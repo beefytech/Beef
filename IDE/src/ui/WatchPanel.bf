@@ -2307,7 +2307,7 @@ namespace IDE.ui
 			BFApp.sApp.DeferDelete(editWidget);
             mEditWidget = null;
 
-            if (mWidgetWindow.mFocusWidget == null)
+            if (mWidgetWindow?.mFocusWidget == null)
                 SetFocus();
             if ((mHasFocus) && (!removedItem))
                 listViewItem.GetSubItem(0).Focused = true;
