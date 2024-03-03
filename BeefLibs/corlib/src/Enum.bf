@@ -99,7 +99,12 @@ namespace System
 		[NoShow(true)]
 		public static Result<T> Parse<T>(StringView str, bool ignoreCase = false) where T : enum
 		{
-			return EnumParser<T>.Parse(str, ignoreCase);
+			[IgnoreErrors(true)]
+			{
+				return EnumParser<T>.Parse(str, ignoreCase);
+			}
+#unwarn
+			return .Err;
 		}
 
 		[NoShow(true)]
