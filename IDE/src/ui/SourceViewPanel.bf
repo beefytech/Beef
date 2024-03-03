@@ -643,6 +643,8 @@ namespace IDE.ui
 			}
 		}
 
+		public bool IsActiveBeefSource => mIsBeefSource && (FilteredProjectSource != null);
+
         public this(SourceEmbedKind embedKind = .None)
         {
 			mEmbedKind = embedKind;

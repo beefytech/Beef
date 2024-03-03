@@ -5221,7 +5221,7 @@ namespace IDE.ui
 
         public override void InsertText(int index, String text)
         {
-            if ((IDEApp.sApp.mSymbolReferenceHelper != null) && (mSourceViewPanel != null))
+            if ((IDEApp.sApp.mSymbolReferenceHelper != null) && (mSourceViewPanel != null) && (mSourceViewPanel.IsActiveBeefSource))
                 IDEApp.sApp.mSymbolReferenceHelper.SourcePreInsertText(this, index, text);
 
             for (var persistentTextPosition in PersistentTextPositions)
@@ -5260,7 +5260,7 @@ namespace IDE.ui
             }
 
 			
-            if ((mSourceViewPanel != null) && (IDEApp.sApp.mSymbolReferenceHelper != null))
+            if ((mSourceViewPanel != null) && (IDEApp.sApp.mSymbolReferenceHelper != null) && (mSourceViewPanel.IsActiveBeefSource))
                 IDEApp.sApp.mSymbolReferenceHelper.SourceUpdateText(this, index);
         }
 
