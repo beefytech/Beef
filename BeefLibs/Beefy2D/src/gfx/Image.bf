@@ -13,7 +13,7 @@ namespace Beefy.gfx
 #if !STUDIO_CLIENT
     public class Image : IDrawable
     {
-		enum LoadFlags
+		public enum LoadFlags
 		{
 			None = 0,
 			Additive = 1,

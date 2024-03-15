@@ -109,6 +109,11 @@ namespace Beefy.gfx
 			public float mBottom;
 		}
 
+		public class BitmapPage
+		{
+			public Image mImage ~ delete _;
+		}
+
 		enum MarkPosition
 		{
 			AboveC, // Center
@@ -124,12 +129,14 @@ namespace Beefy.gfx
         const int32 LOW_CHAR_COUNT = 128;
 
         Dictionary<char32, CharData> mCharData;
+		List<BitmapPage> mBitmapPages ~ DeleteContainerAndItems!(_);
         CharData[] mLowCharData;
 		FTFont* mFTFont;
 		String mPath;
 		List<AltFont> mAlternates;
 		MarkRefData mMarkRefData ~ delete _;
 		float[] mLoKerningTable;
+		//BitmapFont mBMFont ~ delete _; 
 		public StringView mEllipsis = "...";
 
         public this()
@@ -430,6 +437,93 @@ namespace Beefy.gfx
 			String fontPath = scope String(mPath);
 			if (pointSize == -1)
 			{
+				if (fontName.EndsWith(".fnt"))
+				{
+					mBitmapPages = new .();
+
+					var contents = File.ReadAllText(fontName, .. scope .());
+					contents.Replace("\r", "");
+					for (var line in contents.Split('\n', .RemoveEmptyEntries))
+					{
+						bool CheckVal(StringView text, StringView key, ref int32 val)
+						{
+							if (!text.StartsWith(key))
+								return false;
+							if (text[key.Length] != '=')
+								return false;
+							val = int32.Parse(text.Substring(key.Length + 1));
+							return true;
+						}
+
+						bool CheckVal(StringView text, String key, String val)
+						{
+							if (!text.StartsWith(key))
+								return false;
+							if (text[key.Length] != '=')
+								return false;
+							StringView sv = text.Substring(key.Length + 1);
+							if (sv.StartsWith('"'))
+								sv.RemoveFromStart(1);
+							if (sv.EndsWith('"'))
+								sv.RemoveFromEnd(1);
+							val.Append(sv);
+							return true;
+						}
+
+						if (line.StartsWith("page"))
+						{
+							String imageFileName = scope .();
+
+							for (var text in line.Split(' ', .RemoveEmptyEntries))
+								CheckVal(text, "file", imageFileName);
+
+							var dir = Path.GetDirectoryPath(fontName, .. scope .());
+							var imagePath = scope $"{dir}/{imageFileName}";
+
+							BitmapPage page = new .();
+
+							page.mImage = Image.LoadFromFile(imagePath);
+							mBitmapPages.Add(page);
+						}
+						
+						if (line.StartsWith("char "))
+						{
+							CharData charData = null;
+
+							for (var text in line.Split(' ', .RemoveEmptyEntries))
+							{
+								int32 id = 0;
+								if (CheckVal(text, "id", ref id))
+								{
+									charData = new .();
+									if (id < LOW_CHAR_COUNT)
+										mLowCharData[id] = charData;
+									else
+										mCharData[(.)id] = charData;
+								}
+
+								if (charData != null)
+								{
+									CheckVal(text, "x", ref charData.mX);
+									CheckVal(text, "y", ref charData.mY);
+									CheckVal(text, "width", ref charData.mWidth);
+									CheckVal(text, "height", ref charData.mHeight);
+									CheckVal(text, "xoffset", ref charData.mXOffset);
+									CheckVal(text, "yoffset", ref charData.mYOffset);
+									CheckVal(text, "xadvance", ref charData.mXAdvance);
+
+									int32 pageIdx = -1;
+									CheckVal(text, "page", ref pageIdx);
+
+									if (pageIdx != -1)
+										charData.mImageSegment = mBitmapPages[pageIdx].mImage.CreateImageSegment(charData.mX, charData.mY, charData.mWidth, charData.mHeight);
+								}
+							}
+						}
+					}
+					return true;
+				}
+
 				fontPath.Set(BFApp.sApp.mInstallDir);
 				fontPath.Append("fonts/SourceCodePro-Regular.ttf");
 				usePointSize = 9;
@@ -734,9 +828,6 @@ namespace Beefy.gfx
 
         public void Draw(Graphics g, StringView theString, FontMetrics* fontMetrics = null)
         {
-			if (mFTFont == null)
-				return;
-
             float curX = 0;
             float curY = 0;
 
@@ -748,8 +839,6 @@ namespace Beefy.gfx
 
 			g.PushTextRenderState();
 
-#unwarn
-			float markScale = mFTFont.mHeight / 8.0f;
 			float markTopOfs = 0;
 			float markBotOfs = 0;
 
