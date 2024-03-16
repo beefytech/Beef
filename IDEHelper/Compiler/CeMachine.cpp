@@ -11,6 +11,7 @@
 #include "../Backend/BeIRCodeGen.h"
 #include "BeefySysLib/platform/PlatformHelper.h"
 #include "../DebugManager.h"
+#include "BeefySysLib/util/StackHelper.h"
 
 extern "C"
 {
@@ -5051,6 +5052,24 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 	// DISABLED
 	//return BfTypedValue();
 
+	//
+	{
+		StackHelper stackHelper;
+		if (!stackHelper.CanStackExpand(256 * 1024))
+		{
+			BfTypedValue result;
+			if (!stackHelper.Execute([&]()
+				{
+					result = Call(callSource, module, methodInstance, args, flags, expectingType);
+				}))
+			{
+				module->Fail("Stack exhausted in CeContext::Call", callSource.mRefNode);
+			}
+			return result;
+		}
+	}
+
+
 	AutoTimer autoTimer(mCeMachine->mRevisionExecuteTime);
 
 	SetAndRestoreValue<CeContext*> curPrevContext(mPrevContext, mCeMachine->mCurContext);
@@ -9990,11 +10009,15 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 
 		if (auto function = BeValueDynCast<BeFunction>(funcVal))
 		{
+			String funcName = function->mName;
+			if (funcName.EndsWith("__INLINE"))
+				funcName.RemoveFromEnd(8);
+
 			CeFunctionInfo** namedFunctionInfoPtr = NULL;
-			if (mNamedFunctionMap.TryAdd(function->mName, NULL, &namedFunctionInfoPtr))
+			if (mNamedFunctionMap.TryAdd(funcName, NULL, &namedFunctionInfoPtr))
 			{
 				ceFunctionInfo = new CeFunctionInfo();
-				ceFunctionInfo->mName = function->mName;
+				ceFunctionInfo->mName = funcName;
 				*namedFunctionInfoPtr = ceFunctionInfo;
 			}
 			else

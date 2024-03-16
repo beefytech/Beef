@@ -12002,6 +12002,12 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 		else
 		{
 			auto wantTypeInst = wantType->ToTypeInstance();
+			if (wantTypeInst == NULL)
+			{
+				InternalError("BfModule::ConstantToCurrent typeInst error");
+				return BfIRValue();
+			}
+
 			if (wantTypeInst->mBaseType != NULL)
 			{
 				auto baseVal = ConstantToCurrent(constHolder->GetConstant(constArray->mValues[0]), constHolder, wantTypeInst->mBaseType);
@@ -12024,6 +12030,13 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 				{
 					if (fieldInstance.mDataIdx < 0)
 						continue;
+
+					if (fieldInstance.mDataIdx >= constArray->mValues.mSize)
+					{
+						InternalError("BfModule::ConstantToCurrent union error");
+						return BfIRValue();
+					}
+
 					auto val = constArray->mValues[fieldInstance.mDataIdx];
 					BfIRValue memberVal = ConstantToCurrent(constHolder->GetConstant(val), constHolder, fieldInstance.mResolvedType);
 					if (fieldInstance.mDataIdx == newVals.mSize)

@@ -6268,7 +6268,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		if (!typeInstance->IsInterface())
 		{
 			auto interfaceTypeDef = checkInterface->mTypeDef;
-			BF_ASSERT(interfaceTypeDef->mMethods.size() == checkInterface->mMethodInstanceGroups.size());
+			BF_ASSERT((interfaceTypeDef->mMethods.size() == checkInterface->mMethodInstanceGroups.size()) || (checkInterface->IsDeleting()));
 
 			// Reserve empty entries
 			for (int methodIdx = 0; methodIdx < (int)interfaceTypeDef->mMethods.size(); methodIdx++)
