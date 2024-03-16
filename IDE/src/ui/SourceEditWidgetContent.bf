@@ -4365,6 +4365,8 @@ namespace IDE.ui
 
                 if ((needsFreshAutoComplete) && (!didAutoComplete) && (mOnGenerateAutocomplete != null))
                 {
+					if (CheckReadOnly())
+						return;
 					if (IsCursorVisible(false))
 						mOnGenerateAutocomplete(keyChar, isHighPri ? .HighPriority : default);
                 }
