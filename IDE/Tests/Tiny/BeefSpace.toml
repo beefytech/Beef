@@ -24,3 +24,17 @@ ReflectKind = "Minimal"
 [Configs.Release.Win64]
 RuntimeKind = "Reduced"
 ReflectKind = "Minimal"
+
+[Configs.Release.Win32]
+RuntimeKind = "Reduced"
+ReflectKind = "Minimal"
+
+[Configs.ReleaseNoRT.Win64]
+RuntimeKind = "Disabled"
+ReflectKind = "Minimal"
+ConfigSelections = {Tiny = {Config = "Release"}}
+
+[Configs.ReleaseNoRT.Win32]
+RuntimeKind = "Disabled"
+ReflectKind = "Minimal"
+ConfigSelections = {Tiny = {Config = "Release"}}

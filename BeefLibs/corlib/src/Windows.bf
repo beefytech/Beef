@@ -1829,7 +1829,7 @@ namespace System
 		[CLink, CallingConvention(.Stdcall)]
 		public static extern HInstance LoadLibraryW(char16* libFileName);
 		
-		[CLink, CallingConvention(.Stdcall)]
+		[Import("kernel32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern HInstance LoadLibraryA(char8* libFileName);
 
 		[CLink, CallingConvention(.Stdcall)]

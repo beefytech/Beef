@@ -646,12 +646,14 @@ namespace System
 	{
 		static function void*(int) sMallocFunc;
 		static function void(void*) sFreeFunc;
+		static function void(char8) sPutChar;
 
 		static this()
 		{
 			var lib = Windows.LoadLibraryA("msvcrt.dll");
 			sMallocFunc = (.)Windows.GetProcAddress(lib, "malloc");
 			sFreeFunc = (.)Windows.GetProcAddress(lib, "free");
+			sPutChar = (.)Windows.GetProcAddress(lib, "putchar");
 		}
 
 		/*[LinkName(.C), AlwaysInclude]
@@ -670,6 +672,12 @@ namespace System
 		static void free(void* ptr)
 		{
 			sFreeFunc(ptr);
+		}
+
+		[LinkName(.C), AlwaysInclude]
+		static void putchar(char8 c)
+		{
+			sPutChar(c);
 		}
 
 		[LinkName(.C), AlwaysInclude]
@@ -735,9 +743,14 @@ namespace System
 		[LinkName(.C), AlwaysInclude]
 		static void mainCRTStartup()
 		{
-			//WinMain(null, null, "hi", 1);
 			main(0, null);
 		}
+
+		/*[LinkName(.C), AlwaysInclude]
+		static void WinMainCRTStartup()
+		{
+			//WinMain(null, null, "hi", 1);
+		}*/
 
 		[LinkName(.C), Export]
 		static int32 _tls_index;

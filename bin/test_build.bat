@@ -46,6 +46,20 @@ if %size% GTR 16000 (
     goto :HADERROR
 )
 
+@ECHO Building Tiny NoRT
+bin\RunWithStats IDE\dist\BeefBuild -proddir=IDE\Tests\Tiny -clean -config=ReleaseNoRT
+set size=0
+FOR /F "usebackq" %%A IN ('IDE\Tests\Tiny\build\ReleaseNoRT_Win64\Tiny\Tiny.exe') DO set size=%%~zA
+echo Tiny executable size: %size% (expected 5120, max 7000)
+if %size% LSS 1000 (
+    echo TINY executable not found?
+    goto :HADERROR
+)
+if %size% GTR 7000 (
+    echo TINY executable is too large!
+    goto :HADERROR
+)
+
 @ECHO Building BeefIDE_d with BeefBuild_d
 bin\RunAndWait IDE\dist\BeefPerf.exe -cmd="Nop()"
 @IF %ERRORLEVEL% NEQ 0 GOTO FAILPERF_START
