@@ -1688,6 +1688,12 @@ void BfContext::PopulateHotTypeDataVTable(BfTypeInstance* typeInstance)
 			methodInstance = parentVirtualMethod;
 		}*/
 
+		if ((methodInstance->mMethodInfoEx == NULL) || (methodInstance->mMethodInfoEx->mMangledName.IsEmpty()))
+		{
+			// This should not occur, we should have build these mangled names already
+			EnsureHotMangledVirtualMethodName(methodInstance);
+		}
+
 		BF_ASSERT(!methodInstance->mMethodInfoEx->mMangledName.IsEmpty());
 
 		auto& entry = hotTypeData->mVTableEntries[vIdx];
