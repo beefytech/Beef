@@ -10,7 +10,7 @@ using System.Threading;
 using System.Interop;
 using System;
 
-using internal System.String;
+//using internal System.String;
 
 namespace System
 {
@@ -48,7 +48,7 @@ namespace System
 			NullTerminate = 1
 		}
 
-		internal struct Interns
+		public struct Interns
 		{
 			public static Monitor sMonitor = new Monitor() ~ delete _;
 			public static HashSet<String> sInterns = new .() ~ delete _;
