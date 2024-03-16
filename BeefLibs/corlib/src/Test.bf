@@ -70,7 +70,7 @@ namespace System
 		{
 			if (!condition)
 			{
-				if (Runtime.CheckErrorHandlers(scope Runtime.AssertError(.Test, error, filePath, line)) == .Ignore)
+				if ((Runtime.CheckAssertError != null) && (Runtime.CheckAssertError(.Test, error, filePath, line) == .Ignore))
 					return;
 				String failStr = scope .()..AppendF("Assert failed: {} at line {} in {}", error, line, filePath);
 				Internal.[Friend]Test_Error(failStr);

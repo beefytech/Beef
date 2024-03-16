@@ -763,7 +763,10 @@ namespace IDE
 		}
 
 		public static void GetRtLibNames(Workspace.PlatformType platformType, Workspace.Options workspaceOptions, Project.Options options, bool dynName, String outRt, String outDbg, String outAlloc)
-		{			
+		{
+			if (workspaceOptions.mRuntimeKind == .Disabled)
+				return;
+
 			if ((platformType == .Linux) || (platformType == .macOS) || (platformType == .iOS))
 			{
 				if (options.mBuildOptions.mBeefLibType == .DynamicDebug)
@@ -1059,10 +1062,13 @@ namespace IDE
 				    return false;
 				}*/
 
-				switch (options.mBuildOptions.mCLibType)
+				var clibType = options.mBuildOptions.mCLibType;
+				if (workspaceOptions.mRuntimeKind == .Disabled)
+					clibType = .None;
+				switch (clibType)
 				{
 				case .None:
-					linkLine.Append("-nodefaultlib ");
+					linkLine.Append("-nodefaultlib chkstk.obj ");
 				case .Dynamic:
 					//linkLine.Append((workspaceOptions.mMachineType == .x86) ? "-defaultlib:msvcprt " : "-defaultlib:msvcrt ");
 					linkLine.Append("-defaultlib:msvcrt ");

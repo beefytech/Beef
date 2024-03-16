@@ -81,12 +81,6 @@ namespace System
 		public static extern Object UnsafeCastToObject(void* ptr);
 		[Intrinsic("cast")]
 		public static extern void* UnsafeCastToPtr(Object obj);
-		[CallingConvention(.Cdecl), NoReturn]
-		public static extern void ThrowIndexOutOfRange(int stackOffset = 0);
-		[CallingConvention(.Cdecl), NoReturn]
-		public static extern void ThrowObjectNotInitialized(int stackOffset = 0);
-		[CallingConvention(.Cdecl), NoReturn]
-		public static extern void FatalError(String error, int stackOffset = 0);
 		[Intrinsic("memcpy")]
 		public static extern void MemCpy(void* dest, void* src, int length, int32 align = 1, bool isVolatile = false);
 		[Intrinsic("memmove")]
@@ -103,6 +97,32 @@ namespace System
 		public static extern void StdFree(void* ptr);
 		[Intrinsic("returnaddress")]
 		public static extern void* GetReturnAddress(int32 level = 0);
+
+		[CallingConvention(.Cdecl)]
+		static extern void Test_Init(char8* testData);
+		[CallingConvention(.Cdecl)]
+		static extern void Test_Error(char8* error);
+		[CallingConvention(.Cdecl)]
+		static extern void Test_Write(char8* str);
+		[CallingConvention(.Cdecl)]
+		static extern int32 Test_Query();
+		[CallingConvention(.Cdecl)]
+		static extern void Test_Finish();
+
+		static void* sModuleHandle;
+		[AlwaysInclude]
+		static void SetModuleHandle(void* handle)
+		{
+			sModuleHandle = handle;
+		}
+
+#if !BF_RUNTIME_DISABLE
+		[CallingConvention(.Cdecl), NoReturn]
+		public static extern void ThrowIndexOutOfRange(int stackOffset = 0);
+		[CallingConvention(.Cdecl), NoReturn]
+		public static extern void ThrowObjectNotInitialized(int stackOffset = 0);
+		[CallingConvention(.Cdecl), NoReturn]
+		public static extern void FatalError(String error, int stackOffset = 0);
 		[CallingConvention(.Cdecl)]
 		public static extern void* VirtualAlloc(int size, bool canExecute, bool canWrite);
 		[CallingConvention(.Cdecl)]
@@ -160,25 +180,236 @@ namespace System
 		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_RawFree(void* ptr);
 
-		[CallingConvention(.Cdecl), AlwaysInclude]
-		static extern void Shutdown();
 		[CallingConvention(.Cdecl)]
-		static extern void Test_Init(char8* testData);
-		[CallingConvention(.Cdecl)]
-		static extern void Test_Error(char8* error);
-		[CallingConvention(.Cdecl)]
-		static extern void Test_Write(char8* str);
-		[CallingConvention(.Cdecl)]
-		static extern int32 Test_Query();
-		[CallingConvention(.Cdecl)]
-		static extern void Test_Finish();
+		static extern void Shutdown_Internal();
 
-		static void* sModuleHandle;
-		[AlwaysInclude]
-		static void SetModuleHandle(void* handle)
+		[CallingConvention(.Cdecl), AlwaysInclude]
+		static void Shutdown()
 		{
-			sModuleHandle = handle;
+			Shutdown_Internal();
+			Runtime.Shutdown();
 		}
+	#else
+
+		enum BfObjectFlags : uint8
+		{
+			None			= 0,
+			Mark1			= 0x01,
+			Mark2			= 0x02,
+			Mark3			= 0x03,
+			Allocated		= 0x04,
+			StackAlloc		= 0x08,
+			AppendAlloc		= 0x10,
+			AllocInfo		= 0x20,
+			AllocInfo_Short = 0x40,	
+			Deleted			= 0x80
+		};
+
+		[NoReturn]
+		static void Crash()
+		{
+			char8* ptr = null;
+			*ptr = 'A';
+		}
+
+		[AlwaysInclude, NoReturn]
+		public static void ThrowIndexOutOfRange(int stackOffset = 0)
+		{
+			Crash();
+		}
+
+		[AlwaysInclude, NoReturn]
+		public static void ThrowObjectNotInitialized(int stackOffset = 0)
+		{
+			Crash();
+		}
+
+		[AlwaysInclude, NoReturn]
+		public static void FatalError(String error, int stackOffset = 0)
+		{
+			Crash();
+		}
+
+		[AlwaysInclude]
+		public static void* VirtualAlloc(int size, bool canExecute, bool canWrite)
+		{
+			return null;
+		}
+
+		public static int32 CStrLen(char8* charPtr)
+		{
+			int32 len = 0;
+			while (charPtr[len] != 0)
+				len++;
+			return len;
+		}
+
+		public static int64 GetTickCountMicro()
+		{
+			return 0;
+		}
+
+
+		[AlwaysInclude]
+		public static void BfDelegateTargetCheck(void* target)
+		{
+
+		}
+
+		[AlwaysInclude]
+		public static void* LoadSharedLibrary(char8* filePath)
+		{
+			return null;
+		}
+
+		[AlwaysInclude]
+		public static void LoadSharedLibraryInto(char8* filePath, void** libDest)
+		{
+
+		}
+
+		[AlwaysInclude]
+		public static void* GetSharedProcAddress(void* libHandle, char8* procName)
+		{
+			return null;
+		}
+
+		[AlwaysInclude]
+		public static void GetSharedProcAddressInto(void* libHandle, char8* procName, void** procDest)
+		{
+
+		}
+
+		[AlwaysInclude]
+		public static char8* GetCommandLineArgs()
+		{
+			return "";
+		}
+
+		public static void ProfilerCmd(char8* str)
+		{
+
+		}
+
+		public static void ReportMemory()
+		{
+
+		}
+
+		public static void ObjectDynCheck(Object obj, int32 typeId, bool allowNull)
+		{
+
+		}
+
+		public static void ObjectDynCheckFailed(Object obj, int32 typeId)
+		{
+
+		}
+
+		[DisableChecks, DisableObjectAccessChecks]
+		public static void Dbg_ObjectCreated(Object obj, int size, ClassVData* classVData)
+		{
+		}
+
+		[DisableChecks, DisableObjectAccessChecks]
+		public static void Dbg_ObjectCreatedEx(Object obj, int size, ClassVData* classVData)
+		{
+
+		}
+
+		[DisableChecks, DisableObjectAccessChecks]
+		public static void Dbg_ObjectAllocated(Object obj, int size, ClassVData* classVData)
+		{
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			obj.[Friend]mClassVData = (.)(void*)classVData;
+			obj.[Friend]mDbgAllocInfo = (.)GetReturnAddress(0);
+#else
+			obj.[Friend]mClassVData = classVData;
+#endif
+		}
+
+		[DisableChecks, DisableObjectAccessChecks]
+		public static void Dbg_ObjectAllocatedEx(Object obj, int size, ClassVData* classVData)
+		{
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			obj.[Friend]mClassVData = (.)(void*)classVData;
+			obj.[Friend]mDbgAllocInfo = (.)GetReturnAddress(0);
+#else
+			obj.[Friend]mClassVData = classVData;
+#endif
+		}
+
+		public static int Dbg_PrepareStackTrace(int baseAllocSize, int maxStackTraceDepth)
+		{
+			return 0;
+		}
+
+		[DisableChecks, DisableObjectAccessChecks]
+		public static void Dbg_ObjectStackInit(Object obj, ClassVData* classVData)
+		{
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			obj.[Friend]mClassVData = (.)(void*)classVData;
+			obj.[Friend]mClassVData |= (.)BfObjectFlags.StackAlloc;
+			obj.[Friend]mDbgAllocInfo = (.)GetReturnAddress(0);
+#else
+			obj.[Friend]mClassVData = classVData;
+#endif
+		}
+
+		public static Object Dbg_ObjectAlloc(TypeInstance typeInst, int size)
+		{
+			return null;
+		}
+
+		public static Object Dbg_ObjectAlloc(ClassVData* classVData, int size, int align, int maxStackTraceDepth)
+		{
+			return null;
+		}
+
+		public static void Dbg_ObjectPreDelete(Object obj)
+		{
+
+		}
+
+		public static void Dbg_ObjectPreCustomDelete(Object obj)
+		{
+
+		}
+
+		public static void Dbg_MarkObjectDeleted(Object obj)
+		{
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			obj.[Friend]mClassVData |= (.)BfObjectFlags.Deleted;
+#endif
+		}
+
+		public static void* Dbg_RawAlloc(int size)
+		{
+			return null;
+		}
+
+		public static void* Dbg_RawObjectAlloc(int size)
+		{
+			return null;
+		}
+
+		public static void* Dbg_RawAlloc(int size, DbgRawAllocData* rawAllocData)
+		{
+			return null;
+		}
+
+		public static void Dbg_RawFree(void* ptr)
+		{
+
+		}
+
+		[AlwaysInclude]
+		static void Shutdown()
+		{
+
+		}
+	#endif
+
 		[AlwaysInclude]
 		static void AddRtFlags(int32 flags)
 		{
@@ -209,15 +440,15 @@ namespace System
 		}
 
 		[Error("Cannot be called directly"), SkipCall]
-		static void SetDeleted1(void* dest);		
+		static void SetDeleted1(void* dest);
 		[Error("Cannot be called directly"), SkipCall]
-		static void SetDeleted4(void* dest);		
+		static void SetDeleted4(void* dest);
 		[Error("Cannot be called directly"), SkipCall]
-		static void SetDeleted8(void* dest);		
+		static void SetDeleted8(void* dest);
 		[Error("Cannot be called directly"), SkipCall]
-		static void SetDeleted16(void* dest);		
+		static void SetDeleted16(void* dest);
 		[Error("Cannot be called directly"), SkipCall]
-		static extern void SetDeletedX(void* dest, int size);		
+		static extern void SetDeletedX(void* dest, int size);
 		[Error("Cannot be called directly"), SkipCall]
 		static extern void SetDeleted(void* dest, int size, int32 align);
 		[Error("Cannot be called directly"), SkipCall]
@@ -254,9 +485,9 @@ namespace System
 			}
 		}
 
-		[AlwaysInclude]
         public static String[] CreateParamsArray()
 		{
+#if !BF_RUNTIME_DISABLE
 			char8* cmdLine = GetCommandLineArgs();
 			//Windows.MessageBoxA(default, scope String()..AppendF("CmdLine: {0}", StringView(cmdLine)), "HI", 0);
 
@@ -336,7 +567,7 @@ namespace System
 				        if (firstCharIdx == -1)
 				            firstCharIdx = i;
 						if (c == '^')
-						{	
+						{
 							i++;
 						}
 				        if (c == '"')
@@ -357,9 +588,11 @@ namespace System
 			}
 
 		    return strVals;
+#else
+			return new String[0];
+#endif
 		}
 
-		[AlwaysInclude]
         public static void DeleteStringArray(String[] arr)
         {
             for (var str in arr)
@@ -367,8 +600,10 @@ namespace System
             delete arr;
         }
 
+#if !BF_RUNTIME_DISABLE
         extern static this();
         extern static ~this();
+#endif
     }
 
 	struct CRTAlloc

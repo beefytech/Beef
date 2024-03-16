@@ -656,6 +656,7 @@ public:
 	virtual String GetCurrentException() override;
 	virtual void SetAliasPath(const StringImpl& origPath, const StringImpl& localPath) override;
 	virtual String GetModulesInfo() override;
+	virtual String GetModuleInfo(const StringImpl& moduleName) override;
 	virtual void CancelSymSrv() override;
 	virtual bool HasPendingDebugLoads() override;
 	virtual int LoadImageForModule(const StringImpl& moduleName, const StringImpl& debugFileName) override;

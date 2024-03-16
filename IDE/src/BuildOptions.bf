@@ -5,6 +5,7 @@ namespace IDE
 {
 	class BuildOptions
 	{
+		[Reflect(.All)]
 		public enum LTOType
 		{
 			case None;
@@ -18,6 +19,7 @@ namespace IDE
 			}
 		}
 
+		[Reflect(.All)]
 		public enum EmitDebugInfo
 		{
 		    No,
@@ -25,6 +27,7 @@ namespace IDE
 		    LinesOnly,            
 		}
 
+		[Reflect(.All)]
 		public enum SIMDSetting
 		{
 		    None,
@@ -38,6 +41,7 @@ namespace IDE
 		    AVX2,            
 		}
 
+		[Reflect]
 		public enum BfOptimizationLevel
 		{
 		    case O0;
@@ -53,6 +57,7 @@ namespace IDE
 			}
 		}
 
+		[Reflect]
 		public enum RelocType
 		{
 			NotSet,
@@ -64,6 +69,7 @@ namespace IDE
 			ROPI_RWPI
 		}
 
+		[Reflect]
 		public enum PICLevel
 		{
 			NotSet,
@@ -72,6 +78,7 @@ namespace IDE
 			Big
 		}
 
+		[Reflect]
 		public enum AlwaysIncludeKind
 		{
 			NotSet,

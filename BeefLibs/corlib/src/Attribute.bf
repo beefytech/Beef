@@ -172,6 +172,12 @@ namespace System
 	    
 	}
 
+	[AttributeUsage(.MemberAccess)]
+	public struct NoStaticCtorAttribute : Attribute
+	{
+	    
+	}
+
 	
 	[AttributeUsage(.Block)]
 	public struct ConstSkipAttribute : Attribute

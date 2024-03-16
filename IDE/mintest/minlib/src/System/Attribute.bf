@@ -110,13 +110,13 @@ namespace System
     [AttributeUsage(.Method | .Constructor |  .Invocation)]
     public struct InlineAttribute : Attribute
     {
-        
+
     }
 
 	[AttributeUsage(.Invocation)]
 	public struct UnboundAttribute : Attribute
 	{
-	    
+
 	}
 
 	[AttributeUsage(.Class | .Struct | .Interface | .Method | .Constructor)]
@@ -136,13 +136,13 @@ namespace System
 	[AttributeUsage(.MemberAccess | .Alloc)]
 	public struct FriendAttribute : Attribute
 	{
-	    
+
 	}
 
 	[AttributeUsage(.MemberAccess)]
 	public struct NoExtensionAttribute : Attribute
 	{
-	    
+
 	}
 
 	[AttributeUsage(.Block)]
@@ -161,13 +161,13 @@ namespace System
 	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
 	public struct OptimizeAttribute : Attribute
 	{
-	    
+
 	}
 
 	[AttributeUsage(.Method | .Class | .Struct | .Enum)]
 	public struct UseLLVMAttribute : Attribute
 	{
-	    
+
 	}
 
     [AttributeUsage(.Method /*2*/ | .StaticField)]
@@ -344,7 +344,7 @@ namespace System
 	[AttributeUsage(.Enum)]
 	public struct AllowDuplicatesAttribute : Attribute
 	{
-	    
+
 	}
 
 	[AttributeUsage(.Class | .Struct)]
@@ -409,7 +409,7 @@ namespace System
 
 	public struct ExportAttribute : Attribute
 	{
-	    
+
 	}
 
 	[AttributeUsage(.StaticField | .Field, .NotInherited)]
@@ -418,6 +418,12 @@ namespace System
 		public this()
 		{
 		}
+	}
+
+	[AttributeUsage(.MemberAccess)]
+	public struct NoStaticCtorAttribute : Attribute
+	{
+
 	}
 
 	/// The [Checked] attribute is used to mark a method or a method invocation as being "checked", meaning

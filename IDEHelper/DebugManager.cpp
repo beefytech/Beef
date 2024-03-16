@@ -1548,6 +1548,13 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_GetModulesInfo()
 	return outString.c_str();
 }
 
+BF_EXPORT const char* BF_CALLTYPE Debugger_GetModuleInfo(const char* moduleName)
+{
+	String& outString = *gTLStrReturn.Get();
+	outString = gDebugger->GetModuleInfo(moduleName);
+	return outString.c_str();
+}
+
 BF_EXPORT void BF_CALLTYPE Debugger_CancelSymSrv()
 {
 	gDebugger->CancelSymSrv();

@@ -13,8 +13,15 @@ namespace System.Diagnostics.Contracts
             Assert,
             Assume,
         }
-        
+
+#if !BF_RUNTIME_DISABLE
         static extern void ReportFailure(ContractFailureKind failureKind, char8* userMessage, int32 userMessageLen, char8* conditionText, int32 conditionTextLen);
+#else
+		static void ReportFailure(ContractFailureKind failureKind, char8* userMessage, int32 userMessageLen, char8* conditionText, int32 conditionTextLen)
+		{
+			Internal.FatalError("Contract.ReportFailure");
+		}
+#endif
 
         /// <summary>
         /// This method is used internally to trigger a failure indicating to the "programmer" that he is using the interface incorrectly.

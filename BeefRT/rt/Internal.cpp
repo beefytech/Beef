@@ -52,6 +52,7 @@
 USING_NS_BF;
 
 static Beefy::StringT<0> gCmdLineString;
+bool gCmdLineStringHandled;
 bf::System::Runtime::BfRtCallbacks gBfRtCallbacks;
 BfRtFlags gBfRtFlags = (BfRtFlags)0;
 
@@ -65,7 +66,10 @@ static int gTestMethodIdx = -1;
 static uint32 gTestStartTick = 0;
 static bool gTestBreakOnFailure = false;
 
+typedef void(*ClientPipeErrorFunc)(const Beefy::StringView& error, int stackOffset);
+
 static BfpFile* gClientPipe = NULL;
+static ClientPipeErrorFunc gClientPipeErrorFunc;
 static Beefy::String gTestInBuffer;
 
 namespace bf
@@ -85,7 +89,7 @@ namespace bf
 
 			BFRT_EXPORT static void BfStaticCtor();
 			BFRT_EXPORT static void BfStaticDtor();
-			BFRT_EXPORT static void Shutdown();
+			BFRT_EXPORT static void Shutdown_Internal();
 		public:
 			BFRT_EXPORT static Object* UnsafeCastToObject(void* inPtr);
 			BFRT_EXPORT static void* UnsafeCastToPtr(Object* obj);
@@ -224,18 +228,8 @@ static void Internal_FatalError(const char* error)
 	if (gBfRtCallbacks.CheckErrorHandler != NULL)
 		gBfRtCallbacks.CheckErrorHandler("FatalError", error, NULL, 0);
 
-	if ((gClientPipe != NULL) && (!gTestBreakOnFailure))
-	{
-		Beefy::String str = ":TestFatal\t";
-		str += error;
-		str.Replace('\n', '\r');
-		str += "\n";
-		TestString(str);
-
- 		Beefy::String result;
- 		TestReadCmd(result);
-		exit(1);
-	}
+	if (gClientPipeErrorFunc != NULL)
+		gClientPipeErrorFunc(error, 0);
 	else
 		BfpSystem_FatalError(error, "BEEF FATAL ERROR");
 }
@@ -304,62 +298,41 @@ void bf::System::Runtime::Init(int version, int flags, BfRtCallbacks* callbacks)
 	if ((flags & 4) != 0)
 		sysInitFlags = (BfpSystemInitFlags)(sysInitFlags | BfpSystemInitFlag_SilentCrash);
 	BfpSystem_Init(BFP_VERSION, sysInitFlags);
-	BfpSystem_AddCrashInfoFunc(GetCrashInfo);
 
 	if (gBfRtCallbacks.Alloc != NULL)
 	{
-		Internal_FatalError(StrFormat("BeefRT already initialized. Multiple executable modules in the same process cannot dynamically link to the Beef runtime.").c_str());
+		Internal_FatalError("BeefRT already initialized. Multiple executable modules in the same process cannot dynamically link to the Beef runtime.");
 	}
 
 	if (version != BFRT_VERSION)
 	{
-        BfpSystem_FatalError(StrFormat("BeefRT build version '%d' does not match requested version '%d'", BFRT_VERSION, version).c_str(), "BEEF FATAL ERROR");
+		char error[256];
+		sprintf(error, "BeefRT build version '%d' does not match requested version '%d'", BFRT_VERSION, version);
+        BfpSystem_FatalError(error, "BEEF FATAL ERROR");
 	}
 
 	gBfRtCallbacks = *callbacks;
 	gBfRtFlags = (BfRtFlags)flags;
-
-	Beefy::String cmdLine;
-
-	BfpSystemResult result;
-	BFP_GETSTR_HELPER(cmdLine, result, BfpSystem_GetCommandLine(__STR, __STRLEN, &result));
-
-	char* cmdLineStr = (char*)cmdLine.c_str();
-
-	//::MessageBoxA(NULL, cmdLineStr, "BFRT", 0);
-
-	char* useCmdLineStr = cmdLineStr;
-
-	if (cmdLineStr[0] != 0)
-	{
-		bool nameQuoted = cmdLineStr[0] == '\"';
-
-		Beefy::String passedName;
-		int i;
-		for (i = (nameQuoted ? 1 : 0); cmdLineStr[i] != 0; i++)
-		{
-			wchar_t c = cmdLineStr[i];
-
-			if (((nameQuoted) && (c == '"')) ||
-				((!nameQuoted) && (c == ' ')))
-			{
-				i++;
-				break;
-			}
-			passedName += cmdLineStr[i];
-		}
-
-		useCmdLineStr += i;
-		while (*useCmdLineStr == L' ')
-			useCmdLineStr++;
-	}
-	gCmdLineString = useCmdLineStr;
 
 #ifdef BF_PLATFORM_WINDOWS
 	gBfTLSKey = FlsAlloc(TlsFreeFunc);
 #else
 	pthread_key_create(&gBfTLSKey, TlsFreeFunc);
 #endif
+}
+
+void bf::System::Runtime::InitCrashCatcher(int flags)
+{
+	BfpSystemInitFlags sysInitFlags = BfpSystemInitFlag_InstallCrashCatcher;
+	if ((flags & 4) != 0)
+		sysInitFlags = (BfpSystemInitFlags)(sysInitFlags | BfpSystemInitFlag_SilentCrash);
+	BfpSystem_InitCrashCatcher(sysInitFlags);
+	BfpSystem_AddCrashInfoFunc(GetCrashInfo);
+}
+
+void bf::System::Runtime::ShutdownCrashCatcher()
+{
+	BfpSystem_ShutdownCrashCatcher();
 }
 
 void bf::System::Runtime::SetErrorString(char* errorStr)
@@ -379,7 +352,7 @@ void bf::System::Runtime::SetCrashReportKind(bf::System::Runtime::RtCrashReportK
 
 //////////////////////////////////////////////////////////////////////////
 
-void Internal::Shutdown()
+void Internal::Shutdown_Internal()
 {
 	BfInternalThread::WaitForAllDone();
 	if (gBfRtCallbacks.GC_Shutdown != NULL)
@@ -419,20 +392,9 @@ void* Internal::UnsafeCastToPtr(Object* obj)
 
 void Internal::ThrowIndexOutOfRange(intptr stackOffset)
 {
-	if (gClientPipe != NULL)
-	{
-		if (gTestBreakOnFailure)
-		{
-			SETUP_ERROR("Index out of range", (int)(2 + stackOffset));
-			BF_DEBUG_BREAK();
-		}
-
-		Beefy::String str = ":TestFail\tIndex out of range\n";
-		TestString(str);
-		exit(1);
-	}
-
-	if ((stackOffset != -1) && (::IsDebuggerPresent()))
+	if (gClientPipeErrorFunc != NULL)
+		gClientPipeErrorFunc("Index out of range", 0);
+	else if ((stackOffset != -1) && (::IsDebuggerPresent()))
 	{
 		SETUP_ERROR("Index out of range", (int)(2 + stackOffset));
 		BF_DEBUG_BREAK();
@@ -443,20 +405,9 @@ void Internal::ThrowIndexOutOfRange(intptr stackOffset)
 
 void Internal::ThrowObjectNotInitialized(intptr stackOffset)
 {
-	if (gClientPipe != NULL)
-	{
-		if (gTestBreakOnFailure)
-		{
-			SETUP_ERROR("Object not initialized", (int)(2 + stackOffset));
-			BF_DEBUG_BREAK();
-		}
-
-		Beefy::String str = ":TestFail\tObject not initialized\n";
-		TestString(str);
-		exit(1);
-	}
-
-	if ((stackOffset != -1) && (::IsDebuggerPresent()))
+	if (gClientPipeErrorFunc != NULL)
+		gClientPipeErrorFunc("Object not initialized", 0);
+	else if ((stackOffset != -1) && (::IsDebuggerPresent()))
 	{
 		SETUP_ERROR("Object not initialized", (int)(2 + stackOffset));
 		BF_DEBUG_BREAK();
@@ -467,29 +418,17 @@ void Internal::ThrowObjectNotInitialized(intptr stackOffset)
 
 void Internal::FatalError(bf::System::String* error, intptr stackOffset)
 {
-	if (gClientPipe != NULL)
-	{
-		if (gTestBreakOnFailure)
-		{
-			SETUP_ERROR(error->CStr(), (int)(2 + stackOffset));
-			BF_DEBUG_BREAK();
-		}
-
-		Beefy::String str = ":TestFail\t";
-		str += error->CStr();
-		str.Replace('\n', '\r');
-		str += "\n";
-		TestString(str);
-		exit(1);
-	}
-
+	Beefy::StringView errorStringView = error->ToStringView();
+	Beefy::StringSimple errorString = errorStringView;
+	if (gClientPipeErrorFunc != NULL)
+		gClientPipeErrorFunc(errorStringView, 0);
 	if ((stackOffset != -1) && (::IsDebuggerPresent()))
 	{
-		SETUP_ERROR(error->CStr(), (int)(2 + stackOffset));
+		SETUP_ERROR(errorString.c_str(), (int)(2 + stackOffset));
 		BF_DEBUG_BREAK();
 	}
 
-    Internal_FatalError(error->CStr());
+    Internal_FatalError(errorString.c_str());
 }
 
 void Internal::MemCpy(void* dest, void* src, intptr length)
@@ -630,6 +569,46 @@ void Internal::GetSharedProcAddressInto(void* libHandle, char* procName, void** 
 
 char* Internal::GetCommandLineArgs()
 {
+	if (!gCmdLineStringHandled)
+	{
+		Beefy::String cmdLine;
+
+		BfpSystemResult result;
+		BFP_GETSTR_HELPER(cmdLine, result, BfpSystem_GetCommandLine(__STR, __STRLEN, &result));
+
+		char* cmdLineStr = (char*)cmdLine.c_str();
+
+		//::MessageBoxA(NULL, cmdLineStr, "BFRT", 0);
+
+		char* useCmdLineStr = cmdLineStr;
+
+		if (cmdLineStr[0] != 0)
+		{
+			bool nameQuoted = cmdLineStr[0] == '\"';
+
+			Beefy::String passedName;
+			int i;
+			for (i = (nameQuoted ? 1 : 0); cmdLineStr[i] != 0; i++)
+			{
+				wchar_t c = cmdLineStr[i];
+
+				if (((nameQuoted) && (c == '"')) ||
+					((!nameQuoted) && (c == ' ')))
+				{
+					i++;
+					break;
+				}
+				passedName += cmdLineStr[i];
+			}
+
+			useCmdLineStr += i;
+			while (*useCmdLineStr == L' ')
+				useCmdLineStr++;
+		}
+		gCmdLineString = useCmdLineStr;
+		gCmdLineStringHandled = true;
+	}
+
 	return (char*)gCmdLineString.c_str();
 }
 
@@ -697,6 +676,27 @@ static void TestReadCmd(Beefy::String& str)
 	}
 }
 
+void TestFailed(const Beefy::StringView& error, int stackOffset)
+{
+	if (gClientPipe != NULL)
+	{
+		Beefy::String errorString = error;
+
+		if (gTestBreakOnFailure)
+		{
+			SETUP_ERROR(errorString.c_str(), (int)(2 + stackOffset));
+			BF_DEBUG_BREAK();
+		}
+
+		Beefy::String str = ":TestFail\t";
+		str += errorString.c_str();
+		str.Replace('\n', '\r');
+		str += "\n";
+		TestString(str);
+		exit(1);
+	}
+}
+
 void Internal::Test_Init(char* testData)
 {
 	BfpSystem_SetCrashReportKind(BfpCrashReportKind_None);
@@ -707,6 +707,8 @@ void Internal::Test_Init(char* testData)
 	gClientPipe = BfpFile_Create(args.c_str(), BfpFileCreateKind_OpenExisting, (BfpFileCreateFlags)(BfpFileCreateFlag_Read | BfpFileCreateFlag_Write | BfpFileCreateFlag_Pipe), BfpFileAttribute_None, &fileResult);
 	if (fileResult != BfpFileResult_Ok)
 		BF_FATAL("Test_Init failed to create pipe to test manager");
+
+	gClientPipeErrorFunc = TestFailed;
 
 	Beefy::String outStr;
 	outStr += ":TestInit\n";
@@ -853,7 +855,6 @@ void Internal::ObjectDynCheck(bf::System::Object* object, int typeId, bool allow
 	if (result == NULL)
 	{
 		Beefy::String errorStr = "Attempting invalid cast on object";
-		//errorStr += StrFormat("\x1LEAK\t0x%@\n   (%s)0x%@\n", object, object->GetTypeName().c_str(), object);
 		errorStr += StrFormat("\x1LEAK\t0x%@\n   (%s)0x%@\n", object, "System.Object", object);
 		SETUP_ERROR(errorStr.c_str(), 2);
 		BF_DEBUG_BREAK();

@@ -8,6 +8,8 @@ USING_NS_BF_DBG;
 DbgHotScanner::DbgHotScanner(WinDebugger* debugger)
 {
 	mDebugger = debugger;
+	mBfTypesInfoAddr = 0;
+	mDbgGCData = { 0 };
 }
 
 NS_BF_DBG_BEGIN
@@ -255,20 +257,25 @@ void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memK
 			int* typeIdPtr = NULL;
 			if (mFoundClassVDataAddrs.TryAdd(classVDataAddr, NULL, &typeIdPtr))
 			{
-				addr_target typeAddr = mDebugger->ReadMemory<addr_target>(classVDataAddr);
-				Fake_Type_Data typeData;
-				mDebugger->ReadMemory(typeAddr + objectSize, sizeof(typeData), &typeData);
-
-				*typeIdPtr = typeData.mTypeId;
-				_MarkTypeUsed(typeData.mTypeId, elementSize);
-				if ((typeData.mTypeFlags & BfTypeFlags_Delegate) != 0)
+				if (mBfTypesInfoAddr > 0)
 				{
-					Fake_Delegate_Data* dlg = (Fake_Delegate_Data*)((uint8*)spanPtr + objectSize);
-					if (mFoundFuncPtrs.Add(dlg->mFuncPtr))
+					addr_target typeId = mDebugger->ReadMemory<int32>(classVDataAddr);
+					addr_target arrayAddr = mBfTypesInfoAddr + typeId * sizeof(addr_target);
+					addr_target typeAddr = mDebugger->ReadMemory<addr_target>(arrayAddr);
+					Fake_Type_Data typeData;
+					mDebugger->ReadMemory(typeAddr + objectSize, sizeof(typeData), &typeData);
+
+					*typeIdPtr = typeData.mTypeId;
+					_MarkTypeUsed(typeData.mTypeId, elementSize);
+					if ((typeData.mTypeFlags & BfTypeFlags_Delegate) != 0)
 					{
-						auto subProgram = mDebugger->mDebugTarget->FindSubProgram(dlg->mFuncPtr, DbgOnDemandKind_None);
-						if ((subProgram != NULL) && (subProgram->GetLanguage() == DbgLanguage_Beef))
-							AddSubProgram(subProgram, true, "D ");
+						Fake_Delegate_Data* dlg = (Fake_Delegate_Data*)((uint8*)spanPtr + objectSize);
+						if (mFoundFuncPtrs.Add(dlg->mFuncPtr))
+						{
+							auto subProgram = mDebugger->mDebugTarget->FindSubProgram(dlg->mFuncPtr, DbgOnDemandKind_None);
+							if ((subProgram != NULL) && (subProgram->GetLanguage() == DbgLanguage_Beef))
+								AddSubProgram(subProgram, true, "D ");
+						}
 					}
 				}
 			}
@@ -358,12 +365,51 @@ void DbgHotScanner::Scan(DbgHotResolveFlags flags)
 		{
 			if ((module->mFilePath.Contains("Beef")) && (module->mFilePath.Contains("Dbg")))
 			{
+				module->ParseTypeData();
 				module->ParseSymbolData();
 				auto entry = module->mSymbolNameMap.Find("gGCDbgData");
 				if ((entry != NULL) && (entry->mValue != NULL))
 					gcDbgDataAddr = entry->mValue->mAddress;
 			}
 		}
+
+		auto module = mDebugger->mDebugTarget->mTargetBinary;
+		if (module->mBfTypesInfoAddr == 0)
+		{
+			module->mBfTypesInfoAddr = -1;
+			auto typeTypeEntry = module->FindType("System.Type", DbgLanguage_Beef);
+			if ((typeTypeEntry != NULL) && (typeTypeEntry->mValue != NULL))
+			{
+				auto typeType = typeTypeEntry->mValue;
+				module->mBfTypeType = typeType;
+				if (typeType->mNeedsGlobalsPopulated)
+					typeType->mCompileUnit->mDbgModule->PopulateTypeGlobals(typeType);
+
+				for (auto member : typeType->mMemberList)
+				{
+					if ((member->mIsStatic) && (member->mName != NULL) && (strcmp(member->mName, "sTypes") == 0) && (member->mLocationData != NULL))
+					{
+						DbgAddrType addrType;
+						module->mBfTypesInfoAddr = member->mCompileUnit->mDbgModule->EvaluateLocation(NULL, member->mLocationData, member->mLocationLen, NULL, &addrType);
+					}
+				}
+
+				if (module->mBfTypesInfoAddr <= 0)
+				{
+					auto entry = module->mSymbolNameMap.Find(
+#ifdef BF_DBG_64
+						"?sTypes@Type@System@bf@@2PEAPEAV123@A"
+#else
+						"?sTypes@Type@System@bf@@2PAPAV123@A"
+#endif
+					);
+
+					if (entry)
+						module->mBfTypesInfoAddr = entry->mValue->mAddress;
+				}
+			}
+		}
+		mBfTypesInfoAddr = module->mBfTypesInfoAddr;
 
 		if (gcDbgDataAddr == 0)
 			return;

@@ -12872,6 +12872,210 @@ String WinDebugger::GetModulesInfo()
 	return str;
 }
 
+String WinDebugger::GetModuleInfo(const StringImpl& modulePath)
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	String result;
+
+	for (auto dbgModule : mDebugTarget->mDbgModules)
+	{
+		if (modulePath.Equals(dbgModule->mFilePath, StringImpl::CompareKind_OrdinalIgnoreCase))
+		{
+			dbgModule->ParseGlobalsData();
+			dbgModule->PopulateStaticVariableMap();
+
+			auto coff = (COFF*)dbgModule;
+			coff->ParseCompileUnits();
+
+			int fileSize = 0;
+			//
+			{
+				FileStream fs;
+				fs.Open(coff->mFilePath, "rb");
+				fileSize = fs.GetSize();
+			}
+
+			result += StrFormat("Path: %s FileSize:%0.2fk MemoryImage:%0.2fk\n", coff->mFilePath.c_str(), fileSize / 1024.0f, coff->mImageSize / 1024.0f);
+
+			result += "Sections:\n";
+			for (auto& section : coff->mSections)
+			{
+				result += StrFormat("\t%s\t%0.2fk\n", section.mName.c_str(), (section.mAddrLength) / 1024.0f);
+			}
+			result += "\n";
+
+			result += "Compile Units:\n";
+			for (auto compileUnit : dbgModule->mCompileUnits)
+			{
+				coff->MapCompileUnitMethods(compileUnit);
+				result += StrFormat("\t%s PCRange:%0.2fk\n", compileUnit->mName.c_str(), (compileUnit->mHighPC - compileUnit->mLowPC) / 1024.0f);
+			}
+			result += "\n";
+
+			Array<CvModuleInfo*> moduleInfos;
+			for (auto moduleInfo : coff->mCvModuleInfo)
+			{
+				if (moduleInfo->mSectionContrib.mSize > 0)
+					moduleInfos.Add(moduleInfo);
+			}
+			moduleInfos.Sort([](CvModuleInfo* lhs, CvModuleInfo* rhs)
+				{
+					return lhs->mSectionContrib.mSize > rhs->mSectionContrib.mSize;
+				});
+
+			int totalContrib = 0;
+			result += "CV Module Info:\n";
+			for (auto moduleInfo : moduleInfos)
+			{
+				auto section = coff->mSections[moduleInfo->mSectionContrib.mSection - 1];
+
+				result += StrFormat("\t%s\t%s\t%0.2fk\t%@-%@\n", moduleInfo->mModuleName, section.mName.c_str(), (moduleInfo->mSectionContrib.mSize) / 1024.0f,
+					coff->GetSectionAddr(moduleInfo->mSectionContrib.mSection, moduleInfo->mSectionContrib.mOffset),
+					coff->GetSectionAddr(moduleInfo->mSectionContrib.mSection, moduleInfo->mSectionContrib.mOffset + moduleInfo->mSectionContrib.mSize));
+				totalContrib += moduleInfo->mSectionContrib.mSize;
+			}
+			result += StrFormat("\tTOTAL: %0.2fk\n", (totalContrib) / 1024.0f);
+			result += "\n";
+
+			addr_target minAddr = 0;
+			Array<DbgCompileUnitContrib*> contribs;
+			for (auto itr = mDebugTarget->mContribMap.begin(); itr != mDebugTarget->mContribMap.end(); ++itr)
+			{
+				auto contrib = *itr;
+				if (contrib->mDbgModule != coff)
+					continue;
+
+				if (contrib->mAddress < minAddr)
+					continue;
+
+				minAddr = contrib->mAddress + contrib->mLength;
+
+				auto section = &coff->mSectionHeaders[contrib->mSection - 1];
+				if (section->mSizeOfRawData <= 0)
+					continue;
+
+				contribs.Add(contrib);
+			}
+			contribs.Sort([](DbgCompileUnitContrib* lhs, DbgCompileUnitContrib* rhs)
+				{
+					return lhs->mLength > rhs->mLength;
+				});
+
+			totalContrib = 0;
+			result += "Contribs:\n";
+			for (auto contrib : contribs)
+			{
+				auto cvModule = coff->mCvModuleInfo[contrib->mCompileUnitId];
+				auto section = &coff->mSectionHeaders[contrib->mSection - 1];
+				result += StrFormat("\t%s\t%s\t%0.2fk\t%@\n", cvModule->mModuleName, section->mName, (contrib->mLength)/1024.0f, contrib->mAddress);
+				totalContrib += contrib->mLength;
+			}
+			result += StrFormat("\tTOTAL: %0.2fk\n", (totalContrib) / 1024.0f);
+			result += "\n";
+
+			struct SymbolEntry
+			{
+				const char* mName;
+				addr_target mAddress;
+				int mSize;
+			};
+			Array<SymbolEntry> symbolEntries;
+
+			for (auto symbol : mDebugTarget->mSymbolMap)
+			{
+				if (symbol->mDbgModule != coff)
+					continue;
+
+				if (!symbolEntries.IsEmpty())
+				{
+					auto lastSymbol = &symbolEntries.back();
+					if (lastSymbol->mSize == 0)
+						lastSymbol->mSize = symbol->mAddress - lastSymbol->mAddress;
+				}
+
+				SymbolEntry symbolEntry;
+				symbolEntry.mName = symbol->mName;
+				symbolEntry.mAddress = symbol->mAddress;
+				symbolEntry.mSize = 0;
+				symbolEntries.Add(symbolEntry);
+			}
+			if (!symbolEntries.IsEmpty())
+			{
+				auto lastSymbol = &symbolEntries.back();
+				for (auto contrib : contribs)
+				{
+					if ((lastSymbol->mAddress >= contrib->mAddress) && (lastSymbol->mAddress < contrib->mAddress + contrib->mLength))
+					{
+						lastSymbol->mSize = (contrib->mAddress + contrib->mLength) - lastSymbol->mAddress;
+						break;
+					}
+				}
+			}
+			symbolEntries.Sort([](const SymbolEntry& lhs, const SymbolEntry& rhs)
+				{
+					return lhs.mSize > rhs.mSize;
+				});
+
+			totalContrib = 0;
+			result += "Symbols:\n";
+			for (auto symbolEntry : symbolEntries)
+			{
+				result += StrFormat("\t%s\t%0.2fk\t%@\n", symbolEntry.mName, (symbolEntry.mSize) / 1024.0f, symbolEntry.mAddress);
+				totalContrib += symbolEntry.mSize;
+			}
+			result += StrFormat("\tTOTAL: %0.2fk\n", (totalContrib) / 1024.0f);
+			result += "\n";
+
+			//////////////////////////////////////////////////////////////////////////
+
+			totalContrib = 0;
+			result += "Static Variables:\n";
+			for (auto& variable : coff->mStaticVariables)
+			{
+				result += StrFormat("\t%s\t%0.2fk\n", variable->mName, (variable->mType->GetByteCount()) / 1024.0f);
+				totalContrib += variable->mType->GetByteCount();
+			}
+			result += StrFormat("\tTOTAL: %0.2fk\n", (totalContrib) / 1024.0f);
+			result += "\n";
+
+			totalContrib = 0;
+			result += "Methods:\n";
+			Array<DbgSubprogram*> methods;
+			for (int typeIdx = 0; typeIdx < coff->mTypes.mSize; typeIdx++)
+			{
+				auto type = coff->mTypes[typeIdx];
+				type->PopulateType();
+				for (auto method : type->mMethodList)
+					methods.Add(method);
+			}
+			for (auto compileUnit : dbgModule->mCompileUnits)
+			{
+				for (auto method : compileUnit->mOrphanMethods)
+					methods.Add(method);
+			}
+			methods.Sort([](DbgSubprogram* lhs, DbgSubprogram* rhs)
+				{
+					return lhs->GetByteCount() > rhs->GetByteCount();
+				});
+			for (auto method : methods)
+			{
+				int methodSize = method->GetByteCount();
+				if (methodSize <= 0)
+					continue;
+				auto name = method->ToString();
+				result += StrFormat("\t%s\t%0.2fk\n", name.c_str(), methodSize / 1024.0f);
+				totalContrib += methodSize;
+			}
+
+			result += StrFormat("\tTOTAL: %0.2fk\n", (totalContrib) / 1024.0f);
+			result += "\n";
+		}
+	}
+
+	return result;
+}
+
 void WinDebugger::CancelSymSrv()
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);

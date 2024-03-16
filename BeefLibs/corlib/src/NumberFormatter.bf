@@ -1130,12 +1130,14 @@ namespace System
 		// Hexadecimal digits representation.
 		private static uint32 FastToDecHex (int32 val)
 		{
+			var decHexDigits = DecHexDigits;
+
 			if (val < 100)
-				return (uint32)DecHexDigits [val];
+				return (uint32)decHexDigits[val];
 
 			// Uses 2^19 (524288) to compute val / 100 for val < 10000.
 			int32 v = (val * 5243) >> 19;
-			return (uint32)((DecHexDigits [v] << 8) | DecHexDigits [val - v * 100]);
+			return (uint32)((decHexDigits[v] << 8) | decHexDigits[val - v * 100]);
 		}
 
 		// Helper to translate an int in the range 0 .. 99999999 to its
@@ -1739,6 +1741,31 @@ namespace System
 			NumberFormatter inst = GetInstance!(fp);
 			inst.Init (format, value, UInt32DefPrecision);
 			inst.IntegerToString(format, fp, outString);
+		}
+
+		public static void AddrToString (uint value, String outString)
+		{
+			const int bufLen = 18;
+			char8* strChars = scope:: char8[bufLen]* (?);	
+			int32 curLen = 0;	
+			uint64 valLeft = (.)value;
+			while (valLeft > 0)	
+			{	
+				if (curLen == 8)	
+					strChars[bufLen - curLen++ - 1] = '\'';	
+			    strChars[bufLen - curLen++ - 1] = DigitUpperTable[(int)(valLeft & 0xF)];
+			    valLeft >>= 4;	
+			}	
+
+			while (curLen < 10)	
+			{	
+				if (curLen == 8)	
+					strChars[bufLen - curLen++ - 1] = '\'';	
+				strChars[bufLen - curLen++ - 1] = '0';	
+			}	
+
+			char8* char8Ptr = &strChars[bufLen - curLen];	
+			outString.Append(char8Ptr, curLen);
 		}
 
 		public static void NumberToString (StringView format, int32 value, IFormatProvider fp, String outString)

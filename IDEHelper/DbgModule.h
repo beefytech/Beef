@@ -442,6 +442,7 @@ public:
 	bool IsGenericMethod();
 	bool ThisIsSplat();
 	bool IsLambda();
+	int GetByteCount();
 
 	DbgSubprogram* GetRootInlineParent()
 	{
@@ -823,6 +824,7 @@ public:
 	addr_target mAddress;
 	int mCompileUnitId;
 	int mLength;
+	int mSection;
 };
 
 class DbgCompileUnit
@@ -874,6 +876,7 @@ public:
 class DbgSection
 {
 public:
+	String mName;
 	addr_target mAddrStart;
 	addr_target mAddrLength;
 	bool mWritingEnabled;
@@ -1183,7 +1186,7 @@ public:
 	bool mIsDwarf64;
 
 	HashSet<DbgSrcFile*> mSrcFileDeferredRefs;
-	Array<addr_target> mSectionRVAs;
+	Array<PESectionHeader> mSectionHeaders;
 	SLIList<DbgSymbol*> mDeferredSymbols;
 	Beefy::OwnedVector<DbgDeferredHotResolve> mDeferredHotResolveList;
 	Array<DbgHotTargetSection*> mHotTargetSections;

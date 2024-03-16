@@ -509,7 +509,7 @@ addr_target COFF::GetSectionAddr(uint16 section, uint32 offset)
 		return hiBase + offset;
 	}
 
-	int rva = mSectionRVAs[section - 1];
+	int rva = mSectionHeaders[section - 1].mVirtualAddress;
 	if (rva == 0)
 		return ADDR_FLAG_ABS + offset;
 
@@ -5178,6 +5178,7 @@ bool COFF::CvParseDBI(int wantAge)
 				contribEntry->mLength = curSize;
 				contribEntry->mDbgModule = this;
 				contribEntry->mCompileUnitId = contrib.mModule;
+				contribEntry->mSection = contrib.mSection;
 				mDebugTarget->mContribMap.Insert(contribEntry);
 			}
 		}
@@ -5288,7 +5289,7 @@ bool COFF::CvParseDBI(int wantAge)
 
 void COFF::ParseSectionHeader(int sectionIdx)
 {
-	bool fakeRVAS = mSectionRVAs.empty();
+	bool fakeRVAS = mSectionHeaders.empty();
 
 	int sectionSize = 0;
 	uint8* sectionData = CvReadStream(sectionIdx, &sectionSize);
@@ -5300,12 +5301,15 @@ void COFF::ParseSectionHeader(int sectionIdx)
 		auto& sectionHeader = GET(PESectionHeader);
 		if (fakeRVAS)
 		{
-			mSectionRVAs.push_back(sectionHeader.mVirtualAddress);
+			mSectionHeaders.push_back(sectionHeader);
 		}
 	}
 
 	if (fakeRVAS)
-		mSectionRVAs.push_back(0);
+	{
+		PESectionHeader sectionHeader = { 0 };
+		mSectionHeaders.push_back(sectionHeader);
+	}
 
 	delete sectionData;
 }

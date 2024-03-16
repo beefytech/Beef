@@ -343,6 +343,7 @@ public:
 	virtual String FindLineCallAddresses(intptr address) = 0;
 	virtual String GetCurrentException() = 0;
 	virtual String GetModulesInfo() = 0;
+	virtual String GetModuleInfo(const StringImpl& moduleName) { return ""; }
 	virtual void SetAliasPath(const StringImpl& origPath, const StringImpl& localPath) = 0;
 	virtual void CancelSymSrv() = 0;
 	virtual bool HasPendingDebugLoads() = 0;

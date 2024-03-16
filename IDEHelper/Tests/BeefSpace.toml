@@ -8,6 +8,9 @@ StartupProject = "Tests"
 [Configs.Debug.Win64]
 IntermediateType = "ObjectAndIRCode"
 
+[Configs.Debug.Win32]
+IntermediateType = "ObjectAndIRCode"
+
 [Configs.Test.Win64]
 IntermediateType = "ObjectAndIRCode"
 COptimizationLevel = "O2"

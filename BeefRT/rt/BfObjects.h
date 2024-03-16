@@ -26,7 +26,7 @@ enum BfObjectFlags : uint8
 	BfObjectFlag_StackAlloc		= 0x08,
 	BfObjectFlag_AppendAlloc	= 0x10,
 	BfObjectFlag_AllocInfo		= 0x20,
-	BfObjectFlag_AllocInfo_Short= 0x40,	
+	BfObjectFlag_AllocInfo_Short= 0x40,
 	BfObjectFlag_Deleted		= 0x80
 };
 
@@ -36,7 +36,7 @@ enum BfRtFlags
 	BfRtFlags_LeakCheck = 2,
 	BfRtFlags_SilentCrash = 4,
 	BfRtFlags_DebugAlloc = 8,
-	BfRtFlags_NoThreadExitWait = 0x10,	
+	BfRtFlags_NoThreadExitWait = 0x10,
 };
 
 namespace bf
@@ -90,7 +90,7 @@ namespace bf
 				bf::System::Object* (*Object_DynamicCastToTypeId)(bf::System::Object* obj, int typeId);
 				void(*Type_GetFullName)(System::Type* type, bf::System::String* str);
 				bf::System::String* (*String_Alloc)();
-				const char* (*String_ToCStr)(bf::System::String* str);
+				Beefy::StringView (*String_ToStringView)(bf::System::String* str);
 				bf::System::Threading::Thread* (*Thread_Alloc)();
 				bf::System::Threading::Thread* (*Thread_GetMainThread)();
 				void(*Thread_ThreadProc)(bf::System::Threading::Thread* thread);
@@ -98,24 +98,26 @@ namespace bf
 				void(*Thread_SetInternalThread)(bf::System::Threading::Thread* thread, BfInternalThread* internalThread);
 				bool(*Thread_IsAutoDelete)(bf::System::Threading::Thread* thread);
 				void(*Thread_AutoDelete)(bf::System::Threading::Thread* thread);
-				int32(*Thread_GetMaxStackSize)(bf::System::Threading::Thread* thread);				
+				int32(*Thread_GetMaxStackSize)(bf::System::Threading::Thread* thread);
 				void(*Thread_Exiting)();
 				void(*GC_MarkAllStaticMembers)();
 				bool(*GC_CallRootCallbacks)();
 				void(*GC_Shutdown)();
 				void(*SetErrorString)(const char* str);
 				void(*DebugMessageData_SetupError)(const char* str, int32 stackWindbackCount);
-				void(*DebugMessageData_SetupProfilerCmd)(const char* str);				
+				void(*DebugMessageData_SetupProfilerCmd)(const char* str);
 				void(*DebugMessageData_Fatal)();
 				void(*DebugMessageData_Clear)();
-				int(*CheckErrorHandler)(const char* kind, const char* arg1, const char* arg2, intptr arg3);				
+				int(*CheckErrorHandler)(const char* kind, const char* arg1, const char* arg2, intptr arg3);
 			};
 
 		public:
-			BFRT_EXPORT static void SetCrashReportKind(RtCrashReportKind crashReportKind);			
+			BFRT_EXPORT static void SetCrashReportKind(RtCrashReportKind crashReportKind);
 
 		private:
-			BFRT_EXPORT static void Init(int version, int flags, BfRtCallbacks* callbacks);			
+			BFRT_EXPORT static void Init(int version, int flags, BfRtCallbacks* callbacks);
+			BFRT_EXPORT static void InitCrashCatcher(int flags);
+			BFRT_EXPORT static void ShutdownCrashCatcher();
 			BFRT_EXPORT static void AddCrashInfoFunc(void* func);
 			BFRT_EXPORT static void SetErrorString(char* errorStr);
 			BFRT_EXPORT static void Dbg_Init(int version, int flags, BfRtCallbacks* callbacks);
@@ -150,7 +152,7 @@ namespace bf
 		public:
 			union
 			{
-				intptr mClassVData;				
+				intptr mClassVData;
 				struct
 				{
 					BfObjectFlags mObjectFlags;
@@ -193,7 +195,7 @@ namespace bf
 			TypeId mTypeId;
 			TypeId mBoxedId;
 			uint16 mTypeFlags;
-			int32 mMemberDataOffset;			
+			int32 mMemberDataOffset;
 			uint8 mTypeCode;
 			uint8 mAlign;
 
@@ -225,7 +227,7 @@ namespace bf
 				String* mName;
 				String* mNamespace;
 				int32 mInstSize;
-				int32 mInstAlign;				
+				int32 mInstAlign;
 			};
 		}
 
@@ -252,9 +254,9 @@ namespace bf
 			uint mAllocSizeAndFlags;
 			char* mPtr;
 
-			const char* CStr()
+			Beefy::StringView ToStringView()
 			{
-				return BFRTCALLBACKS.String_ToCStr(this);
+				return BFRTCALLBACKS.String_ToStringView(this);
 			}
 		};
 	}

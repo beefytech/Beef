@@ -5206,7 +5206,12 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 	}
 	else if (fieldDef->mIsStatic)
 	{
-		mModule->CheckStaticAccess(typeInstance);
+		if ((mModule->mAttributeState == NULL) || (mModule->mAttributeState->mCustomAttributes == NULL) ||
+			(!mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mNoStaticCtorAttributeTypeDef)))
+		{
+			mModule->CheckStaticAccess(typeInstance);
+		}
+
 		auto retVal = mModule->ReferenceStaticField(fieldInstance);
 		bool isStaticCtor = (mModule->mCurMethodInstance != NULL) &&
 			(mModule->mCurMethodInstance->mMethodDef->IsCtorOrInit()) &&
@@ -6684,7 +6689,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 #endif
 						int vExtOfs = typeInst->GetOrigImplBaseVTableSize();
 
-						vDataIdx = mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 1 + mModule->mCompiler->GetDynCastVDataCount() + mModule->mCompiler->mMaxInterfaceSlots);
+
+						vDataIdx = mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, mModule->mCompiler->GetVDataPrefixDataCount() + mModule->mCompiler->GetDynCastVDataCount() + mModule->mCompiler->mMaxInterfaceSlots);
 						vDataIdx = mModule->mBfIRBuilder->CreateAdd(vDataIdx, mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, vExtOfs));
 						BfIRValue extendPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(vDataPtr, vDataIdx);
 						vDataPtr = mModule->mBfIRBuilder->CreateLoad(extendPtr);
@@ -7601,7 +7607,14 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		}
 		else
 		{
-			mModule->CheckStaticAccess(methodInstance->mMethodInstanceGroup->mOwner);
+			if (prevBindResult.mPrevVal == NULL)
+			{
+				if ((mModule->mAttributeState == NULL) || (mModule->mAttributeState->mCustomAttributes == NULL) ||
+					(!mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mNoStaticCtorAttributeTypeDef)))
+				{
+					mModule->CheckStaticAccess(methodInstance->mMethodInstanceGroup->mOwner);
+				}
+			}
 
 			if (target)
 			{
@@ -8613,7 +8626,16 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		//  the type has been initialized
 		auto targetTypeInst = target.mType->ToTypeInstance();
 		if (targetTypeInst != NULL)
-			mModule->CheckStaticAccess(targetTypeInst);
+		{
+			if (prevBindResult.mPrevVal == NULL)
+			{
+				if ((mModule->mAttributeState == NULL) || (mModule->mAttributeState->mCustomAttributes == NULL) ||
+					(!mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mNoStaticCtorAttributeTypeDef)))
+				{
+					mModule->CheckStaticAccess(targetTypeInst);
+				}
+			}
+		}
 	}
 
 	if (methodInstance->mReturnType == NULL)
@@ -12535,7 +12557,7 @@ void BfExprEvaluator::Visit(BfCheckTypeExpression* checkTypeExpr)
 void BfExprEvaluator::Visit(BfDynamicCastExpression* dynCastExpr)
 {
 	auto targetValue = mModule->CreateValueFromExpression(dynCastExpr->mTarget);
-	auto targetType = mModule->ResolveTypeRefAllowUnboundGenerics(dynCastExpr->mTypeRef, BfPopulateType_Data, false);
+	auto targetType = mModule->ResolveTypeRefAllowUnboundGenerics(dynCastExpr->mTypeRef, BfPopulateType_Data, BfResolveTypeRefFlag_None, false);
 
 	auto autoComplete = GetAutoComplete();
 	if (autoComplete != NULL)
@@ -18843,6 +18865,10 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 			checkedKind = BfCheckedKind_Unchecked;
 			mModule->mAttributeState->mUsed = true;
 		}
+		if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mNoStaticCtorAttributeTypeDef))
+		{
+			mModule->mAttributeState->mUsed = true;
+		}
 	}
 
 	if ((isCascade) && (cascadeOperatorToken != NULL) && ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0))
@@ -20967,7 +20993,7 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 					}
 
 					elementValue = mModule->LoadOrAggregateValue(elementValue);
-					if (!elementValue.mValue.IsConst())
+					if (!elemPtrValue.IsConst())
 						mModule->mBfIRBuilder->CreateAlignedStore(elementValue.mValue, elemPtrValue, checkArrayType->mElementType->mAlign);
 				}
 			}

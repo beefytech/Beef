@@ -91,7 +91,7 @@ namespace System
 #endif
 		}
 
-#if BF_ENABLE_REALTIME_LEAK_CHECK || BF_DEBUG_ALLOC
+#if (BF_ENABLE_REALTIME_LEAK_CHECK || BF_DEBUG_ALLOC) && !BF_RUNTIME_DISABLE
 		[CallingConvention(.Cdecl)]
 		public extern static void Report();
 		[CallingConvention(.Cdecl)]

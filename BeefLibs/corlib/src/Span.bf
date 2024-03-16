@@ -330,7 +330,7 @@ namespace System
 		public override void ToString(String strBuffer)
 		{
 			strBuffer.Append("(");
-			typeof(T).GetFullName(strBuffer);
+			typeof(T).ToString(strBuffer);
 			strBuffer.AppendF("*)0x{0:A}[{1}]", (uint)(void*)mPtr, mLength);
 		}
 

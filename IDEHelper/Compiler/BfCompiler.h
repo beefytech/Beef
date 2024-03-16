@@ -442,6 +442,7 @@ public:
 	BfTypeDef* mDisableChecksAttributeTypeDef;
 	BfTypeDef* mDisableObjectAccessChecksAttributeTypeDef;
 	BfTypeDef* mFriendAttributeTypeDef;
+	BfTypeDef* mNoStaticCtorAttributeTypeDef;
 	BfTypeDef* mComptimeAttributeTypeDef;
 	BfTypeDef* mConstEvalAttributeTypeDef;
 	BfTypeDef* mNoExtensionAttributeTypeDef;
@@ -501,6 +502,7 @@ public:
 	void MarkStringPool(BfIRConstHolder* constHolder, BfIRValue irValue);
 	void ClearUnusedStringPoolEntries();
 	void ClearBuildCache();
+	int GetVDataPrefixDataCount();
 	int GetDynCastVDataCount();
 	bool IsAutocomplete();
 	bool IsDataResolvePass();

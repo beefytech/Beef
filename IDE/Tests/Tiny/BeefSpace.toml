@@ -1,0 +1,26 @@
+FileVersion = 1
+Projects = {Tiny = {Path = "."}}
+Unlocked = ["corlib"]
+
+[Workspace]
+StartupProject = "Tiny"
+
+[Configs.Debug.Win64]
+AllocType = "CRT"
+RuntimeKind = "Reduced"
+ReflectKind = "Minimal"
+RuntimeChecks = false
+EmitDynamicCastCheck = false
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+EnableRealtimeLeakCheck = false
+AllowHotSwapping = false
+IntermediateType = "ObjectAndIRCode"
+
+[Configs.Debug.Win32]
+RuntimeKind = "Reduced"
+ReflectKind = "Minimal"
+
+[Configs.Release.Win64]
+RuntimeKind = "Reduced"
+ReflectKind = "Minimal"

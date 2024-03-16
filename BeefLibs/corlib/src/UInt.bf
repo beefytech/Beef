@@ -11,6 +11,14 @@ namespace System
 			case InvalidChar(uint partialResult);
 		}
 
+		public struct Simple : uint
+		{
+			public override void ToString(String strBuffer)
+			{
+				((uint)this).ToString(strBuffer);
+			}
+		}
+
 		public const uint MaxValue = (sizeof(uint) == 8) ? 0xFFFFFFFFFFFFFFFFUL : 0xFFFFFFFFL;
 		public const uint MinValue = 0;
 

@@ -1,4 +1,5 @@
 using System.Diagnostics;
+using System.Threading;
 namespace System.Text
 {
 	[StaticInitPriority(100)]
@@ -15,11 +16,39 @@ namespace System.Text
 			case PartialEncode(int inChars, int encodedBytes);
 		}
 
-		public static readonly ASCIIEncoding ASCII = new ASCIIEncoding() ~ delete _;
-		public static readonly UTF8Encoding UTF8 = new UTF8Encoding() ~ delete _;
-		public static readonly UTF8EncodingWithBOM UTF8WithBOM = new UTF8EncodingWithBOM() ~ delete _;
-		public static readonly UTF16Encoding UTF16 = new UTF16Encoding() ~ delete _;
-		public static readonly UTF16EncodingWithBOM UTF16WithBOM = new UTF16EncodingWithBOM() ~ delete _;
+		static Encoding sASCII ~ delete _;
+		static Encoding sUTF8 ~ delete _;
+		static Encoding sUTF8WithBOM ~ delete _;
+		static Encoding sUTF16 ~ delete _;
+		static Encoding sUTF16WithBOM ~ delete _;
+
+		static T GetEncoding<T>(ref Encoding encoding) where T : Encoding, new, delete
+		{
+			if (encoding != null)
+				return (.)encoding;
+
+			var newEncoding = new T();
+			if (Compiler.IsComptime)
+			{
+				encoding = newEncoding;
+				return newEncoding;
+			}
+
+			let prevValue = Interlocked.CompareExchange(ref encoding, null, newEncoding);
+			if (prevValue != null)
+			{
+				// This was already set - race condition
+				delete newEncoding;
+				return (.)prevValue;
+			}
+			return newEncoding;
+		}
+
+		public static ASCIIEncoding ASCII => GetEncoding<ASCIIEncoding>(ref sASCII);
+		public static UTF8Encoding UTF8 => GetEncoding<UTF8Encoding>(ref sUTF8);
+		public static UTF8EncodingWithBOM UTF8WithBOM => GetEncoding<UTF8EncodingWithBOM>(ref sUTF8WithBOM);
+		public static UTF16Encoding UTF16 => GetEncoding<UTF16Encoding>(ref sUTF16);
+		public static UTF16EncodingWithBOM UTF16WithBOM => GetEncoding<UTF16EncodingWithBOM>(ref sUTF16WithBOM);
 
 		public abstract int GetCharUnitSize();
 		public abstract int GetEncodedLength(char32 c);

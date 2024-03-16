@@ -1220,7 +1220,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 
 	Array<BfType*> vdataTypeList;
 	HashSet<BfModule*> usedModuleSet;
-	HashSet<BfType*> reflectTypeSet;
+	HashSet<BfType*> reflectSkipTypeSet;
 	HashSet<BfType*> reflectFieldTypeSet;
 
 	vdataHashCtx.MixinStr(project->mStartupObject);
@@ -1398,20 +1398,49 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	bool madeBfTypeData = false;
 
 	auto typeDefType = mContext->mBfTypeType;
-	bool needsTypeList = bfModule->IsMethodImplementedAndReified(typeDefType, "GetType");
+	bool needsFullTypeList = bfModule->IsMethodImplementedAndReified(typeDefType, "GetType");
+	bool needsTypeList = needsFullTypeList || bfModule->IsMethodImplementedAndReified(typeDefType, "GetType_");
 	bool needsObjectTypeData = needsTypeList || bfModule->IsMethodImplementedAndReified(vdataContext->mBfObjectType, "RawGetType") || bfModule->IsMethodImplementedAndReified(vdataContext->mBfObjectType, "GetType");
 	bool needsTypeNames = bfModule->IsMethodImplementedAndReified(typeDefType, "GetName") || bfModule->IsMethodImplementedAndReified(typeDefType, "GetFullName");
 	bool needsStringLiteralList = (mOptions.mAllowHotSwapping) || (bfModule->IsMethodImplementedAndReified(stringType, "Intern")) || (bfModule->IsMethodImplementedAndReified(stringViewType, "Intern"));
 
-	Dictionary<int, int> usedStringIdMap;
+	BfCreateTypeDataContext createTypeDataCtx;
 
-	reflectTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectTypeInstanceTypeDef));
-	reflectTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectSpecializedGenericType));
-	reflectTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectUnspecializedGenericType));
-	reflectTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectArrayType));
-	reflectTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectGenericParamType));
+	if (!needsTypeList)
+	{
+		reflectSkipTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mTypeTypeDef));
+		reflectSkipTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectTypeInstanceTypeDef));
+	}
 
+	if (!needsFullTypeList)
+	{
+		reflectSkipTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectSpecializedGenericType));
+		reflectSkipTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectUnspecializedGenericType));
+		reflectSkipTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectConstExprType));
+		reflectSkipTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectArrayType));
+		reflectSkipTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectGenericParamType));
+		reflectSkipTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectPointerType));
+		reflectSkipTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectSizedArrayType));
+		reflectSkipTypeSet.Add(vdataContext->mUnreifiedModule->ResolveTypeDef(mReflectRefType));
+	}
+
+	HashSet<BfType*> boxeeSet;
+	for (auto type : vdataTypeList)
+	{
+		auto typeInst = type->ToTypeInstance();
+
+		if ((!type->IsReified()) || (type->IsUnspecializedType()))
+			continue;
+
+		if (type->IsBoxed())
+			boxeeSet.Add(typeInst->GetUnderlyingType());
+	}
+
+	int usedTypeCount = 0;
+	HashSet<BfType*> vDataTypeSet;
 	SmallVector<BfIRValue, 256> typeDataVector;
+	Array<BfType*> usedTypeDataVector;
+
 	for (auto type : vdataTypeList)
 	{
 		if (type->IsTypeAlias())
@@ -1425,8 +1454,11 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		if ((typeInst != NULL) && (!typeInst->IsReified()) && (!typeInst->IsUnspecializedType()))
 			continue;
 
-		bool needsTypeData = (needsTypeList) || ((type->IsObject()) && (needsObjectTypeData));
+		bool needsTypeData = (needsFullTypeList) || ((type->IsObject()) && (needsObjectTypeData));
 		bool needsVData = (type->IsObject()) && (typeInst->HasBeenInstantiated());
+
+		if ((needsObjectTypeData) && (boxeeSet.Contains(typeInst)))
+			needsTypeData = true;
 
 		bool forceReflectFields = false;
 
@@ -1437,8 +1469,16 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 				forceReflectFields = true;
 		}
 
-		BfIRValue typeVariable;
+		if (reflectSkipTypeSet.Contains(type))
+		{
+			if (!bfModule->mProject->mReferencedTypeData.Contains(type))
+			{
+				needsTypeData = false;
+				needsVData = false;
+			}
+		}
 
+		BfIRValue typeVariable;
 		if ((needsTypeData) || (needsVData))
 		{
 			if (reflectFieldTypeSet.Contains(type))
@@ -1446,14 +1486,25 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 				needsTypeData = true;
 				forceReflectFields = true;
 			}
-			else if (reflectTypeSet.Contains(type))
+			/*else if (reflectTypeSet.Contains(type))
 			{
 				needsTypeData = true;
 				needsVData = true;
-			}
+			}*/
 
-			typeVariable = bfModule->CreateTypeData(type, usedStringIdMap, forceReflectFields, needsTypeData, needsTypeNames, needsVData);
+			if (needsVData)
+				vDataTypeSet.Add(type);
+
+			typeVariable = bfModule->CreateTypeData(type, createTypeDataCtx, forceReflectFields, needsTypeData, needsTypeNames, needsVData);
+			if (typeVariable)
+				usedTypeDataVector.Add(type);
 		}
+		else if ((type->IsInterface()) && (typeInst->mSlotNum >= 0))
+		{
+			bfModule->CreateSlotOfs(typeInst);
+		}
+
+		usedTypeCount++;
 		type->mDirty = false;
 
 		if (needsTypeList)
@@ -1573,13 +1624,13 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		BfMangler::MangleStaticFieldName(stringsVariableName, GetMangleKind(), stringType->ToTypeInstance(), "sIdStringLiterals", stringPtrType);
 		Array<BfIRValue> stringList;
 
-		stringList.Resize(usedStringIdMap.size());
-		for (auto& kv : usedStringIdMap)
+		stringList.Resize(createTypeDataCtx.mUsedStringIdMap.size());
+		for (auto& kv : createTypeDataCtx.mUsedStringIdMap)
 		{
 			stringList[kv.mValue] = bfModule->mStringObjectPool[kv.mKey];
 		}
 
-		BfIRType stringArrayType = bfModule->mBfIRBuilder->GetSizedArrayType(stringPtrIRType, (int)usedStringIdMap.size());
+		BfIRType stringArrayType = bfModule->mBfIRBuilder->GetSizedArrayType(stringPtrIRType, (int)createTypeDataCtx.mUsedStringIdMap.size());
 		auto stringArray = bfModule->mBfIRBuilder->CreateConstAgg_Value(stringArrayType, stringList);
 
 		auto stringArrayVar = bfModule->mBfIRBuilder->CreateGlobalVariable(stringArrayType, true, BfIRLinkageType_External, stringArray, stringsVariableName);
@@ -3994,10 +4045,10 @@ void BfCompiler::VisitSourceExteriorNodes()
 
 						if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(usingDirective->mTypeRef))
 						{
-							mContext->mScratchModule->ResolveTypeRefAllowUnboundGenerics(usingDirective->mTypeRef, BfPopulateType_Identity);
+							mContext->mScratchModule->ResolveTypeRefAllowUnboundGenerics(usingDirective->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_NoReify);
 						}
 						else
-							mContext->mScratchModule->ResolveTypeRef(usingDirective->mTypeRef, BfPopulateType_Identity);
+							mContext->mScratchModule->ResolveTypeRef(usingDirective->mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_NoReify);
 
 						if ((mResolvePassData != NULL) && (mResolvePassData->mAutoComplete != NULL))
 							mResolvePassData->mAutoComplete->CheckTypeRef(usingDirective->mTypeRef, false, false);
@@ -5608,11 +5659,18 @@ void BfCompiler::ClearBuildCache()
 	}
 }
 
+int BfCompiler::GetVDataPrefixDataCount()
+{
+	return (mSystem->mPtrSize == 4) ? 2 : 1;
+}
+
 int BfCompiler::GetDynCastVDataCount()
 {
 	int dynElements = 1 + mMaxInterfaceSlots;
 	return ((dynElements * 4) + mSystem->mPtrSize - 1) / mSystem->mPtrSize;
 }
+
+
 
 bool BfCompiler::IsAutocomplete()
 {
@@ -7177,6 +7235,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mActionTypeDef = _GetRequiredType("System.Action");
 	mEnumTypeDef = _GetRequiredType("System.Enum");
 	mFriendAttributeTypeDef = _GetRequiredType("System.FriendAttribute");
+	mNoStaticCtorAttributeTypeDef = _GetRequiredType("System.NoStaticCtorAttribute");
 	mComptimeAttributeTypeDef = _GetRequiredType("System.ComptimeAttribute");
 	mConstEvalAttributeTypeDef = _GetRequiredType("System.ConstEvalAttribute");
 	mNoExtensionAttributeTypeDef = _GetRequiredType("System.NoExtensionAttribute");

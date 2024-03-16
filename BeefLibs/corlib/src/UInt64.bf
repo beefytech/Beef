@@ -58,8 +58,6 @@ namespace System
 			}
 		}
 
-		static String sHexUpperChars = "0123456789ABCDEF";
-		static String sHexLowerChars = "0123456789abcdef";
 		public void ToString(String outString, String format, IFormatProvider formatProvider)
 		{
 			if(format == null || format.IsEmpty)

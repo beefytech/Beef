@@ -13,6 +13,14 @@ namespace System
 			case InvalidChar(int partialResult);
 		}
 
+		public struct Simple : int
+		{
+			public override void ToString(String strBuffer)
+			{
+				((int)this).ToString(strBuffer);
+			}
+		}
+
 		public const int MaxValue = (sizeof(int) == 8) ? 0x7FFFFFFFFFFFFFFFL : 0x7FFFFFFF;
 		public const int MinValue = (sizeof(int) == 8) ? -0x8000000000000000L : -0x80000000;
 

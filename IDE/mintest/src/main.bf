@@ -46,8 +46,8 @@ namespace Hey.Dude.Bro
 
 		
 
-		[Import(@"C:\Beef\BeefTools\TestDLL\x64\Debug\TestDLL.dll"), LinkName("Test2")]
-		public static extern void Test2(int32 a, int32 b, int32 c, int32 d, function Color(int32 a, int32 b) func);
+		//[Import(@"C:\Beef\BeefTools\TestDLL\x64\Debug\TestDLL.dll"), LinkName("Test2")]
+		//public static extern void Test2(int32 a, int32 b, int32 c, int32 d, function Color(int32 a, int32 b) func);
 
 		public static Color GetColor(int32 a, int32 b)
 		{
@@ -61,7 +61,9 @@ namespace Hey.Dude.Bro
 
 		public static int Main(String[] args)
 		{
-			Test2(1, 2, 3, 4, => GetColor);
+			Debug.WriteLine("Hey!");
+
+			//Test2(1, 2, 3, 4, => GetColor);
 
 			//Blurg.Hey();
 			return 1;

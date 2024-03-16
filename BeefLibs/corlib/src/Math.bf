@@ -223,7 +223,8 @@ namespace System
 			modf(d, out intPart);
 			return intPart;
         }
-            
+
+#if !BF_RUNTIME_DISABLE
         public static extern float Sqrt(float f);
         public static extern double Sqrt(double d);
 		public static extern float Cbrt(float f);
@@ -236,6 +237,20 @@ namespace System
         public static extern double Exp(double d);
 		public static extern float Pow(float x, float y);
         public static extern double Pow(double x, double y);
+#else
+		public static float Sqrt(float f) => Runtime.NotImplemented();
+		public static double Sqrt(double d) => Runtime.NotImplemented();
+		public static float Cbrt(float f) => Runtime.NotImplemented();
+		public static double Cbrt(double d) => Runtime.NotImplemented();
+		public static float Log(float f) => Runtime.NotImplemented();
+		public static double Log(double d) => Runtime.NotImplemented();
+		public static float Log10(float f) => Runtime.NotImplemented();
+		public static double Log10(double d) => Runtime.NotImplemented();
+		public static float Exp(float f) => Runtime.NotImplemented();
+		public static double Exp(double d) => Runtime.NotImplemented();
+		public static float Pow(float x, float y) => Runtime.NotImplemented();
+		public static double Pow(double x, double y) => Runtime.NotImplemented();
+#endif
 
 		public static float IEEERemainder(float x, float y)
 		{

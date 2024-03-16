@@ -94,6 +94,12 @@ namespace IDE
 			BitcodeAndIRCode,
         }
 
+		public enum ReflectKind
+		{
+			Normal,
+			Minimal
+		}
+
 		public enum PlatformType
 		{
 			case Unknown;
@@ -263,6 +269,13 @@ namespace IDE
 			Custom
 		}
 
+		public enum RuntimeKind
+		{
+			Default,
+			Reduced,
+			Disabled
+		}
+
 		public class BeefGlobalOptions
 		{
 			[Reflect]
@@ -304,6 +317,10 @@ namespace IDE
 			public bool mLargeStrings;
 			[Reflect]
 			public bool mLargeCollections;
+			[Reflect]
+			public RuntimeKind mRuntimeKind;
+			[Reflect]
+			public ReflectKind mReflectKind;
 			[Reflect]
 			public AllocType mAllocType = .CRT;
 			[Reflect]
@@ -352,7 +369,7 @@ namespace IDE
 				get
 				{
 #if BF_PLATFORM_WINDOWS
-					return mEnableRealtimeLeakCheck && mEnableObjectDebugFlags && (mAllocType == .Debug);
+					return mEnableRealtimeLeakCheck && mEnableObjectDebugFlags && (mAllocType == .Debug) && (mRuntimeKind != .Disabled);
 #else
 					return false;
 #endif
@@ -376,6 +393,8 @@ namespace IDE
 				mNoOmitFramePointers = prev.mNoOmitFramePointers;
 				mLargeStrings = prev.mLargeStrings;
 				mLargeCollections = prev.mLargeCollections;
+				mRuntimeKind = prev.mRuntimeKind;
+				mReflectKind = prev.mReflectKind;
 				mAllocType = prev.mAllocType;
 				mAllocMalloc.Set(prev.mAllocMalloc);
 				mAllocFree.Set(prev.mAllocFree);
@@ -813,6 +832,8 @@ namespace IDE
                                 data.ConditionalAdd("NoOmitFramePointers", options.mNoOmitFramePointers, false);
 								data.ConditionalAdd("LargeStrings", options.mLargeStrings, false);
 								data.ConditionalAdd("LargeCollections", options.mLargeCollections, false);
+								data.ConditionalAdd("RuntimeKind", options.mRuntimeKind);
+								data.ConditionalAdd("ReflectKind", options.mReflectKind);
                                 data.ConditionalAdd("InitLocalVariables", options.mInitLocalVariables, false);
                                 data.ConditionalAdd("RuntimeChecks", options.mRuntimeChecks, !isRelease);
                                 data.ConditionalAdd("EmitDynamicCastCheck", options.mEmitDynamicCastCheck, !isRelease);
@@ -1004,6 +1025,8 @@ namespace IDE
 			options.mNoOmitFramePointers = false;
 			options.mLargeStrings = false;
 			options.mLargeCollections = false;
+			options.mRuntimeKind = .Default;
+			options.mReflectKind = .Normal;
 			options.mInitLocalVariables = false;
 			options.mRuntimeChecks = !isRelease;
 			options.mEmitDynamicCastCheck = !isRelease;
@@ -1113,6 +1136,8 @@ namespace IDE
                     options.mNoOmitFramePointers = data.GetBool("NoOmitFramePointers", false);
 					options.mLargeStrings = data.GetBool("LargeStrings", false);
 					options.mLargeCollections = data.GetBool("LargeCollections", false);
+					options.mRuntimeKind = data.GetEnum<RuntimeKind>("RuntimeKind");
+					options.mReflectKind = data.GetEnum<ReflectKind>("ReflectKind");
 					options.mInitLocalVariables = data.GetBool("InitLocalVariables", false);
                     options.mRuntimeChecks = data.GetBool("RuntimeChecks", !isRelease);
                     options.mEmitDynamicCastCheck = data.GetBool("EmitDynamicCastCheck", !isRelease);

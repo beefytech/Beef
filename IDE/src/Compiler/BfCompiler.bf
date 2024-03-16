@@ -739,9 +739,14 @@ namespace IDE.Compiler
 			SetOpt(options.mAllowHotSwapping, .EnableHotSwapping);
 #endif
 
+			var allocType = options.mAllocType;
+
+			if ((options.mRuntimeKind == .Disabled) && (allocType == .Debug))
+				allocType = .CRT;
+
 			String mallocLinkName;
 			String freeLinkName;
-			switch (options.mAllocType)
+			switch (allocType)
 			{
 			case .CRT:
 				mallocLinkName = "malloc";

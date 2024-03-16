@@ -39,9 +39,14 @@
 
 USING_NS_BF;
 
+static void Crash_Error(const char* msg);
+
+typedef void(*BfpCrashErrorFunc)(const char* str);
+
 static bool gTimerInitialized = false;
 static int gTimerDivisor = 0;
 CritSect gBfpCritSect;
+BfpCrashErrorFunc gCrashErrorFunc = Crash_Error;
 
 struct WindowsSharedInfo
 {
@@ -415,8 +420,9 @@ void Beefy::BFFatalError(const StringImpl& message, const StringImpl& file, int 
 		gBFApp->mSysDialogCnt++;
 #endif
 
-	String failMsg = StrFormat("%s in %s:%d", message.c_str(), file.c_str(), line);
-	BfpSystem_FatalError(failMsg.c_str(), "FATAL ERROR");
+	char* failMsg = new char[message.length() + file.length() + 64];
+	sprintf(failMsg, "%s in %s:%d", message.c_str(), file.c_str(), line);
+	BfpSystem_FatalError(failMsg, "FATAL ERROR");
 
 #ifndef BF_NO_BFAPP
 	if (gBFApp != NULL)
@@ -906,6 +912,7 @@ static void __cdecl AbortHandler(int)
 static int64 gCPUFreq = -1;
 static int64 gStartCPUTick = -1;
 static int64 gStartQPF = -1;
+static void(*sOldSIGABRTHandler)(int signal) = nullptr;
 
 static void InitCPUFreq()
 {
@@ -918,10 +925,31 @@ static void InitCPUFreq()
 	}
 }
 
-static void(*sOldSIGABRTHandler)(int signal) = nullptr;
+static void Crash_Error(const char* msg)
+{
+	HMODULE hMod = GetModuleHandleA(NULL);
+	PIMAGE_DOS_HEADER pDosHdr = (PIMAGE_DOS_HEADER)hMod;
+	PIMAGE_NT_HEADERS pNtHdr = (PIMAGE_NT_HEADERS)((uint8*)hMod + pDosHdr->e_lfanew);
+	bool isCLI = pNtHdr->OptionalHeader.Subsystem == IMAGE_SUBSYSTEM_WINDOWS_CUI;
+
+	if (isCLI)
+		fprintf(stderr, "**** FATAL APPLICATION ERROR ****\n%s\n", msg);
+	else
+		::MessageBoxA(NULL, msg, "FATAL ERROR", MB_ICONSTOP);
+	_set_purecall_handler(nullptr);
+	_set_invalid_parameter_handler(nullptr);
+	signal(SIGABRT, sOldSIGABRTHandler);
+	abort();
+}
+
+static void Crash_Error_CrashHandler(const char* msg)
+{
+	CrashCatcher::Get()->Crash(msg);
+}
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flags)
 {
+	gCrashErrorFunc = Crash_Error;
 	InitCPUFreq();
 
 	::_set_error_mode(_OUT_TO_STDERR);
@@ -935,7 +963,9 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
 
 	if (version != BFP_VERSION)
 	{
-		BfpSystem_FatalError(StrFormat("Bfp build version '%d' does not match requested version '%d'", BFP_VERSION, version).c_str(), "BFP FATAL ERROR");
+		char msg[1024];
+		sprintf(msg, "Bfp build version '%d' does not match requested version '%d'", BFP_VERSION, version);
+		BfpSystem_FatalError(msg, "BFP FATAL ERROR");
 	}
 
 	if ((flags & BfpSystemInitFlag_InstallCrashCatcher) != 0)
@@ -953,11 +983,15 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
 		sOldSIGABRTHandler = signal(SIGABRT, &AbortHandler);
 		if (sOldSIGABRTHandler == SIG_ERR)
 			sOldSIGABRTHandler = nullptr;
-
-		CrashCatcher::Get()->Init();
-		if ((flags & BfpSystemInitFlag_SilentCrash) != 0)
-			CrashCatcher::Get()->SetCrashReportKind(BfpCrashReportKind_None);
 	}
+}
+
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_InitCrashCatcher(BfpSystemInitFlags flags)
+{
+	CrashCatcher::Get()->Init();
+	if ((flags & BfpSystemInitFlag_SilentCrash) != 0)
+		CrashCatcher::Get()->SetCrashReportKind(BfpCrashReportKind_None);
+	gCrashErrorFunc = Crash_Error_CrashHandler;
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
@@ -993,7 +1027,10 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Shutdown()
 		delete gManagerTail;
 		gManagerTail = next;
 	}
+}
 
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_ShutdownCrashCatcher()
+{
 	if (CrashCatcher::Shutdown())
 	{
 		_set_purecall_handler(nullptr);
@@ -1092,9 +1129,17 @@ BFP_EXPORT uint64 BFP_CALLTYPE BfpSystem_InterlockedCompareExchange64(uint64* pt
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_FatalError(const char* error, const char* title)
 {
 	if (title != NULL)
-		CrashCatcher::Get()->Crash(String(title) + "\n" + String(error));
-	else
-		CrashCatcher::Get()->Crash(error);
+	{
+		int errorLen = (int)strlen(error);
+		int titleLen = (int)strlen(title);
+		char* str = new char[errorLen + 1 + titleLen + 1];
+		strcpy(str, title);
+		strcat(str, "\n");
+		strcat(str, error);
+		gCrashErrorFunc(str);
+	}
+ 	else
+		gCrashErrorFunc(error);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetCommandLine(char* outStr, int* inOutStrSize, BfpSystemResult* outResult)
@@ -2245,9 +2290,12 @@ static LOCATEXSTATEFEATURE pfnLocateXStateFeature = NULL;
 typedef BOOL(WINAPI* SETXSTATEFEATURESMASK)(PCONTEXT Context, DWORD64 FeatureMask);
 static SETXSTATEFEATURESMASK pfnSetXStateFeaturesMask = NULL;
 
-static uint8 ContextBuffer[4096];
+static uint8* ContextBuffer;
 static CONTEXT* CaptureRegistersEx(HANDLE hThread, intptr*& curPtr)
 {
+	if (ContextBuffer == NULL)
+		ContextBuffer = new uint8[4096];
+
 	PCONTEXT Context;
 	DWORD ContextSize;
 	DWORD64 FeatureMask;

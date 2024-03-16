@@ -382,6 +382,7 @@ public:
 	BfModule* mScratchModule;
 	BfModule* mUnreifiedModule;
 	HashSet<String> mUsedModuleNames;
+	HashSet<BfType*> mGhostDependencies; // We couldn't properly rebuild our dependencies
 	Dictionary<BfProject*, BfModule*> mProjectModule;
 	Array<BfModule*> mModules;
 	Array<BfModule*> mDeletingModules;

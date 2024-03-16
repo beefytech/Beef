@@ -15,12 +15,8 @@ namespace FMOD
     */
     public class VERSION
     {
-        public const int32    number = 0x00010803;
-#if BF_64_BIT
-        public const String dll    = "fmod64.dll";
-#else
-        public const String dll    = "fmod.dll";
-#endif
+        public const int32 number = 0x00020220;
+        public const String dll = "fmod.dll";
     }
 
     public class CONSTANTS
@@ -1385,7 +1381,7 @@ namespace FMOD
         public int                      fileuserdata;           /* [w]   Optional. Specify 0 to ignore. User data to be passed into the file callbacks. */
         public int32                         filebuffersize;         /* [w]   Optional. Specify 0 to ignore. Buffer size for reading the file, -1 to disable buffering, or 0 for system default. */
         public CHANNELORDER                channelorder;           /* [w]   Optional. Specify 0 to ignore. Use this to differ the way fmod maps multichannel sounds to speakers.  See FMOD_CHANNELORDER for more. */
-        public CHANNELMASK                 channelmask;            /* [w]   Optional. Specify 0 to ignore. Use this to differ the way fmod maps multichannel sounds to speakers.  See FMOD_CHANNELMASK for more. */
+        //public CHANNELMASK                 channelmask;            /* [w]   Optional. Specify 0 to ignore. Use this to differ the way fmod maps multichannel sounds to speakers.  See FMOD_CHANNELMASK for more. */
         public int                      initialsoundgroup;      /* [w]   Optional. Specify 0 to ignore. Specify a sound group if required, to put sound in as it is created. */
         public uint32                        initialseekposition;    /* [w]   Optional. Specify 0 to ignore. For streams. Specify an initial position to seek the stream to. */
         public TIMEUNIT                    initialseekpostype;     /* [w]   Optional. Specify 0 to ignore. For streams. Specify the time unit for the position set in initialseekposition. */
@@ -1587,7 +1583,7 @@ namespace FMOD
             RESULT result   = RESULT.OK;
             int rawPtr   = 0;
 
-            result = FMOD_System_Create(out rawPtr);
+            result = FMOD_System_Create(out rawPtr, VERSION.number);
             if (result != RESULT.OK)
             {
                 return result;
@@ -1602,7 +1598,7 @@ namespace FMOD
         #region importfunctions
 
         [Import(VERSION.dll), CLink, CallingConvention(.Stdcall)]
-        private static extern RESULT FMOD_System_Create                      (out int system);
+        private static extern RESULT FMOD_System_Create                      (out int system, uint headerversion);
 
         #endregion
     }
@@ -2008,6 +2004,7 @@ namespace FMOD
             stringData = name.CStr();
             
             exinfo.cbsize = (int32)sizeof(CREATESOUNDEXINFO);
+			//int offset = offsetof(CREATESOUNDEXINFO, channelmask);
 
             int soundraw;
             RESULT result = FMOD_System_CreateSound(rawPtr, stringData, mode, ref exinfo, out soundraw);

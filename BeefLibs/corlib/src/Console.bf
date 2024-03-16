@@ -13,17 +13,44 @@ namespace System
 			CtrlBreak
 		}
 
-		static Encoding InputEncoding = Encoding.ASCII;
-		static Encoding OutputEncoding = Encoding.ASCII;
+		public struct CancelInfo
+		{
+			public static Event<delegate void (CancelKind cancelKind, ref bool terminate)> sOnCancel ~ _.Dispose();
+			public static bool sCancelEventRegistered;
+		}
+
+		static Encoding sInputEncoding;
+		static Encoding sOutputEncoding;
+
+		static Encoding InputEncoding
+		{
+			get
+			{
+				return sInputEncoding ?? Encoding.ASCII;
+			}
+			set
+			{
+				sInputEncoding = value;
+			}
+		}
+		static Encoding OutputEncoding
+		{
+			get
+			{
+				return sOutputEncoding ?? Encoding.ASCII;
+			}
+			set
+			{
+				SetupOutStringEx();
+				sOutputEncoding = value;
+			}
+		}
 		
 		static ConsoleColor sForegroundColor = .White;
 		static ConsoleColor sBackgroundColor = .Black;
 
 		static readonly ConsoleColor sOriginalForegroundColor = sForegroundColor;
 		static readonly ConsoleColor sOriginalBackgroundColor = sBackgroundColor;
-
-		static Event<delegate void (CancelKind cancelKind, ref bool terminate)> sOnCancel ~ _.Dispose();
-		static bool sCancelEventRegistered;
 
 		public static ConsoleColor ForegroundColor
 		{
@@ -56,18 +83,39 @@ namespace System
 		{
 		}
 
+		static void SetupOutStringEx()
+		{
+			OutString = => OutString_Ex;
+		}
+
+		static function void(StringView str) OutString = => OutString_Simple;
+
+		[CLink, CallingConvention(.Cdecl)]
+		static extern void putchar(char8 c);
+
+		static void OutString_Simple(StringView str)
+		{
+			for (var c in str.RawChars)
+				putchar(c);
+		}
+
+		static void OutString_Ex(StringView str)
+		{
+			Out.Write(str).IgnoreError();
+		}
+
 		public static ref Event<delegate void (CancelKind cancelKind, ref bool terminate)> OnCancel
 		{
 			get
 			{
-				if (!sCancelEventRegistered)
+				if (!CancelInfo.sCancelEventRegistered)
 				{
-					sCancelEventRegistered = true;
+					CancelInfo.sCancelEventRegistered = true;
 #if BF_PLATFORM_WINDOWS
 					SetConsoleCtrlHandler(=> ConsoleCtrlHandler, true);
 #endif
 				}
-				return ref sOnCancel;
+				return ref CancelInfo.sOnCancel;
 			}
 		}
 
@@ -77,7 +125,7 @@ namespace System
 		{
 			bool terminate = true;
 			if ((ctrlType == 0) || (ctrlType == 1))
-				sOnCancel((.)ctrlType, ref terminate);
+				CancelInfo.sOnCancel((.)ctrlType, ref terminate);
 			return terminate ? false : true;
 		}
 
@@ -286,7 +334,7 @@ namespace System
 
 		public static void Write(StringView line)
 		{
-			Out.Write(line).IgnoreError();
+			OutString(line);
 		}
 
 		public static void Write(StringView fmt, params Object[] args)
@@ -308,12 +356,13 @@ namespace System
 
 		public static void WriteLine()
 		{
-			Out.Write("\n").IgnoreError();
+			OutString("\n");
 		}
 
 		public static void WriteLine(StringView line)
 		{
-			Out.WriteLine(line).IgnoreError();
+			OutString(line);
+			OutString("\n");
 		}
 
 		public static void WriteLine(StringView fmt, params Object[] args)

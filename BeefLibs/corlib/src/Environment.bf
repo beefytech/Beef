@@ -1,6 +1,7 @@
 using System.IO;
 using System.Collections;
 using System.Text;
+using System.Threading;
 
 namespace System
 {
@@ -12,7 +13,23 @@ namespace System
 		public static readonly String NewLine = "\n";
 #endif // BF_PLATFORM_WINDOWS
 
-		public static OperatingSystem OSVersion = new OperatingSystem() ~ delete _;
+
+		static OperatingSystem sOSVersion ~ delete _;
+		public static OperatingSystem OSVersion
+		{
+			get
+			{
+				var osVersion = new OperatingSystem();
+				let prevValue = Interlocked.CompareExchange(ref sOSVersion, null, osVersion);
+				if (prevValue != null)
+				{
+					// This was already set - race condition
+					delete osVersion;
+					return prevValue;
+				}
+				return osVersion;
+			}
+		}
 
 		public static void* ModuleHandle => Internal.[Friend]sModuleHandle;
 

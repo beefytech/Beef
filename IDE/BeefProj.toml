@@ -24,7 +24,7 @@ OtherLinkFlags = ""
 TargetDirectory = "$(WorkspaceDir)/dist"
 TargetName = "BeefIDE_d"
 OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib"
-DebugCommandArguments = "-proddir=\"$(WorkspaceDir)\\..\\IDE\""
+DebugCommandArguments = "-proddir=\"$(WorkspaceDir)\\..\\BeefBuild\""
 DebugWorkingDirectory = "$(WorkspaceDir)\\.."
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 

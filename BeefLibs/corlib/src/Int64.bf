@@ -63,11 +63,6 @@ namespace System
 			}
 		}
 
-		//static char8[] sHexUpperChars = new char8[]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'A', 'B', 'C', 'D', 'E', 'F'} ~ delete _;
-		//static char8[] sHexLowerChars = new char8[]{'0', '1', '2', '3', '4', '5', '6', '7', '8', '9', 'a', 'b', 'c', 'd', 'e', 'f'} ~ delete _;
-
-		static String sHexUpperChars = "0123456789ABCDEF";
-		static String sHexLowerChars = "0123456789abcdef";
 		public void ToString(String outString, String format, IFormatProvider formatProvider)
 		{
 			if(format == null || format.IsEmpty)

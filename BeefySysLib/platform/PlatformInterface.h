@@ -100,12 +100,14 @@ enum BfpCrashReportKind
 };
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flags);
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_InitCrashCatcher(BfpSystemInitFlags flags);
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv);
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCrashReportKind(BfpCrashReportKind crashReportKind);
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_AddCrashInfoFunc(BfpCrashInfoFunc crashInfoFunc);
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_AddCrashInfo(const char* str); // Can do at any time, or during CrashInfoFunc callbacks
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCrashRelaunchCmd(const char* str);
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_Shutdown();
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_ShutdownCrashCatcher();
 BFP_EXPORT uint32 BFP_CALLTYPE BfpSystem_TickCount();
 BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpSystem_GetTimeStamp();
 BFP_EXPORT uint16 BFP_CALLTYPE BfpSystem_EndianSwap16(uint16 val);

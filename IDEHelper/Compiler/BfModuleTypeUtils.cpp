@@ -410,7 +410,7 @@ bool BfModule::ValidateGenericConstraints(BfAstNode* typeRef, BfTypeInstance* ge
 	SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, mIgnoreErrors || ignoreErrors);
 	genericTypeInst->mGenericTypeInfo->mValidatedGenericConstraints = true;
 	if (!genericTypeInst->mGenericTypeInfo->mFinishedGenericParams)
-		PopulateType(genericTypeInst, BfPopulateType_Interfaces_All);
+		mContext->mUnreifiedModule->PopulateType(genericTypeInst, BfPopulateType_Interfaces_All);
 
 	if (genericTypeInst->IsTypeAlias())
 	{
@@ -418,7 +418,7 @@ bool BfModule::ValidateGenericConstraints(BfAstNode* typeRef, BfTypeInstance* ge
 		if ((underlyingType != NULL) && (underlyingType->IsGenericTypeInstance()))
 		{
 			auto underlyingGenericType = underlyingType->ToGenericTypeInstance();
-			PopulateType(underlyingType, BfPopulateType_Declaration);
+			mContext->mUnreifiedModule->PopulateType(underlyingType, BfPopulateType_Declaration);
 			bool result = ValidateGenericConstraints(typeRef, underlyingGenericType, ignoreErrors);
 			if (underlyingGenericType->mGenericTypeInfo->mHadValidateErrors)
 				genericTypeInst->mGenericTypeInfo->mHadValidateErrors = true;
@@ -441,7 +441,7 @@ bool BfModule::ValidateGenericConstraints(BfAstNode* typeRef, BfTypeInstance* ge
 	{
 		startGenericParamIdx = typeDef->mOuterType->mGenericParamDefs.mSize + typeDef->mOuterType->mExternalConstraints.mSize;
 		auto outerType = GetOuterType(genericTypeInst);
-		PopulateType(outerType, BfPopulateType_Declaration);
+		mContext->mUnreifiedModule->PopulateType(outerType, BfPopulateType_Declaration);
 		if ((outerType->mGenericTypeInfo != NULL) && (outerType->mGenericTypeInfo->mHadValidateErrors))
 			genericTypeInst->mGenericTypeInfo->mHadValidateErrors = true;
 	}
@@ -800,6 +800,11 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 		// Do it here so the location we attempted to specialize this type will throw the failure if there is one
  		if (!InitGenericParams(resolvedTypeRef))
   			return;
+	}
+
+	if ((typeInst != NULL) && (typeInst->mIsReified) && (!mCompiler->mIsResolveOnly))
+	{
+		BfLogSysM("REIFIED(InitType): %s Type:%p FromModule:%s FromMethod:%p\n", TypeToString(resolvedTypeRef).c_str(), resolvedTypeRef, mModuleName.c_str(), prevMethodInstance.mPrevVal);
 	}
 
 	BfLogSysM("%p InitType: %s Type: %p TypeDef: %p Revision:%d\n", mContext, TypeToString(resolvedTypeRef).c_str(), resolvedTypeRef, (typeInst != NULL) ? typeInst->mTypeDef : NULL, mCompiler->mRevision);
@@ -1212,6 +1217,14 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 								canFastReify = false;
 					}
 
+					if (!mCompiler->mIsResolveOnly)
+					{
+						for (auto ownedTypes : typeModule->mOwnedTypeInstances)
+						{
+							BfLogSysM("REIFIED(PopulateType-Reference): %s %p FromModule:%s FromMethod: %p\n", TypeToString(ownedTypes).c_str(), ownedTypes, mModuleName.c_str(), mCurMethodInstance);
+						}
+					}
+
 					if (canFastReify)
 					{
 						BfLogSysM("Setting reified type %p in module %p in PopulateType on module awaiting finish\n", resolvedTypeRef, typeModule);
@@ -1292,7 +1305,17 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCurMethodInstance, NULL);
 	SetAndRestoreValue<BfMethodState*> prevMethodState(mCurMethodState, NULL);
 
-	BF_ASSERT((resolvedTypeRef->mRebuildFlags & (BfTypeRebuildFlag_Deleted | BfTypeRebuildFlag_DeleteQueued)) == 0);
+	if ((resolvedTypeRef->mRebuildFlags & (BfTypeRebuildFlag_Deleted | BfTypeRebuildFlag_DeleteQueued)) != 0)
+	{
+		if (mContext->mGhostDependencies.Contains(resolvedTypeRef))
+		{
+			// Not a nice state, but we should be able to recover
+			return;
+		}
+
+		InternalError("Attempting PopulateType on deleted type");
+		return;
+	}
 
 	bool isNew = resolvedTypeRef->mDefineState == BfTypeDefineState_Undefined;
 	if (isNew)
@@ -8268,7 +8291,7 @@ BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType
 
 	auto typeDefTypeRef = mContext->mTypeDefTypeRefPool.Get();
 	typeDefTypeRef->mTypeDef = typeDef;
-	auto resolvedtypeDefType = ResolveTypeRef(typeDefTypeRef, populateType);
+	auto resolvedtypeDefType = ResolveTypeRef(typeDefTypeRef, populateType, resolveFlags);
 	if (resolvedtypeDefType == NULL)
 	{
 		mContext->mTypeDefTypeRefPool.GiveBack(typeDefTypeRef);
@@ -11347,7 +11370,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 						}
 					}
 
-					return ResolveTypeResult(typeRef, ResolveTypeDef(typeDef, genericArgs, populateType), populateType, resolveFlags);
+					return ResolveTypeResult(typeRef, ResolveTypeDef(typeDef, genericArgs, populateType, resolveFlags), populateType, resolveFlags);
 				}
 			}
 		}
@@ -12635,7 +12658,7 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 	return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 }
 
-BfType* BfModule::ResolveTypeRefAllowUnboundGenerics(BfTypeReference* typeRef, BfPopulateType populateType, bool resolveGenericParam)
+BfType* BfModule::ResolveTypeRefAllowUnboundGenerics(BfTypeReference* typeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags, bool resolveGenericParam)
 {
 	if (auto genericTypeRef = BfNodeDynCast<BfGenericInstanceTypeRef>(typeRef))
 	{
@@ -12648,7 +12671,7 @@ BfType* BfModule::ResolveTypeRefAllowUnboundGenerics(BfTypeReference* typeRef, B
 			BfTypeVector typeVector;
 			for (int i = 0; i < (int)genericTypeDef->mGenericParamDefs.size(); i++)
 				typeVector.push_back(GetGenericParamType(BfGenericParamKind_Type, i));
-			auto result = ResolveTypeDef(genericTypeDef, typeVector, populateType);
+			auto result = ResolveTypeDef(genericTypeDef, typeVector, populateType, resolveFlags);
 			if ((result != NULL) && (genericTypeRef->mCommas.size() + 1 != genericTypeDef->mGenericParamDefs.size()))
 			{
 				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurTypeInstance, result->ToTypeInstance());

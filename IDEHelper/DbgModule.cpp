@@ -833,6 +833,11 @@ bool DbgSubprogram::IsLambda()
 	return StringView(mName).Contains('$');
 }
 
+int DbgSubprogram::GetByteCount()
+{
+	return (int)(mBlock.mHighPC - mBlock.mLowPC);
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 DbgSubprogram::~DbgSubprogram()
@@ -5783,7 +5788,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 
 	Array<PESectionHeader> sectionHeaders;
 	sectionHeaders.Resize(ntHdr.mFileHeader.mNumberOfSections);
-	mSectionRVAs.Resize(sectionHeaders.size() + 1);
+	mSectionHeaders.Resize(sectionHeaders.size() + 1);
 
 	Array<String> sectionNames;
 	sectionNames.Resize(ntHdr.mFileHeader.mNumberOfSections);
@@ -5792,7 +5797,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 
 	for (int sectNum = 0; sectNum < ntHdr.mFileHeader.mNumberOfSections; sectNum++)
 	{
-		mSectionRVAs[sectNum] = sectionHeaders[sectNum].mVirtualAddress;
+		mSectionHeaders[sectNum] = sectionHeaders[sectNum];
 	}
 
 	int tlsSection = -1;
@@ -5827,6 +5832,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		}
 
 		DbgSection dwSection;
+		dwSection.mName = name;
 		dwSection.mIsExecutable = (sectHdr.mCharacteristics & IMAGE_SCN_MEM_EXECUTE) != 0;
 		dwSection.mAddrStart = sectHdr.mVirtualAddress;
 		dwSection.mAddrLength = BF_MAX(sectHdr.mSizeOfRawData, sectHdr.mVirtualSize);
@@ -6290,7 +6296,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 						}
 					}
 					else
-						targetAddr = mSectionRVAs[symInfo->mSectionNum - 1] + symInfo->mValue;
+						targetAddr = mSectionHeaders[symInfo->mSectionNum - 1].mVirtualAddress + symInfo->mValue;
 
 					if (((targetAddr != 0) || (isTLS)) &&
 						(name[0] != '.'))

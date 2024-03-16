@@ -367,6 +367,9 @@ namespace IDE.Debugger
 		static extern char8* Debugger_GetModulesInfo();
 
 		[CallingConvention(.Stdcall),CLink]
+		static extern char8* Debugger_GetModuleInfo(char8* moduleName);
+
+		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_HasPendingDebugLoads();
 
 		[CallingConvention(.Stdcall),CLink]
@@ -1192,6 +1195,11 @@ namespace IDE.Debugger
 		public void GetModulesInfo(String modulesInfo)
 		{
 			modulesInfo.Append(Debugger_GetModulesInfo());
+		}
+
+		public void GetModuleInfo(StringView moduleName, String moduleInfo)
+		{
+			moduleInfo.Append(Debugger_GetModuleInfo(moduleName.ToScopeCStr!()));
 		}
 
 		public int32 LoadDebugInfoForModule(String moduleName)

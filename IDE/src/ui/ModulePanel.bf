@@ -158,6 +158,20 @@ namespace IDE.ui
 								}
 							});
 					});
+
+				anItem = menu.AddItem("Copy Info to Clipboard");
+				anItem.mOnMenuItemSelected.Add(new (item) =>
+					{
+						String moduleInfo = scope .();
+						listView.GetRoot().WithSelectedItems(scope (item) =>
+							{
+								if (!moduleInfo.IsEmpty)
+									moduleInfo.Append("\n");
+								gApp.mDebugger.GetModuleInfo(item.GetSubItem(1).Label, moduleInfo);
+							});
+						gApp.SetClipboardText(moduleInfo);
+					});
+
 				MenuWidget menuWidget = ThemeFactory.mDefault.CreateMenuWidget(menu);
 				menuWidget.Init(relWidget, x, y);
 			}

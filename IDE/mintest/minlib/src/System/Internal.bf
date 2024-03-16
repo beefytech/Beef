@@ -92,8 +92,15 @@ namespace System
 		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_RawFree(void* ptr);
 
+		[CallingConvention(.Cdecl)]
+		static extern void Shutdown_Internal();
+
 		[CallingConvention(.Cdecl), AlwaysInclude]
-		static extern void Shutdown();
+		static void Shutdown()
+		{
+			Shutdown_Internal();
+		}
+		
 		[CallingConvention(.Cdecl)]
 		static extern void Test_Init(char8* testData);
 		[CallingConvention(.Cdecl)]

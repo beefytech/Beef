@@ -26,7 +26,7 @@ namespace System.Threading
 		static Event<delegate void()> sOnExit ~ _.Dispose();
 		Event<delegate void()> mOnExit ~ _.Dispose();
 
-		public static Thread sMainThread = new Thread() ~ delete _;
+		public static Thread sMainThread ~ delete _;
 
         [StaticInitPriority(102)]
         struct RuntimeThreadInit
@@ -48,8 +48,10 @@ namespace System.Threading
 
             static void Thread_SetInternalThread(Object thread, void* internalThread)
             {
+#if BF_ENABLE_REALTIME_LEAK_CHECK
 				if (internalThread != null)
 					GC.[Friend]AddPendingThread(internalThread);
+#endif
                 ((Thread)thread).[Friend]mInternalThread = (int)internalThread;
             }
 
@@ -118,8 +120,19 @@ namespace System.Threading
                 cb.[Friend]mThread_AutoDelete = => Thread_AutoDelete;
                 cb.[Friend]mThread_GetMaxStackSize = => Thread_GetMaxStackSize;
 				cb.[Friend]mThread_Exiting = => Thread_Exiting;
+
+				Runtime.[Friend, NoStaticCtor]sThreadInit = => Thread.Init;
             }
+
+			public static void Check()
+			{
+			}
         }
+
+		public static this()
+		{
+			RuntimeThreadInit.Check();
+		}
 
 		private this()
 		{
@@ -170,6 +183,7 @@ namespace System.Threading
         {
 #unwarn
             RuntimeThreadInit runtimeThreadInitRef = ?;
+			sMainThread = new Thread();
             sMainThread.ManualThreadInit();
         }
 
@@ -225,11 +239,6 @@ namespace System.Threading
 			}
 		}
 
-        extern void ManualThreadInit();
-        extern void StartInternal();
-        extern void SetStackStart(void* ptr);
-		extern void ThreadStarted();
-
         public void Start(bool autoDelete = true)
         {
             mAutoDelete = autoDelete;
@@ -247,7 +256,7 @@ namespace System.Threading
             StartInternal();
         }
 
-#if BF_PLATFORM_WINDOWS
+#if BF_PLATFORM_WINDOWS && !BF_RUNTIME_DISABLE
 		[CLink]
 		static extern int32 _tls_index; 
 #endif
@@ -256,17 +265,13 @@ namespace System.Threading
 		{
 			get
 			{
-#if BF_PLATFORM_WINDOWS
+#if BF_PLATFORM_WINDOWS && !BF_RUNTIME_DISABLE
 				return _tls_index;
 #else
 				return 0;
 #endif
 			}
 		}
-
-		public static extern void RequestExitNotify();
-        public extern void Suspend();
-        public extern void Resume();
 
         public ThreadPriority Priority
         {
@@ -283,12 +288,7 @@ namespace System.Threading
 					SetPriorityNative((int32)value);
 			}
         }
-		[CallingConvention(.Cdecl)]
-        private extern int32 GetPriorityNative();
-		[CallingConvention(.Cdecl)]
-        private extern void SetPriorityNative(int32 priority);
 
-        extern bool GetIsAlive();
         public bool IsAlive
         {
             get
@@ -297,8 +297,7 @@ namespace System.Threading
             }
         }
 
-		[CallingConvention(.Cdecl)]
-        extern bool GetIsThreadPoolThread();
+		
         public bool IsThreadPoolThread
         {
             get
@@ -307,8 +306,6 @@ namespace System.Threading
             }
         }
 
-        private extern bool JoinInternal(int32 millisecondsTimeout);
-        
         public void Join()
         {
             JoinInternal(Timeout.Infinite);
@@ -328,7 +325,6 @@ namespace System.Threading
             return Join((int32)tm);
         }
 
-        private static extern void SleepInternal(int32 millisecondsTimeout);
         public static void Sleep(int32 millisecondsTimeout)
         {
             SleepInternal(millisecondsTimeout);
@@ -342,14 +338,10 @@ namespace System.Threading
             Sleep((int32)tm);
         }
 
-        private static extern void SpinWaitInternal(int32 iterations);
-        
         public static void SpinWait(int iterations)
         {
             SpinWaitInternal((int32)iterations);
         }
-        
-        private static extern bool YieldInternal();
         
         public static bool Yield()
         {
@@ -364,9 +356,6 @@ namespace System.Threading
             }
         }
 
-        [CallingConvention(.Cdecl)]
-        extern int GetThreadId();
-
         public int Id
         {
             get
@@ -376,9 +365,6 @@ namespace System.Threading
         }
 
 		public static int CurrentThreadId => Platform.BfpThread_GetCurrentId();
-
-		[CallingConvention(.Cdecl)]
-        private static extern Thread GetCurrentThreadNative();
         
         void SetStart(Delegate ownStartDelegate, int32 maxStackSize)
         {
@@ -405,18 +391,11 @@ namespace System.Threading
             delete mDelegate;
         }
 
-		[CallingConvention(.Cdecl)]
-        private extern void InternalFinalize();
-
         public bool IsBackground
         {
             get { return IsBackgroundNative(); }
             set { SetBackgroundNative(value); }
         }
-		[CallingConvention(.Cdecl)]
-        private extern bool IsBackgroundNative();
-		[CallingConvention(.Cdecl)]
-        private extern void SetBackgroundNative(bool isBackground);
 		
 		public void SetJoinOnDelete(bool joinOnDelete)
 		{
@@ -427,8 +406,6 @@ namespace System.Threading
         {
             get { return (ThreadState)GetThreadStateNative(); }
         }
-        [CallingConvention(.Cdecl)]
-        private extern int32 GetThreadStateNative();
 
         public void SetName(String name)
         {
@@ -450,7 +427,63 @@ namespace System.Threading
             if (mName != null)
                 outName.Append(mName);
         }
+
+#if !BF_RUNTIME_DISABLE
         [CallingConvention(.Cdecl)]
         private extern void InformThreadNameChange(String name);
+		[CallingConvention(.Cdecl)]
+		private extern bool IsBackgroundNative();
+		[CallingConvention(.Cdecl)]
+		private extern void SetBackgroundNative(bool isBackground);
+		[CallingConvention(.Cdecl)]
+		private extern void InternalFinalize();
+		[CallingConvention(.Cdecl)]
+		private static extern Thread GetCurrentThreadNative();
+		[CallingConvention(.Cdecl)]
+		private extern int32 GetPriorityNative();
+		[CallingConvention(.Cdecl)]
+		private extern void SetPriorityNative(int32 priority);
+		[CallingConvention(.Cdecl)]
+		extern bool GetIsThreadPoolThread();
+		[CallingConvention(.Cdecl)]
+		extern int GetThreadId();
+		[CallingConvention(.Cdecl)]
+		private extern int32 GetThreadStateNative();
+		private static extern void SpinWaitInternal(int32 iterations);
+		private static extern void SleepInternal(int32 millisecondsTimeout);
+		private extern bool JoinInternal(int32 millisecondsTimeout);
+		private static extern bool YieldInternal();
+		extern void ManualThreadInit();
+		extern void StartInternal();
+		extern void SetStackStart(void* ptr);
+		extern void ThreadStarted();
+		public static extern void RequestExitNotify();
+		public extern void Suspend();
+		public extern void Resume();
+		extern bool GetIsAlive();
+#else
+		private void InformThreadNameChange(String name) {}
+		private bool IsBackgroundNative() => false;
+		private void SetBackgroundNative(bool isBackground) {}
+		private void InternalFinalize() {}
+		private static Thread GetCurrentThreadNative() => null;
+		private int32 GetPriorityNative() => 0;
+		private void SetPriorityNative(int32 priority) {}
+		bool GetIsThreadPoolThread() => false;
+		int GetThreadId() => 0;
+		private int32 GetThreadStateNative() => 0;
+		private static void SpinWaitInternal(int32 iterations) {}
+		private static void SleepInternal(int32 millisecondsTimeout) {}
+		private bool JoinInternal(int32 millisecondsTimeout) => false;
+		private static bool YieldInternal() => false;
+		void ManualThreadInit() {}
+		void StartInternal() {}
+		void SetStackStart(void* ptr) {}
+		void ThreadStarted() {}
+		public static void RequestExitNotify() {}
+		public void Suspend() {}
+		public void Resume() {}
+		bool GetIsAlive() => false;
+#endif
     }
 }

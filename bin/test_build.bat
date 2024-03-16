@@ -1,4 +1,3 @@
-
 @ECHO --------------------------- Beef Test_Build.Bat Version 1 ---------------------------
 
 @SET P4_CHANGELIST=%1
@@ -32,6 +31,20 @@ IDE\Tests\SysMSVCRT\build\Debug_Win64\SysMSVCRT\SysMSVCRT.exe 1000 234
 @ECHO Testing IDE\corlib
 IDE\dist\BeefBuild_d -proddir=BeefLibs\corlib -test
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
+
+@ECHO Building Tiny
+bin\RunWithStats IDE\dist\BeefBuild -proddir=IDE\Tests\Tiny -clean -config=Release
+set size=0
+FOR /F "usebackq" %%A IN ('IDE\Tests\Tiny\build\Release_Win64\Tiny\Tiny.exe') DO set size=%%~zA
+echo Tiny executable size: %size% (expected 13824, max 16000)
+if %size% LSS 10000 (
+    echo TINY executable not found?
+    goto :HADERROR
+)
+if %size% GTR 16000 (
+    echo TINY executable is too large!
+    goto :HADERROR
+)
 
 @ECHO Building BeefIDE_d with BeefBuild_d
 bin\RunAndWait IDE\dist\BeefPerf.exe -cmd="Nop()"

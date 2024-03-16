@@ -199,7 +199,11 @@ namespace System
 		[CallingConvention(.Stdcall), CLink]
 		static extern int32 ftoa(float val, char8* str);
 
+#if !BF_RUNTIME_DISABLE
 		static extern int32 ToString(double val, char8* str, bool roundTrip);
+#else
+		static int32 ToString(double val, char8* str, bool roundTrip) => Runtime.NotImplemented();
+#endif
 
 		public override void ToString(String strBuffer)
 		{

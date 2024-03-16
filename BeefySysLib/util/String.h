@@ -194,7 +194,7 @@ public:
 		this->mPtr = sv.mPtr + offset;
 		this->mLength = length;
 	}
-	
+
 	StringView(const StringImpl& str);
 	StringView(const StringImpl& str, int offset);
 	StringView(const StringImpl& str, int offset, int length);
@@ -211,7 +211,7 @@ public:
 		this->mPtr = ptr;
 		this->mLength = length;
 	}
-	
+
 	const char& operator[](intptr idx) const
 	{
 		BF_ASSERT((uintptr)idx < (uintptr)this->mLength);
@@ -328,9 +328,9 @@ public:
 	bool Contains(const StringView& str) const
 	{
 		return IndexOf(str) != -1;
-	}	
+	}
 
-	StringSplitEnumerator Split(char c);	
+	StringSplitEnumerator Split(char c);
 
 	const_iterator begin() const
 	{
@@ -340,7 +340,7 @@ public:
 	const_iterator end() const
 	{
 		return mPtr + this->mLength;
-	}	
+	}
 };
 
 struct StringSplitEnumerator
@@ -510,7 +510,7 @@ public:
 	{
 		StringSplitEnumerator endVal = *this;
 		endVal.mPos = endVal.mStrLen + 1;
-		endVal.mMatchPos = endVal.mStrLen;		
+		endVal.mMatchPos = endVal.mStrLen;
 		return endVal;
 	}
 };
@@ -543,7 +543,7 @@ public:
 	char* mPtr;
 
 public:
-	
+
 
 protected:
 	void EnsureMutable()
@@ -568,14 +568,14 @@ protected:
 		free(this->mPtr);
 	}
 
-	intptr CalcNewSize(intptr minSize);	
+	intptr CalcNewSize(intptr minSize);
 	void Realloc(intptr newSize, bool copyStr = true);
-	void Realloc(char* newPtr, intptr newSize);		
-	static bool EqualsHelper(const char* a, const char* b, intptr length);	
-	static bool EqualsIgnoreCaseHelper(const char* a, const char* b, intptr length);	
+	void Realloc(char* newPtr, intptr newSize);
+	static bool EqualsHelper(const char* a, const char* b, intptr length);
+	static bool EqualsIgnoreCaseHelper(const char* a, const char* b, intptr length);
 	static int CompareOrdinalIgnoreCaseHelper(const StringImpl& strA, const StringImpl& strB);
 	static intptr CompareOrdinalIgnoreCaseHelper(const char* strA, intptr lengthA, const char* strB, intptr lengthB);
-	static intptr CompareOrdinalIgnoreCaseHelper(const StringImpl& strA, intptr indexA, intptr lengthA, const StringImpl& strB, intptr indexB, intptr lengthB);	
+	static intptr CompareOrdinalIgnoreCaseHelper(const StringImpl& strA, intptr indexA, intptr lengthA, const StringImpl& strB, intptr indexB, intptr lengthB);
 	static intptr CompareOrdinalHelper(const char* strA, intptr lengthA, const char* strB, intptr lengthB);
 	static intptr CompareOrdinalHelper(const StringImpl& strA, intptr indexA, intptr lengthA, const StringImpl& strB, intptr indexB, intptr lengthB);
 
@@ -613,7 +613,7 @@ protected:
 	}
 
 
-public:	
+public:
 	static StringImpl MakeRef(const char* charPtr)
 	{
 		StringImpl str;
@@ -710,7 +710,7 @@ public:
 			this->mLength = count;
 		}
 	}
-	
+
 	~StringImpl()
 	{
 		if (IsDynAlloc())
@@ -783,11 +783,11 @@ public:
 	bool operator>(const StringImpl& strB) const
 	{
 		return strcmp(GetPtr(), strB.GetPtr()) > 0;
-	}	
-	
+	}
+
 	StringImpl& operator=(const StringImpl& str)
 	{
-		if (&str != this)			
+		if (&str != this)
 		{
 			this->mLength = 0;
 			Append(str.GetPtr(), str.mLength);
@@ -812,14 +812,14 @@ public:
 		{
 			// If there's an internal buffer then we have to copy
 			int_strsize count = (int_strsize)str.mLength;
-			int_strsize allocSize = count + 1;			
+			int_strsize allocSize = count + 1;
 			if (allocSize > GetAllocSize())
 				Realloc(allocSize, false);
 			auto ptr = GetMutablePtr();
 			memcpy(ptr, str.GetPtr(), count + 1);
-			ptr[count] = 0;			
+			ptr[count] = 0;
 			this->mLength = count;
-		}		
+		}
 		return *this;
 	}
 
@@ -924,12 +924,12 @@ public:
 	void Reserve(intptr newSize);
 
 	void Append(const char* appendPtr);
-	void Append(const char* appendPtr, intptr length);	
-	void Append(const StringView& str);	
+	void Append(const char* appendPtr, intptr length);
+	void Append(const StringView& str);
 	void Append(const StringImpl& str);
 	void Append(const StringImpl& str, const StringImpl& str2);
 	void Append(const StringImpl& str, const StringImpl& str2, const StringImpl& str3);
-	void Append(char c, int count = 1);		
+	void Append(char c, int count = 1);
 
 	void Release()
 	{
@@ -937,7 +937,7 @@ public:
 			DeletePtr();
 		this->mLength = 0;
 		this->mPtr = NULL;
-		this->mAllocSizeAndFlags = 0;		
+		this->mAllocSizeAndFlags = 0;
 	}
 
 	void Clear()
@@ -955,10 +955,10 @@ public:
 	String Substring(intptr startIdx) const;
 	String Substring(intptr startIdx, intptr length) const;
 
-	void Remove(intptr startIdx, intptr length);	
-	void Remove(intptr char8Idx);	
-	void RemoveToEnd(intptr startIdx);		
-	void RemoveFromEnd(intptr length);	
+	void Remove(intptr startIdx, intptr length);
+	void Remove(intptr char8Idx);
+	void RemoveToEnd(intptr startIdx);
+	void RemoveFromEnd(intptr length);
 	void Insert(intptr idx, const StringImpl& addString);
 	void Insert(intptr idx, const char* str, intptr len);
 	void Insert(intptr idx, char c);
@@ -971,14 +971,14 @@ public:
 	}
 
 	static intptr Compare(const StringImpl& strA, const StringImpl& strB, bool ignoreCase)
-	{		
+	{
 		if (ignoreCase)
 			return CompareOrdinalIgnoreCaseHelper(strA.GetPtr(), strA.GetLength(), strB.GetPtr(), strB.GetLength());
 		return CompareOrdinalHelper(strA.GetPtr(), strA.GetLength(), strB.GetPtr(), strB.GetLength());
 	}
 
 	static intptr Compare(const StringImpl& strA, intptr indexA, const StringImpl& strB, intptr indexB, intptr length, bool ignoreCase);
-	
+
 	bool Equals(const StringImpl& b, CompareKind comparisonType = CompareKind_Ordinal) const
 	{
 		return Equals(*this, b, comparisonType);
@@ -1021,16 +1021,16 @@ public:
 	bool EndsWith(char c) const
 	{
 		if (this->mLength == 0)
-			return false;		
+			return false;
 		return GetPtr()[this->mLength - 1] == c;
 	}
 
 	void ReplaceLargerHelper(const StringView& find, const StringView& replace);
 	void Replace(char find, char replace);
 	void Replace(const StringView& find, const StringView& replace);
-	void TrimEnd();	
-	void TrimStart();	
-	void Trim();	
+	void TrimEnd();
+	void TrimStart();
+	void Trim();
 	bool IsWhitespace() const;
 	bool IsEmpty() const
 	{
@@ -1045,12 +1045,12 @@ public:
 	bool HasMultibyteChars();
 	intptr IndexOf(const StringView& subStr, bool ignoreCase = false) const;
 	intptr IndexOf(const StringView& subStr, int32 startIdx) const;
-	intptr IndexOf(const StringView& subStr, int64 startIdx) const;	
-	intptr IndexOf(char c, int32 startIdx = 0) const;	
+	intptr IndexOf(const StringView& subStr, int64 startIdx) const;
+	intptr IndexOf(char c, int32 startIdx = 0) const;
 	intptr IndexOf(char c, int64 startIdx) const;
-	intptr LastIndexOf(char c) const;	
+	intptr LastIndexOf(char c) const;
 	intptr LastIndexOf(char c, intptr startCheck) const;
-	
+
 	StringSplitEnumerator Split(char c)
 	{
 		return StringSplitEnumerator(GetPtr(), mLength, c, 0x7FFFFFFF, false);
@@ -1060,7 +1060,7 @@ public:
 	{
 		return IndexOf(c) != -1;
 	}
-	
+
 	bool Contains(const StringView& str) const
 	{
 		return IndexOf(str) != -1;
@@ -1217,6 +1217,41 @@ public:
 	}
 };
 
+class StringSimple : public StringView
+{
+public:
+	StringSimple()
+	{
+
+	}
+
+	StringSimple(const StringView& sv)
+	{
+		this->mPtr = new char[sv.mLength + 1];
+		this->mLength = sv.mLength;
+		memcpy((char*)this->mPtr, sv.mPtr, this->mLength);
+		((char*)this->mPtr)[this->mLength] = 0;
+	}
+
+	StringSimple(const StringImpl& str)
+	{
+		this->mPtr = new char[str.mLength + 1];
+		this->mLength = str.mLength;
+		memcpy((char*)this->mPtr, str.GetPtr(), this->mLength);
+		((char*)mPtr)[this->mLength] = 0;
+	}
+
+	~StringSimple()
+	{
+		delete this->mPtr;
+	}
+
+	const char* c_str()
+	{
+		return this->mPtr;
+	}
+};
+
 class UTF16String : public Array<uint16>
 {
 public:
@@ -1227,7 +1262,7 @@ public:
 	void Set(const wchar_t* str, int len);
 	void Set(const wchar_t* str);
 	const wchar_t* c_str() const;
-	size_t length() const;	
+	size_t length() const;
 };
 
 #define BF_SPECIALIZE_STR(size) \

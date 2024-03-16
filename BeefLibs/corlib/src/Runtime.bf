@@ -1,8 +1,10 @@
 using System.Threading;
 using System.Collections;
-#if BF_ENABLE_OBJECT_DEBUG_FLAGS || BF_DEBUG_ALLOC
+#if (BF_ENABLE_OBJECT_DEBUG_FLAGS || BF_DEBUG_ALLOC) && !BF_RUNTIME_DISABLE
 #define BF_DBG_RUNTIME
 #endif
+
+using internal System.Threading.Thread;
 
 namespace System
 {
@@ -17,7 +19,7 @@ namespace System
 	{
 		const int32 cVersion = 10;
 
-		[CRepr, AlwaysInclude]
+		[CRepr]
 		struct BfDebugMessageData
 		{
 			enum MessageType : int32
@@ -104,7 +106,7 @@ namespace System
 
 		struct BfRtCallbacks
 		{
-			public static BfRtCallbacks sCallbacks = .();
+			public static BfRtCallbacks sCallbacks;
 
 			function void* (int size) mAlloc;
 			function void (void* ptr) mFree;
@@ -115,7 +117,7 @@ namespace System
 			function Object (Object obj, int32 typeId) mObject_DynamicCastToTypeId;
 			function void (Type type, String str) mType_GetFullName;
 			function String () mString_Alloc;
-			function char8* (String str) mString_ToCStr;
+			function StringView (String str) mString_ToStringView;
 			function Object () mThread_Alloc;
 			function Object () mThread_GetMainThread;
 			function void (Object thread) mThread_ThreadProc;
@@ -178,7 +180,7 @@ namespace System
 			static void Type_GetFullName(Type type, String str)
 			{
 #if BF_DBG_RUNTIME
-				type.GetFullName(str);
+				type.ToString(str);
 #else
 				//
 #endif
@@ -189,9 +191,9 @@ namespace System
 				return new String();
 			}
 
-			static char8* String_ToCStr(String str)
+			static StringView String_ToStringView(String str)
 			{
-				return str.CStr();
+				return str;
 			}
 
 			static void GC_MarkAllStaticMembers()
@@ -219,39 +221,37 @@ namespace System
 
 			static void DebugMessageData_SetupError(char8* str, int32 stackWindbackCount)
 			{
+#if !BF_RUNTIME_REDUCED
 				BfDebugMessageData.gBfDebugMessageData.SetupError(str, stackWindbackCount);
+#endif
 			}
 
 			static void DebugMessageData_SetupProfilerCmd(char8* str)
 			{
+#if !BF_RUNTIME_REDUCED
 				BfDebugMessageData.gBfDebugMessageData.SetupProfilerCmd(str);
+#endif
 			}
 
 			static void DebugMessageData_Fatal()
 			{
+#if !BF_RUNTIME_REDUCED
 				BfDebugMessageData.gBfDebugMessageData.Fatal();
+#endif
 			}
 
 			static void DebugMessageData_Clear()
 			{
+#if !BF_RUNTIME_REDUCED
 				BfDebugMessageData.gBfDebugMessageData.Clear();
+#endif
 			}
-		
-			static int32 CheckErrorHandler(char8* kind, char8* arg1, char8* arg2, int arg3)
+
+			static int32 CheckErrorHandle(char8* kind, char8* arg1, char8* arg2, int arg3)
 			{
-				Error error = null;
-				switch (StringView(kind))
-				{
-				case "FatalError":
-					error = scope:: FatalError() { mError = new .(arg1) };
-				case "LoadSharedLibrary":
-					error = scope:: LoadSharedLibraryError() { mPath = new .(arg1) };
-				case "GetSharedProcAddress":
-					error = scope:: GetSharedProcAddressError() { mPath = new .(arg1), mProcName = new .(arg2) };	
-				}
-				if (error == null)
-					return 0;
-				return (int32)Runtime.CheckErrorHandlers(error);
+				if (Runtime.CheckErrorHandler != null)
+					return Runtime.CheckErrorHandler(kind, arg1, arg2, arg3);
+				return 0;
 			}
 
 			public void Init() mut
@@ -264,7 +264,7 @@ namespace System
 			    mObject_DynamicCastToTypeId = => Object_DynamicCastToTypeId;
 				mType_GetFullName = => Type_GetFullName;
 				mString_Alloc = => String_Alloc;
-				mString_ToCStr = => String_ToCStr;
+				mString_ToStringView = => String_ToStringView;
 				mGC_MarkAllStaticMembers = => GC_MarkAllStaticMembers;
 				mGC_CallRootCallbacks = => GC_CallRootCallbacks;
 				mGC_Shutdown = => GC_Shutdown;
@@ -277,12 +277,23 @@ namespace System
 			}
 		};
 
+#if !BF_RUNTIME_DISABLE
 		private static extern void Init(int32 version, int32 flags, BfRtCallbacks* callbacks);
+		private static extern void InitCrashCatcher(int32 flags);
+		private static extern void ShutdownCrashCatcher();
 		private static extern void AddCrashInfoFunc(void* func);
 		private static extern void Dbg_Init(int32 version, int32 flags, BfRtCallbacks* callbacks);
 		private static extern void SetErrorString(char8* error);
 		private static extern void* Dbg_GetCrashInfoFunc();
 		public static extern void SetCrashReportKind(RtCrashReportKind crashReportKind);
+#else
+		private static void Init(int32 version, int32 flags, BfRtCallbacks* callbacks) {}
+		private static void AddCrashInfoFunc(void* func) {}
+		private static void Dbg_Init(int32 version, int32 flags, BfRtCallbacks* callbacks) {}
+		private static void SetErrorString(char8* error) {}
+		private static void* Dbg_GetCrashInfoFunc() => null;
+		public static void SetCrashReportKind(RtCrashReportKind crashReportKind) {}
+#endif
 
 		public enum RtCrashReportKind : int32
 		{
@@ -359,18 +370,23 @@ namespace System
 			Fail
 		}
 
-		public delegate ErrorHandlerResult ErrorHandler(ErrorStage stage, Error error);
+		static struct ErrorHandlerData
+		{
+			public delegate ErrorHandlerResult ErrorHandler(ErrorStage stage, Error error);
+			public static AllocWrapper<Monitor> sMonitor ~ _.Dispose();
+			public static List<ErrorHandler> sErrorHandlers ~ DeleteContainerAndItems!(_);
+			public static bool sInsideErrorHandler;
+		}
 
 		static RtFlags sExtraFlags;
-		static AllocWrapper<Monitor> sMonitor ~ _.Dispose();
-		static List<ErrorHandler> sErrorHandlers ~ DeleteContainerAndItems!(_);
-		static bool sInsideErrorHandler;
-
 		static bool sQueriedFeatures = false;
 		static RuntimeFeatures sFeatures;
 
+		static function void() sThreadInit;
+
 		public static this()
 		{
+#if !BF_RUNTIME_DISABLE
 			BfRtCallbacks.sCallbacks.Init();
 
 			RtFlags flags = sExtraFlags;
@@ -384,84 +400,134 @@ namespace System
 			flags |= .DebugAlloc;
 #endif
 			Init(cVersion, (int32)flags, &BfRtCallbacks.sCallbacks);
+#if !BF_RUNTIME_REDUCED && BF_PLATFORM_WINDOWS
+			InitCrashCatcher((int32)flags);
+#endif
 #if BF_DBG_RUNTIME
 			Dbg_Init(cVersion, (int32)flags, &BfRtCallbacks.sCallbacks);
 #endif
-			Thread.[Friend]Init();
+			if (sThreadInit != null)
+				sThreadInit();
+#endif
 		}
 
 		[NoReturn]
 		public static void FatalError(String msg = "Fatal error encountered", String filePath = Compiler.CallerFilePath, int line = Compiler.CallerLineNum)
 		{
-			String failStr = scope .()..AppendF("{} at line {} in {}", msg, line, filePath);
+#if !BF_RUNTIME_REDUCED
+			String failStr = scope .()..Append(msg, " at line ");
+			line.ToString(failStr);
+			failStr.Append(" in ", filePath);
 			Internal.FatalError(failStr, 1);
+#else
+			Internal.FatalError("Fatal error", 1);
+#endif
 		}
 
 		[NoReturn]
 		public static void NotImplemented(String filePath = Compiler.CallerFilePath, int line = Compiler.CallerLineNum)
 		{
-			String failStr = scope .()..AppendF("Not Implemented at line {} in {}", line, filePath);
+			String failStr = scope .()..Append("Not implemented at line ");
+			line.ToString(failStr);
+			failStr.Append(" in ", filePath);
 			Internal.FatalError(failStr, 1);
 		}
 
-		public static void Assert(bool condition, String error = Compiler.CallerExpression[0], String filePath = Compiler.CallerFilePath, int line = Compiler.CallerLineNum) 
+		public static void Assert(bool condition, String error = Compiler.CallerExpression[0], String filePath = Compiler.CallerFilePath, int line = Compiler.CallerLineNum)
 		{
 			if (!condition)
 			{
-				if (Runtime.CheckErrorHandlers(scope Runtime.AssertError(.Runtime, error, filePath, line)) == .Ignore)
+				if ((Runtime.CheckAssertError != null) && (Runtime.CheckAssertError(.Runtime, error, filePath, line) == .Ignore))
 					return;
-				String failStr = scope .()..AppendF("Assert failed: {} at line {} in {}", error, line, filePath);
+#if !BF_RUNTIME_REDUCED
+				String failStr = scope .()..Append("Assert failed: ", error, " at line ");
+				line.ToString(failStr);
+				failStr.Append(" in ", filePath);
 				Internal.FatalError(failStr, 1);
+#else
+				Internal.FatalError("Assert failed", 1);
+#endif
 			}
 		}
 
-		public static void AddErrorHandler(ErrorHandler handler)
+		public static void AddErrorHandler(ErrorHandlerData.ErrorHandler handler)
 		{
 			if (Compiler.IsComptime)
 				return;
 
-			using (sMonitor.Val.Enter())
+			using (ErrorHandlerData.sMonitor.Val.Enter())
 			{
-				if (sErrorHandlers == null)
-					sErrorHandlers = new .();
-				sErrorHandlers.Add(handler);
+				if (CheckAssertError == null)
+				{
+					CheckAssertError = => CheckAssertError_Impl;
+					CheckErrorHandler = => CheckErrorHandler_Impl;
+				}
+
+				if (ErrorHandlerData.sErrorHandlers == null)
+					ErrorHandlerData.sErrorHandlers = new .();
+				ErrorHandlerData.sErrorHandlers.Add(handler);
 			}
 		}
 
-		public static Result<void> RemoveErrorHandler(ErrorHandler handler)
+		public static Result<void> RemoveErrorHandler(ErrorHandlerData.ErrorHandler handler)
 		{
 			if (Compiler.IsComptime)
 				return .Ok;
 
-			using (sMonitor.Val.Enter())
+			using (ErrorHandlerData.sMonitor.Val.Enter())
 			{
-				if (sErrorHandlers.RemoveStrict(handler))
+				if (ErrorHandlerData.sErrorHandlers.RemoveStrict(handler))
 					return .Ok;
 			}
 			return .Err;
 		}
 
-		public static ErrorHandlerResult CheckErrorHandlers(Error error)
+		public static function ErrorHandlerResult(AssertError.Kind kind, String error, String filePath, int lineNum) CheckAssertError;
+		public static function int32(char8* kind, char8* arg1, char8* arg2, int arg3) CheckErrorHandler;
+
+		static ErrorHandlerResult CheckAssertError_Impl(AssertError.Kind kind, String error, String filePath, int lineNum)
+		{
+			return CheckErrorHandlers(scope AssertError(kind, error, filePath, lineNum));
+		}
+
+		static int32 CheckErrorHandler_Impl(char8* kind, char8* arg1, char8* arg2, int arg3)
+		{
+			Error error = null;
+			switch (StringView(kind))
+			{
+			case "FatalError":
+				error = scope:: FatalError() { mError = new .(arg1) };
+			case "LoadSharedLibrary":
+				error = scope:: LoadSharedLibraryError() { mPath = new .(arg1) };
+			case "GetSharedProcAddress":
+				error = scope:: GetSharedProcAddressError() { mPath = new .(arg1), mProcName = new .(arg2) };
+			}
+			if (error == null)
+				return 0;
+			return (int32)CheckErrorHandlers(error);
+		}
+
+		static ErrorHandlerResult CheckErrorHandlers(Error error)
 		{
 			if (Compiler.IsComptime)
 				return .ContinueFailure;
 
-			using (sMonitor.Val.Enter())
+			using (ErrorHandlerData.sMonitor.Val.Enter())
 			{
-				if (sInsideErrorHandler)
+				if (ErrorHandlerData.sInsideErrorHandler)
 					return .ContinueFailure;
 
-				sInsideErrorHandler = true;
-				defer { sInsideErrorHandler = false; }
+				ErrorHandlerData.sInsideErrorHandler = true;
+				defer { ErrorHandlerData.sInsideErrorHandler = false; }
 
 				for (int pass = 0; pass < 2; pass++)
 				{
-					int idx = (sErrorHandlers?.Count).GetValueOrDefault() - 1;
+					int idx = (ErrorHandlerData.sErrorHandlers?.Count).GetValueOrDefault() - 1;
 					while (idx >= 0)
 					{
-						if (idx < sErrorHandlers.Count)
+						if (idx < ErrorHandlerData.sErrorHandlers.Count)
 						{
-							var handler = sErrorHandlers[idx];
+							var handler = ErrorHandlerData.sErrorHandlers[idx];
 							var result = handler((pass == 0) ? .PreFail : .Fail, error);
 							if (result == .Ignore)
 							{
@@ -562,5 +628,122 @@ namespace System
 		[Intrinsic("xgetbv")]
 		private static extern uint64 xgetbv(uint32 xcr);
 #endif
+
+		public static void Shutdown()
+		{
+#if !BF_RUNTIME_REDUCED && BF_PLATFORM_WINDOWS
+			ShutdownCrashCatcher();
+#endif
+		}
 	}
 }
+
+#if BF_RUNTIME_DISABLE
+namespace System
+{
+	[AlwaysInclude, StaticInitPriority(1000)]
+	static class MinRuntime
+	{
+		static function void*(int) sMallocFunc;
+		static function void(void*) sFreeFunc;
+
+		static this()
+		{
+			var lib = Windows.LoadLibraryA("msvcrt.dll");
+			sMallocFunc = (.)Windows.GetProcAddress(lib, "malloc");
+			sFreeFunc = (.)Windows.GetProcAddress(lib, "free");
+		}
+
+		/*[LinkName(.C), AlwaysInclude]
+		static void __chkstk()
+		{
+
+		}*/
+
+		[LinkName(.C), AlwaysInclude]
+		static void* malloc(int size)
+		{
+			return sMallocFunc(size);
+		}
+
+		[LinkName(.C), AlwaysInclude]
+		static void free(void* ptr)
+		{
+			sFreeFunc(ptr);
+		}
+
+		[LinkName(.C), AlwaysInclude]
+		static void memset(void* dest, uint8 val, int size)
+		{
+			uint8* outPtr = (.)dest;
+			for (int i < size)
+				*(outPtr++) = val;
+		}
+
+		[LinkName(.C), AlwaysInclude]
+		static void memcpy(void* dest, void* src, int size)
+		{
+			uint8* destPtr = (.)dest;
+			uint8* srcPtr = (.)src;
+
+			if (destPtr < srcPtr)
+			{
+				for (int i < size)
+					*(destPtr++) = *(srcPtr++);
+			}
+			else
+			{
+				destPtr += size;
+				srcPtr += size;
+				for (int i < size)
+					*(--destPtr) = *(--srcPtr);
+			}
+		}
+
+		[LinkName(.C), AlwaysInclude]
+		static void memmove(void* dest, void* src, int size)
+		{
+			uint8* destPtr = (.)dest;
+			uint8* srcPtr = (.)src;
+
+			if (destPtr < srcPtr)
+			{
+				for (int i < size)
+					*(destPtr++) = *(srcPtr++);
+			}
+			else
+			{
+				destPtr += size;
+				srcPtr += size;
+				for (int i < size)
+					*(--destPtr) = *(--srcPtr);
+			}
+		}
+
+		[LinkName(.C), AlwaysInclude]
+		static double strtod(char8* str, char8** endPtr)
+		{
+			return 0;
+		}
+
+		[LinkName(.C), AlwaysInclude]
+		static extern void WinMain(void* module, void* prevModule, char8* args, int32 showCmd);
+
+		[LinkName(.C), AlwaysInclude]
+		static extern int32 main(int argc, char8** argv);
+
+		[LinkName(.C), AlwaysInclude]
+		static void mainCRTStartup()
+		{
+			//WinMain(null, null, "hi", 1);
+			main(0, null);
+		}
+
+		[LinkName(.C), Export]
+		static int32 _tls_index;
+
+		[LinkName(.C), Export]
+		static bool _fltused;
+	}
+}
+#endif

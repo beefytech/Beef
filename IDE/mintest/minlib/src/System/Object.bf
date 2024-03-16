@@ -48,63 +48,122 @@ namespace System
 
     class Object : IHashable
     {
-#if BF_ENABLE_OBJECT_DEBUG_FLAGS
-        int mClassVData;
-        int mDbgAllocInfo;
-#else        
-        ClassVData* mClassVData;
-#endif        
-    
-        public virtual ~this()
-        {
+		#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+		int mClassVData;
+		int mDbgAllocInfo;
+#else
+		ClassVData* mClassVData;
+#endif
+
+		public virtual ~this()
+		{
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
 			mClassVData = ((mClassVData & ~0x08) | 0x80);
-#endif			
-        }
+#endif
+		}
 
-        int IHashable.GetHashCode()
-        {
-            return (int)(void*)this;
-        }
-
-        public Type GetType()
-        {
-            Type type;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
-            ClassVData* maskedVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
-            type = maskedVData.mType;
-#else            
-            type = mClassVData.mType;
-#endif            
-            if ((type.[Friend]mTypeFlags & TypeFlags.Boxed) != 0)
-            {
-                //int32 underlyingType = (int32)((TypeInstance)type).mUnderlyingType;
-                type = Type.[Friend]GetType(((TypeInstance)type).[Friend]mUnderlyingType);
-            }
+		[NoShow]
+		int32 GetFlags()
+		{
+			return (int32)mClassVData & 0xFF;
+		}
+
+		[DisableObjectAccessChecks, NoShow]
+		public bool IsDeleted()
+		{
+		    return (int32)mClassVData & 0x80 != 0;
+		}
+#else
+		[SkipCall]
+		public bool IsDeleted()
+		{
+		    return false;
+		}
+#endif
+		extern Type Comptime_GetType();
+
+		public Type GetType()
+        {
+			if (Compiler.IsComptime)
+				return Comptime_GetType();
+
+			ClassVData* classVData;
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			classVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
+#else
+			classVData = mClassVData;
+#endif
+
+#if BF_32_BIT
+			Type type = Type.[Friend]GetType_((.)(classVData.mType2));
+#else
+			Type type = Type.[Friend]GetType_((.)(classVData.mType >> 32));
+#endif
             return type;
+        }
+
+        TypeId GetTypeId()
+        {
+			ClassVData* classVData;
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+            classVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
+#else
+			classVData = mClassVData;
+#endif
+
+#if BF_32_BIT
+			return (.)classVData.mType2;
+#else
+			return (.)(classVData.mType >> 32);
+#endif
         }
 
 		[NoShow]
         Type RawGetType()
         {
-            Type type;
+			if (Compiler.IsComptime)
+				return Comptime_GetType();
+
+			ClassVData* classVData;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
-            ClassVData* maskedVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
-            type = maskedVData.mType;
-#else            
-            type = mClassVData.mType;
-#endif            
-            return type;
+			classVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
+#else
+			classVData = mClassVData;
+#endif
+
+#if BF_32_BIT
+			Type type = Type.[Friend]GetType_((.)(classVData.mType));
+#else
+			Type type = Type.[Friend]GetType_((.)(classVData.mType & 0xFFFFFFFF));
+#endif
+			return type;
         }
+
+		TypeId RawGetTypeId()
+		{
+			ClassVData* classVData;
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			classVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
+#else
+			classVData = mClassVData;
+#endif
+
+#if BF_32_BIT
+			return (.)classVData.mType;
+#else
+			return (.)(classVData.mType & 0xFFFFFFFF);
+#endif
+		}
 
 #if BF_DYNAMIC_CAST_CHECK || BF_ENABLE_REALTIME_LEAK_CHECK
 		[NoShow]
-        public virtual Object DynamicCastToTypeId(int32 typeId)
-        {
-            if (typeId == (int32)RawGetType().[Friend]mTypeId)
-                return this;
-            return null;
-        }
+		public virtual Object DynamicCastToTypeId(int32 typeId)
+		{
+		    if (typeId == (.)RawGetTypeId())
+		        return this;
+		    return null;
+		}
 
 		[NoShow]
 		public virtual Object DynamicCastToInterface(int32 typeId)
@@ -112,13 +171,18 @@ namespace System
 		    return null;
 		}
 #endif
-        
+
+		int IHashable.GetHashCode()
+		{
+		    return (int)Internal.UnsafeCastToPtr(this);
+		}
+
         public virtual void ToString(String strBuffer)
         {
-            //strBuffer.Set(stack string(GetType().mName));
-            RawGetType().GetName(strBuffer);
+            strBuffer.Append("Type#");
+			GetTypeId().ToString(strBuffer);
         }
-        
+
         /*public virtual int GetHashCode()
         {
             return (int)(intptr)(void*)this;
@@ -138,12 +202,12 @@ namespace System
                 obj.ToString(strBuffer);
 		}
     }
-    
+
     interface IResult<T>
     {
         T GetBaseResult();
     }
-        
+
     struct ValueType
     {
 		public static extern bool Equals<T>(T val1, T val2);
@@ -197,7 +261,7 @@ namespace System
 			{
 				return CSize;
 			}
-		}	
+		}
 
 		public explicit static operator T[CSize] (Self val)
 		{
@@ -226,11 +290,11 @@ namespace System
     struct Void : void
     {
     }
-    
+
     struct Boolean : bool
-    {        
+    {
     }
-    
+
     struct Char8 : char8
     {
   		public bool IsWhiteSpace
@@ -248,7 +312,7 @@ namespace System
 
 	struct Char16 : char16
 	{
-	    
+
 	}
 
     struct Char32 : char32
@@ -258,15 +322,15 @@ namespace System
 			get;
 		}
     }
-    
+
     struct Int8 : int8
-    {        
+    {
     }
-    
+
     struct UInt8 : uint8
-    {        
+    {
     }
-    
+
     struct Int16 : int16, IOpComparable, IIsNaN
     {
 		public static int operator<=>(Int16 a, Int16 b)
@@ -283,11 +347,11 @@ namespace System
 			}
 		}
     }
-    
+
     struct UInt16 : uint16
-    {        
+    {
     }
-    
+
     struct UInt32 : uint32, IHashable, IOpComparable, IIsNaN, IOpNegatable
     {
         public const int32 MaxValue = 0x7FFFFFFF;
@@ -307,7 +371,7 @@ namespace System
 
 		public this()
 		{
-			
+
 		}
 
 		bool IIsNaN.IsNaN
@@ -324,12 +388,12 @@ namespace System
 			return (.)this;
 		}
     }
-    
+
     struct Int64 : int64
     {
         public const int64 MaxValue = 0x7FFFFFFFFFFFFFFFL;
         public const int64 MinValue = -0x8000000000000000L;
-        
+
 		public override void ToString(String strBuffer)
 		{
 		    // Dumb, make better.
@@ -344,11 +408,11 @@ namespace System
 			}
 		    if (charIdx == 14)
 		        strChars[charIdx--] = '0';
-		    char8* charPtr = &strChars[charIdx + 1];		   
+		    char8* charPtr = &strChars[charIdx + 1];
 		    strBuffer.Append(scope:: String(charPtr));
 		}
     }
-    
+
     struct UInt64 : uint64
     {
     }
@@ -405,7 +469,7 @@ namespace System
 	}
 
     struct UInt : uint, IOpComparable, IIsNaN
-    {        
+    {
         public static int operator<=>(UInt a, UInt b)
 		{
 			return (uint)a <=> (uint)b;
@@ -469,11 +533,11 @@ namespace System
 			}
             if (charIdx == 14)
                 strChars[charIdx--] = '0';
-            char8* charPtr = &strChars[charIdx + 1];		   
+            char8* charPtr = &strChars[charIdx + 1];
             strBuffer.Append(scope:: String(charPtr));
         }
     }
-        
+
     struct Enum
     {
 		public static Result<T> Parse<T>(String str) where T : Enum
@@ -528,7 +592,7 @@ namespace System
     {
 		public int64 mMethodId;
         public DeferredCall* mNext;
-        
+
 		public void Cancel() mut
 		{
 			mMethodId = 0;

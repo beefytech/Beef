@@ -10,6 +10,8 @@ using System.Threading;
 using System.Interop;
 using System;
 
+using internal System.String;
+
 namespace System
 {
 	// String size type
@@ -46,6 +48,13 @@ namespace System
 			NullTerminate = 1
 		}
 
+		internal struct Interns
+		{
+			public static Monitor sMonitor = new Monitor() ~ delete _;
+			public static HashSet<String> sInterns = new .() ~ delete _;
+			public static List<String> sOwnedInterns = new .() ~ DeleteContainerAndItems!(_);
+		}
+
 		int_strsize mLength;
 		uint_strsize mAllocSizeAndFlags;
 		char8* mPtrOrBuffer = null;
@@ -53,9 +62,6 @@ namespace System
 		extern const String* sStringLiterals;
 		extern const String* sIdStringLiterals;
 		static String* sPrevInternLinkPtr; // For detecting changes to sStringLiterals for hot loads
-		static Monitor sMonitor = new Monitor() ~ delete _;
-		static HashSet<String> sInterns = new .() ~ delete _;
-		static List<String> sOwnedInterns = new .() ~ DeleteContainerAndItems!(_);
 		public const String Empty = "";
 
 #if BF_LARGE_STRINGS
@@ -619,7 +625,6 @@ namespace System
 			String.Quote(Ptr, mLength, outString);
 		}
 
-		[AlwaysInclude]
 		public char8* CStr()
 		{
 			EnsureNullTerminator();
@@ -2846,15 +2851,15 @@ namespace System
 				String str = *(ptr++);
 				if (str == null)
 					break;
-				sInterns.Add(str);
+				Interns.sInterns.Add(str);
 			}
 		}
 
 		public String Intern()
 		{
-			using (sMonitor.Enter())
+			using (Interns.sMonitor.Enter())
 			{
-				bool needsLiteralPass = sInterns.Count == 0;
+				bool needsLiteralPass = Interns.sInterns.Count == 0;
 				String* internalLinkPtr = *((String**)(sStringLiterals));
 				if (internalLinkPtr != sPrevInternLinkPtr)
 				{
@@ -2865,13 +2870,13 @@ namespace System
 					CheckLiterals(sStringLiterals);
 
 				String* entryPtr;
-				if (sInterns.TryAdd(this, out entryPtr))
+				if (Interns.sInterns.TryAdd(this, out entryPtr))
 				{
 					String result = new String(mLength + 1);
 					result.Append(this);
 					result.EnsureNullTerminator();
 					*entryPtr = result;
-					sOwnedInterns.Add(result);
+					Interns.sOwnedInterns.Add(result);
 					return result;
 				}
 				return *entryPtr;
@@ -4256,9 +4261,9 @@ namespace System
 
 		public String Intern()
 		{
-			using (String.[Friend]sMonitor.Enter())
+			using (String.Interns.sMonitor.Enter())
 			{
-				bool needsLiteralPass = String.[Friend]sInterns.Count == 0;
+				bool needsLiteralPass = String.Interns.sInterns.Count == 0;
 				String* internalLinkPtr = *((String**)(String.[Friend]sStringLiterals));
 				if (internalLinkPtr != String.[Friend]sPrevInternLinkPtr)
 				{
@@ -4269,13 +4274,13 @@ namespace System
 					String.[Friend]CheckLiterals(String.[Friend]sStringLiterals);
 
 				String* entryPtr;
-				if (String.[Friend]sInterns.TryAddAlt(this, out entryPtr))
+				if (String.Interns.sInterns.TryAddAlt(this, out entryPtr))
 				{
 					String result = new String(mLength + 1);
 					result.Append(this);
 					result.EnsureNullTerminator();
 					*entryPtr = result;
-					String.[Friend]sOwnedInterns.Add(result);
+					String.Interns.sOwnedInterns.Add(result);
 					return result;
 				}
 				return *entryPtr;
@@ -4367,7 +4372,7 @@ namespace System
 	}
 
 #if TEST
-	extension String
+	class StringTest
 	{
 		[Test]
 		public static void Test_Intern()

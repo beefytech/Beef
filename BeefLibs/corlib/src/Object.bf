@@ -10,10 +10,11 @@ namespace System
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
         int mClassVData;
         int mDbgAllocInfo;
-#else        
+#else
         ClassVData* mClassVData;
 #endif
-    
+
+		[AlwaysInclude]
         public virtual ~this()
         {
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
@@ -47,19 +48,35 @@ namespace System
 			if (Compiler.IsComptime)
 				return Comptime_GetType();
 
-            Type type;
+			ClassVData* classVData;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
-            ClassVData* maskedVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
-            type = maskedVData.mType;
+			classVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
 #else
-            type = mClassVData.mType;
+			classVData = mClassVData;
 #endif
-            if ((type.[Friend]mTypeFlags & TypeFlags.Boxed) != 0)
-            {
-                //int32 underlyingType = (int32)((TypeInstance)type).mUnderlyingType;
-                type = Type.[Friend]GetType(((TypeInstance)type).[Friend]mUnderlyingType);
-            }
+
+#if BF_32_BIT
+			Type type = Type.[Friend]GetType_(classVData.mType2);
+#else
+			Type type = Type.[Friend]GetType_((.)(classVData.mType >> 32));
+#endif
             return type;
+        }
+
+        TypeId GetTypeId()
+        {
+			ClassVData* classVData;
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+            classVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
+#else
+			classVData = mClassVData;
+#endif
+
+#if BF_32_BIT
+			return (.)classVData.mType2;
+#else
+			return (.)(classVData.mType >> 32);
+#endif
         }
 
 		[NoShow]
@@ -68,21 +85,42 @@ namespace System
 			if (Compiler.IsComptime)
 				return Comptime_GetType();
 
-            Type type;
+			ClassVData* classVData;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
-            ClassVData* maskedVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
-            type = maskedVData.mType;
-#else            
-            type = mClassVData.mType;
-#endif            
-            return type;
+			classVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
+#else
+			classVData = mClassVData;
+#endif
+
+#if BF_32_BIT
+			Type type = Type.[Friend]GetType_(classVData.mType);
+#else
+			Type type = Type.[Friend]GetType_((.)(classVData.mType & 0xFFFFFFFF));
+#endif
+			return type;
         }
+
+		TypeId RawGetTypeId()
+		{
+			ClassVData* classVData;
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			classVData = (ClassVData*)(void*)(mClassVData & ~(int)0xFF);
+#else
+			classVData = mClassVData;
+#endif
+
+#if BF_32_BIT
+			return (.)classVData.mType;
+#else
+			return (.)(classVData.mType & 0xFFFFFFFF);
+#endif
+		}
 
 #if BF_DYNAMIC_CAST_CHECK || BF_ENABLE_REALTIME_LEAK_CHECK
 		[NoShow]
 		public virtual Object DynamicCastToTypeId(int32 typeId)
 		{
-		    if (typeId == (int32)RawGetType().[Friend]mTypeId)
+		    if (typeId == (.)RawGetTypeId())
 		        return this;
 		    return null;
 		}
@@ -98,9 +136,13 @@ namespace System
         {
             return (int)Internal.UnsafeCastToPtr(this);
         }
-        
+
         public virtual void ToString(String strBuffer)
         {
+#if BF_REFLECT_MINIMAL
+			strBuffer.AppendF($"Type#{(Int.Simple)GetTypeId()}@0x");
+			NumberFormatter.AddrToString((uint)Internal.UnsafeCastToPtr(this), strBuffer);
+#else
 			let t = RawGetType();
 			if (t.IsBoxedStructPtr)
 			{
@@ -108,13 +150,15 @@ namespace System
 				let innerPtr = *(void**)((uint8*)Internal.UnsafeCastToPtr(this) + ti.[Friend]mMemberDataOffset);
 				strBuffer.Append("(");
 				ti.UnderlyingType.GetFullName(strBuffer);
-				strBuffer.AppendF("*)0x{0:A}", (uint)(void*)innerPtr);
+				//strBuffer.AppendF("*)0x{0:A}", (UInt.Simple)(uint)(void*)innerPtr);
+				strBuffer.Append("*)0x");
+				NumberFormatter.AddrToString((uint)(void*)innerPtr, strBuffer);
 				return;
 			}
             t.GetFullName(strBuffer);
 			strBuffer.Append("@0x");
-
-			((int)Internal.UnsafeCastToPtr(this)).ToString(strBuffer, "A", null);
+			NumberFormatter.AddrToString((uint)Internal.UnsafeCastToPtr(this), strBuffer);
+#endif
         }
 
 		private static void ToString(Object obj, String strBuffer)
@@ -124,7 +168,7 @@ namespace System
 			else
 				obj.ToString(strBuffer);
 		}
-                
+
         [SkipCall, NoShow]
     	protected virtual void GCMarkMembers()
         {

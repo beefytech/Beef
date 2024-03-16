@@ -1270,11 +1270,12 @@ bool BfMethodInstance::WasGenericParam(int paramIdx)
 
 bool BfMethodInstance::IsParamSkipped(int paramIdx)
 {
+	auto resolveModule = GetModule()->mContext->mUnreifiedModule;
 	if (paramIdx == -1)
 		return false;
 	BfType* paramType = GetParamType(paramIdx);
 	if ((paramType->CanBeValuelessType()) && (paramType->IsDataIncomplete()))
-		GetModule()->PopulateType(paramType, BfPopulateType_Data);
+		resolveModule->PopulateType(paramType, BfPopulateType_Data);
 	if ((paramType->IsValuelessType()) && (!paramType->IsMethodRef()))
 		return true;
 	return false;
@@ -1344,7 +1345,7 @@ int BfMethodInstance::DbgGetVirtualMethodNum()
 		module->HadSlotCountDependency();
 
 		int vDataIdx = -1;
-		vDataIdx = 1 + module->mCompiler->mMaxInterfaceSlots;
+		vDataIdx = module->mCompiler->GetVDataPrefixDataCount() + module->mCompiler->mMaxInterfaceSlots;
 		vDataIdx += module->mCompiler->GetDynCastVDataCount();
 		if ((module->mCompiler->mOptions.mHasVDataExtender) && (module->mCompiler->IsHotCompile()))
 		{
@@ -1375,7 +1376,9 @@ int BfMethodInstance::DbgGetVirtualMethodNum()
 
 void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType, SizedArrayImpl<BfIRType>& paramTypes, bool forceStatic)
 {
-	module->PopulateType(mReturnType);
+	BfModule* resolveModule = module->mContext->mUnreifiedModule;
+
+	resolveModule->PopulateType(mReturnType);
 
 	BfTypeCode loweredReturnTypeCode = BfTypeCode_None;
 	BfTypeCode loweredReturnTypeCode2 = BfTypeCode_None;
@@ -1459,7 +1462,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		else
 		{
 			if ((checkType->IsComposite()) && (checkType->IsIncomplete()))
-				module->PopulateType(checkType, BfPopulateType_Data);
+				resolveModule->PopulateType(checkType, BfPopulateType_Data);
 
 			if (checkType->IsMethodRef())
 			{
@@ -1492,7 +1495,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		}
 
 		if (checkType->CanBeValuelessType())
-			module->PopulateType(checkType, BfPopulateType_Data);
+			resolveModule->PopulateType(checkType, BfPopulateType_Data);
 		if ((checkType->IsValuelessType()) && (!checkType->IsMethodRef()))
 			continue;
 

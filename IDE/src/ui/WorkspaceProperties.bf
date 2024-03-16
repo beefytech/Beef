@@ -797,6 +797,8 @@ namespace IDE.ui
             AddPropertiesItem(category, "No Omit Frame Pointers", "mNoOmitFramePointers");
 			AddPropertiesItem(category, "Large Strings", "mLargeStrings");
 			AddPropertiesItem(category, "Large Collections", "mLargeCollections");
+			AddPropertiesItem(category, "Runtime", "mRuntimeKind");
+			AddPropertiesItem(category, "Reflection", "mReflectKind");
             category.Open(true, true);
 
             (category, propEntry) = AddPropertiesItem(root, "Debug");

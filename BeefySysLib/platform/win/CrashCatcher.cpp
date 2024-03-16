@@ -52,7 +52,6 @@ static SYMGETMODULEBASEPROC gSymGetModuleBase = NULL;
 static SYMGETSYMFROMADDRPROC gSymGetSymFromAddr = NULL;
 static SYMGETLINEFROMADDR gSymGetLineFromAddr = NULL;
 
-
 static bool CreateMiniDump(EXCEPTION_POINTERS* pep, const StringImpl& filePath);
 
 static bool LoadImageHelp()
@@ -117,47 +116,6 @@ static bool LoadImageHelp()
 	return true;
 }
 
-struct
-{
-	DWORD   dwExceptionCode;
-	char    *szMessage;
-} gMsgTable[] = {
-	{ STATUS_SEGMENT_NOTIFICATION,     "Segment Notification" },
-	{ STATUS_BREAKPOINT,               "Breakpoint" },
-	{ STATUS_SINGLE_STEP,              "Single step" },
-	{ STATUS_WAIT_0,                   "Wait 0" },
-	{ STATUS_ABANDONED_WAIT_0,         "Abandoned Wait 0" },
-	{ STATUS_USER_APC,                 "User APC" },
-	{ STATUS_TIMEOUT,                  "Timeout" },
-	{ STATUS_PENDING,                  "Pending" },
-	{ STATUS_GUARD_PAGE_VIOLATION,     "Guard Page Violation" },
-	{ STATUS_DATATYPE_MISALIGNMENT,    "Data Type Misalignment" },
-	{ STATUS_ACCESS_VIOLATION,         "Access Violation" },
-	{ STATUS_IN_PAGE_ERROR,            "In Page Error" },
-	{ STATUS_NO_MEMORY,                "No Memory" },
-	{ STATUS_ILLEGAL_INSTRUCTION,      "Illegal Instruction" },
-	{ STATUS_NONCONTINUABLE_EXCEPTION, "Noncontinuable Exception" },
-	{ STATUS_INVALID_DISPOSITION,      "Invalid Disposition" },
-	{ STATUS_ARRAY_BOUNDS_EXCEEDED,    "Array Bounds Exceeded" },
-	{ STATUS_FLOAT_DENORMAL_OPERAND,   "Float Denormal Operand" },
-	{ STATUS_FLOAT_DIVIDE_BY_ZERO,     "Divide by Zero" },
-	{ STATUS_FLOAT_INEXACT_RESULT,     "Float Inexact Result" },
-	{ STATUS_FLOAT_INVALID_OPERATION,  "Float Invalid Operation" },
-	{ STATUS_FLOAT_OVERFLOW,           "Float Overflow" },
-	{ STATUS_FLOAT_STACK_CHECK,        "Float Stack Check" },
-	{ STATUS_FLOAT_UNDERFLOW,          "Float Underflow" },
-	{ STATUS_INTEGER_DIVIDE_BY_ZERO,   "Integer Divide by Zero" },
-	{ STATUS_INTEGER_OVERFLOW,         "Integer Overflow" },
-	{ STATUS_PRIVILEGED_INSTRUCTION,   "Privileged Instruction" },
-	{ STATUS_STACK_OVERFLOW,           "Stack Overflow" },
-	{ STATUS_CONTROL_C_EXIT,           "Ctrl+C Exit" },
-	{ 0xFFFFFFFF,                      "" }
-};
-
-static HFONT gDialogFont;
-static HFONT gBoldFont;
-static String gErrorTitle;
-static String gErrorText;
 static HWND gDebugButtonWindow = NULL;
 static HWND gYesButtonWindow = NULL;
 static HWND gNoButtonWindow = NULL;
@@ -265,19 +223,19 @@ static void ShowErrorDialog(const StringImpl& errorTitle, const StringImpl& erro
 	gUseDefaultFonts = aVersionInfo.dwPlatformId != VER_PLATFORM_WIN32_NT;
 
 	int aHeight = -MulDiv(8, 96, 72);
-	gDialogFont = ::CreateFontA(aHeight, 0, 0, 0, FW_NORMAL, FALSE, FALSE,
+	HFONT gDialogFont = ::CreateFontA(aHeight, 0, 0, 0, FW_NORMAL, FALSE, FALSE,
 		false, ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
 		DEFAULT_PITCH | FF_DONTCARE, "Tahoma");
 
 	aHeight = -MulDiv(10, 96, 72);
-	gBoldFont = ::CreateFontA(aHeight, 0, 0, 0, FW_BOLD, FALSE, FALSE,
+	HFONT gBoldFont = ::CreateFontA(aHeight, 0, 0, 0, FW_BOLD, FALSE, FALSE,
 		false, ANSI_CHARSET, OUT_DEFAULT_PRECIS, CLIP_DEFAULT_PRECIS, DEFAULT_QUALITY,
 		DEFAULT_PITCH | FF_DONTCARE, "Tahoma");
 
 	::SetCursor(::LoadCursor(NULL, IDC_ARROW));
 
-	gErrorTitle = errorTitle;
-	gErrorText = errorText;
+	String gErrorTitle = errorTitle;
+	String gErrorText = errorText;
 
 	WNDCLASSW wc;
 	wc.style = 0;
@@ -935,6 +893,44 @@ static void DoHandleDebugEvent(LPEXCEPTION_POINTERS lpEP)
 
 	///////////////////////////
 	// first name the exception
+
+	struct
+	{
+		DWORD   dwExceptionCode;
+		char* szMessage;
+	} gMsgTable[] = {
+		{ STATUS_SEGMENT_NOTIFICATION,     "Segment Notification" },
+		{ STATUS_BREAKPOINT,               "Breakpoint" },
+		{ STATUS_SINGLE_STEP,              "Single step" },
+		{ STATUS_WAIT_0,                   "Wait 0" },
+		{ STATUS_ABANDONED_WAIT_0,         "Abandoned Wait 0" },
+		{ STATUS_USER_APC,                 "User APC" },
+		{ STATUS_TIMEOUT,                  "Timeout" },
+		{ STATUS_PENDING,                  "Pending" },
+		{ STATUS_GUARD_PAGE_VIOLATION,     "Guard Page Violation" },
+		{ STATUS_DATATYPE_MISALIGNMENT,    "Data Type Misalignment" },
+		{ STATUS_ACCESS_VIOLATION,         "Access Violation" },
+		{ STATUS_IN_PAGE_ERROR,            "In Page Error" },
+		{ STATUS_NO_MEMORY,                "No Memory" },
+		{ STATUS_ILLEGAL_INSTRUCTION,      "Illegal Instruction" },
+		{ STATUS_NONCONTINUABLE_EXCEPTION, "Noncontinuable Exception" },
+		{ STATUS_INVALID_DISPOSITION,      "Invalid Disposition" },
+		{ STATUS_ARRAY_BOUNDS_EXCEEDED,    "Array Bounds Exceeded" },
+		{ STATUS_FLOAT_DENORMAL_OPERAND,   "Float Denormal Operand" },
+		{ STATUS_FLOAT_DIVIDE_BY_ZERO,     "Divide by Zero" },
+		{ STATUS_FLOAT_INEXACT_RESULT,     "Float Inexact Result" },
+		{ STATUS_FLOAT_INVALID_OPERATION,  "Float Invalid Operation" },
+		{ STATUS_FLOAT_OVERFLOW,           "Float Overflow" },
+		{ STATUS_FLOAT_STACK_CHECK,        "Float Stack Check" },
+		{ STATUS_FLOAT_UNDERFLOW,          "Float Underflow" },
+		{ STATUS_INTEGER_DIVIDE_BY_ZERO,   "Integer Divide by Zero" },
+		{ STATUS_INTEGER_OVERFLOW,         "Integer Overflow" },
+		{ STATUS_PRIVILEGED_INSTRUCTION,   "Privileged Instruction" },
+		{ STATUS_STACK_OVERFLOW,           "Stack Overflow" },
+		{ STATUS_CONTROL_C_EXIT,           "Ctrl+C Exit" },
+		{ 0xFFFFFFFF,                      "" }
+	};
+
 	char  *szName = NULL;
 	for (int i = 0; gMsgTable[i].dwExceptionCode != 0xFFFFFFFF; i++)
 	{

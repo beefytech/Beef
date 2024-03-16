@@ -8488,6 +8488,13 @@ namespace IDE
 					macroList.Add("BF_LARGE_COLLECTIONS");
 			}
 
+			if (workspaceOptions.mRuntimeKind == .Disabled)
+				macroList.Add("BF_RUNTIME_DISABLE");
+			if ((workspaceOptions.mRuntimeKind == .Reduced) || (workspaceOptions.mRuntimeKind == .Disabled))
+				macroList.Add("BF_RUNTIME_REDUCED");
+			if (workspaceOptions.mReflectKind == .Minimal)
+				macroList.Add("BF_REFLECT_MINIMAL");
+
 			// Only supported on Windows at the moment
 			bool hasLeakCheck = false;
             if (workspaceOptions.LeakCheckingEnabled)

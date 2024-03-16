@@ -78,7 +78,7 @@ namespace System
 			public uint32 dwFileDateLS;       // e.g. 0
 		}
 
-		[CLink, CallingConvention(.Stdcall)]
+		[Import("kernel32.lib"), CLink, CallingConvention(.Stdcall)]
 		extern static bool GetVersionExA(OSVersionInfoExA* lpVersionInformation);
 
 		[CLink, CallingConvention(.Stdcall)]
@@ -274,9 +274,9 @@ namespace System
 			String arch = Arch32;
 #endif
 			if (Version.Revision == 0)
-				outVar.AppendF("{} (Version {}.{}, Build {}, {})", Name, Version.Major, Version.Minor, Version.Build, arch);
+				outVar.AppendF("{} (Version {}.{}, Build {}, {})", Name, (UInt.Simple)Version.Major, (UInt.Simple)Version.Minor, (UInt.Simple)Version.Build, arch);
 			else
-				outVar.AppendF("{} Service Pack {} (Version {}.{}, Build {}, {})", Name, Version.Revision, Version.Major, Version.Minor, Version.Build, arch);
+				outVar.AppendF("{} Service Pack {} (Version {}.{}, Build {}, {})", Name, (UInt.Simple)Version.Revision, (UInt.Simple)Version.Major, (UInt.Simple)Version.Minor, (UInt.Simple)Version.Build, arch);
 #elif BF_PLATFORM_LINUX
 			outVar.AppendF("{} {} (Version {}.{}.{})", PrettyName, Name, Version.Major, Version.Minor, Version.Revision);
 #else // MACOS and ANDROID

@@ -3865,8 +3865,8 @@ addr_ce CeContext::GetReflectType(int typeId)
 	if (bfType->mDefineState != BfTypeDefineState_CETypeInit)
 		ceModule->PopulateType(bfType, BfPopulateType_DataAndMethods);
 
-	Dictionary<int, int> usedStringMap;
-	auto irData = ceModule->CreateTypeData(bfType, usedStringMap, true, true, true, false);
+	BfCreateTypeDataContext createTypeDataCtx;
+	auto irData = ceModule->CreateTypeData(bfType, createTypeDataCtx, true, true, true, false);
 
 	BeValue* beValue = NULL;
 	if (auto constant = mCeMachine->mCeModule->mBfIRBuilder->GetConstant(irData))

@@ -6714,12 +6714,18 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 			PopulateType(itrInterface, BfPopulateType_Full_Force);
 			getNextMethodInst = GetMethodByName(itrInterface, "GetNext");
 		}
-		BF_ASSERT(getNextMethodInst);
-		nextResult = BfTypedValue(CreateAlloca(getNextMethodInst.mMethodInstance->mReturnType), getNextMethodInst.mMethodInstance->mReturnType, true);
-
-		if (nextResult.mType->IsGenericTypeInstance())
+		if (getNextMethodInst)
 		{
-			nextEmbeddedType = ((BfTypeInstance*)nextResult.mType)->mGenericTypeInfo->mTypeGenericArguments[0];
+			nextResult = BfTypedValue(CreateAlloca(getNextMethodInst.mMethodInstance->mReturnType), getNextMethodInst.mMethodInstance->mReturnType, true);
+
+			if (nextResult.mType->IsGenericTypeInstance())
+			{
+				nextEmbeddedType = ((BfTypeInstance*)nextResult.mType)->mGenericTypeInfo->mTypeGenericArguments[0];
+			}
+		}
+		else
+		{
+			InternalError("Failed to find GetNext");
 		}
 	}
 	if (nextEmbeddedType == NULL)
