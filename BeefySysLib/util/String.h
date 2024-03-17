@@ -1241,6 +1241,15 @@ public:
 		((char*)mPtr)[this->mLength] = 0;
 	}
 
+	StringSimple& operator=(const StringView& sv)
+	{
+		delete this->mPtr;
+		this->mPtr = new char[sv.mLength + 1];
+		this->mLength = sv.mLength;
+		memcpy((char*)this->mPtr, sv.mPtr, this->mLength);
+		((char*)this->mPtr)[this->mLength] = 0;
+	}
+
 	~StringSimple()
 	{
 		delete this->mPtr;

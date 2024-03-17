@@ -680,7 +680,7 @@ void TestFailed(const Beefy::StringView& error, int stackOffset)
 {
 	if (gClientPipe != NULL)
 	{
-		Beefy::String errorString = error;
+		Beefy::StringSimple errorString = error;
 
 		if (gTestBreakOnFailure)
 		{
