@@ -578,6 +578,14 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
     }
 }
 
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_InitCrashCatcher(BfpSystemInitFlags flags)
+{
+}
+
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_ShutdownCrashCatcher()
+{
+}
+
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
 {
     char exePath[PATH_MAX] = { 0 };
