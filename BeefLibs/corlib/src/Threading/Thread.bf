@@ -148,7 +148,7 @@ namespace System.Threading
             SetStart((Delegate)start, 0);  //0 will setup Thread with default stackSize
         }
         
-        public this(ThreadStart start, int32 maxStackSize)
+        public this(ThreadStart start, int maxStackSize)
         {            
             if (start == null)
             {
@@ -156,7 +156,7 @@ namespace System.Threading
             }
             if (0 > maxStackSize)
                 Runtime.FatalError();            
-            SetStart((Delegate)start, maxStackSize);
+            SetStart((Delegate)start, (.)maxStackSize);
         }
 
         public this(ParameterizedThreadStart start)

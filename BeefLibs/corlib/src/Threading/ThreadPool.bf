@@ -40,7 +40,14 @@ namespace System.Threading
 
 		static ThreadStats sWorkerThreadStats;
 		static ThreadStats sIOThreadStats;
+		static int sMaxStackSize;
 		static List<WorkEntry> mWorkEntries = new List<WorkEntry>() ~ delete _;
+
+		public static int MaxStackSize
+		{
+			get => sMaxStackSize;
+			set => sMaxStackSize = value;
+		}
 
 		static this()
 		{
@@ -76,7 +83,7 @@ namespace System.Threading
 					sWorkerThreadStats.mCount++;
 					sWorkerThreadStats.mActive++; // We know the thread will immediately become active
 
-					Thread thread = new Thread(new () => { WorkerProc(threadId); });
+					Thread thread = new Thread(new () => { WorkerProc(threadId); }, sMaxStackSize);
 					sThreads.Add(thread);
 					thread.Start(false);
 				}
