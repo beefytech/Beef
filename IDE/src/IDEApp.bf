@@ -575,6 +575,8 @@ namespace IDE
 
         public this()
         {
+			ThreadPool.MaxStackSize = 8*1024*1024;
+
             sApp = this;
 			gApp = this;
 			mMainThread = Thread.CurrentThread;
