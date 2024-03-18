@@ -1554,7 +1554,7 @@ public:
 	Dictionary<BeValue*, String> mValueNameMap;
 	Dictionary<String, int> mSeenNames;
 
-	void ToString(StringImpl& str, BeValue* value, bool showType = true, bool mdDrillDown = false);
+	void ToString(StringImpl& str, BeValue* value, bool showType = true, bool mdDrillDown = false, bool checkStack = false);
 	void ToString(StringImpl& str, BeType* type);
 	void ToString(StringImpl& str, BeDbgFunction* dbgFunction, bool showScope);
 	static void ToString(StringImpl& str, int val);

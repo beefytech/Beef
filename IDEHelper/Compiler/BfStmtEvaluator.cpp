@@ -8,6 +8,7 @@
 #include "BfMangler.h"
 #include "BeefySysLib/util/PerfTimer.h"
 #include "BeefySysLib/util/BeefPerf.h"
+#include "BeefySysLib/util/StackHelper.h"
 #include "BfSourceClassifier.h"
 #include "BfAutoComplete.h"
 #include "BfDemangler.h"
@@ -3285,6 +3286,25 @@ void BfModule::AddBasicBlock(BfIRBlock bb, bool activate)
 
 void BfModule::VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEvaluator, BfEmbeddedStatementFlags flags)
 {
+	if ((flags & BfEmbeddedStatementFlags_CheckStack) != 0)
+	{
+		BP_ZONE("BfModule.VisitEmbeddedStatement");
+
+		StackHelper stackHelper;
+		if (!stackHelper.CanStackExpand(64 * 1024))
+		{
+
+			if (!stackHelper.Execute([&]()
+				{
+					VisitEmbeddedStatement(stmt, exprEvaluator, flags);
+				}))
+			{
+				Fail("Statement too complex to parse", stmt);
+			}
+			return;
+		}
+	}
+
 	auto block = BfNodeDynCast<BfBlock>(stmt);
 	BfLabelNode* labelNode = NULL;
 	if (block == NULL)
@@ -3948,7 +3968,7 @@ void BfModule::DoIfStatement(BfIfStatement* ifStmt, bool includeTrueStmt, bool i
 			falseDeferredLocalAssignData.ExtendFrom(mCurMethodState->mDeferredLocalAssignData);
 			SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(mCurMethodState->mDeferredLocalAssignData, &falseDeferredLocalAssignData);
 			if (includeFalseStmt)
-				VisitEmbeddedStatement(ifStmt->mFalseStatement, NULL, BfEmbeddedStatementFlags_IsConditional);
+				VisitEmbeddedStatement(ifStmt->mFalseStatement, NULL, (BfEmbeddedStatementFlags)(BfEmbeddedStatementFlags_IsConditional | BfEmbeddedStatementFlags_CheckStack));
 		}
 		if ((!mCurMethodState->mLeftBlockUncond) && (!ignoredLastBlock))
 		{

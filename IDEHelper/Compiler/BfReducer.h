@@ -39,6 +39,7 @@ public:
 		CreateStmtFlags_AllowUnterminatedExpression = 4,
 		CreateStmtFlags_AllowLocalFunction = 8,
 		CreateStmtFlags_ForceVariableDecl = 0x10,
+		CreateStmtFlags_CheckStack = 0x20,
 
 		CreateStmtFlags_To_CreateExprFlags_Mask = 1
 	};

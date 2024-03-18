@@ -3989,7 +3989,7 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 			{
 				MEMBER_SET(ifStmt, mElseToken, tokenNode);
 				mVisitorPos.MoveNext();
-				auto falseStmt = CreateStatementAfter(ifStmt, subCreateStmtFlags);
+				auto falseStmt = CreateStatementAfter(ifStmt, (CreateStmtFlags)(subCreateStmtFlags | CreateStmtFlags_CheckStack));
 				MEMBER_SET_CHECKED(ifStmt, mFalseStatement, falseStmt);
 			}
 
@@ -4655,6 +4655,25 @@ bool BfReducer::IsTerminatingExpression(BfAstNode* node)
 BfAstNode* BfReducer::CreateStatement(BfAstNode* node, CreateStmtFlags createStmtFlags)
 {
 	AssertCurrentNode(node);
+
+	if ((createStmtFlags & CreateStmtFlags_CheckStack) != 0)
+	{
+		BP_ZONE("CreateStatement.CheckStack");
+
+		StackHelper stackHelper;
+		if (!stackHelper.CanStackExpand(64 * 1024))
+		{
+			BfAstNode* result = NULL;
+			if (!stackHelper.Execute([&]()
+				{
+					result = CreateStatement(node, createStmtFlags);
+				}))
+			{
+				Fail("Statement too complex to parse", node);
+			}
+				return result;
+		}
+	}
 
 	if ((createStmtFlags & CreateStmtFlags_AllowUnterminatedExpression) != 0)
 	{

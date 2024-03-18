@@ -148,7 +148,8 @@ enum BfEmbeddedStatementFlags : int8
 	BfEmbeddedStatementFlags_None = 0,
 	BfEmbeddedStatementFlags_IsConditional = 1,
 	BfEmbeddedStatementFlags_IsDeferredBlock = 2,
-	BfEmbeddedStatementFlags_Unscoped = 4
+	BfEmbeddedStatementFlags_Unscoped = 4,
+	BfEmbeddedStatementFlags_CheckStack = 8
 };
 
 enum BfLocalVarAssignKind : int8

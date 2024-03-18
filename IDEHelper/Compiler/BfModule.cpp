@@ -9043,7 +9043,7 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 		BP_ZONE("CreateValueFromExpression:CheckStack");
 
 		StackHelper stackHelper;
-		if (!stackHelper.CanStackExpand(64 * 1024))
+		if (!stackHelper.CanStackExpand(128 * 1024))
 		{
 			BfTypedValue result;
 			if (!stackHelper.Execute([&]()

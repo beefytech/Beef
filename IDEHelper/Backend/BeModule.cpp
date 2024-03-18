@@ -2,6 +2,7 @@
 #include "../Beef/BfCommon.h"
 #include "../Compiler/BfUtil.h"
 #include "BeefySysLib/util/BeefPerf.h"
+#include "BeefySysLib/util/StackHelper.h"
 #include "../Compiler/BfIRCodeGen.h"
 
 #include "BeefySysLib/util/AllocDebug.h"
@@ -1031,8 +1032,27 @@ void BeDbgEnumType::SetMembers(SizedArrayImpl<BeMDNode*>& members)
 
 //////////////////////////////////////////////////////////////////////////
 
-void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, bool mdDrillDown)
+void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, bool mdDrillDown, bool checkStack)
 {
+	if (checkStack)
+	{
+		BP_ZONE("CreateValueFromExpression:CheckStack");
+
+		StackHelper stackHelper;
+		if (!stackHelper.CanStackExpand(64 * 1024))
+		{
+			if (!stackHelper.Execute([&]()
+				{
+					ToString(str, value, showType, mdDrillDown, false);
+				}))
+			{
+				//Fail("Expression too complex to compile", expr);
+				str += "!!!FAILED!!!";
+			}
+			return;
+		}
+	}
+
 	if (value == NULL)
 	{
 		str += "<null>";
@@ -1105,7 +1125,7 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 			str += StrFormat("%d@", lexBlock->mId);
 			ToString(str, lexBlock->mFile);
 			str += ":";
-			ToString(str, lexBlock->mScope);
+			ToString(str, lexBlock->mScope, true, false, true);
 			return;
 		}
 
