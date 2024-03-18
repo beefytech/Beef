@@ -423,21 +423,18 @@ namespace System
 				if (var fieldTypeInst = fieldInfo.FieldType as TypeInstance)
 				{
 					bool hasPayload = (fieldTypeInst.IsTuple) && (fieldTypeInst.FieldCount > 0);
-					if (caseIdx == 0)
-						code.Append("\t");
-					else
-						code.Append("\telse ");
 					if (!hasPayload)
 					{
-						code.AppendF($"if (str.Equals(\"{fieldInfo.Name}\", ignoreCase))\n\t\treturn .Ok(.{fieldInfo.Name});\n");
+						code.AppendF($"\tif (str.Equals(\"{fieldInfo.Name}\", ignoreCase))\n\t\treturn .Ok(.{fieldInfo.Name});\n");
 					}
-					else
+					else	
 					{
-						code.AppendF($"if (str.StartsWith(\"{fieldInfo.Name}(\", ignoreCase ? .OrdinalIgnoreCase : .Ordinal))\n\t{{\n");
+						code.AppendF($"\tif (str.StartsWith(\"{fieldInfo.Name}(\", ignoreCase ? .OrdinalIgnoreCase : .Ordinal))\n\t{{\n");
 						code.AppendF($"\t\t*({dscrType}*)((uint8*)&result + {dscrOffset}) = {fieldInfo.MemberOffset};\n");
 						code.AppendF($"\t\tvar itr = Try!(EnumFields(str.Substring({fieldInfo.Name.Length+1})));\n");
 						for (var tupField in fieldTypeInst.GetFields())
 							code.AppendF($"\t\tTry!(ParseValue(ref itr, ref *({tupField.FieldType}*)((uint8*)&result + {tupField.MemberOffset})));\n");
+						code.Append("\t\treturn result;\n");
 						code.Append("\t}\n");
 					}
 				}
@@ -445,16 +442,7 @@ namespace System
 				caseIdx++;
 			}
 
-			if (caseIdx == 0)
-			{
-				code.Append("\treturn .Err;\n");
-			}
-			else
-			{
-				code.Append("\telse\n\t\treturn .Err;\n");
-				if (hadPayload)
-					code.Append("\treturn result;\n");
-			}
+			code.Append("\treturn .Err;\n");
 			code.Append("}\n");
 
 			Compiler.EmitTypeBody(typeof(Self), code);
