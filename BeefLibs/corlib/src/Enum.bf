@@ -400,6 +400,7 @@ namespace System
 			}
 
 			bool hadPayload = false;
+			bool hadCases = false;
 
 			for (var fieldInfo in typeof(T).GetFields())
 			{
@@ -414,43 +415,6 @@ namespace System
 				}
 			}
 
-			bool canParseNum = typeof(T).FieldCount > 0 && !hadPayload;
-			String ident = canParseNum ? "\t\t" : "\t";
-
-			if (canParseNum)
-			{
-				code.Append("\tif (int64 val = int64.Parse(str))\n\t{\n\t\tswitch ((T)val)\n\t\t{\n");
-				
-				List<int64> cases = scope List<int64>();
-
-				int caseIdx = 0;
-				for (var fieldInfo in typeof(T).GetFields())
-				{
-					if (!fieldInfo.IsEnumCase)
-						continue;
-
-					if (var fieldTypeInst = fieldInfo.FieldType as TypeInstance)
-					{
-						Variant variant = fieldInfo.GetValue(null).Get();
-						int64 value = variant.Get<int64>();
-	
-						if (cases.Contains(value))
-							continue;
-
-						if ((fieldTypeInst.IsTuple) && (fieldTypeInst.FieldCount > 0))
-							Runtime.NotImplemented();
-
-						code.AppendF($"\t\tcase .{fieldInfo.Name}:\n\t\t\treturn .Ok(.{fieldInfo.Name});\n");
-
-						cases.Add(value);
-					}
-	
-					caseIdx++;
-				}
-
-				code.Append("\t\t}\n\t}\n\telse\n\t{\n");
-			}
-
 			int caseIdx = 0;
 			for (var fieldInfo in typeof(T).GetFields())
 			{
@@ -459,28 +423,35 @@ namespace System
 
 				if (var fieldTypeInst = fieldInfo.FieldType as TypeInstance)
 				{
+					hadCases = true;
 					bool hasPayload = (fieldTypeInst.IsTuple) && (fieldTypeInst.FieldCount > 0);
 					if (!hasPayload)
 					{
-						code.AppendF($"{ident}if (str.Equals(\"{fieldInfo.Name}\", ignoreCase))\n{ident}\treturn .Ok(.{fieldInfo.Name});\n");
+						code.AppendF($"\tif (str.Equals(\"{fieldInfo.Name}\", ignoreCase))\n\t\treturn .Ok(.{fieldInfo.Name});\n");
 					}
 					else	
 					{
-						code.AppendF($"{ident}if (str.StartsWith(\"{fieldInfo.Name}(\", ignoreCase ? .OrdinalIgnoreCase : .Ordinal))\n{ident}{{\n");
-						code.AppendF($"{ident}\t*({dscrType}*)((uint8*)&result + {dscrOffset}) = {fieldInfo.MemberOffset};\n");
-						code.AppendF($"{ident}\tvar itr = Try!(EnumFields(str.Substring({fieldInfo.Name.Length+1})));\n");
+						code.AppendF($"\tif (str.StartsWith(\"{fieldInfo.Name}(\", ignoreCase ? .OrdinalIgnoreCase : .Ordinal))\n\t{{\n");
+						code.AppendF($"\t\t*({dscrType}*)((uint8*)&result + {dscrOffset}) = {fieldInfo.MemberOffset};\n");
+						code.AppendF($"\t\tvar itr = Try!(EnumFields(str.Substring({fieldInfo.Name.Length+1})));\n");
 						for (var tupField in fieldTypeInst.GetFields())
-							code.AppendF($"{ident}\tTry!(ParseValue(ref itr, ref *({tupField.FieldType}*)((uint8*)&result + {tupField.MemberOffset})));\n");
-						code.AppendF($"{ident}\treturn result;\n");
-						code.AppendF($"{ident}}}\n");
+							code.AppendF($"\t\tTry!(ParseValue(ref itr, ref *({tupField.FieldType}*)((uint8*)&result + {tupField.MemberOffset})));\n");
+						code.Append("\t\treturn result;\n");
+						code.Append("\t}\n");
 					}
 				}
 
 				caseIdx++;
 			}
 
-			if (canParseNum)
-				code.Append("\t}\n");
+			if ((hadCases) && (!hadPayload))
+			{
+				Type underlyingType = typeof(T).UnderlyingType;
+				if (underlyingType.Size < 4)
+					underlyingType = typeof(int);
+				code.AppendF($"\tif ({underlyingType}.Parse(str) case let .Ok(iVal))\n");
+				code.Append("\t\treturn .Ok((.)iVal);\n");
+			}
 
 			code.Append("\treturn .Err;\n");
 			code.Append("}\n");
