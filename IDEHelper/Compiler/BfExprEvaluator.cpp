@@ -23981,8 +23981,6 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 					argValues.Init(&sizedArgExprs);
 					ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
 					rightArg = argValues.mResolvedArgs[0];
-					if (!rightArg.mTypedValue)
-						continue;
 				}
 
 				SizedArray<BfResolvedArg, 2> args;
@@ -24253,8 +24251,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 						bool works = false;
 						if (opConstraint.mBinaryOp == findBinaryOp)
 						{
-							if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
-								(mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType)))
+							if (((args[0].mTypedValue) && (mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType))) &&
+								((args[1].mTypedValue) && (mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType))))
 							{
 								works = true;
 							}
@@ -24262,13 +24260,13 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 						if ((isComparison) && (opConstraint.mBinaryOp == BfBinaryOp_Compare))
 						{
-							if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType)) &&
-								(mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType)))
+							if (((args[0].mTypedValue) && (mModule->CanCast(args[0].mTypedValue, opConstraint.mLeftType))) &&
+								((args[1].mTypedValue) && (mModule->CanCast(args[1].mTypedValue, opConstraint.mRightType))))
 							{
 								works = true;
 							}
-							else if ((mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType)) &&
-								(mModule->CanCast(args[1].mTypedValue, opConstraint.mLeftType)))
+							else if (((args[0].mTypedValue) && (mModule->CanCast(args[0].mTypedValue, opConstraint.mRightType))) &&
+								((args[1].mTypedValue) && (mModule->CanCast(args[1].mTypedValue, opConstraint.mLeftType))))
 							{
 								works = true;
 							}

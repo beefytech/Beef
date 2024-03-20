@@ -68,6 +68,11 @@ namespace Tests
 		{
 			public int mA;
 
+			public this(int a)
+			{
+				mA = a;
+			}
+
 			public static StructA operator+(StructA lhs, StructA rhs)
 			{
 				StructA res;
@@ -556,6 +561,10 @@ namespace Tests
 			sb6 = ++sb0;
 			Test.Assert(sb0.mB == 13);
 			Test.Assert(sb6.mB == 13);
+
+			StructA sa7 = sa0;
+			sa7 += .(100);
+			Test.Assert(sa7.mA == 103);
 
 			float val = Op((int32)100, (int16)23);
 			Test.Assert(val == 123);
