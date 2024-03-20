@@ -20993,8 +20993,8 @@ void BfExprEvaluator::InitializedSizedArray(BfSizedArrayType* arrayType, BfToken
 					}
 
 					elementValue = mModule->LoadOrAggregateValue(elementValue);
-					if (!elemPtrValue.IsConst())
-						mModule->mBfIRBuilder->CreateAlignedStore(elementValue.mValue, elemPtrValue, checkArrayType->mElementType->mAlign);
+					// Note that elemPtrValue can be a const GEP on a global variable
+					mModule->mBfIRBuilder->CreateAlignedStore(elementValue.mValue, elemPtrValue, checkArrayType->mElementType->mAlign);
 				}
 			}
 
