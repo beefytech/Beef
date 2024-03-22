@@ -3324,6 +3324,8 @@ namespace IDE.ui
 								CompactChildExpression(listViewItem, evalStr);
 
 								int valStart = 0;
+								if ((evalStr.StartsWith("@Beef:")) || (evalStr.StartsWith("@C:")))
+									valStart = evalStr.IndexOf(':') + 1;
 								if (evalStr.StartsWith('{'))
 								{
 									int endPos = evalStr.IndexOf('}');
@@ -3335,6 +3337,7 @@ namespace IDE.ui
 									evalStr.Remove(valStart, 1);
 								else
 									evalStr.Insert(valStart, "&");
+
 								gApp.mBreakpointPanel.CreateMemoryBreakpoint(evalStr);
 								gApp.MarkDirty();
 							});

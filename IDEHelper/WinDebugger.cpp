@@ -10672,6 +10672,38 @@ String WinDebugger::CompactChildExpression(const StringImpl& expr, const StringI
 	if (compileUnit != NULL)
 		language = compileUnit->mLanguage;
 
+	auto terminatedParentExpr = parentExpr + ";";
+
+	String parentPrefix;
+
+	int colonIdx = terminatedParentExpr.IndexOf(':');
+	if (colonIdx > 0)
+	{
+		bool isValid = true;
+		String lang = terminatedParentExpr.Substring(1, colonIdx - 1);
+		lang = ToUpper(lang);
+		if ((lang == "") || (lang == "BEEF"))
+		{
+			language = DbgLanguage_Beef;
+		}
+		else if (lang == "C")
+		{
+			language = DbgLanguage_C;
+		}
+		if (language != DbgLanguage_Unknown)
+		{
+			parentPrefix += terminatedParentExpr.Substring(0, colonIdx + 1);
+			terminatedParentExpr.Remove(0, colonIdx + 1);
+		}
+	}
+
+	if (terminatedParentExpr.StartsWith('{'))
+	{
+		int prefixEnd = terminatedParentExpr.IndexOf('}');
+		parentPrefix += terminatedParentExpr.Substring(0, prefixEnd + 1);
+		terminatedParentExpr.Remove(0, prefixEnd + 1);
+	}
+
 	BfPassInstance bfPassInstance(mBfSystem);
 
 	BfParser parser(mBfSystem);
@@ -10679,16 +10711,6 @@ String WinDebugger::CompactChildExpression(const StringImpl& expr, const StringI
 	auto terminatedExpr = expr + ";";
 	parser.SetSource(terminatedExpr.c_str(), terminatedExpr.length());
 	parser.Parse(&bfPassInstance);
-
-	auto terminatedParentExpr = parentExpr + ";";
-
-	String parentPrefix;
-	if (terminatedParentExpr.StartsWith('{'))
-	{
-		int prefixEnd = terminatedParentExpr.IndexOf('}');
-		parentPrefix = terminatedParentExpr.Substring(0, prefixEnd + 1);
-		terminatedParentExpr.Remove(0, prefixEnd + 1);
-	}
 
 	BfParser parentParser(mBfSystem);
 	parentParser.mCompatMode = language != DbgLanguage_Beef;
