@@ -1966,8 +1966,10 @@ BfType* BfTypeInstance::GetUnionInnerType(bool* wantSplat)
 	// Don't allow a float for the inner type -- to avoid invalid loading invalid FP bit patterns during copies
 	if ((unionInnerType != NULL) && (!makeRaw))
 	{
-		if (wantSplat != NULL)
-			*wantSplat = true;
+		//TODO: How did splats make sense? It breaks CompactList
+
+		//if (wantSplat != NULL)
+		//	*wantSplat = true;
 	}
 	else
 	{
