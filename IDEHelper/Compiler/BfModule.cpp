@@ -8397,6 +8397,8 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		checkGenericParamFlags = checkGenericParamInst->mGenericParamFlags;
 		if (checkGenericParamInst->mTypeConstraint != NULL)
 			checkArgType = checkGenericParamInst->mTypeConstraint;
+		if (checkGenericParamInst->mGenericParamFlags & BfGenericParamFlag_Var)
+			checkArgType = GetPrimitiveType(BfTypeCode_Var);
 
 // 		if ((checkGenericParamFlags & (BfGenericParamFlag_Struct | BfGenericParamFlag_StructPtr)) != 0)
 // 		{
@@ -8660,6 +8662,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 				convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs, mCurTypeInstance);
 			if (convCheckConstraint == NULL)
 				return false;
+
 			if ((checkArgType->IsMethodRef()) || (checkArgType->IsFunction()))
 			{
 				if (convCheckConstraint->IsDelegate())
@@ -8693,7 +8696,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 				else if ((checkArgType->IsFunction()) && (convCheckConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)))
 					constraintMatched = true;
 			}
-			else if ((checkArgType == convCheckConstraint) || (TypeIsSubTypeOf(checkArgType->ToTypeInstance(), convCheckConstraint->ToTypeInstance())))
+			else if ((checkArgType == convCheckConstraint) || (checkArgType->IsVar()) || (TypeIsSubTypeOf(checkArgType->ToTypeInstance(), convCheckConstraint->ToTypeInstance())))
 			{
 				constraintMatched = true;
 			}
