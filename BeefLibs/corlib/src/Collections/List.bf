@@ -1182,6 +1182,16 @@ namespace System.Collections
 		}
 	}
 
+	extension List<T> where T : IDisposable
+	{
+		public void ClearAndDisposeItems()
+		{
+			for (var item in this)
+				item.Dispose();
+			Clear();
+		}
+	}
+
 	extension List<T> where T : String
 	{
 		public bool Contains(T item, StringComparison comparison)
