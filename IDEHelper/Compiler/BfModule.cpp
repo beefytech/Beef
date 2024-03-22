@@ -8693,7 +8693,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 				else if ((checkArgType->IsFunction()) && (convCheckConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)))
 					constraintMatched = true;
 			}
-			else if (CanCast(GetFakeTypedValue(checkArgType), convCheckConstraint))
+			else if ((checkArgType == convCheckConstraint) || (TypeIsSubTypeOf(checkArgType->ToTypeInstance(), convCheckConstraint->ToTypeInstance())))
 			{
 				constraintMatched = true;
 			}
@@ -8719,8 +8719,8 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 
 				if (!constraintMatched)
 				{
-					BfType* wrappedStructType = GetWrappedStructType(origCheckArgType, false);
-					if (CanCast(GetFakeTypedValue(wrappedStructType), convCheckConstraint))
+					BfTypeInstance* wrappedStructType = GetWrappedStructType(origCheckArgType, false);
+					if ((wrappedStructType == convCheckConstraint) || (TypeIsSubTypeOf(wrappedStructType, convCheckConstraint->ToTypeInstance())))
 						constraintMatched = true;
 				}
 			}
