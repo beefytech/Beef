@@ -3098,7 +3098,7 @@ void BfIRCodeGen::HandleNextCmd()
 							else
 								FatalError("Value is not ConstantExpr");
 						}
-						
+
 						static int symbolCount = 0;
 						symbolCount++;
 
@@ -3108,7 +3108,7 @@ void BfIRCodeGen::HandleNextCmd()
 						{
 							chars[i] = llvm::ConstantInt::get(charType, strContent[0][i]);;
 						}
-						
+
 						chars.push_back(llvm::ConstantInt::get(charType, 0));
 						auto stringType = llvm::ArrayType::get(charType, chars.size());
 
@@ -3121,7 +3121,7 @@ void BfIRCodeGen::HandleNextCmd()
 						globalVar->setConstant(true);
 						globalVar->setLinkage(llvm::GlobalValue::LinkageTypes::ExternalLinkage);
 						globalVar->setUnnamedAddr(llvm::GlobalValue::UnnamedAddr::Global);
-						
+
 						SetResult(curId, llvm::ConstantExpr::getBitCast(globalVar, charType->getPointerTo()));
 						break;
 					}
@@ -3421,7 +3421,7 @@ void BfIRCodeGen::HandleNextCmd()
 						}
 
 						auto func = mLLVMModule->getOrInsertFunction(funcName, vecType, vecType, vecType);
-						
+
 						// Call intrinsic
 						llvm::SmallVector<llvm::Value*, 2> args;
 						args.push_back(val0);

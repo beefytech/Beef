@@ -17003,7 +17003,8 @@ void BeMCContext::Generate(BeFunction* function)
 					auto castedInst = (BeValueScopeRetainInst*)inst;
 					auto mcValue = GetOperand(castedInst->mValue, false, true);
 					auto vregInfo = GetVRegInfo(mcValue);
-					vregInfo->mValueScopeRetainedKind = BeMCValueScopeRetainKind_Soft;
+					if (vregInfo != NULL)
+						vregInfo->mValueScopeRetainedKind = BeMCValueScopeRetainKind_Soft;
 				}
 				break;
 			case BeValueScopeEndInst::TypeId:

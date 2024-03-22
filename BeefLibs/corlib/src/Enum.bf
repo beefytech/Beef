@@ -387,6 +387,8 @@ namespace System
 
 			code.Append("public static Result<T> Parse(StringView str, bool ignoreCase = false)\n");
 			code.Append("{\n");
+			code.Append("\tif (str.IsEmpty)\n");
+			code.Append("\t\treturn .Err;\n");
 
 			Type dscrType = typeof(int);
 			int dscrOffset = 0;
@@ -399,58 +401,163 @@ namespace System
 				}
 			}
 
-			bool hadPayload = false;
-			bool hadCases = false;
+			List<FieldInfo> caseList = scope .();
 
-			for (var fieldInfo in typeof(T).GetFields())
-			{
-				if (var fieldTypeInst = fieldInfo.FieldType as TypeInstance)
-				{
-					if ((fieldTypeInst.IsTuple) && (fieldTypeInst.FieldCount > 0))
-					{
-						code.Append("\tT result = default;\n");
-						hadPayload = true;
-						break;
-					}
-				}
-			}
+			bool hasPayload = false;
 
-			int caseIdx = 0;
 			for (var fieldInfo in typeof(T).GetFields())
 			{
 				if (!fieldInfo.IsEnumCase)
 					continue;
-
 				if (var fieldTypeInst = fieldInfo.FieldType as TypeInstance)
 				{
-					hadCases = true;
-					bool hasPayload = (fieldTypeInst.IsTuple) && (fieldTypeInst.FieldCount > 0);
-					if (!hasPayload)
+					caseList.Add(fieldInfo);
+					if ((fieldTypeInst.IsTuple) && (fieldTypeInst.FieldCount > 0))
 					{
-						code.AppendF($"\tif (str.Equals(\"{fieldInfo.Name}\", ignoreCase))\n\t\treturn .Ok(.{fieldInfo.Name});\n");
+						hasPayload = true;
 					}
-					else	
+				}
+			}
+
+			if (hasPayload)
+				code.Append("\tT result = default;\n");
+
+			if ((!hasPayload) && (caseList.Count > 0))
+			{
+				Type underlyingType = typeof(T).UnderlyingType;
+				if (underlyingType.Size < 4)
+					underlyingType = typeof(int);
+				code.AppendF($"\tif (((str[0].IsDigit) || (str[0] == '-')) && ({underlyingType}.Parse(str) case let .Ok(iVal)))\n");
+				code.Append("\t\treturn .Ok((.)iVal);\n");
+			}
+			else if (hasPayload)
+			{
+				code.Append("""
+								StringView nameStr;
+								StringView argStr = default;
+								int parenPos = str.IndexOf('(');
+								if (parenPos != -1)
+								{
+									nameStr = str.Substring(0, parenPos);
+									argStr = str.Substring(parenPos + 1);
+								}
+								else
+									nameStr = str;
+								int matchIdx = -1;
+
+							""");
+			}
+
+			for (int ignoreCasePass < 2)
+			{
+				if (caseList.IsEmpty)
+					break;
+
+				void GetFieldName(FieldInfo fieldInfo, String outName)
+				{
+					outName.Append(fieldInfo.Name);
+					if (ignoreCasePass == 0)
+						outName.ToLower();
+				}
+
+				if (ignoreCasePass == 0)
+					code.Append("\tif (ignoreCase)\n");
+				else
+					code.Append("\telse\n");
+				code.Append("\t{\n");
+
+				int numBuckets = 1;
+				Dictionary<int, CompactList<(int hash, int caseIdx)>> buckets = scope .();
+				void ClearBucketList()
+				{
+					for (var list in buckets.Values)
+						list.Dispose();
+					buckets.Clear();
+				}
+				defer ClearBucketList();
+
+				for (int bucketPass < caseList.Count * 2)
+				{
+					ClearBucketList();
+					numBuckets = (bucketPass % 2 == 0) ? (caseList.Count + bucketPass / 2) : (caseList.Count - bucketPass / 2 - 1);
+
+					for (int caseIdx < caseList.Count)
 					{
-						code.AppendF($"\tif (str.StartsWith(\"{fieldInfo.Name}(\", ignoreCase ? .OrdinalIgnoreCase : .Ordinal))\n\t{{\n");
+						var fieldInfo = caseList[caseIdx];
+						var fieldName = GetFieldName(fieldInfo, .. scope .(64));
+						int hashCode = fieldName.GetHashCode();
+						if (buckets.TryAdd(hashCode % numBuckets, ?, var entryList))
+							*entryList = default;
+						entryList.Add((hashCode, caseIdx));
+					}
+
+					// Try for at least a 75% occupancy to ensure we get a jump table
+					if (buckets.Count >= numBuckets * 0.75)
+						break;
+				}
+
+				StringView strName;
+				if (hasPayload)
+					strName = (ignoreCasePass == 0) ? "checkStr" : "nameStr";
+				else
+					strName = "str";
+				if (ignoreCasePass == 0)
+					code.AppendF($"\t\tString checkStr = scope .({(hasPayload ? "nameStr" : "str")})..ToLower();\n");
+				code.AppendF($"\t\tint hashCode = {strName}.GetHashCode();\n");
+				if (numBuckets > 1)
+					code.AppendF($"\t\tswitch (hashCode % {numBuckets})\n");
+				code.Append("\t\t{\n");
+				for (int bucketIdx < numBuckets)
+				{
+					if (!buckets.TryGet(bucketIdx, ?, var entryList))
+						continue;
+					if (numBuckets > 1)
+						code.AppendF($"\t\tcase {bucketIdx}:\n");
+					for (var entry in entryList)
+					{
+						var fieldInfo = caseList[entry.caseIdx];
+						var fieldName = GetFieldName(fieldInfo, .. scope .(64));
+						var fieldTypeInst = fieldInfo.FieldType as TypeInstance;
+						bool caseHasPayload = (fieldTypeInst.IsTuple) && (fieldTypeInst.FieldCount > 0);
+						
+						if (hasPayload)
+							code.AppendF($"\t\t\tif ((hashCode == {fieldName.GetHashCode()}) && ({strName} == \"{fieldName}\") && ({caseHasPayload ? "!" : ""}argStr.IsEmpty))\n");
+						else
+							code.AppendF($"\t\t\tif ((hashCode == {fieldName.GetHashCode()}) && ({strName} == \"{fieldName}\"))\n");
+						if (caseHasPayload)
+							code.AppendF($"\t\t\t\tmatchIdx = {entry.caseIdx};\n");
+						else
+							code.AppendF($"\t\t\t\treturn .Ok(.{fieldInfo.Name});\n");
+					}
+				}
+				
+
+				code.Append("\t\t}\n");
+				code.Append("\t}\n");
+			}
+
+			if (hasPayload)
+			{
+				code.Append("\tswitch (matchIdx)\n");
+				code.Append("\t{\n");
+				for (var caseIdx < caseList.Count)
+				{
+					var fieldInfo = caseList[caseIdx];
+					var fieldTypeInst = fieldInfo.FieldType as TypeInstance;
+					bool caseHasPayload = (fieldTypeInst.IsTuple) && (fieldTypeInst.FieldCount > 0);
+
+					if (caseHasPayload)
+					{
+						code.AppendF($"\tcase {caseIdx}:\n");
 						code.AppendF($"\t\t*({dscrType}*)((uint8*)&result + {dscrOffset}) = {fieldInfo.MemberOffset};\n");
 						code.AppendF($"\t\tvar itr = Try!(EnumFields(str.Substring({fieldInfo.Name.Length+1})));\n");
 						for (var tupField in fieldTypeInst.GetFields())
 							code.AppendF($"\t\tTry!(ParseValue(ref itr, ref *({tupField.FieldType}*)((uint8*)&result + {tupField.MemberOffset})));\n");
 						code.Append("\t\treturn result;\n");
-						code.Append("\t}\n");
 					}
+
 				}
-
-				caseIdx++;
-			}
-
-			if ((hadCases) && (!hadPayload))
-			{
-				Type underlyingType = typeof(T).UnderlyingType;
-				if (underlyingType.Size < 4)
-					underlyingType = typeof(int);
-				code.AppendF($"\tif ({underlyingType}.Parse(str) case let .Ok(iVal))\n");
-				code.Append("\t\treturn .Ok((.)iVal);\n");
+				code.Append("\t}\n");
 			}
 
 			code.Append("\treturn .Err;\n");
