@@ -5758,10 +5758,12 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 
 					if ((!target.IsStatic()) || (prop->mIsStatic) || ((mBfEvalExprFlags & BfEvalExprFlags_NameOf) != 0))
 					{
+						if (!curCheckType->IsTypeMemberIncluded(prop->mDeclaringType, activeTypeDef, mModule))
+							continue;
+
 						if (!mModule->IsInSpecializedSection())
 						{
-							if ((!curCheckType->IsTypeMemberIncluded(prop->mDeclaringType, activeTypeDef, mModule)) ||
-								(!curCheckType->IsTypeMemberAccessible(prop->mDeclaringType, mModule->GetVisibleProjectSet())))
+							if (!curCheckType->IsTypeMemberAccessible(prop->mDeclaringType, mModule->GetVisibleProjectSet()))
 								continue;
 						}
 
@@ -11879,12 +11881,17 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 		_Int32Result((typeInstance != NULL) ? typeInstance->GetInstStride() : type->GetStride());
 	else if (memberName == "UnderlyingType")
 	{
+		bool handled = false;
+
 		auto typeType = mModule->ResolveTypeDef(mModule->mCompiler->mTypeTypeDef);
 		if (type->IsGenericParam())
 		{
 			auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)type);
 			if (genericParamInstance->IsEnum())
+			{
+				handled = true;
 				mResult = BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(typeType)), typeType);
+			}
 		}
 		else if (type->IsEnum())
 		{
@@ -11893,10 +11900,14 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 			auto underlyingType = type->GetUnderlyingType();
 			if (underlyingType != NULL)
 			{
+				handled = true;
 				mModule->AddDependency(underlyingType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
 				mResult = BfTypedValue(mModule->CreateTypeDataRef(underlyingType), typeType);
 			}
 		}
+
+		if (!handled)
+			mResult = BfTypedValue(mModule->CreateTypeDataRef(mModule->GetPrimitiveType(BfTypeCode_None)), typeType);
 	}
 	else if (memberName == "BitSize")
 	{
