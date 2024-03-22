@@ -38,6 +38,7 @@ namespace IDE.ui
 		void SelectConfig(StringView configName)
 		{
 			mCopyConfigName.Set(configName);
+			mCopiedConfigCombo.Label = configName;
 		}
 
 		void PopulateConfigMenu(Menu menu)
