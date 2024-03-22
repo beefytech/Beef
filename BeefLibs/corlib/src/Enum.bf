@@ -485,7 +485,7 @@ namespace System
 					{
 						var fieldInfo = caseList[caseIdx];
 						var fieldName = GetFieldName(fieldInfo, .. scope .(64));
-						int hashCode = fieldName.GetHashCode();
+						int hashCode = fieldName.GetHashCode() & Int.MaxValue;
 						if (buckets.TryAdd(hashCode % numBuckets, ?, var entryList))
 							*entryList = default;
 						entryList.Add((hashCode, caseIdx));
@@ -500,12 +500,12 @@ namespace System
 				if (hasPayload)
 					strName = (ignoreCasePass == 0) ? "checkStr" : "nameStr";
 				else
-					strName = "str";
+					strName = (ignoreCasePass == 0) ? "checkStr" : "str";
 				if (ignoreCasePass == 0)
 					code.AppendF($"\t\tString checkStr = scope .({(hasPayload ? "nameStr" : "str")})..ToLower();\n");
 				code.AppendF($"\t\tint hashCode = {strName}.GetHashCode();\n");
 				if (numBuckets > 1)
-					code.AppendF($"\t\tswitch (hashCode % {numBuckets})\n");
+					code.AppendF($"\t\tswitch ((hashCode & Int.MaxValue) % {numBuckets})\n");
 				code.Append("\t\t{\n");
 				for (int bucketIdx < numBuckets)
 				{
