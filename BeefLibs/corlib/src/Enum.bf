@@ -380,9 +380,16 @@ namespace System
 
 	class EnumParser<T>
 	{
+		struct Entry : this(int hashCode, String name, T value, bool hasMore)
+		{
+			
+		}
+
 		[OnCompile(.TypeInit), Comptime]
 		public static void OnTypeInit()
 		{
+			String entryTableCode = scope .();
+			String lookupTableCode = scope .();
 			String code = scope .();
 
 			code.Append("public static Result<T> Parse(StringView str, bool ignoreCase = false)\n");
@@ -422,6 +429,7 @@ namespace System
 			if (hasPayload)
 				code.Append("\tT result = default;\n");
 
+			bool useHashTable = (!hasPayload) && (caseList.Count > 0);
 			if ((!hasPayload) && (caseList.Count > 0))
 			{
 				Type underlyingType = typeof(T).UnderlyingType;
@@ -429,6 +437,13 @@ namespace System
 					underlyingType = typeof(int);
 				code.AppendF($"\tif (((str[0].IsDigit) || (str[0] == '-')) && ({underlyingType}.Parse(str) case let .Ok(iVal)))\n");
 				code.Append("\t\treturn .Ok((.)iVal);\n");
+
+				if (useHashTable)
+				{
+					code.Append("\tint entryIdx = -1;\n");
+					code.Append("\tint hashCode;\n");
+					code.Append("\tStringView checkStr;\n");
+				}
 			}
 			else if (hasPayload)
 			{
@@ -448,6 +463,10 @@ namespace System
 							""");
 			}
 
+			int bucketsTried = 0;
+
+			int tableEntryIdx = 0;
+
 			for (int ignoreCasePass < 2)
 			{
 				if (caseList.IsEmpty)
@@ -460,40 +479,66 @@ namespace System
 						outName.ToLower();
 				}
 
+				List<int> hashList = scope .();
+				hashList.Resize(caseList.Count);
+				String fieldName = scope .(64);
+				for (int caseIdx < caseList.Count)
+				{
+					var fieldInfo = caseList[caseIdx];
+					fieldName.Clear();
+					GetFieldName(fieldInfo, fieldName);
+					hashList[caseIdx] = fieldName.GetHashCode();
+				}
+
 				if (ignoreCasePass == 0)
 					code.Append("\tif (ignoreCase)\n");
 				else
 					code.Append("\telse\n");
 				code.Append("\t{\n");
 
-				int numBuckets = 1;
-				Dictionary<int, CompactList<(int hash, int caseIdx)>> buckets = scope .();
-				void ClearBucketList()
+				bool[] bucketUsed = new bool[caseList.Count] (?);
+				defer delete bucketUsed;
+
+				int numBuckets = caseList.Count;
+				if (numBuckets < 4)
 				{
-					for (var list in buckets.Values)
-						list.Dispose();
-					buckets.Clear();
+					// Don't bother with the switch
+					numBuckets = 1;
 				}
-				defer ClearBucketList();
 
-				for (int bucketPass < caseList.Count * 2)
+				// Try for at least a 75% occupancy in the non-table case to ensure we get a jump table
+				float minBucketOccupancy = useHashTable ? 0.65f : 0.75f;
+				while (numBuckets > 2)
 				{
-					ClearBucketList();
-					numBuckets = (bucketPass % 2 == 0) ? (caseList.Count + bucketPass / 2) : (caseList.Count - bucketPass / 2 - 1);
+					bucketsTried++;
+					Internal.MemSet(bucketUsed.Ptr, 0, numBuckets);
 
+					int numBucketsUsed = 0;
 					for (int caseIdx < caseList.Count)
 					{
-						var fieldInfo = caseList[caseIdx];
-						var fieldName = GetFieldName(fieldInfo, .. scope .(64));
-						int hashCode = fieldName.GetHashCode() & Int.MaxValue;
-						if (buckets.TryAdd(hashCode % numBuckets, ?, var entryList))
-							*entryList = default;
-						entryList.Add((hashCode, caseIdx));
+						int bucketNum = (hashList[caseIdx] & Int.MaxValue) % numBuckets;
+						if (!bucketUsed[bucketNum])
+						{
+							numBucketsUsed++;
+							bucketUsed[bucketNum] = true;
+						}
 					}
 
-					// Try for at least a 75% occupancy to ensure we get a jump table
-					if (buckets.Count >= numBuckets * 0.75)
+					if (numBucketsUsed >= numBuckets * minBucketOccupancy)
 						break;
+					numBuckets -= numBuckets / 20 + 1;
+				}
+
+				List<int> startFields = scope .();
+				startFields.Resize(numBuckets, -1);
+				List<int> nextCases = scope .();
+				nextCases.Resize(caseList.Count, -1);
+
+				for (int caseIdx < caseList.Count)
+				{
+					int bucketNum = (hashList[caseIdx] & Int.MaxValue) % numBuckets;
+					nextCases[caseIdx] = startFields[bucketNum];
+					startFields[bucketNum] = caseIdx;
 				}
 
 				StringView strName;
@@ -501,39 +546,132 @@ namespace System
 					strName = (ignoreCasePass == 0) ? "checkStr" : "nameStr";
 				else
 					strName = (ignoreCasePass == 0) ? "checkStr" : "str";
-				if (ignoreCasePass == 0)
-					code.AppendF($"\t\tString checkStr = scope .({(hasPayload ? "nameStr" : "str")})..ToLower();\n");
-				code.AppendF($"\t\tint hashCode = {strName}.GetHashCode();\n");
-				if (numBuckets > 1)
-					code.AppendF($"\t\tswitch ((hashCode & Int.MaxValue) % {numBuckets})\n");
-				code.Append("\t\t{\n");
+				
+				if (useHashTable)
+				{
+					int endingIdx = tableEntryIdx + caseList.Count;
+					String idxType = "int32";
+					if (endingIdx <= Int8.MaxValue)
+						idxType = "int8";
+					else if (endingIdx <= Int16.MaxValue)
+						idxType = "int16";
+					lookupTableCode.AppendF($"const {idxType}[{numBuckets}] cLookupTable{ignoreCasePass} = .(");
+					if (tableEntryIdx == 0)
+						entryTableCode.AppendF($"const Entry[{caseList.Count * 2}] cEntryTable = .(");
+
+					if (ignoreCasePass == 0)
+						code.AppendF($"\t\tcheckStr = scope:: String(str)..ToLower();\n");
+					else
+						code.Append("\t\tcheckStr = str;\n");
+					code.Append("\t\thashCode = checkStr.GetHashCode();\n");
+					code.AppendF($"\t\tentryIdx = cLookupTable{ignoreCasePass}[(hashCode & Int.MaxValue) % {numBuckets}];\n");
+				}
+				else
+				{
+					if (ignoreCasePass == 0)
+						code.AppendF($"\t\tString checkStr = scope .({(hasPayload ? "nameStr" : "str")})..ToLower();\n");
+					code.AppendF($"\t\tint hashCode = {strName}.GetHashCode();\n");
+					if (numBuckets > 1)
+						code.AppendF($"\t\tswitch ((hashCode & Int.MaxValue) % {numBuckets})\n");
+					code.Append("\t\t{\n");
+				}
+
 				for (int bucketIdx < numBuckets)
 				{
-					if (!buckets.TryGet(bucketIdx, ?, var entryList))
-						continue;
-					if (numBuckets > 1)
-						code.AppendF($"\t\tcase {bucketIdx}:\n");
-					for (var entry in entryList)
+					if ((!hasPayload) && (bucketIdx > 0))
+						lookupTableCode.Append(", ");
+
+					int bucketEntryCount = 0;
+					int caseIdx = startFields[bucketIdx];
+					while (caseIdx != -1)
 					{
-						var fieldInfo = caseList[entry.caseIdx];
-						var fieldName = GetFieldName(fieldInfo, .. scope .(64));
+						if (useHashTable)
+						{
+							if (bucketEntryCount == 0)
+								tableEntryIdx.ToString(lookupTableCode);
+						}
+						else if ((bucketEntryCount == 0) && (numBuckets > 1))
+							code.AppendF($"\t\tcase {bucketIdx}:\n");
+
+						var fieldInfo = caseList[caseIdx];
+						fieldName.Clear();
+						GetFieldName(fieldInfo, fieldName);
 						var fieldTypeInst = fieldInfo.FieldType as TypeInstance;
 						bool caseHasPayload = (fieldTypeInst.IsTuple) && (fieldTypeInst.FieldCount > 0);
-						
-						if (hasPayload)
-							code.AppendF($"\t\t\tif ((hashCode == {fieldName.GetHashCode()}) && ({strName} == \"{fieldName}\") && ({caseHasPayload ? "!" : ""}argStr.IsEmpty))\n");
+
+						int hashCode = fieldName.GetHashCode();
+						if (useHashTable)
+						{
+							if (tableEntryIdx > 0)
+								entryTableCode.Append(",");
+							entryTableCode.Append("\n\t.(");
+							hashCode.ToString(entryTableCode);
+							entryTableCode.Append(", \"");
+							entryTableCode.Append(fieldName);
+							entryTableCode.Append("\", .");
+							entryTableCode.Append(fieldInfo.Name);
+							entryTableCode.Append(", ");
+							entryTableCode.Append((nextCases[caseIdx] == -1) ? "false" : "true");
+							entryTableCode.Append(")");
+
+							tableEntryIdx++;
+						}
+						else if (hasPayload)
+						{
+							code.AppendF($"\t\t\tif ((hashCode == {hashCode}) && ({strName} == \"{fieldName}\") && ({caseHasPayload ? "!" : ""}argStr.IsEmpty))\n");
+							if (caseHasPayload)
+								code.AppendF($"\t\t\t\tmatchIdx = {caseIdx};\n");
+							else
+								code.AppendF($"\t\t\t\treturn .Ok(.{fieldInfo.Name});\n");
+						}
 						else
-							code.AppendF($"\t\t\tif ((hashCode == {fieldName.GetHashCode()}) && ({strName} == \"{fieldName}\"))\n");
-						if (caseHasPayload)
-							code.AppendF($"\t\t\t\tmatchIdx = {entry.caseIdx};\n");
-						else
-							code.AppendF($"\t\t\t\treturn .Ok(.{fieldInfo.Name});\n");
+						{
+							code.Append("\t\t\tif ((hashCode == ");
+							hashCode.ToString(code);
+							code.Append(") && (");
+							code.Append(strName);
+							code.Append(" == \"");
+							code.Append(fieldName);
+							code.Append("\"))\n");
+							code.Append("\t\t\t\treturn .Ok(.");
+							code.Append(fieldInfo.Name);
+							code.Append(");\n");
+						}
+
+						caseIdx = nextCases[caseIdx];
+						bucketEntryCount++;
+					}
+
+					if ((!hasPayload) && (bucketEntryCount == 0))
+					{
+						lookupTableCode.Append("-1");
 					}
 				}
-				
 
-				code.Append("\t\t}\n");
+				if (!useHashTable)
+					code.Append("\t\t}\n");
 				code.Append("\t}\n");
+
+				if (!lookupTableCode.IsEmpty)
+				{
+					lookupTableCode.Append(");\n\n");
+				}
+			}
+
+			if (useHashTable)
+			{
+				code.Append("""
+								while (entryIdx >= 0)
+								{
+									var entry = cEntryTable[entryIdx];
+									if ((hashCode == entry.hashCode) && (checkStr == entry.name))
+										return .Ok(entry.value);
+									if (!entry.hasMore)
+										break;
+									entryIdx++;
+								}
+
+							""");
 			}
 
 			if (hasPayload)
@@ -562,6 +700,14 @@ namespace System
 
 			code.Append("\treturn .Err;\n");
 			code.Append("}\n");
+
+			if (!entryTableCode.IsEmpty)
+			{
+				entryTableCode.Append(");\n\n");
+				Compiler.EmitTypeBody(typeof(Self), entryTableCode);
+			}
+			if (!lookupTableCode.IsEmpty)
+				Compiler.EmitTypeBody(typeof(Self), lookupTableCode);
 
 			Compiler.EmitTypeBody(typeof(Self), code);
 		}
