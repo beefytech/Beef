@@ -22566,7 +22566,12 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			else if (value.mType->IsFloat())
 				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateNeg(value.mValue), origType);
 			else
+			{
+				ResolveGenericType();
+				if (mResult.mType->IsVar())
+					break;
 				numericFail = true;
+			}
 		}
 		break;
 	case BfUnaryOp_InvertBits:
