@@ -8269,11 +8269,6 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 				}
 				else if (constraintType->IsPrimitiveType())
 				{
-					if (isUnspecialized)
-					{
-						Fail("Primitive constraints are not allowed unless preceded with 'const'", constraintTypeRef);
-						continue;
-					}
 					checkEquality = true;
 				}
 
@@ -8293,11 +8288,6 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 				}
 				else if ((!constraintType->IsTypeInstance()) && (!constraintType->IsSizedArray()))
 				{
-					if (isUnspecialized)
-					{
-						Fail(StrFormat("Type '%s' is not allowed as a generic constraint", TypeToString(constraintType).c_str()), constraintTypeRef);
-						continue;
-					}
 					checkEquality = true;
 				}
 
@@ -12631,6 +12621,8 @@ BfCustomAttributes* BfModule::GetCustomAttributes(BfTypeDef* typeDef)
 		attrTarget = BfAttributeTargets_Interface;
 	else if (typeDef->mTypeCode == BfTypeCode_Struct)
 		attrTarget = BfAttributeTargets_Struct;
+	else if (typeDef->mTypeCode == BfTypeCode_Extension)
+		attrTarget = (BfAttributeTargets)(BfAttributeTargets_Struct | BfAttributeTargets_Class | BfAttributeTargets_Interface | BfAttributeTargets_Enum);
 	else
 		attrTarget = BfAttributeTargets_Class;
 	return GetCustomAttributes(typeDef->mTypeDeclaration->mAttributes, attrTarget);
