@@ -113,7 +113,14 @@ namespace System.Diagnostics
 
         public static int64 GetTimestamp()
         {
-            return Internal.GetTickCountMicro();
+			if (Compiler.IsComptime)
+			{
+				return (.)Platform.BfpSystem_GetTimeStamp() / 10;
+			}
+			else
+			{
+	            return Internal.GetTickCountMicro();
+			}
         }
 
         // Get the elapsed ticks.        
