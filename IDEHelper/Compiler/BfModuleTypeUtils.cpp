@@ -4677,6 +4677,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						if (partialTypeDef->mTypeDeclaration->mAttributes == NULL)
 							continue;
 
+						if (!typeInstance->IsTypeMemberIncluded(partialTypeDef))
+							continue;
+
 						typeState.mCurTypeDef = partialTypeDef;
 						GetCustomAttributes(customAttributes, partialTypeDef->mTypeDeclaration->mAttributes, attrTarget);
 					}
