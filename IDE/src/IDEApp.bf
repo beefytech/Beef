@@ -3824,7 +3824,10 @@ namespace IDE
         {
             var textPanel = GetActiveTextPanel();
             if (textPanel != null)
+			{
                 textPanel.ShowQuickFind(isReplace);
+				return;
+			}
 			else
 			{
 				if (let activeWindow = GetActiveWindow())
@@ -3841,6 +3844,12 @@ namespace IDE
 						widget = widget.mParent;
 					}
 				}
+			}
+
+			var activePanel = GetActivePanel();
+			if (var watchPanel = activePanel as WatchPanel)
+			{
+				watchPanel.mListView.ShowFind();
 			}
         }
 
@@ -3941,6 +3950,12 @@ namespace IDE
 						widget = widget.mParent;
 					}
 				}
+			}
+
+			var activePanel = GetActivePanel();
+			if (var watchPanel = activePanel as WatchPanel)
+			{
+				watchPanel.mListView.FindNext(dir);
 			}
         }
 

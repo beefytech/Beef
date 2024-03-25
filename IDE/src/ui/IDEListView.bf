@@ -16,6 +16,7 @@ namespace IDE.ui
 
     public class IDEListView : DarkListView
     {
+		public int32 mCurId;
 		public bool mCancelingEdit;
 		public ListViewItem mEditingItem;
 		public Event<delegate void(EditWidget editWidget, bool cancelled)> mOnEditDone ~ _.Dispose();

@@ -487,16 +487,16 @@ namespace Beefy.theme.dark
             float originY;
             SelfToOtherTranslate(listView, 0, 0, out originX, out originY);
 
+			float prevLinePos = -1;
             for (int32 i = 0; i < mChildItems.Count; i++)
             {
                 var childItem = mChildItems[i];
-				if (childItem.mHeight == 0)
-					continue;
                 using (g.PushColor(listView.mGridLinesColor))
                 {
                     float linePos = childItem.mY + childItem.mHeight;
-                    if (linePos <= mChildAreaHeight + mSelfHeight)
+                    if ((linePos <= mChildAreaHeight + mSelfHeight) && (linePos != prevLinePos))
                         g.FillRect(-originX, linePos, listView.mWidth, 1);
+					prevLinePos = linePos;
                 }
             }
         }

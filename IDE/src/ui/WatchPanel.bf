@@ -137,8 +137,64 @@ namespace IDE.ui
 
     public class WatchListView : IDEListView
     {
+		public class FindState
+		{
+			public int32 mDir;
+			public int32 mItr;
+			public int32 mPrevId;
+			public HashSet<int32> mOpenIds = new .() ~ delete _;
+		}
+
+		public class CloseButton : ButtonWidget
+		{
+		    public override void Draw(Graphics g)
+		    {
+		        base.Draw(g);
+		        if (mMouseOver)
+		        {
+		            using (g.PushColor(mMouseDown ? 0xFFFF0000 : Color.White))
+		                g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.CloseOver), GS!(0), GS!(0));
+		        }
+		        else
+				{
+					g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Close), GS!(0), GS!(0));
+				}
+		    }
+
+		    public override void MouseClicked(float x, float y, float origX, float origY, int32 btn)
+		    {
+		        base.MouseClicked(x, y, origX, origY, btn);
+
+		        var watchListView = (WatchListView)mParent.mParent;
+		        watchListView.HideFind();
+		    }
+
+			public override void MouseMove(float x, float y)
+			{
+				base.MouseMove(x, y);
+				MarkDirty();
+			}
+
+			public override void MouseLeave()
+			{
+				base.MouseLeave();
+				MarkDirty();
+			}
+		}
+
         public IWatchOwner mWatchOwner;
         public static int32 sCurDynReferenceId;
+		public DarkEditWidget mFindWidget;
+		public CloseButton mCloseButton;
+		public ToggleButton mFilterButton;
+		public String mFindString ~ delete _;
+		public int32 mFindIdx;
+		public bool mFiltering;
+
+		public int32 mLastWorkTick;
+		public int32 mWorkTicks;
+
+		public FindState mFindState;
 
         public this(IWatchOwner IWatchOwner)
         {
@@ -160,6 +216,433 @@ namespace IDE.ui
 			if (var watchPanel = mParent as WatchPanel)
 			{
 				watchPanel.SetFocus();
+			}
+		}
+
+		protected override void SetScaleData()
+		{
+			base.SetScaleData();
+			if (mFindWidget != null)
+			{
+				mScrollbarInsets.mTop += GS!(23);
+				mFindWidget.mEditWidgetContent.mTextInsets.mLeft = GS!(20);
+			}
+
+			mIconX = GS!(4);
+			mOpenButtonX = GS!(4);
+			mLabelX = GS!(44);
+			mChildIndent = GS!(16);
+			mHiliteOffset = GS!(-2);
+		}
+
+		public void RehupFind()
+		{
+			SetScaleData();
+			RehupSize();
+			UpdateScrollbars();
+		}
+
+		public void ShowFind()
+		{
+			if (mFindWidget == null)
+			{
+				mFindWidget = new DarkEditWidget();
+				mFindWidget.mOnKeyDown.Add(new (keyboardEvent) =>
+					{
+						if (keyboardEvent.mKeyCode == .Escape)
+						{
+							HideFind();
+						}
+						if (keyboardEvent.mKeyCode == .Tab)
+						{
+							mFilterButton.SetFocus();
+						}
+						if (keyboardEvent.mKeyCode == .Return)
+						{
+							FindNext(1);
+						}
+					});
+				mFindWidget.mOnContentChanged.Add(new (evt) =>
+					{
+						if (mFindString == null)
+							mFindString = new .();
+						mFindString.Clear();
+						mFindWidget.GetText(mFindString);
+						if (mFindString.IsEmpty)
+						{
+							DeleteAndNullify!(mFindString);
+						}
+						mFindIdx++;
+						mFiltering = (mFindString != null) && (mFilterButton.mToggled);
+					});
+
+				AddWidget(mFindWidget);
+
+				var watchListView = this;
+
+				mCloseButton = new CloseButton();
+				mFindWidget.AddWidget(mCloseButton);
+
+				mFilterButton = new ToggleButton();
+				mFilterButton.mOnKeyDown.Add(new (keyboardEvent) =>
+					{
+						if (keyboardEvent.mKeyCode == .Escape)
+						{
+							HideFind();
+						}
+						if (keyboardEvent.mKeyCode == .Tab)
+						{
+							if (keyboardEvent.mKeyFlags.HasFlag(.Shift))
+								mFindWidget.SetFocus();
+							else
+							{
+								watchListView.mParent.SetFocus();
+								var widget = watchListView.FindWidgetByCoords(mWidth - GS!(30), mFindWidget.mY + mFindWidget.mHeight + GS!(10));
+
+								if (var listViewItem = widget as ListViewItem)
+								{
+									listViewItem.GetSubItem(0).Focused = true;
+								}
+							}
+						}
+					});
+				mFilterButton.Label = "Filter";
+
+				
+				mFilterButton.mOnMouseDown.Add(new [&] (mouseArgs) =>
+					{
+						mFindIdx++;
+						mFiltering = (mFindString != null) && (mFilterButton.mToggled);
+					});
+
+				mFindWidget.AddWidget(mFilterButton);
+			}
+			// Doing it twice allows us to lose focus of editing an item and then refocus ourselves
+			mFindWidget.SetFocus();
+			mFindWidget.SetFocus();
+			RehupFind();
+		}
+
+		public bool WithNextItems(ListViewItem item, int32 dir, List<ListViewItem> fromList, delegate bool(WatchListViewItem item, int idx) dlg)
+		{
+			if (item.mChildItems == null)
+				return true;
+
+			if ((item.mParentItem != null) && (!item.IsOpen))
+				return true;
+
+			int idx = (dir > 0) ? -1 : item.mChildItems.Count;
+			if (!fromList.IsEmpty)
+			{
+				idx = item.mChildItems.IndexOf(fromList.PopBack());
+				if (idx == -1)
+				{
+					// Failed
+					fromList.Clear();
+				}
+				else if ((dir < 0) && (fromList.IsEmpty))
+				{
+					// Don't do anything
+				}
+				else
+				{
+					var childItem = (WatchListViewItem)item.mChildItems[idx];
+					if (!WithNextItems(childItem, dir, fromList, dlg))
+						return false;
+					if (dir < 0)
+					{
+						if (!dlg(childItem, idx))
+							return false;
+					}
+				}
+			}
+
+			while (true)
+			{
+				idx += dir;
+				if ((idx < 0) || (idx >= item.mChildItems.Count))
+					break;
+				var childItem = (WatchListViewItem)item.mChildItems[idx];
+				if (dir > 0)
+				{
+					if (!dlg(childItem, idx))
+						return false;
+				}
+				if (!WithNextItems(childItem, dir, fromList, dlg))
+					return false;
+				if (dir < 0)
+				{
+					if (!dlg(childItem, idx))
+						return false;
+				}
+			}
+
+			return true;
+		}
+
+		void ClearFindState()
+		{
+			if (mFindState == null)
+				return;
+
+			mRoot.WithSelectedItems(scope (listViewItem) =>
+				{
+					var watchListViewItem = (WatchListViewItem)listViewItem;
+					if ((listViewItem.IsParent) && (!mFindState.mOpenIds.Contains(watchListViewItem.mId)))
+					{
+						listViewItem.Open(false, true);
+					}
+				});
+
+			DeleteAndNullify!(mFindState);
+		}
+
+		void CreateFindState()
+		{
+			ClearFindState();
+			mFindState = new FindState();
+		}
+
+		public bool UpdateFind()
+		{
+			if (mRoot.GetChildCount() == 0)
+				return false;
+
+			mFindIdx++;
+
+			WatchListViewItem selectedItem = null;
+			if (mFindState.mPrevId != 0)
+			{
+				mRoot.WithItems(scope [&] (listViewItem) =>
+					{
+						var watchListViewItem = (WatchListViewItem)listViewItem;
+						if (watchListViewItem.mId == mFindState.mPrevId)
+							selectedItem = watchListViewItem;
+					});
+			}
+			else
+			{
+				selectedItem = (WatchListViewItem)mRoot.FindFirstSelectedItem();
+			}
+			List<ListViewItem> selectList = scope .();
+
+			ListViewItem checkItem = selectedItem;
+			while ((checkItem != null) && (checkItem != mRoot))
+			{
+				selectList.Add(checkItem);
+				checkItem = checkItem.mParentItem;
+			}
+
+			mFindState.mPrevId = 0;
+
+			float? wantY = null;
+
+			WatchSeriesInfo curSeriesInfo = null;
+			WatchListViewItem prevSeriesItem = null;
+
+			WatchListViewItem nextItem = null;
+			WithNextItems(mRoot, mFindState.mDir, selectList, scope [&] (listViewItem, idx) =>
+				{
+					void ContinueFromItem(WatchListViewItem item, bool atEnd)
+					{
+						var atEnd;
+						if (mFindState.mDir < 0)
+							atEnd = !atEnd;
+
+						mFindState.mPrevId = item.mId;
+						item.SelfToOtherTranslate(mScrollContent, 0, atEnd ? (item.mHeight - 1) : 0, ?, var transY);
+						wantY = transY;
+
+						if (mFindState.mDir < 0)
+							wantY -= mScrollContentContainer.mHeight;
+					}
+
+					if (!listViewItem.mFindMismatch)
+					{
+						nextItem = listViewItem;
+						return false;
+					}
+
+					
+					if (listViewItem.mWatchSeriesInfo != curSeriesInfo)
+					{
+						if (curSeriesInfo != null)
+						{
+							if ((prevSeriesItem.mSeriesMemberIdx != curSeriesInfo.mCount - 1) &&
+								(prevSeriesItem.mSeriesMemberIdx != curSeriesInfo.mShowPages * curSeriesInfo.mShowPageSize - 1))
+							{
+								// We didn't finish the previous series
+								ContinueFromItem(prevSeriesItem, true);
+								return false;
+							}
+						}
+
+						curSeriesInfo = listViewItem.mWatchSeriesInfo;
+					}
+					else if ((curSeriesInfo != null) && (prevSeriesItem != null) && (listViewItem.mSeriesMemberIdx != prevSeriesItem.mSeriesMemberIdx + mFindState.mDir))
+					{
+						// Not in sequence
+						ContinueFromItem(prevSeriesItem, true);
+						return false;
+					}
+
+					prevSeriesItem = listViewItem;
+
+					/*if (idx == listViewItem.mParentItem.mChildItems.Count - 1)
+					{
+						float itemBottom = listViewItem.mY + listViewItem.mHeight;
+						float parentBottom = listViewItem.mParentItem.mSelfHeight + listViewItem.mParentItem.mChildAreaHeight;
+						if (itemBottom < parentBottom)
+						{
+							listViewItem.mParentItem.SelfToOtherTranslate(this, 0, parentBottom, var transX, var transY);
+							wantY = transY;
+
+							return false;
+						}
+					}*/
+
+					return true;
+				});
+
+			//mFindState.mDir = 0;
+
+			if (wantY != null)
+			{
+				mVertScrollbar.ScrollTo(wantY.Value);
+				return false;
+			}
+
+			mFindState.mDir = 0;
+
+			if (nextItem != null)
+			{
+				mRoot.SelectItemExclusively(nextItem);
+				EnsureItemVisible(nextItem, false);
+
+				if (mFindIdx > 1)
+				{
+					nextItem.SelfToOtherTranslate(mScrollContent, 0, nextItem.mHeight / 2, ?, var transY);
+					mVertScrollbar.ScrollTo(Math.Max(transY - mScrollContentContainer.mHeight / 2, 0));
+				}
+			}
+			else
+			{
+				IDEApp.Beep(IDEApp.MessageBeepType.Information);
+				IDEApp.sApp.MessageDialog("Search Done", "Find reached the starting point of the search.");
+				mRoot.SelectItemExclusively(null);
+			}
+
+			return true;
+		}
+
+		public void FindNext(int32 dir)
+		{
+			if (mFindString == null)
+				return;
+
+			CreateFindState();
+			mFindState.mDir = dir;
+		}
+
+		public void HideFind()
+		{
+			DeleteAndNullify!(mFindString);
+			mFindIdx++;
+			mFindWidget.RemoveSelf();
+			gApp.DeferDelete(mFindWidget);
+			mFindWidget = null;
+			mCloseButton = null;
+			RehupFind();
+			mParent.SetFocus();
+			mFiltering = false;
+		}
+
+		void ResizeComponenets()
+		{
+			if (mFindWidget != null)
+			{
+				mFindWidget.Resize(0, GS!(20), mWidth, GS!(23));
+				mCloseButton.Resize(mWidth - GS!(20), GS!(1), GS!(20), GS!(20));
+				mFilterButton.Resize(mWidth - GS!(80), GS!(1), GS!(60), GS!(21));
+			}
+		}
+
+		public override void Resize(float x, float y, float width, float height)
+		{
+			base.Resize(x, y, width, height);
+			ResizeComponenets();
+		}
+
+		public override void KeyDown(KeyCode keyCode, bool isRepeat)
+		{
+			if ((keyCode == .Escape) && (mFindWidget != null))
+			{
+				HideFind();
+			}
+
+			if (keyCode == .Tab)
+			{
+				if (mFindWidget != null)
+					mFindWidget.SetFocus();
+			}
+
+			base.KeyDown(keyCode, isRepeat);
+		}
+
+		public override void DrawAll(Graphics g)
+		{
+			base.DrawAll(g);
+
+			if (mFindWidget != null)
+			{
+				g.Draw(DarkTheme.sDarkTheme.GetImage(.Search), mFindWidget.mX + GS!(1), mFindWidget.mY + GS!(1));
+
+				if (mWorkTicks >= 60)
+				{
+					IDEUtils.DrawWait(g, mWidth - GS!(95), mFindWidget.CenterY, gApp.mUpdateCnt);
+				}
+			}
+		}
+
+		public void DidWork()
+		{
+			mLastWorkTick = mUpdateCnt;
+		}
+
+		public override void Update()
+		{
+			base.Update();
+
+			if (mUpdateCnt - mLastWorkTick < 10)
+			{
+				MarkDirty();
+				mWorkTicks++;
+			}
+			else if (mWorkTicks > 0)
+			{
+				MarkDirty();
+				mWorkTicks = 0;
+			}
+		}
+
+		public override void UpdateAll()
+		{
+			Stopwatch sw = scope .()..Start();
+			for (int pass = 0; true; pass++)
+			{
+				base.UpdateAll();
+
+				if (mFindState == null)
+					break;
+				if (!gApp.mIsUpdateBatchStart)
+					break;
+				if ((pass > 0) && (sw.ElapsedMilliseconds >= 10))
+					break;
+				if (mFindState.mDir != 0)
+				{
+					if (UpdateFind())
+						ClearFindState(); // Done
+				}
 			}
 		}
     }
@@ -1005,6 +1488,7 @@ namespace IDE.ui
 
     public class WatchListViewItem : IDEListViewItem
     {
+		public int32 mId;
         public IWatchOwner mWatchOwner;
         public WatchEntry mWatchEntry ~ delete _;
         public bool mFailed;
@@ -1019,7 +1503,11 @@ namespace IDE.ui
         public bool mIsPlaceholder;
         public bool mDisabled = false;
         public bool mAllowRefresh = false;
-        public bool mValueChanged = false;		
+        public bool mValueChanged = false;
+		public int mLastFindIdx;
+		public bool mFindMismatch;
+		public bool mChildHasMatch;
+		public String mColoredLabel ~ delete _;
 		bool mWantRemoveSelf;
 
         public WatchRefreshButton mWatchRefreshButton;
@@ -1053,6 +1541,7 @@ namespace IDE.ui
 
         public this(IWatchOwner watchOwner, IDEListView listView)
         {
+			mId = ++listView.mCurId;
             mWatchOwner = watchOwner;
         }
 
@@ -1300,6 +1789,25 @@ namespace IDE.ui
             mWatchOwner.UpdateWatch(this);
         }
 
+		void CheckValue()
+		{
+			if ((mWatchEntry != null) && (!mWatchEntry.mHasValue))
+			{
+				var parentWatchListViewItem = mParentItem as WatchListViewItem;
+
+				if ((!mDisabled) || (parentWatchListViewItem == null) || (mWatchEntry.mIsNewExpression))
+				{
+				    mWatchOwner.UpdateWatch(this);
+				}
+				else if (mColumnIdx == 0)
+				{
+				    var valSubItem = GetSubItem(1);
+				    if (valSubItem.Label == "")
+				        valSubItem.Label = "???";
+				}
+			}
+		}
+
         public override void DrawAll(Graphics g)
         {
             if (mParentItem.mChildAreaHeight == 0)
@@ -1317,18 +1825,7 @@ namespace IDE.ui
             {
                 if (mParentItem.mChildAreaHeight > 0)
                 {
-                    var parentWatchListViewItem = mParentItem as WatchListViewItem;
-
-                    if ((!mDisabled) || (parentWatchListViewItem == null) || (mWatchEntry.mIsNewExpression))
-                    {
-                        mWatchOwner.UpdateWatch(this);
-                    }
-                    else if (mColumnIdx == 0)
-                    {
-                        var valSubItem = GetSubItem(1);
-                        if (valSubItem.Label == "")
-                            valSubItem.Label = "???";
-                    }
+                   CheckValue();
                 }
             }
 
@@ -1374,23 +1871,120 @@ namespace IDE.ui
 			}
 		}
 
+		void CheckFindString()
+		{
+			var watchListView = (WatchListView)mListView;
+			if (mLastFindIdx == watchListView.mFindIdx)
+				return;
+
+			if (watchListView.mFindString != null)
+			{
+				CheckValue();
+			}
+
+			bool findMismatch = true;
+			if (mColumnIdx == 0)
+			{
+				for (var subItem in mSubItems)
+				{
+					if (subItem == this)
+						continue;
+					var watchSubItem = (WatchListViewItem)subItem;
+					watchSubItem.CheckFindString();
+					if (!watchSubItem.mFindMismatch)
+						findMismatch = false;
+				}
+			}
+
+			if (watchListView.mFindString != null)
+			{
+				if (mColoredLabel == null)
+					mColoredLabel = new String(mLabel.Length);
+				else
+					mColoredLabel .Clear();
+
+				var findStr = watchListView.mFindString;
+
+				uint32 disableColor = 0xFF808080;
+				uint32 enableColor = 0xFFF0F0FF;
+
+				int checkIdx = 0;
+				while (true)
+				{
+					int foundIdx = mLabel.IndexOf(findStr, checkIdx, true);
+					if (foundIdx == -1)
+					{
+						gfx.Font.StrEncodeColor(disableColor, mColoredLabel);
+						mColoredLabel.Append(mLabel, checkIdx);
+						break;
+					}
+
+					gfx.Font.StrEncodeColor(disableColor, mColoredLabel);
+					mColoredLabel.Append(mLabel, checkIdx, foundIdx - checkIdx);
+					gfx.Font.StrEncodeColor(enableColor, mColoredLabel);
+					mColoredLabel.Append(mLabel, foundIdx, findStr.Length);
+
+					checkIdx = foundIdx + findStr.Length;
+				}
+
+				if (checkIdx != 0)
+					findMismatch = false;
+			}
+			else
+			{
+				findMismatch = false;
+				DeleteAndNullify!(mColoredLabel);
+			}
+
+			if (findMismatch != mFindMismatch)
+			{
+				mFindMismatch = findMismatch;
+				watchListView.mListSizeDirty = true;
+			}
+
+			mLastFindIdx = watchListView.mFindIdx;
+		}
+
         public override void Draw(Graphics g)
         {
-            uint32 color = Color.White;
+			var watchListView = (WatchListView)mListView;
+
+			uint32 color = Color.White;
             var headItem = (WatchListViewItem)GetSubItem(0);
             var valueItem = (WatchListViewItem)GetSubItem(1);
+
+			CheckFindString();
+
+			bool findHide = watchListView.mFiltering && headItem.mFindMismatch && !headItem.mChildHasMatch;
+
+			if (mChildWidgets != null)
+			{
+				for (var widget in mChildWidgets)
+				{
+					if (widget is ListViewItem)
+						continue;
+					widget.mVisible = !findHide;
+				}
+			}
+
+			if (findHide)
+				return;
+
             if (headItem.mDisabled)
                 color = 0x80FFFFFF;
             else if (mFailed)
                 color = 0xFFFF4040;
             
-            var watchListView = (WatchListView)mListView;
             if (IsBold)
                 watchListView.mFont = DarkTheme.sDarkTheme.mSmallBoldFont;
+			var prevLabel = mLabel;
+			if (mColoredLabel != null)
+				mLabel = mColoredLabel;
             using (g.PushColor(color))
             {
-                base.Draw(g);                
+                base.Draw(g);
             }
+			mLabel = prevLabel;
             watchListView.mFont = DarkTheme.sDarkTheme.mSmallFont;
 
             if ((this == headItem) && (mWatchEntry.mResultType != WatchResultType.None))
@@ -1460,6 +2054,9 @@ namespace IDE.ui
 
         public override void Update()
         {
+			var watchListView = (WatchListView)mListView;
+
+			bool didWork = false;
 			mMustUpdateBeforeEvaluate = false;
 
 			if ((mWatchEntry != null) && (mWatchEntry.mIsPending))
@@ -1477,10 +2074,9 @@ namespace IDE.ui
 					}
 				}
 			}
-            var watchListView = (WatchListView)mListView;
             if (mParentItem.mChildAreaHeight != 0)                
             {
-                float itemHeight = watchListView.mFont.GetLineSpacing();
+                float fullItemHeight = watchListView.mFont.GetLineSpacing();
                 int32 addrSize = IDEApp.sApp.mDebugger.GetAddrSize() * 2;
                 int32 dbgContinuationCount = 0;
 
@@ -1565,11 +2161,15 @@ namespace IDE.ui
                             else
                                 nextWatchListViewItem = null;
                         }                        
-                        
+
+						float itemHeight = fullItemHeight;
                         bool wantsFillIn = (curY + ofsY + itemHeight >= 0) && (curY + ofsY < mListView.mHeight);
                         bool wantsDelete = !wantsFillIn;
 						bool forceDelete = false;
 						bool forceFillIn = false;
+
+						if ((watchListView.mFiltering) && (curWatchListViewItem != null) && (curWatchListViewItem.mFindMismatch))
+							itemHeight = 0;
 
                         if (mDisabled)
                         {
@@ -1589,9 +2189,12 @@ namespace IDE.ui
 							forceFillIn = true;
 						}
 
+						bool keepFilteredItem = (watchListView.mFiltering) && (curWatchListViewItem != null) && (curWatchListViewItem.mFindMismatch);
+
 						if ((forceDelete) || 
-                            ((wantsDelete) && (idx != 0) && (curWatchListViewItem != null) && (curWatchListViewItem.mChildAreaHeight == 0) && (!curWatchListViewItem.mIsSelected)))
+                            ((wantsDelete) && (idx != 0) && (curWatchListViewItem != null) && (curWatchListViewItem.mChildAreaHeight == 0) && (!curWatchListViewItem.mIsSelected) && (!keepFilteredItem)))
 						{
+							didWork = true;
 							if (curWatchListViewItem == nextWatchListViewItem)
 								nextWatchListViewItem = null;
 
@@ -1603,6 +2206,7 @@ namespace IDE.ui
                         if (((curWatchListViewItem == null) && (wantsFillIn)) ||
 							(forceFillIn))
                         {
+							didWork = true;
                             prevWatchListViewItem.mBottomPadding = (curY - prevWatchListViewItem.mY) - prevWatchListViewItem.mSelfHeight - prevWatchListViewItem.mChildAreaHeight;
 							if (curWatchListViewItem == null)
                             	curWatchListViewItem = (WatchListViewItem)mParentItem.CreateChildItemAtIndex(curMemberIdx);
@@ -1813,14 +2417,52 @@ namespace IDE.ui
 				}
 			}
 
+
+			if (didWork)
+				watchListView.DidWork();
+
             base.Update();
         }
 
 		public override void UpdateAll()
 		{
+			var watchListView = (WatchListView)mListView;
+
+			if ((mWatchSeriesInfo != null) && (mSeriesMemberIdx == 0))
+			{
+				// Always update these
+			}
+			else if ((watchListView.mFiltering) && (mLastFindIdx == watchListView.mFindIdx) && (mFindMismatch) && (!mChildHasMatch))
+			{
+				// Fast out
+				return;
+			}
+
+			mChildHasMatch = false;
+
 			base.UpdateAll();
 			if (mWantRemoveSelf)
 				mParentItem.RemoveChildItem(this);
+
+			if (mColumnIdx == 0)
+			{
+				var parentWatchItem = mParentItem as WatchListViewItem;
+
+				float wantHeight;
+				CheckFindString();
+				if ((watchListView.mFiltering) && (mFindMismatch) && (!mChildHasMatch))
+					wantHeight = 0;
+				else
+					wantHeight = watchListView.mFont.GetLineSpacing();
+				if (mSelfHeight != wantHeight)
+				{
+					mSelfHeight = wantHeight;
+					watchListView.mListSizeDirty = true;
+				}
+
+				if (!mFindMismatch)
+					parentWatchItem?.mChildHasMatch = true;
+			}
 		}
     }
 
@@ -1880,11 +2522,7 @@ namespace IDE.ui
 
 		void SetScaleData()
 		{
-			mListView.mIconX = GS!(4);
-			mListView.mOpenButtonX = GS!(4);
-			mListView.mLabelX = GS!(44);
-			mListView.mChildIndent = GS!(16);
-			mListView.mHiliteOffset = GS!(-2);
+			
 		}
 
 		public override void RehupScale(float oldScale, float newScale)
@@ -2602,6 +3240,8 @@ namespace IDE.ui
                 valueSubItem.Label = newVal;
                 valueSubItem.mFailed = false;
             }
+			listViewItem.mLastFindIdx = -1;
+			valueSubItem.mLastFindIdx = -1;
 
             var typeSubItem = (WatchListViewItem)listViewItem.GetSubItem(2);
             if (vals.Count > 1)
