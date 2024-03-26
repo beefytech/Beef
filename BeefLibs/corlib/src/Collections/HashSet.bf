@@ -1303,4 +1303,14 @@ namespace System.Collections
 			}
 		}
 	}
+
+	public extension HashSet<T> where T : delete
+	{
+		public void ClearAndDelete()
+		{
+			for (var val in this)
+				delete val;
+			Clear();
+		}
+	}
 }
