@@ -6555,16 +6555,19 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 							origVTable = typeInstance->mVirtualMethodTable;
 
 						BfMethodInstance* declMethodInstance = entry.mDeclaringMethod;
-						if ((mIsComptimeModule) || (typeInstance->IsTypeMemberAccessible(declMethodInstance->mMethodDef->mDeclaringType, mProject)))
+						if (declMethodInstance != NULL)
 						{
-							// Prepare to reslot...
-							entry.mImplementingMethod = entry.mDeclaringMethod;
-							reslotNames.Add(declMethodInstance->mMethodDef->mName);
-						}
-						else
-						{
-							// Decl isn't accessible, null out entry
-							entry.mImplementingMethod = BfMethodRef();
+							if ((mIsComptimeModule) || (typeInstance->IsTypeMemberAccessible(declMethodInstance->mMethodDef->mDeclaringType, mProject)))
+							{
+								// Prepare to reslot...
+								entry.mImplementingMethod = entry.mDeclaringMethod;
+								reslotNames.Add(declMethodInstance->mMethodDef->mName);
+							}
+							else
+							{
+								// Decl isn't accessible, null out entry
+								entry.mImplementingMethod = BfMethodRef();
+							}
 						}
 					}
 				}
