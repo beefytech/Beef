@@ -51,19 +51,19 @@ namespace Beefy.gfx
         public float ZDepth { get; set; }
         
         protected DisposeProxy mMatrixDisposeProxy ~ delete _;
-        const int32 MATIX_STACK_SIZE = 256;
+        const int32 MATIX_STACK_SIZE = 4096;
         public Matrix[] mMatrixStack = new Matrix[MATIX_STACK_SIZE] ~ delete _;
         public int32 mMatrixStackIdx = 0;
         public Matrix mMatrix;
 
         protected DisposeProxy mDrawLayerDisposeProxy ~ delete _;
-        const int32 DRAW_LAYER_SIZE = 256;
+        const int32 DRAW_LAYER_SIZE = 4096;
         public DrawLayer[] mDrawLayerStack = new DrawLayer[DRAW_LAYER_SIZE] ~ delete _;
         public int32 mDrawLayerStackIdx = 0;
         public DrawLayer mDrawLayer;
 
         protected DisposeProxy mColorDisposeProxy ~ delete _;
-        const int32 COLOR_STACK_SIZE = 256;
+        const int32 COLOR_STACK_SIZE = 4096;
         public Color[] mColorStack = new Color[COLOR_STACK_SIZE] ~ delete _;
         public int32 mColorStackIdx = 0;
         public Color mColor = Color.White;
