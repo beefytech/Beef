@@ -814,6 +814,7 @@ namespace Beefy.widgets
 				mRoot.mWidth = Math.Max(listWidth, mScrollContentContainer.mWidth);
 
                 mRoot.mHeight = mRoot.CalculatedDesiredHeight() + mBottomInset;
+				Debug.Assert(mRoot.mHeight >= 0);
                 mRoot.ResizeComponents(0);
 
                 UpdateScrollbarData();
@@ -953,13 +954,31 @@ namespace Beefy.widgets
                         KeyDown(KeyCode.Down, false);
                 case KeyCode.Up:
 					int idx = selectedItem.mParentItem.mChildItems.IndexOf(selectedItem);
-					if (idx > 0)
+					idx--;
+					while (idx >= 0)
 					{
-					    newSelection = selectedItem.mParentItem.mChildItems[idx - 1];
+					    var checkSelection = selectedItem.mParentItem.mChildItems[idx];
+						if (checkSelection.mSelfHeight <= 0)
+						{
+							idx--;
+							continue;
+						}
+						newSelection = checkSelection;
 					    while (newSelection.mChildAreaHeight > 0)
-					        newSelection = newSelection.mChildItems[newSelection.mChildItems.Count - 1];
+						{
+							for (int checkIdx in (0..<newSelection.mChildItems.Count).Reversed)
+							{
+								checkSelection = newSelection.mChildItems[checkIdx];
+								if (checkSelection.mSelfHeight > 0)
+								{
+						        	newSelection = checkSelection;
+									break;
+								}
+							}
+						}
+						break;
 					}
-					else if (selectedItem.mParentItem != mRoot)
+					if ((idx < 0) && (selectedItem.mParentItem != mRoot))
 					{
 					    newSelection = selectedItem.mParentItem;
 					}
@@ -967,18 +986,33 @@ namespace Beefy.widgets
                 case KeyCode.Down:
                     if ((selectedItem.IsOpen) && (!selectedItem.mChildItems.IsEmpty))
 					{
-                        newSelection = selectedItem.mChildItems[0];
+						for (int i < selectedItem.mChildItems.Count)
+						{
+	                        var checkSelection = selectedItem.mChildItems[i];
+							if (checkSelection.mSelfHeight > 0)
+							{
+								newSelection = checkSelection;
+								break;
+							}
+						}
 					}
-                    else
+
+					if (newSelection == null)
                     {
-                        while (selectedItem != mRoot)
+                        SelectLoop: while (selectedItem != mRoot)
                         {
                             var childItems = selectedItem.mParentItem.mChildItems;
                             int idx = childItems.IndexOf(selectedItem);
-                            if (idx < childItems.Count - 1)
+							idx++;
+                            while (idx < childItems.Count)
                             {
-                                newSelection = childItems[idx + 1];
-                                break;
+								var checkSelection = childItems[idx];
+								if (checkSelection.mSelfHeight > 0)
+								{
+									newSelection = checkSelection;
+									break SelectLoop;
+								}
+								idx++;
                             }
 
                             selectedItem = selectedItem.mParentItem;
@@ -988,14 +1022,32 @@ namespace Beefy.widgets
                 case KeyCode.Left:
                     if (!selectedItem.Open(false))
                     {
-                        if (selectedItem.mParentItem != GetRoot())
-                            newSelection = selectedItem.mParentItem;
+						var checkSelection = selectedItem.mParentItem;
+                        while (checkSelection != GetRoot())
+						{
+							if (checkSelection.mSelfHeight > 0)
+							{
+								newSelection = checkSelection;
+								break;
+							}
+                            checkSelection = checkSelection.mParentItem;
+						}
                     }
                 case KeyCode.Right:
                     if (!selectedItem.Open(true))
                     {
-                        if ((selectedItem.mChildItems != null) && (selectedItem.mChildItems.Count > 0))
-                            newSelection = selectedItem.mChildItems[0];
+                        if (selectedItem.mChildItems != null)
+						{
+							for (int i < selectedItem.mChildItems.Count)
+							{
+							    var checkSelection = selectedItem.mChildItems[i];
+								if (checkSelection.mSelfHeight > 0)
+								{
+									newSelection = checkSelection;
+									break;
+								}
+							}
+						}
                     }
 				case KeyCode.Space:
 					if (!selectedItem.Open(false))

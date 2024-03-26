@@ -54,7 +54,10 @@ namespace Beefy.theme.dark
                 return;
             mIsOpen = open;
             if (immediate)
+			{
                 mRot = mIsOpen ? (Math.PI_f / 2) : 0;
+				mItem.mListView.mListSizeDirty = true;
+			}
         }
 
         public override void UpdateF(float updatePct)
@@ -319,7 +322,9 @@ namespace Beefy.theme.dark
                 IDisposable colorScope = null;
                 if (mIconImageColor != 0)
                     colorScope = g.PushColor(mIconImageColor);
-                g.Draw(mIconImage, listView.mIconX + labelOfs, 0);
+				float iconX = listView.mIconX + labelOfs;
+				if (labelX < mWidth)
+                	g.Draw(mIconImage, iconX, 0);
                 if (colorScope != null)
                     colorScope.Dispose();
             }
@@ -345,6 +350,9 @@ namespace Beefy.theme.dark
 						overflowMode = .Wrap;
                     g.DrawString(mLabel, labelX, 0, .Left, wantWidth, overflowMode);
 				}
+
+				if (mOpenButton != null)
+					mOpenButton.SetVisible(wantWidth > GS!(-30));
             }
         }
 
@@ -422,7 +430,11 @@ namespace Beefy.theme.dark
 			if ((mChildItems != null) && (mShowChildPct > 0))
 			{
 			    for (ListViewItem listViewItem in mChildItems)
-			        mChildAreaHeight += listViewItem.CalculatedDesiredHeight();
+				{
+					var childHeight = listViewItem.CalculatedDesiredHeight();
+					Debug.Assert(childHeight >= 0);
+			        mChildAreaHeight += childHeight;
+				}
 				mChildAreaHeight *= mShowChildPct;
 			}
 
@@ -518,18 +530,27 @@ namespace Beefy.theme.dark
                 }
             }
 
+			float scrollX = (.)listView.mHorzPos.v;
+
 			float hiliteX = GS!(4) + listView.mHiliteOffset;
-			
+
+			float checkLabelX = LabelX;
 
 			if (mListView.mColumns.Count > 0)
 			{
-				float adjust = LabelX - mListView.mColumns[0].mWidth;
+				float adjust = (checkLabelX + scrollX) - mListView.mColumns[0].mWidth - listView.mLabelX;
 
 				if (adjust > 0)
 				{
 					hiliteX -= adjust;
 				}
 			}
+
+			/*float adjust = (checkLabelX + scrollX) - mListView.mColumns[0].mWidth;
+			if (adjust > 0)
+			{
+				//hiliteX -= adjust;
+			}*/
 
 			var darkListView = mListView as DarkListView;
 			float height = darkListView.mFont.GetLineSpacing();
