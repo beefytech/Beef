@@ -810,7 +810,7 @@ namespace IDE.ui
 			DeleteAndNullify!(mFindSelection);
 			DeleteAndNullify!(mFindParents);
 			DeleteAndNullify!(mFindDeepOpened);
-			mFindOpenedExprs.ClearAndDelete();
+			mFindOpenedExprs?.ClearAndDelete();
 			DeleteAndNullify!(mFindOpenedExprs);
 			mFindFlags = .None;
 		}
