@@ -3246,12 +3246,15 @@ namespace IDE.ui
 
 			bool hasVisibleItem = false;
 			bool hasHiddemItems = false;
-			for (var item in mListView.GetRoot().mChildItems)
+			if (mListView.GetRoot().GetChildCount() > 0)
 			{
-				if (item.mSelfHeight > 0)
-					hasVisibleItem = true;
-				else
-					hasHiddemItems = true;
+				for (var item in mListView.GetRoot().mChildItems)
+				{
+					if (item.mSelfHeight > 0)
+						hasVisibleItem = true;
+					else
+						hasHiddemItems = true;
+				}
 			}
 
 			if ((hasHiddemItems) && (!hasVisibleItem))
