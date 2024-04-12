@@ -244,7 +244,7 @@ namespace System.Threading
 		StartInternal();
 	}
 
-        public void Start(bool autoDelete = true)
+        public void Start(bool autoDelete)
         {
             	mAutoDelete = autoDelete;
             	Start();
@@ -260,7 +260,7 @@ namespace System.Threading
 		StartInternal();
 	}
         
-        public void Start(Object parameter, bool autoDelete = true)
+        public void Start(Object parameter, bool autoDelete)
         {
             mAutoDelete = autoDelete;
             Start(parameter);
