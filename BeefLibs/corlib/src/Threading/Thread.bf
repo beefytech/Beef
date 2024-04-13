@@ -19,7 +19,7 @@ namespace System.Threading
         
         private Object mThreadStartArg;
 
-        bool mAutoDelete;
+        bool mAutoDelete = true;
 		bool mJoinOnDelete;
 
 		static Monitor sMonitor = new .() ~ delete _;
@@ -239,21 +239,31 @@ namespace System.Threading
 			}
 		}
 
-        public void Start(bool autoDelete = true)
+	public void Start()
+	{
+		StartInternal();
+	}
+
+        public void Start(bool autoDelete)
         {
-            mAutoDelete = autoDelete;
-            StartInternal();
+            	mAutoDelete = autoDelete;
+            	Start();
         }
+
+	public void Start(Object parameter)
+	{
+		if (mDelegate is ThreadStart)
+		{
+			Runtime.FatalError();
+		}
+		mThreadStartArg = parameter;
+		StartInternal();
+	}
         
-        public void Start(Object parameter, bool autoDelete = true)
+        public void Start(Object parameter, bool autoDelete)
         {
             mAutoDelete = autoDelete;
-            if (mDelegate is ThreadStart)
-            {
-                Runtime.FatalError();
-            }
-            mThreadStartArg = parameter;
-            StartInternal();
+            Start(parameter);
         }
 
 #if BF_PLATFORM_WINDOWS && !BF_RUNTIME_DISABLE
