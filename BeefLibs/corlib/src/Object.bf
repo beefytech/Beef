@@ -144,18 +144,25 @@ namespace System
 			NumberFormatter.AddrToString((uint)Internal.UnsafeCastToPtr(this), strBuffer);
 #else
 			let t = RawGetType();
-			if (t.IsBoxedStructPtr)
+			if (t == null)
 			{
-				let ti = (TypeInstance)t;
-				let innerPtr = *(void**)((uint8*)Internal.UnsafeCastToPtr(this) + ti.[Friend]mMemberDataOffset);
-				strBuffer.Append("(");
-				ti.UnderlyingType.GetFullName(strBuffer);
-				//strBuffer.AppendF("*)0x{0:A}", (UInt.Simple)(uint)(void*)innerPtr);
-				strBuffer.Append("*)0x");
-				NumberFormatter.AddrToString((uint)(void*)innerPtr, strBuffer);
-				return;
+				strBuffer.AppendF($"Type#{(Int.Simple)GetTypeId()}");
 			}
-            t.GetFullName(strBuffer);
+			else
+			{
+				if (t.IsBoxedStructPtr)
+				{
+					let ti = (TypeInstance)t;
+					let innerPtr = *(void**)((uint8*)Internal.UnsafeCastToPtr(this) + ti.[Friend]mMemberDataOffset);
+					strBuffer.Append("(");
+					ti.UnderlyingType.GetFullName(strBuffer);
+					//strBuffer.AppendF("*)0x{0:A}", (UInt.Simple)(uint)(void*)innerPtr);
+					strBuffer.Append("*)0x");
+					NumberFormatter.AddrToString((uint)(void*)innerPtr, strBuffer);
+					return;
+				}
+	            t.GetFullName(strBuffer);
+			}
 			strBuffer.Append("@0x");
 			NumberFormatter.AddrToString((uint)Internal.UnsafeCastToPtr(this), strBuffer);
 #endif
