@@ -75,6 +75,11 @@ namespace Beefy.utils
 		{
 			return Math.Min(mBatchSize, 256); // Don't allow a large batch (ie: rename) to cause us to pull too much out of the undo buffer
 		}
+
+		public override void ToString(String strBuffer)
+		{
+			strBuffer.AppendF($"UndoBatchStart {mName}");
+		}
     }
 
     public class UndoBatchEnd : UndoAction, IUndoBatchEnd
@@ -95,6 +100,11 @@ namespace Beefy.utils
                 return mBatchStart;
             }
         }
+
+		public override void ToString(String strBuffer)
+		{
+			strBuffer.AppendF($"UndoBatchEnd {Name}");
+		}
     }
 
     public class UndoManager
@@ -306,6 +316,22 @@ namespace Beefy.utils
 		public int32 GetActionCount()
 		{
 			return mUndoIdx;
+		}
+
+		public override void ToString(String str)
+		{
+			for (int i < mUndoList.Count)
+			{
+				if (i == mUndoIdx)
+					str.Append(">");
+				else
+					str.Append(" ");
+
+				var entry = mUndoList[i];
+				str.AppendF($"{i}. {entry}");
+
+				str.Append("\n");
+			}
 		}
     }
 }

@@ -5902,6 +5902,14 @@ namespace IDE
 				internalEditMenu.AddMenuItem("Delayed Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgDelayedAutocomplete); }, null, null, true, gApp.mDbgDelayedAutocomplete ? 1 : 0);
 				internalEditMenu.AddMenuItem("Time Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgTimeAutocomplete); }, null, null, true, gApp.mDbgTimeAutocomplete ? 1 : 0);
 				internalEditMenu.AddMenuItem("Perf Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgPerfAutocomplete); }, null, null, true, gApp.mDbgPerfAutocomplete ? 1 : 0);
+				internalEditMenu.AddMenuItem("Dump Undo Buffer", null, new (menu) =>
+					{
+						if (var panel = GetActiveSourceViewPanel())
+						{
+							var str = panel.mEditWidget.mEditWidgetContent.mData.mUndoManager.ToString(.. scope .());
+							Debug.WriteLine(str);
+						}
+					}, null, null, true, gApp.mDbgPerfAutocomplete ? 1 : 0);
 			}
 
 			//////////

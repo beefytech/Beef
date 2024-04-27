@@ -321,6 +321,14 @@ namespace Beefy.widgets
                 InsertTextAction insertTextAction = nextAction as InsertTextAction;
                 if (insertTextAction == null)
                     return false;
+
+				int curIdx = mCursorTextPos;
+				int nextIdx = insertTextAction.mCursorTextPos;
+				if ((nextIdx != curIdx + mText.Length) ||
+					(mText.EndsWith("\n")) ||
+					(insertTextAction.mText == "\n"))
+					return false;
+
                 if (insertTextAction.mSelection != null)
                 {
                     if (mSelection == null)
@@ -335,14 +343,9 @@ namespace Beefy.widgets
                     mSelectionText.Append(insertTextAction.mSelectionText);
                 }
 
-                int curIdx = mCursorTextPos;
-                int nextIdx = insertTextAction.mCursorTextPos;
                 mRestoreSelectionOnUndo &= insertTextAction.mRestoreSelectionOnUndo;
                 
-                if ((nextIdx != curIdx + mText.Length) ||
-                    (mText.EndsWith("\n")) ||
-                    (insertTextAction.mText == "\n"))
-                    return false;
+                
 
                 mText.Append(insertTextAction.mText);
                 return true;
@@ -374,6 +377,31 @@ namespace Beefy.widgets
                     editWidgetContent.mEditWidget.FinishScroll();
                 return true;
             }
+
+			public override void ToString(String strBuffer)
+			{
+				strBuffer.Append("InsertTextAction");
+				if (mText != null)
+				{
+					strBuffer.Append(" ");
+					mText.Quote(strBuffer);
+				}
+
+				strBuffer.AppendF($" CursorTextPos:{mCursorTextPos}");
+				strBuffer.AppendF(" Selection:");
+				if (mSelection != null)
+				{
+					strBuffer.AppendF($"{mSelection.Value.mStartPos}-{mSelection.Value.mEndPos}");
+				}
+				else
+					strBuffer.AppendF("null");
+
+				if (mSelectionText != null)
+				{
+					strBuffer.AppendF(" SelectionText:");
+					mSelectionText.Quote(strBuffer);
+				}
+			}
         }
 
         public class DeleteCharAction : TextAction
