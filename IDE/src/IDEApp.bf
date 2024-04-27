@@ -568,6 +568,23 @@ namespace IDE
 			}
 		}
 
+		public bool MenuHasFocus
+		{
+			get
+			{
+				for (var window in mWindows)
+				{
+					var widgetWindow = window as WidgetWindow;
+					if ((widgetWindow != null) && (widgetWindow.mHasFocus))
+					{
+						if (widgetWindow.mRootWidget is MenuContainer)
+							return true;
+					}
+				}
+				return false;
+			}
+		}
+
 		[CallingConvention(.Stdcall),CLink]
 		static extern void IDEHelper_ProgramStart();
 		[CallingConvention(.Stdcall),CLink]

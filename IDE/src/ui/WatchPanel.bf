@@ -4117,7 +4117,7 @@ namespace IDE.ui
 
             CheckClearDirtyWatches();
 
-			if ((mDeselectOnFocusLost) && (!HasFocus) && (mListView.mFindWidget == null))
+			if ((mDeselectOnFocusLost) && (!HasFocus) && (mListView.mFindWidget == null) && (!gApp.MenuHasFocus))
 				mListView.GetRoot().SelectItemExclusively(null);
 
 			//mListView.m
