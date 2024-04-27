@@ -830,6 +830,8 @@ BfMethodFlags BfMethodInstance::GetMethodFlags()
 		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_Constructor);
 	if (mMethodDef->mIsReadOnly)
 		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_ReadOnly);
+	if (mMethodDef->mMethodType == BfMethodType_Mixin)
+		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_Mixin);
 
 	auto callingConvention = GetOwner()->mModule->GetIRCallingConvention(this);
 	if (callingConvention == BfIRCallingConv_ThisCall)
