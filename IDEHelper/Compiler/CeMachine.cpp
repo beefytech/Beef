@@ -5069,6 +5069,8 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 		}
 	}
 
+	//auto ceModule = mCeMachine->mCeModule;
+
 
 	AutoTimer autoTimer(mCeMachine->mRevisionExecuteTime);
 
@@ -5776,6 +5778,7 @@ public:
 bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* startFramePtr, BfType*& returnType, BfType*& castReturnType)
 {
 	auto ceModule = mCeMachine->mCeModule;
+	SetAndRestoreValue<bool> ignoreWrites(ceModule->mBfIRBuilder->mIgnoreWrites, false);
 	CeFunction* ceFunction = startFunction;
 	returnType = startFunction->mMethodInstance->mReturnType;
 	uint8* memStart = &mMemory[0];
@@ -8197,6 +8200,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					if (moduleMethodInstance)
 					{
 						auto ceFunction = mCeMachine->QueueMethod(moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc);
+						if (ceFunction == NULL)
+						{
+							_Fail("Method generation failed");
+							return false;
+						}
 						ceFunction->mCeFunctionInfo->mRefCount++;
 						mCeMachine->DerefMethodInfo(callEntry.mFunctionInfo);
 						callEntry.mFunctionInfo = ceFunction->mCeFunctionInfo;
