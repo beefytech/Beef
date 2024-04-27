@@ -56,6 +56,9 @@ namespace System.Reflection
 		public bool CanReflect => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mComptimeMethodFlags.HasFlag(.NoReflect) :
 			mData.mMethodData.[Friend]mFlags.HasFlag(.SpecialName);
+		public bool IsMixin => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags.HasFlag(.Mixin) :
+			mData.mMethodData.[Friend]mFlags.HasFlag(.Mixin);
 
 		public StringView Name => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetName(mData.mComptimeMethodInstance) :

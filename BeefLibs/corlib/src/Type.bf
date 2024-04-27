@@ -1533,6 +1533,7 @@ namespace System.Reflection
 		Virtual             	= 0x0040,     // Method virtual.
 		HideBySig           	= 0x0080,     // Method hides by name+sig, else just by name.
 		ReadOnly				= 0x0100,
+		Mixin                   = 0x0200,
 		Abstract            	= 0x0400,     // Method does not provide an implementation.
 		SpecialName         	= 0x0800,     // Method is special.  Name describes how.
 		StdCall					= 0x1000,
