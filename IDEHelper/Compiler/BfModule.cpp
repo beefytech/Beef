@@ -25058,14 +25058,17 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 							(checkMethod->mProtection != BfProtection_Private) &&
 							(CompareMethodSignatures(checkMethodInstance, mCurMethodInstance)))
 						{
-							if (!methodDef->mIsNew)
+							if ((!methodDef->mIsNew) && (!checkMethod->mDeclaringType->IsExtension()))
 							{
 								BfAstNode* refNode = methodInstance->mMethodDef->GetRefNode();
 								if (refNode != NULL)
 								{
 									BfError* bfError = Warn(BfWarning_CS0114_MethodHidesInherited, StrFormat("Method hides inherited member from '%s'. Use the 'new' keyword if the hiding was intentional.", TypeToString(baseType).c_str()), refNode); //CDH TODO should we mention override keyword in warning text?
 									if (bfError != NULL)
+									{
 										bfError->mIsPersistent = true;
+										mCompiler->mPassInstance->MoreInfo("See inherited method", checkMethod->GetRefNode());
+									}
 								}
 							}
 							foundHiddenMethod = true;
@@ -25992,7 +25995,11 @@ bool BfModule::SlotInterfaceMethod(BfMethodInstance* methodInstance)
 				}
 				else if (!methodDef->mIsNew)
 				{
-					Warn(BfWarning_CS0114_MethodHidesInherited, StrFormat("Method hides inherited member from '%s'. Use the 'new' keyword if hiding was intentional.", TypeToString(ifaceInst).c_str()), declaringNode);
+					auto error = Warn(BfWarning_CS0114_MethodHidesInherited, StrFormat("Method hides inherited member from '%s'. Use the 'new' keyword if hiding was intentional.", TypeToString(ifaceInst).c_str()), declaringNode);
+					if (error != NULL)
+					{
+						mCompiler->mPassInstance->MoreInfo("See inherited method", ifaceMethod->mMethodDef->GetRefNode());
+					}
 				}
 			}
 		}
