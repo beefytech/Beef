@@ -609,7 +609,7 @@ namespace System
 							entryTableCode.Append(", \"");
 							entryTableCode.Append(fieldName);
 							entryTableCode.Append("\", .");
-							entryTableCode.Append(fieldInfo.Name);
+							fieldInfo.GetSourceName(entryTableCode);
 							entryTableCode.Append(", ");
 							entryTableCode.Append((nextCases[caseIdx] == -1) ? "false" : "true");
 							entryTableCode.Append(")");
@@ -622,7 +622,11 @@ namespace System
 							if (caseHasPayload)
 								code.AppendF($"\t\t\t\tmatchIdx = {caseIdx};\n");
 							else
-								code.AppendF($"\t\t\t\treturn .Ok(.{fieldInfo.Name});\n");
+							{
+								code.Append("\t\t\t\treturn .Ok(.");
+								fieldInfo.GetSourceName(code);
+								code.Append(");\n");
+							}
 						}
 						else
 						{

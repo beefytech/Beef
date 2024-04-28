@@ -8,6 +8,32 @@ namespace System
 {
 	static class Compiler
 	{
+		public class Identifier
+		{
+			public static HashSet<String> sReservedNameSet = new .() ~ delete _;
+
+			const String[?] cReservedNames = .("abstract", "alignof", "alloctype", "append", "as", "asm", "base", "break",
+				"case", "catch", "checked", "class", "comptype", "const", "continue", "decltype", "default", "defer", "delegate",
+				"delete", "do", "else", "enum", "explicit", "extension", "extern", "false", "finally", "fixed", "for", "function",
+				"if", "implicit", "in", "interface", "internal", "is", "isconst", "mixin", "namespace", "new", "null", "nullable",
+				"offsetof", "operator", "out", "override", "params", "private", "protected", "public", "readonly", "ref",
+				"rettype", "return", "scope", "sealed", "sizeof", "static", "strideof", "struct", "switch", "this", "true", "try",
+				"typealias", "typeof", "unchecked", "using", "var", "virtual", "volatile", "where", "while");
+
+			public static this()
+			{
+				for (var name in cReservedNames)
+					sReservedNameSet.Add(name);
+			}
+
+			public static void GetSourceName(StringView name, String outStr)
+			{
+				if (sReservedNameSet.ContainsAlt(name))
+					outStr.Append('@');
+				outStr.Append(name);
+			}
+		}
+
 		public abstract class Generator
 		{
 			public enum Flags

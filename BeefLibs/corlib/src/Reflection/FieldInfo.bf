@@ -38,6 +38,11 @@ namespace System.Reflection
 			mFieldData.mCustomAttributesIdx :
 			-1;
 
+		public void GetSourceName(String outStr)
+		{
+			Compiler.Identifier.GetSourceName(Name, outStr);
+		}
+
 	    public Result<void, Error> SetValue(Object obj, Object value)
 	    {    
 	        void* dataAddr = ((uint8*)Internal.UnsafeCastToPtr(obj));
