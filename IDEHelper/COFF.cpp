@@ -3684,6 +3684,10 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 					PTR_ALIGN(data, sectionData, 4);
 				}
 			}
+			else if (lineInfoType == 255)
+			{
+				// Ignore
+			}
 			else
 			{
 				BF_ASSERT((lineInfoType >= DEBUG_S_SYMBOLS) && (lineInfoType <= DEBUG_S_COFF_SYMBOL_RVA));
