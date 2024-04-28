@@ -3692,10 +3692,10 @@ void BfModule::DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool unde
 }
 
 void BfModule::DoPopulateType_CeCheckEnum(BfTypeInstance* typeInstance, bool underlyingTypeDeferred)
-{
+{	
 	if (!typeInstance->IsEnum())
 		return;
-	if ((!underlyingTypeDeferred) && (!typeInstance->IsPayloadEnum()))
+	if (!typeInstance->IsPayloadEnum())
 		return;
 	if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext != NULL))
 		return;

@@ -63,17 +63,23 @@ namespace System
 		public static void FatalError(String msg = "Test fatal error encountered", String filePath = Compiler.CallerFilePath, int line = Compiler.CallerLineNum)
 		{
 			String failStr = scope .()..AppendF("{} at line {} in {}", msg, line, filePath);
-			Internal.[Friend]Test_Error(failStr);
+			if (Compiler.IsComptime)
+				Internal.FatalError(failStr);
+			else
+				Internal.[Friend]Test_Error(failStr);
 		}
 
 		public static void Assert(bool condition, String error = Compiler.CallerExpression[0], String filePath = Compiler.CallerFilePath, int line = Compiler.CallerLineNum) 
 		{
 			if (!condition)
 			{
-				if ((Runtime.CheckAssertError != null) && (Runtime.CheckAssertError(.Test, error, filePath, line) == .Ignore))
+				if ((!Compiler.IsComptime) && (Runtime.CheckAssertError != null) && (Runtime.CheckAssertError(.Test, error, filePath, line) == .Ignore))
 					return;
 				String failStr = scope .()..AppendF("Assert failed: {} at line {} in {}", error, line, filePath);
-				Internal.[Friend]Test_Error(failStr);
+				if (Compiler.IsComptime)
+					Internal.FatalError(failStr);
+				else
+					Internal.[Friend]Test_Error(failStr);
 			}
 		}
 	}

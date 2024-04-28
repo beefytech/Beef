@@ -251,15 +251,23 @@ namespace Tests
 			}
 		}
 
-		[CheckEnum]
+		[CheckPayloadEnum]
 		enum EnumA
 		{
 			case A(int64 aa);
 			case B(float bb);
 		}
 
+		[CheckEnum]
+		enum EnumB
+		{
+			case A = 123;
+			case B = 1000;
+			case C = 1200;
+		}
+
 		[AttributeUsage(.All)]
-		public struct CheckEnumAttribute : Attribute, IComptimeTypeApply
+		public struct CheckPayloadEnumAttribute : Attribute, IComptimeTypeApply
 		{
 			public void ApplyToType(Type type)
 			{
@@ -280,6 +288,26 @@ namespace Tests
 					fieldIdx++;
 				}
 				Test.Assert(fieldIdx == 4);
+			}
+		}
+
+		[AttributeUsage(.All)]
+		public struct CheckEnumAttribute : Attribute, IComptimeTypeApply
+		{
+			public void ApplyToType(Type type)
+			{
+				int fieldIdx = 0;
+				for (var field in type.GetFields())
+				{
+					switch (fieldIdx)
+					{
+					case 0:
+						Test.Assert(field.Name == "A");
+						Test.Assert(field.FieldType.UnderlyingType == typeof(int64));
+					}
+					fieldIdx++;
+				}
+				Test.Assert(fieldIdx == 3);
 			}
 		}
 
