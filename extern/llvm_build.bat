@@ -9,7 +9,7 @@ git clone --depth 1 --branch llvmorg-13.0.1 --config core.autocrlf=false https:/
 @IF EXIST llvm_win64_13_0_1 GOTO HAS_CONFIG
 mkdir llvm_win64_13_0_1
 cd llvm_win64_13_0_1
-cmake ../llvm-project_13_0_1/llvm -G"Visual Studio 16 2019" -Ax64 -Thost=x64 -DLLVM_USE_CRT_DEBUG:STRING="MTd" -DLLVM_USE_CRT_RELEASE:STRING="MT" -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly"
+cmake ../llvm-project_13_0_1/llvm -G"Visual Studio 17 2022" -Ax64 -Thost=x64 -DLLVM_USE_CRT_DEBUG:STRING="MTd" -DLLVM_USE_CRT_RELEASE:STRING="MT" -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly"
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 @GOTO DOBUILD
 
