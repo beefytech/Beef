@@ -12,13 +12,17 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/Support/TargetRegistry.h"
+#include "llvm/MC/TargetRegistry.h"
 #include "llvm/Target/TargetOptions.h"
 #include "llvm/Target/TargetMachine.h"
 #include "llvm/IR/InlineAsm.h"
 //#include "llvm/Target/TargetSubtargetInfo.h"
 //#include "llvm/Target/TargetInstrInfo.h"
 #include "llvm/MC/MCAsmInfo.h"
+#include "llvm/MC/MCInstrDesc.h"
+#include "llvm/MC/MCSubtargetInfo.h"
+#include "llvm/MC/MCInstrInfo.h"
+#include "llvm/MC/MCRegisterInfo.h"
 #include "llvm/MC/MCStreamer.h"
 #include "llvm/MC/MCDisassembler/MCDisassembler.h"
 #include "llvm/MC/MCParser/MCAsmParser.h"
@@ -212,8 +216,8 @@ bool X86Instr::IsLoadAddress()
 	const MCInstrDesc &instDesc = mX86->mInstrInfo->get(mMCInst.getOpcode());
 	if (instDesc.NumOperands >= 6)
 	{
-		if ((instDesc.OpInfo[0].OperandType == MCOI::OPERAND_REGISTER) &&
-			(instDesc.OpInfo[4].OperandType == MCOI::OPERAND_MEMORY))
+		if ((instDesc.operands()[0].OperandType == MCOI::OPERAND_REGISTER) &&
+			(instDesc.operands()[4].OperandType == MCOI::OPERAND_MEMORY))
 			return true;
 	}
 
@@ -384,7 +388,7 @@ uint32 X86Instr::GetTarget(Debugger* debugger, X86CPURegisters* registers)
 
 	int opIdx = 0;
 	auto operand = mMCInst.getOperand(0);
-	if ((mMCInst.getNumOperands() >= 5) && (instDesc.OpInfo[0].OperandType == MCOI::OPERAND_REGISTER) && (instDesc.OpInfo[4].OperandType == MCOI::OPERAND_MEMORY))
+	if ((mMCInst.getNumOperands() >= 5) && (instDesc.operands()[0].OperandType == MCOI::OPERAND_REGISTER) && (instDesc.operands()[4].OperandType == MCOI::OPERAND_MEMORY))
 	{
 		opIdx = 4;
 		operand = mMCInst.getOperand(opIdx);
@@ -396,7 +400,7 @@ uint32 X86Instr::GetTarget(Debugger* debugger, X86CPURegisters* registers)
 		//TODO: LLVM3.8 - add changes to MCInst?
 		/*if (instDesc.OpInfo[opIdx].OperandType == MCOI::OPERAND_PCREL)
 			targetAddr += mMCInst.getPCAddr() + mMCInst.getInstLength();*/
-		if (instDesc.OpInfo[opIdx].OperandType == MCOI::OPERAND_PCREL)
+		if (instDesc.operands()[opIdx].OperandType == MCOI::OPERAND_PCREL)
 			targetAddr += mAddress + mSize;
 		return targetAddr;
 	}
@@ -699,8 +703,8 @@ void X86CPU::GetClobbersForMnemonic(const StringImpl& mnemonic, int argCount, Ar
 		if (!outMayClobberMem && desc.mayStore())
 			outMayClobberMem = true;
 
-		int numImplicits = desc.getNumImplicitDefs();
-		auto impPtr = desc.getImplicitDefs();
+		int numImplicits = (int)desc.implicit_defs().size();
+		auto impPtr = desc.implicit_defs();
 		for (int iImp=0; iImp<numImplicits; ++iImp)
 			impRegs.Add(impPtr[iImp]);
 	}

@@ -29,6 +29,7 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/IR/InlineAsm.h"
 #include "llvm/Support/FileSystem.h"
+#include "llvm/IR/DIBuilder.h"
 
 #pragma warning(pop)
 
@@ -1894,11 +1895,11 @@ String BfIRBuilder::ToString(BfIRType irType)
 		{
 			auto& typeEntry = mBfIRCodeGen->GetTypeEntry(irType.mId);
 			if (irType.mKind == BfIRType::TypeKind::TypeKind_TypeId)
-				llvmType = typeEntry.mLLVMType;
+				llvmType = typeEntry.mType->mLLVMType;
 			else if (irType.mKind == BfIRType::TypeKind::TypeKind_TypeInstId)
-				llvmType = typeEntry.mInstLLVMType;
+				llvmType = typeEntry.mInstType->mLLVMType;
 			else if (irType.mKind == BfIRType::TypeKind::TypeKind_TypeInstPtrId)
-				llvmType = typeEntry.mInstLLVMType->getPointerTo();
+				llvmType = typeEntry.mInstType->mLLVMType->getPointerTo();
 		}
 
 		if (llvmType == NULL)
@@ -1910,7 +1911,7 @@ String BfIRBuilder::ToString(BfIRType irType)
 		if (auto pointerType = llvm::dyn_cast<llvm::PointerType>(llvmType))
 		{
 			strStream << "\n ElementType: ";
-			pointerType->getElementType()->print(strStream);
+			//pointerType->getElementType()->print(strStream);
 		}
 		strStream.flush();
 		return outStr;

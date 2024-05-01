@@ -5,6 +5,7 @@
 #include "BeefySysLib/MemStream.h"
 #include "codeview/cvinfo.h"
 #include "BeefySysLib/util/BeefPerf.h"
+#include "llvm/IR/DIBuilder.h"
 
 #include "BeefySysLib/util/AllocDebug.h"
 

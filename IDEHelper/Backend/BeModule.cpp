@@ -4,6 +4,7 @@
 #include "BeefySysLib/util/BeefPerf.h"
 #include "BeefySysLib/util/StackHelper.h"
 #include "../Compiler/BfIRCodeGen.h"
+#include "llvm/IR/DIBuilder.h"
 
 #include "BeefySysLib/util/AllocDebug.h"
 

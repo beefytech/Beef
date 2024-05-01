@@ -585,10 +585,10 @@ void ShowMemoryUsage()
 	return HeapAlloc(hHeap, dwFlags, dwBytes);
 }*/
 
-static void BfFatalErrorHandler(void *user_data, const std::string& reason, bool gen_crash_diag)
+static void BfFatalErrorHandler(void *user_data, const char* reason, bool gen_crash_diag)
 {
-	BF_FATAL(reason.c_str());
-	OutputDebugStrF("LLVM ERROR: %s\n", reason.c_str());
+	BF_FATAL(reason);
+	OutputDebugStrF("LLVM ERROR: %s\n", reason);
 }
 
 #ifdef BF_PLATFORM_WINDOWS

@@ -31,17 +31,40 @@ enum BfIRCodeGenEntryKind
 	BfIRCodeGenEntryKind_LLVMValue,
 	BfIRCodeGenEntryKind_LLVMValue_Aligned,
 	BfIRCodeGenEntryKind_LLVMType,
+	BfIRCodeGenEntryKind_TypedValue,
+	BfIRCodeGenEntryKind_TypedValue_Aligned,
+	BfIRCodeGenEntryKind_TypeEx,
 	BfIRCodeGenEntryKind_LLVMBasicBlock,
 	BfIRCodeGenEntryKind_LLVMMetadata,
 	BfIRCodeGenEntryKind_IntrinsicData,
 };
+
+class BfIRTypeEx;
 
 class BfIRIntrinsicData
 {
 public:
 	String mName;
 	BfIRIntrinsic mIntrinsic;
-	llvm::Type* mReturnType;
+	BfIRTypeEx* mReturnType;
+};
+
+class BfIRTypeEx
+{
+public:
+	llvm::Type* mLLVMType;
+	SizedArray<BfIRTypeEx*, 1> mMembers;
+
+	BfIRTypeEx()
+	{
+		mLLVMType = NULL;
+	}
+};
+
+struct BfIRTypedValue
+{
+	llvm::Value* mValue;
+	BfIRTypeEx* mTypeEx;
 };
 
 struct BfIRCodeGenEntry
@@ -51,9 +74,11 @@ struct BfIRCodeGenEntry
 	{
 		llvm::Value* mLLVMValue;
 		llvm::Type* mLLVMType;
+		BfIRTypeEx* mTypeEx;
 		llvm::BasicBlock* mLLVMBlock;
 		llvm::MDNode* mLLVMMetadata;
 		BfIRIntrinsicData* mIntrinsicData;
+		BfIRTypedValue mTypedValue;
 	};
 };
 
@@ -65,9 +90,9 @@ public:
 	int mAlign;
 	llvm::DIType* mDIType;
 	llvm::DIType* mInstDIType;
-	llvm::Type* mLLVMType;
-	llvm::Type* mAlignLLVMType;
-	llvm::Type* mInstLLVMType;
+	BfIRTypeEx* mType;
+	BfIRTypeEx* mAlignType;
+	BfIRTypeEx* mInstType;
 
 public:
 	BfIRTypeEntry()
@@ -77,9 +102,9 @@ public:
 		mAlign = -1;
 		mDIType = NULL;
 		mInstDIType = NULL;
-		mLLVMType = NULL;
-		mAlignLLVMType = NULL;
-		mInstLLVMType = NULL;
+		mType = NULL;
+		mAlignType = NULL;
+		mInstType = NULL;
 	}
 };
 
@@ -112,6 +137,7 @@ public:
 	llvm::LLVMContext* mLLVMContext;
 	llvm::Module* mLLVMModule;
 	llvm::Function* mActiveFunction;
+	BfIRTypeEx* mActiveFunctionType;
 	llvm::IRBuilder<>* mIRBuilder;
 	llvm::AttributeList* mAttrSet;
 	llvm::DIBuilder* mDIBuilder;
@@ -129,42 +155,57 @@ public:
 	int mConstValIdx;
 
 	int mCmdCount;
+	int mCurLine;
 	Dictionary<int, BfIRCodeGenEntry> mResults;
 	Dictionary<int, BfIRTypeEntry> mTypes;
 	Dictionary<int, llvm::Function*> mIntrinsicMap;
+	Dictionary<BfTypeCode, BfIRTypeEx*> mTypeCodeTypeExMap;
+	Dictionary<llvm::Type*, BfIRTypeEx*> mLLVMTypeExMap;
+	Dictionary<BfIRTypeEx*, BfIRTypeEx*> mPointerTypeExMap;
 	Dictionary<llvm::Function*, int> mIntrinsicReverseMap;
 	Array<llvm::Constant*> mConfigConsts32;
 	Array<llvm::Constant*> mConfigConsts64;
-	Dictionary<llvm::Type*, llvm::Value*> mReflectDataMap;
-	Dictionary<llvm::Type*, llvm::Type*> mAlignedTypeToNormalType;
-	Dictionary<llvm::Type*, int> mTypeToTypeIdMap;
+	Dictionary<BfIRTypeEx*, BfIRTypedValue> mReflectDataMap;
+	Dictionary<BfIRTypeEx*, BfIRTypeEx*> mAlignedTypeToNormalType;
+	Dictionary<BfIRTypeEx*, int> mTypeToTypeIdMap;
 	HashSet<llvm::BasicBlock*> mLockedBlocks;
 	OwnedArray<BfIRIntrinsicData> mIntrinsicData;
 	Dictionary<llvm::Function*, BfIRSimdType> mFunctionsUsingSimd;
+	Array<BfIRTypeEx*> mIRTypeExs;
+	BfIRTypedValue mLastFuncCalled;
 
 public:
 	void InitTarget();
 	void FixValues(llvm::StructType* structType, llvm::SmallVector<llvm::Value*, 8>& values);
 	void FixIndexer(llvm::Value*& val);
+	void FixTypedValue(BfIRTypedValue& typedValue);
 	BfTypeCode GetTypeCode(llvm::Type* type, bool isSigned);
 	llvm::Type* GetLLVMType(BfTypeCode typeCode, bool& isSigned);
+	BfIRTypeEx* GetTypeEx(llvm::Type* llvmType);
+	BfIRTypeEx* CreateTypeEx(llvm::Type* llvmType);
+	BfIRTypeEx* GetTypeEx(BfTypeCode typeCode, bool& isSigned);
+	BfIRTypeEx* GetPointerTypeEx(BfIRTypeEx* typeEx);
+	BfIRTypeEx* GetTypeMember(BfIRTypeEx* typeEx, int idx);
 	BfIRTypeEntry& GetTypeEntry(int typeId);
-	BfIRTypeEntry* GetTypeEntry(llvm::Type* type);
+	BfIRTypeEntry* GetTypeEntry(BfIRTypeEx* type);
 	void SetResult(int id, llvm::Value* value);
+	void SetResult(int id, const BfIRTypedValue& value);
 	void SetResultAligned(int id, llvm::Value* value);
+	void SetResultAligned(int id, const BfIRTypedValue& value);
 	void SetResult(int id, llvm::Type* value);
+	void SetResult(int id, BfIRTypeEx* typeEx);
 	void SetResult(int id, llvm::BasicBlock* value);
 	void SetResult(int id, llvm::MDNode* value);
 	void CreateMemSet(llvm::Value* addr, llvm::Value* val, llvm::Value* size, int alignment, bool isVolatile = false);
 	void AddNop();
-	llvm::Value* TryToVector(llvm::Value* value);
-	llvm::Value* TryToVector(llvm::Value* value, llvm::Type* elemType);
-	llvm::Type* GetElemType(llvm::Value* value);
-	bool TryMemCpy(llvm::Value* ptr, llvm::Value* val);
-	bool TryVectorCpy(llvm::Value* ptr, llvm::Value* val);
-	llvm::Type* GetSizeAlignedType(BfIRTypeEntry* typeEntry);
-	llvm::Value* GetAlignedPtr(llvm::Value* val);
-	llvm::Value* FixGEP(llvm::Value* fromValue, llvm::Value* result);
+	llvm::Value* TryToVector(const BfIRTypedValue& value);	
+	bool TryMemCpy(const BfIRTypedValue& ptr, llvm::Value* val);
+	bool TryVectorCpy(const BfIRTypedValue& ptr, llvm::Value* val);
+
+	llvm::Type* GetLLVMPointerElementType(BfIRTypeEx* typeEx);	
+
+	BfIRTypeEx* GetSizeAlignedType(BfIRTypeEntry* typeEntry);
+	BfIRTypedValue GetAlignedPtr(const BfIRTypedValue& val);	
 	llvm::Value* DoCheckedIntrinsic(llvm::Intrinsic::ID intrin, llvm::Value* lhs, llvm::Value* rhs, bool useAsm);
 
 public:
@@ -186,11 +227,15 @@ public:
 	void Read(bool& val);
 	void Read(int8& val);
 	void Read(BfIRTypeEntry*& type);
+	void Read(BfIRTypeEx*& typeEx, BfIRTypeEntry** outTypeEntry = NULL);
 	void Read(llvm::Type*& llvmType, BfIRTypeEntry** outTypeEntry = NULL);
 	void Read(llvm::FunctionType*& llvmType);
+	void ReadFunctionType(BfIRTypeEx*& typeEx);
+	void Read(BfIRTypedValue& llvmValue, BfIRCodeGenEntry** codeGenEntry = NULL, BfIRSizeAlignKind sizeAlignKind = BfIRSizeAlignKind_Original);
 	void Read(llvm::Value*& llvmValue, BfIRCodeGenEntry** codeGenEntry = NULL, BfIRSizeAlignKind sizeAlignKind = BfIRSizeAlignKind_Original);
-	void Read(llvm::Constant*& llvmConstant, BfIRSizeAlignKind sizeAlignKind = BfIRSizeAlignKind_Original);
+	void Read(llvm::Constant*& llvmConstant, BfIRSizeAlignKind sizeAlignKind = BfIRSizeAlignKind_Original);	
 	void Read(llvm::Function*& llvmFunc);
+	void ReadFunction(BfIRTypedValue& typeEx);
 	void Read(llvm::BasicBlock*& llvmBlock);
 	void Read(llvm::MDNode*& llvmMD);
 	void Read(llvm::Metadata*& llvmMD);
@@ -237,6 +282,7 @@ public:
 	String GetSimdTypeString(BfIRSimdType type);
 	BfIRSimdType GetSimdTypeFromFunction(llvm::Function* function);
 
+	BfIRTypedValue GetTypedValue(int streamId);
 	llvm::Value* GetLLVMValue(int streamId);
 	llvm::Type* GetLLVMType(int streamId);
 	llvm::BasicBlock* GetLLVMBlock(int streamId);

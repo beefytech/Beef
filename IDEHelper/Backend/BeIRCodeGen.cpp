@@ -2,6 +2,7 @@
 #include "../Compiler/BfIRCodeGen.h"
 #include "BeDbgModule.h"
 #include "BeefySysLib/util/BeefPerf.h"
+#include "llvm/IR/DIBuilder.h"
 
 #include "BeefySysLib/util/AllocDebug.h"
 #include "BeefySysLib/util/Hash.h"

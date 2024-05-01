@@ -14,7 +14,10 @@
 #include "llvm/Support/SourceMgr.h"
 #include "llvm/MC/MCContext.h"
 #include "llvm/ADT/StringRef.h"
-#include "llvm/Support/TargetRegistry.h"
+#include "llvm/MC/TargetRegistry.h"
+#include "llvm/MC/MCInstrInfo.h"
+#include "llvm/MC/MCRegisterInfo.h"
+#include "llvm/MC/MCSubtargetInfo.h"
 #include "llvm/IR/InlineAsm.h"
 //#include "llvm/Support/MemoryObject.h"
 #include "llvm/Target/TargetOptions.h"
@@ -363,8 +366,8 @@ bool X64Instr::IsLoadAddress()
 	const MCInstrDesc &instDesc = mX64->mInstrInfo->get(mMCInst.getOpcode());
 	if (instDesc.NumOperands >= 6)
 	{
-		if ((instDesc.OpInfo[0].OperandType == MCOI::OPERAND_REGISTER) &&
-			(instDesc.OpInfo[4].OperandType == MCOI::OPERAND_MEMORY))
+		if ((instDesc.operands()[0].OperandType == MCOI::OPERAND_REGISTER) &&
+			(instDesc.operands()[4].OperandType == MCOI::OPERAND_MEMORY))
 			return true;
 	}
 
@@ -724,7 +727,7 @@ uint64 X64Instr::GetTarget(Debugger* debugger, X64CPURegisters* registers)
 	auto operand = mMCInst.getOperand(0);
 	if (mMCInst.getNumOperands() > 4)
 	{
-		if ((instDesc.OpInfo[0].OperandType == MCOI::OPERAND_REGISTER) && (instDesc.OpInfo[4].OperandType == MCOI::OPERAND_MEMORY))
+		if ((instDesc.operands()[0].OperandType == MCOI::OPERAND_REGISTER) && (instDesc.operands()[4].OperandType == MCOI::OPERAND_MEMORY))
 		{
 			opIdx = 4;
 			operand = mMCInst.getOperand(opIdx);
@@ -734,7 +737,7 @@ uint64 X64Instr::GetTarget(Debugger* debugger, X64CPURegisters* registers)
 	if (operand.isImm())
 	{
 		auto targetAddr = (uint64)operand.getImm();
-		if (instDesc.OpInfo[opIdx].OperandType == MCOI::OPERAND_PCREL)
+		if (instDesc.operands()[opIdx].OperandType == MCOI::OPERAND_PCREL)
 			targetAddr += mAddress + mSize;
 		return targetAddr;
 	}
@@ -1109,8 +1112,8 @@ void X64CPU::GetClobbersForMnemonic(const StringImpl& mnemonic, int argCount, Ar
 		if (!outMayClobberMem && desc.mayStore())
 			outMayClobberMem = true;
 
-		int numImplicits = desc.getNumImplicitDefs();
-		auto impPtr = desc.getImplicitDefs();
+		int numImplicits = (int)desc.implicit_defs().size();
+		auto& impPtr = desc.implicit_defs();
 		for (int iImp = 0; iImp<numImplicits; ++iImp)
 			impRegs.Add(impPtr[iImp]);
 	}

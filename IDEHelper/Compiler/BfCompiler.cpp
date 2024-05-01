@@ -11,6 +11,13 @@
 #include "BeefySysLib/util/AllocDebug.h"
 
 #include "llvm/Support/Compiler.h"
+#include "llvm/Support/Compiler.h"
+#include "llvm/IR/IRBuilder.h"
+#include "llvm/IR/Type.h"
+#include "llvm/IR/DIBuilder.h"
+#include "llvm/IR/DebugInfo.h"
+#include "llvm/IR/Argument.h"
+#include "llvm/IR/Constants.h"
 
 #include "BfCompiler.h"
 #include "BfSystem.h"
@@ -55,11 +62,11 @@ void pt(llvm::Type* t)
 	os << " isSized: " << t->isSized() << "\n";
 	os.flush();
 
-	if (auto pointerType = llvm::dyn_cast<llvm::PointerType>(t))
-	{
-		Beefy::OutputDebugStrF("Element: ");
-		pt(pointerType->getElementType());
-	}
+// 	if (auto pointerType = llvm::dyn_cast<llvm::PointerType>(t))
+// 	{
+// 		Beefy::OutputDebugStrF("Element: ");
+// 		pt(pointerType->getElementType());
+// 	}
 }
 
 void ppt(llvm::Type* t)
@@ -70,7 +77,7 @@ void ppt(llvm::Type* t)
 		Beefy::OutputDebugStrF("Not a pointer type");
 		return;
 	}
-	pt(pointerType->getElementType());
+	//pt(pointerType->getElementType());
 }
 
 void pt(llvm::DINode* t)

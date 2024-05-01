@@ -27,6 +27,7 @@
 #pragma warning(disable:4800)
 #pragma warning(disable:4996)
 
+#include "llvm/IR/DIBuilder.h"
 #include "llvm/IR/Module.h"
 #include "llvm/IR/Constants.h"
 #include "llvm/IR/GlobalValue.h"

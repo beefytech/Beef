@@ -29,6 +29,15 @@
 #include <fcntl.h>
 #include <time.h>
 
+#pragma warning (disable:4267)
+//#include "llvm/Support/Compiler.h"
+//#include "llvm/IR/IRBuilder.h"
+//#include "llvm/IR/Type.h"
+#include "llvm/IR/DIBuilder.h"
+//#include "llvm/IR/DebugInfo.h"
+//#include "llvm/IR/Argument.h"
+//#include "llvm/IR/Constants.h"
+
 #pragma warning(pop)
 
 //////////////////////////////////////////////////////////////////////////
@@ -1249,8 +1258,8 @@ void BfModule::SetupIRBuilder(bool dbgVerifyCodeGen)
 		//  code as we walk the AST
 		//mBfIRBuilder->mDbgVerifyCodeGen = true;
 		if (
-			(mModuleName == "-")
-			//|| (mModuleName == "BeefTest2_ClearColorValue")
+			(mModuleName == "BeefTest_LLVMType")
+			|| (mModuleName == "System_ValueType")
 			//|| (mModuleName == "Tests_FuncRefs")
 			)
 			mBfIRBuilder->mDbgVerifyCodeGen = true;
