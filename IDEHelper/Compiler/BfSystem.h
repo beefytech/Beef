@@ -357,7 +357,8 @@ enum BfOptLevel
 enum BfLTOType
 {
 	BfLTOType_None = 0,
-	BfLTOType_Thin = 1
+	BfLTOType_Thin = 1,
+	BfLTOType_Fat = 2
 };
 
 enum BfCFLAAType

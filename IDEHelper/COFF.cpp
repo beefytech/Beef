@@ -3289,6 +3289,8 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 			break;
 		case 0x1179:
 			break;
+		case 0x1180:
+			break;
 		case 7:
 			// Unknown
 			break;

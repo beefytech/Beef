@@ -21,6 +21,7 @@ namespace llvm
 	class Module;
 	class LLVMContext;
 	class TargetMachine;
+	class Triple;
 };
 
 NS_BF_BEGIN
@@ -207,6 +208,8 @@ public:
 	BfIRTypeEx* GetSizeAlignedType(BfIRTypeEntry* typeEntry);
 	BfIRTypedValue GetAlignedPtr(const BfIRTypedValue& val);	
 	llvm::Value* DoCheckedIntrinsic(llvm::Intrinsic::ID intrin, llvm::Value* lhs, llvm::Value* rhs, bool useAsm);
+
+	void RunOptimizationPipeline(const llvm::Triple& targetTriple);
 
 public:
 	BfIRCodeGen();

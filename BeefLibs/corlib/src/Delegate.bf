@@ -1,5 +1,6 @@
 namespace System
 {
+	[AlwaysInclude]
 	class Delegate : IHashable
 	{
 	    void* mFuncPtr;
@@ -61,6 +62,7 @@ namespace System
 
 	delegate void Action();
 
+	[AlwaysInclude]
 	struct Function : int
 	{
 
