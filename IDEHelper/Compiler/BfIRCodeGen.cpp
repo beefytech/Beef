@@ -1181,7 +1181,7 @@ void BfIRCodeGen::Read(BfIRTypedValue& typedValue, BfIRCodeGenEntry** codeGenEnt
 				llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), idx1)};
 
 			auto compositeType = GetTypeMember(target.mTypeEx, 0);
-			int elemIdx = BF_MIN(idx1, (int)compositeType->mMembers.mSize - 1);
+			int elemIdx = BF_MAX(BF_MIN(idx1, (int)compositeType->mMembers.mSize - 1), 0);
 			auto elemType = GetTypeMember(compositeType, elemIdx);
 
 			auto constant = llvm::dyn_cast<llvm::Constant>(target.mValue);
@@ -4709,7 +4709,15 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM_NOTRANS(llvm::Value*, instValue);
 			BF_ASSERT(llvm::isa<llvm::Instruction>(instValue));
-			((llvm::Instruction*)instValue)->setDebugLoc(llvm::DebugLoc());
+
+			if (llvm::dyn_cast<llvm::DbgDeclareInst>(instValue))
+			{
+				printf("BfIRCmd_ClearDebugLocationInst on DbgDeclareInst in %s\n", mModuleName.c_str());
+			}
+			else
+			{
+				((llvm::Instruction*)instValue)->setDebugLoc(llvm::DebugLoc());
+			}
 		}
 		break;
 	case BfIRCmd_ClearDebugLocationInstLast:
@@ -4720,7 +4728,14 @@ void BfIRCodeGen::HandleNextCmd()
 				if (!bb->empty())
 				{
 					auto& inst = bb->back();
-					inst.setDebugLoc(llvm::DebugLoc());
+					if (llvm::dyn_cast<llvm::DbgDeclareInst>(&inst))
+					{
+						printf("BfIRCmd_ClearDebugLocationInstLast on DbgDeclareInst\n");
+					}
+					else
+					{
+						inst.setDebugLoc(llvm::DebugLoc());
+					}					
 				}
 			}
 		}
@@ -4729,7 +4744,14 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM_NOTRANS(llvm::Value*, instValue);
 			BF_ASSERT(llvm::isa<llvm::Instruction>(instValue));
-			((llvm::Instruction*)instValue)->setDebugLoc(mIRBuilder->getCurrentDebugLocation());
+			if ((llvm::dyn_cast<llvm::DbgDeclareInst>(instValue)) && (!mIRBuilder->getCurrentDebugLocation()))
+			{
+				printf("BfIRCmd_UpdateDebugLocation NULL on DbgDeclareInst\n");
+			}
+			else
+			{
+				((llvm::Instruction*)instValue)->setDebugLoc(mIRBuilder->getCurrentDebugLocation());
+			}
 		}
 		break;
 	case BfIRCmd_SetCurrentDebugLocation:
@@ -5394,15 +5416,20 @@ void BfIRCodeGen::HandleNextCmd()
 			llvm::Instruction* insertBeforeInst = NULL;
 			if (insertBefore != NULL)
 				insertBeforeInst = llvm::dyn_cast<llvm::Instruction>(insertBefore);
-			if (insertBeforeInst != NULL)
+
+			// Protect against lack of debug location
+			if (mIRBuilder->getCurrentDebugLocation())
 			{
-				SetResult(curId, mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
-					mIRBuilder->getCurrentDebugLocation(), insertBeforeInst));
-			}
-			else
-			{
-				SetResult(curId, mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
-					mIRBuilder->getCurrentDebugLocation(), mIRBuilder->GetInsertBlock()));
+				if (insertBeforeInst != NULL)
+				{
+					SetResult(curId, mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
+						mIRBuilder->getCurrentDebugLocation(), insertBeforeInst));
+				}
+				else
+				{
+					SetResult(curId, mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
+						mIRBuilder->getCurrentDebugLocation(), mIRBuilder->GetInsertBlock()));
+				}
 			}
 		}
 		break;

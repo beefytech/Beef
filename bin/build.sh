@@ -43,13 +43,13 @@ else
 	echo "Ninja isn't installed, consider installing it for faster build speeds."
 fi
 
-LLVM_CONFIG=$(command -v llvm-config-13 2>/dev/null || command -v llvm-config 2>/dev/null)
+LLVM_CONFIG=$(command -v llvm-config-18 2>/dev/null || command -v llvm-config 2>/dev/null)
 LLVM_FOUND=0
 
 if [ -n "$LLVM_CONFIG" ]; then
   LLVM_VERSION=$($LLVM_CONFIG --version)
   LLVM_MAJOR_VERSION=$(echo "$LLVM_VERSION" | cut -d. -f1)
-  if [ "$LLVM_MAJOR_VERSION" = "13" ]; then
+  if [ "$LLVM_MAJOR_VERSION" = "18" ]; then
     LLVM_FOUND=1
   fi
 fi
@@ -59,8 +59,8 @@ set -e
 
 ### Dependencies ###
 
-if [ ! -f ../extern/llvm_linux_13_0_1/_Done.txt ] && [ $LLVM_FOUND == 0 ]; then
-	echo "ERROR: LLVM 13 was not detected on your system. Please install the package 'llvm-13-dev' and try again." >&2
+if [ ! -f ../extern/llvm_linux_18_1_4/_Done.txt ] && [ $LLVM_FOUND == 0 ]; then
+	echo "ERROR: LLVM 18 was not detected on your system. Please install the package 'llvm-18-dev' and try again." >&2
 	echo "ERROR: As an alternative, you can compile LLVM from source using the script 'extern/llvm_build.sh'." >&2
 	exit
 fi

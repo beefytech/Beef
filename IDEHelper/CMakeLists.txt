@@ -185,29 +185,29 @@ else()
     X86Target.cpp
   )
 
-  include_directories(
-    ../extern/llvm-project_13_0_1/llvm/include
-    ../extern/llvm-project_13_0_1/llvm/lib/Target
+  include_directories(h
+    ../extern/llvm-project_18_1_4/llvm/include
+    ../extern/llvm-project_18_1_4/llvm/lib/Target18_1_4
   )
 
   if(CMAKE_BUILD_TYPE STREQUAL "Debug")
     include_directories(
-      ../extern/llvm_linux_13_0_1/include
-      ../extern/llvm_linux_13_0_1/lib/Target/X86
-      ../extern/llvm_linux_13_0_1/lib/Target/AArch64
+      ../extern/llvm_linux_18_1_4/include
+      ../extern/llvm_linux_18_1_4/lib/Target/X86
+      ../extern/llvm_linux_18_1_4/lib/Target/AArch64
     )
-    set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_13_0_1/lib")
+    set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_18_1_4/lib")
   else()
     include_directories(
-      ../extern/llvm_linux_rel_13_0_1/include
-      ../extern/llvm_linux_rel_13_0_1/lib/Target/X86
-      ../extern/llvm_linux_rel_13_0_1/lib/Target/AArch64
+      ../extern/llvm_linux_rel_18_1_4/include
+      ../extern/llvm_linux_rel_18_1_4/lib/Target/X86
+      ../extern/llvm_linux_rel_18_1_4/lib/Target/AArch64
     )
-    set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_rel_13_0_1/lib")
+    set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_rel_18_1_4/lib")
   endif()
 
   execute_process(
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_13_0_1/bin/llvm-config --system-libs --link-static
+    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_18_1_4/bin/llvm-config --system-libs --link-static
     OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
     OUTPUT_STRIP_TRAILING_WHITESPACE
     RESULT_VARIABLE EXEC_RESULT
@@ -220,8 +220,8 @@ else()
       message(FATAL_ERROR "llvm-config couldn't be executed: ${EXEC_RESULT}")
     endif()
   endif()
-  
-  message(STATUS "Found LLVM 13.0.1 (local build)")
+
+  message(STATUS "Found LLVM 18.1.4 (local build)")
 
   set(TARGET_LIBS_OS "${LLVM_SYSTEM_LIBS}")
 

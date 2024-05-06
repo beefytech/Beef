@@ -14,34 +14,34 @@ do
 	fi
 done
 
-if [ ! -d llvm-project_13_0_1 ]; then
-	if [ -f llvm-13.0.1.src.tar.xz ]; then # if user downloaded llvm-13.0.1.src.tar.xz then use it instead
-		tar -xf llvm-13.0.1.src.tar.xz
-		mkdir llvm-project_13_0_1
-		mv llvm-13.0.1.src llvm-project_13_0_1/llvm
-	else # shallow git clone llvm repo if llvm-13.0.1.src.tar.xz does not exists
-		git clone --depth 1 --branch llvmorg-13.0.1 https://github.com/llvm/llvm-project.git llvm-project_13_0_1
+if [ ! -d llvm-project_18_1_4 ]; then
+	if [ -f llvm-18.1.4.src.tar.xz ]; then # if user downloaded llvm-18.1.4.src.tar.xz then use it instead
+		tar -xf llvm-18.1.4.src.tar.xz
+		mkdir llvm-project_18_1_4
+		mv llvm-18.1.4.src llvm-project_18_1_4/llvm
+	else # shallow git clone llvm repo if llvm-18.1.4.src.tar.xz does not exists
+		git clone --depth 1 --branch llvmorg-18.1.4 https://github.com/llvm/llvm-project.git llvm-project_18_1_4
 	fi
-fi #end if llvm-project_13_0_1 exists
+fi #end if llvm-project_18_1_4 exists
 
-if [ ! -d llvm_linux_13_0_1 ]; then
-	mkdir llvm_linux_13_0_1
+if [ ! -d llvm_linux_18_1_4 ]; then
+	mkdir llvm_linux_18_1_4
 fi
 
-if [ ! -d llvm_linux_13_0_1/bin ] || [ $FORCE_BUILD == 1 ]; then
-	cd llvm_linux_13_0_1
-	cmake $USE_NINJA ../llvm-project_13_0_1/llvm -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly" -DCMAKE_BUILD_TYPE:String="Debug"
+if [ ! -d llvm_linux_18_1_4/bin ] || [ $FORCE_BUILD == 1 ]; then
+	cd llvm_linux_18_1_4
+	cmake $USE_NINJA ../llvm-project_18_1_4/llvm -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly" -DCMAKE_BUILD_TYPE:String="Debug"
 	cmake --build . -t $(cat ../llvm_targets.txt)
 	cd ..
 fi
 
-if [ ! -d llvm_linux_rel_13_0_1 ]; then
-	mkdir llvm_linux_rel_13_0_1
+if [ ! -d llvm_linux_rel_18_1_4 ]; then
+	mkdir llvm_linux_rel_18_1_4
 fi
 
-if [ ! -d llvm_linux_rel_13_0_1/bin ] || [ $FORCE_BUILD == 1 ]; then
-	cd llvm_linux_rel_13_0_1
-	cmake $USE_NINJA ../llvm-project_13_0_1/llvm -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly" -DCMAKE_BUILD_TYPE:String="Release"
+if [ ! -d llvm_linux_rel_18_1_4/bin ] || [ $FORCE_BUILD == 1 ]; then
+	cd llvm_linux_rel_18_1_4
+	cmake $USE_NINJA ../llvm-project_18_1_4/llvm -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly" -DCMAKE_BUILD_TYPE:String="Release"
 	cmake --build . -t $(cat ../llvm_targets.txt)
 	cd ..
 fi
@@ -50,6 +50,6 @@ if [ ! -d ../IDE/dist/llvm/bin ]; then
 	mkdir ../IDE/dist/llvm
 	mkdir ../IDE/dist/llvm/bin
 fi
-cp llvm_linux_rel_13_0_1/bin/llvm-ar ../IDE/dist/llvm/bin
+cp llvm_linux_rel_18_1_4/bin/llvm-ar ../IDE/dist/llvm/bin
 
-echo done > llvm_linux_13_0_1/_Done.txt
+echo done > llvm_linux_18_1_4/_Done.txt

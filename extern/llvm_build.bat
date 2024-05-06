@@ -9,6 +9,7 @@ git clone --depth 1 --branch llvmorg-18.1.4 --config core.autocrlf=false https:/
 @IF EXIST llvm_win64_18_1_4 GOTO HAS_CONFIG
 mkdir llvm_win64_18_1_4
 cd llvm_win64_18_1_4
+@REM cmake ../llvm-project_18_1_4/llvm -G"Visual Studio 17 2022" -Ax64 -Thost=x64 -DLLVM_ENABLE_PROJECTS=clang -D CMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly"
 cmake ../llvm-project_18_1_4/llvm -G"Visual Studio 17 2022" -Ax64 -Thost=x64 -D CMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly"
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 @GOTO DOBUILD

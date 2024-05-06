@@ -1258,8 +1258,8 @@ void BfModule::SetupIRBuilder(bool dbgVerifyCodeGen)
 		//  code as we walk the AST
 		//mBfIRBuilder->mDbgVerifyCodeGen = true;
 		if (
-			(mModuleName == "BeefTest_LLVMType")
-			|| (mModuleName == "System_ValueType")
+			(mModuleName == "vdata")
+			|| (mModuleName == "")
 			//|| (mModuleName == "Tests_FuncRefs")
 			)
 			mBfIRBuilder->mDbgVerifyCodeGen = true;
