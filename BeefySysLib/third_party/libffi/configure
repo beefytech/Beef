@@ -2744,10 +2744,10 @@ $as_echo "continue configure in default builddir \"./$ax_enable_builddir\"" >&6;
       srcdir=`echo "$ax_enable_builddir" |
               sed -e 's,^\./,,;s,[^/]$,&/,;s,[^/]*/,../,g;s,[/]$,,;'`
       # going to restart from subdirectory location
-      test -f $srcdir/config.log   && mv $srcdir/config.log   .
-      test -f $srcdir/confdefs.h   && mv $srcdir/confdefs.h   .
-      test -f $srcdir/conftest.log && mv $srcdir/conftest.log .
-      test -f $srcdir/$cache_file  && mv $srcdir/$cache_file  .
+      test -f $srcdir/config.log   && cp $srcdir/config.log   .
+      test -f $srcdir/confdefs.h   && cp $srcdir/confdefs.h   .
+      test -f $srcdir/conftest.log && cp $srcdir/conftest.log .
+      test -f $srcdir/$cache_file  && cp $srcdir/$cache_file  .
       { $as_echo "$as_me:${as_lineno-$LINENO}: result: ....exec $SHELL $srcdir/$0 \"--srcdir=$srcdir\" \"--enable-builddir=$ax_enable_builddir\" ${1+\"$@\"}" >&5
 $as_echo "....exec $SHELL $srcdir/$0 \"--srcdir=$srcdir\" \"--enable-builddir=$ax_enable_builddir\" ${1+\"$@\"}" >&6; }
       case "$0" in # restart

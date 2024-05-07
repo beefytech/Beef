@@ -1113,7 +1113,7 @@ void X64CPU::GetClobbersForMnemonic(const StringImpl& mnemonic, int argCount, Ar
 			outMayClobberMem = true;
 
 		int numImplicits = (int)desc.implicit_defs().size();
-		auto& impPtr = desc.implicit_defs();
+		auto impPtr = desc.implicit_defs();
 		for (int iImp = 0; iImp<numImplicits; ++iImp)
 			impRegs.Add(impPtr[iImp]);
 	}

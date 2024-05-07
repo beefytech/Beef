@@ -15,7 +15,7 @@ set(OUTPUT_RELEASE Release/bin)
 
 project(${PROJECT_NAME} CXX C)
 
-set (CMAKE_CXX_STANDARD 14)
+set (CMAKE_CXX_STANDARD 17)
 add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
 
 #set(CMAKE_POSITION_INDEPENDENT_CODE ON)
@@ -119,7 +119,7 @@ add_executable(${PROJECT_NAME}
    ${SRC_FILES}
 )
 
-find_package(LLVM 18 CONFIG COMPONENTS)
+find_package(LLVM 18.1 CONFIG COMPONENTS)
 
 if (LLVM_FOUND)
   message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -130,41 +130,7 @@ if (LLVM_FOUND)
 
   set(TARGET_LIBS_OS "-lLLVM-18")
 else()
-  include_directories(
-    ../extern/llvm-project_18_1_4/llvm/include
-    ../extern/llvm-project_18_1_4/llvm/lib/Target
-  )
-
-  if(CMAKE_BUILD_TYPE STREQUAL "Debug")
-    include_directories(
-      ../extern/llvm_linux_18_1_4/include
-      ../extern/llvm_linux_18_1_4/lib/Target/X86
-    )
-    set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_18_1_4/lib")
-  else()
-    include_directories(
-      ../extern/llvm_linux_rel_18_1_4/include
-      ../extern/llvm_linux_rel_18_1_4/lib/Target/X86
-    )
-    set(LLVM_LIB "${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_rel_18_1_4/lib")
-  endif()
-
-  execute_process(
-    COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/../extern/llvm_linux_18_1_4/bin/llvm-config --system-libs --link-static
-    OUTPUT_VARIABLE LLVM_SYSTEM_LIBS
-    OUTPUT_STRIP_TRAILING_WHITESPACE
-    RESULT_VARIABLE EXEC_RESULT
-  )
-
-  if (EXEC_RESULT AND NOT EXEC_RESULT EQUAL 0)
-    if (EXEC_RESULT MATCHES "^[0-9]+$")
-      message(FATAL_ERROR "llvm-config exited with code ${EXEC_RESULT}.")
-    else()
-      message(FATAL_ERROR "llvm-config couldn't be executed: ${EXEC_RESULT}")
-    endif()
-  endif()
-
-  message(STATUS "Found LLVM 18.1.4 (local build)")
+  message(FATAL_ERROR "LLVM not found")
 endif()
 
 if (${APPLE})

@@ -49,7 +49,8 @@ LLVM_FOUND=0
 if [ -n "$LLVM_CONFIG" ]; then
   LLVM_VERSION=$($LLVM_CONFIG --version)
   LLVM_MAJOR_VERSION=$(echo "$LLVM_VERSION" | cut -d. -f1)
-  if [ "$LLVM_MAJOR_VERSION" = "18" ]; then
+  LLVM_MINOR_VERSION=$(echo "$LLVM_VERSION" | cut -d. -f2)
+  if [ "$LLVM_MAJOR_VERSION" = "18" ] && [ "$LLVM_MINOR_VERSION" = "1" ]; then
     LLVM_FOUND=1
   fi
 fi
@@ -59,9 +60,8 @@ set -e
 
 ### Dependencies ###
 
-if [ ! -f ../extern/llvm_linux_18_1_4/_Done.txt ] && [ $LLVM_FOUND == 0 ]; then
-	echo "ERROR: LLVM 18 was not detected on your system. Please install the package 'llvm-18-dev' and try again." >&2
-	echo "ERROR: As an alternative, you can compile LLVM from source using the script 'extern/llvm_build.sh'." >&2
+if [ $LLVM_FOUND == 0 ]; then
+	echo "ERROR: LLVM 18.1 was not detected on your system. Please install the package 'llvm-18-dev' and try again." >&2
 	exit
 fi
 
@@ -102,25 +102,26 @@ else
 fi
 
 ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libBeefRT_d.a libBeefRT_d.a
-ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libBeefySysLib_d.$LIBEXT libBeefySysLib_d.$LIBEXT
-ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libIDEHelper_d.$LIBEXT libIDEHelper_d.$LIBEXT
+ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libBeefySysLib_d.a libBeefySysLib_d.a
+ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libIDEHelper_d.a libIDEHelper_d.a
 
 ln -s -f $ROOTPATH/jbuild/Release/bin/libBeefRT.a libBeefRT.a
-ln -s -f $ROOTPATH/jbuild/Release/bin/libBeefySysLib.$LIBEXT libBeefySysLib.$LIBEXT
-ln -s -f $ROOTPATH/jbuild/Release/bin/libIDEHelper.$LIBEXT libIDEHelper.$LIBEXT
+ln -s -f $ROOTPATH/jbuild/Release/bin/libBeefySysLib.a libBeefySysLib.a
+ln -s -f $ROOTPATH/jbuild/Release/bin/libIDEHelper.a libIDEHelper.a
+ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libhunspell.$LIBEXT libhunspell.$LIBEXT
 
 ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libBeefRT_d.a ../../BeefLibs/Beefy2D/dist/libBeefRT_d.a
-ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libBeefySysLib_d.$LIBEXT ../../BeefLibs/Beefy2D/dist/libBeefySysLib_d.$LIBEXT
-ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libIDEHelper_d.$LIBEXT ../../BeefLibs/Beefy2D/dist/libIDEHelper_d.$LIBEXT
+ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libBeefySysLib_d.a ../../BeefLibs/Beefy2D/dist/libBeefySysLib_d.a
+ln -s -f $ROOTPATH/jbuild_d/Debug/bin/libIDEHelper_d.a ../../BeefLibs/Beefy2D/dist/libIDEHelper_d.a
 
 ln -s -f $ROOTPATH/jbuild/Release/bin/libBeefRT.a ../../BeefLibs/Beefy2D/dist/libBeefRT.a
-ln -s -f $ROOTPATH/jbuild/Release/bin/libBeefySysLib.$LIBEXT ../../BeefLibs/Beefy2D/dist/libBeefySysLib.$LIBEXT
-ln -s -f $ROOTPATH/jbuild/Release/bin/libIDEHelper.$LIBEXT ../../BeefLibs/Beefy2D/dist/libIDEHelper.$LIBEXT
+ln -s -f $ROOTPATH/jbuild/Release/bin/libBeefySysLib.a ../../BeefLibs/Beefy2D/dist/libBeefySysLib.a
+ln -s -f $ROOTPATH/jbuild/Release/bin/libIDEHelper.a ../../BeefLibs/Beefy2D/dist/libIDEHelper.a
 
 ### DEBUG ###
 
 echo Building BeefBuild_bootd
-../../jbuild_d/Debug/bin/BeefBoot --out="BeefBuild_bootd" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --define=DEBUG --startup=BeefBuild.Program --linkparams="./libBeefRT_d.a ./libIDEHelper_d.$LIBEXT ./libBeefySysLib_d.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs_d.txt) $LINKOPTS"
+../../jbuild_d/Debug/bin/BeefBoot --out="BeefBuild_bootd" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --define=DEBUG --startup=BeefBuild.Program --linkparams="./libBeefRT_d.a ./libIDEHelper_d.a ./libBeefySysLib_d.a ./libhunspell.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs_d.txt) $LINKOPTS"
 echo Building BeefBuild_d
 ./BeefBuild_bootd -clean -proddir=../../BeefBuild -config=Debug
 echo Testing IDEHelper/Tests in BeefBuild_d
@@ -129,7 +130,7 @@ echo Testing IDEHelper/Tests in BeefBuild_d
 ### RELEASE ###
 
 echo Building BeefBuild_boot
-../../jbuild/Release/bin/BeefBoot --out="BeefBuild_boot" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --startup=BeefBuild.Program --linkparams="./libBeefRT.a ./libIDEHelper.$LIBEXT ./libBeefySysLib.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs.txt) $LINKOPTS"
+../../jbuild/Release/bin/BeefBoot --out="BeefBuild_boot" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --startup=BeefBuild.Program --linkparams="./libBeefRT.a ./libIDEHelper.a ./libBeefySysLib.a ./libhunspell.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs.txt) $LINKOPTS"
 echo Building BeefBuild
 ./BeefBuild_boot -clean -proddir=../../BeefBuild -config=Release
 echo Testing IDEHelper/Tests in BeefBuild
