@@ -1248,6 +1248,7 @@ public:
 		this->mLength = sv.mLength;
 		memcpy((char*)this->mPtr, sv.mPtr, this->mLength);
 		((char*)this->mPtr)[this->mLength] = 0;
+		return *this;
 	}
 
 	~StringSimple()

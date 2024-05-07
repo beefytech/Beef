@@ -1258,7 +1258,7 @@ void BfModule::SetupIRBuilder(bool dbgVerifyCodeGen)
 		//  code as we walk the AST
 		//mBfIRBuilder->mDbgVerifyCodeGen = true;
 		if (
-			(mModuleName == "vdata")
+			(mModuleName == "-")
 			|| (mModuleName == "")
 			//|| (mModuleName == "Tests_FuncRefs")
 			)
@@ -9816,7 +9816,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 					{
 						mBfIRBuilder->SetInsertPoint(mCurMethodState->mIRInitBlock);
 						typedVal = BfTypedValue(mBfIRBuilder->CreateBitCast(allocaInst, mBfIRBuilder->MapType(arrayType)), arrayType);
-						mBfIRBuilder->ClearDebugLocation_Last();
+						mBfIRBuilder->ClearDebugLocation(typedVal.mValue);
 						mBfIRBuilder->SetInsertPoint(prevBlock);
 						allocaBlock = mCurMethodState->mIRInitBlock;
 					}
