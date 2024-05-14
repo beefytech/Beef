@@ -6019,6 +6019,8 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 		{
 			BfResolvedArg resolvedArg;
 			resolvedArg.mTypedValue = typedValueExpr->mTypedValue;
+			if (resolvedArg.mTypedValue.IsParams())
+				resolvedArg.mArgFlags = BfArgFlag_ParamsExpr;
 			resolvedArg.mExpression = typedValueExpr->mRefNode;
 			resolvedArgs.mResolvedArgs.push_back(resolvedArg);
 			continue;
@@ -13393,6 +13395,8 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		auto typedValueExpr = &typedValueExprs[i];
 		typedValueExpr->mTypedValue.mValue = BfIRValue(BfIRValueFlags_Value, -1);
 		typedValueExpr->mTypedValue.mType = methodInstance->GetParamType(i + paramOffset);
+		if (methodInstance->GetParamKind(i + paramOffset) == BfParamKind_Params)
+			typedValueExpr->mTypedValue.mKind = BfTypedValueKind_Params;
 		typedValueExpr->mRefNode = NULL;
 		args[i] = typedValueExpr;
 	}
