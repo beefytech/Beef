@@ -863,7 +863,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 				paramType = mModule->ResolveGenericType(paramType, NULL, genericArgumentsSubstitute, mModule->mCurTypeInstance, allowSpecializeFail);
 				paramType = mModule->FixIntUnknown(paramType);
 			}
-			if (paramType->IsConstExprValue())
+			if ((paramType != NULL) && (paramType->IsConstExprValue()))
 			{
 				paramWasConstExpr = true;
 				paramType = ((BfConstExprValueType*)paramType)->mType;
@@ -875,7 +875,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 				prevParamType = mModule->ResolveGenericType(prevParamType, NULL, prevGenericArgumentsSubstitute, mModule->mCurTypeInstance, allowSpecializeFail);
 				prevParamType = mModule->FixIntUnknown(prevParamType);
 			}
-			if (prevParamType->IsConstExprValue())
+			if ((prevParamType != NULL) && (prevParamType->IsConstExprValue()))
 			{
 				prevParamWasConstExpr = true;
 				prevParamType = ((BfConstExprValueType*)prevParamType)->mType;
