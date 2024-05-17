@@ -14,16 +14,15 @@ PUSHD %~dp0..\
 mkdir stats
 :STATS_HAS
 
-@IF EXIST extern\llvm_win64_13_0_1\_Done.txt GOTO LLVM_HAS
-call extern\llvm_build.bat
+@IF EXIST BeefDep0_Done.txt GOTO DEPS0_HAS
+@ECHO Downloading dependencies (LLVM)...
+bin\curl.exe -O https://www.beeflang.org/BeefDep0.zip
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
-:LLVM_HAS
-
-@IF EXIST IDE\dist\llvm\bin\lld-link.exe GOTO LLD_HAS
-@ECHO ========== MISSING LLVM TOOLS ==========
-@ECHO IDE\dist\llvm\bin\lld-link.exe not found. Copy in from a Beef install or an LLVM/Clang install.
-@GOTO HADERROR
-:LLD_HAS
+@ECHO Extracting dependencies (takes a while)...
+bin\tar.exe -xf BeefDep0.zip
+@IF %ERRORLEVEL% NEQ 0 GOTO
+del BeefDep0.zip
+:DEPS0_HAS
 
 copy BeefLibs\SDL2\dist\SDL2.dll IDE\dist
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
