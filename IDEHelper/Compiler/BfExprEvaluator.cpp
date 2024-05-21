@@ -15952,7 +15952,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 					}
 
 					mModule->mBfIRBuilder->PopulateType(resultType);
-					if (!resultType->IsValuelessType())
+					if ((!resultType->IsValuelessType()) && (!addr.IsConst()))
 					{
 						mModule->mBfIRBuilder->CreateMemSet(mModule->CreateIndexedValue(resultType, addr, clearFromIdx),
 							mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int8, isUninit ? 0xCC : 0), clearBytes, resultType->mAlign);
