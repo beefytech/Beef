@@ -4764,6 +4764,20 @@ void BfIRCodeGen::HandleNextCmd()
 				column = 0;
 			mCurLine = line;
 			mDebugLoc = llvm::DILocation::get(*mLLVMContext, line, column, diScope, diInlinedAt);
+
+#ifdef _DEBUG
+			llvm::DILocation* DL = mDebugLoc;
+			if (DL != NULL)
+			{
+				llvm::Metadata* Parent = DL->getRawScope();
+				llvm::DILocalScope* Scope = DL->getInlinedAtScope();
+				llvm::DISubprogram* SP = Scope->getSubprogram();
+				if (SP != NULL)
+				{
+					BF_ASSERT(SP->describes(mActiveFunction));
+				}
+			}
+#endif
 		}
 		break;
 	case BfIRCmd_Nop:
