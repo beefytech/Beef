@@ -4897,7 +4897,10 @@ void BfIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_DbgGetCurrentLocation:
 		{
-			SetResult(curId, mIRBuilder->getCurrentDebugLocation());
+			auto debugLoc = mIRBuilder->getCurrentDebugLocation();
+			if (!debugLoc)
+				debugLoc = mDebugLoc;
+			SetResult(curId, debugLoc);
 		}
 		break;
 	case BfIRCmd_DbgSetType:
