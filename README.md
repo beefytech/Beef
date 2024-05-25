@@ -20,7 +20,7 @@ The Beef IDE supports productivity features such as autocomplete, fixits, reform
 [Official website (beeflang.org)](https://www.beeflang.org)<br>
 [Documentation](https://www.beeflang.org/docs/)<br>
 [Stable Releases](https://github.com/beefytech/Beef/releases)<br>
-[Nightly Windows Release](http://nightly.beeflang.org/BeefSetup.exe)<br>
+[Nightly Windows Release](https://nightly.beeflang.org/BeefSetup.exe)<br>
 
 # IDE Screenshots
 
