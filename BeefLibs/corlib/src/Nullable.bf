@@ -70,6 +70,12 @@ namespace System
             outValue = mValue;
             return true;
         }
+
+		public bool TryGetValue(out T outValue)
+		{
+		    outValue = mValue;
+		    return mHasValue;
+		}
         
         public T GetValueOrDefault(T defaultValue)
         {
