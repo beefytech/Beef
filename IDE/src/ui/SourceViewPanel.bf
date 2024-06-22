@@ -4655,7 +4655,7 @@ namespace IDE.ui
 							int breakpointCount = (.)(curLineFlags & .BreakpointCountMask);
 							curLineFlags++;
 
-							float iconX = Math.Max(GS!(-2), mEditWidget.mX - GS!(24) - sDrawLeftAdjust) + breakpointCount*-GS!(2);
+							float iconX = 4;
 							float iconY = 0 + ewc.mLineCoords[drawLineNum] + (lineSpacing - DarkTheme.sUnitSize + GS!(5)) / 2;
 
 							// Just leave last digit visible
@@ -4680,8 +4680,7 @@ namespace IDE.ui
 									continue;
 								//hadLineIcon[drawLineNum - lineStart] = true;
 								Image image = DarkTheme.sDarkTheme.GetImage(bookmark.mIsDisabled ? .IconBookmarkDisabled : .IconBookmark);
-                                g.Draw(image, Math.Max(GS!(-5), mEditWidget.mX - GS!(30) - sDrawLeftAdjust),
-									0 + bookmark.mLineNum * lineSpacing);
+                                g.Draw(image, 0, bookmark.mLineNum * lineSpacing);
 
 								var curLineFlags = ref lineFlags[drawLineNum - lineStart];
 								curLineFlags |= .Boomkmark;
@@ -4718,22 +4717,8 @@ namespace IDE.ui
 									continue;
 
 								lineStr.Clear();
+								lineStr.AppendF("{0}", lineIdx + 1);
 
-								int maxLineChars = Int32.MaxValue;
-
-								let curLineFlags = lineFlags[lineIdx - lineStart];
-								if ((uint8)(curLineFlags & .BreakpointCountMask) > 0)
-									maxLineChars = 1;
-								else if (curLineFlags.HasFlag(.Boomkmark))
-									maxLineChars = 2;
-
-								switch (maxLineChars)
-								{
-								case 0:
-								case 1: lineStr.AppendF("{0}", (lineIdx + 1) % 10);
-								case 2: lineStr.AppendF("{0}", (lineIdx + 1) % 100);
-								default: lineStr.AppendF("{0}", lineIdx + 1);
-								}
 						        g.DrawString(lineStr, 0, GS!(2) + ewc.mLineCoords[lineIdx], FontAlign.Right, editX - GS!(14));
 						    }
 						}
@@ -7210,7 +7195,7 @@ namespace IDE.ui
 
             var font = IDEApp.sApp.mTinyCodeFont;
 
-            float lineWidth = Math.Max(font.GetWidth(ToStackString!(mEditWidget.Content.GetLineCount())) + GS!(24), GS!(32));
+            float lineWidth = Math.Max(font.GetWidth(ToStackString!(mEditWidget.Content.GetLineCount())) + GS!(36), GS!(32));
             return Math.Max(GS!(24), lineWidth);
         }
 
