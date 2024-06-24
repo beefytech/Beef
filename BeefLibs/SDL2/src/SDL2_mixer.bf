@@ -288,8 +288,7 @@ namespace SDL2
 			int32 ticks
 		);
 
-		/* chunk refers to a Mix_Chunk* */
-		[LinkName("Mix_PlayChannel")]
+		/* chunk refers to a Mix_Chunk* */		
 		public static int32 PlayChannel(
 			int32 channel,
 			Chunk* chunk,
