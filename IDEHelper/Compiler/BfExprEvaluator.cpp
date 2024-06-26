@@ -971,6 +971,17 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 				}
 			}
 
+			if ((!isBetter) && (!isWorse) && (paramType->IsRef()) && (prevParamType->IsRef()))
+			{
+				auto refType = (BfRefType*)paramType;
+				auto prevRefType = (BfRefType*)prevParamType;
+
+				// Prefer 'out' to 'ref'
+				SET_BETTER_OR_WORSE(
+					(refType->mRefKind == BfRefType::RefKind_Out) && (prevRefType->mRefKind == BfRefType::RefKind_Ref),
+					(refType->mRefKind == BfRefType::RefKind_Ref) && (prevRefType->mRefKind == BfRefType::RefKind_Out));				
+			}
+
 			if ((newArgIdx >= 0) && (newMethodInstance->GetParamKind(newArgIdx) == BfParamKind_Params))
 				usedExtendedForm = true;
 			if ((prevArgIdx >= 0) && (prevMethodInstance->GetParamKind(prevArgIdx) == BfParamKind_Params))
