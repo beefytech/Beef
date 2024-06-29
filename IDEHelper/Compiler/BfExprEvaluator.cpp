@@ -6103,26 +6103,7 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 		{
 			resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_LambdaBindAttempt);
 			handled = true;
-		}
-		else if (auto memberRef = BfNodeDynCast<BfMemberReferenceExpression>(argExpr))
-		{
-			if (memberRef->mTarget == NULL)
-			{
-				resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_UnqualifiedDotAttempt);
-				handled = true;
-			}
-		}
-		else if (auto invokeExpr = BfNodeDynCast<BfInvocationExpression>(argExpr))
-		{
-			if (auto memberRef = BfNodeDynCast<BfMemberReferenceExpression>(invokeExpr->mTarget))
-			{
-				if (memberRef->mTarget == NULL)
-				{
-					resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_UnqualifiedDotAttempt);
-					handled = true;
-				}
-			}
-		}
+		}		
 		else if (auto defaultExpr = BfNodeDynCast<BfDefaultExpression>(argExpr))
 		{
 			if (defaultExpr->mTypeRef == NULL)
@@ -6160,6 +6141,35 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 				}
 			}
 		}*/
+
+		if (!handled)
+		{
+			BfAstNode* checkArgExpr = argExpr;
+			while (checkArgExpr != NULL)
+			{
+				if (auto memberRef = BfNodeDynCast<BfMemberReferenceExpression>(checkArgExpr))
+				{
+					if (memberRef->mTarget == NULL)
+					{
+						resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_UnqualifiedDotAttempt);
+						handled = true;
+						break;
+					}
+					else
+						checkArgExpr = memberRef->mTarget;
+				}
+				else if (auto invokeExpr = BfNodeDynCast<BfInvocationExpression>(checkArgExpr))
+				{
+					checkArgExpr = invokeExpr->mTarget;
+				}
+				else if (auto parenExpr = BfNodeDynCast<BfParenthesizedExpression>(checkArgExpr))
+				{
+					checkArgExpr = parenExpr->mExpression;
+				}
+				else
+					break;
+			}
+		}
 
 		if ((argExpr != NULL) && (!handled))
 		{
