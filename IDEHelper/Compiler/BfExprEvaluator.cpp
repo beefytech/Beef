@@ -6130,18 +6130,6 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 			handled = true;
 		}
 
-		/*else if (auto castExpr = BfNodeDynCast<BfCastExpression>(argExpr))
-		{
-			if (auto namedTypeRef = BfNodeDynCastExact<BfNamedTypeReference>(castExpr->mTypeRef))
-			{
-				if (namedTypeRef->ToString() == "ExpectedType")
-				{
-					resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_ExpectedTypeCast);
-					handled = true;
-				}
-			}
-		}*/
-
 		if (!handled)
 		{
 			BfAstNode* checkArgExpr = argExpr;
