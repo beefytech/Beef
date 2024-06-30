@@ -4628,7 +4628,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		if (isPayloadEnum)
 		{
 			auto enumType = switchValue.mType->ToTypeInstance();
-			for (auto fieldInstance : enumType->mFieldInstances)
+			for (auto& fieldInstance : enumType->mFieldInstances)
 			{
 				auto fieldDef = fieldInstance.GetFieldDef();
 				if (fieldDef->IsEnumCaseEntry())
