@@ -1217,14 +1217,14 @@ namespace System.Collections
 			public int32 mNext;          // Index of next entry, -1 if last
 		}
 
-		public struct Enumerator : IEnumerator<T>
+		public struct Enumerator : IRefEnumerator<T*>, IEnumerator<T>
 		{
 			private HashSet<T> mSet;
 			private int_cosize mIndex;
 #if VERSION_HASHSET
 			private int32 mVersion;
 #endif
-			private T mCurrent;
+			private T* mCurrent;
 
 			public this(HashSet<T> set)
 			{
@@ -1233,7 +1233,7 @@ namespace System.Collections
 #if VERSION_HASHSET
 				mVersion = set.mVersion;
 #endif
-				mCurrent = default;
+				mCurrent = null;
 			}
 
 #if VERSION_HASHSET
@@ -1257,14 +1257,14 @@ namespace System.Collections
 				{
 					if (mSet.mSlots[mIndex].mHashCode >= 0)
 					{
-						mCurrent = mSet.mSlots[mIndex].mValue;
+						mCurrent = &mSet.mSlots[mIndex].mValue;
 						mIndex++;
 						return true;
 					}
 					mIndex++;
 				}
 				mIndex = mSet.mLastIndex + 1;
-				mCurrent = default(T);
+				mCurrent = null;
 				return false;
 			}
 
@@ -1272,7 +1272,15 @@ namespace System.Collections
 			{
 				get
 				{
-					return mCurrent;
+					return *mCurrent;
+				}
+			}
+
+			public ref T CurrentRef
+			{
+				get
+				{
+					return ref *mCurrent;
 				}
 			}
 
@@ -1292,7 +1300,7 @@ namespace System.Collections
 				CheckVersion();
 #endif
 				mIndex = 0;
-				mCurrent = default(T);
+				mCurrent = null;
 			}
 
 			public Result<T> GetNext() mut
@@ -1300,6 +1308,13 @@ namespace System.Collections
 				if (!MoveNext())
 					return .Err;
 				return Current;
+			}
+
+			public Result<T*> GetNextRef() mut
+			{
+				if (!MoveNext())
+					return .Err;
+				return &CurrentRef;
 			}
 		}
 	}
