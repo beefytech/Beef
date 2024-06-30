@@ -1399,7 +1399,20 @@ void BfPrinter::Visit(BfIdentifierNode* identifierNode)
 	Visit(identifierNode->ToBase());
 
 	if (!CheckReplace(identifierNode))
+	{		
+		if (!mOutString.IsEmpty())
+		{
+			char endC = mOutString[mOutString.mLength - 1];
+			if ((endC == '_') || (isalnum((uint8)endC)))
+			{
+				// Can fix spacing in error conditions
+				if (identifierNode->mTriviaStart >= 0)
+					Write(identifierNode, identifierNode->mTriviaStart, identifierNode->mSrcStart - identifierNode->mTriviaStart);
+			}
+		}
+
 		WriteSourceString(identifierNode);
+	}
 }
 
 void BfPrinter::Visit(BfQualifiedNameNode* nameNode)
