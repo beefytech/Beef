@@ -470,19 +470,19 @@ namespace System
 		public static extern void BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sysDirKind, char8* outPath, int32* inOutPathLen, BfpFileResult* outResult);
 #else
 		
-		public static void BfpDirectory_Create(char8* name, BfpFileResult* outResult) => Runtime.NotImplemented();
+		public static void BfpDirectory_Create(char8* name, BfpFileResult* outResult) { *outResult = .UnknownError; }
 		
-		public static void BfpDirectory_Rename(char8* oldName, char8* newName, BfpFileResult* outResult) => Runtime.NotImplemented();
+		public static void BfpDirectory_Rename(char8* oldName, char8* newName, BfpFileResult* outResult) { *outResult = .UnknownError; }
 		
-		public static void BfpDirectory_Delete(char8* name, BfpFileResult* outResult) => Runtime.NotImplemented();
+		public static void BfpDirectory_Delete(char8* name, BfpFileResult* outResult) { *outResult = .UnknownError; }
 		
-		public static void BfpDirectory_GetCurrent(char8* outPath, int32* inOutPathSize, BfpFileResult* outResult) => Runtime.NotImplemented();
+		public static void BfpDirectory_GetCurrent(char8* outPath, int32* inOutPathSize, BfpFileResult* outResult) { *outResult = .UnknownError; }
 		
-		public static void BfpDirectory_SetCurrent(char8* path, BfpFileResult* outResult) => Runtime.NotImplemented();
+		public static void BfpDirectory_SetCurrent(char8* path, BfpFileResult* outResult) { *outResult = .UnknownError; }
 		
-		public static bool BfpDirectory_Exists(char8* path) => Runtime.NotImplemented();
+		public static bool BfpDirectory_Exists(char8* path) => false;
 		
-		public static void BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sysDirKind, char8* outPath, int32* inOutPathLen, BfpFileResult* outResult) => Runtime.NotImplemented();
+		public static void BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sysDirKind, char8* outPath, int32* inOutPathLen, BfpFileResult* outResult) { *outResult = .UnknownError; }
 #endif
 
 		public enum BfpFileCreateKind : int32
