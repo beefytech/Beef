@@ -177,7 +177,7 @@ if (LLVM_FOUND)
   include_directories(${LLVM_INCLUDE_DIRS})
   add_definitions(${LLVM_DEFINITIONS})
 
-  set(TARGET_LIBS_OS "-lLLVM-18 ${LLVM_SYSTEM_LIBS}")
+  set(STRIP ${TARGET_LIBS_OS} "-lLLVM-18 ${LLVM_SYSTEM_LIBS}")
 else()
   message(FATAL_ERROR "LLVM not found")
 endif()
