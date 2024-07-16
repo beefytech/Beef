@@ -17,6 +17,7 @@ namespace IDE.ui
 			Compiler,
 		    Debugger,
 		    VisualStudio,
+			Terminal,
 			Wasm,
 
 		    COUNT
@@ -61,6 +62,7 @@ namespace IDE.ui
 			AddCategoryItem(root, "Compiler");
 		    AddCategoryItem(root, "Debugger");
 			AddCategoryItem(root, "Visual Studio");
+			AddCategoryItem(root, "Terminal");
 			AddCategoryItem(root, "Wasm");
 
 			if (!gApp.mSettings.mVSSettings.IsConfigured())
@@ -96,7 +98,6 @@ namespace IDE.ui
 			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
 			AddPropertiesItem(category, "Font", "mFonts");
 			AddPropertiesItem(category, "Font Size", "mFontSize");
-			AddPropertiesItem(category, "Windows Console", "mWindowsConsole");
 			AddPropertiesItem(category, "Autocomplete", "mAutoCompleteShowKind");
 			AddPropertiesItem(category, "Autocomplete Require Control", "mAutoCompleteRequireControl");
 			AddPropertiesItem(category, "Autocomplete Require Tab", "mAutoCompleteRequireTab");
@@ -166,6 +167,18 @@ namespace IDE.ui
 			category.mIsBold = true;
 			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
 			AddPropertiesItem(category, "Emscripten Path", "mEmscriptenPath", null, .BrowseForFolder);
+			category.Open(true, true);
+		}
+
+		void PopulateTerminalOptions()
+		{
+			mCurPropertiesTarget = gApp.mSettings;
+
+			var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
+			var (category, propEntry) = AddPropertiesItem(root, "General");
+			category.mIsBold = true;
+			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
+			AddPropertiesItem(category, "Windows Terminal", "mWindowsTerminal");
 			category.Open(true, true);
 		}
 
@@ -424,6 +437,8 @@ namespace IDE.ui
 					PopulateDebuggerOptions();
 				case .VisualStudio:
 					PopulateVSOptions();
+				case .Terminal:
+					PopulateTerminalOptions();
 				case .Wasm:
 					PopulateWasmOptions();
 				default:

@@ -657,7 +657,6 @@ namespace IDE
 
 			public List<String> mFonts = new .() ~ DeleteContainerAndItems!(_);
 			public float mFontSize = 12;
-			public String mWindowsConsole = new .("Powershell") ~ delete _;
 			public AutoCompleteShowKind mAutoCompleteShowKind = .PanelIfVisible;
 			public bool mAutoCompleteRequireControl = true;
 			public bool mAutoCompleteRequireTab = false;
@@ -692,7 +691,6 @@ namespace IDE
 						sd.Add(str);
 				}
 				sd.Add("FontSize", mFontSize);
-				sd.Add("WindowsConsole", mWindowsConsole);
 				sd.Add("AutoCompleteShowKind", mAutoCompleteShowKind);
 				sd.Add("AutoCompleteRequireControl", mAutoCompleteRequireControl);
 				sd.Add("AutoCompleteRequireTab", mAutoCompleteRequireTab);
@@ -730,7 +728,6 @@ namespace IDE
 				}
 				sd.Get("UIScale", ref gApp.mSettings.mUISettings.mScale); // Legacy
 				sd.Get("FontSize", ref mFontSize);
-				sd.Get("WindowsConsole", mWindowsConsole);
 				sd.Get("AutoCompleteShowKind", ref mAutoCompleteShowKind);
 				sd.Get("AutoCompleteRequireControl", ref mAutoCompleteRequireControl);
 				sd.Get("AutoCompleteRequireTab", ref mAutoCompleteRequireTab);
@@ -1112,6 +1109,7 @@ namespace IDE
 		public KeySettings mKeySettings = new .() ~ delete _;
 		public RecentFiles mRecentFiles = new RecentFiles() ~ delete _;
 		public String mWakaTimeKey = new .() ~ delete _;
+		public String mWindowsTerminal = new .("Powershell") ~ delete _;
 		public String mEmscriptenPath = new .() ~ delete _;
 		public bool mEnableDevMode;
 		public TutorialsFinished mTutorialsFinished = .();
@@ -1169,6 +1167,8 @@ namespace IDE
 				mDebuggerSettings.Serialize(sd);
 			using (sd.CreateObject("VisualStudio"))
 				mVSSettings.Serialize(sd);
+			using (sd.CreateObject("Terminal"))
+				sd.Add("WindowsTerminal", mWindowsTerminal);
 			using (sd.CreateObject("Wasm"))
 				sd.Add("EmscriptenPath", mEmscriptenPath);
 
@@ -1258,6 +1258,8 @@ namespace IDE
 				mDebuggerSettings.Deserialize(sd);
 			using (sd.Open("VisualStudio"))
 				mVSSettings.Deserialize(sd);
+			using (sd.Open("Terminal"))
+				sd.Get("WindowsTerminal", mWindowsTerminal);
 			using (sd.Open("Wasm"))
 				sd.Get("EmscriptenPath", mEmscriptenPath);
 

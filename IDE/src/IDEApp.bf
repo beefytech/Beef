@@ -6525,7 +6525,7 @@ namespace IDE
 
 								ProcessStartInfo procInfo = scope ProcessStartInfo();
 								procInfo.UseShellExecute = true;
-								procInfo.SetFileName(gApp.mSettings.mEditorSettings.mDefaultConsole);
+								procInfo.SetFileName(gApp.mSettings.mWindowsTerminal);
 								procInfo.SetWorkingDirectory(directory);
 
 								let process = scope SpawnedProcess();
