@@ -184,7 +184,7 @@ namespace IDE.ui
 				}
 
 				ProcessStartInfo psi = scope ProcessStartInfo();
-				psi.SetFileName(gApp.mSettings.mEditorSettings.mDefaultConsole);
+				psi.SetFileName(gApp.mSettings.mEditorSettings.mWindowsConsole);
 				psi.UseShellExecute = true;
 				psi.SetWorkingDirectory(mPath);
 

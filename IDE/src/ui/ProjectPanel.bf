@@ -2957,7 +2957,8 @@ namespace IDE.ui
 
 			void AddOpenContainingFolder()
 			{
-				var item = menu.AddItem("Open Containing Folder");
+				var folderItem = menu.AddItem("Open Containing Folder");
+				var item = folderItem.AddItem("In Explorer");
 				item.mOnMenuItemSelected.Add(new (item) =>
 				    {
 						let projectItem = GetSelectedProjectItem();
@@ -2990,7 +2991,7 @@ namespace IDE.ui
 						}
 				    });
 
-				item = menu.AddItem("Open in Terminal");
+				item = folderItem.AddItem("In Console");
 				item.mOnMenuItemSelected.Add(new (menu) =>
 					{
 						let projectItem = GetSelectedProjectItem();
@@ -3014,7 +3015,7 @@ namespace IDE.ui
 						if (!path.IsWhiteSpace)
 						{
 							ProcessStartInfo psi = scope ProcessStartInfo();
-							psi.SetFileName(gApp.mSettings.mEditorSettings.mDefaultConsole);
+							psi.SetFileName(gApp.mSettings.mEditorSettings.mWindowsConsole);
 							psi.SetWorkingDirectory(path);
 							psi.UseShellExecute = true;
 
