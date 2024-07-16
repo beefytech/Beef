@@ -2989,6 +2989,39 @@ namespace IDE.ui
 							process.Start(psi).IgnoreError();
 						}
 				    });
+
+				item = menu.AddItem("Open in Terminal");
+				item.mOnMenuItemSelected.Add(new (menu) =>
+					{
+						let projectItem = GetSelectedProjectItem();
+						String path = scope String();
+						if (projectItem == null)
+						{
+							path.Set(gApp.mWorkspace.mDir);
+						}
+						else if (let projectFolder = projectItem as ProjectFolder)
+						{
+							if (projectFolder.mParentFolder == null)
+							{
+								path.Set(projectFolder.mProject.mProjectDir);
+							}
+							else
+								projectFolder.GetFullImportPath(path);
+						}
+						else
+							projectItem.mParentFolder.GetFullImportPath(path);
+
+						if (!path.IsWhiteSpace)
+						{
+							ProcessStartInfo psi = scope ProcessStartInfo();
+							psi.SetFileName(gApp.mSettings.mEditorSettings.mDefaultConsole);
+							psi.SetWorkingDirectory(path);
+							psi.UseShellExecute = true;
+
+							var process = scope SpawnedProcess();
+							process.Start(psi).IgnoreError();
+						}
+					});
 			}
 
             if (projectItem == null)

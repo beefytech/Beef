@@ -6517,6 +6517,20 @@ namespace IDE
 								let process = scope SpawnedProcess();
 								process.Start(procInfo).IgnoreError();
 							});
+						item = menu.AddItem("Open in Terminal");
+						item.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								let directory = scope String();
+								Path.GetDirectoryPath(sourceViewPanel.mFilePath, directory);
+
+								ProcessStartInfo procInfo = scope ProcessStartInfo();
+								procInfo.UseShellExecute = true;
+								procInfo.SetFileName(gApp.mSettings.mEditorSettings.mDefaultConsole);
+								procInfo.SetWorkingDirectory(directory);
+
+								let process = scope SpawnedProcess();
+								process.Start(procInfo).IgnoreError();
+							});
 						item = menu.AddItem("Show in Workspace Panel");
 						item.mOnMenuItemSelected.Add(new (menu) =>
 							{

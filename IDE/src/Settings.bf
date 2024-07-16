@@ -657,6 +657,7 @@ namespace IDE
 
 			public List<String> mFonts = new .() ~ DeleteContainerAndItems!(_);
 			public float mFontSize = 12;
+			public String mWindowsConsole = new .("Powershell") ~ delete _;
 			public AutoCompleteShowKind mAutoCompleteShowKind = .PanelIfVisible;
 			public bool mAutoCompleteRequireControl = true;
 			public bool mAutoCompleteRequireTab = false;
@@ -691,6 +692,7 @@ namespace IDE
 						sd.Add(str);
 				}
 				sd.Add("FontSize", mFontSize);
+				sd.Add("WindowsConsole", mWindowsConsole);
 				sd.Add("AutoCompleteShowKind", mAutoCompleteShowKind);
 				sd.Add("AutoCompleteRequireControl", mAutoCompleteRequireControl);
 				sd.Add("AutoCompleteRequireTab", mAutoCompleteRequireTab);
@@ -728,6 +730,7 @@ namespace IDE
 				}
 				sd.Get("UIScale", ref gApp.mSettings.mUISettings.mScale); // Legacy
 				sd.Get("FontSize", ref mFontSize);
+				sd.Get("WindowsConsole", mWindowsConsole);
 				sd.Get("AutoCompleteShowKind", ref mAutoCompleteShowKind);
 				sd.Get("AutoCompleteRequireControl", ref mAutoCompleteRequireControl);
 				sd.Get("AutoCompleteRequireTab", ref mAutoCompleteRequireTab);
