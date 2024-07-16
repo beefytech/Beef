@@ -657,7 +657,7 @@ namespace IDE
 
 			public List<String> mFonts = new .() ~ DeleteContainerAndItems!(_);
 			public float mFontSize = 12;
-			public String mDefaultConsole = new .("powershell") ~ delete _;
+			public String mDefaultConsole = new .("Powershell") ~ delete _;
 			public AutoCompleteShowKind mAutoCompleteShowKind = .PanelIfVisible;
 			public bool mAutoCompleteRequireControl = true;
 			public bool mAutoCompleteRequireTab = false;
