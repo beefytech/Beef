@@ -394,7 +394,7 @@ namespace IDE.ui
 			{
 				var focusedListViewItem = GetRoot().FindFocusedItem();
 
-				bool changeFocus = (keyCode == .Tab) && (mWidgetWindow.GetKeyFlags() == .None);
+				bool changeFocus = (keyCode == .Tab) && (mWidgetWindow.GetKeyFlags(true) == .None);
 				if ((keyCode == .Right) && ((focusedListViewItem == null) || (focusedListViewItem.GetChildCount() == 0)))
 					changeFocus = true;
 
@@ -454,7 +454,7 @@ namespace IDE.ui
 			{
 				var propertiesDialog = (PropertiesDialog)mParent;
 
-				let keyFlags = mWidgetWindow.GetKeyFlags();
+				let keyFlags = mWidgetWindow.GetKeyFlags(true);
 				bool changeFocus = (keyCode == .Tab) && (keyFlags == .Shift);
 				if (keyCode == .Left)
 				{

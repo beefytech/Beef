@@ -2098,6 +2098,11 @@ BFP_EXPORT void BFP_CALLTYPE BfpSpawn_GetStdHandles(BfpSpawn* spawn, BfpFile** o
 	}
 }
 
+BFP_EXPORT int BFP_CALLTYPE BfpSpawn_GetProcessId(BfpSpawn* spawn)
+{
+	return spawn->mProcessId;
+}
+
 /// BfpThread
 
 BFP_EXPORT BfpThread* BFP_CALLTYPE BfpThread_Create(BfpThreadStartProc startProc, void* threadParam, intptr stackSize, BfpThreadCreateFlags flags, BfpThreadId* outThreadId)

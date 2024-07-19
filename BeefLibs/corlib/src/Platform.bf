@@ -243,6 +243,8 @@ namespace System
 		public static void BfpProcess_GetProcessName(BfpProcess* process, char8* outName, int32* inOutNameSize, BfpProcessResult* outResult) => Runtime.NotImplemented();
 		
 		public static int32 BfpProcess_GetProcessId(BfpProcess* process) => Runtime.NotImplemented();
+
+		public static int BfpSpawn_GetProcessId(BfpSpawn* spawn) => Runtime.NotImplemented();;
 #endif
 
 		public enum BfpSpawnFlags : int32
@@ -286,6 +288,8 @@ namespace System
 		public static extern bool BfpSpawn_WaitFor(BfpSpawn* spawn, int waitMS, int* outExitCode, BfpSpawnResult* outResult);
 		[CallingConvention(.Stdcall), CLink]
 		public static extern void BfpSpawn_GetStdHandles(BfpSpawn* spawn, BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr);
+		[CallingConvention(.Stdcall), CLink]
+		public static extern int BfpSpawn_GetProcessId(BfpSpawn* spawn);
 
 		[CallingConvention(.Stdcall), CLink]
 		public static extern int BfpProcess_GetCurrentId();

@@ -910,7 +910,7 @@ namespace Beefy.widgets
 			switch (keyCode)
 			{
 			case (KeyCode)'A':
-			    if ((mAllowMultiSelect) && (mWidgetWindow.GetKeyFlags() == KeyFlags.Ctrl))
+			    if ((mAllowMultiSelect) && (mWidgetWindow.GetKeyFlags(true) == KeyFlags.Ctrl))
 			    {
 			        mRoot.WithItems(scope (listViewItem) =>
 			            {

@@ -160,6 +160,7 @@ namespace IDE
         public PropertiesPanel mPropertiesPanel;
         public Font mTinyCodeFont ~ delete _;
         public Font mCodeFont ~ delete _;
+		public Font mTermFont ~ delete _;
 		protected bool mInitialized;
 		public bool mConfig_NoIR;
 		public bool mFailed;
@@ -196,6 +197,8 @@ namespace IDE
 		public bool mWantShowOutput;
 
         public OutputPanel mOutputPanel;
+		public TerminalPanel mTerminalPanel;
+		public ConsolePanel mConsolePanel;
         public ImmediatePanel mImmediatePanel;
         public FindResultsPanel mFindResultsPanel;
         public WatchPanel mAutoWatchPanel;
@@ -711,6 +714,8 @@ namespace IDE
 			RemoveAndDelete!(mProjectPanel);
 			RemoveAndDelete!(mClassViewPanel);
 			RemoveAndDelete!(mOutputPanel);
+			RemoveAndDelete!(mTerminalPanel);
+			RemoveAndDelete!(mConsolePanel);
 			RemoveAndDelete!(mImmediatePanel);
 			RemoveAndDelete!(mFindResultsPanel);
 			RemoveAndDelete!(mAutoWatchPanel);
@@ -815,6 +820,8 @@ namespace IDE
 			dlg(mProjectPanel);
 			dlg(mClassViewPanel);
 			dlg(mOutputPanel);
+			dlg(mTerminalPanel);
+			dlg(mConsolePanel);
 			dlg(mImmediatePanel);
 			dlg(mFindResultsPanel);
 			dlg(mAutoWatchPanel);
@@ -5153,6 +5160,18 @@ namespace IDE
         }
 
 		[IDECommand]
+		public void ShowTerminal()
+		{
+		    ShowPanel(mTerminalPanel, "Terminal");
+		}
+
+		[IDECommand]
+		public void ShowConsole()
+		{
+		    ShowPanel(mConsolePanel, "Console");
+		}
+
+		[IDECommand]
         public void ShowImmediatePanel()
         {            
             ShowPanel(mImmediatePanel, "Immediate");
@@ -5924,12 +5943,14 @@ namespace IDE
 			AddMenuItem(subMenu, "&Diagnostics", "Show Diagnostics");
 			AddMenuItem(subMenu, "E&rrors", "Show Errors");
 			AddMenuItem(subMenu, "&Find Results", "Show Find Results");
+			AddMenuItem(subMenu, "&Terminal", "Show Terminal");
+			AddMenuItem(subMenu, "Co&nsole", "Show Console");
 			AddMenuItem(subMenu, "&Immediate Window", "Show Immediate");
 			AddMenuItem(subMenu, "&Memory", "Show Memory");
 			AddMenuItem(subMenu, "Mod&ules", "Show Modules");
 			AddMenuItem(subMenu, "&Output", "Show Output");
 			AddMenuItem(subMenu, "&Profiler", "Show Profiler");
-			AddMenuItem(subMenu, "&Threads", "Show Threads");
+			AddMenuItem(subMenu, "T&hreads", "Show Threads");
 			AddMenuItem(subMenu, "&Watches", "Show Watches");
 			AddMenuItem(subMenu, "Work&space Explorer", "Show Workspace Explorer");
 			subMenu.AddMenuItem(null);
@@ -6076,6 +6097,7 @@ namespace IDE
         public void SetupNewWindow(WidgetWindow window, bool isMainWindow)
         {
             window.mOnWindowKeyDown.Add(new => SysKeyDown);
+			window.mOnWindowKeyUp.Add(new => SysKeyUp);
 			window.mOnMouseUp.Add(new => MouseUp);
 			if (isMainWindow)
             	window.mOnWindowCloseQuery.Add(new => SecondaryAllowClose);
@@ -8228,6 +8250,9 @@ namespace IDE
 				NOP!();
 			}
 
+			mConsolePanel.SysKeyDown(evt);
+			//mTerminalPanel.SysKeyDown(evt);
+
 			if (evt.mHandled)
 				return;
 
@@ -8276,7 +8301,7 @@ namespace IDE
 			{
 				var keyState = scope KeyState();
 				keyState.mKeyCode = evt.mKeyCode;
-				keyState.mKeyFlags = evt.mKeyFlags;
+				keyState.mKeyFlags = evt.mKeyFlags.HeldKeys;
 
 				var curKeyMap = mCommands.mKeyMap;
 
@@ -8377,7 +8402,7 @@ namespace IDE
 			//if (focusWidget is DisassemblyPanel)
 				//break;            
 
-            if (evt.mKeyFlags == 0) // No ctrl/shift/alt
+            if (evt.mKeyFlags.HeldKeys == 0) // No ctrl/shift/alt
             {
                 switch (evt.mKeyCode)
                 {
@@ -8398,6 +8423,12 @@ namespace IDE
                 }
             }
         }
+
+		void SysKeyUp(KeyCode keyCode)
+		{
+			//mTerminalPanel.SysKeyUp(keyCode);
+			mConsolePanel.SysKeyUp(keyCode);
+		}
     
         void ShowOpenFileInSolutionDialog()
         {
@@ -12242,6 +12273,7 @@ namespace IDE
 
 			mTinyCodeFont = new Font();
 			mCodeFont = new Font();
+			mTermFont = new Font();
 
 			//mCodeFont = Font.LoadFromFile(BFApp.sApp.mInstallDir + "fonts/SourceCodePro32.fnt");
 
@@ -12268,6 +12300,10 @@ namespace IDE
 			mClassViewPanel.mAutoDelete = false;
             mOutputPanel = new OutputPanel(true);
 			mOutputPanel.mAutoDelete = false;
+			mTerminalPanel = new TerminalPanel();
+			mTerminalPanel.mAutoDelete = false;
+			mConsolePanel = new ConsolePanel();
+			mConsolePanel.mAutoDelete = false;
             mImmediatePanel = new ImmediatePanel();
 			mImmediatePanel.mAutoDelete = false;
             mFindResultsPanel = new FindResultsPanel();
@@ -12395,6 +12431,7 @@ namespace IDE
             mMainWindow.mIsMainWindow = true;
 			mMainWindow.mOnMouseUp.Add(new => MouseUp);
             mMainWindow.mOnWindowKeyDown.Add(new => SysKeyDown);
+			mMainWindow.mOnWindowKeyUp.Add(new => SysKeyUp);
             mMainWindow.mOnWindowCloseQuery.Add(new => AllowClose);
 			mMainWindow.mOnDragDropFile.Add(new => DragDropFile);
             CreateMenu();
@@ -12618,6 +12655,8 @@ namespace IDE
 				mTinyCodeFont.AddAlternate(new String("fonts/seguisym.ttf"), tinyFontSize);
 				mTinyCodeFont.AddAlternate(new String("fonts/seguihis.ttf"), tinyFontSize);*/
 			}
+
+			mTermFont.Load("Cascadia Mono Regular", fontSize);
 
 			if (!err.IsEmpty)
 			{

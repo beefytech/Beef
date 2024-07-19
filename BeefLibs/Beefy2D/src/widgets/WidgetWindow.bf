@@ -17,6 +17,7 @@ namespace Beefy.widgets
     public delegate void WindowMovedHandler(BFWindow window);
     public delegate void MouseWheelHandler(MouseEvent mouseEvent);    
     public delegate void KeyDownHandler(KeyDownEvent keyboardEvent);
+	public delegate void KeyUpHandler(KeyCode keyCode);
 	//public delegate void CloseTemporaryHandler(WidgetWindow window);
 	public delegate void DragDropFileHandler(StringView filePath);
     
@@ -33,6 +34,7 @@ namespace Beefy.widgets
         public Event<MouseWheelHandler> mOnMouseWheel ~ _.Dispose();
         public Event<MenuItemSelectedHandler> mOnMenuItemSelected ~ _.Dispose();
         public Event<KeyDownHandler> mOnWindowKeyDown ~ _.Dispose();
+		public Event<KeyUpHandler> mOnWindowKeyUp ~ _.Dispose();
     	public Event<delegate HitTestResult(int32, int32)> mOnHitTest ~ _.Dispose();
 		public Event<DragDropFileHandler> mOnDragDropFile ~ _.Dispose();
 
@@ -122,7 +124,12 @@ namespace Beefy.widgets
 			}
         }
 
-        public KeyFlags GetKeyFlags()
+#if BF_PLATFORM_WINDOWS
+		[CLink, CallingConvention(.Stdcall)]
+		static extern int16 GetKeyState(int nVirtKey);
+#endif
+
+        public KeyFlags GetKeyFlags(bool onlyHeldKeys)
         {
             KeyFlags keyFlags = default;
             if (IsKeyDown(KeyCode.Shift))
@@ -131,6 +138,17 @@ namespace Beefy.widgets
                 keyFlags |= KeyFlags.Ctrl;
             if (IsKeyDown(KeyCode.Menu))
                 keyFlags |= KeyFlags.Alt;
+
+#if BF_PLATFORM_WINDOWS
+			if (!onlyHeldKeys)
+			{
+				if (GetKeyState((.)KeyCode.CapsLock) != 0)
+					keyFlags |= .CapsLock;
+				if (GetKeyState((.)KeyCode.Numlock) != 0)
+					keyFlags |= .NumLock;
+			}
+#endif
+
             return keyFlags;
         }
 
@@ -414,7 +432,7 @@ namespace Beefy.widgets
 
 			KeyDownEvent e = scope KeyDownEvent();
 			e.mSender = this;
-			e.mKeyFlags = GetKeyFlags();
+			e.mKeyFlags = GetKeyFlags(false);
 			e.mKeyCode = (KeyCode)keyCode;
 			e.mIsRepeat = isRepeat != 0;
 
@@ -450,6 +468,8 @@ namespace Beefy.widgets
 			var fakeFocusWindow = GetFakeFocusWindow();
 			if (fakeFocusWindow != null)
 				fakeFocusWindow.KeyUp(keyCode);
+
+			mOnWindowKeyUp((.)keyCode);
         }
 
         public override HitTestResult HitTest(int32 x, int32 y)
@@ -650,7 +670,7 @@ namespace Beefy.widgets
 			let oldFlags = mMouseFlags;
 
 			if (mMouseFlags == 0)
-				mMouseDownKeyFlags = GetKeyFlags();
+				mMouseDownKeyFlags = GetKeyFlags(true);
 
             mMouseFlags |= (MouseFlag)(1 << btn);
             if ((!mHasFocus) && (mParent == null))
@@ -802,7 +822,14 @@ namespace Beefy.widgets
                 float childX;
                 float childY;
                 aWidget.RootToSelfTranslate(mMouseX, mMouseY, out childX, out childY);
-                aWidget.MouseWheel(childX, childY, deltaX, deltaY);
+
+				MouseEvent anEvent = scope MouseEvent();
+				anEvent.mX = childX;
+				anEvent.mY = childY;
+				anEvent.mWheelDeltaX = deltaX;
+				anEvent.mWheelDeltaY = deltaY;
+				anEvent.mSender = this;
+                aWidget.MouseWheel(anEvent);
             }            
         }
 

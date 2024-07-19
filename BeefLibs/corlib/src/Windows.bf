@@ -101,6 +101,12 @@ namespace System
 		public function int WndProc(HWnd hWnd, int32 msg, int wParam, int lParam);
 		public delegate IntBool EnumThreadWindowsCallback(HWnd hWnd, void* extraParameter);
 
+		public struct Rect : this(int32 left, int32 top, int32 right, int32 bottom)
+		{
+			public int32 Width => right - left;
+			public int32 Height => bottom - top;
+		}
+
 		[CRepr]
 		public struct OpenFileName
 		{
@@ -1738,6 +1744,9 @@ namespace System
 #endif
 
 		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern IntBool SetWindowPos(HWnd hWnd, HWnd hWndAfter, int x, int y, int cx, int cy, int flags);
+
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool PostMessageW(HWnd hWnd, int32 msg, int wParam, int lParam);
 
 		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
@@ -1772,6 +1781,9 @@ namespace System
 		
 		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern int32 GetWindowTextA(HWnd hWnd, char8* ptr, int32 length);
+
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern IntBool AdjustWindowRectEx(ref Rect rect, uint32 style, IntBool menu, uint32 exStyle);
 
 		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 GetWindowThreadProcessId(HWnd handle, out int32 processId);

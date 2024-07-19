@@ -7,10 +7,14 @@ namespace Beefy.widgets
 {
     public enum KeyFlags
     {
-		None = 0,
-        Alt = 1,
-        Ctrl = 2,
-        Shift = 4
+		case None = 0,
+	        Alt = 1,
+	        Ctrl = 2,
+	        Shift = 4,
+			CapsLock = 8,
+			NumLock = 0x10;
+
+		public KeyFlags HeldKeys => this & ~(CapsLock | NumLock);
     }
 }
 

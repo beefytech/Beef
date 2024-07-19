@@ -83,6 +83,9 @@ namespace IDE.ui
             data.GetString("Type", type);
             Panel panel = null;
 
+			if (type == "")
+				return gApp.mTerminalPanel;
+
             if (type == "CallStackPanel")
                 panel = gApp.mCallStackPanel;
             else if (type == "BreakpointPanel")
@@ -93,6 +96,10 @@ namespace IDE.ui
             {                
                 panel = gApp.mOutputPanel;
             }
+			else if (type == "TerminalPanel")
+			{                
+			    panel = gApp.mTerminalPanel;
+			}
             else if (type == "ImmediatePanel")
             {                
                 panel = gApp.mImmediatePanel;
@@ -158,6 +165,14 @@ namespace IDE.ui
 			else if (type == "BookmarksPanel")
 			{                
 			    panel = gApp.mBookmarksPanel;
+			}
+			else if (type == "TerminalPanel")
+			{                
+			    panel = gApp.mTerminalPanel;
+			}
+			else if (type == "ConsolePanel")
+			{                
+			    panel = gApp.mConsolePanel;
 			}
 
             if (panel != null)

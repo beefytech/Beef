@@ -2304,7 +2304,7 @@ namespace Beefy.widgets
             int prevCursorPos;
             bool gotCursorPos = TryGetCursorTextPos(out prevCursorPos);
 
-            if (mWidgetWindow.GetKeyFlags() == .Ctrl)
+            if (mWidgetWindow.GetKeyFlags(true) == .Ctrl)
             {
                 switch (keyCode)
                 {
@@ -2330,7 +2330,7 @@ namespace Beefy.widgets
                 }
             }
 
-			if (mWidgetWindow.GetKeyFlags() == .Ctrl | .Shift)
+			if (mWidgetWindow.GetKeyFlags(true) == .Ctrl | .Shift)
 			{
 				switch (keyCode)
 				{

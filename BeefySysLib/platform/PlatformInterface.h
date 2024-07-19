@@ -217,6 +217,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSpawn_Release(BfpSpawn* spawn);
 BFP_EXPORT void BFP_CALLTYPE BfpSpawn_Kill(BfpSpawn* spawn, int exitCode, BfpKillFlags killFlags, BfpSpawnResult* outResult);
 BFP_EXPORT bool BFP_CALLTYPE BfpSpawn_WaitFor(BfpSpawn* spawn, int waitMS, int* outExitCode, BfpSpawnResult* outResult);
 BFP_EXPORT void BFP_CALLTYPE BfpSpawn_GetStdHandles(BfpSpawn* spawn, BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr); // Caller must release the files
+BFP_EXPORT int BFP_CALLTYPE BfpSpawn_GetProcessId(BfpSpawn* spawn);
 
 enum BfpThreadCreateFlags
 {

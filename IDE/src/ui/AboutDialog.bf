@@ -242,7 +242,7 @@ namespace IDE.ui
 		{
 			base.KeyDown(keyCode, isRepeat);
 
-			if ((keyCode == (.)'C') && (mWidgetWindow.GetKeyFlags() == .Ctrl))
+			if ((keyCode == (.)'C') && (mWidgetWindow.GetKeyFlags(true) == .Ctrl))
 			{
 				String versionInfo = scope String();
 				versionInfo.AppendF("Beef IDE Version {}", gApp.mVersionInfo.FileVersion);

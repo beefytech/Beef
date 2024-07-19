@@ -2375,7 +2375,7 @@ namespace IDE.ui
 
             base.KeyDown(keyCode, isRepeat);
 
-			if (mWidgetWindow.GetKeyFlags() == .Ctrl)
+			if (mWidgetWindow.GetKeyFlags(true) == .Ctrl)
 			{
 				switch (keyCode)
 				{
@@ -2388,7 +2388,7 @@ namespace IDE.ui
 				default:
 				}
 			}
-			else if (mWidgetWindow.GetKeyFlags() == .None)
+			else if (mWidgetWindow.GetKeyFlags(true) == .None)
 			{
 				if (keyCode == KeyCode.Delete)
 					RemoveSelectedItems();
