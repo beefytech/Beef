@@ -99,6 +99,12 @@ class Program
 					int32 row = GET!<int32>(ptr);
 					int32 dy = GET!<int32>(ptr);
 					mProvider.MouseWheel(col, row, dy);
+				case .ScrollTo:
+					int32 row = GET!<int32>(ptr);
+					mProvider.ScrollTo(row);
+				case .Update:
+					bool paused = GET!<bool>(ptr);
+					mProvider.Update(paused);
 				default:
 				}
 			case .Err(let err):
@@ -126,8 +132,6 @@ class Program
 
 		while (true)
 		{
-			mProvider.Update();
-
 			var process = Platform.BfpProcess_GetById(null, mPid, null);
 			if (process == null)
 			{

@@ -112,7 +112,7 @@ class ConsoleProvider
 
 	}
 
-	public virtual UpdateState Update() => .None;
+	public virtual UpdateState Update(bool paused) => .None;
 
 	public virtual uint32 GetColor(int i) => 0xFF000000;
 }
@@ -752,8 +752,11 @@ class WinNativeConsoleProvider : ConsoleProvider
 		}
 	}
 
-	public override UpdateState Update()
+	public override UpdateState Update(bool paused)
 	{
+		if (paused)
+			return .None;
+
 		ScreenInfo newScreenInfo = new .();
 		if (GetScreenInfo(newScreenInfo))
 		{
@@ -802,7 +805,9 @@ class BeefConConsoleProvider : ConsoleProvider
 		MouseDown,
 		MouseMove,
 		MouseUp,
-		MouseWheel
+		MouseWheel,
+		ScrollTo,
+		Update
 	}
 
 	public class Pipe
@@ -1070,7 +1075,7 @@ class BeefConConsoleProvider : ConsoleProvider
 		*((T*)(ptr += sizeof(T)) - 1)
 	}
 
-	public override UpdateState Update()
+	public override UpdateState Update(bool paused)
 	{
 		if (!mAttached)
 			return .None;
@@ -1098,6 +1103,13 @@ class BeefConConsoleProvider : ConsoleProvider
 			if (mPipe.Connect((mBeefConProcess != null) ? mProcessId : 123, mConId) case .Err)
 				return .None;
 			Resize(mResizedWidth, mResizedHeight, false);
+		}
+
+		if (!paused)
+		{
+			mPipe.StartMessage(.Update);
+			mPipe.Stream.Write(paused);
+			mPipe.EndMessage();
 		}
 
 		mPipe.StartMessage(.GetData);
@@ -1168,6 +1180,16 @@ class BeefConConsoleProvider : ConsoleProvider
 		mPipe.Stream.Write((int32)cols);
 		mPipe.Stream.Write((int32)rows);
 		mPipe.Stream.Write(resizeContent);
+		mPipe.EndMessage();
+	}
+
+	public override void ScrollTo(int row)
+	{
+		if (row == mScrollTop)
+			return;
+		mScrollTop = (.)row;
+		mPipe.StartMessage(.ScrollTo);
+		mPipe.Stream.Write((int32)row);
 		mPipe.EndMessage();
 	}
 

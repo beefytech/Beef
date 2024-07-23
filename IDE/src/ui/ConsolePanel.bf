@@ -406,6 +406,10 @@ class ConsolePanel : Panel
 			}
 		}
 
+		float wantViewSize = Math.Max(mConsoleProvider.BufferHeight * mCellHeight, mHeight);
+		if (mView.mHeight != wantViewSize)
+			ResizeComponents();
+
 		if (mScrollableWidget.mVertScrollbar.mThumb.mMouseDown)
 		{
 			Paused = true;
@@ -425,11 +429,8 @@ class ConsolePanel : Panel
 		else
 			mPauseCB.Label = "Paused";
 
-		if (!Paused)
-		{
-			if (mConsoleProvider.Update() case .Dirty)
-				MarkDirty();
-		}
+		if (mConsoleProvider.Update(Paused) case .Dirty)
+			MarkDirty();
 
 		/*if (mScreenInfo != null)
 		{
