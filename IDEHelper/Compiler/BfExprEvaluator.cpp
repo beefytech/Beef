@@ -18145,6 +18145,18 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 				expectingType = underlyingType;
 			}
 
+			BfType* inRefType = NULL;
+			if ((expectingType != NULL) && (expectingType->IsRef()))
+			{
+				auto refType = (BfRefType*)expectingType;
+				if (refType->mRefKind == BfRefType::RefKind_In)
+				{
+					inRefType = expectingType;
+					auto underlyingType = expectingType->GetUnderlyingType();
+					expectingType = underlyingType;
+				}
+			}
+
 			if (expectingType != NULL)
 			{
 				if (expectingType->IsSizedArray())
@@ -18187,6 +18199,12 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 							if ((ctorResult) && (!ctorResult.mType->IsVoid()))
 								mResult = ctorResult;
 							mModule->ValidateAllocation(expectingType, invocationExpr->mTarget);
+
+							if ((inRefType != NULL) && (mResult.mType == expectingType) && (mResult.IsAddr()))
+							{
+								// Put back the 'in'
+								mResult = BfTypedValue(mResult.mValue, inRefType);
+							}
 
 							return;
 						}
