@@ -1008,6 +1008,8 @@ class BeefConConsoleProvider : ConsoleProvider
 
 	public override Cell GetCell(int col, int row)
 	{
+		if (mCells == null)
+			return default;
 		return mCells[row * mWidth + col];
 	}
 

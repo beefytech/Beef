@@ -173,7 +173,7 @@ class ConsolePanel : Panel
 					{
 						var cellInfo = mConsolePanel.mConsoleProvider.GetCell(i);
 
-						if ((i % numVisibleCols == 0) && (i != selStart))
+						if ((numVisibleCols > 0) && (i % numVisibleCols == 0) && (i != selStart))
 						{
 							// Start of new line
 							while ((str.Length > 0) && (str[str.Length - 1] == ' '))
@@ -275,6 +275,8 @@ class ConsolePanel : Panel
 
 		public static Position FromIndex(int index, int width)
 		{
+			if (width == 0)
+				return .((.)index, 0);
 			return .((.)(index % width), (.)(index / width));
 		}
 	}
