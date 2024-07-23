@@ -389,6 +389,7 @@ public:
 	String mArgs;
 	String mWorkingDir;
 	bool mHotSwapEnabled;
+	DbgOpenFileFlags mOpenFileFlags;
 	Array<uint8> mEnvBlock;
 	DebugTarget* mEmptyDebugTarget;
 	DebugTarget* mDebugTarget;
@@ -400,6 +401,11 @@ public:
 	DWORD mDbgProcessId;
 	HANDLE mDbgProcessHandle;
 	HANDLE mDbgThreadHandle;
+
+	HANDLE mStdInputPipe;
+	HANDLE mStdOutputPipe;
+	HANDLE mStdErrorPipe;
+
 	bool mIsDebuggerWaiting;
 	bool mWantsDebugContinue;
 	bool mNeedsRehupBreakpoints;
@@ -553,7 +559,7 @@ public:
 	void ModuleChanged(DbgModule* dbgModule);
 	bool DoUpdate();
 	void DebugThreadProc();
-	bool DoOpenFile(const StringImpl& fileName, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock);
+	bool DoOpenFile(const StringImpl& fileName, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, DbgOpenFileFlags openFileFlags);
 
 	DbgTypedValue GetRegister(const StringImpl& regName, DbgLanguage language, CPURegisters* registers, Array<RegForm>* regForms = NULL);
 	void FixupLineData(DbgCompileUnit* compileUnit);
@@ -581,8 +587,9 @@ public:
 	virtual void OutputRawMessage(const StringImpl& msg) override;
 	virtual int GetAddrSize() override;
 	virtual bool CanOpen(const StringImpl& fileName, DebuggerResult* outResult) override;
-	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled) override;
+	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled, DbgOpenFileFlags openFileFlags) override;
 	virtual bool Attach(int processId, BfDbgAttachFlags attachFlags) override;
+	virtual void GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr) override;
 	virtual void Run() override;
 	virtual bool HasLoadedTargetBinary() override;
 	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) override;

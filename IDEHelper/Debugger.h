@@ -200,6 +200,14 @@ enum DbgMemoryFlags : uint8
 	DbgMemoryFlags_Execute = 4
 };
 
+enum DbgOpenFileFlags : uint8
+{
+	DbgOpenFileFlag_None = 0,
+	DbgOpenFileFlag_RedirectStdInput = 1,
+	DbgOpenFileFlag_RedirectStdOutput = 2,
+	DbgOpenFileFlag_RedirectStdError = 4
+};
+
 class DbgModuleMemoryCache
 {
 public:
@@ -266,8 +274,9 @@ public:
 	virtual void OutputRawMessage(const StringImpl& msg) = 0;
 	virtual int GetAddrSize() = 0;
 	virtual bool CanOpen(const StringImpl& fileName, DebuggerResult* outResult) = 0;
-	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled) = 0;
+	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled, DbgOpenFileFlags openFileFlags) = 0;
 	virtual bool Attach(int processId, BfDbgAttachFlags attachFlags) = 0;
+	virtual void GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr) = 0;
 	virtual void Run() = 0;
 	virtual bool HasLoadedTargetBinary() { return true; }
 	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) = 0;

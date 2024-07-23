@@ -10,6 +10,7 @@ namespace System.Diagnostics
 		bool mRedirectStandardOutput = false;       
 		bool mRedirectStandardError = false;
 		bool mCreateNoWindow = false;
+		bool mActivateWindow = false;
 		public bool ErrorDialog;
 		//public Windows.Handle ErrorDialogParentHandle;
 		//public ProcessWindowStyle WindowStyle;
@@ -26,6 +27,7 @@ namespace System.Diagnostics
 		public bool RedirectStandardOutput { get { return mRedirectStandardOutput; } set { mRedirectStandardOutput = value; } };
 		public bool RedirectStandardError { get { return mRedirectStandardError; } set { mRedirectStandardError = value; } };
 		public bool CreateNoWindow { get { return mCreateNoWindow; } set { mCreateNoWindow = value; } };
+		public bool ActivateWindow { get { return mActivateWindow; } set { mActivateWindow = value; } };
 
 		Encoding StandardOutputEncoding;
 		Encoding StandardErrorEncoding;

@@ -1689,6 +1689,13 @@ public:
 				creationFlags |= CREATE_NO_WINDOW;
 			// set up the environment block parameter
 
+			if ((flags & BfpSpawnFlag_NoActivateWindow) != 0)
+			{
+				startupInfo.dwFlags |= STARTF_USESHOWWINDOW;
+				startupInfo.wShowWindow = SW_SHOWNOACTIVATE;
+			}
+			// set up the environment block parameter
+
 			WCHAR* targetStrPtr = NULL;
 			UTF16String targetStrW;
 			if ((flags & BfpSpawnFlag_ArgsIncludesTarget) != 0)
@@ -1726,7 +1733,7 @@ public:
 					String str8(env, envSize);
 					envW = UTF8Decode(str8);
 					envVoidPtr = (void*)envW.c_str();
-					startupInfo.dwFlags |= CREATE_UNICODE_ENVIRONMENT;
+					creationFlags |= CREATE_UNICODE_ENVIRONMENT;
 				}
 				else
 				{
@@ -2998,6 +3005,11 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 	return bfpFile;
 }
 
+BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_GetFromHandle(intptr handle, BfpFileResult* outResult)
+{
+	return new BfpFile((HANDLE)handle);		
+}
+
 BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_GetStd(BfpFileStdKind kind, BfpFileResult* outResult)
 {
 	HANDLE h = INVALID_HANDLE_VALUE;
@@ -3235,6 +3247,9 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 	int lastError = ::GetLastError();
 	switch (lastError)
 	{
+	case ERROR_PIPE_LISTENING:
+		OUTRESULT(BfpFileResult_PipeListening);
+		break;
 	case ERROR_BROKEN_PIPE: // Just an EOF
 		OUTRESULT(BfpFileResult_Ok);
 		break;

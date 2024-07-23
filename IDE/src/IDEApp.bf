@@ -345,6 +345,9 @@ namespace IDE
 		bool mProfileCompile = false;
 		ProfileInstance mProfileCompileProfileId;
 
+		Monitor mDebugOutputMonitor = new .() ~ delete _;
+		String mDebugOutput = new .() ~ delete _;
+
 #if !CLI
 		public IPCHelper mIPCHelper ~ delete _;
 		public bool mIPCHadFocus;
@@ -3779,7 +3782,7 @@ namespace IDE
 			}
 
 			// Always write to STDOUT even if we're running as a GUI, allowing cases like RunAndWait to pass us a stdout handle
-			Console.Error.WriteLine("ERROR: {0}", text);
+			Console.Error.WriteLine("ERROR: {0}", text).IgnoreError();
 
 #if CLI
 			mFailed = true;
@@ -3806,7 +3809,7 @@ namespace IDE
 
 				mFailed = true;
 				OutputLineSmart("ERROR: {0}", text);
-				Console.Error.WriteLine("ERROR: {0}", text);
+				Console.Error.WriteLine("ERROR: {0}", text).IgnoreError();
 
 				return null;
 			}
@@ -8250,8 +8253,11 @@ namespace IDE
 				NOP!();
 			}
 
-			mConsolePanel.SysKeyDown(evt);
-			//mTerminalPanel.SysKeyDown(evt);
+			if (!evt.mKeyFlags.HeldKeys.HasFlag(.Alt))
+			{
+				mConsolePanel.SysKeyDown(evt);
+				mTerminalPanel.SysKeyDown(evt);
+			}
 
 			if (evt.mHandled)
 				return;
@@ -8426,8 +8432,8 @@ namespace IDE
 
 		void SysKeyUp(KeyCode keyCode)
 		{
-			//mTerminalPanel.SysKeyUp(keyCode);
 			mConsolePanel.SysKeyUp(keyCode);
+			mTerminalPanel.SysKeyUp(keyCode);
 		}
     
         void ShowOpenFileInSolutionDialog()
@@ -8786,8 +8792,10 @@ namespace IDE
 				return;
 			StreamReader streamReader = scope StreamReader(fileStream, null, false, 4096);
 
+			int count = 0;
 			while (true)
 			{
+				count++;
 				var buffer = scope String();
 				if (streamReader.ReadLine(buffer) case .Err)
 					break;				
@@ -8815,6 +8823,60 @@ namespace IDE
 				    executionInstance.mDeferredOutput.Add(new String(buffer));				
 			}
 		}
+
+		void ReadDebugOutputThread(Object obj)
+		{
+			FileStream fileStream = (.)obj;
+
+			int count = 0;
+			Loop: while (true)
+			{
+				uint8[4096] data = ?;
+				switch (fileStream.TryRead(data, -1))
+				{
+				case .Ok(let len):
+					if (len == 0)
+						break Loop;
+					using (mDebugOutputMonitor.Enter())
+					{
+						for (int i < len)
+							mDebugOutput.Append((char8)data[i]);
+					}
+				case .Err:
+					break Loop;
+				}
+
+				/*var buffer = scope String();
+				if (streamReader.Read(buffer) case .Err)
+					break;				
+				using (mDebugOutputMonitor.Enter())				
+				    mDebugOutput.Add(new String(buffer));*/
+
+				count++;
+			}
+
+			delete fileStream;
+		}
+
+		/*static void ReadDebugErrorThread(Object obj)
+		{
+			ExecutionInstance executionInstance = (ExecutionInstance)obj;
+
+			FileStream fileStream = scope FileStream();
+			if (executionInstance.mProcess.AttachStandardError(fileStream) case .Err)
+				return;
+			StreamReader streamReader = scope StreamReader(fileStream, null, false, 4096);
+
+			while (true)
+			{
+				var buffer = scope String();
+				if (streamReader.ReadLine(buffer) case .Err)
+					break;				
+
+				using (IDEApp.sApp.mMonitor.Enter())				
+				    executionInstance.mDeferredOutput.Add(new String(buffer));				
+			}
+		}*/
 
 		public enum RunFlags
 		{
@@ -11943,8 +12005,26 @@ namespace IDE
 				return true;
 			}
 
-            if (!mDebugger.OpenFile(launchPath, targetPath, arguments, workingDir, envBlock, wasCompiled, workspaceOptions.mAllowHotSwapping))
+			if (mSettings.mDebugConsoleKind == .Embedded)
+			{
+				ShowConsole();
+				mConsolePanel.Attach();
+			}
+
+			if (mSettings.mDebugConsoleKind == .RedirectToImmediate)
+			{
+				ShowImmediatePanel();
+			}
+
+			DebugManager.OpenFileFlags openFileFlags = .None;
+
+			if ((mSettings.mDebugConsoleKind == .RedirectToImmediate) || (mSettings.mDebugConsoleKind == .RedirectToOutput))
+				openFileFlags |= .RedirectStdOutput | .RedirectStdError;
+
+            if (!mDebugger.OpenFile(launchPath, targetPath, arguments, workingDir, envBlock, wasCompiled, workspaceOptions.mAllowHotSwapping, openFileFlags))
             {
+				if (!mSettings.mAlwaysEnableConsole)
+					mConsolePanel.Detach();
 				DeleteAndNullify!(mCompileAndRunStopwatch);
                 return false;
             }
@@ -12301,8 +12381,10 @@ namespace IDE
             mOutputPanel = new OutputPanel(true);
 			mOutputPanel.mAutoDelete = false;
 			mTerminalPanel = new TerminalPanel();
+			mTerminalPanel .Init();
 			mTerminalPanel.mAutoDelete = false;
 			mConsolePanel = new ConsolePanel();
+			mConsolePanel.Init();
 			mConsolePanel.mAutoDelete = false;
             mImmediatePanel = new ImmediatePanel();
 			mImmediatePanel.mAutoDelete = false;
@@ -12963,6 +13045,37 @@ namespace IDE
                 {
                 	mDebugger.Update();
 
+					Platform.BfpFile* stdOut = null;
+					Platform.BfpFile* stdError = null;
+					mDebugger.GetStdHandles(null, &stdOut, &stdError);
+					if (stdOut != null)
+					{
+						FileStream fileStream = new FileStream();
+						fileStream.Attach(stdOut);
+						Thread thread = new Thread(new => ReadDebugOutputThread);
+						thread.Start(fileStream, true);
+					}
+					if (stdError != null)
+					{
+						FileStream fileStream = new FileStream();
+						fileStream.Attach(stdError);
+						Thread thread = new Thread(new => ReadDebugOutputThread);
+						thread.Start(fileStream, true);
+					}
+
+					using (mDebugOutputMonitor.Enter())
+					{
+						if (!mDebugOutput.IsEmpty)
+						{
+							mDebugOutput.Replace("\r", "");
+							if (mSettings.mDebugConsoleKind == .RedirectToOutput)
+								mOutputPanel.Write(mDebugOutput);
+							if (mSettings.mDebugConsoleKind == .RedirectToImmediate)
+								mImmediatePanel.Write(mDebugOutput);
+							mDebugOutput.Clear();
+						}
+					}
+
 					runState = mDebugger.GetRunState();
 					mDebuggerPerformingTask = (runState == .DebugEval) || (runState == .DebugEval_Done) || (runState == .SearchingSymSrv);
 
@@ -13514,6 +13627,8 @@ namespace IDE
                     var disassemblyPanel = TryGetDisassemblyPanel(false);
                     if (disassemblyPanel != null)
                         disassemblyPanel.Disable();
+					if (!mSettings.mAlwaysEnableConsole)
+						mConsolePanel.Detach();
                     mDebugger.DisposeNativeBreakpoints();
                     mDebugger.Detach();
                     mDebugger.mIsRunning = false;
@@ -14539,6 +14654,16 @@ namespace IDE
 				RefreshRate = 60;
 			}
 
+			if (mTerminalPanel != null)
+			{
+				// Detach terminal if the panel is closed
+				var terminalTabButton = GetTab(mTerminalPanel);
+				if (terminalTabButton == null)
+				{
+					mTerminalPanel.Detach();
+				}
+			}
+
 			bool hasFocus = false;
 			for (let window in mWindows)
 			{
@@ -14621,6 +14746,15 @@ namespace IDE
 			mDiagnosticsPanel?.UpdateStats();
 			if (mScriptManager != null)
 				mScriptManager.Update();
+
+			if (mConsolePanel != null)
+			{
+				if ((mSettings.mAlwaysEnableConsole) ||
+					((mSettings.mDebugConsoleKind == .Embedded) && (mDebugger.mIsRunning)))
+					mConsolePanel.Attach();
+				else
+					mConsolePanel.Detach();
+			}
 
 			if (mTestManager != null)
 			{

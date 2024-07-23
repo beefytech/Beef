@@ -24,6 +24,7 @@ namespace System.IO
 		case OpenError(FileOpenError);
 		case ReadError(FileReadError);
 		case SeekError;
+		case PipeListening;
 	}
 
 	static class File

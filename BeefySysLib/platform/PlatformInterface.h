@@ -54,7 +54,8 @@ enum BfpResult
 	BfpResult_PartialData,
 	BfpResult_TempFileError,
 	BfpResult_Timeout,
-	BfpResult_NotEmpty
+	BfpResult_NotEmpty,
+	BfpResult_PipeListening
 };
 
 enum BfpSystemResult
@@ -77,7 +78,8 @@ enum BfpFileResult
 	BfpFileResult_PartialData = BfpResult_PartialData,
 	BfpFileResult_InsufficientBuffer = BfpResult_InsufficientBuffer,
 	BfpFileResult_Timeout = BfpResult_Timeout,
-	BfpFileResult_NotEmpty = BfpResult_NotEmpty
+	BfpFileResult_NotEmpty = BfpResult_NotEmpty,
+	BfpFileResult_PipeListening = BfpResult_PipeListening
 };
 
 typedef void(*BfpCrashInfoFunc)();
@@ -197,6 +199,7 @@ enum BfpSpawnFlags
 	BfpSpawnFlag_ErrorDialog = 0x400,
 	BfpSpawnFlag_Window_Hide = 0x800,
 	BfpSpawnFlag_Window_Maximized = 0x1000,
+	BfpSpawnFlag_NoActivateWindow = 0x2000,
 };
 
 enum BfpSpawnResult
@@ -420,7 +423,7 @@ enum BfpFileStdKind
 
 BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* name, BfpFileCreateKind createKind, BfpFileCreateFlags createFlags, BfpFileAttributes createdFileAttr, BfpFileResult* outResult);
 BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_GetStd(BfpFileStdKind kind, BfpFileResult* outResult);
-BFP_EXPORT intptr BFP_CALLTYPE BfpFile_GetSystemHandle(BfpFile* file);
+BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_GetFromHandle(intptr handle, BfpFileResult* outResult);
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Release(BfpFile* file);
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Close(BfpFile* file, BfpFileResult* outResult);
 BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Write(BfpFile* file, const void* buffer, intptr size, int timeoutMS, BfpFileResult* outResult);

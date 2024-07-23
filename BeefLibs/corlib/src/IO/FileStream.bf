@@ -72,6 +72,8 @@ namespace System.IO
 				{
 				case .Timeout:
 					return .Err(.ReadError(.Timeout));
+				case .PipeListening:
+					return .Err(.PipeListening);
 				default:
 					return .Err(.ReadError(.Unknown));
 				}

@@ -70,6 +70,8 @@ namespace System.Diagnostics
 			}
 			if (startInfo.CreateNoWindow)
 				spawnFlags |= .NoWindow;
+			if (!startInfo.ActivateWindow)
+				spawnFlags |= .NoActivateWindow;
 			if (startInfo.RedirectStandardInput)
 				spawnFlags |= .RedirectStdInput;
 			if (startInfo.RedirectStandardOutput)
