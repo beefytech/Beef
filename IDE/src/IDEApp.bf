@@ -426,8 +426,15 @@ namespace IDE
 			public int mSampleRate;
 		}
 
+		class OpenDebugConsoleCmd : ExecutionCmd
+		{
+
+		}
+
         class StartDebugCmd : ExecutionCmd
         {
+			public bool mConnectedToConsole;
+			public int32 mConsoleProcessId;
 			public bool mWasCompiled;
 			public bool mHotCompileEnabled;
 
@@ -9248,6 +9255,73 @@ namespace IDE
 					}
 				}
 
+				if (let startDebugCmd = next as StartDebugCmd)
+				{
+#if BF_PLATFORM_WINDOWS
+					if ((mSettings.mDebugConsoleKind == .Native) && (mSettings.mKeepNativeConsoleOpen))
+					{
+						if (!startDebugCmd.mConnectedToConsole)
+						{
+							if (startDebugCmd.mConsoleProcessId == 0)
+							{
+								int32 processId = 0;
+
+								List<Process> processList = scope .();
+								Process.GetProcesses(processList);
+								defer processList.ClearAndDeleteItems();
+
+								for (var process in processList)
+								{
+									if ((process.ProcessName.Contains("BeefCon.exe")) || (process.ProcessName.Contains("BeefCon_d.exe")))
+									{
+										var title = process.GetMainWindowTitle(.. scope .());
+										if (title.EndsWith("Debug Console"))
+										{
+											processId = process.Id;
+										}
+									}
+								}
+
+								if (processId == 0)
+								{
+									var beefConExe = scope $"{gApp.mInstallDir}/BeefCon.exe";
+
+									ProcessStartInfo procInfo = scope ProcessStartInfo();
+									procInfo.UseShellExecute = false;
+									procInfo.SetFileName(beefConExe);
+									procInfo.SetArguments(scope $"{Process.CurrentId}");
+									procInfo.ActivateWindow = false;
+
+									var process = scope SpawnedProcess();
+									if (process.Start(procInfo) case .Ok)
+									{
+										processId = (.)process.ProcessId;
+									}
+								}
+
+								startDebugCmd.mConsoleProcessId = processId;
+							}
+
+							if (startDebugCmd.mConsoleProcessId != 0)
+							{
+								if (WinNativeConsoleProvider.AttachConsole(startDebugCmd.mConsoleProcessId))
+								{
+									// Worked
+									WinNativeConsoleProvider.ClearConsole();
+									mConsolePanel.mBeefConAttachState = .Attached(startDebugCmd.mConsoleProcessId);
+									startDebugCmd.mConnectedToConsole = true;
+								}
+								else
+								{
+									// Keep trying to attach
+									return;
+								}
+							}
+						}
+					}
+#endif
+				}
+
 				defer delete next;
                 mExecutionQueue.RemoveAt(0);
 
@@ -9336,6 +9410,19 @@ namespace IDE
 	                    }
 	                    else
 	                        OutputLine("Failed to start debugger");
+
+/*#if BF_PLATFORM_WINDOWS
+						if ((mSettings.mDebugConsoleKind == .Native) && (mSettings.mKeepNativeConsoleOpen))
+						{
+							BeefConConsoleProvider.Pipe pipe = scope .();
+							//pipe.Connect(Process.CurrentId, )
+							pipe.Connect(123, -startDebugCmd.mConsoleProcessId).IgnoreError();
+
+							pipe.StartMessage(.Attached);
+							pipe.Stream.Write((int32)mDebugger.GetProcessId());
+							pipe.EndMessage();
+						}
+#endif*/
 					}
                 }
                 else if (next is ExecutionQueueCmd)
@@ -13781,7 +13868,12 @@ namespace IDE
                     if (mForegroundTargetCountdown > 0)
                     {
                         if ((--mForegroundTargetCountdown == 0) && (mDebugger.mIsRunning))
-                            mDebugger.ForegroundTarget();
+						{
+							if (mConsolePanel.mBeefConAttachState case .Connected(let processId))
+                            	mDebugger.ForegroundTarget(processId);
+							else
+								mDebugger.ForegroundTarget(0);
+						}
                     }
 
                     if ((mDebugger != null) && (mExecutionPaused) && (mDebugger.mIsRunning))
@@ -13845,6 +13937,33 @@ namespace IDE
 				DeleteAndNullify!(mLaunchData);
 
 			mErrorsPanel?.UpdateAlways();
+
+			if ((mConsolePanel != null) && (mConsolePanel.mBeefConAttachState case .Attached(let consoleProcessId)))
+			{
+				if (!mDebugger.mIsRunning)
+				{
+					mConsolePanel.Detach();
+				}
+				else
+				{
+					int32 debugProcessId = mDebugger.GetProcessId();
+					if (debugProcessId != 0)
+					{
+						BeefConConsoleProvider.Pipe pipe = scope .();
+						pipe.Connect(Process.CurrentId, -consoleProcessId).IgnoreError();
+						//pipe.Connect(Process.CurrentId, )
+						//pipe.Connect(123, -consoleProcessId).IgnoreError();
+
+						pipe.StartMessage(.Attached);
+						pipe.Stream.Write(debugProcessId);
+						pipe.EndMessage();
+						mConsolePanel.Detach();
+
+						mConsolePanel.mBeefConAttachState = .Connected(consoleProcessId);
+						mDebugger.ForegroundTarget(consoleProcessId);
+					}
+				}
+			}
         }
 
         public void ShowPassOutput(BfPassInstance bfPassInstance)

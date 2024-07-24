@@ -409,7 +409,7 @@ void CeDebugger::ContinueDebugEvent()
 	mCeMachine->mDebugEvent.Set();
 }
 
-void CeDebugger::ForegroundTarget()
+void CeDebugger::ForegroundTarget(int altProcessId)
 {
 }
 
@@ -4359,6 +4359,11 @@ String CeDebugger::CompactChildExpression(const StringImpl& expr, const StringIm
 String CeDebugger::GetProcessInfo()
 {
 	return String();
+}
+
+int CeDebugger::GetProcessId()
+{
+	return 0;
 }
 
 DebugVisualizerEntry* CeDebugger::FindVisualizerForType(BfType* dbgType, Array<String>* wildcardCaptures)

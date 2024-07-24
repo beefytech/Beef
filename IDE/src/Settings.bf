@@ -1122,6 +1122,7 @@ namespace IDE
 		public String mWindowsTerminal = new .("Powershell") ~ delete _;
 		public ConsoleKind mDebugConsoleKind;
 		public bool mAlwaysEnableConsole;
+		public bool mKeepNativeConsoleOpen;
 		public String mEmscriptenPath = new .() ~ delete _;
 		public bool mEnableDevMode;
 		public TutorialsFinished mTutorialsFinished = .();
@@ -1184,6 +1185,7 @@ namespace IDE
 				sd.Add("WindowsTerminal", mWindowsTerminal);
 				sd.Add("DebugConsole", mDebugConsoleKind);
 				sd.Add("AlwaysEnableConsole", mAlwaysEnableConsole);
+				sd.Add("KeepNativeConsoleOpen", mKeepNativeConsoleOpen);
 			}
 			using (sd.CreateObject("Wasm"))
 				sd.Add("EmscriptenPath", mEmscriptenPath);
@@ -1279,6 +1281,7 @@ namespace IDE
 				sd.Get("WindowsTerminal", mWindowsTerminal);
 				mDebugConsoleKind = sd.GetEnum<ConsoleKind>("DebugConsole", .Native);
 				mAlwaysEnableConsole = sd.GetBool("AlwaysEnableConsole");
+				mKeepNativeConsoleOpen = sd.GetBool("KeepNativeConsoleOpen");
 			}
 			using (sd.Open("Wasm"))
 				sd.Get("EmscriptenPath", mEmscriptenPath);

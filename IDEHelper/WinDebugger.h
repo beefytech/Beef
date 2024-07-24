@@ -598,7 +598,7 @@ public:
 	virtual String GetDbgAllocInfo() override;
 	virtual void Update() override;
 	virtual void ContinueDebugEvent() override;
-	virtual void ForegroundTarget() override;
+	virtual void ForegroundTarget(int altProcessId) override;
 	virtual Breakpoint* CreateBreakpoint(const StringImpl& fileName, int lineNum, int wantColumn, int instrOffset) override;
 	virtual Breakpoint* CreateMemoryBreakpoint(intptr addr, int byteCount) override;
 	virtual Breakpoint* CreateSymbolBreakpoint(const StringImpl& symbolName) override;
@@ -630,6 +630,7 @@ public:
 	virtual String GetAutoLocals(int callStackIdx, bool showRegs) override;
 	virtual String CompactChildExpression(const StringImpl& expr, const StringImpl& parentExpr, int callStackIdx) override;
 	virtual String GetProcessInfo() override;
+	virtual int GetProcessId() override;
 	virtual String GetThreadInfo() override;
 	virtual void SetActiveThread(int threadId) override;
 	virtual int GetActiveThread() override;

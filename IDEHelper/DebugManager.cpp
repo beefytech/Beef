@@ -1363,9 +1363,9 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_GetCollectionContinuation(const char*
 	return outString.c_str();
 }
 
-BF_EXPORT void BF_CALLTYPE Debugger_ForegroundTarget()
+BF_EXPORT void BF_CALLTYPE Debugger_ForegroundTarget(int altProcessId)
 {
-	gDebugger->ForegroundTarget();
+	gDebugger->ForegroundTarget(altProcessId);
 
 	//BOOL worked = EnumThreadWindows(gDebugger->mProcessInfo.dwThreadId, WdEnumWindowsProc, 0);
 	//BF_ASSERT(worked);
@@ -1376,6 +1376,11 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_GetProcessInfo()
 	String& outString = *gTLStrReturn.Get();
 	outString = gDebugger->GetProcessInfo();
 	return outString.c_str();
+}
+
+BF_EXPORT int BF_CALLTYPE Debugger_GetProcessId()
+{
+	return gDebugger->GetProcessId();
 }
 
 BF_EXPORT const char* BF_CALLTYPE Debugger_GetThreadInfo()

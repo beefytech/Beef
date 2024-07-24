@@ -181,6 +181,13 @@ namespace bf
 			Beefy::String GetTypeName();
 		};
 
+		class Console
+		{
+		public:
+			BFRT_EXPORT static void PutChar(char c);
+			BFRT_EXPORT static void ReopenHandles();
+		};
+
 		class Exception : public Object
 		{
 

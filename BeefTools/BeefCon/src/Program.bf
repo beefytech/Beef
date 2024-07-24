@@ -12,14 +12,20 @@ class Program
 	BeefConConsoleProvider.Pipe mPipe ~ delete _;
 	WinNativeConsoleProvider mProvider ~ delete _;
 	int32 mPid;
+	int32 mAttachedPid;
+	Windows.ProcessHandle mAttachedProcess;
+	String mAttachedName = new .() ~ delete _;
 	int32 mConid;
 	String mExecStr = new .() ~ delete _;
 	SpawnedProcess mSpawnedProcess ~ delete _;
 
 	public ~this()
 	{
-		mSpawnedProcess.Kill();
-		mSpawnedProcess.WaitFor();
+		if (mSpawnedProcess != null)
+		{
+			mSpawnedProcess.Kill();
+			mSpawnedProcess.WaitFor();
+		}
 	}
 
 	static mixin GET<T>(var ptr)
@@ -105,6 +111,16 @@ class Program
 				case .Update:
 					bool paused = GET!<bool>(ptr);
 					mProvider.Update(paused);
+				case .Attached:
+					int32 pid = GET!<int32>(ptr);
+					Process process = scope .();
+					if (process.GetProcessById(pid) case .Ok)
+					{
+						mAttachedPid = pid;
+						mAttachedName.Set(process.ProcessName);
+						WinNativeConsoleProvider.SetConsoleTitleW(mAttachedName.ToScopedNativeWChar!());
+						mAttachedProcess = Windows.OpenProcess(Windows.PROCESS_ALL_ACCESS, false, mAttachedPid);
+					}
 				default:
 				}
 			case .Err(let err):
@@ -113,22 +129,111 @@ class Program
 		}
 	}
 
+	public void ClearConsoleTitle()
+	{
+		WinNativeConsoleProvider.SetConsoleTitleW("BeefIDE Debug Console".ToScopedNativeWChar!());
+	}
+
+	/*[CLink]
+	static extern void* freopen (char8 * filename, char8 * mode, void* stream );
+	[CLink]
+	static extern void* stdout;*/
+
 	public void Run()
 	{
 		mPipe = new .();
 		mPipe.Listen(mPid, mConid);
 
 		mProvider = new .();
-		//mProvider.mHideNativeConsole = false;
+		mProvider.mHideNativeConsole = !mExecStr.IsEmpty;
 		mProvider.Attach();
+		Console.ReopenHandles();
 
-		ProcessStartInfo procInfo = scope ProcessStartInfo();
-		procInfo.UseShellExecute = false;
-		procInfo.SetFileName(mExecStr);
+		if (!mExecStr.IsEmpty)
+		{
+			ProcessStartInfo procInfo = scope ProcessStartInfo();
+			procInfo.UseShellExecute = false;
+			procInfo.SetFileName(mExecStr);
 
-		mSpawnedProcess = new SpawnedProcess();
-		if (mSpawnedProcess.Start(procInfo) case .Err)
-			return;
+			mSpawnedProcess = new SpawnedProcess();
+			if (mSpawnedProcess.Start(procInfo) case .Err)
+				return;
+		}
+		else
+		{
+			ClearConsoleTitle();
+		}
+
+		while (true)
+		{
+			// Check BeefIDE process
+			{
+				var process = Platform.BfpProcess_GetById(null, mPid, null);
+				if (process == null)
+				{
+					Console.Error.WriteLine("Process closed");
+					return;
+				}
+				Platform.BfpProcess_Release(process);
+			}
+
+			MessageLoop();
+
+			if (mPipe.mFailed)
+			{
+				if (mSpawnedProcess == null)
+				{
+					DeleteAndNullify!(mPipe);
+					mPipe = new .();
+					mPipe.Listen(mPid, mConid);
+				}	
+				else
+					return;
+			}
+
+			if (!mPipe.mConnected)
+				Thread.Sleep(20);
+
+			if (mSpawnedProcess != null)
+			{
+				if (mSpawnedProcess.WaitFor(0))
+					return;
+			}
+
+			if (mAttachedPid != 0)
+			{
+				if ((Windows.GetExitCodeProcess(mAttachedProcess, var exitCode)) && (exitCode != 259))
+				{
+					ClearConsoleTitle();
+
+					Console.WriteLine();
+					Console.WriteLine(scope $"{mAttachedName} (process {mAttachedPid}) exited with code {exitCode}.");
+					Console.WriteLine("Press any key to close this window...");
+
+					mAttachedProcess.Close();
+					mAttachedProcess = default;
+					mAttachedPid = 0;
+					mAttachedName.Clear();
+				}
+			}
+
+			if ((mSpawnedProcess == null) && (mAttachedPid == 0))
+			{
+				if (Console.KeyAvailable)
+					return;
+			}
+		}
+	}
+
+	/*public void RunHost()
+	{
+		mPipe = new .();
+		mPipe.Listen(mPid, 0);
+
+
+
+		WinNativeConsoleProvider.AllocConsole();
+		WinNativeConsoleProvider.SetConsoleTitleW("BeefIDE Debug Console".ToScopedNativeWChar!());
 
 		while (true)
 		{
@@ -146,26 +251,32 @@ class Program
 
 			if (!mPipe.mConnected)
 				Thread.Sleep(20);
-
-			if (mSpawnedProcess.WaitFor(0))
-				return;
 		}
-	}
+	}*/
 
 	public static int Main(String[] args)
 	{
-		if (args.Count < 2)
+		if (args.Count < 1)
 		{
-			Console.Error.WriteLine("Usage: BeefCon <pid> <conid> <exe>");
+			Console.Error.WriteLine("Usage: BeefCon <pid> [conid] [exe]");
 			return 1;
 		}
 
 		Program pg = scope .();
-		pg.mPid = int32.Parse(args[0]);
-		pg.mConid = int32.Parse(args[1]);
-		pg.mExecStr.Set(args[2]);
-		pg.Run();
-
+		if (args.Count >= 3)
+		{
+			pg.mPid = int32.Parse(args[0]);
+			pg.mConid = int32.Parse(args[1]);
+			pg.mExecStr.Set(args[2]);
+			pg.Run();
+		}
+		else
+		{
+			pg.mPid = int32.Parse(args[0]);
+			pg.mConid = -Process.CurrentId;
+			pg.Run();
+		}
+		
 		return 0;
 	}
 }

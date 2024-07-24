@@ -281,6 +281,13 @@ class ConsolePanel : Panel
 		}
 	}
 
+	public enum BeefConAttachState
+	{
+		case None;
+		case Attached(int32 processId);
+		case Connected(int32 processId);
+	}
+
 	public ConsoleProvider mConsoleProvider ~ delete _;
 	public DarkCheckBox mMousePassthroughCB;
 	public DarkCheckBox mPauseCB;
@@ -290,6 +297,7 @@ class ConsolePanel : Panel
 	public int32 mCellHeight;
 	public (Position start, Position end)? mSelection;
 	public Position? mClickPos;
+	public BeefConAttachState mBeefConAttachState;
 
 	public bool Paused
 	{
@@ -781,6 +789,14 @@ class ConsolePanel : Panel
 
 	public void Detach()
 	{
+		if (mBeefConAttachState case .Attached)
+		{
+#if BF_PLATFORM_WINDOWS
+			WinNativeConsoleProvider.FreeConsole();
+#endif
+			mBeefConAttachState = .None;
+		}
+
 		if (!mConsoleProvider.Attached)
 			return;
 		mConsoleProvider.Detach();

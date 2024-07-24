@@ -1496,6 +1496,9 @@ namespace System
 		[CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool GetExitCodeThread(Handle process, out int32 exitCode);
 
+		[Import("psapi.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern int32 GetModuleFileNameExW(Handle process, Handle module, char16* filename, int32 size);
+
 		[CLink, CallingConvention(.Stdcall)]
 		public static extern int32 ResumeThread(Handle thread);
 

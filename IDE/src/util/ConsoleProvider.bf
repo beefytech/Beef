@@ -250,10 +250,13 @@ class WinNativeConsoleProvider : ConsoleProvider
 
 #if BF_PLATFORM_WINDOWS
 	[CLink, CallingConvention(.Stdcall)]
-	public static extern void AllocConsole();
+	public static extern Windows.IntBool AllocConsole();
 
 	[CLink, CallingConvention(.Stdcall)]
-	public static extern void AttachConsole(int processId);
+	public static extern void SetConsoleTitleW(char16* title);
+
+	[CLink, CallingConvention(.Stdcall)]
+	public static extern Windows.IntBool AttachConsole(int processId);
 
 	[CLink, CallingConvention(.Stdcall)]
 	public static extern void FreeConsole();
@@ -290,6 +293,15 @@ class WinNativeConsoleProvider : ConsoleProvider
 
 	[CLink]
 	public static extern Windows.IntBool ReadConsoleInputW(Windows.Handle handle, INPUT_RECORD* eventsPtr, int32 eventCount, out int32 numEventsRead);
+
+	[CLink]
+	public static extern Windows.IntBool SetConsoleCursorPosition(Windows.Handle handle, POINT pos);
+
+	[CLink]
+	public static extern Windows.IntBool FillConsoleOutputCharacterW(Windows.Handle handle, char16 char, int32 length, POINT writeCoord, out int32 numCharsWritten);
+
+	[CLink]
+	public static extern Windows.IntBool FillConsoleOutputAttribute(Windows.Handle handle, uint16 attribute, int32 length, POINT writeCoord, out int32 numCharsWritten);
 #endif
 
 	ScreenInfo mScreenInfo ~ delete _;
@@ -789,6 +801,58 @@ class WinNativeConsoleProvider : ConsoleProvider
 	{
 		return (mScreenInfo != null) ? mScreenInfo.mColorTable[i] : 0xFF000000;
 	}
+
+	public static void ClearConsole()
+	{
+		var outHandle = Console.[Friend]GetStdHandle(Console.STD_OUTPUT_HANDLE);
+
+		POINT coordScreen = default;    // home for the cursor
+		int32 cCharsWritten;
+		CONSOLE_SCREEN_BUFFER_INFOEX csbi = default;
+		csbi.mSize = sizeof(CONSOLE_SCREEN_BUFFER_INFOEX);
+
+		// Get the number of character cells in the current buffer.
+		if (!GetConsoleScreenBufferInfoEx(outHandle, ref csbi))
+		{
+		    return;
+		}
+
+		let dwConSize = (int32)csbi.mWidth * csbi.mHeight;
+
+		// Fill the entire screen with blanks.
+		if (!FillConsoleOutputCharacterW(outHandle,        // Handle to console screen buffer
+		                                ' ',      // Character to write to the buffer
+		                                dwConSize,       // Number of cells to write
+		                                coordScreen,     // Coordinates of first cell
+		                                out cCharsWritten)) // Receive number of characters written
+		{
+		    return;
+		}
+
+		// Get the current text attribute.
+		if (!GetConsoleScreenBufferInfoEx(outHandle, ref csbi))
+		{
+		    return;
+		}
+
+		// Set the buffer's attributes accordingly.
+		if (!FillConsoleOutputAttribute(outHandle,         // Handle to console screen buffer
+		                                csbi.wAttributes, // Character attributes to use
+		                                dwConSize,        // Number of cells to set attribute
+		                                coordScreen,      // Coordinates of first cell
+		                                out cCharsWritten))  // Receive number of characters written
+		{
+		    return;
+		}
+
+		// Put the cursor at its home coordinates.
+		SetConsoleCursorPosition(outHandle, coordScreen);
+	}
+
+	public void Clear()
+	{
+		ClearConsole();
+	}
 }
 
 class BeefConConsoleProvider : ConsoleProvider
@@ -807,7 +871,8 @@ class BeefConConsoleProvider : ConsoleProvider
 		MouseUp,
 		MouseWheel,
 		ScrollTo,
-		Update
+		Update,
+		Attached
 	}
 
 	public class Pipe

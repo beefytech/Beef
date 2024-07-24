@@ -3055,6 +3055,8 @@ void WinDebugger::ContinueDebugEvent()
 
 static BOOL CALLBACK WdEnumWindowsProc(HWND hwnd, LPARAM lParam)
 {
+	int wantProcessId = lParam;
+
 	HWND owner = GetWindow(hwnd, GW_OWNER);
 	if (!IsWindowVisible(hwnd))
 		return TRUE;
@@ -3062,7 +3064,7 @@ static BOOL CALLBACK WdEnumWindowsProc(HWND hwnd, LPARAM lParam)
 	DWORD processId = 0;
 	DWORD threadId = GetWindowThreadProcessId(hwnd, &processId);
 
-	if (processId != ((WinDebugger*)gDebugger)->mProcessInfo.dwProcessId)
+	if (processId != wantProcessId)
 		return TRUE;
 	
 	while (true)
@@ -3080,8 +3082,12 @@ static BOOL CALLBACK WdEnumWindowsProc(HWND hwnd, LPARAM lParam)
 	return TRUE;
 }
 
-void WinDebugger::ForegroundTarget()
+void WinDebugger::ForegroundTarget(int altProcessId)
 {
+	int wantProcessId = altProcessId;
+	if (wantProcessId == 0)
+		wantProcessId = ((WinDebugger*)gDebugger)->mProcessInfo.dwProcessId;
+
 	HWND hwnd = ::GetForegroundWindow();
 	if (hwnd != INVALID_HANDLE_VALUE)
 	{
@@ -3090,8 +3096,8 @@ void WinDebugger::ForegroundTarget()
 		if (processId == ((WinDebugger*)gDebugger)->mProcessInfo.dwProcessId)
 			return; // Already good
 	}
-
-	EnumWindows(WdEnumWindowsProc, 0);
+	
+	EnumWindows(WdEnumWindowsProc, wantProcessId);
 }
 
 static int gFindLineDataAt = 0;
@@ -10975,6 +10981,14 @@ String WinDebugger::GetProcessInfo()
 	retStr += StrFormat("UserTime\t%lld\n", *(int64*)&userTime / sysinfo.dwNumberOfProcessors);
 
 	return retStr;
+}
+
+int WinDebugger::GetProcessId()
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	if (!mThreadList.IsEmpty())
+		return mThreadList[0]->mProcessId;
+	return mDbgProcessId;
 }
 
 String WinDebugger::GetThreadInfo()

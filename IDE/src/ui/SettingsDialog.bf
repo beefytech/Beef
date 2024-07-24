@@ -181,6 +181,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Windows Terminal", "mWindowsTerminal");
 			AddPropertiesItem(category, "Debug Console", "mDebugConsoleKind");
 			AddPropertiesItem(category, "Always Enable Console", "mAlwaysEnableConsole");
+			AddPropertiesItem(category, "Keep Native Console Open", "mKeepNativeConsoleOpen");
 			category.Open(true, true);
 		}
 

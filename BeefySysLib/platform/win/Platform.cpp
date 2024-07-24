@@ -1500,7 +1500,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_GetProcessName(BfpProcess* process, char
 			OUTRESULT(BfpProcessResult_UnknownError);
 			return;
 		}
-		WCHAR wName[MAX_PATH];
+		WCHAR wName[MAX_PATH] = { 0 };
 		::GetModuleFileNameExW(hProc, NULL, wName, MAX_PATH);
 		::CloseHandle(hProc);
 		String name = UTF8Encode(wName);

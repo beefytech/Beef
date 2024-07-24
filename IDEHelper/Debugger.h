@@ -285,7 +285,7 @@ public:
 	virtual String GetDbgAllocInfo() = 0;
 	virtual void Update() = 0;
 	virtual void ContinueDebugEvent() = 0;
-	virtual void ForegroundTarget() = 0;
+	virtual void ForegroundTarget(int altProcessId) = 0;
 	virtual Breakpoint* CreateBreakpoint(const StringImpl& fileName, int lineNum, int wantColumn, int instrOffset) = 0;
 	virtual Breakpoint* CreateMemoryBreakpoint(intptr addr, int byteCount) = 0;
 	virtual Breakpoint* CreateSymbolBreakpoint(const StringImpl& symbolName) = 0;
@@ -320,6 +320,7 @@ public:
 	virtual String GetAutoLocals(int callStackIdx, bool showRegs) = 0;
 	virtual String CompactChildExpression(const StringImpl& expr, const StringImpl& parentExpr, int callStackIdx) = 0;
 	virtual String GetProcessInfo() = 0;
+	virtual int GetProcessId() = 0;
 	virtual String GetThreadInfo() = 0;
 	virtual void SetActiveThread(int threadId) = 0;
 	virtual int GetActiveThread() = 0;

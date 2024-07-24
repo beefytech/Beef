@@ -270,7 +270,7 @@ namespace IDE.Debugger
 		static extern char8* Debugger_GetCollectionContinuation(char8* continuationData, int32 callStackIdx, int32 count);
 
 		[CallingConvention(.Stdcall),CLink]
-		static extern void Debugger_ForegroundTarget();
+		static extern void Debugger_ForegroundTarget(int32 altProcessId);
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern void CallStack_Update();
@@ -313,6 +313,9 @@ namespace IDE.Debugger
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetProcessInfo();
+
+		[CallingConvention(.Stdcall),CLink]
+		static extern int32 Debugger_GetProcessId();
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetThreadInfo();
@@ -912,9 +915,9 @@ namespace IDE.Debugger
 			outVal.Append(result);
 		}
 
-		public void ForegroundTarget()
+		public void ForegroundTarget(int32 altProcessId)
 		{
-			Debugger_ForegroundTarget();
+			Debugger_ForegroundTarget(altProcessId);
 		}
 
 		public void UpdateCallStack()
@@ -1077,6 +1080,13 @@ namespace IDE.Debugger
 				return;
 			char8* strPtr = Debugger_GetProcessInfo();
 			outProcessInfo.Append(strPtr);
+		}
+
+		public int32 GetProcessId()
+		{
+			if (!mIsRunning)
+				return 0;
+			return Debugger_GetProcessId();
 		}
 
 		public void GetThreadInfo(String outThreadInfo)
