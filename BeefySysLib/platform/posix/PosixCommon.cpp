@@ -1241,6 +1241,11 @@ BFP_EXPORT void BFP_CALLTYPE BfpSpawn_GetStdHandles(BfpSpawn* spawn, BfpFile** o
     }
 }
 
+BFP_EXPORT int BFP_CALLTYPE BfpSpawn_GetProcessId(BfpSpawn* spawn)
+{
+    return spawn->mPid;
+}
+
 bool BfpSpawn_WaitFor(BfpSpawn* spawn, int waitMS, int* outExitCode, BfpSpawnResult* outResult)
 {
     OUTRESULT(BfpSpawnResult_Ok);

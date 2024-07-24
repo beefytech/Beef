@@ -971,6 +971,17 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 				}
 			}
 
+			if ((!isBetter) && (!isWorse) && (paramType->IsRef()) && (prevParamType->IsRef()))
+			{
+				auto refType = (BfRefType*)paramType;
+				auto prevRefType = (BfRefType*)prevParamType;
+
+				// Prefer 'out' to 'ref'
+				SET_BETTER_OR_WORSE(
+					(refType->mRefKind == BfRefType::RefKind_Out) && (prevRefType->mRefKind == BfRefType::RefKind_Ref),
+					(refType->mRefKind == BfRefType::RefKind_Ref) && (prevRefType->mRefKind == BfRefType::RefKind_Out));				
+			}
+
 			if ((newArgIdx >= 0) && (newMethodInstance->GetParamKind(newArgIdx) == BfParamKind_Params))
 				usedExtendedForm = true;
 			if ((prevArgIdx >= 0) && (prevMethodInstance->GetParamKind(prevArgIdx) == BfParamKind_Params))
@@ -6019,6 +6030,8 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 		{
 			BfResolvedArg resolvedArg;
 			resolvedArg.mTypedValue = typedValueExpr->mTypedValue;
+			if (resolvedArg.mTypedValue.IsParams())
+				resolvedArg.mArgFlags = BfArgFlag_ParamsExpr;
 			resolvedArg.mExpression = typedValueExpr->mRefNode;
 			resolvedArgs.mResolvedArgs.push_back(resolvedArg);
 			continue;
@@ -6092,26 +6105,7 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 		{
 			resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_LambdaBindAttempt);
 			handled = true;
-		}
-		else if (auto memberRef = BfNodeDynCast<BfMemberReferenceExpression>(argExpr))
-		{
-			if (memberRef->mTarget == NULL)
-			{
-				resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_UnqualifiedDotAttempt);
-				handled = true;
-			}
-		}
-		else if (auto invokeExpr = BfNodeDynCast<BfInvocationExpression>(argExpr))
-		{
-			if (auto memberRef = BfNodeDynCast<BfMemberReferenceExpression>(invokeExpr->mTarget))
-			{
-				if (memberRef->mTarget == NULL)
-				{
-					resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_UnqualifiedDotAttempt);
-					handled = true;
-				}
-			}
-		}
+		}		
 		else if (auto defaultExpr = BfNodeDynCast<BfDefaultExpression>(argExpr))
 		{
 			if (defaultExpr->mTypeRef == NULL)
@@ -6138,17 +6132,34 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 			handled = true;
 		}
 
-		/*else if (auto castExpr = BfNodeDynCast<BfCastExpression>(argExpr))
+		if (!handled)
 		{
-			if (auto namedTypeRef = BfNodeDynCastExact<BfNamedTypeReference>(castExpr->mTypeRef))
+			BfAstNode* checkArgExpr = argExpr;
+			while (checkArgExpr != NULL)
 			{
-				if (namedTypeRef->ToString() == "ExpectedType")
+				if (auto memberRef = BfNodeDynCast<BfMemberReferenceExpression>(checkArgExpr))
 				{
-					resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_ExpectedTypeCast);
-					handled = true;
+					if (memberRef->mTarget == NULL)
+					{
+						resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_UnqualifiedDotAttempt);
+						handled = true;
+						break;
+					}
+					else
+						checkArgExpr = memberRef->mTarget;
 				}
+				else if (auto invokeExpr = BfNodeDynCast<BfInvocationExpression>(checkArgExpr))
+				{
+					checkArgExpr = invokeExpr->mTarget;
+				}
+				else if (auto parenExpr = BfNodeDynCast<BfParenthesizedExpression>(checkArgExpr))
+				{
+					checkArgExpr = parenExpr->mExpression;
+				}
+				else
+					break;
 			}
-		}*/
+		}
 
 		if ((argExpr != NULL) && (!handled))
 		{
@@ -13393,6 +13404,8 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		auto typedValueExpr = &typedValueExprs[i];
 		typedValueExpr->mTypedValue.mValue = BfIRValue(BfIRValueFlags_Value, -1);
 		typedValueExpr->mTypedValue.mType = methodInstance->GetParamType(i + paramOffset);
+		if (methodInstance->GetParamKind(i + paramOffset) == BfParamKind_Params)
+			typedValueExpr->mTypedValue.mKind = BfTypedValueKind_Params;
 		typedValueExpr->mRefNode = NULL;
 		args[i] = typedValueExpr;
 	}
@@ -17537,6 +17550,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 	mModule->mBfIRBuilder->SaveDebugLocation();
 	SetAndRestoreValue<BfMixinState*> prevMixinState(curMethodState->mMixinState, mixinState);
+	SetAndRestoreValue<BfExprEvaluator*> prevExprEvaluator(curMethodState->mCurScope->mExprEvaluator, NULL);
 
 	BfGetSymbolReferenceKind prevSymbolRefKind = BfGetSymbolReferenceKind_None;
 	if (mModule->mCompiler->mResolvePassData != NULL)
@@ -18132,6 +18146,18 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 				expectingType = underlyingType;
 			}
 
+			BfType* inRefType = NULL;
+			if ((expectingType != NULL) && (expectingType->IsRef()))
+			{
+				auto refType = (BfRefType*)expectingType;
+				if (refType->mRefKind == BfRefType::RefKind_In)
+				{
+					inRefType = expectingType;
+					auto underlyingType = expectingType->GetUnderlyingType();
+					expectingType = underlyingType;
+				}
+			}
+
 			if (expectingType != NULL)
 			{
 				if (expectingType->IsSizedArray())
@@ -18174,6 +18200,12 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 							if ((ctorResult) && (!ctorResult.mType->IsVoid()))
 								mResult = ctorResult;
 							mModule->ValidateAllocation(expectingType, invocationExpr->mTarget);
+
+							if ((inRefType != NULL) && (mResult.mType == expectingType) && (mResult.IsAddr()))
+							{
+								// Put back the 'in'
+								mResult = BfTypedValue(mResult.mValue, inRefType);
+							}
 
 							return;
 						}

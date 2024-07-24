@@ -513,6 +513,11 @@ namespace Beefy.theme.dark
 			return rect;
 		}
 
+#if BF_PLATFORM_WINDOWS
+		[CLink]
+		static extern int32 GetCaretBlinkTime();
+#endif
+
         public override void Draw(Graphics g)
         {            
             base.Draw(g);
@@ -568,7 +573,16 @@ namespace Beefy.theme.dark
 						g.OutlineRect(hiliteX, y, totalLineWidth, lineSpacing + thickness, thickness);
 				}
 
-			    float brightness = (float)Math.Cos(Math.Max(0.0f, mCursorBlinkTicks - 20) / 9.0f);                            
+				float blinkRate = 1 / 9.0f;
+#if BF_PLATFORM_WINDOWS
+				int blinkTime = GetCaretBlinkTime();
+				if (blinkTime <= 0)
+					blinkRate = 0;
+				else
+					blinkRate = (blinkRate * 530) / blinkTime;
+#endif
+
+			    float brightness = (float)Math.Cos(Math.Max(0.0f, mCursorBlinkTicks - 20) * blinkRate);                      
 			    brightness = Math.Clamp(brightness * 2.0f + 1.6f, 0, 1);
 			    if (mEditWidget.mVertPos.IsMoving)
 			        brightness = 0; // When we animate a pgup or pgdn, it's weird seeing the cursor scrolling around

@@ -79,6 +79,11 @@ static void FilterThreadName(String& name)
 	}
 }
 
+static bool IsHandleValid(HANDLE handle)
+{
+	return (handle != NULL) && (handle != INVALID_HANDLE_VALUE);
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 WdBreakpointCondition::~WdBreakpointCondition()
@@ -508,6 +513,9 @@ WinDebugger::WinDebugger(DebugManager* debugManager) : mDbgSymSrv(this)
 	mOrigStepType = StepType_None;
 	mLastValidStepIntoPC = 0;
 	mActiveSymSrvRequest = NULL;
+	mStdInputPipe = INVALID_HANDLE_VALUE;
+	mStdOutputPipe = INVALID_HANDLE_VALUE;
+	mStdErrorPipe = INVALID_HANDLE_VALUE;
 
 	mStoredReturnValueAddr = 0;
 #ifdef BF_DBG_32
@@ -528,6 +536,8 @@ WinDebugger::WinDebugger(DebugManager* debugManager) : mDbgSymSrv(this)
 	mDbgProcessId = 0;
 	mDbgHeapData = NULL;
 	mIsPartialCallStack = true;
+	mHotSwapEnabled = false;
+	mOpenFileFlags = DbgOpenFileFlag_None;
 
 	for (int i = 0; i < 4; i++)
 	{
@@ -919,7 +929,7 @@ void WinDebugger::DebugThreadProc()
 
 	if (!IsMiniDumpDebugger())
 	{
-		if (!DoOpenFile(mLaunchPath, mArgs, mWorkingDir, mEnvBlock))
+		if (!DoOpenFile(mLaunchPath, mArgs, mWorkingDir, mEnvBlock, mOpenFileFlags))
 		{
 			if (mDbgProcessId != 0)
 				OutputRawMessage("error Unable to attach to process");
@@ -1005,7 +1015,7 @@ bool WinDebugger::CanOpen(const StringImpl& fileName, DebuggerResult* outResult)
 	return canRead;
 }
 
-void WinDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled)
+void WinDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled, DbgOpenFileFlags openFileFlags)
 {
 	BF_ASSERT(!mIsRunning);
 	mLaunchPath = launchPath;
@@ -1014,6 +1024,7 @@ void WinDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targe
 	mWorkingDir = workingDir;
 	mEnvBlock = envBlock;
 	mHotSwapEnabled = hotSwapEnabled;
+	mOpenFileFlags = openFileFlags;
 	mDebugTarget = new DebugTarget(this);
 }
 
@@ -1057,6 +1068,29 @@ bool WinDebugger::Attach(int processId, BfDbgAttachFlags attachFlags)
 	mDebugTarget = new DebugTarget(this);
 
 	return true;
+}
+
+void WinDebugger::GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr)
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	if ((outStdIn != NULL) && (IsHandleValid(mStdInputPipe)))
+	{
+		*outStdIn = BfpFile_GetFromHandle((intptr)mStdInputPipe, NULL);
+		mStdInputPipe = 0;
+	}
+
+	if ((outStdOut != NULL) && (IsHandleValid(mStdOutputPipe)))
+	{
+		*outStdOut = BfpFile_GetFromHandle((intptr)mStdOutputPipe, NULL);
+		mStdOutputPipe = 0;
+	}
+
+	if ((outStdErr != NULL) && (IsHandleValid(mStdErrorPipe)))
+	{
+		*outStdErr = BfpFile_GetFromHandle((intptr)mStdErrorPipe, NULL);
+		mStdErrorPipe = 0;
+	}
 }
 
 void WinDebugger::Run()
@@ -1262,7 +1296,50 @@ String WinDebugger::GetDbgAllocInfo()
 	return result;
 }
 
-bool WinDebugger::DoOpenFile(const StringImpl& fileName, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock)
+static bool CreatePipeWithSecurityAttributes(HANDLE& hReadPipe, HANDLE& hWritePipe, SECURITY_ATTRIBUTES* lpPipeAttributes, int32 nSize)
+{
+	hReadPipe = 0;
+	hWritePipe = 0;
+	bool ret = ::CreatePipe(&hReadPipe, &hWritePipe, lpPipeAttributes, nSize);
+	if (!ret || (hReadPipe == INVALID_HANDLE_VALUE) || (hWritePipe == INVALID_HANDLE_VALUE))
+		return false;
+	return true;
+}
+
+static bool CreatePipe(HANDLE& parentHandle, HANDLE& childHandle, bool parentInputs)
+{
+	SECURITY_ATTRIBUTES securityAttributesParent = { 0 };
+	securityAttributesParent.bInheritHandle = 1;
+
+	HANDLE hTmp = INVALID_HANDLE_VALUE;
+	if (parentInputs)
+		CreatePipeWithSecurityAttributes(childHandle, hTmp, &securityAttributesParent, 0);
+	else
+		CreatePipeWithSecurityAttributes(hTmp, childHandle, &securityAttributesParent, 0);
+
+	HANDLE dupHandle = 0;
+
+	// Duplicate the parent handle to be non-inheritable so that the child process
+	// doesn't have access. This is done for correctness sake, exact reason is unclear.
+	// One potential theory is that child process can do something brain dead like
+	// closing the parent end of the pipe and there by getting into a blocking situation
+	// as parent will not be draining the pipe at the other end anymore.
+	if (!::DuplicateHandle(GetCurrentProcess(), hTmp,
+		GetCurrentProcess(), &dupHandle,
+		0, false, DUPLICATE_SAME_ACCESS))
+	{
+		return false;
+	}
+
+	parentHandle = dupHandle;
+
+	if (hTmp != INVALID_HANDLE_VALUE)
+		::CloseHandle(hTmp);
+
+	return true;
+}
+
+bool WinDebugger::DoOpenFile(const StringImpl& fileName, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, DbgOpenFileFlags openFileFlags)
 {
 	BP_ZONE("WinDebugger::DoOpenFile");
 
@@ -1273,6 +1350,33 @@ bool WinDebugger::DoOpenFile(const StringImpl& fileName, const StringImpl& args,
 	ZeroMemory(&si, sizeof(si));
 	si.cb = sizeof(si);
 	ZeroMemory(&mProcessInfo, sizeof(mProcessInfo));
+
+	DWORD flags = DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS | CREATE_DEFAULT_ERROR_MODE;
+	BOOL inheritHandles = false;
+
+	// set up the streams
+	if ((openFileFlags & (DbgOpenFileFlag_RedirectStdInput | DbgOpenFileFlag_RedirectStdOutput | DbgOpenFileFlag_RedirectStdError)) != 0)
+	{
+		if ((openFileFlags & DbgOpenFileFlag_RedirectStdInput) != 0)
+			CreatePipe(mStdInputPipe, si.hStdInput, true);
+		else if (::GetConsoleWindow() != NULL)
+			si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+		else
+			si.hStdInput = INVALID_HANDLE_VALUE;
+
+		if ((openFileFlags & DbgOpenFileFlag_RedirectStdOutput) != 0)
+			CreatePipe(mStdOutputPipe, si.hStdOutput, false);
+		else
+			si.hStdOutput = GetStdHandle(STD_OUTPUT_HANDLE);
+
+		if ((openFileFlags & DbgOpenFileFlag_RedirectStdError) != 0)
+			CreatePipe(mStdErrorPipe, si.hStdError, false);
+		else
+			si.hStdError = GetStdHandle(STD_ERROR_HANDLE);		
+		flags |= CREATE_NO_WINDOW;
+		si.dwFlags = STARTF_USESTDHANDLES;
+		inheritHandles = true;
+	}	
 
 	if (mDbgProcessId != 0)
 	{
@@ -1287,8 +1391,7 @@ bool WinDebugger::DoOpenFile(const StringImpl& fileName, const StringImpl& args,
 		BP_ZONE("DoOpenFile_CreateProcessW");
 
 		UTF16String envW;
-
-		DWORD flags = DEBUG_PROCESS | DEBUG_ONLY_THIS_PROCESS | CREATE_DEFAULT_ERROR_MODE;
+		
 		void* envPtr = NULL;
 		if (!envBlock.IsEmpty())
 		{
@@ -1318,11 +1421,34 @@ bool WinDebugger::DoOpenFile(const StringImpl& fileName, const StringImpl& args,
 			cmdLine += args;
 		}
 
-		BOOL worked = CreateProcessW(NULL, (WCHAR*)UTF8Decode(cmdLine).c_str(), NULL, NULL, FALSE,
+		BOOL worked = CreateProcessW(NULL, (WCHAR*)UTF8Decode(cmdLine).c_str(), NULL, NULL, inheritHandles,
 			flags, envPtr, (WCHAR*)UTF8Decode(workingDir).c_str(), &si, &mProcessInfo);
+
+		if ((openFileFlags & DbgOpenFileFlag_RedirectStdInput) != 0)
+			::CloseHandle(si.hStdInput);
+		if ((openFileFlags & DbgOpenFileFlag_RedirectStdOutput) != 0)
+			::CloseHandle(si.hStdOutput);
+		if ((openFileFlags & DbgOpenFileFlag_RedirectStdError) != 0)
+			::CloseHandle(si.hStdError);
 
 		if (!worked)
 		{
+			if (IsHandleValid(mStdInputPipe))
+			{
+				::CloseHandle(mStdInputPipe);
+				mStdInputPipe = 0;
+			}
+			if (IsHandleValid(mStdOutputPipe))
+			{
+				::CloseHandle(mStdOutputPipe);
+				mStdOutputPipe = 0;
+			}
+			if (IsHandleValid(mStdErrorPipe))
+			{
+				::CloseHandle(mStdErrorPipe);
+				mStdErrorPipe = 0;
+			}
+
 			auto lastError = ::GetLastError();
 			if (lastError == ERROR_DIRECTORY)
 			{
@@ -1503,6 +1629,18 @@ void WinDebugger::Detach()
 	mBreakpointAddrMap.Clear();
 
 	gDebugUpdateCnt = 0;
+
+	if (IsHandleValid(mStdInputPipe))
+		::CloseHandle(mStdInputPipe);
+	mStdInputPipe = INVALID_HANDLE_VALUE;
+
+	if (IsHandleValid(mStdOutputPipe))
+		::CloseHandle(mStdOutputPipe);
+	mStdOutputPipe = INVALID_HANDLE_VALUE;
+	
+	if (IsHandleValid(mStdErrorPipe))
+		::CloseHandle(mStdErrorPipe);
+	mStdErrorPipe = INVALID_HANDLE_VALUE;
 }
 
 Profiler* WinDebugger::StartProfiling()
@@ -2917,6 +3055,8 @@ void WinDebugger::ContinueDebugEvent()
 
 static BOOL CALLBACK WdEnumWindowsProc(HWND hwnd, LPARAM lParam)
 {
+	int wantProcessId = lParam;
+
 	HWND owner = GetWindow(hwnd, GW_OWNER);
 	if (!IsWindowVisible(hwnd))
 		return TRUE;
@@ -2924,16 +3064,40 @@ static BOOL CALLBACK WdEnumWindowsProc(HWND hwnd, LPARAM lParam)
 	DWORD processId = 0;
 	DWORD threadId = GetWindowThreadProcessId(hwnd, &processId);
 
-	if (processId != ((WinDebugger*)gDebugger)->mProcessInfo.dwProcessId)
+	if (processId != wantProcessId)
 		return TRUE;
-
-	SetForegroundWindow(hwnd);
+	
+	while (true)
+	{
+		HWND parentHWnd = GetParent(hwnd);
+		if (parentHWnd != NULL)
+		{
+			hwnd = parentHWnd;
+			continue;
+		}
+		SetForegroundWindow(hwnd);
+		break;
+	}
+	
 	return TRUE;
 }
 
-void WinDebugger::ForegroundTarget()
+void WinDebugger::ForegroundTarget(int altProcessId)
 {
-	EnumWindows(WdEnumWindowsProc, 0);
+	int wantProcessId = altProcessId;
+	if (wantProcessId == 0)
+		wantProcessId = ((WinDebugger*)gDebugger)->mProcessInfo.dwProcessId;
+
+	HWND hwnd = ::GetForegroundWindow();
+	if (hwnd != INVALID_HANDLE_VALUE)
+	{
+		DWORD processId = 0;
+		GetWindowThreadProcessId(hwnd, &processId);
+		if (processId == ((WinDebugger*)gDebugger)->mProcessInfo.dwProcessId)
+			return; // Already good
+	}
+	
+	EnumWindows(WdEnumWindowsProc, wantProcessId);
 }
 
 static int gFindLineDataAt = 0;
@@ -10817,6 +10981,14 @@ String WinDebugger::GetProcessInfo()
 	retStr += StrFormat("UserTime\t%lld\n", *(int64*)&userTime / sysinfo.dwNumberOfProcessors);
 
 	return retStr;
+}
+
+int WinDebugger::GetProcessId()
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	if (!mThreadList.IsEmpty())
+		return mThreadList[0]->mProcessId;
+	return mDbgProcessId;
 }
 
 String WinDebugger::GetThreadInfo()

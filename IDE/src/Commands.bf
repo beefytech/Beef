@@ -309,6 +309,8 @@ namespace IDE
 			Add("Show File Externally", new => gApp.Cmd_ShowFileExternally);
 			Add("Show Find Results", new => gApp.ShowFindResults);
 			Add("Show Fixit", new => gApp.Cmd_ShowFixit);
+			Add("Show Terminal", new => gApp.ShowTerminal);
+			Add("Show Console", new => gApp.ShowConsole);
 			Add("Show Immediate", new => gApp.ShowImmediatePanel);
 			Add("Show Memory", new => gApp.ShowMemory);
 			Add("Show Modules", new => gApp.ShowModules);

@@ -898,8 +898,10 @@ namespace IDE
 				Add("Show Output", "Ctrl+Alt+O");
 				Add("Show Profiler", "Ctrl+Alt+P");
 				Add("Show QuickWatch", "Shift+Alt+W");
-				Add("Show Threads", "Ctrl+Alt+T");
+				Add("Show Threads", "Ctrl+Alt+H");
 				Add("Show Watches", "Ctrl+Alt+W");
+				Add("Show Console", "Ctrl+Alt+N");
+				Add("Show Terminal", "Ctrl+Alt+T");
 				Add("Show Workspace Explorer", "Ctrl+Alt+S");
 				Add("Start Debugging", "F5");
 				Add("Start Without Debugging", "Ctrl+F5");
@@ -1097,6 +1099,14 @@ namespace IDE
 			public bool mDependencies;
 		}
 
+		public enum ConsoleKind
+		{
+			Native,
+			Embedded,
+			RedirectToOutput,
+			RedirectToImmediate,
+		}
+
 		public bool mLoadedSettings;
 		public String mSettingFileText ~ delete _;
 		public DateTime mSettingFileDateTime;
@@ -1109,6 +1119,10 @@ namespace IDE
 		public KeySettings mKeySettings = new .() ~ delete _;
 		public RecentFiles mRecentFiles = new RecentFiles() ~ delete _;
 		public String mWakaTimeKey = new .() ~ delete _;
+		public String mWindowsTerminal = new .("Powershell") ~ delete _;
+		public ConsoleKind mDebugConsoleKind;
+		public bool mAlwaysEnableConsole;
+		public bool mKeepNativeConsoleOpen;
 		public String mEmscriptenPath = new .() ~ delete _;
 		public bool mEnableDevMode;
 		public TutorialsFinished mTutorialsFinished = .();
@@ -1166,6 +1180,13 @@ namespace IDE
 				mDebuggerSettings.Serialize(sd);
 			using (sd.CreateObject("VisualStudio"))
 				mVSSettings.Serialize(sd);
+			using (sd.CreateObject("Console"))
+			{
+				sd.Add("WindowsTerminal", mWindowsTerminal);
+				sd.Add("DebugConsole", mDebugConsoleKind);
+				sd.Add("AlwaysEnableConsole", mAlwaysEnableConsole);
+				sd.Add("KeepNativeConsoleOpen", mKeepNativeConsoleOpen);
+			}
 			using (sd.CreateObject("Wasm"))
 				sd.Add("EmscriptenPath", mEmscriptenPath);
 
@@ -1255,6 +1276,13 @@ namespace IDE
 				mDebuggerSettings.Deserialize(sd);
 			using (sd.Open("VisualStudio"))
 				mVSSettings.Deserialize(sd);
+			using (sd.Open("Console"))
+			{
+				sd.Get("WindowsTerminal", mWindowsTerminal);
+				mDebugConsoleKind = sd.GetEnum<ConsoleKind>("DebugConsole", .Native);
+				mAlwaysEnableConsole = sd.GetBool("AlwaysEnableConsole");
+				mKeepNativeConsoleOpen = sd.GetBool("KeepNativeConsoleOpen");
+			}
 			using (sd.Open("Wasm"))
 				sd.Get("EmscriptenPath", mEmscriptenPath);
 

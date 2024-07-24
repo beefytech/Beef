@@ -691,6 +691,8 @@ namespace Beefy.gfx
         public float GetWidth(char32 theChar)
         {
             CharData charData = GetCharData(theChar);
+			if (charData == null)
+				return 0;
             return charData.mXAdvance;
         }
 

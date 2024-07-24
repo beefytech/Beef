@@ -314,8 +314,9 @@ public:
 	virtual void OutputRawMessage(const StringImpl& msg) override;
 	virtual int GetAddrSize() override;
 	virtual bool CanOpen(const StringImpl& fileName, DebuggerResult* outResult) override;
-	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled) override;
+	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled, DbgOpenFileFlags openFileFlags) override;
 	virtual bool Attach(int processId, BfDbgAttachFlags attachFlags) override;
+	virtual void GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr) override;
 	virtual void Run() override;
 	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) override;
 	virtual void InitiateHotResolve(DbgHotResolveFlags flags) override;
@@ -323,7 +324,7 @@ public:
 	virtual String GetDbgAllocInfo() override;
 	virtual void Update() override;
 	virtual void ContinueDebugEvent() override;
-	virtual void ForegroundTarget() override;
+	virtual void ForegroundTarget(int altProcessId) override;
 	virtual Breakpoint* CreateBreakpoint(const StringImpl& fileName, int lineNum, int wantColumn, int instrOffset) override;
 	virtual Breakpoint* CreateMemoryBreakpoint(intptr addr, int byteCount) override;
 	virtual Breakpoint* CreateSymbolBreakpoint(const StringImpl& symbolName) override;
@@ -358,6 +359,7 @@ public:
 	virtual String GetAutoLocals(int callStackIdx, bool showRegs) override;
 	virtual String CompactChildExpression(const StringImpl& expr, const StringImpl& parentExpr, int callStackIdx) override;
 	virtual String GetProcessInfo() override;
+	virtual int GetProcessId() override;
 	virtual String GetThreadInfo() override;
 	virtual void SetActiveThread(int threadId) override;
 	virtual int GetActiveThread() override;

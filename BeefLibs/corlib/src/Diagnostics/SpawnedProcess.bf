@@ -35,6 +35,16 @@ namespace System.Diagnostics
 			}
 		}
 
+		public int ProcessId
+		{
+			get
+			{
+				if (mSpawn == null)
+					return -1;
+				return Platform.BfpSpawn_GetProcessId(mSpawn);
+			}
+		}
+
 		public this()
 		{
 			mSpawn = null;
@@ -60,6 +70,8 @@ namespace System.Diagnostics
 			}
 			if (startInfo.CreateNoWindow)
 				spawnFlags |= .NoWindow;
+			if (!startInfo.ActivateWindow)
+				spawnFlags |= .NoActivateWindow;
 			if (startInfo.RedirectStandardInput)
 				spawnFlags |= .RedirectStdInput;
 			if (startInfo.RedirectStandardOutput)

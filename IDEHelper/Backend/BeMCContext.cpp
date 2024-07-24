@@ -9804,7 +9804,14 @@ bool BeMCContext::DoLegalization()
 					{
 						if ((rmInfo.mRegB != X64Reg_None) || (rmInfo.mDisp != 0) || (rmInfo.mBScale != 1))
 						{
-							isInvalid = true;
+							if ((vregInfo->mIsExpr) && (vregInfo->mRelTo.mKind == BeMCOperandKind_Immediate_i64))
+							{
+								// Zero-sized alloc, allow
+							}
+							else
+							{
+								isInvalid = true;
+							}
 						}
 					}
 					else if (rmInfo.mMode == BeMCRMMode_Deref)
@@ -18076,7 +18083,7 @@ void BeMCContext::Generate(BeFunction* function)
 	BEMC_ASSERT(retCount == 1);
 
 	bool wantDebug = mDebugging;
-	//wantDebug |= function->mName == "?__BfCtor@SpriteBatchRenderer@Repo@bf@@QEAAXTint@@@Z";
+	wantDebug |= function->mName == "?Test@Program@BeefTest@bf@@SAXXZ";
 	//wantDebug |= function->mName == "?Testos@Fartso@@SAHPEA1@HH@Z";
 	//wantDebug |= function->mName == "?GetYoopA@Fartso@@QEAAUYoop@@XZ";
 		//"?TestVals@Fartso@@QEAATint@@XZ";

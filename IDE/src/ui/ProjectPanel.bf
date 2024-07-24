@@ -2375,7 +2375,7 @@ namespace IDE.ui
 
             base.KeyDown(keyCode, isRepeat);
 
-			if (mWidgetWindow.GetKeyFlags() == .Ctrl)
+			if (mWidgetWindow.GetKeyFlags(true) == .Ctrl)
 			{
 				switch (keyCode)
 				{
@@ -2388,7 +2388,7 @@ namespace IDE.ui
 				default:
 				}
 			}
-			else if (mWidgetWindow.GetKeyFlags() == .None)
+			else if (mWidgetWindow.GetKeyFlags(true) == .None)
 			{
 				if (keyCode == KeyCode.Delete)
 					RemoveSelectedItems();
@@ -2957,7 +2957,8 @@ namespace IDE.ui
 
 			void AddOpenContainingFolder()
 			{
-				var item = menu.AddItem("Open Containing Folder");
+				var folderItem = menu.AddItem("Open Containing Folder");
+				var item = folderItem.AddItem("File Explorer");
 				item.mOnMenuItemSelected.Add(new (item) =>
 				    {
 						let projectItem = GetSelectedProjectItem();
@@ -2989,6 +2990,67 @@ namespace IDE.ui
 							process.Start(psi).IgnoreError();
 						}
 				    });
+
+				item = folderItem.AddItem("External Terminal");
+				item.mOnMenuItemSelected.Add(new (menu) =>
+					{
+						let projectItem = GetSelectedProjectItem();
+						String path = scope String();
+						if (projectItem == null)
+						{
+							path.Set(gApp.mWorkspace.mDir);
+						}
+						else if (let projectFolder = projectItem as ProjectFolder)
+						{
+							if (projectFolder.mParentFolder == null)
+							{
+								path.Set(projectFolder.mProject.mProjectDir);
+							}
+							else
+								projectFolder.GetFullImportPath(path);
+						}
+						else
+							projectItem.mParentFolder.GetFullImportPath(path);
+
+						if (!path.IsWhiteSpace)
+						{
+							ProcessStartInfo psi = scope ProcessStartInfo();
+							psi.SetFileName(gApp.mSettings.mWindowsTerminal);
+							psi.SetWorkingDirectory(path);
+							psi.UseShellExecute = true;
+
+							var process = scope SpawnedProcess();
+							process.Start(psi).IgnoreError();
+						}
+					});
+
+				item = folderItem.AddItem("Embedded Terminal");
+				item.mOnMenuItemSelected.Add(new (menu) =>
+					{
+						let projectItem = GetSelectedProjectItem();
+						String path = scope String();
+						if (projectItem == null)
+						{
+							path.Set(gApp.mWorkspace.mDir);
+						}
+						else if (let projectFolder = projectItem as ProjectFolder)
+						{
+							if (projectFolder.mParentFolder == null)
+							{
+								path.Set(projectFolder.mProject.mProjectDir);
+							}
+							else
+								projectFolder.GetFullImportPath(path);
+						}
+						else
+							projectItem.mParentFolder.GetFullImportPath(path);
+
+						if (!path.IsWhiteSpace)
+						{
+							gApp.ShowTerminal();
+							gApp.mTerminalPanel.OpenDirectory(path);
+						}
+					});
 			}
 
             if (projectItem == null)

@@ -26,6 +26,8 @@ namespace System.IO
 
 		public Result<void, FileOpenError> Create(StringView machineName, StringView pipeName, PipeOptions options)
 		{
+			Close();
+
 			Runtime.Assert(mBfpFile == null);
 
 			String path = scope String();
@@ -64,6 +66,8 @@ namespace System.IO
 
 		public Result<void, FileOpenError> Open(StringView machineName, StringView pipeName, PipeOptions options)
 		{
+			Close();
+
 			Runtime.Assert(mBfpFile == null);
 
 			String path = scope String();

@@ -138,6 +138,14 @@ namespace IDE.Debugger
 			Allocations = 2
 		}
 
+		public enum OpenFileFlags
+		{
+			None,
+			RedirectStdInput = 1,
+			RedirectStdOutput = 2,
+			RedirectStdError = 4
+		}
+
 		public List<Breakpoint> mBreakpointList = new List<Breakpoint>();
 		public Dictionary<String, StepFilter> mStepFilterList = new Dictionary<String, StepFilter>();
 
@@ -157,13 +165,16 @@ namespace IDE.Debugger
 		static extern bool Debugger_OpenMiniDump(char8* filename);
 
 		[CallingConvention(.Stdcall),CLink]
-		static extern bool Debugger_OpenFile(char8* launchPath, char8* targetPath, char8* args, char8* workingDir, void* envBlockPtr, int32 envBlockLen, bool hotSwapEnabled);
+		static extern bool Debugger_OpenFile(char8* launchPath, char8* targetPath, char8* args, char8* workingDir, void* envBlockPtr, int32 envBlockLen, bool hotSwapEnabled, OpenFileFlags openFileFlags);
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_ComptimeAttach(void* bfCompiler);
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern bool Debugger_Attach(int32 processId, AttachFlags attachFlags);
+
+		[CallingConvention(.Stdcall),CLink]
+		public static extern void Debugger_GetStdHandles(Platform.BfpFile** outStdIn, Platform.BfpFile** outStdOut, Platform.BfpFile** outStdErr);
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern void Debugger_Run();
@@ -259,7 +270,7 @@ namespace IDE.Debugger
 		static extern char8* Debugger_GetCollectionContinuation(char8* continuationData, int32 callStackIdx, int32 count);
 
 		[CallingConvention(.Stdcall),CLink]
-		static extern void Debugger_ForegroundTarget();
+		static extern void Debugger_ForegroundTarget(int32 altProcessId);
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern void CallStack_Update();
@@ -302,6 +313,9 @@ namespace IDE.Debugger
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetProcessInfo();
+
+		[CallingConvention(.Stdcall),CLink]
+		static extern int32 Debugger_GetProcessId();
 
 		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetThreadInfo();
@@ -473,7 +487,7 @@ namespace IDE.Debugger
 			Debugger_FullReportMemory();
 		}
 
-		public bool OpenFile(String launchPath, String targetPath, String args, String workingDir, Span<char8> envBlock, bool isCompiled, bool hotSwapEnabled)
+		public bool OpenFile(String launchPath, String targetPath, String args, String workingDir, Span<char8> envBlock, bool isCompiled, bool hotSwapEnabled, OpenFileFlags openFileFlags)
 		{
 			DeleteAndNullify!(mRunningPath);
 			mRunningPath = new String(launchPath);
@@ -481,7 +495,7 @@ namespace IDE.Debugger
 			mIsComptimeDebug = false;
 			mIsRunningCompiled = isCompiled;
 			mIsRunningWithHotSwap = hotSwapEnabled;
-			return Debugger_OpenFile(launchPath, targetPath, args, workingDir, envBlock.Ptr, (int32)envBlock.Length, hotSwapEnabled);
+			return Debugger_OpenFile(launchPath, targetPath, args, workingDir, envBlock.Ptr, (int32)envBlock.Length, hotSwapEnabled, openFileFlags);
 		}
 
 		public bool ComptimeAttach(BfCompiler compiler)
@@ -901,9 +915,9 @@ namespace IDE.Debugger
 			outVal.Append(result);
 		}
 
-		public void ForegroundTarget()
+		public void ForegroundTarget(int32 altProcessId)
 		{
-			Debugger_ForegroundTarget();
+			Debugger_ForegroundTarget(altProcessId);
 		}
 
 		public void UpdateCallStack()
@@ -1068,6 +1082,13 @@ namespace IDE.Debugger
 			outProcessInfo.Append(strPtr);
 		}
 
+		public int32 GetProcessId()
+		{
+			if (!mIsRunning)
+				return 0;
+			return Debugger_GetProcessId();
+		}
+
 		public void GetThreadInfo(String outThreadInfo)
 		{
 			if (!mIsRunning)
@@ -1173,6 +1194,11 @@ namespace IDE.Debugger
 			mIsComptimeDebug = false;
 			mIsRunningWithHotSwap = false;
 			return Debugger_Attach(process.Id, attachFlags);
+		}
+
+		public void GetStdHandles(Platform.BfpFile** outStdIn, Platform.BfpFile** outStdOut, Platform.BfpFile** outStdErr)
+		{
+			Debugger_GetStdHandles(outStdIn, outStdOut, outStdErr);
 		}
 
 		public DbgProfiler StartProfiling(int threadId, String desc, int sampleRate)

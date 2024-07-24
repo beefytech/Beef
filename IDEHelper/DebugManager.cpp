@@ -754,7 +754,7 @@ BF_EXPORT int BF_CALLTYPE Debugger_GetAddrSize()
 	return gDebugger->GetAddrSize();
 }
 
-BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char* targetPath, const char* args, const char* workingDir, void* envBlockPtr, int envBlockSize, bool hotSwapEnabled)
+BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char* targetPath, const char* args, const char* workingDir, void* envBlockPtr, int envBlockSize, bool hotSwapEnabled, DbgOpenFileFlags openFileFlags)
 {
 	BF_ASSERT(gDebugger == NULL);
 
@@ -784,7 +784,7 @@ BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char*
 			envBlock.Insert(0, (uint8*)envBlockPtr, envBlockSize);
 	}
 
-	gDebugger->OpenFile(launchPath, targetPath, args, workingDir, envBlock, hotSwapEnabled);
+	gDebugger->OpenFile(launchPath, targetPath, args, workingDir, envBlock, hotSwapEnabled, openFileFlags);
 	return true;
 }
 
@@ -909,6 +909,12 @@ BF_EXPORT bool BF_CALLTYPE Debugger_Attach(int processId, BfDbgAttachFlags attac
 	}
 
 	return false;
+}
+
+BF_EXPORT void Debugger_GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr)
+{
+	if (gDebugger != NULL)
+		gDebugger->GetStdHandles(outStdIn, outStdOut, outStdErr);
 }
 
 BF_EXPORT void BF_CALLTYPE Debugger_Run()
@@ -1357,9 +1363,9 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_GetCollectionContinuation(const char*
 	return outString.c_str();
 }
 
-BF_EXPORT void BF_CALLTYPE Debugger_ForegroundTarget()
+BF_EXPORT void BF_CALLTYPE Debugger_ForegroundTarget(int altProcessId)
 {
-	gDebugger->ForegroundTarget();
+	gDebugger->ForegroundTarget(altProcessId);
 
 	//BOOL worked = EnumThreadWindows(gDebugger->mProcessInfo.dwThreadId, WdEnumWindowsProc, 0);
 	//BF_ASSERT(worked);
@@ -1370,6 +1376,11 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_GetProcessInfo()
 	String& outString = *gTLStrReturn.Get();
 	outString = gDebugger->GetProcessInfo();
 	return outString.c_str();
+}
+
+BF_EXPORT int BF_CALLTYPE Debugger_GetProcessId()
+{
+	return gDebugger->GetProcessId();
 }
 
 BF_EXPORT const char* BF_CALLTYPE Debugger_GetThreadInfo()

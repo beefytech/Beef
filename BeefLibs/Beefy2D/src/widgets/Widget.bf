@@ -747,18 +747,32 @@ namespace Beefy.widgets
             }
         }
 
+		public virtual void MouseWheel(MouseEvent evt)
+		{
+			if (!evt.mHandled)
+			{
+				MouseWheel(evt.mX, evt.mY, evt.mWheelDeltaX, evt.mWheelDeltaY);
+
+				MarkDirty();
+
+				if (mParent != null)
+				{
+					MouseEvent parentEvt = scope .();
+					parentEvt.mWheelDeltaX = evt.mWheelDeltaX;
+					parentEvt.mWheelDeltaY = evt.mWheelDeltaY;
+					parentEvt.mSender = evt.mSender;
+
+				    // Keep passing it up until some is interested in using it...
+				    SelfToParentTranslate(evt.mX, evt.mY, out parentEvt.mX, out parentEvt.mY);
+
+				    mParent.MouseWheel(parentEvt);
+				}
+			}
+		}
+
         public virtual void MouseWheel(float x, float y, float deltaX, float deltaY)
         {
-			MarkDirty();
-
-            if (mParent != null)
-            {
-                // Keep passing it up until some is interested in using it...
-                float aX;
-                float aY;
-                SelfToParentTranslate(x, y, out aX, out aY);
-                mParent.MouseWheel(aX, aY, deltaX, deltaY);
-            }
+			
         }
 
         public virtual void MouseUp(float x, float y, int32 btn)

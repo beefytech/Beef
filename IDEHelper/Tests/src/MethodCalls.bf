@@ -126,6 +126,11 @@ namespace Tests
 		{
 		}
 
+		public static int InCallStruct(in StructA val)
+		{
+			return val.mA + val.mB;
+		}
+
 		public static int ParamsA(int a, params Span<int> ints)
 		{
 			int result = a;
@@ -206,6 +211,9 @@ namespace Tests
 			StructA sa = .(100, 101);
 			StructA sa2 = .(200, 201);
 			StructA sa3 = .(300, 301);
+
+			Test.Assert(InCallStruct(sa) == 201);
+			Test.Assert(InCallStruct(.(200, 202)) == 402);
 
 			Test.Assert(Method0(sa) == 100);
 			Test.Assert(Method1(sa, sa2) == 200);

@@ -160,6 +160,7 @@ namespace IDE
         public PropertiesPanel mPropertiesPanel;
         public Font mTinyCodeFont ~ delete _;
         public Font mCodeFont ~ delete _;
+		public Font mTermFont ~ delete _;
 		protected bool mInitialized;
 		public bool mConfig_NoIR;
 		public bool mFailed;
@@ -196,6 +197,8 @@ namespace IDE
 		public bool mWantShowOutput;
 
         public OutputPanel mOutputPanel;
+		public TerminalPanel mTerminalPanel;
+		public ConsolePanel mConsolePanel;
         public ImmediatePanel mImmediatePanel;
         public FindResultsPanel mFindResultsPanel;
         public WatchPanel mAutoWatchPanel;
@@ -342,6 +345,9 @@ namespace IDE
 		bool mProfileCompile = false;
 		ProfileInstance mProfileCompileProfileId;
 
+		Monitor mDebugOutputMonitor = new .() ~ delete _;
+		String mDebugOutput = new .() ~ delete _;
+
 #if !CLI
 		public IPCHelper mIPCHelper ~ delete _;
 		public bool mIPCHadFocus;
@@ -420,8 +426,15 @@ namespace IDE
 			public int mSampleRate;
 		}
 
+		class OpenDebugConsoleCmd : ExecutionCmd
+		{
+
+		}
+
         class StartDebugCmd : ExecutionCmd
         {
+			public bool mConnectedToConsole;
+			public int32 mConsoleProcessId;
 			public bool mWasCompiled;
 			public bool mHotCompileEnabled;
 
@@ -711,6 +724,8 @@ namespace IDE
 			RemoveAndDelete!(mProjectPanel);
 			RemoveAndDelete!(mClassViewPanel);
 			RemoveAndDelete!(mOutputPanel);
+			RemoveAndDelete!(mTerminalPanel);
+			RemoveAndDelete!(mConsolePanel);
 			RemoveAndDelete!(mImmediatePanel);
 			RemoveAndDelete!(mFindResultsPanel);
 			RemoveAndDelete!(mAutoWatchPanel);
@@ -815,6 +830,8 @@ namespace IDE
 			dlg(mProjectPanel);
 			dlg(mClassViewPanel);
 			dlg(mOutputPanel);
+			dlg(mTerminalPanel);
+			dlg(mConsolePanel);
 			dlg(mImmediatePanel);
 			dlg(mFindResultsPanel);
 			dlg(mAutoWatchPanel);
@@ -3772,7 +3789,7 @@ namespace IDE
 			}
 
 			// Always write to STDOUT even if we're running as a GUI, allowing cases like RunAndWait to pass us a stdout handle
-			Console.Error.WriteLine("ERROR: {0}", text);
+			Console.Error.WriteLine("ERROR: {0}", text).IgnoreError();
 
 #if CLI
 			mFailed = true;
@@ -3799,7 +3816,7 @@ namespace IDE
 
 				mFailed = true;
 				OutputLineSmart("ERROR: {0}", text);
-				Console.Error.WriteLine("ERROR: {0}", text);
+				Console.Error.WriteLine("ERROR: {0}", text).IgnoreError();
 
 				return null;
 			}
@@ -5153,6 +5170,18 @@ namespace IDE
         }
 
 		[IDECommand]
+		public void ShowTerminal()
+		{
+		    ShowPanel(mTerminalPanel, "Terminal");
+		}
+
+		[IDECommand]
+		public void ShowConsole()
+		{
+		    ShowPanel(mConsolePanel, "Console");
+		}
+
+		[IDECommand]
         public void ShowImmediatePanel()
         {            
             ShowPanel(mImmediatePanel, "Immediate");
@@ -5924,12 +5953,14 @@ namespace IDE
 			AddMenuItem(subMenu, "&Diagnostics", "Show Diagnostics");
 			AddMenuItem(subMenu, "E&rrors", "Show Errors");
 			AddMenuItem(subMenu, "&Find Results", "Show Find Results");
+			AddMenuItem(subMenu, "&Terminal", "Show Terminal");
+			AddMenuItem(subMenu, "Co&nsole", "Show Console");
 			AddMenuItem(subMenu, "&Immediate Window", "Show Immediate");
 			AddMenuItem(subMenu, "&Memory", "Show Memory");
 			AddMenuItem(subMenu, "Mod&ules", "Show Modules");
 			AddMenuItem(subMenu, "&Output", "Show Output");
 			AddMenuItem(subMenu, "&Profiler", "Show Profiler");
-			AddMenuItem(subMenu, "&Threads", "Show Threads");
+			AddMenuItem(subMenu, "T&hreads", "Show Threads");
 			AddMenuItem(subMenu, "&Watches", "Show Watches");
 			AddMenuItem(subMenu, "Work&space Explorer", "Show Workspace Explorer");
 			subMenu.AddMenuItem(null);
@@ -6076,6 +6107,7 @@ namespace IDE
         public void SetupNewWindow(WidgetWindow window, bool isMainWindow)
         {
             window.mOnWindowKeyDown.Add(new => SysKeyDown);
+			window.mOnWindowKeyUp.Add(new => SysKeyUp);
 			window.mOnMouseUp.Add(new => MouseUp);
 			if (isMainWindow)
             	window.mOnWindowCloseQuery.Add(new => SecondaryAllowClose);
@@ -6513,6 +6545,20 @@ namespace IDE
 								ProcessStartInfo procInfo = scope ProcessStartInfo();
 								procInfo.UseShellExecute = true;
 								procInfo.SetFileName(directory);
+
+								let process = scope SpawnedProcess();
+								process.Start(procInfo).IgnoreError();
+							});
+						item = menu.AddItem("Open in Terminal");
+						item.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								let directory = scope String();
+								Path.GetDirectoryPath(sourceViewPanel.mFilePath, directory);
+
+								ProcessStartInfo procInfo = scope ProcessStartInfo();
+								procInfo.UseShellExecute = true;
+								procInfo.SetFileName(gApp.mSettings.mWindowsTerminal);
+								procInfo.SetWorkingDirectory(directory);
 
 								let process = scope SpawnedProcess();
 								process.Start(procInfo).IgnoreError();
@@ -8214,6 +8260,12 @@ namespace IDE
 				NOP!();
 			}
 
+			if (!evt.mKeyFlags.HeldKeys.HasFlag(.Alt))
+			{
+				mConsolePanel.SysKeyDown(evt);
+				mTerminalPanel.SysKeyDown(evt);
+			}
+
 			if (evt.mHandled)
 				return;
 
@@ -8262,7 +8314,7 @@ namespace IDE
 			{
 				var keyState = scope KeyState();
 				keyState.mKeyCode = evt.mKeyCode;
-				keyState.mKeyFlags = evt.mKeyFlags;
+				keyState.mKeyFlags = evt.mKeyFlags.HeldKeys;
 
 				var curKeyMap = mCommands.mKeyMap;
 
@@ -8363,7 +8415,7 @@ namespace IDE
 			//if (focusWidget is DisassemblyPanel)
 				//break;            
 
-            if (evt.mKeyFlags == 0) // No ctrl/shift/alt
+            if (evt.mKeyFlags.HeldKeys == 0) // No ctrl/shift/alt
             {
                 switch (evt.mKeyCode)
                 {
@@ -8384,6 +8436,12 @@ namespace IDE
                 }
             }
         }
+
+		void SysKeyUp(KeyCode keyCode)
+		{
+			mConsolePanel.SysKeyUp(keyCode);
+			mTerminalPanel.SysKeyUp(keyCode);
+		}
     
         void ShowOpenFileInSolutionDialog()
         {
@@ -8741,8 +8799,10 @@ namespace IDE
 				return;
 			StreamReader streamReader = scope StreamReader(fileStream, null, false, 4096);
 
+			int count = 0;
 			while (true)
 			{
+				count++;
 				var buffer = scope String();
 				if (streamReader.ReadLine(buffer) case .Err)
 					break;				
@@ -8770,6 +8830,60 @@ namespace IDE
 				    executionInstance.mDeferredOutput.Add(new String(buffer));				
 			}
 		}
+
+		void ReadDebugOutputThread(Object obj)
+		{
+			FileStream fileStream = (.)obj;
+
+			int count = 0;
+			Loop: while (true)
+			{
+				uint8[4096] data = ?;
+				switch (fileStream.TryRead(data, -1))
+				{
+				case .Ok(let len):
+					if (len == 0)
+						break Loop;
+					using (mDebugOutputMonitor.Enter())
+					{
+						for (int i < len)
+							mDebugOutput.Append((char8)data[i]);
+					}
+				case .Err:
+					break Loop;
+				}
+
+				/*var buffer = scope String();
+				if (streamReader.Read(buffer) case .Err)
+					break;				
+				using (mDebugOutputMonitor.Enter())				
+				    mDebugOutput.Add(new String(buffer));*/
+
+				count++;
+			}
+
+			delete fileStream;
+		}
+
+		/*static void ReadDebugErrorThread(Object obj)
+		{
+			ExecutionInstance executionInstance = (ExecutionInstance)obj;
+
+			FileStream fileStream = scope FileStream();
+			if (executionInstance.mProcess.AttachStandardError(fileStream) case .Err)
+				return;
+			StreamReader streamReader = scope StreamReader(fileStream, null, false, 4096);
+
+			while (true)
+			{
+				var buffer = scope String();
+				if (streamReader.ReadLine(buffer) case .Err)
+					break;				
+
+				using (IDEApp.sApp.mMonitor.Enter())				
+				    executionInstance.mDeferredOutput.Add(new String(buffer));				
+			}
+		}*/
 
 		public enum RunFlags
 		{
@@ -9141,6 +9255,73 @@ namespace IDE
 					}
 				}
 
+				if (let startDebugCmd = next as StartDebugCmd)
+				{
+#if BF_PLATFORM_WINDOWS
+					if ((mSettings.mDebugConsoleKind == .Native) && (mSettings.mKeepNativeConsoleOpen))
+					{
+						if (!startDebugCmd.mConnectedToConsole)
+						{
+							if (startDebugCmd.mConsoleProcessId == 0)
+							{
+								int32 processId = 0;
+
+								List<Process> processList = scope .();
+								Process.GetProcesses(processList);
+								defer processList.ClearAndDeleteItems();
+
+								for (var process in processList)
+								{
+									if ((process.ProcessName.Contains("BeefCon.exe")) || (process.ProcessName.Contains("BeefCon_d.exe")))
+									{
+										var title = process.GetMainWindowTitle(.. scope .());
+										if (title.EndsWith("Debug Console"))
+										{
+											processId = process.Id;
+										}
+									}
+								}
+
+								if (processId == 0)
+								{
+									var beefConExe = scope $"{gApp.mInstallDir}/BeefCon.exe";
+
+									ProcessStartInfo procInfo = scope ProcessStartInfo();
+									procInfo.UseShellExecute = false;
+									procInfo.SetFileName(beefConExe);
+									procInfo.SetArguments(scope $"{Process.CurrentId}");
+									procInfo.ActivateWindow = false;
+
+									var process = scope SpawnedProcess();
+									if (process.Start(procInfo) case .Ok)
+									{
+										processId = (.)process.ProcessId;
+									}
+								}
+
+								startDebugCmd.mConsoleProcessId = processId;
+							}
+
+							if (startDebugCmd.mConsoleProcessId != 0)
+							{
+								if (WinNativeConsoleProvider.AttachConsole(startDebugCmd.mConsoleProcessId))
+								{
+									// Worked
+									WinNativeConsoleProvider.ClearConsole();
+									mConsolePanel.mBeefConAttachState = .Attached(startDebugCmd.mConsoleProcessId);
+									startDebugCmd.mConnectedToConsole = true;
+								}
+								else
+								{
+									// Keep trying to attach
+									return;
+								}
+							}
+						}
+					}
+#endif
+				}
+
 				defer delete next;
                 mExecutionQueue.RemoveAt(0);
 
@@ -9229,6 +9410,19 @@ namespace IDE
 	                    }
 	                    else
 	                        OutputLine("Failed to start debugger");
+
+/*#if BF_PLATFORM_WINDOWS
+						if ((mSettings.mDebugConsoleKind == .Native) && (mSettings.mKeepNativeConsoleOpen))
+						{
+							BeefConConsoleProvider.Pipe pipe = scope .();
+							//pipe.Connect(Process.CurrentId, )
+							pipe.Connect(123, -startDebugCmd.mConsoleProcessId).IgnoreError();
+
+							pipe.StartMessage(.Attached);
+							pipe.Stream.Write((int32)mDebugger.GetProcessId());
+							pipe.EndMessage();
+						}
+#endif*/
 					}
                 }
                 else if (next is ExecutionQueueCmd)
@@ -11898,8 +12092,26 @@ namespace IDE
 				return true;
 			}
 
-            if (!mDebugger.OpenFile(launchPath, targetPath, arguments, workingDir, envBlock, wasCompiled, workspaceOptions.mAllowHotSwapping))
+			if (mSettings.mDebugConsoleKind == .Embedded)
+			{
+				ShowConsole();
+				mConsolePanel.Attach();
+			}
+
+			if (mSettings.mDebugConsoleKind == .RedirectToImmediate)
+			{
+				ShowImmediatePanel();
+			}
+
+			DebugManager.OpenFileFlags openFileFlags = .None;
+
+			if ((mSettings.mDebugConsoleKind == .RedirectToImmediate) || (mSettings.mDebugConsoleKind == .RedirectToOutput))
+				openFileFlags |= .RedirectStdOutput | .RedirectStdError;
+
+            if (!mDebugger.OpenFile(launchPath, targetPath, arguments, workingDir, envBlock, wasCompiled, workspaceOptions.mAllowHotSwapping, openFileFlags))
             {
+				if (!mSettings.mAlwaysEnableConsole)
+					mConsolePanel.Detach();
 				DeleteAndNullify!(mCompileAndRunStopwatch);
                 return false;
             }
@@ -12228,6 +12440,7 @@ namespace IDE
 
 			mTinyCodeFont = new Font();
 			mCodeFont = new Font();
+			mTermFont = new Font();
 
 			//mCodeFont = Font.LoadFromFile(BFApp.sApp.mInstallDir + "fonts/SourceCodePro32.fnt");
 
@@ -12254,6 +12467,12 @@ namespace IDE
 			mClassViewPanel.mAutoDelete = false;
             mOutputPanel = new OutputPanel(true);
 			mOutputPanel.mAutoDelete = false;
+			mTerminalPanel = new TerminalPanel();
+			mTerminalPanel .Init();
+			mTerminalPanel.mAutoDelete = false;
+			mConsolePanel = new ConsolePanel();
+			mConsolePanel.Init();
+			mConsolePanel.mAutoDelete = false;
             mImmediatePanel = new ImmediatePanel();
 			mImmediatePanel.mAutoDelete = false;
             mFindResultsPanel = new FindResultsPanel();
@@ -12381,6 +12600,7 @@ namespace IDE
             mMainWindow.mIsMainWindow = true;
 			mMainWindow.mOnMouseUp.Add(new => MouseUp);
             mMainWindow.mOnWindowKeyDown.Add(new => SysKeyDown);
+			mMainWindow.mOnWindowKeyUp.Add(new => SysKeyUp);
             mMainWindow.mOnWindowCloseQuery.Add(new => AllowClose);
 			mMainWindow.mOnDragDropFile.Add(new => DragDropFile);
             CreateMenu();
@@ -12604,6 +12824,8 @@ namespace IDE
 				mTinyCodeFont.AddAlternate(new String("fonts/seguisym.ttf"), tinyFontSize);
 				mTinyCodeFont.AddAlternate(new String("fonts/seguihis.ttf"), tinyFontSize);*/
 			}
+
+			mTermFont.Load("Cascadia Mono Regular", fontSize);
 
 			if (!err.IsEmpty)
 			{
@@ -12909,6 +13131,37 @@ namespace IDE
 				if (mDebugger != null)
                 {
                 	mDebugger.Update();
+
+					Platform.BfpFile* stdOut = null;
+					Platform.BfpFile* stdError = null;
+					mDebugger.GetStdHandles(null, &stdOut, &stdError);
+					if (stdOut != null)
+					{
+						FileStream fileStream = new FileStream();
+						fileStream.Attach(stdOut);
+						Thread thread = new Thread(new => ReadDebugOutputThread);
+						thread.Start(fileStream, true);
+					}
+					if (stdError != null)
+					{
+						FileStream fileStream = new FileStream();
+						fileStream.Attach(stdError);
+						Thread thread = new Thread(new => ReadDebugOutputThread);
+						thread.Start(fileStream, true);
+					}
+
+					using (mDebugOutputMonitor.Enter())
+					{
+						if (!mDebugOutput.IsEmpty)
+						{
+							mDebugOutput.Replace("\r", "");
+							if (mSettings.mDebugConsoleKind == .RedirectToOutput)
+								mOutputPanel.Write(mDebugOutput);
+							if (mSettings.mDebugConsoleKind == .RedirectToImmediate)
+								mImmediatePanel.Write(mDebugOutput);
+							mDebugOutput.Clear();
+						}
+					}
 
 					runState = mDebugger.GetRunState();
 					mDebuggerPerformingTask = (runState == .DebugEval) || (runState == .DebugEval_Done) || (runState == .SearchingSymSrv);
@@ -13461,6 +13714,8 @@ namespace IDE
                     var disassemblyPanel = TryGetDisassemblyPanel(false);
                     if (disassemblyPanel != null)
                         disassemblyPanel.Disable();
+					if (!mSettings.mAlwaysEnableConsole)
+						mConsolePanel.Detach();
                     mDebugger.DisposeNativeBreakpoints();
                     mDebugger.Detach();
                     mDebugger.mIsRunning = false;
@@ -13613,7 +13868,12 @@ namespace IDE
                     if (mForegroundTargetCountdown > 0)
                     {
                         if ((--mForegroundTargetCountdown == 0) && (mDebugger.mIsRunning))
-                            mDebugger.ForegroundTarget();
+						{
+							if (mConsolePanel.mBeefConAttachState case .Connected(let processId))
+                            	mDebugger.ForegroundTarget(processId);
+							else
+								mDebugger.ForegroundTarget(0);
+						}
                     }
 
                     if ((mDebugger != null) && (mExecutionPaused) && (mDebugger.mIsRunning))
@@ -13677,6 +13937,33 @@ namespace IDE
 				DeleteAndNullify!(mLaunchData);
 
 			mErrorsPanel?.UpdateAlways();
+
+			if ((mConsolePanel != null) && (mConsolePanel.mBeefConAttachState case .Attached(let consoleProcessId)))
+			{
+				if (!mDebugger.mIsRunning)
+				{
+					mConsolePanel.Detach();
+				}
+				else
+				{
+					int32 debugProcessId = mDebugger.GetProcessId();
+					if (debugProcessId != 0)
+					{
+						BeefConConsoleProvider.Pipe pipe = scope .();
+						pipe.Connect(Process.CurrentId, -consoleProcessId).IgnoreError();
+						//pipe.Connect(Process.CurrentId, )
+						//pipe.Connect(123, -consoleProcessId).IgnoreError();
+
+						pipe.StartMessage(.Attached);
+						pipe.Stream.Write(debugProcessId);
+						pipe.EndMessage();
+						mConsolePanel.Detach();
+
+						mConsolePanel.mBeefConAttachState = .Connected(consoleProcessId);
+						mDebugger.ForegroundTarget(consoleProcessId);
+					}
+				}
+			}
         }
 
         public void ShowPassOutput(BfPassInstance bfPassInstance)
@@ -14486,6 +14773,16 @@ namespace IDE
 				RefreshRate = 60;
 			}
 
+			if (mTerminalPanel != null)
+			{
+				// Detach terminal if the panel is closed
+				var terminalTabButton = GetTab(mTerminalPanel);
+				if (terminalTabButton == null)
+				{
+					mTerminalPanel.Detach();
+				}
+			}
+
 			bool hasFocus = false;
 			for (let window in mWindows)
 			{
@@ -14568,6 +14865,15 @@ namespace IDE
 			mDiagnosticsPanel?.UpdateStats();
 			if (mScriptManager != null)
 				mScriptManager.Update();
+
+			if (mConsolePanel != null)
+			{
+				if ((mSettings.mAlwaysEnableConsole) ||
+					((mSettings.mDebugConsoleKind == .Embedded) && (mDebugger.mIsRunning)))
+					mConsolePanel.Attach();
+				else
+					mConsolePanel.Detach();
+			}
 
 			if (mTestManager != null)
 			{

@@ -4858,8 +4858,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if (typeInstance->IsInterface())
 				Fail("Interfaces cannot include fields. Consider making this a property", field->GetRefNode());
 		}
-
-		int enumCaseEntryIdx = 0;
+		
 		for (int pass = 0; pass < 2; pass++)
 		{
 			for (auto field : typeDef->mFields)
@@ -4889,7 +4888,6 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				{
 					if (typeInstance->IsEnum())
 					{
-						fieldInstance->mDataIdx = -(enumCaseEntryIdx++) - 1;
 						resolvedFieldType = typeInstance;
 
 						BfType* payloadType = NULL;
@@ -4980,6 +4978,23 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					// Don't allocate this until after we're finished populating entire FieldInstance list,
 					//  because we may have re-entry and create multiple instances of this static field
 				}
+			}
+		}
+
+		// Assign enum indices
+		int enumCaseEntryIdx = 0;
+		for (auto field : typeDef->mFields)
+		{
+			auto fieldInstance = &typeInstance->mFieldInstances[field->mIdx];
+			if (!fieldInstance->mFieldIncluded)
+				continue;
+
+			if (field->IsEnumCaseEntry())
+			{
+				if (typeInstance->IsEnum())
+				{
+					fieldInstance->mDataIdx = -(enumCaseEntryIdx++) - 1;					
+				}				
 			}
 		}
 

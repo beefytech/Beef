@@ -328,13 +328,17 @@ bool CeDebugger::CanOpen(const StringImpl& fileName, DebuggerResult* outResult)
 	return false;
 }
 
-void CeDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled)
+void CeDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled, DbgOpenFileFlags openFileFlags)
 {
 }
 
 bool CeDebugger::Attach(int processId, BfDbgAttachFlags attachFlags)
 {
 	return false;
+}
+
+void CeDebugger::GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr)
+{
 }
 
 void CeDebugger::Run()
@@ -405,7 +409,7 @@ void CeDebugger::ContinueDebugEvent()
 	mCeMachine->mDebugEvent.Set();
 }
 
-void CeDebugger::ForegroundTarget()
+void CeDebugger::ForegroundTarget(int altProcessId)
 {
 }
 
@@ -4355,6 +4359,11 @@ String CeDebugger::CompactChildExpression(const StringImpl& expr, const StringIm
 String CeDebugger::GetProcessInfo()
 {
 	return String();
+}
+
+int CeDebugger::GetProcessId()
+{
+	return 0;
 }
 
 DebugVisualizerEntry* CeDebugger::FindVisualizerForType(BfType* dbgType, Array<String>* wildcardCaptures)

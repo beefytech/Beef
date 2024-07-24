@@ -31,7 +31,8 @@ namespace System
 			PartialData,
 			TempFileError,
 			Timeout,
-			NotEmpty
+			NotEmpty,
+			PipeListening
 		};
 
 		public struct BfpSpawn {}
@@ -243,6 +244,8 @@ namespace System
 		public static void BfpProcess_GetProcessName(BfpProcess* process, char8* outName, int32* inOutNameSize, BfpProcessResult* outResult) => Runtime.NotImplemented();
 		
 		public static int32 BfpProcess_GetProcessId(BfpProcess* process) => Runtime.NotImplemented();
+
+		public static int BfpSpawn_GetProcessId(BfpSpawn* spawn) => Runtime.NotImplemented();;
 #endif
 
 		public enum BfpSpawnFlags : int32
@@ -261,6 +264,7 @@ namespace System
 			ErrorDialog = 0x400,
 			Window_Hide = 0x800,
 			Window_Maximized = 0x1000,
+			NoActivateWindow = 0x2000
 		};
 
 		public enum BfpKillFlags : int32
@@ -286,6 +290,8 @@ namespace System
 		public static extern bool BfpSpawn_WaitFor(BfpSpawn* spawn, int waitMS, int* outExitCode, BfpSpawnResult* outResult);
 		[CallingConvention(.Stdcall), CLink]
 		public static extern void BfpSpawn_GetStdHandles(BfpSpawn* spawn, BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr);
+		[CallingConvention(.Stdcall), CLink]
+		public static extern int BfpSpawn_GetProcessId(BfpSpawn* spawn);
 
 		[CallingConvention(.Stdcall), CLink]
 		public static extern int BfpProcess_GetCurrentId();
@@ -451,6 +457,7 @@ namespace System
 			InsufficientBuffer		= (int)Result.InsufficientBuffer,
 			Timeout					= (int)Result.Timeout,
 			NotEmpty				= (int)Result.NotEmpty,
+			PipeListening			= (int)Result.PipeListening,
 		};
 
 #if !BF_RUNTIME_DISABLE
@@ -470,19 +477,19 @@ namespace System
 		public static extern void BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sysDirKind, char8* outPath, int32* inOutPathLen, BfpFileResult* outResult);
 #else
 		
-		public static void BfpDirectory_Create(char8* name, BfpFileResult* outResult) => Runtime.NotImplemented();
+		public static void BfpDirectory_Create(char8* name, BfpFileResult* outResult) { *outResult = .UnknownError; }
 		
-		public static void BfpDirectory_Rename(char8* oldName, char8* newName, BfpFileResult* outResult) => Runtime.NotImplemented();
+		public static void BfpDirectory_Rename(char8* oldName, char8* newName, BfpFileResult* outResult) { *outResult = .UnknownError; }
 		
-		public static void BfpDirectory_Delete(char8* name, BfpFileResult* outResult) => Runtime.NotImplemented();
+		public static void BfpDirectory_Delete(char8* name, BfpFileResult* outResult) { *outResult = .UnknownError; }
 		
-		public static void BfpDirectory_GetCurrent(char8* outPath, int32* inOutPathSize, BfpFileResult* outResult) => Runtime.NotImplemented();
+		public static void BfpDirectory_GetCurrent(char8* outPath, int32* inOutPathSize, BfpFileResult* outResult) { *outResult = .UnknownError; }
 		
-		public static void BfpDirectory_SetCurrent(char8* path, BfpFileResult* outResult) => Runtime.NotImplemented();
+		public static void BfpDirectory_SetCurrent(char8* path, BfpFileResult* outResult) { *outResult = .UnknownError; }
 		
-		public static bool BfpDirectory_Exists(char8* path) => Runtime.NotImplemented();
+		public static bool BfpDirectory_Exists(char8* path) => false;
 		
-		public static void BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sysDirKind, char8* outPath, int32* inOutPathLen, BfpFileResult* outResult) => Runtime.NotImplemented();
+		public static void BfpDirectory_GetSysDirectory(BfpSysDirectoryKind sysDirKind, char8* outPath, int32* inOutPathLen, BfpFileResult* outResult) { *outResult = .UnknownError; }
 #endif
 
 		public enum BfpFileCreateKind : int32

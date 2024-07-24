@@ -132,6 +132,7 @@ namespace IDE.ui
 					menu.AddItem("Open").mOnMenuItemSelected.Add(new (menu) => { TryOpenWorkspace(); });
 					menu.AddItem();
 					menu.AddItem("Open Containing Folder").mOnMenuItemSelected.Add(new (menu) => { OpenContainingFolder(); });
+					menu.AddItem("Open in Terminal").mOnMenuItemSelected.Add(new (menu) => { OpenInTerminal(); });
 					menu.AddItem("Copy Path").mOnMenuItemSelected.Add(new (menu) => {
 						gApp.SetClipboardData("text", mPath.CStr(), (int32)mPath.Length + 1, true);
 					});
@@ -169,6 +170,23 @@ namespace IDE.ui
 				psi.SetFileName(mPath);
 				psi.UseShellExecute = true;
 				psi.SetVerb("Open");
+
+				var process = scope SpawnedProcess();
+				process.Start(psi).IgnoreError();
+			}
+
+			void OpenInTerminal()
+			{
+				if (!Directory.Exists(mPath))
+				{
+					ShowNotFoundDialog();
+					return;
+				}
+
+				ProcessStartInfo psi = scope ProcessStartInfo();
+				psi.SetFileName(gApp.mSettings.mWindowsTerminal);
+				psi.UseShellExecute = true;
+				psi.SetWorkingDirectory(mPath);
 
 				var process = scope SpawnedProcess();
 				process.Start(psi).IgnoreError();

@@ -90,13 +90,13 @@ namespace System
 
 		static function void(StringView str) OutString = => OutString_Simple;
 
-		[CLink, CallingConvention(.Cdecl)]
-		static extern void putchar(char8 c);
+		public static extern void PutChar(char8 c);
+		public static extern void ReopenHandles();
 
 		static void OutString_Simple(StringView str)
 		{
 			for (var c in str.RawChars)
-				putchar(c);
+				PutChar(c);
 		}
 
 		static void OutString_Ex(StringView str)

@@ -292,6 +292,26 @@ static void NTAPI TlsFreeFunc(void* ptr)
 	gBfRtCallbacks.Thread_Exiting();
 }
 
+void bf::System::Console::PutChar(char c)
+{
+	putchar(c);
+}
+
+void bf::System::Console::ReopenHandles()
+{
+ 	FILE* fDummy;
+ 	freopen_s(&fDummy, "CONOUT$", "w", stdout);
+	freopen_s(&fDummy, "CONOUT$", "w", stderr);
+	freopen_s(&fDummy, "CONIN$", "r", stdin);	
+// 
+// 	// std::wcout, std::wclog, std::wcerr, std::wcin
+ 	HANDLE hConOut = CreateFileA("CONOUT$", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+ 	HANDLE hConIn = CreateFileA("CONIN$", GENERIC_READ | GENERIC_WRITE, FILE_SHARE_READ | FILE_SHARE_WRITE, NULL, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, NULL);
+ 	SetStdHandle(STD_OUTPUT_HANDLE, hConOut);
+ 	SetStdHandle(STD_ERROR_HANDLE, hConOut);
+ 	SetStdHandle(STD_INPUT_HANDLE, hConIn);	
+}
+
 void bf::System::Runtime::Init(int version, int flags, BfRtCallbacks* callbacks)
 {
 	BfpSystemInitFlags sysInitFlags = BfpSystemInitFlag_InstallCrashCatcher;

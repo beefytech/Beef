@@ -109,5 +109,11 @@ namespace System.IO
 
 			return .Ok;
         }
+
+		public void Clear()
+		{
+			mMemory.Clear();
+			mPosition = 0;
+		}
 	}
 }

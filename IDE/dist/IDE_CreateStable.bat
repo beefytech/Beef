@@ -52,6 +52,10 @@ IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 BeefBuild_boot.exe -proddir=..\ -config=Release -platform=Win64
 IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 
+@ECHO ---- Building BeefCon ----
+BeefBuild_d.exe -proddir=..\..\BeefTools\BeefCon -config=Release
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+
 echo on
 
 @ECHO ---- Copying files ----
@@ -82,6 +86,7 @@ IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 copy Beef*Dbg*.* host
 IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 copy userdict.txt host
+copy BeefCon.exe host
 @REM copy lib*.dll host
 copy Beefy2D.dll host
 copy BeefDbgVis.toml host

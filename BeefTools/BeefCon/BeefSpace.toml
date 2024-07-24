@@ -1,0 +1,8 @@
+FileVersion = 1
+Projects = {BeefCon = {Path = "."}, Beefy2D = "*"}
+
+[Workspace]
+StartupProject = "BeefCon"
+
+[Configs.Release.Win64]
+BfOptimizationLevel = "OgPlus"
