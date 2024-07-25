@@ -134,20 +134,15 @@ class Program
 		WinNativeConsoleProvider.SetConsoleTitleW("BeefIDE Debug Console".ToScopedNativeWChar!());
 	}
 
-	/*[CLink]
-	static extern void* freopen (char8 * filename, char8 * mode, void* stream );
-	[CLink]
-	static extern void* stdout;*/
-
 	public void Run()
 	{
 		mPipe = new .();
-		mPipe.Listen(mPid, mConid);
+		if (mPipe.Listen(mPid, mConid) case .Err)
+			return;
 
 		mProvider = new .();
 		mProvider.mHideNativeConsole = !mExecStr.IsEmpty;
 		mProvider.Attach();
-		Console.ReopenHandles();
 
 		if (!mExecStr.IsEmpty)
 		{
@@ -162,6 +157,7 @@ class Program
 		else
 		{
 			ClearConsoleTitle();
+			Console.ReopenHandles();
 		}
 
 		while (true)
