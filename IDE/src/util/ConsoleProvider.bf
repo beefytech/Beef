@@ -149,7 +149,9 @@ class WinNativeConsoleProvider : ConsoleProvider
 	[CRepr]
 	struct RECT : this(int16 left, int16 top, int16 right, int16 bottom)
 	{
+		[Inline]
 		public int16 Width => right - left;
+		[Inline]
 		public int16 Height => bottom - top;
 	}
 
@@ -372,15 +374,12 @@ class WinNativeConsoleProvider : ConsoleProvider
 				return (mScreenInfo.mInfo.mCursorX, mScreenInfo.mInfo.mCursorY);
 			return default;
 		}
-
-		set
-		{
-
-		}
 	}
 
 	public override Cell GetCell(int col, int row)
 	{
+		if (mScreenInfo == null)
+			return default;
 		if ((row < 0) || (row >= mScreenInfo.mInfo.mWindowRect.Height))
 		{
 			GetFullScreenInfo(mScreenInfo);
