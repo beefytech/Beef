@@ -3283,6 +3283,7 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 			break;
 		case /*S_INLINEES*/0x1168:
 			break;
+		case 0x1159: //S_ARMSWITCHTABLE
 		case 0x1176:			
 		case 0x1178:			
 		case 0x1179:			
