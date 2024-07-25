@@ -340,13 +340,16 @@ class WinNativeConsoleProvider : ConsoleProvider
 	{
 		get
 		{
+#if BF_PLATFORM_WINDOWS
 			var outHandle = Console.[Friend]GetStdHandle(Console.STD_OUTPUT_HANDLE);
 			CONSOLE_SCREEN_BUFFER_INFOEX info = default;
 			info.mSize = sizeof(CONSOLE_SCREEN_BUFFER_INFOEX);
-#if BF_PLATFORM_WINDOWS
-			GetConsoleScreenBufferInfoEx(outHandle, ref info);
+			if (GetConsoleScreenBufferInfoEx(outHandle, ref info))
+				return info.mHeight;
 #endif
-			return info.mHeight;
+			if (mScreenInfo != null)
+				return mScreenInfo.mInfo.mHeight;
+			return 0;
 		}
 	}
 	public override bool Attached => mHasConsole;
@@ -386,16 +389,19 @@ class WinNativeConsoleProvider : ConsoleProvider
 		if (mScreenInfo.mFullCharInfo != null)
 		{
 			int bufRow = row + mScreenInfo.mScrollTop;
-			if (col >= mScreenInfo.mInfo.mWidth)
+			int idx = bufRow * mScreenInfo.mInfo.mWidth + col;
+			int maxIdx = (int)mScreenInfo.mInfo.mWidth * mScreenInfo.mInfo.mHeight;
+			if ((idx < 0) || (idx >= maxIdx))
 				return default;
-			if (bufRow >= mScreenInfo.mInfo.mHeight)
-				return default;
-
-			var info = mScreenInfo.mFullCharInfo[bufRow * mScreenInfo.mInfo.mWidth + col];
+			var info = mScreenInfo.mFullCharInfo[idx];
 			return .() { mChar = info.mChar, mAttributes = info.mAttributes };
 		}
 
-		var info = mScreenInfo.mCharInfo[row * mScreenInfo.mInfo.mWindowRect.Width + col];
+		int idx = row * mScreenInfo.mInfo.mWindowRect.Width + col;
+		int maxIdx = (int)mScreenInfo.mInfo.mWindowRect.Width * mScreenInfo.mInfo.mWindowRect.Height;
+		if ((idx < 0) || (idx >= maxIdx))
+			return default;
+		var info = mScreenInfo.mCharInfo[idx];
 		return .() { mChar = info.mChar, mAttributes = info.mAttributes };
 	}
 

@@ -740,11 +740,14 @@ class ConsolePanel : Panel
 
 	public void SysKeyDown(KeyDownEvent keyEvent)
 	{
-		if (Paused)
+		if (!keyEvent.mKeyCode.IsModifier)
 		{
-			mSelection = null;
-			Paused = false;
-			return;
+			if (Paused)
+			{
+				mSelection = null;
+				Paused = false;
+				return;
+			}
 		}
 
 		if (mView.mHasFocus)

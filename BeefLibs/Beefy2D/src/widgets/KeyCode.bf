@@ -126,7 +126,8 @@ namespace Beefy.widgets
 					 .RWin,
 					 .Alt,
 					 .Control,
-					 .Command:
+					 .Command,
+					 .Shift:
 					return true;
 				default:
 					return false;
