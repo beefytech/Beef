@@ -4221,7 +4221,7 @@ bool DbgExprEvaluator::StoreValue(DbgTypedValue& ptr, DbgTypedValue& value, BfAs
 			tempVal |= value.mUInt64 << dbgBitfieldType->mPosition;
 
 			if (!mDebugger->WriteMemory(ptr.mSrcAddress, &tempVal, ptr.mType->GetByteCount()))
-				mPassInstance->Fail("Failed to write to memory");
+				mPassInstance->Fail(StrFormat("Failed to write to memory address %@", ptr.mSrcAddress));
 
 			if ((dbgBitfieldType->mTypeParam->IsSigned()) && ((value.mUInt64 & (1LL << (dbgBitfieldType->mLength - 1))) != 0))
 			{
@@ -4232,7 +4232,7 @@ bool DbgExprEvaluator::StoreValue(DbgTypedValue& ptr, DbgTypedValue& value, BfAs
 		else
 		{
 			if (!mDebugger->WriteMemory(ptr.mSrcAddress, &value.mInt8, ptr.mType->GetByteCount()))
-				mPassInstance->Fail("Failed to write to memory");
+				mPassInstance->Fail(StrFormat("Failed to write to memory address %@", ptr.mSrcAddress));
 		}
 	}
 	else
