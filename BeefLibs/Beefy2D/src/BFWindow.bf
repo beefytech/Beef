@@ -50,6 +50,7 @@ namespace Beefy
 			AllowFullscreen = 0x0800'0000,
 			AcceptFiles = 0x1000'0000,
 			NoShow = 0x2000'0000,
+			NoMouse = 0x4000'0000,
         };
 
 		[AllowDuplicates]

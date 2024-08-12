@@ -125,7 +125,7 @@ namespace Beefy.widgets
         }
 
 #if BF_PLATFORM_WINDOWS
-		[CLink, CallingConvention(.Stdcall)]
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int16 GetKeyState(int nVirtKey);
 #endif
 
