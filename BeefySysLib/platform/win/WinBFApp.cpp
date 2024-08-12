@@ -167,6 +167,8 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		windowFlagsEx |= WS_EX_TOPMOST;
 	if ((windowFlags & BFWINDOW_ACCEPTFILES))
 		windowFlagsEx |= WS_EX_ACCEPTFILES;
+	if ((windowFlags & BFWINDOW_NO_MOUSE))
+		windowFlagsEx |= WS_EX_TRANSPARENT | WS_EX_LAYERED;
 
 	if (windowFlags & BFWINDOW_CLIENT_SIZED)
 	{
