@@ -1319,6 +1319,9 @@ namespace IDE
 
 					let workspaceOptions = gApp.GetCurWorkspaceOptions();
 					let options = gApp.GetCurProjectOptions(checkProject);
+					if (options == null)
+						continue;
+
 					gApp.[Friend]GetTargetPaths(checkProject, gApp.mPlatformName, workspaceOptions, options, targetPaths);
 
 					if ((checkProject.mGeneralOptions.mTargetType == .BeefLib) && (options.mBuildOptions.mBuildKind != .DynamicLib))
