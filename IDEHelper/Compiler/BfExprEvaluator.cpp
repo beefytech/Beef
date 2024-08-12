@@ -5406,11 +5406,14 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 	{
 		auto unionInnerType = typeInstance->GetUnionInnerType();
 		if (unionInnerType != resolvedFieldType)
-		{
-			if (!retVal.IsAddr())
-				retVal = mModule->MakeAddressable(retVal);
+		{			
+			BfTypedValue unionTypedValue = retVal;
+			unionTypedValue.mType = unionInnerType;
+			if (!unionTypedValue.IsAddr())
+				unionTypedValue = mModule->MakeAddressable(unionTypedValue);
 			BfIRType llvmPtrType = mModule->mBfIRBuilder->GetPointerTo(mModule->mBfIRBuilder->MapType(resolvedFieldType));
-			retVal.mValue = mModule->mBfIRBuilder->CreateBitCast(retVal.mValue, llvmPtrType);
+			retVal.mValue = mModule->mBfIRBuilder->CreateBitCast(unionTypedValue.mValue, llvmPtrType);
+			retVal.mKind = unionTypedValue.mKind;
 		}
 	}
 
