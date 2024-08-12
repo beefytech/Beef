@@ -707,8 +707,16 @@ namespace Beefy.utils
         public float GetCurFloat(float theDefault = 0)
         {
             Object aVal = GetCurrent();
-            if ((aVal == null) || (!(aVal is float)))
-                return theDefault;
+			if (aVal == null)
+				return theDefault;
+            if (aVal is double)
+				return (float)(double)aVal;
+			if (aVal is int64)
+				return (float)(int64)aVal;
+			if (aVal is int32)
+				return (float)(int32)aVal;
+			if (!(aVal is float))
+				return theDefault;
             return (float)aVal;
         }
 
