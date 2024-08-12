@@ -8,7 +8,7 @@ namespace Beefy.sound
 		{
 			get
 			{
-				return this == (.)-1;
+				return this <= 0;
 			}
 		}
 	}
