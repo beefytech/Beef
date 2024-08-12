@@ -242,6 +242,11 @@ namespace Beefy.geom
             Scale(scaleX, scaleY);
             Offset(centerX, centerY);
         }
+
+		public override void ToString(String strBuffer)
+		{
+			strBuffer.AppendF($"({mX}, {mY}, {mWidth}, {mHeight})");
+		}
     }
 
 	typealias Rect = Rect<float>;
