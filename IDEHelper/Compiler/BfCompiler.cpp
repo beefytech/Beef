@@ -961,6 +961,10 @@ void BfCompiler::EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& test
 				{
 					testMethod.mName += "Ig";
 				}
+				else if (fieldDef->mName == "Name")
+				{
+					testMethod.mName += "Ovwn";
+				}
 			}
 		}
 
