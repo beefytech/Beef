@@ -971,7 +971,7 @@ void BfCompiler::EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& test
 					if (str != NULL)
 					{
 						testMethod.mName += "Name";						
-						testMethod.mName += SlashString(*str, true, true, true);;
+						testMethod.mName += SlashString(*str, true, true, true);
 						testMethod.mName += '\a';
 					}
 				}
