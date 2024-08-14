@@ -968,14 +968,12 @@ void BfCompiler::EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& test
 				if (fieldDef->mName == "Name")
 				{
 					String* str = bfModule->GetStringPoolString(field.mParam.mValue, typeInstance->mConstHolder);
-					testMethod.mName += "Name";
-					String* temp = new String(*str);
-					temp->Replace('\t', "\\t"); //Good enough for now
-					temp->Replace('\n', "\\n");
-					temp->Replace('\a', "\\a");
-					temp->Replace('\v', "\\v");
-					testMethod.mName += *temp;
-					testMethod.mName += "\a";
+					if (str != NULL)
+					{
+						testMethod.mName += "Name";						
+						testMethod.mName += SlashString(*str, true, true, true);;
+						testMethod.mName += '\a';
+					}
 				}
 			}
 		}
