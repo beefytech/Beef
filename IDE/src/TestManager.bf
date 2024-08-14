@@ -394,11 +394,11 @@ namespace IDE
 							{
 								if(i.StartsWith('\v'))
 								{
-									if(i == "\vSf")
+									if(i == "Sf")
 										testEntry.mShouldFail = true;
-									else if(i == "\vPr")
+									else if(i == "Pr")
 										testEntry.mProfile = true;
-									else if(i == "\vIg")
+									else if(i == "Ig")
 										testEntry.mIgnore = true;
 								}
 								else if(i.StartsWith("Name"))
