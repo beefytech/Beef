@@ -951,15 +951,15 @@ void BfCompiler::EmitTestMethod(BfVDataModule* bfModule, Array<TestMethod>& test
 				BfFieldDef* fieldDef = field.mFieldRef;
 				if (fieldDef->mName == "ShouldFail")
 				{
-					testMethod.mName += "Sf";
+					testMethod.mName += "Sf\a";
 				}
 				else if (fieldDef->mName == "Profile")
 				{
-					testMethod.mName += "Pr";
+					testMethod.mName += "Pr\a";
 				}
 				else if (fieldDef->mName == "Ignore")
 				{
-					testMethod.mName += "Ig";
+					testMethod.mName += "Ig\a";
 				}
 			}
 			else if ((constant != NULL) && (constant->mTypeCode == BfTypeCode_StringId))
