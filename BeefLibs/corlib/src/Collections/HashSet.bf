@@ -182,7 +182,7 @@ namespace System.Collections
 		{
 			if (mBuckets != null)
 			{
-				int32 hashCode = (int32)InternalGetHashCode(item);
+				int32 hashCode = InternalGetHashCode(item);
 				// see note at "HashSet" level describing why "- 1" appears in for loop
 				for (int32 i = mBuckets[hashCode % mBuckets.Count] - 1; i >= 0; i = mSlots[i].mNext)
 				{
@@ -277,7 +277,7 @@ namespace System.Collections
 		{
 			if (mBuckets != null)
 			{
-				int32 hashCode = (int32)InternalGetHashCode(item);
+				int32 hashCode = InternalGetHashCode(item);
 				int32 bucket = hashCode % (int32)mBuckets.Count;
 				int32 last = -1;
 				for (int32 i = mBuckets[bucket] - 1; i >= 0; last = i,i = mSlots[i].mNext)
@@ -616,7 +616,7 @@ namespace System.Collections
 				{
 					if (newSlots[i].mHashCode != -1)
 					{
-						newSlots[i].mHashCode = (int32)InternalGetHashCode(newSlots[i].mValue);
+						newSlots[i].mHashCode = InternalGetHashCode(newSlots[i].mValue);
 					}
 				}
 			}
@@ -645,7 +645,7 @@ namespace System.Collections
 				Initialize(0);
 			}
 
-			int32 hashCode = (int32)InternalGetHashCode(value);
+			int32 hashCode = InternalGetHashCode(value);
 			int32 bucket = hashCode % (int32)mBuckets.Count;
 #if FEATURE_RANDOMIZED_STRING_HASHING && !FEATURE_NETCORE
 			int collisionCount = 0;
@@ -1182,23 +1182,26 @@ namespace System.Collections
 		}*/
 
 		/// Workaround Comparers that throw ArgumentNullException for GetHashCode(null).
-		/// @return hash code
-		private int InternalGetHashCode(T item)
+		/// @return hash codeInternalGetHashCode
+		public int32 GetHashKey(int hashCode)
+		{
+			if (sizeof(int) == 4)
+				return (int32)hashCode;
+			return (int32)(hashCode ^ ((hashCode >> 31) * 1171)) & 0x7FFFFFFF;
+		}
+
+		private int32 InternalGetHashCode(T item)
 		{
 			if (item == null)
-			{
 				return 0;
-			}
-			return item.GetHashCode() & Lower31BitMask;
+			return GetHashKey(item.GetHashCode());
 		}
 
 		private int InternalGetHashCodeAlt<TAltKey>(TAltKey item) where TAltKey : IHashable
 		{
 			if (item == null)
-			{
 				return 0;
-			}
-			return item.GetHashCode() & Lower31BitMask;
+			return GetHashKey(item.GetHashCode());
 		}
 
 		#endregion
