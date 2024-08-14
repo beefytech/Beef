@@ -2,7 +2,7 @@ using System.IO;
 
 namespace System.Security.Cryptography
 {
-	struct SHA256Hash : IParseable<SHA256Hash>
+	struct SHA256Hash : IParseable<SHA256Hash>, IHashable
 	{
 		public uint8[32] mHash;
 
@@ -63,6 +63,12 @@ namespace System.Security.Cryptography
 			HashEncode.HashEncode64(((uint64*)&mHash)[2], outStr);
 #unwarn
 			HashEncode.HashEncode64(((uint64*)&mHash)[3], outStr);
+		}
+
+		public int GetHashCode()
+		{
+#unwarn
+			return *(int*)&mHash;
 		}
 	}
 
