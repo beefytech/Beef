@@ -457,6 +457,7 @@ namespace System
 		public bool Ignore;
 		public bool Profile;
 		public String Tag;
+  		public String Name;
 	}
 
 	public struct ImportAttribute : Attribute
