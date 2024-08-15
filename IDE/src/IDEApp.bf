@@ -11491,6 +11491,8 @@ namespace IDE
 
 		public void QueueProfiling(int threadId, String desc, int sampleRate)
 		{
+  			if(mExecutionQueue.IsEmpty)
+				return;
 			var profileCmd = new ProfileCmd();
 			profileCmd.mThreadId = threadId;
 			profileCmd.mDesc = new String(desc);
