@@ -14161,29 +14161,33 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				if ((isNull) || (mContext->mStringObjectIdMap.TryGetValue(stringId, &entry)))
 				{
 					auto svTypeInst = toType->ToTypeInstance();
-
+					
 					PopulateType(svTypeInst);
 					PopulateType(svTypeInst->mBaseType);
 					mBfIRBuilder->PopulateType(svTypeInst);
 
-					SizedArray<BfIRValue, 2> spanFieldVals;
-					spanFieldVals.Add(mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(svTypeInst->mBaseType->mBaseType)));
-
-					if (isNull)
+					// Sanity check
+					if (svTypeInst->mMergedFieldDataCount == 2)
 					{
-						spanFieldVals.Add(mBfIRBuilder->CreateConstNull(mBfIRBuilder->MapType(CreatePointerType(GetPrimitiveType(BfTypeCode_Char8)))));
-						spanFieldVals.Add(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0));
-					}
-					else
-					{
-						auto stringCharPtr = GetStringCharPtr(stringId);
-						spanFieldVals.Add(stringCharPtr);
-						spanFieldVals.Add(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, entry->mString.mLength));
-					}
+						SizedArray<BfIRValue, 2> spanFieldVals;
+						spanFieldVals.Add(mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(svTypeInst->mBaseType->mBaseType)));
 
-					SizedArray<BfIRValue, 2> svFieldVals;
-					svFieldVals.Add(mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(svTypeInst->mBaseType), spanFieldVals));
-					return mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(svTypeInst), svFieldVals);
+						if (isNull)
+						{
+							spanFieldVals.Add(mBfIRBuilder->CreateConstNull(mBfIRBuilder->MapType(CreatePointerType(GetPrimitiveType(BfTypeCode_Char8)))));
+							spanFieldVals.Add(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0));
+						}
+						else
+						{
+							auto stringCharPtr = GetStringCharPtr(stringId);
+							spanFieldVals.Add(stringCharPtr);
+							spanFieldVals.Add(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, entry->mString.mLength));
+						}
+
+						SizedArray<BfIRValue, 2> svFieldVals;
+						svFieldVals.Add(mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(svTypeInst->mBaseType), spanFieldVals));
+						return mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(svTypeInst), svFieldVals);
+					}
 				}
 			}
 		}
