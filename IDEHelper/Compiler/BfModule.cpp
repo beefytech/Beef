@@ -18945,6 +18945,8 @@ void BfModule::EmitTupleToStringBody()
 				fieldValue = MakeAddressable(fieldValue);
 				fieldValue.mType = wrappedType;
 				fieldValue.mValue = mBfIRBuilder->CreateBitCast(fieldValue.mValue, mBfIRBuilder->MapTypeInstPtr(fieldValue.mType->ToTypeInstance()));
+				if (!wrappedType->IsValuelessType())
+					fieldValue.mKind = BfTypedValueKind_Addr;
 			}
 		}
 
