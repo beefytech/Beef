@@ -23,7 +23,7 @@ namespace Beefy.theme.dark
                 base.Draw(g);
                 if (mMouseOver)
                 {
-                    using (g.PushColor(mMouseDown ? 0xFFFF0000 : Color.White))
+                    using (g.PushColor((mMouseFlags.HasFlag(.Left)) ? 0xFFFF0000 : Color.White))
                         g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.CloseOver), GS!(-4), GS!(-4));
                 }
                 else
@@ -40,9 +40,12 @@ namespace Beefy.theme.dark
             {
                 base.MouseClicked(x, y, origX, origY, btn);
 
-                var tabButton = (DarkTabButton)mParent;
-                if (tabButton.mCloseClickedEvent.HasListeners)
-                    tabButton.mCloseClickedEvent();
+				if (btn == 0)
+				{
+	                var tabButton = (DarkTabButton)mParent;
+	                if (tabButton.mCloseClickedEvent.HasListeners)
+	                    tabButton.mCloseClickedEvent();
+				}
             }
 
 			public override void MouseMove(float x, float y)
