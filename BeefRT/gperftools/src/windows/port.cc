@@ -248,7 +248,7 @@ SysAllocator* sys_alloc = NULL;
 
 size_t TCMalloc_SystemTaken = 0;
 
-static int virtAllocIdx = 0;
+static intptr_t sVirtualAllocAddr = 0xBF010000000;
 
 void TCMalloc_RecordAlloc(void* ptr, int size);
 
@@ -273,7 +273,10 @@ void* TCMalloc_SystemAlloc(size_t size, size_t *actual_size,
     extra = alignment - pagesize;
   }
 
-  void* result = VirtualAlloc(0, size + extra, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
+  void* result = VirtualAlloc((void*)sVirtualAllocAddr, size + extra, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
+  sVirtualAllocAddr += size + extra;
+  if (result == NULL)
+	result = VirtualAlloc(0, size + extra, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
 	//  TODO:Remove this
   //void* result = VirtualAlloc((void*)(0x500000000 + 0x1000000*virtAllocIdx), size + extra, MEM_COMMIT|MEM_RESERVE, PAGE_READWRITE);
   //virtAllocIdx++;
