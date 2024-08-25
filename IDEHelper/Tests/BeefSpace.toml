@@ -12,7 +12,6 @@ IntermediateType = "ObjectAndIRCode"
 IntermediateType = "ObjectAndIRCode"
 
 [Configs.Test.Win64]
-BfOptimizationLevel = "O0"
 IntermediateType = "ObjectAndIRCode"
 COptimizationLevel = "O2"
 ConfigSelections = {TestsB = {Config = "Test"}}
