@@ -364,16 +364,41 @@ namespace System
 			Internal.MemMove(destination.Ptr, &GetRef(0), strideof(T) * mLength, alignof(T));
 		}
 
+		/// Copies the array starting from srcOffset to destination, which must be at least large enough to hold all the remaining array items
 		public void CopyTo(Span<T> destination, int srcOffset)
 		{
-			Debug.Assert((uint)srcOffset + (uint)destination.[Friend]mLength <= (uint)mLength);
-			Internal.MemMove(destination.Ptr, &GetRef(srcOffset), strideof(T) * (destination.[Friend]mLength - srcOffset), alignof(T));
+			int length = mLength - srcOffset;
+			Debug.Assert((uint)srcOffset <= (uint)mLength);
+			Debug.Assert((uint)length <= (uint)destination.Length);
+			Internal.MemCpy(destination.Ptr, &GetRef(srcOffset), strideof(T) * length, alignof(T));
 		}
 
+		public void CopyTo(Span<T> destination, int srcOffset, int length)
+		{
+			Debug.Assert(length >= 0);
+			Debug.Assert((uint)srcOffset + (uint)length <= (uint)mLength);
+			Debug.Assert((uint)length <= (uint)destination.Length);
+			Internal.MemCpy(destination.Ptr, &GetRef(srcOffset), strideof(T) * length, alignof(T));
+		}
+
+		/// Copies the array starting from srcOffset to destination, which must be at least large enough to hold all the remaining array items
 		public void CopyTo<T2>(Span<T2> destination, int srcOffset) where T2 : operator explicit T
 		{
 			//TODO: Handle src/dest overlap (MemMove)
-			Debug.Assert((uint)srcOffset + (uint)destination.[Friend]mLength <= (uint)mLength);
+			int length = mLength - srcOffset;
+			Debug.Assert((uint)srcOffset <= (uint)mLength);
+			Debug.Assert((uint)length <= (uint)destination.Length);
+			var ptr = destination.[Friend]mPtr;
+			for (int i = 0; i < destination.[Friend]mLength; i++)
+				ptr[i] = (T2)GetRef(i + srcOffset);
+		}
+
+		public void CopyTo<T2>(Span<T2> destination, int srcOffset, int length) where T2 : operator explicit T
+		{
+			//TODO: Handle src/dest overlap (MemMove)
+			Debug.Assert(length >= 0);
+			Debug.Assert((uint)srcOffset + (uint)length <= (uint)mLength);
+			Debug.Assert((uint)length <= (uint)destination.Length);
 			var ptr = destination.[Friend]mPtr;
 			for (int i = 0; i < destination.[Friend]mLength; i++)
 				ptr[i] = (T2)GetRef(i + srcOffset);
