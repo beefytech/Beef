@@ -389,7 +389,7 @@ namespace System
 			Debug.Assert((uint)srcOffset <= (uint)mLength);
 			Debug.Assert((uint)length <= (uint)destination.Length);
 			var ptr = destination.[Friend]mPtr;
-			for (int i = 0; i < destination.[Friend]mLength; i++)
+			for (int i = 0; i < length; i++)
 				ptr[i] = (T2)GetRef(i + srcOffset);
 		}
 
@@ -400,7 +400,7 @@ namespace System
 			Debug.Assert((uint)srcOffset + (uint)length <= (uint)mLength);
 			Debug.Assert((uint)length <= (uint)destination.Length);
 			var ptr = destination.[Friend]mPtr;
-			for (int i = 0; i < destination.[Friend]mLength; i++)
+			for (int i = 0; i < length; i++)
 				ptr[i] = (T2)GetRef(i + srcOffset);
 		}
 
