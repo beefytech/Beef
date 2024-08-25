@@ -73,11 +73,11 @@ namespace System.IO
 		protected const int32 MaxPath = 260;
 		private const int32 MaxDirectoryLength = 255;
 
-		public static void GetFullPath(String inPartialPath, String outFullPath)
+		public static void GetFullPath(StringView inPartialPath, String outFullPath)
 		{
 			Platform.GetStrHelper(outFullPath, scope (outPtr, outSize, outResult) =>
 				{
-					Platform.BfpFile_GetFullPath(inPartialPath, outPtr, outSize, (Platform.BfpFileResult*)outResult);
+					Platform.BfpFile_GetFullPath(inPartialPath.ToScopeCStr!(), outPtr, outSize, (Platform.BfpFileResult*)outResult);
 				});
 		}
 
