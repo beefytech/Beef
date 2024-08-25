@@ -1098,7 +1098,13 @@ void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
 			int markId = objectFlags & BF_OBJECTFLAG_MARK_ID_MASK;
 			if ((mCollectFailed) && (markId != mCurMarkId))
 			{
-				obj->mObjectFlags = (BfObjectFlags)((obj->mObjectFlags & ~BF_OBJECTFLAG_MARK_ID_MASK) | mCurMarkId);
+				while (true)
+				{
+					uintptr prevVal = (uintptr)obj->mClassVData;
+					uintptr newVal = (prevVal & ~BF_OBJECTFLAG_MARK_ID_MASK) | mCurMarkId;
+					if (::InterlockedCompareExchange((volatile uintptr*)&obj->mClassVData, newVal, prevVal) == prevVal)
+						break;
+				}				
 				markId = mCurMarkId;
 			}
 
