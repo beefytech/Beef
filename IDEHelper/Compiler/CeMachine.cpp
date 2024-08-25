@@ -973,6 +973,37 @@ void CeBuilder::EmitBinarySwitchSection(BeSwitchInst* switchInst, int startIdx, 
 	}
 }
 
+CeOperand CeBuilder::EmitLoad(CeOperand ceTarget, int loadRefCount)
+{
+	CeOperand result;
+	if (ceTarget.mKind == CeOperandKind_AllocaAddr)
+	{
+		if (loadRefCount <= 1)
+		{
+			result = ceTarget;
+			result.mKind = CeOperandKind_FrameOfs;
+		}
+		else
+		{
+			ceTarget.mKind = CeOperandKind_FrameOfs;
+			result = FrameAlloc(ceTarget.mType);
+			EmitSizedOp(CeOp_Move_8, ceTarget, NULL, true);
+			Emit((int32)result.mFrameOfs);
+		}
+	}
+	else
+	{
+		BF_ASSERT(ceTarget.mType->IsPointer());
+		auto pointerType = (BePointerType*)ceTarget.mType;
+		auto elemType = pointerType->mElementType;
+
+		CeOperand refOperand = ceTarget;
+		refOperand.mType = elemType;
+		EmitSizedOp(CeOp_Load_8, refOperand, &result, true);
+	}
+	return result;
+}
+
 int CeBuilder::GetCodePos()
 {
 	return (int)mCeFunction->mCode.size();
@@ -2396,32 +2427,7 @@ void CeBuilder::Build()
 				{
 					auto castedInst = (BeLoadInst*)inst;
 					auto ceTarget = GetOperand(castedInst->mTarget, true);
-
-					if (ceTarget.mKind == CeOperandKind_AllocaAddr)
-					{
-						if (inst->mRefCount <= 1)
-						{
-							result = ceTarget;
-							result.mKind = CeOperandKind_FrameOfs;
-						}
-						else
-						{
-							ceTarget.mKind = CeOperandKind_FrameOfs;
-							result = FrameAlloc(ceTarget.mType);
-							EmitSizedOp(CeOp_Move_8, ceTarget, NULL, true);
-							Emit((int32)result.mFrameOfs);
-						}
-					}
-					else
-					{
-						BF_ASSERT(ceTarget.mType->IsPointer());
-						auto pointerType = (BePointerType*)ceTarget.mType;
-						auto elemType = pointerType->mElementType;
-
-						CeOperand refOperand = ceTarget;
-						refOperand.mType = elemType;
-						EmitSizedOp(CeOp_Load_8, refOperand, &result, true);
-					}
+					result = EmitLoad(ceTarget, inst->mRefCount);					
 				}
 				break;
 			case BeBinaryOpInst::TypeId:
@@ -3134,6 +3140,33 @@ void CeBuilder::Build()
 							break;
 						case BfIRIntrinsic_DebugTrap:
 							Emit(CeOp_DbgBreak);
+							break;
+						case BfIRIntrinsic_AtomicCmpXChg:		
+							{
+								auto mcPtr = GetOperand(castedInst->mArgs[0].mValue, true);
+								auto mcComparand = GetOperand(castedInst->mArgs[1].mValue);
+								auto mcValue = GetOperand(castedInst->mArgs[2].mValue);
+
+								CeOperand mcPrev = EmitLoad(mcPtr);
+
+								CeOperand cmpResult;								
+								EmitBinaryOp(CeOp_Cmp_EQ_I8, CeOp_InvalidOp, mcPrev, mcComparand, cmpResult);
+								Emit(CeOp_JmpIfNot);
+								Emit((int32)14);
+								EmitFrameOffset(cmpResult);
+								if (mcPtr.mKind == CeOperandKind_AllocaAddr)
+								{
+									EmitSizedOp(CeOp_Move_8, mcValue, NULL, true);
+									Emit((int32)mcPtr.mFrameOfs);
+								}
+								else
+								{
+									EmitSizedOp(CeOp_Store_8, mcValue, NULL, true);
+									EmitFrameOffset(mcPtr);
+								}
+
+								result = mcPrev;
+							}
 							break;
 						default:
 							Emit(CeOp_Error);
