@@ -4092,22 +4092,31 @@ bool WinDebugger::CheckConditionalBreakpoint(WdBreakpoint* breakpoint, DbgSubpro
 
 		String expr;
 		_SplitExpr(headBreakpoint->mLogging, expr, formatInfo.mSubjectExpr);
-		if (expr.StartsWith("@Beef:"))
-		{
-			expr.Remove(0, 6);
-			formatInfo.mLanguage = DbgLanguage_Beef;
-		}
-		else if (expr.StartsWith("@C:"))
-		{
-			expr.Remove(0, 3);
-			formatInfo.mLanguage = DbgLanguage_C;
-		}
 
-		ProcessEvalString(dbgCompileUnit, DbgTypedValue(), expr, displayString, formatInfo, NULL, false);
-		mRunState = prevRunState;
+		if (expr.StartsWith("@Script:"))
+		{
+			displayString = "script ";
+			displayString += expr.Substring(8);
+		}
+		else
+		{
+			if (expr.StartsWith("@Beef:"))
+			{
+				expr.Remove(0, 6);
+				formatInfo.mLanguage = DbgLanguage_Beef;
+			}
+			else if (expr.StartsWith("@C:"))
+			{
+				expr.Remove(0, 3);
+				formatInfo.mLanguage = DbgLanguage_C;
+			}
 
-		displayString.Insert(0, "log ");
-		displayString.Append("\n");
+			ProcessEvalString(dbgCompileUnit, DbgTypedValue(), expr, displayString, formatInfo, NULL, false);
+			mRunState = prevRunState;
+
+			displayString.Insert(0, "log ");
+			displayString.Append("\n");
+		}
 
 		mDebugManager->mOutMessages.push_back(displayString);
 

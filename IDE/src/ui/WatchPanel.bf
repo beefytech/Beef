@@ -2859,7 +2859,7 @@ namespace IDE.ui
 
 			base.UpdateAll();
 			if (mWantRemoveSelf)
-				mParentItem.RemoveChildItem(this);
+				mParentItem?.RemoveChildItem(this);
 
 			if (mColumnIdx == 0)
 			{

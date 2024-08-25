@@ -1563,6 +1563,15 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void PrintEval(String evalStr)
+		{
+			String outVal = scope String();
+			if (!Evaluate(evalStr, outVal))
+				return;
+			gApp.OutputLineSmart(outVal);
+		}
+
+		[IDECommand]
 		public void AssertTypeInfo(int compilerId, String typeName, String wantTypeInfo)
 		{
 			String typeInfo = scope String();
@@ -1729,7 +1738,29 @@ namespace IDE
 		}
 
 		[IDECommand]
-		public void SelectCallStackWithStr(String str)
+		public void PrintCallStack()
+		{
+			gApp.OutputLine("Callstack:");
+			int32 stackIdx = 0;
+			while (true)
+			{
+				int stackCount = gApp.mDebugger.GetCallStackCount();
+				if (stackIdx >= stackCount)
+				{
+					gApp.mDebugger.UpdateCallStack();
+					if (stackIdx >= gApp.mDebugger.GetCallStackCount())
+						break;
+				}
+
+				String file = scope .();
+				String stackFrameInfo = scope .();
+				gApp.mDebugger.GetStackFrameInfo(stackIdx, var addr, file, stackFrameInfo);
+				gApp.OutputLine(scope $" {stackIdx}: {stackFrameInfo}");
+				stackIdx++;
+			}
+		}
+
+		public bool DoSelectCallStackWithStr(String str)
 		{
 			int32 stackIdx = 0;
 			while (true)
@@ -1748,12 +1779,24 @@ namespace IDE
 				if (stackFrameInfo.Contains(str))
 				{
 					gApp.mDebugger.mActiveCallStackIdx = (.)stackIdx;
-					return;
+					return true;
 				}
 				stackIdx++;
 			}
+			return false;
+		}
 
-			mScriptManager.Fail("Failed to find stack frame containing string '{}'", str);
+		[IDECommand]
+		public void SelectCallStackWithStr(String str)
+		{
+			if (!DoSelectCallStackWithStr(str))
+				mScriptManager.Fail("Failed to find stack frame containing string '{}'", str);
+		}
+
+		[IDECommand]
+		public void TrySelectCallStackWithStr(String str)
+		{
+			DoSelectCallStackWithStr(str);
 		}
 
 		public bool AssertRunning()

@@ -13690,6 +13690,19 @@ namespace IDE
 					{
 						mSymSrvStatus.Set(param);
 					}
+					else if (cmd == "script")
+					{
+						String absTestPath = scope String();
+						if (mWorkspace.mDir != null)
+							Path.GetAbsolutePath(param, mWorkspace.mDir, absTestPath);
+						else
+							Path.GetFullPath(param, absTestPath);
+						if (mScriptManager.mFailed)
+							mScriptManager.Clear();
+						mScriptManager.mSoftFail = true;
+						mScriptManager.SetTimeoutMS(20*60*1000); // 20 minute timeout
+						mScriptManager.QueueCommandFile(absTestPath);
+					}
                     else
                     {
                         Runtime.FatalError("Invalid debugger message type");
