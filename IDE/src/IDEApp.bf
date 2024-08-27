@@ -24,25 +24,24 @@ using IDE.Util;
 using IDE.ui;
 using IDE.util;
 
-[AttributeUsage(.Method, .ReflectAttribute | .AlwaysIncludeTarget, ReflectUser=.All)]
+[AttributeUsage(.Method, .ReflectAttribute | .AlwaysIncludeTarget, ReflectUser = .All)]
 struct IDECommandAttribute : Attribute
 {
-
 }
 
 namespace IDE
 {
-    public class WindowData
-    {
-        public DrawLayer mOverlayLayer ~ delete _;
-    }
+	public class WindowData
+	{
+		public DrawLayer mOverlayLayer ~ delete _;
+	}
 
 	enum SourceShowType
 	{
 		ShowExisting,
 		ShowExistingInActivePanel,
 		New,
-		Temp,			
+		Temp,
 	}
 
 	enum Verbosity
@@ -57,7 +56,6 @@ namespace IDE
 
 	class DeferredUserRequest
 	{
-
 	}
 
 	class DeferredShowPCLocation : DeferredUserRequest
@@ -96,10 +94,10 @@ namespace IDE
 			{
 				mSharedData.mOpenNewWindowDelegate.Add(new (fromTabbedView, newWindow) => gApp.SetupNewWindow(newWindow, true));
 				mSharedData.mTabbedViewClosed.Add(new (tabbedView) =>
-				    {
+					{
 						if (tabbedView == gApp.mActiveDocumentsTabbedView)
 							gApp.mActiveDocumentsTabbedView = null;
-				    });
+					});
 			}
 		}
 
@@ -116,18 +114,18 @@ namespace IDE
 		}
 	}
 
-    public class IDEApp : BFApp
-    {
+	public class IDEApp : BFApp
+	{
 		public static String sRTVersionStr = "042";
 		public const String cVersion = "0.43.5";
 
 #if BF_PLATFORM_WINDOWS
 		public static readonly String sPlatform64Name = "Win64";
 		public static readonly String sPlatform32Name = "Win32";
-#elif BF_PLATFORM_LINUX
+		#elif BF_PLATFORM_LINUX
 		public static readonly String sPlatform64Name = "Linux64";
 		public static readonly String sPlatform32Name = "Linux32";
-#elif BF_PLATFORM_MACOS
+		#elif BF_PLATFORM_MACOS
 		public static readonly String sPlatform64Name = "macOS";
 		public static readonly String sPlatform32Name = null;
 #else
@@ -135,8 +133,8 @@ namespace IDE
 		public static readonly String sPlatform32Name = "Unknown32";
 #endif
 
-        public const uint32 cDialogOutlineLightColor = 0xFF404040;
-        public const uint32 cDialogOutlineDarkColor = 0xFF202020;
+		public const uint32 cDialogOutlineLightColor = 0xFF404040;
+		public const uint32 cDialogOutlineDarkColor = 0xFF202020;
 
 		public static bool sExitTest;
 
@@ -156,10 +154,10 @@ namespace IDE
 
 		//public ToolboxPanel mToolboxPanel;
 		public Monitor mMonitor = new Monitor() ~ delete _;
-        public Thread mMainThread;
-        public PropertiesPanel mPropertiesPanel;
-        public Font mTinyCodeFont ~ delete _;
-        public Font mCodeFont ~ delete _;
+		public Thread mMainThread;
+		public PropertiesPanel mPropertiesPanel;
+		public Font mTinyCodeFont ~ delete _;
+		public Font mCodeFont ~ delete _;
 		public Font mTermFont ~ delete _;
 		protected bool mInitialized;
 		public bool mConfig_NoIR;
@@ -179,115 +177,117 @@ namespace IDE
 		public Commands mCommands = new .() ~ delete _;
 		public KeyChordState mKeyChordState ~ delete _;
 
-        public WidgetWindow mMainWindow;
-        public DarkDockingFrame mDockingFrame;
-        public MainFrame mMainFrame;
-        public GlobalUndoManager mGlobalUndoManager = new GlobalUndoManager() ~ delete _;
+		public WidgetWindow mMainWindow;
+		public DarkDockingFrame mDockingFrame;
+		public MainFrame mMainFrame;
+		public GlobalUndoManager mGlobalUndoManager = new GlobalUndoManager() ~ delete _;
 		public SourceControl mSourceControl = new SourceControl() ~ delete _;
 
-        public WidgetWindow mPopupWindow;
- 		public RecentFileSelector mRecentFileSelector;
-        
-        public IDETabbedView mActiveDocumentsTabbedView;
-        public static new IDEApp sApp;
+		public WidgetWindow mPopupWindow;
+		public RecentFileSelector mRecentFileSelector;
 
-        public Image mTransparencyGridImage ~ delete _;
-        public Image mSquiggleImage ~ delete _;
-        public Image mCircleImage ~ delete _;
+		public IDETabbedView mActiveDocumentsTabbedView;
+		public static new IDEApp sApp;
+
+		public Image mTransparencyGridImage ~ delete _;
+		public Image mSquiggleImage ~ delete _;
+		public Image mCircleImage ~ delete _;
 		public bool mWantShowOutput;
 
-        public OutputPanel mOutputPanel;
+		public OutputPanel mOutputPanel;
+#if BF_PLATFORM_WINDOWS
 		public TerminalPanel mTerminalPanel;
 		public ConsolePanel mConsolePanel;
-        public ImmediatePanel mImmediatePanel;
-        public FindResultsPanel mFindResultsPanel;
-        public WatchPanel mAutoWatchPanel;
-        public WatchPanel mWatchPanel;
-        public MemoryPanel mMemoryPanel;
-        public CallStackPanel mCallStackPanel;
+#endif
+		public ImmediatePanel mImmediatePanel;
+		public FindResultsPanel mFindResultsPanel;
+		public WatchPanel mAutoWatchPanel;
+		public WatchPanel mWatchPanel;
+		public MemoryPanel mMemoryPanel;
+		public CallStackPanel mCallStackPanel;
 		public ErrorsPanel mErrorsPanel;
-        public BreakpointPanel mBreakpointPanel;
+		public BreakpointPanel mBreakpointPanel;
 		public DiagnosticsPanel mDiagnosticsPanel;
 		public ModulePanel mModulePanel;
-        public ThreadPanel mThreadPanel;
+		public ThreadPanel mThreadPanel;
 		public ProfilePanel mProfilePanel;
-        public ProjectPanel mProjectPanel;
+		public ProjectPanel mProjectPanel;
 		public ClassViewPanel mClassViewPanel;
 		public Widget mLastActivePanel;
 		public SourceViewPanel mLastActiveSourceViewPanel;
 		public AutoCompletePanel mAutoCompletePanel;
 		public BookmarksPanel mBookmarksPanel;
-        
-        public Rect mRequestedWindowRect = Rect(64, 64, 1200, 1024);
+
+		public Rect mRequestedWindowRect = Rect(64, 64, 1200, 1024);
 		public BFWindow.ShowKind mRequestedShowKind;
-        public WakaTime mWakaTime ~ delete _;
+		public WakaTime mWakaTime ~ delete _;
 
 		public PackMan mPackMan = new PackMan() ~ delete _;
 		public Settings mSettings = new Settings() ~ delete _;
-        public Workspace mWorkspace = new Workspace() ~ delete _;
-        public FileWatcher mFileWatcher = new FileWatcher() ~ delete _;
+		public Workspace mWorkspace = new Workspace() ~ delete _;
+		public FileWatcher mFileWatcher = new FileWatcher() ~ delete _;
 #if !CLI
 		public FileRecovery mFileRecovery = new FileRecovery() ~ delete _;
 #endif
 		public int mLastFileChangeId;
-        public bool mHaveSourcesChangedInternallySinceLastCompile;
-        public bool mHaveSourcesChangedExternallySinceLastCompile;
+		public bool mHaveSourcesChangedInternallySinceLastCompile;
+		public bool mHaveSourcesChangedExternallySinceLastCompile;
 
-        public String mConfigName = new String() ~ delete _;
-        public String mPlatformName = new String() ~ delete _;
+		public String mConfigName = new String() ~ delete _;
+		public String mPlatformName = new String() ~ delete _;
 
 		public String mSetConfigName ~ delete _;
 		public String mSetPlatformName ~ delete _;
 
-        public Targets mTargets = new Targets() ~ delete _;
-        public DebugManager mDebugger ~ delete _;
+		public Targets mTargets = new Targets() ~ delete _;
+		public DebugManager mDebugger ~ delete _;
 		public String mSymSrvStatus = new String() ~ delete _;
 		public delegate void(String) mPendingDebugExprHandler = null;
 		public bool mIsImmediateDebugExprEval;
-        public BookmarkManager mBookmarkManager = new BookmarkManager() ~ delete _;
-        public HistoryManager mHistoryManager = new HistoryManager() ~ delete _;
-        public Stopwatch mCompileAndRunStopwatch ~ delete _;
+		public BookmarkManager mBookmarkManager = new BookmarkManager() ~ delete _;
+		public HistoryManager mHistoryManager = new HistoryManager() ~ delete _;
+		public Stopwatch mCompileAndRunStopwatch ~ delete _;
 
 		// The Beef build system only gets populated when a build is requested,
 		//  but the Clang build system keeps up-to-date with the projects' files
 		//  and watches for file changes
-        public BfSystem mBfBuildSystem ~ delete _;
-        public BfCompiler mBfBuildCompiler;
+		public BfSystem mBfBuildSystem ~ delete _;
+		public BfCompiler mBfBuildCompiler;
 		public int mCompileSinceCleanCount;
 		public BuildContext mBuildContext ~ delete _;
 #if IDE_C_SUPPORT
-        public ClangCompiler mDepClang ~ delete _;
+		public ClangCompiler mDepClang ~ delete _;
 #endif
 		// The Beef resolve system is up-to-date with the projects' files, 
 		//  but the Clang resolver only has open files in it
 		public bool mNoResolve = false;
 		public bool mDeterministic = false;
-        public BfSystem mBfResolveSystem ~ delete _;
-        public BfCompiler mBfResolveCompiler;
-        public BfResolveHelper mBfResolveHelper ~ delete _;
+		public BfSystem mBfResolveSystem ~ delete _;
+		public BfCompiler mBfResolveCompiler;
+		public BfResolveHelper mBfResolveHelper ~ delete _;
 #if IDE_C_SUPPORT
-        public ClangCompiler mResolveClang;
+		public ClangCompiler mResolveClang;
 #endif
-        public SpellChecker mSpellChecker;
+		public SpellChecker mSpellChecker;
 		public List<String> mExternalChangeDeferredOpen = new List<String>() ~ DeleteContainerAndItems!(_);
 		public SettingHistoryManager mLaunchHistoryManager = new SettingHistoryManager(true) ~ delete _;
 		public SettingHistoryManager mFindAndReplaceHistoryManager = new SettingHistoryManager(true) ~ delete _;
 
 		List<Object> mIdleDeferredDeletes = new List<Object>() ~ delete _;
 		public bool mCompilingBeef = false;
-        public bool mWantsClean = false;
-        public bool mWantsBeefClean = false;
+		public bool mWantsClean = false;
+		public bool mWantsBeefClean = false;
 		public bool mWantsRehupCallstack = false;
-        public bool mDebugAutoBuild = false;
-        public bool mDebugAutoRun = false;
+		public bool mDebugAutoBuild = false;
+		public bool mDebugAutoRun = false;
 		public bool mDisableBuilding;
 		public int32 mDebugAutoShutdownCounter;
-        public bool mTargetDidInitBreak = false;
-        public bool mTargetHadFirstBreak = false;
-        public bool mTargetStartWithStep = false;
-        public Breakpoint mMainBreakpoint;
+		public bool mTargetDidInitBreak = false;
+		public bool mTargetHadFirstBreak = false;
+		public bool mTargetStartWithStep = false;
+		public Breakpoint mMainBreakpoint;
 		public Breakpoint mMainBreakpoint2;
-        public bool mInDisassemblyView;
+		public bool mInDisassemblyView;
 		public bool mIsAttachPendingSourceShow;
 		public bool mStepOverExternalFiles;
 
@@ -296,39 +296,39 @@ namespace IDE
 		public bool mExitWhenTestScriptDone = true;
 		public ScriptManager mScriptManager = new ScriptManager() ~ delete _;
 		public TestManager mTestManager ~ delete _;
-        public bool mExecutionPaused = false;
+		public bool mExecutionPaused = false;
 		public HotResolveState mHotResolveState;
 		public int mHotResolveTryIdx;
 		public bool mDebuggerPerformingTask = false; // Executing an expression, loading from symbol server
-        public int32 mForegroundTargetCountdown = 0;
+		public int32 mForegroundTargetCountdown = 0;
 		public int32 mDebuggerContinueIdx;
 
-        public SysMenu mWindowMenu;
+		public SysMenu mWindowMenu;
 		public List<SourceViewPanel> mPostRemoveUpdatePanels = new .() ~ delete _;
 		public List<String> mRecentlyDisplayedFiles = new List<String>() ~ DeleteContainerAndItems!(_);
-        public List<SysMenu> mRecentlyDisplayedFilesMenuItems = new List<SysMenu>() ~ delete _;
-        public Dictionary<BFWindow, WindowData> mWindowDatas = new Dictionary<BFWindow, WindowData>() ~ delete _;
+		public List<SysMenu> mRecentlyDisplayedFilesMenuItems = new List<SysMenu>() ~ delete _;
+		public Dictionary<BFWindow, WindowData> mWindowDatas = new Dictionary<BFWindow, WindowData>() ~ delete _;
 		public Dictionary<String, FileEditData> mFileEditData = new Dictionary<String, FileEditData>() ~
-            {
+			{
 				for (var editDataPair in mFileEditData)
 				{
 					delete editDataPair.key;
 					editDataPair.value.Deref();
 				}
 				delete _;
-            };
+			};
 		public int32 mFileDataDataRevision;
-        
-        /*public Point mLastAbsMousePos;        
+
+		/*public Point mLastAbsMousePos;        
 		public Point mLastRelMousePos;
-        public int32 mMouseStillTicks;
-        public Widget mLastMouseWidget;*/
+		public int32 mMouseStillTicks;
+		public Widget mLastMouseWidget;*/
 		public bool mAppHasFocus;
-        public int32 mCloseDelay;
-        public FileChangedDialog mFileChangedDialog;
-        public FindAndReplaceDialog mFindAndReplaceDialog;
+		public int32 mCloseDelay;
+		public FileChangedDialog mFileChangedDialog;
+		public FindAndReplaceDialog mFindAndReplaceDialog;
 		public LaunchDialog mLaunchDialog;
-        public SymbolReferenceHelper mSymbolReferenceHelper;
+		public SymbolReferenceHelper mSymbolReferenceHelper;
 		public WrappedMenuValue mViewWhiteSpace = .(false);
 		public bool mEnableGCCollect = true;
 		public bool mDbgFastUpdate;
@@ -380,13 +380,13 @@ namespace IDE
 			CrashDump,
 			DebugSession
 		}
-        DeferredOpenKind mDeferredOpen;
+		DeferredOpenKind mDeferredOpen;
 		String mDeferredOpenFileName;
 
-        public class ExecutionCmd
-        {
-            public bool mOnlyIfNotFailed;
-        }
+		public class ExecutionCmd
+		{
+			public bool mOnlyIfNotFailed;
+		}
 
 		public class WriteEmitCmd : ExecutionCmd
 		{
@@ -394,22 +394,22 @@ namespace IDE
 			public String mPath ~ delete _;
 		}
 
-        public class BuildCompletedCmd : ExecutionCmd
-        {
-            public Stopwatch mStopwatch ~ delete _;
+		public class BuildCompletedCmd : ExecutionCmd
+		{
+			public Stopwatch mStopwatch ~ delete _;
 			public String mHotProjectName ~ delete _;
-            public bool mFailed;
+			public bool mFailed;
 #if IDE_C_SUPPORT
-            public HashSet<String> mClangCompiledFiles = new HashSet<String>() ~ DeleteContainerAndItems!(_);
+			public HashSet<String> mClangCompiledFiles = new HashSet<String>() ~ DeleteContainerAndItems!(_);
 #endif
-        }
+		}
 
-        class ProcessBfCompileCmd : ExecutionCmd
-        {
-            public BfPassInstance mBfPassInstance;
-            public CompileKind mCompileKind;
-            public Project mHotProject;
-            public Stopwatch mStopwatch ~ delete _;
+		class ProcessBfCompileCmd : ExecutionCmd
+		{
+			public BfPassInstance mBfPassInstance;
+			public CompileKind mCompileKind;
+			public Project mHotProject;
+			public Stopwatch mStopwatch ~ delete _;
 			public Profiler mProfiler;
 			public ProfileCmd mProfileCmd ~ delete _;
 			public bool mHadBeef;
@@ -417,7 +417,7 @@ namespace IDE
 			public ~this()
 			{
 			}
-        }
+		}
 
 		class ProfileCmd : ExecutionCmd
 		{
@@ -428,11 +428,10 @@ namespace IDE
 
 		class OpenDebugConsoleCmd : ExecutionCmd
 		{
-
 		}
 
-        class StartDebugCmd : ExecutionCmd
-        {
+		class StartDebugCmd : ExecutionCmd
+		{
 			public bool mConnectedToConsole;
 			public int32 mConsoleProcessId;
 			public bool mWasCompiled;
@@ -441,23 +440,22 @@ namespace IDE
 			public this()
 			{
 			}
-        }
+		}
 
-        public class TargetCompletedCmd : ExecutionCmd
-        {
+		public class TargetCompletedCmd : ExecutionCmd
+		{
 			public Project mProject;
 			public bool mIsReady = true;
 
-            public this(Project project)
-            {
-                mProject = project;
-            }
+			public this(Project project)
+			{
+				mProject = project;
+			}
 
 			public ~this()
 			{
-
 			}
-        }
+		}
 
 		public class ScriptCmd : ExecutionCmd
 		{
@@ -472,32 +470,32 @@ namespace IDE
 			UTF16WithBom
 		}
 
-        public class ExecutionQueueCmd : ExecutionCmd
-        {
+		public class ExecutionQueueCmd : ExecutionCmd
+		{
 			public String mReference ~ delete _;
-            public String mFileName ~ delete _;
-            public String mArgs  ~ delete _;
-            public String mWorkingDir  ~ delete _;
+			public String mFileName ~ delete _;
+			public String mArgs  ~ delete _;
+			public String mWorkingDir  ~ delete _;
 			public Dictionary<String, String> mEnvVars ~ DeleteDictionaryAndKeysAndValues!(_);
-            public ArgsFileKind mUseArgsFile;
-            public int32 mParallelGroup = -1;
+			public ArgsFileKind mUseArgsFile;
+			public int32 mParallelGroup = -1;
 			public bool mIsTargetRun;
 			public String mStdInData ~ delete _;
 			public RunFlags mRunFlags;
-        }
-        public List<ExecutionCmd> mExecutionQueue = new List<ExecutionCmd>() ~ DeleteContainerAndItems!(_);
+		}
+		public List<ExecutionCmd> mExecutionQueue = new List<ExecutionCmd>() ~ DeleteContainerAndItems!(_);
 
-        public class ExecutionInstance
-        {
-            public SpawnedProcess mProcess /*~ delete _*/;
-            public List<String> mDeferredOutput = new List<String>() ~ DeleteContainerAndItems!(_);
-            public Stopwatch mStopwatch = new Stopwatch() ~ delete _;
-            public String mTempFileName ~ delete _;
-            public int32 mParallelGroup = -1;
-            public Task<String> mReadTask /*~ delete _*/;
-            public delegate void(Task<String>) mOnReadTaskComplete /*~ delete _*/;
-            public Task<String> mErrorTask /*~ delete _*/;
-            public delegate void(Task<String>) mOnErrorTaskComplete /*~ delete _*/;
+		public class ExecutionInstance
+		{
+			public SpawnedProcess mProcess /*~ delete _*/;
+			public List<String> mDeferredOutput = new List<String>() ~ DeleteContainerAndItems!(_);
+			public Stopwatch mStopwatch = new Stopwatch() ~ delete _;
+			public String mTempFileName ~ delete _;
+			public int32 mParallelGroup = -1;
+			public Task<String> mReadTask /*~ delete _*/;
+			public delegate void(Task<String>) mOnReadTaskComplete /*~ delete _*/;
+			public Task<String> mErrorTask /*~ delete _*/;
+			public delegate void(Task<String>) mOnErrorTaskComplete /*~ delete _*/;
 			public Monitor mMonitor = new Monitor() ~ delete _;
 			public String mStdInData ~ delete _;
 
@@ -539,11 +537,11 @@ namespace IDE
 				mCanceled = true;
 				mProcess.Kill(0, .KillChildren);
 			}
-        }        
-        List<ExecutionInstance> mExecutionInstances = new List<ExecutionInstance>() ~ DeleteContainerAndItems!(_);
-        public int32 mHotIndex = 0;
-        private int32 mStepCount;
-        private int32 mNoDebugMessagesTick;
+		}
+		List<ExecutionInstance> mExecutionInstances = new List<ExecutionInstance>() ~ DeleteContainerAndItems!(_);
+		public int32 mHotIndex = 0;
+		private int32 mStepCount;
+		private int32 mNoDebugMessagesTick;
 
 		public class DeferredShowSource
 		{
@@ -557,13 +555,13 @@ namespace IDE
 		}
 		public DeferredShowSource mDeferredShowSource ~ delete _;
 
-        public bool IsCompiling
-        {
-            get
-            {
-                return (mExecutionInstances.Count > 0) || (mExecutionQueue.Count > 0) || (mBuildContext != null);
-            }
-        }
+		public bool IsCompiling
+		{
+			get
+			{
+				return (mExecutionInstances.Count > 0) || (mExecutionQueue.Count > 0) || (mBuildContext != null);
+			}
+		}
 
 		public bool EnableGCCollect
 		{
@@ -577,7 +575,7 @@ namespace IDE
 				mEnableGCCollect = value;
 				//GC.SetAutoCollectPeriod(mEnableGCCollect ? 2000 : -1);
 				GC.SetAutoCollectPeriod(mEnableGCCollect ? 20 : -1);
-				GC.SetCollectFreeThreshold(mEnableGCCollect ? 64*1024*1024 : -1);
+				GC.SetCollectFreeThreshold(mEnableGCCollect ? 64 * 1024 * 1024 : -1);
 			}
 		}
 
@@ -598,16 +596,16 @@ namespace IDE
 			}
 		}
 
-		[CallingConvention(.Stdcall),CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void IDEHelper_ProgramStart();
-		[CallingConvention(.Stdcall),CLink]
+		[CallingConvention(.Stdcall), CLink]
 		static extern void IDEHelper_ProgramDone();
 
-        public this()
-        {
-			ThreadPool.MaxStackSize = 8*1024*1024;
+		public this()
+		{
+			ThreadPool.MaxStackSize = 8 * 1024 * 1024;
 
-            sApp = this;
+			sApp = this;
 			gApp = this;
 			mMainThread = Thread.CurrentThread;
 
@@ -620,32 +618,32 @@ namespace IDE
 			//BfParser_Go();///
 
 			mScriptManager.AddTarget(this);
-        }
+		}
 
 		public static this()
 		{
 			//Profiler.StartSampling();
 		}
 
-        public void GetBfSystems(List<BfSystem> systems)
-        {
-            systems.Add(mBfBuildSystem);
+		public void GetBfSystems(List<BfSystem> systems)
+		{
+			systems.Add(mBfBuildSystem);
 			if (mBfResolveSystem != null)
-            	systems.Add(mBfResolveSystem);
-        }
+				systems.Add(mBfResolveSystem);
+		}
 
-        public void GetBfCompilers(List<BfCompiler> compiler)
-        {
+		public void GetBfCompilers(List<BfCompiler> compiler)
+		{
 			if (mBfBuildCompiler != null)
-            	compiler.Add(mBfBuildCompiler);
+				compiler.Add(mBfBuildCompiler);
 			if (mBfResolveCompiler != null)
-            	compiler.Add(mBfResolveCompiler);
-        }
+				compiler.Add(mBfResolveCompiler);
+		}
 
-        public bool HaveSourcesChanged()
-        {
-            return mHaveSourcesChangedInternallySinceLastCompile || mHaveSourcesChangedExternallySinceLastCompile;
-        }
+		public bool HaveSourcesChanged()
+		{
+			return mHaveSourcesChangedInternallySinceLastCompile || mHaveSourcesChangedExternallySinceLastCompile;
+		}
 
 		public void MarkWatchesDirty()
 		{
@@ -655,20 +653,20 @@ namespace IDE
 				});
 		}
 
-        void PCChanged()
-        {
-            var disasmPanel = TryGetDisassemblyPanel();
-            if (disasmPanel != null)
-                disasmPanel.mLocationDirty = true;
-            mDebugger.mCallStackDirty = true;
+		void PCChanged()
+		{
+			var disasmPanel = TryGetDisassemblyPanel();
+			if (disasmPanel != null)
+				disasmPanel.mLocationDirty = true;
+			mDebugger.mCallStackDirty = true;
 			WithWatchPanels(scope (watchPanel) =>
 				{
 					watchPanel.MarkWatchesDirty(true, !mTargetHadFirstBreak);
 				});
-            mMemoryPanel.MarkViewDirty();
-            mCallStackPanel.MarkCallStackDirty();
-            mThreadPanel.MarkThreadsDirty();
-            mDebugger.CheckCallStack();
+			mMemoryPanel.MarkViewDirty();
+			mCallStackPanel.MarkCallStackDirty();
+			mThreadPanel.MarkThreadsDirty();
+			mDebugger.CheckCallStack();
 
 
 			// If we do a "PCChanged" from the execution of a method in the Immediate panel, don't move
@@ -688,11 +686,11 @@ namespace IDE
 			if (mRunningTestScript)
 				setFocus = true;
 
-            ShowPCLocation(mDebugger.mActiveCallStackIdx, false, false, false, setFocus);
-        }
+			ShowPCLocation(mDebugger.mActiveCallStackIdx, false, false, false, setFocus);
+		}
 
-        public ~this()
-        {
+		public ~this()
+		{
 #if !CLI
 			if (!mStartedWithTestScript && !mForceFirstRun)
 			{
@@ -703,7 +701,7 @@ namespace IDE
 #endif
 
 			/*WithTabs(scope (tabButton) =>
-            	{
+				{
 					var panel = tabButton.mContent as Panel;
 					if (panel != null)
 					{
@@ -713,7 +711,7 @@ namespace IDE
 							tabButton.mContent = null;
 						}
 					}
-                });*/
+				});*/
 
 			mixin RemoveAndDelete(var widget)
 			{
@@ -724,8 +722,10 @@ namespace IDE
 			RemoveAndDelete!(mProjectPanel);
 			RemoveAndDelete!(mClassViewPanel);
 			RemoveAndDelete!(mOutputPanel);
+#if BF_PLATFORM_WINDOWS
 			RemoveAndDelete!(mTerminalPanel);
 			RemoveAndDelete!(mConsolePanel);
+#endif
 			RemoveAndDelete!(mImmediatePanel);
 			RemoveAndDelete!(mFindResultsPanel);
 			RemoveAndDelete!(mAutoWatchPanel);
@@ -747,40 +747,40 @@ namespace IDE
 			if (mBfBuildCompiler != null)
 			{
 				mBfBuildCompiler.RequestFastFinish();
-            	mBfBuildCompiler.CancelBackground();
+				mBfBuildCompiler.CancelBackground();
 			}
 			if (mBfResolveCompiler != null)
 			{
 				mBfResolveCompiler.RequestFastFinish();
-            	mBfResolveCompiler.CancelBackground();
+				mBfResolveCompiler.CancelBackground();
 			}
 
 #if IDE_C_SUPPORT
-            mDepClang.CancelBackground();
-            mResolveClang.CancelBackground();
+			mDepClang.CancelBackground();
+			mResolveClang.CancelBackground();
 #endif
 
-            /*if (mMainBreakpoint != null)
-            {
-                mMainBreakpoint.Dispose();
-                mMainBreakpoint = null;
-            }*/
+			/*if (mMainBreakpoint != null)
+			{
+				mMainBreakpoint.Dispose();
+				mMainBreakpoint = null;
+			}*/
 
-            /*delete mBfBuildCompiler;            
-            delete mBfBuildSystem;
-            delete mDepClang;
-            
-            
-            delete mBfResolveCompiler;
-            delete mBfResolveSystem;
-            delete mResolveClang;
+			/*delete mBfBuildCompiler;            
+			delete mBfBuildSystem;
+			delete mDepClang;
+			
+			
+			delete mBfResolveCompiler;
+			delete mBfResolveSystem;
+			delete mResolveClang;
 
-            delete mSpellChecker;
+			delete mSpellChecker;
 
 			//base.Dispose();
 
-            delete mDebugger;
-            delete ThemeFactory.mDefault;*/
+			delete mDebugger;
+			delete ThemeFactory.mDefault;*/
 
 			for (var val in mWindowDatas.Values)
 				delete val;
@@ -815,7 +815,7 @@ namespace IDE
 				SpawnedProcess process = scope SpawnedProcess();
 				process.Start(psi).IgnoreError();
 			}
-        }
+		}
 
 		public bool IsCrashDump
 		{
@@ -830,8 +830,10 @@ namespace IDE
 			dlg(mProjectPanel);
 			dlg(mClassViewPanel);
 			dlg(mOutputPanel);
+#if BF_PLATFORM_WINDOWS
 			dlg(mTerminalPanel);
 			dlg(mConsolePanel);
+#endif
 			dlg(mImmediatePanel);
 			dlg(mFindResultsPanel);
 			dlg(mAutoWatchPanel);
@@ -854,8 +856,8 @@ namespace IDE
 			base.ShutdownCompleted();
 		}
 
-        public override void Shutdown()
-        {
+		public override void Shutdown()
+		{
 			if ((mDebugger != null) && (mDebugger.mIsRunning))
 			{
 				mDebugger.DisposeNativeBreakpoints();
@@ -864,13 +866,13 @@ namespace IDE
 				mExecutionPaused = false;
 			}
 
-            base.Shutdown();
-        }
+			base.Shutdown();
+		}
 
-        public override void Run()
-        {
-            base.Run();
-        }
+		public override void Run()
+		{
+			base.Run();
+		}
 
 		public void Cmd_ViewNew()
 		{
@@ -890,11 +892,11 @@ namespace IDE
 		{
 			if (((mBfBuildCompiler != null) && mBfBuildCompiler.HasQueuedCommands()) ||
 				((mBfResolveCompiler != null) && (mBfResolveCompiler.HasQueuedCommands()))
-#if IDE_C_SUPPORT
-                || (mDepClang.HasQueuedCommands()) ||
+			#if IDE_C_SUPPORT
+				|| (mDepClang.HasQueuedCommands()) ||
 				(mResolveClang.HasQueuedCommands())
 #endif
-                )
+				)
 				return;
 
 			for (var obj in mIdleDeferredDeletes)
@@ -902,8 +904,8 @@ namespace IDE
 			mIdleDeferredDeletes.Clear();
 		}
 
-        public void DoOpenFile()
-        {
+		public void DoOpenFile()
+		{
 #if !CLI
 			if (mDeferredOpenFileName != null)
 			{
@@ -946,7 +948,7 @@ namespace IDE
 				}
 			}
 #endif
-        }
+		}
 
 		public void OpenWorkspace(StringView openFileName)
 		{
@@ -962,7 +964,7 @@ namespace IDE
 		}
 
 		public void DoOpenWorkspace(bool isCreating = false)
-		{		
+		{
 #if !CLI
 			if (mDeferredOpenFileName != null)
 			{
@@ -1019,7 +1021,7 @@ namespace IDE
 		}
 
 		public void DoOpenDebugSession()
-		{		
+		{
 #if !CLI
 			if (mDeferredOpenFileName != null)
 			{
@@ -1036,13 +1038,13 @@ namespace IDE
 			fileDialog.Title = "Open Debug Session";
 			fileDialog.SetFilter("Debug Session (*.bfdbg)|*.bfdbg|All files (*.*)|*.*");
 			fileDialog.ValidateNames = true;
-			mMainWindow.PreModalChild();            
+			mMainWindow.PreModalChild();
 			if (fileDialog.ShowDialog(GetActiveWindow()).GetValueOrDefault() == .OK)
 			{
 				for (String openFileName in fileDialog.FileNames)
 				{
 					String.NewOrSet!(mDeferredOpenFileName, openFileName);
-					mDeferredOpen =.DebugSession;
+					mDeferredOpen = .DebugSession;
 					break;
 				}
 			}
@@ -1071,7 +1073,7 @@ namespace IDE
 		}
 
 		public void DoOpenCrashDump()
-		{		
+		{
 #if !CLI
 			if (mDeferredOpenFileName != null)
 			{
@@ -1084,7 +1086,7 @@ namespace IDE
 			fileDialog.Title = "Open Crash Dump";
 			fileDialog.SetFilter("Crash Dump (*.dmp)|*.dmp|All files (*.*)|*.*");
 			fileDialog.ValidateNames = true;
-			mMainWindow.PreModalChild();            
+			mMainWindow.PreModalChild();
 			if (fileDialog.ShowDialog(GetActiveWindow()).GetValueOrDefault() == .OK)
 			{
 				for (String openFileName in fileDialog.FileNames)
@@ -1108,8 +1110,8 @@ namespace IDE
 			{
 				String testPath = scope String();
 				testPath.Append(project.mProjectDir);
-                testPath.Append(Path.DirectorySeparatorChar);
-                testPath.Append(path);
+				testPath.Append(Path.DirectorySeparatorChar);
+				testPath.Append(path);
 				if (File.Exists(testPath))
 				{
 					path.Set(testPath);
@@ -1194,23 +1196,23 @@ namespace IDE
 			}
 		}
 
-        public Dialog QuerySaveFiles(List<String> changedList, WidgetWindow window = null)
-        {            
-            Dialog aDialog;
-            if (changedList.Count == 1)
-            {
-                aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", StackStringFormat!("Save changes to '{0}' before closing?", changedList[0]), DarkTheme.sDarkTheme.mIconWarning);
-            }
-            else
-            {
-                String text = scope String("The following files have been modified: ");
-                text.Join(", ", changedList.GetEnumerator());
-                text .Append(". Save before closing?");
-                aDialog = ThemeFactory.mDefault.CreateDialog("Save files?", text, DarkTheme.sDarkTheme.mIconWarning);
-            }
+		public Dialog QuerySaveFiles(List<String> changedList, WidgetWindow window = null)
+		{
+			Dialog aDialog;
+			if (changedList.Count == 1)
+			{
+				aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", StackStringFormat!("Save changes to '{0}' before closing?", changedList[0]), DarkTheme.sDarkTheme.mIconWarning);
+			}
+			else
+			{
+				String text = scope String("The following files have been modified: ");
+				text.Join(", ", changedList.GetEnumerator());
+				text.Append(". Save before closing?");
+				aDialog = ThemeFactory.mDefault.CreateDialog("Save files?", text, DarkTheme.sDarkTheme.mIconWarning);
+			}
 
-            return aDialog;            
-        }
+			return aDialog;
+		}
 
 		public bool CheckCloseWorkspace(BFWindow window, Action onSave, Action onNoSave, Action onCancel)
 		{
@@ -1237,16 +1239,16 @@ namespace IDE
 				Path.GetFileName(path, fileName);
 				if (fileName.IsEmpty)
 					fileName.Append("Workspace");
-			    changedList.Add(fileName);
+				changedList.Add(fileName);
 			}
 			for (var project in mWorkspace.mProjects)
-			    if (project.mHasChanged)
+				if (project.mHasChanged)
 				{
 					var fileName = new String();
 					Path.GetFileName(project.mProjectPath, fileName);
 					if (fileName.IsEmpty)
 						fileName.Append(project.IsDebugSession ? "Debug Session" : "Project");
-			        changedList.Add(fileName);
+					changedList.Add(fileName);
 				}
 			mWorkspace.WithProjectItems(scope (projectItem) =>
 				{
@@ -1256,31 +1258,30 @@ namespace IDE
 						if ((projectSource.mEditData != null) && (projectSource.mEditData.HasTextChanged()))
 						{
 							var fileName = new String();
-							Path.GetFileName(projectSource.mPath, fileName);														
+							Path.GetFileName(projectSource.mPath, fileName);
 							changedList.Add(fileName);
 						}
 					}
-					
-			    });
+				});
 			WithSourceViewPanels(scope (sourceViewPanel) =>
-			    {
-			        if (sourceViewPanel.HasUnsavedChanges())
+				{
+					if (sourceViewPanel.HasUnsavedChanges())
 					{
 						var fileName = scope String();
 						Path.GetFileName(sourceViewPanel.mFilePath, fileName);
 						if (fileName.IsWhiteSpace)
 							fileName.Set("untitled");
 						if (!changedList.Contains(fileName))
-			            	changedList.Add(new String(fileName));
+							changedList.Add(new String(fileName));
 					}
-			    });
+				});
 
 			if (changedList.Count == 0)
 			{
 				DeleteDelegates();
 				if (!mRunningTestScript)
-			    	SaveWorkspaceUserData(false);
-			    return true;
+					SaveWorkspaceUserData(false);
+				return true;
 			}
 
 			var aDialog = QuerySaveFiles(changedList);
@@ -1293,7 +1294,7 @@ namespace IDE
 			aDialog.AddButton("Don't Save", new (evt) =>
 				{
 					OutputLine("Changes not saved.");
-				    onNoSave();
+					onNoSave();
 				} ~ delete onNoSave);
 
 			aDialog.mEscButton = aDialog.AddButton("Cancel", new (evt) =>
@@ -1305,12 +1306,12 @@ namespace IDE
 			return false;
 		}
 
-        public bool AllowClose(BFWindow window)
-        {
+		public bool AllowClose(BFWindow window)
+		{
 			if (mRunningTestScript)
 				return true;
 
-         	return CheckCloseWorkspace(window,
+			return CheckCloseWorkspace(window,
 				new () =>
 				{
 					// We use a close delay after saving so the user can see we actually saved before closing down
@@ -1322,18 +1323,19 @@ namespace IDE
 					SaveWorkspaceUserData(false);
 					mMainWindow.Close(true);
 				}, null);
-        }
+		}
 
-        public bool SecondaryAllowClose(BFWindow window)
-        {
+		public bool SecondaryAllowClose(BFWindow window)
+		{
 			if (mRunningTestScript)
 				return true;
 
 			void CloseTabs()
 			{
-				WithDocumentTabbedViewsOf(window, scope (tabbedView) => {
-					tabbedView.CloseTabs(false, true, true);
-				});
+				WithDocumentTabbedViewsOf(window, scope (tabbedView) =>
+					{
+						tabbedView.CloseTabs(false, true, true);
+					});
 			}
 
 			void CloseWindow()
@@ -1342,63 +1344,64 @@ namespace IDE
 				window.Close(true);
 			}
 
-            List<String> changedList = scope List<String>();
+			List<String> changedList = scope List<String>();
 			defer ClearAndDeleteItems(changedList);
-            WithSourceViewPanelsOf(window, scope (sourceViewPanel) =>
-                {
-                    if (sourceViewPanel.HasUnsavedChanges())
+			WithSourceViewPanelsOf(window, scope (sourceViewPanel) =>
+				{
+					if (sourceViewPanel.HasUnsavedChanges())
 					{
 						var fileName = new String();
 						Path.GetFileName(sourceViewPanel.mFilePath, fileName);
-                        changedList.Add(fileName);
+						changedList.Add(fileName);
 					}
-                });
+				});
 
-            if (changedList.Count == 0) {
+			if (changedList.Count == 0)
+			{
 				CloseTabs();
-                return true;
+				return true;
 			}
-            var aDialog = QuerySaveFiles(changedList, (WidgetWindow)window);
-            aDialog.mDefaultButton = aDialog.AddButton("Save", new (evt) =>
-            {
-                bool hadError = false;
-				// We use a close delay after saving so the user can see we actually saved before closing down
-				var _this = this;
-                WithSourceViewPanelsOf(window, scope [&] (sourceViewPanel) =>
-                	{
-                        if ((!hadError) && (sourceViewPanel.HasUnsavedChanges()))
-                            if (!_this.SaveFile(sourceViewPanel))
-                                hadError = true;
-                    });
-                if (hadError)
-                    return;
-				CloseTabs();
-				CloseWindow();
-            });
-            aDialog.AddButton("Don't Save", new (evt) =>
-            {
-				var _this = this;
-				WithSourceViewPanelsOf(window, scope [&] (sourceViewPanel) =>
-					{
-						if (sourceViewPanel.HasUnsavedChanges())
-							_this.RevertSourceViewPanel(sourceViewPanel);
-				    });
-				CloseTabs();
-				CloseWindow();
-            });
+			var aDialog = QuerySaveFiles(changedList, (WidgetWindow)window);
+			aDialog.mDefaultButton = aDialog.AddButton("Save", new (evt) =>
+				{
+					bool hadError = false;
+					// We use a close delay after saving so the user can see we actually saved before closing down
+					var _this = this;
+					WithSourceViewPanelsOf(window, scope [&] (sourceViewPanel) =>
+						{
+							if ((!hadError) && (sourceViewPanel.HasUnsavedChanges()))
+								if (!_this.SaveFile(sourceViewPanel))
+									hadError = true;
+						});
+					if (hadError)
+						return;
+					CloseTabs();
+					CloseWindow();
+				});
+			aDialog.AddButton("Don't Save", new (evt) =>
+				{
+					var _this = this;
+					WithSourceViewPanelsOf(window, scope [&] (sourceViewPanel) =>
+						{
+							if (sourceViewPanel.HasUnsavedChanges())
+								_this.RevertSourceViewPanel(sourceViewPanel);
+						});
+					CloseTabs();
+					CloseWindow();
+				});
 
-            aDialog.mEscButton = aDialog.AddButton("Cancel");
-            aDialog.PopupWindow((WidgetWindow)window ?? mMainWindow);
-            return false;
-        }
+			aDialog.mEscButton = aDialog.AddButton("Cancel");
+			aDialog.PopupWindow((WidgetWindow)window ?? mMainWindow);
+			return false;
+		}
 
-        public SourceViewPanel GetActiveSourceViewPanel(bool includeLastActive = false, bool includeEmbeds = false)
-        {
+		public SourceViewPanel GetActiveSourceViewPanel(bool includeLastActive = false, bool includeEmbeds = false)
+		{
 			if (mRunningTestScript)
 				return mLastActiveSourceViewPanel;
 
-            var activePanel = GetActiveDocumentPanel();
-            var sourceViewPanel = activePanel as SourceViewPanel;
+			var activePanel = GetActiveDocumentPanel();
+			var sourceViewPanel = activePanel as SourceViewPanel;
 			if (sourceViewPanel != null)
 				sourceViewPanel = sourceViewPanel.GetActivePanel();
 			if ((mLastActiveSourceViewPanel != null) && (includeLastActive))
@@ -1406,27 +1409,27 @@ namespace IDE
 			if ((sourceViewPanel != null) && (includeEmbeds))
 				sourceViewPanel = sourceViewPanel.GetFocusedEmbeddedView();
 			return sourceViewPanel;
-        }
+		}
 
-        public TextPanel GetActiveTextPanel()
-        {
-            var activePanel = GetActivePanel();
-            return activePanel as TextPanel;
-        }
+		public TextPanel GetActiveTextPanel()
+		{
+			var activePanel = GetActivePanel();
+			return activePanel as TextPanel;
+		}
 
-        public void RefreshVisibleViews(SourceViewPanel excludeSourceViewPanel = null, CompilerBase.ViewRefreshKind viewRefreshKind = .FullRefresh)
-        {
-            WithSourceViewPanels(scope (sourceViewPanel) =>
-                {
+		public void RefreshVisibleViews(SourceViewPanel excludeSourceViewPanel = null, CompilerBase.ViewRefreshKind viewRefreshKind = .FullRefresh)
+		{
+			WithSourceViewPanels(scope (sourceViewPanel) =>
+				{
 					if ((sourceViewPanel.mParent != null) && (sourceViewPanel != excludeSourceViewPanel))
 					{
-	                    if (viewRefreshKind ==.Collapse)
+						if (viewRefreshKind == .Collapse)
 							sourceViewPanel.QueueCollapseRefresh();
 						else
 							sourceViewPanel.QueueFullRefresh(true);
 					}
-                });
-        }
+				});
+		}
 
 		public bool SaveFile(ProjectSource projectSource)
 		{
@@ -1439,10 +1442,10 @@ namespace IDE
 
 				using (mFileWatcher.mMonitor.Enter())
 				{
-				    String path = scope String();
+					String path = scope String();
 					projectSource.GetFullImportPath(path);
-				    String text = scope String();
-				    projectSource.mEditData.mEditWidget.GetText(text);
+					String text = scope String();
+					projectSource.mEditData.mEditWidget.GetText(text);
 					if (!SafeWriteTextFile(path, text, true, projectSource.mEditData.mLineEndingKind, scope (outStr) =>
 						{
 							projectSource.mEditData.BuildHash(outStr);
@@ -1452,13 +1455,13 @@ namespace IDE
 					}
 
 					mFileWatcher.OmitFileChange(path, text);
-				    projectSource.mEditData.mLastFileTextVersion = projectSource.mEditData.mEditWidget.Content.mData.mCurTextVersionId;
+					projectSource.mEditData.mLastFileTextVersion = projectSource.mEditData.mEditWidget.Content.mData.mCurTextVersionId;
 #if IDE_C_SUPPORT
-				    mDepClang.FileSaved(path);
+					mDepClang.FileSaved(path);
 #endif
-				    
-			        if (mWakaTime != null)			        
-			            mWakaTime.QueueFile(path, projectSource.mProject.mProjectName, true);
+
+					if (mWakaTime != null)
+						mWakaTime.QueueFile(path, projectSource.mProject.mProjectName, true);
 				}
 			}
 			return true;
@@ -1500,8 +1503,8 @@ namespace IDE
 					if (Utils.WriteTextFile(path, useText) case .Err)
 					{
 						if (showErrors)
-					    	Fail(StackStringFormat!("Failed to write file '{0}'", path));
-					    return false;
+							Fail(StackStringFormat!("Failed to write file '{0}'", path));
+						return false;
 					}
 				}
 			}
@@ -1558,7 +1561,7 @@ namespace IDE
 
 				if (!compiler.IsPerformingBackgroundOperation())
 					compiler.GetEmitSource(useFileName, outBuffer);
-				
+
 				if (onPreFilter != null)
 					onPreFilter();
 				return .Ok;
@@ -1637,9 +1640,9 @@ namespace IDE
 			//  think a file was externally saved
 			using (mFileWatcher.mMonitor.Enter())
 			{
-			    String path = forcePath ?? editData.mFilePath;
-			    String text = scope String();
-			    editData.mEditWidget.GetText(text);
+				String path = forcePath ?? editData.mFilePath;
+				String text = scope String();
+				editData.mEditWidget.GetText(text);
 
 				if (!SafeWriteTextFile(path, text, true, lineEndingKind, scope (outStr) =>
 					{
@@ -1654,7 +1657,7 @@ namespace IDE
 				editData.mLastFileTextVersion = editData.mEditWidget.Content.mData.mCurTextVersionId;
 				mFileWatcher.OmitFileChange(path, text);
 				if (forcePath == null)
-			    {
+				{
 					for (var user in editData.mEditWidget.mEditWidgetContent.mData.mUsers)
 					{
 						if (var sourceEditWidgetContent = user as SourceEditWidgetContent)
@@ -1665,17 +1668,17 @@ namespace IDE
 					}
 				}
 #if IDE_C_SUPPORT
-			    mDepClang.FileSaved(path);
+				mDepClang.FileSaved(path);
 #endif
 			}
 
 			return true;
 		}
 
-        public bool SaveFile(SourceViewPanel sourceViewPanel, String forcePath = null)
-        {
-            if ((sourceViewPanel.HasUnsavedChanges()) || (forcePath != null))
-            {
+		public bool SaveFile(SourceViewPanel sourceViewPanel, String forcePath = null)
+		{
+			if ((sourceViewPanel.HasUnsavedChanges()) || (forcePath != null))
+			{
 				if (gApp.mSettings.mEditorSettings.mFormatOnSave)
 				{
 					sourceViewPanel.ReformatDocument(true);
@@ -1695,83 +1698,83 @@ namespace IDE
 				if (!SaveFile(sourceViewPanel.mEditData, forcePath))
 					return false;
 
-                if (sourceViewPanel.mProjectSource != null)
-                {
-                    if (mWakaTime != null)
-                    {
+				if (sourceViewPanel.mProjectSource != null)
+				{
+					if (mWakaTime != null)
+					{
 						String path = forcePath ?? sourceViewPanel.mFilePath;
-                        mWakaTime.QueueFile(path, sourceViewPanel.mProjectSource.mProject.mProjectName, true);
-                    }
-                }
-            }
-            return true;
-        }
+						mWakaTime.QueueFile(path, sourceViewPanel.mProjectSource.mProject.mProjectName, true);
+					}
+				}
+			}
+			return true;
+		}
 
-        public ProjectSource FindProjectItem(ProjectFolder projectFolder, String relPath)
-        {
-            for (var childItem in projectFolder.mChildItems)
-            {
-                ProjectSource projectSource = childItem as ProjectSource;
-                if (projectSource != null)
-                {
-                    if (String.Equals(projectSource.mPath, relPath, Environment.IsFileSystemCaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase))
-                        return projectSource;
-                }
+		public ProjectSource FindProjectItem(ProjectFolder projectFolder, String relPath)
+		{
+			for (var childItem in projectFolder.mChildItems)
+			{
+				ProjectSource projectSource = childItem as ProjectSource;
+				if (projectSource != null)
+				{
+					if (String.Equals(projectSource.mPath, relPath, Environment.IsFileSystemCaseSensitive ? StringComparison.Ordinal : StringComparison.OrdinalIgnoreCase))
+						return projectSource;
+				}
 
-                ProjectFolder childFolder = childItem as ProjectFolder;
-                if (childFolder != null)
-                {
-                    projectSource = FindProjectItem(childFolder, relPath);
-                    if (projectSource != null)
-                        return projectSource;
-                }
-            }
-            return null;
-        }
+				ProjectFolder childFolder = childItem as ProjectFolder;
+				if (childFolder != null)
+				{
+					projectSource = FindProjectItem(childFolder, relPath);
+					if (projectSource != null)
+						return projectSource;
+				}
+			}
+			return null;
+		}
 
-        public Project FindProjectByName(String projectName)
-        {
-            for (var project in mWorkspace.mProjects)
-                if (project.mProjectName == projectName)
-                    return project;
-            return null;
-        }
+		public Project FindProjectByName(String projectName)
+		{
+			for (var project in mWorkspace.mProjects)
+				if (project.mProjectName == projectName)
+					return project;
+			return null;
+		}
 
-        public ProjectSource FindProjectSourceItem(String filePath)
-        {
-            for (var project in mWorkspace.mProjects)
-            {
-                String relPath = scope String();
-                project.GetProjectRelPath(filePath, relPath);
+		public ProjectSource FindProjectSourceItem(String filePath)
+		{
+			for (var project in mWorkspace.mProjects)
+			{
+				String relPath = scope String();
+				project.GetProjectRelPath(filePath, relPath);
 
-                var projectItem = FindProjectItem(project.mRootFolder, relPath);
-                if (projectItem != null)
-                    return projectItem;
-            }
-            return null;
-        }
+				var projectItem = FindProjectItem(project.mRootFolder, relPath);
+				if (projectItem != null)
+					return projectItem;
+			}
+			return null;
+		}
 
 		///
-       
-        void SerializeWindow(StructuredData data, WidgetWindow window)
-        {
-            data.Add("X", window.mNormX);
-            data.Add("Y", window.mNormY);
-            data.Add("Width", window.mNormWidth);
-            data.Add("Height", window.mNormHeight);
+
+		void SerializeWindow(StructuredData data, WidgetWindow window)
+		{
+			data.Add("X", window.mNormX);
+			data.Add("Y", window.mNormY);
+			data.Add("Width", window.mNormWidth);
+			data.Add("Height", window.mNormHeight);
 			data.Add("ShowKind", window.mShowKind);
-        }
+		}
 
-        void SerializeTabbedView(StructuredData data, DarkTabbedView tabbedView, bool serializeDocs)
-        {
-            if (tabbedView == mActiveDocumentsTabbedView)
-                data.Add("DefaultDocumentsTabbedView", true);
+		void SerializeTabbedView(StructuredData data, DarkTabbedView tabbedView, bool serializeDocs)
+		{
+			if (tabbedView == mActiveDocumentsTabbedView)
+				data.Add("DefaultDocumentsTabbedView", true);
 
-            data.Add("Type", "TabbedView");
-            using (data.CreateArray("Tabs"))
-            {
-                for (var tabWidget in tabbedView.mTabs)
-                {
+			data.Add("Type", "TabbedView");
+			using (data.CreateArray("Tabs"))
+			{
+				for (var tabWidget in tabbedView.mTabs)
+				{
 					if (!serializeDocs)
 					{
 						if (tabWidget.mContent is SourceViewPanel)
@@ -1784,8 +1787,8 @@ namespace IDE
 							continue;
 					}
 
-                    using (data.CreateObject())
-                    {
+					using (data.CreateObject())
+					{
 						var panel = tabWidget.mContent as Panel;
 						if (!panel.WantsSerialization)
 							continue;
@@ -1793,64 +1796,64 @@ namespace IDE
 						if (tabWidget.mIsActive)
 							data.Add("Active", true);
 
-                        data.Add("TabLabel", tabWidget.mLabel);
-                        data.Add("TabWidth", tabWidget.mWantWidth / DarkTheme.sScale);
+						data.Add("TabLabel", tabWidget.mLabel);
+						data.Add("TabWidth", tabWidget.mWantWidth / DarkTheme.sScale);
 						data.Add("TabIsPinned", tabWidget.mIsPinned);
 
 						if (var watchPanel = tabWidget.mContent as WatchPanel)
 						{
 							watchPanel.Serialize(data, serializeDocs);
 						}
-                        else if (panel != null)
-                        {
-                            panel.Serialize(data);
-                        }
-                        else
-                        {
-                            var innerTabbedView = tabWidget.mContent as DarkTabbedView;
-                            if (innerTabbedView != null)
-                            {                                
-                                SerializeTabbedView(data, innerTabbedView, serializeDocs);
-                            }
-                        }
-                    }
-                }
-            }
-        }
+						else if (panel != null)
+						{
+							panel.Serialize(data);
+						}
+						else
+						{
+							var innerTabbedView = tabWidget.mContent as DarkTabbedView;
+							if (innerTabbedView != null)
+							{
+								SerializeTabbedView(data, innerTabbedView, serializeDocs);
+							}
+						}
+					}
+				}
+			}
+		}
 
-        void SerializeDockingFrame(StructuredData data, DockingFrame dockingFrame, bool serializeDocs)
-        {
-            data.Add("Type", "DockingFrame");
-            data.Add("SplitType", (int32)dockingFrame.mSplitType);
-            using (data.CreateArray("DockedWidgets"))
-            {
-                for (var dockedWidget in dockingFrame.mDockedWidgets)
-                {
-                    using (data.CreateObject())
-                    {
-                        if (dockedWidget.mIsFillWidget)
-                            data.Add("IsFillWidget", true);
+		void SerializeDockingFrame(StructuredData data, DockingFrame dockingFrame, bool serializeDocs)
+		{
+			data.Add("Type", "DockingFrame");
+			data.Add("SplitType", (int32)dockingFrame.mSplitType);
+			using (data.CreateArray("DockedWidgets"))
+			{
+				for (var dockedWidget in dockingFrame.mDockedWidgets)
+				{
+					using (data.CreateObject())
+					{
+						if (dockedWidget.mIsFillWidget)
+							data.Add("IsFillWidget", true);
 						if (!dockedWidget.mAutoClose)
 							data.Add("Permanent", true);
-                        data.Add("RequestedWidth", dockedWidget.mRequestedWidth);
-                        data.Add("RequestedHeight", dockedWidget.mRequestedHeight);
-                        data.ConditionalAdd("SizePriority", dockedWidget.mSizePriority, 0);
+						data.Add("RequestedWidth", dockedWidget.mRequestedWidth);
+						data.Add("RequestedHeight", dockedWidget.mRequestedHeight);
+						data.ConditionalAdd("SizePriority", dockedWidget.mSizePriority, 0);
 
-                        if (dockedWidget is DarkDockingFrame)
-                        {
-                            var innerDockingFrame = (DarkDockingFrame)dockedWidget;
-                            SerializeDockingFrame(data, innerDockingFrame, serializeDocs);
-                        }
+						if (dockedWidget is DarkDockingFrame)
+						{
+							var innerDockingFrame = (DarkDockingFrame)dockedWidget;
+							SerializeDockingFrame(data, innerDockingFrame, serializeDocs);
+						}
 
-                        if (dockedWidget is DarkTabbedView)
-                        {
-                            var tabbedView = (DarkTabbedView)dockedWidget;
-                            SerializeTabbedView(data, tabbedView, serializeDocs);
-                        }
-                    }
-                }
-            }
-        }
+						if (dockedWidget is DarkTabbedView)
+						{
+							var tabbedView = (DarkTabbedView)dockedWidget;
+							SerializeTabbedView(data, tabbedView, serializeDocs);
+						}
+					}
+				}
+			}
+		}
 
 		bool SaveDefaultLayoutData()
 		{
@@ -1864,12 +1867,12 @@ namespace IDE
 
 			using (sd.CreateObject("MainWindow"))
 			{
-			    SerializeWindow(sd, mMainWindow);
+				SerializeWindow(sd, mMainWindow);
 			}
 
 			using (sd.CreateObject("MainDockingFrame"))
 			{
-			    SerializeDockingFrame(sd, mDockingFrame, false);
+				SerializeDockingFrame(sd, mDockingFrame, false);
 			}
 
 			String projectUserFileName = scope String();
@@ -1884,7 +1887,7 @@ namespace IDE
 		{
 			String projectUserFileName = scope String();
 			GetDefaultLayoutDataFileName(projectUserFileName);
-			
+
 			StructuredData sd = scope .();
 			if (sd.Load(projectUserFileName) case .Err)
 				return false;
@@ -1901,10 +1904,9 @@ namespace IDE
 			using (sd.CreateObject("MainWindow"))
 			{
 				if (mMainWindow != null)
-			    	SerializeWindow(sd, mMainWindow);
+					SerializeWindow(sd, mMainWindow);
 				else
 				{
-					
 					sd.Add("X", mRequestedWindowRect.mX);
 					sd.Add("Y", mRequestedWindowRect.mY);
 					sd.Add("Width", mRequestedWindowRect.mWidth);
@@ -1915,13 +1917,13 @@ namespace IDE
 
 			using (sd.CreateObject("MainDockingFrame"))
 			{
-			    SerializeDockingFrame(sd, mDockingFrame, true);
+				SerializeDockingFrame(sd, mDockingFrame, true);
 			}
 
 			using (sd.CreateArray("RecentFilesList"))
 			{
-			    for (var recentFile in mRecentlyDisplayedFiles)
-			    {
+				for (var recentFile in mRecentlyDisplayedFiles)
+				{
 					String relPath = scope .();
 					mWorkspace.GetWorkspaceRelativePath(recentFile, relPath);
 					sd.Add(relPath);
@@ -1930,26 +1932,26 @@ namespace IDE
 
 			using (sd.CreateArray("Breakpoints"))
 			{
-			    for (var breakpoint in mDebugger.mBreakpointList)
-			    {
-			        if ((breakpoint.mFileName != null) || (breakpoint.mIsMemoryBreakpoint) || (breakpoint.mSymbol != null))
-			        {
-			            using (sd.CreateObject())
-			            {                    
-			                if (breakpoint.mFileName != null)
-			                {
+				for (var breakpoint in mDebugger.mBreakpointList)
+				{
+					if ((breakpoint.mFileName != null) || (breakpoint.mIsMemoryBreakpoint) || (breakpoint.mSymbol != null))
+					{
+						using (sd.CreateObject())
+						{
+							if (breakpoint.mFileName != null)
+							{
 								String relPath = scope .();
 								mWorkspace.GetWorkspaceRelativePath(breakpoint.mFileName, relPath);
-			                    sd.Add("File", relPath);
-			                    sd.Add("Line", breakpoint.mLineNum);
-			                    sd.Add("Column", breakpoint.mColumn);
+								sd.Add("File", relPath);
+								sd.Add("Line", breakpoint.mLineNum);
+								sd.Add("Column", breakpoint.mColumn);
 								if (breakpoint.mInstrOffset != -1)
 									sd.Add("InstrOffset", breakpoint.mInstrOffset);
-			                }
+							}
 							if (breakpoint.mSymbol != null)
 								sd.Add("Symbol", breakpoint.mSymbol);
-			                if (breakpoint.mIsMemoryBreakpoint)
-			                    sd.Add("MemoryWatchExpression", breakpoint.mMemoryWatchExpression);
+							if (breakpoint.mIsMemoryBreakpoint)
+								sd.Add("MemoryWatchExpression", breakpoint.mMemoryWatchExpression);
 							if (breakpoint.mCondition != null)
 								sd.Add("Condition", breakpoint.mCondition);
 							if (breakpoint.mLogging != null)
@@ -1961,37 +1963,37 @@ namespace IDE
 								sd.Add("Disabled", true);
 							if (breakpoint.mThreadId != -1)
 								sd.Add("HasThreadId", true);
-			            }
-			        }
-			    }
+						}
+					}
+				}
 			}
-			
+
 			using (sd.CreateArray("BookmarkFolders"))
 			{
 				for (var folder in mBookmarkManager.mBookmarkFolders)
 				{
-			        using (sd.CreateObject())
-			        {
-			            sd.Add("Title", folder.mTitle);
-						
+					using (sd.CreateObject())
+					{
+						sd.Add("Title", folder.mTitle);
+
 						using (sd.CreateArray("Bookmarks"))
 						{
 							for (var bookmark in folder.mBookmarkList)
 							{
-							    if (bookmark.mFileName != null)
-							    {
-							        using (sd.CreateObject())
-							        {
+								if (bookmark.mFileName != null)
+								{
+									using (sd.CreateObject())
+									{
 										String relPath = scope .();
 										mWorkspace.GetWorkspaceRelativePath(bookmark.mFileName, relPath);
-							            sd.Add("File", relPath);
-							            sd.Add("Line", bookmark.mLineNum);
-							            sd.Add("Column", bookmark.mColumn);
-							            sd.Add("Title", bookmark.mTitle);
-							            if (bookmark.mIsDisabled)
+										sd.Add("File", relPath);
+										sd.Add("Line", bookmark.mLineNum);
+										sd.Add("Column", bookmark.mColumn);
+										sd.Add("Title", bookmark.mTitle);
+										if (bookmark.mIsDisabled)
 											sd.Add("Disabled", true);
-							        }
-							    }
+									}
+								}
 							}
 						}
 					}
@@ -2002,49 +2004,49 @@ namespace IDE
 			{
 				var displayTypeNames = scope String();
 				mDebugger.GetDisplayTypeNames(displayTypeNames);
-			    var referenceIds = String.StackSplit!(displayTypeNames, '\n');
-			    for (var referenceId in referenceIds)                
-			    {                    
-			        if (!referenceId.StartsWith("0", StringComparison.Ordinal))
-			        {
-			            DebugManager.IntDisplayType intDisplayType;
-			            DebugManager.MmDisplayType mmDisplayType;
+				var referenceIds = String.StackSplit!(displayTypeNames, '\n');
+				for (var referenceId in referenceIds)
+				{
+					if (!referenceId.StartsWith("0", StringComparison.Ordinal))
+					{
+						DebugManager.IntDisplayType intDisplayType;
+						DebugManager.MmDisplayType mmDisplayType;
 						DebugManager.FloatDisplayType floatDisplayType;
 						String formatStr = scope .();
-			            mDebugger.GetDisplayTypes(referenceId, formatStr, out intDisplayType, out mmDisplayType, out floatDisplayType);
-			            using (sd.CreateObject(referenceId))
-			            {
+						mDebugger.GetDisplayTypes(referenceId, formatStr, out intDisplayType, out mmDisplayType, out floatDisplayType);
+						using (sd.CreateObject(referenceId))
+						{
 							if (!formatStr.IsEmpty)
 								sd.Add("FormatStr", formatStr);
-			                sd.ConditionalAdd("IntDisplayType", intDisplayType);
-			                sd.ConditionalAdd("MmDisplayType", mmDisplayType);
+							sd.ConditionalAdd("IntDisplayType", intDisplayType);
+							sd.ConditionalAdd("MmDisplayType", mmDisplayType);
 							sd.ConditionalAdd("FloatDisplayType", floatDisplayType);
-			            }
-			        }
-			    }
+						}
+					}
+				}
 			}
 
 			using (sd.CreateArray("StepFilters"))
 			{
-			    for (var stepFilter in mDebugger.mStepFilterList.Values)
-			    {
+				for (var stepFilter in mDebugger.mStepFilterList.Values)
+				{
 					if (stepFilter.mIsGlobal)
 						continue;
 					if (stepFilter.mKind == .Filtered)
 						sd.Add(stepFilter.mFilter);
-			    }
+				}
 				sd.RemoveIfEmpty();
 			}
 
 			using (sd.CreateArray("StepNotFilters"))
 			{
-			    for (var stepFilter in mDebugger.mStepFilterList.Values)
-			    {
+				for (var stepFilter in mDebugger.mStepFilterList.Values)
+				{
 					if (stepFilter.mIsGlobal)
 						continue;
 					if (stepFilter.mKind == .NotFiltered)
 						sd.Add(stepFilter.mFilter);
-			    }
+				}
 				sd.RemoveIfEmpty();
 			}
 
@@ -2066,8 +2068,8 @@ namespace IDE
 			}
 		}
 
-        bool SaveWorkspaceUserData(bool showErrors = true)
-        {
+		bool SaveWorkspaceUserData(bool showErrors = true)
+		{
 			// Don't save if we didn't finish creating the workspace
 			if (mWorkspace.mNeedsCreate)
 				return false;
@@ -2087,24 +2089,24 @@ namespace IDE
 				return true;
 			}
 
-            StructuredData sd = scope StructuredData();
+			StructuredData sd = scope StructuredData();
 
 			sd.CreateNew();
 			SaveWorkspaceUserData(sd);
 
-            String projectUserFileName = scope String();
-            GetWorkspaceUserDataFileName(projectUserFileName);
-            String jsonString = scope String();
+			String projectUserFileName = scope String();
+			GetWorkspaceUserDataFileName(projectUserFileName);
+			String jsonString = scope String();
 			sd.ToTOML(jsonString);
 
 			if (projectUserFileName.IsEmpty)
 				return false;
 
-            return SafeWriteTextFile(projectUserFileName, jsonString, showErrors);
-        }
-        
-        bool GetWorkspaceUserDataFileName(String outResult)
-        {
+			return SafeWriteTextFile(projectUserFileName, jsonString, showErrors);
+		}
+
+		bool GetWorkspaceUserDataFileName(String outResult)
+		{
 			if (mWorkspace.mDir == null)
 				return false;
 
@@ -2114,7 +2116,7 @@ namespace IDE
 			}
 			else
 			{
-            	outResult.Append(mWorkspace.mDir, "/BeefSpace_User.toml");
+				outResult.Append(mWorkspace.mDir, "/BeefSpace_User.toml");
 				var legacyName = scope String(mWorkspace.mDir, "/BeefUser.toml");
 
 				if (File.Exists(legacyName))
@@ -2136,15 +2138,15 @@ namespace IDE
 			}
 
 			return true;
-        }
+		}
 
 		void GetDefaultLayoutDataFileName(String outResult)
 		{
 			outResult.Append(mInstallDir, "/DefaultLayout.toml");
 		}
 
-        bool GetWorkspaceFileName(String outResult)
-        {
+		bool GetWorkspaceFileName(String outResult)
+		{
 			if (mWorkspace.mDir == null)
 				return false;
 
@@ -2160,12 +2162,12 @@ namespace IDE
 			outResult.Append(mWorkspace.mDir, "/BeefSpace.toml");
 			IDEUtils.FixFilePath(outResult);
 			return true;
-        }
+		}
 
 		///
 
-        bool SaveWorkspace()
-        {
+		bool SaveWorkspace()
+		{
 			if (mWorkspace.mNeedsCreate)
 				mWorkspace.mNeedsCreate = false;
 
@@ -2175,7 +2177,7 @@ namespace IDE
 				if (mWorkspace.mDir == null)
 				{
 					let activeWindow = GetActiveWindow();
-	
+
 					FolderBrowserDialog folderDialog = scope FolderBrowserDialog();
 					//folderDialog.SelectedPath = fullDir;
 					if (activeWindow != null)
@@ -2183,7 +2185,7 @@ namespace IDE
 					if (folderDialog.ShowDialog(gApp.GetActiveWindow()).GetValueOrDefault() != .OK)
 						return false;
 					mWorkspace.mDir = new String(folderDialog.SelectedPath);
-	
+
 					String workspaceFileName = scope .();
 					GetWorkspaceFileName(workspaceFileName);
 					if (File.Exists(workspaceFileName))
@@ -2202,17 +2204,17 @@ namespace IDE
 				}
 			}
 
-            StructuredData data = scope StructuredData();
+			StructuredData data = scope StructuredData();
 			data.CreateNew();
-            mWorkspace.Serialize(data);
+			mWorkspace.Serialize(data);
 
 			String tomlString = scope String();
 			data.ToTOML(tomlString);
 			if (!mWorkspace.IsSingleFileWorkspace)
 			{
-	            String workspaceFileName = scope String();
-	            GetWorkspaceFileName(workspaceFileName);
-			
+				String workspaceFileName = scope String();
+				GetWorkspaceFileName(workspaceFileName);
+
 				if (!SafeWriteTextFile(workspaceFileName, tomlString))
 				{
 					Fail(StackStringFormat!("Failed to write workspace file '{0}'", workspaceFileName));
@@ -2228,8 +2230,8 @@ namespace IDE
 			}
 			mWorkspace.mHasChanged = false;
 			MarkDirty();
-            return true;
-        }
+			return true;
+		}
 
 		bool SaveDebugSession()
 		{
@@ -2268,7 +2270,7 @@ namespace IDE
 				dialog.OverwritePrompt = true;
 				if (dialog.ShowDialog(activeWindow).GetValueOrDefault() != .OK)
 					return false;
-				
+
 				project.mProjectPath.Set(dialog.FileNames[0]);
 			}
 #endif
@@ -2310,14 +2312,14 @@ namespace IDE
 				return false;*/
 		}
 
-        public void AddProjectToWorkspace(Project project, bool addToProjectList = true)
-        {
+		public void AddProjectToWorkspace(Project project, bool addToProjectList = true)
+		{
 			if (addToProjectList)
-            	mWorkspace.mProjects.Add(project);
-            mBfBuildSystem.AddProject(project);
+				mWorkspace.mProjects.Add(project);
+			mBfBuildSystem.AddProject(project);
 #if !CLI
 			if (mBfResolveSystem != null)
-            	mBfResolveSystem.AddProject(project);
+				mBfResolveSystem.AddProject(project);
 #endif
 			mWorkspace.ClearProjectNameCache();
 
@@ -2326,17 +2328,17 @@ namespace IDE
 				for (var checkProject in mWorkspace.mProjects)
 				{
 					int idx = checkProject.mDependencies.FindIndex(scope (dep) => dep.mProjectName == project.mProjectName);
-				    if (idx != -1)
-				        ProjectOptionsChanged(checkProject);
+					if (idx != -1)
+						ProjectOptionsChanged(checkProject);
 				}
 				ProjectOptionsChanged(project, false);
 			}
-        }
+		}
 
-        public void AddNewProjectToWorkspace(Project project, VerSpec verSpec = .None)
-        {
-            AddProjectToWorkspace(project);
-            mWorkspace.SetChanged();
+		public void AddNewProjectToWorkspace(Project project, VerSpec verSpec = .None)
+		{
+			AddProjectToWorkspace(project);
+			mWorkspace.SetChanged();
 
 			var relPath = scope String();
 			Path.GetRelativePath(project.mProjectPath, mWorkspace.mDir, relPath);
@@ -2368,31 +2370,31 @@ namespace IDE
 			dep.mProjectName = new .("corlib");
 			dep.mVerSpec = .SemVer(new .("*"));
 			project.mDependencies.Add(dep);
-        }
+		}
 
-        public Project CreateProject(String projName, String projDir, Project.TargetType targetType)
-        {
-            Project project = new Project();
-            project.mProjectName.Set(projName);
-            project.mProjectPath.Set(projDir);
-            Utils.GetDirWithSlash(project.mProjectPath);
+		public Project CreateProject(String projName, String projDir, Project.TargetType targetType)
+		{
+			Project project = new Project();
+			project.mProjectName.Set(projName);
+			project.mProjectPath.Set(projDir);
+			Utils.GetDirWithSlash(project.mProjectPath);
 			project.mProjectPath.Append("BeefProj.toml");
-            project.mProjectDir.Set(projDir);
+			project.mProjectDir.Set(projDir);
 			project.mGeneralOptions.mTargetType = targetType;
 			project.SetupDefault();
-            project.SetChanged();
+			project.SetChanged();
 			AddNewProjectToWorkspace(project);
 			project.FinishCreate();
 
-            mProjectPanel.InitProject(project, mProjectPanel.GetSelectedWorkspaceFolder());
-            mProjectPanel.Sort();
-            mWorkspace.FixOptions();
+			mProjectPanel.InitProject(project, mProjectPanel.GetSelectedWorkspaceFolder());
+			mProjectPanel.Sort();
+			mWorkspace.FixOptions();
 			mWorkspace.mHasChanged = true;
 
 			mWorkspace.ClearProjectNameCache();
-        	CurrentWorkspaceConfigChanged();
+			CurrentWorkspaceConfigChanged();
 			return project;
-        }
+		}
 
 		void StopDebugging()
 		{
@@ -2437,9 +2439,9 @@ namespace IDE
 
 			if (!mNoResolve)
 			{
-			    mBfResolveSystem = new BfSystem();
-			    mBfResolveCompiler = mBfResolveSystem.CreateCompiler(true);
-			    mBfResolveHelper = new BfResolveHelper();
+				mBfResolveSystem = new BfSystem();
+				mBfResolveCompiler = mBfResolveSystem.CreateCompiler(true);
+				mBfResolveHelper = new BfResolveHelper();
 			}
 
 			mCompileSinceCleanCount = 0;
@@ -2450,7 +2452,7 @@ namespace IDE
 			/*var docPanels = scope List<Widget>();
 			WithTabs(scope [&] (tab) =>
 			{
-			    var sourceViewPanel = tab.mContent as SourceViewPanel;
+				var sourceViewPanel = tab.mContent as SourceViewPanel;
 				if (sourceViewPanel != null)
 				{	
 					docPanels.Add(sourceViewPanel);
@@ -2519,7 +2521,7 @@ namespace IDE
 			{
 				if (!LoadWorkspaceUserData())
 				{
-				    CreateDefaultLayout();
+					CreateDefaultLayout();
 				}
 			}
 
@@ -2560,7 +2562,7 @@ namespace IDE
 					if (SaveAll())
 					{
 						CloseWorkspaceAndSetupNew();
-					}	
+					}
 				},
 				new () =>
 				{
@@ -2591,7 +2593,6 @@ namespace IDE
 		[IDECommand]
 		void CollapseRedo()
 		{
-
 		}
 
 		[IDECommand]
@@ -2609,9 +2610,8 @@ namespace IDE
 		[IDECommand]
 		void CollapseUndo()
 		{
-
 		}
-		
+
 		[IDECommand]
 		void DeleteAllRight()
 		{
@@ -2664,7 +2664,7 @@ namespace IDE
 			if (var sourceViewPanel = GetLastActiveDocumentPanel() as SourceViewPanel)
 			{
 				var sewc = sourceViewPanel.mEditWidget.mEditWidgetContent as SourceEditWidgetContent;
-				uint8[] newData = new uint8[sewc.mData.mTextLength*4];
+				uint8[] newData = new uint8[sewc.mData.mTextLength * 4];
 
 				var idData = ref sewc.mData.mTextIdData;
 				/*idData.Prepare();
@@ -2675,21 +2675,21 @@ namespace IDE
 				int charIdx = 0;
 				while (true)
 				{
-				    int32 cmd = Utils.DecodeInt(idData.mData, ref decodeIdx);
-				    if (cmd > 0)
-				    {
+					int32 cmd = Utils.DecodeInt(idData.mData, ref decodeIdx);
+					if (cmd > 0)
+					{
 						charId = cmd;
 						Utils.EncodeInt(newData, ref encodeIdx, charId);
 					}
-				    else
-				    {
-				        int32 spanSize = -cmd;
-				        
-				        charId += spanSize;
-				        charIdx += spanSize;
+					else
+					{
+						int32 spanSize = -cmd;
+						
+						charId += spanSize;
+						charIdx += spanSize;
 
-				        if (cmd == 0)
-				        {
+						if (cmd == 0)
+						{
 							Utils.EncodeInt(newData, ref encodeIdx, 0);
 							break;
 						}
@@ -2700,7 +2700,7 @@ namespace IDE
 							spanSize -= 64;
 						}
 						Utils.EncodeInt(newData, ref encodeIdx, -spanSize);
-				    }
+					}
 				}*/
 
 				int encodeIdx = 0;
@@ -2794,14 +2794,14 @@ namespace IDE
 				mWorkspace.mProjectLoadState = .Loaded;
 		}
 
-        protected void LoadWorkspace(BeefVerb verb)
-        {
+		protected void LoadWorkspace(BeefVerb verb)
+		{
 			scope AutoBeefPerf("IDEApp.LoadWorkspace");
 
 			AddRecentFile(.OpenedWorkspace, mWorkspace.mDir);
 
-            StructuredData data = null;
-            
+			StructuredData data = null;
+
 			String workspaceFileName = scope String();
 			if (mWorkspace.IsSingleFileWorkspace)
 			{
@@ -2812,8 +2812,8 @@ namespace IDE
 				workspaceFileName.Append("Workspace");
 			}
 			else
-            	GetWorkspaceFileName(workspaceFileName);
-            data = scope StructuredData(); //.LoadFromFile(workspaceFileName).GetValueOrDefault();
+				GetWorkspaceFileName(workspaceFileName);
+			data = scope StructuredData(); //.LoadFromFile(workspaceFileName).GetValueOrDefault();
 
 			LoadConfig();
 
@@ -2828,8 +2828,8 @@ namespace IDE
 
 			var startupProjectName = scope String();
 
-            if (StructuredLoad(data, workspaceFileName) case .Err(let err))
-            {
+			if (StructuredLoad(data, workspaceFileName) case .Err(let err))
+			{
 				mBeefConfig.Refresh();
 
 				switch (err)
@@ -2863,18 +2863,18 @@ namespace IDE
 				}
 
 				//Directory.CreateDirectory(mWorkspace.mDir).IgnoreError();
-                //int lastSlashPos = mWorkspace.mDir.LastIndexOf(IDEUtils.cNativeSlash);
-                String projectName = mWorkspace.mName;
+				//int lastSlashPos = mWorkspace.mDir.LastIndexOf(IDEUtils.cNativeSlash);
+				String projectName = mWorkspace.mName;
 				Debug.Assert(!projectName.IsWhiteSpace);
 
-                String projectPath = scope String(mWorkspace.mDir);
-                Utils.GetDirWithSlash(projectPath);
-                projectPath.Append("BeefProj.toml");
-				
-                Project project = new Project();
+				String projectPath = scope String(mWorkspace.mDir);
+				Utils.GetDirWithSlash(projectPath);
+				projectPath.Append("BeefProj.toml");
+
+				Project project = new Project();
 				mWorkspace.mProjects.Add(project);
 				project.mProjectPath.Set(projectPath);
-                if (!project.Load(projectPath))
+				if (!project.Load(projectPath))
 				{
 					project.mBeefGlobalOptions.mDefaultNamespace.Set(projectName);
 					project.mBeefGlobalOptions.mStartupObject.Clear();
@@ -2884,7 +2884,7 @@ namespace IDE
 					project.mNeedsCreate = true;
 					project.mHasChanged = true;
 					project.mProjectDir.Set(mWorkspace.mDir);
-					
+
 					project.FinishCreate(false);
 
 					VerSpec verSpec = .SemVer(new .("*"));
@@ -2906,9 +2906,9 @@ namespace IDE
 				projSpec.mVerSpec = .Path(new String("."));
 				mWorkspace.mProjectSpecs.Add(projSpec);
 
-                mWorkspace.mStartupProject = project;
+				mWorkspace.mStartupProject = project;
 				mWorkspace.mHasChanged = true;
-                AddProjectToWorkspace(project, false);
+				AddProjectToWorkspace(project, false);
 
 				ShowPanel(mOutputPanel, false);
 
@@ -2929,7 +2929,7 @@ namespace IDE
 					mWorkspace.mNeedsCreate = true;
 					OutputLine("Use 'File\\Save All' to commit to disk.");
 				}
-            }
+			}
 			else
 			{
 				mWorkspace.mProjectFileEntries.Add(new .(workspaceFileName));
@@ -2981,8 +2981,6 @@ namespace IDE
 							LoadFailed();
 						default:
 						}
-
-						
 					}
 				}
 				mWorkspace.Deserialize(data);
@@ -2999,10 +2997,10 @@ namespace IDE
 			}
 
 			mWorkspace.FinishDeserialize(data);
-            mWorkspace.FixOptions(mConfigName, mPlatformName);
+			mWorkspace.FixOptions(mConfigName, mPlatformName);
 #if !CLI
 			if (mBfResolveCompiler != null)
-            	mBfResolveCompiler.QueueSetWorkspaceOptions(null, 0);
+				mBfResolveCompiler.QueueSetWorkspaceOptions(null, 0);
 #endif
 
 			String relaunchCmd = scope .();
@@ -3010,7 +3008,7 @@ namespace IDE
 			Platform.BfpSystem_SetCrashRelaunchCmd(relaunchCmd);
 
 			MarkDirty();
-        }
+		}
 
 		protected void ReloadWorkspace()
 		{
@@ -3082,7 +3080,7 @@ namespace IDE
 			if (useVerSpec case .SemVer)
 			{
 				// First pass we just try to use the 'expected' project name
-				FindLoop: for (int pass < 2)
+				FindLoop:for (int pass < 2)
 				{
 					using (mBeefConfig.mRegistry.mMonitor.Enter())
 					{
@@ -3194,8 +3192,8 @@ namespace IDE
 			return .Ok(project);
 		}
 
-        protected void WorkspaceLoaded()
-        {
+		protected void WorkspaceLoaded()
+		{
 			scope AutoBeefPerf("IDE.WorkspaceLoaded");
 
 			if (!Environment.IsFileSystemCaseSensitive)
@@ -3224,7 +3222,7 @@ namespace IDE
 				for (let configName in configs)
 				{
 					mWorkspace.FixOptions(configName, platformName);
-				}						  
+				}
 			}
 
 			mWorkspace.FixOptions(mConfigName, mPlatformName);
@@ -3232,92 +3230,92 @@ namespace IDE
 			if (mBfResolveSystem != null)
 				PreConfigureBeefSystem(mBfResolveSystem, mBfResolveCompiler);
 #endif
-            for (var project in mWorkspace.mProjects)
-            {
+			for (var project in mWorkspace.mProjects)
+			{
 				project.mEnabled = IsProjectEnabled(project);
 #if !CLI
 				if (mBfResolveSystem != null)
-                	SetupBeefProjectSettings(mBfResolveSystem, mBfResolveCompiler, project);
+					SetupBeefProjectSettings(mBfResolveSystem, mBfResolveCompiler, project);
 #endif
-                project.mRootFolder.SortItems();
-            }
+				project.mRootFolder.SortItems();
+			}
 
 			if (mWorkspace.IsSingleFileWorkspace)
 			{
 				AddToRecentDisplayedFilesList(CompositeFile.sMainFileName);
 			}
-        }
+		}
 
 		///
 
-        void DeserializeTabbedView(StructuredData data, IDETabbedView tabbedView)
-        {
-            if (data.GetBool("DefaultDocumentsTabbedView"))
-                mActiveDocumentsTabbedView = tabbedView;
+		void DeserializeTabbedView(StructuredData data, IDETabbedView tabbedView)
+		{
+			if (data.GetBool("DefaultDocumentsTabbedView"))
+				mActiveDocumentsTabbedView = tabbedView;
 
 			SourceViewTabButton activeTab = null;
-            for (data.Enumerate("Tabs"))
-            {
-                Panel panel = Panel.Create(data);
-                if (panel == null)
-                    continue;
-                Debug.Assert(panel != null);
+			for ( data.Enumerate("Tabs"))
+			{
+				Panel panel = Panel.Create(data);
+				if (panel == null)
+					continue;
+				Debug.Assert(panel != null);
 
 				bool isActive = data.GetBool("Active");
-				
-                var newTabButton = new SourceViewTabButton();
-                newTabButton.Label = "";
-                data.GetString("TabLabel", newTabButton.mLabel);
+
+				var newTabButton = new SourceViewTabButton();
+				newTabButton.Label = "";
+				data.GetString("TabLabel", newTabButton.mLabel);
 				newTabButton.mIsPinned = data.GetBool("TabIsPinned");
 				newTabButton.mOwnsContent = panel.mAutoDelete;
 				newTabButton.mTabWidthOffset = panel.TabWidthOffset;
-                //newTabButton.mWantWidth = (float)Math.Round(data.GetFloat("TabWidth") * DarkTheme.sScale);
-                newTabButton.mHeight = tabbedView.mTabHeight;
-                newTabButton.mContent = panel;
-                tabbedView.AddTab(newTabButton, tabbedView.GetTabCount());
+				//newTabButton.mWantWidth = (float)Math.Round(data.GetFloat("TabWidth") * DarkTheme.sScale);
+				newTabButton.mHeight = tabbedView.mTabHeight;
+				newTabButton.mContent = panel;
+				tabbedView.AddTab(newTabButton, tabbedView.GetTabCount());
 				newTabButton.RehupScale(1.0f, 1.0f);
-                
-                newTabButton.mCloseClickedEvent.Add(new () => DocumentCloseClicked(panel));
+
+				newTabButton.mCloseClickedEvent.Add(new () => DocumentCloseClicked(panel));
 
 				if (isActive)
 					activeTab = newTabButton;
-            }
+			}
 
 			if (activeTab != null)
 				activeTab.Activate(false);
-        }
+		}
 
-        void DeserializeDockingFrame(StructuredData data, DockingFrame dockingFrame)
-        {
-            dockingFrame.mSplitType = (DockingFrame.SplitType)data.GetInt("SplitType");
-            for (var _docWid in data.Enumerate("DockedWidgets"))
-            {
-                //for (int32 dockedWidgetIdx = 0; dockedWidgetIdx < data.Count; dockedWidgetIdx++)
+		void DeserializeDockingFrame(StructuredData data, DockingFrame dockingFrame)
+		{
+			dockingFrame.mSplitType = (DockingFrame.SplitType)data.GetInt("SplitType");
+			for (var _docWid in data.Enumerate("DockedWidgets"))
+			{
+				//for (int32 dockedWidgetIdx = 0; dockedWidgetIdx < data.Count; dockedWidgetIdx++)
 				//for (var dockedWidgetKV in data)
-                {
-                    //using (data.Open(dockedWidgetIdx))
+				{
+					//using (data.Open(dockedWidgetIdx))
 					//using (data.Open(@dockedWidgetKV))
-                    {
-                        DockedWidget dockedWidget = null;
+					{
+						DockedWidget dockedWidget = null;
 						IDETabbedView tabbedView = null;
 
-                        String type = scope String();
-                        data.GetString("Type", type);
-                        if (type == "DockingFrame")
-                        {
-                            var innerDockingFrame = new DarkDockingFrame();
-                            DeserializeDockingFrame(data, innerDockingFrame);
-                            dockedWidget = innerDockingFrame;
-                        }
-                        else if (type == "TabbedView")
-                        {
-                            tabbedView = CreateTabbedView();
-                            DeserializeTabbedView(data, tabbedView);
-                            dockedWidget = tabbedView;
-                        }
+						String type = scope String();
+						data.GetString("Type", type);
+						if (type == "DockingFrame")
+						{
+							var innerDockingFrame = new DarkDockingFrame();
+							DeserializeDockingFrame(data, innerDockingFrame);
+							dockedWidget = innerDockingFrame;
+						}
+						else if (type == "TabbedView")
+						{
+							tabbedView = CreateTabbedView();
+							DeserializeTabbedView(data, tabbedView);
+							dockedWidget = tabbedView;
+						}
 
-                        dockedWidget.mParentDockingFrame = dockingFrame;
-                        dockedWidget.mIsFillWidget = data.GetBool("IsFillWidget");
+						dockedWidget.mParentDockingFrame = dockingFrame;
+						dockedWidget.mIsFillWidget = data.GetBool("IsFillWidget");
 						dockedWidget.mAutoClose = !data.GetBool("Permanent");
 						if (dockedWidget.mIsFillWidget)
 							dockedWidget.mHasFillWidget = true;
@@ -3334,27 +3332,27 @@ namespace IDE
 						dockedWidget.mWidth = dockedWidget.mRequestedWidth;
 						dockedWidget.mHeight = dockedWidget.mRequestedHeight;
 
-                        dockingFrame.AddWidget(dockedWidget);
-                        dockingFrame.mDockedWidgets.Add(dockedWidget);
-                    }
-                }
-            }
+						dockingFrame.AddWidget(dockedWidget);
+						dockingFrame.mDockedWidgets.Add(dockedWidget);
+					}
+				}
+			}
 			dockingFrame.Rehup();
-            dockingFrame.ResizeContent();
-        }
+			dockingFrame.ResizeContent();
+		}
 
-        void DeserializeWindow(StructuredData data, WidgetWindow window)
-        {
-            int32 x = data.GetInt("X");
-            int32 y = data.GetInt("Y");
-            int32 width = data.GetInt("Width");
-            int32 height = data.GetInt("Height");
+		void DeserializeWindow(StructuredData data, WidgetWindow window)
+		{
+			int32 x = data.GetInt("X");
+			int32 y = data.GetInt("Y");
+			int32 width = data.GetInt("Width");
+			int32 height = data.GetInt("Height");
 			if ((width > 0) && (height > 0))
 			{
 				mRequestedWindowRect = Rect(x, y, width, height);
 			}
 			mRequestedShowKind = data.GetEnum<BFWindow.ShowKind>("ShowKind");
-        }
+		}
 
 		bool LoadWorkspaceUserData(StructuredData data)
 		{
@@ -3364,9 +3362,9 @@ namespace IDE
 				data.GetString("LastConfig", configName);
 				if (!configName.IsEmpty)
 				{
-					 mConfigName.Set(configName);
+					mConfigName.Set(configName);
 				}
-			
+
 				String platformName = scope String();
 				data.GetString("LastPlatform", platformName);
 				if (!platformName.IsEmpty)
@@ -3376,42 +3374,42 @@ namespace IDE
 			}
 
 			using (data.Open("MainWindow"))
-			    DeserializeWindow(data, mMainWindow);
+				DeserializeWindow(data, mMainWindow);
 
 			if (mMainWindow == null)
 				mMainFrame.Resize(0, 0, mRequestedWindowRect.mWidth, mRequestedWindowRect.mHeight);
 
 			using (data.Open("MainDockingFrame"))
-			    DeserializeDockingFrame(data, mDockingFrame);
+				DeserializeDockingFrame(data, mDockingFrame);
 
 			ClearAndDeleteItems(mRecentlyDisplayedFiles);
-			for (data.Enumerate("RecentFilesList"))
+			for ( data.Enumerate("RecentFilesList"))
 			{
 				String relPath = scope String();
 				data.GetCurString(relPath);
 				IDEUtils.FixFilePath(relPath);
 				String absPath = new String();
 				mWorkspace.GetWorkspaceAbsPath(relPath, absPath);
-		        mRecentlyDisplayedFiles.Add(absPath);
+				mRecentlyDisplayedFiles.Add(absPath);
 			}
 
 			for (var _breakpoint in data.Enumerate("Breakpoints"))
-		    {
-	            String relPath = scope String();
-	            data.GetString("File", relPath);
+			{
+				String relPath = scope String();
+				data.GetString("File", relPath);
 				IDEUtils.FixFilePath(relPath);
 				String absPath = scope String();
 				mWorkspace.GetWorkspaceAbsPath(relPath, absPath);
-	            int32 lineNum = data.GetInt("Line");
-	            int32 column = data.GetInt("Column");
-	            int32 instrOffset = data.GetInt("InstrOffset", -1);
-	            String memoryWatchExpression = scope String();
-	            data.GetString("MemoryWatchExpression", memoryWatchExpression);
+				int32 lineNum = data.GetInt("Line");
+				int32 column = data.GetInt("Column");
+				int32 instrOffset = data.GetInt("InstrOffset", -1);
+				String memoryWatchExpression = scope String();
+				data.GetString("MemoryWatchExpression", memoryWatchExpression);
 				Breakpoint breakpoint = null;
-	            if (memoryWatchExpression.Length > 0)
-	                breakpoint = mDebugger.CreateMemoryBreakpoint(memoryWatchExpression, (int)0, 0, null);
-	            else if (absPath.Length > 0)
-	                breakpoint = mDebugger.CreateBreakpoint(absPath, lineNum, column, instrOffset);
+				if (memoryWatchExpression.Length > 0)
+					breakpoint = mDebugger.CreateMemoryBreakpoint(memoryWatchExpression, (int)0, 0, null);
+				else if (absPath.Length > 0)
+					breakpoint = mDebugger.CreateBreakpoint(absPath, lineNum, column, instrOffset);
 				else
 				{
 					String symbol = scope .();
@@ -3441,7 +3439,7 @@ namespace IDE
 					if (data.GetBool("HasThreadId"))
 						breakpoint.SetThreadId(0);
 				}
-		    }
+			}
 
 			for (var _bookmarkFolder in data.Enumerate("BookmarkFolders"))
 			{
@@ -3455,36 +3453,36 @@ namespace IDE
 
 				for (var _bookmark in data.Enumerate("Bookmarks"))
 				{
-				    String relPath = scope String();
-				    data.GetString("File", relPath);
+					String relPath = scope String();
+					data.GetString("File", relPath);
 					IDEUtils.FixFilePath(relPath);
 					String absPath = scope String();
 					mWorkspace.GetWorkspaceAbsPath(relPath, absPath);
-				    int32 lineNum = data.GetInt("Line");
-				    int32 column = data.GetInt("Column");
+					int32 lineNum = data.GetInt("Line");
+					int32 column = data.GetInt("Column");
 					String bookmarkTitle = scope String();
 					data.GetString("Title", bookmarkTitle);
 
-				    bool isDisabled = data.GetBool("Disabled", false);
+					bool isDisabled = data.GetBool("Disabled", false);
 
-				    mBookmarkManager.CreateBookmark(absPath, lineNum, column, isDisabled, bookmarkTitle, folder);
+					mBookmarkManager.CreateBookmark(absPath, lineNum, column, isDisabled, bookmarkTitle, folder);
 				}
 			}
 
 			// Legacy loading
 			for (var _bookmark in data.Enumerate("Bookmarks"))
 			{
-			    String relPath = scope String();
-			    data.GetString("File", relPath);
+				String relPath = scope String();
+				data.GetString("File", relPath);
 				IDEUtils.FixFilePath(relPath);
 				String absPath = scope String();
 				mWorkspace.GetWorkspaceAbsPath(relPath, absPath);
-			    int32 lineNum = data.GetInt("Line");
-			    int32 column = data.GetInt("Column");
+				int32 lineNum = data.GetInt("Line");
+				int32 column = data.GetInt("Column");
 
-			    bool isDisabled = data.GetBool("Disabled", false);
+				bool isDisabled = data.GetBool("Disabled", false);
 
-			    mBookmarkManager.CreateBookmark(absPath, lineNum, column, isDisabled, null, null);
+				mBookmarkManager.CreateBookmark(absPath, lineNum, column, isDisabled, null, null);
 			}
 
 			mBookmarkManager.RecalcCurId();
@@ -3492,18 +3490,18 @@ namespace IDE
 			for (var referenceId in data.Enumerate("DebuggerDisplayTypes"))
 			{
 				var referenceIdStr = scope String(referenceId);
-		        if (referenceIdStr.Length == 0)
-		            referenceIdStr = null;
+				if (referenceIdStr.Length == 0)
+					referenceIdStr = null;
 
 				String formatStr = scope .();
 				data.GetString("FormatStr", formatStr);
-	            var intDisplayType = data.GetEnum<DebugManager.IntDisplayType>("IntDisplayType");
-	            var mmDisplayType = data.GetEnum<DebugManager.MmDisplayType>("MmDisplayType");
+				var intDisplayType = data.GetEnum<DebugManager.IntDisplayType>("IntDisplayType");
+				var mmDisplayType = data.GetEnum<DebugManager.MmDisplayType>("MmDisplayType");
 				var floatDisplayType = data.GetEnum<DebugManager.FloatDisplayType>("FloatDisplayType");
-	            mDebugger.SetDisplayTypes(referenceIdStr, formatStr, intDisplayType, mmDisplayType, floatDisplayType);
+				mDebugger.SetDisplayTypes(referenceIdStr, formatStr, intDisplayType, mmDisplayType, floatDisplayType);
 			}
 
-			for (data.Enumerate("StepFilters"))
+			for ( data.Enumerate("StepFilters"))
 			{
 				String filter = scope String();
 				data.GetCurString(filter);
@@ -3511,7 +3509,7 @@ namespace IDE
 					mDebugger.CreateStepFilter(filter, false, .Filtered);
 			}
 
-			for (data.Enumerate("StepNotFilters"))
+			for ( data.Enumerate("StepNotFilters"))
 			{
 				String filter = scope String();
 				data.GetCurString(filter);
@@ -3540,46 +3538,46 @@ namespace IDE
 			return true;
 		}
 
-        bool LoadWorkspaceUserData()
-        {
+		bool LoadWorkspaceUserData()
+		{
 			scope AutoBeefPerf("IDEApp.LoadWorkspaceUserData");
 			//return false;
 
 			String path = scope String();
 			if (!GetWorkspaceUserDataFileName(path))
 				return false;
-            var data = scope StructuredData();
-            if (data.Load(path) case .Err)
+			var data = scope StructuredData();
+			if (data.Load(path) case .Err)
 				return false;
 
 			if (!LoadWorkspaceUserData(data))
 				return false;
 			return true;
-        }
+		}
 
-		/// 
+		///
 
 		public void RehupStepFilters()
 		{
 			mDebugger.SetStepOverExternalFiles(mStepOverExternalFiles);
 		}
 
-        public void SaveClangFiles()
-        {
-            WithSourceViewPanels(scope (sourceViewPanel) =>
-                {
-                    if (sourceViewPanel.mIsClang)
-                        SaveFile(sourceViewPanel);
-                });
-        }
+		public void SaveClangFiles()
+		{
+			WithSourceViewPanels(scope (sourceViewPanel) =>
+				{
+					if (sourceViewPanel.mIsClang)
+						SaveFile(sourceViewPanel);
+				});
+		}
 
 		[IDECommand]
-        public void SaveFile()
-        {
-            var sourceViewPanel = GetActiveSourceViewPanel();
-            if (sourceViewPanel != null)
-                SaveFile(sourceViewPanel);
-        }
+		public void SaveFile()
+		{
+			var sourceViewPanel = GetActiveSourceViewPanel();
+			if (sourceViewPanel != null)
+				SaveFile(sourceViewPanel);
+		}
 
 		[IDECommand]
 		public void SaveAs()
@@ -3650,7 +3648,7 @@ namespace IDE
 					if (SaveAll())
 					{
 						NewDebugSession(false);
-					}	
+					}
 				},
 				new () =>
 				{
@@ -3701,14 +3699,14 @@ namespace IDE
 		}
 
 		[IDECommand]
-        public bool SaveAll()
-        {
-            bool success = true;
+		public bool SaveAll()
+		{
+			bool success = true;
 
-            WithSourceViewPanels(scope [&] (sourceViewPanel) =>
-                {
-                    success &= SaveFile(sourceViewPanel);
-                });
+			WithSourceViewPanels(scope [&] (sourceViewPanel) =>
+				{
+					success &= SaveFile(sourceViewPanel);
+				});
 			mWorkspace.WithProjectItems(scope [&] (projectItem) =>
 				{
 					var projectSource = projectItem as ProjectSource;
@@ -3719,24 +3717,23 @@ namespace IDE
 							success &= SaveFile(projectSource);
 						}
 					}
-					
 				});
-            for (var project in mWorkspace.mProjects)
-            {
-                if (project.mHasChanged)
+			for (var project in mWorkspace.mProjects)
+			{
+				if (project.mHasChanged)
 				{
 					if (project.IsDebugSession)
 						success &= SaveDebugSession();
 					else
-                    	project.Save();
+						project.Save();
 				}
-            }
-            if ((mWorkspace.IsInitialized) && (!mWorkspace.IsDebugSession) &&
+			}
+			if ((mWorkspace.IsInitialized) && (!mWorkspace.IsDebugSession) &&
 				((mWorkspace.mHasChanged) || (mWorkspace.mDir == null)))
-                success &= SaveWorkspace();
+				success &= SaveWorkspace();
 
 			if (!mRunningTestScript)
-            {
+			{
 #if !CLI
 				if (!mWorkspace.IsDebugSession)
 					success &= SaveWorkspaceUserData();
@@ -3747,8 +3744,8 @@ namespace IDE
 
 			MarkDirty();
 
-            return success;
-        }
+			return success;
+		}
 
 		[IDECommand]
 		void Cmd_Exit()
@@ -3756,8 +3753,8 @@ namespace IDE
 			mMainWindow.Close();
 		}
 
-        WidgetWindow GetCurrentWindow()
-        {
+		WidgetWindow GetCurrentWindow()
+		{
 			if (mRunningTestScript)
 			{
 				if (mLastActivePanel != null)
@@ -3765,22 +3762,22 @@ namespace IDE
 				return mMainWindow;
 			}
 
-            for (var window in mWindows)
-            {
-                if (window.mHasFocus)
-                {
-                    var returnWindow = window;
+			for (var window in mWindows)
+			{
+				if (window.mHasFocus)
+				{
+					var returnWindow = window;
 					// With this "modal" flag, it caused errors to popup within a hoverwatch on a failed variable edit
-                    while ((returnWindow.mParent != null) /*&& (returnWindow.mWindowFlags.HasFlag(BFWindow.Flags.Modal))*/)
-                        returnWindow = returnWindow.mParent;
-                    return (WidgetWindow)returnWindow;
-                }
-            }
-            return mMainWindow;
-        }
+					while ((returnWindow.mParent != null) /*&& (returnWindow.mWindowFlags.HasFlag(BFWindow.Flags.Modal))*/)
+						returnWindow = returnWindow.mParent;
+					return (WidgetWindow)returnWindow;
+				}
+			}
+			return mMainWindow;
+		}
 
-        public Dialog Fail(String text, Widget addWidget = null, WidgetWindow parentWindow = null)
-        {
+		public Dialog Fail(String text, Widget addWidget = null, WidgetWindow parentWindow = null)
+		{
 			var text;
 			if (text.Contains('\t'))
 			{
@@ -3824,18 +3821,18 @@ namespace IDE
 #unwarn
 			Debug.Assert(Thread.CurrentThread == mMainThread);
 
-            if (mMainWindow == null)
-            {
-                Internal.FatalError(StackStringFormat!("FAILED: {0}", text));
-            }
+			if (mMainWindow == null)
+			{
+				Internal.FatalError(StackStringFormat!("FAILED: {0}", text));
+			}
 
-            Beep(MessageBeepType.Error);
+			Beep(MessageBeepType.Error);
 
-            Dialog dialog = ThemeFactory.mDefault.CreateDialog("ERROR", text, DarkTheme.sDarkTheme.mIconError);
-            dialog.mDefaultButton = dialog.AddButton("OK");
-            dialog.mEscButton = dialog.mDefaultButton;
+			Dialog dialog = ThemeFactory.mDefault.CreateDialog("ERROR", text, DarkTheme.sDarkTheme.mIconError);
+			dialog.mDefaultButton = dialog.AddButton("OK");
+			dialog.mEscButton = dialog.mDefaultButton;
 			dialog.mWindowFlags |= .Modal;
-            dialog.PopupWindow(parentWindow ?? GetCurrentWindow());
+			dialog.PopupWindow(parentWindow ?? GetCurrentWindow());
 
 			if (addWidget != null)
 			{
@@ -3844,22 +3841,22 @@ namespace IDE
 				addWidget.mX = 90;
 			}
 			return dialog;
-        }
+		}
 
-        public void MessageDialog(String title, String text)
-        {            
-            Dialog dialog = ThemeFactory.mDefault.CreateDialog(title, text);
-            dialog.mDefaultButton = dialog.AddButton("OK");
-            dialog.mEscButton = dialog.mDefaultButton;
-            dialog.PopupWindow(mMainWindow);
-        }
+		public void MessageDialog(String title, String text)
+		{
+			Dialog dialog = ThemeFactory.mDefault.CreateDialog(title, text);
+			dialog.mDefaultButton = dialog.AddButton("OK");
+			dialog.mEscButton = dialog.mDefaultButton;
+			dialog.PopupWindow(mMainWindow);
+		}
 
-        public void DoQuickFind(bool isReplace)
-        {
-            var textPanel = GetActiveTextPanel();
-            if (textPanel != null)
+		public void DoQuickFind(bool isReplace)
+		{
+			var textPanel = GetActiveTextPanel();
+			if (textPanel != null)
 			{
-                textPanel.ShowQuickFind(isReplace);
+				textPanel.ShowQuickFind(isReplace);
 				return;
 			}
 			else
@@ -3885,7 +3882,7 @@ namespace IDE
 			{
 				watchPanel.mListView.ShowFind();
 			}
-        }
+		}
 
 		[IDECommand]
 		public void ShowAbout()
@@ -3906,20 +3903,20 @@ namespace IDE
 			DoQuickFind(true);
 		}
 
-        private void DoFindAndReplace(bool isReplace)
-        {
+		private void DoFindAndReplace(bool isReplace)
+		{
 			RecordHistoryLocation();
 
-            if (mFindAndReplaceDialog != null)
-            {
-                mFindAndReplaceDialog.mWidgetWindow.SetForeground();
-                return;
-            }
+			if (mFindAndReplaceDialog != null)
+			{
+				mFindAndReplaceDialog.mWidgetWindow.SetForeground();
+				return;
+			}
 
-            mFindAndReplaceDialog = new FindAndReplaceDialog(isReplace);
-            mFindAndReplaceDialog.PopupWindow(mMainWindow);
-            mFindAndReplaceDialog.mOnClosed.Add(new () => { mFindAndReplaceDialog = null; });
-        }
+			mFindAndReplaceDialog = new FindAndReplaceDialog(isReplace);
+			mFindAndReplaceDialog.PopupWindow(mMainWindow);
+			mFindAndReplaceDialog.mOnClosed.Add(new () => { mFindAndReplaceDialog = null; });
+		}
 
 		[IDECommand]
 		public void Cmd_Find()
@@ -3961,12 +3958,12 @@ namespace IDE
 				sourceViewPanel.mEditWidget.mEditWidgetContent.CursorToLineStart(true);
 		}
 
-        public void DoFindNext(int32 dir = 1)
-        {
-            var textPanel = GetActiveTextPanel();
-            if (textPanel != null)
+		public void DoFindNext(int32 dir = 1)
+		{
+			var textPanel = GetActiveTextPanel();
+			if (textPanel != null)
 			{
-                textPanel.FindNext(dir);
+				textPanel.FindNext(dir);
 			}
 			else
 			{
@@ -3991,7 +3988,7 @@ namespace IDE
 			{
 				watchPanel.mListView.FindNext(dir);
 			}
-        }
+		}
 
 		void DoShowNextDocumentPanel()
 		{
@@ -4008,7 +4005,7 @@ namespace IDE
 			bool foundActiveTabbedView = false;
 
 			WithDocumentTabbedViews(scope [&] (tabbedView) =>
-                {
+				{
 					if (tabbedView.mIsFillWidget)
 					{
 						if (firstTabbedView == null)
@@ -4018,7 +4015,7 @@ namespace IDE
 						else if ((foundActiveTabbedView) && (nextTabbedView == null))
 							nextTabbedView = tabbedView;
 					}
-                });
+				});
 			if (nextTabbedView == null)
 				nextTabbedView = firstTabbedView;
 			if (nextTabbedView != null)
@@ -4054,11 +4051,11 @@ namespace IDE
 		}
 
 		[IDECommand]
-        public void Cmd_GotoLine()
-        {
-            var sourceViewPanel = GetActiveSourceViewPanel();
-            if (sourceViewPanel != null)
-            {
+		public void Cmd_GotoLine()
+		{
+			var sourceViewPanel = GetActiveSourceViewPanel();
+			if (sourceViewPanel != null)
+			{
 				sourceViewPanel.GotoLine();
 				return;
 			}
@@ -4068,22 +4065,22 @@ namespace IDE
 			{
 				memoryPanel.GotoAddress();
 			}
-        }
+		}
 
 		[IDECommand]
-        public void Cmd_GotoMethod()
-        {
-            var sourceViewPanel = GetActiveSourceViewPanel();
-            if (sourceViewPanel != null)
-                sourceViewPanel.GotoMethod();
-        }
+		public void Cmd_GotoMethod()
+		{
+			var sourceViewPanel = GetActiveSourceViewPanel();
+			if (sourceViewPanel != null)
+				sourceViewPanel.GotoMethod();
+		}
 
 		[IDECommand]
 		public void Cmd_RenameItem()
 		{
 			let activePanel = GetActivePanel();
 			if (var projectPanel = activePanel as ProjectPanel)
-            {
+			{
 				projectPanel.TryRenameItem();
 			}
 			else if (var watchPanel = activePanel as WatchPanel)
@@ -4097,19 +4094,19 @@ namespace IDE
 		}
 
 		[IDECommand]
-        public void Cmd_RenameSymbol()
-        {
-            var sourceViewPanel = GetActiveSourceViewPanel();
-            if (sourceViewPanel != null)
-                sourceViewPanel.RenameSymbol();
-        }
+		public void Cmd_RenameSymbol()
+		{
+			var sourceViewPanel = GetActiveSourceViewPanel();
+			if (sourceViewPanel != null)
+				sourceViewPanel.RenameSymbol();
+		}
 
 		[IDECommand]
 		public void Cmd_FindAllReferences()
 		{
 			var sourceViewPanel = GetActiveSourceViewPanel();
 			if (sourceViewPanel != null)
-			    sourceViewPanel.FindAllReferences();
+				sourceViewPanel.FindAllReferences();
 		}
 
 		[IDECommand]
@@ -4118,8 +4115,8 @@ namespace IDE
 			var widgetWindow = GetCurrentWindow();
 			if (widgetWindow != null)
 			{
-			    var dialog = new FindClassDialog();
-			    dialog.PopupWindow(mMainWindow);
+				var dialog = new FindClassDialog();
+				dialog.PopupWindow(mMainWindow);
 			}
 		}
 
@@ -4223,26 +4220,26 @@ namespace IDE
 		{
 			var sourceViewPanel = GetActiveSourceViewPanel();
 			if (sourceViewPanel != null)
-			{                            
-			    if (sourceViewPanel.mProjectSource != null)
-			    {
-			        var filePath = scope String();
-			        sourceViewPanel.mProjectSource.GetFullImportPath(filePath);
-			        if ((filePath.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase)) ||
-			            (filePath.EndsWith(".c", StringComparison.OrdinalIgnoreCase)))
-			        {
-			            ShowPanel(mOutputPanel, false);
-			            SaveFile(sourceViewPanel);
+			{
+				if (sourceViewPanel.mProjectSource != null)
+				{
+					var filePath = scope String();
+					sourceViewPanel.mProjectSource.GetFullImportPath(filePath);
+					if ((filePath.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase)) ||
+						(filePath.EndsWith(".c", StringComparison.OrdinalIgnoreCase)))
+					{
+						ShowPanel(mOutputPanel, false);
+						SaveFile(sourceViewPanel);
 
-			            var project = sourceViewPanel.mProjectSource.mProject;
-			            Project.Options options = GetCurProjectOptions(project);
-			            if (options != null)
-			            {
-			                Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
-			                CompileSource(project, workspaceOptions, options, filePath);
-			            }
-			        }
-			    }
+						var project = sourceViewPanel.mProjectSource.mProject;
+						Project.Options options = GetCurProjectOptions(project);
+						if (options != null)
+						{
+							Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
+							CompileSource(project, workspaceOptions, options, filePath);
+						}
+					}
+				}
 			}
 		}
 		[IDECommand]
@@ -4275,12 +4272,12 @@ namespace IDE
 			var curOutputPanel = mOutputPanel;
 			if ((mFindResultsPanel != null) && (mFindResultsPanel.mWidgetWindow != null))
 			{
-			    if (mFindResultsPanel.mLastFocusAppUpdateCnt > curOutputPanel.mLastFocusAppUpdateCnt)
-			        curOutputPanel = mFindResultsPanel;
+				if (mFindResultsPanel.mLastFocusAppUpdateCnt > curOutputPanel.mLastFocusAppUpdateCnt)
+					curOutputPanel = mFindResultsPanel;
 			}
 			curOutputPanel.GotoNextSourceReference();
 		}
-		
+
 		[IDECommand]
 		public void Cmd_ZoomOut()
 		{
@@ -4303,9 +4300,9 @@ namespace IDE
 			if (scale < 4.0f)
 			{
 				if (scale < 0)
-					scale += 0.02f;//0.05f;
+					scale += 0.02f; //0.05f;
 				else //if (scale < 2.0f)
-					scale += 0.04f;//0.10f;
+					scale += 0.04f; //0.10f;
 
 				SetScale(scale);
 			}
@@ -4341,56 +4338,56 @@ namespace IDE
 		[IDECommand]
 		public void Cmd_QuickInfo()
 		{
-		    var sourceViewPanel = GetActiveSourceViewPanel(true);
-		    if (sourceViewPanel != null)
-		    {
+			var sourceViewPanel = GetActiveSourceViewPanel(true);
+			if (sourceViewPanel != null)
+			{
 				if (sourceViewPanel.mEditWidget.mEditWidgetContent.GetCursorLineChar(var line, var lineChar))
 					sourceViewPanel.UpdateMouseover(true, true, line, lineChar, true);
 			}
 		}
 
 		[IDECommand]
-        public void Cmd_ReformatDocument()
-        {
-            var sourceViewPanel = GetActiveSourceViewPanel(true);
-            if (sourceViewPanel != null)
-                sourceViewPanel.ReformatDocument();
-        }
+		public void Cmd_ReformatDocument()
+		{
+			var sourceViewPanel = GetActiveSourceViewPanel(true);
+			if (sourceViewPanel != null)
+				sourceViewPanel.ReformatDocument();
+		}
 
-        void RemoveAllBreakpoints()
-        {
+		void RemoveAllBreakpoints()
+		{
 			BfLog.LogDbg("IDEApp.RemoveAllBreakpoints\n");
-            while (mDebugger.mBreakpointList.Count > 0)
-                mDebugger.DeleteBreakpoint(mDebugger.mBreakpointList[0]);
-        }
+			while (mDebugger.mBreakpointList.Count > 0)
+				mDebugger.DeleteBreakpoint(mDebugger.mBreakpointList[0]);
+		}
 
 		[IDECommand]
-        void Cmd_Break()
-        {
-            mDebugger.BreakAll();
-        }
+		void Cmd_Break()
+		{
+			mDebugger.BreakAll();
+		}
 
-        public void ShowDisassemblyAtCursor()
-        {
-            if (!mDebugger.mIsRunning)
-                return; // Ignore
+		public void ShowDisassemblyAtCursor()
+		{
+			if (!mDebugger.mIsRunning)
+				return; // Ignore
 
-            var sourceViewPanel = GetActiveSourceViewPanel();
-            if (sourceViewPanel != null)
-            {
-                int line;
-                int lineChar;
-                sourceViewPanel.mEditWidget.Content.GetCursorLineChar(out line, out lineChar);
-                
-                var disassemblyPanel = ShowDisassemblyPanel();
-                if (!disassemblyPanel.Show(sourceViewPanel.mFilePath, line, lineChar))
-                    ShowRecentFile(1); // Go back a file
-            }
-        }
+			var sourceViewPanel = GetActiveSourceViewPanel();
+			if (sourceViewPanel != null)
+			{
+				int line;
+				int lineChar;
+				sourceViewPanel.mEditWidget.Content.GetCursorLineChar(out line, out lineChar);
+
+				var disassemblyPanel = ShowDisassemblyPanel();
+				if (!disassemblyPanel.Show(sourceViewPanel.mFilePath, line, lineChar))
+					ShowRecentFile(1); // Go back a file
+			}
+		}
 
 		[IDECommand]
-        public void ShowDisassemblyAtStack()
-        {
+		public void ShowDisassemblyAtStack()
+		{
 			var activePanel = GetActivePanel();
 			if (var diassemblyPanel = activePanel as DisassemblyPanel)
 			{
@@ -4398,89 +4395,89 @@ namespace IDE
 				return;
 			}
 
-            if ((mDebugger.mIsRunning) && (mDebugger.IsPaused()))
-            {
-                ShowPCLocation(mDebugger.mActiveCallStackIdx, false, false, true);
-            }
+			if ((mDebugger.mIsRunning) && (mDebugger.IsPaused()))
+			{
+				ShowPCLocation(mDebugger.mActiveCallStackIdx, false, false, true);
+			}
 			else
 			{
 				ShowDisassemblyPanel(true);
 			}
 			mInDisassemblyView = true;
-        }
+		}
 
-        public void GoToDefinition(bool force)
-        {
-            var sourceViewPanel = GetActiveSourceViewPanel(false, true);
-            if (sourceViewPanel != null)
-            {
+		public void GoToDefinition(bool force)
+		{
+			var sourceViewPanel = GetActiveSourceViewPanel(false, true);
+			if (sourceViewPanel != null)
+			{
 				if (!force)
 				{
 					if ((!sourceViewPanel.mIsBeefSource) || (sourceViewPanel.mProjectSource == null))
 						return;
 				}
 
-                if ((!sourceViewPanel.mEditWidget.Content.GetCursorLineChar(var line, var lineChar)) && (!force))
+				if ((!sourceViewPanel.mEditWidget.Content.GetCursorLineChar(var line, var lineChar)) && (!force))
 					return;
-				
+
 				if (!sourceViewPanel.HasTextAtCursor())
 					return;
 
 #if IDE_C_SUPPORT
-                if (sourceViewPanel.mIsClang)
-                {
-                    String defFile = scope String();
-                    int defLine;
-                    int defColumn;
-                    mResolveClang.CancelBackground();
-                    
-                    int defIdx = sourceViewPanel.mEditWidget.Content.GetTextIdx(line, lineChar);
-                    if (mResolveClang.FindDefinition(sourceViewPanel.mFilePath, defIdx,
-                        defFile, out defLine, out defColumn))
-                    {
-                        sourceViewPanel.RecordHistoryLocation();
-                        sourceViewPanel = ShowSourceFileLocation(defFile, -1, -1, defLine, defColumn, LocatorType.Smart, true);
-                        if (sourceViewPanel != null)
-                            sourceViewPanel.RecordHistoryLocation();
-                        return;
-                    }
-                }
-                else
+				if (sourceViewPanel.mIsClang)
+				{
+					String defFile = scope String();
+					int defLine;
+					int defColumn;
+					mResolveClang.CancelBackground();
+					
+					int defIdx = sourceViewPanel.mEditWidget.Content.GetTextIdx(line, lineChar);
+					if (mResolveClang.FindDefinition(sourceViewPanel.mFilePath, defIdx,
+						defFile, out defLine, out defColumn))
+					{
+						sourceViewPanel.RecordHistoryLocation();
+						sourceViewPanel = ShowSourceFileLocation(defFile, -1, -1, defLine, defColumn, LocatorType.Smart, true);
+						if (sourceViewPanel != null)
+							sourceViewPanel.RecordHistoryLocation();
+						return;
+					}
+				}
+				else
 #endif
-                /*{                    
-                    ResolveParams resolveParams = scope ResolveParams();
-                    sourceViewPanel.Classify(ResolveType.GoToDefinition, resolveParams);
-                    if (resolveParams.mOutFileName != null)
-                    {
-                        sourceViewPanel.RecordHistoryLocation();
-                        sourceViewPanel = ShowSourceFileLocation(resolveParams.mOutFileName, -1, -1, resolveParams.mOutLine, resolveParams.mOutLineChar, LocatorType.Smart, true);
-                        sourceViewPanel.RecordHistoryLocation(true);
-                        return;
-                    }
-                }
+				/*{                    
+					ResolveParams resolveParams = scope ResolveParams();
+					sourceViewPanel.Classify(ResolveType.GoToDefinition, resolveParams);
+					if (resolveParams.mOutFileName != null)
+					{
+						sourceViewPanel.RecordHistoryLocation();
+						sourceViewPanel = ShowSourceFileLocation(resolveParams.mOutFileName, -1, -1, resolveParams.mOutLine, resolveParams.mOutLineChar, LocatorType.Smart, true);
+						sourceViewPanel.RecordHistoryLocation(true);
+						return;
+					}
+				}
 
 				if (mBfResolveCompiler.HasResolvedAll())
 				{
-	                Fail("Unable to locate definition");
+					Fail("Unable to locate definition");
 				}
 				else*/
 				{
 					sourceViewPanel.ShowSymbolReferenceHelper(.GoToDefinition);
 				}
-            }
-        }
+			}
+		}
 
-        public void StackPositionChanged()
-        {                      
+		public void StackPositionChanged()
+		{
 			WithWatchPanels(scope (watchPanel) =>
 				{
 					watchPanel.MarkWatchesDirty(false, true);
 				});
-            mMemoryPanel.MarkViewDirty();            
-        }
+			mMemoryPanel.MarkViewDirty();
+		}
 
-        public void RefreshWatches()
-        {
+		public void RefreshWatches()
+		{
 			//Debug.WriteLine("RefreshWatches");
 
 			WithWatchPanels(scope (watchPanel) =>
@@ -4497,49 +4494,49 @@ namespace IDE
 					hoverWatch.Refresh();
 				}
 			}
-        }
+		}
 
-        public void MemoryEdited()
-        {
-            RefreshWatches();
-            mMemoryPanel.MarkViewDirty();
-        }
+		public void MemoryEdited()
+		{
+			RefreshWatches();
+			mMemoryPanel.MarkViewDirty();
+		}
 
-        public void AddWatch(String watchExpr)
-        {
+		public void AddWatch(String watchExpr)
+		{
 			ShowWatches();
-            mWatchPanel.AddWatchItem(watchExpr);
-            mWatchPanel.MarkWatchesDirty(false);
-        }
+			mWatchPanel.AddWatchItem(watchExpr);
+			mWatchPanel.MarkWatchesDirty(false);
+		}
 
-        public bool IsInDisassemblyMode(bool wantShowSource = false)
-        {
+		public bool IsInDisassemblyMode(bool wantShowSource = false)
+		{
 			//return GetActiveDocumentPanel() is DisassemblyPanel;
-            if (!mInDisassemblyView)
-                return false;
+			if (!mInDisassemblyView)
+				return false;
 
-            DisassemblyPanel disassemblyPanel = TryGetDisassemblyPanel();
-            if (disassemblyPanel == null)
-                return false;
-            return ((disassemblyPanel.mStayInDisassemblyCheckbox != null) && (disassemblyPanel.mStayInDisassemblyCheckbox.Checked)) || (!wantShowSource);
-        }
+			DisassemblyPanel disassemblyPanel = TryGetDisassemblyPanel();
+			if (disassemblyPanel == null)
+				return false;
+			return ((disassemblyPanel.mStayInDisassemblyCheckbox != null) && (disassemblyPanel.mStayInDisassemblyCheckbox.Checked)) || (!wantShowSource);
+		}
 
-        DisassemblyPanel TryGetDisassemblyPanel(bool onlyIfVisible = true)
-        {
-            Debug.Assert(true);
+		DisassemblyPanel TryGetDisassemblyPanel(bool onlyIfVisible = true)
+		{
+			Debug.Assert(true);
 
-            DisassemblyPanel disassemblyPanel = null;
-            WithTabs(scope [?] (tabButton) =>
-                {
-                    if ((disassemblyPanel == null) && (tabButton.mContent is DisassemblyPanel))
-                    {
-                        var checkDisassemblyPanel = (DisassemblyPanel)tabButton.mContent;
-                        if ((!onlyIfVisible) || (checkDisassemblyPanel.mWidgetWindow != null))
-                            disassemblyPanel = checkDisassemblyPanel;
-                    }
-                });
-            return disassemblyPanel;
-        }
+			DisassemblyPanel disassemblyPanel = null;
+			WithTabs(scope [?] (tabButton) =>
+				{
+					if ((disassemblyPanel == null) && (tabButton.mContent is DisassemblyPanel))
+					{
+						var checkDisassemblyPanel = (DisassemblyPanel)tabButton.mContent;
+						if ((!onlyIfVisible) || (checkDisassemblyPanel.mWidgetWindow != null))
+							disassemblyPanel = checkDisassemblyPanel;
+					}
+				});
+			return disassemblyPanel;
+		}
 
 
 		[IDECommand]
@@ -4604,16 +4601,16 @@ namespace IDE
 			}
 
 			if ((!mDebugger.mIsRunning) || (!mDebugger.mIsRunningCompiled))
-			{                        
-			    if (mExecutionQueue.Count == 0)
-			    {
-			        mOutputPanel.Clear();
+			{
+				if (mExecutionQueue.Count == 0)
+				{
+					mOutputPanel.Clear();
 					if (compileKind == .DebugComptime)
-			        	OutputLine("Compiling with comptime debugging...");
+						OutputLine("Compiling with comptime debugging...");
 					else
 						OutputLine("Compiling...");
-			        Compile(compileKind, null);
-			    }
+					Compile(compileKind, null);
+				}
 			}
 			else if ((mDebugger.mIsRunning) && (!mDebugger.HasLoadedTargetBinary()))
 			{
@@ -4621,10 +4618,10 @@ namespace IDE
 			}
 			else
 			{
-			    mOutputPanel.Clear();
-			    OutputLine("Hot Compiling...");
-			    Project runningProject = mWorkspace.mStartupProject;
-			    Compile(compileKind, runningProject);
+				mOutputPanel.Clear();
+				OutputLine("Hot Compiling...");
+				Project runningProject = mWorkspace.mStartupProject;
+				Compile(compileKind, runningProject);
 			}
 		}
 
@@ -4640,15 +4637,15 @@ namespace IDE
 		{
 			if (mDebugger.mIsRunning)
 			{
-			    if (mExecutionPaused)
-			    {
-			        DebuggerUnpaused();
-			        mDebugger.StepInto(IsInDisassemblyMode());
-			    }
+				if (mExecutionPaused)
+				{
+					DebuggerUnpaused();
+					mDebugger.StepInto(IsInDisassemblyMode());
+				}
 			}
 			else
 			{
-			    RunWithStep();
+				RunWithStep();
 			}
 		}
 
@@ -4658,11 +4655,11 @@ namespace IDE
 			mStepCount++;
 			if (mDebugger.mIsRunning)
 			{
-			    if (mExecutionPaused)
-			    {
-			        DebuggerUnpaused();
-			        mDebugger.StepOver(IsInDisassemblyMode());
-			    }
+				if (mExecutionPaused)
+				{
+					DebuggerUnpaused();
+					mDebugger.StepOver(IsInDisassemblyMode());
+				}
 			}
 			else
 			{
@@ -4671,7 +4668,7 @@ namespace IDE
 					mRunTimingProfileId = Profiler.StartSampling("RunTiming");
 				}
 
-			    RunWithStep();
+				RunWithStep();
 			}
 		}
 
@@ -4680,8 +4677,8 @@ namespace IDE
 		{
 			if (mExecutionPaused)
 			{
-			    DebuggerUnpaused();
-			    mDebugger.StepOut(IsInDisassemblyMode());                            
+				DebuggerUnpaused();
+				mDebugger.StepOut(IsInDisassemblyMode());
 			}
 		}
 
@@ -4689,12 +4686,12 @@ namespace IDE
 		void Cmd_Continue()
 		{
 			if (mDebugger.mIsRunning)
-			{                            
-			    if (mDebugger.IsPaused())
-			    {
-			        DebuggerUnpaused();
-			        mDebugger.Continue();
-			    }                            
+			{
+				if (mDebugger.IsPaused())
+				{
+					DebuggerUnpaused();
+					mDebugger.Continue();
+				}
 			}
 		}
 
@@ -4702,12 +4699,12 @@ namespace IDE
 		public void RunWithCompiling()
 		{
 			if (mDebugger.mIsRunning)
-			{                            
-			    if (mDebugger.IsPaused())
-			    {
-			        DebuggerUnpaused();
-			        mDebugger.Continue();
-			    }                            
+			{
+				if (mDebugger.IsPaused())
+				{
+					DebuggerUnpaused();
+					mDebugger.Continue();
+				}
 			}
 			else if (AreTestsRunning())
 			{
@@ -4715,8 +4712,8 @@ namespace IDE
 			}
 			else
 			{
-			    mTargetStartWithStep = false;
-			    CompileAndRun(true);
+				mTargetStartWithStep = false;
+				CompileAndRun(true);
 			}
 		}
 
@@ -4738,12 +4735,12 @@ namespace IDE
 		{
 			if (!mDebugger.mIsRunning)
 			{
-			    OutputLine("Starting target without compiling...");
+				OutputLine("Starting target without compiling...");
 				mTargetStartWithStep = false;
-			    var startDebugCmd = new StartDebugCmd();
+				var startDebugCmd = new StartDebugCmd();
 				startDebugCmd.mWasCompiled = false;
-			    startDebugCmd.mOnlyIfNotFailed = true;
-			    mExecutionQueue.Add(startDebugCmd);
+				startDebugCmd.mOnlyIfNotFailed = true;
+				mExecutionQueue.Add(startDebugCmd);
 			}
 		}
 
@@ -4751,12 +4748,12 @@ namespace IDE
 		void RunWithoutDebugging()
 		{
 			if (mDebugger.mIsRunning)
-			{                            
-			    if (mDebugger.IsPaused())
-			    {
-			        DebuggerUnpaused();
-			        mDebugger.Continue();
-			    }                            
+			{
+				if (mDebugger.IsPaused())
+				{
+					DebuggerUnpaused();
+					mDebugger.Continue();
+				}
 			}
 			else if (AreTestsRunning())
 			{
@@ -4764,8 +4761,8 @@ namespace IDE
 			}
 			else
 			{
-			    mTargetStartWithStep = false;
-			    CompileAndRun(false);
+				mTargetStartWithStep = false;
+				CompileAndRun(false);
 			}
 		}
 
@@ -4792,17 +4789,17 @@ namespace IDE
 			}
 
 			if (mDebugger.mIsRunning)
-			{                            
-			    if (mDebugger.IsPaused())
-			    {
-			        DebuggerUnpaused();
-			        mDebugger.Continue();
-			    }
+			{
+				if (mDebugger.IsPaused())
+				{
+					DebuggerUnpaused();
+					mDebugger.Continue();
+				}
 			}
 			else
 			{
-			    mTargetStartWithStep = false;
-			    CompileAndRun(true);
+				mTargetStartWithStep = false;
+				CompileAndRun(true);
 			}
 		}
 
@@ -4815,34 +4812,34 @@ namespace IDE
 
 			if (mDebugger.mIsRunning)
 			{
-			    if (mExecutionPaused)
-			    {
+				if (mExecutionPaused)
+				{
 					if (gApp.mDebugger.mActiveCallStackIdx != 0)
 					{
 						gApp.Fail("Set Next Statement cannot only be used when the top of the callstack is selected");
 						return;
 					}
 
-			        if (disassemblyPanel != null)
-			        {
-			            String sourceFileName = scope String();
-			            int addr = disassemblyPanel.GetCursorAddress(sourceFileName);
-			            if (addr != (int)0)
-			            {
-			                mDebugger.SetNextStatement(true, sourceFileName, addr, 0);
-			                PCChanged();
-			            }
+					if (disassemblyPanel != null)
+					{
+						String sourceFileName = scope String();
+						int addr = disassemblyPanel.GetCursorAddress(sourceFileName);
+						if (addr != (int)0)
+						{
+							mDebugger.SetNextStatement(true, sourceFileName, addr, 0);
+							PCChanged();
+						}
 
-			            DebuggerUnpaused();
-			        }
-			        else if (sourceViewPanel != null)
-			        {
+						DebuggerUnpaused();
+					}
+					else if (sourceViewPanel != null)
+					{
 						var activePanel = sourceViewPanel.GetActivePanel();
 
-			            int lineIdx;
-			            int lineCharIdx;
-			            var editWidgetContent = activePanel.mEditWidget.Content;
-			            editWidgetContent.GetLineCharAtIdx(editWidgetContent.CursorTextPos, out lineIdx, out lineCharIdx);
+						int lineIdx;
+						int lineCharIdx;
+						var editWidgetContent = activePanel.mEditWidget.Content;
+						editWidgetContent.GetLineCharAtIdx(editWidgetContent.CursorTextPos, out lineIdx, out lineCharIdx);
 
 						/*int hotFileIdx = sourceViewPanel.[Friend]mHotFileIdx;
 						sourceViewPanel.[Friend]RemapActiveToCompiledLine(hotFileIdx, ref lineIdx, ref lineCharIdx);*/
@@ -4853,8 +4850,8 @@ namespace IDE
 						// Find first non-space char8
 						while ((textPos < editWidgetContent.mData.mTextLength) && (((char8)editWidgetContent.mData.mText[textPos].mChar).IsWhiteSpace))
 						{
-						    textPos++;
-						    lineCharIdx++;
+							textPos++;
+							lineCharIdx++;
 						}
 
 						if (sourceViewPanel.[Friend]mOldVersionPanel == null)
@@ -4877,12 +4874,12 @@ namespace IDE
 								sourceViewPanel.[Friend]RemapActiveToCompiledLine(hotIdx, ref lineIdx, ref lineCharIdx);
 						}
 
-			            mDebugger.SetNextStatement(false, sourceViewPanel.mFilePath, (int)lineIdx, lineCharIdx);
+						mDebugger.SetNextStatement(false, sourceViewPanel.mFilePath, (int)lineIdx, lineCharIdx);
 
-			            PCChanged();
-			            DebuggerUnpaused();
-			        }
-			    }                           
+						PCChanged();
+						DebuggerUnpaused();
+					}
+				}
 			}
 		}
 
@@ -4893,10 +4890,10 @@ namespace IDE
 			if (var sourceViewPanel = documentPanel as SourceViewPanel)
 			{
 				sourceViewPanel = sourceViewPanel.GetFocusedEmbeddedView();
-			    sourceViewPanel.ToggleBreakpointAtCursor(setKind, setFlags, bindToThread ? gApp.mDebugger.GetActiveThread() : -1);
+				sourceViewPanel.ToggleBreakpointAtCursor(setKind, setFlags, bindToThread ? gApp.mDebugger.GetActiveThread() : -1);
 			}
 			else if (var disassemblyPanel = documentPanel as DisassemblyPanel)
-			{				
+			{
 				disassemblyPanel.ToggleBreakpointAtCursor(setKind, setFlags, bindToThread ? gApp.mDebugger.GetActiveThread() : -1);
 			}
 		}
@@ -4953,7 +4950,7 @@ namespace IDE
 			var sourceViewPanel = GetActiveSourceViewPanel();
 			if (sourceViewPanel == null)
 				return;
-			
+
 			if (sourceViewPanel.mProjectSource == null)
 				return;
 
@@ -4967,23 +4964,21 @@ namespace IDE
 		}
 
 		[IDECommand]
-        void CancelBuild()
-        {            
-            mBfBuildCompiler.RequestCancelBackground();
-            if (IsCompiling)
-            {
-                OutputLine("Canceling Compilation...");
+		void CancelBuild()
+		{
+			mBfBuildCompiler.RequestCancelBackground();
+			if (IsCompiling)
+			{
+				OutputLine("Canceling Compilation...");
 				//DeleteAndClearItems!(mExecutionQueue);
 				for (var cmd in mExecutionQueue)
 				{
 #unwarn
 					if (var processBfCompileCmd = cmd as ProcessBfCompileCmd)
 					{
-						
 					}
 					else if (var buildCompleteCmd = cmd as BuildCompletedCmd)
 					{
-
 					}
 					else
 					{
@@ -4996,44 +4991,44 @@ namespace IDE
 				{
 					executionInstance.Cancel();
 				}
-            }
+			}
 
 			if ((mBuildContext != null) && (mBuildContext.mScriptManager != null))
 				mBuildContext.mScriptManager.Cancel();
-        }
+		}
 
-        TabbedView FindTabbedView(DockingFrame dockingFrame, int32 xDir, int32 yDir)
-        {
-            bool useFirst = true;
-            if (dockingFrame.mSplitType == DockingFrame.SplitType.Horz)
-            {
-                useFirst = xDir > 0;
-            }
-            else
-                useFirst = yDir > 0;
+		TabbedView FindTabbedView(DockingFrame dockingFrame, int32 xDir, int32 yDir)
+		{
+			bool useFirst = true;
+			if (dockingFrame.mSplitType == DockingFrame.SplitType.Horz)
+			{
+				useFirst = xDir > 0;
+			}
+			else
+				useFirst = yDir > 0;
 
-            for (int32 pass = 0; pass < 2; pass++)
-            {
-                for (int32 i = 0; i < dockingFrame.mDockedWidgets.Count; i++)
-                {
-                    if ((useFirst) && (i == 0) && (pass == 0))
-                        continue;
+			for (int32 pass = 0; pass < 2; pass++)
+			{
+				for (int32 i = 0; i < dockingFrame.mDockedWidgets.Count; i++)
+				{
+					if ((useFirst) && (i == 0) && (pass == 0))
+						continue;
 
-                    var widget = dockingFrame.mDockedWidgets[i];
-                    if (widget is TabbedView)
-                        return (TabbedView)widget;
-                    DockingFrame childFrame = widget as DockingFrame;
-                    if (childFrame != null)
-                    {
-                        TabbedView tabbedView = FindTabbedView(childFrame, xDir, yDir);
-                        if (tabbedView != null)
-                            return tabbedView;
-                    }
-                }
-            }
+					var widget = dockingFrame.mDockedWidgets[i];
+					if (widget is TabbedView)
+						return (TabbedView)widget;
+					DockingFrame childFrame = widget as DockingFrame;
+					if (childFrame != null)
+					{
+						TabbedView tabbedView = FindTabbedView(childFrame, xDir, yDir);
+						if (tabbedView != null)
+							return tabbedView;
+					}
+				}
+			}
 
-            return null;
-        }
+			return null;
+		}
 
 		enum ShowTabResult
 		{
@@ -5041,50 +5036,50 @@ namespace IDE
 			OpenedNew
 		}
 
-        ShowTabResult ShowTab(Widget tabContent, String name, bool ownsContent, bool setFocus)
-        {
+		ShowTabResult ShowTab(Widget tabContent, String name, bool ownsContent, bool setFocus)
+		{
 			var result = ShowTabResult.Existing;
-            var tabButton = GetTab(tabContent);
-            if (tabButton == null)
-            {
+			var tabButton = GetTab(tabContent);
+			if (tabButton == null)
+			{
 				TabbedView tabbedView = null;
 				if (var newPanel = tabContent as Panel)
 				{
 					WithTabs(scope [&] (tabButton) =>
-	                    {
+						{
 							if (newPanel.HasAffinity(tabButton.mContent))
 							{
 								tabbedView = tabButton.mTabbedView;
 							}
-	                    });
+						});
 				}
 
 				if (tabbedView == null)
-                	tabbedView = FindTabbedView(mDockingFrame, -1, 1);
+					tabbedView = FindTabbedView(mDockingFrame, -1, 1);
 				if (tabbedView == null)
 				{
 					tabbedView = CreateTabbedView();
 					mDockingFrame.AddDockedWidget(tabbedView, null, .Left);
 				}
-                if (tabbedView != null)
+				if (tabbedView != null)
 				{
-                    tabButton = SetupTab(tabbedView, name, 100, tabContent, ownsContent);
+					tabButton = SetupTab(tabbedView, name, 100, tabContent, ownsContent);
 					result = ShowTabResult.OpenedNew;
 				}
-            }
-            if (tabButton != null)
+			}
+			if (tabButton != null)
 			{
 				tabButton.RehupScale(1.0f, 1.0f);
-                tabButton.Activate(setFocus);
+				tabButton.Activate(setFocus);
 			}
 			return result;
-        }
+		}
 
 		public void RecordHistoryLocation(bool includeLastActive = false)
 		{
 			var sourceViewPanel = GetActiveSourceViewPanel(includeLastActive);
 			if (sourceViewPanel != null)
-			    sourceViewPanel.RecordHistoryLocation();
+				sourceViewPanel.RecordHistoryLocation();
 		}
 
 		void ShowPanel(Panel panel, String label, bool setFocus = true)
@@ -5114,7 +5109,7 @@ namespace IDE
 					}
 					checkWindow = checkWindow.mParent;
 				}
-				
+
 				if (!hasFocus)
 					panel.mWidgetWindow.SetForeground();
 			}
@@ -5142,13 +5137,13 @@ namespace IDE
 		[IDECommand]
 		public void ShowCallstack()
 		{
-		    ShowPanel(mCallStackPanel, "Call Stack");						
+			ShowPanel(mCallStackPanel, "Call Stack");
 		}
 
 		[IDECommand]
 		public void ShowErrors()
 		{
-		    ShowPanel(mErrorsPanel, "Errors");						
+			ShowPanel(mErrorsPanel, "Errors");
 		}
 
 		[IDECommand]
@@ -5160,38 +5155,40 @@ namespace IDE
 		[IDECommand]
 		public void ShowWatches()
 		{
-		    ShowPanel(mWatchPanel, "Watch");
+			ShowPanel(mWatchPanel, "Watch");
 		}
 
 		[IDECommand]
-        public void ShowAutoWatches()
-        {
-            ShowPanel(mAutoWatchPanel, "Auto Watches");
-        }
-
+		public void ShowAutoWatches()
+		{
+			ShowPanel(mAutoWatchPanel, "Auto Watches");
+		}
 		[IDECommand]
 		public void ShowTerminal()
 		{
-		    ShowPanel(mTerminalPanel, "Terminal");
+#if BF_PLATFORM_WINDOWS
+			ShowPanel(mTerminalPanel, "Terminal");
+#endif
 		}
 
 		[IDECommand]
 		public void ShowConsole()
 		{
-		    ShowPanel(mConsolePanel, "Console");
+#if BF_PLATFORM_WINDOWS
+			ShowPanel(mConsolePanel, "Console");
+#endif
+		}
+		[IDECommand]
+		public void ShowImmediatePanel()
+		{
+			ShowPanel(mImmediatePanel, "Immediate");
 		}
 
 		[IDECommand]
-        public void ShowImmediatePanel()
-        {            
-            ShowPanel(mImmediatePanel, "Immediate");
-        }
-
-		[IDECommand]
-        public void ShowBreakpoints()
-        {
-            ShowPanel(mBreakpointPanel, "Breakpoints");
-        }
+		public void ShowBreakpoints()
+		{
+			ShowPanel(mBreakpointPanel, "Breakpoints");
+		}
 
 		[IDECommand]
 		public void ShowDiagnostics()
@@ -5202,7 +5199,7 @@ namespace IDE
 		[IDECommand]
 		public void ShowModules()
 		{
-		    ShowPanel(mModulePanel, "Modules");
+			ShowPanel(mModulePanel, "Modules");
 		}
 
 		[IDECommand]
@@ -5214,13 +5211,13 @@ namespace IDE
 		[IDECommand]
 		public void ShowProfilePanel()
 		{
-		    ShowPanel(mProfilePanel, "Profile");
+			ShowPanel(mProfilePanel, "Profile");
 		}
 
 		[IDECommand]
 		public void ShowBookmarks()
 		{
-		    ShowPanel(mBookmarksPanel, "Bookmarks");						
+			ShowPanel(mBookmarksPanel, "Bookmarks");
 		}
 
 		[IDECommand]
@@ -5285,8 +5282,8 @@ namespace IDE
 		[IDECommand]
 		public void ShowSettings()
 		{
-		    var workspaceProperties = new SettingsDialog();
-		    workspaceProperties.PopupWindow(mMainWindow);
+			var workspaceProperties = new SettingsDialog();
+			workspaceProperties.PopupWindow(mMainWindow);
 		}
 
 		[IDECommand]
@@ -5298,7 +5295,7 @@ namespace IDE
 
 			DeleteAndNullify!(mKeyChordState);
 
-		    mSettings.Load();
+			mSettings.Load();
 			mSettings.Apply();
 			UpdateRecentFileMenuItems();
 			UpdateRecentDisplayedFilesMenuItems();
@@ -5348,71 +5345,71 @@ namespace IDE
 		[IDECommand]
 		public void ShowKeyboardShortcuts()
 		{
-		    /*var workspaceProperties = new SettingsDialog();
-		    workspaceProperties.PopupWindow(mMainWindow);*/
+			/*var workspaceProperties = new SettingsDialog();
+			workspaceProperties.PopupWindow(mMainWindow);*/
 		}
 
 		public void ShowFindResults(bool setFocus)
 		{
-		    ShowPanel(mFindResultsPanel, "Find Results", setFocus);
+			ShowPanel(mFindResultsPanel, "Find Results", setFocus);
 		}
 
 		[IDECommand]
-        public void ShowFindResults()
-        {
-            ShowFindResults(true);
-        }
+		public void ShowFindResults()
+		{
+			ShowFindResults(true);
+		}
 
 		[IDECommand]
 		public void ShowOutput()
 		{
-		    ShowPanel(mOutputPanel, "Output", false);
+			ShowPanel(mOutputPanel, "Output", false);
 		}
 
 		[IDECommand]
 		public void ShowAutoCompletePanel()
 		{
-		    ShowPanel(mAutoCompletePanel, "Autocomplete", false);
+			ShowPanel(mAutoCompletePanel, "Autocomplete", false);
 		}
 
 		[IDECommand]
-        private void OpenCorresponding()
-        {
-            var sourceViewPanel = GetActiveSourceViewPanel();
-            if (sourceViewPanel != null)
-            {
-                String fileName = sourceViewPanel.mFilePath;
-                String findFileName = null;
-                int dotPos = fileName.LastIndexOf('.');
-                if ((fileName.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase)) || (fileName.EndsWith(".c", StringComparison.OrdinalIgnoreCase)))
-                {
-                    findFileName = scope:: String(fileName, 0, dotPos);
-                    findFileName.Append(".h");
-                }
-                else if ((fileName.EndsWith(".h", StringComparison.OrdinalIgnoreCase)) || (fileName.EndsWith(".hpp", StringComparison.OrdinalIgnoreCase)))
-                {
-                    findFileName = scope:: String(fileName, 0, dotPos);
-                    findFileName.Append(".c");
-                    if (!File.Exists(findFileName))
+		private void OpenCorresponding()
+		{
+			var sourceViewPanel = GetActiveSourceViewPanel();
+			if (sourceViewPanel != null)
+			{
+				String fileName = sourceViewPanel.mFilePath;
+				String findFileName = null;
+				int dotPos = fileName.LastIndexOf('.');
+				if ((fileName.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase)) || (fileName.EndsWith(".c", StringComparison.OrdinalIgnoreCase)))
+				{
+					findFileName = scope:: String(fileName, 0, dotPos);
+					findFileName.Append(".h");
+				}
+				else if ((fileName.EndsWith(".h", StringComparison.OrdinalIgnoreCase)) || (fileName.EndsWith(".hpp", StringComparison.OrdinalIgnoreCase)))
+				{
+					findFileName = scope:: String(fileName, 0, dotPos);
+					findFileName.Append(".c");
+					if (!File.Exists(findFileName))
 					{
-                        findFileName = scope:: String(fileName, 0, dotPos);
-                         findFileName.Append(".cpp");
+						findFileName = scope:: String(fileName, 0, dotPos);
+						findFileName.Append(".cpp");
 					}
-                }
+				}
 
-                if (findFileName != null)
-                {
-                    if (File.Exists(findFileName))
-                    {
-                        ShowSourceFile(findFileName);
-                    }
-                    else
-                    {
-                        Fail("Unable to find corresponding file");
-                    }
-                }
-            }
-        }
+				if (findFileName != null)
+				{
+					if (File.Exists(findFileName))
+					{
+						ShowSourceFile(findFileName);
+					}
+					else
+					{
+						Fail("Unable to find corresponding file");
+					}
+				}
+			}
+		}
 
 		DarkTabbedView GetActiveTabbedView()
 		{
@@ -5496,19 +5493,19 @@ namespace IDE
 		void DoErrorTest()
 		{
 			Dialog aDialog = ThemeFactory.mDefault.CreateDialog("ERROR", "This\nmultiline!\nLine 3.", DarkTheme.sDarkTheme.mIconError);
-            aDialog.mDefaultButton = aDialog.AddButton("OK");
-            aDialog.mEscButton = aDialog.mDefaultButton;
-            aDialog.PopupWindow(GetCurrentWindow());
+			aDialog.mDefaultButton = aDialog.AddButton("OK");
+			aDialog.mEscButton = aDialog.mDefaultButton;
+			aDialog.PopupWindow(GetCurrentWindow());
 		}
 
 		void ReportMemory()
 		{
 			mDebugger.FullReportMemory();
 			if (mBfResolveSystem != null)
-            	mBfResolveSystem.ReportMemory();
-            mBfBuildSystem.ReportMemory();
-            Internal.ReportMemory();
-            GC.Report();
+				mBfResolveSystem.ReportMemory();
+			mBfBuildSystem.ReportMemory();
+			Internal.ReportMemory();
+			GC.Report();
 		}
 
 		[IDECommand]
@@ -5517,8 +5514,8 @@ namespace IDE
 			var widgetWindow = GetCurrentWindow();
 			if (widgetWindow != null)
 			{
-			    var attachDialog = new AttachDialog();
-			    attachDialog.PopupWindow(mMainWindow);
+				var attachDialog = new AttachDialog();
+				attachDialog.PopupWindow(mMainWindow);
 			}
 		}
 
@@ -5527,15 +5524,15 @@ namespace IDE
 		{
 			if (mLaunchDialog != null)
 			{
-			    mLaunchDialog.mWidgetWindow.SetForeground();
-			    return;
+				mLaunchDialog.mWidgetWindow.SetForeground();
+				return;
 			}
 
 			mLaunchDialog = new LaunchDialog();
 			mLaunchDialog.PopupWindow(mMainWindow);
 			mLaunchDialog.mOnClosed.Add(new () => { mLaunchDialog = null; });
 		}
-		
+
 		void DoProfile()
 		{
 			if (gApp.mProfilePanel.mUserProfiler != null)
@@ -5768,16 +5765,16 @@ namespace IDE
 			menu.SetDisabled(mDebugger.mIsRunning);
 		}
 
-        public void CreateMenu()
-        {
+		public void CreateMenu()
+		{
 			scope AutoBeefPerf("IDEApp.CreateMenu");
 
-            SysMenu root = mMainWindow.mSysMenu;
+			SysMenu root = mMainWindow.mSysMenu;
 
 			String keyStr = scope String();
-			
+
 			SysMenu AddMenuItem(SysMenu menu, String dispString, String cmdName, MenuItemUpdateHandler menuItemUpdateHandler = null,
-            	SysBitmap bitmap = null, bool enabled = true,  int32 checkState = -1, bool radioCheck = false)
+				SysBitmap bitmap = null, bool enabled = true,  int32 checkState = -1, bool radioCheck = false)
 			{
 				let ideCommand = mCommands.mCommandMap[cmdName];
 				if (ideCommand != null)
@@ -5798,14 +5795,14 @@ namespace IDE
 
 			//////////
 
-            SysMenu subMenu = root.AddMenuItem("&File");
+			SysMenu subMenu = root.AddMenuItem("&File");
 			let newMenu = subMenu.AddMenuItem("&New");
 			AddMenuItem(newMenu, "New &Workspace", "New Workspace");
-            AddMenuItem(newMenu, "New &Project", "New Project");
+			AddMenuItem(newMenu, "New &Project", "New Project");
 			AddMenuItem(newMenu, "New &Debug Session", "New Debug Session");
 			AddMenuItem(newMenu, "New &File", "New File");
 
-            let openMenu = subMenu.AddMenuItem("&Open");
+			let openMenu = subMenu.AddMenuItem("&Open");
 			//openMenu.AddMenuItem("&Open Workspace...", GetCmdKey("Open Workspace"), new (evt) => { OpenWorkspace(); } );
 			AddMenuItem(openMenu, "Open &Workspace...", "Open Workspace");
 			AddMenuItem(openMenu, "Open &Project...", "Open Project");
@@ -5821,8 +5818,8 @@ namespace IDE
 			mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedFile].mMenu = recentMenu.AddMenuItem("Open Recent &File");
 			mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedCrashDump].mMenu = recentMenu.AddMenuItem("Open Recent &Crash Dump");
 
-            AddMenuItem(subMenu, "&Save File","Save File", new => UpdateMenuItem_HasActiveDocument);
-            AddMenuItem(subMenu, "Save &As...", "Save As", new => UpdateMenuItem_HasActiveDocument);
+			AddMenuItem(subMenu, "&Save File", "Save File", new => UpdateMenuItem_HasActiveDocument);
+			AddMenuItem(subMenu, "Save &As...", "Save As", new => UpdateMenuItem_HasActiveDocument);
 			AddMenuItem(subMenu, "Save A&ll", "Save All");
 			let prefMenu = subMenu.AddMenuItem("&Preferences");
 			AddMenuItem(prefMenu, "&Settings", "Settings");
@@ -5830,22 +5827,22 @@ namespace IDE
 			AddMenuItem(prefMenu, "Reset UI", "Reset UI");
 			AddMenuItem(prefMenu, "Safe Mode", "Safe Mode Toggle", new (menu) => { menu.SetCheckState(mSafeMode ? 1 : 0); }, null, true, mSafeMode ? 1 : 0);
 			AddMenuItem(subMenu, "Close Workspace", "Close Workspace", new => UpdateMenuItem_HasWorkspace);
-            AddMenuItem(subMenu, "E&xit", "Exit");
+			AddMenuItem(subMenu, "E&xit", "Exit");
 
 			//////////
 
-            subMenu = root.AddMenuItem("&Edit");
-            AddMenuItem(subMenu, "Quick &Find...", "Find in Document", new => UpdateMenuItem_HasActivePanel);
-            AddMenuItem(subMenu, "Quick &Replace...", "Replace in Document", new => UpdateMenuItem_HasActiveDocument);
-            AddMenuItem(subMenu, "Find in &Files...", "Find in Files");
-            AddMenuItem(subMenu, "Replace in Files...", "Replace in Files");
+			subMenu = root.AddMenuItem("&Edit");
+			AddMenuItem(subMenu, "Quick &Find...", "Find in Document", new => UpdateMenuItem_HasActivePanel);
+			AddMenuItem(subMenu, "Quick &Replace...", "Replace in Document", new => UpdateMenuItem_HasActiveDocument);
+			AddMenuItem(subMenu, "Find in &Files...", "Find in Files");
+			AddMenuItem(subMenu, "Replace in Files...", "Replace in Files");
 			AddMenuItem(subMenu, "Find Prev", "Find Prev", new => UpdateMenuItem_HasActivePanel);
-            AddMenuItem(subMenu, "Find Next", "Find Next", new => UpdateMenuItem_HasActivePanel);
+			AddMenuItem(subMenu, "Find Next", "Find Next", new => UpdateMenuItem_HasActivePanel);
 			AddMenuItem(subMenu, "Show &Current", "Show Current");
-			
-            AddMenuItem(subMenu, "&Goto Line...", "Goto Line", new => UpdateMenuItem_HasActiveDocument);
-            AddMenuItem(subMenu, "Goto &Method...", "Goto Method", new => UpdateMenuItem_HasActiveDocument);
-            AddMenuItem(subMenu, "&Rename Symbol", "Rename Symbol", new => UpdateMenuItem_HasActiveDocument);
+
+			AddMenuItem(subMenu, "&Goto Line...", "Goto Line", new => UpdateMenuItem_HasActiveDocument);
+			AddMenuItem(subMenu, "Goto &Method...", "Goto Method", new => UpdateMenuItem_HasActiveDocument);
+			AddMenuItem(subMenu, "&Rename Symbol", "Rename Symbol", new => UpdateMenuItem_HasActiveDocument);
 			AddMenuItem(subMenu, "Show Fi&xit", "Show Fixit", new => UpdateMenuItem_HasActiveDocument);
 			AddMenuItem(subMenu, "Find &All References", "Find All References", new => UpdateMenuItem_HasActiveDocument);
 			AddMenuItem(subMenu, "Find C&lass...", "Find Class");
@@ -5899,14 +5896,14 @@ namespace IDE
 			var comptimeMenu = subMenu.AddMenuItem("Comptime");
 			var emitViewCompiler = comptimeMenu.AddMenuItem("Emit View Compiler");
 			var subItem = emitViewCompiler.AddMenuItem("Resolve", null,
-				new (menu) => { SetEmbedCompiler(.Resolve); } ,
+				new (menu) => { SetEmbedCompiler(.Resolve); },
 				new (menu) => { menu.SetCheckState((mSettings.mEditorSettings.mEmitCompiler == .Resolve) ? 1 : 0); },
 				null, true, (mSettings.mEditorSettings.mEmitCompiler == .Resolve) ? 1 : 0);
 			subItem = emitViewCompiler.AddMenuItem("Build", null,
-				new (menu) => { SetEmbedCompiler(.Build); } ,
+				new (menu) => { SetEmbedCompiler(.Build); },
 				new (menu) => { menu.SetCheckState((mSettings.mEditorSettings.mEmitCompiler == .Build) ? 1 : 0); },
 				null, true, (mSettings.mEditorSettings.mEmitCompiler == .Build) ? 1 : 0);
-			
+
 			var advancedEditMenu = subMenu.AddMenuItem("Advanced");
 			AddMenuItem(advancedEditMenu, "Duplicate Line", "Duplicate Line");
 			AddMenuItem(advancedEditMenu, "Move Line Up", "Move Line Up");
@@ -5943,7 +5940,7 @@ namespace IDE
 
 			//////////
 
-            subMenu = root.AddMenuItem("&View");
+			subMenu = root.AddMenuItem("&View");
 			AddMenuItem(subMenu, "AutoComplet&e", "Show Autocomplete Panel");
 			AddMenuItem(subMenu, "&Auto Watches", "Show Auto Watches");
 			AddMenuItem(subMenu, "Boo&kmarks", "Show Bookmarks");
@@ -5970,13 +5967,13 @@ namespace IDE
 
 			//////////
 
-            subMenu = root.AddMenuItem("&Build");
+			subMenu = root.AddMenuItem("&Build");
 			AddMenuItem(subMenu, "&Build Workspace", "Build Workspace", new => UpdateMenuItem_HasWorkspace);
 			AddMenuItem(subMenu, "&Debug Comptime", "Debug Comptime", new => UpdateMenuItem_DebugStopped_HasWorkspace);
-            AddMenuItem(subMenu, "&Clean", "Clean", new => UpdateMenuItem_DebugStopped_HasWorkspace);
-            AddMenuItem(subMenu, "Clean Beef", "Clean Beef", new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			AddMenuItem(subMenu, "&Clean", "Clean", new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			AddMenuItem(subMenu, "Clean Beef", "Clean Beef", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			//subMenu.AddMenuItem("Compile Current File", null, new (menu) => { CompileCurrentFile(); });
-            AddMenuItem(subMenu, "Cancel Build", "Cancel Build", new (menu) => { menu.SetDisabled(!IsCompiling); });
+			AddMenuItem(subMenu, "Cancel Build", "Cancel Build", new (menu) => { menu.SetDisabled(!IsCompiling); });
 
 			subMenu.AddMenuItem("Verbose", null, new (menu) =>
 				{
@@ -5991,31 +5988,30 @@ namespace IDE
 			if (mSettings.mEnableDevMode)
 			{
 				var internalBuildMenu = subMenu.AddMenuItem("Internal");
-	            internalBuildMenu.AddMenuItem("Autobuild (Debug)", null, new (menu) => { mDebugAutoBuild = !mDebugAutoBuild; });
-	            internalBuildMenu.AddMenuItem("Autorun (Debug)", null, new (menu) => { mDebugAutoRun = !mDebugAutoRun; });
+				internalBuildMenu.AddMenuItem("Autobuild (Debug)", null, new (menu) => { mDebugAutoBuild = !mDebugAutoBuild; });
+				internalBuildMenu.AddMenuItem("Autorun (Debug)", null, new (menu) => { mDebugAutoRun = !mDebugAutoRun; });
 				internalBuildMenu.AddMenuItem("Disable Compiling", null, new (menu) => { ToggleCheck(menu, ref mDisableBuilding); }, null, null, true, mDisableBuilding ? 1 : 0);
 			}
 
 			//////////
 
-            subMenu = root.AddMenuItem("&Debug");
+			subMenu = root.AddMenuItem("&Debug");
 			AddMenuItem(subMenu, "&Start Debugging", "Start Debugging", new (item) =>
 				{
-					SysMenu sysMenu = (.)item; 
+					SysMenu sysMenu = (.)item;
 					if (mDebugger.mIsRunning)
 						sysMenu.Modify("&Continue", sysMenu.mHotKey, null, mDebugger.IsPaused());
 					else
 						sysMenu.Modify("&Start Debugging", sysMenu.mHotKey, null, mWorkspace.IsInitialized);
-					
 				});
 			AddMenuItem(subMenu, "Start Wit&hout Debugging", "Start Without Debugging", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(subMenu, "Start With&out Compiling", "Start Without Compiling", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(subMenu, "&Launch Process...", "Launch Process", new => UpdateMenuItem_DebugStopped);
 			AddMenuItem(subMenu, "&Attach to Process...", "Attach to Process", new => UpdateMenuItem_DebugStopped);
 			AddMenuItem(subMenu, "&Stop Debugging", "Stop Debugging", new => UpdateMenuItem_DebugOrTestRunning);
-            AddMenuItem(subMenu, "Break All", "Break All", new => UpdateMenuItem_DebugNotPaused);
-            AddMenuItem(subMenu, "Remove All Breakpoints", "Remove All Breakpoints");
-            AddMenuItem(subMenu, "Show &Disassembly", "Show Disassembly");
+			AddMenuItem(subMenu, "Break All", "Break All", new => UpdateMenuItem_DebugNotPaused);
+			AddMenuItem(subMenu, "Remove All Breakpoints", "Remove All Breakpoints");
+			AddMenuItem(subMenu, "Show &Disassembly", "Show Disassembly");
 			AddMenuItem(subMenu, "&Quick Watch", "Show QuickWatch", new => UpdateMenuItem_DebugPaused);
 			AddMenuItem(subMenu, "&Profile", "Profile", new => UpdateMenuItem_HasWorkspace);
 			subMenu.AddMenuItem(null);
@@ -6032,28 +6028,28 @@ namespace IDE
 			if (mSettings.mEnableDevMode)
 			{
 				var internalDebugMenu = subMenu.AddMenuItem("Internal");
-				internalDebugMenu.AddMenuItem("Error Test", null, new (menu) => { DoErrorTest(); } );
-				internalDebugMenu.AddMenuItem("Reconnect BeefPerf", null, new (menu) => { BeefPerf.RetryConnect(); } );
-	            AddMenuItem(internalDebugMenu, "Report Memory", "Report Memory");
+				internalDebugMenu.AddMenuItem("Error Test", null, new (menu) => { DoErrorTest(); });
+				internalDebugMenu.AddMenuItem("Reconnect BeefPerf", null, new (menu) => { BeefPerf.RetryConnect(); });
+				AddMenuItem(internalDebugMenu, "Report Memory", "Report Memory");
 				internalDebugMenu.AddMenuItem("Crash", null, new (menu) => { int* ptr = null; *ptr = 123; });
 				internalDebugMenu.AddMenuItem("Show Welcome", null, new (menu) => { ShowWelcome(); });
 				internalDebugMenu.AddMenuItem("Exit Test", null, new (menu) => { ExitTest(); });
 				internalDebugMenu.AddMenuItem("Run Test", null, new (menu) => { mRunTest = !mRunTest; });
 				internalDebugMenu.AddMenuItem("GC Collect", null, new (menu) =>
-	                {
-	                    var profileId = Profiler.StartSampling().GetValueOrDefault();
+					{
+						var profileId = Profiler.StartSampling().GetValueOrDefault();
 						for (int i < 10)
 							GC.Collect(false);
 						if (profileId != 0)
 							profileId.Dispose();
-	                });
+					});
 				internalDebugMenu.AddMenuItem("Enable GC Collect", null, new (menu) => { ToggleCheck(menu, ref mEnableGCCollect); EnableGCCollect = mEnableGCCollect; }, null, null, true, mEnableGCCollect ? 1 : 0);
 				internalDebugMenu.AddMenuItem("Fast Updating", null, new (menu) => { ToggleCheck(menu, ref mDbgFastUpdate); EnableGCCollect = mDbgFastUpdate; }, null, null, true, mDbgFastUpdate ? 1 : 0);
 				internalDebugMenu.AddMenuItem("Alloc String", null, new (menu) => { new String("Alloc String"); });
 				internalDebugMenu.AddMenuItem("Perform Long Update Checks", null, new (menu) =>
-	                {
+					{
 						bool wantsLongUpdateCheck = mLongUpdateProfileId != 0;
-	                    ToggleCheck(menu, ref wantsLongUpdateCheck);
+						ToggleCheck(menu, ref wantsLongUpdateCheck);
 						mLastLongUpdateCheck = 0;
 						mLastLongUpdateCheckError = 0;
 						if (wantsLongUpdateCheck)
@@ -6063,7 +6059,7 @@ namespace IDE
 							mLongUpdateProfileId.Dispose();
 							mLongUpdateProfileId = 0;
 						}
-	                }, null, null, true, (mLongUpdateProfileId != 0) ? 1 : 0);
+					}, null, null, true, (mLongUpdateProfileId != 0) ? 1 : 0);
 			}
 
 			//////////
@@ -6072,7 +6068,7 @@ namespace IDE
 			var testRunMenu = testMenu.AddMenuItem("&Run", null, null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(testRunMenu, "&Normal Tests", "Run Normal Tests");
 			AddMenuItem(testRunMenu, "&All Tests", "Run All Tests");
-			
+
 
 			var testDebugMenu = testMenu.AddMenuItem("&Debug", null, null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(testDebugMenu, "&Normal Tests", "Debug Normal Tests");
@@ -6080,89 +6076,89 @@ namespace IDE
 			testDebugMenu.AddMenuItem(null);
 			testDebugMenu.AddMenuItem("Break on Failure", null, new (menu) =>
 				{
-				    ToggleCheck(menu, ref mTestBreakOnFailure);
+					ToggleCheck(menu, ref mTestBreakOnFailure);
 				}, null, null, true, mTestBreakOnFailure ? 1 : 0);
 
 			AddMenuItem(testMenu, "Enable Console", "Test Enable Console", null, null, true, mTestEnableConsole ? 1 : 0);
 
 			//////////
 
-            mWindowMenu = root.AddMenuItem("&Window");
-            AddMenuItem(mWindowMenu, "&Close Document", "Close Document", new => UpdateMenuItem_HasLastActiveDocument);
+			mWindowMenu = root.AddMenuItem("&Window");
+			AddMenuItem(mWindowMenu, "&Close Document", "Close Document", new => UpdateMenuItem_HasLastActiveDocument);
 			AddMenuItem(mWindowMenu, "Close &Panel", "Close Panel", new => UpdateMenuItem_HasActivePanel);
 			AddMenuItem(mWindowMenu, "&Close All", "Close All Panels");
 			AddMenuItem(mWindowMenu, "Close All Except Current", "Close All Panels Except");
 			AddMenuItem(mWindowMenu, "&New View into File", "View New", new => UpdateMenuItem_HasActiveDocument);
 			AddMenuItem(mWindowMenu, "&Split View", "View Split", new => UpdateMenuItem_HasActiveDocument);
 
-            subMenu = root.AddMenuItem("&Help");
-            AddMenuItem(subMenu, "&About", "About");
-        }
+			subMenu = root.AddMenuItem("&Help");
+			AddMenuItem(subMenu, "&About", "About");
+		}
 
-        IDETabbedView CreateTabbedView()
-        {
-            return new IDETabbedView(null);
-        }
+		IDETabbedView CreateTabbedView()
+		{
+			return new IDETabbedView(null);
+		}
 
-        public void SetupNewWindow(WidgetWindow window, bool isMainWindow)
-        {
-            window.mOnWindowKeyDown.Add(new => SysKeyDown);
+		public void SetupNewWindow(WidgetWindow window, bool isMainWindow)
+		{
+			window.mOnWindowKeyDown.Add(new => SysKeyDown);
 			window.mOnWindowKeyUp.Add(new => SysKeyUp);
 			window.mOnMouseUp.Add(new => MouseUp);
 			if (isMainWindow)
-            	window.mOnWindowCloseQuery.Add(new => SecondaryAllowClose);
-        }        
+				window.mOnWindowCloseQuery.Add(new => SecondaryAllowClose);
+		}
 
 		DarkTabbedView FindDocumentTabbedView()
 		{
 			for (int32 windowIdx = 0; windowIdx < mWindows.Count; windowIdx++)
 			{
-			    var window = mWindows[windowIdx];
-			    var widgetWindow = window as WidgetWindow;
-			    if (widgetWindow != null)
-			    {
-			        var darkDockingFrame = widgetWindow.mRootWidget as DarkDockingFrame;
-			        if (widgetWindow == mMainWindow)
-			            darkDockingFrame = mDockingFrame;
+				var window = mWindows[windowIdx];
+				var widgetWindow = window as WidgetWindow;
+				if (widgetWindow != null)
+				{
+					var darkDockingFrame = widgetWindow.mRootWidget as DarkDockingFrame;
+					if (widgetWindow == mMainWindow)
+						darkDockingFrame = mDockingFrame;
 
 					//DarkTabbedView documentTabbedView = null;
 
 					DarkTabbedView documentTabbedView = null;
-			        if (darkDockingFrame != null)
-			        {
-			            darkDockingFrame.WithAllDockedWidgets(scope [&] (dockedWidget) =>
-			                {
+					if (darkDockingFrame != null)
+					{
+						darkDockingFrame.WithAllDockedWidgets(scope [&] (dockedWidget) =>
+							{
 								bool hadSource = false;
-			                    var tabbedView = dockedWidget as DarkTabbedView;
-			                    if (tabbedView != null)
-			                    {
+								var tabbedView = dockedWidget as DarkTabbedView;
+								if (tabbedView != null)
+								{
 									tabbedView.WithTabs(scope [&] (tab) =>
-                                        {
+										{
 											if (documentTabbedView != null)
 												return;
 											var content = tab.mContent;
 											if ((content is SourceViewPanel) ||
 												(content is DisassemblyPanel))
 												hadSource = true;
-                                        });
+										});
 								}
 								if (hadSource)
 									documentTabbedView = tabbedView;
-			                });
-			        }
+							});
+					}
 					if (documentTabbedView != null)
 						return documentTabbedView;
-			    }
+				}
 			}
 			return null;
 		}
 
-        public DarkTabbedView GetDefaultDocumentTabbedView()
-        {
-            if ((mActiveDocumentsTabbedView == null) || (mActiveDocumentsTabbedView.mParent == null))
-            {
-                mActiveDocumentsTabbedView = CreateTabbedView();
-                mActiveDocumentsTabbedView.SetRequestedSize(150, 150);
+		public DarkTabbedView GetDefaultDocumentTabbedView()
+		{
+			if ((mActiveDocumentsTabbedView == null) || (mActiveDocumentsTabbedView.mParent == null))
+			{
+				mActiveDocumentsTabbedView = CreateTabbedView();
+				mActiveDocumentsTabbedView.SetRequestedSize(150, 150);
 				mActiveDocumentsTabbedView.mIsFillWidget = true;
 				mActiveDocumentsTabbedView.mAutoClose = false;
 
@@ -6177,44 +6173,44 @@ namespace IDE
 						}
 					}
 				}
-				
-                mDockingFrame.AddDockedWidget(mActiveDocumentsTabbedView, null, DockingFrame.WidgetAlign.Right);
-            }
 
-            return mActiveDocumentsTabbedView;
-        }
+				mDockingFrame.AddDockedWidget(mActiveDocumentsTabbedView, null, DockingFrame.WidgetAlign.Right);
+			}
 
-        void PopulateDocumentMenu(DarkTabbedView tabbedView, Menu menu)
-        {
-            WithTabs(scope (tab) =>
-                {
-                    var menuItem = menu.AddItem(tab.mLabel);
-                    menuItem.mOnMenuItemSelected.Add(new (selMenuItem) =>
-                        {
-                            TabbedView.TabButton activateTab = tab;
-                            activateTab.Activate();
-                        });
-                });
-        }
+			return mActiveDocumentsTabbedView;
+		}
+
+		void PopulateDocumentMenu(DarkTabbedView tabbedView, Menu menu)
+		{
+			WithTabs(scope (tab) =>
+				{
+					var menuItem = menu.AddItem(tab.mLabel);
+					menuItem.mOnMenuItemSelected.Add(new (selMenuItem) =>
+						{
+							TabbedView.TabButton activateTab = tab;
+							activateTab.Activate();
+						});
+				});
+		}
 
 		public void WithDocumentTabbedViewsOf(BFWindow window, delegate void(DarkTabbedView) func)
 		{
 			var widgetWindow = window as WidgetWindow;
 			if (widgetWindow != null)
 			{
-			    var darkDockingFrame = widgetWindow.mRootWidget as DarkDockingFrame;
-			    if (widgetWindow == mMainWindow)
-			        darkDockingFrame = mDockingFrame;
+				var darkDockingFrame = widgetWindow.mRootWidget as DarkDockingFrame;
+				if (widgetWindow == mMainWindow)
+					darkDockingFrame = mDockingFrame;
 
-			    if (darkDockingFrame != null)
-			    {
-			        darkDockingFrame.WithAllDockedWidgets(scope (dockedWidget) =>
-			            {
-			                var tabbedView = dockedWidget as DarkTabbedView;
-			                if (tabbedView != null)
-			                    func(tabbedView);
-			            });
-			    }
+				if (darkDockingFrame != null)
+				{
+					darkDockingFrame.WithAllDockedWidgets(scope (dockedWidget) =>
+						{
+							var tabbedView = dockedWidget as DarkTabbedView;
+							if (tabbedView != null)
+								func(tabbedView);
+						});
+				}
 			}
 		}
 
@@ -6224,41 +6220,41 @@ namespace IDE
 				WithDocumentTabbedViewsOf(window, func);
 		}
 
-        public void EnsureDocumentArea()
-        {
-            GetDefaultDocumentTabbedView();            
-        }
+		public void EnsureDocumentArea()
+		{
+			GetDefaultDocumentTabbedView();
+		}
 
-        public Widget GetActivePanel()
-        {
+		public Widget GetActivePanel()
+		{
 			if (mRunningTestScript)
 				return mLastActivePanel;
 
-            for (var window in mWindows)
-            {
+			for (var window in mWindows)
+			{
 				if (!window.mHasFocus)
 					continue;
 
-                var widgetWindow = window as WidgetWindow;
-                if (widgetWindow != null)
-                {
-                    var focusWidget = widgetWindow.mFocusWidget;
+				var widgetWindow = window as WidgetWindow;
+				if (widgetWindow != null)
+				{
+					var focusWidget = widgetWindow.mFocusWidget;
 
 					if ((focusWidget == null) && (var hoverWatch = widgetWindow.mRootWidget as HoverWatch))
 					{
 						return hoverWatch.mTextPanel;
 					}
 
-                    while ((focusWidget != null) && (focusWidget.mParent != null))
-                    {
-                        if (focusWidget.mParent is TabbedView)
-                            return focusWidget;
-                        focusWidget = focusWidget.mParent;
-                    }
-                }
-            }
-            return null;
-        }
+					while ((focusWidget != null) && (focusWidget.mParent != null))
+					{
+						if (focusWidget.mParent is TabbedView)
+							return focusWidget;
+						focusWidget = focusWidget.mParent;
+					}
+				}
+			}
+			return null;
+		}
 
 		public SourceEditWidgetContent GetActiveSourceEditWidgetContent()
 		{
@@ -6303,15 +6299,15 @@ namespace IDE
 
 		public Widget GetActiveDocumentPanel()
 		{
-		    var activePanel = GetActivePanel();
+			var activePanel = GetActivePanel();
 			if ((activePanel is SourceViewPanel) || (activePanel is DisassemblyPanel))
 				return activePanel;
-		    return null;
+			return null;
 		}
 
 		public Widget GetLastActiveDocumentPanel()
 		{
-		    var activePanel = GetActiveDocumentPanel();
+			var activePanel = GetActiveDocumentPanel();
 			if (activePanel != null)
 				return activePanel;
 			if (mActiveDocumentsTabbedView != null)
@@ -6322,16 +6318,16 @@ namespace IDE
 					var lastActivePanel = activeTab.mContent;
 					if ((lastActivePanel is SourceViewPanel) || (lastActivePanel is DisassemblyPanel))
 						return lastActivePanel;
-				}	
+				}
 			}
-		    return null;
+			return null;
 		}
-        
+
 		public void WithTabsOf(BFWindow window, delegate void(TabbedView.TabButton) func)
 		{
 			WithDocumentTabbedViewsOf(window, scope (documentTabbedView) =>
 				{
-				    documentTabbedView.WithTabs(func);
+					documentTabbedView.WithTabs(func);
 				});
 		}
 
@@ -6341,24 +6337,24 @@ namespace IDE
 				WithTabsOf(window, func);
 		}
 
-        public TabbedView.TabButton GetTab(Widget content)
-        {
-            TabbedView.TabButton tab = null;
-            WithTabs(scope [?] (checkTab) =>
-                {
-                    if (checkTab.mContent == content)
-                        tab = checkTab;
-                });
-            return tab;
-        }        
+		public TabbedView.TabButton GetTab(Widget content)
+		{
+			TabbedView.TabButton tab = null;
+			WithTabs(scope [?] (checkTab) =>
+				{
+					if (checkTab.mContent == content)
+						tab = checkTab;
+				});
+			return tab;
+		}
 
 		public void WithSourceViewPanelsOf(BFWindow window, delegate void(SourceViewPanel) func)
 		{
 			WithTabsOf(window, scope (tab) =>
 				{
-				    var sourceViewPanel = tab.mContent as SourceViewPanel;
-				    if (sourceViewPanel != null)
-				        func(sourceViewPanel);
+					var sourceViewPanel = tab.mContent as SourceViewPanel;
+					if (sourceViewPanel != null)
+						func(sourceViewPanel);
 				});
 		}
 
@@ -6379,39 +6375,39 @@ namespace IDE
 			return tabButton;
 		}
 
-        public DisassemblyPanel ShowDisassemblyPanel(bool clearData = false)
-        {
-            DisassemblyPanel disassemblyPanel = null;
-            WithTabs(scope [&] (tab) =>
-                {
-                    if ((disassemblyPanel == null) && (tab.mContent is DisassemblyPanel))
-                    {
-                        disassemblyPanel = (DisassemblyPanel)tab.mContent;
+		public DisassemblyPanel ShowDisassemblyPanel(bool clearData = false)
+		{
+			DisassemblyPanel disassemblyPanel = null;
+			WithTabs(scope [&] (tab) =>
+				{
+					if ((disassemblyPanel == null) && (tab.mContent is DisassemblyPanel))
+					{
+						disassemblyPanel = (DisassemblyPanel)tab.mContent;
 						disassemblyPanel.ClearQueuedData();
-                        tab.Activate();                        
-                    }
-                });
-            if (disassemblyPanel != null)
-                return disassemblyPanel;
-            
-            TabbedView tabbedView = GetDefaultDocumentTabbedView();
-            disassemblyPanel = new DisassemblyPanel();
+						tab.Activate();
+					}
+				});
+			if (disassemblyPanel != null)
+				return disassemblyPanel;
+
+			TabbedView tabbedView = GetDefaultDocumentTabbedView();
+			disassemblyPanel = new DisassemblyPanel();
 			//diassemblyPanel.Show(filePath);
 
-            var newTabButton = new SourceViewTabButton();
-            newTabButton.Label = DisassemblyPanel.sPanelName;
-            newTabButton.mWantWidth = newTabButton.GetWantWidth();
-            newTabButton.mHeight = tabbedView.mTabHeight; 
-            newTabButton.mContent = disassemblyPanel;
-            tabbedView.AddTab(newTabButton, GetTabInsertIndex(tabbedView));
-            
-            newTabButton.mCloseClickedEvent.Add(new () => CloseDocument(disassemblyPanel));
-            newTabButton.Activate();
+			var newTabButton = new SourceViewTabButton();
+			newTabButton.Label = DisassemblyPanel.sPanelName;
+			newTabButton.mWantWidth = newTabButton.GetWantWidth();
+			newTabButton.mHeight = tabbedView.mTabHeight;
+			newTabButton.mContent = disassemblyPanel;
+			tabbedView.AddTab(newTabButton, GetTabInsertIndex(tabbedView));
+
+			newTabButton.mCloseClickedEvent.Add(new () => CloseDocument(disassemblyPanel));
+			newTabButton.Activate();
 			//diassemblyPanel.FocusEdit();
 
 			mLastActivePanel = disassemblyPanel;
-            return disassemblyPanel;
-        }
+			return disassemblyPanel;
+		}
 
 		int GetTabInsertIndex(TabbedView tabs)
 		{
@@ -6434,14 +6430,14 @@ namespace IDE
 			return index;
 		}
 
-        public class SourceViewTabButton : DarkTabbedView.DarkTabButton
-        {
+		public class SourceViewTabButton : DarkTabbedView.DarkTabButton
+		{
 			public bool mIsTemp;
 
-            public float GetWantWidth()
-            {
-                return DarkTheme.sDarkTheme.mSmallFont.GetWidth(mLabel) + DarkTheme.GetScaled(40);
-            }
+			public float GetWantWidth()
+			{
+				return DarkTheme.sDarkTheme.mSmallFont.GetWidth(mLabel) + DarkTheme.GetScaled(40);
+			}
 
 			public override void Activate(bool setFocus = true)
 			{
@@ -6467,20 +6463,20 @@ namespace IDE
 				}
 			}
 
-            public override void Draw(Graphics g)
-            {
-                base.Draw(g);
+			public override void Draw(Graphics g)
+			{
+				base.Draw(g);
 
 				if (mWidth < mWantWidth / 2)
 					return;
 
-                var sourceViewPanel = mContent as SourceViewPanel;
-                if (sourceViewPanel != null)
+				var sourceViewPanel = mContent as SourceViewPanel;
+				if (sourceViewPanel != null)
 				{
-	                if (sourceViewPanel.HasUnsavedChanges())
+					if (sourceViewPanel.HasUnsavedChanges())
 					{
 						g.SetFont(IDEApp.sApp.mTinyCodeFont);
-	                    g.DrawString("*", mWantWidth - DarkTheme.sUnitSize + GS!(2), 0);
+						g.DrawString("*", mWantWidth - DarkTheme.sUnitSize + GS!(2), 0);
 					}
 					else if (sourceViewPanel.mLoadFailed)
 					{
@@ -6514,17 +6510,17 @@ namespace IDE
 					using (g.PushColor(0x80404070))
 						g.FillRect(0, 0, mWidth, mHeight);
 				}
-            }
+			}
 
-            public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
-            {
+			public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
+			{
 				if ((mIsRightTab) && (btn == 0) && (btnCount > 1))
 				{
 					IDEApp.sApp.MakeTabPermanent(this);
 					return;
 				}
 
-                base.MouseDown(x, y, btn, btnCount);
+				base.MouseDown(x, y, btn, btnCount);
 
 				if (btn == 1)
 				{
@@ -6603,69 +6599,69 @@ namespace IDE
 					else
 						delete menu;
 				}
-            }
+			}
 
-            public override void Update()
-            {
-                base.Update();
-                Point point;
-                if (DarkTooltipManager.CheckMouseover(this, 25, out point))
-                {
-                    var sourceViewPanel = mContent as SourceViewPanel;
-                    if ((sourceViewPanel != null) && (sourceViewPanel.mFilePath != null))
-                        DarkTooltipManager.ShowTooltip(sourceViewPanel.mFilePath, this, point.x, 14);
-                }
-            }
-        }
+			public override void Update()
+			{
+				base.Update();
+				Point point;
+				if (DarkTooltipManager.CheckMouseover(this, 25, out point))
+				{
+					var sourceViewPanel = mContent as SourceViewPanel;
+					if ((sourceViewPanel != null) && (sourceViewPanel.mFilePath != null))
+						DarkTooltipManager.ShowTooltip(sourceViewPanel.mFilePath, this, point.x, 14);
+				}
+			}
+		}
 
-        public SourceViewPanel FindSourceViewPanel(String filePath)
-        {
+		public SourceViewPanel FindSourceViewPanel(String filePath)
+		{
 			if (filePath == null)
 				return null;
-            String useFilePath = scope String(filePath);
-            if (!IDEUtils.FixFilePath(useFilePath))
+			String useFilePath = scope String(filePath);
+			if (!IDEUtils.FixFilePath(useFilePath))
 				return null;
-            
-            SourceViewPanel sourceViewPanel = null;
 
-            WithTabs(scope [&] (tabButton) =>
-                {
-                    if ((sourceViewPanel == null) && (tabButton.mContent is SourceViewPanel))
-                    {
-                        var checkedResourceViewPanel = (SourceViewPanel)tabButton.mContent;
-                        if (Path.Equals(checkedResourceViewPanel.mFilePath, useFilePath))
-                            sourceViewPanel = checkedResourceViewPanel;
-                    }
-                });
-            return sourceViewPanel;
-        }
+			SourceViewPanel sourceViewPanel = null;
 
-        void MakeTabPermanent(DarkTabbedView.DarkTabButton tabButton)
-        {
-            tabButton.mDragHelper.mAllowDrag = false;
-            tabButton.mTextColor = Color.White;
-            tabButton.mIsRightTab = false;            
-            var darkTabbedView = (DarkTabbedView)tabButton.mTabbedView;
-            darkTabbedView.SetRightTab(null, false);
-            darkTabbedView.AddTab(tabButton, GetTabInsertIndex(darkTabbedView));
-            tabButton.Activate();
-        }
+			WithTabs(scope [&] (tabButton) =>
+				{
+					if ((sourceViewPanel == null) && (tabButton.mContent is SourceViewPanel))
+					{
+						var checkedResourceViewPanel = (SourceViewPanel)tabButton.mContent;
+						if (Path.Equals(checkedResourceViewPanel.mFilePath, useFilePath))
+							sourceViewPanel = checkedResourceViewPanel;
+					}
+				});
+			return sourceViewPanel;
+		}
 
-        public SourceEditWidget CreateSourceEditWidget(SourceEditWidget refEditWidget = null)
-        {         
-            var editWidget = new SourceEditWidget(null, refEditWidget);
-            editWidget.Content.mIsMultiline = true;
-            editWidget.Content.mWordWrap = false;
-            editWidget.InitScrollbars(true, true);
+		void MakeTabPermanent(DarkTabbedView.DarkTabButton tabButton)
+		{
+			tabButton.mDragHelper.mAllowDrag = false;
+			tabButton.mTextColor = Color.White;
+			tabButton.mIsRightTab = false;
+			var darkTabbedView = (DarkTabbedView)tabButton.mTabbedView;
+			darkTabbedView.SetRightTab(null, false);
+			darkTabbedView.AddTab(tabButton, GetTabInsertIndex(darkTabbedView));
+			tabButton.Activate();
+		}
 
-            var editWidgetContent = (SourceEditWidgetContent)editWidget.Content;
+		public SourceEditWidget CreateSourceEditWidget(SourceEditWidget refEditWidget = null)
+		{
+			var editWidget = new SourceEditWidget(null, refEditWidget);
+			editWidget.Content.mIsMultiline = true;
+			editWidget.Content.mWordWrap = false;
+			editWidget.InitScrollbars(true, true);
+
+			var editWidgetContent = (SourceEditWidgetContent)editWidget.Content;
 			//mEditWidget.mVertScrollbar.mScrollIncrement = editWidgetContent.mFont.GetLineSpacing();
-            editWidgetContent.mHiliteColor = 0xFF384858;
-            editWidgetContent.mUnfocusedHiliteColor = 0x80384858;
+			editWidgetContent.mHiliteColor = 0xFF384858;
+			editWidgetContent.mUnfocusedHiliteColor = 0x80384858;
 			editWidgetContent.mHiliteCurrentLine = mSettings.mEditorSettings.mHiliteCurrentLine;
 
-            return editWidget;
-        }
+			return editWidget;
+		}
 
 		public bool CreateEditDataEditWidget(FileEditData editData)
 		{
@@ -6688,7 +6684,7 @@ namespace IDE
 									if (i < text.Length - 2)
 										nextC = text[++i];
 								}
-							}	
+							}
 
 							if (nextC == '\n')
 								editData.mLineEndingKind = .CrLf;
@@ -6703,7 +6699,7 @@ namespace IDE
 						}
 					}
 					editData.BuildHash(text);
-				} ) case .Err)
+				}) case .Err)
 				return false;
 			editData..GetFileTime();
 
@@ -6817,12 +6813,12 @@ namespace IDE
 			//delete editData;
 		}
 
-        public FileEditData GetEditData(ProjectSource projectSource, bool createEditWidget = true, SourceHash.Kind hashKind = .MD5)
-        {
+		public FileEditData GetEditData(ProjectSource projectSource, bool createEditWidget = true, SourceHash.Kind hashKind = .MD5)
+		{
 			using (mMonitor.Enter())
 			{
-	            if (projectSource.mEditData == null)
-	            {
+				if (projectSource.mEditData == null)
+				{
 					String filePath = scope String();
 					projectSource.GetFullImportPath(filePath);
 
@@ -6836,19 +6832,19 @@ namespace IDE
 				}
 
 					/*editData = CreateEditData(filePath);
-	                /*if (projectSource.mSavedContent == null)
-	                {
-	                    editData = CreateEditData(filePath);
-	                }
-	                else
-	                {
-	                    editData = new FileEditData();
+					/*if (projectSource.mSavedContent == null)
+					{
+						editData = CreateEditData(filePath);
+					}
+					else
+					{
+						editData = new FileEditData();
 						editData.mFilePath = new String(filePath);
-	                    editData.mEditWidget = CreateSourceEditWidget();
-	                    editData.mEditWidget.Content.AppendText(projectSource.mSavedContent);
-	                    editData.mEditWidget.Content.mData.mTextIdData.DuplicateFrom(projectSource.mSavedCharIdData);
+						editData.mEditWidget = CreateSourceEditWidget();
+						editData.mEditWidget.Content.AppendText(projectSource.mSavedContent);
+						editData.mEditWidget.Content.mData.mTextIdData.DuplicateFrom(projectSource.mSavedCharIdData);
 						editData.mOwnsEditWidget = true;
-	                }*/
+					}*/
 
 					if (editData != null)
 					{
@@ -6857,17 +6853,17 @@ namespace IDE
 						projectSource.mEditData = editData;
 						projectSource.mEditData.mLastFileTextVersion = projectSource.mEditData.mEditWidget.Content.mData.mCurTextVersionId;
 					}  
-	            }
-	            return projectSource.mEditData;*/
+				}
+				return projectSource.mEditData;*/
 			}
 
 			if (createEditWidget)
 				CreateEditDataEditWidget(projectSource.mEditData);
 			return projectSource.mEditData;
-        }		
+		}
 
-        public (SourceViewPanel panel, TabbedView.TabButton tabButton) ShowSourceFile(String filePath, ProjectSource projectSource = null, SourceShowType showType = SourceShowType.ShowExisting, bool setFocus = true)
-        {
+		public (SourceViewPanel panel, TabbedView.TabButton tabButton) ShowSourceFile(String filePath, ProjectSource projectSource = null, SourceShowType showType = SourceShowType.ShowExisting, bool setFocus = true)
+		{
 			DeleteAndNullify!(mDeferredShowSource);
 
 			//TODO: PUT BACK!
@@ -6886,7 +6882,7 @@ namespace IDE
 			}
 
 			int32 emitRevision = -1;
-			
+
 			if (useFilePath != null)
 			{
 				int barPos = useFilePath.IndexOf('|');
@@ -6896,13 +6892,13 @@ namespace IDE
 					useFilePath.RemoveToEnd(barPos);
 				}
 			}
-            
-            if ((useFilePath != null) && (!IDEUtils.FixFilePath(useFilePath)))
-				return (null, null);
-            if ((useFilePath == null) & (showType != .New))
-                return (null, null);
 
-            SourceViewPanel sourceViewPanel = null;
+			if ((useFilePath != null) && (!IDEUtils.FixFilePath(useFilePath)))
+				return (null, null);
+			if ((useFilePath == null) & (showType != .New))
+				return (null, null);
+
+			SourceViewPanel sourceViewPanel = null;
 			DarkTabbedView.DarkTabButton sourceViewPanelTab = null;
 
 			if ((useProjectSource == null) && (useFilePath != null))
@@ -6919,14 +6915,14 @@ namespace IDE
 			if (showType != SourceShowType.New)
 			{
 				delegate void(TabbedView.TabButton) tabFunc = scope [&] (tabButton) =>
-	                {
-	                    var darkTabButton = (DarkTabbedView.DarkTabButton)tabButton;
-	                    if (tabButton.mContent is SourceViewPanel)
-	                    {						
-	                        var checkSourceViewPanel = (SourceViewPanel)tabButton.mContent;
-	
-	                        if (checkSourceViewPanel.FileNameMatches(useFilePath))
-	                        {
+					{
+						var darkTabButton = (DarkTabbedView.DarkTabButton)tabButton;
+						if (tabButton.mContent is SourceViewPanel)
+						{
+							var checkSourceViewPanel = (SourceViewPanel)tabButton.mContent;
+
+							if (checkSourceViewPanel.FileNameMatches(useFilePath))
+							{
 								if (sourceViewPanel != null)
 								{
 									// Already found one that matches our active tabbed view?
@@ -6936,9 +6932,9 @@ namespace IDE
 
 								sourceViewPanel = checkSourceViewPanel;
 								sourceViewPanelTab = darkTabButton;
-	                        }
-	                    }
-	                };
+							}
+						}
+					};
 
 				if ((showType == .ShowExistingInActivePanel) && (mActiveDocumentsTabbedView != null))
 				{
@@ -6952,89 +6948,89 @@ namespace IDE
 					//matchedTabButton = tabButton;
 					if ((sourceViewPanelTab.mIsRightTab) && (showType != SourceShowType.Temp))
 					{
-					    MakeTabPermanent(sourceViewPanelTab);
+						MakeTabPermanent(sourceViewPanelTab);
 					}
 
 					if ((useProjectSource != null) &&
-					    (sourceViewPanel.mProjectSource != useProjectSource))
+						(sourceViewPanel.mProjectSource != useProjectSource))
 					{
 						//TODO: Change project source in view
 						sourceViewPanel.AttachToProjectSource(useProjectSource);
-					    //sourceViewPanel.mProjectSource = useProjectSource;
-					    //sourceViewPanel.QueueFullRefresh(true);
+						//sourceViewPanel.mProjectSource = useProjectSource;
+						//sourceViewPanel.QueueFullRefresh(true);
 					}
 
 					if ((sourceViewPanel.mWidgetWindow != null) && (!HasModalDialogs()) && (!mRunningTestScript))
-					    sourceViewPanel.mWidgetWindow.SetForeground();
+						sourceViewPanel.mWidgetWindow.SetForeground();
 					sourceViewPanelTab.Activate(setFocus);
 					sourceViewPanelTab.mTabbedView.FinishTabAnim();
 					if (setFocus)
-					    sourceViewPanel.FocusEdit();
+						sourceViewPanel.FocusEdit();
 
 					sourceViewPanel.CheckEmitRevision();
 				}
 			}
 
-            if (sourceViewPanel != null)
-                return (sourceViewPanel, sourceViewPanelTab);
+			if (sourceViewPanel != null)
+				return (sourceViewPanel, sourceViewPanelTab);
 
 			//ShowSourceFile(filePath, projectSource, showTemp, setFocus);
 
-            DarkTabbedView tabbedView = GetDefaultDocumentTabbedView();
-            sourceViewPanel = new SourceViewPanel();
-            bool success;
+			DarkTabbedView tabbedView = GetDefaultDocumentTabbedView();
+			sourceViewPanel = new SourceViewPanel();
+			bool success;
 			if (useProjectSource != null)
-            {                
-                success = sourceViewPanel.Show(useProjectSource, !mInitialized);
-            }
-            else
-                success = sourceViewPanel.Show(useFilePath, !mInitialized);
+			{
+				success = sourceViewPanel.Show(useProjectSource, !mInitialized);
+			}
+			else
+				success = sourceViewPanel.Show(useFilePath, !mInitialized);
 			sourceViewPanel.mEmitRevision = emitRevision;
 			if (emitRevision != -1)
 				sourceViewPanel.mEditWidget.mEditWidgetContent.mIsReadOnly = true;
 
-            if (!success)
-            {
-                sourceViewPanel.Close();
+			if (!success)
+			{
+				sourceViewPanel.Close();
 				delete sourceViewPanel;
-                return (null, null);
-            }
+				return (null, null);
+			}
 
-            var newTabButton = new SourceViewTabButton();
-            newTabButton.Label = "";
+			var newTabButton = new SourceViewTabButton();
+			newTabButton.Label = "";
 			if (useFilePath != null)
-            	Path.GetFileName(useFilePath, newTabButton.mLabel);
+				Path.GetFileName(useFilePath, newTabButton.mLabel);
 			else
 				newTabButton.mLabel.Set("untitled");
-            newTabButton.mWantWidth = newTabButton.GetWantWidth();
-            newTabButton.mHeight = tabbedView.mTabHeight;
-            newTabButton.mContent = sourceViewPanel;
+			newTabButton.mWantWidth = newTabButton.GetWantWidth();
+			newTabButton.mHeight = tabbedView.mTabHeight;
+			newTabButton.mContent = sourceViewPanel;
 
-            if (showType == SourceShowType.Temp)
-            {
+			if (showType == SourceShowType.Temp)
+			{
 				let prevAutoClose = tabbedView.mAutoClose;
 				defer { tabbedView.mAutoClose = prevAutoClose; }
 				tabbedView.mAutoClose = false;
 
-                if (tabbedView.mRightTab != null)
-                {
-                    CloseDocument(tabbedView.mRightTab.mContent);
-                    Debug.Assert(tabbedView.mRightTab == null);
-                }
+				if (tabbedView.mRightTab != null)
+				{
+					CloseDocument(tabbedView.mRightTab.mContent);
+					Debug.Assert(tabbedView.mRightTab == null);
+				}
 
-                newTabButton.mTextColor = 0xFFC8C8C8;
-                newTabButton.mIsRightTab = true;
-                tabbedView.SetRightTab(newTabButton);
-            }
-            else
-                tabbedView.AddTab(newTabButton, GetTabInsertIndex(tabbedView));
-            newTabButton.mCloseClickedEvent.Add(new () => DocumentCloseClicked(sourceViewPanel));
-            newTabButton.Activate(setFocus);
-            if ((setFocus) && (sourceViewPanel.mWidgetWindow != null))
-                sourceViewPanel.FocusEdit();  
+				newTabButton.mTextColor = 0xFFC8C8C8;
+				newTabButton.mIsRightTab = true;
+				tabbedView.SetRightTab(newTabButton);
+			}
+			else
+				tabbedView.AddTab(newTabButton, GetTabInsertIndex(tabbedView));
+			newTabButton.mCloseClickedEvent.Add(new () => DocumentCloseClicked(sourceViewPanel));
+			newTabButton.Activate(setFocus);
+			if ((setFocus) && (sourceViewPanel.mWidgetWindow != null))
+				sourceViewPanel.FocusEdit();
 
-            return (sourceViewPanel, newTabButton);
-        }
+			return (sourceViewPanel, newTabButton);
+		}
 
 		int GetRecentFilesIdx(String filePath)
 		{
@@ -7043,19 +7039,18 @@ namespace IDE
 
 		public void UpdateRecentFilesMenuItems(List<String> filesList)
 		{
-
 		}
 
-        public void UpdateRecentDisplayedFilesMenuItems()
-        {
-            if (mWindowMenu == null)
-                return;
+		public void UpdateRecentDisplayedFilesMenuItems()
+		{
+			if (mWindowMenu == null)
+				return;
 
 			RecentFiles.UpdateMenu(mRecentlyDisplayedFiles, mWindowMenu, mRecentlyDisplayedFilesMenuItems, true, scope (idx, sysMenu) =>
 				{
 					sysMenu.mOnMenuItemSelected.Add(new (evt) => ShowRecentFile(idx));
 				});
-        }
+		}
 
 		public void UpdateRecentFileMenuItems(RecentFiles.RecentKind recentKind)
 		{
@@ -7116,25 +7111,25 @@ namespace IDE
 				mRecentFileSelector.Prev();
 		}
 
-        void ShowRecentFile(int idx, bool setFocus = true, bool checkIfExists = false)
-        {
+		void ShowRecentFile(int idx, bool setFocus = true, bool checkIfExists = false)
+		{
 			if (idx >= mRecentlyDisplayedFiles.Count)
 				return;
 
-            String sourceFile = mRecentlyDisplayedFiles[idx];
-            if (sourceFile == DisassemblyPanel.sPanelName)
-            {
-                ShowDisassemblyPanel();
-                return;
-            }
+			String sourceFile = mRecentlyDisplayedFiles[idx];
+			if (sourceFile == DisassemblyPanel.sPanelName)
+			{
+				ShowDisassemblyPanel();
+				return;
+			}
 			if ((checkIfExists) && (!File.Exists(sourceFile)))
 				return;
-            ShowSourceFile(sourceFile, null, SourceShowType.ShowExisting, setFocus);
-        }
+			ShowSourceFile(sourceFile, null, SourceShowType.ShowExisting, setFocus);
+		}
 
 		void ShowRecentFile(RecentFiles.RecentKind recentKind, int idx, bool setFocus = true)
 		{
-		    String filePath = mSettings.mRecentFiles.mRecents[(int)recentKind].mList[idx];
+			String filePath = mSettings.mRecentFiles.mRecents[(int)recentKind].mList[idx];
 
 			switch (recentKind)
 			{
@@ -7156,23 +7151,23 @@ namespace IDE
 			}
 		}
 
-        void DocumentCloseClicked(Widget documentPanel)
-        {
-            var sourceViewPanel = documentPanel as SourceViewPanel;
-            if (sourceViewPanel == null)
-            {
-                CloseDocument(documentPanel);
-                return;
-            }
+		void DocumentCloseClicked(Widget documentPanel)
+		{
+			var sourceViewPanel = documentPanel as SourceViewPanel;
+			if (sourceViewPanel == null)
+			{
+				CloseDocument(documentPanel);
+				return;
+			}
 
 			// This is a test
 			// This is a test
 
-            if ((!sourceViewPanel.HasUnsavedChanges()) || (!sourceViewPanel.IsLastViewOfData()))
-            {
-                CloseDocument(sourceViewPanel);
-                return;
-            }
+			if ((!sourceViewPanel.HasUnsavedChanges()) || (!sourceViewPanel.IsLastViewOfData()))
+			{
+				CloseDocument(sourceViewPanel);
+				return;
+			}
 
 			// This is a test
 
@@ -7181,30 +7176,30 @@ namespace IDE
 				Path.GetFileName(sourceViewPanel.mFilePath, fileName);
 			else
 				fileName.Append("untitled");
-            Dialog aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", StackStringFormat!("Save changes to '{0}' before closing?", fileName), DarkTheme.sDarkTheme.mIconWarning);
-            aDialog.mDefaultButton = aDialog.AddButton("Save", new (evt) => { SaveFile(sourceViewPanel); CloseDocument(sourceViewPanel); }); 
-            aDialog.AddButton("Don't Save", new (evt) => CloseDocument(sourceViewPanel));            
-            aDialog.mEscButton = aDialog.AddButton("Cancel");
-            aDialog.PopupWindow(mMainWindow);
-        }
+			Dialog aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", StackStringFormat!("Save changes to '{0}' before closing?", fileName), DarkTheme.sDarkTheme.mIconWarning);
+			aDialog.mDefaultButton = aDialog.AddButton("Save", new (evt) => { SaveFile(sourceViewPanel); CloseDocument(sourceViewPanel); });
+			aDialog.AddButton("Don't Save", new (evt) => CloseDocument(sourceViewPanel));
+			aDialog.mEscButton = aDialog.AddButton("Cancel");
+			aDialog.PopupWindow(mMainWindow);
+		}
 
 		void RevertSourceViewPanel(SourceViewPanel sourceViewPanel)
 		{
 			// When we close a Beef file that has modified text, we need to revert by
 			//  reparsing from the actual source file
-		    if (sourceViewPanel.mIsBeefSource)
-		    {
-		        mBfResolveHelper.DeferReparse(sourceViewPanel.mFilePath, null);
+			if (sourceViewPanel.mIsBeefSource)
+			{
+				mBfResolveHelper.DeferReparse(sourceViewPanel.mFilePath, null);
 				//mBfResolveHelper.DeferRefreshVisibleViews(null);
-		    }
+			}
 
 			var projectSource = sourceViewPanel.mProjectSource;
-		    if (projectSource != null)
-		    {
-		        var editData = GetEditData(projectSource, true);
-		        if (editData != null)
-		        {
-		            var editWidgetContent = editData.mEditWidget.mEditWidgetContent;
+			if (projectSource != null)
+			{
+				var editData = GetEditData(projectSource, true);
+				if (editData != null)
+				{
+					var editWidgetContent = editData.mEditWidget.mEditWidgetContent;
 
 					//TODO: Verify this, once we have multiple panes allowed within a single SourceViewContent
 					if (editWidgetContent.mData.mUsers.Count == 1) // Is last view of data...
@@ -7220,33 +7215,33 @@ namespace IDE
 							// Undo until we either get to whatever the last saved state was, or until we
 							//  get to a global action like renaming a symbol - we need to leave those
 							//  so the global undo actually works if invoked from another file
-		                    while (editData.HasTextChanged())
-		                    {
-		                        var nextUndoAction = editWidgetContent.mData.mUndoManager.GetLastUndoAction();
+							while (editData.HasTextChanged())
+							{
+								var nextUndoAction = editWidgetContent.mData.mUndoManager.GetLastUndoAction();
 								if (nextUndoAction == null)
 									break;
-		                        if (nextUndoAction is UndoBatchEnd)
-		                        {
-		                            var undoBatchEnd = (UndoBatchEnd)nextUndoAction;
-		                            if (undoBatchEnd.Name.StartsWith("#"))
-		                            {
-		                                break;
-		                            }
-		                        }
-		                        editWidgetContent.mData.mUndoManager.Undo();
-		                    }
+								if (nextUndoAction is UndoBatchEnd)
+								{
+									var undoBatchEnd = (UndoBatchEnd)nextUndoAction;
+									if (undoBatchEnd.Name.StartsWith("#"))
+									{
+										break;
+									}
+								}
+								editWidgetContent.mData.mUndoManager.Undo();
+							}
 
 							editWidgetContent.mData.mTextIdData.Prepare();
 						}
 					}
-		        }
+				}
 			}
 		}
 
-        public void CloseDocument(Widget documentPanel)
-        {
-            bool hasFocus = false;
-            var sourceViewPanel = documentPanel as SourceViewPanel;
+		public void CloseDocument(Widget documentPanel)
+		{
+			bool hasFocus = false;
+			var sourceViewPanel = documentPanel as SourceViewPanel;
 
 			if ((documentPanel.mWidgetWindow != null) && (documentPanel.mWidgetWindow.mFocusWidget != null))
 			{
@@ -7254,29 +7249,29 @@ namespace IDE
 					hasFocus = true;
 			}
 
-            /*if (sourceViewPanel != null)            
-                hasFocus = sourceViewPanel.mEditWidget.mHasFocus;*/
+			/*if (sourceViewPanel != null)            
+				hasFocus = sourceViewPanel.mEditWidget.mHasFocus;*/
 
-            if ((sourceViewPanel != null) && (sourceViewPanel.HasUnsavedChanges()))
+			if ((sourceViewPanel != null) && (sourceViewPanel.HasUnsavedChanges()))
 				RevertSourceViewPanel(sourceViewPanel);
 
-            DarkTabbedView tabbedView = null;
-            DarkTabbedView.DarkTabButton tabButton = null;
-            WithTabs(scope [?] (tab) =>
-                {
-                    if (tab.mContent == documentPanel)
-                    {
-                        tabbedView = (DarkTabbedView)tab.mTabbedView;
-                        tabButton = (DarkTabbedView.DarkTabButton)tab;
-                    }
-                });
+			DarkTabbedView tabbedView = null;
+			DarkTabbedView.DarkTabButton tabButton = null;
+			WithTabs(scope [?] (tab) =>
+				{
+					if (tab.mContent == documentPanel)
+					{
+						tabbedView = (DarkTabbedView)tab.mTabbedView;
+						tabButton = (DarkTabbedView.DarkTabButton)tab;
+					}
+				});
 
-            if (tabbedView == null)
-                return;
+			if (tabbedView == null)
+				return;
 
 			int recentFileIdx = -1;
-            if (sourceViewPanel != null)
-            {
+			if (sourceViewPanel != null)
+			{
 				if (sourceViewPanel.[Friend]NeedsPostRemoveUpdate)
 				{
 					sourceViewPanel.[Friend]mDeleteAfterPostRemoveUpdate = true;
@@ -7284,25 +7279,25 @@ namespace IDE
 					tabButton.mContent = null;
 				}
 				else
-                	sourceViewPanel.Dispose();
+					sourceViewPanel.Dispose();
 
 				if (sourceViewPanel.mFilePath != null)
 					recentFileIdx = GetRecentFilesIdx(sourceViewPanel.mFilePath);
-            }
+			}
 
 			/*if (tabButton.mIsRightTab)
 				tabbedView.SetRightTab(null);
 			else*/
-                        
-            if (documentPanel is DisassemblyPanel)
+
+			if (documentPanel is DisassemblyPanel)
 				recentFileIdx = GetRecentFilesIdx(DisassemblyPanel.sPanelName);
-                //mRecentFilesList.Remove(DisassemblyPanel.sPanelName);
+				//mRecentFilesList.Remove(DisassemblyPanel.sPanelName);
 
 			if (recentFileIdx != -1)
 			{
 				delete mRecentlyDisplayedFiles[recentFileIdx];
 				mRecentlyDisplayedFiles.RemoveAt(recentFileIdx);
-	            UpdateRecentDisplayedFilesMenuItems();
+				UpdateRecentDisplayedFilesMenuItems();
 			}
 
 			if (tabButton.mIsActive)
@@ -7317,12 +7312,12 @@ namespace IDE
 			if (tabButton.mIsActive)
 			{
 				tabbedView.WithTabs(scope [&] (checkTab) =>
-	                {
+					{
 						if (checkTab == tabButton)
 							foundRemovedTab = true;
 						else if ((!foundRemovedTab) || (nextTab == null))
 							nextTab = checkTab;
-	                });
+					});
 			}
 			else
 			{
@@ -7350,45 +7345,45 @@ namespace IDE
 
 			//var intDict = scope Dictionary<String, int>();
 
-            /*if (mRecentFilesList.Count >= 1)
-            {
+			/*if (mRecentFilesList.Count >= 1)
+			{
 				// Show second-last file
-                ShowRecentFile(0, hasFocus);
-            }*/
+				ShowRecentFile(0, hasFocus);
+			}*/
 			//var newActiveTab = tabbedView.GetActiveTab();
 			//if (newActiveTab != null)
 				//newActiveTab.mContent.SetFocus();
-        }
+		}
 
-        void TryCloseCurrentDocument()
-        {
-            var activeDocumentPanel = GetLastActiveDocumentPanel();
-            if (activeDocumentPanel != null)
-            {
-                if (activeDocumentPanel is SourceViewPanel)
-                {
-                    var sourceViewPanel = (SourceViewPanel)activeDocumentPanel;
-                    DocumentCloseClicked(sourceViewPanel);
-                    return;
-                }
-                CloseDocument(activeDocumentPanel);
-            }
-        }
+		void TryCloseCurrentDocument()
+		{
+			var activeDocumentPanel = GetLastActiveDocumentPanel();
+			if (activeDocumentPanel != null)
+			{
+				if (activeDocumentPanel is SourceViewPanel)
+				{
+					var sourceViewPanel = (SourceViewPanel)activeDocumentPanel;
+					DocumentCloseClicked(sourceViewPanel);
+					return;
+				}
+				CloseDocument(activeDocumentPanel);
+			}
+		}
 
 		void TryCloseCurrentPanel()
 		{
-		    var activeDocumentPanel = GetActiveDocumentPanel();
-		    if (activeDocumentPanel != null)
-		    {
-		        if (activeDocumentPanel is SourceViewPanel)
-		        {
-		            var sourceViewPanel = (SourceViewPanel)activeDocumentPanel;
-		            DocumentCloseClicked(sourceViewPanel);
-		            return;
-		        }
-		        CloseDocument(activeDocumentPanel);
+			var activeDocumentPanel = GetActiveDocumentPanel();
+			if (activeDocumentPanel != null)
+			{
+				if (activeDocumentPanel is SourceViewPanel)
+				{
+					var sourceViewPanel = (SourceViewPanel)activeDocumentPanel;
+					DocumentCloseClicked(sourceViewPanel);
+					return;
+				}
+				CloseDocument(activeDocumentPanel);
 				return;
-		    }
+			}
 
 			var activePanel = GetActivePanel();
 			if (activePanel != null)
@@ -7404,14 +7399,14 @@ namespace IDE
 				skipDocumentPanel = GetActiveDocumentPanel();
 
 			WithTabs(scope [&] (tab) =>
-			{
-				if ((tab.mContent is SourceViewPanel) || (tab.mTabbedView.mIsFillWidget))
 				{
-					if (tab.mContent != skipDocumentPanel)
-						docPanels.Add(tab.mContent);
-				}				
-			});	
-	    
+					if ((tab.mContent is SourceViewPanel) || (tab.mTabbedView.mIsFillWidget))
+					{
+						if (tab.mContent != skipDocumentPanel)
+							docPanels.Add(tab.mContent);
+					}
+				});
+
 			for (var docPanel in docPanels)
 				DocumentCloseClicked(docPanel);
 		}
@@ -7426,27 +7421,27 @@ namespace IDE
 		}
 
 		[IDECommand]
-        void CloseCurrentDocument()
-        {
-            var activeDocumentPanel = GetActiveDocumentPanel();
-            if (activeDocumentPanel != null)
-                CloseDocument(activeDocumentPanel);
-        }        
+		void CloseCurrentDocument()
+		{
+			var activeDocumentPanel = GetActiveDocumentPanel();
+			if (activeDocumentPanel != null)
+				CloseDocument(activeDocumentPanel);
+		}
 
-        public SourceViewPanel ShowProjectItem(ProjectItem projectItem, bool showTemp = true, bool setFocus = true)
-        {
-            if (projectItem is ProjectSource)
-            {
-                var projectSource = (ProjectSource)projectItem;
+		public SourceViewPanel ShowProjectItem(ProjectItem projectItem, bool showTemp = true, bool setFocus = true)
+		{
+			if (projectItem is ProjectSource)
+			{
+				var projectSource = (ProjectSource)projectItem;
 				var fullPath = scope String();
 				projectSource.GetFullImportPath(fullPath);
-                return ShowSourceFile(fullPath, projectSource, showTemp ? SourceShowType.Temp : SourceShowType.ShowExistingInActivePanel, setFocus).panel;
-            }
-            return null;
-        }
+				return ShowSourceFile(fullPath, projectSource, showTemp ? SourceShowType.Temp : SourceShowType.ShowExistingInActivePanel, setFocus).panel;
+			}
+			return null;
+		}
 
-        public SourceViewPanel ShowSourceFileLocation(String filePath, int showHotIdx, int refHotIdx, int line, int column, LocatorType hilitePosition, bool showTemp = false)
-        {
+		public SourceViewPanel ShowSourceFileLocation(String filePath, int showHotIdx, int refHotIdx, int line, int column, LocatorType hilitePosition, bool showTemp = false)
+		{
 			var useFilePath = filePath;
 
 			if (filePath.StartsWith("$Emit$"))
@@ -7482,11 +7477,11 @@ namespace IDE
 						itr.GetNext();
 						itr.GetNext();
 						typeName = itr.GetNext().Value;
-	
+
 						mBfResolveCompiler.mBfSystem.Lock(0);
 						embedFilePath = mBfResolveCompiler.GetEmitLocation(typeName, line, .. scope:: .(), out embedLine, out embedLineChar, var embedHash);
 						mBfResolveCompiler.mBfSystem.Unlock();
-						
+
 						useFilePath = scope:: $"$Emit${useFilePath.Substring("$Emit$Resolve$".Length)}";
 					}
 					else
@@ -7501,11 +7496,11 @@ namespace IDE
 						itr.GetNext();
 						itr.GetNext();
 						typeName = itr.GetNext().Value;
-	
+
 						mBfBuildCompiler.mBfSystem.Lock(0);
 						embedFilePath = mBfBuildCompiler.GetEmitLocation(typeName, line, .. scope:: .(), out embedLine, out embedLineChar, var embedHash);
 						mBfBuildCompiler.mBfSystem.Unlock();
-						
+
 						useFilePath = scope:: $"$Emit${useFilePath.Substring("$Emit$Build$".Length)}";
 					}
 					else
@@ -7540,7 +7535,7 @@ namespace IDE
 				{
 					var sourceViewPanel = ShowSourceFile(scope .(embedFilePath), null, showTemp ? SourceShowType.Temp : SourceShowType.ShowExisting).panel;
 					if (sourceViewPanel == null)
-					    return null;
+						return null;
 
 					var sewc = sourceViewPanel.mEditWidget.mEditWidgetContent as SourceEditWidgetContent;
 					var data = sewc.mData as SourceEditWidgetContent.Data;
@@ -7567,54 +7562,54 @@ namespace IDE
 				}
 			}
 
-            var (sourceViewPanel, tabButton) = ShowSourceFile(useFilePath, null, showTemp ? SourceShowType.Temp : SourceShowType.ShowExisting);
-            if (sourceViewPanel == null)
-                return null;
+			var (sourceViewPanel, tabButton) = ShowSourceFile(useFilePath, null, showTemp ? SourceShowType.Temp : SourceShowType.ShowExisting);
+			if (sourceViewPanel == null)
+				return null;
 			if (((filePath.StartsWith("$")) && (var svTabButton = tabButton as SourceViewTabButton)))
 				svTabButton.mIsTemp = true;
-            sourceViewPanel.ShowHotFileIdx(showHotIdx);
-            sourceViewPanel.ShowFileLocation(refHotIdx, Math.Max(0, line), Math.Max(0, column), hilitePosition);
-            return sourceViewPanel;
-        }
+			sourceViewPanel.ShowHotFileIdx(showHotIdx);
+			sourceViewPanel.ShowFileLocation(refHotIdx, Math.Max(0, line), Math.Max(0, column), hilitePosition);
+			return sourceViewPanel;
+		}
 
-        public SourceViewPanel ShowSourceFileLocation(String filePath, int32 cursorIdx, LocatorType hilitePosition)
-        {
-            var sourceViewPanel = ShowSourceFile(filePath).panel;
-            sourceViewPanel.ShowFileLocation(cursorIdx, hilitePosition);
-            return sourceViewPanel;
-        }
+		public SourceViewPanel ShowSourceFileLocation(String filePath, int32 cursorIdx, LocatorType hilitePosition)
+		{
+			var sourceViewPanel = ShowSourceFile(filePath).panel;
+			sourceViewPanel.ShowFileLocation(cursorIdx, hilitePosition);
+			return sourceViewPanel;
+		}
 
-        public void ShowPCLocation(int32 stackIdx, bool onlyShowCurrent = false, bool wantShowSource = false, bool wantShowDisassembly = false, bool setFocus = true)
-        {
+		public void ShowPCLocation(int32 stackIdx, bool onlyShowCurrent = false, bool wantShowSource = false, bool wantShowDisassembly = false, bool setFocus = true)
+		{
 			if (stackIdx == -1)
 				return;
 
 			ClearDeferredUserRequest();
 
-            int addr;
-            String filePath = scope String();
-            int hotIdx;
-            int defLineStart;
-            int defLineEnd;
-            int line;
-            int column;
-            int language;
-            int stackSize;
-            mDebugger.CheckCallStack();
-            String entryName = scope String();
+			int addr;
+			String filePath = scope String();
+			int hotIdx;
+			int defLineStart;
+			int defLineEnd;
+			int line;
+			int column;
+			int language;
+			int stackSize;
+			mDebugger.CheckCallStack();
+			String entryName = scope String();
 			DebugManager.FrameFlags frameFlags;
 
 			for (int pass < 2)
 			{
-	            mDebugger.GetStackFrameInfo(stackIdx, entryName, out addr, filePath, out hotIdx, out defLineStart, out defLineEnd, out line, out column, out language, out stackSize, out frameFlags);
+				mDebugger.GetStackFrameInfo(stackIdx, entryName, out addr, filePath, out hotIdx, out defLineStart, out defLineEnd, out line, out column, out language, out stackSize, out frameFlags);
 
 				if (!frameFlags.HasFlag(.HasPendingDebugInfo))
 					break;
-				
+
 				int bangPos = entryName.IndexOf('!');
 				if (bangPos == -1)
 					break;
-				
+
 				String moduleName = scope String(entryName, 0, bangPos);
 
 				int result = mDebugger.LoadDebugInfoForModule(moduleName);
@@ -7637,12 +7632,12 @@ namespace IDE
 
 			bool useWantShowDisassembly = wantShowDisassembly;
 
-            for (var breakpoint in mDebugger.mBreakpointList)
-            {
-                if (((breakpoint.mAddressRequested) || (breakpoint.mInstrOffset != -1)) &&
-                    (breakpoint.ContainsAddress(addr)))
-                    useWantShowDisassembly = true;
-            }
+			for (var breakpoint in mDebugger.mBreakpointList)
+			{
+				if (((breakpoint.mAddressRequested) || (breakpoint.mInstrOffset != -1)) &&
+					(breakpoint.ContainsAddress(addr)))
+					useWantShowDisassembly = true;
+			}
 
 			String aliasFilePath = null;
 			String loadCmd = null;
@@ -7705,24 +7700,24 @@ namespace IDE
 				mIsAttachPendingSourceShow = false;
 			}
 
-            bool hasSource = filePath.Length != 0;
-            if ((IsInDisassemblyMode(wantShowSource)) || (!hasSource) || (useWantShowDisassembly))
-            {
+			bool hasSource = filePath.Length != 0;
+			if ((IsInDisassemblyMode(wantShowSource)) || (!hasSource) || (useWantShowDisassembly))
+			{
 				if (frameFlags.HasFlag(.HasPendingDebugInfo))
 				{
-                    SetDeferredUserRequest(new DeferredShowPCLocation(stackIdx));
+					SetDeferredUserRequest(new DeferredShowPCLocation(stackIdx));
 				}
 				else
 				{
-	                var disassemblyPanel = ShowDisassemblyPanel(true);
+					var disassemblyPanel = ShowDisassemblyPanel(true);
 					if (aliasFilePath != null)
 						String.NewOrSet!(disassemblyPanel.mAliasFilePath, aliasFilePath);
-	                disassemblyPanel.Show(addr, filePath, line, column, hotIdx, defLineStart, defLineEnd);
+					disassemblyPanel.Show(addr, filePath, line, column, hotIdx, defLineStart, defLineEnd);
 					disassemblyPanel.mSourceHash = hash;
 				}
-            }
-            else if (filePath.Length > 0)
-            {
+			}
+			else if (filePath.Length > 0)
+			{
 				if ((IsCrashDump) && (!mShowedFirstDocument))
 				{
 					mShowedFirstDocument = true;
@@ -7735,9 +7730,9 @@ namespace IDE
 					return;
 				}
 
-                var (sourceViewPanel, tabButton) = ShowSourceFile(filePath, null, SourceShowType.ShowExisting, setFocus);
-                if (sourceViewPanel != null)
-                {
+				var (sourceViewPanel, tabButton) = ShowSourceFile(filePath, null, SourceShowType.ShowExisting, setFocus);
+				if (sourceViewPanel != null)
+				{
 					sourceViewPanel.mIsSourceCode = true; // It's always source code, even if there is no extension (ie: stl types like "vector")
 
 					if ((aliasFilePath != null) && (var svTabButton = tabButton as SourceViewTabButton))
@@ -7767,10 +7762,10 @@ namespace IDE
 					{
 						sourceViewPanel.ShowWrongHash();
 					}
-					
-                    int showHotIdx = -1;
-                    if (!onlyShowCurrent)
-                    {
+
+					int showHotIdx = -1;
+					if (!onlyShowCurrent)
+					{
 						bool checkForChange = false;
 						if (frameFlags.HasFlag(.WasHotReplaced))
 							checkForChange = true;
@@ -7783,26 +7778,26 @@ namespace IDE
 						}
 
 						if (checkForChange)
-                        {
-                            if (sourceViewPanel.HasTextChangedSinceCompile(defLineStart, defLineEnd, hotIdx))
-                                showHotIdx = hotIdx;
-                        }
+						{
+							if (sourceViewPanel.HasTextChangedSinceCompile(defLineStart, defLineEnd, hotIdx))
+								showHotIdx = hotIdx;
+						}
 						/*else
 						{
 							if (sourceViewPanel.HasTextChangedSinceCompile(defLineStart, defLineEnd, -1))
 								showHotIdx = mWorkspace.GetHighestCompileIdx();
 						}*/
-                    }
+					}
 
-                    sourceViewPanel.ShowHotFileIdx(showHotIdx);
-                    sourceViewPanel.ShowFileLocation(hotIdx, Math.Max(0, line), Math.Max(0, column), LocatorType.Smart);
-                }                
+					sourceViewPanel.ShowHotFileIdx(showHotIdx);
+					sourceViewPanel.ShowFileLocation(hotIdx, Math.Max(0, line), Math.Max(0, column), LocatorType.Smart);
+				}
 
-                var disassemblyPanel = TryGetDisassemblyPanel(false);
-                if (disassemblyPanel != null)
-                    disassemblyPanel.Show(addr, filePath, line, column, hotIdx, defLineStart, defLineEnd);
-            }
-        }
+				var disassemblyPanel = TryGetDisassemblyPanel(false);
+				if (disassemblyPanel != null)
+					disassemblyPanel.Show(addr, filePath, line, column, hotIdx, defLineStart, defLineEnd);
+			}
+		}
 
 		public override void UnhandledCommandLine(String key, String value)
 		{
@@ -7814,8 +7809,8 @@ namespace IDE
 			Fail(StackStringFormat!("Unhandled command line param: {0}", key));
 		}
 
-        public override bool HandleCommandLineParam(String key, String value)
-        {
+		public override bool HandleCommandLineParam(String key, String value)
+		{
 			if (mLaunchData != null)
 			{
 				if (mLaunchData.mArgs != null)
@@ -7835,7 +7830,7 @@ namespace IDE
 				}
 			}
 
-            if (base.HandleCommandLineParam(key, value))
+			if (base.HandleCommandLineParam(key, value))
 				return true;
 
 			if (value == null)
@@ -7849,7 +7844,7 @@ namespace IDE
 				case "-testNoExit":
 					mExitWhenTestScriptDone = false;
 				case "-firstRun":
-					mForceFirstRun = true;																														  
+					mForceFirstRun = true;
 					mIsFirstRun = true;
 				case "-clean":
 					mWantsClean = true;
@@ -7861,7 +7856,7 @@ namespace IDE
 				case "-launchPaused":
 					if (mLaunchData != null)
 						mLaunchData.mPaused = true;
-					else																												   
+					else
 						Fail("'-launchPaused' can only be used after '-launch'");
 				case "-safe":
 #if !CLI && BF_PLATFORM_WINDOWS
@@ -7895,7 +7890,7 @@ namespace IDE
 					mProcessAttachHandle = (Windows.EventHandle)int32.Parse(value).GetValueOrDefault();
 #endif
 				case "-attachId":
-	                mProcessAttachId = int32.Parse(value).GetValueOrDefault();
+					mProcessAttachId = int32.Parse(value).GetValueOrDefault();
 				case "-config":
 					if (mSetConfigName == null)
 						mSetConfigName = new String();
@@ -7917,7 +7912,7 @@ namespace IDE
 					if (mSetPlatformName == null)
 						mSetPlatformName = new String();
 					mSetPlatformName.Set(value);
-	            case "-test":
+				case "-test":
 					Runtime.SetCrashReportKind(.PrintOnly);
 
 					String absTestPath = scope String();
@@ -7928,25 +7923,25 @@ namespace IDE
 
 					mWantsClean = true;
 					mRunningTestScript = true;
-					mScriptManager.SetTimeoutMS(20*60*1000); // 20 minute timeout
+					mScriptManager.SetTimeoutMS(20 * 60 * 1000); // 20 minute timeout
 					mScriptManager.QueueCommandFile(absTestPath);
 				case "-verbosity":
 					if (value == "quiet")
-					    mVerbosity = .Quiet;
+						mVerbosity = .Quiet;
 					else if (value == "minimal")
-					    mVerbosity = .Minimal;
+						mVerbosity = .Minimal;
 					else if (value == "normal")
-					    mVerbosity = .Normal;
+						mVerbosity = .Normal;
 					else if (value == "detailed")
-					    mVerbosity = .Detailed;
+						mVerbosity = .Detailed;
 					else if (value == "diagnostic")
-					    mVerbosity = .Diagnostic;
+						mVerbosity = .Diagnostic;
 					else
 						Fail(scope String()..AppendF("Invalid verbosity option: {}", value));
 				case "-workspace","-proddir":
 					var relDir = scope String(value);
 					if ((relDir.EndsWith("\\")) || relDir.EndsWith("\""))
-					relDir.RemoveToEnd(relDir.Length - 1);
+						relDir.RemoveToEnd(relDir.Length - 1);
 					IDEUtils.FixFilePath(relDir);
 
 					String fullDir = new String();
@@ -7969,7 +7964,7 @@ namespace IDE
 				}
 				return true;
 			}
-        }
+		}
 
 		public void DragDropFile(StringView filePath)
 		{
@@ -7999,27 +7994,27 @@ namespace IDE
 			}
 		}
 
-        class Board : Widget
-        {
-            public override void Draw(Graphics g)
-            {
-                base.Draw(g);
+		class Board : Widget
+		{
+			public override void Draw(Graphics g)
+			{
+				base.Draw(g);
 
-                using (g.PushColor(0xFFFFFFFF))
-                    g.FillRect(0, 0, 80, 80);
-            }
-        }
+				using (g.PushColor(0xFFFFFFFF))
+					g.FillRect(0, 0, 80, 80);
+			}
+		}
 
-        public virtual void Output(String outStr)
-        {
+		public virtual void Output(String outStr)
+		{
 #if CLI
 			Console.Write(outStr);
 			return;
 #endif
 #unwarn
-            outStr.Replace("\r", "");
-            mOutputPanel.Write(outStr);
-        }
+			outStr.Replace("\r", "");
+			mOutputPanel.Write(outStr);
+		}
 
 		public virtual void OutputSmart(String outStr)
 		{
@@ -8029,33 +8024,33 @@ namespace IDE
 #endif
 #unwarn
 			if (outStr.Contains('\r'))
-		    {
+			{
 				let newStr = scope String()..Append(outStr);
 				newStr.Replace("\r", "");
 				mOutputPanel.WriteSmart(newStr);
 			}
 			else
-		    	mOutputPanel.WriteSmart(outStr);
+				mOutputPanel.WriteSmart(outStr);
 		}
 
-        public virtual void Output(String format, params Object[] args)
-        {
-            String outStr = format;
-            if (args.Count > 0)
+		public virtual void Output(String format, params Object[] args)
+		{
+			String outStr = format;
+			if (args.Count > 0)
 			{
-                outStr = scope:: String();
-                outStr.AppendF(outStr, params args);
+				outStr = scope:: String();
+				outStr.AppendF(outStr, params args);
 			}
 			else
 				outStr = scope:: String(format);
-            outStr.Replace("\r", "");
+			outStr.Replace("\r", "");
 
 #if CLI
 			Console.Write(outStr);
 #else
-            mOutputPanel.Write(outStr);
+			mOutputPanel.Write(outStr);
 #endif
-        }
+		}
 
 		public void CompilerLog(String format, params Object[] args)
 		{
@@ -8067,17 +8062,17 @@ namespace IDE
 				mBfResolveSystem.Log(str);
 		}
 
-        public virtual void OutputLine(String format, params Object[] args)
-        {
-            String outStr;
-            if (args.Count > 0)
+		public virtual void OutputLine(String format, params Object[] args)
+		{
+			String outStr;
+			if (args.Count > 0)
 			{
 				outStr = scope:: String();
-                outStr.AppendF(format, params args);
+				outStr.AppendF(format, params args);
 			}
 			else
 				outStr = scope:: String(format);
-            outStr.Replace("\r", "");			
+			outStr.Replace("\r", "");
 
 			if (mRunningTestScript)
 				Console.WriteLine(outStr);
@@ -8085,10 +8080,10 @@ namespace IDE
 #if CLI
 			Console.WriteLine(outStr);
 #else
-            outStr.Append("\n");
-            mOutputPanel.Write(outStr);
+			outStr.Append("\n");
+			mOutputPanel.Write(outStr);
 #endif
-        }
+		}
 
 		public virtual void OutputErrorLine(String format, params Object[] args)
 		{
@@ -8115,15 +8110,15 @@ namespace IDE
 
 		public virtual void OutputLineSmart(String format, params Object[] args)
 		{
-		    String outStr;
-		    if (args.Count > 0)
+			String outStr;
+			if (args.Count > 0)
 			{
 				outStr = scope:: String();
-		        outStr.AppendF(format, params args);
+				outStr.AppendF(format, params args);
 			}
 			else
 				outStr = scope:: String(format);
-		    outStr.Replace("\r", "");
+			outStr.Replace("\r", "");
 #if CLI
 			if (outStr.StartsWith("ERROR:"))
 				mFailed = true;
@@ -8131,12 +8126,12 @@ namespace IDE
 #else
 			outStr.Append("\n");
 			if (mOutputPanel != null)
-		    	mOutputPanel.WriteSmart(outStr);
+				mOutputPanel.WriteSmart(outStr);
 #endif
 		}
 
-        public virtual void OutputFormatted(String str, bool isDbgEvalOutput = false)
-        {
+		public virtual void OutputFormatted(String str, bool isDbgEvalOutput = false)
+		{
 #if CLI
 			Console.Write(str);
 			return;
@@ -8145,52 +8140,52 @@ namespace IDE
 #unwarn
 			String useStr = str;
 
-            while (true)
-            {
-                if (mDebugger.GetRunState() != .NotStarted)
-                {
-                    int locPos = useStr.IndexOf("^loc:");
-                    if (locPos != -1)
-                    {
-                        String addrSB = scope String();
-                        int i = locPos + 5;
-                        for (; i < useStr.Length; i++)
-                        {
-                            char8 c = useStr[i];
-                            if ((c == 'x') || ((c >= '0') && (c <= '9')) || ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')))
-                            {
-                                addrSB.Append(c);
-                            }
-                            else if (c == '\'')
-                            {
+			while (true)
+			{
+				if (mDebugger.GetRunState() != .NotStarted)
+				{
+					int locPos = useStr.IndexOf("^loc:");
+					if (locPos != -1)
+					{
+						String addrSB = scope String();
+						int i = locPos + 5;
+						for (; i < useStr.Length; i++)
+						{
+							char8 c = useStr[i];
+							if ((c == 'x') || ((c >= '0') && (c <= '9')) || ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')))
+							{
+								addrSB.Append(c);
+							}
+							else if (c == '\'')
+							{
 								// Allow
-                            }
-                            else
-                                break;
-                        }
+							}
+							else
+								break;
+						}
 
-                        int64 memoryAddress = int64.Parse(addrSB, .HexNumber);
-                        String srcLocation = scope String();
-                        mDebugger.GetAddressSourceLocation((int)memoryAddress, srcLocation);
+						int64 memoryAddress = int64.Parse(addrSB, .HexNumber);
+						String srcLocation = scope String();
+						mDebugger.GetAddressSourceLocation((int)memoryAddress, srcLocation);
 
 						var newStr = scope:: String();
-                        newStr.Append(useStr, 0, locPos);
-                        newStr.Append(srcLocation);
-                        newStr.Append(useStr, i);
+						newStr.Append(useStr, 0, locPos);
+						newStr.Append(srcLocation);
+						newStr.Append(useStr, i);
 						useStr = newStr;
 
-                        continue;
-                    }
-                }
+						continue;
+					}
+				}
 
-                break;
-            }
+				break;
+			}
 
 			if ((isDbgEvalOutput) && (mIsImmediateDebugExprEval))
 				mImmediatePanel.WriteResult(useStr);
 
-            OutputSmart(useStr);
-        }
+			OutputSmart(useStr);
+		}
 
 		public void PhysSetScale(float scale, bool force = false)
 		{
@@ -8204,37 +8199,37 @@ namespace IDE
 
 			for (int32 windowIdx = 0; windowIdx < mWindows.Count; windowIdx++)
 			{
-			    var window = mWindows[windowIdx];
-			    var widgetWindow = window as WidgetWindow;
-			    if (widgetWindow != null)
-			    {
+				var window = mWindows[windowIdx];
+				var widgetWindow = window as WidgetWindow;
+				if (widgetWindow != null)
+				{
 					widgetWindow.mRootWidget.RehupScale(prevScale, DarkTheme.sScale);
 
-			        var darkDockingFrame = widgetWindow.mRootWidget as DarkDockingFrame;
-			        if (widgetWindow == mMainWindow)
-			            darkDockingFrame = mDockingFrame;
+					var darkDockingFrame = widgetWindow.mRootWidget as DarkDockingFrame;
+					if (widgetWindow == mMainWindow)
+						darkDockingFrame = mDockingFrame;
 
-			        if (darkDockingFrame != null)
-			        {
-			            darkDockingFrame.WithAllDockedWidgets(scope (dockedWidget) =>
-			                {
-			                    var tabbedView = dockedWidget as DarkTabbedView;
-			                    if (tabbedView != null)
-			                    {
+					if (darkDockingFrame != null)
+					{
+						darkDockingFrame.WithAllDockedWidgets(scope (dockedWidget) =>
+							{
+								var tabbedView = dockedWidget as DarkTabbedView;
+								if (tabbedView != null)
+								{
 									tabbedView.WithTabs(scope (tab) =>
 										{
 											var panel = tab.mContent as Panel;
 											if ((panel != null) && (panel.mWidgetWindow == null))
 											{
 												panel.RehupScale(prevScale, DarkTheme.sScale);
-											}    
+											}
 										});
-								}    
-			                });
-			        }
+								}
+							});
+					}
 
 					widgetWindow.mRootWidget.RehupSize();
-			    }
+				}
 				widgetWindow.mIsDirty = true;
 			}
 		}
@@ -8253,8 +8248,8 @@ namespace IDE
 				NavigateForwards();
 		}
 
-        void SysKeyDown(KeyDownEvent evt)
-        {
+		void SysKeyDown(KeyDownEvent evt)
+		{
 			if (evt.mKeyCode != .Alt)
 			{
 				NOP!();
@@ -8262,14 +8257,16 @@ namespace IDE
 
 			if (!evt.mKeyFlags.HeldKeys.HasFlag(.Alt))
 			{
+#if BF_PLATFORM_WINDOWS
 				mConsolePanel.SysKeyDown(evt);
 				mTerminalPanel.SysKeyDown(evt);
+#endif
 			}
 
 			if (evt.mHandled)
 				return;
 
-            var window = (WidgetWindow)evt.mSender;                     
+			var window = (WidgetWindow)evt.mSender;
 
 			if (window.mFocusWidget is KeysEditWidget)
 			{
@@ -8305,7 +8302,7 @@ namespace IDE
 						return;
 				}
 			}
-			
+
 			if ((mKeyChordState != null) && (evt.mKeyCode.IsModifier))
 			{
 				// Ignore
@@ -8362,7 +8359,7 @@ namespace IDE
 									matches |= useFlags.HasFlag(.MainWindow);
 								if (checkCommand.mContextFlags.HasFlag(.WorkWindow))
 									matches |= useFlags.HasFlag(.WorkWindow);
-	
+
 								if (matches)
 								{
 									checkCommand.mAction();
@@ -8371,7 +8368,7 @@ namespace IDE
 								checkCommand = checkCommand.mNext;
 							}
 						}
-	
+
 						if (!foundMatch)
 						{
 							var checkCommand = command;
@@ -8385,7 +8382,7 @@ namespace IDE
 								checkCommand = checkCommand.mNext;
 							}
 						}
-	
+
 						if (foundMatch)
 						{
 							evt.mHandled = true;
@@ -8405,53 +8402,55 @@ namespace IDE
 				}
 			}
 
-            SourceViewPanel sourceViewPanel = null;
-            Widget focusWidget = window.mFocusWidget;
-            
-            if (focusWidget is EditWidget)
-                focusWidget = focusWidget.mParent;
-            if (focusWidget is SourceViewPanel)                
-                sourceViewPanel = (SourceViewPanel)focusWidget;
-			//if (focusWidget is DisassemblyPanel)
-				//break;            
+			SourceViewPanel sourceViewPanel = null;
+			Widget focusWidget = window.mFocusWidget;
 
-            if (evt.mKeyFlags.HeldKeys == 0) // No ctrl/shift/alt
-            {
-                switch (evt.mKeyCode)
-                {
-                case KeyCode.F2:
-                    if (sourceViewPanel != null)
-                    {
-                        mBookmarkManager.NextBookmark();
-                    }
-                    else if (focusWidget is ProjectPanel)
-                    {
-                        var projectPanel = (ProjectPanel)focusWidget;
-                        projectPanel.TryRenameItem();
-                    }
-                    break;
-                default:
+			if (focusWidget is EditWidget)
+				focusWidget = focusWidget.mParent;
+			if (focusWidget is SourceViewPanel)
+				sourceViewPanel = (SourceViewPanel)focusWidget;
+			//if (focusWidget is DisassemblyPanel)
+				//break;
+
+			if (evt.mKeyFlags.HeldKeys == 0) // No ctrl/shift/alt
+			{
+				switch (evt.mKeyCode)
+				{
+				case KeyCode.F2:
+					if (sourceViewPanel != null)
+					{
+						mBookmarkManager.NextBookmark();
+					}
+					else if (focusWidget is ProjectPanel)
+					{
+						var projectPanel = (ProjectPanel)focusWidget;
+						projectPanel.TryRenameItem();
+					}
+					break;
+				default:
 					//OutputLine("Unknown key: {0}", (int)evt.mKeycode);
-                    break;
-                }
-            }
-        }
+					break;
+				}
+			}
+		}
 
 		void SysKeyUp(KeyCode keyCode)
 		{
+#if BF_PLATFORM_WINDOWS
 			mConsolePanel.SysKeyUp(keyCode);
 			mTerminalPanel.SysKeyUp(keyCode);
+#endif
 		}
-    
-        void ShowOpenFileInSolutionDialog()
-        {
-            var widgetWindow = GetCurrentWindow();
-            if (widgetWindow != null)
-            {
-                var openFileInSolutionDialog = new OpenFileInSolutionDialog();
-                openFileInSolutionDialog.PopupWindow(mMainWindow);
-            }
-        }
+
+		void ShowOpenFileInSolutionDialog()
+		{
+			var widgetWindow = GetCurrentWindow();
+			if (widgetWindow != null)
+			{
+				var openFileInSolutionDialog = new OpenFileInSolutionDialog();
+				openFileInSolutionDialog.PopupWindow(mMainWindow);
+			}
+		}
 
 		void ChangeCase(bool toUpper)
 		{
@@ -8503,21 +8502,21 @@ namespace IDE
 			return false;
 		}
 
-        public static bool IsBeefFile(String fileName)
-        {
+		public static bool IsBeefFile(String fileName)
+		{
 			if (fileName.StartsWith('$'))
 				return true;
-            return fileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".bf", StringComparison.OrdinalIgnoreCase);
-        }
+			return fileName.EndsWith(".cs", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".bf", StringComparison.OrdinalIgnoreCase);
+		}
 
-        public static bool IsClangSourceFile(String fileName)
-        {
+		public static bool IsClangSourceFile(String fileName)
+		{
 #if IDE_C_SUPPORT
-            return fileName.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".c", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".cc", StringComparison.OrdinalIgnoreCase);
+			return fileName.EndsWith(".cpp", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".c", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".cc", StringComparison.OrdinalIgnoreCase);
 #else
 			return false;
-#endif			
-        }
+#endif
+		}
 
 		public static bool IsSourceCode(String fileName)
 		{
@@ -8529,13 +8528,13 @@ namespace IDE
 				fileName.EndsWith(".hpp", StringComparison.OrdinalIgnoreCase);
 		}
 
-        public static bool IsClangSourceHeader(String fileName)
-        {
-            return fileName.EndsWith(".h", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".hpp", StringComparison.OrdinalIgnoreCase);
-        }
+		public static bool IsClangSourceHeader(String fileName)
+		{
+			return fileName.EndsWith(".h", StringComparison.OrdinalIgnoreCase) || fileName.EndsWith(".hpp", StringComparison.OrdinalIgnoreCase);
+		}
 
-        public void GetBeefPreprocessorMacros(DefinesSet macroList)
-        {
+		public void GetBeefPreprocessorMacros(DefinesSet macroList)
+		{
 			var workspaceOptions = GetCurWorkspaceOptions();
 			var targetTriple = scope String();
 
@@ -8571,10 +8570,10 @@ namespace IDE
 				macroList.Add(def);
 			}
 
-            if (workspaceOptions.mRuntimeChecks)
-                macroList.Add("BF_RUNTIME_CHECKS");
-            if (workspaceOptions.mEnableObjectDebugFlags)
-                macroList.Add("BF_ENABLE_OBJECT_DEBUG_FLAGS");
+			if (workspaceOptions.mRuntimeChecks)
+				macroList.Add("BF_RUNTIME_CHECKS");
+			if (workspaceOptions.mEnableObjectDebugFlags)
+				macroList.Add("BF_ENABLE_OBJECT_DEBUG_FLAGS");
 			if (workspaceOptions.mAllowHotSwapping)
 				macroList.Add("BF_ALLOW_HOT_SWAPPING");
 
@@ -8597,10 +8596,10 @@ namespace IDE
 
 			// Only supported on Windows at the moment
 			bool hasLeakCheck = false;
-            if (workspaceOptions.LeakCheckingEnabled)
+			if (workspaceOptions.LeakCheckingEnabled)
 			{
 				hasLeakCheck = true;
-                macroList.Add("BF_ENABLE_REALTIME_LEAK_CHECK");
+				macroList.Add("BF_ENABLE_REALTIME_LEAK_CHECK");
 			}
 
 			if ((workspaceOptions.mAllocType == .Debug) || (hasLeakCheck))
@@ -8620,53 +8619,53 @@ namespace IDE
 				macroList.Add("BF_32_BIT");
 
 			//if (workspaceOptions.mE)
-			macroList.Add("BF_HAS_VDATA_EXTENDER");			
-        }
+			macroList.Add("BF_HAS_VDATA_EXTENDER");
+		}
 
-        public void GetClangResolveArgs(Project project, List<String> outResolveArgs)
-        {            
-            using (project.mMonitor.Enter())
-            {
+		public void GetClangResolveArgs(Project project, List<String> outResolveArgs)
+		{
+			using (project.mMonitor.Enter())
+			{
 				//List<string> argsList = new List<string>();
-                var options = GetCurProjectOptions(project);
+				var options = GetCurProjectOptions(project);
 
-                if (options == null)
-                    return;
+				if (options == null)
+					return;
 
-                outResolveArgs.Add(new String("-std=c++11"));
+				outResolveArgs.Add(new String("-std=c++11"));
 
-                if (options.mCOptions.mEnableBeefInterop)
-                {
-					var beefPreprocMacros = scope DefinesSet();
-                    GetBeefPreprocessorMacros(beefPreprocMacros);
-                    for (var beefPreprocMacro in beefPreprocMacros.mDefines)
-					{
-                        outResolveArgs.Add(new String("-D", beefPreprocMacro));
-					}
-                }
-
-                for (var preprocMacro in options.mCOptions.mPreprocessorMacros)
-                    outResolveArgs.Add(new String("-D", preprocMacro));
-                for (var includePath in options.mCOptions.mIncludePaths)
+				if (options.mCOptions.mEnableBeefInterop)
 				{
-                    //outResolveArgs.Add(new String("-I", includePath));
+					var beefPreprocMacros = scope DefinesSet();
+					GetBeefPreprocessorMacros(beefPreprocMacros);
+					for (var beefPreprocMacro in beefPreprocMacros.mDefines)
+					{
+						outResolveArgs.Add(new String("-D", beefPreprocMacro));
+					}
+				}
+
+				for (var preprocMacro in options.mCOptions.mPreprocessorMacros)
+					outResolveArgs.Add(new String("-D", preprocMacro));
+				for (var includePath in options.mCOptions.mIncludePaths)
+				{
+					//outResolveArgs.Add(new String("-I", includePath));
 					var fullIncludePath = scope String();
-					project.GetProjectFullPath(includePath, fullIncludePath);					
+					project.GetProjectFullPath(includePath, fullIncludePath);
 					outResolveArgs.Add(new String("-I", fullIncludePath));
 				}
 
-                String llvmDir = scope String(IDEApp.sApp.mInstallDir);
-                IDEUtils.FixFilePath(llvmDir);
-                llvmDir.Append("llvm/");
-                outResolveArgs.Add(new String("-I", llvmDir, "lib/gcc/i686-w64-mingw32/5.2.0/include"));
-                outResolveArgs.Add(new String("-I", llvmDir, "lib/gcc/i686-w64-mingw32/5.2.0/include-fixed"));
-                outResolveArgs.Add(new String("-I", llvmDir, "i686-w64-mingw32/include"));
-                outResolveArgs.Add(new String("-I", llvmDir, "i686-w64-mingw32/include/c++"));
-                outResolveArgs.Add(new String("-I", llvmDir, "i686-w64-mingw32/include/c++/i686-w64-mingw32"));
-                outResolveArgs.Add(new String("-I", llvmDir, "i686-w64-mingw32/include/c++/backward"));
-                outResolveArgs.Add(new String("-I", llvmDir, "bin/../lib/clang/3.7.0/include"));
-                
-                outResolveArgs.Add(new String("-I", llvmDir, "i686-w64-mingw32/include"));
+				String llvmDir = scope String(IDEApp.sApp.mInstallDir);
+				IDEUtils.FixFilePath(llvmDir);
+				llvmDir.Append("llvm/");
+				outResolveArgs.Add(new String("-I", llvmDir, "lib/gcc/i686-w64-mingw32/5.2.0/include"));
+				outResolveArgs.Add(new String("-I", llvmDir, "lib/gcc/i686-w64-mingw32/5.2.0/include-fixed"));
+				outResolveArgs.Add(new String("-I", llvmDir, "i686-w64-mingw32/include"));
+				outResolveArgs.Add(new String("-I", llvmDir, "i686-w64-mingw32/include/c++"));
+				outResolveArgs.Add(new String("-I", llvmDir, "i686-w64-mingw32/include/c++/i686-w64-mingw32"));
+				outResolveArgs.Add(new String("-I", llvmDir, "i686-w64-mingw32/include/c++/backward"));
+				outResolveArgs.Add(new String("-I", llvmDir, "bin/../lib/clang/3.7.0/include"));
+
+				outResolveArgs.Add(new String("-I", llvmDir, "i686-w64-mingw32/include"));
 
 				outResolveArgs.Add(new String("-cc1"));
 				outResolveArgs.Add(new String("-std=c++11"));
@@ -8678,52 +8677,52 @@ namespace IDE
 				outResolveArgs.Add(new String("x86-64"));
 				outResolveArgs.Add(new String("-target-feature"));
 				outResolveArgs.Add(new String("+sse2"));*/
-            }
-        }
+			}
+		}
 
-        public CompilerBase GetProjectCompilerForFile(String fileName)
-        {            
-            if (IsBeefFile(fileName))
-                return mBfResolveCompiler;
+		public CompilerBase GetProjectCompilerForFile(String fileName)
+		{
+			if (IsBeefFile(fileName))
+				return mBfResolveCompiler;
 #if IDE_C_SUPPORT
-            if (IsClangSourceFile(fileName))
-                return mDepClang;
+			if (IsClangSourceFile(fileName))
+				return mDepClang;
 #endif
-            return null;
-        }
+			return null;
+		}
 
-        public CompilerBase GetResolveCompilerForFile(String fileName)
-        {            
-            if (IsBeefFile(fileName))
-                return mBfResolveCompiler;
+		public CompilerBase GetResolveCompilerForFile(String fileName)
+		{
+			if (IsBeefFile(fileName))
+				return mBfResolveCompiler;
 #if IDE_C_SUPPORT
-            if (IsClangSourceFile(fileName))
-                return mResolveClang;
+			if (IsClangSourceFile(fileName))
+				return mResolveClang;
 #endif
-            return null;
-        }
+			return null;
+		}
 
-        public void GetClangFiles(ProjectFolder projectFolder, List<ProjectSource> clangFiles)
-        {            
-            for (var item in projectFolder.mChildItems)
-            {
-                if (item is ProjectSource)
-                {
-                    var projectSource = (ProjectSource)item;
+		public void GetClangFiles(ProjectFolder projectFolder, List<ProjectSource> clangFiles)
+		{
+			for (var item in projectFolder.mChildItems)
+			{
+				if (item is ProjectSource)
+				{
+					var projectSource = (ProjectSource)item;
 
-                    if (!IsClangSourceFile(projectSource.mPath))
-                        continue;
+					if (!IsClangSourceFile(projectSource.mPath))
+						continue;
 
-                    clangFiles.Add(projectSource);                    
-                }
+					clangFiles.Add(projectSource);
+				}
 
-                if (item is ProjectFolder)
-                {
-                    var innerProjectFolder = (ProjectFolder)item;
-                    GetClangFiles(innerProjectFolder, clangFiles);
-                }
-            }            
-        }
+				if (item is ProjectFolder)
+				{
+					var innerProjectFolder = (ProjectFolder)item;
+					GetClangFiles(innerProjectFolder, clangFiles);
+				}
+			}
+		}
 
 		/*void StopExecutionInstance()
 		{
@@ -8741,34 +8740,34 @@ namespace IDE
 
 		const int cArgFileThreshold = 0x2000 - 1;
 
-        public ExecutionQueueCmd QueueRun(String fileName, String args, String workingDir, ArgsFileKind argsFileKind = .None)
-        {            
-            var executionQueueCmd = new ExecutionQueueCmd();
-            executionQueueCmd.mFileName = new String(fileName);
-            executionQueueCmd.mArgs = new String(args);
-            executionQueueCmd.mWorkingDir = new String(workingDir);
+		public ExecutionQueueCmd QueueRun(String fileName, String args, String workingDir, ArgsFileKind argsFileKind = .None)
+		{
+			var executionQueueCmd = new ExecutionQueueCmd();
+			executionQueueCmd.mFileName = new String(fileName);
+			executionQueueCmd.mArgs = new String(args);
+			executionQueueCmd.mWorkingDir = new String(workingDir);
 			if (fileName.Length + args.Length + 1 > cArgFileThreshold)
 			{
 				// Only use UTF16 if we absolutely need to
 				if ((argsFileKind == .UTF16WithBom) && (!args.HasMultibyteChars()))
 					executionQueueCmd.mUseArgsFile = .UTF8;
 				else
-                	executionQueueCmd.mUseArgsFile = argsFileKind;
+					executionQueueCmd.mUseArgsFile = argsFileKind;
 			}
-            mExecutionQueue.Add(executionQueueCmd);
-            return executionQueueCmd;
-        }
+			mExecutionQueue.Add(executionQueueCmd);
+			return executionQueueCmd;
+		}
 
-        void GotExecutionOutputLine(ExecutionInstance executionInstance, String str)
-        {
-            if (!String.IsNullOrEmpty(str))
-            {                
-                using (mMonitor.Enter())
-                {
-                    executionInstance.mDeferredOutput.Add(new String(str));
-                }
-            }
-        }
+		void GotExecutionOutputLine(ExecutionInstance executionInstance, String str)
+		{
+			if (!String.IsNullOrEmpty(str))
+			{
+				using (mMonitor.Enter())
+				{
+					executionInstance.mDeferredOutput.Add(new String(str));
+				}
+			}
+		}
 
 		static void WriteInputThread(Object obj)
 		{
@@ -8777,8 +8776,8 @@ namespace IDE
 			FileStream fileStream = scope FileStream();
 			if (executionInstance.mProcess.AttachStandardInput(fileStream) case .Err)
 				return;
-			
-			WriteLoop: while (!executionInstance.mStdInData.IsEmpty)
+
+			WriteLoop:while (!executionInstance.mStdInData.IsEmpty)
 			{
 				switch (fileStream.TryWrite(.((.)executionInstance.mStdInData.Ptr, executionInstance.mStdInData.Length)))
 				{
@@ -8805,9 +8804,9 @@ namespace IDE
 				count++;
 				var buffer = scope String();
 				if (streamReader.ReadLine(buffer) case .Err)
-					break;				
-				using (IDEApp.sApp.mMonitor.Enter())				
-				    executionInstance.mDeferredOutput.Add(new String(buffer));				
+					break;
+				using (IDEApp.sApp.mMonitor.Enter())
+					executionInstance.mDeferredOutput.Add(new String(buffer));
 			}
 		}
 
@@ -8824,10 +8823,10 @@ namespace IDE
 			{
 				var buffer = scope String();
 				if (streamReader.ReadLine(buffer) case .Err)
-					break;				
+					break;
 
-				using (IDEApp.sApp.mMonitor.Enter())				
-				    executionInstance.mDeferredOutput.Add(new String(buffer));				
+				using (IDEApp.sApp.mMonitor.Enter())
+					executionInstance.mDeferredOutput.Add(new String(buffer));
 			}
 		}
 
@@ -8836,7 +8835,7 @@ namespace IDE
 			FileStream fileStream = (.)obj;
 
 			int count = 0;
-			Loop: while (true)
+			Loop:while (true)
 			{
 				uint8[4096] data = ?;
 				switch (fileStream.TryRead(data, -1))
@@ -8857,7 +8856,7 @@ namespace IDE
 				if (streamReader.Read(buffer) case .Err)
 					break;				
 				using (mDebugOutputMonitor.Enter())				
-				    mDebugOutput.Add(new String(buffer));*/
+					mDebugOutput.Add(new String(buffer));*/
 
 				count++;
 			}
@@ -8881,7 +8880,7 @@ namespace IDE
 					break;				
 
 				using (IDEApp.sApp.mMonitor.Enter())				
-				    executionInstance.mDeferredOutput.Add(new String(buffer));				
+					executionInstance.mDeferredOutput.Add(new String(buffer));				
 			}
 		}*/
 
@@ -8894,29 +8893,29 @@ namespace IDE
 			NoWait = 8,
 		}
 
-        public ExecutionInstance DoRun(String inFileName, String args, String workingDir, ArgsFileKind useArgsFile, Dictionary<String, String> envVars = null, String stdInData = null, RunFlags runFlags = .None, String reference = null)
-        {
+		public ExecutionInstance DoRun(String inFileName, String args, String workingDir, ArgsFileKind useArgsFile, Dictionary<String, String> envVars = null, String stdInData = null, RunFlags runFlags = .None, String reference = null)
+		{
 			//Debug.Assert(executionInstance == null);
 
 			String fileName = scope String(inFileName ?? "");
 			QuoteIfNeeded(fileName);
 
-            ProcessStartInfo startInfo = scope ProcessStartInfo();
-            startInfo.UseShellExecute = false;
+			ProcessStartInfo startInfo = scope ProcessStartInfo();
+			startInfo.UseShellExecute = false;
 			if (!fileName.IsEmpty)
-            	startInfo.SetFileName(fileName);
-            startInfo.SetWorkingDirectory(workingDir);
-            startInfo.SetArguments(args);
+				startInfo.SetFileName(fileName);
+			startInfo.SetWorkingDirectory(workingDir);
+			startInfo.SetArguments(args);
 
 			if ((!runFlags.HasFlag(.NoRedirect)) && (!runFlags.HasFlag(.NoWait)))
 			{
-	            startInfo.RedirectStandardOutput = true;
-	            startInfo.RedirectStandardError = true;
+				startInfo.RedirectStandardOutput = true;
+				startInfo.RedirectStandardError = true;
 				startInfo.RedirectStandardInput = true;
-	            startInfo.CreateNoWindow = true;
+				startInfo.CreateNoWindow = true;
 			}
 
-			
+
 			var executionInstance = new ExecutionInstance();
 
 #if BF_PLATFORM_WINDOWS
@@ -8964,25 +8963,25 @@ namespace IDE
 					startInfo.AddEnvironmentVariable(envKV.key, envKV.value);
 			}
 
-            if (useArgsFile != .None)
-            {
-                String tempFileName = scope String();
-                Path.GetTempFileName(tempFileName);
+			if (useArgsFile != .None)
+			{
+				String tempFileName = scope String();
+				Path.GetTempFileName(tempFileName);
 
 				Encoding encoding = Encoding.UTF8;
 				if (useArgsFile == .UTF16WithBom)
 					encoding = Encoding.UTF16WithBOM;
 
-                var result = File.WriteAllText(tempFileName, args, encoding);
+				var result = File.WriteAllText(tempFileName, args, encoding);
 				if (result case .Err)
 					OutputLine("Failed to create temporary param file");
-                String arguments = scope String();
+				String arguments = scope String();
 				arguments.Concat("@", tempFileName);
 				startInfo.SetArguments(arguments);
 
 				delete executionInstance.mTempFileName;
-                executionInstance.mTempFileName = new String(tempFileName);
-            }
+				executionInstance.mTempFileName = new String(tempFileName);
+			}
 
 			if (mVerbosity >= .Detailed)
 			{
@@ -8994,27 +8993,27 @@ namespace IDE
 				}
 
 				if (!startInfo.[Friend]mFileName.IsEmpty)
-                {
+				{
 					if (reference != null)
-                		OutputLine($"Executing ({reference}): {startInfo.[Friend]mFileName} {showArgs}");
+						OutputLine($"Executing ({reference}): {startInfo.[Friend]mFileName} {showArgs}");
 					else
 						OutputLine($"Executing: {startInfo.[Friend]mFileName} {showArgs}");
 
-                	if ((mVerbosity >= .Diagnostic) && (useArgsFile != .None))
-                		OutputLine("Arg file contents: {0}", args);
+					if ((mVerbosity >= .Diagnostic) && (useArgsFile != .None))
+						OutputLine("Arg file contents: {0}", args);
 					if ((mVerbosity >= .Diagnostic) && (stdInData != null))
 						OutputLine("StdIn data: {0}", stdInData);
-                }
+				}
 				else
 					OutputLine("Executing: {0}", showArgs);
 			}
 
 			//if (useArgsFile)
-            {
-                //if (mVerbosity >= .Detailed)
-                    //OutputLine(" Args: {0}", args);
-            }
-            
+			{
+				//if (mVerbosity >= .Detailed)
+					//OutputLine(" Args: {0}", args);
+			}
+
 			/*var processResult = Process.Start(startInfo);
 			if (case .Err = processResult)
 			{
@@ -9022,7 +9021,7 @@ namespace IDE
 				return executionInstance;
 			}*/
 
-            SpawnedProcess process = new SpawnedProcess();
+			SpawnedProcess process = new SpawnedProcess();
 			if (process.Start(startInfo) case .Err)
 			{
 				OutputErrorLine("Failed to execute \"{0}\"", inFileName);
@@ -9039,8 +9038,8 @@ namespace IDE
 			}
 
 			mExecutionInstances.Add(executionInstance);
-            executionInstance.mStopwatch.Start();
-            executionInstance.mProcess = process;
+			executionInstance.mStopwatch.Start();
+			executionInstance.mProcess = process;
 
 			executionInstance.mOutputThread = new Thread(new => ReadOutputThread);
 			executionInstance.mOutputThread.Start(executionInstance, false);
@@ -9055,22 +9054,19 @@ namespace IDE
 				executionInstance.mInputThread.Start(executionInstance, false);
 			}
 
-            return executionInstance;
-        }
+			return executionInstance;
+		}
 
 		protected virtual void BeefCompileStarted()
 		{
-
 		}
 
 		protected virtual void BeefCompileDone()
 		{
-
 		}
 
 		protected virtual void CompileDone(bool succeeded)
 		{
-
 		}
 
 		BuildCompletedCmd GetBuildCompletedCmd()
@@ -9083,22 +9079,22 @@ namespace IDE
 			return null;
 		}
 
-        void UpdateExecution()
-        {
-            if (mExecutionInstances.Count > 0)
-            {
-                var executionInstance = mExecutionInstances[0];
-                bool failed = false;
+		void UpdateExecution()
+		{
+			if (mExecutionInstances.Count > 0)
+			{
+				var executionInstance = mExecutionInstances[0];
+				bool failed = false;
 				bool isDone = false;
 
 				using (mMonitor.Enter())
 				{
-				    for (var str in executionInstance.mDeferredOutput)
+					for (var str in executionInstance.mDeferredOutput)
 					{
-				        OutputLine(str);
+						OutputLine(str);
 						delete str;
 					}
-				    executionInstance.mDeferredOutput.Clear();
+					executionInstance.mDeferredOutput.Clear();
 				}
 
 				if (executionInstance.mProcess == null)
@@ -9108,8 +9104,8 @@ namespace IDE
 					failed = true;
 					executionInstance.mExitCode = -1;
 				}
-                else if (executionInstance.mProcess.HasExited)
-                {
+				else if (executionInstance.mProcess.HasExited)
+				{
 					isDone = true;
 
 					if (executionInstance.mOutputThread != null)
@@ -9127,22 +9123,22 @@ namespace IDE
 					if (isDone)
 					{
 						executionInstance.mExitCode = executionInstance.mProcess.ExitCode;
-	                    if (executionInstance.mProcess.ExitCode != 0)
-	                        failed = true;                                            
-	                    executionInstance.mProcess.WaitFor(-1);
-	                    executionInstance.mProcess.Close();
+						if (executionInstance.mProcess.ExitCode != 0)
+							failed = true;
+						executionInstance.mProcess.WaitFor(-1);
+						executionInstance.mProcess.Close();
 
-	                    executionInstance.mStopwatch.Stop();
+						executionInstance.mStopwatch.Stop();
 						if (executionInstance.mIsTargetRun)
 						{
 							mTargetExitCode = executionInstance.mExitCode;
 						}
 						else
 						{
-		                    if (executionInstance.mParallelGroup == -1)
-		                    {
+							if (executionInstance.mParallelGroup == -1)
+							{
 								if (mVerbosity >= .Detailed)
-		                        	OutputLine("Execution time: {0:0.00}s", executionInstance.mStopwatch.ElapsedMilliseconds / 1000.0f);
+									OutputLine("Execution time: {0:0.00}s", executionInstance.mStopwatch.ElapsedMilliseconds / 1000.0f);
 							}
 
 							if (executionInstance.mCanceled)
@@ -9151,22 +9147,22 @@ namespace IDE
 								OutputLine("Execution Failed");
 						}
 
-	                    if (executionInstance.mTempFileName != null)
-	                    {
-	                        File.Delete(executionInstance.mTempFileName).IgnoreError();
-	                    }
+						if (executionInstance.mTempFileName != null)
+						{
+							File.Delete(executionInstance.mTempFileName).IgnoreError();
+						}
 					}
-                }
+				}
 
-                if (failed)
-                {
-                    if (mExecutionQueue.Count > 0)
-                    {
-                        var buildCompletedCmd = GetBuildCompletedCmd();
-                        if (buildCompletedCmd != null)
-                            buildCompletedCmd.mFailed = true;
-                    }
-                }
+				if (failed)
+				{
+					if (mExecutionQueue.Count > 0)
+					{
+						var buildCompletedCmd = GetBuildCompletedCmd();
+						if (buildCompletedCmd != null)
+							buildCompletedCmd.mFailed = true;
+					}
+				}
 
 				if (isDone)
 				{
@@ -9185,7 +9181,7 @@ namespace IDE
 				{                    
 					OutputLine("Compilation finished.");
 				}*/
-            }
+			}
 
 			bool buildFailed = false;
 			if ((mBuildContext != null) && (mBuildContext.Failed))
@@ -9194,37 +9190,37 @@ namespace IDE
 			if ((buildCompleteCmd != null) && (buildCompleteCmd.mFailed))
 				buildFailed = true;
 
-            bool canExecuteNext = false;
-            int32 parallelExecutionCount = 16;
-            if ((mExecutionQueue.Count > 0) && (mExecutionInstances.Count < parallelExecutionCount))
-            {
-                var executionQueueCmd = mExecutionQueue[0] as ExecutionQueueCmd;
-                if (executionQueueCmd != null)
-                {
-                    if (mExecutionInstances.Count > 0)
-                    {
-                        var executionInstance = mExecutionInstances[0];
-                        if ((executionQueueCmd.mParallelGroup != -1) &&
-                            (executionQueueCmd.mParallelGroup == executionInstance.mParallelGroup))
-                            canExecuteNext = true;
-                    }
-                    else
-                        canExecuteNext = true;
-                }
-                else if (mExecutionInstances.Count == 0)
-                    canExecuteNext = true;
-            }
+			bool canExecuteNext = false;
+			int32 parallelExecutionCount = 16;
+			if ((mExecutionQueue.Count > 0) && (mExecutionInstances.Count < parallelExecutionCount))
+			{
+				var executionQueueCmd = mExecutionQueue[0] as ExecutionQueueCmd;
+				if (executionQueueCmd != null)
+				{
+					if (mExecutionInstances.Count > 0)
+					{
+						var executionInstance = mExecutionInstances[0];
+						if ((executionQueueCmd.mParallelGroup != -1) &&
+							(executionQueueCmd.mParallelGroup == executionInstance.mParallelGroup))
+							canExecuteNext = true;
+					}
+					else
+						canExecuteNext = true;
+				}
+				else if (mExecutionInstances.Count == 0)
+					canExecuteNext = true;
+			}
 
-            if (canExecuteNext)
-            {
-                var next = mExecutionQueue[0];
+			if (canExecuteNext)
+			{
+				var next = mExecutionQueue[0];
 
 				bool waitForBuildClang = false;
 #if IDE_C_SUPPORT
 				waitForBuildClang = (mDepClang.mCompileWaitsForQueueEmpty) && (mDepClang.HasQueuedCommands());
 #endif
-                if ((next is ProcessBfCompileCmd) && (mBfBuildCompiler.HasQueuedCommands() || (waitForBuildClang)))
-                    return;
+				if ((next is ProcessBfCompileCmd) && (mBfBuildCompiler.HasQueuedCommands() || (waitForBuildClang)))
+					return;
 
 				/*if (next is BuildCompletedCmd)
 				{
@@ -9255,9 +9251,9 @@ namespace IDE
 					}
 				}
 
+#if BF_PLATFORM_WINDOWS
 				if (let startDebugCmd = next as StartDebugCmd)
 				{
-#if BF_PLATFORM_WINDOWS
 					if ((mSettings.mDebugConsoleKind == .Native) && (mSettings.mKeepNativeConsoleOpen))
 					{
 						if (!startDebugCmd.mConnectedToConsole)
@@ -9319,25 +9315,24 @@ namespace IDE
 							}
 						}
 					}
+				}
 #endif
+				defer delete next;
+				mExecutionQueue.RemoveAt(0);
+
+				bool ignoreCommand = false;
+				if (next.mOnlyIfNotFailed)
+				{
+					if (mExecutionQueue.Count > 0)
+					{
+						var buildCompletedCmd = GetBuildCompletedCmd();
+						if ((buildCompletedCmd != null) && (buildCompletedCmd.mFailed))
+							ignoreCommand = true;
+					}
 				}
 
-				defer delete next;
-                mExecutionQueue.RemoveAt(0);
-
-                bool ignoreCommand = false;
-                if (next.mOnlyIfNotFailed)
-                {
-                    if (mExecutionQueue.Count > 0)
-                    {
-                        var buildCompletedCmd = GetBuildCompletedCmd();
-                        if ((buildCompletedCmd != null) && (buildCompletedCmd.mFailed))
-                            ignoreCommand = true;
-                    }
-                }
-
-                if (ignoreCommand)
-                {
+				if (ignoreCommand)
+				{
 					// Nothing
 					if (let targetCompletedCmd = next as TargetCompletedCmd)
 					{
@@ -9346,35 +9341,35 @@ namespace IDE
 						gApp.mBfBuildCompiler.SetBuildValue(projectBuildDir, "Link", "FAILED");
 						gApp.mBfBuildCompiler.WriteBuildCache(projectBuildDir);
 					}
-                }
-                else if (next is ProcessBfCompileCmd)
-                {
-                    var processCompileCmd = (ProcessBfCompileCmd)next;
+				}
+				else if (next is ProcessBfCompileCmd)
+				{
+					var processCompileCmd = (ProcessBfCompileCmd)next;
 
 					mCompilingBeef = false;
 					BeefCompileDone();
 
 					//processCompileCmd.mStopwatch.Stop();
 					if ((processCompileCmd.mHadBeef) && (mVerbosity >= .Normal))
-                    	OutputLine("Beef compilation time: {0:0.00}s", processCompileCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
+						OutputLine("Beef compilation time: {0:0.00}s", processCompileCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
 
 					var compileInstance = mWorkspace.mCompileInstanceList.Back;
 					compileInstance.mCompileResult = .Failure;
-                    if (processCompileCmd.mBfPassInstance.mCompileSucceeded)
-                    {
+					if (processCompileCmd.mBfPassInstance.mCompileSucceeded)
+					{
 						//foreach (var sourceViewPanel in GetSourceViewPanels())
-                        WithSourceViewPanels(scope (sourceViewPanel) =>
-                            {
-                                sourceViewPanel.mHasChangedSinceLastCompile = false;
-                            });
-                        compileInstance.mCompileResult = .Success;
-                    }
+						WithSourceViewPanels(scope (sourceViewPanel) =>
+							{
+								sourceViewPanel.mHasChangedSinceLastCompile = false;
+							});
+						compileInstance.mCompileResult = .Success;
+					}
 					else
 					{
 						compileInstance.mCompileResult = .Failure;
 					}
 
-                    ProcessBeefCompileResults(processCompileCmd.mBfPassInstance, processCompileCmd.mCompileKind, processCompileCmd.mHotProject, processCompileCmd.mStopwatch);
+					ProcessBeefCompileResults(processCompileCmd.mBfPassInstance, processCompileCmd.mCompileKind, processCompileCmd.mHotProject, processCompileCmd.mStopwatch);
 					if (mHotResolveState != .None)
 					{
 						if (compileInstance.mCompileResult == .Success)
@@ -9389,27 +9384,27 @@ namespace IDE
 
 					delete processCompileCmd.mStopwatch;
 					processCompileCmd.mStopwatch = null;
-                }
-                else if (next is TargetCompletedCmd)
-                {
+				}
+				else if (next is TargetCompletedCmd)
+				{
 					if (!buildFailed)
 					{
-	                    var targetCompletedCmd = (TargetCompletedCmd)next;
-	                    targetCompletedCmd.mProject.mNeedsTargetRebuild = false;
+						var targetCompletedCmd = (TargetCompletedCmd)next;
+						targetCompletedCmd.mProject.mNeedsTargetRebuild = false;
 						targetCompletedCmd.mProject.mForceCustomCommands = false;
 					}
-                }
-                else if (next is StartDebugCmd)
-                {
+				}
+				else if (next is StartDebugCmd)
+				{
 					if (!buildFailed)
 					{
 						var startDebugCmd = (StartDebugCmd)next;
-	                    if (StartupProject(true, startDebugCmd.mWasCompiled))
-	                    {
-	                        OutputLine("Debugger started");
-	                    }
-	                    else
-	                        OutputLine("Failed to start debugger");
+						if (StartupProject(true, startDebugCmd.mWasCompiled))
+						{
+							OutputLine("Debugger started");
+						}
+						else
+							OutputLine("Failed to start debugger");
 
 /*#if BF_PLATFORM_WINDOWS
 						if ((mSettings.mDebugConsoleKind == .Native) && (mSettings.mKeepNativeConsoleOpen))
@@ -9422,12 +9417,12 @@ namespace IDE
 							pipe.Stream.Write((int32)mDebugger.GetProcessId());
 							pipe.EndMessage();
 						}
-#endif*/
+					#endif*/
 					}
-                }
-                else if (next is ExecutionQueueCmd)
-                {
-                    var executionQueueCmd = (ExecutionQueueCmd)next;
+				}
+				else if (next is ExecutionQueueCmd)
+				{
+					var executionQueueCmd = (ExecutionQueueCmd)next;
 
 					ReplaceVariables(executionQueueCmd.mFileName);
 					ReplaceVariables(executionQueueCmd.mArgs);
@@ -9438,43 +9433,43 @@ namespace IDE
 							ReplaceVariables(kv.value);
 					}
 
-                    var executionInstance = DoRun(executionQueueCmd.mFileName, executionQueueCmd.mArgs, executionQueueCmd.mWorkingDir, executionQueueCmd.mUseArgsFile,
+					var executionInstance = DoRun(executionQueueCmd.mFileName, executionQueueCmd.mArgs, executionQueueCmd.mWorkingDir, executionQueueCmd.mUseArgsFile,
 						executionQueueCmd.mEnvVars, executionQueueCmd.mStdInData, executionQueueCmd.mRunFlags, executionQueueCmd.mReference);
 					if (executionInstance != null)
 					{
-	                    executionInstance.mParallelGroup = executionQueueCmd.mParallelGroup;
+						executionInstance.mParallelGroup = executionQueueCmd.mParallelGroup;
 						executionInstance.mIsTargetRun = executionQueueCmd.mIsTargetRun;
 					}
-                }
-                else if (next is BuildCompletedCmd)
-                {
-                    var buildCompletedCmd = (BuildCompletedCmd)next;
+				}
+				else if (next is BuildCompletedCmd)
+				{
+					var buildCompletedCmd = (BuildCompletedCmd)next;
 #if IDE_C_SUPPORT
-                    mWorkspace.WithProjectItems(scope (projectItem) =>
-                        {
-                            var projectSource = projectItem as ProjectSource;
-                            if (projectItem != null)
-                            {
+					mWorkspace.WithProjectItems(scope (projectItem) =>
+						{
+							var projectSource = projectItem as ProjectSource;
+							if (projectItem != null)
+							{
 								String fullPath = scope String();
 								projectSource.GetFullImportPath(fullPath);
-                                if (completedCompileCmd.mClangCompiledFiles.Contains(fullPath))
-                                {
-                                    mDepClang.QueueCheckDependencies(projectSource, ClangCompiler.DepCheckerType.Clang);
-                                }
-                            }                            
-                        });
-                    if (!completedCompileCmd.mFailed)
-                        mDepClang.mDoDependencyCheck = false;
+								if (completedCompileCmd.mClangCompiledFiles.Contains(fullPath))
+								{
+									mDepClang.QueueCheckDependencies(projectSource, ClangCompiler.DepCheckerType.Clang);
+								}
+							}                            
+						});
+					if (!completedCompileCmd.mFailed)
+						mDepClang.mDoDependencyCheck = false;
 #endif
 					if (buildFailed)
 						buildCompletedCmd.mFailed = true;
-					
+
 					CompileResult(buildCompletedCmd.mHotProjectName, !buildCompletedCmd.mFailed);
 
-                    if (buildCompletedCmd.mFailed)
-                        OutputLineSmart("ERROR: BUILD FAILED");
+					if (buildCompletedCmd.mFailed)
+						OutputLineSmart("ERROR: BUILD FAILED");
 					if ((mVerbosity >= .Detailed) && (buildCompletedCmd.mStopwatch != null))
-                    	OutputLine("Total build time: {0:0.00}s", buildCompletedCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
+						OutputLine("Total build time: {0:0.00}s", buildCompletedCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
 
 					if (mDebugger?.mIsComptimeDebug == true)
 						DebuggerComptimeStop();
@@ -9488,7 +9483,7 @@ namespace IDE
 						else
 							mTestManager.Start();
 					}
-                }
+				}
 				else if (var profileCmd = next as ProfileCmd)
 				{
 					if (gApp.mDebugger.mIsRunning)
@@ -9523,52 +9518,52 @@ namespace IDE
 							delete filePath;
 						});
 				}
-                else
-                {
-                    Runtime.FatalError("Unknown command");
-                }
-            }
-        }
+				else
+				{
+					Runtime.FatalError("Unknown command");
+				}
+			}
+		}
 
-        public bool ParseSourceFile(BfSystem bfSystem, BfPassInstance passInstance, ProjectSource projectSource)
-        {
-            bool worked = true;
+		public bool ParseSourceFile(BfSystem bfSystem, BfPassInstance passInstance, ProjectSource projectSource)
+		{
+			bool worked = true;
 
-            if (!IsBeefFile(projectSource.mPath))
-                return true;
+			if (!IsBeefFile(projectSource.mPath))
+				return true;
 
 			var fullPath = scope String();
 			projectSource.GetFullImportPath(fullPath);
-            String data = scope String();
-            LoadTextFile(fullPath, data);
-            if (data == null)
-            {
-                OutputErrorLine("FAILED TO LOAD FILE: {0}", fullPath);
-                return true;
-            }
+			String data = scope String();
+			LoadTextFile(fullPath, data);
+			if (data == null)
+			{
+				OutputErrorLine("FAILED TO LOAD FILE: {0}", fullPath);
+				return true;
+			}
 
-            mFileWatcher.FileIsValid(fullPath);
+			mFileWatcher.FileIsValid(fullPath);
 
-            var bfParser = bfSystem.CreateParser(projectSource);
-            bfParser.SetSource(data, fullPath, -1);
-            worked &= bfParser.Parse(passInstance, false);
-            worked &= bfParser.Reduce(passInstance);
-            worked &= bfParser.BuildDefs(passInstance, null, false);
-            return worked;
-        }
+			var bfParser = bfSystem.CreateParser(projectSource);
+			bfParser.SetSource(data, fullPath, -1);
+			worked &= bfParser.Parse(passInstance, false);
+			worked &= bfParser.Reduce(passInstance);
+			worked &= bfParser.BuildDefs(passInstance, null, false);
+			return worked;
+		}
 
-        public bool FindProjectSourceContent(ProjectSource projectSource, out IdSpan char8IdData, bool loadOnFail, String sourceContent, SourceHash* sourceHash)
-        {
-            char8IdData = IdSpan();
-            var fullPath = scope String();
+		public bool FindProjectSourceContent(ProjectSource projectSource, out IdSpan char8IdData, bool loadOnFail, String sourceContent, SourceHash* sourceHash)
+		{
+			char8IdData = IdSpan();
+			var fullPath = scope String();
 			projectSource.GetFullImportPath(fullPath);
-			
+
 			//SourceViewPanel sourceViewPanel = null;
-            
-            using (mMonitor.Enter())
-            {
-                if (projectSource.mEditData != null)
-                {
+
+			using (mMonitor.Enter())
+			{
+				if (projectSource.mEditData != null)
+				{
 					if (projectSource.mEditData.IsFileDeleted())
 					{
 						return false;
@@ -9577,10 +9572,10 @@ namespace IDE
 					{
 						var idData = ref projectSource.mEditData.mEditWidget.Content.mData.mTextIdData;
 						idData.Prepare();
-	                    if (!projectSource.mEditData.mSavedCharIdData.Equals(idData))
-	                    {
-	                        char8IdData = projectSource.mEditData.mEditWidget.mEditWidgetContent.mData.mTextIdData.Duplicate();
-	                        projectSource.mEditData.mEditWidget.GetText(sourceContent);
+						if (!projectSource.mEditData.mSavedCharIdData.Equals(idData))
+						{
+							char8IdData = projectSource.mEditData.mEditWidget.mEditWidgetContent.mData.mTextIdData.Duplicate();
+							projectSource.mEditData.mEditWidget.GetText(sourceContent);
 							if (sourceHash != null)
 							{
 								*sourceHash = SourceHash.Create(.MD5, sourceContent, projectSource.mEditData.mLineEndingKind);
@@ -9588,40 +9583,40 @@ namespace IDE
 									projectSource.mEditData.mMD5Hash = md5Hash;
 							}
 							return true;
-	                    }
+						}
 					}
 
 					if (projectSource.mEditData.mSavedContent != null)
 					{
-					    char8IdData = projectSource.mEditData.mSavedCharIdData.Duplicate();
-					    sourceContent.Set(projectSource.mEditData.mSavedContent);
+						char8IdData = projectSource.mEditData.mSavedCharIdData.Duplicate();
+						sourceContent.Set(projectSource.mEditData.mSavedContent);
 						if ((!projectSource.mEditData.mMD5Hash.IsZero) && (sourceHash != null))
 							*sourceHash = .MD5(projectSource.mEditData.mMD5Hash);
 						return true;
 					}
-                }
-            }
+				}
+			}
 
-            if (loadOnFail)
-            {
-                String text = scope String();
+			if (loadOnFail)
+			{
+				String text = scope String();
 				bool isValid = false;
-                if (LoadTextFile(fullPath, text, true, scope [?] () => { if (sourceHash != null) *sourceHash = SourceHash.Create(.MD5, text); } ) case .Ok)
+				if (LoadTextFile(fullPath, text, true, scope [?] () => { if (sourceHash != null) *sourceHash = SourceHash.Create(.MD5, text); }) case .Ok)
 				{
-                    mFileWatcher.FileIsValid(fullPath);
+					mFileWatcher.FileIsValid(fullPath);
 					isValid = true;
 				}
-				
-                char8IdData = IdSpan.GetDefault((int32)text.Length);
+
+				char8IdData = IdSpan.GetDefault((int32)text.Length);
 				var editData = GetEditData(projectSource, false);
 				using (mMonitor.Enter())
-                {
+				{
 					if (isValid)
 					{
 						editData.SetSavedData(text, char8IdData);
 						sourceContent.Set(text);
 					}
-                    else
+					else
 					{
 						editData.SetSavedData(null, IdSpan());
 						editData.mFileDeleted = true;
@@ -9634,90 +9629,90 @@ namespace IDE
 					editData.GetFileTime();
 				}
 				return isValid;
-            }
+			}
 
-            return false;
-        }
+			return false;
+		}
 
-        public void SetInDisassemblyView(bool inDisassemblyView)
-        {
+		public void SetInDisassemblyView(bool inDisassemblyView)
+		{
 			if (mShuttingDown)
 				return;
 
-            if (mInDisassemblyView != inDisassemblyView)
-            {
+			if (mInDisassemblyView != inDisassemblyView)
+			{
 				// We need to refresh auto watch panel so we can handle displaying registers when switching to disasm
-                mAutoWatchPanel.MarkWatchesDirty(false);
-                mInDisassemblyView = inDisassemblyView;
-            }            
-        }
+				mAutoWatchPanel.MarkWatchesDirty(false);
+				mInDisassemblyView = inDisassemblyView;
+			}
+		}
 
-        public bool ParseSourceFiles(BfSystem bfSystem, BfPassInstance passInstance, ProjectFolder projectFolder)
-        {
-            bool worked = true;
+		public bool ParseSourceFiles(BfSystem bfSystem, BfPassInstance passInstance, ProjectFolder projectFolder)
+		{
+			bool worked = true;
 
-            for (var item in projectFolder.mChildItems)
-            {
-                if (item is ProjectSource)
-                {
-                    var projectSource = (ProjectSource)item;                    
-                    worked &= ParseSourceFile(bfSystem, passInstance, projectSource);
-                }
+			for (var item in projectFolder.mChildItems)
+			{
+				if (item is ProjectSource)
+				{
+					var projectSource = (ProjectSource)item;
+					worked &= ParseSourceFile(bfSystem, passInstance, projectSource);
+				}
 
-                if (item is ProjectFolder)
-                {
-                    var innerProjectFolder = (ProjectFolder)item;
-                    worked &= ParseSourceFiles(bfSystem, passInstance, innerProjectFolder);
-                }
-            }
-            return worked;
-        }
+				if (item is ProjectFolder)
+				{
+					var innerProjectFolder = (ProjectFolder)item;
+					worked &= ParseSourceFiles(bfSystem, passInstance, innerProjectFolder);
+				}
+			}
+			return worked;
+		}
 
 		public bool HasPendingBeefFiles(bool forceQueue, ProjectFolder projectFolder)
 		{
-			bool hadBeef = false;       
-			  
+			bool hadBeef = false;
+
 			for (var item in projectFolder.mChildItems)
 			{
 				if (item.mIncludeKind == .Ignore)
 					continue;
 
-			    if (item is ProjectSource)
-			    {
-			        var projectSource = (ProjectSource)item;
-			        if (IsBeefFile(projectSource.mPath))
-			        {
+				if (item is ProjectSource)
+				{
+					var projectSource = (ProjectSource)item;
+					if (IsBeefFile(projectSource.mPath))
+					{
 						if ((projectSource.HasChangedSinceLastCompile) || (forceQueue))
 						{
 							hadBeef = true;
 						}
-			        }
-			    }
+					}
+				}
 
-			    if (item is ProjectFolder)
-			    {
-			        var innerProjectFolder = (ProjectFolder)item;
-			        hadBeef |= HasPendingBeefFiles(forceQueue, innerProjectFolder);
-			    }
+				if (item is ProjectFolder)
+				{
+					var innerProjectFolder = (ProjectFolder)item;
+					hadBeef |= HasPendingBeefFiles(forceQueue, innerProjectFolder);
+				}
 			}
 
 			return hadBeef;
 		}
 
-        public bool QueueParseBeefFiles(BfCompiler bfCompiler, bool forceQueue, ProjectFolder projectFolder, Project hotProject)
-        {
-            bool hadBeef = false;       
-              
-            for (var item in projectFolder.mChildItems)
-            {
+		public bool QueueParseBeefFiles(BfCompiler bfCompiler, bool forceQueue, ProjectFolder projectFolder, Project hotProject)
+		{
+			bool hadBeef = false;
+
+			for (var item in projectFolder.mChildItems)
+			{
 				if (item.mIncludeKind == .Ignore)
 					continue;
 
-                if (item is ProjectSource)
-                {
-                    var projectSource = (ProjectSource)item;
-                    if (IsBeefFile(projectSource.mPath))
-                    {
+				if (item is ProjectSource)
+				{
+					var projectSource = (ProjectSource)item;
+					if (IsBeefFile(projectSource.mPath))
+					{
 						// if it's the resolve compiler then we take this as an indication that we need to recompile this file
 						//  later on when a build is requested, most likely because the project or workspace configuration has
 						//  changed (such as preprocessor or other setting changes)
@@ -9736,7 +9731,7 @@ namespace IDE
 							bool wantsHashRefresh = false;
 							if ((hotProject == null) && (projectSource.mWasBuiltWithOldHash))
 								wantsHashRefresh = true;
-								
+
 							if ((projectSource.HasChangedSinceLastCompile) || (projectSource.mLoadFailed) || (forceQueue) || (wantsHashRefresh))
 							{
 								// mHasChangedSinceLastCompile is safe to set 'false' here since it just determines whether or not
@@ -9756,73 +9751,73 @@ namespace IDE
 									}
 								}
 
-		                        bfCompiler.QueueProjectSource(projectSource, sourceHash, !bfCompiler.mIsResolveOnly);
+								bfCompiler.QueueProjectSource(projectSource, sourceHash, !bfCompiler.mIsResolveOnly);
 								hadBeef = true;
 							}
 						}
-                    }
-                }
+					}
+				}
 
-                if (item is ProjectFolder)
-                {
-                    var innerProjectFolder = (ProjectFolder)item;
-                    hadBeef |= QueueParseBeefFiles(bfCompiler, forceQueue, innerProjectFolder, hotProject);
-                }
-            }
+				if (item is ProjectFolder)
+				{
+					var innerProjectFolder = (ProjectFolder)item;
+					hadBeef |= QueueParseBeefFiles(bfCompiler, forceQueue, innerProjectFolder, hotProject);
+				}
+			}
 
-            return hadBeef;
-        }
+			return hadBeef;
+		}
 
 #if IDE_C_SUPPORT
-        public void QueueParseClangFiles(ClangCompiler clangCompiler, ProjectFolder projectFolder)
-        {
-            for (var item in projectFolder.mChildItems)
-            {
-                if (item is ProjectSource)
-                {
-                    var projectSource = (ProjectSource)item;
-                    if (IsClangSourceFile(projectSource.mPath))
-                        clangCompiler.QueueProjectSource(projectSource);
-                }
+		public void QueueParseClangFiles(ClangCompiler clangCompiler, ProjectFolder projectFolder)
+		{
+			for (var item in projectFolder.mChildItems)
+			{
+				if (item is ProjectSource)
+				{
+					var projectSource = (ProjectSource)item;
+					if (IsClangSourceFile(projectSource.mPath))
+						clangCompiler.QueueProjectSource(projectSource);
+				}
 
-                if (item is ProjectFolder)
-                {
-                    var innerProjectFolder = (ProjectFolder)item;
-                    QueueParseClangFiles(clangCompiler, innerProjectFolder);
-                }
-            }
-        }
+				if (item is ProjectFolder)
+				{
+					var innerProjectFolder = (ProjectFolder)item;
+					QueueParseClangFiles(clangCompiler, innerProjectFolder);
+				}
+			}
+		}
 #endif
 
-        public Workspace.Options GetCurWorkspaceOptions()
-        {            
-            return mWorkspace.GetOptions(mConfigName, mPlatformName);
-        }
+		public Workspace.Options GetCurWorkspaceOptions()
+		{
+			return mWorkspace.GetOptions(mConfigName, mPlatformName);
+		}
 
 		public Workspace.ConfigSelection GetCurConfigSelection(Project project)
 		{
 			var workspaceOptions = mWorkspace.GetOptions(mConfigName, mPlatformName);
 			if (workspaceOptions == null)
-			    return null;
+				return null;
 
 			Workspace.ConfigSelection configSelection;
 			workspaceOptions.mConfigSelections.TryGetValue(project, out configSelection);
 			if ((configSelection == null) || (!configSelection.mEnabled))
-			    return null;
+				return null;
 
 			return configSelection;
 		}
 
-        public Project.Options GetCurProjectOptions(Project project)
-        {
+		public Project.Options GetCurProjectOptions(Project project)
+		{
 			if (project.mFailed)
 				return null;
-            
-            Workspace.ConfigSelection configSelection = GetCurConfigSelection(project);
-            if (configSelection == null)
-                return null;
-            return project.GetOptions(configSelection.mConfig, configSelection.mPlatform);
-        }
+
+			Workspace.ConfigSelection configSelection = GetCurConfigSelection(project);
+			if (configSelection == null)
+				return null;
+			return project.GetOptions(configSelection.mConfig, configSelection.mPlatform);
+		}
 
 		public bool IsProjectEnabled(Project project)
 		{
@@ -9859,24 +9854,24 @@ namespace IDE
 		//  Can only be changed from the Resolve BfCompiler thread, and Build settings 
 		//  are only changed before background compilation begins.  We also call this 
 		//  during WorkspaceLoad, but the resolve threads aren't processing then.
-        public bool SetupBeefProjectSettings(BfSystem bfSystem, BfCompiler bfCompiler, Project project)
-        {
-            bool success = true;
-            var bfProject = bfSystem.GetBfProject(project);
-            Project.Options options = GetCurProjectOptions(project);
-            Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
-            if (options == null)
-            {
+		public bool SetupBeefProjectSettings(BfSystem bfSystem, BfCompiler bfCompiler, Project project)
+		{
+			bool success = true;
+			var bfProject = bfSystem.GetBfProject(project);
+			Project.Options options = GetCurProjectOptions(project);
+			Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
+			if (options == null)
+			{
 				//Fail(StackStringFormat!("Failed to retrieve options for {0}", project.mProjectName));
-                bfProject.SetDisabled(true);
-                return false;
-            }
+				bfProject.SetDisabled(true);
+				return false;
+			}
 
-            bfProject.SetDisabled(false);
+			bfProject.SetDisabled(false);
 
 			let platform = Workspace.PlatformType.GetFromName(mPlatformName, workspaceOptions.mTargetTriple);
 
-            var preprocessorMacros = scope DefinesSet();
+			var preprocessorMacros = scope DefinesSet();
 			void AddMacros(List<String> macros)
 			{
 				for (var macro in macros)
@@ -9890,17 +9885,17 @@ namespace IDE
 			AddMacros(mWorkspace.mBeefGlobalOptions.mPreprocessorMacros);
 			AddMacros(workspaceOptions.mPreprocessorMacros);
 			GetBeefPreprocessorMacros(preprocessorMacros);
-            
+
 			var optimizationLevel = workspaceOptions.mBfOptimizationLevel;
-            if (options.mBeefOptions.mOptimizationLevel != null)
-                optimizationLevel = options.mBeefOptions.mOptimizationLevel.Value;
+			if (options.mBeefOptions.mOptimizationLevel != null)
+				optimizationLevel = options.mBeefOptions.mOptimizationLevel.Value;
 
 			bool isWin64 = true;
 			if (!workspaceOptions.mTargetTriple.IsWhiteSpace)
 				isWin64 = workspaceOptions.mTargetTriple.StartsWith("x86_64-pc-windows");
 			else
 				isWin64 = mPlatformName == "Win64";
-				
+
 			if ((optimizationLevel == .OgPlus) && (!isWin64) && (bfCompiler == mBfBuildCompiler))
 			{
 				OutputLineSmart("WARNING: Project '{0}' has Og+ specified, which is only supported for Win64 targets.", project.mProjectName);
@@ -9915,7 +9910,7 @@ namespace IDE
 				if (options.mBeefOptions.mLTOType != null)
 					ltoType = options.mBeefOptions.mLTOType.Value;
 			}
-			
+
 			var targetType = project.mGeneralOptions.mTargetType;
 
 			if (bfSystem != mBfResolveSystem)
@@ -9969,22 +9964,22 @@ namespace IDE
 					relocType = .PIC;
 			}
 
-            bfProject.SetOptions(targetType,
-                project.mBeefGlobalOptions.mStartupObject,
-                preprocessorMacros.mDefines,
-                optimizationLevel, ltoType, relocType, options.mBeefOptions.mPICLevel,
+			bfProject.SetOptions(targetType,
+				project.mBeefGlobalOptions.mStartupObject,
+				preprocessorMacros.mDefines,
+				optimizationLevel, ltoType, relocType, options.mBeefOptions.mPICLevel,
 				options.mBeefOptions.mMergeFunctions, options.mBeefOptions.mCombineLoads,
-                options.mBeefOptions.mVectorizeLoops, options.mBeefOptions.mVectorizeSLP);
+				options.mBeefOptions.mVectorizeLoops, options.mBeefOptions.mVectorizeSLP);
 
-            List<Project> depProjectList = scope List<Project>();
-            if (!GetDependentProjectList(project, depProjectList))
-                success = false;
-            bfProject.ClearDependencies();
-            for (var depProject in depProjectList)
-            {
-                if (bfSystem.mProjectMap.TryGetValue(depProject, var depBfProject))
-                	bfProject.AddDependency(depBfProject);
-            }
+			List<Project> depProjectList = scope List<Project>();
+			if (!GetDependentProjectList(project, depProjectList))
+				success = false;
+			bfProject.ClearDependencies();
+			for (var depProject in depProjectList)
+			{
+				if (bfSystem.mProjectMap.TryGetValue(depProject, var depBfProject))
+					bfProject.AddDependency(depBfProject);
+			}
 
 			if (!bfCompiler.mIsResolveOnly)
 			{
@@ -9994,11 +9989,11 @@ namespace IDE
 					bfSystem.AddTypeOptions(typeOption);
 			}
 
-            return success;
-        }
+			return success;
+		}
 
-        public void CurrentWorkspaceConfigChanged()
-        {
+		public void CurrentWorkspaceConfigChanged()
+		{
 #if IDE_C_SUPPORT
 			for (var val in mDepClang.mProjectBuildString.Values)
 				delete val;
@@ -10007,21 +10002,21 @@ namespace IDE
 
 			if (mBfResolveCompiler != null)
 			{
-	            mBfResolveCompiler.QueueSetWorkspaceOptions(null, 0);
-	            mBfResolveCompiler.QueueDeferredResolveAll();
+				mBfResolveCompiler.QueueSetWorkspaceOptions(null, 0);
+				mBfResolveCompiler.QueueDeferredResolveAll();
 			}
 
-            mWorkspace.FixOptions(mConfigName, mPlatformName); 
-            for (var project in mWorkspace.mProjects)
-            {               
-                ProjectOptionsChanged(project);
+			mWorkspace.FixOptions(mConfigName, mPlatformName);
+			for (var project in mWorkspace.mProjects)
+			{
+				ProjectOptionsChanged(project);
 #if IDE_C_SUPPORT
-                QueueParseClangFiles(mDepClang, project.mRootFolder);
+				QueueParseClangFiles(mDepClang, project.mRootFolder);
 #endif
-            }
+			}
 			mWorkspace.ClearProjectNameCache();
-            mProjectPanel.RehupProjects();
-        }
+			mProjectPanel.RehupProjects();
+		}
 
 		/*public string GetClangDepConfigName(Project project)
 		{
@@ -10034,14 +10029,14 @@ namespace IDE
 			return String.Format("{0:X16}", hash);
 		}*/
 
-        public void ProjectOptionsChanged(Project project, bool reparseFiles = true)
-        {
+		public void ProjectOptionsChanged(Project project, bool reparseFiles = true)
+		{
 			bool isEnabled = IsProjectEnabled(project);
 			mWorkspace.ClearProjectNameCache();
 
 			if (mBfResolveCompiler != null)
 			{
-			    mBfResolveCompiler.QueueSetupProjectSettings(project);
+				mBfResolveCompiler.QueueSetupProjectSettings(project);
 			}
 
 			if (isEnabled != project.mEnabled)
@@ -10063,16 +10058,16 @@ namespace IDE
 			}
 
 #if IDE_C_SUPPORT
-            mDepClang.mDoDependencyCheck = true;
+			mDepClang.mDoDependencyCheck = true;
 #endif
 			if (mBfResolveCompiler != null)
 			{
 				if (IsProjectEnabled(project))
 				{
-		            if (reparseFiles)
-		                QueueParseBeefFiles(mBfResolveCompiler, false, project.mRootFolder, null);
-		            mBfResolveCompiler.QueueDeferredResolveAll();
-		            mBfResolveCompiler.QueueRefreshViewCommand();
+					if (reparseFiles)
+						QueueParseBeefFiles(mBfResolveCompiler, false, project.mRootFolder, null);
+					mBfResolveCompiler.QueueDeferredResolveAll();
+					mBfResolveCompiler.QueueRefreshViewCommand();
 				}
 			}
 			else
@@ -10080,7 +10075,7 @@ namespace IDE
 				if (reparseFiles)
 					QueueParseBeefFiles(mBfResolveCompiler, false, project.mRootFolder, null);
 			}
-        }
+		}
 
 		public void RenameProject(Project project, String newName)
 		{
@@ -10112,35 +10107,35 @@ namespace IDE
 			mWorkspace.ClearProjectNameCache();
 		}
 
-        public void RemoveProject(Project project)
-        {
+		public void RemoveProject(Project project)
+		{
 			RemoveProjectItems(project);
 
 			project.mDeleted = true;
-            mWorkspace.SetChanged();
-            mWorkspace.mProjects.Remove(project);
+			mWorkspace.SetChanged();
+			mWorkspace.mProjects.Remove(project);
 #if IDE_C_SUPPORT
-            using (mDepClang.mMonitor.Enter())
-            {
-                mDepClang.mProjectBuildString.Remove(project);
-            }
+			using (mDepClang.mMonitor.Enter())
+			{
+				mDepClang.mProjectBuildString.Remove(project);
+			}
 #endif
 
-            if (mWorkspace.mStartupProject == project)
-                mWorkspace.mStartupProject = null;
+			if (mWorkspace.mStartupProject == project)
+				mWorkspace.mStartupProject = null;
 
-            mWorkspace.FixOptions();
-            CurrentWorkspaceConfigChanged();
+			mWorkspace.FixOptions();
+			CurrentWorkspaceConfigChanged();
 
 			var bfCompilers = scope List<BfCompiler>();
 			GetBfCompilers(bfCompilers);
-            for (var bfCompiler in bfCompilers)
-            {
-                var bfProject = bfCompiler.mBfSystem.GetBfProject(project);
-                bfProject.SetDisabled(true);
-                bfCompiler.mBfSystem.RemoveBfProject(project);
-                bfCompiler.QueueDeleteBfProject(bfProject);
-            }
+			for (var bfCompiler in bfCompilers)
+			{
+				var bfProject = bfCompiler.mBfSystem.GetBfProject(project);
+				bfProject.SetDisabled(true);
+				bfCompiler.mBfSystem.RemoveBfProject(project);
+				bfCompiler.QueueDeleteBfProject(bfProject);
+			}
 
 			for (var checkProject in mWorkspace.mProjects)
 			{
@@ -10180,24 +10175,24 @@ namespace IDE
 				window.Close(true);
 
 			IdleDeferDelete(project);
-        }
+		}
 
-        BfPassInstance CompileBeef(Project hotProject, int32 hotIdx, bool lastCompileHadMessages, out bool hadBeef)
-        {
+		BfPassInstance CompileBeef(Project hotProject, int32 hotIdx, bool lastCompileHadMessages, out bool hadBeef)
+		{
 			CompilerLog("IDEApp.CompileBeef");
 
 			hadBeef = false;
 			mCompilingBeef = true;
 			BeefCompileStarted();
 
-            bool success = true;
-            BfSystem bfSystem = mBfBuildSystem;
-            BfCompiler bfCompiler = mBfBuildCompiler;
-            BfPassInstance passInstance = bfSystem.CreatePassInstance();
-            bfCompiler.QueueSetPassInstance(passInstance);
+			bool success = true;
+			BfSystem bfSystem = mBfBuildSystem;
+			BfCompiler bfCompiler = mBfBuildCompiler;
+			BfPassInstance passInstance = bfSystem.CreatePassInstance();
+			bfCompiler.QueueSetPassInstance(passInstance);
 
-            bfCompiler.QueueSetWorkspaceOptions(hotProject, hotIdx);
-            
+			bfCompiler.QueueSetWorkspaceOptions(hotProject, hotIdx);
+
 			Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
 
 			bool tryQueueFiles = true;
@@ -10245,43 +10240,43 @@ namespace IDE
 			if (tryQueueFiles)
 			{
 				PreConfigureBeefSystem(bfSystem, bfCompiler);
-	            for (var project in mWorkspace.mProjects)
-	            {
-	                if (SetupBeefProjectSettings(bfSystem, bfCompiler, project))
-	                {
-	                    doCompile |= QueueParseBeefFiles(bfCompiler, !workspaceOptions.mIncrementalBuild, project.mRootFolder, hotProject);
-	                }
-	                else if (IsProjectEnabled(project))
-	                    success = false;
-	            }
+				for (var project in mWorkspace.mProjects)
+				{
+					if (SetupBeefProjectSettings(bfSystem, bfCompiler, project))
+					{
+						doCompile |= QueueParseBeefFiles(bfCompiler, !workspaceOptions.mIncrementalBuild, project.mRootFolder, hotProject);
+					}
+					else if (IsProjectEnabled(project))
+						success = false;
+				}
 			}
 
 			if (needsComptime)
 				doCompile = true;
 
-            if (!success)
+			if (!success)
 			{
 				bfCompiler.QueueDeletePassInstance(passInstance);
-                return null;
+				return null;
 			}
 
-            for (var project in mWorkspace.mProjects)
-            {
+			for (var project in mWorkspace.mProjects)
+			{
 				if (!project.mGeneralOptions.mTargetType.IsBeef)
 					continue;
 
 				hadBeef = true;
-                String projectBuildDir = scope String();
-                GetWorkspaceBuildDir(projectBuildDir);
-                projectBuildDir.Append("/", project.mProjectName);
-                Directory.CreateDirectory(projectBuildDir).IgnoreError();
-            }
+				String projectBuildDir = scope String();
+				GetWorkspaceBuildDir(projectBuildDir);
+				projectBuildDir.Append("/", project.mProjectName);
+				Directory.CreateDirectory(projectBuildDir).IgnoreError();
+			}
 
 			if (!hadBeef)
 				doCompile = false;
 
-            if (doCompile)
-            {
+			if (doCompile)
+			{
 				for (var project in mWorkspace.mProjects)
 				{
 					// Regenerate these
@@ -10291,28 +10286,28 @@ namespace IDE
 
 				var dir = scope String();
 				GetWorkspaceBuildDir(dir);
-                bfCompiler.QueueCompile(dir);
-            }
-            else
-            {
+				bfCompiler.QueueCompile(dir);
+			}
+			else
+			{
 				bfCompiler.ClearResults();
-                passInstance.mCompileSucceeded = true;
-            }
-            return passInstance;
-        }
+				passInstance.mCompileSucceeded = true;
+			}
+			return passInstance;
+		}
 
-        public bool DoResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String error, String result)
-        {
+		public bool DoResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String error, String result)
+		{
 			int startIdx = result.Length;
 			int i = startIdx;
 			result.Append(configString);
 
 			bool hadError = false;
 
-            for ( ; i < result.Length - 2; i++)
-            {
-                if ((result[i] == '$') && (result[i + 1] == '('))
-                {
+			for (; i < result.Length - 2; i++)
+			{
+				if ((result[i] == '$') && (result[i + 1] == '('))
+				{
 					int parenPos = -1;
 					int openCount = 1;
 					bool inString = false;
@@ -10345,319 +10340,318 @@ namespace IDE
 								{
 									parenPos = checkIdx;
 									break;
-								}	
+								}
 							}
 						}
 
 						prevC = c;
 					}
 
-                    if (parenPos != -1)
-					ReplaceBlock:
-					do
-                    {
-                        String replaceStr = scope String(result, i + 2, parenPos - i - 2);
-                        String newString = null;
-
-						if (replaceStr.Contains(' '))
+					if (parenPos != -1)
+						ReplaceBlock:
+							do
 						{
-							String cmd = scope .();
+							String replaceStr = scope String(result, i + 2, parenPos - i - 2);
+							String newString = null;
 
-							List<String> args = scope .();
-
-							for (let str in replaceStr.Split(' ', .RemoveEmptyEntries))
+							if (replaceStr.Contains(' '))
 							{
-								if (cmd.IsEmpty)
-									cmd.Set(str);
-								else
+								String cmd = scope .();
+
+								List<String> args = scope .();
+
+								for (let str in replaceStr.Split(' ', .RemoveEmptyEntries))
 								{
-									String arg = scope:ReplaceBlock .();
-									if (str.StartsWith("\""))
+									if (cmd.IsEmpty)
+										cmd.Set(str);
+									else
 									{
-										String unresolvedStr = scope .();
-										str.UnQuoteString(unresolvedStr);
-										if (!DoResolveConfigString(platformName, workspaceOptions, project, options, unresolvedStr, error, arg))
-											return false;
+										String arg = scope:ReplaceBlock .();
+										if (str.StartsWith("\""))
+										{
+											String unresolvedStr = scope .();
+											str.UnQuoteString(unresolvedStr);
+											if (!DoResolveConfigString(platformName, workspaceOptions, project, options, unresolvedStr, error, arg))
+												return false;
+										}
+										else
+											arg.Append(str);
+										args.Add(arg);
+									}
+								}
+
+								String cmdErr = null;
+
+								switch (cmd)
+								{
+								case "Slash":
+									if (args.Count == 1)
+									{
+										newString = scope:ReplaceBlock .();
+										args[0].Quote(newString);
 									}
 									else
-										arg.Append(str);
-									args.Add(arg);
+										cmdErr = "Invalid number of arguments";
+								case "Var":
+									break ReplaceBlock;
+								case "Arguments",
+									"BuildDir",
+									"LinkFlags",
+									"ProjectDir",
+									"ProjectName",
+									"TargetDir",
+									"TargetPath",
+									"WorkingDir":
+									var selProject = mWorkspace.FindProject(args[0]);
+									if (selProject != null)
+									{
+										Workspace.Options selWorkspaceOptions = gApp.GetCurWorkspaceOptions();
+										Project.Options selOptions = gApp.GetCurProjectOptions(selProject);
+										String selConfigString = scope $"$({cmd})";
+										replaceStr.Clear();
+										newString = scope:ReplaceBlock .();
+										DoResolveConfigString(platformName, selWorkspaceOptions, selProject, selOptions, selConfigString, error, newString);
+									}
+									else
+										cmdErr = "Unable to find project";
+								default:
+									cmdErr = "Invalid command";
+								}
+
+								if (newString == null)
+								{
+									if (error != null)
+									{
+										if (cmdErr != null)
+											error.Set(cmdErr);
+										else
+											error.Set(replaceStr);
+									}
+									hadError = true;
+									break ReplaceBlock;
 								}
 							}
 
-							String cmdErr = null;
-
-							switch (cmd)
+							if ((newString == null) && (project != null))
 							{
-							case "Slash":
-								if (args.Count == 1)
+								switch (replaceStr)
 								{
-									newString = scope:ReplaceBlock .();
-									args[0].Quote(newString);
+								case "ProjectName":
+									newString = project.mProjectName;
+									break;
 								}
-								else
-									cmdErr = "Invalid number of arguments";
-							case "Var":
-								break ReplaceBlock;
-							case "Arguments",
-								 "BuildDir",
-								 "LinkFlags",
-								 "ProjectDir",
-								 "ProjectName",
-								 "TargetDir",
-								 "TargetPath",
-								 "WorkingDir":
-								var selProject = mWorkspace.FindProject(args[0]);
-								if (selProject != null)
+							}
+
+							if ((newString == null) && (options != null))
+							{
+								switch (replaceStr)
 								{
-									Workspace.Options selWorkspaceOptions = gApp.GetCurWorkspaceOptions();
-									Project.Options selOptions = gApp.GetCurProjectOptions(selProject);
-									String selConfigString = scope $"$({cmd})";
-									replaceStr.Clear();
-									newString = scope:ReplaceBlock .();
-									DoResolveConfigString(platformName, selWorkspaceOptions, selProject, selOptions, selConfigString, error, newString);
+								case "Arguments":
+									if (mLaunchData?.mArgs != null)
+										newString = mLaunchData.mArgs;
+									else
+										newString = options.mDebugOptions.mCommandArguments;
+								case "WorkingDir":
+									if (mLaunchData?.mWorkingDir != null)
+										newString = mLaunchData.mWorkingDir;
+									else
+										newString = options.mDebugOptions.mWorkingDirectory;
+									IDEUtils.FixFilePath(newString);
+								case "TargetDir":
+									{
+										if (project.IsDebugSession)
+										{
+											let targetPath = scope:ReplaceBlock String();
+											DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, targetPath);
+											newString = scope:ReplaceBlock String();
+											Path.GetDirectoryPath(targetPath, newString);
+											break;
+										}
+
+										String targetDir = scope String();
+										DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetDirectory, error, targetDir);
+										newString = scope:ReplaceBlock String();
+										Path.GetAbsolutePath(targetDir, project.mProjectDir, newString);
+										IDEUtils.FixFilePath(newString);
+									}
+								case "TargetPath":
+									{
+										if (project.IsDebugSession)
+										{
+											newString = scope:ReplaceBlock String();
+											DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, newString);
+											break;
+										}
+
+										String targetDir = scope String();
+										DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetDirectory, error, targetDir);
+										newString = scope:ReplaceBlock String();
+										Path.GetAbsolutePath(targetDir, project.mProjectDir, newString);
+										Utils.GetDirWithSlash(newString);
+
+										if (!DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, newString))
+											return false;
+
+										let platformType = Workspace.PlatformType.GetFromName(platformName, workspaceOptions.mTargetTriple);
+
+										switch (platformType)
+										{
+										case .Windows:
+											if (options.mBuildOptions.mBuildKind == .DynamicLib)
+												newString.Append(".dll");
+											else if ((options.mBuildOptions.mBuildKind == .StaticLib) || (project.mGeneralOptions.mTargetType == .BeefLib))
+												newString.Append(".lib");
+											else if (project.mGeneralOptions.mTargetType != .CustomBuild)
+												newString.Append(".exe");
+										case .macOS:
+											if (options.mBuildOptions.mBuildKind == .DynamicLib)
+												newString.Append(".dylib");
+											else if (options.mBuildOptions.mBuildKind == .StaticLib)
+												newString.Append(".a");
+										case .Wasm:
+											if (!newString.Contains('.'))
+												newString.Append(".html");
+										default:
+											if (options.mBuildOptions.mBuildKind == .DynamicLib)
+												newString.Append(".so");
+											else if (options.mBuildOptions.mBuildKind == .StaticLib)
+												newString.Append(".a");
+										}
+									}
+									IDEUtils.FixFilePath(newString);
+								case "ProjectDir":
+									if (project.IsDebugSession)
+									{
+										newString = scope:ReplaceBlock String();
+										Path.GetDirectoryPath(project.mProjectPath, newString);
+									}
+									else
+										newString = project.mProjectDir;
+									IDEUtils.FixFilePath(newString);
+								case "BuildDir":
+									newString = scope:ReplaceBlock String();
+									GetProjectBuildDir(project, newString);
+									IDEUtils.FixFilePath(newString);
+									//Debug.WriteLine("BuildDir: {0}", newString);
+								case "LinkFlags":
+									newString = scope:ReplaceBlock String();
+
+									bool isBeefDynLib = (project.mGeneralOptions.mTargetType == .BeefLib) && (options.mBuildOptions.mBuildKind == .DynamicLib);
+
+									if ((project.mGeneralOptions.mTargetType == .BeefConsoleApplication) ||
+										(project.mGeneralOptions.mTargetType == .BeefGUIApplication) ||
+										(isBeefDynLib) ||
+										(options.mBuildOptions.mBuildKind == .Test))
+									{
+										let platformType = Workspace.PlatformType.GetFromName(platformName, workspaceOptions.mTargetTriple);
+										String rtName = scope String();
+										String dbgName = scope String();
+										String allocName = scope String();
+										BuildContext.GetRtLibNames(platformType, workspaceOptions, options, false, rtName, dbgName, allocName);
+
+										switch (platformType)
+										{
+										case .Windows:
+											newString.Append(rtName);
+											if (!dbgName.IsEmpty)
+												newString.Append(" ", dbgName);
+											if (!allocName.IsEmpty)
+												newString.Append(" ", allocName);
+										case .macOS:
+											newString.AppendF("./{} -Wl,-rpath -Wl,@executable_path", rtName);
+										case .iOS:
+										case .Linux:
+											newString.AppendF("./{} -lpthread -ldl -Wl,-rpath -Wl,$ORIGIN", rtName);
+										case .Wasm:
+											newString.Append("\"");
+											newString.Append(mInstallDir);
+											newString.Append("Beef", IDEApp.sRTVersionStr, "RT");
+											newString.Append((Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4) ? "32" : "64");
+											newString.Append("_wasm");
+											if (project.mWasmOptions.mEnableThreads)
+												newString.Append("_pthread");
+											newString.Append(".a\"");
+										default:
+										}
+									}
+								case "VSToolPath":
+									if (Workspace.PlatformType.GetPtrSizeByName(platformName) == 4)
+										newString = gApp.mSettings.mVSSettings.mBin32Path;
+									else
+										newString = gApp.mSettings.mVSSettings.mBin64Path;
+									IDEUtils.FixFilePath(newString);
+								case "VSToolPath_x86":
+									newString = gApp.mSettings.mVSSettings.mBin32Path;
+									IDEUtils.FixFilePath(newString);
+								case "VSToolPath_x64":
+									newString = gApp.mSettings.mVSSettings.mBin64Path;
+									IDEUtils.FixFilePath(newString);
 								}
-								else
-									cmdErr = "Unable to find project";
-							default:
-								cmdErr = "Invalid command";
+							}
+
+							if ((newString == null) && (mScriptManager != null))
+							{
+								switch (replaceStr)
+								{
+								case "ScriptDir":
+									if ((mScriptManager != null) && (mScriptManager.mCurCmd != null))
+									{
+										newString = scope:ReplaceBlock String();
+										Path.GetDirectoryPath(mScriptManager.mCurCmd.mSrcFile, newString);
+									}
+								}
+							}
+
+							if (newString == null)
+							{
+								switch (replaceStr)
+								{
+								case "Configuration":
+									newString = mConfigName;
+								case "Platform":
+									newString = mPlatformName;
+								case "WorkspaceDir":
+									if (mWorkspace.mDir != null)
+										newString = mWorkspace.mDir;
+									else if (project.IsDebugSession)
+									{
+										newString = scope:ReplaceBlock String();
+										Path.GetDirectoryPath(project.mProjectPath, newString);
+									}
+								case "BeefPath":
+									newString = gApp.mInstallDir;
+								default:
+								}
 							}
 
 							if (newString == null)
 							{
 								if (error != null)
-								{
-									if (cmdErr != null)
-										error.Set(cmdErr);
-									else 
-										error.Set(replaceStr);
-								}
+									error.Set(replaceStr);
 								hadError = true;
-								break ReplaceBlock;
-							}
-						}
-
-						if ((newString == null) && (project != null))
-						{
-							switch (replaceStr)
-							{
-							case "ProjectName":
-								newString = project.mProjectName;
 								break;
 							}
-						}
 
-						if ((newString == null) && (options != null))
-						{
-							switch (replaceStr)
+							if (newString != null)
 							{
-							case "Arguments":
-								if (mLaunchData?.mArgs != null)
-									newString = mLaunchData.mArgs;
-								else
-									newString = options.mDebugOptions.mCommandArguments;
-							case "WorkingDir":
-								if (mLaunchData?.mWorkingDir != null)
-									newString = mLaunchData.mWorkingDir;
-								else
-									newString = options.mDebugOptions.mWorkingDirectory;
-								IDEUtils.FixFilePath(newString);
-							case "TargetDir":
-								{
-									if (project.IsDebugSession)
-									{
-										let targetPath = scope:ReplaceBlock String();
-										DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, targetPath);
-										newString = scope:ReplaceBlock String();
-										Path.GetDirectoryPath(targetPath, newString);
-										break;
-									}
-
-									String targetDir = scope String();
-									DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetDirectory, error, targetDir);
-									newString = scope:ReplaceBlock String();
-									Path.GetAbsolutePath(targetDir, project.mProjectDir, newString);
-									IDEUtils.FixFilePath(newString);
-								}
-							case "TargetPath":
-		                        {
-									if (project.IsDebugSession)
-									{
-										newString = scope:ReplaceBlock String();
-										DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, newString);
-										break;
-									}
-
-									String targetDir = scope String();
-									DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetDirectory, error, targetDir);
-									newString = scope:ReplaceBlock String();
-									Path.GetAbsolutePath(targetDir, project.mProjectDir, newString);
-									Utils.GetDirWithSlash(newString);
-									
-									if (!DoResolveConfigString(platformName, workspaceOptions, project, options, options.mBuildOptions.mTargetName, error, newString))
-										return false;
-
-									let platformType = Workspace.PlatformType.GetFromName(platformName, workspaceOptions.mTargetTriple);
-
-									switch (platformType)
-									{
-									case .Windows:
-										if (options.mBuildOptions.mBuildKind == .DynamicLib)
-											newString.Append(".dll");
-										else if ((options.mBuildOptions.mBuildKind == .StaticLib) || (project.mGeneralOptions.mTargetType == .BeefLib))
-											newString.Append(".lib");
-										else if (project.mGeneralOptions.mTargetType != .CustomBuild)
-										    newString.Append(".exe");
-									case .macOS:
-										if (options.mBuildOptions.mBuildKind == .DynamicLib)
-											newString.Append(".dylib");
-										else if (options.mBuildOptions.mBuildKind == .StaticLib)
-											newString.Append(".a");
-									case .Wasm:
-										if (!newString.Contains('.'))
-											newString.Append(".html");
-									default:
-										if (options.mBuildOptions.mBuildKind == .DynamicLib)
-											newString.Append(".so");
-										else if (options.mBuildOptions.mBuildKind == .StaticLib)
-											newString.Append(".a");
-									}
-		                        }
-								IDEUtils.FixFilePath(newString);
-		                    case "ProjectDir":
-								if (project.IsDebugSession)
-								{
-									newString = scope:ReplaceBlock String();
-									Path.GetDirectoryPath(project.mProjectPath, newString);
-								}
-								else
-		                        	newString = project.mProjectDir;
-								IDEUtils.FixFilePath(newString);
-		                    case "BuildDir":
-								newString = scope:ReplaceBlock String();
-		                        GetProjectBuildDir(project, newString);
-								IDEUtils.FixFilePath(newString);
-								//Debug.WriteLine("BuildDir: {0}", newString);
-							case "LinkFlags":
-								newString = scope:ReplaceBlock String();
-
-								bool isBeefDynLib = (project.mGeneralOptions.mTargetType == .BeefLib) && (options.mBuildOptions.mBuildKind == .DynamicLib);
-
-								if ((project.mGeneralOptions.mTargetType == .BeefConsoleApplication) ||
-									(project.mGeneralOptions.mTargetType == .BeefGUIApplication) ||
-									(isBeefDynLib) ||
-									(options.mBuildOptions.mBuildKind == .Test))
-								{
-									let platformType = Workspace.PlatformType.GetFromName(platformName, workspaceOptions.mTargetTriple);
-									String rtName = scope String();
-									String dbgName = scope String();
-									String allocName = scope String();
-									BuildContext.GetRtLibNames(platformType, workspaceOptions, options, false, rtName, dbgName, allocName);
-
-									switch (platformType)
-									{
-									case .Windows:
-										newString.Append(rtName);
-										if (!dbgName.IsEmpty)
-											newString.Append(" ", dbgName);
-										if (!allocName.IsEmpty)
-											newString.Append(" ", allocName);
-									case .macOS:
-										newString.AppendF("./{} -Wl,-rpath -Wl,@executable_path", rtName);
-									case .iOS:
-									case .Linux:
-										newString.AppendF("./{} -lpthread -ldl -Wl,-rpath -Wl,$ORIGIN", rtName);
-									case .Wasm:
-										newString.Append("\"");
-										newString.Append(mInstallDir);
-										newString.Append("Beef", IDEApp.sRTVersionStr, "RT");
-										newString.Append((Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4) ? "32" : "64");
-										newString.Append("_wasm");
-	  									if (project.mWasmOptions.mEnableThreads)
-	    										newString.Append("_pthread");
-	       									newString.Append(".a\"");
-									default:
-									}	
-
-								}
-							case "VSToolPath":
-								if (Workspace.PlatformType.GetPtrSizeByName(platformName) == 4)
-									newString = gApp.mSettings.mVSSettings.mBin32Path;
-								else
-									newString = gApp.mSettings.mVSSettings.mBin64Path;
-								IDEUtils.FixFilePath(newString);
-							case "VSToolPath_x86":
-								newString = gApp.mSettings.mVSSettings.mBin32Path;
-								IDEUtils.FixFilePath(newString);
-							case "VSToolPath_x64":
-								newString = gApp.mSettings.mVSSettings.mBin64Path;
-								IDEUtils.FixFilePath(newString);
+								result.Remove(i, parenPos - i + 1);
+								result.Insert(i, newString);
+								i--;
 							}
 						}
-
-						if ((newString == null) && (mScriptManager != null))
-						{
-							switch (replaceStr)
-							{
-							case "ScriptDir":
-								if ((mScriptManager != null) && (mScriptManager.mCurCmd != null))
-								{
-									newString = scope:ReplaceBlock String();
-									Path.GetDirectoryPath(mScriptManager.mCurCmd.mSrcFile, newString);
-								}
-							}
-						}
-
-						if (newString == null)
-						{
-	                        switch (replaceStr)
-	                        {
-	                        case "Configuration":
-	                            newString = mConfigName;
-	                        case "Platform":
-	                            newString = mPlatformName;
-	                        case "WorkspaceDir":
-								if (mWorkspace.mDir != null)
-	                            	newString = mWorkspace.mDir;
-								else if (project.IsDebugSession)
-								{
-									newString = scope:ReplaceBlock String();
-									Path.GetDirectoryPath(project.mProjectPath, newString);
-								}
-							case "BeefPath":
-								newString = gApp.mInstallDir;
-	                        default:
-	                        }
-						}
-
-						if (newString == null)
-						{
-							if (error != null)
-								error.Set(replaceStr);
-							hadError = true;
-							break;
-						}
-
-						if (newString != null)
-						{
-							result.Remove(i, parenPos - i + 1);
-							result.Insert(i, newString);
-							i--;
-						}
-                    }
-                }
-            }
+				}
+			}
 
 			return !hadError;
-        }
+		}
 
 		public void ReplaceVariables(String result)
 		{
 			int i = 0;
-			for ( ; i < result.Length - 2; i++)
+			for (; i < result.Length - 2; i++)
 			{
-			    if ((result[i] == '$') && (result[i + 1] == '('))
-			    {
+				if ((result[i] == '$') && (result[i + 1] == '('))
+				{
 					int parenPos = -1;
 					int openCount = 1;
 					bool inString = false;
@@ -10690,192 +10684,190 @@ namespace IDE
 								{
 									parenPos = checkIdx;
 									break;
-								}	
+								}
 							}
 						}
 
 						prevC = c;
 					}
 
-			        if (parenPos != -1)
-					ReplaceBlock:
-					do
-			        {
-			            String replaceStr = scope String(result, i + 2, parenPos - i - 2);
-
-						if (!replaceStr.StartsWith("Var "))
-							continue;
-
-						String varName = scope String(replaceStr, 4);
-						String newString = null;
-
-						if (mScriptManager.mContext.mVars.TryGetValue(varName, var value))
+					if (parenPos != -1)
+						ReplaceBlock:
+							do
 						{
-							if (value.VariantType == typeof(String))
-							{
-								newString = scope:ReplaceBlock String(value.Get<String>());
-							}
-						}
+							String replaceStr = scope String(result, i + 2, parenPos - i - 2);
 
-						if (newString == null)
-						{
-							if (mBuildContext != null)
+							if (!replaceStr.StartsWith("Var "))
+								continue;
+
+							String varName = scope String(replaceStr, 4);
+							String newString = null;
+
+							if (mScriptManager.mContext.mVars.TryGetValue(varName, var value))
 							{
-								if (mBuildContext.mScriptContext.mVars.TryGetValue(varName, out value))
+								if (value.VariantType == typeof(String))
 								{
-									if (value.VariantType == typeof(String))
+									newString = scope:ReplaceBlock String(value.Get<String>());
+								}
+							}
+
+							if (newString == null)
+							{
+								if (mBuildContext != null)
+								{
+									if (mBuildContext.mScriptContext.mVars.TryGetValue(varName, out value))
 									{
-										newString = scope:ReplaceBlock String(value.Get<String>());
+										if (value.VariantType == typeof(String))
+										{
+											newString = scope:ReplaceBlock String(value.Get<String>());
+										}
 									}
 								}
 							}
-						}
 
-						if (newString != null)
-						{
-							result.Remove(i, parenPos - i + 1);
-							result.Insert(i, newString);
-							i--;
+							if (newString != null)
+							{
+								result.Remove(i, parenPos - i + 1);
+								result.Insert(i, newString);
+								i--;
+							}
 						}
-			        }
-			    }
+				}
 			}
-
 		}
 
-        public bool ResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String errorContext, String outResult)
-        {
-            String errorString = scope String();
-            if (!DoResolveConfigString(platformName, workspaceOptions, project, options, configString, errorString, outResult))
+		public bool ResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String errorContext, String outResult)
+		{
+			String errorString = scope String();
+			if (!DoResolveConfigString(platformName, workspaceOptions, project, options, configString, errorString, outResult))
 			{
-                OutputErrorLine("Invalid macro in {0}: {1}", errorContext, errorString);
+				OutputErrorLine("Invalid macro in {0}: {1}", errorContext, errorString);
 				return false;
 			}
-            return true;
-        }
+			return true;
+		}
 
-        public void GetWorkspaceBuildDir(String outResult)
-        {
+		public void GetWorkspaceBuildDir(String outResult)
+		{
 			if (mWorkspace.mDir == null)
 				return;
-            outResult.Append(mWorkspace.mDir, "/build/", mConfigName, "_", mPlatformName);
-        }
+			outResult.Append(mWorkspace.mDir, "/build/", mConfigName, "_", mPlatformName);
+		}
 
-        public void GetProjectBuildDir(Project project, String outResult)
-        {
-            GetWorkspaceBuildDir(outResult);
+		public void GetProjectBuildDir(Project project, String outResult)
+		{
+			GetWorkspaceBuildDir(outResult);
 			if (!outResult.IsEmpty)
-            	outResult.Append("/", project.mProjectName);
-        }
+				outResult.Append("/", project.mProjectName);
+		}
 
-        public void GetClangOutputFilePathWithoutExtension(ProjectSource projectSource, String outResult)
-        {
-            GetProjectBuildDir(projectSource.mProject, outResult);
-            outResult.Append("/");
+		public void GetClangOutputFilePathWithoutExtension(ProjectSource projectSource, String outResult)
+		{
+			GetProjectBuildDir(projectSource.mProject, outResult);
+			outResult.Append("/");
 			String fullPath = scope String();
 			projectSource.GetFullImportPath(fullPath);
-            Path.GetFileNameWithoutExtension(fullPath, outResult);
-        }
+			Path.GetFileNameWithoutExtension(fullPath, outResult);
+		}
 
-        public void GetClangBuildString(Project project, Project.Options options, Workspace.Options workspaceOptions, bool isC, String clangOptions)
-        {
-            bool isClang = options.mCOptions.mCompilerType == Project.CCompilerType.Clang;
+		public void GetClangBuildString(Project project, Project.Options options, Workspace.Options workspaceOptions, bool isC, String clangOptions)
+		{
+			bool isClang = options.mCOptions.mCompilerType == Project.CCompilerType.Clang;
 
-            if (options.mCOptions.mEmitDebugInfo)
-            {
-                if (isClang)
+			if (options.mCOptions.mEmitDebugInfo)
+			{
+				if (isClang)
 				{
-                    clangOptions.Append("-g -fstandalone-debug ");
+					clangOptions.Append("-g -fstandalone-debug ");
 
 					if (workspaceOptions.mToolsetType != .GNU)
 						clangOptions.Append("-gcodeview ");
-
 				}
-                else
-                    clangOptions.Append("-g ");
-            }
+				else
+					clangOptions.Append("-g ");
+			}
 
 			//TODO:
-            var simd = workspaceOptions.mCSIMDSetting;
-            if (options.mCOptions.mSIMD != null)
-                simd = options.mCOptions.mSIMD.Value;
+			var simd = workspaceOptions.mCSIMDSetting;
+			if (options.mCOptions.mSIMD != null)
+				simd = options.mCOptions.mSIMD.Value;
 
-            switch (simd)
-            {
-            case .SSE:
-                clangOptions.Append("-msse ");
-                break;
-            case .SSE2:
-                clangOptions.Append("-msse2 ");
-                break;
-            case .SSE3:
-                clangOptions.Append("-msse3 ");
-                break;
-            case .SSE4:
-                clangOptions.Append("-msse4 ");
-                break;
-            case .SSE41:
-                clangOptions.Append("-msse4.1 ");
-                break;
-            case .AVX:
-                clangOptions.Append("-mavx ");
-                break;
-            case .AVX2:
-                clangOptions.Append("-mavx2 ");
-                break;
+			switch (simd)
+			{
+			case .SSE:
+				clangOptions.Append("-msse ");
+				break;
+			case .SSE2:
+				clangOptions.Append("-msse2 ");
+				break;
+			case .SSE3:
+				clangOptions.Append("-msse3 ");
+				break;
+			case .SSE4:
+				clangOptions.Append("-msse4 ");
+				break;
+			case .SSE41:
+				clangOptions.Append("-msse4.1 ");
+				break;
+			case .AVX:
+				clangOptions.Append("-mavx ");
+				break;
+			case .AVX2:
+				clangOptions.Append("-mavx2 ");
+				break;
 			default:
-            }            
+			}
 
-            if (options.mCOptions.mEnableBeefInterop)
-            {
-                var beefPreprocMacros = scope DefinesSet();
-                GetBeefPreprocessorMacros(beefPreprocMacros);
-                for (var beefPreprocMacro in beefPreprocMacros.mDefines)                
-                    clangOptions.Append("-D", beefPreprocMacro, " ");
-            }
+			if (options.mCOptions.mEnableBeefInterop)
+			{
+				var beefPreprocMacros = scope DefinesSet();
+				GetBeefPreprocessorMacros(beefPreprocMacros);
+				for (var beefPreprocMacro in beefPreprocMacros.mDefines)
+					clangOptions.Append("-D", beefPreprocMacro, " ");
+			}
 
-            if (options.mCOptions.mAllWarnings)
-                clangOptions.Append("-Wall ");
+			if (options.mCOptions.mAllWarnings)
+				clangOptions.Append("-Wall ");
 
-            var optimizationLevel = options.mCOptions.mOptimizationLevel;
-            if (optimizationLevel == Project.COptimizationLevel.FromWorkspace)
-                optimizationLevel = (Project.COptimizationLevel)workspaceOptions.mCOptimizationLevel;
-            clangOptions.AppendF("-{0} ", optimizationLevel);
-            for (var preprocMacro in options.mCOptions.mPreprocessorMacros)
-            {
-                clangOptions.Append("-D", preprocMacro, " ");
-            }
-            for (var includePath in options.mCOptions.mIncludePaths)
-            {
+			var optimizationLevel = options.mCOptions.mOptimizationLevel;
+			if (optimizationLevel == Project.COptimizationLevel.FromWorkspace)
+				optimizationLevel = (Project.COptimizationLevel)workspaceOptions.mCOptimizationLevel;
+			clangOptions.AppendF("-{0} ", optimizationLevel);
+			for (var preprocMacro in options.mCOptions.mPreprocessorMacros)
+			{
+				clangOptions.Append("-D", preprocMacro, " ");
+			}
+			for (var includePath in options.mCOptions.mIncludePaths)
+			{
 				var fullIncludePath = scope String();
 				project.GetProjectFullPath(includePath, fullIncludePath);
-                if (fullIncludePath.Contains(' '))
-                    clangOptions.Append("\"-I", fullIncludePath, "\" ");
-                else
-                    clangOptions.Append("-I", fullIncludePath, " ");
-            }
+				if (fullIncludePath.Contains(' '))
+					clangOptions.Append("\"-I", fullIncludePath, "\" ");
+				else
+					clangOptions.Append("-I", fullIncludePath, " ");
+			}
 
-            if (options.mCOptions.mCompilerType == Project.CCompilerType.GCC)
-            {
-                if (Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4)
-                    clangOptions.Append("-m32 ");
-                else
-                    clangOptions.Append("-m64 ");
-            }
-            else
-            {
+			if (options.mCOptions.mCompilerType == Project.CCompilerType.GCC)
+			{
+				if (Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4)
+					clangOptions.Append("-m32 ");
+				else
+					clangOptions.Append("-m64 ");
+			}
+			else
+			{
 				clangOptions.Append("--target=");
 				if (TargetTriple.IsTargetTriple(gApp.mPlatformName))
 					clangOptions.Append(gApp.mPlatformName);
 				else
-                	Workspace.PlatformType.GetTargetTripleByName(gApp.mPlatformName, workspaceOptions.mToolsetType, clangOptions);
+					Workspace.PlatformType.GetTargetTripleByName(gApp.mPlatformName, workspaceOptions.mToolsetType, clangOptions);
 				clangOptions.Append(" ");
 
 				if (workspaceOptions.mToolsetType == .GNU)
 				{
 					//
 				}
-                else
+				else
 				{
 					clangOptions.Append("-I\"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\include\" ");
 					clangOptions.Append("-I\"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\atlmfc\\include\" ");
@@ -10884,34 +10876,33 @@ namespace IDE
 					clangOptions.Append("-I\"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.14393.0\\shared\" ");
 					clangOptions.Append("-I\"C:\\Program Files (x86)\\Windows Kits\\10\\Include\\10.0.14393.0\\winrt\" ");
 				}
-            }
+			}
 
-            if (options.mCOptions.mNoOmitFramePointers)
-                clangOptions.Append("-fno-omit-frame-pointer ");
+			if (options.mCOptions.mNoOmitFramePointers)
+				clangOptions.Append("-fno-omit-frame-pointer ");
 
-            if (options.mCOptions.mGenerateLLVMAsm)
-                clangOptions.Append("-emit-llvm -S ");
-            else
-                clangOptions.Append("-c ");
+			if (options.mCOptions.mGenerateLLVMAsm)
+				clangOptions.Append("-emit-llvm -S ");
+			else
+				clangOptions.Append("-c ");
 
-            if (!isC)
-            {
-                if (!String.IsNullOrEmpty(options.mCOptions.mOtherCPPFlags))
-                    clangOptions.Append(options.mCOptions.mOtherCPPFlags, " ") ;
-                clangOptions.Append("-std=c++14 ");
-            }
-            else
-            {
-                if (!String.IsNullOrEmpty(options.mCOptions.mOtherCFlags))
-                    clangOptions.Append(options.mCOptions.mOtherCFlags, " ");
-            }            
+			if (!isC)
+			{
+				if (!String.IsNullOrEmpty(options.mCOptions.mOtherCPPFlags))
+					clangOptions.Append(options.mCOptions.mOtherCPPFlags, " ");
+				clangOptions.Append("-std=c++14 ");
+			}
+			else
+			{
+				if (!String.IsNullOrEmpty(options.mCOptions.mOtherCFlags))
+					clangOptions.Append(options.mCOptions.mOtherCFlags, " ");
+			}
+		}
 
-        }
-
-        static void QuoteIfNeeded(String str)
-        {
-            if (!str.Contains(' '))
-                return;
+		static void QuoteIfNeeded(String str)
+		{
+			if (!str.Contains(' '))
+				return;
 
 			for (int32 i = 0; i < str.Length; i++)
 			{
@@ -10926,77 +10917,77 @@ namespace IDE
 
 			str.Insert(0, '"');
 			str.Append('"');
-        }
+		}
 
-        ExecutionQueueCmd CompileSource(Project project, Workspace.Options workspaceOptions, Project.Options options, String buildFileName, String addOptions = null)
-        {
-            String workspaceBuildDir = scope String();
-            GetWorkspaceBuildDir(workspaceBuildDir);
-            String projectBuildDir = scope String(workspaceBuildDir, "/", project.mProjectName);
-            String baseName = scope String();
-            Path.GetFileNameWithoutExtension(buildFileName, baseName);
-            String objName = scope String(projectBuildDir, "/", baseName, (options.mCOptions.mGenerateLLVMAsm ? ".ll" : ".obj"));
+		ExecutionQueueCmd CompileSource(Project project, Workspace.Options workspaceOptions, Project.Options options, String buildFileName, String addOptions = null)
+		{
+			String workspaceBuildDir = scope String();
+			GetWorkspaceBuildDir(workspaceBuildDir);
+			String projectBuildDir = scope String(workspaceBuildDir, "/", project.mProjectName);
+			String baseName = scope String();
+			Path.GetFileNameWithoutExtension(buildFileName, baseName);
+			String objName = scope String(projectBuildDir, "/", baseName, (options.mCOptions.mGenerateLLVMAsm ? ".ll" : ".obj"));
 
-            String llvmDir = scope String(IDEApp.sApp.mInstallDir);
-            IDEUtils.FixFilePath(llvmDir);
-            llvmDir.Append("llvm/");
-            String gccExePath = "c:/mingw/bin/g++.exe";
-            String clangCppExePath = scope String(llvmDir, "bin/clang++.exe");
+			String llvmDir = scope String(IDEApp.sApp.mInstallDir);
+			IDEUtils.FixFilePath(llvmDir);
+			llvmDir.Append("llvm/");
+			String gccExePath = "c:/mingw/bin/g++.exe";
+			String clangCppExePath = scope String(llvmDir, "bin/clang++.exe");
 			String clangCExePath = scope String(llvmDir, "bin/clang.exe");
-            String clangOptions = scope String(buildFileName);
-            QuoteIfNeeded(clangOptions);
-            clangOptions.Append(" ");
+			String clangOptions = scope String(buildFileName);
+			QuoteIfNeeded(clangOptions);
+			clangOptions.Append(" ");
 
-            bool isC = false;
+			bool isC = false;
 
-            var ext = scope String();
-            Path.GetExtension(buildFileName, ext);
-            if (ext == ".c")
-                isC = true;            
-            
+			var ext = scope String();
+			Path.GetExtension(buildFileName, ext);
+			if (ext == ".c")
+				isC = true;
+
 			var buildStr = scope String();
 			GetClangBuildString(project, options, workspaceOptions, isC, buildStr);
-            clangOptions.Append(buildStr);
+			clangOptions.Append(buildStr);
 
-            int lastDot = objName.LastIndexOf('.');
+			int lastDot = objName.LastIndexOf('.');
 
 			String depFileName = scope String(objName, 0, lastDot);
-            QuoteIfNeeded(depFileName);
-            depFileName.Append(".dep");
-            clangOptions.Append("-MD -MF ", depFileName, " ");
+			QuoteIfNeeded(depFileName);
+			depFileName.Append(".dep");
+			clangOptions.Append("-MD -MF ", depFileName, " ");
 
 			if (addOptions != null)
 				clangOptions.Append(addOptions, " ");
 
-            clangOptions.Append("-o ");
+			clangOptions.Append("-o ");
 			String quotedObjName = scope String(objName);
-            QuoteIfNeeded(quotedObjName);
+			QuoteIfNeeded(quotedObjName);
 			clangOptions.Append(quotedObjName);
-			
-            String compilerExePath = (options.mCOptions.mCompilerType == Project.CCompilerType.GCC) ? gccExePath : isC ? clangCExePath : clangCppExePath;            
-            return QueueRun(compilerExePath, clangOptions, IDEApp.sApp.mInstallDir, .UTF8);
-        }
-		
+
+			String compilerExePath = (options.mCOptions.mCompilerType == Project.CCompilerType.GCC) ? gccExePath : isC ? clangCExePath : clangCppExePath;
+			return QueueRun(compilerExePath, clangOptions, IDEApp.sApp.mInstallDir, .UTF8);
+		}
+
 		void SkipProjectCompile(Project project, Project hotProject)
 		{
-		    Project.Options options = GetCurProjectOptions(project);
-		    if (options == null)
-		        return;
-		    
-		    BfCompiler bfCompiler = mBfBuildCompiler;
+			Project.Options options = GetCurProjectOptions(project);
+			if (options == null)
+				return;
+
+			BfCompiler bfCompiler = mBfBuildCompiler;
 			BfSystem bfSystem = mBfBuildSystem;
 
-		    var bfProject = mBfBuildSystem.mProjectMap[project];
-		    bool bfHadOutputChanges;
-		    List<String> bfFileNames = scope List<String>();
+			var bfProject = mBfBuildSystem.mProjectMap[project];
+			bool bfHadOutputChanges;
+			List<String> bfFileNames = scope List<String>();
 
 			bfSystem.Lock(0);
 			bfCompiler.GetOutputFileNames(bfProject, .None, out bfHadOutputChanges, bfFileNames);
 			bfSystem.Unlock();
 
 			defer ClearAndDeleteItems(bfFileNames);
-		    if (bfHadOutputChanges)
-		        project.mNeedsTargetRebuild = true;
+			if (bfHadOutputChanges)
+				project.mNeedsTargetRebuild = true;
 		}
 
 		void GetTargetPaths(Project project, String platformName, Workspace.Options workspaceOptions, Project.Options options, List<String> outPaths)
@@ -11016,7 +11007,7 @@ namespace IDE
 					outPaths.Add(new String(pdbPath));
 				}
 			}
-#endif			
+#endif
 		}
 
 		public class ArgBuilder
@@ -11049,7 +11040,7 @@ namespace IDE
 				}
 				mTarget.Append(' ');
 			}
-			
+
 			public void AddFileName(String filePath)
 			{
 				IDEUtils.AppendWithOptionalQuotes(mTarget, filePath);
@@ -11077,64 +11068,64 @@ namespace IDE
 			}
 		}
 
-        Project FindProject(String projectName)
-        {
-            return mWorkspace.FindProject(projectName);
-        }
+		Project FindProject(String projectName)
+		{
+			return mWorkspace.FindProject(projectName);
+		}
 
-        public bool GetDependentProjectList(Project project, List<Project> orderedProjectList, List<Project> projectStack = null)
-        {
+		public bool GetDependentProjectList(Project project, List<Project> orderedProjectList, List<Project> projectStack = null)
+		{
 			var useProjectStack = projectStack;
-            if ((useProjectStack != null) && (useProjectStack.Contains(project)))
-            {
-                String projectError = scope String("Circular dependency between projects: ");
-                for (int32 i = 0; i < useProjectStack.Count; i++)
-                {
-                    if (i > 0)
-                        projectError.Append(", ");
-                    projectError.Append(useProjectStack[i].mProjectName);
-                }
-                OutputErrorLine(projectError);
-                return true;
-            }
+			if ((useProjectStack != null) && (useProjectStack.Contains(project)))
+			{
+				String projectError = scope String("Circular dependency between projects: ");
+				for (int32 i = 0; i < useProjectStack.Count; i++)
+				{
+					if (i > 0)
+						projectError.Append(", ");
+					projectError.Append(useProjectStack[i].mProjectName);
+				}
+				OutputErrorLine(projectError);
+				return true;
+			}
 
-            if (orderedProjectList.Contains(project))
-                return true;
+			if (orderedProjectList.Contains(project))
+				return true;
 
-            bool addSelf = true;
-            if (useProjectStack == null)
-            {
-                useProjectStack = scope:: List<Project>();
-                addSelf = false;
-            }
+			bool addSelf = true;
+			if (useProjectStack == null)
+			{
+				useProjectStack = scope:: List<Project>();
+				addSelf = false;
+			}
 
-            useProjectStack.Add(project);
-            for (var dep in project.mDependencies)
-            {
-                Project depProject = FindProject(dep.mProjectName);
-                if (depProject == null)
-                {
-                    OutputLine(StackStringFormat!("Unable to find project '{0}', a dependency of project '{1}'", dep.mProjectName, project.mProjectName));
-                    return false;
-                }
-                if (!GetDependentProjectList(depProject, orderedProjectList, useProjectStack))
-                    return false;
-            }
+			useProjectStack.Add(project);
+			for (var dep in project.mDependencies)
+			{
+				Project depProject = FindProject(dep.mProjectName);
+				if (depProject == null)
+				{
+					OutputLine(StackStringFormat!("Unable to find project '{0}', a dependency of project '{1}'", dep.mProjectName, project.mProjectName));
+					return false;
+				}
+				if (!GetDependentProjectList(depProject, orderedProjectList, useProjectStack))
+					return false;
+			}
 
-            if (addSelf)
-            {
-                useProjectStack.RemoveAt(useProjectStack.Count - 1);
-                orderedProjectList.Add(project);
-            }
-            return true;
-        }
+			if (addSelf)
+			{
+				useProjectStack.RemoveAt(useProjectStack.Count - 1);
+				orderedProjectList.Add(project);
+			}
+			return true;
+		}
 
-        void GetOrderedProjectList(List<Project> orderedProjectList)
-        {
-            List<Project> projectStack = scope List<Project>();
-            for (var project in mWorkspace.mProjects)            
-                GetDependentProjectList(project, orderedProjectList, projectStack);
-        }
+		void GetOrderedProjectList(List<Project> orderedProjectList)
+		{
+			List<Project> projectStack = scope List<Project>();
+			for (var project in mWorkspace.mProjects)
+				GetDependentProjectList(project, orderedProjectList, projectStack);
+		}
 
 		public virtual void LoadFailed()
 		{
@@ -11147,12 +11138,12 @@ namespace IDE
 			mLastTestFailed = true;
 		}
 
-        protected virtual void CompileFailed()
-        {
+		protected virtual void CompileFailed()
+		{
 			if (mTestManager != null)
 				mTestManager.BuildFailed();
 			if (mVerbosity > .Quiet)
-            	OutputLine("Compile failed.");
+				OutputLine("Compile failed.");
 			mLastCompileFailed = true;
 
 			if (mRunningTestScript)
@@ -11167,7 +11158,7 @@ namespace IDE
 
 			if (mDebugger?.mIsComptimeDebug == true)
 				DebuggerComptimeStop();
-        }
+		}
 
 		void DbgCopyChangedFiles(DateTime cmpTime, StringView srcDir, StringView destDir)
 		{
@@ -11264,18 +11255,18 @@ namespace IDE
 			}
 		}
 
-        void ProcessBeefCompileResults(BfPassInstance passInstance, CompileKind compileKind, Project hotProject, Stopwatch startStopWatch)
-        {
+		void ProcessBeefCompileResults(BfPassInstance passInstance, CompileKind compileKind, Project hotProject, Stopwatch startStopWatch)
+		{
 			bool didCompileSucceed = true;
 			if (passInstance != null)
 			{
 				if (mProfileCompileProfileId != 0)
 					mProfileCompileProfileId.Dispose();
 
-	            while (true)
-	            {
+				while (true)
+				{
 					String str = scope String();
-	                if (!passInstance.PopOutString(str))
+					if (!passInstance.PopOutString(str))
 						break;
 
 					if (mVerbosity == .Quiet)
@@ -11310,8 +11301,8 @@ namespace IDE
 
 					str.Append("\n");
 					OutputSmart(str);
-	                //OutputLine(str);
-	            }
+					//OutputLine(str);
+				}
 
 				if ((passInstance.mFailed) && (passInstance.mCompileSucceeded))
 				{
@@ -11320,7 +11311,7 @@ namespace IDE
 					passInstance.mCompileSucceeded = false;
 				}
 
-	            didCompileSucceed = passInstance.mCompileSucceeded;
+				didCompileSucceed = passInstance.mCompileSucceeded;
 
 				if (didCompileSucceed)
 				{
@@ -11329,8 +11320,8 @@ namespace IDE
 						{
 							if (var projectSource = item as ProjectSource)
 							{
-							    if (IsBeefFile(projectSource.mPath))
-							    {
+								if (IsBeefFile(projectSource.mPath))
+								{
 									if (!projectSource.mHasChangedSinceLastCompile)
 										projectSource.mHasChangedSinceLastSuccessfulCompile = false;
 								}
@@ -11340,7 +11331,7 @@ namespace IDE
 				else
 					mLastCompileHadMessages = true;
 
-	        	delete passInstance;
+				delete passInstance;
 			}
 
 			if ((hotProject != null) && (passInstance != null) && (didCompileSucceed))
@@ -11363,57 +11354,57 @@ namespace IDE
 				{
 					mHotResolveState = .Pending;
 				}
-				
+
 				mHotResolveTryIdx = 0;
-					
+
 				mDebugger.InitiateHotResolve(hotResolveFlags);
 				return;
 			}
 
 			List<Project> orderedProjectList = scope List<Project>();
-            GetOrderedProjectList(orderedProjectList);
-            if (!didCompileSucceed)
-            {
+			GetOrderedProjectList(orderedProjectList);
+			if (!didCompileSucceed)
+			{
 				// Failed, bail out
 				for (var project in orderedProjectList)
 				{
-				    SkipProjectCompile(project, hotProject);                        
+					SkipProjectCompile(project, hotProject);
 				}
 				CompileResult((hotProject != null) ? hotProject.mProjectName : null, false);
 				CompileFailed();
-                return;
-            }
+				return;
+			}
 
-            var completedCompileCmd = new BuildCompletedCmd();
+			var completedCompileCmd = new BuildCompletedCmd();
 			if (hotProject != null)
 				completedCompileCmd.mHotProjectName = new String(hotProject.mProjectName);
 
 			//TODO: Pass in
 			//Project project = mWorkspace.mProjects[0];
-            bool success = true;
-            List<String> hotFileNames = scope List<String>();
+			bool success = true;
+			List<String> hotFileNames = scope List<String>();
 			defer ClearAndDeleteItems(hotFileNames);
 			Debug.Assert(mBuildContext == null);
 			DeleteAndNullify!(mBuildContext);
 			mBuildContext = new .();
 			mBuildContext.mWorkspaceOptions = GetCurWorkspaceOptions();
 
-            for (var project in orderedProjectList)
-            {
-                if (!mBuildContext.QueueProjectCompile(project, hotProject, completedCompileCmd, hotFileNames, compileKind))
-                    success = false;
-            }
+			for (var project in orderedProjectList)
+			{
+				if (!mBuildContext.QueueProjectCompile(project, hotProject, completedCompileCmd, hotFileNames, compileKind))
+					success = false;
+			}
 
 			for (var project in orderedProjectList)
 			{
-			    if (!mBuildContext.QueueProjectPostBuild(project, hotProject, completedCompileCmd, hotFileNames, compileKind))
-			        success = false;
+				if (!mBuildContext.QueueProjectPostBuild(project, hotProject, completedCompileCmd, hotFileNames, compileKind))
+					success = false;
 			}
 
-            if (hotFileNames.Count > 0)
-            {
+			if (hotFileNames.Count > 0)
+			{
 				// Why were we rehupping BEFORE hotLoad?
-                mDebugger.RehupBreakpoints(false, false);
+				mDebugger.RehupBreakpoints(false, false);
 
 				String[] entries = scope String[hotFileNames.Count];
 				for (int32 i = 0; i < hotFileNames.Count; i++)
@@ -11422,76 +11413,76 @@ namespace IDE
 				//
 
 				mBfBuildCompiler.HotCommit();
-                mDebugger.HotLoad(entries, mWorkspace.HotCompileIdx);
-                /*if (mDebugger.IsPaused())
-                    PCChanged();*/
+				mDebugger.HotLoad(entries, mWorkspace.HotCompileIdx);
+				/*if (mDebugger.IsPaused())
+					PCChanged();*/
 
 				//mDebugger.RehupBreakpoints(false);
 
 				RefreshWatches();
-            }
+			}
 
-            if (!success)
-                CompileFailed();
+			if (!success)
+				CompileFailed();
 
-            if (success)
-            {
+			if (success)
+			{
 				var options = GetCurWorkspaceOptions();
 
 				if (compileKind == .DebugAfter)
 				{
-	                var startDebugCmd = new StartDebugCmd();
+					var startDebugCmd = new StartDebugCmd();
 					startDebugCmd.mWasCompiled = true;
-	                startDebugCmd.mOnlyIfNotFailed = true;
+					startDebugCmd.mOnlyIfNotFailed = true;
 					startDebugCmd.mHotCompileEnabled = options.mAllowHotSwapping;
-	                mExecutionQueue.Add(startDebugCmd);
+					mExecutionQueue.Add(startDebugCmd);
 				}
 				else if (compileKind == .RunAfter)
 				{
 					StartupProject(false, true);
 				}
-            }
-            
+			}
+
 			if (startStopWatch != null)
-            {
+			{
 				delete completedCompileCmd.mStopwatch;
 				var stopwatch = new Stopwatch();
 				stopwatch.CopyFrom(startStopWatch);
-                completedCompileCmd.mStopwatch = stopwatch;
+				completedCompileCmd.mStopwatch = stopwatch;
 			}
-            mExecutionQueue.Add(completedCompileCmd);
-        }
+			mExecutionQueue.Add(completedCompileCmd);
+		}
 
-        bool CompileAndRun(bool debug)
-        {
+		bool CompileAndRun(bool debug)
+		{
 			if (AreTestsRunning())
 				return false;
 			if (IsCompiling)
 				return false;
 
-            if (!mExecutionQueue.IsEmpty)
-            {
-                if (var processCompileCmd = mExecutionQueue.Back as ProcessBfCompileCmd)
-                {
-                    processCompileCmd.mCompileKind = debug ? .DebugAfter : .RunAfter;
-                }
+			if (!mExecutionQueue.IsEmpty)
+			{
+				if (var processCompileCmd = mExecutionQueue.Back as ProcessBfCompileCmd)
+				{
+					processCompileCmd.mCompileKind = debug ? .DebugAfter : .RunAfter;
+				}
 
-                return false;
-            }
+				return false;
+			}
 
 			if (mInitialized)
 				DeleteAndNullify!(mLaunchData);
 
-            mOutputPanel.Clear();            
-            OutputLine("Compiling...");
-            if (!Compile(debug ? .DebugAfter : .RunAfter, null))
+			mOutputPanel.Clear();
+			OutputLine("Compiling...");
+			if (!Compile(debug ? .DebugAfter : .RunAfter, null))
 				return false;
 			return true;
-        }
+		}
 
 		public void QueueProfiling(int threadId, String desc, int sampleRate)
 		{
-  			if(mExecutionQueue.IsEmpty)
+			if (mExecutionQueue.IsEmpty)
 				return;
 			var profileCmd = new ProfileCmd();
 			profileCmd.mThreadId = threadId;
@@ -11525,7 +11516,7 @@ namespace IDE
 
 			if (hasTempFiles)
 			{
-				var dialog = ThemeFactory.mDefault.CreateDialog("Close Temp Files", 
+				var dialog = ThemeFactory.mDefault.CreateDialog("Close Temp Files",
 					"Do you want to close temporary files opened from the debugger?");
 				dialog.mDefaultButton = dialog.AddButton("Yes", new (evt) =>
 					{
@@ -11541,11 +11532,10 @@ namespace IDE
 						for (var tab in closeTabs)
 						{
 							CloseDocument(tab.mContent);
-						}	
+						}
 					});
 				dialog.AddButton("No", new (evt) =>
 					{
-						
 					});
 				dialog.PopupWindow(GetActiveWindow());
 			}
@@ -11594,7 +11584,7 @@ namespace IDE
 			startupCode.AppendF(
 				"""
 				using System;
-
+				
 				namespace {};
 				
 				class {}
@@ -11660,8 +11650,8 @@ namespace IDE
 			}
 		}
 
-        protected bool Compile(CompileKind compileKind, Project hotProject)
-        {
+		protected bool Compile(CompileKind compileKind, Project hotProject)
+		{
 			Debug.Assert(mBuildContext == null);
 
 			if (mWorkspace.mStartupProject != null)
@@ -11679,7 +11669,6 @@ namespace IDE
 						},
 						new (dlg) =>
 						{
-
 						});
 					dlg.PopupWindow(GetActiveWindow());
 #else
@@ -11732,7 +11721,7 @@ namespace IDE
 				canCompile = true;
 			default:
 			}
-			
+
 			if (!canCompile)
 			{
 				OutputErrorLine("Cannot compile for platform '{}' from host platform '{}'", platform, hostPlatform);
@@ -11780,7 +11769,7 @@ namespace IDE
 							delete delDirName;
 						});
 
-					
+
 					bool worked = false;
 					for (int i < 20)
 					{
@@ -11798,7 +11787,7 @@ namespace IDE
 				{
 					delete mDbgCompileDir;
 					mDbgCompileDir = new String(dbgBuildDir);
-					
+
 					for (var project in mWorkspace.mProjects)
 					{
 						String buildDir = scope .();
@@ -11842,13 +11831,13 @@ namespace IDE
 
 				if (!mSettings.mVSSettings.IsConfigured())
 				{
-					String err = 
-					"""
-					Beef requires the Microsoft C++ build tools for Visual Studio 2013 or later, but they don't seem to be installed.
-
-					Install just Microsoft Visual C++ Build Tools or the entire Visual Studio suite from:
-					    https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022
-					""";
+					String err =
+						"""
+						Beef requires the Microsoft C++ build tools for Visual Studio 2013 or later, but they don't seem to be installed.
+						
+						Install just Microsoft Visual C++ Build Tools or the entire Visual Studio suite from:
+						    https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022
+						""";
 
 #if CLI
 					Fail(err);
@@ -11866,7 +11855,6 @@ namespace IDE
 						},
 						new (dlg) =>
 						{
-
 						});
 					((DarkButton)dlg.mButtons[0]).Label = "Open Link";
 					dlg.PopupWindow(GetActiveWindow());
@@ -11886,7 +11874,7 @@ namespace IDE
 					UpdateCompilersAndDebugger();
 				}
 			}
-			
+
 			if ((!workspaceOptions.mIncrementalBuild) && (mCompileSinceCleanCount > 0) && (hotProject == null))
 			{
 				delete mBfBuildCompiler;
@@ -11896,7 +11884,7 @@ namespace IDE
 
 				for (var project in mWorkspace.mProjects)
 				{
-				    mBfBuildSystem.AddProject(project);
+					mBfBuildSystem.AddProject(project);
 				}
 			}
 
@@ -11914,7 +11902,7 @@ namespace IDE
 			mLastCompileSucceeded = false;
 			mLastCompileHadMessages = false;
 			mCompileSinceCleanCount++;
-            ShowPanel(mOutputPanel, false);
+			ShowPanel(mOutputPanel, false);
 
 			if (mDisableBuilding)
 			{
@@ -11922,18 +11910,18 @@ namespace IDE
 				return false;
 			}
 
-            if (mExecutionQueue.Count > 0)
-                return false;
+			if (mExecutionQueue.Count > 0)
+				return false;
 
-            if ((mDebugger != null) && (mDebugger.mIsRunning) && (hotProject == null) && (compileKind != .WhileRunning))
+			if ((mDebugger != null) && (mDebugger.mIsRunning) && (hotProject == null) && (compileKind != .WhileRunning))
 			{
 				Debug.Assert(!mDebugger.mIsRunningCompiled);
 				Debug.Assert((compileKind == .Normal) || (compileKind == .DebugComptime));
 			}
 
-            mHaveSourcesChangedExternallySinceLastCompile = false;
-            mHaveSourcesChangedInternallySinceLastCompile = false;
-            mWorkspace.SetupProjectCompileInstance(hotProject != null);
+			mHaveSourcesChangedExternallySinceLastCompile = false;
+			mHaveSourcesChangedInternallySinceLastCompile = false;
+			mWorkspace.SetupProjectCompileInstance(hotProject != null);
 
 			int32 hotIdx = mWorkspace.HotCompileIdx;
 			if (hotProject == null)
@@ -11945,39 +11933,39 @@ namespace IDE
 			//  For hotload we do it later.
 			//if (!mDebugger.mIsRunning)
 				//mDebugger.RehupBreakpoints(true);
-            
-            SaveClangFiles();            
 
-            if ((compileKind == .RunAfter) || (compileKind == .DebugAfter))
-            {
+			SaveClangFiles();
+
+			if ((compileKind == .RunAfter) || (compileKind == .DebugAfter))
+			{
 				DeleteAndNullify!(mCompileAndRunStopwatch);
-                mCompileAndRunStopwatch = new Stopwatch();
-                mCompileAndRunStopwatch.Start();
-            }
+				mCompileAndRunStopwatch = new Stopwatch();
+				mCompileAndRunStopwatch.Start();
+			}
 
-            //mBfBuildCompiler.QueueStartTiming();
-            mBfBuildCompiler.ClearCompletionPercentage();
+			//mBfBuildCompiler.QueueStartTiming();
+			mBfBuildCompiler.ClearCompletionPercentage();
 
-            BfPassInstance passInstance = null;
+			BfPassInstance passInstance = null;
 
 			passInstance = CompileBeef(hotProject, hotIdx, lastCompileHadMessages, let hadBeef);
-            if (passInstance == null)
-            {
-                CompileFailed();
-                return false;
-            }                
+			if (passInstance == null)
+			{
+				CompileFailed();
+				return false;
+			}
 
-            ProcessBfCompileCmd processCompileCmd = new ProcessBfCompileCmd();
-            processCompileCmd.mBfPassInstance = passInstance;
-            processCompileCmd.mCompileKind = compileKind;
-            processCompileCmd.mHotProject = hotProject;
-            processCompileCmd.mStopwatch = new Stopwatch();
-            processCompileCmd.mStopwatch.Start();
+			ProcessBfCompileCmd processCompileCmd = new ProcessBfCompileCmd();
+			processCompileCmd.mBfPassInstance = passInstance;
+			processCompileCmd.mCompileKind = compileKind;
+			processCompileCmd.mHotProject = hotProject;
+			processCompileCmd.mStopwatch = new Stopwatch();
+			processCompileCmd.mStopwatch.Start();
 			processCompileCmd.mHadBeef = hadBeef;
-            mExecutionQueue.Add(processCompileCmd);                        
+			mExecutionQueue.Add(processCompileCmd);
 
-            return true;
-        }
+			return true;
+		}
 
 		void CheckDebugVisualizers()
 		{
@@ -12003,37 +11991,37 @@ namespace IDE
 			//mDebugger.LoadDebugVisualizers(scope String(mInstallDir, "BeefDbgVis.toml"));
 		}
 
-        bool StartupProject(bool doDebug, bool wasCompiled)
-        {
+		bool StartupProject(bool doDebug, bool wasCompiled)
+		{
 			mProfilePanel.Clear();
 
-            if (mWorkspace.mStartupProject == null)
-            {
-                OutputErrorLine("No startup project started");
-                return false;
-            }
+			if (mWorkspace.mStartupProject == null)
+			{
+				OutputErrorLine("No startup project started");
+				return false;
+			}
 			var project = mWorkspace.mStartupProject;
 			var workspaceOptions = GetCurWorkspaceOptions();
-            var options = GetCurProjectOptions(project);
-            if (options == null)
-            {
-                OutputErrorLine("Startup project '{0}' not enabled", mWorkspace.mStartupProject.mProjectName);
-                return false;
-            }
+			var options = GetCurProjectOptions(project);
+			if (options == null)
+			{
+				OutputErrorLine("Startup project '{0}' not enabled", mWorkspace.mStartupProject.mProjectName);
+				return false;
+			}
 
-            mDebugger.ClearInvalidBreakpoints();
+			mDebugger.ClearInvalidBreakpoints();
 
-            mTargetDidInitBreak = false;
-            mTargetHadFirstBreak = false;
+			mTargetDidInitBreak = false;
+			mTargetHadFirstBreak = false;
 
 			//options.mDebugOptions.mCommand
 
-            String launchPathRel = scope String();
-            ResolveConfigString(mPlatformName, workspaceOptions, project, options, options.mDebugOptions.mCommand, "debug command", launchPathRel);
-            String arguments = scope String();
-            ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(Arguments)", "debug command arguments", arguments);
-            String workingDirRel = scope String();
-            ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(WorkingDir)", "debug working directory", workingDirRel);
+			String launchPathRel = scope String();
+			ResolveConfigString(mPlatformName, workspaceOptions, project, options, options.mDebugOptions.mCommand, "debug command", launchPathRel);
+			String arguments = scope String();
+			ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(Arguments)", "debug command arguments", arguments);
+			String workingDirRel = scope String();
+			ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(WorkingDir)", "debug working directory", workingDirRel);
 			var workingDir = scope String();
 			Path.GetAbsolutePath(workingDirRel, project.mProjectDir, workingDir);
 
@@ -12097,7 +12085,9 @@ namespace IDE
 			if (mSettings.mDebugConsoleKind == .Embedded)
 			{
 				ShowConsole();
+#if BF_PLATFORM_WINDOWS
 				mConsolePanel.Attach();
+#endif
 			}
 
 			if (mSettings.mDebugConsoleKind == .RedirectToImmediate)
@@ -12110,13 +12100,15 @@ namespace IDE
 			if ((mSettings.mDebugConsoleKind == .RedirectToImmediate) || (mSettings.mDebugConsoleKind == .RedirectToOutput))
 				openFileFlags |= .RedirectStdOutput | .RedirectStdError;
 
-            if (!mDebugger.OpenFile(launchPath, targetPath, arguments, workingDir, envBlock, wasCompiled, workspaceOptions.mAllowHotSwapping, openFileFlags))
-            {
+			if (!mDebugger.OpenFile(launchPath, targetPath, arguments, workingDir, envBlock, wasCompiled, workspaceOptions.mAllowHotSwapping, openFileFlags))
+			{
+#if BF_PLATFORM_WINDOWS
 				if (!mSettings.mAlwaysEnableConsole)
 					mConsolePanel.Detach();
+#endif
 				DeleteAndNullify!(mCompileAndRunStopwatch);
-                return false;
-            }
+				return false;
+			}
 
 			CheckDebugVisualizers();
 
@@ -12127,35 +12119,35 @@ namespace IDE
 					sourceView.RehupAlias();
 				});
 
-            mDebugger.RehupBreakpoints(true);
-            mDebugger.Run();
+			mDebugger.RehupBreakpoints(true);
+			mDebugger.Run();
 			mModulePanel.ModulesChanged();
 
-            if (mCompileAndRunStopwatch != null)
-            {
-                mCompileAndRunStopwatch.Stop();
-                OutputLine("Compile-to-debug time: {0:0.00}s", mCompileAndRunStopwatch.ElapsedMilliseconds / 1000.0f);
-            }
+			if (mCompileAndRunStopwatch != null)
+			{
+				mCompileAndRunStopwatch.Stop();
+				OutputLine("Compile-to-debug time: {0:0.00}s", mCompileAndRunStopwatch.ElapsedMilliseconds / 1000.0f);
+			}
 
-            if ((mTargetStartWithStep) && (mMainBreakpoint == null))
-            {
+			if ((mTargetStartWithStep) && (mMainBreakpoint == null))
+			{
 				// The idea is that we don't want to step into static initializers, so we 
 				// temporarily break on _main and then we single step                                    
 				//mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("_ZN3Hey4Dude3Bro9TestClass4MainEv");
-                if ((project.mGeneralOptions.mTargetType == Project.TargetType.BeefConsoleApplication) ||
-                    (project.mGeneralOptions.mTargetType == Project.TargetType.BeefGUIApplication))
-                    mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("-BeefStartProgram");
-                else
+				if ((project.mGeneralOptions.mTargetType == Project.TargetType.BeefConsoleApplication) ||
+					(project.mGeneralOptions.mTargetType == Project.TargetType.BeefGUIApplication))
+					mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("-BeefStartProgram");
+				else
 				{
-                    mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("-main");
+					mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("-main");
 #if BF_PLATFORM_WINDOWS
 					//mMainBreakpoint2 = mDebugger.CreateSymbolBreakpoint("-WinMain");
 #endif
 				}
-            }
+			}
 
-            return true;
-        }
+			return true;
+		}
 
 		public void Attach(Process process, DebugManager.AttachFlags attachFlags)
 		{
@@ -12186,14 +12178,14 @@ namespace IDE
 			mIsAttachPendingSourceShow = true;
 		}
 
-        void ShowPanel(Widget panel, bool setFocus = true)
-        {
-            WithTabs(scope (tab) =>
-                {
-                    if (tab.mContent == panel)
-                        tab.Activate(setFocus);
-                });
-        }
+		void ShowPanel(Widget panel, bool setFocus = true)
+		{
+			WithTabs(scope (tab) =>
+				{
+					if (tab.mContent == panel)
+						tab.Activate(setFocus);
+				});
+		}
 
 		void ShowStartupFile()
 		{
@@ -12224,8 +12216,8 @@ namespace IDE
 			}
 		}
 
-        public void CreateDefaultLayout(bool allowSavedLayout = true)
-        {
+		public void CreateDefaultLayout(bool allowSavedLayout = true)
+		{
 			//TODO:
 			//mConfigName.Set("Dbg");
 
@@ -12234,70 +12226,70 @@ namespace IDE
 				return;
 			}
 
-            bool docOnlyView = false;
-            
-            TabbedView projectTabbedView = CreateTabbedView();
-            SetupTab(projectTabbedView, "Workspace", 0, mProjectPanel, false);
-            projectTabbedView.SetRequestedSize(GS!(200), GS!(200));
+			bool docOnlyView = false;
+
+			TabbedView projectTabbedView = CreateTabbedView();
+			SetupTab(projectTabbedView, "Workspace", 0, mProjectPanel, false);
+			projectTabbedView.SetRequestedSize(GS!(200), GS!(200));
 			projectTabbedView.mWidth = GS!(200);
 
-            //TabbedView propertiesView = CreateTabbedView();
-            //propertiesView.AddTab("Properties", 0, mPropertiesPanel, false);
-            //propertiesView.SetRequestedSize(250, 250);
+			//TabbedView propertiesView = CreateTabbedView();
+			//propertiesView.AddTab("Properties", 0, mPropertiesPanel, false);
+			//propertiesView.SetRequestedSize(250, 250);
 
-            if (!docOnlyView)
-            {
-                mDockingFrame.AddDockedWidget(projectTabbedView, null, DockingFrame.WidgetAlign.Left);                
-                EnsureDocumentArea();
-                //mDockingFrame.AddDockedWidget(propertiesView, null, DockingFrame.WidgetAlign.Right);                
-            }            
+			if (!docOnlyView)
+			{
+				mDockingFrame.AddDockedWidget(projectTabbedView, null, DockingFrame.WidgetAlign.Left);
+				EnsureDocumentArea();
+				//mDockingFrame.AddDockedWidget(propertiesView, null, DockingFrame.WidgetAlign.Right);
+			}
 
-            var outputTabbedView = CreateTabbedView();
-            mDockingFrame.AddDockedWidget(outputTabbedView, null, DockingFrame.WidgetAlign.Bottom);
+			var outputTabbedView = CreateTabbedView();
+			mDockingFrame.AddDockedWidget(outputTabbedView, null, DockingFrame.WidgetAlign.Bottom);
 			outputTabbedView.SetRequestedSize(GS!(250), GS!(250));
-            
-            SetupTab(outputTabbedView, "Output", GS!(150), mOutputPanel, false);
-            SetupTab(outputTabbedView, "Immediate", GS!(150), mImmediatePanel, false);
-            //outputTabbedView.AddTab("Find Results", 150, mFindResultsPanel, false);
 
-            var watchTabbedView = CreateTabbedView();
-            watchTabbedView.SetRequestedSize(GS!(250), GS!(250));
-            mDockingFrame.AddDockedWidget(watchTabbedView, outputTabbedView, DockingFrame.WidgetAlign.Left);
+			SetupTab(outputTabbedView, "Output", GS!(150), mOutputPanel, false);
+			SetupTab(outputTabbedView, "Immediate", GS!(150), mImmediatePanel, false);
+			//outputTabbedView.AddTab("Find Results", 150, mFindResultsPanel, false);
 
-            SetupTab(watchTabbedView, "Auto", 150, mAutoWatchPanel, false);
-            SetupTab(watchTabbedView, "Watch", 150, mWatchPanel, false);
-            SetupTab(watchTabbedView, "Memory", 150, mMemoryPanel, false);
-            
-            SetupTab(outputTabbedView, "Call Stack", 150, mCallStackPanel, false);
-            SetupTab(outputTabbedView, "Threads", 150, mThreadPanel, false);
-        }
+			var watchTabbedView = CreateTabbedView();
+			watchTabbedView.SetRequestedSize(GS!(250), GS!(250));
+			mDockingFrame.AddDockedWidget(watchTabbedView, outputTabbedView, DockingFrame.WidgetAlign.Left);
 
-        protected void CreateBfSystems()
-        {
+			SetupTab(watchTabbedView, "Auto", 150, mAutoWatchPanel, false);
+			SetupTab(watchTabbedView, "Watch", 150, mWatchPanel, false);
+			SetupTab(watchTabbedView, "Memory", 150, mMemoryPanel, false);
+
+			SetupTab(outputTabbedView, "Call Stack", 150, mCallStackPanel, false);
+			SetupTab(outputTabbedView, "Threads", 150, mThreadPanel, false);
+		}
+
+		protected void CreateBfSystems()
+		{
 			scope AutoBeefPerf("IDEApp.CreateBfSystems");
 
 #if !CLI
 			if (!mNoResolve)
 			{
-	            mBfResolveSystem = new BfSystem();
-	            mBfResolveCompiler = mBfResolveSystem.CreateCompiler(true);
-	            mBfResolveHelper = new BfResolveHelper();
+				mBfResolveSystem = new BfSystem();
+				mBfResolveCompiler = mBfResolveSystem.CreateCompiler(true);
+				mBfResolveHelper = new BfResolveHelper();
 			}
 #if IDE_C_SUPPORT
-            mResolveClang = new ClangCompiler(true);
+			mResolveClang = new ClangCompiler(true);
 #endif
 #endif
 
 			mCompileSinceCleanCount = 0;
-            mBfBuildSystem = new BfSystem();
-            mBfBuildCompiler = mBfBuildSystem.CreateCompiler(false);
+			mBfBuildSystem = new BfSystem();
+			mBfBuildCompiler = mBfBuildSystem.CreateCompiler(false);
 #if IDE_C_SUPPORT
-            mDepClang = new ClangCompiler(false);
-            mDepClang.mPairedCompiler = mResolveClang;
-            mResolveClang.mPairedCompiler = mDepClang;
+			mDepClang = new ClangCompiler(false);
+			mDepClang.mPairedCompiler = mResolveClang;
+			mResolveClang.mPairedCompiler = mDepClang;
 #endif
-        }
-        
+		}
+
 		void UpdateTitle(StringView titleOverride = default)
 		{
 			String title = scope String();
@@ -12367,8 +12359,8 @@ namespace IDE
 		}
 
 #if !CLI
-        public override void Init()
-        {
+		public override void Init()
+		{
 			scope AutoBeefPerf("IDEApp.Init");
 			//int zag = 123;
 
@@ -12391,7 +12383,7 @@ namespace IDE
 			//mColorMatrix = Matrix4.Identity;
 #endif
 
-            base.Init();
+			base.Init();
 			mSettings.Apply();
 
 			//Yoop();
@@ -12402,7 +12394,7 @@ namespace IDE
 			}*/
 
 			mAutoDirty = false;
-            WidgetWindow.sOnWindowClosed.Add(new => HandleWindowClosed);
+			WidgetWindow.sOnWindowClosed.Add(new => HandleWindowClosed);
 
 			//mProjectDir = BFApp.mApp.mInstallDir + "../../";
 
@@ -12435,10 +12427,10 @@ namespace IDE
 
 			Font.AddFontFailEntry("Segoe UI", scope String()..AppendF("{}fonts/NotoSans-Regular.ttf", mInstallDir));
 
-            DarkTheme aTheme = new DarkTheme();
+			DarkTheme aTheme = new DarkTheme();
 			mSettings.mUISettings.Apply(); // Apply again to set actual theme
-            aTheme.Init();
-            ThemeFactory.mDefault = aTheme;
+			aTheme.Init();
+			ThemeFactory.mDefault = aTheme;
 
 			mTinyCodeFont = new Font();
 			mCodeFont = new Font();
@@ -12448,46 +12440,48 @@ namespace IDE
 
 			//mCodeFont = Font.LoadFromFile(BFApp.sApp.mInstallDir + "fonts/SegoeUI24.fnt");
 
-            mMainFrame = new MainFrame();
-            mDockingFrame = mMainFrame.mDockingFrame;            
-            
-            mSquiggleImage = Image.LoadFromFile(scope String(mInstallDir, "images/Squiggle.png"));
-            mCircleImage = Image.LoadFromFile(scope String(mInstallDir, "images/Circle.png"));
-			
+			mMainFrame = new MainFrame();
+			mDockingFrame = mMainFrame.mDockingFrame;
+
+			mSquiggleImage = Image.LoadFromFile(scope String(mInstallDir, "images/Squiggle.png"));
+			mCircleImage = Image.LoadFromFile(scope String(mInstallDir, "images/Circle.png"));
+
 			RehupScale();
 
-            CreateBfSystems();
+			CreateBfSystems();
 			if (mWantsClean)
 			{
 				mBfBuildCompiler.ClearBuildCache();
 				mWantsClean = false;
 			}
 
-            mProjectPanel = new ProjectPanel();
+			mProjectPanel = new ProjectPanel();
 			mProjectPanel.mAutoDelete = false;
 			mClassViewPanel = new ClassViewPanel();
 			mClassViewPanel.mAutoDelete = false;
-            mOutputPanel = new OutputPanel(true);
+			mOutputPanel = new OutputPanel(true);
 			mOutputPanel.mAutoDelete = false;
+#if BF_PLATFORM_WINDOWS
 			mTerminalPanel = new TerminalPanel();
 			mTerminalPanel .Init();
 			mTerminalPanel.mAutoDelete = false;
 			mConsolePanel = new ConsolePanel();
 			mConsolePanel.Init();
 			mConsolePanel.mAutoDelete = false;
-            mImmediatePanel = new ImmediatePanel();
+#endif
+			mImmediatePanel = new ImmediatePanel();
 			mImmediatePanel.mAutoDelete = false;
-            mFindResultsPanel = new FindResultsPanel();
+			mFindResultsPanel = new FindResultsPanel();
 			mFindResultsPanel.mAutoDelete = false;
-            mAutoWatchPanel = new WatchPanel(true);            
+			mAutoWatchPanel = new WatchPanel(true);
 			mAutoWatchPanel.mAutoDelete = false;
-            mWatchPanel = new WatchPanel(false);
+			mWatchPanel = new WatchPanel(false);
 			mWatchPanel.mAutoDelete = false;
-            mMemoryPanel = new MemoryPanel();
+			mMemoryPanel = new MemoryPanel();
 			mMemoryPanel.mAutoDelete = false;
-            mCallStackPanel = new CallStackPanel();
+			mCallStackPanel = new CallStackPanel();
 			mCallStackPanel.mAutoDelete = false;
-            mBreakpointPanel = new BreakpointPanel();
+			mBreakpointPanel = new BreakpointPanel();
 			mBreakpointPanel.mAutoDelete = false;
 			mDiagnosticsPanel = new DiagnosticsPanel();
 			mDiagnosticsPanel.mAutoDelete = false;
@@ -12495,11 +12489,11 @@ namespace IDE
 			mErrorsPanel.mAutoDelete = false;
 			mModulePanel = new ModulePanel();
 			mModulePanel.mAutoDelete = false;
-            mThreadPanel = new ThreadPanel();
+			mThreadPanel = new ThreadPanel();
 			mThreadPanel.mAutoDelete = false;
 			mProfilePanel = new ProfilePanel();
 			mProfilePanel.mAutoDelete = false;
-            mPropertiesPanel = new PropertiesPanel();
+			mPropertiesPanel = new PropertiesPanel();
 			mPropertiesPanel.mAutoDelete = false;
 			mAutoCompletePanel = new AutoCompletePanel();
 			mAutoCompletePanel.mAutoDelete = false;
@@ -12517,18 +12511,18 @@ namespace IDE
 			OutputLine("IDE Started. Version {} built {}.", mVersionInfo.FileVersion, exeDateStr);
 
 			/*if (!mRunningTestScript)
-            {
+			{
 				LoadUserSettings(); // User setting can affect automated testing, so use default settings
 				mSettings.Load();
 				mSettings.Apply();
 			}*/
 
-            if (mWorkspace.mDir != null)
-            {
-                mWorkspace.mName = new String();
-                Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
-                LoadWorkspace(mVerb);
-            }
+			if (mWorkspace.mDir != null)
+			{
+				mWorkspace.mName = new String();
+				Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
+				LoadWorkspace(mVerb);
+			}
 			else if (mWorkspace.IsSingleFileWorkspace)
 			{
 				mWorkspace.mName = new String();
@@ -12538,7 +12532,7 @@ namespace IDE
 
 			bool loadedWorkspaceUserData = false;
 
-            if ((!mRunningTestScript) && (LoadWorkspaceUserData()))
+			if ((!mRunningTestScript) && (LoadWorkspaceUserData()))
 			{
 				loadedWorkspaceUserData = true;
 			}
@@ -12555,7 +12549,7 @@ namespace IDE
 				DeleteAndNullify!(mSetPlatformName);
 			}
 
-            WorkspaceLoaded();
+			WorkspaceLoaded();
 
 			if ((mIsFirstRun) && (!loadedWorkspaceUserData))
 			{
@@ -12564,7 +12558,7 @@ namespace IDE
 				int32 height = (int32)(workHeight * 0.85f);
 				int32 width = Math.Min(4 * height / 3, (int32)(workWidth * 0.85f));
 
-				mRequestedWindowRect = .(workX + (workWidth - width)/2, workY + (workHeight - height)/2, width, height);
+				mRequestedWindowRect = .(workX + (workWidth - width) / 2, workY + (workHeight - height) / 2, width, height);
 			}
 
 			if (!loadedWorkspaceUserData)
@@ -12573,7 +12567,7 @@ namespace IDE
 			//
 			{
 				BFWindow.Flags flags = .Border | .ThickFrame | .Resizable | .SysMenu |
-	                .Caption | .Minimize | .Maximize | .QuitOnClose | .Menu | .PopupPosition | .AcceptFiles;
+					.Caption | .Minimize | .Maximize | .QuitOnClose | .Menu | .PopupPosition | .AcceptFiles;
 				if (mRunningTestScript)
 					flags |= .NoActivate;
 
@@ -12581,9 +12575,9 @@ namespace IDE
 					flags |= .ShowMaximized;
 
 				scope AutoBeefPerf("IDEApp.Init:CreateMainWindow");
-	            mMainWindow = new WidgetWindow(null, "Beef IDE", (int32)mRequestedWindowRect.mX,
-	                (int32)mRequestedWindowRect.mY, (int32)mRequestedWindowRect.mWidth, (int32)mRequestedWindowRect.mHeight,
-	                flags, mMainFrame);
+				mMainWindow = new WidgetWindow(null, "Beef IDE", (int32)mRequestedWindowRect.mX,
+					(int32)mRequestedWindowRect.mY, (int32)mRequestedWindowRect.mWidth, (int32)mRequestedWindowRect.mHeight,
+					flags, mMainFrame);
 			}
 
 			if (mIsFirstRun)
@@ -12594,23 +12588,23 @@ namespace IDE
 				{
 					mSettings.mUISettings.mScale = 100 * Math.Min(dpi / 96.0f, 4.0f);
 					mSettings.Apply();
-				}	
+				}
 			}
 
 			UpdateTitle();
-            mMainWindow.SetMinimumSize(GS!(480), GS!(360));
-            mMainWindow.mIsMainWindow = true;
+			mMainWindow.SetMinimumSize(GS!(480), GS!(360));
+			mMainWindow.mIsMainWindow = true;
 			mMainWindow.mOnMouseUp.Add(new => MouseUp);
-            mMainWindow.mOnWindowKeyDown.Add(new => SysKeyDown);
+			mMainWindow.mOnWindowKeyDown.Add(new => SysKeyDown);
 			mMainWindow.mOnWindowKeyUp.Add(new => SysKeyUp);
-            mMainWindow.mOnWindowCloseQuery.Add(new => AllowClose);
+			mMainWindow.mOnWindowCloseQuery.Add(new => AllowClose);
 			mMainWindow.mOnDragDropFile.Add(new => DragDropFile);
-            CreateMenu();
-            UpdateRecentDisplayedFilesMenuItems();
-            if (mRecentlyDisplayedFiles.Count > 0)
-                ShowRecentFile(0);
-			
-            mProjectPanel.RebuildUI();
+			CreateMenu();
+			UpdateRecentDisplayedFilesMenuItems();
+			if (mRecentlyDisplayedFiles.Count > 0)
+				ShowRecentFile(0);
+
+			mProjectPanel.RebuildUI();
 
 			if (mProcessAttachId != 0)
 			{
@@ -12632,7 +12626,7 @@ namespace IDE
 					if (!mProcessAttachHandle.IsInvalid)
 						attachFlags |= .ShutdownOnExit;
 #endif
-					
+
 					Attach(debugProcess, attachFlags);
 #if BF_PLATFORM_WINDOWS
 					if (!mProcessAttachHandle.IsInvalid)
@@ -12715,7 +12709,7 @@ namespace IDE
 
 			if ((mSettings.mUISettings.mShowStartupPanel) && (!mIsFirstRun) && (!mWorkspace.IsInitialized))
 				ShowStartup();
-        }
+		}
 #endif
 		void ShowWelcome()
 		{
@@ -12765,7 +12759,7 @@ namespace IDE
 				return;
 
 			float fontSize = DarkTheme.sScale * mSettings.mEditorSettings.mFontSize;
-			float tinyFontSize = fontSize * 8.0f/9.0f;
+			float tinyFontSize = fontSize * 8.0f / 9.0f;
 
 			String err = scope String();
 			void FontFail(StringView name)
@@ -12777,27 +12771,27 @@ namespace IDE
 
 			bool isFirstFont = true;
 			for (var fontName in mSettings.mEditorSettings.mFonts)
-			FontLoop:
-			{
-				bool isOptional;
-				if (isOptional = fontName.StartsWith("?"))
-					fontName = scope:FontLoop String(fontName, "?".Length);
+				FontLoop:
+				{
+					bool isOptional;
+					if (isOptional = fontName.StartsWith("?"))
+						fontName = scope:FontLoop String(fontName, "?".Length);
 
-				if (isFirstFont)
-				{
-					mTinyCodeFont.Dispose(true);
-					isFirstFont = !mTinyCodeFont.Load(fontName, tinyFontSize);
-					mCodeFont.Dispose(true);
-					if (!mCodeFont.Load(fontName, fontSize))
-						FontFail(fontName);
+					if (isFirstFont)
+					{
+						mTinyCodeFont.Dispose(true);
+						isFirstFont = !mTinyCodeFont.Load(fontName, tinyFontSize);
+						mCodeFont.Dispose(true);
+						if (!mCodeFont.Load(fontName, fontSize))
+							FontFail(fontName);
+					}
+					else
+					{
+						mTinyCodeFont.AddAlternate(fontName, tinyFontSize).IgnoreError();
+						if ((mCodeFont.AddAlternate(fontName, fontSize) case .Err) && (!isOptional))
+							FontFail(fontName);
+					}
 				}
-				else
-				{
-					mTinyCodeFont.AddAlternate(fontName, tinyFontSize).IgnoreError();
-					if ((mCodeFont.AddAlternate(fontName, fontSize) case .Err) && (!isOptional))
-						FontFail(fontName);
-				}
-			}
 
 			if (mCodeFont.GetHeight() == 0)
 			{
@@ -12852,37 +12846,37 @@ namespace IDE
 			}*/
 		}
 
-        void HandleWindowClosed(BFWindow window)
-        {
-            if (mWindowDatas.GetAndRemove(window) case .Ok((?, var windowData)))
+		void HandleWindowClosed(BFWindow window)
+		{
+			if (mWindowDatas.GetAndRemove(window) case .Ok((?, var windowData)))
 			{
 				delete windowData;
 			}
-        }
+		}
 
-        WindowData GetWindowData(BFWindow window)
-        {
-            WindowData windowData;
-            mWindowDatas.TryGetValue(window, out windowData);
-            if (windowData == null)
-            {
-                windowData = new WindowData();
-                mWindowDatas[window] = windowData;
-            }
-            return windowData;
-        }
+		WindowData GetWindowData(BFWindow window)
+		{
+			WindowData windowData;
+			mWindowDatas.TryGetValue(window, out windowData);
+			if (windowData == null)
+			{
+				windowData = new WindowData();
+				mWindowDatas[window] = windowData;
+			}
+			return windowData;
+		}
 
-        public DrawLayer GetOverlayLayer(BFWindow window)
-        {
-            WindowData windowData = GetWindowData(window);
-            if (windowData.mOverlayLayer == null)
-                windowData.mOverlayLayer = new DrawLayer(window);
-            return windowData.mOverlayLayer;
-        }
+		public DrawLayer GetOverlayLayer(BFWindow window)
+		{
+			WindowData windowData = GetWindowData(window);
+			if (windowData.mOverlayLayer == null)
+				windowData.mOverlayLayer = new DrawLayer(window);
+			return windowData.mOverlayLayer;
+		}
 
-        void UpdateDrawTracking()
-        {            
-        }
+		void UpdateDrawTracking()
+		{
+		}
 
 		public enum EvalResult
 		{
@@ -12914,7 +12908,7 @@ namespace IDE
 			{
 				String curMethodOwner = scope String();
 				int32 stackLanguage = 0;
-                mDebugger.GetStackMethodOwner(mDebugger.mActiveCallStackIdx, curMethodOwner, out stackLanguage);
+				mDebugger.GetStackMethodOwner(mDebugger.mActiveCallStackIdx, curMethodOwner, out stackLanguage);
 				if ((curMethodOwner.Length > 0) && (stackLanguage == 2) && (mWorkspace.mStartupProject != null)) // Beef only
 				{
 					String namespaceSearch = scope String();
@@ -12959,18 +12953,18 @@ namespace IDE
 			mDebugger.Detach();
 		}
 
-        void DebuggerPaused()
-        {
-            mDebugger.mActiveCallStackIdx = 0;
-            mExecutionPaused = true;
+		void DebuggerPaused()
+		{
+			mDebugger.mActiveCallStackIdx = 0;
+			mExecutionPaused = true;
 			mDebugger.GetRunState();
 			WithWatchPanels(scope (watchPanel) =>
 				{
 					watchPanel.SetDisabled(false);
 				});
-            mMemoryPanel.SetDisabled(false);
-            mCallStackPanel.SetDisabled(false);
-        }
+			mMemoryPanel.SetDisabled(false);
+			mCallStackPanel.SetDisabled(false);
+		}
 
 		void WithWatchPanels(delegate void(WatchPanel watchPanel) dlg)
 		{
@@ -12988,37 +12982,37 @@ namespace IDE
 			}
 		}
 
-        void DebuggerUnpaused()
-        {
+		void DebuggerUnpaused()
+		{
 			// Leave target in background for a bit, incase we immediately
 			//  hit another breakpoint
-            mDebugger.mActiveCallStackIdx = 0;
-            mForegroundTargetCountdown = 30; 
-            mExecutionPaused = false;
+			mDebugger.mActiveCallStackIdx = 0;
+			mForegroundTargetCountdown = 30;
+			mExecutionPaused = false;
 			WithWatchPanels(scope (watchPanel) =>
 				{
 					watchPanel.SetDisabled(true);
 				});
-            mMemoryPanel.SetDisabled(true);
-            mCallStackPanel.SetDisabled(true);
+			mMemoryPanel.SetDisabled(true);
+			mCallStackPanel.SetDisabled(true);
 
 			// If hoverwatch is up, we need to close it so we refresh the value
-            var sourceViewPanel = GetActiveSourceViewPanel();
-            if ((sourceViewPanel != null) && (sourceViewPanel.mHoverWatch != null))
-            {
-                sourceViewPanel.mHoverWatch.Close();                
-            }
+			var sourceViewPanel = GetActiveSourceViewPanel();
+			if ((sourceViewPanel != null) && (sourceViewPanel.mHoverWatch != null))
+			{
+				sourceViewPanel.mHoverWatch.Close();
+			}
 			mDebuggerContinueIdx++;
-        }
+		}
 
-        public void StepIntoSpecific(int addr)
-        {
-            if (mExecutionPaused)
-            {
-                DebuggerUnpaused();
-                mDebugger.StepIntoSpecific(addr);
-            }            
-        }
+		public void StepIntoSpecific(int addr)
+		{
+			if (mExecutionPaused)
+			{
+				DebuggerUnpaused();
+				mDebugger.StepIntoSpecific(addr);
+			}
+		}
 
 		void FinishPendingHotResolve()
 		{
@@ -13027,7 +13021,7 @@ namespace IDE
 
 			if (!mDebugger.GetHotResolveData(typeData, stackListStr))
 				return;
-			
+
 			mBfBuildCompiler.HotResolve_Start((mHotResolveState == .Pending) ? .None : .HadDataChanges);
 			mHotResolveState = .None;
 
@@ -13088,16 +13082,16 @@ namespace IDE
 		{
 			project.WithProjectItems(scope (projectItem) =>
 				{
-				    var projectSource = projectItem as ProjectSource;
-				    if (projectSource != null)
-				    {
+					var projectSource = projectItem as ProjectSource;
+					if (projectSource != null)
+					{
 						if (projectSource.mIncludeKind == .Ignore)
 							return;
-				        var resolveCompiler = GetProjectCompilerForFile(projectSource.mPath);
-				        if (resolveCompiler == mBfResolveCompiler)
-				            resolveCompiler.QueueProjectSource(projectSource, .None, false);
+						var resolveCompiler = GetProjectCompilerForFile(projectSource.mPath);
+						if (resolveCompiler == mBfResolveCompiler)
+							resolveCompiler.QueueProjectSource(projectSource, .None, false);
 						projectSource.mHasChangedSinceLastCompile = true;
-				    }
+					}
 				});
 		}
 
@@ -13105,34 +13099,34 @@ namespace IDE
 		{
 			project.WithProjectItems(scope (projectItem) =>
 				{
-				    var projectSource = projectItem as ProjectSource;
-				    if (projectSource != null)
-				    {
-				        var resolveCompiler = GetProjectCompilerForFile(projectSource.mPath);
-				        if ((resolveCompiler == mBfResolveCompiler) && (resolveCompiler != null))
-				            resolveCompiler.QueueProjectSourceRemoved(projectSource);
+					var projectSource = projectItem as ProjectSource;
+					if (projectSource != null)
+					{
+						var resolveCompiler = GetProjectCompilerForFile(projectSource.mPath);
+						if ((resolveCompiler == mBfResolveCompiler) && (resolveCompiler != null))
+							resolveCompiler.QueueProjectSourceRemoved(projectSource);
 
 						if (IsBeefFile(projectSource.mPath))
 						{
 							mBfBuildCompiler.QueueProjectSourceRemoved(projectSource);
 						}
-				    }
+					}
 				});
 		}
 
-        void UpdateCompilersAndDebugger()
-        {
+		void UpdateCompilersAndDebugger()
+		{
 			scope AutoBeefPerf("UpdateCompilersAndDebugger");
 
 			var msg = scope String();
 
-            while (true)
-            {
-            	DebugManager.RunState runState = .NotStarted;
+			while (true)
+			{
+				DebugManager.RunState runState = .NotStarted;
 
 				if (mDebugger != null)
-                {
-                	mDebugger.Update();
+				{
+					mDebugger.Update();
 
 					Platform.BfpFile* stdOut = null;
 					Platform.BfpFile* stdError = null;
@@ -13168,27 +13162,27 @@ namespace IDE
 					runState = mDebugger.GetRunState();
 					mDebuggerPerformingTask = (runState == .DebugEval) || (runState == .DebugEval_Done) || (runState == .SearchingSymSrv);
 
-	                if (mDebugAutoRun)
-	                {
-	                    if (runState == DebugManager.RunState.NotStarted)
-	                    {
+					if (mDebugAutoRun)
+					{
+						if (runState == DebugManager.RunState.NotStarted)
+						{
 							mOutputPanel.Clear();
 
-	                        if ((mExecutionQueue.Count == 0) && (!mDebugger.mIsRunning))
-	                        {
-	                            mTargetStartWithStep = true;
-	                            var startDbgCmd = new StartDebugCmd();
+							if ((mExecutionQueue.Count == 0) && (!mDebugger.mIsRunning))
+							{
+								mTargetStartWithStep = true;
+								var startDbgCmd = new StartDebugCmd();
 								startDbgCmd.mWasCompiled = true;
-	                            startDbgCmd.mOnlyIfNotFailed = true;
-	                            mExecutionQueue.Add(startDbgCmd);
-	                        }
-	                    }
-	                    else if (runState == DebugManager.RunState.Paused)
-	                    {
+								startDbgCmd.mOnlyIfNotFailed = true;
+								mExecutionQueue.Add(startDbgCmd);
+							}
+						}
+						else if (runState == DebugManager.RunState.Paused)
+						{
 							mDebugger.Continue();
-	                        //mDebugger.Terminate();
-	                    }
-	                }
+							//mDebugger.Terminate();
+						}
+					}
 
 					if ((mPendingDebugExprHandler != null) && (runState != .DebugEval) && (runState != .SearchingSymSrv))
 					{
@@ -13205,50 +13199,50 @@ namespace IDE
 					{
 						FinishPendingHotResolve();
 					}
-	            }
+				}
 
-                if (mDebugAutoBuild)
-                {
-                    if ((!mBfBuildCompiler.HasQueuedCommands()) && (mExecutionInstances.Count == 0) && (mExecutionQueue.Count == 0))
-                    {
-                        OutputLine("Autobuilding...");
-                        CompileBeef(null, 0, mLastCompileSucceeded, let hadBeef);
-                    }
-                }
+				if (mDebugAutoBuild)
+				{
+					if ((!mBfBuildCompiler.HasQueuedCommands()) && (mExecutionInstances.Count == 0) && (mExecutionQueue.Count == 0))
+					{
+						OutputLine("Autobuilding...");
+						CompileBeef(null, 0, mLastCompileSucceeded, let hadBeef);
+					}
+				}
 
 				bool didClean = false;
-                if (mWantsBeefClean)
-                {
+				if (mWantsBeefClean)
+				{
 					mBfBuildCompiler?.CancelBackground();
 					mBfResolveCompiler?.CancelBackground();
 
-                    if ((!mBfBuildCompiler.HasQueuedCommands()) &&
+					if ((!mBfBuildCompiler.HasQueuedCommands()) &&
 						((mBfResolveCompiler == null) || (!mBfResolveCompiler.HasQueuedCommands())))
-                    {
+					{
 						didClean = true;
-                        OutputLine("Cleaned Beef.");
+						OutputLine("Cleaned Beef.");
 
 						if (mErrorsPanel != null)
 							mErrorsPanel.ClearParserErrors(null);
 
-                        DeleteAndNullify!(mBfResolveCompiler);
-                        DeleteAndNullify!(mBfResolveSystem);
+						DeleteAndNullify!(mBfResolveCompiler);
+						DeleteAndNullify!(mBfResolveSystem);
 						DeleteAndNullify!(mBfResolveHelper);
-                        DeleteAndNullify!(mBfBuildCompiler);
-                        DeleteAndNullify!(mBfBuildSystem);
-						
+						DeleteAndNullify!(mBfBuildCompiler);
+						DeleteAndNullify!(mBfBuildSystem);
+
 						///
-                        mDebugger.FullReportMemory();
+						mDebugger.FullReportMemory();
 
 						var workspaceBuildDir = scope String();
 						GetWorkspaceBuildDir(workspaceBuildDir);
 						if (Directory.Exists(workspaceBuildDir))
 						{
 							var result = Utils.DelTree(workspaceBuildDir, scope (fileName) =>
-                                {
+								{
 									return fileName.EndsWith("build.dat");
-                                });
-						    if (result case .Err)
+								});
+							if (result case .Err)
 							{
 								var str = scope String("Failed to delete folder: ", workspaceBuildDir);
 								Fail(str);
@@ -13259,55 +13253,55 @@ namespace IDE
 
 						if (!mNoResolve)
 						{
-	                        mBfResolveSystem = new BfSystem();
-	                        mBfResolveCompiler = mBfResolveSystem.CreateCompiler(true);
-	                        mBfResolveHelper = new BfResolveHelper();
+							mBfResolveSystem = new BfSystem();
+							mBfResolveCompiler = mBfResolveSystem.CreateCompiler(true);
+							mBfResolveHelper = new BfResolveHelper();
 						}
 
 						mCompileSinceCleanCount = 0;
-                        mBfBuildSystem = new BfSystem();
-                        mBfBuildCompiler = mBfBuildSystem.CreateCompiler(false);
+						mBfBuildSystem = new BfSystem();
+						mBfBuildCompiler = mBfBuildSystem.CreateCompiler(false);
 						mBfBuildCompiler.ClearBuildCache();
 
 						/*foreach (var project in mWorkspace.mProjects)
 						{
-						    mBfBuildSystem.AddProject(project);
+							mBfBuildSystem.AddProject(project);
 							if (mBfResolveSystem != null)
-						    	mBfResolveSystem.AddProject(project);
+								mBfResolveSystem.AddProject(project);
 						}
-                        
-                        foreach (var project in mWorkspace.mProjects)
-                        {
-                            project.WithProjectItems(scope (projectItem) =>
-                                {
-                                    var projectSource = projectItem as ProjectSource;
-                                    if (projectSource != null)
-                                    {                                        
-                                        var resolveCompiler = GetProjectCompilerForFile(projectSource.mPath);
-                                        if (resolveCompiler == mBfResolveCompiler)
-                                            resolveCompiler.QueueProjectSource(projectSource);
-                                    }
-                                });
-                        }
-                        mBfResolveCompiler.QueueDeferredResolveAll();
-                        CurrentWorkspaceConfigChanged();*/
+						
+						foreach (var project in mWorkspace.mProjects)
+						{
+							project.WithProjectItems(scope (projectItem) =>
+								{
+									var projectSource = projectItem as ProjectSource;
+									if (projectSource != null)
+									{                                        
+										var resolveCompiler = GetProjectCompilerForFile(projectSource.mPath);
+										if (resolveCompiler == mBfResolveCompiler)
+											resolveCompiler.QueueProjectSource(projectSource);
+									}
+								});
+						}
+						mBfResolveCompiler.QueueDeferredResolveAll();
+						CurrentWorkspaceConfigChanged();*/
 
-                        mWantsBeefClean = false;
-                    }
-                }
+						mWantsBeefClean = false;
+					}
+				}
 
-                if (mWantsClean)
-                {
+				if (mWantsClean)
+				{
 					mBfBuildCompiler?.CancelBackground();
 					mBfResolveCompiler?.CancelBackground();
 
-                    if ((!mBfBuildCompiler.HasQueuedCommands()) && (!mBfResolveCompiler.HasQueuedCommands())
-#if IDE_C_SUPPORT
-                        && (!mDepClang.HasQueuedCommands()) && (!mResolveClang.HasQueuedCommands())
+					if ((!mBfBuildCompiler.HasQueuedCommands()) && (!mBfResolveCompiler.HasQueuedCommands())
+					#if IDE_C_SUPPORT
+						&& (!mDepClang.HasQueuedCommands()) && (!mResolveClang.HasQueuedCommands())
 #endif
-                        )
-                    {                        
-                        OutputLine("Cleaned.");
+						)
+					{
+						OutputLine("Cleaned.");
 
 						if (mErrorsPanel != null)
 							mErrorsPanel.ClearParserErrors(null);
@@ -13315,35 +13309,35 @@ namespace IDE
 						let workspaceOptions = GetCurWorkspaceOptions();
 
 						delete mBfResolveHelper;
-                        delete mBfResolveCompiler;
-                        delete mBfResolveSystem;
+						delete mBfResolveCompiler;
+						delete mBfResolveSystem;
 #if IDE_C_SUPPORT
-                        delete mResolveClang;
+						delete mResolveClang;
 #endif
 
-                        delete mBfBuildCompiler;
-                        delete mBfBuildSystem;
+						delete mBfBuildCompiler;
+						delete mBfBuildSystem;
 #if IDE_C_SUPPORT
-                        delete mDepClang;
+						delete mDepClang;
 #endif
 						//
 
-                        CreateBfSystems();
+						CreateBfSystems();
 						mBfBuildCompiler.ClearBuildCache();
 
-                        var workspaceBuildDir = scope String();
-                        GetWorkspaceBuildDir(workspaceBuildDir);
-                        if (Directory.Exists(workspaceBuildDir))
-                        {
+						var workspaceBuildDir = scope String();
+						GetWorkspaceBuildDir(workspaceBuildDir);
+						if (Directory.Exists(workspaceBuildDir))
+						{
 							var result = Utils.DelTree(workspaceBuildDir);
-                            if (result case .Err)
+							if (result case .Err)
 							{
 								var str = scope String("Failed to delete folder: ", workspaceBuildDir);
 								//result.Exception.ToString(str);
-                                Fail(str);
+								Fail(str);
 								//result.Dispose();
 							}
-                        }
+						}
 
 						List<String> deleteFails = scope .();
 
@@ -13401,19 +13395,19 @@ namespace IDE
 						ClearAndDeleteItems(deleteFails);
 
 						didClean = true;
-                        mWantsClean = false;
+						mWantsClean = false;
 						mDbgCompileIdx = -1;
 						mDbgHighestTime = default;
-                    }
-                }
+					}
+				}
 
 				if (didClean)
 				{
 					for (var project in mWorkspace.mProjects)
 					{
-					    mBfBuildSystem.AddProject(project);
+						mBfBuildSystem.AddProject(project);
 						if (mBfResolveSystem != null)
-					    	mBfResolveSystem.AddProject(project);
+							mBfResolveSystem.AddProject(project);
 					}
 
 					if (mBfResolveSystem != null)
@@ -13438,68 +13432,68 @@ namespace IDE
 					}
 				}
 
-                mBfBuildSystem.Update();
-                mBfBuildCompiler.Update();
-                while (true)
-                {
+				mBfBuildSystem.Update();
+				mBfBuildCompiler.Update();
+				while (true)
+				{
 #if CLI
 					if (mCompilingBeef)
 						break;
-#endif					
+#endif
 
 					msg.Clear();
-                    if (!mBfBuildCompiler.PopMessage(msg))
+					if (!mBfBuildCompiler.PopMessage(msg))
 						break;
-                    OutputLineSmart(msg);					
-                }
+					OutputLineSmart(msg);
+				}
 
 				if (mBfResolveSystem != null)
 				{
-	                mBfResolveSystem.Update();
-	                mBfResolveCompiler.Update();
-	                mBfResolveCompiler.ClearMessages();
-	                mBfResolveHelper.Update();
+					mBfResolveSystem.Update();
+					mBfResolveCompiler.Update();
+					mBfResolveCompiler.ClearMessages();
+					mBfResolveHelper.Update();
 				}
 
 #if IDE_C_SUPPORT
-                mDepClang.Update();
-                if ((!IsCompiling) && (!mDepClang.IsPerformingBackgroundOperation()))
-                {
+				mDepClang.Update();
+				if ((!IsCompiling) && (!mDepClang.IsPerformingBackgroundOperation()))
+				{
 					// Only leave mCompileWaitsForQueueEmpty false for a fast initial build
-                    mDepClang.mCompileWaitsForQueueEmpty = true;
-                }
+					mDepClang.mCompileWaitsForQueueEmpty = true;
+				}
 
-                while (true)
-                {
+				while (true)
+				{
 					msg.Clear();
-                    if (!mDepClang.PopMessage(msg))
+					if (!mDepClang.PopMessage(msg))
 						break;
-                    OutputLine(msg);
-                }
+					OutputLine(msg);
+				}
 
-                mResolveClang.Update();
-                mResolveClang.ClearMessages();
+				mResolveClang.Update();
+				mResolveClang.ClearMessages();
 #endif
 
-                bool wantDebuggerDetach = false;
-                if ((mDebugger != null) && (runState == DebugManager.RunState.Terminated))
-                {
-                    wantDebuggerDetach = true;                    
-                }
+				bool wantDebuggerDetach = false;
+				if ((mDebugger != null) && (runState == DebugManager.RunState.Terminated))
+				{
+					wantDebuggerDetach = true;
+				}
 
 				String deferredMsgType = scope String();
 				String deferredOutput = scope String();
 
-                bool hadMessages = false;
-                while (mDebugger != null)
-                {
+				bool hadMessages = false;
+				while (mDebugger != null)
+				{
 					msg.Clear();
-                    if (!mDebugger.PopMessage(msg))
+					if (!mDebugger.PopMessage(msg))
 					{
 						break;
 					}
-                    hadMessages = true;                    
-                    int paramIdx = msg.IndexOf(' ');
+					hadMessages = true;
+					int paramIdx = msg.IndexOf(' ');
 					StringView cmd = default;
 					StringView param = default;
 
@@ -13519,8 +13513,8 @@ namespace IDE
 						isOutput = true;
 					}
 
-                    if (isOutput)
-                    {
+					if (isOutput)
+					{
 						if (deferredMsgType != cmd)
 						{
 							if (deferredOutput.Length > 0)
@@ -13532,11 +13526,11 @@ namespace IDE
 							deferredMsgType.Set(cmd);
 						}
 
-						
+
 						deferredOutput.Append(param);
-                    }
-                    else if ((cmd == "error") || (cmd == "errorsoft"))
-                    {
+					}
+					else if ((cmd == "error") || (cmd == "errorsoft"))
+					{
 						if ((mRunningTestScript) && (!IsCrashDump) && (!mScriptManager.IsErrorExpected(param, false)))
 							mScriptManager.Fail(param);
 
@@ -13594,7 +13588,6 @@ namespace IDE
 
 								if (addWidget != null)
 									mOutputPanel.AddInlineWidget(addWidget);
-
 							}
 							else if (infoPos != -1)
 							{
@@ -13639,29 +13632,29 @@ namespace IDE
 
 						if (focusOutput)
 							ShowOutput();
-                    }
-                    else if (cmd == "memoryBreak")
-                    {
-                        Breakpoint breakpoint = null;
-                        int memoryAddress = (int)int64.Parse(param, System.Globalization.NumberStyles.HexNumber);
-                        for (var checkBreakpoint in mDebugger.mBreakpointList)
-                        {
-                            if (checkBreakpoint.mMemoryAddress == memoryAddress)
-                                breakpoint = checkBreakpoint;
-                        }
-                        String infoString = StackStringFormat!("Memory breakpoint hit: '0x{0:X08}'", (int64)memoryAddress);
+					}
+					else if (cmd == "memoryBreak")
+					{
+						Breakpoint breakpoint = null;
+						int memoryAddress = (int)int64.Parse(param, System.Globalization.NumberStyles.HexNumber);
+						for (var checkBreakpoint in mDebugger.mBreakpointList)
+						{
+							if (checkBreakpoint.mMemoryAddress == memoryAddress)
+								breakpoint = checkBreakpoint;
+						}
+						String infoString = StackStringFormat!("Memory breakpoint hit: '0x{0:X08}'", (int64)memoryAddress);
 						if (breakpoint != null)
 							infoString = StackStringFormat!("Memory breakpoint hit: '0x{0:X08}' ({1})", (int64)memoryAddress, breakpoint.mMemoryWatchExpression);
 						OutputLine(infoString);
 						if (!mRunningTestScript)
 						{
-	                        MessageDialog("Breakpoint Hit", infoString);
-	                        Beep(MessageBeepType.Information);
+							MessageDialog("Breakpoint Hit", infoString);
+							Beep(MessageBeepType.Information);
 						}
-                    }
+					}
 					else if (cmd == "newProfiler")
 					{
-						var profiler = mDebugger.PopProfiler();						
+						var profiler = mDebugger.PopProfiler();
 						//ShowProfilePanel();
 						mProfilePanel.Add(profiler);
 					}
@@ -13700,18 +13693,18 @@ namespace IDE
 						if (mScriptManager.mFailed)
 							mScriptManager.Clear();
 						mScriptManager.mSoftFail = true;
-						mScriptManager.SetTimeoutMS(20*60*1000); // 20 minute timeout
+						mScriptManager.SetTimeoutMS(20 * 60 * 1000); // 20 minute timeout
 						mScriptManager.QueueCommandFile(absTestPath);
 					}
-                    else
-                    {
-                        Runtime.FatalError("Invalid debugger message type");
-                    }
-                }
+					else
+					{
+						Runtime.FatalError("Invalid debugger message type");
+					}
+				}
 
 				if (deferredOutput.Length > 0)
 				{
-				    OutputFormatted(deferredOutput, deferredMsgType == "dbgEvalMsg");
+					OutputFormatted(deferredOutput, deferredMsgType == "dbgEvalMsg");
 				}
 
 				/*if (hadMessages)                
@@ -13720,25 +13713,27 @@ namespace IDE
 					mNoDebugMessagesTick++;
 				if (mNoDebugMessagesTick < 10)
 					wantDebuggerDetach = false; // Don't detach if we have messages*/
-                
-                if (wantDebuggerDetach)
-                {
+
+				if (wantDebuggerDetach)
+				{
 					OutputLine("Detached debugger");
 
 					UpdateTitle();
-                    var disassemblyPanel = TryGetDisassemblyPanel(false);
-                    if (disassemblyPanel != null)
-                        disassemblyPanel.Disable();
+					var disassemblyPanel = TryGetDisassemblyPanel(false);
+					if (disassemblyPanel != null)
+						disassemblyPanel.Disable();
+#if BF_PLATFORM_WINDOWS
 					if (!mSettings.mAlwaysEnableConsole)
 						mConsolePanel.Detach();
-                    mDebugger.DisposeNativeBreakpoints();
-                    mDebugger.Detach();
-                    mDebugger.mIsRunning = false;
+#endif
+					mDebugger.DisposeNativeBreakpoints();
+					mDebugger.Detach();
+					mDebugger.mIsRunning = false;
 					mExecutionPaused = false;
 					mHotResolveState = .None;
 					mDebuggerPerformingTask = false;
-                    mWorkspace.StoppedRunning();
-                    mBreakpointPanel.BreakpointsChanged();
+					mWorkspace.StoppedRunning();
+					mBreakpointPanel.BreakpointsChanged();
 					mModulePanel.ModulesChanged();
 					if (mPendingDebugExprHandler != null)
 					{
@@ -13751,19 +13746,19 @@ namespace IDE
 							watchPanel.SetDisabled(true);
 						});
 					mIsAttachPendingSourceShow = false;
-                }
+				}
 
-                if ((mDebugger != null) && (mDebugger.IsPaused()) && (!mDebugger.HasPendingDebugLoads()))
-                {
-                    mForegroundTargetCountdown = 0;
-                    if (!mExecutionPaused)
-                    {
-                        if (!mTargetDidInitBreak)
-                        {
-                            mTargetDidInitBreak = true;
+				if ((mDebugger != null) && (mDebugger.IsPaused()) && (!mDebugger.HasPendingDebugLoads()))
+				{
+					mForegroundTargetCountdown = 0;
+					if (!mExecutionPaused)
+					{
+						if (!mTargetDidInitBreak)
+						{
+							mTargetDidInitBreak = true;
 							bool wantsContinue = true;
-                            if (mTargetStartWithStep)
-                            {
+							if (mTargetStartWithStep)
+							{
 								if ((mMainBreakpoint != null) && (!mMainBreakpoint.IsBound()))
 								{
 									BfLog.LogDbg("Deleting mMainBreakpoint 1\n");
@@ -13781,50 +13776,50 @@ namespace IDE
 								}
 
 								wantsContinue = true;
-                            }
-                            else
-                            {
-                                if (mMainBreakpoint != null)
-                                {
+							}
+							else
+							{
+								if (mMainBreakpoint != null)
+								{
 									if (mMainBreakpoint.IsActiveBreakpoint())
 										wantsContinue = true;
 									BfLog.LogDbg("Deleting mMainBreakpoint 2\n");
 									mDebugger.DeleteBreakpoint(mMainBreakpoint);
-                                    //mMainBreakpoint.Dispose();
-                                    mMainBreakpoint = null;
-                                }
-                            }
+									//mMainBreakpoint.Dispose();
+									mMainBreakpoint = null;
+								}
+							}
 
 							if (wantsContinue)
 							{
 								DebuggerUnpaused();
 								mDebugger.Continue();
 							}
-                        }
-                        else
-                        {                            
-                            if (mMainBreakpoint != null)
-                            {
+						}
+						else
+						{
+							if (mMainBreakpoint != null)
+							{
 								BfLog.LogDbg("Deleting mMainBreakpoint 3\n");
-                                mDebugger.DeleteBreakpoint(mMainBreakpoint);
-                                mMainBreakpoint = null;
+								mDebugger.DeleteBreakpoint(mMainBreakpoint);
+								mMainBreakpoint = null;
 
-                                int addr;
-                                String fileName = null;
-                                mDebugger.UpdateCallStack();
-                                var stackInfo = scope String();
-                                mDebugger.GetStackFrameInfo(0, out addr, fileName, stackInfo);
-                                if (stackInfo.Contains("BeefStartProgram"))
-                                {
+								int addr;
+								String fileName = null;
+								mDebugger.UpdateCallStack();
+								var stackInfo = scope String();
+								mDebugger.GetStackFrameInfo(0, out addr, fileName, stackInfo);
+								if (stackInfo.Contains("BeefStartProgram"))
+								{
 									// Okay, NOW we can do a "step into"
-                                    if (!IsInDisassemblyMode())
-                                        mDebugger.StepInto(false);
-                                    return;
-                                } 
-                            }
+									if (!IsInDisassemblyMode())
+										mDebugger.StepInto(false);
+									return;
+								}
+							}
 
-                            if ((!HasModalDialogs()) && (!mRunningTestScript))
-                                mMainWindow.SetForeground();
+							if ((!HasModalDialogs()) && (!mRunningTestScript))
+								mMainWindow.SetForeground();
 
 							if (mRunTimingProfileId != 0)
 							{
@@ -13833,33 +13828,33 @@ namespace IDE
 							}
 
 							BeefPerf.Event("Debugger Paused", "");
-                            DebuggerPaused();
-                            PCChanged();
+							DebuggerPaused();
+							PCChanged();
 							mBreakpointPanel.MarkStatsDirty();
-                            mTargetHadFirstBreak = true;
+							mTargetHadFirstBreak = true;
 
-                            switch (mDebugger.GetRunState())
-                            {
+							switch (mDebugger.GetRunState())
+							{
 							case .Exception:
-                                String exceptionLine = scope String();
-                                mDebugger.GetCurrentException(exceptionLine);
-                                var exceptionData = String.StackSplit!(exceptionLine, '\n');
+								String exceptionLine = scope String();
+								mDebugger.GetCurrentException(exceptionLine);
+								var exceptionData = String.StackSplit!(exceptionLine, '\n');
 
-                                String exHeader = StackStringFormat!("Exception {0}", exceptionData[1]);
-                                if (exceptionData.Count >= 3)
-                                    exHeader = exceptionData[2];
+								String exHeader = StackStringFormat!("Exception {0}", exceptionData[1]);
+								if (exceptionData.Count >= 3)
+									exHeader = exceptionData[2];
 
-                                String exString = StackStringFormat!("{0} at {1}", exHeader, exceptionData[0]);
+								String exString = StackStringFormat!("{0} at {1}", exHeader, exceptionData[0]);
 
-                                OutputLine(exString);
+								OutputLine(exString);
 								if (!IsCrashDump)
-                                	Fail(exString);
+									Fail(exString);
 							default:
-                            }
-                        }
-                    }
-                    break;
-                }
+							}
+						}
+					}
+					break;
+				}
 				else if ((mDebugger != null) && (mDebugger.GetRunState() == .TargetUnloaded))
 				{
 					if (mWorkspace.mHadHotCompileSinceLastFullCompile)
@@ -13874,28 +13869,30 @@ namespace IDE
 					mWorkspace.StoppedRunning();
 					break;
 				}
-                else if (mDebuggerPerformingTask)
+				else if (mDebuggerPerformingTask)
 				{
 					break;
 				}
 				else
-                {
-                    if (mForegroundTargetCountdown > 0)
-                    {
-                        if ((--mForegroundTargetCountdown == 0) && (mDebugger.mIsRunning))
+				{
+					if (mForegroundTargetCountdown > 0)
+					{
+						if ((--mForegroundTargetCountdown == 0) && (mDebugger.mIsRunning))
 						{
+#if BF_PLATFORM_WINDOWS
 							if (mConsolePanel.mBeefConAttachState case .Connected(let processId))
-                            	mDebugger.ForegroundTarget(processId);
+								mDebugger.ForegroundTarget(processId);
 							else
 								mDebugger.ForegroundTarget(0);
+#endif
 						}
-                    }
+					}
 
-                    if ((mDebugger != null) && (mExecutionPaused) && (mDebugger.mIsRunning))
-                        DebuggerUnpaused();
-                    break;
-                }
-            }
+					if ((mDebugger != null) && (mExecutionPaused) && (mDebugger.mIsRunning))
+						DebuggerUnpaused();
+					break;
+				}
+			}
 
 			if ((mDebugger != null) && ((mDebugger.IsPaused()) || (!mDebugger.mIsRunning)) && (!IsCompiling))
 			{
@@ -13952,7 +13949,7 @@ namespace IDE
 				DeleteAndNullify!(mLaunchData);
 
 			mErrorsPanel?.UpdateAlways();
-
+#if BF_PLATFORM_WINDOWS
 			if ((mConsolePanel != null) && (mConsolePanel.mBeefConAttachState case .Attached(let consoleProcessId)))
 			{
 				if (!mDebugger.mIsRunning)
@@ -13979,27 +13976,28 @@ namespace IDE
 					}
 				}
 			}
-        }
+#endif
+		}
 
-        public void ShowPassOutput(BfPassInstance bfPassInstance)
-        {
-            while (true)
-            {
-                var outString = scope String();
-                if (!bfPassInstance.PopOutString(outString))
+		public void ShowPassOutput(BfPassInstance bfPassInstance)
+		{
+			while (true)
+			{
+				var outString = scope String();
+				if (!bfPassInstance.PopOutString(outString))
 					break;
-                OutputLine(outString);
-            }
-        }
+				OutputLine(outString);
+			}
+		}
 
-        /*public bool CheckMouseover(Widget checkWidget, int32 wantTicks, out Point mousePoint)
-        {
-            mousePoint = Point(Int32.MinValue, Int32.MinValue);
-            if (checkWidget != mLastMouseWidget) 
-                return false;
-            checkWidget.RootToSelfTranslate(mLastRelMousePos.x, mLastRelMousePos.y, out mousePoint.x, out mousePoint.y);
-            return mMouseStillTicks == wantTicks;
-        }
+		/*public bool CheckMouseover(Widget checkWidget, int32 wantTicks, out Point mousePoint)
+		{
+			mousePoint = Point(Int32.MinValue, Int32.MinValue);
+			if (checkWidget != mLastMouseWidget) 
+				return false;
+			checkWidget.RootToSelfTranslate(mLastRelMousePos.x, mLastRelMousePos.y, out mousePoint.x, out mousePoint.y);
+			return mMouseStillTicks == wantTicks;
+		}
 
 		void LastMouseWidgetDeleted(Widget widget)
 		{
@@ -14016,55 +14014,55 @@ namespace IDE
 				mLastMouseWidget.mDeletedHandler.Add(new => LastMouseWidgetDeleted);
 		}
 
-        void UpdateMouseover()
-        {
+		void UpdateMouseover()
+		{
 			if (mMouseStillTicks != -1)
-            	mMouseStillTicks++;
+				mMouseStillTicks++;
 
-            Widget overWidget = null;
-            int32 numOverWidgets = 0;
-            foreach (var window in mWindows)
-            {
-                var widgetWindow = window as WidgetWindow;
-                
-                widgetWindow.RehupMouse(false);
-                var windowOverWidget = widgetWindow.mCaptureWidget ?? widgetWindow.mOverWidget;
-                if ((windowOverWidget != null) && (widgetWindow.mAlpha == 1.0f) && (widgetWindow.mCaptureWidget == null))
-                {
-                    overWidget = windowOverWidget;
-                    numOverWidgets++;
-                    if (overWidget != mLastMouseWidget)
-                    {
+			Widget overWidget = null;
+			int32 numOverWidgets = 0;
+			foreach (var window in mWindows)
+			{
+				var widgetWindow = window as WidgetWindow;
+				
+				widgetWindow.RehupMouse(false);
+				var windowOverWidget = widgetWindow.mCaptureWidget ?? widgetWindow.mOverWidget;
+				if ((windowOverWidget != null) && (widgetWindow.mAlpha == 1.0f) && (widgetWindow.mCaptureWidget == null))
+				{
+					overWidget = windowOverWidget;
+					numOverWidgets++;
+					if (overWidget != mLastMouseWidget)
+					{
 						SetLastMouseWidget(overWidget);                        
-                        mMouseStillTicks = -1;
-                    }
+						mMouseStillTicks = -1;
+					}
 
 					float actualX = widgetWindow.mClientX + widgetWindow.mMouseX;
 					float actualY = widgetWindow.mClientY + widgetWindow.mMouseY;
-                    if ((mLastAbsMousePos.x != actualX) || (mLastAbsMousePos.y != actualY))
-                    {
-                        mMouseStillTicks = 0;
-                        mLastAbsMousePos.x = actualX;
-                        mLastAbsMousePos.y = actualY;
-                    }
+					if ((mLastAbsMousePos.x != actualX) || (mLastAbsMousePos.y != actualY))
+					{
+						mMouseStillTicks = 0;
+						mLastAbsMousePos.x = actualX;
+						mLastAbsMousePos.y = actualY;
+					}
 					mLastRelMousePos.x = widgetWindow.mMouseX;
 					mLastRelMousePos.y = widgetWindow.mMouseY;
-                }
-            }
+				}
+			}
 
-            if (overWidget == null)
-            {     
-           		SetLastMouseWidget(null);
-                mMouseStillTicks = -1;
-            }
+			if (overWidget == null)
+			{     
+				   SetLastMouseWidget(null);
+				mMouseStillTicks = -1;
+			}
 
-            if (numOverWidgets > 1)
-            {
+			if (numOverWidgets > 1)
+			{
 				//int a = 0;
-            }
+			}
 
-            Debug.Assert(numOverWidgets <= 1);                        
-        }*/
+			Debug.Assert(numOverWidgets <= 1);                        
+		}*/
 
 		public void FileRenamed(ProjectFileItem projectFileItem, String oldPath, String newPath)
 		{
@@ -14084,31 +14082,31 @@ namespace IDE
 			RenameEditData(oldPath, newPath);
 
 			WithTabs(scope (tab) =>
-			    {
-			        var sourceViewPanel = tab.mContent as SourceViewPanel;
-			        if (sourceViewPanel != null)
-			        {
-			            if (Path.Equals(sourceViewPanel.mFilePath, oldPath))
-			            {
+				{
+					var sourceViewPanel = tab.mContent as SourceViewPanel;
+					if (sourceViewPanel != null)
+					{
+						if (Path.Equals(sourceViewPanel.mFilePath, oldPath))
+						{
 							var sourceViewTab = (IDEApp.SourceViewTabButton)tab;
-			                
+
 							sourceViewPanel.PathChanged(newPath);
-			                tab.Label = newFileName;
+							tab.Label = newFileName;
 							float newWidth = sourceViewTab.GetWantWidth();
 							if (newWidth != tab.mWantWidth)
 							{
 								tab.mWantWidth = newWidth;
 								tab.mTabbedView.mNeedResizeTabs = true;
 							}
-			            }
-			        }
-			    });
+						}
+					}
+				});
 
 			var recentFileList = mRecentlyDisplayedFiles;
 			for (int32 recentFileIdx = 0; recentFileIdx < recentFileList.Count; recentFileIdx++)
 			{
-			    if (recentFileList[recentFileIdx] == oldPath)
-			        recentFileList[recentFileIdx].Set(newPath);
+				if (recentFileList[recentFileIdx] == oldPath)
+					recentFileList[recentFileIdx].Set(newPath);
 			}
 			UpdateRecentDisplayedFilesMenuItems();
 
@@ -14142,7 +14140,7 @@ namespace IDE
 			String newName = null;
 			if (newPath != null)
 			{
-				newName = scope ::String();
+				newName = scope:: String();
 				Path.GetFileName(newPath, newName);
 			}
 
@@ -14150,7 +14148,7 @@ namespace IDE
 			{
 				if (projectItem.mIncludeKind == .Auto)
 				{
-	                let projectFileItem = projectItem as ProjectFileItem;
+					let projectFileItem = projectItem as ProjectFileItem;
 
 					if (listViewItem != null)
 						listViewItem.Label = newName;
@@ -14171,7 +14169,7 @@ namespace IDE
 				}
 			}
 			else if (changeType == .FileCreated)
-			{				
+			{
 				let projectFolder = projectItem as ProjectFolder;
 				if (projectFolder.IsAutoInclude())
 				{
@@ -14253,7 +14251,7 @@ namespace IDE
 								if (File.GetLastWriteTime(editData.mFilePath) case .Ok(let fileTime))
 								{
 									if (fileTime != projectSource.mEditData.mFileTime)
-									{ 
+									{
 										if (!projectSource.mEditData.mMD5Hash.IsZero)
 										{
 											var text = scope String();
@@ -14265,7 +14263,6 @@ namespace IDE
 													changed = true;
 												}
 											}
-
 										}
 										else
 											changed = true;
@@ -14277,7 +14274,6 @@ namespace IDE
 								}
 							}
 						}
-
 					});
 			}
 		}
@@ -14291,7 +14287,7 @@ namespace IDE
 
 			bool appHasFocus = false;
 			for (var window in mWindows)
-			    appHasFocus |= window.mHasFocus;
+				appHasFocus |= window.mHasFocus;
 
 			if ((appHasFocus) && (!mAppHasFocus))
 			{
@@ -14321,7 +14317,6 @@ namespace IDE
 								},
 								new (dlg) =>
 								{
-
 								});
 							dialog.PopupWindow(GetActiveWindow());
 							hadChange = true;
@@ -14334,7 +14329,7 @@ namespace IDE
 			if (mRunningTestScript)
 				appHasFocus = true;
 
-			// Is this enough to get the behavior we want?	
+			// Is this enough to get the behavior we want?
 			if (!appHasFocus)
 				return;
 
@@ -14389,7 +14384,7 @@ namespace IDE
 				}
 			}
 
-			while (/*(appHasFocus) && */((mFileChangedDialog == null) || (mFileChangedDialog.mClosed)))
+			while ( /*(appHasFocus) && */((mFileChangedDialog == null) || (mFileChangedDialog.mClosed)))
 			{
 				while (mExternalChangeDeferredOpen.Count > 0)
 				{
@@ -14399,12 +14394,12 @@ namespace IDE
 				}
 
 				var changedFile = mFileWatcher.PopChangedFile();
-			    if (changedFile == null)
-			    {
-			        if (mFileChangedDialog != null)
-			            mFileChangedDialog = null;
-			        break;
-			    }
+				if (changedFile == null)
+				{
+					if (mFileChangedDialog != null)
+						mFileChangedDialog = null;
+					break;
+				}
 				String fileName = changedFile.mPath;
 				defer
 				{
@@ -14431,7 +14426,7 @@ namespace IDE
 				if (editData.mQueuedContent == null)
 					editData.mQueuedContent = new String();
 				editData.mQueuedContent.Clear();
-				if (LoadTextFile(fileName, editData.mQueuedContent, false, scope() =>
+				if (LoadTextFile(fileName, editData.mQueuedContent, false, scope () =>
 					{
 						editData.BuildHash(editData.mQueuedContent);
 					}) case .Err(let err))
@@ -14455,36 +14450,36 @@ namespace IDE
 					}
 				}
 
-			    var sourceViewPanel = FindSourceViewPanel(fileName);
-			    if (sourceViewPanel != null)
-			    {
+				var sourceViewPanel = FindSourceViewPanel(fileName);
+				if (sourceViewPanel != null)
+				{
 					FileChangedDialog.DialogKind dialogKind = File.Exists(fileName) ? .Changed : .Deleted;
 
 					if ((sourceViewPanel.mEditData != null) && (sourceViewPanel.mEditData.mFileDeleted))
 						sourceViewPanel.mEditData.IsFileDeleted(); // Rehup
 
-			        if ((sourceViewPanel.HasUnsavedChanges()) || (dialogKind == .Deleted))
-			        {
-			            if ((mFileChangedDialog != null) && (mFileChangedDialog.mApplyAllResult[(int)dialogKind].HasValue))
-			            {
-			                bool closeAll = mFileChangedDialog.mApplyAllResult[(int)dialogKind].Value;
-			                if (closeAll)
+					if ((sourceViewPanel.HasUnsavedChanges()) || (dialogKind == .Deleted))
+					{
+						if ((mFileChangedDialog != null) && (mFileChangedDialog.mApplyAllResult[(int)dialogKind].HasValue))
+						{
+							bool closeAll = mFileChangedDialog.mApplyAllResult[(int)dialogKind].Value;
+							if (closeAll)
 								gApp.CloseDocument(sourceViewPanel);
-			                continue;
-			            }
-			            else
-			            {
-			                mFileChangedDialog = new FileChangedDialog();
-			                mFileChangedDialog.Show(sourceViewPanel);
-			            }
-			            break;
-			        }
-			        else
-			        {
-			            sourceViewPanel.Reload();
+							continue;
+						}
+						else
+						{
+							mFileChangedDialog = new FileChangedDialog();
+							mFileChangedDialog.Show(sourceViewPanel);
+						}
+						break;
+					}
+					else
+					{
+						sourceViewPanel.Reload();
 						//FileChanged(fileName);
-			        }
-			    }                
+					}
+				}
 				else
 				{
 					editData.Reload();
@@ -14525,7 +14520,7 @@ namespace IDE
 
 #if !CLI
 		void UpdateIPC()
-		{						
+		{
 			bool hasFocus = false;
 			for (var window in mWindows)
 			{
@@ -14540,18 +14535,18 @@ namespace IDE
 			{
 				// Keep trying to create IPCHelper until we finally succeed
 				if (mIPCHelper == null)
-				{					
+				{
 					mIPCHelper = new IPCHelper();
 					if (!mIPCHelper.Init("BF_IDE"))
-						DeleteAndNullify!(mIPCHelper);					
+						DeleteAndNullify!(mIPCHelper);
 					else
 					{
 #if !DEBUG
-						OutputLine("IPC: Hosting");//
+						OutputLine("IPC: Hosting"); //
 #endif
 					}
 				}
-			}						
+			}
 
 			if (mIPCHelper != null)
 			{
@@ -14587,8 +14582,8 @@ namespace IDE
 							mIPCHelper = null;
 						}
 					}
-				}				
-			}			
+				}
+			}
 		}
 #endif
 
@@ -14658,7 +14653,7 @@ namespace IDE
 
 						if (File.Exists(mDeferredOpenFileName))
 						{
-							var dialog = ThemeFactory.mDefault.CreateDialog("Already Exists", 
+							var dialog = ThemeFactory.mDefault.CreateDialog("Already Exists",
 								scope String()..AppendF("A Beef workspace already exists at '{}'. Do you want to open it?", directoryPath),
 								DarkTheme.sDarkTheme.mIconWarning);
 							dialog.mDefaultButton = dialog.AddButton("Yes", new (evt) =>
@@ -14674,7 +14669,7 @@ namespace IDE
 						}
 						else if (!IDEUtils.IsDirectoryEmpty(directoryPath))
 						{
-							var dialog = ThemeFactory.mDefault.CreateDialog("Already Exists", 
+							var dialog = ThemeFactory.mDefault.CreateDialog("Already Exists",
 								scope String()..AppendF("A non-empty directory already exists at '{}'. Are you sure you want to create a workspace there?", directoryPath),
 								DarkTheme.sDarkTheme.mIconWarning);
 							dialog.mDefaultButton = dialog.AddButton("Yes", new (evt) =>
@@ -14709,7 +14704,7 @@ namespace IDE
 				DoOpenFile();
 			case .CrashDump:
 				DoOpenCrashDump();
-			case .Workspace, .NewWorkspace, .NewWorkspaceOrProject:
+			case .Workspace,.NewWorkspace,.NewWorkspaceOrProject:
 
 				if ((mDeferredOpenFileName == null) && (deferredOpen == .Workspace))
 				{
@@ -14756,12 +14751,11 @@ namespace IDE
 							Runtime.Assert(sourceViewPanel != null, "Source marked as modified with no SourceViewPanel");
 						}
 					}
-				
 				});
 		}
 
-        public override void Update(bool batchStart)
-        {
+		public override void Update(bool batchStart)
+		{
 			scope AutoBeefPerf("IDEApp.Update");
 
 			/*using (mWorkspace.mMonitor.Enter())
@@ -14787,7 +14781,7 @@ namespace IDE
 			{
 				RefreshRate = 60;
 			}
-
+#if BF_PLATFORM_WINDOWS
 			if (mTerminalPanel != null)
 			{
 				// Detach terminal if the panel is closed
@@ -14797,7 +14791,7 @@ namespace IDE
 					mTerminalPanel.Detach();
 				}
 			}
-
+#endif
 			bool hasFocus = false;
 			for (let window in mWindows)
 			{
@@ -14840,17 +14834,16 @@ namespace IDE
 				}
 				else if (IsCompiling)
 				{
-
 				}
 				else if (mDebugger.mIsRunning)
-				{                            
-				    mDebugger.Terminate();
+				{
+					mDebugger.Terminate();
 					mRunTestDelay = 30;
 				}
 				else
 				{
-				    mTargetStartWithStep = false;
-				    CompileAndRun(true);
+					mTargetStartWithStep = false;
+					CompileAndRun(true);
 					mRunTestDelay = 200;
 				}
 			}
@@ -14860,27 +14853,28 @@ namespace IDE
 			if (mLongUpdateProfileId != 0)
 				DoLongUpdateCheck();
 
-            if (mWakaTime != null)
-                mWakaTime.Update();
+			if (mWakaTime != null)
+				mWakaTime.Update();
 			if (mFindResultsPanel != null)
-            	mFindResultsPanel.Update();
+				mFindResultsPanel.Update();
 			if (mBfResolveSystem != null)
-            	mBfResolveSystem.PerfZoneStart("IDEApp.Update");
-            UpdateWorkspace();
+				mBfResolveSystem.PerfZoneStart("IDEApp.Update");
+			UpdateWorkspace();
 			if (ThemeFactory.mDefault != null)
-            	ThemeFactory.mDefault.Update();
-            base.Update(batchStart);
+				ThemeFactory.mDefault.Update();
+			base.Update(batchStart);
 
-            DarkTooltipManager.UpdateTooltip();
-            mGlobalUndoManager.Update();
-            
-            for (var project in mWorkspace.mProjects)
-                project.Update();
-            UpdateCompilersAndDebugger();
+			DarkTooltipManager.UpdateTooltip();
+			mGlobalUndoManager.Update();
+
+			for (var project in mWorkspace.mProjects)
+				project.Update();
+			UpdateCompilersAndDebugger();
 			mDiagnosticsPanel?.UpdateStats();
 			if (mScriptManager != null)
 				mScriptManager.Update();
 
+#if BF_PLATFORM_WINDOWS
 			if (mConsolePanel != null)
 			{
 				if ((mSettings.mAlwaysEnableConsole) ||
@@ -14889,7 +14883,7 @@ namespace IDE
 				else
 					mConsolePanel.Detach();
 			}
-
+#endif
 			if (mTestManager != null)
 			{
 				mTestManager.Update();
@@ -14900,21 +14894,21 @@ namespace IDE
 					DeleteAndNullify!(mTestManager);
 				}
 			}
-			
-            UpdateExecution();
+
+			UpdateExecution();
 			if (mBfResolveSystem != null)
-            	mBfResolveSystem.PerfZoneEnd();            
+				mBfResolveSystem.PerfZoneEnd();
 
 			UpdateDeferredOpens();
 
-            mHaveSourcesChangedInternallySinceLastCompile = false;
-            WithSourceViewPanels(scope (sourceViewPanel) =>
-                {
-                    mHaveSourcesChangedInternallySinceLastCompile |= sourceViewPanel.mHasChangedSinceLastCompile;
-                });
+			mHaveSourcesChangedInternallySinceLastCompile = false;
+			WithSourceViewPanels(scope (sourceViewPanel) =>
+				{
+					mHaveSourcesChangedInternallySinceLastCompile |= sourceViewPanel.mHasChangedSinceLastCompile;
+				});
 
-            if ((mCloseDelay > 0) && (--mCloseDelay == 0))
-                mMainWindow.Close();
+			if ((mCloseDelay > 0) && (--mCloseDelay == 0))
+				mMainWindow.Close();
 
 			ProcessIdleDeferredDeletes();
 
@@ -14978,10 +14972,10 @@ namespace IDE
 			///
 			//TODO: REMOVE
 			//mDebugger.InitiateHotResolve(.ActiveMethods | .Allocations);
-        }
+		}
 
-        public override void Draw(bool forceDraw)
-        {
+		public override void Draw(bool forceDraw)
+		{
 			scope AutoBeefPerf("IDEApp.Draw");
 #if CLI
 			return;
@@ -14989,66 +14983,66 @@ namespace IDE
 #unwarn
 			if (mBfResolveSystem != null)
 			{
-	            mBfResolveSystem.PerfZoneStart("IDEApp.Draw");
-	            base.Draw(forceDraw);
-	            mBfResolveSystem.PerfZoneEnd();
-	            if (mBfResolveSystem.mIsTiming)
-	            {
-	                mBfResolveSystem.StopTiming();
-	                mBfResolveSystem.DbgPrintTimings();
-	            }
+				mBfResolveSystem.PerfZoneStart("IDEApp.Draw");
+				base.Draw(forceDraw);
+				mBfResolveSystem.PerfZoneEnd();
+				if (mBfResolveSystem.mIsTiming)
+				{
+					mBfResolveSystem.StopTiming();
+					mBfResolveSystem.DbgPrintTimings();
+				}
 			}
 			else
 				base.Draw(forceDraw);
-        }
+		}
 
-        public void DrawSquiggle(Graphics g, float x, float y, float width)
-        {
+		public void DrawSquiggle(Graphics g, float x, float y, float width)
+		{
 			Image squiggleImage = IDEApp.sApp.mSquiggleImage;
 			int32 segSize = 30;
 			float height = mSquiggleImage.mHeight;
-            
-            float curX = x;
-            float curWidth = width;
+
+			float curX = x;
+			float curWidth = width;
 
 			float drawY = y + gApp.mCodeFont.GetHeight();
-            while (curWidth > 0)
-            {
-                float drawWidth = Math.Min(curWidth, segSize - (curX % segSize));
+			while (curWidth > 0)
+			{
+				float drawWidth = Math.Min(curWidth, segSize - (curX % segSize));
 
-                float u1 = ((int32)curX % segSize) / (float)squiggleImage.mSrcWidth;
-                float u2 = u1 + drawWidth / (float)squiggleImage.mSrcWidth;
+				float u1 = ((int32)curX % segSize) / (float)squiggleImage.mSrcWidth;
+				float u2 = u1 + drawWidth / (float)squiggleImage.mSrcWidth;
 
-                g.DrawQuad(squiggleImage, curX, drawY, u1, 0, drawWidth, height, u2, 1.0f);
+				g.DrawQuad(squiggleImage, curX, drawY, u1, 0, drawWidth, height, u2, 1.0f);
 
-                curWidth -= drawWidth;
-                curX += drawWidth;
-            }
-        }
+				curWidth -= drawWidth;
+				curX += drawWidth;
+			}
+		}
 
-        public enum MessageBeepType
-        {
-            Default = -1,
-            Ok = 0x00000000,
-            Error = 0x00000010,
-            Question = 0x00000020,
-            Warning = 0x00000030,
-            Information = 0x00000040,
-        }
-        	
-        public static void Beep(MessageBeepType type)
-        {
+		public enum MessageBeepType
+		{
+			Default = -1,
+			Ok = 0x00000000,
+			Error = 0x00000010,
+			Question = 0x00000020,
+			Warning = 0x00000030,
+			Information = 0x00000040,
+		}
+
+		public static void Beep(MessageBeepType type)
+		{
 #if BF_PLATFORM_WINDOWS && !CLI
-        	MessageBeep(type);
-#endif        	
-        }
+			MessageBeep(type);
+#endif
+		}
 
 #if BF_PLATFORM_WINDOWS
-        [Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
-        public static extern bool MessageBeep(MessageBeepType type);
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern bool MessageBeep(MessageBeepType type);
 #endif
-		
-    }
+
+	}
 
 	static
 	{
