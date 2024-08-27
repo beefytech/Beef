@@ -83,8 +83,11 @@ namespace IDE.ui
             data.GetString("Type", type);
             Panel panel = null;
 
+#if BF_PLATFORM_WINDOWS
 			if (type == "")
 				return gApp.mTerminalPanel;
+#endif
+
 
             if (type == "CallStackPanel")
                 panel = gApp.mCallStackPanel;
@@ -97,8 +100,10 @@ namespace IDE.ui
                 panel = gApp.mOutputPanel;
             }
 			else if (type == "TerminalPanel")
-			{                
+			{
+#if BF_PLATFORM_WINDOWS
 			    panel = gApp.mTerminalPanel;
+#endif
 			}
             else if (type == "ImmediatePanel")
             {                
@@ -167,12 +172,16 @@ namespace IDE.ui
 			    panel = gApp.mBookmarksPanel;
 			}
 			else if (type == "TerminalPanel")
-			{                
+			{
+#if BF_PLATFORM_WINDOWS
 			    panel = gApp.mTerminalPanel;
+#endif
 			}
 			else if (type == "ConsolePanel")
-			{                
+			{
+#if BF_PLATFORM_WINDOWS
 			    panel = gApp.mConsolePanel;
+#endif
 			}
 
             if (panel != null)

@@ -13,7 +13,7 @@ using Beefy.utils;
 using IDE.util;
 
 namespace IDE.ui;
-
+#if BF_PLATFORM_WINDOWS
 class TerminalPanel : ConsolePanel
 {
 	public override void Serialize(StructuredData data)
@@ -58,3 +58,4 @@ class TerminalPanel : ConsolePanel
 		consoleProvider.Attach();
 	}
 }
+#endif

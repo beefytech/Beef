@@ -14,7 +14,7 @@ using System.Threading;
 using IDE.util;
 
 namespace IDE.ui;
-
+#if BF_PLATFORM_WINDOWS
 class ConsolePanel : Panel
 {
 	class View : Widget
@@ -369,7 +369,9 @@ class ConsolePanel : Panel
 
 	public virtual void Init()
 	{
+#if BF_PLATFORM_WINDOWS
 		mConsoleProvider = new WinNativeConsoleProvider();
+#endif
 	}
 
 	public override void Serialize(StructuredData data)
@@ -810,3 +812,4 @@ class ConsolePanel : Panel
 		mView.SetFocus();
 	}
 }
+#endif

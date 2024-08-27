@@ -299,6 +299,7 @@ void bf::System::Console::PutChar(char c)
 
 void bf::System::Console::ReopenHandles()
 {
+#ifdef _MSC_VER	
  	FILE* fDummy;
  	freopen_s(&fDummy, "CONOUT$", "w", stdout);
 	freopen_s(&fDummy, "CONOUT$", "w", stderr);
@@ -310,6 +311,7 @@ void bf::System::Console::ReopenHandles()
  	SetStdHandle(STD_OUTPUT_HANDLE, hConOut);
  	SetStdHandle(STD_ERROR_HANDLE, hConOut);
  	SetStdHandle(STD_INPUT_HANDLE, hConIn);	
+#endif
 }
 
 void bf::System::Runtime::Init(int version, int flags, BfRtCallbacks* callbacks)

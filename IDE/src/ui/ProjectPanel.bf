@@ -3047,8 +3047,10 @@ namespace IDE.ui
 
 						if (!path.IsWhiteSpace)
 						{
+#if BF_PLATFORM_WINDOWS
 							gApp.ShowTerminal();
 							gApp.mTerminalPanel.OpenDirectory(path);
+#endif
 						}
 					});
 			}

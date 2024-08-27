@@ -8,6 +8,7 @@ using System.IO;
 using System.Threading;
 namespace IDE.util;
 
+#if BF_PLATFORM_WINDOWS
 class ConsoleProvider
 {
 	public enum UpdateState
@@ -1325,3 +1326,4 @@ class BeefConConsoleProvider : ConsoleProvider
 		mPipe.EndMessage();
 	}
 }
+#endif
