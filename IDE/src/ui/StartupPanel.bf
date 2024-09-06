@@ -29,7 +29,7 @@ namespace IDE.ui
 				mScrollContent.AddWidget(widget);
 			}
 
-			public void ResizeSelf(float x, float y, float width, float height)
+			public override void Resize(float x, float y, float width, float height)
 			{
 				const float MARGIN = 3;
 				float currentY = 0;
@@ -48,10 +48,9 @@ namespace IDE.ui
 				if (currentY > height)
 					InitScrollbars(false, true);
 
-				Resize(x, y, width, Math.Min(currentY, height));
 				mScrollContent.Resize(0, 0, fillWidth, currentY);
 
-				UpdateScrollbars();
+				base.Resize(x, y, width, Math.Min(currentY, height));
 			}
 
 			public override void Draw(Graphics g)
@@ -218,6 +217,7 @@ namespace IDE.ui
 				delete recentWorkspaces.mList[index];
 				recentWorkspaces.mList.RemoveAt(index);
 				recentWorkspaces.mMenuItems[index].Dispose();
+				delete recentWorkspaces.mMenuItems[index];
 				recentWorkspaces.mMenuItems.RemoveAt(index);
 
 				RemoveSelf();
@@ -342,7 +342,7 @@ namespace IDE.ui
 			float offsetX = buttonWidth + GS!(35);
 			float offsetY = GS!(50);
 
-			mRecentsScrollWidget.ResizeSelf(offsetX, offsetY, Math.Clamp(mWidth - offsetX - GS!(4), 0, GS!(700)), Math.Clamp(mHeight - offsetY - GS!(4), 0, GS!(700)));
+			mRecentsScrollWidget.Resize(offsetX, offsetY, Math.Clamp(mWidth - offsetX - GS!(4), 0, GS!(700)), Math.Clamp(mHeight - offsetY - GS!(4), 0, GS!(700)));
 		}
 
 		void OpenDocumentation()
