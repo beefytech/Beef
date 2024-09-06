@@ -32,6 +32,9 @@ class TerminalPanel : ConsolePanel
 
 	public override void AddedToParent()
 	{
+		if (gApp.mWorkspace.mDir == null)
+			return;
+
 		var consoleProvider = (BeefConConsoleProvider)mConsoleProvider;
 		consoleProvider.mTerminalExe.Set(gApp.mSettings.mWindowsTerminal);
 		consoleProvider.mWorkingDir.Set(gApp.mWorkspace.mDir);
