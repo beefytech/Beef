@@ -8911,10 +8911,15 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			methodDecl->mGenericConstraintsDeclaration = NULL;
 		}
 
+		if (methodDecl->mBody != NULL)
+		{
+			Fail("Unexpected method body after delegate/function type", methodDecl->mBody);
+		}
+
 		if (failed)
 			return typeDeclaration;
 
-		if (methodDecl->mEndSemicolon == NULL)
+		if ((methodDecl->mEndSemicolon == NULL) && (methodDecl->mCloseParen != NULL))
 			FailAfter("Expected ';'", methodDecl->mCloseParen);
 
 		//MEMBER_SET(methodDecl, mReturnType, retType);
