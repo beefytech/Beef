@@ -577,4 +577,306 @@ namespace System.IO
 		}
 	}
 }
+#elif BF_PLATFORM_LINUX
+namespace System.IO;
+
+enum DialogResult
+{
+	None = 2,
+	OK = 0,
+	Cancel = 1
+}
+
+abstract class CommonDialog
+{
+	protected Linux.DBus* mBus ~ Linux.SdBusUnref(_);
+	protected Linux.DBusMsg* mRequest ~ Linux.SdBusMessageUnref(_);
+	protected Linux.DBusErr mError ~ Linux.SdBusErrorFree(&_);
+	protected String mTitle ~ delete _;
+	protected String mInitialDir ~ delete _;
+	protected String[] mFileNames ~ DeleteContainerAndItems!(_);
+	protected bool mDone;
+
+	private uint32 mResult;
+	
+
+	public virtual void Reset()
+	{
+		DeleteAndNullify!(mTitle);
+		DeleteAndNullify!(mInitialDir);
+		DeleteContainerAndItems!(mFileNames);
+		mFileNames = null;
+	}
+
+	public StringView Title
+	{
+		set
+		{
+			String.NewOrSet!(mTitle, value);
+		}
+
+		get
+		{ 
+	        return mTitle;
+		}
+	}
+
+	public Result<DialogResult> ShowDialog(INativeWindow owner = null)
+	{
+		TryC!(Linux.SdBusOpenUser(&mBus)); // Maybe keep the bus open while the program is running ?
+		
+		Linux.DBusMsg* call = ?;
+		TryC!(Linux.SdBusNewMethodCall(
+			mBus,
+			&call,
+			"org.freedesktop.portal.Desktop",
+			"/org/freedesktop/portal/desktop",
+			"org.freedesktop.portal.FileChooser",
+			Method));
+
+		Linux.SdBusMessageAppend(call, "ss", "", Title.ToScopeCStr!()); //TODO : set parent_window to X11/Wayland handle
+		Linux.SdBusMessageOpenContainer(call, .Array, "{sv}");
+		if(mInitialDir != null)
+		{
+			Linux.SdBusMessageOpenContainer(call, .DictEntry, "sv");
+			Linux.SdBusMessageAppendBasic(call, .String, "current_folder");
+			Linux.SdBusMessageOpenContainer(call, .Variant, "ay");
+			Linux.SdBusMessageAppendArray(call, .Byte, mInitialDir.CStr(), (.)mInitialDir.Length);
+			Linux.SdBusMessageCloseContainer(call);
+			Linux.SdBusMessageCloseContainer(call);
+		}
+		AddOptions(call);
+		Linux.SdBusMessageCloseContainer(call);
+		TryC!(Linux.SdBusCall(mBus, call, uint32.MaxValue, &mError, &mRequest)); // TODO : change timeout
+
+		Linux.SdBusMessageUnref(call);
+
+		char8* path = ?;
+		TryC!(Linux.SdBusMessageRead(mRequest, "o", &path));
+		TryC!(Linux.SdBusMatchSignal(mBus,
+                                  null,
+                                  null,
+                                  path,
+                                  "org.freedesktop.portal.Request",
+                                  "Response",
+                                  => ParseResponse,
+                                  Internal.UnsafeCastToPtr(this)
+                                  ));
+
+		while(!mDone)
+		{
+		    Linux.DBusMsg* m = ?;
+			TryC!(Linux.SdBusWait(mBus, uint64.MaxValue));
+			TryC!(Linux.SdBusProcess(mBus, &m));
+		    Linux.SdBusMessageUnref(m);
+		}
+
+		return (DialogResult)mResult;
+	}
+
+	private static int32 ParseResponse(Linux.DBusMsg* response, void* ptr, Linux.DBusErr* error)
+	{
+		Self dia = (.)Internal.UnsafeCastToObject(ptr);
+
+		char8* key = ?;
+
+		Linux.SdBusMessageReadBasic(response, .UInt32, &dia.mResult);
+		Linux.SdBusMessageEnterContainer(response, .Array, "{sv}");
+		while(Linux.SdBusMessagePeekType(response, null, null) != 0)
+		{
+		    Linux.SdBusMessageEnterContainer(response, .DictEntry, "sv");
+		    Linux.SdBusMessageReadBasic(response, .String, &key);
+		    switch(StringView(key))
+		    {
+		    case "uris":
+		        List<String> uris = scope .();
+		        
+		        Linux.SdBusMessageEnterContainer(response, .Variant, "as");
+		        Linux.SdBusMessageEnterContainer(response, .Array, "s");
+		        while(Linux.SdBusMessagePeekType(response, null, null) != 0)
+		        {
+		            char8* uri = ?;
+		            Linux.SdBusMessageReadBasic(response, .String, &uri);
+		            uris.Add(new .(StringView(uri+7))); // Removing the "file://" prefix
+		        }
+		        Linux.SdBusMessageExitContainer(response);
+		        Linux.SdBusMessageExitContainer(response);
+
+		        dia.mFileNames = new .[uris.Count];
+		        uris.CopyTo(dia.mFileNames);
+		    default:
+		        Linux.SdBusMessageSkip(response, "v");
+		    }
+		    Linux.SdBusMessageExitContainer(response);
+		}
+		Linux.SdBusMessageExitContainer(response);
+
+		dia.mDone = true;
+		return 0;
+	}
+
+	protected abstract char8* Method { get; }
+	protected abstract void AddOptions(Linux.DBusMsg* m);
+}
+
+public abstract class FileDialog : CommonDialog
+{
+	protected int32 mOptions;
+	private String mFilter ~ delete _;
+
+	public this()
+	{
+		Reset();
+	}
+
+	public override void Reset()
+	{
+		base.Reset();
+		DeleteAndNullify!(mFilter);
+	}
+
+	public StringView InitialDirectory
+	{
+		set
+		{
+			String.NewOrSet!(mInitialDir, value);
+		}
+
+		get
+		{ 
+	        return mInitialDir;
+		}
+	}
+
+	public String[] FileNames
+	{
+		get
+		{
+			return mFileNames;
+		}
+	}
+
+	public StringView FileName
+	{
+		set
+		{
+			if (mFileNames == null)
+			{
+				mFileNames = new String[](new String(value));
+			}	
+		}
+	}
+
+	public bool Multiselect
+	{
+	    get
+	    {
+	        return GetOption(512);
+	    }
+
+	    set
+	    {
+	        SetOption(512, value);
+	    }
+	}
+
+	public bool ValidateNames // Unused kept for compatibility
+	{
+		get
+		{
+			return !GetOption(256);
+		}
+
+		set
+		{
+			SetOption(256, !value);
+		}
+	}		
+
+	public StringView DefaultExt { get; set; } // Unused kept for compatibility		 
+
+	public void GetFilter(String outFilter)
+	{
+		if (mFilter != null)
+			outFilter.Append(mFilter);
+	}
+
+	public Result<void> SetFilter(StringView value)
+	{
+		String useValue = scope String(value);
+		if (useValue != null && useValue.Length > 0)
+		{
+			var formats = String.StackSplit!(useValue, '|');
+			if (formats == null || formats.Count % 2 != 0)
+			{
+				return .Err;
+			}
+			///
+			/*String[] formats = value.Split('|');
+			if (formats == null || formats.Length % 2 != 0)
+			{
+				throw new ArgumentException(SR.GetString(SR.FileDialogInvalidFilter));
+			}*/
+			String.NewOrSet!(mFilter, useValue);
+		}
+		else
+		{
+			useValue = null;
+			DeleteAndNullify!(mFilter);
+		}
+		
+		return .Ok;
+	}
+
+	protected bool GetOption(int32 option)
+	{
+		return (mOptions & option) != 0;
+	}
+
+	protected void SetOption(int32 option, bool value)
+	{
+		if (value)
+		{
+			mOptions |= option;
+		}
+		else
+		{
+			mOptions &= ~option;
+		}
+	}
+
+	protected override void AddOptions(Linux.DBusMsg* m)
+	{
+		if(Multiselect)
+		{
+			Linux.SdBusMessageOpenContainer(m, .DictEntry, "sv");
+			Linux.SdBusMessageAppend(m, "sv", "multiple", "b", 1);
+			Linux.SdBusMessageCloseContainer(m);
+		}
+
+		if(mFilter != null)
+		{
+			Linux.SdBusMessageOpenContainer(m, .DictEntry, "sv");
+			Linux.SdBusMessageAppendBasic(m, .String, "filters");
+			Linux.SdBusMessageOpenContainer(m, .Variant, "a(sa(us))");
+			Linux.SdBusMessageOpenContainer(m, .Array, "(sa(us))");
+			for(let filter in mFilter.Split('|'))
+			{
+				Linux.SdBusMessageOpenContainer(m, .Struct, "sa(us)");
+				Linux.SdBusMessageAppendBasic(m, .String, filter.ToScopeCStr!());
+				Linux.SdBusMessageOpenContainer(m, .Array, "(us)");
+				@filter.MoveNext();
+				for(let ext in @filter.Current.Split(';'))
+				{
+					Linux.SdBusMessageAppend(m, "(us)", 0, ext.ToScopeCStr!());
+				}
+				Linux.SdBusMessageCloseContainer(m);
+				Linux.SdBusMessageCloseContainer(m);
+			}
+			Linux.SdBusMessageCloseContainer(m);
+			Linux.SdBusMessageCloseContainer(m);
+			Linux.SdBusMessageCloseContainer(m);
+		}
+	}
+}
 #endif

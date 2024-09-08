@@ -221,4 +221,41 @@ namespace System.IO
 		}
 	}	
 }
+#elif BF_PLATFORM_LINUX
+namespace System.IO;
+
+public class FolderBrowserDialog : CommonDialog
+{
+	public enum FolderKind
+	{
+		Open,
+		Save
+	}
+
+	public this(FolderKind kind = .Open)
+	{
+		// Only OpenFile allows directory selection so FolderKind isn't stored
+		Reset();
+	}
+
+	public StringView SelectedPath
+	{
+		get
+		{
+			return mDone ? (mFileNames == null) ? "" : mFileNames[0] : mInitialDir; //Response gets stored in mFileNames
+		}
+		set
+		{
+			mInitialDir.Set(value);
+		}
+	}
+
+	protected override char8* Method => "OpenFile";
+	protected override void AddOptions(Linux.DBusMsg* m)
+	{
+		Linux.SdBusMessageOpenContainer(m, .DictEntry, "sv");
+		Linux.SdBusMessageAppend(m, "sv", "directory", "b", 1);
+		Linux.SdBusMessageCloseContainer(m);
+	}
+}
 #endif
