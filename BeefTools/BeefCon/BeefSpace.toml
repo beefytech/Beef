@@ -3,6 +3,7 @@ Projects = {BeefCon = {Path = "."}, Beefy2D = "*"}
 
 [Workspace]
 StartupProject = "BeefCon"
+PreprocessorMacros = ["BEEFCON"]
 
 [Configs.Release.Win64]
 BfOptimizationLevel = "OgPlus"

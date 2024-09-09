@@ -579,7 +579,9 @@ class WinNativeConsoleProvider : ConsoleProvider
 		if ((mHideNativeConsole) && (window != default))
 		{
 			Windows.SetWindowPos(window, default, 0, 0, 0, 0, 0x290 /* SWP_NOACTIVATE | SWP_NOREPOSITION | SWP_HIDEWINDOW */);
+#if !BEEFCON
 			gApp.mMainWindow.SetForeground();
+#endif
 		}
 
 		//ResizeComponents();
