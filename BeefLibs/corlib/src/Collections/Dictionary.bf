@@ -38,7 +38,7 @@ namespace System.Collections
 		typealias KeyValuePair=(TKey key, TValue value);
 		typealias KeyRefValuePair=(TKey key, TValue* valueRef);
 
-		private struct Entry			
+		protected struct Entry			
 		{
 			public TKey mKey;           // Key of entry
 			public TValue mValue;         // Value of entry
