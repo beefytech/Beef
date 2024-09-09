@@ -11858,7 +11858,7 @@ namespace IDE
 						});
 					((DarkButton)dlg.mButtons[0]).Label = "Open Link";
 					dlg.PopupWindow(GetActiveWindow());
-					MessageBeep(.Error);
+					Beep(.Error);
 #endif
 				}
 			}
