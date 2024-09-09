@@ -237,8 +237,8 @@ namespace Beefy.widgets
 				return;
 			}
 
-			float delta = (mOrientation == .Horz) ? deltaX : deltaY;
-            Scroll(GetScrollIncrement() * -delta);
+			float delta = (mOrientation == .Horz) ? deltaX : -deltaY;
+            Scroll(GetScrollIncrement() * delta);
         }
     }
 }
