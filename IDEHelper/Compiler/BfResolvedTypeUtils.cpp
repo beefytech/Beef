@@ -3417,7 +3417,21 @@ BfTypeDef* BfResolvedTypeSet::FindRootCommonOuterType(BfTypeDef* outerType, Look
 {
 	if (ctx->mModule->mCurTypeInstance == NULL)
 		return NULL;
-	BfTypeDef* commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, outerType);
+
+	BfTypeDef* commonOuterType = NULL;
+
+	auto checkOuterTypeInst = ctx->mModule->mCurTypeInstance;
+	while (checkOuterTypeInst != NULL)
+	{
+		commonOuterType = ctx->mModule->FindCommonOuterType(checkOuterTypeInst->mTypeDef, outerType);
+		if (commonOuterType != NULL)
+		{			
+			outOuterTypeInstance = checkOuterTypeInst;
+			break;
+		}
+		checkOuterTypeInst = checkOuterTypeInst->mBaseType;
+	}
+
 	if ((commonOuterType == NULL) && (outerType != NULL))
 	{
 		auto staticSearch = ctx->mModule->GetStaticSearch();
@@ -3462,7 +3476,11 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 				auto outerType = ctx->mModule->mSystem->GetOuterTypeNonPartial(typeDef);
 
 				if (typeRef == ctx->mRootTypeRef)
+				{
 					commonOuterType = FindRootCommonOuterType(outerType, ctx, checkTypeInstance);
+					if ((checkTypeInstance != NULL) && (checkTypeInstance->IsBoxed()))
+						checkTypeInstance = checkTypeInstance->GetUnderlyingType()->ToTypeInstance();
+				}
 				else
 					commonOuterType = ctx->mModule->FindCommonOuterType(ctx->mModule->mCurTypeInstance->mTypeDef, outerType);
 

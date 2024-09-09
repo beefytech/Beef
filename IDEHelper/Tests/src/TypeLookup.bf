@@ -1,5 +1,7 @@
 #pragma warning disable 168
 
+using System.Collections;
+
 namespace Tests
 {
 	class ClassE
@@ -119,5 +121,10 @@ namespace Tests
 				}
 			}
 		}
+	}
+
+	class DictExt : Dictionary<int, float>
+	{
+		Entry mEntry;
 	}
 }
