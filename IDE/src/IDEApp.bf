@@ -14518,7 +14518,7 @@ namespace IDE
 			}
 		}
 
-#if !CLI
+#if !CLI && BF_PLATFORM_WINDOWS
 		void UpdateIPC()
 		{
 			bool hasFocus = false;
@@ -14821,7 +14821,7 @@ namespace IDE
 				//BFApp_CheckMemory();
 			}
 
-#if !CLI
+#if !CLI && BF_PLATFORM_WINDOWS
 			if (mSettings.mEnableDevMode)
 				UpdateIPC();
 #endif
