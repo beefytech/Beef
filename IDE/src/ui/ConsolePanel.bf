@@ -456,7 +456,7 @@ class ConsolePanel : Panel
 			}
 		}*/
 
-		if (Paused || !mConsoleProvider.Attached)
+		if ((Paused || !mConsoleProvider.Attached) && (gApp.mIsUpdateBatchStart))
 		{
 			int scrollTop = (.)(mScrollableWidget.mVertScrollbar.mContentPos / mCellHeight);
 			float wantScrollPos = scrollTop * mCellHeight;
@@ -687,7 +687,21 @@ class ConsolePanel : Panel
 
 	public override void DrawAll(Graphics g)
 	{
-		if (!mConsoleProvider.Attached)
+		if ((mConsoleProvider is WinNativeConsoleProvider) && (gApp.mSettings.mDebugConsoleKind != .Embedded))
+		{
+			using (g.PushColor(0xFFA0A0A0))
+			{
+				base.DrawAll(g);
+			}
+
+			using (g.PushColor(0x40A0A0A0))
+				g.FillRect(0, 0, mWidth, mHeight);
+
+			g.SetFont(DarkTheme.sDarkTheme.mSmallFont);
+			using (g.PushColor(0xFFA0A0A0))
+				g.DrawString("Enable embedded Debug Console in Settings", GS!(16), GS!(16), .Centered, mScrollableWidget.mVertScrollbar.mX - GS!(32));
+		}
+		else if (!mConsoleProvider.Attached)
 		{
 			//using (g.PushColor(0x80FFFFFF))
 			using (g.PushColor(0xFFA0A0A0))

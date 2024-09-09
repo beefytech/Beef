@@ -490,6 +490,9 @@ class WinNativeConsoleProvider : ConsoleProvider
 		if (mScreenInfo == null)
 			return;
 
+		if (mScreenInfo.mScrollTop == row)
+			return;
+
 		GetFullScreenInfo(mScreenInfo);
 
 		mScreenInfo.mScrollTop = (.)row;
