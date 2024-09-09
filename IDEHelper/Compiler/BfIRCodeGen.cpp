@@ -511,6 +511,19 @@ void pve(const BfIRTypedValue& typedValue)
 	pte(typedValue.mTypeEx);
 }
 
+void pirb(llvm::IRBuilder<>* irBuilder)
+{
+	Beefy::debug_ostream os;
+	os << "Debug loc: ";
+	auto debugLoc = irBuilder->getCurrentDebugLocation();
+	if (debugLoc.get() == NULL)
+		os << "NULL";
+	else
+		debugLoc->print(os);	
+	os << "\n";
+	os.flush();
+}
+
 void BfIRCodeGen::FixValues(llvm::StructType* structType, llvm::SmallVector<llvm::Value*, 8>& values)
 {
 	if (values.size() >= structType->getNumElements())
@@ -3076,7 +3089,9 @@ void BfIRCodeGen::HandleNextCmd()
 	case BfIRCmd_SetInsertPointAtStart:
 		{
 			CMD_PARAM(llvm::BasicBlock*, block);
-			mIRBuilder->SetInsertPoint(block, block->begin());
+			mIRBuilder->SetInsertPoint(block, block->begin());			
+			// SetInsertPoint can clear the debug loc so reset it here
+			mIRBuilder->SetCurrentDebugLocation(mDebugLoc);			
 		}
 		break;
 	case BfIRCmd_EraseFromParent:
