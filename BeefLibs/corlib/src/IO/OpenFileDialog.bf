@@ -173,4 +173,23 @@ namespace System.IO
 	}
 }
 
+#elif BF_PLATFORM_LINUX
+namespace System.IO;
+
+public class OpenFileDialog : FileDialog
+{
+	public bool ShowReadOnly // Unused kept for compatibility
+	{
+	    get
+	    {
+	        return !GetOption(4);
+	    }
+	    set
+	    {
+	        SetOption(4, !value);
+	    }
+	}
+
+	protected override char8* Method => "OpenFile";
+}
 #endif

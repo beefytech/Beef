@@ -139,8 +139,36 @@ namespace System.IO
 	}
 }
 
-#else
+#elif BF_PLATFORM_LINUX
+namespace System.IO;
 
+public class SaveFileDialog : FileDialog
+{
+	public virtual bool OverwritePrompt // Unused kept for compatibility
+	{
+	    get
+		{
+	        return GetOption(2);
+	    }
+
+	    set
+		{
+	        SetOption(2, value);
+	    }
+	}
+
+	protected override char8* Method => "SaveFile";
+	protected override void AddOptions(Linux.DBusMsg* m)
+	{
+		if(mFileNames != null)
+		{
+			Linux.SdBusMessageOpenContainer(m, .DictEntry, "sv");
+			Linux.SdBusMessageAppend(m, "sv", "current_name", "s", mFileNames[0].CStr());
+			Linux.SdBusMessageCloseContainer(m);
+		}
+	}
+}
+#else
 namespace System.IO
 {
 	[Error("This class is only available on Windows")]
@@ -149,5 +177,4 @@ namespace System.IO
 
 	}
 }
-
 #endif
