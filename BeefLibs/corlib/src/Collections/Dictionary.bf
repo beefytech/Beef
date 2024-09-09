@@ -35,8 +35,8 @@ namespace System.Collections
 		IEnumerable<(TKey key, TValue value)>,
 		IRefEnumerable<(TKey key, TValue* valueRef)> where TKey : IHashable
 	{
-		typealias KeyValuePair=(TKey key, TValue value);
-		typealias KeyRefValuePair=(TKey key, TValue* valueRef);
+		protected typealias KeyValuePair=(TKey key, TValue value);
+		protected typealias KeyRefValuePair=(TKey key, TValue* valueRef);
 
 		protected struct Entry			
 		{
@@ -46,18 +46,18 @@ namespace System.Collections
 			public int_cosize mNext;        // Index of next entry, -1 if last
 		}
 
-		int_cosize* mBuckets;
-		Entry* mEntries;
-		int_cosize mAllocSize;
-		int_cosize mCount;
-		int_cosize  mFreeList;
-		int_cosize mFreeCount;
+		protected int_cosize* mBuckets;
+		protected Entry* mEntries;
+		protected int_cosize mAllocSize;
+		protected int_cosize mCount;
+		protected int_cosize  mFreeList;
+		protected int_cosize mFreeCount;
 #if VERSION_DICTIONARY
 		private int32 mVersion;
 		const String cVersionError = "Dictionary changed during enumeration";
 #endif
 		
-		public this(): this(0) { }
+		public this() : this(0) { }
 
 		public this(int_cosize capacity)
 		{
