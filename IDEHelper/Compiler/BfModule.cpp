@@ -6899,6 +6899,12 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 		reflectIncludeAllMethods = true;
 	}
 
+	if (typeInstance->IsTuple())
+	{
+		// Required to generate tuple name at runtime
+		reflectIncludeAllFields = true;
+	}
+
 	BfReflectKind reflectKind = BfReflectKind_Type;
 
 	auto _GetReflectUserFromDirective = [&](BfAttributeDirective* attributesDirective, BfAttributeTargets attrTarget)

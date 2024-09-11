@@ -1047,7 +1047,13 @@ namespace System.Reflection
 					{
 						if (fieldIdx > 0)
 							strBuffer.Append(", ");
-						GetType(mFieldDataPtr[fieldIdx].[Friend]mFieldTypeId).GetFullName(strBuffer);
+						var fieldData = mFieldDataPtr[fieldIdx];
+						GetType(fieldData.[Friend]mFieldTypeId).GetFullName(strBuffer);
+						if (!fieldData.mName[0].IsNumber)
+						{
+							strBuffer.Append(' ');
+							strBuffer.Append(fieldData.mName);
+						}
 					}
 				}
 				else if ((mTypeFlags.HasFlag(.Splattable)) && (mFieldDataPtr != null))
