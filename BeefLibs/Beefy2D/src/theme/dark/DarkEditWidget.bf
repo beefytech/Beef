@@ -99,7 +99,7 @@ namespace Beefy.theme.dark
 				mLineCoordJumpTable = new .();
 
 			mLineCoords.Clear();
-			mLineCoords.GrowUnitialized(mData.mLineStarts.Count);
+			mLineCoords.GrowUninitialized(mData.mLineStarts.Count);
 			mLineCoordJumpTable.Clear();
 
 			float fontHeight = mFont.GetLineSpacing();

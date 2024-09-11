@@ -1479,7 +1479,7 @@ namespace Beefy.widgets
 			}
 
             mData.mLineStarts = new List<int32>();
-            mData.mLineStarts.GrowUnitialized(lineIdx + 2);
+            mData.mLineStarts.GrowUninitialized(lineIdx + 2);
 			int32* lineStartsPtr = mData.mLineStarts.Ptr;
 			lineStartsPtr[0] = 0;
             

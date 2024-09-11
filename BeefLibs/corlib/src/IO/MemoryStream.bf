@@ -87,7 +87,7 @@ namespace System.IO
 				return .Ok(0);
 			int growSize = mPosition + count - mMemory.Count;
 			if (growSize > 0)
-				mMemory.GrowUnitialized(growSize);
+				mMemory.GrowUninitialized(growSize);
 			Internal.MemCpy(&mMemory[mPosition], data.Ptr, count);
 			mPosition += count;
 			return .Ok(count);

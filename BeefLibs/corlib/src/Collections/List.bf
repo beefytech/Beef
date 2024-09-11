@@ -177,7 +177,7 @@ namespace System.Collections
 				else
 				{
 					int addSize = value - mSize;
-					Internal.MemSet(GrowUnitialized(addSize), 0, addSize * strideof(T));
+					Internal.MemSet(GrowUninitialized(addSize), 0, addSize * strideof(T));
 				}
 			}
 		}
@@ -434,7 +434,7 @@ namespace System.Collections
 		}
 
 		/// Returns a pointer to the start of the added uninitialized section
-		public T* GrowUnitialized(int addSize)
+		public T* GrowUninitialized(int addSize)
 		{
 			if (mSize + addSize > AllocSize) EnsureCapacity(mSize + addSize, true);
 			mSize += (int_cosize)addSize;
@@ -445,6 +445,9 @@ namespace System.Collections
 				return null;
 			return &mItems[mSize - addSize];
 		}
+
+		[Obsolete("Method replaced by GrowUninitialized due to misspelling")]
+		public T* GrowUnitialized(int addSize) => GrowUninitialized(addSize);
 
 		public void Clear()
 		{

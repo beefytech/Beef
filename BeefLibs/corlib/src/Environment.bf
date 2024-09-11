@@ -152,7 +152,7 @@ namespace System
 				char16* encodedData = scope char16[allocSize]*;
 				int encodedLen = UTF16.Encode(key, encodedData, allocSize);
 				int byteLen = encodedLen * 2;
-				Internal.MemCpy(data.GrowUnitialized(byteLen), encodedData, byteLen);
+				Internal.MemCpy(data.GrowUninitialized(byteLen), encodedData, byteLen);
 
 				data.Add((uint8)'='); data.Add((uint8)0);
 
@@ -161,7 +161,7 @@ namespace System
 				encodedData = scope char16[allocSize]*;
 				encodedLen = UTF16.Encode(value, encodedData, allocSize);
 				byteLen = encodedLen * 2;
-				Internal.MemCpy(data.GrowUnitialized(byteLen), encodedData, byteLen);
+				Internal.MemCpy(data.GrowUninitialized(byteLen), encodedData, byteLen);
 
 				data.Add(0); data.Add(0); // Single UTF16 char
 			}
@@ -187,13 +187,13 @@ namespace System
 			for (var key in keys)
 			{
 				int byteLen = key.Length;
-				Internal.MemCpy(data.GrowUnitialized(byteLen), key.Ptr, byteLen);
+				Internal.MemCpy(data.GrowUninitialized(byteLen), key.Ptr, byteLen);
 
 				data.Add('=');
 
 				let value = values[@key];
 				byteLen = value.Length;
-				Internal.MemCpy(data.GrowUnitialized(byteLen), value.Ptr, byteLen);
+				Internal.MemCpy(data.GrowUninitialized(byteLen), value.Ptr, byteLen);
 
 				data.Add(0);
 			}

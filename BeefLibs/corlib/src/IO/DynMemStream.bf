@@ -100,7 +100,7 @@ namespace System.IO
 				return .Ok(0);
 			int growSize = mPosition + count - mData.Count;
 			if (growSize > 0)
-				mData.GrowUnitialized(growSize);
+				mData.GrowUninitialized(growSize);
 			Internal.MemCpy(&mData[mPosition], data.Ptr, count);
 			mPosition += count;
 			return .Ok(count);
@@ -204,7 +204,7 @@ namespace System.IO
 			let count = data.Length;
 			if (count == 0)
 				return .Ok(0);
-			Internal.MemCpy(mData.GrowUnitialized(count), data.Ptr, count);
+			Internal.MemCpy(mData.GrowUninitialized(count), data.Ptr, count);
 			return .Ok(count);
 		}
 
