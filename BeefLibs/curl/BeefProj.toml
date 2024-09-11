@@ -4,3 +4,9 @@ FileVersion = 1
 Name = "curl"
 TargetType = "BeefLib"
 StartupObject = "Program"
+
+[Configs.Debug.Linux64]
+OtherLinkFlags = "$(LinkFlags) -lcurl"
+
+[Configs.Release.Linux64]
+OtherLinkFlags = "$(LinkFlags) -lcurl"
