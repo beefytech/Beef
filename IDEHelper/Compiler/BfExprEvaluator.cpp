@@ -11625,7 +11625,10 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 		mModule->mBfIRBuilder->SetInsertPoint(initBlock);
 	}
 
-	BfTypedValue initValue = GetResult(true);
+	BfTypedValue origInitValue = GetResult(true);
+	BfTypedValue initValue = origInitValue;
+	if ((initValue) && (initValue.mType->IsRef()))	
+		initValue = mModule->RemoveRef(initValue, false);
 	bool isFirstAdd = true;
 
 	for (auto elementExpr : initExpr->mValues)
@@ -11749,7 +11752,7 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 		mModule->mBfIRBuilder->SetInsertPoint(curBlock);
 	}
 
-	mResult = initValue;
+	mResult = origInitValue;
 }
 
 void BfExprEvaluator::Visit(BfCollectionInitializerExpression* arrayInitExpr)

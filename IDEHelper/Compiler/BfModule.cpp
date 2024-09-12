@@ -12944,7 +12944,7 @@ BfVariant BfModule::TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& 
 	return variant;
 }
 
-BfTypedValue BfModule::RemoveRef(BfTypedValue typedValue)
+BfTypedValue BfModule::RemoveRef(BfTypedValue typedValue, bool makeInReadOnly)
 {
 	if ((typedValue.mType != NULL) && (typedValue.mType->IsRef()))
 	{
@@ -12969,7 +12969,7 @@ BfTypedValue BfModule::RemoveRef(BfTypedValue typedValue)
 			BF_ASSERT(typedValue.mValue.IsFake());
 		}
 
-		if (refType->mRefKind == BfRefType::RefKind_In)
+		if ((refType->mRefKind == BfRefType::RefKind_In) && (makeInReadOnly))
 		{
 			if (typedValue.mKind == BfTypedValueKind_Addr)
 				typedValue.mKind = BfTypedValueKind_ReadOnlyAddr;

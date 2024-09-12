@@ -1752,7 +1752,7 @@ public:
 	void EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* targetType, BfIRBlock trueBlock, BfIRBlock falseBlock, bool nullSucceeds = false);
 	void EmitDynamicCastCheck(BfTypedValue typedVal, BfType* type, bool allowNull);
 	void CheckStaticAccess(BfTypeInstance* typeInstance);
-	BfTypedValue RemoveRef(BfTypedValue typedValue);
+	BfTypedValue RemoveRef(BfTypedValue typedValue, bool makeInReadOnly = true);
 	BfTypedValue SanitizeAddr(BfTypedValue typedValue);
 	BfTypedValue ToRef(BfTypedValue typedValue, BfRefType* refType = NULL);
 	BfTypedValue LoadOrAggregateValue(BfTypedValue typedValue);
