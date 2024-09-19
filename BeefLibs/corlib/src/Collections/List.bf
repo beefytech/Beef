@@ -446,7 +446,7 @@ namespace System.Collections
 			return &mItems[mSize - addSize];
 		}
 
-		[Obsolete("Method replaced by GrowUninitialized due to misspelling")]
+		[Obsolete("Method replaced by GrowUninitialized due to misspelling"), NoShow]
 		public T* GrowUnitialized(int addSize) => GrowUninitialized(addSize);
 
 		public void Clear()

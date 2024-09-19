@@ -128,7 +128,7 @@ namespace CURL
 			int byteCount = size * count;
 			if (byteCount > 0)
 			{
-	            Internal.MemCpy(transfer.mData.GrowUnitialized(byteCount), dataPtr, byteCount);
+	            Internal.MemCpy(transfer.mData.GrowUninitialized(byteCount), dataPtr, byteCount);
 			}
 			return count;
 		}

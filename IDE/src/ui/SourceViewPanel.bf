@@ -4563,7 +4563,7 @@ namespace IDE.ui
 					{
 						mCollapseRegionView.mLineStart = (.)lineStart;
 						mCollapseRegionView.mCollapseIndices.Clear();
-						Internal.MemSet(mCollapseRegionView.mCollapseIndices.GrowUnitialized(drawLineCount), 0, drawLineCount * sizeof(int32));
+						Internal.MemSet(mCollapseRegionView.mCollapseIndices.GrowUninitialized(drawLineCount), 0, drawLineCount * sizeof(int32));
 						mCollapseRegionView.mCollapseRevision = ewc.mCollapseParseRevision;
 						mCollapseRegionView.mTextVersionId = ewc.mCollapseTextVersionId;
 

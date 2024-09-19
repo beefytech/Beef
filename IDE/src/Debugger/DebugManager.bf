@@ -1261,7 +1261,7 @@ namespace IDE.Debugger
 				return false;
 
 			outTypeData.Clear();
-			result = Debugger_GetHotResolveData(outTypeData.GrowUnitialized(outDataSize), &outDataSize);
+			result = Debugger_GetHotResolveData(outTypeData.GrowUninitialized(outDataSize), &outDataSize);
 			outStackStr.Append(result);
 			return true;
 		}

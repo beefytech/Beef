@@ -5666,7 +5666,7 @@ namespace IDE.ui
 				return;
 
 			mLineCoords.Clear();
-			mLineCoords.GrowUnitialized(data.mLineStarts.Count);
+			mLineCoords.GrowUninitialized(data.mLineStarts.Count);
 			mLineCoordJumpTable.Clear();
 
 			List<(int32 line, EmitEmbed emitEmbed)> orderedEmitEmbeds = scope .();
