@@ -4145,6 +4145,12 @@ namespace System
 			return .(this, pos, length);
 		}
 
+		[NoDiscard]
+		public StringView Substring(IndexRange range)
+		{
+			return .(this)[range];
+		}
+
 		public (char32, int) GetChar32(int idx)
 		{
 			Debug.Assert((uint)idx < (uint)mLength);
