@@ -1132,11 +1132,30 @@ bool BfModule::CheckCircularDataError(bool failTypes)
 		}
 		else if (checkTypeState->mCurFieldDef != NULL)
 		{
-			Fail(StrFormat("Field '%s.%s' causes a data cycle", TypeToString(checkTypeState->mType).c_str(), checkTypeState->mCurFieldDef->mName.c_str()));
+			BfAstNode* refNode = checkTypeState->mCurFieldDef->GetRefNode();
+
+			if (refNode == NULL)
+			{
+				if (checkTypeState->mCurTypeDef != NULL)
+					refNode = checkTypeState->mCurTypeDef->GetRefNode();
+			}
+
+			auto checkSrcTypeState = checkTypeState;
+			while ((refNode == NULL) && (checkSrcTypeState != NULL))
+			{
+				if (checkSrcTypeState->mCurFieldDef != NULL)
+					refNode = checkSrcTypeState->mCurFieldDef->GetRefNode();
+				checkSrcTypeState = checkSrcTypeState->mPrevState;
+			}
+
+			Fail(StrFormat("Field '%s.%s' causes a data cycle", TypeToString(checkTypeState->mType).c_str(), checkTypeState->mCurFieldDef->mName.c_str()), refNode, true);
 		}
 		else
 		{
-			Fail(StrFormat("Type '%s' causes a data cycle", TypeToString(checkTypeState->mType).c_str()));
+			BfAstNode* refNode = NULL;
+			if (checkTypeState->mCurTypeDef != NULL)
+				refNode = checkTypeState->mCurTypeDef->GetRefNode();
+			Fail(StrFormat("Type '%s' causes a data cycle", TypeToString(checkTypeState->mType).c_str()), refNode, true);
 		}
 
 		auto typeInstance = checkTypeState->mType->ToTypeInstance();
