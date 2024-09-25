@@ -13462,6 +13462,11 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		return;
 	}
 
+	if (((bindResult.mMethodInstance->mComptimeFlags & BfComptimeFlag_Comptime) != 0) && ((mModule->mCurMethodInstance->mComptimeFlags & BfComptimeFlag_Comptime) == 0))
+	{
+		 mModule->Fail(StrFormat("Cannot bind to const-eval method '%s', as this method is not available at runtime", mModule->MethodToString(bindResult.mMethodInstance).c_str()), delegateBindExpr->mTarget);
+	}
+
 	auto bindMethodInstance = bindResult.mMethodInstance;
 	if (isMethodRefMatch)
 	{
