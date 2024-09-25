@@ -827,6 +827,12 @@ namespace System
 			return .(this, pos, length);
 		}
 
+		[NoDiscard]
+		public StringView Substring(IndexRange range)
+		{
+			return .(this)[range];
+		}
+		
 		public void Append(StringView strView)
 		{
 			Append(strView.Ptr, strView.Length);
