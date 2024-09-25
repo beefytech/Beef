@@ -102,7 +102,8 @@ namespace IDE.ui
 			editWidgetContent.GetLineCharAtIdx(charIdx, out remappedLine, out remappedLineChar);
 
 			var filePath = lineSrcInfo.mEditData.mFilePath;
-			IDEApp.sApp.ShowSourceFileLocation(filePath, -1, -1/*IDEApp.sApp.mWorkspace.GetHighestCompileIdx()*/, remappedLine, remappedLineChar, LocatorType.Always);
+			var panel = IDEApp.sApp.ShowSourceFileLocation(filePath, -1, -1/*IDEApp.sApp.mWorkspace.GetHighestCompileIdx()*/, remappedLine, remappedLineChar, LocatorType.Always);
+			panel?.RecordHistoryLocation();
 			return true;
 		}
 
