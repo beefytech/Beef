@@ -313,6 +313,7 @@ public:
 	BfBaseClassWalker();
 	BfBaseClassWalker(BfType* typeA, BfType* typeB, BfModule* module);
 	void AddConstraints(BfType* srcType, BfGenericParamInstance* genericParam);
+	void AddInterfaces(BfType* srcType, BfTypeInstance* typeInst);
 
 public:
 	Entry Next();

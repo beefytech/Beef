@@ -413,6 +413,25 @@ namespace Tests
 			}
 		}
 
+	    public interface IAdd
+	    {
+	        static Self operator+(Self a, Self b);
+	    }
+
+	    public interface IAdd2 : IAdd
+	    {
+	    }
+		    
+        public static void MyFunction<T>(T a, T b) where T : IAdd
+        {
+            T sum = a + b;
+        }
+
+        public static void MyFunction2<T>(T a, T b) where T : IAdd2
+        {
+            T sum = a + b;
+        }
+
 		[Test]
 		public static void TestDefaults()
 		{

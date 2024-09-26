@@ -69,10 +69,20 @@ BfBaseClassWalker::BfBaseClassWalker(BfType* typeA, BfType* typeB, BfModule* mod
 		AddConstraints(typeA, module->GetGenericParamInstance((BfGenericParamType*)typeA));
 	}
 
+	if ((typeA != NULL) && (typeA->IsInterface()))
+	{
+		AddInterfaces(typeA, typeA->ToTypeInstance());
+	}
+
 	if ((typeB != NULL) && (typeB->IsGenericParam()))
 	{
 		mMayBeFromInterface = true;
 		AddConstraints(typeB, module->GetGenericParamInstance((BfGenericParamType*)typeB));
+	}
+
+	if ((typeB != NULL) && (typeB->IsInterface()))
+	{
+		AddInterfaces(typeB, typeB->ToTypeInstance());
 	}
 }
 
@@ -95,6 +105,8 @@ void BfBaseClassWalker::AddConstraints(BfType* srcType, BfGenericParamInstance* 
 	{
 		auto typeInst = genericParam->mTypeConstraint->ToTypeInstance();
 		{
+			if (typeInst->IsInterface())
+				AddInterfaces(srcType, typeInst->ToTypeInstance());
 			Entry entry(srcType, typeInst);
 			if ((typeInst != NULL) && (!mManualList.Contains(entry)))
 				mManualList.Add(entry);
@@ -103,7 +115,19 @@ void BfBaseClassWalker::AddConstraints(BfType* srcType, BfGenericParamInstance* 
 
 	for (auto typeInst : genericParam->mInterfaceConstraints)
 	{
+		if (typeInst->IsInterface())
+			AddInterfaces(srcType, typeInst->ToTypeInstance());
 		Entry entry(srcType, typeInst);
+		if ((typeInst != NULL) && (!mManualList.Contains(entry)))
+			mManualList.Add(entry);
+	}
+}
+
+void BfBaseClassWalker::AddInterfaces(BfType* srcType, BfTypeInstance* typeInst)
+{
+	for (auto ifaceEntry : typeInst->mInterfaces)
+	{
+		Entry entry(srcType, ifaceEntry.mInterfaceType);
 		if ((typeInst != NULL) && (!mManualList.Contains(entry)))
 			mManualList.Add(entry);
 	}
