@@ -4477,6 +4477,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 
 		typeInstance->mBaseType = baseTypeInst;
+		typeInstance->mWantsGCMarking = baseTypeInst->mWantsGCMarking;
 		typeInstance->mInheritDepth = baseTypeInst->mInheritDepth + 1;
 		typeInstance->mHasParameterizedBase = baseTypeInst->mHasParameterizedBase;
 		if ((baseTypeInst->IsArray()) || (baseTypeInst->IsSizedArray()) || (baseTypeInst->IsGenericTypeInstance()))
