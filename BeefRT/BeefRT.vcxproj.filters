@@ -105,6 +105,9 @@
     <ClCompile Include="..\BeefySysLib\util\AllocDebug.cpp">
       <Filter>BeefySysLib\util</Filter>
     </ClCompile>
+    <ClCompile Include="rt\Parallel.cpp">
+      <Filter>rt</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="rt\BfObjects.h">
@@ -145,6 +148,9 @@
     </ClInclude>
     <ClInclude Include="..\BeefySysLib\util\BeefPerf.h">
       <Filter>BeefySysLib\util</Filter>
+    </ClInclude>
+    <ClInclude Include="rt\Parallel.h">
+      <Filter>rt</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
