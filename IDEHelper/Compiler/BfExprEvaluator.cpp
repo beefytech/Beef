@@ -104,22 +104,26 @@ void BfBaseClassWalker::AddConstraints(BfType* srcType, BfGenericParamInstance* 
 	if (genericParam->mTypeConstraint != NULL)
 	{
 		auto typeInst = genericParam->mTypeConstraint->ToTypeInstance();
+		if (typeInst != NULL)
 		{
 			if (typeInst->IsInterface())
 				AddInterfaces(srcType, typeInst->ToTypeInstance());
 			Entry entry(srcType, typeInst);
-			if ((typeInst != NULL) && (!mManualList.Contains(entry)))
+			if (!mManualList.Contains(entry))
 				mManualList.Add(entry);
 		}
 	}
 
 	for (auto typeInst : genericParam->mInterfaceConstraints)
 	{
-		if (typeInst->IsInterface())
-			AddInterfaces(srcType, typeInst->ToTypeInstance());
-		Entry entry(srcType, typeInst);
-		if ((typeInst != NULL) && (!mManualList.Contains(entry)))
-			mManualList.Add(entry);
+		if (typeInst != NULL)
+		{
+			if (typeInst->IsInterface())
+				AddInterfaces(srcType, typeInst->ToTypeInstance());
+			Entry entry(srcType, typeInst);
+			if (!mManualList.Contains(entry))
+				mManualList.Add(entry);
+		}
 	}
 }
 
