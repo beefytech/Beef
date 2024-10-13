@@ -6775,6 +6775,8 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	BfTypedValue varTypedVal;
 	bool needsValCopy = true;
 
+	BfType* origVarType = varType;
+
 	// Local variable
 	{
 		if (!tupleBinds.IsEmpty())
@@ -6914,7 +6916,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	innerScopeData.mIsLoop = true;
 
 	if ((autoComplete != NULL) && (forEachStmt->mVariableTypeRef != NULL))
-		autoComplete->CheckVarResolution(forEachStmt->mVariableTypeRef, varType);
+		autoComplete->CheckVarResolution(forEachStmt->mVariableTypeRef, origVarType);
 
 	if (isArray || isSizedArray)
 		mBfIRBuilder->CreateAlignedStore(GetConstValue(0), itr.mValue, itr.mType->mAlign);
