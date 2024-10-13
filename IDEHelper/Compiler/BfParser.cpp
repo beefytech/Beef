@@ -387,11 +387,12 @@ BfParser::BfParser(BfSystem* bfSystem, BfProject* bfProject) : BfSource(bfSystem
 	mInAsmBlock = false;
 	mPreprocessorIgnoredSectionNode = NULL;
 	mPreprocessorIgnoreDepth = 0;
+	mAddedDependsDefines = false;
 
 	if (bfProject != NULL)
 	{
 		for (auto macro : bfProject->mPreprocessorMacros)
-			mPreprocessorDefines[macro] = BfDefineState_FromProject;
+			mPreprocessorDefines[macro] = BfDefineState_FromProject;		
 	}
 }
 
@@ -927,6 +928,18 @@ void BfParser::HandleUndefine(const StringImpl& name)
 
 MaybeBool BfParser::HandleIfDef(const StringImpl& name)
 {
+	if ((!mAddedDependsDefines) && (mProject != NULL) && (name.StartsWith("BF_DEPENDS_")))
+	{
+		for (auto project : mProject->mDependencies)
+		{
+			StringT<64> def = "BF_DEPENDS_";
+			def.Append(project->mName);
+			MakeUpper(def);
+			mPreprocessorDefines[def] = BfDefineState_FromProject;
+		}
+		mAddedDependsDefines = true;
+	}
+
 	BfDefineState defineState;
 	if (mPreprocessorDefines.TryGetValue(name, &defineState))
 	{

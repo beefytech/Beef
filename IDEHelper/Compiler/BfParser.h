@@ -173,6 +173,7 @@ public:
 	int mJumpTableSize;
 	int mOrigSrcLength;
 	int mDataId;
+	bool mAddedDependsDefines;
 
 	int mSrcIdx;
 	int mLineStart;
