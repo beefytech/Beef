@@ -54,6 +54,40 @@ namespace Tests
 			}
 		}
 
+		enum EnumH { A, B }
+
+		enum EnumI
+		{
+			case A;case B;case C;case D;case E;
+			case F;case G;case H;case I;case J;
+			case K;case L;case M;case N;case O;
+			case P;case Q;case R;case S;case T;
+			case U;case V;case W;case X;case Y;
+			case Z;case AA;case AB;case AC;case AD;
+			case AE;case AF;case AG;case AH;case AI;
+			case AJ;case AK;case AL;case AM;case AN;
+			case AO;case AP;case AQ;case AR;case AS;
+			case AT;case AU;case AV;case AW;case AX;
+			case AY;case AZ;case BA;case BB;case BC;
+			case BD;case BE;case BF;case BG;case BH;
+			case BI;case BJ;case BK;case BL;case BM;
+			case BN;case BO;case BP;case BQ;case BR;
+			case BS;case BT;case BU;case BV;case BW;
+			case BX;case BY;case BZ;case CA;case CB;
+			case CC;case CD;case CE;case CF;case CG;
+			case CH;case CI;case CJ;case CK;case CL;
+			case CM;case CN;case CO;case CP;case CQ;
+			case CR;case CS;case CT;case CU;case CV;
+			case CW;case CX;case CY;case CZ;case DA;
+			case DB;case DC;case DD;case DE;case DF;
+			case DG;case DH;case DI;case DJ;case DK;
+			case DL;case DM;case DN;case DO;case DP;
+			case DQ;case DR;case DS;case DT;case DU;
+			case DV;case DW;case DX;
+			case DY(EnumH val);
+			// Started from 129 elements, no less
+		}
+
 		[Test]
 		static void TestBasic()
 		{
@@ -189,6 +223,12 @@ namespace Tests
 			var ea = Enum.GetMaxValue<EnumA>();
 			Test.Assert(ea == .B);
 			Test.Assert(Enum.GetCount<EnumA>() == 2);
+
+			EnumI ei = .DY(.B);
+			bool foundH = false;
+			if (ei case .DY(var eh))
+				foundH = eh == .B;
+			Test.Assert(foundH);
 		}
 	}
 }

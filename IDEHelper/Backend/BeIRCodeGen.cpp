@@ -886,6 +886,10 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 
 			auto constStruct = mBeModule->mOwnedValues.Alloc<BeStructConstant>();
 			constStruct->mType = type;
+
+			if (type->IsStruct())
+				FixValues((BeStructType*)type, values);
+
 			for (int i = 0; i < (int)values.size(); i++)
 			{
 				auto val = values[i];
@@ -933,9 +937,6 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 
 				constStruct->mMemberValues.Add(constant);
 			}
-
-			if (type->IsStruct())
-				FixValues((BeStructType*)type, constStruct->mMemberValues);
 
 			beValue = constStruct;
 
