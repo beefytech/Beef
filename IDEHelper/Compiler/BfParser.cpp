@@ -934,6 +934,7 @@ MaybeBool BfParser::HandleIfDef(const StringImpl& name)
 		{
 			StringT<64> def = "BF_DEPENDS_";
 			def.Append(project->mName);
+			def.Replace("-", "_");
 			MakeUpper(def);
 			mPreprocessorDefines[def] = BfDefineState_FromProject;
 		}
