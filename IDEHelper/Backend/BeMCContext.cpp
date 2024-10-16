@@ -3519,8 +3519,7 @@ void BeMCContext::CreateCondBr(BeMCBlock* mcBlock, BeMCOperand& testVal, const B
 	else if (testVal.mKind == BeMCOperandKind_CmpResult)
 	{
 		// Beef-specific: assuming CMP results aren't stomped
-		auto& cmpResult = mCmpResults[testVal.mCmpResultIdx];
-		AllocInst(BeMCInstKind_CondBr, trueBlock, BeMCOperand::FromCmpKind(cmpResult.mCmpKind));
+		auto& cmpResult = mCmpResults[testVal.mCmpResultIdx];		
 		if (cmpResult.mInverted)
 		{
 			AllocInst(BeMCInstKind_CondBr, falseBlock, BeMCOperand::FromCmpKind(cmpResult.mCmpKind));
