@@ -2400,7 +2400,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, lhs);
 			CMD_PARAM(llvm::Value*, rhs);
 			if (lhs->getType()->isFloatingPointTy())
-				SetResult(curId, mIRBuilder->CreateFCmpONE(lhs, rhs));
+				SetResult(curId, mIRBuilder->CreateFCmpUNE(lhs, rhs));
 			else
 				SetResult(curId, mIRBuilder->CreateICmpNE(lhs, rhs));
 		}
@@ -2450,7 +2450,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, lhs);
 			CMD_PARAM(llvm::Value*, rhs);
 			if (lhs->getType()->isFloatingPointTy())
-				SetResult(curId, mIRBuilder->CreateFCmpUGT(lhs, rhs));
+				SetResult(curId, mIRBuilder->CreateFCmpOGT(lhs, rhs));
 			else
 				SetResult(curId, mIRBuilder->CreateICmpSGT(lhs, rhs));
 		}

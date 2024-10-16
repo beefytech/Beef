@@ -2106,6 +2106,8 @@ String BeMCContext::ToString(const BeMCOperand& operand)
 		if (cmpResult.mResultVRegIdx != -1)
 			result += StrFormat("<vreg%d>", cmpResult.mResultVRegIdx);
 		result += " ";
+ 		if (cmpResult.mInverted)
+ 			result += "!";
 		result += BeDumpContext::ToString(cmpResult.mCmpKind);
 		return result;
 	}
@@ -3519,7 +3521,16 @@ void BeMCContext::CreateCondBr(BeMCBlock* mcBlock, BeMCOperand& testVal, const B
 		// Beef-specific: assuming CMP results aren't stomped
 		auto& cmpResult = mCmpResults[testVal.mCmpResultIdx];
 		AllocInst(BeMCInstKind_CondBr, trueBlock, BeMCOperand::FromCmpKind(cmpResult.mCmpKind));
-		AllocInst(BeMCInstKind_Br, falseBlock);
+		if (cmpResult.mInverted)
+		{
+			AllocInst(BeMCInstKind_CondBr, falseBlock, BeMCOperand::FromCmpKind(cmpResult.mCmpKind));
+			AllocInst(BeMCInstKind_Br, trueBlock);
+		}
+		else
+		{
+			AllocInst(BeMCInstKind_CondBr, trueBlock, BeMCOperand::FromCmpKind(cmpResult.mCmpKind));
+			AllocInst(BeMCInstKind_Br, falseBlock);
+		}
 	}
 	else if (testVal.mKind == BeMCOperandKind_Phi)
 	{
@@ -6135,27 +6146,35 @@ uint8 BeMCContext::GetJumpOpCode(BeCmpKind cmpKind, bool isLong)
 		case BeCmpKind_SLT: // JL
 			return 0x8C;
 		case BeCmpKind_ULT: // JB
+		case BeCmpKind_OLT: // JB
 			return 0x82;
 		case BeCmpKind_SLE: // JLE
 			return 0x8E;
 		case BeCmpKind_ULE: // JBE
+		case BeCmpKind_OLE: // JBE
 			return 0x86;
 		case BeCmpKind_EQ: // JE
 			return 0x84;
 		case BeCmpKind_NE: // JNE
 			return 0x85;
+		case BeCmpKind_OEQ: // JNP
+			return 0x8B;
+		case BeCmpKind_UNE: // JP
+			return 0x8A;
 		case BeCmpKind_SGT: // JG
 			return 0x8F;
 		case BeCmpKind_UGT: // JA
+		case BeCmpKind_OGT: // JA
 			return 0x87;
 		case BeCmpKind_SGE: // JGE
 			return 0x8D;
 		case BeCmpKind_UGE: // JAE
+		case BeCmpKind_OGE: // JAE
 			return 0x83;
 		case BeCmpKind_NB: // JNB
 			return 0x83;
 		case BeCmpKind_NO: // JNO
-			return 0x81;
+			return 0x81;		
 		}
 	}
 	else
@@ -6167,22 +6186,30 @@ uint8 BeMCContext::GetJumpOpCode(BeCmpKind cmpKind, bool isLong)
 		case BeCmpKind_SLT: // JL
 			return 0x7C;
 		case BeCmpKind_ULT: // JB
+		case BeCmpKind_OLT: // JB
 			return 0x72;
 		case BeCmpKind_SLE: // JLE
 			return 0x7E;
 		case BeCmpKind_ULE: // JBE
+		case BeCmpKind_OLE: // JBE
 			return 0x76;
 		case BeCmpKind_EQ: // JE
 			return 0x74;
 		case BeCmpKind_NE: // JNE
 			return 0x75;
+		case BeCmpKind_OEQ: // JNP
+			return 0x7B;
+		case BeCmpKind_UNE: // JP
+			return 0x7A;
 		case BeCmpKind_SGT: // JG
 			return 0x7F;
 		case BeCmpKind_UGT: // JA
+		case BeCmpKind_OGT: // JA
 			return 0x77;
 		case BeCmpKind_SGE: // JGE
 			return 0x7D;
 		case BeCmpKind_UGE: // JAE
+		case BeCmpKind_OGE: // JAE
 			return 0x73;
 		case BeCmpKind_NB: // JNB
 			return 0x73;
@@ -6669,6 +6696,8 @@ void BeMCContext::InitializedPassHelper(BeMCBlock* mcBlock, BeVTrackingGenContex
 			{
 				auto cmpToBoolInst = AllocInst(BeMCInstKind_CmpToBool, BeMCOperand::FromCmpKind(cmpResult.mCmpKind), BeMCOperand(), instIdx + 1);
 				cmpToBoolInst->mResult = BeMCOperand::FromVReg(cmpResult.mResultVRegIdx);
+				if (cmpResult.mInverted)
+					AllocInst(BeMCInstKind_Not, cmpToBoolInst->mResult, instIdx + 2);
 			}
 
 			inst->mResult = BeMCOperand();
@@ -10384,6 +10413,14 @@ bool BeMCContext::DoLegalization()
 
 					if (arg0Type->IsFloat())
 					{
+						if (!arg0.IsNativeReg())
+						{
+							// We need an <xmm> for reg0. We're not allowed to reorder SwapCmpSides due to NaN handling
+							ReplaceWithNewVReg(inst->mArg0, instIdx, true, true);
+							isFinalRun = false;
+							break;
+						}
+
 						// Cmp <r/m>, <xmm> is not valid, only Cmp <xmm>, <r/m>
 						if ((!arg0.IsNativeReg()) && (arg1.IsNativeReg()))
 						{
@@ -11347,7 +11384,8 @@ bool BeMCContext::DoJumpRemovePass()
 
 						auto nextNextInst = mcBlock->mInstructions[nextNextIdx];
 						if ((nextInst->mKind == BeMCInstKind_Br) &&
-							(nextNextInst->mKind == BeMCInstKind_Label) && (inst->mArg0 == nextNextInst->mArg0))
+							(nextNextInst->mKind == BeMCInstKind_Label) && (inst->mArg0 == nextNextInst->mArg0) &&
+							(!BeModule::IsCmpOrdered(inst->mArg1.mCmpKind)))
 						{
 							didWork = true;
 							inst->mArg0 = nextInst->mArg0;
@@ -14815,17 +14853,17 @@ void BeMCContext::DoCodeEmission()
 					{
 					case BeMCInstForm_XMM32_FRM32:
 					case BeMCInstForm_XMM32_IMM:
-						// COMISS
+						// UCOMISS
 						EmitREX(inst->mArg0, inst->mArg1, false);
-						Emit(0x0F); Emit(0x2F);
+						Emit(0x0F); Emit(0x2E);
 						EmitModRM(inst->mArg0, inst->mArg1);
 						break;
 					case BeMCInstForm_XMM64_FRM64:
 					case BeMCInstForm_XMM64_IMM:
-						// COMISD
+						// UCOMISD
 						Emit(0x66);
 						EmitREX(inst->mArg0, inst->mArg1, false);
-						Emit(0x0F); Emit(0x2F);
+						Emit(0x0F); Emit(0x2E);
 						EmitModRM(inst->mArg0, inst->mArg1);
 						break;
 					default:
@@ -15103,24 +15141,50 @@ void BeMCContext::DoCodeEmission()
 				break;
 			case BeMCInstKind_CondBr:
 				{
-					if (inst->mArg0.mKind == BeMCOperandKind_Immediate_i64)
-					{
-						mOut.Write(GetJumpOpCode(inst->mArg1.mCmpKind, false));
-						mOut.Write((uint8)inst->mArg0.mImmediate);
-					}
-					else
-					{
-						BF_ASSERT(inst->mArg0.mKind == BeMCOperandKind_Label);
-						BeMCJump jump;
-						jump.mCodeOffset = funcCodePos;
-						jump.mLabelIdx = inst->mArg0.mLabelIdx;
-						// Speculative make it a short jump
-						jump.mJumpKind = 0;
-						jump.mCmpKind = inst->mArg1.mCmpKind;
-						deferredJumps.push_back(jump);
+					for (int pass = 0; pass < 2; pass++)
+					{						
+						if (inst->mArg0.mKind == BeMCOperandKind_Immediate_i64)
+						{
+							if (pass == 1)
+								break;
 
-						mOut.Write(GetJumpOpCode(jump.mCmpKind, false));
-						mOut.Write((uint8)0);
+							mOut.Write(GetJumpOpCode(inst->mArg1.mCmpKind, false));
+							mOut.Write((uint8)inst->mArg0.mImmediate);
+						}
+						else
+						{
+							BeCmpKind cmpKind = inst->mArg1.mCmpKind;
+							if (pass == 1)
+							{
+								switch (cmpKind)
+								{
+								case BeCmpKind_OEQ:
+									cmpKind = BeCmpKind_EQ;
+									break;
+								case BeCmpKind_UNE:
+									cmpKind = BeCmpKind_NE;
+									break;
+								default:
+									cmpKind = BeCmpKind_None;
+								}
+
+								if (cmpKind == BeCmpKind_None)
+									break;
+							}
+
+							BF_ASSERT(inst->mArg0.mKind == BeMCOperandKind_Label);
+							BeMCJump jump;
+							jump.mCodeOffset = funcCodePos;
+							jump.mLabelIdx = inst->mArg0.mLabelIdx;
+							// Speculative make it a short jump
+							jump.mJumpKind = 0;
+							jump.mCmpKind = cmpKind;;
+							deferredJumps.push_back(jump);
+
+							mOut.Write(GetJumpOpCode(jump.mCmpKind, false));
+							mOut.Write((uint8)0);
+							funcCodePos += 2;
+						}
 					}
 				}
 				break;
@@ -16687,19 +16751,31 @@ void BeMCContext::Generate(BeFunction* function)
 
 					if (valType->IsFloat())
 					{
+						// These operations are set up to properly handle NaN comparisons
 						switch (cmpResult.mCmpKind)
 						{
 						case BeCmpKind_SLT:
-							cmpResult.mCmpKind = BeCmpKind_ULT;
+							cmpResult.mCmpKind = BeCmpKind_OLE;
+							cmpResult.mInverted = true;
+							BF_SWAP(mcInst->mArg0, mcInst->mArg1);
 							break;
 						case BeCmpKind_SLE:
-							cmpResult.mCmpKind = BeCmpKind_ULE;
+							cmpResult.mCmpKind = BeCmpKind_OLT;
+							cmpResult.mInverted = true;
+							BF_SWAP(mcInst->mArg0, mcInst->mArg1);
 							break;
 						case BeCmpKind_SGT:
-							cmpResult.mCmpKind = BeCmpKind_UGT;
+							cmpResult.mCmpKind = BeCmpKind_OGT;
 							break;
 						case BeCmpKind_SGE:
-							cmpResult.mCmpKind = BeCmpKind_UGE;
+							cmpResult.mCmpKind = BeCmpKind_OGE;
+							break;
+						case BeCmpKind_EQ:
+							cmpResult.mCmpKind = BeCmpKind_UNE;
+							cmpResult.mInverted = true;
+							break;
+						case BeCmpKind_NE:
+							cmpResult.mCmpKind = BeCmpKind_UNE;							
 							break;
 						}
 					}
@@ -16710,6 +16786,7 @@ void BeMCContext::Generate(BeFunction* function)
 					result.mCmpResultIdx = cmpResultIdx;
 
 					mcInst->mResult = result;
+					break;
 				}
 				break;
 			case BeObjectAccessCheckInst::TypeId:
@@ -18083,7 +18160,7 @@ void BeMCContext::Generate(BeFunction* function)
 	BEMC_ASSERT(retCount == 1);
 
 	bool wantDebug = mDebugging;
-	wantDebug |= function->mName == "?Test@Program@BeefTest@bf@@SAXXZ";
+	wantDebug |= function->mName == "?GetVal@TestProgram@BeefTest@bf@@SATint@@M@Z";
 	//wantDebug |= function->mName == "?Testos@Fartso@@SAHPEA1@HH@Z";
 	//wantDebug |= function->mName == "?GetYoopA@Fartso@@QEAAUYoop@@XZ";
 		//"?TestVals@Fartso@@QEAATint@@XZ";

@@ -1726,14 +1726,18 @@ void BeDumpContext::ToString(StringImpl& str, BeCmpKind cmpKind)
 	{
 	case BeCmpKind_SLT: str += "slt"; return;
 	case BeCmpKind_ULT: str += "ult"; return;
+	case BeCmpKind_OLT: str += "olt"; return;
 	case BeCmpKind_SLE: str += "sle"; return;
 	case BeCmpKind_ULE: str += "ule"; return;
+	case BeCmpKind_OLE: str += "ole"; return;
 	case BeCmpKind_EQ: str += "eq"; return;
 	case BeCmpKind_NE: str += "ne"; return;
 	case BeCmpKind_SGT: str += "sgt"; return;
 	case BeCmpKind_UGT: str += "ugt"; return;
+	case BeCmpKind_OGT: str += "ogt"; return;
 	case BeCmpKind_SGE: str += "sge"; return;
 	case BeCmpKind_UGE: str += "uge"; return;
+	case BeCmpKind_OGE: str += "oge"; return;
 	case BeCmpKind_NB: str += "nb"; return;
 	case BeCmpKind_NO: str += "no"; return;
 	default:
@@ -3017,22 +3021,34 @@ BeCmpKind BeModule::InvertCmp(BeCmpKind cmpKind)
 		return BeCmpKind_SGE;
 	case BeCmpKind_ULT:
 		return BeCmpKind_UGE;
+	case BeCmpKind_OLT:
+		return BeCmpKind_OGE;
 	case BeCmpKind_SLE:
 		return BeCmpKind_SGT;
 	case BeCmpKind_ULE:
 		return BeCmpKind_UGT;
+	case BeCmpKind_OLE:
+		return BeCmpKind_OGT;
 	case BeCmpKind_EQ:
 		return BeCmpKind_NE;
+	case BeCmpKind_OEQ:
+		return BeCmpKind_UNE;
 	case BeCmpKind_NE:
 		return BeCmpKind_EQ;
+	case BeCmpKind_UNE:
+		return BeCmpKind_OEQ;
 	case BeCmpKind_SGT:
 		return BeCmpKind_SLE;
 	case BeCmpKind_UGT:
 		return BeCmpKind_ULE;
+	case BeCmpKind_OGT:
+		return BeCmpKind_OLE;
 	case BeCmpKind_SGE:
 		return BeCmpKind_SLT;
 	case BeCmpKind_UGE:
 		return BeCmpKind_ULT;
+	case BeCmpKind_OGE:
+		return BeCmpKind_OLT;
 	}
 	return cmpKind;
 }
@@ -3045,10 +3061,14 @@ BeCmpKind BeModule::SwapCmpSides(BeCmpKind cmpKind)
 		return BeCmpKind_SGT;
 	case BeCmpKind_ULT:
 		return BeCmpKind_UGT;
+	case BeCmpKind_OLT:
+		return BeCmpKind_OGT;
 	case BeCmpKind_SLE:
 		return BeCmpKind_SGE;
 	case BeCmpKind_ULE:
 		return BeCmpKind_UGE;
+	case BeCmpKind_OLE:
+		return BeCmpKind_OGE;
 	case BeCmpKind_EQ:
 		return BeCmpKind_EQ;
 	case BeCmpKind_NE:
@@ -3057,12 +3077,31 @@ BeCmpKind BeModule::SwapCmpSides(BeCmpKind cmpKind)
 		return BeCmpKind_SLT;
 	case BeCmpKind_UGT:
 		return BeCmpKind_ULT;
+	case BeCmpKind_OGT:
+		return BeCmpKind_OLT;
 	case BeCmpKind_SGE:
 		return BeCmpKind_SLE;
 	case BeCmpKind_UGE:
 		return BeCmpKind_ULE;
+	case BeCmpKind_OGE:
+		return BeCmpKind_OLE;
 	}
 	return cmpKind;
+}
+
+bool BeModule::IsCmpOrdered(BeCmpKind cmpKind)
+{
+	switch (cmpKind)
+	{
+	case BeCmpKind_OLT:
+	case BeCmpKind_OLE:
+	case BeCmpKind_OGT:
+	case BeCmpKind_OGE:
+	case BeCmpKind_OEQ:
+	case BeCmpKind_UNE:
+		return true;
+	}
+	return false;
 }
 
 void BeModule::AddInst(BeInst* inst)

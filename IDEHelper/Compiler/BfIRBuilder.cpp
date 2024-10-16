@@ -297,12 +297,13 @@ String BfIRConstHolder::ToString(BfIRValue irValue)
 		}
 		else if (constant->mTypeCode == BfTypeCode_NullPtr)
 		{
-			String ret = "null";
+			String ret;
 			if (constant->mIRType)
 			{
-				ret += "\n";
 				ret += ToString(constant->mIRType);
+				ret += " ";
 			}
+			ret += "null";
 			return ret;
 		}
 		else if (constant->mTypeCode == BfTypeCode_Boolean)
@@ -333,14 +334,14 @@ String BfIRConstHolder::ToString(BfIRValue irValue)
 		else if (constant->mConstType == BfConstType_BitCast)
 		{
 			auto bitcast = (BfConstantBitCast*)constant;
-			BfIRValue targetConst(BfIRValueFlags_Const, bitcast->mTarget);
-			return ToString(targetConst) + " BitCast to " + ToString(bitcast->mToType);
+			BfIRValue targetConst(BfIRValueFlags_Const, bitcast->mTarget);			
+			return ToString(bitcast->mToType) += " bitcast " + ToString(targetConst);
 		}
 		else if (constant->mConstType == BfConstType_Box)
 		{
 			auto box = (BfConstantBox*)constant;
 			BfIRValue targetConst(BfIRValueFlags_Const, box->mTarget);
-			return ToString(targetConst) + " box to " + ToString(box->mToType);
+			return ToString(box->mToType) + " box " + ToString(targetConst);
 		}
 		else if (constant->mConstType == BfConstType_GEP32_1)
 		{
@@ -376,7 +377,7 @@ String BfIRConstHolder::ToString(BfIRValue irValue)
 		{
 			auto constAgg = (BfConstantAgg*)constant;
 			String str = ToString(constAgg->mType);
-			str += "(";
+			str += " (";
 
 			for (int i = 0; i < (int)constAgg->mValues.size(); i++)
 			{
@@ -4778,6 +4779,12 @@ BfIRValue BfIRBuilder::CreateInBoundsGEP(BfIRValue val, int idx0, int idx1)
 {
 	if (val.IsConst())
 	{
+#ifdef _DEBUG
+		auto targetConstant = GetConstant(val);
+		BF_ASSERT((mBfIRCodeGen == NULL) || 
+			((targetConstant->mTypeCode != BfTypeCode_NullPtr) && (targetConstant->mConstType != BfConstType_BitCastNull)));
+#endif
+
 		auto constGEP = mTempAlloc.Alloc<BfConstantGEP32_2>();
 		constGEP->mConstType = BfConstType_GEP32_2;
 		constGEP->mTarget = val.mId;
@@ -4804,6 +4811,10 @@ BfIRValue BfIRBuilder::CreateInBoundsGEP(BfIRValue val, BfIRValue idx0)
 	auto constant = GetConstant(val);
 	if (constant != NULL)
 	{
+#ifdef _DEBUG		
+		//BF_ASSERT((constant->mTypeCode != BfTypeCode_NullPtr) && (constant->mConstType != BfConstType_BitCastNull));
+#endif
+
 		if (constant->mConstType == BfConstType_IntToPtr)
 		{
 			auto fromPtrToInt = (BfConstantIntToPtr*)constant;
@@ -5051,6 +5062,12 @@ void BfIRBuilder::CreateValueScopeHardEnd(BfIRValue scopeStart)
 
 BfIRValue BfIRBuilder::CreateLoad(BfIRValue val, bool isVolatile)
 {
+#ifdef _DEBUG
+// 	auto targetConstant = GetConstant(val);
+// 	if (targetConstant != NULL)
+// 		BF_ASSERT((targetConstant->mTypeCode != BfTypeCode_NullPtr) && (targetConstant->mConstType != BfConstType_BitCastNull));
+#endif
+
 	BfIRValue retVal = WriteCmd(BfIRCmd_Load, val, isVolatile);
 	NEW_CMD_INSERTED_IRVALUE;
 	return retVal;
@@ -5058,6 +5075,12 @@ BfIRValue BfIRBuilder::CreateLoad(BfIRValue val, bool isVolatile)
 
 BfIRValue BfIRBuilder::CreateAlignedLoad(BfIRValue val, int align, bool isVolatile)
 {
+#ifdef _DEBUG
+// 	auto targetConstant = GetConstant(val);
+// 	if (targetConstant != NULL)
+// 		BF_ASSERT((targetConstant->mTypeCode != BfTypeCode_NullPtr) && (targetConstant->mConstType != BfConstType_BitCastNull));
+#endif
+
 	BfIRValue retVal = WriteCmd(BfIRCmd_AlignedLoad, val, align, isVolatile);
 	NEW_CMD_INSERTED_IRVALUE;
 	return retVal;

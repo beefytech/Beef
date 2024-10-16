@@ -166,11 +166,13 @@ struct BeCmpResult
 {
 	BeCmpKind mCmpKind;
 	int mResultVRegIdx;
+	bool mInverted;
 
 	BeCmpResult()
 	{
 		mCmpKind = BeCmpKind_None;
 		mResultVRegIdx = -1;
+		mInverted = false;
 	}
 };
 

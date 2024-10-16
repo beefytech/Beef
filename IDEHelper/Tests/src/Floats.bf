@@ -51,6 +51,66 @@ namespace Tests
 			FloatParseErrTest("6e+");
 		}
 
+		[Test]
+		public static void TestCmp()
+		{
+			float fNeg = -1;
+			float fNan = float.NaN;
+
+			if (fNeg < 0)
+			{
+			}
+			else
+			{
+				Test.FatalError();
+			}
+			if (fNeg > 0)
+				Test.FatalError();
+
+			if (fNan < 0)
+				Test.FatalError();
+			if (fNan <= 0)
+				Test.FatalError();
+			if (fNan > 0)
+				Test.FatalError();
+			if (fNan >= 0)
+				Test.FatalError();
+			if (fNan == 0)
+				Test.FatalError();
+			if (fNan != 0)
+			{
+
+			}
+			else
+			{
+				Test.FatalError();
+			}
+
+			if (fNan == fNan)
+				Test.FatalError();
+
+			if (fNan != fNan)
+			{
+
+			}
+			else
+			{
+				Test.FatalError();
+			}
+
+			bool b0 = fNan < 0;
+			bool b1 = fNan > 0;
+			bool b2 = fNan == fNan;
+			bool b3 = fNan != fNan;
+			bool b4 = fNan != 0;
+
+			Test.Assert(!b0);
+			Test.Assert(!b1);
+			Test.Assert(!b2);
+			Test.Assert(b3);
+			Test.Assert(b4);
+		}
+
 		public static void MinMaxTest<T>(T expectedMinValue, T expectedMaxValue)
 		where T : IMinMaxValue<T>
 		where int : operator T <=> T

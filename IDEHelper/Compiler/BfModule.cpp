@@ -10126,7 +10126,17 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 		{
 			if ((mBfIRBuilder->mIgnoreWrites) ||
 				((mCompiler->mIsResolveOnly) && (!mIsComptimeModule)))
-				return GetDefaultValue(typeInstance);
+			{
+				if (mBfIRBuilder->mIgnoreWrites)
+				{
+					return GetDefaultValue(typeInstance);
+				}
+				else
+				{
+					// Fake with alloca
+					return mBfIRBuilder->CreateAlloca(allocType);
+				}
+			}
 
 			auto classVDataType = ResolveTypeDef(mCompiler->mClassVDataTypeDef);
 			auto vData = mBfIRBuilder->CreateBitCast(vDataRef, mBfIRBuilder->MapTypeInstPtr(classVDataType->ToTypeInstance()));
