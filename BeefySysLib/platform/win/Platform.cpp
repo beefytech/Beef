@@ -1295,6 +1295,13 @@ BFP_EXPORT bool BFP_CALLTYPE BfpProcess_IsRemoteMachine(const char* machineName)
 
 BFP_EXPORT BfpProcess* BFP_CALLTYPE BfpProcess_GetById(const char* machineName, int processId, BfpProcessResult* outResult)
 {
+	HANDLE hProc = ::OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, processId);
+	if (hProc == NULL)
+	{
+		OUTRESULT(BfpProcessResult_NotFound);
+		return NULL;
+	}	
+
 	BfpProcess* process = new BfpProcess();
 	process->mProcessId = processId;
 	process->mInfo = NULL;
@@ -1495,9 +1502,9 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_GetProcessName(BfpProcess* process, char
 	if (process->mImageName.IsEmpty())
 	{
 		HANDLE hProc = ::OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, process->mProcessId);
-		if (hProc == INVALID_HANDLE_VALUE)
+		if (hProc == NULL)
 		{
-			OUTRESULT(BfpProcessResult_UnknownError);
+			OUTRESULT(BfpProcessResult_NotFound);
 			return;
 		}
 		WCHAR wName[MAX_PATH] = { 0 };

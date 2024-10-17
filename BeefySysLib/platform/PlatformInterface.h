@@ -172,6 +172,7 @@ enum BfpProcessResult
 	BfpProcessResult_Ok = BfpResult_Ok,
 	BfpProcessResult_UnknownError = BfpResult_UnknownError,
 	BfpProcessResult_InsufficientBuffer = BfpResult_InsufficientBuffer,
+	BfpProcessResult_NotFound = BfpResult_NotFound
 };
 
 BFP_EXPORT intptr BFP_CALLTYPE BfpProcess_GetCurrentId();
