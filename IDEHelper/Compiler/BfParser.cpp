@@ -935,6 +935,11 @@ MaybeBool BfParser::HandleIfDef(const StringImpl& name)
 			StringT<64> def = "BF_DEPENDS_";
 			def.Append(project->mName);
 			MakeUpper(def);
+			for (auto& c : def)
+			{
+				if (!isalnum((uint8)c))
+					c = '_';
+			}
 			mPreprocessorDefines[def] = BfDefineState_FromProject;
 		}
 		mAddedDependsDefines = true;
