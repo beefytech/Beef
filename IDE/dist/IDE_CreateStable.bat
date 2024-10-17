@@ -86,7 +86,7 @@ IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 copy Beef*Dbg*.* host
 IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 copy userdict.txt host
-copy BeefCon.exe host
+copy BeefCon*.* host
 @REM copy lib*.dll host
 copy Beefy2D.dll host
 copy BeefDbgVis.toml host
