@@ -10131,11 +10131,12 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 				{
 					return GetDefaultValue(typeInstance);
 				}
-				else
-				{
-					// Fake with alloca
-					return mBfIRBuilder->CreateAlloca(allocType);
-				}
+ 				else
+ 				{
+ 					// Fake with alloca
+					mBfIRBuilder->PopulateType(typeInstance);
+ 					return mBfIRBuilder->CreateAlloca(mBfIRBuilder->MapTypeInst(typeInstance));
+ 				}
 			}
 
 			auto classVDataType = ResolveTypeDef(mCompiler->mClassVDataTypeDef);
