@@ -406,7 +406,7 @@ namespace IDE
 
 		class ProcessBfCompileCmd : ExecutionCmd
 		{
-			public BfPassInstance mBfPassInstance;
+			public BfPassInstance mBfPassInstance ~ delete _;
 			public CompileKind mCompileKind;
 			public Project mHotProject;
 			public Stopwatch mStopwatch ~ delete _;
@@ -9370,6 +9370,8 @@ namespace IDE
 					}
 
 					ProcessBeefCompileResults(processCompileCmd.mBfPassInstance, processCompileCmd.mCompileKind, processCompileCmd.mHotProject, processCompileCmd.mStopwatch);
+					processCompileCmd.mBfPassInstance = null;
+
 					if (mHotResolveState != .None)
 					{
 						if (compileInstance.mCompileResult == .Success)
