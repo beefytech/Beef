@@ -1301,6 +1301,7 @@ BFP_EXPORT BfpProcess* BFP_CALLTYPE BfpProcess_GetById(const char* machineName, 
 		OUTRESULT(BfpProcessResult_NotFound);
 		return NULL;
 	}	
+	::CloseHandle(hProc);
 
 	BfpProcess* process = new BfpProcess();
 	process->mProcessId = processId;

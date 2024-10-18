@@ -163,6 +163,7 @@ class Program
 		while (true)
 		{
 			// Check BeefIDE process
+			if ((mPid != 123) || (!Debug.IsDebuggerPresent))
 			{
 				var process = Platform.BfpProcess_GetById(null, mPid, null);
 				if (process == null)
