@@ -1124,6 +1124,7 @@ namespace IDE
 		public bool mAlwaysEnableConsole;
 		public bool mKeepNativeConsoleOpen;
 		public String mEmscriptenPath = new .() ~ delete _;
+		public bool mEmscriptenPendingInstall;
 		public bool mEnableDevMode;
 		public TutorialsFinished mTutorialsFinished = .();
 

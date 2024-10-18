@@ -394,6 +394,11 @@ namespace IDE
 			public String mPath ~ delete _;
 		}
 
+		public class EmsdkInstalledCmd : ExecutionCmd
+		{
+			public String mPath ~ delete _;
+		}
+
 		public class BuildCompletedCmd : ExecutionCmd
 		{
 			public Stopwatch mStopwatch ~ delete _;
@@ -9519,6 +9524,11 @@ namespace IDE
 							delete projectName;
 							delete filePath;
 						});
+				}
+				else if (var emsdkCmd = next as EmsdkInstalledCmd)
+				{
+					gApp.mSettings.mEmscriptenPath.Set(emsdkCmd.mPath);
+					gApp.mSettings.Save();
 				}
 				else
 				{

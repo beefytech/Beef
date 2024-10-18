@@ -6,6 +6,7 @@ using System.Diagnostics;
 using Beefy;
 using IDE.util;
 using IDE.Util;
+using Beefy.theme.dark;
 
 namespace IDE
 {
@@ -680,7 +681,9 @@ namespace IDE
 				}
 
 				UpdateCacheStr(project, linkLine, workspaceOptions, options, depPaths, libPaths);
-				
+
+				String emsdkPath = scope .(gApp.mSettings.mEmscriptenPath);
+
 			    if (project.mNeedsTargetRebuild)
 			    {
 			        if (File.Delete(targetPath) case .Err)
@@ -692,25 +695,67 @@ namespace IDE
 					String compilerExePath = scope String();
 					if (gApp.mSettings.mEmscriptenPath.IsEmpty)
 					{
-						gApp.OutputErrorLine("Emscripten path not configured. Check Wasm configuration in File\\Preferences\\Settings.");
-						return false;
-					}
-					else
-					{
-						compilerExePath.Append(gApp.mSettings.mEmscriptenPath);
-						if ((!compilerExePath.EndsWith('\\')) && (!compilerExePath.EndsWith('/')))
-							compilerExePath.Append("/");
-					}
+						// Set for auto-install without prompting
+						gApp.mSettings.mEmscriptenPendingInstall = true;
 
-					if (!File.Exists(scope $"{gApp.mInstallDir}/Beef{IDEApp.sRTVersionStr}RT32_wasm.a"))
-					{
-						gApp.OutputErrorLine("Wasm runtime libraries not found. Build with 'wasm/build_wasm.bat'.");
+#if CLI
+						gApp.Fail("Emscripten path not configured. Check Wasm configuration in File\\Preferences\\Settings.");
 						return false;
+#else
+						if (gApp.mSettings.mEmscriptenPendingInstall)
+						{
+							String wasmPath = Path.GetAbsolutePath("../../wasm", gApp.mInstallDir, .. scope .());
+							IDEUtils.FixFilePath(wasmPath);
+
+							var runCmd = gApp.QueueRun(scope $"{wasmPath}/fetch_wasm.bat", "", wasmPath, .UTF8);
+							runCmd.mOnlyIfNotFailed = true;
+
+							var installedCmd = new IDEApp.EmsdkInstalledCmd();
+							installedCmd.mPath = new $"{wasmPath}/emsdk";
+							IDEUtils.FixFilePath(installedCmd.mPath);
+							installedCmd.mOnlyIfNotFailed = true;
+							gApp.mExecutionQueue.Add(installedCmd);
+
+							emsdkPath.Set(installedCmd.mPath);
+						}
+						else
+						{
+							DarkDialog dlg = new DarkDialog("Install Emscripten", "Beef uses Emscripten for WASM support. Would you like to have that installed or would you like to set it up yourself?", DarkTheme.sDarkTheme.mIconError);
+							dlg.mWindowFlags |= .Modal;
+							dlg.AddOkCancelButtons(new (dlg) =>
+								{
+									gApp.mSettings.mEmscriptenPendingInstall = true;
+									gApp.[Friend]Compile();
+								},
+								new (dlg) =>
+								{
+									gApp.OutputErrorLine("Emscripten path not configured. Check Wasm configuration in File\\Preferences\\Settings.");
+								});
+							((DarkButton)dlg.mButtons[0]).Label = "Install";
+							((DarkButton)dlg.mButtons[1]).Label = "Cancel";
+							dlg.PopupWindow(gApp.GetActiveWindow());
+							IDEApp.Beep(.Error);
+							return false;
+						}
+#endif
+					}
+					
+					compilerExePath.Append(emsdkPath);
+					if ((!compilerExePath.EndsWith('\\')) && (!compilerExePath.EndsWith('/')))
+						compilerExePath.Append("/");
+
+					if (!gApp.mSettings.mEmscriptenPendingInstall)
+					{
+						if (!File.Exists(scope $"{gApp.mInstallDir}/Beef{IDEApp.sRTVersionStr}RT32_wasm.a"))
+						{
+							gApp.OutputErrorLine("Wasm runtime libraries not found. Build with 'wasm/build_wasm.bat'.");
+							return false;
+						}
 					}
 
 					compilerExePath.Append(@"/upstream/emscripten/emcc.bat");
 					//linkLine.Append(" c:\\Beef\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ALIASING_FUNCTION_POINTERS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1 -s \"EXPORTED_FUNCTIONS=['_BeefMain','_BeefDone','_pthread_mutexattr_init','_pthread_mutex_init','_emscripten_futex_wake','_calloc','_sbrk']\"");
-					linkLine.Append("-s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0");
+					linkLine.Append("-s DISABLE_EXCEPTION_CATCHING=0");
 
 					if (project.mWasmOptions.mEnableThreads)
 						linkLine.Append(" -pthread");
