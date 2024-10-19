@@ -74,7 +74,15 @@ namespace System.Globalization
 			get
 			{
 				if (mNumInfo == null)
-					mNumInfo = new NumberFormatInfo(mCultureData);
+				{
+					var numInfo = new NumberFormatInfo(mCultureData);
+					if (var prevValue = Interlocked.CompareExchange(ref mNumInfo, null, numInfo))
+					{
+						// This was already set - race condition
+						delete numInfo;
+						return prevValue;
+					}
+				}
 				return mNumInfo;
 			}
 		}

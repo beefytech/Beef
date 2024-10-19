@@ -19,15 +19,17 @@ namespace System
 		{
 			get
 			{
-				var osVersion = new OperatingSystem();
-				let prevValue = Interlocked.CompareExchange(ref sOSVersion, null, osVersion);
-				if (prevValue != null)
+				if (sOSVersion == null)
 				{
-					// This was already set - race condition
-					delete osVersion;
-					return prevValue;
+					var osVersion = new OperatingSystem();
+					if (let prevValue = Interlocked.CompareExchange(ref sOSVersion, null, osVersion))
+					{
+						// This was already set - race condition
+						delete osVersion;
+						return prevValue;
+					}
 				}
-				return osVersion;
+				return sOSVersion;
 			}
 		}
 
