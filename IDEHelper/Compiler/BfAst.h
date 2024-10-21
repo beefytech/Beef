@@ -137,13 +137,13 @@ struct BfVariant
 	~BfVariant()
 	{
 		if (mTypeCode == BfTypeCode_Struct)
-			delete (uint8*)mPtr;
+			delete [] (uint8*)mPtr;
 	}
 
 	BfVariant& operator=(const BfVariant& variant)
 	{
 		if (mTypeCode == BfTypeCode_Struct)
-			delete (uint8*)mPtr;
+			delete [] (uint8*)mPtr;
 		mTypeCode = variant.mTypeCode;
 		mWarnType = variant.mWarnType;
 		mUInt64 = variant.mUInt64;
