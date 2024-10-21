@@ -1,5 +1,5 @@
 FileVersion = 1
-Dependencies = {Beefy2D = "*", corlib = "*", curl = "*", libgit2 = "*"}
+Dependencies = {Beefy2D = "*", corlib = "*", curl = "*"}
 
 [Project]
 Name = "IDE"
@@ -27,6 +27,7 @@ OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib
 DebugCommandArguments = "-proddir=\"$(WorkspaceDir)\\..\\BeefBuild\""
 DebugWorkingDirectory = "$(WorkspaceDir)\\.."
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
+PreprocessorMacros = ["DEBUG,HASGIT"]
 
 [Configs.Release.Win32]
 TargetName = ""
@@ -36,9 +37,10 @@ OtherLinkFlags = ""
 TargetDirectory = "$(WorkspaceDir)/dist"
 TargetName = "BeefIDE"
 OtherLinkFlags = "Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib Beef042RT64.lib IDEHelper64.lib BeefySysLib64.lib"
-DebugCommandArguments = "-workspace=C:\\proj\\BeefTest"
+DebugCommandArguments = "-proddir=C:\\Beef\\IDE\\Tests\\Test1 -test=scripts\\Enums.txt -testNoExit"
 DebugWorkingDirectory = "$(ProjectDir)\\dist"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
+PreprocessorMacros = ["RELEASE,HASGIT"]
 
 [Configs.Debug2.Win32]
 TargetName = ""
