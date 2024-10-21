@@ -704,7 +704,9 @@ namespace IDE
 #else
 						if (gApp.mSettings.mEmscriptenPendingInstall)
 						{
-							String wasmPath = Path.GetAbsolutePath("../../wasm", gApp.mInstallDir, .. scope .());
+							String wasmPath = Path.GetAbsolutePath("../wasm", gApp.mInstallDir, .. scope .());
+							if (!Directory.Exists(wasmPath))
+								Path.GetAbsolutePath("../../wasm", gApp.mInstallDir, wasmPath..Clear());
 							IDEUtils.FixFilePath(wasmPath);
 
 							var runCmd = gApp.QueueRun(scope $"{wasmPath}/fetch_wasm.bat", "", wasmPath, .UTF8);
