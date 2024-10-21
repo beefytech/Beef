@@ -389,6 +389,9 @@ BfIRCodeGen::~BfIRCodeGen()
 	for (auto typeEx : mIRTypeExs)
 		delete typeEx;
 
+	for (auto kv : mTypeCodeTypeExMap)
+		delete kv.mValue;
+
 	delete mStream;
 	delete mIRBuilder;
 	delete mDIBuilder;
