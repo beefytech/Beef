@@ -209,22 +209,38 @@ class GitManager
 						mProgressDeltas = 1.0f;
 					}
 
-					StringView version = default;
+					StringView tag = default;
 
 					int refTagIdx = line.IndexOf("\trefs/tags/");
 					if (refTagIdx == 40)
-						version = line.Substring(40 + "\trefs/tags/".Length);
+						tag = line.Substring(40 + "\trefs/tags/".Length);
 
 					if ((line.Length == 45) && (line.EndsWith("HEAD")))
-						version = "HEAD";
+						tag = "HEAD";
 
-					if (!version.IsEmpty)
+					if (!tag.IsEmpty)
+						continue;
+
+					StringView hash = line.Substring(0, 40);
+
+					if (tag.EndsWith("^{}"))
 					{
-						TagInfo tagInfo = new .();
-						tagInfo.mHash = new .(line, 0, 40);
-						tagInfo.mTag = new .(version);
-						mTagInfos.Add(tagInfo);
+						tag.RemoveFromEnd(3);
+						if (!mTagInfos.IsEmpty)
+						{
+							var lastTag = mTagInfos.Back;
+							if (lastTag.mTag == tag)
+							{
+								lastTag.mHash.Set(hash);
+								continue;
+							}
+						}
 					}
+
+					TagInfo tagInfo = new .();
+					tagInfo.mHash = new .(hash);
+					tagInfo.mTag = new .(tag);
+					mTagInfos.Add(tagInfo);
 				}
 			}
 
