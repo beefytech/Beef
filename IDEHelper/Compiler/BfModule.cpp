@@ -12945,7 +12945,9 @@ BfVariant BfModule::TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& 
 	}
 	else
 	{
-		BfVariant::StructData* structData = (BfVariant::StructData*)(new uint8[value.mType->mSize + 4]);
+		int allocSize = value.mType->mSize + 4;
+		BfVariant::StructData* structData = (BfVariant::StructData*)(new uint8[allocSize]);
+		memset(structData, 0, allocSize);
 		structData->mSize = value.mType->mSize;
 		mBfIRBuilder->WriteConstant(value.mValue, structData->mData, value.mType);
 		variant.mTypeCode = BfTypeCode_Struct;
