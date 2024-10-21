@@ -2,4 +2,11 @@ FileVersion = 1
 
 [Project]
 Name = "libgit2"
-TargetType = "BeefLib"
+
+[Configs.Debug.Win64]
+LibPaths = ["$(ProjectDir)/dist/git2.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/*.dll\")"]
+
+[Configs.Release.Win64]
+LibPaths = ["$(ProjectDir)/dist/git2.lib"]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/*.dll\")"]
