@@ -52,7 +52,7 @@ namespace BeefPerf
 		public void Write(void* ptr, int size)
 		{
 			int curSize = mBuffer.Count;
-			mBuffer.GrowUnitialized((int32)size);
+			mBuffer.GrowUninitialized((int32)size);
 			var destPtr = &mBuffer[curSize];
 			Internal.MemCpy(destPtr, ptr, size);
 		}
@@ -184,7 +184,7 @@ namespace BeefPerf
 					mStreamDataList.Capacity = srcStreamDataList.Count;
 				else
 					mStreamDataList.EnsureCapacity(srcStreamDataList.Count, true);
-				mStreamDataList.GrowUnitialized(idx - (int32)mStreamDataList.Count + 1);
+				mStreamDataList.GrowUninitialized(idx - (int32)mStreamDataList.Count + 1);
 			}
 
 			let tempData = scope List<uint8>(srcStreamDataList.Count);
@@ -464,7 +464,7 @@ namespace BeefPerf
 					if (paramSize > 0)
 					{
 						int32 prevSize = (int32)mStreamData.mBuffer.Count;
-						mStreamData.mBuffer.GrowUnitialized(paramSize);
+						mStreamData.mBuffer.GrowUninitialized(paramSize);
 						stateCtx.Read(&mStreamData.mBuffer[prevSize], paramSize);
 					}
 					entry.mParamsReadPos = newParamsPos;
@@ -1001,7 +1001,7 @@ namespace BeefPerf
 			{
 				int dataSize = Read<int32>();
 				streamData.mBuffer = new List<uint8>();
-				streamData.mBuffer.GrowUnitialized(dataSize);
+				streamData.mBuffer.GrowUninitialized(dataSize);
 				Read(streamData.mBuffer);
 
 				Read(out streamData.mStartTick);
@@ -1045,7 +1045,7 @@ namespace BeefPerf
 				int stackSize = Read<int32>();
 				if (stackSize > 0)
 				{
-					cmdTarget.mEntryStack.GrowUnitialized(stackSize);
+					cmdTarget.mEntryStack.GrowUninitialized(stackSize);
 					Read(Span<uint8>((uint8*)&cmdTarget.mEntryStack[0], cmdTarget.mEntryStack.Count * sizeof(BPEntry)));
 				}	
 				

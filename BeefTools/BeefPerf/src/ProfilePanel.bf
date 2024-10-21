@@ -717,7 +717,7 @@ namespace BeefPerf
 			mSorting = true;
 
 			mProfileCtx.mSortingResults.Clear();
-			mProfileCtx.mSortingResults.GrowUnitialized(mProfileCtx.mResults.Count);
+			mProfileCtx.mSortingResults.GrowUninitialized(mProfileCtx.mResults.Count);
 			for (int i < mProfileCtx.mResults.Count)
 				mProfileCtx.mSortingResults[i] = mProfileCtx.mResults[i];
 
