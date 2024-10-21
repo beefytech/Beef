@@ -10,6 +10,87 @@ namespace IDE.ui
 
 	class BuildPropertiesDialog : TargetedPropertiesDialog
 	{
+		protected class DependencyEntry : IEquatable, IMultiValued
+		{
+			public bool mUse;
+			public String mURL ~ delete _;
+			public String mVersion ~ delete _;
+
+			public this()
+			{
+
+			}
+
+			public ~this()
+			{
+			}
+
+			public this(DependencyEntry val)
+			{
+				mUse = val.mUse;
+				if (val.mURL != null)
+					mURL = new .(val.mURL);
+				if (val.mVersion != null)
+					mVersion = new .(val.mVersion);
+			}
+
+			public bool Equals(Object val)
+			{
+				if (var rhsDE = val as DependencyEntry)
+				{
+					return
+						(mUse == rhsDE.mUse) &&
+						(mURL == rhsDE.mURL) &&
+						(mVersion == rhsDE.mVersion);
+				}
+				return false;
+			}
+
+			public void GetValue(int idx, String outValue)
+			{
+				if ((idx == 1) && (mURL != null))
+					outValue.Set(mURL);
+				if ((idx == 2) && (mVersion != null))
+					outValue.Set(mVersion);
+			}
+
+			public bool SetValue(int idx, StringView value)
+			{
+				if (idx == 1)
+				{
+					if (value.IsEmpty)
+					{
+						DeleteAndNullify!(mURL);
+					}
+					else
+					{
+						String.NewOrSet!(mURL, value);
+						mURL.Trim();
+					}
+				}
+				if (idx == 2)
+				{
+					if (value.IsEmpty)
+					{
+						DeleteAndNullify!(mVersion);
+					}
+					else
+					{
+						String.NewOrSet!(mVersion, value);
+						mVersion.Trim();
+					}
+				}
+				return true;
+			}
+
+			public void Set(DependencyEntry value)
+			{
+				mUse = value.mUse;
+				SetValue(1, value.mURL);
+				SetValue(2, value.mVersion);
+			}
+		}
+
 		protected class DistinctOptionBuilder
 		{
 			BuildPropertiesDialog mDialog;

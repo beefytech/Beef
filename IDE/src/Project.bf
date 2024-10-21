@@ -1091,9 +1091,13 @@ namespace IDE
         public class GeneralOptions
         {
 			[Reflect]
+			public String mProjectNameDecl; // Points to mProjectNameDecl in Project
+			[Reflect]
             public TargetType mTargetType;
 			[Reflect]
 			public List<String> mAliases = new .() ~ DeleteContainerAndItems!(_);
+			[Reflect]
+			public SemVer mVersion = new SemVer("") ~ delete _;
         }
 
 		public class BeefGlobalOptions
@@ -1321,6 +1325,7 @@ namespace IDE
 		{
 			public VerSpec mVerSpec ~ _.Dispose();
 			public String mProjectName ~ delete _;
+			public bool mDependencyChecked;
 		}
 
 		public enum DeferState
@@ -1337,13 +1342,20 @@ namespace IDE
 			public VerSpec mVerSpec ~ _.Dispose();
 		}
 
+		public class ManagedInfo
+		{
+			public SemVer mVersion = new .("") ~ delete _;
+			public String mInfo ~ delete _;
+		}
+
 		public Monitor mMonitor = new Monitor() ~ delete _;
         public String mNamespace = new String() ~ delete _;
         public String mProjectDir = new String() ~ delete _;
         public String mProjectName = new String() ~ delete _;
+		public String mProjectNameDecl = mProjectName ~ { if (mProjectNameDecl != mProjectName) delete _; }
         public String mProjectPath = new String() ~ delete _;
+		public ManagedInfo mManagedInfo ~ delete _;
 		public DeferState mDeferState;
-		public List<VerReference> mVerReferences = new .() ~ DeleteContainerAndItems!(_);
 
         //public String mLastImportDir = new String() ~ delete _;
         public bool mHasChanged;
@@ -1410,6 +1422,16 @@ namespace IDE
 			}
 		}
 
+		public SemVer Version
+		{
+			get
+			{
+				if (mManagedInfo != null)
+					return mManagedInfo.mVersion;
+				return mGeneralOptions.mVersion;
+			}
+		}
+
 		void SetupDefaultOptions(Options options)
 		{
 			options.mBuildOptions.mOtherLinkFlags.Set("$(LinkFlags)");
@@ -1443,6 +1465,7 @@ namespace IDE
 				mGeneralOptions.mTargetType = .CustomBuild;
 			SetupDefaultConfigs();
 
+			mGeneralOptions.mProjectNameDecl = mProjectNameDecl;
 			mBeefGlobalOptions.mStartupObject.Set("Program");
         }
 
@@ -1526,6 +1549,21 @@ namespace IDE
 				Path.GetDirectoryPath(mProjectPath, mProjectDir);
 	            if (structuredData.Load(ProjectFileName) case .Err)
 	                return false;
+
+				String managedText = scope .();
+				if (File.ReadAllText(scope $"{mProjectDir}/BeefManaged.toml", managedText) case .Ok)
+				{
+					mManagedInfo = new .();
+					mManagedInfo.mInfo = new .(managedText);
+
+					StructuredData msd = scope .();
+					if (msd.LoadFromString(managedText) case .Ok)
+					{
+						if (mManagedInfo.mVersion.mVersion == null)
+							mManagedInfo.mVersion.mVersion = new .();
+						msd.GetString("Version", mManagedInfo.mVersion.mVersion);
+					}
+				}
 			}
 			else
 			{
@@ -1615,7 +1653,8 @@ namespace IDE
 			using (data.CreateObject("Project"))
 			{
 				if (!IsSingleFile)
-					data.Add("Name", mProjectName);
+					data.Add("Name", mProjectNameDecl);
+				data.ConditionalAdd("Version", mGeneralOptions.mVersion.mVersion);
 				data.ConditionalAdd("TargetType", mGeneralOptions.mTargetType, GetDefaultTargetType());
 				data.ConditionalAdd("StartupObject", mBeefGlobalOptions.mStartupObject, IsSingleFile ? "Program" : "");
 				var defaultNamespace = scope String();
@@ -1955,7 +1994,24 @@ namespace IDE
 			using (data.Open("Project"))
 			{
 				if (!IsSingleFile)
-					data.GetString("Name", mProjectName);
+				{
+					var projectName = data.GetString("Name", .. scope .());
+					if ((!mProjectName.IsEmpty) && (projectName != mProjectName))
+					{
+						// If the name we specified clashes with the delclared project name in the config
+						if (mProjectNameDecl === mProjectName)
+						{
+							mProjectNameDecl = new .(projectName);
+							mGeneralOptions.mProjectNameDecl = mProjectNameDecl;
+							gApp.mWorkspace.ClearProjectNameCache();
+						}
+						else
+							mProjectNameDecl.Set(projectName);
+					}
+					else
+						mProjectName.Set(projectName);
+				}
+				data.GetString("Version", mGeneralOptions.mVersion.mVersion);
 				ReadStrings("Aliases", mGeneralOptions.mAliases);
 				data.GetString("StartupObject", mBeefGlobalOptions.mStartupObject, IsSingleFile ? "Program" : "");
 				var defaultNamespace = scope String();
@@ -2029,7 +2085,7 @@ namespace IDE
 				{
 				case .Ok(let project):
 				case .Err(let err):
-					gApp.OutputLineSmart("ERROR: Unable to load project '{0}' specified in project '{1}'", dep.mProjectName, mProjectName);
+					// Give an error later
 				}
 			}
 
@@ -2232,6 +2288,35 @@ namespace IDE
 			mRootFolder.StartWatching();
         }
 
+		public void CheckDependenciesLoaded()
+		{
+			for (var dep in mDependencies)
+			{
+				if (!dep.mDependencyChecked)
+				{
+					var project = gApp.mWorkspace.FindProject(dep.mProjectName);
+					if (project != null)
+					{
+						var projectVersion = project.Version;
+						if (!projectVersion.mVersion.IsEmpty)
+						{
+							if (dep.mVerSpec case .Git(let url, let ver))
+							{
+								if (!SemVer.IsVersionMatch(projectVersion, ver))
+									gApp.OutputLineSmart($"WARNING: Project '{mProjectName}' has version constraint '{ver}' for '{dep.mProjectName}' which is not satisfied by selected version '{projectVersion}'");
+							}
+						}
+					}
+					else
+					{
+						gApp.OutputLineSmart("ERROR: Unable to load project '{0}' specified in project '{1}'", dep.mProjectName, mProjectName);
+					}
+
+					dep.mDependencyChecked = true;
+				}
+			}
+		}
+
 		public void FinishCreate(bool allowCreateDir = true)
 		{
 			if (!mRootFolder.mIsWatching)
@@ -2414,28 +2499,34 @@ namespace IDE
             }
         }
 
-        public bool HasDependency(String projectName, bool checkRecursively = true)
+        public VerSpec* GetDependency(String projectName, bool checkRecursively = true)
         {
 			HashSet<Project> checkedProject = scope .();
 
-			bool CheckDependency(Project project)
+			VerSpec* CheckDependency(Project project)
 			{
 				if (!checkedProject.Add(project))
-					return false;
+					return null;
 
 				for (var dependency in project.mDependencies)
 				{
 				    if (dependency.mProjectName == projectName)
-				        return true;
+				        return &dependency.mVerSpec;
 					let depProject = gApp.mWorkspace.FindProject(dependency.mProjectName);
-					if ((depProject != null) && (checkRecursively) && (CheckDependency(depProject)))
-						return true;
+					if ((depProject != null) && (checkRecursively))
+					{
+						var verSpec = CheckDependency(depProject);
+						if (verSpec != null)
+							return verSpec;
+					}
 				}
-				return false;
+				return null;
 			}
 
             return CheckDependency(this);
         }
+
+		public bool HasDependency(String projectName, bool checkRecursively = true) => GetDependency(projectName, checkRecursively) != null;
 
 		public void SetupDefault(Options options, String configName, String platformName)
 		{

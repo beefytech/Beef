@@ -123,6 +123,7 @@ namespace IDE
 		List<String> mConfigPathQueue = new List<String>() ~ DeleteContainerAndItems!(_);
 		List<LibDirectory> mLibDirectories = new List<LibDirectory>() ~ DeleteContainerAndItems!(_);
 		List<FileSystemWatcher> mWatchers = new .() ~ DeleteContainerAndItems!(_);
+		public String mManagedLibPath = new .() ~ delete _;
 		public bool mLibsChanged;
 
 		void LibsChanged()
@@ -219,6 +220,15 @@ namespace IDE
 					mWatchers.Add(watcher);
 #endif
 				}
+			}
+
+			data.GetString("ManagedLibDir", mManagedLibPath);
+			if ((mManagedLibPath.IsEmpty) && (!mLibDirectories.IsEmpty))
+			{
+				var libPath = Path.GetAbsolutePath(mLibDirectories[0].mPath, gApp.mInstallDir, .. scope .());
+				var managedPath = Path.GetAbsolutePath("../BeefManaged", libPath, .. scope .());
+				if (Directory.Exists(managedPath))
+					mManagedLibPath.Set(managedPath);
 			}
 
 			mConfigFiles.Add(configFile);

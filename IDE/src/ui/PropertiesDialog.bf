@@ -114,6 +114,12 @@ namespace IDE.ui
 
     public class PropertiesDialog : IDEDialog
     {
+		public interface IMultiValued
+		{
+			void GetValue(int idx, String outValue);
+			bool SetValue(int idx, StringView value);
+		}
+
 		class OwnedStringList : List<String>
 		{
 
@@ -215,6 +221,7 @@ namespace IDE.ui
 			public String mRelPath ~ delete _;
 			public bool mIsTypeWildcard;
 			public bool mAllowMultiline;
+			public bool mReadOnly;
 			public Insets mEditInsets ~ delete _;
 
 			public ~this()
@@ -304,6 +311,18 @@ namespace IDE.ui
 				            return false;
 				    }
 				    return true;
+				}
+				else if (type.IsObject)
+				{
+					var lhsObj = lhs.Get<Object>();
+					var rhsObj = rhs.Get<Object>();
+
+					if ((var lhsEq = lhsObj as IEquatable) && (var rhsEq = rhsObj as IEquatable))
+					{
+						return lhsEq.Equals(rhsEq);
+					}
+
+					return false;
 				}
 				else // Could be an int or enum
 					return Variant.Equals!<int32>(lhs, rhs);
@@ -815,7 +834,7 @@ namespace IDE.ui
 
             if (mPropEditWidget != null)
             {
-				DarkListViewItem editItem = (DarkListViewItem)mEditingListViewItem.GetSubItem(1);
+				DarkListViewItem editItem = (DarkListViewItem)mEditingListViewItem;
 				let propEntry = mEditingProps[0];
 
 				float xPos;
@@ -871,7 +890,7 @@ namespace IDE.ui
             editWidget.GetText(newValue);
             newValue.Trim();
 
-            DarkListViewItem item = (DarkListViewItem)mEditingListViewItem;
+            DarkListViewItem rootItem = (DarkListViewItem)mEditingListViewItem.GetSubItem(0);
             //DarkListViewItem valueItem = (DarkListViewItem)item.GetSubItem(1);
 
 			if (!editWidget.mEditWidgetContent.HasUndoData())
@@ -920,14 +939,14 @@ namespace IDE.ui
 				{
 					//
 				}
-                else if (editingProp.mListViewItem != item)
+                else if (editingProp.mListViewItem != rootItem)
                 {
                     List<String> curEntries = editingProp.mCurValue.Get<List<String>>();
                     List<String> entries = new List<String>(curEntries.GetEnumerator());
 
                     for (int32 childIdx = 0; childIdx < editingProp.mListViewItem.GetChildCount(); childIdx++)
                     {
-                        if (item == editingProp.mListViewItem.GetChildAtIndex(childIdx))
+                        if (rootItem == editingProp.mListViewItem.GetChildAtIndex(childIdx))
                         {
                             if (childIdx >= entries.Count)
                                 entries.Add(new String(newValue));
@@ -1026,6 +1045,11 @@ namespace IDE.ui
 							gApp.Fail(error);
 							setValue = false;
 						}
+					}
+					else if ((curVariantType.IsObject) && (var multiValue = prevValue.Get<Object>() as IMultiValued))
+					{
+						multiValue.SetValue(mEditingListViewItem.mColumnIdx - 1, newValue);
+						setValue = false;
 					}
 					else
                         editingProp.mCurValue = Variant.Create(new String(newValue), true);
@@ -1247,37 +1271,49 @@ namespace IDE.ui
 			if (ewc.mIsMultiline)
 				editWidget.InitScrollbars(false, true);
 
+			if (propEntry.mReadOnly)
+				editWidget.mEditWidgetContent.mIsReadOnly = true;
+
 			editWidget.mScrollContentInsets.Set(GS!(3), GS!(3), GS!(1), GS!(3));
 			editWidget.Content.mTextInsets.Set(GS!(-3), GS!(2), 0, GS!(2));
 			//editWidget.RehupSize();
             if (subValueIdx != -1)
             {
-                List<String> stringList = propEntry.mCurValue.Get<List<String>>();
-                if (subValueIdx < stringList.Count)
-                    editWidget.SetText(stringList[subValueIdx]);
+				var obj = propEntry.mCurValue.Get<Object>();
+				if (var multiValued = obj as IMultiValued)
+				{
+					var label = multiValued.GetValue(subValueIdx, .. scope .());
+					editWidget.SetText(label);
+				}
+				else
+				{
+	                List<String> stringList = obj as List<String>;
+	                if (subValueIdx < stringList.Count)
+	                    editWidget.SetText(stringList[subValueIdx]);
 
-                MoveItemWidget moveItemWidget;
-                if (subValueIdx > 0)
-                {
-                    moveItemWidget = new MoveItemWidget();
-                    editWidget.AddWidget(moveItemWidget);
-                    moveItemWidget.Resize(6, editWidget.mY - GS!(16), GS!(20), GS!(20));
-                    moveItemWidget.mArrowDir = -1;
-                    moveItemWidget.mOnMouseDown.Add(new (evt) => { MoveEditingItem(subValueIdx, -1); });
-					if (!ewc.mIsMultiline)
-                    	editWidget.mOnKeyDown.Add(new (evt) => { if (evt.mKeyCode == KeyCode.Up) MoveEditingItem(subValueIdx, -1); });
-                }
+	                MoveItemWidget moveItemWidget;
+	                if (subValueIdx > 0)
+	                {
+	                    moveItemWidget = new MoveItemWidget();
+	                    editWidget.AddWidget(moveItemWidget);
+	                    moveItemWidget.Resize(6, editWidget.mY - GS!(16), GS!(20), GS!(20));
+	                    moveItemWidget.mArrowDir = -1;
+	                    moveItemWidget.mOnMouseDown.Add(new (evt) => { MoveEditingItem(subValueIdx, -1); });
+						if (!ewc.mIsMultiline)
+	                    	editWidget.mOnKeyDown.Add(new (evt) => { if (evt.mKeyCode == KeyCode.Up) MoveEditingItem(subValueIdx, -1); });
+	                }
 
-                if (subValueIdx < stringList.Count - 1)
-                {
-                    moveItemWidget = new MoveItemWidget();
-                    editWidget.AddWidget(moveItemWidget);
-                    moveItemWidget.Resize(6, editWidget.mY + GS!(16), GS!(20), GS!(20));
-                    moveItemWidget.mArrowDir = 1;
-                    moveItemWidget.mOnMouseDown.Add(new (evt) => { MoveEditingItem(subValueIdx, 1); });
-					if (!ewc.mIsMultiline)
-                    	editWidget.mOnKeyDown.Add(new (evt) => { if (evt.mKeyCode == KeyCode.Down) MoveEditingItem(subValueIdx, 1); });
-                }
+	                if (subValueIdx < stringList.Count - 1)
+	                {
+	                    moveItemWidget = new MoveItemWidget();
+	                    editWidget.AddWidget(moveItemWidget);
+	                    moveItemWidget.Resize(6, editWidget.mY + GS!(16), GS!(20), GS!(20));
+	                    moveItemWidget.mArrowDir = 1;
+	                    moveItemWidget.mOnMouseDown.Add(new (evt) => { MoveEditingItem(subValueIdx, 1); });
+						if (!ewc.mIsMultiline)
+	                    	editWidget.mOnKeyDown.Add(new (evt) => { if (evt.mKeyCode == KeyCode.Down) MoveEditingItem(subValueIdx, 1); });
+	                }
+				}
             }
             else
             {
@@ -1363,8 +1399,8 @@ namespace IDE.ui
 					hasChanged = true;
 			}
 
-            if (propEntry.mFieldInfo == default(FieldInfo))
-                return;
+            /*if (propEntry.mFieldInfo == default(FieldInfo))
+                return;*/
 
 			var curVariantType = propEntry.mCurValue.VariantType;
 
@@ -1516,6 +1552,15 @@ namespace IDE.ui
                 valueItem.Label = allValues;
 				FixLabel(valueItem);
             }
+			else if ((curVariantType.IsObject) && (var multiValue = propEntry.mCurValue.Get<Object>() as IMultiValued))
+			{
+				for (int columnIdx in 1..<propEntry.mListViewItem.mSubItems.Count)
+				{
+					var subItem = propEntry.mListViewItem.GetSubItem(columnIdx);
+					var label = multiValue.GetValue(columnIdx - 1, .. scope .());
+					subItem.Label = label;
+				}
+			}
             else if (propEntry.mCheckBox != null)
             {
                 propEntry.mCheckBox.Checked = propEntry.mCurValue.Get<bool>();
@@ -2026,9 +2071,10 @@ namespace IDE.ui
 				clickedItem.mListView.GetRoot().SelectItemExclusively(null);
 			}
 
-            DarkListViewItem item = (DarkListViewItem)clickedItem.GetSubItem(0);
+            DarkListViewItem item = (DarkListViewItem)clickedItem;
+			DarkListViewItem rootItem = (DarkListViewItem)item.GetSubItem(0);
 
-            PropEntry[] propertyEntries = mPropPage.mPropEntries[item];
+            PropEntry[] propertyEntries = mPropPage.mPropEntries[rootItem];
 			if (propertyEntries[0].mDisabled)
 				return;
             EditValue(item, propertyEntries);
@@ -2039,7 +2085,7 @@ namespace IDE.ui
 			var propEntry = propEntries[0];
             DarkListViewItem parentItem = propEntry.mListViewItem;
             DarkListViewItem clickedItem = (DarkListViewItem)parentItem.GetChildAtIndex(idx);
-            DarkListViewItem item = (DarkListViewItem)clickedItem.GetSubItem(0);
+            DarkListViewItem item = (DarkListViewItem)clickedItem.GetSubItem(1);
             EditValue(item, propEntries, idx);
         }
 

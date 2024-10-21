@@ -10,13 +10,12 @@ using Beefy.events;
 using Beefy.theme.dark;
 using Beefy.gfx;
 using Beefy.geom;
+using IDE.Util;
 
 namespace IDE.ui
 {
     public class ProjectProperties : BuildPropertiesDialog
     {   
-		ValueContainer<String> mVC;
-
         enum CategoryType
         {
 			General, ///
@@ -27,6 +26,7 @@ namespace IDE.ui
             Dependencies,
 			Beef_Global,
 			Platform,
+			Managed,
 
 			Targeted, ///
 			Beef_Targeted,
@@ -36,10 +36,11 @@ namespace IDE.ui
 
             COUNT
         }
-        
+
         public Project mProject;
-        Dictionary<String, ValueContainer<bool>> mDependencyValuesMap ~ DeleteDictionaryAndKeysAndValues!(_);
+        Dictionary<String, DependencyEntry> mDependencyValuesMap ~ DeleteDictionaryAndKeysAndValues!(_);
 		Project.Options[] mCurProjectOptions ~ delete _;
+		List<String> mUpdateProjectLocks = new .() ~ DeleteContainerAndItems!(_);
 		float mLockFlashPct;
 		public int32 mNewDebugSessionCountdown;
         
@@ -96,6 +97,7 @@ namespace IDE.ui
 			AddCategoryItem(globalItem, "Dependencies");
 			AddCategoryItem(globalItem, "Beef");
 			AddCategoryItem(globalItem, "Platform");
+			AddCategoryItem(globalItem, "Managed");
 			globalItem.Open(true, true);
 
 			var targetedItem = AddCategoryItem(root, "Targeted");
@@ -149,7 +151,8 @@ namespace IDE.ui
 			case .General,
 				 .Project,
 				 .Dependencies,
-				 .Beef_Global:
+				 .Beef_Global,
+				 .Managed:
 				return .None;
 			case .Platform:
 				return .Platform;
@@ -432,6 +435,7 @@ namespace IDE.ui
 					default:
 					}
 				}
+			case .Managed:
 			case .Build, .Debugging, .Beef_Targeted:
 				DeleteDistinctBuildOptions();
 				DistinctBuildOptions defaultTypeOptions = scope:: .();
@@ -530,7 +534,9 @@ namespace IDE.ui
 			else
 			{
 				mCurPropertiesTargets = new Object[1];
-				if (categoryType == .Project)
+				if (categoryType == .Managed)
+					mCurPropertiesTargets[0] = mProject.mManagedInfo;
+				else if (categoryType == .Project)
 					mCurPropertiesTargets[0] = mProject.mGeneralOptions;
 				else if (categoryType == .Beef_Global)
 					mCurPropertiesTargets[0] = mProject.mBeefGlobalOptions;
@@ -600,6 +606,8 @@ namespace IDE.ui
 						}
 					}
 				}
+				else if (categoryType == CategoryType.Managed)
+					PopulateManagedOptions();
 				else if (categoryType == CategoryType.Build)
 					PopulateBuildOptions();
 				else if (categoryType == CategoryType.Beef_Global				)
@@ -619,6 +627,8 @@ namespace IDE.ui
         void PopulateGeneralOptions()
         {
             var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
+			var (listViewItem, propEntry) = AddPropertiesItem(root, "Project Name", "mProjectNameDecl");
+			AddPropertiesItem(root, "Project Name Aliases", "mAliases");
 			AddPropertiesItem(root, "Target Type", "mTargetType", scope String[]
 				(
 					"Console Application",
@@ -627,8 +637,20 @@ namespace IDE.ui
 					"Custom Build",
 					"Test"
 				));
-			AddPropertiesItem(root, "Project Name Aliases", "mAliases");
+			AddPropertiesItem(root, "Version", "mVersion.mVersion");
         }
+
+		void PopulateManagedOptions()
+		{
+			if (mCurPropertiesTargets[0] == null)
+				return;
+			var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
+			var (listViewItem, propEntry) = AddPropertiesItem(root, "Version", "mVersion.mVersion");
+			propEntry.mReadOnly = true;
+			(listViewItem, propEntry) = AddPropertiesItem(root, "Info", "mInfo");
+			propEntry.mAllowMultiline = true;
+			propEntry.mReadOnly = true;
+		}
 
 		void PopulateWindowsOptions()
 		{
@@ -696,7 +718,21 @@ namespace IDE.ui
 
         void PopulateDependencyOptions()
         {
-            mDependencyValuesMap = new Dictionary<String, ValueContainer<bool>>();
+			mPropPage.mPropertiesListView.mColumns[0].Label = "Project";
+			mPropPage.mPropertiesListView.mColumns[0].mMinWidth = GS!(100);
+			mPropPage.mPropertiesListView.mColumns[0].mWidth = GS!(180);
+
+			mPropPage.mPropertiesListView.mColumns[1].Label = "";
+			mPropPage.mPropertiesListView.mColumns[1].mMinWidth = GS!(20);
+			mPropPage.mPropertiesListView.mColumns[1].mWidth = GS!(20);
+
+			mPropPage.mPropertiesListView.AddColumn(180, "Remote URL");
+			mPropPage.mPropertiesListView.mColumns[2].mMinWidth = GS!(100);
+
+			mPropPage.mPropertiesListView.AddColumn(180, "Ver Constraint");
+			mPropPage.mPropertiesListView.mColumns[3].mMinWidth = GS!(100);
+
+            mDependencyValuesMap = new .();
 
             var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
             var category = root;
@@ -719,42 +755,79 @@ namespace IDE.ui
             projectNames.Sort(scope (a, b) => String.Compare(a, b, true));
 
             for (var projectName in projectNames)
-            {                
-                var dependencyContainer = new ValueContainer<bool>();
-                dependencyContainer.mValue = mProject.HasDependency(projectName, false);
-                mDependencyValuesMap[new String(projectName)] = dependencyContainer;
+            {
+				var project = gApp.mWorkspace.FindProject(projectName);
+
+                var dependencyEntry = new DependencyEntry();
+				var verSpec = mProject.GetDependency(projectName, false);
+				if (verSpec != null)
+				{
+	                dependencyEntry.mUse = true;
+					if (verSpec case .Git(let url, let ver))
+					{
+						dependencyEntry.mURL = new .(url);
+						if (ver != null)
+							dependencyEntry.mVersion = new .(ver.mVersion);
+					}
+				}
+                mDependencyValuesMap[new String(projectName)] = dependencyEntry;
                 
                 var (listViewItem, propItem) = AddPropertiesItem(category, projectName);
                 if (IDEApp.sApp.mWorkspace.FindProject(projectName) == null)
                     listViewItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFFF6060);
 
-                var subItem = listViewItem.CreateSubItem(1);
+                var subItem = (DarkListViewItem)listViewItem.CreateSubItem(1);
 
                 var checkbox = new DarkCheckBox();
-                checkbox.Checked = dependencyContainer.mValue;
+                checkbox.Checked = dependencyEntry.mUse;
                 checkbox.Resize(0, 0, DarkTheme.sUnitSize, DarkTheme.sUnitSize);
                 subItem.AddWidget(checkbox);
 
 				PropEntry[] propEntries = new PropEntry[1];
 
                 PropEntry propEntry = new PropEntry();
-                propEntry.mTarget = dependencyContainer;
-                //propEntry.mFieldInfo = dependencyContainer.GetType().GetField("mValue").Value;
-                propEntry.mOrigValue = Variant.Create(dependencyContainer.mValue);
-                propEntry.mCurValue = propEntry.mOrigValue;
+                propEntry.mTarget = dependencyEntry;
+                propEntry.mOrigValue = Variant.Create(dependencyEntry);
+                propEntry.mCurValue = Variant.Create(new DependencyEntry(dependencyEntry), true);
 				
                 propEntry.mListViewItem = listViewItem;
                 propEntry.mCheckBox = checkbox;
 				propEntry.mApplyAction = new () =>
 					{
-						if (propEntry.mCurValue.Get<bool>())
+						bool updateProjectLock = false;
+
+						var dependencyEntry = propEntry.mCurValue.Get<DependencyEntry>();
+						if (dependencyEntry.mUse)
 						{
-							if (!mProject.HasDependency(listViewItem.mLabel))
+							VerSpec verSpec = default;
+							if (dependencyEntry.mURL != null)
+								verSpec = .Git(new .(dependencyEntry.mURL), (dependencyEntry.mVersion != null) ? new .(dependencyEntry.mVersion) : null);
+							else if (dependencyEntry.mVersion != null)
+								verSpec = .SemVer(new .(dependencyEntry.mVersion));
+							else
+								verSpec = .SemVer(new .("*"));
+
+							var verSpecPtr = mProject.GetDependency(listViewItem.mLabel);
+							if (verSpecPtr == null)
 							{
+								if (verSpec case .Git(let url, let ver))
+									updateProjectLock = true;
+
 								var dep = new Project.Dependency();
 								dep.mProjectName = new String(listViewItem.mLabel);
-								dep.mVerSpec = .SemVer(new .("*"));
+								dep.mVerSpec = verSpec;
 								mProject.mDependencies.Add(dep);
+							}
+							else
+							{
+								if (*verSpecPtr != verSpec)
+								{
+									if ((*verSpecPtr case .Git) ||
+										(verSpecPtr case .Git))
+										updateProjectLock = true;
+									verSpecPtr.Dispose();
+									*verSpecPtr = verSpec;
+								}
 							}
 						}
 						else
@@ -762,19 +835,103 @@ namespace IDE.ui
 							int idx = mProject.mDependencies.FindIndex(scope (dep) => dep.mProjectName == listViewItem.mLabel);
 							if (idx != -1)
 							{
+								var dep = mProject.mDependencies[idx];
+								if (dep.mVerSpec case .Git)
+									updateProjectLock = true;
 								delete mProject.mDependencies[idx];
 								mProject.mDependencies.RemoveAt(idx);
 							}							
 						}
-						propEntry.mOrigValue = propEntry.mCurValue;
+
+						var origDependencyEntry = propEntry.mOrigValue.Get<DependencyEntry>();
+						origDependencyEntry.Set(dependencyEntry);
+
+						if (updateProjectLock)
+							mUpdateProjectLocks.Add(new .(listViewItem.Label));
 					};
 
-                checkbox.mOnMouseUp.Add(new (evt) => { PropEntry.DisposeVariant(ref propEntry.mCurValue); propEntry.mCurValue = Variant.Create(checkbox.Checked); });
+                checkbox.mOnMouseUp.Add(new (evt) =>
+					{
+						var dependencyEntry = propEntry.mCurValue.Get<DependencyEntry>();
+						dependencyEntry.mUse = !dependencyEntry.mUse;
+						if (dependencyEntry.mUse)
+						{
+							var projectName = listViewItem.Label;
+
+							for (var projectSpec in gApp.mWorkspace.mProjectSpecs)
+							{
+								if (projectSpec.mProjectName == projectName)
+								{
+									if (projectSpec.mVerSpec case .Git(let url, let ver))
+									{
+										dependencyEntry.SetValue(1, url);
+										dependencyEntry.SetValue(2, ver.mVersion);
+									}
+								}
+							}
+							var propEntries = mPropPage.mPropEntries[listViewItem];
+							UpdatePropertyValue(propEntries);
+						}
+						else
+						{
+							DeleteAndNullify!(dependencyEntry.mURL);
+							DeleteAndNullify!(dependencyEntry.mVersion);
+							var propEntries = mPropPage.mPropEntries[listViewItem];
+							UpdatePropertyValue(propEntries);
+						}
+
+					});
+
+
+				subItem = (.)listViewItem.GetOrCreateSubItem(2);
+				if (dependencyEntry.mURL != null)
+					subItem.Label = dependencyEntry.mURL;
+				subItem.mOnMouseDown.Add(new => DepPropValueClicked);
+
+				subItem = (.)listViewItem.GetOrCreateSubItem(3);
+				if (dependencyEntry.mVersion != null)
+				{
+					subItem.Label = dependencyEntry.mVersion;
+					if (project != null)
+					{
+						var version = project.Version;
+						if (!version.IsEmpty)
+						{
+							if (!SemVer.IsVersionMatch(version.mVersion, dependencyEntry.mVersion))
+								subItem.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFFFFF60);
+						}
+					}
+				}
+				subItem.mOnMouseDown.Add(new => DepPropValueClicked);
 
 				propEntries[0] = propEntry;
                 mPropPage.mPropEntries[listViewItem] = propEntries;
             }            
         }
+
+		protected void DepPropValueClicked(MouseEvent theEvent)
+		{
+		    DarkListViewItem clickedItem = (DarkListViewItem)theEvent.mSender;
+			if (clickedItem.mColumnIdx == 0)
+			{
+				clickedItem.mListView.SetFocus();
+				clickedItem.mListView.GetRoot().SelectItemExclusively(clickedItem);
+				return;
+			}
+
+			if (theEvent.mX != -1)
+			{
+				clickedItem.mListView.GetRoot().SelectItemExclusively(null);
+			}
+
+		    DarkListViewItem item = (DarkListViewItem)clickedItem;
+			DarkListViewItem rootItem = (DarkListViewItem)clickedItem.GetSubItem(0);
+
+		    PropEntry[] propertyEntries = mPropPage.mPropEntries[rootItem];
+			if (propertyEntries[0].mDisabled)
+				return;
+		    EditValue(item, propertyEntries, clickedItem.mColumnIdx - 1);
+		}
 
 		protected override Object[] PhysAddNewDistinctBuildOptions()
 		{
@@ -985,6 +1142,8 @@ namespace IDE.ui
             /*if (!AssertNotCompilingOrRunning())
                 return false;*/
 
+			String newProjectName = scope .();
+
             using (mProject.mMonitor.Enter())
             {
                 for (var targetedConfigData in mConfigDatas)
@@ -1000,9 +1159,18 @@ namespace IDE.ui
 							for (var propEntry in propEntries)
 							{
 	                            if (propEntry.HasChanged())
-	                            {									
-	                                configDataHadChange = true;
-	                                propEntry.ApplyValue();
+	                            {
+									if ((propEntry.mFieldInfo != default) && (propEntry.mFieldInfo.Name == "mProjectNameDecl"))
+									{
+										var newName = propEntry.mCurValue.Get<String>();
+										newProjectName.Append(newName);
+										newProjectName.Trim();
+									}
+									else
+									{
+		                                configDataHadChange = true;
+		                                propEntry.ApplyValue();
+									}
 	                            }
 							}
 							if (propPage == mPropPage)
@@ -1060,6 +1228,9 @@ namespace IDE.ui
 				ClearTargetedData();
 			}
 
+			if (!newProjectName.IsEmpty)
+				gApp.RenameProject(mProject, newProjectName);
+
             return true;
         }
 
@@ -1081,6 +1252,7 @@ namespace IDE.ui
 		{
 			base.Close();
 			SetWorkspaceData(false);
+			gApp.NotifyProjectVersionLocks(mUpdateProjectLocks);
 		}
 
         public override void PopupWindow(WidgetWindow parentWindow, float offsetX = 0, float offsetY = 0)

@@ -1932,7 +1932,7 @@ namespace IDE.ui
 			}
 			else if (resolveType == ResolveType.GetCurrentLocation)
 			{
-				PrimaryNavigationBar.SetLocation(autocompleteInfo);
+				PrimaryNavigationBar.SetLocation(autocompleteInfo ?? "");
 			}
 			else if ((resolveType == .Autocomplete) || (resolveType == .GetFixits))
 			{

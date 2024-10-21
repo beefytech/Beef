@@ -22,7 +22,7 @@ namespace IDE.ui
 		public DarkButton mSafeModeButton;
 		public bool mWasCompiling;
 		public int mEvalCount;
-		public ImageWidget mCancelSymSrvButton;
+		public ImageWidget mCancelButton;
 		public int mDirtyDelay;
 		public int mStatusBoxUpdateCnt = -1;
 
@@ -117,8 +117,8 @@ namespace IDE.ui
             mConfigComboBox.Resize(mWidth - btnLeft, GS!(0), GS!(120), GS!(24));
             mPlatformComboBox.Resize(mWidth - btnLeft - GS!(120), GS!(0), GS!(120), GS!(24));
 
-			if (mCancelSymSrvButton != null)
-				mCancelSymSrvButton.Resize(GS!(546), 0, GS!(20), GS!(20));
+			if (mCancelButton != null)
+				mCancelButton.Resize(GS!(546), 0, GS!(20), GS!(20));
 
 			if (mSafeModeButton != null)
 			{
@@ -182,19 +182,31 @@ namespace IDE.ui
 			else
 				mEvalCount = 0;
 
+			void ShowCancelButton()
+			{
+				if (mCancelButton == null)
+				{
+					mCancelButton = new ImageWidget();
+					mCancelButton.mImage = DarkTheme.sDarkTheme.GetImage(.Close);
+					mCancelButton.mOverImage = DarkTheme.sDarkTheme.GetImage(.CloseOver);
+					mCancelButton.mOnMouseClick.Add(new (evt) =>
+						{
+							if (gApp.mWorkspace.mProjectLoadState == .Preparing)
+							{
+								gApp.CancelWorkspaceLoading();
+							}
+							else
+								gApp.mDebugger.CancelSymSrv();
+						});
+					AddWidget(mCancelButton);
+					ResizeComponents();
+				}
+			}
+
 			if (debugState == .SearchingSymSrv)
 			{
 				MarkDirtyEx();
-
-				if (mCancelSymSrvButton == null)
-				{
-					mCancelSymSrvButton = new ImageWidget();
-					mCancelSymSrvButton.mImage = DarkTheme.sDarkTheme.GetImage(.Close);
-					mCancelSymSrvButton.mOverImage = DarkTheme.sDarkTheme.GetImage(.CloseOver);
-					mCancelSymSrvButton.mOnMouseClick.Add(new (evt) => { gApp.mDebugger.CancelSymSrv(); });
-					AddWidget(mCancelSymSrvButton);
-					ResizeComponents();
-				}
+				ShowCancelButton();
 
 				float len = GS!(200);
 				float x = GS!(350);
@@ -209,15 +221,45 @@ namespace IDE.ui
 					}
 				}
 			}
+			else if (gApp.mWorkspace.mProjectLoadState == .Preparing)
+			{
+				MarkDirtyEx();
+				ShowCancelButton();
+
+				float len = GS!(200);
+				float x = GS!(350);
+				Rect completionRect = Rect(x, GS!(1), len, GS!(17));
+
+				String status = scope .();
+
+				for (var workItem in gApp.mPackMan.mWorkItems)
+				{
+					if (workItem.mGitInstance == null)
+						break;
+
+					//DrawCompletion(workItem.mGitInstance.mProgress);
+					status.AppendF($"Retrieving {workItem.mProjectName}: {(int)(workItem.mGitInstance.mProgress * 100)}%");
+				}
+
+				Point mousePos;
+				if (DarkTooltipManager.CheckMouseover(this, 25, out mousePos, true))
+				{
+					if (completionRect.Contains(mousePos.x, mousePos.y))
+					{
+						if (!status.IsEmpty)
+							DarkTooltipManager.ShowTooltip(status, this, mousePos.x, mousePos.y);
+					}
+				}
+			}
 			else
 			{
 				if ((DarkTooltipManager.sTooltip != null) && (DarkTooltipManager.sTooltip.mRelWidget == this))
 					DarkTooltipManager.sTooltip.Close();
 
-				if (mCancelSymSrvButton != null)
+				if (mCancelButton != null)
 				{
-					RemoveAndDelete(mCancelSymSrvButton);
-					mCancelSymSrvButton = null;
+					RemoveAndDelete(mCancelButton);
+					mCancelButton = null;
 				}
 			}
 
@@ -367,6 +409,16 @@ namespace IDE.ui
 
 			float statusLabelPos = (int)GS!(-1.3f);
 
+			void DrawCompletion(float pct)
+			{
+				Rect completionRect = Rect(GS!(200), GS!(2), GS!(120), GS!(15));
+				using (g.PushColor(0xFF000000))
+				    g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth, completionRect.mHeight);
+				completionRect.Inflate(GS!(-1), GS!(-1));
+				using (g.PushColor(0xFF00FF00))
+				    g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth * pct, completionRect.mHeight);
+			}
+
 			//completionPct = 0.4f;
 			if ((gApp.mDebugger?.mIsComptimeDebug == true) &&
 				((gApp.mDebugger.IsPaused()) || (debugState == .DebugEval)))
@@ -375,12 +427,7 @@ namespace IDE.ui
 			}
             else if (completionPct.HasValue)
             {                
-                Rect completionRect = Rect(GS!(200), GS!(2), GS!(120), GS!(15));
-                using (g.PushColor(0xFF000000))
-                    g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth, completionRect.mHeight);
-                completionRect.Inflate(GS!(-1), GS!(-1));
-                using (g.PushColor(0xFF00FF00))
-                    g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth * completionPct.Value, completionRect.mHeight);
+                DrawCompletion(completionPct.Value);
             }
             else if ((gApp.mDebugger.mIsRunning) && (gApp.HaveSourcesChanged()))
             {
@@ -394,7 +441,7 @@ namespace IDE.ui
                 g.DrawString("Source Changed", GS!(200), statusLabelPos, FontAlign.Centered, GS!(120));
             }
 
-			void DrawStatusBox(StringView str, int32 updateCnt = -1)
+			void DrawStatusBox(StringView str, int32 updateCnt = -1, bool showCancelButton = false)
 			{
 				if (mStatusBoxUpdateCnt == -1)
 					mStatusBoxUpdateCnt = 0;
@@ -415,8 +462,18 @@ namespace IDE.ui
 				using (g.PushColor(Color.FromHSV(0.1f, 0.5f, (float)Math.Max(pulsePct * 0.15f + 0.3f, 0.3f))))
 				    g.FillRect(completionRect.mX, completionRect.mY, completionRect.mWidth, completionRect.mHeight);
 
-				if (mCancelSymSrvButton != null)
-					mCancelSymSrvButton.mX = completionRect.Right - GS!(16);
+				if (mCancelButton != null)
+				{
+					if (showCancelButton)
+					{
+						mCancelButton.SetVisible(true);
+						mCancelButton.mX = completionRect.Right - GS!(16);
+					}
+					else
+					{
+						mCancelButton.SetVisible(false);
+					}
+				}
 
 				using (g.PushColor(DarkTheme.COLOR_TEXT))
 					g.DrawString(str, x, statusLabelPos, FontAlign.Centered, len);
@@ -428,10 +485,6 @@ namespace IDE.ui
 				gApp.mKeyChordState.mCommandMap.ToString(chordState);
 				chordState.Append(", <Awaiting Key>...");
 				DrawStatusBox(chordState);
-			}
-			else if (mCancelSymSrvButton != null)
-			{
-				DrawStatusBox("Retrieving Debug Symbols...  ");
 			}
 			else if (mEvalCount > 20)
 			{
@@ -451,10 +504,16 @@ namespace IDE.ui
 			}
 			else if (gApp.mWorkspace.mProjectLoadState == .Preparing)
 			{
-				DrawStatusBox("Loading Projects");
+				DrawStatusBox("Loading Projects", -1, true);
+			}
+			else if (mCancelButton != null)
+			{
+				DrawStatusBox("Retrieving Debug Symbols...  ", -1, true);
 			}
 			else if (gApp.mDeferredShowSource != null)
+			{
 				DrawStatusBox("Queued Showing Source");
+			}
 			else
 				mStatusBoxUpdateCnt = -1;
 

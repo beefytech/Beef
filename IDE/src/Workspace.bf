@@ -223,7 +223,8 @@ namespace IDE
 			None,
 			Loaded,
 			ReadyToLoad,
-			Preparing
+			Preparing,
+			Failed
 		}
 
         public class ConfigSelection : IHashable, IEquatable
@@ -488,26 +489,25 @@ namespace IDE
 			public VerSpec mVerSpec ~ _.Dispose();
 		}
 
-		public class Lock
+		public enum Lock
 		{
-			public enum Location
-			{
-				case Cache;
-				case Local(String path);
+			case Cache;
+			case Local(String path);
+			case Git(String url, String tag, String hash);
 
-				public void Dispose()
+			public void Dispose()
+			{
+				switch (this)
 				{
-					switch (this)
-					{
-					case .Cache:
-					case .Local(let path):
-						delete path;
-					}
+				case .Cache:
+				case .Local(let path):
+					delete path;
+				case Git(var url, var tag, var hash):
+					delete url;
+					delete tag;
+					delete hash;
 				}
 			}
-
-			public String mVersion ~ delete _;
-			public Location mLocation ~ _.Dispose(); 
 		}
 
 		public Monitor mMonitor = new Monitor() ~ delete _;
@@ -519,7 +519,15 @@ namespace IDE
 		public List<ProjectSpec> mProjectSpecs = new .() ~ DeleteContainerAndItems!(_);
 		public List<ProjectFileEntry> mProjectFileEntries = new .() ~ DeleteContainerAndItems!(_);
 		public Dictionary<String, Project> mProjectNameMap = new .() ~ DeleteDictionaryAndKeys!(_);
-		public Dictionary<String, Lock> mProjectLockMap = new .() ~ DeleteDictionaryAndKeysAndValues!(_);
+		public Dictionary<String, Lock> mProjectLockMap = new .() ~
+			{
+				for (var kv in ref _)
+				{
+					delete kv.key;
+					kv.valueRef.Dispose();
+				}
+				delete _;
+			}
         public Project mStartupProject;
 		public bool mLoading;
 		public bool mNeedsCreate;
@@ -576,6 +584,20 @@ namespace IDE
 		public void MarkPlatformNamesDirty()
 		{
 			ClearAndDeleteItems(mPlatforms);
+		}
+
+		public void SetLock(StringView projectName, Lock lock)
+		{
+			if (mProjectLockMap.TryAddAlt(projectName, var keyPtr, var valuePtr))
+			{
+				*keyPtr = new .(projectName);
+				*valuePtr = lock;
+			}
+			else
+			{
+				valuePtr.Dispose();
+				*valuePtr = lock;
+			}
 		}
 
 		public void GetPlatformList(List<String> outList)
@@ -947,16 +969,33 @@ namespace IDE
 		{
 			using (mMonitor.Enter())
 			{
+				int GetNamePriority(StringView name, Project project)
+				{
+					if (project.mProjectName == name)
+						return 2;
+					if (project.mProjectNameDecl == name)
+						return 1;
+					return 0;
+				}
+
 				void Add(String name, Project project)
 				{
-					bool added = mProjectNameMap.TryAdd(name, var keyPtr, var valuePtr);
-					if (!added)
-						return;
-					*keyPtr = new String(name);
-					*valuePtr = project;
+					if (mProjectNameMap.TryAdd(name, var keyPtr, var valuePtr))
+					{
+						*keyPtr = new String(name);
+						*valuePtr = project;
+					}
+					else
+					{
+						if (GetNamePriority(name, project) > GetNamePriority(*keyPtr, *valuePtr))
+							*valuePtr = project;
+					}
 				}
 	
 				Add(project.mProjectName, project);
+
+				if (project.mProjectNameDecl !== project.mProjectName)
+					Add(project.mProjectNameDecl, project);
 	
 				for (var alias in project.mGeneralOptions.mAliases)
 					Add(alias, project);
@@ -979,7 +1018,11 @@ namespace IDE
 					}
 
 					for (var project in mProjects)
+					{
 						Add(project.mProjectName, project);
+						if (project.mProjectName != project.mProjectNameDecl)
+							Add(project.mProjectNameDecl, project);
+					}
 					
 					for (var project in mProjects)
 					{

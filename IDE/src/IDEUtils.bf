@@ -9,6 +9,7 @@ using Beefy;
 using Beefy.gfx;
 using Beefy.theme.dark;
 using IDE.ui;
+using System.Diagnostics;
 
 namespace IDE
 {
@@ -127,6 +128,29 @@ namespace IDE
             }
 			return true;
         }
+
+		public static void SafeKill(int processId)
+		{
+			var beefConExe = scope $"{gApp.mInstallDir}/BeefCon.exe";
+
+			ProcessStartInfo procInfo = scope ProcessStartInfo();
+			procInfo.UseShellExecute = false;
+			procInfo.SetFileName(beefConExe);
+			procInfo.SetArguments(scope $"{processId} kill");
+			procInfo.ActivateWindow = false;
+
+			var process = scope SpawnedProcess();
+			process.Start(procInfo).IgnoreError();
+		}
+
+		public static void SafeKill(SpawnedProcess process)
+		{
+			if (process.WaitFor(0))
+				return;
+			SafeKill(process.ProcessId);
+			if (!process.WaitFor(2000))
+				process.Kill();
+		}
 
 		public static bool IsDirectoryEmpty(StringView dirPath)
 		{

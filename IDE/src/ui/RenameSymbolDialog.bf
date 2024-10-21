@@ -414,7 +414,8 @@ namespace IDE.ui
 
 			if (mGettingSymbolInfo)
 			{
-				gApp.Fail("Cannot rename symbols here");
+				if (gApp.mWorkspace.mProjectLoadState == .Loaded)
+					gApp.Fail("Cannot rename symbols here");
 				mGettingSymbolInfo = false;
 				return;
 			}
@@ -430,6 +431,12 @@ namespace IDE.ui
             if ((mKind == Kind.ShowFileReferences) || (mResolveParams.mLocalId != -1))
             {                
                 mParser = IDEApp.sApp.mBfResolveSystem.FindParser(mSourceViewPanel.mProjectSource);
+				if (mParser == null)
+				{
+					mGettingSymbolInfo = false;
+					return;
+				}
+
 				if ((mResolveParams != null) && (mResolveParams.mLocalId != -1))
 					mParser.SetAutocomplete(mCursorPos);
 				else

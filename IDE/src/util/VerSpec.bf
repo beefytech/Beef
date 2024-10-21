@@ -39,6 +39,8 @@ namespace IDE.Util
 			case .Path(let path):
 				return .Path(new String(path));
 			case .Git(let url, let ver):
+				if (ver == null)
+					return .Git(new String(url), null);
 				return .Git(new String(url), new SemVer(ver));
 			}
 		}
@@ -113,7 +115,7 @@ namespace IDE.Util
 				using (data.CreateObject(name))
 				{
 					data.Add("Git", path);
-					if (ver != null)
+					if ((ver != null) && (!ver.mVersion.IsEmpty))
 						data.Add("Version", ver.mVersion);
 				}
 			case .SemVer(var ver):
