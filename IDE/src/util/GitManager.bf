@@ -218,7 +218,7 @@ class GitManager
 					if ((line.Length == 45) && (line.EndsWith("HEAD")))
 						tag = "HEAD";
 
-					if (!tag.IsEmpty)
+					if (tag.IsEmpty)
 						continue;
 
 					StringView hash = line.Substring(0, 40);
