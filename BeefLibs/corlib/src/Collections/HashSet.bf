@@ -206,7 +206,7 @@ namespace System.Collections
 		{
 			if (mBuckets != null)
 			{
-				int32 hashCode = (int32)item.GetHashCode() & Lower31BitMask;
+				int32 hashCode = (int32)InternalGetHashCodeAlt(item) & Lower31BitMask;
 				// see note at "HashSet" level describing why "- 1" appears in for loop
 				for (int32 i = mBuckets[hashCode % mBuckets.Count] - 1; i >= 0; i = mSlots[i].mNext)
 				{
