@@ -120,50 +120,59 @@ int main()
 	
 	std::string cmdLine = useCmdLineStr;	
 	
-	PROCESS_INFORMATION processInfo;
+	for (int pass = 0; pass < 2; pass++)
+	{
+		PROCESS_INFORMATION processInfo;
 
-	STARTUPINFOA si;
-	ZeroMemory(&si, sizeof(si));
-	si.cb = sizeof(si);
-	memset(&processInfo, 0, sizeof(processInfo));
+		STARTUPINFOA si;
+		ZeroMemory(&si, sizeof(si));
+		si.cb = sizeof(si);
+		memset(&processInfo, 0, sizeof(processInfo));
 
-	si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
+		si.hStdInput = GetStdHandle(STD_INPUT_HANDLE);
 
- 	HANDLE stdOut;
- 	CreatePipe(stdOut, si.hStdOutput, false);
-	
-	HANDLE stdErr;
-	CreatePipe(stdErr, si.hStdError, false);	
+		HANDLE stdOut;
+		CreatePipe(stdOut, si.hStdOutput, false);
 
-	si.dwFlags = STARTF_USESTDHANDLES;
+		HANDLE stdErr;
+		CreatePipe(stdErr, si.hStdError, false);
 
-	DWORD startTick = GetTickCount();
-	BOOL worked = CreateProcessA(NULL, (char*)cmdLine.c_str(), NULL, NULL, TRUE,
-		flags, envPtr, NULL, &si, &processInfo);
+		si.dwFlags = STARTF_USESTDHANDLES;
 
-	::CloseHandle(si.hStdOutput);
-	::CloseHandle(si.hStdError);
+		DWORD startTick = GetTickCount();
+		BOOL worked = CreateProcessA(NULL, (char*)cmdLine.c_str(), NULL, NULL, TRUE,
+			flags, envPtr, NULL, &si, &processInfo);
 
-	if (!worked)
-		return 1;
+		::CloseHandle(si.hStdOutput);
+		::CloseHandle(si.hStdError);
 
-	DWORD threadId;
- 	ProcParams stdOutParams = { stdOut, GetStdHandle(STD_OUTPUT_HANDLE) };
- 	HANDLE stdOutThread = ::CreateThread(NULL, (SIZE_T)128*1024, (LPTHREAD_START_ROUTINE)ReadProc, (void*)&stdOutParams, 0, &threadId);
+		if (!worked)
+			return 1;
 
-	ProcParams stdErrParams = { stdErr, GetStdHandle(STD_ERROR_HANDLE) };
-	HANDLE stdErrThread = ::CreateThread(NULL, (SIZE_T)128 * 1024, (LPTHREAD_START_ROUTINE)ReadProc, (void*)&stdErrParams, 0, &threadId);
+		DWORD threadId;
+		ProcParams stdOutParams = { stdOut, GetStdHandle(STD_OUTPUT_HANDLE) };
+		HANDLE stdOutThread = ::CreateThread(NULL, (SIZE_T)128 * 1024, (LPTHREAD_START_ROUTINE)ReadProc, (void*)&stdOutParams, 0, &threadId);
 
-	while (true)
-	{		
-		if (::WaitForSingleObject(processInfo.hProcess, 20) == WAIT_OBJECT_0)
-			break;
+		ProcParams stdErrParams = { stdErr, GetStdHandle(STD_ERROR_HANDLE) };
+		HANDLE stdErrThread = ::CreateThread(NULL, (SIZE_T)128 * 1024, (LPTHREAD_START_ROUTINE)ReadProc, (void*)&stdErrParams, 0, &threadId);
+
+		while (true)
+		{
+			if (::WaitForSingleObject(processInfo.hProcess, 20) == WAIT_OBJECT_0)
+				break;
+		}
+		::WaitForSingleObject(stdOutThread, INFINITE);
+		::WaitForSingleObject(stdErrThread, INFINITE);
+
+		DWORD exitCode = 0;
+		::GetExitCodeProcess(processInfo.hProcess, &exitCode);
+
+		printf("Exit code: %d\n", exitCode);
+		if ((exitCode == 0) || (pass == 1))
+			return exitCode;
+		
+		printf("FAILED! Starting second attempt.\n");
 	}
-	::WaitForSingleObject(stdOutThread, INFINITE);
-	::WaitForSingleObject(stdErrThread, INFINITE);
 
-	DWORD exitCode = 0;
-	::GetExitCodeProcess(processInfo.hProcess, &exitCode);	
-	
-	return exitCode;
+	return 0;
 }
