@@ -18,6 +18,7 @@ SDL2.dll
 BeefSpace_User.toml
 lld-link.exe
 stats/
+bin/Git
 **/dist/*
 BeefySysLib/third_party/*
 BeefTools/RandoCode/*
@@ -26,6 +27,7 @@ IDE/Tests/NewProject*/*
 *.csproj.user
 builds/*
 wasm/*
+BeefManaged/*
 BeefPerf.txt
 IDE/Tests/Rando
 install/
