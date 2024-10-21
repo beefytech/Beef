@@ -211,7 +211,9 @@ namespace System
 		public enum BfpProcessResult : int32
 		{
 			Ok = (int)Result.Ok,
-			InsufficientBuffer = (int)Result.InsufficientBuffer
+			NotFound = (int)Result.NotFound,
+			InsufficientBuffer = (int)Result.InsufficientBuffer,
+			UnknownError = (int)Result.UnknownError,
 		}
 
 #if !BF_RUNTIME_DISABLE
@@ -229,6 +231,9 @@ namespace System
 		public static extern void BfpProcess_GetProcessName(BfpProcess* process, char8* outName, int32* inOutNameSize, BfpProcessResult* outResult);
 		[CallingConvention(.Stdcall), CLink]
 		public static extern int32 BfpProcess_GetProcessId(BfpProcess* process);
+		[CallingConvention(.Stdcall), CLink]
+		public static extern bool BfpProcess_WaitFor(BfpProcess* process, int waitMS, int* outExitCode, BfpProcessResult* outResult);
+
 #else
 		
 		public static bool BfpProcess_IsRemoteMachine(char8* machineName) => Runtime.NotImplemented();

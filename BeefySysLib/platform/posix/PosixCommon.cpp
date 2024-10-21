@@ -858,6 +858,11 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_Release(BfpProcess* process)
     NOT_IMPL;
 }
 
+BFP_EXPORT bool BFP_CALLTYPE BfpProcess_WaitFor(BfpProcess* process, int waitMS, int* outExitCode, BfpProcessResult* outResult)
+{
+    NOT_IMPL;
+}
+
 BFP_EXPORT void BFP_CALLTYPE BfpProcess_GetMainWindowTitle(BfpProcess* process, char* outTitle, int* inOutTitleSize, BfpProcessResult* outResult)
 {
     NOT_IMPL;

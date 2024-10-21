@@ -1285,7 +1285,15 @@ struct BfpProcess
 {
 	int mProcessId;
 	SYSTEM_PROCESS_INFORMATION* mInfo;
+	HANDLE mProcess;
 	String mImageName;
+
+	BfpProcess()
+	{
+		mProcessId = -1;
+		mInfo = NULL;
+		mProcess = 0;
+	}
 };
 
 BFP_EXPORT bool BFP_CALLTYPE BfpProcess_IsRemoteMachine(const char* machineName)
@@ -1295,16 +1303,16 @@ BFP_EXPORT bool BFP_CALLTYPE BfpProcess_IsRemoteMachine(const char* machineName)
 
 BFP_EXPORT BfpProcess* BFP_CALLTYPE BfpProcess_GetById(const char* machineName, int processId, BfpProcessResult* outResult)
 {
-	HANDLE hProc = ::OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, processId);
+	HANDLE hProc = ::OpenProcess(PROCESS_QUERY_INFORMATION | SYNCHRONIZE, FALSE, processId);
 	if (hProc == NULL)
 	{
 		OUTRESULT(BfpProcessResult_NotFound);
 		return NULL;
-	}	
-	::CloseHandle(hProc);
+	}		
 
 	BfpProcess* process = new BfpProcess();
 	process->mProcessId = processId;
+	process->mProcess = hProc;
 	process->mInfo = NULL;
 	return process;
 }
@@ -1395,7 +1403,32 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_Release(BfpProcess* process)
 {
 	if (process->mInfo != NULL)
 		free(process->mInfo);
+	if (process->mProcess != NULL)
+		::CloseHandle(process->mProcess);
 	delete process;
+}
+
+BFP_EXPORT bool BFP_CALLTYPE BfpProcess_WaitFor(BfpProcess* process, int waitMS, int* outExitCode, BfpProcessResult* outResult)
+{
+	if (process->mProcess == NULL)	
+	{
+		OUTRESULT(BfpProcessResult_NotFound);
+		return false;
+	}
+
+	if (::WaitForSingleObject(process->mProcess, waitMS) != WAIT_OBJECT_0)
+	{
+		OUTRESULT(BfpProcessResult_NotFound);
+		return false;
+	}
+
+	DWORD errorCode = 0;
+	GetExitCodeProcess(process->mProcess, &errorCode);
+	if (outExitCode != NULL)
+		*outExitCode = (int)errorCode;
+
+	OUTRESULT(BfpProcessResult_Ok);
+	return true;
 }
 
 //struct EnumWndData

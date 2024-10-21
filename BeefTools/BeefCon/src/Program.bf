@@ -19,6 +19,17 @@ class Program
 	String mExecStr = new .() ~ delete _;
 	SpawnedProcess mSpawnedProcess ~ delete _;
 
+	[CLink, CallingConvention(.Stdcall)]
+	public static extern Windows.IntBool AttachConsole(int processId);
+
+	[CallingConvention(.Stdcall)]
+	function Windows.IntBool ConsoleCtrlHandler(int32 ctrlType);
+	[CLink, CallingConvention(.Stdcall)]
+	static extern Windows.IntBool SetConsoleCtrlHandler(ConsoleCtrlHandler handler, Windows.IntBool addHandler);
+
+	[CLink, CallingConvention(.Stdcall)]
+	static extern Windows.IntBool GenerateConsoleCtrlEvent(uint32 dwCtrlEvent, uint32 dwProcessGroupId);
+
 	public ~this()
 	{
 		if (mSpawnedProcess != null)
@@ -165,13 +176,21 @@ class Program
 			// Check BeefIDE process
 			if ((mPid != 123) || (!Debug.IsDebuggerPresent))
 			{
+				bool isProcessOpen = false;
+
 				var process = Platform.BfpProcess_GetById(null, mPid, null);
-				if (process == null)
+				if (process != null)
+				{
+					if (!Platform.BfpProcess_WaitFor(process, 0, null, null))
+						isProcessOpen = true;
+					Platform.BfpProcess_Release(process);
+				}
+
+				if (!isProcessOpen)
 				{
 					Console.Error.WriteLine("Process closed");
 					return;
 				}
-				Platform.BfpProcess_Release(process);
 			}
 
 			MessageLoop();
@@ -266,6 +285,16 @@ class Program
 			pg.mConid = int32.Parse(args[1]);
 			pg.mExecStr.Set(args[2]);
 			pg.Run();
+		}
+		else if (args.Count >= 2)
+		{
+			pg.mPid = int32.Parse(args[0]);
+			if (args[1] == "kill")
+			{
+				AttachConsole(pg.mPid);
+				SetConsoleCtrlHandler(default, true);
+				GenerateConsoleCtrlEvent(/*CTRL_C_EVENT*/0, 0);
+			}
 		}
 		else
 		{
