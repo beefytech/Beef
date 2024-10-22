@@ -292,9 +292,20 @@ static void NTAPI TlsFreeFunc(void* ptr)
 	gBfRtCallbacks.Thread_Exiting();
 }
 
-void bf::System::Console::PutChar(char c)
+void bf::System::Console::PutChars(char* ptr, int len)
 {
-	putchar(c);
+#ifdef BF_PLATFORM_WINDOWS
+	HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+	if (handle != INVALID_HANDLE_VALUE)
+	{
+		DWORD numBytesWritten = 0;
+		::WriteFile(handle, ptr, (DWORD)len, &numBytesWritten, NULL);
+		return;
+	}
+#endif
+
+	for (int i = 0; i < len; i++)
+		putchar(ptr[i]);
 }
 
 void bf::System::Console::ReopenHandles()

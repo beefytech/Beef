@@ -90,13 +90,12 @@ namespace System
 
 		static function void(StringView str) OutString = => OutString_Simple;
 
-		public static extern void PutChar(char8 c);
+		private static extern void PutChars(char8* c, int32 len);
 		public static extern void ReopenHandles();
 
 		static void OutString_Simple(StringView str)
 		{
-			for (var c in str.RawChars)
-				PutChar(c);
+			PutChars(str.Ptr, (.)str.Length);
 		}
 
 		static void OutString_Ex(StringView str)

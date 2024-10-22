@@ -183,8 +183,9 @@ namespace bf
 
 		class Console
 		{
+		private:
+			BFRT_EXPORT static void PutChars(char* ptr, int len);
 		public:
-			BFRT_EXPORT static void PutChar(char c);
 			BFRT_EXPORT static void ReopenHandles();
 		};
 
