@@ -874,14 +874,40 @@ namespace IDE.ui
 
 							for (var projectSpec in gApp.mWorkspace.mProjectSpecs)
 							{
+								String bestConstraint = scope .();
+								String bestURL = scope .();
+
 								if (projectSpec.mProjectName == projectName)
 								{
 									if (projectSpec.mVerSpec case .Git(let url, let ver))
 									{
-										dependencyEntry.SetValue(1, url);
-										dependencyEntry.SetValue(2, ver.mVersion);
+										bestConstraint.Set(ver.mVersion);
+										bestURL.Set(url);
 									}
 								}
+
+								for (var project in gApp.mWorkspace.mProjects)
+								{
+									for (var dep in project.mDependencies)
+									{
+										if (dep.mVerSpec case .Git(let url, let ver))
+										{
+											if (bestURL.IsEmpty)
+												bestURL.Set(url);
+											else if (url != bestURL)
+												continue;
+
+											String highConstraint = scope .();
+											if ((ver.mVersion != null) && (SemVer.GetHighestConstraint(bestConstraint, ver.mVersion, highConstraint)))
+											{
+												bestConstraint.Set(highConstraint);
+											}
+										}
+									}
+								}
+
+								dependencyEntry.SetValue(1, bestURL);
+								dependencyEntry.SetValue(2, bestConstraint);
 							}
 							var propEntries = mPropPage.mPropEntries[listViewItem];
 							UpdatePropertyValue(propEntries);

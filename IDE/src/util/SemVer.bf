@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 
 namespace IDE.Util
 {
@@ -30,6 +31,17 @@ namespace IDE.Util
 			public Kind Major => mPart[0];
 			public Kind Minor => mPart[1];
 			public Kind Patch => mPart[2];
+
+			public static int operator<=>(Self lhs, Self rhs)
+			{
+				for (int i < 3)
+				{
+					int val = lhs.mPart[i].NumOrDefault <=> rhs.mPart[i].NumOrDefault;
+					if (val != 0)
+						return val;
+				}
+				return 0;
+			}
 		}
 
 		enum CompareKind
@@ -143,7 +155,13 @@ namespace IDE.Util
 			return GetParts(mVersion);
 		}
 
-		public static bool IsVersionMatch(StringView fullVersion, StringView wildcard)
+		enum VersionSpec
+		{
+			case String(StringView version);
+			case Parts(SemVer.Parts parts);
+		}
+
+		static bool IsVersionMatch(VersionSpec fullVersion, StringView wildcard)
 		{
 			int commaPos = wildcard.IndexOf(',');
 			if (commaPos != -1)
@@ -193,13 +211,21 @@ namespace IDE.Util
 			// Does we include equality?
 			if ((compareKind != .Gt) && (compareKind != .Lt))
 			{
-				if (fullVersion == wildcard)
-					return true;
+				if (fullVersion case .String(let fullStr))
+					if (fullStr == wildcard)
+						return true;
 			}
 
 			Parts full;
-			if (!(GetParts(fullVersion) case .Ok(out full)))
-				return false;
+			switch (fullVersion)
+			{
+			case .String(let fullStr):
+				if (!(GetParts(fullStr) case .Ok(out full)))
+					return false;
+			case .Parts(let fullParts):
+				full = fullParts;
+			}
+			
 			Parts wild;
 			if (!(GetParts(wildcard) case .Ok(out wild)))
 				return false;
@@ -265,6 +291,11 @@ namespace IDE.Util
 			return true;
 		}
 
+		public static bool IsVersionMatch(StringView fullVersion, StringView wildcard)
+		{
+			return IsVersionMatch(.String(fullVersion), wildcard);
+		}
+
 		public static bool IsVersionMatch(SemVer fullVersion, SemVer wildcard) => IsVersionMatch(fullVersion.mVersion, wildcard.mVersion);
 
 		public static Result<int> Compare(StringView lhs, StringView rhs)
@@ -295,6 +326,145 @@ namespace IDE.Util
 			}
 
 			return comp;
+		}
+
+		static void FindEmbeddedVersion(StringView version, List<int32[3]> parts, ref int32[3] highestParts)
+		{
+			int startIdx = 0;
+			int partIdx = 0;
+			int sectionCount = 0;
+
+			if (version.IsEmpty)
+				return;
+
+			Result<void> SetPart(Parts.Kind kind)
+			{
+				if (partIdx >= 3)
+					return .Err;
+				int32 val = 0;
+				if (kind case .Num(out val)) {}
+				if (partIdx == 0)
+					parts.Add(default);
+				parts.Back[partIdx] = val;
+				highestParts[partIdx] = Math.Max(highestParts[partIdx], val);
+				partIdx++;
+				return .Ok;
+			}
+
+			Result<void> FlushPart(int i)
+			{
+				StringView partStr = version.Substring(startIdx, i - startIdx);
+				if (!partStr.IsEmpty)
+				{
+					int32 partNum = Try!(int32.Parse(partStr));
+					Try!(SetPart(.Num(partNum)));
+				}
+				return .Ok;
+			}
+
+			for (int i in startIdx ..< version.Length)
+			{
+				char8 c = version[i];
+				if (c == '.')
+				{
+					FlushPart(i).IgnoreError();
+					startIdx = i + 1;
+					continue;
+				}
+				else if (c.IsNumber)
+				{
+					continue;
+				}
+				else
+				{
+					startIdx = i + 1;
+					partIdx = 0;
+					sectionCount++;
+				}
+
+			}
+			FlushPart(version.Length).IgnoreError();
+		}
+
+		public static bool GetHighestConstraint(StringView ver1, StringView ver2, String outVer)
+		{
+			if (ver1.IsEmpty)
+			{
+				if (ver2.IsEmpty)
+					return false;
+				outVer.Set(ver2);
+				return true;
+			}
+
+			if (ver2.IsEmpty)
+			{
+				outVer.Set(ver1);
+				return true;
+			}
+
+			List<int32[3]> embeddedParts = scope .();
+			int32[3] highestParts = default;
+			FindEmbeddedVersion(ver1, embeddedParts, ref highestParts);
+			FindEmbeddedVersion(ver2, embeddedParts, ref highestParts);
+
+			StringView bestVer = default;
+			SemVer.Parts bestParts = default;
+
+			bool CheckMatch(SemVer.Parts parts)
+			{
+				bool match1 = IsVersionMatch(.Parts(parts), ver1);
+				bool match2 = IsVersionMatch(.Parts(parts), ver2);
+
+				StringView verMatch = default;
+
+				if ((match1) && (!match2))
+					verMatch = ver1;
+				else if ((match2) && (!match1))
+					verMatch = ver2;
+				else
+					return false;
+
+				if (parts <=> bestParts > 0)
+				{
+					bestParts = parts;
+					bestVer = verMatch;
+				}
+				return true;
+			}
+
+			bool CheckParts(int32[3] parts)
+			{
+				SemVer.Parts checkParts = default;
+				for (int i < 3)
+				{
+					int32 val = parts[i];
+					if (val < 0)
+						return false;
+					checkParts.mPart[i] = .Num(val);
+				}
+				return CheckMatch(checkParts);
+			}
+
+			// Try variations of explicitly-stated versions in constraints and try to find versions that match one constraint but not another,
+			//  then select the constraint that allowed the highest version in that the other constraint didn't
+			for (var parts in embeddedParts)
+			{
+				CheckParts(.(parts[0], parts[1], parts[2]));
+				CheckParts(.(parts[0], parts[1], parts[2] - 1));
+				CheckParts(.(parts[0], parts[1], parts[2] + 1));
+				CheckParts(.(parts[0], parts[1] + 1, 0));
+				CheckParts(.(parts[0], parts[1] - 1, 999999));
+				CheckParts(.(parts[0] + 1, 0, 0));
+				CheckParts(.(parts[0] - 1, 999999, 999999));
+			}
+
+			if (!bestVer.IsEmpty)
+			{
+				outVer.Set(bestVer);
+				return true;
+			}
+
+			return false;
 		}
 
 		public override void ToString(String strBuffer)

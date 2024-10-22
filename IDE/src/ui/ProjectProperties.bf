@@ -811,7 +811,26 @@ namespace IDE.ui
 							if (verSpecPtr == null)
 							{
 								if (verSpec case .Git(let url, let ver))
-									updateProjectLock = true;
+								{
+									bool matchesWorkspace = false;
+									for (var projectSpec in gApp.mWorkspace.mProjectSpecs)
+									{
+										if (projectSpec.mProjectName == projectName)
+										{
+											if (projectSpec.mVerSpec case .Git(let checkURL, let checkVer))
+											{
+												if ((checkURL == url) && (checkVer == ver))
+													matchesWorkspace = true;
+											}
+										}
+									}
+
+									if (!matchesWorkspace)
+									{
+										// This added new spec matches the workspace so we it doesn't affect any locking
+										updateProjectLock = true;
+									}
+								}
 
 								var dep = new Project.Dependency();
 								dep.mProjectName = new String(listViewItem.mLabel);

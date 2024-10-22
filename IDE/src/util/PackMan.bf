@@ -55,6 +55,12 @@ namespace IDE.util
 
 		public bool CheckInit()
 		{
+			if ((gApp.mWorkspace.mProjectLoadState != .Preparing) && (mWorkItems.IsEmpty))
+			{
+				// Clear failed state
+				mFailed = false;
+			}
+
 			if (mInitialized)
 				return true;
 
@@ -215,7 +221,7 @@ namespace IDE.util
 			workItem.mKind = .FindVersion;
 			workItem.mProjectName = new .(projectName);
 			workItem.mURL = new .(url);
-			if (semVer != null)
+			if (!semVer.IsEmpty)
 				workItem.mConstraints = new .() { new String(semVer.mVersion) };
 			mWorkItems.Add(workItem);
 		}
@@ -287,8 +293,12 @@ namespace IDE.util
 
 						for (var tag in workItem.mGitInstance.mTagInfos)
 						{
-							if ((tag.mTag == "HEAD") && (workItem.mConstraints == null))
+							if ((tag.mTag == "HEAD") &&
+								((workItem.mConstraints == null) || (workItem.mConstraints.Contains("HEAD"))))
+							{
 								bestHash = tag.mHash;
+								break;
+							}
 							else if (workItem.mConstraints != null)
 							{
 								bool hasMatch = false;
@@ -328,7 +338,7 @@ namespace IDE.util
 								constraints.Append('\'');
 							}
 
-							Fail(scope $"Failed to locate version for '{workItem.mProjectName}' with constraints '{constraints}'");
+							Fail(scope $"Failed to locate version for '{workItem.mProjectName}' with constraints {constraints}");
 						}
 					case .Clone:
 						Checkout(workItem.mProjectName, workItem.mURL, workItem.mPath, workItem.mTag, workItem.mHash);
@@ -340,6 +350,10 @@ namespace IDE.util
 							gApp.OutputLine($"Git cloning library '{workItem.mProjectName}' done.");
 					default:
 					}
+				}
+				else
+				{
+					Fail(scope $"Failed to retrieve project '{workItem.mProjectName}' at '{workItem.mURL}'");
 				}
 
 				@workItem.Remove();
