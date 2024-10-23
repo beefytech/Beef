@@ -3931,7 +3931,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		if ((typeInstance->mRebuildFlags & BfTypeRebuildFlag_UnderlyingTypeDeferred) != 0)
 			underlyingTypeDeferred = true;
 	}
-	else if (typeInstance->IsEnum())
+	
+	if ((typeInstance->IsEnum()) && (underlyingType == NULL) && (!underlyingTypeDeferred))
 	{
 		bool hasPayloads = false;
 		for (auto fieldDef : typeDef->mFields)

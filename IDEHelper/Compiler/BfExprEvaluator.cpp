@@ -9117,7 +9117,7 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 
 			if (wantConst)
 			{
-				NOP;
+				//
 			}
 			else if ((mReceivingValue != NULL) && (mReceivingValue->mType == enumType) && (mReceivingValue->IsAddr()))
 			{
@@ -9135,6 +9135,12 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 			BF_ASSERT(fieldInstance->mResolvedType->IsTuple());
 			auto tupleType = (BfTypeInstance*)fieldInstance->mResolvedType;
 			mModule->mBfIRBuilder->PopulateType(tupleType);
+
+			if (tupleType->IsDeleting())
+			{
+				mModule->FailInternal("Deleted tuple type found in CheckEnumCreation", targetSrc);
+				return BfTypedValue();
+			}
 
 			bool constFailed = false;
 			SizedArray<BfIRValue, 8> constTupleMembers;

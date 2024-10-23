@@ -2691,14 +2691,20 @@ BfType* BfTypeInstance::GetUnderlyingType()
 	{
 		if (!checkTypeInst->mFieldInstances.empty())
 		{
-			mTypeInfoEx->mUnderlyingType = checkTypeInst->mFieldInstances.back().mResolvedType;
-			return mTypeInfoEx->mUnderlyingType;
+			auto& lastField = checkTypeInst->mFieldInstances.back();
+			if (lastField.mFieldIdx == -1)
+			{
+				auto underlyingType = lastField.mResolvedType;
+				BF_ASSERT(underlyingType != this);
+				mTypeInfoEx->mUnderlyingType = underlyingType;
+				return mTypeInfoEx->mUnderlyingType;
+			}
 		}
 		checkTypeInst = checkTypeInst->mBaseType;
-		if (checkTypeInst->IsIncomplete())
+		if ((checkTypeInst != NULL) && (checkTypeInst->IsIncomplete()))
 			mModule->PopulateType(checkTypeInst, BfPopulateType_Data);
 	}
-	BF_FATAL("Failed");
+	//BF_FATAL("Failed");
 	return mTypeInfoEx->mUnderlyingType;
 }
 
