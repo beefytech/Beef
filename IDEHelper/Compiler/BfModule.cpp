@@ -16785,7 +16785,7 @@ void BfModule::CreateDelegateInvokeMethod()
 		if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsComptimeModule) && (mCompiler->mSystem->mPtrSize == 8))
 		{
 			numVal = mBfIRBuilder->CreatePtrToInt(fieldVal, BfTypeCode_UInt64);
-			auto andVal = mBfIRBuilder->CreateAnd(numVal, mBfIRBuilder->CreateConst(BfTypeCode_UInt64, ~0x8000000000000000ULL));
+			auto andVal = mBfIRBuilder->CreateAnd(numVal, mBfIRBuilder->CreateConst(BfTypeCode_UInt64, (uint64)~0x8000000000000000ULL));
 			fieldVal = mBfIRBuilder->CreateIntToPtr(andVal, mBfIRBuilder->MapType(mContext->mBfObjectType));
 		}
 
@@ -16794,7 +16794,7 @@ void BfModule::CreateDelegateInvokeMethod()
 			auto oacDoBB = mBfIRBuilder->CreateBlock("oac.do", true);
 			auto oacDoneBB = mBfIRBuilder->CreateBlock("oac.done");			
 
-			auto checkGTE = mBfIRBuilder->CreateCmpGTE(numVal, mBfIRBuilder->CreateConst(BfTypeCode_UInt64, 0x8000000000000000ULL), false);
+			auto checkGTE = mBfIRBuilder->CreateCmpGTE(numVal, mBfIRBuilder->CreateConst(BfTypeCode_UInt64, (uint64)0x8000000000000000ULL), false);
 			mBfIRBuilder->CreateCondBr(checkGTE, oacDoBB, oacDoneBB);
 			mBfIRBuilder->SetInsertPoint(oacDoBB);
 			mBfIRBuilder->CreateObjectAccessCheck(fieldVal, !IsOptimized());
