@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {WasmLaunch = {Path = "."}}
+
+[Workspace]
+StartupProject = "WasmLaunch"
