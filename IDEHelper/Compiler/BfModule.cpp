@@ -16786,11 +16786,11 @@ void BfModule::CreateDelegateInvokeMethod()
 		{
 			numVal = mBfIRBuilder->CreatePtrToInt(fieldVal, BfTypeCode_UInt64);
 			auto andVal = mBfIRBuilder->CreateAnd(numVal, mBfIRBuilder->CreateConst(BfTypeCode_UInt64, ~0x8000000000000000ULL));
-			fieldVal = andVal;
+			fieldVal = mBfIRBuilder->CreateIntToPtr(andVal, mBfIRBuilder->MapType(mContext->mBfObjectType));
 		}
 
 		if ((WantsObjectAccessCheck(mContext->mBfObjectType) && (mCompiler->mSystem->mPtrSize == 8)))
-		{			
+		{
 			auto oacDoBB = mBfIRBuilder->CreateBlock("oac.do", true);
 			auto oacDoneBB = mBfIRBuilder->CreateBlock("oac.done");			
 
