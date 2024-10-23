@@ -34,6 +34,7 @@ IDE\dist\BeefBuild_d -proddir=BeefLibs\corlib -test
 
 @ECHO Building Tiny
 bin\RunWithStats IDE\dist\BeefBuild -proddir=IDE\Tests\Tiny -clean -config=Release
+@IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 set size=0
 FOR /F "usebackq" %%A IN ('IDE\Tests\Tiny\build\Release_Win64\Tiny\Tiny.exe') DO set size=%%~zA
 echo Tiny executable size: %size% (expected 13824, max 16000)
@@ -48,6 +49,7 @@ if %size% GTR 16000 (
 
 @ECHO Building Tiny NoRT
 bin\RunWithStats IDE\dist\BeefBuild -proddir=IDE\Tests\Tiny -clean -config=ReleaseNoRT
+@IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 set size=0
 FOR /F "usebackq" %%A IN ('IDE\Tests\Tiny\build\ReleaseNoRT_Win64\Tiny\Tiny.exe') DO set size=%%~zA
 echo Tiny executable size: %size% (expected 5120, max 7000)
