@@ -1413,6 +1413,22 @@ BfIRValue BfIRConstHolder::ReadConstant(void* ptr, BfType* type)
 		return CreateConst(BfTypeCode_StringId, *(int32*)ptr);
 	}
 
+	if (type->IsPointer())
+	{
+		bool isZero = false;
+		if (mModule->mSystem->mPtrSize == 4)
+			isZero = *(int32*)ptr == 0;
+		else
+			isZero = *(int64*)ptr == 0;
+		if (isZero)
+		{
+			BfIRType irType;
+			irType.mKind = BfIRTypeData::TypeKind_TypeId;
+			irType.mId = type->mTypeId;
+			return CreateConstNull(irType);
+		}		
+	}
+
 	return BfIRValue();
 }
 
