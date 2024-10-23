@@ -12305,6 +12305,12 @@ namespace IDE
 			if (workingDir.IsEmpty)
 				Path.GetDirectoryPath(launchPath, workingDir).IgnoreError();
 
+			if (launchPath.EndsWith(".html"))
+			{
+				arguments.Set(launchPath);
+				launchPath.Set(scope $"{gApp.mInstallDir}/WasmLaunch.exe");
+			}
+
 			if (!Directory.Exists(workingDir))
 			{
 				OutputErrorLine(scope String()..AppendF("Unable to locate working directory '{0}'", workingDir));
