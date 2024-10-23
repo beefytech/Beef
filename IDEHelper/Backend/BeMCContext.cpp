@@ -12707,7 +12707,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 				// lea rdi, <dest+curOfs>
 				EmitREX(BeMCOperand::FromReg(X64Reg_RDI), dest, true);
 				Emit(0x8D);
-				EmitModRMRel(EncodeRegNum(X64Reg_RDI), rmInfo.mRegA, rmInfo.mRegB, 1, rmInfo.mDisp + curOfs);
+				EmitModRMRel(EncodeRegNum(X64Reg_RDI), rmInfo.mRegA, rmInfo.mRegB, rmInfo.mBScale, rmInfo.mDisp + curOfs);
 
 				// mov al, <val>
 				Emit(0xB0); Emit(val);
@@ -12737,7 +12737,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 		// mov <dest+curOfs>, R11
 		EmitREX(BeMCOperand::FromReg(X64Reg_R11), dest, true);
 		Emit(0x89);
-		EmitModRMRel(EncodeRegNum(X64Reg_R11), rmInfo.mRegA, rmInfo.mRegB, 1, rmInfo.mDisp + curOfs);
+		EmitModRMRel(EncodeRegNum(X64Reg_R11), rmInfo.mRegA, rmInfo.mRegB, rmInfo.mBScale, rmInfo.mDisp + curOfs);
 		curOfs += 8;
 	}
 
@@ -12750,7 +12750,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 		// mov <dest+curOfs>, R11d
 		EmitREX(BeMCOperand::FromReg(X64Reg_R11D), dest, false);
 		Emit(0x89);
-		EmitModRMRel(EncodeRegNum(X64Reg_R11D), rmInfo.mRegA, rmInfo.mRegB, 1, rmInfo.mDisp + curOfs);
+		EmitModRMRel(EncodeRegNum(X64Reg_R11D), rmInfo.mRegA, rmInfo.mRegB, rmInfo.mBScale, rmInfo.mDisp + curOfs);
 	}
 
 	for (; curOfs <= memSize - 2; curOfs += 2)
@@ -12762,7 +12762,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 		// mov <dest+curOfs>, R11w
 		Emit(0x66); EmitREX(BeMCOperand::FromReg(X64Reg_R11W), dest, false);
 		Emit(0x89);
-		EmitModRMRel(EncodeRegNum(X64Reg_R11W), rmInfo.mRegA, rmInfo.mRegB, 1, rmInfo.mDisp + curOfs);
+		EmitModRMRel(EncodeRegNum(X64Reg_R11W), rmInfo.mRegA, rmInfo.mRegB, rmInfo.mBScale, rmInfo.mDisp + curOfs);
 	}
 
 	for (; curOfs <= memSize - 1; curOfs += 1)
@@ -12774,7 +12774,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 		// mov <dest+curOfs>, R11b
 		EmitREX(BeMCOperand::FromReg(X64Reg_R11B), dest, false);
 		Emit(0x89 - 1);
-		EmitModRMRel(EncodeRegNum(X64Reg_R11B), rmInfo.mRegA, rmInfo.mRegB, 1, rmInfo.mDisp + curOfs);
+		EmitModRMRel(EncodeRegNum(X64Reg_R11B), rmInfo.mRegA, rmInfo.mRegB, rmInfo.mBScale, rmInfo.mDisp + curOfs);
 	}
 
 	for (auto constVal : constData.mConsts)
@@ -12798,7 +12798,7 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 		// mov <dest+curOfs>, R11
 		EmitREX(BeMCOperand::FromReg(X64Reg_R11), dest, true);
 		Emit(0x89);
-		EmitModRMRel(EncodeRegNum(X64Reg_R11), rmInfo.mRegA, rmInfo.mRegB, 1, rmInfo.mDisp + constVal.mIdx);
+		EmitModRMRel(EncodeRegNum(X64Reg_R11), rmInfo.mRegA, rmInfo.mRegB, rmInfo.mBScale, rmInfo.mDisp + constVal.mIdx);
 	}
 }
 
