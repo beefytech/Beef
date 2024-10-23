@@ -408,9 +408,9 @@ namespace Tests
 				Test.Assert(a == 10+10 + 30);
 				Test.Assert(mA == 100+300+300 + 300);
 
-				bind.Dispose();
-
 				Test.Assert(Use(scope => dlg, 10) == 400);
+
+				bind.Dispose();
 
 				function int(int num) func = => StaticMethod;
 				Test.Assert(Use(=> StaticMethod, 123) == 1123);

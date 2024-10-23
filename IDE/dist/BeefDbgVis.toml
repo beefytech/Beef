@@ -23,11 +23,11 @@ ValuePointer = "/*(mMethodId < 0) ? &this :*/ __cast(\"_BF_DeferredData_\", mMet
 Name = "System.Event<*>"
 DisplayString = "{{ data={__cast(\"System.Object\", mData & sDataMask)} }}"
 [[Type.Expand.Item]]
-Name = "[target]"
+Name = "[Target]"
 Value = "__cast(\"System.Object\", mData)"
 Condition = "(mData & sIsEnumerating) == 0"
 [[Type.Expand.Item]]
-Name = "[target]"
+Name = "[Target]"
 Value = "((System.Event<$T1>.Enumerator*)(mData & sDataMask)).mTarget"
 Condition = "(mData & sIsEnumerating) != 0"
 [[Type.Expand.Item]]

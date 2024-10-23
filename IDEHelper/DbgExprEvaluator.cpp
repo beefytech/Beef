@@ -7739,9 +7739,20 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 	else if (methodName == "__funcTarget")
 	{
 		if (argValues.size() == 2)
-		{
+		{			
+			auto funcTargetTyped = argValues[1];
+			if ((sizeof(addr_target) == 8) && ((funcTargetTyped.mPtr & 0x8000000000000000LL) != 0))
+			{
+				auto objectType = mDbgModule->FindType("System.Object", NULL, DbgLanguage_BeefUnfixed);
+				if (objectType != NULL)
+					objectType = mDbgModule->GetPointerType(objectType);
+				funcTargetTyped.mPtr &= 0x7FFFFFFFFFFFFFFFLL;
+				if (objectType != NULL)
+					funcTargetTyped.mType = objectType;
+			}
+
 			auto funcPtr = argValues[0].mPtr;
-			auto funcTarget = argValues[1].mPtr;
+			auto funcTarget = funcTargetTyped.mPtr;
 
 			String symbolName;
 			addr_target offset;
@@ -7762,7 +7773,7 @@ DbgTypedValue DbgExprEvaluator::MatchMethod(BfAstNode* targetSrc, DbgTypedValue 
 				}
 			}
 
-			return argValues[1];
+			return funcTargetTyped;
 		}
 	}
 	else if (methodName == "__stringView")

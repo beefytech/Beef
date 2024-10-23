@@ -14031,7 +14031,18 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		if ((implicitParamCount > 0) || (needsSplat)) // Point back to self, it contains capture data
 			valPtr = mModule->mBfIRBuilder->CreateBitCast(mResult.mValue, mModule->mBfIRBuilder->GetPrimitiveType(BfTypeCode_NullPtr));
 		else if (bindResult.mTarget)
-			valPtr = mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->GetPrimitiveType(BfTypeCode_NullPtr));
+		{
+			if ((target.mType->IsObjectOrInterface()) &&
+				(mModule->mCompiler->mOptions.mObjectHasDebugFlags) && (!mModule->mIsComptimeModule) &&
+				(mModule->mCompiler->mSystem->mPtrSize == 8))
+			{
+				auto numVal = mModule->mBfIRBuilder->CreatePtrToInt(target.mValue, BfTypeCode_UInt64);
+				auto orVal = mModule->mBfIRBuilder->CreateOr(numVal, mModule->mBfIRBuilder->CreateConst(BfTypeCode_UInt64, 0x8000000000000000ULL));
+				valPtr = mModule->mBfIRBuilder->CreateIntToPtr(orVal, mModule->mBfIRBuilder->GetPrimitiveType(BfTypeCode_NullPtr));
+			}
+			else
+				valPtr = mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->GetPrimitiveType(BfTypeCode_NullPtr));
+		}
 		else
 			valPtr = mModule->GetDefaultValue(mModule->GetPrimitiveType(BfTypeCode_NullPtr));
 		auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(baseDelegate, 0, 2);

@@ -90,6 +90,11 @@ namespace IDE.ui
     		SetScaleData();
 		}
 
+		public ~this()
+		{
+			IDEApp.sApp.mDebugger.mBreakpointsChangedDelegate.Remove(scope => BreakpointsChanged, true);
+		}
+
 		void SetScaleData()
 		{
 			mListView.mIconX = GS!(4);

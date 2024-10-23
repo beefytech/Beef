@@ -1746,6 +1746,7 @@ public:
 	bool HasCompiledOutput();
 	bool HasExecutedOutput();
 	void SkipObjectAccessCheck(BfTypedValue typedVal);
+	bool WantsObjectAccessCheck(BfType* type);
 	void EmitObjectAccessCheck(BfTypedValue typedVal);
 	bool WantsDebugHelpers();
 	void EmitEnsureInstructionAt();

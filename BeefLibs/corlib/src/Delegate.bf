@@ -31,7 +31,11 @@ namespace System
 
 		public void* GetTarget()
 		{
+#if BF_64_BIT && BF_ENABLE_OBJECT_DEBUG_FLAGS
+			return (.)((int)mTarget & 0x7FFFFFFF'FFFFFFFF);
+#else
 			return mTarget;
+#endif
 		}
 
 	    public void SetFuncPtr(void* ptr, void* target = null)
@@ -43,7 +47,11 @@ namespace System
 		protected override void GCMarkMembers()
 		{
 			// Note- this is safe even if mTarget is not an object, because the GC does object address validation
+#if BF_64_BIT && BF_ENABLE_OBJECT_DEBUG_FLAGS
+			GC.Mark(Internal.UnsafeCastToObject((.)((int)mTarget & 0x7FFFFFFF'FFFFFFFF)));
+#else
 			GC.Mark(Internal.UnsafeCastToObject(mTarget));
+#endif
 		}
 
 		public int GetHashCode()

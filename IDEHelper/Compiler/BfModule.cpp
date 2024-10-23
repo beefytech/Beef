@@ -10472,6 +10472,24 @@ void BfModule::SkipObjectAccessCheck(BfTypedValue typedVal)
 	mCurMethodState->mSkipObjectAccessChecks.Add(typedVal.mValue.mId);
 }
 
+bool BfModule::WantsObjectAccessCheck(BfType* type)
+{
+	if ((mBfIRBuilder->mIgnoreWrites) || (!type->IsObjectOrInterface()) || (mCurMethodState == NULL) || (mCurMethodState->mIgnoreObjectAccessCheck))
+		return false;
+
+	if ((!mCompiler->mOptions.mObjectHasDebugFlags) || (mIsComptimeModule))
+		return false;
+	
+	bool emitObjectAccessCheck = mCompiler->mOptions.mEmitObjectAccessCheck;
+	auto typeOptions = GetTypeOptions();
+	if (typeOptions != NULL)
+		emitObjectAccessCheck = typeOptions->Apply(emitObjectAccessCheck, BfOptionFlags_EmitObjectAccessCheck);
+	if (!emitObjectAccessCheck)
+		return false;
+
+	return true;
+}
+
 void BfModule::EmitObjectAccessCheck(BfTypedValue typedVal)
 {
 	if ((mBfIRBuilder->mIgnoreWrites) || (!typedVal.mType->IsObjectOrInterface()) || (mCurMethodState == NULL) || (mCurMethodState->mIgnoreObjectAccessCheck))
@@ -16754,13 +16772,38 @@ void BfModule::CreateDelegateInvokeMethod()
 	BfIRValue staticResult;
 
 	auto callingConv = GetIRCallingConvention(mCurMethodInstance);
-
+	auto trueEndBB = trueBB;
+	
 	/// Non-static invocation
 	{
 		auto memberFuncPtr = mBfIRBuilder->GetPointerTo(mBfIRBuilder->MapMethod(mCurMethodInstance));
 		auto memberFuncPtrPtr = mBfIRBuilder->GetPointerTo(memberFuncPtr);
 
 		mBfIRBuilder->SetInsertPoint(trueBB);
+				
+		BfIRValue numVal;
+		if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsComptimeModule) && (mCompiler->mSystem->mPtrSize == 8))
+		{
+			numVal = mBfIRBuilder->CreatePtrToInt(fieldVal, BfTypeCode_UInt64);
+			auto andVal = mBfIRBuilder->CreateAnd(numVal, mBfIRBuilder->CreateConst(BfTypeCode_UInt64, ~0x8000000000000000ULL));
+			fieldVal = andVal;
+		}
+
+		if ((WantsObjectAccessCheck(mContext->mBfObjectType) && (mCompiler->mSystem->mPtrSize == 8)))
+		{			
+			auto oacDoBB = mBfIRBuilder->CreateBlock("oac.do", true);
+			auto oacDoneBB = mBfIRBuilder->CreateBlock("oac.done");			
+
+			auto checkGTE = mBfIRBuilder->CreateCmpGTE(numVal, mBfIRBuilder->CreateConst(BfTypeCode_UInt64, 0x8000000000000000ULL), false);
+			mBfIRBuilder->CreateCondBr(checkGTE, oacDoBB, oacDoneBB);
+			mBfIRBuilder->SetInsertPoint(oacDoBB);
+			mBfIRBuilder->CreateObjectAccessCheck(fieldVal, !IsOptimized());
+			mBfIRBuilder->CreateBr(oacDoneBB);
+			mBfIRBuilder->AddBlock(oacDoneBB);
+			mBfIRBuilder->SetInsertPoint(oacDoneBB);
+			trueEndBB = oacDoneBB;
+		}
+
 		memberFuncArgs[thisIdx] = mBfIRBuilder->CreateBitCast(fieldVal, mBfIRBuilder->MapType(mCurTypeInstance));
 		auto fieldPtr = mBfIRBuilder->CreateInBoundsGEP(multicastDelegate, 0, 1); // Load 'delegate.mFuncPtr'
 		auto funcPtrPtr = mBfIRBuilder->CreateBitCast(fieldPtr, memberFuncPtrPtr);
@@ -16829,7 +16872,7 @@ void BfModule::CreateDelegateInvokeMethod()
 		else
 			loweredIRReturnType = mBfIRBuilder->MapType(mCurMethodInstance->mReturnType);
 		auto phi = mBfIRBuilder->CreatePhi(loweredIRReturnType, 2);
-		mBfIRBuilder->AddPhiIncoming(phi, nonStaticResult, trueBB);
+		mBfIRBuilder->AddPhiIncoming(phi, nonStaticResult, trueEndBB);
 		mBfIRBuilder->AddPhiIncoming(phi, staticResult, falseBB);
 		mBfIRBuilder->CreateRet(phi);
 	}
