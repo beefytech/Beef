@@ -14037,7 +14037,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 				(mModule->mCompiler->mSystem->mPtrSize == 8))
 			{
 				auto numVal = mModule->mBfIRBuilder->CreatePtrToInt(target.mValue, BfTypeCode_UInt64);
-				auto orVal = mModule->mBfIRBuilder->CreateOr(numVal, mModule->mBfIRBuilder->CreateConst(BfTypeCode_UInt64, 0x8000000000000000ULL));
+				auto orVal = mModule->mBfIRBuilder->CreateOr(numVal, mModule->mBfIRBuilder->CreateConst(BfTypeCode_UInt64, (uint64)0x8000000000000000ULL));
 				valPtr = mModule->mBfIRBuilder->CreateIntToPtr(orVal, mModule->mBfIRBuilder->GetPrimitiveType(BfTypeCode_NullPtr));
 			}
 			else
