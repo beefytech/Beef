@@ -364,7 +364,7 @@ namespace BeefBuild
 		{
 			base.Update(batchStart);
 
-			if (mWorkspace.mProjectLoadState != .Loaded)
+			if ((mWorkspace.mProjectLoadState != .None) && (mWorkspace.mProjectLoadState != .Loaded))
 			{
 				// Wait for workspace to complete loading
 			}
