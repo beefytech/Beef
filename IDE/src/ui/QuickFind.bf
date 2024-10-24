@@ -652,7 +652,10 @@ namespace IDE.ui
 				DataUpdated();
 
 				if (!replaceAll)
+				{
+					mCurFindIdx = searchStart;
 					break;
+				}
 
                 /*if (flags == (byte)SourceElementFlags.Find_CurrentSelection)
                 {
