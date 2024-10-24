@@ -48,7 +48,7 @@ namespace IDE.ui
 				(evt.mKeyCode == .RAlt))
 				return;
 
-			if ((evt.mKeyFlags == 0) &&
+			if ((evt.mKeyFlags.HeldKeys == 0) &&
 				(evt.mKeyCode == .Escape))
 			{
 				evt.mHandled = false;
@@ -57,9 +57,9 @@ namespace IDE.ui
 
 			var keyState = scope KeyState();
 			keyState.mKeyCode = evt.mKeyCode;
-			keyState.mKeyFlags = evt.mKeyFlags;
+			keyState.mKeyFlags = evt.mKeyFlags.HeldKeys;
 			
-			if (keyState.mKeyFlags == 0)
+			if (keyState.mKeyFlags.HeldKeys == 0)
 			{
 				if (keyState.mKeyCode == .Return)
 					return;
@@ -79,7 +79,7 @@ namespace IDE.ui
 			}
 			else
 			{
-				if ((evt.mKeyFlags == 0) &&
+				if ((evt.mKeyFlags.HeldKeys == 0) &&
 					((evt.mKeyCode == .Delete) || (evt.mKeyCode == .Backspace)) &&
 					((Content.HasSelection()) || (!HasKeys)))
 				{

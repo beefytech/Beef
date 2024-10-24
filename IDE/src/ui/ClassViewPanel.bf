@@ -359,7 +359,7 @@ namespace IDE.ui
 			mSearchEdit = new DarkEditWidget();
 			mSearchEdit.mOnKeyDown.Add(new (evt) =>
 				{
-					if ((evt.mKeyCode == .Tab) && (evt.mKeyFlags == 0))
+					if ((evt.mKeyCode == .Tab) && (evt.mKeyFlags.HeldKeys == 0))
 					{
 						mTypeLV.SetFocus();
 					}
@@ -458,7 +458,7 @@ namespace IDE.ui
 			default:
 			}
 
-			if (evt.mKeyFlags == .Ctrl)
+			if (evt.mKeyFlags.HeldKeys == .Ctrl)
 			{
 				switch (evt.mKeyCode)
 				{
