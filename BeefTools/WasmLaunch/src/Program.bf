@@ -73,7 +73,7 @@ class Program
 			ProcessStartInfo procInfo = scope ProcessStartInfo();
 			procInfo.UseShellExecute = false;
 			procInfo.SetFileName(exePath);
-			procInfo.SetArguments(scope $"{Process.CurrentId} {htmlPath}");
+			procInfo.SetArguments(scope $"{Process.CurrentId} \"{htmlPath}\"");
 			procInfo.ActivateWindow = false;
 
 			var process = scope SpawnedProcess();

@@ -12307,7 +12307,7 @@ namespace IDE
 
 			if (launchPath.EndsWith(".html"))
 			{
-				arguments.Set(launchPath);
+				arguments.Set(scope $"\"{launchPath}\"");
 				launchPath.Set(scope $"{gApp.mInstallDir}/WasmLaunch.exe");
 			}
 
