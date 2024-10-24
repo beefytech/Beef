@@ -19,7 +19,8 @@ namespace IDE.util
 				None,
 				FindVersion,
 				Clone,
-				Checkout
+				Checkout,
+				Setup
 			}
 
 			public Kind mKind;
@@ -30,6 +31,7 @@ namespace IDE.util
 			public String mHash ~ delete _;
 			public String mPath ~ delete _;
 			public GitManager.GitInstance mGitInstance ~ _?.ReleaseRef();
+			public IDEApp.ExecutionInstance mExecInstance ~ _?.Release();
 
 			public ~this()
 			{
@@ -41,6 +43,7 @@ namespace IDE.util
 		public bool mInitialized;
 		public String mManagedPath ~ delete _;
 		public bool mFailed;
+		public HashSet<String> mCleanHashSet = new .() ~ DeleteContainerAndItems!(_);
 
 		public void Fail(StringView error)
 		{
@@ -51,6 +54,26 @@ namespace IDE.util
 				mFailed = true;
 				gApp.[Friend]FlushDeferredLoadProjects();
 			}
+		}
+
+		public bool IsPathManaged(StringView path)
+		{
+			if (path.IsEmpty)
+				return false;
+			if (String.IsNullOrEmpty(mManagedPath))
+				return false;
+			if (path.Length < mManagedPath.Length)
+				return false;
+			return Path.Equals(mManagedPath, path.Substring(0, mManagedPath.Length));
+		}
+
+		public bool GetManagedHash(StringView path, String outHash)
+		{
+			StringView subView = path.Substring(mManagedPath.Length + 1);
+			if (subView.Length < 40)
+				return false;
+			outHash.Append(subView.Substring(0, 40));
+			return true;
 		}
 
 		public bool CheckInit()
@@ -79,8 +102,10 @@ namespace IDE.util
 			outPath.AppendF($"{mManagedPath}/{hash}");
 		}
 
-		public bool CheckLock(StringView projectName, String outPath)
+		public bool CheckLock(StringView projectName, String outPath, out bool failed)
 		{
+			failed = false;
+
 			if (!CheckInit())
 				return false;
 
@@ -96,12 +121,19 @@ namespace IDE.util
 			switch (lock)
 			{
 			case .Git(let url, let tag, let hash):
+				if (mCleanHashSet.Contains(hash))
+					return false;
 				var path = GetPath(url, hash, .. scope .());
 				var managedFilePath = scope $"{path}/BeefManaged.toml";
 				if (File.Exists(managedFilePath))
 				{
+					StructuredData sd = scope .();
+					sd.Load(managedFilePath).IgnoreError();
 					outPath.Append(path);
 					outPath.Append("/BeefProj.toml");
+
+					if (!sd.GetBool("Setup"))
+						gApp.OutputErrorLine(scope $"Project '{projectName}' previous failed setup. Clean managed cache to try again.");
 					return true;
 				}
 			default:
@@ -110,20 +142,54 @@ namespace IDE.util
 			return false;
 		}
 
-		public void CloneCompleted(StringView projectName, StringView url, StringView tag, StringView hash, StringView path)
+		public void CloneCompleted(StringView projectName, StringView url, StringView tag, StringView hash, StringView path, bool writeFile, bool setupComplete)
 		{
+			if (mCleanHashSet.GetAndRemoveAlt(hash) case .Ok(let val))
+				delete val;
+
 			gApp.mWorkspace.SetLock(projectName, .Git(new .(url), new .(tag), new .(hash)));
 
-			StructuredData sd = scope .();
-			sd.CreateNew();
-			sd.Add("FileVersion", 1);
-			sd.Add("Version", tag);
-			sd.Add("GitURL", url);
-			sd.Add("GitTag", tag);
-			sd.Add("GitHash", hash);
-			var tomlText = sd.ToTOML(.. scope .());
-			var managedFilePath = scope $"{path}/BeefManaged.toml";
-			File.WriteAllText(managedFilePath, tomlText).IgnoreError();
+			if (writeFile)
+			{
+				StructuredData sd = scope .();
+				sd.CreateNew();
+				sd.Add("FileVersion", 1);
+				sd.Add("Version", tag);
+				sd.Add("GitURL", url);
+				sd.Add("GitTag", tag);
+				sd.Add("GitHash", hash);
+				sd.Add("Setup", setupComplete);
+				var tomlText = sd.ToTOML(.. scope .());
+				var managedFilePath = scope $"{path}/BeefManaged.toml";
+				File.WriteAllText(managedFilePath, tomlText).IgnoreError();
+			}
+		}
+
+		public void RunSetupProject(StringView projectName, StringView url, StringView tag, StringView hash, StringView path)
+		{
+			if (!CheckInit())
+				return;
+
+			String beefBuildPath = scope $"{gApp.mInstallDir}BeefBuild.exe";
+			String args = scope $"-run";
+			var execInst = gApp.DoRun(beefBuildPath, args, path, .None);
+			execInst?.mAutoDelete = false;
+			execInst?.mSmartOutput = true;
+
+			WorkItem workItem = new .();
+			workItem.mKind = .Setup;
+			workItem.mProjectName = new .(projectName);
+			workItem.mURL = new .(url);
+			workItem.mTag = new .(tag);
+			workItem.mHash = new .(hash);
+			workItem.mPath = new .(path);
+			workItem.mExecInstance = execInst;
+			mWorkItems.Add(workItem);
+
+			/*cmd.mDoneEvent.Add(new (success) =>
+				{
+					int a = 123;
+				});*/
 		}
 
 		public void GetWithHash(StringView projectName, StringView url, StringView tag, StringView hash)
@@ -136,25 +202,27 @@ namespace IDE.util
 			Directory.CreateDirectory(urlPath).IgnoreError();
 			if (Directory.Exists(destPath))
 			{
-				var managedFilePath = scope $"{destPath}/BeefManaged.toml";
-				if (File.Exists(managedFilePath))
+				if (!mCleanHashSet.ContainsAlt(hash))
 				{
-					if (gApp.mVerbosity >= .Normal)
+					var managedFilePath = scope $"{destPath}/BeefManaged.toml";
+					if (File.Exists(managedFilePath))
 					{
-						if (tag.IsEmpty)
-							gApp.OutputLine($"Git selecting library '{projectName}' at {hash.Substring(0, 7)}");
-						else
-							gApp.OutputLine($"Git selecting library '{projectName}' tag '{tag}' at {hash.Substring(0, 7)}");
-					}
+						if (gApp.mVerbosity >= .Normal)
+						{
+							if (tag.IsEmpty)
+								gApp.OutputLine($"Git selecting library '{projectName}' at {hash.Substring(0, 7)}");
+							else
+								gApp.OutputLine($"Git selecting library '{projectName}' tag '{tag}' at {hash.Substring(0, 7)}");
+						}
 
-					CloneCompleted(projectName, url, tag, hash, destPath);
-					ProjectReady(projectName, destPath);
-					return;
+						CloneCompleted(projectName, url, tag, hash, destPath, false, false);
+						ProjectReady(projectName, destPath);
+						return;
+					}
 				}
 
 				String tempDir = new $"{destPath}__{(int32)Internal.GetTickCountMicro():X}";
 
-				//if (Directory.DelTree(destPath) case .Err)
 				if (Directory.Move(destPath, tempDir) case .Err)
 				{
 					delete tempDir;
@@ -272,16 +340,31 @@ namespace IDE.util
 			// First handle active git items
 			for (var workItem in mWorkItems)
 			{
+				bool removeItem = false;
 				if (workItem.mGitInstance == null)
-					continue;
-
-				if (!workItem.mGitInstance.mDone)
+				{
+					switch (workItem.mKind)
+					{
+					case .Setup:
+						if ((workItem.mExecInstance == null) || (workItem.mExecInstance.mDone))
+						{
+							bool success = workItem.mExecInstance?.mExitCode == 0;
+							String projPath = Path.GetAbsolutePath("../", workItem.mPath, .. scope .());
+							CloneCompleted(workItem.mProjectName, workItem.mURL, workItem.mTag, workItem.mHash, projPath, true, success);
+							if (success)
+								ProjectReady(workItem.mProjectName, projPath);
+							else
+								gApp.OutputErrorLine(scope $"Failed to setup project '{workItem.mProjectName}' located at '{projPath}'");
+							removeItem = true;
+						}
+					default:
+					}
+				}
+				else if (!workItem.mGitInstance.mDone)
 				{
 					executingGit = true;
-					continue;
 				}
-
-				if (!workItem.mGitInstance.mFailed)
+				else if (!workItem.mGitInstance.mFailed)
 				{
 					switch (workItem.mKind)
 					{
@@ -343,21 +426,40 @@ namespace IDE.util
 					case .Clone:
 						Checkout(workItem.mProjectName, workItem.mURL, workItem.mPath, workItem.mTag, workItem.mHash);
 					case .Checkout:
-						CloneCompleted(workItem.mProjectName, workItem.mURL, workItem.mTag, workItem.mHash, workItem.mPath);
-						ProjectReady(workItem.mProjectName, workItem.mPath);
-
 						if (gApp.mVerbosity >= .Normal)
 							gApp.OutputLine($"Git cloning library '{workItem.mProjectName}' done.");
+
+						String setupPath = scope $"{workItem.mPath}/Setup";
+
+						/*if (workItem.mProjectName == "BeefProj0")
+						{
+							setupPath.Set("C:/proj/BeefProj0/Setup");
+						}*/
+
+						if (Directory.Exists(setupPath))
+						{
+							RunSetupProject(workItem.mProjectName, workItem.mURL, workItem.mTag, workItem.mHash, setupPath);
+						}
+						else
+						{
+							CloneCompleted(workItem.mProjectName, workItem.mURL, workItem.mTag, workItem.mHash, workItem.mPath, true, true);
+							ProjectReady(workItem.mProjectName, workItem.mPath);
+						}
 					default:
 					}
+					removeItem = true;
 				}
 				else
 				{
 					Fail(scope $"Failed to retrieve project '{workItem.mProjectName}' at '{workItem.mURL}'");
+					removeItem = true;
 				}
 
-				@workItem.Remove();
-				delete workItem;
+				if (removeItem)
+				{
+					@workItem.Remove();
+					delete workItem;
+				}
 			}
 
 			if (!executingGit)

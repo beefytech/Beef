@@ -515,6 +515,8 @@ namespace IDE
 			public bool mAutoDelete = true;
 			public bool mCanceled;
 			public bool mIsTargetRun;
+			public bool mDone;
+			public bool mSmartOutput;
 
 			public ~this()
 			{
@@ -544,6 +546,14 @@ namespace IDE
 			{
 				mCanceled = true;
 				mProcess.Kill(0, .KillChildren);
+			}
+
+			public void Release()
+			{
+				if (!mDone)
+					mAutoDelete = true;
+				else
+					delete this;
 			}
 		}
 		List<ExecutionInstance> mExecutionInstances = new List<ExecutionInstance>() ~ DeleteContainerAndItems!(_);
@@ -3307,7 +3317,7 @@ namespace IDE
 			case .Git(let url, let ver):
 			
 				var checkPath = scope String();
-				if (mPackMan.CheckLock(projectName, checkPath))
+				if (mPackMan.CheckLock(projectName, checkPath, var projectFailed))
 				{
 					projectFilePath = scope:: String(checkPath);
 				}
@@ -8979,7 +8989,7 @@ namespace IDE
 
 		const int cArgFileThreshold = 0x2000 - 1;
 
-		public ExecutionQueueCmd QueueRun(String fileName, String args, String workingDir, ArgsFileKind argsFileKind = .None)
+		public ExecutionQueueCmd QueueRun(StringView fileName, StringView args, StringView workingDir, ArgsFileKind argsFileKind = .None)
 		{
 			var executionQueueCmd = new ExecutionQueueCmd();
 			executionQueueCmd.mFileName = new String(fileName);
@@ -8988,7 +8998,7 @@ namespace IDE
 			if (fileName.Length + args.Length + 1 > cArgFileThreshold)
 			{
 				// Only use UTF16 if we absolutely need to
-				if ((argsFileKind == .UTF16WithBom) && (!args.HasMultibyteChars()))
+				if ((argsFileKind == .UTF16WithBom) && (!args.HasMultibyteChars))
 					executionQueueCmd.mUseArgsFile = .UTF8;
 				else
 					executionQueueCmd.mUseArgsFile = argsFileKind;
@@ -9132,11 +9142,11 @@ namespace IDE
 			NoWait = 8,
 		}
 
-		public ExecutionInstance DoRun(String inFileName, String args, String workingDir, ArgsFileKind useArgsFile, Dictionary<String, String> envVars = null, String stdInData = null, RunFlags runFlags = .None, String reference = null)
+		public ExecutionInstance DoRun(StringView inFileName, StringView args, StringView workingDir, ArgsFileKind useArgsFile, Dictionary<String, String> envVars = null, String stdInData = null, RunFlags runFlags = .None, String reference = null)
 		{
 			//Debug.Assert(executionInstance == null);
 
-			String fileName = scope String(inFileName ?? "");
+			String fileName = scope String(inFileName);
 			QuoteIfNeeded(fileName);
 
 			ProcessStartInfo startInfo = scope ProcessStartInfo();
@@ -9330,7 +9340,10 @@ namespace IDE
 				{
 					for (var str in executionInstance.mDeferredOutput)
 					{
-						OutputLine(str);
+						if (executionInstance.mSmartOutput)
+							OutputLineSmart(str);
+						else
+							OutputLine(str);
 						delete str;
 					}
 					executionInstance.mDeferredOutput.Clear();
@@ -9406,6 +9419,7 @@ namespace IDE
 				if (isDone)
 				{
 					mExecutionInstances.RemoveAt(0);
+					executionInstance.mDone = true;
 					if (executionInstance.mAutoDelete)
 						delete executionInstance;
 				}

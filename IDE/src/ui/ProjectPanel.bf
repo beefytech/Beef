@@ -3209,6 +3209,26 @@ namespace IDE.ui
 								}
 						    });
 
+						item = menu.AddItem("Clear Managed Cache");
+						item.mDisabled = (projectItem == null) || (!gApp.mPackMan.IsPathManaged(projectItem.mProject.mProjectDir));
+						item.mOnMenuItemSelected.Add(new (item) =>
+						    {
+								var projectItem = GetSelectedProjectItem();
+								if (projectItem != null)
+								{
+									let project = projectItem.mProject;
+									String hash = scope .();
+									if (gApp.mPackMan.GetManagedHash(project.mProjectDir, hash))
+									{
+										gApp.[Friend]SaveWorkspaceLockData(true);
+										gApp.CloseOldBeefManaged();
+										if (gApp.mPackMan.mCleanHashSet.TryAdd(hash, var entryPtr))
+											*entryPtr = new .(hash);
+										gApp.[Friend]ReloadWorkspace();
+									}
+								}
+						    });
+
 						item = menu.AddItem("Lock Project");
 						if (projectItem.mProject.mLocked)
 							item.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);

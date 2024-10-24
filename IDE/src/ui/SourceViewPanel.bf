@@ -432,7 +432,7 @@ namespace IDE.ui
 		public bool mLoadFailed;
 		String mOldVerLoadCmd ~ delete _;
 		HTTPRequest mOldVerHTTPRequest ~ delete _;
-		IDEApp.ExecutionInstance mOldVerLoadExecutionInstance ~ { if (_ != null) _.mAutoDelete = true; };
+		IDEApp.ExecutionInstance mOldVerLoadExecutionInstance ~ _?.Release();
 		SourceFindTask mSourceFindTask ~ delete _;
 		HoverResolveTask mHoverResolveTask ~ delete _;
 		bool mWantsFastClassify;
