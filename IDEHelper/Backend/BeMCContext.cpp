@@ -6696,7 +6696,7 @@ void BeMCContext::InitializedPassHelper(BeMCBlock* mcBlock, BeVTrackingGenContex
 				auto cmpToBoolInst = AllocInst(BeMCInstKind_CmpToBool, BeMCOperand::FromCmpKind(cmpResult.mCmpKind), BeMCOperand(), instIdx + 1);
 				cmpToBoolInst->mResult = BeMCOperand::FromVReg(cmpResult.mResultVRegIdx);
 				if (cmpResult.mInverted)
-					AllocInst(BeMCInstKind_Not, cmpToBoolInst->mResult, instIdx + 2);
+					AllocInst(BeMCInstKind_Xor, cmpToBoolInst->mResult, BeMCOperand::FromImmediate(1), instIdx + 2);
 			}
 
 			inst->mResult = BeMCOperand();
