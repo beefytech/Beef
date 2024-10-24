@@ -321,6 +321,54 @@ namespace System.Collections
 			return false;
 		}
 
+		bool RemoveAlt<TAltKey>(TAltKey item, T* outValue) where TAltKey : IHashable where bool : operator T == TAltKey
+		{
+			if (mBuckets != null)
+			{
+				int32 hashCode = InternalGetHashCodeAlt(item);
+				int32 bucket = hashCode % (int32)mBuckets.Count;
+				int32 last = -1;
+				for (int32 i = mBuckets[bucket] - 1; i >= 0; last = i,i = mSlots[i].mNext)
+				{
+					if (mSlots[i].mHashCode == hashCode && /*m_comparer.Equals*/(mSlots[i].mValue == item))
+					{
+						if (last < 0)
+						{
+							// first iteration; update buckets
+							mBuckets[bucket] = mSlots[i].mNext + 1;
+						}
+						else
+						{
+							// subsequent iterations; update 'next' pointers
+							mSlots[last].mNext = mSlots[i].mNext;
+						}
+						if (outValue != null)
+							*outValue = mSlots[i].mValue;
+						mSlots[i].mHashCode = -1;
+						mSlots[i].mValue = default(T);
+						mSlots[i].mNext = mFreeList;
+
+						mCount--;
+#if VERSION_HASHSET
+						mVersion++;
+#endif
+						if (mCount == 0)
+						{
+							mLastIndex = 0;
+							mFreeList = -1;
+						}
+						else
+						{
+							mFreeList = i;
+						}
+						return true;
+					}
+				}
+			}
+			// either m_buckets is null or wasn't found
+			return false;
+		}
+
 		/// Remove item from this container
 		/// @param item item to remove
 		/// @return true if removed; false if not (i.e. if the item wasn't in the HashSet)
@@ -336,6 +384,17 @@ namespace System.Collections
 		{
 			T value = ?;
 			if (!Remove(item, &value))
+				return .Err;
+			return .Ok(value);
+		}
+
+		/// Remove item from this container
+		/// @param item item to remove
+		/// @return .Ok(value) if removed, with 'value' being the stored value; .Err if not (i.e. if the item wasn't in the HashSet)
+		public Result<T> GetAndRemoveAlt<TAltKey>(TAltKey item) where TAltKey : IHashable where bool : operator T == TAltKey
+		{
+			T value = ?;
+			if (!RemoveAlt(item, &value))
 				return .Err;
 			return .Ok(value);
 		}
@@ -1198,7 +1257,7 @@ namespace System.Collections
 			return GetHashKey(item.GetHashCode());
 		}
 
-		private int InternalGetHashCodeAlt<TAltKey>(TAltKey item) where TAltKey : IHashable
+		private int32 InternalGetHashCodeAlt<TAltKey>(TAltKey item) where TAltKey : IHashable
 		{
 			if (item == null)
 				return 0;
