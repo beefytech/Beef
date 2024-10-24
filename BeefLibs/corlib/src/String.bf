@@ -2745,6 +2745,20 @@ namespace System
 			return UTF8Enumerator(Ptr, startIdx, mLength);
 		}
 
+		public bool HasMultibyteChars
+		{
+			get
+			{
+				char8* ptr = Ptr;
+				int len = Length;
+				for (int i < len)
+					if (ptr[i] >= '\x80')
+						return true;
+				return false;
+			}
+		}
+
+		[Obsolete("HasMultibyteChars() method has been replaced with the HasMultibyteChars property")]
 		public bool HasMultibyteChars()
 		{
 			char8* ptr = Ptr;
@@ -3704,6 +3718,19 @@ namespace System
 					if (!mPtr[i].IsWhiteSpace)
 						return false;
 				return true;
+			}
+		}
+
+		public bool HasMultibyteChars
+		{
+			get
+			{
+				char8* ptr = Ptr;
+				int len = Length;
+				for (int i < len)
+					if (ptr[i] >= '\x80')
+						return true;
+				return false;
 			}
 		}
 
