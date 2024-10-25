@@ -166,6 +166,12 @@ namespace System.Net
 		public const int SOCK_DGRAM = 2;
 		public const int IPPROTO_TCP = 6;
 		public const int IPPROTO_UDP = 17;
+
+		public const int TCP_NODELAY = 1;
+		public const int TCP_MAXSEG = 2;
+		public const int TCP_CORK = 3;
+		public const int TCP_KEEPIDLE = 4;
+
 #if BF_PLATFORM_WINDOWS
 		public const int SOL_SOCKET = 0xffff;
 		public const int SO_REUSEADDR = 0x0004;
