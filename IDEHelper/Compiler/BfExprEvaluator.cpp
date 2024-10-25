@@ -22135,7 +22135,7 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 		if (indexArgument.mValue.IsConst())
 		{
 			auto indexConst = mModule->mBfIRBuilder->GetConstant(indexArgument.mValue);
-			if (indexConst->mUInt64 >= (uint64)sizedArrayType->mElementCount)
+			if ((BfIRBuilder::IsIntable(indexConst->mTypeCode)) && (indexConst->mUInt64 >= (uint64)sizedArrayType->mElementCount))
 			{
 				if ((!mModule->IsInSpecializedSection()) && (checkedKind != BfCheckedKind_Unchecked))
 				{
