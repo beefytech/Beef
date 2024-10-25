@@ -102,6 +102,15 @@ namespace IDE.util
 			outPath.AppendF($"{mManagedPath}/{hash}");
 		}
 
+		bool WantsHashClean(StringView hash)
+		{
+			if (mCleanHashSet.ContainsAlt(hash))
+				return true;
+			if (mCleanHashSet.Contains("*"))
+				return true;
+			return false;
+		}
+
 		public bool CheckLock(StringView projectName, String outPath, out bool failed)
 		{
 			failed = false;
@@ -121,7 +130,7 @@ namespace IDE.util
 			switch (lock)
 			{
 			case .Git(let url, let tag, let hash):
-				if (mCleanHashSet.Contains(hash))
+				if (WantsHashClean(hash))
 					return false;
 				var path = GetPath(url, hash, .. scope .());
 				var managedFilePath = scope $"{path}/BeefManaged.toml";
@@ -192,6 +201,35 @@ namespace IDE.util
 				});*/
 		}
 
+		public void DeleteDir(StringView path)
+		{
+			String tempDir;
+
+			if (path.Contains("__DELETE__"))
+			{
+				tempDir = new .(path);
+			}
+			else
+			{
+				tempDir = new $"{path}__DELETE__{(int32)Internal.GetTickCountMicro():X}";
+				if (Directory.Move(path, tempDir) case .Err)
+				{
+					delete tempDir;
+					Fail(scope $"Failed to remove directory '{path}'");
+					return;
+				}
+			}
+
+			ThreadPool.QueueUserWorkItem(new () =>
+				{
+					Directory.DelTree(tempDir);
+				}
+				~
+				{
+					delete tempDir;
+				});
+		}
+
 		public void GetWithHash(StringView projectName, StringView url, StringView tag, StringView hash)
 		{
 			if (!CheckInit())
@@ -202,7 +240,7 @@ namespace IDE.util
 			Directory.CreateDirectory(urlPath).IgnoreError();
 			if (Directory.Exists(destPath))
 			{
-				if (!mCleanHashSet.ContainsAlt(hash))
+				if (!WantsHashClean(hash))
 				{
 					var managedFilePath = scope $"{destPath}/BeefManaged.toml";
 					if (File.Exists(managedFilePath))
@@ -221,23 +259,7 @@ namespace IDE.util
 					}
 				}
 
-				String tempDir = new $"{destPath}__{(int32)Internal.GetTickCountMicro():X}";
-
-				if (Directory.Move(destPath, tempDir) case .Err)
-				{
-					delete tempDir;
-					Fail(scope $"Failed to remove directory '{destPath}'");
-					return;
-				}
-
-				ThreadPool.QueueUserWorkItem(new () =>
-					{
-						Directory.DelTree(tempDir);
-					}
-					~
-					{
-						delete tempDir;
-					});
+				DeleteDir(destPath);
 			}
 
 			if (gApp.mVerbosity >= .Normal)
@@ -508,6 +530,28 @@ namespace IDE.util
 
 			Fail("Aborted project transfer");
 			mWorkItems.ClearAndDeleteItems();
+		}
+
+		public void CleanCache()
+		{
+			if (!CheckInit())
+				return;
+
+			if (mManagedPath.IsEmpty)
+				return;
+
+			for (var entry in Directory.EnumerateDirectories(mManagedPath))
+			{
+				if (!entry.IsDirectory)
+					continue;
+
+				var fileName = entry.GetFileName(.. scope .());
+				if (fileName.Length < 40)
+					continue;
+
+				var filePath = entry.GetFilePath(.. scope .());
+				DeleteDir(filePath);
+			}
 		}
 	}
 }

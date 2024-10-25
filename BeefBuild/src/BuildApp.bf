@@ -92,6 +92,14 @@ namespace BeefBuild
 				mWantsClean = false;
 			}
 
+			if (mVerb == .CleanCache)
+			{
+				LoadConfig();
+				mPackMan.CleanCache();
+				Stop();
+				return;
+			}
+
 			if (mWorkspace.mDir == null)
 			{
 				mWorkspace.mDir = new String();
@@ -193,6 +201,10 @@ namespace BeefBuild
 					return true;
 				case "-crash":
 					Runtime.FatalError("-crash specified on command line");
+				case "-cleancache":
+					if (mPackMan.mCleanHashSet.TryAddAlt("*", var entryPtr))
+						*entryPtr = new .("*");
+					return true;
 				}
 
 				if (!key.StartsWith('-'))
@@ -207,6 +219,8 @@ namespace BeefBuild
 							mVerb = .None;
 						case "new":
 							mVerb = .New;
+						case "cleancache":
+							mVerb = .CleanCache;
 						case "generate":
 							mWantsGenerate = true;
 						case "run":
@@ -284,6 +298,10 @@ namespace BeefBuild
 					    mVerbosity = .Diagnostic;
 					else
 						Fail(scope String()..AppendF("Invalid verbosity option: {}", value));
+					return true;
+				case "-cleancache":
+					if (mPackMan.mCleanHashSet.TryAddAlt(value, var entryPtr))
+						*entryPtr = new .(value);
 					return true;
 				}
 			}

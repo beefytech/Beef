@@ -77,7 +77,8 @@ namespace IDE
 		Test,
 		Run,
 		Update,
-		GetVersion
+		GetVersion,
+		CleanCache
 	}
 
 	enum HotResolveState
@@ -13039,7 +13040,7 @@ namespace IDE
 				LoadConfig();
 		}
 
-		void LoadConfig()
+		protected void LoadConfig()
 		{
 			delete mBeefConfig;
 			mBeefConfig = new BeefConfig();
