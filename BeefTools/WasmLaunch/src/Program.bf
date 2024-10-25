@@ -36,18 +36,19 @@ class Program
 			process.Kill();
 	}
 
-	static void WaitForPort(int32 port)
+	static bool WaitForPort(int32 port, int32 maxWaitTime)
 	{
 		Stopwatch sw = scope .();
 		sw.Start();
 
 		Socket.Init();
-		while (sw.ElapsedMilliseconds < 5000)
+		while (sw.ElapsedMilliseconds < maxWaitTime)
 		{
 			var socket = scope Socket();
 			if (socket.Connect("127.0.0.1", port, var sockaddr) case .Ok)
-				return;
+				return true;
 		}
+		return false;
 	}
 
 	public static void OpenURL(StringView url)
@@ -109,13 +110,24 @@ class Program
 		ProcessStartInfo procInfo = scope ProcessStartInfo();
 		procInfo.UseShellExecute = false;
 		procInfo.SetFileName(serverPath);
-		procInfo.SetArguments(scope $"-p {port} {htmlDir}");
+		procInfo.SetArguments(scope $"-p {port} \"{htmlDir}\"");
 		procInfo.CreateNoWindow = true;
 
 		var process = scope SpawnedProcess();
 		process.Start(procInfo).IgnoreError();
 
-		WaitForPort(port);
+		Stopwatch sw = scope .()..Start();
+		while (true)
+		{
+			if (WaitForPort(port, 1000))
+				break;
+			if ((process.WaitFor(0)) || (sw.ElapsedMilliseconds >= 15*1000))
+			{
+				Windows.MessageBoxA(default, scope $"Failed to start miniserve on port {port}", "WASM LAUNCH ERROR", Windows.MB_ICONHAND | Windows.MB_OK);
+				return 1;
+			}
+		}
+
 		OpenURL(scope $"http://127.0.0.1:{port}/{htmlFileName}");
 
 		while (true)

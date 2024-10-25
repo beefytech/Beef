@@ -1432,7 +1432,7 @@ namespace IDE
 		    String outputDir = scope String();
 			String absOutputDir = scope String();
 			
-			if (testProjectInfo != null)
+			if ((testProjectInfo != null) && (mPlatformType != .Wasm))
 			{
 				absOutputDir.Append(projectBuildDir);
 				outputDir = absOutputDir;

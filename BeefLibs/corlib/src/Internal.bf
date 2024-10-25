@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Reflection;
+using System.Diagnostics;
 
 namespace System
 {
@@ -98,6 +99,96 @@ namespace System
 		[Intrinsic("returnaddress")]
 		public static extern void* GetReturnAddress(int32 level = 0);
 
+#if BF_PLATFORM_WASM
+		static int32 sTestIdx;
+		class TestEntry
+		{
+			public String mName ~ delete _;
+			public String mFilePath ~ delete _;
+			public int mLine;
+			public int mColumn;
+			public bool mShouldFail;
+			public bool mProfile;
+			public bool mIgnore;
+			public bool mFailed;
+			public bool mExecuted;
+		}
+		static List<TestEntry> sTestEntries ~ DeleteContainerAndItems!(_);
+
+		[CallingConvention(.Cdecl), LinkName("Test_Init_Wasm")]
+		static void Test_Init(char8* testData)
+		{
+			sTestEntries = new .();
+
+			for (var cmd in StringView(testData).Split('\n'))
+			{
+				List<StringView> cmdParts = scope .(cmd.Split('\t'));
+				let attribs = cmdParts[1];
+
+				TestEntry testEntry = new TestEntry();
+				testEntry.mName = new String(cmdParts[0]);
+				testEntry.mFilePath = new String(cmdParts[2]);
+				testEntry.mLine = int32.Parse(cmdParts[3]).Get();
+				testEntry.mColumn = int32.Parse(cmdParts[4]).Get();
+				List<StringView> attributes = scope .(attribs.Split('\a'));
+				for(var i in attributes)
+				{
+					if(i.StartsWith('\v'))
+					{
+						if(i == "Sf")
+							testEntry.mShouldFail = true;
+						else if(i == "Pr")
+							testEntry.mProfile = true;
+						else if(i == "Ig")
+							testEntry.mIgnore = true;
+					}
+					else if(i.StartsWith("Name"))
+					{
+						testEntry.mName.Clear();
+						scope String(i.Substring("Name".Length)).Escape(testEntry.mName);
+					}
+				}
+				sTestEntries.Add(testEntry);
+			}
+		}
+
+		[CallingConvention(.Cdecl), LinkName("Test_Error_Wasm")]
+		static void Test_Error(char8* error)
+		{
+			Debug.WriteLine(scope $"TEST ERROR: {StringView(error)}");
+		}
+
+		[CallingConvention(.Cdecl), LinkName("Test_Write_Wasm")]
+		static void Test_Write(char8* str)
+		{
+			Debug.Write(StringView(str));
+		}
+
+		[CallingConvention(.Cdecl), LinkName("Test_Query_Wasm")]
+		static int32 Test_Query()
+		{
+			while (sTestIdx < sTestEntries.Count)
+			{
+				var testEntry = sTestEntries[sTestIdx];
+				if ((testEntry.mIgnore) || (testEntry.mShouldFail))
+				{
+					sTestIdx++;
+					continue;
+				}
+
+				Debug.WriteLine($"Test '{testEntry.mName}'");
+				break;
+			}
+			
+			return sTestIdx++;
+		}
+
+		[CallingConvention(.Cdecl), LinkName("Test_Finish_Wasm")]
+		static void Test_Finish()
+		{
+			Debug.WriteLine("Tests done.");
+		}
+#else
 		[CallingConvention(.Cdecl)]
 		static extern void Test_Init(char8* testData);
 		[CallingConvention(.Cdecl)]
@@ -108,6 +199,7 @@ namespace System
 		static extern int32 Test_Query();
 		[CallingConvention(.Cdecl)]
 		static extern void Test_Finish();
+#endif
 
 		static void* sModuleHandle;
 		[AlwaysInclude]

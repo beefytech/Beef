@@ -614,6 +614,15 @@ namespace IDE
 			}
 		}
 
+		public Workspace.PlatformType CurrentPlatform
+		{
+			get
+			{
+				Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
+				return Workspace.PlatformType.GetFromName(mPlatformName, workspaceOptions.mTargetTriple);
+			}
+		}
+
 		[CallingConvention(.Stdcall), CLink]
 		static extern void IDEHelper_ProgramStart();
 		[CallingConvention(.Stdcall), CLink]
@@ -5864,6 +5873,15 @@ namespace IDE
 		[IDECommand]
 		protected void RunTests(bool includeIgnored, bool debug)
 		{
+			var workspaceOptions = GetCurWorkspaceOptions();
+			if (CurrentPlatform == .Wasm)
+			{
+				if (workspaceOptions.mBuildKind != .Test)
+					mMainFrame.mStatusBar.SelectConfig("Test");
+				CompileAndRun(true);
+				return;
+			}
+
 			if (mOutputPanel != null)
 			{
 				ShowPanel(mOutputPanel, false);
@@ -5884,7 +5902,6 @@ namespace IDE
 
 			String prevConfigName = scope String(mConfigName);
 
-			var workspaceOptions = GetCurWorkspaceOptions();
 			if (workspaceOptions.mBuildKind != .Test)
 			{
 				mMainFrame.mStatusBar.SelectConfig("Test");
@@ -5898,10 +5915,12 @@ namespace IDE
 				return;
 			}
 
+			var platformType = Workspace.PlatformType.GetFromName(gApp.mPlatformName, workspaceOptions.mTargetTriple);
+
 			mLastTestFailed = false;
 			mTestManager = new TestManager();
 			mTestManager.mPrevConfigName = new String(prevConfigName);
-			mTestManager.mDebug = debug;
+			mTestManager.mDebug = debug && (platformType != .Wasm);
 			mTestManager.mIncludeIgnored = includeIgnored;
 
 			if (mOutputPanel != null)
@@ -12093,7 +12112,7 @@ namespace IDE
 
 			if ((compileKind == .RunAfter) || (compileKind == .DebugAfter))
 			{
-				if (workspaceOptions.mBuildKind == .Test)
+				if ((workspaceOptions.mBuildKind == .Test) && (platform != .Wasm))
 				{
 					OutputErrorLine("Cannot directly run Test workspace configurations. Use the 'Test' menu to run or debug tests.");
 					return false;
