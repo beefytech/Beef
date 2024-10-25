@@ -92,6 +92,7 @@ namespace Tests
 				Test.Assert(ptr[i] == data[i]);
 		}
 
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
 		[Test]
 		public static void Test()
 		{
@@ -129,5 +130,6 @@ namespace Tests
 			Test.Assert(cf.mC == 234);
 			cf.mB.Append('!', 2048);
 		}
+#endif
 	}
 }

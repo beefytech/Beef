@@ -1259,7 +1259,7 @@ void BfModule::SetupIRBuilder(bool dbgVerifyCodeGen)
 		//mBfIRBuilder->mDbgVerifyCodeGen = true;
 		if (
 			(mModuleName == "-")
-			|| (mModuleName == "")
+			//|| (mModuleName == "")
 			//|| (mModuleName == "Tests_FuncRefs")
 			)
 			mBfIRBuilder->mDbgVerifyCodeGen = true;

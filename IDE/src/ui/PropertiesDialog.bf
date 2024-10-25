@@ -1,3 +1,5 @@
+#pragma warning disable 168
+
 using System;
 using System.Collections;
 using System.Diagnostics;
@@ -1600,6 +1602,14 @@ namespace IDE.ui
 				float floatVal = propEntry.mCurValue.Get<float>();
 				floatVal.ToString(valStr);
 				valueItem.Label = valStr;
+			}
+			else if (curVariantType == typeof(Workspace.ConfigSelection))
+			{
+				var platformItem = (DarkListViewItem)propEntry.mListViewItem.GetSubItem(2);
+
+				var configSelection = propEntry.mCurValue.Get<Workspace.ConfigSelection>();
+				valueItem.Label = configSelection.mConfig;
+				platformItem.Label = configSelection.mPlatform;
 			}
 			else
 				ThrowUnimplemented();

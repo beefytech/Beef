@@ -14018,7 +14018,14 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
  	else if ((closureTypeInst != NULL) && (captureThisByValue))
  	{
  		// When we need to aggregrate a splat for a target, we just point out delegate's mTarget to inside ourselves where we aggregated the value
- 		auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(mResult.mValue, 0, 1);
+		int dataIdx = 1;
+		if (!closureTypeInst->mFieldInstances.IsEmpty())
+		{
+			auto& fieldInst = closureTypeInst->mFieldInstances[0];
+			BF_ASSERT(fieldInst.GetFieldDef()->mName == "__this");
+			dataIdx = fieldInst.mDataIdx;
+		}
+ 		auto fieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(mResult.mValue, 0, dataIdx);
  		target = mModule->LoadValue(target);
  		mModule->mBfIRBuilder->CreateStore(target.mValue, fieldPtr);
  		target = BfTypedValue(fieldPtr, target.mType, true);

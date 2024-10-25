@@ -1801,11 +1801,11 @@ void BfTypeInstance::Dispose()
 	mTypeDef = NULL;
 }
 
-int BfTypeInstance::GetSplatCount()
+int BfTypeInstance::GetSplatCount(bool force)
 {
 	if (IsValuelessType())
 		return 0;
-	if (!mIsSplattable)
+	if ((!mIsSplattable) && (!force))
 		return 1;
 	int splatCount = 0;
 	BfTypeUtils::SplatIterate([&](BfType* checkType) { splatCount++; }, this);
@@ -2047,6 +2047,30 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 		return false;
 
 	bool deepCheck = false;
+
+	if (mModule->mCompiler->mOptions.mMachineType == BfMachineType_Wasm32)
+	{
+		if (IsComposite())
+		{
+			if (GetSplatCount(true) == 1)
+			{
+				BfType* componentType = NULL;
+				BfTypeUtils::SplatIterate([&](BfType* checkType) { componentType = checkType; }, this);
+				if (componentType != NULL)
+				{
+					if (componentType->IsPrimitiveType())
+					{
+						auto primType = (BfPrimitiveType*)componentType;
+						if (outTypeCode != NULL)
+							*outTypeCode = primType->mTypeDef->mTypeCode;
+						return true;
+					}
+				}
+			}
+			else
+				return false;
+		}
+	}
 
 	if (mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows)
 	{

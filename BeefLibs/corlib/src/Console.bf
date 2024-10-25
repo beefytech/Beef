@@ -90,11 +90,12 @@ namespace System
 
 		static function void(StringView str) OutString = => OutString_Simple;
 
-#if !BF_RUNTIME_DISABLE
+#if !BF_RUNTIME_DISABLE && !BF_PLATFORM_WASM
 		private static extern void PutChars(char8* c, int32 len);
 #else
 		[CLink]
-		private static extern void putchar(char8 c);
+		private static extern int32 putchar(char8 c);
+		[LinkName("Console_PutChars")]
 		private static void PutChars(char8* c, int32 len)
 		{
 			for (int i < len)

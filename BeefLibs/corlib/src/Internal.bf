@@ -32,7 +32,7 @@ namespace System
 	[CRepr]
 	struct VarArgs
 	{
-#if BF_PLATFORM_WINDOWS
+#if BF_PLATFORM_WINDOWS || BF_PLATFORM_WASM
 		void* mVAList;
 #else
 		int[5] mVAList; // Conservative size for va_list
@@ -67,7 +67,7 @@ namespace System
 
 		public void* ToVAList() mut
 		{
-#if BF_PLATFORM_WINDOWS
+#if BF_PLATFORM_WINDOWS || BF_PLATFORM_WASM
 			return mVAList;
 #else
 			return &mVAList;
@@ -101,6 +101,8 @@ namespace System
 
 #if BF_PLATFORM_WASM
 		static int32 sTestIdx;
+		static int32 sRanTestCount;
+		static int32 sErrorCount;
 		class TestEntry
 		{
 			public String mName ~ delete _;
@@ -155,6 +157,7 @@ namespace System
 		[CallingConvention(.Cdecl), LinkName("Test_Error_Wasm")]
 		static void Test_Error(char8* error)
 		{
+			sErrorCount++;
 			Debug.WriteLine(scope $"TEST ERROR: {StringView(error)}");
 		}
 
@@ -179,14 +182,23 @@ namespace System
 				Debug.WriteLine($"Test '{testEntry.mName}'");
 				break;
 			}
-			
+
+			sRanTestCount++;
 			return sTestIdx++;
 		}
 
 		[CallingConvention(.Cdecl), LinkName("Test_Finish_Wasm")]
 		static void Test_Finish()
 		{
-			Debug.WriteLine("Tests done.");
+			sRanTestCount--;
+
+			String completeStr = scope $"Completed {sRanTestCount} of {sTestEntries.Count} tests.'";
+			Debug.WriteLine(completeStr);
+			if (sErrorCount > 0)
+			{
+				String failStr = scope $"ERROR: Failed {sErrorCount} test{((sErrorCount != 1) ? "s" : "")}";
+				Debug.WriteLine(failStr);
+			}
 		}
 #else
 		[CallingConvention(.Cdecl)]

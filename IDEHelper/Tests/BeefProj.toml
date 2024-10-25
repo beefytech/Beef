@@ -19,3 +19,7 @@ PreBuildCmds = ["/usr/bin/c++ $(ProjectDir)/CLib/main.cpp -g -c -o $(ProjectDir)
 [Configs.Test.macOS]
 OtherLinkFlags = "$(LinkFlags) $(ProjectDir)/CLib/main.o"
 PreBuildCmds = ["/usr/bin/c++ $(ProjectDir)/CLib/main.cpp -g -c -o $(ProjectDir)/CLib/main.o"]
+
+[Configs.Test.wasm32]
+OtherLinkFlags = "$(LinkFlags) $(ProjectDir)/CLib/main_wasm.o -sSTACK_SIZE=1048576"
+PreBuildCmds = ["$(EmccPath) $(ProjectDir)/CLib/main.cpp -g -c -o $(ProjectDir)/CLib/main_wasm.o"]

@@ -10881,6 +10881,9 @@ namespace IDE
 								case "VSToolPath_x64":
 									newString = gApp.mSettings.mVSSettings.mBin64Path;
 									IDEUtils.FixFilePath(newString);
+								case "EmccPath":
+									newString = scope:ReplaceBlock String();
+									newString.AppendF($"{gApp.mSettings.mEmscriptenPath}/upstream/emscripten/emcc.bat");
 								}
 							}
 

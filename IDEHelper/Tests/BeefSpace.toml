@@ -11,6 +11,11 @@ IntermediateType = "ObjectAndIRCode"
 [Configs.Debug.Win32]
 IntermediateType = "ObjectAndIRCode"
 
+[Configs.Debug.wasm32]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+
 [Configs.Test.Win64]
 IntermediateType = "ObjectAndIRCode"
 COptimizationLevel = "O2"
@@ -26,6 +31,12 @@ COptimizationLevel = "O2"
 ConfigSelections = {TestsB = {Config = "Test"}}
 
 [Configs.Test.Win32]
+ConfigSelections = {TestsB = {Config = "Test"}}
+
+[Configs.Test.wasm32]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
 IntermediateType = "ObjectAndIRCode"
 ConfigSelections = {TestsB = {Config = "Test"}}
 
@@ -50,3 +61,13 @@ EmitObjectAccessCheck = false
 EnableRealtimeLeakCheck = false
 AllocStackTraceDepth = 0
 COptimizationLevel = "O2"
+
+[Configs.TestFail.wasm32]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+
+[Configs.Paranoid.wasm32]
+AllocType = "CRT"
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false

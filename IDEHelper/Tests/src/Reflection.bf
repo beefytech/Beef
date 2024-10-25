@@ -259,6 +259,7 @@ namespace Tests
 			Test.Assert(t.InstanceSize == 8);
 		}
 
+#if !BF_PLATFORM_WASM
 		[Test]
 		static void TestA()
 		{
@@ -683,5 +684,6 @@ namespace Tests
 				fieldIdx++;
 			}
 		}
+#endif
 	}
 }

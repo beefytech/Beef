@@ -553,7 +553,7 @@ public:
 	virtual bool IsSpecializedByAutoCompleteMethod() { return false; }
 	virtual bool IsUnspecializedTypeVariation() { return false; }
 	virtual bool IsSplattable() { return false; }
-	virtual int GetSplatCount() { return 1; }
+	virtual int GetSplatCount(bool force = false) { return 1; }
 	virtual bool IsVoid() { return false; }
 	virtual bool IsVoidPtr() { return false; }
 	virtual bool CanBeValuelessType() { return false; }
@@ -2134,7 +2134,7 @@ public:
 	virtual bool IsFinishingType() override { return mIsFinishingType; }
 	virtual bool IsIncomplete() override { return (mTypeIncomplete) || (mBaseTypeMayBeIncomplete); }
 	virtual bool IsSplattable() override { BF_ASSERT((mInstSize >= 0) || (!IsComposite())); return mIsSplattable; }
-	virtual int GetSplatCount() override;
+	virtual int GetSplatCount(bool force = false) override;
 	virtual bool IsTypeInstance() override { return true; }
 	virtual BfTypeCode GetTypeCode() override { return mTypeDef->mTypeCode; }
 	virtual bool IsInterface() override { return mTypeDef->mTypeCode == BfTypeCode_Interface; }
@@ -2465,7 +2465,7 @@ public:
 	virtual bool IsComposite() override { return true; }
 	virtual bool IsMethodRef() override { return true; }
 	virtual bool IsSplattable() override { return true; }
-	virtual int GetSplatCount() override { return (int)mDataToParamIdx.mSize; }
+	virtual int GetSplatCount(bool force) override { return (int)mDataToParamIdx.mSize; }
 
 	virtual bool IsOnDemand() override { return true; }
 	virtual bool IsTemporary() override { return true; }
