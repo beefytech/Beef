@@ -388,20 +388,16 @@ namespace IDE
 							testEntry.mLine = int32.Parse(cmdParts[3]).Get();
 							testEntry.mColumn = int32.Parse(cmdParts[4]).Get();
 
-
 							List<StringView> attributes = scope .(attribs.Split('\a'));
-							for(var i in attributes)
+							for (var i in attributes)
 							{
-								if(i.StartsWith('\v'))
-								{
-									if(i == "Sf")
-										testEntry.mShouldFail = true;
-									else if(i == "Pr")
-										testEntry.mProfile = true;
-									else if(i == "Ig")
-										testEntry.mIgnore = true;
-								}
-								else if(i.StartsWith("Name"))
+								if (i == "Sf")
+									testEntry.mShouldFail = true;
+								else if (i == "Pr")
+									testEntry.mProfile = true;
+								else if (i == "Ig")
+									testEntry.mIgnore = true;
+								else if (i.StartsWith("Name"))
 								{
 									testEntry.mName.Clear();
 									scope String(i.Substring("Name".Length)).Escape(testEntry.mName);
