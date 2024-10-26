@@ -516,7 +516,7 @@ namespace Beefy.theme.dark
 			int underlinePos = label.IndexOf('&');
 			if (underlinePos == -1)
 				return false;
-			char32 underlineC = label.GetChar32(underlinePos + 1).0;
+			char32 underlineC = label.GetChar32(underlinePos + 1).c;
 			underlineC = underlineC.ToUpper;
 			return ((char32)keyCode == underlineC);
 		}
@@ -530,7 +530,7 @@ namespace Beefy.theme.dark
 				label.Append(str, 0, underlinePos);
 				float underlineX = g.mFont.GetWidth(label);
 
-				char32 underlineC = str.GetChar32(underlinePos + 1).0;
+				char32 underlineC = str.GetChar32(underlinePos + 1).c;
 				float underlineWidth = g.mFont.GetWidth(underlineC);
 
 				FontMetrics fm = .();

@@ -2799,7 +2799,7 @@ namespace System
 			return (c32, idx, len);
 		}
 
-		public (int startIdx, int length) GetCodePointSpan(int idx)
+		public (int startIdx, int8 length) GetCodePointSpan(int idx)
 		{
 			char8* ptr = Ptr;
 			int startIdx = idx;
@@ -4178,7 +4178,7 @@ namespace System
 			return .(this)[range];
 		}
 
-		public (char32, int) GetChar32(int idx)
+		public (char32 c, int8 length) GetChar32(int idx)
 		{
 			Debug.Assert((uint)idx < (uint)mLength);
 			char8* ptr = Ptr;
@@ -4190,7 +4190,7 @@ namespace System
 			return UTF8.Decode(ptr + idx, mLength - idx);
 		}
 
-		public (char32, int, int) GetChar32WithBacktrack(int idx)
+		public (char32 c, int idx, int8 length) GetChar32WithBacktrack(int idx)
 		{
 			Debug.Assert((uint)idx < (uint)mLength);
 			char8* ptr = Ptr;

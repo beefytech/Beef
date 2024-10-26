@@ -34,13 +34,13 @@ namespace System.Text
 			return 5;
 		}
 
-		public static int GetDecodedLength(char8* buf)
+		public static int8 GetDecodedLength(char8* buf)
 		{
 			char32 c = *buf;
 			return UTF8.sTrailingBytesForUTF8[c] + 1;
 		}
 
-		public static int GetDecodedLength(char8 firstChar)
+		public static int8 GetDecodedLength(char8 firstChar)
 		{
 			return UTF8.sTrailingBytesForUTF8[firstChar] + 1;
 		}
