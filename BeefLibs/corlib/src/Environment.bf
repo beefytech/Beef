@@ -8,9 +8,9 @@ namespace System
 	public static class Environment
 	{
 #if BF_PLATFORM_WINDOWS
-		public static readonly String NewLine = "\r\n";
+		public const String NewLine = "\r\n";
 #else
-		public static readonly String NewLine = "\n";
+		public const String NewLine = "\n";
 #endif // BF_PLATFORM_WINDOWS
 
 
