@@ -135,15 +135,12 @@ namespace System
 				List<StringView> attributes = scope .(attribs.Split('\a'));
 				for(var i in attributes)
 				{
-					if(i.StartsWith('\v'))
-					{
-						if(i == "Sf")
-							testEntry.mShouldFail = true;
-						else if(i == "Pr")
-							testEntry.mProfile = true;
-						else if(i == "Ig")
-							testEntry.mIgnore = true;
-					}
+					if (i == "Sf")
+						testEntry.mShouldFail = true;
+					else if (i == "Pr")
+						testEntry.mProfile = true;
+					else if (i == "Ig")
+						testEntry.mIgnore = true;
 					else if(i.StartsWith("Name"))
 					{
 						testEntry.mName.Clear();
