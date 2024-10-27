@@ -741,6 +741,8 @@ namespace IDE.ui
             var sourceContent = mEditWidget.Content as SourceEditWidgetContent;
             if (mSelectionStart != null)
 			{
+				if (mSelectionEnd != null)
+					sourceContent.mSelection = .(mSelectionStart.mIndex, mSelectionEnd.mIndex);
 				if (sourceContent != null)
                 	sourceContent.PersistentTextPositions.Remove(mSelectionStart);
 				DeleteAndNullify!(mSelectionStart);
