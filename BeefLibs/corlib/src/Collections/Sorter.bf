@@ -219,9 +219,24 @@ namespace System.Collections
 
 	        while (left < right)
 	        {
-	            while (comparer(keys[++left], pivot) < 0) {}
-	            while (comparer(pivot, keys[--right]) < 0) {}
+				while (true)
+				{
+					left++;
+					if (left >= mCount)
+						Runtime.FatalError("Illegal comparer method. Comparer(lhs, rhs) must equal -Comparer(rhs, lhs).");
+					if (comparer(keys[++left], pivot) >= 0)
+						break;
+				}
 
+				while (true)
+				{
+					right--;
+					if (right < 0)
+						Runtime.FatalError("Illegal comparer method. Comparer(lhs, rhs) must equal -Comparer(rhs, lhs).");
+					if (comparer(pivot, keys[right]) >= 0)
+						break;
+				}
+				
 	            if(left >= right)
 	                break;
 
