@@ -224,7 +224,7 @@ namespace System.Collections
 					left++;
 					if (left >= mCount)
 						Runtime.FatalError("Illegal comparer method. Comparer(lhs, rhs) must equal -Comparer(rhs, lhs).");
-					if (comparer(keys[++left], pivot) >= 0)
+					if (comparer(keys[left], pivot) >= 0)
 						break;
 				}
 
