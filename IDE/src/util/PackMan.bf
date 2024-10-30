@@ -311,7 +311,7 @@ namespace IDE.util
 			workItem.mKind = .FindVersion;
 			workItem.mProjectName = new .(projectName);
 			workItem.mURL = new .(url);
-			if (!semVer.IsEmpty)
+			if (semVer?.IsEmpty == false)
 				workItem.mConstraints = new .() { new String(semVer.mVersion) };
 			mWorkItems.Add(workItem);
 		}
