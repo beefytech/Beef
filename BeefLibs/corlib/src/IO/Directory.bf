@@ -90,20 +90,14 @@ namespace System.IO
 			return .Ok;
 		}
 
-  		///Copies and overwrites the contents of fromPath into toPath.
+  		/// Copies and overwrites the contents of fromPath into toPath.
 		public static Result<void, Platform.BfpFileResult> Copy(StringView fromPath, StringView toPath)
 		{
-			if(Directory.CreateDirectory(toPath) case .Err(let err))
-				return .Err(err);
-
-			for(var file in Directory.EnumerateFiles(fromPath))
-				if(File.Copy(file.GetFilePath(.. scope .()), scope $"{toPath}/{file.GetFileName(.. scope .())}") case .Err(let err))
-					return .Err(err);
-
-			for(var dir in Directory.EnumerateDirectories(fromPath))
-				if(Directory.Copy(dir.GetFilePath(.. scope .()), scope $"{toPath}/{dir.GetFileName(.. scope .())}") case .Err(let err))
-					return .Err(err);
-
+			Try!(Directory.CreateDirectory(toPath));
+			for (var file in Directory.EnumerateFiles(fromPath))
+				Try!(File.Copy(file.GetFilePath(.. scope .()), file.GetFileName(.. scope $"{toPath}/")));
+			for (var dir in Directory.EnumerateDirectories(fromPath))
+				Try!(Directory.Copy(dir.GetFilePath(.. scope .()), dir.GetFileName(.. scope $"{toPath}/")));
 			return .Ok;
 		}
 
