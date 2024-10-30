@@ -1300,8 +1300,7 @@ namespace IDE
 			gApp.mProjectPanel.[Friend]RemoveSelectedItems(false);
 		}
 
-		[IDECommand]
-		public void CopyToDependents(String srcPath)
+		void DoCopyToTarget(String srcPath, bool onlyDependents)
 		{
 			let depProject = GetProject();
 			if (depProject == null)
@@ -1312,7 +1311,8 @@ namespace IDE
 
 			for (let checkProject in gApp.mWorkspace.mProjects)
 			{
-				if (checkProject.HasDependency(depProject.mProjectName))
+				if ((checkProject.HasDependency(depProject.mProjectName)) ||
+					((checkProject == depProject) && (!onlyDependents)))
 				{
 					List<String> targetPaths = scope .();
 					defer ClearAndDeleteItems(targetPaths);
@@ -1332,13 +1332,27 @@ namespace IDE
 						String targetDirPath = scope .();
 						Path.GetDirectoryPath(targetPaths[0], targetDirPath);
 
-						bool CopyFile(String srcPath)
+						bool CopyFile(StringView srcPath, StringView destPath)
 						{
-							String fileName = scope .();
-							Path.GetFileName(srcPath, fileName);
+							if (Directory.Exists(srcPath))
+							{
+								if (Directory.CreateDirectory(destPath) case .Err)
+									return false;
 
-							String destPath = scope .();
-							Path.GetAbsolutePath(fileName, targetDirPath, destPath);
+								for (let entry in Directory.Enumerate(srcPath))
+								{
+									String foundPath = scope .();
+									entry.GetFilePath(foundPath);
+									String subDestPath = scope .();
+									subDestPath.Append(destPath);
+									subDestPath.Append('/');
+									entry.GetFileName(subDestPath);
+									if (!CopyFile(foundPath, subDestPath))
+										return false;
+								}
+
+								return true;
+							}
 
 							if (File.CopyIfNewer(srcPath, destPath) case .Err)
 							{
@@ -1347,6 +1361,12 @@ namespace IDE
 							}
 							return true;
 						}
+
+						if ((srcPath.EndsWith('/')) || (srcPath.EndsWith('\\')))
+							srcPath.RemoveFromEnd(1);
+
+						String fileName = scope .();
+						Path.GetFileName(srcPath, fileName);
 
 						if (srcPath.Contains('*'))
 						{
@@ -1359,18 +1379,39 @@ namespace IDE
 							{
 								String foundPath = scope .();
 								entry.GetFilePath(foundPath);
-								if (!CopyFile(foundPath))
+
+								String subDestPath = scope .();
+								subDestPath.Append(targetDirPath);
+								subDestPath.Append('/');
+								entry.GetFileName(subDestPath);
+
+								if (!CopyFile(foundPath, subDestPath))
 									return;
 							}
 						}
 						else
 						{
-							if (!CopyFile(srcPath))
+							String destPath = scope .();
+							Path.GetAbsolutePath(fileName, targetDirPath, destPath);
+
+							if (!CopyFile(srcPath, destPath))
 								return;
 						}
 					}
 				}
 			}
+		}
+
+		[IDECommand]
+		public void CopyToDependents(String srcPath)
+		{
+			DoCopyToTarget(srcPath, true);
+		}
+
+		[IDECommand]
+		public void CopyToTarget(String srcPath)
+		{
+			DoCopyToTarget(srcPath, false);
 		}
 
 		[IDECommand]

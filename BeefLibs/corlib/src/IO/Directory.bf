@@ -139,6 +139,23 @@ namespace System.IO
 			return FileEnumerator(useStr, findFileData);
 		}
 
+		public static FileEnumerator Enumerate(StringView dirPath)
+		{
+			let searchStr = scope String();
+			searchStr.Append(dirPath);
+			searchStr.Append("/*");
+			return Enumerate(searchStr, .Directories | .Files);
+		}
+
+		public static FileEnumerator Enumerate(StringView dirPath, StringView wildcard)
+		{
+			let searchStr = scope String();
+			searchStr.Append(dirPath);
+			searchStr.Append("/");
+			searchStr.Append(wildcard);
+			return Enumerate(searchStr, .Directories | .Files);
+		}
+
 		public static FileEnumerator EnumerateDirectories(StringView dirPath)
 		{
 			let searchStr = scope String();
