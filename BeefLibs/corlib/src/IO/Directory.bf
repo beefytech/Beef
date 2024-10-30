@@ -90,6 +90,23 @@ namespace System.IO
 			return .Ok;
 		}
 
+  		///Copies and overwrites the contents of fromPath into toPath.
+		public static Result<void, Platform.BfpFileResult> Copy(StringView fromPath, StringView toPath)
+		{
+			if(Directory.CreateDirectory(toPath) case .Err(let err))
+				return .Err(err);
+
+			for(var file in Directory.EnumerateFiles(fromPath))
+				if(File.Copy(file.GetFilePath(.. scope .()), scope $"{toPath}/{file.GetFileName(.. scope .())}") case .Err(let err))
+					return .Err(err);
+
+			for(var dir in Directory.EnumerateDirectories(fromPath))
+				if(Directory.Copy(dir.GetFilePath(.. scope .()), scope $"{toPath}/{dir.GetFileName(.. scope .())}") case .Err(let err))
+					return .Err(err);
+
+			return .Ok;
+		}
+
 		public static void GetCurrentDirectory(String outPath)
 		{
 			Platform.GetStrHelper(outPath, scope (outPtr, outSize, outResult) =>
