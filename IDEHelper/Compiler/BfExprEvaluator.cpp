@@ -10012,6 +10012,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		if ((methodGenericArguments != NULL) && (methodGenericArguments->size() > 0))
 			wantNumGenericArgs = (int)methodGenericArguments->size();
 		BfTypeInstance* resolvedTypeInstance = NULL;
+		BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None;
 		if (wantCtor)
 		{
 			resolvedTypeInstance = targetTypeInst;
@@ -10020,7 +10021,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		{
 			if (auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(methodBoundExpr))
 			{
-				auto resolvedType = mModule->ResolveTypeRef(invocationExpr->mTarget, methodGenericArguments);
+				auto resolvedType = mModule->ResolveTypeRef_Ref(invocationExpr->mTarget, methodGenericArguments, BfPopulateType_Data, resolveFlags);
 
 				if (resolvedType != NULL)
 					resolvedTypeInstance = resolvedType->ToTypeInstance();
@@ -10036,10 +10037,10 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				BfType* refType;
 				if (methodGenericArguments != NULL)
 				{
-					refType = mModule->ResolveTypeRef(identifierNode, methodGenericArguments);
+					refType = mModule->ResolveTypeRef_Ref(identifierNode, methodGenericArguments, BfPopulateType_Data, resolveFlags);
 				}
 				else
-					refType = mModule->ResolveTypeRef(identifierNode, NULL);
+					refType = mModule->ResolveTypeRef_Ref(identifierNode, NULL, BfPopulateType_Data, resolveFlags);
 				prevIgnoreErrors.Restore();
 
 				if ((refType != NULL) && (refType->IsPrimitiveType()))
@@ -10104,7 +10105,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 			if (mModule->mCompiler->mResolvePassData != NULL)
 			{
-				if (!BfNodeIsA<BfMemberReferenceExpression>(targetSrc))
+				if ((!BfNodeIsA<BfMemberReferenceExpression>(targetSrc)) && ((resolveFlags & BfResolveTypeRefFlag_FromIndirectSource) == 0))
 					mModule->mCompiler->mResolvePassData->HandleTypeReference(targetSrc, resolvedTypeInstance->mTypeDef);
 			}
 

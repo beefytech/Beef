@@ -4666,10 +4666,12 @@ void BfCompiler::ProcessAutocompleteTempType()
 	if ((typeInst->IsUnspecializedType()) || (!typeInst->IsGenericTypeInstance()))
 	{
 		auto autoComplete = mResolvePassData->mAutoComplete;
-		if (autoComplete->IsAutocompleteNode(tempTypeDef->mTypeDeclaration->mNameNode))
-		{
-			BfIdentifierNode* nameNode;
-			nameNode = tempTypeDef->mTypeDeclaration->mNameNode;
+		BfAstNode* nameNode = tempTypeDef->mTypeDeclaration->mNameNode;
+		BfAstNode* refNode = nameNode;
+		if (refNode == NULL)
+			refNode = tempTypeDef->mTypeDeclaration->mStaticSpecifier;
+		if (autoComplete->IsAutocompleteNode(refNode))
+		{			
 			if ((actualTypeDef->mIsCombinedPartial) && (tempTypeDef->mTypeCode == BfTypeCode_Extension))
 			{
 				autoComplete->AddTopLevelNamespaces(tempTypeDef->mTypeDeclaration->mNameNode);
@@ -4677,15 +4679,19 @@ void BfCompiler::ProcessAutocompleteTempType()
 				autoComplete->SetDefinitionLocation(actualTypeDef->mTypeDeclaration->mNameNode);
 			}
 			else
-				autoComplete->SetDefinitionLocation(nameNode);
+				autoComplete->SetDefinitionLocation(refNode);
 			autoComplete->mDefType = actualTypeDef;
-			autoComplete->mInsertStartIdx = nameNode->GetSrcStart();
-			autoComplete->mInsertEndIdx = nameNode->GetSrcEnd();
+
+			if (nameNode != NULL)
+			{
+				autoComplete->mInsertStartIdx = nameNode->GetSrcStart();
+				autoComplete->mInsertEndIdx = nameNode->GetSrcEnd();
+			}
 
 			if (autoComplete->mResolveType == BfResolveType_GetResultString)
 			{
 				autoComplete->mResultString = ":";
-				autoComplete->mResultString += module->TypeToString(typeInst, (BfTypeNameFlags)(BfTypeNameFlag_ExtendedInfo | BfTypeNameFlag_ResolveGenericParamNames));
+ 				autoComplete->mResultString += module->TypeToString(typeInst, (BfTypeNameFlags)(BfTypeNameFlag_ExtendedInfo | BfTypeNameFlag_ResolveGenericParamNames));
 			}
 		}
 	}

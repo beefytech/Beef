@@ -10864,6 +10864,11 @@ void BfModule::GetDelegateTypeRefAttributes(BfDelegateTypeRef* delegateTypeRef, 
 
 BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags, int numGenericArgs)
 {
+	return ResolveTypeRef_Ref(typeRef, populateType, resolveFlags, numGenericArgs);
+}
+
+BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType populateType, BfResolveTypeRefFlags& resolveFlags, int numGenericArgs)
+{
 	//BP_ZONE("BfModule::ResolveTypeRef");
 
 	if (typeRef == NULL)
@@ -12769,7 +12774,7 @@ BfTypeInstance* BfModule::GetUnspecializedTypeInstance(BfTypeInstance* typeInst)
 	return result->ToTypeInstance();
 }
 
-BfType* BfModule::ResolveTypeRef_Type(BfAstNode* astNode, const BfSizedArray<BfAstNode*>* genericArgs, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
+BfType* BfModule::ResolveTypeRef_Type(BfAstNode* astNode, const BfSizedArray<BfAstNode*>* genericArgs, BfPopulateType populateType, BfResolveTypeRefFlags& resolveFlags)
 {
 	if ((genericArgs == NULL) || (genericArgs->size() == 0))
 	{
@@ -12779,7 +12784,7 @@ BfType* BfModule::ResolveTypeRef_Type(BfAstNode* astNode, const BfSizedArray<BfA
 			typeRef.mNameNode = identifier;
 			typeRef.mSrcEnd = 0;
 			typeRef.mToken = BfToken_None;
-			auto type = ResolveTypeRef(&typeRef, populateType, resolveFlags);
+			auto type = ResolveTypeRef_Ref(&typeRef, populateType, resolveFlags, 0);
 			return type;
 		}
 	}
@@ -12846,10 +12851,15 @@ BfType* BfModule::ResolveTypeRef_Type(BfAstNode* astNode, const BfSizedArray<BfA
 		typeRef = genericInstanceTypeRef;
 	}
 
-	return ResolveTypeRef(typeRef, populateType, resolveFlags);
+	return ResolveTypeRef_Ref(typeRef, populateType, resolveFlags, 0);
 }
 
 BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfAstNode*>* genericArgs, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
+{
+	return ResolveTypeRef_Ref(astNode, genericArgs, populateType, resolveFlags);
+}
+
+BfType* BfModule::ResolveTypeRef_Ref(BfAstNode* astNode, const BfSizedArray<BfAstNode*>* genericArgs, BfPopulateType populateType, BfResolveTypeRefFlags& resolveFlags)
 {
 	if (astNode == NULL)
 	{
@@ -12858,13 +12868,14 @@ BfType* BfModule::ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfAstNod
 	}
 
 	if (auto typeRef = BfNodeDynCast<BfTypeReference>(astNode))
-		return ResolveTypeRef(typeRef, populateType, resolveFlags);
+		return ResolveTypeRef_Ref(typeRef, populateType, resolveFlags, 0);
 
 	if ((resolveFlags & BfResolveTypeRefFlag_AllowImplicitConstExpr) != 0)
 	{
 		if (auto expr = BfNodeDynCast<BfExpression>(astNode))
 		{
-			auto checkType = ResolveTypeRef_Type(astNode, genericArgs, populateType, (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_IgnoreLookupError));
+			resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_IgnoreLookupError);
+			auto checkType = ResolveTypeRef_Type(astNode, genericArgs, populateType, resolveFlags);
 			if (checkType != NULL)
 				return checkType;
 
@@ -15883,7 +15894,9 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 
 		if ((typeNameFlags & BfTypeNameFlag_ExtendedInfo) != 0)
 		{
-			if (typeInstance->mTypeDef->mIsDelegate)
+			if (typeInstance->mTypeDef->IsGlobalsContainer())
+				str += "static ";
+			else if (typeInstance->mTypeDef->mIsDelegate)
 				str += "delegate ";
 			else if (typeInstance->mTypeDef->mIsFunction)
 				str += "function ";
