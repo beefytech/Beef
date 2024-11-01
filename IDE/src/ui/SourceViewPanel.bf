@@ -4508,7 +4508,7 @@ namespace IDE.ui
 			Boomkmark = 0x80
 		}
 		
-		static float sDrawLeftAdjust = GS!(12);
+		static float sIconRightIndent = GS!(4);
 
         public override void Draw(Graphics g)
         {
@@ -4655,7 +4655,7 @@ namespace IDE.ui
 							int breakpointCount = (.)(curLineFlags & .BreakpointCountMask);
 							curLineFlags++;
 
-							float iconX = Math.Max(GS!(-2), mEditWidget.mX - GS!(24) - sDrawLeftAdjust) + breakpointCount*-GS!(2);
+							float iconX = sIconRightIndent;
 							float iconY = 0 + ewc.mLineCoords[drawLineNum] + (lineSpacing - DarkTheme.sUnitSize + GS!(5)) / 2;
 
 							// Just leave last digit visible
@@ -4680,8 +4680,7 @@ namespace IDE.ui
 									continue;
 								//hadLineIcon[drawLineNum - lineStart] = true;
 								Image image = DarkTheme.sDarkTheme.GetImage(bookmark.mIsDisabled ? .IconBookmarkDisabled : .IconBookmark);
-                                g.Draw(image, Math.Max(GS!(-5), mEditWidget.mX - GS!(30) - sDrawLeftAdjust),
-									0 + bookmark.mLineNum * lineSpacing);
+                                g.Draw(image, 0, 0 + bookmark.mLineNum * lineSpacing);
 
 								var curLineFlags = ref lineFlags[drawLineNum - lineStart];
 								curLineFlags |= .Boomkmark;
@@ -4718,22 +4717,8 @@ namespace IDE.ui
 									continue;
 
 								lineStr.Clear();
+								lineStr.AppendF("{0}", lineIdx + 1);
 
-								int maxLineChars = Int32.MaxValue;
-
-								let curLineFlags = lineFlags[lineIdx - lineStart];
-								if ((uint8)(curLineFlags & .BreakpointCountMask) > 0)
-									maxLineChars = 1;
-								else if (curLineFlags.HasFlag(.Boomkmark))
-									maxLineChars = 2;
-
-								switch (maxLineChars)
-								{
-								case 0:
-								case 1: lineStr.AppendF("{0}", (lineIdx + 1) % 10);
-								case 2: lineStr.AppendF("{0}", (lineIdx + 1) % 100);
-								default: lineStr.AppendF("{0}", lineIdx + 1);
-								}
 						        g.DrawString(lineStr, 0, GS!(2) + ewc.mLineCoords[lineIdx], FontAlign.Right, editX - GS!(14));
 						    }
 						}
@@ -4844,7 +4829,7 @@ namespace IDE.ui
 							{
 								mLinePointerDrawData.mUpdateCnt = gApp.mUpdateCnt;
 								mLinePointerDrawData.mDebuggerContinueIdx = gApp.mDebuggerContinueIdx;
-								g.Draw(img, mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
+								g.Draw(img, sIconRightIndent + sIconRightIndent,
 									0 + ewc.GetLineY(lineNum, 0));
 							}
 
@@ -4854,7 +4839,7 @@ namespace IDE.ui
 								if (dragLineNum >= 0 && dragLineNum != lineNum)
 								{
 									using (g.PushColor(0x7FFFFFFF))
-										g.Draw(img, mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
+										g.Draw(img, sIconRightIndent + sIconRightIndent,
 											0 + ewc.GetLineY(dragLineNum, 0));
 								}
 							}
@@ -7210,7 +7195,7 @@ namespace IDE.ui
 
             var font = IDEApp.sApp.mTinyCodeFont;
 
-            float lineWidth = Math.Max(font.GetWidth(ToStackString!(mEditWidget.Content.GetLineCount())) + GS!(24), GS!(32));
+            float lineWidth = Math.Max(font.GetWidth(ToStackString!(mEditWidget.Content.GetLineCount())) + GS!(24) + GS!(14), GS!(32));
             return Math.Max(GS!(24), lineWidth);
         }
 
@@ -7514,8 +7499,7 @@ namespace IDE.ui
 			if (!mIsDraggingLinePointer && IDEApp.sApp.mExecutionPaused && gApp.mDebugger.mActiveCallStackIdx == 0 && mMouseFlags.HasFlag(.Left))
 			{         
 				SourceEditWidgetContent ewc = (.)mEditWidget.Content;
-				Rect linePointerRect = .(
-					mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
+				Rect linePointerRect = .(sIconRightIndent + sIconRightIndent,
 					0 + ewc.GetLineY(mLinePointerDrawData.mLine, 0),
 					GS!(15),
 					GS!(15)
