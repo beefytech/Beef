@@ -2544,15 +2544,19 @@ namespace IDE.ui
 
             if ((!mListView.mCancelingEdit) && (listViewItem.mLabel != newValue)) 
             {
+				bool changeLabel = true;
+				var parentLvItem = (ProjectListViewItem)listViewItem.mParentItem;
+
                 if (column == 0)
                 {
 					bool failed = false;
-
+					
 					RenameBlock: do
                     {
 						var projectFolder = projectItem as ProjectFolder;
 						if ((projectFolder != null) && (projectFolder.mParentFolder == null))
 						{
+							changeLabel = false;
 							gApp.RenameProject(projectFolder.mProject, newValue);
 							break;
 						}
@@ -2685,7 +2689,7 @@ namespace IDE.ui
 						IDEApp.sApp.Fail("Failed to rename item");
                         IDEApp.Beep(IDEApp.MessageBeepType.Error);
                         return;
-                    }                    
+                    }
                 }
                 else if (column == 1)
                 {
@@ -2693,11 +2697,11 @@ namespace IDE.ui
                 }
 
                 // Item renamed
-                listViewItem.Label = newValue;
+				if (changeLabel)
+                	listViewItem.Label = newValue;
 				if (projectItem.mIncludeKind != .Auto)
                 	projectItem.mProject.SetChanged();
 
-				var parentLvItem = (ProjectListViewItem)listViewItem.mParentItem;
 				QueueSortItem(parentLvItem);
 				Sort();
             }
