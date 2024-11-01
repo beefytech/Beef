@@ -25,7 +25,7 @@ namespace Tests
 		{
 			switch (shape)
 			{
-			case .Circle(let x, let y, let radius) when x > 0 && y == 10:
+			case .Circle(let x, let y, let radius) when x == 10:
 				return 12;
 			default:
 				return 23;
