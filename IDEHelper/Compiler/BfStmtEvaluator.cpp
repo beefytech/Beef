@@ -4950,6 +4950,10 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 					mBfIRBuilder->SetInsertPoint(notEqBB);
 				}
 			}
+			else if (whenExpr != NULL)
+			{
+				mayHaveMatch = true;
+			}
 
 			if (notEqBB)
 				lastNotEqBlock = notEqBB;
