@@ -21943,9 +21943,13 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 		mResult = BfTypedValue(mModule->GetDefaultValue(target.mType), target.mType, true);
 		return;
 	}
-
-	if (target.mType->IsTypeInstance())
+	
+	if ((target.mType->IsTypeInstance()) || (target.mType->IsGenericParam()))
 	{
+		BfGenericParamInstance* genericParamInstance = NULL;
+		if (target.mType->IsGenericParam())
+			genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)target.mType);
+
 		mIndexerValues.clear();
 
 		SizedArray<BfExpression*, 2> argExprs;
@@ -21969,9 +21973,15 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 			BfPropertyDef* foundProp = NULL;
 			BfTypeInstance* foundPropTypeInst = NULL;
 
-			auto curCheckType = startCheckTypeInst;
-			while (curCheckType != NULL)
+			BfBaseClassWalker baseClassWalker(target.mType, NULL, mModule);
+			
+			while (true)
 			{
+				auto checkEntry = baseClassWalker.Next();
+				auto curCheckType = checkEntry.mTypeInstance;
+				if (curCheckType == NULL)
+					break;
+
 				BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
 
 				curCheckType->mTypeDef->PopulateMemberSets();
@@ -21992,9 +22002,6 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 					{
 						if (checkMethod->mMethodType != BfMethodType_PropertyGetter)
 							continue;
-
-						// For generic params - check interface constraints for an indexer, call that method
-						BF_ASSERT(!target.mType->IsGenericParam());
 
 						if (checkMethod->mIsStatic != wantStatic)
 							continue;
@@ -22072,13 +22079,12 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 	bool wantsChecks = checkedKind == BfCheckedKind_Checked;
 	if (checkedKind == BfCheckedKind_NotSet)
 		wantsChecks = mModule->GetDefaultCheckedKind() == BfCheckedKind_Checked;
-
-	//target.mType = mModule->ResolveGenericType(target.mType);
+	
 	if (target.mType->IsVar())
 	{
 		mResult = target;
 		return;
-	}
+	}	
 
 	if ((!target.mType->IsPointer()) && (!target.mType->IsSizedArray()))
 	{

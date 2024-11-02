@@ -1,4 +1,10 @@
 using System;
+using System.Collections;
+
+public interface IIndexable<T>
+{
+    T this[int index] { get; set; }
+}
 
 namespace Tests
 {
@@ -87,6 +93,28 @@ namespace Tests
 		    public Span<int> this[Range r] => default;
 		}
 
+		class IndexTest : IIndexable<float>
+		{
+			public float this[int index]
+			{
+				get
+				{
+					return index;
+				}
+
+				set
+				{
+
+				}
+			}
+		}
+
+		public static float Get<T>(T indexable) where T : IIndexable<float>
+		{
+		    float f = indexable[4];
+			return f;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -116,6 +144,9 @@ namespace Tests
 
 			Bar bar = scope .();
 			Test.Assert(bar[3] == 9);
+
+			IndexTest it = scope .();
+			Test.Assert(it[5] == 5.0f);
 		}
 	}
 }
