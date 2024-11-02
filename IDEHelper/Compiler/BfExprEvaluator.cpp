@@ -46,19 +46,21 @@ DeferredTupleAssignData::~DeferredTupleAssignData()
 
 //////////////////////////////////////////////////////////////////////////
 
-BfBaseClassWalker::BfBaseClassWalker(BfType* typeA, BfType* typeB, BfModule* module)
+BfBaseClassWalker::BfBaseClassWalker(BfType* typeA, BfType* typeB, BfModule* module, bool allowInterfaces)
 {
 	mMayBeFromInterface = false;
 
 	if (typeB == typeA)
 		typeB = NULL;
 
-	if ((typeA != NULL) && (!typeA->IsInterface()))
+	if ((typeA != NULL) && 
+		((!typeA->IsInterface()) || (allowInterfaces)))
 		mTypes[0] = typeA->ToTypeInstance();
 	else
 		mTypes[0] = NULL;
 
-	if ((typeB != NULL) && (!typeB->IsInterface()))
+	if ((typeB != NULL) && 
+		((!typeB->IsInterface()) || (allowInterfaces)))
 		mTypes[1] = typeB->ToTypeInstance();
 	else
 		mTypes[1] = NULL;
@@ -21973,7 +21975,7 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 			BfPropertyDef* foundProp = NULL;
 			BfTypeInstance* foundPropTypeInst = NULL;
 
-			BfBaseClassWalker baseClassWalker(target.mType, NULL, mModule);
+			BfBaseClassWalker baseClassWalker(target.mType, NULL, mModule, true);
 			
 			while (true)
 			{

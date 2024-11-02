@@ -311,7 +311,7 @@ public:
 
 public:
 	BfBaseClassWalker();
-	BfBaseClassWalker(BfType* typeA, BfType* typeB, BfModule* module);
+	BfBaseClassWalker(BfType* typeA, BfType* typeB, BfModule* module, bool allowInterfaces = false);
 	void AddConstraints(BfType* srcType, BfGenericParamInstance* genericParam);
 	void AddInterfaces(BfType* srcType, BfTypeInstance* typeInst);
 
