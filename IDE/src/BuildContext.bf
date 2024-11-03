@@ -204,6 +204,9 @@ namespace IDE
 
 			bool useArCmds = false;
 
+			if (objectsArg.Contains(".lib", true))
+				useArCmds = true;
+
 			if (useArCmds)
 			{
 				arCmds = scope:: String("");
