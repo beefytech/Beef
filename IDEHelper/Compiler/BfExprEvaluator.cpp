@@ -1980,9 +1980,16 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 
 					if (methodInstance->GetParamKind(paramIdx) == BfParamKind_Params)
 					{
-						paramsParamIdx = paramIdx;
-						if ((wantType->IsArray()) || (wantType->IsSizedArray()) || (wantType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef)))
-							wantType = wantType->GetUnderlyingType();
+						if ((mArguments[argIdx].mArgFlags & BfArgFlag_ParamsExpr) != 0)							
+						{
+							// Match to entire thing
+						}
+						else
+						{
+							paramsParamIdx = paramIdx;
+							if ((wantType->IsArray()) || (wantType->IsSizedArray()) || (wantType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef)))
+								wantType = wantType->GetUnderlyingType();
+						}
 					}
 
 					if (!genericInferContext.InferGenericArgument(methodInstance, type, wantType, argTypedValue.mValue))
@@ -22954,15 +22961,60 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 				}
 				else
 				{
-					auto isValid = false;
-					auto genericTypeInst = mResult.mType->ToGenericTypeInstance();
-					if ((genericTypeInst != NULL) && (genericTypeInst->IsInstanceOf(mModule->mCompiler->mSpanTypeDef)))
-						isValid = true;
-					else if ((mResult.mType->IsArray()) || (mResult.mType->IsSizedArray()))
-						isValid = true;
+					auto origValue = mResult;
+					auto isValid = false;					
+
+					for (int pass = 0; pass < 2; pass++)
+					{
+						auto typeInst = mResult.mType->ToTypeInstance();
+						auto genericTypeInst = mResult.mType->ToGenericTypeInstance();
+						if ((genericTypeInst != NULL) && (genericTypeInst->IsInstanceOf(mModule->mCompiler->mSpanTypeDef)))
+							isValid = true;
+						else if ((mResult.mType->IsArray()) || (mResult.mType->IsSizedArray()))
+							isValid = true;
+						else if ((typeInst != NULL) && (pass == 0))
+						{
+							BfBaseClassWalker baseClassWalker(typeInst, NULL, mModule);
+
+							BfType* bestCastType = NULL;
+							while (true)
+							{
+								auto entry = baseClassWalker.Next();
+								auto checkType = entry.mTypeInstance;
+								if (checkType == NULL)
+									break;
+								for (auto operatorDef : checkType->mTypeDef->mOperators)
+								{
+									if (operatorDef->mOperatorDeclaration->mIsConvOperator)
+									{
+										if (operatorDef->IsExplicit())
+											continue;
+
+										auto methodInstance = mModule->GetRawMethodInstanceAtIdx(typeInst, operatorDef->mIdx);
+
+										auto checkType = methodInstance->mReturnType;
+										if (checkType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef))
+											bestCastType = checkType;
+										else if ((checkType->IsArray()) || (checkType->IsSizedArray()))
+											bestCastType = checkType;
+									}
+								}
+							}
+
+							if (bestCastType == NULL)
+								break;							
+							auto castTypedValue = mModule->Cast(opToken, mResult, bestCastType, BfCastFlags_SilentFail);
+							if (!castTypedValue)
+								break;
+							mResult = castTypedValue;							
+						}
+						else
+							break;
+					}	
+
 					if (!isValid)
 					{
-						mModule->Fail(StrFormat("A 'params' expression cannot be used on type '%s'", mModule->TypeToString(mResult.mType).c_str()), opToken);
+						mModule->Fail(StrFormat("A 'params' expression cannot be used on type '%s'", mModule->TypeToString(origValue.mType).c_str()), opToken);
 					}
 				}
 			}

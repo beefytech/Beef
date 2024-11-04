@@ -1,4 +1,6 @@
 using System;
+using System.Collections;
+
 namespace Tests
 {
 	class MethodCalls
@@ -205,6 +207,16 @@ namespace Tests
 		static int sIdx = 0;
 		static int GetNext() => ++sIdx;
 
+		public static float ParamsTest(params Span<float> span)
+		{
+			return span[0];
+		}
+
+		public static T ParamsTest2<T>(params Span<T> span)
+		{
+			return span[0];
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -273,6 +285,11 @@ namespace Tests
 			Test.Assert(Named(p3:GetNext(), p2:GetNext(), p1:GetNext()) == 10321);
 			Test.Assert(Named(p2:GetNext(), p1:GetNext(), p0:GetNext()) == 20654);
 			Test.Assert(Named(p1:9) == 30193);
+
+			List<float> fList = scope .();
+			fList.Add(1.2f);
+			Test.Assert(ParamsTest(params fList) == 1.2f);
+			Test.Assert(ParamsTest2(params fList) == 1.2f);
 		}
 	}
 }

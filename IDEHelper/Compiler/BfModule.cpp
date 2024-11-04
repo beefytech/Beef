@@ -2861,8 +2861,8 @@ bool BfModule::CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* me
 		if (curCheckType != NULL)
 		{
 			allowPrivate |= IsInnerType(curCheckType->mTypeDef, memberOwner->mTypeDef);
-			if (memberOwner->mTypeDef->IsGlobalsContainer())			
-				allowPrivate |= curCheckType->mTypeDef->mNamespace.StartsWith(memberOwner->mTypeDef->mNamespace);			
+			if (memberOwner->mTypeDef->IsGlobalsContainer())
+				allowPrivate |= curCheckType->mTypeDef->mNamespace == memberOwner->mTypeDef->mNamespace;
 		}
 		if (allowPrivate)
 			flags = (BfProtectionCheckFlags)(flags | BfProtectionCheckFlag_AllowPrivate | BfProtectionCheckFlag_CheckedPrivate);
