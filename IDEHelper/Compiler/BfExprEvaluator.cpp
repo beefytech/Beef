@@ -22326,6 +22326,9 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 	}
 	else
 	{
+		// We are no longer accessing data within this type
+		mResultLocalVar = NULL;
+
 		target = mModule->LoadValue(target);
 		BfPointerType* pointerType = (BfPointerType*)target.mType;
 		auto underlyingType = pointerType->mElementType;
