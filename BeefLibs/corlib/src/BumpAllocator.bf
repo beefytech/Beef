@@ -2,7 +2,7 @@ using System.Collections;
 
 namespace System
 {
-	class BumpAllocator : IRawAllocator
+	class BumpAllocator : ITypedAllocator
 	{
 		struct DtorEntry
 		{
