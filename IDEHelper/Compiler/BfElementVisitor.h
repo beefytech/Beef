@@ -33,6 +33,7 @@ public:
 	virtual void Visit(BfGenericOperatorConstraint* genericConstraints);
 	virtual void Visit(BfGenericConstraintsDeclaration* genericConstraints);
 	virtual void Visit(BfGenericArgumentsNode* genericArgumentsNode);
+	virtual void Visit(BfCtorExplicitNode* genericArgumentsNode);
 
 	virtual void Visit(BfEmptyStatement* emptyStmt);
 	virtual void Visit(BfTokenNode* tokenNode);

@@ -7977,7 +7977,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 							arrayType, false);
 
 						BfResolvedArgs resolvedArgs;
-						MatchConstructor(targetSrc, NULL, expandedParamsArray, arrayType, resolvedArgs, false, false);
+						MatchConstructor(targetSrc, NULL, expandedParamsArray, arrayType, resolvedArgs, false, BfMethodGenericArguments(), false);
 
 						//TODO: Assert 'length' var is at slot 1
 						auto arrayBits = mModule->mBfIRBuilder->CreateBitCast(expandedParamsArray.mValue, mModule->mBfIRBuilder->MapType(arrayType->mBaseType));
@@ -8742,7 +8742,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	return callResult;
 }
 
-BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, BfTypeInstance* targetType, BfResolvedArgs& argValues, bool callCtorBodyOnly, bool allowAppendAlloc, BfTypedValue* appendIndexValue)
+BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, BfTypeInstance* targetType, BfResolvedArgs& argValues, bool callCtorBodyOnly, 
+	const BfMethodGenericArguments& methodGenericArguments,	bool allowAppendAlloc, BfTypedValue* appendIndexValue)
 {
 	// Temporarily disable so we don't capture calls in params
 	SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(mFunctionBindResult, NULL);
@@ -8750,7 +8751,7 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 	static int sCtorCount = 0;
 	sCtorCount++;
 
-	BfMethodMatcher methodMatcher(targetSrc, mModule, "", argValues.mResolvedArgs, BfMethodGenericArguments());
+	BfMethodMatcher methodMatcher(targetSrc, mModule, "", argValues.mResolvedArgs, methodGenericArguments);
 	methodMatcher.mBfEvalExprFlags = mBfEvalExprFlags;
 
 	BfTypeVector typeGenericArguments;
@@ -8842,11 +8843,13 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 	// There should always be a constructor
 	BF_ASSERT(methodMatcher.mBestMethodDef != NULL);
 
-	auto moduleMethodInstance = mModule->GetMethodInstance(methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher.mBestMethodGenericArguments);
-	if (!mModule->CheckUseMethodInstance(moduleMethodInstance.mMethodInstance, targetSrc))
-	{
+	//auto moduleMethodInstance = mModule->GetMethodInstance(methodMatcher.mBestMethodTypeInstance, methodMatcher.mBestMethodDef, methodMatcher.mBestMethodGenericArguments);
+
+	auto moduleMethodInstance = GetSelectedMethod(methodMatcher);
+	if (!moduleMethodInstance)
 		return BfTypedValue();
-	}
+	if (!mModule->CheckUseMethodInstance(moduleMethodInstance.mMethodInstance, targetSrc))	
+		return BfTypedValue();	
 
 	BfAutoComplete* autoComplete = GetAutoComplete();
 	if (autoComplete != NULL)
@@ -10142,7 +10145,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			mResultLocalVar = NULL;
 			mResultFieldInstance = NULL;
 			mResultLocalVarRefNode = NULL;
-			auto result = MatchConstructor(targetSrc, methodBoundExpr, structInst, resolvedTypeInstance, argValues, false, resolvedTypeInstance->IsObject());
+			auto result = MatchConstructor(targetSrc, methodBoundExpr, structInst, resolvedTypeInstance, argValues, false, BfMethodGenericArguments(), resolvedTypeInstance->IsObject());
 			if ((result) && (!result.mType->IsVoid()))
 				return result;
 			mModule->ValidateAllocation(resolvedTypeInstance, targetSrc);
@@ -14042,7 +14045,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
  	}
 
 	BfResolvedArgs resolvedArgs;
-	MatchConstructor(delegateBindExpr, delegateBindExpr, mResult, useTypeInstance, resolvedArgs, false, false);
+	MatchConstructor(delegateBindExpr, delegateBindExpr, mResult, useTypeInstance, resolvedArgs, false, BfMethodGenericArguments(), false);
 
 	auto baseDelegateType = VerifyBaseDelegateType(delegateTypeInstance->mBaseType);
 	auto baseDelegate = mModule->mBfIRBuilder->CreateBitCast(mResult.mValue, mModule->mBfIRBuilder->MapType(baseDelegateType, BfIRPopulateType_Full));
@@ -15490,6 +15493,10 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		}
 	}
 
+	BfMethodGenericArguments methodGenericArguments;
+	if ((objCreateExpr != NULL) && (objCreateExpr->mCtorExplicit != NULL) && (objCreateExpr->mCtorExplicit->mGenericArgs != NULL))
+		methodGenericArguments.mArguments = &objCreateExpr->mCtorExplicit->mGenericArgs->mGenericArgs;
+
 	CheckObjectCreateTypeRef(mExpectingType, allocNode);
 
 	BfAttributeState attributeState;
@@ -15499,11 +15506,17 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 	BfAllocTarget allocTarget;
 	ResolveAllocTarget(allocTarget, allocNode, newToken, &attributeState.mCustomAttributes);
 
-	bool isScopeAlloc = newToken->GetToken() == BfToken_Scope;
-	bool isAppendAlloc = newToken->GetToken() == BfToken_Append;
-	bool isStackAlloc = (newToken->GetToken() == BfToken_Stack) || (isScopeAlloc);
+	bool isStructAlloc = newToken == NULL;
+	bool isScopeAlloc = (newToken != NULL) && (newToken->GetToken() == BfToken_Scope);
+	bool isAppendAlloc = (newToken != NULL) && (newToken->GetToken() == BfToken_Append);
+	bool isStackAlloc = ((newToken != NULL) && (newToken->GetToken() == BfToken_Stack)) || (isScopeAlloc) || (isStructAlloc);
 	bool isArrayAlloc = false;// (objCreateExpr->mArraySizeSpecifier != NULL);
 	bool isRawArrayAlloc = (objCreateExpr != NULL) && (objCreateExpr->mStarToken != NULL);
+
+	if ((objCreateExpr != NULL) && (objCreateExpr->mCtorExplicit != NULL) && (objCreateExpr->mCtorExplicit->mThisToken != NULL))
+	{
+		mModule->SetElementType(objCreateExpr->mCtorExplicit->mThisToken, BfSourceElementType_Method);
+	}
 
 	if (isScopeAlloc)
 	{
@@ -15578,6 +15591,10 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 			else if (mExpectingType->IsPointer())
 			{
 				unresolvedTypeRef = mExpectingType->GetUnderlyingType();
+			}
+			else if (mExpectingType->IsStruct())
+			{
+				unresolvedTypeRef = mExpectingType;
 			}
 			else if (mExpectingType->IsVar())
 				unresolvedTypeRef = mExpectingType;
@@ -16107,18 +16124,18 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 			}
 			break;
 		}
-
+		
 		BfResolvedArgs resolvedArgs;
 
 		auto rawAutoComplete = mModule->mCompiler->GetAutoComplete();
 		if (rawAutoComplete != NULL)
 		{
 			SetAndRestoreValue<bool> prevCapturing(rawAutoComplete->mIsCapturingMethodMatchInfo, false);
-			MatchConstructor(refNode, objCreateExpr, arrayValue, arrayType, resolvedArgs, false, false);
+			MatchConstructor(refNode, objCreateExpr, arrayValue, arrayType, resolvedArgs, false, methodGenericArguments, false);
 		}
 		else
 		{
-			MatchConstructor(refNode, objCreateExpr, arrayValue, arrayType, resolvedArgs, false, false);
+			MatchConstructor(refNode, objCreateExpr, arrayValue, arrayType, resolvedArgs, false, methodGenericArguments, false);
 		}
 
 		//TODO: Assert 'length' var is at slot 1
@@ -16294,7 +16311,11 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 	{
 		auto wasCapturingMethodInfo = autoComplete->mIsCapturingMethodMatchInfo;
 		autoComplete->CheckInvocation(objCreateExpr, objCreateExpr->mOpenToken, objCreateExpr->mCloseToken, objCreateExpr->mCommas);
-		MatchConstructor(objCreateExpr->mTypeRef, objCreateExpr, emtpyThis, typeInstance, argValues, false, true);
+
+		BfAstNode* refNode = objCreateExpr->mTypeRef;
+		if ((objCreateExpr->mCtorExplicit != NULL) && (objCreateExpr->mCtorExplicit->mThisToken != NULL))
+			refNode = objCreateExpr->mCtorExplicit->mThisToken;
+		MatchConstructor(refNode, objCreateExpr, emtpyThis, typeInstance, argValues, false, methodGenericArguments, true);
 		if ((wasCapturingMethodInfo) && (!autoComplete->mIsCapturingMethodMatchInfo))
 		{
 			if (autoComplete->mMethodMatchInfo != NULL)
@@ -16308,7 +16329,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		auto refNode = allocNode;
 		if (objCreateExpr != NULL)
 			refNode = objCreateExpr->mTypeRef;
-		MatchConstructor(refNode, objCreateExpr, emtpyThis, typeInstance, argValues, false, true);
+		MatchConstructor(refNode, objCreateExpr, emtpyThis, typeInstance, argValues, false, methodGenericArguments, true);
 	}
 	if (objCreateExpr != NULL)
 		mModule->ValidateAllocation(typeInstance, objCreateExpr->mTypeRef);
@@ -16329,7 +16350,16 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		}
 		else
 		{
-			auto calcAppendMethodModule = mModule->GetMethodInstanceAtIdx(bindResult.mMethodInstance->GetOwner(), bindResult.mMethodInstance->mMethodDef->mIdx + 1, BF_METHODNAME_CALCAPPEND);
+			//auto calcAppendMethodModule = mModule->GetMethodInstanceAtIdx(bindResult.mMethodInstance->GetOwner(), bindResult.mMethodInstance->mMethodDef->mIdx + 1, BF_METHODNAME_CALCAPPEND);
+
+			BfTypeVector methodGenericArguments;
+			if (bindResult.mMethodInstance->mMethodInfoEx != NULL)
+				methodGenericArguments = bindResult.mMethodInstance->mMethodInfoEx->mMethodGenericArguments;
+
+			auto methodOwner = bindResult.mMethodInstance->GetOwner();
+			auto calcAppendMethodDef = methodOwner->mTypeDef->mMethods[bindResult.mMethodInstance->mMethodDef->mIdx + 1];
+			BF_ASSERT(calcAppendMethodDef->mName == BF_METHODNAME_CALCAPPEND);
+			auto calcAppendMethodModule = mModule->GetMethodInstance(methodOwner, calcAppendMethodDef, methodGenericArguments);
 
 			SizedArray<BfIRValue, 2> irArgs;
 			if (bindResult.mIRArgs.size() > 1)
@@ -16523,6 +16553,17 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 	{
 		mModule->mCompiler->mCeMachine->ClearAppendAllocInfo();
 	}
+
+	if ((mResult) && (isStructAlloc))
+	{
+		if (mResult.mType->IsPointer())
+		{
+			mResult = mModule->LoadValue(mResult);
+			mResult = BfTypedValue(mResult.mValue, mResult.mType->GetUnderlyingType(), true);
+		}
+		else
+			mModule->Fail(StrFormat("Allocation specifier such as 'new' is required for reference type '%s'", mModule->TypeToString(mResult.mType).c_str()), objCreateExpr);
+	}
 }
 
 void BfExprEvaluator::Visit(BfBoxExpression* boxExpr)
@@ -16612,7 +16653,13 @@ void BfExprEvaluator::ResolveAllocTarget(BfAllocTarget& allocTarget, BfAstNode* 
 
 	allocTarget.mRefNode = allocNode;
 	newToken = BfNodeDynCast<BfTokenNode>(allocNode);
-	if (newToken == NULL)
+	if (allocNode == NULL)
+	{
+		// Scope
+		if (mModule->mCurMethodState != NULL)
+			allocTarget.mScopeData = mModule->mCurMethodState->mCurScope->GetTargetable();
+	}
+	else if (newToken == NULL)
 	{
 		if (auto scopeNode = BfNodeDynCast<BfScopeNode>(allocNode))
 		{
@@ -18269,7 +18316,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 							else
 								mResult = BfTypedValue(mModule->CreateAlloca(expectingType), expectingType, BfTypedValueKind_TempAddr);
 
-							auto ctorResult = MatchConstructor(target, methodBoundExpr, mResult, expectingType->ToTypeInstance(), argValues, false, false);
+							auto ctorResult = MatchConstructor(target, methodBoundExpr, mResult, expectingType->ToTypeInstance(), argValues, false, BfMethodGenericArguments(), false);
 							if ((ctorResult) && (!ctorResult.mType->IsVoid()))
 								mResult = ctorResult;
 							mModule->ValidateAllocation(expectingType, invocationExpr->mTarget);
@@ -23591,7 +23638,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
 
 		mResult = BfTypedValue(alloca, allocType, true);
-		auto result = MatchConstructor(opToken, NULL, mResult, allocType, argValues, true, false);
+		auto result = MatchConstructor(opToken, NULL, mResult, allocType, argValues, true, BfMethodGenericArguments(), false);
 		if ((result) && (!result.mType->IsVoid()))
 			mResult = result;
 

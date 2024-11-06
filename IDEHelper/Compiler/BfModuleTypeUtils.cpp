@@ -5537,7 +5537,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 							BfTypedValue emptyThis(mBfIRBuilder->GetFakeVal(), resolvedTypeRef, resolvedTypeRef->IsStruct());
 
 							exprEvaluator.mBfEvalExprFlags = BfEvalExprFlags_Comptime;
-							auto ctorResult = exprEvaluator.MatchConstructor(nameRefNode, NULL, emptyThis, fieldTypeInst, resolvedArgs, false, true);
+							auto ctorResult = exprEvaluator.MatchConstructor(nameRefNode, NULL, emptyThis, fieldTypeInst, resolvedArgs, false, BfMethodGenericArguments(), true);
 
 							if ((bindResult.mMethodInstance != NULL) && (bindResult.mMethodInstance->mMethodDef->mHasAppend))
 							{

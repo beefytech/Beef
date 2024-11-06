@@ -114,6 +114,15 @@ void BfElementVisitor::Visit(BfGenericArgumentsNode* genericArgumentsNode)
 	VisitChild(genericArgumentsNode->mCloseChevron);
 }
 
+void BfElementVisitor::Visit(BfCtorExplicitNode* ctorExplicitNode)
+{
+	Visit(ctorExplicitNode->ToBase());
+
+	VisitChild(ctorExplicitNode->mDotToken);
+	VisitChild(ctorExplicitNode->mThisToken);
+	VisitChild(ctorExplicitNode->mGenericArgs);
+}
+
 void BfElementVisitor::Visit(BfStatement* stmt)
 {
 	Visit(stmt->ToBase());
@@ -627,6 +636,7 @@ void BfElementVisitor::Visit(BfObjectCreateExpression* newExpr)
 	VisitChild(newExpr->mNewNode);
 	VisitChild(newExpr->mStarToken);
 	VisitChild(newExpr->mTypeRef);
+	VisitChild(newExpr->mCtorExplicit);
 	VisitChild(newExpr->mOpenToken);
 	VisitChild(newExpr->mCloseToken);
 	for (auto& val : newExpr->mArguments)

@@ -778,7 +778,7 @@ public:
 					if (typeInst != NULL)
 					{
 						exprEvaluator.ResolveArgValues(argValues);
-						exprEvaluator.MatchConstructor(objCreateExpr->mTypeRef, objCreateExpr, emtpyThis, typeInst, argValues, false, true);
+						exprEvaluator.MatchConstructor(objCreateExpr->mTypeRef, objCreateExpr, emtpyThis, typeInst, argValues, false, BfMethodGenericArguments(), true);
 					}
 					exprEvaluator.mFunctionBindResult = NULL;
 
@@ -4765,7 +4765,7 @@ void BfModule::AppendedObjectInit(BfFieldInstance* fieldInst)
 		mBfIRBuilder->CreateStore(GetConstValue8(BfObjectFlag_AppendAlloc), thisFlagsPtr);
 	}
 
-	exprEvaluator.MatchConstructor(fieldDef->GetNameNode(), NULL, thisValue, fieldInst->mResolvedType->ToTypeInstance(), resolvedArgs, false, true, &indexVal);
+	exprEvaluator.MatchConstructor(fieldDef->GetNameNode(), NULL, thisValue, fieldInst->mResolvedType->ToTypeInstance(), resolvedArgs, false, BfMethodGenericArguments(), true, &indexVal);
 }
 
 void BfModule::CheckInterfaceMethod(BfMethodInstance* methodInstance)
@@ -17149,7 +17149,7 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
 		exprEvaluator.ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
 		SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(exprEvaluator.mFunctionBindResult, &bindResult);
-		exprEvaluator.MatchConstructor(targetRefNode, NULL, target, targetType, argValues, true, true);
+		exprEvaluator.MatchConstructor(targetRefNode, NULL, target, targetType, argValues, true, BfMethodGenericArguments(), true);
 	}
 
 	if (bindResult.mMethodInstance == NULL)
@@ -17196,7 +17196,7 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 		bindResult.mSkipThis = true;
 		bindResult.mWantsArgs = true;
 		SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(exprEvaluator.mFunctionBindResult, &bindResult);
-		exprEvaluator.MatchConstructor(targetRefNode, NULL, target, targetType, argValues, true, true);
+		exprEvaluator.MatchConstructor(targetRefNode, NULL, target, targetType, argValues, true, BfMethodGenericArguments(), true);
 		BF_ASSERT(bindResult.mIRArgs[0].IsFake());
 		bindResult.mIRArgs.RemoveAt(0);
 		calcAppendArgs = bindResult.mIRArgs;
@@ -18704,7 +18704,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 			appendIdxVal = BfTypedValue(localVar->mValue, intRefType);
 			mCurMethodState->mCurAppendAlign = 1; // Don't make any assumptions about how the base leaves the alignment
 		}
-        exprEvaluator.MatchConstructor(targetRefNode, NULL, target, targetType, argValues, true, methodDef->mHasAppend, &appendIdxVal);
+        exprEvaluator.MatchConstructor(targetRefNode, NULL, target, targetType, argValues, true, BfMethodGenericArguments(), methodDef->mHasAppend, &appendIdxVal);
 
 		if (autoComplete != NULL)
 		{

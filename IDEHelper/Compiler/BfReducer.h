@@ -204,7 +204,7 @@ public:
 	BfLambdaBindExpression* CreateLambdaBindExpression(BfAstNode* allocNode, BfTokenNode* parenToken = NULL);
 	BfCollectionInitializerExpression* CreateCollectionInitializerExpression(BfBlock* block);
 	BfCollectionInitializerExpression* CreateCollectionInitializerExpression(BfTokenNode* openToken);
-	BfObjectCreateExpression* CreateObjectCreateExpression(BfAstNode* allocNode);
+	BfObjectCreateExpression* CreateObjectCreateExpression(BfAstNode* allocNode, BfAstNode* targetNode = NULL);
 	BfScopedInvocationTarget* CreateScopedInvocationTarget(BfAstNode*& targetRef, BfTokenNode* colonToken);
 	BfInvocationExpression* CreateInvocationExpression(BfAstNode* target, CreateExprFlags createExprFlags = CreateExprFlags_None);
 	BfInitializerExpression* TryCreateInitializerExpression(BfAstNode* target);

@@ -497,7 +497,7 @@ public:
 	void PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& irArgs, bool disableSplat = false, bool disableLowering = false, bool isIntrinsic = false, bool createCompositeCopy = false);
 	void PushThis(BfAstNode* targetSrc, BfTypedValue callTarget, BfMethodInstance* methodInstance, SizedArrayImpl<BfIRValue>& irArgs, bool skipMutCheck = false);
 	BfTypedValue MatchConstructor(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, BfTypeInstance* targetType,
-		BfResolvedArgs& argValues, bool callCtorBodyOnly, bool allowAppendAlloc, BfTypedValue* appendIndexValue = NULL);
+		BfResolvedArgs& argValues, bool callCtorBodyOnly, const BfMethodGenericArguments& methodGenericArguments, bool allowAppendAlloc, BfTypedValue* appendIndexValue = NULL);
 	BfTypedValue CheckEnumCreation(BfAstNode* targetSrc, BfTypeInstance* enumType, const StringImpl& caseName, BfResolvedArgs& argValues);
 	BfTypedValue MatchMethod(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& name,
 		BfResolvedArgs& argValue, const BfMethodGenericArguments& methodGenericArguments, BfCheckedKind checkedKind = BfCheckedKind_NotSet);

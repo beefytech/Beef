@@ -337,6 +337,7 @@ class BfScopeNode;
 class BfNewNode;
 class BfLabeledBlock;
 class BfGenericArgumentsNode;
+class BfCtorExplicitNode;
 class BfStatement;
 class BfLabelableStatement;
 class BfExpression;
@@ -529,6 +530,7 @@ public:
 	virtual void Visit(BfGenericOperatorConstraint* genericConstraints);
 	virtual void Visit(BfGenericConstraintsDeclaration* genericConstraints);
 	virtual void Visit(BfGenericArgumentsNode* genericArgumentsNode);
+	virtual void Visit(BfCtorExplicitNode* genericArgumentsNode);
 
 	virtual void Visit(BfEmptyStatement* emptyStmt);
 	virtual void Visit(BfTokenNode* tokenNode);
@@ -2911,6 +2913,16 @@ public:
 	BfAstNode* mStatement;
 };	BF_AST_DECL(BfAttributedStatement, BfStatement);
 
+class BfCtorExplicitNode : public BfAstNode
+{
+public:
+	BF_AST_TYPE(BfCtorExplicitNode, BfAstNode);
+
+	BfAstNode* mDotToken;
+	BfTokenNode* mThisToken;
+	BfGenericArgumentsNode* mGenericArgs;
+};	BF_AST_DECL(BfCtorExplicitNode, BfAstNode);
+
 class BfObjectCreateExpression : public BfMethodBoundExpression
 {
 public:
@@ -2919,6 +2931,7 @@ public:
 	BfAstNode* mNewNode;
 	BfTokenNode* mStarToken;
 	BfTypeReference* mTypeRef;
+	BfCtorExplicitNode* mCtorExplicit;
 	BfTokenNode* mOpenToken;
 	BfTokenNode* mCloseToken;
 	BfSizedArray<BfExpression*> mArguments;

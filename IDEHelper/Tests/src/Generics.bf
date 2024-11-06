@@ -385,7 +385,22 @@ namespace Tests
 
 			public class InnerB
 			{
+				public T mVal;
 
+				public this<T3>(T3 val) where T : operator implicit T3
+				{
+					mVal = (.)val;
+				}
+			}
+
+			public struct InnerC
+			{
+				public T mVal;
+
+				public this<T3>(T3 val) where T : operator implicit T3
+				{
+					mVal = (.)val;
+				}
 			}
 
 			public static OuterA<int,float>.Inner<int16> sVal;
@@ -491,6 +506,13 @@ namespace Tests
 			Test.Assert(specializedType.UnspecializedType == typeof(Dictionary<,>.Enumerator));
 			var t = typeof(Array2<>);
 			t = typeof(ClassH<,>.Inner<>);
+
+			var innerB = new OuterA<int, float>.InnerB.this<int32>(123);
+			Test.Assert(innerB.mVal == 123);
+			delete innerB;
+
+			var innerC = OuterA<int, float>.InnerC.this<int32>(123);
+			Test.Assert(innerC.mVal == 123);
 		}
 	}
 

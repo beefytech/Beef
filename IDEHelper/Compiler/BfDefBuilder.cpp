@@ -604,7 +604,8 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	if ((methodDef->mMethodType == BfMethodType_Normal) ||
 		(methodDef->mMethodType == BfMethodType_Operator) ||
 		(methodDef->mMethodType == BfMethodType_Mixin) ||
-		(methodDef->mMethodType == BfMethodType_Extension))
+		(methodDef->mMethodType == BfMethodType_Extension) ||
+		(methodDef->mMethodType == BfMethodType_Ctor))
 	{
 		bool isGeneric = (methodDeclaration->mGenericParams != NULL) || (!mCurTypeDef->mGenericParamDefs.IsEmpty());
 		ParseGenericParams(methodDeclaration->mGenericParams, methodDeclaration->mGenericConstraintsDeclaration, methodDef->mGenericParams, &methodDef->mExternalConstraints, outerGenericSize, isGeneric);
@@ -2084,6 +2085,14 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 							newParam->mMethodGenericParamIdx = param->mMethodGenericParamIdx;
 							methodDef->mParams.push_back(newParam);
 						}
+
+						for (auto genericParam : method->mGenericParams)
+						{
+							BfGenericParamDef* newGenericParam = new BfGenericParamDef();
+							*newGenericParam = *genericParam;
+							methodDef->mGenericParams.Add(newGenericParam);
+						}
+						methodDef->mExternalConstraints = method->mExternalConstraints;
 
 						// Insert a 'appendIdx'
 						BfParameterDef* newParam = new BfParameterDef();
