@@ -3600,7 +3600,9 @@ void BfModule::DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool unde
 		{
 			BfTypeCode typeCode;
 
-			if ((min >= -0x80) && (max <= 0x7F))
+			if ((min == 0) && (max == 0))
+				typeCode = BfTypeCode_None;
+			else if ((min >= -0x80) && (max <= 0x7F))
 				typeCode = BfTypeCode_Int8;
 			else if ((min >= 0) && (max <= 0xFF))
 				typeCode = BfTypeCode_UInt8;
@@ -12232,6 +12234,19 @@ BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType po
 
 		return ResolveTypeResult(typeRef, tupleType, populateType, resolveFlags);
 	}
+	else if (auto tagTypeRef = BfNodeDynCast<BfTagTypeRef>(typeRef))
+	{
+		auto baseType = (BfTypeInstance*)ResolveTypeDef(mContext->mCompiler->mEnumTypeDef, BfPopulateType_Identity);
+
+		BfTagType* tagType = new BfTagType();
+		tagType->Init(baseType->mTypeDef->mProject, baseType, tagTypeRef->mNameNode->ToString());		
+
+		resolvedEntry->mValue = tagType;
+		BF_ASSERT(BfResolvedTypeSet::Hash(tagType, &lookupCtx) == resolvedEntry->mHashCode);
+		populateModule->InitType(tagType, populateType);
+
+		return ResolveTypeResult(typeRef, tagType, populateType, resolveFlags);
+	}
 	else if (auto nullableTypeRef = BfNodeDynCast<BfNullableTypeRef>(typeRef))
 	{
 		BfTypeReference* elementTypeRef = nullableTypeRef->mElementType;
@@ -15779,6 +15794,13 @@ void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameF
 			}
 		}
 		str += ")";
+		return;
+	}
+	else if ((resolvedType->IsOnDemand()) && (resolvedType->IsEnum()))
+	{
+		auto typeInst = resolvedType->ToTypeInstance();
+		str += "tag ";
+		str += typeInst->mTypeDef->mFields[0]->mName;
 		return;
 	}
 	else if (resolvedType->IsDelegateFromTypeRef() || resolvedType->IsFunctionFromTypeRef())

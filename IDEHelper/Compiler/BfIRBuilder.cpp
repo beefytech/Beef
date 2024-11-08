@@ -928,6 +928,10 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 	{
 		return CreateConstArrayZero(fromConst->mInt32);
 	}
+	else if (fromConst->mTypeCode == BfTypeCode_None)
+	{
+		return CreateConst(fromConst->mTypeCode, 0);
+	}
 	else if ((IsInt(fromConst->mTypeCode)) || (fromConst->mTypeCode == BfTypeCode_Boolean) || (fromConst->mTypeCode == BfTypeCode_StringId))
 	{
 		return CreateConst(fromConst->mTypeCode, fromConst->mUInt64);
@@ -975,7 +979,7 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 		box->mTarget = copiedTarget.mId;
 		box->mToType = fromBox->mToType;
 		copiedConst = (BfConstant*)box;
-	}
+	}	
 	else
 	{
 		BF_FATAL("not handled");
@@ -3283,7 +3287,8 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 						if (fieldInstance->mConstIdx != -1)
 						{
 							constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
-							staticValue = mModule->ConstantToCurrent(constant, typeInstance->mConstHolder, resolvedFieldType);
+							if (!resolvedFieldType->IsValuelessType())
+								staticValue = mModule->ConstantToCurrent(constant, typeInstance->mConstHolder, resolvedFieldType);
 						}
 
 						if (fieldInstance->mResolvedType->IsComposite())

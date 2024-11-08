@@ -937,7 +937,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int 
 			// Ignore
 		}
 		else if ((checkNode->IsA<BfIdentifierNode>()) || (checkNode->IsA<BfMemberReferenceExpression>()))
-		{
+		{			
 			// Identifier is always allowed in tuple (parenDepth == 0), because it's potentially the field name
 			//  (successToken == BfToken_RParen) infers we are already checking inside parentheses, such as
 			//  when we see a potential cast expression
@@ -954,8 +954,15 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int 
 				hadUnexpectedIdentifier = true;
 			}
 
-			hadIdentifier = true;
-			identifierExpected = false;
+// 			if (checkNode->Equals("tag"))
+// 			{
+// 				// Keep looking for tag name				
+// 			}
+// 			else
+			{
+				hadIdentifier = true;
+				identifierExpected = false;
+			}
 		}
 		else if (checkNode->IsA<BfBlock>())
 		{
@@ -5195,6 +5202,19 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 	BfTypeReference* typeRef = BfNodeDynCast<BfTypeReference>(firstNode);
 	if (typeRef == NULL)
 	{
+// 		if (identifierNode->Equals("tag"))
+// 		{
+// 			auto rightIdentifer = ExpectIdentifierAfter(identifierNode);
+// 			if (rightIdentifer != NULL)				
+// 			{
+// 				auto tagTypeRef = mAlloc->Alloc<BfTagTypeRef>();
+// 				ReplaceNode(identifierNode, tagTypeRef);
+// 				tagTypeRef->mTagNode = identifierNode;
+// 				MEMBER_SET(tagTypeRef, mNameNode, rightIdentifer);
+// 				return tagTypeRef;
+// 			}
+// 		}
+
 		typeRef = DoCreateNamedTypeRef(identifierNode);
 	}
 
@@ -5250,7 +5270,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					{
 						auto rightIdentifer = ExpectIdentifierAfter(qualifiedTypeRef);
 						if (rightIdentifer == NULL)
-							return qualifiedTypeRef;
+							return qualifiedTypeRef;						
 
 						auto namedTypeRef = mAlloc->Alloc<BfNamedTypeReference>();
 						namedTypeRef->mNameNode = rightIdentifer;
@@ -7346,7 +7366,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 			if (openToken == NULL)
 				return indexerDeclaration;
 			MEMBER_SET(indexerDeclaration, mOpenBracket, openToken);
-			auto endToken = ParseMethodParams(indexerDeclaration, &params, &commas, BfToken_RBracket, true);
+			auto endToken = ParseMethodParams(indexerDeclaration, &params, &commas, BfToken_RBracket, false);
 			if (endToken == NULL)
 				return indexerDeclaration;
 			MEMBER_SET(indexerDeclaration, mCloseBracket, endToken);
@@ -7780,7 +7800,7 @@ BfLambdaBindExpression* BfReducer::CreateLambdaBindExpression(BfAstNode* allocNo
 		if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
 			isRParen = tokenNode->GetToken() == BfToken_RParen;
 		if (!isRParen)
-		{
+		{			
 			auto nameIdentifier = ExpectIdentifierAfter(lambdaBindExpr, "parameter name");
 			if (nameIdentifier == NULL)
 				return lambdaBindExpr;
@@ -10028,7 +10048,7 @@ bool BfReducer::ParseMethod(BfMethodDeclaration* methodDeclaration, SizedArrayIm
 		}
 	}
 
-	methodDeclaration->mCloseParen = ParseMethodParams(methodDeclaration, params, commas, BfToken_RParen, true);
+	methodDeclaration->mCloseParen = ParseMethodParams(methodDeclaration, params, commas, BfToken_RParen, false);
 
 	// RParen
 	if (methodDeclaration->mCloseParen == NULL)

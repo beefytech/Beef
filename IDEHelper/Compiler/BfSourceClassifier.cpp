@@ -329,6 +329,17 @@ void BfSourceClassifier::Visit(BfNamedTypeReference* typeRef)
 	}
 }
 
+void BfSourceClassifier::Visit(BfTagTypeRef* typeRef)
+{
+	Visit((BfAstNode*)typeRef);
+
+	VisitChild(typeRef->mTagNode);
+	SetElementType(typeRef->mTagNode, BfSourceElementType_Keyword);
+
+	VisitChild(typeRef->mNameNode);
+	SetElementType(typeRef->mNameNode, BfSourceElementType_Type);
+}
+
 void BfSourceClassifier::Visit(BfQualifiedTypeReference* qualifiedType)
 {
 	Visit((BfAstNode*)qualifiedType);

@@ -1680,7 +1680,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	BP_ZONE("BfMethodMatcher::CheckMethod");
 
 	BackupMatchKind curMatchKind = BackupMatchKind_None;
-	bool hadMatch = false;
+	bool hadMatch = false;	
 
 	// Never consider overrides - they only get found at original method declaration
 	//  mBypassVirtual gets set when we are doing an explicit "base" call, or when we are a struct --
@@ -2599,12 +2599,16 @@ NoMatch:
 	}
 
 Done:
-	if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo) && (genericArgumentsSubstitute != NULL))
+	if ((autoComplete != NULL) && (autoComplete->mIsCapturingMethodMatchInfo))
 	{
 		auto methodMatchInfo = autoComplete->mMethodMatchInfo;
 		if (!methodMatchInfo->mInstanceList.IsEmpty())
-		{
-			methodMatchInfo->mInstanceList[methodMatchInfo->mInstanceList.size() - 1].mGenericArguments = *genericArgumentsSubstitute;
+		{			
+			auto& matchInstance = methodMatchInfo->mInstanceList[methodMatchInfo->mInstanceList.size() - 1];
+			matchInstance.mArgMatchCount = argMatchCount;
+			matchInstance.mIsMatch = hadMatch;
+			if (genericArgumentsSubstitute != NULL)
+				matchInstance.mGenericArguments = *genericArgumentsSubstitute;
 		}
 	}
 
@@ -5249,6 +5253,8 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 		BF_ASSERT(fieldInstance->mConstIdx != -1);
 
 		auto foreignConst = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
+		if (resolvedFieldType->IsValuelessType())
+			return BfTypedValue(BfIRValue::sValueless, resolvedFieldType);
 		auto retVal = mModule->ConstantToCurrent(foreignConst, typeInstance->mConstHolder, resolvedFieldType);
 		return BfTypedValue(retVal, resolvedFieldType);
 	}

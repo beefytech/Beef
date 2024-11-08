@@ -797,12 +797,21 @@ void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, Bf
 		{
 			mModule->PopulateType(typeInst);
 
-			String str;
-			str += mModule->TypeToString(fieldInstance->mResolvedType);
-			str += " ";
-			str += mModule->TypeToString(typeInst);
-			str += ".";
-			str += fieldDef->mName;
+			bool isTag = typeInst->IsEnum() && typeInst->IsOnDemand();
+
+			String str;			
+			if (!isTag)
+			{
+				if (!fieldInstance->GetFieldDef()->IsEnumCaseEntry())
+				{
+					str += mModule->TypeToString(fieldInstance->mResolvedType);
+					str += " ";
+				}
+				str += mModule->TypeToString(typeInst);
+				str += ".";
+				str += fieldDef->mName;
+			}
+
 			if (entryAdded->mDocumentation != NULL)
 			{
 				str += "\x04";
@@ -813,7 +822,9 @@ void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, Bf
 				str += "\x05";
 				documentation->GetDocString(str);
 			}
-			entryAdded->mDocumentation = mAlloc.AllocString(str);
+
+			if (!str.IsEmpty())
+				entryAdded->mDocumentation = mAlloc.AllocString(str);
 		}
 
 		if ((mIsGetDefinition) && (mDefType == NULL))
@@ -1270,7 +1281,11 @@ void BfAutoComplete::AddEnumTypeMembers(BfTypeInstance* typeInst, const StringIm
 			AutoCompleteEntry entry(hasPayload ? "payloadEnum" : "value", fieldDef->mName);
 			if (auto entryAdded = AddEntry(entry, filter))
 			{
-				if (CheckDocumentation(entryAdded, fieldDef->GetFieldDeclaration()->mDocumentation))
+				auto fieldDecl = fieldDef->GetFieldDeclaration();
+				if (fieldDecl == NULL)
+					continue;
+
+				if (CheckDocumentation(entryAdded, fieldDecl->mDocumentation))
 				{
 				}
 
@@ -1278,8 +1293,8 @@ void BfAutoComplete::AddEnumTypeMembers(BfTypeInstance* typeInst, const StringIm
 				{
 					mDefType = typeInst->mTypeDef;
 					mDefField = fieldDef;
-					if (fieldDef->mFieldDeclaration != NULL)
-						SetDefinitionLocation(fieldDef->GetFieldDeclaration()->mNameNode);
+					if (fieldDecl != NULL)
+						SetDefinitionLocation(fieldDecl->mNameNode);
 				}
 			}
 		}

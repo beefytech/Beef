@@ -1674,6 +1674,15 @@ void BfPrinter::Visit(BfTupleTypeRef* typeRef)
 	VisitChild(typeRef->mCloseParen);
 }
 
+void BfPrinter::Visit(BfTagTypeRef* typeRef)
+{
+	Visit((BfAstNode*)typeRef);
+
+	VisitChild(typeRef->mTagNode);
+	ExpectSpace();
+	VisitChild(typeRef->mNameNode);
+}
+
 void BfPrinter::Visit(BfDelegateTypeRef* typeRef)
 {
 	Visit((BfAstNode*)typeRef);

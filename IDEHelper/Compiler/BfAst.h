@@ -389,6 +389,7 @@ class BfVarRefTypeReference;
 class BfLetTypeReference;
 class BfGenericInstanceTypeRef;
 class BfTupleTypeRef;
+class BfTagTypeRef;
 class BfDelegateTypeRef;
 class BfExprModTypeRef;
 class BfCommentNode;
@@ -561,6 +562,7 @@ public:
 	virtual void Visit(BfArrayTypeRef* typeRef);
 	virtual void Visit(BfGenericInstanceTypeRef* typeRef);
 	virtual void Visit(BfTupleTypeRef* typeRef);
+	virtual void Visit(BfTagTypeRef* typeRef);
 	virtual void Visit(BfDelegateTypeRef* typeRef);
 	virtual void Visit(BfExprModTypeRef* declTypeRef);
 	virtual void Visit(BfPointerTypeRef* typeRef);
@@ -2666,6 +2668,15 @@ public:
 		return std::max(1, (int)mFieldTypes.size());
 	}
 };	BF_AST_DECL(BfTupleTypeRef, BfElementedTypeRef);
+
+class BfTagTypeRef : public BfTypeReference
+{
+public:
+	BF_AST_TYPE(BfTagTypeRef, BfTypeReference);
+
+	BfIdentifierNode* mTagNode;
+	BfIdentifierNode* mNameNode;
+};	BF_AST_DECL(BfTagTypeRef, BfTypeReference);
 
 class BfDelegateTypeRef : public BfTypeReference
 {

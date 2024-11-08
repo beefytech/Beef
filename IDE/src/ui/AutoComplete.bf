@@ -196,7 +196,6 @@ namespace IDE.ui
         {
             public AutoComplete mAutoComplete;
             public bool mIsInitted;
-            public int mIgnoreMove;
 			public bool mOwnsWindow;
 			public float mRightBoxAdjust;
 			public float mWantHeight;
@@ -237,7 +236,7 @@ namespace IDE.ui
 						return;
 				}
 
-                if ((mIgnoreMove == 0) && (mWidgetWindow != null) && (!mWidgetWindow.mHasClosed))
+                if ((mAutoComplete.mIgnoreMove == 0) && (mWidgetWindow != null) && (!mWidgetWindow.mHasClosed))
                     mAutoComplete.Close();
             }
 
@@ -345,7 +344,6 @@ namespace IDE.ui
 			public override void Update()
 			{
 				base.Update();
-				Debug.Assert((mIgnoreMove >= 0) && (mIgnoreMove <= 4));
 			}
         }
 
@@ -591,15 +589,11 @@ namespace IDE.ui
 
 					int windowHeight = (int)(mWantHeight + Math.Max(0, mDocHeight - GS!(32)));
 
-					mIgnoreMove++;
-					if (mAutoComplete.mInvokeWidget != null)
-						mAutoComplete.mInvokeWidget.mIgnoreMove++;
+					mAutoComplete.mIgnoreMove++;
 					mWidgetWindow.Resize(mWidgetWindow.mNormX, mWidgetWindow.mNormY, windowWidth, windowHeight);
 					mScrollContent.mWidth = mWidth;
 					//Resize(0, 0, mWidgetWindow.mClientWidth, mWidgetWindow.mClientHeight);
-					mIgnoreMove--;
-					if (mAutoComplete.mInvokeWidget != null)
-						mAutoComplete.mInvokeWidget.mIgnoreMove--;
+					mAutoComplete.mIgnoreMove--;
 					ResizeContent(-1, -1, mVertScrollbar != null);
 				}
 			}
@@ -653,7 +647,7 @@ namespace IDE.ui
 					entryWidget.mDocumentation = new:mAlloc String(documentation);
                 entryWidget.mIcon = icon;
 
-				entryWidget.SetMatches(matchIndices);
+				entryWidget.SetMatches(matchIndices ?? scope .());
 
                 UpdateEntry(entryWidget, mEntryList.Count);
                 mEntryList.Add(entryWidget);
@@ -860,6 +854,7 @@ namespace IDE.ui
             {
                 public String mText ~ delete _;
 				public String mDocumentation ~ delete _;
+				public int32 mArgMatchCount;
 
 				public int GetParamCount()
 				{
@@ -941,9 +936,9 @@ namespace IDE.ui
 				{
 					if (mOwnsWindow)
 					{
-						mIgnoreMove++;
+						mAutoComplete.mIgnoreMove++;
 						mAutoComplete.UpdateWindow(ref mWidgetWindow, this, mAutoComplete.mInvokeSrcPositions[0], (int32)extWidth, (int32)extHeight);
-						mIgnoreMove--;
+						mAutoComplete.mIgnoreMove--;
 					}
 					else
 					{
@@ -966,11 +961,15 @@ namespace IDE.ui
                     mSelectIdx = 0;
             }
 
-            public void SelectDirection(int32 dir)
+            public bool SelectDirection(int32 dir)
             {
                 int32 newSelection = mSelectIdx + dir;
                 if ((newSelection >= 0) && (newSelection < mEntryList.Count))
+				{
                     Select(newSelection);
+					return true;
+				}
+				return false;
             }
 
             public override void Update()
@@ -979,36 +978,15 @@ namespace IDE.ui
 
             }
 
-			void DrawInfo(Graphics g, out float extWidth, out float extHeight)
+			public void GetState(out int cursorSection)
 			{
-				var font = IDEApp.sApp.mCodeFont;
-
-				extWidth = 0;
-
-				float curX = GS!(8);
-				float curY = GS!(5);
-
-				if (mEntryList.Count > 1)
-				{
-					String numStr = scope String();
-					numStr.AppendF("{0}/{1}", mSelectIdx + 1, mEntryList.Count);
-					if (g != null)
-					{
-					    using (g.PushColor(gApp.mSettings.mUISettings.mColors.mAutoCompleteSubText))
-					        g.DrawString(numStr, curX, curY);
-					}
-					curX += font.GetWidth(numStr) + GS!(8);
-				}
+				cursorSection = -1;
 
 				var selectedEntry = mEntryList[mSelectIdx];
-				
-				float maxWidth = mWidth;
 
-				StringView paramName = .();
 				List<StringView> textSections = scope List<StringView>(selectedEntry.mText.Split('\x01'));
 
 				int cursorPos = mAutoComplete.mTargetEditWidget.Content.CursorTextPos;
-				int cursorSection = -1;
 				for (int sectionIdx = 0; sectionIdx < mAutoComplete.mInvokeSrcPositions.Count - 1; sectionIdx++)
 				{
 				    if (cursorPos > mAutoComplete.mInvokeSrcPositions[sectionIdx])
@@ -1085,6 +1063,37 @@ namespace IDE.ui
 						}
 					}
 				}
+			}
+
+			void DrawInfo(Graphics g, out float extWidth, out float extHeight)
+			{
+				var font = IDEApp.sApp.mCodeFont;
+
+				extWidth = 0;
+
+				float curX = GS!(8);
+				float curY = GS!(5);
+
+				if (mEntryList.Count > 1)
+				{
+					String numStr = scope String();
+					numStr.AppendF("{0}/{1}", mSelectIdx + 1, mEntryList.Count);
+					if (g != null)
+					{
+					    using (g.PushColor(gApp.mSettings.mUISettings.mColors.mAutoCompleteSubText))
+					        g.DrawString(numStr, curX, curY);
+					}
+					curX += font.GetWidth(numStr) + GS!(8);
+				}
+
+				var selectedEntry = mEntryList[mSelectIdx];
+				
+				float maxWidth = mWidth;
+
+				StringView paramName = .();
+				List<StringView> textSections = scope List<StringView>(selectedEntry.mText.Split('\x01'));
+
+				GetState(var cursorSection);
 
 				float paramX = 0;
 				for (int sectionIdx = 0; sectionIdx < textSections.Count; sectionIdx++)
@@ -1259,6 +1268,7 @@ namespace IDE.ui
 		public bool mIsDocumentationPass;
 		public bool mIsUserRequested;
 
+		public int mIgnoreMove;
 		bool mClosed;
 		bool mPopulating;
 		float mWantX;
@@ -1412,6 +1422,8 @@ namespace IDE.ui
 
         public void Update()
         {
+			Debug.Assert((mIgnoreMove >= 0) && (mIgnoreMove <= 4));
+
             if ((mInvokeWindow != null) && (!mInvokeWidget.mIsAboveText))
             {
                 int textIdx = mTargetEditWidget.Content.CursorTextPos;
@@ -1440,18 +1452,13 @@ namespace IDE.ui
 				int insertLine = line;
 				if ((insertLine != invokeLine) && ((insertLine - invokeLine) * gApp.mCodeFont.GetHeight() < GS!(40)))
                 {
-                    mInvokeWidget.mIgnoreMove++;
-                    if (mListWindow != null)
-                        mAutoCompleteListWidget.mIgnoreMove++;
+                    mIgnoreMove++;
                     mInvokeWidget.mIsAboveText = true;
 					mInvokeWidget.ResizeContent(false);
                     UpdateWindow(ref mInvokeWindow, mInvokeWidget, mInvokeSrcPositions[0], (int32)mInvokeWidget.mWidth, (int32)mInvokeWidget.mHeight);                    
                     if (mListWindow != null)
-                    {
                         UpdateWindow(ref mListWindow, mAutoCompleteListWidget, mInsertStartIdx, mListWindow.mWindowWidth, mListWindow.mWindowHeight);
-                        mAutoCompleteListWidget.mIgnoreMove--;
-                    }
-                    mInvokeWidget.mIgnoreMove--;
+                    mIgnoreMove--;
                 }
             }
 
@@ -1470,6 +1477,67 @@ namespace IDE.ui
 					Close();
 				}
 			}
+
+			/*if (mInvokeWidget != null)
+			{
+				var invokeEntry = mInvokeWidget.mEntryList[mInvokeWidget.mSelectIdx];
+
+				mInvokeWidget.GetState(var cursorSection);
+
+				if (mAutoCompleteListWidget != null)
+				{
+
+				}
+				else
+				{
+					if (cursorSection > 0)
+					{
+						int sectionStartIdx = -1;
+						int sectionEndIdx = -1;
+
+						int foundSectionIdx = 0;
+						for (var c in invokeEntry.mText.RawChars)
+						{
+							if (c == '\x01')
+							{
+								foundSectionIdx++;
+								if (foundSectionIdx == cursorSection)
+									sectionStartIdx = @c.Index;
+								else if (foundSectionIdx == cursorSection + 1)
+									sectionEndIdx = @c.Index;
+							}
+						}
+
+						if (sectionEndIdx != -1)
+						{
+							StringView argText = invokeEntry.mText.Substring(sectionStartIdx + 1, sectionEndIdx - sectionStartIdx - 1);
+							argText.Trim();
+							while (!argText.IsEmpty)
+							{
+								char8 c = argText[argText.Length - 1];
+								if ((c.IsLetterOrDigit) || (c == '_'))
+									break;
+								argText.RemoveFromEnd(1);
+							}
+
+							if (argText.StartsWith("tag "))
+							{
+								int spacePos = argText.IndexOf(' ', 4);
+								if (spacePos == -1)
+									spacePos = argText.Length;
+								StringView tagName = argText.Substring(4, spacePos - 4);
+
+								mInsertStartIdx = mInvokeSrcPositions[cursorSection - 1];
+								mInsertEndIdx = mInsertStartIdx;
+								mAutoCompleteListWidget = new AutoCompleteListWidget(this);
+								mAutoCompleteListWidget.AddEntry("value", scope $".{tagName}", DarkTheme.sDarkTheme.GetImage(.IconValue));
+								HandleAutoCompleteListWidget(1);
+								mAutoCompleteListWidget.mSelectIdx = 0;
+							}
+						}
+					}
+				}
+			}*/
         }
 
 		public void GetFilter(String outFilter)
@@ -1718,10 +1786,7 @@ namespace IDE.ui
 
 		public void SetIgnoreMove(bool ignoreMove)
 		{
-			if (mAutoCompleteListWidget != null)
-			    mAutoCompleteListWidget.mIgnoreMove += ignoreMove ? 1 : -1;
-			if (mInvokeWidget != null)
-			    mInvokeWidget.mIgnoreMove += ignoreMove ? 1 : -1;	
+			mIgnoreMove += ignoreMove ? 1 : -1;
 		}
 
 		// IDEHelper/third_party/FtsFuzzyMatch.h 
@@ -1996,61 +2061,7 @@ namespace IDE.ui
 
             if (mAutoCompleteListWidget != null)
             {
-                if (mAutoCompleteListWidget.mEntryList.Count > 0)
-                {
-					mAutoCompleteListWidget.mOwnsWindow = !IsInPanel();
-					mAutoCompleteListWidget.mAutoFocus = IsInPanel();
-					int32 windowWidth = (int32)mAutoCompleteListWidget.mMaxWidth;
-					if (mAutoCompleteListWidget.mRightBoxAdjust != 0)
-						windowWidth += (int32)mAutoCompleteListWidget.mRightBoxAdjust; // - GS!(16);
-					//windowWidth += (int32)mAutoCompleteListWidget.mDocWidth;
-					windowWidth += GS!(16);
-
-					int32 contentHeight = (int32)(visibleCount * mAutoCompleteListWidget.mItemSpacing);
-					int32 windowHeight = contentHeight + GS!(20);
-					int32 maxWindowHeight = GetMaxWindowHeight();
-					bool wantScrollbar = false;
-					if (windowHeight > maxWindowHeight)
-					{
-					    windowHeight = maxWindowHeight;
-					    wantScrollbar = true;
-					    windowWidth += GS!(12);
-					}
-					contentHeight += GS!(8);
-					mAutoCompleteListWidget.ResizeContent(windowWidth, contentHeight, wantScrollbar);
-					if ((mInsertStartIdx != -1) && (!IsInPanel()))
-					{
-						UpdateWindow(ref mListWindow, mAutoCompleteListWidget, mInsertStartIdx, windowWidth, windowHeight);
-						mAutoCompleteListWidget.mWantHeight = windowHeight;
-					}
-					mAutoCompleteListWidget.UpdateScrollbars();
-					mAutoCompleteListWidget.CenterSelection();
-					mAutoCompleteListWidget.UpdateWidth();
-                }
-                else
-                {
-					if ((mListWindow == null) || (mListWindow.mRootWidget != mAutoCompleteListWidget))
-                    {
-						if (IsInPanel())
-						{
-							gApp.mAutoCompletePanel.Unbind(this);
-							if (mInvokeWidget != null)
-							{
-								if (mInvokeWidget.mParent != null)
-									mInvokeWidget.RemoveSelf();
-								delete mInvokeWidget;
-								mInvokeWidget = null;
-							}
-						}
-						delete mAutoCompleteListWidget;
-					}
-                    if (mListWindow != null)
-                    {
-                        mListWindow.Close();
-                        mListWindow = null;
-                    }
-                    mAutoCompleteListWidget = null;
-                }
+				HandleAutoCompleteListWidget(visibleCount);
             }
 			gApp.mAutoCompletePanel.FinishBind();
             SetIgnoreMove(false);
@@ -2174,6 +2185,65 @@ namespace IDE.ui
 			//Debug.WriteLine("UpdateInfo {0} {1}", mInsertStartIdx, mInsertEndIdx);
 		}
 
+		public void HandleAutoCompleteListWidget(int visibleCount)
+		{
+			if (mAutoCompleteListWidget.mEntryList.Count > 0)
+			{
+				mAutoCompleteListWidget.mOwnsWindow = !IsInPanel();
+				mAutoCompleteListWidget.mAutoFocus = IsInPanel();
+				int32 windowWidth = (int32)mAutoCompleteListWidget.mMaxWidth;
+				if (mAutoCompleteListWidget.mRightBoxAdjust != 0)
+					windowWidth += (int32)mAutoCompleteListWidget.mRightBoxAdjust; // - GS!(16);
+				//windowWidth += (int32)mAutoCompleteListWidget.mDocWidth;
+				windowWidth += GS!(16);
+
+				int32 contentHeight = (int32)(visibleCount * mAutoCompleteListWidget.mItemSpacing);
+				int32 windowHeight = contentHeight + GS!(20);
+				int32 maxWindowHeight = GetMaxWindowHeight();
+				bool wantScrollbar = false;
+				if (windowHeight > maxWindowHeight)
+				{
+				    windowHeight = maxWindowHeight;
+				    wantScrollbar = true;
+				    windowWidth += GS!(12);
+				}
+				contentHeight += GS!(8);
+				mAutoCompleteListWidget.ResizeContent(windowWidth, contentHeight, wantScrollbar);
+				if ((mInsertStartIdx != -1) && (!IsInPanel()))
+				{
+					UpdateWindow(ref mListWindow, mAutoCompleteListWidget, mInsertStartIdx, windowWidth, windowHeight);
+					mAutoCompleteListWidget.mWantHeight = windowHeight;
+				}
+				mAutoCompleteListWidget.UpdateScrollbars();
+				mAutoCompleteListWidget.CenterSelection();
+				mAutoCompleteListWidget.UpdateWidth();
+			}
+			else
+			{
+				if ((mListWindow == null) || (mListWindow.mRootWidget != mAutoCompleteListWidget))
+			    {
+					if (IsInPanel())
+					{
+						gApp.mAutoCompletePanel.Unbind(this);
+						if (mInvokeWidget != null)
+						{
+							if (mInvokeWidget.mParent != null)
+								mInvokeWidget.RemoveSelf();
+							delete mInvokeWidget;
+							mInvokeWidget = null;
+						}
+					}
+					delete mAutoCompleteListWidget;
+				}
+			    if (mListWindow != null)
+			    {
+			        mListWindow.Close();
+			        mListWindow = null;
+			    }
+			    mAutoCompleteListWidget = null;
+			}
+		}
+
         public void SetInfo(String info, bool clearList = true, int32 textOffset = 0, bool changedAfterInfo = false)
         {
 			scope AutoBeefPerf("AutoComplete.SetInfo");
@@ -2196,7 +2266,7 @@ namespace IDE.ui
             {
                 if (mAutoCompleteListWidget != null)
                 {
-					mAutoCompleteListWidget.mIgnoreMove++;
+					mIgnoreMove++;
 					if (IsInPanel())
 					{
 						mAutoCompleteListWidget.RemoveSelf();
@@ -2210,6 +2280,7 @@ namespace IDE.ui
 					else
 						delete mAutoCompleteListWidget;
                     mAutoCompleteListWidget = null;
+					mIgnoreMove--;
                 }
             }
             if (mAutoCompleteListWidget == null)
@@ -2434,6 +2505,7 @@ namespace IDE.ui
 
 					var invokeEntry = new InvokeWidget.Entry();
 					invokeEntry.mText = new String(entryDisplay);
+					invokeEntry.mArgMatchCount = int32.Parse(entryInsert).GetValueOrDefault();
 					if (!documentation.IsEmpty)
 						invokeEntry.mDocumentation = new String(documentation);
 					mInvokeWidget.AddEntry(invokeEntry);                            
@@ -2846,6 +2918,14 @@ namespace IDE.ui
 			}
 		}
 
+		public void GetInsertText(String outStr)
+		{
+			if (mAutoCompleteListWidget != null)
+			{
+				var entry = mAutoCompleteListWidget.mEntryList[mAutoCompleteListWidget.mSelectIdx];
+				outStr.Append(entry.mEntryInsert ?? entry.mEntryDisplay);
+			}
+		}
 
         public void InsertSelection(char32 keyChar, String insertType = null, String insertStr = null)
         {

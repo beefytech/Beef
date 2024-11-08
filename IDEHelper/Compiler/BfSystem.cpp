@@ -427,6 +427,12 @@ void BfParameterDef::SetName(BfAstNode* nameNode)
 
 //////////////////////////////////////////////////////////////////////////
 
+bool BfFieldDef::IsEnumCaseEntry()
+{
+	return ((mFieldDeclaration != NULL) && (BfNodeIsA<BfEnumEntryDeclaration>(mFieldDeclaration))) ||
+		((mFieldDeclaration == NULL) && (mIsConst) && (mDeclaringType->mTypeCode == BfTypeCode_Enum));
+}
+
 bool BfPropertyDef::IsVirtual()
 {
 	if (((BfPropertyDeclaration*)mFieldDeclaration)->mVirtualSpecifier)

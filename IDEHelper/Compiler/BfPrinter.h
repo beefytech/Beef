@@ -167,6 +167,7 @@ public:
 	virtual void Visit(BfArrayTypeRef* typeRef) override;
 	virtual void Visit(BfGenericInstanceTypeRef* typeRef) override;
 	virtual void Visit(BfTupleTypeRef * typeRef) override;
+	virtual void Visit(BfTagTypeRef* typeRef) override;
 	virtual void Visit(BfDelegateTypeRef* typeRef) override;
 	virtual void Visit(BfPointerTypeRef* typeRef) override;
 	virtual void Visit(BfNullableTypeRef* typeRef) override;

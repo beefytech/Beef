@@ -301,6 +301,11 @@ void BfStructuralVisitor::Visit(BfTupleTypeRef* typeRef)
 	Visit(typeRef->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfTagTypeRef* typeRef)
+{
+	Visit(typeRef->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfDelegateTypeRef* typeRef)
 {
 	Visit(typeRef->ToBase());

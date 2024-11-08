@@ -113,6 +113,7 @@ public:
 	virtual void Visit(BfArrayTypeRef* arrayType) override;
 	virtual void Visit(BfPointerTypeRef* pointerType) override;
 	virtual void Visit(BfNamedTypeReference* typeRef) override;
+	virtual void Visit(BfTagTypeRef* typeRef) override;
 	virtual void Visit(BfGenericInstanceTypeRef* typeRef) override;
 	virtual void Visit(BfLocalMethodDeclaration * methodDecl) override;
 	virtual void Visit(BfLiteralExpression* literalExpr) override;

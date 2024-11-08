@@ -8608,7 +8608,9 @@ void BfCompiler::GenerateAutocompleteInfo()
 					}
 				}
 
-				autoCompleteResultString += "invoke\t" + methodText + "\n";
+				autoCompleteResultString += "invoke\t" + methodText;
+				autoCompleteResultString += StrFormat("\t%d", methodEntry.mArgMatchCount);
+				autoCompleteResultString += "\n";
 
 				idx++;
 			}

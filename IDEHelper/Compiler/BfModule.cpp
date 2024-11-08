@@ -21841,10 +21841,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				mBfIRBuilder->SaveDebugLocation();
 				mBfIRBuilder->ClearDebugLocation();
 				BfIRValue fromBool;
-				if (!mCurTypeInstance->IsTypedPrimitive())
+				if ((!mCurTypeInstance->IsTypedPrimitive()) || (mCurTypeInstance->IsValuelessType()))
 				{
 					fromBool = GetDefaultValue(methodInstance->mReturnType);
-				}
+				}				
 				else
 				{
 					auto andResult = mBfIRBuilder->CreateAnd(mCurMethodState->mLocals[0]->mValue, mCurMethodState->mLocals[1]->mValue);
@@ -21872,7 +21872,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 			mBfIRBuilder->ClearDebugLocation();
 			BfIRValue fromBool;
 			mBfIRBuilder->RestoreDebugLocation();
-			ret = mBfIRBuilder->CreateRet(GetThis().mValue);
+			if (!mCurTypeInstance->IsValuelessType())
+				ret = mBfIRBuilder->CreateRet(GetThis().mValue);
+			else
+				mBfIRBuilder->CreateRetVoid();
 			//ExtendLocalLifetimes(0);
 			EmitLifetimeEnds(&mCurMethodState->mHeadScope);
 

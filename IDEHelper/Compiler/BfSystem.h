@@ -655,10 +655,7 @@ public:
 		return (mName[0] >= '0') && (mName[0] <= '9');
 	}
 
-	bool IsEnumCaseEntry()
-	{
-		return (mFieldDeclaration != NULL) && (BfNodeIsA<BfEnumEntryDeclaration>(mFieldDeclaration));
-	}
+	bool IsEnumCaseEntry();
 
 	bool IsNonConstStatic()
 	{

@@ -64,6 +64,7 @@ public:
 	virtual void Visit(BfArrayTypeRef* typeRef);
 	virtual void Visit(BfGenericInstanceTypeRef* typeRef);
 	virtual void Visit(BfTupleTypeRef* typeRef);
+	virtual void Visit(BfTagTypeRef* typeRef);
 	virtual void Visit(BfExprModTypeRef* typeRef);
 	virtual void Visit(BfDelegateTypeRef* typeRef);
 	virtual void Visit(BfPointerTypeRef* typeRef);

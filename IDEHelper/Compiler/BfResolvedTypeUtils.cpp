@@ -2987,6 +2987,79 @@ void BfTupleType::Finish()
 
 //////////////////////////////////////////////////////////////////////////
 
+BfTagType::BfTagType()
+{
+	mCreatedTypeDef = false;
+	mSource = NULL;
+	mTypeDef = NULL;	
+}
+
+BfTagType::~BfTagType()
+{
+	mMethodInstanceGroups.Clear();
+	if (mCreatedTypeDef)
+	{
+		delete mTypeDef;
+		mTypeDef = NULL;
+	}
+	delete mSource;
+}
+
+void BfTagType::Init(BfProject* bfProject, BfTypeInstance* valueTypeInstance, const StringImpl& name)
+{
+	auto srcTypeDef = valueTypeInstance->mTypeDef;
+	auto system = valueTypeInstance->mModule->mSystem;
+
+	if (mTypeDef == NULL)
+		mTypeDef = new BfTypeDef();
+	for (auto field : mTypeDef->mFields)
+		delete field;
+	mTypeDef->mFields.Clear();
+	mTypeDef->mSystem = system;
+	mTypeDef->mProject = bfProject;
+	mTypeDef->mTypeCode = srcTypeDef->mTypeCode;
+	mTypeDef->mName = system->mEmptyAtom;
+	mTypeDef->mSystem = system;
+
+	mTypeDef->mHash = srcTypeDef->mHash;
+	mTypeDef->mSignatureHash = srcTypeDef->mSignatureHash;
+	mTypeDef->mTypeCode = BfTypeCode_Enum;
+
+	mCreatedTypeDef = true;
+
+	auto field = BfDefBuilder::AddField(mTypeDef, NULL, name);
+	field->mIsStatic = true;
+	field->mIsConst = true;
+}
+
+void BfTagType::Dispose()
+{
+	if (mCreatedTypeDef)
+	{
+		delete mTypeDef;
+		mTypeDef = NULL;
+		mCreatedTypeDef = false;
+	}
+	BfTypeInstance::Dispose();
+}
+
+void BfTagType::Finish()
+{
+	BF_ASSERT(!mTypeFailed);
+
+	auto bfSystem = mTypeDef->mSystem;
+	mSource = new BfSource(bfSystem);
+	mTypeDef->mSource = mSource;
+	mTypeDef->mSource->mRefCount++;
+
+	BfDefBuilder bfDefBuilder(bfSystem);
+	bfDefBuilder.mCurTypeDef = mTypeDef;
+	bfDefBuilder.mCurDeclaringTypeDef = mTypeDef;
+	bfDefBuilder.FinishTypeDef(true);
+}
+
+//////////////////////////////////////////////////////////////////////////
+
 BfBoxedType::~BfBoxedType()
 {
 	//if ((mTypeDef != NULL) && (mTypeDef->mEmitParent != NULL))
@@ -3132,6 +3205,7 @@ BfResolvedTypeSet::~BfResolvedTypeSet()
 #define HASH_CONSTEXPR 12
 #define HASH_GLOBAL 13
 #define HASH_DOTDOTDOT 14
+#define HASH_TAG 15
 
 BfVariant BfResolvedTypeSet::EvaluateToVariant(LookupContext* ctx, BfExpression* expr, BfType*& outType)
 {
@@ -3233,6 +3307,13 @@ int BfResolvedTypeSet::DoHash(BfType* type, LookupContext* ctx, bool allowRef, i
 			hashVal = HASH_MIX(hashVal, HASH_DOTDOTDOT);
 
 		return hashVal;
+	}
+	else if ((type->IsEnum()) && (type->IsOnDemand()))
+	{
+		BfTypeInstance* typeInstance = type->ToTypeInstance();
+		auto fieldName = typeInstance->mTypeDef->mFields[0]->mName;		
+		int nameHash = (int)Hash64(fieldName.c_str(), (int)fieldName.length());
+		return nameHash ^ HASH_TAG;
 	}
 	else if (type->IsTypeInstance())
 	{
@@ -4156,6 +4237,17 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		ctx->mFailed = true;
 		return 0;
 	}
+	else if (auto tagTypeRef = BfNodeDynCastExact<BfTagTypeRef>(typeRef))
+	{
+		int nameHash = 0;
+		if (tagTypeRef->mNameNode != NULL)
+		{
+			auto fieldName = tagTypeRef->mNameNode;
+			const char* nameStr = fieldName->GetSourceData()->mSrc + fieldName->GetSrcStart();
+			nameHash = (int)Hash64(nameStr, fieldName->GetSrcLength());
+		}
+		return nameHash ^ HASH_TAG;
+	}
 	else
 	{
 		BF_FATAL("Not handled");
@@ -4838,6 +4930,15 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
  			return false;
 
 		return true;
+	}
+	else if ((lhs->IsEnum()) && (lhs->IsOnDemand()))
+	{
+		BfTypeInstance* typeInstance = lhs->ToTypeInstance();
+		auto fieldName = typeInstance->mTypeDef->mFields[0]->mName;		
+		auto tagTypeRef = BfNodeDynCastExact<BfTagTypeRef>(rhs);
+		if (tagTypeRef == NULL)
+			return false;
+		return tagTypeRef->mNameNode->Equals(fieldName);
 	}
 	else if (lhs->IsTypeInstance())
 	{

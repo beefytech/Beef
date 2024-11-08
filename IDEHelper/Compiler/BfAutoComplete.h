@@ -137,6 +137,8 @@ public:
 		BfTypeInstance* mTypeInstance;
 		BfTypeVector mGenericArguments;
 		BfMethodInstance* mCurMethodInstance;
+		bool mIsMatch;
+		int mArgMatchCount;
 
 		MethodMatchEntry()
 		{
@@ -144,6 +146,8 @@ public:
 			mPayloadEnumField = NULL;
 			mTypeInstance = NULL;
 			mCurMethodInstance = NULL;
+			mIsMatch = false;
+			mArgMatchCount = false;
 		}
 	};
 

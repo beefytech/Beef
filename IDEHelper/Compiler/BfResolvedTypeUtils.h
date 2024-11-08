@@ -2401,6 +2401,24 @@ public:
 	virtual int GetGenericDepth() override { return mGenericDepth; }
 };
 
+class BfTagType : public BfTypeInstance
+{
+public:
+	bool mCreatedTypeDef;
+	String mNameAdd;
+	BfSource* mSource;	
+
+public:
+	BfTagType();
+	~BfTagType();
+
+	void Init(BfProject* bfProject, BfTypeInstance* valueTypeInstance, const StringImpl& name);
+	virtual void Dispose() override;	
+	void Finish();
+
+	virtual bool IsOnDemand() override { return true; }
+};
+
 class BfConcreteInterfaceType : public BfType
 {
 public:
