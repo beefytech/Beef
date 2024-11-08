@@ -2595,7 +2595,7 @@ namespace IDE.ui
 							while (checkIdx >= 0)
 							{
 								let displayType = (SourceElementType)mData.mText[checkIdx].mDisplayTypeId;
-								if (displayType == .Comment)
+								if ((displayType == .Comment) || (displayType == .Literal))
 								{
 									checkIdx--;
 									continue;
@@ -3867,7 +3867,8 @@ namespace IDE.ui
 				}
 				isEndingChar = false;
 			}
-            
+
+			bool forceAutoCompleteInsert = false;
 			if (isEndingChar)
             {
 				bool forceAsyncFinish = false;
@@ -3882,6 +3883,10 @@ namespace IDE.ui
 							// Could be a symbol autocomplete?
 							forceAsyncFinish = true;
 						}
+						else if (c == '.')
+						{
+							doAutocomplete = true;
+						}
 					}
 				}
 
@@ -3890,6 +3895,17 @@ namespace IDE.ui
 					if (mOnFinishAsyncAutocomplete != null)
 						mOnFinishAsyncAutocomplete();
 					doAutocomplete = true;
+				}
+
+				if ((mAutoComplete != null) && (!doAutocomplete) && (mAutoComplete.mInsertStartIdx == mAutoComplete.mInsertEndIdx) && (!keyChar.IsWhiteSpace))
+				{
+					// Handle tag insertion even if we have no text
+					var insertText = mAutoComplete.GetInsertText(.. scope .());
+					if (insertText.StartsWith('.'))
+					{
+						forceAutoCompleteInsert = true;
+						doAutocomplete = true;
+					}
 				}
             }
 			else
@@ -3903,11 +3919,11 @@ namespace IDE.ui
 				if ((mAutoComplete.mInsertEndIdx != -1) && (mAutoComplete.mInsertEndIdx != mCursorTextPos) && (keyChar != '\t') && (keyChar != '\r') && (keyChar != '\n'))
 					doAutocomplete = false;
 				
-                if ((mAutoComplete.IsInsertEmpty()) && (!mAutoComplete.mIsFixit) && (keyChar != '.') && (keyChar != '\t') && (keyChar != '\r'))
+                /*if ((mAutoComplete.IsInsertEmpty()) && (!mAutoComplete.mIsFixit) && (keyChar != '.') && (keyChar != '\t') && (keyChar != '\r'))
                 {
                     // Require a '.' or tab to insert autocomplete when we don't have any insert section (ie: after an 'enumVal = ')
                     doAutocomplete = false;
-                }
+                }*/
 
 				if ((keyChar == '[') && (mAutoComplete.mInsertStartIdx >= 0) && (mData.mText[mAutoComplete.mInsertStartIdx].mChar != '.'))
 				{
@@ -3927,7 +3943,7 @@ namespace IDE.ui
 				if (keyChar == '\x7F') /* Ctrl+Backspace */
 					doAutocomplete = false;
 
-                if (doAutocomplete)
+                if ((doAutocomplete) || (forceAutoCompleteInsert))
                 {
 					if (mOnFinishAsyncAutocomplete != null)
 						mOnFinishAsyncAutocomplete();
@@ -4575,7 +4591,15 @@ namespace IDE.ui
 				{
 	                if ((mAutoComplete != null) && (mAutoComplete.IsShowing()))
 	                {
-	                    if (mAutoComplete.mAutoCompleteListWidget != null)
+						bool wantListCursors = false;
+
+						if (mAutoComplete.mAutoCompleteListWidget != null)
+						{
+							if (mAutoComplete.mAutoCompleteListWidget.mEntryList.Count > 1)
+								wantListCursors = true;
+						}
+
+	                    if (wantListCursors)
 	                    {
 	                        int32 pageSize = (int32)(mAutoComplete.mAutoCompleteListWidget.mScrollContentContainer.mHeight / mAutoComplete.mAutoCompleteListWidget.mItemSpacing - 0.5f);
 	                        int32 moveDir = 0;
@@ -4591,7 +4615,12 @@ namespace IDE.ui
 	                    }
 	                    else if (mAutoComplete.mInvokeWidget != null)
 	                    {
-	                        mAutoComplete.mInvokeWidget.SelectDirection(((keyCode == KeyCode.Up) || (keyCode == KeyCode.PageUp)) ? -1 : 1);
+							// Close the list if we had !wantListCursors
+	                        if (mAutoComplete.mInvokeWidget.SelectDirection(((keyCode == KeyCode.Up) || (keyCode == KeyCode.PageUp)) ? -1 : 1))
+							{
+								mAutoComplete?.CloseListWindow();
+								mAutoComplete?.Update();
+							}
 	                    }
 						return;
 	                }
