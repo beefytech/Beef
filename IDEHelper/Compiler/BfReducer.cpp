@@ -8327,15 +8327,17 @@ BfObjectCreateExpression* BfReducer::CreateObjectCreateExpression(BfAstNode* all
 
 		if (objectCreateExpr->mCtorExplicit != NULL)
 		{
-			nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
-			if ((nextToken->mToken != NULL) && (nextToken->mToken == BfToken_LChevron))
+			if (nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
 			{
-				mVisitorPos.MoveNext();
-				auto genericParamsDecl = CreateGenericArguments(nextToken, true);
-				if (genericParamsDecl == NULL)
-					return objectCreateExpr;
-				MEMBER_SET(objectCreateExpr->mCtorExplicit, mGenericArgs, genericParamsDecl);
-				objectCreateExpr->mSrcEnd = objectCreateExpr->mCtorExplicit->mSrcEnd;
+				if ((nextToken->mToken != NULL) && (nextToken->mToken == BfToken_LChevron))
+				{
+					mVisitorPos.MoveNext();
+					auto genericParamsDecl = CreateGenericArguments(nextToken, true);
+					if (genericParamsDecl == NULL)
+						return objectCreateExpr;
+					MEMBER_SET(objectCreateExpr->mCtorExplicit, mGenericArgs, genericParamsDecl);
+					objectCreateExpr->mSrcEnd = objectCreateExpr->mCtorExplicit->mSrcEnd;
+				}
 			}
 		}
 
