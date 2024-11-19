@@ -14611,6 +14611,13 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			auto fromTypedPrimitiveType = typedVal.mType->ToTypeInstance();
 			auto primTypedVal = BfTypedValue(typedVal.mValue, fromTypedPrimitiveType->mFieldInstances.back().mResolvedType, typedVal.IsAddr());
 			primTypedVal = LoadValue(primTypedVal);
+
+			if ((typedVal.mType->IsEnum()) && (primTypedVal.IsValuelessType()))
+			{
+				// For enums with <= 1 member, fake an int8(0) instead of a void
+				primTypedVal = GetDefaultTypedValue(GetPrimitiveType(BfTypeCode_Int8));
+			}
+
 			return CastToValue(srcNode, primTypedVal, toType, castFlags);
 		}
 
