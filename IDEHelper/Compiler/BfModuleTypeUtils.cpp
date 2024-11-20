@@ -3955,6 +3955,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 			for (auto baseTypeRef : typeDef->mBaseTypes)
 			{
+				auto declTypeDef = typeDef;
+				if (typeDef->mIsCombinedPartial)
+					declTypeDef = typeDef->mPartials.front();
+				SetAndRestoreValue<BfTypeDef*> prevTypeDef(mContext->mCurTypeState->mCurTypeDef, declTypeDef);
 				SetAndRestoreValue<BfTypeReference*> prevTypeRef(mContext->mCurTypeState->mCurBaseTypeRef, baseTypeRef);
 				SetAndRestoreValue<BfTypeDefineState> prevDefineState(typeInstance->mDefineState, BfTypeDefineState_ResolvingBaseType);
 				SetAndRestoreValue<bool> prevIgnoreError(mIgnoreErrors, true);

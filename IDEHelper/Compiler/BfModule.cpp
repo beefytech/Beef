@@ -18839,7 +18839,9 @@ void BfModule::EmitEnumToStringBody()
 	paramTypes.Add(stringType);
 	auto appendModuleMethodInstance = GetMethodByName(stringType->ToTypeInstance(), "Append", paramTypes);
 
-	auto switchVal = mBfIRBuilder->CreateSwitch(enumVal, noMatchBlock, (int)mCurTypeInstance->mFieldInstances.size());
+	BfIRValue switchVal;
+	if (!mCurTypeInstance->IsValuelessType())
+		switchVal = mBfIRBuilder->CreateSwitch(enumVal, noMatchBlock, (int)mCurTypeInstance->mFieldInstances.size());
 
 	HashSet<int64> handledCases;
 	for (auto& fieldInstance : mCurTypeInstance->mFieldInstances)
@@ -18847,13 +18849,13 @@ void BfModule::EmitEnumToStringBody()
 		if (fieldInstance.mIsEnumPayloadCase)
 		{
 			int tagId = -fieldInstance.mDataIdx - 1;
+			
 			BfIRBlock caseBlock = mBfIRBuilder->CreateBlock("case");
 			mBfIRBuilder->AddBlock(caseBlock);
 			mBfIRBuilder->SetInsertPoint(caseBlock);
-
 			BF_ASSERT(discriminatorType->IsPrimitiveType());
 			auto constVal = mBfIRBuilder->CreateConst(((BfPrimitiveType*)discriminatorType)->mTypeDef->mTypeCode, tagId);
-			mBfIRBuilder->AddSwitchCase(switchVal, constVal, caseBlock);
+			mBfIRBuilder->AddSwitchCase(switchVal, constVal, caseBlock);			
 
 			auto caseStr = GetStringObjectValue(fieldInstance.GetFieldDef()->mName);
 
@@ -18882,7 +18884,7 @@ void BfModule::EmitEnumToStringBody()
 				irArgs.Add(stringDestVal.mValue);
 				exprEvaluator.CreateCall(NULL, toStringMethod.mMethodInstance, toStringMethod.mFunc, true, irArgs);
 			}
-
+			
 			mBfIRBuilder->CreateBr(endBlock);
 			continue;
 		}
@@ -18903,12 +18905,15 @@ void BfModule::EmitEnumToStringBody()
 			continue;
 		}
 
-		BfIRBlock caseBlock = mBfIRBuilder->CreateBlock("case");
-		mBfIRBuilder->AddBlock(caseBlock);
-		mBfIRBuilder->SetInsertPoint(caseBlock);
+		if (switchVal)
+		{
+			BfIRBlock caseBlock = mBfIRBuilder->CreateBlock("case");
+			mBfIRBuilder->AddBlock(caseBlock);
+			mBfIRBuilder->SetInsertPoint(caseBlock);
 
-		BfIRValue constVal = ConstantToCurrent(constant, mCurTypeInstance->mConstHolder, mCurTypeInstance);
-		mBfIRBuilder->AddSwitchCase(switchVal, constVal, caseBlock);
+			BfIRValue constVal = ConstantToCurrent(constant, mCurTypeInstance->mConstHolder, mCurTypeInstance);
+			mBfIRBuilder->AddSwitchCase(switchVal, constVal, caseBlock);
+		}
 
 		auto caseStr = GetStringObjectValue(fieldInstance.GetFieldDef()->mName);
 		mBfIRBuilder->CreateStore(caseStr, strVal);
@@ -18923,21 +18928,25 @@ void BfModule::EmitEnumToStringBody()
 	args.Add(stringDestVal.mValue);
 	args.Add(mBfIRBuilder->CreateLoad(strVal));
 	exprEvaluator.CreateCall(NULL, appendModuleMethodInstance.mMethodInstance, appendModuleMethodInstance.mFunc, false, args);
-	mBfIRBuilder->CreateBr(endBlock);
 
-	mBfIRBuilder->AddBlock(noMatchBlock);
-	mBfIRBuilder->SetInsertPoint(noMatchBlock);
-	auto int64Val = mBfIRBuilder->CreateNumericCast(enumVal, false, BfTypeCode_Int64);
-	auto toStringModuleMethodInstance = GetMethodByName(int64StructType, "ToString", 1);
-	args.clear();
-	args.Add(int64Val);
-	stringDestVal = LoadValue(stringDestAddr);
-	args.Add(stringDestVal.mValue);
-	exprEvaluator.CreateCall(NULL, toStringModuleMethodInstance.mMethodInstance, toStringModuleMethodInstance.mFunc, false, args);
-	mBfIRBuilder->CreateBr(endBlock);
+	if (switchVal)
+	{		
+		mBfIRBuilder->CreateBr(endBlock);
 
-	mBfIRBuilder->AddBlock(endBlock);
-	mBfIRBuilder->SetInsertPoint(endBlock);
+		mBfIRBuilder->AddBlock(noMatchBlock);
+		mBfIRBuilder->SetInsertPoint(noMatchBlock);
+		auto int64Val = mBfIRBuilder->CreateNumericCast(enumVal, false, BfTypeCode_Int64);
+		auto toStringModuleMethodInstance = GetMethodByName(int64StructType, "ToString", 1);
+		args.clear();
+		args.Add(int64Val);
+		stringDestVal = LoadValue(stringDestAddr);
+		args.Add(stringDestVal.mValue);
+		exprEvaluator.CreateCall(NULL, toStringModuleMethodInstance.mMethodInstance, toStringModuleMethodInstance.mFunc, false, args);
+		mBfIRBuilder->CreateBr(endBlock);
+
+		mBfIRBuilder->AddBlock(endBlock);
+		mBfIRBuilder->SetInsertPoint(endBlock);
+	}
 }
 
 void BfModule::EmitTupleToStringBody()
