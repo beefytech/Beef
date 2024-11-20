@@ -19044,7 +19044,10 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 	SetAndRestoreValue<bool> prevUsedAsStatement(mUsedAsStatement, mUsedAsStatement || isCascade);
 	SetAndRestoreValue<BfEvalExprFlags> prevEvalExprFlags(mBfEvalExprFlags);
 	if (isCascade)
-		mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_InCascade);
+	{
+		mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_InCascade);		
+		thisValue = mModule->MakeAddressable(thisValue);		
+	}
 
 	if (((mayBeComptimeCall) && (!mModule->mIsComptimeModule) && (!mModule->mBfIRBuilder->mIgnoreWrites)) ||
 		((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mConstEvalAttributeTypeDef))))
