@@ -9723,6 +9723,8 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 					underlyingType->IsBfObject() ? "" : "*");
 				val += EncodeDataPtr(exprResult.mPtr, true);
 			}
+
+			val += "\n:pointer\t" + EncodeDataPtr(exprResult.mPtr, true);
 		}
 
 		if (val[0] == '!')
@@ -9761,6 +9763,10 @@ String WinDebugger::EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance
 			{
 				if (canEdit)
 					val += "\n:canEdit";
+				if (exprResult.mType->mTypeCode == DbgType_Ptr)
+				{
+					val += "\n:editVal\t" + EncodeDataPtr(exprResult.mPtr, true);
+				}
 			}
 		}
 	}

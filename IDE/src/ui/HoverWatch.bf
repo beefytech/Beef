@@ -879,6 +879,10 @@ namespace IDE.ui
                     {
                         String.NewOrSet!(watch.mEditInitialize, scope String(memberVals[1]));
                     }
+					else if (memberVals0 == ":pointer")
+					{
+						String.NewOrSet!(watch.mPointer, scope String(memberVals[1]));
+					}
 					else if (memberVals0 == ":break")
 					{
 						watch.mMemoryBreakpointAddr = (int)Int64.Parse(memberVals[1], .HexNumber);

@@ -1,4 +1,5 @@
 using System;
+using System.Globalization;
 
 namespace System
 {
@@ -95,16 +96,16 @@ namespace System
 			}
 		}
 
-		public static Result<int, ParseError> Parse(StringView val)
+		public static Result<int, ParseError> Parse(StringView val, NumberStyles style = .Number, CultureInfo cultureInfo = null)
 		{
 			if (sizeof(Self) == sizeof(int64))
 			{
-				var result = Int64.Parse(val);
+				var result = Int64.Parse(val, style, cultureInfo);
 				return *(Result<int, ParseError>*)&result;
 			}
 			else
 			{
-				var result = Int32.Parse(val);
+				var result = Int32.Parse(val, style, cultureInfo);
 				return *(Result<int, ParseError>*)&result;
 			}
 		}

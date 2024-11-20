@@ -1,3 +1,4 @@
+using System.Globalization;
 namespace System
 {
 #unwarn
@@ -85,16 +86,16 @@ namespace System
 				((uint32)this).ToString(outString, format, formatProvider);
 		}
 
-		public static Result<uint, ParseError> Parse(StringView val)
+		public static Result<uint, ParseError> Parse(StringView val, NumberStyles style = .Number, CultureInfo cultureInfo = null)
 		{
 			if (sizeof(Self) == sizeof(uint64))
 			{
-				var result = UInt64.Parse(val);
+				var result = Int64.Parse(val, style, cultureInfo);
 				return *(Result<uint, ParseError>*)&result;
 			}
 			else
 			{
-				var result = UInt32.Parse(val);
+				var result = Int32.Parse(val, style, cultureInfo);
 				return *(Result<uint, ParseError>*)&result;
 			}
 		}

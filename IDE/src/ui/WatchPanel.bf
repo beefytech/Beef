@@ -47,7 +47,8 @@ namespace IDE.ui
 		public String mAddrValueExpr ~ delete _;
 		public String mPointeeExpr ~ delete _;
         public bool mCanEdit;
-        public String mEditInitialize ~ delete _;
+        public String mPointer ~ delete _;
+		public String mEditInitialize ~ delete _;
         public bool mHadValue;
         public bool mHasValue;
         public bool mIsNewExpression;
@@ -4487,7 +4488,7 @@ namespace IDE.ui
 
 				if (watchEntry.mResultType.HasFlag(.Pointer))
 				{
-					if (int.Parse(watchEntry.mEditInitialize) case .Ok(let addr))
+					if (int.Parse(watchEntry.mPointer ?? watchEntry.mEditInitialize, .AllowHexSpecifier) case .Ok(let addr))
 					{
 						int threadId;
 						gApp.mDebugger.GetStackAllocInfo(addr, out threadId, null);
