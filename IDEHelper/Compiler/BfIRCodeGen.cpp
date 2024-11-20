@@ -2244,9 +2244,15 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BfIRTypeEx*, elementType);
 			CMD_PARAM(int, length);
 
+			auto llvmType = elementType->mLLVMType;
+			if (llvmType->getScalarSizeInBits() == 1)
+			{
+				llvmType = llvm::Type::getInt8Ty(*mLLVMContext);
+			}
+
 			auto typeEx = new BfIRTypeEx();
 			mIRTypeExs.Add(typeEx);
-			typeEx->mLLVMType = llvm::FixedVectorType::get(elementType->mLLVMType, length);
+			typeEx->mLLVMType = llvm::FixedVectorType::get(llvmType, length);
 			typeEx->mMembers.Add(elementType);
 			SetResult(curId, typeEx);
 		}

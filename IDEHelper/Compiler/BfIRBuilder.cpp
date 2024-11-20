@@ -3093,8 +3093,6 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 		{
 			if (underlyingArrayIsVector)
 			{
-				if (underlyingArrayType == mModule->GetPrimitiveType(BfTypeCode_Boolean))
-					underlyingArrayType = mModule->GetPrimitiveType(BfTypeCode_UInt8);
 				irType = GetVectorType(MapType(underlyingArrayType), underlyingArraySize);
 			}
 			else
