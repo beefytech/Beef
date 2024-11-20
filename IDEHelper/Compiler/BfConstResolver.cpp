@@ -305,7 +305,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 						isDirectPass = true;
 				}
 
-				if (!isDirectPass)
+				if ((!isDirectPass) && (wantType->IsArray()))
 				{
 					BfArrayType* arrayType = (BfArrayType*)wantType;
 					if (arrayType->IsIncomplete())
