@@ -11904,13 +11904,27 @@ BeMCInstForm BeMCContext::GetInstForm(BeMCInst* inst)
 	if ((arg0Type != NULL) && (arg1Type != NULL) &&
 		((arg0Type->IsVector()) || (arg1Type->IsVector())))
 	{
-		if (arg0.IsNativeReg())
+		if ((arg0Type->mSize == 8) || (arg1Type->mSize == 8))
 		{
-			return BeMCInstForm_XMM128_RM128;
+			if (arg0.IsNativeReg())
+			{
+				return BeMCInstForm_XMM64_RM64;
+			}
+			else
+			{
+				return BeMCInstForm_FRM64_XMM64;
+			}
 		}
 		else
 		{
-			return BeMCInstForm_FRM128_XMM128;
+			if (arg0.IsNativeReg())
+			{
+				return BeMCInstForm_XMM128_RM128;
+			}
+			else
+			{
+				return BeMCInstForm_FRM128_XMM128;
+			}
 		}
 	}
 	else if ((arg0Type != NULL) && (arg1Type != NULL) &&
@@ -12355,9 +12369,13 @@ bool BeMCContext::EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 op
 	case BeMCInstForm_XMM64_IMM:
 	case BeMCInstForm_XMM64_FRM64:
 	case BeMCInstForm_XMM32_FRM64:
-		Emit(0xF2); EmitREX(inst->mArg0, inst->mArg1, is64Bit);
-		Emit(0x0F); Emit(opcode);
-		EmitModRM(inst->mArg0, inst->mArg1);
+		{
+			auto arg0 = GetFixedOperand(inst->mArg0);
+			auto arg1 = GetFixedOperand(inst->mArg1);
+			Emit(0xF2); EmitREX(arg0, arg1, is64Bit);
+			Emit(0x0F); Emit(opcode);
+			EmitModRM(arg0, arg1);
+		}
 		return true;
 	case BeMCInstForm_XMM128_RM128:
 		{
@@ -12411,14 +12429,22 @@ bool BeMCContext::EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 op
 	switch (instForm)
 	{
 	case BeMCInstForm_FRM32_XMM32:
-		Emit(0xF3); EmitREX(inst->mArg1, inst->mArg0, is64Bit);
-		Emit(0x0F); Emit(opcode_dest_frm);
-		EmitModRM(inst->mArg1, inst->mArg0);
+		{
+			auto arg0 = GetFixedOperand(inst->mArg0);
+			auto arg1 = GetFixedOperand(inst->mArg1);
+			Emit(0xF3); EmitREX(arg1, arg0, is64Bit);
+			Emit(0x0F); Emit(opcode_dest_frm);
+			EmitModRM(arg1, arg0);
+		}
 		return true;
 	case BeMCInstForm_FRM64_XMM64:
-		Emit(0xF2); EmitREX(inst->mArg1, inst->mArg0, is64Bit);
-		Emit(0x0F); Emit(opcode_dest_frm);
-		EmitModRM(inst->mArg1, inst->mArg0);
+		{
+			auto arg0 = GetFixedOperand(inst->mArg0);
+			auto arg1 = GetFixedOperand(inst->mArg1);
+			Emit(0xF2); EmitREX(arg1, arg0, is64Bit);
+			Emit(0x0F); Emit(opcode_dest_frm);
+			EmitModRM(arg1, arg0);
+		}
 		return true;
 	default:
 		return EmitStdXMMInst(instForm, inst, opcode);
@@ -13845,17 +13871,7 @@ void BeMCContext::DoCodeEmission()
 								// CVTSI2SD - use zero-extended 64-bit register
 								EmitStdXMMInst(BeMCInstForm_XMM64_RM64, inst, 0x2A);
 							}
-							break;
-						case BeMCInstForm_XMM64_RM64:
-						case BeMCInstForm_XMM32_RM64:
-							{
-								// uint64->xmm Not implemented
-								// We do a signed transform instead
-
-								// CVTSI2SS / CVTSI2SD
-								EmitStdXMMInst(instForm, inst, 0x2A);
-							}
-							break;
+							break;						
 						case BeMCInstForm_XMM64_FRM32:
 						case BeMCInstForm_XMM32_FRM64:
 							{
@@ -13930,6 +13946,24 @@ void BeMCContext::DoCodeEmission()
 								}
 							}
 							break;
+						case BeMCInstForm_XMM64_RM64:
+						case BeMCInstForm_XMM32_RM64:
+							{
+								if ((arg0Type->IsVector()) && (arg1Type->IsVector()))
+								{
+									// Fall through
+								}
+								else
+								{
+									// uint64->xmm Not implemented
+									// We do a signed transform instead
+
+									// CVTSI2SS / CVTSI2SD
+									EmitStdXMMInst(instForm, inst, 0x2A);
+									break;
+								}
+							}							
+							// Fall through
 						default:
 							{
 								// MOVSS/MOVSD

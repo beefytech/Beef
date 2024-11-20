@@ -918,9 +918,10 @@ enum BeMCInstForm
 	BeMCInstForm_R32,
 	BeMCInstForm_R64,
 
+	// FRM32 = float, FRM64 = double
 	BeMCInstForm_XMM32_IMM,
 	BeMCInstForm_XMM64_IMM,
-	BeMCInstForm_XMM32_FRM32,
+	BeMCInstForm_XMM32_FRM32, 
 	BeMCInstForm_XMM64_FRM32,
 	BeMCInstForm_XMM32_FRM64,
 	BeMCInstForm_XMM64_FRM64,
