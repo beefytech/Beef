@@ -5253,8 +5253,6 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 		BF_ASSERT(fieldInstance->mConstIdx != -1);
 
 		auto foreignConst = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
-		if (resolvedFieldType->IsValuelessType())
-			return BfTypedValue(BfIRValue::sValueless, resolvedFieldType);
 		auto retVal = mModule->ConstantToCurrent(foreignConst, typeInstance->mConstHolder, resolvedFieldType);
 		return BfTypedValue(retVal, resolvedFieldType);
 	}
