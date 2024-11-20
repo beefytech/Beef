@@ -5171,6 +5171,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			caseScopeData.mIsSharedTempBlock = true;
 			mCurMethodState->AddScope(&caseScopeData);
 			NewScopeState();
+			caseScopeData.mLabel = newScope.mLabel;
 
 			bool hadReturn = false;
 			VisitCodeBlock(switchCase->mCodeBlock, BfIRBlock(), endBlock, BfIRBlock(), true, &hadReturn, switchStmt->mLabelNode);

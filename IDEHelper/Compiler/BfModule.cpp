@@ -1942,7 +1942,7 @@ void BfModule::NewScopeState(bool createLexicalBlock, bool flushValueScope)
 		{
 			if (checkScope->mLabel == mCurMethodState->mCurScope->mLabel)
 			{
-				auto errorNode = Fail("Duplicate scope label", curScope->mLabelNode);
+				auto errorNode = Warn(0, StrFormat("Duplicate scope label '%s'", checkScope->mLabel.c_str()), curScope->mLabelNode);
 				if (errorNode != NULL)
 					mCompiler->mPassInstance->MoreInfo("See previous scope label", checkScope->mLabelNode);
 				break;
