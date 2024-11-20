@@ -21931,6 +21931,10 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 
 void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, BfTypedValue target)
 {
+	BfAstNode* refNode = indexerExpr->mOpenBracket;
+	if (refNode == NULL)
+		refNode = indexerExpr->mTarget;
+	
 	bool wantStatic = false;
 	// Try first as a non-static indexer, then as a static indexer
 
@@ -22028,6 +22032,13 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 		BfMethodDef* methodDef = NULL;
 
 		auto startCheckTypeInst = target.mType->ToTypeInstance();
+		auto lookupType = target.mType;
+		if (lookupType != NULL)
+		{
+			lookupType = BindGenericType(refNode, lookupType);
+			if (lookupType->IsGenericParam())
+				startCheckTypeInst = NULL;
+		}		
 
 		for (int pass = 0; pass < 2; pass++)
 		{
@@ -22036,7 +22047,7 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 			BfPropertyDef* foundProp = NULL;
 			BfTypeInstance* foundPropTypeInst = NULL;
 
-			BfBaseClassWalker baseClassWalker(target.mType, NULL, mModule, true);
+			BfBaseClassWalker baseClassWalker(lookupType, NULL, mModule, true);
 			
 			while (true)
 			{

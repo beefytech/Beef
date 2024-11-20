@@ -109,6 +109,22 @@ namespace Tests
 			}
 		}
 
+		class IndexTestExplicit : IIndexable<float>
+		{
+			public float IIndexable<float>.this[int index]
+			{
+				get
+				{
+					return index;
+				}
+
+				set
+				{
+
+				}
+			}
+		}
+
 		public static float Get<T>(T indexable) where T : IIndexable<float>
 		{
 		    float f = indexable[4];
@@ -147,6 +163,10 @@ namespace Tests
 
 			IndexTest it = scope .();
 			Test.Assert(it[5] == 5.0f);
+			Test.Assert(Get(it) == 4);
+
+			IndexTestExplicit it2 = scope .();
+			Test.Assert(Get(it2) == 4);
 		}
 	}
 }
