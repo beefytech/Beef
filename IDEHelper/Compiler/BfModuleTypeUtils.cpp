@@ -14556,8 +14556,15 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						if ((convTypedVal.mType->IsWrappableType()) && (wantType == GetWrappedStructType(convTypedVal.mType)))
 						{
 							convTypedVal = MakeAddressable(convTypedVal);
-							methodMatcher.mArguments[0].mTypedValue = BfTypedValue(mBfIRBuilder->CreateBitCast(convTypedVal.mValue, mBfIRBuilder->MapTypeInstPtr(wantType->ToTypeInstance())),
-								paramType, paramType->IsRef() ? BfTypedValueKind_Value : BfTypedValueKind_Addr);
+							if (convTypedVal.mType->IsValuelessType())
+							{
+								methodMatcher.mArguments[0].mTypedValue = GetDefaultTypedValue(paramType, false, paramType->IsRef() ? BfDefaultValueKind_Value : BfDefaultValueKind_Addr);
+							}
+							else
+							{
+								methodMatcher.mArguments[0].mTypedValue = BfTypedValue(mBfIRBuilder->CreateBitCast(convTypedVal.mValue, mBfIRBuilder->MapTypeInstPtr(wantType->ToTypeInstance())),
+									paramType, paramType->IsRef() ? BfTypedValueKind_Value : BfTypedValueKind_Addr);
+							}
 						}
 						else
 						{
