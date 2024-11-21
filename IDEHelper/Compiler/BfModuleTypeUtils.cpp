@@ -6238,9 +6238,20 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	if (typeInstance->mTypeOptionsIdx >= 0)
 		typeOptions = mSystem->GetTypeOptions(typeInstance->mTypeOptionsIdx);
 
+	BfMethodDef* defaultCtor = NULL;
+	bool hasExplicitCtors = false;
+
 	// Generate all methods. Pass 0
 	for (auto methodDef : typeDef->mMethods)
 	{
+		if (methodDef->mMethodType == BfMethodType_Ctor)
+		{
+			if (methodDef->mMethodDeclaration == NULL)
+				defaultCtor = methodDef;
+			else
+				hasExplicitCtors = true;
+		}
+
 		auto methodInstanceGroup = &typeInstance->mMethodInstanceGroups[methodDef->mIdx];
 
 		// Don't set these pointers during resolve pass because they may become invalid if it's just a temporary autocomplete method
@@ -6270,6 +6281,12 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		// Thsi MAY be generated already
 		// This should still be set to the default value
 		//BF_ASSERT((methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_NotSet) || (methodInstanceGroup->mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude));
+	}
+
+	if ((defaultCtor != NULL) && (hasExplicitCtors))
+	{
+		// This can happen if we emit another ctor
+		defaultCtor->mProtection = BfProtection_Hidden;
 	}
 
 	if (typeInstance == mContext->mBfObjectType)

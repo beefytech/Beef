@@ -52,7 +52,8 @@ class BfPassInstance;
 
 enum BfProtection : uint8
 {
-	BfProtection_Hidden,
+	BfProtection_Disable,
+	BfProtection_Hidden,	
 	BfProtection_Private,
 	BfProtection_Internal,
 	BfProtection_Protected,

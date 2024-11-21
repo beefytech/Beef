@@ -524,6 +524,33 @@ namespace Tests
 			}
 		}
 
+		struct Float3 : this(float x, float y, float z = 0)
+		{
+		}
+
+		struct Pos3f : Float3
+		{
+			[OnCompile(.TypeInit), Comptime]
+			static void TypeInit()
+			{
+				Compiler.EmitTypeBody(typeof(Self),
+					"""
+					public this(float x, float y, float z) : base(x, y, z) {}
+					""");
+			}
+		}
+
+		struct DefaultCtorTest
+		{
+			public int mA;
+
+			[OnCompile(.TypeInit), Comptime]
+			static void InitType()
+			{
+				Compiler.EmitTypeBody(typeof(Self), "public this() { mA = 123; }");
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -613,6 +640,9 @@ namespace Tests
 				public int mA = 123;
 				"""> genClass = scope .();
 			Test.Assert(genClass.mA == 123);
+
+			DefaultCtorTest dct = .();
+			Test.Assert(dct.mA == 123);
 		}
 	}
 }

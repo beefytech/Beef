@@ -26000,7 +26000,7 @@ void BfModule::CheckOverridenMethod(BfMethodInstance* methodInstance, BfMethodIn
 	auto prevProtection = methodOverriden->mMethodDef->mProtection;
 	if ((methodDef->mProtection != prevProtection) && (methodDef->mMethodType != BfMethodType_Dtor))
 	{
-		const char* protectionNames[] = { "hidden", "private", "internal", "protected", "protected internal", "public" };
+		const char* protectionNames[] = { "disabled", "hidden", "private", "internal", "protected", "protected internal", "public" };
 		BF_STATIC_ASSERT(BF_ARRAY_COUNT(protectionNames) == BfProtection_COUNT);
 		BfAstNode* protectionRefNode = NULL;
 		if (auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration())
