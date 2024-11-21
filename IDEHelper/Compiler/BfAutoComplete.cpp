@@ -2548,7 +2548,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 
 			if (methodInst->GetParamKind(paramIdx) == BfParamKind_Params)
 				methodName += "params ";
-
+			
 			methodName += mModule->TypeToString(methodInst->GetParamType(paramIdx), nameFlags);
 			methodName += " ";
 			methodName += methodDef->mParams[paramIdx]->mName;
@@ -2564,6 +2564,16 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 			{
 				if (methodInst->GetParamKind(paramIdx) == BfParamKind_Params)
 					impString += "params ";
+
+				auto paramType = methodInst->GetParamType(paramIdx);
+				if (paramType->IsRef())
+				{
+					auto refType = (BfRefType*)paramType;
+					if (refType->mRefKind == BfRefType::RefKind_Ref)
+						impString += "ref ";
+					if (refType->mRefKind == BfRefType::RefKind_Out)
+						impString += "out ";
+				}
 
 				impString += methodDef->mParams[paramIdx]->mName;
 			}
