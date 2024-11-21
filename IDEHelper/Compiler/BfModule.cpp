@@ -25070,6 +25070,12 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 						if ((checkMethod->mCommutableKind == BfCommutableKind_Reverse) || (methodDef->mCommutableKind == BfCommutableKind_Reverse))
 							silentlyAllow = true;
 
+						if (checkMethod->mMethodDeclaration == NULL)
+						{
+							// This can allow emission of a default ctor if we've already auto-added a default ctor
+							silentlyAllow = true;							
+						}
+
 						if (!silentlyAllow)
 						{
 							if ((!methodDef->mName.IsEmpty()) || (checkMethodInstance->mMethodDef->mIsOperator))
