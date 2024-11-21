@@ -11904,7 +11904,8 @@ BeMCInstForm BeMCContext::GetInstForm(BeMCInst* inst)
 	if ((arg0Type != NULL) && (arg1Type != NULL) &&
 		((arg0Type->IsVector()) || (arg1Type->IsVector())))
 	{
-		if ((arg0Type->mSize == 8) || (arg1Type->mSize == 8))
+		if (((arg0Type->IsVector()) && (arg0Type->mSize == 8)) || 
+			((arg1Type->IsVector()) && (arg1Type->mSize == 8)))
 		{
 			if (arg0.IsNativeReg())
 			{
@@ -12467,9 +12468,13 @@ bool BeMCContext::EmitPackedXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8
 	case BeMCInstForm_XMM32_IMM:
 	case BeMCInstForm_XMM32_FRM32:
 	case BeMCInstForm_XMM64_FRM32: // CVTSS2SD
-		EmitREX(inst->mArg0, inst->mArg1, is64Bit);
-		Emit(0x0F); Emit(opcode);
-		EmitModRM(inst->mArg0, inst->mArg1);
+		{
+			auto arg0 = GetFixedOperand(inst->mArg0);
+			auto arg1 = GetFixedOperand(inst->mArg1);
+			EmitREX(arg0, arg1, is64Bit);
+			Emit(0x0F); Emit(opcode);
+			EmitModRM(arg0, arg1);
+		}
 		return true;
 
 	case BeMCInstForm_R64_F64:
@@ -12481,9 +12486,13 @@ bool BeMCContext::EmitPackedXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8
 	case BeMCInstForm_XMM64_IMM:
 	case BeMCInstForm_XMM64_FRM64:
 	case BeMCInstForm_XMM32_FRM64: // CVTSD2SS
-		EmitREX(inst->mArg0, inst->mArg1, is64Bit);
-		Emit(0x0F); Emit(opcode);
-		EmitModRM(inst->mArg0, inst->mArg1);
+		{
+			auto arg0 = GetFixedOperand(inst->mArg0);
+			auto arg1 = GetFixedOperand(inst->mArg1);
+			EmitREX(arg0, arg1, is64Bit);
+			Emit(0x0F); Emit(opcode);
+			EmitModRM(arg0, arg1);
+		}
 		return true;
 	}
 
@@ -16228,7 +16237,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	//mDebugging = (function->mName == "?stbi__gif_load_next@6$StbImage@StbImageBeef@bf@@SAPEAEPEAVstbi__context@123@PEAVstbi__gif@123@PEAHHPEAE@Z");
+	mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@SAXPEAV?$Array1@PEAVString@System@bf@@@System@3@@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
