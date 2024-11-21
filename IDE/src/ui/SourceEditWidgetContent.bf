@@ -16,6 +16,7 @@ using Beefy.geom;
 using Beefy.events;
 using System.Security.Cryptography;
 using System.IO;
+using IDE.Util;
 
 namespace IDE.ui
 {    
@@ -5196,6 +5197,82 @@ namespace IDE.ui
 			base.MouseDown(x, y, btn, btnCount);
 		}
 
+		public void Undo(bool force)
+		{
+			if (!force)
+			{
+				String undoWarnFiles = scope .();
+
+				mData.mUndoManager.PreUndo(scope [&] (undoAction) =>
+					{
+						if (var globalUndoAction = undoAction as GlobalUndoAction)
+						{
+							bool panelFoundInAll = true;
+
+							for (var fileEditData in globalUndoAction.mUndoData.mFileEditDatas)
+							{
+								bool actionFound = false;
+								bool foundPanel = false;
+								var data = fileEditData.mEditWidget.mEditWidgetContent.mData;
+
+								for (var user in data.mUsers)
+								{
+									if (var sewc = user as SourceEditWidgetContent)
+									{
+										if (sewc.mSourceViewPanel != null)
+										{
+											foundPanel = true;
+										}
+									}
+									if (!foundPanel)
+										panelFoundInAll = false;
+								}
+
+								data.mUndoManager.PreUndo(scope [&] (subUndoAction) =>
+									{
+										if (var subGlobalUndoAction = subUndoAction as GlobalUndoAction)
+										{
+											if (subGlobalUndoAction.mUndoData == globalUndoAction.mUndoData)
+												actionFound = true;
+										}
+										
+									});
+
+								if (!actionFound)
+								{
+									if (!undoWarnFiles.IsEmpty)
+										undoWarnFiles.Append(", ");
+									undoWarnFiles.AppendF("'");
+									Path.GetFileName(fileEditData.mFilePath, undoWarnFiles);
+									undoWarnFiles.AppendF("'");
+								}
+							}
+						}
+					});
+
+				if (!undoWarnFiles.IsEmpty)
+				{
+					Dialog dialog = ThemeFactory.mDefault.CreateDialog("Undo/Redo Warning", scope $"You are attempting to undo a global operation which will revert subsequent changes in {undoWarnFiles}. Do you wish to proceed?", DarkTheme.sDarkTheme.mIconWarning);
+					dialog.mDefaultButton = dialog.AddButton("Yes", new (evt) =>
+						{
+							dialog.Close();
+							var svPanel = gApp.GetActiveSourceViewPanel();
+							if ((svPanel != null) && (svPanel.mEditWidget == mEditWidget))
+								Undo(true);
+						});
+					dialog.mEscButton = dialog.AddButton("No", new (evt) =>
+						{
+							//dialog.Close();
+						});
+					dialog.PopupWindow(gApp.GetActiveWindow());
+					return;
+				}
+			}
+
+
+			base.Undo();
+		}
+
         public override void Undo()
         {
 			var symbolReferenceHelper = IDEApp.sApp.mSymbolReferenceHelper;
@@ -5205,7 +5282,7 @@ namespace IDE.ui
                 return;
             }
 
-            base.Undo();            
+            Undo(false);
         }
 
         public override void Redo()

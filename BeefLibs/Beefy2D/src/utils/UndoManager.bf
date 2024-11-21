@@ -278,6 +278,31 @@ namespace Beefy.utils
             return true;
         }
 
+		public void PreUndo(delegate void (UndoAction) dlg)
+		{
+			int undoIdx = mUndoIdx;
+			if (undoIdx == 0)
+			    return;
+
+			var undoAction = mUndoList[undoIdx - 1];
+			if (IUndoBatchEnd undoBatchEnd = undoAction as IUndoBatchEnd)
+			{
+			    while (true)
+			    {
+					dlg(undoAction);
+			        if (undoIdx == 0)
+			            return;
+			        undoIdx--;
+			        if ((undoAction == undoBatchEnd.BatchStart) || (undoIdx == 0))
+			            return;
+			        undoAction = mUndoList[undoIdx - 1];
+			    }
+			}
+
+			dlg(undoAction);
+			undoIdx--;
+		}
+
         public bool Redo()
         {
             mSkipNextMerge = true;
