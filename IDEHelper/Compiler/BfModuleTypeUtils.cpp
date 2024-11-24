@@ -6244,7 +6244,7 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	// Generate all methods. Pass 0
 	for (auto methodDef : typeDef->mMethods)
 	{
-		if (methodDef->mMethodType == BfMethodType_Ctor)
+		if ((methodDef->mMethodType == BfMethodType_Ctor) && (!methodDef->mIsStatic))
 		{
 			if (methodDef->mMethodDeclaration == NULL)
 				defaultCtor = methodDef;
