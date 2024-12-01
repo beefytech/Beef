@@ -117,9 +117,9 @@ extension CompactList<T> where T : class
 {
 	Object mObject;
 
-    public this()
-    {
-    }
+	public this()
+	{
+	}
 
 	[Inline]
 	Object NullSentinel => Internal.UnsafeCastToObject((.)1);
