@@ -375,8 +375,8 @@ namespace IDE
 				GetColor("Literal", ref mLiteral);
 				GetColor("Identifier", ref mIdentifier);
 				mLocal = mIdentifier;
-				mParameter = mIdentifier;
 				GetColor("Local", ref mLocal);
+				mParameter = mLocal;
 				GetColor("Parameter", ref mParameter);
 				mMember = mIdentifier;
 				GetColor("Member", ref mMember);
