@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Numerics;
 
 namespace Tests
 {
@@ -217,6 +218,16 @@ namespace Tests
 			return span[0];
 		}
 
+		public static float GetFirstFloat(float[3] fVals)
+		{
+			return fVals[0];
+		}
+
+		public static float GetFirstFloatRef(ref float[3] fVals)
+		{
+			return fVals[0];
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -290,6 +301,10 @@ namespace Tests
 			fList.Add(1.2f);
 			Test.Assert(ParamsTest(params fList) == 1.2f);
 			Test.Assert(ParamsTest2(params fList) == 1.2f);
+
+			float4 fVals = .(123, 234, 345, 456);
+			Test.Assert(GetFirstFloat(*(.)&fVals) == 123);
+			Test.Assert(GetFirstFloatRef(ref *(.)&fVals) == 123);
 		}
 	}
 }

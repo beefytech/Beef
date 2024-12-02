@@ -1471,7 +1471,7 @@ BfTypedValue BfMethodMatcher::ResolveArgTypedValue(BfResolvedArg& resolvedArg, B
 
 				BfExprEvaluator exprEvaluator(mModule);
 				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags);
-				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowIntUnknown | BfEvalExprFlags_NoAutoComplete);
+				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowIntUnknown | BfEvalExprFlags_AllowRefExpr | BfEvalExprFlags_NoAutoComplete);
 				if ((resolvedArg.mArgFlags & BfArgFlag_ParamsExpr) != 0)
 					exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(exprEvaluator.mBfEvalExprFlags | BfEvalExprFlags_AllowParamsExpr);
 
@@ -7460,7 +7460,7 @@ void BfExprEvaluator::FinishDeferredEvals(SizedArrayImpl<BfResolvedArg>& argValu
 			{
 				auto expr = BfNodeDynCast<BfExpression>(argValues[argIdx].mExpression);
 				if (expr != NULL)
-					argValue = mModule->CreateValueFromExpression(expr, argValues[argIdx].mExpectedType);
+					argValue = mModule->CreateValueFromExpression(expr, argValues[argIdx].mExpectedType, BfEvalExprFlags_NoCast);
 			}
 		}
 	}
@@ -8955,7 +8955,7 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 			{
 				BfExprEvaluator exprEvaluator(mModule);
 				exprEvaluator.mReceivingValue = receivingValue;
-				BfEvalExprFlags flags = (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast);
+				BfEvalExprFlags flags = (BfEvalExprFlags)((mBfEvalExprFlags & BfEvalExprFlags_InheritFlags) | BfEvalExprFlags_NoCast | BfEvalExprFlags_AllowRefExpr);
 				if ((paramKind == BfParamKind_Params) || (paramKind == BfParamKind_DelegateParam))
 					flags = (BfEvalExprFlags)(flags | BfEvalExprFlags_AllowParamsExpr);
 
@@ -22405,15 +22405,25 @@ void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp
 		BfType* prevExpedcting = mExpectingType;
 		switch (unaryOp)
 		{
+		case BfUnaryOp_Ref:
+			// Allow
+			break;
+		case BfUnaryOp_Dereference:
+			if (mExpectingType != NULL)
+			{
+				if (mExpectingType->IsRef())
+					mExpectingType = mExpectingType->GetUnderlyingType();
+				mExpectingType = mModule->CreatePointerType(mExpectingType);
+			}
+			break;
 		case BfUnaryOp_Negate:
 		case BfUnaryOp_Positive:
 		case BfUnaryOp_InvertBits:
 			// If we're expecting an int64 or uint64 then just leave the type as unknown
 			if ((mExpectingType != NULL) && (mExpectingType->IsInteger()) && (mExpectingType->mSize == 8))
 				mExpectingType = NULL;
-
 			// Otherwise keep expecting type
-			break;
+			break;		
 		default:
 			mExpectingType = NULL;
 		}

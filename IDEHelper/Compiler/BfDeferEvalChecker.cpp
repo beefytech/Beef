@@ -139,9 +139,12 @@ void BfDeferEvalChecker::Visit(BfUnaryOperatorExpression* unaryOpExpr)
 {
 	switch (unaryOpExpr->mOp)
 	{
+	case BfUnaryOp_Dereference:
+	case BfUnaryOp_Ref:
+	case BfUnaryOp_Not:
 	case BfUnaryOp_Negate:
 	case BfUnaryOp_Positive:
-	case BfUnaryOp_InvertBits:
+	case BfUnaryOp_InvertBits:	
 		VisitChild(unaryOpExpr->mExpression);
 		break;
 // 	case BfUnaryOp_Params:
