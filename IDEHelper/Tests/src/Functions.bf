@@ -159,6 +159,31 @@ namespace Tests
 			}
 		}
 
+		interface ITest
+		{
+			static void Func();
+		}
+
+		class ClassC<T> where T : ITest
+		{
+			static function void() func = => T.Func;
+
+			public static void Test()
+			{
+				func();
+			}
+		}
+
+		class Zoop : ITest
+		{
+			public static int sVal;
+
+			public static void Func()
+			{
+				sVal = 123;
+			}
+		}
+
 		public static int UseFunc0<T>(function int (T this, float f) func, T a, float b)
 		{
 			return func(a, b);
@@ -226,6 +251,9 @@ namespace Tests
 				});
 
 			StructCRepr.Test();
+
+			ClassC<Zoop>.Test();
+			Test.Assert(Zoop.sVal == 123);
 		}
 	}
 }

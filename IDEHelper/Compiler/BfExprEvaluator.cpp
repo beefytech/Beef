@@ -6805,7 +6805,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 		{
 			// We're attempting to directly invoke a non-virtual interface method, this will happen during the unspecialized pass
 			//  OR if we had an error and didn't find an implementing member in the actual target
-			if ((!mModule->mCurMethodInstance->mIsUnspecialized) && (!mModule->mCurTypeInstance->IsInterface()))
+			if (((mModule->mCurMethodInstance == NULL) || (!mModule->mCurMethodInstance->mIsUnspecialized)) &&
+				(!mModule->mCurTypeInstance->IsInterface()))
 				mModule->AssertErrorState();
 
 			if (returnType->IsInterface())

@@ -13093,7 +13093,7 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targe
 			{
 				if ((!methodInstance->mIsUnspecialized) && (HasCompiledOutput()))
 					AssertErrorState();
-				return GetDefaultValue(dataType);
+				return GetDefaultTypedValue(dataType, false, BfDefaultValueKind_Value).mValue;
 			}
 			bindFuncVal = methodRefMethod.mFunc;
 		}
