@@ -1231,10 +1231,10 @@ CeOperand CeBuilder::EmitNumericCast(const CeOperand& ceValue, BeType* toType, b
 						op = CeOp_Conv_U8_U64;
 						break;
 					case BeTypeCode_Float:
-						op = CeOp_Conv_I8_F32;
+						op = CeOp_Conv_U8_F32;
 						break;
 					case BeTypeCode_Double:
-						op = CeOp_Conv_I8_F64;
+						op = CeOp_Conv_U8_F64;
 						break;
 					}
 					break;
