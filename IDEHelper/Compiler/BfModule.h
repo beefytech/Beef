@@ -1652,6 +1652,7 @@ public:
 	void FixConstValueParams(BfTypeInstance* typeInst, SizedArrayImpl<BfIRValue>& valueParams, bool fillInPadding = false);
 	BfIRValue CreateStringObjectValue(const StringImpl& str, int stringId, bool define);
 	BfIRValue CreateStringCharPtr(const StringImpl& str, int stringId, bool define);
+	bool HasStringId(BfIRValue constantStr, BfIRConstHolder* constHolder = NULL);
 	int GetStringPoolIdx(BfIRValue constantStr, BfIRConstHolder* constHolder = NULL);
 	String* GetStringPoolString(BfIRValue constantStr, BfIRConstHolder* constHolder = NULL);
 	BfIRValue GetStringCharPtr(int stringId, bool force = false);

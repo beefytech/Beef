@@ -1766,6 +1766,29 @@ BfIRValue BfModule::CreateStringObjectValue(const StringImpl& str, int stringId,
 	return stringValLiteral;
 }
 
+bool BfModule::HasStringId(BfIRValue constantStr, BfIRConstHolder* constHolder)
+{
+	if (constHolder == NULL)
+		constHolder = mBfIRBuilder;
+
+	auto constant = constHolder->GetConstant(constantStr);
+	if (constant == NULL)
+		return false;
+
+	while (constant->mConstType == BfConstType_BitCast)
+	{
+		auto constBitCast = (BfConstantBitCast*)constant;
+		constant = constHolder->GetConstantById(constBitCast->mTarget);
+	}
+
+	if (constant->mTypeCode == BfTypeCode_StringId)
+	{
+		return true;
+	}
+
+	return false;
+}
+
 int BfModule::GetStringPoolIdx(BfIRValue constantStr, BfIRConstHolder* constHolder)
 {
 	if (constHolder == NULL)

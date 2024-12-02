@@ -184,7 +184,13 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 		if (isConst)
 		{
 			auto constant = mModule->mBfIRBuilder->GetConstant(mResult.mValue);
-			if ((constant->mConstType == BfConstType_GlobalVar) && ((flags & BfConstResolveFlag_AllowGlobalVariable) == 0))
+
+			if ((constant->mTypeCode != BfTypeCode_StringId) && (mModule->HasStringId(mResult.mValue, mModule->mBfIRBuilder)))
+			{
+				mModule->Fail("Invalid usage of string constant", expr);				
+				mResult = BfTypedValue();
+			}
+			else if ((constant->mConstType == BfConstType_GlobalVar) && ((flags & BfConstResolveFlag_AllowGlobalVariable) == 0))
 			{
 				int stringId = mModule->GetStringPoolIdx(mResult.mValue, mModule->mBfIRBuilder);
 				if (stringId != -1)
@@ -193,7 +199,7 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 				}
 				else
 					isConst = false;
-			}
+			}			
 		}
 
 		if ((!isConst) && ((mBfEvalExprFlags & BfEvalExprFlags_AllowNonConst) == 0))
