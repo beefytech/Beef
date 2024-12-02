@@ -4090,10 +4090,16 @@ namespace IDE.ui
 						}
                         if (column > 0)
                         {
-							String tabStr = scope String();
-							tabStr.Append('\t', column / gApp.mSettings.mEditorSettings.mTabSize);
-							tabStr.Append(' ', column % gApp.mSettings.mEditorSettings.mTabSize);
-                            InsertAtCursor(tabStr);
+                            String indentationStr = scope String();
+                            switch (gApp.mSettings.mEditorSettings.mTabsOrSpaces)
+							{
+                            case .Spaces:
+                                indentationStr.Append(' ', column);
+                            case .Tabs:
+                                indentationStr.Append('\t', column / gApp.mSettings.mEditorSettings.mTabSize);
+                                indentationStr.Append(' ', column % gApp.mSettings.mEditorSettings.mTabSize);
+                            }
+                            InsertAtCursor(indentationStr);
 						}
 
 						// Insert extra blank line if we're breaking between a { and a }
