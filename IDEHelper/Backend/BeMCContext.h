@@ -1433,6 +1433,7 @@ public:
 	X64CPURegister ResizeRegister(X64CPURegister reg, int numBits);
 	X64CPURegister ResizeRegister(X64CPURegister reg, BeType* type);
 	X64CPURegister GetFullRegister(X64CPURegister reg);
+	bool HasLoad(const BeMCOperand& operand);
 	bool IsAddress(BeMCOperand& operand);
 	bool IsAddressable(BeMCOperand& operand);
 	bool IsVRegExpr(BeMCOperand& operand);
@@ -1440,7 +1441,7 @@ public:
 	BeMCOperand GetFixedOperand(const BeMCOperand& operand);
 	uint8 GetREX(const BeMCOperand& op0, const BeMCOperand& op1, bool is64Bit);
 	void EmitREX(const BeMCOperand& op0, const BeMCOperand& op1, bool is64Bit);
-
+	
 	uint8 EncodeRegNum(X64CPURegister regNum);
 	int GetRegSize(int regNum);
 	void ValidateRMResult(const BeMCOperand& operand, BeRMParamsInfo& rmInfo, bool doValidate = true);

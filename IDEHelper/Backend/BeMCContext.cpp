@@ -5387,6 +5387,20 @@ X64CPURegister BeMCContext::GetFullRegister(X64CPURegister reg)
 	return ResizeRegister(reg, 8);
 }
 
+bool BeMCContext::HasLoad(const BeMCOperand& operand)
+{
+	if (operand.mKind == BeMCOperandKind_VRegLoad)
+		return true;
+	if (operand.mKind != BeMCOperandKind_VReg)
+		return false;
+	auto vregInfo = mVRegInfo[operand.mVRegIdx];
+	if (HasLoad(vregInfo->mRelTo))
+		return true;
+	if (HasLoad(vregInfo->mRelOffset))
+		return true;
+	return false;
+}
+
 bool BeMCContext::IsAddress(BeMCOperand& operand)
 {
 	if (operand.mKind == BeMCOperandKind_VRegAddr)
@@ -8900,7 +8914,7 @@ bool BeMCContext::DoLegalization()
 			auto inst = mcBlock->mInstructions[instIdx];
 			SetCurrentInst(inst);
 			mActiveInst = inst;
-
+			
 			if (inst->mKind == BeMCInstKind_Mov)
 			{
 				// Useless mov, remove it
@@ -8912,7 +8926,7 @@ bool BeMCContext::DoLegalization()
 					continue;
 				}
 			}
-
+			
 			BeMCInst* nextInst = NULL;
 			if (instIdx < mcBlock->mInstructions.size() - 1)
 			{
@@ -8929,6 +8943,21 @@ bool BeMCContext::DoLegalization()
 			{
 				RemoveInst(mcBlock, instIdx);
 				instIdx--;
+				continue;
+			}
+
+			if ((inst->mKind == BeMCInstKind_Sub) && (OperandsEqual(inst->mResult, inst->mArg1)))
+			{
+				// From: b = Sub a, b
+				// To: Neg b
+				//     Add b, a
+				AllocInst(BeMCInstKind_Add, inst->mResult, inst->mArg0, instIdx + 1);
+				inst->mKind = BeMCInstKind_Neg;
+				inst->mArg0 = inst->mResult;
+				inst->mArg1 = BeMCOperand();
+				inst->mResult = BeMCOperand();
+				isFinalRun = false;
+				instIdx++;
 				continue;
 			}
 
@@ -9031,7 +9060,18 @@ bool BeMCContext::DoLegalization()
 								BeMCOperand savedOperand = BeMCOperand::FromVReg(remappedOperand.mVRegIdx);
 								BeMCOperand newOperand;
 
-								if (origOperand.mKind == BeMCOperandKind_VRegLoad)
+								bool replaceLoad = origOperand.mKind == BeMCOperandKind_VRegLoad;
+								
+								// If we have a load on both the target and a load on a failed arg then do *not* keep the load-ness of the replaced arg								
+								if ((replaceLoad) &&
+									((inst->mArg0 == origOperand) || (inst->mArg1 == origOperand)) &&
+									(HasLoad(inst->mResult)) && (HasLoad((origOperand))))
+								{
+									//  This can not only fix further 'bad operand' passes, it can fix aliasing problems
+									replaceLoad = false;
+								}
+
+								if (replaceLoad)
 								{
 									// Loads keep their load-ness
 									savedOperand = BeMCOperand::FromVReg(remappedOperand.mVRegIdx);
@@ -9166,7 +9206,7 @@ bool BeMCContext::DoLegalization()
 
 				// Int 3-form mul does not follow these rules
 				if (doStdCheck)
-				{
+				{					
 					bool isIncOrDec = false;
 					isIncOrDec = (((inst->mKind == BeMCInstKind_Add) || (inst->mKind == BeMCInstKind_Sub)) &&
 						(arg1.IsImmediateInt()) && (arg1.mImmediate == 1));
@@ -9252,7 +9292,7 @@ bool BeMCContext::DoLegalization()
 								OutputDebugStrF(" BadOps\n");
 							continue;
 						}
-					}
+					}					
 
 					if (inst->mResult)
 					{
@@ -9309,27 +9349,10 @@ bool BeMCContext::DoLegalization()
 							{
 								bool handled = false;
 								if (OperandsEqual(inst->mResult, inst->mArg1))
-								{
-									if (inst->mKind == BeMCInstKind_Sub)
-									{
-										// From: b = Sub a, b
-										// To: Neg b
-										//     Add b, a
-										AllocInst(BeMCInstKind_Add, inst->mResult, inst->mArg0, instIdx + 1);
-										inst->mKind = BeMCInstKind_Neg;
-										inst->mArg0 = inst->mResult;
-										inst->mArg1 = BeMCOperand();
-										inst->mResult = BeMCOperand();
-										handled = true;
-
-										instIdx--; // Rerun on the Neg
-									}
-									else
-									{
-										// We need a scratch reg for this
-										ReplaceWithNewVReg(inst->mArg1, instIdx, true);
-										IntroduceVRegs(inst->mArg1, mcBlock, instIdx, instIdx + 2);
-									}
+								{									
+									// We need a scratch reg for this
+									ReplaceWithNewVReg(inst->mArg1, instIdx, true);
+									IntroduceVRegs(inst->mArg1, mcBlock, instIdx, instIdx + 2);									
 								}
 
 								if (!handled)
@@ -16237,7 +16260,7 @@ void BeMCContext::Generate(BeFunction* function)
 	mDbgPreferredRegs[32] = X64Reg_R8;*/
 
 	//mDbgPreferredRegs[8] = X64Reg_RAX;
-	mDebugging = (function->mName == "?Main@TestProgram@BeefTest@bf@@SAXPEAV?$Array1@PEAVString@System@bf@@@System@3@@Z");
+	mDebugging = (function->mName == "?MyFunction@MyStruct@BeefTest5@bf@@QEAAXAEAI@Z");
 	//		|| (function->mName == "?MethodA@TestProgram@BeefTest@bf@@CAXXZ");
 	// 		|| (function->mName == "?Hey@Blurg@bf@@SAXXZ")
 	// 		;
