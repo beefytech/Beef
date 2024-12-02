@@ -159,6 +159,7 @@ void BfSourceClassifier::Visit(BfFieldDeclaration* fieldDecl)
 	VisitChild(fieldDecl->mReadOnlySpecifier);
 	VisitChild(fieldDecl->mTypeRef);
 	VisitChild(fieldDecl->mNameNode);
+	SetElementType(fieldDecl->mNameNode, BfSourceElementType_Member);
 }
 
 void BfSourceClassifier::Visit(BfFieldDtorDeclaration* fieldDtorDecl)
@@ -285,6 +286,8 @@ void BfSourceClassifier::Visit(BfQualifiedNameNode* qualifiedName)
 	VisitChild(qualifiedName->mLeft);
 	VisitChild(qualifiedName->mDot);
 	VisitChild(qualifiedName->mRight);
+	if (BfNodeIsExact<BfIdentifierNode>(qualifiedName->mRight))
+		SetElementType(qualifiedName->mRight, BfSourceElementType_Member);
 }
 
 void BfSourceClassifier::Visit(BfThisExpression* thisExpr)
@@ -306,7 +309,7 @@ void BfSourceClassifier::Visit(BfMemberReferenceExpression* memberRefExpr)
 	Visit((BfAstNode*)memberRefExpr);
 	VisitChild(memberRefExpr->mTarget);
 	VisitChild(memberRefExpr->mDotToken);
-	VisitChild(memberRefExpr->mMemberName);
+	SetElementType(memberRefExpr->mMemberName, BfSourceElementType_Member);
 }
 
 void BfSourceClassifier::Visit(BfNamedTypeReference* typeRef)
@@ -393,6 +396,24 @@ void BfSourceClassifier::Visit(BfGenericInstanceTypeRef* genericInstTypeRef)
 		VisitChild(genericInstTypeRef->mGenericArguments[i]);
 	}
 	VisitChild(genericInstTypeRef->mCloseChevron);
+}
+
+void BfSourceClassifier::Visit(BfVariableDeclaration* varDecl)
+{
+	BfElementVisitor::Visit(varDecl);
+
+	if (!varDecl->IsA<BfParameterDeclaration>())
+		SetElementType(varDecl->mNameNode, BfSourceElementType_Local);
+}
+
+void BfSourceClassifier::Visit(BfLambdaBindExpression* lambdaBindExpr)
+{
+	BfElementVisitor::Visit(lambdaBindExpr);
+
+	for (auto param : lambdaBindExpr->mParams)
+	{		
+		SetElementType(param, BfSourceElementType_Parameter);
+	}
 }
 
 void BfSourceClassifier::Visit(BfLocalMethodDeclaration* methodDecl)
@@ -573,6 +594,12 @@ void BfSourceClassifier::Visit(BfMethodDeclaration* methodDeclaration)
 
 	SetElementType(methodDeclaration->mNameNode, BfSourceElementType_Method);
 
+	for (auto paramDecl : methodDeclaration->mParams)
+	{
+		if (paramDecl != NULL)
+			SetElementType(paramDecl->mNameNode, BfSourceElementType_Parameter);
+	}
+
 	if (methodDeclaration->mGenericParams != NULL)
 	{
 		for (auto& genericParam : methodDeclaration->mGenericParams->mGenericParams)
@@ -614,6 +641,8 @@ void BfSourceClassifier::Visit(BfPropertyDeclaration* propertyDeclaration)
 	SetAndRestoreValue<BfAstNode*> prevMember(mCurMember, propertyDeclaration);
 
 	BfElementVisitor::Visit(propertyDeclaration);
+
+	SetElementType(propertyDeclaration->mNameNode, BfSourceElementType_Member);
 
 	if (auto expr = BfNodeDynCast<BfPropertyBodyExpression>(propertyDeclaration->mDefinitionBlock))
 		return;

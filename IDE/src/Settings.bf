@@ -324,6 +324,9 @@ namespace IDE
 			public Color mLiteral = 0XFFC8A0FF;
 			public Color mIdentifier = 0xFFFFFFFF;
 			public Color mComment = 0xFF75715E;
+			public Color mLocal = 0xFFFFFFFF;
+			public Color mParameter = 0xFFFFFFFF;
+			public Color mMember = 0xFFFFFFFF;
 			public Color mMethod = 0xFFA6E22A;
 			public Color mType = 0xFF66D9EF;
 			public Color mPrimitiveType = 0xFF66D9EF;
@@ -371,8 +374,15 @@ namespace IDE
 				GetColor("Keyword", ref mKeyword);
 				GetColor("Literal", ref mLiteral);
 				GetColor("Identifier", ref mIdentifier);
-				GetColor("Comment", ref mComment);
+				mLocal = mIdentifier;
+				mParameter = mIdentifier;
+				GetColor("Local", ref mLocal);
+				GetColor("Parameter", ref mParameter);
+				mMember = mIdentifier;
+				GetColor("Member", ref mMember);
+				mMethod = mMember;
 				GetColor("Method", ref mMethod);
+				GetColor("Comment", ref mComment);
 				if (sd.Contains("Type"))
 				{
 					GetColor("Type", ref mType);
@@ -409,8 +419,11 @@ namespace IDE
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Normal] = mCode;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Keyword] = mKeyword;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Literal] = mLiteral;
-				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Identifier] = mIdentifier;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Comment] = mComment;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Identifier] = mIdentifier;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Local] = mLocal;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Parameter] = mParameter;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Member] = mMember;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Method] = mMethod;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Type] = mType;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.PrimitiveType] = mPrimitiveType;

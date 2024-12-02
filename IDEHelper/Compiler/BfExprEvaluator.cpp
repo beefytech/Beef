@@ -4464,6 +4464,8 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 						}
 					}
 
+					mModule->SetElementType(identifierNode, (varDecl->IsParam()) ? BfSourceElementType_Parameter : BfSourceElementType_Local);
+
 					BfTypedValue localResult = LoadLocal(varDecl);
 					auto autoComplete = GetAutoComplete();
 					if (identifierNode != NULL)
@@ -4516,6 +4518,8 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 						}
 						else if (fieldDef->mIsReadOnly)
 							result = mModule->LoadValue(result);
+
+						//mModule->SetElementType(identifierNode, (localVar->IsParam()) ? BfSourceElementType_Parameter : BfSourceElementType_Local);
 
 						mResultLocalVar = localVar;
 						mResultFieldInstance = &field;
@@ -4676,7 +4680,10 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 				thisValue = BfTypedValue(globalContainer.mTypeInst);
 				result = LookupField(identifierNode, thisValue, findName);
 				if ((result) || (mPropDef != NULL))
+				{
+					mModule->SetElementType(identifierNode, BfSourceElementType_Member);
 					return result;
+				}
 			}
 		}
 
@@ -4688,9 +4695,16 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 				thisValue = BfTypedValue(typeInst);
 				result = LookupField(identifierNode, thisValue, findName);
 				if ((result) || (mPropDef != NULL))
+				{
+					mModule->SetElementType(identifierNode, BfSourceElementType_Member);
 					return result;
+				}
 			}
 		}
+	}
+	else
+	{
+		mModule->SetElementType(identifierNode, BfSourceElementType_Member);
 	}
 
 	if ((!result) && (identifierNode != NULL))

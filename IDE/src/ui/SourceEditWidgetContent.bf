@@ -785,8 +785,11 @@ namespace IDE.ui
                 0xFFFFFFFF, // Normal
                 0xFFE1AE9A, // Keyword
                 0XFFC8A0FF, // Literal
+				0xFF75715E, // Comment
                 0xFFFFFFFF, // Identifier
-                0xFF75715E, // Comment
+				0xFFFFFFFF, // Local
+				0xFFFFFFFF, // Parameter
+				0xFFFFFFFF, // Member
                 0xFFA6E22A, // Method
 				0xFF66D9EF, // Type
 				0xFF66D9EF, // PrimitiveType
