@@ -7460,7 +7460,7 @@ void BfExprEvaluator::FinishDeferredEvals(SizedArrayImpl<BfResolvedArg>& argValu
 			{
 				auto expr = BfNodeDynCast<BfExpression>(argValues[argIdx].mExpression);
 				if (expr != NULL)
-					argValue = mModule->CreateValueFromExpression(expr);
+					argValue = mModule->CreateValueFromExpression(expr, argValues[argIdx].mExpectedType);
 			}
 		}
 	}
@@ -10076,6 +10076,9 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 
 				if ((refType != NULL) && (refType->IsPrimitiveType()))
 				{
+					for (auto& resolvedArg : argValues.mResolvedArgs)
+						resolvedArg.mExpectedType = refType;
+
 					FinishDeferredEvals(argValues);
 
 					if (argValues.mResolvedArgs.IsEmpty())
@@ -23882,6 +23885,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	if ((binaryOp == BfBinaryOp_LeftShift) || (binaryOp == BfBinaryOp_RightShift))
 	{
 		forceLeftType = true;
+		mModule->FixIntUnknown(leftValue);
 	}
 
 	if (rightValue.mType->IsRef())
