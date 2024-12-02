@@ -1924,7 +1924,8 @@ BfType* BfTypeInstance::GetUnionInnerType(bool* wantSplat)
 		{
 			SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
 
-			mModule->PopulateType(checkInnerType, checkInnerType->IsValueType() ? BfPopulateType_Data : BfPopulateType_Declaration);
+			if (checkInnerType->IsDataIncomplete())
+				mModule->PopulateType(checkInnerType, checkInnerType->IsValueType() ? BfPopulateType_Data : BfPopulateType_Declaration);
 			if (checkInnerType->mSize > unionSize)
 				unionSize = checkInnerType->mSize;
 

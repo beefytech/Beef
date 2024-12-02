@@ -1277,18 +1277,24 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 							typeModule->PrepareForIRWriting(resolvedTypeRef->ToTypeInstance());
 					}
 					else
-					{
-						BF_ASSERT((mCompiler->mCompileState != BfCompiler::CompileState_Unreified) && (mCompiler->mCompileState != BfCompiler::CompileState_VData));
+					{						
+						if ((mCompiler->mCompileState == BfCompiler::CompileState_Unreified) || (mCompiler->mCompileState == BfCompiler::CompileState_VData))
+						{
+							FailInternal(StrFormat("Invalid late reification of type '%s'", TypeToString(resolvedTypeRef).c_str()));
+						}
+						else
+						{
+							BF_ASSERT((mCompiler->mCompileState != BfCompiler::CompileState_Unreified) && (mCompiler->mCompileState != BfCompiler::CompileState_VData));
+							BfLogSysM("Queued reification of type %p in module %p in PopulateType\n", resolvedTypeRef, typeModule);
 
-						BfLogSysM("Queued reification of type %p in module %p in PopulateType\n", resolvedTypeRef, typeModule);
+							BF_ASSERT((typeModule != mContext->mUnreifiedModule) && (typeModule != mContext->mScratchModule));
 
-						BF_ASSERT((typeModule != mContext->mUnreifiedModule) && (typeModule != mContext->mScratchModule));
-
-						BF_ASSERT(!typeModule->mIsSpecialModule);
-						// This caused issues - we may need to reify a type and then request a method
-						typeModule->mReifyQueued = true;
-						mContext->mReifyModuleWorkList.Add(typeModule);
-						//typeModule->ReifyModule();
+							BF_ASSERT(!typeModule->mIsSpecialModule);
+							// This caused issues - we may need to reify a type and then request a method
+							typeModule->mReifyQueued = true;
+							mContext->mReifyModuleWorkList.Add(typeModule);
+							//typeModule->ReifyModule();
+						}
 					}
 				}
 			}
@@ -6244,12 +6250,16 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	// Generate all methods. Pass 0
 	for (auto methodDef : typeDef->mMethods)
 	{
-		if ((methodDef->mMethodType == BfMethodType_Ctor) && (!methodDef->mIsStatic))
+		if ((methodDef->mMethodType == BfMethodType_Ctor) && (!methodDef->mIsStatic) && (!methodDef->mDeclaringType->IsExtension()))
 		{
 			if (methodDef->mMethodDeclaration == NULL)
+			{
 				defaultCtor = methodDef;
+			}
 			else
+			{
 				hasExplicitCtors = true;
+			}
 		}
 
 		auto methodInstanceGroup = &typeInstance->mMethodInstanceGroups[methodDef->mIdx];
