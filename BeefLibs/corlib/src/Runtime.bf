@@ -437,7 +437,7 @@ namespace System
 		{
 			if (!condition)
 			{
-				if ((Runtime.CheckAssertError != null) && (Runtime.CheckAssertError(.Runtime, error, filePath, line) == .Ignore))
+				if ((!Compiler.IsComptime) && (Runtime.CheckAssertError != null) && (Runtime.CheckAssertError(.Runtime, error, filePath, line) == .Ignore))
 					return;
 #if !BF_RUNTIME_REDUCED
 				String failStr = scope .()..Append("Assert failed: ", error, " at line ");
