@@ -6187,7 +6187,9 @@ uint8 BeMCContext::GetJumpOpCode(BeCmpKind cmpKind, bool isLong)
 		case BeCmpKind_NB: // JNB
 			return 0x83;
 		case BeCmpKind_NO: // JNO
-			return 0x81;		
+			return 0x81;
+		case BeCmpKind_Sign: // JS
+			return 0x88;
 		}
 	}
 	else
@@ -6228,6 +6230,8 @@ uint8 BeMCContext::GetJumpOpCode(BeCmpKind cmpKind, bool isLong)
 			return 0x73;
 		case BeCmpKind_NO: // JNO
 			return 0x71;
+		case BeCmpKind_Sign: // JS
+			return 0x78;
 		}
 	}
 
@@ -16584,6 +16588,28 @@ void BeMCContext::Generate(BeFunction* function)
 							auto vregInfo = mVRegInfo[toValue.mVRegIdx];
 							vregInfo->mIsExpr = true;
 							vregInfo->mRelTo = mcValue;
+						}
+						else if ((toType->IsFloat()) && (fromType->IsIntable()) && (fromType->mSize == 8))
+						{
+							// uint64 to float - basically, when we are signed then we shift down one bit (so it's unsigned) and then double the result. There's a 1-bit correction factor.
+							AllocInst(BeMCInstKind_Test, mcValue, mcValue);
+							AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(mCurLabelIdx), BeMCOperand::FromCmpKind(BeCmpKind_Sign));							
+							AllocInst(BeMCInstKind_MovSX, toValue, mcValue);
+							AllocInst(BeMCInstKind_Br, BeMCOperand::FromLabel(mCurLabelIdx + 1));
+							CreateLabel();
+
+							auto temp0 = AllocVirtualReg(GetType(mcValue));
+							CreateDefineVReg(temp0);
+							auto temp1 = AllocVirtualReg(GetType(mcValue));
+							CreateDefineVReg(temp1);
+							AllocInst(BeMCInstKind_Mov, temp0, mcValue);
+							AllocInst(BeMCInstKind_Shr, temp0, BeMCOperand::FromImmediate(1));
+							AllocInst(BeMCInstKind_Mov, temp1, mcValue);
+							AllocInst(BeMCInstKind_And, temp1, BeMCOperand::FromImmediate(1));
+							AllocInst(BeMCInstKind_Or, temp0, temp1);
+							AllocInst(BeMCInstKind_MovSX, toValue, temp0);
+							AllocInst(BeMCInstKind_Add, toValue, toValue);
+							CreateLabel();										
 						}
 						else
 						{

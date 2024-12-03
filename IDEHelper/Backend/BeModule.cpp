@@ -1740,6 +1740,7 @@ void BeDumpContext::ToString(StringImpl& str, BeCmpKind cmpKind)
 	case BeCmpKind_OGE: str += "oge"; return;
 	case BeCmpKind_NB: str += "nb"; return;
 	case BeCmpKind_NO: str += "no"; return;
+	case BeCmpKind_Sign: str += "sign"; return;
 	default:
 		str += "???";
 	}

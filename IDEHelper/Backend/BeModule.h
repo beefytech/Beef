@@ -874,6 +874,7 @@ enum BeCmpKind
 	BeCmpKind_OGE,
 	BeCmpKind_NB,
 	BeCmpKind_NO,
+	BeCmpKind_Sign,
 };
 
 class BeCmpInst : public BeInst
