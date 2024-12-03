@@ -16589,7 +16589,7 @@ void BeMCContext::Generate(BeFunction* function)
 							vregInfo->mIsExpr = true;
 							vregInfo->mRelTo = mcValue;
 						}
-						else if ((toType->IsFloat()) && (fromType->IsIntable()) && (fromType->mSize == 8))
+						else if ((toType->IsFloat()) && (fromType->IsIntable()) && (fromType->mSize == 8) && (!castedInst->mValSigned))
 						{
 							// uint64 to float - basically, when we are signed then we shift down one bit (so it's unsigned) and then double the result. There's a 1-bit correction factor.
 							AllocInst(BeMCInstKind_Test, mcValue, mcValue);
