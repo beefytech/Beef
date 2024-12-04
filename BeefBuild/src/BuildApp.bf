@@ -424,6 +424,7 @@ namespace BeefBuild
 							return;
 
 						ExecutionQueueCmd executionCmd = QueueRun(targetPaths[0], mRunArgs ?? "", curPath);
+						executionCmd.mRunFlags |= .NoRedirect;
 						executionCmd.mIsTargetRun = true;
 						mDidRun = true;
 						return;
