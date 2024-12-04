@@ -9352,7 +9352,9 @@ bool BeMCContext::DoLegalization()
 							else
 							{
 								bool handled = false;
-								if (OperandsEqual(inst->mResult, inst->mArg1))
+								// Check for exact quality or potential aliasing
+								if ((OperandsEqual(inst->mResult, inst->mArg1)) ||
+									((HasLoad(inst->mResult)) && (HasLoad(inst->mArg1))))
 								{									
 									// We need a scratch reg for this
 									ReplaceWithNewVReg(inst->mArg1, instIdx, true);
