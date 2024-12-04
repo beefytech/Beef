@@ -309,6 +309,7 @@ void BfSourceClassifier::Visit(BfMemberReferenceExpression* memberRefExpr)
 	Visit((BfAstNode*)memberRefExpr);
 	VisitChild(memberRefExpr->mTarget);
 	VisitChild(memberRefExpr->mDotToken);
+	VisitChild(memberRefExpr->mMemberName);
 	SetElementType(memberRefExpr->mMemberName, BfSourceElementType_Member);
 }
 
