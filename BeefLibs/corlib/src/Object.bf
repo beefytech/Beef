@@ -116,7 +116,7 @@ namespace System
 #endif
 		}
 
-#if BF_DYNAMIC_CAST_CHECK || BF_ENABLE_REALTIME_LEAK_CHECK
+#if BF_DYNAMIC_CAST_CHECK || BF_ENABLE_REALTIME_LEAK_CHECK || BF_ALLOW_HOT_SWAPPING
 		[NoShow]
 		public virtual Object DynamicCastToTypeId(int32 typeId)
 		{
