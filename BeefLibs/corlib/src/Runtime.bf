@@ -638,7 +638,7 @@ namespace System
 	}
 }
 
-#if BF_RUNTIME_DISABLE
+#if BF_RUNTIME_DISABLE && !BF_CRT_DISABLE
 namespace System
 {
 	[AlwaysInclude, StaticInitPriority(1000)]
