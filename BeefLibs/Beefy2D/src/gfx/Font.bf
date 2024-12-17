@@ -828,10 +828,10 @@ namespace Beefy.gfx
 		    }
 		}
 
-        public void Draw(Graphics g, StringView theString, FontMetrics* fontMetrics = null)
+        public void Draw(Graphics g, float x, float y, StringView theString, FontMetrics* fontMetrics = null)
         {
-            float curX = 0;
-            float curY = 0;
+            float curX = x;
+            float curY = y;
 
             Matrix newMatrix = Matrix();
 			bool hasClipRect = g.mClipRect.HasValue;
@@ -944,6 +944,9 @@ namespace Beefy.gfx
             }
 
 			g.PopRenderState();
+
+			if (fontMetrics != null)
+				fontMetrics.mMaxX = Math.Max(fontMetrics.mMaxX, curX);
         }
 
         public float Draw(Graphics g, StringView theString, float x, float y, int32 justification = -1, float width = 0, FontOverflowMode stringEndMode = FontOverflowMode.Overflow, FontMetrics* fontMetrics = null)
@@ -1060,14 +1063,11 @@ namespace Beefy.gfx
 
             if (g != null)
             {
-                using (g.PushTranslate(useX, useY))
-                    Draw(g, workingStr, fontMetrics);
+				Draw(g, useX, useY, workingStr, fontMetrics);
             }
-            else
-            {
-                if (fontMetrics != null)
-                    fontMetrics.mMaxWidth = Math.Max(fontMetrics.mMaxWidth, GetWidth(workingStr));
-            }
+            
+            if (fontMetrics != null)
+                fontMetrics.mMaxWidth = Math.Max(fontMetrics.mMaxWidth, GetWidth(workingStr));
             drawHeight += GetLineSpacing();
 
             if (fontMetrics != null)
