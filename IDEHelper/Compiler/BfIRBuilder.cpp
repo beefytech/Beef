@@ -5487,10 +5487,13 @@ void BfIRBuilder::SetActiveFunction(BfIRFunction func)
 	if (mActiveFunctionHasBody)
 		mNumFunctionsWithBodies++;
 
-	WriteCmd(BfIRCmd_SetActiveFunction, func);
 	mActiveFunction = func;
 	mActiveFunctionHasBody = false;
-	NEW_CMD_INSERTED;
+	if (!func.IsFake())
+	{
+		WriteCmd(BfIRCmd_SetActiveFunction, func);
+		NEW_CMD_INSERTED;
+	}
 }
 
 BfIRFunction BfIRBuilder::GetActiveFunction()
