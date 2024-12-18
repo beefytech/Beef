@@ -2878,6 +2878,14 @@ BeMCOperand BeMCContext::CreateLoad(const BeMCOperand& mcTarget)
 		return CreateLoad(fakePtr);
 	}
 
+	if (HasImmediateTarget(mcTarget))
+	{		
+		BeMCOperand scratchReg = AllocVirtualReg(GetType(mcTarget), 2);
+		CreateDefineVReg(scratchReg);
+		AllocInst(BeMCInstKind_Mov, scratchReg, mcTarget);			
+		return CreateLoad(scratchReg);		
+	}
+
 	BeMCOperand result;
 
 	auto loadedTarget = BeMCOperand::ToLoad(mcTarget);
@@ -6024,6 +6032,18 @@ void BeMCContext::GetRMParams(const BeMCOperand& operand, BeRMParamsInfo& rmInfo
 		rmInfo.mMode = BeMCRMMode_Invalid;
 		return;
 	}
+}
+
+bool BeMCContext::HasImmediateTarget(const BeMCOperand& operand)
+{
+	if (operand.IsImmediate())
+		return true;
+	auto vregInfo = GetVRegInfo(operand);
+	if (vregInfo == NULL)
+		return false;	
+	if (vregInfo->mRelTo)
+		return HasImmediateTarget(vregInfo->mRelTo);
+	return false;
 }
 
 void BeMCContext::DisableRegister(const BeMCOperand& operand, X64CPURegister reg)
@@ -10436,7 +10456,7 @@ bool BeMCContext::DoLegalization()
 					bool needSwap = false;
 
 					// Cmp <imm>, <r/m> is not legal, so we need to swap LHS/RHS, which means also modifying the instruction that uses the result of the cmp
-					if (inst->mArg0.IsImmediate())
+					if (arg0.IsImmediate())
 						needSwap = true;
 
 					if (arg0Type->IsFloat())

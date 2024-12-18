@@ -1446,6 +1446,7 @@ public:
 	int GetRegSize(int regNum);
 	void ValidateRMResult(const BeMCOperand& operand, BeRMParamsInfo& rmInfo, bool doValidate = true);
 	void GetRMParams(const BeMCOperand& operand, BeRMParamsInfo& rmInfo, bool doValidate = true);
+	bool HasImmediateTarget(const BeMCOperand& operand);
 	void DisableRegister(const BeMCOperand& operand, X64CPURegister reg);
 	void MarkInvalidRMRegs(const BeMCOperand& operand);
 	void GetUsedRegs(const BeMCOperand& operand, X64CPURegister& regA, X64CPURegister& regB); // Expands regs
