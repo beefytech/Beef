@@ -21485,6 +21485,10 @@ void BfExprEvaluator::Visit(BfTupleExpression* tupleExpr)
 				BfFieldInstance* fieldInstance = &tupleType->mFieldInstances[fieldIdx];
 				if (fieldInstance->mDataIdx < 0)
 					continue;
+
+				while (fieldInstance->mDataIdx >= irValues.size())
+					irValues.Add(BfIRValue());
+
 				irValues[fieldInstance->mDataIdx] = typedValues[fieldIdx].mValue;
 			}
 
