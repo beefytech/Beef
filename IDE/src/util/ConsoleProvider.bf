@@ -903,6 +903,7 @@ class BeefConConsoleProvider : ConsoleProvider
 		public bool mConnected;
 		public Thread mThread ~ delete _;
 		public Monitor mDataMonitor = new .() ~ delete _;
+		public WaitEvent mDataEvent = new .() ~ delete _;
 		public int mPendingReadClear;
 		public bool mExiting;
 
@@ -949,6 +950,7 @@ class BeefConConsoleProvider : ConsoleProvider
 					using (mDataMonitor.Enter())
 					{
 						mRecvStream.TryWrite(.(&data, len));
+						mDataEvent.Set(true);
 					}
 				case .Err(let err):
 					if ((err == .PipeListening) && (!mConnected))
@@ -1022,7 +1024,7 @@ class BeefConConsoleProvider : ConsoleProvider
 			}
 		}
 
-		public Result<Span<uint8>> ReadMessage(int timeoutMS)
+		Result<Span<uint8>> DoReadMessage()
 		{
 			using (mDataMonitor.Enter())
 			{
@@ -1042,6 +1044,19 @@ class BeefConConsoleProvider : ConsoleProvider
 
 				mPendingReadClear = wantTotalLen;
 				return .Ok(.(mRecvStream.Memory.Ptr + 4, wantTotalLen - 4));
+			}
+		}
+
+		public Result<Span<uint8>> ReadMessage(int timeoutMS)
+		{
+			if (timeoutMS != 0)
+				mDataEvent.WaitFor(timeoutMS);
+			using (mDataMonitor.Enter())
+			{
+				var result = DoReadMessage();
+				if (result case .Err)
+					mDataEvent.Reset();
+				return result;
 			}
 		}
 	}
