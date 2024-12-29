@@ -6751,8 +6751,10 @@ String WinDebugger::ReadString(DbgTypeCode charType, intptr addr, bool isLocalAd
 	return retVal;
 }
 
-void WinDebugger::ProcessEvalString(DbgCompileUnit* dbgCompileUnit, DbgTypedValue useTypedValue, String& evalStr, String& displayString, DwFormatInfo& formatInfo, DebugVisualizerEntry* debugVis, bool limitLength)
+bool WinDebugger::ProcessEvalString(DbgCompileUnit* dbgCompileUnit, DbgTypedValue useTypedValue, String& evalStr, String& displayString, DwFormatInfo& formatInfo, DebugVisualizerEntry* debugVis, bool limitLength)
 {
+	bool success = true;
+
 	for (int i = 0; i < (int)evalStr.length(); i++)
 	{
 		char c = evalStr[i];
@@ -6794,22 +6796,31 @@ void WinDebugger::ProcessEvalString(DbgCompileUnit* dbgCompileUnit, DbgTypedValu
 					if ((formatInfo.mRawString) && (limitLength))
 					{
 						displayString = result;
-						return;
+						return success;
 					}
 
-					int crPos = result.IndexOf('\n');
-					if (crPos != -1)
-						displayString += result.Substring(0, crPos);
-					else
+					if (displayStrFormatInfo.mRawString)
+					{
 						displayString += result;
+					}
+					else
+					{
+						int crPos = result.IndexOf('\n');
+						if (crPos != -1)
+							displayString += result.Substring(0, crPos);
+						else
+							displayString += result;
+					}
 				}
 				else if (debugVis != NULL)
 				{
+					success = false;
 					displayString += "<DbgVis Failed>";
 					DbgVisFailed(debugVis, evalString, errors);
 				}
 				else
 				{
+					success = false;
 					displayString += "<Eval Failed>";
 				}
 			}
@@ -6830,6 +6841,8 @@ void WinDebugger::ProcessEvalString(DbgCompileUnit* dbgCompileUnit, DbgTypedValu
 
 		displayString += c;
 	}
+
+	return success;
 }
 
 static bool IsNormalChar(uint32 c)
