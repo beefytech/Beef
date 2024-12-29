@@ -5567,8 +5567,8 @@ void DbgModule::HotReplaceMethods(DbgType* newType, DbgType* primaryType)
 			else
 			{
 				_AddToHotReplacedMethodList(newMethod);
-			}			
-			newMethod = newMethod->mNext;
+				newMethod = newMethod->mNext;
+			}						
 		}		
 	}
 	else
