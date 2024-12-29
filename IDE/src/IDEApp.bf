@@ -6633,11 +6633,12 @@ namespace IDE
 					window.SetForeground();
 			}
 
-			disassemblyPanel.ClearQueuedData();
-			disassemblyTab.Activate();
-
 			if (disassemblyPanel != null)
+			{
+				disassemblyPanel.ClearQueuedData();
+				disassemblyTab.Activate();
 				return disassemblyPanel;
+			}
 
 			TabbedView tabbedView = GetDefaultDocumentTabbedView();
 			disassemblyPanel = new DisassemblyPanel();
