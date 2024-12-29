@@ -332,6 +332,22 @@ namespace Beefy
 			}
 		}
 
+		public Point? CursorScreenPos
+		{
+			get
+			{
+				for (var window in mWindows)
+				{
+					if (var widgetWindow = window as WidgetWindow)
+					{
+						if (widgetWindow.mHasMouseInside)
+							return .(widgetWindow.mClientMouseX + widgetWindow.mClientX, widgetWindow.mClientMouseY + widgetWindow.mClientY);
+					}
+				}
+				return null;
+			}
+		}
+
 		public static void Startup(String[] args, Action startupCallback)
 		{
 			/*string[] newArgs = new string[args.Length + 1];

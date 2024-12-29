@@ -5,6 +5,7 @@ using System.Diagnostics;
 using Beefy.gfx;
 using Beefy.sys;
 using System.IO;
+using Beefy.geom;
 
 #if MONOTOUCH
 using MonoTouch;
@@ -327,6 +328,9 @@ namespace Beefy
 		static void Static_NativeDragDropFileDelegate(void* window, char8* filePath) { GetBFWindow(window).DragDropFile(StringView(filePath)); }
 		#endif
 
+		public Rect<int32> ClientRect => .(mClientX, mClientY, mClientWidth, mClientHeight);
+		public Rect<int32> WindowRect => .(mX, mY, mWindowWidth, mWindowHeight);
+ 		
 		public this()
 		{
 		}

@@ -33,7 +33,7 @@ namespace Beefy.theme.dark
         public bool mAllowResize;
 		public bool mHasClosed;
 		public Insets mRelWidgetMouseInsets ~ delete _;
-		public bool mAllowMouseInsideSelf;
+		public Insets mAllowMouseInsideInsets ~ delete _;
 		public bool mAllowMouseOutside;
 		public int mAutoCloseDelay;
 		public bool mIsClipped;
@@ -162,7 +162,7 @@ namespace Beefy.theme.dark
             int32 relX = x - mWidgetWindow.mX;
             int32 relY = y - mWidgetWindow.mY;
 
-            if ((relX >= mWidgetWindow.mWindowWidth - GS!(18)) && (relY >= mWidgetWindow.mWindowHeight - GS!(18)))
+            if ((relX >= mWidgetWindow.mWindowWidth - GS!(22)) && (relY >= mWidgetWindow.mWindowHeight - GS!(22)))
                 return BFWindowBase.HitTestResult.BottomRight;
             return BFWindowBase.HitTestResult.Client;
         }
@@ -256,13 +256,31 @@ namespace Beefy.theme.dark
 			mRelWidgetMouseInsets?.ApplyTo(ref checkRect);
 			if ((mRelWidget.mWidgetWindow != null) && (mRelWidget.mWidgetWindow.mHasMouseInside))
 			{
-				//checkRect.Inflate(8, 8);
 				if (checkRect.Contains(mRelWidget.mWidgetWindow.mClientMouseX, mRelWidget.mWidgetWindow.mClientMouseY))
 					return;
 			}
+			if (mAllowMouseInsideInsets != null)
+			{
+				if (mWidgetWindow.mHasMouseInside)
+					return;
 
-			if ((mWidgetWindow.mHasMouseInside) && (mAllowMouseInsideSelf))
-				return;
+				Rect<float> clientRect = mWidgetWindow.ClientRect;
+				mAllowMouseInsideInsets.ApplyTo(ref clientRect);
+
+				var cursorScreenPos = BFApp.sApp.CursorScreenPos;
+				if (cursorScreenPos != null)
+				{
+					if (clientRect.Contains((.)cursorScreenPos.Value.x, (.)cursorScreenPos.Value.y))
+						return;
+				}
+
+				NOP!();
+
+				/*var screenX = (int32)rootX + mWidgetWindow.mClientX;
+				var screenY = (int32)rootY + mWidgetWindow.mClientY;
+				if (clientRect.Contains(screenX, screenY))
+					return;*/
+			}
 
 			var checkWindow = BFApp.sApp.FocusedWindow;
 			if ((checkWindow != null) && (checkWindow.HasParent(mWidgetWindow)))
