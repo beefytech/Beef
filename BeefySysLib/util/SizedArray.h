@@ -378,7 +378,7 @@ protected:
 
 	void Grow(intptr newSize)
 	{
-		T* newVals = TAlloc::allocate<typename T>(newSize);
+		T* newVals = allocate<T>(newSize);
 		if (this->mVals != NULL)
 		{
 			if (this->mSize > 0)
@@ -533,7 +533,7 @@ public:
 		{
 			intptr newSize = this->mAllocSize + this->mAllocSize / 2 + 1;
 
-			T* newVals =  TAlloc::allocate<typename T>(newSize);
+			T* newVals =  allocate<T>(newSize);
 			if (this->mVals != NULL)
 			{
 				if (idx > 0) // Copy left of idx
@@ -562,7 +562,7 @@ public:
 		{
 			intptr newSize = BF_MAX(this->mSize + size, this->mAllocSize + this->mAllocSize / 2 + 1);
 
-			T* newVals =  TAlloc::allocate<typename T>(newSize);
+			T* newVals =  allocate<T>(newSize);
 			if (this->mVals != NULL)
 			{
 				if (idx > 0) // Copy left of idx
@@ -638,7 +638,7 @@ public:
 protected:
 	void Grow(intptr newSize)
 	{
-		T* newVals =  TAlloc::allocate<typename T>(newSize);
+		T* newVals =  allocate<T>(newSize);
 		if (this->mVals != NULL)
 		{
 			if (this->mSize > 0)
@@ -761,7 +761,7 @@ public:
 		{
 			intptr newSize = this->mAllocSize + this->mAllocSize / 2 + 1;
 
-			T* newVals =  TAlloc::allocate<typename T>(newSize);
+			T* newVals =  allocate<T>(newSize);
 			if (this->mVals != NULL)
 			{
 				if (idx > 0) // Copy left of idx
@@ -790,7 +790,7 @@ public:
 		{
 			intptr newSize = BF_MAX(this->mSize + size, this->mAllocSize + this->mAllocSize / 2 + 1);
 
-			T* newVals =  TAlloc::allocate<typename T>(newSize);
+			T* newVals =  allocate<T>(newSize);
 			if (this->mVals != NULL)
 			{
 				if (idx > 0) // Copy left of idx
