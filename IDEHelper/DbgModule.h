@@ -665,8 +665,8 @@ public:
 	class SubprogramRecord
 	{
 	public:
-		Array<DbgLineInfoCtx, AllocatorBump<DbgLineInfoCtx> > mContexts;
-		Array<DbgLineData, AllocatorBump<DbgLineData> > mLines;
+		Array<DbgLineInfoCtx, AllocatorBump> mContexts;
+		Array<DbgLineData, AllocatorBump> mLines;
 		int mCurContext;
 		bool mHasInlinees;
 	};
@@ -1273,6 +1273,8 @@ public:
 	void DoReloc(DbgHotTargetSection* hotTargetSection, COFFRelocation& coffReloc, addr_target resolveSymbolAddr, PE_SymInfo* symInfo);
 	void ParseHotTargetSections(DataStream* stream, addr_target* resovledSymbolAddrs);
 	void CommitHotTargetSections();
+	bool HasHotReplacedMethods(DbgType* type);
+	void HotReplaceMethods(DbgType* newType, DbgType* primaryType);
 	void HotReplaceType(DbgType* newType);
 	void ProcessHotSwapVariables();
 	virtual bool LoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge) { return false; }

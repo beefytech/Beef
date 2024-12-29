@@ -2690,11 +2690,7 @@ public:
 	void ReportMemory(MemReporter* memReporter);
 };
 
-class BfResolvedTypeSetFuncs : public MultiHashSetFuncs
-{
-};
-
-class BfResolvedTypeSet : public MultiHashSet<BfType*, BfResolvedTypeSetFuncs>
+class BfResolvedTypeSet : public MultiHashSet<BfType*, AllocatorCLib>
 {
 public:
 	enum BfHashFlags
@@ -2749,7 +2745,7 @@ public:
 		BfTypeDef* ResolveToTypeDef(BfTypeReference* typeReference, BfType** outType = NULL);
 	};
 
-	class Iterator : public MultiHashSet<BfType*, BfResolvedTypeSetFuncs>::Iterator
+	class Iterator : public MultiHashSet<BfType*, AllocatorCLib>::Iterator
 	{
 	public:
 		Iterator(MultiHashSet* set) : MultiHashSet::Iterator(set)

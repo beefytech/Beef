@@ -4,16 +4,16 @@
 
 NS_BF_BEGIN;
 
-template <typename T>
 class AllocatorCLib
 {
 public:
+	template <typename T>
 	T* allocate(intptr count)
 	{
 		return (T*)malloc(sizeof(T) * count);
 	}
 
-	void deallocate(T* ptr)
+	void deallocate(void* ptr)
 	{
 		free(ptr);
 	}
@@ -27,9 +27,14 @@ public:
 	{
 		free(ptr);
 	}
+
+	bool deallocateAll()
+	{
+		return false;
+	}
 };
 
-template <typename T, typename TAlloc = AllocatorCLib<T> >
+template <typename T, typename TAlloc = AllocatorCLib >
 class ArrayBase : public TAlloc
 {
 public:
@@ -445,7 +450,7 @@ protected:
 
 	void SetBufferSize(intptr newSize)
 	{
-		T* newVals = TAlloc::allocate(newSize);
+		T* newVals = TAlloc::allocate<T>(newSize);
 		if (this->mVals != NULL)
 		{
 			if (this->mSize > 0)
@@ -625,7 +630,7 @@ public:
 		{
 			intptr newSize = this->mAllocSize + this->mAllocSize / 2 + 1;
 
-			T* newVals = TAlloc::allocate(newSize);
+			T* newVals = TAlloc::allocate<T>(newSize);
 			if (this->mVals != NULL)
 			{
 				if (idx > 0) // Copy left of idx
@@ -653,7 +658,7 @@ public:
 		{
 			intptr newSize = BF_MAX(this->mSize + size, this->mAllocSize + this->mAllocSize / 2 + 1);
 
-			T* newVals = TAlloc::allocate(newSize);
+			T* newVals = TAlloc::allocate<T>(newSize);
 			if (this->mVals != NULL)
 			{
 				if (idx > 0) // Copy left of idx
@@ -682,7 +687,7 @@ public:
 		{
 			intptr newSize = BF_MAX(this->mSize + count, this->mAllocSize + this->mAllocSize / 2 + 1);
 
-			T* newVals = TAlloc::allocate(newSize);
+			T* newVals = TAlloc::allocate<T>(newSize);
 			if (this->mVals != NULL)
 			{
 				if (idx > 0) // Copy left of idx
@@ -764,7 +769,7 @@ public:
 protected:
 	void SetBufferSize(intptr newSize)
 	{
-		T* newVals = TAlloc::allocate(newSize);
+		T* newVals = TAlloc::allocate<T>(newSize);
 		if (this->mVals != NULL)
 		{
 			if (this->mSize > 0)
@@ -928,7 +933,7 @@ public:
 		{
 			intptr newSize = this->mAllocSize + this->mAllocSize / 2 + 1;
 
-			T* newVals = TAlloc::allocate(newSize);
+			T* newVals = TAlloc::allocate<T>(newSize);
 			if (this->mVals != NULL)
 			{
 				if (idx > 0) // Copy left of idx
@@ -956,7 +961,7 @@ public:
 		{
 			intptr newSize = BF_MAX(this->mSize + size, this->mAllocSize + this->mAllocSize / 2 + 1);
 
-			T* newVals = TAlloc::allocate(newSize);
+			T* newVals = TAlloc::allocate<T>(newSize);
 			if (this->mVals != NULL)
 			{
 				if (idx > 0) // Copy left of idx
@@ -984,7 +989,7 @@ public:
 		{
 			intptr newSize = BF_MAX(this->mSize + size, this->mAllocSize + this->mAllocSize / 2 + 1);
 
-			T* newVals = TAlloc::allocate(newSize);
+			T* newVals = TAlloc::allocate<T>(newSize);
 			if (this->mVals != NULL)
 			{
 				if (idx > 0) // Copy left of idx
@@ -1102,7 +1107,7 @@ public:
 	}
 };
 
-template <typename T, typename TAlloc = AllocatorCLib<T> >
+template <typename T, typename TAlloc = AllocatorCLib >
 class Array : public ArrayImpl<T, TAlloc, std::is_pod<T>::value>
 {
 public:

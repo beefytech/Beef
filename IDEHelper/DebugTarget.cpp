@@ -33,6 +33,7 @@ DebugTarget::DebugTarget(WinDebugger* debugger)
 	mHotHeapAddr = 0;
 	mHotHeapReserveSize = 0;
 	mLastHotHeapCleanIdx = 0;
+	mVDataHotIdx = -1;
 	mIsEmpty = false;
 	mWasLocallyBuilt = false;
 	mCurModuleId = 0;
@@ -2489,15 +2490,17 @@ DbgBreakKind DebugTarget::GetDbgBreakKind(addr_target address, CPURegisters* reg
 	return DbgBreakKind_None;
 }
 
+#define ADDR_ROUGH(address) ((address) & ~0x3FFF)
+
 DbgModule* DebugTarget::FindDbgModuleForAddress(addr_target address)
 {
-	addr_target checkAddr = address & ~0xFFFF;
+	addr_target checkAddr = ADDR_ROUGH(address);
 	FindDbgModuleCacheEntry* valuePtr = NULL;
 	if (mFindDbgModuleCache.TryAdd(checkAddr, NULL, &valuePtr))
 	{
 		for (auto dwarf : mDbgModules)
 		{
-			if ((address >= dwarf->mImageBase) && (address < dwarf->mImageBase + dwarf->mImageSize))
+			if ((checkAddr >= ADDR_ROUGH(dwarf->mImageBase)) && (checkAddr <= ADDR_ROUGH(dwarf->mImageBase + dwarf->mImageSize)))
 			{
 				if (valuePtr->mFirst == NULL)
 				{

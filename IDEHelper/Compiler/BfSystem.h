@@ -1254,7 +1254,7 @@ public:
 	bool HasCustomAttributes();
 };
 
-struct BfTypeDefMapFuncs : public MultiHashSetFuncs
+struct BfTypeDefMapFuncs : public AllocatorCLib
 {
 	int GetHash(BfTypeDef* typeDef)
 	{

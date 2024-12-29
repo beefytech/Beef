@@ -1151,9 +1151,14 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 
 	int startingModuleIdx = (int)mDebugTarget->mDbgModules.size();
 
+	bool hasHotVData = false;
+
 	bool failed = false;
 	for (auto fileName : objectFiles)
 	{
+		if ((fileName.IndexOf("/vdata.") != -1) || (fileName.IndexOf("\\vdata.") != -1))
+			hasHotVData = true;
+
 		BfLogDbg("WinDebugger::HotLoad: %s\n", fileName.c_str());
 		DbgModule* newBinary = mDebugTarget->HotLoad(fileName, hotIdx);
 		if ((newBinary != NULL) && (newBinary->mFailed))
@@ -1185,6 +1190,9 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 		CleanupHotHeap();
 
 	mDebugTarget->RehupSrcFiles();
+
+	if (hasHotVData)
+		mDebugTarget->mVDataHotIdx = hotIdx;
 
 	for (int breakIdx = 0; breakIdx < (int)mBreakpoints.size(); breakIdx++)
 	{

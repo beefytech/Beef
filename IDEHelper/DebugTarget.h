@@ -49,6 +49,7 @@ public:
 	addr_target mHotHeapAddr;
 	int64 mHotHeapReserveSize;
 	int mLastHotHeapCleanIdx;
+	int mVDataHotIdx;
 	String mTargetPath;
 	DbgModule* mLaunchBinary;
 	DbgModule* mTargetBinary;

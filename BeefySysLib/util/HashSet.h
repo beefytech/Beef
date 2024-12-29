@@ -5,7 +5,7 @@
 
 NS_BF_BEGIN;
 
-template <typename TKey, typename TAlloc = AllocatorCLib<TKey> >
+template <typename TKey, typename TAlloc = AllocatorCLib >
 class HashSet : public TAlloc
 {
 public:

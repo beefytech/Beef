@@ -2184,6 +2184,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClInclude Include="util\MappedFile.h" />
     <ClInclude Include="util\MathUtils.h" />
     <ClInclude Include="util\Matrix4.h" />
+    <ClInclude Include="util\MultiDictionary.h" />
     <ClInclude Include="util\MultiHashSet.h" />
     <ClInclude Include="util\PerfTimer.h" />
     <ClInclude Include="util\Point.h" />

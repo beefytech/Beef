@@ -1132,6 +1132,9 @@
     <ClInclude Include="third_party\putty\wildcard.h">
       <Filter>src\third_party\putty</Filter>
     </ClInclude>
+    <ClInclude Include="util\MultiDictionary.h">
+      <Filter>src\util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="third_party\libffi\i686-pc-cygwin\src\x86\win32.asm">

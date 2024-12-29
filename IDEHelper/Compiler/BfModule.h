@@ -1063,8 +1063,8 @@ public:
 	BfIRBlock mIRHeadBlock;
 	BfIRBlock mIRInitBlock;
 	BfIRBlock mIREntryBlock;
-	Array<BfLocalVariable*, AllocatorBump<BfLocalVariable*> > mLocals;
-	HashSet<BfLocalVarEntry, AllocatorBump<BfLocalVariable*> > mLocalVarSet;
+	Array<BfLocalVariable*, AllocatorBump> mLocals;
+	HashSet<BfLocalVarEntry, AllocatorBump> mLocalVarSet;
 	Array<BfLocalMethod*> mLocalMethods;
 	Dictionary<String, BfLocalMethod*> mLocalMethodMap;
 	Dictionary<String, BfLocalMethod*> mLocalMethodCache; // So any lambda 'capturing' and 'processing' stages use the same local method

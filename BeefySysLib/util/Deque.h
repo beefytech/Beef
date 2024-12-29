@@ -8,7 +8,7 @@ NS_BF_BEGIN;
 #define DEQUE_IDX(i) (this->mVals[((i) + this->mOffset) % this->mAllocSize])
 #define DEQUE_IDX_ON(arr, i) ((arr).mVals[((i) + (arr).mOffset) % (arr).mAllocSize])
 
-template <typename T, typename TAlloc = AllocatorCLib<T> >
+template <typename T, typename TAlloc = AllocatorCLib >
 class DequeBase : public TAlloc
 {
 public:
@@ -370,7 +370,7 @@ protected:
 	
  	void Grow(intptr newSize)
  	{
- 		T* newVals = TAlloc::allocate(newSize);
+ 		T* newVals = TAlloc::allocate<T>(newSize);
  		if (this->mVals != NULL)
  		{
 			if (this->mSize > 0)
@@ -707,7 +707,7 @@ class DequeImpl<T, TAlloc, true> : public DequeBase<T, TAlloc>
 protected:
 	void Grow(intptr newSize)
 	{
-		T* newVals = TAlloc::allocate(newSize);
+		T* newVals = TAlloc::allocate<T>(newSize);
 		if (this->mVals != NULL)
 		{
 			if (this->mSize > 0)
@@ -1043,7 +1043,7 @@ public:
 	}
 };
 
-template <typename T, typename TAlloc = AllocatorCLib<T> >
+template <typename T, typename TAlloc = AllocatorCLib >
 class Deque : public DequeImpl<T, TAlloc, std::is_pod<T>::value>
 {
 public:
