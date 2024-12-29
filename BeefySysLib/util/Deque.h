@@ -370,7 +370,7 @@ protected:
 	
  	void Grow(intptr newSize)
  	{
- 		T* newVals = TAlloc::allocate<T>(newSize);
+ 		T* newVals = TAlloc::template allocate<T>(newSize);
  		if (this->mVals != NULL)
  		{
 			if (this->mSize > 0)
@@ -707,7 +707,7 @@ class DequeImpl<T, TAlloc, true> : public DequeBase<T, TAlloc>
 protected:
 	void Grow(intptr newSize)
 	{
-		T* newVals = TAlloc::allocate<T>(newSize);
+		T* newVals = TAlloc::template allocate<T>(newSize);
 		if (this->mVals != NULL)
 		{
 			if (this->mSize > 0)
