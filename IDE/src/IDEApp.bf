@@ -6612,18 +6612,30 @@ namespace IDE
 			return tabButton;
 		}
 
-		public DisassemblyPanel ShowDisassemblyPanel(bool clearData = false)
+		public DisassemblyPanel ShowDisassemblyPanel(bool clearData = false, bool setFocus = false)
 		{
 			DisassemblyPanel disassemblyPanel = null;
+			TabbedView.TabButton disassemblyTab = null;
+
 			WithTabs(scope [&] (tab) =>
 				{
 					if ((disassemblyPanel == null) && (tab.mContent is DisassemblyPanel))
 					{
+						disassemblyTab = tab;
 						disassemblyPanel = (DisassemblyPanel)tab.mContent;
-						disassemblyPanel.ClearQueuedData();
-						tab.Activate();
 					}
 				});
+
+			if (disassemblyTab != null)
+			{
+				var window = disassemblyTab.mWidgetWindow;
+				if ((setFocus) && (window != null) && (!HasModalDialogs()) && (!mRunningTestScript))
+					window.SetForeground();
+			}
+
+			disassemblyPanel.ClearQueuedData();
+			disassemblyTab.Activate();
+
 			if (disassemblyPanel != null)
 				return disassemblyPanel;
 
@@ -7149,6 +7161,12 @@ namespace IDE
 				}
 			}
 
+			void ActivateWindow(WidgetWindow window)
+			{
+				if ((setFocus) && (window != null) && (!HasModalDialogs()) && (!mRunningTestScript))
+					window.SetForeground();
+			}
+
 			if (showType != SourceShowType.New)
 			{
 				delegate void(TabbedView.TabButton) tabFunc = scope [&] (tabButton) =>
@@ -7197,8 +7215,7 @@ namespace IDE
 						//sourceViewPanel.QueueFullRefresh(true);
 					}
 
-					if ((sourceViewPanel.mWidgetWindow != null) && (!HasModalDialogs()) && (!mRunningTestScript))
-						sourceViewPanel.mWidgetWindow.SetForeground();
+					ActivateWindow(sourceViewPanelTab.mWidgetWindow);
 					sourceViewPanelTab.Activate(setFocus);
 					sourceViewPanelTab.mTabbedView.FinishTabAnim();
 					if (setFocus)
@@ -7214,6 +7231,7 @@ namespace IDE
 			//ShowSourceFile(filePath, projectSource, showTemp, setFocus);
 
 			DarkTabbedView tabbedView = GetDefaultDocumentTabbedView();
+			ActivateWindow(tabbedView.mWidgetWindow);
 			sourceViewPanel = new SourceViewPanel();
 			bool success;
 			if (useProjectSource != null)
@@ -7977,7 +7995,7 @@ namespace IDE
 				}
 				else
 				{
-					var disassemblyPanel = ShowDisassemblyPanel(true);
+					var disassemblyPanel = ShowDisassemblyPanel(true, setFocus);
 					if (aliasFilePath != null)
 						String.NewOrSet!(disassemblyPanel.mAliasFilePath, aliasFilePath);
 					disassemblyPanel.Show(addr, filePath, line, column, hotIdx, defLineStart, defLineEnd);

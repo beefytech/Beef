@@ -907,6 +907,9 @@ namespace Beefy.widgets
         {
             base.KeyDown(keyCode, isRepeat);
 
+			if (mWidgetWindow == null)
+				return;
+
 			switch (keyCode)
 			{
 			case (KeyCode)'A':
