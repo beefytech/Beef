@@ -5401,7 +5401,7 @@ void DbgModule::HotReplaceMethods(DbgType* newType, DbgType* primaryType)
 			{
 				// Too old
 				return;
-			}			
+			}
 
 			oldMethod->PopulateSubprogram();
 			if (oldMethod->mBlock.IsEmpty())
@@ -5529,6 +5529,7 @@ void DbgModule::HotReplaceMethods(DbgType* newType, DbgType* primaryType)
 
 	auto _ReplaceMethod = [&](DbgSubprogram* newMethod)
 		{
+			bool didReplace = false;
 			if (!newMethod->mBlock.IsEmpty())
 			{
 				BfLogDbg("Hot added new method %p %s Address:%p\n", newMethod, newMethod->mName, newMethod->mBlock.mLowPC);
@@ -5543,9 +5544,11 @@ void DbgModule::HotReplaceMethods(DbgType* newType, DbgType* primaryType)
 					{
 						auto oldMethod = itr.GetValue();
 						_HotJump(oldMethod, newMethod);
+						didReplace = true;
 					}
 				}
 			}
+			return didReplace;
 		};
 
 	if (newType == primaryType)
@@ -5558,11 +5561,15 @@ void DbgModule::HotReplaceMethods(DbgType* newType, DbgType* primaryType)
 			if ((newMethod->mBlock.mLowPC >= mImageBase) && (newMethod->mBlock.mHighPC <= mImageBase + mImageSize))
 			{
 				// Our object file contains this function
-				_ReplaceMethod(newMethod);
-				auto nextMethod = newMethod->mNext;
-				newType->mMethodList.Remove(newMethod);
-				primaryType->mHotReplacedMethodList.PushFront(newMethod);
-				newMethod = nextMethod;				
+				if (_ReplaceMethod(newMethod))
+				{
+					auto nextMethod = newMethod->mNext;
+					newType->mMethodList.Remove(newMethod);
+					primaryType->mHotReplacedMethodList.PushFront(newMethod);
+					newMethod = nextMethod;
+				}
+				else
+					newMethod = newMethod->mNext;
 			}
 			else
 			{
@@ -6582,7 +6589,9 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 				auto primaryType = dbgType->GetPrimaryType();
 
 				if ((primaryType->mHotNewType == NULL) && (HasHotReplacedMethods(primaryType)) && (dbgType == primaryType))
-					HotReplaceMethods(dbgType, primaryType);
+				{
+					HotReplaceMethods(dbgType, primaryType);					
+				}
 
 				if (primaryType != dbgType)
 				{
