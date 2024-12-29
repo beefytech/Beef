@@ -180,7 +180,7 @@ protected:
 	void ResizeEntries(int newSize)
 	{
 		BF_ASSERT(newSize >= mAllocSize);
-		Entry* newEntries = TFuncs::allocate<Entry>(newSize);
+		Entry* newEntries = TFuncs::template allocate<Entry>(newSize);
 		
 		for (int i = 0; i < mCount; i++)
 		{
@@ -276,7 +276,7 @@ public:
 	{
 		if (this->mHashHeads == NULL)
 		{
-			this->mHashHeads = TFuncs::allocate<int>(mHashSize);
+			this->mHashHeads = TFuncs::template allocate<int>(mHashSize);
 			memset(this->mHashHeads, -1, sizeof(int) * mHashSize);
 		}
 
@@ -298,7 +298,7 @@ public:
 	{
 		if (this->mHashHeads == NULL)
 		{			
-			this->mHashHeads = TFuncs::allocate<int>(mHashSize);
+			this->mHashHeads = TFuncs::template allocate<int>(mHashSize);
 			memset(this->mHashHeads, -1, sizeof(int) * mHashSize);
 		}
 
@@ -332,7 +332,7 @@ public:
 
 	void Rehash(int newHashSize)
 	{
-		auto newHashHeads = TFuncs::allocate<int>(newHashSize);
+		auto newHashHeads = TFuncs::template allocate<int>(newHashSize);
 		memset(newHashHeads, -1, sizeof(int) * newHashSize);
 		
 		if (mHashHeads != NULL)
