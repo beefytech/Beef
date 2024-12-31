@@ -693,7 +693,7 @@ namespace IDE.ui
 
             for (int32 c in scope int32[] ( 4, 8, 16, 32, 64 ))
             {
-                columnChoice = menuItem.AddItem(StackStringFormat!("{0} bytes", c));
+                columnChoice = menuItem.AddItem(scope String()..AppendF("{0} bytes", c));
                 if ((mAutoResizeType == .Manual) && (c == (int32)mBytesPerDisplayLine))
                     columnChoice.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
                 columnChoice.mOnMenuItemSelected.Add(new (evt) =>
@@ -884,8 +884,8 @@ namespace IDE.ui
 
                     for (int i=0; i<mBytesPerDisplayLine; ++i)
                     {
-                        g.DrawString(StackStringFormat!("{0:X1}", i), GS!(mColumnDisplayStart) + i*GS!(mColumnDisplayStride) + GS!(mColumnDisplayStride)*0.125f - ((i > 0xF) ? GS!(4) : 0), GS!(3), FontAlign.Left);
-                        g.DrawString(StackStringFormat!("{0:X1}", i & 0xF), strViewColumnStart + i*GS!(mStrViewDisplayStride), GS!(3), FontAlign.Left);
+                        g.DrawString(scope String()..AppendF("{0:X1}", i), GS!(mColumnDisplayStart) + i*GS!(mColumnDisplayStride) + GS!(mColumnDisplayStride)*0.125f - ((i > 0xF) ? GS!(4) : 0), GS!(3), FontAlign.Left);
+                        g.DrawString(scope String()..AppendF("{0:X1}", i & 0xF), strViewColumnStart + i*GS!(mStrViewDisplayStride), GS!(3), FontAlign.Left);
                     }
                 }
             }

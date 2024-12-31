@@ -1095,7 +1095,7 @@ namespace IDE
 			}
 			else
 			{
-				Fail(StackStringFormat!("Failed to load minidump '{0}'", mCrashDumpPath));
+				Fail(scope String()..AppendF("Failed to load minidump '{0}'", mCrashDumpPath));
 				DeleteAndNullify!(mCrashDumpPath);
 			}
 		}
@@ -1229,7 +1229,7 @@ namespace IDE
 			Dialog aDialog;
 			if (changedList.Count == 1)
 			{
-				aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", StackStringFormat!("Save changes to '{0}' before closing?", changedList[0]), DarkTheme.sDarkTheme.mIconWarning);
+				aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", scope String()..AppendF("Save changes to '{0}' before closing?", changedList[0]), DarkTheme.sDarkTheme.mIconWarning);
 			}
 			else
 			{
@@ -1531,7 +1531,7 @@ namespace IDE
 					if (Utils.WriteTextFile(path, useText) case .Err)
 					{
 						if (showErrors)
-							Fail(StackStringFormat!("Failed to write file '{0}'", path));
+							Fail(scope String()..AppendF("Failed to write file '{0}'", path));
 						return false;
 					}
 				}
@@ -2312,7 +2312,7 @@ namespace IDE
 
 				if (Directory.CreateDirectory(mWorkspace.mDir) case .Err)
 				{
-					Fail(StackStringFormat!("Failed to create workspace directory '{0}'", mWorkspace.mDir));
+					Fail(scope String()..AppendF("Failed to create workspace directory '{0}'", mWorkspace.mDir));
 					return false;
 				}
 			}
@@ -2330,7 +2330,7 @@ namespace IDE
 
 				if (!SafeWriteTextFile(workspaceFileName, tomlString))
 				{
-					Fail(StackStringFormat!("Failed to write workspace file '{0}'", workspaceFileName));
+					Fail(scope String()..AppendF("Failed to write workspace file '{0}'", workspaceFileName));
 					return false;
 				}
 			}
@@ -3356,7 +3356,7 @@ namespace IDE
 
 			/*if (!project.Load(projectFilePath))
 			{
-				Fail(StackStringFormat!("Failed to load project {0}", projectFilePath));
+				Fail(scope String()..AppendF("Failed to load project {0}", projectFilePath));
 				delete project;
 				return .Err(.LoadFailed);
 			}
@@ -4050,7 +4050,7 @@ namespace IDE
 
 			if (mMainWindow == null)
 			{
-				Internal.FatalError(StackStringFormat!("FAILED: {0}", text));
+				Internal.FatalError(scope String()..AppendF("FAILED: {0}", text));
 			}
 
 			Beep(MessageBeepType.Error);
@@ -7432,7 +7432,7 @@ namespace IDE
 				Path.GetFileName(sourceViewPanel.mFilePath, fileName);
 			else
 				fileName.Append("untitled");
-			Dialog aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", StackStringFormat!("Save changes to '{0}' before closing?", fileName), DarkTheme.sDarkTheme.mIconWarning);
+			Dialog aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", scope String()..AppendF("Save changes to '{0}' before closing?", fileName), DarkTheme.sDarkTheme.mIconWarning);
 			aDialog.mDefaultButton = aDialog.AddButton("Save", new (evt) => { SaveFile(sourceViewPanel); CloseDocument(sourceViewPanel); });
 			aDialog.AddButton("Don't Save", new (evt) => CloseDocument(sourceViewPanel));
 			aDialog.mEscButton = aDialog.AddButton("Cancel");
@@ -8093,7 +8093,7 @@ namespace IDE
 				DragDropFile(key);
 				return;
 			}
-			Fail(StackStringFormat!("Unhandled command line param: {0}", key));
+			Fail(scope String()..AppendF("Unhandled command line param: {0}", key));
 		}
 
 		public override bool HandleCommandLineParam(String key, String value)
@@ -10161,7 +10161,7 @@ namespace IDE
 			Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
 			if (options == null)
 			{
-				//Fail(StackStringFormat!("Failed to retrieve options for {0}", project.mProjectName));
+				//Fail(scope String()..AppendF("Failed to retrieve options for {0}", project.mProjectName));
 				bfProject.SetDisabled(true);
 				return false;
 			}
@@ -11423,7 +11423,7 @@ namespace IDE
 				Project depProject = FindProject(dep.mProjectName);
 				if (depProject == null)
 				{
-					OutputLine(StackStringFormat!("Unable to find project '{0}', a dependency of project '{1}'", dep.mProjectName, project.mProjectName));
+					OutputLine(scope String()..AppendF("Unable to find project '{0}', a dependency of project '{1}'", dep.mProjectName, project.mProjectName));
 					return false;
 				}
 				if (!GetDependentProjectList(depProject, orderedProjectList, useProjectStack))
@@ -12939,7 +12939,7 @@ namespace IDE
 				{
 				case .Ok:
 				case .Err:
-					Fail(StackStringFormat!("Unable to locate process id {0}", mProcessAttachId));
+					Fail(scope String()..AppendF("Unable to locate process id {0}", mProcessAttachId));
 				}
 				if (debugProcess.IsAttached)
 				{
@@ -12975,7 +12975,7 @@ namespace IDE
 				}
 				else
 				{
-					Fail(StackStringFormat!("Failed to load minidump '{0}'", mCrashDumpPath));
+					Fail(scope String()..AppendF("Failed to load minidump '{0}'", mCrashDumpPath));
 				}
 			}
 			else if (mLaunchData != null)
@@ -13971,9 +13971,9 @@ namespace IDE
 							if (checkBreakpoint.mMemoryAddress == memoryAddress)
 								breakpoint = checkBreakpoint;
 						}
-						String infoString = StackStringFormat!("Memory breakpoint hit: '0x{0:X08}'", (int64)memoryAddress);
+						String infoString = scope String()..AppendF("Memory breakpoint hit: '0x{0:X08}'", (int64)memoryAddress);
 						if (breakpoint != null)
-							infoString = StackStringFormat!("Memory breakpoint hit: '0x{0:X08}' ({1})", (int64)memoryAddress, breakpoint.mMemoryWatchExpression);
+							infoString = scope String()..AppendF("Memory breakpoint hit: '0x{0:X08}' ({1})", (int64)memoryAddress, breakpoint.mMemoryWatchExpression);
 						OutputLine(infoString);
 						if (!mRunningTestScript)
 						{
@@ -14169,11 +14169,11 @@ namespace IDE
 								mDebugger.GetCurrentException(exceptionLine);
 								var exceptionData = String.StackSplit!(exceptionLine, '\n');
 
-								String exHeader = StackStringFormat!("Exception {0}", exceptionData[1]);
+								String exHeader = scope String()..AppendF("Exception {0}", exceptionData[1]);
 								if (exceptionData.Count >= 3)
 									exHeader = exceptionData[2];
 
-								String exString = StackStringFormat!("{0} at {1}", exHeader, exceptionData[0]);
+								String exString = scope String()..AppendF("{0} at {1}", exHeader, exceptionData[0]);
 
 								OutputLine(exString);
 								if (!IsCrashDump)

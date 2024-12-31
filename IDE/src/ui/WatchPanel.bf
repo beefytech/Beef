@@ -1664,8 +1664,8 @@ namespace IDE.ui
 			if (mShowStatusBar)
 			{
 				g.DrawString(textPosString, 16, textY, .Left, mWidth - GS!(140), .Ellipsis);
-	            g.DrawString(StackStringFormat!("Ln {0}", line + 1), mWidth - GS!(130), textY);
-	            g.DrawString(StackStringFormat!("Col {0}", col + 1), mWidth - GS!(70), textY);
+	            g.DrawString(scope String()..AppendF("Ln {0}", line + 1), mWidth - GS!(130), textY);
+	            g.DrawString(scope String()..AppendF("Col {0}", col + 1), mWidth - GS!(70), textY);
 			}
 
 			//using (g.PushColor(0xD0FFFFFF))

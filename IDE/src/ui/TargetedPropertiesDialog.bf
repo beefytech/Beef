@@ -50,7 +50,7 @@ namespace IDE.ui
 
 			if (!mTargetedProperties.mActiveConfigName.IsEmpty)
 			{
-				String dispStr = StackStringFormat!("Active({0})", mTargetedProperties.mActiveConfigName);
+				String dispStr = scope String()..AppendF("Active({0})", mTargetedProperties.mActiveConfigName);
 				item = menu.AddItem(dispStr);
 				item.mOnMenuItemSelected.Add(new (evt) => { SelectConfig(mTargetedProperties.mActiveConfigName); });
 			}
@@ -549,7 +549,7 @@ namespace IDE.ui
 
 			if (!mActiveConfigName.IsEmpty)
 			{
-				String dispStr = StackStringFormat!("Active({0})", mActiveConfigName);
+				String dispStr = scope String()..AppendF("Active({0})", mActiveConfigName);
 				item = menu.AddItem(dispStr);
 				item.mOnMenuItemSelected.Add(new (evt) => { SelectConfig(mActiveConfigName); });
 			}
@@ -613,7 +613,7 @@ namespace IDE.ui
 			{
 				if (!platformName.IsEmpty)
 				{
-				    String dispStr = (IDEApp.sApp.mPlatformName == platformName) ? StackStringFormat!("Active({0})", platformName) : platformName;
+				    String dispStr = (IDEApp.sApp.mPlatformName == platformName) ? scope String()..AppendF("Active({0})", platformName) : platformName;
 				    item = menu.AddItem(dispStr);
 				    item.mOnMenuItemSelected.Add(new (evt) => { SelectPlatform(platformName); });
 				}
@@ -692,7 +692,7 @@ namespace IDE.ui
             {
 				if (mConfigNames.Count == 1)
 				{
-	                String dispStr = ((mConfigNames.Count == 1) && (mActiveConfigName == mConfigNames[0])) ? StackStringFormat!("Active({0})", mConfigNames[0]) : mConfigNames[0];
+	                String dispStr = ((mConfigNames.Count == 1) && (mActiveConfigName == mConfigNames[0])) ? scope String()..AppendF("Active({0})", mConfigNames[0]) : mConfigNames[0];
 	                mConfigComboBox.Label = dispStr;
 				}
 				else
@@ -716,7 +716,7 @@ namespace IDE.ui
 			{
 				if (mPlatformNames.Count == 1)
 				{
-	                String dispStr = ((mPlatformNames.Count == 1) && (mActivePlatformName == mPlatformNames[0])) ? StackStringFormat!("Active({0})", mPlatformNames[0]) : mPlatformNames[0];
+	                String dispStr = ((mPlatformNames.Count == 1) && (mActivePlatformName == mPlatformNames[0])) ? scope String()..AppendF("Active({0})", mPlatformNames[0]) : mPlatformNames[0];
 	                mPlatformComboBox.Label = dispStr;
 				}
 				else

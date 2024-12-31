@@ -108,6 +108,7 @@ static
 		str.AppendF(format, args);
 	}*/
 
+	[Warn("StackStringFormat has been deprecated and will be removed in the future. Consider switching to string interpolation or 'scope:: String()..AppendF'.")]
 	public static mixin StackStringFormat(String format, var arg1)
 	{
 		var str = scope:: String();
@@ -115,6 +116,7 @@ static
 		str
 	}
 
+	[Warn("StackStringFormat has been deprecated and will be removed in the future. Consider switching to string interpolation or 'scope:: String()..AppendF'.")]
 	public static mixin StackStringFormat(String format, var arg1, var arg2)
 	{
 		var str = scope:: String();
@@ -122,6 +124,7 @@ static
 		str
 	}
 
+	[Warn("StackStringFormat has been deprecated and will be removed in the future. Consider switching to string interpolation or 'scope:: String()..AppendF'.")]
 	public static mixin StackStringFormat(String format, var arg1, var arg2, var arg3)
 	{
 		var str = scope:: String();

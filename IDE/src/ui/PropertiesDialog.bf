@@ -1536,7 +1536,7 @@ namespace IDE.ui
                     }
                     if (i < strVals.Count)
                     {
-                        childItem.Label = StackStringFormat!("#{0}", i + 1);
+                        childItem.Label = scope String()..AppendF("#{0}", i + 1);
                         childSubItem.mTextColor = DarkTheme.COLOR_TEXT;
                     }
                     else

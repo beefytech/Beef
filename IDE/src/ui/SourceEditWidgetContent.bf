@@ -5077,7 +5077,7 @@ namespace IDE.ui
 						                int callInstLoc = (int)int64.Parse(callInstLocStr, System.Globalization.NumberStyles.HexNumber);
 						                if (callData.Count == 1)
 						                {
-						                    callMenuItem = stepIntoSpecificMenu.AddItem(StackStringFormat!("Indirect call at 0x{0:X}", callInstLoc));
+						                    callMenuItem = stepIntoSpecificMenu.AddItem(scope String()..AppendF("Indirect call at 0x{0:X}", callInstLoc));
 						                }
 						                else
 						                {

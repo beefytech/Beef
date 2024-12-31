@@ -3809,7 +3809,7 @@ namespace IDE.ui
             var text = scope String();
             if (gApp.LoadTextFile(mFilePath, text) case .Err)
             {
-                gApp.Fail(StackStringFormat!("Failed to open file '{0}'", mFilePath));
+                gApp.Fail(scope String()..AppendF("Failed to open file '{0}'", mFilePath));
                 return;
             }
 
@@ -5179,7 +5179,7 @@ namespace IDE.ui
 
         public void GotoLine()
         {                        
-            GoToLineDialog aDialog = new GoToLineDialog("Go To Line", StackStringFormat!("Line Number ({0}-{1})", 1, mEditWidget.Content.GetLineCount()));
+            GoToLineDialog aDialog = new GoToLineDialog("Go To Line", scope String()..AppendF("Line Number ({0}-{1})", 1, mEditWidget.Content.GetLineCount()));
             aDialog.Init(this);                        
             aDialog.PopupWindow(mWidgetWindow);
         }
