@@ -237,6 +237,7 @@ public:
 	void AddTopLevelNamespaces(BfAstNode* identifierNode);
 	void AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttribute = false);
 	void AddOverrides(const StringImpl& filter);
+	void AddCtorPassthroughs();
 	void UpdateReplaceData();
 	void AddTypeInstanceEntry(BfTypeInstance* typeInst);
 	bool CheckDocumentation(AutoCompleteEntry* entry, BfCommentNode* documentation);

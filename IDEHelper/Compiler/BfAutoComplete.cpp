@@ -2475,7 +2475,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 
 	BfTypeNameFlags nameFlags = (BfTypeNameFlags)(BfTypeNameFlag_ReduceName | BfTypeNameFlag_ResolveGenericParamNames);
 
-	if (methodDef->mMethodType == BfMethodType_Normal)
+	if ((methodDef->mMethodType == BfMethodType_Normal) || (methodDef->mMethodType == BfMethodType_Ctor))
 	{
 		StringT<128> methodPrefix;
 		StringT<128> methodName;
@@ -2483,7 +2483,12 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 
 		bool isAbstract = (methodDef->mIsAbstract) || (isInterface) || (!methodDef->mIsVirtual);
 
-		if (isAbstract)
+		if (methodDef->mMethodType == BfMethodType_Ctor)
+		{
+			impString += " : base(";
+			isAbstract = false;
+		}
+		else if (isAbstract)
 		{
 			if (!methodInst->mReturnType->IsVoid())
 				impString += "return default;";
@@ -2507,20 +2512,27 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 		}
 		else if (methodDeclaration->mProtectionSpecifier != NULL)
 			methodPrefix += methodDeclaration->mProtectionSpecifier->ToString() + " ";
-		if (!isInterface)
+		
+		if ((!isInterface) && (methodDef->mMethodType != BfMethodType_Ctor))
 			methodPrefix += "override ";
 		if (methodDef->mIsStatic)
 			methodPrefix += "static ";
 
-		methodPrefix += mModule->TypeToString(methodInst->mReturnType, nameFlags);
-		methodPrefix += " ";
+		if (methodDef->mMethodType != BfMethodType_Ctor)
+		{
+			methodPrefix += mModule->TypeToString(methodInst->mReturnType, nameFlags);
+			methodPrefix += " ";
+		}
 		if (isExplicitInterface)
 		{
 			methodName += mModule->TypeToString(methodInst->GetOwner(), nameFlags);
 			methodName += ".";
 		}
 
-		methodName += methodDef->mName;
+		if (methodDef->mMethodType == BfMethodType_Ctor)
+			methodName += "this";
+		else
+			methodName += methodDef->mName;
 
 		if (methodInst->GetNumGenericArguments() > 0)
 		{
@@ -2607,7 +2619,9 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 			}
 		}
 
-		if (!isAbstract)
+		if (methodDef->mMethodType == BfMethodType_Ctor)
+			impString += ")";		
+		else if (!isAbstract)
 			impString += ");";
 
 		if (showString != NULL)
@@ -2617,7 +2631,10 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 			if (showString == insertString)
 				*insertString += "\t";
 
-			*insertString += methodPrefix + methodName + "\t" + impString;
+			if (methodDef->mMethodType == BfMethodType_Ctor)
+				*insertString += methodPrefix + methodName + impString + "\t";
+			else
+				*insertString += methodPrefix + methodName + "\t" + impString;
 		}
 
 		return true;
@@ -2806,6 +2823,70 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 	}
 }
 
+void BfAutoComplete::AddCtorPassthroughs()
+{
+	if (!mIsAutoComplete)
+		return;
+
+	auto activeTypeDef = mModule->GetActiveTypeDef();
+
+	BfTypeInstance* curType = mModule->mCurTypeInstance;	
+	auto baseType = curType->mBaseType;
+
+	Array<BfMethodInstance*> declMethods;
+	for (auto methodDef : curType->mTypeDef->mMethods)
+	{
+		if (methodDef->mMethodType != BfMethodType_Ctor)
+			continue;
+		
+		auto& methodGroup = curType->mMethodInstanceGroups[methodDef->mIdx];
+		auto methodInst = methodGroup.mDefault;
+		if (methodInst == NULL)
+			continue;
+		if (methodDef->mMethodType != BfMethodType_Ctor)
+			continue;
+		declMethods.Add(methodInst);
+	}
+
+	for (auto methodDef : baseType->mTypeDef->mMethods)
+	{
+		if (methodDef->mShow != BfShow_Show)
+			continue;
+		if (methodDef->mProtection < BfProtection_Protected)
+			continue;
+		if (methodDef->mIsStatic)
+			continue;
+
+		auto& methodGroup = baseType->mMethodInstanceGroups[methodDef->mIdx];
+		auto methodInst = methodGroup.mDefault;
+		if (methodInst == NULL)		
+			continue;
+		if (methodDef->mMethodType != BfMethodType_Ctor)
+			continue;
+		
+		if (methodInst->GetParamCount() == 0)
+			continue;
+
+		bool hasDecl = false;
+		for (auto declMethod : declMethods)
+		{
+			if (mModule->CompareMethodSignatures(methodInst, declMethod))
+			{
+				hasDecl = true;
+				break;
+			}
+		}
+		if (hasDecl)
+			continue;
+
+		StringT<512> insertString;
+		GetMethodInfo(methodInst, &insertString, &insertString, true, false);
+		if (insertString.IsEmpty())
+			continue;
+		AddEntry(AutoCompleteEntry("this", insertString), "");
+	}
+}
+
 void BfAutoComplete::UpdateReplaceData()
 {
 }
@@ -2854,6 +2935,28 @@ void BfAutoComplete::CheckMethod(BfMethodDeclaration* methodDeclaration, bool is
 			}
 
 			AddOverrides(filter);
+		}
+	}
+
+	if (auto ctorDeclaration = BfNodeDynCast<BfConstructorDeclaration>(methodDeclaration))
+	{
+		if ((ctorDeclaration->mThisToken != NULL) && (ctorDeclaration->mOpenParen == NULL))
+		{
+			auto bfParser = ctorDeclaration->mThisToken->GetSourceData()->ToParser();
+			if (bfParser == NULL)
+				return;
+			int cursorIdx = bfParser->mCursorIdx;
+
+			if ((IsAutocompleteNode(methodDeclaration, 1)) && (cursorIdx == ctorDeclaration->mThisToken->GetSrcEnd()))
+			{
+				if (mIsAutoComplete)
+				{
+					mInsertStartIdx = ctorDeclaration->GetSrcStart();
+					mInsertEndIdx = ctorDeclaration->mThisToken->GetSrcEnd();
+				}
+
+				AddCtorPassthroughs();
+			}
 		}
 	}
 
