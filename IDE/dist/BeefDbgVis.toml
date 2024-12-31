@@ -568,6 +568,30 @@ Name = "[Value]"
 Value = "*($T2*)&mValue"
 
 [[Type]]
+Name = "Beefy::MultiDictionary<*, *, *>"
+DisplayString = "{{ count={mCount - mFreeCount} }}"
+[[Type.Expand.Item]]
+Name = "[Count]"
+Value = "mCount - mFreeCount"
+[Type.Expand.DictionaryItems]
+Size = "mCount - mFreeCount"
+Buckets = "mHashHeads"
+Entries = "mEntries"
+Key = "mKey"
+Value = "mValue"
+Next = "mNext"
+
+[[Type]]
+Name = "Beefy::MultiDictionary<*, *, *>::Entry"
+DisplayString = "{{[{mKey}, {mValue}]}}"
+[[Type.Expand.Item]]
+Name = "[Key]"
+Value = "mKey"
+[[Type.Expand.Item]]
+Name = "[Value]"
+Value = "mValue"
+
+[[Type]]
 Name = "Beefy::HashSet<*, *>"
 DisplayString = "{{ count={mCount - mFreeCount} }}"
 [[Type.Expand.Item]]

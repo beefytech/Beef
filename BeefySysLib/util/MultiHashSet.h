@@ -146,6 +146,8 @@ public:
 				this->mCurEntry = this->mSet->mEntries[this->mCurEntry].mNext;
 			} 
 			while ((this->mCurEntry != -1) && (this->mSet->mEntries[this->mCurEntry].mHashCode != wantHash));
+			if (this->mCurEntry == -1)
+				this->mCurBucket = mSet->mHashSize;
 		}
 	};
 

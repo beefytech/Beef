@@ -70,14 +70,22 @@ public:
 	struct Iterator
 	{
 	public:
-		MultiDictionary* mSet;
+		MultiDictionary* mDict;
 		int mCurEntry;
 		int mCurBucket;
 
-	public:
-		Iterator(MultiDictionary* set)
+	protected:
+		Iterator()
 		{
-			this->mSet = set;
+			this->mDict = NULL;
+			this->mCurBucket = 0;
+			this->mCurEntry = -1;
+		}
+
+	public:
+		Iterator(MultiDictionary* dict)
+		{
+			this->mDict = dict;
 			this->mCurBucket = 0;
 			this->mCurEntry = -1;
 		}
@@ -86,21 +94,21 @@ public:
 		{
 			if (this->mCurEntry != -1)
 			{
-				this->mCurEntry = this->mSet->mEntries[this->mCurEntry].mNext;
+				this->mCurEntry = this->mDict->mEntries[this->mCurEntry].mNext;
 				if (this->mCurEntry != -1)
 					return *this;
 				this->mCurBucket++;
 			}
 
-			if (mSet->mHashHeads == NULL)
+			if (mDict->mHashHeads == NULL)
 			{
-				this->mCurBucket = this->mSet->mHashSize;
+				this->mCurBucket = this->mDict->mHashSize;
 				return *this; // At end
 			}
 
-			while (this->mCurBucket < mSet->mHashSize)
+			while (this->mCurBucket < mDict->mHashSize)
 			{
-				this->mCurEntry = this->mSet->mHashHeads[mCurBucket];
+				this->mCurEntry = this->mDict->mHashHeads[mCurBucket];
 				if (this->mCurEntry != -1)
 					return *this;
 				this->mCurBucket++;
@@ -111,12 +119,12 @@ public:
 
 		TKey GetKey()
 		{
-			return this->mSet->mEntries[this->mCurEntry].mKey;
+			return this->mDict->mEntries[this->mCurEntry].mKey;
 		}
 
 		TValue GetValue()
 		{
-			return this->mSet->mEntries[this->mCurEntry].mValue;
+			return this->mDict->mEntries[this->mCurEntry].mValue;
 		}
 		
 		bool operator!=(const Iterator& itr) const
@@ -131,11 +139,45 @@ public:
 
 		void MoveToNextHashMatch()
 		{
-			int wantHash = this->mSet->mEntries[this->mCurEntry].mHashCode;
+			int wantHash = this->mDict->mEntries[this->mCurEntry].mHashCode;
 			do
 			{
-				this->mCurEntry = this->mSet->mEntries[this->mCurEntry].mNext;
-			} while ((this->mCurEntry != -1) && (this->mSet->mEntries[this->mCurEntry].mHashCode != wantHash));
+				this->mCurEntry = this->mDict->mEntries[this->mCurEntry].mNext;
+			} while ((this->mCurEntry != -1) && (this->mDict->mEntries[this->mCurEntry].mHashCode != wantHash));
+			if (this->mCurEntry == -1)
+				this->mCurBucket =  mDict->mHashSize;
+		}
+	};
+
+	struct MatchIterator : public Iterator
+	{
+	public:
+		TKey mKey;
+
+	public:
+		MatchIterator(const Iterator& iterator)
+		{
+			this->mDict = iterator.mDict;
+			this->mCurBucket = iterator.mCurBucket;
+			this->mCurEntry = iterator.mCurEntry;
+		}
+
+		MatchIterator(MultiDictionary* dict, const TKey& key) : Iterator(dict)
+		{
+			mKey = key;
+		}
+
+		MatchIterator& operator++()
+		{
+			while (true)
+			{
+				MoveToNextHashMatch();
+				if (*this == mDict->end())
+					break;
+				if (mKey == GetKey())
+					break;
+			}			
+			return *this;
 		}
 	};
 
@@ -400,7 +442,7 @@ public:
 	}
 
 	template <typename TKey>
-	Iterator TryGet(const TKey& key)
+	MatchIterator TryGet(const TKey& key)
 	{
 		if (mHashHeads == NULL)
 			return end();
@@ -415,7 +457,7 @@ public:
 			auto checkEntry = &this->mEntries[checkEntryIdx];
 			if ((checkEntry->mHashCode == hash) && (TFuncs::Matches(key, checkEntry->mKey)))
 			{
-				Iterator itr(this);
+				MatchIterator itr(this, key);
 				itr.mCurEntry = checkEntryIdx;
 				itr.mCurBucket = hashIdx;
 				return itr;

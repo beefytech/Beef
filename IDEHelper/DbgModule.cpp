@@ -5408,8 +5408,8 @@ void DbgModule::HotReplaceMethods(DbgType* newType, DbgType* primaryType)
 				return;			
 			auto symInfo = mDebugTarget->mSymbolMap.Get(oldMethod->mBlock.mLowPC);
 			if (symInfo != NULL)
-			{				
-				oldProgramMap.Add(StringView(symInfo->mName), oldMethod);				
+			{
+				oldProgramMap.Add(StringView(symInfo->mName), oldMethod);
 			}
 		};
 
@@ -5531,16 +5531,17 @@ void DbgModule::HotReplaceMethods(DbgType* newType, DbgType* primaryType)
 		{
 			bool didReplace = false;
 			if (!newMethod->mBlock.IsEmpty())
-			{
-				BfLogDbg("Hot added new method %p %s Address:%p\n", newMethod, newMethod->mName, newMethod->mBlock.mLowPC);
-
+			{				
 				newMethod->PopulateSubprogram();
-
+				
 				auto symInfo = mDebugTarget->mSymbolMap.Get(newMethod->mBlock.mLowPC);
+				BfLogDbg("Hot added new method %p %s Address:%p Sym:%s\n", 
+					newMethod, newMethod->mName, newMethod->mBlock.mLowPC,
+					(symInfo != NULL) ? symInfo->mName : "???");
 				if (symInfo != NULL)
 				{	
 					DbgSubprogram* oldMethod = NULL;
-					for (auto itr = oldProgramMap.TryGet(StringView(symInfo->mName)); itr != oldProgramMap.end(); ++itr)					
+					for (auto itr = oldProgramMap.TryGet(StringView(symInfo->mName)); itr != oldProgramMap.end(); ++itr)
 					{
 						auto oldMethod = itr.GetValue();
 						_HotJump(oldMethod, newMethod);
