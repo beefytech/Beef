@@ -31,7 +31,7 @@ namespace BeefBuild
 
 			//TestZip2();
 			String commandLine = scope String();
-			commandLine.Join(" ", params args);
+			commandLine.Join(" ", args);
 
 			BuildApp mApp = new BuildApp();	
 			mApp.ParseCommandLine(commandLine);

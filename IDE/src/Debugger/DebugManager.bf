@@ -544,10 +544,8 @@ namespace IDE.Debugger
 
 		public void HotLoad(String[] objectFileNames, int hotIdx)
 		{
-			
-
 			String filenamesStr = scope String();
-			filenamesStr.Join("\n", params objectFileNames);
+			filenamesStr.Join("\n", objectFileNames);
 			Debugger_HotLoad(filenamesStr, (int32)hotIdx);
 
 			// The hot load will bind breakpoints to any new methods, but the old versions
