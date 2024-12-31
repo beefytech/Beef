@@ -293,6 +293,14 @@ namespace System
 			mLength = (int_strsize)count;
 		}
 
+		static int StrLengths(Span<StringView> strs)
+		{
+			int count = 0;
+			for (var str in strs)
+				count += str.Length;
+			return count;
+		}
+
 		static int StrLengths(Span<String> strs)
 		{
 			int count = 0;
@@ -302,7 +310,7 @@ namespace System
 		}
 
 		[AllowAppend]
-		public this(params Span<String> strs)
+		public this(params Span<StringView> strs)
 		{
 			int count = StrLengths(strs);
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
@@ -313,7 +321,27 @@ namespace System
 			int curIdx = 0;
 			for (var str in strs)
 			{
-				Internal.MemCpy(ptr + curIdx, str.Ptr, str.mLength);
+				Internal.MemCpy(ptr + curIdx, str.Ptr, str.Length);
+				curIdx += str.Length;
+			}
+			
+			mLength = (int_strsize)count;
+			mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
+		}
+
+		[AllowAppend]
+		public this(Span<String> strs)
+		{
+			int count = StrLengths(strs);
+			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
+#unwarn
+			char8* addlPtr = append char8[bufferSize]*(?);
+			Init(bufferSize);
+			let ptr = Ptr;
+			int curIdx = 0;
+			for (var str in strs)
+			{
+				Internal.MemCpy(ptr + curIdx, str.Ptr, str.Length);
 				curIdx += str.Length;
 			}
 			
@@ -2514,6 +2542,16 @@ namespace System
 			}
 		}
 
+		public void Join(StringView separator, Span<String> values)
+		{
+			for (int i = 0; i < values.Length; i++)
+			{
+				if (i > 0)
+					Append(separator);
+				values[i].ToString(this);
+			}
+		}
+
 		public void Join(StringView separator, params Span<StringView> values)
 		{
 			for (int i = 0; i < values.Length; i++)
@@ -2523,6 +2561,7 @@ namespace System
 				values[i].ToString(this);
 			}
 		}
+
 
 		public StringSplitEnumerator Split(char8 c)
 		{
