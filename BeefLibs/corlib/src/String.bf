@@ -293,7 +293,7 @@ namespace System
 			mLength = (int_strsize)count;
 		}
 
-		static int StrLengths(String[] strs)
+		static int StrLengths(Span<String> strs)
 		{
 			int count = 0;
 			for (var str in strs)
@@ -302,7 +302,7 @@ namespace System
 		}
 
 		[AllowAppend]
-		public this(params String[] strs)
+		public this(params Span<String> strs)
 		{
 			int count = StrLengths(strs);
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
@@ -966,7 +966,7 @@ namespace System
 			Append(str.Ptr + offset, length);
 		}
 
-		public void Append(params String[] strings)
+		public void Append(params Span<StringView> strings)
 		{
 			for (var str in strings)
 				Append(str);
@@ -2514,9 +2514,9 @@ namespace System
 			}
 		}
 
-		public void Join(String separator, params String[] values)
+		public void Join(StringView separator, params Span<StringView> values)
 		{
-			for (int i = 0; i < values.Count; i++)
+			for (int i = 0; i < values.Length; i++)
 			{
 				if (i > 0)
 					Append(separator);
@@ -2544,27 +2544,27 @@ namespace System
 			return StringSplitEnumerator(Ptr, Length, separator, count, options);
 		}
 
-		public StringSplitEnumerator Split(params char8[] separators)
+		public StringSplitEnumerator Split(params Span<char8> separators)
 		{
 			return StringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
 		}
 
-		public StringSplitEnumerator Split(char8[] separators)
+		public StringSplitEnumerator Split(Span<char8> separators)
 		{
 			return StringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
 		}
 
-		public StringSplitEnumerator Split(char8[] separators, int count)
+		public StringSplitEnumerator Split(Span<char8> separators, int count)
 		{
 			return StringSplitEnumerator(Ptr, Length, separators, count, StringSplitOptions.None);
 		}
 
-		public StringSplitEnumerator Split(char8[] separators, int count, StringSplitOptions options)
+		public StringSplitEnumerator Split(Span<char8> separators, int count, StringSplitOptions options)
 		{
 			return StringSplitEnumerator(Ptr, Length, separators, count, options);
 		}
 
-		public StringSplitEnumerator Split(char8[] separators, StringSplitOptions options)
+		public StringSplitEnumerator Split(Span<char8> separators, StringSplitOptions options)
 		{
 			return StringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, options);
 		}
@@ -3079,15 +3079,15 @@ namespace System
 		int_strsize mPos;
 		int_strsize mMatchPos;
 
-		public this(char8* ptr, int strLength, char8[] separators, int count, StringSplitOptions splitOptions)
+		public this(char8* ptr, int strLength, Span<char8> separators, int count, StringSplitOptions splitOptions)
 		{
 			mPtr = ptr;
 			mStrLen = (int_strsize)strLength;
-			if (separators?.Count > 0)
+			if (separators.Length > 0)
 			{
 				mFirstSeparator = separators[0];
 				mSeparatorPtr = &separators[0];
-				mSeparatorCount = (.)separators.Count;
+				mSeparatorCount = (.)separators.Length;
 			}
 			else
 			{
@@ -3281,7 +3281,7 @@ namespace System
 	{
 		StringSplitOptions mSplitOptions;
 		StringView mFirstSeparator;
-		StringView[] mSeparators;
+		Span<StringView> mSeparators;
 		char8* mPtr;
 		int_strsize mStrLen;
 		int32 mCurCount;
@@ -3290,11 +3290,11 @@ namespace System
 		int_strsize mMatchPos;
 		int_strsize mMatchLen;
 
-		public this(char8* ptr, int strLength, StringView[] separators, int count, StringSplitOptions splitOptions)
+		public this(char8* ptr, int strLength, Span<StringView> separators, int count, StringSplitOptions splitOptions)
 		{
 			mPtr = ptr;
 			mStrLen = (int_strsize)strLength;
-			if (separators?.Count > 0)
+			if (separators.Length > 0)
 				mFirstSeparator = separators[0];
 			else
 				mFirstSeparator = .();
@@ -3414,7 +3414,7 @@ namespace System
 				}
 				else
 				{
-					if (mFirstSeparator.IsNull && (mSeparators == null || mSeparators.IsEmpty) && mPtr[mMatchPos].IsWhiteSpace)
+					if (mFirstSeparator.IsNull && (mSeparators.IsEmpty) && mPtr[mMatchPos].IsWhiteSpace)
 					{
 						foundMatch = true;
 						mMatchLen = 1;
@@ -3424,9 +3424,9 @@ namespace System
 						foundMatch = true;
 						mMatchLen = (int_strsize)mFirstSeparator.Length;
 					}
-					else if (mSeparators != null)
+					else if (!mSeparators.IsEmpty)
 					{
-						for (int i = 1; i < mSeparators.Count; i++)
+						for (int i = 1; i < mSeparators.Length; i++)
 						{
 							if (mSeparators[i].Length <= mStrLen - mMatchPos && StringView(&mPtr[mMatchPos], mSeparators[i].Length) == mSeparators[i])
 							{
@@ -4273,27 +4273,27 @@ namespace System
 			return StringStringSplitEnumerator(Ptr, Length, separator, count, options);
 		}
 
-		public StringStringSplitEnumerator Split(params StringView[] separators)
+		public StringStringSplitEnumerator Split(params Span<StringView> separators)
 		{
 			return StringStringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
 		}
 
-		public StringStringSplitEnumerator Split(StringView[] separators)
+		public StringStringSplitEnumerator Split(Span<StringView> separators)
 		{
 			return StringStringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
 		}
 
-		public StringStringSplitEnumerator Split(StringView[] separators, int count)
+		public StringStringSplitEnumerator Split(Span<StringView> separators, int count)
 		{
 			return StringStringSplitEnumerator(Ptr, Length, separators, count, StringSplitOptions.None);
 		}
 
-		public StringStringSplitEnumerator Split(StringView[] separators, int count, StringSplitOptions options)
+		public StringStringSplitEnumerator Split(Span<StringView> separators, int count, StringSplitOptions options)
 		{
 			return StringStringSplitEnumerator(Ptr, Length, separators, count, options);
 		}
 
-		public StringStringSplitEnumerator Split(StringView[] separators, StringSplitOptions options)
+		public StringStringSplitEnumerator Split(Span<StringView> separators, StringSplitOptions options)
 		{
 			return StringStringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, options);
 		}
