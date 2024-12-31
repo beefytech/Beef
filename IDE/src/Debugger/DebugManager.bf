@@ -432,7 +432,8 @@ namespace IDE.Debugger
 		public int32 mActiveCallStackIdx;
 		public Event<Action> mBreakpointsChangedDelegate ~ _.Dispose();
 		public Breakpoint mRunToCursorBreakpoint;
-		public int32 mDebugIdx;
+		public int32 mSessionIdx;
+		public int32 mStateIdx;
 
 		public bool IsRunning
 		{
@@ -464,6 +465,17 @@ namespace IDE.Debugger
 				delete filter;
 			delete mStepFilterList;
 			Debugger_Delete();
+		}
+
+		public void IncrementSessionIdx()
+		{
+			mSessionIdx++;
+			mStateIdx++;
+		}
+
+		public void IncrementStateIdx()
+		{
+			mStateIdx++;
 		}
 
 		public void Reset()

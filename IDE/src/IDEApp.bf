@@ -4864,7 +4864,7 @@ namespace IDE
 		{
 			if (mDebugger.mIsRunning)
 			{
-				if (mExecutionPaused)
+				if ((mExecutionPaused) && (mDebugger.IsPaused()))
 				{
 					DebuggerUnpaused();
 					mDebugger.StepInto(IsInDisassemblyMode());
@@ -4882,7 +4882,7 @@ namespace IDE
 			mStepCount++;
 			if (mDebugger.mIsRunning)
 			{
-				if (mExecutionPaused)
+				if ((mExecutionPaused) && (mDebugger.IsPaused()))
 				{
 					DebuggerUnpaused();
 					mDebugger.StepOver(IsInDisassemblyMode());
@@ -4902,7 +4902,7 @@ namespace IDE
 		[IDECommand]
 		void StepOut()
 		{
-			if (mExecutionPaused)
+			if ((mExecutionPaused) && (mDebugger.IsPaused()))
 			{
 				DebuggerUnpaused();
 				mDebugger.StepOut(IsInDisassemblyMode());
@@ -12437,7 +12437,7 @@ namespace IDE
 			CheckDebugVisualizers();
 
 			mDebugger.mIsRunning = true;
-			mDebugger.mDebugIdx++;
+			mDebugger.IncrementSessionIdx();
 			WithSourceViewPanels(scope (sourceView) =>
 				{
 					sourceView.RehupAlias();
@@ -12496,7 +12496,7 @@ namespace IDE
 
 			CheckDebugVisualizers();
 			mDebugger.mIsRunning = true;
-			mDebugger.mDebugIdx++;
+			mDebugger.IncrementSessionIdx();
 			mDebugger.RehupBreakpoints(true);
 			mDebugger.Run();
 			mIsAttachPendingSourceShow = true;
@@ -12969,7 +12969,7 @@ namespace IDE
 				if (mDebugger.OpenMiniDump(mCrashDumpPath))
 				{
 					mDebugger.mIsRunning = true;
-					mDebugger.mDebugIdx++;
+					mDebugger.IncrementSessionIdx();
 					mExecutionPaused = false; // Make this false so we can detect a Pause immediately
 					mIsAttachPendingSourceShow = true;
 				}
@@ -13281,6 +13281,7 @@ namespace IDE
 
 		void DebuggerPaused()
 		{
+			mDebugger.IncrementStateIdx();
 			mDebugger.mActiveCallStackIdx = 0;
 			mExecutionPaused = true;
 			mDebugger.GetRunState();
@@ -13294,6 +13295,8 @@ namespace IDE
 
 		void WithWatchPanels(delegate void(WatchPanel watchPanel) dlg)
 		{
+			if (mWatchPanel == null)
+				return;
 			dlg(mWatchPanel);
 			dlg(mAutoWatchPanel);
 			for (let window in mWindows)

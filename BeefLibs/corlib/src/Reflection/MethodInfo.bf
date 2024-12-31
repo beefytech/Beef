@@ -1017,6 +1017,25 @@ namespace System.Reflection
 			strBuffer.Append(')');
 		}
 
+		public void GetMethodSig(String strBuffer)
+		{
+			strBuffer.Append('(');
+			int useParamIdx = 0;
+			for (int paramIdx < ParamCount)
+			{
+				var flag = GetParamFlags(paramIdx);
+				if (flag.HasFlag(.Implicit))
+					continue;
+				if (useParamIdx > 0)
+					strBuffer.Append(", ");
+				if (flag.HasFlag(.Params))
+					strBuffer.Append("params ");
+				strBuffer.Append(GetParamType(paramIdx));
+				useParamIdx++;
+			}
+			strBuffer.Append(')');
+		}
+
 		public void GetParamsDecl(String strBuffer)
 		{
 			int useParamIdx = 0;

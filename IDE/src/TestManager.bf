@@ -639,7 +639,7 @@ namespace IDE
 					gApp.mDebugger.RehupBreakpoints(true);
 					gApp.mDebugger.Run();
 					gApp.mDebugger.mIsRunning = true;
-					gApp.mDebugger.mDebugIdx++;
+					gApp.mDebugger.IncrementSessionIdx();
 				}
 
 				mTestInstance.mThread.Start(false);

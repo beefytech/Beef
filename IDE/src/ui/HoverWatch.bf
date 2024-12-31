@@ -775,7 +775,7 @@ namespace IDE.ui
 						flags |= DebugManager.EvalExpressionFlags.DeselectCallStackIdx;
 					if (mAllowSideEffects)
 						flags |= .AllowSideEffects | .AllowCalls;
-					if (gApp.mSettings.mDebuggerSettings.mAutoEvaluateProperties)
+					if (gApp.mSettings.mDebuggerSettings.mAutoEvaluatePropertiesOnHover)
 						flags |= .AllowProperties;
 					if (watch.mResultType == .RawText)
 						flags |= .RawStr;

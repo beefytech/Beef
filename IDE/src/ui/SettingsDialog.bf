@@ -347,7 +347,8 @@ namespace IDE.ui
 			AddPropertiesItem(root, "Symbol File Locations", "mSymbolSearchPath");
 			AddPropertiesItem(root, "Auto Find Paths", "mAutoFindPaths");
 			AddPropertiesItem(root, "Profile Sample Rate", "mProfileSampleRate");
-			AddPropertiesItem(root, "Auto Evaluate Properties", "mAutoEvaluateProperties");
+			AddPropertiesItem(root, "Auto Eval Properties on Hover", "mAutoEvaluatePropertiesOnHover");
+			AddPropertiesItem(root, "Auto Refresh Side Effects", "mAutoRefreshWatches");
 		}
 
 		protected override void ResetSettings()

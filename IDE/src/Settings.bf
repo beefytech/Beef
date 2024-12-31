@@ -153,7 +153,8 @@ namespace IDE
 			public List<String> mSymbolSearchPath = new .() ~ DeleteContainerAndItems!(_);
 			public List<String> mAutoFindPaths = new .() ~ DeleteContainerAndItems!(_);
 			public int32 mProfileSampleRate = 1000;
-			public bool mAutoEvaluateProperties = false;
+			public bool mAutoEvaluatePropertiesOnHover = false;
+			public bool mAutoRefreshWatches = false;
 
 			public void Serialize(StructuredData sd)
 			{
@@ -194,7 +195,8 @@ namespace IDE
 					sd.RemoveIfEmpty();
 				}
 				sd.Add("ProfileSampleRate", mProfileSampleRate);
-				sd.Add("AutoEvaluateProperties", mAutoEvaluateProperties);
+				sd.Add("AutoEvaluateProperties", mAutoEvaluatePropertiesOnHover);
+				sd.Add("AutoRefreshWatches", mAutoRefreshWatches);
 			}
 
 			public void Deserialize(StructuredData sd)
@@ -233,7 +235,8 @@ namespace IDE
 					}
 				}
 				sd.Get("ProfileSampleRate", ref mProfileSampleRate);
-				sd.Get("AutoEvaluateProperties", ref mAutoEvaluateProperties);
+				sd.Get("AutoEvaluateProperties", ref mAutoEvaluatePropertiesOnHover);
+				sd.Get("AutoRefreshWatches", ref mAutoRefreshWatches);
 			}
 
 			public void Apply()
@@ -264,6 +267,9 @@ namespace IDE
 				gApp.mDebugger.SetSourcePathRemap(remapStr);
 
 				mProfileSampleRate = Math.Clamp(mProfileSampleRate, 10, 10000);
+
+				gApp.mDebugger.IncrementStateIdx();
+				gApp.RefreshWatches();
 			}
 
 			public void SetDefaults()
@@ -1349,7 +1355,6 @@ namespace IDE
 			mKeySettings.Apply();
 			mDebuggerSettings.Apply();
 			
-
 			for (var window in gApp.mWindows)
 			{
 				if (var widgetWindow = window as WidgetWindow)

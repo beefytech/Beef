@@ -2977,11 +2977,15 @@ namespace IDE.ui
                 //insertText = insertText.Substring(0, insertText.Length - 1);
             String implText = null;
             int tabIdx = insertText.IndexOf('\t');
-            if (tabIdx != -1)
+			int splitIdx = tabIdx;
+			int crIdx = insertText.IndexOf('\r');
+			if ((crIdx != -1) && (tabIdx != -1) && (crIdx < tabIdx))
+				splitIdx = crIdx;
+			if (splitIdx != -1)
             {
                 implText = scope:: String();
-                implText.Append(insertText, tabIdx);
-                insertText.RemoveToEnd(tabIdx);
+                implText.Append(insertText, splitIdx);
+                insertText.RemoveToEnd(splitIdx);
             }
             String prevText = scope String();
             mTargetEditWidget.Content.ExtractString(editSelection.mStartPos, editSelection.mEndPos - editSelection.mStartPos, prevText);
