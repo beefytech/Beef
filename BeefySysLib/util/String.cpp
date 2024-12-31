@@ -654,7 +654,7 @@ void StringImpl::ReplaceLargerHelper(const StringView& find, const StringView& r
 
 	intptr moveOffset = replace.mLength - find.mLength;
 
-	for (intptr startIdx = 0; startIdx < mLength - find.mLength; startIdx++)
+	for (intptr startIdx = 0; startIdx <= mLength - find.mLength; startIdx++)
 	{
 		if (EqualsHelper(GetPtr() + startIdx, find.mPtr, find.mLength))
 		{
@@ -720,7 +720,7 @@ void StringImpl::Replace(const StringView& find, const StringView & replace)
 	intptr inIdx = 0;
 	intptr outIdx = 0;
 
-	while (inIdx < mLength - find.mLength)
+	while (inIdx <= mLength - find.mLength)
 	{
 		if (EqualsHelper(ptr + inIdx, findPtr, find.mLength))
 		{

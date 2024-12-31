@@ -2760,7 +2760,7 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 
 	BfTypeInstance* curType = mModule->mCurTypeInstance;
 	while (curType != NULL)
-	{
+	{		
 		for (auto methodDef : curType->mTypeDef->mMethods)
 		{
 			if (methodDef->mShow >= checkShow)
@@ -2812,8 +2812,8 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 			StringT<512> insertString;
 			GetMethodInfo(methodInst, &insertString, &insertString, true, false);
 			if (insertString.IsEmpty())
-				continue;
-			AddEntry(AutoCompleteEntry("override", insertString), filter);
+				continue;			
+			AddEntry(AutoCompleteEntry("override", insertString), filter);			
 		}
 
 		if (curType->IsStruct())
@@ -2833,6 +2833,8 @@ void BfAutoComplete::AddCtorPassthroughs()
 	BfTypeInstance* curType = mModule->mCurTypeInstance;	
 	auto baseType = curType->mBaseType;
 
+	String totalInsertString;
+
 	Array<BfMethodInstance*> declMethods;
 	for (auto methodDef : curType->mTypeDef->mMethods)
 	{
@@ -2847,7 +2849,7 @@ void BfAutoComplete::AddCtorPassthroughs()
 			continue;
 		declMethods.Add(methodInst);
 	}
-
+	
 	for (auto methodDef : baseType->mTypeDef->mMethods)
 	{
 		if (methodDef->mShow != BfShow_Show)
@@ -2884,6 +2886,21 @@ void BfAutoComplete::AddCtorPassthroughs()
 		if (insertString.IsEmpty())
 			continue;
 		AddEntry(AutoCompleteEntry("this", insertString), "");
+
+		int tabPos = (int)insertString.IndexOf('\t');
+		if (tabPos >= 0)
+		{
+ 			if (!totalInsertString.IsEmpty())
+ 				totalInsertString += "\r\r";
+			totalInsertString += insertString.Substring(tabPos + 1);
+		}
+	}
+
+	if ((!totalInsertString.IsEmpty()) && (mEntriesSet.GetCount() >= 2))
+	{
+		totalInsertString.Replace("\t", "\t\b");
+		totalInsertString.Insert(0, "this - all\t");
+		auto entry = AddEntry(AutoCompleteEntry("this", totalInsertString), "");
 	}
 }
 
