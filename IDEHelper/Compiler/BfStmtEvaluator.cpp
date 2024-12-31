@@ -1778,6 +1778,11 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 				resolvedType = initValue.mType;
 				unresolvedType = resolvedType;
 			}
+
+ 			if (auto autoComplete = mCompiler->GetAutoComplete())
+ 			{
+ 				autoComplete->CheckResult(varDecl->mInitializer, initValue);
+ 			}
 		}
 		if ((!handledVarInit) && (!isConst))
 		{

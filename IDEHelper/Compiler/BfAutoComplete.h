@@ -244,7 +244,7 @@ public:
 	void FixitGetParamString(const BfTypeVector& paramTypes, StringImpl& outStr);
 	int FixitGetMemberInsertPos(BfTypeDef* typeDef);
 	String FixitGetLocation(BfParserData* parserData, int insertPos);
-	String ConstantToString(BfIRConstHolder* constHolder, BfIRValue id);
+	String ConstantToString(BfIRConstHolder* constHolder, BfTypedValue typedValue);
 
 public:
 	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete, bool doFuzzyAutoComplete = false);
@@ -283,6 +283,7 @@ public:
 	void FixitAddConstructor(BfTypeInstance* typeInstance);
 	void FixitAddFullyQualify(BfAstNode* refNode, const StringImpl& findName, const SizedArrayImpl<BfUsingFieldData::MemberRef>& foundList);
 
+	void AddResultTypeKind(BfType* type);
 	void SetResultStringType(BfType* type);
 };
 

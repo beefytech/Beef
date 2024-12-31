@@ -5172,7 +5172,7 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 
 				if (fieldInstance->mConstIdx != -1)
 				{
-					String constStr = autoComplete->ConstantToString(typeInstance->mConstHolder, BfIRValue(BfIRValueFlags_Const, fieldInstance->mConstIdx));
+					String constStr = autoComplete->ConstantToString(typeInstance->mConstHolder, BfTypedValue(BfIRValue(BfIRValueFlags_Const, fieldInstance->mConstIdx), fieldInstance->mResolvedType));
 					if (!constStr.IsEmpty())
 					{
 						autoComplete->mResultString += " = ";

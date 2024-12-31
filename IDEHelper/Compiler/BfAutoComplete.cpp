@@ -2957,30 +2957,85 @@ void BfAutoComplete::CheckVarResolution(BfAstNode* varTypeRef, BfType* resolvedT
 	}
 }
 
-void BfAutoComplete::CheckResult(BfAstNode* node, const BfTypedValue& typedValue)
+class BfAutocompleteNodeChecker : public BfStructuralVisitor
 {
+public:
+	BfAutoComplete* mAutoComplete;
+	bool mSelected;
+
+public:
+	BfAutocompleteNodeChecker(BfAutoComplete* autoComplete)
+	{
+		mAutoComplete = autoComplete;
+		mSelected = false;
+	}
+
+	virtual void Visit(BfAstNode* bfAstNode) override
+	{
+		mSelected = mAutoComplete->IsAutocompleteNode(bfAstNode);
+	}
+
+	virtual void Visit(BfBinaryOperatorExpression* binOpExpr) override
+	{
+		mSelected = mAutoComplete->IsAutocompleteNode(binOpExpr->mOpToken);
+	}
+
+	virtual void Visit(BfUnaryOperatorExpression* unaryOpExpr) override
+	{
+		VisitChild(unaryOpExpr->mExpression);
+	}
+
+	virtual void Visit(BfCastExpression* castExpr) override
+	{
+		VisitChild(castExpr->mExpression);
+	}
+
+	virtual void Visit(BfLiteralExpression* literalExpr) override
+	{
+		mSelected = mAutoComplete->IsAutocompleteNode(literalExpr);
+	}
+
+	virtual void Visit(BfIdentifierNode* identifierNode) override
+	{
+		mSelected = mAutoComplete->IsAutocompleteNode(identifierNode);
+	}
+
+	virtual void Visit(BfMemberReferenceExpression* memberRefExpr) override
+	{
+		mSelected = mAutoComplete->IsAutocompleteNode(memberRefExpr->mMemberName);
+	}
+};
+
+void BfAutoComplete::CheckResult(BfAstNode* node, const BfTypedValue& typedValue)
+{	
 	if (mResolveType != BfResolveType_GetResultString)
 		return;
 
 	if (!IsAutocompleteNode(node))
 		return;
-
+	
 	if (!typedValue.mValue.IsConst())
 		return;
-
 	if (typedValue.mType->IsPointer())
 		return;
 	if (typedValue.mType->IsObject())
 		return;
 
-	auto constant = mModule->mBfIRBuilder->GetConstant(typedValue.mValue);
-	if (BfIRConstHolder::IsInt(constant->mTypeCode))
+	BfAutocompleteNodeChecker autocompleteNodeChecker(this);
+	autocompleteNodeChecker.VisitChildNoRef(node);
+	if (!autocompleteNodeChecker.mSelected)
+		return;
+
+	String constStr = ConstantToString(mModule->mBfIRBuilder, typedValue);
+	if (!constStr.IsEmpty())
 	{
-		mResultString = StrFormat(":%lld", constant->mInt64);
+		mResultString = ":";
+		mResultString += constStr;
+		AddResultTypeKind(typedValue.mType);
 	}
-	else if (BfIRConstHolder::IsFloat(constant->mTypeCode))
+	else
 	{
-		mResultString = StrFormat(":%f", constant->mDouble);
+		SetResultStringType(typedValue.mType);
 	}
 }
 
@@ -3041,7 +3096,7 @@ void BfAutoComplete::CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* v
 		{
 			String constStr;
 			if (varDecl->mConstValue.IsConst())
-				constStr = ConstantToString(mModule->mBfIRBuilder, varDecl->mConstValue);
+				constStr = ConstantToString(mModule->mBfIRBuilder, BfTypedValue(varDecl->mConstValue, varDecl->mResolvedType));
 			if (!constStr.IsEmpty())
 			{
 				mResultString = constStr;
@@ -3699,11 +3754,21 @@ String BfAutoComplete::FixitGetLocation(BfParserData* parser, int insertPos)
 	return StrFormat("%s|%d:%d", parser->mFileName.c_str(), line, lineChar);
 }
 
-String BfAutoComplete::ConstantToString(BfIRConstHolder* constHolder, BfIRValue id)
+String BfAutoComplete::ConstantToString(BfIRConstHolder* constHolder, BfTypedValue typedValue)
 {
+	SetAndRestoreValue<BfTypeInstance*> prevTypeInst(mModule->mCurTypeInstance, typedValue.mType->ToTypeInstance());
+	SetAndRestoreValue<BfMethodInstance*> prevMethodInst(mModule->mCurMethodInstance, NULL);
+
+	BF_ASSERT(typedValue.mValue.IsConst());
+
+	String result;
+	result = "(";
+	result += mModule->TypeToString(typedValue.mType);
+	result += ")";
+
 	char str[32];
 
-	int stringId = mModule->GetStringPoolIdx(id, constHolder);
+	int stringId = mModule->GetStringPoolIdx(typedValue.mValue, constHolder);
 	if (stringId != -1)
 	{
 		BfStringPoolEntry* entry;
@@ -3716,49 +3781,52 @@ String BfAutoComplete::ConstantToString(BfIRConstHolder* constHolder, BfIRValue 
 		}
 	}
 
-	auto constant = constHolder->GetConstant(id);
+	auto constant = constHolder->GetConstant(typedValue.mValue);
 	switch (constant->mTypeCode)
 	{
 	case BfTypeCode_Boolean:
-		return StrFormat(":(bool) %s", constant->mBool ? "true" : "false");
-	case BfTypeCode_UInt8:
-		return StrFormat(":(uint8) %llu", constant->mUInt64);
-	case BfTypeCode_UInt16:
-		return StrFormat(":(uint16) %llu", constant->mUInt64);
-	case BfTypeCode_UInt32:
-		return StrFormat(":(uint32) %llu", constant->mUInt64);
-	case BfTypeCode_UInt64:
-		return StrFormat(":(uint64) %llu", constant->mUInt64);
-
-	case BfTypeCode_Int8:
-		return StrFormat(":(int8) %lld", constant->mInt64);
-	case BfTypeCode_Int16:
-		return StrFormat(":(int16) %lld", constant->mInt64);
-	case BfTypeCode_Int32:
-		return StrFormat(":(int32) %lld", constant->mInt64);
-	case BfTypeCode_Int64:
-		return StrFormat(":(int64) %lld", constant->mInt64);
-
-	case BfTypeCode_Float:
-		{
-			ExactMinimalFloatToStr((float)constant->mDouble, str);
-			String result;
-			result += str;
-			result += "f";
-			return result;
-		}
-	case BfTypeCode_Double:
-		{
-			ExactMinimalDoubleToStr(constant->mDouble, str);
-			String result;
-			result += str;
-			return result;
-		}
-	default:
+		result += StrFormat(" %s", constant->mBool ? "true" : "false");
 		break;
+	case BfTypeCode_UInt8:
+		result += StrFormat(" %llu", constant->mUInt64);
+		break;
+	case BfTypeCode_UInt16:
+		result += StrFormat(" %llu", constant->mUInt64);
+		break;
+	case BfTypeCode_UInt32:
+		result += StrFormat(" %llu", constant->mUInt64);
+		break;
+	case BfTypeCode_UInt64:
+		result += StrFormat(" %llu", constant->mUInt64);
+		break;
+	case BfTypeCode_Int8:
+		result += StrFormat(" %lld", constant->mInt64);
+		break;
+	case BfTypeCode_Int16:
+		result += StrFormat(" %lld", constant->mInt64);
+		break;
+	case BfTypeCode_Int32:
+		result += StrFormat(" %lld", constant->mInt64);
+		break;
+	case BfTypeCode_Int64:
+		result += StrFormat(" %lld", constant->mInt64);
+		break;
+	case BfTypeCode_Float:	
+		ExactMinimalFloatToStr((float)constant->mDouble, str);			
+		result += " ";
+		result += str;
+		result += "f";
+		break;
+	case BfTypeCode_Double:		
+		ExactMinimalDoubleToStr(constant->mDouble, str);
+		result += " ";
+		result += str;
+		break;
+	default:
+		return "";
 	}
 
-	return "";
+	return result;
 }
 
 void BfAutoComplete::FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& methodName, BfType* returnType, const BfTypeVector& paramTypes, bool wantStatic)
@@ -3946,13 +4014,8 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 	}
 }
 
-void BfAutoComplete::SetResultStringType(BfType * type)
+void BfAutoComplete::AddResultTypeKind(BfType* type)
 {
-	SetAndRestoreValue<BfTypeInstance*> prevTypeInst(mModule->mCurTypeInstance, type->ToTypeInstance());
-	SetAndRestoreValue<BfMethodInstance*> prevMethodInst(mModule->mCurMethodInstance, NULL);
-
-	mResultString = ":";
-	mResultString += mModule->TypeToString(type);
 	if (type->IsObject())
 		mResultString += "\n:type\tclass";
 	else if (type->IsInterface())
@@ -3961,6 +4024,16 @@ void BfAutoComplete::SetResultStringType(BfType * type)
 		mResultString += "\n:type\tpointer";
 	else
 		mResultString += "\n:type\tvaluetype";
+}
+
+void BfAutoComplete::SetResultStringType(BfType* type)
+{
+	SetAndRestoreValue<BfTypeInstance*> prevTypeInst(mModule->mCurTypeInstance, type->ToTypeInstance());
+	SetAndRestoreValue<BfMethodInstance*> prevMethodInst(mModule->mCurMethodInstance, NULL);
+
+	mResultString = ":";
+	mResultString += mModule->TypeToString(type);
+	AddResultTypeKind(type);
 }
 
 void BfAutoComplete::FixitAddFullyQualify(BfAstNode* refNode, const StringImpl& findName, const SizedArrayImpl<BfUsingFieldData::MemberRef>& foundList)

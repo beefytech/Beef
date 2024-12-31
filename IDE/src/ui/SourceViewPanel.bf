@@ -5645,8 +5645,22 @@ namespace IDE.ui
 					if ((mHoverResolveTask == null) &&
 						((debugExpr == null) || (!debugExpr.StartsWith(':'))))
 					{
+						bool wantDebugEval = false;
+						if ((gApp.mDebugger.mIsRunning) && (!String.IsNullOrEmpty(debugExpr)))
+						{
+							wantDebugEval = true;
+							if (FilteredProjectSource != null)
+							{
+								// This is active Beef source
+								if ((debugExpr[0].IsNumber) || (debugExpr.StartsWith('\'')) || (debugExpr.StartsWith('"')))
+								{
+									// Literal, don't debug eval
+									wantDebugEval = false;
+								}
+							}
+						}
 
-						if (((!gApp.mDebugger.mIsRunning) || (!mHoverWatch.HasDisplay)) && // Don't show extended information for debug watches
+						if (((!wantDebugEval) || (!mHoverWatch.HasDisplay)) && // Don't show extended information for debug watches
 							(!handlingHoverResolveTask) && (ResolveCompiler != null) && (!ResolveCompiler.mThreadWorkerHi.mThreadRunning) && (gApp.mSettings.mEditorSettings.mHiliteCursorReferences) && (!gApp.mDeterministic))
 						{
 							ResolveParams resolveParams = new .();

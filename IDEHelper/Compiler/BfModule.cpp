@@ -4670,6 +4670,10 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 					if (mCompiler->mCeMachine->mExecuteId != ceExecuteId)
 						fieldInstance->mHadConstEval = true;
 				}
+
+				if (auto autoComplete = mCompiler->GetAutoComplete())
+					autoComplete->CheckResult(initializer, result);
+
 				return result;
 			}
 		}
@@ -9239,6 +9243,9 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 
 	if ((typedVal.mType->IsValueType()) && ((flags & BfEvalExprFlags_NoValueAddr) != 0))
 		typedVal = LoadValue(typedVal, 0, exprEvaluator.mIsVolatileReference);
+
+ 	if (auto autoComplete = mCompiler->GetAutoComplete())
+ 		autoComplete->CheckResult(expr, typedVal);	
 
 	return typedVal;
 }

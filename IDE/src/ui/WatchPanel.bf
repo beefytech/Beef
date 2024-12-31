@@ -2635,9 +2635,9 @@ namespace IDE.ui
                             }
 
 							var dispStr = scope String();
-							dispStr.AppendF(mWatchSeriesInfo.mDisplayTemplate, params formatParams);
+							dispStr.AppendF(mWatchSeriesInfo.mDisplayTemplate, params formatParams).IgnoreError();
 							var evalStr = scope String();
-							evalStr.AppendF(mWatchSeriesInfo.mEvalTemplate, params formatParams);
+							evalStr.AppendF(mWatchSeriesInfo.mEvalTemplate, params formatParams).IgnoreError();
 
                             watchListView.mWatchOwner.SetupListViewItem(curWatchListViewItem, dispStr, evalStr);
 							curWatchListViewItem.mWatchEntry.mSeriesFirstVersion = mWatchSeriesInfo.mSeriesFirstVersion;
