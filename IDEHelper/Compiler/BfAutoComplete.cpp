@@ -2505,6 +2505,9 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 
 		auto methodDeclaration = methodDef->GetMethodDeclaration();
 
+		if (methodDef->mHasAppend)
+			methodPrefix += "[AllowAppend]\r";
+
 		if (isInterface)
 		{
 			if (!isExplicitInterface)
@@ -2548,10 +2551,15 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 			methodName += ">";
 		}
 
+		int usedParamIdx = 0;
+
 		methodName += "(";
 		for (int paramIdx = 0; paramIdx < (int)methodInst->GetParamCount(); paramIdx++)
-		{
-			if (paramIdx > 0)
+		{			
+			if (methodInst->GetParamKind(paramIdx) == BfParamKind_AppendIdx)
+				continue;
+			
+			if (usedParamIdx > 0)
 			{
 				methodName += ", ";
 				if (!isAbstract)
@@ -2589,6 +2597,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 
 				impString += methodDef->mParams[paramIdx]->mName;
 			}
+			usedParamIdx++;
 		}
 		methodName += ")";
 
