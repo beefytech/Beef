@@ -1479,9 +1479,7 @@ const char* Beefy::BfTokenToString(BfToken token)
 	case BfToken_Sealed:
 		return "sealed";
 	case BfToken_SizeOf:
-		return "sizeof";
-	case BfToken_Stack:
-		return "stack";
+		return "sizeof";	
 	case BfToken_Static:
 		return "static";
 	case BfToken_StrideOf:

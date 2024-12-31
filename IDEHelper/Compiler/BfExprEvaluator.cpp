@@ -15531,7 +15531,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 	bool isStructAlloc = newToken == NULL;
 	bool isScopeAlloc = (newToken != NULL) && (newToken->GetToken() == BfToken_Scope);
 	bool isAppendAlloc = (newToken != NULL) && (newToken->GetToken() == BfToken_Append);
-	bool isStackAlloc = ((newToken != NULL) && (newToken->GetToken() == BfToken_Stack)) || (isScopeAlloc) || (isStructAlloc);
+	bool isStackAlloc = (isScopeAlloc) || (isStructAlloc);
 	bool isArrayAlloc = false;// (objCreateExpr->mArraySizeSpecifier != NULL);
 	bool isRawArrayAlloc = (objCreateExpr != NULL) && (objCreateExpr->mStarToken != NULL);
 
@@ -16716,12 +16716,7 @@ void BfExprEvaluator::ResolveAllocTarget(BfAllocTarget& allocTarget, BfAstNode* 
 		if (mModule->mCurMethodState != NULL)
 			allocTarget.mScopeData = mModule->mCurMethodState->mCurScope->GetTargetable();
 	}
-	else if (newToken->GetToken() == BfToken_Stack)
-	{
-		if (mModule->mCurMethodState != NULL)
-			allocTarget.mScopeData = &mModule->mCurMethodState->mHeadScope;
-	}
-
+	
 	if (attributeDirective != NULL)
 	{
 		auto customAttrs = mModule->GetCustomAttributes(attributeDirective, BfAttributeTargets_Alloc, BfGetCustomAttributesFlags_AllowNonConstArgs, allocTarget.mCaptureInfo);

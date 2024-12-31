@@ -1824,13 +1824,9 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				return nextExpr;
 			}
 			else if ((token == BfToken_New) ||
-				(token == BfToken_Scope) ||
-				(token == BfToken_Stack) ||
+				(token == BfToken_Scope) ||				
 				(token == BfToken_Append))
-			{
-				if (token == BfToken_Stack)
-					Fail("'Stack' not supported. Use 'scope::' instead.", tokenNode);
-
+			{				
 				auto allocNode = CreateAllocNode(tokenNode);
 
 				bool isDelegateBind = false;
@@ -4082,7 +4078,7 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 					MEMBER_SET(deferStmt, mOpenParen, nextTokenNode);
 					mVisitorPos.MoveNext();
 
-					nextTokenNode = ExpectTokenAfter(deferStmt, BfToken_Scope, BfToken_Stack);
+					nextTokenNode = ExpectTokenAfter(deferStmt, BfToken_Scope);
 					MEMBER_SET_CHECKED(deferStmt, mScopeToken, nextTokenNode);
 
 					nextTokenNode = ExpectTokenAfter(deferStmt, BfToken_RParen);
@@ -4597,8 +4593,7 @@ bool BfReducer::IsTerminatingExpression(BfAstNode* node)
 			case BfToken_AllocType:
 			case BfToken_Append:
 			case BfToken_Default:
-			case BfToken_Is:
-			case BfToken_Stack:
+			case BfToken_Is:			
 			case BfToken_Scope:
 			case BfToken_New:
 			case BfToken_RetType:

@@ -3308,11 +3308,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					case TOKEN_HASH('s', 'i', 'z', 'e'):
 						if (SrcPtrHasToken("sizeof"))
 							mToken = BfToken_SizeOf;
-						break;
-					case TOKEN_HASH('s', 't', 'a', 'c'):
-						if ((!mCompatMode) && (SrcPtrHasToken("stack")))
-							mToken = BfToken_Stack;
-						break;
+						break;					
 					case TOKEN_HASH('s', 't', 'a', 't'):
 						if (SrcPtrHasToken("static"))
 							mToken = BfToken_Static;
