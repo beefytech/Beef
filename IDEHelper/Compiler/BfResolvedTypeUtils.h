@@ -2831,28 +2831,51 @@ public:
 		{
 			return false;
 		}
-		int bucket = (hashVal & 0x7FFFFFFF) % mHashSize;
-		auto checkEntryIdx = mHashHeads[bucket];
-		while (checkEntryIdx != -1)
+
+		while (true)
 		{
-			auto checkEntry = &mEntries[checkEntryIdx];
+			int startAllocSize = mAllocSize;
+			int bucket = (hashVal & 0x7FFFFFFF) % mHashSize;
+			auto startEntryIdx = mHashHeads[bucket];
+			auto checkEntryIdx = startEntryIdx;
+			bool needsRerun = false;
 
-			// checkEntry->mType can be NULL if we're in the process of filling it in (and this Insert is from an element type)
-			//  OR if the type resolution failed after node insertion
-			if ((checkEntry->mValue != NULL) && (hashVal == checkEntry->mHashCode) && (Equals(checkEntry->mValue, findType, ctx)))
+			while (checkEntryIdx != -1)
 			{
-				*entryPtr = EntryRef(this, checkEntryIdx);
-				return false;
-			}
-			checkEntryIdx = checkEntry->mNext;
+				auto checkEntry = &mEntries[checkEntryIdx];
 
-			tryCount++;
-			// If this fires off, this may indicate that our hashes are equivalent but Equals fails
-			if (tryCount >= 10)
-			{
-				NOP;
+				// checkEntry->mType can be NULL if we're in the process of filling it in (and this Insert is from an element type)
+				//  OR if the type resolution failed after node insertion
+				if ((checkEntry->mValue != NULL) && (hashVal == checkEntry->mHashCode) && (Equals(checkEntry->mValue, findType, ctx)))
+				{
+					*entryPtr = EntryRef(this, checkEntryIdx);
+					return false;
+				}
+
+				if ((mAllocSize != startAllocSize) || (startEntryIdx != mHashHeads[bucket]))
+				{
+					// It's possible for Equals to add types, buckets could be invalid or a new type could
+					//  have been inserted at the start of our bucket
+					needsRerun = true;
+					break;
+				}
+
+				checkEntryIdx = checkEntry->mNext;
+
+				tryCount++;
+				// If this fires off, this may indicate that our hashes are equivalent but Equals fails
+				if (tryCount >= 10)
+				{
+					NOP;
+				}
+				BF_ASSERT(tryCount < 10);
 			}
-			BF_ASSERT(tryCount < 10);
+			
+			if (!needsRerun)
+			{
+				// Retry if we added entries
+				break;
+			}
 		}
 
 		if ((ctx->mResolveFlags & BfResolveTypeRefFlag_NoCreate) != 0)

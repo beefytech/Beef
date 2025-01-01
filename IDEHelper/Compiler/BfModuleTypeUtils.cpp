@@ -11685,10 +11685,15 @@ BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType po
 	}
 
 	static int sCallIdx = 0;
-	int callIdx = sCallIdx++;
-	if (callIdx == 0x00006CA4)
+	int callIdx = 0;
+
+	if (!mCompiler->mIsResolveOnly)
 	{
-		NOP;
+		callIdx = sCallIdx++;
+		if (callIdx == 0x0000A224)
+		{
+			NOP;
+		}		
 	}
 
 	BfResolvedTypeSet::LookupContext lookupCtx;
