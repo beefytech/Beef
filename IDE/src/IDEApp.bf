@@ -13971,9 +13971,11 @@ namespace IDE
 							if (checkBreakpoint.mMemoryAddress == memoryAddress)
 								breakpoint = checkBreakpoint;
 						}
-						String infoString = scope String()..AppendF("Memory breakpoint hit: '0x{0:X08}'", (int64)memoryAddress);
+						String infoString = scope .();
 						if (breakpoint != null)
-							infoString = scope String()..AppendF("Memory breakpoint hit: '0x{0:X08}' ({1})", (int64)memoryAddress, breakpoint.mMemoryWatchExpression);
+							infoString.AppendF("Memory breakpoint hit: '0x{0:X08}' ({1})", (int64)memoryAddress, breakpoint.mMemoryWatchExpression);
+						else
+							infoString.AppendF("Memory breakpoint hit: '0x{0:X08}'", (int64)memoryAddress);
 						OutputLine(infoString);
 						if (!mRunningTestScript)
 						{
