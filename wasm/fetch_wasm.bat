@@ -6,7 +6,7 @@
 @ECHO Extracting Emscripten...
 cd ..
 bin\tar.exe -xf wasm\EmsdkDep0.zip
-@IF %ERRORLEVEL% NEQ 0 GOTO
+@IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 del wasm\EmsdkDep0.zip
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
