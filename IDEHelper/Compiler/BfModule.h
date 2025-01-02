@@ -1676,7 +1676,7 @@ public:
 	bool HasUnactializedConstant(BfConstant* constant, BfIRConstHolder* constHolder);
 	BfTypedValue GetTypedValueFromConstant(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType);
 	BfIRValue ConstantToCurrent(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType, bool allowUnactualized = false);
-	void ValidateCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeTargets attrTarget);
+	void ValidateCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeTargets attrTarget, bool force = false);
 	void GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, BfGetCustomAttributesFlags flags = BfGetCustomAttributesFlags_None, BfCaptureInfo* captureInfo = NULL);
 	BfCustomAttributes* GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, BfGetCustomAttributesFlags flags = BfGetCustomAttributesFlags_None, BfCaptureInfo* captureInfo = NULL);
 	BfCustomAttributes* GetCustomAttributes(BfTypeDef* typeDef);

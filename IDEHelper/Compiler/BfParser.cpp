@@ -105,6 +105,38 @@ return 0;
 
 //////////////////////////////////////////////////////////////////////////
 
+static CritSect gParseFileDataCrit;
+static Array<int> gFreeIds;
+static int gCurFreeId;
+
+int BfParseFileData::GetUniqueId(int idx)
+{
+	AutoCrit autoCrit(gParseFileDataCrit);
+	while (idx >= mUniqueIDList.size())
+	{
+		if (!gFreeIds.IsEmpty())
+		{
+			mUniqueIDList.Add(gFreeIds.back());
+			gFreeIds.pop_back();
+		}
+		else
+			mUniqueIDList.Add(gCurFreeId++);
+	}
+	return mUniqueIDList[idx];
+}
+
+BfParseFileData::~BfParseFileData()
+{
+	if (!mUniqueIDList.IsEmpty())
+	{
+		AutoCrit autoCrit(gParseFileDataCrit);
+		for (auto id : mUniqueIDList)
+			gFreeIds.Add(id);
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////
+
 BfParserCache* Beefy::gBfParserCache = NULL;
 
 bool BfParserCache::DataEntry::operator==(const LookupEntry& lookup) const
@@ -201,12 +233,37 @@ BfParserData::BfParserData()
 	mCharIdData = NULL;
 	mUniqueParser = NULL;
 	mDidReduce = false;
+	mParseFileData = NULL;
 }
 
 BfParserData::~BfParserData()
 {
+	if (mParseFileData != NULL)
+	{
+		BF_ASSERT(mParseFileData->mRefCount >= 0);
+		mParseFileData->mRefCount--;
+		if (mParseFileData->mRefCount == 0)
+		{
+			delete mParseFileData;
+			gBfParserCache->mParseFileDataMap.Remove(mFileName);
+		}
+	}
+
 	delete[] mJumpTable;
 	delete[] mCharIdData;
+}
+
+void BfParserData::InitFileData()
+{
+	BF_ASSERT(mParseFileData == NULL);
+
+	BfParseFileData** valuePtr = NULL;
+	if (gBfParserCache->mParseFileDataMap.TryAdd(mFileName, NULL, &valuePtr))
+	{
+		*valuePtr = new BfParseFileData();
+	}
+	mParseFileData = *valuePtr;
+	mParseFileData->mRefCount++;
 }
 
 int BfParserData::GetCharIdAtIndex(int findIndex)
@@ -328,7 +385,7 @@ void BfParserData::Deref()
 	mRefCount--;
 	BF_ASSERT(mRefCount >= 0);
 	if (mRefCount == 0)
-	{
+	{		
 		AutoCrit autoCrit(gBfParserCache->mCritSect);
 		BfParserCache::DataEntry dataEntry;
 		dataEntry.mParserData = this;
@@ -413,6 +470,8 @@ BfParser::~BfParser()
 	}
 	else if (mParserData->mRefCount == 0)
 	{
+
+
 		// Just never got added to the cache
 		delete mParserData;
 	}
@@ -510,6 +569,7 @@ void BfParser::Init(uint64 cacheHash)
 	mParserData = new BfParserData();
 	mSourceData = mParserData;
 	mParserData->mFileName = mFileName;
+	mParserData->InitFileData();
 	if (mDataId != -1)
 		mParserData->mDataId = mDataId;
 	else

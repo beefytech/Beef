@@ -2450,6 +2450,11 @@ bool BfTypeInstance::GetResultInfo(BfType*& valueType, int& okTagId)
 	return false;
 }
 
+bool BfTypeInstance::IsAnonymous()
+{
+	return (mTypeDef->mTypeDeclaration != NULL) && (mTypeDef->mTypeDeclaration->IsAnonymous());
+}
+
 void BfTypeInstance::ReportMemory(MemReporter* memReporter)
 {
 	if (mGenericTypeInfo != NULL)
@@ -4249,6 +4254,13 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		}
 		return nameHash ^ HASH_TAG;
 	}
+// 	else if (auto inlineTypeRef = BfNodeDynCastExact<BfInlineTypeReference>(typeRef))
+// 	{
+// 		String name;
+// 		inlineTypeRef->mTypeDeclaration->GetAnonymousName(name);
+// 		int nameHash = (int)Hash64(name.c_str(), (int)name.length());
+// 		return nameHash ^ HASH_TAG;
+// 	}
 	else
 	{
 		BF_FATAL("Not handled");
@@ -5552,6 +5564,8 @@ String BfTypeUtils::TypeToString(BfAstNode* typeRefNode)
 	}
 	if (auto directStrTypeName = BfNodeDynCast<BfDirectStrTypeReference>(typeRef))
 		return directStrTypeName->mTypeName;
+	if (auto inlineTypeRef = BfNodeDynCast<BfInlineTypeReference>(typeRef))
+		return inlineTypeRef->mTypeDeclaration->mAnonymousName;
 
 	if (auto tupleTypeRef = BfNodeDynCast<BfTupleTypeRef>(typeRef))
 	{

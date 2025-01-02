@@ -236,6 +236,11 @@ void BfStructuralVisitor::Visit(BfTypeReference* typeRef)
 	Visit(typeRef->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfInlineTypeReference* typeRef)
+{
+	Visit(typeRef->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfNamedTypeReference* typeRef)
 {
 	Visit(typeRef->ToBase());
@@ -1233,14 +1238,21 @@ void BfBlock::SetSize(int wantSize)
 
 //////////////////////////////////////////////////////////////////////////
 
+bool BfTypeDeclaration::IsAnonymous()
+{
+	return (mAnonymousName != NULL);
+}
+
+//////////////////////////////////////////////////////////////////////////
+
 bool BfTypeReference::IsNamedTypeReference()
 {
-	return IsA<BfNamedTypeReference>() || IsA<BfDirectStrTypeReference>();
+	return IsA<BfNamedTypeReference>() || IsA<BfDirectStrTypeReference>() || IsA<BfInlineTypeReference>();
 }
 
 bool BfTypeReference::IsTypeDefTypeReference()
 {
-	return IsA<BfNamedTypeReference>() || IsA<BfDirectStrTypeReference>() || IsA<BfDirectTypeDefReference>();
+	return IsA<BfNamedTypeReference>() || IsA<BfDirectStrTypeReference>() || IsA<BfInlineTypeReference>() || IsA<BfDirectTypeDefReference>();
 }
 
 String BfTypeReference::ToCleanAttributeString()
@@ -1655,6 +1667,11 @@ const char* Beefy::BfTokenToString(BfToken token)
 bool Beefy::BfTokenIsKeyword(BfToken token)
 {
 	return (token >= BfToken_Abstract) && (token <= BfToken_Yield);
+}
+
+bool Beefy::BfTokenIsTypeDecl(BfToken token)
+{
+	return (token == BfToken_Struct) || (token == BfToken_Class) || (token == BfToken_Interface) || (token == BfToken_Enum);
 }
 
 BfBinaryOp Beefy::BfAssignOpToBinaryOp(BfAssignmentOp assignmentOp)

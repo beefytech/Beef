@@ -49,7 +49,15 @@ typedef HashSet<BfProject*> BfProjectSet;
 class BfAtom
 {
 public:
+	enum Kind
+	{
+		Kind_Normal,
+		Kind_Anon
+	};
+
+public:
 	StringView mString;
+	Kind mKind;
 	int mRefCount;
 	int mPendingDerefCount;
 	int mHash;
@@ -1783,6 +1791,8 @@ public:
 	Array<BfAtom*> mAtomGraveyard;
 	uint32 mAtomUpdateIdx;
 	int32 mTypeMapVersion; // Increment when we add any new types or namespaces
+	int32 mAnonymousAtomCount;
+	int32 mCurUniqueId;
 
 	OwnedVector<BfMethodDef> mMethodGraveyard;
 	OwnedVector<BfFieldDef> mFieldGraveyard;
@@ -1830,7 +1840,7 @@ public:
 	BfSystem();
 	~BfSystem();
 
-	BfAtom* GetAtom(const StringImpl& string);
+	BfAtom* GetAtom(const StringImpl& string, BfAtom::Kind kind = BfAtom::Kind_Normal);
 	BfAtom* FindAtom(const StringImpl& string); // Doesn't create a ref
 	BfAtom* FindAtom(const StringView& string); // Doesn't create a ref
 	void ReleaseAtom(BfAtom* atom);

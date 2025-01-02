@@ -5077,10 +5077,13 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					// Handled elsewhere
 				}
 				else
-				{
+				{					
 					SetAndRestoreValue<BfFieldDef*> prevTypeRef(mContext->mCurTypeState->mCurFieldDef, fieldDef);
+					fieldInstance->mCustomAttributes = GetCustomAttributes(fieldDef->GetFieldDeclaration()->mAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);					
+				}
 
-					fieldInstance->mCustomAttributes = GetCustomAttributes(fieldDef->GetFieldDeclaration()->mAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);
+				if (fieldInstance->mCustomAttributes != NULL)
+				{
 					for (auto customAttr : fieldInstance->mCustomAttributes->mAttributes)
 					{
 						if (TypeToString(customAttr.mType) == "System.ThreadStaticAttribute")
@@ -5092,6 +5095,38 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						}
 					}
 				}
+			}
+
+			if ((fieldInstance->mResolvedType != NULL) && (fieldInstance->mResolvedType->IsTypeInstance()) && (fieldInstance->mResolvedType->ToTypeInstance()->IsAnonymous()))
+			{
+				auto fieldTypeInst = fieldInstance->mResolvedType->ToTypeInstance();				
+				if ((fieldTypeInst->IsAnonymous()) && (fieldTypeInst->mCustomAttributes != NULL))
+				{
+					bool hasPendingAttributes = false;
+					for (const auto& customAttribute : fieldTypeInst->mCustomAttributes->mAttributes)
+					{
+						if (customAttribute.mAwaitingValidation)
+						{
+							hasPendingAttributes = true;
+							break;
+						}
+					}
+									 
+					if (hasPendingAttributes)
+					{
+						fieldInstance->mCustomAttributes = new BfCustomAttributes();
+						for (const auto& customAttribute : fieldTypeInst->mCustomAttributes->mAttributes)
+						{
+							if (!customAttribute.mAwaitingValidation)
+								continue;
+										 
+							BfCustomAttribute copiedCustomAttribute = customAttribute;
+							copiedCustomAttribute.mIsMultiUse = false;
+							fieldInstance->mCustomAttributes->mAttributes.Add(copiedCustomAttribute);
+						}
+						ValidateCustomAttributes(fieldInstance->mCustomAttributes, fieldDef->mIsStatic ? BfAttributeTargets_StaticField : BfAttributeTargets_Field);
+					}
+				}																					
 			}
 
 			if (resolvedFieldType == NULL)
@@ -8445,6 +8480,7 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopu
 	BfNamedTypeReference* namedTypeRef = NULL;
 	BfGenericInstanceTypeRef* genericTypeRef = NULL;
 	BfDirectStrTypeReference* directStrTypeRef = NULL;
+	BfInlineTypeReference* inlineTypeRef = NULL;
 	BfIdentifierNode* identifierNode = NULL;
 	if ((namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(typeRef)))
 	{
@@ -8463,17 +8499,24 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopu
 	{
 		//
 	}
+	else if ((inlineTypeRef = BfNodeDynCastExact<BfInlineTypeReference>(typeRef)))
+	{
+		//
+	}
 
-	BF_ASSERT((identifierNode != NULL) || (namedTypeRef != NULL) || (directStrTypeRef != NULL));
+	BF_ASSERT((identifierNode != NULL) || (namedTypeRef != NULL) || (directStrTypeRef != NULL) || (inlineTypeRef != NULL));
 
 	auto usedOuterType = outerType;
 	if (nestedTypeDef == NULL)
 	{
+		String tempStr;
 		StringView findName;
 		if (namedTypeRef != NULL)
 			findName = namedTypeRef->mNameNode->ToStringView();
 		else if (identifierNode != NULL)
 			findName = identifierNode->ToStringView();
+		else if (inlineTypeRef != NULL)		
+			findName = inlineTypeRef->mTypeDeclaration->mAnonymousName;		
 		else
 			findName = directStrTypeRef->mTypeName;
 
@@ -10468,17 +10511,18 @@ BfTypeDef* BfModule::FindTypeDef(BfTypeReference* typeRef, BfTypeInstance* typeI
 	if (auto elementedType = BfNodeDynCast<BfElementedTypeRef>(typeRef))
 		return FindTypeDef(elementedType->mElementType, typeInstanceOverride, error);
 
-	BF_ASSERT(typeRef->IsA<BfNamedTypeReference>() || typeRef->IsA<BfQualifiedTypeReference>() || typeRef->IsA<BfDirectStrTypeReference>());
+	BF_ASSERT(typeRef->IsA<BfNamedTypeReference>() || typeRef->IsA<BfQualifiedTypeReference>() || typeRef->IsA<BfDirectStrTypeReference>() || typeRef->IsA<BfInlineTypeReference>());
 	auto namedTypeRef = BfNodeDynCast<BfNamedTypeReference>(typeRef);
 
 	StringView findNameStr;
 	if (namedTypeRef != NULL)
 		findNameStr = namedTypeRef->mNameNode->ToStringView();
 	else
-	{
-		auto directStrTypeDef = BfNodeDynCastExact<BfDirectStrTypeReference>(typeRef);
-		if (directStrTypeDef != NULL)
+	{		
+		if (auto directStrTypeDef = BfNodeDynCastExact<BfDirectStrTypeReference>(typeRef))
 			findNameStr = directStrTypeDef->mTypeName;
+		else if (auto inlineTypeRef = BfNodeDynCastExact<BfInlineTypeReference>(typeRef))
+			findNameStr = inlineTypeRef->mTypeDeclaration->mAnonymousName;
 		else
 			BFMODULE_FATAL(this, "Error?");
 	}
@@ -10943,7 +10987,7 @@ BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType po
 	{
 		Fail("Invalid use of 'var ref'. Generally references are generated with a 'var' declaration with 'ref' applied to the initializer", typeRef);
 		return NULL;
-	}
+	}	
 
 	if (mNoResolveGenericParams)
 		resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_NoResolveGenericParam);
@@ -10989,13 +11033,16 @@ BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType po
 		// Check generics first
 		auto namedTypeRef = BfNodeDynCastExact<BfNamedTypeReference>(typeRef);
 		auto directStrTypeRef = BfNodeDynCastExact<BfDirectStrTypeReference>(typeRef);
-		if (((namedTypeRef != NULL) && (namedTypeRef->mNameNode != NULL)) || (directStrTypeRef != NULL))
+		auto inlineStrTypeRef = BfNodeDynCastExact<BfInlineTypeReference>(typeRef);
+		if (((namedTypeRef != NULL) && (namedTypeRef->mNameNode != NULL)) || (directStrTypeRef != NULL) || (inlineStrTypeRef != NULL))
 		{
 			StringView findName;
 			if (namedTypeRef != NULL)
 				findName = namedTypeRef->mNameNode->ToStringView();
-			else
+			else if (directStrTypeRef != NULL)
 				findName = directStrTypeRef->mTypeName;
+			else
+				findName = inlineStrTypeRef->mTypeDeclaration->mAnonymousName;
 			if (findName == "Self")
 			{
 				BfType* selfType = mCurTypeInstance;

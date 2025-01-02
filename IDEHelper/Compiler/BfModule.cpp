@@ -2350,7 +2350,7 @@ bool BfModule::TryLocalVariableInit(BfLocalVariable* localVar)
 void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 {
 	BfAstNode* localNameNode = localVar->mNameNode;
-	if (localVar->mIsThis)
+	if ((localVar->mIsThis) && (mCurMethodInstance != NULL))
 	{
 		localNameNode = mCurMethodInstance->mMethodDef->GetRefNode();
 	}
@@ -12137,7 +12137,7 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 	return mBfIRBuilder->CreateConst(constant, constHolder);
 }
 
-void BfModule::ValidateCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeTargets attrTarget)
+void BfModule::ValidateCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeTargets attrTarget, bool force)
 {
 	if (attrTarget == BfAttributeTargets_SkipValidate)
 		return;
@@ -12149,6 +12149,9 @@ void BfModule::ValidateCustomAttributes(BfCustomAttributes* customAttributes, Bf
 
 		if ((customAttribute.mType->mAttributeData->mAttributeTargets & attrTarget) == 0)
 		{
+			if ((customAttribute.mIsMultiUse) && (!force))
+				continue;
+
 			Fail(StrFormat("Attribute '%s' is not valid on this declaration type. It is only valid on %s.",
 				customAttribute.GetRefNode()->ToString().c_str(), GetAttributesTargetListString(customAttribute.mType->mAttributeData->mAttributeTargets).c_str()), customAttribute.mRef->mAttributeTypeRef);	// CS0592
 		}
@@ -12222,6 +12225,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 		customAttribute.mAwaitingValidation = true;
 		customAttribute.mDeclaringType = activeTypeDef;
 		customAttribute.mRef = attributesDirective;
+		customAttribute.mIsMultiUse = attributesDirective->mIsMultiUse;
 
 		if (attributesDirective->mAttrOpenToken != NULL)
 			targetOverride = (BfAttributeTargets)0;
@@ -23430,7 +23434,7 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 	auto typeInstance = methodInstance->GetOwner();
 
 	if (typeInstance->IsInstanceOf(mCompiler->mValueTypeTypeDef))
-		return;
+		return;	
 
 	BfTypeState typeState(typeInstance);
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
@@ -23458,7 +23462,7 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 
 		if ((methodInstance == methodInstance->mMethodInstanceGroup->mDefault) && (methodInstance->mMethodInstanceGroup->mDefaultCustomAttributes != NULL))
 		{
-			// Take over prevoiusly-generated custom attributes
+			// Take over previously-generated custom attributes
 			methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = methodInstance->mMethodInstanceGroup->mDefaultCustomAttributes;
 			methodInstance->mMethodInstanceGroup->mDefaultCustomAttributes = NULL;
 		}
@@ -23479,7 +23483,55 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 		}
 	}
 
-	customAttributes = methodInstance->GetCustomAttributes();
+	if (methodDeclaration != NULL)
+	{
+		if (auto inlineTypeRef = BfNodeDynCast<BfInlineTypeReference>(methodDeclaration->mReturnType))
+		{
+			if (inlineTypeRef->mTypeDeclaration->mAttributes != NULL)
+			{
+				// Apply multiuse attributes from anonymous return type
+				auto returnType = ResolveTypeRef(inlineTypeRef);
+				if ((returnType != NULL) && (returnType->ToTypeInstance()))
+				{
+					auto returnTypeInst = returnType->ToTypeInstance();
+					if ((returnTypeInst->IsAnonymous()) && (returnTypeInst->mCustomAttributes != NULL))
+					{
+						bool hasPendingAttributes = false;
+						for (const auto& customAttribute : returnTypeInst->mCustomAttributes->mAttributes)
+						{
+							if (customAttribute.mAwaitingValidation)
+							{
+								hasPendingAttributes = true;
+								break;
+							}
+						}
+
+						if (hasPendingAttributes)
+						{
+							if (methodInstance->GetMethodInfoEx()->mMethodCustomAttributes == NULL)
+								methodInstance->mMethodInfoEx->mMethodCustomAttributes = new BfMethodCustomAttributes();
+
+							if (methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes == NULL)
+								methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes = new BfCustomAttributes();
+
+							for (const auto& customAttribute : returnTypeInst->mCustomAttributes->mAttributes)
+							{
+								if (!customAttribute.mAwaitingValidation)
+									continue;
+
+								BfCustomAttribute copiedCustomAttribute = customAttribute;
+								copiedCustomAttribute.mIsMultiUse = false;
+								methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes->mAttributes.Add(copiedCustomAttribute);
+							}
+							ValidateCustomAttributes(methodInstance->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes, attrTarget);
+						}
+					}
+				}
+			}
+		}
+	}
+
+	customAttributes = methodInstance->GetCustomAttributes();	
 	if (customAttributes == NULL)
 	{
 		auto owner = methodInstance->GetOwner();

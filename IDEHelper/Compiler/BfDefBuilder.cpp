@@ -795,10 +795,16 @@ void BfDefBuilder::Visit(BfMethodDeclaration* methodDeclaration)
 	}
 }
 
-void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef* methodDef)
+void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef* methodDef, bool checkReturnType)
 {
-	while (attributes != NULL)
+	if (checkReturnType)
 	{
+		if (auto inlineTypeRef = BfNodeDynCast<BfInlineTypeReference>(methodDef->mReturnTypeRef))
+			ParseAttributes(inlineTypeRef->mTypeDeclaration->mAttributes, methodDef, false);
+	}
+
+	while (attributes != NULL)
+	{		
 		if (attributes->mAttributeTypeRef != NULL)
 		{
 			auto typeRefName = attributes->mAttributeTypeRef->ToCleanAttributeString();
@@ -1434,13 +1440,11 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	}
 
 	BF_ASSERT(typeDeclaration->GetSourceData() == mCurSource->mSourceData);
-
-	if ((typeDeclaration->mTypeNode != NULL) && (typeDeclaration->mNameNode == NULL))
-		return;
-
+	
     /*if (typeDeclaration->mNameNode != NULL)
         OutputDebugStrF("Decl: %s\n", typeDeclaration->mNameNode->ToString().c_str());*/
 
+	bool isAnonymous = typeDeclaration->IsAnonymous();
 	bool isAutoCompleteTempType = false;
 	if (mResolvePassData != NULL)
 	{
@@ -1511,10 +1515,17 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	}
 	if (typeDeclaration->mNameNode == NULL)
 	{
-		// Global
-		mCurTypeDef->mName = mSystem->mGlobalsAtom;
-		mCurTypeDef->mName->Ref();
-		BF_ASSERT(mCurTypeDef->mSystem != NULL);
+		if (typeDeclaration->mStaticSpecifier != NULL)
+		{
+			// Global
+			mCurTypeDef->mName = mSystem->mGlobalsAtom;
+			mCurTypeDef->mName->Ref();
+			BF_ASSERT(mCurTypeDef->mSystem != NULL);
+		}
+		else
+		{			
+			mCurTypeDef->mName = mSystem->GetAtom(typeDeclaration->mAnonymousName);
+		}
 	}
 	else
 	{
@@ -1527,7 +1538,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 
 	BfLogSys(mCurSource->mSystem, "DefBuilder %p %p TypeDecl:%s\n", mCurTypeDef, mCurSource, mCurTypeDef->mName->ToString().mPtr);
 
-	mCurTypeDef->mProtection = (outerTypeDef == NULL) ? BfProtection_Public : BfProtection_Private;
+	mCurTypeDef->mProtection = ((outerTypeDef == NULL) || (isAnonymous)) ? BfProtection_Public : BfProtection_Private;
 	if (typeDeclaration->mProtectionSpecifier != NULL)
 	{
 		if ((outerTypeDef == NULL) &&
@@ -1954,6 +1965,11 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 			if (typeDeclaration->mAutoCtor == NULL)
 				mCurTypeDef->mIsOpaque = true;
 		}
+	}
+
+	for (auto& anonTypeDecl : typeDeclaration->mAnonymousTypes)
+	{
+		VisitChildNoRef(anonTypeDecl);
 	}
 
 	FinishTypeDef(mCurTypeDef->mTypeCode == BfTypeCode_Enum);

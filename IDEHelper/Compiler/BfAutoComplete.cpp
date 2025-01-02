@@ -223,6 +223,7 @@ BfAutoComplete::BfAutoComplete(BfResolveType resolveType, bool doFuzzyAutoComple
 BfAutoComplete::~BfAutoComplete()
 {
 	Clear();
+	RemoveMethodMatchInfo();
 }
 
 void BfAutoComplete::SetModule(BfModule* module)

@@ -2205,6 +2205,7 @@ public:
 	bool HasBeenInstantiated() { return mHasBeenInstantiated || ((mAlwaysIncludeFlags & BfAlwaysIncludeFlag_AssumeInstantiated) != 0); }
 	bool IncludeAllMethods() { return ((mAlwaysIncludeFlags & BfAlwaysIncludeFlag_IncludeAllMethods) != 0); }
 	bool DefineStateAllowsStaticMethods() { return mDefineState >= BfTypeDefineState_HasInterfaces_Direct; }
+	bool IsAnonymous();
 
 	virtual void ReportMemory(MemReporter* memReporter) override;
 };
@@ -2669,6 +2670,7 @@ public:
 	Array<BfCustomAttributeSetProperty> mSetProperties;
 	Array<BfCustomAttributeSetField> mSetField;
 	bool mAwaitingValidation;
+	bool mIsMultiUse;
 
 	BfAstNode* GetRefNode()
 	{

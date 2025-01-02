@@ -325,6 +325,13 @@ void BfElementVisitor::Visit(BfTypeReference* typeRef)
 	Visit(typeRef->ToBase());
 }
 
+void BfElementVisitor::Visit(BfInlineTypeReference* typeRef)
+{
+	Visit(typeRef->ToBase());
+
+	VisitChild(typeRef->mTypeDeclaration);
+}
+
 void BfElementVisitor::Visit(BfNamedTypeReference* typeRef)
 {
 	Visit(typeRef->ToBase());

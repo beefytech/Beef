@@ -129,6 +129,39 @@ public:
 		}
 	};
 
+	struct CurTypeState
+	{
+	public:		
+		BfTypeDeclaration* mTypeDeclaration;
+		BfAstAllocator* mAlloc;
+		Array<BfTypeDeclaration*> mAnonymousTypeDecls;
+
+	public:
+		CurTypeState()
+		{
+			mTypeDeclaration = NULL;
+			mAlloc = NULL;
+		}
+
+		CurTypeState(BfTypeDeclaration* typeDecl, BfAstAllocator* alloc)
+		{
+			mTypeDeclaration = typeDecl;
+			mAlloc = alloc;
+		}
+
+		~CurTypeState()
+		{			
+			if ((mTypeDeclaration != NULL) && (mAnonymousTypeDecls.mSize > 0))
+			{				
+				BF_ASSERT(mTypeDeclaration->mAnonymousTypes.mSize == 0);
+				mTypeDeclaration->mAnonymousTypes.mSize = (int)mAnonymousTypeDecls.size();				
+				mTypeDeclaration->mAnonymousTypes.mVals = (BfTypeDeclaration**)mAlloc->AllocBytes(mAnonymousTypeDecls.mSize * sizeof(BfTypeDeclaration*), sizeof(BfTypeDeclaration*));
+				for (int i = 0; i < mAnonymousTypeDecls.mSize; i++)
+					mTypeDeclaration->mAnonymousTypes.mVals[i] = mAnonymousTypeDecls[i];				
+			}
+		}
+	};
+
 public:
 	BfAstAllocator* mAlloc;
 	BfSystem* mSystem;
@@ -138,10 +171,12 @@ public:
 	BfAstNode* mTypeMemberNodeStart;
 	int mClassDepth;
 	int mMethodDepth;
+	int mCurUniqueIdx;
 	BfTypeDeclaration* mCurTypeDecl;
+	CurTypeState* mCurTypeState;
 	BfTypeDeclaration* mLastTypeDecl;
 	BfMethodDeclaration* mCurMethodDecl;
-	BfAstNode* mLastBlockNode;
+	BfAstNode* mLastBlockNode;	
 	bool mStmtHasError;
 	bool mPrevStmtHadError;
 	bool mCompatMode; // Does C++ compatible parsing
@@ -179,7 +214,9 @@ public:
 	bool IsNodeRelevant(BfAstNode* startNode, BfAstNode* endNode);
 	void MoveNode(BfAstNode* srcNode, BfAstNode* newOwner);
 	void ReplaceNode(BfAstNode* prevNode, BfAstNode* newNode);
-
+	
+	bool CheckInlineTypeRefAttribute(BfAstNode* typeRef, BfAttributeDirective* attributes);
+	void CheckMultiuseAttributeTypeRef(BfAstNode* typeRef);
 	bool SetProtection(BfAstNode* parentNode, BfAstNode*& protectionNodeRef, BfTokenNode* tokenNode);
 	BfAstNode* CreateAllocNode(BfTokenNode* newNode);
 	BfAstNode* ReplaceTokenStarter(BfAstNode* astNode, int idx = -1, bool allowIn = false);
@@ -238,7 +275,7 @@ public:
 	BfWhileStatement* CreateWhileStatement(BfAstNode* node);
 	BfDoStatement* CreateDoStatement(BfAstNode* node);
 	BfRepeatStatement* CreateRepeatStatement(BfAstNode* node);
-	BfAstNode* CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode = NULL);
+	BfAstNode* CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode = NULL, bool isAnonymous = false);
 	BfAstNode* HandleTopLevel(BfBlock* node);
 	BfInlineAsmStatement* CreateInlineAsmStatement(BfAstNode* asmNode);
 

@@ -662,7 +662,7 @@ void BfSourceClassifier::Visit(BfTypeDeclaration* typeDeclaration)
 
 	SetAndRestoreValue<BfAstNode*> prevMember(mCurMember, typeDeclaration);
 
-	if (mSkipTypeDeclarations)
+	if ((mSkipTypeDeclarations) && (!typeDeclaration->IsAnonymous()))
 	{
 		if (auto defineBlock = BfNodeDynCast<BfBlock>(typeDeclaration->mDefineNode))
 		{

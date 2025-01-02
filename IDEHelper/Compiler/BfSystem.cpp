@@ -1984,6 +1984,8 @@ BfSystem::BfSystem()
 		gPerfManager = new PerfManager();
 	//gPerfManager->StartRecording();
 
+	mAnonymousAtomCount = 0;
+	mCurUniqueId = 0;
 	mAtomUpdateIdx = 0;
 	mAtomCreateIdx = 0;
 	mTypeMapVersion = 1;
@@ -2094,7 +2096,7 @@ BfSystem::~BfSystem()
 	typeDef->mHash = typeCode + 1000; \
 	mSystemTypeDefs[name] = typeDef;
 
-BfAtom* BfSystem::GetAtom(const StringImpl& string)
+BfAtom* BfSystem::GetAtom(const StringImpl& string, BfAtom::Kind kind)
 {
 	StringView* stringPtr = NULL;
 	BfAtom* atom = NULL;
@@ -2111,6 +2113,7 @@ BfAtom* BfSystem::GetAtom(const StringImpl& string)
 		}
 #endif
 		mAtomCreateIdx++;
+		atom->mKind = kind;
 		atom->mIsSystemType = false;
 		atom->mAtomUpdateIdx = ++mAtomUpdateIdx;
 		atom->mString = *stringPtr;
@@ -2120,6 +2123,9 @@ BfAtom* BfSystem::GetAtom(const StringImpl& string)
 		atom->mHash = 0;
 		for (char c : string)
 			atom->mHash = ((atom->mHash ^ c) << 5) - atom->mHash;
+
+		if (kind == BfAtom::Kind_Anon)
+			mAnonymousAtomCount++;
 
 		BfLogSys(this, "Atom Allocated %p %s\n", atom, string.c_str());
 
@@ -2152,6 +2158,12 @@ void BfSystem::ReleaseAtom(BfAtom* atom)
 {
 	if (--atom->mRefCount == 0)
 	{
+		if (atom->mKind == BfAtom::Kind_Anon)
+		{
+			mAnonymousAtomCount--;
+			BF_ASSERT(mAnonymousAtomCount >= 0);
+		}
+
 		mAtomGraveyard.push_back(atom);
 		return;
 	}

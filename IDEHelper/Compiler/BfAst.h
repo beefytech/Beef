@@ -381,6 +381,7 @@ class BfReturnStatement;
 class BfYieldStatement;
 class BfUnaryOperatorExpression;
 class BfBinaryOperatorExpression;
+class BfInlineTypeReference;
 class BfArrayTypeRef;
 class BfPointerTypeRef;
 class BfDotTypeReference;
@@ -549,6 +550,7 @@ public:
 	virtual void Visit(BfInitializerExpression* collectionInitExpr);
 	virtual void Visit(BfCollectionInitializerExpression* collectionInitExpr);
 	virtual void Visit(BfTypeReference* typeRef);
+	virtual void Visit(BfInlineTypeReference* typeRef);
 	virtual void Visit(BfNamedTypeReference* typeRef);
 	virtual void Visit(BfQualifiedTypeReference* qualifiedType);
 	virtual void Visit(BfDotTypeReference* typeRef);
@@ -2147,6 +2149,7 @@ public:
 	ASTREF(BfTokenNode*) mCtorCloseParen;
 	BfSizedArray<ASTREF(BfExpression*)> mArguments;
 	BfSizedArray<ASTREF(BfTokenNode*)> mCommas;
+	bool mIsMultiUse; // For anonymous types and also another use like a field decl
 
 	ASTREF(BfAttributeDirective*) mNextAttribute;
 
@@ -2442,10 +2445,15 @@ public:
 	BfGenericParamsDeclaration* mGenericParams;
 	BfGenericConstraintsDeclaration* mGenericConstraintsDeclaration;
 	bool mIgnoreDeclaration;
+	char* mAnonymousName;
 
 	BfTokenNode* mColonToken;
 	BfSizedArray<ASTREF(BfTypeReference*)> mBaseClasses;
 	BfSizedArray<ASTREF(BfAstNode*)> mBaseClassCommas;
+	BfSizedArray<BfTypeDeclaration*> mAnonymousTypes;
+	
+	bool IsAnonymous();	
+
 };	BF_AST_DECL(BfTypeDeclaration, BfAstNode);
 
 class BfTypeAliasDeclaration : public BfTypeDeclaration
@@ -2467,6 +2475,14 @@ public:
 	bool IsTypeDefTypeReference();
 	String ToCleanAttributeString();
 };	BF_AST_DECL(BfTypeReference, BfAstNode);
+
+class BfInlineTypeReference : public BfTypeReference
+{
+public:
+	BF_AST_TYPE(BfInlineTypeReference, BfTypeReference);
+	
+	BfTypeDeclaration* mTypeDeclaration;
+};	BF_AST_DECL(BfInlineTypeReference, BfTypeReference);
 
 class BfDirectTypeReference : public BfTypeReference
 {
@@ -3568,6 +3584,7 @@ public:
 
 const char* BfTokenToString(BfToken token);
 bool BfTokenIsKeyword(BfToken token);
+bool BfTokenIsTypeDecl(BfToken token);
 BfBinaryOp BfAssignOpToBinaryOp(BfAssignmentOp assignmentOp);
 BfBinaryOp BfGetOppositeBinaryOp(BfBinaryOp origOp);
 BfBinaryOp BfGetFlippedBinaryOp(BfBinaryOp origOp);

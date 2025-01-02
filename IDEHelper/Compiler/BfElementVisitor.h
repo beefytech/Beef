@@ -51,6 +51,7 @@ public:
 	virtual void Visit(BfInitializerExpression* initExpr);
 	virtual void Visit(BfCollectionInitializerExpression* collectionInitExpr);
 	virtual void Visit(BfTypeReference* typeRef);
+	virtual void Visit(BfInlineTypeReference* typeRef);
 	virtual void Visit(BfNamedTypeReference* typeRef);
 	virtual void Visit(BfQualifiedTypeReference* qualifiedType);
 	virtual void Visit(BfDotTypeReference* typeRef);

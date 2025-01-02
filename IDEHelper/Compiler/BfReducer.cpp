@@ -47,6 +47,7 @@ BfReducer::BfReducer()
 	mSystem = NULL;
 	mResolvePassData = NULL;
 	mMethodDepth = 0;
+	mCurUniqueIdx = 0;
 	mDocumentCheckIdx = 0;
 	mTypeMemberNodeStart = NULL;
 }
@@ -402,6 +403,39 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int 
 					*outEndNode = endNode;
 				mVisitorPos.mReadPos = startNode;
 				return true;
+			}
+			else if ((checkToken == BfToken_Struct) || (checkToken == BfToken_Class) || (checkToken == BfToken_Interface) || (checkToken == BfToken_Enum))
+			{
+				checkIdx++;
+				auto nextNode = mVisitorPos.Get(checkIdx);
+				if (auto block = BfNodeDynCast<BfBlock>(nextNode))
+				{
+					if (outEndNode != NULL)
+						*outEndNode = checkIdx;
+					return true;
+				}
+
+				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+				{
+					if (tokenNode->mToken == BfToken_Colon)
+					{
+						while (true)
+						{
+							checkIdx++;
+							auto checkNode = mVisitorPos.Get(checkIdx);
+							if (checkNode == NULL)
+								return false;
+							if (auto block = BfNodeDynCast<BfBlock>(checkNode))
+							{
+								if (outEndNode != NULL)
+									*outEndNode = checkIdx;
+								return true;
+							}
+						}
+					}
+				}
+
+				return false;
 			}
 			else
 				return false;
@@ -4360,6 +4394,7 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 						ReplaceNode(typeRef, methodDecl);
 						methodDecl->mDocumentation = FindDocumentation(methodDecl);
 						methodDecl->mReturnType = typeRef;
+						CheckMultiuseAttributeTypeRef(methodDecl->mReturnType);
 
 						BfDeferredAstSizedArray<BfParameterDeclaration*> params(methodDecl->mParams, mAlloc);
 						BfDeferredAstSizedArray<BfTokenNode*> commas(methodDecl->mCommas, mAlloc);
@@ -5105,6 +5140,71 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					if ((createTypeRefFlags & CreateTypeRefFlags_EarlyExit) != 0)
 						return delegateTypeRef;
 				}
+				else if ((BfTokenIsTypeDecl(token)) || (token == BfToken_LBracket))
+				{
+					BfAttributeDirective* attributes = NULL;
+					if (token == BfToken_LBracket)
+					{
+						attributes = CreateAttributeDirective(tokenNode);
+						if (attributes == NULL)
+							return NULL;
+						mVisitorPos.MoveNext();
+ 						bool isValid = false;
+
+						auto nextNode = mVisitorPos.GetCurrent();
+						tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
+						if (tokenNode != NULL)
+						{
+							token = tokenNode->mToken;
+							if (BfTokenIsTypeDecl(token))
+								isValid = true;
+						}
+						if (!isValid)
+						{
+							AddErrorNode(attributes);
+							return NULL;
+						}
+					}
+
+					bool attribsApply = false;
+					if ((mTypeMemberNodeStart != NULL) && (mTypeMemberNodeStart->mSrcEnd == tokenNode->mTriviaStart))
+						attribsApply = true;
+					auto typeDeclNode = CreateTopLevelObject(tokenNode, attributes, attribsApply ? mTypeMemberNodeStart : NULL, true);
+					if (typeDeclNode == NULL)
+					{
+						if (attributes != NULL)
+							AddErrorNode(attributes);
+						return NULL;
+					}
+
+					auto typeDecl = BfNodeDynCast<BfTypeDeclaration>(typeDeclNode);
+					if (typeDecl == NULL)
+					{
+						if (attributes != NULL)
+							AddErrorNode(attributes);
+						AddErrorNode(typeDeclNode);
+						return NULL;
+					}
+
+					String name;
+					auto parserData = typeDecl->GetParserData();
+					name = "Anon_";					
+
+ 					auto parseFileData = parserData->mParseFileData;
+					int uniqueId = parseFileData->GetUniqueId(mCurUniqueIdx++);
+					name += StrFormat("%d", uniqueId);
+
+ 					int len = (int)name.length() + 1;
+ 					typeDecl->mAnonymousName = (char*)mAlloc->AllocBytes(len);
+ 					memcpy(typeDecl->mAnonymousName, name.c_str(), len);
+
+					if (mCurTypeState != NULL)
+						mCurTypeState->mAnonymousTypeDecls.Add(typeDecl);
+					auto typeRef = mAlloc->Alloc<BfInlineTypeReference>();
+					ReplaceNode(typeDecl, typeRef);
+					typeRef->mTypeDeclaration = typeDecl;
+					return typeRef;
+				}				
 				else if ((token == BfToken_Comptype) || (token == BfToken_Decltype))
 				{
 					auto declTypeRef = mAlloc->Alloc<BfExprModTypeRef>();
@@ -5881,6 +5981,12 @@ BfStatement* BfReducer::CreateAttributedStatement(BfTokenNode* tokenNode, Create
 			(checkNode->IsA<BfStringInterpolationExpression>()) ||
  			(checkNode->IsA<BfBlock>()))
 		{
+			if (auto varDecl = BfNodeDynCast<BfVariableDeclaration>(checkNode))
+			{
+				if (CheckInlineTypeRefAttribute(varDecl->mTypeRef, attrib))
+					return BfNodeDynCast<BfStatement>(stmt);
+			}
+
 			BfAttributedStatement* attribStmt = mAlloc->Alloc<BfAttributedStatement>();
 			ReplaceNode(attrib, attribStmt);
 			attribStmt->mAttributes = attrib;
@@ -6169,6 +6275,8 @@ BfFieldDeclaration* BfReducer::CreateFieldDeclaration(BfTokenNode* tokenNode, Bf
 		MoveNode(fieldDeclaration->mNameNode, fieldDeclaration);
 		//mVisitorPos.MoveNext();
 	}
+	CheckMultiuseAttributeTypeRef(fieldDeclaration->mTypeRef);
+
 	BfToken token = tokenNode->GetToken();
 	if (token == BfToken_AssignEquals)
 	{
@@ -6273,6 +6381,26 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 			Fail("Invalid target for attributes", memberNode);
 			return memberNode;
 		}
+		
+		memberNode->mTriviaStart = attributes->mTriviaStart;
+		memberNode->mSrcStart = attributes->mSrcStart;
+
+		if (auto fieldDecl = BfNodeDynCast<BfFieldDeclaration>(member))
+		{
+			if (CheckInlineTypeRefAttribute(fieldDecl->mTypeRef, attributes))
+			{
+				return member;
+			}
+		}
+
+		if (auto methodDecl = BfNodeDynCast<BfMethodDeclaration>(member))
+		{
+			if (CheckInlineTypeRefAttribute(methodDecl->mReturnType, attributes))
+			{
+				return member;
+			}
+		}
+		
 
 		ReplaceNode(attributes, member);
 		member->mAttributes = attributes;
@@ -6291,6 +6419,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 		if (typeRef == NULL)
 			return operatorDecl;
 		MEMBER_SET_CHECKED(operatorDecl, mReturnType, typeRef);
+		CheckMultiuseAttributeTypeRef(operatorDecl->mReturnType);
 		operatorDecl->mIsConvOperator = true;
 
 		ParseMethod(operatorDecl, &params, &commas);
@@ -7061,10 +7190,19 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 			}
 		}
 
+		if ((token == BfToken_Struct) || (token == BfToken_Class) || (token == BfToken_Interface) || (token == BfToken_Enum))
+		{
+			int endNodeIdx = -1;
+			if (IsTypeReference(node, BfToken_None, -1, &endNodeIdx))
+			{
+				isTypeRef = true;
+			}			
+		}
+
 		if ((token == BfToken_LBracket) && (depth > 0))
 		{
-			Fail("Unexpected custom attribute", node);
-			return NULL;
+			// The only valid option is an attributed type reference
+			isTypeRef = true;
 		}
 
 		if (isTypeRef)
@@ -7218,6 +7356,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 							ReplaceNode(nameIdentifier, methodDeclaration);
 						methodDeclaration->mDocumentation = FindDocumentation(mTypeMemberNodeStart);
 						MEMBER_SET(methodDeclaration, mReturnType, typeRef);
+						CheckMultiuseAttributeTypeRef(methodDeclaration->mReturnType);
 						MEMBER_SET(methodDeclaration, mExplicitInterface, explicitInterface);
 						MEMBER_SET(methodDeclaration, mExplicitInterfaceDotToken, explicitInterfaceDot);
 						return methodDeclaration;
@@ -7235,6 +7374,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 			BfDeferredAstSizedArray<BfTokenNode*> commas(operatorDecl->mCommas, mAlloc);
 			ReplaceNode(typeRef, operatorDecl);
 			operatorDecl->mReturnType = typeRef;
+			CheckMultiuseAttributeTypeRef(operatorDecl->mReturnType);
 			mVisitorPos.MoveNext();
 
 			MEMBER_SET(operatorDecl, mOperatorToken, nextToken);
@@ -7394,6 +7534,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 					ReplaceNode(typeRef, propDecl);
 					propDecl->mDocumentation = FindDocumentation(mTypeMemberNodeStart);
 					propDecl->mTypeRef = typeRef;
+					CheckMultiuseAttributeTypeRef(propDecl->mTypeRef);
 
 					if (explicitInterface != NULL)
 					{
@@ -7553,6 +7694,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 						ReplaceNode(typeRef, fieldDecl);
 						fieldDecl->mDocumentation = FindDocumentation(mTypeMemberNodeStart);
 						fieldDecl->mTypeRef = typeRef;
+						CheckMultiuseAttributeTypeRef(fieldDecl->mTypeRef);
 						return fieldDecl;
 					}
 				}
@@ -7584,6 +7726,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 			}
 
 			methodDeclaration->mReturnType = typeRef;
+			CheckMultiuseAttributeTypeRef(methodDeclaration->mReturnType);
 			MEMBER_SET_CHECKED(methodDeclaration, mNameNode, nameIdentifier);
 			mCurMethodDecl = methodDeclaration;
 			ParseMethod(methodDeclaration, &params, &commas);
@@ -7988,6 +8131,47 @@ BfScopedInvocationTarget* BfReducer::CreateScopedInvocationTarget(BfAstNode*& ta
 	}
 
 	return scopedInvocationTarget;
+}
+
+bool BfReducer::CheckInlineTypeRefAttribute(BfAstNode* typeRef, BfAttributeDirective* attributes)
+{
+	if (attributes == NULL)
+		return false;
+
+	if (auto inlineTypeRef = BfNodeDynCast<BfInlineTypeReference>(typeRef))
+	{
+		auto checkAttribute = attributes;
+		while (checkAttribute != NULL)
+		{
+			checkAttribute->mIsMultiUse = true;
+			checkAttribute = checkAttribute->mNextAttribute;
+		}
+
+		auto typeDecl = inlineTypeRef->mTypeDeclaration;				
+		typeDecl->mTriviaStart = attributes->mTriviaStart;
+		typeDecl->mSrcStart = attributes->mSrcStart;
+		typeDecl->mAttributes = attributes;
+
+		if ((typeDecl->mIgnoreDeclaration) && (IsNodeRelevant(typeDecl)))
+			typeDecl->mIgnoreDeclaration = false;
+
+		return true;
+	}
+
+	return false;
+}
+
+void BfReducer::CheckMultiuseAttributeTypeRef(BfAstNode* typeRef)
+{
+	if (auto inlineTypeRef = BfNodeDynCast<BfInlineTypeReference>(typeRef))
+	{
+		auto checkAttribute = inlineTypeRef->mTypeDeclaration->mAttributes;
+		while (checkAttribute != NULL)
+		{
+			checkAttribute->mIsMultiUse = true;
+			checkAttribute = checkAttribute->mNextAttribute;
+		}
+	}	
 }
 
 bool BfReducer::SetProtection(BfAstNode* parentNode, BfAstNode*& protectionNodeRef, BfTokenNode* tokenNode)
@@ -8648,7 +8832,7 @@ BfAstNode* BfReducer::HandleTopLevel(BfBlock* node)
 	return node;
 }
 
-BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode)
+BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode, bool isAnonymous)
 {
 	AssertCurrentNode(tokenNode);
 
@@ -8992,9 +9176,12 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 
 	case BfToken_Delegate:
 	case BfToken_Function:
-	{
+	{		
 		auto typeDeclaration = mAlloc->Alloc<BfTypeDeclaration>();
+		
 		SetAndRestoreValue<BfTypeDeclaration*> prevTypeDecl(mCurTypeDecl, typeDeclaration);
+		CurTypeState curTypeState(typeDeclaration, mAlloc);		
+		SetAndRestoreValue<CurTypeState*> prevTypeState(mCurTypeState, &curTypeState);
 
 		ReplaceNode(tokenNode, typeDeclaration);
 		typeDeclaration->mDocumentation = FindDocumentation(typeDeclaration);
@@ -9006,6 +9193,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 
 		auto methodDecl = mAlloc->Alloc<BfMethodDeclaration>();
 		MEMBER_SET(methodDecl, mReturnType, retType);
+		CheckMultiuseAttributeTypeRef(methodDecl->mReturnType);
 		BfDeferredAstSizedArray<BfParameterDeclaration*> params(methodDecl->mParams, mAlloc);
 		BfDeferredAstSizedArray<BfTokenNode*> commas(methodDecl->mCommas, mAlloc);
 		methodDecl->mDocumentation = FindDocumentation(methodDecl);
@@ -9121,11 +9309,16 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 		if ((tokenNode->GetToken() == BfToken_Enum) && (isSimpleEnum))
 			break;
 
-		auto identifierNode = ExpectIdentifierAfter(tokenNode);
-		if (identifierNode == NULL)
+		BfIdentifierNode* identifierNode = NULL;
+
+		if (!isAnonymous)
 		{
-			AddErrorNode(tokenNode);
-			return NULL;
+			identifierNode = ExpectIdentifierAfter(tokenNode);
+			if (identifierNode == NULL)
+			{
+				AddErrorNode(tokenNode);
+				return NULL;
+			}
 		}
 
 		// We put extra effort in here to continue after failure, since 'return NULL' failure
@@ -9138,7 +9331,8 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 		typeDeclaration->mTypeNode = tokenNode;
 		typeDeclaration->mNameNode = identifierNode;
 		ReplaceNode(tokenNode, typeDeclaration);
-		MoveNode(identifierNode, typeDeclaration);
+		if (identifierNode != NULL)
+			MoveNode(identifierNode, typeDeclaration);
 		typeDeclaration->mDocumentation = FindDocumentation(mTypeMemberNodeStart);
 
 		auto nextNode = mVisitorPos.GetNext();
@@ -10645,8 +10839,10 @@ void BfReducer::HandleBlock(BfBlock* block, bool allowEndingExpression)
 void BfReducer::HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode)
 {
 	SetAndRestoreValue<BfTypeDeclaration*> prevTypeDecl(mCurTypeDecl, typeDecl);
+	CurTypeState curTypeState(typeDecl, mAlloc);
+	SetAndRestoreValue<CurTypeState*> prevTypeState(mCurTypeState, &curTypeState);
 	SetAndRestoreValue<BfVisitorPos> prevVisitorPos(mVisitorPos, BfVisitorPos(BfNodeDynCast<BfBlock>(typeDecl->mDefineNode)));
-
+	
 	if (attributes != NULL)
 	{
 		MEMBER_SET(typeDecl, mAttributes, attributes);
