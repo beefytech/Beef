@@ -512,9 +512,6 @@ namespace IDE.ui
 
 			public void UpdateWidth()
 			{
-				if (mWidgetWindow == null)
-					return;
-
 				int firstEntry = (int)(-(int)mScrollContent.mY / mItemSpacing);
 				int lastEntry = (int)((-(int)mScrollContent.mY + mScrollContentContainer.mHeight) / mItemSpacing);
 
@@ -536,6 +533,8 @@ namespace IDE.ui
 					mMaxWidth = Math.Max(mMaxWidth, entryWidth);
 				}
 
+				if (mWidgetWindow == null)
+					return;
 
 				float docWidth = 0.0f;
 				float docHeight = 0;
@@ -1295,7 +1294,7 @@ namespace IDE.ui
 			var textIdx;
 
 			// This makes typing '..' NOT move the window after pressing the second '.'
-			if (mTargetEditWidget.Content.SafeGetChar(textIdx - 2) == '.')
+			 if (mTargetEditWidget.Content.SafeGetChar(textIdx - 2) == '.')
 			{
 				textIdx--;
 			}
@@ -2209,6 +2208,7 @@ namespace IDE.ui
 				}
 				contentHeight += GS!(8);
 				mAutoCompleteListWidget.ResizeContent(windowWidth, contentHeight, wantScrollbar);
+				//mAutoCompleteListWidget.UpdateWidth();
 				if ((mInsertStartIdx != -1) && (!IsInPanel()))
 				{
 					UpdateWindow(ref mListWindow, mAutoCompleteListWidget, mInsertStartIdx, windowWidth, windowHeight);
