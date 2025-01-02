@@ -1698,6 +1698,7 @@ public:
 	BfIRValue ValueScopeStart();
 	void ValueScopeEnd(BfIRValue valueScopeStart);
 	BfProjectSet* GetVisibleProjectSet();
+	bool IsProjectVisible(BfProject* project);
 
 	void AddBasicBlock(BfIRBlock bb, bool activate = true);
 	void VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEvaluator = NULL, BfEmbeddedStatementFlags flags = BfEmbeddedStatementFlags_None);

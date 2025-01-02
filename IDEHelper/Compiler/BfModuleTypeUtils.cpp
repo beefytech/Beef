@@ -4961,7 +4961,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					// For 'let', make read-only
 				}
 				else
-				{
+				{					
 					BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_NoResolveGenericParam;
 					if (initializer != NULL)
 						resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_AllowInferredSizedArray);
@@ -8547,13 +8547,9 @@ BfType* BfModule::ResolveInnerType(BfType* outerType, BfAstNode* typeRef, BfPopu
 							if ((!isFailurePass) && ((resolveFlags & BfResolveTypeRefFlag_IgnoreProtection) == 0) &&
 								(!CheckProtection(latestCheckType->mProtection, latestCheckType, allowProtected, allowPrivate)))
 								continue;
-
-							if (checkType->mProject != checkOuterType->mTypeDef->mProject)
-							{
-								auto visibleProjectSet = GetVisibleProjectSet();
-								if ((visibleProjectSet == NULL) || (!visibleProjectSet->Contains(checkType->mProject)))
-									continue;
-							}
+							
+							if ((checkType->mProject != checkOuterType->mTypeDef->mProject) && (!IsProjectVisible(checkType->mProject)))
+								continue;							
 
 							if ((checkType->mName->mString == findName) && (checkType->GetSelfGenericParamCount() == numGenericArgs))
 							{

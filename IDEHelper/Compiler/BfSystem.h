@@ -1422,6 +1422,7 @@ public:
 
 	HashSet<BfModule*> mUsedModules;
 	HashSet<BfType*> mReferencedTypeData;
+	HashSet<BfProject*> mDependencySet;
 
 	Val128 mBuildConfigHash;
 	Val128 mVDataConfigHash;
@@ -1435,6 +1436,7 @@ public:
 	bool ContainsReference(BfProject* refProject);
 	bool ReferencesOrReferencedBy(BfProject* refProject);
 	bool IsTestProject();
+	bool HasDependency(BfProject* project);
 };
 
 //CDH TODO move these out to separate header if list gets big/unwieldy

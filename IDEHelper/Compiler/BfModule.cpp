@@ -2629,6 +2629,23 @@ BfProjectSet* BfModule::GetVisibleProjectSet()
 	return &mCurMethodState->mVisibleProjectSet;
 }
 
+bool BfModule::IsProjectVisible(BfProject* project)
+{	
+	auto visibleProjectSet = GetVisibleProjectSet();
+	if (visibleProjectSet != NULL)
+		return visibleProjectSet->Contains(project);
+	
+	auto activeTypeDef = GetActiveTypeDef();
+	if (activeTypeDef != NULL)
+	{
+		if (activeTypeDef->mProject == project)
+			return true;
+		return activeTypeDef->mProject->HasDependency(project);
+	}
+
+	return false;
+}
+
 BfFileInstance* BfModule::GetFileFromNode(BfAstNode* astNode)
 {
 	auto bfParser = astNode->GetSourceData()->ToParserData();

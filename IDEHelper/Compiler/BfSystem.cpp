@@ -1113,6 +1113,24 @@ bool BfProject::IsTestProject()
 	return mTargetType == BfTargetType_BeefTest;
 }
 
+bool BfProject::HasDependency(BfProject* project)
+{	
+	if (mDependencySet.IsEmpty())
+	{
+		auto _AddProject = [&](BfProject* addProject)
+			{
+				if (mDependencySet.Add(addProject))
+				{
+					for (auto dep : addProject->mDependencies)
+						mDependencySet.Add(dep);
+				}
+			};
+		_AddProject(this);
+		
+	}
+	return mDependencySet.Contains(project);
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 BfErrorBase::~BfErrorBase()
