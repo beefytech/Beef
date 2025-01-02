@@ -18966,6 +18966,9 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		return;
 	}
 
+	if (targetFunctionName.StartsWith('@'))
+		targetFunctionName.Remove(0, 1);
+
 	//TODO: We removed this...  Messed up with PrimStruct 'this' non-mut errors
 
 	// We moved this until later in MatchMethod, we want the raw target for the GetType optimization, plus we shouldn't do this until we know we won't do a SkipCall
