@@ -3472,6 +3472,9 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeAliasType* typeAlias)
 
 void BfModule::DoPopulateType_InitSearches(BfTypeInstance* typeInstance)
 {
+	if (typeInstance->IsBoxed())
+		return;
+
 	auto typeDef = typeInstance->mTypeDef;
 
 	auto _AddStaticSearch = [&](BfTypeDef* typeDef)

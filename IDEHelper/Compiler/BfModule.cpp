@@ -21653,50 +21653,55 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 			else
 			{
 				auto innerMethodDef = innerMethodInstance.mMethodInstance->mMethodDef;
-				BF_ASSERT(innerMethodDef == methodDef);
-
-				SizedArray<BfIRValue, 8> innerParams;
-				BfExprEvaluator exprEvaluator(this);
-
-				if (!innerType->IsValuelessType())
+				if ((innerMethodDef == methodDef != NULL) && (!CompareMethodSignatures(methodInstance, innerMethodInstance.mMethodInstance)))
 				{
-					BfIRValue thisValue = mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, 0, 1);
-					BfTypedValue innerVal(thisValue, innerType, true);
-					if (boxedType->IsBoxedStructPtr())
-					{
-						innerVal = LoadValue(innerVal);
-						innerVal = BfTypedValue(innerVal.mValue, innerType, true);
-					}
-
-					exprEvaluator.PushThis(NULL, innerVal, innerMethodInstance.mMethodInstance, innerParams);
-				}
-
-				for (int i = 1; i < (int)mCurMethodState->mLocals.size(); i++)
-				{
-					BfLocalVariable* localVar = mCurMethodState->mLocals[i];
-					BfTypedValue localVal = exprEvaluator.LoadLocal(localVar, true);
-					exprEvaluator.PushArg(localVal, innerParams);
-				}
-				if (!innerMethodInstance.mFunc)
-				{
-					BF_ASSERT(innerType->IsUnspecializedType());
-				}
-				else if ((!mIsComptimeModule) && (methodInstance->GetStructRetIdx() != -1))
-				{
-					mBfIRBuilder->PopulateType(methodInstance->mReturnType);
-					auto returnType = BfTypedValue(mBfIRBuilder->GetArgument(methodInstance->GetStructRetIdx()), methodInstance->mReturnType, true);
-					exprEvaluator.mReceivingValue = &returnType;
-					auto retVal = exprEvaluator.CreateCall(NULL, innerMethodInstance.mMethodInstance, innerMethodInstance.mFunc, true, innerParams, NULL, BfCreateCallFlags_TailCall);
-					BF_ASSERT(exprEvaluator.mReceivingValue == NULL); // Ensure it was actually used
-					mBfIRBuilder->CreateRetVoid();
+					InternalError("Boxing method passthrough error");
 				}
 				else
 				{
-					mBfIRBuilder->PopulateType(methodInstance->mReturnType);
-					auto retVal = exprEvaluator.CreateCall(NULL, innerMethodInstance.mMethodInstance, innerMethodInstance.mFunc, true, innerParams, NULL, BfCreateCallFlags_TailCall);
-					if (mCurMethodInstance->mReturnType->IsValueType())
-						retVal = LoadValue(retVal);
-					CreateReturn(retVal.mValue);
+					SizedArray<BfIRValue, 8> innerParams;
+					BfExprEvaluator exprEvaluator(this);
+
+					if (!innerType->IsValuelessType())
+					{
+						BfIRValue thisValue = mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, 0, 1);
+						BfTypedValue innerVal(thisValue, innerType, true);
+						if (boxedType->IsBoxedStructPtr())
+						{
+							innerVal = LoadValue(innerVal);
+							innerVal = BfTypedValue(innerVal.mValue, innerType, true);
+						}
+
+						exprEvaluator.PushThis(NULL, innerVal, innerMethodInstance.mMethodInstance, innerParams);
+					}
+
+					for (int i = 1; i < (int)mCurMethodState->mLocals.size(); i++)
+					{
+						BfLocalVariable* localVar = mCurMethodState->mLocals[i];
+						BfTypedValue localVal = exprEvaluator.LoadLocal(localVar, true);
+						exprEvaluator.PushArg(localVal, innerParams);
+					}
+					if (!innerMethodInstance.mFunc)
+					{
+						BF_ASSERT(innerType->IsUnspecializedType());
+					}
+					else if ((!mIsComptimeModule) && (methodInstance->GetStructRetIdx() != -1))
+					{
+						mBfIRBuilder->PopulateType(methodInstance->mReturnType);
+						auto returnType = BfTypedValue(mBfIRBuilder->GetArgument(methodInstance->GetStructRetIdx()), methodInstance->mReturnType, true);
+						exprEvaluator.mReceivingValue = &returnType;
+						auto retVal = exprEvaluator.CreateCall(NULL, innerMethodInstance.mMethodInstance, innerMethodInstance.mFunc, true, innerParams, NULL, BfCreateCallFlags_TailCall);
+						BF_ASSERT(exprEvaluator.mReceivingValue == NULL); // Ensure it was actually used
+						mBfIRBuilder->CreateRetVoid();
+					}
+					else
+					{
+						mBfIRBuilder->PopulateType(methodInstance->mReturnType);
+						auto retVal = exprEvaluator.CreateCall(NULL, innerMethodInstance.mMethodInstance, innerMethodInstance.mFunc, true, innerParams, NULL, BfCreateCallFlags_TailCall);
+						if (mCurMethodInstance->mReturnType->IsValueType())
+							retVal = LoadValue(retVal);
+						CreateReturn(retVal.mValue);
+					}
 				}
 			}
 		}

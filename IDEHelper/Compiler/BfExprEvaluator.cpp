@@ -2344,7 +2344,16 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			// If we allowed this then it would allow too many matches (and allow conversion to any type during CastToValue)
 			goto NoMatch;
 		}
+
+		bool doFullTypeResolve = false;
+		if (returnType->IsUnspecializedTypeVariation())
+		{
+			returnType = typeUnspecMethodInstance->mReturnType;
+			doFullTypeResolve = true;
+		}		
 		if ((genericArgumentsSubstitute != NULL) && (returnType->IsUnspecializedType()))
+			doFullTypeResolve = true;
+		if (doFullTypeResolve)
 		{
 			auto resolvedType = mModule->ResolveGenericType(returnType, typeGenericArguments, genericArgumentsSubstitute, mModule->mCurTypeInstance, false);
 			if (resolvedType == NULL)
@@ -6383,7 +6392,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			mModule->mCurMethodState->mCancelledDeferredCall = true;
 	}
 
-	if (methodDef->mIsNoReturn)
+	if ((methodDef->mIsNoReturn) && ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) == 0))
 	{
 		mModule->mCurMethodState->SetHadReturn(true);
 		mModule->mCurMethodState->mLeftBlockUncond = true;
