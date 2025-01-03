@@ -404,7 +404,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int 
 				mVisitorPos.mReadPos = startNode;
 				return true;
 			}
-			else if ((checkToken == BfToken_Struct) || (checkToken == BfToken_Class) || (checkToken == BfToken_Interface) || (checkToken == BfToken_Enum))
+			else if (BfTokenIsTypeDecl(checkToken))
 			{
 				checkIdx++;
 				auto nextNode = mVisitorPos.Get(checkIdx);
@@ -5188,7 +5188,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 
 					String name;
 					auto parserData = typeDecl->GetParserData();
-					name = "Anon_";					
+					name = "_Anon_";
 
  					auto parseFileData = parserData->mParseFileData;
 					int uniqueId = parseFileData->GetUniqueId(mCurUniqueIdx++);
@@ -7190,7 +7190,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 			}
 		}
 
-		if ((token == BfToken_Struct) || (token == BfToken_Class) || (token == BfToken_Interface) || (token == BfToken_Enum))
+		if (BfTokenIsTypeDecl(token))
 		{
 			int endNodeIdx = -1;
 			if (IsTypeReference(node, BfToken_None, -1, &endNodeIdx))
@@ -9310,7 +9310,6 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 			break;
 
 		BfIdentifierNode* identifierNode = NULL;
-
 		if (!isAnonymous)
 		{
 			identifierNode = ExpectIdentifierAfter(tokenNode);
@@ -9473,9 +9472,13 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 
 	if (isSimpleEnum)
 	{
-		auto identifierNode = ExpectIdentifierAfter(tokenNode, "enum name");
-		if (identifierNode == NULL)
-			return NULL;
+		BfIdentifierNode* identifierNode = NULL;
+		if (!isAnonymous)
+		{
+			identifierNode = ExpectIdentifierAfter(tokenNode, "enum name");
+			if (identifierNode == NULL)
+				return NULL;
+		}
 
 		// We put extra effort in here to continue after failure, since 'return NULL' failure
 		//  means we don't parse members inside type (messes up colorization and such)
@@ -9487,7 +9490,8 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 		typeDeclaration->mTypeNode = tokenNode;
 		typeDeclaration->mNameNode = identifierNode;
 		ReplaceNode(tokenNode, typeDeclaration);
-		MoveNode(identifierNode, typeDeclaration);
+		if (identifierNode != NULL)
+			MoveNode(identifierNode, typeDeclaration);
 		typeDeclaration->mDocumentation = FindDocumentation(typeDeclaration);
 
 		auto nextNode = mVisitorPos.GetNext();

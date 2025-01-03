@@ -14,6 +14,10 @@ class Anonymous
 			retVals.mB = 2;
 			return retVals;
 		}
+
+		public enum { Left, Right } GetDirection() => .Right;
+
+		public enum : int { A, B, C } Val => .C;
 	}
 
 	struct StructB
@@ -36,6 +40,9 @@ class Anonymous
 		var val = sa.[Friend]GetVals();
 		Test.Assert(val.mA == 0);
 		Test.Assert(val.mB == 0);
+
+		Test.Assert(sa.GetDirection() == .Right);
+		Test.Assert(sa.Val == .C);
 
 		StructB sb = default;
 		sb.mX = 345;
