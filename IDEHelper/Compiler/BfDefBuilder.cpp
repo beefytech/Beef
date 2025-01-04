@@ -1977,6 +1977,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	for (auto& anonTypeDecl : typeDeclaration->mAnonymousTypes)
 	{
 		VisitChildNoRef(anonTypeDecl);
+		mFullHashCtx->MixinStr(anonTypeDecl->mAnonymousName);
 	}
 
 	FinishTypeDef(mCurTypeDef->mTypeCode == BfTypeCode_Enum);
