@@ -45,6 +45,8 @@ class Anonymous
 		public int Val = 123;
 	}
 
+	public static class : this(int x, int y) sValA = new .(3, 4) ~ delete _;
+
 	[Test]
 	public static void TestBasics()
 	{
@@ -85,5 +87,8 @@ class Anonymous
 
 		var str = ca.ToString(.. scope .());
 		Test.Assert(str == "ClassA override");
+
+		Test.Assert(sValA.x == 3);
+		Test.Assert(sValA.y == 4);
 	}
 }

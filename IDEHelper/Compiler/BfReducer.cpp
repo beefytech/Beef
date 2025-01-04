@@ -8230,13 +8230,24 @@ BfScopedInvocationTarget* BfReducer::CreateScopedInvocationTarget(BfAstNode*& ta
 void BfReducer::InitAnonymousType(BfTypeDeclaration* typeDecl)
 {
 	auto block = BfNodeDynCast<BfBlock>(typeDecl->mDefineNode);
+	int blockId = 0;
+	if (blockId != NULL)
+	{
+		blockId = block->mParserBlockId;
+	}
+	else
+	{
+		auto parser = mSource->ToParser();
+		if (parser != NULL)
+			blockId = parser->mCurBlockId + typeDecl->mSrcStart;
+	}
 
 	String name;
 	auto parserData = typeDecl->GetParserData();
 	name = "_Anon_";
 
 	auto parseFileData = parserData->mParseFileData;
-	int uniqueId = parseFileData->GetUniqueId(block->mParserBlockId);
+	int uniqueId = parseFileData->GetUniqueId(blockId);
 	name += StrFormat("%d", uniqueId);
 
 	int len = (int)name.length() + 1;
@@ -9464,12 +9475,20 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 
 				if (baseTypeIdx > 0)
 				{
+					bool hasComma = false;
+
 					if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
 					{
-						if (tokenNode->mToken == BfToken_Semicolon)
-						{
-							break;
-						}
+						if ((tokenNode->mToken == BfToken_Semicolon) && (!isAnonymous))
+							break;						
+						if (tokenNode->mToken == BfToken_Comma)
+							hasComma = true;
+					}
+
+					if ((!hasComma) && (isAnonymous))
+					{
+						// End type declaration
+						break;
 					}
 
 					BfTokenNode* commaToken = NULL;
@@ -9551,7 +9570,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 
 		if (tokenNode != NULL)
 		{
-			if (tokenNode->GetToken() == BfToken_Semicolon)
+			if ((tokenNode->GetToken() == BfToken_Semicolon) && (!isAnonymous))
 			{
 				typeDeclaration->mDefineNode = tokenNode;
 				MoveNode(tokenNode, typeDeclaration);
@@ -9559,6 +9578,9 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 				return typeDeclaration;
 			}
 		}
+
+		if ((isAnonymous) && (!BfNodeIsA<BfBlock>(nextNode)))
+			return typeDeclaration;
 
 		auto blockNode = ExpectBlockAfter(typeDeclaration);
 		if (blockNode != NULL)

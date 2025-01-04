@@ -15588,11 +15588,12 @@ void BfExprEvaluator::CheckObjectCreateTypeRef(BfType* expectingType, BfAstNode*
 				auto arrayType = (BfArrayType*)expectingType;
 				expectingType = arrayType->mGenericTypeInfo->mTypeGenericArguments[0];
 			}
-
+			
 			auto expectingTypeInst = expectingType->ToTypeInstance();
 			if (expectingTypeInst != NULL)
 			{
-				autoComplete->AddTypeInstanceEntry(expectingTypeInst);
+				if (!expectingTypeInst->IsAnonymous())
+					autoComplete->AddTypeInstanceEntry(expectingTypeInst);
 			}
 			else
 				autoComplete->mDefaultSelection = mModule->TypeToString(expectingType);
