@@ -11030,6 +11030,27 @@ bool BfReducer::IsInitializerStatement(int checkIdx)
 			checkIdx = BF_MAX(checkIdx + 1, endNode);
 			continue;
 		}		
+		else if (endNode != -1)
+		{
+			auto nextNode = mVisitorPos.Get(endNode);
+			if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+			{
+				if (tokenNode->mToken == BfToken_LParen)
+				{
+					int checkEndNode = -1;
+					if (IsTypeReference(checkNode, tokenNode->mToken, -1, &checkEndNode, &coundBeExpr))
+					{
+						if (checkEndNode == endNode)
+						{
+							// Is method call
+							return true;
+						}
+					}
+				}
+			}
+
+			
+		}
 
 		nodeCount++;
 		checkIdx++;
