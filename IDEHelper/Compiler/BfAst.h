@@ -358,6 +358,7 @@ class BfAttributedIdentifierNode;
 class BfQualifiedNameNode;
 class BfNamespaceDeclaration;
 class BfTypeDeclaration;
+class BfInitializerTypeDeclaration;
 class BfTypeAliasDeclaration;
 class BfMethodDeclaration;
 class BfOperatorDeclaration;
@@ -1809,6 +1810,7 @@ public:
 	ASTREF(BfTokenNode*) mCloseBrace;
 	//BfDebugArray<BfAstNode*> mChildArr;
 	BfSizedArray<ASTREF(BfAstNode*)> mChildArr;
+	int mParserBlockId;
 
 public:
 	using BfAstNode::Init;
@@ -2282,6 +2284,7 @@ public:
 
 	BfAstNode* mTarget;
 	BfTokenNode* mOpenBrace;
+	BfInlineTypeReference* mInlineTypeRef;
 	BfSizedArray<BfExpression*> mValues;
 	BfSizedArray<BfTokenNode*> mCommas;
 	BfTokenNode* mCloseBrace;
@@ -2453,8 +2456,15 @@ public:
 	BfSizedArray<BfTypeDeclaration*> mAnonymousTypes;
 	
 	bool IsAnonymous();	
+	bool IsAnonymousInitializerType();
 
 };	BF_AST_DECL(BfTypeDeclaration, BfAstNode);
+
+class BfInitializerTypeDeclaration : public BfTypeDeclaration
+{
+public:
+	BF_AST_TYPE(BfInitializerTypeDeclaration, BfTypeDeclaration);
+};	BF_AST_DECL(BfInitializerTypeDeclaration, BfTypeDeclaration);
 
 class BfTypeAliasDeclaration : public BfTypeDeclaration
 {
@@ -2964,6 +2974,14 @@ public:
 	BfSizedArray<BfExpression*> mArguments;
 	BfSizedArray<BfTokenNode*> mCommas;
 };	BF_AST_DECL(BfObjectCreateExpression, BfMethodBoundExpression);
+
+class BfExtendExpression : public BfExpression
+{
+public:
+	BF_AST_TYPE(BfExtendExpression, BfExpression);
+	BfAstNode* mTarget;
+	BfTypeDeclaration* mTypeDecl;
+};	BF_AST_DECL(BfExtendExpression, BfExpression);
 
 class BfBoxExpression : public BfExpression
 {

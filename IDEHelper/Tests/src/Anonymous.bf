@@ -30,6 +30,21 @@ class Anonymous
 		} mCoords;
 	}
 
+	struct StructC
+	{
+		public int mA;
+
+		public this(int a)
+		{
+			mA = a;
+		}
+	}
+
+	class ClassA
+	{
+		public int Val = 123;
+	}
+
 	[Test]
 	public static void TestBasics()
 	{
@@ -47,5 +62,28 @@ class Anonymous
 		StructB sb = default;
 		sb.mX = 345;
 		Test.Assert(sb.mY == 345);
+
+		var sc = StructC(456)
+			{
+				public int mB = 567;
+
+				{
+					_.mB += 1000;
+				},
+				mB += 10000
+			};
+		Test.Assert(sc.mA == 456);
+		Test.Assert(sc.mB == 11567);
+
+		var ca = scope ClassA()
+			{
+				public override void ToString(String strBuffer)
+				{
+					strBuffer.Append("ClassA override");
+				}
+			};
+
+		var str = ca.ToString(.. scope .());
+		Test.Assert(str == "ClassA override");
 	}
 }

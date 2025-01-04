@@ -118,7 +118,8 @@ enum BfTypeCode : uint8
 	BfTypeCode_Int64X2,
 	BfTypeCode_Int64X3,
 	BfTypeCode_Int64X4,
-	BfTypeCode_Length
+	BfTypeCode_Length,
+	BfTypeCode_Inferred
 };
 
 enum BfConstType

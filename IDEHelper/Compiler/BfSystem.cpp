@@ -3044,7 +3044,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 
 	typeDef->mProtection = nextTypeDef->mProtection;
 
-	BF_ASSERT(typeDef->mTypeCode == nextTypeDef->mTypeCode);
+	BF_ASSERT((typeDef->mTypeCode == nextTypeDef->mTypeCode) || (nextTypeDef->mTypeCode == BfTypeCode_Inferred));
 
 	typeDef->mTypeCode = nextTypeDef->mTypeCode;
 	typeDef->mShow = nextTypeDef->mShow;

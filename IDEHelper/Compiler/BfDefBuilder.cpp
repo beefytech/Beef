@@ -1508,7 +1508,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	mCurTypeDef->mProject = mCurSource->mProject;
 	mCurTypeDef->mNamespace = mNamespace;
 	mSystem->AddNamespaceUsage(mCurTypeDef->mNamespace, mCurTypeDef->mProject);
-	if (typeDeclaration->mTypeNode == NULL)
+	if ((typeDeclaration->mTypeNode == NULL) && (!isAnonymous))
 	{
 		mCurTypeDef->mIsPartial = true;
 		mCurTypeDef->mIsExplicitPartial = true;
@@ -1750,7 +1750,11 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	if (typeDeclaration->mTypeNode != NULL)
 		typeToken = typeDeclaration->mTypeNode->GetToken();
 
-	if (typeDeclaration->mTypeNode == NULL)
+	if (typeDeclaration->IsAnonymousInitializerType())
+	{
+		mCurTypeDef->mTypeCode = BfTypeCode_Inferred;
+	}
+	else if (typeDeclaration->mTypeNode == NULL)
 	{
 		// Globals
 		mCurTypeDef->mTypeCode = BfTypeCode_Struct;
@@ -1851,6 +1855,9 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 							(checkTypeDef->mIsDelegate == mCurTypeDef->mIsDelegate) &&
 							(checkTypeDef->mIsFunction == mCurTypeDef->mIsFunction) &&
 							(checkTypeDef->mOuterType == actualOuterTypeDef);
+
+						if ((mCurTypeDef->mTypeCode == BfTypeCode_Inferred) && (checkTypeDef->mTypeDeclaration->IsAnonymousInitializerType()))
+							isCompatible = true;
 
 						if (isCompatible)
 						{
@@ -1977,7 +1984,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	// Map methods into the correct index from previous revision
 	if (prevRevisionTypeDef != NULL)
 	{
-		BF_ASSERT(mCurTypeDef->mTypeCode == prevRevisionTypeDef->mTypeCode);
+		BF_ASSERT((mCurTypeDef->mTypeCode == prevRevisionTypeDef->mTypeCode) || (mCurTypeDef->mTypeCode == BfTypeCode_Inferred));
 
 		if (mCurTypeDef->mFullHash == prevRevisionTypeDef->mFullHash)
 		{
@@ -2280,7 +2287,8 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		needsDynamicCastMethod = false;
 	}
 
-	if ((mCurTypeDef->mTypeCode == BfTypeCode_Object) && (!mCurTypeDef->mIsStatic) && (ctorClear == NULL))
+	if (((mCurTypeDef->mTypeCode == BfTypeCode_Object) || (mCurTypeDef->mTypeCode == BfTypeCode_Inferred)) &&
+		(!mCurTypeDef->mIsStatic) && (ctorClear == NULL))
 	{
 		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_CtorClear, BfProtection_Private, false, "", mIsComptime);
 		methodDef->mIsMutating = true;
@@ -2299,7 +2307,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	if ((needsStaticInit) && (staticCtor == NULL))
 	{
 		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, BfProtection_Public, true, "", mIsComptime);
-	}
+	}	
 
 	bool makeCtorPrivate = hasCtor;
 

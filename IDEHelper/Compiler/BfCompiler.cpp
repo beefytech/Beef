@@ -4442,7 +4442,7 @@ void BfCompiler::ProcessAutocompleteTempType()
 		{
 			auto checkTypeDef = *actualTypeDefItr;
 			if ((!checkTypeDef->mIsPartial) /*&& (checkTypeDef->mTypeCode != BfTypeCode_Extension)*/ &&
-				((checkTypeDef->mTypeCode == tempTypeDef->mTypeCode) || (tempTypeDef->mTypeCode == BfTypeCode_Extension)))
+				((checkTypeDef->mTypeCode == tempTypeDef->mTypeCode) || (tempTypeDef->mTypeCode == BfTypeCode_Extension) || (tempTypeDef->mTypeCode == BfTypeCode_Inferred)))
 			{
 				if ((checkTypeDef->NameEquals(tempTypeDef)) && (checkTypeDef->mIsCombinedPartial) &&
 					(checkTypeDef->mGenericParamDefs.size() == tempTypeDef->mGenericParamDefs.size()) &&
@@ -4831,8 +4831,8 @@ void BfCompiler::ProcessAutocompleteTempType()
 	{
 		for (auto baseType : checkTypeDef->mBaseTypes)
 		{
-			autoComplete->CheckTypeRef(baseType, false);
-			module->ResolveTypeRef(baseType);
+			autoComplete->CheckTypeRef(BfNodeDynCast<BfTypeReference>(baseType), false);
+			module->ResolveTypeRef_Ref(baseType, BfPopulateType_Identity);
 		}
 		checkTypeDef = checkTypeDef->mOuterType;
 	}
@@ -5055,6 +5055,9 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 BfType* BfCompiler::CheckSymbolReferenceTypeRef(BfModule* module, BfTypeReference* typeRef)
 {
+	if (typeRef == NULL)
+		return NULL;
+
 	//auto resolvedType = module->ResolveTypeRef(typeRef, BfPopulateType_Declaration,
 		//(BfResolveTypeRefFlags)(BfResolveTypeRefFlag_AllowRef | BfResolveTypeRefFlag_AllowGenericMethodParamConstValue | BfResolveTypeRefFlag_AllowGenericTypeParamConstValue));
 	auto resolvedType = module->ResolveTypeRef(typeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowRef);
@@ -5271,7 +5274,7 @@ void BfCompiler::GetSymbolReferences()
 							SetAndRestoreValue<BfTypeState*> prevTypeState(module->mContext->mCurTypeState, &typeState);
 
 							for (auto baseTypeRef : checkTypeDef->mBaseTypes)
-								CheckSymbolReferenceTypeRef(module, baseTypeRef);
+								CheckSymbolReferenceTypeRef(module, BfNodeDynCast<BfTypeReference>(baseTypeRef));
 
 							for (auto genericParam : checkTypeDef->mGenericParamDefs)
 							{
@@ -5343,7 +5346,7 @@ void BfCompiler::GetSymbolReferences()
 		if (mResolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Type)
 		{
 			for (auto baseTypeRef : typeDef->mBaseTypes)
-				CheckSymbolReferenceTypeRef(module, baseTypeRef);
+				CheckSymbolReferenceTypeRef(module, BfNodeDynCast<BfTypeReference>(baseTypeRef));
 		}
 
 		BfTypeState typeState;

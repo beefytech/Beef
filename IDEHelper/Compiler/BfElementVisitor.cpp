@@ -301,6 +301,7 @@ void BfElementVisitor::Visit(BfInitializerExpression* initExpr)
 
 	VisitChild(initExpr->mTarget);
 	VisitChild(initExpr->mOpenBrace);
+	VisitChild(initExpr->mInlineTypeRef);
 	for (auto& val : initExpr->mValues)
 		VisitChild(val);
 	for (auto& val : initExpr->mCommas)

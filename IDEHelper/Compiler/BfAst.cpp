@@ -1243,6 +1243,11 @@ bool BfTypeDeclaration::IsAnonymous()
 	return (mAnonymousName != NULL);
 }
 
+bool BfTypeDeclaration::IsAnonymousInitializerType()
+{
+	return (mAnonymousName != NULL) && (mTypeNode == NULL);
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 bool BfTypeReference::IsNamedTypeReference()

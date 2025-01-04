@@ -2455,6 +2455,11 @@ bool BfTypeInstance::IsAnonymous()
 	return (mTypeDef->mTypeDeclaration != NULL) && (mTypeDef->mTypeDeclaration->IsAnonymous());
 }
 
+bool BfTypeInstance::IsAnonymousInitializerType()
+{
+	return (mTypeDef->mTypeDeclaration != NULL) && (mTypeDef->mTypeDeclaration->IsAnonymousInitializerType());
+}
+
 void BfTypeInstance::ReportMemory(MemReporter* memReporter)
 {
 	if (mGenericTypeInfo != NULL)

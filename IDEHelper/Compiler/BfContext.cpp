@@ -1293,7 +1293,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	typeInst->mHasStaticInitMethod = false;
 	typeInst->mHasStaticMarkMethod = false;
 	typeInst->mHasStaticDtorMethod = false;
-	typeInst->mHasTLSFindMethod = false;
+	typeInst->mHasTLSFindMethod = false;	
 	typeInst->mBaseType = NULL;
 	delete typeInst->mCustomAttributes;
 	typeInst->mCustomAttributes = NULL;

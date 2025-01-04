@@ -170,8 +170,7 @@ public:
 	BfResolvePassData* mResolvePassData;
 	BfAstNode* mTypeMemberNodeStart;
 	int mClassDepth;
-	int mMethodDepth;
-	int mCurUniqueIdx;
+	int mMethodDepth;	
 	BfTypeDeclaration* mCurTypeDecl;
 	CurTypeState* mCurTypeState;
 	BfTypeDeclaration* mLastTypeDecl;
@@ -211,10 +210,12 @@ public:
 
 	void AssertCurrentNode(BfAstNode* node);
 	bool IsNodeRelevant(BfAstNode* astNode);
+	bool IsCursorInside(BfAstNode* astNode);
 	bool IsNodeRelevant(BfAstNode* startNode, BfAstNode* endNode);
 	void MoveNode(BfAstNode* srcNode, BfAstNode* newOwner);
 	void ReplaceNode(BfAstNode* prevNode, BfAstNode* newNode);
 	
+	void InitAnonymousType(BfTypeDeclaration* typeDecl);
 	bool CheckInlineTypeRefAttribute(BfAstNode* typeRef, BfAttributeDirective* attributes);
 	void CheckMultiuseAttributeTypeRef(BfAstNode* typeRef);
 	bool SetProtection(BfAstNode* parentNode, BfAstNode*& protectionNodeRef, BfTokenNode* tokenNode);
@@ -280,7 +281,10 @@ public:
 	BfInlineAsmStatement* CreateInlineAsmStatement(BfAstNode* asmNode);
 
 	void HandleBlock(BfBlock* block, bool allowEndingExpression = false);
-	void HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode = NULL);
+	bool IsInitializerStatement(int checkIdx);
+	bool IsInitializerStatement(BfAstNode* node);
+	bool InitializerBlockHasInlineTypeDecl(BfBlock* block);
+	void HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode = NULL, bool findInitializer = false);
 
 public:
 	BfReducer();

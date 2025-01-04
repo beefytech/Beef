@@ -65,7 +65,7 @@ enum MaybeBool
 class BfParseFileData
 {
 public:
-	Array<int> mUniqueIDList;
+	Dictionary<int, int> mUniqueIDList;
 	int mRefCount;
 
 public:
@@ -198,6 +198,7 @@ public:
 	int mLineStart;
 	int mLineNum;
 	bool mInAsmBlock;
+	int mCurBlockId;
 
 	BfParserFlag mParserFlags;
 	int mCursorIdx;

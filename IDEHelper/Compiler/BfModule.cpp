@@ -18194,7 +18194,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	auto methodDeclaration = methodDef->mMethodDeclaration;
 	auto ctorDeclaration = (BfConstructorDeclaration*)methodDef->mMethodDeclaration;
 	auto typeDef = mCurTypeInstance->mTypeDef;
-
+		
 	BfCustomAttributes* customAttributes = NULL;
 	defer(delete customAttributes);
 	BfInvocationExpression* ctorInvocation = NULL;
@@ -18230,7 +18230,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	}
 
 	// Zero out memory for default ctor
-	if ((methodDeclaration == NULL) && (mCurTypeInstance->IsStruct()) && (methodInstance->mChainType != BfMethodChainType_ChainMember) &&
+	if ((methodDeclaration == NULL) && (mCurTypeInstance->IsStruct()) && (!mCurTypeInstance->IsAnonymousInitializerType()) && (methodInstance->mChainType != BfMethodChainType_ChainMember) &&
 		(!mCurMethodState->mLocals.IsEmpty()))
 	{
 		if (mCurTypeInstance->IsTypedPrimitive())
@@ -18593,6 +18593,8 @@ void BfModule::EmitCtorBody(bool& skipBody)
     	targetRefNode = ctorDeclaration->mInitializer;
 	if (auto invocationExpr = BfNodeDynCast<BfInvocationExpression>(targetRefNode))
 		targetRefNode = invocationExpr->mTarget;
+	if (targetRefNode == NULL)
+		targetRefNode = mCurTypeInstance->mTypeDef->GetRefNode();
 
 	if (baseCtorNode != NULL)
 	{
@@ -18687,7 +18689,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				targetType = mCurTypeInstance->mBaseType;
 				if (ctorDeclaration != NULL)
 					targetRefNode = ctorDeclaration->mThisToken;
-				else if (typeDef->mTypeDeclaration != NULL)
+				else if ((typeDef->mTypeDeclaration != NULL) && (typeDef->mTypeDeclaration->mNameNode != NULL))
 					targetRefNode = typeDef->mTypeDeclaration->mNameNode;
 			}
 		}
@@ -18717,7 +18719,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 	}
 
 	auto autoComplete = mCompiler->GetAutoComplete();
-	if (targetType != NULL)
+	if ((targetType != NULL) && (!mCurTypeInstance->IsAnonymousInitializerType()))
 	{
 		BfAstNode* refNode = methodDeclaration;
 		if (refNode == NULL)
@@ -20615,7 +20617,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		if ((mCompiler->mIsResolveOnly) && (!mIsComptimeModule) && (methodDef->mBody != NULL) && (!mCurTypeInstance->IsBoxed()))
 		{
 			if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(methodDef->mBody))
+			{
+				SetAndRestoreValue<bool> prevSkipAnonTypes(sourceClassifier->mSkipAnonymousTypes, true);
 				sourceClassifier->VisitChildNoRef(methodDef->mBody);
+			}
 		}
 	}
 
@@ -21727,13 +21732,13 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		mCurMethodState->mLeftBlockUncond = true;
 	}
 	else if (methodDef->mMethodType == BfMethodType_CtorClear)
-	{
+	{		
 		SetIllegalSrcPos();
 		mBfIRBuilder->ClearDebugLocation();
 		PopulateType(mCurTypeInstance, BfPopulateType_Data);
 		auto thisVal = GetThis();
 		int prevSize = 0;
-		if (mContext->mBfObjectType != NULL)
+		if ((mContext->mBfObjectType != NULL) && (mCurTypeInstance->IsObject()))
 		{
 			prevSize = mContext->mBfObjectType->mInstSize;
 			PopulateType(mContext->mBfObjectType);

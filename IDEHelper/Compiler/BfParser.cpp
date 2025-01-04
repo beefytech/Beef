@@ -112,17 +112,19 @@ static int gCurFreeId;
 int BfParseFileData::GetUniqueId(int idx)
 {
 	AutoCrit autoCrit(gParseFileDataCrit);
-	while (idx >= mUniqueIDList.size())
+
+	int* valuePtr = NULL;
+	if (mUniqueIDList.TryAdd(idx, NULL, &valuePtr))
 	{
 		if (!gFreeIds.IsEmpty())
 		{
-			mUniqueIDList.Add(gFreeIds.back());
+			*valuePtr = gFreeIds.back();
 			gFreeIds.pop_back();
 		}
 		else
-			mUniqueIDList.Add(gCurFreeId++);
-	}
-	return mUniqueIDList[idx];
+			*valuePtr = gCurFreeId++;
+	}	
+	return *valuePtr;
 }
 
 BfParseFileData::~BfParseFileData()
@@ -130,8 +132,8 @@ BfParseFileData::~BfParseFileData()
 	if (!mUniqueIDList.IsEmpty())
 	{
 		AutoCrit autoCrit(gParseFileDataCrit);
-		for (auto id : mUniqueIDList)
-			gFreeIds.Add(id);
+		for (auto kv : mUniqueIDList)
+			gFreeIds.Add(kv.mValue);
 	}
 }
 
@@ -442,6 +444,7 @@ BfParser::BfParser(BfSystem* bfSystem, BfProject* bfProject) : BfSource(bfSystem
 	mTriviaStart = 0;
 	mParsingFailed = false;
 	mInAsmBlock = false;
+	mCurBlockId = 0;
 	mPreprocessorIgnoredSectionNode = NULL;
 	mPreprocessorIgnoreDepth = 0;
 	mAddedDependsDefines = false;
@@ -856,7 +859,10 @@ BfBlock* BfParser::ParseInlineBlock(int spaceIdx, int endIdx)
 		if (startNode == NULL)
 			startNode = childNode;
 		if (block == NULL)
+		{
 			block = mAlloc->Alloc<BfBlock>();
+			block->mParserBlockId = ++mCurBlockId;
+		}
 		block->Add(childNode);
 		childArr.push_back(childNode);
 		//block->mChildArr.Add(childNode, &mAlloc);
@@ -3644,6 +3650,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 			else*/
 			{
 				genBlock = mAlloc->Alloc<BfBlock>();
+				genBlock->mParserBlockId = ++mCurBlockId;
 				genBlock->mOpenBrace = (BfTokenNode*)CreateNode();
 				newBlock = genBlock;
 			}

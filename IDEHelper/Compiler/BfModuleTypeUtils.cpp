@@ -1660,6 +1660,7 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		case BfTypeCode_Interface:
 		case BfTypeCode_Enum:
 		case BfTypeCode_TypeAlias:
+		case BfTypeCode_Inferred:
 			// Implemented below
 			break;
 		case BfTypeCode_Extension:
@@ -4179,6 +4180,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	{
 		baseType = ResolveTypeDef(mCompiler->mValueTypeTypeDef, BfPopulateType_Data)->ToTypeInstance();
 	}
+	else if (typeDef->mTypeCode == BfTypeCode_Inferred)
+		baseType = mContext->mBfObjectType;
 
 	if (baseType != NULL)
 		defaultBaseTypeInst = baseType->ToTypeInstance();
@@ -4193,7 +4196,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 	bool wantPopulateInterfaces = false;
 
-	BfTypeReference* baseTypeRef = NULL;
+	BfAstNode* baseTypeRef = NULL;
 	if ((typeDef->mIsDelegate) && (!typeInstance->IsClosure()))
 	{
 		if (mCompiler->mDelegateTypeDef == NULL)
@@ -4229,7 +4232,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			SetAndRestoreValue<BfTypeDefineState> prevDefineState(typeInstance->mDefineState, BfTypeDefineState_ResolvingBaseType);
 
 			bool populateBase = !typeInstance->mTypeFailed;
-			BfType* checkType = checkType = ResolveTypeRef(checkTypeRef, BfPopulateType_Declaration);
+			BfType* checkType = checkType = ResolveTypeRef_Ref(checkTypeRef, BfPopulateType_Declaration);
 
 			if ((checkType != NULL) && (!checkType->IsInterface()) && (populateBase))
 			{
@@ -4415,6 +4418,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	if (baseType != NULL)
 	{
 		baseTypeInst = baseType->ToTypeInstance();
+		if ((baseTypeInst != NULL) && (typeDef->mTypeCode == BfTypeCode_Inferred))
+			typeDef->mTypeCode = baseTypeInst->mTypeDef->mTypeCode;
 	}
 
 	if (typeInstance->mBaseType != NULL)
@@ -12967,6 +12972,9 @@ BfType* BfModule::ResolveTypeRef_Ref(BfAstNode* astNode, const BfSizedArray<BfAs
 	if (auto typeRef = BfNodeDynCast<BfTypeReference>(astNode))
 		return ResolveTypeRef_Ref(typeRef, populateType, resolveFlags, 0);
 
+	if (astNode->IsTemporary())
+		return ResolveTypeRef((BfTypeReference*)astNode, populateType, resolveFlags);
+
 	if ((resolveFlags & BfResolveTypeRefFlag_AllowImplicitConstExpr) != 0)
 	{
 		if (auto expr = BfNodeDynCast<BfExpression>(astNode))
@@ -12991,6 +12999,12 @@ BfType* BfModule::ResolveTypeRef_Ref(BfAstNode* astNode, const BfSizedArray<BfAs
 	}
 
 	return ResolveTypeRef_Type(astNode, genericArgs, populateType, resolveFlags);
+}
+
+BfType* BfModule::ResolveTypeRef_Ref(BfAstNode* astNode, BfPopulateType populateType)
+{
+	BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None;
+	return ResolveTypeRef_Ref(astNode, NULL, populateType, resolveFlags);
 }
 
 // This flow should mirror CastToValue

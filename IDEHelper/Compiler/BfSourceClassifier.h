@@ -69,6 +69,7 @@ public:
 	bool mSkipAttributes;
 	bool mIsSideChannel;
 	bool mPreserveFlags;
+	bool mSkipAnonymousTypes;
 	uint8 mClassifierPassId;
 	BfAstNode* mPrevNode;
 	BfAstNode* mCurMember;

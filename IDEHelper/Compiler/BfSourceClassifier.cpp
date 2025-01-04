@@ -18,6 +18,7 @@ BfSourceClassifier::BfSourceClassifier(BfParser* bfParser, CharData* charData)
 	mPrevNode = NULL;
 	mCurMember = NULL;
 	mCurLocalMethodDeclaration = NULL;
+	mSkipAnonymousTypes = false;
 }
 
 void BfSourceClassifier::ModifyFlags(BfAstNode* node, uint8 andFlags, uint8 orFlags)
@@ -657,6 +658,9 @@ void BfSourceClassifier::Visit(BfPropertyDeclaration* propertyDeclaration)
 
 void BfSourceClassifier::Visit(BfTypeDeclaration* typeDeclaration)
 {
+	if ((mSkipAnonymousTypes) && (typeDeclaration->IsAnonymous()))
+		return;
+
 	if (typeDeclaration->mIgnoreDeclaration)
 		return;
 

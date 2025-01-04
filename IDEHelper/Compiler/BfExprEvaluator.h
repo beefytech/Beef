@@ -506,6 +506,7 @@ public:
 	BfModuleMethodInstance GetSelectedMethod(BfMethodMatcher& methodMatcher);
 	bool CheckVariableDeclaration(BfAstNode* checkNode, bool requireSimpleIfExpr, bool exprMustBeTrue, bool silentFail);
 	bool HasVariableDeclaration(BfAstNode* checkNode);
+	void DoInvocation(BfInvocationExpression* invocationExpr);
 	void DoInvocation(BfAstNode* target, BfMethodBoundExpression* methodBoundExpr, const BfSizedArray<BfExpression*>& args, const BfMethodGenericArguments& methodGenericArgs, BfTypedValue* outCascadeValue = NULL);
 	int GetMixinVariable();
 	void CheckLocalMethods(BfAstNode* targetSrc, BfTypeInstance* typeInstance, const StringImpl& methodName, BfMethodMatcher& methodMatcher, BfMethodType methodType);
@@ -538,7 +539,7 @@ public:
 	void InitializedSizedArray(BfSizedArrayType* sizedArrayType, BfTokenNode* openToken, const BfSizedArray<BfExpression*>& values, const BfSizedArray<BfTokenNode*>& commas, BfTokenNode* closeToken, BfTypedValue* receivingValue = NULL);
 	void CheckDotToken(BfTokenNode* tokenNode);
 	void DoMemberReference(BfMemberReferenceExpression* memberRefExpr, BfTypedValue* outCascadeValue);
-	void CreateObject(BfObjectCreateExpression* objCreateExpr, BfAstNode* allocNode, BfType* allocType);
+	void CreateObject(BfObjectCreateExpression* objCreateExpr, BfAstNode* allocNode, BfType* allocType, BfInlineTypeReference* inlineTypeRef);
 	void HandleIndexerExpression(BfIndexerExpression* indexerExpr, BfTypedValue target);
 
 	//////////////////////////////////////////////////////////////////////////

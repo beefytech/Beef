@@ -236,7 +236,7 @@ public:
 	void AddExtensionMethods(BfTypeInstance* targetType, BfTypeInstance* extensionContainer, const StringImpl& filter, bool allowProtected, bool allowPrivate);
 	void AddTopLevelNamespaces(BfAstNode* identifierNode);
 	void AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttribute = false);
-	void AddOverrides(const StringImpl& filter);
+	void AddOverrides(const StringImpl& filter, bool forceAll = false);
 	void AddCtorPassthroughs();
 	void UpdateReplaceData();
 	void AddTypeInstanceEntry(BfTypeInstance* typeInst);

@@ -2206,6 +2206,7 @@ public:
 	bool IncludeAllMethods() { return ((mAlwaysIncludeFlags & BfAlwaysIncludeFlag_IncludeAllMethods) != 0); }
 	bool DefineStateAllowsStaticMethods() { return mDefineState >= BfTypeDefineState_HasInterfaces_Direct; }
 	bool IsAnonymous();
+	bool IsAnonymousInitializerType();
 
 	virtual void ReportMemory(MemReporter* memReporter) override;
 };

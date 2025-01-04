@@ -2759,7 +2759,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 	return false;
 }
 
-void BfAutoComplete::AddOverrides(const StringImpl& filter)
+void BfAutoComplete::AddOverrides(const StringImpl& filter, bool forceAll)
 {
 	if (!mIsAutoComplete)
 		return;
@@ -2780,7 +2780,7 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 			if (curType == mModule->mCurTypeInstance)
 			{
 				// The "normal" case, and only case for types without extensions
-				if (methodDef->mDeclaringType == activeTypeDef)
+				if ((methodDef->mDeclaringType == activeTypeDef) && (!forceAll))
 					continue;
 
 				if ((methodDef->mDeclaringType->IsExtension()) && (methodDef->mDeclaringType->mProject == activeTypeDef->mProject))
@@ -2812,7 +2812,7 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 				(methodDef->mMethodType != BfMethodType_PropertySetter))
 				continue;
 
-			if ((methodInst->mVirtualTableIdx >= 0) && (methodInst->mVirtualTableIdx < mModule->mCurTypeInstance->mVirtualMethodTable.size()))
+			if ((methodInst->mVirtualTableIdx >= 0) && (methodInst->mVirtualTableIdx < mModule->mCurTypeInstance->mVirtualMethodTable.size()) && (!forceAll))
 			{
 				auto& vEntry = mModule->mCurTypeInstance->mVirtualMethodTable[methodInst->mVirtualTableIdx];
 				if (vEntry.mImplementingMethod.mTypeInstance == mModule->mCurTypeInstance)
