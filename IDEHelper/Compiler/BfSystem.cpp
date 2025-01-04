@@ -956,6 +956,8 @@ bool BfTypeDef::HasAutoProperty(BfPropertyDeclaration* propertyDeclaration)
 		return false;
 	if (propertyDeclaration->mExternSpecifier != NULL)
 		return false;
+	if (propertyDeclaration->IsA<BfIndexerDeclaration>())
+		return false;
 
 	for (auto methodDeclaration : propertyDeclaration->mMethods)
 	{
@@ -967,10 +969,8 @@ bool BfTypeDef::HasAutoProperty(BfPropertyDeclaration* propertyDeclaration)
 
 String BfTypeDef::GetAutoPropertyName(BfPropertyDeclaration* propertyDeclaration)
 {
-	String name = "prop__";
-	if (propertyDeclaration->IsA<BfIndexerDeclaration>())
-		name += "indexer__";
-	else if (propertyDeclaration->mNameNode != NULL)
+	String name = "prop__";	
+	if (propertyDeclaration->mNameNode != NULL)
 		name += propertyDeclaration->mNameNode->ToString();
 	return name;
 }

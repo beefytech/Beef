@@ -22008,7 +22008,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 			if ((propertyDeclaration != NULL) && (!typeDef->HasAutoProperty(propertyDeclaration)))
 			{
 				if ((!mCurTypeInstance->IsInterface()) && (!hasExternSpecifier))
-					Fail("Body expected", methodDef->mBody);
+					Fail("Body expected", methodDef->GetRefNode());
 			}
 			else if (methodDef->mMethodType == BfMethodType_PropertyGetter)
 			{
