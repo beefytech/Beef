@@ -8229,9 +8229,8 @@ BfScopedInvocationTarget* BfReducer::CreateScopedInvocationTarget(BfAstNode*& ta
 
 void BfReducer::InitAnonymousType(BfTypeDeclaration* typeDecl)
 {
-	auto block = BfNodeDynCast<BfBlock>(typeDecl->mDefineNode);
-	int blockId = 0;
-	if (blockId != NULL)
+	int blockId = 0;	
+	if (auto block = BfNodeDynCast<BfBlock>(typeDecl->mDefineNode))
 	{
 		blockId = block->mParserBlockId;
 	}
