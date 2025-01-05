@@ -5472,9 +5472,22 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			{
 				auto resolvedFieldType = fieldInstance->GetResolvedType();
 				if ((!typeInstance->IsBoxed()) && (fieldDef != NULL))
-				{
-					if ((fieldDef->mUsingProtection != BfProtection_Hidden) && (!resolvedFieldType->IsGenericParam()) && (!resolvedFieldType->IsObject()) && (!resolvedFieldType->IsStruct()))
-						Warn(0, StrFormat("Field type '%s' is not applicable for 'using'", TypeToString(resolvedFieldType).c_str()), fieldDef->GetFieldDeclaration()->mConstSpecifier);
+				{					
+					if (fieldDef->mUsingProtection != BfProtection_Hidden) 
+					{
+						auto fieldDecl = fieldDef->GetFieldDeclaration();
+						BfAstNode* refNode = fieldDecl->mConstSpecifier;
+						if (refNode == NULL)
+							refNode = fieldDef->GetRefNode();
+						if ((!resolvedFieldType->IsGenericParam()) && (!resolvedFieldType->IsObject()) && (!resolvedFieldType->IsStruct()))
+						{														
+							Warn(0, StrFormat("Field type '%s' is not applicable for 'using'", TypeToString(resolvedFieldType).c_str()), refNode);
+						}
+						else if ((fieldDecl->mConstSpecifier == NULL) && (!BfNodeIsA<BfInlineTypeReference>(fieldDecl->mTypeRef)))
+						{
+							Warn(0, "Field needs either a name or a 'using' declaration", refNode);
+						}
+					}
 
 					if (fieldInstance->mIsEnumPayloadCase)
 					{

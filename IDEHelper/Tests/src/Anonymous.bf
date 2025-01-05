@@ -23,11 +23,11 @@ class Anonymous
 	struct StructB
 	{
 		[Union]
-		public using struct
+		public struct
 		{
 			public int mX;
 			public int mY;
-		} mCoords;
+		};
 	}
 
 	struct StructC

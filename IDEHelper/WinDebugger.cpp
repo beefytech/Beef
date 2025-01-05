@@ -5991,6 +5991,8 @@ String WinDebugger::MaybeQuoteFormatInfoParam(const StringImpl& str)
 DbgTypedValue WinDebugger::EvaluateInContext(DbgCompileUnit* dbgCompileUnit, const DbgTypedValue& contextTypedValue, const StringImpl& subExpr, DwFormatInfo* formatInfo, String* outReferenceId, String* outErrors)
 {
 	DbgEvaluationContext dbgEvaluationContext(this, dbgCompileUnit->mDbgModule, subExpr, formatInfo, contextTypedValue);
+	if (dbgEvaluationContext.mDbgExprEvaluator == NULL)
+		return DbgTypedValue();
 	dbgEvaluationContext.mDbgExprEvaluator->mDbgCompileUnit = dbgCompileUnit;
 	if (formatInfo != NULL)
 	{

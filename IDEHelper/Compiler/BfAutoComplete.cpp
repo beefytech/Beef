@@ -782,6 +782,8 @@ void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl&
 
 void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, BfFieldInstance* fieldInstance, const StringImpl& filter)
 {
+	if (fieldDef->mName.IsEmpty())
+		return;
 	int wantPrefixCount = 0;
 	const char* filterStr = filter.c_str();
 	while (filterStr[0] == '@')
@@ -1662,6 +1664,8 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 
 		for (auto field : showAttrTypeDef->mFields)
 		{
+			if (field->mName.IsEmpty())
+				continue;
 			if (auto entryAdded = AddEntry(AutoCompleteEntry("field", field->mName + "="), filter))
 			{
 				auto fieldDeclaration = field->GetFieldDeclaration();
@@ -3663,7 +3667,7 @@ void BfAutoComplete::FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType,
 	auto parser = typeInst->mTypeDef->GetDefinition()->mSource->ToParser();
 	if (parser == NULL)
 		return;
-
+	
 	String fullName = typeInst->mTypeDef->mFullName.ToString();
 	String fieldStr;
 

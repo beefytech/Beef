@@ -679,6 +679,8 @@ public:
 		{
 			if (fieldDeclaration->mNameNode != NULL)
 				return fieldDeclaration->mNameNode;
+			if (fieldDeclaration->mTypeRef != NULL)
+				return fieldDeclaration->mTypeRef;
 		}
 
 		if (auto paramDeclaration = BfNodeDynCast<BfParameterDeclaration>(mFieldDeclaration))

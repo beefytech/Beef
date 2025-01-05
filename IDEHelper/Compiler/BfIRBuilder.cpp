@@ -3220,265 +3220,282 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 		diFieldTypes.push_back(memberType);
 	}
 
-	bool isPayloadEnum = (typeInstance->IsEnum()) && (!typeInstance->IsTypedPrimitive());
-	for (int fieldIdx = 0; fieldIdx < typeInstance->mFieldInstances.mSize; fieldIdx++)
+	std::function<void(BfType* type, int depth, int byteOffset)> _AddFields = [&](BfType* type, int depth, int byteOffset)
 	{
-		auto fieldInstance = &typeInstance->mFieldInstances[fieldIdx];
-		if (!fieldInstance->mFieldIncluded)
-			continue;
-		auto fieldDef = fieldInstance->GetFieldDef();
+		typeInstance = type->ToTypeInstance();
+		if (typeInstance == NULL)
+			return;
 
-		if ((fieldInstance->mResolvedType == NULL) || (typeInstance->IsBoxed()))
-			continue;
-
-		auto resolvedFieldType = fieldInstance->GetResolvedType();
-		mModule->PopulateType(resolvedFieldType, BfPopulateType_Declaration);
-		BfIRType resolvedFieldIRType = MapType(resolvedFieldType);
-		BfIRMDNode resolvedFieldDIType;
-
-		if ((fieldDef != NULL) && (!fieldDef->mIsStatic) && (resolvedFieldType->IsStruct()))
-			PopulateType(resolvedFieldType, BfIRPopulateType_Eventually_Full);
-		resolvedFieldDIType = DbgGetType(resolvedFieldType);
-
-		if (fieldInstance->IsAppendedObject())
-			resolvedFieldDIType = DbgGetTypeInst(resolvedFieldType->ToTypeInstance());
-
-		if ((fieldDef == NULL) && (typeInstance->IsPayloadEnum()))
+		bool isPayloadEnum = (typeInstance->IsEnum()) && (!typeInstance->IsTypedPrimitive());
+		for (int fieldIdx = 0; fieldIdx < typeInstance->mFieldInstances.mSize; fieldIdx++)
 		{
-			orderedFields.push_back(fieldInstance);
+			auto fieldInstance = &typeInstance->mFieldInstances[fieldIdx];
+			if (!fieldInstance->mFieldIncluded)
+				continue;
+			auto fieldDef = fieldInstance->GetFieldDef();
 
-			int lineNum = 0;
-			int flags = llvm::DINode::FlagPublic;
-			auto fieldType = fieldInstance->mResolvedType;
-			String fieldName = "__bftag";
-			auto memberType = DbgCreateMemberType(diForwardDecl, fieldName, fileDIScope, lineNum,
-				resolvedFieldType->mSize * 8, resolvedFieldType->mAlign * 8, fieldInstance->mDataOffset * 8,
-				flags, resolvedFieldDIType);
-			diFieldTypes.push_back(memberType);
-		}
+			if ((fieldInstance->mResolvedType == NULL) || (typeInstance->IsBoxed()))
+				continue;
 
-		if ((!typeInstance->IsBoxed()) && (fieldDef != NULL))
-		{
-			if (fieldDef->mIsConst)
+			auto resolvedFieldType = fieldInstance->GetResolvedType();
+			mModule->PopulateType(resolvedFieldType, BfPopulateType_Declaration);
+			BfIRType resolvedFieldIRType = MapType(resolvedFieldType);
+			BfIRMDNode resolvedFieldDIType;
+
+			if ((fieldDef != NULL) && (!fieldDef->mIsStatic) && (resolvedFieldType->IsStruct()))
+				PopulateType(resolvedFieldType, BfIRPopulateType_Eventually_Full);
+			resolvedFieldDIType = DbgGetType(resolvedFieldType);
+
+			if (fieldInstance->IsAppendedObject())
+				resolvedFieldDIType = DbgGetTypeInst(resolvedFieldType->ToTypeInstance());
+
+			if ((fieldDef == NULL) && (typeInstance->IsPayloadEnum()))
 			{
-				if (isDefiningModule)
+				orderedFields.push_back(fieldInstance);
+
+				int lineNum = 0;
+				int flags = llvm::DINode::FlagPublic;
+				auto fieldType = fieldInstance->mResolvedType;
+				String fieldName = "__bftag";
+				auto memberType = DbgCreateMemberType(diForwardDecl, fieldName, fileDIScope, lineNum,
+					resolvedFieldType->mSize * 8, resolvedFieldType->mAlign * 8, fieldInstance->mDataOffset * 8,
+					flags, resolvedFieldDIType);
+				diFieldTypes.push_back(memberType);
+			}
+
+			if ((!typeInstance->IsBoxed()) && (fieldDef != NULL))
+			{
+				if (fieldDef->mIsConst)
 				{
-					if ((isPayloadEnum) && (fieldDef->IsEnumCaseEntry()))
+					if ((isDefiningModule) && (depth == 0))
 					{
-						auto payloadType = fieldInstance->mResolvedType;
-						if (payloadType == NULL)
-							payloadType = mModule->CreateTupleType(BfTypeVector(), Array<String>());
-
-						String fieldName = StrFormat("_%d_%s", -fieldInstance->mDataIdx - 1, fieldDef->mName.c_str());
-
-						int flags = 0;
-						auto memberType = DbgCreateMemberType(diForwardDecl, fieldName, fileDIScope, 0,
-							BF_ALIGN(payloadType->mSize, payloadType->mAlign) * 8, payloadType->mAlign * 8, 0,
-							flags, DbgGetType(payloadType));
-						diFieldTypes.push_back(memberType);
-					}
-					else
-					{
-						BfConstant* constant = NULL;
-						BfIRValue staticValue;
-
-						if (fieldInstance->mConstIdx != -1)
+						if ((isPayloadEnum) && (fieldDef->IsEnumCaseEntry()))
 						{
-							constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
-							if (!resolvedFieldType->IsValuelessType())
-								staticValue = mModule->ConstantToCurrent(constant, typeInstance->mConstHolder, resolvedFieldType);
-						}
+							auto payloadType = fieldInstance->mResolvedType;
+							if (payloadType == NULL)
+								payloadType = mModule->CreateTupleType(BfTypeVector(), Array<String>());
 
-						if (fieldInstance->mResolvedType->IsComposite())
-							PopulateType(fieldInstance->mResolvedType);
-
-						BfIRMDNode constDIType = DbgCreateConstType(resolvedFieldDIType);
-						if ((fieldDef->mIsExtern) && (resolvedFieldType->IsPointer()))
-						{
-							auto underlyingType = resolvedFieldType->GetUnderlyingType();
-							auto staticTypedValue = mModule->ReferenceStaticField(fieldInstance);
-							staticValue = staticTypedValue.mValue;
+							String fieldName = StrFormat("_%d_%s", -fieldInstance->mDataIdx - 1, fieldDef->mName.c_str());
 
 							int flags = 0;
-							auto memberType = DbgCreateStaticMemberType(diForwardDecl, fieldDef->mName, fileDIScope, 0,
-								constDIType, flags, CreateConst(BfTypeCode_Int32, 0));
-							diFieldTypes.push_back(memberType);
-
-							StringT<128> staticVarName;
-							BfMangler::Mangle(staticVarName, mModule->mCompiler->GetMangleKind(), fieldInstance);
-							if (!staticVarName.StartsWith("#"))
-							{
-								String fieldName = DbgGetStaticFieldName(fieldInstance);
-								DbgCreateGlobalVariable(diForwardDecl, fieldName, staticVarName, fileDIScope, 0,
-									constDIType, false, staticValue, memberType);
-							}
-						}
-						else if (resolvedFieldType->IsValuelessType())
-						{
-							// Do nothing
-						}
-						else if ((resolvedFieldType->IsObjectOrInterface()) || (resolvedFieldType->IsPointer()) || (resolvedFieldType->IsSizedArray()))
-						{
-							bool useIntConstant = false;
-
-							bool wasMadeAddr = false;
-
-							StringT<128> staticVarName;
-							BfMangler::Mangle(staticVarName, mModule->mCompiler->GetMangleKind(), fieldInstance);
-
-							String fieldName = fieldDef->mName;
-							BfIRValue intConstant;
-							if (constant != NULL)
-							{
-								// This constant debug info causes linking errors on Linux
-								if (isOptimized)
-									continue;
-
-								if ((constant->mConstType == BfConstType_Agg) ||
-									(constant->mConstType == BfConstType_AggZero) ||
-									(constant->mTypeCode == BfTypeCode_NullPtr))
-								{
-									staticValue = ConstToMemory(staticValue);
-									wasMadeAddr = true;
-								}
-								else if (constant->mTypeCode == BfTypeCode_StringId)
-								{
-									int stringId = constant->mInt32;
-									const StringImpl& str = mModule->mContext->mStringObjectIdMap[stringId].mString;
-									if (resolvedFieldType->IsPointer())
-										staticValue = mModule->GetStringCharPtr(str);
-									else
-										staticValue = mModule->GetStringObjectValue(str);
-								}
-								else
-								{
-									// Ignore other types (for now)
-									continue;
-								}
-							}
-
-							if (!useIntConstant)
-							{
-								auto useType = resolvedFieldType;
-								if (wasMadeAddr)
-									useType = mModule->CreatePointerType(useType);
-								staticValue = CreateGlobalVariable(mModule->mBfIRBuilder->MapType(useType), true, BfIRLinkageType_Internal, staticValue, staticVarName);
-								GlobalVar_SetAlignment(staticValue, useType->mAlign);
-							}
-
-							int flags = 0;
-							auto memberType = DbgCreateStaticMemberType(diForwardDecl, fieldName, fileDIScope, 0,
-								constDIType, flags, useIntConstant ? intConstant : BfIRValue());
-							diFieldTypes.push_back(memberType);
-
-							if (fieldDef->mUsingProtection != BfProtection_Hidden)
-							{
-								auto memberType = DbgCreateStaticMemberType(diForwardDecl, "$using$" + fieldName, fileDIScope, 0,
-									constDIType, flags, useIntConstant ? intConstant : BfIRValue());
-								diFieldTypes.push_back(memberType);
-							}
-
-							if (staticValue)
-							{
-								String qualifiedName = DbgGetStaticFieldName(fieldInstance);
-								DbgCreateGlobalVariable(diForwardDecl, qualifiedName, staticVarName, fileDIScope, 0,
-									constDIType, false, staticValue, memberType);
-							}
-						}
-						else if (mModule->mCompiler->mOptions.IsCodeView())
-						{
-							int flags = 0;
-							String fieldName = fieldDef->mName;
-							if ((constant != NULL) &&
-								((IsIntable(constant->mTypeCode)) || (IsFloat(constant->mTypeCode))))
-							{
-								int64 writeVal = constant->mInt64;
-								if (constant->mTypeCode == BfTypeCode_Float)
-								{
-									// We need to do this because Singles are stored in mDouble, so we need to reduce here
-									float floatVal = (float)constant->mDouble;
-									writeVal = *(uint32*)&floatVal;
-								}
-								if (writeVal < 0)
-									fieldName += StrFormat("$_%llu", -writeVal);
-								else
-									fieldName += StrFormat("$%llu", writeVal);
-							}
-							auto memberType = DbgCreateStaticMemberType(diForwardDecl, fieldName, fileDIScope, 0,
-								constDIType, flags, staticValue);
+							auto memberType = DbgCreateMemberType(diForwardDecl, fieldName, fileDIScope, 0,
+								BF_ALIGN(payloadType->mSize, payloadType->mAlign) * 8, payloadType->mAlign * 8, 0,
+								flags, DbgGetType(payloadType));
 							diFieldTypes.push_back(memberType);
 						}
 						else
 						{
-							int flags = 0;
-							String fieldName = DbgGetStaticFieldName(fieldInstance);
-							auto memberType = DbgCreateStaticMemberType(diForwardDecl, fieldName, fileDIScope, 0,
-								constDIType, flags, staticValue);
+							BfConstant* constant = NULL;
+							BfIRValue staticValue;
+
+							if (fieldInstance->mConstIdx != -1)
+							{
+								constant = typeInstance->mConstHolder->GetConstantById(fieldInstance->mConstIdx);
+								if (!resolvedFieldType->IsValuelessType())
+									staticValue = mModule->ConstantToCurrent(constant, typeInstance->mConstHolder, resolvedFieldType);
+							}
+
+							if (fieldInstance->mResolvedType->IsComposite())
+								PopulateType(fieldInstance->mResolvedType);
+
+							BfIRMDNode constDIType = DbgCreateConstType(resolvedFieldDIType);
+							if ((fieldDef->mIsExtern) && (resolvedFieldType->IsPointer()))
+							{
+								auto underlyingType = resolvedFieldType->GetUnderlyingType();
+								auto staticTypedValue = mModule->ReferenceStaticField(fieldInstance);
+								staticValue = staticTypedValue.mValue;
+
+								int flags = 0;
+								auto memberType = DbgCreateStaticMemberType(diForwardDecl, fieldDef->mName, fileDIScope, 0,
+									constDIType, flags, CreateConst(BfTypeCode_Int32, 0));
+								diFieldTypes.push_back(memberType);
+
+								StringT<128> staticVarName;
+								BfMangler::Mangle(staticVarName, mModule->mCompiler->GetMangleKind(), fieldInstance);
+								if (!staticVarName.StartsWith("#"))
+								{
+									String fieldName = DbgGetStaticFieldName(fieldInstance);
+									DbgCreateGlobalVariable(diForwardDecl, fieldName, staticVarName, fileDIScope, 0,
+										constDIType, false, staticValue, memberType);
+								}
+							}
+							else if (resolvedFieldType->IsValuelessType())
+							{
+								// Do nothing
+							}
+							else if ((resolvedFieldType->IsObjectOrInterface()) || (resolvedFieldType->IsPointer()) || (resolvedFieldType->IsSizedArray()))
+							{
+								bool useIntConstant = false;
+
+								bool wasMadeAddr = false;
+
+								StringT<128> staticVarName;
+								BfMangler::Mangle(staticVarName, mModule->mCompiler->GetMangleKind(), fieldInstance);
+
+								String fieldName = fieldDef->mName;
+								BfIRValue intConstant;
+								if (constant != NULL)
+								{
+									// This constant debug info causes linking errors on Linux
+									if (isOptimized)
+										continue;
+
+									if ((constant->mConstType == BfConstType_Agg) ||
+										(constant->mConstType == BfConstType_AggZero) ||
+										(constant->mTypeCode == BfTypeCode_NullPtr))
+									{
+										staticValue = ConstToMemory(staticValue);
+										wasMadeAddr = true;
+									}
+									else if (constant->mTypeCode == BfTypeCode_StringId)
+									{
+										int stringId = constant->mInt32;
+										const StringImpl& str = mModule->mContext->mStringObjectIdMap[stringId].mString;
+										if (resolvedFieldType->IsPointer())
+											staticValue = mModule->GetStringCharPtr(str);
+										else
+											staticValue = mModule->GetStringObjectValue(str);
+									}
+									else
+									{
+										// Ignore other types (for now)
+										continue;
+									}
+								}
+
+								if (!useIntConstant)
+								{
+									auto useType = resolvedFieldType;
+									if (wasMadeAddr)
+										useType = mModule->CreatePointerType(useType);
+									staticValue = CreateGlobalVariable(mModule->mBfIRBuilder->MapType(useType), true, BfIRLinkageType_Internal, staticValue, staticVarName);
+									GlobalVar_SetAlignment(staticValue, useType->mAlign);
+								}
+
+								BfIRMDNode memberType;
+								int flags = 0;
+								if (!fieldDef->mName.IsEmpty())
+								{
+									memberType = DbgCreateStaticMemberType(diForwardDecl, fieldName, fileDIScope, 0,
+										constDIType, flags, useIntConstant ? intConstant : BfIRValue());
+									diFieldTypes.push_back(memberType);
+								}
+
+								if (fieldDef->mUsingProtection != BfProtection_Hidden)
+								{
+									auto memberType = DbgCreateStaticMemberType(diForwardDecl, "$using$" + fieldName, fileDIScope, 0,
+										constDIType, flags, useIntConstant ? intConstant : BfIRValue());
+									diFieldTypes.push_back(memberType);
+								}
+
+								if ((staticValue) && (!fieldDef->mName.IsEmpty()))
+								{
+									String qualifiedName = DbgGetStaticFieldName(fieldInstance);
+									DbgCreateGlobalVariable(diForwardDecl, qualifiedName, staticVarName, fileDIScope, 0,
+										constDIType, false, staticValue, memberType);
+								}
+							}
+							else if (mModule->mCompiler->mOptions.IsCodeView())
+							{
+								int flags = 0;
+								String fieldName = fieldDef->mName;
+								if ((constant != NULL) &&
+									((IsIntable(constant->mTypeCode)) || (IsFloat(constant->mTypeCode))))
+								{
+									int64 writeVal = constant->mInt64;
+									if (constant->mTypeCode == BfTypeCode_Float)
+									{
+										// We need to do this because Singles are stored in mDouble, so we need to reduce here
+										float floatVal = (float)constant->mDouble;
+										writeVal = *(uint32*)&floatVal;
+									}
+									if (writeVal < 0)
+										fieldName += StrFormat("$_%llu", -writeVal);
+									else
+										fieldName += StrFormat("$%llu", writeVal);
+								}
+								auto memberType = DbgCreateStaticMemberType(diForwardDecl, fieldName, fileDIScope, 0,
+									constDIType, flags, staticValue);
+								diFieldTypes.push_back(memberType);
+							}
+							else
+							{
+								int flags = 0;
+								String fieldName = DbgGetStaticFieldName(fieldInstance);
+								auto memberType = DbgCreateStaticMemberType(diForwardDecl, fieldName, fileDIScope, 0,
+									constDIType, flags, staticValue);
+								diFieldTypes.push_back(memberType);
+							}
+						}
+					}
+				}
+				else if (fieldDef->mIsStatic)
+				{
+					if ((isDefiningModule) && (depth == 0))
+					{
+						BfIRMDNode memberType;
+						int flags = 0;
+						if (!fieldDef->mName.IsEmpty())
+						{
+							memberType = DbgCreateStaticMemberType(diForwardDecl, fieldDef->mName, fileDIScope, 0,
+								resolvedFieldDIType, flags, BfIRValue());
+							diFieldTypes.push_back(memberType);
+						}
+
+						if (fieldDef->mUsingProtection != BfProtection_Hidden)
+						{
+							auto memberType = DbgCreateStaticMemberType(diForwardDecl, "$using$" + fieldDef->mName, fileDIScope, 0,
+								resolvedFieldDIType, flags, BfIRValue());
+							diFieldTypes.push_back(memberType);
+						}
+
+						StringT<128> staticVarName;
+						BfMangler::Mangle(staticVarName, mModule->mCompiler->GetMangleKind(), fieldInstance);
+						if ((!staticVarName.StartsWith('#')) && (!fieldDef->mName.IsEmpty()))
+						{
+							auto staticValue = mModule->ReferenceStaticField(fieldInstance);
+							if (staticValue.mValue)
+							{
+								String fieldName = DbgGetStaticFieldName(fieldInstance);
+								DbgCreateGlobalVariable(diForwardDecl, fieldName, staticVarName, fileDIScope, 0,
+									resolvedFieldDIType, false, staticValue.mValue, memberType);
+							}
+						}
+					}
+				}
+				else
+				{
+					bool useForUnion = false;
+
+					BF_ASSERT(!fieldInstance->mIsEnumPayloadCase);
+
+					if (wantDIData)
+					{
+						if ((fieldDef->mUsingProtection != BfProtection_Hidden) && (depth < 10))
+						{
+							_AddFields(fieldInstance->mResolvedType, depth + 1, byteOffset + fieldInstance->mDataOffset);
+						}
+
+						int lineNum = 0;
+
+						int flags = 0;
+						String fieldName = fieldDef->mName;
+						if (!fieldDef->mName.IsEmpty())
+						{
+							if (fieldDef->mHasMultiDefs)
+								fieldName += "$" + fieldDef->mDeclaringType->mProject->mName;
+							auto memberType = DbgCreateMemberType(diForwardDecl, fieldName, fileDIScope, lineNum,
+								fieldInstance->mDataSize * 8, resolvedFieldType->mAlign * 8, (byteOffset + fieldInstance->mDataOffset) * 8,
+								flags, resolvedFieldDIType);
 							diFieldTypes.push_back(memberType);
 						}
 					}
 				}
 			}
-			else if (fieldDef->mIsStatic)
-			{
-				if (isDefiningModule)
-				{
-					int flags = 0;
-					auto memberType = DbgCreateStaticMemberType(diForwardDecl, fieldDef->mName, fileDIScope, 0,
-						resolvedFieldDIType, flags, BfIRValue());
-					diFieldTypes.push_back(memberType);
-
-					if (fieldDef->mUsingProtection != BfProtection_Hidden)
-					{
-						auto memberType = DbgCreateStaticMemberType(diForwardDecl, "$using$" + fieldDef->mName, fileDIScope, 0,
-							resolvedFieldDIType, flags, BfIRValue());
-						diFieldTypes.push_back(memberType);
-					}
-
-					StringT<128> staticVarName;
-					BfMangler::Mangle(staticVarName, mModule->mCompiler->GetMangleKind(), fieldInstance);
-					if (!staticVarName.StartsWith('#'))
-					{
-						auto staticValue = mModule->ReferenceStaticField(fieldInstance);
-						if (staticValue.mValue)
-						{
-							String fieldName = DbgGetStaticFieldName(fieldInstance);
-							DbgCreateGlobalVariable(diForwardDecl, fieldName, staticVarName, fileDIScope, 0,
-								resolvedFieldDIType, false, staticValue.mValue, memberType);
-						}
-					}
-				}
-			}
-			else
-			{
-				bool useForUnion = false;
-
-				BF_ASSERT(!fieldInstance->mIsEnumPayloadCase);
-
-				if (wantDIData)
-				{
-					int lineNum = 0;
-
-					int flags = 0;
-					String fieldName = fieldDef->mName;
-					if (fieldDef->mHasMultiDefs)
-						fieldName += "$" + fieldDef->mDeclaringType->mProject->mName;
-					auto memberType = DbgCreateMemberType(diForwardDecl, fieldName, fileDIScope, lineNum,
-						fieldInstance->mDataSize * 8, resolvedFieldType->mAlign * 8, fieldInstance->mDataOffset * 8,
-						flags, resolvedFieldDIType);
-					diFieldTypes.push_back(memberType);
-
-					if (fieldDef->mUsingProtection != BfProtection_Hidden)
-					{
-						auto memberType = DbgCreateMemberType(diForwardDecl, "$using$" + fieldName, fileDIScope, lineNum,
-							fieldInstance->mDataSize * 8, resolvedFieldType->mAlign * 8, fieldInstance->mDataOffset * 8,
-							flags, resolvedFieldDIType);
-						diFieldTypes.push_back(memberType);
-					}
-				}
-			}
 		}
-	}
+	};	
+
+	_AddFields(typeInstance, 0, 0);
 
 	int dataPos = 0;
 	if (typeInstance->mBaseType != NULL)

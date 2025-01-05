@@ -1202,6 +1202,10 @@ void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
 		else
 			fieldDef->mUsingProtection = fieldDef->mProtection;
 	}
+	else if (fieldDeclaration->mNameNode == NULL)
+	{
+		fieldDef->mUsingProtection = fieldDef->mProtection;
+	}
 
 	fieldDef->mIsStatic = (fieldDeclaration->mStaticSpecifier != NULL) || fieldDef->mIsConst;
 	fieldDef->mIsVolatile = (fieldDeclaration->mVolatileSpecifier != NULL);

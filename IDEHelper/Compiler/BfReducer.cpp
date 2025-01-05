@@ -6309,11 +6309,13 @@ BfFieldDeclaration* BfReducer::CreateFieldDeclaration(BfTokenNode* tokenNode, Bf
 	else
 	{
 		ReplaceNode(typeRef, fieldDeclaration);
-		fieldDeclaration->mTypeRef = typeRef;
-		fieldDeclaration->mNameNode = nameIdentifier;
+		fieldDeclaration->mTypeRef = typeRef;		
 		fieldDeclaration->mInitializer = NULL;
-		MoveNode(fieldDeclaration->mNameNode, fieldDeclaration);
-		//mVisitorPos.MoveNext();
+		if (nameIdentifier != NULL)
+		{
+			fieldDeclaration->mNameNode = nameIdentifier;
+			MoveNode(fieldDeclaration->mNameNode, fieldDeclaration);
+		}		
 	}
 	CheckMultiuseAttributeTypeRef(fieldDeclaration->mTypeRef);
 
@@ -7407,7 +7409,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 	}
 	else if (auto nextToken = BfNodeDynCast<BfTokenNode>(nextNode))
 	{
-		if (nextToken->GetToken() == BfToken_Operator)
+		if (nextToken->mToken == BfToken_Operator)
 		{
 			auto operatorDecl = mAlloc->Alloc<BfOperatorDeclaration>();
 			BfDeferredAstSizedArray<BfParameterDeclaration*> params(operatorDecl->mParams, mAlloc);
@@ -7493,7 +7495,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 
 			return operatorDecl;
 		}
-		else if (nextToken->GetToken() == BfToken_LParen)
+		else if (nextToken->mToken == BfToken_LParen)
 		{
 			Fail("Method return type expected", node);
 
@@ -7504,6 +7506,10 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 				ReplaceNode(typeRef, nameIdentifier);
 				typeRef = NULL;
 			}
+		}
+		else if (nextToken->mToken == BfToken_Semicolon)
+		{
+			forceIsMethod = true;
 		}
 	}
 
