@@ -49,6 +49,7 @@ BfReducer::BfReducer()
 	mMethodDepth = 0;	
 	mDocumentCheckIdx = 0;
 	mTypeMemberNodeStart = NULL;
+	mCurTypeState = NULL;
 }
 
 bool BfReducer::IsSemicolon(BfAstNode* node)
@@ -8260,7 +8261,13 @@ void BfReducer::InitAnonymousType(BfTypeDeclaration* typeDecl)
 	memcpy(typeDecl->mAnonymousName, name.c_str(), len);
 
 	if (mCurTypeState != NULL)
+	{
 		mCurTypeState->mAnonymousTypeDecls.Add(typeDecl);
+	}
+	else
+	{
+		Fail("Type declarations are not allowed in emitted code", typeDecl);
+	}
 }
 
 bool BfReducer::CheckInlineTypeRefAttribute(BfAstNode* typeRef, BfAttributeDirective* attributes)
