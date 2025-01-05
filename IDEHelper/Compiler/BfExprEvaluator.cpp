@@ -5206,7 +5206,13 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 
 	if (fieldDef->mIsStatic)
 	{
-		if ((target) && ((flags & BfLookupFieldFlag_IsImplicitThis) == 0) && (!typeInstance->mTypeDef->IsGlobalsContainer()))
+		if (target)
+		{
+			//BF_ASSERT((flags & BfLookupFieldFlag_HasInstance) != 0);
+			flags = (BfLookupFieldFlags)(flags | BfLookupFieldFlag_HasInstance);
+		}
+
+		if (((flags & BfLookupFieldFlag_HasInstance) != 0) && ((flags & BfLookupFieldFlag_IsImplicitThis) == 0) && (!typeInstance->mTypeDef->IsGlobalsContainer()))
 		{
 			//CS0176: Member 'Program.sVal' cannot be accessed with an instance reference; qualify it with a type name instead
 			mModule->Fail(StrFormat("Member '%s.%s' cannot be accessed with an instance reference; qualify it with a type name instead",
@@ -5507,6 +5513,9 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 
 BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue target, const StringImpl& fieldName, BfLookupFieldFlags flags)
 {
+ 	if (target)
+ 		flags = (BfLookupFieldFlags)(flags | BfLookupFieldFlag_HasInstance);
+
 	if ((target.mType != NULL && (target.mType->IsGenericParam())))
 	{
 		auto genericParamType = (BfGenericParamType*)target.mType;
@@ -5726,7 +5735,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				auto checkProtection = field->mProtection;
 				if (checkProtection == BfProtection_Hidden)
 				{
-					// Allow acessing hidden fields
+					// Allow accessing hidden fields
 					checkProtection = BfProtection_Private;
 				}
 
@@ -6016,13 +6025,18 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			curCheckType = curCheckType->mBaseType;
 		}
 	}
-
+	
 	auto outerTypeDef = mModule->GetOuterType(startCheckType);
 	if (outerTypeDef != NULL)
 	{
+		BfLookupFieldFlags newFlags = BfLookupFieldFlag_CheckingOuter;
+		if (((flags & BfLookupFieldFlag_HasInstance) != 0) &&
+			((flags & BfLookupFieldFlag_IsImplicitThis) == 0))
+			newFlags = (BfLookupFieldFlags)(newFlags | BfLookupFieldFlag_HasInstance);
+
 		// Check statics in outer type
-		return LookupField(targetSrc, BfTypedValue(outerTypeDef), fieldName, BfLookupFieldFlag_CheckingOuter);
-	}
+		return LookupField(targetSrc, BfTypedValue(outerTypeDef), fieldName, newFlags);
+	}	
 
 	return BfTypedValue();
 }

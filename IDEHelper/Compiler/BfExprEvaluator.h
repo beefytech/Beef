@@ -379,7 +379,8 @@ enum BfLookupFieldFlags
 	BfLookupFieldFlag_IgnoreProtection = 8,
 	BfLookupFieldFlag_BindOnly = 0x10,
 	BfLookupFieldFlag_IsFailurePass = 0x20,
-	BfLookupFieldFlag_IsAnonymous = 0x40
+	BfLookupFieldFlag_IsAnonymous = 0x40,
+	BfLookupFieldFlag_HasInstance = 0x80
 };
 
 enum BfUnaryOpFlags
