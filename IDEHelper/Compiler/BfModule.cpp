@@ -2884,6 +2884,9 @@ void BfModule::GetAccessAllowed(BfTypeInstance* checkType, bool &allowProtected,
 
 bool BfModule::CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* memberOwner, BfProject* memberProject, BfProtection memberProtection, BfTypeInstance* lookupStartType)
 {
+	if ((memberOwner != NULL) && (mCurMethodState != NULL) && (mCurMethodState->mPrivateTypeInstance == memberOwner))
+		return true;
+
 	if (memberProtection == BfProtection_Hidden)
 		return false;
 	if (memberProtection == BfProtection_Public)
@@ -22233,6 +22236,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				mCurMethodState->mHeadScope.mAstBlock = bodyBlock;
 				mCurMethodState->mHeadScope.mCloseNode = bodyBlock->mCloseBrace;
 				VisitCodeBlock(bodyBlock);
+				BF_ASSERT(mCurMethodState->mCurScope == &mCurMethodState->mHeadScope);
 			}
 			else if (auto expressionBody = BfNodeDynCast<BfExpression>(methodDef->mBody))
 			{

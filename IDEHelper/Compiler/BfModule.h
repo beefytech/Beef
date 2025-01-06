@@ -1059,6 +1059,7 @@ public:
 	BfConstResolveState* mConstResolveState;
 	BfMethodInstance* mMethodInstance;
 	BfHotDataReferenceBuilder* mHotDataReferenceBuilder;
+	BfTypeInstance* mPrivateTypeInstance;
 	BfIRFunction mIRFunction;
 	BfIRBlock mIRHeadBlock;
 	BfIRBlock mIRInitBlock;
@@ -1133,6 +1134,7 @@ public:
 		mPrevMethodState = NULL;
 		mConstResolveState = NULL;
 		mHotDataReferenceBuilder = NULL;
+		mPrivateTypeInstance = NULL;
 		mHeadScope.mIsScopeHead = true;
 		mCurScope = &mHeadScope;
 		mTailScope = &mHeadScope;

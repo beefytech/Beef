@@ -11734,6 +11734,33 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 		initValue = mModule->RemoveRef(initValue, false);
 	bool isFirstAdd = true;
 
+	SetAndRestoreValue<BfTypeInstance*> prevPrivateTypeInstance(mModule->mCurMethodState->mPrivateTypeInstance);
+	BfScopeData newScope;
+
+	if (initExpr->mInlineTypeRef != NULL)
+		mModule->mCurMethodState->mPrivateTypeInstance = initValue.mType->ToTypeInstance();
+
+	newScope.mInnerIsConditional = true;
+	newScope.mCloseNode = initExpr->mCloseBrace;	
+	mModule->mCurMethodState->AddScope(&newScope);
+	mModule->NewScopeState();
+
+	BfLocalVariable* localDef = new BfLocalVariable();
+	localDef->mName = "_";
+	localDef->mResolvedType = initValue.mType;
+	localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
+	if (initValue.IsAddr())
+	{
+		localDef->mAddr = initValue.mValue;
+	}
+	else
+	{
+		localDef->mValue = initValue.mValue;
+		localDef->mIsSplat = initValue.IsSplat();
+	}
+	if (!localDef->mResolvedType->IsVar())
+		mModule->AddLocalVariableDef(localDef, true, true);
+
 	for (auto elementExpr : initExpr->mValues)
 	{
 		if ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0)
@@ -11814,36 +11841,7 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 		}
 		else
 		{
-			BfBlock* block = BfNodeDynCast<BfBlock>(elementExpr);
-			bool handled = false;
-
-			BfScopeData newScope;
-
-			if (block != NULL)
-			{
-				newScope.mInnerIsConditional = true;
-				newScope.mCloseNode = block;
-				if (block->mCloseBrace != NULL)
-					newScope.mCloseNode = block->mCloseBrace;					
-				mModule->mCurMethodState->AddScope(&newScope);
-				mModule->NewScopeState();
-
-				BfLocalVariable* localDef = new BfLocalVariable();
-				localDef->mName = "_";
-				localDef->mResolvedType = initValue.mType;					
-				localDef->mAssignedKind = BfLocalVarAssignKind_Unconditional;
-				if (initValue.IsAddr())
-				{
-					localDef->mAddr = initValue.mValue;
-				}
-				else
-				{
-					localDef->mValue = initValue.mValue;
-					localDef->mIsSplat = initValue.IsSplat();
-				}
-				if (!localDef->mResolvedType->IsVar())
-					mModule->AddLocalVariableDef(localDef, true, true);	
-			}
+			BfBlock* block = BfNodeDynCast<BfBlock>(elementExpr);						
 
 			auto autoComplete = GetAutoComplete();
 			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(elementExpr)))
@@ -11875,12 +11873,6 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 				exprEvaluator.MatchMethod(elementExpr, NULL, initValue, false, false, "Add", argValues, BfMethodGenericArguments());
 			}			
 
-			if (block != NULL)
-			{
-				mModule->RestoreScopeState();
-				handled = true;
-			}
-
 			wasValidInitKind = true;
 		}
 
@@ -11889,6 +11881,7 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 			mModule->Fail("Invalid initializer member declarator", initExpr);
 		}
 	}
+	mModule->RestoreScopeState();
 
 	if (initExpr->mValues.IsEmpty())
 	{	
