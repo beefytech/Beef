@@ -1519,17 +1519,18 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	}
 	if (typeDeclaration->mNameNode == NULL)
 	{
-		if (typeDeclaration->mStaticSpecifier != NULL)
+		if (typeDeclaration->mAnonymousName != NULL)
+		{
+			mCurTypeDef->mName = mSystem->GetAtom(typeDeclaration->mAnonymousName);
+		}
+
+		if (mCurTypeDef->mName == NULL)
 		{
 			// Global
 			mCurTypeDef->mName = mSystem->mGlobalsAtom;
 			mCurTypeDef->mName->Ref();
 			BF_ASSERT(mCurTypeDef->mSystem != NULL);
-		}
-		else
-		{			
-			mCurTypeDef->mName = mSystem->GetAtom(typeDeclaration->mAnonymousName);
-		}
+		}		
 	}
 	else
 	{
