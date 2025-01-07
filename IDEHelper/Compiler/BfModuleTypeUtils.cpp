@@ -3256,9 +3256,12 @@ void BfModule::PopulateUsingFieldData(BfTypeInstance* typeInstance)
 			}
 
 			auto fieldInstance = &usingType->mFieldInstances[fieldDef->mIdx];
-			auto fieldTypeInst = fieldInstance->mResolvedType->ToTypeInstance();
-			if (fieldTypeInst != NULL)
-				_CheckType(fieldTypeInst, fieldDef->mIsStatic);
+			if (fieldInstance->mResolvedType != NULL)
+			{
+				auto fieldTypeInst = fieldInstance->mResolvedType->ToTypeInstance();
+				if (fieldTypeInst != NULL)
+					_CheckType(fieldTypeInst, fieldDef->mIsStatic);
+			}
 		}
 
 		for (auto propDef : usingType->mTypeDef->mProperties)
