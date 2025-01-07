@@ -7907,10 +7907,14 @@ BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfAstNode* ta
 		{
 			if ((allowInitializerStatement) && (!IsInitializerStatement(node)))
 			{
+				auto defBlock = mAlloc->Alloc<BfBlock>();
+				ReplaceNode(block, defBlock);
+				*defBlock = *block;
+
 				auto typeDecl = mAlloc->Alloc<BfInitializerTypeDeclaration>();
 				ReplaceNode(node, typeDecl);
-				block->mOpenBrace = NULL;
-				MEMBER_SET(typeDecl, mDefineNode, block);
+				defBlock->mOpenBrace = NULL;
+				MEMBER_SET(typeDecl, mDefineNode, defBlock);
 				InitAnonymousType(typeDecl);
 				HandleTypeDeclaration(typeDecl, NULL, NULL, true);
 				initializerStartIdx = mVisitorPos.mWritePos;				
@@ -7971,7 +7975,7 @@ BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfAstNode* ta
 			int srcEnd = block->mSrcEnd;
 			if (initializerStartIdx > 0)
 				srcEnd = block->mChildArr[initializerStartIdx - 1]->mSrcEnd;
-			block->mSrcEnd = srcEnd;
+			typeDecl->mDefineNode->mSrcEnd = srcEnd;
 			typeDecl->mSrcEnd = srcEnd;
 		}
 
