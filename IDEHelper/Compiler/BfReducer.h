@@ -171,6 +171,7 @@ public:
 	BfAstNode* mTypeMemberNodeStart;
 	int mClassDepth;
 	int mMethodDepth;	
+	int mLastErrorSrcEnd;
 	BfTypeDeclaration* mCurTypeDecl;
 	CurTypeState* mCurTypeState;
 	BfTypeDeclaration* mLastTypeDecl;

@@ -50,6 +50,7 @@ BfReducer::BfReducer()
 	mDocumentCheckIdx = 0;
 	mTypeMemberNodeStart = NULL;
 	mCurTypeState = NULL;
+	mLastErrorSrcEnd = -1;
 }
 
 bool BfReducer::IsSemicolon(BfAstNode* node)
@@ -84,7 +85,7 @@ void BfReducer::AssertCurrentNode(BfAstNode* node)
 	auto currentNode = mVisitorPos.GetCurrent();
 	if (currentNode == NULL)
 		return;
-	if (!node->LocationEndEquals(currentNode))
+	if ((!node->LocationEndEquals(currentNode)) && (mLastErrorSrcEnd != currentNode->mSrcEnd))
 	{
 		const char* lastCPtr = &node->GetSourceData()->mSrc[node->GetSrcEnd() - 1];
 		// We have an "exceptional" case where breaking a double chevron will look like a position error
@@ -237,6 +238,7 @@ void BfReducer::AddErrorNode(BfAstNode* astNode, bool removeNode)
 		mSource->AddErrorNode(astNode);
 	if (removeNode)
 		astNode->RemoveSelf();
+	mLastErrorSrcEnd = astNode->mSrcEnd;
 }
 
 bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int endNode, int* retryNode, int* outEndNode, bool* couldBeExpr, bool* isGenericType, bool* isTuple)
@@ -5739,7 +5741,14 @@ BfTypeReference* BfReducer::CreateTypeRefAfter(BfAstNode* astNode, CreateTypeRef
 	BfTypeReference* typeRef = CreateTypeRef(nextNode, createTypeRefFlags);
 	if (typeRef == NULL)
 	{
-		BF_ASSERT(mVisitorPos.mReadPos == startPos);
+		if (mLastErrorSrcEnd > startPos)
+		{
+			// We added an error node and made progress
+		}
+		else
+		{
+			BF_ASSERT(mVisitorPos.mReadPos == startPos);			
+		}
 		mVisitorPos.mReadPos--;
 	}
 	return typeRef;
@@ -8264,13 +8273,18 @@ void BfReducer::InitAnonymousType(BfTypeDeclaration* typeDecl)
 	typeDecl->mAnonymousName = (char*)mAlloc->AllocBytes(len);
 	memcpy(typeDecl->mAnonymousName, name.c_str(), len);
 
-	if (mCurTypeState != NULL)
+	auto parser = typeDecl->GetParser();
+	if ((parser != NULL) && (parser->mIsEmitted))
+	{
+		Fail("Type declarations are not allowed in emitted code", typeDecl);
+	}
+	else if (mCurTypeState != NULL)
 	{
 		mCurTypeState->mAnonymousTypeDecls.Add(typeDecl);
 	}
 	else
-	{
-		Fail("Type declarations are not allowed in emitted code", typeDecl);
+	{				
+		Fail("Invalid use of anonymous type declaration", typeDecl);
 	}
 }
 
