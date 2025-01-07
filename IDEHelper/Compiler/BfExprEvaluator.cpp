@@ -11740,6 +11740,7 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 	if (initExpr->mInlineTypeRef != NULL)
 		mModule->mCurMethodState->mPrivateTypeInstance = initValue.mType->ToTypeInstance();
 
+	newScope.mAllowTargeting = false;
 	newScope.mInnerIsConditional = true;
 	newScope.mCloseNode = initExpr->mCloseBrace;	
 	mModule->mCurMethodState->AddScope(&newScope);
