@@ -8237,12 +8237,14 @@ namespace IDE
 					if (fullDir.EndsWith("BeefSpace.toml", .OrdinalIgnoreCase))
 						fullDir.RemoveFromEnd("BeefSpace.toml".Length);
 
-					if ((File.Exists(fullDir)) || (IsBeefFile(fullDir)))
+					//TODO: Properly implement 'composite files'
+					/*if ((File.Exists(fullDir)) ||
+						((IsBeefFile(fullDir)) && (!Directory.Exists(fullDir))))
 					{
 						mWorkspace.mCompositeFile = new CompositeFile(fullDir);
 						delete fullDir;
 					}
-					else
+					else*/
 						mWorkspace.mDir = fullDir;
 				case "-file":
 					DragDropFile(value);
