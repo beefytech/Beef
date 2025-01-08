@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 namespace Tests;
 
 class Anonymous
@@ -38,6 +39,8 @@ class Anonymous
 		{
 			mA = a;
 		}
+
+		public Self Clone() => this;
 	}
 
 	class ClassA
@@ -76,6 +79,18 @@ class Anonymous
 			};
 		Test.Assert(sc.mA == 456);
 		Test.Assert(sc.mB == 11567);
+
+		List<StructC> scList = scope .() { sc };
+		List<StructC> scList2 = scope List<StructC>()
+			{
+				(int, float) GetTuple() => default;
+				int this[float f] => 99;
+
+				scList[0].Clone(),
+				(scList[0].Clone()),
+				(.)(scList[0].Clone())
+			};
+		Test.Assert(scList2.Count == 3);
 
 		var ca = scope ClassA()
 			{

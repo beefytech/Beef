@@ -11021,7 +11021,6 @@ bool BfReducer::IsInitializerStatement(int checkIdx)
 			case BfToken_Internal:
 			case BfToken_Protected:
 			case BfToken_This:
-			case BfToken_LBracket:
 			case BfToken_Semicolon:
 			case BfToken_Case:
 			case BfToken_Const:
