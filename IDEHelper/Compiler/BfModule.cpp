@@ -3950,11 +3950,7 @@ void BfModule::PopulateGlobalContainersList(const BfGlobalLookup& globalLookup)
 
 	BP_ZONE("PopulateGlobalContainersList");
 
-	BfTypeDef* userTypeDef = mContext->mCurTypeState->mCurTypeDef;
-	if ((userTypeDef == NULL) && (mCurMethodInstance != NULL))
-		userTypeDef = mCurMethodInstance->mMethodDef->mDeclaringType;
-	if (userTypeDef == NULL)
-		userTypeDef = mCurTypeInstance->mTypeDef;
+	BfTypeDef* userTypeDef = GetActiveTypeDef();
 
 	if (mContext->mCurTypeState->mGlobalContainerCurUserTypeDef != userTypeDef)
 	{

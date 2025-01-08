@@ -1,9 +1,21 @@
 using System;
 
+namespace Other
+{
+	static
+	{
+		public const int sOther1 = 123;
+	}
+}
+
+using Other;
+
 namespace Tests
 {
 	class Globals
 	{
+		static uint8[sOther1] sArr;
+
 		public struct StructA : this(int64 a, int32 b)
 		{
 		}
@@ -73,6 +85,8 @@ namespace Tests
 
 			Test.Assert(LibSpace.MethodA() == 100);
 			Test.Assert(LibSpace.MethodB() == 200);
+
+			Test.Assert(sArr.Count == 123);
 		}
 	}
 }
