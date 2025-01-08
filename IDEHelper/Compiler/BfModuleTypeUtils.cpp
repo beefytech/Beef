@@ -10178,8 +10178,16 @@ BfTypeDef* BfModule::GetActiveTypeDef(BfTypeInstance* typeInstanceOverride, bool
 {
 	BfTypeDef* useTypeDef = NULL;
 	BfTypeInstance* typeInstance = (typeInstanceOverride != NULL) ? typeInstanceOverride : mCurTypeInstance;
-	if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mForceActiveTypeDef != NULL))
-		return mContext->mCurTypeState->mForceActiveTypeDef;
+
+	auto curTypeState = mContext->mCurTypeState;
+	if (curTypeState != NULL)
+	{
+		if ((curTypeState->mType != NULL) && (curTypeState->mType != typeInstance))
+			curTypeState = NULL;
+	}
+	
+	if ((curTypeState != NULL) && (curTypeState->mForceActiveTypeDef != NULL))
+		return curTypeState->mForceActiveTypeDef;
 	if (typeInstance != NULL)
 		useTypeDef = typeInstance->mTypeDef->GetDefinition();
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL) && (useMixinDecl))
@@ -10202,12 +10210,12 @@ BfTypeDef* BfModule::GetActiveTypeDef(BfTypeInstance* typeInstanceOverride, bool
 			}
 		}
 	}
-	else if (mContext->mCurTypeState != NULL)
+	else if (curTypeState != NULL)
 	{
-		if ((mContext->mCurTypeState->mCurFieldDef != NULL) && (mContext->mCurTypeState->mCurFieldDef->mDeclaringType != NULL))
-			useTypeDef = mContext->mCurTypeState->mCurFieldDef->mDeclaringType->GetDefinition(true);
-		else if (mContext->mCurTypeState->mCurTypeDef != NULL)
-			useTypeDef = mContext->mCurTypeState->mCurTypeDef->GetDefinition(true);
+		if ((curTypeState->mCurFieldDef != NULL) && (curTypeState->mCurFieldDef->mDeclaringType != NULL))
+			useTypeDef = curTypeState->mCurFieldDef->mDeclaringType->GetDefinition(true);
+		else if (curTypeState->mCurTypeDef != NULL)
+			useTypeDef = curTypeState->mCurTypeDef->GetDefinition(true);
 	}
 
 	return useTypeDef;
