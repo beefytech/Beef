@@ -22592,7 +22592,8 @@ void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp
 			{
 				if (mExpectingType->IsRef())
 					mExpectingType = mExpectingType->GetUnderlyingType();
-				mExpectingType = mModule->CreatePointerType(mExpectingType);
+				if (!mExpectingType->IsVar())
+					mExpectingType = mModule->CreatePointerType(mExpectingType);
 			}
 			break;
 		case BfUnaryOp_Negate:
