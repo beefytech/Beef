@@ -3889,7 +3889,10 @@ namespace IDE.ui
 						}
 						else if (c == '.')
 						{
-							doAutocomplete = true;
+							if (mAutoComplete?.HasInteracted == true)
+							{
+								doAutocomplete = true;
+							}
 						}
 					}
 				}

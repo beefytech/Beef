@@ -702,6 +702,8 @@ namespace IDE.ui
 
             public void SelectDirection(int32 dir)
             {
+				mAutoComplete.HasInteracted = true;
+
 				if (mEntryList.IsEmpty)
 					return;
                 int32 newSelection = mSelectIdx + dir;
@@ -1272,6 +1274,8 @@ namespace IDE.ui
 		bool mPopulating;
 		float mWantX;
 		float mWantY;
+
+		public bool HasInteracted;
 
         public this(EditWidget targetEditWidget)
         {
