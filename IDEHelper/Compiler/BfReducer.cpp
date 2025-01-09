@@ -10024,7 +10024,8 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 				(token == BfToken_AllocType) || (token == BfToken_RetType) ||
 				(token == BfToken_Params) || (token == BfToken_LParen) ||
 				(token == BfToken_Var) || (token == BfToken_LBracket) ||
-				(token == BfToken_ReadOnly) || (token == BfToken_DotDotDot)))
+				(token == BfToken_ReadOnly) || (token == BfToken_DotDotDot) ||
+				BfTokenIsTypeDecl(token)))
 			{
 				// These get picked up below
 			}
@@ -10080,7 +10081,7 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 				(token == BfToken_Delegate) || (token == BfToken_Function) ||
 				(token == BfToken_Comptype) || (token == BfToken_Decltype) ||
 				(token == BfToken_AllocType) || (token == BfToken_RetType) ||
-				(token == BfToken_DotDotDot))
+				(token == BfToken_DotDotDot) || BfTokenIsTypeDecl(token))
 			{
 				mVisitorPos.MoveNext();
 				typeRef = CreateTypeRef(tokenNode);
