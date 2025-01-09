@@ -14692,6 +14692,23 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		}
 	}
 
+	auto _CheckDllImport = [&]()
+		{
+			auto declModule = methodInstance->mDeclModule;
+			if ((!methodInstance->mIRFunction) && (declModule->mIsModuleMutable) && (!declModule->mBfIRBuilder->mIgnoreWrites))
+			{
+				auto importKind = methodInstance->GetImportCallKind();
+				if (importKind != BfImportCallKind_None)
+				{
+					BfLogSysM("DllImportGlobalVar creating %p in module %p from module %p\n", methodInstance, declModule, this);
+					methodInstance->mIRFunction = mBfIRBuilder->GetFakeVal();
+					auto func = declModule->CreateDllImportGlobalVar(methodInstance, true);
+					BF_ASSERT(func);
+					declModule->mFuncReferences[methodInstance] = func;
+				}
+			}
+		};
+
 	if ((methodInstance != NULL) && (!doingRedeclare))
 	{
 		SetMethodDependency(methodInstance);
@@ -14794,25 +14811,14 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			if (methodInstance->mDeclModule != this)
 				return ReferenceExternalMethodInstance(methodInstance, flags);
 
-			if ((!methodInstance->mIRFunction) && (mIsModuleMutable) && (!mBfIRBuilder->mIgnoreWrites))
-			{
-				auto importKind = methodInstance->GetImportCallKind();
-				if (importKind != BfImportCallKind_None)
-				{
-					BfLogSysM("DllImportGlobalVar creating %p\n", methodInstance);
-					methodInstance->mIRFunction = mBfIRBuilder->GetFakeVal();
-					auto func = CreateDllImportGlobalVar(methodInstance, true);
-					BF_ASSERT(func);
-					mFuncReferences[methodInstance] = func;
-				}
-			}
+			_CheckDllImport();
 
 			return BfModuleMethodInstance(methodInstance);
 		}
 	}
 
 	if (!doingRedeclare)
-	{
+	{		
 		BfModule* specModule = NULL;
 		if ((!keepInCurrentModule) && (projectList.size() > 0) && (!isUnspecializedPass) && (HasCompiledOutput()) && (!mIsScratchModule))
 		{
@@ -14828,7 +14834,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				return specMethodInstance.mMethodInstance;
 			return ReferenceExternalMethodInstance(specMethodInstance.mMethodInstance, flags);
 		}
-
+		
 		if ((!isUnspecializedPass) && (methodGenericArguments.size() != 0) && (methodInstGroup->mDefault == NULL))
 		{
 			// We are attempting to specialize but we don't have the unspecialized method yet.  Generate that first.
@@ -15007,7 +15013,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	}
 
 	SetMethodDependency(methodInstance);
-
+	
 	SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(declareModule->mCurMethodInstance, methodInstance);
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(declareModule->mCurTypeInstance, typeInst);
 	SetAndRestoreValue<BfFilePosition> prevFilePos(declareModule->mCurFilePosition);
@@ -15039,6 +15045,11 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 
 	if (methodInstance->mDeclModule != this)
 		return ReferenceExternalMethodInstance(methodInstance, flags);
+
+	if (doingRedeclare)
+	{
+		_CheckDllImport();
+	}
 
 	return BfModuleMethodInstance(methodInstance);
 }
