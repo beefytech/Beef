@@ -34,6 +34,7 @@ DebugTarget::DebugTarget(WinDebugger* debugger)
 	mHotHeapReserveSize = 0;
 	mLastHotHeapCleanIdx = 0;
 	mVDataHotIdx = -1;
+	mHotChainBreakIdx = 0;
 	mIsEmpty = false;
 	mWasLocallyBuilt = false;
 	mCurModuleId = 0;

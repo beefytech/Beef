@@ -5395,21 +5395,41 @@ void DbgModule::HotReplaceMethods(DbgType* newType, DbgType* primaryType)
 
 	MultiDictionary<StringView, DbgSubprogram*> oldProgramMap;
 	auto _AddToHotReplacedMethodList = [&](DbgSubprogram* oldMethod)
-		{	
-			int hotIdx = oldMethod->mCompileUnit->mDbgModule->mHotIdx;
-			if ((hotIdx > 0) && (hotIdx < mDebugTarget->mVDataHotIdx))
-			{
-				// Too old
-				return;
-			}
-
+		{
 			oldMethod->PopulateSubprogram();
 			if (oldMethod->mBlock.IsEmpty())
-				return;			
+				return;
 			auto symInfo = mDebugTarget->mSymbolMap.Get(oldMethod->mBlock.mLowPC);
 			if (symInfo != NULL)
 			{
-				oldProgramMap.Add(StringView(symInfo->mName), oldMethod);
+				StringView key = StringView(symInfo->mName);
+				DbgSubprogram** oldestValuePtr = NULL;
+				int count = 0;
+				for (auto itr = oldProgramMap.TryGet(key); itr != oldProgramMap.end(); ++itr)
+				{
+					auto& checkProgram = itr.GetValue();
+					if ((oldestValuePtr == NULL) ||
+						(checkProgram->mCompileUnit->mDbgModule->mHotIdx < (*oldestValuePtr)->mCompileUnit->mDbgModule->mHotIdx))
+						oldestValuePtr = &checkProgram;					
+					count++;
+				}
+
+				// If we hot jump from only the last version of the method then we potentially create a long "jump chain"
+				//  from a call to the original method through every hot version to this current one. We also don't want to 
+				//  blindly update every old version because that will cause hot loading to become too slow over many iterations. 
+				//  We balance this by linking SOME old versions to the newest one, decreasing in frequency as we move through 
+				//  the older methods
+				if ((count == 0) ||
+					(mDebugTarget->mHotChainBreakIdx++) % (1 << (count + 1)) == 0)
+				{
+					oldProgramMap.Add(StringView(symInfo->mName), oldMethod);
+				}
+				else if ((count > 1) && ((mDebugTarget->mHotChainBreakIdx++) % 2 == 0))
+				{
+					// Prefer the older of the methods when we are not adding a new entry. This will also ensure that the 
+					//  original method gets updated very often
+					*oldestValuePtr = oldMethod;
+				}
 			}
 		};
 
