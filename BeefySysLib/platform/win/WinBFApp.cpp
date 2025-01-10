@@ -204,7 +204,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 
 	if (mMenu != NULL)
 	{
-		WinBFMenu* placeholderMenu = (WinBFMenu*) AddMenuItem(mMenu, 0, ": Placeholder Menu Item :", NULL, NULL, false, -1, false);
+		WinBFMenu* placeholderMenu = (WinBFMenu*) AddMenuItem(mMenu, 0, "", NULL, NULL, false, -1, false);
 		placeholderMenu->mIsPlaceholder = true;
 	}
 
