@@ -101,6 +101,8 @@ namespace Beefy.geom
             }
         }
 
+		public Vector2 XY => .(mX, mY);
+
         public this(float x, float y, float z)
         {
             mX = x;
@@ -306,5 +308,7 @@ namespace Beefy.geom
         {
             str.AppendF("{0:0.0#}, {1:0.0#}, {2:0.0#}", mX, mY, mZ);
         }
+
+		public static Vector3 operator implicit(Vector2 vec) => .(vec.mX, vec.mY, 0);
     }
 }
