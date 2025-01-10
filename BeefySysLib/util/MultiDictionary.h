@@ -117,12 +117,12 @@ public:
 			return *this; // At end
 		}
 
-		TKey GetKey()
+		TKey& GetKey()
 		{
 			return this->mDict->mEntries[this->mCurEntry].mKey;
 		}
 
-		TValue GetValue()
+		TValue& GetValue()
 		{
 			return this->mDict->mEntries[this->mCurEntry].mValue;
 		}
@@ -466,6 +466,21 @@ public:
 		}
 
 		return end();
+	}	
+
+	template <typename TKey>
+	bool Contains(const TKey& key)
+	{
+		return TryGet(key) != end();
+	}
+
+	template <typename TKey>
+	int GetCount(const TKey& key)
+	{
+		int count = 0;
+		for (auto itr = TryGet(key); itr != end(); ++itr)
+			count++;
+		return count;
 	}
 
 	template <typename TKey>
