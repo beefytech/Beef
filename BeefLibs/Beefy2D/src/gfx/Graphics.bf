@@ -924,6 +924,11 @@ namespace Beefy.gfx
             FillRect(x, y + height - thickness, width, thickness);
         }
 
+		public void OutlineRect(Rect rect)
+		{
+			OutlineRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
+		}
+
         public void FillRectGradient(float x, float y, float width, float height,
             Color colorTopLeft, Color colorTopRight, Color colorBotLeft, Color colorBotRight)
         {

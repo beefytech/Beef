@@ -244,6 +244,11 @@ namespace Beefy.geom
             mHeight *= scaleY;
         }
 
+		public void Scale(T scale) mut
+		{
+			Scale(scale, scale);
+		}
+
         public void ScaleFrom(T scaleX, T scaleY, T centerX, T centerY) mut
         {
             Offset(-centerX, -centerY);

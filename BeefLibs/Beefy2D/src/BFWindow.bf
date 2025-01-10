@@ -484,6 +484,11 @@ namespace Beefy
             BFWindow_Resize(mNativeWindow, (int32)x, (int32)y, (int32)width, (int32)height, (int32)showKind);
         }
 
+		public virtual void ResizeClient(int width, int height)
+		{
+			Resize(mX, mY, mWindowWidth + (width - mClientWidth), mWindowHeight + (height - mClientHeight));
+		}
+
         public void SetForeground()
         {
             BFWindow_SetForeground(mNativeWindow);
