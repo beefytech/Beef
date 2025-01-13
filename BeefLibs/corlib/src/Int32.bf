@@ -66,7 +66,7 @@ namespace System
 		public override void ToString(String strBuffer)
 		{
 			// Dumb, make better.
-			char8[] strChars = scope:: char8[16];
+			char8[16] strChars = ?;
 			int32 char8Idx = 14;
 			int32 valLeft = (int32)this;
 			bool isNeg = true;
