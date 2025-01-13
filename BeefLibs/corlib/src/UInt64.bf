@@ -85,7 +85,7 @@ namespace System
 		    if (char8Idx == 20)
 		        strChars[char8Idx--] = '0';
 		    char8* char8Ptr = &strChars[char8Idx + 1];
-		    strBuffer.Append(char8Ptr);
+		    strBuffer.Append(char8Ptr, 20 - char8Idx);
 		}
 
 		public static Result<uint64, ParseError> Parse(StringView val, NumberStyles style = .Number, CultureInfo cultureInfo = null)

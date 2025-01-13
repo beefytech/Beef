@@ -73,7 +73,7 @@ namespace System
 			if (char8Idx == 14)
 				strChars[char8Idx--] = '0';
 			char8* char8Ptr = &strChars[char8Idx + 1];
-			strBuffer.Append(char8Ptr);
+			strBuffer.Append(char8Ptr, 14 - char8Idx);
 		}
 
 		void ToString(String strBuffer, int minNumerals)
