@@ -2106,8 +2106,12 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		return aTexture;
 	}
 
+	String pathEx = fileName;
+	if ((flags & TextureFlag_Additive) != 0)
+		pathEx += ":add";
+
 	DXTexture* aTexture = NULL;
-	if (mTextureMap.TryGetValue(fileName, &aTexture))
+	if (mTextureMap.TryGetValue(pathEx, &aTexture))
 	{
 		aTexture->AddRef();
 		return aTexture;
@@ -2251,7 +2255,7 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 	aTexture = (DXTexture*)RenderDevice::LoadTexture(fileName, flags);
 	if (aTexture != NULL)
 	{
-		aTexture->mPath = fileName;
+		aTexture->mPath = pathEx;
 		mTextureMap[aTexture->mPath] = aTexture;
 	}
 
