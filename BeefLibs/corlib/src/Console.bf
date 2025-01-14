@@ -396,6 +396,7 @@ namespace System
 		{
 			sForegroundColor = sOriginalForegroundColor;
 			sBackgroundColor = sOriginalBackgroundColor;
+			SetColors();
 
 #if !BF_PLATFORM_WINDOWS
 			Write("\x1B[0m");
