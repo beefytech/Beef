@@ -46,6 +46,11 @@ namespace Beefy.geom
 
 		public Vector2 Normalized => Vector2(mX, mY)..Normalize();
 
+		public bool IsLengthLess(float check)
+		{
+			return mX * mX + mY * mY < check * check;
+		}
+
 		public static Vector2 Normalize(Vector2 vector)
 		{
 			Vector2 newVec;
@@ -122,6 +127,11 @@ namespace Beefy.geom
 		public static Vector2 operator /(Vector2 vec1, float factor)
 		{
 		    return Vector2(vec1.mX / factor, vec1.mY / factor);
+		}
+
+		public override void ToString(String strBuffer)
+		{
+			strBuffer.AppendF("{0:0.0#}, {1:0.0#}", mX, mY);
 		}
     }
 }
