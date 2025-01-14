@@ -3899,6 +3899,8 @@ addr_ce CeContext::GetReflectTypeDecl(int typeId)
 
 	if (bfType->mDefineState < BfTypeDefineState_HasInterfaces_Direct)
 		ceModule->PopulateType(bfType, BfPopulateType_Interfaces_Direct);
+	if (bfType->mDefineState < BfTypeDefineState_HasCustomAttributes)
+		ceModule->PopulateType(bfType, BfPopulateType_CustomAttributes);
 	
 	BfCreateTypeDataContext createTypeDataCtx;
 	auto irData = ceModule->CreateTypeDeclData(bfType);

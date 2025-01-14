@@ -44,6 +44,7 @@ enum BfPopulateType
 	BfPopulateType_IdentityNoRemapAlias,
 	BfPopulateType_Declaration,
 	BfPopulateType_BaseType,
+	BfPopulateType_CustomAttributes,
 	BfPopulateType_Interfaces_Direct,
 	BfPopulateType_AllowStaticMethods,
 	BfPopulateType_Interfaces_All,

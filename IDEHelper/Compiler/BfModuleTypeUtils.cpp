@@ -4240,7 +4240,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if ((checkType != NULL) && (!checkType->IsInterface()) && (populateBase))
 			{
 				SetAndRestoreValue<BfTypeInstance*> prevBaseType(mContext->mCurTypeState->mCurBaseType, checkType->ToTypeInstance());
-				PopulateType(checkType, (populateType <= BfPopulateType_BaseType) ? BfPopulateType_BaseType : BfPopulateType_Data);
+				PopulateType(checkType, BfPopulateType_Declaration);
 			}
 
 			if (typeInstance->mDefineState >= BfTypeDefineState_Defined)
@@ -4466,7 +4466,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					baseTypeInst = ResolveTypeDef(mCompiler->mBfObjectTypeDef)->ToTypeInstance();
 			}
 		}
-		PopulateType(baseTypeInst, BfPopulateType_Data);
+
+		if (populateType > BfPopulateType_CustomAttributes)
+			PopulateType(baseTypeInst, BfPopulateType_Data);
 
 		typeInstance->mBaseTypeMayBeIncomplete = false;
 
@@ -4745,6 +4747,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			}
 		}
 	}
+
+	if (typeInstance->mDefineState < BfTypeDefineState_HasCustomAttributes)
+		typeInstance->mDefineState = BfTypeDefineState_HasCustomAttributes;
 
 	if (typeInstance->mTypeOptionsIdx == -2)
 	{

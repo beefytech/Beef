@@ -459,6 +459,7 @@ enum BfTypeDefineState : uint8
 	BfTypeDefineState_Declaring,
 	BfTypeDefineState_Declared,
 	BfTypeDefineState_ResolvingBaseType,
+	BfTypeDefineState_HasCustomAttributes,
 	BfTypeDefineState_HasInterfaces_Direct,
 	BfTypeDefineState_CETypeInit,
 	BfTypeDefineState_CEPostTypeInit,

@@ -6099,7 +6099,7 @@ BfIRValue BfModule::GetTypeTypeData(BfType* type, BfCreateTypeDataContext& ctx, 
 	if (type->IsObject())
 	{
 		typeFlags |= BfTypeFlags_Object;
-		if (typeInstance->mDefineState >= BfTypeDefineState_DefinedAndMethodsSlotted)
+		if ((!wantsTypeDecl) && (typeInstance->mDefineState >= BfTypeDefineState_DefinedAndMethodsSlotted))
 		{
 			BfMethodInstance* methodInstance = typeInstance->mVirtualMethodTable[mCompiler->GetVTableMethodOffset() + 0].mImplementingMethod;
 			if ((methodInstance != NULL) && (methodInstance->GetOwner() != mContext->mBfObjectType))
@@ -22007,7 +22007,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		}
 		else if (((methodDef->mName == BF_METHODNAME_ENUM_GETUNDERLYINGREF) || (methodDef->mName == BF_METHODNAME_ENUM_GETUNDERLYING)) &&
 			(mCurTypeInstance->IsEnum()) && (!mCurTypeInstance->IsBoxed()))
-		{
+		{			
 			BfIRValue ret;
 			// Unfortunate DebugLoc shenanigans-
 			//  Our params get removed if we don't have any DebugLocs, but we don't want to actually be able to step into this method,
@@ -22016,10 +22016,14 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 			mBfIRBuilder->ClearDebugLocation();
 			BfIRValue fromBool;
 			mBfIRBuilder->RestoreDebugLocation();
-			if (!mCurTypeInstance->IsValuelessType())
-				ret = mBfIRBuilder->CreateRet(GetThis().mValue);
-			else
-				mBfIRBuilder->CreateRetVoid();
+
+			if (!mCompiler->mIsResolveOnly)
+			{
+				if (!mCurTypeInstance->IsValuelessType())
+					ret = mBfIRBuilder->CreateRet(GetThis().mValue);
+				else
+					mBfIRBuilder->CreateRetVoid();
+			}
 			//ExtendLocalLifetimes(0);
 			EmitLifetimeEnds(&mCurMethodState->mHeadScope);
 
@@ -24071,7 +24075,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	BF_ASSERT((mCompiler->mCeMachine == NULL) || (!mCompiler->mCeMachine->mDbgPaused));
 
 	BP_ZONE("BfModule::DoMethodDeclaration");
-
+	
 	// We could trigger a DoMethodDeclaration from a const resolver or other location, so we reset it here
 	//  to effectively make mIgnoreWrites method-scoped
 	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites || mCurMethodInstance->mIsUnspecialized || mCurTypeInstance->mResolvingVarField);
