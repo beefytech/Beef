@@ -2093,6 +2093,8 @@ public:
 	void EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType, BfIRValue arg, SizedArrayImpl<uint8>& data, Dictionary<int, int>& usedStringIdMap);
 	BfIRValue CreateFieldData(BfFieldInstance* fieldInstance, int customAttrIdx);
 	void CreateSlotOfs(BfTypeInstance* typeInstance);
+	BfIRValue GetTypeTypeData(BfType* type, BfCreateTypeDataContext& ctx, bool needsTypeData, bool wantsTypeDecl, bool needsTypeNames, int& typeFlags, int& typeCode);
+	BfIRValue CreateTypeDeclData(BfType* type);
 	BfIRValue CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, bool forceReflectFields, bool needsTypeData, bool needsTypeNames, bool needsVData);
 	BfIRValue FixClassVData(BfIRValue value);
 

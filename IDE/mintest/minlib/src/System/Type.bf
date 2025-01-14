@@ -15,6 +15,15 @@ namespace System
         //  including the vtable and interface slots
     }
 
+	public class TypeDeclaration
+	{
+		protected TypeId mTypeId;
+		protected TypeId mBaseTypeId;
+		protected TypeId mOuterTypeId;
+		protected TypeFlags mTypeFlags;
+		protected TypeCode mTypeCode;
+	}
+
     [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     public class Type
     {

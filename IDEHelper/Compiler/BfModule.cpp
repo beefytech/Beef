@@ -6004,29 +6004,13 @@ void BfModule::CreateSlotOfs(BfTypeInstance* typeInstance)
 		GetConstValue32(virtSlotIdx), slotVarName);
 }
 
-BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, bool forceReflectFields, bool needsTypeData, bool needsTypeNames, bool needsVData)
+BfIRValue BfModule::GetTypeTypeData(BfType* type, BfCreateTypeDataContext& ctx, bool needsTypeData, bool wantsTypeDecl, bool needsTypeNames, int& typeFlags, int& typeCode)
 {
-	if ((IsHotCompile()) && (!type->mDirty))
-		return BfIRValue();
-
-	BfIRValue* irValuePtr = NULL;
-	if (mTypeDataRefs.TryGetValue(type, &irValuePtr))
-	{
-		return *irValuePtr;
-	}
-
 	BfTypeInstance* typeInstance = type->ToTypeInstance();
 	BfType* typeInstanceType = ResolveTypeDef(mCompiler->mReflectTypeInstanceTypeDef);
 	mBfIRBuilder->PopulateType(typeInstanceType, BfIRPopulateType_Full_ForceDefinition);
 
-	if (typeInstanceType == NULL)
-	{
-		AssertErrorState();
-		return BfIRValue();
-	}
-
-	BfIRValue typeTypeData;
-	int typeFlags = 0;
+	BfIRValue typeTypeData;	 
 	if (needsTypeData)
 	{
 		BfTypeInstance* typeInstanceTypeInstance = typeInstanceType->ToTypeInstance();
@@ -6069,10 +6053,15 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 		else
 			typeDataSource = mContext->mBfTypeType;
 
+		if (wantsTypeDecl)
+		{
+			typeDataSource = ResolveTypeDef(mCompiler->mTypeTypeDeclDef)->ToTypeInstance();
+		}
+
 		if ((!mTypeDataRefs.ContainsKey(typeDataSource)) && (typeDataSource != type) && (!mIsComptimeModule))
 		{
 			CreateTypeData(typeDataSource, ctx, false, true, needsTypeNames, true);
-		}
+		}		
 
 		typeTypeData = CreateClassVDataGlobal(typeDataSource);
 
@@ -6083,40 +6072,6 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 		//typeTypeData = CreateClassVDataGlobal(typeInstanceType->ToTypeInstance());
 		typeTypeData = mBfIRBuilder->CreateConstNull();
 	}
-
-	BfType* longType = GetPrimitiveType(BfTypeCode_Int64);
-	BfType* intType = GetPrimitiveType(BfTypeCode_Int32);
-	BfType* intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
-	BfType* shortType = GetPrimitiveType(BfTypeCode_Int16);
-	BfType* byteType = GetPrimitiveType(BfTypeCode_Int8);
-
-	BfType* typeIdType = intType;
-
-	auto voidPtrType = GetPrimitiveType(BfTypeCode_NullPtr);
-	auto voidPtrIRType = mBfIRBuilder->MapType(voidPtrType);
-	auto voidPtrPtrIRType = mBfIRBuilder->GetPointerTo(voidPtrIRType);
-	auto voidPtrNull = GetDefaultValue(voidPtrType);
-
-	SizedArray<BfIRValue, 4> typeValueParams;
-	GetConstClassValueParam(typeTypeData, typeValueParams);
-
-	FixConstValueParams(mContext->mBfObjectType, typeValueParams);
-	BfIRValue objectData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(mContext->mBfObjectType, BfIRPopulateType_Full), typeValueParams);
-
-	StringT<512> typeDataName;
-	if ((typeInstance != NULL) && (!typeInstance->IsTypeAlias()))
-	{
-		BfMangler::MangleStaticFieldName(typeDataName, mCompiler->GetMangleKind(), typeInstance, "sBfTypeData");
-		if (typeInstance->mTypeDef->IsGlobalsContainer())
-			typeDataName += "`G`" + typeInstance->mTypeDef->mProject->mName;
-	}
-	else
-	{
-		typeDataName += "sBfTypeData.";
-		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, mContext->mScratchModule);
-	}
-
-	int typeCode = BfTypeCode_None;
 
 	if (typeInstance != NULL)
 	{
@@ -6181,7 +6136,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 		typeFlags |= BfTypeFlags_Delegate;
 	if (type->IsFunction())
 		typeFlags |= BfTypeFlags_Function;
-	if ((type->mDefineState != BfTypeDefineState_CETypeInit) && (type->WantsGCMarking()))
+	if ((!wantsTypeDecl) && (type->mDefineState != BfTypeDefineState_CETypeInit) && (type->WantsGCMarking()))
 		typeFlags |= BfTypeFlags_WantsMarking;
 
 	if ((typeInstance != NULL) && (typeInstance->mTypeDef->mIsStatic))
@@ -6189,6 +6144,115 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 	if ((typeInstance != NULL) && (typeInstance->mTypeDef->mIsAbstract))
 		typeFlags |= BfTypeFlags_Abstract;
 
+	return typeTypeData;
+}
+
+BfIRValue BfModule::CreateTypeDeclData(BfType* type)
+{
+	auto typeDeclType = ResolveTypeDef(mCompiler->mTypeTypeDeclDef)->ToTypeInstance();
+
+	int typeCode = 0;
+	int typeFlags = 0;
+
+	BfCreateTypeDataContext createTypeDataCtx;	
+	BfIRValue typeTypeData = GetTypeTypeData(type, createTypeDataCtx, true, true, true, typeFlags, typeCode);
+
+	SizedArray<BfIRValue, 4> typeValueParams;
+	GetConstClassValueParam(typeTypeData, typeValueParams);
+
+	BfType* longType = GetPrimitiveType(BfTypeCode_Int64);
+	BfType* intType = GetPrimitiveType(BfTypeCode_Int32);
+	BfType* intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
+	BfType* shortType = GetPrimitiveType(BfTypeCode_Int16);
+	BfType* byteType = GetPrimitiveType(BfTypeCode_Int8);
+
+	BfType* typeIdType = intType;
+
+	auto typeInst = type->ToTypeInstance();
+
+	auto outerType = GetOuterType(type);	
+	BfType* baseType = NULL;
+	if (typeInst != NULL)
+		baseType = typeInst->mBaseType;
+
+	BfIRValue objectData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(mContext->mBfObjectType, BfIRPopulateType_Full), typeValueParams);
+	SizedArray<BfIRValue, 9> typeDataParams =
+	{
+		objectData,
+ 		GetConstValue(type->mTypeId, typeIdType), // mTypeId
+		GetConstValue((baseType != NULL) ? baseType->mTypeId : 0, typeIdType), // mBaseTypeId
+		GetConstValue((outerType != NULL) ? outerType->mTypeId : 0, typeIdType), // mOuterTypeId		
+		GetConstValue(typeFlags, intType), // mTypeFlags
+		GetConstValue(typeCode, byteType), // mTypeCode 		
+	};
+	FixConstValueParams(typeDeclType, typeDataParams);
+	auto typeData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(typeDeclType, BfIRPopulateType_Full), typeDataParams);
+
+	String typeDataName = StrFormat("sBfTypeDeclData.%d", type->mTypeId);
+	BfIRValue typeDataVar = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapTypeInst(typeDeclType), true,
+		BfIRLinkageType_External, typeData, typeDataName);
+	mBfIRBuilder->GlobalVar_SetAlignment(typeDataVar, mSystem->mPtrSize);
+
+	return typeDataVar;
+}
+
+BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, bool forceReflectFields, bool needsTypeData, bool needsTypeNames, bool needsVData)
+{
+	if ((IsHotCompile()) && (!type->mDirty))
+		return BfIRValue();
+
+	BfIRValue* irValuePtr = NULL;
+	if (mTypeDataRefs.TryGetValue(type, &irValuePtr))
+	{
+		return *irValuePtr;
+	}
+
+	BfTypeInstance* typeInstance = type->ToTypeInstance();
+	BfType* typeInstanceType = ResolveTypeDef(mCompiler->mReflectTypeInstanceTypeDef);
+	mBfIRBuilder->PopulateType(typeInstanceType, BfIRPopulateType_Full_ForceDefinition);
+
+	if (typeInstanceType == NULL)
+	{
+		AssertErrorState();
+		return BfIRValue();
+	}
+
+	int typeCode = BfTypeCode_None;
+	int typeFlags = 0;
+	BfIRValue typeTypeData = GetTypeTypeData(type, ctx, needsTypeData, false, needsTypeNames, typeFlags, typeCode);
+
+	BfType* longType = GetPrimitiveType(BfTypeCode_Int64);
+	BfType* intType = GetPrimitiveType(BfTypeCode_Int32);
+	BfType* intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
+	BfType* shortType = GetPrimitiveType(BfTypeCode_Int16);
+	BfType* byteType = GetPrimitiveType(BfTypeCode_Int8);
+
+	BfType* typeIdType = intType;
+
+	auto voidPtrType = GetPrimitiveType(BfTypeCode_NullPtr);
+	auto voidPtrIRType = mBfIRBuilder->MapType(voidPtrType);
+	auto voidPtrPtrIRType = mBfIRBuilder->GetPointerTo(voidPtrIRType);
+	auto voidPtrNull = GetDefaultValue(voidPtrType);
+
+	SizedArray<BfIRValue, 4> typeValueParams;
+	GetConstClassValueParam(typeTypeData, typeValueParams);
+
+	FixConstValueParams(mContext->mBfObjectType, typeValueParams);
+	BfIRValue objectData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(mContext->mBfObjectType, BfIRPopulateType_Full), typeValueParams);
+
+	StringT<512> typeDataName;
+	if ((typeInstance != NULL) && (!typeInstance->IsTypeAlias()))
+	{
+		BfMangler::MangleStaticFieldName(typeDataName, mCompiler->GetMangleKind(), typeInstance, "sBfTypeData");
+		if (typeInstance->mTypeDef->IsGlobalsContainer())
+			typeDataName += "`G`" + typeInstance->mTypeDef->mProject->mName;
+	}
+	else
+	{
+		typeDataName += "sBfTypeData.";
+		BfMangler::Mangle(typeDataName, mCompiler->GetMangleKind(), type, mContext->mScratchModule);
+	}
+	
 	int virtSlotIdx = -1;
 	if ((typeInstance != NULL) && (typeInstance->mSlotNum >= 0))
 		virtSlotIdx = typeInstance->mSlotNum + mCompiler->GetVDataPrefixDataCount() + mCompiler->GetDynCastVDataCount();

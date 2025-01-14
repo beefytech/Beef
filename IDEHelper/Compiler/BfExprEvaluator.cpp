@@ -12005,7 +12005,9 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 	}
 
 	mModule->AddDependency(type, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
-	mModule->PopulateType(type);
+
+	// We want to try to avoid triggering OnTypeInit for basic info
+	mModule->PopulateType(type, BfPopulateType_Interfaces_Direct);
 	auto typeInstance = type->ToTypeInstance();
 
 	auto _BoolResult = [&](bool val)
@@ -12072,214 +12074,220 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 		auto genericTypeInst = type->ToGenericTypeInstance();
 		_Int32Result((genericTypeInst != NULL) ? (int)genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.size() : 0);
 	}
-	else if (memberName == "Size")
-		_Int32Result(type->mSize);
-	else if (memberName == "Align")
-		_Int32Result(type->mAlign);
-	else if (memberName == "Stride")
-		_Int32Result(type->GetStride());
-	else if (memberName == "InstanceSize")
-		_Int32Result((typeInstance != NULL) ? typeInstance->mInstSize : type->mSize);
-	else if (memberName == "InstanceAlign")
-		_Int32Result((typeInstance != NULL) ? typeInstance->mInstAlign : type->mSize);
-	else if (memberName == "InstanceStride")
-		_Int32Result((typeInstance != NULL) ? typeInstance->GetInstStride() : type->GetStride());
-	else if (memberName == "UnderlyingType")
+	else
 	{
-		bool handled = false;
+		// We need full data
+		mModule->PopulateType(type, BfPopulateType_Data);
 
-		auto typeType = mModule->ResolveTypeDef(mModule->mCompiler->mTypeTypeDef);
-		if (type->IsGenericParam())
+		if (memberName == "Size")
+			_Int32Result(type->mSize);
+		else if (memberName == "Align")
+			_Int32Result(type->mAlign);
+		else if (memberName == "Stride")
+			_Int32Result(type->GetStride());
+		else if (memberName == "InstanceSize")
+			_Int32Result((typeInstance != NULL) ? typeInstance->mInstSize : type->mSize);
+		else if (memberName == "InstanceAlign")
+			_Int32Result((typeInstance != NULL) ? typeInstance->mInstAlign : type->mSize);
+		else if (memberName == "InstanceStride")
+			_Int32Result((typeInstance != NULL) ? typeInstance->GetInstStride() : type->GetStride());
+		else if (memberName == "UnderlyingType")
 		{
-			auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)type);
-			if (genericParamInstance->IsEnum())
+			bool handled = false;
+
+			auto typeType = mModule->ResolveTypeDef(mModule->mCompiler->mTypeTypeDef);
+			if (type->IsGenericParam())
 			{
-				handled = true;
-				mResult = BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(typeType)), typeType);
-			}
-		}
-		else if (type->IsEnum())
-		{
-			if (type->IsDataIncomplete())
-				mModule->PopulateType(type);
-			auto underlyingType = type->GetUnderlyingType();
-			if (underlyingType != NULL)
-			{
-				handled = true;
-				mModule->AddDependency(underlyingType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
-				mResult = BfTypedValue(mModule->CreateTypeDataRef(underlyingType), typeType);
-			}
-		}
-
-		if (!handled)
-			mResult = BfTypedValue(mModule->CreateTypeDataRef(mModule->GetPrimitiveType(BfTypeCode_None)), typeType);
-	}
-	else if (memberName == "BitSize")
-	{
-		auto int32Type = mModule->GetPrimitiveType(BfTypeCode_Int32);
-
-		BfType* checkType = type;
-		if (checkType->IsTypedPrimitive())
-			checkType = checkType->GetUnderlyingType();
-
-		if (checkType->IsGenericParam())
-		{
-			mResult = mModule->GetDefaultTypedValue(int32Type, false, Beefy::BfDefaultValueKind_Undef);
-			return true;
-		}
-
-		if ((typeInstance != NULL) && (typeInstance->IsEnum()))
-		{
-			if (typeInstance->mTypeInfoEx != NULL)
-			{
-				int64 minValue = typeInstance->mTypeInfoEx->mMinValue;
-				if (minValue < 0)
-					minValue = ~minValue;
-				int64 maxValue = typeInstance->mTypeInfoEx->mMaxValue;
-				if (maxValue < 0)
-					maxValue = ~maxValue;
-				uint64 value = (uint64)minValue | (uint64)maxValue;
-
-				int bitCount = 1;
-				if (typeInstance->mTypeInfoEx->mMinValue < 0)
-					bitCount++;
-
-				while (value >>= 1)
-					bitCount++;
-
-				mModule->AddDependency(typeInstance, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ReadFields);
-				mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, bitCount), int32Type);
-				return true;
-			}
-		}
-
-		int bitSize = checkType->mSize * 8;
-		if (checkType->GetTypeCode() == BfTypeCode_Boolean)
-			bitSize = 1;
-		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, bitSize), int32Type);
-		return true;
-	}
-	else if ((memberName == "MinValue") || (memberName == "MaxValue"))
-	{
-		bool isMin = memberName == "MinValue";
-		bool isBitSize = memberName == "BitSize";
-
-		BfType* checkType = type;
-		if (checkType->IsTypedPrimitive())
-			checkType = checkType->GetUnderlyingType();
-
-		if (checkType->IsGenericParam())
-		{
-			bool foundMatch = false;
-
-			auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)checkType);
-			if (((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Enum) != 0) ||
-				((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mEnumTypeDef))))
-				foundMatch = true;
-
-			else
-			{
-				for (auto constraint : genericParamInstance->mInterfaceConstraints)
+				auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)type);
+				if (genericParamInstance->IsEnum())
 				{
-					if (constraint->IsInstanceOf(mModule->mCompiler->mIIntegerTypeDef))
-						foundMatch = true;
+					handled = true;
+					mResult = BfTypedValue(mModule->mBfIRBuilder->GetUndefConstValue(mModule->mBfIRBuilder->MapType(typeType)), typeType);
+				}
+			}
+			else if (type->IsEnum())
+			{
+				if (type->IsDataIncomplete())
+					mModule->PopulateType(type);
+				auto underlyingType = type->GetUnderlyingType();
+				if (underlyingType != NULL)
+				{
+					handled = true;
+					mModule->AddDependency(underlyingType, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
+					mResult = BfTypedValue(mModule->CreateTypeDataRef(underlyingType), typeType);
 				}
 			}
 
-			if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
-			{
-				for (int genericParamIdx = (int)mModule->mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
-					genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
-				{
-					genericParamInstance = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
-					if (genericParamInstance->mExternType == type)
-					{
-						if (((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Enum) != 0) ||
-							((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mEnumTypeDef))))
-							foundMatch = true;
-					}
-				}
-			}
+			if (!handled)
+				mResult = BfTypedValue(mModule->CreateTypeDataRef(mModule->GetPrimitiveType(BfTypeCode_None)), typeType);
+		}
+		else if (memberName == "BitSize")
+		{
+			auto int32Type = mModule->GetPrimitiveType(BfTypeCode_Int32);
 
-			if (foundMatch)
+			BfType* checkType = type;
+			if (checkType->IsTypedPrimitive())
+				checkType = checkType->GetUnderlyingType();
+
+			if (checkType->IsGenericParam())
 			{
-				mResult = mModule->GetDefaultTypedValue(type, false, Beefy::BfDefaultValueKind_Undef);
+				mResult = mModule->GetDefaultTypedValue(int32Type, false, Beefy::BfDefaultValueKind_Undef);
 				return true;
 			}
-		}
-
-		if (checkType->IsPrimitiveType())
-		{
-			auto primType = (BfPrimitiveType*)checkType;
 
 			if ((typeInstance != NULL) && (typeInstance->IsEnum()))
 			{
 				if (typeInstance->mTypeInfoEx != NULL)
 				{
+					int64 minValue = typeInstance->mTypeInfoEx->mMinValue;
+					if (minValue < 0)
+						minValue = ~minValue;
+					int64 maxValue = typeInstance->mTypeInfoEx->mMaxValue;
+					if (maxValue < 0)
+						maxValue = ~maxValue;
+					uint64 value = (uint64)minValue | (uint64)maxValue;
+
+					int bitCount = 1;
+					if (typeInstance->mTypeInfoEx->mMinValue < 0)
+						bitCount++;
+
+					while (value >>= 1)
+						bitCount++;
+
 					mModule->AddDependency(typeInstance, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ReadFields);
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)typeInstance->mTypeInfoEx->mMinValue : (uint64)typeInstance->mTypeInfoEx->mMaxValue), typeInstance);
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, bitCount), int32Type);
 					return true;
 				}
+			}
+
+			int bitSize = checkType->mSize * 8;
+			if (checkType->GetTypeCode() == BfTypeCode_Boolean)
+				bitSize = 1;
+			mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, bitSize), int32Type);
+			return true;
+		}
+		else if ((memberName == "MinValue") || (memberName == "MaxValue"))
+		{
+			bool isMin = memberName == "MinValue";
+			bool isBitSize = memberName == "BitSize";
+
+			BfType* checkType = type;
+			if (checkType->IsTypedPrimitive())
+				checkType = checkType->GetUnderlyingType();
+
+			if (checkType->IsGenericParam())
+			{
+				bool foundMatch = false;
+
+				auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)checkType);
+				if (((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Enum) != 0) ||
+					((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mEnumTypeDef))))
+					foundMatch = true;
+
+				else
+				{
+					for (auto constraint : genericParamInstance->mInterfaceConstraints)
+					{
+						if (constraint->IsInstanceOf(mModule->mCompiler->mIIntegerTypeDef))
+							foundMatch = true;
+					}
+				}
+
+				if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
+				{
+					for (int genericParamIdx = (int)mModule->mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+						genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+					{
+						genericParamInstance = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+						if (genericParamInstance->mExternType == type)
+						{
+							if (((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Enum) != 0) ||
+								((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mEnumTypeDef))))
+								foundMatch = true;
+						}
+					}
+				}
+
+				if (foundMatch)
+				{
+					mResult = mModule->GetDefaultTypedValue(type, false, Beefy::BfDefaultValueKind_Undef);
+					return true;
+				}
+			}
+
+			if (checkType->IsPrimitiveType())
+			{
+				auto primType = (BfPrimitiveType*)checkType;
+
+				if ((typeInstance != NULL) && (typeInstance->IsEnum()))
+				{
+					if (typeInstance->mTypeInfoEx != NULL)
+					{
+						mModule->AddDependency(typeInstance, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ReadFields);
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)typeInstance->mTypeInfoEx->mMinValue : (uint64)typeInstance->mTypeInfoEx->mMaxValue), typeInstance);
+						return true;
+					}
+				}
+				else
+				{
+					switch (primType->mTypeDef->mTypeCode)
+					{
+					case BfTypeCode_Int8:
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? -0x80 : 0x7F), primType);
+						return true;
+					case BfTypeCode_Int16:
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? -0x8000 : 0x7FFF), primType);
+						return true;
+					case BfTypeCode_Int32:
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x80000000LL : 0x7FFFFFFF), primType);
+						return true;
+					case BfTypeCode_Int64:
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x8000000000000000LL : (uint64)0x7FFFFFFFFFFFFFFFLL), primType);
+						return true;
+					case BfTypeCode_UInt8:
+					case BfTypeCode_Char8:
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : 0xFF), primType);
+						return true;
+					case BfTypeCode_UInt16:
+					case BfTypeCode_Char16:
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : 0xFFFF), primType);
+						return true;
+					case BfTypeCode_UInt32:
+					case BfTypeCode_Char32:
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFLL), primType);
+						return true;
+					case BfTypeCode_UInt64:
+						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFFFFFFFFFLL), primType);
+						return true;
+					case BfTypeCode_IntPtr:
+						if (mModule->mSystem->mPtrSize == 8)
+							mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x8000000000000000LL : (uint64)0x7FFFFFFFFFFFFFFFLL), primType);
+						else
+							mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x80000000LL : 0x7FFFFFFF), primType);
+						return true;
+					case BfTypeCode_UIntPtr:
+						if (mModule->mSystem->mPtrSize == 8)
+							mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFFFFFFFFFLL), primType);
+						else
+							mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFLL), primType);
+						return true;
+					default: break;
+					}
+				}
+			}
+
+			if (type->IsEnum())
+			{
+				mModule->Fail(StrFormat("'MinValue' cannot be used on enum with payload '%s'", mModule->TypeToString(type).c_str()), propName);
 			}
 			else
 			{
-				switch (primType->mTypeDef->mTypeCode)
-				{
-				case BfTypeCode_Int8:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? -0x80 : 0x7F), primType);
-					return true;
-				case BfTypeCode_Int16:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? -0x8000 : 0x7FFF), primType);
-					return true;
-				case BfTypeCode_Int32:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x80000000LL : 0x7FFFFFFF), primType);
-					return true;
-				case BfTypeCode_Int64:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x8000000000000000LL : (uint64)0x7FFFFFFFFFFFFFFFLL), primType);
-					return true;
-				case BfTypeCode_UInt8:
-				case BfTypeCode_Char8:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : 0xFF), primType);
-					return true;
-				case BfTypeCode_UInt16:
-				case BfTypeCode_Char16:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : 0xFFFF), primType);
-					return true;
-				case BfTypeCode_UInt32:
-				case BfTypeCode_Char32:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFLL), primType);
-					return true;
-				case BfTypeCode_UInt64:
-					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFFFFFFFFFLL), primType);
-					return true;
-				case BfTypeCode_IntPtr:
-					if (mModule->mSystem->mPtrSize == 8)
-						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x8000000000000000LL : (uint64)0x7FFFFFFFFFFFFFFFLL), primType);
-					else
-						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? (uint64)-0x80000000LL : 0x7FFFFFFF), primType);
-					return true;
-				case BfTypeCode_UIntPtr:
-					if (mModule->mSystem->mPtrSize == 8)
-						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFFFFFFFFFLL), primType);
-					else
-						mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(primType->mTypeDef->mTypeCode, isMin ? 0 : (uint64)0xFFFFFFFFLL), primType);
-					return true;
-				default: break;
-				}
+				mModule->Fail(StrFormat("'%s' cannot be used on type '%s'", memberName.c_str(), mModule->TypeToString(type).c_str()), propName);
 			}
 		}
-
-		if (type->IsEnum())
-		{
-			mModule->Fail(StrFormat("'MinValue' cannot be used on enum with payload '%s'", mModule->TypeToString(type).c_str()), propName);
-		}
 		else
-		{
-			mModule->Fail(StrFormat("'%s' cannot be used on type '%s'", memberName.c_str(), mModule->TypeToString(type).c_str()), propName);
-		}
+			return false;
 	}
-	else
-		return false;
 
 	if ((type->IsGenericParam()) && (!mModule->mIsComptimeModule))
 	{

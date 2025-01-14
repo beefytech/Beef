@@ -5,6 +5,163 @@ using System.Diagnostics;
 
 namespace System
 {
+	public class TypeDeclaration
+	{
+		protected TypeId mTypeId;
+		protected TypeId mBaseTypeId;
+		protected TypeId mOuterTypeId;
+		protected TypeFlags mTypeFlags;
+		protected TypeCode mTypeCode;
+
+		public TypeCode TypeCode => mTypeCode;
+		public TypeId TypeId => mTypeId;
+		public TypeDeclaration BaseType
+		{
+			get
+			{
+				return Type.[Friend]Comptime_GetTypeDeclarationById((.)mBaseTypeId);
+			}
+		}
+		public TypeDeclaration OuterType
+		{
+			get
+			{
+				return Type.[Friend]Comptime_GetTypeDeclarationById((.)mOuterTypeId);
+			}
+		}
+		public Type ResolvedType => Type.[Friend]Comptime_GetTypeById((.)mTypeId);
+
+		public static Enumerator Types
+		{
+			get
+			{
+				return .();
+			}
+		}
+
+		public void GetFullName(String strBuffer)
+		{
+			strBuffer.Append(Type.[Friend]Comptime_Type_ToString((.)mTypeId));
+		}
+
+		public void GetName(String strBuffer)
+		{
+			strBuffer.Append(Type.[Friend]Comptime_TypeName_ToString((.)mTypeId));
+		}
+
+		public void GetNamespace(String strBuffer)
+		{
+			strBuffer.Append(Type.[Friend]Comptime_Namespace_ToString((.)mTypeId));
+		}
+
+		public bool HasCustomAttribute<T>() where T : Attribute
+		{
+			if (Compiler.IsComptime)
+			{
+				int32 attrIdx = -1;
+				Type attrType = null;
+				repeat
+				{
+					attrType = Type.[Friend]Comptime_Type_GetCustomAttributeType((int32)TypeId, ++attrIdx);
+					if (attrType == typeof(T))
+						return true;
+				}
+				while (attrType != null);
+				return false;
+			}
+			return false;
+		}
+
+		public Result<T> GetCustomAttribute<T>() where T : Attribute
+		{
+			if (Compiler.IsComptime)
+			{
+				int32 attrIdx = -1;
+				Type attrType = null;
+				repeat
+				{
+					attrType = Type.[Friend]Comptime_Type_GetCustomAttributeType((int32)TypeId, ++attrIdx);
+					if (attrType == typeof(T))
+					{
+						T val = ?;
+						if (Type.[Friend]Comptime_Type_GetCustomAttribute((int32)TypeId, attrIdx, &val))
+							return val;
+					}
+				}
+				while (attrType != null);
+				return .Err;
+			}
+			return .Err;
+		}
+
+		[Comptime]
+		public AttributeInfo.ComptimeTypeCustomAttributeEnumerator GetCustomAttributes()
+		{
+			return .((int32)TypeId);
+		}
+
+		public struct Enumerator : IEnumerator<TypeDeclaration>
+		{
+			int32 mCurId;
+
+			public Result<TypeDeclaration> GetNext() mut
+			{
+				while (true)
+				{
+					if (!Compiler.IsComptime)
+					{
+						Runtime.FatalError("Runtime type declarations are not supported");
+					}
+					else
+					{
+						var typeDecl = Type.[Friend]Comptime_GetNextTypeDeclaration(mCurId);
+						if (typeDecl != null)
+						{
+							mCurId = (.)typeDecl.TypeId;
+							return .Ok(typeDecl);
+						}
+						return .Err;
+					}
+				}
+			}
+		}
+
+		public static TypeDeclaration GetById(TypeId typeId) => Type.[Friend]Comptime_GetTypeDeclarationById((.)typeId);
+
+		public static Result<TypeDeclaration> GetByName(StringView typeName)
+		{
+			if (Compiler.IsComptime)
+			{
+				var type = Type.[Friend]Comptime_GetTypeDeclarationByName(typeName);
+				if (type == null)
+					return .Err;
+				return type;
+			}
+
+			return .Err;
+		}
+
+		public override void ToString(String strBuffer)
+		{
+			GetFullName(strBuffer);
+		}
+
+		public bool HasDeclaredField(StringView fieldName)
+		{
+			return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 0, fieldName);
+		}
+
+		public bool HasDeclaredMethod(StringView fieldName)
+		{
+			return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 1, fieldName);
+		}
+
+		public bool HasDeclaredProperty(StringView fieldName)
+		{
+			return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 2, fieldName);
+		}
+	}
+
     struct ClassVData
     {
         public int mType;
@@ -31,6 +188,21 @@ namespace System
 		protected TypeCode mTypeCode;
 		protected uint8 mAlign;
 		protected uint8 mAllocStackCountOverride;
+
+		public TypeDeclaration TypeDeclaration
+		{
+			get
+			{
+				if (!Compiler.IsComptime)
+				{
+					Runtime.FatalError("Runtime type declarations are not supported");
+				}
+				else
+				{
+					return Comptime_GetTypeDeclarationById((.)mTypeId);
+				}
+			}
+		}
 
 		public static TypeId TypeIdEnd
 		{
@@ -551,9 +723,15 @@ namespace System
 			public int64 mData;
 		}
 
+		static extern TypeDeclaration Comptime_GetTypeDeclarationById(int32 typeId);
+		static extern TypeDeclaration Comptime_GetTypeDeclarationByName(StringView name);
+		static extern TypeDeclaration Comptime_GetNextTypeDeclaration(int32 lastTypeId);
+		static extern bool Comptime_Type_HasDeclaredMember(int32 typeId, int32 kind, StringView name);
 		static extern Type Comptime_GetTypeById(int32 typeId);
 		static extern Type Comptime_GetTypeByName(StringView name);
 		static extern String Comptime_Type_ToString(int32 typeId);
+		static extern String Comptime_TypeName_ToString(int32 typeId);
+		static extern String Comptime_Namespace_ToString(int32 typeId);
 		static extern Type Comptime_GetSpecializedType(Type unspecializedType, Span<Type> typeArgs);
 		static extern bool Comptime_Type_GetCustomAttribute(int32 typeId, int32 attributeIdx, void* dataPtr);
 		static extern bool Comptime_Field_GetCustomAttribute(int32 typeId, int32 fieldIdx, int32 attributeIdx, void* dataPtr);
@@ -766,7 +944,7 @@ namespace System
 				while (true)
 				{
 					if (Compiler.IsComptime)
-						Runtime.FatalError("Comptime type enumeration not supported");
+						Runtime.FatalError("Comptime type enumeration not supported. Consider enumerating over TypeDeclaration.Types");
 
 					if (mCurId >= sTypeCount)
 						return .Err;
@@ -838,7 +1016,13 @@ namespace System
 
 namespace System.Reflection
 {
-    public struct TypeId : int32 {}
+    public struct TypeId : int32
+	{
+		public override void ToString(String strBuffer)
+		{
+			strBuffer.AppendF($"TypeId#{(int32)this}");
+		}
+	}
 
     [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     public class TypeInstance : Type
@@ -1409,7 +1593,11 @@ namespace System.Reflection
 				{
 					if (i > 0)
 						strBuffer.Append(", ");
-					Type.GetType(mResolvedTypeRefs[i]).GetFullName(strBuffer);
+					var genericArg = Type.GetType(mResolvedTypeRefs[i]);
+					if (genericArg != null)
+						genericArg.GetFullName(strBuffer);
+					else
+						strBuffer.Append("???");
 				}
 				strBuffer.Append('>');
 			}

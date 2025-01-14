@@ -474,6 +474,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mStringTypeDef = NULL;
 	mStringViewTypeDef = NULL;
 	mThreadStaticAttributeTypeDef = NULL;
+	mTypeTypeDeclDef = NULL;
 	mTypeTypeDef = NULL;
 	mUnboundAttributeTypeDef = NULL;
 	mValueTypeTypeDef = NULL;
@@ -7326,6 +7327,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mStringViewTypeDef = _GetRequiredType("System.StringView");
 	mTestAttributeTypeDef = _GetRequiredType("System.TestAttribute");
 	mThreadStaticAttributeTypeDef = _GetRequiredType("System.ThreadStaticAttribute");
+	mTypeTypeDeclDef = _GetRequiredType("System.TypeDeclaration");
 	mTypeTypeDef = _GetRequiredType("System.Type");
 	mUnboundAttributeTypeDef = _GetRequiredType("System.UnboundAttribute");
 	mValueTypeTypeDef = _GetRequiredType("System.ValueType");

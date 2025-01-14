@@ -3878,6 +3878,53 @@ addr_ce CeContext::GetConstantData(BeConstant* constant)
 	return (addr_ce)(ptr - mMemory.mVals);
 }
 
+
+addr_ce CeContext::GetReflectTypeDecl(int typeId)
+{
+	addr_ce* addrPtr = NULL;
+	if (!mReflectDeclMap.TryAdd(typeId, NULL, &addrPtr))
+		return *addrPtr;
+
+	auto ceModule = mCeMachine->mCeModule;
+	SetAndRestoreValue<bool> ignoreWrites(ceModule->mBfIRBuilder->mIgnoreWrites, false);
+
+	if (ceModule->mContext->mBfTypeType == NULL)
+		ceModule->mContext->ReflectInit();
+
+	if ((uintptr)typeId >= (uintptr)mCeMachine->mCeModule->mContext->mTypes.mSize)
+		return 0;
+	auto bfType = mCeMachine->mCeModule->mContext->mTypes[typeId];
+	if (bfType == NULL)
+		return 0;
+
+	if (bfType->mDefineState < BfTypeDefineState_HasInterfaces_Direct)
+		ceModule->PopulateType(bfType, BfPopulateType_Interfaces_Direct);
+	
+	BfCreateTypeDataContext createTypeDataCtx;
+	auto irData = ceModule->CreateTypeDeclData(bfType);
+
+	BeValue* beValue = NULL;
+	if (auto constant = mCeMachine->mCeModule->mBfIRBuilder->GetConstant(irData))
+	{
+		if (constant->mConstType == BfConstType_BitCast)
+		{
+			auto bitcast = (BfConstantBitCast*)constant;
+			constant = mCeMachine->mCeModule->mBfIRBuilder->GetConstantById(bitcast->mTarget);
+		}
+		if (constant->mConstType == BfConstType_GlobalVar)
+		{
+			auto globalVar = (BfGlobalVar*)constant;
+			beValue = mCeMachine->mCeModule->mBfIRBuilder->mBeIRCodeGen->GetBeValue(globalVar->mStreamId);
+		}
+	}
+
+	if (auto constant = BeValueDynCast<BeConstant>(beValue))
+		*addrPtr = GetConstantData(constant);
+
+	// We need to 'get' again because we might have resized
+	return *addrPtr;
+}
+
 addr_ce CeContext::GetReflectType(int typeId)
 {
 	addr_ce* addrPtr = NULL;
@@ -3924,7 +3971,7 @@ addr_ce CeContext::GetReflectType(int typeId)
 	return *addrPtr;
 }
 
-addr_ce CeContext::GetReflectType(const String& typeName)
+addr_ce CeContext::GetReflectType(const String& typeName, bool useDeclaration)
 {
 	if (mCeMachine->mTempParser == NULL)
 	{
@@ -3964,7 +4011,7 @@ addr_ce CeContext::GetReflectType(const String& typeName)
 
 	if (type == NULL)
 		return 0;
-	return GetReflectType(type->mTypeId);
+	return useDeclaration ? GetReflectTypeDecl(type->mTypeId) : GetReflectType(type->mTypeId);
 }
 
 int CeContext::GetTypeIdFromType(addr_ce typeAddr)
@@ -6036,6 +6083,110 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					OutputDebugStrF("Debug Val: %lld %llX\n", intVal, intVal);
 				}
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectTypeDeclById)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + ceModule->mSystem->mPtrSize);
+				auto reflectType = GetReflectTypeDecl(typeId);
+				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectTypeDeclByName)
+			{
+				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				String typeName;
+				if (!GetStringFromStringView(strViewPtr, typeName))
+				{
+					_Fail("Invalid StringView");
+					return false;
+				}
+				auto reflectType = GetReflectType(typeName, true);
+				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectNextTypeDecl)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + ceModule->mSystem->mPtrSize);
+
+				addr_ce reflectType = 0;
+
+				auto context = mCeMachine->mCeModule->mContext;
+				while (true)
+				{
+					typeId++;
+					if (typeId >= mCeMachine->mCeModule->mContext->mTypes.mSize)
+						break;
+					auto bfType = mCeMachine->mCeModule->mContext->mTypes[typeId];
+					if (bfType != NULL)
+					{
+						if (bfType->IsOnDemand())
+							continue;
+						if (bfType->IsBoxed())
+							continue;
+						if (bfType->IsArray())
+							continue;
+						if (bfType->IsNullable())
+							continue;
+						
+						auto bfTypeInst = bfType->ToTypeInstance();
+						if (bfTypeInst == NULL)
+							continue;
+						
+						if (bfTypeInst->mTypeDef->mTypeDeclaration == NULL)
+							continue;
+
+						if (bfTypeInst->IsGenericTypeInstance())
+						{
+							if (!bfTypeInst->IsUnspecializedType())
+								continue;								
+							if (bfTypeInst->IsUnspecializedTypeVariation())
+								continue;							
+						}
+						
+						auto curProject = mCurModule->mProject;
+						auto declProject = bfTypeInst->mTypeDef->mProject;
+
+						if ((declProject != curProject) && (!curProject->HasDependency(declProject)))
+							continue;
+															
+						reflectType = GetReflectTypeDecl(typeId);
+						if (reflectType != 0)
+							break;						
+					}
+				}
+				
+				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_HasDeclaredMember)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + 1);
+				int32 memberKind = *(int32*)((uint8*)stackPtr + 1 + 4);
+				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr + 1 + 4 + 4);				
+
+				bool hasMember;
+
+				String typeName;
+				if (!GetStringFromStringView(strViewPtr, typeName))
+				{
+					_Fail("Invalid StringView");
+					return false;
+				}
+
+				BfType* type = GetBfType(typeId);
+				if ((type != NULL) && (type->IsTypeInstance()))
+				{					
+					auto typeInst = type->ToTypeInstance();
+					typeInst->mTypeDef->PopulateMemberSets();
+					if (memberKind == 0) // Field					
+						hasMember = typeInst->mTypeDef->mFieldSet.ContainsWith((StringImpl&)typeName);
+					else if (memberKind == 1) // Method
+						hasMember = typeInst->mTypeDef->mMethodSet.ContainsWith((StringImpl&)typeName);
+					else if (memberKind == 2) // Property
+						hasMember = typeInst->mTypeDef->mPropertySet.ContainsWith((StringImpl&)typeName);
+				}
+
+				*(addr_ce*)(stackPtr + 0) = hasMember;
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectType)
 			{
 				addr_ce objAddr = *(addr_ce*)((uint8*)stackPtr + ceModule->mSystem->mPtrSize);
@@ -6062,7 +6213,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					_Fail("Invalid StringView");
 					return false;
 				}
-				auto reflectType = GetReflectType(typeName);
+				auto reflectType = GetReflectType(typeName, false);
 				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
 			}
@@ -6089,9 +6240,54 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, mCallerMethodInstance);
 				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
-				CeSetAddrVal(stackPtr + 0, GetString(mCeMachine->mCeModule->TypeToString(type)), ptrSize);
+
+				String typeName;
+				mCeMachine->mCeModule->DoTypeToString(typeName, type, BfTypeNameFlags_None);
+				CeSetAddrVal(stackPtr + 0, GetString(typeName), ptrSize);
 				_FixVariables();
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_TypeName_ToString)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
+
+				BfType* type = GetBfType(typeId);
+				bool success = false;
+				if (type == NULL)
+				{
+					_Fail("Invalid type");
+					return false;
+				}
+
+				String str;
+				if (auto typeInst = type->ToTypeInstance())
+					str = typeInst->mTypeDef->mName->ToString();
+
+				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, mCallerMethodInstance);
+				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
+				CeSetAddrVal(stackPtr + 0, GetString(str), ptrSize);
+				_FixVariables();
+				}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Namespace_ToString)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
+
+				BfType* type = GetBfType(typeId);
+				bool success = false;
+				if (type == NULL)
+				{
+					_Fail("Invalid type");
+					return false;
+				}
+
+				String str;
+				if (auto typeInst = type->ToTypeInstance())
+					typeInst->mTypeDef->mNamespace.ToString(str);
+
+				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, mCallerMethodInstance);
+				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
+				CeSetAddrVal(stackPtr + 0, GetString(str), ptrSize);
+				_FixVariables();
+				}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Type_GetCustomAttribute)
 			{
 				int32 typeId = *(int32*)((uint8*)stackPtr + 1);
@@ -9650,7 +9846,23 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mTypeTypeDef))
 			{
-				if (methodDef->mName == "Comptime_GetTypeById")
+				if (methodDef->mName == "Comptime_GetTypeDeclarationById")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_GetReflectTypeDeclById;
+				}
+				if (methodDef->mName == "Comptime_GetTypeDeclarationByName")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_GetReflectTypeDeclByName;
+				}
+				else if (methodDef->mName == "Comptime_GetNextTypeDeclaration")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_GetReflectNextTypeDecl;
+				}
+				else if (methodDef->mName == "Comptime_Type_HasDeclaredMember")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_HasDeclaredMember;
+				}
+				else if (methodDef->mName == "Comptime_GetTypeById")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_GetReflectTypeById;
 				}
@@ -9665,6 +9877,14 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_Type_ToString")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Type_ToString;
+				}
+				else if (methodDef->mName == "Comptime_TypeName_ToString")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_TypeName_ToString;
+				}
+				else if (methodDef->mName == "Comptime_Namespace_ToString")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Namespace_ToString;
 				}
 				else if (methodDef->mName == "Comptime_Type_GetCustomAttribute")
 				{
@@ -10259,7 +10479,8 @@ CeContext* CeMachine::AllocContext()
 void CeMachine::ReleaseContext(CeContext* ceContext)
 {
 	ceContext->mStringMap.Clear();
-	ceContext->mReflectMap.Clear();
+	ceContext->mReflectDeclMap.Clear();
+	ceContext->mReflectMap.Clear();	
 	ceContext->mConstDataMap.Clear();
 	ceContext->mMemory.Clear();
 	if (ceContext->mMemory.mAllocSize > BF_CE_MAX_CARRYOVER_MEMORY)

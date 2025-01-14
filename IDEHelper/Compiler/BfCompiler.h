@@ -376,6 +376,7 @@ public:
 	BfTypeDef* mEnumTypeDef;
 	BfTypeDef* mStringTypeDef;
 	BfTypeDef* mStringViewTypeDef;
+	BfTypeDef* mTypeTypeDeclDef;
 	BfTypeDef* mTypeTypeDef;
 	BfTypeDef* mValueTypeTypeDef;
 	BfTypeDef* mResultTypeDef;

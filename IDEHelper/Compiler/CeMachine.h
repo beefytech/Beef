@@ -428,12 +428,18 @@ enum CeFunctionKind
 	CeFunctionKind_DynCheckFailed,
 	CeFunctionKind_FatalError,
 	CeFunctionKind_DebugWrite,
-	CeFunctionKind_DebugWrite_Int,
+	CeFunctionKind_DebugWrite_Int,	
+	CeFunctionKind_GetReflectTypeDeclById,
+	CeFunctionKind_GetReflectTypeDeclByName,
+	CeFunctionKind_GetReflectNextTypeDecl,
+	CeFunctionKind_HasDeclaredMember,
 	CeFunctionKind_GetReflectType,
 	CeFunctionKind_GetReflectTypeById,
 	CeFunctionKind_GetReflectTypeByName,
 	CeFunctionKind_GetReflectSpecializedType,
 	CeFunctionKind_Type_ToString,
+	CeFunctionKind_TypeName_ToString,
+	CeFunctionKind_Namespace_ToString,
 	CeFunctionKind_Type_GetCustomAttribute,
 	CeFunctionKind_Field_GetCustomAttribute,
 	CeFunctionKind_Method_GetCustomAttribute,
@@ -1105,6 +1111,7 @@ public:
 	int mStackSize;
 	Dictionary<int, addr_ce> mStringMap;
 	Dictionary<int, addr_ce> mReflectMap;
+	Dictionary<int, addr_ce> mReflectDeclMap;
 	Dictionary<Val128, addr_ce> mConstDataMap;
 	HashSet<int> mStaticCtorExecSet;
 	Dictionary<String, CeStaticFieldInfo> mStaticFieldMap;
@@ -1137,8 +1144,9 @@ public:
 	uint8* CeMalloc(int size);
 	bool CeFree(addr_ce addr);
 	addr_ce CeAllocArray(BfArrayType* arrayType, int count, addr_ce& elemsAddr);
+	addr_ce GetReflectTypeDecl(int typeId);	
 	addr_ce GetReflectType(int typeId);
-	addr_ce GetReflectType(const String& typeName);
+	addr_ce GetReflectType(const String& typeName, bool useDeclaration);
 	int GetTypeIdFromType(addr_ce typeAddr);
 	addr_ce GetReflectSpecializedType(addr_ce unspecializedType, addr_ce typeArgsSpanAddr);
 	addr_ce GetString(int stringId);
