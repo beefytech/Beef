@@ -1263,6 +1263,7 @@ BfFieldDef* BfDefBuilder::AddField(BfTypeDef* typeDef, BfTypeReference* fieldTyp
 BfMethodDef* BfDefBuilder::AddMethod(BfTypeDef* typeDef, BfMethodType methodType, BfProtection protection, bool isStatic, const StringImpl& name, bool addedAfterEmit)
 {
 	BF_ASSERT(typeDef->mTypeCode != BfTypeCode_TypeAlias);
+	BF_ASSERT(!typeDef->mIsOpaque);
 
 	auto methodDef = new BfMethodDef();
 	methodDef->mIdx = (int)typeDef->mMethods.size();
@@ -2293,27 +2294,30 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		needsDynamicCastMethod = false;
 	}
 
-	if (((mCurTypeDef->mTypeCode == BfTypeCode_Object) || (mCurTypeDef->mTypeCode == BfTypeCode_Inferred)) &&
-		(!mCurTypeDef->mIsStatic) && (ctorClear == NULL))
+	if (!mCurTypeDef->mIsOpaque)
 	{
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_CtorClear, BfProtection_Private, false, "", mIsComptime);
-		methodDef->mIsMutating = true;
-	}
+		if (((mCurTypeDef->mTypeCode == BfTypeCode_Object) || (mCurTypeDef->mTypeCode == BfTypeCode_Inferred)) &&
+			(!mCurTypeDef->mIsStatic) && (ctorClear == NULL))
+		{
+			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_CtorClear, BfProtection_Private, false, "", mIsComptime);
+			methodDef->mIsMutating = true;
+		}
 
-	if ((needsDtor) && (dtor == NULL))
-	{
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, false, "", mIsComptime);
-	}
+		if ((needsDtor) && (dtor == NULL))
+		{
+			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, false, "", mIsComptime);
+		}
 
-	if ((needsStaticDtor) && (staticDtor == NULL))
-	{
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, true, "", mIsComptime);
-	}
+		if ((needsStaticDtor) && (staticDtor == NULL))
+		{
+			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, true, "", mIsComptime);
+		}
 
-	if ((needsStaticInit) && (staticCtor == NULL))
-	{
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, BfProtection_Public, true, "", mIsComptime);
-	}	
+		if ((needsStaticInit) && (staticCtor == NULL))
+		{
+			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, BfProtection_Public, true, "", mIsComptime);
+		}
+	}
 
 	bool makeCtorPrivate = hasCtor;
 
@@ -2322,7 +2326,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	if (mCurTypeDef->mTypeCode == BfTypeCode_Extension)
 		needsDefaultCtor = false;
 
-	if ((needsDefaultCtor) && ((!hasDefaultCtor)))
+	if ((needsDefaultCtor) && (!hasDefaultCtor) && (!mCurTypeDef->mIsOpaque))
 	{
 		BfProtection prot = hasCtor ? BfProtection_Hidden : BfProtection_Public;
 		if (mCurTypeDef->mName == mSystem->mEmptyAtom)
@@ -2340,7 +2344,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 	//TODO: Don't do this for the autocomplete pass
 	if ((needsDynamicCastMethod) && (mCurTypeDef->mTypeCode != BfTypeCode_Interface) && (mCurTypeDef->mTypeCode != BfTypeCode_Extension) &&
-		(!mCurTypeDef->mIsStatic) && (!isAutocomplete) && (!isAlias))
+		(!mCurTypeDef->mIsStatic) && (!isAutocomplete) && (!isAlias) && (!mCurTypeDef->mIsOpaque))
 	{
 		AddDynamicCastMethods(mCurTypeDef);
 	}
@@ -2361,7 +2365,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	if (isPayloadEnum)
 		hasNonStaticField = true;
 
-	if (mCurTypeDef->mTypeCode != BfTypeCode_Interface)
+	if ((mCurTypeDef->mTypeCode != BfTypeCode_Interface) && (!mCurTypeDef->mIsOpaque))
 	{
 		if ((hasStaticField) && (staticMarkMethod == NULL))
 		{
@@ -2389,7 +2393,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	if (toStringMethod != NULL)
 		wantsToString = false;
 
-	if ((mCurTypeDef->mTypeCode == BfTypeCode_Enum) && (!isPayloadEnum) && (getUnderlyingMethod == NULL))
+	if ((mCurTypeDef->mTypeCode == BfTypeCode_Enum) && (!isPayloadEnum) && (getUnderlyingMethod == NULL) && (!mCurTypeDef->mIsOpaque))
 	{
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
@@ -2447,7 +2451,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		}
 	}
 
-	if (wantsToString)
+	if ((wantsToString) && (!mCurTypeDef->mIsOpaque))
 	{
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
@@ -2463,7 +2467,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		methodDef->mAddedAfterEmit = mIsComptime;
 	}
 
-	if ((needsEqualsMethod) && (equalsMethod == NULL) && (equalsOpMethod == NULL))
+	if ((needsEqualsMethod) && (equalsMethod == NULL) && (equalsOpMethod == NULL) && (!mCurTypeDef->mIsOpaque))
 	{
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
@@ -2478,7 +2482,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		methodDef->mAddedAfterEmit = mIsComptime;
 	}
 
-	if ((needsEqualsMethod) && (strictEqualsMethod == NULL))
+	if ((needsEqualsMethod) && (strictEqualsMethod == NULL) && (!mCurTypeDef->mIsOpaque))
 	{
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);

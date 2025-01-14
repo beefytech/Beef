@@ -5475,7 +5475,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			{
 				auto resolvedFieldType = fieldInstance->GetResolvedType();
 				if ((!typeInstance->IsBoxed()) && (fieldDef != NULL))
-				{					
+				{
 					if (fieldDef->mUsingProtection != BfProtection_Hidden) 
 					{
 						auto fieldDecl = fieldDef->GetFieldDeclaration();
@@ -5742,6 +5742,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						}
 					}
 				}
+
+				if ((resolvedFieldType->IsOpaque()) && (!IsInSpecializedGeneric()))
+					Fail(StrFormat("Invalid use of opaque type '%s' in field '%s.%s'",
+						TypeToString(resolvedFieldType).c_str(), TypeToString(mCurTypeInstance).c_str(), fieldDef->mName.c_str()),
+						fieldDef->mTypeRef, true);
 
 				if ((!typeInstance->IsSpecializedType()) && (!typeInstance->IsOnDemand()) && (fieldDef != NULL) && (!CheckDefineMemberProtection(fieldDef->mProtection, resolvedFieldType)))
 				{

@@ -2751,7 +2751,9 @@ bool BfTypeInstance::IsValuelessType()
 		return false;
 	}
 	if (mTypeDef->mIsOpaque)
-		return false;
+	{
+		return true;
+	}
 
 	BF_ASSERT((mDefineState >= BfTypeDefineState_Defined) || (mTypeFailed));
 	BF_ASSERT(mInstSize >= 0);
