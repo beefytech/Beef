@@ -6240,9 +6240,16 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, mCallerMethodInstance);
 				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
-
+				
+				bool simpleName = false;				
+				if ((type->IsUnspecializedType()) && (!type->IsUnspecializedTypeVariation()) && (!type->IsGenericParam()))
+					simpleName = true;
 				String typeName;
-				mCeMachine->mCeModule->DoTypeToString(typeName, type, BfTypeNameFlags_None);
+				if (simpleName)
+					mCeMachine->mCeModule->DoTypeToString(typeName, type, BfTypeNameFlags_None);					
+				else
+					typeName = mCeMachine->mCeModule->TypeToString(type);
+					
 				CeSetAddrVal(stackPtr + 0, GetString(typeName), ptrSize);
 				_FixVariables();
 			}
