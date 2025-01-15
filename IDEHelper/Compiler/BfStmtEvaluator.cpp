@@ -4167,47 +4167,73 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 	auto val = CreateValueFromExpression(deleteStmt->mExpression);
 	if (!val)
 		return;
-
-	if (val.mType->IsAllocType())
-		val.mType = val.mType->GetUnderlyingType();
-
-	BfGenericParamType* genericType = NULL;
-	if (val.mType->IsGenericParam())
-		genericType = (BfGenericParamType*)val.mType;
-	if ((val.mType->IsPointer()) && (val.mType->GetUnderlyingType()->IsGenericParam()))
-		genericType = (BfGenericParamType*)val.mType->GetUnderlyingType();
-
+	
 	auto checkType = val.mType;
-	if (genericType != NULL)
+	for (int pass = 0; pass < 2; pass++)
 	{
-		BfGenericParamFlags genericParamFlags = BfGenericParamFlag_None;
-		BfType* typeConstraint = NULL;
-		auto genericParam = GetMergedGenericParamData(genericType, genericParamFlags, typeConstraint);
+		BfGenericParamType* genericType = NULL;
+		if (checkType->IsGenericParam())
+			genericType = (BfGenericParamType*)checkType;
+		if ((checkType->IsPointer()) && (checkType->GetUnderlyingType()->IsGenericParam()))
+			genericType = (BfGenericParamType*)checkType->GetUnderlyingType();
+		if ((genericType != NULL) || (checkType->IsUnspecializedType()))
+		{		
+			BfGenericParamFlags genericParamFlags = BfGenericParamFlag_None;
+			BfType* typeConstraint = NULL;
+			BfGenericParamInstance* genericParam = NULL;
+			if (genericType != NULL)
+				genericParam = GetMergedGenericParamData(genericType, genericParamFlags, typeConstraint);
+			if (genericParam == NULL)
+				GetMergedGenericParamData(checkType, genericParamFlags, typeConstraint);
 
-		if (typeConstraint != NULL)
-			checkType = typeConstraint;
-		bool canAlwaysDelete = checkType->IsDelegate() || checkType->IsFunction() || checkType->IsArray();
-		if (auto checkTypeInst = checkType->ToTypeInstance())
-		{
-			if ((checkTypeInst->IsInstanceOf(mCompiler->mDelegateTypeDef)) ||
-				(checkTypeInst->IsInstanceOf(mCompiler->mFunctionTypeDef)))
-				canAlwaysDelete = true;
-		}
+			if (typeConstraint != NULL)
+				checkType = typeConstraint;
+			bool canAlwaysDelete = checkType->IsDelegate() || checkType->IsFunction() || checkType->IsArray();
+			if (auto checkTypeInst = checkType->ToTypeInstance())
+			{
+				if ((checkTypeInst->IsInstanceOf(mCompiler->mDelegateTypeDef)) ||
+					(checkTypeInst->IsInstanceOf(mCompiler->mFunctionTypeDef)))
+					canAlwaysDelete = true;
+			}
 
-		if (!canAlwaysDelete)
-		{
-			if (genericParamFlags & (BfGenericParamFlag_Delete | BfGenericParamFlag_Var))
-				return;
-			if (genericParamFlags & BfGenericParamFlag_StructPtr)
-				return;
-			if ((genericParamFlags & BfGenericParamFlag_Struct) && (checkType->IsPointer()))
-				return;
-			auto genericParamInst = GetGenericParamInstance(genericType);
-			Fail(StrFormat("Must add 'where %s : delete' constraint to generic parameter to delete generic type '%s'",
-				genericParamInst->GetGenericParamDef()->mName.c_str(), TypeToString(val.mType).c_str()), deleteStmt->mExpression);
-			return;
+			if (!canAlwaysDelete)
+			{
+				bool success = false;
+				if (genericParamFlags & (BfGenericParamFlag_Delete | BfGenericParamFlag_Var))
+					success = true;
+				else if (genericParamFlags & BfGenericParamFlag_StructPtr)
+					success = true;
+				else if ((genericParamFlags & BfGenericParamFlag_Struct) && (checkType->IsPointer()))
+					success = true;
+
+				if (success)
+				{
+					if ((pass == 1) && (genericType != NULL))
+					{
+						auto genericParamInst = GetGenericParamInstance(genericType);
+						Warn(0, StrFormat("Must add 'where alloctype(%s) : delete' constraint to generic parameter to delete generic type '%s'",
+							genericParamInst->GetGenericParamDef()->mName.c_str(), TypeToString(val.mType).c_str()), deleteStmt->mExpression);
+					}
+					return;
+				}
+
+				if (genericType != NULL)
+				{
+					auto genericParamInst = GetGenericParamInstance(genericType);
+					Fail(StrFormat("Must add 'where %s : delete' constraint to generic parameter to delete generic type '%s'",
+						genericParamInst->GetGenericParamDef()->mName.c_str(), TypeToString(val.mType).c_str()), deleteStmt->mExpression);
+					return;
+				}
+			}			
 		}
-	}
+		if (pass == 0)
+		{
+			if (checkType->IsAllocType())
+				checkType = checkType->GetUnderlyingType();
+			else
+				break;
+		}
+	}	
 
 	if (checkType->IsVar())
 	{
