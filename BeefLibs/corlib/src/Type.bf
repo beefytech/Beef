@@ -13,6 +13,14 @@ namespace System
 		protected TypeFlags mTypeFlags;
 		protected TypeCode mTypeCode;
 
+		public static TypeDeclaration.Enumerator TypeDeclarations
+		{
+			get
+			{
+				return .();
+			}
+		}
+
 		public TypeCode TypeCode => mTypeCode;
 		public TypeId TypeId => mTypeId;
 		public TypeDeclaration BaseType
@@ -29,15 +37,8 @@ namespace System
 				return Type.[Friend]Comptime_GetTypeDeclarationById((.)mOuterTypeId);
 			}
 		}
-		public Type ResolvedType => Type.[Friend]Comptime_GetTypeById((.)mTypeId);
 
-		public static Enumerator Types
-		{
-			get
-			{
-				return .();
-			}
-		}
+		public Type ResolvedType => Type.[Friend]Comptime_GetTypeById((.)mTypeId);
 
 		public void GetFullName(String strBuffer)
 		{
@@ -213,6 +214,14 @@ namespace System
 		}
 
 		public static Enumerator Types
+		{
+			get
+			{
+				return .();
+			}
+		}
+
+		public static TypeDeclaration.Enumerator TypeDeclarations
 		{
 			get
 			{
