@@ -3917,8 +3917,16 @@ addr_ce CeContext::GetReflectTypeDecl(int typeId)
 	if (bfType->mDefineState < BfTypeDefineState_HasCustomAttributes)
 		ceModule->PopulateType(bfType, BfPopulateType_CustomAttributes);
 	
+	BfProject* curProject = NULL;
+	auto activeTypeDef = mCurModule->GetActiveTypeDef();
+	if (activeTypeDef != NULL)
+		curProject = activeTypeDef->mProject;
+
+	if (curProject == NULL)
+		return 0;
+
 	BfCreateTypeDataContext createTypeDataCtx;
-	auto irData = ceModule->CreateTypeDeclData(bfType, mCurModule->mProject);
+	auto irData = ceModule->CreateTypeDeclData(bfType, curProject);
 
 	BeValue* beValue = NULL;
 	if (auto constant = mCeMachine->mCeModule->mBfIRBuilder->GetConstant(irData))
