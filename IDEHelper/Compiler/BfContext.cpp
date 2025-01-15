@@ -1459,7 +1459,7 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 				if (dependencyFlags &
 					(BfDependencyMap::DependencyFlag_ReadFields | BfDependencyMap::DependencyFlag_ParamOrReturnValue |
 						BfDependencyMap::DependencyFlag_LocalUsage | BfDependencyMap::DependencyFlag_MethodGenericArg |
-						BfDependencyMap::DependencyFlag_Allocates))
+						BfDependencyMap::DependencyFlag_Allocates | BfDependencyMap::DependencyFlag_TypeSignature))
 				{
 					RebuildType(dependentType);
 				}
@@ -2243,6 +2243,8 @@ void BfContext::UpdateRevisedTypes()
 
 	bool rebuildAllFilesChanged = mCompiler->mRebuildChangedFileSet.Contains("*");
 
+	uint64 projectDepHash = 0;
+
 	// Do primary 'rebuild' scan
 	for (auto type : mResolvedTypes)
 	{
@@ -2315,6 +2317,14 @@ void BfContext::UpdateRevisedTypes()
 					if ((rebuildAllFilesChanged) || (mCompiler->mRebuildChangedFileSet.Contains(kv.mKey.mString)))
 						changed = true;
 					mCompiler->mRebuildFileSet.Add(kv.mKey.mString);
+				}
+
+				if (kv.mKey.mKind == CeRebuildKey::Kind_TypeDeclListHash)
+				{
+					if (projectDepHash == 0)
+						projectDepHash = mSystem->GetTypeDeclListHash();
+					if (kv.mValue.mInt != projectDepHash)
+						changed = true;
 				}
 			}
 

@@ -12004,7 +12004,13 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 		return false;
 	}
 
-	mModule->AddDependency(type, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
+	bool success = true;
+
+	defer(
+		{
+			if (success)
+				mModule->AddDependency(type, mModule->mCurTypeInstance, BfDependencyMap::DependencyFlag_TypeSignature);
+		});
 
 	// We want to try to avoid triggering OnTypeInit for basic info
 	mModule->PopulateType(type, BfPopulateType_Interfaces_Direct);
@@ -12286,7 +12292,10 @@ bool BfExprEvaluator::LookupTypeProp(BfTypeOfExpression* typeOfExpr, BfIdentifie
 			}
 		}
 		else
+		{
+			success = false;
 			return false;
+		}
 	}
 
 	if ((type->IsGenericParam()) && (!mModule->mIsComptimeModule))

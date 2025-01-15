@@ -2095,7 +2095,7 @@ public:
 	BfIRValue CreateFieldData(BfFieldInstance* fieldInstance, int customAttrIdx);
 	void CreateSlotOfs(BfTypeInstance* typeInstance);
 	BfIRValue GetTypeTypeData(BfType* type, BfCreateTypeDataContext& ctx, bool needsTypeData, bool wantsTypeDecl, bool needsTypeNames, int& typeFlags, int& typeCode);
-	BfIRValue CreateTypeDeclData(BfType* type);
+	BfIRValue CreateTypeDeclData(BfType* type, BfProject* curProject);
 	BfIRValue CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, bool forceReflectFields, bool needsTypeData, bool needsTypeNames, bool needsVData);
 	BfIRValue FixClassVData(BfIRValue value);
 

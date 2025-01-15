@@ -7031,7 +7031,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		String toolsetErrors;
 		for (auto project : mSystem->mProjects)
 		{
-			project->mDependencySet.Clear();
+			project->ClearCache();
 			if (project->mDisabled)
 				continue;
 			if (project->mCodeGenOptions.mLTOType != BfLTOType_None)

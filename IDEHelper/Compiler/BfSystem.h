@@ -1404,6 +1404,15 @@ public:
 		DeleteStage_AwaitingRefs,
 	};
 
+	enum DependencyKind
+	{
+		DependencyKind_None,
+		DependencyKind_Dependency,
+		DependencyKind_Identity,		
+		DependencyKind_Dependent_Exclusive,
+		DependencyKind_Dependent_Shared
+	};
+
 public:
 	BfSystem* mSystem;
 	String mName;
@@ -1425,6 +1434,7 @@ public:
 	HashSet<BfModule*> mUsedModules;
 	HashSet<BfType*> mReferencedTypeData;
 	HashSet<BfProject*> mDependencySet;
+	Dictionary<BfProject*, DependencyKind> mDependencyKindDict;
 
 	Val128 mBuildConfigHash;
 	Val128 mVDataConfigHash;
@@ -1435,10 +1445,12 @@ public:
 	BfProject();
 	~BfProject();
 
+	void ClearCache();
 	bool ContainsReference(BfProject* refProject);
 	bool ReferencesOrReferencedBy(BfProject* refProject);
 	bool IsTestProject();
-	bool HasDependency(BfProject* project);
+	bool HasDependency(BfProject* project);	
+	DependencyKind GetDependencyKind(BfProject* project);
 };
 
 //CDH TODO move these out to separate header if list gets big/unwieldy
@@ -1864,6 +1876,7 @@ public:
 	BfParser* CreateParser(BfProject* bfProject);
 	BfCompiler* CreateCompiler(bool isResolveOnly);
 	BfProject* GetProject(const StringImpl& projName);
+	uint64 GetTypeDeclListHash();
 
 	BfTypeReference* GetTypeRefElement(BfTypeReference* typeRef);
 	BfTypeDef* FilterDeletedTypeDef(BfTypeDef* typeDef);

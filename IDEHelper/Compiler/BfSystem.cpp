@@ -1091,6 +1091,12 @@ BfProject::~BfProject()
 	BfLogSysM("Deleting project %p %s\n", this, mName.c_str());
 }
 
+void BfProject::ClearCache()
+{
+	mDependencySet.Clear();
+	mDependencyKindDict.Clear();
+}
+
 bool BfProject::ContainsReference(BfProject* refProject)
 {
 	if (refProject->mDisabled)
@@ -1129,6 +1135,41 @@ bool BfProject::HasDependency(BfProject* project)
 		
 	}
 	return mDependencySet.Contains(project);
+}
+
+BfProject::DependencyKind BfProject::GetDependencyKind(BfProject* project)
+{
+	DependencyKind* depKindPtr = NULL;
+	if (mDependencyKindDict.TryAdd(project, NULL, &depKindPtr))
+	{
+		*depKindPtr = DependencyKind_None;
+		if (project == this)
+		{
+			*depKindPtr = DependencyKind_Identity;
+		}
+		else if (HasDependency(project))
+		{
+			*depKindPtr = DependencyKind_Dependency;
+		}
+		else if (project->HasDependency(this))
+		{
+			*depKindPtr = DependencyKind_Dependent_Exclusive;
+			
+			for (auto checkProject : mSystem->mProjects)
+			{
+				if ((checkProject == this) || (checkProject == project) || (checkProject->mDisabled))
+					continue;
+				if (checkProject->HasDependency(this))
+				{
+					if (!checkProject->HasDependency(project))
+					{
+						*depKindPtr = DependencyKind_Dependent_Shared;
+					}
+				}
+			}
+		}
+	}
+	return *depKindPtr;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2478,6 +2519,21 @@ BfProject* BfSystem::GetProject(const StringImpl& projName)
 			return project;
 
 	return NULL;
+}
+
+uint64 BfSystem::GetTypeDeclListHash()
+{
+	HashContext hashCtx;
+	for (auto project : mProjects)
+	{
+		hashCtx.MixinStr(project->mName);
+		hashCtx.Mixin(project->mDisabled);
+		hashCtx.Mixin(project->mDependencies.mSize);
+		for (auto dep : project->mDependencies)		
+			hashCtx.Mixin(dep->mIdx);		
+	}
+	hashCtx.Mixin(mTypeDefs.mRevision);
+	return hashCtx.Finish128().mLow;
 }
 
 BfTypeReference* BfSystem::GetTypeRefElement(BfTypeReference* typeRef)

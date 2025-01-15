@@ -6128,7 +6128,7 @@ BfIRValue BfModule::GetTypeTypeData(BfType* type, BfCreateTypeDataContext& ctx, 
 		typeFlags |= BfTypeFlags_SizedArray;
 	if (type->IsConstExprValue())
 		typeFlags |= BfTypeFlags_ConstExpr;
-	if (type->IsSplattable())
+	if ((!wantsTypeDecl) && (type->IsSplattable()))
 		typeFlags |= BfTypeFlags_Splattable;
 	if (type->IsUnion())
 		typeFlags |= BfTypeFlags_Union;
@@ -6147,7 +6147,7 @@ BfIRValue BfModule::GetTypeTypeData(BfType* type, BfCreateTypeDataContext& ctx, 
 	return typeTypeData;
 }
 
-BfIRValue BfModule::CreateTypeDeclData(BfType* type)
+BfIRValue BfModule::CreateTypeDeclData(BfType* type, BfProject* curProject)
 {
 	auto typeDeclType = ResolveTypeDef(mCompiler->mTypeTypeDeclDef)->ToTypeInstance();
 
@@ -6175,15 +6175,49 @@ BfIRValue BfModule::CreateTypeDeclData(BfType* type)
 	if (typeInst != NULL)
 		baseType = typeInst->mBaseType;
 
+	enum BfTypeDeclFlags
+	{
+		BfTypeDeclFlag_DeclaredInDependency = 1,
+		BfTypeDeclFlag_DeclaredInDependent = 2,
+		BfTypeDeclFlag_DeclaredInCurrent = 4,
+		BfTypeDeclFlag_AlwaysVisible = 8,
+		BfTypeDeclFlag_SometimesVisible = 0x10
+	};
+	int flags = 0;
+
+	if (typeInst != NULL)
+	{			
+		auto declProject = typeInst->mTypeDef->mProject;
+
+		auto depKind = curProject->GetDependencyKind(declProject);
+
+		if (depKind == BfProject::DependencyKind_Identity)
+		{
+			flags |= BfTypeDeclFlag_DeclaredInCurrent | BfTypeDeclFlag_AlwaysVisible | BfTypeDeclFlag_SometimesVisible;
+		}
+		else if (depKind == BfProject::DependencyKind_Dependency)
+		{
+			flags |= BfTypeDeclFlag_DeclaredInDependency | BfTypeDeclFlag_AlwaysVisible | BfTypeDeclFlag_SometimesVisible;
+		}
+		else if (depKind == BfProject::DependencyKind_Dependent_Exclusive)
+		{
+			flags |= BfTypeDeclFlag_DeclaredInDependent | BfTypeDeclFlag_AlwaysVisible | BfTypeDeclFlag_SometimesVisible;
+		}
+		else if (depKind == BfProject::DependencyKind_Dependent_Shared)
+		{
+			flags |= BfTypeDeclFlag_DeclaredInDependent | BfTypeDeclFlag_SometimesVisible;
+		}
+	}
+
 	BfIRValue objectData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(mContext->mBfObjectType, BfIRPopulateType_Full), typeValueParams);
 	SizedArray<BfIRValue, 9> typeDataParams =
 	{
 		objectData,
- 		GetConstValue(type->mTypeId, typeIdType), // mTypeId
-		GetConstValue((baseType != NULL) ? baseType->mTypeId : 0, typeIdType), // mBaseTypeId
+ 		GetConstValue(type->mTypeId, typeIdType), // mTypeId		
 		GetConstValue((outerType != NULL) ? outerType->mTypeId : 0, typeIdType), // mOuterTypeId		
 		GetConstValue(typeFlags, intType), // mTypeFlags
-		GetConstValue(typeCode, byteType), // mTypeCode 		
+		GetConstValue(flags, byteType), // mFlags
+		GetConstValue(typeCode, byteType), // mTypeCode
 	};
 	FixConstValueParams(typeDeclType, typeDataParams);
 	auto typeData = mBfIRBuilder->CreateConstAgg_Value(mBfIRBuilder->MapTypeInst(typeDeclType, BfIRPopulateType_Full), typeDataParams);

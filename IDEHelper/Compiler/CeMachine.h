@@ -432,6 +432,7 @@ enum CeFunctionKind
 	CeFunctionKind_GetReflectTypeDeclById,
 	CeFunctionKind_GetReflectTypeDeclByName,
 	CeFunctionKind_GetReflectNextTypeDecl,
+	CeFunctionKind_GetBaseType,
 	CeFunctionKind_HasDeclaredMember,
 	CeFunctionKind_GetReflectType,
 	CeFunctionKind_GetReflectTypeById,
@@ -957,16 +958,24 @@ public:
 	{
 		Kind_None,
 		Kind_File,
-		Kind_Directory
+		Kind_Directory,
+		Kind_TypeDeclListHash,		
 	};
 
 public:
 	Kind mKind;
 	String mString;
+	int mInt;
+
+	CeRebuildKey()
+	{
+		mKind = Kind_None;
+		mInt = 0;
+	}
 
 	bool operator==(const CeRebuildKey& other) const
 	{
-		return (mKind == other.mKind) && (mString == other.mString);
+		return (mKind == other.mKind) && (mString == other.mString) && (mInt == other.mInt);
 	}
 };
 
@@ -1095,6 +1104,20 @@ public:
 	}
 };
 
+class CeTypeDeclState
+{
+public:
+	Dictionary<int, addr_ce> mReflectDeclMap;
+	HashSet<BfTypeDef*> mIteratedTypeDefs;
+	bool mCheckedAllTypeDefs;
+
+public:
+	CeTypeDeclState()
+	{
+		mCheckedAllTypeDefs = false;
+	}
+};
+
 class CeContext
 {
 public:
@@ -1111,7 +1134,7 @@ public:
 	int mStackSize;
 	Dictionary<int, addr_ce> mStringMap;
 	Dictionary<int, addr_ce> mReflectMap;
-	Dictionary<int, addr_ce> mReflectDeclMap;
+	CeTypeDeclState* mTypeDeclState;
 	Dictionary<Val128, addr_ce> mConstDataMap;
 	HashSet<int> mStaticCtorExecSet;
 	Dictionary<String, CeStaticFieldInfo> mStaticFieldMap;
@@ -1140,6 +1163,7 @@ public:
 	void CalcWorkingDir();
 	void FixRelativePath(StringImpl& path);
 	bool AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value);
+	void AddTypeSigRebuild(BfType* type);
 	void AddFileRebuild(const StringImpl& filePath);
 	uint8* CeMalloc(int size);
 	bool CeFree(addr_ce addr);
