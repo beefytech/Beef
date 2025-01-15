@@ -9621,11 +9621,39 @@ void BfModule::GetActiveTypeGenericParamInstances(SizedArray<BfGenericParamInsta
 		genericParamInstances.Add(entry);
 }
 
-BfGenericParamInstance* BfModule::GetMergedGenericParamData(BfGenericParamType* type, BfGenericParamFlags& outFlags, BfType*& outTypeConstraint)
+BfGenericParamInstance* BfModule::GetMergedGenericParamData(BfType* type, BfGenericParamFlags& outFlags, BfType*& outTypeConstraint)
 {
-	BfGenericParamInstance* genericParam = GetGenericParamInstance(type);
-	outFlags = genericParam->mGenericParamFlags;
-	outTypeConstraint = genericParam->mTypeConstraint;
+	BfGenericParamType* genericParamType = NULL;
+	if (type->IsGenericParam())
+		genericParamType = (BfGenericParamType*)type;
+
+	BfGenericParamInstance* genericParam = NULL;
+	if (genericParamType != NULL)
+	{
+		genericParam = GetGenericParamInstance(genericParamType);
+		outFlags = (BfGenericParamFlags)(outFlags | genericParam->mGenericParamFlags);
+		if (genericParam->mTypeConstraint != NULL)
+			outTypeConstraint = genericParam->mTypeConstraint;
+	}
+	else
+	{
+		outFlags = BfGenericParamFlag_None;
+		outTypeConstraint = NULL;
+
+		if ((mCurTypeInstance != NULL) && (mCurTypeInstance->mGenericTypeInfo != NULL))
+		{
+			for (int genericIdx = mCurTypeInstance->mTypeDef->mGenericParamDefs.mSize; genericIdx < mCurTypeInstance->mGenericTypeInfo->mGenericParams.mSize; genericIdx++)
+			{
+				auto genericParam = mCurTypeInstance->mGenericTypeInfo->mGenericParams[genericIdx];
+				if (genericParam->mExternType == type)
+				{
+					outFlags = (BfGenericParamFlags)(outFlags | genericParam->mGenericParamFlags);
+					if (genericParam->mTypeConstraint != NULL)
+						outTypeConstraint = genericParam->mTypeConstraint;
+				}
+			}
+		}
+	}
 
 	// Check method generic constraints
 	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecialized) && (mCurMethodInstance->mMethodInfoEx != NULL))

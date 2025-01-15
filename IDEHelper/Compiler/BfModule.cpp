@@ -8566,6 +8566,20 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	if (checkArgType->IsObjectOrInterface())
 		argIsReferenceType = true;
 
+	if ((mCurMethodInstance != NULL) && (mCurMethodInstance->mIsUnspecialized) && (mCurMethodInstance->mMethodInfoEx != NULL))
+	{
+		for (int genericParamIdx = (int)mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+			genericParamIdx < mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+		{
+			auto genericParamInst = mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+					
+ 			if (genericParamInst->mExternType == checkArgType)
+ 			{
+				checkGenericParamFlags |= genericParamInst->mGenericParamFlags; 				
+ 			}
+		}
+	}
+
 	BfTypeInstance* typeConstraintInst = NULL;
 	if (genericParamInst->mTypeConstraint != NULL)
 		typeConstraintInst = genericParamInst->mTypeConstraint->ToTypeInstance();

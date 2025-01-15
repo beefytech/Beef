@@ -1,3 +1,5 @@
+#pragma warning disable 168
+
 using System;
 using System.Collections;
 
@@ -18,6 +20,32 @@ namespace Tests
 			public override int32 GetWidth()
 			{
 				return base.GetWidth();
+			}
+		}
+
+		interface IZop
+		{
+			void Zop();
+		}
+
+		interface IZag
+		{
+			void Zag();
+		}
+
+		class ClassC<T> where T : IDisposable
+		{
+			public void MethodA(T val) where T : IZop, delete, new
+			{
+				val.Zop();
+				MethodB(val);
+				delete val;
+			}
+
+			public void MethodB(T val) where T : IZop, delete, new
+			{
+				alloctype(T) z = new T();
+				delete val;
 			}
 		}
 
