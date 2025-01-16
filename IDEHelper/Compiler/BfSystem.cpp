@@ -1762,7 +1762,7 @@ BfError* BfPassInstance::WarnAt(int warningNumber, const StringImpl& warning, Bf
 		return NULL;
 
 	auto bfParser = bfSource->ToParserData();
-	if ((bfParser != NULL) && (warningNumber > 0) && (!bfParser->IsWarningEnabledAtSrcIndex(warningNumber, srcIdx)))
+	if ((bfParser != NULL) && (!bfParser->IsWarningEnabledAtSrcIndex(warningNumber, srcIdx)))
 		return NULL;
 
 	if (!WantsRangeRecorded(bfParser, srcIdx, srcLen, true, isDeferred))

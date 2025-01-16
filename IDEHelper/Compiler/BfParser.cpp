@@ -363,21 +363,18 @@ bool BfParserData::IsUnwarnedAt(BfAstNode* node)
 bool BfParserData::IsWarningEnabledAtSrcIndex(int warningNumber, int srcIdx)
 {
 	int enabled = 1; //CDH TODO if/when we add warning level support, this default will change based on the warning number and the general project warning level setting
-	int lastUnwarnPos = 0;
 
 	for (const auto& it : mWarningEnabledChanges)
 	{
 		if (it.mKey > srcIdx)
 			break;
-		if (it.mValue.mWarningNumber == warningNumber)
+		if ((it.mValue.mWarningNumber == warningNumber) || (it.mValue.mWarningNumber == -1))
 		{
 			if (it.mValue.mEnable)
 				enabled++;
 			else
 				enabled--;
-		}
-		if (it.mValue.mWarningNumber == -1)
-			lastUnwarnPos = -1;
+		}		
 	}
 	return enabled > 0;
 }
@@ -923,10 +920,14 @@ void BfParser::HandlePragma(const StringImpl& pragma, BfBlock* block)
 				mPassInstance->FailAt("Expected \"disable\" or \"restore\" after \"warning\"", mSourceData, iterNode->GetSrcStart(), iterNode->GetSrcLength());
 			}
 
-			//iterNode = parentNode->mChildArr.GetAs<BfAstNode*>(++curIdx);
+			int srcStart = iterNode->GetSrcStart();
+
+			int nodeCount = 0;
+			
 			iterNode = itr.Get();
 			while (iterNode)
 			{
+				++nodeCount;
 				++itr;
 				auto tokenStr = iterNode->ToString();
 				if (tokenStr != ",") // commas allowed between warning numbers but not required; we just ignore them
@@ -941,11 +942,14 @@ void BfParser::HandlePragma(const StringImpl& pragma, BfBlock* block)
 							break;
 						}
 					}
-					if (isNum)
+
+					int warningNum = atoi(tokenStr.c_str());
+
+					if ((isNum) && (warningNum > 0))
 					{
 						BfParserWarningEnabledChange wec;
 						wec.mEnable = enable;
-						wec.mWarningNumber = atoi(tokenStr.c_str());
+						wec.mWarningNumber = warningNum;
 						mParserData->mWarningEnabledChanges[iterNode->GetSrcStart()] = wec;
 					}
 					else
@@ -953,9 +957,16 @@ void BfParser::HandlePragma(const StringImpl& pragma, BfBlock* block)
 						mPassInstance->FailAt("Expected decimal warning number", mSourceData, iterNode->GetSrcStart(), iterNode->GetSrcLength());
 					}
 				}
-
-				//iterNode = parentNode->mChildArr.Get(++curIdx);
+				
 				iterNode = itr.Get();
+			}
+
+			if (nodeCount == 0)
+			{
+				BfParserWarningEnabledChange wec;
+				wec.mEnable = enable;
+				wec.mWarningNumber = -1;
+				mParserData->mWarningEnabledChanges[srcStart] = wec;
 			}
 		}
 		else
