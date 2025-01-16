@@ -7,10 +7,19 @@ namespace System
 {
 	public class TypeDeclaration
 	{
+		protected enum Flags : uint8
+		{
+			DeclaredInDependency = 1,
+			DeclaredInDependent = 2,
+			DeclaredInCurrent = 4,
+			AlwaysVisible = 8,
+			SometimesVisible = 0x10
+		}
+
 		protected TypeId mTypeId;
-		protected TypeId mBaseTypeId;
 		protected TypeId mOuterTypeId;
 		protected TypeFlags mTypeFlags;
+		protected Flags mFlags;
 		protected TypeCode mTypeCode;
 
 		public static TypeDeclaration.Enumerator TypeDeclarations
@@ -27,7 +36,8 @@ namespace System
 		{
 			get
 			{
-				return Type.[Friend]Comptime_GetTypeDeclarationById((.)mBaseTypeId);
+				int32 baseTypeId = Type.[Friend]Comptime_Type_GetBaseType((.)mTypeId);
+				return Type.[Friend]Comptime_GetTypeDeclarationById(baseTypeId);
 			}
 		}
 		public TypeDeclaration OuterType
@@ -37,6 +47,12 @@ namespace System
 				return Type.[Friend]Comptime_GetTypeDeclarationById((.)mOuterTypeId);
 			}
 		}
+
+		public bool DeclaredInDependency => mFlags.HasFlag(.DeclaredInDependency);
+		public bool DeclaredInDependent => mFlags.HasFlag(.DeclaredInDependent);
+		public bool DeclaredInCurrent => mFlags.HasFlag(.DeclaredInCurrent);
+		public bool AlwaysVisible => mFlags.HasFlag(.AlwaysVisible);
+		public bool SometimesVisible => mFlags.HasFlag(.SometimesVisible);
 
 		public Type ResolvedType => Type.[Friend]Comptime_GetTypeById((.)mTypeId);
 
@@ -735,6 +751,7 @@ namespace System
 		static extern TypeDeclaration Comptime_GetTypeDeclarationById(int32 typeId);
 		static extern TypeDeclaration Comptime_GetTypeDeclarationByName(StringView name);
 		static extern TypeDeclaration Comptime_GetNextTypeDeclaration(int32 lastTypeId);
+		static extern int32 Comptime_Type_GetBaseType(int32 typeId);
 		static extern bool Comptime_Type_HasDeclaredMember(int32 typeId, int32 kind, StringView name);
 		static extern Type Comptime_GetTypeById(int32 typeId);
 		static extern Type Comptime_GetTypeByName(StringView name);
