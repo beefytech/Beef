@@ -2012,14 +2012,14 @@ namespace FMOD
 
             return result;
         }
-        public RESULT createSound            (uint8[] data, MODE mode, ref CREATESOUNDEXINFO exinfo, out Sound sound)
+        public RESULT createSound            (Span<uint8> data, MODE mode, ref CREATESOUNDEXINFO exinfo, out Sound sound)
         {
             sound = null;
 
             exinfo.cbsize = (int32)sizeof(CREATESOUNDEXINFO);
 
             int soundraw;
-            RESULT result = FMOD_System_CreateSound(rawPtr, (char8*)&data[0], mode, ref exinfo, out soundraw);
+            RESULT result = FMOD_System_CreateSound(rawPtr, (.)data.Ptr, mode, ref exinfo, out soundraw);
             sound = new Sound(soundraw);
 
             return result;

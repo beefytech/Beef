@@ -34,21 +34,91 @@ Implements RFC 1950: http://www.ietf.org/rfc/rfc1950.txt and RFC 1951: http://ww
 using System;
 using System.IO;
 using System.Diagnostics;
+using System.Collections;
 
 #define TINFL_USE_64BIT_BITBUF
 #define MINIZ_HAS_64BIT_REGISTERS
 #define MINIZ_LITTLE_ENDIAN
 #define MINIZ_USE_UNALIGNED_LOADS_AND_STORES
 
+#if BF_PLATFORM_WINDOWS
+#define ALLOW_FILE_MAPPING
+#endif
+
 namespace MiniZ
 {
 	class ZipFile
 	{
+		class RangeStream : Stream
+		{
+			public bool mOwnsStream;
+			public Stream mStream ~ { if (mOwnsStream) delete _; };
+			public Range mRange;
+
+			public override bool CanRead => mStream.CanRead;
+			public override bool CanWrite => mStream.CanWrite;
+			public override int64 Length => mRange.Length;
+
+			public override int64 Position
+			{
+				get
+				{
+					return mStream.Position - mRange.Start;
+				}
+
+				set
+				{
+					mStream.Position = value + mRange.Start;
+				}
+			}
+			
+			public override Result<void> Seek(int64 pos, SeekKind seekKind = .Absolute)
+			{
+				//return mStream.Seek(pos, seekKind);
+
+				switch (seekKind)
+				{
+				case .Absolute:
+					return mStream.Seek(pos + mRange.Start, .Absolute);
+				case .Relative:
+					return mStream.Seek(pos, .Relative);
+				case .FromEnd:
+					return mStream.Seek(mRange.End - pos);
+				}
+			}
+
+			public override Result<int> TryRead(Span<uint8> data)
+			{
+				return mStream.TryRead(data);
+			}
+
+			public override Result<int, FileError> TryRead(Span<uint8> data, int timeoutMS)
+			{
+				return mStream.TryRead(data, timeoutMS);
+			}
+
+			public override Result<int> TryWrite(Span<uint8> data)
+			{
+				return mStream.TryWrite(data);
+			}
+
+			public override Result<void> Close()
+			{
+				return mStream.Close();
+			}
+
+			public override Result<void> Flush()
+			{
+				return mStream.Flush();
+			}
+		}
+
 		public class Entry
 		{
 			ZipFile mZipFile;
 			MiniZ.ZipArchiveFileStat mFileStat;
 			int32 mFileIdx;
+			Span<uint8> mAllocatedData ~ delete mAllocatedData.Ptr;
 
 			public bool IsDirectory
 			{
@@ -63,6 +133,17 @@ namespace MiniZ
 				if (!MiniZ.ZipReaderExtractToFile(&mZipFile.[Friend]mFile, mFileIdx, scope String(filePath, .NullTerminate), .None))
 					return .Err;
 				return .Ok;
+			}
+
+			public Result<Span<uint8>> ExtractToMemory()
+			{
+				if (mAllocatedData.IsEmpty)
+				{
+					mAllocatedData = .(new uint8[mFileStat.mUncompSize]*, mFileStat.mUncompSize);
+					if (!MiniZ.ZipReaderExtractToMem(&mZipFile.[Friend]mFile, mFileIdx, mAllocatedData.Ptr, mAllocatedData.Length, .None))
+						return .Err;
+				}
+				return .Ok(mAllocatedData);
 			}
 
 			int GetStrLen(char8* ptr, int max)
@@ -97,10 +178,27 @@ namespace MiniZ
 				outComment.Append(&mFileStat.mComment, GetStrLen(&mFileStat.mComment, mFileStat.mComment.Count));
 				return .Ok;
 			}
+
+			public DateTime GetDateTime()
+			{
+				int64 time = (int64)mFileStat.mTime * 10000000L + 116444736000000000L;
+				return DateTime(time);
+			}
+
+			public Platform.BfpTimeStamp GetTimestamp()
+			{
+				return (.)(mFileStat.mTime * 10000000L + 116444736000000000L);
+			}
 		}
 
 		MiniZ.ZipArchive mFile;
 		bool mInitialized;
+#if ALLOW_FILE_MAPPING
+		Windows.FileHandle mShareFileHandle ~ _.Close();
+		Windows.Handle mShareFileMapping ~ _.Close();
+		Span<uint8> mMappedData;
+#endif
+		Stream mOwnedStream ~ delete _;
 
 		public ~this()
 		{
@@ -115,6 +213,74 @@ namespace MiniZ
 				return .Err;
 			mInitialized = true;
 			return .Ok;
+		}
+
+		public Result<void> Open(StringView fileName, Range range)
+		{
+			Debug.Assert(!mInitialized);
+
+			FileStream fileStream = new FileStream();
+			if (fileStream.Open(fileName, .Read, .Read) case .Err)
+			{
+				delete fileStream;
+				return .Err;
+			}
+
+			RangeStream rangeStream = new RangeStream() { mStream = fileStream, mOwnsStream = true, mRange = range };
+			mOwnedStream = rangeStream;
+			if (!MiniZ.ZipReaderInitStream(&mFile, rangeStream, .None))
+				return .Err;
+			mInitialized = true;
+			return .Ok;
+		}
+
+		public Result<void> Open(Span<uint8> data)
+		{
+			Debug.Assert(!mInitialized);
+			if (!MiniZ.ZipReaderInitMem(&mFile, data.Ptr, data.Length, .None))
+				return .Err;
+			mInitialized = true;
+			return .Ok;
+		}
+
+		public Result<void> OpenMapped(StringView fileName)
+		{
+#if ALLOW_FILE_MAPPING
+			mShareFileHandle = Windows.CreateFileA(fileName.ToScopeCStr!(), Windows.GENERIC_READ, .Read, null, .Open, 0, default);
+			uint32 sizeHigh = 0;
+			uint32 sizeLow = (.)Windows.GetFileSize(mShareFileHandle, (.)&sizeHigh);
+			mShareFileMapping = Windows.CreateFileMappingA(mShareFileHandle, null, Windows.PAGE_READONLY, sizeHigh, sizeLow, null);
+			mMappedData = .((.)Windows.MapViewOfFile(mShareFileMapping, Windows.FILE_MAP_READ, 0, 0, sizeLow), sizeLow);
+
+			Debug.Assert(!mInitialized);
+			if (!MiniZ.ZipReaderInitMem(&mFile, mMappedData.Ptr, mMappedData.Length, .None))
+				return .Err;
+			mInitialized = true;
+			return .Ok;
+#else
+			return Open(fileName);
+#endif
+		}
+
+		public Result<void> OpenMapped(StringView fileName, Range range)
+		{
+#if ALLOW_FILE_MAPPING
+			mShareFileHandle = Windows.CreateFileA(fileName.ToScopeCStr!(), Windows.GENERIC_READ, .Read, null, .Open, 0, default);
+			uint32 sizeHigh = 0;
+			uint32 sizeLow = (.)range.End;
+
+			mShareFileMapping = Windows.CreateFileMappingA(mShareFileHandle, null, Windows.PAGE_READONLY, sizeHigh, sizeLow, null);
+			uint8* ptr = (.)Windows.MapViewOfFile(mShareFileMapping, Windows.FILE_MAP_READ, 0, 0, sizeLow);
+			mMappedData = .(ptr + range.Start, range.Length);
+
+			Debug.Assert(!mInitialized);
+			if (!MiniZ.ZipReaderInitMem(&mFile, mMappedData.Ptr, mMappedData.Length, .None))
+				return .Err;
+			mInitialized = true;
+			return .Ok;
+#else
+			return Open(fileName, range);
+#endif
 		}
 
 		public Result<void> Init(Stream stream)
@@ -3115,7 +3281,7 @@ namespace MiniZ
 			return s;
 		}
 
-		static bool zip_reader_init_mem(ZipArchive* pZip, void* pMem, int size, ZipFlags flags)
+		public static bool ZipReaderInitMem(ZipArchive* pZip, void* pMem, int size, ZipFlags flags)
 		{
 			if (!zip_reader_init_internal(pZip, flags))
 				return false;
