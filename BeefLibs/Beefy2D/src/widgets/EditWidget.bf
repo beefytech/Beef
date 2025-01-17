@@ -2836,7 +2836,7 @@ namespace Beefy.widgets
 			        hi = i - 1;
 			}
 
-			if (hi < GetLineCount())
+			if ((hi >= 0) && (hi < GetLineCount()))
 			{
 				line = (int32)hi;
 				theChar = idx - mData.mLineStarts[hi];
