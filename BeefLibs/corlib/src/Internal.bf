@@ -234,8 +234,20 @@ namespace System
 		public static extern void BfDelegateTargetCheck(void* target);
 		[CallingConvention(.Cdecl), AlwaysInclude]
 		public static extern void* LoadSharedLibrary(char8* filePath);
-		[CallingConvention(.Cdecl), AlwaysInclude]
-		public static extern void LoadSharedLibraryInto(char8* filePath, void** libDest);
+		[AlwaysInclude, LinkName("Beef_LoadSharedLibraryInto")]
+		public static void LoadSharedLibraryInto(char8* filePath, void** libDest)
+		{
+			if (*libDest == null)
+			{
+				if (Runtime.LibraryLoadCallback != null)
+					*libDest = Runtime.LibraryLoadCallback(filePath);
+			}
+			if (*libDest == null)
+			{
+				*libDest = LoadSharedLibrary(filePath);
+			}
+		}
+
 		[CallingConvention(.Cdecl), AlwaysInclude]
 		public static extern void* GetSharedProcAddress(void* libHandle, char8* procName);
 		[CallingConvention(.Cdecl), AlwaysInclude]
