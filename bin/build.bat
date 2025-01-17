@@ -33,6 +33,9 @@ CALL bin/msbuild.bat BeefySysLib\BeefySysLib.vcxproj /p:Configuration=Debug /p:P
 CALL bin/msbuild.bat BeefySysLib\BeefySysLib.vcxproj /p:Configuration=Release /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
+CALL bin/msbuild.bat BeefySysLib\BeefySysLib.vcxproj /p:Configuration="Release Static" /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
+@IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
+
 CALL bin/msbuild.bat IDEHelper\IDEHelper.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=%cd%\ /v:m %MSBUILD_FLAGS%
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 

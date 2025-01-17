@@ -8,6 +8,9 @@ IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 @ECHO ---- Building BeefySysLib (Release) ----
 CALL ../../bin/msbuild.bat ..\..\BeefySysLib\BeefySysLib.vcxproj /p:Configuration=Release /p:Platform=x64 /p:SolutionDir=%cd%\..\..\ /v:m
 IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building BeefySysLib (Release Static) ----
+CALL ../../bin/msbuild.bat ..\..\BeefySysLib\BeefySysLib.vcxproj /p:Configuration="Release Static" /p:Platform=x64 /p:SolutionDir=%cd%\..\..\ /v:m
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 
 REM @ECHO ---- Building libhunspell (Debug) ----
 REM CALL ../../bin/msbuild.bat ..\..\libhunspell\libhunspell.vcxproj /p:Configuration=Debug /p:Platform=x64 /p:SolutionDir=%cd%\..\ /v:m
