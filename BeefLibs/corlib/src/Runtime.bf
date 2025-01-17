@@ -14,7 +14,7 @@ namespace System
 		public bool AVX, AVX2, AVX512;
 	}
 
-	[StaticInitPriority(101)]
+	[StaticInitPriority(201)]
 	static class Runtime
 	{
 		const int32 cVersion = 10;
@@ -484,6 +484,7 @@ namespace System
 
 		public static function ErrorHandlerResult(AssertError.Kind kind, String error, String filePath, int lineNum) CheckAssertError;
 		public static function int32(char8* kind, char8* arg1, char8* arg2, int arg3) CheckErrorHandler;
+		public static function void*(char8* filePath) LibraryLoadCallback;
 
 		static ErrorHandlerResult CheckAssertError_Impl(AssertError.Kind kind, String error, String filePath, int lineNum)
 		{

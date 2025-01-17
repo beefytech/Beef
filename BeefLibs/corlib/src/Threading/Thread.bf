@@ -8,7 +8,7 @@ namespace System.Threading
     public delegate void ThreadStart();
     public delegate void ParameterizedThreadStart(Object obj);
 
-	[StaticInitPriority(100)]
+	[StaticInitPriority(200)]
     public sealed class Thread
     {
         private int mInternalThread;
@@ -28,7 +28,7 @@ namespace System.Threading
 
 		public static Thread sMainThread ~ delete _;
 
-        [StaticInitPriority(102)]
+        [StaticInitPriority(202)]
         struct RuntimeThreadInit
         {
             static Object Thread_Alloc()

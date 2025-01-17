@@ -53,7 +53,7 @@ namespace System {
         NoThrowOnInvalidTime      = 2
     }
 
-	[StaticInitPriority(100)]
+	[StaticInitPriority(200)]
     sealed public class TimeZoneInfo : IEquatable<TimeZoneInfo>
 	{
         // ---- SECTION:  members supporting exposed properties -------------*

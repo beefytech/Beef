@@ -46,7 +46,7 @@ namespace System.IO
 			Platform.BfpFileAttributes fileFlags = .Normal;
 
 			Platform.BfpFileResult fileResult = .Ok;
-			mBfpFile = Platform.BfpFile_Create(path, createKind, createFlags, fileFlags, &fileResult);
+			mBfpFile = Platform.Hook.BfpFile_Create(path, createKind, createFlags, fileFlags, &fileResult);
 
 			if ((mBfpFile == null) || (fileResult != .Ok))
 			{
@@ -83,7 +83,7 @@ namespace System.IO
 			Platform.BfpFileAttributes fileFlags = .Normal;
 
 			Platform.BfpFileResult fileResult = .Ok;
-			mBfpFile = Platform.BfpFile_Create(path, createKind, createFlags, fileFlags, &fileResult);
+			mBfpFile = Platform.Hook.sBfpFile_Create(path, createKind, createFlags, fileFlags, &fileResult);
 
 			if ((mBfpFile == null) || (fileResult != .Ok))
 			{

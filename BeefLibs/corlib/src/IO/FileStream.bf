@@ -12,12 +12,12 @@ namespace System.IO
 		{
 			get
 			{
-				return Platform.BfpFile_Seek(mBfpFile, 0, .Relative);
+				return Platform.Hook.BfpFile_Seek(mBfpFile, 0, .Relative);
 			}
 
 			set
 			{
-				Platform.BfpFile_Seek(mBfpFile, value, .Absolute);
+				Platform.Hook.BfpFile_Seek(mBfpFile, value, .Absolute);
 			}
 		}
 
@@ -25,7 +25,7 @@ namespace System.IO
 		{
 			get
 			{
-				return Platform.BfpFile_GetFileSize(mBfpFile);
+				return Platform.Hook.BfpFile_GetFileSize(mBfpFile);
 			}
 		}
 
@@ -35,7 +35,7 @@ namespace System.IO
 			{
 				if (mBfpFile == null)
 					return 0;
-				return Platform.BfpFile_GetSystemHandle(mBfpFile);
+				return Platform.Hook.BfpFile_GetSystemHandle(mBfpFile);
 			}
 		}
 
@@ -46,7 +46,7 @@ namespace System.IO
 
 		public override Result<void> Seek(int64 pos, SeekKind seekKind = .Absolute)
 		{
-			int64 newPos = Platform.BfpFile_Seek(mBfpFile, pos, (Platform.BfpFileSeekKind)seekKind);
+			int64 newPos = Platform.Hook.BfpFile_Seek(mBfpFile, pos, (Platform.BfpFileSeekKind)seekKind);
 			// Ensure position is what was requested
 			if ((seekKind == .Absolute) && (newPos != pos))
 				return .Err;
@@ -56,7 +56,7 @@ namespace System.IO
 		public override Result<int> TryRead(Span<uint8> data)
 		{
 			Platform.BfpFileResult result = .Ok;
-			int numBytesRead = Platform.BfpFile_Read(mBfpFile, data.Ptr, data.Length, -1, &result);
+			int numBytesRead = Platform.Hook.BfpFile_Read(mBfpFile, data.Ptr, data.Length, -1, &result);
 			if ((result != .Ok) && (result != .PartialData))
 				return .Err;
 			return numBytesRead;
@@ -65,7 +65,7 @@ namespace System.IO
 		public override Result<int, FileError> TryRead(Span<uint8> data, int timeoutMS)
 		{
 			Platform.BfpFileResult result = .Ok;
-			int numBytesRead = Platform.BfpFile_Read(mBfpFile, data.Ptr, data.Length, timeoutMS, &result);
+			int numBytesRead = Platform.Hook.BfpFile_Read(mBfpFile, data.Ptr, data.Length, timeoutMS, &result);
 			if ((result != .Ok) && (result != .PartialData))
 			{
 				switch (result)
@@ -84,7 +84,7 @@ namespace System.IO
 		public override Result<int> TryWrite(Span<uint8> data)
 		{
 			Platform.BfpFileResult result = .Ok;
-			int numBytesWritten = Platform.BfpFile_Write(mBfpFile, data.Ptr, data.Length, -1, &result);
+			int numBytesWritten = Platform.Hook.BfpFile_Write(mBfpFile, data.Ptr, data.Length, -1, &result);
 			if ((result != .Ok) && (result != .PartialData))
 				return .Err;
 			return numBytesWritten;
@@ -93,7 +93,7 @@ namespace System.IO
 		public override Result<void> Close()
 		{
 			if (mBfpFile != null)
-				Platform.BfpFile_Release(mBfpFile);
+				Platform.Hook.BfpFile_Release(mBfpFile);
 			mBfpFile = null;
 			return .Ok;
 		}
@@ -101,7 +101,7 @@ namespace System.IO
 		public override Result<void> Flush()
 		{
 			if (mBfpFile != null)
-				Platform.BfpFile_Flush(mBfpFile);
+				Platform.Hook.BfpFile_Flush(mBfpFile);
 			return .Ok;
 		}
 
@@ -159,7 +159,7 @@ namespace System.IO
 		public Result<void, FileOpenError> OpenStd(Platform.BfpFileStdKind stdKind)
 		{
 			Platform.BfpFileResult fileResult = .Ok;
-			mBfpFile = Platform.BfpFile_GetStd(stdKind, &fileResult);
+			mBfpFile = Platform.Hook.BfpFile_GetStd(stdKind, &fileResult);
 			mFileAccess = .ReadWrite;
 
 			if ((mBfpFile == null) || (fileResult != .Ok))
@@ -218,7 +218,7 @@ namespace System.IO
 			Platform.BfpFileAttributes fileFlags = .Normal;
 			
 			Platform.BfpFileResult fileResult = .Ok;
-			mBfpFile = Platform.BfpFile_Create(path.ToScopeCStr!(128), createKind, createFlags, fileFlags, &fileResult);
+			mBfpFile = Platform.Hook.BfpFile_Create(path.ToScopeCStr!(128), createKind, createFlags, fileFlags, &fileResult);
 
 			if ((mBfpFile == null) || (fileResult != .Ok))
 			{
@@ -261,7 +261,7 @@ namespace System.IO
 				Seek(length);
 
 			Platform.BfpFileResult result = .Ok;
-			Platform.BfpFile_Truncate(mBfpFile, &result);
+			Platform.Hook.BfpFile_Truncate(mBfpFile, &result);
 			if (result != .Ok)
 			{
 				Seek(pos);
@@ -297,7 +297,7 @@ namespace System.IO
 			{
 				if (mBfpFile == null)
 					return 0;
-				return Platform.BfpFile_GetSystemHandle(mBfpFile);
+				return Platform.Hook.BfpFile_GetSystemHandle(mBfpFile);
 			}
 		}
 
@@ -321,7 +321,7 @@ namespace System.IO
 		{
 			set
 			{
-				// Matches the behavior of Platform.BfpFile_Seek(mBfpFile, value, .Absolute);
+				// Matches the behavior of Platform.Hook.BfpFile_Seek(mBfpFile, value, .Absolute);
 				mPos = Math.Max(value, 0);
 			}
 		}
@@ -355,7 +355,7 @@ namespace System.IO
 		public Result<void, FileOpenError> OpenStd(Platform.BfpFileStdKind stdKind)
 		{
 			Platform.BfpFileResult fileResult = .Ok;
-			mBfpFile = Platform.BfpFile_GetStd(stdKind, &fileResult);
+			mBfpFile = Platform.Hook.BfpFile_GetStd(stdKind, &fileResult);
 			mFileAccess = .ReadWrite;
 
 			if ((mBfpFile == null) || (fileResult != .Ok))
@@ -413,7 +413,7 @@ namespace System.IO
 			Platform.BfpFileAttributes fileFlags = .Normal;
 			
 			Platform.BfpFileResult fileResult = .Ok;
-			mBfpFile = Platform.BfpFile_Create(path.ToScopeCStr!(128), createKind, createFlags, fileFlags, &fileResult);
+			mBfpFile = Platform.Hook.BfpFile_Create(path.ToScopeCStr!(128), createKind, createFlags, fileFlags, &fileResult);
 
 			if ((mBfpFile == null) || (fileResult != .Ok))
 			{
@@ -467,7 +467,7 @@ namespace System.IO
 				newPos = mPos + pos;
 			}
 
-			// Matches the behaviour of Platform.BfpFile_Seek(mBfpFile, value, .Absolute);
+			// Matches the behaviour of Platform.Hook.BfpFile_Seek(mBfpFile, value, .Absolute);
 			mPos = Math.Max(newPos, 0);
 			if (seekKind == .Absolute && newPos < 0)
 				return .Err;
@@ -479,7 +479,7 @@ namespace System.IO
 		{
 			let ret = base.Close();
 			if (mBfpFile != null)
-				Platform.BfpFile_Release(mBfpFile);
+				Platform.Hook.BfpFile_Release(mBfpFile);
 
 			mBfpFile = null;
 			mFileAccess = default;
@@ -489,12 +489,12 @@ namespace System.IO
 
 		protected override void UpdateLength()
 		{
-			mUnderlyingLength = Platform.BfpFile_GetFileSize(mBfpFile);
+			mUnderlyingLength = Platform.Hook.BfpFile_GetFileSize(mBfpFile);
 		}
 
 		protected Result<void, FileError> SeekUnderlying(int64 offset, Platform.BfpFileSeekKind seekKind = .Absolute)
 		{
-			int64 newPos = Platform.BfpFile_Seek(mBfpFile, offset, seekKind);
+			int64 newPos = Platform.Hook.BfpFile_Seek(mBfpFile, offset, seekKind);
 			Result<void, FileError> result = ((seekKind == .Absolute) && (newPos != offset)) ? .Err(.SeekError) : .Ok;
 			if (result case .Ok)
 				mBfpFilePos = newPos;
@@ -507,7 +507,7 @@ namespace System.IO
 				Try!(SeekUnderlying(pos));
 
 			Platform.BfpFileResult result = .Ok;
-			int numBytesRead = Platform.BfpFile_Read(mBfpFile, data.Ptr, data.Length, -1, &result);
+			int numBytesRead = Platform.Hook.BfpFile_Read(mBfpFile, data.Ptr, data.Length, -1, &result);
 			if ((result != .Ok) && (result != .PartialData))
 				return .Err;
 			mBfpFilePos += numBytesRead;
@@ -520,7 +520,7 @@ namespace System.IO
 				Try!(SeekUnderlying(pos));
 
 			Platform.BfpFileResult result = .Ok;
-			int numBytesRead = Platform.BfpFile_Write(mBfpFile, data.Ptr, data.Length, -1, &result);
+			int numBytesRead = Platform.Hook.BfpFile_Write(mBfpFile, data.Ptr, data.Length, -1, &result);
 			if ((result != .Ok) && (result != .PartialData))
 				return .Err;
 			mBfpFilePos += numBytesRead;
@@ -533,7 +533,7 @@ namespace System.IO
 				Try!(SeekUnderlying(mPos));
 
 			Platform.BfpFileResult result = .Ok;
-			int numBytesRead = Platform.BfpFile_Read(mBfpFile, data.Ptr, data.Length, timeoutMS, &result);
+			int numBytesRead = Platform.Hook.BfpFile_Read(mBfpFile, data.Ptr, data.Length, timeoutMS, &result);
 			if ((result != .Ok) && (result != .PartialData))
 			{
 				switch (result)
@@ -560,7 +560,7 @@ namespace System.IO
 			}
 
 			Platform.BfpFileResult result = .Ok;
-			Platform.BfpFile_Truncate(mBfpFile, &result);
+			Platform.Hook.BfpFile_Truncate(mBfpFile, &result);
 			if (result != .Ok)
 			{
 				Try!(SeekUnderlying(pos));
@@ -585,7 +585,7 @@ namespace System.IO
 		{
 			var result = base.Flush();
 			if (mBfpFile != null)
-				Platform.BfpFile_Flush(mBfpFile);
+				Platform.Hook.BfpFile_Flush(mBfpFile);
 			return result;
 		}
 	}

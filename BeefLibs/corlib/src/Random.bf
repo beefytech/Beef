@@ -21,7 +21,7 @@ namespace System
 	using System.Threading;
 
 	// This class is thread-safe for random results, but not deterministically thread-safe
-	[StaticInitPriority(100)]
+	[StaticInitPriority(200)]
 	public class Random
 	{
       //
