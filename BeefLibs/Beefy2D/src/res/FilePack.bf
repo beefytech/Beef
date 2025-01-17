@@ -282,19 +282,19 @@ static class FilePackManager
 	{
 	}
 
-	static StableIndexedList<Stream> sStreams = new .() ~ DeleteContainerAndItems!(_);
-	static StableIndexedList<FilePack.FindFileData> sFindFileData = new .() ~ DeleteContainerAndItems!(_);
+	static StableIndexedList<Stream> sStreams = new .() ~ { DeleteContainerAndItems!(_); _ = null; }
+	static StableIndexedList<FilePack.FindFileData> sFindFileData = new .() ~ { DeleteContainerAndItems!(_); _ = null; }
 
 	static Stream TryGetStream(Platform.BfpFile* file, out int idx)
 	{
 		idx = (int)(void*)file;
-		return sStreams.SafeGet(idx);
+		return sStreams?.SafeGet(idx);
 	}
 
 	static FilePack.FindFileData TryGetFindFileData(Platform.BfpFindFileData* findFileData, out int idx)
 	{
 		idx = (int)(void*)findFileData;
-		return sFindFileData.SafeGet(idx);
+		return sFindFileData?.SafeGet(idx);
 	}
 
 	public static struct HookOverrides
