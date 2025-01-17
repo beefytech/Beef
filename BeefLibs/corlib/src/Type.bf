@@ -956,8 +956,9 @@ namespace System
 #if !BF_REFLECT_MINIMAL
 			GetFullName(strBuffer);
 #else
-			strBuffer.Append("Type#");
-			mTypeId.ToString(strBuffer);
+			strBuffer.Append("comptype(");
+			((int32)mTypeId).ToString(strBuffer);
+			strBuffer.Append(")");
 #endif
 		}
 
