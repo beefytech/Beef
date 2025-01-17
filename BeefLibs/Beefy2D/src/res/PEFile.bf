@@ -239,6 +239,7 @@ static class PEFile
 
 	public static Result<Range> LocateExtraFileInExecutable()
 	{
+#if BF_PLATFORM_WINDOWS
 		var exePath = Environment.GetExecutableFilePath(.. scope .());
 		var exeFileInfo = scope FileInfo(exePath);
 
@@ -267,7 +268,7 @@ static class PEFile
 		Range span = .(exeEnd, fileLength);
 		if (span.Length > 0)
 			return span;
-
+#endif
 		return .Err;
 	}
 }
