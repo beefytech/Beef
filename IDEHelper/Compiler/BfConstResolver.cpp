@@ -231,7 +231,8 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 
 	if ((flags & BfConstResolveFlag_NoActualizeValues) == 0)
 	{
-		prevIgnoreWrites.Restore();
+		if (mModule->mBfIRBuilder->mHasStarted)
+			prevIgnoreWrites.Restore();
 		mModule->FixValueActualization(mResult, !prevIgnoreWrites.mPrevVal || ((flags & BfConstResolveFlag_ActualizeValues) != 0));
 	}
 
