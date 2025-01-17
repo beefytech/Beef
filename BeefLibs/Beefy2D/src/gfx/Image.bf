@@ -3,6 +3,7 @@ using System.Collections;
 using System.Text;
 using Beefy.utils;
 using System.Diagnostics;
+using res;
 
 #if STUDIO_CLIENT
 using Beefy.ipc;
@@ -94,11 +95,13 @@ namespace Beefy.gfx
             return CreateFromNativeTextureSegment(aNativeTextureSegment);
         }
 
-        public static Image LoadFromFile(String fileName, LoadFlags flags = .None)
+        public static Image LoadFromFile(StringView fileName, LoadFlags flags = .None)
         {
 			scope AutoBeefPerf("Image.LoadFromFile");
 
-            void* aNativeTextureSegment = Gfx_LoadTexture(fileName, (int32)flags);
+			var useFileName = scope String()..Append(fileName);
+			FilePackManager.TryMakeMemoryString(useFileName);
+            void* aNativeTextureSegment = Gfx_LoadTexture(useFileName, (int32)flags);
             if (aNativeTextureSegment == null)
             {
 				if (flags.HasFlag(.FatalError))

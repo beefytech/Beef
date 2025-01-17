@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Text;
+using res;
 
 namespace Beefy.gfx
 {
@@ -28,9 +29,22 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_GetShaderParam(void* shader, String paramName);
 
-        public static Shader CreateFromFile(String fileName, VertexDefinition vertexDefinition)
+        public static Shader CreateFromFile(StringView fileName, VertexDefinition vertexDefinition)
         {
-            void* aNativeShader = Gfx_LoadShader(fileName, vertexDefinition.mNativeVertexDefinition);
+			var useFileName = scope String(fileName);
+			if (FilePackManager.TryMakeMemoryString(useFileName, ".fx_VS_vs_4_0"))
+			{
+				var useFileName2 = scope String(fileName);
+				if (FilePackManager.TryMakeMemoryString(useFileName2, ".fx_PS_ps_4_0"))
+				{
+					useFileName.Append("\n");
+					useFileName.Append(useFileName2);
+				}
+			}
+
+			FilePackManager.TryMakeMemoryString(useFileName, ".fx");
+
+            void* aNativeShader = Gfx_LoadShader(useFileName, vertexDefinition.mNativeVertexDefinition);
             if (aNativeShader == null)
                 return null;
 
