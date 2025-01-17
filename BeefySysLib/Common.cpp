@@ -1382,6 +1382,7 @@ void Beefy::BFFatalError(const char* message, const char* file, int line)
 
 bool Beefy::ParseMemorySpan(const StringImpl& str, void*& outPtr, int& outSize)
 {
+#ifndef BF_SMALL
 	if (str.StartsWith("@"))
 	{
 		int colon = (int)str.IndexOf(':');
@@ -1391,5 +1392,6 @@ bool Beefy::ParseMemorySpan(const StringImpl& str, void*& outPtr, int& outSize)
 		outSize = (int)strtol(lenStr.c_str(), NULL, 10);
 		return true;
 	}
+#endif
 	return false;
 }
