@@ -66,12 +66,12 @@ namespace System
 			TempFileError = (int)Result.TempFileError
 		}
 
+#if !BF_RUNTIME_DISABLE
 		[StaticHook(typeof(SelfOuter))]
 		public static struct Hook
 		{
 		}
 
-#if !BF_RUNTIME_DISABLE
 		[CallingConvention(.Stdcall), CLink]
 		public static extern uint32 BfpSystem_TickCount();
 		[CallingConvention(.Stdcall), CLink]
@@ -129,6 +129,7 @@ namespace System
 		[CallingConvention(.Stdcall), CLink]
 		public static extern void* BfpTLS_GetValue(BfpTLS* tls);
 #else
+		public typealias Hook = Self;
 		
 		public static uint32 BfpSystem_TickCount() => Runtime.NotImplemented();
 		
