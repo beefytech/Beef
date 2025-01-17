@@ -1,6 +1,6 @@
 namespace System;
 
-[AttributeUsage(.Types | .Method, .AlwaysIncludeTarget)]
+[AttributeUsage(.Types | .Method)]
 public struct StaticHookAttribute : Attribute, IOnTypeInit
 {
 	Type mSrcType;
