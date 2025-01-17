@@ -242,6 +242,7 @@ bool FileExists(const StringImpl& path, String* outActualName = NULL);
 bool DirectoryExists(const StringImpl& path, String* outActualName = NULL);
 bool RecursiveCreateDirectory(const StringImpl& dirName);
 bool RecursiveDeleteDirectory(const StringImpl& dirName);
+bool ParseMemorySpan(const StringImpl& str, void*& outPtr, int& outSize);
 
 #define CHARTAG(val) FromBIGEndian(val)
 

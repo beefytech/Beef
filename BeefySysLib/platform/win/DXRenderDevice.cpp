@@ -5,6 +5,7 @@
 #include "img/ImageData.h"
 #include "util/PerfTimer.h"
 #include "util/BeefPerf.h"
+#include "Span.h"
 #include "FileStream.h"
 #include "DDS.h"
 
@@ -225,11 +226,13 @@ void DXShader::ReleaseNative()
 	mConstBuffer = NULL;
 }
 
-extern "C"
-typedef HRESULT(WINAPI* Func_D3DX10CompileFromFileW)(LPCWSTR pSrcFile, CONST D3D10_SHADER_MACRO* pDefines, LPD3D10INCLUDE pInclude,
+extern "C" typedef HRESULT(WINAPI* Func_D3DX10CompileFromFileW)(LPCWSTR pSrcFile, CONST D3D10_SHADER_MACRO* pDefines, LPD3D10INCLUDE pInclude,
 	LPCSTR pFunctionName, LPCSTR pProfile, UINT Flags1, UINT Flags2, ID3D10Blob** ppShader, ID3D10Blob** ppErrorMsgs);
-
 static Func_D3DX10CompileFromFileW gFunc_D3DX10CompileFromFileW;
+
+extern "C" typedef HRESULT(WINAPI* Func_D3DX10Compile)(void* srcData, size_t srcSize, char* sourceName, CONST D3D10_SHADER_MACRO* pDefines, LPD3D10INCLUDE pInclude,
+	LPCSTR pFunctionName, LPCSTR pProfile, UINT Flags1, UINT Flags2, ID3D10Blob** ppShader, ID3D10Blob** ppErrorMsgs);
+static Func_D3DX10Compile gFunc_D3DX10Compile;
 
 static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer)
 {
@@ -239,7 +242,7 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 	bool useCache = false;
 	auto srcDate = ::BfpFile_GetTime_LastWrite(filePath.c_str());
 	auto cacheDate = ::BfpFile_GetTime_LastWrite(outObj.c_str());
-	if (cacheDate >= srcDate)
+	if ((cacheDate != 0) && (cacheDate >= srcDate))
 		useCache = true;
 
 	if (!useCache)
@@ -257,16 +260,37 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 
 	if (!useCache)
 	{
-		if (gFunc_D3DX10CompileFromFileW == NULL)
-		{
-			auto lib = LoadLibraryA("D3DCompiler_47.dll");
-			if (lib != NULL)
-				gFunc_D3DX10CompileFromFileW = (Func_D3DX10CompileFromFileW)::GetProcAddress(lib, "D3DCompileFromFile");
-		}
+		bool useCompile = true;
 
+		HRESULT dxResult;
 		ID3D10Blob* errorMessage = NULL;
-		auto dxResult = gFunc_D3DX10CompileFromFileW(UTF8Decode(filePath).c_str(), NULL, NULL, entry.c_str(), profile.c_str(),
-			D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
+		if (useCompile)
+		{
+			if (gFunc_D3DX10Compile == NULL)
+			{
+				auto lib = LoadLibraryA("D3DCompiler_47.dll");
+				if (lib != NULL)
+					gFunc_D3DX10Compile = (Func_D3DX10Compile)::GetProcAddress(lib, "D3DCompile");
+			}
+
+			int memSize = 0;
+			uint8* memPtr = LoadBinaryData(filePath, &memSize);
+
+			dxResult = gFunc_D3DX10Compile(memPtr, memSize, "Shader", NULL, NULL, entry.c_str(), profile.c_str(),
+				D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
+		}
+		else
+		{
+			if (gFunc_D3DX10CompileFromFileW == NULL)
+			{
+				auto lib = LoadLibraryA("D3DCompiler_47.dll");
+				if (lib != NULL)
+					gFunc_D3DX10CompileFromFileW = (Func_D3DX10CompileFromFileW)::GetProcAddress(lib, "D3DCompileFromFile");
+			}
+			
+			dxResult = gFunc_D3DX10CompileFromFileW(UTF8Decode(filePath).c_str(), NULL, NULL, entry.c_str(), profile.c_str(),
+				D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
+		}				
 
 		if (DXFAILED(dxResult))
 		{
@@ -310,6 +334,36 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 	return true;
 }
 
+static bool LoadDXShader(Span<uint8> fileData, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer)
+{
+	HRESULT hr;
+	
+	if (gFunc_D3DX10Compile == NULL)
+	{
+		auto lib = LoadLibraryA("D3DCompiler_47.dll");
+		if (lib != NULL)
+			gFunc_D3DX10Compile = (Func_D3DX10Compile)::GetProcAddress(lib, "D3DCompile");
+	}
+
+	ID3D10Blob* errorMessage = NULL;
+	auto dxResult = gFunc_D3DX10Compile(fileData.mVals, fileData.mSize, "ShaderSource", NULL, NULL, entry.c_str(), profile.c_str(),
+		D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
+
+	if (DXFAILED(dxResult))
+	{
+		if (errorMessage != NULL)
+		{
+			BF_FATAL(StrFormat("Vertex shader load failed: %s", (char*)errorMessage->GetBufferPointer()).c_str());
+			errorMessage->Release();
+		}
+		else
+			BF_FATAL("Shader load failed");
+		return false;
+	}
+
+	return true;
+}
+
 bool DXShader::Load()
 {
 	//HRESULT hr;
@@ -318,8 +372,35 @@ bool DXShader::Load()
 	ID3D10Blob* vertexShaderBuffer = NULL;
 	ID3D10Blob* pixelShaderBuffer = NULL;
 
-	LoadDXShader(mSrcPath + ".fx", "VS", "vs_4_0", &vertexShaderBuffer);
-	LoadDXShader(mSrcPath + ".fx", "PS", "ps_4_0", &pixelShaderBuffer);
+	void* memPtr = NULL;
+	int memSize = 0;
+	if (ParseMemorySpan(mSrcPath, memPtr, memSize))
+	{		
+		int crPos = (int)mSrcPath.IndexOf('\n');
+		if (crPos != -1)
+		{
+			void* memPtr2 = NULL;
+			int memSize2 = 0;
+			if (ParseMemorySpan(mSrcPath.Substring(crPos + 1), memPtr2, memSize2))
+			{
+				D3D10CreateBlob(memSize, &vertexShaderBuffer);
+				memcpy(vertexShaderBuffer->GetBufferPointer(), memPtr, memSize);
+				D3D10CreateBlob(memSize2, &pixelShaderBuffer);
+				memcpy(pixelShaderBuffer->GetBufferPointer(), memPtr2, memSize2);	
+			}
+		}
+		else
+		{
+			Span<uint8> span((uint8*)memPtr, memSize);
+			LoadDXShader(span, "VS", "vs_4_0", &vertexShaderBuffer);
+			LoadDXShader(span, "PS", "ps_4_0", &pixelShaderBuffer);
+		}
+	}
+	else
+	{
+		LoadDXShader(mSrcPath + ".fx", "VS", "vs_4_0", &vertexShaderBuffer);
+		LoadDXShader(mSrcPath + ".fx", "PS", "ps_4_0", &pixelShaderBuffer);
+	}
 
 	defer(
 		{

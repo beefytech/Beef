@@ -1380,6 +1380,16 @@ void Beefy::BFFatalError(const char* message, const char* file, int line)
 	BFFatalError(String(message), String(file), line);
 }
 
-void MakeUpper(const StringImpl& theString)
+bool Beefy::ParseMemorySpan(const StringImpl& str, void*& outPtr, int& outSize)
 {
+	if (str.StartsWith("@"))
+	{
+		int colon = (int)str.IndexOf(':');
+		String addrStr = str.Substring(1, colon - 1);
+		String lenStr = str.Substring(colon + 1);
+		outPtr = (void*)(intptr)strtoll(addrStr.c_str(), NULL, 16);
+		outSize = (int)strtol(lenStr.c_str(), NULL, 10);
+		return true;
+	}
+	return false;
 }

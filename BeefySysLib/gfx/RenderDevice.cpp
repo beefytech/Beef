@@ -150,14 +150,12 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 	if (!handled)
 	{
 		imageData->mWantsAlphaPremultiplied = (flags & TextureFlag_NoPremult) == 0;
-		if (fileName.StartsWith("@"))
-		{
-			int colon = (int)fileName.IndexOf(':');
-			String addrStr = fileName.Substring(1, colon - 1);
-			String lenStr = fileName.Substring(colon + 1);
-			void* addr = (void*)(intptr)strtoll(addrStr.c_str(), NULL, 16);
-			int len = (int)strtol(lenStr.c_str(), NULL, 10);
-			if (!imageData->LoadFromMemory(addr, len))
+
+		void* memPtr = NULL;
+		int memLen = 0;
+		if (ParseMemorySpan(fileName, memPtr, memLen))
+		{			
+			if (!imageData->LoadFromMemory(memPtr, memLen))
 			{
 				failed = true;
 				delete imageData;
