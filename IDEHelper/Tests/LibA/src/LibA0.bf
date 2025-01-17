@@ -42,7 +42,7 @@ namespace LibA
 			val.Dispose();
 		}
 
-		public static void Alloc<T>() where T : new, delete
+		public static void Alloc<T>() where T : new where alloctype(T) : delete
 		{
 			let t = new T();
 			delete t;

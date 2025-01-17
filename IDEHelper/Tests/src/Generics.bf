@@ -168,7 +168,7 @@ namespace Tests
 			}
 		}
 
-		public static void Alloc0<T>() where T : new, delete, IDisposable
+		public static void Alloc0<T>() where T : new, IDisposable where alloctype(T) : delete
 		{
 			alloctype(T) val = new T();
 			val.Dispose();
