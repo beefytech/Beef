@@ -35,7 +35,7 @@ namespace System
             return (int32)mClassVData & 0x80 != 0;
         }
 #else
-        [SkipCall]
+        [SkipCall, NoShow]
         public bool IsDeleted()
         {
             return false;
