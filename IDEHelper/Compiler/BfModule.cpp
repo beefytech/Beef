@@ -24124,12 +24124,19 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 	BP_ZONE("BfModule::DoMethodDeclaration");
 	
+	auto typeInstance = mCurTypeInstance;
+	auto typeDef = typeInstance->mTypeDef;
+	auto methodDef = mCurMethodInstance->mMethodDef;
+
 	// We could trigger a DoMethodDeclaration from a const resolver or other location, so we reset it here
 	//  to effectively make mIgnoreWrites method-scoped
 	SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites || mCurMethodInstance->mIsUnspecialized || mCurTypeInstance->mResolvingVarField);
 	SetAndRestoreValue<bool> prevIsCapturingMethodMatchInfo;
 	SetAndRestoreValue<bool> prevAllowLockYield(mContext->mAllowLockYield, false);
 	BfTypeState typeState(mCurTypeInstance);
+	typeState.mPrevState = mContext->mCurTypeState;
+	typeState.mForceActiveTypeDef = methodDef->mDeclaringType;
+	typeState.mCurMethodDef = methodDef;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
 	BfModule* resolveModule = mContext->mUnreifiedModule;
@@ -24158,11 +24165,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 //  	}
 
 	if ((mAwaitingInitFinish) && (!mBfIRBuilder->mIgnoreWrites))
-		FinishInit();
-
-	auto typeInstance = mCurTypeInstance;
-	auto typeDef = typeInstance->mTypeDef;
-	auto methodDef = mCurMethodInstance->mMethodDef;
+		FinishInit();	
 
 	if (methodDef->mName.StartsWith('_'))
 	{

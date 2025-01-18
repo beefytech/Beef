@@ -3587,6 +3587,7 @@ CeContext::CeContext()
 	mReflectTypeIdOffset = -1;
 	mExecuteId = -1;
 	mStackSize = -1;
+	mRecursiveDepth = -1;
 
 	mCurCallSource = NULL;
 	mHeap = new	ContiguousHeap();
@@ -5194,7 +5195,7 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 	SetAndRestoreValue<BfMethodInstance*> moduleCurMethodInstance(module->mCurMethodInstance, methodInstance);
 	SetAndRestoreValue<BfTypeInstance*> moduleCurTypeInstance(module->mCurTypeInstance, methodInstance->GetOwner());
 
-	SetAndRestoreValue<int> prevCurExecuteId(mCurModule->mCompiler->mCurCEExecuteId, mCeMachine->mExecuteId);
+	SetAndRestoreValue<int> prevCurExecuteId(mCurModule->mCompiler->mCurCEExecuteId, mCeMachine->mExecuteId);	
 
 	// Reentrancy may occur as methods need defining
 	//SetAndRestoreValue<BfMethodState*> prevMethodStateInConstEval(module->mCurMethodState, NULL);
@@ -9414,6 +9415,7 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mCurContext = NULL;
 	mCurCallSource = NULL;
 	mExecuteId = -1;
+	mCurRecursiveDepth = 0;
 
 	mCurFunctionId = 0;
 	mRevisionExecuteTime = 0;
@@ -10305,10 +10307,12 @@ void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder
 
 	CeBuilder ceBuilder;
 	SetAndRestoreValue<CeBuilder*> prevBuilder(mCurBuilder, &ceBuilder);
-	ceBuilder.mParentBuilder = parentBuilder;
+	ceBuilder.mParentBuilder = parentBuilder;	
 	ceBuilder.mPtrSize = mCeModule->mCompiler->mSystem->mPtrSize;
 	ceBuilder.mCeMachine = this;
 	ceBuilder.mCeFunction = ceFunction;
+	SetAndRestoreValue<int> prevRecursiveDepth(mCurRecursiveDepth, mCurRecursiveDepth + 1);
+	ceBuilder.mRecursiveDepth = mCurRecursiveDepth;
 	ceBuilder.Build();
 
 	ceFunction->mInitializeState = CeFunction::InitializeState_Initialized;
@@ -10599,8 +10603,44 @@ void CeMachine::ReleaseContext(CeContext* ceContext)
 
 BfTypedValue CeMachine::Call(CeCallSource callSource, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType)
 {
-	auto ceContext = AllocContext();
+	auto ceContext = AllocContext();	
+	SetAndRestoreValue<int> prevRecursiveDepth(mCurRecursiveDepth, mCurRecursiveDepth + 1);
+	ceContext->mRecursiveDepth = mCurRecursiveDepth;
 	auto result = ceContext->Call(callSource, module, methodInstance, args, flags, expectingType);
 	ReleaseContext(ceContext);
 	return result;
+}
+
+BfError* CeMachine::FailCurrent(BfModule* srcModule, const StringImpl& error, BfAstNode* refNode)
+{
+	BfError* bfError = NULL;
+
+	if ((mCurBuilder != NULL) &&
+		((mCurContext != NULL) || (mCurBuilder->mRecursiveDepth > mCurContext->mRecursiveDepth)))
+	{
+		String useError = error;
+		useError += StrFormat(" during const-eval generation of '%s'", srcModule->MethodToString(mCurBuilder->mCeFunction->mMethodInstance).c_str());		
+		bfError = srcModule->Fail(error, refNode);
+
+		if (bfError != NULL)
+		{
+			auto filePos = mCurBuilder->mCeMachine->mCeModule->mCurFilePosition;
+			auto parser = filePos.mFileInstance->mParser;
+			if (parser != NULL)
+			{
+				srcModule->mCompiler->mPassInstance->MoreInfoAt(
+					StrFormat("See comptime method '%s' processing location", srcModule->MethodToString(mCurBuilder->mCeFunction->mMethodInstance).c_str()),
+					parser, filePos.mCurSrcPos, 1, BfFailFlag_None);
+			}
+		}
+	}
+	else
+	{
+		bfError = srcModule->Fail(error, refNode);
+	}	
+	return bfError;
+}
+
+void CeMachine::FailCurrentMoreInfo(const StringImpl& error, BfAstNode* refNode)
+{
 }

@@ -1183,10 +1183,10 @@ void BfMSMangler::AddTypeStart(MangleContext& mangleContext, StringImpl& name, B
 	if ((type->IsEnum()) && (type->IsTypedPrimitive()))
 	{
 		auto unreifiedModule = mangleContext.GetUnreifiedModule();
-		if (unreifiedModule != NULL)
-			unreifiedModule->PopulateType(type, BfPopulateType_Data);
-
-		BF_ASSERT(type->mSize >= 0);
+		if (type->mDefineState >= BfTypeDefineState_Defined)
+		{
+			BF_ASSERT(type->mSize >= 0);
+		}
 
 		// The enum size is supposed to be encoded, but VC always uses '4'
 		//name += "W";

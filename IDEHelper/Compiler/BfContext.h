@@ -160,6 +160,7 @@ public:
 	BfTypeInstance* mCurBaseType;
 	BfTypeReference* mCurAttributeTypeRef;
 	BfFieldDef* mCurFieldDef;
+	BfMethodDef* mCurMethodDef;
 	BfTypeDef* mCurTypeDef;
 	BfTypeDef* mForceActiveTypeDef;
 	BfProject* mActiveProject;
@@ -179,6 +180,7 @@ public:
 		mCurBaseTypeRef = NULL;
 		mCurBaseType = NULL;
 		mCurFieldDef = NULL;
+		mCurMethodDef = NULL;
 		mCurAttributeTypeRef = NULL;
 		mCurTypeDef = NULL;
 		mForceActiveTypeDef = NULL;
@@ -199,6 +201,7 @@ public:
 		mCurBaseTypeRef = NULL;
 		mCurBaseType = NULL;
 		mCurFieldDef = NULL;
+		mCurMethodDef = NULL;
 		mCurAttributeTypeRef = NULL;
 		mCurTypeDef = NULL;
 		mForceActiveTypeDef = NULL;

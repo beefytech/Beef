@@ -833,12 +833,13 @@ class CeBuilder
 {
 public:
 	CeBuilder* mParentBuilder;
-	CeMachine* mCeMachine;
+	CeMachine* mCeMachine;	
 	CeFunction* mCeFunction;
 	BeFunction* mBeFunction;
 	CeOperand mReturnVal;
 	BeType* mIntPtrType;
 	int mPtrSize;
+	int mRecursiveDepth;
 
 	String mError;
 	BeDbgLoc* mCurDbgLoc;
@@ -862,6 +863,7 @@ public:
 	{
 		mParentBuilder = NULL;
 		mPtrSize = 0;
+		mRecursiveDepth = -1;
 		mCeFunction = NULL;
 		mBeFunction = NULL;
 		mCeMachine = NULL;
@@ -1126,6 +1128,7 @@ public:
 	int mReflectTypeIdOffset;
 	int mExecuteId;
 	CeEvalFlags mCurEvalFlags;
+	int mRecursiveDepth;
 
 	// These are only valid for the current execution
 	ContiguousHeap* mHeap;
@@ -1248,6 +1251,7 @@ public:
 	int mRevisionExecuteTime;
 	int mCurFunctionId;
 	int mExecuteId;
+	int mCurRecursiveDepth;
 	CeAppendAllocInfo* mAppendAllocInfo;
 
 	CeContext* mCurContext;
@@ -1308,6 +1312,9 @@ public:
 	CeContext* AllocContext();
 	void ReleaseContext(CeContext* context);
 	BfTypedValue Call(CeCallSource callSource, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType);
+
+	BfError* FailCurrent(BfModule* srcModule, const StringImpl& error, BfAstNode* refNode);
+	void FailCurrentMoreInfo(const StringImpl& error, BfAstNode* refNode);
 };
 
 NS_BF_END

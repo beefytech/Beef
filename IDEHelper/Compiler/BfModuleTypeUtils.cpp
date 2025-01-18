@@ -1044,8 +1044,12 @@ void BfModule::TypeFailed(BfTypeInstance* typeInstance)
 	mHadBuildError = true;
 }
 
-bool BfModule::CheckCircularDataError(bool failTypes)
+bool BfModule::CheckCircularDataError(bool failTypes, bool forceFail)
 {
+	// First check to see if the forceFail is necessary
+	if ((forceFail) && (CheckCircularDataError(failTypes, false)))
+		return true;
+
 	// Find two loops of mCurTypeInstance. Just finding one loop can give some false errors.
 
 	BfTypeState* circularTypeStateEnd = NULL;
@@ -1055,6 +1059,9 @@ bool BfModule::CheckCircularDataError(bool failTypes)
 	bool isPreBaseCheck = checkTypeState->mPopulateType == BfPopulateType_Declaration;
 	while (true)
 	{
+		if (forceFail)
+			break;
+
 		if (checkTypeState == NULL)
 			return false;
 
@@ -1090,7 +1097,9 @@ bool BfModule::CheckCircularDataError(bool failTypes)
 	}
 
 	bool hadError = false;
-	checkTypeState = mContext->mCurTypeState->mPrevState;
+	checkTypeState = mContext->mCurTypeState;
+	if (!forceFail)
+		checkTypeState = checkTypeState->mPrevState;
 	while (true)
 	{
 		if (checkTypeState == NULL)
@@ -1106,7 +1115,12 @@ bool BfModule::CheckCircularDataError(bool failTypes)
 			continue;
 		}
 
-		if ((checkTypeState->mCurAttributeTypeRef == NULL) && (checkTypeState->mCurBaseTypeRef == NULL) && (checkTypeState->mCurFieldDef == NULL) &&
+		if (forceFail)
+		{
+			// Go all the way through
+			NOP;
+		}
+		else if ((checkTypeState->mCurAttributeTypeRef == NULL) && (checkTypeState->mCurBaseTypeRef == NULL) && (checkTypeState->mCurFieldDef == NULL) &&
 			((checkTypeState->mType == NULL) || (checkTypeState->mType->IsTypeInstance())))
 			return hadError;
 
@@ -1129,6 +1143,11 @@ bool BfModule::CheckCircularDataError(bool failTypes)
 		{
 			Fail(StrFormat("Field '%s.%s' causes a data cycle", TypeToString(checkTypeState->mType).c_str(), checkTypeState->mCurFieldDef->mName.c_str()),
 				checkTypeState->mCurFieldDef->mTypeRef, true);
+		}
+		else if ((checkTypeState->mCurMethodDef != NULL) && (checkTypeState->mCurMethodDef->mMethodDeclaration != NULL))
+		{
+			Fail(StrFormat("Method '%s.%s' causes a data cycle", TypeToString(checkTypeState->mType).c_str(), checkTypeState->mCurMethodDef->mName.c_str()),
+				checkTypeState->mCurMethodDef->GetRefNode(), true);
 		}
 		else if (checkTypeState->mCurFieldDef != NULL)
 		{
@@ -2837,6 +2856,11 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			Fail("OnCompile methods cannot declare parameters", methodDeclaration);
 			continue;
 		}
+
+		if (typeInstance->mTypeDef->mName->ToString() == "AssetType")
+		{
+			NOP;
+		}	
 
 		SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCeMachine->mCurEmitContext);
 		if (onCompileKind == BfCEOnCompileKind_TypeInit)
@@ -5217,21 +5241,80 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			if ((foundTypeCount >= 2) || (typeInstance->mTypeDef->IsEmitted()))
 			{
 				String error = "OnCompile const evaluation creates a data dependency during TypeInit";
-				if (mCompiler->mCeMachine->mCurBuilder != NULL)
-				{
-					error += StrFormat(" during const-eval generation of '%s'", MethodToString(mCompiler->mCeMachine->mCurBuilder->mCeFunction->mMethodInstance).c_str());
-				}
+				
+
+// 				if (mCompiler->mCeMachine->mCurBuilder != NULL)
+// 				{
+// 					error += StrFormat(" during const-eval generation of '%s'", MethodToString(mCompiler->mCeMachine->mCurBuilder->mCeFunction->mMethodInstance).c_str());
+// 				}
+
+				BfError* bfError = NULL;
 
 				auto refNode = typeDef->GetRefNode();
-				Fail(error, refNode);
+				//Fail(error, refNode);
+				mCompiler->mCeMachine->FailCurrent(this, error, refNode);
+
 				if ((mCompiler->mCeMachine->mCurContext != NULL) && (mCompiler->mCeMachine->mCurContext->mCurFrame != NULL))
-					mCompiler->mCeMachine->mCurContext->Fail(*mCompiler->mCeMachine->mCurContext->mCurFrame, error);
+					bfError = mCompiler->mCeMachine->mCurContext->Fail(*mCompiler->mCeMachine->mCurContext->mCurFrame, error);
 				else if (mCompiler->mCeMachine->mCurContext != NULL)
-					mCompiler->mCeMachine->mCurContext->Fail(error);
+					bfError = mCompiler->mCeMachine->mCurContext->Fail(error);
 				tryCE = false;
+
+				if (bfError != NULL)
+				{
+					auto passInstance = mCompiler->mPassInstance;
+
+					int foundTypeCount = 0;
+					auto typeState = mContext->mCurTypeState;
+					while (typeState != NULL)
+					{
+						if (typeState->mCurAttributeTypeRef != NULL)
+						{
+							passInstance->MoreInfo(StrFormat("Attribute type '%s' causes a data cycle", BfTypeUtils::TypeToString(typeState->mCurAttributeTypeRef).c_str()), typeState->mCurAttributeTypeRef);
+						}
+						else if (typeState->mCurBaseTypeRef != NULL)
+						{
+							passInstance->MoreInfo(StrFormat("Base type '%s' causes a data cycle", BfTypeUtils::TypeToString(typeState->mCurBaseTypeRef).c_str()), typeState->mCurBaseTypeRef);
+						}
+						else if ((typeState->mCurFieldDef != NULL) && (typeState->mCurFieldDef->mFieldDeclaration != NULL))
+						{
+							passInstance->MoreInfo(StrFormat("Field '%s.%s' causes a data cycle", TypeToString(typeState->mType).c_str(), typeState->mCurFieldDef->mName.c_str()),
+								typeState->mCurFieldDef->mTypeRef);
+						}
+						else if ((typeState->mCurMethodDef != NULL) && (typeState->mCurMethodDef->mMethodDeclaration != NULL))
+						{
+							passInstance->MoreInfo(StrFormat("Method '%s.%s' causes a data cycle", TypeToString(typeState->mType).c_str(), typeState->mCurMethodDef->mName.c_str()),
+								typeState->mCurMethodDef->GetRefNode());
+						}						
+						else
+						{
+							BfAstNode* refNode = NULL;
+							if (typeState->mCurTypeDef != NULL)
+								refNode = typeState->mCurTypeDef->GetRefNode();
+							passInstance->MoreInfo(StrFormat("Type '%s' causes a data cycle", TypeToString(typeState->mType).c_str()), refNode);
+						}
+
+						if (typeState->mType == typeInstance)
+						{
+							foundTypeCount++;
+							if (foundTypeCount == 2)
+								break;
+						}
+						typeState = typeState->mPrevState;
+					}
+				}
 			}
  		}
 
+		if ((typeInstance->mDefineState == BfTypeDefineState_CETypeInit) && (tryCE))
+		{
+			if (!CheckCircularDataError())
+			{
+				Fail(StrFormat("Unexpected comptime circular data error detected in type '%s'", TypeToString(typeInstance).c_str()), typeDef->GetRefNode());
+				CheckCircularDataError(true, true);
+			}
+		}
+		
 		if ((typeInstance->mDefineState < BfTypeDefineState_CEPostTypeInit) && (tryCE))
  		{
 			BF_ASSERT(!typeInstance->mTypeDef->IsEmitted());
