@@ -21803,7 +21803,7 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 	{
 		// Success
 	}
-	else if ((thisValue.mType->IsPointer()) || (thisValue.mType->IsObjectOrInterface()))
+	else if ((thisValue.mType->IsPointer()) || (thisValue.mType->IsObjectOrInterface()) || (thisValue.mType->IsFunction()))
 	{
 		// Also good
 	}
@@ -21862,6 +21862,10 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 			BfIRValue valuePtr = mModule->mBfIRBuilder->CreateInBoundsGEP(thisValue.mValue, 0, 1); // mValue
 			thisValue = BfTypedValue(valuePtr, elementType, true);
 		}
+	}
+	else if (thisValue.mType->IsFunction())
+	{
+		isNotNull = mModule->mBfIRBuilder->CreateCmpNE(thisValue.mValue, mModule->GetDefaultValue(thisValue.mType));
 	}
 	else
 		isNotNull = mModule->mBfIRBuilder->CreateIsNotNull(thisValue.mValue);

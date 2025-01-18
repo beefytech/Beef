@@ -980,8 +980,15 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 		}
 		else
 		{
-			canUseMethod &= (CHECK_STATIC(methodDef->mIsStatic) &&
-				(mModule->CheckProtection(protectionCheckFlags, typeInst, methodDef->mDeclaringType->mProject, methodDef->mProtection, startType)));
+			if (typeInst->IsFunction())
+			{
+				canUseMethod = true;
+			}
+			else
+			{
+				canUseMethod &= (CHECK_STATIC(methodDef->mIsStatic) &&
+					(mModule->CheckProtection(protectionCheckFlags, typeInst, methodDef->mDeclaringType->mProject, methodDef->mProtection, startType)));
+			}
 		}
 		if (canUseMethod)
 		{
