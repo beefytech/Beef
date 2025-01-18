@@ -426,7 +426,14 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	methodDef->mBody = methodDeclaration->mBody;
 
 	if ((methodDeclaration->mThisToken != NULL) && (!methodDeclaration->mParams.IsEmpty()))
+	{
 		methodDef->mMethodType = BfMethodType_Extension;
+		if (!methodDef->mIsStatic)
+		{
+			methodDef->mIsStatic = true;
+			Fail("Extension methods must be declared 'static'", methodDef->GetRefNode());
+		}
+	}
 
 	HashContext signatureHashCtx;
 	HashNode(signatureHashCtx, methodDeclaration, methodDef->mBody);

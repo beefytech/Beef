@@ -1336,6 +1336,9 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 			continue;
 
 		auto thisType = methodInstance->GetParamType(0);
+		if (thisType->IsRef())
+			thisType = thisType->GetUnderlyingType();
+
 		bool paramValidated = false;
 		if (methodInstance->GetNumGenericParams() > 0)
 		{

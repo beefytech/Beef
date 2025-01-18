@@ -2274,6 +2274,12 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			}
 			else
 			{
+				if ((checkMethod->mMethodType == BfMethodType_Extension) && (argIdx == -1))
+				{
+					if ((wantType->IsRef()) && (!argTypedValue.mType->IsRef()))
+						wantType = wantType->GetUnderlyingType();
+				}
+
 				if ((wantType->IsRef()) && (!argTypedValue.mType->IsRef()) &&
 					((mAllowImplicitRef) || (wantType->IsIn())))
 					wantType = wantType->GetUnderlyingType();
@@ -10582,7 +10588,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 		callTargetType = moduleMethodInstance.mMethodInstance->GetParamType(0);
 		if ((callTargetType->IsRef()) && (target.IsAddr()) && (!target.IsReadOnly()) && (target.mType->IsValueType()))
 		{
-			target = BfTypedValue(target.mValue, mModule->CreateRefType(target.mType));
+			auto refType = (BfRefType*)callTargetType;
+			target = BfTypedValue(target.mValue, mModule->CreateRefType(target.mType, refType->mRefKind));
 		}
 	}
 
