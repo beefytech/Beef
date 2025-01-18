@@ -24134,9 +24134,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	SetAndRestoreValue<bool> prevIsCapturingMethodMatchInfo;
 	SetAndRestoreValue<bool> prevAllowLockYield(mContext->mAllowLockYield, false);
 	BfTypeState typeState(mCurTypeInstance);
-	typeState.mPrevState = mContext->mCurTypeState;
-	typeState.mForceActiveTypeDef = methodDef->mDeclaringType;
-	typeState.mCurMethodDef = methodDef;
+ 	typeState.mPrevState = mContext->mCurTypeState;
+ 	typeState.mCurMethodDef = methodDef;
 	SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
 	BfModule* resolveModule = mContext->mUnreifiedModule;
