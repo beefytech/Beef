@@ -1813,7 +1813,8 @@ namespace IDE.ui
 		public bool mFindMismatch;
 		public bool mChildHasMatch;
 		public String mColoredLabel ~ delete _;
-		bool mWantRemoveSelf;
+		public bool mWantRemoveSelf;
+		public bool mFreezeHeight;
 
         public WatchRefreshButton mWatchRefreshButton;
 		public ActionButton mActionButton;
@@ -2935,7 +2936,8 @@ namespace IDE.ui
 					wantHeight = 0;
 				else
 					wantHeight = watchListView.mFont.GetLineSpacing();
-				if (mSelfHeight != wantHeight)
+				
+				if ((mSelfHeight != wantHeight) && (!mFreezeHeight))
 				{
 					mSelfHeight = wantHeight;
 					watchListView.mListSizeDirty = true;
