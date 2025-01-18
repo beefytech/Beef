@@ -8516,6 +8516,18 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				if ((callEntry.mFunctionInfo->mCeFunction == NULL) && (!callEntry.mFunctionInfo->mMethodRef.IsNull()))
 				{
 					auto methodRef = callEntry.mFunctionInfo->mMethodRef;
+					if (methodRef.mMethodNum >= methodRef.mTypeInstance->mTypeDef->mMethods.mSize)
+					{
+						// Must be a comptime-generated method
+						ceModule->PopulateType(methodRef.mTypeInstance);
+					}
+
+					if (methodRef.mMethodNum >= methodRef.mTypeInstance->mTypeDef->mMethods.mSize)
+					{
+						_Fail("OOB method reference");
+						return false;
+					}
+
 					auto methodDef = methodRef.mTypeInstance->mTypeDef->mMethods[methodRef.mMethodNum];
 					auto moduleMethodInstance = ceModule->GetMethodInstance(methodRef.mTypeInstance, methodDef,
 						methodRef.mMethodGenericArguments);
