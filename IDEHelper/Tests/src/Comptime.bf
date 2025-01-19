@@ -665,7 +665,7 @@ namespace Tests
 			Test.Assert(dct.mA == 123);
 
 			const int typeSizes = StructE.GetSizes();
-			Test.Assert(typeSizes == 25);
+			Test.Assert(typeSizes == sizeof(StructA) + sizeof(EnumA));
 		}
 	}
 }
