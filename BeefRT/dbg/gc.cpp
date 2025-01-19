@@ -2180,6 +2180,12 @@ void BFGC::AddPendingThread(BfInternalThread* internalThread)
 	mPendingThreads.TryAdd(internalThread->mThreadId, internalThread);
 }
 
+void BFGC::Disable()
+{
+	StopCollecting();
+	mGracelessShutdown = true;
+}
+
 void BFGC::Shutdown()
 {
 	if (mShutdown)
@@ -2894,6 +2900,11 @@ void GC::AddPendingThread(void* internalThreadInfo)
 void GC::RemoveStackMarkableObject(Object* obj)
 {
 	gBFGC.RemoveStackMarkableObject(obj);
+}
+
+void GC::Disable()
+{
+	gBFGC.Disable();
 }
 
 void GC::Shutdown()

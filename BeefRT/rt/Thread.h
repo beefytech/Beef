@@ -111,6 +111,7 @@ public:
 	bool mStarted;
 	bool mJoinOnDelete;
 	bool mIsManualInit;
+	bool mIsBackground;
 	BfpThread* mThreadHandle;
 	intptr mThreadId;	
 	Beefy::CritSect mCritSect;
@@ -126,6 +127,7 @@ public:
 		mIsSuspended = false;
 		mJoinOnDelete = true;
 		mIsManualInit = false;
+		mIsBackground = false;
 		mStackStart = 0;
 		mThreadId = 0;
 	}

@@ -108,6 +108,8 @@ namespace System
 		[CallingConvention(.Cdecl)]
 		private extern static void Init();
 		[CallingConvention(.Cdecl)]
+		public extern static void Disable();
+		[CallingConvention(.Cdecl)]
         public extern static void Collect(bool async = true);
 		[CallingConvention(.Cdecl)]
 		private extern static void StopCollecting();
@@ -136,6 +138,7 @@ namespace System
 		[CallingConvention(.Cdecl)]
 		public extern static void ExcludeThreadId(int thereadId);
 #else
+		public static void Disable() {}
 		public static void Collect(bool async = true) {}
 		private static void MarkAllStaticMembers() {}
 		public static void DebugDumpLeaks() {}
