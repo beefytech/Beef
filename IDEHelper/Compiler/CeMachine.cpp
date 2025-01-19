@@ -7806,10 +7806,15 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		SpecialCheck:
 			if (*fastFinishPtr)
 			{
+				BfTypeInstance* rebuildType = NULL;
 				if ((mCurModule != NULL) && (mCurModule->mCurTypeInstance != NULL))
+					rebuildType = mCurModule->mCurTypeInstance;
+				if ((mCurEmitContext != NULL) && (mCurEmitContext->mType != NULL))
+					rebuildType = mCurEmitContext->mType->ToTypeInstance();
+				if (rebuildType != NULL)
 				{
-					mCurModule->mCurTypeInstance->mRebuildFlags = (BfTypeRebuildFlags)(mCurModule->mCurTypeInstance->mRebuildFlags | BfTypeRebuildFlag_ConstEvalCancelled);
-					mCurModule->DeferRebuildType(mCurModule->mCurTypeInstance);
+					rebuildType->mRebuildFlags = (BfTypeRebuildFlags)(rebuildType->mRebuildFlags | BfTypeRebuildFlag_ConstEvalCancelled);
+					mCurModule->DeferRebuildType(rebuildType);
 				}
 				if (*cancelingPtr)
 				{
