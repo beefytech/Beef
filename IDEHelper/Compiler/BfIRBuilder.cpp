@@ -2794,7 +2794,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 	{
 		BfPointerType* pointerType = (BfPointerType*)type;
 		populateModule->PopulateType(pointerType->mElementType, BfPopulateType_Data);
-		if (pointerType->mElementType->IsValuelessType())
+		if (pointerType->mElementType->IsValuelessNonOpaqueType())
 		{
 			irType = GetPrimitiveType(BfTypeCode_NullPtr);
 		}
@@ -2813,7 +2813,7 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 	{
 		BfRefType* refType = (BfRefType*)type;
 
-		if (refType->mElementType->IsValuelessType())
+		if (refType->mElementType->IsValuelessNonOpaqueType())
 			irType = GetPrimitiveType(BfTypeCode_NullPtr);
 		else
 		{

@@ -13205,7 +13205,7 @@ BfTypedValue BfModule::ToRef(BfTypedValue typedValue, BfRefType* refType)
 	if (refType->mRefKind == BfRefType::RefKind_Mut)
 		refType = CreateRefType(typedValue.mType);
 
-	if (!typedValue.mType->IsValuelessType())
+	if (!typedValue.mType->IsValuelessNonOpaqueType())
 		typedValue = MakeAddressable(typedValue, false, true);
 	return BfTypedValue(typedValue.mValue, refType);
 }
@@ -13216,7 +13216,7 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 		return typedValue;
 
 	PopulateType(typedValue.mType);
-	if ((typedValue.mType->IsValuelessType()) || (typedValue.mType->IsVar()))
+	if ((typedValue.mType->IsValuelessNonOpaqueType()) || (typedValue.mType->IsVar()))
 		return BfTypedValue(mBfIRBuilder->GetFakeVal(), typedValue.mType, false);
 
 	if (typedValue.mValue.IsConst())
@@ -13518,7 +13518,7 @@ BfTypedValue BfModule::MakeAddressable(BfTypedValue typedVal, bool forceMutable,
 
  	if ((forceAddressable) ||
 		((typedVal.mType->IsValueType()) &&
- 		(!typedVal.mType->IsValuelessType())))
+ 		(!typedVal.mType->IsValuelessNonOpaqueType())))
 	{
 		wasReadOnly = true; // Any non-addr is implicitly read-only
 
@@ -21175,7 +21175,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		for ( ; argIdx < irParamCount; localIdx++)
 		{
 			bool isThis = ((localIdx == 0) && (!mCurMethodInstance->mMethodDef->mIsStatic));
-			if ((isThis) && (thisType->IsValuelessType()))
+			if ((isThis) && (thisType->IsValuelessNonOpaqueType()))
 				isThis = false;
 
 			if ((!mIsComptimeModule) && (methodInstance->GetStructRetIdx() == argIdx))
@@ -21192,7 +21192,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				paramVar = methodState.mLocals[localIdx];
 				if ((paramVar->mCompositeCount == -1) &&
 					(!paramVar->mIsConst) &&
-                    ((!paramVar->mResolvedType->IsValuelessType()) || (paramVar->mResolvedType->IsMethodRef())))
+                    ((!paramVar->mResolvedType->IsValuelessNonOpaqueType()) || (paramVar->mResolvedType->IsMethodRef())))
 					break;
 				localIdx++;
 			}
@@ -21358,7 +21358,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				continue;
 
 			bool isThis = ((curLocalIdx == 0) && (!mCurMethodInstance->mMethodDef->mIsStatic));
-			if ((isThis) && (thisType->IsValuelessType()))
+			if ((isThis) && (thisType->IsValuelessNonOpaqueType()))
 				isThis = false;
 
 			if (paramVar->mValue.IsArg())
@@ -21423,7 +21423,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 						}
 					}
 
-					if (paramVar->mResolvedType->IsValuelessType())
+					if (paramVar->mResolvedType->IsValuelessNonOpaqueType())
 					{
 						diVariable = mBfIRBuilder->DbgCreateAutoVariable(diFunction,
 							paramName, mCurFilePosition.mFileInstance->mDIFile, mCurFilePosition.mCurLine, diType);
@@ -21691,7 +21691,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				if (loweredTypeCode2 != BfTypeCode_None)
 					argIdx++;
 			}
-			else if (!paramVar->mResolvedType->IsValuelessType())
+			else if (!paramVar->mResolvedType->IsValuelessNonOpaqueType())
 			{
 				argIdx++;
 			}

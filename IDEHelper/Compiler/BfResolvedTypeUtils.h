@@ -560,6 +560,7 @@ public:
 	virtual bool IsVoidPtr() { return false; }
 	virtual bool CanBeValuelessType() { return false; }
 	virtual bool IsValuelessType() { BF_ASSERT(mSize != -1); BF_ASSERT(mDefineState >= BfTypeDefineState_Defined); return mSize == 0; }
+	virtual bool IsValuelessNonOpaqueType() { return IsValuelessType() && !IsOpaque(); }
 	virtual bool IsSelf() { return false; }
 	virtual bool IsDot() { return false; }
 	virtual bool IsVar() { return false; }
@@ -2537,7 +2538,7 @@ public:
 	virtual bool IsUnspecializedType() override { return mElementType->IsUnspecializedType(); }
 	virtual bool IsUnspecializedTypeVariation() override { return mElementType->IsUnspecializedTypeVariation(); }
 	virtual bool CanBeValuelessType() override { return mElementType->CanBeValuelessType(); }
-	virtual bool IsValuelessType() override { return mElementType->IsValuelessType(); }
+	virtual bool IsValuelessType() override { return mElementType->IsValuelessNonOpaqueType(); }
 };
 
 class BfArrayType : public BfTypeInstance

@@ -1905,7 +1905,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			localDef->mValue = initValue.mValue;
 			if ((localDef->mAddr) && (!localDef->mResolvedType->IsValuelessType()))
 			{
-				if (!initValue.mType->IsVar())
+				if ((!initValue.mType->IsVar()) && (!initValue.mType->IsValuelessType()))
 					wantsStore = true;
 			}
 			else

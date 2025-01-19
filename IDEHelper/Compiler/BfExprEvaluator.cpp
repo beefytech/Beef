@@ -4288,7 +4288,7 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 			BfRefType* refType = (BfRefType*)varDecl->mResolvedType;
 			BfType* innerType = refType->mElementType;
 
-			if (innerType->IsValuelessType())
+			if (innerType->IsValuelessNonOpaqueType())
 			{
 				if (refType->mRefKind == BfRefType::RefKind_Mut)
 					return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), innerType, BfTypedValueKind_MutableValue);
@@ -4314,7 +4314,7 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 		else
 			localResult = BfTypedValue(varDecl->mAddr, varDecl->mResolvedType, varDecl->mIsReadOnly ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
 	}
-	else if (varDecl->mResolvedType->IsValuelessType())
+	else if (varDecl->mResolvedType->IsValuelessNonOpaqueType())
 	{
 		if ((varDecl->mResolvedType->IsRef()) && (!allowRef))
 		{
@@ -7309,7 +7309,7 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 		argVal = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
 	}
 
-	if (argVal.mType->IsValuelessType())
+	if (argVal.mType->IsValuelessNonOpaqueType())
 		return;
 	bool wantSplat = false;
 	if ((argVal.mType->IsSplattable()) && (!disableSplat) && (!IsComptime()))
@@ -7404,7 +7404,7 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 
 void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMethodInstance* methodInstance, SizedArrayImpl<BfIRValue>& irArgs, bool skipMutCheck)
 {
-	MakeBaseConcrete(argVal);
+ 	MakeBaseConcrete(argVal);
 
 	auto methodDef = methodInstance->mMethodDef;
 	if (methodInstance->IsSkipCall())
@@ -7456,14 +7456,14 @@ void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMeth
 		}
 	}
 
-	if (argVal.mType->IsValuelessType())
+	if (argVal.mType->IsValuelessNonOpaqueType())
 		return;
 
 	auto owner = methodInstance->GetOwner();
 
 	bool allowThisSplatting;
 	if (mModule->mIsComptimeModule)
-		allowThisSplatting = owner->IsTypedPrimitive() || owner->IsValuelessType();
+		allowThisSplatting = owner->IsTypedPrimitive() || owner->IsValuelessNonOpaqueType();
 	else
 		allowThisSplatting = methodInstance->AllowsSplatting(-1);
 
@@ -21057,7 +21057,11 @@ void BfExprEvaluator::PerformAssignment(BfAssignmentExpression* assignExpr, bool
 			}
 			else
 			{
-				if (ptr.mType->IsValuelessType())
+				if (ptr.mType->IsOpaque())
+				{
+					mModule->Fail(StrFormat("Unable to assign to opaque type '%s'", mModule->TypeToString(ptr.mType).c_str()), assignExpr);
+				}
+				else if (ptr.mType->IsValuelessType())
 				{
 					mModule->EmitEnsureInstructionAt();
 				}
@@ -22577,7 +22581,11 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 		auto underlyingType = pointerType->mElementType;
 		mModule->mBfIRBuilder->PopulateType(underlyingType);
 
-		if (isUndefIndex)
+		if (underlyingType->IsOpaque())
+		{
+			mModule->Fail(StrFormat("Unable to index opaque pointer type '%s'", mModule->TypeToString(pointerType).c_str()), indexerExpr);
+		}
+		else if (isUndefIndex)
 		{
 			mResult = mModule->GetDefaultTypedValue(underlyingType, false, BfDefaultValueKind_Addr);
 		}
@@ -23014,7 +23022,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			mModule->FixIntUnknown(mResult);
 			mModule->PopulateType(mResult.mType);
 			auto ptrType = mModule->CreatePointerType(mResult.mType);
-			if (mResult.mType->IsValuelessType())
+			if ((mResult.mType->IsValuelessType()) && (!mResult.mType->IsOpaque()))
 			{
 				if (!mModule->IsInSpecializedSection())
 				{
@@ -23072,7 +23080,7 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			BfPointerType* pointerType = (BfPointerType*)derefTarget.mType;
 			auto resolvedType = pointerType->mElementType;
 			mModule->PopulateType(resolvedType);
-			if (resolvedType->IsValuelessType())
+			if (resolvedType->IsValuelessNonOpaqueType())
 				mResult = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), resolvedType, true);
 			else
 				mResult = BfTypedValue(derefTarget.mValue, resolvedType, true);

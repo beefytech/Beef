@@ -1090,8 +1090,8 @@ bool BfMethodInstance::HasThis()
 	if (mMethodDef->mIsStatic)
 		return false;
 	if ((mMethodInfoEx != NULL) && (mMethodInfoEx->mClosureInstanceInfo != NULL) && (mMethodInfoEx->mClosureInstanceInfo->mThisOverride != NULL))
-		return !mMethodInfoEx->mClosureInstanceInfo->mThisOverride->IsValuelessType();
-	return (!mMethodInstanceGroup->mOwner->IsValuelessType());
+		return !mMethodInfoEx->mClosureInstanceInfo->mThisOverride->IsValuelessNonOpaqueType();
+	return (!mMethodInstanceGroup->mOwner->IsValuelessNonOpaqueType());
 }
 
 bool BfMethodInstance::IsVirtual()
@@ -1278,7 +1278,7 @@ bool BfMethodInstance::IsParamSkipped(int paramIdx)
 	BfType* paramType = GetParamType(paramIdx);
 	if ((paramType->CanBeValuelessType()) && (paramType->IsDataIncomplete()))
 		resolveModule->PopulateType(paramType, BfPopulateType_Data);
-	if ((paramType->IsValuelessType()) && (!paramType->IsMethodRef()))
+	if ((paramType->IsValuelessNonOpaqueType()) && (!paramType->IsMethodRef()))
 		return true;
 	return false;
 }
@@ -1378,6 +1378,11 @@ int BfMethodInstance::DbgGetVirtualMethodNum()
 
 void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType, SizedArrayImpl<BfIRType>& paramTypes, bool forceStatic)
 {
+	if (mMethodDef->mName == "Test4")
+	{
+		NOP;
+	}
+
 	BfModule* resolveModule = module->mContext->mUnreifiedModule;
 
 	resolveModule->PopulateType(mReturnType);
@@ -1498,7 +1503,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 
 		if (checkType->CanBeValuelessType())
 			resolveModule->PopulateType(checkType, BfPopulateType_Data);
-		if ((checkType->IsValuelessType()) && (!checkType->IsMethodRef()))
+		if ((checkType->IsValuelessNonOpaqueType()) && (!checkType->IsMethodRef()))
 			continue;
 
 		if ((doSplat) && (!checkType->IsMethodRef()))
