@@ -1885,6 +1885,17 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 // 				return GetOperand(callInst->mInlineResult);
 		}
 		break;
+	case BeTypeOfConstant::TypeId:
+		{
+			auto beTypeOf = (BeTypeOfConstant*)value;									
+			auto ptrType = mCeMachine->GetBeContext()->GetVoidPtrType();
+			CeOperand result = FrameAlloc(ptrType);
+			Emit(CeOp_GetReflectType);
+			EmitFrameOffset(result);
+			Emit((int32)beTypeOf->mBfTypeId);
+			return result;
+		}
+		break;
 	}
 
 	CeOperand* operandPtr = NULL;

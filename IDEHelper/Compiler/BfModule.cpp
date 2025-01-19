@@ -5620,7 +5620,7 @@ BfIRValue BfModule::CreateClassVDataExtGlobal(BfTypeInstance* declTypeInst, BfTy
 	return globalVariable;
 }
 
-BfIRValue BfModule::CreateTypeDataRef(BfType* type)
+BfIRValue BfModule::CreateTypeDataRef(BfType* type, bool forceConstant)
 {
 	if (mBfIRBuilder->mIgnoreWrites)
 	{
@@ -5629,6 +5629,9 @@ BfIRValue BfModule::CreateTypeDataRef(BfType* type)
 
 	if (mIsComptimeModule)
 	{
+		if (forceConstant)
+			return mBfIRBuilder->CreateTypeOfComptime(type);
+
 		auto typeTypeDef = ResolveTypeDef(mCompiler->mTypeTypeDef);
 		auto typeTypeInst = typeTypeDef->ToTypeInstance();
 		return mBfIRBuilder->Comptime_GetReflectType(type->mTypeId, mBfIRBuilder->MapType(typeTypeInst));
@@ -12119,7 +12122,7 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 		auto constTypeOf = (BfTypeOf_Const*)constant;
 		if (mCurTypeInstance != NULL)
 			AddDependency(constTypeOf->mType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
-		return CreateTypeDataRef(constTypeOf->mType);
+		return CreateTypeDataRef(constTypeOf->mType, true);
 	}
 
 	if (constant->mConstType == BfConstType_PtrToInt)

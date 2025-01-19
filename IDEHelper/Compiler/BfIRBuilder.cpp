@@ -406,6 +406,11 @@ String BfIRConstHolder::ToString(BfIRValue irValue)
 			auto typeofConst = (BfTypeOf_Const*)constant;
 			return "typeof " + mModule->TypeToString(typeofConst->mType);
 		}
+		else if (constant->mConstType == BfConstType_TypeOf_Comptime)
+		{
+			auto typeofConst = (BfTypeOf_Const*)constant;
+			return "typeof_comptime " + mModule->TypeToString(typeofConst->mType);
+			}
 		else if (constant->mConstType == BfConstType_TypeOf_WithData)
 		{
 			auto typeofConst = (BfTypeOf_WithData_Const*)constant;
@@ -687,8 +692,8 @@ int BfIRConstHolder::CheckConstEquality(BfIRValue lhs, BfIRValue rhs)
 		}
 	}
 
-	if (((constLHS->mConstType == BfConstType_TypeOf) || (constLHS->mConstType == BfConstType_TypeOf_WithData)) &&
-		((constRHS->mConstType == BfConstType_TypeOf) || (constRHS->mConstType == BfConstType_TypeOf_WithData)))
+	if (((constLHS->mConstType == BfConstType_TypeOf) || (constLHS->mConstType == BfConstType_TypeOf_WithData) || (constLHS->mConstType == BfConstType_TypeOf_Comptime)) &&
+		((constRHS->mConstType == BfConstType_TypeOf) || (constRHS->mConstType == BfConstType_TypeOf_WithData) || (constRHS->mConstType == BfConstType_TypeOf_Comptime)))
 	{
 		auto typeOfLHS = (BfTypeOf_Const*)constLHS;
 		auto typeOfRHS = (BfTypeOf_Const*)constRHS;
@@ -892,6 +897,11 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 		auto typeOf = (BfTypeOf_Const*)fromConst;
 		return CreateTypeOf(typeOf->mType);
 	}
+	else if (fromConst->mConstType == BfConstType_TypeOf_Comptime)
+	{
+		auto typeOf = (BfTypeOf_Const*)fromConst;
+		return CreateTypeOfComptime(typeOf->mType);
+	}
 	else if (fromConst->mConstType == BfConstType_TypeOf_WithData)
 	{
 		auto typeOf = (BfTypeOf_WithData_Const*)fromConst;
@@ -1039,6 +1049,7 @@ BfIRValue BfIRConstHolder::CreateConstAgg(BfIRType type, const BfSizedArray<BfIR
 	for (auto& val : values)
 	{
 		BF_ASSERT(val);
+		//BF_ASSERT(val.IsConst());
 	}
 #endif
 
@@ -1135,6 +1146,18 @@ BfIRValue BfIRConstHolder::CreateConstBox(BfIRValue val, BfIRType type)
 #endif
 	BF_ASSERT((void*)GetConstant(castedVal) == (void*)box);
 	return castedVal;
+}
+
+BfIRValue BfIRConstHolder::CreateTypeOfComptime(BfType* type)
+{
+	BfTypeOf_Const* typeOf = mTempAlloc.Alloc<BfTypeOf_Const>();
+	typeOf->mConstType = BfConstType_TypeOf_Comptime;
+	typeOf->mType = type;
+	auto irValue = BfIRValue(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(typeOf));
+#ifdef CHECK_CONSTHOLDER
+	irValue.mHolder = this;
+#endif
+	return irValue;
 }
 
 BfIRValue BfIRConstHolder::CreateTypeOf(BfType* type)
@@ -2528,6 +2551,14 @@ void BfIRBuilder::Write(const BfIRValue& irValue)
 			{
 				auto typeofConst = (BfTypeOf_Const*)constant;
 				Write(MapType(typeofConst->mType, BfIRPopulateType_Identity));
+			}
+			break;
+		case (int)BfConstType_TypeOf_Comptime:
+			{
+				auto typeType = mModule->ResolveTypeDef(mModule->mCompiler->mTypeTypeDef);
+				auto typeofConst = (BfTypeOf_Const*)constant;
+				Write(MapType(typeType, BfIRPopulateType_Identity));
+				Write(typeofConst->mType->mTypeId);
 			}
 			break;
 		case (int)BfConstType_Undef:

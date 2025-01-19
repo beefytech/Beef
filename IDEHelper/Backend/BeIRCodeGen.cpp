@@ -962,9 +962,19 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 		}
 		else if (constType == BfConstType_TypeOf)
 		{
-			CMD_PARAM(BeType*, type);
+			CMD_PARAM(BeType*, type);	
 			beValue = mReflectDataMap[type];
 			BF_ASSERT(beValue != NULL);
+			return;
+		}
+		else if (constType == BfConstType_TypeOf_Comptime)
+		{
+			CMD_PARAM(BeType*, typeType);
+			CMD_PARAM(int, bfTypeId);
+			auto beConst = mBeModule->mAlloc.Alloc<BeTypeOfConstant>();
+			beConst->mType = typeType;
+			beConst->mBfTypeId = bfTypeId;
+			beValue = beConst;
 			return;
 		}
 		else if (constType == BfConstType_TypeOf_WithData)

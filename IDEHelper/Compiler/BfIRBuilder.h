@@ -134,6 +134,7 @@ enum BfConstType
 	BfConstType_IntToPtr,
 	BfConstType_TypeOf,
 	BfConstType_TypeOf_WithData,
+	BfConstType_TypeOf_Comptime,
 	BfConstType_AggZero,
 	BfConstType_Agg,
 	BfConstType_AggCE,
@@ -981,6 +982,7 @@ public:
 	BfIRValue CreateConstBitCast(BfIRValue val, BfIRType type);
 	BfIRValue CreateConstBox(BfIRValue val, BfIRType type);
 	BfIRValue CreateTypeOf(BfType* type);
+	BfIRValue CreateTypeOfComptime(BfType* type);
 	BfIRValue CreateTypeOf(BfType* type, BfIRValue typeData);
 	BfIRValue GetUndefConstValue(BfIRType type);
 	BfIRValue CreateGlobalVariableConstant(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS = false);
