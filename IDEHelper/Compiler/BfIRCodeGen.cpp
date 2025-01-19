@@ -2029,6 +2029,9 @@ void BfIRCodeGen::InitTarget()
 
 void BfIRCodeGen::HandleNextCmd()
 {
+	if (mFailed)
+		return;
+
 	int curId = mCmdCount;
 
 	BfIRCmd cmd = (BfIRCmd)mStream->Read();
@@ -2090,6 +2093,9 @@ void BfIRCodeGen::HandleNextCmd()
 			else
 				mLLVMModule->print(outStream, NULL);
 		}
+		break;
+	case BfIRCmd_Abort:
+		Fail("Stream aborted");
 		break;
 	case BfIRCmd_SetType:
 		{

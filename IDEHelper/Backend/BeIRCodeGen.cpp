@@ -1123,7 +1123,10 @@ void BeIRCodeGen::Read(BeMDNode*& llvmMD)
 }
 
 void BeIRCodeGen::HandleNextCmd()
-{
+{	
+	if (mFailed)
+		return;
+
 	int curId = mCmdCount;
 
 	BfIRCmd cmd = (BfIRCmd)mStream->Read();
@@ -1192,6 +1195,11 @@ void BeIRCodeGen::HandleNextCmd()
 				mBeModule->print(outStream, NULL);*/
 		}
 		break;
+	case BfIRCmd_Abort:
+		{
+			Fail("Stream aborted");			
+		}
+		break;
 	case BfIRCmd_SetType:
 		{
 			CMD_PARAM(int, typeId);
@@ -1236,6 +1244,13 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, instSize);
 			CMD_PARAM(int, instAlign);
 			CMD_PARAM(bool, isPacked);
+
+			if ((type == NULL) || (type->mTypeCode != BeTypeCode_Struct))
+			{
+				Fail("StructSetBody invalid type");
+				break;
+			}
+
 			BF_ASSERT(type->mTypeCode == BeTypeCode_Struct);
 			auto structType = (BeStructType*)type;
 			mBeContext->SetStructBody(structType, members, isPacked);

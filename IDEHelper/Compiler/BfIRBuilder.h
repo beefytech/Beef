@@ -161,6 +161,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_Module_SetTargetTriple,
 	BfIRCmd_Module_AddModuleFlag,
 	BfIRCmd_WriteIR,
+	BfIRCmd_Abort,
 
 	BfIRCmd_SetType,
 	BfIRCmd_SetInstType,
@@ -1199,6 +1200,7 @@ public:
 	void SetBackend(bool isBeefBackend);
 	void RemoveIRCodeGen();
 	void WriteIR(const StringImpl& fileName);
+	void AbortStream();
 
 	void Module_SetTargetTriple(const StringImpl& targetTriple, const StringImpl& targetCPU);
 	void Module_AddModuleFlag(const StringImpl& flag, int val);

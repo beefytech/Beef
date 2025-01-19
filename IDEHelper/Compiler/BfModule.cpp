@@ -11097,7 +11097,7 @@ BfMethodInstance* BfModule::GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstan
 	{
 		if (mCompiler->EnsureCeUnpaused(typeInstance))
 		{
-			BF_FATAL("OOB in GetRawMethodInstanceAtIdx");
+			InternalError("OOB in GetRawMethodInstanceAtIdx");
 		}
 		return NULL;
 	}

@@ -2217,6 +2217,12 @@ void BfIRBuilder::WriteIR(const StringImpl& fileName)
 	NEW_CMD_INSERTED;
 }
 
+void BfIRBuilder::AbortStream()
+{
+	WriteCmd(BfIRCmd_Abort);
+	NEW_CMD_INSERTED;
+}
+
 void BfIRBuilder::Module_SetTargetTriple(const StringImpl& targetTriple, const StringImpl& targetCPU)
 {
 	WriteCmd(BfIRCmd_Module_SetTargetTriple, targetTriple, targetCPU);
@@ -2774,7 +2780,11 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 	if (!type->IsDeclared())
 		populateModule->PopulateType(type, BfPopulateType_Declaration);
 
-	BF_ASSERT(type->IsDeclared());
+	if (!type->IsDeclared())
+	{
+		AbortStream();
+		return;
+	}
 
 #ifdef BFIR_RENTRY_CHECK
 	ReEntryCheck reEntryCheck(&mDeclReentrySet, type);
