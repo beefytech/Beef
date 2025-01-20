@@ -6799,20 +6799,25 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 					else
 					{
 						// Map this new virtual index back to the original index
-						//vDataIdx += (methodInstance->mVirtualTableIdx - typeInst->GetBaseVTableSize()) + typeInst->GetOrigBaseVTableSize();
-
-						//vDataIdx = mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 1 + methodInstance->GetOwner()->GetDynCastVDataCount() + mModule->mCompiler->mMaxInterfaceSlots);
+						
+						// Find the type instance that declared the original method
+						auto declTypeInst = typeInst;
+						while (declTypeInst->mBaseType != NULL)
+						{
+							mModule->PopulateType(declTypeInst->mBaseType, BfPopulateType_DataAndMethods);
+							if (methodInstance->mVirtualTableIdx >= declTypeInst->mBaseType->mVirtualMethodTableSize)
+								break;
+							BF_ASSERT(methodInstance->mMethodDef->mIsOverride);
+							declTypeInst = declTypeInst->mBaseType;							
+						}
 
 						vDataIdx = mModule->mBfIRBuilder->GetConfigConst(BfIRConfigConst_VirtualMethodOfs, BfTypeCode_Int32);
 						vDataIdx = mModule->mBfIRBuilder->CreateAdd(vDataIdx, mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32,
-							(methodInstance->mVirtualTableIdx - typeInst->GetImplBaseVTableSize()) + typeInst->GetOrigImplBaseVTableSize()));
+							(methodInstance->mVirtualTableIdx - declTypeInst->GetImplBaseVTableSize()) + declTypeInst->GetOrigImplBaseVTableSize()));
 					}
 				}
 				else
-				{
-					//vDataIdx += methodInstance->mVirtualTableIdx;
-
-					//vDataIdx = mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, 1 + methodInstance->GetOwner()->GetDynCastVDataCount() + mModule->mCompiler->mMaxInterfaceSlots);
+				{					
 					vDataIdx = mModule->mBfIRBuilder->GetConfigConst(BfIRConfigConst_VirtualMethodOfs, BfTypeCode_Int32);
 					vDataIdx = mModule->mBfIRBuilder->CreateAdd(vDataIdx, mModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, methodInstance->mVirtualTableIdx));
 				}

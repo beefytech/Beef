@@ -1,0 +1,13 @@
+ShowFile("src/HotSwap_Virtuals02.bf")
+GotoText("//Test_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+StepOver()
+
+ToggleCommentAt("ClassA_GetVal01")
+Compile()
+StepOver()
+
+ToggleCommentAt("ClassB_GetVal04")
+Compile()
+StepOver()
