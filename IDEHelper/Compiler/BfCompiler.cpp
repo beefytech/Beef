@@ -5362,7 +5362,8 @@ void BfCompiler::GetSymbolReferences()
 				typeState.mCurTypeDef = propDef->mDeclaringType;
 				module->GetBasePropertyDef(checkPropDef, checkTypeInst);
 				if (auto fieldDecl = propDef->GetFieldDeclaration())
-					mResolvePassData->HandlePropertyReference(fieldDecl->mNameNode, checkTypeInst->mTypeDef, checkPropDef);
+					if (fieldDecl->mNameNode != NULL)
+						mResolvePassData->HandlePropertyReference(fieldDecl->mNameNode, checkTypeInst->mTypeDef, checkPropDef);
 			}
 		}
 
