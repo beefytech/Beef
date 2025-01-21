@@ -6778,8 +6778,11 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 					BfMethodInstance* declaringMethodInstance = (BfMethodInstance*)entry.mDeclaringMethod;
 					if ((declaringMethodInstance != NULL) && (declaringMethodInstance->mMethodInstanceGroup->IsImplemented()) && (declaringMethodInstance->mIsReified))
 					{
- 						BF_ASSERT(entry.mImplementingMethod.mTypeInstance->mMethodInstanceGroups[entry.mImplementingMethod.mMethodNum].IsImplemented());
- 						BF_ASSERT(entry.mImplementingMethod.mTypeInstance->mMethodInstanceGroups[entry.mImplementingMethod.mMethodNum].mDefault->mIsReified);
+						if (entry.mImplementingMethod.mMethodNum >= 0)
+						{
+							BF_ASSERT(entry.mImplementingMethod.mTypeInstance->mMethodInstanceGroups[entry.mImplementingMethod.mMethodNum].IsImplemented());
+							BF_ASSERT(entry.mImplementingMethod.mTypeInstance->mMethodInstanceGroups[entry.mImplementingMethod.mMethodNum].mDefault->mIsReified);
+						}
 						BfMethodInstance* methodInstance = (BfMethodInstance*)entry.mImplementingMethod;
 						if ((methodInstance != NULL) && (!methodInstance->mMethodDef->mIsAbstract))
 						{
