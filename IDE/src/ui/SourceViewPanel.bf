@@ -95,7 +95,7 @@ namespace IDE.ui
             base.MouseDown(x, y, btn, btnCount);
         }
 
-		public override void MouseWheel(float x, float y, float deltaX, float deltaY)
+		public override void MouseWheel(MouseEvent evt)
 		{
 			var sewc = mEditWidgetContent as SourceEditWidgetContent;
 			if ((sewc.mSourceViewPanel != null) && (sewc.mSourceViewPanel.mEmbedParent != null))
@@ -104,19 +104,26 @@ namespace IDE.ui
 				{
 					if ((mVertScrollbar != null) && (mVertScrollbar.mAllowMouseWheel))
 					{
-						mVertScrollbar.MouseWheel(x, y, 0, deltaY);
+						mVertScrollbar.MouseWheel(evt.mX, evt.mY, evt.mWheelDeltaX, evt.mWheelDeltaY);
 						return;
 					}
 				}
 
 				var target = sewc.mSourceViewPanel.mEmbedParent.mEditWidget.mEditWidgetContent;
-				SelfToOtherTranslate(target, x, y, var transX, var transY);
-				target.MouseWheel(transX, transY, deltaX, deltaY);
+
+				MouseEvent parentEvt = scope .();
+				parentEvt.mWheelDeltaX = evt.mWheelDeltaX;
+				parentEvt.mWheelDeltaY = evt.mWheelDeltaY;
+				parentEvt.mSender = evt.mSender;
+
+				// Keep passing it up until some is interested in using it...
+				SelfToOtherTranslate(target, evt.mX, evt.mY, out parentEvt.mX, out parentEvt.mY);
+
+				target.MouseWheel(evt);
 				return;
 			}
 
-
-			base.MouseWheel(x, y, deltaX, deltaY);
+			base.MouseWheel(evt);
 		}
 
         public override void GotFocus()
