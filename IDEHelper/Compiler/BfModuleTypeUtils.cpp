@@ -15130,6 +15130,7 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 
 					BfIRValue curTupleValue = CreateAlloca(tupleType);
 					auto loadedVal = LoadValue(typedVal);
+					FixValueActualization(loadedVal);
 					mBfIRBuilder->CreateStore(loadedVal.mValue, mBfIRBuilder->CreateBitCast(curTupleValue, mBfIRBuilder->MapTypeInstPtr(fromTupleType)));
 					return BfTypedValue(curTupleValue, tupleType, BfTypedValueKind_TempAddr);
 				}
