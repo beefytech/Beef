@@ -20715,6 +20715,21 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		return;
 	}
 
+	auto _SanityCheckType = [&](BfType* type)
+		{			
+			if ((type != NULL) && (type->IsDeleting()))
+			{
+				InternalError("Method references deleted type", methodDef->GetRefNode());
+				return false;
+			}
+			return true;
+		};
+	if (!_SanityCheckType(methodInstance->mReturnType))
+		return;
+	for (int paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
+		if (!_SanityCheckType(methodInstance->GetParamType(paramIdx)))
+			return;
+
 	StringT<512> mangledName;
 	BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), mCurMethodInstance);
 	if (!methodInstance->mIRFunction)
@@ -26099,6 +26114,15 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 			{
 				checkMethodDef = checkMethodDef->mNextWithSameName;
 				continue;
+			}
+
+			if (iMethodIdx >= ifaceInst->mMethodInstanceGroups.mSize)			
+				PopulateType(ifaceInst, BfPopulateType_DataAndMethods);			
+
+			if (iMethodIdx >= ifaceInst->mMethodInstanceGroups.mSize)
+			{
+				InternalError("Interface slotting error", methodInstance->mMethodDef->GetMutNode());
+				break;
 			}
 
 			auto& iMethodGroup = ifaceInst->mMethodInstanceGroups[iMethodIdx];
