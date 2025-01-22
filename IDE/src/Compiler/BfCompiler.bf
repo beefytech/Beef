@@ -987,7 +987,11 @@ namespace IDE.Compiler
 			{
 				if (!curWatches.Contains(kv.key))
 				{
-					gApp.mFileWatcher.RemoveWatch(kv.key, kv.value);
+					var watchFile = scope String(kv.key);
+					if ((watchFile.EndsWith(Path.DirectorySeparatorChar)) || (watchFile.EndsWith(Path.AltDirectorySeparatorChar)))
+						watchFile.Append("*");
+					gApp.mFileWatcher.RemoveWatch(watchFile, kv.value);
+					//Debug.Assert(!gApp.mFileWatcher.HasDependentObject(kv.value));
 					oldKeys.Add(kv.key);
 				}
 			}
