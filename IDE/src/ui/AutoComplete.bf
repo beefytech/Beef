@@ -2967,7 +2967,7 @@ namespace IDE.ui
 				return;
 			}
 
-			bool isExplicitInsert = (keyChar == '\0') || (keyChar == '\t') || (keyChar == '\n');
+			bool isExplicitInsert = (keyChar == '\0') || (keyChar == '\t') || (keyChar == '\n') || (keyChar == '\r');
 
             String insertText = entry.mEntryInsert ?? entry.mEntryDisplay;
 			if ((!isExplicitInsert) && (insertText.Contains('\t')))
