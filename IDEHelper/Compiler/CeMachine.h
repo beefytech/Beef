@@ -1169,6 +1169,7 @@ public:
 	void AddTypeSigRebuild(BfType* type);
 	void AddFileRebuild(const StringImpl& filePath);
 	uint8* CeMalloc(int size);
+	uint8* CeMallocZero(int size);
 	bool CeFree(addr_ce addr);
 	addr_ce CeAllocArray(BfArrayType* arrayType, int count, addr_ce& elemsAddr);
 	addr_ce GetReflectTypeDecl(int typeId);	

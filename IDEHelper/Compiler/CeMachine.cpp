@@ -3847,6 +3847,13 @@ uint8* CeContext::CeMalloc(int size)
 #endif
 }
 
+uint8* CeContext::CeMallocZero(int size)
+{
+	uint8* ptr = CeMalloc(size);
+	memset(ptr, 0, size);
+	return ptr;
+}
+
 bool CeContext::CeFree(addr_ce addr)
 {
 #ifdef CE_ENABLE_HEAP
@@ -3892,7 +3899,7 @@ addr_ce CeContext::GetConstantData(BeConstant* constant)
 	auto result = mCeMachine->WriteConstant(structData, writeConstant, this);
 	BF_ASSERT(result == CeErrorKind_None);
 
-	uint8* ptr = CeMalloc(structData.mData.mSize);
+	uint8* ptr = CeMallocZero(structData.mData.mSize);
 	memcpy(ptr, structData.mData.mVals, structData.mData.mSize);
 	return (addr_ce)(ptr - mMemory.mVals);
 }
@@ -4123,10 +4130,8 @@ addr_ce CeContext::GetString(int stringId)
 	int allocSize = stringTypeInst->mInstSize + (int)str.length() + 1;
 	int charsOffset = stringTypeInst->mInstSize;
 
-	uint8* mem = CeMalloc(allocSize);
-
-	memset(mem, 0, allocSize);
-
+	uint8* mem = CeMallocZero(allocSize);
+	
 	auto lenByteCount = stringTypeInst->mFieldInstances[0].mResolvedType->mSize;
 	auto lenOffset = stringTypeInst->mFieldInstances[0].mDataOffset;
 	auto allocSizeOffset = stringTypeInst->mFieldInstances[1].mDataOffset;
@@ -4374,7 +4379,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		if (type->IsPointer())
 		{
 			auto elementType = type->GetUnderlyingType();
-			auto toPtr = CeMalloc(elementType->mSize);
+			auto toPtr = CeMallocZero(elementType->mSize);
 			addr_ce toAddr = (addr_ce)(toPtr - mMemory.mVals);
 			if (ptrSize == 4)
 				CE_GETC(int32) = (int32)toAddr;
@@ -4827,6 +4832,12 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 				auto allocSizeOffset = stringTypeInst->mFieldInstances[1].mDataOffset;
 				auto ptrOffset = stringTypeInst->mFieldInstances[2].mDataOffset;
 
+				if (addr + ptrOffset + 4 > memSize)
+				{
+					// Memory error
+					return irBuilder->CreateConstNull(irBuilder->MapType(typeInst));
+				}
+
 				int32 lenVal = *(int32*)(instData + lenOffset);
 
 				char* charPtr = NULL;
@@ -5087,8 +5098,8 @@ BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfI
 	SetAndRestoreValue<bool> prevIgnoreWrites(module->mBfIRBuilder->mIgnoreWrites, true);
 
 	module->mContext->mUnreifiedModule->PopulateType(customAttribute->mType);
-	if (ceAttrAddr == 0)
-		ceAttrAddr = CeMalloc(customAttribute->mType->mSize) - mMemory.mVals;
+	if (ceAttrAddr == 0)	
+		ceAttrAddr = CeMallocZero(customAttribute->mType->mSize) - mMemory.mVals;			
 	BfIRValue ceAttrVal = module->mBfIRBuilder->CreateConstAggCE(module->mBfIRBuilder->MapType(customAttribute->mType, BfIRPopulateType_Identity), ceAttrAddr);
 	BfTypedValue ceAttrTypedValue(ceAttrVal, customAttribute->mType);
 
