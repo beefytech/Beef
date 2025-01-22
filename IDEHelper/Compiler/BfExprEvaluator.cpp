@@ -2296,7 +2296,11 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 
 				if (!mModule->CanCast(argTypedValue, wantType, castFlags))
 				{
-					if ((mAllowImplicitWrap) && (argTypedValue.mType->IsWrappableType()) && (mModule->GetWrappedStructType(argTypedValue.mType) == wantType))
+					if ((argIdx == -1) && (wantType->IsWrappableType()) && (mModule->GetWrappedStructType(wantType) == argTypedValue.mType))
+					{
+						// Extension target can be wrapped
+					}
+					else if ((mAllowImplicitWrap) && (argTypedValue.mType->IsWrappableType()) && (mModule->GetWrappedStructType(argTypedValue.mType) == wantType))
 					{
 						// Is wrapped type
 					}
