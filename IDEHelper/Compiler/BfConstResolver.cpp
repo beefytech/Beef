@@ -167,7 +167,10 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 		}
 		else
 		{
-			mResult = mModule->Cast(expr, mResult, wantType, (BfCastFlags)(BfCastFlags_WantsConst | (explicitCast ? BfCastFlags_Explicit : BfCastFlags_None)));
+			BfCastFlags castFlags = (BfCastFlags)(BfCastFlags_WantsConst | (explicitCast ? BfCastFlags_Explicit : BfCastFlags_None));
+			if ((flags & BfConstResolveFlag_NoConversionOperator) != 0)
+				castFlags = (BfCastFlags)(castFlags | BfCastFlags_NoConversionOperator);
+			mResult = mModule->Cast(expr, mResult, wantType, castFlags);
 		}
 	}
 

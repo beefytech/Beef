@@ -1135,7 +1135,10 @@ void BeIRCodeGen::Read(BeMDNode*& llvmMD)
 void BeIRCodeGen::HandleNextCmd()
 {	
 	if (mFailed)
+	{
+		mStream->SetReadPos(mStream->GetSize());
 		return;
+	}
 
 	int curId = mCmdCount;
 
@@ -2318,7 +2321,11 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeValue*, value);
 			CMD_PARAM(BeBlock*, comingFrom);
 
-			BF_ASSERT(phiValue->GetType() == value->GetType());
+			if (phiValue->GetType() != value->GetType())
+			{
+				Fail("AddPhiIncoming type mismatch");
+				break;
+			}			
 
 			auto phiIncoming = mBeModule->mAlloc.Alloc<BePhiIncoming>();
 			phiIncoming->mBlock = comingFrom;

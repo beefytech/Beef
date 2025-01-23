@@ -4679,6 +4679,10 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 					//  auto-created underlying type and it will cause an 'error flash'. We defer errors until the full resolve for that purpose
 					resolveFlags = BfConstResolveFlag_NoCast;
 				}
+
+				if ((mCurTypeInstance->IsEnum()) && (fieldDef->IsEnumCaseEntry()))
+					resolveFlags = (BfConstResolveFlags)(resolveFlags | BfConstResolveFlag_NoConversionOperator | BfConstResolveFlag_ExplicitCast);
+
 				UpdateSrcPos(initializer);
 				auto result = constResolver.Resolve(initializer, fieldType, resolveFlags);
 				if ((mCompiler->mCeMachine != NULL) && (fieldInstance != NULL))
