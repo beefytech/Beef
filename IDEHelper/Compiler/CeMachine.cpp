@@ -8647,7 +8647,10 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				_Fail("Empty virtual table");
 				return false;
 			}
-			auto methodInstance = (BfMethodInstance*)valueType->mVirtualMethodTable[virtualIdx].mImplementingMethod;
+			auto& methodRef = valueType->mVirtualMethodTable[virtualIdx].mImplementingMethod;
+			if (methodRef.mTypeInstance->mDefineState < BfTypeDefineState_DefinedAndMethodsSlotted)
+				ceModule->PopulateType(methodRef.mTypeInstance, BfPopulateType_DataAndMethods);
+			auto methodInstance = (BfMethodInstance*)methodRef;
 
 			auto callFunction = mCeMachine->GetPreparedFunction(methodInstance);
 			if (needsFunctionIds)
