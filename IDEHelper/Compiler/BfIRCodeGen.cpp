@@ -2344,7 +2344,8 @@ void BfIRCodeGen::HandleNextCmd()
 		{
 			CMD_PARAM_NOTRANS(llvm::Value*, val);
 			CMD_PARAM(String, name);
-			val->setName(name.c_str());
+			if (!val->getType()->isVoidTy())
+				val->setName(name.c_str());
 		}
 		break;
 	case BfIRCmd_CreateUndefValue:
