@@ -1032,6 +1032,12 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		return;
 	}
 
+	typeInst->mRebuildFlags = (BfTypeRebuildFlags)(typeInst->mRebuildFlags | BfTypeRebuildFlag_InRebuildType);
+	defer(
+		{
+			typeInst->mRebuildFlags = (BfTypeRebuildFlags)(typeInst->mRebuildFlags & ~BfTypeRebuildFlag_InRebuildType);
+		});
+
 	if (mCompiler->mCeMachine != NULL)
 		mCompiler->mCeMachine->ClearTypeData(typeInst);
 
@@ -1367,6 +1373,11 @@ void BfContext::RebuildDependentTypes_MidCompile(BfDependedType* dType, const St
 		BfLogSysM("Rebuilding dependent types MidCompile Type:%p Reason:%s - updating after deleting types\n", dType, reason.c_str());
 		UpdateAfterDeletingTypes();
 	}
+}
+
+bool BfContext::IsRebuilding(BfType* type)
+{
+	return ((type->mRebuildFlags & BfTypeRebuildFlag_InRebuildType) != 0);		
 }
 
 bool BfContext::CanRebuild(BfType* type)
@@ -2006,6 +2017,10 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 			if (CanRebuild(dependentType))
 			{
 				RebuildType(dependentType);
+			}
+			else if (IsRebuilding(dependentType))
+			{
+				// Ignore
 			}
 			else if (dependentTypeInst != NULL)
 			{
@@ -3408,6 +3423,9 @@ void BfContext::TryUnreifyModules()
 void BfContext::MarkUsedModules(BfProject* project, BfModule* module)
 {
 	BP_ZONE("BfContext::MarkUsedModules");
+
+	if (module->mIsDeleting)
+		return;
 
 	BF_ASSERT_REL(!module->mIsDeleting);
 

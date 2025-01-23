@@ -503,6 +503,7 @@ public:
 	void RebuildDependentTypes(BfDependedType* dType);
 	void QueueMidCompileRebuildDependentTypes(BfDependedType* dType, const String& reason);
 	void RebuildDependentTypes_MidCompile(BfDependedType* dType, const String& reason);
+	bool IsRebuilding(BfType* type);
 	bool CanRebuild(BfType* type);
 	void TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChange);
 	void TypeMethodSignaturesChanged(BfTypeInstance* typeInst);
