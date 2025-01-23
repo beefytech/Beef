@@ -8553,6 +8553,9 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	bool ignoreErrors = (errorOut == NULL) ||
 		((genericParamSource.mMethodInstance == NULL) && (genericParamSource.mTypeInstance == NULL));
 
+	if (checkArgType->IsVar())
+		return true;
+
 	BfType* origCheckArgType = checkArgType;
 
 	if (origCheckArgType->IsRef())
