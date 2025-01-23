@@ -11081,6 +11081,12 @@ bool BfModule::GetBasePropertyDef(BfPropertyDef*& propDef, BfTypeInstance*& type
 
 BfMethodInstance* BfModule::GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstance, int methodIdx, const char* assertName)
 {
+	if (typeInstance->IsDeleting())
+	{
+		InternalError("GetRawMethodInstanceAtIdx for deleted type", typeInstance->mTypeDef->GetRefNode());
+		return NULL;
+	}
+
 	if (!typeInstance->mResolvingVarField)
 	{
 		if (!typeInstance->DefineStateAllowsStaticMethods())
