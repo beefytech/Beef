@@ -2607,7 +2607,14 @@ BfProjectSet* BfModule::GetVisibleProjectSet()
 		};
 
 		if (mCurTypeInstance != NULL)
+		{
 			_AddType(mCurTypeInstance);
+			if ((mContext->mCurTypeState != NULL) && (mContext->mCurTypeState->mType == mCurTypeInstance))
+			{
+				if (mContext->mCurTypeState->mCurTypeDef != NULL)
+					_AddProject(mContext->mCurTypeState->mCurTypeDef->mProject);
+			}
+		}
 
 		auto methodState = mCurMethodState;
 		while (methodState != NULL)

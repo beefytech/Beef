@@ -2097,7 +2097,12 @@ void CeBuilder::Build()
 			mCeFunction->mFailed = true;
 			return;
 		}
-		mBeFunction = (BeFunction*)irCodeGen->GetBeValue(dupMethodInstance.mIRFunction.mId);
+		mBeFunction = (BeFunction*)irCodeGen->TryGetBeValue(dupMethodInstance.mIRFunction.mId);
+		if (mBeFunction == NULL)
+		{
+			mCeFunction->mFailed = true;
+			return;
+		}
 
 		mIntPtrType = irCodeGen->mBeContext->GetPrimitiveType((mPtrSize == 4) ? BeTypeCode_Int32 : BeTypeCode_Int64);
 
@@ -10386,6 +10391,10 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 	{
 		if ((func.IsConst()) || (func.IsFake()))
 			return NULL;
+
+		auto funcVal = mCeModule->mBfIRBuilder->mBeIRCodeGen->TryGetBeValue(func.mId);
+		if (funcVal == NULL)
+			return NULL;
 	}
 
 	CeFunctionInfo** functionInfoPtr = NULL;
@@ -10409,8 +10418,7 @@ CeFunction* CeMachine::GetFunction(BfMethodInstance* methodInstance, BfIRValue f
 	}
 	else
 	{
-		auto funcVal = mCeModule->mBfIRBuilder->mBeIRCodeGen->GetBeValue(func.mId);
-
+		auto funcVal = mCeModule->mBfIRBuilder->mBeIRCodeGen->GetBeValue(func.mId);		
 		if (auto function = BeValueDynCast<BeFunction>(funcVal))
 		{
 			String funcName = function->mName;

@@ -6099,6 +6099,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			std::function<void(BfType*)> splatIterate;
 			splatIterate = [&](BfType* checkType)
 			{
+				if (hadNonSplattable)
+					return;
+
 				if (checkType->IsValueType())
 					PopulateType(checkType, BfPopulateType_Data);
 
@@ -6135,6 +6138,13 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						for (int fieldIdx = 0; fieldIdx < (int)checkTypeInstance->mFieldInstances.size(); fieldIdx++)
 						{
 							auto fieldInstance = (BfFieldInstance*)&checkTypeInstance->mFieldInstances[fieldIdx];
+
+							if ((fieldInstance->mResolvedType->IsVar()) || (fieldInstance->mResolvedType->IsLet()))
+							{
+								//TODO: allow splattables with var/let field types
+								hadNonSplattable = true;
+							}
+
 							if (fieldInstance->mDataIdx >= 0)
 								splatIterate(fieldInstance->GetResolvedType());
 						}

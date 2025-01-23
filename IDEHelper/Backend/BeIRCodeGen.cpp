@@ -1264,11 +1264,24 @@ void BeIRCodeGen::HandleNextCmd()
 				break;
 			}
 
-			BF_ASSERT(type->mTypeCode == BeTypeCode_Struct);
-			auto structType = (BeStructType*)type;
-			mBeContext->SetStructBody(structType, members, isPacked);
-			structType->mSize = instSize;
-			structType->mAlign = instAlign;
+			bool failed = false;
+			for (auto member : members)
+			{
+				if (member->mSize < 0)
+				{
+					Fail("StructSetBody invalid member type");
+					failed = true;
+				}
+			}
+
+			if (!failed)
+			{
+				BF_ASSERT(type->mTypeCode == BeTypeCode_Struct);
+				auto structType = (BeStructType*)type;
+				mBeContext->SetStructBody(structType, members, isPacked);
+				structType->mSize = instSize;
+				structType->mAlign = instAlign;
+			}
 		}
 		break;
 	case  BfIRCmd_Type:
@@ -3723,6 +3736,18 @@ void BeIRCodeGen::SetConfigConst(int idx, int value)
 {
 	BF_ASSERT(idx == (int)mConfigConsts.size());
 	mConfigConsts.Add(value);
+}
+
+BeValue* BeIRCodeGen::TryGetBeValue(int id)
+{
+	auto& result = mResults[id];
+	if (result.mKind != BeIRCodeGenEntryKind_Value)
+		return NULL;
+#ifdef BE_EXTRA_CHECKS
+	BF_ASSERT(!result.mBeValue->mLifetimeEnded);
+	BF_ASSERT(!result.mBeValue->mWasRemoved);
+#endif
+	return result.mBeValue;
 }
 
 BeValue* BeIRCodeGen::GetBeValue(int id)

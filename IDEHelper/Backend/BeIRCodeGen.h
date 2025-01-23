@@ -150,6 +150,7 @@ public:
 	virtual void SetConfigConst(int idx, int value) override;
 
 	BeValue* GetBeValue(int streamId);
+	BeValue* TryGetBeValue(int streamId);
 	BeType* GetBeType(int streamId);
 	BeBlock* GetBeBlock(int streamId);
 	BeMDNode* GetBeMetadata(int streamId);
