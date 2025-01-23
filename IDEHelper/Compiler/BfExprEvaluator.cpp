@@ -233,8 +233,10 @@ void BfMethodMatcher::Init(const BfMethodGenericArguments& methodGenericArgument
 			mHasVarArguments |= bfType->IsVar();
 			if (bfType->IsGenericParam())
 			{
-				auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)bfType);
-				if ((genericParamInstance->mGenericParamFlags & BfGenericParamFlag_Var) != 0)
+				BfType* typeConstraint = NULL;
+				BfGenericParamFlags flags = BfGenericParamFlag_None;
+				mModule->GetMergedGenericParamData(bfType, flags, typeConstraint);
+				if ((flags & BfGenericParamFlag_Var) != 0)
 					mHasVarArguments = true;
 			}
 		}
