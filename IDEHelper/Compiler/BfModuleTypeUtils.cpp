@@ -6755,6 +6755,12 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 			if (methodDef->mMethodType == BfMethodType_CtorNoBody)
 				declRequired = true;
 
+			if ((methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mIsOverride))
+			{
+				// From extension				
+				implRequired = true;
+			}
+
 			if ((methodDef->mIsStatic) &&
 				((methodDef->mMethodType == BfMethodType_Dtor) || (methodDef->mMethodType == BfMethodType_Ctor)))
 			{
