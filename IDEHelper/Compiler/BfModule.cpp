@@ -12817,6 +12817,7 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 
 		bool success = true;
 
+		int methodCheckCount = 0;
 		bool isFailurePass = false;
 		for (int pass = 0; pass < 2; pass++)
 		{
@@ -12828,11 +12829,12 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 					continue; // Don't match private default ctor if there's a user-defined one
 
 				if ((checkMethod->mIsStatic) || (checkMethod->mMethodType != BfMethodType_Ctor))
-					continue;
+					continue;				
 
 				if ((!isFailurePass) && (!CheckProtection(checkMethod->mProtection, attrTypeInst->mTypeDef, false, false)))
 					continue;
 
+				methodCheckCount++;
 				methodMatcher.CheckMethod(NULL, attrTypeInst, checkMethod, isFailurePass);
 			}
 
@@ -12856,6 +12858,8 @@ void BfModule::GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttri
 
 		if (methodMatcher.mBestMethodDef == NULL)
 		{
+			if (methodCheckCount == 0)
+				Fail(StrFormat("No attribute constructors found for type '%s'", TypeToString(attrTypeInst).c_str()), attributesDirective);
 			AssertErrorState();
 			continue;
 		}
@@ -13351,7 +13355,7 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 		return typedValue;
 
 	PopulateType(typedValue.mType);
-	if ((typedValue.mType->IsValuelessNonOpaqueType()) || (typedValue.mType->IsVar()))
+	if ((typedValue.mType->IsValuelessType()) || (typedValue.mType->IsVar()))
 		return BfTypedValue(mBfIRBuilder->GetFakeVal(), typedValue.mType, false);
 
 	if (typedValue.mValue.IsConst())
