@@ -1286,7 +1286,7 @@ public:
 	void RemoveFunc(CeFunction* ceFunction);
 	void RemoveMethod(BfMethodInstance* methodInstance);
 	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);
-	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal, CeContext* ceContext);
+	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal, CeContext* ceContext, CeBuilder* ceBuilder);
 
 	void CheckFunctionKind(CeFunction* ceFunction);
 	void PrepareFunction(CeFunction* methodInstance, CeBuilder* parentBuilder);

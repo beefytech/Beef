@@ -1736,7 +1736,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 			{
 				CeConstStructData constStructData;
 				constStructData.mQueueFixups = true;
-				errorKind = mCeMachine->WriteConstant(constStructData, structConstant, NULL);
+				errorKind = mCeMachine->WriteConstant(constStructData, structConstant, NULL, this);
 				if (errorKind == CeErrorKind_None)
 				{
 					*constDataPtr = (int)mCeFunction->mConstStructTable.size();
@@ -3901,7 +3901,7 @@ addr_ce CeContext::GetConstantData(BeConstant* constant)
 	}
 
 	CeConstStructData structData;
-	auto result = mCeMachine->WriteConstant(structData, writeConstant, this);
+	auto result = mCeMachine->WriteConstant(structData, writeConstant, this, NULL);
 	BF_ASSERT(result == CeErrorKind_None);
 
 	uint8* ptr = CeMallocZero(structData.mData.mSize);
@@ -9725,7 +9725,7 @@ void CeMachine::RemoveMethod(BfMethodInstance* methodInstance)
 	methodInstance->mInCEMachine = false;
 }
 
-CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constVal, CeContext* ceContext)
+CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constVal, CeContext* ceContext, CeBuilder* ceBuilder)
 {
 	auto ceModule = mCeModule;
 	auto beType = constVal->GetType();
@@ -9794,7 +9794,7 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 		BF_ASSERT(!data.mQueueFixups);
 		CeConstStructData gvData;
 
-		auto result = WriteConstant(gvData, globalVar->mInitializer, ceContext);
+		auto result = WriteConstant(gvData, globalVar->mInitializer, ceContext, NULL);
 		if (result != CeErrorKind_None)
 			return result;
 
@@ -9805,6 +9805,19 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 		int64 addr64 = (addr_ce)(gvPtr - ceContext->mMemory.mVals);
 		memcpy(ptr, &addr64, mCeModule->mSystem->mPtrSize);
 		return CeErrorKind_None;
+	}
+	else if (auto beTypeOfConst = BeValueDynCast<BeTypeOfConstant>(constVal))
+	{
+		if (ceBuilder != NULL)
+		{
+			// Fake it to not break debugging
+			auto ptr = data.mData.GrowUninitialized(ceModule->mSystem->mPtrSize);
+			int64 addr64 = beTypeOfConst->mBfTypeId;
+			memcpy(ptr, &addr64, ceModule->mSystem->mPtrSize);
+		}
+		return CeErrorKind_None;
+
+		return CeErrorKind_Error;
 	}
 	else if (auto beFunc = BeValueDynCast<BeFunction>(constVal))
 	{
@@ -9825,7 +9838,7 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 				if (wantZeroes > 0)
 					data.mData.Insert(data.mData.size(), (uint8)0, wantZeroes);
 
-				auto result = WriteConstant(data, constStruct->mMemberValues[memberIdx], ceContext);
+				auto result = WriteConstant(data, constStruct->mMemberValues[memberIdx], ceContext, ceBuilder);
 				if (result != CeErrorKind_None)
 					return result;
 			}
@@ -9836,7 +9849,7 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 		{
 			for (auto& memberVal : constStruct->mMemberValues)
 			{
-				auto result = WriteConstant(data, memberVal, ceContext);
+				auto result = WriteConstant(data, memberVal, ceContext, ceBuilder);
 				if (result != CeErrorKind_None)
 					return result;
 			}
@@ -9850,7 +9863,7 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 	}
 	else if (auto constCast = BeValueDynCast<BeCastConstant>(constVal))
 	{
-		auto result = WriteConstant(data, constCast->mTarget, ceContext);
+		auto result = WriteConstant(data, constCast->mTarget, ceContext, ceBuilder);
 		if (result != CeErrorKind_None)
 			return result;
 	}
