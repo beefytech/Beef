@@ -4235,19 +4235,22 @@ void BfModule::CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLo
 			else
 				irType = mBfIRBuilder->MapType(fieldType, BfIRPopulateType_Eventually_Full);
 
-			BfIRValue globalVar = mBfIRBuilder->CreateGlobalVariable(
-				irType,
-				false,
-				BfIRLinkageType_External,
-				initValue,
-				staticVarName,
-				isThreadLocal);
-			mBfIRBuilder->GlobalVar_SetAlignment(globalVar, fieldType->mAlign);
-			if (storageKind != BfIRStorageKind_Normal)
-				mBfIRBuilder->GlobalVar_SetStorageKind(globalVar, storageKind);
+			if (fieldType->mSize > 0)
+			{
+				BfIRValue globalVar = mBfIRBuilder->CreateGlobalVariable(
+					irType,
+					false,
+					BfIRLinkageType_External,
+					initValue,
+					staticVarName,
+					isThreadLocal);
+				mBfIRBuilder->GlobalVar_SetAlignment(globalVar, fieldType->mAlign);
+				if (storageKind != BfIRStorageKind_Normal)
+					mBfIRBuilder->GlobalVar_SetStorageKind(globalVar, storageKind);
 
-			BF_ASSERT(globalVar);
-			mStaticFieldRefs[fieldInstance] = globalVar;
+				BF_ASSERT(globalVar);
+				mStaticFieldRefs[fieldInstance] = globalVar;
+			}
 		}
 	}
 }
@@ -14755,6 +14758,15 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	}
 	else
 	{
+		if (methodDef->mIdx >= typeInst->mMethodInstanceGroups.mSize)
+			PopulateType(typeInst, BfPopulateType_DataAndMethods);		
+
+		if (methodDef->mIdx >= typeInst->mMethodInstanceGroups.mSize)
+		{
+			InternalError("GetMethodInstance OOB error", methodDef->GetRefNode());
+			return BfModuleMethodInstance();
+		}
+
 		methodInstGroup = &typeInst->mMethodInstanceGroups[methodDef->mIdx];
 	}
 

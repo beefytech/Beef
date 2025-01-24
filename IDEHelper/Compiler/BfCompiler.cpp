@@ -10353,6 +10353,10 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 						emitParser->GetLineCharAtIdx(kv.mValue.mSrcStart, startLine, startLineChar);
 
 					int srcEnd = kv.mValue.mSrcEnd - 1;
+
+					if (srcEnd >= emitParser->mOrigSrcLength)
+						continue;
+
 					while (srcEnd >= kv.mValue.mSrcStart)
 					{
 						char c = emitParser->mSrc[srcEnd];
