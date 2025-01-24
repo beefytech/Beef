@@ -13266,8 +13266,14 @@ BfVariant BfModule::TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& 
 			}
 		}
 	}
-	else
+	else if (value.mType->IsConstExprValue())
 	{
+		auto constExprType = (BfConstExprValueType*)value.mType;
+		return constExprType->mValue;
+	}
+	else if (value.mType->IsValueType())
+	{		
+		PopulateType(value.mType);
 		int allocSize = value.mType->mSize + 4;
 		BfVariant::StructData* structData = (BfVariant::StructData*)(new uint8[allocSize]);
 		memset(structData, 0, allocSize);

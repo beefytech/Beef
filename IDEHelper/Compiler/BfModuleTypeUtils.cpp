@@ -7742,6 +7742,9 @@ BfPointerType* BfModule::CreatePointerType(BfType* resolvedType)
 
 BfConstExprValueType* BfModule::CreateConstExprValueType(const BfTypedValue& typedValue, bool allowCreate)
 {
+	if (typedValue.mType->IsConstExprValue())
+		return (BfConstExprValueType*)typedValue.mType;
+
 	BfPopulateType populateType = allowCreate ? BfPopulateType_Data : BfPopulateType_Identity;
 	BfResolveTypeRefFlags resolveFlags = allowCreate ? BfResolveTypeRefFlag_None : BfResolveTypeRefFlag_NoCreate;
 
