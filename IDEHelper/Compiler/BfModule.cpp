@@ -21158,8 +21158,10 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 
 		if (mDICompileUnit)
 		{
+			// Note: for comptime we need to ensure we don't force type population with DbgGetTypeInst here, as that
+			//  can generate a CeMachine InitType circular data reference
 			int flags = 0;
-			BfIRMDNode funcScope = mBfIRBuilder->DbgGetTypeInst(mCurTypeInstance);
+			BfIRMDNode funcScope = mBfIRBuilder->DbgGetTypeInst(mCurTypeInstance, BfIRPopulateType_Identity);
 
 			if (methodDef->mProtection == BfProtection_Public)
 				flags = llvm::DINode::FlagPublic;
