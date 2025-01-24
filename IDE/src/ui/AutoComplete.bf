@@ -1070,7 +1070,11 @@ namespace IDE.ui
 			{
 				var font = IDEApp.sApp.mCodeFont;
 
+				extHeight = 0;
 				extWidth = 0;
+
+				if (mSelectIdx < 0)
+					return;
 
 				float curX = GS!(8);
 				float curY = GS!(5);
