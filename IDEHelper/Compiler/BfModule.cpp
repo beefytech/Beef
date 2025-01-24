@@ -8705,7 +8705,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			auto genericParamInst = mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
 					
- 			if (genericParamInst->mExternType == checkArgType)
+ 			if ((genericParamInst->mExternType == checkArgType) && (checkArgType->IsUnspecializedType()))
  			{
 				checkGenericParamFlags |= genericParamInst->mGenericParamFlags; 				
  			}

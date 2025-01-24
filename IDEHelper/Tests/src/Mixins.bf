@@ -97,6 +97,33 @@ namespace Tests
 			}
 		}
 
+		public static mixin Test<T>(T a) where T : struct {}
+		public static mixin Test(Type value) {}
+		public static mixin Test<T>(T a) where T : class, delete {}
+
+		public class TestClass<TValue>
+		{
+			public bool CallTest<T>(TValue val)
+				where TValue : var
+			{
+				SelfOuter.Test!(val);
+				return true;
+			}
+		}
+
+		public static mixin Test2<T>(T a) where T : struct {}
+		public static mixin Test2<T>(T a) where T : class, delete {}
+
+		public class TestClass2<TValue>
+		{
+			public bool CallTest<T>(TValue val)
+				where TValue : var
+			{
+				SelfOuter.Test2!(val);
+				return true;
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -130,6 +157,12 @@ namespace Tests
 
 			DispClass dc = scope .();
 			DisposeIt!(dc);
+
+			let test2 = scope TestClass<int>();
+			test2.CallTest<int>(2);
+
+			let test3 = scope TestClass2<int>();
+			test3.CallTest<int>(2);
 		}
 
 		[Test]
