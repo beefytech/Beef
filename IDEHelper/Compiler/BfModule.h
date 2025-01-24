@@ -1887,6 +1887,7 @@ public:
 	void CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLocal = false);
 	void ResolveConstField(BfTypeInstance* typeInst, BfFieldInstance* fieldInstance, BfFieldDef* field, bool forceResolve = false);
 	BfTypedValue GetFieldInitializerValue(BfFieldInstance* fieldInstance, BfExpression* initializer = NULL, BfFieldDef* fieldDef = NULL, BfType* fieldType = NULL, bool doStore = false);
+	bool TryGetAppendedObjectInfo(BfFieldInstance* fieldInstance, int& dataSize, int& alignSize);
 	void AppendedObjectInit(BfFieldInstance* fieldInstance);
 	void MarkFieldInitialized(BfFieldInstance* fieldInstance);
 	bool IsThreadLocal(BfFieldInstance* fieldInstance);

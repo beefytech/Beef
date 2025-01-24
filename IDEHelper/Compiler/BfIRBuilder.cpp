@@ -3287,7 +3287,7 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 				PopulateType(resolvedFieldType, BfIRPopulateType_Eventually_Full);
 			resolvedFieldDIType = DbgGetType(resolvedFieldType);
 
-			if (fieldInstance->IsAppendedObject())
+			if ((fieldInstance->IsAppendedObject()) && (!fieldDef->mIsStatic))
 				resolvedFieldDIType = DbgGetTypeInst(resolvedFieldType->ToTypeInstance());
 
 			if ((fieldDef == NULL) && (typeInstance->IsPayloadEnum()))

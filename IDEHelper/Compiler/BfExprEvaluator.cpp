@@ -5310,7 +5310,7 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 			(mModule->mCurMethodInstance->mMethodDef->IsCtorOrInit()) &&
 			(mModule->mCurMethodInstance->mMethodDef->mIsStatic);
 
-		if ((mModule->mCompiler->mOptions.mRuntimeChecks) && (fieldInstance->IsAppendedObject()) && (!mModule->mBfIRBuilder->mIgnoreWrites) &&
+		if ((mModule->mCompiler->mOptions.mRuntimeChecks) && (fieldInstance->IsAppendedObject()) && (!fieldDef->mIsStatic) && (!mModule->mBfIRBuilder->mIgnoreWrites) &&
 			(!mModule->IsSkippingExtraResolveChecks()))
 		{
 			auto intType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);

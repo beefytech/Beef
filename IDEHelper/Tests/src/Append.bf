@@ -83,6 +83,22 @@ namespace Tests
 			public int mC = 234;
 		}
 
+		static class ClassG
+		{
+			public static append String sFirst;
+			public static append String sSecond;
+			public static append String sThird;
+
+			static public StringView sValue => Self.sFirst;
+
+			static public void Set(StringView value)
+			{
+				Self.sThird.Set(value);
+				Self.sSecond.Set(value);
+				Self.sFirst.Set(value);
+			}
+		}
+
 		static void CheckData(Object obj, int lastAllocSize, uint8[] data)
 		{
 			int objSize = typeof(Object).InstanceSize;
@@ -129,6 +145,11 @@ namespace Tests
 			Test.Assert(cf.mB.AllocSize == 1024);
 			Test.Assert(cf.mC == 234);
 			cf.mB.Append('!', 2048);
+
+			ClassG.Set("1234567890");
+			Test.Assert(ClassG.sFirst == "1234567890");
+			Test.Assert(ClassG.sSecond == "1234567890");
+			Test.Assert(ClassG.sThird == "1234567890");
 		}
 #endif
 	}
