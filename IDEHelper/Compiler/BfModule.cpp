@@ -16293,6 +16293,7 @@ BfScopeData* BfModule::FindScope(BfAstNode* scopeName, BfMixinState* fromMixinSt
 
 		if (!inMixinDecl)
 			Fail(StrFormat("Unable to locate label '%s'", findLabel.c_str()), scopeName);
+		return NULL;
 	}
 
 	if (auto scopeNode = BfNodeDynCast<BfScopeNode>(scopeName))

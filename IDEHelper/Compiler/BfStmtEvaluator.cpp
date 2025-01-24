@@ -5608,7 +5608,7 @@ void BfModule::Visit(BfContinueStatement* continueStmt)
 		breakData = FindBreakData(continueStmt->mLabel);
 		if ((breakData != NULL) && (!breakData->mIRContinueBlock))
 		{
-			Fail(StrFormat("'continue' not applicable in '%s", continueStmt->mLabel->ToString().c_str()), continueStmt);
+			Fail(StrFormat("'continue' not applicable in '%s'", continueStmt->mLabel->ToString().c_str()), continueStmt);
 			return;
 		}
 	}
