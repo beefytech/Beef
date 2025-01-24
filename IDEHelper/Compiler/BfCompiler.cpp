@@ -4442,7 +4442,8 @@ void BfCompiler::ProcessAutocompleteTempType()
 		while (actualTypeDefItr)
 		{
 			auto checkTypeDef = *actualTypeDefItr;
-			if ((!checkTypeDef->mIsPartial) /*&& (checkTypeDef->mTypeCode != BfTypeCode_Extension)*/ &&
+			if ((!checkTypeDef->mIsPartial) && (checkTypeDef->mName == tempTypeDef->mName) &&
+				(checkTypeDef->mIsFunction == tempTypeDef->mIsFunction) && (checkTypeDef->mIsDelegate == tempTypeDef->mIsDelegate) &&
 				((checkTypeDef->mTypeCode == tempTypeDef->mTypeCode) || (tempTypeDef->mTypeCode == BfTypeCode_Extension) || (tempTypeDef->mTypeCode == BfTypeCode_Inferred)))
 			{
 				if ((checkTypeDef->NameEquals(tempTypeDef)) && (checkTypeDef->mIsCombinedPartial) &&
