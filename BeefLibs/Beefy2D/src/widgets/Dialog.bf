@@ -387,6 +387,14 @@ namespace Beefy.widgets
 					evt.mHandled = true;
 				}
             }
+
+			if (evt.mKeyFlags.HasFlag(.Ctrl) && (evt.mKeyCode == (KeyCode)'C'))
+			{
+				var clipboardText = scope String();
+				clipboardText.AppendF("{}\n{}", mTitle, mText);
+				BFApp.sApp.SetClipboardText(clipboardText, "");
+				evt.mHandled = true;
+			}
         }
     }
 }
