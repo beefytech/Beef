@@ -633,7 +633,7 @@ namespace Beefy.widgets
 
             if (targetWidget.mParent == mParent)
             {
-                mParent.ParentToSelfTranslate(transX, transY, out transX, out transY);
+                targetWidget.ParentToSelfTranslate(transX, transY, out transX, out transY);
                 return;
             }            
             

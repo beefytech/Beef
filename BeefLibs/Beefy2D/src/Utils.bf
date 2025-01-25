@@ -481,6 +481,7 @@ namespace Beefy
 		public static Image GetAnimFrame(Image[] images, float pct)
 		{
 			int frameNum = (int)(images.Count * (pct - 0.000001f));
+			frameNum %= images.Count;
 			return images[frameNum];
 		}
     }        

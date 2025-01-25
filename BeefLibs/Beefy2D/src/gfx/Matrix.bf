@@ -168,6 +168,11 @@ namespace Beefy.gfx
             return Point(tx + a * point.x + c * point.y, ty + b * point.x + d * point.y);
         }
 
+		public Vector2 Multiply(Vector2 point)
+		{
+		    return Vector2(tx + a * point.mX + c * point.mY, ty + b * point.mX + d * point.mY);
+		}
+
         public void Invert() mut
         {
             float _a = a;

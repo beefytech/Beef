@@ -109,6 +109,11 @@ namespace Beefy.geom
             return Vector2((float)Math.Cos(angle) * length, (float)Math.Sin(angle) * length);
         }
 
+		public static Vector2 operator -(Vector2 vec1)
+		{
+		    return Vector2(-vec1.mX, -vec1.mY);
+		}
+
         public static Vector2 operator +(Vector2 vec1, Vector2 vec2)
         {
             return Vector2(vec1.mX + vec2.mX, vec1.mY + vec2.mY);
