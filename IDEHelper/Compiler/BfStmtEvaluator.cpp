@@ -4423,12 +4423,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 }
 
 void BfModule::Visit(BfSwitchStatement* switchStmt)
-{
-	if (mModuleName == "BeefTest_TestProgram")
-	{
-		NOP;
-	}
-
+{	
 	BfScopeData outerScope;
 	outerScope.mInnerIsConditional = false;
 	outerScope.mCloseNode = switchStmt;

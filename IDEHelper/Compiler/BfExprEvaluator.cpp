@@ -17896,6 +17896,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	mModule->mBfIRBuilder->SaveDebugLocation();
 	SetAndRestoreValue<BfMixinState*> prevMixinState(curMethodState->mMixinState, mixinState);
 	SetAndRestoreValue<BfExprEvaluator*> prevExprEvaluator(curMethodState->mCurScope->mExprEvaluator, NULL);
+	SetAndRestoreValue<BfPendingNullConditional*> prevNullConditional(curMethodState->mPendingNullConditional, NULL);
 
 	BfGetSymbolReferenceKind prevSymbolRefKind = BfGetSymbolReferenceKind_None;
 	if (mModule->mCompiler->mResolvePassData != NULL)
