@@ -26,6 +26,52 @@ namespace IDE.ui
 			public int mLine;
 			public int mColumn;
 
+			public override void MouseClicked(float x, float y, float origX, float origY, int32 btn)
+			{
+				base.MouseClicked(x, y, origX, origY, btn);
+
+				if (btn == 1)
+				{
+					Menu menu = new Menu();
+					var menuItemCopySingle = menu.AddItem("Copy");
+					menuItemCopySingle.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						var item = (ErrorsListViewItem)this.GetSubItem(0);
+						var buffer = item.CopyError(.. scope String());
+						gApp.SetClipboardText(buffer);
+					});
+
+					var menuItemCopyAll = menu.AddItem("Copy All");
+					menuItemCopyAll.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						var buffer = scope String();
+
+						var root = this.mListView.GetRoot();
+						var childCount = root.GetChildCount();
+						for (var n = 0; n < childCount; n++)
+						{
+							var row = (ErrorsListViewItem)root.GetChildAtIndex(n);
+							row.CopyError(buffer);
+						}
+
+						gApp.SetClipboardText(buffer);
+					});
+
+					MenuWidget menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
+					menuWidget.Init(this, x, y);
+				}
+			}
+
+			public void CopyError (String buffer)
+			{
+				var preffix = scope String();
+				Font.StrRemoveColors(this.mSubItems[0].mLabel, preffix);
+				preffix.ToUpper();
+				var description = this.mSubItems[1].mLabel;
+
+				buffer.AppendF("{}: {} at line {}:{} in {}\n", preffix, description, this.mLine, this.mColumn, this.mFilePath);
+			}
+
 			public override void DrawSelect(Graphics g)
 			{
 				bool hasFocus = mListView.mHasFocus;
