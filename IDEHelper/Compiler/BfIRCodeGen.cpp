@@ -3105,7 +3105,17 @@ void BfIRCodeGen::HandleNextCmd()
 	case BfIRCmd_SetInsertPointAtStart:
 		{
 			CMD_PARAM(llvm::BasicBlock*, block);
-			mIRBuilder->SetInsertPoint(block, block->begin());			
+
+			auto itr = block->begin();
+			if (itr != block->end())
+			{
+				// Some instructructions MUST be at start of the block
+				auto instType = itr->getType();
+				if (llvm::PHINode::classof(&*itr))
+					++itr;
+			}
+
+			mIRBuilder->SetInsertPoint(block, itr);
 			// SetInsertPoint can clear the debug loc so reset it here
 			mIRBuilder->SetCurrentDebugLocation(mDebugLoc);			
 		}
