@@ -158,7 +158,7 @@ namespace Beefy.widgets
             }
         }
 
-        public void WithSelectedItems(delegate void(ListViewItem) func, bool skipSelectedChildrenOnSelectedItems = false, bool skipClosed = false)
+        public void WithSelectedItems(delegate void(ListViewItem item) func, bool skipSelectedChildrenOnSelectedItems = false, bool skipClosed = false)
         {
             bool selfSelected = Selected;
             if (selfSelected)
