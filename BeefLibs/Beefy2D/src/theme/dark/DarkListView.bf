@@ -1028,6 +1028,12 @@ namespace Beefy.theme.dark
                 mScrollContentInsets.mBottom += GS!(2);
 
             base.InitScrollbars(wantHorz, wantVert);
+
+			float scrollIncrement = this.mFont.GetLineSpacing();
+			if (mHorzScrollbar != null)
+			    mHorzScrollbar.mScrollIncrement = scrollIncrement;
+			if (mVertScrollbar != null)
+			    mVertScrollbar.mScrollIncrement = scrollIncrement;
         }
 
         protected override ListViewItem CreateListViewItem()
