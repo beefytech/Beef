@@ -13419,7 +13419,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			{
 				if (TypeIsSubTypeOf(fromInner->ToTypeInstance(), toInner->ToTypeInstance()))
 				{
-					if (toInner->IsValuelessType())
+					if (toInner->IsValuelessNonOpaqueType())
 						return mBfIRBuilder->GetFakeVal();
 					// Is this valid?
 					typedVal = MakeAddressable(typedVal);
