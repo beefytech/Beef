@@ -719,7 +719,8 @@ namespace IDE.ui
                         editWidgetContent.mData.mUndoManager.Add(insertTextAction);
                         editWidgetContent.PhysInsertAtCursor(newStr, false);
 
-                        if (spanStart < cursorPos)
+						if (((strLenDiff > 0) && (spanStart + strLenDiff < cursorPos)) ||
+							((strLenDiff < 0) && (spanStart + strLenDiff <= cursorPos)))
                             cursorPos += strLenDiff;
                     }                    
 
