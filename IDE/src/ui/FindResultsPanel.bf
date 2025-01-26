@@ -188,6 +188,7 @@ namespace IDE.ui
 						bool lineMatched;
 						if (mSearchOptions.mMatchWholeWord)
 						{
+							line.EnsureNullTerminator();
 							bool isNewStart = true;
 							int lineIdx = 0;
 							for (let c32 in line.DecodedChars)

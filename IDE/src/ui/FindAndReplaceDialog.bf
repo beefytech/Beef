@@ -67,7 +67,7 @@ namespace IDE.ui
 			AddDialogComponent(mMatchCaseCheckbox);
 
 			mMatchWholeWordCheckbox = new DarkCheckBox();
-			mMatchWholeWordCheckbox.Label = "Match &whole case";
+			mMatchWholeWordCheckbox.Label = "Match &whole word";
 			AddDialogComponent(mMatchWholeWordCheckbox);
 
 			mAbortButton = new DarkButton();
