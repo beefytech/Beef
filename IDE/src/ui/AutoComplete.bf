@@ -933,6 +933,9 @@ namespace IDE.ui
 				mWidth = extWidth;
 				mHeight = extHeight;
 
+				if ((mWidth <= 0) || (mHeight <= 0))
+					return;
+
 				if (resizeWindow)
 				{
 					if (mOwnsWindow)
@@ -2039,7 +2042,7 @@ namespace IDE.ui
             if (mInvokeWidget != null)
             {
 				prevInvokeSelect = mInvokeWidget.mSelectIdx;
-                if ((mInvokeWidget.mEntryList.Count > 0) && (!mInvokeSrcPositions.IsEmpty))
+                if ((mInvokeWidget.mEntryList.Count > 0) && (!mInvokeSrcPositions.IsEmpty) && (mInvokeWidget.mSelectIdx >= 0))
                 {
 					if (IsInPanel())
 					{
@@ -2049,8 +2052,11 @@ namespace IDE.ui
 					{
 						mInvokeWidget.mOwnsWindow = true;
 						mInvokeWidget.ResizeContent(false);
-	                    UpdateWindow(ref mInvokeWindow, mInvokeWidget, mInvokeSrcPositions[0], (int32)mInvokeWidget.mWidth, (int32)mInvokeWidget.mHeight);
-						mInvokeWidget.ResizeContent(true);
+						if ((mInvokeWidget.mWidth > 0) && (mInvokeWidget.mHeight > 0))
+						{
+		                    UpdateWindow(ref mInvokeWindow, mInvokeWidget, mInvokeSrcPositions[0], (int32)mInvokeWidget.mWidth, (int32)mInvokeWidget.mHeight);
+							mInvokeWidget.ResizeContent(true);
+						}
 					}
                 }
                 else
