@@ -21,6 +21,14 @@ public:
 		mHeight = 0;
 	}
 
+	Rect(float x, float y, float width, float height)
+	{
+		mX = x;
+		mY = y;
+		mWidth = width;
+		mHeight = height;
+	}
+
 	bool operator!=(const Rect& r2)
 	{
 		return (mX != r2.mX) || (mY != r2.mY) || (mWidth != r2.mWidth) || (mHeight != r2.mHeight);

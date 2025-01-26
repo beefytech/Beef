@@ -71,6 +71,9 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         static extern int32 Gfx_Texture_GetHeight(void* textureSegment);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_ApplyEffect(void* destTextureSegment, void* srcTextureSegment, char8* options);
+
         public this()
         {            
         }
@@ -187,6 +190,11 @@ namespace Beefy.gfx
 			mWidth = Math.Abs(srcWidth);
 			mHeight = Math.Abs(srcHeight);
 			Gfx_ModifyTextureSegment(mNativeTextureSegment, srcImage.mNativeTextureSegment, (int32)srcX, (int32)srcY, (int32)srcWidth, (int32)srcHeight);
+		}
+
+		public void ApplyEffect(Image destImage, StringView options)
+		{
+			Gfx_ApplyEffect(destImage.mNativeTextureSegment, mNativeTextureSegment, options.ToScopeCStr!());
 		}
 
 		public void SetBits(int destX, int destY, int destWidth, int destHeight, int srcPitch, uint32* bits)

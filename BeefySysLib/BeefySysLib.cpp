@@ -10,6 +10,7 @@
 #include "util/Vector.h"
 #include "util/PerfTimer.h"
 #include "util/TLSingleton.h"
+#include "img/ImgEffects.h"
 
 #include "util/AllocDebug.h"
 
@@ -474,12 +475,12 @@ BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_LoadTexture(const char* fileName, int 
 
 BF_EXPORT void BF_CALLTYPE Gfx_Texture_SetBits(TextureSegment* textureSegment, int destX, int destY, int destWidth, int destHeight, int srcPitch, uint32* bits)
 {
-	textureSegment->mTexture->SetBits(destX, destY, destWidth, destHeight, srcPitch, bits);
+	textureSegment->SetBits(destX, destY, destWidth, destHeight, srcPitch, bits);
 }
 
 BF_EXPORT void BF_CALLTYPE Gfx_Texture_GetBits(TextureSegment* textureSegment, int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
 {
-	textureSegment->mTexture->GetBits(srcX, srcY, srcWidth, srcHeight, destPitch, bits);
+	textureSegment->GetBits(srcX, srcY, srcWidth, srcHeight, destPitch, bits);
 }
 
 BF_EXPORT void BF_CALLTYPE Gfx_Texture_Delete(TextureSegment* textureSegment)
@@ -514,6 +515,93 @@ BF_EXPORT void BF_CALLTYPE Gfx_ModifyTextureSegment(TextureSegment* destTextureS
 	destTextureSegment->mV2 = ((srcY + srcHeight) / (float) texture->mHeight) + srcTextureSegment->mV1;
 	destTextureSegment->mScaleX = (float)abs(srcWidth);
 	destTextureSegment->mScaleY = (float)abs(srcHeight);
+}
+
+int32 FormatI32(const StringView& str)
+{
+	String val = String(str);
+	if (val.StartsWith('#'))
+	{		
+		return (int32)strtoll(val.c_str() + 1, NULL, 16);
+	}
+	if (val.StartsWith("0x"))
+	{
+		return (int32)strtoll(val.c_str() + 2, NULL, 16);
+	}
+	return atoi(val.c_str());
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_ApplyEffect(TextureSegment* destTextureSegment, TextureSegment* srcTextureSegment, char* optionsPtr)
+{
+	BaseImageEffect* effect = NULL;
+	defer({
+		delete effect;
+		});
+
+	bool needsPremultiply = false;
+
+	String options = optionsPtr;
+	for (auto line : options.Split('\n'))
+	{
+		int eqPos = (int)line.IndexOf('=');
+		if (eqPos != -1)
+		{
+			StringView cmd = StringView(line, 0, eqPos);	
+			StringView value = StringView(line, eqPos + 1);
+
+			if (cmd == "Effect")
+			{
+				if (value == "Stroke")
+				{
+					auto strokeEffect = new ImageStrokeEffect();
+					effect = strokeEffect;
+					strokeEffect->mPosition = 'OutF';
+					strokeEffect->mSize = 1;
+					strokeEffect->mColorFill.mColor = 0xFF000000;
+				}				
+			}
+			if (cmd == "Size")
+			{
+				int32 size = FormatI32(value);
+				if (auto strokeEffect = dynamic_cast<ImageStrokeEffect*>(effect))
+				{
+					strokeEffect->mSize = size;
+				}
+			}
+			if (cmd == "Color")
+			{
+				uint32 color = (uint32)FormatI32(value);
+				if (auto strokeEffect = dynamic_cast<ImageStrokeEffect*>(effect))
+				{
+					strokeEffect->mColorFill.mColor = color;
+					if ((color & 0x00FFFFFF) != 0)
+						needsPremultiply = true;
+				}
+			}
+		}
+	}
+
+	if (effect != NULL)
+	{
+		ImageData destImageData;
+		ImageData srcImageData;
+
+		Rect srcRect = srcTextureSegment->GetRect();
+		Rect destRect = destTextureSegment->GetRect();
+
+		destTextureSegment->GetImageData(destImageData);
+		srcImageData.CreateNew(destImageData.mWidth, destImageData.mHeight);
+
+		srcTextureSegment->GetImageData(srcImageData, 
+			(int)(destRect.mWidth - srcRect.mWidth) / 2,
+			(int)(destRect.mHeight - srcRect.mHeight) / 2);
+		
+		effect->Apply(NULL, &srcImageData, &destImageData);
+		if (needsPremultiply)
+			destImageData.PremultiplyAlpha();
+		
+		destTextureSegment->SetImageData(destImageData);
+	}
 }
 
 BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateTextureSegment(TextureSegment* textureSegment, int srcX, int srcY, int srcWidth, int srcHeight)

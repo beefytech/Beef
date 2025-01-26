@@ -16,6 +16,7 @@ ImageData::ImageData()
 	mY = 0;
 	mWidth = 0;
 	mHeight = 0;
+	mStride = 0;
 	mWantsAlphaPremultiplied = true;
 	mAlphaPremultiplied = false;
 	mIsAdditive = false;
@@ -67,7 +68,7 @@ void ImageData::CreateNew(int x, int y, int width, int height, bool clear)
 
 void ImageData::CreateNew(int width, int height, bool clear)
 {
-	mWidth = width;
+	mWidth = mStride = width;
 	mHeight = height;
 	mBits = new uint32[mWidth*mHeight];
 	if (clear)
@@ -89,7 +90,7 @@ void ImageData::CopyFrom(ImageData* img, int x, int y)
 	{
 		for (int x = destStartX; x < destEndX; x++)
 		{
-			mBits[x + y * mWidth] = img->mBits[(x + srcXOfs) + (y + srcYOfs)*img->mWidth];
+			mBits[x + y * mStride] = img->mBits[(x + srcXOfs) + (y + srcYOfs)*img->mStride];
 		}
 	}
 }
