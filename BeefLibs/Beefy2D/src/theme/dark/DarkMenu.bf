@@ -239,6 +239,23 @@ namespace Beefy.theme.dark
 				MarkDirty();
             }
         }        
+
+		public override void InitScrollbars(bool wantHorz, bool wantVert)
+		{
+		    if (!wantHorz)
+		        mScrollContentInsets.mBottom += GS!(2);
+
+		    base.InitScrollbars(wantHorz, wantVert);
+
+			float scrollIncrement = 0;
+			if (var darkMenuWidget = mScrollContent as DarkMenuWidget)
+				scrollIncrement = darkMenuWidget.mFont.GetLineSpacing();
+
+			if (mHorzScrollbar != null)
+			    mHorzScrollbar.mScrollIncrement = scrollIncrement;
+			if (mVertScrollbar != null)
+			    mVertScrollbar.mScrollIncrement = scrollIncrement;
+		}
     }
 
     public class DarkMenuWidget : MenuWidget
