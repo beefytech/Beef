@@ -242,9 +242,6 @@ namespace Beefy.theme.dark
 
 		public override void InitScrollbars(bool wantHorz, bool wantVert)
 		{
-		    if (!wantHorz)
-		        mScrollContentInsets.mBottom += GS!(2);
-
 		    base.InitScrollbars(wantHorz, wantVert);
 
 			float scrollIncrement = 0;
