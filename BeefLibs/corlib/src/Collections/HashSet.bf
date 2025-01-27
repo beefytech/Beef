@@ -1245,7 +1245,7 @@ namespace System.Collections
 		public int32 GetHashKey(int hashCode)
 		{
 			if (sizeof(int) == 4)
-				return (int32)hashCode;
+				return (int32)hashCode & 0x7FFFFFFF;
 #unwarn
 			return (int32)(hashCode ^ ((hashCode >> 31) * 1171)) & 0x7FFFFFFF;
 		}
