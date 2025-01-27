@@ -350,6 +350,8 @@ namespace IDE
 			public Color mCurrentLineHilite = 0xFF4C4C54;
 			public Color mCurrentLineNumberHilite = 0x18FFFFFF;
 			public Color mCharPairHilite = 0x1DFFFFFF;
+			public Color mCodeHighlight = 0xFF384858;
+			public Color mCodeHighlightUnfocused = 0x80384858;
 
 			public void Deserialize(StructuredData sd)
 			{
@@ -418,6 +420,8 @@ namespace IDE
 				GetColor("CurrentLineHilite", ref mCurrentLineHilite);
 				GetColor("CurrentLineNumberHilite", ref mCurrentLineNumberHilite);
 				GetColor("CharPairHilite", ref mCharPairHilite);
+				GetColor("CodeHighlight", ref mCodeHighlight);
+				GetColor("CodeHighlightUnfocused", ref mCodeHighlightUnfocused);
 			}
 
 			public void Apply()

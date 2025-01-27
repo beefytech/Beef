@@ -6906,8 +6906,8 @@ namespace IDE
 
 			var editWidgetContent = (SourceEditWidgetContent)editWidget.Content;
 			//mEditWidget.mVertScrollbar.mScrollIncrement = editWidgetContent.mFont.GetLineSpacing();
-			editWidgetContent.mHiliteColor = 0xFF384858;
-			editWidgetContent.mUnfocusedHiliteColor = 0x80384858;
+			editWidgetContent.mHiliteColor = mSettings.mUISettings.mColors.mCodeHighlight;
+			editWidgetContent.mUnfocusedHiliteColor = mSettings.mUISettings.mColors.mCodeHighlightUnfocused;
 			editWidgetContent.mHiliteCurrentLine = mSettings.mEditorSettings.mHiliteCurrentLine;
 
 			return editWidget;
