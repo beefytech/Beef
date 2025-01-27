@@ -413,6 +413,11 @@ namespace IDE.ui
 							g.PushColor(DarkTheme.COLOR_MENU_FOCUSED);
 							defer:loop g.PopColor();
 						}
+						else
+						{
+							g.PushColor(DarkTheme.COLOR_TEXT);
+							defer:loop g.PopColor();
+						}
 
 						let str = StringView(mEntryDisplay, index, @c.NextIndex - index);
 

@@ -877,7 +877,7 @@ namespace IDE.ui
             // column header
             using (g.PushClip(0, 0, mWidth, GS!(mColumnHeaderHeight)))
             {
-                using (g.PushColor(0xFFFFFFFF))
+                using (g.PushColor(DarkTheme.COLOR_TEXT))
                 {
                     g.SetFont(mFont);
                     float strViewColumnStart = GS!(mColumnDisplayStart) + mBytesPerDisplayLine*GS!(mColumnDisplayStride) + GS!(mStrViewDisplayStartOffset);
@@ -908,7 +908,7 @@ namespace IDE.ui
                 float displayAdj = (float)(-mShowPositionDisplayOffset * lineSpacing);
                 using (g.PushTranslate(0, displayAdj))
                 {
-                    using (g.PushColor(0xFFFFFFFF))
+                    using (g.PushColor(DarkTheme.COLOR_TEXT))
                     {
                         //ulong lineStart = mCurPosition / mBytesPerDisplayLine;
                         int lockSize = lineCount * mBytesPerDisplayLine;

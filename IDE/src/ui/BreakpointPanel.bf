@@ -652,17 +652,15 @@ namespace IDE.ui
 					subItem.mOnMouseClick.Add(new => ListViewItemClicked);
                 }
                 var listViewItem = (BreakpointListViewItem)root.GetChildAtIndex(breakIdx);
-                listViewItem.mTextColor = Color.White;
+                listViewItem.mTextColor = DarkTheme.COLOR_TEXT;
 
 				listViewItem.mIsBold = breakpoint.IsActiveBreakpoint();
 
 				var locString = scope String();
 				breakpoint.ToString_Location(locString);
 				listViewItem.Label = locString;
-				if (breakpoint.IsBound())
-					listViewItem.mTextColor = 0xFFFFFFFF;
-				else
-					listViewItem.mTextColor = 0x80FFFFFF;
+				if (!breakpoint.IsBound())
+					listViewItem.mTextColor = (0x00FFFFFF & DarkTheme.COLOR_TEXT) | 0x80000000;
 
 				// Condition
 				var subItem = listViewItem.GetSubItem(2);

@@ -322,11 +322,14 @@ namespace IDE.ui
         {
             base.Draw(g);
 
-            g.DrawString("Find what:", 6, mEditWidget.mY - GS!(18));
-			if (mReplaceWidget != null)
-				g.DrawString("Replace with:", GS!(6), mReplaceWidget.mY - GS!(18));
-            g.DrawString("Look in:", GS!(6), mLocationCombo.mY - GS!(18));
-			g.DrawString("Look at these file types:", GS!(6), mFileTypesCombo.mY - GS!(18));
+			using (g.PushColor(DarkTheme.COLOR_TEXT))
+			{
+				g.DrawString("Find what:", 6, mEditWidget.mY - GS!(18));
+				if (mReplaceWidget != null)
+					g.DrawString("Replace with:", GS!(6), mReplaceWidget.mY - GS!(18));
+				g.DrawString("Look in:", GS!(6), mLocationCombo.mY - GS!(18));
+				g.DrawString("Look at these file types:", GS!(6), mFileTypesCombo.mY - GS!(18));
+			}
         }
 
 		public override void Update()
