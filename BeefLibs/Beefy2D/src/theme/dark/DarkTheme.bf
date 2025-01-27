@@ -197,6 +197,7 @@ namespace Beefy.theme.dark
         };
 
 		public static uint32 COLOR_TEXT                   = 0xFFFFFFFF;
+		public static uint32 COLOR_TEXT_DISABLED          = 0xFFA8A8A8;
         public static uint32 COLOR_WINDOW                 = 0xFF595962;
         public static uint32 COLOR_BKG                    = 0xFF26262A;
         public static uint32 COLOR_SELECTED_OUTLINE       = 0xFFCFAE11;

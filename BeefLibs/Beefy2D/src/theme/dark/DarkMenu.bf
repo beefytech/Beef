@@ -32,7 +32,7 @@ namespace Beefy.theme.dark
 				let darkMenuWidget = (DarkMenuWidget)mMenuWidget;
 				g.SetFont(mMenuItem.mBold ? darkMenuWidget.mBoldFont : darkMenuWidget.mFont);
 
-				using (g.PushColor(mMenuItem.mDisabled ? 0xFFA8A8A8 : 0xFFFFFFFF))
+				using (g.PushColor(mMenuItem.mDisabled ? DarkTheme.COLOR_TEXT_DISABLED : DarkTheme.COLOR_TEXT))
 				{
 					StringView leftStr = mMenuItem.mLabel;
 					StringView rightStr = default;
@@ -43,12 +43,9 @@ namespace Beefy.theme.dark
 						leftStr.RemoveToEnd(barIdx);
 					}
 
-					using (g.PushColor(DarkTheme.COLOR_TEXT))
-					{
-						g.DrawString(leftStr, GS!(36), 0);
-						if (!rightStr.IsEmpty)
-							g.DrawString(rightStr, mWidth - GS!(8), 0, .Right);
-					}
+					g.DrawString(leftStr, GS!(36), 0);
+					if (!rightStr.IsEmpty)
+						g.DrawString(rightStr, mWidth - GS!(8), 0, .Right);
 				}
 
                 if (mMenuItem.mIconImage != null)
@@ -57,7 +54,7 @@ namespace Beefy.theme.dark
 
             if (mMenuItem.IsParent)
             {
-				using (g.PushColor(mMenuItem.mDisabled ? 0xFFA8A8A8 : 0xFFFFFFFF))
+				using (g.PushColor(mMenuItem.mDisabled ? DarkTheme.COLOR_TEXT_DISABLED : DarkTheme.COLOR_TEXT))
                 	g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.RightArrow), mWidth - GS!(16), 0);
             }
         }
