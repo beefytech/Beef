@@ -829,8 +829,24 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 			}
 			else if (typeRefName == "AllowAppend")
 			{
-				methodDef->mHasAppend = true;
-				methodDef->mIsNoSplat = true;
+				methodDef->mAppendKind = BfAllowAppendKind_Yes;
+				methodDef->mIsNoSplat = true;				
+				if (!attributes->mArguments.IsEmpty())
+				{
+					if (auto assignExpr = BfNodeDynCast<BfAssignmentExpression>(attributes->mArguments[0]))
+					{
+						if ((assignExpr->mLeft != NULL) && (assignExpr->mRight != NULL) &&
+							(assignExpr->mLeft->Equals("ZeroGap")))
+						{
+							if (assignExpr->mRight->Equals("true"))
+								methodDef->mAppendKind = BfAllowAppendKind_ZeroGap;
+							else if (assignExpr->mRight->Equals("false"))
+								methodDef->mAppendKind = BfAllowAppendKind_Yes;
+							else
+								Fail("Can only use 'true' or 'false' for 'ZeroGap'", assignExpr->mRight);
+						}
+					}
+				}
 			}
 			else if (typeRefName == "Checked")
 				methodDef->mCheckedKind = BfCheckedKind_Checked;
@@ -1754,7 +1770,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	mCurTypeDef->mSource = mCurSource;
 	mCurTypeDef->mSource->mRefCount++;
 	mCurTypeDef->mTypeDeclaration = typeDeclaration;
-	mCurTypeDef->mIsAbstract = (typeDeclaration->mAbstractSpecifier != NULL) && (typeDeclaration->mAbstractSpecifier->GetToken() == BfToken_Abstract);
+	mCurTypeDef->mIsAbstract = (typeDeclaration->mAbstractSpecifier != NULL) && (typeDeclaration->mAbstractSpecifier->GetToken() == BfToken_Abstract);	
 	mCurTypeDef->mIsStatic = typeDeclaration->mStaticSpecifier != NULL;
 	mCurTypeDef->mIsDelegate = false;
 	mCurTypeDef->mIsFunction = false;
@@ -2090,7 +2106,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 					hasDefaultCtor = true;
 
 				auto ctorDeclaration = (BfConstructorDeclaration*)method->mMethodDeclaration;
-				if (method->mHasAppend)
+				if (method->mAppendKind != BfAllowAppendKind_No)
 				{
 					mCurTypeDef->mHasAppendCtor = true;
 
@@ -2105,6 +2121,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 						methodDef->mProtection = BfProtection_Public;
 						methodDef->mMethodType = BfMethodType_CtorCalcAppend;
 						methodDef->mIsMutating = method->mIsMutating;
+						methodDef->mAppendKind = method->mAppendKind;
 						methodDef->mIsNoSplat = true;
 
 						methodDef->mMethodDeclaration = method->mMethodDeclaration;
@@ -2133,7 +2150,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 						// Insert a 'appendIdx'
 						BfParameterDef* newParam = new BfParameterDef();
-						newParam->mName = "appendIdx";
+						newParam->mName = "__appendIdx";
 						newParam->mTypeRef = mSystem->mDirectRefIntTypeRef;
 						newParam->mParamKind = BfParamKind_AppendIdx;
 						method->mParams.Insert(0, newParam);
@@ -2524,7 +2541,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			mSignatureHashCtx->MixinStr(methodDef->mName);
 
 		if ((methodDef->mAlwaysInline) ||
-			(methodDef->mHasAppend) ||
+			(methodDef->mAppendKind != BfAllowAppendKind_No) ||
 			(methodDef->mMethodType == BfMethodType_Mixin))
 			inlineHashCtx.Mixin(methodDef->mFullHash);
 

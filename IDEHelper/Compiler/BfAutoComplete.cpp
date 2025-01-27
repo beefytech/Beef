@@ -2520,7 +2520,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 
 		auto methodDeclaration = methodDef->GetMethodDeclaration();
 
-		if (methodDef->mHasAppend)
+		if (methodDef->HasAppend())
 			methodPrefix += "[AllowAppend]\r";
 
 		if (isInterface)
@@ -4083,7 +4083,7 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 
 			int insertPos = FixitGetMemberInsertPos(mModule->mCurTypeInstance->mTypeDef);
 			String methodStr = "\f\a";
-			if (methodInstance->mMethodDef->mHasAppend)
+			if (methodInstance->mMethodDef->HasAppend())
 				methodStr += "[AllowAppend]\r";
 			methodStr += "public this(";
 			int useParamIdx = 0;

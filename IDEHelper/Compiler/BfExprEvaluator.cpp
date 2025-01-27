@@ -222,6 +222,7 @@ void BfMethodMatcher::Init(const BfMethodGenericArguments& methodGenericArgument
 	mAutoFlushAmbiguityErrors = true;
 	mMethodCheckCount = 0;
 	mCheckedKind = BfCheckedKind_NotSet;
+	mAllowAppendKind = BfAllowAppendKind_No;
 	mMatchFailKind = MatchFailKind_None;
 	mBfEvalExprFlags = BfEvalExprFlags_None;
 
@@ -808,7 +809,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	bool anyIsExtension = false;
 
 	int newImplicitParamCount = newMethodInstance->GetImplicitParamCount();
-	if (newMethodInstance->mMethodDef->mHasAppend)
+	if (newMethodInstance->mMethodDef->HasAppend())
 		newImplicitParamCount++;
 	if (newMethodInstance->mMethodDef->mMethodType == BfMethodType_Extension)
 	{
@@ -817,7 +818,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	}
 
 	int prevImplicitParamCount = prevMethodInstance->GetImplicitParamCount();
-	if (prevMethodInstance->mMethodDef->mHasAppend)
+	if (prevMethodInstance->mMethodDef->HasAppend())
 		prevImplicitParamCount++;
 	if (prevMethodInstance->mMethodDef->mMethodType == BfMethodType_Extension)
 	{
@@ -1281,6 +1282,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 	}
 
 	RETURN_BETTER_OR_WORSE(newMethodDef->mCheckedKind == mCheckedKind, prevMethodDef->mCheckedKind == mCheckedKind);
+	RETURN_BETTER_OR_WORSE(newMethodDef->mAppendKind == mAllowAppendKind, prevMethodDef->mAppendKind == mAllowAppendKind);
 	RETURN_BETTER_OR_WORSE(newMethodDef->mCommutableKind != BfCommutableKind_Reverse, prevMethodDef->mCommutableKind != BfCommutableKind_Reverse);
 
 	// If one of these methods is local to the current extension then choose that one
@@ -1775,7 +1777,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		((!mHadExplicitGenericArguments) || (mHadPartialGenericArguments));
 	int paramIdx = 0;
 	BfType* paramsElementType = NULL;
-	if (checkMethod->mHasAppend)
+	if (checkMethod->HasAppend())
 		paramIdx++;
 
 	int uniqueGenericStartIdx = mModule->GetLocalInferrableGenericArgCount(checkMethod);
@@ -1887,7 +1889,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		int argIdx = 0;
 		int paramIdx = 0;
 
-		if (checkMethod->mHasAppend)
+		if (checkMethod->HasAppend())
 			paramIdx++;
 
 		if (checkMethod->mMethodType == BfMethodType_Extension)
@@ -2636,7 +2638,7 @@ Done:
 	return mBestMethodDef == checkMethod;
 }
 
-void BfMethodMatcher::FlushAmbiguityError()
+void BfMethodMatcher::FlushAmbiguityError(bool useWarning)
 {
 	if (!mAmbiguousEntries.empty())
 	{
@@ -2644,9 +2646,20 @@ void BfMethodMatcher::FlushAmbiguityError()
 		{
 			BfError* error;
 			if (!mMethodName.empty())
-				error = mModule->Fail(StrFormat("Ambiguous method call for '%s'", mMethodName.c_str()), mTargetSrc);
+			{
+				if (useWarning)
+					error = mModule->Warn(0, StrFormat("Ambiguous method call for '%s'", mMethodName.c_str()), mTargetSrc);
+				else
+					error = mModule->Fail(StrFormat("Ambiguous method call for '%s'", mMethodName.c_str()), mTargetSrc);
+			}
 			else
-				error = mModule->Fail("Ambiguous method call", mTargetSrc);
+			{
+				if (useWarning)
+					error = mModule->Warn(0, "Ambiguous method call", mTargetSrc);
+				else
+					error = mModule->Fail("Ambiguous method call", mTargetSrc);
+			}
+
 			if (error != NULL)
 			{
 				BfMethodInstance* bestMethodInstance = mModule->GetUnspecializedMethodInstance(mBestRawMethodInstance, true);
@@ -8037,7 +8050,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 							arrayType, false);
 
 						BfResolvedArgs resolvedArgs;
-						MatchConstructor(targetSrc, NULL, expandedParamsArray, arrayType, resolvedArgs, false, BfMethodGenericArguments(), false);
+						MatchConstructor(targetSrc, NULL, expandedParamsArray, arrayType, resolvedArgs, false, BfMethodGenericArguments(), BfAllowAppendKind_No);
 
 						//TODO: Assert 'length' var is at slot 1
 						auto arrayBits = mModule->mBfIRBuilder->CreateBitCast(expandedParamsArray.mValue, mModule->mBfIRBuilder->MapType(arrayType->mBaseType));
@@ -8806,15 +8819,21 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 }
 
 BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, BfTypeInstance* targetType, BfResolvedArgs& argValues, bool callCtorBodyOnly, 
-	const BfMethodGenericArguments& methodGenericArguments,	bool allowAppendAlloc, BfTypedValue* appendIndexValue)
+	const BfMethodGenericArguments& methodGenericArguments, BfAllowAppendKind allowAppendKind, BfTypedValue* appendIndexValue)
 {
 	// Temporarily disable so we don't capture calls in params
 	SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(mFunctionBindResult, NULL);
+
+	auto origAllowAppendKind = allowAppendKind;
+
+	if (allowAppendKind == BfAllowAppendKind_Infer)
+		allowAppendKind = targetType->IsZeroGap() ? BfAllowAppendKind_ZeroGap : BfAllowAppendKind_Yes;
 
 	static int sCtorCount = 0;
 	sCtorCount++;
 
 	BfMethodMatcher methodMatcher(targetSrc, mModule, "", argValues.mResolvedArgs, methodGenericArguments);
+	methodMatcher.mAllowAppendKind = allowAppendKind;
 	methodMatcher.mBfEvalExprFlags = mBfEvalExprFlags;
 
 	BfTypeVector typeGenericArguments;
@@ -8942,17 +8961,29 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 	}
 
 	BfConstructorDeclaration* ctorDecl = (BfConstructorDeclaration*)methodMatcher.mBestMethodDef->mMethodDeclaration;
-	if ((methodMatcher.mBestMethodDef->mHasAppend) && (targetType->IsObject()))
-	{
-		if (!allowAppendAlloc)
+	if ((methodMatcher.mBestMethodDef->HasAppend()) && (targetType->IsObject()))
+	{		
+		if (allowAppendKind == BfAllowAppendKind_No)
 		{
 			if (mModule->mCurMethodInstance->mMethodDef->mMethodDeclaration == NULL)
 				mModule->Fail("Constructors with append allocations cannot be called from a default constructor. Considering adding an explicit default constructor with the [AllowAppend] specifier.", targetSrc);
 			else
 				mModule->Fail("Constructors with append allocations cannot be called from a constructor without [AllowAppend] specified.", targetSrc);
-		}
+		}		
 		else
 		{
+			if ((allowAppendKind == BfAllowAppendKind_Yes) && (methodMatcher.mBestMethodDef->mAppendKind == BfAllowAppendKind_ZeroGap))
+			{
+				BfError* error;
+				if (origAllowAppendKind == BfAllowAppendKind_Infer)
+					error = mModule->Fail(StrFormat("Cannot call ZeroGap constructor for type '%s' because of fields added from type extensions", mModule->TypeToString(targetType).c_str()), targetSrc);
+				else
+					error = mModule->Fail(StrFormat("Cannot call ZeroGap constructor for type '%s' from here", mModule->TypeToString(targetType).c_str()), targetSrc);
+
+				if ((error != NULL) && (methodMatcher.mBestMethodDef->mMethodDeclaration != NULL))
+					mModule->mCompiler->mPassInstance->MoreInfo(StrFormat("See method declaration"), methodMatcher.mBestMethodDef->GetRefNode());
+			}
+
 			BfResolvedArg resolvedArg;
  			if (appendIndexValue != NULL)
  			{
@@ -8974,6 +9005,9 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 			methodMatcher.mArguments.Insert(0, resolvedArg);
 		}
 	}
+
+	if (methodMatcher.mAutoFlushAmbiguityErrors)
+		methodMatcher.FlushAmbiguityError(true);
 
 	if (isFailurePass)
 		mModule->Fail(StrFormat("'%s' is inaccessible due to its protection level", mModule->MethodToString(moduleMethodInstance.mMethodInstance).c_str()), targetSrc);
@@ -10215,7 +10249,8 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			mResultLocalVar = NULL;
 			mResultFieldInstance = NULL;
 			mResultLocalVarRefNode = NULL;
-			BfTypedValue result = MatchConstructor(targetSrc, methodBoundExpr, structInst, resolvedTypeInstance, argValues, false, BfMethodGenericArguments(), resolvedTypeInstance->IsObject());
+			BfTypedValue result = MatchConstructor(targetSrc, methodBoundExpr, structInst, resolvedTypeInstance, argValues, false, BfMethodGenericArguments(), 
+				resolvedTypeInstance->IsObject() ? BfAllowAppendKind_Infer : BfAllowAppendKind_No);
 			if ((result) && (!result.mType->IsVoid()))
 				return result;
 			mModule->ValidateAllocation(resolvedTypeInstance, targetSrc);
@@ -14222,7 +14257,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
  	}
 
 	BfResolvedArgs resolvedArgs;
-	MatchConstructor(delegateBindExpr, delegateBindExpr, mResult, useTypeInstance, resolvedArgs, false, BfMethodGenericArguments(), false);
+	MatchConstructor(delegateBindExpr, delegateBindExpr, mResult, useTypeInstance, resolvedArgs, false, BfMethodGenericArguments(), BfAllowAppendKind_No);
 
 	auto baseDelegateType = VerifyBaseDelegateType(delegateTypeInstance->mBaseType);
 	auto baseDelegate = mModule->mBfIRBuilder->CreateBitCast(mResult.mValue, mModule->mBfIRBuilder->MapType(baseDelegateType, BfIRPopulateType_Full));
@@ -15951,7 +15986,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 				mModule->Fail("Append allocations are only allowed as local variable declarations in the main method body", allocNode);
 				isAppendAlloc = false;
 			}
-			else if (!methodDef->mHasAppend)
+			else if (!methodDef->HasAppend())
 			{
 				mModule->Fail("Append allocations can only be used on constructors with [AllowAppend] specified", allocNode);
 				isAppendAlloc = false;
@@ -16319,11 +16354,11 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		if (rawAutoComplete != NULL)
 		{
 			SetAndRestoreValue<bool> prevCapturing(rawAutoComplete->mIsCapturingMethodMatchInfo, false);
-			MatchConstructor(refNode, objCreateExpr, arrayValue, arrayType, resolvedArgs, false, methodGenericArguments, false);
+			MatchConstructor(refNode, objCreateExpr, arrayValue, arrayType, resolvedArgs, false, methodGenericArguments, BfAllowAppendKind_No);
 		}
 		else
 		{
-			MatchConstructor(refNode, objCreateExpr, arrayValue, arrayType, resolvedArgs, false, methodGenericArguments, false);
+			MatchConstructor(refNode, objCreateExpr, arrayValue, arrayType, resolvedArgs, false, methodGenericArguments, BfAllowAppendKind_No);
 		}
 
 		//TODO: Assert 'length' var is at slot 1
@@ -16506,7 +16541,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		auto checkTypeInst = typeInstance;
 		if (checkTypeInst->IsAnonymousInitializerType())
 			checkTypeInst = checkTypeInst->mBaseType;
-		MatchConstructor(refNode, objCreateExpr, emtpyThis, checkTypeInst, argValues, false, methodGenericArguments, true);
+		MatchConstructor(refNode, objCreateExpr, emtpyThis, checkTypeInst, argValues, false, methodGenericArguments, BfAllowAppendKind_Infer);
 		if ((wasCapturingMethodInfo) && (!autoComplete->mIsCapturingMethodMatchInfo))
 		{
 			if (autoComplete->mMethodMatchInfo != NULL)
@@ -16524,7 +16559,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		auto checkTypeInst = typeInstance;
 		if (checkTypeInst->IsAnonymousInitializerType())
 			checkTypeInst = checkTypeInst->mBaseType;
-		MatchConstructor(refNode, objCreateExpr, emtpyThis, checkTypeInst, argValues, false, methodGenericArguments, true);
+		MatchConstructor(refNode, objCreateExpr, emtpyThis, checkTypeInst, argValues, false, methodGenericArguments, BfAllowAppendKind_Infer);
 	}
 	if (objCreateExpr != NULL)
 		mModule->ValidateAllocation(typeInstance, objCreateExpr->mTypeRef);
@@ -16536,7 +16571,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		allocAlign = typeInstance->mInstAlign;
 	int appendAllocAlign = 0;
 
-	if ((bindResult.mMethodInstance != NULL) && (bindResult.mMethodInstance->mMethodDef->mHasAppend))
+	if ((bindResult.mMethodInstance != NULL) && (bindResult.mMethodInstance->mMethodDef->HasAppend()))
 	{
 		if (!bindResult.mFunc)
 		{
@@ -16736,7 +16771,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 				thisTypedValue = mModule->Cast(allocNode, thisTypedValue, wantType);
 			}
 
-			if ((bindResult.mMethodInstance->mMethodDef->mHasAppend) && (mResult.mType->IsObject()))
+			if ((bindResult.mMethodInstance->mMethodDef->HasAppend()) && (mResult.mType->IsObject()))
 			{
 				BF_ASSERT(bindResult.mIRArgs[0].IsFake());
 				auto typeInst = mResult.mType->ToTypeInstance();
@@ -18542,7 +18577,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 							else
 								mResult = BfTypedValue(mModule->CreateAlloca(expectingType), expectingType, BfTypedValueKind_TempAddr);
 
-							auto ctorResult = MatchConstructor(target, methodBoundExpr, mResult, expectingType->ToTypeInstance(), argValues, false, BfMethodGenericArguments(), false);
+							auto ctorResult = MatchConstructor(target, methodBoundExpr, mResult, expectingType->ToTypeInstance(), argValues, false, BfMethodGenericArguments(), BfAllowAppendKind_No);
 							if ((ctorResult) && (!ctorResult.mType->IsVoid()))
 								mResult = ctorResult;
 							mModule->ValidateAllocation(expectingType, invocationExpr->mTarget);
@@ -23916,7 +23951,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 		ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
 
 		mResult = BfTypedValue(alloca, allocType, true);
-		auto result = MatchConstructor(opToken, NULL, mResult, allocType, argValues, true, BfMethodGenericArguments(), false);
+		auto result = MatchConstructor(opToken, NULL, mResult, allocType, argValues, true, BfMethodGenericArguments(), BfAllowAppendKind_No);
 		if ((result) && (!result.mType->IsVoid()))
 			mResult = result;
 

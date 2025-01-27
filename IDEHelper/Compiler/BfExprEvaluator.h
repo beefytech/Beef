@@ -219,6 +219,7 @@ public:
 	BfType* mCheckReturnType;
 	BfMethodType mMethodType;
 	BfCheckedKind mCheckedKind;
+	BfAllowAppendKind mAllowAppendKind;
 	Array<SizedArray<BfUsingFieldData::MemberRef, 1>*>* mUsingLists;
 	bool mHasArgNames;
 	bool mHadExplicitGenericArguments;
@@ -261,7 +262,7 @@ public:
 	void CompareMethods(BfMethodInstance* prevMethodInstance, BfTypeVector* prevGenericArgumentsSubstitute,
 		BfMethodInstance* newMethodInstance, BfTypeVector* genericArgumentsSubstitute,
 		bool* outNewIsBetter, bool* outNewIsWorse, bool allowSpecializeFail);
-	void FlushAmbiguityError();
+	void FlushAmbiguityError(bool useWarning = false);
 	bool IsType(BfTypedValue& val, BfType* type);
 	int GetMostSpecificType(BfType* lhs, BfType* rhs); // 0, 1, or -1
 
@@ -498,7 +499,7 @@ public:
 	void PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& irArgs, bool disableSplat = false, bool disableLowering = false, bool isIntrinsic = false, bool createCompositeCopy = false);
 	void PushThis(BfAstNode* targetSrc, BfTypedValue callTarget, BfMethodInstance* methodInstance, SizedArrayImpl<BfIRValue>& irArgs, bool skipMutCheck = false);
 	BfTypedValue MatchConstructor(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, BfTypeInstance* targetType,
-		BfResolvedArgs& argValues, bool callCtorBodyOnly, const BfMethodGenericArguments& methodGenericArguments, bool allowAppendAlloc, BfTypedValue* appendIndexValue = NULL);
+		BfResolvedArgs& argValues, bool callCtorBodyOnly, const BfMethodGenericArguments& methodGenericArguments, BfAllowAppendKind allowAppendKind, BfTypedValue* appendIndexValue = NULL);
 	BfTypedValue CheckEnumCreation(BfAstNode* targetSrc, BfTypeInstance* enumType, const StringImpl& caseName, BfResolvedArgs& argValues);
 	BfTypedValue MatchMethod(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& name,
 		BfResolvedArgs& argValue, const BfMethodGenericArguments& methodGenericArguments, BfCheckedKind checkedKind = BfCheckedKind_NotSet);

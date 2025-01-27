@@ -2020,6 +2020,7 @@ public:
 	void AddMethodToWorkList(BfMethodInstance* methodInstance);
 	bool IsInterestedInMethod(BfTypeInstance* typeInstance, BfMethodDef* methodDef);
 	void CalcAppendAlign(BfMethodInstance* methodInst);
+	BfAllowAppendKind GetBaseAllowAppend(BfMethodInstance* curMethodInstance);
 	BfTypedValue TryConstCalcAppend(BfMethodInstance* methodInst, SizedArrayImpl<BfIRValue>& args, bool force = false);
 	BfTypedValue CallBaseCtorCalc(bool constOnly);
 	void EmitCtorCalcAppend();

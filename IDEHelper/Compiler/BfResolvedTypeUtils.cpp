@@ -841,6 +841,9 @@ BfMethodFlags BfMethodInstance::GetMethodFlags()
 	else if (callingConvention == BfIRCallingConv_FastCall)
 		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_FastCall);
 
+	methodFlags = (BfMethodFlags)(methodFlags | (mMethodDef->mAppendKind * BfMethodFlags_AppendBit0));
+	methodFlags = (BfMethodFlags)(methodFlags | (mMethodDef->mCheckedKind * BfMethodFlags_CheckedBit0));
+
 	return methodFlags;
 }
 
@@ -2702,6 +2705,23 @@ bool BfTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* activeT
 	}
 
 	return genericExEntry->mConstraintsPassed;
+}
+
+bool BfTypeInstance::IsZeroGap()
+{
+	BF_ASSERT(mDefineState >= BfTypeDefineState_Defined);
+
+	for (int fieldIdx = mFieldInstances.mSize - 1; fieldIdx >= 0; fieldIdx--)
+	{
+		auto fieldInstance = &mFieldInstances[fieldIdx];
+		auto fieldDef = fieldInstance->GetFieldDef();
+		if (fieldDef == NULL)
+			continue;
+		if ((!fieldDef->mIsStatic) && (fieldDef->mDeclaringType->IsExtension()) && (!fieldInstance->mResolvedType->IsValuelessType()))
+			return false;
+	}
+
+	return true;
 }
 
 void BfGenericTypeInfo::ReportMemory(MemReporter* memReporter)

@@ -2906,7 +2906,10 @@ namespace IDE.ui
 
 			base.UpdateAll();
 			if (mWantRemoveSelf)
+			{
 				mParentItem?.RemoveChildItem(this);
+				return;
+			}
 
 			if (mColumnIdx == 0)
 			{

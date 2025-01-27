@@ -530,11 +530,8 @@ namespace System.Reflection
 			}
 		}
 
-		public Result<T*> GetValueReference<T>(Object target)
+		Result<T*> DoGetValueReference<T>(Object target)
 		{
-			if (FieldType != typeof(T))
-				return .Err;
-
 			void* targetDataAddr;
 			if (target == null)
 			{
@@ -554,6 +551,21 @@ namespace System.Reflection
 				targetDataAddr = GetDataPtrAndType(target, out tTarget);
 				return GetValueReference<T>(targetDataAddr, tTarget);
 			}
+		}
+
+		public Result<T*> GetValueReference<T>(Object target)
+		{
+			if (FieldType != typeof(T))
+				return .Err;
+			return DoGetValueReference<T>(target);
+		}
+
+		public Result<T> GetValue<T>(Object target)
+		{
+			if ((FieldType != typeof(T)) && (!FieldType.IsSubtypeOf(typeof(T))))
+				return .Err;
+			T* result = Try!(DoGetValueReference<T>(target));
+			return *result;
 		}
 
 		public Result<Variant> GetValueReference(Object target)

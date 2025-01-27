@@ -253,7 +253,11 @@ enum BfMethodFlags
 	BfMethodFlags_FastCall = 0x2000,
 	BfMethodFlags_ThisCall = 0x3000,
 	BfMethodFlags_Mutating = 0x4000,
-	BfMethodFlags_Constructor = 0x8000
+	BfMethodFlags_Constructor = 0x8000,
+	BfMethodFlags_AppendBit0 = 0x10000,
+	BfMethodFlags_AppendBit1 = 0x20000,
+	BfMethodFlags_CheckedBit0 = 0x40000,
+	BfMethodFlags_CheckedBit1 = 0x80000,
 };
 
 enum BfComptimeMethodFlags
@@ -888,6 +892,15 @@ enum BfComptimeFlags : int8
 	BfComptimeFlag_ConstEval = 4
 };
 
+enum BfAllowAppendKind : int8
+{
+	BfAllowAppendKind_No,
+	BfAllowAppendKind_Yes,
+	BfAllowAppendKind_ZeroGap,
+
+	BfAllowAppendKind_Infer
+};
+
 class BfMethodDef : public BfMemberDef
 {
 public:
@@ -916,7 +929,7 @@ public:
 	bool mCodeChanged;
 	bool mWantsBody;
 	bool mCLink;
-	bool mHasAppend;
+	BfAllowAppendKind mAppendKind;
 	bool mAlwaysInline;
 	bool mIsNoReturn;
 	bool mIsMutating;
@@ -970,7 +983,7 @@ public:
 		mImportKind = BfImportKind_None;
 		mMethodType = BfMethodType_Normal;
 		mCallingConvention = BfCallingConvention_Unspecified;
-		mHasAppend = false;
+		mAppendKind = BfAllowAppendKind_No;
 		mAlwaysInline = false;
 		mParamNameMap = NULL;
 		mNextWithSameName = NULL;
@@ -980,6 +993,7 @@ public:
 
 	static BfImportKind GetImportKindFromPath(const StringImpl& filePath);
 	bool HasNoThisSplat() { return mIsMutating || mIsNoSplat; }
+	bool HasAppend() { return mAppendKind != BfAllowAppendKind_No; }
 	void Reset();
 	void FreeMembers();
 	BfMethodDeclaration* GetMethodDeclaration();
@@ -1144,7 +1158,7 @@ public:
 	BfShow mShow;
 	bool mIsAlwaysInclude;
 	bool mIsNoDiscard;
-	bool mIsPartial;
+	bool mIsPartial;	
 	bool mIsExplicitPartial;
 	bool mPartialUsed;
 	bool mIsCombinedPartial;

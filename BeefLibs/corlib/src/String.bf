@@ -74,42 +74,86 @@ namespace System
 		const uint32 cStrPtrFlag = 0x40000000;
 #endif
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(int count) // 0
 		{
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
 			char8* addlPtr = append char8[bufferSize]*(?);
-			Init(bufferSize);
 			mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
 			mLength = 0;
 		}
 
 		[AllowAppend]
+		public this(int count) // 0
+		{
+			int bufferSize = count;
+#unwarn
+			char8* addlPtr = append char8[bufferSize]*(?);
+			mPtrOrBuffer = addlPtr;
+			mAllocSizeAndFlags = (uint_strsize)bufferSize | cStrPtrFlag;
+			mLength = 0;
+		}
+
+		[AllowAppend(ZeroGap=true)]
 		public this()
 		{
 		    let bufferSize = 16 - sizeof(char8*);
 #unwarn
 		    char8* addlPtr = append char8[bufferSize]*(?);
-			Init(bufferSize);
 		    mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
 		    mLength = 0;
 		}
 
 		[AllowAppend]
+		public this()
+		{
+		    let bufferSize = 8;
+#unwarn
+		    char8* addlPtr = append char8[bufferSize]*(?);
+			mPtrOrBuffer = addlPtr;
+		    mAllocSizeAndFlags = (uint_strsize)bufferSize | cStrPtrFlag;
+		    mLength = 0;
+		}
+
+		[AllowAppend(ZeroGap=true)]
 		public this(String str)
 		{
 			let count = str.mLength;
+			/*int a = __appendIdx;
+			int b = offsetof(String, mPtrOrBuffer);
+			if (__appendIdx == offsetof(String, mPtrOrBuffer))
+			{
+
+			}*/
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
 			char8* addlPtr = append char8[bufferSize]*(?);
-			Init(bufferSize);
 			Internal.MemCpy(Ptr, str.Ptr, count);
 			mLength = count;
 			mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
 		}
 
 		[AllowAppend]
+		public this(String str)
+		{
+			let count = str.mLength;
+			/*int a = __appendIdx;
+			int b = offsetof(String, mPtrOrBuffer);
+			if (__appendIdx == offsetof(String, mPtrOrBuffer))
+			{
+
+			}*/
+			int bufferSize = count;
+#unwarn
+			char8* addlPtr = append char8[bufferSize]*(?);
+			mPtrOrBuffer = addlPtr;
+			Internal.MemCpy(Ptr, str.Ptr, count);
+			mLength = count;
+			mAllocSizeAndFlags = (uint_strsize)bufferSize | cStrPtrFlag;
+		}
+
+		[AllowAppend(ZeroGap=true)]
 		public this(String str, int offset)
 		{
 			Debug.Assert((uint)offset <= (uint)str.Length);
@@ -126,7 +170,7 @@ namespace System
 			mLength = (int_strsize)count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(String str, int offset, int count)
 		{
 			Debug.Assert((uint)offset <= (uint)str.Length);
@@ -144,7 +188,7 @@ namespace System
 			mLength = (int_strsize)count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(char8 c, int count)
 		{
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
@@ -158,7 +202,7 @@ namespace System
 			mLength = (int_strsize)count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(char8* char8Ptr)
 		{
 			let count = Internal.CStrLen(char8Ptr);
@@ -173,7 +217,7 @@ namespace System
 			mLength = count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(char8* char8Ptr, int count)
 		{
 		    int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
@@ -187,7 +231,7 @@ namespace System
 		    mLength = (int_strsize)count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(char16* char16Ptr)
 		{
 			let count = UTF16.GetLengthAsUTF8(char16Ptr);
@@ -200,7 +244,7 @@ namespace System
 			UTF16.Decode(char16Ptr, this);
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(Span<char16> chars)
 		{
 			let count = UTF16.GetLengthAsUTF8(chars);
@@ -213,14 +257,13 @@ namespace System
 			UTF16.Decode(chars, this);
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(StringView strView)
 		{			
 			let count = strView.Length;
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
 			char8* addlPtr = append char8[bufferSize]*(?);
-			Init(bufferSize);
 			let ptr = Ptr;
 			Internal.MemCpy(ptr, strView.Ptr, strView.Length);
 			mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
@@ -228,6 +271,20 @@ namespace System
 		}
 
 		[AllowAppend]
+		public this(StringView strView)
+		{			
+			let count = strView.Length;
+			int bufferSize = count;
+#unwarn
+			char8* addlPtr = append char8[bufferSize]*(?);
+			mPtrOrBuffer = addlPtr;
+			let ptr = Ptr;
+			Internal.MemCpy(ptr, strView.Ptr, strView.Length);
+			mAllocSizeAndFlags = (uint_strsize)bufferSize | cStrPtrFlag;
+			mLength = (int_strsize)strView.Length;
+		}
+
+		[AllowAppend(ZeroGap=true)]
 		public this(StringView strView, CreateFlags flags)
 		{			
 			let count = strView.Length + (flags.HasFlag(.NullTerminate) ? 1 : 0);
@@ -243,7 +300,7 @@ namespace System
 			mLength = (int32)strView.Length;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(StringView strView, int offset)
 		{
 			Debug.Assert((uint)offset <= (uint)strView.Length);
@@ -261,7 +318,7 @@ namespace System
 			mLength = (int_strsize)count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(StringView strView, int offset, int count)
 		{
 			Debug.Assert((uint)offset <= (uint)strView.Length);
@@ -279,7 +336,7 @@ namespace System
 			mLength = (int_strsize)count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(char8[] chars, int offset, int count)
 		{
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
@@ -670,7 +727,7 @@ namespace System
 		public static implicit operator Span<char8>(String str)
 		{
 		    if (str == null)
-				return .(null, 0);
+				return .((char8*)null, 0);
 			return .(str.Ptr, str.Length);
 		}
 

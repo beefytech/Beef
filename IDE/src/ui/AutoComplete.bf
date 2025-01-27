@@ -1817,7 +1817,7 @@ namespace IDE.ui
 
 			if (!fts_fuzzy_match(filter.CStr(), entry.mEntryDisplay.CStr(), ref score, &matches, matches.Count))
 			{
-				entry.SetMatches(Span<uint8>(null, 0));
+				entry.SetMatches(Span<uint8>((uint8*)null, 0));
 				entry.mScore = score;
 				return false;
 			}

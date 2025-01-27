@@ -633,6 +633,7 @@ public:
 	virtual bool GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCode = NULL, BfTypeCode* outTypeCode2 = NULL) { return false; }
 	virtual BfType* GetUnderlyingType() { return NULL; }
 	virtual bool HasWrappedRepresentation() { return IsWrappableType(); }
+	virtual bool IsZeroGap() { return true; }
 	virtual bool IsTypeMemberIncluded(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef = NULL, BfModule* module = NULL) { return true; } // May be 'false' only for generic extensions with constraints
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef) { return true; }
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProject* curProject) { return true; }
@@ -973,7 +974,7 @@ public:
 	bool IsMixin()
 	{
 		return mMethodDef->mMethodType == BfMethodType_Mixin;
-	}
+	}	
 
 	BfImportKind GetImportKind();
 	BfMethodFlags GetMethodFlags();
@@ -2182,6 +2183,7 @@ public:
  	virtual bool IsNullable() override;
  	virtual bool HasVarConstraints();
  	virtual bool IsTypeMemberIncluded(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef = NULL, BfModule* module = NULL) override;
+	virtual bool IsZeroGap() override;
 
 	virtual BfTypeInstance* GetImplBaseType() { return mBaseType; }
 

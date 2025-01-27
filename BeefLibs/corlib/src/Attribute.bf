@@ -372,7 +372,7 @@ namespace System
 	[AttributeUsage(.Constructor)]
 	public struct AllowAppendAttribute : Attribute
 	{
-
+		public bool ZeroGap;
 	}
 
 	[AttributeUsage(.Class | .Struct)]

@@ -778,13 +778,13 @@ public:
 					if (typeInst != NULL)
 					{
 						exprEvaluator.ResolveArgValues(argValues);
-						exprEvaluator.MatchConstructor(objCreateExpr->mTypeRef, objCreateExpr, emtpyThis, typeInst, argValues, false, BfMethodGenericArguments(), true);
+						exprEvaluator.MatchConstructor(objCreateExpr->mTypeRef, objCreateExpr, emtpyThis, typeInst, argValues, false, BfMethodGenericArguments(), BfAllowAppendKind_Infer);
 					}
 					exprEvaluator.mFunctionBindResult = NULL;
 
 					if (bindResult.mMethodInstance != NULL)
 					{
-						if (bindResult.mMethodInstance->mMethodDef->mHasAppend)
+						if (bindResult.mMethodInstance->mMethodDef->HasAppend())
 						{
 							auto calcAppendArgs = bindResult.mIRArgs;
 							BF_ASSERT(calcAppendArgs[0].IsFake());
@@ -4808,9 +4808,9 @@ bool BfModule::TryGetAppendedObjectInfo(BfFieldInstance* fieldInstance, int& dat
 	BfTypedValue emptyThis(mBfIRBuilder->GetFakeVal(), mCurTypeInstance, mCurTypeInstance->IsStruct());
 
 	exprEvaluator.mBfEvalExprFlags = BfEvalExprFlags_Comptime;
-	auto ctorResult = exprEvaluator.MatchConstructor(nameRefNode, NULL, emptyThis, fieldTypeInst, resolvedArgs, false, BfMethodGenericArguments(), true);
+	auto ctorResult = exprEvaluator.MatchConstructor(nameRefNode, NULL, emptyThis, fieldTypeInst, resolvedArgs, false, BfMethodGenericArguments(), BfAllowAppendKind_Infer);
 
-	if ((bindResult.mMethodInstance != NULL) && (bindResult.mMethodInstance->mMethodDef->mHasAppend))
+	if ((bindResult.mMethodInstance != NULL) && (bindResult.mMethodInstance->mMethodDef->HasAppend()))
 	{
 		auto calcAppendMethodModule = GetMethodInstanceAtIdx(bindResult.mMethodInstance->GetOwner(), bindResult.mMethodInstance->mMethodDef->mIdx + 1, BF_METHODNAME_CALCAPPEND);
 
@@ -4934,7 +4934,7 @@ void BfModule::AppendedObjectInit(BfFieldInstance* fieldInst)
 		mBfIRBuilder->CreateStore(GetConstValue8(BfObjectFlag_AppendAlloc), thisFlagsPtr);
 	}
 
-	exprEvaluator.MatchConstructor(fieldDef->GetNameNode(), NULL, thisValue, fieldInst->mResolvedType->ToTypeInstance(), resolvedArgs, false, BfMethodGenericArguments(), true, &indexVal);
+	exprEvaluator.MatchConstructor(fieldDef->GetNameNode(), NULL, thisValue, fieldInst->mResolvedType->ToTypeInstance(), resolvedArgs, false, BfMethodGenericArguments(), BfAllowAppendKind_Infer, &indexVal);
 }
 
 void BfModule::CheckInterfaceMethod(BfMethodInstance* methodInstance)
@@ -7839,7 +7839,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 				paramsVal,
 				GetConstValue(defaultMethod->mReturnType->mTypeId, typeIdType),
 				GetConstValue((int)paramVals.size(), shortType),
-				GetConstValue(methodFlags, shortType),
+				GetConstValue(methodFlags, intType),
 				GetConstValue(methodIdx, intType),
 				GetConstValue(vDataVal, intType),
 				GetConstValue(customAttrIdx, intType),
@@ -10544,7 +10544,7 @@ void BfModule::EmitAppendAlign(int align, int sizeMultiple)
 		else if (mCurMethodInstance->mMethodDef->mMethodType == BfMethodType_Ctor)
 		{
 			auto localVar = mCurMethodState->GetRootMethodState()->mLocals[1];
-			BF_ASSERT(localVar->mName == "appendIdx");
+			BF_ASSERT(localVar->mName == "__appendIdx");
 			auto appendIdxVal = BfTypedValue(localVar->mValue, localVar->mResolvedType, true);
 			BfIRValue appendCurIdx = mBfIRBuilder->CreateLoad(appendIdxVal.mValue);
 			if (align > 1)
@@ -10579,7 +10579,7 @@ void BfModule::EmitAppendAlign(int align, int sizeMultiple)
 BfIRValue BfModule::AppendAllocFromType(BfType* type, BfIRValue appendSizeValue, int appendAllocAlign, BfIRValue arraySize, int arrayDim, bool isRawArrayAlloc, bool zeroMemory)
 {
 	auto localVar = mCurMethodState->GetRootMethodState()->mLocals[1];
-	BF_ASSERT(localVar->mName == "appendIdx");
+	BF_ASSERT(localVar->mName == "__appendIdx");
 	BfTypedValue appendIdxVal(localVar->mValue, localVar->mResolvedType, true);
 
 	BfIRValue retValue;
@@ -14043,6 +14043,8 @@ bool BfModule::CompareMethodSignatures(BfMethodInstance* methodA, BfMethodInstan
 	}
 	else if (methodA->mMethodDef->mName != methodB->mMethodDef->mName)
 		return false;
+	if (methodA->mMethodDef->mAppendKind != methodB->mMethodDef->mAppendKind)
+		return false;
 	if (methodA->mMethodDef->mCheckedKind != methodB->mMethodDef->mCheckedKind)
 		return false;
 	if (methodA->mMethodDef->mHasComptime != methodB->mMethodDef->mHasComptime)
@@ -15186,6 +15188,11 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	}
 
 	if (methodDef->mMethodType == BfMethodType_Init)
+	{
+		methodInstance->mMangleWithIdx = true;
+	}
+
+	if (methodDef->mAppendKind > BfAllowAppendKind_No)
 	{
 		methodInstance->mMangleWithIdx = true;
 	}
@@ -17243,6 +17250,24 @@ void BfModule::CalcAppendAlign(BfMethodInstance* methodInst)
 	methodInst->mAppendAllocAlign = 1;
 }
 
+BfAllowAppendKind BfModule::GetBaseAllowAppend(BfMethodInstance* curMethodInstance)
+{
+	auto typeInstance = curMethodInstance->GetOwner();
+	auto methodDef = curMethodInstance->mMethodDef;
+
+	if (methodDef->mAppendKind == BfAllowAppendKind_No)
+		return BfAllowAppendKind_No;
+
+	if ((typeInstance->mInstSize == typeInstance->mBaseType->mInstSize) &&
+		(typeInstance->IsZeroGap()) &&
+		(typeInstance->mBaseType->IsZeroGap()) &&
+		(methodDef->mAppendKind == BfAllowAppendKind_ZeroGap))
+	{
+		return BfAllowAppendKind_ZeroGap;
+	}
+	return BfAllowAppendKind_Yes;
+}
+
 BfTypedValue BfModule::TryConstCalcAppend(BfMethodInstance* methodInst, SizedArrayImpl<BfIRValue>& args, bool force)
 {
 	BP_ZONE("BfModule::TryConstCalcAppend");
@@ -17423,13 +17448,15 @@ BfTypedValue BfModule::TryConstCalcAppend(BfMethodInstance* methodInst, SizedArr
 }
 
 BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
-{
+{	
 	// Any errors should only be shown in the actual CTOR call
 	SetAndRestoreValue<bool> prevIgnoreWrites(mIgnoreErrors, true);
 
 	auto methodDef = mCurMethodInstance->mMethodDef;
 	BF_ASSERT((methodDef->mMethodType == BfMethodType_Ctor) || (methodDef->mMethodType == BfMethodType_CtorCalcAppend));
 	auto ctorDeclaration = (BfConstructorDeclaration*)methodDef->mMethodDeclaration;
+
+	BfAllowAppendKind allowAppendKind = GetBaseAllowAppend(mCurMethodInstance);	
 
 	BfCustomAttributes* customAttributes = NULL;
 	defer(delete customAttributes);
@@ -17473,11 +17500,11 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 	BfFunctionBindResult bindResult;
 	bindResult.mSkipThis = true;
 	bindResult.mWantsArgs = true;
-	{
+	{		
 		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
 		exprEvaluator.ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
 		SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(exprEvaluator.mFunctionBindResult, &bindResult);
-		exprEvaluator.MatchConstructor(targetRefNode, NULL, target, targetType, argValues, true, BfMethodGenericArguments(), true);
+		exprEvaluator.MatchConstructor(targetRefNode, NULL, target, targetType, argValues, true, BfMethodGenericArguments(), allowAppendKind, NULL);
 	}
 
 	if (bindResult.mMethodInstance == NULL)
@@ -17486,7 +17513,7 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 		return BfTypedValue();
 	}
 
-	if (!bindResult.mMethodInstance->mMethodDef->mHasAppend)
+	if (!bindResult.mMethodInstance->mMethodDef->HasAppend())
 	{
 		return BfTypedValue();
 	}
@@ -17524,7 +17551,7 @@ BfTypedValue BfModule::CallBaseCtorCalc(bool constOnly)
 		bindResult.mSkipThis = true;
 		bindResult.mWantsArgs = true;
 		SetAndRestoreValue<BfFunctionBindResult*> prevBindResult(exprEvaluator.mFunctionBindResult, &bindResult);
-		exprEvaluator.MatchConstructor(targetRefNode, NULL, target, targetType, argValues, true, BfMethodGenericArguments(), true);
+		exprEvaluator.MatchConstructor(targetRefNode, NULL, target, targetType, argValues, true, BfMethodGenericArguments(), allowAppendKind, NULL);
 		BF_ASSERT(bindResult.mIRArgs[0].IsFake());
 		bindResult.mIRArgs.RemoveAt(0);
 		calcAppendArgs = bindResult.mIRArgs;
@@ -18975,7 +19002,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 		}
 	}
 
-	if (methodDef->mHasAppend)
+	if (methodDef->HasAppend())
 	{
 		mCurMethodState->mCurAppendAlign = methodInstance->mAppendAllocAlign;
 	}
@@ -19028,16 +19055,18 @@ void BfModule::EmitCtorBody(bool& skipBody)
 		}
 		exprEvaluator.ResolveArgValues(argValues, BfResolveArgsFlag_DeferParamEval);
 
+		BfAllowAppendKind allowAppendKind = GetBaseAllowAppend(mCurMethodInstance);
+		
 		BfTypedValue appendIdxVal;
-		if (methodDef->mHasAppend)
+		if (methodDef->HasAppend())
 		{
 			auto localVar = mCurMethodState->GetRootMethodState()->mLocals[1];
-			BF_ASSERT(localVar->mName == "appendIdx");
+			BF_ASSERT(localVar->mName == "__appendIdx");
 			auto intRefType = localVar->mResolvedType;
 			appendIdxVal = BfTypedValue(localVar->mValue, intRefType);
 			mCurMethodState->mCurAppendAlign = 1; // Don't make any assumptions about how the base leaves the alignment
 		}
-        exprEvaluator.MatchConstructor(targetRefNode, NULL, target, targetType, argValues, true, BfMethodGenericArguments(), methodDef->mHasAppend, &appendIdxVal);
+        exprEvaluator.MatchConstructor(targetRefNode, NULL, target, targetType, argValues, true, BfMethodGenericArguments(), allowAppendKind, &appendIdxVal);
 
 		if (autoComplete != NULL)
 		{
@@ -25486,6 +25515,12 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 						{
 							// This can allow emission of a default ctor if we've already auto-added a default ctor
 							silentlyAllow = true;							
+						}
+
+						if (checkMethod->mMethodType == BfMethodType_CtorCalcAppend)
+						{
+							// Only use the main ctor as the error method
+							silentlyAllow = true;
 						}
 
 						if (!silentlyAllow)

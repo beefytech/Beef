@@ -82,6 +82,13 @@ namespace System.Reflection
 			Name == "~this"  :
 			mData.mMethodData.mName === "~this";
 
+		public AllowAppendKind AllowAppendKind => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags.AllowAppendKind :
+			mData.mMethodData.[Friend]mFlags.AllowAppendKind;
+		public CheckedKind CheckedKind => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags.CheckedKind :
+			mData.mMethodData.[Friend]mFlags.CheckedKind;
+
 		public Type ReturnType => Compiler.IsComptime ?
 			Type.[Friend]GetType((.)Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mReturnTypeId) :
 			Type.[Friend]GetType(mData.mMethodData.mReturnType);

@@ -1742,9 +1742,9 @@ namespace System.Reflection
 		Appended				= 0x1000,
     }
 
-	public enum MethodFlags : uint16
+	public enum MethodFlags : uint32
 	{
-		MethodAccessMask    	= 0x0007,
+		case MethodAccessMask    	= 0x0007,
 		Protected               = 0x0003,
 		Public                  = 0x0006,
 
@@ -1762,5 +1762,26 @@ namespace System.Reflection
 		ThisCall				= 0x3000, // Purposely resuing StdCall|FastCall
 		Mutating				= 0x4000,
 		Constructor				= 0x8000,
+		AppendBit0				= 0x10000,
+		AppendBit1				= 0x20000,
+		CheckedBit0				= 0x40000,
+		CheckedBit1				= 0x80000;
+
+		public AllowAppendKind AllowAppendKind => (.)(int32)(this / AppendBit0);
+		public CheckedKind CheckedKind => (.)(int32)(this / CheckedBit0);
+	}
+
+	public enum AllowAppendKind
+	{
+		No,
+		Yes,
+		ZeroGap
+	}
+
+	public enum CheckedKind
+	{
+		NotSet,
+		Checked,
+		Unchecked
 	}
 }
