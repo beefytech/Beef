@@ -312,6 +312,7 @@ namespace IDE
 		{
 			public Color mText = 0xFFFFFFFF;
 			public Color mTextDisabled = 0xFFA8A8A8;
+			public Color mTextSelected = 0xFF2f5c88;
 			public Color mWindow = 0xFF44444D;
 			public Color mBackground = 0xFF1C1C24;
 			public Color mSelectedOutline = 0xFFCFAE11;
@@ -366,6 +367,7 @@ namespace IDE
 
 				GetColor("Text", ref mText);
 				GetColor("TextDisabled", ref mTextDisabled);
+				GetColor("TextSelected", ref mTextSelected);
 				GetColor("Window", ref mWindow);
 				GetColor("Background", ref mBackground);
 				GetColor("SelectedOutline", ref mSelectedOutline);
@@ -453,6 +455,7 @@ namespace IDE
 
 				DarkTheme.COLOR_TEXT = mText;
 				DarkTheme.COLOR_TEXT_DISABLED = mTextDisabled;
+				DarkTheme.COLOR_TEXT_SELECTED = mTextSelected;
 				DarkTheme.COLOR_WINDOW = mWindow;
 				DarkTheme.COLOR_BKG = mBackground;
 				DarkTheme.COLOR_SELECTED_OUTLINE = mSelectedOutline;

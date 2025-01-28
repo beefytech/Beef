@@ -80,6 +80,7 @@ namespace Beefy.theme.dark
             mHorzJumpSize = GS!(40);
             mFont = DarkTheme.sDarkTheme?.mSmallFont;
 			mTextColors[0] = DarkTheme.COLOR_TEXT;
+			mHiliteColor = DarkTheme.COLOR_TEXT_SELECTED;
         }
 
 		protected override EditWidgetContent.Data CreateEditData()
