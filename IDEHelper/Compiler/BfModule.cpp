@@ -475,6 +475,7 @@ public:
 	BfTypedValue mConstAccum;
 	bool mFailed;
 	bool mIsFirstConstPass;
+	bool mHasAppendWantMark;
 	int mCurAppendAlign;
 
 public:
@@ -482,6 +483,7 @@ public:
 	{
 		mFailed = false;
 		mIsFirstConstPass = false;
+		mHasAppendWantMark = false;
 		mCurAppendAlign = 1;
 	}
 
@@ -653,6 +655,9 @@ public:
 					mModule->AssertErrorState();
 					return;
 				}
+
+				if (origResolvedTypeRef->WantsGCMarking())
+					mHasAppendWantMark = true;
 
 				bool isGenericParam = origResolvedTypeRef->IsGenericParam();
 				auto resolvedTypeRef = origResolvedTypeRef;
@@ -6272,6 +6277,8 @@ BfIRValue BfModule::GetTypeTypeData(BfType* type, BfCreateTypeDataContext& ctx, 
 		typeFlags |= BfTypeFlags_Static;
 	if ((typeInstance != NULL) && (typeInstance->mTypeDef->mIsAbstract))
 		typeFlags |= BfTypeFlags_Abstract;
+	if ((typeInstance != NULL) && (typeInstance->mHasAppendWantMark))
+		typeFlags |= BfTypeFlags_HasAppendWantMark;
 
 	return typeTypeData;
 }
@@ -9534,7 +9541,7 @@ BfTypedValue BfModule::GetOrCreateVarAddr(BfExpression* expr)
 }
 
 // Clear memory, set classVData, call init. Actual ctor is called elsewhere.
-void BfModule::InitTypeInst(BfTypedValue typedValue, BfScopeData* scopeData, bool zeroMemory, BfIRValue sizeValue)
+void BfModule::InitTypeInst(BfTypedValue typedValue, BfScopeData* scopeData, bool zeroMemory, BfIRValue sizeValue, BfAllocFlags allocFlags)
 {
 	auto typeInstance = typedValue.mType->ToTypeInstance();
 	if (zeroMemory)
@@ -9581,6 +9588,8 @@ void BfModule::InitTypeInst(BfTypedValue typedValue, BfScopeData* scopeData, boo
 			SizedArray<BfIRValue, 4> llvmArgs;
 			llvmArgs.push_back(objectPtr);
 			llvmArgs.push_back(vDataRef);
+			llvmArgs.push_back(sizeValue);
+			llvmArgs.push_back(mBfIRBuilder->CreateConst(BfTypeCode_Int8, allocFlags));
 
 			auto objectStackInitMethod = GetInternalMethod("Dbg_ObjectStackInit");
 			if (objectStackInitMethod)
@@ -10213,7 +10222,7 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 						doCondAlloca = !wasDynAlloc && isDynAlloc && mCurMethodState->mInConditionalBlock;
 					AddStackAlloc(typedVal, arraySize, NULL, scopeData, doCondAlloca, true);
 				}
-				InitTypeInst(typedVal, scopeData, zeroMemory, sizeValue);
+				InitTypeInst(typedVal, scopeData, zeroMemory, sizeValue, allocFlags);
 
 				return typedVal.mValue;
 			}
@@ -10443,7 +10452,8 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 				llvmArgs.push_back(sizeValue);
 				llvmArgs.push_back(GetConstValue(typeInstance->mAlign));
 				llvmArgs.push_back(GetConstValue(stackCount));
-				auto moduleMethodInstance = GetInternalMethod("Dbg_ObjectAlloc", 4);
+				llvmArgs.push_back(GetConstValue(allocFlags, GetPrimitiveType(BfTypeCode_Int8)));
+				auto moduleMethodInstance = GetInternalMethod("Dbg_ObjectAlloc", 5);
 				BfIRValue objectVal = mBfIRBuilder->CreateCall(moduleMethodInstance.mFunc, llvmArgs);
 				result = mBfIRBuilder->CreateBitCast(objectVal, mBfIRBuilder->MapType(typeInstance));
 			}
@@ -10647,6 +10657,9 @@ BfIRValue BfModule::AppendAllocFromType(BfType* type, BfIRValue appendSizeValue,
 		BfIRType toType;
 		if (typeInst != NULL)
 		{
+			mBfIRBuilder->PopulateType(typeInst);
+			if (typeInst->WantsGCMarking())
+				mCurTypeInstance->mHasAppendWantMark = true;			
 			EmitAppendAlign(typeInst->mInstAlign, typeInst->mInstSize);
 			sizeValue = GetConstValue(typeInst->mInstSize);
 			toType = mBfIRBuilder->MapTypeInstPtr(typeInst);
@@ -10665,6 +10678,35 @@ BfIRValue BfModule::AppendAllocFromType(BfType* type, BfIRValue appendSizeValue,
 
 		retTypeInstance = typeInst;
 		retValue = mBfIRBuilder->CreateIntToPtr(curIdxVal, toType);
+
+		if ((typeInst != NULL) && (typeInst->WantsGCMarking()) && (mCompiler->mOptions.mDebugAlloc))
+		{
+			auto curThis = GetThis();
+			auto thisObj = Cast(mCurMethodInstance->mMethodDef->GetRefNode(), curThis, mContext->mBfObjectType);
+
+			if (typeInst->IsObject())
+			{
+				auto appendedObj = Cast(mCurMethodInstance->mMethodDef->GetRefNode(), BfTypedValue(retValue, typeInst), mContext->mBfObjectType);
+				BfModuleMethodInstance allocMethod = GetInternalMethod("Dbg_ObjectAppended", 2);
+				SizedArray<BfIRValue, 2> llvmArgs;
+				llvmArgs.push_back(thisObj.mValue);
+				llvmArgs.push_back(appendedObj.mValue);
+				mBfIRBuilder->CreateCall(allocMethod.mFunc, llvmArgs);
+			}
+			else
+			{				
+				// Raw
+				BfIRValue allocPtr = mBfIRBuilder->CreateBitCast(retValue, mBfIRBuilder->MapType(voidPtrType));				
+				BfIRValue allocData = GetDbgRawAllocData(type);
+				BfModuleMethodInstance allocMethod = GetInternalMethod("Dbg_RawAppended", 3);
+
+				SizedArray<BfIRValue, 3> llvmArgs;
+				llvmArgs.push_back(thisObj.mValue);
+				llvmArgs.push_back(allocPtr);
+				llvmArgs.push_back(allocData);
+				mBfIRBuilder->CreateCall(allocMethod.mFunc, llvmArgs);
+			}
+		}
 	}
 
 	if ((retTypeInstance != NULL) && (retTypeInstance->IsObject()))
@@ -15871,7 +15913,7 @@ BfTypedValue BfModule::GetThis(bool markUsing)
 	auto curMethodOwner = mCurMethodInstance->mMethodInstanceGroup->mOwner;
 	if ((curMethodOwner->IsStruct()) || (curMethodOwner->IsTypedPrimitive()))
 	{
-		if ((localDef->mResolvedType->IsTypedPrimitive()) && (!mCurMethodInstance->mMethodDef->mIsMutating))
+		if ((localDef->mResolvedType->IsTypedPrimitive()) && (!mCurMethodInstance->mMethodDef->mIsMutating) && (mCurMethodInstance->mCallingConvention != BfCallingConvention_Cdecl))
 		{
 			return BfTypedValue(thisValue, useMethodState->mLocals[0]->mResolvedType, BfTypedValueKind_ReadOnlyThisValue);
 		}
@@ -17411,12 +17453,15 @@ BfTypedValue BfModule::TryConstCalcAppend(BfMethodInstance* methodInst, SizedArr
 			appendAllocVisitor.mFailed = true;
 		if (!appendAllocVisitor.mFailed)
 			constValue = appendAllocVisitor.mConstAccum;
+		if (appendAllocVisitor.mHasAppendWantMark)
+			methodInst->mHasAppendWantMark = true;
+
 		if (isFirstRun)
 		{
 			mCurMethodInstance->mEndingAppendAllocAlign = appendAllocVisitor.mCurAppendAlign;
 			if (mCurMethodInstance->mAppendAllocAlign <= 0)
 				mCurMethodInstance->mAppendAllocAlign = 1;
-		}
+		}		
 
 		if (isFirstRun)
 		{
@@ -18090,6 +18135,19 @@ void BfModule::EmitDtorBody()
 			}
 		}
 	}
+	
+	// If there are appends then we just need the rootmost append type to do the Dbg_AppendDeleted
+ 	if ((!mIsComptimeModule) && (!methodDef->mIsStatic) && (mCompiler->mOptions.mDebugAlloc) &&
+		(mCurTypeInstance->HasAppendCtor()) && (!mCurTypeInstance->BaseHasAppendCtor()))
+ 	{		
+		auto thisValue = GetThis();
+		auto appendedObj = mBfIRBuilder->CreateBitCast(thisValue.mValue, mBfIRBuilder->MapType(mContext->mBfObjectType));
+		BfModuleMethodInstance allocMethod = GetInternalMethod("Dbg_AppendDeleted", 1);
+		SizedArray<BfIRValue, 1> llvmArgs;
+		llvmArgs.push_back(appendedObj);			
+		if (allocMethod)
+			mBfIRBuilder->CreateCall(allocMethod.mFunc, llvmArgs);
+ 	}
 }
 
 BfIRValue BfModule::CreateDllImportGlobalVar(BfMethodInstance* methodInstance, bool define)
@@ -20534,6 +20592,19 @@ void BfModule::EmitGCMarkMembers()
 				CallChainedMethods(mCurMethodInstance, false);
 		}
 	}
+
+	// If there are appends then we just need the rootmost append type to do the Dbg_MarkAppended
+	if ((!mIsComptimeModule) && (!methodDef->mIsStatic) && (mCompiler->mOptions.mDebugAlloc) && 
+		(mCurTypeInstance->HasAppendCtor()) && (!mCurTypeInstance->BaseHasAppendCtor()))
+	{
+		auto thisValue = GetThis();
+		auto appendedObj = mBfIRBuilder->CreateBitCast(thisValue.mValue, mBfIRBuilder->MapType(mContext->mBfObjectType));
+		BfModuleMethodInstance allocMethod = GetInternalMethod("Dbg_MarkAppended", 1);
+		SizedArray<BfIRValue, 1> llvmArgs;
+		llvmArgs.push_back(appendedObj);
+		if (allocMethod)
+			mBfIRBuilder->CreateCall(allocMethod.mFunc, llvmArgs);
+	}
 }
 
 void BfModule::EmitGCFindTLSMembers()
@@ -21452,7 +21523,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 					else
 					{
  						bool wantPtr = (thisType->IsComposite()) && (!paramVar->mIsLowered);
- 						if ((thisType->IsTypedPrimitive()) && (methodDef->HasNoThisSplat()))
+ 						if ((thisType->IsTypedPrimitive()) &&
+							((methodDef->HasNoThisSplat()) || (methodInstance->mCallingConvention == BfCallingConvention_Cdecl)))
  							wantPtr = true;
 
 						if (wantPtr)
@@ -21582,7 +21654,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 					{
 						diType = mBfIRBuilder->DbgGetType(paramVar->mResolvedType);
 						bool wantRef = paramVar->mResolvedType->IsComposite();
-						if ((paramVar->mResolvedType->IsTypedPrimitive()) && (methodDef->HasNoThisSplat()))
+						if ((paramVar->mResolvedType->IsTypedPrimitive()) && 
+							((methodDef->HasNoThisSplat()) || (methodInstance->mCallingConvention == BfCallingConvention_Cdecl)))
 							wantRef = true;
 
 						if (wantRef)
@@ -23897,6 +23970,12 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 	}
 
 	methodInstance->mCallingConvention = methodDef->mCallingConvention;
+	if ((typeInstance->IsValueType()) && (methodDef->mIsOverride) && (methodDef->mName == BF_METHODNAME_MARKMEMBERS))
+	{
+		// Make sure we we pass 'this' as a pointer into GCMarkMembers so it's compatible with the mark function pointer
+		methodInstance->mCallingConvention = BfCallingConvention_Cdecl;
+	}
+
 	if (customAttributes != NULL)
 	{
 		auto linkNameAttr = customAttributes->Get(mCompiler->mCallingConventionAttributeTypeDef);

@@ -8513,7 +8513,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			{
 				addr_target objectSize = ReadMemory<addr_target>(ptrVal + sizeof(addr_target));
 				addr_target largeAllocInfo = ReadMemory<addr_target>(ptrVal + objectSize);
-				stackTraceLen = largeAllocInfo & 0xFFFF;
+				stackTraceLen = (largeAllocInfo >> 8) & 0xFFFF;
 				stackTraceAddr = ptrVal + objectSize + sizeof(addr_target);
 			}
 			else if ((bfObjectFlags & BfObjectFlag_AllocInfo_Short) != 0)

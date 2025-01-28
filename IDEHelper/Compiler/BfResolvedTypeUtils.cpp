@@ -1381,11 +1381,6 @@ int BfMethodInstance::DbgGetVirtualMethodNum()
 
 void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType, SizedArrayImpl<BfIRType>& paramTypes, bool forceStatic)
 {
-	if (mMethodDef->mName == "Test4")
-	{
-		NOP;
-	}
-
 	BfModule* resolveModule = module->mContext->mUnreifiedModule;
 
 	resolveModule->PopulateType(mReturnType);
@@ -1458,7 +1453,11 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		bool doSplat = false;
 		if (paramIdx == -1)
 		{
-			if ((!mMethodDef->mIsMutating) && (checkType->IsTypedPrimitive()))
+			if (mCallingConvention == BfCallingConvention_Cdecl)
+			{
+				// Pass by pointer even for typed primitives
+			}
+			else if ((!mMethodDef->mIsMutating) && (checkType->IsTypedPrimitive()))
 			{
 				checkType = checkType->GetUnderlyingType();
 			}
@@ -2466,6 +2465,22 @@ bool BfTypeInstance::IsAnonymous()
 bool BfTypeInstance::IsAnonymousInitializerType()
 {
 	return (mTypeDef->mTypeDeclaration != NULL) && (mTypeDef->mTypeDeclaration->IsAnonymousInitializerType());
+}
+
+bool BfTypeInstance::HasAppendCtor()
+{
+	return mTypeDef->mHasAppendCtor;
+}
+
+bool BfTypeInstance::BaseHasAppendCtor()
+{
+	if (mBaseType != NULL)
+	{
+		if (mBaseType->HasAppendCtor())
+			return true;
+		return mBaseType->BaseHasAppendCtor();
+	}
+	return false;
 }
 
 void BfTypeInstance::ReportMemory(MemReporter* memReporter)

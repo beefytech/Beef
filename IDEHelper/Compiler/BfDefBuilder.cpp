@@ -2067,6 +2067,15 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	BfMethodDef* strictEqualsMethod = NULL;
 
 	bool needsStaticInit = false;
+	if (mCurTypeDef->IsExtension())
+		needsDefaultCtor = false;
+
+	bool needsDtor = false;
+	bool needsStaticDtor = false;
+	bool hasStaticField = false;
+	bool hasNonStaticField = false;
+	bool hasThreadStatics = false;
+
 	for (int methodIdx = 0; methodIdx < (int)mCurTypeDef->mMethods.size(); methodIdx++)
 	{
 		auto method = mCurTypeDef->mMethods[methodIdx];
@@ -2080,6 +2089,9 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 		if (method->mMethodType == BfMethodType_Ctor)
 		{
+			if (method->HasAppend())
+				needsDtor = true;
+
 			if (method->mIsStatic)
 			{
 				if ((staticCtor != NULL) && (staticCtor->mMethodDeclaration != NULL))
@@ -2239,15 +2251,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		if ((method->mImportKind == BfImportKind_Import_Dynamic) || (method->mImportKind == BfImportKind_Import_Unknown))
 			needsStaticInit = true;
 	}
-
-	if (mCurTypeDef->IsExtension())
-		needsDefaultCtor = false;
-
-	bool needsDtor = false;
-	bool needsStaticDtor = false;
-	bool hasStaticField = false;
-	bool hasNonStaticField = false;
-	bool hasThreadStatics = false;
+	
 	for (auto field : mCurTypeDef->mFields)
 	{
 		if (field->mIsStatic)

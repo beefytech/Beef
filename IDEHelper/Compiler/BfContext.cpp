@@ -1232,6 +1232,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	typeInst->mHasPackingHoles = false;
 	typeInst->mWantsGCMarking = false;
 	typeInst->mHasDeclError = false;
+	typeInst->mHasAppendWantMark = false;
 	delete typeInst->mTypeInfoEx;
 	typeInst->mTypeInfoEx = NULL;
 

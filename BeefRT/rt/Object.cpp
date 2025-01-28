@@ -20,3 +20,11 @@ Beefy::String bf::System::Type::GetFullName()
 	BFRTCALLBACKS.Object_Delete(strObj);
 	return str;
 }
+
+bf::System::Type_NOFLAGS* bf::System::Type::GetTypeData()
+{
+	if ((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0)
+		return BFRTCALLBACKS.ClassVData_GetTypeDataPtr((bf::System::ClassVData*)(mClassVData & ~0xFF));
+	else
+		return BFRTCALLBACKS.ClassVData_GetTypeDataPtr((bf::System::ClassVData*)(mClassVData));
+}

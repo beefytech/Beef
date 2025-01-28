@@ -7492,7 +7492,7 @@ void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMeth
 	else
 		allowThisSplatting = methodInstance->AllowsSplatting(-1);
 
-	if ((!allowThisSplatting) || (methodDef->mIsMutating))
+	if ((!allowThisSplatting) || (methodDef->mIsMutating) || (methodInstance->mCallingConvention == BfCallingConvention_Cdecl))
 	{
 		argVal = mModule->MakeAddressable(argVal);
 		irArgs.push_back(argVal.mValue);
@@ -16569,7 +16569,8 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 	int allocAlign = resolvedTypeRef->mAlign;
 	if (typeInstance != NULL)
 		allocAlign = typeInstance->mInstAlign;
-	int appendAllocAlign = 0;
+	int appendAllocAlign = 0;	
+	BfAllocFlags allocFlags = BfAllocFlags_None;
 
 	if ((bindResult.mMethodInstance != NULL) && (bindResult.mMethodInstance->mMethodDef->HasAppend()))
 	{
@@ -16605,6 +16606,9 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 			appendSizeValue = appendSizeTypedValue.mValue;
 			allocAlign = BF_MAX(allocAlign, calcAppendMethodModule.mMethodInstance->mAppendAllocAlign);
 			appendAllocAlign = calcAppendMethodModule.mMethodInstance->mAppendAllocAlign;
+
+ 			if (calcAppendMethodModule.mMethodInstance->mHasAppendWantMark)
+ 				allocFlags = (BfAllocFlags)(allocFlags | BfAllocFlags_HasAppendWantMark);
 		}
 
 		if (appendAllocAlign != 0)
@@ -16615,6 +16619,12 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 				int extraSize = appendAllocAlign - (endingAlign % appendAllocAlign);
 				appendSizeValue = mModule->mBfIRBuilder->CreateAdd(appendSizeValue, mModule->GetConstValue(extraSize));
 			}
+		}
+
+		if ((allocFlags & BfAllocFlags_HasAppendWantMark) != 0)
+		{
+			int markInfoSize = sizeof(intptr) + sizeof(intptr) * 4; // Stack trace, MarkAppendEntry
+			appendSizeValue = mModule->mBfIRBuilder->CreateAdd(appendSizeValue, mModule->GetConstValue(markInfoSize));
 		}
 	}
 
@@ -16635,7 +16645,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		}
 		else
 		{
-			allocValue = mModule->AllocFromType(resolvedTypeRef, allocTarget, appendSizeValue, BfIRValue(), 0, BfAllocFlags_None, allocAlign);
+			allocValue = mModule->AllocFromType(resolvedTypeRef, allocTarget, appendSizeValue, BfIRValue(), 0, allocFlags, allocAlign);
 		}
 		if (((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) && (mModule->mCompiler->mCeMachine != NULL))
 		{
@@ -16710,14 +16720,21 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 						{
 							auto impMethodInstance = (BfMethodInstance*)vtableEntry.mImplementingMethod;
 							bool needsCall = false;
-							if (impMethodInstance != NULL)
-							{
-								needsCall = impMethodInstance->mMethodDef->mBody != NULL;
-							}
-							else
-							{
+
+							if (allocFlags & BfAllocFlags_HasAppendWantMark)
 								needsCall = true;
-								BF_ASSERT(vtableEntry.mImplementingMethod.mKind == BfMethodRefKind_AmbiguousRef);
+
+							if (!needsCall)
+							{
+								if (impMethodInstance != NULL)
+								{
+									needsCall = impMethodInstance->mMethodDef->mBody != NULL;
+								}
+								else
+								{
+									needsCall = true;
+									BF_ASSERT(vtableEntry.mImplementingMethod.mKind == BfMethodRefKind_AmbiguousRef);
+								}
 							}
 
 							if (!needsCall)

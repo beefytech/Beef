@@ -908,6 +908,7 @@ public:
 	bool mInCEMachine:1;
 	bool mCeCancelled:1;
 	bool mIsDisposed:1;
+	bool mHasAppendWantMark:1;
 	BfMethodChainType mChainType;
 	BfComptimeFlags mComptimeFlags;
 	BfCallingConvention mCallingConvention;
@@ -951,6 +952,7 @@ public:
 		mInCEMachine = false;
 		mCeCancelled = false;
 		mIsDisposed = false;
+		mHasAppendWantMark = false;
 		mChainType = BfMethodChainType_None;
 		mComptimeFlags = BfComptimeFlag_None;
 		mCallingConvention = BfCallingConvention_Unspecified;
@@ -2064,6 +2066,7 @@ public:
 	bool mHasPackingHoles;
 	bool mWantsGCMarking;
 	bool mHasDeclError;
+	bool mHasAppendWantMark;
 
 public:
 	BfTypeInstance()
@@ -2116,6 +2119,7 @@ public:
 		mWantsGCMarking = false;
 		mHasParameterizedBase = false;
 		mHasDeclError = false;
+		mHasAppendWantMark = false;
 		mMergedFieldDataCount = 0;
 		mConstHolder = NULL;
 	}
@@ -2213,6 +2217,8 @@ public:
 	bool DefineStateAllowsStaticMethods() { return mDefineState >= BfTypeDefineState_HasInterfaces_Direct; }
 	bool IsAnonymous();
 	bool IsAnonymousInitializerType();
+	bool HasAppendCtor();
+	bool BaseHasAppendCtor();
 
 	virtual void ReportMemory(MemReporter* memReporter) override;
 };

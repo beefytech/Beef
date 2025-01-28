@@ -239,6 +239,7 @@ enum BfTypeFlags
 
 	BfTypeFlags_Static			= 0x200000,
 	BfTypeFlags_Abstract		= 0x400000,
+	BfTypeFlags_HasAppendWantMark = 0x800000,
 };
 
 enum BfMethodFlags

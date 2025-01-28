@@ -115,16 +115,18 @@ void BFGC::RawMarkSpan(tcmalloc_raw::Span* span, int expectedStartPage)
 		if (rawAllocData != NULL)
 		{	
 			if (rawAllocData->mMarkFunc != NULL)
-			{	
+			{					
 				intptr extraDataSize = sizeof(intptr);
 				if (rawAllocData->mMaxStackTrace == 1)
 				{
-					extraDataSize += sizeof(intptr);					
+					extraDataSize += sizeof(intptr) + 2;
+					extraDataSize += *(uint16*)((uint8*)spanPtr + elementSize - sizeof(intptr) - sizeof(intptr) - 2);
 				}
 				else if (rawAllocData->mMaxStackTrace > 1)
 				{
 					intptr stackTraceCount = *(intptr*)((uint8*)spanPtr + elementSize - sizeof(intptr) - sizeof(intptr));					
-					extraDataSize += (1 + stackTraceCount) * sizeof(intptr);
+					extraDataSize += (1 + stackTraceCount) * sizeof(intptr) + 2;
+					extraDataSize += *(uint16*)((uint8*)spanPtr + elementSize - sizeof(intptr) - sizeof(intptr) - stackTraceCount * sizeof(intptr) - 2);					
 				}
 
 				struct MarkTarget
@@ -132,17 +134,21 @@ void BFGC::RawMarkSpan(tcmalloc_raw::Span* span, int expectedStartPage)
 				};
 				typedef void(MarkTarget::*MarkFunc)();
 				MarkFunc markFunc = *(MarkFunc*)&rawAllocData->mMarkFunc;
-				 
-				// It's possible we can overestimate elemCount, particularly for large allocations. This doesn't cause a problem
-				//  because we can safely mark on complete random memory -- pointer values are always validated before being followed
-				intptr elemStride = BF_ALIGN(rawAllocData->mType->mSize, rawAllocData->mType->mAlign);
-				if (elemStride > 0)
+				
+				auto typeData = rawAllocData->mType->GetTypeData();
+				if (typeData != NULL)					
 				{
-					intptr dataSize = elementSize - extraDataSize;
-					intptr elemCount = dataSize / elemStride;
-					for (intptr elemIdx = 0; elemIdx < elemCount; elemIdx++)
+					// It's possible we can overestimate elemCount, particularly for large allocations. This doesn't cause a problem
+					//  because we can safely mark on complete random memory -- pointer values are always validated before being followed
+					intptr elemStride = BF_ALIGN(typeData->mSize, typeData->mAlign);
+					if (elemStride > 0)
 					{
-						(((MarkTarget*)((uint8*)spanPtr + elemIdx * elemStride))->*markFunc)();
+						intptr dataSize = elementSize - extraDataSize;
+						intptr elemCount = dataSize / elemStride;
+						for (intptr elemIdx = 0; elemIdx < elemCount; elemIdx++)
+						{
+							(((MarkTarget*)((uint8*)spanPtr + elemIdx * elemStride))->*markFunc)();
+						}
 					}
 				}
 			}
@@ -282,13 +288,13 @@ void BFGC::RawReportHandleSpan(tcmalloc_raw::Span* span, int expectedStartPage, 
 				
 				if (rawAllocData->mType != NULL)
 				{
-					intptr typeSize;
-					if ((gBfRtDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0)
-						typeSize = rawAllocData->mType->mSize;
-					else
-						typeSize = ((bf::System::Type_NOFLAGS*)rawAllocData->mType)->mSize;
-					if (typeSize > 0)
-						rawLeakInfo.mDataCount = (elementSize - extraDataSize) / typeSize;
+					bf::System::Type_NOFLAGS* typeData = rawAllocData->mType->GetTypeData();					
+					if (typeData != NULL)
+					{
+						intptr typeSize = typeData->mSize;
+						if (typeSize > 0)
+							rawLeakInfo.mDataCount = (elementSize - extraDataSize) / typeSize;
+					}
 				}
 				else
 					rawLeakInfo.mDataCount = 1;
@@ -558,8 +564,8 @@ void* BfRawAllocate(intptr size, bf::System::DbgRawAllocData* rawAllocData, void
 		markOffsetPtr = (uint16*)((uint8*)result + totalSize - sizeof(intptr) - sizeof(intptr) - 2);
 	}
 	else if (rawAllocData->mMaxStackTrace > 1)
-	{
-		memcpy((uint8*)result + totalSize - sizeof(intptr) - sizeof(intptr), &stackTraceCount, sizeof(intptr));
+	{		
+		*(intptr*)((uint8*)result + totalSize - sizeof(intptr) - sizeof(intptr)) = stackTraceCount;		
 		memcpy((uint8*)result + totalSize - sizeof(intptr) - sizeof(intptr) - stackTraceCount*sizeof(intptr), stackTraceInfo, stackTraceCount*sizeof(intptr));
 		markOffsetPtr = (uint16*)((uint8*)result + totalSize - sizeof(intptr) - sizeof(intptr) - stackTraceCount * sizeof(intptr) - 2);
 	}

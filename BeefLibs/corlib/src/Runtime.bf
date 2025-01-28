@@ -111,7 +111,7 @@ namespace System
 			function void* (int size) mAlloc;
 			function void (void* ptr) mFree;
 			function void (Object obj) mObject_Delete;
-			void* mUnused0;
+			function void* (ClassVData* vdataPtr) mClassVData_GetTypeData;
 			function Type (Object obj) mObject_GetType;
 			function void (Object obj) mObject_GCMarkMembers;
 			function Object (Object obj, int32 typeId) mObject_DynamicCastToTypeId;
@@ -150,6 +150,16 @@ namespace System
 			static void Object_Delete(Object obj)
 			{
 				delete obj;
+			}
+
+			static void* ClassVData_GetTypeData(ClassVData* classVData)
+			{
+#if BF_32_BIT
+				Type type = Type.[Friend]GetType_(classVData.mType2);
+#else
+				Type type = Type.[Friend]GetType_((.)(classVData.mType >> 32));
+#endif
+				return &type.[Friend]mSize;
 			}
 
 			static Type Object_GetType(Object obj)
@@ -259,6 +269,7 @@ namespace System
 				mAlloc = => Alloc;
 				mFree = => Free;
 				mObject_Delete = => Object_Delete;
+				mClassVData_GetTypeData = => ClassVData_GetTypeData;
 				mObject_GetType = => Object_GetType;
 				mObject_GCMarkMembers = => Object_GCMarkMembers;
 			    mObject_DynamicCastToTypeId = => Object_DynamicCastToTypeId;

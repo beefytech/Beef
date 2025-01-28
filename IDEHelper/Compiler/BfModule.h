@@ -128,10 +128,11 @@ enum BfCastResultFlags : int8
 enum BfAllocFlags : int8
 {
 	BfAllocFlags_None = 0,
-	BfAllocFlags_RawArray = 1,
-	BfAllocFlags_ZeroMemory = 2,
-	BfAllocFlags_NoDtorCall = 4,
-	BfAllocFlags_NoDefaultToMalloc = 8
+	BfAllocFlags_HasAppendWantMark = 1,
+	BfAllocFlags_RawArray = 2,
+	BfAllocFlags_ZeroMemory = 4,
+	BfAllocFlags_NoDtorCall = 8,
+	BfAllocFlags_NoDefaultToMalloc = 0x10,	
 };
 
 enum BfProtectionCheckFlags : int8
@@ -1736,7 +1737,7 @@ public:
 	void CleanupFileInstances();
 	void AssertErrorState();
 	void AssertParseErrorState();
-	void InitTypeInst(BfTypedValue typedValue, BfScopeData* scope, bool zeroMemory, BfIRValue dataSize);
+	void InitTypeInst(BfTypedValue typedValue, BfScopeData* scope, bool zeroMemory, BfIRValue dataSize, BfAllocFlags allocFlags = BfAllocFlags_None);
 	bool IsAllocatorAligned();
 	BfIRValue AllocBytes(BfAstNode* refNode, const BfAllocTarget& allocTarget, BfType* type, BfIRValue sizeValue, BfIRValue alignValue, BfAllocFlags allocFlags/*bool zeroMemory, bool defaultToMalloc*/);
 	BfIRValue GetMarkFuncPtr(BfType* type);
