@@ -2483,6 +2483,20 @@ bool BfTypeInstance::BaseHasAppendCtor()
 	return false;
 }
 
+bool BfTypeInstance::HasAppendedField(bool checkBase)
+{
+	for (auto& fieldInstance : mFieldInstances)
+	{
+		if (fieldInstance.IsAppendedObject())
+			return true;
+	}
+
+	if ((checkBase) && (mBaseType != NULL))
+		return mBaseType->HasAppendedField(checkBase);
+
+	return false;
+}
+
 void BfTypeInstance::ReportMemory(MemReporter* memReporter)
 {
 	if (mGenericTypeInfo != NULL)

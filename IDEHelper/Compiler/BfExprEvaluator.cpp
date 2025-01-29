@@ -16739,14 +16739,8 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 
 							if (!needsCall)
 							{
-								for (auto& fieldInst : typeInstance->mFieldInstances)
-								{
-									if (fieldInst.IsAppendedObject())
-									{
-										needsCall = true;
-										break;
-									}
-								}
+								if (typeInstance->HasAppendedField(true))
+									needsCall = true;								
 							}
 
 							if (needsCall)

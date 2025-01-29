@@ -1020,7 +1020,7 @@ public:
 	BfExpression* GetParamInitializer(int paramIdx);
 	BfTypeReference* GetParamTypeRef(int paramIdx);
 	BfIdentifierNode* GetParamNameNode(int paramIdx);
-	int DbgGetVirtualMethodNum();
+	int DbgGetVirtualMethodNum();	
 
 	void GetIRFunctionInfo(BfModule* module, BfIRType& returnType, SizedArrayImpl<BfIRType>& paramTypes, bool forceStatic = false);
 	int GetIRFunctionParamCount(BfModule* module);
@@ -2219,6 +2219,7 @@ public:
 	bool IsAnonymousInitializerType();
 	bool HasAppendCtor();
 	bool BaseHasAppendCtor();
+	bool HasAppendedField(bool checkBase);
 
 	virtual void ReportMemory(MemReporter* memReporter) override;
 };
