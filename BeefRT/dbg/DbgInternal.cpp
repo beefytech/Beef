@@ -329,14 +329,7 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 			capturedTraceCount = BF_CAPTURE_STACK(1, (intptr*)stackTrace, min((int)maxStackTraceDepth, 1024));
 			const intptr maxSmallObjectSize = ((intptr)1 << ((sizeof(intptr) - 2) * 8)) - 1;
 
-			bool forceLarge = false;
-			auto typeData = BFRTCALLBACKS.ClassVData_GetTypeDataPtr(classVData);
-			if ((typeData->mTypeFlags & BfTypeFlag_HasAppendWantMark) != 0)
-			{
-				forceLarge = true;
-			}
-
-			if ((capturedTraceCount > 255) || (size >= maxSmallObjectSize) || (forceLarge))
+			if ((capturedTraceCount > 255) || (size >= maxSmallObjectSize))
 			{
 				largeAllocInfo = true;
 				allocSize += (1 + capturedTraceCount) * sizeof(intptr);
@@ -455,7 +448,7 @@ void Internal::Dbg_ObjectStackInit(bf::System::Object* result, bf::System::Class
 		int capturedTraceCount = 1;
 		*(intptr*)((uint8*)result + size) = (intptr)BF_RETURN_ADDRESS;
 		memset((uint8*)result + size + sizeof(intptr), 0, sizeof(intptr) * 4);
-		result->mDbgAllocInfo = (size << 16) | (((intptr)allocFlags) << 8) | capturedTraceCount;
+		result->mDbgAllocInfo = ((intptr)size << 16) | (((intptr)allocFlags) << 8) | capturedTraceCount;
 		BF_FULL_MEMORY_FENCE();
 		result->mClassVData |= (intptr)BfObjectFlag_AllocInfo_Short;
 	}	
