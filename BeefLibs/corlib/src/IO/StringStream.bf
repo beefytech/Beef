@@ -23,6 +23,7 @@ namespace System.IO
 			mString = appendStr;
 		}
 
+		[DisableChecks]
 		public ~this()
 		{
 			if (mStringKind == .Append)

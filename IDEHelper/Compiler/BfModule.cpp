@@ -18142,9 +18142,10 @@ void BfModule::EmitDtorBody()
  	{		
 		auto thisValue = GetThis();
 		auto appendedObj = mBfIRBuilder->CreateBitCast(thisValue.mValue, mBfIRBuilder->MapType(mContext->mBfObjectType));
-		BfModuleMethodInstance allocMethod = GetInternalMethod("Dbg_AppendDeleted", 1);
+		BfModuleMethodInstance allocMethod = GetInternalMethod("Dbg_AppendDeleted", 2);
 		SizedArray<BfIRValue, 1> llvmArgs;
-		llvmArgs.push_back(appendedObj);			
+		llvmArgs.Add(appendedObj);
+		llvmArgs.Add(mBfIRBuilder->CreateConst(BfTypeCode_Boolean, mCurMethodState->mDisableChecks ? 0 : 1));
 		if (allocMethod)
 			mBfIRBuilder->CreateCall(allocMethod.mFunc, llvmArgs);
  	}
@@ -22030,6 +22031,20 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 	if ((methodDef != NULL) && (propertyDeclaration != NULL) && (propertyDeclaration->mExternSpecifier != NULL))
 		hasExternSpecifier = true;
 
+	if (methodDef->mName == BF_METHODNAME_MARKMEMBERS)
+	{
+		// We need to be able to mark deleted objects
+		mCurMethodState->mIgnoreObjectAccessCheck = true;
+	}
+	auto customAttributes = methodInstance->GetCustomAttributes();
+	if (customAttributes != NULL)
+	{
+		if (customAttributes->Contains(mCompiler->mDisableObjectAccessChecksAttributeTypeDef))
+			mCurMethodState->mIgnoreObjectAccessCheck = true;
+		if (customAttributes->Contains(mCompiler->mDisableChecksAttributeTypeDef))
+			mCurMethodState->mDisableChecks = true;
+	}
+
 	// Allocate, clear, set classVData
 
 	if ((methodDef->mMethodType == BfMethodType_Ctor) && (methodDef->mIsStatic))
@@ -22207,21 +22222,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 	if ((!mCurTypeInstance->IsBoxed()) && (methodDeclaration != NULL) && (methodDeclaration->mHadYield) && (methodDef->mBody != NULL))
 	{
 		EmitIteratorBlock(skipBody);
-	}
-
-	if (methodDef->mName == BF_METHODNAME_MARKMEMBERS)
-	{
-		// We need to be able to mark deleted objects
-		mCurMethodState->mIgnoreObjectAccessCheck = true;
-	}
-	auto customAttributes = methodInstance->GetCustomAttributes();
-	if (customAttributes != NULL)
-	{
-		if (customAttributes->Contains(mCompiler->mDisableObjectAccessChecksAttributeTypeDef))
-			mCurMethodState->mIgnoreObjectAccessCheck = true;
-		if (customAttributes->Contains(mCompiler->mDisableChecksAttributeTypeDef))
-			mCurMethodState->mDisableChecks = true;
-	}
+	}	
 
 	if ((methodDef->mMethodType == BfMethodType_CtorNoBody) && (!methodDef->mIsStatic) &&
 		((methodInstance->mChainType == BfMethodChainType_ChainHead) || (methodInstance->mChainType == BfMethodChainType_None)))

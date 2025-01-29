@@ -437,7 +437,7 @@ namespace System
 #endif
 		}
 
-		public static void Dbg_AppendDeleted(Object rootObj)
+		public static void Dbg_AppendDeleted(Object rootObj, bool doChecks)
 		{
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
 			void Handle(AppendAllocEntry* headAllocEntry)
@@ -448,11 +448,14 @@ namespace System
 					switch (checkAllocEntry.mKind)
 					{
 					case .Object(let obj):
-#unwarn
-						if (!obj.[DisableObjectAccessChecks]IsDeleted())
+						if (doChecks)
 						{
-							if (obj.GetType().HasDestructor)
-								Debug.FatalError("Appended object not deleted with 'delete:append'");
+#unwarn
+							if (!obj.[DisableObjectAccessChecks]IsDeleted())
+							{
+								if (obj.GetType().HasDestructor)
+									Debug.FatalError("Appended object not deleted with 'delete:append'");
+							}
 						}
 					case .Raw(let rawPtr, let allocData):
 					default:
