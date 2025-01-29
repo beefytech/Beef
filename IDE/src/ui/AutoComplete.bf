@@ -1582,7 +1582,7 @@ namespace IDE.ui
                 mInsertStartIdx--;
             }*/
 
-            if ((mInvokeWidget != null) && (mInvokeWidget.mEntryList.Count > 0))
+            if ((mInvokeWidget != null) && (mInvokeSrcPositions != null) && (mInvokeWidget.mEntryList.Count > 0))
             {
 				var data = mTargetEditWidget.Content.mData;
 
@@ -2042,7 +2042,7 @@ namespace IDE.ui
             if (mInvokeWidget != null)
             {
 				prevInvokeSelect = mInvokeWidget.mSelectIdx;
-                if ((mInvokeWidget.mEntryList.Count > 0) && (!mInvokeSrcPositions.IsEmpty) && (mInvokeWidget.mSelectIdx >= 0))
+                if ((mInvokeWidget.mEntryList.Count > 0) && (mInvokeSrcPositions != null) && (!mInvokeSrcPositions.IsEmpty) && (mInvokeWidget.mSelectIdx >= 0))
                 {
 					if (IsInPanel())
 					{

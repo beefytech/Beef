@@ -8346,7 +8346,7 @@ void BfCompiler::GenerateAutocompleteInfo()
 		auto methodMatchInfo = autoComplete->mMethodMatchInfo;
 		if ((methodMatchInfo != NULL) && (wantsDocEntry == NULL))
 		{
-			if (methodMatchInfo->mInstanceList.size() > 0)
+			if ((methodMatchInfo->mInstanceList.size() > 0) && (methodMatchInfo->mBestIdx >= 0))
 			{
 				if (autoComplete->mIdentifierUsed != NULL)
 				{
