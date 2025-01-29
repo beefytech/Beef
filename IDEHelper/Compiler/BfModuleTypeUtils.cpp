@@ -9558,6 +9558,13 @@ BfGenericParamInstance* BfModule::GetGenericTypeParamInstance(int genericParamId
 // 		curTypeInstance = mCurMethodInstance->mMethodInstanceGroup->mOwner;
 
 	BfTypeInstance* genericTypeInst = curTypeInstance->ToGenericTypeInstance();
+
+	if (genericTypeInst == NULL)
+	{
+		FatalError("Invalid mCurTypeInstance for GetGenericTypeParamInstance");
+		return NULL;
+	}
+
 	if ((genericTypeInst->IsIncomplete()) && (genericTypeInst->mGenericTypeInfo->mGenericParams.size() == 0))
 	{
 		// Set this to NULL so we don't recurse infinitely

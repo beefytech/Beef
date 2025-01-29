@@ -9453,6 +9453,10 @@ bool BfExprEvaluator::CheckGenericCtor(BfGenericParamType* genericParamType, BfR
 		mModule->Fail(StrFormat("Must add 'where %s : struct' constraint to generic parameter to instantiate type without allocator", genericParam->GetGenericParamDef()->mName.c_str()), targetSrc);
 		success = false;
 	}
+	else if ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0)
+	{
+		mModule->Fail(StrFormat("Generic parameter '%s' constructor cannot be guaranteed to be const-evaluable", genericParam->GetGenericParamDef()->mName.c_str()), targetSrc);
+	}
 
 	return success;
 }
@@ -18614,7 +18618,8 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 							BfResolveArgsFlags resolveArgsFlags = BfResolveArgsFlag_None;
 							ResolveArgValues(argValues, resolveArgsFlags);
 
-							CheckGenericCtor((BfGenericParamType*)expectingType, argValues, invocationExpr->mTarget);
+							if (!mModule->mCurMethodInstance->mIsUnspecializedVariation)
+								CheckGenericCtor((BfGenericParamType*)expectingType, argValues, invocationExpr->mTarget);
 							mResult = mModule->GetDefaultTypedValue(expectingType);
 							return;
 						}
