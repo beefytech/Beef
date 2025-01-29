@@ -24039,7 +24039,7 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 			(methodInstance->GetOwner()->mDefineState < BfTypeDefineState_Defined));
 		mangledName = "autocomplete_tmp";
 	}
-
+	
 	if (!mBfIRBuilder->mIgnoreWrites)
 	{
 		BfIRFunction prevFunc;
@@ -24048,14 +24048,16 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 		prevFunc = mBfIRBuilder->GetFunction(mangledName);
 		if (prevFunc)
 		{
-			if ((methodDef->mIsOverride) && (mCurTypeInstance->mTypeDef->mIsCombinedPartial))
+			auto owner = methodInstance->GetOwner();
+
+			if ((methodDef->mIsOverride) && (owner->mTypeDef->mIsCombinedPartial))
 			{
 				bool takeover = false;
 
-				mCurTypeInstance->mTypeDef->PopulateMemberSets();
+				owner->mTypeDef->PopulateMemberSets();
 				BfMethodDef* nextMethod = NULL;
 				BfMemberSetEntry* entry = NULL;
-				if (mCurTypeInstance->mTypeDef->mMethodSet.TryGet(BfMemberSetEntry(methodDef), &entry))
+				if (owner->mTypeDef->mMethodSet.TryGet(BfMemberSetEntry(methodDef), &entry))
 					nextMethod = (BfMethodDef*)entry->mMemberDef;
 				while (nextMethod != NULL)
 				{
@@ -24066,7 +24068,7 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 						continue;
 					if (checkMethod->mIsOverride)
 					{
-						auto checkMethodInstance = mCurTypeInstance->mMethodInstanceGroups[checkMethod->mIdx].mDefault;
+						auto checkMethodInstance = owner->mMethodInstanceGroups[checkMethod->mIdx].mDefault;
 						if (checkMethodInstance == NULL)
 							continue;
 						if ((checkMethodInstance->mIRFunction == prevFunc) &&
@@ -24079,7 +24081,7 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 							else if (auto methodDeclaration = methodDef->GetMethodDeclaration())
 								refNode = methodDeclaration->mVirtualSpecifier;
 
-							auto error = Fail(StrFormat("Conflicting extension override method '%s'", MethodToString(mCurMethodInstance).c_str()), refNode);
+							auto error = Fail(StrFormat("Conflicting extension override method '%s'", MethodToString(methodInstance).c_str()), refNode);
 							if (error != NULL)
 								mCompiler->mPassInstance->MoreInfo("See previous override", checkMethod->GetRefNode());
 
@@ -24090,19 +24092,25 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 
 					if (!checkMethod->mIsExtern)
 						continue;
-					auto checkMethodInstance = mCurTypeInstance->mMethodInstanceGroups[checkMethod->mIdx].mDefault;
+					auto checkMethodInstance = owner->mMethodInstanceGroups[checkMethod->mIdx].mDefault;
 					if (checkMethodInstance == NULL)
 						continue;
-					if (!CompareMethodSignatures(checkMethodInstance, mCurMethodInstance))
+					if (!CompareMethodSignatures(checkMethodInstance, methodInstance))
 						continue;
 					// Take over function
 					takeover = true;
+
+					BfLogSysM("Method %p setting mHasBeenProcessed due to funcId takeover from method %p\n", checkMethodInstance, prevFunc.mId, methodInstance);
+					checkMethodInstance->mHasBeenProcessed = true;
 				}
 
 				if (takeover)
-					mCurMethodInstance->mIRFunction = prevFunc;
+				{
+					BfLogSysM("Method %p takover of previous funcId: %d\n", methodInstance, prevFunc.mId);
+					methodInstance->mIRFunction = prevFunc;
+				}
 
-				if (!mCurMethodInstance->mIRFunction)
+				if (!methodInstance->mIRFunction)
 				{
 					BfLogSysM("Function collision from inner override erased prevFunc %p: %d\n", methodInstance, prevFunc.mId);
 					if (!mIsComptimeModule)
@@ -24120,9 +24128,9 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 				//  their constraints, but they should only collide in their unspecialized form
 				//  since only one will be chosen for a given concrete type
 				if (!mIsComptimeModule)
-					mCurMethodInstance->mMangleWithIdx = true;
+					methodInstance->mMangleWithIdx = true;
 				mangledName.Clear();
-				BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), mCurMethodInstance);
+				BfMangler::Mangle(mangledName, mCompiler->GetMangleKind(), methodInstance);
 
 				BfLogSysM("Function collision forced mangleWithIdx for %p: %d GenericArgs: %d Unspecialized: %d\n", methodInstance, prevFunc.mId, methodInstance->GetNumGenericArguments(), methodInstance->mIsUnspecialized);
 			}
@@ -24141,54 +24149,12 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 		GetMethodCustomAttributes(methodInstance);
 	}
 
-// 	if (prevFunc)
-// 	{
-// 		if (methodDef->mIsExtern)
-// 		{
-// 			BfLogSysM("Reusing function for %p: %d\n", methodInstance, prevFunc.mId);
-// 			methodInstance->mIRFunction = prevFunc;
-// 		}
-// 		else
-// 		{
-// 			if ((methodInstance->IsSpecializedByAutoCompleteMethod()) ||
-// 				((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mResolveType >= BfResolveType_GoToDefinition)))
-// 			{
-// 				// If we're doing re-pass over the methods for something like BfResolveType_ShowFileSymbolReferences, then allow this collision
-// 				BfLogSysM("Ignoring function name collision\n");
-// 			}
-// 			else
-// 			{
-// 				if (methodDef->mMethodDeclaration == NULL)
-// 				{
-// 					AssertErrorState();
-// 				}
-// 				else
-// 				{
-// 					BF_ASSERT(mIsSpecialModule);
-// 					if ((mCompiler->mRevision == 1) && (HasCompiledOutput()))
-// 					{
-// 						// We shouldn't have name collisions on the first run!
-// 						AssertErrorState();
-// 					}
-// 				}
-// 			}
-// 			BfLogSysM("Before erase\n");
-// 			mBfIRBuilder->Func_EraseFromParent(prevFunc);
-// 		}
-// 	}
-
 	bool isIntrinsic = false;
 	if (!methodInstance->mIRFunction)
 	{
 		BfIRFunction func;
 		bool wantsLLVMFunc = ((!typeInstance->IsUnspecializedType() || (mIsComptimeModule)) &&
 			(!methodDef->IsEmptyPartial())) && (funcType);
-
-		/*if (mCurTypeInstance->mTypeDef->mName->ToString() == "ClassA")
-		{
-		if (!mIsReified)
-		wantsLLVMFunc = false;
-		}*/
 
 		if (wantsLLVMFunc)
 		{
@@ -24203,14 +24169,9 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 				BfLogSysM("Creating FuncId:%d %s in module %p\n", func.mId, mangledName.c_str(), this);
 				if (methodInstance->mAlwaysInline)
 					mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_AlwaysInline);
-
-// 				if (prevFunc)
-// 					BfLogSysM("Removing Func %d, replacing with %d\n", prevFunc.mId, func.mId);
 			}
 
-			methodInstance->mIRFunction = func;
-			//if (!ignoreWrites)
-				//BF_ASSERT(!func.IsFake());
+			methodInstance->mIRFunction = func;			
 		}
 	}
 
