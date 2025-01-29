@@ -7429,12 +7429,18 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 										matchedMethodString.c_str()), matchedMethod->mMethodDef->GetMutNode());
 									mCompiler->mPassInstance->MoreInfo(StrFormat("Declare the interface method as 'mut' to allow matching 'mut' implementations"), ifaceMethodInst->mMethodDef->mMethodDeclaration);
 								}
-								else
+								else if (!matchedMethod->mReturnType->IsVar())
 								{
 									mCompiler->mPassInstance->MoreInfo(StrFormat("'%s' cannot match because it does not have the return type '%s'",
 										matchedMethodString.c_str(), TypeToString(ifaceMethodInst->mReturnType).c_str()), matchedMethod->mMethodDef->mReturnTypeRef);
 									if ((ifaceMethodInst->mVirtualTableIdx != -1) && (ifaceMethodInst->mReturnType->IsInterface()))
-										mCompiler->mPassInstance->MoreInfo("Declare the interface method as 'concrete' to allow matching concrete return values", ifaceMethodInst->mMethodDef->GetMethodDeclaration()->mVirtualSpecifier);
+									{
+										BfAstNode* refNode = ifaceMethodInst->mMethodDef->GetRefNode();
+										auto methodDecl = ifaceMethodInst->mMethodDef->GetMethodDeclaration();
+										if ((methodDecl != NULL) && (methodDecl->mVirtualSpecifier != NULL))
+											refNode = methodDecl->mVirtualSpecifier;
+										mCompiler->mPassInstance->MoreInfo("Declare the interface method as 'concrete' to allow matching concrete return values", refNode);
+									}
 								}
 							}
 						}
