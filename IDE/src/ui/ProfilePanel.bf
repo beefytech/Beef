@@ -684,6 +684,9 @@ namespace IDE.ui
 		{
 			base.Draw(g);
 
+			g.PushColor(DarkTheme.COLOR_TEXT);
+			defer g.PopColor();
+
 			g.SetFont(DarkTheme.sDarkTheme.mSmallFont);
 			g.DrawString("Session", mSessionComboBox.mX - GS!(2), mSessionComboBox.mY, .Right);
 			g.DrawString("Thread", mThreadComboBox.mX - GS!(2), mThreadComboBox.mY, .Right);

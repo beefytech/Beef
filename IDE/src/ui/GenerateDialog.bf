@@ -834,9 +834,12 @@ namespace IDE.ui
 				g.DrawString(label, widget.mX + GS!(6), widget.mY - GS!(20));
 			}
 
-			DrawLabel(mKindBar, mRegenerating ? "Regenerating ..." : "Generator");
-			for (var uiEntry in mUIEntries)
-				DrawLabel(uiEntry.mWidget, uiEntry.mLabel);
+			using (g.PushColor(DarkTheme.COLOR_TEXT))
+			{
+				DrawLabel(mKindBar, mRegenerating ? "Regenerating ..." : "Generator");
+				for (var uiEntry in mUIEntries)
+					DrawLabel(uiEntry.mWidget, uiEntry.mLabel);
+			}
 		}
 
 		public override void DrawAll(Graphics g)

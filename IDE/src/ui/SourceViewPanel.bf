@@ -4746,7 +4746,8 @@ namespace IDE.ui
 								case 2: lineStr.AppendF("{0}", (lineIdx + 1) % 100);
 								default: lineStr.AppendF("{0}", lineIdx + 1);
 								}
-						        g.DrawString(lineStr, 0, GS!(2) + ewc.mLineCoords[lineIdx], FontAlign.Right, editX - GS!(14));
+								using (g.PushColor(DarkTheme.COLOR_TEXT))
+						        	g.DrawString(lineStr, 0, GS!(2) + ewc.mLineCoords[lineIdx], FontAlign.Right, editX - GS!(14));
 						    }
 						}
 					}

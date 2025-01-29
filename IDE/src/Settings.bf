@@ -311,6 +311,8 @@ namespace IDE
 		public class Colors
 		{
 			public Color mText = 0xFFFFFFFF;
+			public Color mTextDisabled = 0xFFA8A8A8;
+			public Color mTextSelected = 0xFF2f5c88;
 			public Color mWindow = 0xFF44444D;
 			public Color mBackground = 0xFF1C1C24;
 			public Color mSelectedOutline = 0xFFCFAE11;
@@ -350,6 +352,8 @@ namespace IDE
 			public Color mCurrentLineHilite = 0xFF4C4C54;
 			public Color mCurrentLineNumberHilite = 0x18FFFFFF;
 			public Color mCharPairHilite = 0x1DFFFFFF;
+			public Color mCodeHilite = 0xFF384858;
+			public Color mCodeHiliteUnfocused = 0x80384858;
 
 			public void Deserialize(StructuredData sd)
 			{
@@ -362,6 +366,8 @@ namespace IDE
 				}
 
 				GetColor("Text", ref mText);
+				GetColor("TextDisabled", ref mTextDisabled);
+				GetColor("TextSelected", ref mTextSelected);
 				GetColor("Window", ref mWindow);
 				GetColor("Background", ref mBackground);
 				GetColor("SelectedOutline", ref mSelectedOutline);
@@ -418,6 +424,8 @@ namespace IDE
 				GetColor("CurrentLineHilite", ref mCurrentLineHilite);
 				GetColor("CurrentLineNumberHilite", ref mCurrentLineNumberHilite);
 				GetColor("CharPairHilite", ref mCharPairHilite);
+				GetColor("CodeHilite", ref mCodeHilite);
+				GetColor("CodeHiliteUnfocused", ref mCodeHiliteUnfocused);
 			}
 
 			public void Apply()
@@ -446,6 +454,8 @@ namespace IDE
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.VisibleWhiteSpace] = mVisibleWhiteSpace;
 
 				DarkTheme.COLOR_TEXT = mText;
+				DarkTheme.COLOR_TEXT_DISABLED = mTextDisabled;
+				DarkTheme.COLOR_TEXT_SELECTED = mTextSelected;
 				DarkTheme.COLOR_WINDOW = mWindow;
 				DarkTheme.COLOR_BKG = mBackground;
 				DarkTheme.COLOR_SELECTED_OUTLINE = mSelectedOutline;

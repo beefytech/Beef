@@ -92,7 +92,8 @@ namespace IDE.ui
 				}
 
 				g.SetFont(s_Font);
-				g.DrawString(mPath, 10, 0, .Left, mWidth - 10);
+				using (g.PushColor(gApp.mSettings.mUISettings.mColors.mText))
+					g.DrawString(mPath, 10, 0, .Left, mWidth - 10);
 			}
 
 			public override void MouseEnter()

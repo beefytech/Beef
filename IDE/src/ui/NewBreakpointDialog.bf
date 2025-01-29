@@ -140,7 +140,8 @@ namespace IDE.ui
         {
             base.Draw(g);
 
-            g.DrawString((mBreakpointKind == .Memory) ? "Breakpoint Address" : "Symbol Name", mAddressEdit.mX, mAddressEdit.mY - GS!(20));
+			using (g.PushColor(DarkTheme.COLOR_TEXT))
+            	g.DrawString((mBreakpointKind == .Memory) ? "Breakpoint Address" : "Symbol Name", mAddressEdit.mX, mAddressEdit.mY - GS!(20));
             //g.DrawString("Project Directory", mDialogEditWidget.mX, mDialogEditWidget.mY - 20);
         }
 

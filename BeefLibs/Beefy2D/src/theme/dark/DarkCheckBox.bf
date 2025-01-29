@@ -121,7 +121,8 @@ namespace Beefy.theme.dark
             {
 				g.SetFont(mFont);
 
-				DarkTheme.DrawUnderlined(g, mLabel, GS!(22), GS!(-1));
+				using(g.PushColor(DarkTheme.COLOR_TEXT))
+					DarkTheme.DrawUnderlined(g, mLabel, GS!(22), GS!(-1));
 
 				/*int underlinePos = mLabel.IndexOf('&');
 				if ((underlinePos != -1) && (underlinePos < mLabel.Length - 1))

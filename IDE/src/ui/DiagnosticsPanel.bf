@@ -255,7 +255,8 @@ namespace IDE.ui
 					{
 						using (g.PushClip(0, 0, width, height))
 						{
-							using (g.PushColor(0xFF00FF00))
+							// Using override to prevent the color turning black when using a dark text color.
+							using (g.PushColorOverride(0xFF00FF00))
 							{
 								float prevY = 0;
 
@@ -439,10 +440,13 @@ namespace IDE.ui
 				using (g.PushColor(0x20FFFFFF))
 					g.FillRect(0, 0, mWidth, mHeight);
 
-				DrawData(g, mData, mTimes, dataRect.mX, dataRect.mY, dataRect.mWidth, dataRect.mHeight);
+				using (g.PushColor(DarkTheme.COLOR_TEXT))
+				{
+					DrawData(g, mData, mTimes, dataRect.mX, dataRect.mY, dataRect.mWidth, dataRect.mHeight);
 
-				g.SetFont(DarkTheme.sDarkTheme.mSmallBoldFont);
-				g.DrawString(mLabel, -GS!(0), -GS!(0), .Centered, dataRect.mX);
+					g.SetFont(DarkTheme.sDarkTheme.mSmallBoldFont);
+					g.DrawString(mLabel, -GS!(0), -GS!(0), .Centered, dataRect.mX);
+				}
 			}
 		}
 

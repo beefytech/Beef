@@ -369,14 +369,17 @@ namespace IDE.ui
         {
             base.Draw(g);
 
-            g.DrawString("Breakpoint Condition", mConditionEdit.mX, mConditionEdit.mY - GS!(20));
-			g.DrawString("Thread Id", mThreadEdit.mX, mThreadEdit.mY - GS!(20));
-            g.DrawString("Log String", mLogEdit.mX, mLogEdit.mY - GS!(20));
-			g.DrawString("Break on Hit Count", mHitCountCombo.mX, mHitCountEdit.mY - GS!(19));
+			using (g.PushColor(DarkTheme.COLOR_TEXT))
+			{
+				g.DrawString("Breakpoint Condition", mConditionEdit.mX, mConditionEdit.mY - GS!(20));
+				g.DrawString("Thread Id", mThreadEdit.mX, mThreadEdit.mY - GS!(20));
+				g.DrawString("Log String", mLogEdit.mX, mLogEdit.mY - GS!(20));
+				g.DrawString("Break on Hit Count", mHitCountCombo.mX, mHitCountEdit.mY - GS!(19));
 
-			var str = scope String();
-			str.AppendF("Current: {0}", mStartingHitCount);
-			g.DrawString(str, mWidth - GS!(16) - GS!(8), mHitCountEdit.mY - GS!(19), .Right);
+				var str = scope String();
+				str.AppendF("Current: {0}", mStartingHitCount);
+				g.DrawString(str, mWidth - GS!(16) - GS!(8), mHitCountEdit.mY - GS!(19), .Right);
+			}
         }
     }
 }
