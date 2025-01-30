@@ -5656,7 +5656,8 @@ BfIRValue BfModule::CreateClassVDataExtGlobal(BfTypeInstance* declTypeInst, BfTy
 		return mBfIRBuilder->GetFakeVal();
 
 	int numElements = declTypeInst->GetSelfVTableSize() - declTypeInst->GetOrigSelfVTableSize();
-	BF_ASSERT(numElements >= 0);
+	if (numElements < 0)	
+		InternalError("CreateClassVDataExtGlobal numElements < 0");
 	if (numElements <= 0)
 		return BfIRValue();
 
@@ -21968,7 +21969,12 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				if (loweredTypeCode2 != BfTypeCode_None)
 					argIdx++;
 			}
-			else if (!paramVar->mResolvedType->IsValuelessNonOpaqueType())
+			else if ((isThis) && (paramVar->mResolvedType->IsOpaque()))
+			{				
+				if ((methodDef->mIsMutating) || (methodInstance->mCallingConvention == BfCallingConvention_Cdecl))
+					argIdx++;
+			}
+			else if (!paramVar->mResolvedType->IsValuelessType())
 			{
 				argIdx++;
 			}
