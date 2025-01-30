@@ -135,9 +135,6 @@ namespace IDE
 		public static readonly String sPlatform32Name = "Unknown32";
 #endif
 
-		public const uint32 cDialogOutlineLightColor = 0xFF404040;
-		public const uint32 cDialogOutlineDarkColor = 0xFF202020;
-
 		public static bool sExitTest;
 
 		public Verbosity mVerbosity = .Default;

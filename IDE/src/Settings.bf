@@ -314,6 +314,9 @@ namespace IDE
 			public Color mTextDisabled = 0xFFA8A8A8;
 			public Color mTextSelected = 0xFF2f5c88;
 			public Color mWindow = 0xFF44444D;
+			public Color mDialogOutlineIn = 0xFF404040;
+			public Color mDialogOutlineOut = 0xFF202020;
+			public Color mGrid = 0x0CFFFFFF;
 			public Color mBackground = 0xFF1C1C24;
 			public Color mSelectedOutline = 0xFFCFAE11;
 			public Color mMenuFocused = 0xFFE5A910;
@@ -369,6 +372,9 @@ namespace IDE
 				GetColor("TextDisabled", ref mTextDisabled);
 				GetColor("TextSelected", ref mTextSelected);
 				GetColor("Window", ref mWindow);
+				GetColor("DialogOutlineIn", ref mDialogOutlineIn);
+				GetColor("DialogOutlineOut", ref mDialogOutlineOut);
+				GetColor("Grid", ref mGrid);
 				GetColor("Background", ref mBackground);
 				GetColor("SelectedOutline", ref mSelectedOutline);
 				GetColor("MenuFocused", ref mMenuFocused);
@@ -457,6 +463,9 @@ namespace IDE
 				DarkTheme.COLOR_TEXT_DISABLED = mTextDisabled;
 				DarkTheme.COLOR_TEXT_SELECTED = mTextSelected;
 				DarkTheme.COLOR_WINDOW = mWindow;
+				DarkTheme.COLOR_DIALOG_OUTLINE_IN = mDialogOutlineIn;
+				DarkTheme.COLOR_DIALOG_OUTLINE_OUT = mDialogOutlineOut;
+				DarkTheme.COLOR_GRID = mGrid;
 				DarkTheme.COLOR_BKG = mBackground;
 				DarkTheme.COLOR_SELECTED_OUTLINE = mSelectedOutline;
 				DarkTheme.COLOR_MENU_FOCUSED = mMenuFocused;
