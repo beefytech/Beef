@@ -390,10 +390,23 @@ namespace Beefy.widgets
 
 			if (evt.mKeyFlags.HasFlag(.Ctrl) && (evt.mKeyCode == (KeyCode)'C'))
 			{
-				var clipboardText = scope String();
-				clipboardText.AppendF("{}\n{}", mTitle, mText);
-				BFApp.sApp.SetClipboardText(clipboardText, "");
-				evt.mHandled = true;
+				ClipboardBlock: do
+				{
+					if (mChildWidgets != null)
+					{
+						for (var child in mChildWidgets)
+						{
+							if (child is ButtonWidget)
+								continue;
+							break ClipboardBlock;
+						}
+					}
+
+					var clipboardText = scope String();
+					clipboardText.AppendF("{}\n{}", mTitle, mText);
+					BFApp.sApp.SetClipboardText(clipboardText, "");
+					evt.mHandled = true;
+				}
 			}
         }
     }
