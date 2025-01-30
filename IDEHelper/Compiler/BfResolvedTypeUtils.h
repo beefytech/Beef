@@ -480,6 +480,7 @@ public:
 	Array<BfType*> mParams;
 	bool mHasExplicitThis;
 	bool mHasVarArgs;
+	bool mHasParams;
 	BfCallingConvention mCallingConvention;
 
 public:
@@ -488,6 +489,7 @@ public:
 		mReturnType = NULL;
 		mHasExplicitThis = false;
 		mHasVarArgs = false;
+		mHasParams = false;
 		mCallingConvention = BfCallingConvention_Unspecified;
 	}
 

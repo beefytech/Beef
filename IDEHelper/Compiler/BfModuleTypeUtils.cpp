@@ -12731,6 +12731,9 @@ BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType po
 			if (paramType == NULL)
 				paramType = GetPrimitiveType(BfTypeCode_Var);
 
+			if ((param->mModToken != NULL) && (param->mModToken->mToken == BfToken_Params))
+				delegateInfo->mHasParams = true;
+
 			String paramName;
 			if (param->mNameNode != NULL)
 				paramName = param->mNameNode->ToString();

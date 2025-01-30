@@ -4407,6 +4407,12 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 				return false;
 			if (lhsDelegateInfo->mCallingConvention != rhsDelegateInfo->mCallingConvention)
 				return false;
+			if (lhsDelegateInfo->mHasParams != rhsDelegateInfo->mHasParams)
+				return false;
+			if (lhsDelegateInfo->mHasVarArgs != rhsDelegateInfo->mHasVarArgs)
+				return false;
+			if (lhsDelegateInfo->mHasExplicitThis != rhsDelegateInfo->mHasExplicitThis)
+				return false;
 
 			auto lhsMethodDef = lhsInst->mTypeDef->mMethods[0];
 			auto rhsMethodDef = rhsInst->mTypeDef->mMethods[0];
@@ -4414,7 +4420,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			if (lhsMethodDef->mCallingConvention != rhsMethodDef->mCallingConvention)
 				return false;
 			if (lhsMethodDef->mIsMutating != rhsMethodDef->mIsMutating)
-				return false;
+				return false;			
 			if (lhsDelegateInfo->mReturnType != rhsDelegateInfo->mReturnType)
 				return false;
 			if (lhsDelegateInfo->mParams.size() != rhsDelegateInfo->mParams.size())
@@ -4981,6 +4987,8 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 
 		if (lhsParamsCount != (int)rhsDelegateType->mParams.size())
 			return false;
+
+		bool rhsHadParams = false;
 		for (int paramIdx = paramRefOfs; paramIdx < lhsDelegateInfo->mParams.size(); paramIdx++)
 		{
 			auto paramTypeRef = rhsDelegateType->mParams[paramIdx]->mTypeRef;
@@ -4992,7 +5000,12 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 				rhsParamName = rhsDelegateType->mParams[paramIdx]->mNameNode->ToStringView();
 			if (invokeMethodDef->mParams[paramIdx]->mName != rhsParamName)
 				return false;
+			if ((rhsDelegateType->mParams[paramIdx]->mModToken != NULL) && (rhsDelegateType->mParams[paramIdx]->mModToken->mToken == BfToken_Params))
+				rhsHadParams = true;
 		}
+
+		if (rhsHadParams != lhsDelegateInfo->mHasParams)
+			return false;
 
 		if ((ctx->mModule->mCurTypeInstance == NULL) || (!ctx->mModule->mCurTypeInstance->IsGenericTypeInstance()))
 			wantGeneric = false;
