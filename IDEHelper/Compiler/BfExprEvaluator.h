@@ -510,6 +510,7 @@ public:
 	bool HasVariableDeclaration(BfAstNode* checkNode);
 	void DoInvocation(BfInvocationExpression* invocationExpr);
 	void DoInvocation(BfAstNode* target, BfMethodBoundExpression* methodBoundExpr, const BfSizedArray<BfExpression*>& args, const BfMethodGenericArguments& methodGenericArgs, BfTypedValue* outCascadeValue = NULL);
+	void DoCaseExpression(BfTypedValue caseValAddr, BfCaseExpression* caseExpr);
 	int GetMixinVariable();
 	void CheckLocalMethods(BfAstNode* targetSrc, BfTypeInstance* typeInstance, const StringImpl& methodName, BfMethodMatcher& methodMatcher, BfMethodType methodType);
 	void InjectMixin(BfAstNode* targetSrc, BfTypedValue target, bool allowImplicitThis, const StringImpl& name, const BfSizedArray<BfExpression*>& arguments, const BfMethodGenericArguments& methodGenericArgs);
