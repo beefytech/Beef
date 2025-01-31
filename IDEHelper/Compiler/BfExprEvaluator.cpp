@@ -25040,6 +25040,9 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 
 		if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality) || (binaryOp == BfBinaryOp_InEquality) || (binaryOp == BfBinaryOp_StrictInEquality))
 		{
+			leftValue = mModule->LoadOrAggregateValue(leftValue);
+			rightValue = mModule->LoadOrAggregateValue(rightValue);
+
 			if (resultType->IsInterface())
 			{
 				// Compare as objects instead
