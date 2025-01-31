@@ -6148,7 +6148,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				typeInstance->mModule->ResolveConstField(typeInstance, fieldInstance, fieldDef);
 
 				// Check enum cases for duplicates
-				if (mCurTypeInstance->IsEnum())
+				if ((mCurTypeInstance->IsEnum()) && (!mCurTypeInstance->IsUnspecializedTypeVariation()))
 				{
 					auto underlyingType = fieldInstance->mResolvedType->GetUnderlyingType();
 					if ((fieldDef->IsEnumCaseEntry()) && (fieldInstance->mConstIdx != -1) && (underlyingType->IsIntegral()))
