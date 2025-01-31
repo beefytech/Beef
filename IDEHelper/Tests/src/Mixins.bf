@@ -124,6 +124,37 @@ namespace Tests
 			}
 		}
 
+		class Foo<T, T2> where T : class
+		{
+			static void Test ()
+			{
+				Helper<T>.Pop!<int>();
+			}
+		}
+
+		extension Foo<T, T2>
+		{
+
+		}
+
+		class Helper<T>
+		{
+
+		}
+
+		extension Helper<T>
+		{
+			static public mixin Pop<TVal> ()
+			{
+				Pop2<int>()
+			}
+
+			static public T Pop2<TVal> () where TVal : var, struct, INumeric
+			{
+				return default;
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -198,6 +229,8 @@ namespace Tests
 			var sv2 = Unwrap!(svRes)..Trim();
 			Test.Assert(svRes.Value == "ab ");
 			Test.Assert(sv2 == "ab");
+
+			Helper<int>.Pop!<float>();
 		}
 
 	}

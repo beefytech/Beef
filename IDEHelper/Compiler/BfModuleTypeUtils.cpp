@@ -9629,7 +9629,9 @@ void BfModule::GetActiveTypeGenericParamInstances(SizedArray<BfGenericParamInsta
 
 	if (genericTypeInst->mGenericTypeInfo->mGenericExtensionInfo != NULL)
 	{
-		auto activeTypeDef = GetActiveTypeDef(NULL, true);
+		// Note: original version had useMixinDecl set. Was there a reason for that? Causes issue 2118
+		auto activeTypeDef = GetActiveTypeDef(NULL);
+
 		if ((activeTypeDef->mTypeDeclaration != genericTypeInst->mTypeDef->mTypeDeclaration) && (activeTypeDef->IsExtension()))
 		{
 			BfTypeDef* lookupTypeDef = activeTypeDef;
