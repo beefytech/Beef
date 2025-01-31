@@ -308,8 +308,8 @@ namespace IDE.ui
 		    //Outline(g, mCategorySelector, 0, 0, 0xFF404040);
 		    //Outline(g, mCategorySelector, -1, -1, 0xFF202020);
 
-		    Outline(g, mFileList, 0, 0, IDEApp.cDialogOutlineLightColor);
-		    Outline(g, mFileList, -1, -1, IDEApp.cDialogOutlineDarkColor);
+		    Outline(g, mFileList, 0, 0, DarkTheme.COLOR_DIALOG_OUTLINE_OUT);
+		    Outline(g, mFileList, -1, -1, DarkTheme.COLOR_DIALOG_OUTLINE_IN);
 		}
 
 		void CheckFileDates()
