@@ -185,7 +185,7 @@ namespace IDE.ui
 
 						char8* linePtr = line.Ptr;
 
-						bool lineMatched;
+						bool lineMatched = false;
 						if (mSearchOptions.mMatchWholeWord)
 						{
 							line.EnsureNullTerminator();
