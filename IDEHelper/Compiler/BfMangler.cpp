@@ -329,6 +329,8 @@ void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name
 				name += "__varargs";
 				continue;
 			}
+			if (methodDef->mParams[paramIdx]->mParamKind == BfParamKind_Params)
+				name += "_params_";
 			typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mParams[paramIdx]->mTypeRef)->mType);
 		}
 		for (auto type : typeVec)
@@ -1273,6 +1275,8 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 					name += "__varargs";
 					continue;
 				}
+				if (methodDef->mParams[paramIdx]->mParamKind == BfParamKind_Params)
+					name += "_params_";
 				typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mParams[paramIdx]->mTypeRef)->mType);
 			}
 			name += '@';
