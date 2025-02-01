@@ -2195,7 +2195,7 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		pathEx += ":add";
 
 	DXTexture* aTexture = NULL;
-	if (mTextureMap.TryGetValue(pathEx, &aTexture))
+	if ((!fileName.StartsWith('@')) && (mTextureMap.TryGetValue(pathEx, &aTexture)))
 	{
 		aTexture->AddRef();
 		return aTexture;
