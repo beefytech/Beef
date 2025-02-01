@@ -9504,7 +9504,10 @@ BfType* BfModule::ResolveSelfType(BfType* type, BfType* selfType)
 {
 	if (!type->IsUnspecializedTypeVariation())
 		return type;
-	return ResolveGenericType(type, NULL, NULL, selfType);
+	BfType* resolvedType = ResolveGenericType(type, NULL, NULL, selfType);
+	if (resolvedType != NULL)
+		return resolvedType;
+	return type;
 }
 
 BfType* BfModule::ResolveType(BfType* lookupType, BfPopulateType populateType, BfResolveTypeRefFlags resolveFlags)
