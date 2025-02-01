@@ -7601,6 +7601,13 @@ void BfExprEvaluator::FinishDeferredEvals(BfResolvedArgs& argValues)
 					mModule->CheckVariableDef(localVar);
 					localVar->Init();
 					mModule->AddLocalVariableDef(localVar, true);
+
+					auto curScope = mModule->mCurMethodState->mCurScope;
+					if (curScope->mScopeKind == BfScopeKind_StatementTarget)
+					{
+						// Move this variable into the parent scope
+						curScope->mLocalVarStart = (int)mModule->mCurMethodState->mLocals.size();
+					}
 				}
 			}
 		}
@@ -20101,6 +20108,12 @@ bool BfExprEvaluator::CheckIsBase(BfAstNode* checkNode)
 
 bool BfExprEvaluator::CheckModifyResult(BfTypedValue& typedVal, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut, bool emitWarning, bool skipCopyOnMutate)
 {
+	if (typedVal.mType->IsVar())
+	{
+		// Allow without error
+		return true;
+	}
+
 	BfLocalVariable* localVar = NULL;
 	bool isCapturedLocal = false;
 	if (mResultLocalVar != NULL)
@@ -20127,7 +20140,7 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue& typedVal, BfAstNode* refNo
 	{
 		auto methodState = mModule->mCurMethodState->GetNonCaptureState();
 		localVar = methodState->mLocals[typedVal.mValue.mId];
-	}
+	}	
 
 	if ((typedVal.mKind == BfTypedValueKind_MutableValue) && (onlyNeedsMut))
 	{
