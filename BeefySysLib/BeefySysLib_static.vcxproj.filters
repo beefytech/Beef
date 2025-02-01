@@ -590,6 +590,9 @@
     <ClCompile Include="third_party\putty\wildcard.c">
       <Filter>src\third_party\putty</Filter>
     </ClCompile>
+    <ClCompile Include="img\BMPData.cpp">
+      <Filter>src\img</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -906,6 +909,9 @@
     </ClInclude>
     <ClInclude Include="third_party\putty\wildcard.h">
       <Filter>src\third_party\putty</Filter>
+    </ClInclude>
+    <ClInclude Include="img\BMPData.h">
+      <Filter>src\img</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -6,6 +6,7 @@
 #include "img/TGAData.h"
 #include "img/PNGData.h"
 #include "img/PVRData.h"
+#include "img/BMPData.h"
 #include "img/BFIData.h"
 #include "img/JPEGData.h"
 #include "util/PerfTimer.h"
@@ -142,6 +143,12 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		imageData = new JPEGData();
 	else if (ext == ".pvr")
 		imageData = new PVRData();
+	else if (ext == ".bmp")
+	{
+		BMPData* bmpData = new BMPData();
+		bmpData->mHasTransFollowing = (flags & TextureFlag_HasTransFollowing) == 0;;
+		imageData = bmpData;
+	}
 	else
 	{
 		return NULL; // Unknown format

@@ -740,6 +740,9 @@
     <ClCompile Include="util\MTRand.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
+    <ClCompile Include="img\BMPData.cpp">
+      <Filter>src\img</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -1140,6 +1143,9 @@
     </ClInclude>
     <ClInclude Include="util\MTRand.h">
       <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="img\BMPData.h">
+      <Filter>src\img</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

@@ -692,6 +692,9 @@ void DXTexture::SetBits(int destX, int destY, int destWidth, int destHeight, int
 
 void DXTexture::GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
 {
+	if ((srcWidth <= 0) || (srcHeight <= 0))
+		return;
+
 	D3D11_TEXTURE2D_DESC texDesc;
 	texDesc.ArraySize = 1;
 	texDesc.BindFlags = 0;

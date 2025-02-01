@@ -1,8 +1,12 @@
+#pragma warning disable 168
+
 using System;
 using System.IO;
 using System.Collections;
 using System.Text;
 using System.Diagnostics;
+using Beefy.gfx;
+
 namespace IDE.util
 {
 	class ResourceGen
@@ -61,6 +65,60 @@ namespace IDE.util
 		};
 
 		FileStream mOutStream = new FileStream() ~ delete _;
+
+		public static Result<Image> LoadIcon(String iconFile, int wantSize = -1)
+		{
+			FileStream stream = scope FileStream();
+			if (stream.Open(iconFile, .Read) case .Err)
+			{
+				return .Err;
+			}
+
+			let iconDir = Try!(stream.Read<IconDir>());
+			if ((iconDir.mReserved != 0) || (iconDir.mType != 1) || (iconDir.mCount > 0x100))
+			{
+				return .Err;
+			}
+
+			var entries = scope List<IconDirectoryEntry>();
+
+			for (int idx < iconDir.mCount)
+			{
+				entries.Add(Try!(stream.Read<IconDirectoryEntry>()));
+			}
+
+			int bestIdx = iconDir.mCount - 1;
+			for (int idx < iconDir.mCount)
+			{
+				let iconEntry = ref entries[idx];
+				if (iconEntry.mWidth >= wantSize)
+				{
+					bestIdx = idx;
+					break;
+				}
+			}
+
+			let iconEntry = ref entries[bestIdx];
+
+			Try!(stream.Seek(iconEntry.mImageOffset));
+
+			if (iconEntry.mBytesInRes > 1024*1024)
+			{
+				return .Err;
+			}
+
+			uint8* data = new:ScopedAlloc! uint8[iconEntry.mBytesInRes]*;
+
+			Try!(stream.TryRead(.(data, iconEntry.mBytesInRes)));
+
+			String bmpPath = scope $"@{(int)(void*)data:X}:{iconEntry.mBytesInRes}.bmp";
+
+			var image = Image.LoadFromFile(bmpPath);
+			if (image != null)
+				return image;
+
+			return .Err;
+		}
 
 		public Result<void> AddIcon(String iconFile)
 		{
