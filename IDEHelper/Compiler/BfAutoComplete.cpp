@@ -923,16 +923,22 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 		addNonStatic = true;
 
 	auto activeTypeDef = mModule->GetActiveTypeDef();
+	
+#define CHECK_STATIC(staticVal) ((staticVal && addStatic) || (!staticVal && addNonStatic))
+
+	mModule->PopulateType(typeInst, BfPopulateType_Data);
 
 	if ((addStatic) && (mModule->mCurMethodInstance == NULL) && (typeInst->IsEnum()) && (allowImplicitThis))
 	{
 		AddEntry(AutoCompleteEntry("value", "_"), filter);
 	}
 
-#define CHECK_STATIC(staticVal) ((staticVal && addStatic) || (!staticVal && addNonStatic))
-
-	mModule->PopulateType(typeInst, BfPopulateType_Data);
-
+	if ((typeInst->IsEnum()) && (typeInst->IsTypedPrimitive()))
+	{	
+		if (typeInst->IsTypedPrimitive())
+			AddEntry(AutoCompleteEntry("valuetype", "UnderlyingType"), filter);		
+	}
+	 
 	BfShow checkShow = (startType == typeInst) ? BfShow_Hide : BfShow_HideIndirect;
 
 	BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;

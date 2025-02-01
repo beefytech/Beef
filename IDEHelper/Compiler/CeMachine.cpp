@@ -6886,14 +6886,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCurModule->mCurTypeInstance, mCallerTypeInstance);
 				SetAndRestoreValue<bool> emitIgnoreWrites(ceModule->mBfIRBuilder->mIgnoreWrites, ignoreWrites.mPrevVal);
 
-// 				int32 strInstAddr = *(int32*)((uint8*)stackPtr + 0);
-// 				String emitStr;
-// 				if (!GetStringFromAddr(strInstAddr, emitStr))
-// 				{
-// 					_Fail("Invalid String");
-// 					return false;
-// 				}
-
 				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr);
 				String emitStr;
 				if (!GetStringFromStringView(strViewPtr, emitStr))

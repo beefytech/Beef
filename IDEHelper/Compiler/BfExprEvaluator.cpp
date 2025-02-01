@@ -24208,6 +24208,7 @@ void BfExprEvaluator::AddStrings(const BfTypedValue& leftValue, const BfTypedVal
 void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNode* rightExpression, BfBinaryOp binaryOp, BfAstNode* opToken, BfBinOpFlags flags, BfTypedValue leftValue, BfTypedValue rightValue)
 {
 	bool noClassify = (flags & BfBinOpFlag_NoClassify) != 0;
+	bool forceRightType = (flags & BfBinOpFlag_ForceRightType) != 0;
 	bool forceLeftType = (flags & BfBinOpFlag_ForceLeftType) != 0;
 	bool deferRight = (flags & BfBinOpFlag_DeferRight) != 0;
 
@@ -24271,7 +24272,11 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	}
 
 	auto resultType = leftValue.mType;
-	if (!forceLeftType)
+	if (forceRightType)
+	{
+		resultType = rightValue.mType;		
+	}
+	else if (!forceLeftType)
 	{
 		bool handled = false;
 
@@ -24974,7 +24979,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			AddStrings(leftValue, rightValue, opToken);
 			return;
 		}
-
+		
 		//TODO: Allow all pointer comparisons, but only allow SUBTRACTION between equal pointer types
 		if ((binaryOp == BfBinaryOp_Subtract) || (binaryOp == BfBinaryOp_OverflowSubtract))
 		{
@@ -25162,11 +25167,26 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			}
 
 			if (needsOtherCast)
-			{
-				// The only purpose of this cast is to potentially throw a casting error
-				BfIRValue otherCastResult = mModule->CastToValue(otherTypeSrc, *otherTypedValue, resultType, explicitCast ? BfCastFlags_Explicit : BfCastFlags_None);
-				if (!otherCastResult)
-					return;
+			{				
+				BfCastFlags castFlags = (BfCastFlags)((explicitCast ? BfCastFlags_Explicit : BfCastFlags_None) | BfCastFlags_SilentFail);
+				BfIRValue otherCastResult = mModule->CastToValue(otherTypeSrc, *otherTypedValue, resultType, castFlags);
+				if (!otherCastResult)					
+				{
+					// We picked the wrong type, try the other one...
+					if (mModule->CanCast(*resultTypedValue, otherType))
+					{
+						BfBinOpFlags newFlags = flags;
+						if (otherTypedValue == &leftValue)
+							newFlags = (BfBinOpFlags)(flags | BfBinOpFlag_ForceLeftType & ~BfBinOpFlag_ForceRightType & ~BfBinOpFlag_DeferRight);
+						else
+							newFlags = (BfBinOpFlags)(flags | BfBinOpFlag_ForceRightType & ~BfBinOpFlag_ForceLeftType & ~BfBinOpFlag_DeferRight);
+						return PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, newFlags, leftValue, rightValue);
+					}
+
+					// Do again but with an error
+					castFlags = (BfCastFlags)(castFlags & ~BfCastFlags_SilentFail);
+					otherCastResult = mModule->CastToValue(otherTypeSrc, *otherTypedValue, resultType, castFlags);
+				}
 			}
 		}
 
