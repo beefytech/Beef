@@ -483,6 +483,21 @@ namespace Tests
 			}
 		}
 
+		public static void Test<F>(F func)
+			where F: delegate void(delegate void(String, params Span<Object>))
+		{
+			String str = scope .();
+
+			delegate void(String, params Span<Object>) setError = scope (errStr, args) => { str.AppendF(errStr, params args); };
+			delegate void() call = scope () => func(setError);
+			call();
+		}
+
+		public static void Test<T>() where T : var
+		{
+			Test((e) => e("hi!"));
+		}
+
 		[Test]
 		public static void ClassTestA()
 		{
@@ -499,6 +514,8 @@ namespace Tests
 			val.Test();
 			val = .();
 			val.TestDlg();
+
+			Test<int>();
 		}
 
 		[Test]

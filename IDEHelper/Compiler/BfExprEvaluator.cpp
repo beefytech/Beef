@@ -10500,6 +10500,12 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 						methodGenericArguments = methodInstance->mMethodInfoEx->mMethodGenericArguments;
 					methodMatcher.mBestMethodInstance = mModule->GetMethodInstance(methodInstance->GetOwner(), methodInstance->mMethodDef, methodGenericArguments);
 				}
+
+				if (methodInstance->mMethodInfoEx != NULL)
+				{
+					methodMatcher.mBestMethodGenericArguments = methodInstance->mMethodInfoEx->mMethodGenericArguments;
+				}
+
 				methodMatcher.mBestMethodTypeInstance = methodInstance->GetOwner();
 				if (methodInstance->HasThis())
 				{
