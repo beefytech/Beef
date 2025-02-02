@@ -366,9 +366,9 @@ namespace BeefBuild
 			mFailed = true;
 		}
 
-		protected override void CompileFailed()
+		protected override void CompileFailed(Stopwatch stopwatch)
 		{
-			base.CompileFailed();
+			base.CompileFailed(stopwatch);
 			mFailed = true;
 		}
 
