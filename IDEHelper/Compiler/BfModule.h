@@ -1624,6 +1624,7 @@ public:
 	void GetAccessAllowed(BfTypeInstance* checkType, bool& allowProtected, bool& allowPrivate);
 	bool CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* memberOwner, BfProject* memberProject, BfProtection memberProtection, BfTypeInstance* lookupStartType);
 	void SetElementType(BfAstNode* astNode, BfSourceElementType elementType);
+	void SetHighestElementType(BfAstNode* astNode, BfSourceElementType elementType);
 	bool PreFail();
 	void SetFail();
 	void VerifyOnDemandMethods();

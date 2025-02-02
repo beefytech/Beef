@@ -3031,6 +3031,15 @@ void BfModule::SetElementType(BfAstNode* astNode, BfSourceElementType elementTyp
 	}
 }
 
+void BfModule::SetHighestElementType(BfAstNode* astNode, BfSourceElementType elementType)
+{
+	if (mCompiler->mResolvePassData != NULL)
+	{
+		if (auto sourceClassifier = mCompiler->mResolvePassData->GetSourceClassifier(astNode))
+			sourceClassifier->SetHighestElementType(astNode, elementType);
+	}
+}
+
 bool BfModule::PreFail()
 {
 	if (!mIgnoreErrors)

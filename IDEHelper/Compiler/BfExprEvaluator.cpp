@@ -4770,7 +4770,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 				result = LookupField(identifierNode, thisValue, findName);
 				if ((result) || (mPropDef != NULL))
 				{
-					mModule->SetElementType(identifierNode, BfSourceElementType_Member);
+					mModule->SetHighestElementType(identifierNode, BfSourceElementType_Member);
 					return result;
 				}
 			}
@@ -4785,7 +4785,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 				result = LookupField(identifierNode, thisValue, findName);
 				if ((result) || (mPropDef != NULL))
 				{
-					mModule->SetElementType(identifierNode, BfSourceElementType_Member);
+					mModule->SetHighestElementType(identifierNode, BfSourceElementType_Member);
 					return result;
 				}
 			}
@@ -4793,7 +4793,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 	}
 	else
 	{
-		mModule->SetElementType(identifierNode, BfSourceElementType_Member);
+		mModule->SetHighestElementType(identifierNode, BfSourceElementType_Member);
 	}
 
 	if ((!result) && (identifierNode != NULL))
