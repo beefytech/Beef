@@ -47,6 +47,7 @@ namespace IDE.ui
 
 		BuildError,
 		BuildWarning,
+		BuildSuccess,
 
 		VisibleWhiteSpace
     }

@@ -306,6 +306,10 @@ namespace IDE.ui
 				{
 					mQueuedDisplayChanges.Add(QueuedDisplayChange(mQueuedText.Length, "WARNING".Length, (.)SourceElementType.BuildWarning));
 				}
+				if (line.StartsWith("SUCCESS:"))
+				{
+					mQueuedDisplayChanges.Add(QueuedDisplayChange(mQueuedText.Length, "SUCCESS".Length, (.)SourceElementType.BuildSuccess));
+				}
 				Write(line);
 			}
 		}

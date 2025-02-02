@@ -9760,9 +9760,9 @@ namespace IDE
 					CompileResult(buildCompletedCmd.mHotProjectName, !buildCompletedCmd.mFailed);
 
 					if (buildCompletedCmd.mFailed)
-						OutputLineSmart("ERROR: BUILD FAILED");
+						OutputLineSmart("ERROR: BUILD FAILED. Total build time: {0:0.00}s", buildCompletedCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
 					if ((mVerbosity >= .Detailed) && (buildCompletedCmd.mStopwatch != null))
-						OutputLine("Total build time: {0:0.00}s", buildCompletedCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
+						OutputLineSmart("SUCCESS: Build completed with no errors. Total build time: {0:0.00}s", buildCompletedCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
 
 					if (mDebugger?.mIsComptimeDebug == true)
 						DebuggerComptimeStop();
@@ -11455,12 +11455,12 @@ namespace IDE
 			mLastTestFailed = true;
 		}
 
-		protected virtual void CompileFailed()
+		protected virtual void CompileFailed(Stopwatch stopwatch)
 		{
 			if (mTestManager != null)
 				mTestManager.BuildFailed();
 			if (mVerbosity > .Quiet)
-				OutputLine("Compile failed.");
+				OutputLineSmart("ERROR: Compile failed. Total build time: {0:0.00}s", stopwatch.ElapsedMilliseconds / 1000.0f);
 			mLastCompileFailed = true;
 
 			if (mRunningTestScript)
@@ -11624,7 +11624,7 @@ namespace IDE
 				if ((passInstance.mFailed) && (passInstance.mCompileSucceeded))
 				{
 					// This can happen if we can't load a Beef file
-					CompileFailed();
+					CompileFailed(startStopWatch);
 					passInstance.mCompileSucceeded = false;
 				}
 
@@ -11656,7 +11656,7 @@ namespace IDE
 				if (!mDebugger.mIsRunning)
 				{
 					OutputErrorLine("Hot compile failed - target no longer running");
-					CompileFailed();
+					CompileFailed(startStopWatch);
 					return;
 				}
 
@@ -11688,7 +11688,7 @@ namespace IDE
 					SkipProjectCompile(project, hotProject);
 				}
 				CompileResult((hotProject != null) ? hotProject.mProjectName : null, false);
-				CompileFailed();
+				CompileFailed(startStopWatch);
 				return;
 			}
 
@@ -11740,7 +11740,7 @@ namespace IDE
 			}
 
 			if (!success)
-				CompileFailed();
+				CompileFailed(startStopWatch);
 
 			if (success)
 			{
@@ -12268,7 +12268,7 @@ namespace IDE
 			passInstance = CompileBeef(hotProject, hotIdx, lastCompileHadMessages, let hadBeef);
 			if (passInstance == null)
 			{
-				CompileFailed();
+				CompileFailed(scope .());
 				return false;
 			}
 

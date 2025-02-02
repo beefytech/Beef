@@ -351,6 +351,7 @@ namespace IDE
 			public Color mError = 0xFFFF0000;
 			public Color mBuildError = 0xFFFF8080;
 			public Color mBuildWarning = 0xFFFFFF80;
+			public Color mBuildSuccess = 0xFF80FF80;
 			public Color mVisibleWhiteSpace = 0xFF9090C0;
 			public Color mCurrentLineHilite = 0xFF4C4C54;
 			public Color mCurrentLineNumberHilite = 0x18FFFFFF;
@@ -426,6 +427,7 @@ namespace IDE
 				GetColor("Error", ref mError);
 				GetColor("BuildError", ref mBuildError);
 				GetColor("BuildWarning", ref mBuildWarning);
+				GetColor("BuildSuccess", ref mBuildSuccess);
 				GetColor("VisibleWhiteSpace", ref mVisibleWhiteSpace);
 				GetColor("CurrentLineHilite", ref mCurrentLineHilite);
 				GetColor("CurrentLineNumberHilite", ref mCurrentLineNumberHilite);
@@ -457,6 +459,7 @@ namespace IDE
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Error] = mError;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildError] = mBuildError;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildWarning] = mBuildWarning;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildSuccess] = mBuildSuccess;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.VisibleWhiteSpace] = mVisibleWhiteSpace;
 
 				DarkTheme.COLOR_TEXT = mText;

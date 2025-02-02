@@ -806,6 +806,7 @@ namespace IDE.ui
 
 				0xFFFF8080, // BuildError
 				0xFFFFFF80, // BuildWarning
+				0xFF80FF80, // BuildSuccess
 
 				0xFF9090C0, // VisibleWhiteSpace
             ) ~ delete _;
