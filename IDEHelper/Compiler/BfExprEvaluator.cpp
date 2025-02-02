@@ -11818,7 +11818,7 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 		{
 			if (type->IsValueType())
 			{
-				if (mReceivingValue != NULL)
+				if ((mReceivingValue != NULL) && (mReceivingValue->mType == type) && (mReceivingValue->IsAddr()))
 				{
 					mResult = *mReceivingValue;
 					mReceivingValue = NULL;
