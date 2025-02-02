@@ -11460,7 +11460,7 @@ namespace IDE
 			if (mTestManager != null)
 				mTestManager.BuildFailed();
 			if (mVerbosity > .Quiet)
-				OutputLineSmart("ERROR: Compile failed. Total build time: {0:0.00}s", stopwatch.ElapsedMilliseconds / 1000.0f);
+				OutputLineSmart("ERROR-SOFT: Compile failed. Total build time: {0:0.00}s", stopwatch.ElapsedMilliseconds / 1000.0f);
 			mLastCompileFailed = true;
 
 			if (mRunningTestScript)

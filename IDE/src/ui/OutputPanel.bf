@@ -287,7 +287,7 @@ namespace IDE.ui
 
 		public void WriteSmart(StringView text)
 		{
-			for (var line in text.Split('\n'))
+			LineLoop: for (var line in text.Split('\n'))
 			{
 				if (@line.Pos != 0)
 					Write("\n");
@@ -300,6 +300,13 @@ namespace IDE.ui
 						continue;
 					}
 
+					mQueuedDisplayChanges.Add(QueuedDisplayChange(mQueuedText.Length, "ERROR".Length, (.)SourceElementType.BuildError));
+				}
+				if (line.StartsWith("ERROR-SOFT:"))
+				{
+					var str = scope:LineLoop String(line);
+					str.Replace("ERROR-SOFT", "ERROR");
+					line = str;
 					mQueuedDisplayChanges.Add(QueuedDisplayChange(mQueuedText.Length, "ERROR".Length, (.)SourceElementType.BuildError));
 				}
 				if ((line.StartsWith("WARNING:")) || (line.StartsWith("WARNING(")))
