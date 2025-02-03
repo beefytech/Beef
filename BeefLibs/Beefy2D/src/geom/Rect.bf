@@ -262,6 +262,7 @@ namespace Beefy.geom
 		}
     }
 
+	typealias RectI32 = Rect<int32>;
 	typealias Rect = Rect<float>;
 	typealias RectD = Rect<double>;
 }

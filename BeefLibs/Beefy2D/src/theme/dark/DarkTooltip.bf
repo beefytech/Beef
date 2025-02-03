@@ -96,6 +96,21 @@ namespace Beefy.theme.dark
 			Detach();
 		}
 
+		public static Point CalcSize(StringView text, float x = 0, float y = 0)
+		{
+			var font = DarkTheme.sDarkTheme.mSmallFont;
+			float minWidth = 0;
+			float minHeight = 0;
+
+			BFApp.sApp.GetWorkspaceRectFrom((.)x, (.)y, 0, 0, var workspaceX, var workspaceY, var workspaceWidth, var workspaceHeight);
+
+			FontMetrics fontMetrics = .();
+			float height = font.Draw(null, text, x, y, 0, 0, FontOverflowMode.Overflow, &fontMetrics);
+			float tooltipWidth = Math.Max(fontMetrics.mMaxWidth + GS!(32), minWidth);
+			float tooltipHeight = Math.Clamp(height + GS!(16), minHeight, workspaceHeight);
+			return .(tooltipWidth, tooltipHeight);
+		}
+
 		void Attach(Widget widget)
 		{
 			if (mRelWidget != null)
@@ -251,12 +266,15 @@ namespace Beefy.theme.dark
 			if (mAllowMouseOutside)
 				return;
 
+			Rect widgetRect = .(0, 0, mRelWidget.mWidth, mRelWidget.mHeight);
+			mRelWidgetMouseInsets?.ApplyTo(ref widgetRect);
+
 			float rootX;
 			float rootY;
-			mRelWidget.SelfToRootTranslate(0, 0, out rootX, out rootY);
+			mRelWidget.SelfToRootTranslate(widgetRect.mX, widgetRect.mY, out rootX, out rootY);
 
-			Rect checkRect = Rect(rootX, rootY, mRelWidget.mWidth, mRelWidget.mHeight);
-			mRelWidgetMouseInsets?.ApplyTo(ref checkRect);
+			Rect checkRect = Rect(rootX, rootY, widgetRect.mWidth, widgetRect.mHeight);
+			
 			if ((mRelWidget.mWidgetWindow != null) && (mRelWidget.mWidgetWindow.mHasMouseInside))
 			{
 				if (checkRect.Contains(mRelWidget.mWidgetWindow.mClientMouseX, mRelWidget.mWidgetWindow.mClientMouseY))
@@ -444,15 +462,6 @@ namespace Beefy.theme.dark
 		   		SetLastMouseWidget(null);
 		        sMouseStillTicks = -1;
 		    }
-
-		    if (numOverWidgets > 1)
-		    {
-				//int a = 0;
-				Debug.WriteLine("numOverWidgets > 1");
-		    }
-
-
-		    //Debug.Assert(numOverWidgets <= 1);                        
 		}
 	}
 }
