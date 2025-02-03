@@ -590,7 +590,35 @@ namespace IDE.ui
 
 			if (Rect(GS!(6), 0, GS!(20), mHeight).Contains(x, y))
 			{
-				gApp.mErrorsPanel.ShowErrorNext();
+				bool hasError = (gApp.mErrorsPanel.mErrorCount > 0);
+				bool hasWarning = (gApp.mErrorsPanel.mWarningCount > 0);
+
+				if (btn == 0)
+				{
+					gApp.mErrorsPanel.ShowErrorNext();
+				}
+				else if ((btn == 1) && ((hasError || hasWarning)))
+				{
+					float useX = x;
+					float useY = y;
+
+					Menu menu = new Menu();
+
+					var menuItem = menu.AddItem("Goto Next Error");
+					menuItem.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						gApp.mErrorsPanel.ShowErrorNext();
+					});
+
+					menuItem = menu.AddItem("Clean Beef");
+					menuItem.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						gApp.Cmd_CleanBeef();
+					});
+
+					MenuWidget menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
+					menuWidget.Init(this, useX, useY);
+				}
 				return;
 			}
 		}
