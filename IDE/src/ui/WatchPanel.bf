@@ -2939,8 +2939,9 @@ namespace IDE.ui
 					wantHeight = 0;
 				else
 					wantHeight = watchListView.mFont.GetLineSpacing();
-				
-				if ((mSelfHeight != wantHeight) && (!mFreezeHeight))
+
+				var dataItem = GetSubItem(1) as WatchListViewItem;
+				if ((mSelfHeight != wantHeight) && (!mFreezeHeight) && (dataItem.mCustomContentWidget == null))
 				{
 					mSelfHeight = wantHeight;
 					watchListView.mListSizeDirty = true;
