@@ -22653,6 +22653,8 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 		if ((!target.IsAddr()) && (!target.mType->IsSizeAligned()))
 			mModule->MakeAddressable(target);
 
+		mResult = BfTypedValue();
+
 		mModule->PopulateType(underlyingType);
 		if ((sizedArrayType->IsUndefSizedArray()) || (isUndefIndex))
 		{
@@ -22669,6 +22671,40 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 		}
 		else if (target.IsAddr())
 		{
+			// Handle below
+		}
+		else
+		{
+			if ((!target.mValue.IsConst()) && (!indexArgument.mValue.IsConst()))
+			{
+				target = mModule->MakeAddressable(target);				
+			}
+			else
+			{
+				mModule->mBfIRBuilder->PopulateType(target.mType);
+				auto gepResult = mModule->mBfIRBuilder->CreateExtractValue(target.mValue, indexArgument.mValue);
+
+				if ((underlyingType->IsString()) || (underlyingType->IsPointer()))
+				{
+					auto resultConst = mModule->mBfIRBuilder->GetConstant(gepResult);
+					if ((resultConst != NULL) && (resultConst->mTypeCode == BfTypeCode_Int32))
+					{
+						int strId = resultConst->mInt32;
+						const StringImpl& str = mModule->mContext->mStringObjectIdMap[strId].mString;
+
+						if (underlyingType->IsString())
+							gepResult = mModule->GetStringObjectValue(str, false);
+						else
+							gepResult = mModule->GetStringCharPtr(strId);
+					}
+				}
+
+				mResult = BfTypedValue(gepResult, underlyingType, BfTypedValueKind_Value);
+			}
+		}
+
+		if ((!mResult) && (target.IsAddr()))
+		{			
 			if (target.mType->IsSizeAligned())
 			{
 				auto gepResult = mModule->mBfIRBuilder->CreateInBoundsGEP(target.mValue, mModule->GetConstValue(0), indexArgument.mValue);
@@ -22680,33 +22716,11 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 				mResult = BfTypedValue(indexResult, underlyingType, target.IsReadOnly() ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
 			}
 		}
-		else
+
+		if (!mResult)
 		{
-			if ((!target.mValue.IsConst()) && (!indexArgument.mValue.IsConst()))
-			{
-				mModule->Fail("Unable to index value", indexerExpr->mTarget);
-				return;
-			}
-
-			mModule->mBfIRBuilder->PopulateType(target.mType);
-			auto gepResult = mModule->mBfIRBuilder->CreateExtractValue(target.mValue, indexArgument.mValue);
-
-			if ((underlyingType->IsString()) || (underlyingType->IsPointer()))
-			{
-				auto resultConst = mModule->mBfIRBuilder->GetConstant(gepResult);
-				if ((resultConst != NULL) && (resultConst->mTypeCode == BfTypeCode_Int32))
-				{
-					int strId = resultConst->mInt32;
-					const StringImpl& str = mModule->mContext->mStringObjectIdMap[strId].mString;
-
-					if (underlyingType->IsString())
-						gepResult = mModule->GetStringObjectValue(str, false);
-					else
-						gepResult = mModule->GetStringCharPtr(strId);
-				}
-			}
-
-			mResult = BfTypedValue(gepResult, underlyingType, BfTypedValueKind_Value);
+			mModule->Fail("Unable to index value", indexerExpr->mTarget);
+			return;
 		}
 	}
 	else
