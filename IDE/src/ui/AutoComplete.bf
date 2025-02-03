@@ -561,8 +561,8 @@ namespace IDE.ui
 
 						int drawScreenX = (.)(mWidgetWindow.mX + mWidth - mDocWidth);
 						gApp.GetWorkspaceRectFrom(drawScreenX, mWidgetWindow.mY, 0, 0, var workspaceX, var workspaceY, var workspaceWidth, var workspaceHeight);
-						float maxWidth = workspaceWidth - drawScreenX - GS!(8);
-						float newDocWidth = Math.Min(docWidth, workspaceWidth - drawScreenX - GS!(8));
+						float maxWidth = workspaceWidth - (drawScreenX - workspaceX) - GS!(8);
+						float newDocWidth = Math.Min(docWidth, workspaceWidth - (drawScreenX - workspaceX) - GS!(8));
 						newDocWidth = Math.Max(newDocWidth, GS!(80));
 						if ((docWidth > maxWidth) || (lineCount > 1))
 						{

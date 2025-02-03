@@ -2042,7 +2042,7 @@ namespace IDE.ui
 							let width = GetValueEditWidth(subItem);
 							propEntry.mEditInsets.mRight = GS!(22);
 							browseButton.mLabelYOfs = GS!(-2);
-							browseButton.Resize(width - GS!(21), GS!(1), GS!(20), subItem.mHeight - 2);
+							browseButton.Resize(width - GS!(21), GS!(1), GS!(20), Math.Max(subItem.mHeight - 2, 0));
 							
 						});
 					subItem.AddWidget(browseButton);
