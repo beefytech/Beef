@@ -5130,10 +5130,16 @@ namespace IDE.ui
 			if (!mIsBeefSource)
 				return;
 
-            var bfSystem = IDEApp.sApp.mBfResolveSystem;
+			var bfSystem = IDEApp.sApp.mBfResolveSystem;
 			if (bfSystem == null)
 				return;
-            var parser = bfSystem.CreateEmptyParser(null);
+			let projectSource = FilteredProjectSource;
+			BfProject bfProject = null;
+			if ((projectSource != null) && (mIsBeefSource))
+			{
+			    bfProject = bfSystem.GetBfProject(projectSource.mProject);
+			}
+            var parser = bfSystem.CreateEmptyParser(bfProject);
 			defer delete parser;
             var text = scope String();
             mEditWidget.GetText(text);
