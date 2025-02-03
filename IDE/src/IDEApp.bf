@@ -9761,7 +9761,7 @@ namespace IDE
 
 					if (buildCompletedCmd.mFailed)
 						OutputLineSmart("ERROR: BUILD FAILED. Total build time: {0:0.00}s", buildCompletedCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
-					if ((mVerbosity >= .Detailed) && (buildCompletedCmd.mStopwatch != null))
+					else if ((mVerbosity >= .Detailed) && (buildCompletedCmd.mStopwatch != null))
 						OutputLineSmart("SUCCESS: Build completed with no errors. Total build time: {0:0.00}s", buildCompletedCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
 
 					if (mDebugger?.mIsComptimeDebug == true)
