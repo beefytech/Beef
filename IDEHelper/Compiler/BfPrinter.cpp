@@ -1337,6 +1337,8 @@ void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 		{
 			int srcLineStart = 0;
 
+			bool startsOnEmptyLine = true;
+
 			int checkIdx = literalExpr->GetSrcStart() - 1;
 			while (checkIdx >= 0)
 			{
@@ -1346,11 +1348,18 @@ void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 					srcLineStart = checkIdx + 1;
 					break;
 				}
+				if ((c != '\t') && (c != ' '))
+					startsOnEmptyLine = false;
 				checkIdx--;
 			}
-
+						
 			int queuedSpaceCount = mQueuedSpaceCount;
 			FlushIndent();
+
+			if (!startsOnEmptyLine)
+			{
+				queuedSpaceCount = mCurIndentLevel * mTabSize;
+			}
 
 			for (int i = literalExpr->GetSrcStart(); i < (int)literalExpr->GetSrcEnd(); i++)
 			{
@@ -1378,6 +1387,9 @@ void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 					i--;
 				}
 			}
+
+// 			if (!startsOnEmptyLine)
+// 				mCurIndentLevel--;
 
 			return;
 		}
