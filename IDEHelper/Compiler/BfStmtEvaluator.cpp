@@ -2381,6 +2381,7 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 		BfTypedValue mArgValue;
 		BfTypedValue mTupleElement;
 		int mFieldIdx;
+		bool mIsOut;
 	};
 	Array<DeferredAssign> deferredAssigns;
 
@@ -2532,7 +2533,7 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 
 				BfExprEvaluator exprEvaluator(this);
 				exprEvaluator.mExpectingType = tupleFieldInstance->GetResolvedType();
-				exprEvaluator.mBfEvalExprFlags = BfEvalExprFlags_AllowOutExpr;
+				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(BfEvalExprFlags_AllowOutExpr | BfEvalExprFlags_AllowRefExpr);
 				if (mCurMethodState->mDeferredLocalAssignData != NULL)
 				{
 					SetAndRestoreValue<bool> prevIsIfCondition(mCurMethodState->mDeferredLocalAssignData->mIsIfCondition, true);
@@ -2554,25 +2555,30 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 				if (argValue.mType->IsRef())
 				{
 					auto refType = (BfRefType*)argValue.mType;
-					if (refType->mRefKind != BfRefType::RefKind_Out)
-					{
-						BfAstNode* refNode = expr;
-						if (auto unaryOperatorExpr = BfNodeDynCast<BfUnaryOperatorExpression>(expr))
-							refNode = unaryOperatorExpr->mOpToken;
-						Fail("Only 'out' refs can be used to assign to an existing value", refNode);
-					}
-
-					DeferredAssign deferredAssign = { expr, argValue, tupleElement, tupleFieldIdx };
+					bool isOut = refType->mRefKind == BfRefType::RefKind_Out;
+ 					if ((refType->mRefKind != BfRefType::RefKind_Out) && (refType->mRefKind != BfRefType::RefKind_Ref))
+ 					{
+ 						BfAstNode* refNode = expr;
+ 						if (auto unaryOperatorExpr = BfNodeDynCast<BfUnaryOperatorExpression>(expr))
+ 							refNode = unaryOperatorExpr->mOpToken;
+ 						Fail("Invalid ref type", refNode);
+ 					}
+					
+					DeferredAssign deferredAssign = { expr, argValue, tupleElement, tupleFieldIdx, isOut };
 					deferredAssigns.push_back(deferredAssign);
-					if (mCurMethodState->mDeferredLocalAssignData != NULL)
-					{
-						SetAndRestoreValue<bool> prevIsIfCondition(mCurMethodState->mDeferredLocalAssignData->mIsIfCondition, true);
-						SetAndRestoreValue<bool> prevIfMayBeSkipped(mCurMethodState->mDeferredLocalAssignData->mIfMayBeSkipped, true);
-						exprEvaluator.MarkResultAssigned();
-					}
-					else
-					{
-						exprEvaluator.MarkResultAssigned();
+
+					if (isOut)
+					{						
+						if (mCurMethodState->mDeferredLocalAssignData != NULL)
+						{
+							SetAndRestoreValue<bool> prevIsIfCondition(mCurMethodState->mDeferredLocalAssignData->mIsIfCondition, true);
+							SetAndRestoreValue<bool> prevIfMayBeSkipped(mCurMethodState->mDeferredLocalAssignData->mIfMayBeSkipped, true);
+							exprEvaluator.MarkResultAssigned();
+						}
+						else
+						{
+							exprEvaluator.MarkResultAssigned();
+						}
 					}
 					continue;
 				}
@@ -2626,6 +2632,9 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 		mBfIRBuilder->SetInsertPoint(falseBlockEnd);
 		for (auto& deferredAssign : deferredAssigns)
 		{
+			if (!deferredAssign.mIsOut)
+				continue;
+
 			auto tupleFieldInstance = &tupleType->mFieldInstances[deferredAssign.mFieldIdx];
 			// We have to re-process the expr because we haven't done it in this branch, and then clear the result out
 			SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, mHadBuildError); // Don't fail twice
