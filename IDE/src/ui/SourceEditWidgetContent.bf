@@ -1,3 +1,4 @@
+#pragma warning disable 168
 using System;
 using System.Collections;
 using System.Text;
@@ -5179,6 +5180,33 @@ namespace IDE.ui
             }
         }
 
+		void SetCollapseLineOpen(int line, bool wantOpen, bool includeChildren)
+		{
+			List<int32> collapseOpenList = scope .();
+			CollapseEntry* parentCollapse = null;
+
+			for (var collapse in mOrderedCollapseEntries)
+			{
+				if (parentCollapse == null)
+				{
+					if (collapse.mAnchorLine == line)
+					{
+						parentCollapse = collapse;
+						collapseOpenList.Add((.)@collapse.Index);
+						if (!includeChildren)
+							break;
+					}
+				}
+				else if ((collapse.mAnchorLine >= parentCollapse.mStartLine) && (collapse.mAnchorLine < parentCollapse.mEndLine))
+				{
+					collapseOpenList.Add((.)@collapse.Index);
+				}
+			}
+
+			for (int32 collapseIdx in collapseOpenList)
+				SetCollapseOpen(collapseIdx, wantOpen);
+		}
+
 		public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
 		{
 			int line = GetLineAt(y);
@@ -5191,16 +5219,41 @@ namespace IDE.ui
 					embed.MouseDown(GetEmbedRect(line, embed), x, y, btn, btnCount);
 					if (btn == 0)
 					{
-						if (btnCount % 2 == 0)
+						bool hasCtrl = mWidgetWindow.IsKeyDown(.Control);
+						if ((btnCount % 2 == 0) || (hasCtrl))
 						{
 							if (var collapseSummary = embed as SourceEditWidgetContent.CollapseSummary)
-								SetCollapseOpen(collapseSummary.mCollapseIndex, true);
+							{
+								SetCollapseLineOpen(line, true, hasCtrl);
+							}	
 							else if (var emitEmbed = embed as EmitEmbed)
 							{
 								emitEmbed.mIsOpen = !emitEmbed.mIsOpen;
 								mCollapseNeedsUpdate = true;
 							}
 						}
+					}
+					else if (btn == 1)
+					{
+						float useX = x;
+						float useY = y;
+
+						Menu menu = new Menu();
+
+						var menuItem = menu.AddItem("Expand");
+						menuItem.mOnMenuItemSelected.Add(new (evt) =>
+							{
+								SetCollapseLineOpen(line, true, false);
+							});
+
+						menuItem = menu.AddItem("Expand All|Ctrl+Click");
+						menuItem.mOnMenuItemSelected.Add(new (evt) =>
+							{
+								SetCollapseLineOpen(line, true, true);
+							});
+
+						MenuWidget menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
+						menuWidget.Init(this, useX, useY);
 					}
 					return;
 				}
@@ -6547,7 +6600,6 @@ namespace IDE.ui
 			}
 		}
 
-		
 		public void SetCollapseOpen(int collapseIdx, bool wantOpen, bool immediate = false, bool keepCursorVisible = false)
 		{
 			var entry = mOrderedCollapseEntries[collapseIdx];

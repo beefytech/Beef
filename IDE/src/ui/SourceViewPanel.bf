@@ -7364,7 +7364,13 @@ namespace IDE.ui
 							int collapseIndex = collapseVal & CollapseRegionView.cIdMask;
 
 							var entry = ewc.mOrderedCollapseEntries[collapseIndex];
-							ewc.SetCollapseOpen(collapseIndex, !entry.mIsOpen);
+
+							if ((mWidgetWindow.IsKeyDown(.Control)))
+							{
+								ewc.[Friend]SetCollapseLineOpen(lineClick, !entry.mIsOpen, true);
+							}
+							else
+								ewc.SetCollapseOpen(collapseIndex, !entry.mIsOpen);
 						}
 						return;
 					}
