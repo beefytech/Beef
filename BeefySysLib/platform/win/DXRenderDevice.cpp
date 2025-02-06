@@ -648,7 +648,7 @@ void DXTexture::PhysSetAsTarget()
 		mRenderDevice->mD3DDeviceContext->RSSetViewports(1, &viewPort);
 	}
 
-	//if (!mHasBeenDrawnTo)
+	if (mWantsClear)
 	{
 		float bgColor[4] = {1, (rand() % 256) / 256.0f, 0.5, 1};
 		mRenderDevice->mD3DDeviceContext->ClearRenderTargetView(mD3DRenderTargetView, bgColor);
@@ -657,6 +657,8 @@ void DXTexture::PhysSetAsTarget()
 
 		//mRenderDevice->mD3DDevice->ClearRenderTargetView(mD3DRenderTargetView, D3DXVECTOR4(1, 0.5, 0.5, 1));
 		mHasBeenDrawnTo = true;
+		if (mResetClear)
+			mWantsClear = false;
 	}
 }
 

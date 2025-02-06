@@ -6,6 +6,7 @@ using Beefy.geom;
 using Beefy.utils;
 using System.Diagnostics;
 using System.Threading;
+using res;
 
 namespace Beefy.gfx
 {
@@ -515,6 +516,14 @@ namespace Beefy.gfx
 
 		void GetFontPath(StringView fontName, String path)
 		{
+			if (fontName.StartsWith('['))
+			{
+				path.Set(fontName);
+				if (FilePackManager.TryMakeMemoryString(path))
+					return;
+				path.Clear();
+			}
+
 			if (fontName.Contains('.'))
 			{
 				Path.GetAbsolutePath(fontName, BFApp.sApp.mInstallDir, path);
@@ -1014,6 +1023,8 @@ namespace Beefy.gfx
 				}
 
                 CharData charData = GetCharData(c);
+				if (charData == null)
+					continue;
 				float drawX = curX + charData.mXOffset;
 				float drawY = curY + charData.mYOffset;
 				

@@ -561,9 +561,10 @@ static class FilePackManager
 	{
 		if (TryGetMemory(path) case .Ok(let val))
 		{
+			String prevPath = scope .()..Append(path);
+
 			var ext = Path.GetExtension(path, .. scope .());
-			path.Set(scope $"@{(int)(void*)val.Ptr:X}:{val.Length}");
-			path.Append(ext);
+			path.Set(scope $"@{(int)(void*)val.Ptr:X}:{val.Length}:{prevPath}");
 			return true;
 		}
 		return false;

@@ -34,6 +34,8 @@ RenderTarget::RenderTarget()
 	mHasBeenDrawnTo = false;
 	mHasBeenTargeted = false;
 	mResizeNum = 0;
+	mWantsClear = true;
+	mResetClear = false;
 }
 
 RenderWindow::RenderWindow()

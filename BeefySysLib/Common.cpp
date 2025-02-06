@@ -1380,9 +1380,11 @@ void Beefy::BFFatalError(const char* message, const char* file, int line)
 	BFFatalError(String(message), String(file), line);
 }
 
-bool Beefy::ParseMemorySpan(const StringImpl& str, void*& outPtr, int& outSize)
+bool Beefy::ParseMemorySpan(const StringImpl& str, void*& outPtr, int& outSize, StringImpl* outKey)
 {
 #ifndef BF_SMALL
+	static int anonymousIdx = 0;
+
 	if (str.StartsWith("@"))
 	{
 		int colon = (int)str.IndexOf(':');
@@ -1390,6 +1392,21 @@ bool Beefy::ParseMemorySpan(const StringImpl& str, void*& outPtr, int& outSize)
 		String lenStr = str.Substring(colon + 1);
 		outPtr = (void*)(intptr)strtoll(addrStr.c_str(), NULL, 16);
 		outSize = (int)strtol(lenStr.c_str(), NULL, 10);
+
+		if (outKey != NULL)
+		{
+			int nextColon = (int)str.IndexOf(':', colon + 1);
+			if (nextColon > 0)
+			{
+				*outKey = str.Substring(nextColon + 1);
+			}
+			else
+			{
+				int dotPos = (int)str.IndexOf('.', colon + 1);
+				*outKey = StrFormat("ANON_%d", anonymousIdx++) + str.Substring(dotPos);
+			}
+		}
+
 		return true;
 	}
 #endif

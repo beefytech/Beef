@@ -110,7 +110,7 @@ namespace Beefy
 
         public virtual void PreDraw(Graphics g)
         {
-            g.PushDrawLayer(mDefaultDrawLayer);            
+            g.PushDrawLayer(mDefaultDrawLayer);
         }
 
         public virtual void PostDraw(Graphics g)
