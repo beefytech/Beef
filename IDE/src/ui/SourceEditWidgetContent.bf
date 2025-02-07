@@ -4193,8 +4193,10 @@ namespace IDE.ui
                 //int cursorTextPos = CursorTextPos;
                 if (cursorTextPos < mData.mTextLength)
                 {
-                    charUnderCursor = (char8)mData.mText[cursorTextPos].mChar;
-					cursorInOpenSpace = ((charUnderCursor == ')') || (charUnderCursor == ']') || (charUnderCursor == ';') || (charUnderCursor == (char8)0) || (charUnderCursor.IsWhiteSpace));
+                    let charData = mData.mText[cursorTextPos];
+                    let cursorInLiteral = (SourceElementType)charData.mDisplayTypeId == .Literal;
+                    charUnderCursor = (char8)charData.mChar;
+					cursorInOpenSpace = ((!cursorInLiteral) && ((charUnderCursor == ')') || (charUnderCursor == ']') || (charUnderCursor == ';') || (charUnderCursor == (char8)0) || (charUnderCursor.IsWhiteSpace)));
 
 					if (((keyChar == '(') && (charUnderCursor == ')')) ||
 						((keyChar == '[') && (charUnderCursor == ']')))
@@ -4229,7 +4231,7 @@ namespace IDE.ui
 	                        }
 							else
 							{
-								if ((keyChar == '"') || (keyChar == '\''))
+								if ((!cursorInLiteral) && ((keyChar == '"') || (keyChar == '\'')))
 									cursorInOpenSpace = true;
 							}
 						}
