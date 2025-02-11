@@ -229,6 +229,7 @@ namespace IDE
 		public HashSet<String> mWantUpdateVersionLocks ~ DeleteContainerAndItems!(_);
 		public Settings mSettings = new Settings() ~ delete _;
 		public Workspace mWorkspace = new Workspace() ~ delete _;
+		public Dictionary<String, String> mCustomProperties = new .() ~ DeleteDictionaryAndValues!(_);
 		public FileWatcher mFileWatcher = new FileWatcher() ~ delete _;
 #if !CLI
 		public FileRecovery mFileRecovery = new FileRecovery() ~ delete _;
@@ -894,6 +895,8 @@ namespace IDE
 				mExecutionPaused = false;
 			}
 
+			ClearProperties();
+
 			base.Shutdown();
 		}
 
@@ -987,6 +990,7 @@ namespace IDE
 			mWorkspace.mName = new String();
 			Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
 
+			LoadProperties(true);
 			LoadWorkspace(.OpenOrNew);
 			FinishShowingNewWorkspace();
 		}
@@ -2258,6 +2262,23 @@ namespace IDE
 			outResult.Append(mInstallDir, "/DefaultLayout.toml");
 		}
 
+		void GetPropertiesFileName(String outResult)
+		{
+			String workspaceDir = scope String();
+
+			if (mWorkspace.mDir == null)
+			{
+				Directory.GetCurrentDirectory(workspaceDir);
+			}
+			else
+			{
+				workspaceDir = mWorkspace.mDir;
+			}
+
+			outResult.Append(workspaceDir, "/BeefProperties.toml");
+			IDEUtils.FixFilePath(outResult);
+		}
+
 		bool GetWorkspaceFileName(String outResult)
 		{
 			if (mWorkspace.mDir == null)
@@ -2957,6 +2978,65 @@ namespace IDE
 			FlushDeferredLoadProjects();
 		}
 
+		public void ClearProperties()
+		{
+			for (var entry in mCustomProperties)
+			{
+				delete entry.key;
+				delete entry.value;
+			}
+
+			mCustomProperties.Clear();
+		}
+
+		public void LoadProperties(bool clear = false)
+		{
+			const char8* PROPERTIES_STR = "Properties";
+
+			if (clear)
+			{
+				ClearProperties();
+			}
+
+			String propertiesFileName = scope String();
+			GetPropertiesFileName(propertiesFileName);
+
+			if (!File.Exists(propertiesFileName))
+			{
+				return;
+			}
+
+			StructuredData data = scope StructuredData();
+			if (StructuredLoad(data, propertiesFileName) case .Err(let err))
+			{
+				OutputErrorLine("Failed to load properties '{0}'", propertiesFileName);
+				LoadFailed();
+				return;
+			}
+
+			if (!data.Contains(PROPERTIES_STR))
+			{
+				return;
+			}
+
+			for (var propertyName in data.Enumerate(PROPERTIES_STR))
+			{
+				String propertyKey = new String();
+				propertyName.ToString(propertyKey);
+
+				if (mCustomProperties.ContainsKey(propertyKey))
+				{
+					delete propertyKey;
+					continue;
+				}
+
+				String propertyValue = new String();
+				data.GetCurString(propertyValue);
+
+				mCustomProperties.Add(propertyKey, propertyValue);
+			}
+		}
+
 		protected void LoadWorkspace(BeefVerb verb)
 		{
 			scope AutoBeefPerf("IDEApp.LoadWorkspace");
@@ -3135,6 +3215,15 @@ namespace IDE
 							LoadFailed();
 							continue;
 						}
+						else if (projSpec.mVerSpec case .Path(let projPath))
+						{
+							String resolvedProjPath = scope String();
+							if (gApp.ResolveConfigString(null, null, null, null, projPath, "custom properties", resolvedProjPath))
+							{
+								projPath.Clear();
+								projPath.Append(resolvedProjPath);
+							}
+						}
 
 						switch (AddProject(projectName, projSpec.mVerSpec))
 						{
@@ -3184,6 +3273,7 @@ namespace IDE
 			CloseWorkspace();
 			mWorkspace.mDir = new String(workspaceDir);
 			mWorkspace.mName = new String(workspaceName);
+			LoadProperties(true);
 			LoadWorkspace(.Open);
 			FinishShowingNewWorkspace();
 		}
@@ -10920,6 +11010,12 @@ namespace IDE
 								case "BeefPath":
 									newString = gApp.mInstallDir;
 								default:
+									// Check if any custom properties match the string.
+									if (mCustomProperties.ContainsKey(replaceStr))
+									{
+										newString = scope:ReplaceBlock String();
+										newString.Append(mCustomProperties[replaceStr]);
+									}
 								}
 							}
 
