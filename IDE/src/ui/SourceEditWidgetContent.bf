@@ -858,6 +858,7 @@ namespace IDE.ui
             SetFont(IDEApp.sApp.mCodeFont, true, true);
 			//SetFont(DarkTheme.sDarkTheme.mSmallFont, false, false);
 
+			mLineHeight = Math.Clamp(gApp.mSettings.mEditorSettings.mLineHeight, 0.125f, 10.0f);
 			mWantsTabsAsSpaces = gApp.mSettings.mEditorSettings.mTabsOrSpaces == .Spaces;
 			mTabLength = gApp.mSettings.mEditorSettings.mTabSize;
             mTabSize = mFont.GetWidth(scope String(' ', gApp.mSettings.mEditorSettings.mTabSize));
