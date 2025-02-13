@@ -575,7 +575,7 @@ namespace Beefy.theme.dark
 			{
 				if (mHiliteCurrentLine && selStartIdx == selEndIdx)
 				{
-					float thickness = 2 * (fontLineSpacing / 18);
+					float thickness = Math.Ceiling(2 * (Math.Floor(fontLineSpacing) / 18));
 					// This isn't quite the right value, but I'm not sure how to get this
 					// to properly highlight the whole line without getting cut off - this works well for now.
 					float totalLineWidth = mEditWidget.mScrollContentContainer.mWidth - thickness;
