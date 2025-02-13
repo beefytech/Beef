@@ -4550,7 +4550,7 @@ namespace IDE.ui
                 {
 					float editX = GetEditX();
 
-					float lineSpacing = ewc.mFont.GetLineSpacing();
+					float lineSpacing = ewc.mFont.GetLineSpacing(ewc.mLineHeight);
 					int cursorLineNumber = mEditWidget.mEditWidgetContent.CursorLineAndColumn.mLine;
 					bool hiliteCurrentLine = mEditWidget.mHasFocus;
 
@@ -4719,6 +4719,8 @@ namespace IDE.ui
                         }*/
                     }
 
+					float offset = ewc.GetTextOffset();
+
 					if ((gApp.mSettings.mEditorSettings.mShowLineNumbers) && (mEmbedKind == .None))
 					{
 						String lineStr = scope String(16);
@@ -4748,7 +4750,7 @@ namespace IDE.ui
 								default: lineStr.AppendF("{0}", lineIdx + 1);
 								}
 								using (g.PushColor(DarkTheme.COLOR_TEXT))
-						        	g.DrawString(lineStr, 0, GS!(2) + ewc.mLineCoords[lineIdx], FontAlign.Right, editX - GS!(14));
+						        	g.DrawString(lineStr, 0, GS!(2) + ewc.mLineCoords[lineIdx] + offset, FontAlign.Right, editX - GS!(14));
 						    }
 						}
 					}
@@ -4787,7 +4789,7 @@ namespace IDE.ui
 							{
 								using (g.PushColor(0xFFA5A5A5))
 								{
-									g.FillRect(editX - (int)GS!(7.5f), ewc.mLineCoords[lineIdx] - (int)GS!(0.5f), (int)GS!(1.5f), lineSpacing);
+									g.FillRect(editX - (int)GS!(7.5f), ewc.mLineCoords[lineIdx] - offset - (int)GS!(0.5f), (int)GS!(1.5f), lineSpacing + offset);
 									g.FillRect(editX - (int)GS!(7.5f), ewc.mLineCoords[lineIdx] + lineSpacing - (int)GS!(1.5f), GS!(5), (int)GS!(1.5f));
 								}
 							}

@@ -50,6 +50,7 @@ namespace Beefy.theme.dark
 		}
 
         public Font mFont;                
+		public float mLineHeight = 1.0f;
         public uint32[] mTextColors = sDefaultColors;
         public uint32 mHiliteColor = 0xFF2f5c88;
         public uint32 mUnfocusedHiliteColor = 0x00000000;
@@ -104,7 +105,7 @@ namespace Beefy.theme.dark
 			mLineCoords.GrowUninitialized(mData.mLineStarts.Count);
 			mLineCoordJumpTable.Clear();
 
-			float fontHeight = mFont.GetLineSpacing();
+			float fontHeight = mFont.GetLineSpacing(mLineHeight);
 			int prevJumpIdx = -1;
 			float jumpCoordSpacing = GetJumpCoordSpacing();
 
@@ -212,6 +213,13 @@ namespace Beefy.theme.dark
 			if ((line >= 0) && (line < mLineCoords.Count))
 				return mLineCoords[line];
 			return defaultVal;
+		}
+
+		public float GetTextOffset()
+		{
+			float baseLineSpacing = mFont.GetLineSpacing();
+			float lineSpacing = mFont.GetLineSpacing(mLineHeight);
+			return lineSpacing / 2.0f - baseLineSpacing / 2.0f;
 		}
 
 		public int FindUncollapsedLine(int line)
@@ -509,7 +517,7 @@ namespace Beefy.theme.dark
 				((embed.mKind == .HideLine) && (!hideLine)))
 				selStartX += GS!(4);
 
-			Rect rect = .(selStartX, mLineCoords[lineIdx] - GS!(1), embed.GetWidth(hideLine), mFont.GetLineSpacing() + GS!(3));
+			Rect rect = .(selStartX, mLineCoords[lineIdx] - GS!(1) + GetTextOffset(), embed.GetWidth(hideLine), mFont.GetLineSpacing() + GS!(3));
 			if (rect.mY < 0)
 				rect.mY = 0;
 			return rect;
@@ -526,7 +534,9 @@ namespace Beefy.theme.dark
 
 #unwarn
             int lineCount = GetLineCount();
-            float lineSpacing = mFont.GetLineSpacing();
+            float lineSpacing = mFont.GetLineSpacing(mLineHeight);
+			float fontLineSpacing = mFont.GetLineSpacing();
+			float textYOffset = GetTextOffset();
 
 			float offsetY = mTextInsets.mTop;
 			if (mHeight < lineSpacing)
@@ -565,7 +575,7 @@ namespace Beefy.theme.dark
 			{
 				if (mHiliteCurrentLine && selStartIdx == selEndIdx)
 				{
-					float thickness = 2 * (lineSpacing / 18);
+					float thickness = 2 * (fontLineSpacing / 18);
 					// This isn't quite the right value, but I'm not sure how to get this
 					// to properly highlight the whole line without getting cut off - this works well for now.
 					float totalLineWidth = mEditWidget.mScrollContentContainer.mWidth - thickness;
@@ -596,18 +606,18 @@ namespace Beefy.theme.dark
 			        if (mCharWidth <= 2)
 			        {
 			            using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness * 0.75f))))
-			                g.FillRect(x, y, GS!(2), lineSpacing);
+			                g.FillRect(x, y + textYOffset, GS!(2), fontLineSpacing);
 			        }
 			        else
 			        {
 			            using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness * 0.30f))))
-			                g.FillRect(x, y, mCharWidth, lineSpacing);
+			                g.FillRect(x, y + textYOffset, mCharWidth, fontLineSpacing);
 			        }
 			    }
 			    else
 			    {
 					using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness))))
-			            g.FillRect(x, y, Math.Max(1.0f, GS!(1)), lineSpacing);
+			            g.FillRect(x, y + textYOffset, Math.Max(1.0f, GS!(1)), fontLineSpacing);
 			    }
 			    drewCursor = true;
 			}
@@ -701,7 +711,7 @@ namespace Beefy.theme.dark
                     }
 
                     float nextX = curX;
-                    nextX = DrawText(g, sectionText, curX, curY, curTypeIdAndFlags);                                        
+                    nextX = DrawText(g, sectionText, curX, curY + textYOffset, curTypeIdAndFlags);                                        
                     DrawSectionFlagsOver(g, curX, curY, nextX - curX, flags);
 
                     //int32 lineDrawStartColumn = lineDrawStart - lineStart;
