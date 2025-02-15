@@ -1659,7 +1659,11 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 
 	auto _CheckConst = [&]
 	{
-		if (initValue.mValue.IsConst())
+		if (initValue.IsAddr())
+		{
+			isConst = false;
+		}
+		else if (initValue.mValue.IsConst())
 		{
 			auto constant = mBfIRBuilder->GetConstant(initValue.mValue);
 
