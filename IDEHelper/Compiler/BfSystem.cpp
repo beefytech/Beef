@@ -3207,6 +3207,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		typeDef->mSystem = partialTypeDef->mSystem;
 		typeDef->mTypeCode = partialTypeDef->mTypeCode;
 		typeDef->mShow = partialTypeDef->mShow;
+		typeDef->mIsOpaque = partialTypeDef->mIsOpaque;
 		typeDef->mIsFunction = partialTypeDef->mIsFunction;
 		typeDef->mIsDelegate = partialTypeDef->mIsDelegate;
 		typeDef->mNestDepth = partialTypeDef->mNestDepth;

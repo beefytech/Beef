@@ -5595,6 +5595,21 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 					if ((!fieldDef->mIsConst) && (!fieldDef->mIsStatic))
 					{
+						BfAstNode* nameRefNode = NULL;
+						if (auto fieldDecl = fieldDef->GetFieldDeclaration())
+							nameRefNode = fieldDecl->mNameNode;
+						else if (auto paramDecl = fieldDef->GetParamDeclaration())
+							nameRefNode = paramDecl->mNameNode;
+						if (nameRefNode == NULL)
+							nameRefNode = fieldDef->mTypeRef;
+
+						if ((!resolvedFieldType->IsValuelessType()) && (typeDef->mIsOpaque))
+						{
+							Fail(StrFormat("Opaque type '%s' attempted to declare non-static field '%s'", TypeToString(typeInstance).c_str(), fieldDef->mName.c_str()), nameRefNode, true);
+							resolvedFieldType = GetPrimitiveType(BfTypeCode_None);
+							fieldInstance->mResolvedType = resolvedFieldType;
+						}
+
 						PopulateType(resolvedFieldType, resolvedFieldType->IsValueType() ? BfPopulateType_Data : BfPopulateType_Declaration);
 						if (resolvedFieldType->WantsGCMarking())
 							typeInstance->mWantsGCMarking = true;
@@ -5611,15 +5626,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						if (fieldDef->mIsExtern)
 						{
 							Fail("Cannot declare instance member as 'extern'", fieldDef->GetFieldDeclaration()->mExternSpecifier, true);
-						}
-
-						BfAstNode* nameRefNode = NULL;
-						if (auto fieldDecl = fieldDef->GetFieldDeclaration())
-							nameRefNode = fieldDecl->mNameNode;
-						else if (auto paramDecl = fieldDef->GetParamDeclaration())
-							nameRefNode = paramDecl->mNameNode;
-						if (nameRefNode == NULL)
-							nameRefNode = fieldDef->mTypeRef;
+						}						
 
 						if (!allowInstanceFields)
 						{
@@ -5677,7 +5684,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 							}
 							else if (!resolvedFieldType->IsObject())
 								Fail("Append fields must be classes", nameRefNode, true);
-						}
+						}						
 
 						BF_ASSERT(dataSize >= 0);
 						fieldInstance->mDataSize = dataSize;

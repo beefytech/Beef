@@ -3488,6 +3488,7 @@ void BfCompiler::UpdateRevisedTypes()
 							compositeTypeDef->mTypeCode = rootTypeDef->mTypeCode;
 						compositeTypeDef->mFullName = rootTypeDef->mFullName;
 						compositeTypeDef->mFullNameEx = rootTypeDef->mFullNameEx;
+						compositeTypeDef->mIsOpaque = rootTypeDef->mIsOpaque;
 						compositeTypeDef->mIsFunction = rootTypeDef->mIsFunction;
 						compositeTypeDef->mIsDelegate = rootTypeDef->mIsDelegate;
 						compositeTypeDef->mIsCombinedPartial = true;
