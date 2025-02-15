@@ -25171,6 +25171,14 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 						{
 							isError = false;
 						}
+						else if (mCurTypeInstance->IsEnum())
+						{
+							if (((methodInstance->mReturnType == typeInstance) && (methodInstance->GetParamType(0)->IsInteger())) ||
+								((methodInstance->mReturnType->IsInteger()) && (methodInstance->GetParamType(0) == typeInstance)))
+							{
+								isError = false;
+							}
+						}
 					}
 				}
 			}

@@ -102,6 +102,13 @@ namespace Tests
 			SDL_BUTTON_LMASK    = (1u << ((SDL_BUTTON_LEFT.Underlying) - 1)),
 		}
 
+		public enum EnumL
+		{
+			case A;
+
+			public static int operator implicit(Self self);
+		}
+
 		[Test]
 		static void TestBasic()
 		{
@@ -249,6 +256,9 @@ namespace Tests
 
 			Test.Assert((int)EnumK.SDL_BUTTON_LMASK == 1);
 			Test.Assert(typeof(EnumK).Size == 8);
+
+			EnumL el = .A;
+			Test.Assert(el == 0);
 		}
 	}
 }

@@ -14672,6 +14672,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				{
 					typedVal = LoadValue(typedVal);
 					auto convTypedValue = BfTypedValue(typedVal.mValue, fromType->GetUnderlyingType());
+					if ((fromType->IsEnum()) && (convTypedValue.mType->IsVoid()) && (methodMatcher.mBestRawMethodInstance != NULL))
+					{
+						if (methodMatcher.mBestRawMethodInstance)
+							convTypedValue = GetDefaultTypedValue(methodMatcher.mBestRawMethodInstance->mReturnType);
+					}
 					return CastToValue(srcNode, convTypedValue, toType, (BfCastFlags)(castFlags & ~BfCastFlags_Explicit), NULL);
 				}
 				else if (toType->IsTypedPrimitive())
