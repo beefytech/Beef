@@ -4861,7 +4861,7 @@ namespace IDE.ui
 								mLinePointerDrawData.mUpdateCnt = gApp.mUpdateCnt;
 								mLinePointerDrawData.mDebuggerContinueIdx = gApp.mDebuggerContinueIdx;
 								g.Draw(img, mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
-									0 + ewc.GetLineY(lineNum, 0));
+									0 + ewc.GetLineY(lineNum, 0) + ewc.GetTextOffset());
 							}
 
 							if (mMousePos != null && mIsDraggingLinePointer)
@@ -4871,7 +4871,7 @@ namespace IDE.ui
 								{
 									using (g.PushColor(0x7FFFFFFF))
 										g.Draw(img, mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
-											0 + ewc.GetLineY(dragLineNum, 0));
+											0 + ewc.GetLineY(dragLineNum, 0) + ewc.GetTextOffset());
 								}
 							}
                         }
@@ -7558,7 +7558,7 @@ namespace IDE.ui
 				SourceEditWidgetContent ewc = (.)mEditWidget.Content;
 				Rect linePointerRect = .(
 					mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
-					0 + ewc.GetLineY(mLinePointerDrawData.mLine, 0),
+					0 + ewc.GetLineY(mLinePointerDrawData.mLine, 0) + ewc.GetTextOffset(),
 					GS!(15),
 					GS!(15)
 				);
@@ -7575,7 +7575,7 @@ namespace IDE.ui
 			else if (mIsDraggingLinePointer)
 			{
 				SourceEditWidgetContent ewc = (.)mEditWidget.Content;
-				float linePos = ewc.GetLineY(GetLineAt(0, mMousePos.Value.y), 0);
+				float linePos = ewc.GetLineY(GetLineAt(0, mMousePos.Value.y), 0) + ewc.GetTextOffset();
 				Rect visibleRange = mEditWidget.GetVisibleContentRange();
 
 				if (visibleRange.Top > linePos)
