@@ -894,11 +894,11 @@ namespace Beefy.gfx
             return (int32)theString.Length;
         }
 
-        public float GetLineSpacing(float heightMultiplier = 1.0f)
+        public float GetLineSpacing()
         {
 			if (mFTFont == null)
 				return 0;
-            return mFTFont.mHeight * heightMultiplier;
+            return mFTFont.mHeight;
         }
 
 		public float GetHeight()
