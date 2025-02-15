@@ -105,7 +105,7 @@ namespace Beefy.theme.dark
 			mLineCoords.GrowUninitialized(mData.mLineStarts.Count);
 			mLineCoordJumpTable.Clear();
 
-			float fontHeight = mFont.GetLineSpacing() * mLineHeight;
+			float fontHeight = Math.Round(mFont.GetLineSpacing() * mLineHeight);
 			int prevJumpIdx = -1;
 			float jumpCoordSpacing = GetJumpCoordSpacing();
 
@@ -218,7 +218,7 @@ namespace Beefy.theme.dark
 		public float GetTextOffset()
 		{
 			float baseLineSpacing = mFont.GetLineSpacing();
-			float lineSpacing = mFont.GetLineSpacing() * mLineHeight;
+			float lineSpacing = Math.Round(mFont.GetLineSpacing() * mLineHeight);
 			return lineSpacing / 2.0f - baseLineSpacing / 2.0f;
 		}
 
@@ -534,7 +534,7 @@ namespace Beefy.theme.dark
 
 #unwarn
             int lineCount = GetLineCount();
-            float lineSpacing = mFont.GetLineSpacing() * mLineHeight;
+            float lineSpacing = Math.Round(mFont.GetLineSpacing() * mLineHeight);
 			float fontLineSpacing = mFont.GetLineSpacing();
 			float textYOffset = GetTextOffset();
 
