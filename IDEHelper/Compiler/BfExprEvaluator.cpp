@@ -11763,7 +11763,7 @@ void BfExprEvaluator::Visit(BfMixinExpression* mixinExpr)
 
 void BfExprEvaluator::Visit(BfSizedArrayCreateExpression* createExpr)
 {
-	auto type = mModule->ResolveTypeRef(createExpr->mTypeRef);
+	auto type = mModule->ResolveTypeRef(createExpr->mTypeRef, NULL, BfPopulateType_Data, BfResolveTypeRefFlag_AllowInferredSizedArray);
 	if (type == NULL)
 		return;
 
@@ -11787,6 +11787,14 @@ void BfExprEvaluator::Visit(BfSizedArrayCreateExpression* createExpr)
 	{
 		mModule->Fail("Sized array expected", createExpr->mTypeRef);
 		return;
+	}
+
+	if (type->IsUndefSizedArray())
+	{
+		int arraySize = 0;
+		if (createExpr->mInitializer != NULL)
+			arraySize = (int)createExpr->mInitializer->mValues.size();
+		type = mModule->CreateSizedArrayType(type->GetUnderlyingType(), arraySize);
 	}
 
 	BfSizedArrayType* arrayType = (BfSizedArrayType*)type;
