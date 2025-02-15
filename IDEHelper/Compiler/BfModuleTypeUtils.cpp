@@ -3590,7 +3590,13 @@ void BfModule::DoPopulateType_InitSearches(BfTypeInstance* typeInstance)
 }
 
 void BfModule::DoPopulateType_FinishEnum(BfTypeInstance* typeInstance, bool underlyingTypeDeferred, HashContext* dataMemberHashCtx, BfType* unionInnerType)
-{
+{	
+	if (typeInstance->mDefineState >= BfTypeDefineState_DefinedAndMethodsSlotting)
+	{
+		// Already locked
+		return;
+	}
+
 	if (typeInstance->IsEnum())
 	{
 		int64 min = 0;

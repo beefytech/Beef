@@ -88,6 +88,20 @@ namespace Tests
 			// Started from 129 elements, no less
 		}
 
+		[AllowDuplicates]
+		public enum EnumJ : uint32
+		{
+			SDL_BUTTON_LEFT     = 1,
+			SDL_BUTTON_LMASK    = (1u << ((SDL_BUTTON_LEFT.Underlying) - 1)),
+		}
+
+		[AllowDuplicates]
+		public enum EnumK
+		{
+			SDL_BUTTON_LEFT     = 1,
+			SDL_BUTTON_LMASK    = (1u << ((SDL_BUTTON_LEFT.Underlying) - 1)),
+		}
+
 		[Test]
 		static void TestBasic()
 		{
@@ -229,6 +243,12 @@ namespace Tests
 			if (ei case .DY(var eh))
 				foundH = eh == .B;
 			Test.Assert(foundH);
+
+			Test.Assert((int)EnumJ.SDL_BUTTON_LMASK == 1);
+			Test.Assert(typeof(EnumJ).Size == 4);
+
+			Test.Assert((int)EnumK.SDL_BUTTON_LMASK == 1);
+			Test.Assert(typeof(EnumK).Size == 8);
 		}
 	}
 }

@@ -22357,7 +22357,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 			BfIRValue fromBool;
 			mBfIRBuilder->RestoreDebugLocation();
 
-			if (!mCompiler->mIsResolveOnly)
+			if ((!mCompiler->mIsResolveOnly) || (mIsComptimeModule))
 			{
 				if (!mCurTypeInstance->IsValuelessType())
 					ret = mBfIRBuilder->CreateRet(GetThis().mValue);
