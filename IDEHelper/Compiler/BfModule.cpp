@@ -21983,7 +21983,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				if ((methodDef->mIsMutating) || (methodInstance->mCallingConvention == BfCallingConvention_Cdecl))
 					argIdx++;
 			}
-			else if (!paramVar->mResolvedType->IsValuelessType())
+			else if (!paramVar->mResolvedType->IsValuelessNonOpaqueType())
 			{
 				argIdx++;
 			}

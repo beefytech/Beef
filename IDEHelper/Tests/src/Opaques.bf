@@ -20,6 +20,8 @@ class Opaques
 		saPtr.mB += addB;
 	}
 
+	static int Method1(StructB sb, void* ptr) => 0;
+
 	[Test]
 	public static void TestBasics()
 	{
@@ -28,5 +30,7 @@ class Opaques
 		sb.Modify(1000, 2000);
 		Test.Assert(sa.mA == 1123);
 		Test.Assert(sa.mB == 2234);
+
+		Method1(default, default);
 	}
 }
