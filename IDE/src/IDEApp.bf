@@ -2516,9 +2516,16 @@ namespace IDE
 		{
 			if (mDebugger.mIsRunning)
 			{
+				if (mDebugger.mIsComptimeDebug)
+					CancelBuild();
 				mDebugger.StopDebugging();
 				while (mDebugger.GetRunState() != .Terminated)
 				{
+					if (mDebugger.mIsComptimeDebug)
+					{
+						if (!mBfBuildCompiler.IsPerformingBackgroundOperation())
+							break;
+					}
 					mDebugger.Update();
 				}
 				mDebugger.mIsRunning = false;
@@ -2526,6 +2533,9 @@ namespace IDE
 			}
 			mDebugger.DisposeNativeBreakpoints();
 			mWantsRehupCallstack = false;
+
+			if (mDebugger.mIsComptimeDebug)
+				mDebugger.Detach();
 		}
 
 		void CloseWorkspace()
@@ -9644,29 +9654,32 @@ namespace IDE
 					if ((processCompileCmd.mHadBeef) && (mVerbosity >= .Normal))
 						OutputLine("Beef compilation time: {0:0.00}s", processCompileCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
 
-					var compileInstance = mWorkspace.mCompileInstanceList.Back;
-					compileInstance.mCompileResult = .Failure;
-					if (processCompileCmd.mBfPassInstance.mCompileSucceeded)
+					if (!mWorkspace.mCompileInstanceList.IsEmpty)
 					{
-						//foreach (var sourceViewPanel in GetSourceViewPanels())
-						WithSourceViewPanels(scope (sourceViewPanel) =>
-							{
-								sourceViewPanel.mHasChangedSinceLastCompile = false;
-							});
-						compileInstance.mCompileResult = .Success;
-					}
-					else
-					{
+						var compileInstance = mWorkspace.mCompileInstanceList.Back;
 						compileInstance.mCompileResult = .Failure;
-					}
+						if (processCompileCmd.mBfPassInstance.mCompileSucceeded)
+						{
+							//foreach (var sourceViewPanel in GetSourceViewPanels())
+							WithSourceViewPanels(scope (sourceViewPanel) =>
+								{
+									sourceViewPanel.mHasChangedSinceLastCompile = false;
+								});
+							compileInstance.mCompileResult = .Success;
+						}
+						else
+						{
+							compileInstance.mCompileResult = .Failure;
+						}
 
-					ProcessBeefCompileResults(processCompileCmd.mBfPassInstance, processCompileCmd.mCompileKind, processCompileCmd.mHotProject, processCompileCmd.mStopwatch);
-					processCompileCmd.mBfPassInstance = null;
+						ProcessBeefCompileResults(processCompileCmd.mBfPassInstance, processCompileCmd.mCompileKind, processCompileCmd.mHotProject, processCompileCmd.mStopwatch);
+						processCompileCmd.mBfPassInstance = null;
 
-					if (mHotResolveState != .None)
-					{
-						if (compileInstance.mCompileResult == .Success)
-							compileInstance.mCompileResult = .PendingHotLoad;
+						if (mHotResolveState != .None)
+						{
+							if (compileInstance.mCompileResult == .Success)
+								compileInstance.mCompileResult = .PendingHotLoad;
+						}
 					}
 
 					if (processCompileCmd.mProfileCmd != null)
