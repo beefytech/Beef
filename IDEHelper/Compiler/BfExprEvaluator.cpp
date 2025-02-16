@@ -22236,7 +22236,62 @@ void BfExprEvaluator::DoMemberReference(BfMemberReferenceExpression* memberRefEx
 	if ((isArrowLookup) && (thisValue))
 		thisValue = TryArrowLookup(thisValue, memberRefExpr->mDotToken);
 
-	mResult = LookupField(nameRefNode, thisValue, findName);
+	auto nameNode = memberRefExpr->mMemberName;
+
+	if ((thisValue.mType != NULL) && (!thisValue.mType->IsTypeInstance()) && (!thisValue.mType->IsGenericParam()))
+	{
+		if (thisValue.mType->IsSizedArray())
+		{
+			if (thisValue.mType->IsValuelessType())
+			{
+				thisValue.mType = mModule->GetWrappedStructType(thisValue.mType);
+				thisValue.mValue = mModule->mBfIRBuilder->GetFakeVal();
+			}
+			else
+			{
+				thisValue = mModule->MakeAddressable(thisValue);
+				thisValue.mType = mModule->GetWrappedStructType(thisValue.mType);
+				thisValue.mValue = mModule->mBfIRBuilder->CreateBitCast(thisValue.mValue, mModule->mBfIRBuilder->MapTypeInstPtr(thisValue.mType->ToTypeInstance()));
+			}
+		}
+		else if (thisValue.mType->IsPointer())
+		{
+			// Leave alone
+		}
+		else if (thisValue.mType->IsWrappableType())
+		{
+			thisValue.mType = mModule->GetWrappedStructType(thisValue.mType);
+		}		
+	}
+
+	BfTypedValue lookupVal = thisValue;
+	if (thisValue.mType != NULL)
+	{
+		auto lookupType = BindGenericType(nameNode, thisValue.mType);
+		if ((lookupType->IsGenericParam()) && (!thisValue.mType->IsGenericParam()))
+		{
+			bool prevUseMixinGenerics = false;
+			if (mModule->mCurMethodState->mMixinState != NULL)
+			{
+				prevUseMixinGenerics = mModule->mCurMethodState->mMixinState->mUseMixinGenerics;
+				mModule->mCurMethodState->mMixinState->mUseMixinGenerics = true;
+			}
+
+			// Try to lookup from generic binding
+			mResult = LookupField(nameRight, BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), lookupType), findName, BfLookupFieldFlag_BindOnly);
+
+			if (mModule->mCurMethodState->mMixinState != NULL)
+				mModule->mCurMethodState->mMixinState->mUseMixinGenerics = prevUseMixinGenerics;
+
+			if (mPropDef != NULL)
+			{
+				mOrigPropTarget = lookupVal;
+				return;
+			}
+		}
+	}
+
+	mResult = LookupField(nameRefNode, lookupVal, findName);
 
 	if ((!mResult) && (mPropDef == NULL))
 	{

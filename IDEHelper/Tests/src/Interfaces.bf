@@ -432,6 +432,29 @@ namespace Tests
             T sum = a + b;
         }
 
+		interface IIntVal
+		{
+			int IntVal { get; }
+		}
+
+		struct StructC : IIntVal
+		{
+			int IIntVal.IntVal
+			{
+				get
+				{
+					return 123;
+				}
+			}
+		}
+
+		static int GetIntVals<T>(T val) where T : IIntVal
+		{
+			int a = (val).[Friend]IntVal;
+			int b = val.IntVal;
+			return a + b;
+		}
+
 		[Test]
 		public static void TestDefaults()
 		{
@@ -473,6 +496,7 @@ namespace Tests
 			Test.Assert(TestIFaceD2(cg) == 999);
 
 			ClassH ch = scope .();
+			Test.Assert(GetIntVals(StructC()) == 246);
 		}
 	}
 }
