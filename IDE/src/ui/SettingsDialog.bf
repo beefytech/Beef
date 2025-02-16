@@ -98,6 +98,7 @@ namespace IDE.ui
 			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
 			AddPropertiesItem(category, "Font", "mFonts");
 			AddPropertiesItem(category, "Font Size", "mFontSize");
+			AddPropertiesItem(category, "Line Height", "mLineHeight");
 			AddPropertiesItem(category, "Autocomplete", "mAutoCompleteShowKind");
 			AddPropertiesItem(category, "Autocomplete Require Control", "mAutoCompleteRequireControl");
 			AddPropertiesItem(category, "Autocomplete Require Tab", "mAutoCompleteRequireTab");

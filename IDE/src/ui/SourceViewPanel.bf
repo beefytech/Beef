@@ -4550,7 +4550,7 @@ namespace IDE.ui
                 {
 					float editX = GetEditX();
 
-					float lineSpacing = ewc.mFont.GetLineSpacing();
+					float lineSpacing = Math.Round(ewc.mFont.GetLineSpacing() * ewc.mLineHeight);
 					int cursorLineNumber = mEditWidget.mEditWidgetContent.CursorLineAndColumn.mLine;
 					bool hiliteCurrentLine = mEditWidget.mHasFocus;
 
@@ -4719,6 +4719,8 @@ namespace IDE.ui
                         }*/
                     }
 
+					float offset = ewc.GetTextOffset();
+
 					if ((gApp.mSettings.mEditorSettings.mShowLineNumbers) && (mEmbedKind == .None))
 					{
 						String lineStr = scope String(16);
@@ -4748,7 +4750,7 @@ namespace IDE.ui
 								default: lineStr.AppendF("{0}", lineIdx + 1);
 								}
 								using (g.PushColor(DarkTheme.COLOR_TEXT))
-						        	g.DrawString(lineStr, 0, GS!(2) + ewc.mLineCoords[lineIdx], FontAlign.Right, editX - GS!(14));
+						        	g.DrawString(lineStr, 0, GS!(2) + ewc.mLineCoords[lineIdx] + offset, FontAlign.Right, editX - GS!(14));
 						    }
 						}
 					}
@@ -4787,7 +4789,7 @@ namespace IDE.ui
 							{
 								using (g.PushColor(0xFFA5A5A5))
 								{
-									g.FillRect(editX - (int)GS!(7.5f), ewc.mLineCoords[lineIdx] - (int)GS!(0.5f), (int)GS!(1.5f), lineSpacing);
+									g.FillRect(editX - (int)GS!(7.5f), ewc.mLineCoords[lineIdx] - offset - (int)GS!(0.5f), (int)GS!(1.5f), lineSpacing + offset);
 									g.FillRect(editX - (int)GS!(7.5f), ewc.mLineCoords[lineIdx] + lineSpacing - (int)GS!(1.5f), GS!(5), (int)GS!(1.5f));
 								}
 							}
@@ -4859,7 +4861,7 @@ namespace IDE.ui
 								mLinePointerDrawData.mUpdateCnt = gApp.mUpdateCnt;
 								mLinePointerDrawData.mDebuggerContinueIdx = gApp.mDebuggerContinueIdx;
 								g.Draw(img, mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
-									0 + ewc.GetLineY(lineNum, 0));
+									0 + ewc.GetLineY(lineNum, 0) + ewc.GetTextOffset());
 							}
 
 							if (mMousePos != null && mIsDraggingLinePointer)
@@ -4869,7 +4871,7 @@ namespace IDE.ui
 								{
 									using (g.PushColor(0x7FFFFFFF))
 										g.Draw(img, mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
-											0 + ewc.GetLineY(dragLineNum, 0));
+											0 + ewc.GetLineY(dragLineNum, 0) + ewc.GetTextOffset());
 								}
 							}
                         }
@@ -7556,7 +7558,7 @@ namespace IDE.ui
 				SourceEditWidgetContent ewc = (.)mEditWidget.Content;
 				Rect linePointerRect = .(
 					mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
-					0 + ewc.GetLineY(mLinePointerDrawData.mLine, 0),
+					0 + ewc.GetLineY(mLinePointerDrawData.mLine, 0) + ewc.GetTextOffset(),
 					GS!(15),
 					GS!(15)
 				);
@@ -7573,7 +7575,7 @@ namespace IDE.ui
 			else if (mIsDraggingLinePointer)
 			{
 				SourceEditWidgetContent ewc = (.)mEditWidget.Content;
-				float linePos = ewc.GetLineY(GetLineAt(0, mMousePos.Value.y), 0);
+				float linePos = ewc.GetLineY(GetLineAt(0, mMousePos.Value.y), 0) + ewc.GetTextOffset();
 				Rect visibleRange = mEditWidget.GetVisibleContentRange();
 
 				if (visibleRange.Top > linePos)

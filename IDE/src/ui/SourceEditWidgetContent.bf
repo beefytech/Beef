@@ -858,6 +858,7 @@ namespace IDE.ui
             SetFont(IDEApp.sApp.mCodeFont, true, true);
 			//SetFont(DarkTheme.sDarkTheme.mSmallFont, false, false);
 
+			mLineHeight = Math.Clamp(gApp.mSettings.mEditorSettings.mLineHeight, 0.125f, 10.0f);
 			mWantsTabsAsSpaces = gApp.mSettings.mEditorSettings.mTabsOrSpaces == .Spaces;
 			mTabLength = gApp.mSettings.mEditorSettings.mTabSize;
             mTabSize = mFont.GetWidth(scope String(' ', gApp.mSettings.mEditorSettings.mTabSize));
@@ -1211,11 +1212,12 @@ namespace IDE.ui
             if ((flags & ~(uint8)SourceElementFlags.Skipped) == 0)
                 return;
 
+			let lineSpacing = Math.Round(mFont.GetLineSpacing() * mLineHeight);
             if ((flags & (uint8)SourceElementFlags.SymbolReference) != 0)
             {
                 bool isRenameSymbol = (IDEApp.sApp.mSymbolReferenceHelper != null) && (IDEApp.sApp.mSymbolReferenceHelper.mKind == SymbolReferenceHelper.Kind.Rename);
                 using (g.PushColor(isRenameSymbol ? (uint32)0x28FFFFFF : (uint32)0x18FFFFFF))
-                    g.FillRect(x, y, width, mFont.GetLineSpacing());
+                    g.FillRect(x, y, width, lineSpacing);
 
                 DrawSectionFlagsOver(g, x, y, width, (uint8)(flags & ~(uint8)SourceElementFlags.SymbolReference));
                 return;
@@ -1224,7 +1226,7 @@ namespace IDE.ui
 			if ((flags & (uint8)SourceElementFlags.Find_CurrentSelection) != 0)
 			{
 			    using (g.PushColor(0x504C575C))
-			        g.FillRect(x, y, width, mFont.GetLineSpacing());
+			        g.FillRect(x, y, width, lineSpacing);
 
 			    DrawSectionFlagsOver(g, x, y, width, (uint8)(flags & ~(uint8)(SourceElementFlags.Find_CurrentSelection | .Find_Matches)));
 			    return;
@@ -1233,7 +1235,7 @@ namespace IDE.ui
             if ((flags & (uint8)SourceElementFlags.Find_Matches) != 0)
             {
                 using (g.PushColor(0x50D0C090))
-                    g.FillRect(x, y, width, mFont.GetLineSpacing());
+                    g.FillRect(x, y, width, lineSpacing);
 
                 DrawSectionFlagsOver(g, x, y, width, (uint8)(flags & ~(uint8)SourceElementFlags.Find_Matches));
                 return;
@@ -1277,7 +1279,7 @@ namespace IDE.ui
                 if (underlineColor != 0)
                 {
                     using (g.PushColor(underlineColor))
-                        gApp.DrawSquiggle(g, x, y, width);                    
+                        gApp.DrawSquiggle(g, x, y + GetTextOffset(), width);                    
                 }
             }
         }
@@ -5853,7 +5855,7 @@ namespace IDE.ui
 			}
 			orderedEmitEmbeds.Sort(scope (lhs, rhs) => lhs.line <=> rhs.line);
 			
-			float fontHeight = mFont.GetLineSpacing();
+			float fontHeight = Math.Round(mFont.GetLineSpacing() * mLineHeight);
 			int prevJumpIdx = -1;
 			float jumpCoordSpacing = GetJumpCoordSpacing();
 
@@ -6432,8 +6434,10 @@ namespace IDE.ui
 					let height = mFont.GetHeight() + GS!(2);
 					using (g.PushColor(DarkTheme.COLOR_CHAR_PAIR_HILITE))
 					{
-						g.FillRect(x1, y1, charWidth, height);
-						g.FillRect(x2, y2, charWidth, height);
+						float offset = GetTextOffset();
+
+						g.FillRect(x1, y1 + offset, charWidth, height);
+						g.FillRect(x2, y2 + offset, charWidth, height);
 					}
 				}
 			}
