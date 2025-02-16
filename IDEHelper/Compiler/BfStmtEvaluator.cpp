@@ -2175,6 +2175,7 @@ void BfModule::HandleTupleVariableDeclaration(BfVariableDeclaration* varDecl, Bf
 		initTupleType = (BfTypeInstance*)initTupleValue.mType;
 
 	CheckTupleVariableDeclaration(tupleExpr, initTupleValue.mType);
+	mBfIRBuilder->PopulateType(initTupleValue.mType);
 
 	for (int varIdx = 0; varIdx < (int)tupleExpr->mValues.size(); varIdx++)
 	{
@@ -2193,7 +2194,7 @@ void BfModule::HandleTupleVariableDeclaration(BfVariableDeclaration* varDecl, Bf
 					initValue = LoadValue(initValue);
 				}
 				else
-					initValue = BfTypedValue(mBfIRBuilder->CreateExtractValue(initTupleValue.mValue, fieldInstance->mDataIdx), resolvedType);
+					initValue = ExtractValue(initTupleValue, fieldInstance, fieldInstance->mDataIdx);					
 			}
 
 			BfTupleNameNode* tupleNameNode = NULL;
