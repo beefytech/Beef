@@ -4550,7 +4550,7 @@ namespace IDE.ui
                 {
 					float editX = GetEditX();
 
-					float lineSpacing = Math.Round(ewc.mFont.GetLineSpacing() * ewc.mLineHeight);
+					float lineSpacing = ewc.LineHeight;
 					int cursorLineNumber = mEditWidget.mEditWidgetContent.CursorLineAndColumn.mLine;
 					bool hiliteCurrentLine = mEditWidget.mHasFocus;
 

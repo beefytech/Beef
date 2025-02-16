@@ -698,7 +698,7 @@ namespace IDE
 
 			public List<String> mFonts = new .() ~ DeleteContainerAndItems!(_);
 			public float mFontSize = 12;
-			public float mLineHeight = 1.0f;
+			public float mLineHeightScale = 1.0f;
 			public AutoCompleteShowKind mAutoCompleteShowKind = .PanelIfVisible;
 			public bool mAutoCompleteRequireControl = true;
 			public bool mAutoCompleteRequireTab = false;
@@ -733,7 +733,7 @@ namespace IDE
 						sd.Add(str);
 				}
 				sd.Add("FontSize", mFontSize);
-				sd.Add("LineHeight", mLineHeight);
+				sd.Add("LineHeightScale", mLineHeightScale);
 				sd.Add("AutoCompleteShowKind", mAutoCompleteShowKind);
 				sd.Add("AutoCompleteRequireControl", mAutoCompleteRequireControl);
 				sd.Add("AutoCompleteRequireTab", mAutoCompleteRequireTab);
@@ -771,7 +771,7 @@ namespace IDE
 				}
 				sd.Get("UIScale", ref gApp.mSettings.mUISettings.mScale); // Legacy
 				sd.Get("FontSize", ref mFontSize);
-				sd.Get("LineHeight", ref mLineHeight);
+				sd.Get("LineHeightScale", ref mLineHeightScale);
 				sd.Get("AutoCompleteShowKind", ref mAutoCompleteShowKind);
 				sd.Get("AutoCompleteRequireControl", ref mAutoCompleteRequireControl);
 				sd.Get("AutoCompleteRequireTab", ref mAutoCompleteRequireTab);
@@ -1368,7 +1368,7 @@ namespace IDE
 		{
 			gApp.mSettings.mUISettings.mScale = Math.Clamp(gApp.mSettings.mUISettings.mScale, 50, 400);
 			gApp.mSettings.mEditorSettings.mFontSize = Math.Clamp(gApp.mSettings.mEditorSettings.mFontSize, 6.0f, 72.0f);
-			gApp.mSettings.mEditorSettings.mLineHeight = Math.Clamp(gApp.mSettings.mEditorSettings.mLineHeight, 0.125f, 10.0f);
+			gApp.mSettings.mEditorSettings.mLineHeightScale = Math.Clamp(gApp.mSettings.mEditorSettings.mLineHeightScale, 0.125f, 10.0f);
 
 			mUISettings.Apply();
 			mEditorSettings.Apply();
@@ -1394,7 +1394,7 @@ namespace IDE
 				{
 					var ewc = (SourceEditWidgetContent)value.mEditWidget.Content;
 					ewc.mHiliteCurrentLine = gApp.mSettings.mEditorSettings.mHiliteCurrentLine;
-					ewc.mLineHeight = gApp.mSettings.mEditorSettings.mLineHeight;
+					ewc.mLineHeightScale = gApp.mSettings.mEditorSettings.mLineHeightScale;
 					ewc.RehupLineCoords();
 				}
 

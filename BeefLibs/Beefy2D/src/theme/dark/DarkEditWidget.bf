@@ -50,7 +50,7 @@ namespace Beefy.theme.dark
 		}
 
         public Font mFont;                
-		public float mLineHeight = 1.0f;
+		public float mLineHeightScale = 1.0f;
         public uint32[] mTextColors = sDefaultColors;
         public uint32 mHiliteColor = 0xFF2f5c88;
         public uint32 mUnfocusedHiliteColor = 0x00000000;
@@ -68,6 +68,8 @@ namespace Beefy.theme.dark
 		public Range? mLineRange;
 
 		protected static uint32[] sDefaultColors = new uint32[] ( Color.White ) ~ delete _;
+
+		public float LineHeight => Math.Max(Math.Round(mFont.GetLineSpacing() * mLineHeightScale), 1);
 
         public this(EditWidgetContent refContent = null) : base(refContent)
         {
@@ -105,7 +107,7 @@ namespace Beefy.theme.dark
 			mLineCoords.GrowUninitialized(mData.mLineStarts.Count);
 			mLineCoordJumpTable.Clear();
 
-			float fontHeight = Math.Round(mFont.GetLineSpacing() * mLineHeight);
+			float fontHeight = LineHeight;
 			int prevJumpIdx = -1;
 			float jumpCoordSpacing = GetJumpCoordSpacing();
 
@@ -218,7 +220,7 @@ namespace Beefy.theme.dark
 		public float GetTextOffset()
 		{
 			float baseLineSpacing = mFont.GetLineSpacing();
-			float lineSpacing = Math.Round(mFont.GetLineSpacing() * mLineHeight);
+			float lineSpacing = LineHeight;
 			return lineSpacing / 2.0f - baseLineSpacing / 2.0f;
 		}
 
@@ -534,7 +536,7 @@ namespace Beefy.theme.dark
 
 #unwarn
             int lineCount = GetLineCount();
-            float lineSpacing = Math.Round(mFont.GetLineSpacing() * mLineHeight);
+            float lineSpacing = LineHeight;
 			float fontLineSpacing = mFont.GetLineSpacing();
 			float textYOffset = GetTextOffset();
 

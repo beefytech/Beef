@@ -195,6 +195,7 @@ namespace IDE.ui
 				None,
 				BrowseForFile,
 				BrowseForFolder,
+				Percent
 			}
 
 			public enum MultiEncodeKind
@@ -1036,8 +1037,10 @@ namespace IDE.ui
 					}
 					else if (curVariantType.[Friend]mTypeCode == .Float)
 					{
-						if (float.Parse(newValue) case .Ok(let floatVal))
+						if (float.Parse(newValue) case .Ok(var floatVal))
 						{
+							if (editingProp.mFlags.HasFlag(.Percent))
+								floatVal /= 100;
 							editingProp.mCurValue = Variant.Create(floatVal);
 						}
 						else
@@ -1600,6 +1603,8 @@ namespace IDE.ui
 			{
 				let valStr = scope String();
 				float floatVal = propEntry.mCurValue.Get<float>();
+				if (propEntry.mFlags.HasFlag(.Percent))
+					floatVal *= 100;
 				floatVal.ToString(valStr);
 				valueItem.Label = valStr;
 			}

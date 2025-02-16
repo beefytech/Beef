@@ -858,7 +858,7 @@ namespace IDE.ui
             SetFont(IDEApp.sApp.mCodeFont, true, true);
 			//SetFont(DarkTheme.sDarkTheme.mSmallFont, false, false);
 
-			mLineHeight = Math.Clamp(gApp.mSettings.mEditorSettings.mLineHeight, 0.125f, 10.0f);
+			mLineHeightScale = Math.Clamp(gApp.mSettings.mEditorSettings.mLineHeightScale, 0.125f, 10.0f);
 			mWantsTabsAsSpaces = gApp.mSettings.mEditorSettings.mTabsOrSpaces == .Spaces;
 			mTabLength = gApp.mSettings.mEditorSettings.mTabSize;
             mTabSize = mFont.GetWidth(scope String(' ', gApp.mSettings.mEditorSettings.mTabSize));
@@ -1212,7 +1212,7 @@ namespace IDE.ui
             if ((flags & ~(uint8)SourceElementFlags.Skipped) == 0)
                 return;
 
-			let lineSpacing = Math.Round(mFont.GetLineSpacing() * mLineHeight);
+			let lineSpacing = LineHeight;
             if ((flags & (uint8)SourceElementFlags.SymbolReference) != 0)
             {
                 bool isRenameSymbol = (IDEApp.sApp.mSymbolReferenceHelper != null) && (IDEApp.sApp.mSymbolReferenceHelper.mKind == SymbolReferenceHelper.Kind.Rename);
@@ -5855,7 +5855,7 @@ namespace IDE.ui
 			}
 			orderedEmitEmbeds.Sort(scope (lhs, rhs) => lhs.line <=> rhs.line);
 			
-			float fontHeight = Math.Round(mFont.GetLineSpacing() * mLineHeight);
+			float fontHeight = LineHeight;
 			int prevJumpIdx = -1;
 			float jumpCoordSpacing = GetJumpCoordSpacing();
 
