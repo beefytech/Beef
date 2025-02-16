@@ -18011,6 +18011,8 @@ void BfModule::EmitDtorBody()
 				PopulateType(val.mType);
 				PopulateType(objectType, BfPopulateType_DataAndMethods);
 
+				EmitObjectAccessCheck(val);
+
 				if (objectType->mVirtualMethodTable.size() == 0)
 				{
 					if (!mCompiler->IsAutocomplete())
