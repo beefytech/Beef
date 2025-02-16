@@ -20335,6 +20335,12 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue& typedVal, BfAstNode* refNo
 	if ((!skipCopyOnMutate) && (typedVal.IsCopyOnMutate()))
 		typedVal = mModule->CopyValue(typedVal);
 
+	if ((emitWarning) && (typedVal.IsReadOnly()))
+	{
+		mModule->Warn(0, StrFormat("Cannot %s read-only variable", modifyType), refNode);
+		return true;
+	}
+
 	return mModule->CheckModifyValue(typedVal, refNode, modifyType);
 }
 
