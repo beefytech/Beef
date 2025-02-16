@@ -1617,6 +1617,7 @@ public:
 public:
 	void FatalError(const StringImpl& error, const char* file = NULL, int line = -1, int column = -1);
 	void FatalError(const StringImpl& error, BfAstNode* refNode);
+	void FatalError(const StringImpl& error, BfFailHandleKind failHandleKind);
 	void InternalError(const StringImpl& error, BfAstNode* refNode = NULL, const char* file = NULL, int line = -1);
 	void NotImpl(BfAstNode* astNode);
 	void AddMethodReference(const BfMethodRef& methodRef, BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None);
@@ -1959,7 +1960,7 @@ public:
 	BfType* ResolveGenericType(BfType* unspecializedType, BfTypeVector* typeGenericArguments, BfTypeVector* methodGenericArguments, BfType* selfType, bool allowFail = false);
 	BfType* ResolveSelfType(BfType* type, BfType* selfType);
 	bool IsUnboundGeneric(BfType* type);
-	BfGenericParamInstance* GetGenericTypeParamInstance(int paramIdx);
+	BfGenericParamInstance* GetGenericTypeParamInstance(int paramIdx, BfFailHandleKind failHandleKind = BfFailHandleKind_Normal);
 	BfGenericParamInstance* GetGenericParamInstance(BfGenericParamType* type, bool checkMixinBind = false, BfFailHandleKind failHandleKind = BfFailHandleKind_Normal);
 	void GetActiveTypeGenericParamInstances(SizedArray<BfGenericParamInstance*, 4>& genericParamInstance);
 	BfGenericParamInstance* GetMergedGenericParamData(BfType* type, BfGenericParamFlags& outFlags, BfType*& outTypeConstraint);

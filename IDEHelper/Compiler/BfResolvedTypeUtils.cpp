@@ -698,7 +698,8 @@ BfMethodInstance* BfMethodParam::GetDelegateParamInvoke()
 		auto methodRefType = (BfMethodRefType*)mResolvedType;
 		return methodRefType->mMethodRef;
 	}
-
+	else if (mResolvedType->IsTuple())
+		return NULL;
 	BF_ASSERT(mResolvedType->IsDelegate() || mResolvedType->IsFunction());
 	auto bfModule = BfModule::GetModuleFor(mResolvedType);
 	BfMethodInstance* invokeMethodInstance = bfModule->GetRawMethodInstanceAtIdx(mResolvedType->ToTypeInstance(), 0, "Invoke");
@@ -1166,6 +1167,23 @@ void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name, int& namePre
 	BfParameterDef* paramDef = mMethodDef->mParams[methodParam->mParamDefIdx];
 	if (methodParam->mDelegateParamIdx != -1)
 	{
+		if (methodParam->mResolvedType->IsTuple())
+		{
+			auto tupleType = (BfTupleType*)methodParam->mResolvedType;
+			auto& fieldInstance = tupleType->mFieldInstances[methodParam->mDelegateParamIdx];
+			if (methodParam->mDelegateParamNameCombine)
+				name = paramDef->mName + "__" + fieldInstance.GetFieldDef()->mName;
+			else
+				name = fieldInstance.GetFieldDef()->mName;
+
+			if (name == "p__a__a")
+			{
+				NOP;
+			}
+
+			return;
+		}
+
 		BfMethodInstance* invokeMethodInstance = methodParam->GetDelegateParamInvoke();
 		if (methodParam->mDelegateParamNameCombine)
 			name = paramDef->mName + "__" + invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx);
@@ -1213,6 +1231,12 @@ BfType* BfMethodInstance::GetParamType(int paramIdx, bool returnUnderlyingParams
 	BfMethodParam* methodParam = &mParams[paramIdx];
 	if (methodParam->mDelegateParamIdx != -1)
 	{
+		if (methodParam->mResolvedType->IsTuple())
+		{
+			auto tupleType = (BfTupleType*)methodParam->mResolvedType;
+			return tupleType->mFieldInstances[methodParam->mDelegateParamIdx].mResolvedType;
+		}
+
 		BfMethodInstance* invokeMethodInstance = methodParam->GetDelegateParamInvoke();
 		return invokeMethodInstance->GetParamType(methodParam->mDelegateParamIdx, true);
 	}
@@ -1247,6 +1271,8 @@ bool BfMethodInstance::GetParamIsSplat(int paramIdx)
 	if (methodParam->mDelegateParamIdx != -1)
 	{
 		BfMethodInstance* invokeMethodInstance = methodParam->GetDelegateParamInvoke();
+		if (invokeMethodInstance == NULL)
+			return false;
 		return invokeMethodInstance->GetParamIsSplat(methodParam->mDelegateParamIdx);
 	}
 	return methodParam->mIsSplat;

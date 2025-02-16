@@ -4209,6 +4209,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 	{
 		baseType = ResolveTypeDef(mCompiler->mPointerTTypeDef, BfPopulateType_Data);
 	}
+	else if (resolvedTypeRef->IsTuple())
+	{
+		baseType = ResolveTypeDef(mCompiler->mTupleTypeDef, BfPopulateType_Data);
+	}
 	else if ((resolvedTypeRef->IsValueType()) && (typeDef != mCompiler->mValueTypeTypeDef))
 	{
 		baseType = ResolveTypeDef(mCompiler->mValueTypeTypeDef, BfPopulateType_Data)->ToTypeInstance();
@@ -9565,7 +9569,7 @@ bool BfModule::IsUnboundGeneric(BfType* type)
 	return (genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var) != 0;
 }
 
-BfGenericParamInstance* BfModule::GetGenericTypeParamInstance(int genericParamIdx)
+BfGenericParamInstance* BfModule::GetGenericTypeParamInstance(int genericParamIdx, BfFailHandleKind failHandleKind)
 {
 	// When we're evaluating a method, make sure the params refer back to that method context
 	auto curTypeInstance = mCurTypeInstance;
@@ -9576,8 +9580,8 @@ BfGenericParamInstance* BfModule::GetGenericTypeParamInstance(int genericParamId
 	BfTypeInstance* genericTypeInst = curTypeInstance->ToGenericTypeInstance();
 
 	if (genericTypeInst == NULL)
-	{
-		FatalError("Invalid mCurTypeInstance for GetGenericTypeParamInstance");
+	{		
+		FatalError("Invalid mCurTypeInstance for GetGenericTypeParamInstance", failHandleKind);
 		return NULL;
 	}
 
@@ -9756,7 +9760,7 @@ BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* ty
 		return curGenericMethodInstance->mMethodInfoEx->mGenericParams[type->mGenericParamIdx];
 	}
 
-	return GetGenericTypeParamInstance(type->mGenericParamIdx);
+	return GetGenericTypeParamInstance(type->mGenericParamIdx, failHandleKind);
 }
 
 bool BfModule::ResolveTypeResult_Validate(BfAstNode* typeRef, BfType* resolvedTypeRef)

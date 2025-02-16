@@ -1,0 +1,5 @@
+namespace System;
+
+struct Tuple
+{
+}

@@ -3617,25 +3617,22 @@ void BfModule::FatalError(const StringImpl& error, const char* file, int line, i
 	BfpSystem_FatalError(fullError.c_str(), "FATAL MODULE ERROR");
 }
 
-void BfModule::FatalError(const StringImpl& error, BfAstNode* refNode)
+void BfModule::FatalError(const StringImpl& error, BfFailHandleKind failHandleKind)
 {
-	if (refNode != NULL)
-	{
-		auto parser = refNode->GetParserData();
-		if (parser != NULL)
-		{
-			int line = -1;
-			int lineChar = -1;
-			parser->GetLineCharAtIdx(refNode->mSrcStart, line, lineChar);
-			if (line != -1)
-				FatalError(error, parser->mFileName.c_str(), line, lineChar);
-		}
-	}
-	FatalError(error);
+	if (failHandleKind == BfFailHandleKind_Normal)
+		FatalError(error);
+	else if (failHandleKind == BfFailHandleKind_Soft)
+		InternalError(error);
 }
 
 void BfModule::InternalError(const StringImpl& error, BfAstNode* refNode, const char* file, int line)
 {
+	static bool isInside = false;
+	if (isInside)
+		return;
+
+	isInside = true;
+
 	String fullError = error;
 
 	if (file != NULL)
@@ -3652,6 +3649,8 @@ void BfModule::InternalError(const StringImpl& error, BfAstNode* refNode, const 
 		fullError += StrFormat("\nSource Location: %s:%d", mCurFilePosition.mFileInstance->mParser->mFileName.c_str(), mCurFilePosition.mCurLine + 1);
 
 	Fail(String("INTERNAL ERROR: ") + fullError, refNode);
+
+	isInside = false;
 }
 
 void BfModule::NotImpl(BfAstNode* astNode)
@@ -16018,6 +16017,8 @@ BfIRValue BfModule::AllocLocalVariable(BfType* type, const StringImpl& name, boo
 
 void BfModule::DoAddLocalVariable(BfLocalVariable* localVar)
 {
+	BF_ASSERT(localVar->mResolvedType != NULL);
+
 	while (localVar->mName.StartsWith('@'))
 	{
 		localVar->mNamePrefixCount++;
@@ -17064,7 +17065,7 @@ void BfModule::AssertErrorState()
 	if (mCompiler->mPassInstance->HasFailed())
 		return;
 
-	InternalError("Compiler in invalid state but AssertErrorState failed to prior error");
+	InternalError("Compiler in invalid state but AssertErrorState failed to detect prior error");
 }
 
 void BfModule::AssertParseErrorState()
@@ -20008,14 +20009,17 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 		{
 			if (compositeVariableIdx == -1)
 			{
-				compositeVariableIdx = (int)mCurMethodState->mLocals.size();
-
-				BfLocalVariable* localVar = new BfLocalVariable();
 				auto paramInst = &methodInstance->mParams[paramIdx];
 				auto paramDef = methodDef->mParams[paramInst->mParamDefIdx];
+
+				compositeVariableIdx = (int)mCurMethodState->mLocals.size();
+				BfLocalVariable* localVar = new BfLocalVariable();
 				localVar->mName = paramDef->mName;
 				localVar->mNamePrefixCount = paramDef->mNamePrefixCount;
-				localVar->mResolvedType = ResolveTypeRef(paramDef->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_NoResolveGenericParam);
+				if (paramDef->mTypeRef != NULL)
+					localVar->mResolvedType = ResolveTypeRef(paramDef->mTypeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_NoResolveGenericParam);
+				if (localVar->mResolvedType == NULL)
+					localVar->mResolvedType = GetPrimitiveType(BfTypeCode_None);
 				localVar->mCompositeCount = 0;
 				DoAddLocalVariable(localVar);
 			}
@@ -20064,9 +20068,9 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 				if (genericParamInstance->mTypeConstraint != NULL)
 				{
 					auto typeInstConstraint = genericParamInstance->mTypeConstraint->ToTypeInstance();
-					if ((genericParamInstance->mTypeConstraint->IsDelegate()) || (genericParamInstance->mTypeConstraint->IsFunction()) ||
+					if ((genericParamInstance->mTypeConstraint->IsDelegate()) || (genericParamInstance->mTypeConstraint->IsFunction()) || (genericParamInstance->mTypeConstraint->IsTuple()) ||
 						((typeInstConstraint != NULL) &&
-						 ((typeInstConstraint->IsInstanceOf(mCompiler->mDelegateTypeDef)) || (typeInstConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)))))
+						 ((typeInstConstraint->IsInstanceOf(mCompiler->mDelegateTypeDef)) || (typeInstConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)) || (typeInstConstraint->IsInstanceOf(mCompiler->mTupleTypeDef)))))
 					{
 						BfLocalVariable* localVar = new BfLocalVariable();
 						localVar->mName = paramDef->mName;
@@ -24965,10 +24969,43 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				isValid = true;
 				addParams = false;
 			}
+			else if (resolvedParamType->IsTuple())
+			{				
+				auto tupleType = (BfTupleType*)resolvedParamType;
+				PopulateType(tupleType);
+			
+				hadDelegateParams = true;
+
+				// This means we copy the params from a delegate
+				BfMethodParam methodParam;
+				methodParam.mResolvedType = resolvedParamType;
+				methodParam.mParamDefIdx = paramDefIdx;
+				methodParam.mDelegateParamIdx = 0;
+				auto invokeMethodInstance = methodParam.GetDelegateParamInvoke();
+				for (int delegateParamIdx = 0; delegateParamIdx < tupleType->mFieldInstances.mSize; delegateParamIdx++)	
+				{
+					auto& fieldInstance = tupleType->mFieldInstances[delegateParamIdx];
+
+					methodParam.mDelegateParamIdx = delegateParamIdx;
+					mCurMethodInstance->mParams.Add(methodParam);
+					
+					if (!methodInstance->IsSpecializedGenericMethod())
+						AddDependency(fieldInstance.mResolvedType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
+				}
+				isValid = true;
+				addParams = false;
+			}
 			else if (resolvedParamType->IsGenericParam())
 			{
-				auto genericParamInstance = GetGenericParamInstance((BfGenericParamType*)resolvedParamType);
-				if (genericParamInstance->mTypeConstraint != NULL)
+				auto genericParamInstance = GetGenericParamInstance((BfGenericParamType*)resolvedParamType, false, BfFailHandleKind_Ignore);
+				if (genericParamInstance == NULL)
+				{
+					// Delegate case with a 'params T'?
+					mCurMethodInstance->mHadGenericDelegateParams = true;
+					isValid = true;
+					addParams = false;
+				}
+				else if (genericParamInstance->mTypeConstraint != NULL)
 				{
 					auto typeInstConstraint = genericParamInstance->mTypeConstraint->ToTypeInstance();
 					if ((genericParamInstance->mTypeConstraint->IsArray()) || (genericParamInstance->mTypeConstraint->IsSizedArray()))
@@ -24979,9 +25016,9 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 						mCurMethodInstance->mParams.Add(methodParam);
 						isValid = true;
 					}
-					else if ((genericParamInstance->mTypeConstraint->IsDelegate()) || (genericParamInstance->mTypeConstraint->IsFunction()) ||
+					else if ((genericParamInstance->mTypeConstraint->IsDelegate()) || (genericParamInstance->mTypeConstraint->IsFunction()) || (genericParamInstance->mTypeConstraint->IsTuple()) ||
 						((genericParamInstance != NULL) && (typeInstConstraint != NULL) &&
-						 ((typeInstConstraint->IsInstanceOf(mCompiler->mDelegateTypeDef)) || (typeInstConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)))))
+						 ((typeInstConstraint->IsInstanceOf(mCompiler->mDelegateTypeDef)) || (typeInstConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)) || (typeInstConstraint->IsInstanceOf(mCompiler->mTupleTypeDef)))))
 					{
 						mCurMethodInstance->mHadGenericDelegateParams = true;
 						isValid = true;
@@ -25055,10 +25092,22 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			{
 				if (usedParamDefIdx[methodParam.mParamDefIdx] > 1)
 					methodParam.mDelegateParamNameCombine = true;
-				BfMethodInstance* invokeMethodInstance = methodParam.GetDelegateParamInvoke();
-				String paramName = invokeMethodInstance->GetParamName(methodParam.mDelegateParamIdx);
-				if (usedNames.Contains(paramName))
-					methodParam.mDelegateParamNameCombine = true;
+
+				if (methodParam.mResolvedType->IsTuple())
+				{
+					auto tupleType = (BfTupleType*)methodParam.mResolvedType;
+					auto& fieldInstance = tupleType->mFieldInstances[methodParam.mDelegateParamIdx];
+					auto paramName = fieldInstance.GetFieldDef()->mName;
+					if (!usedNames.Add(paramName))
+						methodParam.mDelegateParamNameCombine = true;
+				}
+				else
+				{
+					BfMethodInstance* invokeMethodInstance = methodParam.GetDelegateParamInvoke();
+					String paramName = invokeMethodInstance->GetParamName(methodParam.mDelegateParamIdx);
+					if (!usedNames.Add(paramName))
+						methodParam.mDelegateParamNameCombine = true;
+				}
 			}
 		}
 	}

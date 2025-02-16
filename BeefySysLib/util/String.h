@@ -551,10 +551,12 @@ protected:
 		if ((mAllocSizeAndFlags & AttrFlags) == StrPtrFlag)
 		{
 			// It's a reference
-			char* newPtr = AllocPtr(this->mLength);
-			memcpy(newPtr, this->mPtr, this->mLength + 1);
+			int allocSize = (int)BF_MAX(GetAllocSize(), this->mLength + 1);			
+			char* newPtr = AllocPtr(allocSize);
+			memcpy(newPtr, this->mPtr, this->mLength);
+			newPtr[this->mLength] = 0;
 			this->mPtr = newPtr;
-			mAllocSizeAndFlags = this->mLength | DynAllocFlag | StrPtrFlag;
+			mAllocSizeAndFlags = allocSize | DynAllocFlag | StrPtrFlag;
 		}
 	}
 

@@ -14741,30 +14741,19 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 
 	if (invokeMethodInstance != NULL)
 	{
-		for (int paramIdx = 0; paramIdx < (int)invokeMethodInstance->mMethodDef->mParams.size(); paramIdx++)
+		for (int paramIdx = 0; paramIdx < (int)invokeMethodInstance->GetParamCount(); paramIdx++)
 		{
-			auto invokeParamDef = invokeMethodInstance->mMethodDef->mParams[paramIdx];
-
-			BfParameterDef* paramDef = new BfParameterDef();
-			paramDef->mParamDeclaration = tempParamDecls.Alloc();
-			BfAstNode::Zero(paramDef->mParamDeclaration);
-
-			BfLocalVariable* localVar = new BfLocalVariable();
+			BfLocalVariable* localVar = new BfLocalVariable();			
 			if (paramIdx < (int)lambdaBindExpr->mParams.size())
 			{
 				localVar->mName = lambdaBindExpr->mParams[paramIdx]->ToString();
-				localVar->mNameNode = lambdaBindExpr->mParams[paramIdx];
-				paramDef->mParamDeclaration->mNameNode = lambdaBindExpr->mParams[paramIdx];
+				localVar->mNameNode = lambdaBindExpr->mParams[paramIdx];				
 			}
 			else
 			{
 				mModule->AssertErrorState();
-				localVar->mName = invokeParamDef->mName;
-				paramDef->mParamDeclaration->mNameNode = NULL;
-			}
-			paramDef->mName = localVar->mName;
-			methodDef->mParams.push_back(paramDef);
-
+				localVar->mName = invokeMethodInstance->GetParamName(paramIdx);				
+			}						
 			localVar->mResolvedType = invokeMethodInstance->GetParamType(paramIdx);
 			mModule->PopulateType(localVar->mResolvedType);
 			localVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
@@ -14773,14 +14762,40 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 			auto rootMethodState = methodState.GetRootMethodState();
 			localVar->mLocalVarId = rootMethodState->mCurLocalVarId++;
 
-			mModule->DoAddLocalVariable(localVar);
+			mModule->DoAddLocalVariable(localVar);			
 
-			if (autoComplete != NULL)
-				autoComplete->CheckLocalDef(BfNodeDynCast<BfIdentifierNode>(paramDef->mParamDeclaration->mNameNode), methodState.mLocals.back());
 			auto resolvePassData = mModule->mCompiler->mResolvePassData;
 			if (resolvePassData != NULL)
-				resolvePassData->HandleLocalReference(BfNodeDynCast<BfIdentifierNode>(paramDef->mParamDeclaration->mNameNode), mModule->mCurTypeInstance->mTypeDef,
+				resolvePassData->HandleLocalReference(BfNodeDynCast<BfIdentifierNode>(localVar->mNameNode), mModule->mCurTypeInstance->mTypeDef,
 					mModule->mCurMethodInstance->mMethodDef, localVar->mLocalVarId);
+		}
+
+		for (int paramIdx = 0; paramIdx < (int)invokeMethodInstance->mMethodDef->mParams.size(); paramIdx++)
+		{
+			auto invokeParamDef = invokeMethodInstance->mMethodDef->mParams[paramIdx];
+
+			BfParameterDef* paramDef = new BfParameterDef();
+			paramDef->mParamDeclaration = tempParamDecls.Alloc();
+			BfAstNode::Zero(paramDef->mParamDeclaration);						
+			paramDef->mTypeRef = invokeParamDef->mTypeRef;
+			paramDef->mParamKind = invokeParamDef->mParamKind;
+						
+			if ((paramIdx < (int)lambdaBindExpr->mParams.size()) && (invokeMethodInstance->GetParamKind(paramIdx) != BfParamKind_DelegateParam))
+			{				
+				//TODO: Not always correct if we have a 'params'
+				paramDef->mParamDeclaration->mNameNode = lambdaBindExpr->mParams[paramIdx];
+				paramDef->mName = paramDef->mParamDeclaration->mNameNode->ToString();
+			}
+			else
+			{				
+				paramDef->mParamDeclaration->mNameNode = NULL;
+				paramDef->mName = invokeParamDef->mName;
+			}
+			
+			methodDef->mParams.push_back(paramDef);
+			
+			if (autoComplete != NULL)
+				autoComplete->CheckLocalDef(BfNodeDynCast<BfIdentifierNode>(paramDef->mParamDeclaration->mNameNode), methodState.mLocals.back());			
 		}
 	}
 
@@ -24091,12 +24106,17 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 			rightTypedValueExpr.mRefNode = opToken;
 
 			auto valueTypeEmpty = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(indexType->mBaseType->mBaseType), {});
+
+			SizedArray<BfIRValue, 8> tupleEmptyMembers;
+			tupleEmptyMembers.Add(valueTypeEmpty);
+			auto tupleTypeEmpty = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(mModule->ResolveTypeDef(mModule->mCompiler->mTupleTypeDef)), tupleEmptyMembers);
+
 			SizedArray<BfIRValue, 8> enumMembers;
 			enumMembers.Add(valueTypeEmpty);
 			auto enumValue = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(indexType->mBaseType), enumMembers);
 
 			SizedArray<BfIRValue, 8> tupleMembers;
-			tupleMembers.Add(valueTypeEmpty);
+			tupleMembers.Add(tupleTypeEmpty);
 			tupleMembers.Add(mModule->mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 1));
 			auto tupleValue = mModule->mBfIRBuilder->CreateConstAgg(mModule->mBfIRBuilder->MapType(indexType->mFieldInstances[0].mResolvedType), tupleMembers);
 

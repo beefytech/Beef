@@ -478,6 +478,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mTypeTypeDef = NULL;
 	mUnboundAttributeTypeDef = NULL;
 	mValueTypeTypeDef = NULL;
+	mTupleTypeDef = NULL;
 	mResultTypeDef = NULL;
 	mObsoleteAttributeTypeDef = NULL;
 	mErrorAttributeTypeDef = NULL;
@@ -7334,6 +7335,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mTypeTypeDef = _GetRequiredType("System.Type");
 	mUnboundAttributeTypeDef = _GetRequiredType("System.UnboundAttribute");
 	mValueTypeTypeDef = _GetRequiredType("System.ValueType");
+	mTupleTypeDef = _GetRequiredType("System.Tuple");
 	mObsoleteAttributeTypeDef = _GetRequiredType("System.ObsoleteAttribute");
 	mErrorAttributeTypeDef = _GetRequiredType("System.ErrorAttribute");
 	mWarnAttributeTypeDef = _GetRequiredType("System.WarnAttribute");
