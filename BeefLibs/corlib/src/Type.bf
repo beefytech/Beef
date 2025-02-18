@@ -36,15 +36,21 @@ namespace System
 		{
 			get
 			{
-				int32 baseTypeId = Type.[Friend]Comptime_Type_GetBaseType((.)mTypeId);
-				return Type.[Friend]Comptime_GetTypeDeclarationById(baseTypeId);
+				if (Compiler.IsComptime)
+				{
+					int32 baseTypeId = Type.[Friend]Comptime_Type_GetBaseType((.)mTypeId);
+					return Type.[Friend]Comptime_GetTypeDeclarationById(baseTypeId);
+				}
+				return null;
 			}
 		}
 		public TypeDeclaration OuterType
 		{
 			get
 			{
-				return Type.[Friend]Comptime_GetTypeDeclarationById((.)mOuterTypeId);
+				if (Compiler.IsComptime)
+					return Type.[Friend]Comptime_GetTypeDeclarationById((.)mOuterTypeId);
+				return null;
 			}
 		}
 
@@ -54,21 +60,24 @@ namespace System
 		public bool AlwaysVisible => mFlags.HasFlag(.AlwaysVisible);
 		public bool SometimesVisible => mFlags.HasFlag(.SometimesVisible);
 
-		public Type ResolvedType => Type.[Friend]Comptime_GetTypeById((.)mTypeId);
+		public Type ResolvedType => Compiler.IsComptime ? Type.[Friend]Comptime_GetTypeById((.)mTypeId) : null;
 
 		public void GetFullName(String strBuffer)
 		{
-			strBuffer.Append(Type.[Friend]Comptime_Type_ToString((.)mTypeId));
+			if (Compiler.IsComptime)
+				strBuffer.Append(Type.[Friend]Comptime_Type_ToString((.)mTypeId));
 		}
 
 		public void GetName(String strBuffer)
 		{
-			strBuffer.Append(Type.[Friend]Comptime_TypeName_ToString((.)mTypeId));
+			if (Compiler.IsComptime)
+				strBuffer.Append(Type.[Friend]Comptime_TypeName_ToString((.)mTypeId));
 		}
 
 		public void GetNamespace(String strBuffer)
 		{
-			strBuffer.Append(Type.[Friend]Comptime_Namespace_ToString((.)mTypeId));
+			if (Compiler.IsComptime)
+				strBuffer.Append(Type.[Friend]Comptime_Namespace_ToString((.)mTypeId));
 		}
 
 		public bool HasCustomAttribute<T>() where T : Attribute
@@ -165,17 +174,23 @@ namespace System
 
 		public bool HasDeclaredField(StringView fieldName)
 		{
-			return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 0, fieldName);
+			if (Compiler.IsComptime)
+				return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 0, fieldName);
+			return false;
 		}
 
 		public bool HasDeclaredMethod(StringView fieldName)
 		{
-			return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 1, fieldName);
+			if (Compiler.IsComptime)
+				return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 1, fieldName);
+			return false;
 		}
 
 		public bool HasDeclaredProperty(StringView fieldName)
 		{
-			return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 2, fieldName);
+			if (Compiler.IsComptime)
+				return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 2, fieldName);
+			return false;
 		}
 	}
 
