@@ -63,7 +63,7 @@ namespace System
 				mCmdInfo.Append("\n");
 			}
 
-			public void AddEdit(StringView dataName, StringView label, StringView defaultValue)
+			public void AddEdit(StringView dataName, StringView label, StringView defaultValue, bool focus = false)
 			{
 				mCmdInfo.AppendF($"addEdit\t");
 				dataName.QuoteString(mCmdInfo);
@@ -71,7 +71,7 @@ namespace System
 				label.QuoteString(mCmdInfo);
 				mCmdInfo.Append("\t");
 				defaultValue.QuoteString(mCmdInfo);
-				mCmdInfo.Append("\n");
+				mCmdInfo.AppendF($"\t{focus}\n");
 			}
 
 			public void AddFilePath(StringView dataName, StringView label, StringView defaultValue)
@@ -216,7 +216,7 @@ namespace System
 			
 			public override void InitUI()
 			{
-				AddEdit("name", "Class Name", "");
+				AddEdit("name", "Class Name", "", true);
 			}
 
 			public override void Generate(String outFileName, String outText, ref Flags generateFlags)
