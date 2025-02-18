@@ -14689,7 +14689,6 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			{
 				auto fromType = typedVal.mType;
 
-				// Handle the typedPrim<->underlying part implicitly
 				if (fromType->IsTypedPrimitive())
 				{
 					typedVal = LoadValue(typedVal);
@@ -14699,11 +14698,11 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						if (methodMatcher.mBestRawMethodInstance)
 							convTypedValue = GetDefaultTypedValue(methodMatcher.mBestRawMethodInstance->mReturnType);
 					}
-					return CastToValue(srcNode, convTypedValue, toType, (BfCastFlags)(castFlags & ~BfCastFlags_Explicit), NULL);
+					return CastToValue(srcNode, convTypedValue, toType, castFlags, NULL);
 				}
 				else if (toType->IsTypedPrimitive())
 				{
-					auto castedVal = CastToValue(srcNode, typedVal, toType->GetUnderlyingType(), (BfCastFlags)(castFlags & ~BfCastFlags_Explicit), NULL);
+					auto castedVal = CastToValue(srcNode, typedVal, toType->GetUnderlyingType(), castFlags, NULL);
 					return castedVal;
 				}
 			}

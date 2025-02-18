@@ -109,6 +109,15 @@ namespace Tests
 			public static int operator implicit(Self self);
 		}
 
+		public enum EnumM
+		{
+		    public static implicit operator int(Self self);
+
+		    case A;
+		    case B;
+		    case C;
+		}
+
 		[Test]
 		static void TestBasic()
 		{
@@ -118,6 +127,13 @@ namespace Tests
 			Test.Assert(sizeof(EnumB) == 2);
 			Test.Assert(sizeof(EnumC) == 4);
 			Test.Assert(sizeof(EnumD) == 8);
+
+			EnumM em = ?;
+			int i = em;
+			uint u = (uint)em;
+
+			i = 123;
+			EnumA e = (EnumA)i;
 		}
 
 		[Test]
