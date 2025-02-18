@@ -1354,6 +1354,17 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 		if (mContext->mGhostDependencies.Contains(resolvedTypeRef))
 		{
 			// Not a nice state, but we should be able to recover
+			if (resolvedTypeRef->mDefineState < BfTypeDefineState_Defined)
+			{
+				resolvedTypeRef->mDefineState = BfTypeDefineState_Defined;
+				resolvedTypeRef->mSize = 0;
+				resolvedTypeRef->mAlign = 1;				
+				if (typeInstance != NULL)
+				{
+					typeInstance->mInstSize = 0;
+					typeInstance->mInstAlign = 1;
+				}
+			}
 			return;
 		}
 
