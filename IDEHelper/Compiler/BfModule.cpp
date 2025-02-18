@@ -4727,7 +4727,12 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 			staticVarRef = ReferenceStaticField(fieldInstance);
 			exprEvaluator.mReceivingValue = &staticVarRef;
 		}
-		if (fieldType->IsVar())
+
+		if (fieldType->IsDeleting())
+		{
+			InternalError("Field using deleted type", fieldDef->GetRefNode());
+		}
+		else if (fieldType->IsVar())
 			result = CreateValueFromExpression(exprEvaluator, initializer, NULL, (BfEvalExprFlags)(BfEvalExprFlags_NoValueAddr | BfEvalExprFlags_FieldInitializer));
 		else
 			result = CreateValueFromExpression(exprEvaluator, initializer, fieldType, (BfEvalExprFlags)(BfEvalExprFlags_NoValueAddr | BfEvalExprFlags_FieldInitializer));
