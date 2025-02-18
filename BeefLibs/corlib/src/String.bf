@@ -1528,7 +1528,7 @@ namespace System
 				if ((provider == null) && (fmt.IsEmpty) && (width == 0))
 				{
 					if (arg == null)
-						s.Append("null");
+						Append("null");
 					else
 						arg.ToString(this);
 				}
