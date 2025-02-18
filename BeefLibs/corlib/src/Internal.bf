@@ -653,7 +653,7 @@ namespace System
 		}
 
 		[DisableChecks, DisableObjectAccessChecks]
-		public static void Dbg_ObjectStackInit(Object obj, ClassVData* classVData)
+		public static void Dbg_ObjectStackInit(Object obj, ClassVData* classVData, int size, uint8 allocFlags)
 		{
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
 			obj.[Friend]mClassVData = (.)(void*)classVData;

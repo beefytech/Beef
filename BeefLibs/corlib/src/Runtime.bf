@@ -746,8 +746,8 @@ namespace System
 			return 0;
 		}
 
-		[LinkName(.C), AlwaysInclude]
-		static extern void WinMain(void* module, void* prevModule, char8* args, int32 showCmd);
+		/*[LinkName(.C), AlwaysInclude]
+		static extern void WinMain(void* module, void* prevModule, char8* args, int32 showCmd);*/
 
 		[LinkName(.C), AlwaysInclude]
 		static extern int32 main(int argc, char8** argv);

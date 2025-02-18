@@ -44,10 +44,19 @@ namespace System.Diagnostics
 #endif
 		}
 
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+		static void Write(char8* str, int strLen)
+		{
+		}
+		static void Write(int val)
+		{
+		}
+#else
 		[CallingConvention(.Cdecl)]
 		static extern void Write(char8* str, int strLen);
 		[CallingConvention(.Cdecl)]
 		static extern void Write(int val);
+#endif
 
 		public static void Write(String line)
 		{

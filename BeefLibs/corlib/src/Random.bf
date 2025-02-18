@@ -39,7 +39,11 @@ namespace System
 		private int32 inextp;
 		private int32[] SeedArray = new int32[56] ~ delete _;
 
+#if !BF_RUNTIME_DISABLE
 		private static int32 sSeed = (int32)Platform.BfpSystem_GetTimeStamp();
+#else
+		private static int32 sSeed = 0;
+#endif
 
       //
       // Public Constants
