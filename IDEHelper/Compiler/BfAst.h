@@ -846,7 +846,7 @@ public:
 		return (mKind == BfTypedValueKind_NoValue) && (mType != NULL);
 	}
 
-	bool IsParams()
+	bool IsParams() const
 	{
 		return (mKind == BfTypedValueKind_ParamsSplat) || (mKind == BfTypedValueKind_Params);
 	}

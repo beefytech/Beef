@@ -1174,12 +1174,7 @@ void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name, int& namePre
 			if (methodParam->mDelegateParamNameCombine)
 				name = paramDef->mName + "__" + fieldInstance.GetFieldDef()->mName;
 			else
-				name = fieldInstance.GetFieldDef()->mName;
-
-			if (name == "p__a__a")
-			{
-				NOP;
-			}
+				name = fieldInstance.GetFieldDef()->mName;			
 
 			return;
 		}

@@ -650,6 +650,17 @@ namespace System
 		    }
 		}
 
+		public virtual TypeInstance WrappedType
+		{
+		    get
+		    {
+				if (Compiler.IsComptime)
+					return Comptime_GetWrappedType((.)mTypeId) as TypeInstance;
+
+		        return null;
+		    }
+		}
+
 		public virtual TypeInstance.InterfaceEnumerator Interfaces
 		{
 		    get
@@ -754,6 +765,7 @@ namespace System
 		static extern int32 Comptime_Type_GetBaseType(int32 typeId);
 		static extern bool Comptime_Type_HasDeclaredMember(int32 typeId, int32 kind, StringView name);
 		static extern Type Comptime_GetTypeById(int32 typeId);
+		static extern Type Comptime_GetWrappedType(int32 typeId);
 		static extern Type Comptime_GetTypeByName(StringView name);
 		static extern String Comptime_Type_ToString(int32 typeId);
 		static extern String Comptime_TypeName_ToString(int32 typeId);
@@ -863,6 +875,15 @@ namespace System
         {
             return type == this || (type.IsTypedPrimitive && type.UnderlyingType == this);
         }
+
+		public virtual bool ImplementsInterface(Type checkInterface)
+		{
+			var wrappedType = WrappedType;
+			if (wrappedType != null)
+				return wrappedType.ImplementsInterface(checkInterface);
+
+			return false;
+		}
 
 		public virtual Result<FieldInfo> GetField(String fieldName)
 		{
@@ -1247,6 +1268,19 @@ namespace System.Reflection
 		    }
 		}
 
+		public override bool ImplementsInterface(Type checkInterface)
+		{
+			for (int ifaceIdx < mInterfaceCount)
+			{
+				if (mInterfaceDataPtr[ifaceIdx].mInterfaceType == checkInterface.TypeId)
+					return true;
+			}
+			var baseType = BaseType;
+			if (baseType != null)
+				return baseType.ImplementsInterface(checkInterface);
+			return false;
+		}
+
         public override void GetFullName(String strBuffer)
         {
 			if (mTypeFlags.HasFlag(TypeFlags.Tuple))
@@ -1528,7 +1562,8 @@ namespace System.Reflection
 		public override void GetFullName(String strBuffer)
 		{
 			strBuffer.Append("const ");
-			switch (GetType(mValueType))
+			var type = GetType(mValueType);
+			switch (type)
 			{
 			case typeof(float):
 				(*(float*)&mValue).ToString(strBuffer);
@@ -1543,6 +1578,10 @@ namespace System.Reflection
 				strBuffer.Append('\'');
 			case typeof(uint64), typeof(uint):
 				(*(uint64*)&mValue).ToString(strBuffer);
+			case typeof(String):
+				int32 stringId = *(int32*)&mValue;
+				String str = String.GetById(stringId);
+				str.Quote(strBuffer);
 			default:
 				mValue.ToString(strBuffer);
 			}

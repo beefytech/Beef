@@ -578,6 +578,8 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 			name += "U5alloc";
 		else if (retTypeType->mModifiedKind == BfToken_Nullable)
 			name += "U8nullable";
+		else if (retTypeType->mModifiedKind == BfToken_Params)
+			name += "U6params";
 		else
 			BF_FATAL("Unhandled");
 		Mangle(mangleContext, name, retTypeType->mElementType);
@@ -1729,6 +1731,8 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 			name += "alloc$";
 		else if (retType->mModifiedKind == BfToken_Nullable)
 			name += "nullable$";
+		else if (retType->mModifiedKind == BfToken_Params)
+			name += "params$";
 		else
 			BF_FATAL("Unhandled");
 		Mangle(mangleContext, name, retType->mElementType);

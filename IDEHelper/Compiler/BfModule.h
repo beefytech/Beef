@@ -93,6 +93,7 @@ enum BfEvalExprFlags : int64
 	BfEvalExprFlags_AppendFieldInitializer = 0x80000000,
 	BfEvalExprFlags_NameOf = 0x100000000LL,
 	BfEvalExprFlags_NameOfSuccess = 0x200000000LL,
+	BfEvalExprFlags_InParamsExpr = 0x400000000LL,
 
 	BfEvalExprFlags_InheritFlags = BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_Comptime | BfEvalExprFlags_DeclType
 };

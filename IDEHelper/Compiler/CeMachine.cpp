@@ -6311,6 +6311,25 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_GetWrappedType)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + ceModule->mSystem->mPtrSize);
+
+				BfType* type = GetBfType(typeId);								
+				bool success = false;
+				if (type == NULL)
+				{
+					_Fail("Invalid type");
+					return false;
+				}				
+
+				addr_ce reflectType = NULL;
+				type = ceModule->GetWrappedStructType(type);
+				if (type != NULL)
+					reflectType = GetReflectType(type->mTypeId);
+				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectTypeByName)
 			{
 				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
@@ -6895,6 +6914,19 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				}
 
 				mCurModule->CEMixin(mCurCallSource->mRefNode, emitStr);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_GetStringById)
+			{
+				int32 stringId = *(int32*)((uint8*)stackPtr + ptrSize);
+
+				String string = "";				
+				BfStringPoolEntry* valuePtr = NULL;
+				mCurModule->mContext->mStringObjectIdMap.TryGetValue(stringId, &valuePtr);
+				if (valuePtr != NULL)
+					string = valuePtr->mString;
+
+				CeSetAddrVal(stackPtr + 0, GetString(string), ptrSize);
+				_FixVariables();
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Sleep)
 			{
@@ -10019,6 +10051,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_GetReflectTypeById;
 				}
+				else if (methodDef->mName == "Comptime_GetWrappedType")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_GetWrappedType;
+				}
 				else if (methodDef->mName == "Comptime_GetTypeByName")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_GetReflectTypeByName;
@@ -10125,6 +10161,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_EmitMixin")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_EmitMixin;
+				}
+				else if (methodDef->mName == "Comptime_GetStringById")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_GetStringById;
 				}
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mDiagnosticsDebugTypeDef))

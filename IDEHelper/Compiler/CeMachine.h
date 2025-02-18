@@ -436,6 +436,7 @@ enum CeFunctionKind
 	CeFunctionKind_HasDeclaredMember,
 	CeFunctionKind_GetReflectType,
 	CeFunctionKind_GetReflectTypeById,
+	CeFunctionKind_GetWrappedType,
 	CeFunctionKind_GetReflectTypeByName,
 	CeFunctionKind_GetReflectSpecializedType,
 	CeFunctionKind_Type_ToString,
@@ -463,6 +464,7 @@ enum CeFunctionKind
 	CeFunctionKind_EmitMethodEntry,
 	CeFunctionKind_EmitMethodExit,
 	CeFunctionKind_EmitMixin,
+	CeFunctionKind_GetStringById,
 
 	CeFunctionKind_BfpDirectory_Create,
 	CeFunctionKind_BfpDirectory_Rename,

@@ -2032,6 +2032,39 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 					}
 				}
 			}
+			else if (paramsType->IsParamsType())
+			{
+				paramsType = paramsType->GetUnderlyingType();
+				if (paramsType->IsGenericParam())
+				{
+					auto genericParamType = (BfGenericParamType*)paramsType;
+					if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
+					{						
+						auto genericParamInst = methodInstance->mMethodInfoEx->mGenericParams[genericParamType->mGenericParamIdx];
+						if ((genericParamInst->mTypeConstraint != NULL) && (genericParamInst->mTypeConstraint->IsInstanceOf(mModule->mCompiler->mTupleTypeDef)))
+						{
+							bool isValid = true;
+							BfTypeVector genericArgs;
+
+							for (int argIdx = methodInstance->mParams.mSize - 1 - inferParamOffset; argIdx < (int)mArguments.size(); argIdx++)
+							{								
+								BfTypedValue argTypedValue = ResolveArgTypedValue(mArguments[argIdx], NULL, genericArgumentsSubstitute);
+								if (!argTypedValue)
+								{
+									isValid = false;
+									break;
+								}
+								genericArgs.Add(mModule->FixIntUnknown(argTypedValue.mType));
+							}
+
+							if (isValid)
+							{
+								(*genericArgumentsSubstitute)[genericParamType->mGenericParamIdx] = mModule->CreateTupleType(genericArgs, SubstituteList());
+							}							
+						}
+					}
+				}
+			}
 		}
 
 		if (!deferredArgs.IsEmpty())
@@ -4388,6 +4421,10 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 		else
 			localResult = BfTypedValue(varDecl->mAddr, varDecl->mResolvedType, varDecl->mIsReadOnly ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
 	}
+	else if ((varDecl->mResolvedType->IsModifiedTypeType()) && (((BfModifiedTypeType*)varDecl->mResolvedType)->mModifiedKind == BfToken_Params))
+	{
+		localResult = BfTypedValue(BfIRValue(), varDecl->mResolvedType);
+	}
 	else if (varDecl->mResolvedType->IsValuelessNonOpaqueType())
 	{
 		if ((varDecl->mResolvedType->IsRef()) && (!allowRef))
@@ -4401,7 +4438,97 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 	}
 	else if (varDecl->mCompositeCount >= 0)
 	{
-		localResult = BfTypedValue(BfIRValue(), mModule->GetPrimitiveType(BfTypeCode_None));
+		if ((mBfEvalExprFlags & BfEvalExprFlags_InParamsExpr) != 0)
+		{
+			localResult = BfTypedValue(BfIRValue(), mModule->GetPrimitiveType(BfTypeCode_None));
+		}
+		else if (!varDecl->mAddr)
+		{			
+			bool isValid = true;
+
+			Array<BfTypedValue> argVals;
+
+			auto methodState = mModule->mCurMethodState->GetMethodStateForLocal(varDecl);
+			for (int compositeIdx = 0; compositeIdx < varDecl->mCompositeCount; compositeIdx++)
+			{
+				BfResolvedArg compositeResolvedArg;
+				auto compositeLocalVar = methodState->mLocals[varDecl->mLocalVarIdx + compositeIdx + 1];
+				auto argValue = LoadLocal(compositeLocalVar, true);
+				if (argValue)
+				{
+					if (!argValue.mType->IsStruct())
+						argValue = mModule->LoadValue(argValue, NULL, mIsVolatileReference);
+					argVals.Add(argValue);
+				}
+				else				
+					isValid = false;								
+			}
+
+			if (isValid)
+			{
+				BfTypeInstance* tupleType = NULL;
+				if (varDecl->mResolvedType->IsTuple())
+					tupleType = (BfTupleType*)varDecl->mResolvedType;
+				else if ((varDecl->mResolvedType->IsDelegateOrFunction()))
+				{
+					auto invokeFunction = mModule->GetDelegateInvokeMethod(varDecl->mResolvedType->ToTypeInstance());
+					if (invokeFunction != NULL)
+					{
+						BfTypeVector fieldTypes;
+						SubstituteList fieldNames;
+						for (int paramIdx = 0; paramIdx < invokeFunction->GetParamCount(); paramIdx++)
+						{
+							fieldNames.Add(invokeFunction->GetParamName(paramIdx));
+							fieldTypes.Add(invokeFunction->GetParamType(paramIdx));							
+						}						
+						tupleType = mModule->CreateTupleType(fieldTypes, fieldNames);
+					}
+				}
+				
+				if (tupleType == NULL)
+				{
+					isValid = false;
+				}
+				else if (tupleType->IsValuelessType())
+				{
+					localResult = mModule->GetDefaultTypedValue(tupleType);
+				}
+				else
+				{
+					BF_ASSERT(tupleType->mFieldInstances.mSize == argVals.mSize);
+
+					auto instAlloca = mModule->CreateAlloca(tupleType);
+
+					for (int i = 0; i < argVals.mSize; i++)
+					{
+						auto& fieldInstance = tupleType->mFieldInstances[i];
+						if (fieldInstance.mDataIdx >= 0)
+						{
+							auto val = mModule->Cast(varDecl->mNameNode, argVals[i], fieldInstance.mResolvedType);
+							if (val)
+							{
+								val = mModule->LoadOrAggregateValue(val);
+								if (!val.mType->IsValuelessType())
+								{
+									auto elemPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(instAlloca, 0, fieldInstance.mDataIdx);
+									mModule->mBfIRBuilder->CreateStore(val.mValue, elemPtr);
+								}
+							}
+						}
+					}
+
+					varDecl->mResolvedType = tupleType;
+					varDecl->mAddr = instAlloca;
+					varDecl->mIsReadOnly = true;
+					localResult = BfTypedValue(varDecl->mAddr, varDecl->mResolvedType, BfTypedValueKind_ReadOnlyAddr);
+				}				
+			}
+			
+			if (!isValid)
+			{
+				localResult = mModule->GetDefaultTypedValue(mModule->ResolveTypeDef(mModule->mCompiler->mTupleTypeDef));
+			}
+		}		
 	}
 	else
 	{
@@ -4539,11 +4666,6 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 					if ((closureTypeInst != NULL) && (wantName == "this"))
 						break;
 
-					if ((varDecl->mCompositeCount >= 0) && ((mBfEvalExprFlags & BfEvalExprFlags_AllowParamsExpr) == 0))
-					{
-						mModule->Fail("Invalid use of 'params' parameter", refNode);
-					}
-
 					if (varDecl->mResolvedType->IsVoid())
 					{
 						if ((varDecl->mIsReadOnly) && (varDecl->mParamIdx == -2) && (varDecl->mParamFailed))
@@ -4556,6 +4678,12 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 					mModule->SetElementType(identifierNode, (varDecl->IsParam()) ? BfSourceElementType_Parameter : BfSourceElementType_Local);
 
 					BfTypedValue localResult = LoadLocal(varDecl);
+
+					if ((localResult) && (localResult.mType->IsParamsType()) && ((mBfEvalExprFlags & BfEvalExprFlags_AllowParamsExpr) == 0))
+					{
+						localResult = mModule->LoadOrAggregateValue(localResult);
+					}
+
 					auto autoComplete = GetAutoComplete();
 					if (identifierNode != NULL)
 					{
@@ -6355,26 +6483,35 @@ void BfExprEvaluator::ResolveArgValues(BfResolvedArgs& resolvedArgs, BfResolveAr
 				auto methodState = mModule->mCurMethodState->GetMethodStateForLocal(localVar);
 				if (localVar->mCompositeCount >= 0)
 				{
-					if ((resolvedArg.mArgFlags & BfArgFlag_ParamsExpr) == 0)
-						mModule->Warn(0, "'params' token expected", argExpr);
-
-					for (int compositeIdx = 0; compositeIdx < localVar->mCompositeCount; compositeIdx++)
+					if ((resolvedArg.mArgFlags & BfArgFlag_ParamsExpr) != 0)
 					{
-						BfResolvedArg compositeResolvedArg;
-						auto compositeLocalVar = methodState->mLocals[localVar->mLocalVarIdx + compositeIdx + 1];
-						auto argValue = exprEvaluator.LoadLocal(compositeLocalVar, true);
-						if (argValue)
+						for (int compositeIdx = 0; compositeIdx < localVar->mCompositeCount; compositeIdx++)
 						{
-							if (!argValue.mType->IsStruct())
-								argValue = mModule->LoadValue(argValue, NULL, exprEvaluator.mIsVolatileReference);
-						}
-						resolvedArg.mTypedValue = argValue;
-						resolvedArg.mExpression = argExpr;
-						resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_FromParamComposite);
-						resolvedArgs.mResolvedArgs.push_back(resolvedArg);
-					}
+							BfResolvedArg compositeResolvedArg;
+							auto compositeLocalVar = methodState->mLocals[localVar->mLocalVarIdx + compositeIdx + 1];
+							auto argValue = exprEvaluator.LoadLocal(compositeLocalVar, true);
+							if (argValue)
+							{
+								if (!argValue.mType->IsStruct())
+									argValue = mModule->LoadValue(argValue, NULL, exprEvaluator.mIsVolatileReference);
+							}
+							resolvedArg.mTypedValue = argValue;
+							resolvedArg.mExpression = argExpr;
+							resolvedArg.mArgFlags = (BfArgFlags)(resolvedArg.mArgFlags | BfArgFlag_FromParamComposite);
+							resolvedArgs.mResolvedArgs.push_back(resolvedArg);
 
-					continue;
+							exprEvaluator.mIsVolatileReference = false;
+						}
+
+						if ((localVar->mResolvedType->IsModifiedTypeType()) && (((BfModifiedTypeType*)localVar->mResolvedType)->mModifiedKind == BfToken_Params))
+						{
+							// Is a 'params'
+						}
+						else
+							continue;
+					}
+					else
+						exprEvaluator.mResult = mModule->LoadOrAggregateValue(exprEvaluator.mResult);
 				}
 			}
 
@@ -7903,6 +8040,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	BfIRValue expandedParamAlloca;
 	BfTypedValue expandedParamsArray;
 	BfType* expandedParamsElementType = NULL;
+	bool hadDelegateParamIdx = false;
 	int extendedParamIdx = 0;
 
 	AddCallDependencies(methodInstance);
@@ -8170,6 +8308,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 					}
 				}
 			}
+			else if (paramKind == BfParamKind_DelegateParam)
+				hadDelegateParamIdx = true;
 		}
 
 		BfAstNode* arg = NULL;
@@ -8181,7 +8321,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			if (argExprIdx < (int)argValues.size())
 			{
 				arg = argValues[argExprIdx].mExpression;
-				if (((argValues[argExprIdx].mArgFlags & BfArgFlag_StringInterpolateArg) != 0) && (!expandedParamsArray))
+				if (((argValues[argExprIdx].mArgFlags & BfArgFlag_StringInterpolateArg) != 0) && (!expandedParamsArray) && (!hadDelegateParamIdx))
 				{
 					BfAstNode* errorRef = arg;
 					int checkIdx = argExprIdx - 1;
@@ -10418,7 +10558,10 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 						if ((mModule->mCurMethodState != NULL) && (exprEvaluator.mResultLocalVar != NULL) && (exprEvaluator.mResultLocalVarRefNode != NULL))
 						{
 							auto localVar = exprEvaluator.mResultLocalVar;
-							if ((localVar->mCompositeCount >= 0) && (localVar->mResolvedType == fieldVal.mType))
+							auto checkType = localVar->mResolvedType;
+							if (checkType->IsParamsType())
+								checkType = checkType->GetUnderlyingType();
+							if ((localVar->mCompositeCount >= 0) && (checkType == fieldVal.mType))
 							{
 								delegateFailed = false;
 								if (mModule->mCurMethodInstance->mIsUnspecialized)
@@ -19984,12 +20127,12 @@ void BfExprEvaluator::CheckResultForReading(BfTypedValue& typedValue)
 			int fieldIdx = mResultLocalVarField - 1;
 
 			auto localVar = mResultLocalVar;
-			if (localVar->mCompositeCount > 0)
+			/*if (localVar->mCompositeCount > 0)
 			{
 				mModule->Fail(StrFormat("Cannot read from composite '%s', it can only be used in an argument list", localVar->mName.c_str()), mResultLocalVarRefNode);
 				typedValue = BfTypedValue();
 				return;
-			}
+			}*/
 
 			if (localVar->mAssignedKind == BfLocalVarAssignKind_None)
 			{
@@ -22849,9 +22992,7 @@ void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp
 
 	///
 	{
-		// If this is a cast, we don't want the value to be coerced before the unary operator is applied.
-		// WAIT: Why not?
-		//SetAndRestoreValue<BfType*> prevExpectingType(mExpectingType, NULL);
+		SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags);
 
 		BfType* prevExpedcting = mExpectingType;
 		switch (unaryOp)
@@ -22875,10 +23016,13 @@ void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp
 			if ((mExpectingType != NULL) && (mExpectingType->IsInteger()) && (mExpectingType->mSize == 8))
 				mExpectingType = NULL;
 			// Otherwise keep expecting type
-			break;		
+			break;
+		case BfUnaryOp_Params:
+			mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_InParamsExpr);
+			break;
 		default:
 			mExpectingType = NULL;
-		}
+		}					
 		VisitChild(unaryOpExpr);
 		mExpectingType = prevExpedcting;
 	}
@@ -23570,6 +23714,8 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
  			if (allowParams)
  			{
  				mResult = mModule->LoadValue(mResult);
+				if ((mResult.mType != NULL) && (mResult.mType->IsParamsType()))
+					mResult.mType = mResult.mType->GetUnderlyingType();
 				if (mResult.IsSplat())
  					mResult.mKind = BfTypedValueKind_ParamsSplat;
 				else

@@ -1392,6 +1392,10 @@ namespace System
 
 			while (true)
 			{
+				int charsLeft = len - pos;
+				Reserve(mLength + charsLeft);
+				char8* ptr = Ptr;
+
 				int p = pos;
 				int i = pos;
 				while (pos < len)
@@ -1418,7 +1422,8 @@ namespace System
 						}
 					}
 
-					Append(ch);
+					//Append(ch);
+					ptr[mLength++] = ch;
 				}
 
 				if (pos == len) break;
@@ -1519,25 +1524,36 @@ namespace System
 				}
 				if (ch != '}') return FormatError();
 				pos++;
-				if (s == null)
-					s = scope:: String(128);
-				
-				s.Clear();
-				IFormattable formattableArg = arg as IFormattable;
-				if (formattableArg != null)
-					formattableArg.ToString(s, fmt, provider);
-				else if (arg != null)
-					arg.ToString(s);
+
+				if ((provider == null) && (fmt.IsEmpty) && (width == 0))
+				{
+					if (arg == null)
+						s.Append("null");
+					else
+						arg.ToString(this);
+				}
 				else
-					s.Append("null");
-				if (fmt != (Object)"")
-					fmt.Clear();
-				
-				if (s == null) s = String.Empty;
-				int pad = width - s.Length;
-				if (!leftJustify && pad > 0) Append(' ', pad);
-				Append(s);
-				if (leftJustify && pad > 0) Append(' ', pad);
+				{
+					if (s == null)
+						s = scope:: String(128);
+					
+					s.Clear();
+					IFormattable formattableArg = arg as IFormattable;
+					if (formattableArg != null)
+						formattableArg.ToString(s, fmt, provider);
+					else if (arg != null)
+						arg.ToString(s);
+					else
+						s.Append("null");
+					if (fmt != (Object)"")
+						fmt.Clear();
+					
+					if (s == null) s = String.Empty;
+					int pad = width - s.Length;
+					if (!leftJustify && pad > 0) Append(' ', pad);
+					Append(s);
+					if (leftJustify && pad > 0) Append(' ', pad);
+				}
 			}
 
 			return .Ok;
@@ -2997,6 +3013,16 @@ namespace System
 				}
 				return *entryPtr;
 			}
+		}
+
+		public static String GetById(int id)
+		{
+			if (Compiler.IsComptime)
+			{
+				return Compiler.[Friend]Comptime_GetStringById((.)id);
+			}
+			else
+				return sIdStringLiterals[id];
 		}
 
 		public struct RawEnumerator : IRefEnumerator<char8*>, IEnumerator<char8>

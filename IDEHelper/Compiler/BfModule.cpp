@@ -13520,6 +13520,16 @@ BfTypedValue BfModule::LoadOrAggregateValue(BfTypedValue typedValue)
 		return AggregateSplat(typedValue);
 	if (typedValue.IsAddr())
 		return LoadValue(typedValue);
+
+	if ((typedValue.mType != NULL) && (typedValue.mType->IsParamsType()) && (!typedValue.IsParams()))
+	{		
+		return GetDefaultTypedValue(ResolveTypeDef(mCompiler->mTupleTypeDef));
+	}
+	else if ((typedValue.IsParams()) && (typedValue.mType->IsGenericParam()))
+	{
+		return BfTypedValue(mBfIRBuilder->GetFakeVal(), typedValue.mType);
+	}
+
 	return typedValue;
 }
 
@@ -17144,6 +17154,8 @@ void BfModule::CreateDelegateInvokeMethod()
 
 	for (int i = 1; i < (int)mCurMethodState->mLocals.size(); i++)
 	{
+		if (mCurMethodState->mLocals[i]->mCompositeCount >= 0)
+			continue;
 		BfTypedValue localVal = exprEvaluator.LoadLocal(mCurMethodState->mLocals[i], true);
 		exprEvaluator.PushArg(localVal, staticFuncArgs);
 		exprEvaluator.PushArg(localVal, memberFuncArgs);
@@ -20029,6 +20041,16 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			paramVar->mIsImplicitParam = true;
 		}
 
+		if (methodInstance->GetParamKind(paramIdx) == BfParamKind_Params)
+		{
+			if ((paramVar->mResolvedType->IsModifiedTypeType()) && (((BfModifiedTypeType*)paramVar->mResolvedType)->mModifiedKind == BfToken_Params))
+			{
+				paramVar->mValue = BfIRValue();
+				paramVar->mCompositeCount = 0;
+				paramVar->mIsSplat = false;
+			}
+		}
+
 		if (!mCurTypeInstance->IsDelegateOrFunction())
 			CheckVariableDef(paramVar);
 		paramVar->Init();
@@ -20074,11 +20096,24 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 						((typeInstConstraint != NULL) &&
 						 ((typeInstConstraint->IsInstanceOf(mCompiler->mDelegateTypeDef)) || (typeInstConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)) || (typeInstConstraint->IsInstanceOf(mCompiler->mTupleTypeDef)))))
 					{
-						BfLocalVariable* localVar = new BfLocalVariable();
-						localVar->mName = paramDef->mName;
-						localVar->mResolvedType = paramsType;
-						localVar->mCompositeCount = 0;
-						DoAddLocalVariable(localVar);
+						bool doAdd = true;
+
+						// TODO: Remove
+						if (!mCurMethodState->mLocals.IsEmpty())
+						{
+							auto checkVar = mCurMethodState->mLocals.back();
+							if (checkVar->mName == paramDef->mName)
+								doAdd = false;
+						}
+
+						if (doAdd)
+						{
+							BfLocalVariable* localVar = new BfLocalVariable();
+							localVar->mName = paramDef->mName;
+							localVar->mResolvedType = paramsType;
+							localVar->mCompositeCount = 0;
+							DoAddLocalVariable(localVar);
+						}
 					}
 				}
 			}
@@ -24998,14 +25033,16 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				addParams = false;
 			}
 			else if (resolvedParamType->IsGenericParam())
-			{
+			{	
+				bool isGenericDelegateParams = false;
+				bool addDelegateParamsType = false;
+
 				auto genericParamInstance = GetGenericParamInstance((BfGenericParamType*)resolvedParamType, false, BfFailHandleKind_Ignore);
 				if (genericParamInstance == NULL)
 				{
 					// Delegate case with a 'params T'?
-					mCurMethodInstance->mHadGenericDelegateParams = true;
-					isValid = true;
-					addParams = false;
+					isGenericDelegateParams = true;
+					addDelegateParamsType = true;
 				}
 				else if (genericParamInstance->mTypeConstraint != NULL)
 				{
@@ -25022,9 +25059,28 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 						((genericParamInstance != NULL) && (typeInstConstraint != NULL) &&
 						 ((typeInstConstraint->IsInstanceOf(mCompiler->mDelegateTypeDef)) || (typeInstConstraint->IsInstanceOf(mCompiler->mFunctionTypeDef)) || (typeInstConstraint->IsInstanceOf(mCompiler->mTupleTypeDef)))))
 					{
-						mCurMethodInstance->mHadGenericDelegateParams = true;
-						isValid = true;
-						addParams = false;
+						isGenericDelegateParams = true;
+						//addDelegateParamsType = typeInstConstraint->IsInstanceOf(mCompiler->mTupleTypeDef);
+						addDelegateParamsType = true;
+					}
+				}
+
+				if (isGenericDelegateParams)
+				{
+					mCurMethodInstance->mHadGenericDelegateParams = true;
+					isValid = true;
+					addParams = false;
+
+					if (addDelegateParamsType)
+					{
+						BfMethodParam methodParam;
+						methodParam.mResolvedType = CreateModifiedTypeType(resolvedParamType, BfToken_Params);
+						methodParam.mParamDefIdx = paramDefIdx;
+						mCurMethodInstance->mParams.Add(methodParam);
+
+						//TODO: Why do we have this 'if'
+						if (!methodInstance->IsSpecializedGenericMethod())
+							AddDependency(methodParam.mResolvedType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ParamOrReturnValue);
 					}
 				}
 			}
@@ -25032,9 +25088,9 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			{
 				auto paramTypeInst = resolvedParamType->ToTypeInstance();
 				if ((paramTypeInst != NULL) &&
-					((paramTypeInst->IsInstanceOf(mCompiler->mDelegateTypeDef)) || (paramTypeInst->IsInstanceOf(mCompiler->mFunctionTypeDef))))
+					((paramTypeInst->IsInstanceOf(mCompiler->mDelegateTypeDef)) || (paramTypeInst->IsInstanceOf(mCompiler->mFunctionTypeDef)) || (paramTypeInst->IsInstanceOf(mCompiler->mTupleTypeDef))))
 				{
-					// If we have a 'params T' and 'T' gets specialized with actually 'Delegate' or 'Function' then just ignore it
+					// If we have a 'params T' and 'T' gets specialized with actually 'Tuple', 'Delegate' or 'Function' then just ignore it
 					isValid = true;
 					addParams = false;
 				}
@@ -25042,7 +25098,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 			if (!isValid)
 			{
-				Fail("Parameters with 'params' specifiers can only be used for array, span, delegate, or function types", paramDef->mParamDeclaration->mModToken);
+				Fail("Parameters with 'params' specifiers can only be used for array, span, tuple, delegate, or function types", paramDef->mParamDeclaration->mModToken);
 				// Failure case, make it an Object[]
 				resolvedParamType = CreateArrayType(mContext->mBfObjectType, 1);
 			}
@@ -25100,7 +25156,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 					auto tupleType = (BfTupleType*)methodParam.mResolvedType;
 					auto& fieldInstance = tupleType->mFieldInstances[methodParam.mDelegateParamIdx];
 					auto paramName = fieldInstance.GetFieldDef()->mName;
-					if (!usedNames.Add(paramName))
+					if ((!usedNames.Add(paramName)) || (::isdigit((uint8)paramName[0])))
 						methodParam.mDelegateParamNameCombine = true;
 				}
 				else

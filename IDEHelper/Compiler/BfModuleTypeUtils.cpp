@@ -15280,6 +15280,13 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 	}*/
 
 	BfCastResultFlags castResultFlags = BfCastResultFlags_None;
+
+	if ((typedVal.IsParams()) && (toType->IsParamsType()))
+	{
+		if (typedVal.mType == toType->GetUnderlyingType())
+			return BfTypedValue(mBfIRBuilder->GetFakeVal(), toType);
+	}
+
 	auto castedValue = CastToValue(srcNode, typedVal, toType, castFlags, &castResultFlags);
 	if (!castedValue)
 		return BfTypedValue();

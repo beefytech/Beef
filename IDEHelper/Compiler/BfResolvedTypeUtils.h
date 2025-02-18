@@ -626,6 +626,7 @@ public:
 	virtual bool IsOnDemand() { return false; }
 	virtual bool IsTemporary() { return false; }
 	virtual bool IsModifiedTypeType() { return false; }
+	virtual bool IsParamsType() { return false; }
 	virtual bool IsConcreteInterfaceType() { return false; }
 	virtual bool IsTypeAlias() { return false; }
 	virtual bool HasPackingHoles() { return false; }
@@ -1142,6 +1143,7 @@ public:
 	BfType* mElementType;
 
 	virtual bool IsModifiedTypeType() override { return true; }
+	virtual bool IsParamsType() override { return mModifiedKind == BfToken_Params; }
 	virtual bool CanBeValuelessType() override { return true; }
 	virtual bool IsValuelessType() override { return true; }
 
