@@ -21,7 +21,7 @@ class Params
 			{
 				if (constType.ValueType == typeof(String))
 				{
-					format = String.GetById(constType.ValueData);
+					format = String.GetById((.)constType.ValueData);
 				}
 			}
 
