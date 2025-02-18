@@ -669,7 +669,7 @@ namespace System
 			return null;
 		}
 
-		public static Object Dbg_ObjectAlloc(ClassVData* classVData, int size, int align, int maxStackTraceDepth)
+		public static Object Dbg_ObjectAlloc(ClassVData* classVData, int size, int align, int maxStackTraceDepth, uint8 flags)
 		{
 			return null;
 		}
