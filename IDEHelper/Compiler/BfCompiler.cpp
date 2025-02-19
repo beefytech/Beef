@@ -355,6 +355,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mHasRequiredTypes = false;
 	mNeedsFullRefresh = false;
 	mFastFinish = false;
+	mExtraCompileRequested = false;
 	mHasQueuedTypeRebuilds = false;
 	mIsResolveOnly = isResolveOnly;
 	mResolvePassData = NULL;
@@ -7182,6 +7183,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mOutputDirectory = outputDirectory;
 	mSystem->StartYieldSection();
 
+	mExtraCompileRequested = false;
 	mFastFinish = false;
 	mHasQueuedTypeRebuilds = false;
 	mCanceling = false;
@@ -8082,7 +8084,23 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 bool BfCompiler::Compile(const StringImpl& outputDirectory)
 {
-	bool success = DoCompile(outputDirectory);
+	int passIdx = 0;
+	bool success = false;
+	while (true)
+	{
+		auto passState = mPassInstance->GetState();
+
+		success = DoCompile(outputDirectory);
+		if (!mExtraCompileRequested)
+			break;
+		
+		mPassInstance->RestoreState(passState);
+
+		if (passIdx == 1)
+			break;
+		passIdx++;
+	}
+
 	if (!success)
 		return false;
 	if (mPassInstance->HasFailed())
@@ -8130,6 +8148,11 @@ void BfCompiler::RequestFastFinish()
 		mCeMachine->mSpecialCheck = true;
 	BfLogSysM("BfCompiler::RequestFastFinish\n");
 	BpEvent("BfCompiler::RequestFastFinish", "");
+}
+
+void BfCompiler::RequestExtraCompile()
+{
+	mExtraCompileRequested = true;
 }
 
 //#define WANT_COMPILE_LOG

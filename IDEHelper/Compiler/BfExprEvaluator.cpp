@@ -5646,6 +5646,7 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 
 	if (fieldInstance->mDataIdx < 0)
 	{		
+		mModule->mCompiler->RequestExtraCompile();
 		mModule->InternalError("LoadField field DataIdx<0 where InstSize>0");
 		mModule->DeferRebuildType(typeInstance);
 		return mModule->GetDefaultTypedValue(resolvedFieldType);

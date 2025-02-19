@@ -334,6 +334,7 @@ public:
 	bool mHasRequiredTypes;
 	bool mNeedsFullRefresh;
 	bool mFastFinish;
+	bool mExtraCompileRequested;
 	bool mHasQueuedTypeRebuilds; // Infers we had a fast finish that requires a type rebuild
 	bool mHadCancel;
 	bool mWantsDeferMethodDecls;
@@ -545,6 +546,7 @@ public:
 	void GetSymbolReferences();
 	void Cancel();
 	void RequestFastFinish();
+	void RequestExtraCompile();
 	String GetTypeDefList(bool includeLocation);
 	String GetGeneratorString(BfTypeDef* typeDef, BfTypeInstance* typeInst, const StringImpl& generatorMethodName, const StringImpl* args);
 	void HandleGeneratorErrors(StringImpl& result);

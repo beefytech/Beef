@@ -1595,6 +1595,17 @@ public:
 class BfPassInstance
 {
 public:
+	struct StateInfo
+	{
+		int mOutStreamSize;
+		int mErrorsSize;		
+		int mWarningCount;
+		int mDeferredErrorCount;
+		int mFailedIdx;
+		int mWarnIdx;		
+	};
+
+public:
 	const int sMaxDisplayErrors = 100;
 	const int sMaxErrors = 1000;
 
@@ -1635,6 +1646,9 @@ public:
 	}
 
 	~BfPassInstance();
+
+	StateInfo GetState();
+	void RestoreState(StateInfo stateInfo);
 
 	void ClearErrors();
 	bool HasFailed();

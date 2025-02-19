@@ -4730,6 +4730,7 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 
 		if (fieldType->IsDeleting())
 		{
+			mCompiler->RequestExtraCompile();
 			InternalError("Field using deleted type", fieldDef->GetRefNode());
 		}
 		else if (fieldType->IsVar())
@@ -11264,6 +11265,7 @@ BfMethodInstance* BfModule::GetRawMethodInstanceAtIdx(BfTypeInstance* typeInstan
 {
 	if (typeInstance->IsDeleting())
 	{
+		mCompiler->RequestExtraCompile();
 		InternalError("GetRawMethodInstanceAtIdx for deleted type", typeInstance->mTypeDef->GetRefNode());
 		return NULL;
 	}
@@ -20300,6 +20302,13 @@ void BfModule::EmitGCMarkValue(BfTypedValue& thisValue, BfType* checkType, int m
 
 	if (!checkType->WantsGCMarking())
 		return;
+
+	if (checkType->IsDeleting())
+	{
+		mCompiler->RequestExtraCompile();
+		InternalError("EmitGCMarkValue deleted type");
+		return;
+	}
 
 	auto typeInstance = checkType->ToTypeInstance();
 	bool callMarkMethod = false;

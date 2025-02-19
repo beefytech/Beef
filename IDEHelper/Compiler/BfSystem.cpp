@@ -1223,6 +1223,37 @@ BfPassInstance::~BfPassInstance()
 		delete bfError;
 }
 
+BfPassInstance::StateInfo BfPassInstance::GetState()
+{
+	StateInfo stateInfo;
+	stateInfo.mOutStreamSize = (int)mOutStream.mSize;
+	stateInfo.mErrorsSize = mErrors.mSize;
+	stateInfo.mWarningCount = mWarningCount;
+	stateInfo.mDeferredErrorCount = mDeferredErrorCount;
+	stateInfo.mFailedIdx = mFailedIdx;
+	stateInfo.mWarnIdx = mWarnIdx;	
+	return stateInfo;
+}
+
+void BfPassInstance::RestoreState(StateInfo stateInfo)
+{
+	while (mOutStream.mSize > stateInfo.mOutStreamSize)
+		mOutStream.pop_back();
+
+	while (mErrors.mSize > stateInfo.mErrorsSize)
+	{
+		auto error = mErrors.back();
+		mErrors.pop_back();
+		mErrorSet.Remove(error);
+		delete error;
+	}
+	
+	mWarningCount = stateInfo.mWarningCount;
+	mDeferredErrorCount = stateInfo.mDeferredErrorCount;
+	mFailedIdx = stateInfo.mFailedIdx;
+	mWarnIdx = stateInfo.mWarnIdx;
+}
+
 void BfPassInstance::ClearErrors()
 {
 	mFailedIdx = 0;
