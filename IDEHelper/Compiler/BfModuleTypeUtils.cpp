@@ -2495,194 +2495,224 @@ void BfModule::UpdateCEEmit(CeEmitContext* ceEmitContext, BfTypeInstance* typeIn
 }
 
 void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* typeInstance, BfFieldInstance* fieldInstance, BfCustomAttributes* customAttributes, Dictionary<BfTypeInstance*, BfIRValue>& prevAttrInstances, bool underlyingTypeDeferred)
-{
+{	
 	for (auto& customAttribute : customAttributes->mAttributes)
 	{
-		if ((customAttribute.mDeclaringType->IsExtension()) && (typeInstance->IsGenericTypeInstance()) && (!typeInstance->IsUnspecializedTypeVariation()))
-		{
-			if (!typeInstance->IsTypeMemberIncluded(customAttribute.mDeclaringType, typeInstance->mTypeDef, this))
-				continue;
-		}
-
-		auto attrType = customAttribute.mType;
-
-		BfMethodInstance* methodInstance = NULL;
 		bool isFieldApply = false;
-		BfIRValue irValue;
-		int checkDepth = 0;
-		auto checkAttrType = attrType;
-		while (checkAttrType != NULL)
+		bool hasFieldApply = false;
+		bool hasTypeApply = false;
+
+		for (int pass = 0; pass < 2; pass++)
 		{
-			mContext->mUnreifiedModule->PopulateType(checkAttrType, BfPopulateType_DataAndMethods);
-			if (checkAttrType->mDefineState < BfTypeDefineState_DefinedAndMethodsSlotted)
-				break;
-
-			for (auto& ifaceEntry : checkAttrType->mInterfaces)
+			if (pass == 1)
 			{
-				isFieldApply = false;
-				isFieldApply = (ceEmitContext != NULL) && (fieldInstance != NULL) && (ifaceEntry.mInterfaceType->IsInstanceOf(mCompiler->mIOnFieldInitTypeDef));
-
-				if ((isFieldApply) ||
-					((ceEmitContext != NULL) && (ifaceEntry.mInterfaceType->IsInstanceOf(mCompiler->mIComptimeTypeApply))) ||
-					((ceEmitContext != NULL) && (ifaceEntry.mInterfaceType->IsInstanceOf(mCompiler->mIOnTypeInitTypeDef))) ||
-					((ceEmitContext == NULL) && (ifaceEntry.mInterfaceType->IsInstanceOf(mCompiler->mIOnTypeDoneTypeDef))))
+				if ((hasFieldApply) && (hasTypeApply))
 				{
-					 // Passes
+					// Keep going - do the field apply now
 				}
 				else
-					continue;
-
-				prevAttrInstances.TryGetValue(checkAttrType, &irValue);
-				methodInstance = checkAttrType->mInterfaceMethodTable[ifaceEntry.mStartInterfaceTableIdx].mMethodRef;
-				break;
+					break;
 			}
-			if (methodInstance != NULL)
-				break;
 
-			checkAttrType = checkAttrType->mBaseType;
-			checkDepth++;
-		}
-
-		if (methodInstance == NULL)
-			continue;
-
-		SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCeMachine->mCurEmitContext, ceEmitContext);
-		auto ceContext = mCompiler->mCeMachine->AllocContext();
-		defer({ mCompiler->mCeMachine->ReleaseContext(ceContext); });
-
-		BfIRValue attrVal =ceContext->CreateAttribute(customAttribute.mRef, this, typeInstance->mConstHolder, &customAttribute);
-		for (int baseIdx = 0; baseIdx < checkDepth; baseIdx++)
-			attrVal = mBfIRBuilder->CreateExtractValue(attrVal, 0);
-
-		SizedArray<BfIRValue, 1> args;
-		if (!attrType->IsValuelessType())
-			args.Add(attrVal);
-		if (isFieldApply)
-		{
-			auto fieldInfoType = ResolveTypeDef(mCompiler->mReflectFieldInfoTypeDef);
-			if (fieldInfoType != NULL)
+			if ((customAttribute.mDeclaringType->IsExtension()) && (typeInstance->IsGenericTypeInstance()) && (!typeInstance->IsUnspecializedTypeVariation()))
 			{
-				SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
-				SizedArray<BfIRValue, 9> fieldData =
-				{
-					mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(fieldInfoType->ToTypeInstance()->mBaseType, BfIRPopulateType_Identity)),
-					mBfIRBuilder->CreateTypeOf(mCurTypeInstance), // mTypeInstance
-					CreateFieldData(fieldInstance, -1)
-				};
-				FixConstValueParams(fieldInfoType->ToTypeInstance(), fieldData);
-				auto fieldDataAgg = mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(fieldInfoType, BfIRPopulateType_Identity), fieldData);
-				args.Add(fieldDataAgg);
+				if (!typeInstance->IsTypeMemberIncluded(customAttribute.mDeclaringType, typeInstance->mTypeDef, this))
+					continue;
 			}
-		}
-		else
-			args.Add(mBfIRBuilder->CreateTypeOf(typeInstance));
 
-		if (methodInstance->GetParamCount() > 1)
-		{
-			if (irValue)
-				args.Add(irValue);
-			else
-				args.Add(mBfIRBuilder->CreateConstNull());
-		}
-		else
-		{
-			// Only allow a single instance
-			if (irValue)
+			auto attrType = customAttribute.mType;
+
+			BfMethodInstance* methodInstance = NULL;			
+			BfIRValue irValue;
+			int checkDepth = 0;
+			auto checkAttrType = attrType;
+			while (checkAttrType != NULL)
+			{
+				mContext->mUnreifiedModule->PopulateType(checkAttrType, BfPopulateType_DataAndMethods);
+				if (checkAttrType->mDefineState < BfTypeDefineState_DefinedAndMethodsSlotted)
+					break;
+
+				for (auto& ifaceEntry : checkAttrType->mInterfaces)
+				{
+					isFieldApply = false;					
+					isFieldApply = (ceEmitContext != NULL) && (fieldInstance != NULL) && (ifaceEntry.mInterfaceType->IsInstanceOf(mCompiler->mIOnFieldInitTypeDef));
+
+					if (((ceEmitContext != NULL) && (ifaceEntry.mInterfaceType->IsInstanceOf(mCompiler->mIComptimeTypeApply))) ||
+						((ceEmitContext != NULL) && (ifaceEntry.mInterfaceType->IsInstanceOf(mCompiler->mIOnTypeInitTypeDef))) ||
+						((ceEmitContext == NULL) && (ifaceEntry.mInterfaceType->IsInstanceOf(mCompiler->mIOnTypeDoneTypeDef))))
+					{
+						// Passes
+						hasTypeApply = true;						
+						if (pass == 1)
+						{
+							// Only find field inits now
+							continue;
+						}
+					}
+					else if (isFieldApply)
+					{
+						// Field passes
+						hasFieldApply = true;
+						if (methodInstance != NULL)
+							continue;
+					}
+					else
+						continue;
+
+					prevAttrInstances.TryGetValue(checkAttrType, &irValue);
+					methodInstance = checkAttrType->mInterfaceMethodTable[ifaceEntry.mStartInterfaceTableIdx].mMethodRef;
+					if (pass == 1)
+						break;
+				}
+
+				if (methodInstance != NULL)
+					break;
+
+				checkAttrType = checkAttrType->mBaseType;
+				checkDepth++;
+			}
+
+			if (methodInstance == NULL)
 				continue;
-		}
 
-		DoPopulateType_CeCheckEnum(typeInstance, underlyingTypeDeferred);
-		if (fieldInstance != NULL)
-			mCompiler->mCeMachine->mFieldInstanceSet.Add(fieldInstance);
-		BfTypedValue result;
-		///
-		{
-			SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
+			SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCeMachine->mCurEmitContext, ceEmitContext);
+			auto ceContext = mCompiler->mCeMachine->AllocContext();
+			defer({ mCompiler->mCeMachine->ReleaseContext(ceContext); });
 
-			CeCallSource callSource;
-			callSource.mRefNode = customAttribute.mRef;
+			BfIRValue attrVal = ceContext->CreateAttribute(customAttribute.mRef, this, typeInstance->mConstHolder, &customAttribute);
+			for (int baseIdx = 0; baseIdx < checkDepth; baseIdx++)
+				attrVal = mBfIRBuilder->CreateExtractValue(attrVal, 0);
+
+			SizedArray<BfIRValue, 1> args;
+			if (!attrType->IsValuelessType())
+				args.Add(attrVal);
 			if (isFieldApply)
 			{
-				callSource.mKind = CeCallSource::Kind_FieldInit;
-				callSource.mFieldInstance = fieldInstance;
+				auto fieldInfoType = ResolveTypeDef(mCompiler->mReflectFieldInfoTypeDef);
+				if (fieldInfoType != NULL)
+				{
+					SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
+					SizedArray<BfIRValue, 9> fieldData =
+					{
+						mBfIRBuilder->CreateConstAggZero(mBfIRBuilder->MapType(fieldInfoType->ToTypeInstance()->mBaseType, BfIRPopulateType_Identity)),
+						mBfIRBuilder->CreateTypeOf(mCurTypeInstance), // mTypeInstance
+						CreateFieldData(fieldInstance, -1)
+					};
+					FixConstValueParams(fieldInfoType->ToTypeInstance(), fieldData);
+					auto fieldDataAgg = mBfIRBuilder->CreateConstAgg(mBfIRBuilder->MapType(fieldInfoType, BfIRPopulateType_Identity), fieldData);
+					args.Add(fieldDataAgg);
+				}
 			}
-			else if (ceEmitContext != NULL)
+			else
+				args.Add(mBfIRBuilder->CreateTypeOf(typeInstance));
+
+			if (methodInstance->GetParamCount() > 1)
 			{
-				callSource.mKind = CeCallSource::Kind_TypeInit;
+				if (irValue)
+					args.Add(irValue);
+				else
+					args.Add(mBfIRBuilder->CreateConstNull());
 			}
 			else
 			{
-				callSource.mKind = CeCallSource::Kind_TypeDone;
+				// Only allow a single instance
+				if (irValue)
+					continue;
 			}
 
-			result = ceContext->Call(callSource, this, methodInstance, args, (CeEvalFlags)(CeEvalFlags_ForceReturnThis | CeEvalFlags_IgnoreConstEncodeFailure), NULL);
-		}
-		if (fieldInstance != NULL)
-			mCompiler->mCeMachine->mFieldInstanceSet.Remove(fieldInstance);
-		if (result.mType == methodInstance->GetOwner())
-			prevAttrInstances[methodInstance->GetOwner()] = result.mValue;
-
-		if (ceEmitContext == NULL)
-			continue;
-
-		if (typeInstance->mDefineState == BfTypeDefineState_DefinedAndMethodsSlotted)
-			return;
-
-		if (typeInstance->mDefineState != BfTypeDefineState_CETypeInit)
-		{
-			// We populated before we could finish
-			AssertErrorState();
-		}
-		else
-		{
-			auto owner = methodInstance->GetOwner();
-			int typeId = owner->mTypeId;
-			if ((!result) && (mCompiler->mFastFinish))
+			DoPopulateType_CeCheckEnum(typeInstance, underlyingTypeDeferred);
+			if (fieldInstance != NULL)
+				mCompiler->mCeMachine->mFieldInstanceSet.Add(fieldInstance);
+			BfTypedValue result;
+			///
 			{
-				if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext == NULL))
-					typeInstance->mCeTypeInfo->mNext = new BfCeTypeInfo();
-				if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext != NULL))
-					typeInstance->mCeTypeInfo->mNext->mFastFinished = true;
-				if (typeInstance->mCeTypeInfo != NULL)
+				SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true);
+
+				CeCallSource callSource;
+				callSource.mRefNode = customAttribute.mRef;
+				if (isFieldApply)
 				{
-					BfCeTypeEmitEntry* entry = NULL;
-					if (typeInstance->mCeTypeInfo->mTypeIFaceMap.TryGetValue(typeId, &entry))
+					callSource.mKind = CeCallSource::Kind_FieldInit;
+					callSource.mFieldInstance = fieldInstance;
+				}
+				else if (ceEmitContext != NULL)
+				{
+					callSource.mKind = CeCallSource::Kind_TypeInit;
+				}
+				else
+				{
+					callSource.mKind = CeCallSource::Kind_TypeDone;
+				}
+
+				result = ceContext->Call(callSource, this, methodInstance, args, (CeEvalFlags)(CeEvalFlags_ForceReturnThis | CeEvalFlags_IgnoreConstEncodeFailure), NULL);
+			}
+			if (fieldInstance != NULL)
+				mCompiler->mCeMachine->mFieldInstanceSet.Remove(fieldInstance);
+			if (result.mType == methodInstance->GetOwner())
+				prevAttrInstances[methodInstance->GetOwner()] = result.mValue;
+
+			if (ceEmitContext == NULL)
+				continue;
+
+			if (typeInstance->mDefineState == BfTypeDefineState_DefinedAndMethodsSlotted)
+				return;
+
+			if (typeInstance->mDefineState != BfTypeDefineState_CETypeInit)
+			{
+				// We populated before we could finish
+				AssertErrorState();
+			}
+			else
+			{
+				auto owner = methodInstance->GetOwner();
+				int typeId = owner->mTypeId;
+				if ((!result) && (mCompiler->mFastFinish))
+				{
+					if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext == NULL))
+						typeInstance->mCeTypeInfo->mNext = new BfCeTypeInfo();
+					if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext != NULL))
+						typeInstance->mCeTypeInfo->mNext->mFastFinished = true;
+					if (typeInstance->mCeTypeInfo != NULL)
 					{
-						ceEmitContext->mEmitData = entry->mEmitData;
+						BfCeTypeEmitEntry* entry = NULL;
+						if (typeInstance->mCeTypeInfo->mTypeIFaceMap.TryGetValue(typeId, &entry))
+						{
+							ceEmitContext->mEmitData = entry->mEmitData;
+						}
 					}
 				}
-			}
-			else
-			{
-				if (ceEmitContext->HasEmissions())
+				else
 				{
-					if (typeInstance->mCeTypeInfo == NULL)
-						typeInstance->mCeTypeInfo = new BfCeTypeInfo();
-					if (typeInstance->mCeTypeInfo->mNext == NULL)
-						typeInstance->mCeTypeInfo->mNext = new BfCeTypeInfo();
+					if (ceEmitContext->HasEmissions())
+					{
+						if (typeInstance->mCeTypeInfo == NULL)
+							typeInstance->mCeTypeInfo = new BfCeTypeInfo();
+						if (typeInstance->mCeTypeInfo->mNext == NULL)
+							typeInstance->mCeTypeInfo->mNext = new BfCeTypeInfo();
 
-					BfCeTypeEmitEntry entry;
-					entry.mEmitData = ceEmitContext->mEmitData;
-					typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap[typeId] = entry;
-					typeInstance->mCeTypeInfo->mNext->mAlign = BF_MAX(typeInstance->mCeTypeInfo->mNext->mAlign, ceEmitContext->mAlign);
+						BfCeTypeEmitEntry entry;
+						entry.mEmitData = ceEmitContext->mEmitData;
+						typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap[typeId] = entry;
+						typeInstance->mCeTypeInfo->mNext->mAlign = BF_MAX(typeInstance->mCeTypeInfo->mNext->mAlign, ceEmitContext->mAlign);
+					}
+
+					if ((ceEmitContext->mFailed) && (typeInstance->mCeTypeInfo != NULL))
+						typeInstance->mCeTypeInfo->mFailed = true;
 				}
 
-				if ((ceEmitContext->mFailed) && (typeInstance->mCeTypeInfo != NULL))
-					typeInstance->mCeTypeInfo->mFailed = true;
-			}
+				if ((ceEmitContext->HasEmissions()) && (!mCompiler->mFastFinish))
+				{
+					String ctxStr = "comptime ";
+					ctxStr += methodInstance->mMethodDef->mName;
+					ctxStr += " of ";
+					ctxStr += TypeToString(attrType);
+					ctxStr += " to ";
+					ctxStr += TypeToString(typeInstance);
+					ctxStr += " ";
+					ctxStr += customAttribute.mRef->LocationToString();
 
-			if ((ceEmitContext->HasEmissions()) && (!mCompiler->mFastFinish))
-			{
-				String ctxStr = "comptime ";
-				ctxStr += methodInstance->mMethodDef->mName;
-				ctxStr += " of ";
-				ctxStr += TypeToString(attrType);
-				ctxStr += " to ";
-				ctxStr += TypeToString(typeInstance);
-				ctxStr += " ";
-				ctxStr += customAttribute.mRef->LocationToString();
-
-				UpdateCEEmit(ceEmitContext, typeInstance, customAttribute.mDeclaringType, ctxStr, customAttribute.mRef, BfCeTypeEmitSourceKind_Type);
+					UpdateCEEmit(ceEmitContext, typeInstance, customAttribute.mDeclaringType, ctxStr, customAttribute.mRef, BfCeTypeEmitSourceKind_Type);
+				}
 			}
 		}
 	}
@@ -2747,7 +2777,7 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 	if (typeInstance->mCustomAttributes != NULL)
 		HandleCEAttributes(ceEmitContext, typeInstance, NULL, typeInstance->mCustomAttributes, prevAttrInstances, underlyingTypeDeferred);
 
-	if (ceEmitContext != NULL)
+	if ((ceEmitContext != NULL) || (onCompileKind == BfCEOnCompileKind_TypeDone))
 	{
 		for (auto& fieldInstance : typeInstance->mFieldInstances)
 		{
