@@ -581,12 +581,15 @@ namespace IDE.ui
 								uiEntry.mName = partItr.GetNext().Value.UnQuoteString(.. new .());
 								uiEntry.mLabel = partItr.GetNext().Value.UnQuoteString(.. new .());
 								var defaultValue = partItr.GetNext().Value.UnQuoteString(.. scope .());
+								var focus = partItr.GetNext().Value;
 								DarkEditWidget editWidget = new DarkEditWidget();
 								uiEntry.mWidget = editWidget;
 								editWidget.SetText(defaultValue);
 								editWidget.mEditWidgetContent.SelectAll();
 								editWidget.mOnSubmit.Add(new => EditSubmitHandler);
 								AddWidget(editWidget);
+								if (focus == "True")
+									editWidget.SetFocus();
 								mUIEntries.Add(uiEntry);
 								mTabWidgets.Add(editWidget);
 							case "addFilePath", "addFolderPath":
