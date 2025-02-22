@@ -20408,6 +20408,12 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue& typedVal, BfAstNode* refNo
 							mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str(),
 							mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
 					}
+					else if (mResultFieldInstance->GetFieldDef()->mIsAppend)
+					{
+						error = _Fail(StrFormat("Cannot %s append field '%s.%s' within method '%s'", modifyType,
+							mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str(),
+							mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
+					}
 					else if (auto propertyDeclaration = BfNodeDynCast<BfPropertyDeclaration>(mResultFieldInstance->GetFieldDef()->mFieldDeclaration))
 					{
 						String propNam;
