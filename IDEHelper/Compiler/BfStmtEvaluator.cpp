@@ -7183,7 +7183,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 					arrayItem = LoadValue(arrayItem);
 				arrayItem = Cast(forEachStmt->mCollectionExpression, arrayItem, varType, BfCastFlags_Explicit);
 				arrayItem = LoadValue(arrayItem);
-				if (arrayItem)
+				if ((arrayItem) && (!arrayItem.mType->IsValuelessType()))
 					mBfIRBuilder->CreateStore(arrayItem.mValue, varInst);
 			}
 		}
