@@ -6095,7 +6095,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						{
 							auto fieldInstance = (BfFieldInstance*)&checkTypeInstance->mFieldInstances[fieldIdx];
 
-							if ((fieldInstance->mResolvedType->IsVar()) || (fieldInstance->mResolvedType->IsLet()))
+							if ((fieldInstance->mResolvedType != NULL) &&
+								((fieldInstance->mResolvedType->IsVar()) || (fieldInstance->mResolvedType->IsLet())))
 							{
 								//TODO: allow splattables with var/let field types
 								hadNonSplattable = true;
