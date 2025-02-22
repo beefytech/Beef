@@ -2297,7 +2297,14 @@ bool BfModule::TryLocalVariableInit(BfLocalVariable* localVar)
 		{
 			if (fieldInstance.mMergedDataIdx != -1)
 			{
-				int64 checkMask = (int64)1 << fieldInstance.mMergedDataIdx;
+				int64 checkMask = 1;
+				if (auto fieldTypeInst = fieldInstance.mResolvedType->ToTypeInstance())
+				{
+					if (fieldTypeInst->IsValueType())
+						checkMask = (1 << fieldTypeInst->mMergedFieldDataCount) - 1;
+				}
+				checkMask <<= fieldInstance.mMergedDataIdx;
+
 				if ((localVar->mUnassignedFieldFlags & checkMask) != 0)
 				{
 					// For fields added in extensions, we automatically initialize those if necessary
