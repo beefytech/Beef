@@ -225,10 +225,12 @@ namespace System
 				if (name.EndsWith(".bf", .OrdinalIgnoreCase))
 					name.RemoveFromEnd(3);
 				outFileName.Append(name);
+
+				var ns = Namespace..Trim();
+				if (!ns.IsEmpty)
+					outText.AppendF($"namespace {Namespace};\n\n");
 				outText.AppendF(
 					$"""
-					namespace {Namespace};
-					
 					class {name}
 					{{
 					}}
