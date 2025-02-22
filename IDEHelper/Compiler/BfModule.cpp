@@ -16309,22 +16309,30 @@ void BfModule::CheckVariableDef(BfLocalVariable* variableDef)
 		auto checkLocal = localVarEntryPtr->mLocalVar;
 		if ((checkLocal->mLocalVarIdx >= mCurMethodState->GetLocalStartIdx()) && (!checkLocal->mIsShadow))
 		{
-			BfError* error;
+			auto _Fail = [&](int warningNum, String str, BfAstNode* refNode)
+			{
+				BfError* error = Warn(warningNum, str, refNode);				
+				if ((checkLocal->mNameNode != NULL) && (error != NULL))
+					mCompiler->mPassInstance->MoreInfo("Previous declaration", checkLocal->mNameNode);
+			};
+			
+			auto checkScope = mCurMethodState->mCurScope;
+			if (checkScope->mScopeKind == BfScopeKind_StatementTarget)			
+				checkScope = checkScope->mPrevScope;			
+
 			if (checkLocal->mIsImplicitParam)
 				return; // Ignore 'redefinition'
 			if (checkLocal->IsParam())
 			{
 				if (variableDef->IsParam())
-					error = Fail(StrFormat("A parameter named '%s' has already been declared", variableDef->mName.c_str()), variableDef->mNameNode);
+					_Fail(4200, StrFormat("A parameter named '%s' has already been declared", variableDef->mName.c_str()), variableDef->mNameNode);
 				else
-					error = Fail(StrFormat("The name '%s' is already used by a parameter. Consider declaring 'var %s;' if you wish to make a mutable copy of that parameter.", variableDef->mName.c_str(), variableDef->mName.c_str()), variableDef->mNameNode);
+					_Fail(4200, StrFormat("The name '%s' is already used by a parameter. Consider declaring 'var %s;' if you wish to make a mutable copy of that parameter.", variableDef->mName.c_str(), variableDef->mName.c_str()), variableDef->mNameNode);
 			}
-			else if (checkLocal->mLocalVarIdx < mCurMethodState->mCurScope->mLocalVarStart)
-				error = Fail(StrFormat("A variable named '%s' has already been declared in this parent's scope", variableDef->mName.c_str()), variableDef->mNameNode);
+			else if (checkLocal->mLocalVarIdx < checkScope->mLocalVarStart)
+				_Fail(4200, StrFormat("A variable named '%s' has already been declared in an outer scope", variableDef->mName.c_str()), variableDef->mNameNode);
 			else
-				error = Fail(StrFormat("A variable named '%s' has already been declared in this scope", variableDef->mName.c_str()), variableDef->mNameNode);
-			if ((checkLocal->mNameNode != NULL) && (error != NULL))
-				mCompiler->mPassInstance->MoreInfo("Previous declaration", checkLocal->mNameNode);
+				_Fail(4200, StrFormat("A variable named '%s' has already been declared in this scope", variableDef->mName.c_str()), variableDef->mNameNode);
 			return;
 		}
 	}

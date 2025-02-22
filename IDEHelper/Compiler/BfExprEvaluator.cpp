@@ -3884,7 +3884,7 @@ void BfExprEvaluator::DoCaseExpression(BfTypedValue caseValAddr, BfCaseExpressio
 
 		if (hasVariable)
 		{
-			CheckVariableDeclaration(caseExpr, false, true, false);
+			CheckVariableDeclaration(caseExpr, false, false, false);
 		}
 
 		// We can avoid clearing on mismatch if we can be sure we ONLY enter the true block on a match.
@@ -4038,6 +4038,9 @@ void BfExprEvaluator::Visit(BfCaseExpression* caseExpr)
 
 		mResult = BfTypedValue(phiValue, boolType);
 	}
+
+	if (caseExpr->mNotToken != NULL)
+		mResult.mValue = mModule->mBfIRBuilder->CreateNot(mResult.mValue);
 }
 
 void BfExprEvaluator::Visit(BfTypedValueExpression* typedValueExpr)
@@ -4390,6 +4393,13 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 	}
 	else if (varDecl->mAddr)
 	{
+		if ((!mModule->mBfIRBuilder->mIgnoreWrites) && (varDecl->mAddr.IsFake()) && (!varDecl->mResolvedType->IsValuelessType()))
+		{
+			// In an ignore case match we can may need to create a fake "out" when someone tries to read it
+			auto defaultTypedValue = mModule->GetDefaultTypedValue(varDecl->mResolvedType, true, BfDefaultValueKind_Addr);
+			varDecl->mAddr = defaultTypedValue.mValue;
+		}
+
 		if ((varDecl->mResolvedType->IsRef()) && (!allowRef))
 		{
 			BfRefType* refType = (BfRefType*)varDecl->mResolvedType;
@@ -7744,7 +7754,7 @@ void BfExprEvaluator::FinishDeferredEvals(BfResolvedArgs& argValues)
 					if (curScope->mScopeKind == BfScopeKind_StatementTarget)
 					{
 						// Move this variable into the parent scope
-						curScope->mLocalVarStart = (int)mModule->mCurMethodState->mLocals.size();
+						curScope->mLocalVarStart = (int)mModule->mCurMethodState->mLocals.size();						
 					}
 				}
 			}
@@ -9360,7 +9370,7 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 		if (curScope->mScopeKind == BfScopeKind_StatementTarget)
 		{
 			// Move this variable into the parent scope
-			curScope->mLocalVarStart = (int)mModule->mCurMethodState->mLocals.size();
+			curScope->mLocalVarStart = (int)mModule->mCurMethodState->mLocals.size();			
 		}
 	}
 	return argValue;

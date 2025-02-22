@@ -463,6 +463,12 @@ void BfSourceClassifier::Visit(BfTokenNode* tokenNode)
 		SetElementType(tokenNode, BfSourceElementType_Normal);
 }
 
+void BfSourceClassifier::Visit(BfCaseExpression* caseExpr)
+{
+	BfElementVisitor::Visit(caseExpr);
+	SetElementType(caseExpr->mNotToken, BfSourceElementType_Keyword);
+}
+
 void BfSourceClassifier::Visit(BfInvocationExpression* invocationExpr)
 {
 	//BfElementVisitor::Visit(invocationExpr);

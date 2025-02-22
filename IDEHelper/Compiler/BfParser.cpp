@@ -3691,6 +3691,26 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 				Fail("Unexpected ending brace");
 			break;
 		}
+		else if (mToken == BfToken_Case)
+		{
+			if (childArr.mSize > 0)
+			{
+				auto prevNode = childArr[childArr.mSize - 1];
+				if (auto prevIdentifier = BfNodeDynCastExact<BfIdentifierNode>(prevNode))
+				{
+					if (prevIdentifier->Equals("not"))
+					{
+						auto bfTokenNode = mAlloc->Alloc<BfTokenNode>();
+						bfTokenNode->Init(prevIdentifier->mTriviaStart, prevIdentifier->mSrcStart, prevIdentifier->mSrcEnd);
+						bfTokenNode->SetToken(BfToken_Not);
+						childArr[childArr.mSize - 1] = bfTokenNode;
+					}
+				}
+			}
+
+			astNode->Add(childNode);
+			childArr.Add(childNode);
+		}
 		else
 		{
 			if (mToken == BfToken_LParen)

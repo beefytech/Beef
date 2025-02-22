@@ -125,6 +125,7 @@ public:
 	virtual void Visit(BfLiteralExpression* literalExpr) override;
 	virtual void Visit(BfStringInterpolationExpression* stringInterpolationExpression) override;
 	virtual void Visit(BfTokenNode* tokenNode) override;
+	virtual void Visit(BfCaseExpression* caseExpr) override;
 	virtual void Visit(BfInvocationExpression* invocationExpr) override;
 	virtual void Visit(BfIndexerExpression* indexerExpr) override;
 	virtual void Visit(BfConstructorDeclaration* ctorDeclaration) override;

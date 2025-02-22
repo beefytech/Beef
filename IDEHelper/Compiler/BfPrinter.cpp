@@ -2080,6 +2080,8 @@ void BfPrinter::Visit(BfCaseExpression* caseExpr)
 	{
 		VisitChild(caseExpr->mValueExpression);
 		ExpectSpace();
+		VisitChild(caseExpr->mNotToken);
+		ExpectSpace();
 		VisitChild(caseExpr->mCaseToken);
 		BF_ASSERT(caseExpr->mEqualsNode == NULL);
 		ExpectSpace();

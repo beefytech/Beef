@@ -1899,6 +1899,22 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 	{
 		if (auto tokenNode = BfNodeDynCast<BfTokenNode>(node))
 		{
+			BfAstNode* notNode = NULL;
+			if (tokenNode->mToken == BfToken_Not)
+			{
+				auto nextNode = mVisitorPos.GetNext();
+				if (auto nextTokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+				{
+					if (nextTokenNode->mToken == BfToken_Case)
+					{
+						mVisitorPos.MoveNext();
+						notNode = tokenNode;
+						node = nextNode;
+						tokenNode = nextTokenNode;
+					}
+				}
+			}
+
 			BfToken token = tokenNode->GetToken();
 
 			auto nextNode = mVisitorPos.GetNext();
@@ -2112,8 +2128,18 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			else if (token == BfToken_Case)
 			{
 				auto caseExpr = mAlloc->Alloc<BfCaseExpression>();
-				ReplaceNode(tokenNode, caseExpr);
-				caseExpr->mCaseToken = tokenNode;
+				
+				if (notNode != NULL)
+				{
+					ReplaceNode(notNode, caseExpr);
+					caseExpr->mNotToken = notNode;
+					MEMBER_SET(caseExpr, mCaseToken, tokenNode);
+				}
+				else
+				{
+					ReplaceNode(tokenNode, caseExpr);
+					caseExpr->mCaseToken = tokenNode;
+				}				
 
 				if (auto bindToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
 				{
@@ -2694,7 +2720,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				continue;
 			}
 
-			if ((token == BfToken_Case) && ((createExprFlags & CreateStmtFlags_NoCaseExpr) == 0))
+			if (((token == BfToken_Case) || (token == BfToken_Not)) 
+				&& ((createExprFlags & CreateStmtFlags_NoCaseExpr) == 0))
 			{
 				if ((createExprFlags & CreateExprFlags_EarlyExit) != 0)
 					return exprLeft;
@@ -2710,8 +2737,20 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				auto caseExpr = mAlloc->Alloc<BfCaseExpression>();
 				ReplaceNode(exprLeft, caseExpr);
 				caseExpr->mValueExpression = exprLeft;
-				MEMBER_SET(caseExpr, mCaseToken, tokenNode);
-				mVisitorPos.MoveNext();
+
+				if (token == BfToken_Not)
+				{
+					MEMBER_SET(caseExpr, mNotToken, tokenNode);
+					mVisitorPos.MoveNext();
+					tokenNode = ExpectTokenAfter(caseExpr, BfToken_Case);
+					MEMBER_SET(caseExpr, mCaseToken, tokenNode);
+				}
+				else
+				{
+					MEMBER_SET(caseExpr, mCaseToken, tokenNode);
+					mVisitorPos.MoveNext();
+				}
+								
 				exprLeft = caseExpr;
 
 				if (auto bindTokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))

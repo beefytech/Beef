@@ -128,7 +128,7 @@ namespace Tests
 			}
 
 			irn = null;
-			if (irn case .Ok(let val))
+			if (irn case .Ok(let val2))
 			{
 				Test.FatalError();
 			}

@@ -91,6 +91,15 @@ namespace Tests
 			bool eq = iResult case .Ok(ref result);
 			Test.Assert(result == 99);
 
+			if (iResult not case .Ok(var result2))
+			{
+			}
+			else
+			{
+				Test.FatalError();
+			}
+			Test.Assert(result2 == 0);
+
 			const ETest t = .B(234.5f);
 			switch (t)
 			{

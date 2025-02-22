@@ -1461,6 +1461,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "namespace";
 	case BfToken_New:
 		return "new";
+	case BfToken_Not:
+		return "not";
 	case BfToken_Null:
 		return "null";
 	case BfToken_Nullable:

@@ -229,6 +229,7 @@ enum BfToken : uint8
 	BfToken_NameOf,
 	BfToken_Namespace,
 	BfToken_New,
+	BfToken_Not,
 	BfToken_Null,
 	BfToken_Nullable,
 	BfToken_OffsetOf,
@@ -2365,6 +2366,7 @@ class BfCaseExpression : public BfExpression
 public:
 	BF_AST_TYPE(BfCaseExpression, BfExpression);
 
+	BfAstNode* mNotToken;
 	BfTokenNode* mCaseToken;
 	BfExpression* mCaseExpression;
 	BfTokenNode* mEqualsNode;

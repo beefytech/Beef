@@ -724,6 +724,7 @@ void BfElementVisitor::Visit(BfCaseExpression* caseExpr)
 {
 	Visit(caseExpr->ToBase());
 
+	VisitChild(caseExpr->mNotToken);
 	VisitChild(caseExpr->mCaseToken);
 	VisitChild(caseExpr->mCaseExpression);
 	VisitChild(caseExpr->mEqualsNode);
