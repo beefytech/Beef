@@ -16170,7 +16170,7 @@ BfTypedValue BfModule::CreateOutVariable(BfAstNode* refNode, BfVariableDeclarati
 
 	if (isRef)
 	{
-		initValue = MakeAddressable(initValue);
+		initValue = MakeAddressable(initValue, true, true);
 		if ((initValue) && (!initValue.mType->IsValuelessType()))
 			mBfIRBuilder->CreateStore(initValue.mValue, localVar->mAddr);
 	}
