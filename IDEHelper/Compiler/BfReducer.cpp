@@ -4045,9 +4045,56 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 		}
 		else if (token == BfToken_Do)
 		{
+			bool isRepeat = false;			
+
 			auto checkNode = mVisitorPos.Get(mVisitorPos.mReadPos + 2);
 			auto checkToken = BfNodeDynCast<BfTokenNode>(checkNode);
-			if ((checkToken != NULL) && (checkToken->GetToken() == BfToken_While))
+
+			if ((checkToken != NULL) && (checkToken->mToken == BfToken_While))
+			{
+				// Check to see if it's a 'do {} while (...);' or an indepent 'while' statement
+				int checkIdx = mVisitorPos.mReadPos + 3;
+				int openCount = 0;
+
+				while (true)
+				{
+					auto checkNode = mVisitorPos.Get(checkIdx);
+					if (checkNode == NULL)
+						break;
+
+					if (auto tokenNode = BfNodeDynCast<BfTokenNode>(checkNode))
+					{
+						if (tokenNode->mToken == BfToken_LParen)
+						{
+							if ((openCount == 0) && (checkIdx != mVisitorPos.mReadPos + 3))
+								break;
+							openCount++;
+						}
+						else if (tokenNode->mToken == BfToken_RParen)
+						{
+							openCount--;
+							if (openCount < 0)
+								break;
+						}
+						else if (tokenNode->mToken == BfToken_Semicolon)
+						{
+							isRepeat = true;
+							break;
+						}
+						else if (openCount == 0)
+							break;
+					}
+					else
+					{
+						if (openCount == 0)
+							break;
+					}
+
+					checkIdx++;
+				}
+			}
+
+			if (isRepeat)
 				return CreateRepeatStatement(node);
 			else
 				return CreateDoStatement(node);

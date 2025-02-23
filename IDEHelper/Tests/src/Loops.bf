@@ -189,6 +189,14 @@ namespace Tests
 
 			for (var i in emptySpan.Reversed)
 				Test.FatalError();
+
+			do
+			{
+			}
+			while (false)
+			{
+
+			}
 		}
 
 		public static void TestEnumerator1(EnumeratorTest e)
