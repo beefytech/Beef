@@ -16041,8 +16041,19 @@ BfIRValue BfModule::AllocLocalVariable(BfType* type, const StringImpl& name, boo
 
 BfTypedValue BfModule::CreateOutVariable(BfAstNode* refNode, BfVariableDeclaration* variableDeclaration, BfAstNode* paramNameNode, BfType* variableType, BfTypedValue initValue)
 {
+	bool isRef = false;
 	bool isLet = (variableDeclaration != NULL) && (variableDeclaration->mTypeRef->IsExact<BfLetTypeReference>());
 	bool isVar = (variableDeclaration == NULL) || (variableDeclaration->mTypeRef->IsExact<BfVarTypeReference>());
+
+	if (variableDeclaration != NULL)
+	{
+		if (auto varRefTypeReference = BfNodeDynCast<BfVarRefTypeReference>(variableDeclaration->mTypeRef))
+		{
+			isRef = true;
+			isLet = varRefTypeReference->mVarToken->GetToken() == BfToken_Let;
+			isVar = varRefTypeReference->mVarToken->GetToken() == BfToken_Var;
+		}
+	}
 
 	BfLocalVariable* localVar = new BfLocalVariable();
 	if ((variableDeclaration != NULL) && (variableDeclaration->mNameNode != NULL))
@@ -16064,9 +16075,14 @@ BfTypedValue BfModule::CreateOutVariable(BfAstNode* refNode, BfVariableDeclarati
 	}
 
 	localVar->mResolvedType = variableType;
+	if (isRef)
+	{
+		localVar->mResolvedType = CreateRefType(localVar->mResolvedType);
+	}
+
 	PopulateType(variableType);
 	if (!variableType->IsValuelessType())
-		localVar->mAddr = CreateAlloca(variableType);
+		localVar->mAddr = CreateAlloca(localVar->mResolvedType);
 	localVar->mIsReadOnly = isLet;
 	localVar->mReadFromId = 0;
 	localVar->mWrittenToId = 0;
@@ -16080,10 +16096,18 @@ BfTypedValue BfModule::CreateOutVariable(BfAstNode* refNode, BfVariableDeclarati
 
 	auto argValue = BfTypedValue(localVar->mAddr, CreateRefType(variableType, BfRefType::RefKind_Out));
 
-	initValue = LoadOrAggregateValue(initValue);
-
-	if ((initValue) && (!initValue.mType->IsValuelessType()))
-		mBfIRBuilder->CreateStore(initValue.mValue, localVar->mAddr);
+	if (isRef)
+	{
+		initValue = MakeAddressable(initValue);
+		if ((initValue) && (!initValue.mType->IsValuelessType()))
+			mBfIRBuilder->CreateStore(initValue.mValue, localVar->mAddr);
+	}
+	else
+	{		
+		initValue = LoadOrAggregateValue(initValue);
+		if ((initValue) && (!initValue.mType->IsValuelessType()))
+			mBfIRBuilder->CreateStore(initValue.mValue, localVar->mAddr);
+	}
 
 	auto curScope = mCurMethodState->mCurScope;
 	if (curScope->mScopeKind == BfScopeKind_StatementTarget)
