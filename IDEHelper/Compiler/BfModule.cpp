@@ -18951,7 +18951,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 						auto diVariable = mBfIRBuilder->DbgCreateAutoVariable(mCurMethodState->mCurScope->mDIScope,
 							"this", mCurFilePosition.mFileInstance->mDIFile, mCurFilePosition.mCurLine, mBfIRBuilder->DbgGetType(thisType));
 
-						//
+						if (!mCurTypeInstance->IsValuelessType())
 						{
 							auto loadedThis = GetThis();
 
