@@ -16039,6 +16039,74 @@ BfIRValue BfModule::AllocLocalVariable(BfType* type, const StringImpl& name, boo
 	return allocaInst;
 }
 
+BfTypedValue BfModule::CreateOutVariable(BfAstNode* refNode, BfVariableDeclaration* variableDeclaration, BfAstNode* paramNameNode, BfType* variableType, BfTypedValue initValue)
+{
+	bool isLet = (variableDeclaration != NULL) && (variableDeclaration->mTypeRef->IsExact<BfLetTypeReference>());
+	bool isVar = (variableDeclaration == NULL) || (variableDeclaration->mTypeRef->IsExact<BfVarTypeReference>());
+
+	BfLocalVariable* localVar = new BfLocalVariable();
+	if ((variableDeclaration != NULL) && (variableDeclaration->mNameNode != NULL))
+	{
+		localVar->mName = variableDeclaration->mNameNode->ToString();
+		localVar->mNameNode = BfNodeDynCast<BfIdentifierNode>(variableDeclaration->mNameNode);
+	}
+	else
+	{
+		if (paramNameNode != NULL)
+		{
+			localVar->mName = "__";
+			paramNameNode->ToString(localVar->mName);
+			localVar->mName += "_";
+			localVar->mName += StrFormat("%d", mCurMethodState->GetRootMethodState()->mCurLocalVarId);
+		}
+		else
+			localVar->mName = "__" + StrFormat("%d", mCurMethodState->GetRootMethodState()->mCurLocalVarId);
+	}
+
+	localVar->mResolvedType = variableType;
+	PopulateType(variableType);
+	if (!variableType->IsValuelessType())
+		localVar->mAddr = CreateAlloca(variableType);
+	localVar->mIsReadOnly = isLet;
+	localVar->mReadFromId = 0;
+	localVar->mWrittenToId = 0;
+	localVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
+	CheckVariableDef(localVar);
+	localVar->Init();
+	AddLocalVariableDef(localVar, true);
+	
+	BfExprEvaluator exprEvaluator(this);
+	exprEvaluator.CheckVariableDeclaration(refNode, false, false, false);
+
+	auto argValue = BfTypedValue(localVar->mAddr, CreateRefType(variableType, BfRefType::RefKind_Out));
+
+	initValue = LoadOrAggregateValue(initValue);
+
+	if ((initValue) && (!initValue.mType->IsValuelessType()))
+		mBfIRBuilder->CreateStore(initValue.mValue, localVar->mAddr);
+
+	auto curScope = mCurMethodState->mCurScope;
+	if (curScope->mScopeKind == BfScopeKind_StatementTarget)
+		MoveLocalToParentScope(localVar);
+	
+	return argValue;
+}
+
+void BfModule::MoveLocalToParentScope(BfLocalVariable* localVar)
+{
+	auto curScope = mCurMethodState->mCurScope;
+	if (mCurMethodState->mLocals.back() != localVar)
+		return;
+
+	curScope->mLocalVarStart = (int)mCurMethodState->mLocals.size();
+	if ((!curScope->mDeferredLifetimeEnds.IsEmpty()) && (curScope->mDeferredLifetimeEnds.back() == localVar->mAddr))
+	{
+		curScope->mDeferredLifetimeEnds.pop_back();
+		if (curScope->mPrevScope != NULL)
+			curScope->mPrevScope->mDeferredLifetimeEnds.push_back(localVar->mAddr);
+	}
+}
+
 void BfModule::DoAddLocalVariable(BfLocalVariable* localVar)
 {
 	BF_ASSERT(localVar->mResolvedType != NULL);

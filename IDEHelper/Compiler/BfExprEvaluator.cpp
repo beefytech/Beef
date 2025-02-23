@@ -7750,12 +7750,9 @@ void BfExprEvaluator::FinishDeferredEvals(BfResolvedArgs& argValues)
 					localVar->Init();
 					mModule->AddLocalVariableDef(localVar, true);
 
-					auto curScope = mModule->mCurMethodState->mCurScope;
+					auto curScope = mModule->mCurMethodState->mCurScope;					
 					if (curScope->mScopeKind == BfScopeKind_StatementTarget)
-					{
-						// Move this variable into the parent scope
-						curScope->mLocalVarStart = (int)mModule->mCurMethodState->mLocals.size();						
-					}
+						mModule->MoveLocalToParentScope(localVar);					
 				}
 			}
 		}
@@ -9331,47 +9328,7 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 			mModule->CreateValueFromExpression(variableDeclaration->mInitializer, variableType, BfEvalExprFlags_NoCast);
 		}
 
-		BfLocalVariable* localVar = new BfLocalVariable();
-		if ((variableDeclaration != NULL) && (variableDeclaration->mNameNode != NULL))
-		{
-			localVar->mName = variableDeclaration->mNameNode->ToString();
-			localVar->mNameNode = BfNodeDynCast<BfIdentifierNode>(variableDeclaration->mNameNode);
-		}
-		else
-		{
-			if (paramNameNode != NULL)
-			{
-				localVar->mName = "__";
-				paramNameNode->ToString(localVar->mName);
-				localVar->mName += "_";
-				localVar->mName += StrFormat("%d", mModule->mCurMethodState->GetRootMethodState()->mCurLocalVarId);
-			}
-			else
-				localVar->mName = "__" + StrFormat("%d", mModule->mCurMethodState->GetRootMethodState()->mCurLocalVarId);
-		}
-
-		localVar->mResolvedType = variableType;
-		mModule->PopulateType(variableType);
-		if (!variableType->IsValuelessType())
-			localVar->mAddr = mModule->CreateAlloca(variableType);
-		localVar->mIsReadOnly = isLet;
-		localVar->mReadFromId = 0;
-		localVar->mWrittenToId = 0;
-		localVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
-		mModule->CheckVariableDef(localVar);
-		localVar->Init();
-		mModule->AddLocalVariableDef(localVar, true);
-
-		CheckVariableDeclaration(resolvedArg.mExpression, false, false, false);
-
-		argValue = BfTypedValue(localVar->mAddr, mModule->CreateRefType(variableType, BfRefType::RefKind_Out));
-
-		auto curScope = mModule->mCurMethodState->mCurScope;
-		if (curScope->mScopeKind == BfScopeKind_StatementTarget)
-		{
-			// Move this variable into the parent scope
-			curScope->mLocalVarStart = (int)mModule->mCurMethodState->mLocals.size();			
-		}
+		argValue = mModule->CreateOutVariable(resolvedArg.mExpression, variableDeclaration, paramNameNode, variableType, BfTypedValue());
 	}
 	return argValue;
 }

@@ -2438,16 +2438,9 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 
 			if (prevHadFallthrough)
 				Fail("Destructuring cannot be used when the previous case contains a fallthrough", expr);
+			
+			CreateOutVariable(expr, varDecl, NULL, tupleElement.mType, tupleElement);
 
-			auto localVar = HandleVariableDeclaration(varDecl, tupleElement, false, true);
-			localVar->mReadFromId = 0; // Don't give usage errors for binds
-
-			auto curScope = mCurMethodState->mCurScope;
-			if (curScope->mScopeKind == BfScopeKind_StatementTarget)
-			{
-				// Move this variable into the parent scope				
-				curScope->mLocalVarStart = localVar->mLocalVarIdx + 1;								
-			}
 			continue;
 		}
 
@@ -2473,10 +2466,7 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 					localVar->mReadFromId = 0; // Don't give usage errors for binds
 					auto curScope = mCurMethodState->mCurScope;
 					if (curScope->mScopeKind == BfScopeKind_StatementTarget)
-					{
-						// Move this variable into the parent scope				
-						curScope->mLocalVarStart = localVar->mLocalVarIdx + 1;												
-					}
+						MoveLocalToParentScope(localVar);					
 					continue;
 				}
 			}

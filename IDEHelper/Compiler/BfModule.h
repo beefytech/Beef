@@ -1928,6 +1928,8 @@ public:
 	String GenericParamSourceToString(const BfGenericParamSource& genericParamSource);
 	bool CheckGenericConstraints(const BfGenericParamSource& genericParamSource, BfType* checkArgType, BfAstNode* checkArgTypeRef, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs = NULL, BfError** errorOut = NULL);
 	BfIRValue AllocLocalVariable(BfType* type, const StringImpl& name, bool doLifetimeEnd = true);
+	BfTypedValue CreateOutVariable(BfAstNode* refNode, BfVariableDeclaration* variableDeclaration, BfAstNode* paramNameNode, BfType* variableType, BfTypedValue initValue);
+	void MoveLocalToParentScope(BfLocalVariable* localVar);
 	void DoAddLocalVariable(BfLocalVariable* localVar);
 	void FixLocalVariable(BfLocalVariable* localVar);
 	void DoLocalVariableDebugInfo(BfLocalVariable* localVar, bool doAliasValue = false, BfIRValue declareBefore = BfIRValue(), BfIRInitType initType = BfIRInitType_NotSet);
