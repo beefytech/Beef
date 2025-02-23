@@ -1803,7 +1803,7 @@ int BfModule::GetStringPoolIdx(BfIRValue constantStr, BfIRConstHolder* constHold
 	if (constant == NULL)
 		return -1;
 
-	if (constant->mTypeCode == BfTypeCode_StringId)
+	if ((constant->mTypeCode == BfTypeCode_StringId) || (constant->mTypeCode == BfTypeCode_CharPtr))
 	{
 		return constant->mInt32;
 	}
@@ -1893,7 +1893,16 @@ BfIRValue BfModule::GetStringCharPtr(BfIRValue strValue, bool force)
 
 BfIRValue BfModule::GetStringCharPtr(const StringImpl& str, bool force)
 {
-	return GetStringCharPtr(GetStringObjectValue(str, force), force);
+	auto result = GetStringCharPtr(GetStringObjectValue(str, force), force);
+
+	if (result.IsConst())
+	{
+		auto constant = mBfIRBuilder->GetConstant(result);
+		if ((constant != NULL) && (constant->mTypeCode == BfTypeCode_StringId))
+			return mBfIRBuilder->CreateConst(BfTypeCode_CharPtr, constant->mInt32);
+	}
+
+	return result;
 }
 
 BfIRValue BfModule::GetStringObjectValue(int strId, bool define, bool force)
@@ -12273,6 +12282,8 @@ bool BfModule::HasUnactializedConstant(BfConstant* constant, BfIRConstHolder* co
 		return true;
 	if (constant->mTypeCode == BfTypeCode_StringId)
 		return true;
+	if (constant->mTypeCode == BfTypeCode_CharPtr)
+		return true;
 
 	if (constant->mConstType == BfConstType_Agg)
 	{
@@ -12283,6 +12294,46 @@ bool BfModule::HasUnactializedConstant(BfConstant* constant, BfIRConstHolder* co
 				return true;
 		}
 	}
+
+	if (constant->mConstType == BfConstType_PtrToInt)
+	{
+		auto fromPtrToInt = (BfConstantPtrToInt*)constant;
+		auto fromTarget = constHolder->GetConstantById(fromPtrToInt->mTarget);		
+		return HasUnactializedConstant(fromTarget, constHolder);
+	}
+
+	if (constant->mConstType == BfConstType_BitCast)
+	{
+		auto bitcast = (BfConstantBitCast*)constant;
+		auto fromTarget = constHolder->GetConstantById(bitcast->mTarget);
+		return HasUnactializedConstant(fromTarget, constHolder);
+	}
+
+	return false;
+}
+
+bool BfModule::HasGlobalVarReference(BfConstant* constant, BfIRConstHolder* constHolder)
+{
+	if ((constant->mConstType == BfConstType_TypeOf) || (constant->mConstType == BfConstType_TypeOf_WithData))
+		return true;
+	if (constant->mTypeCode == BfTypeCode_StringId)
+		return true;
+	if (constant->mConstType == BfConstType_GlobalVar)
+		return true;
+
+	// NullPtr is stand-in for GlobalVar during autocomplete
+	if (constant->mTypeCode == BfTypeCode_NullPtr)
+		return true;
+
+	if (constant->mConstType == BfConstType_Agg)
+	{
+		auto constArray = (BfConstantAgg*)constant;
+		for (auto val : constArray->mValues)
+		{
+			if (HasGlobalVarReference(constHolder->GetConstant(val), constHolder))
+				return true;
+		}
+	}	
 
 	return false;
 }
@@ -12300,7 +12351,28 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 		return GetDefaultValue(wantType);
 	}
 
-	if (constant->mTypeCode == BfTypeCode_StringId)
+	if ((constant->mTypeCode == BfTypeCode_StringId) || (constant->mTypeCode == BfTypeCode_CharPtr))
+	{
+		if (!allowUnactualized)
+		{
+			if ((wantType == NULL) ||
+				(wantType->IsInstanceOf(mCompiler->mStringTypeDef)) ||
+				((wantType->IsPointer()) && (wantType->GetUnderlyingType() == GetPrimitiveType(BfTypeCode_Char8))))
+			{
+				const StringImpl& str = mContext->mStringObjectIdMap[constant->mInt32].mString;
+				BfIRValue stringObjConst = GetStringObjectValue(str, false, true);
+
+				bool wantCharPtr = ((wantType != NULL) && (wantType->IsPointer()));
+				if ((wantType == NULL) && (constant->mTypeCode == BfTypeCode_CharPtr))
+					wantCharPtr = true;
+				if (wantCharPtr)
+					return GetStringCharPtr(stringObjConst, true);
+				return stringObjConst;
+			}
+		}
+	}
+
+	if (constant->mTypeCode == BfTypeCode_CharPtr)
 	{
 		if (!allowUnactualized)
 		{

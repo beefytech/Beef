@@ -1681,6 +1681,7 @@ public:
 	void CurrentAddToConstHolder(BfIRValue& irVal);
 	void ClearConstData();
 	bool HasUnactializedConstant(BfConstant* constant, BfIRConstHolder* constHolder);
+	bool HasGlobalVarReference(BfConstant* constant, BfIRConstHolder* constHolder);
 	BfTypedValue GetTypedValueFromConstant(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType);
 	BfIRValue ConstantToCurrent(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType, bool allowUnactualized = false);
 	void ValidateCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeTargets attrTarget, bool force = false);

@@ -322,6 +322,10 @@ String BfIRConstHolder::ToString(BfIRValue irValue)
 		{
 			return StrFormat("Constant %lld", constant->mInt64);
 		}
+		else if (constant->mTypeCode == BfTypeCode_CharPtr)
+		{
+			return StrFormat("CharPtr %d", constant->mInt64);
+		}
 		else if (constant->mTypeCode == BfTypeCode_StringId)
 		{
 			return StrFormat("StringId %d", constant->mInt64);
@@ -942,7 +946,7 @@ BfIRValue BfIRConstHolder::CreateConst(BfConstant* fromConst, BfIRConstHolder* f
 	{
 		return CreateConst(fromConst->mTypeCode, 0);
 	}
-	else if ((IsInt(fromConst->mTypeCode)) || (fromConst->mTypeCode == BfTypeCode_Boolean) || (fromConst->mTypeCode == BfTypeCode_StringId))
+	else if ((IsInt(fromConst->mTypeCode)) || (fromConst->mTypeCode == BfTypeCode_Boolean) || (fromConst->mTypeCode == BfTypeCode_StringId) || (fromConst->mTypeCode == BfTypeCode_CharPtr))
 	{
 		return CreateConst(fromConst->mTypeCode, fromConst->mUInt64);
 	}
