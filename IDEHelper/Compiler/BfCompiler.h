@@ -74,6 +74,7 @@ public:
 		int mQueuedTypesProcessed;
 		int mTypesQueued;
 		int mTypesDeleted;
+		int mTypesDeleted_LastUpdateAfterDeletingTypes;
 		int mMethodsQueued;
 
 		int mModulesStarted;

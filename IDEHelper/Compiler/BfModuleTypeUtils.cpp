@@ -7791,17 +7791,27 @@ BfUnknownSizedArrayType* BfModule::CreateUnknownSizedArrayType(BfType* resolvedT
 BfPointerType* BfModule::CreatePointerType(BfType* resolvedType)
 {
 	BF_ASSERT(!resolvedType->IsVar());
-	BF_ASSERT_REL(!resolvedType->IsDeleting());
-
+	
 	auto pointerType = mContext->mPointerTypePool.Get();
 	pointerType->mContext = mContext;
 	pointerType->mElementType = resolvedType;
 	auto resolvedPointerType = (BfPointerType*)ResolveType(pointerType);
 	if (resolvedPointerType != pointerType)
+	{
 		mContext->mPointerTypePool.GiveBack(pointerType);
+	}
+	else
+	{
+		if (resolvedType->IsDeleting())
+		{
+			mCompiler->RequestExtraCompile();
+			InternalError("CreatePointerType using deleted type");
+			mContext->DeleteType(resolvedPointerType);
+		}
+	}
 
 	BF_ASSERT(resolvedPointerType->mElementType == resolvedType);
-
+	
 	return resolvedPointerType;
 }
 

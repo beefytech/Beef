@@ -2036,9 +2036,10 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 void BfContext::UpdateAfterDeletingTypes()
 {
 	BP_ZONE("BfContext::UpdateAfterDeletingTypes");
-	BfLogSysM("UpdateAfterDeletingTypes\n");
+	BfLogSysM("UpdateAfterDeletingTypes\n");	
 
 	int graveyardStart = (int)mTypeGraveyard.size();
+	
 
 	while (true)
 	{
@@ -2124,6 +2125,8 @@ void BfContext::UpdateAfterDeletingTypes()
 			SaveDeletingType(type);
 		}
 	}
+
+	mCompiler->mStats.mTypesDeleted_LastUpdateAfterDeletingTypes = mCompiler->mStats.mTypesDeleted;
 }
 
 // This happens before the old defs have been injected
@@ -3486,6 +3489,13 @@ void BfContext::Cleanup()
 	RemoveInvalidFailTypes();
 
 	mCompiler->mCompileState = BfCompiler::CompileState_Cleanup;
+
+	if (mCompiler->mStats.mTypesDeleted_LastUpdateAfterDeletingTypes != mCompiler->mStats.mTypesDeleted)
+	{
+		// Should only occur for internal compiler errors
+		BF_ASSERT(mCompiler->mExtraCompileRequested);
+		UpdateAfterDeletingTypes();
+	}
 
 	///
 	{

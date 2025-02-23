@@ -9508,8 +9508,14 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 
 				BfTypedValue receivingValue;
 				BfIRValue tupleFieldPtr;
-				if (tuplePtr)
+
+				mModule->PopulateType(tupleFieldInstance->mResolvedType);
+				if (tupleFieldInstance->mResolvedType->IsValuelessType())
 				{
+					receivingValue = mModule->GetDefaultTypedValue(tupleFieldInstance->mResolvedType);
+				}
+				else if (tuplePtr)
+				{					
 					tupleFieldPtr = mModule->mBfIRBuilder->CreateInBoundsGEP(tuplePtr, 0, tupleFieldInstance->mDataIdx);
 					receivingValue = BfTypedValue(tupleFieldPtr, tupleFieldInstance->mResolvedType, true);
 				}

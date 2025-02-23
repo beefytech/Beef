@@ -2947,6 +2947,13 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 			PopulateType(tupleType);
 			mBfIRBuilder->PopulateType(tupleType);
 
+			if (tupleType->IsDeleting())
+			{
+				mCompiler->RequestExtraCompile();
+				InternalError("TryCaseEnumMatch using deleted type", expr);
+				return BfTypedValue();
+			}
+
 			auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
 			tagId = -fieldInstance->mDataIdx - 1;
 
