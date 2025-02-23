@@ -12056,6 +12056,8 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 	if (!localDef->mResolvedType->IsVar())
 		mModule->AddLocalVariableDef(localDef, true, true);
 
+	auto autoComplete = mModule->mCompiler->GetAutoComplete();
+
 	for (auto elementExpr : initExpr->mValues)
 	{
 		if ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0)
@@ -12071,6 +12073,19 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 			BfTypedValue fieldResult;
 			if (auto identifierNode = BfNodeDynCast<BfIdentifierNode>(assignExpr->mLeft))
 			{
+				if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(identifierNode)))
+				{
+					auto type = initValue.mType;
+					if (type->IsPointer())
+						type = type->GetUnderlyingType();
+					if (auto typeInst = type->ToTypeInstance())
+					{
+						autoComplete->mInsertStartIdx = identifierNode->GetSrcStart();
+						autoComplete->mInsertEndIdx = identifierNode->GetSrcEnd();
+						autoComplete->AddTypeMembers(typeInst, false, true, identifierNode->ToString(), typeInst, false, true, false);
+					}					
+				}
+
 				StringT<128> findName;
 				identifierNode->ToString(findName);
 				mResultFieldInstance = NULL;
@@ -12138,17 +12153,18 @@ void BfExprEvaluator::Visit(BfInitializerExpression* initExpr)
 		{
 			BfBlock* block = BfNodeDynCast<BfBlock>(elementExpr);						
 
-			auto autoComplete = GetAutoComplete();
 			if ((autoComplete != NULL) && (autoComplete->IsAutocompleteNode(elementExpr)))
 			{
 				if (auto identiferNode = BfNodeDynCast<BfIdentifierNode>(elementExpr))
 				{
-					auto typeInstance = initValue.mType->ToTypeInstance();
-					if (typeInstance != NULL)
+					auto type = initValue.mType;
+					if (type->IsPointer())
+						type = type->GetUnderlyingType();
+					if (auto typeInst = type->ToTypeInstance())
 					{
 						String filter;
 						identiferNode->ToString(filter);
-						autoComplete->AddTypeMembers(typeInstance, false, true, filter, typeInstance, false, true, false);
+						autoComplete->AddTypeMembers(typeInst, false, true, filter, typeInst, false, true, false);
 					}
 				}
 			}
