@@ -1853,7 +1853,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		{
 			"alignof", "append", "as", "asm", "base", "break", "case", "catch", "checked", "continue", "const", "default", "defer",
 			"delegate", "delete", "do", "else", "false", "finally",
-			"fixed", "for", "function", "if", "implicit", "in", "internal", "is", "isconst", "new", "mixin", "null",
+			"fixed", "for", "function", "if", "implicit", "in", "internal", "is", "isconst", "new", "mixin", "not", "null",
 			"offsetof", "out", "params", "readonly", "ref", "rettype", "return",
 			"sealed", "sizeof", "scope", "static", "strideof", "struct", "switch", /*"this",*/ "try", "true", "typeof", "unchecked",
 			"using", "var", "virtual", "volatile", "where", "while",
