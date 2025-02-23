@@ -1728,10 +1728,15 @@ void BfPrinter::Visit(BfPointerTypeRef* ptrType)
 
 void BfPrinter::Visit(BfNullableTypeRef* ptrType)
 {
-	Visit((BfAstNode*) ptrType);
+	Visit((BfAstNode*)ptrType);
 
 	VisitChild(ptrType->mElementType);
 	VisitChild(ptrType->mQuestionToken);
+}
+
+void BfPrinter::Visit(BfInlineTypeReference* typeRef)
+{
+	VisitChild(typeRef->mTypeDeclaration);
 }
 
 void BfPrinter::Visit(BfVariableDeclaration* varDecl)
@@ -2901,6 +2906,7 @@ void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
 		ExpectSpace();
 		if (isEnumDecl)
 			mNextStateModify.mExpectingSpace = false;
+
 		QueueVisitChild(fieldDeclaration->mTypeRef);
 		ExpectSpace();
 		QueueVisitChild(fieldDeclaration->mNameNode);

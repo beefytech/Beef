@@ -147,15 +147,15 @@ void BfReducer::MoveNode(BfAstNode* srcNode, BfAstNode* newOwner)
 #ifdef BF_AST_HAS_PARENT_MEMBER
 	srcNode->mParent = newOwner;
 #endif
-	int srcStart = srcNode->GetSrcStart();
-	int srcEnd = srcNode->GetSrcEnd();
-	if (srcStart < newOwner->GetSrcStart())
-		newOwner->SetSrcStart(srcStart);
-	if (srcEnd > newOwner->GetSrcEnd())
-		newOwner->SetSrcEnd(srcEnd);
+	int srcStart = srcNode->mSrcStart;
+	int srcEnd = srcNode->mSrcEnd;
+	if (srcStart < newOwner->mSrcStart)
+		newOwner->mSrcStart = srcStart;
+	if (srcEnd > newOwner->mSrcEnd)
+		newOwner->mSrcEnd = srcEnd;
 }
 
-// Replaces prevNode with new node and adds prevNode to newNode's childrenj
+// Replaces prevNode with new node and adds prevNode to newNode's children
 //  It can be considered that newNode encapsulated prevNode.
 void BfReducer::ReplaceNode(BfAstNode* prevNode, BfAstNode* newNode)
 {
@@ -8341,10 +8341,13 @@ bool BfReducer::CheckInlineTypeRefAttribute(BfAstNode* typeRef, BfAttributeDirec
 			checkAttribute = checkAttribute->mNextAttribute;
 		}
 
-		auto typeDecl = inlineTypeRef->mTypeDeclaration;
-		typeDecl->mTriviaStart = attributes->mTriviaStart;
+		auto typeDecl = inlineTypeRef->mTypeDeclaration;		
 		typeDecl->mSrcStart = attributes->mSrcStart;
+		typeDecl->mTriviaStart = typeDecl->mSrcStart;
 		typeDecl->mAttributes = attributes;
+
+		inlineTypeRef->mTriviaStart = attributes->mTriviaStart;
+		inlineTypeRef->mSrcStart = attributes->mSrcStart;
 
 		if ((typeDecl->mIgnoreDeclaration) && (IsNodeRelevant(typeDecl)))
 			typeDecl->mIgnoreDeclaration = false;
@@ -11178,6 +11181,7 @@ void BfReducer::HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDi
 	if (attributes != NULL)
 	{
 		MEMBER_SET(typeDecl, mAttributes, attributes);
+		typeDecl->mTriviaStart = BF_MIN(typeDecl->mAttributes->mTriviaStart, attributes->mTriviaStart);
 	}
 
 	if ((!IsNodeRelevant(deferredHeadNode, typeDecl)) && (!typeDecl->IsTemporary()) && (!findInitializer))
