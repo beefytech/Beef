@@ -420,6 +420,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mEnumTypeDef = NULL;
 	mFriendAttributeTypeDef = NULL;
 	mComptimeAttributeTypeDef = NULL;
+	mIntrinsicAttributeTypeDef = NULL;
 	mConstEvalAttributeTypeDef = NULL;
 	mNoExtensionAttributeTypeDef = NULL;
 	mCheckedAttributeTypeDef = NULL;
@@ -7275,6 +7276,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mFriendAttributeTypeDef = _GetRequiredType("System.FriendAttribute");
 	mNoStaticCtorAttributeTypeDef = _GetRequiredType("System.NoStaticCtorAttribute");
 	mComptimeAttributeTypeDef = _GetRequiredType("System.ComptimeAttribute");
+	mIntrinsicAttributeTypeDef = _GetRequiredType("System.IntrinsicAttribute");
 	mConstEvalAttributeTypeDef = _GetRequiredType("System.ConstEvalAttribute");
 	mNoExtensionAttributeTypeDef = _GetRequiredType("System.NoExtensionAttribute");
 	mCheckedAttributeTypeDef = _GetRequiredType("System.CheckedAttribute");

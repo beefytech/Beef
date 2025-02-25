@@ -448,6 +448,7 @@ public:
 	BfTypeDef* mFriendAttributeTypeDef;
 	BfTypeDef* mNoStaticCtorAttributeTypeDef;
 	BfTypeDef* mComptimeAttributeTypeDef;
+	BfTypeDef* mIntrinsicAttributeTypeDef;
 	BfTypeDef* mConstEvalAttributeTypeDef;
 	BfTypeDef* mNoExtensionAttributeTypeDef;
 	BfTypeDef* mCheckedAttributeTypeDef;

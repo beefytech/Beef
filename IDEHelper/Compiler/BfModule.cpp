@@ -8248,6 +8248,9 @@ void BfModule::CheckStaticAccess(BfTypeInstance* typeInstance)
 
 BfIRFunction BfModule::GetIntrinsic(BfMethodInstance* methodInstance, bool reportFailure)
 {
+	if (!methodInstance->mIsIntrinsic)
+		return BfIRFunction();
+
 	auto methodOwner = methodInstance->GetOwner();
 	auto methodDef = methodInstance->mMethodDef;
 	auto methodDeclaration = methodDef->GetMethodDeclaration();
@@ -8258,61 +8261,43 @@ BfIRFunction BfModule::GetIntrinsic(BfMethodInstance* methodInstance, bool repor
 	if (methodInstance->GetCustomAttributes() == NULL)
 		return BfIRFunction();
 
-	for (auto& customAttribute : methodInstance->GetCustomAttributes()->mAttributes)
+	auto customAttribute = methodInstance->GetCustomAttributes()->Get(mCompiler->mIntrinsicAttributeTypeDef);
+	auto constant = methodOwner->mConstHolder->GetConstant(customAttribute->mCtorArgs[0]);
+	String error;
+
+	if ((constant != NULL) && (constant->mTypeCode == BfTypeCode_StringId))
 	{
-		String typeName = TypeToString(customAttribute.mType);
-		if ((typeName == "System.IntrinsicAttribute") && (customAttribute.mCtorArgs.size() > 0))
+		int stringId = constant->mInt32;
+		auto entry = mContext->mStringObjectIdMap[stringId];
+		String intrinName = entry.mString;
+
+		int intrinId = BfIRCodeGen::GetIntrinsicId(intrinName);
+		if (intrinId != -1)
 		{
-			methodInstance->mIsIntrinsic = true;
-
-			auto constant = methodOwner->mConstHolder->GetConstant(customAttribute.mCtorArgs[0]);
-			String error;
-
-			if ((constant != NULL) && (constant->mTypeCode == BfTypeCode_StringId))
+			if (intrinId == BfIRIntrinsic_Malloc)
 			{
-				int stringId = constant->mInt32;
-				auto entry = mContext->mStringObjectIdMap[stringId];
-				String intrinName = entry.mString;
-
-// 				if (intrinName.StartsWith(":"))
-// 				{
-// 					SizedArray<BfIRType, 2> paramTypes;
-// 					for (auto& param : methodInstance->mParams)
-// 						paramTypes.push_back(mBfIRBuilder->MapType(param.mResolvedType));
-// 					return mBfIRBuilder->GetIntrinsic(intrinName.Substring(1), mBfIRBuilder->MapType(methodInstance->mReturnType), paramTypes);
-// 				}
-// 				else
-				{
-					int intrinId = BfIRCodeGen::GetIntrinsicId(intrinName);
-					if (intrinId != -1)
-					{
-						if (intrinId == BfIRIntrinsic_Malloc)
-						{
-							return GetBuiltInFunc(BfBuiltInFuncType_Malloc);
-						}
-						else if (intrinId == BfIRIntrinsic_Free)
-						{
-							return GetBuiltInFunc(BfBuiltInFuncType_Free);
-						}
-
-						SizedArray<BfIRType, 2> paramTypes;
-						for (auto& param : methodInstance->mParams)
-							paramTypes.push_back(mBfIRBuilder->MapType(param.mResolvedType));
-						return mBfIRBuilder->GetIntrinsic(intrinName, intrinId, mBfIRBuilder->MapType(methodInstance->mReturnType), paramTypes);
-					}
-					else if (reportFailure)
-						error = StrFormat("Unable to find intrinsic '%s'", entry.mString.c_str());
-				}
+				return GetBuiltInFunc(BfBuiltInFuncType_Malloc);
 			}
-			else if (reportFailure)
-				error = "Intrinsic name must be a constant string";
-
-			if (reportFailure)
+			else if (intrinId == BfIRIntrinsic_Free)
 			{
-				Fail(error, customAttribute.mRef);
+				return GetBuiltInFunc(BfBuiltInFuncType_Free);
 			}
+
+			SizedArray<BfIRType, 2> paramTypes;
+			for (auto& param : methodInstance->mParams)
+				paramTypes.push_back(mBfIRBuilder->MapType(param.mResolvedType));
+			return mBfIRBuilder->GetIntrinsic(intrinName, intrinId, mBfIRBuilder->MapType(methodInstance->mReturnType), paramTypes);
 		}
+		else if (reportFailure)
+			error = StrFormat("Unable to find intrinsic '%s'", entry.mString.c_str());		
 	}
+	else if (reportFailure)
+		error = "Intrinsic name must be a constant string";
+
+	if (reportFailure)
+	{
+		Fail(error, customAttribute->mRef);
+	}		
 
 	return BfIRFunction();
 }
@@ -24228,6 +24213,9 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 
 	if (customAttributes != NULL)
 	{
+		if (customAttributes->Contains(mCompiler->mIntrinsicAttributeTypeDef))
+			methodInstance->mIsIntrinsic = true;
+
 		auto linkNameAttr = customAttributes->Get(mCompiler->mCallingConventionAttributeTypeDef);
 		if (linkNameAttr != NULL)
 		{
