@@ -458,13 +458,13 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 		case BfTypeCode_UInt32:
 			name += "j"; return;
         case BfTypeCode_Int64:
-			if (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8)
+			if ((mangleContext.mModule == NULL) || (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8))
 				name += "l";
 			else
 				name += "x";
 			return;
         case BfTypeCode_UInt64:
-			if (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8)
+			if ((mangleContext.mModule == NULL) || (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8))
 				name += "m";
 			else
 				name += "y";
@@ -472,7 +472,7 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 		case BfTypeCode_UIntPtr:
 			if ((mangleContext.mCCompat) || (mangleContext.mInArgs))
 			{
-				if (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8)
+				if ((mangleContext.mModule == NULL) || (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8))
 					name += (primType->mSize == 8) ? "m" : "j";
 				else
 					name += (primType->mSize == 8) ? "y" : "j";
@@ -483,7 +483,7 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 		case BfTypeCode_IntPtr:
 			if ((mangleContext.mCCompat) || (mangleContext.mInArgs))
 			{
-				if (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8)
+				if ((mangleContext.mModule == NULL) || (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8))
 					name += (primType->mSize == 8) ? "l" : "i";
 				else
 					name += (primType->mSize == 8) ? "x" : "i";
