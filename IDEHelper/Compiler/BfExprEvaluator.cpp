@@ -5284,8 +5284,11 @@ BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue ta
 		}
 	}
 
-	SetAndRestoreValue<BfTypedValue> prevResult(mResult, target);
-	CheckResultForReading(mResult);
+	if (!mPropDef->mIsStatic)	
+	{
+		SetAndRestoreValue<BfTypedValue> prevResult(mResult, target);
+		CheckResultForReading(mResult);
+	}
 	return BfTypedValue();
 }
 
