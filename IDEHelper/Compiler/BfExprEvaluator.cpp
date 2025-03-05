@@ -10594,6 +10594,11 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 					((typeConstraint->IsDelegate()) || (typeConstraint->IsFunction())))
 				{
 					BfMethodInstance* invokeMethodInstance = mModule->GetRawMethodInstanceAtIdx(typeConstraint->ToTypeInstance(), 0, "Invoke");
+					if (invokeMethodInstance == NULL)
+					{						
+						mModule->InternalError("Get Invoke failed", targetSrc);
+						return BfTypedValue();
+					}
 
 					methodDef = invokeMethodInstance->mMethodDef;
 					methodMatcher.mBestMethodInstance = invokeMethodInstance;
