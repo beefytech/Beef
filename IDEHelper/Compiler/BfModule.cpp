@@ -16003,7 +16003,7 @@ BfTypedValue BfModule::GetThis(bool markUsing)
 	auto curMethodOwner = mCurMethodInstance->mMethodInstanceGroup->mOwner;
 	if ((curMethodOwner->IsStruct()) || (curMethodOwner->IsTypedPrimitive()))
 	{
-		if ((localDef->mResolvedType->IsTypedPrimitive()) && (!mCurMethodInstance->mMethodDef->mIsMutating) && (mCurMethodInstance->mCallingConvention != BfCallingConvention_Cdecl))
+		if ((localDef->mResolvedType->IsTypedPrimitive()) && (!mCurMethodInstance->mMethodDef->mIsMutating) && (!mCurMethodInstance->ForcingThisPtr()))
 		{
 			return BfTypedValue(thisValue, useMethodState->mLocals[0]->mResolvedType, BfTypedValueKind_ReadOnlyThisValue);
 		}
@@ -19981,7 +19981,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			if (!thisType->IsTypedPrimitive())
 				paramVar->mIsSplat = true;
 		}
-		else if ((!mIsComptimeModule) && (!methodDef->mIsMutating) && (methodInstance->mCallingConvention == BfCallingConvention_Unspecified))
+		else if ((!mIsComptimeModule) && (!methodDef->mIsMutating) && (!methodInstance->ForcingThisPtr()))
 			paramVar->mIsLowered = thisType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2) != BfTypeCode_None;
 
 		auto thisTypeInst = thisType->ToTypeInstance();
@@ -21754,7 +21754,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 					{
  						bool wantPtr = (thisType->IsComposite()) && (!paramVar->mIsLowered);
  						if ((thisType->IsTypedPrimitive()) &&
-							((methodDef->HasNoThisSplat()) || (methodInstance->mCallingConvention == BfCallingConvention_Cdecl)))
+							((methodDef->HasNoThisSplat()) || (methodInstance->ForcingThisPtr())))
  							wantPtr = true;
 
 						if (wantPtr)
@@ -21885,7 +21885,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 						diType = mBfIRBuilder->DbgGetType(paramVar->mResolvedType);
 						bool wantRef = paramVar->mResolvedType->IsComposite();
 						if ((paramVar->mResolvedType->IsTypedPrimitive()) && 
-							((methodDef->HasNoThisSplat()) || (methodInstance->mCallingConvention == BfCallingConvention_Cdecl)))
+							((methodDef->HasNoThisSplat()) || (methodInstance->ForcingThisPtr())))
 							wantRef = true;
 
 						if (wantRef)
@@ -22199,7 +22199,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 			}
 			else if ((isThis) && (paramVar->mResolvedType->IsOpaque()))
 			{				
-				if ((methodDef->mIsMutating) || (methodInstance->mCallingConvention == BfCallingConvention_Cdecl))
+				if ((methodDef->mIsMutating) || (methodInstance->ForcingThisPtr()))
 					argIdx++;
 			}
 			else if (!paramVar->mResolvedType->IsValuelessNonOpaqueType())

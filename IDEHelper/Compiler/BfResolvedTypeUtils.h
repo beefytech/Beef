@@ -559,6 +559,7 @@ public:
 	virtual bool IsUnspecializedTypeVariation() { return false; }
 	virtual bool IsSplattable() { return false; }
 	virtual int GetSplatCount(bool force = false) { return 1; }
+	virtual bool IsCRepr() { return false; }
 	virtual bool IsVoid() { return false; }
 	virtual bool IsVoidPtr() { return false; }
 	virtual bool CanBeValuelessType() { return false; }
@@ -987,6 +988,7 @@ public:
 	void UndoDeclaration(bool keepIRFunction = false);
 	BfTypeInstance* GetOwner();
 	BfModule* GetModule();
+	bool ForcingThisPtr();
 	bool IsSpecializedGenericMethod();
 	bool IsSpecializedGenericMethodOrType();
 	bool IsSpecializedByAutoCompleteMethod();
@@ -2148,6 +2150,7 @@ public:
 	virtual bool IsIncomplete() override { return (mTypeIncomplete) || (mBaseTypeMayBeIncomplete); }
 	virtual bool IsSplattable() override { BF_ASSERT((mInstSize >= 0) || (!IsComposite())); return mIsSplattable; }
 	virtual int GetSplatCount(bool force = false) override;
+	virtual bool IsCRepr() override;
 	virtual bool IsTypeInstance() override { return true; }
 	virtual BfTypeCode GetTypeCode() override { return mTypeDef->mTypeCode; }
 	virtual bool IsInterface() override { return mTypeDef->mTypeCode == BfTypeCode_Interface; }
@@ -2719,6 +2722,7 @@ public:
 		BfHashFlag_AllowRef = 1,
 		BfHashFlag_AllowGenericParamConstValue = 2,
 		BfHashFlag_AllowDotDotDot = 4,
+		BfHashFlag_DisallowPointer = 8
 	};
 
 	struct BfExprResult
@@ -2817,6 +2821,7 @@ public:
 	static int DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags, int& hashSeed);
 	static int Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
 	static int Hash(BfAstNode* typeRefNode, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
+	static void ShowThisPointerWarning(LookupContext* ctx, BfTypeReference* typeRef);
 
 	static bool Equals(BfType* lhs, BfType* rhs, LookupContext* ctx);
 	static bool Equals(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx);

@@ -5963,6 +5963,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			// Align size to alignment
 			if (alignSize >= 1)
 				typeInstance->mInstSize = (dataPos + (alignSize - 1)) & ~(alignSize - 1);
+			if (typeInstance->mInstSize == 0)
+			{
+				// CRepr doesn't allow valueless types
+				typeInstance->mInstSize = 1;				
+			}
 			typeInstance->mIsCRepr = true;
 		}
 		else
@@ -12649,6 +12654,13 @@ BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType po
 				}
 			}
 
+			if (auto refTypeRef = BfNodeDynCast<BfRefTypeRef>(param->mTypeRef))
+			{
+				// This catches `ref Foo*` cases (which generate warnings)
+				if ((refTypeRef->mRefToken != NULL) && (refTypeRef->mRefToken->mToken == BfToken_Mut))
+					hasMutSpecifier = true;
+			}
+
 			auto paramType = ResolveTypeRef(param->mTypeRef, BfPopulateType_Declaration, resolveTypeFlags);
 			if (paramType == NULL)
 			{
@@ -12673,6 +12685,13 @@ BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType po
 					hasMutSpecifier = true;
 					functionThisType = refType->mElementType;
 				}
+
+				if ((functionThisType != NULL) && (functionThisType->IsPointer()))
+				{
+					// We should have already warned against pointer types during hashing
+					functionThisType = functionThisType->GetUnderlyingType();
+				}
+
 				paramTypes.Add(functionThisType);
 				_CheckType(functionThisType);
 			}

@@ -7698,7 +7698,7 @@ void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMeth
 	else
 		allowThisSplatting = methodInstance->AllowsSplatting(-1);
 
-	if ((!allowThisSplatting) || (methodDef->mIsMutating) || (methodInstance->mCallingConvention == BfCallingConvention_Cdecl))
+	if ((!allowThisSplatting) || (methodDef->mIsMutating) || (methodInstance->ForcingThisPtr()))
 	{
 		argVal = mModule->MakeAddressable(argVal);
 		irArgs.push_back(argVal.mValue);

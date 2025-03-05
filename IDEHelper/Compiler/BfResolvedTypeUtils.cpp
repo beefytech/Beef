@@ -900,6 +900,20 @@ BfModule * BfMethodInstance::GetModule()
 	return mMethodInstanceGroup->mOwner->mModule;
 }
 
+bool BfMethodInstance::ForcingThisPtr()
+{
+	if (mMethodDef->mHasExplicitThis)
+	{
+		auto thisType = mParams[0].mResolvedType;
+		if (thisType->IsCRepr())
+			return true;
+	}
+	else if (mMethodInstanceGroup->mOwner->IsCRepr())
+		return true;
+
+	return (mCallingConvention == BfCallingConvention_Cdecl);
+}
+
 bool Beefy::BfMethodInstance::IsSpecializedGenericMethod()
 {
 	return (mMethodInfoEx != NULL) && (mMethodInfoEx->mGenericParams.size() != 0) && (!mIsUnspecialized);
@@ -1070,6 +1084,8 @@ bool BfMethodInstance::AllowsSplatting(int paramIdx)
 	if (paramIdx == -1)
 	{
 		if (mCallingConvention != BfCallingConvention_Unspecified)
+			return false;
+		if (ForcingThisPtr())
 			return false;
 		if (mMethodDef->mIsNoSplat)
 			return false;
@@ -1474,7 +1490,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		bool doSplat = false;
 		if (paramIdx == -1)
 		{
-			if (mCallingConvention == BfCallingConvention_Cdecl)
+			if (ForcingThisPtr())
 			{
 				// Pass by pointer even for typed primitives
 			}
@@ -1838,6 +1854,11 @@ int BfTypeInstance::GetSplatCount(bool force)
 	int splatCount = 0;
 	BfTypeUtils::SplatIterate([&](BfType* checkType) { splatCount++; }, this);
 	return splatCount;
+}
+
+bool BfTypeInstance::IsCRepr()
+{
+	return mIsCRepr;
 }
 
 bool BfTypeInstance::IsString()
@@ -3609,7 +3630,18 @@ int BfResolvedTypeSet::DirectHash(BfTypeReference* typeRef, LookupContext* ctx, 
 		ctx->mFailed = true;
 		return 0;
 	}
+	if (((flags & BfHashFlag_DisallowPointer) != 0) && (resolvedType->IsPointer()))
+	{
+		ShowThisPointerWarning(ctx, typeRef);
+		resolvedType = resolvedType->GetUnderlyingType();
+	}
+
 	return Hash(resolvedType, ctx, BfHashFlag_None, hashSeed);
+}
+
+void BfResolvedTypeSet::ShowThisPointerWarning(LookupContext* ctx, BfTypeReference* typeRef)
+{
+	ctx->mModule->Warn(0, "Pointer types cannot be used as 'this'. If 'this' address is required, use 'mut' or [CRepr]", typeRef);
 }
 
 BfTypeDef* BfResolvedTypeSet::FindRootCommonOuterType(BfTypeDef* outerType, LookupContext* ctx, BfTypeInstance*& outOuterTypeInstance)
@@ -4142,12 +4174,22 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			// Parse attributes?
 			BfTypeReference* fieldType = param->mTypeRef;
 
+			auto hashFlags = (BfHashFlags)(BfHashFlag_AllowRef);
+
 			if (isFirstParam)
 			{
 				if ((param->mNameNode != NULL) && (param->mNameNode->Equals("this")))
 				{
+					hashFlags = (BfHashFlags)(hashFlags | BfHashFlag_DisallowPointer);
+
 					if (auto refNode = BfNodeDynCast<BfRefTypeRef>(fieldType))
 						fieldType = refNode->mElementType;
+
+ 					if (auto pointerType = BfNodeDynCast<BfPointerTypeRef>(fieldType))
+ 					{
+						ShowThisPointerWarning(ctx, pointerType);
+ 						fieldType = pointerType->mElementType;
+ 					}
 				}
 			}
 
@@ -4161,10 +4203,10 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 						continue;
 					}
 				}
-			}
+			}			
 
 			if (fieldType != NULL)
-				hashVal = HASH_MIX(hashVal, Hash(fieldType, ctx, (BfHashFlags)(BfHashFlag_AllowRef), hashSeed + 1));
+				hashVal = HASH_MIX(hashVal, Hash(fieldType, ctx, hashFlags, hashSeed + 1));
 			hashVal = HASH_MIX(hashVal, HashNode(param->mNameNode));
 			isFirstParam = true;
 		}
@@ -4981,17 +5023,33 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 				bool handled = false;
 				auto lhsThisType = lhsDelegateInfo->mParams[0];
 
-				auto rhsThisType = ctx->mModule->ResolveTypeRef(param0->mTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoWarnOnMut | BfResolveTypeRefFlag_AllowRef));
 				bool wantsMutating = false;
+				if (auto refTypeRef = BfNodeDynCast<BfRefTypeRef>(param0->mTypeRef))
+				{
+					// This catches `ref Foo*` cases (which generate warnings)
+					if ((refTypeRef->mRefToken != NULL) && (refTypeRef->mRefToken->mToken == BfToken_Mut))
+						wantsMutating = true;
+				}
 
+				auto rhsThisType = ctx->mModule->ResolveTypeRef(param0->mTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoWarnOnMut | BfResolveTypeRefFlag_AllowRef));				
+
+				if (rhsThisType == NULL)
+					return false;
+				
 				if (rhsThisType->IsRef())
 				{
-					if (lhsThisType != rhsThisType->GetUnderlyingType())
+					rhsThisType = rhsThisType->GetUnderlyingType();
+					if (rhsThisType->IsPointer())
+						rhsThisType = rhsThisType->GetUnderlyingType();
+
+					if (lhsThisType != rhsThisType)
 						return false;
 					wantsMutating = (lhsThisType->IsValueType()) || (lhsThisType->IsGenericParam());
 				}
 				else
 				{
+					if (rhsThisType->IsPointer())
+						rhsThisType = rhsThisType->GetUnderlyingType();
 					if (lhsThisType != rhsThisType)
 						return false;
 				}
