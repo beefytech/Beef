@@ -2845,6 +2845,7 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 
 		BfTypeState typeState;
 		typeState.mPrevState = mContext->mCurTypeState;
+		typeState.mType = typeInstance;
 		typeState.mForceActiveTypeDef = methodDef->mDeclaringType;
 		SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
 
@@ -2897,11 +2898,6 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			Fail("OnCompile methods cannot declare parameters", methodDeclaration);
 			continue;
 		}
-
-		if (typeInstance->mTypeDef->mName->ToString() == "AssetType")
-		{
-			NOP;
-		}	
 
 		SetAndRestoreValue<CeEmitContext*> prevEmitContext(mCompiler->mCeMachine->mCurEmitContext);
 		if (onCompileKind == BfCEOnCompileKind_TypeInit)
