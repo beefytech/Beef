@@ -20041,7 +20041,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 	for (paramIdx = 0; paramIdx < methodInstance->GetParamCount(); paramIdx++)
 	{
 		// We already issues a type error for this param if we had one in declaration processing
-		SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
+ 		SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, true);
 		BfLocalVariable* paramVar = rootMethodState->mBumpAlloc.Alloc<BfLocalVariable>();
 		paramVar->mIsBumpAlloc = true;
 
@@ -25363,7 +25363,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		{
 			BfTypeCode loweredTypeCode = BfTypeCode_None;
 			BfTypeCode loweredTypeCode2 = BfTypeCode_None;
-			if ((!mIsComptimeModule) && (!methodDef->mIsMutating))
+			if ((!mIsComptimeModule) && (!methodDef->mIsMutating) && (!methodInstance->ForcingThisPtr()))
 				thisType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2);
 			argIdx++;
 			if (loweredTypeCode2 != BfTypeCode_None)
