@@ -205,6 +205,7 @@ public:
 		mCurAttributeTypeRef = NULL;
 		mCurTypeDef = NULL;
 		mForceActiveTypeDef = NULL;
+		mActiveProject = NULL;
 		mCurVarInitializer = NULL;
 		mArrayInitializerSize = -1;
 		mResolveKind = ResolveKind_None;
