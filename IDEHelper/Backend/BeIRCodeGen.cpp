@@ -1740,6 +1740,14 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, idx);
 
 			BF_ASSERT(val->GetType()->IsComposite());
+			if (val->GetType()->mTypeCode == BeTypeCode_Struct)
+			{ 
+				auto structType = (BeStructType*)val->GetType();
+				if (idx >= structType->mMembers.mSize)
+				{
+					FatalError("ExtractValue OOB");
+				}
+			}			
 
 			auto extractValueInst = mBeModule->AllocInst<BeExtractValueInst>();
 			extractValueInst->mAggVal = val;

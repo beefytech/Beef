@@ -1585,11 +1585,15 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 				{
 					if (initValue.mType->IsNullable())
 					{
+						auto nullableElementType = initValue.mType->GetUnderlyingType();
 						auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
 						initValue = LoadValue(initValue);
-						exprEvaluator->mResult = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, 2), boolType);
+						exprEvaluator->mResult = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, nullableElementType->IsValuelessType() ? 1 : 2), boolType);
 						handledExprBoolResult = true;
-						initValue = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, 1), initValue.mType->GetUnderlyingType());
+						if (!nullableElementType->IsValuelessType())
+							initValue = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, 1), initValue.mType->GetUnderlyingType());
+						else
+							initValue = BfTypedValue(mBfIRBuilder->GetFakeVal(), nullableElementType);						
 					}
  					else
  					{
