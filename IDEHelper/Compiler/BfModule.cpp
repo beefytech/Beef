@@ -1110,6 +1110,8 @@ bool BfModule::IsHotCompile()
 
 void BfModule::FinishInit()
 {
+	BfLogSysM("FinishInit %@ %s\n", this, mModuleName.c_str());
+
 	BF_ASSERT(mAwaitingInitFinish);
 
 	auto moduleOptions = GetModuleOptions();
@@ -11482,6 +11484,9 @@ BfIRValue BfModule::CreateFunctionFrom(BfMethodInstance* methodInstance, bool tr
 		//BF_ASSERT(!methodInstance->mIRFunction);
 		return BfIRValue();
 	}
+
+	if ((mAwaitingInitFinish) && (!mBfIRBuilder->mIgnoreWrites))
+		FinishInit();
 
 	auto methodDef = methodInstance->mMethodDef;
 	StringT<4096> methodName;
