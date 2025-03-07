@@ -2323,6 +2323,11 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 							{
 								for (int i = 0; i < braceCount - 1; i++)
 									strLiteral += '}';
+
+								if ((((isClosingBrace) && (braceCount > 1) && (braceCount % 2 == 0)) || ((!isClosingBrace)) && (braceCount % 2 == 1)))
+								{
+									mPassInstance->FailAt("Unpaired closing brace.", mSourceData, mSrcIdx - 1, 1);
+								}
 							}
 							else
 							{
