@@ -20496,9 +20496,12 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue& typedVal, BfAstNode* refNo
 
 	if ((mResultFieldInstance != NULL) && (mResultFieldInstance->GetFieldDef()->mIsReadOnly) && (!canModify))
 	{
-		auto error = _Fail(StrFormat("Cannot %s static readonly field '%s.%s' within method '%s'", modifyType,
-			mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str(),
-			mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
+		if (mModule->mCurMethodInstance != NULL)
+		{
+			auto error = _Fail(StrFormat("Cannot %s static readonly field '%s.%s' within method '%s'", modifyType,
+				mModule->TypeToString(mResultFieldInstance->mOwner).c_str(), mResultFieldInstance->GetFieldDef()->mName.c_str(),
+				mModule->MethodToString(mModule->mCurMethodInstance).c_str()), refNode);
+		}
 
 		return false;
 	}
