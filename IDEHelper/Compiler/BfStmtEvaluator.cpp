@@ -543,11 +543,12 @@ BfDeferredCallEntry* BfModule::AddDeferredBlock(BfBlock* block, BfScopeData* sco
 	return deferredCallEntry;
 }
 
-BfDeferredCallEntry* BfModule::AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scopeData, BfAstNode* srcNode, bool bypassVirtual, bool doNullCheck)
+BfDeferredCallEntry* BfModule::AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scopeData, BfAstNode* srcNode, bool bypassVirtual, bool doNullCheck, bool isAllocaFunc)
 {
 	BfDeferredCallEntry* deferredCallEntry = new BfDeferredCallEntry();
 	BF_ASSERT(moduleMethodInstance);
 	deferredCallEntry->mModuleMethodInstance = moduleMethodInstance;
+	deferredCallEntry->mIsAllocaFunc = isAllocaFunc;
 
 	for (auto arg : llvmArgs)
 	{
@@ -783,7 +784,12 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 	}
 
 	BfExprEvaluator expressionEvaluator(this);
-	expressionEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, ((flags & BfDeferredBlockFlag_BypassVirtual) != 0), llvmArgs);
+
+	auto func = moduleMethodInstance.mFunc;
+	if ((flags & BfDeferredBlockFlag_IsAllocaFunc) != 0)
+		func = mBfIRBuilder->CreateLoad(func);
+
+	expressionEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, func, ((flags & BfDeferredBlockFlag_BypassVirtual) != 0), llvmArgs);
 
 	if ((flags & BfDeferredBlockFlag_DoNullChecks) != 0)
 	{
@@ -914,6 +920,8 @@ void BfModule::EmitDeferredCall(BfScopeData* scopeData, BfDeferredCallEntry& def
 		flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_DoNullChecks | BfDeferredBlockFlag_SkipObjectAccessCheck | BfDeferredBlockFlag_MoveNewBlocksToEnd);
 	if (moveBlocks)
 		flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_MoveNewBlocksToEnd);
+	if (deferredCallEntry.mIsAllocaFunc)
+		flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_IsAllocaFunc);
 
 	EmitDeferredCall(deferredCallEntry.mModuleMethodInstance, args, flags);
 }
@@ -926,6 +934,7 @@ void BfModule::EmitDeferredCallProcessor(BfScopeData* scopeData, SLIList<BfDefer
 	{
 		BfModuleMethodInstance mModuleMethodInstance;
 		bool mBypassVirtual;
+		bool mIsAllocaFunc;
 	};
 
 	//typedef std::map<int64, _CallInfo> MapType;
@@ -951,6 +960,7 @@ void BfModule::EmitDeferredCallProcessor(BfScopeData* scopeData, SLIList<BfDefer
 			{
 				callInfo->mModuleMethodInstance = moduleMethodInstance;
 				callInfo->mBypassVirtual = deferredCallEntry->mBypassVirtual;
+				callInfo->mIsAllocaFunc = deferredCallEntry->mIsAllocaFunc;
 			}
 			else
 			{
@@ -1118,6 +1128,7 @@ void BfModule::EmitDeferredCallProcessor(BfScopeData* scopeData, SLIList<BfDefer
 	{
 		auto moduleMethodInstance = callInfoKV.mValue.mModuleMethodInstance;
 		bool bypassVirtual = callInfoKV.mValue.mBypassVirtual;
+		bool isAllocaFunc = callInfoKV.mValue.mIsAllocaFunc;
 		auto methodInstance = moduleMethodInstance.mMethodInstance;
 		auto methodDef = methodInstance->mMethodDef;
 		auto methodOwner = methodInstance->mMethodInstanceGroup->mOwner;
@@ -1204,6 +1215,8 @@ void BfModule::EmitDeferredCallProcessor(BfScopeData* scopeData, SLIList<BfDefer
 			flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_DoNullChecks | BfDeferredBlockFlag_SkipObjectAccessCheck);
 		if (bypassVirtual)
 			flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_BypassVirtual);
+		if (isAllocaFunc)
+			flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_IsAllocaFunc);
 		EmitDeferredCall(moduleMethodInstance, llvmArgs, flags);
 		ValueScopeEnd(valueScopeStart);
 		mBfIRBuilder->CreateBr(condBB);
@@ -7336,9 +7349,12 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 	}
 	else if (auto exprStmt = BfNodeDynCast<BfExpressionStatement>(deferStmt->mTargetNode))
 	{
+		BfDeferCallData deferCallData;
+		deferCallData.mRefNode = exprStmt->mExpression;
+		deferCallData.mScopeAlloc = scope;
+
 		BfExprEvaluator expressionEvaluator(this);
-		expressionEvaluator.mDeferCallRef = exprStmt->mExpression;
-		expressionEvaluator.mDeferScopeAlloc = scope;
+		expressionEvaluator.mDeferCallData = &deferCallData;		
 		expressionEvaluator.VisitChild(exprStmt->mExpression);
 		if (mCurMethodState->mPendingNullConditional != NULL)
 			FlushNullConditional(expressionEvaluator.mResult, true);

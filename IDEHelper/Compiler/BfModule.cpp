@@ -2080,23 +2080,23 @@ void BfModule::RestoreScopeState()
 	mCurMethodState->mTailScope = mCurMethodState->mCurScope;
 }
 
-BfIRValue BfModule::CreateAlloca(BfType* type, bool addLifetime, const char* name, BfIRValue arraySize)
+BfIRValue BfModule::CreateAlloca(BfIRType irType, int align, bool addLifetime, const char* name, BfIRValue arraySize)
 {
 	if (mBfIRBuilder->mIgnoreWrites)
 		return mBfIRBuilder->GetFakeVal();
 
-	BF_ASSERT((*(int8*)&addLifetime == 1) || (*(int8*)&addLifetime == 0));
-	mBfIRBuilder->PopulateType(type);
+	BF_ASSERT((*(int8*)&addLifetime == 1) || (*(int8*)&addLifetime == 0));	
 	auto prevInsertBlock = mBfIRBuilder->GetInsertBlock();
 	if (!mBfIRBuilder->mIgnoreWrites)
 		BF_ASSERT(!prevInsertBlock.IsFake());
 	mBfIRBuilder->SetInsertPoint(mCurMethodState->mIRHeadBlock);
 	BfIRValue allocaInst;
 	if (arraySize)
-		allocaInst = mBfIRBuilder->CreateAlloca(mBfIRBuilder->MapType(type), arraySize);
+		allocaInst = mBfIRBuilder->CreateAlloca(irType, arraySize);
 	else
-		allocaInst = mBfIRBuilder->CreateAlloca(mBfIRBuilder->MapType(type));
-	mBfIRBuilder->SetAllocaAlignment(allocaInst, type->mAlign);
+		allocaInst = mBfIRBuilder->CreateAlloca(irType);
+	if (align > 0)
+		mBfIRBuilder->SetAllocaAlignment(allocaInst, align);
 	mBfIRBuilder->ClearDebugLocation(allocaInst);
 	if (name != NULL)
 		mBfIRBuilder->SetName(allocaInst, name);
@@ -2108,6 +2108,16 @@ BfIRValue BfModule::CreateAlloca(BfType* type, bool addLifetime, const char* nam
 		mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(allocaInst);
 	}
 	return allocaInst;
+}
+
+BfIRValue BfModule::CreateAlloca(BfType* type, bool addLifetime, const char* name, BfIRValue arraySize)
+{
+	if (mBfIRBuilder->mIgnoreWrites)
+		return mBfIRBuilder->GetFakeVal();
+
+	BF_ASSERT((*(int8*)&addLifetime == 1) || (*(int8*)&addLifetime == 0));
+	mBfIRBuilder->PopulateType(type);
+	return CreateAlloca(mBfIRBuilder->MapType(type), type->mAlign, addLifetime, name, arraySize);
 }
 
 BfIRValue BfModule::CreateAllocaInst(BfTypeInstance* typeInst, bool addLifetime, const char* name)

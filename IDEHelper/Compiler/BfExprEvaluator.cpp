@@ -3356,8 +3356,7 @@ BfExprEvaluator::BfExprEvaluator(BfModule* module)
 	mExpectingType = NULL;
 	mFunctionBindResult = NULL;
 	mExplicitCast = false;
-	mDeferCallRef = NULL;
-	mDeferScopeAlloc = NULL;
+	mDeferCallData = NULL;	
 	mPrefixedAttributeState = NULL;
 	mResolveGenericParam = true;
 	mNoBind = false;
@@ -6938,7 +6937,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	if (methodInstance->mVirtualTableIdx != -1)
 	{
-		if ((!bypassVirtual) && (mDeferCallRef == NULL))
+		if ((!bypassVirtual) && (mDeferCallData == NULL))
 		{
 			if ((methodDef->mIsOverride) && (mModule->mCurMethodInstance->mIsReified))
 			{
@@ -7107,9 +7106,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 		return _GetDefaultReturnValue();
 	}
 
-	if (mDeferCallRef != NULL)
+	if (mDeferCallData != NULL)
 	{
-		mModule->AddDeferredCall(BfModuleMethodInstance(methodInstance, func), irArgs, mDeferScopeAlloc, mDeferCallRef, bypassVirtual);
+		if (mDeferCallData->mFuncAlloca_Orig == func)
+			mModule->AddDeferredCall(BfModuleMethodInstance(methodInstance, mDeferCallData->mFuncAlloca), irArgs, mDeferCallData->mScopeAlloc, mDeferCallData->mRefNode, bypassVirtual, false, true);			
+		else
+			mModule->AddDeferredCall(BfModuleMethodInstance(methodInstance, func), irArgs, mDeferCallData->mScopeAlloc, mDeferCallData->mRefNode, bypassVirtual);
 		return mModule->GetFakeTypedValue(returnType);
 	}
 
@@ -7861,6 +7863,13 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 			auto funcType = mModule->mBfIRBuilder->MapMethod(moduleMethodInstance.mMethodInstance);
 			auto funcPtrType = mModule->mBfIRBuilder->GetPointerTo(funcType);
 			moduleMethodInstance.mFunc = mModule->mBfIRBuilder->CreateIntToPtr(target.mValue, funcPtrType);
+
+			if (mDeferCallData != NULL)
+			{
+				mDeferCallData->mFuncAlloca_Orig = moduleMethodInstance.mFunc;
+				mDeferCallData->mFuncAlloca = mModule->CreateAlloca(funcPtrType, target.mType->mAlign, false, "FuncAlloca");
+				mModule->mBfIRBuilder->CreateStore(mDeferCallData->mFuncAlloca_Orig, mDeferCallData->mFuncAlloca);
+			}
 		}
 		else if (!methodDef->mIsStatic)
 		{
@@ -8070,7 +8079,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				autoComplete->mIsCapturingMethodMatchInfo = wasCapturingMatchInfo;
 		});
 
-	BfScopeData* boxScopeData = mDeferScopeAlloc;
+	BfScopeData* boxScopeData = (mDeferCallData != NULL) ? mDeferCallData->mScopeAlloc : NULL;
 	if ((boxScopeData == NULL) && (mModule->mCurMethodState != NULL))
 		boxScopeData = mModule->mCurMethodState->mCurScope;
 
@@ -9254,9 +9263,9 @@ BfTypedValue BfExprEvaluator::ResolveArgValue(BfResolvedArg& resolvedArg, BfType
 
 				if ((argValue) && (argValue.mType != wantType) && (wantType != NULL))
 				{
-					if ((mDeferScopeAlloc != NULL) && (wantType == mModule->mContext->mBfObjectType))
+					if ((mDeferCallData != NULL) && (wantType == mModule->mContext->mBfObjectType))
 					{
-						BfAllocTarget allocTarget(mDeferScopeAlloc);
+						BfAllocTarget allocTarget(mDeferCallData->mScopeAlloc);
 						argValue = mModule->BoxValue(expr, argValue, wantType, allocTarget, ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) ? BfCastFlags_WantsConst : BfCastFlags_None);
 					}
 					else
@@ -17731,7 +17740,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	if (mModule->mCurMethodState == NULL)
 		return;
 
-	if (mDeferCallRef != NULL)
+	if (mDeferCallData != NULL)
 	{
 		mModule->Fail("Mixins cannot be directly deferred. Consider wrapping in a block.", targetSrc);
 	}
@@ -20013,7 +20022,7 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 		if (!handled)
 		{
 			SetAndRestoreValue<BfFunctionBindResult*> prevFunctionBindResult(mFunctionBindResult, NULL);
-			SetAndRestoreValue<BfAstNode*> prevDeferCallRef(mDeferCallRef, NULL);
+			SetAndRestoreValue<BfDeferCallData*> prevDeferCallRef(mDeferCallData, NULL);
 
 			BfMethodDef* matchedMethod = GetPropertyMethodDef(mPropDef, BfMethodType_PropertyGetter, mPropCheckedKind, mPropTarget);
 			if (matchedMethod == NULL)
@@ -23198,7 +23207,7 @@ BfTypedValue BfExprEvaluator::PerformUnaryOperation_TryOperator(const BfTypedVal
 	else
 	{
 		SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags, (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_NoAutoComplete));
-		SetAndRestoreValue<BfAstNode*> prevDeferCallRef(mDeferCallRef, NULL);
+		SetAndRestoreValue<BfDeferCallData*> prevDeferCallRef(mDeferCallData, NULL);
 		result = CreateCall(&methodMatcher, callTarget);
 	}
 

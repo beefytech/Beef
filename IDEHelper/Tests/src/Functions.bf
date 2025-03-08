@@ -182,6 +182,13 @@ namespace Tests
 			{
 				sVal = 123;
 			}
+
+			public static void TestDefer()
+			{
+				function void() func = => Func;
+				if (func != null)
+					defer:: func.Invoke();
+			}
 		}
 
 		public static int UseFunc0<T>(function int (T this, float f) func, T a, float b)
@@ -253,6 +260,10 @@ namespace Tests
 			StructCRepr.Test();
 
 			ClassC<Zoop>.Test();
+			Test.Assert(Zoop.sVal == 123);
+
+			Zoop.sVal = 0;
+			Zoop.TestDefer();
 			Test.Assert(Zoop.sVal == 123);
 		}
 	}

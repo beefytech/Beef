@@ -401,6 +401,14 @@ enum BfBinOpFlags
 	BfBinOpFlag_DeferRight = 0x20
 };
 
+struct BfDeferCallData
+{
+	BfAstNode* mRefNode;
+	BfScopeData* mScopeAlloc;
+	BfIRValue mFuncAlloca; // When we need to load
+	BfIRValue mFuncAlloca_Orig;
+};
+
 class BfExprEvaluator : public BfStructuralVisitor
 {
 public:
@@ -422,9 +430,8 @@ public:
 	BfAttributeState* mPrefixedAttributeState;
 	BfTypedValue* mReceivingValue;
 	BfFunctionBindResult* mFunctionBindResult;
-	SizedArray<BfResolvedArg, 2> mIndexerValues;
-	BfAstNode* mDeferCallRef;
-	BfScopeData* mDeferScopeAlloc;
+	SizedArray<BfResolvedArg, 2> mIndexerValues;	
+	BfDeferCallData* mDeferCallData;	
 	bool mUsedAsStatement;
 	bool mPropDefBypassVirtual;
 	bool mExplicitCast;

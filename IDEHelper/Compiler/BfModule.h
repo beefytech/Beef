@@ -323,6 +323,7 @@ public:
 	bool mCastThis;
 	bool mArgsNeedLoad;
 	bool mIgnored;
+	bool mIsAllocaFunc;
 
 	SLIList<BfDeferredCallEntry*> mDynList;
 	BfIRValue mDynCallTail;
@@ -1481,6 +1482,7 @@ enum BfDeferredBlockFlags
 	BfDeferredBlockFlag_DoNullChecks = 2,
 	BfDeferredBlockFlag_SkipObjectAccessCheck = 4,
 	BfDeferredBlockFlag_MoveNewBlocksToEnd = 8,
+	BfDeferredBlockFlag_IsAllocaFunc = 0x10
 };
 
 enum BfGetCustomAttributesFlags
@@ -1696,6 +1698,7 @@ public:
 
 	BfTypedValue FlushNullConditional(BfTypedValue result, bool ignoreNullable = false);
 	void NewScopeState(bool createLexicalBlock = true, bool flushValueScope = true); // returns prev scope data
+	BfIRValue CreateAlloca(BfIRType irType, int align, bool addLifetime = true, const char* name = NULL, BfIRValue arraySize = BfIRValue());
 	BfIRValue CreateAlloca(BfType* type, bool addLifetime = true, const char* name = NULL, BfIRValue arraySize = BfIRValue());
 	BfIRValue CreateAllocaInst(BfTypeInstance* typeInst, bool addLifetime = true, const char* name = NULL);
 	BfDeferredCallEntry* AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scope, bool condAlloca = false, bool mayEscape = false, BfIRBlock valBlock = BfIRBlock());
@@ -1721,7 +1724,7 @@ public:
 	void EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfDeferredBlockFlags flags = BfDeferredBlockFlag_None);
 	bool AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfScopeData* scope);
 	BfDeferredCallEntry* AddDeferredBlock(BfBlock* block, BfScopeData* scope, Array<BfDeferredCapture>* captures = NULL);
-	BfDeferredCallEntry* AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scope, BfAstNode* srcNode = NULL, bool bypassVirtual = false, bool doNullCheck = false);
+	BfDeferredCallEntry* AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scope, BfAstNode* srcNode = NULL, bool bypassVirtual = false, bool doNullCheck = false, bool isAllocaFunc = false);
 	void EmitDeferredCall(BfScopeData* scopeData, BfDeferredCallEntry& deferredCallEntry, bool moveBlocks);
 	void EmitDeferredCallProcessor(BfScopeData* scopeData, SLIList<BfDeferredCallEntry*>& callEntries, BfIRValue callTail);
 	void EmitDeferredCallProcessorInstances(BfScopeData* scopeData);
