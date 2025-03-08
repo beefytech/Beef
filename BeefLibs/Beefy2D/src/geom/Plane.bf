@@ -283,7 +283,7 @@ namespace Beefy.geom
 
 		public override void ToString(String str)
 		{
-			str.AppendF($"{Normal:{Normal} D:{D}}");
+			str.AppendF($"{{Normal:{Normal} D:{D}}}");
 		}
 
 		#endregion
