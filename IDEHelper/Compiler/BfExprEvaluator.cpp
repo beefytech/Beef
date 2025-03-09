@@ -20095,7 +20095,7 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 
 				auto methodDef = methodInstance.mMethodInstance->mMethodDef;
 				if ((methodDef->mMethodDeclaration == NULL) && (mPropTarget.mValue.IsConst()) &&
-					(methodDef->mName == "get__Underlying"))
+					(mPropTarget.mKind == BfTypedValueKind_Value) && (methodDef->mName == "get__Underlying"))
 				{					
 					mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_Comptime);
 				}
