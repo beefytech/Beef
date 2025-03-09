@@ -7769,6 +7769,10 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 					{
 						MEMBER_SET(method, mBody, expr);
 						propertyDeclaration->SetSrcEnd(expr->GetSrcEnd());
+
+						auto endSemicolon = ExpectTokenAfter(expr, BfToken_Semicolon);
+						if (endSemicolon != NULL)
+							MEMBER_SET(method, mEndSemicolon, endSemicolon);
 					}
 
 					methods.Add(method);
