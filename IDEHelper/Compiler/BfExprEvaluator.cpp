@@ -20094,7 +20094,7 @@ BfTypedValue BfExprEvaluator::GetResult(bool clearResult, bool resolveGenericTyp
 				auto callFlags = mPropDefBypassVirtual ? BfCreateCallFlags_BypassVirtual : BfCreateCallFlags_None;
 
 				auto methodDef = methodInstance.mMethodInstance->mMethodDef;
-				if ((methodDef->mMethodDeclaration == NULL) && (mPropTarget.mValue.IsConst()) &&
+				if ((methodDef->mMethodDeclaration == NULL) && (mModule->mBfIRBuilder->IsConstValue(mPropTarget.mValue)) &&
 					(methodDef->mName == "get__Underlying"))
 				{					
 					mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags | BfEvalExprFlags_Comptime);
