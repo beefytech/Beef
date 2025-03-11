@@ -2839,6 +2839,7 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 		for (auto method : propertyDeclaration->mMethods)
 		{
 			QueueVisitChild(method->mBody);
+			QueueVisitChild(method->mEndSemicolon);
 		}
 	}
 
