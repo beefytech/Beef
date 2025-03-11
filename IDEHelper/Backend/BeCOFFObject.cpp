@@ -1953,6 +1953,11 @@ void BeCOFFObject::WriteConst(BeCOFFSection& sect, BeConstant* constVal)
 			sizeLeft -= writeSize;
 		}
 	}
+	else if (beType->mTypeCode == BeTypeCode_Float)
+	{
+		float f = constVal->mDouble;
+		sect.mData.Write((void*)&f, sizeof(float));
+	}
 	else
 	{
 		sect.mData.Write((void*)&constVal->mInt64, beType->mSize);
