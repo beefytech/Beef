@@ -2867,7 +2867,7 @@ BeMCOperand BeMCContext::GetCallArgVReg(int argIdx, BeTypeCode typeCode)
 	}
 }
 
-BeMCOperand BeMCContext::CreateCall(const BeMCOperand &func, const SizedArrayImpl<BeValue*>& args, BeType* retType, BfIRCallingConv callingConv, bool structRet, bool noReturn, bool isVarArg)
+BeMCOperand BeMCContext::CreateCall(const BeMCOperand &func, const SizedArrayImpl<BeValue*>& args, BeType* retType, BfIRCallingConv callingConv, bool structRet, bool noReturn, int varArgStart)
 {
 	SizedArray<BeMCOperand, 4> opArgs;
 	for (auto itr = args.begin(); itr != args.end(); ++itr)
@@ -2875,7 +2875,7 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand &func, const SizedArrayImp
 		auto& arg = *itr;
 		opArgs.push_back(GetOperand(arg));
 	}
-	return CreateCall(func, opArgs, retType, callingConv, structRet, noReturn, isVarArg);
+	return CreateCall(func, opArgs, retType, callingConv, structRet, noReturn, varArgStart);
 }
 
 BeMCOperand BeMCContext::CreateLoad(const BeMCOperand& mcTarget)
@@ -3029,7 +3029,7 @@ void BeMCContext::CreateStore(BeMCInstKind instKind, const BeMCOperand& val, con
 	}
 }
 
-BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeMCOperand>& args, BeType* retType, BfIRCallingConv callingConv, bool structRet, bool noReturn, bool isVarArg)
+BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeMCOperand>& args, BeType* retType, BfIRCallingConv callingConv, bool structRet, bool noReturn, int varArgStart)
 {
 	BeMCOperand mcResult;
 	//TODO: Allow user to directly specify ret addr with "sret" attribute
@@ -3080,8 +3080,11 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 		if ((argIdx == 0) && (compositeRetReg == X64Reg_RDX))
 			argOfs = 0;
 
+		bool isVarArg = (varArgStart != -1) && (argIdx >= varArgStart);
+
 		auto mcValue = args[argIdx];
-		auto argType = GetType(mcValue);
+		auto argType = GetType(mcValue);		
+
 		X64CPURegister useReg = X64Reg_None;
 		int useArgIdx = argIdx + argOfs;
 
@@ -3122,7 +3125,7 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 			}
 
 			if (isVarArg)
-			{
+			{				
 				X64CPURegister shadowReg = X64Reg_None;
 				switch (useArgIdx)
 				{
@@ -3138,7 +3141,7 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 				case 3:
 					shadowReg = X64Reg_R9;
 					break;
-				}
+				}				
 
 				if ((shadowReg != X64Reg_None) && (useReg != X64Reg_None))
 				{
@@ -17595,7 +17598,7 @@ void BeMCContext::Generate(BeFunction* function)
 					auto castedInst = (BeCallInst*)inst;
 					BeMCOperand mcFunc;
 					BeType* returnType = NULL;
-					bool isVarArg = false;
+					int varArgStart = -1;
 
 					bool useAltArgs = false;
 					SizedArray<BeValue*, 6> args;
@@ -18187,7 +18190,9 @@ void BeMCContext::Generate(BeFunction* function)
 							auto elementType = ((BePointerType*)funcPtrType)->mElementType;
 							if (elementType->mTypeCode == BeTypeCode_Function)
 							{
-								isVarArg = ((BeFunctionType*)elementType)->mIsVarArg;
+								BeFunctionType* funcType = (BeFunctionType*)elementType;
+								if (funcType->mIsVarArg)
+									varArgStart = funcType->mParams.mSize;
 							}
 						}
 
@@ -18204,7 +18209,7 @@ void BeMCContext::Generate(BeFunction* function)
 								args.Add(arg.mValue);
 						}
 
-						result = CreateCall(mcFunc, args, returnType, castedInst->mCallingConv, castedInst->HasStructRet(), castedInst->mNoReturn, isVarArg);
+						result = CreateCall(mcFunc, args, returnType, castedInst->mCallingConv, castedInst->HasStructRet(), castedInst->mNoReturn, varArgStart);
 					}
 				}
 				break;

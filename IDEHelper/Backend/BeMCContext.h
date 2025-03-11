@@ -1377,8 +1377,8 @@ public:
 	void RemoveInst(BeMCBlock* block, int instIdx, bool needChangesMerged = true, bool removeFromList = true);
 	BeMCOperand AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand & lhs, const BeMCOperand & rhs, BeMCBinIdentityKind identityKind, BeMCOverflowCheckKind overflowCheckKind = BeMCOverflowCheckKind_None);
 	BeMCOperand GetCallArgVReg(int argIdx, BeTypeCode typeCode);
-	BeMCOperand CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeMCOperand>& args, BeType* retType = NULL, BfIRCallingConv callingConv = BfIRCallingConv_CDecl, bool structRet = false, bool noReturn = false, bool isVarArg = false);
-	BeMCOperand CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeValue*>& args, BeType* retType = NULL, BfIRCallingConv callingConv = BfIRCallingConv_CDecl, bool structRet = false, bool noReturn = false, bool isVarArg = false);
+	BeMCOperand CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeMCOperand>& args, BeType* retType = NULL, BfIRCallingConv callingConv = BfIRCallingConv_CDecl, bool structRet = false, bool noReturn = false, int varArgStart = -1);
+	BeMCOperand CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeValue*>& args, BeType* retType = NULL, BfIRCallingConv callingConv = BfIRCallingConv_CDecl, bool structRet = false, bool noReturn = false, int varArgStart = -1);
 	BeMCOperand CreateLoad(const BeMCOperand& mcTarget);
 	void CreateStore(BeMCInstKind instKind, const BeMCOperand& val, const BeMCOperand& ptr);
 	void CreateMemSet(const BeMCOperand& addr, uint8 val, int size, int align);
