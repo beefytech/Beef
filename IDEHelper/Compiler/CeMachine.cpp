@@ -159,6 +159,7 @@ static CeOpInfo gOpInfo[] =
 	{"CeOp_GetSP", CEOI_FrameRef},
 	{"CeOp_SetSP", CEOI_None, CEOI_FrameRef},
 	{"GetStaticField", CEOI_FrameRef, CEOI_IMM32},
+	{"GetStaticField_Initializer", CEOI_FrameRef, CEOI_IMM32, CEOI_FrameRef},
 	{"GetMethod", CEOI_FrameRef, CEOI_IMM32},
 	{"GetMethod_Inner", CEOI_FrameRef, CEOI_IMM32},
 	{"GetMethod_Virt", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMM32},
@@ -1565,48 +1566,73 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 				return result;
 			}
 
-			BfFieldInstance** fieldInstancePtr = NULL;
-			if (mStaticFieldInstanceMap.TryGetValue(globalVar->mName, &fieldInstancePtr))
+			CeOperand initializerValue;
+			
+			if (globalVar->mIsConstant)
 			{
+				if (globalVar->mInitializer != NULL)
+				{
+					auto result = GetOperand(globalVar->mInitializer, false, true);
+					if (result.mKind == CeOperandKind_ConstStructTableIdx)
+					{
+						auto& constTableEntry = mCeFunction->mConstStructTable[result.mStructTableIdx];
+						auto ptrType = mCeMachine->GetBeContext()->GetPointerTo(globalVar->mType);
+						auto dataResult = FrameAlloc(ptrType);
+						Emit(CeOp_ConstDataRef);
+						EmitFrameOffset(dataResult);
+						Emit((int32)result.mCallTableIdx);
+						return dataResult;
+					}					
+					return result;
+				}				
+			}
+			else			
+			{
+				initializerValue = GetOperand(globalVar->mInitializer);
+
+				BfFieldInstance** fieldInstancePtr = NULL;
+				mStaticFieldInstanceMap.TryGetValue(globalVar->mName, &fieldInstancePtr);
+
 				int* staticFieldTableIdxPtr = NULL;
 				if (mStaticFieldMap.TryAdd(globalVar, NULL, &staticFieldTableIdxPtr))
 				{
 					CeStaticFieldEntry staticFieldEntry;
-					staticFieldEntry.mTypeId = (*fieldInstancePtr)->mOwner->mTypeId;
+					if (fieldInstancePtr != NULL)
+						staticFieldEntry.mTypeId = (*fieldInstancePtr)->mOwner->mTypeId;
+
 					staticFieldEntry.mName = globalVar->mName;
+					if (globalVar->mLinkageType == Beefy::BfIRLinkageType_Internal)
+					{
+						staticFieldEntry.mName += "@";
+						staticFieldEntry.mName += mCeFunction->mMethodInstance->GetOwner()->mModule->mModuleName;
+					}
+
 					staticFieldEntry.mSize = globalVar->mType->mSize;
 					*staticFieldTableIdxPtr = (int)mCeFunction->mStaticFieldTable.size();
-					mCeFunction->mStaticFieldTable.Add(staticFieldEntry);
+					mCeFunction->mStaticFieldTable.Add(staticFieldEntry);					
 				}
 
 				auto result = FrameAlloc(mCeMachine->GetBeContext()->GetPointerTo(globalVar->mType));
 
-				Emit(CeOp_GetStaticField);
-				EmitFrameOffset(result);
-				Emit((int32)*staticFieldTableIdxPtr);
-
-				return result;
-			}
-
-			if (globalVar->mInitializer != NULL)
-			{
-				auto result = GetOperand(globalVar->mInitializer, false, true);
-				if (result.mKind == CeOperandKind_ConstStructTableIdx)
+				if (initializerValue)
 				{
-					auto& constTableEntry = mCeFunction->mConstStructTable[result.mStructTableIdx];
-					auto ptrType = mCeMachine->GetBeContext()->GetPointerTo(globalVar->mType);
-					auto dataResult = FrameAlloc(ptrType);
-					Emit(CeOp_ConstDataRef);
-					EmitFrameOffset(dataResult);
-					Emit((int32)result.mCallTableIdx);
-					return dataResult;
+					Emit(CeOp_GetStaticField_Initializer);
+					EmitFrameOffset(result);
+					Emit((int32)*staticFieldTableIdxPtr);
+					EmitFrameOffset(initializerValue);
+				}
+				else
+				{
+					Emit(CeOp_GetStaticField);
+					EmitFrameOffset(result);
+					Emit((int32)*staticFieldTableIdxPtr);
 				}
 
 				return result;
 			}
 
-			errorKind = CeErrorKind_GlobalVariable;
-			errorType = mCeMachine->GetBeContext()->GetPointerTo(globalVar->mType);
+ 			errorKind = CeErrorKind_GlobalVariable;
+ 			errorType = mCeMachine->GetBeContext()->GetPointerTo(globalVar->mType);
 		}
 		break;
 	case BeCastConstant::TypeId:
@@ -8405,16 +8431,22 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		}
 		break;
 		case CeOp_GetStaticField:
+		case CeOp_GetStaticField_Initializer:
 		{
 			auto frameOfs = CE_GETINST(int32);
 			int32 tableIdx = CE_GETINST(int32);
+			int32 initializerFrameOfs = 0;
+			if (op == CeOp_GetStaticField_Initializer)
+			{
+				initializerFrameOfs = CE_GETINST(int32);;
+			}
 
 			CeFunction* ctorCallFunction = NULL;
 
 			auto& ceStaticFieldEntry = ceFunction->mStaticFieldTable[tableIdx];
 			if (ceStaticFieldEntry.mBindExecuteId != mExecuteId)
 			{
-				if ((mStaticCtorExecSet.TryAdd(ceStaticFieldEntry.mTypeId, NULL)) && (!ceStaticFieldEntry.mName.StartsWith("#")))
+				if ((ceStaticFieldEntry.mTypeId > 0) && (mStaticCtorExecSet.TryAdd(ceStaticFieldEntry.mTypeId, NULL)) && (!ceStaticFieldEntry.mName.StartsWith("#")))
 				{
 					auto bfType = GetBfType(ceStaticFieldEntry.mTypeId);
 					BfTypeInstance* bfTypeInstance = NULL;
@@ -8466,6 +8498,12 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					if (ceStaticFieldEntry.mSize > 0)
 						memset(ptr, 0, ceStaticFieldEntry.mSize);
 					staticFieldInfo->mAddr = (addr_ce)(ptr - memStart);
+
+					if (op == CeOp_GetStaticField_Initializer)
+					{
+						void* initDataPtr = framePtr + initializerFrameOfs;
+						memcpy(ptr, initDataPtr, ceStaticFieldEntry.mSize);
+					}
 
 					if (ceStaticFieldEntry.mName.StartsWith("#"))
 					{

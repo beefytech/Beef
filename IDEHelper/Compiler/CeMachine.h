@@ -111,6 +111,7 @@ enum CeOp : int16
 	CeOp_GetSP,
 	CeOp_SetSP,
 	CeOp_GetStaticField,
+	CeOp_GetStaticField_Initializer,
 	CeOp_GetMethod,
 	CeOp_GetMethod_Inner,
 	CeOp_GetMethod_Virt,
@@ -858,7 +859,7 @@ public:
 	Dictionary<BeFunction*, int> mInnerFunctionMap;
 	Dictionary<BeGlobalVariable*, int> mStaticFieldMap;
 	Dictionary<String, BfFieldInstance*> mStaticFieldInstanceMap;
-	Dictionary<BeValue*, int> mDbgVariableMap;
+	Dictionary<BeValue*, int> mDbgVariableMap;	
 
 public:
 	CeBuilder()

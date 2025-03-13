@@ -573,6 +573,20 @@ namespace Tests
 			}
 		}
 
+		public static int GetLocalVal1()
+		{
+			static int sVal = 100;
+			sVal++;
+			return sVal;
+		}
+
+		[Comptime]
+		public static int GetLocalVal2()
+		{
+			GetLocalVal1();
+			return GetLocalVal1();
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -666,6 +680,9 @@ namespace Tests
 
 			const int typeSizes = StructE.GetSizes();
 			Test.Assert(typeSizes == sizeof(StructA) + sizeof(EnumA));
+
+			const int cVal = GetLocalVal2();
+			Test.Assert(cVal == 102);
 		}
 	}
 }
