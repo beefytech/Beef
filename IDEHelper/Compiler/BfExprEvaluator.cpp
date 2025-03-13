@@ -4982,7 +4982,12 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 			{
 				auto thisLocal = mModule->mCurMethodState->mLocals[0];
 				if (thisLocal->mIsThis)
-					return BfTypedValue(mModule->mBfIRBuilder->CreateLoad(thisLocal->mAddr), thisLocal->mResolvedType);
+				{
+					if (thisLocal->mAddr)
+						return BfTypedValue(mModule->mBfIRBuilder->CreateLoad(thisLocal->mAddr), thisLocal->mResolvedType);
+					else
+						return BfTypedValue(thisLocal->mValue, thisLocal->mResolvedType);
+				}
 			}
 		}
 	}
