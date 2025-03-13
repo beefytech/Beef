@@ -3136,9 +3136,9 @@ namespace IDE
 
 						if (projSpec.mVerSpec.Parse(data) case .Err)
 						{
-							var err = scope String();
-							err.AppendF("Unable to parse version specifier for {0} in {1}", projectName, workspaceFileName);
-							Fail(err);
+							var errStr = scope String();
+							errStr.AppendF("Unable to parse version specifier for {0} in {1}", projectName, workspaceFileName);
+							Fail(errStr);
 							LoadFailed();
 							continue;
 						}
