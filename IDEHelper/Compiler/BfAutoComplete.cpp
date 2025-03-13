@@ -1872,7 +1872,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 	{
 		const char* tokens[] =
 		{
-			"abstract", "append", "base", "class", "const",
+			"abstract", "append", "base", "class", "concrete", "const",
 			"delegate", "extern", "enum", "explicit", "extension", "function",
 			"interface", "in", "implicit", "internal", "mixin", "namespace", "new",
 			"operator", "out", "override", "params", "private", "protected", "public", "readonly", "ref", "rettype", "return",
