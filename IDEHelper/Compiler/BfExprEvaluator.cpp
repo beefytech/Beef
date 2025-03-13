@@ -5891,6 +5891,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			flags = (BfLookupFieldFlags)(flags | BfLookupFieldFlag_IsFailurePass);
 
 		bool isBaseLookup = false;
+		int checkInterfaceIdx = 0;
 		while (curCheckType != NULL)
 		{
 			if (((flags & BfLookupFieldFlag_CheckingOuter) != 0) && ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0))
@@ -6248,8 +6249,16 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				}
 			}
 
-			isBaseLookup = true;
-			curCheckType = curCheckType->mBaseType;
+			if ((!isBaseLookup) && (startCheckType->IsInterface() && (checkInterfaceIdx < (int)startCheckType->mInterfaces.size())))
+			{
+				curCheckType = startCheckType->mInterfaces[checkInterfaceIdx].mInterfaceType;
+				checkInterfaceIdx++;
+			}
+			else
+			{
+				isBaseLookup = true;
+				curCheckType = curCheckType->mBaseType;
+			}
 		}
 	}
 	
@@ -19924,6 +19933,19 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 
 			if (bestIFaceEntry != NULL)
 			{
+				if ((checkTypeInst->IsInterface()))
+				{
+					auto propTypeInst = bestIFaceEntry->mInterfaceType->ToTypeInstance();
+					if (propTypeInst == NULL)
+					{
+						mModule->Fail("INTERNAL ERROR: Invalid property target", mPropSrc);
+						return BfModuleMethodInstance();
+					}
+					BF_ASSERT(propTypeInst->mTypeDef->mFullNameEx == methodDef->mDeclaringType->mFullNameEx);
+
+					return mModule->GetMethodInstance(propTypeInst, methodDef, BfTypeVector(), mPropGetMethodFlags);
+				}
+
 				auto ifaceMethodEntry = checkTypeInst->mInterfaceMethodTable[bestIFaceEntry->mStartInterfaceTableIdx + methodDef->mIdx];
 				BfMethodInstance* bestMethodInstance = ifaceMethodEntry.mMethodRef;
 				if (bestMethodInstance != NULL)
