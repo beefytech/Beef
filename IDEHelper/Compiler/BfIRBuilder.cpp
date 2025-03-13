@@ -664,6 +664,8 @@ bool BfIRConstHolder::IsConstValue(BfIRValue value)
 
 	if (constant->mConstType == BfConstType_GlobalVar)
 		return false;
+	if (constant->mConstType == BfConstType_Undef)
+		return false;
 
 	return true;
 }

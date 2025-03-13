@@ -15752,7 +15752,7 @@ BfTypedValue BfModule::ReferenceStaticField(BfFieldInstance* fieldInstance)
 	{
 		// Just fake it for the extern and unspecialized modules
 		// We can't do this for compilation because unreified methods with default params need to get actual global variable refs
-		return BfTypedValue(mBfIRBuilder->CreateConstNull(), fieldInstance->GetResolvedType(), true);
+		return BfTypedValue(mBfIRBuilder->CreateUndefValue(mBfIRBuilder->GetPrimitiveType(BfTypeCode_NullPtr)), fieldInstance->GetResolvedType(), true);
 	}
 
 	BfIRValue* globalValuePtr = NULL;
