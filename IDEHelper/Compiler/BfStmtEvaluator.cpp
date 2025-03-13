@@ -4678,7 +4678,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	BfPrimitiveType* intCoercibleType = GetIntCoercibleType(switchValue.mType);
 
 	bool isConstSwitch = false;
-	if ((switchValue.mValue.IsConst()) || (switchValue.mType->IsValuelessType()))
+	if ((mBfIRBuilder->IsConstValue(switchValue.mValue)) || (switchValue.mType->IsValuelessType()))
 	{
 		isConstSwitch = true;
 	}
