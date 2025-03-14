@@ -3019,6 +3019,7 @@ namespace IDE.ui
 
 			didLineComment = false;
 			lineStartCol = 0;
+			int appendedCount = 0;
 			for (int i = minPos; i < maxPos; i++)
 			{
 				var c = mData.mText[i].mChar;
@@ -3056,6 +3057,8 @@ namespace IDE.ui
 					InsertAtCursor(str);
 					didLineComment = true;
 					maxPos += str.Length;
+					if (i <= startTextPos + appendedCount)
+						appendedCount += str.Length;
 				}
 			}
 			mSelection = EditSelection(minPos, maxPos);
@@ -3063,7 +3066,10 @@ namespace IDE.ui
 			if (undoBatchStart != null)
 				mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 
-			CursorLineAndColumn = startLineAndCol;
+			if (appendedCount > 0)
+				CursorTextPos = startTextPos + appendedCount;
+			else
+				CursorLineAndColumn = startLineAndCol;
 
 			if (!hadSelection)
 				mSelection = null;
