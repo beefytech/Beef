@@ -26733,12 +26733,17 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 
 					bool isBetter = false;
 					bool isWorse = false;
-					isBetter = (methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mExplicitInterface != NULL);
-					isWorse = (prevMethod->mMethodInfoEx != NULL) && (prevMethod->mMethodInfoEx->mExplicitInterface != NULL);
+					isBetter = methodInstance->mReturnType == iMethodInst->mReturnType;
+					isWorse = prevMethod->mReturnType == iMethodInst->mReturnType;
 					if (isBetter == isWorse)
 					{
-						isBetter = methodInstance->mReturnType == iMethodInst->mReturnType;
-						isWorse = prevMethod->mReturnType == iMethodInst->mReturnType;
+						isBetter = (methodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx->mExplicitInterface != NULL);
+						isWorse = (prevMethod->mMethodInfoEx != NULL) && (prevMethod->mMethodInfoEx->mExplicitInterface != NULL);
+						if ((isBetter) && (isWorse))
+						{
+							isBetter = methodInstance->mMethodInfoEx->mExplicitInterface == ifaceInst;
+							isWorse = prevMethod->mMethodInfoEx->mExplicitInterface == ifaceInst;
+						}
 					}
 
 					if (isBetter == isWorse)
