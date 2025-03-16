@@ -292,6 +292,9 @@ namespace Tests
 
 			Test.Assert(sizeof(EnumN) == sizeof(System.Interop.c_int));
 
+			Test.Assert(value.HasFlag(.A) == false);
+			Test.Assert(value.HasFlag(.B) == true);
+
 			Test.Assert(value.Underlying == 1);
 
 			ref System.Interop.c_int valueRef = ref value.UnderlyingRef;
