@@ -19465,7 +19465,7 @@ void BfModule::EmitEnumToStringBody()
 		rawPayload = ExtractValue(GetThis(), NULL, 1);
 	}
 	else
-		enumVal = mBfIRBuilder->GetArgument(0);
+		enumVal = LoadValue(GetThis()).mValue;
 
 	Array<BfType*> paramTypes;
 	paramTypes.Add(stringType);
@@ -22565,7 +22565,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				}				
 				else
 				{
-					auto andResult = mBfIRBuilder->CreateAnd(mCurMethodState->mLocals[0]->mValue, mCurMethodState->mLocals[1]->mValue);
+					BfIRValue thisValue = LoadValue(GetThis()).mValue;
+					auto andResult = mBfIRBuilder->CreateAnd(thisValue, mCurMethodState->mLocals[1]->mValue);
 					auto toBool = mBfIRBuilder->CreateCmpNE(andResult, GetDefaultValue(mCurMethodState->mLocals[0]->mResolvedType));
 					fromBool = mBfIRBuilder->CreateNumericCast(toBool, false, BfTypeCode_Boolean);
 				}
@@ -22581,7 +22582,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		}
 		else if (((methodDef->mName == BF_METHODNAME_ENUM_GETUNDERLYINGREF) || (methodDef->mName == BF_METHODNAME_ENUM_GETUNDERLYING)) &&
 			(mCurTypeInstance->IsEnum()) && (!mCurTypeInstance->IsBoxed()))
-		{			
+		{
 			BfIRValue ret;
 			// Unfortunate DebugLoc shenanigans-
 			//  Our params get removed if we don't have any DebugLocs, but we don't want to actually be able to step into this method,
@@ -22594,7 +22595,17 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 			if ((!mCompiler->mIsResolveOnly) || (mIsComptimeModule))
 			{
 				if (!mCurTypeInstance->IsValuelessType())
-					ret = mBfIRBuilder->CreateRet(GetThis().mValue);
+				{
+					auto thisValueOrAddr = GetThis();
+
+					BfIRValue thisValue;
+					if (!methodInstance->mReturnType->IsRef())
+						thisValue = LoadValue(thisValueOrAddr).mValue;
+					else
+						thisValue = thisValueOrAddr.mValue;
+					
+					ret = mBfIRBuilder->CreateRet(thisValue);
+				}
 				else
 					mBfIRBuilder->CreateRetVoid();
 			}

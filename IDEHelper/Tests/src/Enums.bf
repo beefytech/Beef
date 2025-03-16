@@ -118,6 +118,14 @@ namespace Tests
 		    case C;
 		}
 
+		[CRepr]
+		public enum EnumN
+		{
+			A,
+			B,
+			C
+		}
+
 		[Test]
 		static void TestBasic()
 		{
@@ -275,6 +283,25 @@ namespace Tests
 
 			EnumL el = .A;
 			Test.Assert(el == 0);
+		}
+
+		[Test]
+		static void TestCrepr()
+		{
+			EnumN value = .B;
+
+			Test.Assert(sizeof(EnumN) == sizeof(System.Interop.c_int));
+
+			Test.Assert(value.Underlying == 1);
+
+			ref System.Interop.c_int valueRef = ref value.UnderlyingRef;
+			valueRef = 2;
+			Test.Assert(value == .C);
+
+			String str = scope String();
+			value.ToString(str);
+
+			Test.Assert(str == "C");
 		}
 	}
 }
