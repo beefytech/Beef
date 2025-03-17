@@ -7020,6 +7020,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 {
 	BP_ZONE("BfCompiler::Compile");
 
+	uint32 frontendStartTick = GetTickCount();
+
 	if (mSystem->mTypeDefs.mCount == 0)
 	{
 		// No-source bailout
@@ -7831,6 +7833,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	BpLeave();
 	BpEnter("Compile_Finish");
 
+	int frontendTicks = (int)(GetTickCount() - frontendStartTick);
+
 	//TODO:!!
 	//mCanceling = true;
 
@@ -7998,11 +8002,15 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	}
 	mPassInstance->OutputLine(StrFormat(":low %d module%s built, %d object file%s generated",
 		numModulesWritten, (numModulesWritten != 1) ? "s" : "",
-		numObjFilesWritten, (numObjFilesWritten != 1) ? "s" : ""));
+		numObjFilesWritten, (numObjFilesWritten != 1) ? "s" : ""));	
 
-	if ((mCeMachine != NULL) && (!mIsResolveOnly) && (mCeMachine->mRevisionExecuteTime > 0))
+	if (!mIsResolveOnly)
 	{
-		mPassInstance->OutputLine(StrFormat(":med Comptime execution time: %0.2fs", mCeMachine->mRevisionExecuteTime / 1000.0f));
+		mPassInstance->OutputLine(StrFormat(":med Frontend time: %0.2fs", frontendTicks / 1000.0f));
+		if ((mCeMachine != NULL) && (mCeMachine->mRevisionExecuteTime > 0))
+		{
+			mPassInstance->OutputLine(StrFormat(":med Comptime execution time: %0.2fs", mCeMachine->mRevisionExecuteTime / 1000.0f));
+		}
 	}
 
 	BpLeave();
