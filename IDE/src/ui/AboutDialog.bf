@@ -238,17 +238,11 @@ namespace IDE.ui
 			MarkDirty();
 		}
 
-		public override void KeyDown(KeyCode keyCode, bool isRepeat)
-		{
-			base.KeyDown(keyCode, isRepeat);
 
-			if ((keyCode == (.)'C') && (mWidgetWindow.GetKeyFlags(true) == .Ctrl))
-			{
-				String versionInfo = scope String();
-				versionInfo.AppendF("Beef IDE Version {}", gApp.mVersionInfo.FileVersion);
-				versionInfo.AppendF(" Build {}", gApp.mVersionInfo.ProductVersion);
-				gApp.SetClipboardText(versionInfo);
-			}
+		public override void GenerateClipboardText(String outText)
+		{
+			outText.AppendF("Beef IDE Version {}", gApp.mVersionInfo.FileVersion);
+			outText.AppendF(" Build {}", gApp.mVersionInfo.ProductVersion);
 		}
 	}
 }
