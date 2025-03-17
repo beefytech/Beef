@@ -7020,7 +7020,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 {
 	BP_ZONE("BfCompiler::Compile");
 
-	uint32 frontendStartTick = GetTickCount();
+	uint32 frontendStartTick = BFTickCount();
 
 	if (mSystem->mTypeDefs.mCount == 0)
 	{
@@ -7833,7 +7833,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	BpLeave();
 	BpEnter("Compile_Finish");
 
-	int frontendTicks = (int)(GetTickCount() - frontendStartTick);
+	int frontendTicks = (int)(BFTickCount() - frontendStartTick);
 
 	//TODO:!!
 	//mCanceling = true;
