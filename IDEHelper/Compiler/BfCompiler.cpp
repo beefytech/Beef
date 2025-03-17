@@ -8631,6 +8631,9 @@ void BfCompiler::GenerateAutocompleteInfo()
 					}
 					methodText += "\x1)";
 				}
+				
+				autoCompleteResultString += "invoke\t" + methodText;
+				autoCompleteResultString += StrFormat("\t%d", methodEntry.mArgMatchCount);
 
 				if (methodEntry.mMethodDef != NULL)
 				{
@@ -8639,13 +8642,11 @@ void BfCompiler::GenerateAutocompleteInfo()
 					{
 						String docString;
 						methodDeclaration->mDocumentation->GetDocString(docString);
-						methodText += "\x03";
-						methodText += docString;
+						autoCompleteResultString += "\x03";
+						autoCompleteResultString += docString;
 					}
 				}
 
-				autoCompleteResultString += "invoke\t" + methodText;
-				autoCompleteResultString += StrFormat("\t%d", methodEntry.mArgMatchCount);
 				autoCompleteResultString += "\n";
 
 				idx++;
