@@ -13809,6 +13809,9 @@ void BfModule::AggregateSplatIntoAddr(BfTypedValue typedValue, BfIRValue addrVal
 
 BfTypedValue BfModule::MakeAddressable(BfTypedValue typedVal, bool forceMutable, bool forceAddressable)
 {
+	if (!typedVal)
+		return typedVal;
+
 	bool wasReadOnly = typedVal.IsReadOnly();
 
  	if ((forceAddressable) ||
@@ -22567,7 +22570,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				{
 					BfIRValue thisValue = LoadValue(GetThis()).mValue;
 					auto andResult = mBfIRBuilder->CreateAnd(thisValue, mCurMethodState->mLocals[1]->mValue);
-					auto toBool = mBfIRBuilder->CreateCmpNE(andResult, GetDefaultValue(mCurMethodState->mLocals[0]->mResolvedType));
+					auto toBool = mBfIRBuilder->CreateCmpEQ(andResult, mCurMethodState->mLocals[1]->mValue);
 					fromBool = mBfIRBuilder->CreateNumericCast(toBool, false, BfTypeCode_Boolean);
 				}
 				mBfIRBuilder->RestoreDebugLocation();
