@@ -123,7 +123,8 @@ namespace Tests
 		{
 			A,
 			B,
-			C
+			C,
+			D = 4
 		}
 
 		[Test]
@@ -292,10 +293,18 @@ namespace Tests
 
 			Test.Assert(sizeof(EnumN) == sizeof(System.Interop.c_int));
 
-			Test.Assert(value.HasFlag(.A) == false);
+			Test.Assert(value.HasFlag(.A) == true);
 			Test.Assert(value.HasFlag(.B) == true);
-
+			Test.Assert(value.HasFlag(.B | .C) == false);
+			Test.Assert(value.HasFlag(.D) == false);
 			Test.Assert(value.Underlying == 1);
+
+			value = .B | .C;
+			Test.Assert(value.HasFlag(.A) == true);
+			Test.Assert(value.HasFlag(.B) == true);
+			Test.Assert(value.HasFlag(.B | .C) == true);
+			Test.Assert(value.HasFlag(.D) == false);
+			Test.Assert(value.Underlying == 3);
 
 			ref System.Interop.c_int valueRef = ref value.UnderlyingRef;
 			valueRef = 2;
