@@ -884,7 +884,7 @@ namespace IDE.ui
 									if (projectSpec.mVerSpec case .Git(let url, let ver))
 									{
 										dependencyEntry.SetValue(1, url);
-										dependencyEntry.SetValue(2, ver.mVersion);
+										dependencyEntry.SetValue(2, ver?.mVersion);
 									}
 								}
 							}
