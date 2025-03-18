@@ -4670,7 +4670,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 					mModule->Fail("Local variable is not captured", refNode);
 				}
 
-				if ((varSkipCountLeft == 0) && (varDecl != NULL) && (!varDecl->mIsThis))
+				if ((varSkipCountLeft == 0) && (varDecl != NULL))
 				{
 					if ((closureTypeInst != NULL) && (wantName == "this"))
 						break;
@@ -4684,7 +4684,8 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 						}
 					}
 
-					mModule->SetElementType(identifierNode, (varDecl->IsParam()) ? BfSourceElementType_Parameter : BfSourceElementType_Local);
+					if (!varDecl->mIsThis)
+						mModule->SetElementType(identifierNode, (varDecl->IsParam()) ? BfSourceElementType_Parameter : BfSourceElementType_Local);
 
 					BfTypedValue localResult = LoadLocal(varDecl);
 
