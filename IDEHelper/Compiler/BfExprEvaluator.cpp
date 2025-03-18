@@ -9063,7 +9063,10 @@ BfTypedValue BfExprEvaluator::MatchConstructor(BfAstNode* targetSrc, BfMethodBou
 	auto origAllowAppendKind = allowAppendKind;
 
 	if (allowAppendKind == BfAllowAppendKind_Infer)
+	{
+		mModule->PopulateType(targetType);
 		allowAppendKind = targetType->IsZeroGap() ? BfAllowAppendKind_ZeroGap : BfAllowAppendKind_Yes;
+	}
 
 	static int sCtorCount = 0;
 	sCtorCount++;
