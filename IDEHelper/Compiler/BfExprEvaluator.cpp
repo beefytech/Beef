@@ -4670,7 +4670,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 					mModule->Fail("Local variable is not captured", refNode);
 				}
 
-				if ((varSkipCountLeft == 0) && (varDecl != NULL))
+				if ((varSkipCountLeft == 0) && (varDecl != NULL) && (!varDecl->mIsThis))
 				{
 					if ((closureTypeInst != NULL) && (wantName == "this"))
 						break;
