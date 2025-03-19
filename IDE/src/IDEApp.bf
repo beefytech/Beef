@@ -119,7 +119,7 @@ namespace IDE
 	public class IDEApp : BFApp
 	{
 		public static String sRTVersionStr = "042";
-		public const String cVersion = "0.43.5";
+		public const String cVersion = "0.43.6";
 
 #if BF_PLATFORM_WINDOWS
 		public static readonly String sPlatform64Name = "Win64";
@@ -259,7 +259,7 @@ namespace IDE
 #if IDE_C_SUPPORT
 		public ClangCompiler mDepClang ~ delete _;
 #endif
-		// The Beef resolve system is up-to-date with the projects' files, 
+		// The Beef resolve system is up-to-date with the projects' files,
 		//  but the Clang resolver only has open files in it
 		public bool mNoResolve = false;
 		public bool mDeterministic = false;
@@ -320,7 +320,7 @@ namespace IDE
 			};
 		public int32 mFileDataDataRevision;
 
-		/*public Point mLastAbsMousePos;        
+		/*public Point mLastAbsMousePos;
 		public Point mLastRelMousePos;
 		public int32 mMouseStillTicks;
 		public Widget mLastMouseWidget;*/
@@ -791,11 +791,11 @@ namespace IDE
 				mMainBreakpoint = null;
 			}*/
 
-			/*delete mBfBuildCompiler;            
+			/*delete mBfBuildCompiler;
 			delete mBfBuildSystem;
 			delete mDepClang;
-			
-			
+
+
 			delete mBfResolveCompiler;
 			delete mBfResolveSystem;
 			delete mResolveClang;
@@ -1661,7 +1661,7 @@ namespace IDE
 				lineEndingKind = editData.mLineEndingKind;
 			}
 
-			// Lock file watcher to synchronize the 'file changed' notification so we don't 
+			// Lock file watcher to synchronize the 'file changed' notification so we don't
 			//  think a file was externally saved
 			using (mFileWatcher.mMonitor.Enter())
 			{
@@ -2580,9 +2580,9 @@ namespace IDE
 			{
 				var sourceViewPanel = tab.mContent as SourceViewPanel;
 				if (sourceViewPanel != null)
-				{	
+				{
 					docPanels.Add(sourceViewPanel);
-				}				
+				}
 			});
 			for (var docPanel in docPanels)
 				CloseDocument(docPanel);*/
@@ -2812,7 +2812,7 @@ namespace IDE
 					else
 					{
 						int32 spanSize = -cmd;
-						
+
 						charId += spanSize;
 						charIdx += spanSize;
 
@@ -2919,7 +2919,7 @@ namespace IDE
 						hadLoad = true;
 
 						var projectPath = project.mProjectPath;
-						
+
 						if (project.mDeferState == .Pending)
 						{
 							hasDeferredProjects = true;
@@ -3332,7 +3332,7 @@ namespace IDE
 			case .SemVer(let semVer):
 				//
 			case .Git(let url, let ver):
-			
+
 				var checkPath = scope String();
 				if (mPackMan.CheckLock(projectName, checkPath, var projectFailed))
 				{
@@ -3867,7 +3867,7 @@ namespace IDE
 		{
 #if !CLI
 			/*SaveFileDialog dialog = scope .();
-			
+
 			let activeWindow = GetActiveWindow();
 			dialog.OverwritePrompt = true;
 			dialog.SetFilter("Debug Session (*.bfdbg)|*.bfdbg");
@@ -4664,7 +4664,7 @@ namespace IDE
 					int defLine;
 					int defColumn;
 					mResolveClang.CancelBackground();
-					
+
 					int defIdx = sourceViewPanel.mEditWidget.Content.GetTextIdx(line, lineChar);
 					if (mResolveClang.FindDefinition(sourceViewPanel.mFilePath, defIdx,
 						defFile, out defLine, out defColumn))
@@ -4678,7 +4678,7 @@ namespace IDE
 				}
 				else
 #endif
-				/*{                    
+				/*{
 					ResolveParams resolveParams = scope ResolveParams();
 					sourceViewPanel.Classify(ResolveType.GoToDefinition, resolveParams);
 					if (resolveParams.mOutFileName != null)
@@ -7109,7 +7109,7 @@ namespace IDE
 						mFileEditData.Add(editData);
 						projectSource.mEditData = editData;
 						projectSource.mEditData.mLastFileTextVersion = projectSource.mEditData.mEditWidget.Content.mData.mCurTextVersionId;
-					}  
+					}
 				}
 				return projectSource.mEditData;*/
 			}
@@ -7512,7 +7512,7 @@ namespace IDE
 					hasFocus = true;
 			}
 
-			/*if (sourceViewPanel != null)            
+			/*if (sourceViewPanel != null)
 				hasFocus = sourceViewPanel.mEditWidget.mHasFocus;*/
 
 			if ((sourceViewPanel != null) && (sourceViewPanel.HasUnsavedChanges()))
@@ -9151,8 +9151,8 @@ namespace IDE
 
 				/*var buffer = scope String();
 				if (streamReader.Read(buffer) case .Err)
-					break;				
-				using (mDebugOutputMonitor.Enter())				
+					break;
+				using (mDebugOutputMonitor.Enter())
 					mDebugOutput.Add(new String(buffer));*/
 
 				count++;
@@ -9174,10 +9174,10 @@ namespace IDE
 			{
 				var buffer = scope String();
 				if (streamReader.ReadLine(buffer) case .Err)
-					break;				
+					break;
 
-				using (IDEApp.sApp.mMonitor.Enter())				
-					executionInstance.mDeferredOutput.Add(new String(buffer));				
+				using (IDEApp.sApp.mMonitor.Enter())
+					executionInstance.mDeferredOutput.Add(new String(buffer));
 			}
 		}*/
 
@@ -9479,7 +9479,7 @@ namespace IDE
 				}
 
 				if ((executionInstance == null) && (mExecutionQueue.Count == 0))
-				{                    
+				{
 					OutputLine("Compilation finished.");
 				}*/
 			}
@@ -9762,7 +9762,7 @@ namespace IDE
 								{
 									mDepClang.QueueCheckDependencies(projectSource, ClangCompiler.DepCheckerType.Clang);
 								}
-							}                            
+							}
 						});
 					if (!completedCompileCmd.mFailed)
 						mDepClang.mDoDependencyCheck = false;
@@ -10162,8 +10162,8 @@ namespace IDE
 		}
 
 		// Project options are inherently thread safe.  Resolve-system project settings
-		//  Can only be changed from the Resolve BfCompiler thread, and Build settings 
-		//  are only changed before background compilation begins.  We also call this 
+		//  Can only be changed from the Resolve BfCompiler thread, and Build settings
+		//  are only changed before background compilation begins.  We also call this
 		//  during WorkspaceLoad, but the resolve threads aren't processing then.
 		public bool SetupBeefProjectSettings(BfSystem bfSystem, BfCompiler bfCompiler, Project project)
 		{
@@ -10335,7 +10335,7 @@ namespace IDE
 			string clangArgsStr = String.Join("\n", clangArgs);
 
 			long hash = 0;
-			for (int i = 0; i < clangArgsStr.Length; i++)            
+			for (int i = 0; i < clangArgsStr.Length; i++)
 				hash = (hash << 5) - hash + clangArgsStr[i];
 			return String.Format("{0:X16}", hash);
 		}*/
@@ -11914,9 +11914,9 @@ namespace IDE
 			startupCode.AppendF(
 				"""
 				using System;
-				
+
 				namespace {};
-				
+
 				class {}
 				{{
 					public static int Main(String[] args)
@@ -12164,7 +12164,7 @@ namespace IDE
 					String err =
 						"""
 						Beef requires the Microsoft C++ build tools for Visual Studio 2013 or later, but they don't seem to be installed.
-						
+
 						Install just Microsoft Visual C++ Build Tools or the entire Visual Studio suite from:
 						    https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022
 						""";
@@ -12467,8 +12467,8 @@ namespace IDE
 
 			if ((mTargetStartWithStep) && (mMainBreakpoint == null))
 			{
-				// The idea is that we don't want to step into static initializers, so we 
-				// temporarily break on _main and then we single step                                    
+				// The idea is that we don't want to step into static initializers, so we
+				// temporarily break on _main and then we single step
 				//mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("_ZN3Hey4Dude3Bro9TestClass4MainEv");
 				if ((project.mGeneralOptions.mTargetType == Project.TargetType.BeefConsoleApplication) ||
 					(project.mGeneralOptions.mTargetType == Project.TargetType.BeefGUIApplication))
@@ -13179,7 +13179,7 @@ namespace IDE
 
 			/*for (var window in gApp.mWindows)
 			{
-				
+
 				window.SetMinimumSize(GS!());
 			}*/
 		}
@@ -13610,14 +13610,14 @@ namespace IDE
 							if (mBfResolveSystem != null)
 								mBfResolveSystem.AddProject(project);
 						}
-						
+
 						foreach (var project in mWorkspace.mProjects)
 						{
 							project.WithProjectItems(scope (projectItem) =>
 								{
 									var projectSource = projectItem as ProjectSource;
 									if (projectSource != null)
-									{                                        
+									{
 										var resolveCompiler = GetProjectCompilerForFile(projectSource.mPath);
 										if (resolveCompiler == mBfResolveCompiler)
 											resolveCompiler.QueueProjectSource(projectSource);
@@ -14050,8 +14050,8 @@ namespace IDE
 					OutputFormatted(deferredOutput, deferredMsgType == "dbgEvalMsg");
 				}
 
-				/*if (hadMessages)                
-					mNoDebugMessagesTick = 0;                
+				/*if (hadMessages)
+					mNoDebugMessagesTick = 0;
 				else if (IDEApp.sApp.mIsUpdateBatchStart)
 					mNoDebugMessagesTick++;
 				if (mNoDebugMessagesTick < 10)
@@ -14336,7 +14336,7 @@ namespace IDE
 		/*public bool CheckMouseover(Widget checkWidget, int32 wantTicks, out Point mousePoint)
 		{
 			mousePoint = Point(Int32.MinValue, Int32.MinValue);
-			if (checkWidget != mLastMouseWidget) 
+			if (checkWidget != mLastMouseWidget)
 				return false;
 			checkWidget.RootToSelfTranslate(mLastRelMousePos.x, mLastRelMousePos.y, out mousePoint.x, out mousePoint.y);
 			return mMouseStillTicks == wantTicks;
@@ -14367,7 +14367,7 @@ namespace IDE
 			foreach (var window in mWindows)
 			{
 				var widgetWindow = window as WidgetWindow;
-				
+
 				widgetWindow.RehupMouse(false);
 				var windowOverWidget = widgetWindow.mCaptureWidget ?? widgetWindow.mOverWidget;
 				if ((windowOverWidget != null) && (widgetWindow.mAlpha == 1.0f) && (widgetWindow.mCaptureWidget == null))
@@ -14376,7 +14376,7 @@ namespace IDE
 					numOverWidgets++;
 					if (overWidget != mLastMouseWidget)
 					{
-						SetLastMouseWidget(overWidget);                        
+						SetLastMouseWidget(overWidget);
 						mMouseStillTicks = -1;
 					}
 
@@ -14394,7 +14394,7 @@ namespace IDE
 			}
 
 			if (overWidget == null)
-			{     
+			{
 				   SetLastMouseWidget(null);
 				mMouseStillTicks = -1;
 			}
@@ -14404,7 +14404,7 @@ namespace IDE
 				//int a = 0;
 			}
 
-			Debug.Assert(numOverWidgets <= 1);                        
+			Debug.Assert(numOverWidgets <= 1);
 		}*/
 
 		public void FileRenamed(ProjectFileItem projectFileItem, String oldPath, String newPath)
