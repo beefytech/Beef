@@ -53,7 +53,7 @@ if [ -n "$LLVM_CONFIG" ]; then
   LLVM_VERSION=$($LLVM_CONFIG --version)
   LLVM_MAJOR_VERSION=$(echo "$LLVM_VERSION" | cut -d. -f1)
   LLVM_MINOR_VERSION=$(echo "$LLVM_VERSION" | cut -d. -f2)
-  if [ "$LLVM_MAJOR_VERSION" = "18" ] && [ "$LLVM_MINOR_VERSION" = "1" ]; then
+  if [ "$LLVM_MAJOR_VERSION" = "19" ] && [ "$LLVM_MINOR_VERSION" = "1" ]; then
     LLVM_FOUND=1
     # Get the LLVM prefix directory and construct cmake path from it
     LLVM_PREFIX=$($LLVM_CONFIG --prefix)
@@ -65,7 +65,7 @@ if [ -n "$LLVM_CONFIG" ]; then
       LLVM_VERSION=$($LLVM_CONFIG --version)
       LLVM_MAJOR_VERSION=$(echo "$LLVM_VERSION" | cut -d. -f1)
       LLVM_MINOR_VERSION=$(echo "$LLVM_VERSION" | cut -d. -f2)
-      if [ "$LLVM_MAJOR_VERSION" = "18" ] && [ "$LLVM_MINOR_VERSION" = "1" ]; then
+      if [ "$LLVM_MAJOR_VERSION" = "19" ] && [ "$LLVM_MINOR_VERSION" = "1" ]; then
         LLVM_FOUND=1
         LLVM_PREFIX=$($LLVM_CONFIG --prefix)
         LLVM_DIR="$LLVM_PREFIX/lib/cmake/llvm"
