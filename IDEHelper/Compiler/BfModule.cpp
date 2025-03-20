@@ -17460,7 +17460,7 @@ void BfModule::CreateDelegateInvokeMethod()
 		BfIRType loweredIRReturnType;
 		BfTypeCode loweredTypeCode = BfTypeCode_None;
 		BfTypeCode loweredTypeCode2 = BfTypeCode_None;
-		if ((!mIsComptimeModule) && (mCurMethodInstance->GetLoweredReturnType(&loweredTypeCode, &loweredTypeCode2)))
+		if ((!mIsComptimeModule) && (mCurMethodInstance->GetLoweredReturnType(&loweredTypeCode, &loweredTypeCode2)) && (loweredTypeCode != BfTypeCode_None))
 			loweredIRReturnType = GetIRLoweredType(loweredTypeCode, loweredTypeCode2);
 		else
 			loweredIRReturnType = mBfIRBuilder->MapType(mCurMethodInstance->mReturnType);
