@@ -257,7 +257,10 @@ class GitManager
 			if (mProcess.WaitFor(0))
 			{
 				if (mProcess.ExitCode != 0)
+				{
+					Debug.WriteLine($"Git failed with Exit Code:{mProcess.ExitCode} Args:{mArgs} Path:{mPath}");
 					mFailed = true;
+				}
 				mDone = true;
 			}
 		}
