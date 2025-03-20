@@ -2934,7 +2934,7 @@ namespace IDE
 
 						AddProjectToWorkspace(project, false);
 						if (addToUI)
-							mProjectPanel.InitProject(project, null);
+							mProjectPanel?.InitProject(project, null);
 					}
 				}
 				if (!hadLoad)
@@ -2954,7 +2954,7 @@ namespace IDE
 
 			if (loadFailed)
 			{
-				mProjectPanel.RebuildUI();
+				mProjectPanel?.RebuildUI();
 			}
 		}
 
