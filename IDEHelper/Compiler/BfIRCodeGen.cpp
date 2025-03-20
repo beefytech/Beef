@@ -3290,9 +3290,9 @@ void BfIRCodeGen::HandleNextCmd()
 				{ llvm::Intrinsic::sin, 0, -1},
 				{ llvm::Intrinsic::sqrt, 0, -1},
 				{ (llvm::Intrinsic::ID)-2, -1}, // sub,
-				{ (llvm::Intrinsic::ID)-2, -1}, // va_arg,
-				{ llvm::Intrinsic::vaend, -1}, // va_end,
-				{ llvm::Intrinsic::vastart, -1}, // va_start,
+				{ (llvm::Intrinsic::ID)-2, 0, 1, 2}, // va_arg,
+				{ llvm::Intrinsic::vaend, 0, -1}, // va_end,
+				{ llvm::Intrinsic::vastart, 0, -1}, // va_start,
 				{ (llvm::Intrinsic::ID)-2, -1}, // xgetbv
 				{ (llvm::Intrinsic::ID)-2, -1}, // xor
 			};
