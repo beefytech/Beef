@@ -2050,6 +2050,7 @@ void BfIRCodeGen::HandleNextCmd()
 			mPtrSize = ptrSize;
 			mIsOptimized = isOptimized;
 			mLLVMModule = new llvm::Module(moduleName.c_str(), *mLLVMContext);
+			mLLVMModule->setIsNewDbgInfoFormat(false);
 			mIRBuilder = new llvm::IRBuilder<>(*mLLVMContext);
 
             //OutputDebugStrF("-------- Starting Module %s --------\n", moduleName.c_str());
@@ -2368,10 +2369,10 @@ void BfIRCodeGen::HandleNextCmd()
 
 			llvm::Value* retVal = NULL;
 
-			if (BfIRBuilder::IsInt(typeCode))
+			if (BfIRBuilder::IsIntable(typeCode))
 			{
 				// Int -> Int
-				if ((BfIRBuilder::IsInt(valTypeCode)) || (valTypeCode == BfTypeCode_Boolean))
+				if ((BfIRBuilder::IsIntable(valTypeCode)) || (valTypeCode == BfTypeCode_Boolean))
 				{
 					retVal = mIRBuilder->CreateIntCast(val, toLLVMType, toSigned && valIsSigned);
 				}
@@ -2386,7 +2387,7 @@ void BfIRCodeGen::HandleNextCmd()
 			else
 			{
 				// Int -> Float
-				if ((BfIRBuilder::IsInt(valTypeCode)) || (valTypeCode == BfTypeCode_Boolean))
+				if ((BfIRBuilder::IsIntable(valTypeCode)) || (valTypeCode == BfTypeCode_Boolean))
 				{
 					if (BfIRBuilder::IsSigned(valTypeCode))
 						retVal = mIRBuilder->CreateSIToFP(val, toLLVMType);
@@ -2742,7 +2743,7 @@ void BfIRCodeGen::HandleNextCmd()
 			BfIRTypeEx* elemType = GetTypeMember(compositeType, elemIdx);
 
 			BfIRTypedValue result;			
-			result.mValue = mIRBuilder->CreateInBoundsGEP(compositeType->mLLVMType, val.mValue, llvm::makeArrayRef(indices));
+			result.mValue = mIRBuilder->CreateInBoundsGEP(compositeType->mLLVMType, val.mValue, llvm::ArrayRef(indices));
 			result.mTypeEx = GetPointerTypeEx(elemType);
 			SetResult(curId, result);
 		}
@@ -2770,7 +2771,7 @@ void BfIRCodeGen::HandleNextCmd()
 
 			BfIRTypedValue result;
 			result.mTypeEx = elemType;
-			result.mValue = mIRBuilder->CreateExtractValue(val.mValue, llvm::makeArrayRef((unsigned)idx));
+			result.mValue = mIRBuilder->CreateExtractValue(val.mValue, llvm::ArrayRef((unsigned)idx));
 			SetResult(curId, result);
 		}
 		break;
@@ -2782,7 +2783,7 @@ void BfIRCodeGen::HandleNextCmd()
 
 			BfIRTypedValue result;
 			result.mTypeEx = agg.mTypeEx;
-			result.mValue = mIRBuilder->CreateInsertValue(agg.mValue, val.mValue, llvm::makeArrayRef((unsigned)idx));
+			result.mValue = mIRBuilder->CreateInsertValue(agg.mValue, val.mValue, llvm::ArrayRef((unsigned)idx));
 			SetResult(curId, result);
 		}
 		break;
@@ -3964,7 +3965,7 @@ void BfIRCodeGen::HandleNextCmd()
 						llvm::Value* gepArgs[] = {
 							llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), 0),
 							args[1].mValue };
-						auto gep = mIRBuilder->CreateInBoundsGEP(GetLLVMPointerElementType(args[0].mTypeEx), args[0].mValue, llvm::makeArrayRef(gepArgs));
+						auto gep = mIRBuilder->CreateInBoundsGEP(GetLLVMPointerElementType(args[0].mTypeEx), args[0].mValue, llvm::ArrayRef(gepArgs));
 						if (args.size() >= 3)
 							mIRBuilder->CreateStore(args[2].mValue, gep);
 						else
@@ -5480,13 +5481,19 @@ void BfIRCodeGen::HandleNextCmd()
 			{
 				if (insertBeforeInst != NULL)
 				{
-					SetResult(curId, mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
-						mIRBuilder->getCurrentDebugLocation(), insertBeforeInst));
+					auto& dbgResult = mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
+						mIRBuilder->getCurrentDebugLocation(), insertBeforeInst);
+					bool isA = dbgResult.is<llvm::Instruction*>();
+					auto inst = dbgResult.get<llvm::Instruction*>();
+					SetResult(curId, inst);
 				}
 				else
 				{
-					SetResult(curId, mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
-						mIRBuilder->getCurrentDebugLocation(), mIRBuilder->GetInsertBlock()));
+					auto& dbgResult = mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
+						mIRBuilder->getCurrentDebugLocation(), mIRBuilder->GetInsertBlock());
+					bool isA = dbgResult.is<llvm::Instruction*>();
+					auto inst = dbgResult.get<llvm::Instruction*>();
+					SetResult(curId, inst);
 				}
 			}
 		}
@@ -6083,7 +6090,7 @@ void BfIRCodeGen::RunOptimizationPipeline(const llvm::Triple& targetTriple)
 	// Now that we have all of the passes ready, run them.
 	{
 		//PrettyStackTraceString CrashInfo("Optimizer");
-		llvm::TimeTraceScope TimeScope("Optimizer");
+		//llvm::TimeTraceScope TimeScope("Optimizer");
 		MPM.run(*mLLVMModule, MAM);
 	}	
 }

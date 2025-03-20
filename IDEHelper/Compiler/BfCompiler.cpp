@@ -18,6 +18,7 @@
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Argument.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/Module.h"
 
 #include "BfCompiler.h"
 #include "BfSystem.h"

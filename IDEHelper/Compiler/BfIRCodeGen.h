@@ -21,7 +21,7 @@ namespace llvm
 	class Module;
 	class LLVMContext;
 	class TargetMachine;
-	class Triple;
+	class Triple;	
 };
 
 NS_BF_BEGIN
@@ -196,7 +196,7 @@ public:
 	void SetResult(int id, llvm::Type* value);
 	void SetResult(int id, BfIRTypeEx* typeEx);
 	void SetResult(int id, llvm::BasicBlock* value);
-	void SetResult(int id, llvm::MDNode* value);
+	void SetResult(int id, llvm::MDNode* value);	
 	void CreateMemSet(llvm::Value* addr, llvm::Value* val, llvm::Value* size, int alignment, bool isVolatile = false);
 	void AddNop();
 	llvm::Value* TryToVector(const BfIRTypedValue& value);	
