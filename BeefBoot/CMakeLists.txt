@@ -119,7 +119,7 @@ add_executable(${PROJECT_NAME}
    ${SRC_FILES}
 )
 
-find_package(LLVM 18.1 CONFIG COMPONENTS)
+find_package(LLVM 19.1 CONFIG COMPONENTS)
 
 if (LLVM_FOUND)
   message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")

@@ -43,7 +43,7 @@ else
 	echo "Ninja isn't installed, consider installing it for faster build speeds."
 fi
 
-LLVM_CONFIG=$(command -v llvm-config-18 2>/dev/null || 
+LLVM_CONFIG=$(command -v llvm-config-19 2>/dev/null ||
               command -v /usr/lib/llvm18/bin/llvm-config 2>/dev/null ||
               command -v llvm-config 2>/dev/null)
 LLVM_FOUND=0
@@ -59,7 +59,7 @@ if [ -n "$LLVM_CONFIG" ]; then
     LLVM_PREFIX=$($LLVM_CONFIG --prefix)
     LLVM_DIR="$LLVM_PREFIX/lib/cmake/llvm"
   else
-    # If first attempt didn't find 18.1, explicitly try the llvm18 path
+    # If first attempt didn't find 19.1, explicitly try the llvm18 path
     LLVM_CONFIG="/usr/lib/llvm18/bin/llvm-config"
     if [ -x "$LLVM_CONFIG" ]; then
       LLVM_VERSION=$($LLVM_CONFIG --version)
@@ -80,7 +80,7 @@ set -e
 ### Dependencies ###
 
 if [ $LLVM_FOUND == 0 ]; then
-	echo "ERROR: LLVM 18.1 was not detected on your system. Please install the package 'llvm-18-dev' and try again." >&2
+	echo "ERROR: LLVM 19.1 was not detected on your system. Please install the package 'llvm-19-dev' and try again." >&2
 	exit
 fi
 
