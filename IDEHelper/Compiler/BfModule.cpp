@@ -17401,11 +17401,11 @@ void BfModule::CreateDelegateInvokeMethod()
 		auto fieldPtr = mBfIRBuilder->CreateInBoundsGEP(multicastDelegate, 0, 1); // Load 'delegate.mFuncPtr'
 		auto funcPtrPtr = mBfIRBuilder->CreateBitCast(fieldPtr, memberFuncPtrPtr);
 		auto funcPtr = mBfIRBuilder->CreateAlignedLoad(funcPtrPtr, mSystem->mPtrSize);
-		nonStaticResult = mBfIRBuilder->CreateCall(funcPtr, memberFuncArgs);
-		if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx() != -1))
-			mBfIRBuilder->Call_AddAttribute(nonStaticResult, mCurMethodInstance->GetStructRetIdx() + 1, BfIRAttribute_StructRet);
-		if (callingConv != BfIRCallingConv_CDecl)
-			mBfIRBuilder->SetCallCallingConv(nonStaticResult, callingConv);
+		
+		BfExprEvaluator exprEvaluator(this);
+		BfTypedValue nonStaticTypedResult = exprEvaluator.CreateCall(NULL, mCurMethodInstance, funcPtr, true, memberFuncArgs, NULL, BfCreateCallFlags_DelegateThunkNonStatic);
+		nonStaticResult = nonStaticTypedResult.mValue;
+
 		mCurMethodState->SetHadReturn(false);
 		mCurMethodState->mLeftBlockUncond = false;
 		mCurMethodState->mLeftBlockCond = false;
@@ -17419,12 +17419,11 @@ void BfModule::CreateDelegateInvokeMethod()
 		auto fieldPtr = mBfIRBuilder->CreateInBoundsGEP(multicastDelegate, 0, 1); // Load 'delegate.mFuncPtr'
 		auto funcPtrPtr = mBfIRBuilder->CreateBitCast(fieldPtr, staticFuncPtrPtr);
 		auto funcPtr = mBfIRBuilder->CreateAlignedLoad(funcPtrPtr, mSystem->mPtrSize);
-		staticResult = mBfIRBuilder->CreateCall(funcPtr, staticFuncArgs);
-		if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx(true) != -1))
-		{
-			// Note: since this is a forced static invocation, we know the sret will be the first parameter
-			mBfIRBuilder->Call_AddAttribute(staticResult, 0 + 1, BfIRAttribute_StructRet);
-		}
+
+
+		BfExprEvaluator exprEvaluator(this);
+		BfTypedValue staticTypedResult = exprEvaluator.CreateCall(NULL, mCurMethodInstance, funcPtr, true, staticFuncArgs, NULL, BfCreateCallFlags_DelegateThunkStatic);
+		staticResult = staticTypedResult.mValue;
 
 		// We had a sret for the non-static but no sret for the static (because we have a lowered return type there)
 		if ((!mIsComptimeModule) && (mCurMethodInstance->GetStructRetIdx() != -1) && (mCurMethodInstance->GetStructRetIdx(true) == -1))
@@ -17434,10 +17433,6 @@ void BfModule::CreateDelegateInvokeMethod()
 			mBfIRBuilder->CreateStore(staticResult, sretCastedPtr);
 		}
 
-		if (callingConv == BfIRCallingConv_ThisCall)
-			callingConv = BfIRCallingConv_CDecl;
-		if (callingConv != BfIRCallingConv_CDecl)
-			mBfIRBuilder->SetCallCallingConv(staticResult, callingConv);
 		mCurMethodState->SetHadReturn(false);
 		mCurMethodState->mLeftBlockUncond = false;
 		mCurMethodState->mLeftBlockCond = false;

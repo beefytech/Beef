@@ -52,7 +52,9 @@ enum BfCreateCallFlags
 	BfCreateCallFlags_SkipThis = 2,
 	BfCreateCallFlags_AllowImplicitRef = 4,
 	BfCreateCallFlags_TailCall = 8,
-	BfCreateCallFlags_GenericParamThis = 0x10
+	BfCreateCallFlags_GenericParamThis = 0x10,
+	BfCreateCallFlags_DelegateThunkNonStatic = 0x20,
+	BfCreateCallFlags_DelegateThunkStatic = 0x40,
 };
 
 class BfResolvedArg

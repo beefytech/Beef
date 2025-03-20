@@ -6598,6 +6598,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 // 		NOP;
 // 	}
 
+	bool isDelegateThunk = ((callFlags & (BfCreateCallFlags_DelegateThunkNonStatic | BfCreateCallFlags_DelegateThunkStatic)) != 0);
+
 	auto methodDef = methodInstance->mMethodDef;
 	BfIRValue funcCallInst = func;
 
@@ -6721,7 +6723,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	};
 
 	mModule->PopulateType(origReturnType, BfPopulateType_Data);
-	if (GetStructRetIdx(methodInstance) != -1)
+	if ((GetStructRetIdx(methodInstance) != -1) && (!isDelegateThunk))
 	{
 		// We need to ensure that mReceivingValue has the correct type, otherwise it's possible that a conversion operator needs to be applied
 		//  This happens for returning Result<T>'s with a 'T' value
@@ -7164,7 +7166,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	if (returnType->IsComposite())
 		mModule->mBfIRBuilder->PopulateType(returnType);
 
-	methodInstance->mMethodInstanceGroup->mHasEmittedReference = true;
+	methodInstance->mMethodInstanceGroup->mHasEmittedReference = true;	
 
 	BfIRValue callInst;
 	int callIRArgCount = (int)irArgs.size();
@@ -7203,6 +7205,10 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	bool doingThis = methodInstance->HasThis();
 	int argIdx = 0;
 
+	if ((callFlags & BfCreateCallFlags_DelegateThunkStatic) != 0)
+		doingThis = false;
+	bool forceThisPtr = ((callFlags & BfCreateCallFlags_DelegateThunkNonStatic) != 0);
+
 	if (methodDef->mHasExplicitThis)
 		paramIdx++;
 
@@ -7213,7 +7219,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 		if (methodInstance->mIsIntrinsic)
 			break;
 
-		if (argIdx == GetStructRetIdx(methodInstance))
+		if ((sret != NULL) && (argIdx == GetStructRetIdx(methodInstance)))
 		{
 			mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_StructRet);
 			argIdx++;
