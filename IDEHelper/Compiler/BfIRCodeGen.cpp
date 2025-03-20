@@ -5481,17 +5481,15 @@ void BfIRCodeGen::HandleNextCmd()
 			{
 				if (insertBeforeInst != NULL)
 				{
-					auto& dbgResult = mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
+					auto dbgResult = mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
 						mIRBuilder->getCurrentDebugLocation(), insertBeforeInst);
-					bool isA = dbgResult.is<llvm::Instruction*>();
 					auto inst = dbgResult.get<llvm::Instruction*>();
 					SetResult(curId, inst);
 				}
 				else
 				{
-					auto& dbgResult = mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
+					auto dbgResult = mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
 						mIRBuilder->getCurrentDebugLocation(), mIRBuilder->GetInsertBlock());
-					bool isA = dbgResult.is<llvm::Instruction*>();
 					auto inst = dbgResult.get<llvm::Instruction*>();
 					SetResult(curId, inst);
 				}
@@ -6295,10 +6293,10 @@ int BF_LinuxFixLinkage()
 	llvm::MCContext* ctx = NULL;
 	llvm::raw_pwrite_stream* stream = NULL;
 
-	createWasmStreamer(*ctx, NULL, NULL, NULL, false);
-	createMachOStreamer(*ctx, NULL, NULL, NULL, false, false, false);
-	createAsmStreamer(*ctx, NULL, false, false, NULL, NULL, NULL, false);
-	createELFStreamer(*ctx, NULL, NULL, NULL, false);
+	createWasmStreamer(*ctx, NULL, NULL, NULL);
+	createMachOStreamer(*ctx, NULL, NULL, NULL, false, false);
+	createAsmStreamer(*ctx, NULL, NULL, NULL, NULL);
+	createELFStreamer(*ctx, NULL, NULL, NULL);
 
 	return 0;
 }
