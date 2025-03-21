@@ -8859,17 +8859,18 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		}
 	}
 
-	if (checkArgType->IsPointer())
-	{
-		auto ptrType = (BfPointerType*)checkArgType;
-		checkArgType = ptrType->mElementType;
-	}
+	auto checkArgElementType = checkArgType;
+ 	if (checkArgElementType->IsPointer())
+ 	{
+ 		auto ptrType = (BfPointerType*)checkArgElementType;
+		checkArgElementType = ptrType->mElementType;
+ 	}
 
 	if ((genericParamInst->mGenericParamFlags & BfGenericParamFlag_New) != 0)
 	{
 		bool canAlloc = false;
 
-		if (auto checkTypeInst = checkArgType->ToTypeInstance())
+		if (auto checkTypeInst = checkArgElementType->ToTypeInstance())
 		{
 			if (checkTypeInst->IsObjectOrStruct())
 			{
@@ -8910,11 +8911,11 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 					canAlloc = TypeIsSubTypeOf(mCurTypeInstance, checkTypeInst, false);
 			}
 		}
-		else if (checkArgType->IsGenericParam())
+		else if (checkArgElementType->IsGenericParam())
 		{
 			canAlloc = (checkGenericParamFlags & (BfGenericParamFlag_New | BfGenericParamFlag_Var)) != 0;
 		}
-		else if (checkArgType->IsPrimitiveType())
+		else if (checkArgElementType->IsPrimitiveType())
 		{
 			// Any primitive types and stuff can be allocated
 			canAlloc = true;
@@ -8975,7 +8976,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 						}
 
 						if (doError)
-						{
+						{ 
 							if ((!ignoreErrors) && (PreFail()))
 								*errorOut = Fail(StrFormat("Const generic argument '%s', declared with '%s', is not compatible with const constraint '%s' for '%s'", genericParamInst->GetName().c_str(),
 									_TypeToString(constExprValueType).c_str(), _TypeToString(genericParamInst->mTypeConstraint).c_str(), GenericParamSourceToString(genericParamSource).c_str()), checkArgTypeRef);

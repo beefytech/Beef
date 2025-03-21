@@ -23498,6 +23498,15 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 	case BfUnaryOp_Dereference:
 		{
 			CheckResultForReading(mResult);
+			if (mResult.mType->IsGenericParam())
+			{
+				auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)mResult.mType);
+				if ((genericParamInstance->mTypeConstraint != NULL) && (genericParamInstance->mTypeConstraint->IsPointer()))
+				{
+					mResult = mModule->GetDefaultTypedValue(genericParamInstance->mTypeConstraint->GetUnderlyingType(), false, BfDefaultValueKind_Addr);
+					break;
+				}
+			}
 			if (!mResult.mType->IsPointer())
 			{
 				mResult = BfTypedValue();

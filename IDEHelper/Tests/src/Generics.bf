@@ -199,6 +199,11 @@ namespace Tests
 			delete val2;
 		}
 
+		public static int IntPtrTest<T>(T val) where T : int*
+		{
+			return *val;
+		}
+
 		public class ClassE
 		{
 		    public static Self Instance = new ClassE() ~ delete _;
@@ -513,6 +518,9 @@ namespace Tests
 
 			var innerC = OuterA<int, float>.InnerC.this<int32>(123);
 			Test.Assert(innerC.mVal == 123);
+
+			int iVal = 123;
+			Test.Assert(IntPtrTest(&iVal) == 123);
 		}
 	}
 
