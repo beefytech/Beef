@@ -25,6 +25,7 @@ namespace BeefBuild
 		public bool mWantsGenerate = false;
 		public bool mHandledVerb;
 		public String mRunArgs ~ delete _;
+		public String mStartingDirectory = new .() ~ delete _;
 		MainVerbState mMainVerbState;
 
 		/*void Test()
@@ -57,6 +58,8 @@ namespace BeefBuild
 
 		public override void Init()
 		{
+			Directory.GetCurrentDirectory(mStartingDirectory);
+
 			GetVersionInfo(var exeTime);
 
 			if (mVerbosity == .Default)
@@ -412,9 +415,6 @@ namespace BeefBuild
 				{
 					if ((mVerb == .Run) && (!mDidRun) && (!mFailed))
 					{
-						let curPath = scope String();
-						Directory.GetCurrentDirectory(curPath);
-
 						let workspaceOptions = gApp.GetCurWorkspaceOptions();
 						let options = gApp.GetCurProjectOptions(mWorkspace.mStartupProject);
 						let targetPaths = scope List<String>();
@@ -423,7 +423,7 @@ namespace BeefBuild
 						if (targetPaths.IsEmpty)
 							return;
 
-						ExecutionQueueCmd executionCmd = QueueRun(targetPaths[0], mRunArgs ?? "", curPath);
+						ExecutionQueueCmd executionCmd = QueueRun(targetPaths[0], mRunArgs ?? "", mStartingDirectory);
 						executionCmd.mRunFlags |= .NoRedirect;
 						executionCmd.mIsTargetRun = true;
 						mDidRun = true;
