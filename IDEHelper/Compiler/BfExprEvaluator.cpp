@@ -7569,6 +7569,9 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 		argVal = mModule->GetDefaultTypedValue(mModule->mContext->mBfObjectType);
 	}
 
+	if (argVal.mType->IsIncomplete())
+		mModule->PopulateType(argVal.mType);
+
 	if (argVal.mType->IsValuelessNonOpaqueType())
 		return;
 	bool wantSplat = false;
