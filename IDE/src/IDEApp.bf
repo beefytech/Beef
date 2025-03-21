@@ -9338,13 +9338,19 @@ namespace IDE
 			executionInstance.mStopwatch.Start();
 			executionInstance.mProcess = process;
 
-			executionInstance.mOutputThread = new Thread(new => ReadOutputThread);
-			executionInstance.mOutputThread.Start(executionInstance, false);
+			if (startInfo.RedirectStandardOutput)
+			{
+				executionInstance.mOutputThread = new Thread(new => ReadOutputThread);
+				executionInstance.mOutputThread.Start(executionInstance, false);
+			}
 
-			executionInstance.mErrorThread = new Thread(new => ReadErrorThread);
-			executionInstance.mErrorThread.Start(executionInstance, false);
+			if (startInfo.RedirectStandardError)
+			{
+				executionInstance.mErrorThread = new Thread(new => ReadErrorThread);
+				executionInstance.mErrorThread.Start(executionInstance, false);
+			}
 
-			if (stdInData != null)
+			if ((startInfo.RedirectStandardInput) && (stdInData != null))
 			{
 				executionInstance.mStdInData = new String(stdInData);
 				executionInstance.mInputThread = new Thread(new => WriteInputThread);

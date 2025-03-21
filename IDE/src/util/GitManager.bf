@@ -258,7 +258,8 @@ class GitManager
 			{
 				if (mProcess.ExitCode != 0)
 				{
-					Debug.WriteLine($"Git failed with Exit Code:{mProcess.ExitCode} Args:{mArgs} Path:{mPath}");
+					if (gApp.mVerbosity >= .Diagnostic)
+						gApp.OutputLine($"Git failed with Exit Code:{mProcess.ExitCode} Args:{mArgs} Path:{mPath}");
 					mFailed = true;
 				}
 				mDone = true;
