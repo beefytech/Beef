@@ -1294,7 +1294,11 @@ void BfModule::SetupIRBuilder(bool dbgVerifyCodeGen)
 
 void BfModule::EnsureIRBuilder(bool dbgVerifyCodeGen)
 {
-	BF_ASSERT(!mIsDeleting);
+	if (mIsDeleting)
+	{
+		mCompiler->RequestExtraCompile();
+		InternalError("EnsureIRBuilder on deleted module");
+	}	
 
 	if (mBfIRBuilder == NULL)
 	{

@@ -739,8 +739,16 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 	{
 		auto genericTypeInst = (BfTypeInstance*)resolvedTypeRef;
 		for (auto typeGenericArg : genericTypeInst->mGenericTypeInfo->mTypeGenericArguments)
-		{
-			BF_ASSERT((typeGenericArg->mRebuildFlags & BfTypeRebuildFlag_Deleted) == 0);
+		{			
+			//BF_ASSERT((typeGenericArg->mRebuildFlags & BfTypeRebuildFlag_Deleted) == 0);
+			if ((typeGenericArg->mRebuildFlags & BfTypeRebuildFlag_Deleted) != 0)
+			{
+				mCompiler->RequestExtraCompile();
+				InternalError("Using deleted generic type argument in PopulateType");
+				TypeFailed(genericTypeInst);
+				return;
+			}
+
 			if (mIsReified)
 			{
 				// Try to reify any generic args
@@ -1040,6 +1048,8 @@ void BfModule::TypeFailed(BfTypeInstance* typeInstance)
 		typeInstance->mAlign = 1;
 	if (typeInstance->mSize == -1)
 		typeInstance->mSize = 1;
+	if (typeInstance->mContext == NULL)
+		typeInstance->mContext = mContext;
 	mContext->mFailTypes.TryAdd(typeInstance, BfFailKind_Normal);
 	mHadBuildError = true;
 }
@@ -11995,6 +12005,12 @@ BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType po
 		if ((outerTypeInstance != NULL) && (typeDef->mGenericParamDefs.size() != 0))
 		{
 			// Try to inherit generic params from current parent
+			if (outerTypeInstance->IsDeleting())
+			{
+				mCompiler->RequestExtraCompile();
+				InternalError("ResolveTypeRef with deleted outer type");
+				return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
+			}
 
 			BfTypeDef* outerType = mSystem->GetCombinedPartial(typeDef->mOuterType);
 			BF_ASSERT(!outerType->mIsPartial);
@@ -16033,6 +16049,12 @@ void BfModule::VariantToString(StringImpl& str, const BfVariant& variant, BfType
 void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameFlags typeNameFlags, Array<String>* genericMethodNameOverrides)
 {
 	BP_ZONE("BfModule::DoTypeToString");
+
+	if (resolvedType->mContext == NULL)
+	{
+		str += "*UNINITIALIZED TYPE*";
+		return;
+	}
 
 	if ((typeNameFlags & BfTypeNameFlag_AddProjectName) != 0)
 	{
