@@ -8270,6 +8270,8 @@ namespace IDE
 				mDeferredOpen = .DebugSession;
 			else if (filePath.EndsWith(".dmp", .OrdinalIgnoreCase))
 				mDeferredOpen = .CrashDump;
+			else if (filePath.EndsWith("BeefSpace.toml", .OrdinalIgnoreCase))
+				mDeferredOpen  = .Workspace;
 			else
 				mDeferredOpen = .File;
 
