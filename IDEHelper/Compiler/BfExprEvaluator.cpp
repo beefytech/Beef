@@ -7389,6 +7389,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			mModule->mCurMethodState->mMayNeedThisAccessCheck = true;
 	}
 
+	if (isDelegateThunk)
+		return BfTypedValue(callInst, methodInstance->mReturnType);
+
 	BfTypedValue result;
 	if (sret != NULL)
 		result = *sret;
