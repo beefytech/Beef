@@ -7157,6 +7157,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			expectCallingConvention = BfIRCallingConv_ThisCall;
 	}
 
+	if (((callFlags & BfCreateCallFlags_DelegateThunkStatic) != 0) && (expectCallingConvention == BfIRCallingConv_ThisCall))
+		expectCallingConvention = BfIRCallingConv_CDecl;
+
 	if ((methodInstance->mAlwaysInline) && (mModule->mCompiler->mOptions.mEmitLineInfo))
 	{
 		// Emit a NOP so we always have a "step over" point
