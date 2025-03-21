@@ -5184,6 +5184,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 					for (auto& field : enumType->mFieldInstances)
 					{
 						auto fieldDef = field.GetFieldDef();
+				
 						if (fieldDef == NULL)
 							continue;
 						if (!fieldDef->IsEnumCaseEntry())
@@ -5212,21 +5213,115 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 
 			if (!isComprehensive)
 			{
-				BfAstNode* refNode = switchStmt->mSwitchToken;
 				Fail("Switch must be exhaustive, consider adding a default clause", switchStmt->mSwitchToken);
-				if ((switchStmt->mCloseBrace) && (mCompiler->IsAutocomplete()) && (mCompiler->mResolvePassData->mAutoComplete->CheckFixit((refNode))))
-				{
-					BfParserData* parser = refNode->GetSourceData()->ToParserData();
-					if (parser != NULL)
-					{
-						int fileLoc = switchStmt->mCloseBrace->GetSrcStart();
-						mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("default:\tdefault:|%s|%d||default:", parser->mFileName.c_str(), fileLoc).c_str()));
-					}
-				}
 			}
 		}
 		else
 			isComprehensive = false;
+	}
+
+	BfAstNode* refNode = switchStmt->mSwitchToken;
+	if ((switchStmt->mCloseBrace) && (mCompiler->IsAutocomplete()) && (mCompiler->mResolvePassData->mAutoComplete->CheckFixit((switchStmt->mSwitchToken))))
+	{
+		BfParserData* parser = refNode->GetSourceData()->ToParserData();
+		if (parser != NULL)
+		{
+			if (switchStmt->mDefaultCase == NULL)
+			{
+				int fileLoc = switchStmt->mCloseBrace->GetSrcStart();
+				mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Add default case\tdefault:|%s|%d||default:", parser->mFileName.c_str(), fileLoc).c_str()));
+			}
+
+			if ((switchValue.mType->IsEnum()) && (!isComprehensive) || (switchStmt->mDefaultCase != NULL))
+			{	
+				int fileLoc;
+
+				if ((handledCases.IsEmpty()) && (switchStmt->mOpenBrace != NULL))
+					fileLoc = switchStmt->mOpenBrace->GetSrcEnd() + 1;
+				else if (switchStmt->mDefaultCase != NULL)
+					fileLoc = switchStmt->mDefaultCase->GetSrcStart();
+				else
+					fileLoc = switchStmt->mCloseBrace->GetSrcStart();
+
+				String explicitInsertStr;
+
+				auto enumType = switchValue.mType->ToTypeInstance();
+				HashSet<int64> missingValues;
+
+				if (enumType->IsPayloadEnum())
+				{
+					for (auto& field : enumType->mFieldInstances)
+					{
+						auto fieldDef = field.GetFieldDef();
+						if (fieldDef == NULL)
+							continue;
+						if (!fieldDef->IsEnumCaseEntry())
+							continue;
+						if ((field.mDataIdx < 0))
+						{
+							auto key = -field.mDataIdx - 1;
+							if ((!handledCases.ContainsKey(key)) && (missingValues.Add(key)))
+							{
+								auto paramDecl = fieldDef->mTypeRef;
+
+								if ((field.mIsEnumPayloadCase) && (field.mResolvedType->IsTuple()))
+								{
+									auto payloadType = (BfTypeInstance*)field.mResolvedType;
+									if (!payloadType->mFieldInstances.empty())
+									{
+										String fieldsStr;
+										int count = 0;
+										for (auto& payloadField : payloadType->mFieldInstances)
+										{
+											auto payloadFieldDef = payloadField.GetFieldDef();
+											if (payloadFieldDef == NULL)
+												continue;
+
+											String fieldName = payloadFieldDef->mName;
+											if ((fieldName.IsEmpty()) || (fieldName.length() > 0) && (isdigit(fieldName[0])))
+												fieldName = StrFormat("p%d", count);
+											if (count > 0)
+												fieldsStr += ", ";
+											fieldsStr += StrFormat("let %s", fieldName.c_str());
+											count++;
+										}
+
+										if (!fieldsStr.IsEmpty())
+										{
+											explicitInsertStr += StrFormat("|case .%s(%s):", fieldDef->mName.c_str(), fieldsStr.c_str());
+											continue;
+										}
+									}
+								}
+
+								explicitInsertStr += StrFormat("|case .%s:", fieldDef->mName.c_str());
+							}
+						}
+					}
+				}
+				else
+				{	
+					for (auto& field : enumType->mFieldInstances)
+					{
+						auto fieldDef = field.GetFieldDef();
+						if ((fieldDef != NULL) && (fieldDef->IsEnumCaseEntry()))
+						{
+							if (field.mConstIdx != -1)
+							{
+								auto constant = enumType->mConstHolder->GetConstantById(field.mConstIdx);
+								if ((!handledCases.ContainsKey(constant->mInt64)) && (missingValues.Add(constant->mInt64)))
+								{
+									explicitInsertStr += StrFormat("|case .%s:", fieldDef->mName.c_str());
+								}
+							}
+						}
+					}
+				}
+
+				if (missingValues.GetCount() > 0)
+					mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Add missing cases\tdefault:|%s|%d|%s", parser->mFileName.c_str(), fileLoc, explicitInsertStr.c_str()).c_str()));
+			}
+		}
 	}
 
 	if (!hadConstMatch)
