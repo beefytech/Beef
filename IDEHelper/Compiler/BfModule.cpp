@@ -21706,13 +21706,24 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 			BfLocalVariable* paramVar = NULL;
 			while (true)
 			{
-				BF_ASSERT(localIdx < methodState.mLocals.size());
+				if (localIdx >= methodState.mLocals.size())
+				{
+					paramVar = NULL;
+					break;
+				}
+				
 				paramVar = methodState.mLocals[localIdx];
 				if ((paramVar->mCompositeCount == -1) &&
 					(!paramVar->mIsConst) &&
                     ((!paramVar->mResolvedType->IsValuelessNonOpaqueType()) || (paramVar->mResolvedType->IsMethodRef())))
 					break;
 				localIdx++;
+			}
+
+			if (paramVar == NULL)
+			{
+				Fail("Parameter count error", methodDef->GetRefNode());
+				break;
 			}
 
 			if ((isThis) && (mCurTypeInstance->IsValueType()) && (methodDef->mMethodType != BfMethodType_Ctor) && (!methodDef->HasNoThisSplat()))
