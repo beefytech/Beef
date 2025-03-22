@@ -17335,7 +17335,10 @@ BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedVa
 			else if (target.IsAddr())
 			{
 				auto ptrType = mModule->CreatePointerType(primStructType);
-				target = BfTypedValue(mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->MapType(ptrType)), primStructType, true);
+				if (primStructType->IsValuelessType())
+					target = BfTypedValue(target.mValue, primStructType, true);
+				else
+					target = BfTypedValue(mModule->mBfIRBuilder->CreateBitCast(target.mValue, mModule->mBfIRBuilder->MapType(ptrType)), primStructType, true);
 			}
 			else if ((primStructType->IsSplattable()) && (target.IsSplat()) && (!IsComptime()))
 			{
