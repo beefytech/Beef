@@ -14087,6 +14087,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		if (!typedVal.IsAddr())
 		{
 			auto srcAlloca = CreateAllocaInst(fromNullableType);
+			typedVal = LoadOrAggregateValue(typedVal);
 			mBfIRBuilder->CreateStore(typedVal.mValue, srcAlloca);
 			srcPtr = srcAlloca;
 		}
