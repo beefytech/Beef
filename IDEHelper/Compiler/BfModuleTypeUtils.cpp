@@ -9520,7 +9520,7 @@ BfType* BfModule::ResolveGenericType(BfType* unspecializedType, BfTypeVector* ty
 		if (typeDef->mIsDelegate)
 		{
 			BfDefBuilder::AddMethod(typeDef, BfMethodType_Ctor, BfProtection_Public, false, "");
-			BfDefBuilder::AddDynamicCastMethods(typeDef);
+			BfDefBuilder::AddDynamicCastMethods(typeDef, true);
 		}
 
 		delegateType->mContext = mContext;
@@ -12907,7 +12907,7 @@ BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType po
 		if (typeDef->mIsDelegate)
 		{
 			BfDefBuilder::AddMethod(typeDef, BfMethodType_Ctor, BfProtection_Public, false, "");
-			BfDefBuilder::AddDynamicCastMethods(typeDef);
+			BfDefBuilder::AddDynamicCastMethods(typeDef, true);
 		}
 
 		delegateType->mContext = mContext;

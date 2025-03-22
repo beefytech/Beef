@@ -1355,9 +1355,9 @@ BfMethodDef* BfDefBuilder::AddDtor(BfTypeDef* typeDef)
 	return methodDef;
 }
 
-void BfDefBuilder::AddDynamicCastMethods(BfTypeDef* typeDef)
+void BfDefBuilder::AddDynamicCastMethods(BfTypeDef* typeDef, bool needsDynamicCastMethods)
 {
-	//
+	if (needsDynamicCastMethods)
 	{
 		auto methodDef = new BfMethodDef();
 		methodDef->mIdx = (int)typeDef->mMethods.size();
@@ -1378,7 +1378,7 @@ void BfDefBuilder::AddDynamicCastMethods(BfTypeDef* typeDef)
 		methodDef->mIsNoReflect = true;
 	}
 
-	//
+	if (needsDynamicCastMethods)
 	{
 		auto methodDef = new BfMethodDef();
 		methodDef->mIdx = (int)typeDef->mMethods.size();
@@ -2392,10 +2392,10 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		isAutocomplete = true;
 
 	//TODO: Don't do this for the autocomplete pass
-	if ((needsDynamicCastMethod) && (mCurTypeDef->mTypeCode != BfTypeCode_Interface) && (mCurTypeDef->mTypeCode != BfTypeCode_Extension) &&
+	if ((mCurTypeDef->mTypeCode != BfTypeCode_Interface) && (mCurTypeDef->mTypeCode != BfTypeCode_Extension) &&
 		(!mCurTypeDef->mIsStatic) && (!isAutocomplete) && (!isAlias) && (!mCurTypeDef->mIsOpaque))
 	{
-		AddDynamicCastMethods(mCurTypeDef);
+		AddDynamicCastMethods(mCurTypeDef, needsDynamicCastMethod);
 	}
 
 	bool isPayloadEnum = false;

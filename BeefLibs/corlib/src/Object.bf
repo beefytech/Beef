@@ -130,13 +130,13 @@ namespace System
 		{
 		    return null;
 		}
+#endif
 
 		[NoShow]
 		public virtual Object DynamicCastToSignature(int32 sig)
 		{
 		    return null;
 		}
-#endif
 
         int IHashable.GetHashCode()
         {
