@@ -4104,7 +4104,7 @@ bool BfExprEvaluator::CheckForMethodName(BfAstNode* refNode, BfTypeInstance* typ
 }
 
 bool BfExprEvaluator::IsVar(BfType* type, bool forceIgnoreWrites)
-{
+{	
 	if (type->IsVar())
 		return true;
 	if ((type->IsGenericParam()) && (!forceIgnoreWrites) && (!mModule->mBfIRBuilder->mIgnoreWrites))
@@ -5742,7 +5742,7 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue target, const StringImpl& fieldName, BfLookupFieldFlags flags)
 {
  	if (target)
- 		flags = (BfLookupFieldFlags)(flags | BfLookupFieldFlag_HasInstance);
+ 		flags = (BfLookupFieldFlags)(flags | BfLookupFieldFlag_HasInstance);	
 
 	if ((target.mType != NULL && (target.mType->IsGenericParam())))
 	{
@@ -11282,6 +11282,12 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 		else
 			mResult.mKind = BfTypedValueKind_Addr;
 	}
+	else if (mResult.mType->IsAllocType())
+	{
+		BF_ASSERT(mResult.mValue.IsFake());
+		mResult.mType = mResult.mType->GetUnderlyingType();
+	}
+
 	mIsVolatileReference = false;
 	mIsHeapReference = false;
 
