@@ -1398,6 +1398,27 @@ void BfDefBuilder::AddDynamicCastMethods(BfTypeDef* typeDef)
 		methodDef->mReturnTypeRef = typeDef->mSystem->mDirectObjectTypeRef;
 		methodDef->mIsNoReflect = true;
 	}
+
+	if ((typeDef->mIsDelegate) && (!typeDef->mIsClosure))
+	{
+		auto methodDef = new BfMethodDef();
+		methodDef->mIdx = (int)typeDef->mMethods.size();
+		typeDef->mMethods.push_back(methodDef);
+		methodDef->mDeclaringType = typeDef;
+		methodDef->mName = BF_METHODNAME_DYNAMICCAST_SIGNATURE;
+		methodDef->mProtection = BfProtection_Protected;
+		methodDef->mIsStatic = false;
+		methodDef->mMethodType = BfMethodType_Normal;
+		methodDef->mIsVirtual = true;
+		methodDef->mIsOverride = true;
+
+		auto paramDef = new BfParameterDef();
+		paramDef->mName = "sig";
+		paramDef->mTypeRef = typeDef->mSystem->mDirectInt32TypeRef;
+		methodDef->mParams.push_back(paramDef);
+		methodDef->mReturnTypeRef = typeDef->mSystem->mDirectObjectTypeRef;
+		methodDef->mIsNoReflect = true;
+	}
 }
 
 void BfDefBuilder::AddParam(BfMethodDef* methodDef, BfTypeReference* typeRef, const StringImpl& paramName)

@@ -1552,6 +1552,7 @@ public:
 	Dictionary<int, BfIRValue> mStringCharPtrPool;
 	Array<int> mStringPoolRefs;
 	HashSet<int> mUnreifiedStringPoolRefs;
+	HashSet<int> mSignatureIdRefs;
 
 	Array<BfIRBuilder*> mPrevIRBuilders; // Before extensions
 	BfIRBuilder* mBfIRBuilder;
@@ -2019,6 +2020,9 @@ public:
 	void CreateDelegateInvokeMethod();
 	BfType* GetDelegateReturnType(BfType* delegateType);
 	BfMethodInstance* GetDelegateInvokeMethod(BfTypeInstance* typeInstance);
+	String GetDelegateSignatureString(BfTypeInstance* typeInstance);	
+	int GetSignatureId(const StringImpl& str);
+	int GetDelegateSignatureId(BfTypeInstance* typeInstance);
 	String GetLocalMethodName(const StringImpl& baseName, BfAstNode* anchorNode, BfMethodState* declMethodState, BfMixinState* declMixinState);
 	BfMethodDef* GetLocalMethodDef(BfLocalMethod* localMethod);
 	BfModuleMethodInstance GetLocalMethodInstance(BfLocalMethod* localMethod, const BfTypeVector& methodGenericArguments, BfMethodInstance* methodInstance = NULL, bool force = false);

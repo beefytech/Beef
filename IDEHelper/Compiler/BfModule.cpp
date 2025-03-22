@@ -5053,14 +5053,11 @@ void BfModule::CreateDynamicCastMethod()
 	}
 
 	bool isInterfacePass = mCurMethodInstance->mMethodDef->mName == BF_METHODNAME_DYNAMICCAST_INTERFACE;
-
+	bool isSignaturePass = mCurMethodInstance->mMethodDef->mName == BF_METHODNAME_DYNAMICCAST_SIGNATURE;
+	
 	auto func = mCurMethodState->mIRFunction;
 	auto thisValue = mBfIRBuilder->GetArgument(0);
 	auto typeIdValue = mBfIRBuilder->GetArgument(1);
-
-	auto intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
-	auto int32Type = GetPrimitiveType(BfTypeCode_Int32);
-	typeIdValue = CastToValue(NULL, BfTypedValue(typeIdValue, intPtrType), int32Type, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_SilentFail));
 
 	auto thisObject = mBfIRBuilder->CreateBitCast(thisValue, mBfIRBuilder->MapType(objType));
 
@@ -5068,76 +5065,94 @@ void BfModule::CreateDynamicCastMethod()
 	//auto falseBB = mBfIRBuilder->CreateBlock("check.false");
 	auto exitBB = mBfIRBuilder->CreateBlock("exit");
 
-	SizedArray<int, 8> typeMatches;
-	SizedArray<BfTypeInstance*, 8> exChecks;
-	FindSubTypes(mCurTypeInstance, &typeMatches, &exChecks, isInterfacePass);
-
-	if ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType()))
-	{
-		// Add 'unbound' type id to cast list so things like "List<int> is List<>" work
-		auto genericTypeInst = mCurTypeInstance->mTypeDef;
-		BfTypeVector genericArgs;
-		for (int i = 0; i < (int) genericTypeInst->mGenericParamDefs.size(); i++)
-			genericArgs.push_back(GetGenericParamType(BfGenericParamKind_Type, i));
-		auto unboundType = ResolveTypeDef(mCurTypeInstance->mTypeDef->GetDefinition(), genericArgs, BfPopulateType_Declaration);
-		typeMatches.push_back(unboundType->mTypeId);
-	}
-
-	if (mCurTypeInstance->IsBoxed())
-	{
-		BfBoxedType* boxedType = (BfBoxedType*)mCurTypeInstance;
-		BfTypeInstance* innerType = boxedType->mElementType->ToTypeInstance();
-
-		FindSubTypes(innerType, &typeMatches, &exChecks, isInterfacePass);
-
-		if (innerType->IsTypedPrimitive())
-		{
-			auto underlyingType = innerType->GetUnderlyingType();
-			typeMatches.push_back(underlyingType->mTypeId);
-		}
-
-		auto innerTypeInst = innerType->ToTypeInstance();
-		if ((innerTypeInst->IsInstanceOf(mCompiler->mSizedArrayTypeDef)) ||
-			(innerTypeInst->IsInstanceOf(mCompiler->mPointerTTypeDef)) ||
-			(innerTypeInst->IsInstanceOf(mCompiler->mMethodRefTypeDef)))
-		{
-			PopulateType(innerTypeInst);
-			//TODO: What case was this supposed to handle?
-			//typeMatches.push_back(innerTypeInst->mFieldInstances[0].mResolvedType->mTypeId);
-		}
-	}
-
-	auto curBlock = mBfIRBuilder->GetInsertBlock();
-
-	BfIRValue vDataPtr;
-	if (!exChecks.empty())
-	{
-		BfType* intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
-		auto ptrPtrType = mBfIRBuilder->GetPointerTo(mBfIRBuilder->GetPointerTo(mBfIRBuilder->MapType(intPtrType)));
-		auto vDataPtrPtr = mBfIRBuilder->CreateBitCast(thisValue, ptrPtrType);
-		vDataPtr = FixClassVData(mBfIRBuilder->CreateLoad(vDataPtrPtr/*, "vtable"*/));
-	}
-
-	auto switchStatement = mBfIRBuilder->CreateSwitch(typeIdValue, exitBB, (int)typeMatches.size() + (int)exChecks.size());
-	for (auto typeMatch : typeMatches)
-		mBfIRBuilder->AddSwitchCase(switchStatement, GetConstValue32(typeMatch), trueBB);
-
 	Array<BfIRValue> incomingFalses;
-	for (auto ifaceTypeInst : exChecks)
+	BfIRBlock curBlock;
+
+	if (isSignaturePass)
 	{
-		BfIRBlock nextBB = mBfIRBuilder->CreateBlock("exCheck", true);
-		mBfIRBuilder->AddSwitchCase(switchStatement, GetConstValue32(ifaceTypeInst->mTypeId), nextBB);
-		mBfIRBuilder->SetInsertPoint(nextBB);
+		//auto falseBB = mBfIRBuilder->CreateBlock("check.false");
+		curBlock = mBfIRBuilder->GetInsertBlock();
 
-		BfIRValue slotOfs = GetInterfaceSlotNum(ifaceTypeInst);
+		auto signatureId = GetDelegateSignatureId(mCurTypeInstance);		
+		auto eqResult = mBfIRBuilder->CreateCmpEQ(typeIdValue, GetConstValue32(signatureId));
+		mBfIRBuilder->CreateCondBr(eqResult, trueBB, exitBB);				
+	}
+	else
+	{
+		auto intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
+		auto int32Type = GetPrimitiveType(BfTypeCode_Int32);
+		typeIdValue = CastToValue(NULL, BfTypedValue(typeIdValue, intPtrType), int32Type, (BfCastFlags)(BfCastFlags_Explicit | BfCastFlags_SilentFail));
 
-		auto ifacePtrPtr = mBfIRBuilder->CreateInBoundsGEP(vDataPtr, slotOfs/*, "iface"*/);
-		auto ifacePtr = mBfIRBuilder->CreateLoad(ifacePtrPtr);
+		SizedArray<int, 8> typeMatches;
+		SizedArray<BfTypeInstance*, 8> exChecks;
+		FindSubTypes(mCurTypeInstance, &typeMatches, &exChecks, isInterfacePass);
 
-		auto cmpResult = mBfIRBuilder->CreateCmpNE(ifacePtr, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0));
-		mBfIRBuilder->CreateCondBr(cmpResult, trueBB, exitBB);
+		if ((mCurTypeInstance->IsGenericTypeInstance()) && (!mCurTypeInstance->IsUnspecializedType()))
+		{
+			// Add 'unbound' type id to cast list so things like "List<int> is List<>" work
+			auto genericTypeInst = mCurTypeInstance->mTypeDef;
+			BfTypeVector genericArgs;
+			for (int i = 0; i < (int)genericTypeInst->mGenericParamDefs.size(); i++)
+				genericArgs.push_back(GetGenericParamType(BfGenericParamKind_Type, i));
+			auto unboundType = ResolveTypeDef(mCurTypeInstance->mTypeDef->GetDefinition(), genericArgs, BfPopulateType_Declaration);
+			typeMatches.push_back(unboundType->mTypeId);
+		}
 
-		incomingFalses.push_back(nextBB);
+		if (mCurTypeInstance->IsBoxed())
+		{
+			BfBoxedType* boxedType = (BfBoxedType*)mCurTypeInstance;
+			BfTypeInstance* innerType = boxedType->mElementType->ToTypeInstance();
+
+			FindSubTypes(innerType, &typeMatches, &exChecks, isInterfacePass);
+
+			if (innerType->IsTypedPrimitive())
+			{
+				auto underlyingType = innerType->GetUnderlyingType();
+				typeMatches.push_back(underlyingType->mTypeId);
+			}
+
+			auto innerTypeInst = innerType->ToTypeInstance();
+			if ((innerTypeInst->IsInstanceOf(mCompiler->mSizedArrayTypeDef)) ||
+				(innerTypeInst->IsInstanceOf(mCompiler->mPointerTTypeDef)) ||
+				(innerTypeInst->IsInstanceOf(mCompiler->mMethodRefTypeDef)))
+			{
+				PopulateType(innerTypeInst);
+				//TODO: What case was this supposed to handle?
+				//typeMatches.push_back(innerTypeInst->mFieldInstances[0].mResolvedType->mTypeId);
+			}
+		}
+
+		curBlock = mBfIRBuilder->GetInsertBlock();
+
+		BfIRValue vDataPtr;
+		if (!exChecks.empty())
+		{
+			BfType* intPtrType = GetPrimitiveType(BfTypeCode_IntPtr);
+			auto ptrPtrType = mBfIRBuilder->GetPointerTo(mBfIRBuilder->GetPointerTo(mBfIRBuilder->MapType(intPtrType)));
+			auto vDataPtrPtr = mBfIRBuilder->CreateBitCast(thisValue, ptrPtrType);
+			vDataPtr = FixClassVData(mBfIRBuilder->CreateLoad(vDataPtrPtr/*, "vtable"*/));
+		}
+
+		auto switchStatement = mBfIRBuilder->CreateSwitch(typeIdValue, exitBB, (int)typeMatches.size() + (int)exChecks.size());
+		for (auto typeMatch : typeMatches)
+			mBfIRBuilder->AddSwitchCase(switchStatement, GetConstValue32(typeMatch), trueBB);
+		
+		for (auto ifaceTypeInst : exChecks)
+		{
+			BfIRBlock nextBB = mBfIRBuilder->CreateBlock("exCheck", true);
+			mBfIRBuilder->AddSwitchCase(switchStatement, GetConstValue32(ifaceTypeInst->mTypeId), nextBB);
+			mBfIRBuilder->SetInsertPoint(nextBB);
+
+			BfIRValue slotOfs = GetInterfaceSlotNum(ifaceTypeInst);
+
+			auto ifacePtrPtr = mBfIRBuilder->CreateInBoundsGEP(vDataPtr, slotOfs/*, "iface"*/);
+			auto ifacePtr = mBfIRBuilder->CreateLoad(ifacePtrPtr);
+
+			auto cmpResult = mBfIRBuilder->CreateCmpNE(ifacePtr, mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, 0));
+			mBfIRBuilder->CreateCondBr(cmpResult, trueBB, exitBB);
+
+			incomingFalses.push_back(nextBB);
+		}
 	}
 
 	mBfIRBuilder->AddBlock(trueBB);
@@ -10947,8 +10962,25 @@ void BfModule::EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* tar
 
 	auto typeTypeInstance = ResolveTypeDef(mCompiler->mReflectTypeInstanceTypeDef)->ToTypeInstance();
 
-	if (mCompiler->mOptions.mAllowHotSwapping)
+	if (targetType->IsDelegate())
 	{
+		// Delegate signature check
+		int signatureId = GetDelegateSignatureId(targetType->ToTypeInstance());		
+		BfExprEvaluator exprEvaluator(this);
+
+		AddBasicBlock(checkBB);
+		auto objectParam = mBfIRBuilder->CreateBitCast(targetValue.mValue, mBfIRBuilder->MapType(mContext->mBfObjectType));
+		auto moduleMethodInstance = GetMethodByName(mContext->mBfObjectType, "DynamicCastToSignature");
+		SizedArray<BfIRValue, 4> irArgs;
+		irArgs.push_back(objectParam);
+		irArgs.push_back(GetConstValue32(signatureId));
+		auto callResult = exprEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, false, irArgs);
+		auto cmpResult = mBfIRBuilder->CreateCmpNE(callResult.mValue, GetDefaultValue(callResult.mType));
+		irb->CreateCondBr(cmpResult, trueBlock, falseBlock);
+	}
+	else if (mCompiler->mOptions.mAllowHotSwapping)
+	{
+		// "Slow" check
 		BfExprEvaluator exprEvaluator(this);
 
 		AddBasicBlock(checkBB);
@@ -10967,7 +10999,7 @@ void BfModule::EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* tar
 		BfIRValue vDataPtr = irb->CreateBitCast(targetValue.mValue, irb->MapType(intPtrType));
 		vDataPtr = irb->CreateLoad(vDataPtr);
 		if ((mCompiler->mOptions.mObjectHasDebugFlags) && (!mIsComptimeModule))
-			vDataPtr = irb->CreateAnd(vDataPtr, irb->CreateConst(BfTypeCode_IntPtr, (uint64)~0xFFULL));
+			vDataPtr = irb->CreateAnd(vDataPtr, irb->CreateConst(BfTypeCode_IntPtr, (uint64)~0xFFULL));		
 
 		if (targetType->IsInterface())
 		{
@@ -17291,7 +17323,59 @@ BfType* BfModule::GetDelegateReturnType(BfType* delegateType)
 
 BfMethodInstance* BfModule::GetDelegateInvokeMethod(BfTypeInstance* typeInstance)
 {
+	if (typeInstance->IsClosure())
+		typeInstance = typeInstance->mBaseType;
 	return GetRawMethodInstanceAtIdx(typeInstance, 0, "Invoke");
+}
+
+String BfModule::GetDelegateSignatureString(BfTypeInstance* typeInstance)
+{
+	auto invokeMethod = GetDelegateInvokeMethod(typeInstance);
+	if (invokeMethod == NULL)
+		return "";
+
+	String sigString = "";
+	sigString = TypeToString(invokeMethod->mReturnType);
+	sigString += "(";
+	for (int paramIdx = 0; paramIdx < invokeMethod->GetParamCount(); paramIdx++)
+	{
+		if (paramIdx > 0)
+			sigString += ", ";
+
+		auto paramKind = invokeMethod->GetParamKind(paramIdx);
+
+		if (paramKind == BfParamKind_Params)
+		{
+			sigString += "params ";
+		}
+
+		auto paramType = invokeMethod->GetParamType(paramIdx);
+		sigString += TypeToString(paramType);
+		
+		if (paramKind == BfParamKind_ExplicitThis)
+			sigString += " this";
+	}
+	sigString += ")";
+	return sigString;
+}
+
+int BfModule::GetSignatureId(const StringImpl& str)
+{
+	int strId = mContext->GetStringLiteralId(str);
+	mSignatureIdRefs.Add(strId);
+	return strId;
+}
+
+int BfModule::GetDelegateSignatureId(BfTypeInstance* typeInstance)
+{
+	BF_ASSERT(typeInstance->IsDelegate());
+	if (typeInstance->mTypeInfoEx == NULL)
+	{
+		typeInstance->mTypeInfoEx = new BfTypeInfoEx();
+		auto signature = GetDelegateSignatureString(typeInstance);
+		typeInstance->mTypeInfoEx->mMinValue = GetSignatureId(signature);
+	}
+	return (int)typeInstance->mTypeInfoEx->mMinValue;
 }
 
 void BfModule::CreateDelegateInvokeMethod()
@@ -22544,7 +22628,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				mCurMethodState->mLeftBlockUncond = true;
 			}
 		}
-		else if ((methodDef->mName == BF_METHODNAME_DYNAMICCAST) || (methodDef->mName == BF_METHODNAME_DYNAMICCAST_INTERFACE))
+		else if ((methodDef->mName == BF_METHODNAME_DYNAMICCAST) || (methodDef->mName == BF_METHODNAME_DYNAMICCAST_INTERFACE) || (methodDef->mName == BF_METHODNAME_DYNAMICCAST_SIGNATURE))
 		{
 			if (mCurTypeInstance->IsObject())
 			{

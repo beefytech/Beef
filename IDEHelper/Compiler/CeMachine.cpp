@@ -8110,16 +8110,28 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			{
 				CE_CHECKADDR(valueAddr, sizeof(int32));
 
-				auto ifaceType = GetBfType(ifaceId);
+				auto wantType = GetBfType(ifaceId);
 				int32 objTypeId = *(int32*)(memStart + valueAddr);
 				auto valueType = GetBfType(objTypeId);
-				if ((ifaceType == NULL) || (valueType == NULL))
+				if ((wantType == NULL) || (valueType == NULL))
 				{
 					_Fail("Invalid type in CeOp_DynamicCastCheck");
 					return false;
 				}
 
-				if (ceModule->TypeIsSubTypeOf(valueType->ToTypeInstance(), ifaceType->ToTypeInstance(), false))
+				bool matches = false;
+				if (ceModule->TypeIsSubTypeOf(valueType->ToTypeInstance(), wantType->ToTypeInstance(), false))
+				{
+					matches = true;					
+				}
+				else if ((valueType->IsDelegate()) && (wantType->IsDelegate()))
+				{
+					int valueSignatureId = ceModule->GetDelegateSignatureId(valueType->ToTypeInstance());
+					int checkSignatureId = ceModule->GetDelegateSignatureId(wantType->ToTypeInstance());
+					matches = valueSignatureId == checkSignatureId;
+				}
+				
+				if (matches)
 					CeSetAddrVal(&result, valueAddr, ptrSize);
 				else
 					CeSetAddrVal(&result, 0, ptrSize);

@@ -851,6 +851,7 @@ enum BfCallingConvention : uint8
 #define BF_METHODNAME_FIND_TLS_MEMBERS "GCFindTLSMembers"
 #define BF_METHODNAME_DYNAMICCAST "DynamicCastToTypeId"
 #define BF_METHODNAME_DYNAMICCAST_INTERFACE "DynamicCastToInterface"
+#define BF_METHODNAME_DYNAMICCAST_SIGNATURE "DynamicCastToSignature"
 #define BF_METHODNAME_CALCAPPEND "this$calcAppend"
 #define BF_METHODNAME_ENUM_HASFLAG "HasFlag"
 #define BF_METHODNAME_ENUM_GETUNDERLYING "get__Underlying"
