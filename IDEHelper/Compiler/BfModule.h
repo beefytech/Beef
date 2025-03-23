@@ -1846,6 +1846,7 @@ public:
 	bool AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGenericParamInstance* checkOuter);
 	bool CheckConstraintState(BfAstNode* refNode);
 	void ValidateGenericParams(BfGenericParamKind genericParamKind, Span<BfGenericParamInstance*> genericParams);
+	void SetGenericValidationError(BfTypeInstance* typeInst);
 	bool ShouldAllowMultipleDefinitions(BfTypeInstance* typeInst, BfTypeDef* firstDeclaringTypeDef, BfTypeDef* secondDeclaringTypeDef);
 	void CheckInjectNewRevision(BfTypeInstance* typeInstance);
 	void InitType(BfType* resolvedTypeRef, BfPopulateType populateType);

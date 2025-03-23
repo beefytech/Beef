@@ -394,6 +394,26 @@ void BfModule::ValidateGenericParams(BfGenericParamKind genericParamKind, Span<B
 	}
 }
 
+void BfModule::SetGenericValidationError(BfTypeInstance* typeInst)
+{
+	if ((typeInst->mGenericTypeInfo == NULL) || (typeInst->mGenericTypeInfo->mHadValidateErrors))
+		return;
+	typeInst->mGenericTypeInfo->mHadValidateErrors = true;
+
+	for (auto depKV : typeInst->mDependencyMap)
+	{
+		auto depType = depKV.mKey;
+		auto depEntry = depKV.mValue;
+		if ((depEntry.mFlags & BfDependencyMap::DependencyFlag_TypeGenericArg) != 0)
+		{
+			BF_ASSERT(depType->IsGenericTypeInstance());
+
+			// If A<T> had validate errors then consider B<A<T>> to have validate errors
+			SetGenericValidationError(depType->ToTypeInstance());
+		}
+	}
+}
+
 bool BfModule::ValidateGenericConstraints(BfAstNode* typeRef, BfTypeInstance* genericTypeInst, bool ignoreErrors)
 {
 	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsTypeAlias()) && (mCurTypeInstance->IsGenericTypeInstance()))
@@ -421,7 +441,7 @@ bool BfModule::ValidateGenericConstraints(BfAstNode* typeRef, BfTypeInstance* ge
 			mContext->mUnreifiedModule->PopulateType(underlyingType, BfPopulateType_Declaration);
 			bool result = ValidateGenericConstraints(typeRef, underlyingGenericType, ignoreErrors);
 			if (underlyingGenericType->mGenericTypeInfo->mHadValidateErrors)
-				genericTypeInst->mGenericTypeInfo->mHadValidateErrors = true;
+				SetGenericValidationError(genericTypeInst);
 			return result;
 		}
 		return true;
@@ -443,7 +463,7 @@ bool BfModule::ValidateGenericConstraints(BfAstNode* typeRef, BfTypeInstance* ge
 		auto outerType = GetOuterType(genericTypeInst);
 		mContext->mUnreifiedModule->PopulateType(outerType, BfPopulateType_Declaration);
 		if ((outerType->mGenericTypeInfo != NULL) && (outerType->mGenericTypeInfo->mHadValidateErrors))
-			genericTypeInst->mGenericTypeInfo->mHadValidateErrors = true;
+			SetGenericValidationError(genericTypeInst);
 	}
 
 	for (int paramIdx = startGenericParamIdx; paramIdx < (int)genericTypeInst->mGenericTypeInfo->mGenericParams.size(); paramIdx++)
@@ -464,7 +484,7 @@ bool BfModule::ValidateGenericConstraints(BfAstNode* typeRef, BfTypeInstance* ge
 		if ((genericArg == NULL) || (!CheckGenericConstraints(BfGenericParamSource(genericTypeInst), genericArg, typeRef, genericParamInstance, NULL, &error)))
 		{
 			if (!genericTypeInst->IsUnspecializedTypeVariation())
-				genericTypeInst->mGenericTypeInfo->mHadValidateErrors = true;
+				SetGenericValidationError(genericTypeInst);
 			return false;
 		}
 	}
@@ -16050,6 +16070,12 @@ void BfModule::VariantToString(StringImpl& str, const BfVariant& variant, BfType
 void BfModule::DoTypeToString(StringImpl& str, BfType* resolvedType, BfTypeNameFlags typeNameFlags, Array<String>* genericMethodNameOverrides)
 {
 	BP_ZONE("BfModule::DoTypeToString");
+
+	if (resolvedType == NULL)
+	{
+		str += "NULL";
+		return;
+	}
 
 	if (resolvedType->mContext == NULL)
 	{

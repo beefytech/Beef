@@ -150,6 +150,8 @@ namespace IDETest
 			TestExt<int>.InnerB<int> c;
 			TestExt<int>.InnerC d;
 			TestExt<float>.InnerC e; //FAIL
+
+			List<String?> badArgType; //FAIL
 		}
 	}
 }
