@@ -11062,7 +11062,9 @@ namespace IDE
 			String errorString = scope String();
 			if (!DoResolveConfigString(platformName, workspaceOptions, project, options, configString, errorString, outResult))
 			{
-				OutputErrorLine("Invalid macro in {0}: {1}", errorContext, errorString);
+				if (!CustomBuildProperties.Contains(errorString))
+					OutputErrorLine("Invalid macro in {0}: {1}", errorContext, errorString);
+
 				return false;
 			}
 			return true;
