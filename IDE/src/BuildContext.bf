@@ -1375,6 +1375,9 @@ namespace IDE
 
 		public bool QueueProjectCompile(Project project, Project hotProject, IDEApp.BuildCompletedCmd completedCompileCmd, List<String> hotFileNames, CompileKind compileKind)
 		{
+			CustomBuildProperties.ResolveProjectProperties(project);
+			defer CustomBuildProperties.UnresolveProjectProperties(project);
+
 			project.mLastDidBuild = false;
 
 			TestManager.ProjectInfo testProjectInfo = null;

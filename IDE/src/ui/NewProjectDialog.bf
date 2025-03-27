@@ -143,7 +143,6 @@ namespace IDE.ui
 				app.mWorkspace.mDir = new String(projDirectory);
 				app.mWorkspace.mName = new String(projName);
 
-				app.LoadProperties(true);
 				app.[Friend]LoadWorkspace(.OpenOrNew);
 				app.[Friend]FinishShowingNewWorkspace(false);
 
