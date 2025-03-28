@@ -177,7 +177,7 @@ namespace System.IO
 
 		public override Result<void> Close()
 		{
-			let ret = Flush();
+			let ret = FlushBuffer();
 			
 			mPos = 0;
 			mBufferPos = -Int32.MinValue;
