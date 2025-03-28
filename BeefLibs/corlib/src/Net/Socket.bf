@@ -604,13 +604,6 @@ namespace System.Net
 			return AcceptFrom(listenSocket, &clientAddr, &clientAddrLen);
 		}
 
-		public Result<void> AcceptFrom(Socket listenSocket, out SockAddr_in6 clientAddr)
-		{
-			clientAddr = default;
-			int32 clientAddrLen = sizeof(SockAddr_in6);
-			return AcceptFrom(listenSocket, &clientAddr, &clientAddrLen);
-		}
-
 		public Result<void> AcceptFrom(Socket listenSocket) => AcceptFrom(listenSocket, null, null);
 
 		public static int32 Select(FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, int waitTimeMS)
@@ -717,13 +710,6 @@ namespace System.Net
 			from = default;
 			//from.sin_family = AF_INET;
 			int32 fromLen = sizeof(SockAddr_in);
-			return RecvFrom(ptr, size, &from, ref fromLen);
-		}
-
-		public Result<int> RecvFrom(void* ptr, int size, out SockAddr_in6 from)
-		{
-			from = default;
-			int32 fromLen = sizeof(SockAddr_in6);
 			return RecvFrom(ptr, size, &from, ref fromLen);
 		}
 
