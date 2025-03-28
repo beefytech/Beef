@@ -3241,6 +3241,27 @@ namespace IDE
 		public Result<Project, ProjectAddError> AddProject(StringView projectName, VerSpec verSpec)
 		{
 			VerSpec useVerSpec = verSpec;
+
+			switch (useVerSpec)
+			{
+			case .None:
+
+			case .SemVer(let ver):
+				String unresolvedVersion = scope String(ver.mVersion);
+				CustomBuildProperties.ResolveString(unresolvedVersion, ver.mVersion);
+
+			case .Path(let path):
+				String unresolvedPath = scope String(path);
+				CustomBuildProperties.ResolveString(unresolvedPath, path);
+
+			case .Git(let url, let ver):
+				String unresolvedUrl = scope String(url);
+				CustomBuildProperties.ResolveString(unresolvedUrl, url);
+
+				String unresolvedVersion = scope String(ver.mVersion);
+				CustomBuildProperties.ResolveString(unresolvedVersion, ver.mVersion);
+			}
+
 			String verConfigDir = mWorkspace.mDir;
 
 			if (let project = mWorkspace.FindProject(projectName))

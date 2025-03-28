@@ -1040,7 +1040,6 @@ namespace IDE
 				data.GetString("Copyright", mCopyright);
 				data.GetString("FileVersion", mFileVersion);
 				data.GetString("ProductVersion", mProductVersion);
-				String resolvedProductVersion = scope String();
 			}
 
 			public void Serialize(StructuredData data)

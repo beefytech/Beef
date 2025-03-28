@@ -198,11 +198,6 @@ namespace IDE
 			}
 		}
 
-		static public void ResolveWorkspaceProperties(Workspace workspace)
-		{
-
-		}
-
 		static public void ResolveProjectProperties(Project project)
 		{
 			if (project == null)
