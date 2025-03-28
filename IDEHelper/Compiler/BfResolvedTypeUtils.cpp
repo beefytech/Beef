@@ -2861,6 +2861,25 @@ bool BfTypeInstance::IsValuelessType()
 	return false;
 }
 
+bool BfTypeInstance::IsValuelessCReprType()
+{
+	if (!mIsCRepr)
+		return false;
+	if (mInstSize > 1)
+		return false;
+	if ((mBaseType->mIsCRepr) && (!IsValuelessCReprType()))
+		return false;
+
+	BF_ASSERT((mDefineState >= BfTypeDefineState_Defined) || (mTypeFailed));
+	for (auto& fieldInst : mFieldInstances)
+	{
+		if (fieldInst.mDataIdx >= 0)
+			return false;
+	}
+
+	return true;
+}
+
 bool BfTypeInstance::IsIRFuncUsed(BfIRFunction func)
 {
 	for (auto& group : mMethodInstanceGroups)

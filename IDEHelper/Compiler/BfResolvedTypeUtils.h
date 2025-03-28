@@ -2175,6 +2175,7 @@ public:
 	//virtual bool IsValuelessType() override { return (mIsTypedPrimitive) && (mInstSize == 0); }
 	virtual bool CanBeValuelessType() override { return (mTypeDef->mTypeCode == BfTypeCode_Struct) || (mTypeDef->mTypeCode == BfTypeCode_Enum); }
 	virtual bool IsValuelessType() override;
+	virtual bool IsValuelessCReprType();
 	virtual bool HasPackingHoles() override { return mHasPackingHoles; }
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef) override;
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProject* curProject) override;

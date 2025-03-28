@@ -4615,7 +4615,15 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			typeInstance->mInstSize = baseTypeInst->mInstSize;
 			typeInstance->mInstAlign = baseTypeInst->mInstAlign;
 			typeInstance->mAlign = baseTypeInst->mAlign;
-			typeInstance->mSize = baseTypeInst->mSize;
+			typeInstance->mSize = baseTypeInst->mSize;	
+
+ 			if (baseTypeInst->IsValuelessCReprType())
+			{
+				typeInstance->mInstSize = 0;
+				if (typeInstance->IsValueType())
+					typeInstance->mSize = 0;
+			}
+
 			typeInstance->mHasPackingHoles = baseTypeInst->mHasPackingHoles;
 			if (baseTypeInst->mIsTypedPrimitive)
 				typeInstance->mIsTypedPrimitive = true;
