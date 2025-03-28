@@ -2880,6 +2880,20 @@ bool BfTypeInstance::IsValuelessCReprType()
 	return true;
 }
 
+BfTypeInstance* BfTypeInstance::GetBaseType(bool remapValuelessCRepr)
+{
+	if (!remapValuelessCRepr)
+		return mBaseType;
+	auto checkType = mBaseType;
+	while (checkType != NULL)
+	{
+		if (!checkType->IsValuelessCReprType())
+			break;
+		checkType = checkType->mBaseType;
+	}
+	return checkType;
+}
+
 bool BfTypeInstance::IsIRFuncUsed(BfIRFunction func)
 {
 	for (auto& group : mMethodInstanceGroups)

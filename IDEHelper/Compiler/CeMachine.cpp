@@ -4492,10 +4492,11 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 			auto typeInst = type->ToTypeInstance();
 			int idx = 0;
 
-			if (typeInst->mBaseType != NULL)
+			auto baseType = typeInst->GetBaseType(true);
+			if (baseType != NULL)
 			{
 				auto baseConstant = module->mBfIRBuilder->GetConstant(aggConstant->mValues[0]);
-				if (!WriteConstant(module, addr, baseConstant, typeInst->mBaseType))
+				if (!WriteConstant(module, addr, baseConstant, baseType))
 					return false;
 			}
 
@@ -5034,9 +5035,10 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 			return irBuilder->CreateConstNull(irBuilder->MapType(typeInst));
 		}
 
-		if (typeInst->mBaseType != NULL)
+		auto baseType = typeInst->GetBaseType(true);
+		if (baseType != NULL)
 		{
-			auto result = CreateConstant(module, instData, typeInst->mBaseType);
+			auto result = CreateConstant(module, instData, baseType);
 			if (!result)
 				return BfIRValue();
 			fieldVals.Add(result);

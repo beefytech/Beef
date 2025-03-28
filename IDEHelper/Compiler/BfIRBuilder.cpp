@@ -3784,7 +3784,14 @@ void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInst
 	SizedArray<BfIRType, 256> irFieldTypes;
 	if ((!typeInstance->IsTypedPrimitive()) && (typeInstance->mBaseType != NULL))
 	{
-		irFieldTypes.push_back(MapTypeInst(typeInstance->mBaseType, BfIRPopulateType_Eventually_Full));
+		if (typeInstance->mBaseType->IsValuelessCReprType())
+		{
+			// Fake an empty type to avoid having a one-byte base type
+			auto valueTypeType = mModule->ResolveTypeDef(mModule->mCompiler->mValueTypeTypeDef);
+			irFieldTypes.push_back(MapType(valueTypeType, BfIRPopulateType_Eventually_Full));
+		}
+		else
+			irFieldTypes.push_back(MapTypeInst(typeInstance->mBaseType, BfIRPopulateType_Eventually_Full));
 	}
 
 	SizedArray<BfIRMDNode, 256> diFieldTypes;
