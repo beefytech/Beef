@@ -61,11 +61,12 @@ namespace IDE
 			mProjects.Clear();
 		}
 
-		static public void Load()
+		static public void Load(bool clearExistingProperties = true)
 		{
 			const char8* PROPERTIES_STR = "Properties";
 
-			Clear();
+			if (clearExistingProperties)
+				Clear();
 
 			String propertiesFileName = scope String();
 			GetFileName(propertiesFileName);
@@ -85,20 +86,29 @@ namespace IDE
 
 			for (var property in data.Enumerate(PROPERTIES_STR))
 			{
-				String propertyStr = new String();
-				property.ToString(propertyStr);
+				String propertyName = new String();
+				property.ToString(propertyName);
 
-				if (Contains(propertyStr))
+				if (Contains(propertyName))
 				{
-					delete propertyStr;
+					delete propertyName;
 					continue;
 				}
 
 				String propertyValue = new String();
 				data.GetCurString(propertyValue);
 
-				mProperties.Add(propertyStr, propertyValue);
+				TryAddProperty(propertyName, propertyValue);
 			}
+		}
+
+		static public bool TryAddProperty(String propertyName, String propertyValue)
+		{
+			if (Contains(propertyName))
+				return false;
+
+			mProperties.Add(propertyName, propertyValue);
+			return true;
 		}
 
 		static public bool Contains(String property)

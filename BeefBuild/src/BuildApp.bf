@@ -110,7 +110,7 @@ namespace BeefBuild
 			{
 			    mWorkspace.mName = new String();
 			    Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
-				LoadProperties();
+				CustomBuildProperties.Load(false);
 			    LoadWorkspace(mVerb);                
 			}
 			else
@@ -308,15 +308,21 @@ namespace BeefBuild
 					int splitIdx = (int)value.IndexOf('=');
 					if (splitIdx != -1)
 					{
-						String propertyKey = new String();
+						String propertyName = new String();
 						StringView propertyKeyView = value.Substring(0, splitIdx);
-						propertyKeyView.ToString(propertyKey);
+						propertyKeyView.ToString(propertyName);
 
 						String propertyValue = new String();
 						StringView propertyValueView = value.Substring(splitIdx + 1, value.Length - splitIdx - 1);
 						propertyValueView.ToString(propertyValue);
 
-						mCustomProperties.Add(propertyKey, propertyValue);
+						if (!CustomBuildProperties.TryAddProperty(propertyName, propertyValue))
+						{
+							delete propertyName;
+							delete propertyValue;
+							return false;
+						}
+
 						return true;
 					}
 				}

@@ -1041,11 +1041,6 @@ namespace IDE
 				data.GetString("FileVersion", mFileVersion);
 				data.GetString("ProductVersion", mProductVersion);
 				String resolvedProductVersion = scope String();
-				if (gApp.ResolveConfigString(null, null, null, null, mProductVersion, "custom properties", resolvedProductVersion))
-				{
-					mProductVersion.Clear();
-					mProductVersion.Append(resolvedProductVersion);
-				}
 			}
 
 			public void Serialize(StructuredData data)
