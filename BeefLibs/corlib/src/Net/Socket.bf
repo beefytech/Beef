@@ -392,8 +392,11 @@ namespace System.Net
 			service.sin_addr = address;
 			service.sin_port = (uint16)htons((int16)port);
 
-			if (bind(mHandle, &service, sizeof(SockAddr_in)) == SOCKET_ERROR)
+			int32 size = sizeof(SockAddr_in);
+			if (bind(mHandle, &service, size) == SOCKET_ERROR)
 			{
+				int err = WSAGetLastError();
+
 				Close();
 				return .Err;
 			}

@@ -119,7 +119,7 @@ namespace IDE.ui
 			String projectFilePath = scope String()..Append(projDirectory, "/BeefProj.toml");
 			if (File.Exists(projectFilePath))
 			{
-				gApp.Fail(scope String()..AppendF("A Beef projects already exists at '{0}'", projDirectory));
+				gApp.Fail(scope String()..AppendF("A Beef project already exists at '{0}'", projDirectory));
 				return false;
 			}	
 

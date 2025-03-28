@@ -307,8 +307,8 @@ namespace IDE
 
 		public static void DrawOutline(Graphics g, Widget widget, int inflateX = 0, int32 inflateY = 0)
 		{
-		    DrawOutline(g, widget, inflateX, inflateY, IDEApp.cDialogOutlineLightColor);
-			DrawOutline(g, widget, inflateX - 1, inflateY - 1, IDEApp.cDialogOutlineDarkColor);
+		    DrawOutline(g, widget, inflateX, inflateY, DarkTheme.COLOR_DIALOG_OUTLINE_OUT);
+			DrawOutline(g, widget, inflateX - 1, inflateY - 1, DarkTheme.COLOR_DIALOG_OUTLINE_IN);
 		}
 
 		public static void ClampMenuCoords(ref float x, ref float y, ScrollableWidget scrollableWidget, Insets insets = null)

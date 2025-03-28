@@ -17,6 +17,7 @@ BF_TLS_DECLSPEC Thread* Thread::sCurrentThread;
 #endif
 
 static volatile int gLiveThreadCount;
+static volatile int gBackgroundThreadCount;
 static Beefy::SyncEvent gThreadsDoneEvent;
 
 #ifdef BF_PLATFORM_WINDOWS
@@ -132,8 +133,12 @@ static void BF_CALLTYPE CStartProc(void* threadParam)
 
 	bool isAutoDelete = gBfRtCallbacks.Thread_IsAutoDelete(thread);
 	gBfRtCallbacks.Thread_ThreadProc(thread);
-	bool isLastThread = BfpSystem_InterlockedExchangeAdd32((uint32*)&gLiveThreadCount, -1) == 1;
+	
+	if (internalThread->mIsBackground)
+		BfpSystem_InterlockedExchangeAdd32((uint32*)&gBackgroundThreadCount, -1);
 
+	bool isLastThread = (int32)BfpSystem_InterlockedExchangeAdd32((uint32*)&gLiveThreadCount, -1) <= gBackgroundThreadCount + 1;
+		
     //printf("Stopping thread\n");
 
 	bool wantsDelete = false;
@@ -158,7 +163,7 @@ static void BF_CALLTYPE CStartProc(void* threadParam)
 		delete internalThread;
 
 	if (isLastThread)
-		gThreadsDoneEvent.Set(false);
+		gThreadsDoneEvent.Set(false);	
 
     //printf("Thread stopped\n");
 }
@@ -168,7 +173,7 @@ void BfInternalThread::WaitForAllDone()
 	if ((gBfRtFlags & BfRtFlags_NoThreadExitWait) != 0)
 		return;
 
-	while (gLiveThreadCount != 0)
+	while (gLiveThreadCount > gBackgroundThreadCount)
 	{
 		// Clear out any old done events
 		gThreadsDoneEvent.WaitFor();
@@ -303,12 +308,23 @@ void Thread::InternalFinalize()
 
 bool Thread::IsBackgroundNative()
 {
-	return false;
+	auto internalThread = GetInternalThread();
+	if (internalThread == NULL)
+		return false;
+	return internalThread->mIsBackground;
 }
 
 void Thread::SetBackgroundNative(bool isBackground)
 {
+	auto internalThread = GetInternalThread();
+	if (internalThread == NULL)
+		return;
 
+	if (isBackground != internalThread->mIsBackground)
+	{
+		internalThread->mIsBackground = isBackground;		
+		BfpSystem_InterlockedExchangeAdd32((uint32*)&gBackgroundThreadCount, isBackground ? 1 : -1);
+	}	
 }
 
 int Thread::GetThreadStateNative()

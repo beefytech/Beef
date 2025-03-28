@@ -10,15 +10,18 @@ namespace IDETest
 		{
 			Result<int> iResult = .Err;
 
-			if ((iResult case .Ok(var val0)) || (true)) //FAIL
+			if ((iResult case .Ok(var val0)) && (iResult case .Ok(var val1)))
 			{
-
+				val0 = 0;
+				val1 = 0;
 			}
+			val0 = 0;
+			val1 = 0; //FAIL
 
-			int val1;
-			if ((true) || (iResult case .Ok(out val1)))
+			int val2;
+			if ((true) || (iResult case .Ok(out val2)))
 			{
-				int a = val1; //FAIL
+				int a = val2; //FAIL
 			}
 		}
 

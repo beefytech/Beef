@@ -18,6 +18,7 @@
 #include "llvm/IR/DebugInfo.h"
 #include "llvm/IR/Argument.h"
 #include "llvm/IR/Constants.h"
+#include "llvm/IR/Module.h"
 
 #include "BfCompiler.h"
 #include "BfSystem.h"
@@ -355,6 +356,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mHasRequiredTypes = false;
 	mNeedsFullRefresh = false;
 	mFastFinish = false;
+	mExtraCompileRequested = false;
 	mHasQueuedTypeRebuilds = false;
 	mIsResolveOnly = isResolveOnly;
 	mResolvePassData = NULL;
@@ -419,6 +421,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mEnumTypeDef = NULL;
 	mFriendAttributeTypeDef = NULL;
 	mComptimeAttributeTypeDef = NULL;
+	mIntrinsicAttributeTypeDef = NULL;
 	mConstEvalAttributeTypeDef = NULL;
 	mNoExtensionAttributeTypeDef = NULL;
 	mCheckedAttributeTypeDef = NULL;
@@ -474,9 +477,11 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mStringTypeDef = NULL;
 	mStringViewTypeDef = NULL;
 	mThreadStaticAttributeTypeDef = NULL;
+	mTypeTypeDeclDef = NULL;
 	mTypeTypeDef = NULL;
 	mUnboundAttributeTypeDef = NULL;
 	mValueTypeTypeDef = NULL;
+	mTupleTypeDef = NULL;
 	mResultTypeDef = NULL;
 	mObsoleteAttributeTypeDef = NULL;
 	mErrorAttributeTypeDef = NULL;
@@ -3487,6 +3492,7 @@ void BfCompiler::UpdateRevisedTypes()
 							compositeTypeDef->mTypeCode = rootTypeDef->mTypeCode;
 						compositeTypeDef->mFullName = rootTypeDef->mFullName;
 						compositeTypeDef->mFullNameEx = rootTypeDef->mFullNameEx;
+						compositeTypeDef->mIsOpaque = rootTypeDef->mIsOpaque;
 						compositeTypeDef->mIsFunction = rootTypeDef->mIsFunction;
 						compositeTypeDef->mIsDelegate = rootTypeDef->mIsDelegate;
 						compositeTypeDef->mIsCombinedPartial = true;
@@ -4441,8 +4447,9 @@ void BfCompiler::ProcessAutocompleteTempType()
 		while (actualTypeDefItr)
 		{
 			auto checkTypeDef = *actualTypeDefItr;
-			if ((!checkTypeDef->mIsPartial) /*&& (checkTypeDef->mTypeCode != BfTypeCode_Extension)*/ &&
-				((checkTypeDef->mTypeCode == tempTypeDef->mTypeCode) || (tempTypeDef->mTypeCode == BfTypeCode_Extension)))
+			if ((!checkTypeDef->mIsPartial) && (checkTypeDef->mName == tempTypeDef->mName) &&
+				(checkTypeDef->mIsFunction == tempTypeDef->mIsFunction) && (checkTypeDef->mIsDelegate == tempTypeDef->mIsDelegate) &&
+				((checkTypeDef->mTypeCode == tempTypeDef->mTypeCode) || (tempTypeDef->mTypeCode == BfTypeCode_Extension) || (tempTypeDef->mTypeCode == BfTypeCode_Inferred)))
 			{
 				if ((checkTypeDef->NameEquals(tempTypeDef)) && (checkTypeDef->mIsCombinedPartial) &&
 					(checkTypeDef->mGenericParamDefs.size() == tempTypeDef->mGenericParamDefs.size()) &&
@@ -4831,8 +4838,8 @@ void BfCompiler::ProcessAutocompleteTempType()
 	{
 		for (auto baseType : checkTypeDef->mBaseTypes)
 		{
-			autoComplete->CheckTypeRef(baseType, false);
-			module->ResolveTypeRef(baseType);
+			autoComplete->CheckTypeRef(BfNodeDynCast<BfTypeReference>(baseType), false);
+			module->ResolveTypeRef_Ref(baseType, BfPopulateType_Identity);
 		}
 		checkTypeDef = checkTypeDef->mOuterType;
 	}
@@ -5055,6 +5062,9 @@ void BfCompiler::ProcessAutocompleteTempType()
 
 BfType* BfCompiler::CheckSymbolReferenceTypeRef(BfModule* module, BfTypeReference* typeRef)
 {
+	if (typeRef == NULL)
+		return NULL;
+
 	//auto resolvedType = module->ResolveTypeRef(typeRef, BfPopulateType_Declaration,
 		//(BfResolveTypeRefFlags)(BfResolveTypeRefFlag_AllowRef | BfResolveTypeRefFlag_AllowGenericMethodParamConstValue | BfResolveTypeRefFlag_AllowGenericTypeParamConstValue));
 	auto resolvedType = module->ResolveTypeRef(typeRef, BfPopulateType_Declaration, BfResolveTypeRefFlag_AllowRef);
@@ -5271,7 +5281,7 @@ void BfCompiler::GetSymbolReferences()
 							SetAndRestoreValue<BfTypeState*> prevTypeState(module->mContext->mCurTypeState, &typeState);
 
 							for (auto baseTypeRef : checkTypeDef->mBaseTypes)
-								CheckSymbolReferenceTypeRef(module, baseTypeRef);
+								CheckSymbolReferenceTypeRef(module, BfNodeDynCast<BfTypeReference>(baseTypeRef));
 
 							for (auto genericParam : checkTypeDef->mGenericParamDefs)
 							{
@@ -5343,7 +5353,7 @@ void BfCompiler::GetSymbolReferences()
 		if (mResolvePassData->mGetSymbolReferenceKind == BfGetSymbolReferenceKind_Type)
 		{
 			for (auto baseTypeRef : typeDef->mBaseTypes)
-				CheckSymbolReferenceTypeRef(module, baseTypeRef);
+				CheckSymbolReferenceTypeRef(module, BfNodeDynCast<BfTypeReference>(baseTypeRef));
 		}
 
 		BfTypeState typeState;
@@ -5358,7 +5368,8 @@ void BfCompiler::GetSymbolReferences()
 				typeState.mCurTypeDef = propDef->mDeclaringType;
 				module->GetBasePropertyDef(checkPropDef, checkTypeInst);
 				if (auto fieldDecl = propDef->GetFieldDeclaration())
-					mResolvePassData->HandlePropertyReference(fieldDecl->mNameNode, checkTypeInst->mTypeDef, checkPropDef);
+					if (fieldDecl->mNameNode != NULL)
+						mResolvePassData->HandlePropertyReference(fieldDecl->mNameNode, checkTypeInst->mTypeDef, checkPropDef);
 			}
 		}
 
@@ -5606,6 +5617,12 @@ void BfCompiler::MarkStringPool(BfModule* module)
 	}
 
 	for (int stringId : module->mImportFileNames)
+	{
+		BfStringPoolEntry& stringPoolEntry = module->mContext->mStringObjectIdMap[stringId];
+		stringPoolEntry.mLastUsedRevision = mRevision;
+	}
+
+	for (int stringId : module->mSignatureIdRefs)
 	{
 		BfStringPoolEntry& stringPoolEntry = module->mContext->mStringObjectIdMap[stringId];
 		stringPoolEntry.mLastUsedRevision = mRevision;
@@ -7010,6 +7027,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 {
 	BP_ZONE("BfCompiler::Compile");
 
+	uint32 frontendStartTick = BFTickCount();
+
 	if (mSystem->mTypeDefs.mCount == 0)
 	{
 		// No-source bailout
@@ -7027,6 +7046,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 		String toolsetErrors;
 		for (auto project : mSystem->mProjects)
 		{
+			project->ClearCache();
 			if (project->mDisabled)
 				continue;
 			if (project->mCodeGenOptions.mLTOType != BfLTOType_None)
@@ -7173,6 +7193,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mOutputDirectory = outputDirectory;
 	mSystem->StartYieldSection();
 
+	mExtraCompileRequested = false;
 	mFastFinish = false;
 	mHasQueuedTypeRebuilds = false;
 	mCanceling = false;
@@ -7264,6 +7285,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mFriendAttributeTypeDef = _GetRequiredType("System.FriendAttribute");
 	mNoStaticCtorAttributeTypeDef = _GetRequiredType("System.NoStaticCtorAttribute");
 	mComptimeAttributeTypeDef = _GetRequiredType("System.ComptimeAttribute");
+	mIntrinsicAttributeTypeDef = _GetRequiredType("System.IntrinsicAttribute");
 	mConstEvalAttributeTypeDef = _GetRequiredType("System.ConstEvalAttribute");
 	mNoExtensionAttributeTypeDef = _GetRequiredType("System.NoExtensionAttribute");
 	mCheckedAttributeTypeDef = _GetRequiredType("System.CheckedAttribute");
@@ -7322,9 +7344,11 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mStringViewTypeDef = _GetRequiredType("System.StringView");
 	mTestAttributeTypeDef = _GetRequiredType("System.TestAttribute");
 	mThreadStaticAttributeTypeDef = _GetRequiredType("System.ThreadStaticAttribute");
+	mTypeTypeDeclDef = _GetRequiredType("System.TypeDeclaration");
 	mTypeTypeDef = _GetRequiredType("System.Type");
 	mUnboundAttributeTypeDef = _GetRequiredType("System.UnboundAttribute");
 	mValueTypeTypeDef = _GetRequiredType("System.ValueType");
+	mTupleTypeDef = _GetRequiredType("System.Tuple");
 	mObsoleteAttributeTypeDef = _GetRequiredType("System.ObsoleteAttribute");
 	mErrorAttributeTypeDef = _GetRequiredType("System.ErrorAttribute");
 	mWarnAttributeTypeDef = _GetRequiredType("System.WarnAttribute");
@@ -7816,6 +7840,8 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	BpLeave();
 	BpEnter("Compile_Finish");
 
+	int frontendTicks = (int)(BFTickCount() - frontendStartTick);
+
 	//TODO:!!
 	//mCanceling = true;
 
@@ -7983,11 +8009,15 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	}
 	mPassInstance->OutputLine(StrFormat(":low %d module%s built, %d object file%s generated",
 		numModulesWritten, (numModulesWritten != 1) ? "s" : "",
-		numObjFilesWritten, (numObjFilesWritten != 1) ? "s" : ""));
+		numObjFilesWritten, (numObjFilesWritten != 1) ? "s" : ""));	
 
-	if ((mCeMachine != NULL) && (!mIsResolveOnly) && (mCeMachine->mRevisionExecuteTime > 0))
+	if (!mIsResolveOnly)
 	{
-		mPassInstance->OutputLine(StrFormat(":med Comptime execution time: %0.2fs", mCeMachine->mRevisionExecuteTime / 1000.0f));
+		mPassInstance->OutputLine(StrFormat(":med Frontend time: %0.2fs", frontendTicks / 1000.0f));
+		if ((mCeMachine != NULL) && (mCeMachine->mRevisionExecuteTime > 0))
+		{
+			mPassInstance->OutputLine(StrFormat(":med Comptime execution time: %0.2fs", mCeMachine->mRevisionExecuteTime / 1000.0f));
+		}
 	}
 
 	BpLeave();
@@ -8071,7 +8101,23 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 
 bool BfCompiler::Compile(const StringImpl& outputDirectory)
 {
-	bool success = DoCompile(outputDirectory);
+	int passIdx = 0;
+	bool success = false;
+	while (true)
+	{
+		auto passState = mPassInstance->GetState();
+
+		success = DoCompile(outputDirectory);
+		if (!mExtraCompileRequested)
+			break;
+		
+		mPassInstance->RestoreState(passState);
+
+		if (passIdx == 1)
+			break;
+		passIdx++;
+	}
+
 	if (!success)
 		return false;
 	if (mPassInstance->HasFailed())
@@ -8119,6 +8165,11 @@ void BfCompiler::RequestFastFinish()
 		mCeMachine->mSpecialCheck = true;
 	BfLogSysM("BfCompiler::RequestFastFinish\n");
 	BpEvent("BfCompiler::RequestFastFinish", "");
+}
+
+void BfCompiler::RequestExtraCompile()
+{
+	mExtraCompileRequested = true;
 }
 
 //#define WANT_COMPILE_LOG
@@ -8338,7 +8389,7 @@ void BfCompiler::GenerateAutocompleteInfo()
 		auto methodMatchInfo = autoComplete->mMethodMatchInfo;
 		if ((methodMatchInfo != NULL) && (wantsDocEntry == NULL))
 		{
-			if (methodMatchInfo->mInstanceList.size() > 0)
+			if ((methodMatchInfo->mInstanceList.size() > 0) && (methodMatchInfo->mBestIdx >= 0))
 			{
 				if (autoComplete->mIdentifierUsed != NULL)
 				{
@@ -8595,6 +8646,9 @@ void BfCompiler::GenerateAutocompleteInfo()
 					}
 					methodText += "\x1)";
 				}
+				
+				autoCompleteResultString += "invoke\t" + methodText;
+				autoCompleteResultString += StrFormat("\t%d", methodEntry.mArgMatchCount);
 
 				if (methodEntry.mMethodDef != NULL)
 				{
@@ -8603,13 +8657,11 @@ void BfCompiler::GenerateAutocompleteInfo()
 					{
 						String docString;
 						methodDeclaration->mDocumentation->GetDocString(docString);
-						methodText += "\x03";
-						methodText += docString;
+						autoCompleteResultString += "\x03";
+						autoCompleteResultString += docString;
 					}
 				}
 
-				autoCompleteResultString += "invoke\t" + methodText;
-				autoCompleteResultString += StrFormat("\t%d", methodEntry.mArgMatchCount);
 				autoCompleteResultString += "\n";
 
 				idx++;
@@ -10346,6 +10398,10 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 						emitParser->GetLineCharAtIdx(kv.mValue.mSrcStart, startLine, startLineChar);
 
 					int srcEnd = kv.mValue.mSrcEnd - 1;
+
+					if (srcEnd >= emitParser->mOrigSrcLength)
+						continue;
+
 					while (srcEnd >= kv.mValue.mSrcStart)
 					{
 						char c = emitParser->mSrc[srcEnd];

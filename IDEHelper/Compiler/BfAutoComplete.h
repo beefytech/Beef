@@ -236,7 +236,8 @@ public:
 	void AddExtensionMethods(BfTypeInstance* targetType, BfTypeInstance* extensionContainer, const StringImpl& filter, bool allowProtected, bool allowPrivate);
 	void AddTopLevelNamespaces(BfAstNode* identifierNode);
 	void AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttribute = false);
-	void AddOverrides(const StringImpl& filter);
+	void AddOverrides(const StringImpl& filter, bool forceAll = false);
+	void AddCtorPassthroughs();
 	void UpdateReplaceData();
 	void AddTypeInstanceEntry(BfTypeInstance* typeInst);
 	bool CheckDocumentation(AutoCompleteEntry* entry, BfCommentNode* documentation);
@@ -244,7 +245,7 @@ public:
 	void FixitGetParamString(const BfTypeVector& paramTypes, StringImpl& outStr);
 	int FixitGetMemberInsertPos(BfTypeDef* typeDef);
 	String FixitGetLocation(BfParserData* parserData, int insertPos);
-	String ConstantToString(BfIRConstHolder* constHolder, BfIRValue id);
+	String ConstantToString(BfIRConstHolder* constHolder, BfTypedValue typedValue);
 
 public:
 	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete, bool doFuzzyAutoComplete = false);
@@ -283,6 +284,7 @@ public:
 	void FixitAddConstructor(BfTypeInstance* typeInstance);
 	void FixitAddFullyQualify(BfAstNode* refNode, const StringImpl& findName, const SizedArrayImpl<BfUsingFieldData::MemberRef>& foundList);
 
+	void AddResultTypeKind(BfType* type);
 	void SetResultStringType(BfType* type);
 };
 

@@ -5,6 +5,195 @@ using System.Diagnostics;
 
 namespace System
 {
+	public class TypeDeclaration
+	{
+		protected enum Flags : uint8
+		{
+			DeclaredInDependency = 1,
+			DeclaredInDependent = 2,
+			DeclaredInCurrent = 4,
+			AlwaysVisible = 8,
+			SometimesVisible = 0x10
+		}
+
+		protected TypeId mTypeId;
+		protected TypeId mOuterTypeId;
+		protected TypeFlags mTypeFlags;
+		protected Flags mFlags;
+		protected TypeCode mTypeCode;
+
+		public static TypeDeclaration.Enumerator TypeDeclarations
+		{
+			get
+			{
+				return .();
+			}
+		}
+
+		public TypeCode TypeCode => mTypeCode;
+		public TypeId TypeId => mTypeId;
+		public TypeDeclaration BaseType
+		{
+			get
+			{
+				if (Compiler.IsComptime)
+				{
+					int32 baseTypeId = Type.[Friend]Comptime_Type_GetBaseType((.)mTypeId);
+					return Type.[Friend]Comptime_GetTypeDeclarationById(baseTypeId);
+				}
+				return null;
+			}
+		}
+		public TypeDeclaration OuterType
+		{
+			get
+			{
+				if (Compiler.IsComptime)
+					return Type.[Friend]Comptime_GetTypeDeclarationById((.)mOuterTypeId);
+				return null;
+			}
+		}
+
+		public bool DeclaredInDependency => mFlags.HasFlag(.DeclaredInDependency);
+		public bool DeclaredInDependent => mFlags.HasFlag(.DeclaredInDependent);
+		public bool DeclaredInCurrent => mFlags.HasFlag(.DeclaredInCurrent);
+		public bool AlwaysVisible => mFlags.HasFlag(.AlwaysVisible);
+		public bool SometimesVisible => mFlags.HasFlag(.SometimesVisible);
+
+		public Type ResolvedType => Compiler.IsComptime ? Type.[Friend]Comptime_GetTypeById((.)mTypeId) : null;
+
+		public void GetFullName(String strBuffer)
+		{
+			if (Compiler.IsComptime)
+				strBuffer.Append(Type.[Friend]Comptime_Type_ToString((.)mTypeId));
+		}
+
+		public void GetName(String strBuffer)
+		{
+			if (Compiler.IsComptime)
+				strBuffer.Append(Type.[Friend]Comptime_TypeName_ToString((.)mTypeId));
+		}
+
+		public void GetNamespace(String strBuffer)
+		{
+			if (Compiler.IsComptime)
+				strBuffer.Append(Type.[Friend]Comptime_Namespace_ToString((.)mTypeId));
+		}
+
+		public bool HasCustomAttribute<T>() where T : Attribute
+		{
+			if (Compiler.IsComptime)
+			{
+				int32 attrIdx = -1;
+				Type attrType = null;
+				repeat
+				{
+					attrType = Type.[Friend]Comptime_Type_GetCustomAttributeType((int32)TypeId, ++attrIdx);
+					if (attrType == typeof(T))
+						return true;
+				}
+				while (attrType != null);
+				return false;
+			}
+			return false;
+		}
+
+		public Result<T> GetCustomAttribute<T>() where T : Attribute
+		{
+			if (Compiler.IsComptime)
+			{
+				int32 attrIdx = -1;
+				Type attrType = null;
+				repeat
+				{
+					attrType = Type.[Friend]Comptime_Type_GetCustomAttributeType((int32)TypeId, ++attrIdx);
+					if (attrType == typeof(T))
+					{
+						T val = ?;
+						if (Type.[Friend]Comptime_Type_GetCustomAttribute((int32)TypeId, attrIdx, &val))
+							return val;
+					}
+				}
+				while (attrType != null);
+				return .Err;
+			}
+			return .Err;
+		}
+
+		[Comptime]
+		public AttributeInfo.ComptimeTypeCustomAttributeEnumerator GetCustomAttributes()
+		{
+			return .((int32)TypeId);
+		}
+
+		public struct Enumerator : IEnumerator<TypeDeclaration>
+		{
+			int32 mCurId;
+
+			public Result<TypeDeclaration> GetNext() mut
+			{
+				while (true)
+				{
+					if (!Compiler.IsComptime)
+					{
+						Runtime.FatalError("Runtime type declarations are not supported");
+					}
+					else
+					{
+						var typeDecl = Type.[Friend]Comptime_GetNextTypeDeclaration(mCurId);
+						if (typeDecl != null)
+						{
+							mCurId = (.)typeDecl.TypeId;
+							return .Ok(typeDecl);
+						}
+						return .Err;
+					}
+				}
+			}
+		}
+
+		public static TypeDeclaration GetById(TypeId typeId) => Type.[Friend]Comptime_GetTypeDeclarationById((.)typeId);
+
+		public static Result<TypeDeclaration> GetByName(StringView typeName)
+		{
+			if (Compiler.IsComptime)
+			{
+				var type = Type.[Friend]Comptime_GetTypeDeclarationByName(typeName);
+				if (type == null)
+					return .Err;
+				return type;
+			}
+
+			return .Err;
+		}
+
+		public override void ToString(String strBuffer)
+		{
+			GetFullName(strBuffer);
+		}
+
+		public bool HasDeclaredField(StringView fieldName)
+		{
+			if (Compiler.IsComptime)
+				return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 0, fieldName);
+			return false;
+		}
+
+		public bool HasDeclaredMethod(StringView fieldName)
+		{
+			if (Compiler.IsComptime)
+				return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 1, fieldName);
+			return false;
+		}
+
+		public bool HasDeclaredProperty(StringView fieldName)
+		{
+			if (Compiler.IsComptime)
+				return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 2, fieldName);
+			return false;
+		}
+	}
+
     struct ClassVData
     {
         public int mType;
@@ -32,6 +221,21 @@ namespace System
 		protected uint8 mAlign;
 		protected uint8 mAllocStackCountOverride;
 
+		public TypeDeclaration TypeDeclaration
+		{
+			get
+			{
+				if (!Compiler.IsComptime)
+				{
+					Runtime.FatalError("Runtime type declarations are not supported");
+				}
+				else
+				{
+					return Comptime_GetTypeDeclarationById((.)mTypeId);
+				}
+			}
+		}
+
 		public static TypeId TypeIdEnd
 		{
 			get
@@ -41,6 +245,14 @@ namespace System
 		}
 
 		public static Enumerator Types
+		{
+			get
+			{
+				return .();
+			}
+		}
+
+		public static TypeDeclaration.Enumerator TypeDeclarations
 		{
 			get
 			{
@@ -453,6 +665,17 @@ namespace System
 		    }
 		}
 
+		public virtual TypeInstance WrappedType
+		{
+		    get
+		    {
+				if (Compiler.IsComptime)
+					return Comptime_GetWrappedType((.)mTypeId) as TypeInstance;
+
+		        return null;
+		    }
+		}
+
 		public virtual TypeInstance.InterfaceEnumerator Interfaces
 		{
 		    get
@@ -551,9 +774,17 @@ namespace System
 			public int64 mData;
 		}
 
+		static extern TypeDeclaration Comptime_GetTypeDeclarationById(int32 typeId);
+		static extern TypeDeclaration Comptime_GetTypeDeclarationByName(StringView name);
+		static extern TypeDeclaration Comptime_GetNextTypeDeclaration(int32 lastTypeId);
+		static extern int32 Comptime_Type_GetBaseType(int32 typeId);
+		static extern bool Comptime_Type_HasDeclaredMember(int32 typeId, int32 kind, StringView name);
 		static extern Type Comptime_GetTypeById(int32 typeId);
+		static extern Type Comptime_GetWrappedType(int32 typeId);
 		static extern Type Comptime_GetTypeByName(StringView name);
 		static extern String Comptime_Type_ToString(int32 typeId);
+		static extern String Comptime_TypeName_ToString(int32 typeId);
+		static extern String Comptime_Namespace_ToString(int32 typeId);
 		static extern Type Comptime_GetSpecializedType(Type unspecializedType, Span<Type> typeArgs);
 		static extern bool Comptime_Type_GetCustomAttribute(int32 typeId, int32 attributeIdx, void* dataPtr);
 		static extern bool Comptime_Field_GetCustomAttribute(int32 typeId, int32 fieldIdx, int32 attributeIdx, void* dataPtr);
@@ -660,6 +891,15 @@ namespace System
             return type == this || (type.IsTypedPrimitive && type.UnderlyingType == this);
         }
 
+		public virtual bool ImplementsInterface(Type checkInterface)
+		{
+			var wrappedType = WrappedType;
+			if (wrappedType != null)
+				return wrappedType.ImplementsInterface(checkInterface);
+
+			return false;
+		}
+
 		public virtual Result<FieldInfo> GetField(String fieldName)
 		{
 		    return .Err;
@@ -752,8 +992,9 @@ namespace System
 #if !BF_REFLECT_MINIMAL
 			GetFullName(strBuffer);
 #else
-			strBuffer.Append("Type#");
-			mTypeId.ToString(strBuffer);
+			strBuffer.Append("comptype(");
+			((int32)mTypeId).ToString(strBuffer);
+			strBuffer.Append(")");
 #endif
 		}
 
@@ -766,7 +1007,7 @@ namespace System
 				while (true)
 				{
 					if (Compiler.IsComptime)
-						Runtime.FatalError("Comptime type enumeration not supported");
+						Runtime.FatalError("Comptime type enumeration not supported. Consider enumerating over TypeDeclaration.Types");
 
 					if (mCurId >= sTypeCount)
 						return .Err;
@@ -838,7 +1079,13 @@ namespace System
 
 namespace System.Reflection
 {
-    public struct TypeId : int32 {}
+    public struct TypeId : int32
+	{
+		public override void ToString(String strBuffer)
+		{
+			strBuffer.AppendF($"TypeId#{(int32)this}");
+		}
+	}
 
     [Ordered, AlwaysInclude(AssumeInstantiated=true)]
     public class TypeInstance : Type
@@ -1034,6 +1281,19 @@ namespace System.Reflection
 		            return false;
 		        curType = (TypeInstance)Type.GetType(curType.mBaseType);
 		    }
+		}
+
+		public override bool ImplementsInterface(Type checkInterface)
+		{
+			for (int ifaceIdx < mInterfaceCount)
+			{
+				if (mInterfaceDataPtr[ifaceIdx].mInterfaceType == checkInterface.TypeId)
+					return true;
+			}
+			var baseType = BaseType;
+			if (baseType != null)
+				return baseType.ImplementsInterface(checkInterface);
+			return false;
 		}
 
         public override void GetFullName(String strBuffer)
@@ -1317,7 +1577,8 @@ namespace System.Reflection
 		public override void GetFullName(String strBuffer)
 		{
 			strBuffer.Append("const ");
-			switch (GetType(mValueType))
+			var type = GetType(mValueType);
+			switch (type)
 			{
 			case typeof(float):
 				(*(float*)&mValue).ToString(strBuffer);
@@ -1332,6 +1593,10 @@ namespace System.Reflection
 				strBuffer.Append('\'');
 			case typeof(uint64), typeof(uint):
 				(*(uint64*)&mValue).ToString(strBuffer);
+			case typeof(String):
+				int32 stringId = *(int32*)&mValue;
+				String str = String.GetById(stringId);
+				str.Quote(strBuffer);
 			default:
 				mValue.ToString(strBuffer);
 			}
@@ -1409,7 +1674,11 @@ namespace System.Reflection
 				{
 					if (i > 0)
 						strBuffer.Append(", ");
-					Type.GetType(mResolvedTypeRefs[i]).GetFullName(strBuffer);
+					var genericArg = Type.GetType(mResolvedTypeRefs[i]);
+					if (genericArg != null)
+						genericArg.GetFullName(strBuffer);
+					else
+						strBuffer.Append("???");
 				}
 				strBuffer.Append('>');
 			}
@@ -1445,7 +1714,7 @@ namespace System.Reflection
 			int32 stackCount = Compiler.Options.AllocStackCount;
 			if (mAllocStackCountOverride != 0)
 				stackCount = mAllocStackCountOverride;
-			obj = Internal.Dbg_ObjectAlloc([Friend]mTypeClassVData, arraySize, [Friend]mInstAlign, stackCount);
+			obj = Internal.Dbg_ObjectAlloc([Friend]mTypeClassVData, arraySize, [Friend]mInstAlign, stackCount, 0);
 #else
 			void* mem = new [Align(16)] uint8[arraySize]* (?);
 			obj = Internal.UnsafeCastToObject(mem);
@@ -1505,6 +1774,7 @@ namespace System.Reflection
 
 		Static					= 0x200000,
 		Abstract				= 0x400000,
+		HasAppendWantMark		= 0x800000,
     }
 
     public enum FieldFlags : uint16
@@ -1527,9 +1797,9 @@ namespace System.Reflection
 		Appended				= 0x1000,
     }
 
-	public enum MethodFlags : uint16
+	public enum MethodFlags : uint32
 	{
-		MethodAccessMask    	= 0x0007,
+		case MethodAccessMask    	= 0x0007,
 		Protected               = 0x0003,
 		Public                  = 0x0006,
 
@@ -1547,5 +1817,26 @@ namespace System.Reflection
 		ThisCall				= 0x3000, // Purposely resuing StdCall|FastCall
 		Mutating				= 0x4000,
 		Constructor				= 0x8000,
+		AppendBit0				= 0x10000,
+		AppendBit1				= 0x20000,
+		CheckedBit0				= 0x40000,
+		CheckedBit1				= 0x80000;
+
+		public AllowAppendKind AllowAppendKind => (.)(int32)(this / AppendBit0);
+		public CheckedKind CheckedKind => (.)(int32)(this / CheckedBit0);
+	}
+
+	public enum AllowAppendKind
+	{
+		No,
+		Yes,
+		ZeroGap
+	}
+
+	public enum CheckedKind
+	{
+		NotSet,
+		Checked,
+		Unchecked
 	}
 }

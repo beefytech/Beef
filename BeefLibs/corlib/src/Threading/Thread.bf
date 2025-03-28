@@ -8,7 +8,7 @@ namespace System.Threading
     public delegate void ThreadStart();
     public delegate void ParameterizedThreadStart(Object obj);
 
-	[StaticInitPriority(100)]
+	[StaticInitPriority(200)]
     public sealed class Thread
     {
         private int mInternalThread;
@@ -21,14 +21,15 @@ namespace System.Threading
 
         bool mAutoDelete = true;
 		bool mJoinOnDelete;
+		bool mIsBackground;
 
-		static Monitor sMonitor = new .() ~ delete _;
+		static Monitor sMonitor = new .() ~ DeleteAndNullify!(_);
 		static Event<delegate void()> sOnExit ~ _.Dispose();
 		Event<delegate void()> mOnExit ~ _.Dispose();
 
 		public static Thread sMainThread ~ delete _;
 
-        [StaticInitPriority(102)]
+        [StaticInitPriority(202)]
         struct RuntimeThreadInit
         {
             static Object Thread_Alloc()
@@ -86,6 +87,8 @@ namespace System.Threading
 					thread.InformThreadNameChange(thread.mName);
 				if (thread.mPriority != .Normal)
 					thread.SetPriorityNative((.)thread.mPriority);
+				if (thread.mIsBackground)
+					thread.SetBackgroundNative(thread.mIsBackground);
 
                 int32 stackStart = 0;
                 thread.SetStackStart((void*)&stackStart);
@@ -239,27 +242,27 @@ namespace System.Threading
 			}
 		}
 
-	public void Start()
-	{
-		StartInternal();
-	}
+		public void Start()
+		{
+			StartInternal();
+		}
 
         public void Start(bool autoDelete)
         {
             	mAutoDelete = autoDelete;
             	Start();
         }
-
-	public void Start(Object parameter)
-	{
-		if (mDelegate is ThreadStart)
+		
+		public void Start(Object parameter)
 		{
-			Runtime.FatalError();
+			if (mDelegate is ThreadStart)
+			{
+				Runtime.FatalError();
+			}
+			mThreadStartArg = parameter;
+			StartInternal();
 		}
-		mThreadStartArg = parameter;
-		StartInternal();
-	}
-        
+		    
         public void Start(Object parameter, bool autoDelete)
         {
             mAutoDelete = autoDelete;
@@ -384,10 +387,13 @@ namespace System.Threading
 
         public ~this()
         {
-			using (sMonitor.Enter())
+			if (sMonitor != null)
 			{
-				mOnExit();
-				sOnExit();
+				using (sMonitor.Enter())
+				{
+					mOnExit();
+					sOnExit();
+				}
 			}
 
 			if (mJoinOnDelete)
@@ -403,8 +409,13 @@ namespace System.Threading
 
         public bool IsBackground
         {
-            get { return IsBackgroundNative(); }
-            set { SetBackgroundNative(value); }
+            get { return mIsBackground; }
+            set
+			{
+				mIsBackground = value;
+				if (mInternalThread != 0)
+					SetBackgroundNative(mIsBackground);
+			}
         }
 		
 		public void SetJoinOnDelete(bool joinOnDelete)

@@ -14,7 +14,7 @@ namespace System
 		public bool AVX, AVX2, AVX512;
 	}
 
-	[StaticInitPriority(101)]
+	[StaticInitPriority(201)]
 	static class Runtime
 	{
 		const int32 cVersion = 10;
@@ -111,7 +111,7 @@ namespace System
 			function void* (int size) mAlloc;
 			function void (void* ptr) mFree;
 			function void (Object obj) mObject_Delete;
-			void* mUnused0;
+			function void* (ClassVData* vdataPtr) mClassVData_GetTypeData;
 			function Type (Object obj) mObject_GetType;
 			function void (Object obj) mObject_GCMarkMembers;
 			function Object (Object obj, int32 typeId) mObject_DynamicCastToTypeId;
@@ -150,6 +150,16 @@ namespace System
 			static void Object_Delete(Object obj)
 			{
 				delete obj;
+			}
+
+			static void* ClassVData_GetTypeData(ClassVData* classVData)
+			{
+#if BF_32_BIT
+				Type type = Type.[Friend]GetType_(classVData.mType2);
+#else
+				Type type = Type.[Friend]GetType_((.)(classVData.mType >> 32));
+#endif
+				return &type.[Friend]mSize;
 			}
 
 			static Type Object_GetType(Object obj)
@@ -259,6 +269,7 @@ namespace System
 				mAlloc = => Alloc;
 				mFree = => Free;
 				mObject_Delete = => Object_Delete;
+				mClassVData_GetTypeData = => ClassVData_GetTypeData;
 				mObject_GetType = => Object_GetType;
 				mObject_GCMarkMembers = => Object_GCMarkMembers;
 			    mObject_DynamicCastToTypeId = => Object_DynamicCastToTypeId;
@@ -484,6 +495,7 @@ namespace System
 
 		public static function ErrorHandlerResult(AssertError.Kind kind, String error, String filePath, int lineNum) CheckAssertError;
 		public static function int32(char8* kind, char8* arg1, char8* arg2, int arg3) CheckErrorHandler;
+		public static function void*(char8* filePath) LibraryLoadCallback;
 
 		static ErrorHandlerResult CheckAssertError_Impl(AssertError.Kind kind, String error, String filePath, int lineNum)
 		{
@@ -638,7 +650,7 @@ namespace System
 	}
 }
 
-#if BF_RUNTIME_DISABLE
+#if BF_RUNTIME_DISABLE && !BF_CRT_DISABLE
 namespace System
 {
 	[AlwaysInclude, StaticInitPriority(1000)]
@@ -734,8 +746,8 @@ namespace System
 			return 0;
 		}
 
-		[LinkName(.C), AlwaysInclude]
-		static extern void WinMain(void* module, void* prevModule, char8* args, int32 showCmd);
+		/*[LinkName(.C), AlwaysInclude]
+		static extern void WinMain(void* module, void* prevModule, char8* args, int32 showCmd);*/
 
 		[LinkName(.C), AlwaysInclude]
 		static extern int32 main(int argc, char8** argv);

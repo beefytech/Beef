@@ -1,5 +1,6 @@
 using System.Threading;
 using System.Diagnostics;
+using System.Collections;
 
 namespace System
 {
@@ -105,6 +106,8 @@ namespace System
 		{
 			String emitStr = scope .();
 
+			HashSet<String> foundSigs = scope .();
+
 			for (var methodInfo in typeof(T).GetMethods(.Public | .DeclaredOnly))
 			{
 				if (methodInfo.IsStatic)
@@ -112,11 +115,15 @@ namespace System
 				if (!methodInfo.IsConstructor)
 					continue;
 
+				var sig = methodInfo.GetMethodSig(.. new .());
+				if (!foundSigs.Add(sig))
+					continue;
+
 				emitStr.AppendF("public static RefCounted<T> Create(");
 				methodInfo.GetParamsDecl(emitStr);
 				emitStr.AppendF(")\n");
 				emitStr.AppendF("{{\n");
-				emitStr.AppendF("\treturn new [Friend] RefCountedAppend<T>(");
+				emitStr.AppendF("\treturn new [Friend]RefCountedAppend<T>(");
 				methodInfo.GetArgsList(emitStr);
 				emitStr.AppendF(");\n}}\n");
 			}
@@ -207,7 +214,16 @@ namespace System
 				if (!methodInfo.IsConstructor)
 					continue;
 
-				emitStr.AppendF("[AllowAppend]\nprotected this(");
+				if (methodInfo.AllowAppendKind == .Yes)
+					emitStr.AppendF("[AllowAppend]\n");
+				if (methodInfo.AllowAppendKind == .ZeroGap)
+					emitStr.AppendF("[AllowAppend(ZeroGap=true)]\n");
+				if (methodInfo.CheckedKind == .Checked)
+					emitStr.AppendF("[Checked]\n");
+				if (methodInfo.CheckedKind == .Unchecked)
+					emitStr.AppendF("[Unchecked]\n");
+
+				emitStr.AppendF("protected this(");
 				methodInfo.GetParamsDecl(emitStr);
 				emitStr.AppendF(")\n");
 				emitStr.AppendF("{{\n");

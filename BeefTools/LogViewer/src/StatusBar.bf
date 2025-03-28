@@ -1,3 +1,4 @@
+using System;
 using Beefy.widgets;
 using Beefy.gfx;
 
@@ -16,8 +17,8 @@ namespace LogViewer
 				g.FillRect(0, 0, mWidth, mHeight);
 
 			var lineAndColumn = gApp.mBoard.mDocEdit.mEditWidgetContent.CursorLineAndColumn;
-			g.DrawString(StackStringFormat!("Ln {0}", lineAndColumn.mLine + 1), mWidth - 160, 2);
-			g.DrawString(StackStringFormat!("Col {0}", lineAndColumn.mColumn + 1), mWidth - 80, 2);
+			g.DrawString(scope $"Ln {lineAndColumn.mLine + 1}", mWidth - 160, 2);
+			g.DrawString(scope $"Col {lineAndColumn.mColumn + 1}", mWidth - 80, 2);
 
 			if ((gApp.mBoard.mFilterDirtyCountdown != 0) || (gApp.mBoard.mRefreshing))
 				g.DrawString("Refreshing", 8, 2);

@@ -14,7 +14,7 @@ namespace Beefy.theme.dark
 		public float mLabelYOfs;
 
         [DesignEditable(DefaultEditString=true)]
-		public String Label
+		public StringView Label
 		{
 			get
 			{

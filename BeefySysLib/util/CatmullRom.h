@@ -5,6 +5,6 @@
 
 NS_BF_BEGIN;
 
-Point2D CatmullRomEvaluate(Point2D &p0, Point2D &p1, Point2D &p2, Point2D &p3, float tension, float t);
+PointF CatmullRomEvaluate(PointF &p0, PointF &p1, PointF &p2, PointF &p3, float tension, float t);
 
 NS_BF_END;

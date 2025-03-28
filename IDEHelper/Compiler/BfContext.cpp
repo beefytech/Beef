@@ -1032,6 +1032,12 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 		return;
 	}
 
+	typeInst->mRebuildFlags = (BfTypeRebuildFlags)(typeInst->mRebuildFlags | BfTypeRebuildFlag_InRebuildType);
+	defer(
+		{
+			typeInst->mRebuildFlags = (BfTypeRebuildFlags)(typeInst->mRebuildFlags & ~BfTypeRebuildFlag_InRebuildType);
+		});
+
 	if (mCompiler->mCeMachine != NULL)
 		mCompiler->mCeMachine->ClearTypeData(typeInst);
 
@@ -1226,6 +1232,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	typeInst->mHasPackingHoles = false;
 	typeInst->mWantsGCMarking = false;
 	typeInst->mHasDeclError = false;
+	typeInst->mHasAppendWantMark = false;
 	delete typeInst->mTypeInfoEx;
 	typeInst->mTypeInfoEx = NULL;
 
@@ -1293,7 +1300,7 @@ void BfContext::RebuildType(BfType* type, bool deleteOnDemandTypes, bool rebuild
 	typeInst->mHasStaticInitMethod = false;
 	typeInst->mHasStaticMarkMethod = false;
 	typeInst->mHasStaticDtorMethod = false;
-	typeInst->mHasTLSFindMethod = false;
+	typeInst->mHasTLSFindMethod = false;	
 	typeInst->mBaseType = NULL;
 	delete typeInst->mCustomAttributes;
 	typeInst->mCustomAttributes = NULL;
@@ -1367,6 +1374,11 @@ void BfContext::RebuildDependentTypes_MidCompile(BfDependedType* dType, const St
 		BfLogSysM("Rebuilding dependent types MidCompile Type:%p Reason:%s - updating after deleting types\n", dType, reason.c_str());
 		UpdateAfterDeletingTypes();
 	}
+}
+
+bool BfContext::IsRebuilding(BfType* type)
+{
+	return ((type->mRebuildFlags & BfTypeRebuildFlag_InRebuildType) != 0);		
 }
 
 bool BfContext::CanRebuild(BfType* type)
@@ -1459,7 +1471,7 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 				if (dependencyFlags &
 					(BfDependencyMap::DependencyFlag_ReadFields | BfDependencyMap::DependencyFlag_ParamOrReturnValue |
 						BfDependencyMap::DependencyFlag_LocalUsage | BfDependencyMap::DependencyFlag_MethodGenericArg |
-						BfDependencyMap::DependencyFlag_Allocates))
+						BfDependencyMap::DependencyFlag_Allocates | BfDependencyMap::DependencyFlag_TypeSignature))
 				{
 					RebuildType(dependentType);
 				}
@@ -2007,6 +2019,10 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 			{
 				RebuildType(dependentType);
 			}
+			else if (IsRebuilding(dependentType))
+			{
+				// Ignore
+			}
 			else if (dependentTypeInst != NULL)
 			{
 				mGhostDependencies.Add(type);
@@ -2020,9 +2036,10 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 void BfContext::UpdateAfterDeletingTypes()
 {
 	BP_ZONE("BfContext::UpdateAfterDeletingTypes");
-	BfLogSysM("UpdateAfterDeletingTypes\n");
+	BfLogSysM("UpdateAfterDeletingTypes\n");	
 
 	int graveyardStart = (int)mTypeGraveyard.size();
+	
 
 	while (true)
 	{
@@ -2108,6 +2125,8 @@ void BfContext::UpdateAfterDeletingTypes()
 			SaveDeletingType(type);
 		}
 	}
+
+	mCompiler->mStats.mTypesDeleted_LastUpdateAfterDeletingTypes = mCompiler->mStats.mTypesDeleted;
 }
 
 // This happens before the old defs have been injected
@@ -2243,6 +2262,8 @@ void BfContext::UpdateRevisedTypes()
 
 	bool rebuildAllFilesChanged = mCompiler->mRebuildChangedFileSet.Contains("*");
 
+	uint64 projectDepHash = 0;
+
 	// Do primary 'rebuild' scan
 	for (auto type : mResolvedTypes)
 	{
@@ -2315,6 +2336,14 @@ void BfContext::UpdateRevisedTypes()
 					if ((rebuildAllFilesChanged) || (mCompiler->mRebuildChangedFileSet.Contains(kv.mKey.mString)))
 						changed = true;
 					mCompiler->mRebuildFileSet.Add(kv.mKey.mString);
+				}
+
+				if (kv.mKey.mKind == CeRebuildKey::Kind_TypeDeclListHash)
+				{
+					if (projectDepHash == 0)
+						projectDepHash = mSystem->GetTypeDeclListHash();
+					if (kv.mValue.mInt != projectDepHash)
+						changed = true;
 				}
 			}
 
@@ -3399,6 +3428,9 @@ void BfContext::MarkUsedModules(BfProject* project, BfModule* module)
 {
 	BP_ZONE("BfContext::MarkUsedModules");
 
+	if (module->mIsDeleting)
+		return;
+
 	BF_ASSERT_REL(!module->mIsDeleting);
 
 	if (module->mIsScratchModule)
@@ -3457,6 +3489,13 @@ void BfContext::Cleanup()
 	RemoveInvalidFailTypes();
 
 	mCompiler->mCompileState = BfCompiler::CompileState_Cleanup;
+
+	if (mCompiler->mStats.mTypesDeleted_LastUpdateAfterDeletingTypes != mCompiler->mStats.mTypesDeleted)
+	{
+		// Should only occur for internal compiler errors
+		BF_ASSERT(mCompiler->mExtraCompileRequested);
+		UpdateAfterDeletingTypes();
+	}
 
 	///
 	{

@@ -78,29 +78,27 @@ namespace System
 		public override void ToString(String strBuffer)
 		{
 			// Dumb, make better.
-			char8[] strChars = scope:: char8[22];
+			char8[22] strChars = ?;
 			int32 char8Idx = 20;
 			int64 valLeft = (int64)this;
 			bool isNeg = true;
-			int minNumeralsLeft = 0;
 			if (valLeft >= 0)
 			{
 				valLeft = -valLeft;
 				isNeg = false;
 			}
-			while ((valLeft < 0) || (minNumeralsLeft > 0))
+			while (valLeft < 0)
 			{
 				strChars[char8Idx] = (char8)('0' &- (valLeft % 10));
 				valLeft /= 10;
 				char8Idx--;
-				minNumeralsLeft--;
 			}
 			if (char8Idx == 20)
 				strChars[char8Idx--] = '0';
 			if (isNeg)
 				strChars[char8Idx--] = '-';
 			char8* char8Ptr = &strChars[char8Idx + 1];
-			strBuffer.Append(char8Ptr);
+			strBuffer.Append(char8Ptr, 20 - char8Idx);
 		}
 
 		public static Result<int64, ParseError> Parse(StringView val, NumberStyles style = .Number, CultureInfo cultureInfo = null)

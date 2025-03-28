@@ -52,7 +52,9 @@ enum BfCreateCallFlags
 	BfCreateCallFlags_SkipThis = 2,
 	BfCreateCallFlags_AllowImplicitRef = 4,
 	BfCreateCallFlags_TailCall = 8,
-	BfCreateCallFlags_GenericParamThis = 0x10
+	BfCreateCallFlags_GenericParamThis = 0x10,
+	BfCreateCallFlags_DelegateThunkNonStatic = 0x20,
+	BfCreateCallFlags_DelegateThunkStatic = 0x40,
 };
 
 class BfResolvedArg
@@ -219,6 +221,7 @@ public:
 	BfType* mCheckReturnType;
 	BfMethodType mMethodType;
 	BfCheckedKind mCheckedKind;
+	BfAllowAppendKind mAllowAppendKind;
 	Array<SizedArray<BfUsingFieldData::MemberRef, 1>*>* mUsingLists;
 	bool mHasArgNames;
 	bool mHadExplicitGenericArguments;
@@ -261,7 +264,7 @@ public:
 	void CompareMethods(BfMethodInstance* prevMethodInstance, BfTypeVector* prevGenericArgumentsSubstitute,
 		BfMethodInstance* newMethodInstance, BfTypeVector* genericArgumentsSubstitute,
 		bool* outNewIsBetter, bool* outNewIsWorse, bool allowSpecializeFail);
-	void FlushAmbiguityError();
+	void FlushAmbiguityError(bool useWarning = false);
 	bool IsType(BfTypedValue& val, BfType* type);
 	int GetMostSpecificType(BfType* lhs, BfType* rhs); // 0, 1, or -1
 
@@ -379,7 +382,8 @@ enum BfLookupFieldFlags
 	BfLookupFieldFlag_IgnoreProtection = 8,
 	BfLookupFieldFlag_BindOnly = 0x10,
 	BfLookupFieldFlag_IsFailurePass = 0x20,
-	BfLookupFieldFlag_IsAnonymous = 0x40
+	BfLookupFieldFlag_IsAnonymous = 0x40,
+	BfLookupFieldFlag_HasInstance = 0x80
 };
 
 enum BfUnaryOpFlags
@@ -393,9 +397,18 @@ enum BfBinOpFlags
 	BfBinOpFlag_None = 0,
 	BfBinOpFlag_NoClassify = 1,
 	BfBinOpFlag_ForceLeftType = 2,
-	BfBinOpFlag_IgnoreOperatorWithWrongResult = 4,
-	BfBinOpFlag_IsConstraintCheck = 8,
-	BfBinOpFlag_DeferRight = 0x10
+	BfBinOpFlag_ForceRightType = 4,
+	BfBinOpFlag_IgnoreOperatorWithWrongResult = 8,
+	BfBinOpFlag_IsConstraintCheck = 0x10,
+	BfBinOpFlag_DeferRight = 0x20
+};
+
+struct BfDeferCallData
+{
+	BfAstNode* mRefNode;
+	BfScopeData* mScopeAlloc;
+	BfIRValue mFuncAlloca; // When we need to load
+	BfIRValue mFuncAlloca_Orig;
 };
 
 class BfExprEvaluator : public BfStructuralVisitor
@@ -419,9 +432,8 @@ public:
 	BfAttributeState* mPrefixedAttributeState;
 	BfTypedValue* mReceivingValue;
 	BfFunctionBindResult* mFunctionBindResult;
-	SizedArray<BfResolvedArg, 2> mIndexerValues;
-	BfAstNode* mDeferCallRef;
-	BfScopeData* mDeferScopeAlloc;
+	SizedArray<BfResolvedArg, 2> mIndexerValues;	
+	BfDeferCallData* mDeferCallData;	
 	bool mUsedAsStatement;
 	bool mPropDefBypassVirtual;
 	bool mExplicitCast;
@@ -497,7 +509,7 @@ public:
 	void PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& irArgs, bool disableSplat = false, bool disableLowering = false, bool isIntrinsic = false, bool createCompositeCopy = false);
 	void PushThis(BfAstNode* targetSrc, BfTypedValue callTarget, BfMethodInstance* methodInstance, SizedArrayImpl<BfIRValue>& irArgs, bool skipMutCheck = false);
 	BfTypedValue MatchConstructor(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, BfTypeInstance* targetType,
-		BfResolvedArgs& argValues, bool callCtorBodyOnly, const BfMethodGenericArguments& methodGenericArguments, bool allowAppendAlloc, BfTypedValue* appendIndexValue = NULL);
+		BfResolvedArgs& argValues, bool callCtorBodyOnly, const BfMethodGenericArguments& methodGenericArguments, BfAllowAppendKind allowAppendKind, BfTypedValue* appendIndexValue = NULL);
 	BfTypedValue CheckEnumCreation(BfAstNode* targetSrc, BfTypeInstance* enumType, const StringImpl& caseName, BfResolvedArgs& argValues);
 	BfTypedValue MatchMethod(BfAstNode* targetSrc, BfMethodBoundExpression* methodBoundExpr, BfTypedValue target, bool allowImplicitThis, bool bypassVirtual, const StringImpl& name,
 		BfResolvedArgs& argValue, const BfMethodGenericArguments& methodGenericArguments, BfCheckedKind checkedKind = BfCheckedKind_NotSet);
@@ -506,7 +518,9 @@ public:
 	BfModuleMethodInstance GetSelectedMethod(BfMethodMatcher& methodMatcher);
 	bool CheckVariableDeclaration(BfAstNode* checkNode, bool requireSimpleIfExpr, bool exprMustBeTrue, bool silentFail);
 	bool HasVariableDeclaration(BfAstNode* checkNode);
+	void DoInvocation(BfInvocationExpression* invocationExpr);
 	void DoInvocation(BfAstNode* target, BfMethodBoundExpression* methodBoundExpr, const BfSizedArray<BfExpression*>& args, const BfMethodGenericArguments& methodGenericArgs, BfTypedValue* outCascadeValue = NULL);
+	void DoCaseExpression(BfTypedValue caseValAddr, BfCaseExpression* caseExpr);
 	int GetMixinVariable();
 	void CheckLocalMethods(BfAstNode* targetSrc, BfTypeInstance* typeInstance, const StringImpl& methodName, BfMethodMatcher& methodMatcher, BfMethodType methodType);
 	void InjectMixin(BfAstNode* targetSrc, BfTypedValue target, bool allowImplicitThis, const StringImpl& name, const BfSizedArray<BfExpression*>& arguments, const BfMethodGenericArguments& methodGenericArgs);
@@ -538,7 +552,7 @@ public:
 	void InitializedSizedArray(BfSizedArrayType* sizedArrayType, BfTokenNode* openToken, const BfSizedArray<BfExpression*>& values, const BfSizedArray<BfTokenNode*>& commas, BfTokenNode* closeToken, BfTypedValue* receivingValue = NULL);
 	void CheckDotToken(BfTokenNode* tokenNode);
 	void DoMemberReference(BfMemberReferenceExpression* memberRefExpr, BfTypedValue* outCascadeValue);
-	void CreateObject(BfObjectCreateExpression* objCreateExpr, BfAstNode* allocNode, BfType* allocType);
+	void CreateObject(BfObjectCreateExpression* objCreateExpr, BfAstNode* allocNode, BfType* allocType, BfInlineTypeReference* inlineTypeRef);
 	void HandleIndexerExpression(BfIndexerExpression* indexerExpr, BfTypedValue target);
 
 	//////////////////////////////////////////////////////////////////////////

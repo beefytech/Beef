@@ -158,7 +158,7 @@ namespace Beefy.widgets
             }
         }
 
-        public void WithSelectedItems(delegate void(ListViewItem) func, bool skipSelectedChildrenOnSelectedItems = false, bool skipClosed = false)
+        public void WithSelectedItems(delegate void(ListViewItem item) func, bool skipSelectedChildrenOnSelectedItems = false, bool skipClosed = false)
         {
             bool selfSelected = Selected;
             if (selfSelected)
@@ -906,6 +906,9 @@ namespace Beefy.widgets
         public override void KeyDown(KeyCode keyCode, bool isRepeat)
         {
             base.KeyDown(keyCode, isRepeat);
+
+			if (mWidgetWindow == null)
+				return;
 
 			switch (keyCode)
 			{

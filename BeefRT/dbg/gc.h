@@ -397,6 +397,7 @@ public:
 	void AddStackMarkableObject(bf::System::Object* obj);
 	void RemoveStackMarkableObject(bf::System::Object* obj);
 	void AddPendingThread(BfInternalThread* internalThread);
+	void Disable();
 	void Shutdown();	
 	void InitDebugDump();
 	void EndDebugDump();	
@@ -474,7 +475,8 @@ namespace bf
 			BFRT_EXPORT static void AddPendingThread(void* internalThreadInfo);			
 			
 		public:
-			BFRT_EXPORT static void Shutdown();			
+			BFRT_EXPORT static void Disable();
+			BFRT_EXPORT static void Shutdown();
 			BFRT_EXPORT static void Collect(bool async);
 			BFRT_EXPORT static void Report();
 			BFRT_EXPORT static void Mark(Object* obj);

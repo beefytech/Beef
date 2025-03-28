@@ -62,6 +62,22 @@ enum MaybeBool
 	MaybeBool_True = 1,
 };
 
+class BfParseFileData
+{
+public:
+	Dictionary<int, int> mUniqueIDList;
+	int mRefCount;
+
+public:
+	BfParseFileData()
+	{
+		mRefCount = 0;
+	}
+	~BfParseFileData();
+
+	int GetUniqueId(int idx);
+};
+
 class BfParserData : public BfSourceData
 {
 public:
@@ -81,8 +97,9 @@ public:
 	OwnedVector<String> mStringLiterals;
 	Dictionary<int, BfParserWarningEnabledChange> mWarningEnabledChanges;
 	std::set<int> mUnwarns;
+	BfParseFileData* mParseFileData;
 	bool mFailed; // Don't cache if there's a warning or an error
-	bool mDidReduce;
+	bool mDidReduce;	
 
 public:
 	BfParserData();
@@ -94,6 +111,7 @@ public:
 		return this;
 	}
 
+	void InitFileData();
 	virtual BfParser* ToParser() override;
 	int GetCharIdAtIndex(int findIndex);
 	void GetLineCharAtIdx(int idx, int& line, int& lineChar);
@@ -130,6 +148,7 @@ public:
 	int mRefCount;
 	BfAstAllocManager mAstAllocManager;
 	HashSet<DataEntry> mEntries;
+	Dictionary<String, BfParseFileData*> mParseFileDataMap;
 
 public:
 	BfParserCache();
@@ -179,6 +198,7 @@ public:
 	int mLineStart;
 	int mLineNum;
 	bool mInAsmBlock;
+	int mCurBlockId;
 
 	BfParserFlag mParserFlags;
 	int mCursorIdx;

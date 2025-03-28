@@ -135,7 +135,7 @@ namespace System.IO
 				bfpFlags |= .Directories;
 			if (flags.HasFlag(.Files))
 				bfpFlags |= .Files;
-			let findFileData = Platform.BfpFindFileData_FindFirstFile(useStr, bfpFlags, null);
+			let findFileData = Platform.Hook.BfpFindFileData_FindFirstFile(useStr, bfpFlags, null);
 			return FileEnumerator(useStr, findFileData);
 		}
 
@@ -206,7 +206,7 @@ namespace System.IO
 		{
 			get
 			{
-				return Platform.BfpFindFileData_GetFileAttributes(mFindFileData).HasFlag(.Directory);
+				return Platform.Hook.BfpFindFileData_GetFileAttributes(mFindFileData).HasFlag(.Directory);
 			}
 		}
 
@@ -214,7 +214,7 @@ namespace System.IO
 		{
 			Platform.GetStrHelper(outFileName, scope (outPtr, outSize, outResult) =>
 				{
-					Platform.BfpFindFileData_GetFileName(mFindFileData, outPtr, outSize, (Platform.BfpFileResult*)outResult);
+					Platform.Hook.BfpFindFileData_GetFileName(mFindFileData, outPtr, outSize, (Platform.BfpFileResult*)outResult);
 				});
 		}
 
@@ -228,43 +228,45 @@ namespace System.IO
 
 		public DateTime GetLastWriteTime()
 		{
-			return DateTime.FromFileTime((int64)Platform.BfpFindFileData_GetTime_LastWrite(mFindFileData));
+			return DateTime.FromFileTime((int64)Platform.Hook.BfpFindFileData_GetTime_LastWrite(mFindFileData));
 		}
 
 		public DateTime GetLastWriteTimeUtc()
 		{
-			return DateTime.FromFileTimeUtc((int64)Platform.BfpFindFileData_GetTime_LastWrite(mFindFileData));
+			return DateTime.FromFileTimeUtc((int64)Platform.Hook.BfpFindFileData_GetTime_LastWrite(mFindFileData));
 		}
 
 		public DateTime GetCreatedTime()
 		{
-			return DateTime.FromFileTime((int64)Platform.BfpFindFileData_GetTime_Created(mFindFileData));
+			return DateTime.FromFileTime((int64)Platform.Hook.BfpFindFileData_GetTime_Created(mFindFileData));
 		}
 
 		public DateTime GetCreatedTimeUtc()
 		{
-			return DateTime.FromFileTimeUtc((int64)Platform.BfpFindFileData_GetTime_Created(mFindFileData));
+			return DateTime.FromFileTimeUtc((int64)Platform.Hook.BfpFindFileData_GetTime_Created(mFindFileData));
 		}
 
 		public DateTime GetAccessedTime()
 		{
-			return DateTime.FromFileTime((int64)Platform.BfpFindFileData_GetTime_Access(mFindFileData));
+			return DateTime.FromFileTime((int64)Platform.Hook.BfpFindFileData_GetTime_Access(mFindFileData));
 		}
 
 		public DateTime GetAccessedTimeUtc()
 		{
-			return DateTime.FromFileTimeUtc((int64)Platform.BfpFindFileData_GetTime_Access(mFindFileData));
+			return DateTime.FromFileTimeUtc((int64)Platform.Hook.BfpFindFileData_GetTime_Access(mFindFileData));
 		}
 
 		public int64 GetFileSize()
 		{
-			return Platform.BfpFindFileData_GetFileSize(mFindFileData);
+			return Platform.Hook.BfpFindFileData_GetFileSize(mFindFileData);
 		}
 
 		public Platform.BfpFileAttributes GetFileAttributes()
 		{
-			return Platform.BfpFindFileData_GetFileAttributes(mFindFileData);
+			return Platform.Hook.BfpFindFileData_GetFileAttributes(mFindFileData);
 		}
+
+		public static bool operator implicit (Self self) => self.mFindFileData != null;
 	}
 
 	struct FileEnumerator : IEnumerator<FileFindEntry>, IDisposable
@@ -292,7 +294,7 @@ namespace System.IO
 		{
 			delete mSearchStr;
 			if (mFindFileData != null)
-				Platform.BfpFindFileData_Release(mFindFileData);
+				Platform.Hook.BfpFindFileData_Release(mFindFileData);
 		}
 
 		public bool MoveNext() mut 
@@ -301,7 +303,7 @@ namespace System.IO
 			if (mIdx == 0)
 				return mFindFileData != null;
 
-			return Platform.BfpFindFileData_FindNextFile(mFindFileData);
+			return Platform.Hook.BfpFindFileData_FindNextFile(mFindFileData);
 		}
 
 		public Result<FileFindEntry> GetNext() mut

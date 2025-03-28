@@ -43,15 +43,34 @@ else
 	echo "Ninja isn't installed, consider installing it for faster build speeds."
 fi
 
-LLVM_CONFIG=$(command -v llvm-config-18 2>/dev/null || command -v llvm-config 2>/dev/null)
+LLVM_CONFIG=$(command -v llvm-config-19 2>/dev/null ||
+              command -v /usr/lib/llvm18/bin/llvm-config 2>/dev/null ||
+              command -v llvm-config 2>/dev/null)
 LLVM_FOUND=0
+LLVM_DIR=""
 
 if [ -n "$LLVM_CONFIG" ]; then
   LLVM_VERSION=$($LLVM_CONFIG --version)
   LLVM_MAJOR_VERSION=$(echo "$LLVM_VERSION" | cut -d. -f1)
   LLVM_MINOR_VERSION=$(echo "$LLVM_VERSION" | cut -d. -f2)
-  if [ "$LLVM_MAJOR_VERSION" = "18" ] && [ "$LLVM_MINOR_VERSION" = "1" ]; then
+  if [ "$LLVM_MAJOR_VERSION" = "19" ] && [ "$LLVM_MINOR_VERSION" = "1" ]; then
     LLVM_FOUND=1
+    # Get the LLVM prefix directory and construct cmake path from it
+    LLVM_PREFIX=$($LLVM_CONFIG --prefix)
+    LLVM_DIR="$LLVM_PREFIX/lib/cmake/llvm"
+  else
+    # If first attempt didn't find 19.1, explicitly try the llvm18 path
+    LLVM_CONFIG="/usr/lib/llvm18/bin/llvm-config"
+    if [ -x "$LLVM_CONFIG" ]; then
+      LLVM_VERSION=$($LLVM_CONFIG --version)
+      LLVM_MAJOR_VERSION=$(echo "$LLVM_VERSION" | cut -d. -f1)
+      LLVM_MINOR_VERSION=$(echo "$LLVM_VERSION" | cut -d. -f2)
+      if [ "$LLVM_MAJOR_VERSION" = "19" ] && [ "$LLVM_MINOR_VERSION" = "1" ]; then
+        LLVM_FOUND=1
+        LLVM_PREFIX=$($LLVM_CONFIG --prefix)
+        LLVM_DIR="$LLVM_PREFIX/lib/cmake/llvm"
+      fi
+    fi
   fi
 fi
 
@@ -61,7 +80,7 @@ set -e
 ### Dependencies ###
 
 if [ $LLVM_FOUND == 0 ]; then
-	echo "ERROR: LLVM 18.1 was not detected on your system. Please install the package 'llvm-18-dev' and try again." >&2
+	echo "ERROR: LLVM 19.1 was not detected on your system. Please install the package 'llvm-19-dev' and try again." >&2
 	exit
 fi
 
@@ -83,12 +102,12 @@ fi
 
 cd jbuild_d
 
-echo cmake $USE_NINJA $USE_SDL -DCMAKE_BUILD_TYPE=Debug ../
+echo cmake -DLLVM_DIR="$LLVM_DIR" $USE_NINJA $USE_SDL -DCMAKE_BUILD_TYPE=Debug ../
 
-cmake $USE_NINJA $USE_SDL $USE_FFI -DCMAKE_BUILD_TYPE=Debug ../
+cmake -DLLVM_DIR="$LLVM_DIR" $USE_NINJA $USE_SDL $USE_FFI -DCMAKE_BUILD_TYPE=Debug ../
 cmake --build .
 cd ../jbuild
-cmake $USE_NINJA $USE_SDL $USE_FFI -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
+cmake -DLLVM_DIR="$LLVM_DIR" $USE_NINJA $USE_SDL $USE_FFI -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
 cmake --build .
 
 cd ../IDE/dist

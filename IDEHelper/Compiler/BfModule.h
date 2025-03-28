@@ -44,6 +44,7 @@ enum BfPopulateType
 	BfPopulateType_IdentityNoRemapAlias,
 	BfPopulateType_Declaration,
 	BfPopulateType_BaseType,
+	BfPopulateType_CustomAttributes,
 	BfPopulateType_Interfaces_Direct,
 	BfPopulateType_AllowStaticMethods,
 	BfPopulateType_Interfaces_All,
@@ -92,6 +93,7 @@ enum BfEvalExprFlags : int64
 	BfEvalExprFlags_AppendFieldInitializer = 0x80000000,
 	BfEvalExprFlags_NameOf = 0x100000000LL,
 	BfEvalExprFlags_NameOfSuccess = 0x200000000LL,
+	BfEvalExprFlags_InParamsExpr = 0x400000000LL,
 
 	BfEvalExprFlags_InheritFlags = BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_Comptime | BfEvalExprFlags_DeclType
 };
@@ -127,10 +129,11 @@ enum BfCastResultFlags : int8
 enum BfAllocFlags : int8
 {
 	BfAllocFlags_None = 0,
-	BfAllocFlags_RawArray = 1,
-	BfAllocFlags_ZeroMemory = 2,
-	BfAllocFlags_NoDtorCall = 4,
-	BfAllocFlags_NoDefaultToMalloc = 8
+	BfAllocFlags_HasAppendWantMark = 1,
+	BfAllocFlags_RawArray = 2,
+	BfAllocFlags_ZeroMemory = 4,
+	BfAllocFlags_NoDtorCall = 8,
+	BfAllocFlags_NoDefaultToMalloc = 0x10,	
 };
 
 enum BfProtectionCheckFlags : int8
@@ -320,6 +323,7 @@ public:
 	bool mCastThis;
 	bool mArgsNeedLoad;
 	bool mIgnored;
+	bool mIsAllocaFunc;
 
 	SLIList<BfDeferredCallEntry*> mDynList;
 	BfIRValue mDynCallTail;
@@ -1059,12 +1063,13 @@ public:
 	BfConstResolveState* mConstResolveState;
 	BfMethodInstance* mMethodInstance;
 	BfHotDataReferenceBuilder* mHotDataReferenceBuilder;
+	BfTypeInstance* mPrivateTypeInstance;
 	BfIRFunction mIRFunction;
 	BfIRBlock mIRHeadBlock;
 	BfIRBlock mIRInitBlock;
 	BfIRBlock mIREntryBlock;
-	Array<BfLocalVariable*, AllocatorBump<BfLocalVariable*> > mLocals;
-	HashSet<BfLocalVarEntry, AllocatorBump<BfLocalVariable*> > mLocalVarSet;
+	Array<BfLocalVariable*, AllocatorBump> mLocals;
+	HashSet<BfLocalVarEntry, AllocatorBump> mLocalVarSet;
 	Array<BfLocalMethod*> mLocalMethods;
 	Dictionary<String, BfLocalMethod*> mLocalMethodMap;
 	Dictionary<String, BfLocalMethod*> mLocalMethodCache; // So any lambda 'capturing' and 'processing' stages use the same local method
@@ -1133,6 +1138,7 @@ public:
 		mPrevMethodState = NULL;
 		mConstResolveState = NULL;
 		mHotDataReferenceBuilder = NULL;
+		mPrivateTypeInstance = NULL;
 		mHeadScope.mIsScopeHead = true;
 		mCurScope = &mHeadScope;
 		mTailScope = &mHeadScope;
@@ -1476,6 +1482,7 @@ enum BfDeferredBlockFlags
 	BfDeferredBlockFlag_DoNullChecks = 2,
 	BfDeferredBlockFlag_SkipObjectAccessCheck = 4,
 	BfDeferredBlockFlag_MoveNewBlocksToEnd = 8,
+	BfDeferredBlockFlag_IsAllocaFunc = 0x10
 };
 
 enum BfGetCustomAttributesFlags
@@ -1545,6 +1552,7 @@ public:
 	Dictionary<int, BfIRValue> mStringCharPtrPool;
 	Array<int> mStringPoolRefs;
 	HashSet<int> mUnreifiedStringPoolRefs;
+	HashSet<int> mSignatureIdRefs;
 
 	Array<BfIRBuilder*> mPrevIRBuilders; // Before extensions
 	BfIRBuilder* mBfIRBuilder;
@@ -1613,6 +1621,7 @@ public:
 public:
 	void FatalError(const StringImpl& error, const char* file = NULL, int line = -1, int column = -1);
 	void FatalError(const StringImpl& error, BfAstNode* refNode);
+	void FatalError(const StringImpl& error, BfFailHandleKind failHandleKind);
 	void InternalError(const StringImpl& error, BfAstNode* refNode = NULL, const char* file = NULL, int line = -1);
 	void NotImpl(BfAstNode* astNode);
 	void AddMethodReference(const BfMethodRef& methodRef, BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None);
@@ -1620,6 +1629,7 @@ public:
 	void GetAccessAllowed(BfTypeInstance* checkType, bool& allowProtected, bool& allowPrivate);
 	bool CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* memberOwner, BfProject* memberProject, BfProtection memberProtection, BfTypeInstance* lookupStartType);
 	void SetElementType(BfAstNode* astNode, BfSourceElementType elementType);
+	void SetHighestElementType(BfAstNode* astNode, BfSourceElementType elementType);
 	bool PreFail();
 	void SetFail();
 	void VerifyOnDemandMethods();
@@ -1632,7 +1642,7 @@ public:
 	BfError* Warn(int warningNum, const StringImpl& warning, BfAstNode* refNode = NULL, bool isPersistent = false, bool showInSpecialized = false);
 	void CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance, BfFieldInstance* fieldInstance, BfCustomAttributes* customAttributes, BfAstNode* targetSrc);
 	void CheckRangeError(BfType* type, BfAstNode* refNode);
-	bool CheckCircularDataError(bool failTypes = true);
+	bool CheckCircularDataError(bool failTypes = true, bool forceFail = false);
 	BfFileInstance* GetFileFromNode(BfAstNode* astNode);
 	//void UpdateSrcPos(BfAstNode* astNode, bool setDebugLoc = true, int debugLocOffset = 0, bool force = false);
 	void UpdateSrcPos(BfAstNode* astNode, BfSrcPosFlags flags = BfSrcPosFlag_None, int debugLocOffset = 0);
@@ -1674,9 +1684,10 @@ public:
 	void CurrentAddToConstHolder(BfIRValue& irVal);
 	void ClearConstData();
 	bool HasUnactializedConstant(BfConstant* constant, BfIRConstHolder* constHolder);
+	bool HasGlobalVarReference(BfConstant* constant, BfIRConstHolder* constHolder);
 	BfTypedValue GetTypedValueFromConstant(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType);
 	BfIRValue ConstantToCurrent(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType, bool allowUnactualized = false);
-	void ValidateCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeTargets attrTarget);
+	void ValidateCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeTargets attrTarget, bool force = false);
 	void GetCustomAttributes(BfCustomAttributes* customAttributes, BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, BfGetCustomAttributesFlags flags = BfGetCustomAttributesFlags_None, BfCaptureInfo* captureInfo = NULL);
 	BfCustomAttributes* GetCustomAttributes(BfAttributeDirective* attributesDirective, BfAttributeTargets attrType, BfGetCustomAttributesFlags flags = BfGetCustomAttributesFlags_None, BfCaptureInfo* captureInfo = NULL);
 	BfCustomAttributes* GetCustomAttributes(BfTypeDef* typeDef);
@@ -1688,6 +1699,7 @@ public:
 
 	BfTypedValue FlushNullConditional(BfTypedValue result, bool ignoreNullable = false);
 	void NewScopeState(bool createLexicalBlock = true, bool flushValueScope = true); // returns prev scope data
+	BfIRValue CreateAlloca(BfIRType irType, int align, bool addLifetime = true, const char* name = NULL, BfIRValue arraySize = BfIRValue());
 	BfIRValue CreateAlloca(BfType* type, bool addLifetime = true, const char* name = NULL, BfIRValue arraySize = BfIRValue());
 	BfIRValue CreateAllocaInst(BfTypeInstance* typeInst, bool addLifetime = true, const char* name = NULL);
 	BfDeferredCallEntry* AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scope, bool condAlloca = false, bool mayEscape = false, BfIRBlock valBlock = BfIRBlock());
@@ -1698,6 +1710,7 @@ public:
 	BfIRValue ValueScopeStart();
 	void ValueScopeEnd(BfIRValue valueScopeStart);
 	BfProjectSet* GetVisibleProjectSet();
+	bool IsProjectVisible(BfProject* project);
 
 	void AddBasicBlock(BfIRBlock bb, bool activate = true);
 	void VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEvaluator = NULL, BfEmbeddedStatementFlags flags = BfEmbeddedStatementFlags_None);
@@ -1712,7 +1725,7 @@ public:
 	void EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfDeferredBlockFlags flags = BfDeferredBlockFlag_None);
 	bool AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfScopeData* scope);
 	BfDeferredCallEntry* AddDeferredBlock(BfBlock* block, BfScopeData* scope, Array<BfDeferredCapture>* captures = NULL);
-	BfDeferredCallEntry* AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scope, BfAstNode* srcNode = NULL, bool bypassVirtual = false, bool doNullCheck = false);
+	BfDeferredCallEntry* AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scope, BfAstNode* srcNode = NULL, bool bypassVirtual = false, bool doNullCheck = false, bool isAllocaFunc = false);
 	void EmitDeferredCall(BfScopeData* scopeData, BfDeferredCallEntry& deferredCallEntry, bool moveBlocks);
 	void EmitDeferredCallProcessor(BfScopeData* scopeData, SLIList<BfDeferredCallEntry*>& callEntries, BfIRValue callTail);
 	void EmitDeferredCallProcessorInstances(BfScopeData* scopeData);
@@ -1732,7 +1745,7 @@ public:
 	void CleanupFileInstances();
 	void AssertErrorState();
 	void AssertParseErrorState();
-	void InitTypeInst(BfTypedValue typedValue, BfScopeData* scope, bool zeroMemory, BfIRValue dataSize);
+	void InitTypeInst(BfTypedValue typedValue, BfScopeData* scope, bool zeroMemory, BfIRValue dataSize, BfAllocFlags allocFlags = BfAllocFlags_None);
 	bool IsAllocatorAligned();
 	BfIRValue AllocBytes(BfAstNode* refNode, const BfAllocTarget& allocTarget, BfType* type, BfIRValue sizeValue, BfIRValue alignValue, BfAllocFlags allocFlags/*bool zeroMemory, bool defaultToMalloc*/);
 	BfIRValue GetMarkFuncPtr(BfType* type);
@@ -1833,6 +1846,7 @@ public:
 	bool AreConstraintsSubset(BfGenericParamInstance* checkInner, BfGenericParamInstance* checkOuter);
 	bool CheckConstraintState(BfAstNode* refNode);
 	void ValidateGenericParams(BfGenericParamKind genericParamKind, Span<BfGenericParamInstance*> genericParams);
+	void SetGenericValidationError(BfTypeInstance* typeInst);
 	bool ShouldAllowMultipleDefinitions(BfTypeInstance* typeInst, BfTypeDef* firstDeclaringTypeDef, BfTypeDef* secondDeclaringTypeDef);
 	void CheckInjectNewRevision(BfTypeInstance* typeInstance);
 	void InitType(BfType* resolvedTypeRef, BfPopulateType populateType);
@@ -1883,6 +1897,7 @@ public:
 	void CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLocal = false);
 	void ResolveConstField(BfTypeInstance* typeInst, BfFieldInstance* fieldInstance, BfFieldDef* field, bool forceResolve = false);
 	BfTypedValue GetFieldInitializerValue(BfFieldInstance* fieldInstance, BfExpression* initializer = NULL, BfFieldDef* fieldDef = NULL, BfType* fieldType = NULL, bool doStore = false);
+	bool TryGetAppendedObjectInfo(BfFieldInstance* fieldInstance, int& dataSize, int& alignSize);
 	void AppendedObjectInit(BfFieldInstance* fieldInstance);
 	void MarkFieldInitialized(BfFieldInstance* fieldInstance);
 	bool IsThreadLocal(BfFieldInstance* fieldInstance);
@@ -1919,7 +1934,10 @@ public:
 	String GenericParamSourceToString(const BfGenericParamSource& genericParamSource);
 	bool CheckGenericConstraints(const BfGenericParamSource& genericParamSource, BfType* checkArgType, BfAstNode* checkArgTypeRef, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs = NULL, BfError** errorOut = NULL);
 	BfIRValue AllocLocalVariable(BfType* type, const StringImpl& name, bool doLifetimeEnd = true);
+	BfTypedValue CreateOutVariable(BfAstNode* refNode, BfVariableDeclaration* variableDeclaration, BfAstNode* paramNameNode, BfType* variableType, BfTypedValue initValue);
+	void MoveLocalToParentScope(BfLocalVariable* localVar);
 	void DoAddLocalVariable(BfLocalVariable* localVar);
+	void FixLocalVariable(BfLocalVariable* localVar);
 	void DoLocalVariableDebugInfo(BfLocalVariable* localVar, bool doAliasValue = false, BfIRValue declareBefore = BfIRValue(), BfIRInitType initType = BfIRInitType_NotSet);
 	BfLocalVariable* AddLocalVariableDef(BfLocalVariable* localVarDef, bool addDebugInfo = false, bool doAliasValue = false, BfIRValue declareBefore = BfIRValue(), BfIRInitType initType = BfIRInitType_NotSet);
 	bool TryLocalVariableInit(BfLocalVariable* localVar);
@@ -1952,10 +1970,10 @@ public:
 	BfType* ResolveGenericType(BfType* unspecializedType, BfTypeVector* typeGenericArguments, BfTypeVector* methodGenericArguments, BfType* selfType, bool allowFail = false);
 	BfType* ResolveSelfType(BfType* type, BfType* selfType);
 	bool IsUnboundGeneric(BfType* type);
-	BfGenericParamInstance* GetGenericTypeParamInstance(int paramIdx);
+	BfGenericParamInstance* GetGenericTypeParamInstance(int paramIdx, BfFailHandleKind failHandleKind = BfFailHandleKind_Normal);
 	BfGenericParamInstance* GetGenericParamInstance(BfGenericParamType* type, bool checkMixinBind = false, BfFailHandleKind failHandleKind = BfFailHandleKind_Normal);
 	void GetActiveTypeGenericParamInstances(SizedArray<BfGenericParamInstance*, 4>& genericParamInstance);
-	BfGenericParamInstance* GetMergedGenericParamData(BfGenericParamType* type, BfGenericParamFlags& outFlags, BfType*& outTypeConstraint);
+	BfGenericParamInstance* GetMergedGenericParamData(BfType* type, BfGenericParamFlags& outFlags, BfType*& outTypeConstraint);
 	BfTypeInstance* GetBaseType(BfTypeInstance* typeInst);
 	void HandleTypeGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDef, int typeGenericParamIdx);
 	void HandleMethodGenericParamRef(BfAstNode* refNode, BfTypeDef* typeDef, BfMethodDef* methodDef, int typeGenericParamIdx);
@@ -1980,6 +1998,7 @@ public:
 	BfType* ResolveTypeRefAllowUnboundGenerics(BfTypeReference* typeRef, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0, bool resolveGenericParam = true);
 	BfType* ResolveTypeRef_Type(BfAstNode* astNode, const BfSizedArray<BfAstNode*>* genericArgs, BfPopulateType populateType, BfResolveTypeRefFlags& resolveFlags);
 	BfType* ResolveTypeRef_Ref(BfAstNode* astNode, const BfSizedArray<BfAstNode*>* genericArgs, BfPopulateType populateType, BfResolveTypeRefFlags& resolveFlags);
+	BfType* ResolveTypeRef_Ref(BfAstNode* astNode, BfPopulateType populateType);
 	BfType* ResolveTypeRef(BfAstNode* astNode, const BfSizedArray<BfAstNode*>* genericArgs, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = (BfResolveTypeRefFlags)0);
 
 	BfType* ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
@@ -2002,6 +2021,9 @@ public:
 	void CreateDelegateInvokeMethod();
 	BfType* GetDelegateReturnType(BfType* delegateType);
 	BfMethodInstance* GetDelegateInvokeMethod(BfTypeInstance* typeInstance);
+	String GetDelegateSignatureString(BfTypeInstance* typeInstance);	
+	int GetSignatureId(const StringImpl& str);
+	int GetDelegateSignatureId(BfTypeInstance* typeInstance);
 	String GetLocalMethodName(const StringImpl& baseName, BfAstNode* anchorNode, BfMethodState* declMethodState, BfMixinState* declMixinState);
 	BfMethodDef* GetLocalMethodDef(BfLocalMethod* localMethod);
 	BfModuleMethodInstance GetLocalMethodInstance(BfLocalMethod* localMethod, const BfTypeVector& methodGenericArguments, BfMethodInstance* methodInstance = NULL, bool force = false);
@@ -2014,6 +2036,7 @@ public:
 	void AddMethodToWorkList(BfMethodInstance* methodInstance);
 	bool IsInterestedInMethod(BfTypeInstance* typeInstance, BfMethodDef* methodDef);
 	void CalcAppendAlign(BfMethodInstance* methodInst);
+	BfAllowAppendKind GetBaseAllowAppend(BfMethodInstance* curMethodInstance);
 	BfTypedValue TryConstCalcAppend(BfMethodInstance* methodInst, SizedArrayImpl<BfIRValue>& args, bool force = false);
 	BfTypedValue CallBaseCtorCalc(bool constOnly);
 	void EmitCtorCalcAppend();
@@ -2085,10 +2108,12 @@ public:
 	BfIRValue CreateClassVDataGlobal(BfTypeInstance* typeInstance, int* outNumElements = NULL, String* outMangledName = NULL);
 	BfIRValue GetClassVDataPtr(BfTypeInstance* typeInstance);
 	BfIRValue CreateClassVDataExtGlobal(BfTypeInstance* declTypeInst, BfTypeInstance* implTypeInst, int startVirtIdx);
-	BfIRValue CreateTypeDataRef(BfType* type);
+	BfIRValue CreateTypeDataRef(BfType* type, bool forceConstant = false);
 	void EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType, BfIRValue arg, SizedArrayImpl<uint8>& data, Dictionary<int, int>& usedStringIdMap);
 	BfIRValue CreateFieldData(BfFieldInstance* fieldInstance, int customAttrIdx);
 	void CreateSlotOfs(BfTypeInstance* typeInstance);
+	BfIRValue GetTypeTypeData(BfType* type, BfCreateTypeDataContext& ctx, bool needsTypeData, bool wantsTypeDecl, bool needsTypeNames, int& typeFlags, int& typeCode);
+	BfIRValue CreateTypeDeclData(BfType* type, BfProject* curProject);
 	BfIRValue CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, bool forceReflectFields, bool needsTypeData, bool needsTypeNames, bool needsVData);
 	BfIRValue FixClassVData(BfIRValue value);
 

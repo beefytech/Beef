@@ -2160,71 +2160,71 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 	switch (value->GetTypeId())
 	{
 	case BeGlobalVariable::TypeId:
-	{
-		auto globalVar = (BeGlobalVariable*)value;
-		if ((globalVar->mIsTLS) && (mTLSVRegIdx == -1))
 		{
-			auto tlsVReg = AllocVirtualReg(mNativeIntType);
-			auto vregInfo = GetVRegInfo(tlsVReg);
-			vregInfo->mMustExist = true;
-			vregInfo->mForceReg = true;
-			vregInfo->mDisableR12 = true;
-			vregInfo->mDisableR13 = true;
-			mTLSVRegIdx = tlsVReg.mVRegIdx;
-		}
+			auto globalVar = (BeGlobalVariable*)value;
+			if ((globalVar->mIsTLS) && (mTLSVRegIdx == -1))
+			{
+				auto tlsVReg = AllocVirtualReg(mNativeIntType);
+				auto vregInfo = GetVRegInfo(tlsVReg);
+				vregInfo->mMustExist = true;
+				vregInfo->mForceReg = true;
+				vregInfo->mDisableR12 = true;
+				vregInfo->mDisableR13 = true;
+				mTLSVRegIdx = tlsVReg.mVRegIdx;
+			}
 
-		auto sym = mCOFFObject->GetSymbol(globalVar);
-		if (sym != NULL)
-		{
-			BeMCOperand mcOperand;
-			mcOperand.mKind = BeMCOperandKind_SymbolAddr;
-			mcOperand.mSymbolIdx = sym->mIdx;
-			return mcOperand;
+			auto sym = mCOFFObject->GetSymbol(globalVar);
+			if (sym != NULL)
+			{
+				BeMCOperand mcOperand;
+				mcOperand.mKind = BeMCOperandKind_SymbolAddr;
+				mcOperand.mSymbolIdx = sym->mIdx;
+				return mcOperand;
+			}
 		}
-	}
-	break;
+		break;
 	case BeCastConstant::TypeId:
-	{
-		auto constant = (BeCastConstant*)value;
-
-		BeMCOperand mcOperand;
-		auto relTo = GetOperand(constant->mTarget);
-		if (relTo.mKind == BeMCOperandKind_Immediate_Null)
 		{
-			mcOperand.mKind = BeMCOperandKind_Immediate_Null;
-			mcOperand.mType = constant->mType;
+			auto constant = (BeCastConstant*)value;
+
+			BeMCOperand mcOperand;
+			auto relTo = GetOperand(constant->mTarget);
+			if (relTo.mKind == BeMCOperandKind_Immediate_Null)
+			{
+				mcOperand.mKind = BeMCOperandKind_Immediate_Null;
+				mcOperand.mType = constant->mType;
+				return mcOperand;
+			}
+
+			mcOperand = AllocVirtualReg(constant->mType);
+			auto vregInfo = GetVRegInfo(mcOperand);
+			vregInfo->mDefOnFirstUse = true;
+			vregInfo->mRelTo = relTo;
+			vregInfo->mIsExpr = true;
+
 			return mcOperand;
 		}
-
-		mcOperand = AllocVirtualReg(constant->mType);
-		auto vregInfo = GetVRegInfo(mcOperand);
-		vregInfo->mDefOnFirstUse = true;
-		vregInfo->mRelTo = relTo;
-		vregInfo->mIsExpr = true;
-
-		return mcOperand;
-	}
-	break;
+		break;
 	case BeConstant::TypeId:
-	{
-		auto constant = (BeConstant*)value;
-		BeMCOperand mcOperand;
-		switch (constant->mType->mTypeCode)
 		{
-		case BeTypeCode_Boolean:
-		case BeTypeCode_Int8: mcOperand.mKind = BeMCOperandKind_Immediate_i8; break;
-		case BeTypeCode_Int16: mcOperand.mKind = BeMCOperandKind_Immediate_i16; break;
-		case BeTypeCode_Int32: mcOperand.mKind = BeMCOperandKind_Immediate_i32; break;
-		case BeTypeCode_Int64: mcOperand.mKind = BeMCOperandKind_Immediate_i64; break;
-		case BeTypeCode_Float:
-			mcOperand.mImmF32 = constant->mDouble;
-			mcOperand.mKind = BeMCOperandKind_Immediate_f32;
-			return mcOperand;
-		case BeTypeCode_Double:
-			mcOperand.mImmF64 = constant->mDouble;
-			mcOperand.mKind = BeMCOperandKind_Immediate_f64;
-			return mcOperand;
-		case BeTypeCode_Pointer:
+			auto constant = (BeConstant*)value;
+			BeMCOperand mcOperand;
+			switch (constant->mType->mTypeCode)
+			{
+			case BeTypeCode_Boolean:
+			case BeTypeCode_Int8: mcOperand.mKind = BeMCOperandKind_Immediate_i8; break;
+			case BeTypeCode_Int16: mcOperand.mKind = BeMCOperandKind_Immediate_i16; break;
+			case BeTypeCode_Int32: mcOperand.mKind = BeMCOperandKind_Immediate_i32; break;
+			case BeTypeCode_Int64: mcOperand.mKind = BeMCOperandKind_Immediate_i64; break;
+			case BeTypeCode_Float:
+				mcOperand.mImmF32 = constant->mDouble;
+				mcOperand.mKind = BeMCOperandKind_Immediate_f32;
+				return mcOperand;
+			case BeTypeCode_Double:
+				mcOperand.mImmF64 = constant->mDouble;
+				mcOperand.mKind = BeMCOperandKind_Immediate_f64;
+				return mcOperand;
+			case BeTypeCode_Pointer:
 			{
 				if (constant->mTarget == NULL)
 				{
@@ -2253,140 +2253,151 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 				}
 			}
 			break;
-		case BeTypeCode_Struct:
-		case BeTypeCode_SizedArray:
-		case BeTypeCode_Vector:
+			case BeTypeCode_Struct:
+			case BeTypeCode_SizedArray:
+			case BeTypeCode_Vector:
+				mcOperand.mImmediate = constant->mInt64;
+				mcOperand.mKind = BeMCOperandKind_Immediate_i64;
+				break;
+			default:
+				Fail("Unhandled constant type");
+			}
 			mcOperand.mImmediate = constant->mInt64;
-			mcOperand.mKind = BeMCOperandKind_Immediate_i64;
-			break;
-		default:
-			Fail("Unhandled constant type");
-		}
-		mcOperand.mImmediate = constant->mInt64;
-		return mcOperand;
-	}
-	break;
-	case BeStructConstant::TypeId:
-	{
-		auto structConstant = (BeStructConstant*)value;
-
-		BeMCOperand mcOperand;
-		mcOperand.mKind = BeMCOperandKind_ConstAgg;
-		mcOperand.mConstant = structConstant;
-
-		return mcOperand;
-	}
-	case BeGEP1Constant::TypeId:
-	{
-		auto gepConstant = (BeGEP1Constant*)value;
-
-		auto mcVal = GetOperand(gepConstant->mTarget);
-
-		BePointerType* ptrType = (BePointerType*)GetType(mcVal);
-		BEMC_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
-
-		auto result = mcVal;
-
-		// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
-		int byteOffset = 0;
-		BeType* elementType = ptrType->mElementType;
-		byteOffset += gepConstant->mIdx0 * ptrType->mElementType->GetStride();
-
-		result = AllocRelativeVirtualReg(ptrType, result, GetImmediate(byteOffset), 1);
-		// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
-		auto vregInfo = GetVRegInfo(result);
-		vregInfo->mDefOnFirstUse = true;
-		result.mKind = BeMCOperandKind_VReg;
-
-		return result;
-	}
-	break;
-	case BeGEP2Constant::TypeId:
-	{
-		auto gepConstant = (BeGEP2Constant*)value;
-
-		auto mcVal = GetOperand(gepConstant->mTarget);
-
-		BePointerType* ptrType = (BePointerType*)GetType(mcVal);
-		BEMC_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
-
-		auto result = mcVal;
-
-		// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
-		int byteOffset = 0;
-		BeType* elementType = NULL;
-		byteOffset += gepConstant->mIdx0 * ptrType->mElementType->GetStride();
-
-		if (ptrType->mElementType->mTypeCode == BeTypeCode_Struct)
-		{
-			BeStructType* structType = (BeStructType*)ptrType->mElementType;
-			auto& structMember = structType->mMembers[gepConstant->mIdx1];
-			elementType = structMember.mType;
-			byteOffset = structMember.mByteOffset;
-		}
-		else if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
-		{
-			BEMC_ASSERT(ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray);
-			auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
-			elementType = arrayType->mElementType;
-			byteOffset = gepConstant->mIdx1 * elementType->GetStride();
-		}
-		else
-		{
-			BEMC_ASSERT(ptrType->mElementType->mTypeCode == BeTypeCode_Vector);
-			auto arrayType = (BeVectorType*)ptrType->mElementType;
-			elementType = arrayType->mElementType;
-			byteOffset = gepConstant->mIdx1 * elementType->GetStride();
-		}
-
-		auto elementPtrType = mModule->mContext->GetPointerTo(elementType);
-		result = AllocRelativeVirtualReg(elementPtrType, result, GetImmediate(byteOffset), 1);
-		// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
-		auto vregInfo = GetVRegInfo(result);
-		vregInfo->mDefOnFirstUse = true;
-		result.mKind = BeMCOperandKind_VReg;
-
-		return result;
-	}
-	break;
-	case BeExtractValueConstant::TypeId:
-	{
-		// Note: this only handles zero-aggregates
-		auto extractConstant = (BeExtractValueConstant*)value;
-		auto elementType = extractConstant->GetType();
-
-		auto mcVal = GetOperand(extractConstant->mTarget);
-		auto valType = GetType(mcVal);
-
-		BeConstant beConstant;
-		beConstant.mType = elementType;
-		beConstant.mUInt64 = 0;
-		return GetOperand(&beConstant);
-	}
-	break;
-	case BeFunction::TypeId:
-	{
-		auto sym = mCOFFObject->GetSymbol(value);
-		BEMC_ASSERT(sym != NULL);
-		if (sym != NULL)
-		{
-			BeMCOperand mcOperand;
-			mcOperand.mKind = BeMCOperandKind_SymbolAddr;
-			mcOperand.mSymbolIdx = sym->mIdx;
 			return mcOperand;
 		}
-	}
-	break;
+		break;
+	case BeStructConstant::TypeId:
+		{
+			auto structConstant = (BeStructConstant*)value;
+
+			BeMCOperand mcOperand;
+			mcOperand.mKind = BeMCOperandKind_ConstAgg;
+			mcOperand.mConstant = structConstant;
+
+			return mcOperand;
+		}
+		break;
+	case BeGEP1Constant::TypeId:
+		{
+			auto gepConstant = (BeGEP1Constant*)value;
+
+			auto mcVal = GetOperand(gepConstant->mTarget);
+
+			BePointerType* ptrType = (BePointerType*)GetType(mcVal);
+			BEMC_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
+
+			auto result = mcVal;
+
+			// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
+			int byteOffset = 0;
+			BeType* elementType = ptrType->mElementType;
+			byteOffset += gepConstant->mIdx0 * ptrType->mElementType->GetStride();
+
+			result = AllocRelativeVirtualReg(ptrType, result, GetImmediate(byteOffset), 1);
+			// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
+			auto vregInfo = GetVRegInfo(result);
+			vregInfo->mDefOnFirstUse = true;
+			result.mKind = BeMCOperandKind_VReg;
+
+			return result;
+		}
+		break;
+	case BeGEP2Constant::TypeId:
+		{
+			auto gepConstant = (BeGEP2Constant*)value;
+
+			auto mcVal = GetOperand(gepConstant->mTarget);
+
+			BePointerType* ptrType = (BePointerType*)GetType(mcVal);
+			BEMC_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
+
+			auto result = mcVal;
+
+			// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
+			int byteOffset = 0;
+			BeType* elementType = NULL;
+			byteOffset += gepConstant->mIdx0 * ptrType->mElementType->GetStride();
+
+			if (ptrType->mElementType->mTypeCode == BeTypeCode_Struct)
+			{
+				BeStructType* structType = (BeStructType*)ptrType->mElementType;
+				auto& structMember = structType->mMembers[gepConstant->mIdx1];
+				elementType = structMember.mType;
+				byteOffset = structMember.mByteOffset;
+			}
+			else if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
+			{
+				BEMC_ASSERT(ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray);
+				auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
+				elementType = arrayType->mElementType;
+				byteOffset = gepConstant->mIdx1 * elementType->GetStride();
+			}
+			else
+			{
+				BEMC_ASSERT(ptrType->mElementType->mTypeCode == BeTypeCode_Vector);
+				auto arrayType = (BeVectorType*)ptrType->mElementType;
+				elementType = arrayType->mElementType;
+				byteOffset = gepConstant->mIdx1 * elementType->GetStride();
+			}
+
+			auto elementPtrType = mModule->mContext->GetPointerTo(elementType);
+			result = AllocRelativeVirtualReg(elementPtrType, result, GetImmediate(byteOffset), 1);
+			// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
+			auto vregInfo = GetVRegInfo(result);
+			vregInfo->mDefOnFirstUse = true;
+			result.mKind = BeMCOperandKind_VReg;
+
+			return result;
+		}
+		break;
+	case BeExtractValueConstant::TypeId:
+		{
+			// Note: this only handles zero-aggregates
+			auto extractConstant = (BeExtractValueConstant*)value;
+			auto elementType = extractConstant->GetType();
+
+			auto mcVal = GetOperand(extractConstant->mTarget);
+			auto valType = GetType(mcVal);
+
+			BeConstant beConstant;
+			beConstant.mType = elementType;
+			beConstant.mUInt64 = 0;
+			return GetOperand(&beConstant);
+		}
+		break;
+	case BeUndefConstant::TypeId:
+		{
+			auto undefConstant = (BeUndefConstant*)value;
+			BeConstant beConstant;
+			beConstant.mType = undefConstant->mType;
+			beConstant.mUInt64 = 0;
+			return GetOperand(&beConstant);
+		}
+		break;
+	case BeFunction::TypeId:
+		{
+			auto sym = mCOFFObject->GetSymbol(value);
+			BEMC_ASSERT(sym != NULL);
+			if (sym != NULL)
+			{
+				BeMCOperand mcOperand;
+				mcOperand.mKind = BeMCOperandKind_SymbolAddr;
+				mcOperand.mSymbolIdx = sym->mIdx;
+				return mcOperand;
+			}
+		}
+		break;
 	case BeCallInst::TypeId:
-	{
-		auto callInst = (BeCallInst*)value;
-		if (callInst->mInlineResult != NULL)
-			return GetOperand(callInst->mInlineResult);
-	}
-	break;
+		{
+			auto callInst = (BeCallInst*)value;
+			if (callInst->mInlineResult != NULL)
+				return GetOperand(callInst->mInlineResult);
+		}
+		break;
 	case BeDbgVariable::TypeId:
-	{
-	}
+		{
+		}
+		break;
 	}
 
 	BeMCOperand* operandPtr = NULL;
@@ -2856,7 +2867,7 @@ BeMCOperand BeMCContext::GetCallArgVReg(int argIdx, BeTypeCode typeCode)
 	}
 }
 
-BeMCOperand BeMCContext::CreateCall(const BeMCOperand &func, const SizedArrayImpl<BeValue*>& args, BeType* retType, BfIRCallingConv callingConv, bool structRet, bool noReturn, bool isVarArg)
+BeMCOperand BeMCContext::CreateCall(const BeMCOperand &func, const SizedArrayImpl<BeValue*>& args, BeType* retType, BfIRCallingConv callingConv, bool structRet, bool noReturn, int varArgStart)
 {
 	SizedArray<BeMCOperand, 4> opArgs;
 	for (auto itr = args.begin(); itr != args.end(); ++itr)
@@ -2864,7 +2875,7 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand &func, const SizedArrayImp
 		auto& arg = *itr;
 		opArgs.push_back(GetOperand(arg));
 	}
-	return CreateCall(func, opArgs, retType, callingConv, structRet, noReturn, isVarArg);
+	return CreateCall(func, opArgs, retType, callingConv, structRet, noReturn, varArgStart);
 }
 
 BeMCOperand BeMCContext::CreateLoad(const BeMCOperand& mcTarget)
@@ -2876,6 +2887,14 @@ BeMCOperand BeMCContext::CreateLoad(const BeMCOperand& mcTarget)
 		CreateDefineVReg(fakePtr);
 		AllocInst(BeMCInstKind_Mov, fakePtr, BeMCOperand::FromImmediate(0));
 		return CreateLoad(fakePtr);
+	}
+
+	if (HasImmediateTarget(mcTarget))
+	{		
+		BeMCOperand scratchReg = AllocVirtualReg(GetType(mcTarget), 2);
+		CreateDefineVReg(scratchReg);
+		AllocInst(BeMCInstKind_Mov, scratchReg, mcTarget);			
+		return CreateLoad(scratchReg);		
 	}
 
 	BeMCOperand result;
@@ -3010,7 +3029,7 @@ void BeMCContext::CreateStore(BeMCInstKind instKind, const BeMCOperand& val, con
 	}
 }
 
-BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeMCOperand>& args, BeType* retType, BfIRCallingConv callingConv, bool structRet, bool noReturn, bool isVarArg)
+BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeMCOperand>& args, BeType* retType, BfIRCallingConv callingConv, bool structRet, bool noReturn, int varArgStart)
 {
 	BeMCOperand mcResult;
 	//TODO: Allow user to directly specify ret addr with "sret" attribute
@@ -3061,8 +3080,11 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 		if ((argIdx == 0) && (compositeRetReg == X64Reg_RDX))
 			argOfs = 0;
 
+		bool isVarArg = (varArgStart != -1) && (argIdx >= varArgStart);
+
 		auto mcValue = args[argIdx];
-		auto argType = GetType(mcValue);
+		auto argType = GetType(mcValue);		
+
 		X64CPURegister useReg = X64Reg_None;
 		int useArgIdx = argIdx + argOfs;
 
@@ -3103,7 +3125,7 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 			}
 
 			if (isVarArg)
-			{
+			{				
 				X64CPURegister shadowReg = X64Reg_None;
 				switch (useArgIdx)
 				{
@@ -3119,7 +3141,7 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 				case 3:
 					shadowReg = X64Reg_R9;
 					break;
-				}
+				}				
 
 				if ((shadowReg != X64Reg_None) && (useReg != X64Reg_None))
 				{
@@ -6024,6 +6046,18 @@ void BeMCContext::GetRMParams(const BeMCOperand& operand, BeRMParamsInfo& rmInfo
 		rmInfo.mMode = BeMCRMMode_Invalid;
 		return;
 	}
+}
+
+bool BeMCContext::HasImmediateTarget(const BeMCOperand& operand)
+{
+	if (operand.IsImmediate())
+		return true;
+	auto vregInfo = GetVRegInfo(operand);
+	if (vregInfo == NULL)
+		return false;	
+	if (vregInfo->mRelTo)
+		return HasImmediateTarget(vregInfo->mRelTo);
+	return false;
 }
 
 void BeMCContext::DisableRegister(const BeMCOperand& operand, X64CPURegister reg)
@@ -10436,7 +10470,7 @@ bool BeMCContext::DoLegalization()
 					bool needSwap = false;
 
 					// Cmp <imm>, <r/m> is not legal, so we need to swap LHS/RHS, which means also modifying the instruction that uses the result of the cmp
-					if (inst->mArg0.IsImmediate())
+					if (arg0.IsImmediate())
 						needSwap = true;
 
 					if (arg0Type->IsFloat())
@@ -17564,7 +17598,7 @@ void BeMCContext::Generate(BeFunction* function)
 					auto castedInst = (BeCallInst*)inst;
 					BeMCOperand mcFunc;
 					BeType* returnType = NULL;
-					bool isVarArg = false;
+					int varArgStart = -1;
 
 					bool useAltArgs = false;
 					SizedArray<BeValue*, 6> args;
@@ -18156,7 +18190,9 @@ void BeMCContext::Generate(BeFunction* function)
 							auto elementType = ((BePointerType*)funcPtrType)->mElementType;
 							if (elementType->mTypeCode == BeTypeCode_Function)
 							{
-								isVarArg = ((BeFunctionType*)elementType)->mIsVarArg;
+								BeFunctionType* funcType = (BeFunctionType*)elementType;
+								if (funcType->mIsVarArg)
+									varArgStart = funcType->mParams.mSize;
 							}
 						}
 
@@ -18173,7 +18209,7 @@ void BeMCContext::Generate(BeFunction* function)
 								args.Add(arg.mValue);
 						}
 
-						result = CreateCall(mcFunc, args, returnType, castedInst->mCallingConv, castedInst->HasStructRet(), castedInst->mNoReturn, isVarArg);
+						result = CreateCall(mcFunc, args, returnType, castedInst->mCallingConv, castedInst->HasStructRet(), castedInst->mNoReturn, varArgStart);
 					}
 				}
 				break;

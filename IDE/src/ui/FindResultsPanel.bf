@@ -185,9 +185,10 @@ namespace IDE.ui
 
 						char8* linePtr = line.Ptr;
 
-						bool lineMatched;
+						bool lineMatched = false;
 						if (mSearchOptions.mMatchWholeWord)
 						{
+							line.EnsureNullTerminator();
 							bool isNewStart = true;
 							int lineIdx = 0;
 							for (let c32 in line.DecodedChars)

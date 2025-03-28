@@ -35,7 +35,7 @@ namespace System
             return (int32)mClassVData & 0x80 != 0;
         }
 #else
-        [SkipCall]
+        [SkipCall, NoShow]
         public bool IsDeleted()
         {
             return false;
@@ -131,6 +131,12 @@ namespace System
 		    return null;
 		}
 #endif
+
+		[NoShow]
+		public virtual Object DynamicCastToSignature(int32 sig)
+		{
+		    return null;
+		}
 
         int IHashable.GetHashCode()
         {

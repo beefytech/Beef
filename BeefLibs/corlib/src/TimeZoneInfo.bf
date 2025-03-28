@@ -53,7 +53,7 @@ namespace System {
         NoThrowOnInvalidTime      = 2
     }
 
-	[StaticInitPriority(100)]
+	[StaticInitPriority(200)]
     sealed public class TimeZoneInfo : IEquatable<TimeZoneInfo>
 	{
         // ---- SECTION:  members supporting exposed properties -------------*
@@ -2423,8 +2423,8 @@ namespace System {
 					if (dynamicKey.GetValue(c_firstEntryValue) case .Ok(let val))
 						first = val.Get<int32>();
 					int32 last = -1;
-					if (dynamicKey.GetValue(c_lastEntryValue) case .Ok(let val))
-						last = val.Get<int32>();
+					if (dynamicKey.GetValue(c_lastEntryValue) case .Ok(let val2))
+						last = val2.Get<int32>();
 					
                     if ((first == -1) || (last == -1) || (first > last)) {
                         rules = null;

@@ -48,7 +48,7 @@ class Program
 	{
 		while (true)
 		{
-			switch (mPipe.ReadMessage(-1))
+			switch (mPipe.ReadMessage(20))
 			{
 			case .Ok(let msg):
 				uint8* ptr = msg.Ptr + 1;

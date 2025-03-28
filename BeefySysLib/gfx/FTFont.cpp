@@ -136,24 +136,38 @@ bool FTFont::Load(const StringImpl& fileName, float pointSize)
 
 	FTFontManager::Face* face = NULL;
 
+	String key = fileName;
+	void* memPtr = NULL;
+	int memLen = 0;
+	bool isMemory = ParseMemorySpan(fileName, memPtr, memLen, &key);
+
 	FTFontManager::Face** facePtr = NULL;
-	if (gFTFontManager.mFaces.TryAdd(fileName, NULL, &facePtr))
+	if (gFTFontManager.mFaces.TryAdd(key, NULL, &facePtr))
 	{
 		face = new FTFontManager::Face();
 		*facePtr = face;
 
-		face->mFileName = fileName;
+		face->mFileName = key;
 		FT_Face ftFace = NULL;
 
 		String useFileName = fileName;
 		int faceIdx = 0;
-		int atPos = (int)useFileName.IndexOf('@');
+		int atPos = (int)useFileName.IndexOf('@', 1);
 		if (atPos != -1)
 		{
 			faceIdx = atoi(useFileName.c_str() + atPos + 1);
 			useFileName.RemoveToEnd(atPos);
 		}
-		auto error = FT_New_Face(gFTLibrary, useFileName.c_str(), faceIdx, &ftFace);
+		
+		if (isMemory)		
+		{			
+			FT_New_Memory_Face(gFTLibrary, (FT_Byte*)memPtr, memLen, faceIdx, &ftFace);
+		}
+		else
+		{ 
+			FT_New_Face(gFTLibrary, useFileName.c_str(), faceIdx, &ftFace);
+		}
+		
 		face->mFTFace = ftFace;
 	}
 	else

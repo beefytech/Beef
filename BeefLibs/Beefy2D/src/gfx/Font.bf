@@ -6,6 +6,7 @@ using Beefy.geom;
 using Beefy.utils;
 using System.Diagnostics;
 using System.Threading;
+using res;
 
 namespace Beefy.gfx
 {
@@ -35,6 +36,104 @@ namespace Beefy.gfx
 
         public float mMaxWidth;
     }
+
+	public class FontEffect
+	{
+		public enum Kind
+		{
+			case None;
+			case Outline(float thickness, uint32 color);
+		}
+
+		public class EffectCharData
+		{
+			public Font.CharData mSrcCharData;
+			public Font.CharData mEffectCharData ~ delete _;
+		}
+
+		public class FontEntry
+		{
+			public Font mFont;
+			public ImageAtlas mAtlas = new ImageAtlas() ~ delete _;
+			public List<EffectCharData> mCharData = new .() ~ delete _;
+		}
+
+		public Kind mKind;
+		public String mEffectOptions = new .() ~ delete _;
+		public Dictionary<Font, FontEntry> mFontEntries = new .() ~ DeleteDictionaryAndValues!(_);
+		public Dictionary<Font.CharData, EffectCharData> mCharData = new .() ~ DeleteDictionaryAndValues!(_);
+
+		public this(Kind kind)
+		{
+			mKind = kind;
+			switch (mKind)
+			{
+			case .Outline(let thickness, let color):
+				mEffectOptions..Clear().AppendF(
+					$"""
+					Effect=Stroke
+					Size={thickness}
+					Color=#{color:X}
+					""");
+			default:
+			}
+		}
+
+		public ~this()
+		{
+
+		}
+
+		public Font.CharData Apply(Font font, Font.CharData charData)
+		{
+			EffectCharData effectCharData = null;
+			if (mCharData.TryAdd(charData, ?, var effectCharDataPtr))
+			{
+				effectCharData = new EffectCharData();
+				*effectCharDataPtr = effectCharData;
+
+				effectCharData.mSrcCharData = charData;
+				effectCharData.mEffectCharData = new .(charData);
+			}
+			else
+			{
+				return (*effectCharDataPtr).mEffectCharData;
+			}
+
+			FontEntry fontEntry = null;
+			if (mFontEntries.TryAdd(font, ?, var fontEntryPtr))
+			{
+				fontEntry = new .();
+				*fontEntryPtr = fontEntry;
+			}
+			else
+				fontEntry = *fontEntryPtr;
+
+			int32 ofsX = 0;
+			int32 ofsY = 0;
+			if (mKind case .Outline(let thickness, ?))
+			{
+				ofsX += (.)Math.Ceiling(thickness) + 2;
+				ofsY += (.)Math.Ceiling(thickness) + 2;
+			}
+
+			effectCharData.mEffectCharData.mXOffset -= ofsX;
+			effectCharData.mEffectCharData.mYOffset -= ofsY;
+			var effectImage = fontEntry.mAtlas.Alloc(charData.mImageSegment.mSrcWidth + ofsX * 2, charData.mImageSegment.mSrcHeight + ofsY * 2);
+			effectCharData.mEffectCharData.mImageSegment = effectImage;
+			effectCharData.mSrcCharData.mImageSegment.ApplyEffect(effectImage, mEffectOptions);
+
+			/*uint32 color = 0xFFFFFFFF;
+			effectImage.SetBits(0, 0, 1, 1, 1, &color);*/
+
+			return effectCharData.mEffectCharData;
+		}
+
+		public void Prepare(Font font, StringView str)
+		{
+
+		}
+	}
 
     public class Font
     {
@@ -89,6 +188,24 @@ namespace Beefy.gfx
             public int32 mYOffset;
             public int32 mXAdvance;
 			public bool mIsCombiningMark;
+
+			public this()
+			{
+
+			}
+
+			public this(CharData copyFrom)
+			{
+				mImageSegment = copyFrom.mImageSegment;
+				mX = copyFrom.mX;
+				mY = copyFrom.mY;
+				mWidth = copyFrom.mWidth;
+				mHeight = copyFrom.mHeight;
+				mXOffset = copyFrom.mXOffset;
+				mYOffset = copyFrom.mYOffset;
+				mXAdvance = copyFrom.mXAdvance;
+				mIsCombiningMark = copyFrom.mIsCombiningMark;
+			}
         }
 
         public class Page
@@ -139,6 +256,9 @@ namespace Beefy.gfx
 		//BitmapFont mBMFont ~ delete _; 
 		public StringView mEllipsis = "...";
 
+		List<FontEffect> mFontEffectStack ~ delete _;
+		DisposeProxy mFontEffectDisposeProxy = new .(new () => { PopFontEffect(); }) ~ delete _;
+
         public this()
         {
         }
@@ -151,6 +271,19 @@ namespace Beefy.gfx
 		public static ~this()
 		{
 			FTFont_ClearCache();
+		}
+
+		public DisposeProxy PushFontEffect(FontEffect fontEffect)
+		{
+			if (mFontEffectStack == null)
+				mFontEffectStack = new .();
+			mFontEffectStack.Add(fontEffect);
+			return mFontEffectDisposeProxy;
+		}
+
+		public void PopFontEffect()
+		{
+			mFontEffectStack.PopBack();
 		}
 
 		static void BuildFontNameCache()
@@ -383,6 +516,14 @@ namespace Beefy.gfx
 
 		void GetFontPath(StringView fontName, String path)
 		{
+			if (fontName.StartsWith('['))
+			{
+				path.Set(fontName);
+				if (FilePackManager.TryMakeMemoryString(path))
+					return;
+				path.Clear();
+			}
+
 			if (fontName.Contains('.'))
 			{
 				Path.GetAbsolutePath(fontName, BFApp.sApp.mInstallDir, path);
@@ -666,13 +807,23 @@ namespace Beefy.gfx
 						mLowCharData[(int)checkChar] = charData;
 					else
 						mCharData[checkChar] = charData;
-	                return charData;
+	                break;
 				}
-				
+			}
+
+			if (charData == null)
+			{
 				if (checkChar == (char32)'?')
 					return null;
 				return GetCharData((char32)'?');
 			}
+
+			if (mFontEffectStack?.IsEmpty == false)
+			{
+				var fontEffect = mFontEffectStack.Back;
+				charData = fontEffect.Apply(this, charData);
+			}
+
             return charData;
         }
 
@@ -828,10 +979,10 @@ namespace Beefy.gfx
 		    }
 		}
 
-        public void Draw(Graphics g, StringView theString, FontMetrics* fontMetrics = null)
+        public void Draw(Graphics g, float x, float y, StringView theString, FontMetrics* fontMetrics = null)
         {
-            float curX = 0;
-            float curY = 0;
+            float curX = x;
+            float curY = y;
 
             Matrix newMatrix = Matrix();
 			bool hasClipRect = g.mClipRect.HasValue;
@@ -839,7 +990,10 @@ namespace Beefy.gfx
 
 			uint32 color = g.mColor;
 
-			g.PushTextRenderState();
+			bool usingTextRenderState = mFontEffectStack?.IsEmpty != false;
+
+			if (usingTextRenderState)
+				g.PushTextRenderState();
 
 			float markTopOfs = 0;
 			float markBotOfs = 0;
@@ -869,6 +1023,8 @@ namespace Beefy.gfx
 				}
 
                 CharData charData = GetCharData(c);
+				if (charData == null)
+					continue;
 				float drawX = curX + charData.mXOffset;
 				float drawY = curY + charData.mYOffset;
 				
@@ -943,7 +1099,11 @@ namespace Beefy.gfx
                 prevChar = c;
             }
 
-			g.PopRenderState();
+			if (usingTextRenderState)
+				g.PopRenderState();
+
+			if (fontMetrics != null)
+				fontMetrics.mMaxX = Math.Max(fontMetrics.mMaxX, curX);
         }
 
         public float Draw(Graphics g, StringView theString, float x, float y, int32 justification = -1, float width = 0, FontOverflowMode stringEndMode = FontOverflowMode.Overflow, FontMetrics* fontMetrics = null)
@@ -1060,14 +1220,11 @@ namespace Beefy.gfx
 
             if (g != null)
             {
-                using (g.PushTranslate(useX, useY))
-                    Draw(g, workingStr, fontMetrics);
+				Draw(g, useX, useY, workingStr, fontMetrics);
             }
-            else
-            {
-                if (fontMetrics != null)
-                    fontMetrics.mMaxWidth = Math.Max(fontMetrics.mMaxWidth, GetWidth(workingStr));
-            }
+            
+            if (fontMetrics != null)
+                fontMetrics.mMaxWidth = Math.Max(fontMetrics.mMaxWidth, GetWidth(workingStr));
             drawHeight += GetLineSpacing();
 
             if (fontMetrics != null)

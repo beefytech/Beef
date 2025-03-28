@@ -3016,6 +3016,9 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 	if ((createFlags & BfpFileCreateFlag_NoBuffering) != 0)
 		desiredAccess |= FILE_FLAG_NO_BUFFERING;
 
+	if ((createFlags & BfpFileCreateFlag_AllowTimeouts) != 0)	
+		attributes |= FILE_FLAG_OVERLAPPED;	
+
 	HANDLE handle = ::CreateFileW(wPath.c_str(), desiredAccess, shareMode, NULL, creationDisposition, attributes, NULL);
 	if (handle == INVALID_HANDLE_VALUE)
 	{
@@ -3043,6 +3046,13 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 
 	BfpFile* bfpFile = new BfpFile();
 	bfpFile->mHandle = handle;
+
+	if ((createFlags & BfpFileCreateFlag_AllowTimeouts) != 0)
+		bfpFile->mAsyncData = new BfpAsyncData();
+
+	if ((createFlags & BfpFileCreateFlag_Pipe) != 0)
+		bfpFile->mIsPipe = true;
+
 	return bfpFile;
 }
 

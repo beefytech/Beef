@@ -978,7 +978,7 @@ namespace Beefy.theme.dark
         public float mDragOffset = 0;
         public bool mShowColumnGrid;
         public bool mShowGridLines;
-		public Color mGridLinesColor = 0x0CFFFFFF;
+		public Color mGridLinesColor;
         public bool mShowHeader = true;
 		public bool mEndInEllipsis;
 		public bool mWordWrap;
@@ -1002,6 +1002,7 @@ namespace Beefy.theme.dark
         {
             mFont = DarkTheme.sDarkTheme.mSmallFont;
             mBoldFont = DarkTheme.sDarkTheme.mSmallBoldFont;
+			mGridLinesColor = DarkTheme.COLOR_GRID;
             SetShowHeader(true);
 			
         }
@@ -1028,6 +1029,12 @@ namespace Beefy.theme.dark
                 mScrollContentInsets.mBottom += GS!(2);
 
             base.InitScrollbars(wantHorz, wantVert);
+
+			float scrollIncrement = this.mFont.GetLineSpacing();
+			if (mHorzScrollbar != null)
+			    mHorzScrollbar.mScrollIncrement = scrollIncrement;
+			if (mVertScrollbar != null)
+			    mVertScrollbar.mScrollIncrement = scrollIncrement;
         }
 
         protected override ListViewItem CreateListViewItem()
@@ -1087,7 +1094,7 @@ namespace Beefy.theme.dark
 
 			if ((mShowColumnGrid) && (columnIdx < mColumns.Count - 1))
 			{
-			    DrawColumnGridColumn(g, column.mWidth, DarkTheme.sUnitSize, mHeight - DarkTheme.sUnitSize - 1, 0xFF707070);
+			    DrawColumnGridColumn(g, column.mWidth, DarkTheme.sUnitSize, mHeight - DarkTheme.sUnitSize - 1, DarkTheme.COLOR_GRID);
 			}
 
 			float sortArrowX = g.mFont.GetWidth(column.mLabel) + DarkTheme.sUnitSize/2;
@@ -1146,7 +1153,7 @@ namespace Beefy.theme.dark
 
                             if ((mShowColumnGrid) && (columnIdx < mColumns.Count - 1))
                             {
-                                DrawColumnGridColumn(g, curX, GS!(4), mHeight - GS!(8), 0xFF888888);
+                                DrawColumnGridColumn(g, curX, GS!(4), mHeight - GS!(8), DarkTheme.COLOR_GRID);
                             }
                         }
                     }

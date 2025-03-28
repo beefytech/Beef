@@ -1257,9 +1257,9 @@ namespace IDE.ui
             {
                 String errorStr;
                 if (alreadyHadFileList.Count == 1)
-                    errorStr = StackStringFormat!("Project already contained file: {0}", alreadyHadFileList[0]);
+                    errorStr = scope:: String()..AppendF("Project already contained file: {0}", alreadyHadFileList[0]);
                 else
-                    errorStr = StackStringFormat!("Project already contained {0} of the {1} files specified", alreadyHadFileList.Count, totalFileCount);
+                    errorStr = scope:: String()..AppendF("Project already contained {0} of the {1} files specified", alreadyHadFileList.Count, totalFileCount);
                 IDEApp.sApp.Fail(errorStr);
             }
         }
@@ -1991,7 +1991,7 @@ namespace IDE.ui
 
 		                if (projectCount == 1)
 		                {
-		                    aDialog = ThemeFactory.mDefault.CreateDialog("Remove Project", StackStringFormat!("Remove project '{0}' from the workspace?", selectedProjectItem.mProject.mProjectName));
+		                    aDialog = ThemeFactory.mDefault.CreateDialog("Remove Project", scope String()..AppendF("Remove project '{0}' from the workspace?", selectedProjectItem.mProject.mProjectName));
 		                }
 		                else
 		                {
@@ -2009,7 +2009,7 @@ namespace IDE.ui
 		            if (fileCount + folderCount == 1)
 		            {
 		                aDialog = ThemeFactory.mDefault.CreateDialog((fileCount > 0) ? "Delete File" : "Delete Folder",
-		                    StackStringFormat!("Choose Remove to remove '{0}' from '{1}'.\n\nChoose Delete to permanently delete '{0}'.", selectedProjectItem.mName, selectedProjectItem.mProject.mProjectName));
+		                    scope String()..AppendF("Choose Remove to remove '{0}' from '{1}'.\n\nChoose Delete to permanently delete '{0}'.", selectedProjectItem.mName, selectedProjectItem.mProject.mProjectName));
 		            }
 		            else
 		            {
@@ -2034,12 +2034,12 @@ namespace IDE.ui
 		                if (projectsReferenced.Count == 1)
 		                {
 		                    aDialog = ThemeFactory.mDefault.CreateDialog(title,
-		                        StackStringFormat!("Choose Remove to remove the selected {0} from '{1}'.\n\nChoose Delete to permanently delete the selected items.", typeDeleting, selectedProjectItem.mProject.mProjectName));
+		                        scope String()..AppendF("Choose Remove to remove the selected {0} from '{1}'.\n\nChoose Delete to permanently delete the selected items.", typeDeleting, selectedProjectItem.mProject.mProjectName));
 		                }
 		                else
 		                {
 		                    aDialog = ThemeFactory.mDefault.CreateDialog(title,
-		                        StackStringFormat!("Choose Remove to removed the selected {0}.\n\nChoose Delete to permanently delete the selected items.", typeDeleting));
+		                        scope String()..AppendF("Choose Remove to removed the selected {0}.\n\nChoose Delete to permanently delete the selected items.", typeDeleting));
 		                }
 		            }                            
 
@@ -2580,7 +2580,7 @@ namespace IDE.ui
                             /*if ((IDEApp.IsBeefFile(prevPath) != IDEApp.IsBeefFile(newPath)) ||
                                 (IDEApp.IsClangSourceFile(prevPath) != IDEApp.IsClangSourceFile(newPath)))
                             {
-                                IDEApp.sApp.Fail(StackStringFormat!("Invalid file extension change, cannot rename '{0}' to '{1}'", prevPath, newPath));
+                                IDEApp.sApp.Fail(scope String()..AppendF("Invalid file extension change, cannot rename '{0}' to '{1}'", prevPath, newPath));
                                 return;
                             }*/
 
@@ -2798,7 +2798,7 @@ namespace IDE.ui
 
 			if (!File.Exists(filePath))
 			{
-				gApp.Fail(StackStringFormat!("Project file not found: {0}", filePath));
+				gApp.Fail(scope String()..AppendF("Project file not found: {0}", filePath));
 				return null;
 			}
 
@@ -2823,7 +2823,7 @@ namespace IDE.ui
 			Path.GetFileNameWithoutExtension(filePath, projName);
 			if (gApp.mWorkspace.FindProject(projName) != null)
 			{
-			    gApp.Fail(StackStringFormat!("A project named '{0}' name already exists in the workspace.", projName));
+			    gApp.Fail(scope String()..AppendF("A project named '{0}' name already exists in the workspace.", projName));
 			    return null;
 			}
 
@@ -2841,7 +2841,7 @@ namespace IDE.ui
 			InitProject(proj, workspaceFolder);
 			if (failed)
 			{
-			    gApp.Fail(StackStringFormat!("Failed to load project: {0}", filePath));
+			    gApp.Fail(scope String()..AppendF("Failed to load project: {0}", filePath));
 				return proj;
 			}
 

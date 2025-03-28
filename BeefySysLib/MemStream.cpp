@@ -44,17 +44,19 @@ int MemStream::GetSize()
 	return mSize;
 }
 
-void MemStream::Read(void* ptr, int size)
+int MemStream::Read(void* ptr, int size)
 {
 	memcpy(ptr, mData + mPos, size);
 	mPos += size;
+	return size;
 }
 
 
-void Beefy::MemStream::Write(void* ptr, int size)
+int Beefy::MemStream::Write(void* ptr, int size)
 {
 	memcpy(mData + mPos, ptr, size);
 	mPos += size;
+	return size;
 }
 
 int MemStream::GetPos() 
@@ -79,7 +81,7 @@ SafeMemStream::SafeMemStream(void* data, int size, bool freeMemory) : MemStream(
 	mFailed = false;
 }
 
-void SafeMemStream::Read(void* ptr, int size)
+int SafeMemStream::Read(void* ptr, int size)
 {
 	if (mPos + size > mSize)
 	{
@@ -91,6 +93,7 @@ void SafeMemStream::Read(void* ptr, int size)
 		memcpy(ptr, mData + mPos, size);		
 	}
 	mPos += size;
+	return size;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -110,16 +113,18 @@ int DynMemStream::GetSize()
 	return (int)mData.size();
 }
 
-void DynMemStream::Read(void* ptr, int size)
+int DynMemStream::Read(void* ptr, int size)
 {
 	memcpy(ptr, (uint8*)&mData.front() + mPos, size);
 	mPos += size;
+	return size;
 }
 
-void DynMemStream::Write(void* ptr, int size)
+int DynMemStream::Write(void* ptr, int size)
 {	
 	mData.Insert(mPos, (uint8*)ptr, size);
 	mPos += size;
+	return size;
 }
 
 void DynMemStream::Write(uint8 val)

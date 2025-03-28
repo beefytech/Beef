@@ -551,6 +551,42 @@ namespace Tests
 			}
 		}
 
+		struct StructD
+		{
+			[Comptime]
+			public static Span<Type> GetTypes()
+			{
+				List<Type> list = scope .();
+				list.Add(typeof(StructA));
+				list.Add(typeof(EnumA));
+				return list;
+			}
+		}
+
+		struct StructE
+		{
+			[Comptime]
+			public static int GetSizes()
+			{
+				const let typeList = StructD.GetTypes();
+				return typeList[0].InstanceSize + typeList[1].InstanceSize;
+			}
+		}
+
+		public static int GetLocalVal1()
+		{
+			static int sVal = 100;
+			sVal++;
+			return sVal;
+		}
+
+		[Comptime]
+		public static int GetLocalVal2()
+		{
+			GetLocalVal1();
+			return GetLocalVal1();
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -604,8 +640,6 @@ namespace Tests
 			Test.Assert(typeof(decltype(f)) == typeof(float));
 			Test.Assert(ClassB<const 3>.cTimesTen == 30);
 
-
-
 			DictWrapper<Dictionary<int, float>> dictWrap = scope .();
 			dictWrap.[Friend]mValue.Add(1, 2.3f);
 			dictWrap.[Friend]mValue.Add(2, 3.4f);
@@ -643,6 +677,12 @@ namespace Tests
 
 			DefaultCtorTest dct = .();
 			Test.Assert(dct.mA == 123);
+
+			const int typeSizes = StructE.GetSizes();
+			Test.Assert(typeSizes == sizeof(StructA) + sizeof(EnumA));
+
+			const int cVal = GetLocalVal2();
+			Test.Assert(cVal == 102);
 		}
 	}
 }

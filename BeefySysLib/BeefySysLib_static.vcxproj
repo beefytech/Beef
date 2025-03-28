@@ -199,6 +199,7 @@
     <ClCompile Include="gfx\Shader.cpp" />
     <ClCompile Include="gfx\Texture.cpp" />
     <ClCompile Include="img\BFIData.cpp" />
+    <ClCompile Include="img\BMPData.cpp" />
     <ClCompile Include="img\ImageAdjustments.cpp" />
     <ClCompile Include="img\ImageData.cpp" />
     <ClCompile Include="img\ImageUtils.cpp" />
@@ -908,6 +909,7 @@
     <ClInclude Include="gfx\Shader.h" />
     <ClInclude Include="gfx\Texture.h" />
     <ClInclude Include="img\BFIData.h" />
+    <ClInclude Include="img\BMPData.h" />
     <ClInclude Include="img\ImageAdjustments.h" />
     <ClInclude Include="img\ImageData.h" />
     <ClInclude Include="img\ImageUtils.h" />

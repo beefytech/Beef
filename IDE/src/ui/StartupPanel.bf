@@ -1,3 +1,5 @@
+#pragma warning disable 168
+
 using System;
 using System.IO;
 using System.Collections;
@@ -9,6 +11,7 @@ using IDE.util;
 using Beefy.events;
 using Beefy.theme;
 using System.Diagnostics;
+using Beefy.utils;
 
 namespace IDE.ui
 {
@@ -17,6 +20,7 @@ namespace IDE.ui
 		class RecentWorkspacesScrollWidget : ScrollableWidget
 		{
 			public Font mTitleFont;
+			public bool mHasIcons;
 
 			public this()
 			{
@@ -31,7 +35,7 @@ namespace IDE.ui
 
 			public override void Resize(float x, float y, float width, float height)
 			{
-				const float MARGIN = 3;
+				const float MARGIN = 0;
 				float currentY = 0;
 
 				float fillWidth = width - (mVertScrollbar?.Width).GetValueOrDefault();
@@ -40,7 +44,7 @@ namespace IDE.ui
 				{
 					for (let widget in mScrollContent.mChildWidgets)
 					{
-						widget.Resize(0, currentY, fillWidth, GS!(30));
+						widget.Resize(0, currentY, fillWidth, GS!(33));
 						currentY += widget.Height + MARGIN;
 					}
 				}
@@ -60,7 +64,7 @@ namespace IDE.ui
 				g.SetFont(mTitleFont);
 
 				using (g.PushColor(gApp.mSettings.mUISettings.mColors.mText))
-					g.DrawString("Recent Workspaces", 0, GS!(-30), .Centered, mWidth, .Ellipsis);
+					g.DrawString("Recent Workspaces", GS!(2), GS!(-30), .Centered, mWidth - GS!(4), .Ellipsis);
 
 				base.Draw(g);
 			}
@@ -70,6 +74,8 @@ namespace IDE.ui
 		{
 			public static Font s_Font;
 			append String mPath;
+			public bool mTriedLoadIcon;
+			public Image mIcon ~ delete _;
 
 			public bool mPinned;
 			public RecentWorkspacesScrollWidget mRecentsParent;
@@ -91,8 +97,67 @@ namespace IDE.ui
 					
 				}
 
+				if (!mTriedLoadIcon)
+				{
+					mTriedLoadIcon = true;
+
+					StructuredData sd = scope .();
+					if (sd.Load(scope $"{mPath}/BeefProj.toml") case .Ok)
+					{
+						using (sd.Open("Platform"))
+						{
+							using (sd.Open("Windows"))
+							{
+								var iconFileName = sd.GetString("IconFile", .. scope .());
+								iconFileName.Replace("$(ProjectDir)", mPath);
+								iconFileName.Replace("$(WorkspaceDir)", mPath);
+								var iconFilePath = IO.Path.GetAbsolutePath(iconFileName, mPath, .. scope .());
+								
+								if (File.Exists(iconFilePath))
+								{
+									int wantSize = 32;
+									if (var image = ResourceGen.LoadIcon(iconFilePath, wantSize))
+									{
+										if ((image.mWidth != wantSize) || (image.mHeight != wantSize))
+										{
+											image.Scale(wantSize / Math.Max(image.mWidth, image.mHeight));
+										}
+										mIcon = image;
+										mRecentsParent.mHasIcons = true;
+									}
+								}
+							}
+						}
+					}
+				}
+
 				g.SetFont(s_Font);
-				g.DrawString(mPath, 10, 0, .Left, mWidth - 10);
+				using (g.PushColor(gApp.mSettings.mUISettings.mColors.mText))
+				{
+					String drawStr = scope String();
+					int lastSlash = Math.Max(mPath.LastIndexOf('\\'), mPath.LastIndexOf('/'));
+					if (lastSlash != -1)
+					{
+						drawStr.Append(Font.EncodeColor(0x80FFFFFF));
+						drawStr.Append(mPath.Substring(0, lastSlash + 1));
+						drawStr.Append(Font.EncodePopColor());
+						drawStr.Append(mPath.Substring(lastSlash + 1));
+					}
+					else
+					{
+						drawStr.Append(mPath);
+					}
+
+					float drawX = GS!(50);
+					g.DrawString(drawStr, drawX, GS!(3), .Left, mWidth - drawX - GS!(2), .Ellipsis);
+				}
+				if (mIcon != null)
+					g.DrawCentered(mIcon, GS!(24), mHeight / 2);
+				else
+				{
+					using (g.PushColor(0x80FFFFFF))
+						g.DrawCentered(DarkTheme.sDarkTheme.GetImage(.Workspace), GS!(24), mHeight / 2);
+				}
 			}
 
 			public override void MouseEnter()

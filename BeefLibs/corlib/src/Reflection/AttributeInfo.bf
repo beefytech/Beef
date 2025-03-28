@@ -104,7 +104,7 @@ namespace System.Reflection
 					case (TypeCode)typeof(TypeCode).MaxValue + 9: //BfConstType_TypeOf
 						let argTypeId = Decode!<int32>(data);
 						args[argIdx] = Type.[Friend]GetType((.)argTypeId);
-					case (TypeCode)typeof(TypeCode).MaxValue + 18: // BfConstType_Box
+					case (TypeCode)typeof(TypeCode).MaxValue + 19: // BfConstType_Box
 						let boxedTypeId = Decode!<int32>(data);
 						var boxedType = Type.[Friend]GetType_(boxedTypeId);
 						int dataSize = boxedType.InstanceSize - boxedType.[Friend]mMemberDataOffset;
@@ -216,7 +216,7 @@ namespace System.Reflection
 					case (TypeCode)typeof(TypeCode).MaxValue + 9: //BfConstType_TypeOf
 						let argTypeId = AttributeInfo.Decode!<int32>(mData);
 						args[argIdx] = Variant.Create(Type.[Friend]GetType((.)argTypeId));
-					case (TypeCode)typeof(TypeCode).MaxValue + 18: // BfConstType_Box
+					case (TypeCode)typeof(TypeCode).MaxValue + 19: // BfConstType_Box
 						let boxedTypeId = AttributeInfo.Decode!<int32>(mData);
 						var boxedType = Type.[Friend]GetType_(boxedTypeId);
 						int dataSize = boxedType.InstanceSize - boxedType.[Friend]mMemberDataOffset;

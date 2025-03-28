@@ -698,7 +698,8 @@ BfMethodInstance* BfMethodParam::GetDelegateParamInvoke()
 		auto methodRefType = (BfMethodRefType*)mResolvedType;
 		return methodRefType->mMethodRef;
 	}
-
+	else if (mResolvedType->IsTuple())
+		return NULL;
 	BF_ASSERT(mResolvedType->IsDelegate() || mResolvedType->IsFunction());
 	auto bfModule = BfModule::GetModuleFor(mResolvedType);
 	BfMethodInstance* invokeMethodInstance = bfModule->GetRawMethodInstanceAtIdx(mResolvedType->ToTypeInstance(), 0, "Invoke");
@@ -841,6 +842,9 @@ BfMethodFlags BfMethodInstance::GetMethodFlags()
 	else if (callingConvention == BfIRCallingConv_FastCall)
 		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_FastCall);
 
+	methodFlags = (BfMethodFlags)(methodFlags | (mMethodDef->mAppendKind * BfMethodFlags_AppendBit0));
+	methodFlags = (BfMethodFlags)(methodFlags | (mMethodDef->mCheckedKind * BfMethodFlags_CheckedBit0));
+
 	return methodFlags;
 }
 
@@ -894,6 +898,20 @@ BfTypeInstance* BfMethodInstance::GetOwner()
 BfModule * BfMethodInstance::GetModule()
 {
 	return mMethodInstanceGroup->mOwner->mModule;
+}
+
+bool BfMethodInstance::ForcingThisPtr()
+{
+	if (mMethodDef->mHasExplicitThis)
+	{
+		auto thisType = mParams[0].mResolvedType;
+		if (thisType->IsCRepr())
+			return true;
+	}
+	else if (mMethodInstanceGroup->mOwner->IsCRepr())
+		return true;
+
+	return (mCallingConvention == BfCallingConvention_Cdecl);
 }
 
 bool Beefy::BfMethodInstance::IsSpecializedGenericMethod()
@@ -1067,6 +1085,8 @@ bool BfMethodInstance::AllowsSplatting(int paramIdx)
 	{
 		if (mCallingConvention != BfCallingConvention_Unspecified)
 			return false;
+		if (ForcingThisPtr())
+			return false;
 		if (mMethodDef->mIsNoSplat)
 			return false;
 		return !mMethodDef->HasNoThisSplat();
@@ -1090,8 +1110,8 @@ bool BfMethodInstance::HasThis()
 	if (mMethodDef->mIsStatic)
 		return false;
 	if ((mMethodInfoEx != NULL) && (mMethodInfoEx->mClosureInstanceInfo != NULL) && (mMethodInfoEx->mClosureInstanceInfo->mThisOverride != NULL))
-		return !mMethodInfoEx->mClosureInstanceInfo->mThisOverride->IsValuelessType();
-	return (!mMethodInstanceGroup->mOwner->IsValuelessType());
+		return !mMethodInfoEx->mClosureInstanceInfo->mThisOverride->IsValuelessNonOpaqueType();
+	return (!mMethodInstanceGroup->mOwner->IsValuelessNonOpaqueType());
 }
 
 bool BfMethodInstance::IsVirtual()
@@ -1163,6 +1183,18 @@ void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name, int& namePre
 	BfParameterDef* paramDef = mMethodDef->mParams[methodParam->mParamDefIdx];
 	if (methodParam->mDelegateParamIdx != -1)
 	{
+		if (methodParam->mResolvedType->IsTuple())
+		{
+			auto tupleType = (BfTupleType*)methodParam->mResolvedType;
+			auto& fieldInstance = tupleType->mFieldInstances[methodParam->mDelegateParamIdx];
+			if (methodParam->mDelegateParamNameCombine)
+				name = paramDef->mName + "__" + fieldInstance.GetFieldDef()->mName;
+			else
+				name = fieldInstance.GetFieldDef()->mName;			
+
+			return;
+		}
+
 		BfMethodInstance* invokeMethodInstance = methodParam->GetDelegateParamInvoke();
 		if (methodParam->mDelegateParamNameCombine)
 			name = paramDef->mName + "__" + invokeMethodInstance->GetParamName(methodParam->mDelegateParamIdx);
@@ -1210,6 +1242,12 @@ BfType* BfMethodInstance::GetParamType(int paramIdx, bool returnUnderlyingParams
 	BfMethodParam* methodParam = &mParams[paramIdx];
 	if (methodParam->mDelegateParamIdx != -1)
 	{
+		if (methodParam->mResolvedType->IsTuple())
+		{
+			auto tupleType = (BfTupleType*)methodParam->mResolvedType;
+			return tupleType->mFieldInstances[methodParam->mDelegateParamIdx].mResolvedType;
+		}
+
 		BfMethodInstance* invokeMethodInstance = methodParam->GetDelegateParamInvoke();
 		return invokeMethodInstance->GetParamType(methodParam->mDelegateParamIdx, true);
 	}
@@ -1244,6 +1282,8 @@ bool BfMethodInstance::GetParamIsSplat(int paramIdx)
 	if (methodParam->mDelegateParamIdx != -1)
 	{
 		BfMethodInstance* invokeMethodInstance = methodParam->GetDelegateParamInvoke();
+		if (invokeMethodInstance == NULL)
+			return false;
 		return invokeMethodInstance->GetParamIsSplat(methodParam->mDelegateParamIdx);
 	}
 	return methodParam->mIsSplat;
@@ -1278,7 +1318,7 @@ bool BfMethodInstance::IsParamSkipped(int paramIdx)
 	BfType* paramType = GetParamType(paramIdx);
 	if ((paramType->CanBeValuelessType()) && (paramType->IsDataIncomplete()))
 		resolveModule->PopulateType(paramType, BfPopulateType_Data);
-	if ((paramType->IsValuelessType()) && (!paramType->IsMethodRef()))
+	if ((paramType->IsValuelessNonOpaqueType()) && (!paramType->IsMethodRef()))
 		return true;
 	return false;
 }
@@ -1450,7 +1490,11 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		bool doSplat = false;
 		if (paramIdx == -1)
 		{
-			if ((!mMethodDef->mIsMutating) && (checkType->IsTypedPrimitive()))
+			if (ForcingThisPtr())
+			{
+				// Pass by pointer even for typed primitives
+			}
+			else if ((!mMethodDef->mIsMutating) && (checkType->IsTypedPrimitive()))
 			{
 				checkType = checkType->GetUnderlyingType();
 			}
@@ -1498,7 +1542,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 
 		if (checkType->CanBeValuelessType())
 			resolveModule->PopulateType(checkType, BfPopulateType_Data);
-		if ((checkType->IsValuelessType()) && (!checkType->IsMethodRef()))
+		if ((checkType->IsValuelessNonOpaqueType()) && (!checkType->IsMethodRef()))
 			continue;
 
 		if ((doSplat) && (!checkType->IsMethodRef()))
@@ -1810,6 +1854,11 @@ int BfTypeInstance::GetSplatCount(bool force)
 	int splatCount = 0;
 	BfTypeUtils::SplatIterate([&](BfType* checkType) { splatCount++; }, this);
 	return splatCount;
+}
+
+bool BfTypeInstance::IsCRepr()
+{
+	return mIsCRepr;
 }
 
 bool BfTypeInstance::IsString()
@@ -2450,6 +2499,46 @@ bool BfTypeInstance::GetResultInfo(BfType*& valueType, int& okTagId)
 	return false;
 }
 
+bool BfTypeInstance::IsAnonymous()
+{
+	return (mTypeDef->mTypeDeclaration != NULL) && (mTypeDef->mTypeDeclaration->IsAnonymous());
+}
+
+bool BfTypeInstance::IsAnonymousInitializerType()
+{
+	return (mTypeDef->mTypeDeclaration != NULL) && (mTypeDef->mTypeDeclaration->IsAnonymousInitializerType());
+}
+
+bool BfTypeInstance::HasAppendCtor()
+{
+	return mTypeDef->mHasAppendCtor;
+}
+
+bool BfTypeInstance::BaseHasAppendCtor()
+{
+	if (mBaseType != NULL)
+	{
+		if (mBaseType->HasAppendCtor())
+			return true;
+		return mBaseType->BaseHasAppendCtor();
+	}
+	return false;
+}
+
+bool BfTypeInstance::HasAppendedField(bool checkBase)
+{
+	for (auto& fieldInstance : mFieldInstances)
+	{
+		if (fieldInstance.IsAppendedObject())
+			return true;
+	}
+
+	if ((checkBase) && (mBaseType != NULL))
+		return mBaseType->HasAppendedField(checkBase);
+
+	return false;
+}
+
 void BfTypeInstance::ReportMemory(MemReporter* memReporter)
 {
 	if (mGenericTypeInfo != NULL)
@@ -2689,6 +2778,23 @@ bool BfTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* activeT
 	return genericExEntry->mConstraintsPassed;
 }
 
+bool BfTypeInstance::IsZeroGap()
+{
+	BF_ASSERT(mDefineState >= BfTypeDefineState_Defined);
+
+	for (int fieldIdx = mFieldInstances.mSize - 1; fieldIdx >= 0; fieldIdx--)
+	{
+		auto fieldInstance = &mFieldInstances[fieldIdx];
+		auto fieldDef = fieldInstance->GetFieldDef();
+		if (fieldDef == NULL)
+			continue;
+		if ((!fieldDef->mIsStatic) && (fieldDef->mDeclaringType->IsExtension()) && (!fieldInstance->mResolvedType->IsValuelessType()))
+			return false;
+	}
+
+	return true;
+}
+
 void BfGenericTypeInfo::ReportMemory(MemReporter* memReporter)
 {
 	memReporter->Add(sizeof(BfGenericTypeInfo));
@@ -2741,7 +2847,9 @@ bool BfTypeInstance::IsValuelessType()
 		return false;
 	}
 	if (mTypeDef->mIsOpaque)
-		return false;
+	{
+		return true;
+	}
 
 	BF_ASSERT((mDefineState >= BfTypeDefineState_Defined) || (mTypeFailed));
 	BF_ASSERT(mInstSize >= 0);
@@ -2751,6 +2859,39 @@ bool BfTypeInstance::IsValuelessType()
 	}
 
 	return false;
+}
+
+bool BfTypeInstance::IsValuelessCReprType()
+{
+	if (!mIsCRepr)
+		return false;
+	if (mInstSize > 1)
+		return false;
+	if ((mBaseType->mIsCRepr) && (!IsValuelessCReprType()))
+		return false;
+
+	BF_ASSERT((mDefineState >= BfTypeDefineState_Defined) || (mTypeFailed));
+	for (auto& fieldInst : mFieldInstances)
+	{
+		if (fieldInst.mDataIdx >= 0)
+			return false;
+	}
+
+	return true;
+}
+
+BfTypeInstance* BfTypeInstance::GetBaseType(bool remapValuelessCRepr)
+{
+	if (!remapValuelessCRepr)
+		return mBaseType;
+	auto checkType = mBaseType;
+	while (checkType != NULL)
+	{
+		if (!checkType->IsValuelessCReprType())
+			break;
+		checkType = checkType->mBaseType;
+	}
+	return checkType;
 }
 
 bool BfTypeInstance::IsIRFuncUsed(BfIRFunction func)
@@ -3522,7 +3663,18 @@ int BfResolvedTypeSet::DirectHash(BfTypeReference* typeRef, LookupContext* ctx, 
 		ctx->mFailed = true;
 		return 0;
 	}
+	if (((flags & BfHashFlag_DisallowPointer) != 0) && (resolvedType->IsPointer()))
+	{
+		ShowThisPointerWarning(ctx, typeRef);
+		resolvedType = resolvedType->GetUnderlyingType();
+	}
+
 	return Hash(resolvedType, ctx, BfHashFlag_None, hashSeed);
+}
+
+void BfResolvedTypeSet::ShowThisPointerWarning(LookupContext* ctx, BfTypeReference* typeRef)
+{
+	ctx->mModule->Warn(0, "Pointer types cannot be used as 'this'. If 'this' address is required, use 'mut' or [CRepr]", typeRef);
 }
 
 BfTypeDef* BfResolvedTypeSet::FindRootCommonOuterType(BfTypeDef* outerType, LookupContext* ctx, BfTypeInstance*& outOuterTypeInstance)
@@ -4055,12 +4207,22 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			// Parse attributes?
 			BfTypeReference* fieldType = param->mTypeRef;
 
+			auto hashFlags = (BfHashFlags)(BfHashFlag_AllowRef);
+
 			if (isFirstParam)
 			{
 				if ((param->mNameNode != NULL) && (param->mNameNode->Equals("this")))
 				{
+					hashFlags = (BfHashFlags)(hashFlags | BfHashFlag_DisallowPointer);
+
 					if (auto refNode = BfNodeDynCast<BfRefTypeRef>(fieldType))
 						fieldType = refNode->mElementType;
+
+ 					if (auto pointerType = BfNodeDynCast<BfPointerTypeRef>(fieldType))
+ 					{
+						ShowThisPointerWarning(ctx, pointerType);
+ 						fieldType = pointerType->mElementType;
+ 					}
 				}
 			}
 
@@ -4074,10 +4236,10 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 						continue;
 					}
 				}
-			}
+			}			
 
 			if (fieldType != NULL)
-				hashVal = HASH_MIX(hashVal, Hash(fieldType, ctx, (BfHashFlags)(BfHashFlag_AllowRef), hashSeed + 1));
+				hashVal = HASH_MIX(hashVal, Hash(fieldType, ctx, hashFlags, hashSeed + 1));
 			hashVal = HASH_MIX(hashVal, HashNode(param->mNameNode));
 			isFirstParam = true;
 		}
@@ -4249,6 +4411,13 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 		}
 		return nameHash ^ HASH_TAG;
 	}
+// 	else if (auto inlineTypeRef = BfNodeDynCastExact<BfInlineTypeReference>(typeRef))
+// 	{
+// 		String name;
+// 		inlineTypeRef->mTypeDeclaration->GetAnonymousName(name);
+// 		int nameHash = (int)Hash64(name.c_str(), (int)name.length());
+// 		return nameHash ^ HASH_TAG;
+// 	}
 	else
 	{
 		BF_FATAL("Not handled");
@@ -4334,6 +4503,12 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 				return false;
 			if (lhsDelegateInfo->mCallingConvention != rhsDelegateInfo->mCallingConvention)
 				return false;
+			if (lhsDelegateInfo->mHasParams != rhsDelegateInfo->mHasParams)
+				return false;
+			if (lhsDelegateInfo->mHasVarArgs != rhsDelegateInfo->mHasVarArgs)
+				return false;
+			if (lhsDelegateInfo->mHasExplicitThis != rhsDelegateInfo->mHasExplicitThis)
+				return false;
 
 			auto lhsMethodDef = lhsInst->mTypeDef->mMethods[0];
 			auto rhsMethodDef = rhsInst->mTypeDef->mMethods[0];
@@ -4341,7 +4516,7 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfType* rhs, LookupContext* ctx)
 			if (lhsMethodDef->mCallingConvention != rhsMethodDef->mCallingConvention)
 				return false;
 			if (lhsMethodDef->mIsMutating != rhsMethodDef->mIsMutating)
-				return false;
+				return false;			
 			if (lhsDelegateInfo->mReturnType != rhsDelegateInfo->mReturnType)
 				return false;
 			if (lhsDelegateInfo->mParams.size() != rhsDelegateInfo->mParams.size())
@@ -4881,17 +5056,33 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 				bool handled = false;
 				auto lhsThisType = lhsDelegateInfo->mParams[0];
 
-				auto rhsThisType = ctx->mModule->ResolveTypeRef(param0->mTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoWarnOnMut | BfResolveTypeRefFlag_AllowRef));
 				bool wantsMutating = false;
+				if (auto refTypeRef = BfNodeDynCast<BfRefTypeRef>(param0->mTypeRef))
+				{
+					// This catches `ref Foo*` cases (which generate warnings)
+					if ((refTypeRef->mRefToken != NULL) && (refTypeRef->mRefToken->mToken == BfToken_Mut))
+						wantsMutating = true;
+				}
 
+				auto rhsThisType = ctx->mModule->ResolveTypeRef(param0->mTypeRef, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoWarnOnMut | BfResolveTypeRefFlag_AllowRef));				
+
+				if (rhsThisType == NULL)
+					return false;
+				
 				if (rhsThisType->IsRef())
 				{
-					if (lhsThisType != rhsThisType->GetUnderlyingType())
+					rhsThisType = rhsThisType->GetUnderlyingType();
+					if (rhsThisType->IsPointer())
+						rhsThisType = rhsThisType->GetUnderlyingType();
+
+					if (lhsThisType != rhsThisType)
 						return false;
 					wantsMutating = (lhsThisType->IsValueType()) || (lhsThisType->IsGenericParam());
 				}
 				else
 				{
+					if (rhsThisType->IsPointer())
+						rhsThisType = rhsThisType->GetUnderlyingType();
 					if (lhsThisType != rhsThisType)
 						return false;
 				}
@@ -4908,6 +5099,8 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 
 		if (lhsParamsCount != (int)rhsDelegateType->mParams.size())
 			return false;
+
+		bool rhsHadParams = false;
 		for (int paramIdx = paramRefOfs; paramIdx < lhsDelegateInfo->mParams.size(); paramIdx++)
 		{
 			auto paramTypeRef = rhsDelegateType->mParams[paramIdx]->mTypeRef;
@@ -4919,7 +5112,12 @@ bool BfResolvedTypeSet::Equals(BfType* lhs, BfTypeReference* rhs, LookupContext*
 				rhsParamName = rhsDelegateType->mParams[paramIdx]->mNameNode->ToStringView();
 			if (invokeMethodDef->mParams[paramIdx]->mName != rhsParamName)
 				return false;
+			if ((rhsDelegateType->mParams[paramIdx]->mModToken != NULL) && (rhsDelegateType->mParams[paramIdx]->mModToken->mToken == BfToken_Params))
+				rhsHadParams = true;
 		}
+
+		if (rhsHadParams != lhsDelegateInfo->mHasParams)
+			return false;
 
 		if ((ctx->mModule->mCurTypeInstance == NULL) || (!ctx->mModule->mCurTypeInstance->IsGenericTypeInstance()))
 			wantGeneric = false;
@@ -5552,6 +5750,8 @@ String BfTypeUtils::TypeToString(BfAstNode* typeRefNode)
 	}
 	if (auto directStrTypeName = BfNodeDynCast<BfDirectStrTypeReference>(typeRef))
 		return directStrTypeName->mTypeName;
+	if (auto inlineTypeRef = BfNodeDynCast<BfInlineTypeReference>(typeRef))
+		return inlineTypeRef->mTypeDeclaration->mAnonymousName;
 
 	if (auto tupleTypeRef = BfNodeDynCast<BfTupleTypeRef>(typeRef))
 	{

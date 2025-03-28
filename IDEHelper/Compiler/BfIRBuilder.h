@@ -118,7 +118,8 @@ enum BfTypeCode : uint8
 	BfTypeCode_Int64X2,
 	BfTypeCode_Int64X3,
 	BfTypeCode_Int64X4,
-	BfTypeCode_Length
+	BfTypeCode_Length,
+	BfTypeCode_Inferred
 };
 
 enum BfConstType
@@ -133,6 +134,7 @@ enum BfConstType
 	BfConstType_IntToPtr,
 	BfConstType_TypeOf,
 	BfConstType_TypeOf_WithData,
+	BfConstType_TypeOf_Comptime,
 	BfConstType_AggZero,
 	BfConstType_Agg,
 	BfConstType_AggCE,
@@ -160,6 +162,7 @@ enum BfIRCmd : uint8
 	BfIRCmd_Module_SetTargetTriple,
 	BfIRCmd_Module_AddModuleFlag,
 	BfIRCmd_WriteIR,
+	BfIRCmd_Abort,
 
 	BfIRCmd_SetType,
 	BfIRCmd_SetInstType,
@@ -979,6 +982,7 @@ public:
 	BfIRValue CreateConstBitCast(BfIRValue val, BfIRType type);
 	BfIRValue CreateConstBox(BfIRValue val, BfIRType type);
 	BfIRValue CreateTypeOf(BfType* type);
+	BfIRValue CreateTypeOfComptime(BfType* type);
 	BfIRValue CreateTypeOf(BfType* type, BfIRValue typeData);
 	BfIRValue GetUndefConstValue(BfIRType type);
 	BfIRValue CreateGlobalVariableConstant(BfIRType varType, bool isConstant, BfIRLinkageType linkageType, BfIRValue initializer, const StringImpl& name, bool isTLS = false);
@@ -1198,6 +1202,7 @@ public:
 	void SetBackend(bool isBeefBackend);
 	void RemoveIRCodeGen();
 	void WriteIR(const StringImpl& fileName);
+	void AbortStream();
 
 	void Module_SetTargetTriple(const StringImpl& targetTriple, const StringImpl& targetCPU);
 	void Module_AddModuleFlag(const StringImpl& flag, int val);

@@ -72,7 +72,7 @@ void CubicSpline2D::AddPt(float x, float y)
 	delete mYCubicArray;
 	mYCubicArray = NULL;
 
-	mInputPoints.push_back(Point2D(x, y));
+	mInputPoints.push_back(PointF(x, y));
 }
 
 int CubicSpline2D::GetLength()
@@ -86,15 +86,15 @@ void CubicSpline2D::Calculate()
 	std::vector<float> yVals;
 	for (int i = 0; i < (int) mInputPoints.size(); i++)
 	{
-		xVals.push_back(mInputPoints[i].mX);
-		yVals.push_back(mInputPoints[i].mY);
+		xVals.push_back(mInputPoints[i].x);
+		yVals.push_back(mInputPoints[i].y);
 	}
 
 	mXCubicArray = SolveCubic(xVals);
 	mYCubicArray = SolveCubic(yVals);
 }
 
-Point2D CubicSpline2D::Evaluate(float t)
+PointF CubicSpline2D::Evaluate(float t)
 {
 	if (mXCubicArray == NULL)
 		Calculate();
@@ -105,5 +105,5 @@ Point2D CubicSpline2D::Evaluate(float t)
 	if (idx >= (int) mInputPoints.size() - 1)
 		return mInputPoints[mInputPoints.size() - 1];
 
-	return Point2D(mXCubicArray[idx].Evaluate(frac), mYCubicArray[idx].Evaluate(frac));
+	return PointF(mXCubicArray[idx].Evaluate(frac), mYCubicArray[idx].Evaluate(frac));
 }

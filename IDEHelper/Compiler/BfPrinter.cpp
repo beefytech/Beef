@@ -1337,6 +1337,8 @@ void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 		{
 			int srcLineStart = 0;
 
+			bool startsOnEmptyLine = true;
+
 			int checkIdx = literalExpr->GetSrcStart() - 1;
 			while (checkIdx >= 0)
 			{
@@ -1346,11 +1348,18 @@ void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 					srcLineStart = checkIdx + 1;
 					break;
 				}
+				if ((c != '\t') && (c != ' '))
+					startsOnEmptyLine = false;
 				checkIdx--;
 			}
-
+						
 			int queuedSpaceCount = mQueuedSpaceCount;
 			FlushIndent();
+
+			if (!startsOnEmptyLine)
+			{
+				queuedSpaceCount = mCurIndentLevel * mTabSize;
+			}
 
 			for (int i = literalExpr->GetSrcStart(); i < (int)literalExpr->GetSrcEnd(); i++)
 			{
@@ -1378,6 +1387,9 @@ void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 					i--;
 				}
 			}
+
+// 			if (!startsOnEmptyLine)
+// 				mCurIndentLevel--;
 
 			return;
 		}
@@ -1716,10 +1728,15 @@ void BfPrinter::Visit(BfPointerTypeRef* ptrType)
 
 void BfPrinter::Visit(BfNullableTypeRef* ptrType)
 {
-	Visit((BfAstNode*) ptrType);
+	Visit((BfAstNode*)ptrType);
 
 	VisitChild(ptrType->mElementType);
 	VisitChild(ptrType->mQuestionToken);
+}
+
+void BfPrinter::Visit(BfInlineTypeReference* typeRef)
+{
+	VisitChild(typeRef->mTypeDeclaration);
 }
 
 void BfPrinter::Visit(BfVariableDeclaration* varDecl)
@@ -2067,6 +2084,8 @@ void BfPrinter::Visit(BfCaseExpression* caseExpr)
 	else
 	{
 		VisitChild(caseExpr->mValueExpression);
+		ExpectSpace();
+		VisitChild(caseExpr->mNotToken);
 		ExpectSpace();
 		VisitChild(caseExpr->mCaseToken);
 		BF_ASSERT(caseExpr->mEqualsNode == NULL);
@@ -2820,6 +2839,7 @@ void BfPrinter::Visit(BfPropertyDeclaration* propertyDeclaration)
 		for (auto method : propertyDeclaration->mMethods)
 		{
 			QueueVisitChild(method->mBody);
+			QueueVisitChild(method->mEndSemicolon);
 		}
 	}
 
@@ -2887,6 +2907,7 @@ void BfPrinter::Visit(BfFieldDeclaration* fieldDeclaration)
 		ExpectSpace();
 		if (isEnumDecl)
 			mNextStateModify.mExpectingSpace = false;
+
 		QueueVisitChild(fieldDeclaration->mTypeRef);
 		ExpectSpace();
 		QueueVisitChild(fieldDeclaration->mNameNode);

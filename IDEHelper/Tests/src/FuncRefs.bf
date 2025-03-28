@@ -129,8 +129,8 @@ namespace Tests
 		{
 			public int Test;
 		}
-		public static List<CTest> mList = new .() ~ delete _;
-		private static Event<EventHandler> mEvent;
+		public static List<CTest> sList = new .() ~ delete _;
+		private static Event<EventHandler> sEvent;
 
 		[Test]
 		public static void TestBasics()
@@ -161,17 +161,17 @@ namespace Tests
 			TestA ta = scope .();
 			ta.Vec = .(33, 44);
 
-			mList.Add(scope .());
-			mEvent.Add(new (sender, e) =>
+			sList.Add(scope .());
+			sEvent.Add(new (sender, e) =>
 			{
-			    mList.ForEach((b) => { b.Test = 1; });
+			    sList.ForEach((b) => { b.Test = 1; });
 			});
-			mEvent(null, .Empty);
-			mEvent.Dispose();
-			Test.Assert(mList.Back.Test == 1);
+			sEvent(null, .Empty);
+			sEvent.Dispose();
+			Test.Assert(sList.Back.Test == 1);
 
 			int i = 0;
-			mList.ForEach((l) => l.mList.ForEach((l) =>
+			sList.ForEach((l) => sList.ForEach((l) =>
 			{
 				i++;
 			}));
@@ -483,6 +483,21 @@ namespace Tests
 			}
 		}
 
+		public static void Test<F>(F func)
+			where F: delegate void(delegate void(String, params Span<Object>))
+		{
+			String str = scope .();
+
+			delegate void(String, params Span<Object>) setError = scope (errStr, args) => { str.AppendF(errStr, params args); };
+			delegate void() call = scope () => func(setError);
+			call();
+		}
+
+		public static void Test<T>() where T : var
+		{
+			Test((e) => e("hi!"));
+		}
+
 		[Test]
 		public static void ClassTestA()
 		{
@@ -499,6 +514,8 @@ namespace Tests
 			val.Test();
 			val = .();
 			val.TestDlg();
+
+			Test<int>();
 		}
 
 		[Test]

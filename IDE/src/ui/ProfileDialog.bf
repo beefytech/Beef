@@ -95,9 +95,12 @@ namespace IDE.ui
 		{
 			base.Draw(g);
 
-			DrawLabel(g, mDescEdit, "Profile Description (Optional)");
-			DrawLabel(g, mThreadCombo, "Thread");
-			DrawLabel(g, mSampleRateEdit, "Sample Rate");
+			using (g.PushColor(DarkTheme.COLOR_TEXT))
+			{
+				DrawLabel(g, mDescEdit, "Profile Description (Optional)");
+				DrawLabel(g, mThreadCombo, "Thread");
+				DrawLabel(g, mSampleRateEdit, "Sample Rate");
+			}
 		}
 
 		public override void CalcSize()

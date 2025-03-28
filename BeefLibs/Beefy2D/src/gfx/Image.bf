@@ -3,6 +3,7 @@ using System.Collections;
 using System.Text;
 using Beefy.utils;
 using System.Diagnostics;
+using res;
 
 #if STUDIO_CLIENT
 using Beefy.ipc;
@@ -70,6 +71,9 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         static extern int32 Gfx_Texture_GetHeight(void* textureSegment);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_ApplyEffect(void* destTextureSegment, void* srcTextureSegment, char8* options);
+
         public this()
         {            
         }
@@ -94,11 +98,13 @@ namespace Beefy.gfx
             return CreateFromNativeTextureSegment(aNativeTextureSegment);
         }
 
-        public static Image LoadFromFile(String fileName, LoadFlags flags = .None)
+        public static Image LoadFromFile(StringView fileName, LoadFlags flags = .None)
         {
 			scope AutoBeefPerf("Image.LoadFromFile");
 
-            void* aNativeTextureSegment = Gfx_LoadTexture(fileName, (int32)flags);
+			var useFileName = scope String()..Append(fileName);
+			FilePackManager.TryMakeMemoryString(useFileName);
+            void* aNativeTextureSegment = Gfx_LoadTexture(useFileName, (int32)flags);
             if (aNativeTextureSegment == null)
             {
 				if (flags.HasFlag(.FatalError))
@@ -184,6 +190,11 @@ namespace Beefy.gfx
 			mWidth = Math.Abs(srcWidth);
 			mHeight = Math.Abs(srcHeight);
 			Gfx_ModifyTextureSegment(mNativeTextureSegment, srcImage.mNativeTextureSegment, (int32)srcX, (int32)srcY, (int32)srcWidth, (int32)srcHeight);
+		}
+
+		public void ApplyEffect(Image destImage, StringView options)
+		{
+			Gfx_ApplyEffect(destImage.mNativeTextureSegment, mNativeTextureSegment, options.ToScopeCStr!());
 		}
 
 		public void SetBits(int destX, int destY, int destWidth, int destHeight, int srcPitch, uint32* bits)

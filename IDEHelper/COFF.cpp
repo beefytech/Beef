@@ -3451,6 +3451,13 @@ void COFF::ParseCompileUnit_Symbols(DbgCompileUnit* compileUnit, uint8* sectionD
 	_FlushDeferredVariableLocations();
 }
 
+static void FixEmitFileName(const char*& fileName)
+{	
+	const char* emitPtr = strstr(fileName, "$Emit$");
+	if (emitPtr != NULL)
+		fileName = emitPtr;
+}
+
 CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* compileUnit, uint8* sectionData, int sectionSize)
 {
 	BP_ZONE("COFF::ParseCompileUnit");
@@ -3648,8 +3655,7 @@ CvCompileUnit* COFF::ParseCompileUnit(CvModuleInfo* moduleInfo, CvCompileUnit* c
 
 					const char* fileName = mStringTable.mStrTable + fileTableOfs;
 
-					if ((fileName[0] == '\\') && (fileName[1] == '$'))
-						fileName++;
+					FixEmitFileName(fileName);					
 
 					DbgSrcFile* srcFile = NULL;
 
@@ -4696,8 +4702,7 @@ void COFF::ScanCompileUnit(int compileUnitId)
 				else
 				{
 					const char* fileName = mStringTable.mStrTable + fileTableOfs;
-					if ((fileName[0] == '\\') && (fileName[1] == '$'))
-						fileName++;
+					FixEmitFileName(fileName);					
 					srcFile = AddSrcFile(NULL, fileName);
 					mSrcFileDeferredRefs.Add(srcFile);
 					*srcFilePtr = srcFile;

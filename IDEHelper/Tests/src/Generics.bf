@@ -168,7 +168,7 @@ namespace Tests
 			}
 		}
 
-		public static void Alloc0<T>() where T : new, delete, IDisposable
+		public static void Alloc0<T>() where T : new, IDisposable where alloctype(T) : delete
 		{
 			alloctype(T) val = new T();
 			val.Dispose();
@@ -197,6 +197,11 @@ namespace Tests
 			if (val2 != null)
 				val2.Dispose();
 			delete val2;
+		}
+
+		public static int IntPtrTest<T>(T val) where T : int*
+		{
+			return *val;
 		}
 
 		public class ClassE
@@ -513,6 +518,9 @@ namespace Tests
 
 			var innerC = OuterA<int, float>.InnerC.this<int32>(123);
 			Test.Assert(innerC.mVal == 123);
+
+			int iVal = 123;
+			Test.Assert(IntPtrTest(&iVal) == 123);
 		}
 	}
 

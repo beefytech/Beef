@@ -97,6 +97,64 @@ namespace Tests
 			}
 		}
 
+		public static mixin Test<T>(T a) where T : struct {}
+		public static mixin Test(Type value) {}
+		public static mixin Test<T>(T a) where T : class, delete {}
+
+		public class TestClass<TValue>
+		{
+			public bool CallTest<T>(TValue val)
+				where TValue : var
+			{
+				SelfOuter.Test!(val);
+				return true;
+			}
+		}
+
+		public static mixin Test2<T>(T a) where T : struct {}
+		public static mixin Test2<T>(T a) where T : class, delete {}
+
+		public class TestClass2<TValue>
+		{
+			public bool CallTest<T>(TValue val)
+				where TValue : var
+			{
+				SelfOuter.Test2!(val);
+				return true;
+			}
+		}
+
+		class Foo<T, T2> where T : class
+		{
+			static void Test ()
+			{
+				Helper<T>.Pop!<int>();
+			}
+		}
+
+		extension Foo<T, T2>
+		{
+
+		}
+
+		class Helper<T>
+		{
+
+		}
+
+		extension Helper<T>
+		{
+			static public mixin Pop<TVal> ()
+			{
+				Pop2<int>()
+			}
+
+			static public T Pop2<TVal> () where TVal : var, struct, INumeric
+			{
+				return default;
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -130,6 +188,12 @@ namespace Tests
 
 			DispClass dc = scope .();
 			DisposeIt!(dc);
+
+			let test2 = scope TestClass<int>();
+			test2.CallTest<int>(2);
+
+			let test3 = scope TestClass2<int>();
+			test3.CallTest<int>(2);
 		}
 
 		[Test]
@@ -165,6 +229,8 @@ namespace Tests
 			var sv2 = Unwrap!(svRes)..Trim();
 			Test.Assert(svRes.Value == "ab ");
 			Test.Assert(sv2 == "ab");
+
+			Helper<int>.Pop!<float>();
 		}
 
 	}

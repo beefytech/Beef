@@ -25,7 +25,7 @@ void CubicFuncSpline::AddPt(float x, float y)
 	intpoly = NULL;
 	slopes = NULL;
 
-	mInputPoints.push_back(Point2D(x, y));
+	mInputPoints.push_back(PointF(x, y));
 }
 
 int CubicFuncSpline::GetLength()
@@ -42,7 +42,7 @@ void CubicFuncSpline::Lagrange()
 	for( i = 0; i < nPts; i++ ) 
 	{
 		lagpoly[i+0*nPts] = 1.0;
-		float fac = mInputPoints[i].mY;
+		float fac = mInputPoints[i].y;
 		j = 0;
 		for( k = 0; k < nPts; k++ ) 
 		{
@@ -50,10 +50,10 @@ void CubicFuncSpline::Lagrange()
 				continue;
 			lagpoly[i+(j+1)*nPts] = lagpoly[i+j*nPts];
 			for( jj = j; jj > 0; jj-- )
-				lagpoly[i+jj*nPts] = lagpoly[i+(jj-1)*nPts] - lagpoly[i+jj*nPts]*mInputPoints[k].mX;
-			lagpoly[i+0*nPts] *= -mInputPoints[k].mX;
+				lagpoly[i+jj*nPts] = lagpoly[i+(jj-1)*nPts] - lagpoly[i+jj*nPts]*mInputPoints[k].x;
+			lagpoly[i+0*nPts] *= -mInputPoints[k].x;
 			j++;
-			fac /= ( mInputPoints[i].mX - mInputPoints[k].mX );
+			fac /= ( mInputPoints[i].x - mInputPoints[k].x );
 		}
 		for( j = 0; j < nPts; j++ )
 			lagpoly[i+j*nPts] *= fac;
@@ -75,9 +75,9 @@ void CubicFuncSpline::ComputeSplineSlopes()
 
 	for( i = 0; i < n; i++ ) 
 	{
-		h[i] = mInputPoints[i+1].mX - mInputPoints[i].mX;
+		h[i] = mInputPoints[i+1].x - mInputPoints[i].x;
 		hinv[i] = 1.0f / h[i];
-		g[i] = 3 * ( mInputPoints[i+1].mY-mInputPoints[i].mY ) * hinv[i] * hinv[i];
+		g[i] = 3 * ( mInputPoints[i+1].y-mInputPoints[i].y ) * hinv[i] * hinv[i];
 	}
 	a[0] = 2 * hinv[0];
 	b[0] = g[0];
@@ -119,7 +119,7 @@ float CubicFuncSpline::Evaluate(float x)
 		Calculate();
 	
 	int idx = (int) 0;
-	while ((idx < (int) mInputPoints.size()) && (x > mInputPoints[idx].mX))
+	while ((idx < (int) mInputPoints.size()) && (x > mInputPoints[idx].x))
 		idx++;
 		
 	if ((idx == mInputPoints.size()) || (idx == 0))
@@ -128,13 +128,13 @@ float CubicFuncSpline::Evaluate(float x)
 		if (idx == mInputPoints.size())			
 			idx--;
 		float s1 = slopes[idx];
-		return mInputPoints[idx].mY + (x - mInputPoints[idx].mX) * s1;
+		return mInputPoints[idx].y + (x - mInputPoints[idx].x) * s1;
 	}
 
-	float x0 = mInputPoints[idx-1].mX;
-	float x1 = mInputPoints[idx].mX;
-	float y0 = mInputPoints[idx-1].mY;
-	float y1 = mInputPoints[idx].mY;
+	float x0 = mInputPoints[idx-1].x;
+	float x1 = mInputPoints[idx].x;
+	float y0 = mInputPoints[idx-1].y;
+	float y1 = mInputPoints[idx].y;
 	float s0 = slopes[idx-1];	
 	float s1 = slopes[idx];
 

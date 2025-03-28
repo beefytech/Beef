@@ -581,6 +581,18 @@ namespace IDE
 #endif
         }
 
+		public bool HasDependentObject(Object dependentObject)
+		{
+			for (var watchedFileKV in mWatchedFiles)
+			{
+				if (watchedFileKV.value.mDependentObjects.Contains(dependentObject))
+					return true;
+			}
+			if (mDependencyChangeSet.Contains(Internal.UnsafeCastToPtr(dependentObject)))
+				return true;
+			return false;
+		}
+
         public void Update(delegate void(String, String, WatcherChangeTypes) fileChangeHandler = null)
         {
 			while (true)

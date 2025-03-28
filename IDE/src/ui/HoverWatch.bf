@@ -775,7 +775,7 @@ namespace IDE.ui
 						flags |= DebugManager.EvalExpressionFlags.DeselectCallStackIdx;
 					if (mAllowSideEffects)
 						flags |= .AllowSideEffects | .AllowCalls;
-					if (gApp.mSettings.mDebuggerSettings.mAutoEvaluateProperties)
+					if (gApp.mSettings.mDebuggerSettings.mAutoEvaluatePropertiesOnHover)
 						flags |= .AllowProperties;
 					if (watch.mResultType == .RawText)
 						flags |= .RawStr;
@@ -1311,6 +1311,7 @@ namespace IDE.ui
 
 					float addHeight = nameHeight - listViewItem.mSelfHeight;
 					listViewItem.mSelfHeight = nameHeight;
+					listViewItem.mFreezeHeight = true;
 					height += addHeight;
 				}
 
@@ -1322,6 +1323,8 @@ namespace IDE.ui
 			height += GS!(2);
 
             listView.Resize(popupX, popupY, useWidth, height);
+			listView.mListSizeDirty = true;
+			listView.UpdateListSize();
             ResizeWindow();
         }
 

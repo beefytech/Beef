@@ -24,8 +24,8 @@ public:
 
 	virtual bool			Eof() override;
 	virtual int				GetSize() override;
-	virtual void			Read(void* ptr, int size) override;
-	virtual void			Write(void* ptr, int size) override;
+	virtual int				Read(void* ptr, int size) override;
+	virtual int				Write(void* ptr, int size) override;
 
 	virtual int				GetPos() override;
 	virtual void			Seek(int size) override;

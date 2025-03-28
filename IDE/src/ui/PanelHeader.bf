@@ -141,7 +141,7 @@ namespace IDE.ui
 							var editWidget = new WatchStringEdit(mTooltipText, null);
 							
 							tooltip.mRelWidgetMouseInsets = new Insets(0, 0, GS!(-8), 0);
-							tooltip.mAllowMouseInsideSelf = true;
+							tooltip.mAllowMouseInsideInsets = new .();
 							tooltip.AddWidget(editWidget);
 							tooltip.mOnResized.Add(new (widget) => editWidget.Resize(GS!(6), GS!(6), widget.mWidth - GS!(6) * 2, widget.mHeight - GS!(6) * 2));
 							tooltip.mOnResized(tooltip);

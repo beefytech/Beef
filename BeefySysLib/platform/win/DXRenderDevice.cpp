@@ -5,6 +5,7 @@
 #include "img/ImageData.h"
 #include "util/PerfTimer.h"
 #include "util/BeefPerf.h"
+#include "Span.h"
 #include "FileStream.h"
 #include "DDS.h"
 
@@ -225,11 +226,13 @@ void DXShader::ReleaseNative()
 	mConstBuffer = NULL;
 }
 
-extern "C"
-typedef HRESULT(WINAPI* Func_D3DX10CompileFromFileW)(LPCWSTR pSrcFile, CONST D3D10_SHADER_MACRO* pDefines, LPD3D10INCLUDE pInclude,
+extern "C" typedef HRESULT(WINAPI* Func_D3DX10CompileFromFileW)(LPCWSTR pSrcFile, CONST D3D10_SHADER_MACRO* pDefines, LPD3D10INCLUDE pInclude,
 	LPCSTR pFunctionName, LPCSTR pProfile, UINT Flags1, UINT Flags2, ID3D10Blob** ppShader, ID3D10Blob** ppErrorMsgs);
-
 static Func_D3DX10CompileFromFileW gFunc_D3DX10CompileFromFileW;
+
+extern "C" typedef HRESULT(WINAPI* Func_D3DX10Compile)(void* srcData, size_t srcSize, char* sourceName, CONST D3D10_SHADER_MACRO* pDefines, LPD3D10INCLUDE pInclude,
+	LPCSTR pFunctionName, LPCSTR pProfile, UINT Flags1, UINT Flags2, ID3D10Blob** ppShader, ID3D10Blob** ppErrorMsgs);
+static Func_D3DX10Compile gFunc_D3DX10Compile;
 
 static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer)
 {
@@ -239,7 +242,7 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 	bool useCache = false;
 	auto srcDate = ::BfpFile_GetTime_LastWrite(filePath.c_str());
 	auto cacheDate = ::BfpFile_GetTime_LastWrite(outObj.c_str());
-	if (cacheDate >= srcDate)
+	if ((cacheDate != 0) && (cacheDate >= srcDate))
 		useCache = true;
 
 	if (!useCache)
@@ -257,16 +260,37 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 
 	if (!useCache)
 	{
-		if (gFunc_D3DX10CompileFromFileW == NULL)
-		{
-			auto lib = LoadLibraryA("D3DCompiler_47.dll");
-			if (lib != NULL)
-				gFunc_D3DX10CompileFromFileW = (Func_D3DX10CompileFromFileW)::GetProcAddress(lib, "D3DCompileFromFile");
-		}
+		bool useCompile = true;
 
+		HRESULT dxResult;
 		ID3D10Blob* errorMessage = NULL;
-		auto dxResult = gFunc_D3DX10CompileFromFileW(UTF8Decode(filePath).c_str(), NULL, NULL, entry.c_str(), profile.c_str(),
-			D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
+		if (useCompile)
+		{
+			if (gFunc_D3DX10Compile == NULL)
+			{
+				auto lib = LoadLibraryA("D3DCompiler_47.dll");
+				if (lib != NULL)
+					gFunc_D3DX10Compile = (Func_D3DX10Compile)::GetProcAddress(lib, "D3DCompile");
+			}
+
+			int memSize = 0;
+			uint8* memPtr = LoadBinaryData(filePath, &memSize);
+
+			dxResult = gFunc_D3DX10Compile(memPtr, memSize, "Shader", NULL, NULL, entry.c_str(), profile.c_str(),
+				D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
+		}
+		else
+		{
+			if (gFunc_D3DX10CompileFromFileW == NULL)
+			{
+				auto lib = LoadLibraryA("D3DCompiler_47.dll");
+				if (lib != NULL)
+					gFunc_D3DX10CompileFromFileW = (Func_D3DX10CompileFromFileW)::GetProcAddress(lib, "D3DCompileFromFile");
+			}
+			
+			dxResult = gFunc_D3DX10CompileFromFileW(UTF8Decode(filePath).c_str(), NULL, NULL, entry.c_str(), profile.c_str(),
+				D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
+		}				
 
 		if (DXFAILED(dxResult))
 		{
@@ -310,6 +334,36 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 	return true;
 }
 
+static bool LoadDXShader(Span<uint8> fileData, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer)
+{
+	HRESULT hr;
+	
+	if (gFunc_D3DX10Compile == NULL)
+	{
+		auto lib = LoadLibraryA("D3DCompiler_47.dll");
+		if (lib != NULL)
+			gFunc_D3DX10Compile = (Func_D3DX10Compile)::GetProcAddress(lib, "D3DCompile");
+	}
+
+	ID3D10Blob* errorMessage = NULL;
+	auto dxResult = gFunc_D3DX10Compile(fileData.mVals, fileData.mSize, "ShaderSource", NULL, NULL, entry.c_str(), profile.c_str(),
+		D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
+
+	if (DXFAILED(dxResult))
+	{
+		if (errorMessage != NULL)
+		{
+			BF_FATAL(StrFormat("Vertex shader load failed: %s", (char*)errorMessage->GetBufferPointer()).c_str());
+			errorMessage->Release();
+		}
+		else
+			BF_FATAL("Shader load failed");
+		return false;
+	}
+
+	return true;
+}
+
 bool DXShader::Load()
 {
 	//HRESULT hr;
@@ -318,8 +372,35 @@ bool DXShader::Load()
 	ID3D10Blob* vertexShaderBuffer = NULL;
 	ID3D10Blob* pixelShaderBuffer = NULL;
 
-	LoadDXShader(mSrcPath + ".fx", "VS", "vs_4_0", &vertexShaderBuffer);
-	LoadDXShader(mSrcPath + ".fx", "PS", "ps_4_0", &pixelShaderBuffer);
+	void* memPtr = NULL;
+	int memSize = 0;
+	if (ParseMemorySpan(mSrcPath, memPtr, memSize))
+	{		
+		int crPos = (int)mSrcPath.IndexOf('\n');
+		if (crPos != -1)
+		{
+			void* memPtr2 = NULL;
+			int memSize2 = 0;
+			if (ParseMemorySpan(mSrcPath.Substring(crPos + 1), memPtr2, memSize2))
+			{
+				D3D10CreateBlob(memSize, &vertexShaderBuffer);
+				memcpy(vertexShaderBuffer->GetBufferPointer(), memPtr, memSize);
+				D3D10CreateBlob(memSize2, &pixelShaderBuffer);
+				memcpy(pixelShaderBuffer->GetBufferPointer(), memPtr2, memSize2);	
+			}
+		}
+		else
+		{
+			Span<uint8> span((uint8*)memPtr, memSize);
+			LoadDXShader(span, "VS", "vs_4_0", &vertexShaderBuffer);
+			LoadDXShader(span, "PS", "ps_4_0", &pixelShaderBuffer);
+		}
+	}
+	else
+	{
+		LoadDXShader(mSrcPath + ".fx", "VS", "vs_4_0", &vertexShaderBuffer);
+		LoadDXShader(mSrcPath + ".fx", "PS", "ps_4_0", &pixelShaderBuffer);
+	}
 
 	defer(
 		{
@@ -567,7 +648,7 @@ void DXTexture::PhysSetAsTarget()
 		mRenderDevice->mD3DDeviceContext->RSSetViewports(1, &viewPort);
 	}
 
-	//if (!mHasBeenDrawnTo)
+	if (mWantsClear)
 	{
 		float bgColor[4] = {1, (rand() % 256) / 256.0f, 0.5, 1};
 		mRenderDevice->mD3DDeviceContext->ClearRenderTargetView(mD3DRenderTargetView, bgColor);
@@ -576,6 +657,8 @@ void DXTexture::PhysSetAsTarget()
 
 		//mRenderDevice->mD3DDevice->ClearRenderTargetView(mD3DRenderTargetView, D3DXVECTOR4(1, 0.5, 0.5, 1));
 		mHasBeenDrawnTo = true;
+		if (mResetClear)
+			mWantsClear = false;
 	}
 }
 
@@ -611,6 +694,9 @@ void DXTexture::SetBits(int destX, int destY, int destWidth, int destHeight, int
 
 void DXTexture::GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
 {
+	if ((srcWidth <= 0) || (srcHeight <= 0))
+		return;
+
 	D3D11_TEXTURE2D_DESC texDesc;
 	texDesc.ArraySize = 1;
 	texDesc.BindFlags = 0;
@@ -676,11 +762,11 @@ void DXDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 		return;
 
 	if ((mRenderState->mClipped) &&
-		((mRenderState->mClipRect.mWidth == 0) || (mRenderState->mClipRect.mHeight == 0)))
+		((mRenderState->mClipRect.width == 0) || (mRenderState->mClipRect.height == 0)))
 		return;
 
 	if (mRenderState->mClipped)
-		BF_ASSERT((mRenderState->mClipRect.mWidth > 0) && (mRenderState->mClipRect.mHeight > 0));
+		BF_ASSERT((mRenderState->mClipRect.width > 0) && (mRenderState->mClipRect.height > 0));
 
 	DXRenderDevice* aRenderDevice = (DXRenderDevice*)renderDevice;
 	/*if ((mDrawLayer->mRenderWindow != NULL) && (aRenderDevice->mPhysRenderWindow != mDrawLayer->mRenderWindow))
@@ -845,10 +931,10 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 		if (renderState->mClipped)
 		{
 			D3D11_RECT rects[1];
-			rects[0].left = (int)renderState->mClipRect.mX;
-			rects[0].right = (int) (renderState->mClipRect.mX + renderState->mClipRect.mWidth);
-			rects[0].top = (int) renderState->mClipRect.mY;
-			rects[0].bottom = (int) (renderState->mClipRect.mY + renderState->mClipRect.mHeight);
+			rects[0].left = (int)renderState->mClipRect.x;
+			rects[0].right = (int) (renderState->mClipRect.x + renderState->mClipRect.width);
+			rects[0].top = (int) renderState->mClipRect.y;
+			rects[0].bottom = (int) (renderState->mClipRect.y + renderState->mClipRect.height);
 			mD3DDeviceContext->RSSetScissorRects(1, rects);
 		}
 		setRasterizerState = true;
@@ -1297,9 +1383,9 @@ void DXRenderState::SetTexWrap(bool wrap)
 	InvalidateRasterizerState();
 }
 
-void DXRenderState::SetClipRect(const Rect& rect)
+void DXRenderState::SetClipRect(const RectF& rect)
 {
-	BF_ASSERT((rect.mWidth >= 0) && (rect.mHeight >= 0));
+	BF_ASSERT((rect.width >= 0) && (rect.height >= 0));
 	mClipRect = rect;
 	InvalidateRasterizerState();
 }
@@ -2106,8 +2192,12 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		return aTexture;
 	}
 
+	String pathEx = fileName;
+	if ((flags & TextureFlag_Additive) != 0)
+		pathEx += ":add";
+
 	DXTexture* aTexture = NULL;
-	if (mTextureMap.TryGetValue(fileName, &aTexture))
+	if ((!fileName.StartsWith('@')) && (mTextureMap.TryGetValue(pathEx, &aTexture)))
 	{
 		aTexture->AddRef();
 		return aTexture;
@@ -2251,7 +2341,7 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 	aTexture = (DXTexture*)RenderDevice::LoadTexture(fileName, flags);
 	if (aTexture != NULL)
 	{
-		aTexture->mPath = fileName;
+		aTexture->mPath = pathEx;
 		mTextureMap[aTexture->mPath] = aTexture;
 	}
 

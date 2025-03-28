@@ -33,7 +33,7 @@ namespace Beefy.theme.dark
         public bool mAllowResize;
 		public bool mHasClosed;
 		public Insets mRelWidgetMouseInsets ~ delete _;
-		public bool mAllowMouseInsideSelf;
+		public Insets mAllowMouseInsideInsets ~ delete _;
 		public bool mAllowMouseOutside;
 		public int mAutoCloseDelay;
 		public bool mIsClipped;
@@ -94,6 +94,21 @@ namespace Beefy.theme.dark
 		{
 			Debug.Assert(mHasClosed);
 			Detach();
+		}
+
+		public static Point CalcSize(StringView text, float x = 0, float y = 0)
+		{
+			var font = DarkTheme.sDarkTheme.mSmallFont;
+			float minWidth = 0;
+			float minHeight = 0;
+
+			BFApp.sApp.GetWorkspaceRectFrom((.)x, (.)y, 0, 0, var workspaceX, var workspaceY, var workspaceWidth, var workspaceHeight);
+
+			FontMetrics fontMetrics = .();
+			float height = font.Draw(null, text, x, y, 0, 0, FontOverflowMode.Overflow, &fontMetrics);
+			float tooltipWidth = Math.Max(fontMetrics.mMaxWidth + GS!(32), minWidth);
+			float tooltipHeight = Math.Clamp(height + GS!(16), minHeight, workspaceHeight);
+			return .(tooltipWidth, tooltipHeight);
 		}
 
 		void Attach(Widget widget)
@@ -162,7 +177,7 @@ namespace Beefy.theme.dark
             int32 relX = x - mWidgetWindow.mX;
             int32 relY = y - mWidgetWindow.mY;
 
-            if ((relX >= mWidgetWindow.mWindowWidth - GS!(18)) && (relY >= mWidgetWindow.mWindowHeight - GS!(18)))
+            if ((relX >= mWidgetWindow.mWindowWidth - GS!(22)) && (relY >= mWidgetWindow.mWindowHeight - GS!(22)))
                 return BFWindowBase.HitTestResult.BottomRight;
             return BFWindowBase.HitTestResult.Client;
         }
@@ -178,10 +193,13 @@ namespace Beefy.theme.dark
                 g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, mWidth, mHeight);
 
             g.SetFont(mFont);
-			if (mIsClipped)
-            	g.DrawString(mText, GS!(8), GS!(5), .Left, mWidth - GS!(16), .Ellipsis);
-			else
-				g.DrawString(mText, 0, GS!(5), .Centered, mWidth);
+			using (g.PushColor(DarkTheme.COLOR_TEXT))
+			{
+				if (mIsClipped)
+					g.DrawString(mText, GS!(8), GS!(5), .Left, mWidth - GS!(16), .Ellipsis);
+				else
+					g.DrawString(mText, 0, GS!(5), .Centered, mWidth);
+			}
 
             if (mAllowResize)
                 g.Draw(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.ResizeGrabber), mWidth - GS!(22), mHeight - GS!(22));
@@ -248,21 +266,42 @@ namespace Beefy.theme.dark
 			if (mAllowMouseOutside)
 				return;
 
+			Rect widgetRect = .(0, 0, mRelWidget.mWidth, mRelWidget.mHeight);
+			mRelWidgetMouseInsets?.ApplyTo(ref widgetRect);
+
 			float rootX;
 			float rootY;
-			mRelWidget.SelfToRootTranslate(0, 0, out rootX, out rootY);
+			mRelWidget.SelfToRootTranslate(widgetRect.mX, widgetRect.mY, out rootX, out rootY);
 
-			Rect checkRect = Rect(rootX, rootY, mRelWidget.mWidth, mRelWidget.mHeight);
-			mRelWidgetMouseInsets?.ApplyTo(ref checkRect);
+			Rect checkRect = Rect(rootX, rootY, widgetRect.mWidth, widgetRect.mHeight);
+			
 			if ((mRelWidget.mWidgetWindow != null) && (mRelWidget.mWidgetWindow.mHasMouseInside))
 			{
-				//checkRect.Inflate(8, 8);
 				if (checkRect.Contains(mRelWidget.mWidgetWindow.mClientMouseX, mRelWidget.mWidgetWindow.mClientMouseY))
 					return;
 			}
+			if (mAllowMouseInsideInsets != null)
+			{
+				if (mWidgetWindow.mHasMouseInside)
+					return;
 
-			if ((mWidgetWindow.mHasMouseInside) && (mAllowMouseInsideSelf))
-				return;
+				Rect<float> clientRect = mWidgetWindow.ClientRect;
+				mAllowMouseInsideInsets.ApplyTo(ref clientRect);
+
+				var cursorScreenPos = BFApp.sApp.CursorScreenPos;
+				if (cursorScreenPos != null)
+				{
+					if (clientRect.Contains((.)cursorScreenPos.Value.x, (.)cursorScreenPos.Value.y))
+						return;
+				}
+
+				NOP!();
+
+				/*var screenX = (int32)rootX + mWidgetWindow.mClientX;
+				var screenY = (int32)rootY + mWidgetWindow.mClientY;
+				if (clientRect.Contains(screenX, screenY))
+					return;*/
+			}
 
 			var checkWindow = BFApp.sApp.FocusedWindow;
 			if ((checkWindow != null) && (checkWindow.HasParent(mWidgetWindow)))
@@ -423,15 +462,6 @@ namespace Beefy.theme.dark
 		   		SetLastMouseWidget(null);
 		        sMouseStillTicks = -1;
 		    }
-
-		    if (numOverWidgets > 1)
-		    {
-				//int a = 0;
-				Debug.WriteLine("numOverWidgets > 1");
-		    }
-
-
-		    //Debug.Assert(numOverWidgets <= 1);                        
 		}
 	}
 }

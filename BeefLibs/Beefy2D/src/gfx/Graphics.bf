@@ -547,6 +547,11 @@ namespace Beefy.gfx
                 (int)mPixelSnapping, mSmoothing ? 1 : 0, mAdditive ? 1 : 0, (int)g.mColor);*/
         }
 
+		public void DrawCentered(Image image, float x = 0, float y = 0)
+		{
+		    Draw(image, x - image.mWidth / 2, y - image.mHeight / 2);
+		}
+
 		public void Draw(IDrawable drawable, Vector2 vec) => Draw(drawable, vec.mX, vec.mY);
 
         public void DrawButton(Image image, float x, float y, float width)
@@ -924,6 +929,11 @@ namespace Beefy.gfx
             FillRect(x, y + height - thickness, width, thickness);
         }
 
+		public void OutlineRect(Rect rect)
+		{
+			OutlineRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
+		}
+
         public void FillRectGradient(float x, float y, float width, float height,
             Color colorTopLeft, Color colorTopRight, Color colorBotLeft, Color colorBotRight)
         {
@@ -942,6 +952,39 @@ namespace Beefy.gfx
             Gfx_CopyDrawVertex(4, 1);
             Gfx_SetDrawVertex(5, m.tx + (m.a + m.c), m.ty + (m.b + m.d), 0, 0, 0, Color.Mult(mColor, colorBotRight));
         }
+
+		public void FillRectGradientEx(float x, float y, float width, float height,
+		    Color colorTopLeft, Color colorTopRight, Color colorBotLeft, Color colorBotRight)
+		{
+		    Matrix m = Matrix.IdentityMatrix;
+		    m.SetMultiplied(x, y, width, height, ref mMatrix);
+
+			int32 r = ((int32)colorTopLeft.R + colorTopRight.R + colorBotLeft.R + colorBotRight.R) / 4;
+			int32 g = ((int32)colorTopLeft.G + colorTopRight.G + colorBotLeft.G + colorBotRight.G) / 4;
+			int32 b = ((int32)colorTopLeft.B + colorTopRight.B + colorBotLeft.B + colorBotRight.B) / 4;
+			int32 a = ((int32)colorTopLeft.A + colorTopRight.A + colorBotLeft.A + colorBotRight.A) / 4;
+			Color centerColor = .(r, g, b, a);
+
+		    //TODO: Multiply color
+
+		    Gfx_AllocTris(mWhiteDot.mNativeTextureSegment, 12);
+		    
+		    Gfx_SetDrawVertex(0, m.tx, m.ty, 0, 0, 0, Color.Mult(mColor, colorTopLeft));
+		    Gfx_SetDrawVertex(1, m.tx + m.a, m.ty + m.b, 0, 0, 0, Color.Mult(mColor, colorTopRight));
+			Gfx_SetDrawVertex(2, m.tx + (m.a + m.c) * 0.5f, m.ty + (m.b + m.d) * 0.5f, 0, 0, 0, Color.Mult(mColor, centerColor));
+
+			Gfx_CopyDrawVertex(3, 1); // Top Right
+			Gfx_SetDrawVertex(4, m.tx + (m.a + m.c), m.ty + (m.b + m.d), 0, 0, 0, Color.Mult(mColor, colorBotRight));
+			Gfx_CopyDrawVertex(5, 2); // Center
+
+			Gfx_CopyDrawVertex(6, 2); // Center
+			Gfx_CopyDrawVertex(7, 4); // Bottom Right
+		    Gfx_SetDrawVertex(8, m.tx + m.c, m.ty + m.d, 0, 0, 0, Color.Mult(mColor, colorBotLeft));
+
+		    Gfx_CopyDrawVertex(9, 8); // Bottom Left
+		    Gfx_CopyDrawVertex(10, 0); // Top Left
+		    Gfx_CopyDrawVertex(11, 2); // Center
+		}
 
 		void DoDrawLine(float x0, float y0, float x1, float y1, float width)
 		{

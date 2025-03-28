@@ -37,7 +37,7 @@ namespace IDE.ui
 
             mDefaultButton = AddButton("OK", new (evt) => GotoLineSubmit(true));
             mEscButton = AddButton("Cancel", new (evt) => Cancel());
-            mEditWidget = AddEdit(StackStringFormat!("{0}", line + 1));
+            mEditWidget = AddEdit(scope String()..AppendF("{0}", line + 1));
             mEditWidget.mOnContentChanged.Add(new (evt) => GotoLineSubmit(false));
         }
 

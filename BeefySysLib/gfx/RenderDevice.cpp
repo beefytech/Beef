@@ -6,6 +6,7 @@
 #include "img/TGAData.h"
 #include "img/PNGData.h"
 #include "img/PVRData.h"
+#include "img/BMPData.h"
 #include "img/BFIData.h"
 #include "img/JPEGData.h"
 #include "util/PerfTimer.h"
@@ -33,6 +34,8 @@ RenderTarget::RenderTarget()
 	mHasBeenDrawnTo = false;
 	mHasBeenTargeted = false;
 	mResizeNum = 0;
+	mWantsClear = true;
+	mResetClear = false;
 }
 
 RenderWindow::RenderWindow()
@@ -142,6 +145,12 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		imageData = new JPEGData();
 	else if (ext == ".pvr")
 		imageData = new PVRData();
+	else if (ext == ".bmp")
+	{
+		BMPData* bmpData = new BMPData();
+		bmpData->mHasTransFollowing = (flags & TextureFlag_HasTransFollowing) == 0;;
+		imageData = bmpData;
+	}
 	else
 	{
 		return NULL; // Unknown format
@@ -150,14 +159,12 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 	if (!handled)
 	{
 		imageData->mWantsAlphaPremultiplied = (flags & TextureFlag_NoPremult) == 0;
-		if (fileName.StartsWith("@"))
-		{
-			int colon = (int)fileName.IndexOf(':');
-			String addrStr = fileName.Substring(1, colon - 1);
-			String lenStr = fileName.Substring(colon + 1);
-			void* addr = (void*)(intptr)strtoll(addrStr.c_str(), NULL, 16);
-			int len = (int)strtol(lenStr.c_str(), NULL, 10);
-			if (!imageData->LoadFromMemory(addr, len))
+
+		void* memPtr = NULL;
+		int memLen = 0;
+		if (ParseMemorySpan(fileName, memPtr, memLen))
+		{			
+			if (!imageData->LoadFromMemory(memPtr, memLen))
 			{
 				failed = true;
 				delete imageData;

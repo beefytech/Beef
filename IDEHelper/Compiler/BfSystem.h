@@ -49,7 +49,15 @@ typedef HashSet<BfProject*> BfProjectSet;
 class BfAtom
 {
 public:
+	enum Kind
+	{
+		Kind_Normal,
+		Kind_Anon
+	};
+
+public:
 	StringView mString;
+	Kind mKind;
 	int mRefCount;
 	int mPendingDerefCount;
 	int mHash;
@@ -231,6 +239,7 @@ enum BfTypeFlags
 
 	BfTypeFlags_Static			= 0x200000,
 	BfTypeFlags_Abstract		= 0x400000,
+	BfTypeFlags_HasAppendWantMark = 0x800000,
 };
 
 enum BfMethodFlags
@@ -245,7 +254,11 @@ enum BfMethodFlags
 	BfMethodFlags_FastCall = 0x2000,
 	BfMethodFlags_ThisCall = 0x3000,
 	BfMethodFlags_Mutating = 0x4000,
-	BfMethodFlags_Constructor = 0x8000
+	BfMethodFlags_Constructor = 0x8000,
+	BfMethodFlags_AppendBit0 = 0x10000,
+	BfMethodFlags_AppendBit1 = 0x20000,
+	BfMethodFlags_CheckedBit0 = 0x40000,
+	BfMethodFlags_CheckedBit1 = 0x80000,
 };
 
 enum BfComptimeMethodFlags
@@ -671,6 +684,8 @@ public:
 		{
 			if (fieldDeclaration->mNameNode != NULL)
 				return fieldDeclaration->mNameNode;
+			if (fieldDeclaration->mTypeRef != NULL)
+				return fieldDeclaration->mTypeRef;
 		}
 
 		if (auto paramDeclaration = BfNodeDynCast<BfParameterDeclaration>(mFieldDeclaration))
@@ -836,6 +851,7 @@ enum BfCallingConvention : uint8
 #define BF_METHODNAME_FIND_TLS_MEMBERS "GCFindTLSMembers"
 #define BF_METHODNAME_DYNAMICCAST "DynamicCastToTypeId"
 #define BF_METHODNAME_DYNAMICCAST_INTERFACE "DynamicCastToInterface"
+#define BF_METHODNAME_DYNAMICCAST_SIGNATURE "DynamicCastToSignature"
 #define BF_METHODNAME_CALCAPPEND "this$calcAppend"
 #define BF_METHODNAME_ENUM_HASFLAG "HasFlag"
 #define BF_METHODNAME_ENUM_GETUNDERLYING "get__Underlying"
@@ -878,6 +894,15 @@ enum BfComptimeFlags : int8
 	BfComptimeFlag_ConstEval = 4
 };
 
+enum BfAllowAppendKind : int8
+{
+	BfAllowAppendKind_No,
+	BfAllowAppendKind_Yes,
+	BfAllowAppendKind_ZeroGap,
+
+	BfAllowAppendKind_Infer
+};
+
 class BfMethodDef : public BfMemberDef
 {
 public:
@@ -906,7 +931,7 @@ public:
 	bool mCodeChanged;
 	bool mWantsBody;
 	bool mCLink;
-	bool mHasAppend;
+	BfAllowAppendKind mAppendKind;
 	bool mAlwaysInline;
 	bool mIsNoReturn;
 	bool mIsMutating;
@@ -960,7 +985,7 @@ public:
 		mImportKind = BfImportKind_None;
 		mMethodType = BfMethodType_Normal;
 		mCallingConvention = BfCallingConvention_Unspecified;
-		mHasAppend = false;
+		mAppendKind = BfAllowAppendKind_No;
 		mAlwaysInline = false;
 		mParamNameMap = NULL;
 		mNextWithSameName = NULL;
@@ -970,6 +995,7 @@ public:
 
 	static BfImportKind GetImportKindFromPath(const StringImpl& filePath);
 	bool HasNoThisSplat() { return mIsMutating || mIsNoSplat; }
+	bool HasAppend() { return mAppendKind != BfAllowAppendKind_No; }
 	void Reset();
 	void FreeMembers();
 	BfMethodDeclaration* GetMethodDeclaration();
@@ -1134,7 +1160,7 @@ public:
 	BfShow mShow;
 	bool mIsAlwaysInclude;
 	bool mIsNoDiscard;
-	bool mIsPartial;
+	bool mIsPartial;	
 	bool mIsExplicitPartial;
 	bool mPartialUsed;
 	bool mIsCombinedPartial;
@@ -1254,7 +1280,7 @@ public:
 	bool HasCustomAttributes();
 };
 
-struct BfTypeDefMapFuncs : public MultiHashSetFuncs
+struct BfTypeDefMapFuncs : public AllocatorCLib
 {
 	int GetHash(BfTypeDef* typeDef)
 	{
@@ -1394,6 +1420,15 @@ public:
 		DeleteStage_AwaitingRefs,
 	};
 
+	enum DependencyKind
+	{
+		DependencyKind_None,
+		DependencyKind_Dependency,
+		DependencyKind_Identity,		
+		DependencyKind_Dependent_Exclusive,
+		DependencyKind_Dependent_Shared
+	};
+
 public:
 	BfSystem* mSystem;
 	String mName;
@@ -1414,6 +1449,8 @@ public:
 
 	HashSet<BfModule*> mUsedModules;
 	HashSet<BfType*> mReferencedTypeData;
+	HashSet<BfProject*> mDependencySet;
+	Dictionary<BfProject*, DependencyKind> mDependencyKindDict;
 
 	Val128 mBuildConfigHash;
 	Val128 mVDataConfigHash;
@@ -1424,9 +1461,12 @@ public:
 	BfProject();
 	~BfProject();
 
+	void ClearCache();
 	bool ContainsReference(BfProject* refProject);
 	bool ReferencesOrReferencedBy(BfProject* refProject);
 	bool IsTestProject();
+	bool HasDependency(BfProject* project);	
+	DependencyKind GetDependencyKind(BfProject* project);
 };
 
 //CDH TODO move these out to separate header if list gets big/unwieldy
@@ -1556,6 +1596,17 @@ public:
 class BfPassInstance
 {
 public:
+	struct StateInfo
+	{
+		int mOutStreamSize;
+		int mErrorsSize;		
+		int mWarningCount;
+		int mDeferredErrorCount;
+		int mFailedIdx;
+		int mWarnIdx;		
+	};
+
+public:
 	const int sMaxDisplayErrors = 100;
 	const int sMaxErrors = 1000;
 
@@ -1596,6 +1647,9 @@ public:
 	}
 
 	~BfPassInstance();
+
+	StateInfo GetState();
+	void RestoreState(StateInfo stateInfo);
 
 	void ClearErrors();
 	bool HasFailed();
@@ -1783,6 +1837,8 @@ public:
 	Array<BfAtom*> mAtomGraveyard;
 	uint32 mAtomUpdateIdx;
 	int32 mTypeMapVersion; // Increment when we add any new types or namespaces
+	int32 mAnonymousAtomCount;
+	int32 mCurUniqueId;
 
 	OwnedVector<BfMethodDef> mMethodGraveyard;
 	OwnedVector<BfFieldDef> mFieldGraveyard;
@@ -1830,7 +1886,7 @@ public:
 	BfSystem();
 	~BfSystem();
 
-	BfAtom* GetAtom(const StringImpl& string);
+	BfAtom* GetAtom(const StringImpl& string, BfAtom::Kind kind = BfAtom::Kind_Normal);
 	BfAtom* FindAtom(const StringImpl& string); // Doesn't create a ref
 	BfAtom* FindAtom(const StringView& string); // Doesn't create a ref
 	void ReleaseAtom(BfAtom* atom);
@@ -1850,6 +1906,7 @@ public:
 	BfParser* CreateParser(BfProject* bfProject);
 	BfCompiler* CreateCompiler(bool isResolveOnly);
 	BfProject* GetProject(const StringImpl& projName);
+	uint64 GetTypeDeclListHash();
 
 	BfTypeReference* GetTypeRefElement(BfTypeReference* typeRef);
 	BfTypeDef* FilterDeletedTypeDef(BfTypeDef* typeDef);

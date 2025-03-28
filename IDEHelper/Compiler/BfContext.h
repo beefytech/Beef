@@ -160,12 +160,14 @@ public:
 	BfTypeInstance* mCurBaseType;
 	BfTypeReference* mCurAttributeTypeRef;
 	BfFieldDef* mCurFieldDef;
+	BfMethodDef* mCurMethodDef;
 	BfTypeDef* mCurTypeDef;
 	BfTypeDef* mForceActiveTypeDef;
 	BfProject* mActiveProject;
 	ResolveKind mResolveKind;
 	BfAstNode* mCurVarInitializer;
 	int mArrayInitializerSize;
+	BfTypeInstance* mInitializerBaseType;
 
 public:
 	BfTypeState()
@@ -178,6 +180,7 @@ public:
 		mCurBaseTypeRef = NULL;
 		mCurBaseType = NULL;
 		mCurFieldDef = NULL;
+		mCurMethodDef = NULL;
 		mCurAttributeTypeRef = NULL;
 		mCurTypeDef = NULL;
 		mForceActiveTypeDef = NULL;
@@ -185,6 +188,7 @@ public:
 		mCurVarInitializer = NULL;
 		mArrayInitializerSize = -1;
 		mResolveKind = ResolveKind_None;
+		mInitializerBaseType = NULL;
 	}
 
 	BfTypeState(BfType* type, BfTypeState* prevState = NULL)
@@ -197,12 +201,15 @@ public:
 		mCurBaseTypeRef = NULL;
 		mCurBaseType = NULL;
 		mCurFieldDef = NULL;
+		mCurMethodDef = NULL;
 		mCurAttributeTypeRef = NULL;
 		mCurTypeDef = NULL;
 		mForceActiveTypeDef = NULL;
+		mActiveProject = NULL;
 		mCurVarInitializer = NULL;
 		mArrayInitializerSize = -1;
 		mResolveKind = ResolveKind_None;
+		mInitializerBaseType = NULL;
 	}
 };
 
@@ -497,6 +504,7 @@ public:
 	void RebuildDependentTypes(BfDependedType* dType);
 	void QueueMidCompileRebuildDependentTypes(BfDependedType* dType, const String& reason);
 	void RebuildDependentTypes_MidCompile(BfDependedType* dType, const String& reason);
+	bool IsRebuilding(BfType* type);
 	bool CanRebuild(BfType* type);
 	void TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChange);
 	void TypeMethodSignaturesChanged(BfTypeInstance* typeInst);

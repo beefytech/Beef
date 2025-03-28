@@ -25,7 +25,7 @@ namespace System.Diagnostics
 #if !DEBUG
 		[SkipCall]
 #endif
-		public static void FatalError(String msg = "Fatal error encountered", String filePath = Compiler.CallerFilePath, int line = Compiler.CallerLineNum)
+		public static void FatalError(StringView msg = "Fatal error encountered", String filePath = Compiler.CallerFilePath, int line = Compiler.CallerLineNum)
 		{
 			String failStr = scope .()..Append(msg, " at line ");
 			line.ToString(failStr);
@@ -44,10 +44,19 @@ namespace System.Diagnostics
 #endif
 		}
 
+#if !BF_RUNTIME_DISABLE
 		[CallingConvention(.Cdecl)]
 		static extern void Write(char8* str, int strLen);
 		[CallingConvention(.Cdecl)]
 		static extern void Write(int val);
+#else
+		static void Write(char8* str, int strLen)
+		{
+		}
+		static void Write(int val)
+		{
+		}
+#endif
 
 		public static void Write(String line)
 		{
@@ -59,7 +68,7 @@ namespace System.Diagnostics
 			Write(sv.[Friend]mPtr, sv.[Friend]mLength);
 		}
 
-		public static void Write(String fmt, params Span<Object> args)
+		public static void Write(StringView fmt, params Span<Object> args)
 		{
 			String str = scope String(4096);
 			str.AppendF(fmt, params args);
@@ -86,7 +95,7 @@ namespace System.Diagnostics
 			Write(lineStr.Ptr, lineStr.Length);
 		}
 
-		public static void WriteLine(StringView strFormat, params Object[] args)
+		public static void WriteLine(StringView strFormat, params Span<Object> args)
 		{
 			String paramStr = scope String(4096);
 			paramStr.AppendF(strFormat, params args);

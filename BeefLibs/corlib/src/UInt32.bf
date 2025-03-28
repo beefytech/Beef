@@ -61,7 +61,7 @@ namespace System
 		public override void ToString(String strBuffer)
 		{
 			// Dumb, make better.
-			char8[] strChars = scope:: char8[16];
+			char8[16] strChars = ?;
 			int32 char8Idx = 14;
 			uint32 valLeft = (uint32)this;
 			while (valLeft > 0)
@@ -73,7 +73,7 @@ namespace System
 			if (char8Idx == 14)
 				strChars[char8Idx--] = '0';
 			char8* char8Ptr = &strChars[char8Idx + 1];
-			strBuffer.Append(char8Ptr);
+			strBuffer.Append(char8Ptr, 14 - char8Idx);
 		}
 
 		void ToString(String strBuffer, int minNumerals)

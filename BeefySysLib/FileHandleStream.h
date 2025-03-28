@@ -23,9 +23,9 @@ public:
 	bool					Eof() override;
 	int						GetSize() override;
 	using DataStream::Read;
-	void					Read(void* ptr, int size) override;
+	int						Read(void* ptr, int size) override;
 	using DataStream::Write;
-	void					Write(void* ptr, int size) override;
+	int						Write(void* ptr, int size) override;
 
 	int						GetPos() override;
 	void					Seek(int size) override;

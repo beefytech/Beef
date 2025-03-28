@@ -195,6 +195,7 @@ namespace IDE.ui
 				None,
 				BrowseForFile,
 				BrowseForFolder,
+				Percent
 			}
 
 			public enum MultiEncodeKind
@@ -1036,8 +1037,10 @@ namespace IDE.ui
 					}
 					else if (curVariantType.[Friend]mTypeCode == .Float)
 					{
-						if (float.Parse(newValue) case .Ok(let floatVal))
+						if (float.Parse(newValue) case .Ok(var floatVal))
 						{
+							if (editingProp.mFlags.HasFlag(.Percent))
+								floatVal /= 100;
 							editingProp.mCurValue = Variant.Create(floatVal);
 						}
 						else
@@ -1536,7 +1539,7 @@ namespace IDE.ui
                     }
                     if (i < strVals.Count)
                     {
-                        childItem.Label = StackStringFormat!("#{0}", i + 1);
+                        childItem.Label = scope String()..AppendF("#{0}", i + 1);
                         childSubItem.mTextColor = DarkTheme.COLOR_TEXT;
                     }
                     else
@@ -1600,6 +1603,8 @@ namespace IDE.ui
 			{
 				let valStr = scope String();
 				float floatVal = propEntry.mCurValue.Get<float>();
+				if (propEntry.mFlags.HasFlag(.Percent))
+					floatVal *= 100;
 				floatVal.ToString(valStr);
 				valueItem.Label = valStr;
 			}
@@ -2042,7 +2047,7 @@ namespace IDE.ui
 							let width = GetValueEditWidth(subItem);
 							propEntry.mEditInsets.mRight = GS!(22);
 							browseButton.mLabelYOfs = GS!(-2);
-							browseButton.Resize(width - GS!(21), GS!(1), GS!(20), subItem.mHeight - 2);
+							browseButton.Resize(width - GS!(21), GS!(1), GS!(20), Math.Max(subItem.mHeight - 2, 0));
 							
 						});
 					subItem.AddWidget(browseButton);

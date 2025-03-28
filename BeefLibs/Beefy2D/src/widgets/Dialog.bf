@@ -322,6 +322,11 @@ namespace Beefy.widgets
 				mDefaultButton.MouseClicked(0, 0, 0, 0, 3);
 		}
 
+		public virtual void GenerateClipboardText(String outText)
+		{
+			outText.AppendF("{}\n{}", mTitle, mText);
+		}
+
         void WindowKeyDown(KeyDownEvent evt)
         {
 			if ((evt.mKeyCode != .Alt) && (mWidgetWindow.IsKeyDown(.Alt)) && (!mWidgetWindow.IsKeyDown(.Control)))
@@ -387,6 +392,29 @@ namespace Beefy.widgets
 					evt.mHandled = true;
 				}
             }
+
+			if (evt.mKeyFlags.HasFlag(.Ctrl) && (evt.mKeyCode == (KeyCode)'C'))
+			{
+				ClipboardBlock: do
+				{
+					if (mChildWidgets != null)
+					{
+						for (var child in mChildWidgets)
+						{
+							if (child is ButtonWidget)
+								continue;
+							break ClipboardBlock;
+						}
+					}
+
+					var clipboardText = GenerateClipboardText(.. scope String());
+					if (!clipboardText.IsEmpty)
+					{
+						BFApp.sApp.SetClipboardText(clipboardText, "");
+						evt.mHandled = true;
+					}
+				}
+			}
         }
     }
 }

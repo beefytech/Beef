@@ -306,6 +306,7 @@ void bf::System::Console::PutChars(char* ptr, int len)
 
 	for (int i = 0; i < len; i++)
 		putchar(ptr[i]);
+	fflush(stdout);
 }
 
 void bf::System::Console::ReopenHandles()

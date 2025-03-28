@@ -890,7 +890,7 @@ namespace IDE.ui
                         {
                             var lineData = mLineDatas[lineIdx];
                             if (lineData.mSourceFile != null)
-                                g.DrawString(StackStringFormat!("{0}", lineData.mSourceLineNum + 1), GS!(8), GS!(2) + lineIdx * lineSpacing, FontAlign.Right, mEditWidget.mX - GS!(14));
+                                g.DrawString(scope String()..AppendF("{0}", lineData.mSourceLineNum + 1), GS!(8), GS!(2) + lineIdx * lineSpacing, FontAlign.Right, mEditWidget.mX - GS!(14));
                         }
                     }
 
@@ -1338,7 +1338,7 @@ namespace IDE.ui
                             {
                                 if (mLineDatas[line].mAddrEnd != (int)0)
                                 {
-                                    String nextAddr = StackStringFormat!("0x{0:x}L", (int64)mLineDatas[line].mAddrEnd);
+                                    String nextAddr = scope String()..AppendF("0x{0:x}L", (int64)mLineDatas[line].mAddrEnd);
 									nextAddr.Append(" +");
                                     debugExpr.Replace("rip +", nextAddr);
                                 }

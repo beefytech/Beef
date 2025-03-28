@@ -18,6 +18,7 @@ BfSourceClassifier::BfSourceClassifier(BfParser* bfParser, CharData* charData)
 	mPrevNode = NULL;
 	mCurMember = NULL;
 	mCurLocalMethodDeclaration = NULL;
+	mSkipAnonymousTypes = false;
 }
 
 void BfSourceClassifier::ModifyFlags(BfAstNode* node, uint8 andFlags, uint8 orFlags)
@@ -462,6 +463,12 @@ void BfSourceClassifier::Visit(BfTokenNode* tokenNode)
 		SetElementType(tokenNode, BfSourceElementType_Normal);
 }
 
+void BfSourceClassifier::Visit(BfCaseExpression* caseExpr)
+{
+	BfElementVisitor::Visit(caseExpr);
+	SetElementType(caseExpr->mNotToken, BfSourceElementType_Keyword);
+}
+
 void BfSourceClassifier::Visit(BfInvocationExpression* invocationExpr)
 {
 	//BfElementVisitor::Visit(invocationExpr);
@@ -657,12 +664,15 @@ void BfSourceClassifier::Visit(BfPropertyDeclaration* propertyDeclaration)
 
 void BfSourceClassifier::Visit(BfTypeDeclaration* typeDeclaration)
 {
+	if ((mSkipAnonymousTypes) && (typeDeclaration->IsAnonymous()))
+		return;
+
 	if (typeDeclaration->mIgnoreDeclaration)
 		return;
 
 	SetAndRestoreValue<BfAstNode*> prevMember(mCurMember, typeDeclaration);
 
-	if (mSkipTypeDeclarations)
+	if ((mSkipTypeDeclarations) && (!typeDeclaration->IsAnonymous()))
 	{
 		if (auto defineBlock = BfNodeDynCast<BfBlock>(typeDeclaration->mDefineNode))
 		{

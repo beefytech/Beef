@@ -47,6 +47,7 @@ namespace IDE.ui
 
 		BuildError,
 		BuildWarning,
+		BuildSuccess,
 
 		VisibleWhiteSpace
     }
@@ -95,7 +96,7 @@ namespace IDE.ui
             base.MouseDown(x, y, btn, btnCount);
         }
 
-		public override void MouseWheel(float x, float y, float deltaX, float deltaY)
+		public override void MouseWheel(MouseEvent evt)
 		{
 			var sewc = mEditWidgetContent as SourceEditWidgetContent;
 			if ((sewc.mSourceViewPanel != null) && (sewc.mSourceViewPanel.mEmbedParent != null))
@@ -104,19 +105,26 @@ namespace IDE.ui
 				{
 					if ((mVertScrollbar != null) && (mVertScrollbar.mAllowMouseWheel))
 					{
-						mVertScrollbar.MouseWheel(x, y, 0, deltaY);
+						mVertScrollbar.MouseWheel(evt.mX, evt.mY, evt.mWheelDeltaX, evt.mWheelDeltaY);
 						return;
 					}
 				}
 
 				var target = sewc.mSourceViewPanel.mEmbedParent.mEditWidget.mEditWidgetContent;
-				SelfToOtherTranslate(target, x, y, var transX, var transY);
-				target.MouseWheel(transX, transY, deltaX, deltaY);
+
+				MouseEvent parentEvt = scope .();
+				parentEvt.mWheelDeltaX = evt.mWheelDeltaX;
+				parentEvt.mWheelDeltaY = evt.mWheelDeltaY;
+				parentEvt.mSender = evt.mSender;
+
+				// Keep passing it up until some is interested in using it...
+				SelfToOtherTranslate(target, evt.mX, evt.mY, out parentEvt.mX, out parentEvt.mY);
+
+				target.MouseWheel(evt);
 				return;
 			}
 
-
-			base.MouseWheel(x, y, deltaX, deltaY);
+			base.MouseWheel(evt);
 		}
 
         public override void GotFocus()
@@ -3809,7 +3817,7 @@ namespace IDE.ui
             var text = scope String();
             if (gApp.LoadTextFile(mFilePath, text) case .Err)
             {
-                gApp.Fail(StackStringFormat!("Failed to open file '{0}'", mFilePath));
+                gApp.Fail(scope String()..AppendF("Failed to open file '{0}'", mFilePath));
                 return;
             }
 
@@ -4542,7 +4550,7 @@ namespace IDE.ui
                 {
 					float editX = GetEditX();
 
-					float lineSpacing = ewc.mFont.GetLineSpacing();
+					float lineSpacing = ewc.LineHeight;
 					int cursorLineNumber = mEditWidget.mEditWidgetContent.CursorLineAndColumn.mLine;
 					bool hiliteCurrentLine = mEditWidget.mHasFocus;
 
@@ -4711,6 +4719,8 @@ namespace IDE.ui
                         }*/
                     }
 
+					float offset = ewc.GetTextOffset();
+
 					if ((gApp.mSettings.mEditorSettings.mShowLineNumbers) && (mEmbedKind == .None))
 					{
 						String lineStr = scope String(16);
@@ -4739,7 +4749,8 @@ namespace IDE.ui
 								case 2: lineStr.AppendF("{0}", (lineIdx + 1) % 100);
 								default: lineStr.AppendF("{0}", lineIdx + 1);
 								}
-						        g.DrawString(lineStr, 0, GS!(2) + ewc.mLineCoords[lineIdx], FontAlign.Right, editX - GS!(14));
+								using (g.PushColor(DarkTheme.COLOR_TEXT))
+						        	g.DrawString(lineStr, 0, GS!(2) + ewc.mLineCoords[lineIdx] + offset, FontAlign.Right, editX - GS!(14));
 						    }
 						}
 					}
@@ -4778,7 +4789,7 @@ namespace IDE.ui
 							{
 								using (g.PushColor(0xFFA5A5A5))
 								{
-									g.FillRect(editX - (int)GS!(7.5f), ewc.mLineCoords[lineIdx] - (int)GS!(0.5f), (int)GS!(1.5f), lineSpacing);
+									g.FillRect(editX - (int)GS!(7.5f), ewc.mLineCoords[lineIdx] - offset - (int)GS!(0.5f), (int)GS!(1.5f), lineSpacing + offset);
 									g.FillRect(editX - (int)GS!(7.5f), ewc.mLineCoords[lineIdx] + lineSpacing - (int)GS!(1.5f), GS!(5), (int)GS!(1.5f));
 								}
 							}
@@ -4850,7 +4861,7 @@ namespace IDE.ui
 								mLinePointerDrawData.mUpdateCnt = gApp.mUpdateCnt;
 								mLinePointerDrawData.mDebuggerContinueIdx = gApp.mDebuggerContinueIdx;
 								g.Draw(img, mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
-									0 + ewc.GetLineY(lineNum, 0));
+									0 + ewc.GetLineY(lineNum, 0) + ewc.GetTextOffset());
 							}
 
 							if (mMousePos != null && mIsDraggingLinePointer)
@@ -4860,7 +4871,7 @@ namespace IDE.ui
 								{
 									using (g.PushColor(0x7FFFFFFF))
 										g.Draw(img, mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
-											0 + ewc.GetLineY(dragLineNum, 0));
+											0 + ewc.GetLineY(dragLineNum, 0) + ewc.GetTextOffset());
 								}
 							}
                         }
@@ -5121,10 +5132,16 @@ namespace IDE.ui
 			if (!mIsBeefSource)
 				return;
 
-            var bfSystem = IDEApp.sApp.mBfResolveSystem;
+			var bfSystem = IDEApp.sApp.mBfResolveSystem;
 			if (bfSystem == null)
 				return;
-            var parser = bfSystem.CreateEmptyParser(null);
+			let projectSource = FilteredProjectSource;
+			BfProject bfProject = null;
+			if ((projectSource != null) && (mIsBeefSource))
+			{
+			    bfProject = bfSystem.GetBfProject(projectSource.mProject);
+			}
+            var parser = bfSystem.CreateEmptyParser(bfProject);
 			defer delete parser;
             var text = scope String();
             mEditWidget.GetText(text);
@@ -5179,7 +5196,7 @@ namespace IDE.ui
 
         public void GotoLine()
         {                        
-            GoToLineDialog aDialog = new GoToLineDialog("Go To Line", StackStringFormat!("Line Number ({0}-{1})", 1, mEditWidget.Content.GetLineCount()));
+            GoToLineDialog aDialog = new GoToLineDialog("Go To Line", scope String()..AppendF("Line Number ({0}-{1})", 1, mEditWidget.Content.GetLineCount()));
             aDialog.Init(this);                        
             aDialog.PopupWindow(mWidgetWindow);
         }
@@ -5645,8 +5662,22 @@ namespace IDE.ui
 					if ((mHoverResolveTask == null) &&
 						((debugExpr == null) || (!debugExpr.StartsWith(':'))))
 					{
+						bool wantDebugEval = false;
+						if ((gApp.mDebugger.mIsRunning) && (!String.IsNullOrEmpty(debugExpr)))
+						{
+							wantDebugEval = true;
+							if (FilteredProjectSource != null)
+							{
+								// This is active Beef source
+								if ((debugExpr[0].IsNumber) || (debugExpr.StartsWith('\'')) || (debugExpr.StartsWith('"')))
+								{
+									// Literal, don't debug eval
+									wantDebugEval = false;
+								}
+							}
+						}
 
-						if (((!gApp.mDebugger.mIsRunning) || (!mHoverWatch.HasDisplay)) && // Don't show extended information for debug watches
+						if (((!wantDebugEval) || (!mHoverWatch.HasDisplay)) && // Don't show extended information for debug watches
 							(!handlingHoverResolveTask) && (ResolveCompiler != null) && (!ResolveCompiler.mThreadWorkerHi.mThreadRunning) && (gApp.mSettings.mEditorSettings.mHiliteCursorReferences) && (!gApp.mDeterministic))
 						{
 							ResolveParams resolveParams = new .();
@@ -7335,7 +7366,13 @@ namespace IDE.ui
 							int collapseIndex = collapseVal & CollapseRegionView.cIdMask;
 
 							var entry = ewc.mOrderedCollapseEntries[collapseIndex];
-							ewc.SetCollapseOpen(collapseIndex, !entry.mIsOpen);
+
+							if ((mWidgetWindow.IsKeyDown(.Control)))
+							{
+								ewc.[Friend]SetCollapseLineOpen(lineClick, !entry.mIsOpen, true);
+							}
+							else
+								ewc.SetCollapseOpen(collapseIndex, !entry.mIsOpen);
 						}
 						return;
 					}
@@ -7521,7 +7558,7 @@ namespace IDE.ui
 				SourceEditWidgetContent ewc = (.)mEditWidget.Content;
 				Rect linePointerRect = .(
 					mEditWidget.mX - GS!(20) - sDrawLeftAdjust,
-					0 + ewc.GetLineY(mLinePointerDrawData.mLine, 0),
+					0 + ewc.GetLineY(mLinePointerDrawData.mLine, 0) + ewc.GetTextOffset(),
 					GS!(15),
 					GS!(15)
 				);
@@ -7538,7 +7575,7 @@ namespace IDE.ui
 			else if (mIsDraggingLinePointer)
 			{
 				SourceEditWidgetContent ewc = (.)mEditWidget.Content;
-				float linePos = ewc.GetLineY(GetLineAt(0, mMousePos.Value.y), 0);
+				float linePos = ewc.GetLineY(GetLineAt(0, mMousePos.Value.y), 0) + ewc.GetTextOffset();
 				Rect visibleRange = mEditWidget.GetVisibleContentRange();
 
 				if (visibleRange.Top > linePos)

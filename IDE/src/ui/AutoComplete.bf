@@ -413,6 +413,11 @@ namespace IDE.ui
 							g.PushColor(DarkTheme.COLOR_MENU_FOCUSED);
 							defer:loop g.PopColor();
 						}
+						else
+						{
+							g.PushColor(DarkTheme.COLOR_TEXT);
+							defer:loop g.PopColor();
+						}
 
 						let str = StringView(mEntryDisplay, index, @c.NextIndex - index);
 
@@ -512,9 +517,6 @@ namespace IDE.ui
 
 			public void UpdateWidth()
 			{
-				if (mWidgetWindow == null)
-					return;
-
 				int firstEntry = (int)(-(int)mScrollContent.mY / mItemSpacing);
 				int lastEntry = (int)((-(int)mScrollContent.mY + mScrollContentContainer.mHeight) / mItemSpacing);
 
@@ -536,6 +538,8 @@ namespace IDE.ui
 					mMaxWidth = Math.Max(mMaxWidth, entryWidth);
 				}
 
+				if (mWidgetWindow == null)
+					return;
 
 				float docWidth = 0.0f;
 				float docHeight = 0;
@@ -557,8 +561,8 @@ namespace IDE.ui
 
 						int drawScreenX = (.)(mWidgetWindow.mX + mWidth - mDocWidth);
 						gApp.GetWorkspaceRectFrom(drawScreenX, mWidgetWindow.mY, 0, 0, var workspaceX, var workspaceY, var workspaceWidth, var workspaceHeight);
-						float maxWidth = workspaceWidth - drawScreenX - GS!(8);
-						float newDocWidth = Math.Min(docWidth, workspaceWidth - drawScreenX - GS!(8));
+						float maxWidth = workspaceWidth - (drawScreenX - workspaceX) - GS!(8);
+						float newDocWidth = Math.Min(docWidth, workspaceWidth - (drawScreenX - workspaceX) - GS!(8));
 						newDocWidth = Math.Max(newDocWidth, GS!(80));
 						if ((docWidth > maxWidth) || (lineCount > 1))
 						{
@@ -703,6 +707,8 @@ namespace IDE.ui
 
             public void SelectDirection(int32 dir)
             {
+				mAutoComplete.HasInteracted = true;
+
 				if (mEntryList.IsEmpty)
 					return;
                 int32 newSelection = mSelectIdx + dir;
@@ -932,6 +938,9 @@ namespace IDE.ui
 				mWidth = extWidth;
 				mHeight = extHeight;
 
+				if ((mWidth <= 0) || (mHeight <= 0))
+					return;
+
 				if (resizeWindow)
 				{
 					if (mOwnsWindow)
@@ -1069,7 +1078,11 @@ namespace IDE.ui
 			{
 				var font = IDEApp.sApp.mCodeFont;
 
+				extHeight = 0;
 				extWidth = 0;
+
+				if (mSelectIdx < 0)
+					return;
 
 				float curX = GS!(8);
 				float curY = GS!(5);
@@ -1274,6 +1287,8 @@ namespace IDE.ui
 		float mWantX;
 		float mWantY;
 
+		public bool HasInteracted;
+
         public this(EditWidget targetEditWidget)
         {
             mTargetEditWidget = targetEditWidget;
@@ -1295,7 +1310,7 @@ namespace IDE.ui
 			var textIdx;
 
 			// This makes typing '..' NOT move the window after pressing the second '.'
-			if (mTargetEditWidget.Content.SafeGetChar(textIdx - 2) == '.')
+			 if (mTargetEditWidget.Content.SafeGetChar(textIdx - 2) == '.')
 			{
 				textIdx--;
 			}
@@ -1572,7 +1587,7 @@ namespace IDE.ui
                 mInsertStartIdx--;
             }*/
 
-            if ((mInvokeWidget != null) && (mInvokeWidget.mEntryList.Count > 0))
+            if ((mInvokeWidget != null) && (mInvokeSrcPositions != null) && (mInvokeWidget.mEntryList.Count > 0))
             {
 				var data = mTargetEditWidget.Content.mData;
 
@@ -1807,7 +1822,7 @@ namespace IDE.ui
 
 			if (!fts_fuzzy_match(filter.CStr(), entry.mEntryDisplay.CStr(), ref score, &matches, matches.Count))
 			{
-				entry.SetMatches(Span<uint8>(null, 0));
+				entry.SetMatches(Span<uint8>((uint8*)null, 0));
 				entry.mScore = score;
 				return false;
 			}
@@ -2032,7 +2047,7 @@ namespace IDE.ui
             if (mInvokeWidget != null)
             {
 				prevInvokeSelect = mInvokeWidget.mSelectIdx;
-                if ((mInvokeWidget.mEntryList.Count > 0) && (!mInvokeSrcPositions.IsEmpty))
+                if ((mInvokeWidget.mEntryList.Count > 0) && (mInvokeSrcPositions != null) && (!mInvokeSrcPositions.IsEmpty) && (mInvokeWidget.mSelectIdx >= 0))
                 {
 					if (IsInPanel())
 					{
@@ -2042,8 +2057,11 @@ namespace IDE.ui
 					{
 						mInvokeWidget.mOwnsWindow = true;
 						mInvokeWidget.ResizeContent(false);
-	                    UpdateWindow(ref mInvokeWindow, mInvokeWidget, mInvokeSrcPositions[0], (int32)mInvokeWidget.mWidth, (int32)mInvokeWidget.mHeight);
-						mInvokeWidget.ResizeContent(true);
+						if ((mInvokeWidget.mWidth > 0) && (mInvokeWidget.mHeight > 0))
+						{
+		                    UpdateWindow(ref mInvokeWindow, mInvokeWidget, mInvokeSrcPositions[0], (int32)mInvokeWidget.mWidth, (int32)mInvokeWidget.mHeight);
+							mInvokeWidget.ResizeContent(true);
+						}
 					}
                 }
                 else
@@ -2209,6 +2227,7 @@ namespace IDE.ui
 				}
 				contentHeight += GS!(8);
 				mAutoCompleteListWidget.ResizeContent(windowWidth, contentHeight, wantScrollbar);
+				//mAutoCompleteListWidget.UpdateWidth();
 				if ((mInsertStartIdx != -1) && (!IsInPanel()))
 				{
 					UpdateWindow(ref mListWindow, mAutoCompleteListWidget, mInsertStartIdx, windowWidth, windowHeight);
@@ -2963,7 +2982,7 @@ namespace IDE.ui
 				return;
 			}
 
-			bool isExplicitInsert = (keyChar == '\0') || (keyChar == '\t') || (keyChar == '\n');
+			bool isExplicitInsert = (keyChar == '\0') || (keyChar == '\t') || (keyChar == '\n') || (keyChar == '\r');
 
             String insertText = entry.mEntryInsert ?? entry.mEntryDisplay;
 			if ((!isExplicitInsert) && (insertText.Contains('\t')))
@@ -2977,11 +2996,15 @@ namespace IDE.ui
                 //insertText = insertText.Substring(0, insertText.Length - 1);
             String implText = null;
             int tabIdx = insertText.IndexOf('\t');
-            if (tabIdx != -1)
+			int splitIdx = tabIdx;
+			int crIdx = insertText.IndexOf('\r');
+			if ((crIdx != -1) && (tabIdx != -1) && (crIdx < tabIdx))
+				splitIdx = crIdx;
+			if (splitIdx != -1)
             {
                 implText = scope:: String();
-                implText.Append(insertText, tabIdx);
-                insertText.RemoveToEnd(tabIdx);
+                implText.Append(insertText, splitIdx);
+                insertText.RemoveToEnd(splitIdx);
             }
             String prevText = scope String();
             mTargetEditWidget.Content.ExtractString(editSelection.mStartPos, editSelection.mEndPos - editSelection.mStartPos, prevText);

@@ -46,9 +46,11 @@ BfReducer::BfReducer()
 	mAssertCurrentNodeIdx = 0;
 	mSystem = NULL;
 	mResolvePassData = NULL;
-	mMethodDepth = 0;
+	mMethodDepth = 0;	
 	mDocumentCheckIdx = 0;
 	mTypeMemberNodeStart = NULL;
+	mCurTypeState = NULL;
+	mLastErrorSrcEnd = -1;
 }
 
 bool BfReducer::IsSemicolon(BfAstNode* node)
@@ -83,7 +85,7 @@ void BfReducer::AssertCurrentNode(BfAstNode* node)
 	auto currentNode = mVisitorPos.GetCurrent();
 	if (currentNode == NULL)
 		return;
-	if (!node->LocationEndEquals(currentNode))
+	if ((!node->LocationEndEquals(currentNode)) && (mLastErrorSrcEnd != currentNode->mSrcEnd))
 	{
 		const char* lastCPtr = &node->GetSourceData()->mSrc[node->GetSrcEnd() - 1];
 		// We have an "exceptional" case where breaking a double chevron will look like a position error
@@ -104,6 +106,20 @@ bool BfReducer::IsNodeRelevant(BfAstNode* astNode)
 		return true;
 	int cursorPos = bfParser->mCursorIdx;
 	if ((cursorPos == -1) || (astNode->Contains(cursorPos, 1, 0)))
+		return true;
+	BF_ASSERT(bfParser->mParserData->mRefCount == -1);
+	return false;
+}
+
+bool BfReducer::IsCursorInside(BfAstNode* astNode)
+{
+	BfParser* bfParser = astNode->GetSourceData()->ToParser();
+	if (bfParser == NULL)
+		return false;
+	int cursorPos = bfParser->mCursorIdx;
+	if (cursorPos == -1)
+		return false;
+	if (astNode->Contains(cursorPos, 1, 0))
 		return true;
 	BF_ASSERT(bfParser->mParserData->mRefCount == -1);
 	return false;
@@ -131,15 +147,15 @@ void BfReducer::MoveNode(BfAstNode* srcNode, BfAstNode* newOwner)
 #ifdef BF_AST_HAS_PARENT_MEMBER
 	srcNode->mParent = newOwner;
 #endif
-	int srcStart = srcNode->GetSrcStart();
-	int srcEnd = srcNode->GetSrcEnd();
-	if (srcStart < newOwner->GetSrcStart())
-		newOwner->SetSrcStart(srcStart);
-	if (srcEnd > newOwner->GetSrcEnd())
-		newOwner->SetSrcEnd(srcEnd);
+	int srcStart = srcNode->mSrcStart;
+	int srcEnd = srcNode->mSrcEnd;
+	if (srcStart < newOwner->mSrcStart)
+		newOwner->mSrcStart = srcStart;
+	if (srcEnd > newOwner->mSrcEnd)
+		newOwner->mSrcEnd = srcEnd;
 }
 
-// Replaces prevNode with new node and adds prevNode to newNode's childrenj
+// Replaces prevNode with new node and adds prevNode to newNode's children
 //  It can be considered that newNode encapsulated prevNode.
 void BfReducer::ReplaceNode(BfAstNode* prevNode, BfAstNode* newNode)
 {
@@ -222,6 +238,7 @@ void BfReducer::AddErrorNode(BfAstNode* astNode, bool removeNode)
 		mSource->AddErrorNode(astNode);
 	if (removeNode)
 		astNode->RemoveSelf();
+	mLastErrorSrcEnd = astNode->mSrcEnd;
 }
 
 bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int endNode, int* retryNode, int* outEndNode, bool* couldBeExpr, bool* isGenericType, bool* isTuple)
@@ -402,6 +419,39 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int 
 					*outEndNode = endNode;
 				mVisitorPos.mReadPos = startNode;
 				return true;
+			}
+			else if (BfTokenIsTypeDecl(checkToken))
+			{
+				checkIdx++;
+				auto nextNode = mVisitorPos.Get(checkIdx);
+				if (auto block = BfNodeDynCast<BfBlock>(nextNode))
+				{
+					if (outEndNode != NULL)
+						*outEndNode = checkIdx;
+					return true;
+				}
+
+				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+				{
+					if (tokenNode->mToken == BfToken_Colon)
+					{
+						while (true)
+						{
+							checkIdx++;
+							auto checkNode = mVisitorPos.Get(checkIdx);
+							if (checkNode == NULL)
+								return false;
+							if (auto block = BfNodeDynCast<BfBlock>(checkNode))
+							{
+								if (outEndNode != NULL)
+									*outEndNode = checkIdx;
+								return true;
+							}
+						}
+					}
+				}
+
+				return false;
 			}
 			else
 				return false;
@@ -937,7 +987,7 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int 
 			// Ignore
 		}
 		else if ((checkNode->IsA<BfIdentifierNode>()) || (checkNode->IsA<BfMemberReferenceExpression>()))
-		{			
+		{
 			// Identifier is always allowed in tuple (parenDepth == 0), because it's potentially the field name
 			//  (successToken == BfToken_RParen) infers we are already checking inside parentheses, such as
 			//  when we see a potential cast expression
@@ -954,11 +1004,11 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int 
 				hadUnexpectedIdentifier = true;
 			}
 
-// 			if (checkNode->Equals("tag"))
-// 			{
-// 				// Keep looking for tag name				
-// 			}
-// 			else
+			// 			if (checkNode->Equals("tag"))
+			// 			{
+			// 				// Keep looking for tag name				
+			// 			}
+			// 			else
 			{
 				hadIdentifier = true;
 				identifierExpected = false;
@@ -1018,13 +1068,13 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int 
 
 	if ((retryNode != -1) && (successToken == BfToken_None))
 	{
- 		int newEndNode = -1;
- 		if (IsTypeReference(checkNode, successToken, retryNode, &retryNode, &newEndNode, couldBeExpr, isGenericType, isTuple))
- 		{
- 			if (outEndNode != NULL)
- 				*outEndNode = newEndNode;
- 			return true;
- 		}
+		int newEndNode = -1;
+		if (IsTypeReference(checkNode, successToken, retryNode, &retryNode, &newEndNode, couldBeExpr, isGenericType, isTuple))
+		{
+			if (outEndNode != NULL)
+				*outEndNode = newEndNode;
+			return true;
+		}
 	}
 	return false;
 }
@@ -1548,9 +1598,9 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 		{
 			BfExpression* result = NULL;
 			if (!stackHelper.Execute([&]()
-			{
-				result = CreateExpression(node, createExprFlags);
-			}))
+				{
+					result = CreateExpression(node, createExprFlags);
+				}))
 			{
 				Fail("Expression too complex to parse", node);
 			}
@@ -1803,6 +1853,45 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 					exprLeft = TryCreateInitializerExpression(typeRef);
 				}
 			}
+
+			if (auto tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.Get(endNodeIdx)))
+			{
+				if (tokenNode->mToken == BfToken_LParen)
+				{
+					int openCount = 1;
+					int checkIdx = endNodeIdx + 1;
+					while (true)
+					{
+						auto checkNode = mVisitorPos.Get(checkIdx);
+						if (checkNode == NULL)
+							break;
+						if (auto checkTokenNode = BfNodeDynCast<BfTokenNode>(checkNode))
+						{
+							if (checkTokenNode->mToken == BfToken_LParen)
+								openCount++;
+							if (checkTokenNode->mToken == BfToken_RParen)
+							{
+								openCount--;
+								if (openCount == 0)
+									break;
+							}
+						}
+						checkIdx++;
+					}
+
+					if (auto blockNode = BfNodeDynCast<BfBlock>(mVisitorPos.Get(checkIdx + 1)))
+					{
+						// If we have 'A() { ... }', that can either be an invocation with an initializer block or a
+						//  create expression with an inline type declaration + initializer block
+						if (InitializerBlockHasInlineTypeDecl(blockNode))
+						{
+							exprLeft = CreateObjectCreateExpression(NULL, exprLeft);
+							if (auto initExpr = TryCreateInitializerExpression(exprLeft))
+								exprLeft = initExpr;
+						}
+					}
+				}
+			}
 		}
 	}
 
@@ -1810,12 +1899,28 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 	{
 		if (auto tokenNode = BfNodeDynCast<BfTokenNode>(node))
 		{
+			BfAstNode* notNode = NULL;
+			if (tokenNode->mToken == BfToken_Not)
+			{
+				auto nextNode = mVisitorPos.GetNext();
+				if (auto nextTokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+				{
+					if (nextTokenNode->mToken == BfToken_Case)
+					{
+						mVisitorPos.MoveNext();
+						notNode = tokenNode;
+						node = nextNode;
+						tokenNode = nextTokenNode;
+					}
+				}
+			}
+
 			BfToken token = tokenNode->GetToken();
 
 			auto nextNode = mVisitorPos.GetNext();
 			if ((nextNode != NULL) &&
 				((token == BfToken_Checked) ||
-				(token == BfToken_Unchecked)))
+					(token == BfToken_Unchecked)))
 			{
 				mVisitorPos.MoveNext();
 				auto nextExpr = CreateExpression(nextNode);
@@ -1825,12 +1930,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			}
 			else if ((token == BfToken_New) ||
 				(token == BfToken_Scope) ||
-				(token == BfToken_Stack) ||
 				(token == BfToken_Append))
 			{
-				if (token == BfToken_Stack)
-					Fail("'Stack' not supported. Use 'scope::' instead.", tokenNode);
-
 				auto allocNode = CreateAllocNode(tokenNode);
 
 				bool isDelegateBind = false;
@@ -2027,8 +2128,18 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 			else if (token == BfToken_Case)
 			{
 				auto caseExpr = mAlloc->Alloc<BfCaseExpression>();
-				ReplaceNode(tokenNode, caseExpr);
-				caseExpr->mCaseToken = tokenNode;
+				
+				if (notNode != NULL)
+				{
+					ReplaceNode(notNode, caseExpr);
+					caseExpr->mNotToken = notNode;
+					MEMBER_SET(caseExpr, mCaseToken, tokenNode);
+				}
+				else
+				{
+					ReplaceNode(tokenNode, caseExpr);
+					caseExpr->mCaseToken = tokenNode;
+				}				
 
 				if (auto bindToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
 				{
@@ -2058,7 +2169,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				return caseExpr;
 			}
 			else if (token == BfToken_Dot) // Abbreviated dot syntax ".EnumVal"
-			{				
+			{
 				bool handled = false;
 				if (auto nextTokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
 				{
@@ -2067,11 +2178,11 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 						auto invocationExpr = CreateObjectCreateExpression(NULL, tokenNode);
 						if (invocationExpr == NULL)
 							return exprLeft;
-						exprLeft = invocationExpr;												
+						exprLeft = invocationExpr;
 						handled = true;
 					}
 				}
-				
+
 				if (auto blockNode = BfNodeDynCast<BfBlock>(mVisitorPos.GetNext()))
 				{
 					// Initializer ".{ x = 1, y = 2 }"
@@ -2395,8 +2506,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				bool isTypeRef = IsTypeReference(mVisitorPos.GetCurrent(), BfToken_RParen, -1, &outEndNode);
 				mVisitorPos.mReadPos--;
 
- 				if ((isTypeRef) && (outEndNode > 0))
- 				{
+				if ((isTypeRef) && (outEndNode > 0))
+				{
 					if (auto tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.Get(outEndNode - 1)))
 					{
 						if ((tokenNode->mToken == BfToken_RChevron) || (tokenNode->mToken == BfToken_RDblChevron))
@@ -2406,7 +2517,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 							MEMBER_SET_CHECKED(nameOfExpr, mTarget, typeRef);
 						}
 					}
- 				}
+				}
 
 				if (nameOfExpr->mTarget == NULL)
 				{
@@ -2609,7 +2720,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				continue;
 			}
 
-			if ((token == BfToken_Case) && ((createExprFlags & CreateStmtFlags_NoCaseExpr) == 0))
+			if (((token == BfToken_Case) || (token == BfToken_Not)) 
+				&& ((createExprFlags & CreateStmtFlags_NoCaseExpr) == 0))
 			{
 				if ((createExprFlags & CreateExprFlags_EarlyExit) != 0)
 					return exprLeft;
@@ -2625,8 +2737,20 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				auto caseExpr = mAlloc->Alloc<BfCaseExpression>();
 				ReplaceNode(exprLeft, caseExpr);
 				caseExpr->mValueExpression = exprLeft;
-				MEMBER_SET(caseExpr, mCaseToken, tokenNode);
-				mVisitorPos.MoveNext();
+
+				if (token == BfToken_Not)
+				{
+					MEMBER_SET(caseExpr, mNotToken, tokenNode);
+					mVisitorPos.MoveNext();
+					tokenNode = ExpectTokenAfter(caseExpr, BfToken_Case);
+					MEMBER_SET(caseExpr, mCaseToken, tokenNode);
+				}
+				else
+				{
+					MEMBER_SET(caseExpr, mCaseToken, tokenNode);
+					mVisitorPos.MoveNext();
+				}
+								
 				exprLeft = caseExpr;
 
 				if (auto bindTokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
@@ -3921,9 +4045,56 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 		}
 		else if (token == BfToken_Do)
 		{
+			bool isRepeat = false;			
+
 			auto checkNode = mVisitorPos.Get(mVisitorPos.mReadPos + 2);
 			auto checkToken = BfNodeDynCast<BfTokenNode>(checkNode);
-			if ((checkToken != NULL) && (checkToken->GetToken() == BfToken_While))
+
+			if ((checkToken != NULL) && (checkToken->mToken == BfToken_While))
+			{
+				// Check to see if it's a 'do {} while (...);' or an indepent 'while' statement
+				int checkIdx = mVisitorPos.mReadPos + 3;
+				int openCount = 0;
+
+				while (true)
+				{
+					auto checkNode = mVisitorPos.Get(checkIdx);
+					if (checkNode == NULL)
+						break;
+
+					if (auto tokenNode = BfNodeDynCast<BfTokenNode>(checkNode))
+					{
+						if (tokenNode->mToken == BfToken_LParen)
+						{
+							if ((openCount == 0) && (checkIdx != mVisitorPos.mReadPos + 3))
+								break;
+							openCount++;
+						}
+						else if (tokenNode->mToken == BfToken_RParen)
+						{
+							openCount--;
+							if (openCount < 0)
+								break;
+						}
+						else if (tokenNode->mToken == BfToken_Semicolon)
+						{
+							isRepeat = true;
+							break;
+						}
+						else if (openCount == 0)
+							break;
+					}
+					else
+					{
+						if (openCount == 0)
+							break;
+					}
+
+					checkIdx++;
+				}
+			}
+
+			if (isRepeat)
 				return CreateRepeatStatement(node);
 			else
 				return CreateDoStatement(node);
@@ -4082,7 +4253,7 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 					MEMBER_SET(deferStmt, mOpenParen, nextTokenNode);
 					mVisitorPos.MoveNext();
 
-					nextTokenNode = ExpectTokenAfter(deferStmt, BfToken_Scope, BfToken_Stack);
+					nextTokenNode = ExpectTokenAfter(deferStmt, BfToken_Scope);
 					MEMBER_SET_CHECKED(deferStmt, mScopeToken, nextTokenNode);
 
 					nextTokenNode = ExpectTokenAfter(deferStmt, BfToken_RParen);
@@ -4364,6 +4535,7 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 						ReplaceNode(typeRef, methodDecl);
 						methodDecl->mDocumentation = FindDocumentation(methodDecl);
 						methodDecl->mReturnType = typeRef;
+						CheckMultiuseAttributeTypeRef(methodDecl->mReturnType);
 
 						BfDeferredAstSizedArray<BfParameterDeclaration*> params(methodDecl->mParams, mAlloc);
 						BfDeferredAstSizedArray<BfTokenNode*> commas(methodDecl->mCommas, mAlloc);
@@ -4598,7 +4770,6 @@ bool BfReducer::IsTerminatingExpression(BfAstNode* node)
 			case BfToken_Append:
 			case BfToken_Default:
 			case BfToken_Is:
-			case BfToken_Stack:
 			case BfToken_Scope:
 			case BfToken_New:
 			case BfToken_RetType:
@@ -4714,7 +4885,7 @@ BfAstNode* BfReducer::CreateStatement(BfAstNode* node, CreateStmtFlags createStm
 			{
 				Fail("Statement too complex to parse", node);
 			}
-				return result;
+			return result;
 		}
 	}
 
@@ -5110,6 +5281,59 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					if ((createTypeRefFlags & CreateTypeRefFlags_EarlyExit) != 0)
 						return delegateTypeRef;
 				}
+				else if ((BfTokenIsTypeDecl(token)) || (token == BfToken_LBracket))
+				{
+					BfAttributeDirective* attributes = NULL;
+					if (token == BfToken_LBracket)
+					{
+						attributes = CreateAttributeDirective(tokenNode);
+						if (attributes == NULL)
+							return NULL;
+						mVisitorPos.MoveNext();
+						bool isValid = false;
+
+						auto nextNode = mVisitorPos.GetCurrent();
+						tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
+						if (tokenNode != NULL)
+						{
+							token = tokenNode->mToken;
+							if (BfTokenIsTypeDecl(token))
+								isValid = true;
+						}
+						if (!isValid)
+						{
+							AddErrorNode(attributes);
+							return NULL;
+						}
+					}
+
+					bool attribsApply = false;
+					if ((mTypeMemberNodeStart != NULL) && (mTypeMemberNodeStart->mSrcEnd == tokenNode->mTriviaStart))
+						attribsApply = true;
+					auto typeDeclNode = CreateTopLevelObject(tokenNode, attributes, attribsApply ? mTypeMemberNodeStart : NULL, true);
+					if (typeDeclNode == NULL)
+					{
+						if (attributes != NULL)
+							AddErrorNode(attributes);
+						return NULL;
+					}
+
+					auto typeDecl = BfNodeDynCast<BfTypeDeclaration>(typeDeclNode);
+					if (typeDecl == NULL)
+					{
+						if (attributes != NULL)
+							AddErrorNode(attributes);
+						AddErrorNode(typeDeclNode);
+						return NULL;
+					}
+
+					InitAnonymousType(typeDecl);
+
+					auto typeRef = mAlloc->Alloc<BfInlineTypeReference>();
+					ReplaceNode(typeDecl, typeRef);
+					typeRef->mTypeDeclaration = typeDecl;
+					return typeRef;
+				}
 				else if ((token == BfToken_Comptype) || (token == BfToken_Decltype))
 				{
 					auto declTypeRef = mAlloc->Alloc<BfExprModTypeRef>();
@@ -5202,18 +5426,18 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 	BfTypeReference* typeRef = BfNodeDynCast<BfTypeReference>(firstNode);
 	if (typeRef == NULL)
 	{
-// 		if (identifierNode->Equals("tag"))
-// 		{
-// 			auto rightIdentifer = ExpectIdentifierAfter(identifierNode);
-// 			if (rightIdentifer != NULL)				
-// 			{
-// 				auto tagTypeRef = mAlloc->Alloc<BfTagTypeRef>();
-// 				ReplaceNode(identifierNode, tagTypeRef);
-// 				tagTypeRef->mTagNode = identifierNode;
-// 				MEMBER_SET(tagTypeRef, mNameNode, rightIdentifer);
-// 				return tagTypeRef;
-// 			}
-// 		}
+		// 		if (identifierNode->Equals("tag"))
+		// 		{
+		// 			auto rightIdentifer = ExpectIdentifierAfter(identifierNode);
+		// 			if (rightIdentifer != NULL)				
+		// 			{
+		// 				auto tagTypeRef = mAlloc->Alloc<BfTagTypeRef>();
+		// 				ReplaceNode(identifierNode, tagTypeRef);
+		// 				tagTypeRef->mTagNode = identifierNode;
+		// 				MEMBER_SET(tagTypeRef, mNameNode, rightIdentifer);
+		// 				return tagTypeRef;
+		// 			}
+		// 		}
 
 		typeRef = DoCreateNamedTypeRef(identifierNode);
 	}
@@ -5270,7 +5494,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 					{
 						auto rightIdentifer = ExpectIdentifierAfter(qualifiedTypeRef);
 						if (rightIdentifer == NULL)
-							return qualifiedTypeRef;						
+							return qualifiedTypeRef;
 
 						auto namedTypeRef = mAlloc->Alloc<BfNamedTypeReference>();
 						namedTypeRef->mNameNode = rightIdentifer;
@@ -5473,7 +5697,7 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 							token = tokenNode->GetToken();
 						if ((tokenNode != NULL) &&
 							((token == BfToken_Const) ||
-							(token == BfToken_Ref) ||
+								(token == BfToken_Ref) ||
 								(token == BfToken_Mut) ||
 								(token == BfToken_LParen) ||
 								(token == BfToken_Delegate) ||
@@ -5603,7 +5827,14 @@ BfTypeReference* BfReducer::CreateTypeRefAfter(BfAstNode* astNode, CreateTypeRef
 	BfTypeReference* typeRef = CreateTypeRef(nextNode, createTypeRefFlags);
 	if (typeRef == NULL)
 	{
-		BF_ASSERT(mVisitorPos.mReadPos == startPos);
+		if (mLastErrorSrcEnd > startPos)
+		{
+			// We added an error node and made progress
+		}
+		else
+		{
+			BF_ASSERT(mVisitorPos.mReadPos == startPos);			
+		}
 		mVisitorPos.mReadPos--;
 	}
 	return typeRef;
@@ -5677,8 +5908,8 @@ BfIdentifierNode* BfReducer::CompactQualifiedName(BfAstNode* leftNode)
 		auto prevNodeToken = BfNodeDynCast<BfTokenNode>(prevNode);
 		if ((prevNodeToken != NULL) &&
 			((prevNodeToken->GetToken() == BfToken_Dot) ||
-			 (prevNodeToken->GetToken() == BfToken_QuestionDot) ||
-			 (prevNodeToken->GetToken() == BfToken_Arrow)))
+				(prevNodeToken->GetToken() == BfToken_QuestionDot) ||
+				(prevNodeToken->GetToken() == BfToken_Arrow)))
 			return leftIdentifier;
 
 		mVisitorPos.MoveNext(); // past .
@@ -5880,12 +6111,18 @@ BfStatement* BfReducer::CreateAttributedStatement(BfTokenNode* tokenNode, Create
 		if (auto exprStatement = BfNodeDynCast<BfExpressionStatement>(checkNode))
 			checkNode = exprStatement->mExpression;
 
- 		if ((checkNode->IsA<BfObjectCreateExpression>()) ||
- 			(checkNode->IsA<BfInvocationExpression>()) ||
- 			(checkNode->IsA<BfVariableDeclaration>()) ||
+		if ((checkNode->IsA<BfObjectCreateExpression>()) ||
+			(checkNode->IsA<BfInvocationExpression>()) ||
+			(checkNode->IsA<BfVariableDeclaration>()) ||
 			(checkNode->IsA<BfStringInterpolationExpression>()) ||
- 			(checkNode->IsA<BfBlock>()))
+			(checkNode->IsA<BfBlock>()))
 		{
+			if (auto varDecl = BfNodeDynCast<BfVariableDeclaration>(checkNode))
+			{
+				if (CheckInlineTypeRefAttribute(varDecl->mTypeRef, attrib))
+					return BfNodeDynCast<BfStatement>(stmt);
+			}
+
 			BfAttributedStatement* attribStmt = mAlloc->Alloc<BfAttributedStatement>();
 			ReplaceNode(attrib, attribStmt);
 			attribStmt->mAttributes = attrib;
@@ -6028,7 +6265,7 @@ BfTokenNode* BfReducer::ReadArguments(BfAstNode* parentNode, BfAstNode* afterNod
 						ReplaceNode(identifierNode, namedExpr);
 						MEMBER_SET(namedExpr, mNameNode, identifierNode);
 						MEMBER_SET(namedExpr, mColonToken, nextNextToken)
-						mVisitorPos.MoveNext();
+							mVisitorPos.MoveNext();
 						mVisitorPos.MoveNext();
 
 						auto innerExpr = CreateExpressionAfter(namedExpr, CreateExprFlags_AllowVariableDecl);
@@ -6168,12 +6405,16 @@ BfFieldDeclaration* BfReducer::CreateFieldDeclaration(BfTokenNode* tokenNode, Bf
 	else
 	{
 		ReplaceNode(typeRef, fieldDeclaration);
-		fieldDeclaration->mTypeRef = typeRef;
-		fieldDeclaration->mNameNode = nameIdentifier;
+		fieldDeclaration->mTypeRef = typeRef;		
 		fieldDeclaration->mInitializer = NULL;
-		MoveNode(fieldDeclaration->mNameNode, fieldDeclaration);
-		//mVisitorPos.MoveNext();
+		if (nameIdentifier != NULL)
+		{
+			fieldDeclaration->mNameNode = nameIdentifier;
+			MoveNode(fieldDeclaration->mNameNode, fieldDeclaration);
+		}		
 	}
+	CheckMultiuseAttributeTypeRef(fieldDeclaration->mTypeRef);
+
 	BfToken token = tokenNode->GetToken();
 	if (token == BfToken_AssignEquals)
 	{
@@ -6279,6 +6520,26 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 			return memberNode;
 		}
 
+		memberNode->mTriviaStart = attributes->mTriviaStart;
+		memberNode->mSrcStart = attributes->mSrcStart;
+
+		if (auto fieldDecl = BfNodeDynCast<BfFieldDeclaration>(member))
+		{
+			if (CheckInlineTypeRefAttribute(fieldDecl->mTypeRef, attributes))
+			{
+				return member;
+			}
+		}
+
+		if (auto methodDecl = BfNodeDynCast<BfMethodDeclaration>(member))
+		{
+			if (CheckInlineTypeRefAttribute(methodDecl->mReturnType, attributes))
+			{
+				return member;
+			}
+		}
+
+
 		ReplaceNode(attributes, member);
 		member->mAttributes = attributes;
 		return member;
@@ -6296,6 +6557,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 		if (typeRef == NULL)
 			return operatorDecl;
 		MEMBER_SET_CHECKED(operatorDecl, mReturnType, typeRef);
+		CheckMultiuseAttributeTypeRef(operatorDecl->mReturnType);
 		operatorDecl->mIsConvOperator = true;
 
 		ParseMethod(operatorDecl, &params, &commas);
@@ -6769,13 +7031,13 @@ BfAstNode* BfReducer::ReadTypeMember(BfTokenNode* tokenNode, bool declStarted, i
 		if (token == BfToken_Extern)
 		{
 			if ((fieldDecl->mExternSpecifier != NULL) && (fieldDecl->mExternSpecifier->mToken == BfToken_Append))
- 			{
- 				Fail("Extern cannot be used with 'append' specified", tokenNode);
- 			}
- 			else if (fieldDecl->mExternSpecifier != NULL)
- 			{
+			{
+				Fail("Extern cannot be used with 'append' specified", tokenNode);
+			}
+			else if (fieldDecl->mExternSpecifier != NULL)
+			{
 				Fail("Extern already specified", tokenNode);
- 			}
+			}
 
 			MEMBER_SET(fieldDecl, mExternSpecifier, tokenNode);
 			handled = true;
@@ -7043,9 +7305,9 @@ void BfReducer::ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, Bf
 
 BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int depth, BfAstNode* deferredHeadNode)
 {
-// 	SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, node, false);
-// 	if (depth == 0)
-// 		prevTypeMemberNodeStart.Set();
+	// 	SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, node, false);
+	// 	if (depth == 0)
+	// 		prevTypeMemberNodeStart.Set();
 
 	if (mCurTypeDecl != NULL)
 		AssertCurrentNode(node);
@@ -7066,10 +7328,19 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 			}
 		}
 
+		if (BfTokenIsTypeDecl(token))
+		{
+			int endNodeIdx = -1;
+			if (IsTypeReference(node, BfToken_None, -1, &endNodeIdx))
+			{
+				isTypeRef = true;
+			}
+		}
+
 		if ((token == BfToken_LBracket) && (depth > 0))
 		{
-			Fail("Unexpected custom attribute", node);
-			return NULL;
+			// The only valid option is an attributed type reference
+			isTypeRef = true;
 		}
 
 		if (isTypeRef)
@@ -7223,6 +7494,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 							ReplaceNode(nameIdentifier, methodDeclaration);
 						methodDeclaration->mDocumentation = FindDocumentation(mTypeMemberNodeStart);
 						MEMBER_SET(methodDeclaration, mReturnType, typeRef);
+						CheckMultiuseAttributeTypeRef(methodDeclaration->mReturnType);
 						MEMBER_SET(methodDeclaration, mExplicitInterface, explicitInterface);
 						MEMBER_SET(methodDeclaration, mExplicitInterfaceDotToken, explicitInterfaceDot);
 						return methodDeclaration;
@@ -7233,13 +7505,14 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 	}
 	else if (auto nextToken = BfNodeDynCast<BfTokenNode>(nextNode))
 	{
-		if (nextToken->GetToken() == BfToken_Operator)
+		if (nextToken->mToken == BfToken_Operator)
 		{
 			auto operatorDecl = mAlloc->Alloc<BfOperatorDeclaration>();
 			BfDeferredAstSizedArray<BfParameterDeclaration*> params(operatorDecl->mParams, mAlloc);
 			BfDeferredAstSizedArray<BfTokenNode*> commas(operatorDecl->mCommas, mAlloc);
 			ReplaceNode(typeRef, operatorDecl);
 			operatorDecl->mReturnType = typeRef;
+			CheckMultiuseAttributeTypeRef(operatorDecl->mReturnType);
 			mVisitorPos.MoveNext();
 
 			MEMBER_SET(operatorDecl, mOperatorToken, nextToken);
@@ -7318,7 +7591,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 
 			return operatorDecl;
 		}
-		else if (nextToken->GetToken() == BfToken_LParen)
+		else if (nextToken->mToken == BfToken_LParen)
 		{
 			Fail("Method return type expected", node);
 
@@ -7329,6 +7602,10 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 				ReplaceNode(typeRef, nameIdentifier);
 				typeRef = NULL;
 			}
+		}
+		else if (nextToken->mToken == BfToken_Semicolon)
+		{
+			forceIsMethod = true;
 		}
 	}
 
@@ -7399,6 +7676,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 					ReplaceNode(typeRef, propDecl);
 					propDecl->mDocumentation = FindDocumentation(mTypeMemberNodeStart);
 					propDecl->mTypeRef = typeRef;
+					CheckMultiuseAttributeTypeRef(propDecl->mTypeRef);
 
 					if (explicitInterface != NULL)
 					{
@@ -7491,6 +7769,10 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 					{
 						MEMBER_SET(method, mBody, expr);
 						propertyDeclaration->SetSrcEnd(expr->GetSrcEnd());
+
+						auto endSemicolon = ExpectTokenAfter(expr, BfToken_Semicolon);
+						if (endSemicolon != NULL)
+							MEMBER_SET(method, mEndSemicolon, endSemicolon);
 					}
 
 					methods.Add(method);
@@ -7558,6 +7840,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 						ReplaceNode(typeRef, fieldDecl);
 						fieldDecl->mDocumentation = FindDocumentation(mTypeMemberNodeStart);
 						fieldDecl->mTypeRef = typeRef;
+						CheckMultiuseAttributeTypeRef(fieldDecl->mTypeRef);
 						return fieldDecl;
 					}
 				}
@@ -7589,6 +7872,7 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 			}
 
 			methodDeclaration->mReturnType = typeRef;
+			CheckMultiuseAttributeTypeRef(methodDeclaration->mReturnType);
 			MEMBER_SET_CHECKED(methodDeclaration, mNameNode, nameIdentifier);
 			mCurMethodDecl = methodDeclaration;
 			ParseMethod(methodDeclaration, &params, &commas);
@@ -7683,10 +7967,15 @@ BfInvocationExpression* BfReducer::CreateInvocationExpression(BfAstNode* target,
 }
 
 BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfAstNode* target)
-{
+{	
 	auto block = BfNodeDynCast<BfBlock>(mVisitorPos.GetNext());
 	if (block == NULL)
 		return NULL;
+
+	bool allowInitializerStatement = false;
+	auto objectCreateExpr = BfNodeDynCast<BfObjectCreateExpression>(target);
+	if (objectCreateExpr != NULL)
+		allowInitializerStatement = true;
 
 	mVisitorPos.MoveNext();
 
@@ -7702,11 +7991,46 @@ BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfAstNode* ta
 	BfDeferredAstNodeSizedArray<BfExpression*> values(initializerExpr, initializerExpr->mValues, mAlloc);
 	BfDeferredAstNodeSizedArray<BfTokenNode*> commas(initializerExpr, initializerExpr->mCommas, mAlloc);
 
+	int initializerStartIdx = 0;
+	int minTypeDeclEnd = 0;
+	
 	BfAstNode* nextNode = NULL;
 	while (!isDone)
 	{
 		BfAstNode* node = mVisitorPos.GetCurrent();
+		if (node == NULL)
+			break;
 		initializerExpr->mSrcEnd = node->mSrcEnd;
+
+		if ((values.IsEmpty()) && (initializerExpr->mInlineTypeRef == NULL))
+		{
+			if ((allowInitializerStatement) && (!IsInitializerStatement(node)))
+			{
+				auto defBlock = mAlloc->Alloc<BfBlock>();
+				ReplaceNode(block, defBlock);
+				*defBlock = *block;
+
+				auto typeDecl = mAlloc->Alloc<BfInitializerTypeDeclaration>();
+				ReplaceNode(node, typeDecl);
+				defBlock->mOpenBrace = NULL;
+				MEMBER_SET(typeDecl, mDefineNode, defBlock);
+				InitAnonymousType(typeDecl);
+				HandleTypeDeclaration(typeDecl, NULL, NULL, true);
+				initializerStartIdx = mVisitorPos.mWritePos;				
+				auto typeRef = mAlloc->Alloc<BfInlineTypeReference>();
+				ReplaceNode(typeDecl, typeRef);
+				typeRef->mTypeDeclaration = typeDecl;
+				MEMBER_SET(initializerExpr, mInlineTypeRef, typeRef);
+
+				if (objectCreateExpr != NULL)
+				{
+					BfDeferredAstSizedArray<BfTypeReference*> baseClasses(typeDecl->mBaseClasses, mAlloc);
+					baseClasses.Add(objectCreateExpr->mTypeRef);
+				}
+				
+				continue;
+			}
+		}
 
 		auto expr = CreateExpression(node, BfReducer::CreateExprFlags_AllowAnonymousIndexer);
 		isDone = !mVisitorPos.MoveNext();
@@ -7739,6 +8063,24 @@ BfInitializerExpression* BfReducer::TryCreateInitializerExpression(BfAstNode* ta
 	}
 
 	mVisitorPos.Trim();
+
+	if (initializerExpr->mInlineTypeRef != NULL)
+	{
+		auto typeDecl = initializerExpr->mInlineTypeRef->mTypeDeclaration;
+
+		if (initializerStartIdx != 0)
+		{
+			block->SetSize(initializerStartIdx);
+			int srcEnd = block->mSrcEnd;
+			if (initializerStartIdx > 0)
+				srcEnd = block->mChildArr[initializerStartIdx - 1]->mSrcEnd;
+			typeDecl->mDefineNode->mSrcEnd = srcEnd;
+			typeDecl->mSrcEnd = srcEnd;
+		}
+
+		typeDecl->mSrcEnd = BF_MAX(typeDecl->mSrcEnd, minTypeDeclEnd);
+		initializerExpr->mInlineTypeRef->mSrcEnd = typeDecl->mSrcEnd;
+	}
 
 	if (block->mCloseBrace != NULL)
 		MEMBER_SET(initializerExpr, mCloseBrace, block->mCloseBrace);
@@ -7800,7 +8142,7 @@ BfLambdaBindExpression* BfReducer::CreateLambdaBindExpression(BfAstNode* allocNo
 		if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
 			isRParen = tokenNode->GetToken() == BfToken_RParen;
 		if (!isRParen)
-		{			
+		{
 			auto nameIdentifier = ExpectIdentifierAfter(lambdaBindExpr, "parameter name");
 			if (nameIdentifier == NULL)
 				return lambdaBindExpr;
@@ -7898,7 +8240,7 @@ BfCollectionInitializerExpression* BfReducer::CreateCollectionInitializerExpress
 	return arrayInitializerExpression;
 }
 
-BfCollectionInitializerExpression * BfReducer::CreateCollectionInitializerExpression(BfTokenNode* openToken)
+BfCollectionInitializerExpression* BfReducer::CreateCollectionInitializerExpression(BfTokenNode* openToken)
 {
 	auto arrayInitializerExpression = mAlloc->Alloc<BfCollectionInitializerExpression>();
 	BfDeferredAstSizedArray<BfExpression*> values(arrayInitializerExpression->mValues, mAlloc);
@@ -7993,6 +8335,91 @@ BfScopedInvocationTarget* BfReducer::CreateScopedInvocationTarget(BfAstNode*& ta
 	}
 
 	return scopedInvocationTarget;
+}
+
+void BfReducer::InitAnonymousType(BfTypeDeclaration* typeDecl)
+{
+	int blockId = 0;	
+	if (auto block = BfNodeDynCast<BfBlock>(typeDecl->mDefineNode))
+	{
+		blockId = block->mParserBlockId;
+	}
+	else
+	{
+		auto parser = mSource->ToParser();
+		if (parser != NULL)
+			blockId = parser->mCurBlockId + typeDecl->mSrcStart;
+	}
+
+	String name;
+	auto parserData = typeDecl->GetParserData();
+	name = "_Anon_";
+
+	auto parseFileData = parserData->mParseFileData;
+	int uniqueId = parseFileData->GetUniqueId(blockId);
+	name += StrFormat("%d", uniqueId);
+
+	int len = (int)name.length() + 1;
+	typeDecl->mAnonymousName = (char*)mAlloc->AllocBytes(len);
+	memcpy(typeDecl->mAnonymousName, name.c_str(), len);
+
+	auto parser = typeDecl->GetParser();
+	if ((parser != NULL) && (parser->mIsEmitted))
+	{
+		Fail("Type declarations are not allowed in emitted code", typeDecl);
+	}
+	else if (mCurTypeState != NULL)
+	{
+		mCurTypeState->mAnonymousTypeDecls.Add(typeDecl);
+	}
+	else
+	{				
+		Fail("Invalid use of anonymous type declaration", typeDecl);
+	}
+}
+
+bool BfReducer::CheckInlineTypeRefAttribute(BfAstNode* typeRef, BfAttributeDirective* attributes)
+{
+	if (attributes == NULL)
+		return false;
+
+	if (auto inlineTypeRef = BfNodeDynCast<BfInlineTypeReference>(typeRef))
+	{
+		auto checkAttribute = attributes;
+		while (checkAttribute != NULL)
+		{
+			checkAttribute->mIsMultiUse = true;
+			checkAttribute = checkAttribute->mNextAttribute;
+		}
+
+		auto typeDecl = inlineTypeRef->mTypeDeclaration;		
+		typeDecl->mSrcStart = attributes->mSrcStart;
+		typeDecl->mTriviaStart = typeDecl->mSrcStart;
+		typeDecl->mAttributes = attributes;
+
+		inlineTypeRef->mTriviaStart = attributes->mTriviaStart;
+		inlineTypeRef->mSrcStart = attributes->mSrcStart;
+
+		if ((typeDecl->mIgnoreDeclaration) && (IsNodeRelevant(typeDecl)))
+			typeDecl->mIgnoreDeclaration = false;
+
+		return true;
+	}
+
+	return false;
+}
+
+void BfReducer::CheckMultiuseAttributeTypeRef(BfAstNode* typeRef)
+{
+	if (auto inlineTypeRef = BfNodeDynCast<BfInlineTypeReference>(typeRef))
+	{
+		auto checkAttribute = inlineTypeRef->mTypeDeclaration->mAttributes;
+		while (checkAttribute != NULL)
+		{
+			checkAttribute->mIsMultiUse = true;
+			checkAttribute = checkAttribute->mNextAttribute;
+		}
+	}
 }
 
 bool BfReducer::SetProtection(BfAstNode* parentNode, BfAstNode*& protectionNodeRef, BfTokenNode* tokenNode)
@@ -8231,16 +8658,6 @@ BfObjectCreateExpression* BfReducer::CreateObjectCreateExpression(BfAstNode* all
 
 	BfTokenNode* tokenNode;
 
-	// Why did we want this syntax?
-	// 	if (tokenNode = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
-	// 	{
-	// 		if (tokenNode->GetToken() == BfToken_Star)
-	// 		{
-	// 			MEMBER_SET(objectCreateExpr, mStarToken, tokenNode);
-	// 			mVisitorPos.MoveNext();
-	// 		}
-	// 	}
-
 	if (typeRef == NULL)
 		typeRef = CreateTypeRefAfter(objectCreateExpr);
 	if (typeRef == NULL)
@@ -8308,7 +8725,7 @@ BfObjectCreateExpression* BfReducer::CreateObjectCreateExpression(BfAstNode* all
 		if ((nextToken != NULL) && (nextToken->mToken == BfToken_Dot) &&
 			(nextNextToken != NULL) && (nextNextToken->mToken == BfToken_This))
 		{
-			auto ctorExplicitNode = mAlloc->Alloc<BfCtorExplicitNode>();			
+			auto ctorExplicitNode = mAlloc->Alloc<BfCtorExplicitNode>();
 			ReplaceNode(nextToken, ctorExplicitNode);
 			ctorExplicitNode->mDotToken = nextToken;
 			MEMBER_SET(ctorExplicitNode, mThisToken, nextNextToken);
@@ -8320,7 +8737,7 @@ BfObjectCreateExpression* BfReducer::CreateObjectCreateExpression(BfAstNode* all
 		{
 			auto ctorExplicitNode = mAlloc->Alloc<BfCtorExplicitNode>();
 			ReplaceNode(nextToken, ctorExplicitNode);
-			ctorExplicitNode->mThisToken = nextToken;			
+			ctorExplicitNode->mThisToken = nextToken;
 			mVisitorPos.MoveNext();
 			MEMBER_SET(objectCreateExpr, mCtorExplicit, ctorExplicitNode);
 		}
@@ -8447,7 +8864,7 @@ BfMemberReferenceExpression* BfReducer::CreateMemberReferenceExpression(BfAstNod
 		if (tokenNode->GetToken() == BfToken_This)
 		{
 			mVisitorPos.MoveNext();
-			MEMBER_SET(memberReferenceExpr, mMemberName, tokenNode);			
+			MEMBER_SET(memberReferenceExpr, mMemberName, tokenNode);
 		}
 	}
 
@@ -8653,7 +9070,7 @@ BfAstNode* BfReducer::HandleTopLevel(BfBlock* node)
 	return node;
 }
 
-BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode)
+BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode, bool isAnonymous)
 {
 	AssertCurrentNode(tokenNode);
 
@@ -8999,7 +9416,10 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 	case BfToken_Function:
 	{
 		auto typeDeclaration = mAlloc->Alloc<BfTypeDeclaration>();
+
 		SetAndRestoreValue<BfTypeDeclaration*> prevTypeDecl(mCurTypeDecl, typeDeclaration);
+		CurTypeState curTypeState(typeDeclaration, mAlloc);
+		SetAndRestoreValue<CurTypeState*> prevTypeState(mCurTypeState, &curTypeState);
 
 		ReplaceNode(tokenNode, typeDeclaration);
 		typeDeclaration->mDocumentation = FindDocumentation(typeDeclaration);
@@ -9011,6 +9431,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 
 		auto methodDecl = mAlloc->Alloc<BfMethodDeclaration>();
 		MEMBER_SET(methodDecl, mReturnType, retType);
+		CheckMultiuseAttributeTypeRef(methodDecl->mReturnType);
 		BfDeferredAstSizedArray<BfParameterDeclaration*> params(methodDecl->mParams, mAlloc);
 		BfDeferredAstSizedArray<BfTokenNode*> commas(methodDecl->mCommas, mAlloc);
 		methodDecl->mDocumentation = FindDocumentation(methodDecl);
@@ -9126,11 +9547,15 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 		if ((tokenNode->GetToken() == BfToken_Enum) && (isSimpleEnum))
 			break;
 
-		auto identifierNode = ExpectIdentifierAfter(tokenNode);
-		if (identifierNode == NULL)
+		BfIdentifierNode* identifierNode = NULL;
+		if (!isAnonymous)
 		{
-			AddErrorNode(tokenNode);
-			return NULL;
+			identifierNode = ExpectIdentifierAfter(tokenNode);
+			if (identifierNode == NULL)
+			{
+				AddErrorNode(tokenNode);
+				return NULL;
+			}
 		}
 
 		// We put extra effort in here to continue after failure, since 'return NULL' failure
@@ -9143,7 +9568,8 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 		typeDeclaration->mTypeNode = tokenNode;
 		typeDeclaration->mNameNode = identifierNode;
 		ReplaceNode(tokenNode, typeDeclaration);
-		MoveNode(identifierNode, typeDeclaration);
+		if (identifierNode != NULL)
+			MoveNode(identifierNode, typeDeclaration);
 		typeDeclaration->mDocumentation = FindDocumentation(mTypeMemberNodeStart);
 
 		auto nextNode = mVisitorPos.GetNext();
@@ -9172,12 +9598,20 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 
 				if (baseTypeIdx > 0)
 				{
+					bool hasComma = false;
+
 					if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
 					{
-						if (tokenNode->mToken == BfToken_Semicolon)
-						{
-							break;
-						}
+						if ((tokenNode->mToken == BfToken_Semicolon) && (!isAnonymous))
+							break;						
+						if (tokenNode->mToken == BfToken_Comma)
+							hasComma = true;
+					}
+
+					if ((!hasComma) && (isAnonymous))
+					{
+						// End type declaration
+						break;
 					}
 
 					BfTokenNode* commaToken = NULL;
@@ -9259,7 +9693,7 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 
 		if (tokenNode != NULL)
 		{
-			if (tokenNode->GetToken() == BfToken_Semicolon)
+			if ((tokenNode->GetToken() == BfToken_Semicolon) && (!isAnonymous))
 			{
 				typeDeclaration->mDefineNode = tokenNode;
 				MoveNode(tokenNode, typeDeclaration);
@@ -9267,6 +9701,9 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 				return typeDeclaration;
 			}
 		}
+
+		if ((isAnonymous) && (!BfNodeIsA<BfBlock>(nextNode)))
+			return typeDeclaration;
 
 		auto blockNode = ExpectBlockAfter(typeDeclaration);
 		if (blockNode != NULL)
@@ -9284,9 +9721,13 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 
 	if (isSimpleEnum)
 	{
-		auto identifierNode = ExpectIdentifierAfter(tokenNode, "enum name");
-		if (identifierNode == NULL)
-			return NULL;
+		BfIdentifierNode* identifierNode = NULL;
+		if (!isAnonymous)
+		{
+			identifierNode = ExpectIdentifierAfter(tokenNode, "enum name");
+			if (identifierNode == NULL)
+				return NULL;
+		}
 
 		// We put extra effort in here to continue after failure, since 'return NULL' failure
 		//  means we don't parse members inside type (messes up colorization and such)
@@ -9298,7 +9739,8 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 		typeDeclaration->mTypeNode = tokenNode;
 		typeDeclaration->mNameNode = identifierNode;
 		ReplaceNode(tokenNode, typeDeclaration);
-		MoveNode(identifierNode, typeDeclaration);
+		if (identifierNode != NULL)
+			MoveNode(identifierNode, typeDeclaration);
 		typeDeclaration->mDocumentation = FindDocumentation(typeDeclaration);
 
 		auto nextNode = mVisitorPos.GetNext();
@@ -9550,7 +9992,7 @@ BfTokenNode* BfReducer::BreakQuestionLBracket(BfTokenNode* tokenNode)
 	return firstToken;
 }
 
-BfCommentNode * BfReducer::FindDocumentation(BfAstNode* defNodeHead, BfAstNode* defNodeEnd, bool checkDocAfter)
+BfCommentNode* BfReducer::FindDocumentation(BfAstNode* defNodeHead, BfAstNode* defNodeEnd, bool checkDocAfter)
 {
 	if (defNodeEnd == NULL)
 		defNodeEnd = defNodeHead;
@@ -9675,7 +10117,8 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 				(token == BfToken_AllocType) || (token == BfToken_RetType) ||
 				(token == BfToken_Params) || (token == BfToken_LParen) ||
 				(token == BfToken_Var) || (token == BfToken_LBracket) ||
-				(token == BfToken_ReadOnly) || (token == BfToken_DotDotDot)))
+				(token == BfToken_ReadOnly) || (token == BfToken_DotDotDot) ||
+				BfTokenIsTypeDecl(token)))
 			{
 				// These get picked up below
 			}
@@ -9731,7 +10174,7 @@ BfTokenNode* BfReducer::ParseMethodParams(BfAstNode* node, SizedArrayImpl<BfPara
 				(token == BfToken_Delegate) || (token == BfToken_Function) ||
 				(token == BfToken_Comptype) || (token == BfToken_Decltype) ||
 				(token == BfToken_AllocType) || (token == BfToken_RetType) ||
-				(token == BfToken_DotDotDot))
+				(token == BfToken_DotDotDot) || BfTokenIsTypeDecl(token))
 			{
 				mVisitorPos.MoveNext();
 				typeRef = CreateTypeRef(tokenNode);
@@ -10361,55 +10804,55 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 	bool isDone = false;
 	for (int constraintIdx = 0; !isDone; constraintIdx++)
 	{
-// 		if (auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
-// 		{
-// 			if (nextToken->mToken == BfToken_LParen)
-// 			{
-// 				BfGenericConstraintExpression* genericConstraint = mAlloc->Alloc<BfGenericConstraintExpression>();
-// 				ReplaceNode(tokenNode, genericConstraint);
-// 				genericConstraint->mWhereToken = tokenNode;
-// 				constraintsDeclaration->mHasExpressions = true;
-//
-// 				genericConstraintsArr.push_back(genericConstraint);
-//
-// 				auto expr = CreateExpressionAfter(genericConstraint, CreateExprFlags_EarlyExit);
-// 				if (expr == NULL)
-// 					break;
-//
-// 				MEMBER_SET(genericConstraint, mExpression, expr);
-//
-// 				BfTokenNode* nextWhereToken = NULL;
-// 				if (auto checkToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
-// 				{
-// 					if (checkToken->mToken != BfToken_Where)
-// 						nextWhereToken = checkToken;
-// 				}
-//
-// 				auto nextNode = mVisitorPos.GetNext();
-// 				if (BfNodeDynCast<BfBlock>(nextNode))
-// 					break;
-//
-// 				bool handled = false;
-// 				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
-// 				{
-// 					if (tokenNode->mToken == BfToken_FatArrow)
-// 						break;
-// 				}
-//
-// 				tokenNode = ExpectTokenAfter(genericConstraint, BfToken_LBrace, BfToken_Where, BfToken_Semicolon);
-// 				if (tokenNode == NULL)
-// 					break;
-//
-// 				BfToken token = tokenNode->GetToken();
-// 				if (token != BfToken_Where)
-// 				{
-// 					mVisitorPos.mReadPos--;
-// 					break;
-// 				}
-//
-// 				continue;
-// 			}
-// 		}
+		// 		if (auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+		// 		{
+		// 			if (nextToken->mToken == BfToken_LParen)
+		// 			{
+		// 				BfGenericConstraintExpression* genericConstraint = mAlloc->Alloc<BfGenericConstraintExpression>();
+		// 				ReplaceNode(tokenNode, genericConstraint);
+		// 				genericConstraint->mWhereToken = tokenNode;
+		// 				constraintsDeclaration->mHasExpressions = true;
+		//
+		// 				genericConstraintsArr.push_back(genericConstraint);
+		//
+		// 				auto expr = CreateExpressionAfter(genericConstraint, CreateExprFlags_EarlyExit);
+		// 				if (expr == NULL)
+		// 					break;
+		//
+		// 				MEMBER_SET(genericConstraint, mExpression, expr);
+		//
+		// 				BfTokenNode* nextWhereToken = NULL;
+		// 				if (auto checkToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
+		// 				{
+		// 					if (checkToken->mToken != BfToken_Where)
+		// 						nextWhereToken = checkToken;
+		// 				}
+		//
+		// 				auto nextNode = mVisitorPos.GetNext();
+		// 				if (BfNodeDynCast<BfBlock>(nextNode))
+		// 					break;
+		//
+		// 				bool handled = false;
+		// 				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+		// 				{
+		// 					if (tokenNode->mToken == BfToken_FatArrow)
+		// 						break;
+		// 				}
+		//
+		// 				tokenNode = ExpectTokenAfter(genericConstraint, BfToken_LBrace, BfToken_Where, BfToken_Semicolon);
+		// 				if (tokenNode == NULL)
+		// 					break;
+		//
+		// 				BfToken token = tokenNode->GetToken();
+		// 				if (token != BfToken_Where)
+		// 				{
+		// 					mVisitorPos.mReadPos--;
+		// 					break;
+		// 				}
+		//
+		// 				continue;
+		// 			}
+		// 		}
 
 		BfGenericConstraint* genericConstraint = mAlloc->Alloc<BfGenericConstraint>();
 		BfDeferredAstSizedArray<BfAstNode*> constraintTypes(genericConstraint->mConstraintTypes, mAlloc);
@@ -10647,17 +11090,152 @@ void BfReducer::HandleBlock(BfBlock* block, bool allowEndingExpression)
 	mVisitorPos.Trim();
 }
 
-void BfReducer::HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode)
+bool BfReducer::IsInitializerStatement(int checkIdx)
+{
+	SetAndRestoreValue<int> prevReadPos(mVisitorPos.mReadPos);
+
+	int nodeCount = 0;	
+	while (true)
+	{
+		mVisitorPos.mReadPos = checkIdx;
+		auto checkNode = mVisitorPos.GetCurrent();
+		if (checkNode == NULL)
+			return false;
+
+		if (auto checkToken = BfNodeDynCast<BfTokenNode>(checkNode))
+		{
+			switch (checkToken->mToken)
+			{
+			case BfToken_Dot:
+				if (nodeCount == 0)
+					return true;
+				break;
+			case BfToken_Public:
+			case BfToken_Private:
+			case BfToken_Internal:
+			case BfToken_Protected:
+			case BfToken_This:
+			case BfToken_Semicolon:
+			case BfToken_Case:
+			case BfToken_Const:
+			case BfToken_Static:
+			case BfToken_TypeAlias:
+			case BfToken_Mixin:
+			case BfToken_Class:
+			case BfToken_Struct:
+			case BfToken_Enum:
+			case BfToken_Interface:
+			case BfToken_Override:
+				return false;
+			case BfToken_AssignEquals:
+				if (nodeCount > 0)
+					return true;
+				break;
+			case BfToken_Comma:
+				if (nodeCount == 0)
+					return false;
+				else
+					return true;
+			}
+		}
+		else if (auto literalExpr = BfNodeDynCast<BfLiteralExpression>(checkNode))
+		{
+			return true;
+		}
+		else if (auto block = BfNodeDynCast<BfBlock>(checkNode))
+		{
+			if (nodeCount == 0)
+				return true;
+		}
+		
+		int endNode = -1;
+		bool coundBeExpr = false;
+		if (IsTypeReference(checkNode, BfToken_None, -1, &endNode, &coundBeExpr))
+		{
+			auto nextNode = mVisitorPos.Get(endNode);
+			if (nextNode == NULL)
+			{
+				// At end
+				return true;
+			}
+
+			if (BfNodeIsA<BfIdentifierNode>(nextNode))
+				return false;
+
+			if (auto nextToken = BfNodeDynCast<BfTokenNode>(nextNode))
+			{
+				switch (nextToken->mToken)
+				{
+				case BfToken_This:
+					return false;
+				}
+			}
+
+			nodeCount++;
+			checkIdx = BF_MAX(checkIdx + 1, endNode);
+			continue;
+		}		
+		else if (endNode != -1)
+		{
+			auto nextNode = mVisitorPos.Get(endNode);
+			if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
+			{
+				if (tokenNode->mToken == BfToken_LParen)
+				{
+					int checkEndNode = -1;
+					if (IsTypeReference(checkNode, tokenNode->mToken, -1, &checkEndNode, &coundBeExpr))
+					{
+						if (checkEndNode == endNode)
+						{
+							// Is method call
+							return true;
+						}
+					}
+				}
+			}
+
+			
+		}
+
+		nodeCount++;
+		checkIdx++;
+	}
+
+	return false;
+}
+
+bool BfReducer::IsInitializerStatement(BfAstNode* node)
+{	
+	AssertCurrentNode(node);
+	return IsInitializerStatement(mVisitorPos.mReadPos);
+}
+
+bool BfReducer::InitializerBlockHasInlineTypeDecl(BfBlock* block)
+{
+	if (block->mChildArr.mSize == 0)
+		return false;
+
+	SetAndRestoreValue<BfVisitorPos> prevVisitorPos(mVisitorPos, BfVisitorPos(block));
+	return !IsInitializerStatement(0);
+}
+
+void BfReducer::HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode, bool findInitializer)
 {
 	SetAndRestoreValue<BfTypeDeclaration*> prevTypeDecl(mCurTypeDecl, typeDecl);
+	CurTypeState curTypeState(typeDecl, mAlloc);
+	SetAndRestoreValue<CurTypeState*> prevTypeState(mCurTypeState, &curTypeState);
 	SetAndRestoreValue<BfVisitorPos> prevVisitorPos(mVisitorPos, BfVisitorPos(BfNodeDynCast<BfBlock>(typeDecl->mDefineNode)));
+
+	if (findInitializer)
+		prevVisitorPos.CancelRestore();
 
 	if (attributes != NULL)
 	{
 		MEMBER_SET(typeDecl, mAttributes, attributes);
+		typeDecl->mTriviaStart = BF_MIN(typeDecl->mAttributes->mTriviaStart, attributes->mTriviaStart);
 	}
 
-	if ((!IsNodeRelevant(deferredHeadNode, typeDecl)) && (!typeDecl->IsTemporary()))
+	if ((!IsNodeRelevant(deferredHeadNode, typeDecl)) && (!typeDecl->IsTemporary()) && (!findInitializer))
 	{
 		typeDecl->mIgnoreDeclaration = true;
 		return;
@@ -10679,6 +11257,13 @@ void BfReducer::HandleTypeDeclaration(BfTypeDeclaration* typeDecl, BfAttributeDi
 		BfAstNode* typeMember = BfNodeDynCast<BfMemberDeclaration>(node);
 		if (typeMember == NULL)
 		{
+			if (findInitializer)
+			{
+				bool isInitializerStatement = IsInitializerStatement(node);
+				if (isInitializerStatement)
+					return;
+			}
+
 			SetAndRestoreValue<BfAstNode*> prevTypeMemberNodeStart(mTypeMemberNodeStart, node);
 			typeMember = ReadTypeMember(node);
 		}
@@ -10731,438 +11316,438 @@ BfInlineAsmStatement* BfReducer::CreateInlineAsmStatement(BfAstNode* asmNode)
 
 	{
 		auto processInstrNodes = [&](const Array<BfAstNode*>& nodes) -> BfInlineAsmInstruction*
-		{
-			int nodeCount = (int)nodes.size();
-			int curNodeIdx = 0;
-
-			auto instNode = mAlloc->Alloc<BfInlineAsmInstruction>();
-			//instNode->mSource = asmStatement->mSource;
-			int srcStart = nodes.front()->GetSrcStart();
-			int srcEnd = nodes.back()->GetSrcEnd();
-			instNode->Init(srcStart, srcStart, srcEnd);
-
-			auto replaceWithLower = [](String& s)
 			{
-				std::transform(s.begin(), s.end(), s.begin(), ::tolower);
-			};
+				int nodeCount = (int)nodes.size();
+				int curNodeIdx = 0;
 
-			auto readIdent = [&](String& outStr, bool forceLowerCase, const StringImpl& errorExpectation, bool peekOnly) -> bool
-			{
-				if (curNodeIdx >= nodeCount)
-				{
-					if (!peekOnly)
-						Fail(StrFormat("Expected %s", errorExpectation.c_str()), instNode);
-					return false;
-				}
-				BfAstNode* curNode = nodes[curNodeIdx];
-				if (!peekOnly)
-					++curNodeIdx;
-				if (!BfNodeDynCast<BfIdentifierNode>(curNode))
-				{
-					if (!peekOnly)
-						Fail(StrFormat("Found \"%s\", expected %s", NodeToString(curNode).c_str(), errorExpectation.c_str()), instNode);
-					return false;
-				}
+				auto instNode = mAlloc->Alloc<BfInlineAsmInstruction>();
+				//instNode->mSource = asmStatement->mSource;
+				int srcStart = nodes.front()->GetSrcStart();
+				int srcEnd = nodes.back()->GetSrcEnd();
+				instNode->Init(srcStart, srcStart, srcEnd);
 
-				outStr = NodeToString(curNode);
-				if (forceLowerCase)
-					replaceWithLower(outStr);
-				return true;
-			};
-			auto readToken = [&](BfToken tokenType, const StringImpl& errorExpectation, bool peekOnly) -> bool
-			{
-				if (curNodeIdx >= nodeCount)
-				{
-					if (!peekOnly)
-						Fail(StrFormat("Expected %s", errorExpectation.c_str()), instNode);
-					return false;
-				}
-				BfAstNode* curNode = nodes[curNodeIdx];
-				if (!peekOnly)
-					++curNodeIdx;
-				auto tokenNode = BfNodeDynCast<BfTokenNode>(curNode);
-				if (!tokenNode || tokenNode->GetToken() != tokenType)
-				{
-					if (!peekOnly)
-						Fail(StrFormat("Found \"%s\", expected %s", NodeToString(curNode).c_str(), errorExpectation.c_str()), instNode);
-					return false;
-				}
-
-				return true;
-			};
-			auto readInteger = [&](int& outInt, const StringImpl& errorExpectation, bool peekOnly, int& outAdvanceTokenCount) -> bool
-			{
-				int origCurNodeIdx = curNodeIdx;
-				outAdvanceTokenCount = 0;
-
-				bool negate = false;
-				if (readToken(BfToken_Minus, "", true))
-				{
-					++curNodeIdx;
-					++outAdvanceTokenCount;
-					negate = true;
-				}
-
-				if (curNodeIdx >= nodeCount)
-				{
-					if (!peekOnly)
-						Fail(StrFormat("Expected %s", errorExpectation.c_str()), instNode);
-					else
-						curNodeIdx = origCurNodeIdx;
-
-					return false;
-				}
-
-				BfAstNode* curNode = nodes[curNodeIdx];
-				++curNodeIdx;
-				++outAdvanceTokenCount;
-				auto litNode = BfNodeDynCast<BfLiteralExpression>(curNode);
-				if (!litNode || litNode->mValue.mTypeCode != BfTypeCode_Int32)
-				{
-					if (!peekOnly)
-						Fail(StrFormat("Found \"%s\", expected %s", NodeToString(curNode).c_str(), errorExpectation.c_str()), instNode);
-					else
-						curNodeIdx = origCurNodeIdx;
-
-					return false;
-				}
-
-				outInt = litNode->mValue.mInt32;
-				if (negate)
-					outInt = -outInt;
-				if (peekOnly)
-					curNodeIdx = origCurNodeIdx;
-
-				return true;
-			};
-
-			auto readArgMemPrimaryExpr = [&](BfInlineAsmInstruction::AsmArg& outArg) -> bool
-			{
-				String primaryIdent;
-				int primaryInt;
-				int advanceTokenCount = 0;
-
-				if (readIdent(primaryIdent, false, "", true))
-				{
-					outArg.mMemFlags = BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg;
-					outArg.mReg = primaryIdent;
-					++curNodeIdx;
-					return true;
-				}
-				else if (readInteger(primaryInt, "", true, advanceTokenCount))
-				{
-					outArg.mMemFlags = BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp;
-					outArg.mInt = primaryInt;
-					curNodeIdx += advanceTokenCount;
-					return true;
-				}
-				else
-				{
-					Fail(StrFormat("Found \"%s\", expected integer or identifier", NodeToString(nodes[curNodeIdx]).c_str()), instNode);
-					return false;
-				}
-			};
-			std::function<bool(BfInlineAsmInstruction::AsmArg&)> readArgMemMulExpr = [&](BfInlineAsmInstruction::AsmArg& outArg) -> bool
-			{
-				BfInlineAsmInstruction::AsmArg exprArgLeft, exprArgRight;
-
-				if (!readArgMemPrimaryExpr(exprArgLeft))
-					return false;
-
-				if (!readToken(BfToken_Star, "", true))
-				{
-					outArg = exprArgLeft;
-					return true;
-				}
-
-				++curNodeIdx;
-				if (!readArgMemMulExpr(exprArgRight))
-					return false;
-
-				bool leftIdent = (exprArgLeft.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg) != 0;
-				bool rightIdent = (exprArgRight.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg) != 0;
-				if (leftIdent && rightIdent)
-				{
-					Fail(StrFormat("Memory expressions can only scale by an integer", NodeToString(nodes[curNodeIdx]).c_str()), instNode);
-					return false;
-				}
-				else if (leftIdent || rightIdent)
-				{
-					if (leftIdent)
+				auto replaceWithLower = [](String& s)
 					{
-						outArg = exprArgLeft;
-						outArg.mAdjRegScalar = exprArgRight.mInt;
-					}
-					else
+						std::transform(s.begin(), s.end(), s.begin(), ::tolower);
+					};
+
+				auto readIdent = [&](String& outStr, bool forceLowerCase, const StringImpl& errorExpectation, bool peekOnly) -> bool
 					{
-						outArg = exprArgRight;
-						outArg.mAdjRegScalar = exprArgLeft.mInt;
-					}
-
-					outArg.mMemFlags &= ~BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg;
-					outArg.mMemFlags |= BfInlineAsmInstruction::AsmArg::ARGMEMF_AdjReg;
-					outArg.mAdjReg = outArg.mReg;
-					outArg.mReg.clear();
-				}
-				else
-				{
-					outArg = exprArgLeft;
-					outArg.mInt = exprArgLeft.mInt * exprArgRight.mInt;
-				}
-
-				return true;
-			};
-			std::function<bool(BfInlineAsmInstruction::AsmArg&, bool)> readArgMemAddExpr = [&](BfInlineAsmInstruction::AsmArg& outArg, bool subtractLeft) -> bool // can't use 'auto' here since it's recursive
-			{
-				BfInlineAsmInstruction::AsmArg exprArgLeft, exprArgRight;
-
-				if (!readArgMemMulExpr(exprArgLeft))
-					return false;
-
-				if (subtractLeft)
-				{
-					if (exprArgLeft.mMemFlags != BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp)
-					{
-						Fail("Memory expressions can only subtract by an integer", instNode);
-						return false;
-					}
-
-					exprArgLeft.mInt = -exprArgLeft.mInt;
-				}
-
-				bool subtract = false;
-				if (!readToken(BfToken_Plus, "", true))
-				{
-					if (!readToken(BfToken_Minus, "", true))
-					{
-						outArg = exprArgLeft;
-						return true;
-					}
-					else
-						subtract = true;
-				}
-
-				++curNodeIdx;
-				if (!readArgMemAddExpr(exprArgRight, subtract))
-					return false;
-
-				bool leftScaling = (exprArgLeft.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_AdjReg) != 0;
-				bool rightScaling = (exprArgRight.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_AdjReg) != 0;
-				if (leftScaling && rightScaling)
-				{
-					Fail("Memory expressions can only have one scaling register and one non-scaling register", instNode);
-					return false;
-				}
-				BfInlineAsmInstruction::AsmArg* scaledArg = leftScaling ? &exprArgLeft : (rightScaling ? &exprArgRight : nullptr);
-
-				if (scaledArg)
-				{
-					BfInlineAsmInstruction::AsmArg* otherArg = leftScaling ? &exprArgRight : &exprArgLeft;
-
-					outArg = *scaledArg;
-					outArg.mMemFlags |= otherArg->mMemFlags;
-					if (otherArg->mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg)
-					{
-						if (scaledArg->mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg)
+						if (curNodeIdx >= nodeCount)
 						{
-							Fail("Memory expressions can involve at most two registers", instNode);
+							if (!peekOnly)
+								Fail(StrFormat("Expected %s", errorExpectation.c_str()), instNode);
 							return false;
 						}
-						outArg.mReg = otherArg->mReg;
-					}
-					if (otherArg->mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp)
-					{
-						outArg.mInt += otherArg->mInt;
-					}
-				}
-				else
-				{
-					outArg.mInt = 0;
-					if (exprArgLeft.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp)
-					{
-						outArg.mMemFlags |= BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp;
-						outArg.mInt += exprArgLeft.mInt;
-					}
-					if (exprArgRight.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp)
-					{
-						outArg.mMemFlags |= BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp;
-						outArg.mInt += exprArgRight.mInt;
-					}
+						BfAstNode* curNode = nodes[curNodeIdx];
+						if (!peekOnly)
+							++curNodeIdx;
+						if (!BfNodeDynCast<BfIdentifierNode>(curNode))
+						{
+							if (!peekOnly)
+								Fail(StrFormat("Found \"%s\", expected %s", NodeToString(curNode).c_str(), errorExpectation.c_str()), instNode);
+							return false;
+						}
 
-					bool leftIdent = (exprArgLeft.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg) != 0;
-					bool rightIdent = (exprArgRight.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg) != 0;
+						outStr = NodeToString(curNode);
+						if (forceLowerCase)
+							replaceWithLower(outStr);
+						return true;
+					};
+				auto readToken = [&](BfToken tokenType, const StringImpl& errorExpectation, bool peekOnly) -> bool
+					{
+						if (curNodeIdx >= nodeCount)
+						{
+							if (!peekOnly)
+								Fail(StrFormat("Expected %s", errorExpectation.c_str()), instNode);
+							return false;
+						}
+						BfAstNode* curNode = nodes[curNodeIdx];
+						if (!peekOnly)
+							++curNodeIdx;
+						auto tokenNode = BfNodeDynCast<BfTokenNode>(curNode);
+						if (!tokenNode || tokenNode->GetToken() != tokenType)
+						{
+							if (!peekOnly)
+								Fail(StrFormat("Found \"%s\", expected %s", NodeToString(curNode).c_str(), errorExpectation.c_str()), instNode);
+							return false;
+						}
 
-					if (leftIdent && rightIdent)
+						return true;
+					};
+				auto readInteger = [&](int& outInt, const StringImpl& errorExpectation, bool peekOnly, int& outAdvanceTokenCount) -> bool
 					{
-						outArg.mMemFlags |= (BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg | BfInlineAsmInstruction::AsmArg::ARGMEMF_AdjReg);
-						outArg.mReg = exprArgLeft.mReg;
-						outArg.mAdjReg = exprArgRight.mReg;
-						outArg.mAdjRegScalar = 1;
-					}
-					else if (leftIdent)
-					{
-						outArg.mMemFlags |= BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg;
-						outArg.mReg = exprArgLeft.mReg;
-					}
-					else if (rightIdent)
-					{
-						outArg.mMemFlags |= BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg;
-						outArg.mReg = exprArgRight.mReg;
-					}
-				}
+						int origCurNodeIdx = curNodeIdx;
+						outAdvanceTokenCount = 0;
 
-				return true;
-			};
+						bool negate = false;
+						if (readToken(BfToken_Minus, "", true))
+						{
+							++curNodeIdx;
+							++outAdvanceTokenCount;
+							negate = true;
+						}
 
-			auto parseArg = [&](BfInlineAsmInstruction::AsmArg& outArg) -> bool
-			{
-				bool keepGoing = true;
-				while (keepGoing)
-				{
-					keepGoing = false;
+						if (curNodeIdx >= nodeCount)
+						{
+							if (!peekOnly)
+								Fail(StrFormat("Expected %s", errorExpectation.c_str()), instNode);
+							else
+								curNodeIdx = origCurNodeIdx;
 
-					int peekInt;
-					String peekStr;
-					int advanceTokenCount;
-					if (readInteger(peekInt, "", true, advanceTokenCount))
-					{
-						outArg.mType = BfInlineAsmInstruction::AsmArg::ARGTYPE_Immediate;
-						outArg.mInt = peekInt;
-						curNodeIdx += advanceTokenCount;
-					}
-					else if (readIdent(peekStr, false, "", true))
-					{
+							return false;
+						}
+
+						BfAstNode* curNode = nodes[curNodeIdx];
 						++curNodeIdx;
-						String s(peekStr);
-						replaceWithLower(s);
+						++outAdvanceTokenCount;
+						auto litNode = BfNodeDynCast<BfLiteralExpression>(curNode);
+						if (!litNode || litNode->mValue.mTypeCode != BfTypeCode_Int32)
+						{
+							if (!peekOnly)
+								Fail(StrFormat("Found \"%s\", expected %s", NodeToString(curNode).c_str(), errorExpectation.c_str()), instNode);
+							else
+								curNodeIdx = origCurNodeIdx;
 
-						String tempIdent;
+							return false;
+						}
 
-						if ((s == "cs" || s == "ds" || s == "es" || s == "fs" || s == "gs" || s == "ss") && readToken(BfToken_Colon, "", true))
+						outInt = litNode->mValue.mInt32;
+						if (negate)
+							outInt = -outInt;
+						if (peekOnly)
+							curNodeIdx = origCurNodeIdx;
+
+						return true;
+					};
+
+				auto readArgMemPrimaryExpr = [&](BfInlineAsmInstruction::AsmArg& outArg) -> bool
+					{
+						String primaryIdent;
+						int primaryInt;
+						int advanceTokenCount = 0;
+
+						if (readIdent(primaryIdent, false, "", true))
 						{
+							outArg.mMemFlags = BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg;
+							outArg.mReg = primaryIdent;
 							++curNodeIdx;
-							outArg.mSegPrefix = s;
-							keepGoing = true;
+							return true;
 						}
-						else if (s == "st" && readToken(BfToken_LParen, "", true))
+						else if (readInteger(primaryInt, "", true, advanceTokenCount))
 						{
-							++curNodeIdx;
-							outArg.mType = BfInlineAsmInstruction::AsmArg::ARGTYPE_FloatReg;
-							if (!readInteger(peekInt, "integer floating-point register number", false, advanceTokenCount))
-								return false;
-							outArg.mInt = peekInt;
-							if (!readToken(BfToken_RParen, "')'", false))
-								return false;
-						}
-						else if ((s == "byte" || s == "word" || s == "dword" || s == "qword" || s == "xword" || s == "xmmword" || s == "opaque") && readIdent(tempIdent, true, "", true))
-						{
-							if (tempIdent != "ptr")
-							{
-								Fail(StrFormat("Found \"%s\", expected \"ptr\"", NodeToString(nodes[curNodeIdx]).c_str()), instNode);
-								return false;
-							}
-							++curNodeIdx;
-							outArg.mSizePrefix = s;
-							keepGoing = true;
+							outArg.mMemFlags = BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp;
+							outArg.mInt = primaryInt;
+							curNodeIdx += advanceTokenCount;
+							return true;
 						}
 						else
 						{
-							outArg.mType = BfInlineAsmInstruction::AsmArg::ARGTYPE_IntReg;
-							outArg.mReg = peekStr;
+							Fail(StrFormat("Found \"%s\", expected integer or identifier", NodeToString(nodes[curNodeIdx]).c_str()), instNode);
+							return false;
 						}
-					}
-					else if (readToken(BfToken_LBracket, "", true))
+					};
+				std::function<bool(BfInlineAsmInstruction::AsmArg&)> readArgMemMulExpr = [&](BfInlineAsmInstruction::AsmArg& outArg) -> bool
 					{
-						++curNodeIdx;
+						BfInlineAsmInstruction::AsmArg exprArgLeft, exprArgRight;
 
-						BfInlineAsmInstruction::AsmArg exprArgLeft;
-						if (!readArgMemAddExpr(exprArgLeft, false))
+						if (!readArgMemPrimaryExpr(exprArgLeft))
 							return false;
-						if (!readToken(BfToken_RBracket, "']'", false))
-							return false;
-						if (readToken(BfToken_Dot, "", true))
+
+						if (!readToken(BfToken_Star, "", true))
 						{
-							++curNodeIdx;
-							if (!readIdent(outArg.mMemberSuffix, false, "struct member suffix identifier", false))
+							outArg = exprArgLeft;
+							return true;
+						}
+
+						++curNodeIdx;
+						if (!readArgMemMulExpr(exprArgRight))
+							return false;
+
+						bool leftIdent = (exprArgLeft.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg) != 0;
+						bool rightIdent = (exprArgRight.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg) != 0;
+						if (leftIdent && rightIdent)
+						{
+							Fail(StrFormat("Memory expressions can only scale by an integer", NodeToString(nodes[curNodeIdx]).c_str()), instNode);
+							return false;
+						}
+						else if (leftIdent || rightIdent)
+						{
+							if (leftIdent)
+							{
+								outArg = exprArgLeft;
+								outArg.mAdjRegScalar = exprArgRight.mInt;
+							}
+							else
+							{
+								outArg = exprArgRight;
+								outArg.mAdjRegScalar = exprArgLeft.mInt;
+							}
+
+							outArg.mMemFlags &= ~BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg;
+							outArg.mMemFlags |= BfInlineAsmInstruction::AsmArg::ARGMEMF_AdjReg;
+							outArg.mAdjReg = outArg.mReg;
+							outArg.mReg.clear();
+						}
+						else
+						{
+							outArg = exprArgLeft;
+							outArg.mInt = exprArgLeft.mInt * exprArgRight.mInt;
+						}
+
+						return true;
+					};
+				std::function<bool(BfInlineAsmInstruction::AsmArg&, bool)> readArgMemAddExpr = [&](BfInlineAsmInstruction::AsmArg& outArg, bool subtractLeft) -> bool // can't use 'auto' here since it's recursive
+					{
+						BfInlineAsmInstruction::AsmArg exprArgLeft, exprArgRight;
+
+						if (!readArgMemMulExpr(exprArgLeft))
+							return false;
+
+						if (subtractLeft)
+						{
+							if (exprArgLeft.mMemFlags != BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp)
+							{
+								Fail("Memory expressions can only subtract by an integer", instNode);
+								return false;
+							}
+
+							exprArgLeft.mInt = -exprArgLeft.mInt;
+						}
+
+						bool subtract = false;
+						if (!readToken(BfToken_Plus, "", true))
+						{
+							if (!readToken(BfToken_Minus, "", true))
+							{
+								outArg = exprArgLeft;
+								return true;
+							}
+							else
+								subtract = true;
+						}
+
+						++curNodeIdx;
+						if (!readArgMemAddExpr(exprArgRight, subtract))
+							return false;
+
+						bool leftScaling = (exprArgLeft.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_AdjReg) != 0;
+						bool rightScaling = (exprArgRight.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_AdjReg) != 0;
+						if (leftScaling && rightScaling)
+						{
+							Fail("Memory expressions can only have one scaling register and one non-scaling register", instNode);
+							return false;
+						}
+						BfInlineAsmInstruction::AsmArg* scaledArg = leftScaling ? &exprArgLeft : (rightScaling ? &exprArgRight : nullptr);
+
+						if (scaledArg)
+						{
+							BfInlineAsmInstruction::AsmArg* otherArg = leftScaling ? &exprArgRight : &exprArgLeft;
+
+							outArg = *scaledArg;
+							outArg.mMemFlags |= otherArg->mMemFlags;
+							if (otherArg->mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg)
+							{
+								if (scaledArg->mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg)
+								{
+									Fail("Memory expressions can involve at most two registers", instNode);
+									return false;
+								}
+								outArg.mReg = otherArg->mReg;
+							}
+							if (otherArg->mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp)
+							{
+								outArg.mInt += otherArg->mInt;
+							}
+						}
+						else
+						{
+							outArg.mInt = 0;
+							if (exprArgLeft.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp)
+							{
+								outArg.mMemFlags |= BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp;
+								outArg.mInt += exprArgLeft.mInt;
+							}
+							if (exprArgRight.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp)
+							{
+								outArg.mMemFlags |= BfInlineAsmInstruction::AsmArg::ARGMEMF_ImmediateDisp;
+								outArg.mInt += exprArgRight.mInt;
+							}
+
+							bool leftIdent = (exprArgLeft.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg) != 0;
+							bool rightIdent = (exprArgRight.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg) != 0;
+
+							if (leftIdent && rightIdent)
+							{
+								outArg.mMemFlags |= (BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg | BfInlineAsmInstruction::AsmArg::ARGMEMF_AdjReg);
+								outArg.mReg = exprArgLeft.mReg;
+								outArg.mAdjReg = exprArgRight.mReg;
+								outArg.mAdjRegScalar = 1;
+							}
+							else if (leftIdent)
+							{
+								outArg.mMemFlags |= BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg;
+								outArg.mReg = exprArgLeft.mReg;
+							}
+							else if (rightIdent)
+							{
+								outArg.mMemFlags |= BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg;
+								outArg.mReg = exprArgRight.mReg;
+							}
+						}
+
+						return true;
+					};
+
+				auto parseArg = [&](BfInlineAsmInstruction::AsmArg& outArg) -> bool
+					{
+						bool keepGoing = true;
+						while (keepGoing)
+						{
+							keepGoing = false;
+
+							int peekInt;
+							String peekStr;
+							int advanceTokenCount;
+							if (readInteger(peekInt, "", true, advanceTokenCount))
+							{
+								outArg.mType = BfInlineAsmInstruction::AsmArg::ARGTYPE_Immediate;
+								outArg.mInt = peekInt;
+								curNodeIdx += advanceTokenCount;
+							}
+							else if (readIdent(peekStr, false, "", true))
+							{
+								++curNodeIdx;
+								String s(peekStr);
+								replaceWithLower(s);
+
+								String tempIdent;
+
+								if ((s == "cs" || s == "ds" || s == "es" || s == "fs" || s == "gs" || s == "ss") && readToken(BfToken_Colon, "", true))
+								{
+									++curNodeIdx;
+									outArg.mSegPrefix = s;
+									keepGoing = true;
+								}
+								else if (s == "st" && readToken(BfToken_LParen, "", true))
+								{
+									++curNodeIdx;
+									outArg.mType = BfInlineAsmInstruction::AsmArg::ARGTYPE_FloatReg;
+									if (!readInteger(peekInt, "integer floating-point register number", false, advanceTokenCount))
+										return false;
+									outArg.mInt = peekInt;
+									if (!readToken(BfToken_RParen, "')'", false))
+										return false;
+								}
+								else if ((s == "byte" || s == "word" || s == "dword" || s == "qword" || s == "xword" || s == "xmmword" || s == "opaque") && readIdent(tempIdent, true, "", true))
+								{
+									if (tempIdent != "ptr")
+									{
+										Fail(StrFormat("Found \"%s\", expected \"ptr\"", NodeToString(nodes[curNodeIdx]).c_str()), instNode);
+										return false;
+									}
+									++curNodeIdx;
+									outArg.mSizePrefix = s;
+									keepGoing = true;
+								}
+								else
+								{
+									outArg.mType = BfInlineAsmInstruction::AsmArg::ARGTYPE_IntReg;
+									outArg.mReg = peekStr;
+								}
+							}
+							else if (readToken(BfToken_LBracket, "", true))
+							{
+								++curNodeIdx;
+
+								BfInlineAsmInstruction::AsmArg exprArgLeft;
+								if (!readArgMemAddExpr(exprArgLeft, false))
+									return false;
+								if (!readToken(BfToken_RBracket, "']'", false))
+									return false;
+								if (readToken(BfToken_Dot, "", true))
+								{
+									++curNodeIdx;
+									if (!readIdent(outArg.mMemberSuffix, false, "struct member suffix identifier", false))
+										return false;
+								}
+
+								outArg.mType = BfInlineAsmInstruction::AsmArg::ARGTYPE_Memory;
+								outArg.mMemFlags = exprArgLeft.mMemFlags;
+								//outArg.mSegPrefix = already_set_leave_me_alone;
+								//outArg.mSizePrefix = already_set_leave_me_alone;
+								outArg.mInt = exprArgLeft.mInt;
+								outArg.mReg = exprArgLeft.mReg;
+								outArg.mAdjReg = exprArgLeft.mAdjReg;
+								outArg.mAdjRegScalar = exprArgLeft.mAdjRegScalar;
+								//outArg.mMemberSuffix = already_set_leave_me_alone;
+
+								return true;
+							}
+							else
 								return false;
 						}
 
-						outArg.mType = BfInlineAsmInstruction::AsmArg::ARGTYPE_Memory;
-						outArg.mMemFlags = exprArgLeft.mMemFlags;
-						//outArg.mSegPrefix = already_set_leave_me_alone;
-						//outArg.mSizePrefix = already_set_leave_me_alone;
-						outArg.mInt = exprArgLeft.mInt;
-						outArg.mReg = exprArgLeft.mReg;
-						outArg.mAdjReg = exprArgLeft.mAdjReg;
-						outArg.mAdjRegScalar = exprArgLeft.mAdjRegScalar;
-						//outArg.mMemberSuffix = already_set_leave_me_alone;
-
 						return true;
-					}
-					else
-						return false;
+					};
+
+				BfInlineAsmInstruction::AsmInst& outInst = instNode->mAsmInst;
+
+				// instruction / instruction prefix / label
+				String opStr;
+				if (!readIdent(opStr, false, "instruction, instruction prefix, or label", false))
+					return nullptr;
+
+				if (readToken(BfToken_Colon, "", true))
+				{
+					++curNodeIdx;
+					outInst.mLabel = opStr;
+					if (curNodeIdx >= nodeCount)
+						return instNode;
+
+					if (!readIdent(opStr, false, "instruction or instruction prefix", false))
+						return nullptr;
 				}
 
-				return true;
+				replaceWithLower(opStr);
+
+				// check for instruction prefix(s)
+				while (opStr == "lock" || opStr == "rep" || opStr == "repe" || opStr == "repne" || opStr == "repz" || opStr == "repnz")
+				{
+					if (curNodeIdx >= nodeCount) // in case prefix is listed like a separate instruction
+						break;
+					outInst.mOpPrefixes.push_back(opStr);
+
+					if (!readIdent(opStr, true, "instruction or instruction prefix", false))
+						return nullptr;
+				}
+
+				outInst.mOpCode = opStr;
+
+				BfInlineAsmInstruction::AsmArg asmArg;
+				while (parseArg(asmArg))
+				{
+					outInst.mArgs.push_back(asmArg);
+					asmArg = BfInlineAsmInstruction::AsmArg();
+
+					if (!readToken(BfToken_Comma, "", true))
+						break;
+					++curNodeIdx;
+				}
+
+				if (curNodeIdx < nodeCount)
+					return (BfInlineAsmInstruction*)Fail(StrFormat("Found unexpected \"%s\"", NodeToString(nodes[curNodeIdx]).c_str()), instNode);
+
+				//String testStr = outInst.ToString();
+
+				int unusedLineChar = 0;
+				auto bfParser = instNode->GetSourceData()->ToParserData();
+				if (bfParser != NULL)
+					bfParser->GetLineCharAtIdx(instNode->GetSrcStart(), outInst.mDebugLine, unusedLineChar);
+				//return (BfInlineAsmInstruction*)Fail(StrFormat("Line %d\n", outInst.mDebugLine), instNode);
+
+				return instNode;
 			};
-
-			BfInlineAsmInstruction::AsmInst& outInst = instNode->mAsmInst;
-
-			// instruction / instruction prefix / label
-			String opStr;
-			if (!readIdent(opStr, false, "instruction, instruction prefix, or label", false))
-				return nullptr;
-
-			if (readToken(BfToken_Colon, "", true))
-			{
-				++curNodeIdx;
-				outInst.mLabel = opStr;
-				if (curNodeIdx >= nodeCount)
-					return instNode;
-
-				if (!readIdent(opStr, false, "instruction or instruction prefix", false))
-					return nullptr;
-			}
-
-			replaceWithLower(opStr);
-
-			// check for instruction prefix(s)
-			while (opStr == "lock" || opStr == "rep" || opStr == "repe" || opStr == "repne" || opStr == "repz" || opStr == "repnz")
-			{
-				if (curNodeIdx >= nodeCount) // in case prefix is listed like a separate instruction
-					break;
-				outInst.mOpPrefixes.push_back(opStr);
-
-				if (!readIdent(opStr, true, "instruction or instruction prefix", false))
-					return nullptr;
-			}
-
-			outInst.mOpCode = opStr;
-
-			BfInlineAsmInstruction::AsmArg asmArg;
-			while (parseArg(asmArg))
-			{
-				outInst.mArgs.push_back(asmArg);
-				asmArg = BfInlineAsmInstruction::AsmArg();
-
-				if (!readToken(BfToken_Comma, "", true))
-					break;
-				++curNodeIdx;
-			}
-
-			if (curNodeIdx < nodeCount)
-				return (BfInlineAsmInstruction*)Fail(StrFormat("Found unexpected \"%s\"", NodeToString(nodes[curNodeIdx]).c_str()), instNode);
-
-			//String testStr = outInst.ToString();
-
-			int unusedLineChar = 0;
-			auto bfParser = instNode->GetSourceData()->ToParserData();
-			if (bfParser != NULL)
-				bfParser->GetLineCharAtIdx(instNode->GetSrcStart(), outInst.mDebugLine, unusedLineChar);
-			//return (BfInlineAsmInstruction*)Fail(StrFormat("Line %d\n", outInst.mDebugLine), instNode);
-
-			return instNode;
-		};
 
 		// split nodes by newlines into individual instructions, skipping empty lines
 
@@ -11202,7 +11787,7 @@ BfInlineAsmStatement* BfReducer::CreateInlineAsmStatement(BfAstNode* asmNode)
 			instrNodes.Clear();
 		}
 
-		for (auto & instNode : dstInstructions)
+		for (auto& instNode : dstInstructions)
 			MoveNode(instNode, asmStatement);
 		asmStatement->mInstructions = std::move(dstInstructions);
 	}

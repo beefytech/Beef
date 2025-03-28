@@ -5,6 +5,7 @@ SDL2.dll
 *.vcxproj.user
 */llvm-*
 */llvm_*
+*/_llvm*
 */x64/*
 **/Debug/*
 **/Debug */*

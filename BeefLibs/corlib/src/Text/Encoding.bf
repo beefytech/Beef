@@ -2,7 +2,7 @@ using System.Diagnostics;
 using System.Threading;
 namespace System.Text
 {
-	[StaticInitPriority(100)]
+	[StaticInitPriority(200)]
 	abstract class Encoding
 	{
 		public enum DecodeError

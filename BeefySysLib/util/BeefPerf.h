@@ -320,7 +320,7 @@ public:
 #define BP_EXPORT BF_EXPORT
 #define BP_CALLTYPE BF_CALLTYPE
 #else
-#define BP_EXPORT
+#define BP_EXPORT extern "C"
 #define BP_CALLTYPE
 #endif
 

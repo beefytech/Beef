@@ -98,6 +98,7 @@ namespace IDE.ui
 			category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
 			AddPropertiesItem(category, "Font", "mFonts");
 			AddPropertiesItem(category, "Font Size", "mFontSize");
+			AddPropertiesItem(category, "Line Height Scale", "mLineHeightScale", null, .Percent);
 			AddPropertiesItem(category, "Autocomplete", "mAutoCompleteShowKind");
 			AddPropertiesItem(category, "Autocomplete Require Control", "mAutoCompleteRequireControl");
 			AddPropertiesItem(category, "Autocomplete Require Tab", "mAutoCompleteRequireTab");
@@ -347,7 +348,8 @@ namespace IDE.ui
 			AddPropertiesItem(root, "Symbol File Locations", "mSymbolSearchPath");
 			AddPropertiesItem(root, "Auto Find Paths", "mAutoFindPaths");
 			AddPropertiesItem(root, "Profile Sample Rate", "mProfileSampleRate");
-			AddPropertiesItem(root, "Auto Evaluate Properties", "mAutoEvaluateProperties");
+			AddPropertiesItem(root, "Auto Eval Properties on Hover", "mAutoEvaluatePropertiesOnHover");
+			AddPropertiesItem(root, "Auto Refresh Side Effects", "mAutoRefreshWatches");
 		}
 
 		protected override void ResetSettings()

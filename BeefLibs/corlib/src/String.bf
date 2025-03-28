@@ -74,42 +74,86 @@ namespace System
 		const uint32 cStrPtrFlag = 0x40000000;
 #endif
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(int count) // 0
 		{
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
 			char8* addlPtr = append char8[bufferSize]*(?);
-			Init(bufferSize);
 			mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
 			mLength = 0;
 		}
 
 		[AllowAppend]
+		public this(int count) // 0
+		{
+			int bufferSize = count;
+#unwarn
+			char8* addlPtr = append char8[bufferSize]*(?);
+			mPtrOrBuffer = addlPtr;
+			mAllocSizeAndFlags = (uint_strsize)bufferSize | cStrPtrFlag;
+			mLength = 0;
+		}
+
+		[AllowAppend(ZeroGap=true)]
 		public this()
 		{
 		    let bufferSize = 16 - sizeof(char8*);
 #unwarn
 		    char8* addlPtr = append char8[bufferSize]*(?);
-			Init(bufferSize);
 		    mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
 		    mLength = 0;
 		}
 
 		[AllowAppend]
+		public this()
+		{
+		    let bufferSize = 8;
+#unwarn
+		    char8* addlPtr = append char8[bufferSize]*(?);
+			mPtrOrBuffer = addlPtr;
+		    mAllocSizeAndFlags = (uint_strsize)bufferSize | cStrPtrFlag;
+		    mLength = 0;
+		}
+
+		[AllowAppend(ZeroGap=true)]
 		public this(String str)
 		{
 			let count = str.mLength;
+			/*int a = __appendIdx;
+			int b = offsetof(String, mPtrOrBuffer);
+			if (__appendIdx == offsetof(String, mPtrOrBuffer))
+			{
+
+			}*/
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
 			char8* addlPtr = append char8[bufferSize]*(?);
-			Init(bufferSize);
 			Internal.MemCpy(Ptr, str.Ptr, count);
 			mLength = count;
 			mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
 		}
 
 		[AllowAppend]
+		public this(String str)
+		{
+			let count = str.mLength;
+			/*int a = __appendIdx;
+			int b = offsetof(String, mPtrOrBuffer);
+			if (__appendIdx == offsetof(String, mPtrOrBuffer))
+			{
+
+			}*/
+			int bufferSize = count;
+#unwarn
+			char8* addlPtr = append char8[bufferSize]*(?);
+			mPtrOrBuffer = addlPtr;
+			Internal.MemCpy(Ptr, str.Ptr, count);
+			mLength = count;
+			mAllocSizeAndFlags = (uint_strsize)bufferSize | cStrPtrFlag;
+		}
+
+		[AllowAppend(ZeroGap=true)]
 		public this(String str, int offset)
 		{
 			Debug.Assert((uint)offset <= (uint)str.Length);
@@ -126,7 +170,7 @@ namespace System
 			mLength = (int_strsize)count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(String str, int offset, int count)
 		{
 			Debug.Assert((uint)offset <= (uint)str.Length);
@@ -144,7 +188,7 @@ namespace System
 			mLength = (int_strsize)count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(char8 c, int count)
 		{
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
@@ -158,7 +202,7 @@ namespace System
 			mLength = (int_strsize)count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(char8* char8Ptr)
 		{
 			let count = Internal.CStrLen(char8Ptr);
@@ -173,7 +217,7 @@ namespace System
 			mLength = count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(char8* char8Ptr, int count)
 		{
 		    int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
@@ -187,7 +231,7 @@ namespace System
 		    mLength = (int_strsize)count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(char16* char16Ptr)
 		{
 			let count = UTF16.GetLengthAsUTF8(char16Ptr);
@@ -200,7 +244,7 @@ namespace System
 			UTF16.Decode(char16Ptr, this);
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(Span<char16> chars)
 		{
 			let count = UTF16.GetLengthAsUTF8(chars);
@@ -213,14 +257,13 @@ namespace System
 			UTF16.Decode(chars, this);
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(StringView strView)
 		{			
 			let count = strView.Length;
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
 #unwarn
 			char8* addlPtr = append char8[bufferSize]*(?);
-			Init(bufferSize);
 			let ptr = Ptr;
 			Internal.MemCpy(ptr, strView.Ptr, strView.Length);
 			mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
@@ -228,6 +271,20 @@ namespace System
 		}
 
 		[AllowAppend]
+		public this(StringView strView)
+		{			
+			let count = strView.Length;
+			int bufferSize = count;
+#unwarn
+			char8* addlPtr = append char8[bufferSize]*(?);
+			mPtrOrBuffer = addlPtr;
+			let ptr = Ptr;
+			Internal.MemCpy(ptr, strView.Ptr, strView.Length);
+			mAllocSizeAndFlags = (uint_strsize)bufferSize | cStrPtrFlag;
+			mLength = (int_strsize)strView.Length;
+		}
+
+		[AllowAppend(ZeroGap=true)]
 		public this(StringView strView, CreateFlags flags)
 		{			
 			let count = strView.Length + (flags.HasFlag(.NullTerminate) ? 1 : 0);
@@ -243,7 +300,7 @@ namespace System
 			mLength = (int32)strView.Length;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(StringView strView, int offset)
 		{
 			Debug.Assert((uint)offset <= (uint)strView.Length);
@@ -261,7 +318,7 @@ namespace System
 			mLength = (int_strsize)count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(StringView strView, int offset, int count)
 		{
 			Debug.Assert((uint)offset <= (uint)strView.Length);
@@ -279,7 +336,7 @@ namespace System
 			mLength = (int_strsize)count;
 		}
 
-		[AllowAppend]
+		[AllowAppend(ZeroGap=true)]
 		public this(char8[] chars, int offset, int count)
 		{
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
@@ -293,7 +350,15 @@ namespace System
 			mLength = (int_strsize)count;
 		}
 
-		static int StrLengths(String[] strs)
+		static int StrLengths(Span<StringView> strs)
+		{
+			int count = 0;
+			for (var str in strs)
+				count += str.Length;
+			return count;
+		}
+
+		static int StrLengths(Span<String> strs)
 		{
 			int count = 0;
 			for (var str in strs)
@@ -302,7 +367,7 @@ namespace System
 		}
 
 		[AllowAppend]
-		public this(params String[] strs)
+		public this(params Span<StringView> strs)
 		{
 			int count = StrLengths(strs);
 			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
@@ -313,7 +378,27 @@ namespace System
 			int curIdx = 0;
 			for (var str in strs)
 			{
-				Internal.MemCpy(ptr + curIdx, str.Ptr, str.mLength);
+				Internal.MemCpy(ptr + curIdx, str.Ptr, str.Length);
+				curIdx += str.Length;
+			}
+			
+			mLength = (int_strsize)count;
+			mAllocSizeAndFlags = (uint_strsize)bufferSize + (int_strsize)sizeof(char8*);
+		}
+
+		[AllowAppend]
+		public this(Span<String> strs)
+		{
+			int count = StrLengths(strs);
+			int bufferSize = (count == 0) ? 0 : (count - 1) & ~(sizeof(char8*) - 1);
+#unwarn
+			char8* addlPtr = append char8[bufferSize]*(?);
+			Init(bufferSize);
+			let ptr = Ptr;
+			int curIdx = 0;
+			for (var str in strs)
+			{
+				Internal.MemCpy(ptr + curIdx, str.Ptr, str.Length);
 				curIdx += str.Length;
 			}
 			
@@ -642,7 +727,7 @@ namespace System
 		public static implicit operator Span<char8>(String str)
 		{
 		    if (str == null)
-				return .(null, 0);
+				return .((char8*)null, 0);
 			return .(str.Ptr, str.Length);
 		}
 
@@ -966,7 +1051,7 @@ namespace System
 			Append(str.Ptr + offset, length);
 		}
 
-		public void Append(params String[] strings)
+		public void Append(params Span<StringView> strings)
 		{
 			for (var str in strings)
 				Append(str);
@@ -1307,6 +1392,10 @@ namespace System
 
 			while (true)
 			{
+				int charsLeft = len - pos;
+				Reserve(mLength + charsLeft);
+				char8* ptr = Ptr;
+
 				int p = pos;
 				int i = pos;
 				while (pos < len)
@@ -1333,7 +1422,8 @@ namespace System
 						}
 					}
 
-					Append(ch);
+					//Append(ch);
+					ptr[mLength++] = ch;
 				}
 
 				if (pos == len) break;
@@ -1434,25 +1524,36 @@ namespace System
 				}
 				if (ch != '}') return FormatError();
 				pos++;
-				if (s == null)
-					s = scope:: String(128);
-				
-				s.Clear();
-				IFormattable formattableArg = arg as IFormattable;
-				if (formattableArg != null)
-					formattableArg.ToString(s, fmt, provider);
-				else if (arg != null)
-					arg.ToString(s);
+
+				if ((provider == null) && (fmt.IsEmpty) && (width == 0))
+				{
+					if (arg == null)
+						Append("null");
+					else
+						arg.ToString(this);
+				}
 				else
-					s.Append("null");
-				if (fmt != (Object)"")
-					fmt.Clear();
-				
-				if (s == null) s = String.Empty;
-				int pad = width - s.Length;
-				if (!leftJustify && pad > 0) Append(' ', pad);
-				Append(s);
-				if (leftJustify && pad > 0) Append(' ', pad);
+				{
+					if (s == null)
+						s = scope:: String(128);
+					
+					s.Clear();
+					IFormattable formattableArg = arg as IFormattable;
+					if (formattableArg != null)
+						formattableArg.ToString(s, fmt, provider);
+					else if (arg != null)
+						arg.ToString(s);
+					else
+						s.Append("null");
+					if (fmt != (Object)"")
+						fmt.Clear();
+					
+					if (s == null) s = String.Empty;
+					int pad = width - s.Length;
+					if (!leftJustify && pad > 0) Append(' ', pad);
+					Append(s);
+					if (leftJustify && pad > 0) Append(' ', pad);
+				}
 			}
 
 			return .Ok;
@@ -2514,15 +2615,26 @@ namespace System
 			}
 		}
 
-		public void Join(String separator, params String[] values)
+		public void Join(StringView separator, Span<String> values)
 		{
-			for (int i = 0; i < values.Count; i++)
+			for (int i = 0; i < values.Length; i++)
 			{
 				if (i > 0)
 					Append(separator);
 				values[i].ToString(this);
 			}
 		}
+
+		public void Join(StringView separator, params Span<StringView> values)
+		{
+			for (int i = 0; i < values.Length; i++)
+			{
+				if (i > 0)
+					Append(separator);
+				values[i].ToString(this);
+			}
+		}
+
 
 		public StringSplitEnumerator Split(char8 c)
 		{
@@ -2544,27 +2656,27 @@ namespace System
 			return StringSplitEnumerator(Ptr, Length, separator, count, options);
 		}
 
-		public StringSplitEnumerator Split(params char8[] separators)
+		public StringSplitEnumerator Split(params Span<char8> separators)
 		{
 			return StringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
 		}
 
-		public StringSplitEnumerator Split(char8[] separators)
+		public StringSplitEnumerator Split(Span<char8> separators)
 		{
 			return StringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
 		}
 
-		public StringSplitEnumerator Split(char8[] separators, int count)
+		public StringSplitEnumerator Split(Span<char8> separators, int count)
 		{
 			return StringSplitEnumerator(Ptr, Length, separators, count, StringSplitOptions.None);
 		}
 
-		public StringSplitEnumerator Split(char8[] separators, int count, StringSplitOptions options)
+		public StringSplitEnumerator Split(Span<char8> separators, int count, StringSplitOptions options)
 		{
 			return StringSplitEnumerator(Ptr, Length, separators, count, options);
 		}
 
-		public StringSplitEnumerator Split(char8[] separators, StringSplitOptions options)
+		public StringSplitEnumerator Split(Span<char8> separators, StringSplitOptions options)
 		{
 			return StringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, options);
 		}
@@ -2903,6 +3015,16 @@ namespace System
 			}
 		}
 
+		public static String GetById(int id)
+		{
+			if (Compiler.IsComptime)
+			{
+				return Compiler.[Friend]Comptime_GetStringById((.)id);
+			}
+			else
+				return sIdStringLiterals[id];
+		}
+
 		public struct RawEnumerator : IRefEnumerator<char8*>, IEnumerator<char8>
 		{
 			char8* mPtr;
@@ -3079,15 +3201,15 @@ namespace System
 		int_strsize mPos;
 		int_strsize mMatchPos;
 
-		public this(char8* ptr, int strLength, char8[] separators, int count, StringSplitOptions splitOptions)
+		public this(char8* ptr, int strLength, Span<char8> separators, int count, StringSplitOptions splitOptions)
 		{
 			mPtr = ptr;
 			mStrLen = (int_strsize)strLength;
-			if (separators?.Count > 0)
+			if (separators.Length > 0)
 			{
 				mFirstSeparator = separators[0];
 				mSeparatorPtr = &separators[0];
-				mSeparatorCount = (.)separators.Count;
+				mSeparatorCount = (.)separators.Length;
 			}
 			else
 			{
@@ -3281,7 +3403,7 @@ namespace System
 	{
 		StringSplitOptions mSplitOptions;
 		StringView mFirstSeparator;
-		StringView[] mSeparators;
+		Span<StringView> mSeparators;
 		char8* mPtr;
 		int_strsize mStrLen;
 		int32 mCurCount;
@@ -3290,11 +3412,11 @@ namespace System
 		int_strsize mMatchPos;
 		int_strsize mMatchLen;
 
-		public this(char8* ptr, int strLength, StringView[] separators, int count, StringSplitOptions splitOptions)
+		public this(char8* ptr, int strLength, Span<StringView> separators, int count, StringSplitOptions splitOptions)
 		{
 			mPtr = ptr;
 			mStrLen = (int_strsize)strLength;
-			if (separators?.Count > 0)
+			if (separators.Length > 0)
 				mFirstSeparator = separators[0];
 			else
 				mFirstSeparator = .();
@@ -3414,7 +3536,7 @@ namespace System
 				}
 				else
 				{
-					if (mFirstSeparator.IsNull && (mSeparators == null || mSeparators.IsEmpty) && mPtr[mMatchPos].IsWhiteSpace)
+					if (mFirstSeparator.IsNull && (mSeparators.IsEmpty) && mPtr[mMatchPos].IsWhiteSpace)
 					{
 						foundMatch = true;
 						mMatchLen = 1;
@@ -3424,9 +3546,9 @@ namespace System
 						foundMatch = true;
 						mMatchLen = (int_strsize)mFirstSeparator.Length;
 					}
-					else if (mSeparators != null)
+					else if (!mSeparators.IsEmpty)
 					{
-						for (int i = 1; i < mSeparators.Count; i++)
+						for (int i = 1; i < mSeparators.Length; i++)
 						{
 							if (mSeparators[i].Length <= mStrLen - mMatchPos && StringView(&mPtr[mMatchPos], mSeparators[i].Length) == mSeparators[i])
 							{
@@ -4273,27 +4395,27 @@ namespace System
 			return StringStringSplitEnumerator(Ptr, Length, separator, count, options);
 		}
 
-		public StringStringSplitEnumerator Split(params StringView[] separators)
+		public StringStringSplitEnumerator Split(params Span<StringView> separators)
 		{
 			return StringStringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
 		}
 
-		public StringStringSplitEnumerator Split(StringView[] separators)
+		public StringStringSplitEnumerator Split(Span<StringView> separators)
 		{
 			return StringStringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, StringSplitOptions.None);
 		}
 
-		public StringStringSplitEnumerator Split(StringView[] separators, int count)
+		public StringStringSplitEnumerator Split(Span<StringView> separators, int count)
 		{
 			return StringStringSplitEnumerator(Ptr, Length, separators, count, StringSplitOptions.None);
 		}
 
-		public StringStringSplitEnumerator Split(StringView[] separators, int count, StringSplitOptions options)
+		public StringStringSplitEnumerator Split(Span<StringView> separators, int count, StringSplitOptions options)
 		{
 			return StringStringSplitEnumerator(Ptr, Length, separators, count, options);
 		}
 
-		public StringStringSplitEnumerator Split(StringView[] separators, StringSplitOptions options)
+		public StringStringSplitEnumerator Split(Span<StringView> separators, StringSplitOptions options)
 		{
 			return StringStringSplitEnumerator(Ptr, Length, separators, Int32.MaxValue, options);
 		}

@@ -156,6 +156,7 @@ enum TextureFlag : int8
 	TextureFlag_Additive = 1,
 	TextureFlag_NoPremult = 2,
 	TextureFlag_AllowRead = 4,
+	TextureFlag_HasTransFollowing = 8
 };
 
 struct VertexDefData
@@ -200,7 +201,7 @@ public:
 	bool					mClipped;
 	bool					mTexWrap;
 	bool					mWireframe;
-	Rect					mClipRect;
+	RectF					mClipRect;
 	CullMode				mCullMode;
 	Topology3D				mTopology;
 
@@ -212,7 +213,7 @@ public:
 	virtual void SetTexWrap(bool wrap) { mTexWrap = wrap; }
 	virtual void SetWireframe(bool wireframe) { mWireframe = wireframe; }
 	virtual void SetClipped(bool clipped) { mClipped = clipped; }
-	virtual void SetClipRect(const Rect& rect) { mClipRect = rect; }
+	virtual void SetClipRect(const RectF& rect) { mClipRect = rect; }
 	virtual void SetWriteDepthBuffer(bool writeDepthBuffer) { mWriteDepthBuffer = writeDepthBuffer; }
 	virtual void SetDepthFunc(DepthFunc depthFunc) { mDepthFunc = depthFunc; }
 	virtual void SetTopology(Topology3D topology) { mTopology = topology; }

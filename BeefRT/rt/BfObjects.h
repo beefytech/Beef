@@ -59,6 +59,8 @@ namespace bf
 {
 	namespace System
 	{
+		class Type_NOFLAGS;
+
 		struct DbgRawAllocData
 		{
 			Type* mType;
@@ -84,7 +86,7 @@ namespace bf
 				void*(*Alloc)(intptr size);
 				void(*Free)(void* ptr);
 				void(*Object_Delete)(bf::System::Object* obj);
-				void* mUnused0;
+				Type_NOFLAGS*(*ClassVData_GetTypeDataPtr)(bf::System::ClassVData* classVData);
 				bf::System::Type* (*Object_GetType)(bf::System::Object* obj);
 				void(*Object_GCMarkMembers)(bf::System::Object* obj);
 				bf::System::Object* (*Object_DynamicCastToTypeId)(bf::System::Object* obj, int typeId);
@@ -196,28 +198,25 @@ namespace bf
 
 		typedef int32 TypeId;
 
+		enum BfTypeFlags : uint32
+		{
+			BfTypeFlag_HasAppendWantMark = 0x800000
+		};
+
 		class Type : public Object
 		{
-		public:
-			int32 mSize;
-			TypeId mTypeId;
-			TypeId mBoxedId;
-			uint16 mTypeFlags;
-			int32 mMemberDataOffset;
-			uint8 mTypeCode;
-			uint8 mAlign;
-
+		public:			
 			Beefy::String GetFullName();
+			Type_NOFLAGS* GetTypeData();
 		};
 
 		class Type_NOFLAGS
 		{
-		public:
-			intptr mClassVData;
+		public:			
 			int32 mSize;
 			TypeId mTypeId;
 			TypeId mBoxedId;
-			uint16 mTypeFlags;
+			BfTypeFlags mTypeFlags;
 			int32 mMemberDataOffset;
 			uint8 mTypeCode;
 			uint8 mAlign;

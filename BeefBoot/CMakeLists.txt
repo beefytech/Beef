@@ -119,7 +119,7 @@ add_executable(${PROJECT_NAME}
    ${SRC_FILES}
 )
 
-find_package(LLVM 18.1 CONFIG COMPONENTS)
+find_package(LLVM 19.1 CONFIG COMPONENTS)
 
 if (LLVM_FOUND)
   message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -128,7 +128,7 @@ if (LLVM_FOUND)
   include_directories(${LLVM_INCLUDE_DIRS})
   add_definitions(${LLVM_DEFINITIONS})
 
-  set(TARGET_LIBS_OS "-lLLVM-18")
+  set(TARGET_LIBS_OS "-lLLVM-19")
 else()
   message(FATAL_ERROR "LLVM not found")
 endif()

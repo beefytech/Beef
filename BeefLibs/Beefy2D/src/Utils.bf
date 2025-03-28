@@ -6,6 +6,7 @@ using System.Threading;
 using System.IO;
 using System.Diagnostics;
 using System.Security.Cryptography;
+using Beefy.gfx;
 
 namespace Beefy
 {
@@ -21,8 +22,6 @@ namespace Beefy
 
         public static float Deg2Rad = Math.PI_f / 180.0f;
 
-        
-
         public static int32 Rand()
         {
             return mRandom.NextI32();
@@ -31,6 +30,12 @@ namespace Beefy
 		public static float RandFloat()
 		{
 			return (Rand() & 0xFFFFFF) / (float)0xFFFFFF;
+		}
+
+		public static float RandFloatS()
+		{
+#unwarn
+			return ((Rand() & 0x1FFFFFF) / (float)0xFFFFFF) - 1.0f;
 		}
 
 		public static float Interpolate(float left, float right, float pct)
@@ -471,6 +476,13 @@ namespace Beefy
 		public static void RoundScale(ref float val, float scale)
 		{
 			val = (float)Math.Round(val * scale);
+		}
+
+		public static Image GetAnimFrame(Image[] images, float pct)
+		{
+			int frameNum = (int)(images.Count * (pct - 0.000001f));
+			frameNum %= images.Count;
+			return images[frameNum];
 		}
     }        
 }

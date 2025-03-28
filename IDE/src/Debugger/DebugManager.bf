@@ -432,7 +432,8 @@ namespace IDE.Debugger
 		public int32 mActiveCallStackIdx;
 		public Event<Action> mBreakpointsChangedDelegate ~ _.Dispose();
 		public Breakpoint mRunToCursorBreakpoint;
-		public int32 mDebugIdx;
+		public int32 mSessionIdx;
+		public int32 mStateIdx;
 
 		public bool IsRunning
 		{
@@ -464,6 +465,17 @@ namespace IDE.Debugger
 				delete filter;
 			delete mStepFilterList;
 			Debugger_Delete();
+		}
+
+		public void IncrementSessionIdx()
+		{
+			mSessionIdx++;
+			mStateIdx++;
+		}
+
+		public void IncrementStateIdx()
+		{
+			mStateIdx++;
 		}
 
 		public void Reset()
@@ -532,10 +544,8 @@ namespace IDE.Debugger
 
 		public void HotLoad(String[] objectFileNames, int hotIdx)
 		{
-			
-
 			String filenamesStr = scope String();
-			filenamesStr.Join("\n", params objectFileNames);
+			filenamesStr.Join("\n", objectFileNames);
 			Debugger_HotLoad(filenamesStr, (int32)hotIdx);
 
 			// The hot load will bind breakpoints to any new methods, but the old versions

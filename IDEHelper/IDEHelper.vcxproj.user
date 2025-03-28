@@ -20,6 +20,6 @@
     <LocalDebuggerEnvironment>_NO_DEBUG_HEAP=1</LocalDebuggerEnvironment>
   </PropertyGroup>
   <PropertyGroup>
-    <ShowAllFiles>true</ShowAllFiles>
+    <ShowAllFiles>false</ShowAllFiles>
   </PropertyGroup>
 </Project>

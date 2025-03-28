@@ -38,7 +38,7 @@ public:
 class CubicSpline2D
 {
 public:	
-	std::vector<Point2D>	mInputPoints;
+	std::vector<PointF>		mInputPoints;
 	CubicVal*				mXCubicArray;
 	CubicVal*				mYCubicArray;
 
@@ -53,7 +53,7 @@ public:
 	int						GetLength();
 
 	void					Calculate();
-	Point2D					Evaluate(float t);
+	PointF					Evaluate(float t);
 };
 
 NS_BF_END;

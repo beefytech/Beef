@@ -97,6 +97,14 @@ namespace Beefy.geom
 		public T CenterX => mX + mWidth / 2;
 		public T CenterY => mY + mHeight / 2;
 
+		public static Rect<T> operator implicit <TOther>(Rect<TOther> value)
+			where T : operator implicit TOther
+			where TOther : operator TOther + TOther, operator TOther - TOther, operator TOther * TOther, operator TOther / TOther, operator -TOther, operator TOther / int8, IIsNaN, operator implicit int8
+			where int : operator TOther <=> TOther
+		{
+			return .(value.mX, value.mY, value.mWidth, value.mHeight);
+		}
+
         public this(T x = default, T y = default, T width = default, T height = default)
         {
             mX = x;
@@ -236,6 +244,11 @@ namespace Beefy.geom
             mHeight *= scaleY;
         }
 
+		public void Scale(T scale) mut
+		{
+			Scale(scale, scale);
+		}
+
         public void ScaleFrom(T scaleX, T scaleY, T centerX, T centerY) mut
         {
             Offset(-centerX, -centerY);
@@ -249,6 +262,7 @@ namespace Beefy.geom
 		}
     }
 
+	typealias RectI32 = Rect<int32>;
 	typealias Rect = Rect<float>;
 	typealias RectD = Rect<double>;
 }

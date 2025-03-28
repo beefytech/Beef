@@ -695,23 +695,32 @@ namespace IDE
 					    return false;
 					}
 
-					String compilerExePath = scope String();
+					// Set for auto-install without prompting
+					gApp.mSettings.mEmscriptenPendingInstall = false;
+
+					String wasmPath = Path.GetAbsolutePath("../wasm", gApp.mInstallDir, .. scope .());
+					if (!Directory.Exists(wasmPath))
+						Path.GetAbsolutePath("../../wasm", gApp.mInstallDir, wasmPath..Clear());
+					IDEUtils.FixFilePath(wasmPath);
+
 					if (gApp.mSettings.mEmscriptenPath.IsEmpty)
 					{
-						// Set for auto-install without prompting
 						gApp.mSettings.mEmscriptenPendingInstall = true;
+					}
+					else if (!File.Exists(scope $"{wasmPath}/EmsdkDep1_Done.txt"))
+					{
+						gApp.mSettings.mEmscriptenPendingInstall = true;
+					}
 
+					String compilerExePath = scope String();
+					if (gApp.mSettings.mEmscriptenPendingInstall)
+					{
 #if CLI
 						gApp.Fail("Emscripten path not configured. Check Wasm configuration in File\\Preferences\\Settings.");
 						return false;
 #else
 						if (gApp.mSettings.mEmscriptenPendingInstall)
 						{
-							String wasmPath = Path.GetAbsolutePath("../wasm", gApp.mInstallDir, .. scope .());
-							if (!Directory.Exists(wasmPath))
-								Path.GetAbsolutePath("../../wasm", gApp.mInstallDir, wasmPath..Clear());
-							IDEUtils.FixFilePath(wasmPath);
-
 							var runCmd = gApp.QueueRun(scope $"{wasmPath}/fetch_wasm.bat", "", wasmPath, .UTF8);
 							runCmd.mOnlyIfNotFailed = true;
 
@@ -849,8 +858,7 @@ namespace IDE
 
 			if ((workspaceOptions.mEnableObjectDebugFlags) 
    				|| (workspaceOptions.mAllocType == .Debug) 
-       				|| (workspaceOptions.mAllocType == .Stomp)
-	   			|| (workspaceOptions.mAllocStackTraceDepth > 0))
+       			|| (workspaceOptions.mAllocType == .Stomp))
 			{
 				outDbg.Append("Beef", IDEApp.sRTVersionStr, "Dbg");
 				outDbg.Append((Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4) ? "32" : "64");

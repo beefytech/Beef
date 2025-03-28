@@ -5,6 +5,7 @@ using System.Diagnostics;
 using Beefy.gfx;
 using Beefy.sys;
 using System.IO;
+using Beefy.geom;
 
 #if MONOTOUCH
 using MonoTouch;
@@ -109,7 +110,7 @@ namespace Beefy
 
         public virtual void PreDraw(Graphics g)
         {
-            g.PushDrawLayer(mDefaultDrawLayer);            
+            g.PushDrawLayer(mDefaultDrawLayer);
         }
 
         public virtual void PostDraw(Graphics g)
@@ -327,6 +328,9 @@ namespace Beefy
 		static void Static_NativeDragDropFileDelegate(void* window, char8* filePath) { GetBFWindow(window).DragDropFile(StringView(filePath)); }
 		#endif
 
+		public Rect<int32> ClientRect => .(mClientX, mClientY, mClientWidth, mClientHeight);
+		public Rect<int32> WindowRect => .(mX, mY, mWindowWidth, mWindowHeight);
+ 		
 		public this()
 		{
 		}
@@ -479,6 +483,11 @@ namespace Beefy
             Debug.Assert(mNativeWindow != null);
             BFWindow_Resize(mNativeWindow, (int32)x, (int32)y, (int32)width, (int32)height, (int32)showKind);
         }
+
+		public virtual void ResizeClient(int width, int height)
+		{
+			Resize(mX, mY, mWindowWidth + (width - mClientWidth), mWindowHeight + (height - mClientHeight));
+		}
 
         public void SetForeground()
         {

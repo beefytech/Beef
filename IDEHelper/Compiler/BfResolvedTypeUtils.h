@@ -127,6 +127,7 @@ public:
 		DependencyFlag_VirtualCall			= 0x2000000,
 		DependencyFlag_WeakReference		= 0x4000000, // Keeps alive but won't rebuild
 		DependencyFlag_ValueTypeSizeDep		= 0x8000000, // IE: int32[DepType.cVal]
+		DependencyFlag_TypeSignature		= 0x10000000,
 
 		DependencyFlag_DependentUsageMask = ~(DependencyFlag_UnspecializedType | DependencyFlag_MethodGenericArg | DependencyFlag_GenericArgRef)
 	};
@@ -448,7 +449,8 @@ enum BfTypeRebuildFlags
 	BfTypeRebuildFlag_RebuildQueued = 0x20000,
 	BfTypeRebuildFlag_ConstEvalCancelled = 0x40000,
 	BfTypeRebuildFlag_ChangedMidCompile = 0x80000,
-	BfTypeRebuildFlag_PendingGenericArgDep = 0x100000
+	BfTypeRebuildFlag_PendingGenericArgDep = 0x100000,
+	BfTypeRebuildFlag_InRebuildType = 0x200000
 };
 
 class BfTypeDIReplaceCallback;
@@ -459,6 +461,7 @@ enum BfTypeDefineState : uint8
 	BfTypeDefineState_Declaring,
 	BfTypeDefineState_Declared,
 	BfTypeDefineState_ResolvingBaseType,
+	BfTypeDefineState_HasCustomAttributes,
 	BfTypeDefineState_HasInterfaces_Direct,
 	BfTypeDefineState_CETypeInit,
 	BfTypeDefineState_CEPostTypeInit,
@@ -477,6 +480,7 @@ public:
 	Array<BfType*> mParams;
 	bool mHasExplicitThis;
 	bool mHasVarArgs;
+	bool mHasParams;
 	BfCallingConvention mCallingConvention;
 
 public:
@@ -485,6 +489,7 @@ public:
 		mReturnType = NULL;
 		mHasExplicitThis = false;
 		mHasVarArgs = false;
+		mHasParams = false;
 		mCallingConvention = BfCallingConvention_Unspecified;
 	}
 
@@ -554,10 +559,12 @@ public:
 	virtual bool IsUnspecializedTypeVariation() { return false; }
 	virtual bool IsSplattable() { return false; }
 	virtual int GetSplatCount(bool force = false) { return 1; }
+	virtual bool IsCRepr() { return false; }
 	virtual bool IsVoid() { return false; }
 	virtual bool IsVoidPtr() { return false; }
 	virtual bool CanBeValuelessType() { return false; }
 	virtual bool IsValuelessType() { BF_ASSERT(mSize != -1); BF_ASSERT(mDefineState >= BfTypeDefineState_Defined); return mSize == 0; }
+	virtual bool IsValuelessNonOpaqueType() { return IsValuelessType() && !IsOpaque(); }
 	virtual bool IsSelf() { return false; }
 	virtual bool IsDot() { return false; }
 	virtual bool IsVar() { return false; }
@@ -620,6 +627,7 @@ public:
 	virtual bool IsOnDemand() { return false; }
 	virtual bool IsTemporary() { return false; }
 	virtual bool IsModifiedTypeType() { return false; }
+	virtual bool IsParamsType() { return false; }
 	virtual bool IsConcreteInterfaceType() { return false; }
 	virtual bool IsTypeAlias() { return false; }
 	virtual bool HasPackingHoles() { return false; }
@@ -629,6 +637,7 @@ public:
 	virtual bool GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCode = NULL, BfTypeCode* outTypeCode2 = NULL) { return false; }
 	virtual BfType* GetUnderlyingType() { return NULL; }
 	virtual bool HasWrappedRepresentation() { return IsWrappableType(); }
+	virtual bool IsZeroGap() { return true; }
 	virtual bool IsTypeMemberIncluded(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef = NULL, BfModule* module = NULL) { return true; } // May be 'false' only for generic extensions with constraints
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef) { return true; }
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProject* curProject) { return true; }
@@ -903,6 +912,7 @@ public:
 	bool mInCEMachine:1;
 	bool mCeCancelled:1;
 	bool mIsDisposed:1;
+	bool mHasAppendWantMark:1;
 	BfMethodChainType mChainType;
 	BfComptimeFlags mComptimeFlags;
 	BfCallingConvention mCallingConvention;
@@ -946,6 +956,7 @@ public:
 		mInCEMachine = false;
 		mCeCancelled = false;
 		mIsDisposed = false;
+		mHasAppendWantMark = false;
 		mChainType = BfMethodChainType_None;
 		mComptimeFlags = BfComptimeFlag_None;
 		mCallingConvention = BfCallingConvention_Unspecified;
@@ -969,7 +980,7 @@ public:
 	bool IsMixin()
 	{
 		return mMethodDef->mMethodType == BfMethodType_Mixin;
-	}
+	}	
 
 	BfImportKind GetImportKind();
 	BfMethodFlags GetMethodFlags();
@@ -977,6 +988,7 @@ public:
 	void UndoDeclaration(bool keepIRFunction = false);
 	BfTypeInstance* GetOwner();
 	BfModule* GetModule();
+	bool ForcingThisPtr();
 	bool IsSpecializedGenericMethod();
 	bool IsSpecializedGenericMethodOrType();
 	bool IsSpecializedByAutoCompleteMethod();
@@ -1013,7 +1025,7 @@ public:
 	BfExpression* GetParamInitializer(int paramIdx);
 	BfTypeReference* GetParamTypeRef(int paramIdx);
 	BfIdentifierNode* GetParamNameNode(int paramIdx);
-	int DbgGetVirtualMethodNum();
+	int DbgGetVirtualMethodNum();	
 
 	void GetIRFunctionInfo(BfModule* module, BfIRType& returnType, SizedArrayImpl<BfIRType>& paramTypes, bool forceStatic = false);
 	int GetIRFunctionParamCount(BfModule* module);
@@ -1133,6 +1145,7 @@ public:
 	BfType* mElementType;
 
 	virtual bool IsModifiedTypeType() override { return true; }
+	virtual bool IsParamsType() override { return mModifiedKind == BfToken_Params; }
 	virtual bool CanBeValuelessType() override { return true; }
 	virtual bool IsValuelessType() override { return true; }
 
@@ -2059,6 +2072,7 @@ public:
 	bool mHasPackingHoles;
 	bool mWantsGCMarking;
 	bool mHasDeclError;
+	bool mHasAppendWantMark;
 
 public:
 	BfTypeInstance()
@@ -2111,6 +2125,7 @@ public:
 		mWantsGCMarking = false;
 		mHasParameterizedBase = false;
 		mHasDeclError = false;
+		mHasAppendWantMark = false;
 		mMergedFieldDataCount = 0;
 		mConstHolder = NULL;
 	}
@@ -2135,6 +2150,7 @@ public:
 	virtual bool IsIncomplete() override { return (mTypeIncomplete) || (mBaseTypeMayBeIncomplete); }
 	virtual bool IsSplattable() override { BF_ASSERT((mInstSize >= 0) || (!IsComposite())); return mIsSplattable; }
 	virtual int GetSplatCount(bool force = false) override;
+	virtual bool IsCRepr() override;
 	virtual bool IsTypeInstance() override { return true; }
 	virtual BfTypeCode GetTypeCode() override { return mTypeDef->mTypeCode; }
 	virtual bool IsInterface() override { return mTypeDef->mTypeCode == BfTypeCode_Interface; }
@@ -2159,6 +2175,8 @@ public:
 	//virtual bool IsValuelessType() override { return (mIsTypedPrimitive) && (mInstSize == 0); }
 	virtual bool CanBeValuelessType() override { return (mTypeDef->mTypeCode == BfTypeCode_Struct) || (mTypeDef->mTypeCode == BfTypeCode_Enum); }
 	virtual bool IsValuelessType() override;
+	virtual bool IsValuelessCReprType();
+	virtual BfTypeInstance* GetBaseType(bool remapValuelessCRepr = false);
 	virtual bool HasPackingHoles() override { return mHasPackingHoles; }
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef) override;
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProject* curProject) override;
@@ -2178,6 +2196,7 @@ public:
  	virtual bool IsNullable() override;
  	virtual bool HasVarConstraints();
  	virtual bool IsTypeMemberIncluded(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef = NULL, BfModule* module = NULL) override;
+	virtual bool IsZeroGap() override;
 
 	virtual BfTypeInstance* GetImplBaseType() { return mBaseType; }
 
@@ -2205,6 +2224,11 @@ public:
 	bool HasBeenInstantiated() { return mHasBeenInstantiated || ((mAlwaysIncludeFlags & BfAlwaysIncludeFlag_AssumeInstantiated) != 0); }
 	bool IncludeAllMethods() { return ((mAlwaysIncludeFlags & BfAlwaysIncludeFlag_IncludeAllMethods) != 0); }
 	bool DefineStateAllowsStaticMethods() { return mDefineState >= BfTypeDefineState_HasInterfaces_Direct; }
+	bool IsAnonymous();
+	bool IsAnonymousInitializerType();
+	bool HasAppendCtor();
+	bool BaseHasAppendCtor();
+	bool HasAppendedField(bool checkBase);
 
 	virtual void ReportMemory(MemReporter* memReporter) override;
 };
@@ -2533,7 +2557,7 @@ public:
 	virtual bool IsUnspecializedType() override { return mElementType->IsUnspecializedType(); }
 	virtual bool IsUnspecializedTypeVariation() override { return mElementType->IsUnspecializedTypeVariation(); }
 	virtual bool CanBeValuelessType() override { return mElementType->CanBeValuelessType(); }
-	virtual bool IsValuelessType() override { return mElementType->IsValuelessType(); }
+	virtual bool IsValuelessType() override { return mElementType->IsValuelessNonOpaqueType(); }
 };
 
 class BfArrayType : public BfTypeInstance
@@ -2669,6 +2693,7 @@ public:
 	Array<BfCustomAttributeSetProperty> mSetProperties;
 	Array<BfCustomAttributeSetField> mSetField;
 	bool mAwaitingValidation;
+	bool mIsMultiUse;
 
 	BfAstNode* GetRefNode()
 	{
@@ -2690,11 +2715,7 @@ public:
 	void ReportMemory(MemReporter* memReporter);
 };
 
-class BfResolvedTypeSetFuncs : public MultiHashSetFuncs
-{
-};
-
-class BfResolvedTypeSet : public MultiHashSet<BfType*, BfResolvedTypeSetFuncs>
+class BfResolvedTypeSet : public MultiHashSet<BfType*, AllocatorCLib>
 {
 public:
 	enum BfHashFlags
@@ -2703,6 +2724,7 @@ public:
 		BfHashFlag_AllowRef = 1,
 		BfHashFlag_AllowGenericParamConstValue = 2,
 		BfHashFlag_AllowDotDotDot = 4,
+		BfHashFlag_DisallowPointer = 8
 	};
 
 	struct BfExprResult
@@ -2749,7 +2771,7 @@ public:
 		BfTypeDef* ResolveToTypeDef(BfTypeReference* typeReference, BfType** outType = NULL);
 	};
 
-	class Iterator : public MultiHashSet<BfType*, BfResolvedTypeSetFuncs>::Iterator
+	class Iterator : public MultiHashSet<BfType*, AllocatorCLib>::Iterator
 	{
 	public:
 		Iterator(MultiHashSet* set) : MultiHashSet::Iterator(set)
@@ -2801,6 +2823,7 @@ public:
 	static int DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags, int& hashSeed);
 	static int Hash(BfTypeReference* typeRef, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
 	static int Hash(BfAstNode* typeRefNode, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
+	static void ShowThisPointerWarning(LookupContext* ctx, BfTypeReference* typeRef);
 
 	static bool Equals(BfType* lhs, BfType* rhs, LookupContext* ctx);
 	static bool Equals(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx);
@@ -2835,28 +2858,51 @@ public:
 		{
 			return false;
 		}
-		int bucket = (hashVal & 0x7FFFFFFF) % mHashSize;
-		auto checkEntryIdx = mHashHeads[bucket];
-		while (checkEntryIdx != -1)
+
+		while (true)
 		{
-			auto checkEntry = &mEntries[checkEntryIdx];
+			int startAllocSize = mAllocSize;
+			int bucket = (hashVal & 0x7FFFFFFF) % mHashSize;
+			auto startEntryIdx = mHashHeads[bucket];
+			auto checkEntryIdx = startEntryIdx;
+			bool needsRerun = false;
 
-			// checkEntry->mType can be NULL if we're in the process of filling it in (and this Insert is from an element type)
-			//  OR if the type resolution failed after node insertion
-			if ((checkEntry->mValue != NULL) && (hashVal == checkEntry->mHashCode) && (Equals(checkEntry->mValue, findType, ctx)))
+			while (checkEntryIdx != -1)
 			{
-				*entryPtr = EntryRef(this, checkEntryIdx);
-				return false;
-			}
-			checkEntryIdx = checkEntry->mNext;
+				auto checkEntry = &mEntries[checkEntryIdx];
 
-			tryCount++;
-			// If this fires off, this may indicate that our hashes are equivalent but Equals fails
-			if (tryCount >= 10)
-			{
-				NOP;
+				// checkEntry->mType can be NULL if we're in the process of filling it in (and this Insert is from an element type)
+				//  OR if the type resolution failed after node insertion
+				if ((checkEntry->mValue != NULL) && (hashVal == checkEntry->mHashCode) && (Equals(checkEntry->mValue, findType, ctx)))
+				{
+					*entryPtr = EntryRef(this, checkEntryIdx);
+					return false;
+				}
+
+				if ((mAllocSize != startAllocSize) || (startEntryIdx != mHashHeads[bucket]))
+				{
+					// It's possible for Equals to add types, buckets could be invalid or a new type could
+					//  have been inserted at the start of our bucket
+					needsRerun = true;
+					break;
+				}
+
+				checkEntryIdx = checkEntry->mNext;
+
+				tryCount++;
+				// If this fires off, this may indicate that our hashes are equivalent but Equals fails
+				if (tryCount >= 10)
+				{
+					NOP;
+				}
+				BF_ASSERT(tryCount < 10);
 			}
-			BF_ASSERT(tryCount < 10);
+			
+			if (!needsRerun)
+			{
+				// Retry if we added entries
+				break;
+			}
 		}
 
 		if ((ctx->mResolveFlags & BfResolveTypeRefFlag_NoCreate) != 0)

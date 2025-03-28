@@ -141,13 +141,13 @@ namespace System.IO
 
 		public static bool Exists(StringView fileName)
 		{
-			return Platform.BfpFile_Exists(fileName.ToScopeCStr!());
+			return Platform.Hook.BfpFile_Exists(fileName.ToScopeCStr!());
 		}
 
 		public static Result<void, Platform.BfpFileResult> Delete(StringView fileName)
 		{
 			Platform.BfpFileResult result = default;
-			Platform.BfpFile_Delete(fileName.ToScopeCStr!(), &result);
+			Platform.Hook.BfpFile_Delete(fileName.ToScopeCStr!(), &result);
 			if ((result != .Ok) && (result != .NotFound))
 				return .Err(result);
 			return .Ok;
@@ -156,7 +156,7 @@ namespace System.IO
 		public static Result<void, Platform.BfpFileResult> Move(StringView fromPath, StringView toPath)
 		{
 			Platform.BfpFileResult result = default;
-			Platform.BfpFile_Rename(fromPath.ToScopeCStr!(), toPath.ToScopeCStr!(), &result);
+			Platform.Hook.BfpFile_Rename(fromPath.ToScopeCStr!(), toPath.ToScopeCStr!(), &result);
 			if (result != .Ok)
 				return .Err(result);
 			return .Ok;
@@ -165,7 +165,7 @@ namespace System.IO
 		public static Result<void, Platform.BfpFileResult> Copy(StringView fromPath, StringView toPath)
 		{
 			Platform.BfpFileResult result = default;
-			Platform.BfpFile_Copy(fromPath.ToScopeCStr!(), toPath.ToScopeCStr!(), .Always, &result);
+			Platform.Hook.BfpFile_Copy(fromPath.ToScopeCStr!(), toPath.ToScopeCStr!(), .Always, &result);
 			if (result != .Ok)
 				return .Err(result);
 			return .Ok;
@@ -174,7 +174,7 @@ namespace System.IO
 		public static Result<void, Platform.BfpFileResult> CopyIfNewer(StringView fromPath, StringView toPath)
 		{
 			Platform.BfpFileResult result = default;
-			Platform.BfpFile_Copy(fromPath.ToScopeCStr!(), toPath.ToScopeCStr!(), .IfNewer, &result);
+			Platform.Hook.BfpFile_Copy(fromPath.ToScopeCStr!(), toPath.ToScopeCStr!(), .IfNewer, &result);
 			if (result != .Ok)
 				return .Err(result);
 			return .Ok;
@@ -183,7 +183,7 @@ namespace System.IO
 		public static Result<void, Platform.BfpFileResult> Copy(StringView fromPath, StringView toPath, bool overwrite)
 		{
 			Platform.BfpFileResult result = default;
-			Platform.BfpFile_Copy(fromPath.ToScopeCStr!(), toPath.ToScopeCStr!(), overwrite ? .Always : .IfNotExists, &result);
+			Platform.Hook.BfpFile_Copy(fromPath.ToScopeCStr!(), toPath.ToScopeCStr!(), overwrite ? .Always : .IfNotExists, &result);
 			if (result != .Ok)
 				return .Err(result);
 			return .Ok;
@@ -192,7 +192,7 @@ namespace System.IO
 		public static Result<void, Platform.BfpFileResult> SetAttributes(StringView path, FileAttributes attr)
 		{
 			Platform.BfpFileResult result = default;
-			Platform.BfpFile_SetAttributes(path.ToScopeCStr!(), (Platform.BfpFileAttributes)attr, &result);
+			Platform.Hook.BfpFile_SetAttributes(path.ToScopeCStr!(), (Platform.BfpFileAttributes)attr, &result);
 			if (result != .Ok)
 				return .Err(result);
 			return .Ok;
@@ -200,12 +200,47 @@ namespace System.IO
 
 		public static Result<DateTime> GetLastWriteTime(StringView fullPath)
 		{
-			return DateTime.FromFileTime((int64)Platform.BfpFile_GetTime_LastWrite(fullPath.ToScopeCStr!()));
+			return DateTime.FromFileTime((int64)Platform.Hook.BfpFile_GetTime_LastWrite(fullPath.ToScopeCStr!()));
 		}
 
 		public static Result<DateTime> GetLastWriteTimeUtc(StringView fullPath)
 		{
-			return DateTime.FromFileTimeUtc((int64)Platform.BfpFile_GetTime_LastWrite(fullPath.ToScopeCStr!()));
+			return DateTime.FromFileTimeUtc((int64)Platform.Hook.BfpFile_GetTime_LastWrite(fullPath.ToScopeCStr!()));
 		}
+	}
+
+	class FileInfo
+	{
+		FileFindEntry mFileFindEntry;
+
+		public this(StringView path)
+		{
+			let findFileData = Platform.Hook.BfpFindFileData_FindFirstFile(path.ToScopeCStr!(), .Files, null);
+			if (findFileData == null)
+				return;
+			mFileFindEntry = .(new .(path), findFileData);
+		}
+
+		public ~this()
+		{
+			if (mFileFindEntry.[Friend]mSearchStr != null)
+			{
+				delete mFileFindEntry.[Friend]mSearchStr;
+				Platform.Hook.BfpFindFileData_Release(mFileFindEntry.[Friend]mFindFileData);
+			}
+		}
+
+		public bool Exists => mFileFindEntry;
+		public bool IsDirectory => mFileFindEntry ? mFileFindEntry.IsDirectory : default;
+		public void GetFileName(String outFileName) { if (mFileFindEntry) mFileFindEntry.GetFileName(outFileName); }
+		public void GetFilePath(String outPath) { if (mFileFindEntry) mFileFindEntry.GetFilePath(outPath); }
+		public DateTime GetLastWriteTime() => mFileFindEntry ? mFileFindEntry.GetLastWriteTime() : default;
+		public DateTime GetLastWriteTimeUtc() => mFileFindEntry ? mFileFindEntry.GetLastWriteTimeUtc() : default;
+		public DateTime GetCreatedTime() => mFileFindEntry ? mFileFindEntry.GetCreatedTime() : default;
+		public DateTime GetCreatedTimeUtc() => mFileFindEntry ? mFileFindEntry.GetCreatedTimeUtc() : default;
+		public DateTime GetAccessedTime() => mFileFindEntry ? mFileFindEntry.GetAccessedTime() : default;
+		public DateTime GetAccessedTimeUtc() => mFileFindEntry ? mFileFindEntry.GetAccessedTimeUtc() : default;
+		public int64 GetFileSize() => mFileFindEntry ? mFileFindEntry.GetFileSize() : default;
+		public Platform.BfpFileAttributes GetFileAttributes() => mFileFindEntry ? mFileFindEntry.GetFileAttributes() : default;
 	}
 }

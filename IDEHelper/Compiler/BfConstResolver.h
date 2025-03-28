@@ -19,6 +19,7 @@ enum BfConstResolveFlags
 	BfConstResolveFlag_NoActualizeValues = 0x10,
 	BfConstResolveFlag_ArrayInitSize = 0x20,
 	BfConstResolveFlag_AllowGlobalVariable = 0x40,
+	BfConstResolveFlag_NoConversionOperator = 0x80
 };
 
 class BfConstResolver : public BfExprEvaluator

@@ -367,11 +367,7 @@ namespace IDE.ui
 						{
 							String lineStr = scope String();
 							editWidgetContent.ExtractString(lineStart, idx - lineStart, lineStr);
-
-							//String fileName = editData.mFilePath;
-							//String fileName = scope String();
-							//projectSource.GetFullImportPath(fileName);
-
+							lineStr.Trim();
 							gApp.mFindResultsPanel.QueueLine(editData, lineNum, 0, lineStr);
 							
 							wantsLine = false;
@@ -719,7 +715,7 @@ namespace IDE.ui
                         editWidgetContent.mData.mUndoManager.Add(insertTextAction);
                         editWidgetContent.PhysInsertAtCursor(newStr, false);
 
-                        if (spanStart <= cursorPos)
+						if (spanStart + strLenDiff <= cursorPos)
                             cursorPos += strLenDiff;
                     }                    
 

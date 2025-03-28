@@ -5934,8 +5934,13 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 					auto& displayStringList = debugVis->mStringViews;
 
 					DwFormatInfo formatInfo;
+					formatInfo.mCallStackIdx = mCallStackIdx;
 					formatInfo.mRawString = true;
 					formatInfo.mLanguage = language;
+					formatInfo.mNamespaceSearch = mNamespaceSearchStr;
+					formatInfo.mExplicitThis = mExplicitThis;
+					if (mReferenceId != NULL)
+						formatInfo.mReferenceId = *mReferenceId;
 					if (!displayEntry->mCondition.empty())
 					{
 						if (!mDebugger->EvalCondition(debugVis, dbgCompileUnit, useTypedValue, formatInfo, displayEntry->mCondition, dbgVisWildcardCaptures, displayString))
@@ -5943,14 +5948,15 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 					}
 
 					String displayStr = mDebugger->mDebugManager->mDebugVisualizers->DoStringReplace(displayEntry->mString, dbgVisWildcardCaptures);
-					mDebugger->ProcessEvalString(dbgCompileUnit, useTypedValue, displayStr, displayString, formatInfo, debugVis, false);
+					if (mDebugger->ProcessEvalString(dbgCompileUnit, useTypedValue, displayStr, displayString, formatInfo, debugVis, false))
+					{
+						bool isEq = displayString == resultTypedValue->mCharPtr;
 
-					bool isEq = displayString == resultTypedValue->mCharPtr;
-
-					auto boolType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
-					mResult.mType = boolType;
-					mResult.mBool = isEq == ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality));
-					return;
+						auto boolType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
+						mResult.mType = boolType;
+						mResult.mBool = isEq == ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality));
+						return;
+					}
 				}
 			}
 		}

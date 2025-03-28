@@ -543,11 +543,12 @@ BfDeferredCallEntry* BfModule::AddDeferredBlock(BfBlock* block, BfScopeData* sco
 	return deferredCallEntry;
 }
 
-BfDeferredCallEntry* BfModule::AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scopeData, BfAstNode* srcNode, bool bypassVirtual, bool doNullCheck)
+BfDeferredCallEntry* BfModule::AddDeferredCall(const BfModuleMethodInstance& moduleMethodInstance, SizedArrayImpl<BfIRValue>& llvmArgs, BfScopeData* scopeData, BfAstNode* srcNode, bool bypassVirtual, bool doNullCheck, bool isAllocaFunc)
 {
 	BfDeferredCallEntry* deferredCallEntry = new BfDeferredCallEntry();
 	BF_ASSERT(moduleMethodInstance);
 	deferredCallEntry->mModuleMethodInstance = moduleMethodInstance;
+	deferredCallEntry->mIsAllocaFunc = isAllocaFunc;
 
 	for (auto arg : llvmArgs)
 	{
@@ -783,7 +784,12 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 	}
 
 	BfExprEvaluator expressionEvaluator(this);
-	expressionEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, moduleMethodInstance.mFunc, ((flags & BfDeferredBlockFlag_BypassVirtual) != 0), llvmArgs);
+
+	auto func = moduleMethodInstance.mFunc;
+	if ((flags & BfDeferredBlockFlag_IsAllocaFunc) != 0)
+		func = mBfIRBuilder->CreateLoad(func);
+
+	expressionEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, func, ((flags & BfDeferredBlockFlag_BypassVirtual) != 0), llvmArgs);
 
 	if ((flags & BfDeferredBlockFlag_DoNullChecks) != 0)
 	{
@@ -914,6 +920,8 @@ void BfModule::EmitDeferredCall(BfScopeData* scopeData, BfDeferredCallEntry& def
 		flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_DoNullChecks | BfDeferredBlockFlag_SkipObjectAccessCheck | BfDeferredBlockFlag_MoveNewBlocksToEnd);
 	if (moveBlocks)
 		flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_MoveNewBlocksToEnd);
+	if (deferredCallEntry.mIsAllocaFunc)
+		flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_IsAllocaFunc);
 
 	EmitDeferredCall(deferredCallEntry.mModuleMethodInstance, args, flags);
 }
@@ -926,6 +934,7 @@ void BfModule::EmitDeferredCallProcessor(BfScopeData* scopeData, SLIList<BfDefer
 	{
 		BfModuleMethodInstance mModuleMethodInstance;
 		bool mBypassVirtual;
+		bool mIsAllocaFunc;
 	};
 
 	//typedef std::map<int64, _CallInfo> MapType;
@@ -951,6 +960,7 @@ void BfModule::EmitDeferredCallProcessor(BfScopeData* scopeData, SLIList<BfDefer
 			{
 				callInfo->mModuleMethodInstance = moduleMethodInstance;
 				callInfo->mBypassVirtual = deferredCallEntry->mBypassVirtual;
+				callInfo->mIsAllocaFunc = deferredCallEntry->mIsAllocaFunc;
 			}
 			else
 			{
@@ -1118,6 +1128,7 @@ void BfModule::EmitDeferredCallProcessor(BfScopeData* scopeData, SLIList<BfDefer
 	{
 		auto moduleMethodInstance = callInfoKV.mValue.mModuleMethodInstance;
 		bool bypassVirtual = callInfoKV.mValue.mBypassVirtual;
+		bool isAllocaFunc = callInfoKV.mValue.mIsAllocaFunc;
 		auto methodInstance = moduleMethodInstance.mMethodInstance;
 		auto methodDef = methodInstance->mMethodDef;
 		auto methodOwner = methodInstance->mMethodInstanceGroup->mOwner;
@@ -1204,6 +1215,8 @@ void BfModule::EmitDeferredCallProcessor(BfScopeData* scopeData, SLIList<BfDefer
 			flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_DoNullChecks | BfDeferredBlockFlag_SkipObjectAccessCheck);
 		if (bypassVirtual)
 			flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_BypassVirtual);
+		if (isAllocaFunc)
+			flags = (BfDeferredBlockFlags)(flags | BfDeferredBlockFlag_IsAllocaFunc);
 		EmitDeferredCall(moduleMethodInstance, llvmArgs, flags);
 		ValueScopeEnd(valueScopeStart);
 		mBfIRBuilder->CreateBr(condBB);
@@ -1585,11 +1598,15 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 				{
 					if (initValue.mType->IsNullable())
 					{
+						auto nullableElementType = initValue.mType->GetUnderlyingType();
 						auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
 						initValue = LoadValue(initValue);
-						exprEvaluator->mResult = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, 2), boolType);
+						exprEvaluator->mResult = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, nullableElementType->IsValuelessType() ? 1 : 2), boolType);
 						handledExprBoolResult = true;
-						initValue = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, 1), initValue.mType->GetUnderlyingType());
+						if (!nullableElementType->IsValuelessType())
+							initValue = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, 1), initValue.mType->GetUnderlyingType());
+						else
+							initValue = BfTypedValue(mBfIRBuilder->GetFakeVal(), nullableElementType);						
 					}
  					else
  					{
@@ -1659,7 +1676,11 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 
 	auto _CheckConst = [&]
 	{
-		if (initValue.mValue.IsConst())
+		if (initValue.IsAddr())
+		{
+			isConst = false;
+		}
+		else if (initValue.mValue.IsConst())
 		{
 			auto constant = mBfIRBuilder->GetConstant(initValue.mValue);
 
@@ -1778,6 +1799,11 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 				resolvedType = initValue.mType;
 				unresolvedType = resolvedType;
 			}
+
+ 			if (auto autoComplete = mCompiler->GetAutoComplete())
+ 			{
+ 				autoComplete->CheckResult(varDecl->mInitializer, initValue);
+ 			}
 		}
 		if ((!handledVarInit) && (!isConst))
 		{
@@ -1878,7 +1904,8 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		if (!initValue)
 			initValue = GetDefaultTypedValue(localDef->mResolvedType);
 
-		localDef->mAddr = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapType(localDef->mResolvedType), false, BfIRLinkageType_Internal, initValue.mValue, name);;
+		if (!localDef->mResolvedType->IsValuelessType())
+			localDef->mAddr = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapType(localDef->mResolvedType), false, BfIRLinkageType_Internal, initValue.mValue, name);;
 		initHandled = true;
 	}
 
@@ -1900,7 +1927,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			localDef->mValue = initValue.mValue;
 			if ((localDef->mAddr) && (!localDef->mResolvedType->IsValuelessType()))
 			{
-				if (!initValue.mType->IsVar())
+				if ((!initValue.mType->IsVar()) && (!initValue.mType->IsValuelessType()))
 					wantsStore = true;
 			}
 			else
@@ -2165,6 +2192,7 @@ void BfModule::HandleTupleVariableDeclaration(BfVariableDeclaration* varDecl, Bf
 		initTupleType = (BfTypeInstance*)initTupleValue.mType;
 
 	CheckTupleVariableDeclaration(tupleExpr, initTupleValue.mType);
+	mBfIRBuilder->PopulateType(initTupleValue.mType);
 
 	for (int varIdx = 0; varIdx < (int)tupleExpr->mValues.size(); varIdx++)
 	{
@@ -2183,7 +2211,7 @@ void BfModule::HandleTupleVariableDeclaration(BfVariableDeclaration* varDecl, Bf
 					initValue = LoadValue(initValue);
 				}
 				else
-					initValue = BfTypedValue(mBfIRBuilder->CreateExtractValue(initTupleValue.mValue, fieldInstance->mDataIdx), resolvedType);
+					initValue = ExtractValue(initTupleValue, fieldInstance, fieldInstance->mDataIdx);					
 			}
 
 			BfTupleNameNode* tupleNameNode = NULL;
@@ -2375,6 +2403,7 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 		BfTypedValue mArgValue;
 		BfTypedValue mTupleElement;
 		int mFieldIdx;
+		bool mIsOut;
 	};
 	Array<DeferredAssign> deferredAssigns;
 
@@ -2426,9 +2455,9 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 
 			if (prevHadFallthrough)
 				Fail("Destructuring cannot be used when the previous case contains a fallthrough", expr);
+			
+			CreateOutVariable(expr, varDecl, NULL, tupleElement.mType, tupleElement);
 
-			auto localVar = HandleVariableDeclaration(varDecl, tupleElement, false, true);
-			localVar->mReadFromId = 0; // Don't give usage errors for binds
 			continue;
 		}
 
@@ -2452,6 +2481,9 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 
 					auto localVar = HandleVariableDeclaration(resolvedType, binOpExpr->mRight, tupleElement, false, true);
 					localVar->mReadFromId = 0; // Don't give usage errors for binds
+					auto curScope = mCurMethodState->mCurScope;
+					if (curScope->mScopeKind == BfScopeKind_StatementTarget)
+						MoveLocalToParentScope(localVar);					
 					continue;
 				}
 			}
@@ -2526,7 +2558,7 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 
 				BfExprEvaluator exprEvaluator(this);
 				exprEvaluator.mExpectingType = tupleFieldInstance->GetResolvedType();
-				exprEvaluator.mBfEvalExprFlags = BfEvalExprFlags_AllowOutExpr;
+				exprEvaluator.mBfEvalExprFlags = (BfEvalExprFlags)(BfEvalExprFlags_AllowOutExpr | BfEvalExprFlags_AllowRefExpr);
 				if (mCurMethodState->mDeferredLocalAssignData != NULL)
 				{
 					SetAndRestoreValue<bool> prevIsIfCondition(mCurMethodState->mDeferredLocalAssignData->mIsIfCondition, true);
@@ -2548,25 +2580,30 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 				if (argValue.mType->IsRef())
 				{
 					auto refType = (BfRefType*)argValue.mType;
-					if (refType->mRefKind != BfRefType::RefKind_Out)
-					{
-						BfAstNode* refNode = expr;
-						if (auto unaryOperatorExpr = BfNodeDynCast<BfUnaryOperatorExpression>(expr))
-							refNode = unaryOperatorExpr->mOpToken;
-						Fail("Only 'out' refs can be used to assign to an existing value", refNode);
-					}
-
-					DeferredAssign deferredAssign = { expr, argValue, tupleElement, tupleFieldIdx };
+					bool isOut = refType->mRefKind == BfRefType::RefKind_Out;
+ 					if ((refType->mRefKind != BfRefType::RefKind_Out) && (refType->mRefKind != BfRefType::RefKind_Ref))
+ 					{
+ 						BfAstNode* refNode = expr;
+ 						if (auto unaryOperatorExpr = BfNodeDynCast<BfUnaryOperatorExpression>(expr))
+ 							refNode = unaryOperatorExpr->mOpToken;
+ 						Fail("Invalid ref type", refNode);
+ 					}
+					
+					DeferredAssign deferredAssign = { expr, argValue, tupleElement, tupleFieldIdx, isOut };
 					deferredAssigns.push_back(deferredAssign);
-					if (mCurMethodState->mDeferredLocalAssignData != NULL)
-					{
-						SetAndRestoreValue<bool> prevIsIfCondition(mCurMethodState->mDeferredLocalAssignData->mIsIfCondition, true);
-						SetAndRestoreValue<bool> prevIfMayBeSkipped(mCurMethodState->mDeferredLocalAssignData->mIfMayBeSkipped, true);
-						exprEvaluator.MarkResultAssigned();
-					}
-					else
-					{
-						exprEvaluator.MarkResultAssigned();
+
+					if (isOut)
+					{						
+						if (mCurMethodState->mDeferredLocalAssignData != NULL)
+						{
+							SetAndRestoreValue<bool> prevIsIfCondition(mCurMethodState->mDeferredLocalAssignData->mIsIfCondition, true);
+							SetAndRestoreValue<bool> prevIfMayBeSkipped(mCurMethodState->mDeferredLocalAssignData->mIfMayBeSkipped, true);
+							exprEvaluator.MarkResultAssigned();
+						}
+						else
+						{
+							exprEvaluator.MarkResultAssigned();
+						}
 					}
 					continue;
 				}
@@ -2620,6 +2657,9 @@ void BfModule::HandleCaseEnumMatch_Tuple(BfTypedValue tupleVal, const BfSizedArr
 		mBfIRBuilder->SetInsertPoint(falseBlockEnd);
 		for (auto& deferredAssign : deferredAssigns)
 		{
+			if (!deferredAssign.mIsOut)
+				continue;
+
 			auto tupleFieldInstance = &tupleType->mFieldInstances[deferredAssign.mFieldIdx];
 			// We have to re-process the expr because we haven't done it in this branch, and then clear the result out
 			SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, mHadBuildError); // Don't fail twice
@@ -2882,6 +2922,7 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 		tagVal = GetDefaultTypedValue(tagType);
 	}
 
+	BfIRValue eqResult;
 	for (int fieldIdx = 0; fieldIdx < (int)enumType->mFieldInstances.size(); fieldIdx++)
 	{
 		auto fieldInstance = &enumType->mFieldInstances[fieldIdx];
@@ -2913,12 +2954,31 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 			PopulateType(tupleType);
 			mBfIRBuilder->PopulateType(tupleType);
 
+			if (tupleType->IsDeleting())
+			{
+				mCompiler->RequestExtraCompile();
+				InternalError("TryCaseEnumMatch using deleted type", expr);
+				return BfTypedValue();
+			}
+
 			auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
 			tagId = -fieldInstance->mDataIdx - 1;
 
 			auto startBlock = mBfIRBuilder->GetInsertBlock();
 			auto dscrType = enumType->GetDiscriminatorType();
 			BfIRValue eqResult = mBfIRBuilder->CreateCmpEQ(tagVal.mValue, mBfIRBuilder->CreateConst(dscrType->mTypeDef->mTypeCode, tagId));
+
+			bool isConstMatch = false;
+			bool isConstIgnore = false;
+			if (auto constant = mBfIRBuilder->GetConstant(eqResult))
+			{
+				isConstMatch = constant->mBool;
+				isConstIgnore = !constant->mBool;
+			}
+
+			SetAndRestoreValue<bool> prevIgnoreWrite(mBfIRBuilder->mIgnoreWrites);
+			if (isConstIgnore)
+				mBfIRBuilder->mIgnoreWrites = true;
 
 			BfIRBlock falseBlockStart;
 			BfIRBlock falseBlockEnd;
@@ -2939,13 +2999,17 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 			BfIRBlock matchedBlockEnd = matchedBlockStart;
 			if (matchBlock != NULL)
 				*matchBlock = matchedBlockStart;
-			mBfIRBuilder->CreateCondBr(eqResult, matchedBlockStart, falseBlockStart ? falseBlockStart : doneBlockStart);
+
+			if (isConstMatch)
+				mBfIRBuilder->CreateBr(matchedBlockStart);
+			else
+				mBfIRBuilder->CreateCondBr(eqResult, matchedBlockStart, falseBlockStart ? falseBlockStart : doneBlockStart);
 
 			mBfIRBuilder->AddBlock(matchedBlockStart);
 
 			mBfIRBuilder->SetInsertPoint(doneBlockEnd);
 			BfIRValue phiVal;
-			if (eqBlock == NULL)
+			if ((eqBlock == NULL) && (!isConstIgnore) && (!isConstMatch))
 				phiVal = mBfIRBuilder->CreatePhi(mBfIRBuilder->MapType(boolType), 1 + (int)tupleType->mFieldInstances.size());
 
 			mBfIRBuilder->SetInsertPoint(matchedBlockEnd);
@@ -3087,6 +3151,8 @@ BfTypedValue BfModule::TryCaseEnumMatch(BfTypedValue enumVal, BfTypedValue tagVa
 
 			if (phiVal)
 				return BfTypedValue(phiVal, boolType);
+			else if (eqResult)
+				return BfTypedValue(eqResult, boolType);
 			else
 				return GetDefaultTypedValue(boolType);
 		}
@@ -4162,47 +4228,73 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 	auto val = CreateValueFromExpression(deleteStmt->mExpression);
 	if (!val)
 		return;
-
-	if (val.mType->IsAllocType())
-		val.mType = val.mType->GetUnderlyingType();
-
-	BfGenericParamType* genericType = NULL;
-	if (val.mType->IsGenericParam())
-		genericType = (BfGenericParamType*)val.mType;
-	if ((val.mType->IsPointer()) && (val.mType->GetUnderlyingType()->IsGenericParam()))
-		genericType = (BfGenericParamType*)val.mType->GetUnderlyingType();
-
+	
 	auto checkType = val.mType;
-	if (genericType != NULL)
+	for (int pass = 0; pass < 2; pass++)
 	{
-		BfGenericParamFlags genericParamFlags = BfGenericParamFlag_None;
-		BfType* typeConstraint = NULL;
-		auto genericParam = GetMergedGenericParamData(genericType, genericParamFlags, typeConstraint);
+		BfGenericParamType* genericType = NULL;
+		if (checkType->IsGenericParam())
+			genericType = (BfGenericParamType*)checkType;
+		if ((checkType->IsPointer()) && (checkType->GetUnderlyingType()->IsGenericParam()))
+			genericType = (BfGenericParamType*)checkType->GetUnderlyingType();
+		if ((genericType != NULL) || (checkType->IsUnspecializedType()))
+		{		
+			BfGenericParamFlags genericParamFlags = BfGenericParamFlag_None;
+			BfType* typeConstraint = NULL;
+			BfGenericParamInstance* genericParam = NULL;
+			if (genericType != NULL)
+				genericParam = GetMergedGenericParamData(genericType, genericParamFlags, typeConstraint);
+			if (genericParam == NULL)
+				GetMergedGenericParamData(checkType, genericParamFlags, typeConstraint);
 
-		if (typeConstraint != NULL)
-			checkType = typeConstraint;
-		bool canAlwaysDelete = checkType->IsDelegate() || checkType->IsFunction() || checkType->IsArray();
-		if (auto checkTypeInst = checkType->ToTypeInstance())
-		{
-			if ((checkTypeInst->IsInstanceOf(mCompiler->mDelegateTypeDef)) ||
-				(checkTypeInst->IsInstanceOf(mCompiler->mFunctionTypeDef)))
-				canAlwaysDelete = true;
-		}
+			if (typeConstraint != NULL)
+				checkType = typeConstraint;
+			bool canAlwaysDelete = checkType->IsDelegate() || checkType->IsFunction() || checkType->IsArray();
+			if (auto checkTypeInst = checkType->ToTypeInstance())
+			{
+				if ((checkTypeInst->IsInstanceOf(mCompiler->mDelegateTypeDef)) ||
+					(checkTypeInst->IsInstanceOf(mCompiler->mFunctionTypeDef)))
+					canAlwaysDelete = true;
+			}
 
-		if (!canAlwaysDelete)
-		{
-			if (genericParamFlags & (BfGenericParamFlag_Delete | BfGenericParamFlag_Var))
-				return;
-			if (genericParamFlags & BfGenericParamFlag_StructPtr)
-				return;
-			if ((genericParamFlags & BfGenericParamFlag_Struct) && (checkType->IsPointer()))
-				return;
-			auto genericParamInst = GetGenericParamInstance(genericType);
-			Fail(StrFormat("Must add 'where %s : delete' constraint to generic parameter to delete generic type '%s'",
-				genericParamInst->GetGenericParamDef()->mName.c_str(), TypeToString(val.mType).c_str()), deleteStmt->mExpression);
-			return;
+			if (!canAlwaysDelete)
+			{
+				bool success = false;
+				if (genericParamFlags & (BfGenericParamFlag_Delete | BfGenericParamFlag_Var))
+					success = true;
+				else if (genericParamFlags & BfGenericParamFlag_StructPtr)
+					success = true;
+				else if ((genericParamFlags & BfGenericParamFlag_Struct) && (checkType->IsPointer()))
+					success = true;
+
+				if (success)
+				{
+					if ((pass == 1) && (genericType != NULL))
+					{
+						auto genericParamInst = GetGenericParamInstance(genericType);
+						Warn(0, StrFormat("Must add 'where alloctype(%s) : delete' constraint to generic parameter to delete generic type '%s'",
+							genericParamInst->GetGenericParamDef()->mName.c_str(), TypeToString(val.mType).c_str()), deleteStmt->mExpression);
+					}
+					return;
+				}
+
+				if (genericType != NULL)
+				{
+					auto genericParamInst = GetGenericParamInstance(genericType);
+					Fail(StrFormat("Must add 'where %s : delete' constraint to generic parameter to delete generic type '%s'",
+						genericParamInst->GetGenericParamDef()->mName.c_str(), TypeToString(val.mType).c_str()), deleteStmt->mExpression);
+					return;
+				}
+			}			
 		}
-	}
+		if (pass == 0)
+		{
+			if (checkType->IsAllocType())
+				checkType = checkType->GetUnderlyingType();
+			else
+				break;
+		}
+	}	
 
 	if (checkType->IsVar())
 	{
@@ -4392,12 +4484,7 @@ void BfModule::Visit(BfDeleteStatement* deleteStmt)
 }
 
 void BfModule::Visit(BfSwitchStatement* switchStmt)
-{
-	if (mModuleName == "BeefTest_TestProgram")
-	{
-		NOP;
-	}
-
+{	
 	BfScopeData outerScope;
 	outerScope.mInnerIsConditional = false;
 	outerScope.mCloseNode = switchStmt;
@@ -4591,7 +4678,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	BfPrimitiveType* intCoercibleType = GetIntCoercibleType(switchValue.mType);
 
 	bool isConstSwitch = false;
-	if ((switchValue.mValue.IsConst()) || (switchValue.mType->IsValuelessType()))
+	if ((mBfIRBuilder->IsConstValue(switchValue.mValue)) || (switchValue.mType->IsValuelessType()))
 	{
 		isConstSwitch = true;
 	}
@@ -4753,6 +4840,11 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 				else
 				{
 					eqTypedResult = TryCaseEnumMatch(switchValueAddr, enumTagVal, caseExpr, &caseBlock, &notEqBB, &matchBlock, tagId, hadConditional, false, prevHadFallthrough);
+					if (auto constant = mBfIRBuilder->GetConstant(eqTypedResult.mValue))
+					{
+						if (constant->mBool)
+							mayHaveMatch = true;						
+					}
 					if (hadConditional)
 						hadCondCase = true;
 				}
@@ -4882,7 +4974,8 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 					BfExprEvaluator exprEvaluator(this);
 					BfAstNode* refNode = switchCase->mColonToken;
 
-					if ((caseValue.mType->IsPayloadEnum()) && (caseValue.mValue.IsConst()) && (switchValue.mType == caseValue.mType) && (isEnumDescValue))
+					if ((caseValue.mType->IsPayloadEnum()) && (caseValue.mValue.IsConst()) && (switchValue.mType == caseValue.mType) && 
+						((isEnumDescValue) || (constantInt != NULL)))
 					{
 						if (!enumTagVal)
 						{
@@ -5091,6 +5184,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 					for (auto& field : enumType->mFieldInstances)
 					{
 						auto fieldDef = field.GetFieldDef();
+				
 						if (fieldDef == NULL)
 							continue;
 						if (!fieldDef->IsEnumCaseEntry())
@@ -5119,21 +5213,115 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 
 			if (!isComprehensive)
 			{
-				BfAstNode* refNode = switchStmt->mSwitchToken;
 				Fail("Switch must be exhaustive, consider adding a default clause", switchStmt->mSwitchToken);
-				if ((switchStmt->mCloseBrace) && (mCompiler->IsAutocomplete()) && (mCompiler->mResolvePassData->mAutoComplete->CheckFixit((refNode))))
-				{
-					BfParserData* parser = refNode->GetSourceData()->ToParserData();
-					if (parser != NULL)
-					{
-						int fileLoc = switchStmt->mCloseBrace->GetSrcStart();
-						mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("default:\tdefault:|%s|%d||default:", parser->mFileName.c_str(), fileLoc).c_str()));
-					}
-				}
 			}
 		}
 		else
 			isComprehensive = false;
+	}
+
+	BfAstNode* refNode = switchStmt->mSwitchToken;
+	if ((switchStmt->mCloseBrace) && (mCompiler->IsAutocomplete()) && (mCompiler->mResolvePassData->mAutoComplete->CheckFixit((switchStmt->mSwitchToken))))
+	{
+		BfParserData* parser = refNode->GetSourceData()->ToParserData();
+		if (parser != NULL)
+		{
+			if (switchStmt->mDefaultCase == NULL)
+			{
+				int fileLoc = switchStmt->mCloseBrace->GetSrcStart();
+				mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Add default case\tdefault:|%s|%d||default:", parser->mFileName.c_str(), fileLoc).c_str()));
+			}
+
+			if ((switchValue.mType->IsEnum()) && (!isComprehensive) || (switchStmt->mDefaultCase != NULL))
+			{	
+				int fileLoc;
+
+				if ((handledCases.IsEmpty()) && (switchStmt->mOpenBrace != NULL))
+					fileLoc = switchStmt->mOpenBrace->GetSrcEnd() + 1;
+				else if (switchStmt->mDefaultCase != NULL)
+					fileLoc = switchStmt->mDefaultCase->GetSrcStart();
+				else
+					fileLoc = switchStmt->mCloseBrace->GetSrcStart();
+
+				String explicitInsertStr;
+
+				auto enumType = switchValue.mType->ToTypeInstance();
+				HashSet<int64> missingValues;
+
+				if (enumType->IsPayloadEnum())
+				{
+					for (auto& field : enumType->mFieldInstances)
+					{
+						auto fieldDef = field.GetFieldDef();
+						if (fieldDef == NULL)
+							continue;
+						if (!fieldDef->IsEnumCaseEntry())
+							continue;
+						if ((field.mDataIdx < 0))
+						{
+							auto key = -field.mDataIdx - 1;
+							if ((!handledCases.ContainsKey(key)) && (missingValues.Add(key)))
+							{
+								auto paramDecl = fieldDef->mTypeRef;
+
+								if ((field.mIsEnumPayloadCase) && (field.mResolvedType->IsTuple()))
+								{
+									auto payloadType = (BfTypeInstance*)field.mResolvedType;
+									if (!payloadType->mFieldInstances.empty())
+									{
+										String fieldsStr;
+										int count = 0;
+										for (auto& payloadField : payloadType->mFieldInstances)
+										{
+											auto payloadFieldDef = payloadField.GetFieldDef();
+											if (payloadFieldDef == NULL)
+												continue;
+
+											String fieldName = payloadFieldDef->mName;
+											if ((fieldName.IsEmpty()) || (fieldName.length() > 0) && (isdigit(fieldName[0])))
+												fieldName = StrFormat("p%d", count);
+											if (count > 0)
+												fieldsStr += ", ";
+											fieldsStr += StrFormat("let %s", fieldName.c_str());
+											count++;
+										}
+
+										if (!fieldsStr.IsEmpty())
+										{
+											explicitInsertStr += StrFormat("|case .%s(%s):", fieldDef->mName.c_str(), fieldsStr.c_str());
+											continue;
+										}
+									}
+								}
+
+								explicitInsertStr += StrFormat("|case .%s:", fieldDef->mName.c_str());
+							}
+						}
+					}
+				}
+				else
+				{	
+					for (auto& field : enumType->mFieldInstances)
+					{
+						auto fieldDef = field.GetFieldDef();
+						if ((fieldDef != NULL) && (fieldDef->IsEnumCaseEntry()))
+						{
+							if (field.mConstIdx != -1)
+							{
+								auto constant = enumType->mConstHolder->GetConstantById(field.mConstIdx);
+								if ((!handledCases.ContainsKey(constant->mInt64)) && (missingValues.Add(constant->mInt64)))
+								{
+									explicitInsertStr += StrFormat("|case .%s:", fieldDef->mName.c_str());
+								}
+							}
+						}
+					}
+				}
+
+				if (missingValues.GetCount() > 0)
+					mCompiler->mResolvePassData->mAutoComplete->AddEntry(AutoCompleteEntry("fixit", StrFormat("Add missing cases\tdefault:|%s|%d|%s", parser->mFileName.c_str(), fileLoc, explicitInsertStr.c_str()).c_str()));
+			}
+		}
 	}
 
 	if (!hadConstMatch)
@@ -5577,7 +5765,7 @@ void BfModule::Visit(BfContinueStatement* continueStmt)
 		breakData = FindBreakData(continueStmt->mLabel);
 		if ((breakData != NULL) && (!breakData->mIRContinueBlock))
 		{
-			Fail(StrFormat("'continue' not applicable in '%s", continueStmt->mLabel->ToString().c_str()), continueStmt);
+			Fail(StrFormat("'continue' not applicable in '%s'", continueStmt->mLabel->ToString().c_str()), continueStmt);
 			return;
 		}
 	}
@@ -7104,7 +7292,7 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 					arrayItem = LoadValue(arrayItem);
 				arrayItem = Cast(forEachStmt->mCollectionExpression, arrayItem, varType, BfCastFlags_Explicit);
 				arrayItem = LoadValue(arrayItem);
-				if (arrayItem)
+				if ((arrayItem) && (!arrayItem.mType->IsValuelessType()))
 					mBfIRBuilder->CreateStore(arrayItem.mValue, varInst);
 			}
 		}
@@ -7207,7 +7395,16 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 			scope = &mCurMethodState->mHeadScope;
 	}
 	else if (deferStmt->mScopeName != NULL)
+	{
 		scope = FindScope(deferStmt->mScopeName, true);
+
+		if (scope == NULL)
+		{
+			AssertErrorState();
+			// The scope doesn't exist, continue with the current scope so we still get an evaluation of the deferred code
+			scope = mCurMethodState->mCurScope;
+		}
+	}
 	else
 		scope = mCurMethodState->mCurScope;
 
@@ -7247,9 +7444,12 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 	}
 	else if (auto exprStmt = BfNodeDynCast<BfExpressionStatement>(deferStmt->mTargetNode))
 	{
+		BfDeferCallData deferCallData;
+		deferCallData.mRefNode = exprStmt->mExpression;
+		deferCallData.mScopeAlloc = scope;
+
 		BfExprEvaluator expressionEvaluator(this);
-		expressionEvaluator.mDeferCallRef = exprStmt->mExpression;
-		expressionEvaluator.mDeferScopeAlloc = scope;
+		expressionEvaluator.mDeferCallData = &deferCallData;		
 		expressionEvaluator.VisitChild(exprStmt->mExpression);
 		if (mCurMethodState->mPendingNullConditional != NULL)
 			FlushNullConditional(expressionEvaluator.mResult, true);

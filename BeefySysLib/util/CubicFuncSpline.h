@@ -9,7 +9,7 @@ NS_BF_BEGIN;
 class CubicFuncSpline
 {
 public:	
-	std::vector<Point2D>	mInputPoints;
+	std::vector<PointF>	mInputPoints;
 	float* lagpoly;
 	float* intpoly;
 	float* slopes;

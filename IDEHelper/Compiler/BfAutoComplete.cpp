@@ -223,6 +223,7 @@ BfAutoComplete::BfAutoComplete(BfResolveType resolveType, bool doFuzzyAutoComple
 BfAutoComplete::~BfAutoComplete()
 {
 	Clear();
+	RemoveMethodMatchInfo();
 }
 
 void BfAutoComplete::SetModule(BfModule* module)
@@ -781,6 +782,8 @@ void BfAutoComplete::AddCurrentTypes(BfTypeInstance* typeInst, const StringImpl&
 
 void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, BfFieldInstance* fieldInstance, const StringImpl& filter)
 {
+	if (fieldDef->mName.IsEmpty())
+		return;
 	int wantPrefixCount = 0;
 	const char* filterStr = filter.c_str();
 	while (filterStr[0] == '@')
@@ -920,16 +923,22 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 		addNonStatic = true;
 
 	auto activeTypeDef = mModule->GetActiveTypeDef();
+	
+#define CHECK_STATIC(staticVal) ((staticVal && addStatic) || (!staticVal && addNonStatic))
+
+	mModule->PopulateType(typeInst, BfPopulateType_Data);
 
 	if ((addStatic) && (mModule->mCurMethodInstance == NULL) && (typeInst->IsEnum()) && (allowImplicitThis))
 	{
 		AddEntry(AutoCompleteEntry("value", "_"), filter);
 	}
 
-#define CHECK_STATIC(staticVal) ((staticVal && addStatic) || (!staticVal && addNonStatic))
-
-	mModule->PopulateType(typeInst, BfPopulateType_Data);
-
+	if ((typeInst->IsEnum()) && (typeInst->IsTypedPrimitive()))
+	{	
+		if (typeInst->IsTypedPrimitive())
+			AddEntry(AutoCompleteEntry("valuetype", "UnderlyingType"), filter);		
+	}
+	 
 	BfShow checkShow = (startType == typeInst) ? BfShow_Hide : BfShow_HideIndirect;
 
 	BfProtectionCheckFlags protectionCheckFlags = BfProtectionCheckFlag_None;
@@ -977,8 +986,15 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 		}
 		else
 		{
-			canUseMethod &= (CHECK_STATIC(methodDef->mIsStatic) &&
-				(mModule->CheckProtection(protectionCheckFlags, typeInst, methodDef->mDeclaringType->mProject, methodDef->mProtection, startType)));
+			if (typeInst->IsFunction())
+			{
+				canUseMethod = true;
+			}
+			else
+			{
+				canUseMethod &= (CHECK_STATIC(methodDef->mIsStatic) &&
+					(mModule->CheckProtection(protectionCheckFlags, typeInst, methodDef->mDeclaringType->mProject, methodDef->mProtection, startType)));
+			}
 		}
 		if (canUseMethod)
 		{
@@ -1333,6 +1349,9 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 			continue;
 
 		auto thisType = methodInstance->GetParamType(0);
+		if (thisType->IsRef())
+			thisType = thisType->GetUnderlyingType();
+
 		bool paramValidated = false;
 		if (methodInstance->GetNumGenericParams() > 0)
 		{
@@ -1661,6 +1680,8 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 
 		for (auto field : showAttrTypeDef->mFields)
 		{
+			if (field->mName.IsEmpty())
+				continue;
 			if (auto entryAdded = AddEntry(AutoCompleteEntry("field", field->mName + "="), filter))
 			{
 				auto fieldDeclaration = field->GetFieldDeclaration();
@@ -1832,7 +1853,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		{
 			"alignof", "append", "as", "asm", "base", "break", "case", "catch", "checked", "continue", "const", "default", "defer",
 			"delegate", "delete", "do", "else", "false", "finally",
-			"fixed", "for", "function", "if", "implicit", "in", "internal", "is", "isconst", "new", "mixin", "null",
+			"fixed", "for", "function", "if", "implicit", "in", "internal", "is", "isconst", "new", "mixin", "not", "null",
 			"offsetof", "out", "params", "readonly", "ref", "rettype", "return",
 			"sealed", "sizeof", "scope", "static", "strideof", "struct", "switch", /*"this",*/ "try", "true", "typeof", "unchecked",
 			"using", "var", "virtual", "volatile", "where", "while",
@@ -1851,7 +1872,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 	{
 		const char* tokens[] =
 		{
-			"abstract", "append", "base", "class", "const",
+			"abstract", "append", "base", "class", "concrete", "const",
 			"delegate", "extern", "enum", "explicit", "extension", "function",
 			"interface", "in", "implicit", "internal", "mixin", "namespace", "new",
 			"operator", "out", "override", "params", "private", "protected", "public", "readonly", "ref", "rettype", "return",
@@ -2475,7 +2496,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 
 	BfTypeNameFlags nameFlags = (BfTypeNameFlags)(BfTypeNameFlag_ReduceName | BfTypeNameFlag_ResolveGenericParamNames);
 
-	if (methodDef->mMethodType == BfMethodType_Normal)
+	if ((methodDef->mMethodType == BfMethodType_Normal) || (methodDef->mMethodType == BfMethodType_Ctor))
 	{
 		StringT<128> methodPrefix;
 		StringT<128> methodName;
@@ -2483,7 +2504,12 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 
 		bool isAbstract = (methodDef->mIsAbstract) || (isInterface) || (!methodDef->mIsVirtual);
 
-		if (isAbstract)
+		if (methodDef->mMethodType == BfMethodType_Ctor)
+		{
+			impString += " : base(";
+			isAbstract = false;
+		}
+		else if (isAbstract)
 		{
 			if (!methodInst->mReturnType->IsVoid())
 				impString += "return default;";
@@ -2500,6 +2526,9 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 
 		auto methodDeclaration = methodDef->GetMethodDeclaration();
 
+		if (methodDef->HasAppend())
+			methodPrefix += "[AllowAppend]\r";
+
 		if (isInterface)
 		{
 			if (!isExplicitInterface)
@@ -2507,20 +2536,27 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 		}
 		else if (methodDeclaration->mProtectionSpecifier != NULL)
 			methodPrefix += methodDeclaration->mProtectionSpecifier->ToString() + " ";
-		if (!isInterface)
+		
+		if ((!isInterface) && (methodDef->mMethodType != BfMethodType_Ctor))
 			methodPrefix += "override ";
 		if (methodDef->mIsStatic)
 			methodPrefix += "static ";
 
-		methodPrefix += mModule->TypeToString(methodInst->mReturnType, nameFlags);
-		methodPrefix += " ";
+		if (methodDef->mMethodType != BfMethodType_Ctor)
+		{
+			methodPrefix += mModule->TypeToString(methodInst->mReturnType, nameFlags);
+			methodPrefix += " ";
+		}
 		if (isExplicitInterface)
 		{
 			methodName += mModule->TypeToString(methodInst->GetOwner(), nameFlags);
 			methodName += ".";
 		}
 
-		methodName += methodDef->mName;
+		if (methodDef->mMethodType == BfMethodType_Ctor)
+			methodName += "this";
+		else
+			methodName += methodDef->mName;
 
 		if (methodInst->GetNumGenericArguments() > 0)
 		{
@@ -2536,10 +2572,15 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 			methodName += ">";
 		}
 
+		int usedParamIdx = 0;
+
 		methodName += "(";
 		for (int paramIdx = 0; paramIdx < (int)methodInst->GetParamCount(); paramIdx++)
-		{
-			if (paramIdx > 0)
+		{			
+			if (methodInst->GetParamKind(paramIdx) == BfParamKind_AppendIdx)
+				continue;
+			
+			if (usedParamIdx > 0)
 			{
 				methodName += ", ";
 				if (!isAbstract)
@@ -2577,6 +2618,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 
 				impString += methodDef->mParams[paramIdx]->mName;
 			}
+			usedParamIdx++;
 		}
 		methodName += ")";
 
@@ -2607,7 +2649,9 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 			}
 		}
 
-		if (!isAbstract)
+		if (methodDef->mMethodType == BfMethodType_Ctor)
+			impString += ")";		
+		else if (!isAbstract)
 			impString += ");";
 
 		if (showString != NULL)
@@ -2617,7 +2661,10 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 			if (showString == insertString)
 				*insertString += "\t";
 
-			*insertString += methodPrefix + methodName + "\t" + impString;
+			if (methodDef->mMethodType == BfMethodType_Ctor)
+				*insertString += methodPrefix + methodName + impString + "\t";
+			else
+				*insertString += methodPrefix + methodName + "\t" + impString;
 		}
 
 		return true;
@@ -2732,7 +2779,7 @@ bool BfAutoComplete::GetMethodInfo(BfMethodInstance* methodInst, StringImpl* sho
 	return false;
 }
 
-void BfAutoComplete::AddOverrides(const StringImpl& filter)
+void BfAutoComplete::AddOverrides(const StringImpl& filter, bool forceAll)
 {
 	if (!mIsAutoComplete)
 		return;
@@ -2743,7 +2790,7 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 
 	BfTypeInstance* curType = mModule->mCurTypeInstance;
 	while (curType != NULL)
-	{
+	{		
 		for (auto methodDef : curType->mTypeDef->mMethods)
 		{
 			if (methodDef->mShow >= checkShow)
@@ -2753,7 +2800,7 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 			if (curType == mModule->mCurTypeInstance)
 			{
 				// The "normal" case, and only case for types without extensions
-				if (methodDef->mDeclaringType == activeTypeDef)
+				if ((methodDef->mDeclaringType == activeTypeDef) && (!forceAll))
 					continue;
 
 				if ((methodDef->mDeclaringType->IsExtension()) && (methodDef->mDeclaringType->mProject == activeTypeDef->mProject))
@@ -2785,7 +2832,7 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 				(methodDef->mMethodType != BfMethodType_PropertySetter))
 				continue;
 
-			if ((methodInst->mVirtualTableIdx >= 0) && (methodInst->mVirtualTableIdx < mModule->mCurTypeInstance->mVirtualMethodTable.size()))
+			if ((methodInst->mVirtualTableIdx >= 0) && (methodInst->mVirtualTableIdx < mModule->mCurTypeInstance->mVirtualMethodTable.size()) && (!forceAll))
 			{
 				auto& vEntry = mModule->mCurTypeInstance->mVirtualMethodTable[methodInst->mVirtualTableIdx];
 				if (vEntry.mImplementingMethod.mTypeInstance == mModule->mCurTypeInstance)
@@ -2795,14 +2842,95 @@ void BfAutoComplete::AddOverrides(const StringImpl& filter)
 			StringT<512> insertString;
 			GetMethodInfo(methodInst, &insertString, &insertString, true, false);
 			if (insertString.IsEmpty())
-				continue;
-			AddEntry(AutoCompleteEntry("override", insertString), filter);
+				continue;			
+			AddEntry(AutoCompleteEntry("override", insertString), filter);			
 		}
 
 		if (curType->IsStruct())
 			curType = mModule->mContext->mBfObjectType;
 		else
 			curType = curType->mBaseType;
+	}
+}
+
+void BfAutoComplete::AddCtorPassthroughs()
+{
+	if (!mIsAutoComplete)
+		return;
+
+	auto activeTypeDef = mModule->GetActiveTypeDef();
+
+	BfTypeInstance* curType = mModule->mCurTypeInstance;	
+	auto baseType = curType->mBaseType;
+
+	String totalInsertString;
+
+	Array<BfMethodInstance*> declMethods;
+	for (auto methodDef : curType->mTypeDef->mMethods)
+	{
+		if (methodDef->mMethodType != BfMethodType_Ctor)
+			continue;
+		
+		auto& methodGroup = curType->mMethodInstanceGroups[methodDef->mIdx];
+		auto methodInst = methodGroup.mDefault;
+		if (methodInst == NULL)
+			continue;
+		if (methodDef->mMethodType != BfMethodType_Ctor)
+			continue;
+		declMethods.Add(methodInst);
+	}
+	
+	for (auto methodDef : baseType->mTypeDef->mMethods)
+	{
+		if (methodDef->mShow != BfShow_Show)
+			continue;
+		if (methodDef->mProtection < BfProtection_Protected)
+			continue;
+		if (methodDef->mIsStatic)
+			continue;
+
+		auto& methodGroup = baseType->mMethodInstanceGroups[methodDef->mIdx];
+		auto methodInst = methodGroup.mDefault;
+		if (methodInst == NULL)		
+			continue;
+		if (methodDef->mMethodType != BfMethodType_Ctor)
+			continue;
+		
+		if (methodInst->GetParamCount() == 0)
+			continue;
+
+		bool hasDecl = false;
+		for (auto declMethod : declMethods)
+		{
+			if (mModule->CompareMethodSignatures(methodInst, declMethod))
+			{
+				hasDecl = true;
+				break;
+			}
+		}
+		if (hasDecl)
+			continue;
+
+		StringT<512> insertString;
+		GetMethodInfo(methodInst, &insertString, &insertString, true, false);
+		if (insertString.IsEmpty())
+			continue;
+		AddEntry(AutoCompleteEntry("this", insertString), "");
+
+		int tabPos = (int)insertString.IndexOf('\t');
+		if (tabPos >= 0)
+		{
+ 			if (!totalInsertString.IsEmpty())
+ 				totalInsertString += "\r\r";
+			totalInsertString += insertString.Substring(tabPos + 1);
+		}
+	}
+
+	if ((!totalInsertString.IsEmpty()) && (mEntriesSet.GetCount() >= 2))
+	{
+		totalInsertString.Replace("\t", "\t\b");
+		totalInsertString.Insert(0, "this - all\t");
+		auto entry = AddEntry(AutoCompleteEntry("this", totalInsertString), "");
 	}
 }
 
@@ -2854,6 +2982,28 @@ void BfAutoComplete::CheckMethod(BfMethodDeclaration* methodDeclaration, bool is
 			}
 
 			AddOverrides(filter);
+		}
+	}
+
+	if (auto ctorDeclaration = BfNodeDynCast<BfConstructorDeclaration>(methodDeclaration))
+	{
+		if ((ctorDeclaration->mThisToken != NULL) && (ctorDeclaration->mOpenParen == NULL))
+		{
+			auto bfParser = ctorDeclaration->mThisToken->GetSourceData()->ToParser();
+			if (bfParser == NULL)
+				return;
+			int cursorIdx = bfParser->mCursorIdx;
+
+			if ((IsAutocompleteNode(methodDeclaration, 1)) && (cursorIdx == ctorDeclaration->mThisToken->GetSrcEnd()))
+			{
+				if (mIsAutoComplete)
+				{
+					mInsertStartIdx = ctorDeclaration->GetSrcStart();
+					mInsertEndIdx = ctorDeclaration->mThisToken->GetSrcEnd();
+				}
+
+				AddCtorPassthroughs();
+			}
 		}
 	}
 
@@ -2957,30 +3107,85 @@ void BfAutoComplete::CheckVarResolution(BfAstNode* varTypeRef, BfType* resolvedT
 	}
 }
 
-void BfAutoComplete::CheckResult(BfAstNode* node, const BfTypedValue& typedValue)
+class BfAutocompleteNodeChecker : public BfStructuralVisitor
 {
+public:
+	BfAutoComplete* mAutoComplete;
+	bool mSelected;
+
+public:
+	BfAutocompleteNodeChecker(BfAutoComplete* autoComplete)
+	{
+		mAutoComplete = autoComplete;
+		mSelected = false;
+	}
+
+	virtual void Visit(BfAstNode* bfAstNode) override
+	{
+		mSelected = mAutoComplete->IsAutocompleteNode(bfAstNode);
+	}
+
+	virtual void Visit(BfBinaryOperatorExpression* binOpExpr) override
+	{
+		mSelected = mAutoComplete->IsAutocompleteNode(binOpExpr->mOpToken);
+	}
+
+	virtual void Visit(BfUnaryOperatorExpression* unaryOpExpr) override
+	{
+		VisitChild(unaryOpExpr->mExpression);
+	}
+
+	virtual void Visit(BfCastExpression* castExpr) override
+	{
+		VisitChild(castExpr->mExpression);
+	}
+
+	virtual void Visit(BfLiteralExpression* literalExpr) override
+	{
+		mSelected = mAutoComplete->IsAutocompleteNode(literalExpr);
+	}
+
+	virtual void Visit(BfIdentifierNode* identifierNode) override
+	{
+		mSelected = mAutoComplete->IsAutocompleteNode(identifierNode);
+	}
+
+	virtual void Visit(BfMemberReferenceExpression* memberRefExpr) override
+	{
+		mSelected = mAutoComplete->IsAutocompleteNode(memberRefExpr->mMemberName);
+	}
+};
+
+void BfAutoComplete::CheckResult(BfAstNode* node, const BfTypedValue& typedValue)
+{	
 	if (mResolveType != BfResolveType_GetResultString)
 		return;
 
 	if (!IsAutocompleteNode(node))
 		return;
-
+	
 	if (!typedValue.mValue.IsConst())
 		return;
-
 	if (typedValue.mType->IsPointer())
 		return;
 	if (typedValue.mType->IsObject())
 		return;
 
-	auto constant = mModule->mBfIRBuilder->GetConstant(typedValue.mValue);
-	if (BfIRConstHolder::IsInt(constant->mTypeCode))
+	BfAutocompleteNodeChecker autocompleteNodeChecker(this);
+	autocompleteNodeChecker.VisitChildNoRef(node);
+	if (!autocompleteNodeChecker.mSelected)
+		return;
+
+	String constStr = ConstantToString(mModule->mBfIRBuilder, typedValue);
+	if (!constStr.IsEmpty())
 	{
-		mResultString = StrFormat(":%lld", constant->mInt64);
+		mResultString = ":";
+		mResultString += constStr;
+		AddResultTypeKind(typedValue.mType);
 	}
-	else if (BfIRConstHolder::IsFloat(constant->mTypeCode))
+	else
 	{
-		mResultString = StrFormat(":%f", constant->mDouble);
+		SetResultStringType(typedValue.mType);
 	}
 }
 
@@ -3041,7 +3246,7 @@ void BfAutoComplete::CheckLocalRef(BfAstNode* identifierNode, BfLocalVariable* v
 		{
 			String constStr;
 			if (varDecl->mConstValue.IsConst())
-				constStr = ConstantToString(mModule->mBfIRBuilder, varDecl->mConstValue);
+				constStr = ConstantToString(mModule->mBfIRBuilder, BfTypedValue(varDecl->mConstValue, varDecl->mResolvedType));
 			if (!constStr.IsEmpty())
 			{
 				mResultString = constStr;
@@ -3478,7 +3683,7 @@ void BfAutoComplete::FixitAddMember(BfTypeInstance* typeInst, BfType* fieldType,
 	auto parser = typeInst->mTypeDef->GetDefinition()->mSource->ToParser();
 	if (parser == NULL)
 		return;
-
+	
 	String fullName = typeInst->mTypeDef->mFullName.ToString();
 	String fieldStr;
 
@@ -3699,11 +3904,21 @@ String BfAutoComplete::FixitGetLocation(BfParserData* parser, int insertPos)
 	return StrFormat("%s|%d:%d", parser->mFileName.c_str(), line, lineChar);
 }
 
-String BfAutoComplete::ConstantToString(BfIRConstHolder* constHolder, BfIRValue id)
+String BfAutoComplete::ConstantToString(BfIRConstHolder* constHolder, BfTypedValue typedValue)
 {
+	SetAndRestoreValue<BfTypeInstance*> prevTypeInst(mModule->mCurTypeInstance, typedValue.mType->ToTypeInstance());
+	SetAndRestoreValue<BfMethodInstance*> prevMethodInst(mModule->mCurMethodInstance, NULL);
+
+	BF_ASSERT(typedValue.mValue.IsConst());
+
+	String result;
+	result = "(";
+	result += mModule->TypeToString(typedValue.mType);
+	result += ")";
+
 	char str[32];
 
-	int stringId = mModule->GetStringPoolIdx(id, constHolder);
+	int stringId = mModule->GetStringPoolIdx(typedValue.mValue, constHolder);
 	if (stringId != -1)
 	{
 		BfStringPoolEntry* entry;
@@ -3716,49 +3931,52 @@ String BfAutoComplete::ConstantToString(BfIRConstHolder* constHolder, BfIRValue 
 		}
 	}
 
-	auto constant = constHolder->GetConstant(id);
+	auto constant = constHolder->GetConstant(typedValue.mValue);
 	switch (constant->mTypeCode)
 	{
 	case BfTypeCode_Boolean:
-		return StrFormat(":(bool) %s", constant->mBool ? "true" : "false");
-	case BfTypeCode_UInt8:
-		return StrFormat(":(uint8) %llu", constant->mUInt64);
-	case BfTypeCode_UInt16:
-		return StrFormat(":(uint16) %llu", constant->mUInt64);
-	case BfTypeCode_UInt32:
-		return StrFormat(":(uint32) %llu", constant->mUInt64);
-	case BfTypeCode_UInt64:
-		return StrFormat(":(uint64) %llu", constant->mUInt64);
-
-	case BfTypeCode_Int8:
-		return StrFormat(":(int8) %lld", constant->mInt64);
-	case BfTypeCode_Int16:
-		return StrFormat(":(int16) %lld", constant->mInt64);
-	case BfTypeCode_Int32:
-		return StrFormat(":(int32) %lld", constant->mInt64);
-	case BfTypeCode_Int64:
-		return StrFormat(":(int64) %lld", constant->mInt64);
-
-	case BfTypeCode_Float:
-		{
-			ExactMinimalFloatToStr((float)constant->mDouble, str);
-			String result;
-			result += str;
-			result += "f";
-			return result;
-		}
-	case BfTypeCode_Double:
-		{
-			ExactMinimalDoubleToStr(constant->mDouble, str);
-			String result;
-			result += str;
-			return result;
-		}
-	default:
+		result += StrFormat(" %s", constant->mBool ? "true" : "false");
 		break;
+	case BfTypeCode_UInt8:
+		result += StrFormat(" %llu", constant->mUInt64);
+		break;
+	case BfTypeCode_UInt16:
+		result += StrFormat(" %llu", constant->mUInt64);
+		break;
+	case BfTypeCode_UInt32:
+		result += StrFormat(" %llu", constant->mUInt64);
+		break;
+	case BfTypeCode_UInt64:
+		result += StrFormat(" %llu", constant->mUInt64);
+		break;
+	case BfTypeCode_Int8:
+		result += StrFormat(" %lld", constant->mInt64);
+		break;
+	case BfTypeCode_Int16:
+		result += StrFormat(" %lld", constant->mInt64);
+		break;
+	case BfTypeCode_Int32:
+		result += StrFormat(" %lld", constant->mInt64);
+		break;
+	case BfTypeCode_Int64:
+		result += StrFormat(" %lld", constant->mInt64);
+		break;
+	case BfTypeCode_Float:	
+		ExactMinimalFloatToStr((float)constant->mDouble, str);			
+		result += " ";
+		result += str;
+		result += "f";
+		break;
+	case BfTypeCode_Double:		
+		ExactMinimalDoubleToStr(constant->mDouble, str);
+		result += " ";
+		result += str;
+		break;
+	default:
+		return "";
 	}
 
-	return "";
+	return result;
 }
 
 void BfAutoComplete::FixitAddMethod(BfTypeInstance* typeInst, const StringImpl& methodName, BfType* returnType, const BfTypeVector& paramTypes, bool wantStatic)
@@ -3871,7 +4089,7 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 
 			int insertPos = FixitGetMemberInsertPos(mModule->mCurTypeInstance->mTypeDef);
 			String methodStr = "\f\a";
-			if (methodInstance->mMethodDef->mHasAppend)
+			if (methodInstance->mMethodDef->HasAppend())
 				methodStr += "[AllowAppend]\r";
 			methodStr += "public this(";
 			int useParamIdx = 0;
@@ -3946,13 +4164,8 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 	}
 }
 
-void BfAutoComplete::SetResultStringType(BfType * type)
+void BfAutoComplete::AddResultTypeKind(BfType* type)
 {
-	SetAndRestoreValue<BfTypeInstance*> prevTypeInst(mModule->mCurTypeInstance, type->ToTypeInstance());
-	SetAndRestoreValue<BfMethodInstance*> prevMethodInst(mModule->mCurMethodInstance, NULL);
-
-	mResultString = ":";
-	mResultString += mModule->TypeToString(type);
 	if (type->IsObject())
 		mResultString += "\n:type\tclass";
 	else if (type->IsInterface())
@@ -3961,6 +4174,16 @@ void BfAutoComplete::SetResultStringType(BfType * type)
 		mResultString += "\n:type\tpointer";
 	else
 		mResultString += "\n:type\tvaluetype";
+}
+
+void BfAutoComplete::SetResultStringType(BfType* type)
+{
+	SetAndRestoreValue<BfTypeInstance*> prevTypeInst(mModule->mCurTypeInstance, type->ToTypeInstance());
+	SetAndRestoreValue<BfMethodInstance*> prevMethodInst(mModule->mCurMethodInstance, NULL);
+
+	mResultString = ":";
+	mResultString += mModule->TypeToString(type);
+	AddResultTypeKind(type);
 }
 
 void BfAutoComplete::FixitAddFullyQualify(BfAstNode* refNode, const StringImpl& findName, const SizedArrayImpl<BfUsingFieldData::MemberRef>& foundList)

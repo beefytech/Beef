@@ -119,7 +119,7 @@ namespace IDE
 	public class IDEApp : BFApp
 	{
 		public static String sRTVersionStr = "042";
-		public const String cVersion = "0.43.5";
+		public const String cVersion = "0.43.6";
 
 #if BF_PLATFORM_WINDOWS
 		public static readonly String sPlatform64Name = "Win64";
@@ -134,9 +134,6 @@ namespace IDE
 		public static readonly String sPlatform64Name = "Unknown64";
 		public static readonly String sPlatform32Name = "Unknown32";
 #endif
-
-		public const uint32 cDialogOutlineLightColor = 0xFF404040;
-		public const uint32 cDialogOutlineDarkColor = 0xFF202020;
 
 		public static bool sExitTest;
 
@@ -262,7 +259,7 @@ namespace IDE
 #if IDE_C_SUPPORT
 		public ClangCompiler mDepClang ~ delete _;
 #endif
-		// The Beef resolve system is up-to-date with the projects' files, 
+		// The Beef resolve system is up-to-date with the projects' files,
 		//  but the Clang resolver only has open files in it
 		public bool mNoResolve = false;
 		public bool mDeterministic = false;
@@ -323,7 +320,7 @@ namespace IDE
 			};
 		public int32 mFileDataDataRevision;
 
-		/*public Point mLastAbsMousePos;        
+		/*public Point mLastAbsMousePos;
 		public Point mLastRelMousePos;
 		public int32 mMouseStillTicks;
 		public Widget mLastMouseWidget;*/
@@ -794,11 +791,11 @@ namespace IDE
 				mMainBreakpoint = null;
 			}*/
 
-			/*delete mBfBuildCompiler;            
+			/*delete mBfBuildCompiler;
 			delete mBfBuildSystem;
 			delete mDepClang;
-			
-			
+
+
 			delete mBfResolveCompiler;
 			delete mBfResolveSystem;
 			delete mResolveClang;
@@ -1096,7 +1093,7 @@ namespace IDE
 			}
 			else
 			{
-				Fail(StackStringFormat!("Failed to load minidump '{0}'", mCrashDumpPath));
+				Fail(scope String()..AppendF("Failed to load minidump '{0}'", mCrashDumpPath));
 				DeleteAndNullify!(mCrashDumpPath);
 			}
 		}
@@ -1230,7 +1227,7 @@ namespace IDE
 			Dialog aDialog;
 			if (changedList.Count == 1)
 			{
-				aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", StackStringFormat!("Save changes to '{0}' before closing?", changedList[0]), DarkTheme.sDarkTheme.mIconWarning);
+				aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", scope String()..AppendF("Save changes to '{0}' before closing?", changedList[0]), DarkTheme.sDarkTheme.mIconWarning);
 			}
 			else
 			{
@@ -1532,7 +1529,7 @@ namespace IDE
 					if (Utils.WriteTextFile(path, useText) case .Err)
 					{
 						if (showErrors)
-							Fail(StackStringFormat!("Failed to write file '{0}'", path));
+							Fail(scope String()..AppendF("Failed to write file '{0}'", path));
 						return false;
 					}
 				}
@@ -1665,7 +1662,7 @@ namespace IDE
 				lineEndingKind = editData.mLineEndingKind;
 			}
 
-			// Lock file watcher to synchronize the 'file changed' notification so we don't 
+			// Lock file watcher to synchronize the 'file changed' notification so we don't
 			//  think a file was externally saved
 			using (mFileWatcher.mMonitor.Enter())
 			{
@@ -2313,7 +2310,7 @@ namespace IDE
 
 				if (Directory.CreateDirectory(mWorkspace.mDir) case .Err)
 				{
-					Fail(StackStringFormat!("Failed to create workspace directory '{0}'", mWorkspace.mDir));
+					Fail(scope String()..AppendF("Failed to create workspace directory '{0}'", mWorkspace.mDir));
 					return false;
 				}
 			}
@@ -2331,7 +2328,7 @@ namespace IDE
 
 				if (!SafeWriteTextFile(workspaceFileName, tomlString))
 				{
-					Fail(StackStringFormat!("Failed to write workspace file '{0}'", workspaceFileName));
+					Fail(scope String()..AppendF("Failed to write workspace file '{0}'", workspaceFileName));
 					return false;
 				}
 			}
@@ -2520,9 +2517,16 @@ namespace IDE
 		{
 			if (mDebugger.mIsRunning)
 			{
+				if (mDebugger.mIsComptimeDebug)
+					CancelBuild();
 				mDebugger.StopDebugging();
 				while (mDebugger.GetRunState() != .Terminated)
 				{
+					if (mDebugger.mIsComptimeDebug)
+					{
+						if (!mBfBuildCompiler.IsPerformingBackgroundOperation())
+							break;
+					}
 					mDebugger.Update();
 				}
 				mDebugger.mIsRunning = false;
@@ -2530,6 +2534,9 @@ namespace IDE
 			}
 			mDebugger.DisposeNativeBreakpoints();
 			mWantsRehupCallstack = false;
+
+			if (mDebugger.mIsComptimeDebug)
+				mDebugger.Detach();
 		}
 
 		void CloseWorkspace()
@@ -2574,9 +2581,9 @@ namespace IDE
 			{
 				var sourceViewPanel = tab.mContent as SourceViewPanel;
 				if (sourceViewPanel != null)
-				{	
+				{
 					docPanels.Add(sourceViewPanel);
-				}				
+				}
 			});
 			for (var docPanel in docPanels)
 				CloseDocument(docPanel);*/
@@ -2806,7 +2813,7 @@ namespace IDE
 					else
 					{
 						int32 spanSize = -cmd;
-						
+
 						charId += spanSize;
 						charIdx += spanSize;
 
@@ -2913,7 +2920,7 @@ namespace IDE
 						hadLoad = true;
 
 						var projectPath = project.mProjectPath;
-						
+
 						if (project.mDeferState == .Pending)
 						{
 							hasDeferredProjects = true;
@@ -2928,7 +2935,7 @@ namespace IDE
 
 						AddProjectToWorkspace(project, false);
 						if (addToUI)
-							mProjectPanel.InitProject(project, null);
+							mProjectPanel?.InitProject(project, null);
 					}
 				}
 				if (!hadLoad)
@@ -2948,7 +2955,7 @@ namespace IDE
 
 			if (loadFailed)
 			{
-				mProjectPanel.RebuildUI();
+				mProjectPanel?.RebuildUI();
 			}
 		}
 
@@ -3130,9 +3137,9 @@ namespace IDE
 
 						if (projSpec.mVerSpec.Parse(data) case .Err)
 						{
-							var err = scope String();
-							err.AppendF("Unable to parse version specifier for {0} in {1}", projectName, workspaceFileName);
-							Fail(err);
+							var errStr = scope String();
+							errStr.AppendF("Unable to parse version specifier for {0} in {1}", projectName, workspaceFileName);
+							Fail(errStr);
 							LoadFailed();
 							continue;
 						}
@@ -3348,7 +3355,7 @@ namespace IDE
 			case .SemVer(let semVer):
 				//
 			case .Git(let url, let ver):
-			
+
 				var checkPath = scope String();
 				if (mPackMan.CheckLock(projectName, checkPath, var projectFailed))
 				{
@@ -3379,7 +3386,7 @@ namespace IDE
 
 			/*if (!project.Load(projectFilePath))
 			{
-				Fail(StackStringFormat!("Failed to load project {0}", projectFilePath));
+				Fail(scope String()..AppendF("Failed to load project {0}", projectFilePath));
 				delete project;
 				return .Err(.LoadFailed);
 			}
@@ -3883,7 +3890,7 @@ namespace IDE
 		{
 #if !CLI
 			/*SaveFileDialog dialog = scope .();
-			
+
 			let activeWindow = GetActiveWindow();
 			dialog.OverwritePrompt = true;
 			dialog.SetFilter("Debug Session (*.bfdbg)|*.bfdbg");
@@ -4073,7 +4080,7 @@ namespace IDE
 
 			if (mMainWindow == null)
 			{
-				Internal.FatalError(StackStringFormat!("FAILED: {0}", text));
+				Internal.FatalError(scope String()..AppendF("FAILED: {0}", text));
 			}
 
 			Beep(MessageBeepType.Error);
@@ -4680,7 +4687,7 @@ namespace IDE
 					int defLine;
 					int defColumn;
 					mResolveClang.CancelBackground();
-					
+
 					int defIdx = sourceViewPanel.mEditWidget.Content.GetTextIdx(line, lineChar);
 					if (mResolveClang.FindDefinition(sourceViewPanel.mFilePath, defIdx,
 						defFile, out defLine, out defColumn))
@@ -4694,7 +4701,7 @@ namespace IDE
 				}
 				else
 #endif
-				/*{                    
+				/*{
 					ResolveParams resolveParams = scope ResolveParams();
 					sourceViewPanel.Classify(ResolveType.GoToDefinition, resolveParams);
 					if (resolveParams.mOutFileName != null)
@@ -4887,7 +4894,7 @@ namespace IDE
 		{
 			if (mDebugger.mIsRunning)
 			{
-				if (mExecutionPaused)
+				if ((mExecutionPaused) && (mDebugger.IsPaused()))
 				{
 					DebuggerUnpaused();
 					mDebugger.StepInto(IsInDisassemblyMode());
@@ -4905,7 +4912,7 @@ namespace IDE
 			mStepCount++;
 			if (mDebugger.mIsRunning)
 			{
-				if (mExecutionPaused)
+				if ((mExecutionPaused) && (mDebugger.IsPaused()))
 				{
 					DebuggerUnpaused();
 					mDebugger.StepOver(IsInDisassemblyMode());
@@ -4925,7 +4932,7 @@ namespace IDE
 		[IDECommand]
 		void StepOut()
 		{
-			if (mExecutionPaused)
+			if ((mExecutionPaused) && (mDebugger.IsPaused()))
 			{
 				DebuggerUnpaused();
 				mDebugger.StepOut(IsInDisassemblyMode());
@@ -6635,20 +6642,33 @@ namespace IDE
 			return tabButton;
 		}
 
-		public DisassemblyPanel ShowDisassemblyPanel(bool clearData = false)
+		public DisassemblyPanel ShowDisassemblyPanel(bool clearData = false, bool setFocus = false)
 		{
 			DisassemblyPanel disassemblyPanel = null;
+			TabbedView.TabButton disassemblyTab = null;
+
 			WithTabs(scope [&] (tab) =>
 				{
 					if ((disassemblyPanel == null) && (tab.mContent is DisassemblyPanel))
 					{
+						disassemblyTab = tab;
 						disassemblyPanel = (DisassemblyPanel)tab.mContent;
-						disassemblyPanel.ClearQueuedData();
-						tab.Activate();
 					}
 				});
+
+			if (disassemblyTab != null)
+			{
+				var window = disassemblyTab.mWidgetWindow;
+				if ((setFocus) && (window != null) && (!HasModalDialogs()) && (!mRunningTestScript))
+					window.SetForeground();
+			}
+
 			if (disassemblyPanel != null)
+			{
+				disassemblyPanel.ClearQueuedData();
+				disassemblyTab.Activate();
 				return disassemblyPanel;
+			}
 
 			TabbedView tabbedView = GetDefaultDocumentTabbedView();
 			disassemblyPanel = new DisassemblyPanel();
@@ -6916,8 +6936,8 @@ namespace IDE
 
 			var editWidgetContent = (SourceEditWidgetContent)editWidget.Content;
 			//mEditWidget.mVertScrollbar.mScrollIncrement = editWidgetContent.mFont.GetLineSpacing();
-			editWidgetContent.mHiliteColor = 0xFF384858;
-			editWidgetContent.mUnfocusedHiliteColor = 0x80384858;
+			editWidgetContent.mHiliteColor = mSettings.mUISettings.mColors.mCodeHilite;
+			editWidgetContent.mUnfocusedHiliteColor = mSettings.mUISettings.mColors.mCodeHiliteUnfocused;
 			editWidgetContent.mHiliteCurrentLine = mSettings.mEditorSettings.mHiliteCurrentLine;
 
 			return editWidget;
@@ -7112,7 +7132,7 @@ namespace IDE
 						mFileEditData.Add(editData);
 						projectSource.mEditData = editData;
 						projectSource.mEditData.mLastFileTextVersion = projectSource.mEditData.mEditWidget.Content.mData.mCurTextVersionId;
-					}  
+					}
 				}
 				return projectSource.mEditData;*/
 			}
@@ -7172,6 +7192,12 @@ namespace IDE
 				}
 			}
 
+			void ActivateWindow(WidgetWindow window)
+			{
+				if ((setFocus) && (window != null) && (!HasModalDialogs()) && (!mRunningTestScript))
+					window.SetForeground();
+			}
+
 			if (showType != SourceShowType.New)
 			{
 				delegate void(TabbedView.TabButton) tabFunc = scope [&] (tabButton) =>
@@ -7220,8 +7246,7 @@ namespace IDE
 						//sourceViewPanel.QueueFullRefresh(true);
 					}
 
-					if ((sourceViewPanel.mWidgetWindow != null) && (!HasModalDialogs()) && (!mRunningTestScript))
-						sourceViewPanel.mWidgetWindow.SetForeground();
+					ActivateWindow(sourceViewPanelTab.mWidgetWindow);
 					sourceViewPanelTab.Activate(setFocus);
 					sourceViewPanelTab.mTabbedView.FinishTabAnim();
 					if (setFocus)
@@ -7237,6 +7262,7 @@ namespace IDE
 			//ShowSourceFile(filePath, projectSource, showTemp, setFocus);
 
 			DarkTabbedView tabbedView = GetDefaultDocumentTabbedView();
+			ActivateWindow(tabbedView.mWidgetWindow);
 			sourceViewPanel = new SourceViewPanel();
 			bool success;
 			if (useProjectSource != null)
@@ -7436,7 +7462,7 @@ namespace IDE
 				Path.GetFileName(sourceViewPanel.mFilePath, fileName);
 			else
 				fileName.Append("untitled");
-			Dialog aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", StackStringFormat!("Save changes to '{0}' before closing?", fileName), DarkTheme.sDarkTheme.mIconWarning);
+			Dialog aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", scope String()..AppendF("Save changes to '{0}' before closing?", fileName), DarkTheme.sDarkTheme.mIconWarning);
 			aDialog.mDefaultButton = aDialog.AddButton("Save", new (evt) => { SaveFile(sourceViewPanel); CloseDocument(sourceViewPanel); });
 			aDialog.AddButton("Don't Save", new (evt) => CloseDocument(sourceViewPanel));
 			aDialog.mEscButton = aDialog.AddButton("Cancel");
@@ -7509,7 +7535,7 @@ namespace IDE
 					hasFocus = true;
 			}
 
-			/*if (sourceViewPanel != null)            
+			/*if (sourceViewPanel != null)
 				hasFocus = sourceViewPanel.mEditWidget.mHasFocus;*/
 
 			if ((sourceViewPanel != null) && (sourceViewPanel.HasUnsavedChanges()))
@@ -8000,7 +8026,7 @@ namespace IDE
 				}
 				else
 				{
-					var disassemblyPanel = ShowDisassemblyPanel(true);
+					var disassemblyPanel = ShowDisassemblyPanel(true, setFocus);
 					if (aliasFilePath != null)
 						String.NewOrSet!(disassemblyPanel.mAliasFilePath, aliasFilePath);
 					disassemblyPanel.Show(addr, filePath, line, column, hotIdx, defLineStart, defLineEnd);
@@ -8097,7 +8123,7 @@ namespace IDE
 				DragDropFile(key);
 				return;
 			}
-			Fail(StackStringFormat!("Unhandled command line param: {0}", key));
+			Fail(scope String()..AppendF("Unhandled command line param: {0}", key));
 		}
 
 		public override bool HandleCommandLineParam(String key, String value)
@@ -8241,12 +8267,14 @@ namespace IDE
 					if (fullDir.EndsWith("BeefSpace.toml", .OrdinalIgnoreCase))
 						fullDir.RemoveFromEnd("BeefSpace.toml".Length);
 
-					if ((File.Exists(fullDir)) || (IsBeefFile(fullDir)))
+					//TODO: Properly implement 'composite files'
+					/*if ((File.Exists(fullDir)) ||
+						((IsBeefFile(fullDir)) && (!Directory.Exists(fullDir))))
 					{
 						mWorkspace.mCompositeFile = new CompositeFile(fullDir);
 						delete fullDir;
 					}
-					else
+					else*/
 						mWorkspace.mDir = fullDir;
 				case "-file":
 					DragDropFile(value);
@@ -8265,6 +8293,8 @@ namespace IDE
 				mDeferredOpen = .DebugSession;
 			else if (filePath.EndsWith(".dmp", .OrdinalIgnoreCase))
 				mDeferredOpen = .CrashDump;
+			else if (filePath.EndsWith("BeefSpace.toml", .OrdinalIgnoreCase))
+				mDeferredOpen  = .Workspace;
 			else
 				mDeferredOpen = .File;
 
@@ -9146,8 +9176,8 @@ namespace IDE
 
 				/*var buffer = scope String();
 				if (streamReader.Read(buffer) case .Err)
-					break;				
-				using (mDebugOutputMonitor.Enter())				
+					break;
+				using (mDebugOutputMonitor.Enter())
 					mDebugOutput.Add(new String(buffer));*/
 
 				count++;
@@ -9169,10 +9199,10 @@ namespace IDE
 			{
 				var buffer = scope String();
 				if (streamReader.ReadLine(buffer) case .Err)
-					break;				
+					break;
 
-				using (IDEApp.sApp.mMonitor.Enter())				
-					executionInstance.mDeferredOutput.Add(new String(buffer));				
+				using (IDEApp.sApp.mMonitor.Enter())
+					executionInstance.mDeferredOutput.Add(new String(buffer));
 			}
 		}*/
 
@@ -9333,13 +9363,19 @@ namespace IDE
 			executionInstance.mStopwatch.Start();
 			executionInstance.mProcess = process;
 
-			executionInstance.mOutputThread = new Thread(new => ReadOutputThread);
-			executionInstance.mOutputThread.Start(executionInstance, false);
+			if (startInfo.RedirectStandardOutput)
+			{
+				executionInstance.mOutputThread = new Thread(new => ReadOutputThread);
+				executionInstance.mOutputThread.Start(executionInstance, false);
+			}
 
-			executionInstance.mErrorThread = new Thread(new => ReadErrorThread);
-			executionInstance.mErrorThread.Start(executionInstance, false);
+			if (startInfo.RedirectStandardError)
+			{
+				executionInstance.mErrorThread = new Thread(new => ReadErrorThread);
+				executionInstance.mErrorThread.Start(executionInstance, false);
+			}
 
-			if (stdInData != null)
+			if ((startInfo.RedirectStandardInput) && (stdInData != null))
 			{
 				executionInstance.mStdInData = new String(stdInData);
 				executionInstance.mInputThread = new Thread(new => WriteInputThread);
@@ -9474,7 +9510,7 @@ namespace IDE
 				}
 
 				if ((executionInstance == null) && (mExecutionQueue.Count == 0))
-				{                    
+				{
 					OutputLine("Compilation finished.");
 				}*/
 			}
@@ -9649,29 +9685,32 @@ namespace IDE
 					if ((processCompileCmd.mHadBeef) && (mVerbosity >= .Normal))
 						OutputLine("Beef compilation time: {0:0.00}s", processCompileCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
 
-					var compileInstance = mWorkspace.mCompileInstanceList.Back;
-					compileInstance.mCompileResult = .Failure;
-					if (processCompileCmd.mBfPassInstance.mCompileSucceeded)
+					if (!mWorkspace.mCompileInstanceList.IsEmpty)
 					{
-						//foreach (var sourceViewPanel in GetSourceViewPanels())
-						WithSourceViewPanels(scope (sourceViewPanel) =>
-							{
-								sourceViewPanel.mHasChangedSinceLastCompile = false;
-							});
-						compileInstance.mCompileResult = .Success;
-					}
-					else
-					{
+						var compileInstance = mWorkspace.mCompileInstanceList.Back;
 						compileInstance.mCompileResult = .Failure;
-					}
+						if (processCompileCmd.mBfPassInstance.mCompileSucceeded)
+						{
+							//foreach (var sourceViewPanel in GetSourceViewPanels())
+							WithSourceViewPanels(scope (sourceViewPanel) =>
+								{
+									sourceViewPanel.mHasChangedSinceLastCompile = false;
+								});
+							compileInstance.mCompileResult = .Success;
+						}
+						else
+						{
+							compileInstance.mCompileResult = .Failure;
+						}
 
-					ProcessBeefCompileResults(processCompileCmd.mBfPassInstance, processCompileCmd.mCompileKind, processCompileCmd.mHotProject, processCompileCmd.mStopwatch);
-					processCompileCmd.mBfPassInstance = null;
+						ProcessBeefCompileResults(processCompileCmd.mBfPassInstance, processCompileCmd.mCompileKind, processCompileCmd.mHotProject, processCompileCmd.mStopwatch);
+						processCompileCmd.mBfPassInstance = null;
 
-					if (mHotResolveState != .None)
-					{
-						if (compileInstance.mCompileResult == .Success)
-							compileInstance.mCompileResult = .PendingHotLoad;
+						if (mHotResolveState != .None)
+						{
+							if (compileInstance.mCompileResult == .Success)
+								compileInstance.mCompileResult = .PendingHotLoad;
+						}
 					}
 
 					if (processCompileCmd.mProfileCmd != null)
@@ -9754,7 +9793,7 @@ namespace IDE
 								{
 									mDepClang.QueueCheckDependencies(projectSource, ClangCompiler.DepCheckerType.Clang);
 								}
-							}                            
+							}
 						});
 					if (!completedCompileCmd.mFailed)
 						mDepClang.mDoDependencyCheck = false;
@@ -9765,9 +9804,9 @@ namespace IDE
 					CompileResult(buildCompletedCmd.mHotProjectName, !buildCompletedCmd.mFailed);
 
 					if (buildCompletedCmd.mFailed)
-						OutputLineSmart("ERROR: BUILD FAILED");
-					if ((mVerbosity >= .Detailed) && (buildCompletedCmd.mStopwatch != null))
-						OutputLine("Total build time: {0:0.00}s", buildCompletedCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
+						OutputLineSmart("ERROR: BUILD FAILED. Total build time: {0:0.00}s", buildCompletedCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
+					else if ((mVerbosity >= .Detailed) && (buildCompletedCmd.mStopwatch != null))
+						OutputLineSmart("SUCCESS: Build completed with no errors. Total build time: {0:0.00}s", buildCompletedCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
 
 					if (mDebugger?.mIsComptimeDebug == true)
 						DebuggerComptimeStop();
@@ -10154,8 +10193,8 @@ namespace IDE
 		}
 
 		// Project options are inherently thread safe.  Resolve-system project settings
-		//  Can only be changed from the Resolve BfCompiler thread, and Build settings 
-		//  are only changed before background compilation begins.  We also call this 
+		//  Can only be changed from the Resolve BfCompiler thread, and Build settings
+		//  are only changed before background compilation begins.  We also call this
 		//  during WorkspaceLoad, but the resolve threads aren't processing then.
 		public bool SetupBeefProjectSettings(BfSystem bfSystem, BfCompiler bfCompiler, Project project)
 		{
@@ -10165,7 +10204,7 @@ namespace IDE
 			Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
 			if (options == null)
 			{
-				//Fail(StackStringFormat!("Failed to retrieve options for {0}", project.mProjectName));
+				//Fail(scope String()..AppendF("Failed to retrieve options for {0}", project.mProjectName));
 				bfProject.SetDisabled(true);
 				return false;
 			}
@@ -10327,7 +10366,7 @@ namespace IDE
 			string clangArgsStr = String.Join("\n", clangArgs);
 
 			long hash = 0;
-			for (int i = 0; i < clangArgsStr.Length; i++)            
+			for (int i = 0; i < clangArgsStr.Length; i++)
 				hash = (hash << 5) - hash + clangArgsStr[i];
 			return String.Format("{0:X16}", hash);
 		}*/
@@ -11433,7 +11472,7 @@ namespace IDE
 				Project depProject = FindProject(dep.mProjectName);
 				if (depProject == null)
 				{
-					OutputLine(StackStringFormat!("Unable to find project '{0}', a dependency of project '{1}'", dep.mProjectName, project.mProjectName));
+					OutputLine(scope String()..AppendF("Unable to find project '{0}', a dependency of project '{1}'", dep.mProjectName, project.mProjectName));
 					return false;
 				}
 				if (!GetDependentProjectList(depProject, orderedProjectList, useProjectStack))
@@ -11466,12 +11505,12 @@ namespace IDE
 			mLastTestFailed = true;
 		}
 
-		protected virtual void CompileFailed()
+		protected virtual void CompileFailed(Stopwatch stopwatch)
 		{
 			if (mTestManager != null)
 				mTestManager.BuildFailed();
 			if (mVerbosity > .Quiet)
-				OutputLine("Compile failed.");
+				OutputLineSmart("ERROR-SOFT: Compile failed. Total build time: {0:0.00}s", stopwatch.ElapsedMilliseconds / 1000.0f);
 			mLastCompileFailed = true;
 
 			if (mRunningTestScript)
@@ -11635,7 +11674,7 @@ namespace IDE
 				if ((passInstance.mFailed) && (passInstance.mCompileSucceeded))
 				{
 					// This can happen if we can't load a Beef file
-					CompileFailed();
+					CompileFailed(startStopWatch);
 					passInstance.mCompileSucceeded = false;
 				}
 
@@ -11667,7 +11706,7 @@ namespace IDE
 				if (!mDebugger.mIsRunning)
 				{
 					OutputErrorLine("Hot compile failed - target no longer running");
-					CompileFailed();
+					CompileFailed(startStopWatch);
 					return;
 				}
 
@@ -11699,7 +11738,7 @@ namespace IDE
 					SkipProjectCompile(project, hotProject);
 				}
 				CompileResult((hotProject != null) ? hotProject.mProjectName : null, false);
-				CompileFailed();
+				CompileFailed(startStopWatch);
 				return;
 			}
 
@@ -11751,7 +11790,7 @@ namespace IDE
 			}
 
 			if (!success)
-				CompileFailed();
+				CompileFailed(startStopWatch);
 
 			if (success)
 			{
@@ -11912,9 +11951,9 @@ namespace IDE
 			startupCode.AppendF(
 				"""
 				using System;
-				
+
 				namespace {};
-				
+
 				class {}
 				{{
 					public static int Main(String[] args)
@@ -12162,7 +12201,7 @@ namespace IDE
 					String err =
 						"""
 						Beef requires the Microsoft C++ build tools for Visual Studio 2013 or later, but they don't seem to be installed.
-						
+
 						Install just Microsoft Visual C++ Build Tools or the entire Visual Studio suite from:
 						    https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022
 						""";
@@ -12279,7 +12318,7 @@ namespace IDE
 			passInstance = CompileBeef(hotProject, hotIdx, lastCompileHadMessages, let hadBeef);
 			if (passInstance == null)
 			{
-				CompileFailed();
+				CompileFailed(scope .());
 				return false;
 			}
 
@@ -12447,7 +12486,7 @@ namespace IDE
 			CheckDebugVisualizers();
 
 			mDebugger.mIsRunning = true;
-			mDebugger.mDebugIdx++;
+			mDebugger.IncrementSessionIdx();
 			WithSourceViewPanels(scope (sourceView) =>
 				{
 					sourceView.RehupAlias();
@@ -12465,8 +12504,8 @@ namespace IDE
 
 			if ((mTargetStartWithStep) && (mMainBreakpoint == null))
 			{
-				// The idea is that we don't want to step into static initializers, so we 
-				// temporarily break on _main and then we single step                                    
+				// The idea is that we don't want to step into static initializers, so we
+				// temporarily break on _main and then we single step
 				//mMainBreakpoint = mDebugger.CreateSymbolBreakpoint("_ZN3Hey4Dude3Bro9TestClass4MainEv");
 				if ((project.mGeneralOptions.mTargetType == Project.TargetType.BeefConsoleApplication) ||
 					(project.mGeneralOptions.mTargetType == Project.TargetType.BeefGUIApplication))
@@ -12506,7 +12545,7 @@ namespace IDE
 
 			CheckDebugVisualizers();
 			mDebugger.mIsRunning = true;
-			mDebugger.mDebugIdx++;
+			mDebugger.IncrementSessionIdx();
 			mDebugger.RehupBreakpoints(true);
 			mDebugger.Run();
 			mIsAttachPendingSourceShow = true;
@@ -12951,7 +12990,7 @@ namespace IDE
 				{
 				case .Ok:
 				case .Err:
-					Fail(StackStringFormat!("Unable to locate process id {0}", mProcessAttachId));
+					Fail(scope String()..AppendF("Unable to locate process id {0}", mProcessAttachId));
 				}
 				if (debugProcess.IsAttached)
 				{
@@ -12981,13 +13020,13 @@ namespace IDE
 				if (mDebugger.OpenMiniDump(mCrashDumpPath))
 				{
 					mDebugger.mIsRunning = true;
-					mDebugger.mDebugIdx++;
+					mDebugger.IncrementSessionIdx();
 					mExecutionPaused = false; // Make this false so we can detect a Pause immediately
 					mIsAttachPendingSourceShow = true;
 				}
 				else
 				{
-					Fail(StackStringFormat!("Failed to load minidump '{0}'", mCrashDumpPath));
+					Fail(scope String()..AppendF("Failed to load minidump '{0}'", mCrashDumpPath));
 				}
 			}
 			else if (mLaunchData != null)
@@ -13179,7 +13218,7 @@ namespace IDE
 
 			/*for (var window in gApp.mWindows)
 			{
-				
+
 				window.SetMinimumSize(GS!());
 			}*/
 		}
@@ -13293,6 +13332,7 @@ namespace IDE
 
 		void DebuggerPaused()
 		{
+			mDebugger.IncrementStateIdx();
 			mDebugger.mActiveCallStackIdx = 0;
 			mExecutionPaused = true;
 			mDebugger.GetRunState();
@@ -13306,6 +13346,8 @@ namespace IDE
 
 		void WithWatchPanels(delegate void(WatchPanel watchPanel) dlg)
 		{
+			if (mWatchPanel == null)
+				return;
 			dlg(mWatchPanel);
 			dlg(mAutoWatchPanel);
 			for (let window in mWindows)
@@ -13607,14 +13649,14 @@ namespace IDE
 							if (mBfResolveSystem != null)
 								mBfResolveSystem.AddProject(project);
 						}
-						
+
 						foreach (var project in mWorkspace.mProjects)
 						{
 							project.WithProjectItems(scope (projectItem) =>
 								{
 									var projectSource = projectItem as ProjectSource;
 									if (projectSource != null)
-									{                                        
+									{
 										var resolveCompiler = GetProjectCompilerForFile(projectSource.mPath);
 										if (resolveCompiler == mBfResolveCompiler)
 											resolveCompiler.QueueProjectSource(projectSource);
@@ -13980,9 +14022,11 @@ namespace IDE
 							if (checkBreakpoint.mMemoryAddress == memoryAddress)
 								breakpoint = checkBreakpoint;
 						}
-						String infoString = StackStringFormat!("Memory breakpoint hit: '0x{0:X08}'", (int64)memoryAddress);
+						String infoString = scope .();
 						if (breakpoint != null)
-							infoString = StackStringFormat!("Memory breakpoint hit: '0x{0:X08}' ({1})", (int64)memoryAddress, breakpoint.mMemoryWatchExpression);
+							infoString.AppendF("Memory breakpoint hit: '0x{0:X08}' ({1})", (int64)memoryAddress, breakpoint.mMemoryWatchExpression);
+						else
+							infoString.AppendF("Memory breakpoint hit: '0x{0:X08}'", (int64)memoryAddress);
 						OutputLine(infoString);
 						if (!mRunningTestScript)
 						{
@@ -14045,8 +14089,8 @@ namespace IDE
 					OutputFormatted(deferredOutput, deferredMsgType == "dbgEvalMsg");
 				}
 
-				/*if (hadMessages)                
-					mNoDebugMessagesTick = 0;                
+				/*if (hadMessages)
+					mNoDebugMessagesTick = 0;
 				else if (IDEApp.sApp.mIsUpdateBatchStart)
 					mNoDebugMessagesTick++;
 				if (mNoDebugMessagesTick < 10)
@@ -14178,11 +14222,11 @@ namespace IDE
 								mDebugger.GetCurrentException(exceptionLine);
 								var exceptionData = String.StackSplit!(exceptionLine, '\n');
 
-								String exHeader = StackStringFormat!("Exception {0}", exceptionData[1]);
+								String exHeader = scope String()..AppendF("Exception {0}", exceptionData[1]);
 								if (exceptionData.Count >= 3)
 									exHeader = exceptionData[2];
 
-								String exString = StackStringFormat!("{0} at {1}", exHeader, exceptionData[0]);
+								String exString = scope String()..AppendF("{0} at {1}", exHeader, exceptionData[0]);
 
 								OutputLine(exString);
 								if (!IsCrashDump)
@@ -14331,7 +14375,7 @@ namespace IDE
 		/*public bool CheckMouseover(Widget checkWidget, int32 wantTicks, out Point mousePoint)
 		{
 			mousePoint = Point(Int32.MinValue, Int32.MinValue);
-			if (checkWidget != mLastMouseWidget) 
+			if (checkWidget != mLastMouseWidget)
 				return false;
 			checkWidget.RootToSelfTranslate(mLastRelMousePos.x, mLastRelMousePos.y, out mousePoint.x, out mousePoint.y);
 			return mMouseStillTicks == wantTicks;
@@ -14362,7 +14406,7 @@ namespace IDE
 			foreach (var window in mWindows)
 			{
 				var widgetWindow = window as WidgetWindow;
-				
+
 				widgetWindow.RehupMouse(false);
 				var windowOverWidget = widgetWindow.mCaptureWidget ?? widgetWindow.mOverWidget;
 				if ((windowOverWidget != null) && (widgetWindow.mAlpha == 1.0f) && (widgetWindow.mCaptureWidget == null))
@@ -14371,7 +14415,7 @@ namespace IDE
 					numOverWidgets++;
 					if (overWidget != mLastMouseWidget)
 					{
-						SetLastMouseWidget(overWidget);                        
+						SetLastMouseWidget(overWidget);
 						mMouseStillTicks = -1;
 					}
 
@@ -14389,7 +14433,7 @@ namespace IDE
 			}
 
 			if (overWidget == null)
-			{     
+			{
 				   SetLastMouseWidget(null);
 				mMouseStillTicks = -1;
 			}
@@ -14399,7 +14443,7 @@ namespace IDE
 				//int a = 0;
 			}
 
-			Debug.Assert(numOverWidgets <= 1);                        
+			Debug.Assert(numOverWidgets <= 1);
 		}*/
 
 		public void FileRenamed(ProjectFileItem projectFileItem, String oldPath, String newPath)

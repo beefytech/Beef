@@ -1457,6 +1457,13 @@ void BeDumpContext::ToString(StringImpl& str, BeValue* value, bool showType, boo
 		return;
 	}
 
+	if (auto constant = BeValueDynCast<BeTypeOfConstant>(value))
+	{
+		ToString(str, constant->GetType());
+		str += StrFormat(" typeof(%d)", constant->mBfTypeId);
+		return;
+	}
+
 	if (auto constant = BeValueDynCast<BeStringConstant>(value))
 	{
 		ToString(str, constant->GetType());

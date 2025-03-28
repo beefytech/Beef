@@ -2,6 +2,7 @@
 
 #include "Common.h"
 #include "RenderTarget.h"
+#include "../util/Rect.h"
 
 NS_BF_BEGIN;
 
@@ -38,6 +39,15 @@ public:
 
 public:
 	void					InitFromTexture(Texture* texture);
+
+	virtual void			SetBits(int destX, int destY, int destWidth, int destHeight, int srcPitch, uint32* bits);
+	virtual void			GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits);
+
+	void					GetImageData(ImageData& imageData);
+	void					GetImageData(ImageData& imageData, int destX, int destY);
+	void					SetImageData(ImageData& imageData);
+
+	RectF					GetRect();
 };
 
 NS_BF_END;

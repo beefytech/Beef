@@ -114,6 +114,24 @@ namespace Tests
 
 			iNull ??= iNull2;
 			Test.Assert(iNull == 123);
+
+			Result<int32> ir = .Ok(234);
+			Result<int32>? irn = ir;
+
+			if (irn case .Ok(let val))
+			{
+				Test.Assert(val == 234);
+			}
+			else
+			{
+				Test.FatalError();
+			}
+
+			irn = null;
+			if (irn case .Ok(let val2))
+			{
+				Test.FatalError();
+			}
 		}
 	}
 }

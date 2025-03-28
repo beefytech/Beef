@@ -596,7 +596,7 @@ namespace IDE.ui
 	                        curWorkspaceOptions.mConfigSelections.TryGetValue(project, out setConfigSelection);
 	                        if (setConfigSelection == null)
 	                        {
-	                            IDEApp.sApp.Fail(StackStringFormat!("Project '{0}' not in workspace", project.mProjectName));
+	                            IDEApp.sApp.Fail(scope String()..AppendF("Project '{0}' not in workspace", project.mProjectName));
 	                            return;
 	                        }
 	                        setConfigSelection.mEnabled = newConfigSelection.mEnabled;

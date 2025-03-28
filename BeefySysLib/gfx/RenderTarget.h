@@ -12,6 +12,8 @@ public:
 	int						mResizeNum;
 	bool					mHasBeenTargeted;
 	bool					mHasBeenDrawnTo;
+	bool					mWantsClear;
+	bool					mResetClear;
 
 public:
 	RenderTarget();

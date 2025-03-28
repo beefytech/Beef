@@ -12,8 +12,21 @@ namespace Tests
 			return 123;
 		}
 
+		public static void AddTo(this ref StructA @this)
+		{
+			@this.mA += 1000;
+		}
+
+		public static void AddTo2(this in StructA @this)
+		{
+#unwarn
+			(&@this).mA += 1000;
+		}
+
 		class ClassA
 		{
+			public int mA = 10000;
+
 			public static void Test()
 			{
 				Test.Assert("Abc".Remove(1.2f, 2.3f) == 123);
@@ -27,6 +40,11 @@ namespace Tests
 				return a + 1000;
 			}
 
+		}
+
+		struct StructA
+		{
+			public int mA;
 		}
 
 		[Test]
@@ -46,6 +64,13 @@ namespace Tests
 			float a = 1.2f;
 			float b = 2.3f;
 			Test.Assert(a.CompareIt(b) < 0);
+
+			StructA sa = .() { mA = 123 };
+
+			sa.AddTo();
+			Test.Assert(sa.mA == 1123);
+			sa.AddTo2();
+			Test.Assert(sa.mA == 2123);
 		}
 	}
 

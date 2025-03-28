@@ -213,6 +213,11 @@ namespace System
 		public static extern bool Equals<T>(T val1, T val2);
 	}
 
+	struct Tuple
+	{
+
+	}
+
 	struct Function : int
 	{
 

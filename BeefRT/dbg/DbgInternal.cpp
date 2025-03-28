@@ -49,10 +49,10 @@ namespace bf
 			BFRT_EXPORT static void Dbg_ObjectCreatedEx(bf::System::Object* result, intptr size, bf::System::ClassVData* classVData);
 			BFRT_EXPORT static void Dbg_ObjectAllocated(bf::System::Object* result, intptr size, bf::System::ClassVData* classVData);
 			BFRT_EXPORT static void Dbg_ObjectAllocatedEx(bf::System::Object* result, intptr size, bf::System::ClassVData* classVData);
-			BFRT_EXPORT static Object* Dbg_ObjectAlloc(bf::System::Reflection::TypeInstance* typeInst, intptr size);			
-			BFRT_EXPORT static Object* Dbg_ObjectAlloc(bf::System::ClassVData* classVData, intptr size, intptr align, intptr maxStackTraceDept);						
+			BFRT_EXPORT static Object* Dbg_ObjectAlloc(bf::System::Reflection::TypeInstance* typeInst, intptr size);
+			BFRT_EXPORT static Object* Dbg_ObjectAlloc(bf::System::ClassVData* classVData, intptr size, intptr align, intptr maxStackTraceDept, uint8 allocFlags);
 			BFRT_EXPORT static void Dbg_MarkObjectDeleted(bf::System::Object* obj);
-			BFRT_EXPORT static void Dbg_ObjectStackInit(bf::System::Object* result, bf::System::ClassVData* classVData);			
+			BFRT_EXPORT static void Dbg_ObjectStackInit(bf::System::Object* result, bf::System::ClassVData* classVData, intptr size, uint8 allocFlags);
 			BFRT_EXPORT static void Dbg_ObjectPreDelete(bf::System::Object* obj);
 			BFRT_EXPORT static void Dbg_ObjectPreCustomDelete(bf::System::Object* obj);
 			
@@ -315,19 +315,20 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::Reflection::TypeInstan
 
 //#define DBG_OBJECTEND
 
-bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData, intptr size, intptr align, intptr maxStackTraceDepth)
+bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData, intptr size, intptr align, intptr maxStackTraceDepth, uint8 allocFlags)
 {
 	void* stackTrace[1024];
 	int capturedTraceCount = 0;
 	intptr allocSize = size;
 	bool largeAllocInfo = false;
-
+	
 	if ((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0)
 	{
 		if (maxStackTraceDepth > 1)
 		{
 			capturedTraceCount = BF_CAPTURE_STACK(1, (intptr*)stackTrace, min((int)maxStackTraceDepth, 1024));
 			const intptr maxSmallObjectSize = ((intptr)1 << ((sizeof(intptr) - 2) * 8)) - 1;
+
 			if ((capturedTraceCount > 255) || (size >= maxSmallObjectSize))
 			{
 				largeAllocInfo = true;
@@ -335,6 +336,12 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 			}
 			else
 				allocSize += capturedTraceCount * sizeof(intptr);
+		}
+
+		// Append want mark
+		if ((allocFlags & 1) != 0)
+		{
+			allocSize += 4 * sizeof(intptr);
 		}
 	}
 
@@ -385,7 +392,7 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 
 		intptr dbgAllocInfo;
 		auto classVDataVal = (intptr)classVData | (intptr)BfObjectFlag_Allocated;		
-		if (maxStackTraceDepth <= 1)
+		if ((maxStackTraceDepth <= 1) && (allocFlags == 0))
 			dbgAllocInfo = (intptr)BF_RETURN_ADDRESS;
 		else
 		{
@@ -393,13 +400,13 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 			{
 				classVDataVal |= (intptr)BfObjectFlag_AllocInfo;
 				dbgAllocInfo = size;
-				*(intptr*)((uint8*)result + size) = capturedTraceCount;
+				*(intptr*)((uint8*)result + size) = (capturedTraceCount << 8) | allocFlags;
 				memcpy((uint8*)result + size + sizeof(intptr), stackTrace, capturedTraceCount * sizeof(intptr));
 			}
 			else
 			{
 				classVDataVal |= (intptr)BfObjectFlag_AllocInfo_Short;
-				dbgAllocInfo = (size << 16) | capturedTraceCount;
+				dbgAllocInfo = (size << 16) | (((intptr)allocFlags) << 8) | capturedTraceCount;
 				memcpy((uint8*)result + size, stackTrace, capturedTraceCount * sizeof(intptr));
 			}
 		}		
@@ -424,13 +431,27 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 	return result;
 }
 
-void Internal::Dbg_ObjectStackInit(bf::System::Object* result, bf::System::ClassVData* classVData)
+void Internal::Dbg_ObjectStackInit(bf::System::Object* result, bf::System::ClassVData* classVData, intptr totalSize, uint8 allocFlags)
 {
 	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 
 	result->mClassVData = (intptr)classVData | (intptr)BfObjectFlag_StackAlloc;
 #ifndef BFRT_NODBGFLAGS
-	result->mDbgAllocInfo = (intptr)BF_RETURN_ADDRESS;	
+	if ((allocFlags & 1) == 0)
+	{
+		result->mDbgAllocInfo = (intptr)BF_RETURN_ADDRESS;
+	}
+	else
+	{	
+		int size = (int)(totalSize - sizeof(intptr) - sizeof(intptr) * 4);
+
+		int capturedTraceCount = 1;
+		*(intptr*)((uint8*)result + size) = (intptr)BF_RETURN_ADDRESS;
+		memset((uint8*)result + size + sizeof(intptr), 0, sizeof(intptr) * 4);
+		result->mDbgAllocInfo = ((intptr)size << 16) | (((intptr)allocFlags) << 8) | capturedTraceCount;
+		BF_FULL_MEMORY_FENCE();
+		result->mClassVData |= (intptr)BfObjectFlag_AllocInfo_Short;
+	}	
 #endif
 }
 

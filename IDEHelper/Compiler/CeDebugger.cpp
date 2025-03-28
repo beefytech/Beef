@@ -3559,7 +3559,7 @@ String CeDebugger::TypedValueToString(const BfTypedValue& origTypedValue, const 
 			return "";
 
 		String reflectedTypeName;
-		if (displayType->IsInstanceOf(mCompiler->mTypeTypeDef))
+		if ((displayType->IsInstanceOf(mCompiler->mTypeTypeDef)) && (data != NULL))
 		{
 			auto typeInst = displayType->ToTypeInstance();
 			auto typeIdField = typeInst->mTypeDef->GetFieldByName("mTypeId");

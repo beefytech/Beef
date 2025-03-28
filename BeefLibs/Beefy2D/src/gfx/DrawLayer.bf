@@ -13,6 +13,8 @@ namespace Beefy.gfx
 #if !STUDIO_CLIENT
     public class DrawLayer
     {
+		public static List<DrawLayer> sDrawLayers = new .() ~ delete _;
+
         [CallingConvention(.Stdcall), CLink]
         static extern void* DrawLayer_Create(void* window);
 
@@ -33,10 +35,12 @@ namespace Beefy.gfx
         public this(BFWindow window)
         {
             mNativeDrawLayer = DrawLayer_Create((window != null) ? (window.mNativeWindow) : null);
+			sDrawLayers.Add(this);
         }
 
         public ~this()
         {
+			sDrawLayers.Remove(this);
             DrawLayer_Delete(mNativeDrawLayer);
         }
 

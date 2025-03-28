@@ -956,6 +956,8 @@ bool BfTypeDef::HasAutoProperty(BfPropertyDeclaration* propertyDeclaration)
 		return false;
 	if (propertyDeclaration->mExternSpecifier != NULL)
 		return false;
+	if (propertyDeclaration->IsA<BfIndexerDeclaration>())
+		return false;
 
 	for (auto methodDeclaration : propertyDeclaration->mMethods)
 	{
@@ -967,10 +969,8 @@ bool BfTypeDef::HasAutoProperty(BfPropertyDeclaration* propertyDeclaration)
 
 String BfTypeDef::GetAutoPropertyName(BfPropertyDeclaration* propertyDeclaration)
 {
-	String name = "prop__";
-	if (propertyDeclaration->IsA<BfIndexerDeclaration>())
-		name += "indexer__";
-	else if (propertyDeclaration->mNameNode != NULL)
+	String name = "prop__";	
+	if (propertyDeclaration->mNameNode != NULL)
 		name += propertyDeclaration->mNameNode->ToString();
 	return name;
 }
@@ -1091,6 +1091,12 @@ BfProject::~BfProject()
 	BfLogSysM("Deleting project %p %s\n", this, mName.c_str());
 }
 
+void BfProject::ClearCache()
+{
+	mDependencySet.Clear();
+	mDependencyKindDict.Clear();
+}
+
 bool BfProject::ContainsReference(BfProject* refProject)
 {
 	if (refProject->mDisabled)
@@ -1111,6 +1117,59 @@ bool BfProject::ReferencesOrReferencedBy(BfProject* refProject)
 bool BfProject::IsTestProject()
 {
 	return mTargetType == BfTargetType_BeefTest;
+}
+
+bool BfProject::HasDependency(BfProject* project)
+{	
+	if (mDependencySet.IsEmpty())
+	{
+		auto _AddProject = [&](BfProject* addProject)
+			{
+				if (mDependencySet.Add(addProject))
+				{
+					for (auto dep : addProject->mDependencies)
+						mDependencySet.Add(dep);
+				}
+			};
+		_AddProject(this);
+		
+	}
+	return mDependencySet.Contains(project);
+}
+
+BfProject::DependencyKind BfProject::GetDependencyKind(BfProject* project)
+{
+	DependencyKind* depKindPtr = NULL;
+	if (mDependencyKindDict.TryAdd(project, NULL, &depKindPtr))
+	{
+		*depKindPtr = DependencyKind_None;
+		if (project == this)
+		{
+			*depKindPtr = DependencyKind_Identity;
+		}
+		else if (HasDependency(project))
+		{
+			*depKindPtr = DependencyKind_Dependency;
+		}
+		else if (project->HasDependency(this))
+		{
+			*depKindPtr = DependencyKind_Dependent_Exclusive;
+			
+			for (auto checkProject : mSystem->mProjects)
+			{
+				if ((checkProject == this) || (checkProject == project) || (checkProject->mDisabled))
+					continue;
+				if (checkProject->HasDependency(this))
+				{
+					if (!checkProject->HasDependency(project))
+					{
+						*depKindPtr = DependencyKind_Dependent_Shared;
+					}
+				}
+			}
+		}
+	}
+	return *depKindPtr;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -1162,6 +1221,37 @@ BfPassInstance::~BfPassInstance()
 {
 	for (auto bfError : mErrors)
 		delete bfError;
+}
+
+BfPassInstance::StateInfo BfPassInstance::GetState()
+{
+	StateInfo stateInfo;
+	stateInfo.mOutStreamSize = (int)mOutStream.mSize;
+	stateInfo.mErrorsSize = mErrors.mSize;
+	stateInfo.mWarningCount = mWarningCount;
+	stateInfo.mDeferredErrorCount = mDeferredErrorCount;
+	stateInfo.mFailedIdx = mFailedIdx;
+	stateInfo.mWarnIdx = mWarnIdx;	
+	return stateInfo;
+}
+
+void BfPassInstance::RestoreState(StateInfo stateInfo)
+{
+	while (mOutStream.mSize > stateInfo.mOutStreamSize)
+		mOutStream.pop_back();
+
+	while (mErrors.mSize > stateInfo.mErrorsSize)
+	{
+		auto error = mErrors.back();
+		mErrors.pop_back();
+		mErrorSet.Remove(error);
+		delete error;
+	}
+	
+	mWarningCount = stateInfo.mWarningCount;
+	mDeferredErrorCount = stateInfo.mDeferredErrorCount;
+	mFailedIdx = stateInfo.mFailedIdx;
+	mWarnIdx = stateInfo.mWarnIdx;
 }
 
 void BfPassInstance::ClearErrors()
@@ -1703,7 +1793,7 @@ BfError* BfPassInstance::WarnAt(int warningNumber, const StringImpl& warning, Bf
 		return NULL;
 
 	auto bfParser = bfSource->ToParserData();
-	if ((bfParser != NULL) && (warningNumber > 0) && (!bfParser->IsWarningEnabledAtSrcIndex(warningNumber, srcIdx)))
+	if ((bfParser != NULL) && (!bfParser->IsWarningEnabledAtSrcIndex(warningNumber, srcIdx)))
 		return NULL;
 
 	if (!WantsRangeRecorded(bfParser, srcIdx, srcLen, true, isDeferred))
@@ -1984,6 +2074,8 @@ BfSystem::BfSystem()
 		gPerfManager = new PerfManager();
 	//gPerfManager->StartRecording();
 
+	mAnonymousAtomCount = 0;
+	mCurUniqueId = 0;
 	mAtomUpdateIdx = 0;
 	mAtomCreateIdx = 0;
 	mTypeMapVersion = 1;
@@ -2094,7 +2186,7 @@ BfSystem::~BfSystem()
 	typeDef->mHash = typeCode + 1000; \
 	mSystemTypeDefs[name] = typeDef;
 
-BfAtom* BfSystem::GetAtom(const StringImpl& string)
+BfAtom* BfSystem::GetAtom(const StringImpl& string, BfAtom::Kind kind)
 {
 	StringView* stringPtr = NULL;
 	BfAtom* atom = NULL;
@@ -2111,6 +2203,7 @@ BfAtom* BfSystem::GetAtom(const StringImpl& string)
 		}
 #endif
 		mAtomCreateIdx++;
+		atom->mKind = kind;
 		atom->mIsSystemType = false;
 		atom->mAtomUpdateIdx = ++mAtomUpdateIdx;
 		atom->mString = *stringPtr;
@@ -2120,6 +2213,9 @@ BfAtom* BfSystem::GetAtom(const StringImpl& string)
 		atom->mHash = 0;
 		for (char c : string)
 			atom->mHash = ((atom->mHash ^ c) << 5) - atom->mHash;
+
+		if (kind == BfAtom::Kind_Anon)
+			mAnonymousAtomCount++;
 
 		BfLogSys(this, "Atom Allocated %p %s\n", atom, string.c_str());
 
@@ -2152,6 +2248,12 @@ void BfSystem::ReleaseAtom(BfAtom* atom)
 {
 	if (--atom->mRefCount == 0)
 	{
+		if (atom->mKind == BfAtom::Kind_Anon)
+		{
+			mAnonymousAtomCount--;
+			BF_ASSERT(mAnonymousAtomCount >= 0);
+		}
+
 		mAtomGraveyard.push_back(atom);
 		return;
 	}
@@ -2448,6 +2550,21 @@ BfProject* BfSystem::GetProject(const StringImpl& projName)
 			return project;
 
 	return NULL;
+}
+
+uint64 BfSystem::GetTypeDeclListHash()
+{
+	HashContext hashCtx;
+	for (auto project : mProjects)
+	{
+		hashCtx.MixinStr(project->mName);
+		hashCtx.Mixin(project->mDisabled);
+		hashCtx.Mixin(project->mDependencies.mSize);
+		for (auto dep : project->mDependencies)		
+			hashCtx.Mixin(dep->mIdx);		
+	}
+	hashCtx.Mixin(mTypeDefs.mRevision);
+	return hashCtx.Finish128().mLow;
 }
 
 BfTypeReference* BfSystem::GetTypeRefElement(BfTypeReference* typeRef)
@@ -3014,7 +3131,7 @@ void BfSystem::InjectNewRevision(BfTypeDef* typeDef)
 
 	typeDef->mProtection = nextTypeDef->mProtection;
 
-	BF_ASSERT(typeDef->mTypeCode == nextTypeDef->mTypeCode);
+	BF_ASSERT((typeDef->mTypeCode == nextTypeDef->mTypeCode) || (nextTypeDef->mTypeCode == BfTypeCode_Inferred));
 
 	typeDef->mTypeCode = nextTypeDef->mTypeCode;
 	typeDef->mShow = nextTypeDef->mShow;
@@ -3121,6 +3238,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		typeDef->mSystem = partialTypeDef->mSystem;
 		typeDef->mTypeCode = partialTypeDef->mTypeCode;
 		typeDef->mShow = partialTypeDef->mShow;
+		typeDef->mIsOpaque = partialTypeDef->mIsOpaque;
 		typeDef->mIsFunction = partialTypeDef->mIsFunction;
 		typeDef->mIsDelegate = partialTypeDef->mIsDelegate;
 		typeDef->mNestDepth = partialTypeDef->mNestDepth;

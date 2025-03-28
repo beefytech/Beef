@@ -111,6 +111,7 @@ enum CeOp : int16
 	CeOp_GetSP,
 	CeOp_SetSP,
 	CeOp_GetStaticField,
+	CeOp_GetStaticField_Initializer,
 	CeOp_GetMethod,
 	CeOp_GetMethod_Inner,
 	CeOp_GetMethod_Virt,
@@ -428,12 +429,20 @@ enum CeFunctionKind
 	CeFunctionKind_DynCheckFailed,
 	CeFunctionKind_FatalError,
 	CeFunctionKind_DebugWrite,
-	CeFunctionKind_DebugWrite_Int,
+	CeFunctionKind_DebugWrite_Int,	
+	CeFunctionKind_GetReflectTypeDeclById,
+	CeFunctionKind_GetReflectTypeDeclByName,
+	CeFunctionKind_GetReflectNextTypeDecl,
+	CeFunctionKind_GetBaseType,
+	CeFunctionKind_HasDeclaredMember,
 	CeFunctionKind_GetReflectType,
 	CeFunctionKind_GetReflectTypeById,
+	CeFunctionKind_GetWrappedType,
 	CeFunctionKind_GetReflectTypeByName,
 	CeFunctionKind_GetReflectSpecializedType,
 	CeFunctionKind_Type_ToString,
+	CeFunctionKind_TypeName_ToString,
+	CeFunctionKind_Namespace_ToString,
 	CeFunctionKind_Type_GetCustomAttribute,
 	CeFunctionKind_Field_GetCustomAttribute,
 	CeFunctionKind_Method_GetCustomAttribute,
@@ -456,6 +465,7 @@ enum CeFunctionKind
 	CeFunctionKind_EmitMethodEntry,
 	CeFunctionKind_EmitMethodExit,
 	CeFunctionKind_EmitMixin,
+	CeFunctionKind_GetStringById,
 
 	CeFunctionKind_BfpDirectory_Create,
 	CeFunctionKind_BfpDirectory_Rename,
@@ -826,12 +836,13 @@ class CeBuilder
 {
 public:
 	CeBuilder* mParentBuilder;
-	CeMachine* mCeMachine;
+	CeMachine* mCeMachine;	
 	CeFunction* mCeFunction;
 	BeFunction* mBeFunction;
 	CeOperand mReturnVal;
 	BeType* mIntPtrType;
 	int mPtrSize;
+	int mRecursiveDepth;
 
 	String mError;
 	BeDbgLoc* mCurDbgLoc;
@@ -848,13 +859,14 @@ public:
 	Dictionary<BeFunction*, int> mInnerFunctionMap;
 	Dictionary<BeGlobalVariable*, int> mStaticFieldMap;
 	Dictionary<String, BfFieldInstance*> mStaticFieldInstanceMap;
-	Dictionary<BeValue*, int> mDbgVariableMap;
+	Dictionary<BeValue*, int> mDbgVariableMap;	
 
 public:
 	CeBuilder()
 	{
 		mParentBuilder = NULL;
 		mPtrSize = 0;
+		mRecursiveDepth = -1;
 		mCeFunction = NULL;
 		mBeFunction = NULL;
 		mCeMachine = NULL;
@@ -951,16 +963,24 @@ public:
 	{
 		Kind_None,
 		Kind_File,
-		Kind_Directory
+		Kind_Directory,
+		Kind_TypeDeclListHash,		
 	};
 
 public:
 	Kind mKind;
 	String mString;
+	int mInt;
+
+	CeRebuildKey()
+	{
+		mKind = Kind_None;
+		mInt = 0;
+	}
 
 	bool operator==(const CeRebuildKey& other) const
 	{
-		return (mKind == other.mKind) && (mString == other.mString);
+		return (mKind == other.mKind) && (mString == other.mString) && (mInt == other.mInt);
 	}
 };
 
@@ -1089,6 +1109,20 @@ public:
 	}
 };
 
+class CeTypeDeclState
+{
+public:
+	Dictionary<int, addr_ce> mReflectDeclMap;
+	HashSet<BfTypeDef*> mIteratedTypeDefs;
+	bool mCheckedAllTypeDefs;
+
+public:
+	CeTypeDeclState()
+	{
+		mCheckedAllTypeDefs = false;
+	}
+};
+
 class CeContext
 {
 public:
@@ -1097,6 +1131,7 @@ public:
 	int mReflectTypeIdOffset;
 	int mExecuteId;
 	CeEvalFlags mCurEvalFlags;
+	int mRecursiveDepth;
 
 	// These are only valid for the current execution
 	ContiguousHeap* mHeap;
@@ -1105,6 +1140,7 @@ public:
 	int mStackSize;
 	Dictionary<int, addr_ce> mStringMap;
 	Dictionary<int, addr_ce> mReflectMap;
+	CeTypeDeclState* mTypeDeclState;
 	Dictionary<Val128, addr_ce> mConstDataMap;
 	HashSet<int> mStaticCtorExecSet;
 	Dictionary<String, CeStaticFieldInfo> mStaticFieldMap;
@@ -1133,12 +1169,15 @@ public:
 	void CalcWorkingDir();
 	void FixRelativePath(StringImpl& path);
 	bool AddRebuild(const CeRebuildKey& key, const CeRebuildValue& value);
+	void AddTypeSigRebuild(BfType* type);
 	void AddFileRebuild(const StringImpl& filePath);
 	uint8* CeMalloc(int size);
+	uint8* CeMallocZero(int size);
 	bool CeFree(addr_ce addr);
 	addr_ce CeAllocArray(BfArrayType* arrayType, int count, addr_ce& elemsAddr);
+	addr_ce GetReflectTypeDecl(int typeId);	
 	addr_ce GetReflectType(int typeId);
-	addr_ce GetReflectType(const String& typeName);
+	addr_ce GetReflectType(const String& typeName, bool useDeclaration);
 	int GetTypeIdFromType(addr_ce typeAddr);
 	addr_ce GetReflectSpecializedType(addr_ce unspecializedType, addr_ce typeArgsSpanAddr);
 	addr_ce GetString(int stringId);
@@ -1216,6 +1255,7 @@ public:
 	int mRevisionExecuteTime;
 	int mCurFunctionId;
 	int mExecuteId;
+	int mCurRecursiveDepth;
 	CeAppendAllocInfo* mAppendAllocInfo;
 
 	CeContext* mCurContext;
@@ -1249,7 +1289,7 @@ public:
 	void RemoveFunc(CeFunction* ceFunction);
 	void RemoveMethod(BfMethodInstance* methodInstance);
 	void CreateFunction(BfMethodInstance* methodInstance, CeFunction* ceFunction);
-	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal, CeContext* ceContext);
+	CeErrorKind WriteConstant(CeConstStructData& data, BeConstant* constVal, CeContext* ceContext, CeBuilder* ceBuilder);
 
 	void CheckFunctionKind(CeFunction* ceFunction);
 	void PrepareFunction(CeFunction* methodInstance, CeBuilder* parentBuilder);
@@ -1276,6 +1316,9 @@ public:
 	CeContext* AllocContext();
 	void ReleaseContext(CeContext* context);
 	BfTypedValue Call(CeCallSource callSource, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType);
+
+	BfError* FailCurrent(BfModule* srcModule, const StringImpl& error, BfAstNode* refNode);
+	void FailCurrentMoreInfo(const StringImpl& error, BfAstNode* refNode);
 };
 
 NS_BF_END

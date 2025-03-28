@@ -38,7 +38,7 @@ namespace System.IO
 
 		public ~this()
 		{
-			Flush();
+			FlushBuffer();
 		}
 
 		public override Result<void> Seek(int64 pos, SeekKind seekKind = .Absolute)
@@ -84,7 +84,7 @@ namespace System.IO
 				data.RemoveFromStart((.)spaceLeft);
 			}
 
-			Try!(Flush());
+			Try!(FlushBuffer());
 
 			if ((mBuffer == null) || (data.Length > mBuffer.Count))
 			{
@@ -114,7 +114,7 @@ namespace System.IO
 
 			if ((mWriteDirtyEnd >= 0) && (mWriteDirtyEnd != mPos))
 			{
-				Try!(Flush());
+				Try!(FlushBuffer());
 			}
 
 			int writeCount = 0;
@@ -138,7 +138,7 @@ namespace System.IO
 				}
 			}
 
-			Try!(Flush());
+			Try!(FlushBuffer());
 
 			if ((mBuffer == null) || (data.Length > mBuffer.Count))
 			{
@@ -158,7 +158,7 @@ namespace System.IO
 			return writeCount;
 		}
 
-		public override Result<void> Flush()
+		protected Result<void> FlushBuffer()
 		{
 			if (mWriteDirtyPos >= 0)
 			{
@@ -170,9 +170,14 @@ namespace System.IO
 			return .Ok;
 		}
 
+		public override Result<void> Flush()
+		{
+			return FlushBuffer();
+		}
+
 		public override Result<void> Close()
 		{
-			let ret = Flush();
+			let ret = FlushBuffer();
 			
 			mPos = 0;
 			mBufferPos = -Int32.MinValue;

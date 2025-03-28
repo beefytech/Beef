@@ -26,6 +26,43 @@ namespace IDE.ui
 			public int mLine;
 			public int mColumn;
 
+			public override void MouseClicked(float x, float y, float origX, float origY, int32 btn)
+			{
+				base.MouseClicked(x, y, origX, origY, btn);
+
+				if (btn == 1)
+				{
+					Menu menu = new Menu();
+					var menuItemCopySingle = menu.AddItem("Copy");
+					menuItemCopySingle.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						String buffer = scope .();
+						mListView.GetRoot().WithSelectedItems(scope (item) =>
+							{
+								var errorItem = (ErrorsListViewItem)item;
+								if (!buffer.IsEmpty)
+									buffer.Append("\n");
+								errorItem.CopyError(buffer);
+							});
+						if (!buffer.IsEmpty)
+							gApp.SetClipboardText(buffer);
+					});
+
+					MenuWidget menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
+					menuWidget.Init(this, x, y);
+				}
+			}
+
+			public void CopyError (String buffer)
+			{
+				var preffix = scope String();
+				Font.StrRemoveColors(this.mSubItems[0].mLabel, preffix);
+				preffix.ToUpper();
+				var description = this.mSubItems[1].mLabel;
+
+				buffer.AppendF("{}: {} at line {}:{} in {}", preffix, description, this.mLine, this.mColumn, this.mFilePath);
+			}
+
 			public override void DrawSelect(Graphics g)
 			{
 				bool hasFocus = mListView.mHasFocus;

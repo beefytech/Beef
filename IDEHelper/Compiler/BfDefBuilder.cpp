@@ -426,7 +426,14 @@ BfMethodDef* BfDefBuilder::CreateMethodDef(BfMethodDeclaration* methodDeclaratio
 	methodDef->mBody = methodDeclaration->mBody;
 
 	if ((methodDeclaration->mThisToken != NULL) && (!methodDeclaration->mParams.IsEmpty()))
+	{
 		methodDef->mMethodType = BfMethodType_Extension;
+		if (!methodDef->mIsStatic)
+		{
+			methodDef->mIsStatic = true;
+			Fail("Extension methods must be declared 'static'", methodDef->GetRefNode());
+		}
+	}
 
 	HashContext signatureHashCtx;
 	HashNode(signatureHashCtx, methodDeclaration, methodDef->mBody);
@@ -795,10 +802,16 @@ void BfDefBuilder::Visit(BfMethodDeclaration* methodDeclaration)
 	}
 }
 
-void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef* methodDef)
+void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef* methodDef, bool checkReturnType)
 {
-	while (attributes != NULL)
+	if (checkReturnType)
 	{
+		if (auto inlineTypeRef = BfNodeDynCast<BfInlineTypeReference>(methodDef->mReturnTypeRef))
+			ParseAttributes(inlineTypeRef->mTypeDeclaration->mAttributes, methodDef, false);
+	}
+
+	while (attributes != NULL)
+	{		
 		if (attributes->mAttributeTypeRef != NULL)
 		{
 			auto typeRefName = attributes->mAttributeTypeRef->ToCleanAttributeString();
@@ -816,8 +829,24 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 			}
 			else if (typeRefName == "AllowAppend")
 			{
-				methodDef->mHasAppend = true;
-				methodDef->mIsNoSplat = true;
+				methodDef->mAppendKind = BfAllowAppendKind_Yes;
+				methodDef->mIsNoSplat = true;				
+				if (!attributes->mArguments.IsEmpty())
+				{
+					if (auto assignExpr = BfNodeDynCast<BfAssignmentExpression>(attributes->mArguments[0]))
+					{
+						if ((assignExpr->mLeft != NULL) && (assignExpr->mRight != NULL) &&
+							(assignExpr->mLeft->Equals("ZeroGap")))
+						{
+							if (assignExpr->mRight->Equals("true"))
+								methodDef->mAppendKind = BfAllowAppendKind_ZeroGap;
+							else if (assignExpr->mRight->Equals("false"))
+								methodDef->mAppendKind = BfAllowAppendKind_Yes;
+							else
+								Fail("Can only use 'true' or 'false' for 'ZeroGap'", assignExpr->mRight);
+						}
+					}
+				}
 			}
 			else if (typeRefName == "Checked")
 				methodDef->mCheckedKind = BfCheckedKind_Checked;
@@ -1196,6 +1225,10 @@ void BfDefBuilder::Visit(BfFieldDeclaration* fieldDeclaration)
 		else
 			fieldDef->mUsingProtection = fieldDef->mProtection;
 	}
+	else if (fieldDeclaration->mNameNode == NULL)
+	{
+		fieldDef->mUsingProtection = fieldDef->mProtection;
+	}
 
 	fieldDef->mIsStatic = (fieldDeclaration->mStaticSpecifier != NULL) || fieldDef->mIsConst;
 	fieldDef->mIsVolatile = (fieldDeclaration->mVolatileSpecifier != NULL);
@@ -1253,6 +1286,7 @@ BfFieldDef* BfDefBuilder::AddField(BfTypeDef* typeDef, BfTypeReference* fieldTyp
 BfMethodDef* BfDefBuilder::AddMethod(BfTypeDef* typeDef, BfMethodType methodType, BfProtection protection, bool isStatic, const StringImpl& name, bool addedAfterEmit)
 {
 	BF_ASSERT(typeDef->mTypeCode != BfTypeCode_TypeAlias);
+	BF_ASSERT(!typeDef->mIsOpaque);
 
 	auto methodDef = new BfMethodDef();
 	methodDef->mIdx = (int)typeDef->mMethods.size();
@@ -1321,9 +1355,9 @@ BfMethodDef* BfDefBuilder::AddDtor(BfTypeDef* typeDef)
 	return methodDef;
 }
 
-void BfDefBuilder::AddDynamicCastMethods(BfTypeDef* typeDef)
+void BfDefBuilder::AddDynamicCastMethods(BfTypeDef* typeDef, bool needsDynamicCastMethods)
 {
-	//
+	if (needsDynamicCastMethods)
 	{
 		auto methodDef = new BfMethodDef();
 		methodDef->mIdx = (int)typeDef->mMethods.size();
@@ -1344,7 +1378,7 @@ void BfDefBuilder::AddDynamicCastMethods(BfTypeDef* typeDef)
 		methodDef->mIsNoReflect = true;
 	}
 
-	//
+	if (needsDynamicCastMethods)
 	{
 		auto methodDef = new BfMethodDef();
 		methodDef->mIdx = (int)typeDef->mMethods.size();
@@ -1359,6 +1393,27 @@ void BfDefBuilder::AddDynamicCastMethods(BfTypeDef* typeDef)
 
 		auto paramDef = new BfParameterDef();
 		paramDef->mName = "id";
+		paramDef->mTypeRef = typeDef->mSystem->mDirectInt32TypeRef;
+		methodDef->mParams.push_back(paramDef);
+		methodDef->mReturnTypeRef = typeDef->mSystem->mDirectObjectTypeRef;
+		methodDef->mIsNoReflect = true;
+	}
+
+	if ((typeDef->mIsDelegate) && (!typeDef->mIsClosure))
+	{
+		auto methodDef = new BfMethodDef();
+		methodDef->mIdx = (int)typeDef->mMethods.size();
+		typeDef->mMethods.push_back(methodDef);
+		methodDef->mDeclaringType = typeDef;
+		methodDef->mName = BF_METHODNAME_DYNAMICCAST_SIGNATURE;
+		methodDef->mProtection = BfProtection_Protected;
+		methodDef->mIsStatic = false;
+		methodDef->mMethodType = BfMethodType_Normal;
+		methodDef->mIsVirtual = true;
+		methodDef->mIsOverride = true;
+
+		auto paramDef = new BfParameterDef();
+		paramDef->mName = "sig";
 		paramDef->mTypeRef = typeDef->mSystem->mDirectInt32TypeRef;
 		methodDef->mParams.push_back(paramDef);
 		methodDef->mReturnTypeRef = typeDef->mSystem->mDirectObjectTypeRef;
@@ -1434,13 +1489,11 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	}
 
 	BF_ASSERT(typeDeclaration->GetSourceData() == mCurSource->mSourceData);
-
-	if ((typeDeclaration->mTypeNode != NULL) && (typeDeclaration->mNameNode == NULL))
-		return;
-
+	
     /*if (typeDeclaration->mNameNode != NULL)
         OutputDebugStrF("Decl: %s\n", typeDeclaration->mNameNode->ToString().c_str());*/
 
+	bool isAnonymous = typeDeclaration->IsAnonymous();
 	bool isAutoCompleteTempType = false;
 	if (mResolvePassData != NULL)
 	{
@@ -1504,17 +1557,25 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	mCurTypeDef->mProject = mCurSource->mProject;
 	mCurTypeDef->mNamespace = mNamespace;
 	mSystem->AddNamespaceUsage(mCurTypeDef->mNamespace, mCurTypeDef->mProject);
-	if (typeDeclaration->mTypeNode == NULL)
+	if ((typeDeclaration->mTypeNode == NULL) && (!isAnonymous))
 	{
 		mCurTypeDef->mIsPartial = true;
 		mCurTypeDef->mIsExplicitPartial = true;
 	}
 	if (typeDeclaration->mNameNode == NULL)
 	{
-		// Global
-		mCurTypeDef->mName = mSystem->mGlobalsAtom;
-		mCurTypeDef->mName->Ref();
-		BF_ASSERT(mCurTypeDef->mSystem != NULL);
+		if (typeDeclaration->mAnonymousName != NULL)
+		{
+			mCurTypeDef->mName = mSystem->GetAtom(typeDeclaration->mAnonymousName);
+		}
+
+		if (mCurTypeDef->mName == NULL)
+		{
+			// Global
+			mCurTypeDef->mName = mSystem->mGlobalsAtom;
+			mCurTypeDef->mName->Ref();
+			BF_ASSERT(mCurTypeDef->mSystem != NULL);
+		}		
 	}
 	else
 	{
@@ -1527,7 +1588,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 
 	BfLogSys(mCurSource->mSystem, "DefBuilder %p %p TypeDecl:%s\n", mCurTypeDef, mCurSource, mCurTypeDef->mName->ToString().mPtr);
 
-	mCurTypeDef->mProtection = (outerTypeDef == NULL) ? BfProtection_Public : BfProtection_Private;
+	mCurTypeDef->mProtection = ((outerTypeDef == NULL) || (isAnonymous)) ? BfProtection_Public : BfProtection_Private;
 	if (typeDeclaration->mProtectionSpecifier != NULL)
 	{
 		if ((outerTypeDef == NULL) &&
@@ -1730,7 +1791,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	mCurTypeDef->mSource = mCurSource;
 	mCurTypeDef->mSource->mRefCount++;
 	mCurTypeDef->mTypeDeclaration = typeDeclaration;
-	mCurTypeDef->mIsAbstract = (typeDeclaration->mAbstractSpecifier != NULL) && (typeDeclaration->mAbstractSpecifier->GetToken() == BfToken_Abstract);
+	mCurTypeDef->mIsAbstract = (typeDeclaration->mAbstractSpecifier != NULL) && (typeDeclaration->mAbstractSpecifier->GetToken() == BfToken_Abstract);	
 	mCurTypeDef->mIsStatic = typeDeclaration->mStaticSpecifier != NULL;
 	mCurTypeDef->mIsDelegate = false;
 	mCurTypeDef->mIsFunction = false;
@@ -1739,7 +1800,11 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	if (typeDeclaration->mTypeNode != NULL)
 		typeToken = typeDeclaration->mTypeNode->GetToken();
 
-	if (typeDeclaration->mTypeNode == NULL)
+	if (typeDeclaration->IsAnonymousInitializerType())
+	{
+		mCurTypeDef->mTypeCode = BfTypeCode_Inferred;
+	}
+	else if (typeDeclaration->mTypeNode == NULL)
 	{
 		// Globals
 		mCurTypeDef->mTypeCode = BfTypeCode_Struct;
@@ -1840,6 +1905,9 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 							(checkTypeDef->mIsDelegate == mCurTypeDef->mIsDelegate) &&
 							(checkTypeDef->mIsFunction == mCurTypeDef->mIsFunction) &&
 							(checkTypeDef->mOuterType == actualOuterTypeDef);
+
+						if ((mCurTypeDef->mTypeCode == BfTypeCode_Inferred) && (checkTypeDef->mTypeDeclaration->IsAnonymousInitializerType()))
+							isCompatible = true;
 
 						if (isCompatible)
 						{
@@ -1956,12 +2024,18 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 		}
 	}
 
+	for (auto& anonTypeDecl : typeDeclaration->mAnonymousTypes)
+	{
+		VisitChildNoRef(anonTypeDecl);
+		mFullHashCtx->MixinStr(anonTypeDecl->mAnonymousName);
+	}
+
 	FinishTypeDef(mCurTypeDef->mTypeCode == BfTypeCode_Enum);
 
 	// Map methods into the correct index from previous revision
 	if (prevRevisionTypeDef != NULL)
 	{
-		BF_ASSERT(mCurTypeDef->mTypeCode == prevRevisionTypeDef->mTypeCode);
+		BF_ASSERT((mCurTypeDef->mTypeCode == prevRevisionTypeDef->mTypeCode) || (mCurTypeDef->mTypeCode == BfTypeCode_Inferred));
 
 		if (mCurTypeDef->mFullHash == prevRevisionTypeDef->mFullHash)
 		{
@@ -2014,6 +2088,15 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	BfMethodDef* strictEqualsMethod = NULL;
 
 	bool needsStaticInit = false;
+	if (mCurTypeDef->IsExtension())
+		needsDefaultCtor = false;
+
+	bool needsDtor = false;
+	bool needsStaticDtor = false;
+	bool hasStaticField = false;
+	bool hasNonStaticField = false;
+	bool hasThreadStatics = false;
+
 	for (int methodIdx = 0; methodIdx < (int)mCurTypeDef->mMethods.size(); methodIdx++)
 	{
 		auto method = mCurTypeDef->mMethods[methodIdx];
@@ -2027,6 +2110,9 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 		if (method->mMethodType == BfMethodType_Ctor)
 		{
+			if (method->HasAppend())
+				needsDtor = true;
+
 			if (method->mIsStatic)
 			{
 				if ((staticCtor != NULL) && (staticCtor->mMethodDeclaration != NULL))
@@ -2053,7 +2139,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 					hasDefaultCtor = true;
 
 				auto ctorDeclaration = (BfConstructorDeclaration*)method->mMethodDeclaration;
-				if (method->mHasAppend)
+				if (method->mAppendKind != BfAllowAppendKind_No)
 				{
 					mCurTypeDef->mHasAppendCtor = true;
 
@@ -2068,6 +2154,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 						methodDef->mProtection = BfProtection_Public;
 						methodDef->mMethodType = BfMethodType_CtorCalcAppend;
 						methodDef->mIsMutating = method->mIsMutating;
+						methodDef->mAppendKind = method->mAppendKind;
 						methodDef->mIsNoSplat = true;
 
 						methodDef->mMethodDeclaration = method->mMethodDeclaration;
@@ -2096,7 +2183,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 						// Insert a 'appendIdx'
 						BfParameterDef* newParam = new BfParameterDef();
-						newParam->mName = "appendIdx";
+						newParam->mName = "__appendIdx";
 						newParam->mTypeRef = mSystem->mDirectRefIntTypeRef;
 						newParam->mParamKind = BfParamKind_AppendIdx;
 						method->mParams.Insert(0, newParam);
@@ -2185,15 +2272,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		if ((method->mImportKind == BfImportKind_Import_Dynamic) || (method->mImportKind == BfImportKind_Import_Unknown))
 			needsStaticInit = true;
 	}
-
-	if (mCurTypeDef->IsExtension())
-		needsDefaultCtor = false;
-
-	bool needsDtor = false;
-	bool needsStaticDtor = false;
-	bool hasStaticField = false;
-	bool hasNonStaticField = false;
-	bool hasThreadStatics = false;
+	
 	for (auto field : mCurTypeDef->mFields)
 	{
 		if (field->mIsStatic)
@@ -2264,25 +2343,29 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		needsDynamicCastMethod = false;
 	}
 
-	if ((mCurTypeDef->mTypeCode == BfTypeCode_Object) && (!mCurTypeDef->mIsStatic) && (ctorClear == NULL))
+	if (!mCurTypeDef->mIsOpaque)
 	{
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_CtorClear, BfProtection_Private, false, "", mIsComptime);
-		methodDef->mIsMutating = true;
-	}
+		if (((mCurTypeDef->mTypeCode == BfTypeCode_Object) || (mCurTypeDef->mTypeCode == BfTypeCode_Inferred)) &&
+			(!mCurTypeDef->mIsStatic) && (ctorClear == NULL))
+		{
+			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_CtorClear, BfProtection_Private, false, "", mIsComptime);
+			methodDef->mIsMutating = true;
+		}
 
-	if ((needsDtor) && (dtor == NULL))
-	{
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, false, "", mIsComptime);
-	}
+		if ((needsDtor) && (dtor == NULL))
+		{
+			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, false, "", mIsComptime);
+		}
 
-	if ((needsStaticDtor) && (staticDtor == NULL))
-	{
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, true, "", mIsComptime);
-	}
+		if ((needsStaticDtor) && (staticDtor == NULL))
+		{
+			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Dtor, BfProtection_Public, true, "", mIsComptime);
+		}
 
-	if ((needsStaticInit) && (staticCtor == NULL))
-	{
-		auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, BfProtection_Public, true, "", mIsComptime);
+		if ((needsStaticInit) && (staticCtor == NULL))
+		{
+			auto methodDef = AddMethod(mCurTypeDef, BfMethodType_Ctor, BfProtection_Public, true, "", mIsComptime);
+		}
 	}
 
 	bool makeCtorPrivate = hasCtor;
@@ -2292,7 +2375,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	if (mCurTypeDef->mTypeCode == BfTypeCode_Extension)
 		needsDefaultCtor = false;
 
-	if ((needsDefaultCtor) && ((!hasDefaultCtor)))
+	if ((needsDefaultCtor) && (!hasDefaultCtor) && (!mCurTypeDef->mIsOpaque))
 	{
 		BfProtection prot = hasCtor ? BfProtection_Hidden : BfProtection_Public;
 		if (mCurTypeDef->mName == mSystem->mEmptyAtom)
@@ -2309,10 +2392,10 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		isAutocomplete = true;
 
 	//TODO: Don't do this for the autocomplete pass
-	if ((needsDynamicCastMethod) && (mCurTypeDef->mTypeCode != BfTypeCode_Interface) && (mCurTypeDef->mTypeCode != BfTypeCode_Extension) &&
-		(!mCurTypeDef->mIsStatic) && (!isAutocomplete) && (!isAlias))
+	if ((mCurTypeDef->mTypeCode != BfTypeCode_Interface) && (mCurTypeDef->mTypeCode != BfTypeCode_Extension) &&
+		(!mCurTypeDef->mIsStatic) && (!isAutocomplete) && (!isAlias) && (!mCurTypeDef->mIsOpaque))
 	{
-		AddDynamicCastMethods(mCurTypeDef);
+		AddDynamicCastMethods(mCurTypeDef, needsDynamicCastMethod);
 	}
 
 	bool isPayloadEnum = false;
@@ -2331,7 +2414,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	if (isPayloadEnum)
 		hasNonStaticField = true;
 
-	if (mCurTypeDef->mTypeCode != BfTypeCode_Interface)
+	if ((mCurTypeDef->mTypeCode != BfTypeCode_Interface) && (!mCurTypeDef->mIsOpaque))
 	{
 		if ((hasStaticField) && (staticMarkMethod == NULL))
 		{
@@ -2359,7 +2442,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 	if (toStringMethod != NULL)
 		wantsToString = false;
 
-	if ((mCurTypeDef->mTypeCode == BfTypeCode_Enum) && (!isPayloadEnum) && (getUnderlyingMethod == NULL))
+	if ((mCurTypeDef->mTypeCode == BfTypeCode_Enum) && (!isPayloadEnum) && (getUnderlyingMethod == NULL) && (!mCurTypeDef->mIsOpaque))
 	{
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
@@ -2417,7 +2500,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		}
 	}
 
-	if (wantsToString)
+	if ((wantsToString) && (!mCurTypeDef->mIsOpaque))
 	{
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
@@ -2433,7 +2516,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		methodDef->mAddedAfterEmit = mIsComptime;
 	}
 
-	if ((needsEqualsMethod) && (equalsMethod == NULL) && (equalsOpMethod == NULL))
+	if ((needsEqualsMethod) && (equalsMethod == NULL) && (equalsOpMethod == NULL) && (!mCurTypeDef->mIsOpaque))
 	{
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
@@ -2448,7 +2531,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		methodDef->mAddedAfterEmit = mIsComptime;
 	}
 
-	if ((needsEqualsMethod) && (strictEqualsMethod == NULL))
+	if ((needsEqualsMethod) && (strictEqualsMethod == NULL) && (!mCurTypeDef->mIsOpaque))
 	{
 		auto methodDef = new BfMethodDef();
 		mCurTypeDef->mMethods.push_back(methodDef);
@@ -2483,7 +2566,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 			mSignatureHashCtx->MixinStr(methodDef->mName);
 
 		if ((methodDef->mAlwaysInline) ||
-			(methodDef->mHasAppend) ||
+			(methodDef->mAppendKind != BfAllowAppendKind_No) ||
 			(methodDef->mMethodType == BfMethodType_Mixin))
 			inlineHashCtx.Mixin(methodDef->mFullHash);
 

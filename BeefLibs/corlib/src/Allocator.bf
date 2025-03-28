@@ -97,7 +97,7 @@ namespace System
 		}
 	}
 
-	struct AllocWrapper<T> where T : new, delete
+	struct AllocWrapper<T> where T : new where alloctype(T) : delete
 	{
 		alloctype(T) mVal;
 		public alloctype(T) Val

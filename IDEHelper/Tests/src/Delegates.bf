@@ -232,9 +232,16 @@ namespace Tests
 
 		public static void TestCasting()
 		{
-			delegate int(int, int) dlg0 = null;
+			delegate int(int, int) dlg0 = scope (a, b) => 1;
 			delegate int(int a, int b) dlg1 = dlg0;
 			delegate int(int a2, int b2) dlg2 = (.)dlg1;
+			delegate int(float a, float b) dlg3 = scope (a, b) => 2;
+
+			Object obj = dlg0;
+			dlg1 = (.)obj;
+			dlg2 = (.)obj;
+			Test.Assert(obj is delegate int(int a, int b));
+			Test.Assert(!(obj is delegate int(float a, float b)));
 
 			function int(int, int) func0 = null;
 			function int(int a, int b) func1 = func0;

@@ -236,6 +236,11 @@ void BfStructuralVisitor::Visit(BfTypeReference* typeRef)
 	Visit(typeRef->ToBase());
 }
 
+void BfStructuralVisitor::Visit(BfInlineTypeReference* typeRef)
+{
+	Visit(typeRef->ToBase());
+}
+
 void BfStructuralVisitor::Visit(BfNamedTypeReference* typeRef)
 {
 	Visit(typeRef->ToBase());
@@ -1233,14 +1238,26 @@ void BfBlock::SetSize(int wantSize)
 
 //////////////////////////////////////////////////////////////////////////
 
+bool BfTypeDeclaration::IsAnonymous()
+{
+	return (mAnonymousName != NULL);
+}
+
+bool BfTypeDeclaration::IsAnonymousInitializerType()
+{
+	return (mAnonymousName != NULL) && (mTypeNode == NULL);
+}
+
+//////////////////////////////////////////////////////////////////////////
+
 bool BfTypeReference::IsNamedTypeReference()
 {
-	return IsA<BfNamedTypeReference>() || IsA<BfDirectStrTypeReference>();
+	return IsA<BfNamedTypeReference>() || IsA<BfDirectStrTypeReference>() || IsA<BfInlineTypeReference>();
 }
 
 bool BfTypeReference::IsTypeDefTypeReference()
 {
-	return IsA<BfNamedTypeReference>() || IsA<BfDirectStrTypeReference>() || IsA<BfDirectTypeDefReference>();
+	return IsA<BfNamedTypeReference>() || IsA<BfDirectStrTypeReference>() || IsA<BfInlineTypeReference>() || IsA<BfDirectTypeDefReference>();
 }
 
 String BfTypeReference::ToCleanAttributeString()
@@ -1444,6 +1461,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return "namespace";
 	case BfToken_New:
 		return "new";
+	case BfToken_Not:
+		return "not";
 	case BfToken_Null:
 		return "null";
 	case BfToken_Nullable:
@@ -1479,9 +1498,7 @@ const char* Beefy::BfTokenToString(BfToken token)
 	case BfToken_Sealed:
 		return "sealed";
 	case BfToken_SizeOf:
-		return "sizeof";
-	case BfToken_Stack:
-		return "stack";
+		return "sizeof";	
 	case BfToken_Static:
 		return "static";
 	case BfToken_StrideOf:
@@ -1657,6 +1674,11 @@ const char* Beefy::BfTokenToString(BfToken token)
 bool Beefy::BfTokenIsKeyword(BfToken token)
 {
 	return (token >= BfToken_Abstract) && (token <= BfToken_Yield);
+}
+
+bool Beefy::BfTokenIsTypeDecl(BfToken token)
+{
+	return (token == BfToken_Struct) || (token == BfToken_Class) || (token == BfToken_Interface) || (token == BfToken_Enum);
 }
 
 BfBinaryOp Beefy::BfAssignOpToBinaryOp(BfAssignmentOp assignmentOp)

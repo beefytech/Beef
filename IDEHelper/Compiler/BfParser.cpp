@@ -105,6 +105,40 @@ return 0;
 
 //////////////////////////////////////////////////////////////////////////
 
+static CritSect gParseFileDataCrit;
+static Array<int> gFreeIds;
+static int gCurFreeId;
+
+int BfParseFileData::GetUniqueId(int idx)
+{
+	AutoCrit autoCrit(gParseFileDataCrit);
+
+	int* valuePtr = NULL;
+	if (mUniqueIDList.TryAdd(idx, NULL, &valuePtr))
+	{
+		if (!gFreeIds.IsEmpty())
+		{
+			*valuePtr = gFreeIds.back();
+			gFreeIds.pop_back();
+		}
+		else
+			*valuePtr = gCurFreeId++;
+	}	
+	return *valuePtr;
+}
+
+BfParseFileData::~BfParseFileData()
+{
+	if (!mUniqueIDList.IsEmpty())
+	{
+		AutoCrit autoCrit(gParseFileDataCrit);
+		for (auto kv : mUniqueIDList)
+			gFreeIds.Add(kv.mValue);
+	}
+}
+
+//////////////////////////////////////////////////////////////////////////
+
 BfParserCache* Beefy::gBfParserCache = NULL;
 
 bool BfParserCache::DataEntry::operator==(const LookupEntry& lookup) const
@@ -201,12 +235,37 @@ BfParserData::BfParserData()
 	mCharIdData = NULL;
 	mUniqueParser = NULL;
 	mDidReduce = false;
+	mParseFileData = NULL;
 }
 
 BfParserData::~BfParserData()
 {
+	if (mParseFileData != NULL)
+	{
+		BF_ASSERT(mParseFileData->mRefCount >= 0);
+		mParseFileData->mRefCount--;
+		if (mParseFileData->mRefCount == 0)
+		{
+			delete mParseFileData;
+			gBfParserCache->mParseFileDataMap.Remove(mFileName);
+		}
+	}
+
 	delete[] mJumpTable;
 	delete[] mCharIdData;
+}
+
+void BfParserData::InitFileData()
+{
+	BF_ASSERT(mParseFileData == NULL);
+
+	BfParseFileData** valuePtr = NULL;
+	if (gBfParserCache->mParseFileDataMap.TryAdd(mFileName, NULL, &valuePtr))
+	{
+		*valuePtr = new BfParseFileData();
+	}
+	mParseFileData = *valuePtr;
+	mParseFileData->mRefCount++;
 }
 
 int BfParserData::GetCharIdAtIndex(int findIndex)
@@ -304,21 +363,18 @@ bool BfParserData::IsUnwarnedAt(BfAstNode* node)
 bool BfParserData::IsWarningEnabledAtSrcIndex(int warningNumber, int srcIdx)
 {
 	int enabled = 1; //CDH TODO if/when we add warning level support, this default will change based on the warning number and the general project warning level setting
-	int lastUnwarnPos = 0;
 
 	for (const auto& it : mWarningEnabledChanges)
 	{
 		if (it.mKey > srcIdx)
 			break;
-		if (it.mValue.mWarningNumber == warningNumber)
+		if ((it.mValue.mWarningNumber == warningNumber) || (it.mValue.mWarningNumber == -1))
 		{
 			if (it.mValue.mEnable)
 				enabled++;
 			else
 				enabled--;
-		}
-		if (it.mValue.mWarningNumber == -1)
-			lastUnwarnPos = -1;
+		}		
 	}
 	return enabled > 0;
 }
@@ -328,7 +384,7 @@ void BfParserData::Deref()
 	mRefCount--;
 	BF_ASSERT(mRefCount >= 0);
 	if (mRefCount == 0)
-	{
+	{		
 		AutoCrit autoCrit(gBfParserCache->mCritSect);
 		BfParserCache::DataEntry dataEntry;
 		dataEntry.mParserData = this;
@@ -385,6 +441,7 @@ BfParser::BfParser(BfSystem* bfSystem, BfProject* bfProject) : BfSource(bfSystem
 	mTriviaStart = 0;
 	mParsingFailed = false;
 	mInAsmBlock = false;
+	mCurBlockId = 0;
 	mPreprocessorIgnoredSectionNode = NULL;
 	mPreprocessorIgnoreDepth = 0;
 	mAddedDependsDefines = false;
@@ -413,6 +470,8 @@ BfParser::~BfParser()
 	}
 	else if (mParserData->mRefCount == 0)
 	{
+
+
 		// Just never got added to the cache
 		delete mParserData;
 	}
@@ -510,6 +569,7 @@ void BfParser::Init(uint64 cacheHash)
 	mParserData = new BfParserData();
 	mSourceData = mParserData;
 	mParserData->mFileName = mFileName;
+	mParserData->InitFileData();
 	if (mDataId != -1)
 		mParserData->mDataId = mDataId;
 	else
@@ -796,7 +856,10 @@ BfBlock* BfParser::ParseInlineBlock(int spaceIdx, int endIdx)
 		if (startNode == NULL)
 			startNode = childNode;
 		if (block == NULL)
+		{
 			block = mAlloc->Alloc<BfBlock>();
+			block->mParserBlockId = ++mCurBlockId;
+		}
 		block->Add(childNode);
 		childArr.push_back(childNode);
 		//block->mChildArr.Add(childNode, &mAlloc);
@@ -857,10 +920,14 @@ void BfParser::HandlePragma(const StringImpl& pragma, BfBlock* block)
 				mPassInstance->FailAt("Expected \"disable\" or \"restore\" after \"warning\"", mSourceData, iterNode->GetSrcStart(), iterNode->GetSrcLength());
 			}
 
-			//iterNode = parentNode->mChildArr.GetAs<BfAstNode*>(++curIdx);
+			int srcStart = iterNode->GetSrcStart();
+
+			int nodeCount = 0;
+			
 			iterNode = itr.Get();
 			while (iterNode)
 			{
+				++nodeCount;
 				++itr;
 				auto tokenStr = iterNode->ToString();
 				if (tokenStr != ",") // commas allowed between warning numbers but not required; we just ignore them
@@ -875,11 +942,14 @@ void BfParser::HandlePragma(const StringImpl& pragma, BfBlock* block)
 							break;
 						}
 					}
-					if (isNum)
+
+					int warningNum = atoi(tokenStr.c_str());
+
+					if ((isNum) && (warningNum > 0))
 					{
 						BfParserWarningEnabledChange wec;
 						wec.mEnable = enable;
-						wec.mWarningNumber = atoi(tokenStr.c_str());
+						wec.mWarningNumber = warningNum;
 						mParserData->mWarningEnabledChanges[iterNode->GetSrcStart()] = wec;
 					}
 					else
@@ -887,9 +957,16 @@ void BfParser::HandlePragma(const StringImpl& pragma, BfBlock* block)
 						mPassInstance->FailAt("Expected decimal warning number", mSourceData, iterNode->GetSrcStart(), iterNode->GetSrcLength());
 					}
 				}
-
-				//iterNode = parentNode->mChildArr.Get(++curIdx);
+				
 				iterNode = itr.Get();
+			}
+
+			if (nodeCount == 0)
+			{
+				BfParserWarningEnabledChange wec;
+				wec.mEnable = enable;
+				wec.mWarningNumber = -1;
+				mParserData->mWarningEnabledChanges[srcStart] = wec;
 			}
 		}
 		else
@@ -2246,6 +2323,11 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 							{
 								for (int i = 0; i < braceCount - 1; i++)
 									strLiteral += '}';
+
+								if ((((isClosingBrace) && (braceCount > 1) && (braceCount % 2 == 0)) || ((!isClosingBrace)) && (braceCount % 2 == 1)))
+								{
+									mPassInstance->FailAt("Unpaired closing brace.", mSourceData, mSrcIdx - 1, 1);
+								}
 							}
 							else
 							{
@@ -3308,11 +3390,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 					case TOKEN_HASH('s', 'i', 'z', 'e'):
 						if (SrcPtrHasToken("sizeof"))
 							mToken = BfToken_SizeOf;
-						break;
-					case TOKEN_HASH('s', 't', 'a', 'c'):
-						if ((!mCompatMode) && (SrcPtrHasToken("stack")))
-							mToken = BfToken_Stack;
-						break;
+						break;					
 					case TOKEN_HASH('s', 't', 'a', 't'):
 						if (SrcPtrHasToken("static"))
 							mToken = BfToken_Static;
@@ -3588,6 +3666,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 			else*/
 			{
 				genBlock = mAlloc->Alloc<BfBlock>();
+				genBlock->mParserBlockId = ++mCurBlockId;
 				genBlock->mOpenBrace = (BfTokenNode*)CreateNode();
 				newBlock = genBlock;
 			}
@@ -3616,6 +3695,26 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 			if (depth == 0)
 				Fail("Unexpected ending brace");
 			break;
+		}
+		else if (mToken == BfToken_Case)
+		{
+			if (childArr.mSize > 0)
+			{
+				auto prevNode = childArr[childArr.mSize - 1];
+				if (auto prevIdentifier = BfNodeDynCastExact<BfIdentifierNode>(prevNode))
+				{
+					if (prevIdentifier->Equals("not"))
+					{
+						auto bfTokenNode = mAlloc->Alloc<BfTokenNode>();
+						bfTokenNode->Init(prevIdentifier->mTriviaStart, prevIdentifier->mSrcStart, prevIdentifier->mSrcEnd);
+						bfTokenNode->SetToken(BfToken_Not);
+						childArr[childArr.mSize - 1] = bfTokenNode;
+					}
+				}
+			}
+
+			astNode->Add(childNode);
+			childArr.Add(childNode);
 		}
 		else
 		{

@@ -59,6 +59,9 @@ namespace System.Reflection
 		public bool IsMixin => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags.HasFlag(.Mixin) :
 			mData.mMethodData.[Friend]mFlags.HasFlag(.Mixin);
+   		public bool IsMutating => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags.HasFlag(.Mutating) :
+			mData.mMethodData.[Friend]mFlags.HasFlag(.Mutating); 
 
 		public StringView Name => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetName(mData.mComptimeMethodInstance) :
@@ -81,6 +84,13 @@ namespace System.Reflection
 		public bool IsDestructor => Compiler.IsComptime ?
 			Name == "~this"  :
 			mData.mMethodData.mName === "~this";
+
+		public AllowAppendKind AllowAppendKind => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags.AllowAppendKind :
+			mData.mMethodData.[Friend]mFlags.AllowAppendKind;
+		public CheckedKind CheckedKind => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags.CheckedKind :
+			mData.mMethodData.[Friend]mFlags.CheckedKind;
 
 		public Type ReturnType => Compiler.IsComptime ?
 			Type.[Friend]GetType((.)Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mReturnTypeId) :
@@ -1012,6 +1022,25 @@ namespace System.Reflection
 				paramType.ToString(strBuffer);
 				strBuffer.Append(' ');
 				strBuffer.Append(paramData.mName);
+				useParamIdx++;
+			}
+			strBuffer.Append(')');
+		}
+
+		public void GetMethodSig(String strBuffer)
+		{
+			strBuffer.Append('(');
+			int useParamIdx = 0;
+			for (int paramIdx < ParamCount)
+			{
+				var flag = GetParamFlags(paramIdx);
+				if (flag.HasFlag(.Implicit))
+					continue;
+				if (useParamIdx > 0)
+					strBuffer.Append(", ");
+				if (flag.HasFlag(.Params))
+					strBuffer.Append("params ");
+				strBuffer.Append(GetParamType(paramIdx));
 				useParamIdx++;
 			}
 			strBuffer.Append(')');

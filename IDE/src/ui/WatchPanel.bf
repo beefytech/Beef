@@ -54,6 +54,8 @@ namespace IDE.ui
         public bool mIsNewExpression;
 		public bool mIsPending;
 		public bool mUsedLock;
+		public bool? mAutoRefresh;
+		public int32 mDebuggerStateIdx;
 		public int32 mCurStackIdx;
 		public int mMemoryBreakpointAddr;
         public int32 mHadStepCount;
@@ -65,6 +67,24 @@ namespace IDE.ui
 
 		public int32 mSeriesFirstVersion = -1;
 		public int32 mSeriesVersion = -1;
+
+		public bool AutoRefresh
+		{
+			get
+			{
+				if (mAutoRefresh != null)
+					return mAutoRefresh.Value;
+				return gApp.mSettings.mDebuggerSettings.mAutoRefreshWatches;
+			}
+
+			set
+			{
+				if (value == gApp.mSettings.mDebuggerSettings.mAutoRefreshWatches)
+					mAutoRefresh = null;
+				else
+					mAutoRefresh = value;
+			}
+		}
 
 		public bool IsConstant
 		{
@@ -1644,8 +1664,8 @@ namespace IDE.ui
 			if (mShowStatusBar)
 			{
 				g.DrawString(textPosString, 16, textY, .Left, mWidth - GS!(140), .Ellipsis);
-	            g.DrawString(StackStringFormat!("Ln {0}", line + 1), mWidth - GS!(130), textY);
-	            g.DrawString(StackStringFormat!("Col {0}", col + 1), mWidth - GS!(70), textY);
+	            g.DrawString(scope String()..AppendF("Ln {0}", line + 1), mWidth - GS!(130), textY);
+	            g.DrawString(scope String()..AppendF("Col {0}", col + 1), mWidth - GS!(70), textY);
 			}
 
 			//using (g.PushColor(0xD0FFFFFF))
@@ -1793,7 +1813,8 @@ namespace IDE.ui
 		public bool mFindMismatch;
 		public bool mChildHasMatch;
 		public String mColoredLabel ~ delete _;
-		bool mWantRemoveSelf;
+		public bool mWantRemoveSelf;
+		public bool mFreezeHeight;
 
         public WatchRefreshButton mWatchRefreshButton;
 		public ActionButton mActionButton;
@@ -1941,7 +1962,7 @@ namespace IDE.ui
                 if (tooltip != null)
                 {
 					tooltip.mRelWidgetMouseInsets = new Insets(0, 0, GS!(-8), 0);
-					tooltip.mAllowMouseInsideSelf = true;
+					tooltip.mAllowMouseInsideInsets = new .(GS!(-12), GS!(-12), GS!(-4), GS!(-4));
                     tooltip.AddWidget(watchStringEdit);
                     tooltip.mOnResized.Add(new (widget) => watchStringEdit.Resize(GS!(6), GS!(6), widget.mWidth - GS!(6) * 2, widget.mHeight - GS!(6) * 2));
                     tooltip.mOnResized(tooltip);
@@ -1968,7 +1989,32 @@ namespace IDE.ui
             {
                 mWatchRefreshButton = new WatchRefreshButton();
                 mWatchRefreshButton.Resize(GS!(-16), 0, GS!(20), GS!(20));
-                mWatchRefreshButton.mOnMouseDown.Add(new (evt) => RefreshWatch());
+                mWatchRefreshButton.mOnMouseDown.Add(new (evt) =>
+					{
+						if (evt.mBtn == 0)
+							RefreshWatch();
+						if (evt.mBtn == 1)
+						{
+							Menu menu = new Menu();
+							Menu anItem;
+							anItem = menu.AddItem("Refresh");
+							anItem.mOnMenuItemSelected.Add(new (item) => { RefreshWatch(); });
+
+							anItem = menu.AddItem("Auto Refresh");
+							if (mWatchEntry.AutoRefresh)
+								anItem.mIconImage = DarkTheme.sDarkTheme.GetImage(.Check);
+							anItem.mOnMenuItemSelected.Add(new (item) =>
+								{
+									mWatchEntry.AutoRefresh = !mWatchEntry.AutoRefresh;
+									if (mWatchEntry.AutoRefresh)
+										RefreshWatch();
+								});
+
+							MenuWidget menuWidget = ThemeFactory.mDefault.CreateMenuWidget(menu);
+							menuWidget.Init(mWatchRefreshButton, evt.mX, mHeight + GS!(2));
+						}
+
+					});
                 var typeSubItem = GetSubItem(columnIdx);
                 typeSubItem.AddWidget(mWatchRefreshButton);
                 mListView.mListSizeDirty = true;
@@ -2024,7 +2070,7 @@ namespace IDE.ui
 
             if ((mDisabled) && (allowRefresh))
             {
-                AddRefreshButton();             
+                AddRefreshButton();
             }
             else if (mWatchRefreshButton != null)
             {
@@ -2061,7 +2107,7 @@ namespace IDE.ui
             return retVal;
         }
 
-        void RefreshWatch()
+        public void RefreshWatch()
         {
             var parentWatchListViewItem = mParentItem as WatchListViewItem;
             if (parentWatchListViewItem != null)
@@ -2635,9 +2681,9 @@ namespace IDE.ui
                             }
 
 							var dispStr = scope String();
-							dispStr.AppendF(mWatchSeriesInfo.mDisplayTemplate, params formatParams);
+							dispStr.AppendF(mWatchSeriesInfo.mDisplayTemplate, params formatParams).IgnoreError();
 							var evalStr = scope String();
-							evalStr.AppendF(mWatchSeriesInfo.mEvalTemplate, params formatParams);
+							evalStr.AppendF(mWatchSeriesInfo.mEvalTemplate, params formatParams).IgnoreError();
 
                             watchListView.mWatchOwner.SetupListViewItem(curWatchListViewItem, dispStr, evalStr);
 							curWatchListViewItem.mWatchEntry.mSeriesFirstVersion = mWatchSeriesInfo.mSeriesFirstVersion;
@@ -2860,7 +2906,10 @@ namespace IDE.ui
 
 			base.UpdateAll();
 			if (mWantRemoveSelf)
+			{
 				mParentItem?.RemoveChildItem(this);
+				return;
+			}
 
 			if (mColumnIdx == 0)
 			{
@@ -2890,7 +2939,9 @@ namespace IDE.ui
 					wantHeight = 0;
 				else
 					wantHeight = watchListView.mFont.GetLineSpacing();
-				if (mSelfHeight != wantHeight)
+
+				var dataItem = GetSubItem(1) as WatchListViewItem;
+				if ((mSelfHeight != wantHeight) && (!mFreezeHeight) && (dataItem.mCustomContentWidget == null))
 				{
 					mSelfHeight = wantHeight;
 					watchListView.mListSizeDirty = true;
@@ -2997,7 +3048,12 @@ namespace IDE.ui
 				        for (WatchListViewItem watchListViewItem in childItems)
 				        {
 				            var watchEntry = watchListViewItem.mWatchEntry;
-				            data.Add(watchEntry.mEvalStr);
+							using (data.CreateObject())
+							{
+								data.Add("EvalStr", watchEntry.mEvalStr);
+								if (watchEntry.mAutoRefresh != null)
+								data.Add("AutoRefresh", watchEntry.mAutoRefresh.Value);
+							}
 				        }
 				    }
 				}
@@ -3017,14 +3073,23 @@ namespace IDE.ui
             IDEUtils.DeserializeListViewState(data, mListView);
             for (let itemKey in data.Enumerate("Items"))
             {
-                //for (int32 watchIdx = 0; watchIdx < data.Count; watchIdx++)
-				//for (var watchKV in data)
-                {
-                    String watchEntry = scope String();
-                    //data.GetString(watchIdx, watchEntry);
-					data.GetCurString(watchEntry);
-                    AddWatch(watchEntry);
-                }
+                String watchEntry = scope String();
+				data.GetCurString(watchEntry);
+				WatchListViewItem watchItem;
+
+				if (!watchEntry.IsEmpty)
+				{
+					watchItem = AddWatch(watchEntry);
+				}
+				else
+				{
+					data.GetString("EvalStr", watchEntry);
+					watchItem = AddWatch(watchEntry);
+					if (data.Contains("AutoRefresh"))
+					{
+						watchItem.mWatchEntry.mAutoRefresh = data.GetBool("AutoRefresh");
+					}
+				}
             }
 
             return true;
@@ -3622,6 +3687,12 @@ namespace IDE.ui
 			}
             else if (watch.mEvalStr.Length > 0)
             {
+				if (!gApp.mDebugger.IsPaused())
+				{
+					// Keep waiting
+					return;
+				}
+
                 String evalStr = scope String(1024);
 				if (watch.mStackFrameId != null)
 				{
@@ -3637,6 +3708,7 @@ namespace IDE.ui
 				DebugManager.EvalExpressionFlags flags = .AllowStringView;
 				if (watch.mIsNewExpression)
 					flags |= .AllowSideEffects | .AllowCalls;
+
 				gApp.DebugEvaluate(null, evalStr, val, -1, watch.mLanguage, flags);
                 watch.mIsNewExpression = false;                
             }
@@ -3666,6 +3738,14 @@ namespace IDE.ui
                     if (((!valueSubItem.mFailed) && (watch.mHadValue)) || (hadSideEffects) || (hadPropertyEval))
                     {
                         watch.mHasValue = true;
+
+						if ((hadSideEffects) && (watch.AutoRefresh))
+						{
+							if (watch.mDebuggerStateIdx != gApp.mDebugger.mStateIdx)
+								listViewItem.RefreshWatch();
+							return;
+						}
+
                         listViewItem.SetDisabled(true, hadSideEffects);
                         return;
                     }
@@ -3730,6 +3810,7 @@ namespace IDE.ui
             watch.mIsStackAlloc = false;
 			watch.mUsedLock = false;
 			watch.mCurStackIdx = -1;
+			watch.mDebuggerStateIdx = gApp.mDebugger.mStateIdx;
 			watch.mLanguage = .NotSet;
             DeleteAndNullify!(watch.mEditInitialize);
 			DeleteAndNullify!(watch.mAction);

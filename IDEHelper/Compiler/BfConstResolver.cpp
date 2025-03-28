@@ -167,7 +167,10 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 		}
 		else
 		{
-			mResult = mModule->Cast(expr, mResult, wantType, (BfCastFlags)(BfCastFlags_WantsConst | BfCastFlags_NoConversionOperator | (explicitCast ? BfCastFlags_Explicit : BfCastFlags_None)));
+			BfCastFlags castFlags = (BfCastFlags)(BfCastFlags_WantsConst | (explicitCast ? BfCastFlags_Explicit : BfCastFlags_None));
+			if ((flags & BfConstResolveFlag_NoConversionOperator) != 0)
+				castFlags = (BfCastFlags)(castFlags | BfCastFlags_NoConversionOperator);
+			mResult = mModule->Cast(expr, mResult, wantType, castFlags);
 		}
 	}
 
@@ -231,7 +234,8 @@ BfTypedValue BfConstResolver::Resolve(BfExpression* expr, BfType* wantType, BfCo
 
 	if ((flags & BfConstResolveFlag_NoActualizeValues) == 0)
 	{
-		prevIgnoreWrites.Restore();
+		if (mModule->mBfIRBuilder->mHasStarted)
+			prevIgnoreWrites.Restore();
 		mModule->FixValueActualization(mResult, !prevIgnoreWrites.mPrevVal || ((flags & BfConstResolveFlag_ActualizeValues) != 0));
 	}
 
@@ -399,7 +403,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 
 		if (argExpr != NULL)
 		{
-			argValue = mModule->Cast(argExpr, argValue, wantType, (BfCastFlags)(BfCastFlags_WantsConst | BfCastFlags_NoConversionOperator));
+			argValue = mModule->Cast(argExpr, argValue, wantType, (BfCastFlags)(BfCastFlags_WantsConst));
 			if (!argValue)
 				return false;
 		}

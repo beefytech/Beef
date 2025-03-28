@@ -182,7 +182,7 @@ namespace IDE.ui
                 mEditWidget.SetFocus();
                 replaceCount = Replace(true);
                 if (replaceCount > 0)
-                    IDEApp.sApp.MessageDialog("Replace Results", StackStringFormat!("{0} instance(s) replaced.", replaceCount));
+                    IDEApp.sApp.MessageDialog("Replace Results", scope String()..AppendF("{0} instance(s) replaced.", replaceCount));
 
 				if (replaceCount != -1)
 				{

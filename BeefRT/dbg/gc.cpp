@@ -2180,6 +2180,12 @@ void BFGC::AddPendingThread(BfInternalThread* internalThread)
 	mPendingThreads.TryAdd(internalThread->mThreadId, internalThread);
 }
 
+void BFGC::Disable()
+{
+	StopCollecting();
+	mGracelessShutdown = true;
+}
+
 void BFGC::Shutdown()
 {
 	if (mShutdown)
@@ -2664,10 +2670,13 @@ void BFGC::WriteDebugDumpState()
 			{
 				//const bf::System::Type* bfTypeRootData = ((bf::System::Type*)obj->GetTypeSafe())->mTypeRootData;
 				bf::System::Type* bfType = obj->GetTypeSafe();
-				while ((int) debugInfoVector.size() <= bfType->mTypeId)
+
+				auto typeData = bfType->GetTypeData();
+
+				while ((int) debugInfoVector.size() <= typeData->mTypeId)
 					debugInfoVector.push_back(DebugInfo());
 
-				DebugInfo* debugInfo = &debugInfoVector[bfType->mTypeId];
+				DebugInfo* debugInfo = &debugInfoVector[typeData->mTypeId];
 				debugInfo->mType = obj->GetTypeSafe();
 				debugInfo->mCount++;
 				int objSize = BFGetObjectSize(obj);
@@ -2894,6 +2903,11 @@ void GC::AddPendingThread(void* internalThreadInfo)
 void GC::RemoveStackMarkableObject(Object* obj)
 {
 	gBFGC.RemoveStackMarkableObject(obj);
+}
+
+void GC::Disable()
+{
+	gBFGC.Disable();
 }
 
 void GC::Shutdown()

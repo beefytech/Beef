@@ -241,6 +241,7 @@ ImageData* ImageEffects::GetDestImage(ImageData* usingImage)
 		return mSwapImages[1];
 	
 	ImageData* anImage = new ImageData();
+	anImage->mStride = usingImage->mStride;
 	anImage->mWidth = usingImage->mWidth;
 	anImage->mHeight = usingImage->mHeight;
 	anImage->mBits = new uint32[anImage->mWidth*anImage->mHeight];

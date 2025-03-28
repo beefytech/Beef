@@ -962,9 +962,19 @@ void BeIRCodeGen::Read(BeValue*& beValue)
 		}
 		else if (constType == BfConstType_TypeOf)
 		{
-			CMD_PARAM(BeType*, type);
+			CMD_PARAM(BeType*, type);	
 			beValue = mReflectDataMap[type];
 			BF_ASSERT(beValue != NULL);
+			return;
+		}
+		else if (constType == BfConstType_TypeOf_Comptime)
+		{
+			CMD_PARAM(BeType*, typeType);
+			CMD_PARAM(int, bfTypeId);
+			auto beConst = mBeModule->mAlloc.Alloc<BeTypeOfConstant>();
+			beConst->mType = typeType;
+			beConst->mBfTypeId = bfTypeId;
+			beValue = beConst;
 			return;
 		}
 		else if (constType == BfConstType_TypeOf_WithData)
@@ -1123,7 +1133,13 @@ void BeIRCodeGen::Read(BeMDNode*& llvmMD)
 }
 
 void BeIRCodeGen::HandleNextCmd()
-{
+{	
+	if (mFailed)
+	{
+		mStream->SetReadPos(mStream->GetSize());
+		return;
+	}
+
 	int curId = mCmdCount;
 
 	BfIRCmd cmd = (BfIRCmd)mStream->Read();
@@ -1192,6 +1208,11 @@ void BeIRCodeGen::HandleNextCmd()
 				mBeModule->print(outStream, NULL);*/
 		}
 		break;
+	case BfIRCmd_Abort:
+		{
+			Fail("Stream aborted");			
+		}
+		break;
 	case BfIRCmd_SetType:
 		{
 			CMD_PARAM(int, typeId);
@@ -1236,11 +1257,31 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, instSize);
 			CMD_PARAM(int, instAlign);
 			CMD_PARAM(bool, isPacked);
-			BF_ASSERT(type->mTypeCode == BeTypeCode_Struct);
-			auto structType = (BeStructType*)type;
-			mBeContext->SetStructBody(structType, members, isPacked);
-			structType->mSize = instSize;
-			structType->mAlign = instAlign;
+
+			if ((type == NULL) || (type->mTypeCode != BeTypeCode_Struct))
+			{
+				Fail("StructSetBody invalid type");
+				break;
+			}
+
+			bool failed = false;
+			for (auto member : members)
+			{
+				if (member->mSize < 0)
+				{
+					Fail("StructSetBody invalid member type");
+					failed = true;
+				}
+			}
+
+			if (!failed)
+			{
+				BF_ASSERT(type->mTypeCode == BeTypeCode_Struct);
+				auto structType = (BeStructType*)type;
+				mBeContext->SetStructBody(structType, members, isPacked);
+				structType->mSize = instSize;
+				structType->mAlign = instAlign;
+			}
 		}
 		break;
 	case  BfIRCmd_Type:
@@ -1699,6 +1740,14 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(int, idx);
 
 			BF_ASSERT(val->GetType()->IsComposite());
+			if (val->GetType()->mTypeCode == BeTypeCode_Struct)
+			{ 
+				auto structType = (BeStructType*)val->GetType();
+				if (idx >= structType->mMembers.mSize)
+				{
+					FatalError("ExtractValue OOB");
+				}
+			}			
 
 			auto extractValueInst = mBeModule->AllocInst<BeExtractValueInst>();
 			extractValueInst->mAggVal = val;
@@ -2293,7 +2342,11 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeValue*, value);
 			CMD_PARAM(BeBlock*, comingFrom);
 
-			BF_ASSERT(phiValue->GetType() == value->GetType());
+			if (phiValue->GetType() != value->GetType())
+			{
+				Fail("AddPhiIncoming type mismatch");
+				break;
+			}			
 
 			auto phiIncoming = mBeModule->mAlloc.Alloc<BePhiIncoming>();
 			phiIncoming->mBlock = comingFrom;
@@ -3691,6 +3744,18 @@ void BeIRCodeGen::SetConfigConst(int idx, int value)
 {
 	BF_ASSERT(idx == (int)mConfigConsts.size());
 	mConfigConsts.Add(value);
+}
+
+BeValue* BeIRCodeGen::TryGetBeValue(int id)
+{
+	auto& result = mResults[id];
+	if (result.mKind != BeIRCodeGenEntryKind_Value)
+		return NULL;
+#ifdef BE_EXTRA_CHECKS
+	BF_ASSERT(!result.mBeValue->mLifetimeEnded);
+	BF_ASSERT(!result.mBeValue->mWasRemoved);
+#endif
+	return result.mBeValue;
 }
 
 BeValue* BeIRCodeGen::GetBeValue(int id)

@@ -2137,7 +2137,7 @@ bool MsDemangleScanner::DemangleScopedName()
 			}
 			else
 			{
-				return Failed();
+				// Ignore error
 			}
 		}
 		else

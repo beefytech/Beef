@@ -301,6 +301,7 @@ void BfElementVisitor::Visit(BfInitializerExpression* initExpr)
 
 	VisitChild(initExpr->mTarget);
 	VisitChild(initExpr->mOpenBrace);
+	VisitChild(initExpr->mInlineTypeRef);
 	for (auto& val : initExpr->mValues)
 		VisitChild(val);
 	for (auto& val : initExpr->mCommas)
@@ -323,6 +324,13 @@ void BfElementVisitor::Visit(BfCollectionInitializerExpression* collectionInitEx
 void BfElementVisitor::Visit(BfTypeReference* typeRef)
 {
 	Visit(typeRef->ToBase());
+}
+
+void BfElementVisitor::Visit(BfInlineTypeReference* typeRef)
+{
+	Visit(typeRef->ToBase());
+
+	VisitChild(typeRef->mTypeDeclaration);
 }
 
 void BfElementVisitor::Visit(BfNamedTypeReference* typeRef)
@@ -716,6 +724,7 @@ void BfElementVisitor::Visit(BfCaseExpression* caseExpr)
 {
 	Visit(caseExpr->ToBase());
 
+	VisitChild(caseExpr->mNotToken);
 	VisitChild(caseExpr->mCaseToken);
 	VisitChild(caseExpr->mCaseExpression);
 	VisitChild(caseExpr->mEqualsNode);

@@ -219,7 +219,7 @@ public:
 
 	virtual void SetClipped(bool clipped);
 	virtual void SetTexWrap(bool clipped);
-	virtual void SetClipRect(const Rect& rect);
+	virtual void SetClipRect(const RectF& rect);
 	virtual void SetWriteDepthBuffer(bool writeDepthBuffer);
 	virtual void SetDepthFunc(DepthFunc depthFunc);
 };

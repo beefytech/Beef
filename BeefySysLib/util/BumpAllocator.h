@@ -255,23 +255,24 @@ class BumpAllocator : public BumpAllocatorT<0x2000>
 
 };
 
-template <typename T, int ALLOC_SIZE = 0x2000>
-class AllocatorBump
+template <int ALLOC_SIZE = 0x2000>
+class AllocatorBumpT
 {
 public:
 	BumpAllocatorT<ALLOC_SIZE>* mAlloc;
 
-	AllocatorBump()
+	AllocatorBumpT()
 	{
 		mAlloc = NULL;
 	}
 
+	template <typename T>
 	T* allocate(intptr count)
 	{
 		return (T*)mAlloc->AllocBytes((int)(sizeof(T) * count), alignof(T));
 	}
 
-	void deallocate(T* ptr)
+	void deallocate(void* ptr)
 	{		
 	}
 
@@ -286,26 +287,9 @@ public:
 	}
 };
 
-template <int ALLOC_SIZE = 0x2000>
-class RawAllocatorBump
+class AllocatorBump : public AllocatorBumpT<0x2000>
 {
-public:
-	BumpAllocatorT<ALLOC_SIZE>* mAlloc;
 
-	RawAllocatorBump()
-	{
-		mAlloc = NULL;
-	}
-		
-	void* rawAllocate(intptr size)
-	{
-		return mAlloc->AllocBytes(size, 16);
-	}
-
-	void rawDeallocate(void* ptr)
-	{
-
-	}
 };
 
 NS_BF_END

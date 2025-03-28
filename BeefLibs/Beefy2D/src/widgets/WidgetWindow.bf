@@ -69,6 +69,7 @@ namespace Beefy.widgets
 		public bool mWantsUpdateF;
 		public bool mTempWantsUpdateF;
 
+		public Image mContentRenderTarget ~ delete _;
         public int32 mContentClientWidth;
         public int32 mContentClientHeight;
 
@@ -229,10 +230,30 @@ namespace Beefy.widgets
         public override void PreDraw(Graphics g)
         {
             base.PreDraw(g);
+			
+			if (mContentRenderTarget != null)
+			{
+				g.mMatrix.Set(Matrix.IdentityMatrix);
+			}
+			else
+			{
+				g.mMatrix.Set(mScaleMatrix);
+			}
 
-            g.mMatrix.Set(mScaleMatrix);
 			g.mMatrixStack[g.mMatrixStackIdx] = g.mMatrix;
         }
+
+		public override void PostDraw(Graphics g)
+		{
+			base.PostDraw(g);
+
+			if (mContentRenderTarget != null)
+			{
+				for (var drawLayer in DrawLayer.sDrawLayers)
+					drawLayer.DrawToRenderTarget(mContentRenderTarget);
+				g.DrawQuad(mContentRenderTarget, 0, 0, 0, 0, mClientWidth, mClientHeight, 1, 1);
+			}
+		}
 
 		public override void RehupSize()
 		{
@@ -880,8 +901,14 @@ namespace Beefy.widgets
 			mMouseFlags = default;
 		}
 		
-		public void SetContentSize(int width, int height)
+		public void SetContentSize(int width, int height, bool createRenderTarget = false)
 		{
+			DeleteAndNullify!(mContentRenderTarget);
+			if (createRenderTarget)
+			{
+				mContentRenderTarget = Image.CreateRenderTarget((.)width, (.)height);
+			}
+
 			mContentClientWidth = (.)width;
 			mContentClientHeight = (.)height;
 			RehupSize();

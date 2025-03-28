@@ -9,7 +9,7 @@ NS_BF_BEGIN;
 
 #ifdef NEW_DICTIONAY
 
-template <typename TKey, typename TValue, typename TAlloc = AllocatorCLib<TKey> >
+template <typename TKey, typename TValue, typename TAlloc = AllocatorCLib >
 class Dictionary : public TAlloc
 {
 public:

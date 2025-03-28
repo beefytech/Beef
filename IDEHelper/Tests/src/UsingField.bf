@@ -48,14 +48,25 @@ namespace Tests
 		[Union]
 		struct Vector2
 		{
-			public struct Coords
-			{
-				public float mX;
-				public float mY;
-			}
+			public struct Coords : this(float mX, float mY);
 
 			public float[2] mValues;
-			public using Coords mCoords;
+			using public Coords mCoords;
+
+			public this(float x, float y)
+			{
+				mX = x;
+				mY = y;
+			}
+		}
+
+		[Union]
+		struct Vector2b
+		{
+			public struct Coords : this(float mX, float mY);
+
+			public float[2] mValues;
+			public using Coords;
 
 			public this(float x, float y)
 			{
@@ -80,8 +91,16 @@ namespace Tests
 			Test.Assert(sizeof(Vector2) == 8);
 			Test.Assert(vec.mX == 1.2f);
 			Test.Assert(vec.mY == 2.3f);
+			Test.Assert(vec.mCoords == .(1.2f, 2.3f));
 			Test.Assert(vec.mValues[0] == 1.2f);
 			Test.Assert(vec.mValues[1] == 2.3f);
+
+			Vector2b vecb = .(1.2f, 2.3f);
+			Test.Assert(sizeof(Vector2b) == 8);
+			Test.Assert(vecb.mX == 1.2f);
+			Test.Assert(vecb.mY == 2.3f);
+			Test.Assert(vecb.mValues[0] == 1.2f);
+			Test.Assert(vecb.mValues[1] == 2.3f);
 		}
 	}
 }

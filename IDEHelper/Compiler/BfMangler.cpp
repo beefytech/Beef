@@ -329,6 +329,8 @@ void BfGNUMangler::MangleTypeInst(MangleContext& mangleContext, StringImpl& name
 				name += "__varargs";
 				continue;
 			}
+			if (methodDef->mParams[paramIdx]->mParamKind == BfParamKind_Params)
+				name += "_params_";
 			typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mParams[paramIdx]->mTypeRef)->mType);
 		}
 		for (auto type : typeVec)
@@ -456,13 +458,13 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 		case BfTypeCode_UInt32:
 			name += "j"; return;
         case BfTypeCode_Int64:
-			if (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8)
+			if ((mangleContext.mModule == NULL) || (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8))
 				name += "l";
 			else
 				name += "x";
 			return;
         case BfTypeCode_UInt64:
-			if (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8)
+			if ((mangleContext.mModule == NULL) || (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8))
 				name += "m";
 			else
 				name += "y";
@@ -470,7 +472,7 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 		case BfTypeCode_UIntPtr:
 			if ((mangleContext.mCCompat) || (mangleContext.mInArgs))
 			{
-				if (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8)
+				if ((mangleContext.mModule == NULL) || (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8))
 					name += (primType->mSize == 8) ? "m" : "j";
 				else
 					name += (primType->mSize == 8) ? "y" : "j";
@@ -481,7 +483,7 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 		case BfTypeCode_IntPtr:
 			if ((mangleContext.mCCompat) || (mangleContext.mInArgs))
 			{
-				if (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8)
+				if ((mangleContext.mModule == NULL) || (mangleContext.mModule->mCompiler->mOptions.mCLongSize == 8))
 					name += (primType->mSize == 8) ? "l" : "i";
 				else
 					name += (primType->mSize == 8) ? "x" : "i";
@@ -576,6 +578,8 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 			name += "U5alloc";
 		else if (retTypeType->mModifiedKind == BfToken_Nullable)
 			name += "U8nullable";
+		else if (retTypeType->mModifiedKind == BfToken_Params)
+			name += "U6params";
 		else
 			BF_FATAL("Unhandled");
 		Mangle(mangleContext, name, retTypeType->mElementType);
@@ -1183,10 +1187,10 @@ void BfMSMangler::AddTypeStart(MangleContext& mangleContext, StringImpl& name, B
 	if ((type->IsEnum()) && (type->IsTypedPrimitive()))
 	{
 		auto unreifiedModule = mangleContext.GetUnreifiedModule();
-		if (unreifiedModule != NULL)
-			unreifiedModule->PopulateType(type, BfPopulateType_Data);
-
-		BF_ASSERT(type->mSize >= 0);
+		if (type->mDefineState >= BfTypeDefineState_Defined)
+		{
+			BF_ASSERT(type->mSize >= 0);
+		}
 
 		// The enum size is supposed to be encoded, but VC always uses '4'
 		//name += "W";
@@ -1273,6 +1277,8 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 					name += "__varargs";
 					continue;
 				}
+				if (methodDef->mParams[paramIdx]->mParamKind == BfParamKind_Params)
+					name += "_params_";
 				typeVec.push_back(BfNodeDynCast<BfDirectTypeReference>(methodDef->mParams[paramIdx]->mTypeRef)->mType);
 			}
 			name += '@';
@@ -1725,6 +1731,8 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 			name += "alloc$";
 		else if (retType->mModifiedKind == BfToken_Nullable)
 			name += "nullable$";
+		else if (retType->mModifiedKind == BfToken_Params)
+			name += "params$";
 		else
 			BF_FATAL("Unhandled");
 		Mangle(mangleContext, name, retType->mElementType);

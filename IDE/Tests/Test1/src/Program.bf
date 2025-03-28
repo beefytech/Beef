@@ -33,6 +33,7 @@ namespace IDETest
 			Unions.Test();
 			UsingFields.Test();
 			Virtuals.Test();
+			Virtuals02.Test();
 
 			Bug001.Test();
 			Bug002.Test();

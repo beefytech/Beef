@@ -21,7 +21,7 @@ namespace System
 	using System.Threading;
 
 	// This class is thread-safe for random results, but not deterministically thread-safe
-	[StaticInitPriority(100)]
+	[StaticInitPriority(200)]
 	public class Random
 	{
       //
@@ -39,7 +39,11 @@ namespace System
 		private int32 inextp;
 		private int32[] SeedArray = new int32[56] ~ delete _;
 
+#if !BF_RUNTIME_DISABLE
 		private static int32 sSeed = (int32)Platform.BfpSystem_GetTimeStamp();
+#else
+		private static int32 sSeed = 0;
+#endif
 
       //
       // Public Constants

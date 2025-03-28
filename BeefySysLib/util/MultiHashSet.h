@@ -30,7 +30,7 @@ struct MultiHashSetFuncs
 	}
 };
 
-template <typename T, typename TFuncs = AllocatorCLib<T> >
+template <typename T, typename TFuncs = AllocatorCLib >
 class MultiHashSet : public TFuncs
 {
 public:
@@ -146,6 +146,8 @@ public:
 				this->mCurEntry = this->mSet->mEntries[this->mCurEntry].mNext;
 			} 
 			while ((this->mCurEntry != -1) && (this->mSet->mEntries[this->mCurEntry].mHashCode != wantHash));
+			if (this->mCurEntry == -1)
+				this->mCurBucket = mSet->mHashSize;
 		}
 	};
 
@@ -180,7 +182,7 @@ protected:
 	void ResizeEntries(int newSize)
 	{
 		BF_ASSERT(newSize >= mAllocSize);
-		Entry* newEntries = (Entry*)TFuncs::Allocate(sizeof(Entry) * newSize, alignof(Entry));
+		Entry* newEntries = TFuncs::template allocate<Entry>(newSize);
 		
 		for (int i = 0; i < mCount; i++)
 		{
@@ -195,7 +197,7 @@ protected:
 			newEntries[i].mHashCode = -1;
 		}
 		
-		TFuncs::Deallocate(mEntries);
+		TFuncs::deallocate(mEntries);
 		
 		mEntries = newEntries;
 		mAllocSize = (int)newSize;
@@ -276,7 +278,7 @@ public:
 	{
 		if (this->mHashHeads == NULL)
 		{
-			this->mHashHeads = (int*)TFuncs::Allocate(sizeof(int) * mHashSize, alignof(int));
+			this->mHashHeads = TFuncs::template allocate<int>(mHashSize);
 			memset(this->mHashHeads, -1, sizeof(int) * mHashSize);
 		}
 
@@ -298,7 +300,7 @@ public:
 	{
 		if (this->mHashHeads == NULL)
 		{			
-			this->mHashHeads = (int*)TFuncs::Allocate(sizeof(int) * mHashSize, alignof(int));
+			this->mHashHeads = TFuncs::template allocate<int>(mHashSize);
 			memset(this->mHashHeads, -1, sizeof(int) * mHashSize);
 		}
 
@@ -332,7 +334,7 @@ public:
 
 	void Rehash(int newHashSize)
 	{
-		auto newHashHeads = (int*)TFuncs::Allocate(sizeof(int) * newHashSize, alignof(int));
+		auto newHashHeads = TFuncs::template allocate<int>(newHashSize);
 		memset(newHashHeads, -1, sizeof(int) * newHashSize);
 		
 		if (mHashHeads != NULL)
@@ -364,7 +366,7 @@ public:
 				}
 			}
 
-			TFuncs::Deallocate(mHashHeads);
+			TFuncs::deallocate(mHashHeads);
 		}
 		mHashHeads = newHashHeads;
 		mHashSize = newHashSize;
@@ -492,7 +494,7 @@ public:
 	
 	void Clear()
 	{
-		if (!TFuncs::DeallocateAll())
+		if (!TFuncs::deallocateAll())
 		{	
 			auto itr = begin();
 			auto endItr = end();
@@ -502,8 +504,8 @@ public:
 				++itr;
 				FreeIdx(entry);
 			}			
-			TFuncs::Deallocate(this->mHashHeads);
-			TFuncs::Deallocate(this->mEntries);
+			TFuncs::deallocate(this->mHashHeads);
+			TFuncs::deallocate(this->mEntries);
 		}
 		
 		this->mHashSize = cDefaultHashSize;

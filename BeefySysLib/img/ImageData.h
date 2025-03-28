@@ -20,6 +20,7 @@ public:
 	int						mY;
 	int						mWidth;
 	int						mHeight;
+	int						mStride;
 	void*					mHWBits;
 	int						mHWBitsLength;
 	int						mHWBitsType;

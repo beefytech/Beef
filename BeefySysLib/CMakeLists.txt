@@ -142,6 +142,7 @@ file(GLOB SRC_FILES
     img/ImageUtils.cpp
     img/ImgEffects.cpp
     img/JPEGData.cpp
+    img/BMPData.cpp
     img/PNGData.cpp
     img/PSDReader.cpp
     img/PVRData.cpp

@@ -67,6 +67,11 @@ namespace System
 		}
 
 #if !BF_RUNTIME_DISABLE
+		[StaticHook(typeof(SelfOuter))]
+		public static struct Hook
+		{
+		}
+
 		[CallingConvention(.Stdcall), CLink]
 		public static extern uint32 BfpSystem_TickCount();
 		[CallingConvention(.Stdcall), CLink]
@@ -124,6 +129,7 @@ namespace System
 		[CallingConvention(.Stdcall), CLink]
 		public static extern void* BfpTLS_GetValue(BfpTLS* tls);
 #else
+		public typealias Hook = Self;
 		
 		public static uint32 BfpSystem_TickCount() => Runtime.NotImplemented();
 		
@@ -565,47 +571,47 @@ namespace System
 		}
 
 #if !BF_RUNTIME_DISABLE
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern BfpFile* BfpFile_Create(char8* name, BfpFileCreateKind createKind, BfpFileCreateFlags createFlags, BfpFileAttributes createdFileAttrs, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern BfpFile* BfpFile_GetStd(BfpFileStdKind kind, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern int BfpFile_GetSystemHandle(BfpFile* file);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern void BfpFile_Release(BfpFile* file);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern int BfpFile_Write(BfpFile* file, void* buffer, int size, int timeoutMS, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern int BfpFile_Read(BfpFile* file, void* buffer, int size, int timeoutMS, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern void BfpFile_Flush(BfpFile* file);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern int64 BfpFile_GetFileSize(BfpFile* file);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern int64 BfpFile_Seek(BfpFile* file, int64 offset, BfpFileSeekKind seekKind);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern void BfpFile_Truncate(BfpFile* file, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern BfpTimeStamp BfpFile_GetTime_LastWrite(char8* path);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern BfpFileAttributes BfpFile_GetAttributes(char8* path, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern void BfpFile_SetAttributes(char8* path, BfpFileAttributes attribs, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern void BfpFile_Copy(char8* oldPath, char8* newPath, BfpFileCopyKind copyKind, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern void BfpFile_Rename(char8* oldPath, char8* newPath, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern void BfpFile_Delete(char8* path, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern bool BfpFile_Exists(char8* path);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern void BfpFile_GetTempPath(char8* outPath, int32* inOutPathSize, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern void BfpFile_GetTempFileName(char8* outName, int32* inOutNameSize, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern void BfpFile_GetFullPath(char8* inPath, char8* outPath, int32* inOutPathSize, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern void BfpFile_GetActualPath(char8* inPath, char8* outPath, int32* inOutPathSize, BfpFileResult* outResult);
 #else
 		
@@ -660,23 +666,23 @@ namespace System
 		};
 
 #if !BF_RUNTIME_DISABLE
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern BfpFindFileData* BfpFindFileData_FindFirstFile(char8* path, BfpFindFileFlags flags, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern bool BfpFindFileData_FindNextFile(BfpFindFileData* findData);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern void BfpFindFileData_GetFileName(BfpFindFileData* findData, char8* outName, int32* inOutNameSize, BfpFileResult* outResult);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern BfpTimeStamp BfpFindFileData_GetTime_LastWrite(BfpFindFileData* findData);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern BfpTimeStamp BfpFindFileData_GetTime_Created(BfpFindFileData* findData);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern BfpTimeStamp BfpFindFileData_GetTime_Access(BfpFindFileData* findData);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern BfpFileAttributes BfpFindFileData_GetFileAttributes(BfpFindFileData* findData);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern int64 BfpFindFileData_GetFileSize(BfpFindFileData* findData);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Stdcall), CLink, StaticHook]
 		public static extern void BfpFindFileData_Release(BfpFindFileData* findData);
 #else
 		
@@ -712,6 +718,20 @@ namespace System
 			Programs,
 			Programs_Common,
 			Documents
+		}
+
+		public static bool SetStrHelper(StringView str, char8* outStr, int32* inOutSize, Result* outResult)
+		{
+			if (str.Length > *inOutSize + 1)
+			{
+				*inOutSize = (.)str.Length + 1;
+				*outResult = .InsufficientBuffer;
+				return false;
+			}
+			*inOutSize = (.)str.Length + 1;
+			Internal.MemCpy(outStr, str.Ptr, str.Length);
+			outStr[str.Length] = 0;
+			return true;
 		}
 
 		public static Result<void, Platform.Result> GetStrHelper(String outStr, delegate void (char8* outPtr, int32* outSize, Result* outResult) func)

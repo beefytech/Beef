@@ -63,7 +63,7 @@ namespace System
 				mCmdInfo.Append("\n");
 			}
 
-			public void AddEdit(StringView dataName, StringView label, StringView defaultValue)
+			public void AddEdit(StringView dataName, StringView label, StringView defaultValue, bool focus = false)
 			{
 				mCmdInfo.AppendF($"addEdit\t");
 				dataName.QuoteString(mCmdInfo);
@@ -71,7 +71,7 @@ namespace System
 				label.QuoteString(mCmdInfo);
 				mCmdInfo.Append("\t");
 				defaultValue.QuoteString(mCmdInfo);
-				mCmdInfo.Append("\n");
+				mCmdInfo.AppendF($"\t{focus}\n");
 			}
 
 			public void AddFilePath(StringView dataName, StringView label, StringView defaultValue)
@@ -216,7 +216,7 @@ namespace System
 			
 			public override void InitUI()
 			{
-				AddEdit("name", "Class Name", "");
+				AddEdit("name", "Class Name", "", true);
 			}
 
 			public override void Generate(String outFileName, String outText, ref Flags generateFlags)
@@ -225,10 +225,12 @@ namespace System
 				if (name.EndsWith(".bf", .OrdinalIgnoreCase))
 					name.RemoveFromEnd(3);
 				outFileName.Append(name);
+
+				var ns = Namespace..Trim();
+				if (!ns.IsEmpty)
+					outText.AppendF($"namespace {Namespace};\n\n");
 				outText.AppendF(
 					$"""
-					namespace {Namespace};
-					
 					class {name}
 					{{
 					}}
@@ -334,6 +336,7 @@ namespace System
 		static extern void Comptime_EmitMethodEntry(int64 methodHandle, StringView text);
 		static extern void Comptime_EmitMethodExit(int64 methodHandle, StringView text);
 		static extern void Comptime_EmitMixin(StringView text);
+		static extern String Comptime_GetStringById(int32 id);
 
 		[Comptime(OnlyFromComptime=true)]
 		public static MethodBuilder CreateMethod(Type owner, StringView methodName, Type returnType, MethodFlags methodFlags)

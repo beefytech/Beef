@@ -62,10 +62,12 @@ int FileHandleStream::GetSize()
 	return ::GetFileSize(mFileHandle, NULL);
 }
 
-void FileHandleStream::Read(void* ptr, int size)
+int FileHandleStream::Read(void* ptr, int size)
 {
 	if (mCacheBuffer != NULL)
 	{
+		int totalReadSize = 0;
+
 		while (true)
 		{
 			int buffOffset = mVFilePos - mCacheReadPos;
@@ -74,7 +76,7 @@ void FileHandleStream::Read(void* ptr, int size)
 				// If inside
 				memcpy(ptr, mCacheBuffer + buffOffset, size);
 				mVFilePos += size;
-				return;
+				return size;
 			}
 			else if ((buffOffset >= 0) && (buffOffset < mCacheSize))
 			{
@@ -84,6 +86,7 @@ void FileHandleStream::Read(void* ptr, int size)
 
 				ptr = (uint8*)ptr + subSize;
 				size -= subSize;
+				totalReadSize += subSize;
 			}
 
 			mCacheReadPos = mVFilePos & ~(4096 - 1);
@@ -95,7 +98,9 @@ void FileHandleStream::Read(void* ptr, int size)
 				// Zero out underflow bytes
 				memset((uint8*)ptr + aSize, 0, mCacheSize - aSize);
 			}
+			totalReadSize += aSize;
 		}
+		return totalReadSize;
 	}
 	else
 	{		
@@ -106,12 +111,13 @@ void FileHandleStream::Read(void* ptr, int size)
 			// Zero out underflow bytes
 			memset((uint8*)ptr + aSize, 0, size - aSize);
 		}
+		return aSize;
 	}
 }
 
-void FileHandleStream::Write(void* ptr, int size)
+int FileHandleStream::Write(void* ptr, int size)
 {	
-	::WriteFile(mFileHandle, ptr, size, NULL, NULL);
+	return (int)::WriteFile(mFileHandle, ptr, size, NULL, NULL);
 }
 
 int FileHandleStream::GetPos()

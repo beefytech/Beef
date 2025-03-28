@@ -168,7 +168,7 @@ file(GLOB SRC_FILES
     Backend/BeModule.cpp
 )
 
-find_package(LLVM 18.1 CONFIG COMPONENTS)
+find_package(LLVM 19.1 CONFIG COMPONENTS)
 
 if (LLVM_FOUND)
   message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -177,7 +177,7 @@ if (LLVM_FOUND)
   include_directories(${LLVM_INCLUDE_DIRS})
   add_definitions(${LLVM_DEFINITIONS})
 
-  string(APPEND TARGET_LIBS_OS "-lLLVM-18 ${LLVM_SYSTEM_LIBS}")
+  string(APPEND TARGET_LIBS_OS "-lLLVM-19 ${LLVM_SYSTEM_LIBS}")
   string(STRIP ${TARGET_LIBS_OS} TARGET_LIBS_OS)
 else()
   message(FATAL_ERROR "LLVM not found")

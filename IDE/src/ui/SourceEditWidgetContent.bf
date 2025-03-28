@@ -1,3 +1,4 @@
+#pragma warning disable 168
 using System;
 using System.Collections;
 using System.Text;
@@ -806,6 +807,7 @@ namespace IDE.ui
 
 				0xFFFF8080, // BuildError
 				0xFFFFFF80, // BuildWarning
+				0xFF80FF80, // BuildSuccess
 
 				0xFF9090C0, // VisibleWhiteSpace
             ) ~ delete _;
@@ -856,6 +858,7 @@ namespace IDE.ui
             SetFont(IDEApp.sApp.mCodeFont, true, true);
 			//SetFont(DarkTheme.sDarkTheme.mSmallFont, false, false);
 
+			mLineHeightScale = Math.Clamp(gApp.mSettings.mEditorSettings.mLineHeightScale, 0.125f, 10.0f);
 			mWantsTabsAsSpaces = gApp.mSettings.mEditorSettings.mTabsOrSpaces == .Spaces;
 			mTabLength = gApp.mSettings.mEditorSettings.mTabSize;
             mTabSize = mFont.GetWidth(scope String(' ', gApp.mSettings.mEditorSettings.mTabSize));
@@ -1209,11 +1212,12 @@ namespace IDE.ui
             if ((flags & ~(uint8)SourceElementFlags.Skipped) == 0)
                 return;
 
+			let lineSpacing = LineHeight;
             if ((flags & (uint8)SourceElementFlags.SymbolReference) != 0)
             {
                 bool isRenameSymbol = (IDEApp.sApp.mSymbolReferenceHelper != null) && (IDEApp.sApp.mSymbolReferenceHelper.mKind == SymbolReferenceHelper.Kind.Rename);
                 using (g.PushColor(isRenameSymbol ? (uint32)0x28FFFFFF : (uint32)0x18FFFFFF))
-                    g.FillRect(x, y, width, mFont.GetLineSpacing());
+                    g.FillRect(x, y, width, lineSpacing);
 
                 DrawSectionFlagsOver(g, x, y, width, (uint8)(flags & ~(uint8)SourceElementFlags.SymbolReference));
                 return;
@@ -1222,7 +1226,7 @@ namespace IDE.ui
 			if ((flags & (uint8)SourceElementFlags.Find_CurrentSelection) != 0)
 			{
 			    using (g.PushColor(0x504C575C))
-			        g.FillRect(x, y, width, mFont.GetLineSpacing());
+			        g.FillRect(x, y, width, lineSpacing);
 
 			    DrawSectionFlagsOver(g, x, y, width, (uint8)(flags & ~(uint8)(SourceElementFlags.Find_CurrentSelection | .Find_Matches)));
 			    return;
@@ -1231,7 +1235,7 @@ namespace IDE.ui
             if ((flags & (uint8)SourceElementFlags.Find_Matches) != 0)
             {
                 using (g.PushColor(0x50D0C090))
-                    g.FillRect(x, y, width, mFont.GetLineSpacing());
+                    g.FillRect(x, y, width, lineSpacing);
 
                 DrawSectionFlagsOver(g, x, y, width, (uint8)(flags & ~(uint8)SourceElementFlags.Find_Matches));
                 return;
@@ -1275,7 +1279,7 @@ namespace IDE.ui
                 if (underlineColor != 0)
                 {
                     using (g.PushColor(underlineColor))
-                        gApp.DrawSquiggle(g, x, y, width);                    
+                        gApp.DrawSquiggle(g, x, y + GetTextOffset(), width);                    
                 }
             }
         }
@@ -3015,6 +3019,7 @@ namespace IDE.ui
 
 			didLineComment = false;
 			lineStartCol = 0;
+			int appendedCount = 0;
 			for (int i = minPos; i < maxPos; i++)
 			{
 				var c = mData.mText[i].mChar;
@@ -3052,6 +3057,8 @@ namespace IDE.ui
 					InsertAtCursor(str);
 					didLineComment = true;
 					maxPos += str.Length;
+					if (i <= startTextPos + appendedCount)
+						appendedCount += str.Length;
 				}
 			}
 			mSelection = EditSelection(minPos, maxPos);
@@ -3059,7 +3066,10 @@ namespace IDE.ui
 			if (undoBatchStart != null)
 				mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 
-			CursorLineAndColumn = startLineAndCol;
+			if (appendedCount > 0)
+				CursorTextPos = startTextPos + appendedCount;
+			else
+				CursorLineAndColumn = startLineAndCol;
 
 			if (!hadSelection)
 				mSelection = null;
@@ -3889,7 +3899,10 @@ namespace IDE.ui
 						}
 						else if (c == '.')
 						{
-							doAutocomplete = true;
+							if (mAutoComplete?.HasInteracted == true)
+							{
+								doAutocomplete = true;
+							}
 						}
 					}
 				}
@@ -4188,8 +4201,10 @@ namespace IDE.ui
                 //int cursorTextPos = CursorTextPos;
                 if (cursorTextPos < mData.mTextLength)
                 {
-                    charUnderCursor = (char8)mData.mText[cursorTextPos].mChar;
-					cursorInOpenSpace = ((charUnderCursor == ')') || (charUnderCursor == ']') || (charUnderCursor == ';') || (charUnderCursor == (char8)0) || (charUnderCursor.IsWhiteSpace));
+                    let charData = mData.mText[cursorTextPos];
+                    let cursorInLiteral = (SourceElementType)charData.mDisplayTypeId == .Literal;
+                    charUnderCursor = (char8)charData.mChar;
+					cursorInOpenSpace = ((!cursorInLiteral) && ((charUnderCursor == ')') || (charUnderCursor == ']') || (charUnderCursor == ';') || (charUnderCursor == (char8)0) || (charUnderCursor.IsWhiteSpace)));
 
 					if (((keyChar == '(') && (charUnderCursor == ')')) ||
 						((keyChar == '[') && (charUnderCursor == ']')))
@@ -4224,7 +4239,7 @@ namespace IDE.ui
 	                        }
 							else
 							{
-								if ((keyChar == '"') || (keyChar == '\''))
+								if ((!cursorInLiteral) && ((keyChar == '"') || (keyChar == '\'')))
 									cursorInOpenSpace = true;
 							}
 						}
@@ -5077,7 +5092,7 @@ namespace IDE.ui
 						                int callInstLoc = (int)int64.Parse(callInstLocStr, System.Globalization.NumberStyles.HexNumber);
 						                if (callData.Count == 1)
 						                {
-						                    callMenuItem = stepIntoSpecificMenu.AddItem(StackStringFormat!("Indirect call at 0x{0:X}", callInstLoc));
+						                    callMenuItem = stepIntoSpecificMenu.AddItem(scope String()..AppendF("Indirect call at 0x{0:X}", callInstLoc));
 						                }
 						                else
 						                {
@@ -5175,6 +5190,33 @@ namespace IDE.ui
             }
         }
 
+		void SetCollapseLineOpen(int line, bool wantOpen, bool includeChildren)
+		{
+			List<int32> collapseOpenList = scope .();
+			CollapseEntry* parentCollapse = null;
+
+			for (var collapse in mOrderedCollapseEntries)
+			{
+				if (parentCollapse == null)
+				{
+					if (collapse.mAnchorLine == line)
+					{
+						parentCollapse = collapse;
+						collapseOpenList.Add((.)@collapse.Index);
+						if (!includeChildren)
+							break;
+					}
+				}
+				else if ((collapse.mAnchorLine >= parentCollapse.mStartLine) && (collapse.mAnchorLine < parentCollapse.mEndLine))
+				{
+					collapseOpenList.Add((.)@collapse.Index);
+				}
+			}
+
+			for (int32 collapseIdx in collapseOpenList)
+				SetCollapseOpen(collapseIdx, wantOpen);
+		}
+
 		public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
 		{
 			int line = GetLineAt(y);
@@ -5187,16 +5229,41 @@ namespace IDE.ui
 					embed.MouseDown(GetEmbedRect(line, embed), x, y, btn, btnCount);
 					if (btn == 0)
 					{
-						if (btnCount % 2 == 0)
+						bool hasCtrl = mWidgetWindow.IsKeyDown(.Control);
+						if ((btnCount % 2 == 0) || (hasCtrl))
 						{
 							if (var collapseSummary = embed as SourceEditWidgetContent.CollapseSummary)
-								SetCollapseOpen(collapseSummary.mCollapseIndex, true);
+							{
+								SetCollapseLineOpen(line, true, hasCtrl);
+							}	
 							else if (var emitEmbed = embed as EmitEmbed)
 							{
 								emitEmbed.mIsOpen = !emitEmbed.mIsOpen;
 								mCollapseNeedsUpdate = true;
 							}
 						}
+					}
+					else if (btn == 1)
+					{
+						float useX = x;
+						float useY = y;
+
+						Menu menu = new Menu();
+
+						var menuItem = menu.AddItem("Expand");
+						menuItem.mOnMenuItemSelected.Add(new (evt) =>
+							{
+								SetCollapseLineOpen(line, true, false);
+							});
+
+						menuItem = menu.AddItem("Expand All|Ctrl+Click");
+						menuItem.mOnMenuItemSelected.Add(new (evt) =>
+							{
+								SetCollapseLineOpen(line, true, true);
+							});
+
+						MenuWidget menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
+						menuWidget.Init(this, useX, useY);
 					}
 					return;
 				}
@@ -5794,7 +5861,7 @@ namespace IDE.ui
 			}
 			orderedEmitEmbeds.Sort(scope (lhs, rhs) => lhs.line <=> rhs.line);
 			
-			float fontHeight = mFont.GetLineSpacing();
+			float fontHeight = LineHeight;
 			int prevJumpIdx = -1;
 			float jumpCoordSpacing = GetJumpCoordSpacing();
 
@@ -6373,8 +6440,10 @@ namespace IDE.ui
 					let height = mFont.GetHeight() + GS!(2);
 					using (g.PushColor(DarkTheme.COLOR_CHAR_PAIR_HILITE))
 					{
-						g.FillRect(x1, y1, charWidth, height);
-						g.FillRect(x2, y2, charWidth, height);
+						float offset = GetTextOffset();
+
+						g.FillRect(x1, y1 + offset, charWidth, height);
+						g.FillRect(x2, y2 + offset, charWidth, height);
 					}
 				}
 			}
@@ -6543,7 +6612,6 @@ namespace IDE.ui
 			}
 		}
 
-		
 		public void SetCollapseOpen(int collapseIdx, bool wantOpen, bool immediate = false, bool keepCursorVisible = false)
 		{
 			var entry = mOrderedCollapseEntries[collapseIdx];

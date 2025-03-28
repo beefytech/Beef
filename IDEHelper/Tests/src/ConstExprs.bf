@@ -85,6 +85,20 @@ namespace Tests
 			}
 		}
 
+		struct SpecialId : int
+		{
+			public const Self CONST = (.)(int)(void*)(char8*)"ABC";
+			public static Self operator implicit(String str) => (.)(int)(void*)(char8*)str;
+		}
+
+		public static void TestStr(SpecialId specialId)
+		{
+			char8* ptr = (.)(void*)(int)specialId;
+
+			StringView sv = .(ptr);
+			Test.Assert(sv == "ABC");
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -101,6 +115,9 @@ namespace Tests
 
 			Test.Assert(TestRangedArray<int32, -3...3>.cRangeEnd - TestRangedArray<int32, -3...3>.cRangeStart == 7);
 			Test.Assert(TestRangedArray<int32, -3...>.cError == "Invalid type: -3...^1");
+
+			TestStr(.CONST);
+			TestStr("ABC");
 		}
 	}
 }

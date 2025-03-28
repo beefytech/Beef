@@ -119,7 +119,8 @@ namespace Beefy.theme.dark
 
             g.SetFont(mFont);
             if (mText != null)
-                g.DrawString(mText, mTextInsets.mLeft, mTextInsets.mTop, FontAlign.Left, mWidth - mTextInsets.Horz, FontOverflowMode.Wrap);
+				using (g.PushColor(DarkTheme.COLOR_TEXT))
+                	g.DrawString(mText, mTextInsets.mLeft, mTextInsets.mTop, FontAlign.Left, mWidth - mTextInsets.Horz, FontOverflowMode.Wrap);
         }
     }
 }
