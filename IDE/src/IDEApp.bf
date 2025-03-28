@@ -12831,12 +12831,14 @@ namespace IDE
 			{
 				mWorkspace.mName = new String();
 				Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
+				CustomBuildProperties.Load();
 				LoadWorkspace(mVerb);
 			}
 			else if (mWorkspace.IsSingleFileWorkspace)
 			{
 				mWorkspace.mName = new String();
 				Path.GetFileNameWithoutExtension(mWorkspace.mCompositeFile.mFilePath, mWorkspace.mName);
+				CustomBuildProperties.Load();
 				LoadWorkspace(mVerb);
 			}
 
