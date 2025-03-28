@@ -369,11 +369,15 @@ namespace System
 				return .Ok;
 			}
 
-			public Result<void> GetValue(StringView name, String outData)
+			public Result<void> GetValue(StringView name, String outData, bool* isExpanded = null)
 			{
+				if (isExpanded != null)
+					*isExpanded = false;
 				bool gotData = false;
 				GetValue(name, scope [?] (regType, regData) =>
 					{
+						if (isExpanded != null)
+							*isExpanded = regType == Windows.REG_EXPAND_SZ;
 						if ((regType == Windows.REG_SZ) || (regType == Windows.REG_EXPAND_SZ))
 						{
 							gotData = true;
@@ -474,7 +478,7 @@ namespace System
 
 			public Result<void> SetValueExpand(StringView name, StringView strValue)
 			{
-				let result = Windows.RegSetValueExA(this, name.ToScopeCStr!(), 0,  Windows.REG_EXPAND_SZ, strValue.ToScopeCStr!(), (uint32)strValue.Length + 1);
+				let result = Windows.RegSetValueExA(this, name.ToScopeCStr!(), 0, Windows.REG_EXPAND_SZ, strValue.ToScopeCStr!(), (uint32)strValue.Length + 1);
 				if (result != 0)
 					return .Err;
 				return .Ok;
@@ -1773,7 +1777,7 @@ namespace System
 		public static extern int32 SendMessageW(HWnd hWnd, int32 msg, int wParam, int lParam);
 
 		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
-		public static extern int32 SendMessageTimeoutW(HWnd hWnd, int32 msg, int wParam, int lParam, int32 flags, int32 timeout, int32* result);
+		public static extern int32 SendMessageTimeoutW(HWnd hWnd, int32 msg, int wParam, int lParam, int32 flags, int32 timeout, int* result);
 
 		[Import("user32.lib "), CLink, CallingConvention(.Stdcall)]
 		public static extern HWnd SetFocus(HWnd hWnd);
