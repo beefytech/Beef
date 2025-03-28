@@ -10942,6 +10942,13 @@ namespace IDE
 									}
 								case "BeefPath":
 									newString = gApp.mInstallDir;
+								default:
+									// Check if any custom properties match the string.
+									if (CustomBuildProperties.Contains(replaceStr))
+									{
+										newString = scope:ReplaceBlock String();
+										newString.Append(CustomBuildProperties.Get(replaceStr));
+									}
 								}
 							}
 
@@ -11062,9 +11069,7 @@ namespace IDE
 			String errorString = scope String();
 			if (!DoResolveConfigString(platformName, workspaceOptions, project, options, configString, errorString, outResult))
 			{
-				if (!CustomBuildProperties.Contains(errorString))
-					OutputErrorLine("Invalid macro in {0}: {1}", errorContext, errorString);
-
+				OutputErrorLine("Invalid macro in {0}: {1}", errorContext, errorString);
 				return false;
 			}
 			return true;
