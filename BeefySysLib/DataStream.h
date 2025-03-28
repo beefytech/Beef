@@ -21,8 +21,8 @@ public:
 
 	virtual bool			Eof() = 0;
 	virtual int				GetSize() = 0;
-	virtual void			Read(void* ptr, int size) = 0;
-	virtual void			Write(void* ptr, int size) = 0;
+	virtual int				Read(void* ptr, int size) = 0;
+	virtual int				Write(void* ptr, int size) = 0;
 	virtual void			WriteZeros(int size);
 	virtual void			Align(int size);
 

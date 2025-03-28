@@ -4,18 +4,33 @@
 
 NS_BF_BEGIN;
 
-class Point2D
+template <typename T>
+class Point
 {
 public:
-	float mX;
-	float mY;
+	T x;
+	T y;
 
 public:
-	Point2D(float x = 0, float y = 0)
+	Point(T x = 0, T y = 0)
 	{
-		mX = x;
-		mY = y;
+		this->x = x;
+		this->y = y;
+	}
+
+	Point operator+(Point rhs)
+	{
+		return Point(x + rhs.x, y + rhs.y);
+	}
+
+	Point operator-(Point rhs)
+	{
+		return Point(x - rhs.x, y - rhs.y);
 	}
 };
+
+typedef Point<double> PointD;
+typedef Point<float> PointF;
+typedef Point<int32> PointI32;
 
 NS_BF_END;

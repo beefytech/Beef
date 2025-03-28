@@ -99,10 +99,12 @@ int FileStream::GetSize()
 	return aSize;
 }
 
-void FileStream::Read(void* ptr, int size)
+int FileStream::Read(void* ptr, int size)
 {
 	if (mCacheBuffer != NULL)
 	{
+		int totalReadSize = 0;
+
 		while (true)
 		{
 			int buffOffset = mVFilePos - mCacheReadPos;
@@ -111,7 +113,7 @@ void FileStream::Read(void* ptr, int size)
 				// If inside
 				memcpy(ptr, mCacheBuffer + buffOffset, size);
 				mVFilePos += size;
-				return;
+				return size;
 			}
 			else if ((buffOffset >= 0) && (buffOffset < mCacheSize))
 			{
@@ -121,6 +123,8 @@ void FileStream::Read(void* ptr, int size)
 
 				ptr = (uint8*) ptr + subSize;
 				size -= subSize;
+
+				totalReadSize += subSize;
 			}
 			
 			mCacheReadPos = mVFilePos & ~(4096-1);
@@ -131,7 +135,11 @@ void FileStream::Read(void* ptr, int size)
 				// Zero out underflow bytes
 				memset((uint8*) ptr + aSize, 0, mCacheSize - aSize);
 			}
+
+			totalReadSize += aSize;
 		}
+		
+		return totalReadSize;
 	}
 	else
 	{
@@ -142,12 +150,13 @@ void FileStream::Read(void* ptr, int size)
 			memset((uint8*) ptr + aSize, 0, size - aSize);
 			mReadPastEnd = true;
 		}
+		return aSize;
 	}
 }
 
-void FileStream::Write(void* ptr, int size)
+int FileStream::Write(void* ptr, int size)
 {
-	fwrite(ptr, 1, size, mFP);
+	return (int)fwrite(ptr, 1, size, mFP);
 }
 
 int FileStream::GetPos()
@@ -250,7 +259,7 @@ int SysFileStream::GetSize()
 	return (int)BfpFile_GetFileSize(mFile);	
 }
 
-void SysFileStream::Read(void* ptr, int size)
+int SysFileStream::Read(void* ptr, int size)
 {	
 	int readSize = (int)BfpFile_Read(mFile, ptr, size, -1, NULL);
 	if (readSize != size)
@@ -258,11 +267,12 @@ void SysFileStream::Read(void* ptr, int size)
 		// Zero out underflow bytes
 		memset((uint8*)ptr + readSize, 0, size - readSize);
 	}
+	return readSize;
 }
 
-void SysFileStream::Write(void* ptr, int size)
+int SysFileStream::Write(void* ptr, int size)
 {
-	BfpFile_Write(mFile, ptr, size, -1, NULL);
+	return (int)BfpFile_Write(mFile, ptr, size, -1, NULL);
 }
 
 int SysFileStream::GetPos()

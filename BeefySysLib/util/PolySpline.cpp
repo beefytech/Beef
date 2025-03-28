@@ -19,7 +19,7 @@ void PolySpline2D::AddPt(float x, float y)
 	
 	
 
-	mInputPoints.push_back(Point2D(x, y));
+	mInputPoints.push_back(PointF(x, y));
 }
 
 int PolySpline2D::GetLength()
@@ -34,11 +34,11 @@ void PolySpline2D::Calculate()
 	mCoefs = new float[n];
 
 	for (int j=0; j<n; j++)
-		mat[j*n] = mInputPoints[j].mY;
+		mat[j*n] = mInputPoints[j].y;
 	for (int i=1; i<n; i++)
 	{	    
 	    for (int j=0; j<n-i; j++)
-		    mat[i+j*n]=(mat[(i-1)+j*n]-mat[(i-1)+(j+1)*n])/(mInputPoints[j].mX-mInputPoints[j+i].mX);	    
+		    mat[i+j*n]=(mat[(i-1)+j*n]-mat[(i-1)+(j+1)*n])/(mInputPoints[j].x-mInputPoints[j+i].x);	    
 	}
 
 	for (int i=0; i<n; i++)
@@ -58,7 +58,7 @@ float PolySpline2D::Evaluate(float x)
 	{	    
 		float add = mCoefs[i];
 	    for (int j = 0; j < i; j++)
-			add *= (x - mInputPoints[j].mX);
+			add *= (x - mInputPoints[j].x);
 		result += add;
 	}
 

@@ -107,6 +107,11 @@ namespace System
 			public int32 Height => bottom - top;
 		}
 
+		public struct Point : this(int32 x, int32 y)
+		{
+			
+		}
+
 		[CRepr]
 		public struct OpenFileName
 		{
@@ -1703,6 +1708,12 @@ namespace System
 		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern HWnd SetActiveWindow(HWnd wnd);
 
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern HWnd SetForegroundWindow(HWnd wnd);
+
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern HWnd GetForegroundWindow();
+
 		[CLink, CallingConvention(.Stdcall)]
 		public static extern int CallWindowProcA(int wndProc, HWnd hWnd, int32 msg, int wParam, int lParam);
 
@@ -1748,6 +1759,12 @@ namespace System
 
 		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool SetWindowPos(HWnd hWnd, HWnd hWndAfter, int x, int y, int cx, int cy, int flags);
+
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern IntBool GetClientRect(HWnd hWnd, out Rect rect);
+
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern IntBool ClientToScreen(HWnd hWnd, ref Point rect);
 
 		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern IntBool PostMessageW(HWnd hWnd, int32 msg, int wParam, int lParam);

@@ -71,11 +71,11 @@ void TextureSegment::SetImageData(ImageData& imageData)
 	SetBits(0, 0, imageData.mWidth, imageData.mHeight, imageData.mStride, imageData.mBits);
 }
 
-Rect TextureSegment::GetRect()
+RectF TextureSegment::GetRect()
 {
 	float x1 = mU1 * mTexture->mWidth;
 	float x2 = mU2 * mTexture->mWidth;
 	float y1 = mV1 * mTexture->mHeight;
 	float y2 = mV2 * mTexture->mHeight;
-	return Rect(x1, y1, x2 - x1, y2 - y1);
+	return RectF(x1, y1, x2 - x1, y2 - y1);
 }

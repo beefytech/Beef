@@ -76,6 +76,9 @@ namespace System.IO
 			Platform.BfpFileCreateKind createKind = .CreateAlways;
 			Platform.BfpFileCreateFlags createFlags = .Pipe;
 
+			if (options.HasFlag(.AllowTimeouts))
+				createFlags |= .AllowTimeouts;
+
 			createKind = .OpenExisting;
 			createFlags |= .Read;
 			createFlags |= .Write;

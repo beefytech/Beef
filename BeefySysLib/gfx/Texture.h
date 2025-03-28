@@ -47,7 +47,7 @@ public:
 	void					GetImageData(ImageData& imageData, int destX, int destY);
 	void					SetImageData(ImageData& imageData);
 
-	Rect					GetRect();
+	RectF					GetRect();
 };
 
 NS_BF_END;

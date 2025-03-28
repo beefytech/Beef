@@ -8,7 +8,7 @@ NS_BF_BEGIN;
 class BSpline2D
 {
 public:	
-	Array<Point2D>			mInputPoints;
+	Array<PointF>			mInputPoints;
 	int*					mUVals;
 
 public:

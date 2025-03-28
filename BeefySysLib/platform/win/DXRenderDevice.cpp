@@ -762,11 +762,11 @@ void DXDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 		return;
 
 	if ((mRenderState->mClipped) &&
-		((mRenderState->mClipRect.mWidth == 0) || (mRenderState->mClipRect.mHeight == 0)))
+		((mRenderState->mClipRect.width == 0) || (mRenderState->mClipRect.height == 0)))
 		return;
 
 	if (mRenderState->mClipped)
-		BF_ASSERT((mRenderState->mClipRect.mWidth > 0) && (mRenderState->mClipRect.mHeight > 0));
+		BF_ASSERT((mRenderState->mClipRect.width > 0) && (mRenderState->mClipRect.height > 0));
 
 	DXRenderDevice* aRenderDevice = (DXRenderDevice*)renderDevice;
 	/*if ((mDrawLayer->mRenderWindow != NULL) && (aRenderDevice->mPhysRenderWindow != mDrawLayer->mRenderWindow))
@@ -931,10 +931,10 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 		if (renderState->mClipped)
 		{
 			D3D11_RECT rects[1];
-			rects[0].left = (int)renderState->mClipRect.mX;
-			rects[0].right = (int) (renderState->mClipRect.mX + renderState->mClipRect.mWidth);
-			rects[0].top = (int) renderState->mClipRect.mY;
-			rects[0].bottom = (int) (renderState->mClipRect.mY + renderState->mClipRect.mHeight);
+			rects[0].left = (int)renderState->mClipRect.x;
+			rects[0].right = (int) (renderState->mClipRect.x + renderState->mClipRect.width);
+			rects[0].top = (int) renderState->mClipRect.y;
+			rects[0].bottom = (int) (renderState->mClipRect.y + renderState->mClipRect.height);
 			mD3DDeviceContext->RSSetScissorRects(1, rects);
 		}
 		setRasterizerState = true;
@@ -1383,9 +1383,9 @@ void DXRenderState::SetTexWrap(bool wrap)
 	InvalidateRasterizerState();
 }
 
-void DXRenderState::SetClipRect(const Rect& rect)
+void DXRenderState::SetClipRect(const RectF& rect)
 {
-	BF_ASSERT((rect.mWidth >= 0) && (rect.mHeight >= 0));
+	BF_ASSERT((rect.width >= 0) && (rect.height >= 0));
 	mClipRect = rect;
 	InvalidateRasterizerState();
 }

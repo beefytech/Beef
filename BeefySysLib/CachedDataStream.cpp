@@ -36,13 +36,13 @@ int CachedDataStream::GetSize()
 	return mStream->GetSize();
 }
 
-void CachedDataStream::Read(void* ptr, int size)
+int CachedDataStream::Read(void* ptr, int size)
 {
 	Flush();
-	mStream->Read(ptr, size);
+	return mStream->Read(ptr, size);
 }
 
-void CachedDataStream::Write(void* ptr, int size)
+int CachedDataStream::Write(void* ptr, int size)
 {
 	while (size > 0)
 	{
@@ -59,6 +59,7 @@ void CachedDataStream::Write(void* ptr, int size)
 		size -= writeBytes;
 		mDataPtr += writeBytes;
 	}
+	return size;
 }
 
 int CachedDataStream::GetPos()

@@ -737,9 +737,9 @@ void GLRenderDevice::PhysSetRenderState(RenderState* renderState)
 	if (renderState->mClipped)
 	{
 		glEnable(GL_SCISSOR_TEST);
- 		glScissor((GLsizei)renderState->mClipRect.mX,
-			mPhysRenderWindow->mHeight - (GLsizei)renderState->mClipRect.mY - (GLsizei)renderState->mClipRect.mHeight,
- 			(GLsizei)renderState->mClipRect.mWidth, (GLsizei)renderState->mClipRect.mHeight);
+ 		glScissor((GLsizei)renderState->mClipRect.x,
+			mPhysRenderWindow->mHeight - (GLsizei)renderState->mClipRect.y - (GLsizei)renderState->mClipRect.height,
+ 			(GLsizei)renderState->mClipRect.width, (GLsizei)renderState->mClipRect.height);
 	}
 	else
 	{

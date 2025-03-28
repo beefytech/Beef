@@ -9,7 +9,7 @@ NS_BF_BEGIN;
 class PolySpline2D
 {
 public:	
-	std::vector<Point2D>	mInputPoints;
+	std::vector<PointF>	mInputPoints;
 	
 
 public:

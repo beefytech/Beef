@@ -34,9 +34,9 @@ void BSpline2D::AddPt(float x, float y)
 	delete mUVals;
 	mUVals = NULL;
 
-	Point2D pt;
-	pt.mX = x;
-	pt.mY = y;
+	PointF pt;
+	pt.x = x;
+	pt.y = y;
 	mInputPoints.push_back(pt);
 }
 
@@ -44,9 +44,8 @@ void BSpline2D::Calculate()
 {
   int n = (int) mInputPoints.size();
   int t = 1;
-  Point2D* control = &mInputPoints[0];
+  PointF* control = &mInputPoints[0];
   
-
   mUVals=new int[n+t+1];
   compute_intervals(mUVals, n, t);
 
@@ -112,7 +111,7 @@ void BSpline2D::Evaluate(float pct, float* x, float* y)
   int t = (int)mInputPoints.size() - 3; // ????
   t = 1;
 
-  Point2D* control = &mInputPoints[0];
+  PointF* control = &mInputPoints[0];
 
   // initialize the variables that will hold our outputted point  
 
@@ -122,8 +121,8 @@ void BSpline2D::Evaluate(float pct, float* x, float* y)
   for (k=0; k<=n; k++)
   {
     temp = blend(t,t,mUVals,pct);  // same blend is used for each dimension coordinate
-    oX = oX + (control[k]).mX * temp;
-    oY = oY + (control[k]).mY * temp;    
+    oX = oX + (control[k]).x * temp;
+    oY = oY + (control[k]).y * temp;    
   }
 
   *x = oX;

@@ -587,15 +587,15 @@ BF_EXPORT void BF_CALLTYPE Gfx_ApplyEffect(TextureSegment* destTextureSegment, T
 		ImageData destImageData;
 		ImageData srcImageData;
 
-		Rect srcRect = srcTextureSegment->GetRect();
-		Rect destRect = destTextureSegment->GetRect();
+		RectF srcRect = srcTextureSegment->GetRect();
+		RectF destRect = destTextureSegment->GetRect();
 
 		destTextureSegment->GetImageData(destImageData);
 		srcImageData.CreateNew(destImageData.mWidth, destImageData.mHeight);
 
 		srcTextureSegment->GetImageData(srcImageData, 
-			(int)(destRect.mWidth - srcRect.mWidth) / 2,
-			(int)(destRect.mHeight - srcRect.mHeight) / 2);
+			(int)(destRect.width - srcRect.width) / 2,
+			(int)(destRect.height - srcRect.height) / 2);
 		
 		effect->Apply(NULL, &srcImageData, &destImageData);
 		if (needsPremultiply)
@@ -831,10 +831,10 @@ BF_EXPORT void BF_CALLTYPE RenderState_SetWireframe(RenderState* renderState, bo
 BF_EXPORT void BF_CALLTYPE RenderState_SetClip(RenderState* renderState, float x, float y, float width, float height)
 {
 	BF_ASSERT((width >= 0) && (height >= 0));
-	renderState->mClipRect.mX = x;
-	renderState->mClipRect.mY = y;
-	renderState->mClipRect.mWidth = width;
-	renderState->mClipRect.mHeight = height;
+	renderState->mClipRect.x = x;
+	renderState->mClipRect.y = y;
+	renderState->mClipRect.width = width;
+	renderState->mClipRect.height = height;
 	if (!renderState->mClipped)
 		renderState->SetClipped(true);
 }
