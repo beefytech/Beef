@@ -155,8 +155,9 @@ namespace BeefPerf
 				LogLine(text);
 
 				mFailed = true;
-				if (!mShuttingDown)
-					Shutdown();
+				/*if (!mShuttingDown)
+					Shutdown();*/
+				//Stop();
 				return;
 			}
 
@@ -647,7 +648,7 @@ namespace BeefPerf
 
 		public override void UnhandledCommandLine(String key, String value)
 		{
-			Fail(StackStringFormat!("Unhandled command line param: {0}", key));
+			Fail(scope:: String()..AppendF("Unhandled command line param: {0}", key));
 		}
 
 		void SetupNewWindow(WidgetWindow window)
@@ -729,6 +730,9 @@ namespace BeefPerf
 
 		public override void Update(bool batchStart)
 		{
+			if (mFailed)
+				Stop();
+
 			base.Update(batchStart);
 
 			/*if (!mListenSocket.IsConnected)

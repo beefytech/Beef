@@ -216,6 +216,12 @@ namespace BeefPerf
 						Read(&val, 4);
 						val.ToString(outStr);
 					}
+					else if (cNext == 'p')
+					{
+						int64 val = 0;
+						Read(&val, 8);
+						val.ToString(outStr, "X", null);
+					}
 					else if (cNext == 'f')
 					{
 						float val = 0;
