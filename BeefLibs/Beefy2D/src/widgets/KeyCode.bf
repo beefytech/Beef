@@ -160,6 +160,14 @@ namespace Beefy.widgets
 					return (KeyCode)Period;
 				if (c == ',')
 					return (KeyCode)Comma;
+				if (c == ' ')
+					return (KeyCode)Space;
+				if (c == '-')
+					return (KeyCode)Minus;
+				if (c == '+')
+					return (KeyCode)Add;
+				if (c == '=')
+					return (KeyCode)Equals;
 			}
 
 			if (str.StartsWith("0x"))
