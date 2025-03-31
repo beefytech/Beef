@@ -144,7 +144,7 @@ namespace Beefy.widgets
 					return (KeyCode)c;
 				if ((c >= '0') && (c <= '9'))
 					return (KeyCode)c;
-				if ((c >= 'a') && (c <= 'a'))
+				if ((c >= 'a') && (c <= 'z'))
 					return (KeyCode)(c.ToUpper);
 				if (c == '[')
 					return (KeyCode)LBracket;
