@@ -660,7 +660,7 @@ void Beefy::ExactMinimalDoubleToStr(double d, char* str)
 
 static char* StbspCallback(char *buf, void *user, int len)
 {
-    ((String*)user)->Append(buf, len);
+    ((StringImpl*)user)->Append(buf, len);
     return buf;
 }
 
@@ -820,6 +820,12 @@ String Beefy::vformat(const char* fmt, va_list argPtr)
     char buf[STB_SPRINTF_MIN];
     BF_stbsp_vsprintfcb(StbspCallback, (void*)&str, buf, fmt, argPtr);
     return str;
+}
+
+void Beefy::vformat(StringImpl& str, const char* fmt, va_list argPtr)
+{	
+	char buf[STB_SPRINTF_MIN];
+	BF_stbsp_vsprintfcb(StbspCallback, (void*)&str, buf, fmt, argPtr);	
 }
 #endif
 

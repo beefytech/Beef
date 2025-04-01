@@ -31,6 +31,9 @@ namespace LogViewer
 		public List<Match> mNewMatches ~ delete _;
 		public bool mRefreshing;
 
+		public String mFilePath ~ delete _;
+		public String mMemLogName ~ delete _;
+
 		public uint32[] mColors = new .(
 			0xFFFFFFFF,
 			0xFFFC5858,
@@ -54,6 +57,7 @@ namespace LogViewer
 			ewc.mFont = gApp.mFont;
 			ewc.mWordWrap = false;
 			ewc.mTextColors = mColors;
+			ewc.mIsReadOnly = true;
 			mDocEdit.InitScrollbars(true, true);
 			AddWidget(mDocEdit);
 
@@ -79,6 +83,12 @@ namespace LogViewer
 
 		public void Load(StringView filePath)
 		{
+			DeleteAndNullify!(mFilePath);
+			DeleteAndNullify!(mMemLogName);
+			mFilePath = new .(filePath);
+
+			mWidgetWindow.SetTitle(scope $"LogViewer - {mFilePath}");
+
 			scope AutoBeefPerf("Board.Load");
 
 			delete mContent;
@@ -89,7 +99,43 @@ namespace LogViewer
 			{
 				gApp.Fail("Failed to open file '{0}'", filePath);
 			}
+
+			mFilterDirtyCountdown = 1;
+			//Refresh();
 			//mDocEdit.SetText(mContent);
+		}
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern char8* MemLogger_Get(char8* name);
+
+		public void LoadMemLog(StringView name)
+		{
+			DeleteAndNullify!(mFilePath);
+			DeleteAndNullify!(mMemLogName);
+			mMemLogName = new .(name);
+
+			mWidgetWindow.SetTitle(scope $"LogViewer - {mMemLogName}");
+
+			var result = MemLogger_Get(name.ToScopeCStr!());
+			if (result == null)
+			{
+				gApp.Fail("Failed to open MemLog '{0}'", name);
+				return;
+			}
+
+			delete mContent;
+			mContent = new String();
+			mContent.Append(result);
+
+			mFilterDirtyCountdown = 1;
+		}
+
+		public void Reload()
+		{
+			if (mFilePath != null)
+				Load(mFilePath);
+			if (mMemLogName != null)
+				LoadMemLog(mMemLogName);
 		}
 
 		void Refresh()
@@ -105,37 +151,40 @@ namespace LogViewer
 
 			let filters = mFilter.Split!('\n');
 
-			for (var line in mContent.Split('\n'))
+			if (mContent != null)
 			{
-				bool hadMatch = false;
-				bool hadFilter = false;
-
-				for (var filter in filters)
+				for (var line in mContent.Split('\n'))
 				{
-					if (filter.Length == 0)
-						continue;
-					hadFilter = true;
-					int lastIdx = -1;
-					while (true)
+					bool hadMatch = false;
+					bool hadFilter = false;
+
+					for (var filter in filters)
 					{
-						int findIdx = line.IndexOf(filter, lastIdx + 1);
-						if (findIdx == -1)
-							break;
+						if (filter.Length == 0)
+							continue;
+						hadFilter = true;
+						int lastIdx = -1;
+						while (true)
+						{
+							int findIdx = line.IndexOf(filter, lastIdx + 1);
+							if (findIdx == -1)
+								break;
 
-						hadMatch = true;
-						lastIdx = findIdx + filter.Length - 1;
+							hadMatch = true;
+							lastIdx = findIdx + filter.Length - 1;
 
-						Match match;
-						match.mFilterIdx = (.)@filter;
-						match.mTextIdx = (.)(mNewContent.Length + findIdx);
-						mNewMatches.Add(match);
+							Match match;
+							match.mFilterIdx = (.)@filter;
+							match.mTextIdx = (.)(mNewContent.Length + findIdx);
+							mNewMatches.Add(match);
+						}
 					}
-				}
 
-				if ((hadMatch) || (!hadFilter))
-				{
-					mNewContent.Append(line);
-					mNewContent.Append('\n');
+					if ((hadMatch) || (!hadFilter))
+					{
+						mNewContent.Append(line);
+						mNewContent.Append('\n');
+					}
 				}
 			}
 

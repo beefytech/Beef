@@ -1716,6 +1716,9 @@ namespace System
 		public static extern HWnd SetForegroundWindow(HWnd wnd);
 
 		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern HWnd ShowWindow(HWnd wnd, int32 cmdShow);
+
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern HWnd GetForegroundWindow();
 
 		[CLink, CallingConvention(.Stdcall)]

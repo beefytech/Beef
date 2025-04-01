@@ -593,6 +593,9 @@
     <ClCompile Include="img\BMPData.cpp">
       <Filter>src\img</Filter>
     </ClCompile>
+    <ClCompile Include="util\MemLogger.cpp">
+      <Filter>src\util</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -912,6 +915,9 @@
     </ClInclude>
     <ClInclude Include="img\BMPData.h">
       <Filter>src\img</Filter>
+    </ClInclude>
+    <ClInclude Include="util\MemLogger.h">
+      <Filter>src\util</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
