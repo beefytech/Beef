@@ -1035,6 +1035,27 @@ namespace Beefy.gfx
         {
             Gfx_CopyDrawVertex((.)idx, (.)srcIdx);
         }
+
+		public void OutlineOval(float x, float y, float radiusX, float radiusY)
+		{
+			int numSections = 40;
+			for (int section < numSections)
+			{
+				float ang0 = (section * Math.PI_f * 2) / numSections;
+				float ang1 = ((section + 1) * Math.PI_f * 2) / numSections;
+
+				float x0 = x + Math.Cos(ang0) * radiusX;
+				float y0 = y + Math.Sin(ang0) * radiusY;
+				float x1 = x + Math.Cos(ang1) * radiusX;
+				float y1 = y + Math.Sin(ang1) * radiusY;
+				DrawLine(x0, y0, x1, y1);
+			}
+		}
+
+		public void OutlineCircle(float x, float y, float radius)
+		{
+			OutlineOval(x, y, radius, radius);
+		}
     }
 #else
     public class Graphics : GraphicsBase
