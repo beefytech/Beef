@@ -984,6 +984,7 @@ namespace IDE
 			mWorkspace.mName = new String();
 			Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
 
+			CustomBuildProperties.Load();
 			LoadWorkspace(.OpenOrNew);
 			FinishShowingNewWorkspace();
 		}
@@ -3191,6 +3192,7 @@ namespace IDE
 			CloseWorkspace();
 			mWorkspace.mDir = new String(workspaceDir);
 			mWorkspace.mName = new String(workspaceName);
+			CustomBuildProperties.Load();
 			LoadWorkspace(.Open);
 			FinishShowingNewWorkspace();
 		}
@@ -3246,6 +3248,27 @@ namespace IDE
 		public Result<Project, ProjectAddError> AddProject(StringView projectName, VerSpec verSpec)
 		{
 			VerSpec useVerSpec = verSpec;
+
+			switch (useVerSpec)
+			{
+			case .None:
+
+			case .SemVer(let ver):
+				String unresolvedVersion = scope String(ver.mVersion);
+				CustomBuildProperties.ResolveString(unresolvedVersion, ver.mVersion);
+
+			case .Path(let path):
+				String unresolvedPath = scope String(path);
+				CustomBuildProperties.ResolveString(unresolvedPath, path);
+
+			case .Git(let url, let ver):
+				String unresolvedUrl = scope String(url);
+				CustomBuildProperties.ResolveString(unresolvedUrl, url);
+
+				String unresolvedVersion = scope String(ver.mVersion);
+				CustomBuildProperties.ResolveString(unresolvedVersion, ver.mVersion);
+			}
+
 			String verConfigDir = mWorkspace.mDir;
 
 			if (let project = mWorkspace.FindProject(projectName))
@@ -10959,6 +10982,12 @@ namespace IDE
 								case "BeefPath":
 									newString = gApp.mInstallDir;
 								default:
+									// Check if any custom properties match the string.
+									if (CustomBuildProperties.Contains(replaceStr))
+									{
+										newString = scope:ReplaceBlock String();
+										newString.Append(CustomBuildProperties.Get(replaceStr));
+									}
 								}
 							}
 
@@ -12867,12 +12896,14 @@ namespace IDE
 			{
 				mWorkspace.mName = new String();
 				Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
+				CustomBuildProperties.Load();
 				LoadWorkspace(mVerb);
 			}
 			else if (mWorkspace.IsSingleFileWorkspace)
 			{
 				mWorkspace.mName = new String();
 				Path.GetFileNameWithoutExtension(mWorkspace.mCompositeFile.mFilePath, mWorkspace.mName);
+				CustomBuildProperties.Load();
 				LoadWorkspace(mVerb);
 			}
 
