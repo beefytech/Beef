@@ -3025,6 +3025,55 @@ namespace System
 				return sIdStringLiterals[id];
 		}
 
+		public void Reverse(String strBuffer)
+		{
+		    int_strsize originalLength = this.mLength;
+		    char8* originalPtr = this.Ptr;
+
+		    if (originalLength <= 1)
+		    {
+		        strBuffer.Set(.(originalPtr, originalLength));
+		        return;
+		    }
+
+		    char8* tempBuffer = new:this char8[originalLength]* (?);
+		    defer delete tempBuffer;
+
+		    int_strsize writeIdx = 0;
+		    int_strsize readPos = originalLength;
+
+		    while (readPos > 0) {
+		        int_strsize currentReadIdx = readPos - 1;
+		        int_strsize startIdx = currentReadIdx;
+		        char8 c = originalPtr[startIdx];
+		        int8 len = 1;
+
+		        if (c >= (.)0x80) {
+		             while (startIdx > 0 && ((uint8)originalPtr[startIdx] & 0xC0) == 0x80)
+		                 startIdx--;
+
+		             var (decodedC32, decodedLen) = UTF8.Decode(originalPtr + startIdx, originalLength - startIdx);
+
+		             if (decodedLen <= 0) {
+		                 len = 1;
+		                 startIdx = currentReadIdx;
+					 } else {
+		                 len = decodedLen;
+					 }
+		        }
+		        Internal.MemCpy(tempBuffer + writeIdx, originalPtr + startIdx, len);
+
+		        writeIdx += len;
+		        readPos = startIdx;
+		    }
+
+		    Runtime.Assert(writeIdx == originalLength);
+
+		    strBuffer.Clear();
+		    strBuffer.Reserve(originalLength);
+		    strBuffer.Append(tempBuffer, originalLength);
+		}
+
 		public struct RawEnumerator : IRefEnumerator<char8*>, IEnumerator<char8>
 		{
 			char8* mPtr;
