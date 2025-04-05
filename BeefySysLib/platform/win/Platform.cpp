@@ -692,23 +692,34 @@ struct BfOverlappedReleaser
 {
 	BfpAsyncData* mAsyncData;
 	OverlappedReadResult* mOverlapped;
+	bool mProducerFree;
+	bool mConsumerFree;
 
 	BfOverlappedReleaser()
 	{
 		mAsyncData = NULL;
 		mOverlapped = NULL;
+		mProducerFree = true;
+		mConsumerFree = true;
 	}
 
 	BfOverlappedReleaser(BfpAsyncData* asyncData, OverlappedReadResult* overlapped)
 	{
 		mAsyncData = asyncData;
 		mOverlapped = overlapped;
+		mProducerFree = true;
+		mConsumerFree = true;
 	}
 
 	~BfOverlappedReleaser()
 	{
 		if (mOverlapped != NULL)
-			mAsyncData->Release(mOverlapped);
+		{
+			if (mProducerFree)
+				mAsyncData->Release(mOverlapped);
+			if (mConsumerFree)
+				mAsyncData->Release(mOverlapped);
+		}
 	}
 };
 
@@ -742,7 +753,7 @@ struct BfpFile
 };
 
 static void WINAPI OverlappedReadComplete(DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered, LPOVERLAPPED lpOverlapped)
-{	
+{		
 	OverlappedReadResult* readResult = (OverlappedReadResult*)lpOverlapped;	
 	readResult->mFile->mAsyncData->HandleResult(readResult, dwErrorCode, dwNumberOfBytesTransfered);
 }
@@ -3322,6 +3333,16 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 		}
 	}
 
+	if (file->mAsyncData != NULL)
+	{
+		int readSize = file->mAsyncData->ReadQueued(buffer, (int)size);
+		if (readSize > 0)
+		{
+			OUTRESULT(BfpFileResult_Ok);
+			return readSize;
+		}
+	}
+
 	if ((timeoutMS != -1) && (!forceNormalRead))
 	{
 		if (file->mAsyncData == NULL)
@@ -3331,27 +3352,21 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 		}
 
 		while (true)
-		{
-			int readSize = file->mAsyncData->ReadQueued(buffer, (int)size);
-			if (readSize > 0)
-			{
-				OUTRESULT(BfpFileResult_Ok);
-				return readSize;
-			}
-
+		{			
 			OverlappedReadResult* overlapped = file->mAsyncData->AllocBuffer((int)size);			
-			overlapped->mFile = file;
+			overlapped->mFile = file;			
 			
 			BfOverlappedReleaser overlappedReleaser(file->mAsyncData, overlapped);
 
 			//TODO: this doesn't set file stream location.  It only works for streams like pipes, sockets, etc
 			if (::ReadFileEx(file->mHandle, overlapped->GetPtr(), (uint32)size, overlapped, OverlappedReadComplete))
 			{
+				overlappedReleaser.mProducerFree = false;
 				file->mAsyncData->WaitAndResetEvent(timeoutMS);
 
 				DWORD errorCode = 0;
 				int readResult = file->mAsyncData->FinishRead(overlapped, buffer, (int)size, errorCode);
-				overlappedReleaser.mOverlapped = NULL;
+				overlappedReleaser.mConsumerFree = false;
 				if (readResult != -2)
 				{
 					if (errorCode == 0)
@@ -3382,6 +3397,8 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 			}
 			else
 			{
+				overlapped->mData.Clear();
+
 				int lastError = ::GetLastError();
 				if (lastError == ERROR_PIPE_LISTENING)
 				{
