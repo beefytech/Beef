@@ -2660,25 +2660,33 @@ bool WinDebugger::DoUpdate()
 							}
 						}
 
-						BF_ASSERT(foundBreakpoint != NULL);
-
-						DbgSubprogram* subprogram = mDebugTarget->FindSubProgram(pcAddress);
-						if (CheckConditionalBreakpoint(foundBreakpoint, subprogram, pcAddress))
+						if (foundBreakpoint == NULL)
 						{
-							if (foundBreakpoint != NULL)
-							{
-								mDebugManager->mOutMessages.push_back(StrFormat("memoryBreak %s", EncodeDataPtr(foundBreakpoint->mMemoryBreakpointInfo->mMemoryAddress, false).c_str()));
-								mRunState = RunState_Paused;
-							}
-
-							mActiveBreakpoint = foundBreakpoint;
-							mBreakStackFrameIdx = -1;
-							RemoveTempBreakpoints();
-							BfLogDbg("Memory breakpoint hit: %p\n", foundBreakpoint);
+							BfLogDbg("Unknown memory breakpoint hit %p\n", pcAddress);
+							mDebugManager->mOutMessages.push_back(StrFormat("memoryBreak %s", EncodeDataPtr(pcAddress, false).c_str()));
+							mRunState = RunState_Paused;							
+							break;
 						}
 						else
-							ClearCallStack();
-						break;
+						{
+							DbgSubprogram* subprogram = mDebugTarget->FindSubProgram(pcAddress);
+							if (CheckConditionalBreakpoint(foundBreakpoint, subprogram, pcAddress))
+							{
+								if (foundBreakpoint != NULL)
+								{
+									mDebugManager->mOutMessages.push_back(StrFormat("memoryBreak %s", EncodeDataPtr(foundBreakpoint->mMemoryBreakpointInfo->mMemoryAddress, false).c_str()));
+									mRunState = RunState_Paused;
+								}
+
+								mActiveBreakpoint = foundBreakpoint;
+								mBreakStackFrameIdx = -1;
+								RemoveTempBreakpoints();
+								BfLogDbg("Memory breakpoint hit: %p\n", foundBreakpoint);
+							}
+							else
+								ClearCallStack();
+							break;
+						}
 					}
 
 					if ((mRunState == RunState_DebugEval) && (mDebugEvalThreadInfo.mThreadId == mDebuggerWaitingThread->mThreadId))
