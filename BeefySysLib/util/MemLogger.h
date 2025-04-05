@@ -11,6 +11,7 @@ public:
 	void* mMemBuffer;
 	int mBufferSize;
 	int mTotalWriteSize;
+	bool mNoOverflow;
 
 public:
 	MemLogger();

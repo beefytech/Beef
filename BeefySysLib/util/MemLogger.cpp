@@ -16,6 +16,7 @@ MemLogger::MemLogger()
 	mMemBuffer = NULL;
 	mBufferSize = 0;
 	mTotalWriteSize = 0;	
+	mNoOverflow = false;
 }
 
 MemLogger::~MemLogger()
@@ -30,11 +31,15 @@ void MemLogger::Write(const void* ptr, int size)
 {
 	if (mMemBuffer == NULL)
 		return;
-	if (size == 0)
-		return;
-
+		
 	int dataSize = mBufferSize - sizeof(MemLogger_Header);
 	void* dataPtr = (uint8*)mMemBuffer + sizeof(MemLogger_Header);
+
+	if (mNoOverflow)
+		size = BF_MIN(size, dataSize - mTotalWriteSize - 1);
+
+	if (size <= 0)
+		return;
 
 	MemLogger_Header* header = (MemLogger_Header*)mMemBuffer;
 
@@ -49,7 +54,7 @@ void MemLogger::Write(const void* ptr, int size)
 		header->mHead -= dataSize;	
 	
 	if (size > 0)
-	{		
+	{
 		int writeSize2 = BF_MIN(size, dataSize - header->mHead);
 		memcpy((char*)dataPtr + header->mHead, (char*)ptr + writeSize, writeSize2);
 		header->mHead += writeSize2;
