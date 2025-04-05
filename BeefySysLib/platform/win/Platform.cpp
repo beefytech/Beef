@@ -558,8 +558,18 @@ struct OverlappedReadResult : OVERLAPPED
 	BfpFile* mFile;
 	intptr mBytesRead;
 	DWORD mErrorCode;
-	Array<uint8> mData;
-	int mRefCount;
+	Array<uint8> mData;	
+	bool mPending;
+	bool mAttemptedRead;
+
+	OverlappedReadResult()
+	{
+		mFile = NULL;
+		mBytesRead = 0;
+		mErrorCode = 0;
+		mPending = false;
+		mAttemptedRead = false;
+	}
 
 	void* GetPtr()
 	{
@@ -569,20 +579,20 @@ struct OverlappedReadResult : OVERLAPPED
 
 struct BfpAsyncData
 {	
+	BfpFile* mFile;
 	Array<uint8> mQueuedData;	
-	HANDLE mEvent;
-	int mOverlappedReadCount;
+	HANDLE mEvent;	
+	OverlappedReadResult mOverlappedResult;	
 
-	BfpAsyncData()
-	{
-		mOverlappedReadCount = 0;
+	BfpAsyncData(BfpFile* file)
+	{		
+		mFile = file;
 		mEvent = ::CreateEvent(NULL, TRUE, FALSE, NULL);
 	}
 
 	~BfpAsyncData()
 	{
-		::CloseHandle(mEvent);
-		BF_ASSERT(mOverlappedReadCount == 0);
+		::CloseHandle(mEvent);		
 	}
 
 	void SetEvent()
@@ -605,121 +615,95 @@ struct BfpAsyncData
 			return false;
 		}
 	}
-
-	void Release(OverlappedReadResult* readResult)
+	
+	int ReadQueued(void* buffer, int size, int timeoutMS, bool& didWait)
 	{
-		AutoCrit autoCrit(gBfpCritSect);
-
-		BF_ASSERT((readResult->mRefCount == 1) || (readResult->mRefCount == 2));
-		readResult->mRefCount--;
-		if (readResult->mRefCount == 0)
-		{			
-			BF_ASSERT(readResult->mData.IsEmpty());
-			delete readResult;
-			mOverlappedReadCount--;
-		}
-	}
-
-	int ReadQueued(void* buffer, int size)
-	{
-		AutoCrit autoCrit(gBfpCritSect);
+		gBfpCritSect.Lock();
+		
 		if (mQueuedData.mSize == 0)
-			return 0;
+		{	
+			if (mOverlappedResult.mPending)
+			{
+				gBfpCritSect.Unlock();
+				WaitAndResetEvent(timeoutMS);
+				didWait = true;
+				gBfpCritSect.Lock();				
+			}
+			if (mQueuedData.mSize == 0)
+			{
+				gBfpCritSect.Unlock();
+				return 0;
+			}
+		}
 		
 		int readSize = BF_MIN(size, mQueuedData.mSize);
 		memcpy(buffer, mQueuedData.mVals, readSize);
 		mQueuedData.RemoveRange(0, readSize);
+
+		gBfpCritSect.Unlock();
 		return readSize;
 	}
 
-	void HandleResult(OverlappedReadResult* readResult, uint32 errorCode, uint32 bytesRead)
-	{
-		AutoCrit autoCrit(gBfpCritSect);		
-		if (readResult->mRefCount == 2) // Only if we are still waiting
-		{
-			readResult->mErrorCode = errorCode;
-			readResult->mBytesRead = bytesRead;
-			SetEvent();
-		}
-		else
-		{
-			mQueuedData.Insert(mQueuedData.mSize, (uint8*)readResult->GetPtr(), bytesRead);
-			readResult->mData.Clear();
-		}
-		Release(readResult);
-	}
-
-	int FinishRead(OverlappedReadResult* readResult, void* buffer, int size, DWORD& errorCode)
+	void HandleResult(uint32 errorCode, uint32 bytesRead)
 	{
 		AutoCrit autoCrit(gBfpCritSect);
-		if (readResult->mRefCount == 2)
+		BF_ASSERT(mOverlappedResult.mPending);
+		mOverlappedResult.mPending = false;
+		mOverlappedResult.mErrorCode = errorCode;
+		mOverlappedResult.mBytesRead = bytesRead;
+		if (mOverlappedResult.mAttemptedRead) // Already tried to read and failed
 		{
-			Release(readResult);
+			mQueuedData.Insert(mQueuedData.mSize, (uint8*)mOverlappedResult.GetPtr(), bytesRead);
+			mOverlappedResult.mData.Clear();
+		}
+		SetEvent();
+	}
+
+	void AbortOverlapped()
+	{
+		AutoCrit autoCrit(gBfpCritSect);
+		BF_ASSERT(mOverlappedResult.mPending);
+		mOverlappedResult.mPending = false;
+		mOverlappedResult.mData.Clear();
+	}
+
+	int FinishRead(void* buffer, int size, DWORD& errorCode)
+	{
+		AutoCrit autoCrit(gBfpCritSect);
+		BF_ASSERT(!mOverlappedResult.mAttemptedRead);
+		mOverlappedResult.mAttemptedRead = true;
+		if (mOverlappedResult.mPending)
+		{		
 			return -2; // Still executing
 		}
-
-		errorCode = readResult->mErrorCode;
-		if (errorCode != 0)
+		
+		if (mOverlappedResult.mErrorCode != 0)
 		{
-			readResult->mData.Clear();
-			Release(readResult);
 			return -1;
 		}
 
-		BF_ASSERT(size >= readResult->mBytesRead);
-		memcpy(buffer, readResult->GetPtr(), readResult->mBytesRead);
-		int bytesRead = (int)readResult->mBytesRead;
-		readResult->mData.Clear();
-		Release(readResult);
+		BF_ASSERT(size >= mOverlappedResult.mBytesRead);
+		memcpy(buffer, mOverlappedResult.GetPtr(), mOverlappedResult.mBytesRead);
+		int bytesRead = (int)mOverlappedResult.mBytesRead;
+		mOverlappedResult.mData.Clear();
 		return bytesRead;
 	}
 
-	OverlappedReadResult* AllocBuffer(int size)
+	OverlappedReadResult* StartOverlapped(int size)
 	{		
 		AutoCrit autoCrit(gBfpCritSect);
 
-		OverlappedReadResult* readResult = new OverlappedReadResult();		
-		memset(readResult, 0, sizeof(OverlappedReadResult));
-		readResult->mErrorCode = -1;
-		readResult->mData.Resize(size);
-		readResult->mRefCount = 2;		
-		mOverlappedReadCount++;
-		return readResult;
-	}
-};
+		BF_ASSERT(!mOverlappedResult.mPending);
+		BF_ASSERT(mOverlappedResult.mData.IsEmpty());
 
-struct BfOverlappedReleaser
-{
-	BfpAsyncData* mAsyncData;
-	OverlappedReadResult* mOverlapped;
-	bool mProducerFree;
-	bool mConsumerFree;
-
-	BfOverlappedReleaser()
-	{
-		mAsyncData = NULL;
-		mOverlapped = NULL;
-		mProducerFree = true;
-		mConsumerFree = true;
-	}
-
-	BfOverlappedReleaser(BfpAsyncData* asyncData, OverlappedReadResult* overlapped)
-	{
-		mAsyncData = asyncData;
-		mOverlapped = overlapped;
-		mProducerFree = true;
-		mConsumerFree = true;
-	}
-
-	~BfOverlappedReleaser()
-	{
-		if (mOverlapped != NULL)
-		{
-			if (mProducerFree)
-				mAsyncData->Release(mOverlapped);
-			if (mConsumerFree)
-				mAsyncData->Release(mOverlapped);
-		}
+		memset(&mOverlappedResult, 0, sizeof(OVERLAPPED));
+		mOverlappedResult.mFile = mFile;
+		mOverlappedResult.mBytesRead = 0;
+		mOverlappedResult.mPending = true;
+		mOverlappedResult.mAttemptedRead = false;
+		mOverlappedResult.mErrorCode = -1;
+		mOverlappedResult.mData.Resize(size);		
+		return &mOverlappedResult;
 	}
 };
 
@@ -755,7 +739,7 @@ struct BfpFile
 static void WINAPI OverlappedReadComplete(DWORD dwErrorCode, DWORD dwNumberOfBytesTransfered, LPOVERLAPPED lpOverlapped)
 {		
 	OverlappedReadResult* readResult = (OverlappedReadResult*)lpOverlapped;	
-	readResult->mFile->mAsyncData->HandleResult(readResult, dwErrorCode, dwNumberOfBytesTransfered);
+	readResult->mFile->mAsyncData->HandleResult(dwErrorCode, dwNumberOfBytesTransfered);
 }
 
 struct BfpFileWatcher : public BfpOverlapped
@@ -3092,7 +3076,7 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 
 			if (isOverlapped)
 			{
-				bfpFile->mAsyncData = new BfpAsyncData();
+				bfpFile->mAsyncData = new BfpAsyncData(bfpFile);
 			}
 
 			return bfpFile;
@@ -3188,7 +3172,7 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 	bfpFile->mHandle = handle;
 
 	if ((createFlags & BfpFileCreateFlag_AllowTimeouts) != 0)
-		bfpFile->mAsyncData = new BfpAsyncData();
+		bfpFile->mAsyncData = new BfpAsyncData(bfpFile);
 
 	if ((createFlags & BfpFileCreateFlag_Pipe) != 0)
 		bfpFile->mIsPipe = true;
@@ -3335,11 +3319,18 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 
 	if (file->mAsyncData != NULL)
 	{
-		int readSize = file->mAsyncData->ReadQueued(buffer, (int)size);
+		bool didWait = false;
+		int readSize = file->mAsyncData->ReadQueued(buffer, (int)size, timeoutMS, didWait);
 		if (readSize > 0)
 		{
 			OUTRESULT(BfpFileResult_Ok);
 			return readSize;
+		}
+
+		if (didWait)
+		{
+			OUTRESULT(BfpFileResult_Timeout);
+			return 0;
 		}
 	}
 
@@ -3353,21 +3344,16 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 
 		while (true)
 		{			
-			OverlappedReadResult* overlapped = file->mAsyncData->AllocBuffer((int)size);			
-			overlapped->mFile = file;			
-			
-			BfOverlappedReleaser overlappedReleaser(file->mAsyncData, overlapped);
+			OverlappedReadResult* overlapped = file->mAsyncData->StartOverlapped((int)size);			
 
 			//TODO: this doesn't set file stream location.  It only works for streams like pipes, sockets, etc
 			if (::ReadFileEx(file->mHandle, overlapped->GetPtr(), (uint32)size, overlapped, OverlappedReadComplete))
-			{
-				overlappedReleaser.mProducerFree = false;
+			{			
 				file->mAsyncData->WaitAndResetEvent(timeoutMS);
 
 				DWORD errorCode = 0;
-				int readResult = file->mAsyncData->FinishRead(overlapped, buffer, (int)size, errorCode);
-				overlappedReleaser.mConsumerFree = false;
-				if (readResult != -2)
+				int readResult = file->mAsyncData->FinishRead(buffer, (int)size, errorCode);
+				if (readResult != -2) // Still executing
 				{
 					if (errorCode == 0)
 					{						
@@ -3386,18 +3372,14 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 					}
 				}
 				else
-				{
-					::CancelIoEx(file->mHandle, overlapped);					
-					// Clear event set by CancelIoEx
-					file->mAsyncData->WaitAndResetEvent(0);
-										
+				{										
 					OUTRESULT(BfpFileResult_Timeout);
 					return 0;					
 				}				
 			}
 			else
-			{
-				overlapped->mData.Clear();
+			{				
+				file->mAsyncData->AbortOverlapped();
 
 				int lastError = ::GetLastError();
 				if (lastError == ERROR_PIPE_LISTENING)
@@ -3410,10 +3392,6 @@ BFP_EXPORT intptr BFP_CALLTYPE BfpFile_Read(BfpFile* file, void* buffer, intptr 
 						{
 							if (!file->mAsyncData->WaitAndResetEvent(timeoutMS))
 							{
-								::CancelIoEx(file->mHandle, overlapped);
-								// Clear event set by CancelIoEx
-								file->mAsyncData->WaitAndResetEvent(0);
-
 								OUTRESULT(BfpFileResult_Timeout);
 								return 0;
 							}
