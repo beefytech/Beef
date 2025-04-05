@@ -3025,6 +3025,32 @@ namespace System
 				return sIdStringLiterals[id];
 		}
 
+		public void Reverse() {
+			if (mLength < 1)
+				return;
+
+			int start = 0, end = mLength - 1;
+
+			while (start < end) {
+				(Ptr[start], Ptr[end]) = (Ptr[end], Ptr[start]);
+				start++;
+				end--;
+			}
+
+			int charStartByteIndex = 0;
+			for (var currentByteIndex = 0; currentByteIndex < mLength - 1; currentByteIndex++) {
+				if ((Ptr[currentByteIndex] & (.)0xC0) != (.)0x80) {
+					int i = charStartByteIndex, j = currentByteIndex;
+					while (i < j) {
+						(Ptr[i], mPtrOrBuffer[j]) = (Ptr[j], Ptr[i]);
+						i++;
+						j--;
+					}
+					charStartByteIndex = currentByteIndex + 1;
+				}
+			}
+		}
+
 		public struct RawEnumerator : IRefEnumerator<char8*>, IEnumerator<char8>
 		{
 			char8* mPtr;
