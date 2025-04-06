@@ -1,0 +1,60 @@
+[1mdiff --git a/BeefLibs/corlib/src/String.bf b/BeefLibs/corlib/src/String.bf[m
+[1mindex 088cfa81..92f9e7fb 100644[m
+[1m--- a/BeefLibs/corlib/src/String.bf[m
+[1m+++ b/BeefLibs/corlib/src/String.bf[m
+[36m@@ -3025,6 +3025,55 @@[m [mnamespace System[m
+ 				return sIdStringLiterals[id];[m
+ 		}[m
+ [m
+[32m+[m		[32mpublic void Reverse(String strBuffer)[m
+[32m+[m		[32m{[m
+[32m+[m		[32m    int_strsize originalLength = this.mLength;[m
+[32m+[m		[32m    char8* originalPtr = this.Ptr;[m
+[32m+[m
+[32m+[m		[32m    if (originalLength <= 1)[m
+[32m+[m		[32m    {[m
+[32m+[m		[32m        strBuffer.Set(.(originalPtr, originalLength));[m
+[32m+[m		[32m        return;[m
+[32m+[m		[32m    }[m
+[32m+[m
+[32m+[m		[32m    char8* tempBuffer = new:this char8[originalLength]* (?);[m
+[32m+[m		[32m    defer delete tempBuffer;[m
+[32m+[m
+[32m+[m		[32m    int_strsize writeIdx = 0;[m
+[32m+[m		[32m    int_strsize readPos = originalLength;[m
+[32m+[m
+[32m+[m		[32m    while (readPos > 0) {[m
+[32m+[m		[32m        int_strsize currentReadIdx = readPos - 1;[m
+[32m+[m		[32m        int_strsize startIdx = currentReadIdx;[m
+[32m+[m		[32m        char8 c = originalPtr[startIdx];[m
+[32m+[m		[32m        int8 len = 1;[m
+[32m+[m
+[32m+[m		[32m        if (c >= (.)0x80) {[m
+[32m+[m		[32m             while (startIdx > 0 && ((uint8)originalPtr[startIdx] & 0xC0) == 0x80)[m
+[32m+[m		[32m                 startIdx--;[m
+[32m+[m
+[32m+[m		[32m             var (decodedC32, decodedLen) = UTF8.Decode(originalPtr + startIdx, originalLength - startIdx);[m
+[32m+[m
+[32m+[m		[32m             if (decodedLen <= 0) {[m
+[32m+[m		[32m                 len = 1;[m
+[32m+[m		[32m                 startIdx = currentReadIdx;[m
+[32m+[m					[32m } else {[m
+[32m+[m		[32m                 len = decodedLen;[m
+[32m+[m					[32m }[m
+[32m+[m		[32m        }[m
+[32m+[m		[32m        Internal.MemCpy(tempBuffer + writeIdx, originalPtr + startIdx, len);[m
+[32m+[m
+[32m+[m		[32m        writeIdx += len;[m
+[32m+[m		[32m        readPos = startIdx;[m
+[32m+[m		[32m    }[m
+[32m+[m
+[32m+[m		[32m    Runtime.Assert(writeIdx == originalLength);[m
+[32m+[m
+[32m+[m		[32m    strBuffer.Clear();[m
+[32m+[m		[32m    strBuffer.Reserve(originalLength);[m
+[32m+[m		[32m    strBuffer.Append(tempBuffer, originalLength);[m
+[32m+[m		[32m}[m
+[32m+[m
+ 		public struct RawEnumerator : IRefEnumerator<char8*>, IEnumerator<char8>[m
+ 		{[m
+ 			char8* mPtr;[m
