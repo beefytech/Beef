@@ -21,10 +21,12 @@ MemLogger::MemLogger()
 
 MemLogger::~MemLogger()
 {
+#ifdef BF_PLATFORM_WINDOWS
 	if (mMemBuffer != NULL)
 		::UnmapViewOfFile(mMemBuffer);
 	if (mFileMap != NULL)
 		::CloseHandle(mFileMap);
+#endif
 }
 
 void MemLogger::Write(const void* ptr, int size)
@@ -74,6 +76,7 @@ void MemLogger::Write(const void* ptr, int size)
 
 bool Beefy::MemLogger::Create(const StringImpl& memName, int size)
 {
+#ifdef BF_PLATFORM_WINDOWS
 	String sharedName = "MemLogger_" + memName;
 	HANDLE hMapFile = CreateFileMappingA(
 		INVALID_HANDLE_VALUE,    // use paging file
@@ -102,10 +105,14 @@ bool Beefy::MemLogger::Create(const StringImpl& memName, int size)
 	header->mTail = 0;
 	header->mSize = size;
 	return true;
+#else
+	return false;
+#endif
 }
 
 bool Beefy::MemLogger::Get(const StringImpl& memName, String& outStr)
 {
+#ifdef BF_PLATFORM_WINDOWS
 	String sharedName = "MemLogger_" + memName;
 	HANDLE hMapFile = ::OpenFileMappingA(FILE_MAP_READ | FILE_MAP_WRITE, FALSE, sharedName.c_str());
 	if (hMapFile == NULL)
@@ -149,6 +156,9 @@ bool Beefy::MemLogger::Get(const StringImpl& memName, String& outStr)
 	}
 
 	return true;
+#else
+	return false;
+#endif
 }
 
 void Beefy::MemLogger::Log(const char* fmt ...)
