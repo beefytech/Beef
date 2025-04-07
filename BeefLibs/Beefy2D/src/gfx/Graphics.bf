@@ -1038,7 +1038,7 @@ namespace Beefy.gfx
 
 		public void OutlineOval(float x, float y, float radiusX, float radiusY)
 		{
-			int numSections = 40;
+			int numSections = 12 + (.)((radiusX + radiusY) * 0.15f);
 			for (int section < numSections)
 			{
 				float ang0 = (section * Math.PI_f * 2) / numSections;
