@@ -106,7 +106,7 @@ namespace IDE.Compiler
 
         public void* mNativeBfSystem;
         public bool mIsTiming;
-		public Monitor mMonitor = new Monitor() ~ delete _;
+	public Monitor mMonitor = new Monitor() ~ delete _;
 
         public Dictionary<ProjectSource, BfParser> mParserMap = new Dictionary<ProjectSource, BfParser>() ~ delete _;
         public Dictionary<Project, BfProject> mProjectMap = new Dictionary<Project, BfProject>() ~ delete _;
