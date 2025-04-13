@@ -1179,14 +1179,18 @@ namespace IDE.ui
 
 						if (!docString.IsWhiteSpace)
 						{
-							curY += font.GetLineSpacing() + GS!(4);
+							
 							if (g != null)
 							{
+								let docY = curY + font.GetLineSpacing() + GS!(4);
+
 								using (g.PushColor(gApp.mSettings.mUISettings.mColors.mAutoCompleteDocText))
-									docHeight = g.DrawString(docString, curX, curY, .Left, maxDocWidth, .Wrap);
+									docHeight = g.DrawString(docString, curX, docY, .Left, maxDocWidth, .Wrap);
 							}
 							else
 								docHeight = font.GetWrapHeight(docString, maxDocWidth);
+
+							curY += docHeight;
 						}
 
 						extWidth = Math.Max(extWidth, Math.Min(font.GetWidth(docString), maxDocWidth) + GS!(48));
