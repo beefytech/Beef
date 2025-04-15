@@ -1822,7 +1822,27 @@ BFP_EXPORT void BFP_CALLTYPE BfpDirectory_Create(const char* path, BfpFileResult
 
 BFP_EXPORT void BFP_CALLTYPE BfpDirectory_Rename(const char* oldName, const char* newName, BfpFileResult* outResult)
 {
-    NOT_IMPL;
+    if (rename(oldName, newName) != 0)
+    {
+        switch (errno)
+        {
+        case EEXIST:
+            OUTRESULT(BfpFileResult_AlreadyExists);
+            break;
+        case ENOTEMPTY:
+            OUTRESULT(BfpFileResult_NotEmpty);
+            break;
+        case EISDIR:
+        case ENOTDIR:
+            OUTRESULT(BfpFileResult_InvalidParameter);
+            break;
+        default:
+            OUTRESULT(BfpFileResult_UnknownError);
+            break;
+        }
+    }
+    else
+        OUTRESULT(BfpFileResult_Ok);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpDirectory_Delete(const char* path, BfpFileResult* outResult)

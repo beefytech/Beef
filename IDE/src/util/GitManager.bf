@@ -95,6 +95,8 @@ class GitManager
 				if (!File.Exists(gitPath))
 					gitPath.Clear();
 			}
+
+			psi.UseShellExecute = false;
 #endif
 			if (gitPath.IsEmpty)
 				gitPath.Set("git");
@@ -103,7 +105,6 @@ class GitManager
 			psi.SetArguments(mArgs);
 			if (mPath != null)
 				psi.SetWorkingDirectory(mPath);
-			psi.UseShellExecute = false;
 			psi.RedirectStandardError = true;
 			psi.RedirectStandardOutput = true;
 			psi.CreateNoWindow = true;
