@@ -125,7 +125,11 @@ namespace Beefy.widgets
 				case .LWin,
 					 .RWin,
 					 .Alt,
+					 .LAlt,
+					 .RAlt,
 					 .Control,
+					 .LCtrl,
+					 .RCtrl,
 					 .Command,
 					 .Shift:
 					return true;
