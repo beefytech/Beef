@@ -568,7 +568,13 @@ namespace System
 		public T* CArray()
 		{
 			return &mFirstElement;
-		}	
+		}
+
+		public void CopyTo(T[,] arrayTo)
+		{
+			Debug.Assert(arrayTo.mLength >= mLength);
+			Internal.MemCpy(&arrayTo.GetRef(0), &GetRef(0), strideof(T) * mLength, alignof(T));
+		}
 
 		public Span<T>.Enumerator GetEnumerator()
 		{
