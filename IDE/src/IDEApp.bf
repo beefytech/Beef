@@ -4290,6 +4290,7 @@ namespace IDE
 			var sourceViewPanel = GetActiveSourceViewPanel();
 			if (sourceViewPanel != null)
 			{
+				sourceViewPanel.EditWidget.Content.RemoveSecondaryTextCursors();
 				sourceViewPanel.GotoLine();
 				return;
 			}
@@ -5469,7 +5470,7 @@ namespace IDE
 				if (ewc.HasSelection())
 					ewc.GetSelectionText(debugExpr);
 				else
-					sourceViewPanel.GetDebugExpressionAt(ewc.CursorTextPos, debugExpr);
+					sourceViewPanel.GetDebugExpressionAt(ewc.mTextCursors.Front.mCursorTextPos, debugExpr);
 				dialog.Init(debugExpr);
 			}
 			else if (let immediatePanel = activePanel as ImmediatePanel)
@@ -5949,6 +5950,18 @@ namespace IDE
 		{
 			let ideCommand = gApp.mCommands.mCommandMap["Test Enable Console"];
 			ToggleCheck(ideCommand.mMenuItem, ref mTestEnableConsole);
+		}
+
+		[IDECommand]
+		public void Cmd_SelectNextMatch()
+		{
+			GetActiveSourceEditWidgetContent()?.SelectNextMatch();
+		}
+
+		[IDECommand]
+		public void Cmd_SkipCurrentMatchAndSelectNext()
+		{
+			GetActiveSourceEditWidgetContent()?.SkipCurrentMatchAndSelectNext();
 		}
 
 		public void UpdateMenuItem_HasActivePanel(IMenu menu)
@@ -7852,6 +7865,7 @@ namespace IDE
 					if (!sourceViewPanel.[Friend]mWantsFullRefresh)
 						sourceViewPanel.UpdateQueuedEmitShowData();
 
+					sourceViewPanel.EditWidget?.Content.RemoveSecondaryTextCursors();
 					return sourceViewPanel;
 				}
 			}
@@ -7863,6 +7877,7 @@ namespace IDE
 				svTabButton.mIsTemp = true;
 			sourceViewPanel.ShowHotFileIdx(showHotIdx);
 			sourceViewPanel.ShowFileLocation(refHotIdx, Math.Max(0, line), Math.Max(0, column), hilitePosition);
+			sourceViewPanel.EditWidget?.Content.RemoveSecondaryTextCursors();
 			return sourceViewPanel;
 		}
 
@@ -8758,38 +8773,45 @@ namespace IDE
 				return;
 
 			var ewc = sourceViewPanel.mEditWidget.mEditWidgetContent;
-			if (!ewc.HasSelection())
-				return;
-
-			/*ewc.mSelection.Value.GetAsForwardSelect(var startPos, var endPos);
-			for (int i = startPos; i < endPos; i++)
+			for (var cursor in ewc.mTextCursors)
 			{
-				var c = ref ewc.mData.mText[i].mChar;
+				ewc.SetTextCursor(cursor);
+				if (!ewc.HasSelection())
+					continue;
+
+				/*ewc.mSelection.Value.GetAsForwardSelect(var startPos, var endPos);
+				for (int i = startPos; i < endPos; i++)
+				{
+					var c = ref ewc.mData.mText[i].mChar;
+					if (toUpper)
+						c = c.ToUpper;
+					else
+						c = c.ToLower;
+				}*/
+
+				var prevSel = ewc.mSelection.Value;
+
+				var str = scope String();
+				ewc.GetSelectionText(str);
+
+				var prevStr = scope String();
+				prevStr.Append(str);
+
 				if (toUpper)
-					c = c.ToUpper;
+					str.ToUpper();
 				else
-					c = c.ToLower;
-			}*/
+					str.ToLower();
 
-			var prevSel = ewc.mSelection.Value;
+				if (str == prevStr)
+					continue;
 
-			var str = scope String();
-			ewc.GetSelectionText(str);
+				ewc.CreateMultiCursorUndoBatch("IDEApp.ChangeCase()");
+				ewc.InsertAtCursor(str);
 
-			var prevStr = scope String();
-			prevStr.Append(str);
-
-			if (toUpper)
-				str.ToUpper();
-			else
-				str.ToLower();
-
-			if (str == prevStr)
-				return;
-
-			ewc.InsertAtCursor(str);
-
-			ewc.mSelection = prevSel;
+				ewc.mSelection = prevSel;
+			}
+			ewc.CloseMultiCursorUndoBatch();
+			ewc.SetPrimaryTextCursor();
 		}
 
 		public bool IsFilteredOut(String fileName)

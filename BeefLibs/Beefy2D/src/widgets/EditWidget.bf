@@ -101,6 +101,42 @@ namespace Beefy.widgets
             public uint8 mDisplayFlags;
         }
 
+		public class TextCursor
+		{
+			static int32 mNextId = 0;
+
+			public int32 mId;
+
+			public EditSelection? mSelection;
+			public EditWidgetContent.LineAndColumn? mVirtualCursorPos;
+			public int32 mCursorTextPos;
+
+			public bool mCursorImplicitlyMoved;
+			public bool mJustInsertedCharPair;
+
+			public this(int32 id, TextCursor textCursor = null)
+			{
+				mId = id;
+				if (id == -1)
+				{
+					mNextId++;
+					if (mNextId == 0)
+						mNextId++;
+					mId = mNextId;
+				}
+
+				if (textCursor != null)
+				{
+					mSelection = textCursor.mSelection;
+					mVirtualCursorPos = textCursor.mVirtualCursorPos;
+					mCursorTextPos = textCursor.mCursorTextPos;
+
+					if ((mSelection.HasValue) && (mSelection.Value.Length == 0))
+						mSelection = null;
+				}
+			}
+		}
+
         public class TextAction : UndoAction
         {
             public EditWidgetContent.Data mEditWidgetContentData;
@@ -111,6 +147,7 @@ namespace Beefy.widgets
             public int32 mPrevTextVersionId;
             public int32 mCursorTextPos;            
             public LineAndColumn? mVirtualCursorPos;
+			public int32 mTextCursorId;
 
 			// Return either the focused edit widget content, or the last one added
 			public EditWidgetContent EditWidgetContent
@@ -136,11 +173,15 @@ namespace Beefy.widgets
                 	mSelection = editWidget.mSelection;
                 mCursorTextPos = (int32)editWidget.CursorTextPos;
                 mVirtualCursorPos = editWidget.mVirtualCursorPos;
+				mTextCursorId = editWidget.mCurrentTextCursor.mId;
+				if ((editWidget.IsPrimaryTextCursor()) && (editWidget.mMultiCursorUndoBatch != null))
+					editWidget.mMultiCursorUndoBatch.mPrimaryUndoAction = this;
             }
 
             public void SetPreviousState(bool force)
             {
 				var editWidgetContent = EditWidgetContent;
+				editWidgetContent.SetTextCursor(mTextCursorId);
                 mEditWidgetContentData.mCurTextVersionId = mPrevTextVersionId;
                 if ((mRestoreSelectionOnUndo) || (force))
                     editWidgetContent.mSelection = mSelection;
@@ -151,6 +192,41 @@ namespace Beefy.widgets
                 if (mMoveCursor)
                     editWidgetContent.EnsureCursorVisible();                
             }
+
+			static public int32 CalculateOffset(EditWidgetContent ewc, StringView text)
+			{
+				// Calculates an offset which is used to determine, if two undo-actions
+				// from two MultiCursorUndoBatchStart can or cannot be "merged".
+				// It assumes, that every cursor will insert the same amout of text.
+				// NOTE: This can be used to actually merge two UndoAction, however,
+				// I (kallisto56) have not figured out how to properly undo/redo, because
+				// each consecutive action is made at different CursorTextPos,
+				// shifted by surrounding cursors.
+				if (ewc.mTextCursors.Count == 1)
+					return 0;
+
+				var currentSelection = ewc.GetAsSelection(ewc.mCurrentTextCursor, true);
+				var offset = 0;
+				if (currentSelection.Length > 0)
+					offset -= ewc.mSelection.Value.Length;
+
+				for (var cursor in ewc.mTextCursors)
+				{
+					if (cursor.mId == ewc.mCurrentTextCursor.mId)
+						continue;
+
+					var otherSelection = ewc.GetAsSelection(cursor, true);
+					if (currentSelection.mStartPos > otherSelection.mStartPos)
+					{
+						if (otherSelection.Length > 0)
+							offset -= otherSelection.Length;
+
+						offset += text.Length;
+					}
+				}
+
+				return (int32)offset;
+			}
         }
 
         public class SetCursorAction : TextAction
@@ -209,6 +285,79 @@ namespace Beefy.widgets
             }
         }
 
+		public class MultiCursorUndoBatchStart : UndoBatchStart
+		{
+			public List<int32> mTextCursorsIds = new List<int32>() ~ delete _;
+			public TextAction mPrimaryUndoAction = null;
+			public int32 mOffsetToNextUndoAction = int32.MinValue;
+
+			public this(EditWidgetContent ewc, String name)
+				: base(name)
+			{
+				for (var cursor in ewc.mTextCursors)
+					mTextCursorsIds.Add(cursor.mId);
+			}
+
+			public override bool Merge(UndoAction nextAction)
+			{
+				var undoBatchStart = nextAction as MultiCursorUndoBatchStart;
+				if (undoBatchStart == null)
+					return false;
+				if (mName != undoBatchStart.mName)
+					return false;
+				if (mTextCursorsIds.Count != undoBatchStart.mTextCursorsIds.Count)
+					return false;
+
+				// Checking that sequence of ids for text cursors matches
+				for (var i = 0; i < mTextCursorsIds.Count; i++)
+				{
+					if (mTextCursorsIds[i] != undoBatchStart.mTextCursorsIds[i])
+						return false;
+				}
+
+				var lhsInsertText = mPrimaryUndoAction as InsertTextAction;
+				var rhsInsertText = undoBatchStart.mPrimaryUndoAction as InsertTextAction;
+				var lhsDeleteChar = mPrimaryUndoAction as DeleteCharAction;
+				var rhsDeleteChar = undoBatchStart.mPrimaryUndoAction as DeleteCharAction;
+				var lhsDeleteSelection = mPrimaryUndoAction as DeleteSelectionAction;
+				var rhsDeleteSelection = undoBatchStart.mPrimaryUndoAction as DeleteSelectionAction;
+
+				if ((lhsInsertText != null) || (rhsInsertText != null))
+				{
+					if ((lhsInsertText == null) || (rhsInsertText == null))
+						return false;
+
+					int curIdx = lhsInsertText.mCursorTextPos + mOffsetToNextUndoAction;
+					int nextIdx = rhsInsertText.mCursorTextPos;
+					if ((nextIdx != curIdx + lhsInsertText.mText.Length) ||
+						(rhsInsertText.mText.EndsWith("\n")) ||
+						(lhsInsertText.mText == "\n"))
+						return false;
+				}
+				else if ((lhsDeleteChar != null) || (rhsDeleteChar != null))
+				{
+					if ((lhsDeleteChar == null) || (rhsDeleteChar == null))
+						return false;
+					if ((rhsDeleteChar.[Friend]mOffset < 0) != (lhsDeleteChar.[Friend]mOffset < 0))
+						return false;
+					
+					int32 curIdx = lhsDeleteChar.[Friend]mCursorTextPos - mOffsetToNextUndoAction;
+					int32 nextIdx = rhsDeleteChar.mCursorTextPos;  
+					if (nextIdx != curIdx + lhsDeleteChar.[Friend]mOffset)
+						return false;
+				}
+				else if ((lhsDeleteSelection != null) || (rhsDeleteSelection != null))
+				{
+					return false;
+				}
+
+				mPrimaryUndoAction = undoBatchStart.mPrimaryUndoAction;
+				mOffsetToNextUndoAction = undoBatchStart.mOffsetToNextUndoAction;
+
+				return true;
+			}
+		}
+
         public class DeleteSelectionAction : TextAction
         {
             public String mSelectionText;            
@@ -221,6 +370,8 @@ namespace Beefy.widgets
 					mSelectionText = new String();
                     editWidgetContent.GetSelectionText(mSelectionText);
 				}
+				if ((editWidgetContent.IsPrimaryTextCursor()) && (editWidgetContent.mMultiCursorUndoBatch != null))
+					editWidgetContent.mMultiCursorUndoBatch.mOffsetToNextUndoAction = CalculateOffset(editWidgetContent, mSelectionText);
             }
 
 			~this()
@@ -231,6 +382,7 @@ namespace Beefy.widgets
             public override bool Undo()
             {
 				var editWidgetContent = EditWidgetContent;
+				editWidgetContent.SetTextCursor(mTextCursorId);
                 if (mSelection != null)
                 {
                     bool wantSnapScroll = mEditWidgetContentData.mTextLength == 0;
@@ -314,6 +466,8 @@ namespace Beefy.widgets
             {                
                 mText = new String(text);
                 mRestoreSelectionOnUndo = !insertFlags.HasFlag(.NoRestoreSelectionOnUndo);                
+				if ((editWidget.IsPrimaryTextCursor()) && (editWidget.mMultiCursorUndoBatch != null))
+					editWidget.mMultiCursorUndoBatch.mOffsetToNextUndoAction = CalculateOffset(editWidget, mText);
             }
 
             public override bool Merge(UndoAction nextAction)
@@ -321,6 +475,8 @@ namespace Beefy.widgets
                 InsertTextAction insertTextAction = nextAction as InsertTextAction;
                 if (insertTextAction == null)
                     return false;
+				if (mTextCursorId != insertTextAction.mTextCursorId)
+					return false;
 
 				int curIdx = mCursorTextPos;
 				int nextIdx = insertTextAction.mCursorTextPos;
@@ -357,6 +513,7 @@ namespace Beefy.widgets
 					Debug.Assert(mSelection.Value.HasSelection);
 
 				var editWidgetContent = EditWidgetContent;
+				editWidgetContent.SetTextCursor(mTextCursorId);
                 int startIdx = (mSelection != null) ? mSelection.Value.MinPos : mCursorTextPos;
                 editWidgetContent.RemoveText(startIdx, (int32)mText.Length);
                 editWidgetContent.ContentChanged();
@@ -417,6 +574,8 @@ namespace Beefy.widgets
                 int32 textPos = mCursorTextPos;                
 				mText = new String(count);
                 editWidgetContent.ExtractString(textPos + offset, count, mText);
+				if ((editWidget.IsPrimaryTextCursor()) && (editWidget.mMultiCursorUndoBatch != null))
+					editWidget.mMultiCursorUndoBatch.mOffsetToNextUndoAction = CalculateOffset(editWidget, mText);
             }
 
             public override bool Merge(UndoAction nextAction)
@@ -426,6 +585,8 @@ namespace Beefy.widgets
                     return false;                
                 if ((deleteCharAction.mOffset < 0) != (mOffset < 0))
                     return false;
+				if (mTextCursorId != deleteCharAction.mTextCursorId)
+					return false;
 
                 int32 curIdx = mCursorTextPos;
                 int32 nextIdx = deleteCharAction.mCursorTextPos;                
@@ -451,6 +612,7 @@ namespace Beefy.widgets
             {
                 int32 textPos = mCursorTextPos;
                 var editWidgetContent = EditWidgetContent;
+                editWidgetContent.SetTextCursor(mTextCursorId);
 
                 editWidgetContent.CursorTextPos = textPos + mOffset;
 
@@ -579,10 +741,13 @@ namespace Beefy.widgets
         public uint8 mExtendDisplayFlags;
 		public uint8 mInsertDisplayFlags;
 		
+		public MultiCursorUndoBatchStart mMultiCursorUndoBatch;
+		public List<TextCursor> mTextCursors = new List<TextCursor>() ~ DeleteContainerAndItems!(_);
+		public TextCursor mCurrentTextCursor;
         public int32 mCursorBlinkTicks;                
-		public bool mCursorImplicitlyMoved;
-        public bool mJustInsertedCharPair; // Pressing backspace will delete last char8, even though cursor is between char8 pairs (ie: for brace pairs 'speculatively' inserted)
-        public EditSelection? mSelection;
+		public ref bool mCursorImplicitlyMoved => ref mCurrentTextCursor.mCursorImplicitlyMoved;
+        public ref bool mJustInsertedCharPair => ref mCurrentTextCursor.mJustInsertedCharPair; // Pressing backspace will delete last char8, even though cursor is between char8 pairs (ie: for brace pairs 'speculatively' inserted)
+        public ref EditSelection? mSelection => ref mCurrentTextCursor.mSelection;
 		public EditSelection? mDragSelectionUnion; // For double-clicking a word and then "dragging" the selection
 		public DragSelectionKind mDragSelectionKind;
         public bool mIsReadOnly = false;
@@ -592,9 +757,9 @@ namespace Beefy.widgets
         public float mCursorWantX; // For keyboard cursor selection, accounting for when we truncate to line end        
         public bool mOverTypeMode = false;                
         
-        public int32 mCursorTextPos;
+        public ref int32 mCursorTextPos => ref mCurrentTextCursor.mCursorTextPos;
         public bool mShowCursorAtLineEnd;
-        public LineAndColumn? mVirtualCursorPos;
+        public ref LineAndColumn? mVirtualCursorPos => ref mCurrentTextCursor.mVirtualCursorPos;
         public bool mEnsureCursorVisibleOnModify = true;
         public bool mAllowVirtualCursor;
         public bool mAllowMaximalScroll = true; // Allows us to scroll down such that edit widget is blank except for one line of content at the top
@@ -686,6 +851,7 @@ namespace Beefy.widgets
 				mData = CreateEditData();
 			mData.Ref(this);
 			mContentChanged = true;
+			mCurrentTextCursor = mTextCursors.Add(.. new TextCursor(0));
         }
 
 
@@ -790,6 +956,16 @@ namespace Beefy.widgets
 
         public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
         {
+			SetPrimaryTextCursor();
+			if ((mIsMultiline) && (btn == 0) && (mWidgetWindow.GetKeyFlags(true) == .Alt))
+			{
+				mTextCursors.Add(new TextCursor(-1, mCurrentTextCursor));
+			}
+			else
+			{
+				RemoveSecondaryTextCursors();
+			}
+
             base.MouseDown(x, y, btn, btnCount);
             mEditWidget.SetFocus();
 
@@ -997,20 +1173,64 @@ namespace Beefy.widgets
 #endif
         }
 
-		protected virtual void AdjustCursorsAfterExternalEdit(int index, int ofs)
+		protected virtual void AdjustCursorsAfterExternalEdit(int index, int ofs, int lineOfs)
 		{
-#unwarn
-			int cursorPos = CursorTextPos;
-			if (cursorPos >= index)
-				CursorTextPos = Math.Clamp(mCursorTextPos + (int32)ofs, 0, mData.mTextLength + 1);
-			if (HasSelection())
-			{				
-				if (((ofs > 0) && (mSelection.Value.mStartPos >= index)) ||
-					((ofs < 0) && (mSelection.Value.mStartPos > index)))
-					mSelection.ValueRef.mStartPos += (int32)ofs;
-				if (mSelection.Value.mEndPos > index)
-					mSelection.ValueRef.mEndPos += (int32)ofs;
+			var prevTextCursor = mCurrentTextCursor;
+
+			for (var cursor in mTextCursors)
+			{
+				if ((cursor.mId == prevTextCursor.mId) && (mEditWidget.mHasFocus))
+					continue;
+
+				SetTextCursor(cursor);
+
+				if (mEditWidget.mHasFocus)
+				{
+					if (HasSelection())
+					{
+						var isCaretAtStartPos = (mSelection.Value.mStartPos == mCursorTextPos);
+
+						if (((ofs > 0) && (mSelection.Value.MinPos >= index)) ||
+							((ofs < 0) && (mSelection.Value.MinPos > index)))
+						{
+							mSelection.ValueRef.mStartPos = Math.Clamp(mSelection.Value.mStartPos + int32(ofs), 0, mData.mTextLength + 1);
+							mSelection.ValueRef.mEndPos = Math.Clamp(mSelection.Value.mEndPos + int32(ofs), 0, mData.mTextLength + 1);
+						}
+
+						mCursorTextPos = (isCaretAtStartPos)
+							? mSelection.Value.mStartPos
+							: mSelection.Value.mEndPos;
+					}
+					else
+					if (((ofs > 0) && (CursorTextPos > index)) ||
+						((ofs < 0) && (CursorTextPos >= index - ofs)))
+					{
+						mCursorTextPos = Math.Clamp(mCursorTextPos + int32(ofs), 0, mData.mTextLength + 1);
+
+						if (mVirtualCursorPos.HasValue)
+							mVirtualCursorPos = LineAndColumn(mVirtualCursorPos.Value.mLine + lineOfs, mVirtualCursorPos.Value.mColumn);
+					}
+
+					if (mSelection.HasValue && mSelection.Value.mStartPos == mSelection.Value.mEndPos)
+						mSelection = null;
+				}
+				else
+				{
+					int cursorPos = CursorTextPos;
+					if (cursorPos >= index)
+						CursorTextPos = Math.Clamp(mCursorTextPos + (int32)ofs, 0, mData.mTextLength + 1);
+					if (HasSelection())
+					{				
+						if (((ofs > 0) && (mSelection.Value.mStartPos >= index)) ||
+							((ofs < 0) && (mSelection.Value.mStartPos > index)))
+							mSelection.ValueRef.mStartPos += (int32)ofs;
+						if (mSelection.Value.mEndPos > index)
+							mSelection.ValueRef.mEndPos += (int32)ofs;
+					}
+				}
 			}
+
+			SetTextCursor(prevTextCursor);
 		}
 
 		public virtual void ApplyTextFlags(int index, String text, uint8 typeNum, uint8 flags)
@@ -1070,24 +1290,53 @@ namespace Beefy.widgets
 
             VerifyTextIds();
 
+			var lineOfs = 0;
+			for (var n = 0; n < text.Length; n++)
+			{
+				if ((text[n] == '\n') || (text[n] == '\r'))
+					lineOfs++;
+			}
+
 			for (var user in mData.mUsers)
 			{
 				if (user != this)
 				{
-					user.AdjustCursorsAfterExternalEdit(index, (int32)text.Length);
+					user.AdjustCursorsAfterExternalEdit(index, (int32)text.Length, lineOfs);
 					user.ContentChanged();
 				}
 			}
+
+			AdjustCursorsAfterExternalEdit(index, text.Length, lineOfs);
         }
     
 
         public virtual void RemoveText(int index, int length)
         {
+			var lineOfs = 0;
+			if (length != 0)
+			{
+				var startPos = index;
+				var endPos = index + length;
+				if (startPos > endPos)
+					Swap!(startPos, endPos);
+
+				endPos = Math.Clamp(endPos, 0, mData.mTextLength);
+
+				for (var n = startPos; n < endPos; n++)
+				{
+					var char = mData.mText[n].mChar;
+					if ((char == '\n') || (char == '\r'))
+					{
+						lineOfs++;
+					}
+				}
+			}
+
 			for (var user in mData.mUsers)
 			{
 				if (user != this)
 				{
-					user.AdjustCursorsAfterExternalEdit(index, -length);
+					user.AdjustCursorsAfterExternalEdit(index, -length, -lineOfs);
 					user.ContentChanged();
 				}
 			}
@@ -1102,6 +1351,7 @@ namespace Beefy.widgets
 			TextChanged();
 
             VerifyTextIds();			
+			AdjustCursorsAfterExternalEdit(index, -length, -lineOfs);
         }
 
         /*public void PhysInsertAtCursor(String theString, bool moveCursor = true)
@@ -1769,6 +2019,7 @@ namespace Beefy.widgets
 			{
 				if (!CheckReadOnly())
 				{
+					CreateMultiCursorUndoBatch("EWC.KeyChar(Ctrl+Backspace)");
 					int line;
 					int lineChar;
 					GetCursorLineChar(out line, out lineChar);
@@ -1795,6 +2046,7 @@ namespace Beefy.widgets
             {
                 if (!CheckReadOnly())
                 {
+					CreateMultiCursorUndoBatch("EWC.KeyChar(\b)");
 					if (HasSelection())
 					{
 						DeleteSelection();
@@ -1877,7 +2129,10 @@ namespace Beefy.widgets
                 break; 
             case '\t':
 				if (AllowChar(useChar))
+				{
+					CreateMultiCursorUndoBatch("EWC.KeyChar(\t)");
                 	BlockIndentSelection(mWidgetWindow.IsKeyDown(KeyCode.Shift));
+				}
                 return;
             }            
             
@@ -1893,6 +2148,7 @@ namespace Beefy.widgets
 
             if ((AllowChar(useChar)) && (!CheckReadOnly()))
             {                
+				CreateMultiCursorUndoBatch("EWC.KeyChar");
                 if ((useChar == '\n') && (!mAllowVirtualCursor))
                 {              
                     int lineIdx;
@@ -2080,32 +2336,184 @@ namespace Beefy.widgets
 
 		void CopyText(bool cut)
 		{
-			bool selectedLine = false;
-			String extra = scope .();
-			if (!HasSelection())
-			{
-				selectedLine = true;
-				GetLinePosition(CursorLineAndColumn.mLine, var lineStart, var lineEnd);
-				mSelection = .(lineStart, lineEnd);
-				extra.Append("line");
-			}
-			
-			String selText = scope String();
-			GetSelectionText(selText);
-	        BFApp.sApp.SetClipboardText(selText, extra);
+			if (!IsPrimaryTextCursor())
+				return;
+
 			if ((cut) && (!CheckReadOnly()))
-	        {
-				if (selectedLine)
-				{
-					// Remove \n
-					if (mSelection.Value.mEndPos < mData.mTextLength)
-						mSelection.ValueRef.mEndPos++;
-				}
-				DeleteSelection();
+			{
+				// Forcing creation of undo batch, because even single cursor has
+				// multiple undo-actions (SetCursorAction + DeleteSelectionAction).
+				CreateMultiCursorUndoBatch("EWC.CopyText(cut=true)", force: true);
 			}
 
-			if (selectedLine)
+			var text = scope String();
+			var extra = scope String();
+
+			// List of cursors, ordered from the first one in the document, to the last.
+			var sortedCursors = GetSortedCursors(.. scope List<TextCursor>());
+
+			// Copy stage (iterate in order from first to last in the document)
+			for (var cursor in sortedCursors)
+			{
+				SetTextCursor(cursor);
+
+				var cursorText = scope String();
+				var cursorExtra = String.Empty;
+				var selectedLine = false;
+				EditSelection selection;
+
+				if (!HasSelection())
+				{
+					cursorExtra = "line";
+					selectedLine = true;
+					GetLinePosition(CursorLineAndColumn.mLine, var lineStart, var lineEnd);
+					selection = EditSelection(lineStart, lineEnd);
+				}
+				else
+				{
+					mSelection = selection = GetAsSelection(cursor, true);
+				}
+
+				// ...
+				ExtractString(selection.mStartPos, selection.Length, cursorText);
+				cursorText.Append('\n');
+
+				text.Append(cursorText);
+				extra.AppendF("{0}:{1};", cursorExtra, cursorText.Length);
+			}
+
+			BFApp.sApp.SetClipboardText(text, extra);
+			SetPrimaryTextCursor();
+
+			if ((!cut) || (CheckReadOnly()))
+				return;
+
+			int32 GetLine(TextCursor cursor)
+			{
+				if (cursor.mVirtualCursorPos.HasValue)
+					return cursor.mVirtualCursorPos.Value.mLine;
+
+				int line;
+				int lineChar;
+				GetLineCharAtIdx(cursor.mCursorTextPos, out line, out lineChar);
+
+				int coordLineColumn;
+				GetLineAndColumnAtLineChar(line, lineChar, out coordLineColumn);
+				return (int32)line;
+			}
+
+			// Cursors that have selection
+			var selections = scope List<(int32 mLine, TextCursor mCursor)>();
+			for (var idx = 0; idx < sortedCursors.Count; idx++)
+			{
+				var cursor = sortedCursors[idx];
+				SetTextCursor(cursor);
+				
+				var undoAction = mData.mUndoManager.Add(.. new SetCursorAction(this));
+				undoAction.mRestoreSelectionOnUndo = true;
+
+				if (HasSelection())
+				{
+					DeleteSelection();
+					sortedCursors.RemoveAt(idx);
+					selections.Add((.)(GetLine(cursor), cursor));
+					idx--;
+				}
+			}
+
+			TextCursor GetTextCursor(int32 excludeId, int32 line)
+			{
+				for (var cursor in sortedCursors)
+				{
+					if (cursor.mId == excludeId)
+						continue;
+
+					if (GetLine(cursor) == line)
+						return cursor;
+				}
+
+				return null;
+			}
+
+			// At this point we have a list of carets and a list of selections
+			// Selection, that sits on the same line with a caret should be deleted
+			// Multiple carets on the same line should be deleted leaving only one of them
+			for (var idx = sortedCursors.Count - 1; idx >= 0; idx--)
+			{
+				if (idx > sortedCursors.Count-1)
+					idx = sortedCursors.Count-1;
+				if (sortedCursors.Count == 0)
+					break;
+
+				var cursor = sortedCursors[idx];
+				var cursorLine = GetLine(cursor);
+
+				SetTextCursor(cursor);
+
+				// Go over selections and delete those, that sit on the same line with a this caret
+				for (var sidx = selections.Count - 1; sidx >= 0; sidx--)
+				{
+					var selection = selections[sidx];
+
+					if (selection.mLine == cursorLine)
+					{
+						if (selection.mCursor.mId == 0)
+						{
+							// +1 because we're going to delete that line and we want that primary selection to stay on the same line
+							selection.mCursor.mVirtualCursorPos = LineAndColumn(cursorLine+1, 0);
+							selections.RemoveAt(sidx);
+							continue;
+						}
+
+						mTextCursors.Remove(selection.mCursor);
+						selections.RemoveAt(sidx);
+						delete selection.mCursor;
+					}
+				}
+
+				// Get another caret that sits on the same line
+				while (true)
+				{
+					if (cursor == null)
+						break;
+					var anotherCursor = GetTextCursor(cursor.mId, cursorLine);
+					if (anotherCursor == null)
+						break;
+
+					if (anotherCursor.mId == 0)
+					{
+						mTextCursors.Remove(cursor);
+						sortedCursors.Remove(cursor);
+						delete cursor;
+						cursor = null;
+					}
+					else
+					{
+						mTextCursors.Remove(anotherCursor);
+						sortedCursors.Remove(anotherCursor);
+						delete anotherCursor;
+					}
+				}
+
+				if (cursor == null)
+				{
+					idx = sortedCursors.Count;
+					continue;
+				}
+
+				GetLinePosition(CursorLineAndColumn.mLine, var lineStart, var lineEnd);
+				mSelection = .(lineStart, lineEnd);
+				if (mSelection.Value.mEndPos < mData.mTextLength)
+					mSelection.ValueRef.mEndPos++;
+				DeleteSelection();
 				mSelection = null;
+
+				sortedCursors.Remove(cursor);
+				if (sortedCursors.Count == 0)
+					break;
+			}
+
+			SetPrimaryTextCursor();
 		}
 
 		public void CutText()
@@ -2120,45 +2528,148 @@ namespace Beefy.widgets
 
 		public void PasteText(String text, String extra)
 		{
-			if ((extra == "line") && (mAllowVirtualCursor))
+			if (!IsPrimaryTextCursor())
+				return;
+			if (CheckReadOnly())
+				return;
+
+			CreateMultiCursorUndoBatch("EWC.PasteText(text, extra)");
+
+			// Decode 'extra' into fragments
+			// Support for older builds is accounted for later on in this method
+			var offset = 0;
+			var fragments = scope List<(StringView mText, StringView mExtra)>();
+			var enumerator = extra.Split(':', ';');
+			while (enumerator.MoveNext())
 			{
-				UndoBatchStart undoBatchStart = new UndoBatchStart("paste");
-				mData.mUndoManager.Add(undoBatchStart);
+				var cursorExtra = enumerator.Current;
+				if (enumerator.GetNext() case .Err)
+					break;
 
-				var setCursorAction = new SetCursorAction(this);
-				mData.mUndoManager.Add(setCursorAction);
+				var length = int.Parse(enumerator.Current);
+				var cursorText = StringView(text, offset, length);
+				fragments.Add((cursorText, cursorExtra));
+				offset += length;
+			}
 
-				var origLineAndColumn = CursorLineAndColumn;
-				CursorLineAndColumn = .(origLineAndColumn.mLine, 0);
-				var lineStartPosition = CursorLineAndColumn;
-				InsertAtCursor("\n");
-				CursorLineAndColumn = lineStartPosition;
-				
-				CursorToLineStart(false);
-
-				// Adjust to requested column
-				if (CursorLineAndColumn.mColumn != 0)
+			void PasteFragment(String cursorText, StringView cursorExtra)
+			{
+				if ((cursorExtra.Length == 0) || (HasSelection()))
 				{
-					for (let c in text.RawChars)
+					/*if ((cursorExtra.Length == 0) && (cursorText[cursorText.Length-1] == '\n'))
+						cursorText.RemoveFromEnd(1);*/
+					PasteText(cursorText);
+				}
+				else// if (fragment.mExtra == "line")
+				{
+					// Case, when clipboard fragment is a line and cursor is a caret
+					var origLineAndColumn = CursorLineAndColumn;
+					CursorLineAndColumn = .(origLineAndColumn.mLine, 0);
+					var lineStartPosition = CursorLineAndColumn;
+					InsertAtCursor("\n");
+					CursorLineAndColumn = lineStartPosition;
+
+					CursorToLineStart(false);
+
+					// Adjust to requested column
+					if (CursorLineAndColumn.mColumn != 0)
 					{
-						if (!c.IsWhiteSpace)
+						for (let c in cursorText.RawChars)
 						{
-							text.Remove(0, @c.Index);
-							break;
+							if (!c.IsWhiteSpace)
+							{
+								cursorText.Remove(0, @c.Index);
+								break;
+							}
 						}
 					}
+
+					PasteText(cursorText);
+					CursorLineAndColumn = .(origLineAndColumn.mLine + 1, origLineAndColumn.mColumn);
+				}
+			}
+
+			// When clipboard contains text with multiple cursors, but we only have one,
+			// We create cursor for each fragment and make it so that the primary cursor
+			// is the last one in the document.
+			if ((mTextCursors.Count == 1) && (fragments.Count > 1))
+			{
+				// By default, undo-batch is only created when we have multiple cursors
+				CreateMultiCursorUndoBatch("EWC.PasteText(text, extra)", force: true);
+				SetPrimaryTextCursor();
+
+				for (var idx = 0; idx < fragments.Count; idx++)
+				{
+					var fragment = fragments[idx];
+					var length = fragment.mText.Length;
+					if (idx + 1 == fragments.Count)
+						length--;
+
+					PasteFragment(scope String(fragment.mText, 0, length), "");
+					if (idx + 1 < fragments.Count)
+					{
+						var secondary = mTextCursors.Add(.. new TextCursor(-1, mCurrentTextCursor));
+						secondary.mSelection = null;
+						if (secondary.mCursorTextPos > 0)
+							secondary.mCursorTextPos--;
+					}
+					else if ((mCursorTextPos > 0) && (idx + 1 != fragments.Count))
+					{
+						CursorTextPos--;
+					}
+				}
+				return;
+			}
+
+			// Case, when we have multiple cursors
+			var identicalCountOfCusrors = ((mTextCursors.Count == fragments.Count) || (mTextCursors.Count == 1 && fragments.Count == 0));
+			var sortedCursors = GetSortedCursors(.. scope List<TextCursor>());
+			var idx = sortedCursors.Count-1;
+
+			// This is for cases, when we have a single cursor.
+			UndoBatchStart undoBatchStart = null;
+			if (sortedCursors.Count == 1)
+				undoBatchStart = mData.mUndoManager.Add(.. new UndoBatchStart("paste"));
+
+			if (!identicalCountOfCusrors)
+			{
+				text.RemoveFromEnd(1);
+			}
+
+			for (var cursor in sortedCursors.Reversed)
+			{
+				SetTextCursor(cursor);
+
+				if (fragments.Count == 0)
+				{
+					PasteFragment(text, extra);
+					continue;
+				}
+				else if (!identicalCountOfCusrors)
+				{
+					PasteFragment(text, fragments[0].mExtra);
+					continue;
 				}
 
-				PasteText(text);
-				CursorLineAndColumn = .(origLineAndColumn.mLine + 1, origLineAndColumn.mColumn);
-				mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
+				var fragment = fragments[idx--];
+				String cursorText = scope String(fragment.mText, 0, fragment.mText.Length);
+				cursorText.RemoveFromEnd(1);
+
+				mData.mUndoManager.Add(new SetCursorAction(this));
+				PasteFragment(cursorText, fragment.mExtra);
 			}
-			else
-				PasteText(text);
+
+			SetPrimaryTextCursor();
+
+			if (undoBatchStart != null)
+				mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 		}
 
 		public void PasteText()
 		{
+			if (!IsPrimaryTextCursor())
+				return;
+
 			String aText = scope String();
 			String extra = scope .();
 			BFApp.sApp.GetClipboardText(aText, extra);
@@ -2620,6 +3131,7 @@ namespace Beefy.widgets
 				{
 					if (!CheckReadOnly())
 					{
+						CreateMultiCursorUndoBatch("EWC.KeyDown(Ctrl/Shift+Delete)");
 						if (mWidgetWindow.IsKeyDown(.Shift))
 						{
 							int startIdx = CursorTextPos;
@@ -2658,6 +3170,7 @@ namespace Beefy.widgets
 
                 if (!CheckReadOnly())
 				{
+					CreateMultiCursorUndoBatch("EWC.KeyDown(DeleteChar)");
                     DeleteChar();
 				}
 				mCursorImplicitlyMoved = true;
@@ -3177,6 +3690,8 @@ namespace Beefy.widgets
 
         public virtual void EnsureCursorVisible(bool scrollView = true, bool centerView = false, bool doHorzJump = true)
         {
+			if (!IsPrimaryTextCursor())
+				return;
             if (mEditWidget.mScrollContentContainer.mWidth <= 0)
                 return; // Not sized yet
 
@@ -3663,6 +4178,282 @@ namespace Beefy.widgets
 			}
 			return false;
 		}
+
+		public mixin SetPrimaryTextCursorScoped()
+		{
+			if (mCurrentTextCursor.mId != 0)
+			{
+				var previousTextCursor = mCurrentTextCursor;
+				SetTextCursor(mTextCursors.Front);
+				defer :: SetTextCursor(previousTextCursor);
+			}
+		}
+
+		[Inline]
+		public void SetTextCursor(TextCursor cursor)
+		{
+			Debug.Assert(cursor != null);
+			mCurrentTextCursor = cursor;
+		}
+
+		[Inline]
+		public bool IsPrimaryTextCursor()
+		{
+			return (mCurrentTextCursor.mId == 0);
+		}
+
+		public void SetTextCursor(int32 id)
+		{
+			if (id == 0)
+			{
+				mCurrentTextCursor = mTextCursors.Front;
+				return;
+			}
+
+			for (var cursor in mTextCursors)
+			{
+				if (cursor.mId == id)
+				{
+					mCurrentTextCursor = cursor;
+					return;
+				}
+			}
+
+			var cursor = mTextCursors.Add(.. new TextCursor(id));
+			mCurrentTextCursor = cursor;
+		}
+
+		[Inline]
+		public void SetPrimaryTextCursor()
+		{
+			Debug.Assert((mTextCursors.Count > 0) && (mTextCursors.Front.mId == 0));
+			mCurrentTextCursor = mTextCursors.Front;
+		}
+
+		public EditSelection GetAsSelection(TextCursor cursor, bool getAsForwardSelection)
+		{
+			if (cursor.mSelection.HasValue)
+			{
+				if (getAsForwardSelection && cursor.mSelection.Value.IsForwardSelect == false)
+				{
+					cursor.mSelection.Value.GetAsForwardSelect(var start, var end);
+					return EditSelection(start, end);
+				}
+
+				return cursor.mSelection.Value;
+			}
+			else if (cursor.mVirtualCursorPos.HasValue)
+			{
+				var line = cursor.mVirtualCursorPos.Value.mLine;
+				var column = cursor.mVirtualCursorPos.Value.mColumn;
+
+				GetTextCoordAtLineAndColumn(line, column, var x, var y);
+				GetLineCharAtCoord(line, x, var lineChar, ?);
+				int textPos = GetTextIdx(line, lineChar);
+
+				return EditSelection(textPos, textPos);
+			}
+			else
+			{
+				return EditSelection(cursor.mCursorTextPos, cursor.mCursorTextPos);
+			}
+		}
+
+		public void RemoveSecondaryTextCursors()
+		{
+			if (mTextCursors.Count == 1)
+				return;
+
+			for (var idx = 1; idx < mTextCursors.Count; idx++)
+				delete mTextCursors[idx];
+
+			mTextCursors.Resize(1);
+			mCurrentTextCursor = mTextCursors.Front;
+		}
+
+		public void CreateMultiCursorUndoBatch(String name, bool force = false)
+		{
+			if ((mMultiCursorUndoBatch == null) && ((mTextCursors.Count > 1) || (force)))
+			{
+				mMultiCursorUndoBatch = new MultiCursorUndoBatchStart(this, name);
+				mData.mUndoManager.Add(mMultiCursorUndoBatch);
+			}
+		}
+
+		public void CloseMultiCursorUndoBatch()
+		{
+			if (mMultiCursorUndoBatch == null)
+				return;
+
+			mData.mUndoManager.Add(mMultiCursorUndoBatch.mBatchEnd);
+			mMultiCursorUndoBatch = null;
+		}
+
+		public void GetSortedCursors(List<TextCursor> output)
+		{
+			output.AddRange(mTextCursors);
+			output.Sort(scope => CompareTextCursors);
+		}
+
+		int CompareTextCursors(TextCursor lhs, TextCursor rhs)
+		{
+			var lhsSelection = GetAsSelection(lhs, true);
+			var rhsSelection = GetAsSelection(rhs, true);
+			return (lhsSelection.mStartPos <=> rhsSelection.mStartPos);
+		}
+
+		public void RemoveIntersectingTextCursors()
+		{
+			if (mTextCursors.Count == 1)
+				return;
+
+			for (var x = mTextCursors.Count-1; x >= 0; x--)
+			{
+				for (var y = mTextCursors.Count-1; y >= 0; y--)
+				{
+					if (x == y)
+						continue;
+
+					var lhs = mTextCursors[x];
+					var rhs = mTextCursors[y];
+
+					if (TextCursorsIntersects(lhs, rhs))
+					{
+						if (lhs.mId != 0)
+						{
+							delete mTextCursors[x];
+							mTextCursors.RemoveAt(x);
+						}
+						else
+						{
+							delete mTextCursors[y];
+							mTextCursors.RemoveAt(y);
+						}
+
+						break;
+					}
+				}
+			}
+		}
+
+		public bool TextCursorsIntersects(TextCursor lhs, TextCursor rhs)
+		{
+			// Returns true if two text cursors intersect or collide with each other
+			var lhsSelection = GetAsSelection(lhs, true);
+			var rhsSelection = GetAsSelection(rhs, true);
+
+			if (lhsSelection.mStartPos == rhsSelection.mStartPos)
+				return true;
+
+			return !((lhsSelection.mEndPos <= rhsSelection.mStartPos) || (rhsSelection.mEndPos <= lhsSelection.mStartPos));
+		}
+
+		public void SelectNextMatch(bool createCursor = true, bool exhaustiveSearch = false)
+		{
+			SetPrimaryTextCursor();
+
+			if (!HasSelection())
+				return;
+
+			mJustInsertedCharPair = false;
+			mCursorImplicitlyMoved = false;
+
+			var text = scope String();
+			ExtractString(mSelection.Value.MinPos, mSelection.Value.Length, text);
+
+			bool Matches(int startPos)
+			{
+				if (startPos + text.Length >= mData.mTextLength)
+					return false;
+
+				for (var idx = 0; idx < text.Length; idx++)
+				{
+					var char = mData.mText[idx + startPos].mChar;
+					if (char != text[idx])
+						return false;
+				}
+
+				return true;
+			}
+
+			bool IsSelectionExists(int startPos, int endPos, out TextCursor textCursor)
+			{
+				textCursor = null;
+
+				for (var cursor in mTextCursors)
+				{
+					if (!cursor.mSelection.HasValue)
+						continue;
+					if ((cursor.mSelection.Value.MinPos == startPos) && (cursor.mSelection.Value.MaxPos == endPos))
+					{
+						textCursor = cursor;
+						return true;
+					}
+				}
+
+				return false;
+			}
+
+			var startPos = mSelection.Value.MaxPos;
+			var endPos = (int)mData.mTextLength;
+			var found = false;
+
+			while (true)
+			{
+				for (var idx = startPos; idx < endPos; idx++)
+				{
+					if (!Matches(idx))
+						continue;
+
+					if (IsSelectionExists(idx, idx + text.Length, var cursor))
+					{
+						Swap!(mSelection, cursor.mSelection);
+						Swap!(mCursorTextPos, cursor.mCursorTextPos);
+						EnsureCursorVisible();
+
+						if (!createCursor)
+						{
+							mTextCursors.Remove(cursor);
+							delete cursor;
+						}
+
+						return;
+					}
+
+					if (createCursor)
+						mTextCursors.Add(new TextCursor(-1, mCurrentTextCursor));
+
+					// Making selection consistent across all cursors
+					mSelection = (mSelection.Value.IsForwardSelect)
+						? EditSelection(idx, idx+text.Length)
+						: EditSelection(idx+text.Length, idx);
+					mCursorTextPos = mSelection.Value.mEndPos;
+					mVirtualCursorPos = null;
+
+					if (!exhaustiveSearch)
+					{
+						EnsureCursorVisible();
+						return;
+					}
+				}
+
+				// Exit while-loop, if we already tried searching from the start
+				if ((!found) && (startPos == 0))
+					return;
+
+				// From initial 'startPos' to mData.mTextLength no match has been found
+				if (!found)
+				{
+					endPos = (startPos - text.Length);
+					startPos = 0;
+				}
+			}
+		}
+
+		public void SkipCurrentMatchAndSelectNext()
+		{
+			SelectNextMatch(createCursor: false);
+		}
     }
 
     public abstract class EditWidget : ScrollableWidget
@@ -3851,5 +4642,50 @@ namespace Beefy.widgets
 			mVertPos.mPct = 1.0f;
             UpdateContentPosition();
         }
+
+		public override void KeyDown(KeyDownEvent keyEvent)
+		{
+			var ewc = Content;
+			var isSingleInvoke = false;
+			var keyFlags = mWidgetWindow.GetKeyFlags(true);
+
+			if (((keyEvent.mKeyCode == (.)'Z') || (keyEvent.mKeyCode == (.)'Y')) && (keyFlags.HasFlag(.Ctrl)))
+			{
+				ewc.RemoveSecondaryTextCursors();
+				isSingleInvoke = true;
+			}
+			else if (keyEvent.mKeyCode == .Escape)
+			{
+				ewc.RemoveSecondaryTextCursors();
+				isSingleInvoke = true;
+			}
+
+			ewc.RemoveIntersectingTextCursors();
+
+			for (var cursor in ewc.mTextCursors)
+			{
+				ewc.SetTextCursor(cursor);
+				base.KeyDown(keyEvent);
+				if (isSingleInvoke)
+					break;
+			}
+			
+			ewc.SetPrimaryTextCursor();
+			ewc.CloseMultiCursorUndoBatch();
+		}
+
+		public override void KeyChar(KeyCharEvent keyEvent)
+		{
+			var ewc = Content;
+			ewc.RemoveIntersectingTextCursors();
+			for (var cursor in ewc.mTextCursors)
+			{
+				ewc.SetTextCursor(cursor);
+				base.KeyChar(keyEvent);
+			}
+
+			ewc.SetPrimaryTextCursor();
+			ewc.CloseMultiCursorUndoBatch();
+		}
     }
 }

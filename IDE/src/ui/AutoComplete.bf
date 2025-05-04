@@ -995,7 +995,7 @@ namespace IDE.ui
 
 				List<StringView> textSections = scope List<StringView>(selectedEntry.mText.Split('\x01'));
 
-				int cursorPos = mAutoComplete.mTargetEditWidget.Content.CursorTextPos;
+				int cursorPos = mAutoComplete.mTargetEditWidget.Content.mTextCursors.Front.mCursorTextPos;
 				for (int sectionIdx = 0; sectionIdx < mAutoComplete.mInvokeSrcPositions.Count - 1; sectionIdx++)
 				{
 				    if (cursorPos > mAutoComplete.mInvokeSrcPositions[sectionIdx])
@@ -1441,7 +1441,7 @@ namespace IDE.ui
 
             if ((mInvokeWindow != null) && (!mInvokeWidget.mIsAboveText))
             {
-                int textIdx = mTargetEditWidget.Content.CursorTextPos;
+                int textIdx = mTargetEditWidget.Content.mTextCursors.Front.mCursorTextPos;
                 int line = 0;
                 int column = 0;
                 if (textIdx >= 0)
@@ -1559,7 +1559,11 @@ namespace IDE.ui
 		{
 			if ((mInsertEndIdx != -1) && (mInsertStartIdx != -1))
 			{
-				mTargetEditWidget.Content.ExtractString(mInsertStartIdx, Math.Max(mInsertEndIdx - mInsertStartIdx, 0), outFilter);
+				var length = Math.Abs(mInsertEndIdx - mInsertStartIdx);
+				if (length == 0)
+					return;
+				var start = Math.Min(mInsertStartIdx, mInsertEndIdx);
+				mTargetEditWidget.Content.ExtractString(start, length, outFilter);
 			}
 		}
 
@@ -1567,13 +1571,33 @@ namespace IDE.ui
         {
 			//Debug.WriteLine("GetAsyncTextPos start {0} {1}", mInsertStartIdx, mInsertEndIdx);
 
-            mInsertEndIdx = (int32)mTargetEditWidget.Content.CursorTextPos;
-			while ((mInsertStartIdx != -1) && (mInsertStartIdx < mInsertEndIdx))
+            mInsertEndIdx = (int32)mTargetEditWidget.Content.mTextCursors.Front.mCursorTextPos;
+			/*while ((mInsertStartIdx != -1) && (mInsertStartIdx < mInsertEndIdx))
 			{
 				char8 c = (char8)mTargetEditWidget.Content.mData.mText[mInsertStartIdx].mChar;
-				if ((c != ' ') && (c != ','))
+				Debug.WriteLine("StartIdx: {}, EndIdx: {}, mData.mText[startIdx]: '{}'", mInsertStartIdx, mInsertEndIdx, c);
+				if ((c != ' ') && (c != ',') && (c != '('))
 				    break;
 				mInsertStartIdx++;
+			}*/
+			mInsertStartIdx = mInsertEndIdx-1;
+			while ((mInsertStartIdx <= mInsertEndIdx) && (mInsertStartIdx > 0))
+			{
+				var data = mTargetEditWidget.Content.mData.mText[mInsertStartIdx - 1];
+				var type = (SourceElementType)data.mDisplayTypeId;
+				var char = data.mChar;
+
+				// Explicit delimeters
+				if ((char == '\n') || (char == '}') || (char == ';') || (char == '.'))
+					break;
+
+				if (char.IsWhiteSpace)
+					break;
+
+				if ((!char.IsLetterOrDigit) && (char != '_') && (type != .Keyword) && (!char.IsWhiteSpace) && (data.mChar != '@'))
+					break;
+
+				mInsertStartIdx--;
 			}
 
             /*mInsertStartIdx = mInsertEndIdx;
@@ -2398,6 +2422,11 @@ namespace IDE.ui
 					}
 					continue;
 				}
+				else if (entryDisplay.Length == 0)
+				{
+					// Skip entry that has no name
+					continue;
+				}
 
                 switch (entryType)
                 {
@@ -2545,7 +2574,7 @@ namespace IDE.ui
                 }*/
             }
             
-            if (changedAfterInfo)
+            if ((changedAfterInfo) || (mTargetEditWidget.Content.mTextCursors.Count > 1))
             {
                 GetAsyncTextPos();                
             }
@@ -2557,7 +2586,7 @@ namespace IDE.ui
                 mTargetEditWidget.Content.GetLineCharAtIdx(mInvokeSrcPositions[0], out invokeLine, out invokeColumn);
                 int insertLine = 0;
                 int insertColumn = 0;
-                mTargetEditWidget.Content.GetLineCharAtIdx(mTargetEditWidget.Content.CursorTextPos, out insertLine, out insertColumn);
+                mTargetEditWidget.Content.GetLineCharAtIdx(mTargetEditWidget.Content.mTextCursors.Front.mCursorTextPos, out insertLine, out insertColumn);
 
                 if ((insertLine != invokeLine) && ((insertLine - invokeLine) * gApp.mCodeFont.GetHeight() < GS!(40)))
                     mInvokeWidget.mIsAboveText = true;
@@ -2565,7 +2594,7 @@ namespace IDE.ui
 
 			mInfoFilter = new String();
 			GetFilter(mInfoFilter);
-            UpdateData(selectString, changedAfterInfo);
+			UpdateData(selectString, changedAfterInfo);
 			mPopulating = false;
 
 			//Debug.WriteLine("SetInfo {0} {1}", mInsertStartIdx, mInsertEndIdx);
@@ -2716,7 +2745,7 @@ namespace IDE.ui
 
 			var targetSourceEditWidgetContent = mTargetEditWidget.Content as SourceEditWidgetContent;
 			var sourceEditWidgetContent = targetSourceEditWidgetContent;
-			var prevCursorPosition = sourceEditWidgetContent.CursorTextPos;
+			var prevCursorPosition = sourceEditWidgetContent.mTextCursors.Front.mCursorTextPos;
 			var prevScrollPos = mTargetEditWidget.mVertPos.mDest;
 
 			UndoBatchStart undoBatchStart = null;
@@ -2797,7 +2826,7 @@ namespace IDE.ui
 						return;
 					}
 	
-					sourceEditWidgetContent.CursorTextPos = fixitIdx;
+					sourceEditWidgetContent.mTextCursors.Front.mCursorTextPos = fixitIdx;
 					if (focusChange)
 						sourceEditWidgetContent.EnsureCursorVisible(true, true);
 
@@ -2814,7 +2843,7 @@ namespace IDE.ui
 					else
 						InsertImplText(sourceEditWidgetContent, fixitInsert);
 
-					fixitIdx = (.)sourceEditWidgetContent.CursorTextPos;
+					fixitIdx = (.)sourceEditWidgetContent.mTextCursors.Front.mCursorTextPos;
 					insertCount++;
 				}
 			}
@@ -2822,9 +2851,9 @@ namespace IDE.ui
 			if (!focusChange)
 			{
 				mTargetEditWidget.VertScrollTo(prevScrollPos, true);
-				sourceEditWidgetContent.CursorTextPos = prevCursorPosition;
+				sourceEditWidgetContent.mTextCursors.Front.mCursorTextPos = prevCursorPosition;
 				int addedSize = sourceEditWidgetContent.mData.mTextLength - prevTextLength;
-				sourceEditWidgetContent.[Friend]AdjustCursorsAfterExternalEdit(fixitIdx, addedSize);
+				sourceEditWidgetContent.[Friend]AdjustCursorsAfterExternalEdit(fixitIdx, addedSize, 0);
 			}
 
 			if (historyEntry != null)
@@ -2887,9 +2916,9 @@ namespace IDE.ui
 						}
 						if (!sourceEditWidgetContent.IsLineWhiteSpace(sourceEditWidgetContent.CursorLineAndColumn.mLine))
 						{
-							int prevPos = sourceEditWidgetContent.CursorTextPos;
+							int prevPos = sourceEditWidgetContent.mTextCursors.Front.mCursorTextPos;
 							sourceEditWidgetContent.InsertAtCursor("\n");
-							sourceEditWidgetContent.CursorTextPos = prevPos;
+							sourceEditWidgetContent.mTextCursors.Front.mCursorTextPos = (int32)prevPos;
 						}
 						sourceEditWidgetContent.CursorToLineEnd();
 					}
@@ -2906,7 +2935,7 @@ namespace IDE.ui
 					}
 					else if (c == '\b') // Close block
 					{
-						int cursorPos = sourceEditWidgetContent.CursorTextPos;
+						int cursorPos = sourceEditWidgetContent.mTextCursors.Front.mCursorTextPos;
 						while (cursorPos < sourceEditWidgetContent.mData.mTextLength)
 						{
 							char8 checkC = sourceEditWidgetContent.mData.mText[cursorPos].mChar;
@@ -2914,7 +2943,7 @@ namespace IDE.ui
 							if (checkC == '}')
 								break;
 						}
-						sourceEditWidgetContent.CursorTextPos = cursorPos;
+						sourceEditWidgetContent.mTextCursors.Front.mCursorTextPos = (int32)cursorPos;
 					}
 					else
 					{
@@ -2946,70 +2975,100 @@ namespace IDE.ui
 			}
 		}
 
-        public void InsertSelection(char32 keyChar, String insertType = null, String insertStr = null)
-        {
-			//Debug.WriteLine("InsertSelection");
+		public void InsertSelection(char32 keyChar, String insertType = null, String insertStr = null)
+		{
+			var sewc = mTargetEditWidget.Content as SourceEditWidgetContent;
+			Debug.Assert(sewc.IsPrimaryTextCursor());
+			var isExplicitInsert = (keyChar == '\0') || (keyChar == '\t') || (keyChar == '\n') || (keyChar == '\r');
 
-            EditSelection editSelection = EditSelection();            
-            editSelection.mStartPos = mInsertStartIdx;
-            if (mInsertEndIdx != -1)
-                editSelection.mEndPos = mInsertEndIdx;
-            else
-                editSelection.mEndPos = mInsertStartIdx;
-            
-            var entry = mAutoCompleteListWidget.mEntryList[mAutoCompleteListWidget.mSelectIdx];
-            if (keyChar == '!')
-            {
-                if (!entry.mEntryDisplay.EndsWith("!"))
-                {
-                    // Try to find one that DOES end with a '!'
-                    for (var checkEntry in mAutoCompleteListWidget.mEntryList)
-                    {
-                        if (checkEntry.mEntryDisplay.EndsWith("!"))
-                            entry = checkEntry;
-                    }
-                }
-            }
+			AutoCompleteListWidget.EntryWidget GetEntry()
+			{
+				var entry = mAutoCompleteListWidget.mEntryList[mAutoCompleteListWidget.mSelectIdx];
+				if ((keyChar == '!') && (!entry.mEntryDisplay.EndsWith("!")))
+				{
+				    // Try to find one that DOES end with a '!'
+				    for (var checkEntry in mAutoCompleteListWidget.mEntryList)
+				    {
+				        if (checkEntry.mEntryDisplay.EndsWith("!"))
+							return checkEntry;
+				    }
+				}
 
+				return entry;
+			}
+
+			EditSelection CalculateSelection(String implText)
+			{
+				var endPos = (int32)sewc.CursorTextPos;
+				var startPos = endPos;
+				var wentOverWhitespace = false;
+				while ((startPos <= endPos) && (startPos > 0))
+				{
+					var data = sewc.mData.mText[startPos - 1];
+					var type = (SourceElementType)data.mDisplayTypeId;
+
+					// Explicit delimeters
+					if ((data.mChar == '\n') || (data.mChar == '}') || (data.mChar == ';') || (data.mChar == '.'))
+						break;
+
+					var isWhiteSpace = data.mChar.IsWhiteSpace;
+					var isLetterOrDigit = data.mChar.IsLetterOrDigit;
+
+					// When it's not a override method for example
+					// we break right after we find a non-letter-or-digit character
+					// So we would only select last word
+					if ((implText == null) && (!isLetterOrDigit) && (data.mChar != '_') && (data.mChar != '@'))
+						break;
+
+					// This is for cases, when we are searching for 
+					if ((!isLetterOrDigit) && (type != .Keyword) && (!isWhiteSpace) && (data.mChar != '_'))
+						break;
+
+					wentOverWhitespace = isWhiteSpace;
+					startPos--;
+				}
+
+				if (wentOverWhitespace)
+					startPos++;
+
+				return EditSelection(startPos, endPos);
+			}
+
+			var entry = GetEntry();
 			if (insertStr != null)
 				insertStr.Append(entry.mEntryInsert ?? entry.mEntryDisplay);
 
 			if (entry.mEntryType == "fixit")
 			{
 				if (insertType != null)
-					insertType.Append(entry.mEntryType);            
+					insertType.Append(entry.mEntryType);
+				sewc.RemoveSecondaryTextCursors();
 				ApplyFixit(entry.mEntryInsert);
 				return;
 			}
 
-			bool isExplicitInsert = (keyChar == '\0') || (keyChar == '\t') || (keyChar == '\n') || (keyChar == '\r');
-
-            String insertText = entry.mEntryInsert ?? entry.mEntryDisplay;
+			var insertText = scope String(entry.mEntryInsert ?? entry.mEntryDisplay);
 			if ((!isExplicitInsert) && (insertText.Contains('\t')))
 			{
 				// Don't insert multi-line blocks unless we have an explicit insert request (click, tab, or enter)
 				return;
 			}
 
-            if ((keyChar == '=') && (insertText.EndsWith("=")))
+			if ((keyChar == '=') && (insertText.EndsWith("=")))
 				insertText.RemoveToEnd(insertText.Length - 1);
-                //insertText = insertText.Substring(0, insertText.Length - 1);
-            String implText = null;
-            int tabIdx = insertText.IndexOf('\t');
-			int splitIdx = tabIdx;
-			int crIdx = insertText.IndexOf('\r');
-			if ((crIdx != -1) && (tabIdx != -1) && (crIdx < tabIdx))
-				splitIdx = crIdx;
-			if (splitIdx != -1)
-            {
-                implText = scope:: String();
-                implText.Append(insertText, splitIdx);
-                insertText.RemoveToEnd(splitIdx);
-            }
-            String prevText = scope String();
-            mTargetEditWidget.Content.ExtractString(editSelection.mStartPos, editSelection.mEndPos - editSelection.mStartPos, prevText);
 
-            //sAutoCompleteMRU[insertText] = sAutoCompleteIdx++;
+			// Save persistent text positions
+			PersistentTextPosition[] persistentInvokeSrcPositons = null;
+			if (mInvokeSrcPositions != null)
+			{
+				persistentInvokeSrcPositons = scope:: PersistentTextPosition[mInvokeSrcPositions.Count];
+			    for (int32 i = 0; i < mInvokeSrcPositions.Count; i++)
+			    {
+			        persistentInvokeSrcPositons[i] = new PersistentTextPosition(mInvokeSrcPositions[i]);
+			        sewc.PersistentTextPositions.Add(persistentInvokeSrcPositons[i]);
+			    }
+			}
+
 			String* keyPtr;
 			int32* valuePtr;
 			if (sAutoCompleteMRU.TryAdd(entry.mEntryDisplay, out keyPtr, out valuePtr))
@@ -3019,64 +3078,68 @@ namespace IDE.ui
 			}
 			*valuePtr = sAutoCompleteIdx++;
 
-            if (insertText == prevText)
-                return;
+			String implText = null;
+			int tabIdx = insertText.IndexOf('\t');
+			int splitIdx = tabIdx;
+			int crIdx = insertText.IndexOf('\r');
+			if ((crIdx != -1) && (tabIdx != -1) && (crIdx < tabIdx))
+				splitIdx = crIdx;
+			if (splitIdx != -1)
+			{
+			    implText = scope:: String();
+			    implText.Append(insertText, splitIdx);
+			    insertText.RemoveToEnd(splitIdx);
+			}
 
-            var sourceEditWidgetContent = mTargetEditWidget.Content as SourceEditWidgetContent;
+			for (var cursor in sewc.mTextCursors)
+			{
+				sewc.SetTextCursor(cursor);
+				var editSelection = CalculateSelection(implText);
 
-            PersistentTextPosition[] persistentInvokeSrcPositons = null;
-            if (mInvokeSrcPositions != null)
-            {
-                persistentInvokeSrcPositons = scope:: PersistentTextPosition[mInvokeSrcPositions.Count];
-                for (int32 i = 0; i < mInvokeSrcPositions.Count; i++)
-                {
-                    persistentInvokeSrcPositons[i] = new PersistentTextPosition(mInvokeSrcPositions[i]);
-                    sourceEditWidgetContent.PersistentTextPositions.Add(persistentInvokeSrcPositons[i]);
-                }
-            }
+				var prevText = scope String();
+				sewc.ExtractString(editSelection.MinPos, editSelection.Length, prevText);
+				if ((prevText.Length > 0) && (insertText == prevText))
+					continue;
 
-            mTargetEditWidget.Content.mSelection = editSelection;
-            //bool isMethod = (entry.mEntryType == "method");
-            if (insertText.EndsWith("<>"))
-            {
-                if (keyChar == '\t')
-                    mTargetEditWidget.Content.InsertCharPair(insertText);
-                else if (keyChar == '<')
+				sewc.mSelection = editSelection;
+				sewc.mCursorTextPos = (int32)editSelection.MaxPos;
+
+				if (insertText.EndsWith("<>"))
 				{
-					String str = scope String();
-					str.Append(insertText, 0, insertText.Length - 2);
-                    mTargetEditWidget.Content.InsertAtCursor(str, .NoRestoreSelectionOnUndo);
+				    if (keyChar == '\t')
+				        sewc.InsertCharPair(insertText);
+				    else if (keyChar == '<')
+					{
+						var str = scope String();
+						str.Append(insertText, 0, insertText.Length - 2);
+				        sewc.InsertAtCursor(str, .NoRestoreSelectionOnUndo);
+					}
+				    else
+						sewc.InsertAtCursor(insertText, .NoRestoreSelectionOnUndo);
 				}
-                else
-                    mTargetEditWidget.Content.InsertAtCursor(insertText, .NoRestoreSelectionOnUndo);
-            }
-            else
-                mTargetEditWidget.Content.InsertAtCursor(insertText, .NoRestoreSelectionOnUndo);
+				else
+					sewc.InsertAtCursor(insertText, .NoRestoreSelectionOnUndo);
 
-            /*if (mIsAsync)
-                UpdateAsyncInfo();*/
+				if (implText != null)
+					InsertImplText(sewc, implText);
+			}
 
-			if (implText != null)
-				InsertImplText(sourceEditWidgetContent, implText);
-
-            if (persistentInvokeSrcPositons != null)
-            {
-                for (int32 i = 0; i < mInvokeSrcPositions.Count; i++)
-                {
-					//TEST
-                    //var persistentTextPositon = persistentInvokeSrcPositons[i + 100];
+			// Load persistent text positions back
+			if (persistentInvokeSrcPositons != null)
+			{
+				for (int32 i = 0; i < mInvokeSrcPositions.Count; i++)
+				{
 					var persistentTextPositon = persistentInvokeSrcPositons[i];
-                    mInvokeSrcPositions[i] = persistentTextPositon.mIndex;
-                    sourceEditWidgetContent.PersistentTextPositions.Remove(persistentTextPositon);
+				    mInvokeSrcPositions[i] = persistentTextPositon.mIndex;
+				    sewc.PersistentTextPositions.Remove(persistentTextPositon);
 					delete persistentTextPositon;
-                }
-            }
+				}
+			}
 
-            mTargetEditWidget.Content.EnsureCursorVisible();
-            if ((insertType != null) && (insertText.Length > 0))
-                insertType.Append(entry.mEntryType);
-        }
-		
+			sewc.SetPrimaryTextCursor();
+			sewc.EnsureCursorVisible();
+		}
+
 		public void MarkDirty()
 		{
 			if (mInvokeWidget != null)
