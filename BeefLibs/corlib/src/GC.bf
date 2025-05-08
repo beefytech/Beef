@@ -139,13 +139,16 @@ namespace System
 		public extern static void ExcludeThreadId(int thereadId);
 #else
 		public static void Disable() {}
+		[LinkName("beefCollect")]
 		public static void Collect(bool async = true) {}
 		private static void MarkAllStaticMembers() {}
 		public static void DebugDumpLeaks() {}
 		[SkipCall]
 		public static void Mark(Object obj) {}		
 		public static void Mark(void* ptr, int size) {}
+		[LinkName("beefSetAutoCollectPeriod")]
 		public static void SetAutoCollectPeriod(int periodMS) {}
+		[LinkName("beefSetCollectFreeThreshold")]
 		public static void SetCollectFreeThreshold(int freeBytes) {}
 		public static void SetMaxPausePercentage(int maxPausePercentage) {}
 		static void AddPendingThread(void* internalThreadInfo) {}

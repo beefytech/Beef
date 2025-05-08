@@ -1,7 +1,9 @@
 #include "SdlBFApp.h"
+#include "Common.h"
 #include "GLRenderDevice.h"
 #include "platform/PlatformHelper.h"
 #include <SDL2/SDL.h>
+#include <dlfcn.h>
 
 USING_NS_BF;
 
@@ -34,15 +36,20 @@ static HMODULE GetSDLModule(const StringImpl& installDir)
 {
 	if (gSDLModule == NULL)
 	{
+#if defined (BF_PLATFORM_WINDOWS)
 		String loadPath = installDir + "SDL2.dll";
 		gSDLModule = ::LoadLibraryA(loadPath.c_str());
+#elif defined (BF_PLATFORM_LINUX)
+		String loadPath = "/usr/lib/libSDL2.so";
+		gSDLModule = dlopen(loadPath.c_str(), RTLD_LAZY);
+#endif
 		if (gSDLModule == NULL)
 		{
 #ifdef BF_PLATFORM_WINDOWS
 			::MessageBoxA(NULL, "Failed to load SDL2.dll", "FATAL ERROR", MB_OK | MB_ICONERROR);
 			::ExitProcess(1);
 #endif
-			BF_FATAL("Failed to load SDL2.dll");
+			BF_FATAL("Failed to load libSDL2.so");
 		}
 	}
 	return gSDLModule;
@@ -51,7 +58,11 @@ static HMODULE GetSDLModule(const StringImpl& installDir)
 template <typename T>
 static void BFGetSDLProc(T& proc, const char* name, const StringImpl& installDir)
 {
+#if defined (BF_PLATFORM_WINDOWS)
 	proc = (T)::GetProcAddress(GetSDLModule(installDir), name);
+#elif defined (BF_PLATFORM_LINUX)
+	proc = (T)dlsym(GetSDLModule(installDir), name);
+#endif
 }
 
 #define BF_GET_SDLPROC(name) BFGetSDLProc(bf_##name, #name, mInstallDir)
