@@ -3438,6 +3438,9 @@ namespace IDE
 				delete mWorkspace.mDir;
 				mWorkspace.mDir = newPath;
 			}
+			else if (mWorkspace.mDir == null) {
+				mWorkspace.mDir = new String();
+			}
 
 			List<String> platforms = scope List<String>();
 			if (IDEApp.sPlatform32Name != null)
