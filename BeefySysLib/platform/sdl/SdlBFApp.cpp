@@ -2,7 +2,10 @@
 #include "Common.h"
 #include "GLRenderDevice.h"
 #include "platform/PlatformHelper.h"
+#include "platform/PlatformInterface.h"
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_events.h>
+#include <SDL2/SDL_video.h>
 #include <dlfcn.h>
 
 USING_NS_BF;
@@ -363,6 +366,27 @@ void SdlBFApp::Run()
 						sdlBFWindow->mKeyUpFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.keysym.scancode));
 				}
 				break;
+			case SDL_WINDOWEVENT:
+				{
+					switch(sdlEvent.window.event)
+					{
+					case SDL_WINDOWEVENT_MOVED:
+					case SDL_WINDOWEVENT_RESIZED:
+					case SDL_WINDOWEVENT_SIZE_CHANGED:
+					    {
+							SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
+							if (sdlBFWindow != NULL)
+							{
+								sdlBFWindow->mMovedFunc(sdlBFWindow);
+								if (sdlEvent.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
+									sdlBFWindow->mRenderWindow->Resized();
+								}
+							}
+						}
+						break;
+					}
+				}
+				break;
 			}
 		}
 
@@ -407,6 +431,9 @@ void SdlBFWindow::GetPosition(int* x, int* y, int* width, int* height, int* clie
 {
 	bf_SDL_GetWindowPosition(mSDLWindow, x, y);
 	bf_SDL_GetWindowSize(mSDLWindow, width, height);
+
+	*clientX = *x;
+	*clientY = *y;
 	*clientWidth = *width;
 	*clientHeight = *height;
 }
