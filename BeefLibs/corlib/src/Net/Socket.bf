@@ -494,8 +494,8 @@ namespace System.Net
 			int32 size = sizeof(SockAddr_in6);
 			if (bind(mHandle, &service, size) == SOCKET_ERROR)
 			{
+#unwarn
 				int err = WSAGetLastError();
-
 				Close();
 				return .Err;
 			}
