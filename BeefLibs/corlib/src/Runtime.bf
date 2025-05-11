@@ -14,7 +14,6 @@ namespace System
 		public bool AVX, AVX2, AVX512;
 	}
 
-	[StaticInitPriority(201)]
 	static class Runtime
 	{
 		const int32 cVersion = 10;
@@ -284,7 +283,7 @@ namespace System
 				mDebugMessageData_SetupProfilerCmd = => DebugMessageData_SetupProfilerCmd;
 				mDebugMessageData_Fatal = => DebugMessageData_Fatal;
 				mDebugMessageData_Clear = => DebugMessageData_Clear;
-				mCheckErrorHandler = => CheckErrorHandler;
+				mCheckErrorHandler = => CheckErrorHandler_Thunk;
 			}
 		};
 
@@ -389,13 +388,23 @@ namespace System
 			public static bool sInsideErrorHandler;
 		}
 
+
+		[AlwaysInclude, StaticInitPriority(201)]
+		static struct RuntimeInit
+		{
+			public static this()
+			{
+				Runtime.Init();
+			}
+		}
+
 		static RtFlags sExtraFlags;
 		static bool sQueriedFeatures = false;
 		static RuntimeFeatures sFeatures;
 
 		static function void() sThreadInit;
 
-		public static this()
+		static void Init()
 		{
 #if !BF_RUNTIME_DISABLE
 			BfRtCallbacks.sCallbacks.Init();
@@ -420,6 +429,11 @@ namespace System
 			if (sThreadInit != null)
 				sThreadInit();
 #endif
+		}
+
+		public static this()
+		{
+			
 		}
 
 		[NoReturn]
@@ -496,6 +510,13 @@ namespace System
 		public static function ErrorHandlerResult(AssertError.Kind kind, String error, String filePath, int lineNum) CheckAssertError;
 		public static function int32(char8* kind, char8* arg1, char8* arg2, int arg3) CheckErrorHandler;
 		public static function void*(char8* filePath) LibraryLoadCallback;
+
+		public static int32 CheckErrorHandler_Thunk(char8* kind, char8* arg1, char8* arg2, int arg3)
+		{
+			if (CheckErrorHandler != null)
+				return CheckErrorHandler(kind, arg1, arg2, arg3);
+			return 0;
+		}
 
 		static ErrorHandlerResult CheckAssertError_Impl(AssertError.Kind kind, String error, String filePath, int lineNum)
 		{
