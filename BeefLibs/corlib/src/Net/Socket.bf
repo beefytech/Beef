@@ -495,7 +495,7 @@ namespace System.Net
 			if (bind(mHandle, &service, size) == SOCKET_ERROR)
 			{
 #unwarn
-				int err = WSAGetLastError();
+				int err = GetLastError();
 				Close();
 				return .Err;
 			}
