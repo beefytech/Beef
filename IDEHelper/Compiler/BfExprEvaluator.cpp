@@ -19701,7 +19701,7 @@ void BfExprEvaluator::DoInvocation(BfInvocationExpression* invocationExpr)
 						{
 							arrSize = constant->mInt32;
 						}
-						else
+						else if (constant->mConstType != BfConstType_Undef)
 							mModule->Fail("Non-negative integer expected", indexerExpr->mArguments[0]);
 					}
 				}
