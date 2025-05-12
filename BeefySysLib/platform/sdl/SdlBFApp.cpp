@@ -161,7 +161,7 @@ static int SDLConvertScanCode(int scanCode)
 	{
 	case SDL_SCANCODE_9: return '0';
     case SDL_SCANCODE_CANCEL: return 0x03;
-    case SDL_SCANCODE_AC_BACK: return 0x08;
+    case SDL_SCANCODE_BACKSPACE: return 0x08;
     case SDL_SCANCODE_TAB: return 0x09;
     case SDL_SCANCODE_CLEAR: return 0x0C;
     case SDL_SCANCODE_RETURN: return 0x0D;
@@ -349,12 +349,31 @@ void SdlBFApp::Run()
 						sdlBFWindow->mMouseMoveFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y);
 				}
 				break;
+			case SDL_MOUSEWHEEL:
+				{
+					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.wheel.windowID);
+					if(sdlBFWindow != NULL)
+						sdlBFWindow->mMouseWheelFunc(sdlBFWindow, sdlEvent.wheel.mouseX, sdlEvent.wheel.mouseY, sdlEvent.wheel.preciseX, sdlEvent.wheel.preciseY);
+				}
 			case SDL_KEYDOWN:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
 					if (sdlBFWindow != NULL)
 					{
 						sdlBFWindow->mKeyDownFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.keysym.scancode), sdlEvent.key.repeat);
+						switch (sdlEvent.key.keysym.scancode) // These keys are not handled by SDL_TEXTINPUT
+						{
+							case SDL_SCANCODE_RETURN:
+								sdlBFWindow->mKeyCharFunc(sdlBFWindow, '\n');
+								break;
+							case SDL_SCANCODE_BACKSPACE: 
+								sdlBFWindow->mKeyCharFunc(sdlBFWindow, '\b');
+								break;
+							case SDL_SCANCODE_TAB: 
+								sdlBFWindow->mKeyCharFunc(sdlBFWindow, '\t');
+								break;
+							default:;
+						}
 					}
 				}
 				break;
