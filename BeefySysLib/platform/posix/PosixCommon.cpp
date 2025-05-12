@@ -832,6 +832,17 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetComputerName(char* outStr, int* inOutS
 
 // BfpProcess
 
+struct BfpProcess
+{
+    pid_t mProcessId;
+    String mImageName;
+
+    BfpProcess()
+    {
+        mProcessId = -1;
+    }
+};
+
 BFP_EXPORT intptr BFP_CALLTYPE BfpProcess_GetCurrentId()
 {
     return getpid();
@@ -844,18 +855,87 @@ BFP_EXPORT bool BFP_CALLTYPE BfpProcess_IsRemoteMachine(const char* machineName)
 
 BFP_EXPORT BfpProcess* BFP_CALLTYPE BfpProcess_GetById(const char* machineName, int processId, BfpProcessResult* outResult)
 {
+#ifdef BF_PLATFORM_LINUX
+    pid_t pid = static_cast<pid_t>(processId);
+
+    char proc_dir[64];
+    snprintf(proc_dir, sizeof(proc_dir), "/proc/%d", pid);
+
+    if (access(proc_dir, F_OK) != 0)
+    {
+        OUTRESULT(BfpProcessResult_NotFound);
+        return NULL;
+    }
+
+    BfpProcess* process = new BfpProcess();
+    process->mProcessId = pid;
+    return process;
+#else
     NOT_IMPL;
     return NULL;
+#endif
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpProcess_Enumerate(const char* machineName, BfpProcess** outProcesses, int* inOutProcessesSize, BfpProcessResult* outResult)
 {
+#ifdef BF_PLATFORM_LINUX
+    DIR* procDir = opendir("/proc");
+    if (!procDir)
+    {
+        *inOutProcessesSize = 0;
+        return;
+    }
+
+    Beefy::Array<BfpProcess*> processList;
+    struct dirent* entry;
+    while ((entry = readdir(procDir)) != NULL)
+    {
+        const char* name = entry->d_name;
+        bool is_pid = name[0] != '\0';
+        for (const char* p = name; *p; ++p)
+        {
+            if (*p < '0' || *p > '9')
+            {
+                is_pid = false;
+                break;
+            }
+        }
+
+        if (is_pid)
+        {
+            pid_t pid = static_cast<pid_t>(atoi(name));
+            if (pid == 0)
+                continue;
+
+            BfpProcess* proc = new BfpProcess();
+            proc->mProcessId = pid;
+            processList.Add(proc);
+        }
+    }
+
+    closedir(procDir);
+
+    if (static_cast<int>(processList.size()) > *inOutProcessesSize)
+    {
+        *inOutProcessesSize = static_cast<int>(processList.size());
+        OUTRESULT(BfpProcessResult_InsufficientBuffer);
+        for (BfpProcess* p_del : processList)
+            delete p_del;
+        return;
+    }
+
+    for (size_t i = 0; i < processList.size(); ++i)
+        outProcesses[i] = processList[i];
+    *inOutProcessesSize = static_cast<int>(processList.size());
+	OUTRESULT(BfpProcessResult_Ok);
+#else
     NOT_IMPL;
+#endif
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpProcess_Release(BfpProcess* process)
 {
-    NOT_IMPL;
+    delete process;
 }
 
 BFP_EXPORT bool BFP_CALLTYPE BfpProcess_WaitFor(BfpProcess* process, int waitMS, int* outExitCode, BfpProcessResult* outResult)
@@ -865,18 +945,49 @@ BFP_EXPORT bool BFP_CALLTYPE BfpProcess_WaitFor(BfpProcess* process, int waitMS,
 
 BFP_EXPORT void BFP_CALLTYPE BfpProcess_GetMainWindowTitle(BfpProcess* process, char* outTitle, int* inOutTitleSize, BfpProcessResult* outResult)
 {
-    NOT_IMPL;
+    String title;
+    TryStringOut(title, outTitle, inOutTitleSize, (BfpResult*)outResult);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpProcess_GetProcessName(BfpProcess* process, char* outName, int* inOutNameSize, BfpProcessResult* outResult)
 {
-    NOT_IMPL;
+    if (process->mImageName.IsEmpty())
+    {
+#ifdef BF_PLATFORM_LINUX
+        char path[PATH_MAX];
+        snprintf(path, sizeof(path), "/proc/%d/exe", process->mProcessId);
+        char name_buf[PATH_MAX] = {0};
+        ssize_t len = readlink(path, name_buf, sizeof(name_buf) - 1);
+        if (len != -1)
+        {
+            name_buf[len] = '\0';
+            process->mImageName.Append(basename(name_buf));
+        }
+        else
+        {
+            // Only 15 characters of the process name are returned by this, but it works for all processes.
+            snprintf(path, sizeof(path), "/proc/%d/comm", process->mProcessId);
+            FILE* fp = fopen(path, "r");
+            if (fp)
+            {
+                if (fgets(name_buf, sizeof(name_buf), fp)) {
+                    size_t len = strcspn(name_buf, "\n");
+                    name_buf[len] = '\0';
+                    process->mImageName.Append(name_buf, len);
+                }
+                fclose(fp);
+            }
+        }
+#else
+        NOT_IMPL;
+#endif
+    }
+    TryStringOut(process->mImageName, outName, inOutNameSize, (BfpResult*)outResult);
 }
 
 BFP_EXPORT int BFP_CALLTYPE BfpProcess_GetProcessId(BfpProcess* process)
 {
-    NOT_IMPL;
-    return 0;
+    return process->mProcessId;
 }
 
 // BfpSpawn
@@ -2392,9 +2503,148 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetFullPath(const char* inPath, char* outPa
     TryStringOut(str, outPath, inOutPathSize, (BfpResult*)outResult);
 }
 
-BFP_EXPORT void BFP_CALLTYPE BfpFile_GetActualPath(const char* inPath, char* outPath, int* inOutPathSize, BfpFileResult* outResult)
+BFP_EXPORT void BFP_CALLTYPE BfpFile_GetActualPath(const char* inPathC, char* outPathC, int* inOutPathSize, BfpFileResult* outResult)
 {
-    NOT_IMPL;
+    String inPath = inPathC;
+    String outPath;
+
+    // Check for '/../' backtracking - handle those first
+    {
+        int i = 0;
+        int32 lastComponentStart = -1;
+
+        while (i < inPath.mLength)
+        {
+            // Skip until path separator
+            while ((i < inPath.mLength) && (inPath[i] != DIR_SEP_CHAR) && (inPath[i] != DIR_SEP_CHAR_ALT))
+                ++i;
+
+            if (lastComponentStart != -1)
+            {
+                if ((i - lastComponentStart == 2) && (inPath[lastComponentStart] == '.') && (inPath[lastComponentStart + 1] == '.'))
+                {
+                    // Backtrack
+                    while ((lastComponentStart > 0) &&
+                        ((inPath[lastComponentStart - 1] == DIR_SEP_CHAR) || (inPath[lastComponentStart - 1] == DIR_SEP_CHAR_ALT)))
+                        lastComponentStart--;
+                    while ((lastComponentStart > 0) && (inPath[lastComponentStart - 1] != DIR_SEP_CHAR) && (inPath[lastComponentStart - 1] != DIR_SEP_CHAR_ALT))
+                        lastComponentStart--;
+                    inPath.Remove(lastComponentStart, i - lastComponentStart + 1);
+                    i = lastComponentStart;
+                    continue;
+                }
+                else if ((i - lastComponentStart == 1) && (inPath[lastComponentStart] == '.'))
+                {
+                    inPath.Remove(lastComponentStart, i - lastComponentStart + 1);
+                    i = lastComponentStart;
+                    continue;
+                }
+            }
+
+            ++i;
+            // Ignore multiple slashes in a row
+            while ((i < inPath.mLength) && ((inPath[i] == DIR_SEP_CHAR) || (inPath[i] == DIR_SEP_CHAR_ALT)))
+                ++i;
+
+            lastComponentStart = i;
+        }
+    }
+
+    int32 i = 0;
+    int length = (int)inPath.length();
+
+    if (length >= 1)
+    {
+        // Handle root paths starting with '/' or '\'
+        if ((inPath[0] == DIR_SEP_CHAR) || (inPath[0] == DIR_SEP_CHAR_ALT))
+        {
+            i++; // start after initial slash
+            outPath.Append(DIR_SEP_CHAR);
+        }
+        else
+        {
+            // Relative path - prepend current working directory
+            char cwd[PATH_MAX];
+            if (getcwd(cwd, PATH_MAX) != NULL)
+            {
+                outPath.Append(cwd);
+                if (outPath[outPath.length() - 1] != DIR_SEP_CHAR)
+                    outPath.Append(DIR_SEP_CHAR);
+            }
+        }
+    }
+
+    int32 lastComponentStart = i;
+    bool addSeparator = false;
+    String subName;
+
+    while (i < length)
+    {
+        // skip until path separator
+        while ((i < length) && (inPath[i] != DIR_SEP_CHAR) && (inPath[i] != DIR_SEP_CHAR_ALT))
+            ++i;
+
+        if (addSeparator)
+            outPath.Append(DIR_SEP_CHAR);
+
+        subName.Clear();
+        subName = inPath.Substring(0, i);
+        for (int j = 0; j < (int)subName.length(); j++)
+            if (subName[j] == DIR_SEP_CHAR_ALT)
+                subName[j] = DIR_SEP_CHAR;
+
+        String parentPath;
+        String componentName;
+        int32 lastSep = subName.LastIndexOf(DIR_SEP_CHAR);
+        
+        if (lastSep != -1)
+        {
+            parentPath = subName.Substring(0, lastSep);
+            if (parentPath.length() == 0)
+                parentPath = "/";
+            componentName = subName.Substring(lastSep + 1);
+        }
+        else
+        {
+            parentPath = ".";
+            componentName = subName;
+        }
+
+        bool found = false;
+        DIR* dir = opendir(parentPath.c_str());
+        if (dir != NULL)
+        {
+            struct dirent* entry = NULL;
+            while ((entry = readdir(dir)) != NULL)
+            {
+                // Linux is case-sensitive, but we do a case-insensitive comparison 
+                // to help find the correct case for the file
+                if (strcasecmp(entry->d_name, componentName.c_str()) == 0)
+                {
+                    outPath.Append(entry->d_name);
+                    found = true;
+                    break;
+                }
+            }
+            closedir(dir);
+        }
+
+        if (!found)
+        {
+            // If not found, use the original component name
+            outPath.Append(inPath.Substring(lastComponentStart, i - lastComponentStart));
+        }
+
+        ++i;
+        // Ignore multiple slashes in a row
+        while ((i < length) && ((inPath[i] == DIR_SEP_CHAR) || (inPath[i] == DIR_SEP_CHAR_ALT)))
+            ++i;
+
+        lastComponentStart = i;
+        addSeparator = true;
+    }
+
+    TryStringOut(outPath, outPathC, inOutPathSize, (BfpResult*)outResult);
 }
 
 // BfpFindFileData
