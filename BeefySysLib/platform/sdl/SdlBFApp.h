@@ -2,6 +2,7 @@
 
 #include "BFApp.h"
 #include "BFWindow.h"
+#include <SDL2/SDL_video.h>
 #include <map>
 #include "util/Dictionary.h"
 
@@ -54,6 +55,7 @@ class SdlBFApp : public BFApp
 public:
 	bool					mInMsgProc;
 	SdlWindowMap			mSdlWindowMap;
+	SDL_GLContext           mGLContext;
 
 protected:
 	virtual void			Draw() override;

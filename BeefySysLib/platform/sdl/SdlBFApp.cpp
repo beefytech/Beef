@@ -1,11 +1,14 @@
 #include "SdlBFApp.h"
+#include "BFApp.h"
 #include "Common.h"
 #include "GLRenderDevice.h"
 #include "platform/PlatformHelper.h"
 #include "platform/PlatformInterface.h"
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_events.h>
+#include <SDL2/SDL_platform.h>
 #include <SDL2/SDL_video.h>
+#include <cstddef>
 #include <dlfcn.h>
 
 USING_NS_BF;
@@ -31,6 +34,7 @@ void (SDLCALL* bf_SDL_SetWindowPosition)(SDL_Window* window, int x, int y);
 int (SDLCALL* bf_SDL_PollEvent)(SDL_Event* event);
 const char* (SDLCALL* bf_SDL_GetError)(void);
 SDL_GLContext (SDLCALL* bf_SDL_GL_CreateContext)(SDL_Window* window);
+int (SDLCALL* bf_SDL_GL_MakeCurrent)(SDL_Window* window, SDL_GLContext context);
 void (SDLCALL* bf_SDL_Quit)(void);
 
 static HMODULE gSDLModule;
@@ -90,20 +94,23 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
 #endif
 
-	if (!bf_SDL_GL_CreateContext(mSDLWindow))
+	if(((SdlBFApp*)gBFApp)->mGLContext == NULL)
 	{
-		String str = StrFormat(
-#ifdef BF_PLATFORM_OPENGL_ES2
-			"Unable to create SDL OpenGLES context: %s"
-#else
-			"Unable to create SDL OpenGL context: %s"
-#endif
-			, bf_SDL_GetError());
+		if (!(((SdlBFApp*)gBFApp)->mGLContext = bf_SDL_GL_CreateContext(mSDLWindow)))
+		{
+			String str = StrFormat(
+	#ifdef BF_PLATFORM_OPENGL_ES2
+				"Unable to create SDL OpenGLES context: %s"
+	#else
+				"Unable to create SDL OpenGL context: %s"
+	#endif
+				, bf_SDL_GetError());
 
 
-		BF_FATAL(str.c_str());
-		bf_SDL_Quit();
-		exit(2);
+			BF_FATAL(str.c_str());
+			bf_SDL_Quit();
+			exit(2);
+		}
 	}
 
 #ifndef BF_PLATFORM_OPENGL_ES2
@@ -270,6 +277,7 @@ SdlBFApp::SdlBFApp()
 		BF_GET_SDLPROC(SDL_PollEvent);
 		BF_GET_SDLPROC(SDL_GetError);
 		BF_GET_SDLPROC(SDL_GL_CreateContext);
+		BF_GET_SDLPROC(SDL_GL_MakeCurrent);
 		BF_GET_SDLPROC(SDL_Quit);
 	}
 

@@ -1,4 +1,5 @@
 #include "GLRenderDevice.h"
+#include "BFApp.h"
 #include "SdlBFApp.h"
 #include "BFWindow.h"
 #include "img/ImageData.h"
@@ -41,6 +42,7 @@ USING_NS_BF;
 extern void* (SDLCALL* bf_SDL_GL_GetProcAddress)(const char* proc);
 extern void (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
 extern void (SDLCALL* bf_SDL_GL_SwapWindow)(SDL_Window* window);
+extern int (SDLCALL* bf_SDL_GL_MakeCurrent)(SDL_Window* window, SDL_GLContext context);
 
 typedef void (APIENTRYP GL_DEBUGPROC)(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 
@@ -427,6 +429,8 @@ GLRenderWindow::~GLRenderWindow()
 
 void GLRenderWindow::PhysSetAsTarget()
 {
+    bf_SDL_GL_MakeCurrent(mSDLWindow, ((SdlBFApp*)gBFApp)->mGLContext );
+
 	GLfloat matrix[4][4];
 	CreateOrthographicOffCenter(0.0f, (float)mWidth, (float)mHeight, 0.0f, -100.0f, 100.0f, matrix);
     glViewport(0, 0, (GLsizei)mWidth, (GLsizei)mHeight);
@@ -439,6 +443,7 @@ void GLRenderWindow::SetAsTarget()
 	//TODO: Handle this more elegantly when we actually handle draw layers properly...
 	//if (mRenderDevice->mCurRenderTarget != NULL)
 		//mRenderDevice->mCurDrawLayer->Flush();
+	bf_SDL_GL_MakeCurrent(mSDLWindow, ((SdlBFApp*)gBFApp)->mGLContext );
 
 	mHasBeenTargeted = true;
 	mRenderDevice->mCurRenderTarget = this;
