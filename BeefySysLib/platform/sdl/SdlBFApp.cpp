@@ -332,14 +332,14 @@ void SdlBFApp::Run()
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 					if (sdlBFWindow != NULL)
-						sdlBFWindow->mMouseUpFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, sdlEvent.button.button);
+						sdlBFWindow->mMouseUpFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, sdlEvent.button.button - 1);
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 					if (sdlBFWindow != NULL)
-						sdlBFWindow->mMouseDownFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, sdlEvent.button.button, 1);
+						sdlBFWindow->mMouseDownFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, sdlEvent.button.button - 1, 1);
 				}
 				break;
 			case SDL_MOUSEMOTION:
