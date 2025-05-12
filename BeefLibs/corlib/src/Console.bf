@@ -85,10 +85,19 @@ namespace System
 
 		static void SetupOutStringEx()
 		{
-			OutString = => OutString_Ex;
+			sOutString = => OutString_Ex;
 		}
 
-		static function void(StringView str) OutString = => OutString_Simple;
+		static function void(StringView str) sOutString;
+		static function void(StringView str) OutString
+		{
+			get
+			{
+				if (sOutString == null)
+					sOutString = => OutString_Simple;
+				return sOutString;
+			}
+		}
 
 #if !BF_RUNTIME_DISABLE && !BF_PLATFORM_WASM
 		private static extern void PutChars(char8* c, int32 len);

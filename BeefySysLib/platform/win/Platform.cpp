@@ -677,8 +677,10 @@ struct BfpAsyncData
 			return -2; // Still executing
 		}
 		
-		if (mOverlappedResult.mErrorCode != 0)
+		if ((mOverlappedResult.mErrorCode != 0) && (mOverlappedResult.mBytesRead == 0))
 		{
+			mOverlappedResult.mData.Clear();
+			errorCode = mOverlappedResult.mErrorCode;
 			return -1;
 		}
 

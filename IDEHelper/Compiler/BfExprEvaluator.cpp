@@ -7125,7 +7125,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	if (mDeferCallData != NULL)
 	{
-		if (mDeferCallData->mFuncAlloca_Orig == func)
+		if ((func) && (mDeferCallData->mFuncAlloca_Orig == func))
 			mModule->AddDeferredCall(BfModuleMethodInstance(methodInstance, mDeferCallData->mFuncAlloca), irArgs, mDeferCallData->mScopeAlloc, mDeferCallData->mRefNode, bypassVirtual, false, true);			
 		else
 			mModule->AddDeferredCall(BfModuleMethodInstance(methodInstance, func), irArgs, mDeferCallData->mScopeAlloc, mDeferCallData->mRefNode, bypassVirtual);
@@ -19701,7 +19701,7 @@ void BfExprEvaluator::DoInvocation(BfInvocationExpression* invocationExpr)
 						{
 							arrSize = constant->mInt32;
 						}
-						else
+						else if (constant->mConstType != BfConstType_Undef)
 							mModule->Fail("Non-negative integer expected", indexerExpr->mArguments[0]);
 					}
 				}

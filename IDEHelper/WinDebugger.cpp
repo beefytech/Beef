@@ -7515,7 +7515,7 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			String symbolName;
 			addr_target offset;
 			DbgModule* dwarf;
-			static String demangledName;
+			String demangledName;
 			auto subProgram = mDebugTarget->FindSubProgram(funcPtr);
 			if (subProgram != NULL)
 			{
@@ -7532,13 +7532,18 @@ String WinDebugger::DbgTypedValueToString(const DbgTypedValue& origTypedValue, c
 			{
 				auto dbgModule = mDebugTarget->FindDbgModuleForAddress(funcPtr);
 				if (dbgModule != NULL)
+				{
 					demangledName += dbgModule->GetLinkedModule()->mDisplayName + "!";
-				demangledName += StrFormat("0x%@", funcPtr);
+					demangledName += StrFormat("0x%@", funcPtr);
+				}
 			}
 
-			retVal += " {";
-			retVal += demangledName;
-			retVal += "}";
+			if (!demangledName.IsEmpty())
+			{
+				retVal += " {";
+				retVal += demangledName;
+				retVal += "}";
+			}
 			retVal += "\n" + origValueType->ToString(language);
 
 			return retVal;

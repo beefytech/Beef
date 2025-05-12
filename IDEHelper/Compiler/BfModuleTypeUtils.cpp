@@ -13415,6 +13415,8 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targe
 		}
 		if ((mCompiler->mOptions.mAllowHotSwapping) && (!mIsComptimeModule))
 			bindFuncVal = mBfIRBuilder->RemapBindFunction(bindFuncVal);
+		if ((bindFuncVal.IsFake()) && (!mBfIRBuilder->mIgnoreWrites))
+			return GetDefaultValue(GetPrimitiveType(BfTypeCode_IntPtr));
 		return mBfIRBuilder->CreatePtrToInt(bindFuncVal, BfTypeCode_IntPtr);
 	}
 

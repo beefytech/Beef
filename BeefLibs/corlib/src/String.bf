@@ -972,6 +972,9 @@ namespace System
 
 		public void Append(char8* appendPtr, int length)
 		{
+			Debug.Assert(length >= 0);
+			if (length <= 0)
+				return;
 			int newCurrentIndex = mLength + length;
 			char8* ptr;
 			if (newCurrentIndex > AllocSize)
@@ -996,6 +999,9 @@ namespace System
 
 		public void Append(char8[] arr, int idx, int length)
 		{
+			Debug.Assert(length >= 0);
+			if (length <= 0)
+				return;
 			int newCurrentIndex = mLength + length;
 			char8* ptr;
 			if (newCurrentIndex > AllocSize)

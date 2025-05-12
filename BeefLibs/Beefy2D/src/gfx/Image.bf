@@ -103,6 +103,7 @@ namespace Beefy.gfx
 			scope AutoBeefPerf("Image.LoadFromFile");
 
 			var useFileName = scope String()..Append(fileName);
+            useFileName.Replace('\\', '/');
 			FilePackManager.TryMakeMemoryString(useFileName);
             void* aNativeTextureSegment = Gfx_LoadTexture(useFileName, (int32)flags);
             if (aNativeTextureSegment == null)
