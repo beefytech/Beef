@@ -3255,18 +3255,14 @@ namespace IDE
 
 			case .SemVer(let ver):
 				String unresolvedVersion = scope String(ver.mVersion);
-				CustomBuildProperties.ResolveString(unresolvedVersion, ver.mVersion);
 
 			case .Path(let path):
 				String unresolvedPath = scope String(path);
-				CustomBuildProperties.ResolveString(unresolvedPath, path);
 
 			case .Git(let url, let ver):
 				String unresolvedUrl = scope String(url);
-				CustomBuildProperties.ResolveString(unresolvedUrl, url);
 
 				String unresolvedVersion = scope String(ver.mVersion);
-				CustomBuildProperties.ResolveString(unresolvedVersion, ver.mVersion);
 			}
 
 			String verConfigDir = mWorkspace.mDir;
