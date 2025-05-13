@@ -1950,6 +1950,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClCompile Include="util\MappedFile.cpp" />
     <ClCompile Include="util\MathUtils.cpp" />
     <ClCompile Include="util\Matrix4.cpp" />
+    <ClCompile Include="util\MemLogger.cpp" />
     <ClCompile Include="util\MTRand.cpp" />
     <ClCompile Include="util\PerfTimer.cpp" />
     <ClCompile Include="util\Point.cpp" />
@@ -2189,6 +2190,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClInclude Include="util\MappedFile.h" />
     <ClInclude Include="util\MathUtils.h" />
     <ClInclude Include="util\Matrix4.h" />
+    <ClInclude Include="util\MemLogger.h" />
     <ClInclude Include="util\MTRand.h" />
     <ClInclude Include="util\MultiDictionary.h" />
     <ClInclude Include="util\MultiHashSet.h" />

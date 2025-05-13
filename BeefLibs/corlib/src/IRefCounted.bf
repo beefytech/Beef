@@ -82,7 +82,7 @@ namespace System
 		}	
 	}
 
-	class RefCounted<T> : IRefCounted where T : class, delete
+	class RefCounted<T> : IRefCounted where T : delete
 	{
 		public T mVal;
 		public int mRefCount = 1;
@@ -178,7 +178,7 @@ namespace System
 		public virtual T Detach()
 		{
 			var val = mVal;
-			mVal = null;
+			mVal = default;
 			return val;
 		}
 

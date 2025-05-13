@@ -880,6 +880,7 @@
     <ClCompile Include="util\Json.cpp" />
     <ClCompile Include="util\MappedFile.cpp" />
     <ClCompile Include="util\Matrix4.cpp" />
+    <ClCompile Include="util\MemLogger.cpp" />
     <ClCompile Include="util\PerfTimer.cpp" />
     <ClCompile Include="util\Point.cpp" />
     <ClCompile Include="util\PolySpline.cpp" />
@@ -1047,6 +1048,7 @@
     <ClInclude Include="util\Json.h" />
     <ClInclude Include="util\MappedFile.h" />
     <ClInclude Include="util\Matrix4.h" />
+    <ClInclude Include="util\MemLogger.h" />
     <ClInclude Include="util\PerfTimer.h" />
     <ClInclude Include="util\Point.h" />
     <ClInclude Include="util\PolySpline.h" />

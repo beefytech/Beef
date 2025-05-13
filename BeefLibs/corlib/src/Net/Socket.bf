@@ -1,5 +1,6 @@
 using System;
 using System.Diagnostics;
+using System.Interop;
 
 namespace System.Net
 {
@@ -134,6 +135,26 @@ namespace System.Net
 			}
 		}
 
+		[CRepr, Union]
+		public struct IPv6Address
+		{
+			public uint8[16] byte;
+			public uint16[8] word;
+
+			public this(params uint16[8] addr)
+			{
+				for(let i < 8)
+				{
+					this.word[i] = (.)htons((int16)addr[i]);
+				}
+			}
+
+			public this(params uint8[16] addr)
+			{
+				this.byte = addr;
+			}
+		}
+
 		[CRepr]
 		public struct SockAddr
 		{
@@ -150,6 +171,16 @@ namespace System.Net
 		}
 
 		[CRepr]
+		public struct SockAddr_in6 : SockAddr
+		{
+			public int16 sin6_family;
+			public uint16 sin6_port;
+			public uint32 sin6_flowinfo;
+			public IPv6Address sin6_addr;
+			public uint32 sin6_scope_id;
+		}
+
+		[CRepr]
 		public struct HostEnt
 		{
 			public char8* h_name;           /* official name of host */
@@ -159,13 +190,33 @@ namespace System.Net
 			public char8** h_addr_list; /* list of addresses */
 		}
 
+		[CRepr]
+		public struct AddrInfo
+		{
+			public int32 ai_flags;
+			public int32 ai_family;
+			public int32 ai_socktype;
+			public int32 ai_protocol;
+			public c_size ai_addrlen;
+#if BF_PLATFORM_WINDOWS
+			public char8* ai_canonname;
+			public SockAddr* ai_addr;
+#else
+			public SockAddr* ai_addr;
+			public char8* ai_canonname;
+#endif
+			public SockAddr* ai_next;
+		}
+
 		public const HSocket INVALID_SOCKET = (HSocket)-1;
 		public const int32 SOCKET_ERROR = -1;
 		public const int AF_INET = 2;
+		public const int AF_INET6 = 23;
 		public const int SOCK_STREAM = 1;
 		public const int SOCK_DGRAM = 2;
 		public const int IPPROTO_TCP = 6;
 		public const int IPPROTO_UDP = 17;
+		public const int IPPROTO_IPV6 = 41;
 
 		public const int TCP_NODELAY = 1;
 		public const int TCP_MAXSEG = 2;
@@ -176,12 +227,16 @@ namespace System.Net
 		public const int SOL_SOCKET = 0xffff;
 		public const int SO_REUSEADDR = 0x0004;
  		public const int SO_BROADCAST = 0x0020;
+		public const int IPV6_V6ONLY = 27;
 #else
 		public const int SOL_SOCKET = 1;
 		public const int SO_REUSEADDR = 2;
 		public const int SO_BROADCAST = 6;
+		public const int IPV6_V6ONLY = 26;
 #endif
+
 		public const IPv4Address INADDR_ANY = default;
+		public const IPv6Address IN6ADDR_ANY = default;
 
 #if BF_PLATFORM_WINDOWS
 		const int FIONBIO = (int)0x8004667e;
@@ -251,6 +306,9 @@ namespace System.Net
 
 		[CLink, CallingConvention(.Stdcall)]
 		static extern HostEnt* gethostbyname(char8* name);
+
+		[CLink, CallingConvention(.Stdcall)]
+		static extern int32 getaddrinfo(char8* pNodeName, char8* pServiceName, AddrInfo* pHints, AddrInfo** ppResult);
 
 		[CLink, CallingConvention(.Stdcall)]
 		static extern HSocket socket(int32 af, int32 type, int32 protocol);
@@ -395,8 +453,49 @@ namespace System.Net
 			int32 size = sizeof(SockAddr_in);
 			if (bind(mHandle, &service, size) == SOCKET_ERROR)
 			{
-				int err = WSAGetLastError();
+				Close();
+				return .Err;
+			}
 
+			if (listen(mHandle, backlog) == SOCKET_ERROR)
+			{
+#unwarn
+				int err = GetLastError();
+				Close();
+				return .Err;
+			}
+
+			return .Ok;
+		}
+
+		public Result<void> Listen(IPv6Address address, int32 port, int32 backlog = 5, bool v6Only = false)
+		{
+			Debug.Assert(mHandle == INVALID_SOCKET);
+
+			mHandle = socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
+			
+			if (mHandle == INVALID_SOCKET)
+			{
+#unwarn
+				int32 err = GetLastError();
+				return .Err;
+			}
+
+			int32 ipv6Opt = v6Only ? 1 : 0;
+			setsockopt(mHandle, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6Opt, 4);
+
+			RehupSettings();
+
+			SockAddr_in6 service;
+			service.sin6_family = AF_INET6;
+			service.sin6_addr = address;
+			service.sin6_port = (uint16)htons((int16)port);
+
+			int32 size = sizeof(SockAddr_in6);
+			if (bind(mHandle, &service, size) == SOCKET_ERROR)
+			{
+#unwarn
+				int err = GetLastError();
 				Close();
 				return .Err;
 			}
@@ -443,13 +542,47 @@ namespace System.Net
 			return .Ok;
 		}
 
+		public Result<void> Connect(StringView addr, int32 port, out SockAddr* sockAddr, out int addrFamily)
+		{
+			sockAddr = null;
+			addrFamily = default;
+
+			AddrInfo hints = default;
+			hints.ai_socktype = SOCK_STREAM;
+			hints.ai_protocol = IPPROTO_TCP;
+
+			AddrInfo* addrInfo = null;
+			if (getaddrinfo(addr.Ptr, null, &hints, &addrInfo) < 0)
+				return .Err;
+
+			sockAddr = addrInfo.ai_addr;
+			addrFamily = addrInfo.ai_family;
+
+			mHandle = socket(addrInfo.ai_family, SOCK_STREAM, IPPROTO_TCP);
+			if (mHandle == INVALID_SOCKET)
+				return .Err;
+
+			if (connect(mHandle, sockAddr, (.)addrInfo.ai_addrlen) == SOCKET_ERROR)
+				return .Err;
+
+			if (mHandle == INVALID_SOCKET)
+			{
+#unwarn
+				int32 err = GetLastError();
+				return .Err;
+			}
+
+			mIsConnected = true;
+			RehupSettings();
+
+			return .Ok;
+		}
+
 		public Result<void> Connect(StringView addr, int32 port) => Connect(addr, port, ?);
 
-		public Result<void> AcceptFrom(Socket listenSocket, out SockAddr_in clientAddr)
+		public Result<void> AcceptFrom(Socket listenSocket, SockAddr* from, int32* fromLen)
 		{
-			clientAddr = default;
-			int32 clientAddrLen = sizeof(SockAddr_in);
-			mHandle = accept(listenSocket.mHandle, &clientAddr, &clientAddrLen);
+			mHandle = accept(listenSocket.mHandle, from, fromLen);
 			if (mHandle == INVALID_SOCKET)
 			{
 #unwarn
@@ -462,7 +595,14 @@ namespace System.Net
 			return .Ok;
 		}
 
-		public Result<void> AcceptFrom(Socket listenSocket) => AcceptFrom(listenSocket, ?);
+		public Result<void> AcceptFrom(Socket listenSocket, out SockAddr_in clientAddr)
+		{
+			clientAddr = default;
+			int32 clientAddrLen = sizeof(SockAddr_in);
+			return AcceptFrom(listenSocket, &clientAddr, &clientAddrLen);
+		}
+
+		public Result<void> AcceptFrom(Socket listenSocket) => AcceptFrom(listenSocket, null, null);
 
 		public static int32 Select(FDSet* readFDS, FDSet* writeFDS, FDSet* exceptFDS, int waitTimeMS)
 		{
@@ -597,6 +737,8 @@ namespace System.Net
 
 #unwarn
 		public Result<int> SendTo(void* ptr, int size, SockAddr_in to) => SendTo(ptr, size, &to, sizeof(SockAddr_in));
+#unwarn
+		public Result<int> SendTo(void* ptr, int size, SockAddr_in6 to) => SendTo(ptr, size, &to, sizeof(SockAddr_in6));
 		
 		public void Close()
 		{
@@ -630,6 +772,33 @@ namespace System.Net
 			bindAddr.sin_family = AF_INET;
 
 			status = bind(mHandle, &bindAddr, sizeof(SockAddr_in));
+			return .Ok;
+		}
+
+		public Result<void> OpenUDPIPv6(int32 port = -1, bool v6Only = false)
+		{
+			SockAddr_in6 bindAddr = default;
+
+			mHandle = socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
+			if (mHandle == INVALID_SOCKET)
+			{
+				return .Err;
+			}
+
+			RehupSettings();
+
+			int32 yes = 1;
+			//setsockopt(mHandle, SOL_SOCKET, SO_REUSEADDR, &yes, 4);
+			int32 status = setsockopt(mHandle, SOL_SOCKET, SO_BROADCAST, &yes, 4);
+
+			int32 ipv6Opt = v6Only ? 1 : 0;
+			setsockopt(mHandle, IPPROTO_IPV6, IPV6_V6ONLY, &ipv6Opt, 4);
+
+			bindAddr.sin6_addr = IN6ADDR_ANY;
+			bindAddr.sin6_port = (.)htons((int16)port);
+			bindAddr.sin6_family = AF_INET6;
+
+			status = bind(mHandle, &bindAddr, sizeof(SockAddr_in6));
 			return .Ok;
 		}
 	}

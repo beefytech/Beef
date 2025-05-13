@@ -430,6 +430,11 @@ void BpCmdTarget::Enter(const char* name, va_list args)
 					intptr val = va_arg(args, intptr);
 					paramSize += 4; // int32
 				}
+				else if (nextC == 'p')
+				{
+					intptr val = va_arg(args, intptr);
+					paramSize += 8; // int64
+				}
 				else if (nextC == 's')
 				{
 					const char* str = ToStrPtr(va_arg(args, char*));
@@ -487,6 +492,10 @@ void BpCmdTarget::Enter(const char* name, va_list args)
 				else if (nextC == 'd')
 				{
 					BPCMD_MEMBER(int32) = (int32)va_arg(args, intptr);
+				}
+				else if (nextC == 'p')
+				{
+					BPCMD_MEMBER(int64) = (int64)va_arg(args, intptr);
 				}
 				else if (nextC == 's')
 				{
@@ -1120,6 +1129,10 @@ void BpManager::ThreadProc()
 										{
 											zoneName->mSize += 4;
 										}
+										else if (nextC == 'p')
+										{
+											zoneName->mSize += 8;
+										}
 										else if (nextC == 's')
 										{
 											isDyn = true;
@@ -1174,6 +1187,10 @@ void BpManager::ThreadProc()
 									else if (nextC == 'd')
 									{										
 										checkDataIn += 4;
+									}
+									else if (nextC == 'p')
+									{
+										checkDataIn += 8;
 									}
 									else if (nextC == 's')
 									{

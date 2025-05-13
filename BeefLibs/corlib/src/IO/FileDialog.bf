@@ -623,6 +623,9 @@ abstract class CommonDialog
 
 	public Result<DialogResult> ShowDialog(INativeWindow owner = null)
 	{
+		if (!Linux.IsSystemdAvailable)
+			return .Err;
+
 		TryC!(Linux.SdBusOpenUser(&mBus)); // Maybe keep the bus open while the program is running ?
 		
 		Linux.DBusMsg* call = ?;

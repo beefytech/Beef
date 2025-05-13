@@ -1441,6 +1441,8 @@ namespace BeefPerf
 
 							if (cNext == 'd')
 								zoneName.mParamsSize += 4;
+							else if (cNext == 'p')
+								zoneName.mParamsSize += 8;
 							else if (cNext == 'f')
 								zoneName.mParamsSize += 4;
 							else if (cNext == 's')

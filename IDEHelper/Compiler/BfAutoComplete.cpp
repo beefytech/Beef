@@ -3296,6 +3296,9 @@ void BfAutoComplete::CheckLabel(BfIdentifierNode* identifierNode, BfAstNode* pre
 	String filter;
 	if (identifierNode != NULL)
 	{
+		if (mModule->mCurMethodState == NULL)
+			return;
+
 		if ((mModule->mCompiler->mResolvePassData != NULL) && (scopeData != NULL))
 		{
 			auto rootMethodState = mModule->mCurMethodState->GetRootMethodState();

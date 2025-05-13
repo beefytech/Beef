@@ -179,7 +179,12 @@ namespace IDE.util
 			if (!CheckInit())
 				return;
 
-			String beefBuildPath = scope $"{gApp.mInstallDir}BeefBuild.exe";
+#if BF_PLATFORM_WINDOWS
+			let ext = ".exe";
+#else
+			let ext = "";
+#endif
+			String beefBuildPath = scope $"{gApp.mInstallDir}BeefBuild{ext}";
 			String args = scope $"-run";
 			var execInst = gApp.DoRun(beefBuildPath, args, path, .None);
 			execInst?.mAutoDelete = false;

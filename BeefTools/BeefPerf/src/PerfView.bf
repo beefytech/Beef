@@ -767,6 +767,12 @@ namespace BeefPerf
 												stateCtx.Read(&val, 4);
 												val.ToString(str);
 											}
+											else if (cNext == 'p')
+											{
+												int64 val = 0;
+												stateCtx.Read(&val, 8);
+												val.ToString(str, "X", null);
+											}
 											else if (cNext == 'f')
 											{
 												float val = 0;
@@ -2316,6 +2322,11 @@ namespace BeefPerf
 			{
 				switch (keyCode)
 				{
+				case (KeyCode)'C':
+					if (DarkTooltipManager.sTooltip != null)
+					{
+						gApp.SetClipboardText(DarkTooltipManager.sTooltip.mText);
+					}
 				case (KeyCode)'Z':
 					mUndoManager.Undo();
 				case (KeyCode)'Y':

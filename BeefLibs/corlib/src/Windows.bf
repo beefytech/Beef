@@ -107,6 +107,7 @@ namespace System
 			public int32 Height => bottom - top;
 		}
 
+		[CRepr]
 		public struct Point : this(int32 x, int32 y)
 		{
 			
@@ -1714,6 +1715,9 @@ namespace System
 
 		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern HWnd SetForegroundWindow(HWnd wnd);
+
+		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
+		public static extern HWnd ShowWindow(HWnd wnd, int32 cmdShow);
 
 		[Import("user32.lib"), CLink, CallingConvention(.Stdcall)]
 		public static extern HWnd GetForegroundWindow();

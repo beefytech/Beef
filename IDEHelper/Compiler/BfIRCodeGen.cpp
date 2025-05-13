@@ -552,6 +552,31 @@ void BfIRCodeGen::FixValues(llvm::StructType* structType, llvm::SmallVector<llvm
 	}
 }
 
+void BfIRCodeGen::FixValues(llvm::StructType* structType, llvm::SmallVector<llvm::Constant*, 8>& values)
+{
+	if (values.size() >= structType->getNumElements())
+		return;
+
+	int readIdx = (int)values.size() - 1;
+	values.resize(structType->getNumElements());
+	for (int i = (int)values.size() - 1; i >= 0; i--)
+	{
+		if (values[readIdx]->getType() == structType->getElementType(i))
+		{
+			values[i] = values[readIdx];
+			readIdx--;
+		}
+		else if (structType->getElementType(i)->isArrayTy())
+		{
+			values[i] = llvm::ConstantAggregateZero::get(structType->getElementType(i));
+		}
+		else
+		{
+			BF_FATAL("Malformed structure values");
+		}
+	}
+}
+
 void BfIRCodeGen::FixIndexer(llvm::Value*& val)
 {
 	if ((int)val->getType()->getScalarSizeInBits() > mPtrSize * 8)
@@ -1285,6 +1310,8 @@ void BfIRCodeGen::Read(BfIRTypedValue& typedValue, BfIRCodeGenEntry** codeGenEnt
 			}
 			else if (auto structType = llvm::dyn_cast<llvm::StructType>(type->mLLVMType))
 			{
+				FixValues(structType, values);
+
 				for (int i = 0; i < (int)values.size(); i++)
 				{
 					if (values[i]->getType() != structType->getElementType(i))

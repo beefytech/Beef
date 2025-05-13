@@ -125,7 +125,11 @@ namespace Beefy.widgets
 				case .LWin,
 					 .RWin,
 					 .Alt,
+					 .LAlt,
+					 .RAlt,
 					 .Control,
+					 .LCtrl,
+					 .RCtrl,
 					 .Command,
 					 .Shift:
 					return true;
@@ -144,7 +148,7 @@ namespace Beefy.widgets
 					return (KeyCode)c;
 				if ((c >= '0') && (c <= '9'))
 					return (KeyCode)c;
-				if ((c >= 'a') && (c <= 'a'))
+				if ((c >= 'a') && (c <= 'z'))
 					return (KeyCode)(c.ToUpper);
 				if (c == '[')
 					return (KeyCode)LBracket;
@@ -160,6 +164,14 @@ namespace Beefy.widgets
 					return (KeyCode)Period;
 				if (c == ',')
 					return (KeyCode)Comma;
+				if (c == ' ')
+					return (KeyCode)Space;
+				if (c == '-')
+					return (KeyCode)Minus;
+				if (c == '+')
+					return (KeyCode)Add;
+				if (c == '=')
+					return (KeyCode)Equals;
 			}
 
 			if (str.StartsWith("0x"))

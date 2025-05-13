@@ -8,6 +8,7 @@ using Beefy.utils;
 using System.IO;
 using System.Diagnostics;
 using System.Threading;
+using Beefy.sys;
 
 namespace LogViewer
 {
@@ -26,7 +27,7 @@ namespace LogViewer
 		{
 			base.Init();
 
-			var dialog = scope OpenFileDialog();
+			/*var dialog = scope OpenFileDialog();
 			dialog.SetFilter("All files (*.*)|*.*");
 			dialog.InitialDirectory = mInstallDir;
 			dialog.Title = "Open Log";
@@ -35,7 +36,7 @@ namespace LogViewer
 			{
 				Stop();
 				return;
-			}
+			}*/
 
 			BeefPerf.Init("127.0.0.1", "LogViewer");
 
@@ -45,7 +46,7 @@ namespace LogViewer
 
 			BFWindow.Flags windowFlags = BFWindow.Flags.Border | //BFWindow.Flags.SysMenu | //| BFWindow.Flags.CaptureMediaKeys |
 			    BFWindow.Flags.Caption | BFWindow.Flags.Minimize | BFWindow.Flags.QuitOnClose | BFWindowBase.Flags.Resizable |
-			    BFWindow.Flags.SysMenu;
+			    BFWindow.Flags.SysMenu | .Menu;
 
 			mFont = new Font();
 			float fontSize = 12;
@@ -55,17 +56,43 @@ namespace LogViewer
 			mFont.AddAlternate("Segoe UI Emoji", fontSize);
 
 			mBoard = new Board();
-			mBoard.Load(dialog.FileNames[0]);
-			mMainWindow = new WidgetWindow(null, "LogViewer", 0, 0, 1600, 1200, windowFlags, mBoard);
+			//mBoard.Load(dialog.FileNames[0]);
+			mMainWindow = new WidgetWindow(null, "LogViewer", 20, 20, 1600, 1200, windowFlags, mBoard);
 			//mMainWindow.mWindowKeyDownDelegate.Add(new => SysKeyDown);
 			mMainWindow.SetMinimumSize(480, 360);
 			mMainWindow.mIsMainWindow = true;
+
+			SysMenu root = mMainWindow.mSysMenu;
+			var subMenu = root.AddMenuItem("&File");
+			subMenu.AddMenuItem("&Open", "Ctrl+O", new (menu) =>
+				{
+					var dialog = scope OpenFileDialog();
+					dialog.SetFilter("All files (*.*)|*.*");
+					dialog.InitialDirectory = mInstallDir;
+					dialog.Title = "Open Log";
+					let result = dialog.ShowDialog();
+					if ((result case .Err) || (dialog.FileNames.Count == 0))
+					{
+						Stop();
+						return;
+					}
+					mBoard.Load(dialog.FileNames[0]);
+				});
+			subMenu.AddMenuItem("Read &MemLog", "Ctrl+M", new (menu) =>
+				{
+					var dialog = new MemLogDialog();
+					dialog.PopupWindow(mMainWindow);
+				});
+			subMenu.AddMenuItem("&Reload", "Ctrl+R", new (menu) =>
+				{
+					mBoard.Reload();
+				});
 		}
 
 		public void Fail(String str, params Object[] paramVals)
 		{
 			var errStr = scope String();
-			errStr.AppendF(str, paramVals);
+			errStr.AppendF(str, params paramVals);
 			Fail(errStr);
 		}
 

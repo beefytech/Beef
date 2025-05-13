@@ -1837,6 +1837,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 							else
 							{
 								Fail("Sized array type expected", typeRef);
+								AddErrorNode(typeRef);
+								return NULL;
 							}
 						}
 					}

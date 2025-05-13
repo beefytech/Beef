@@ -7222,15 +7222,33 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mHasRequiredTypes = true;
 
 	//HashSet<BfTypeDef*> internalTypeDefs;
+	
+	BfProject* corlibProject = NULL;
 
 	auto _GetRequiredType = [&](const StringImpl& typeName, int genericArgCount = 0)
 	{
-		auto typeDef = mSystem->FindTypeDef(typeName, genericArgCount);
+		BfTypeDef* ambigiousTypeDef = NULL;
+		auto typeDef = mSystem->FindTypeDef(typeName, genericArgCount, NULL, {}, &ambigiousTypeDef);
 		if (typeDef == NULL)
 		{
 			mPassInstance->Fail(StrFormat("Unable to find system type: %s", typeName.c_str()));
 			mHasRequiredTypes = false;
 		}
+
+		if (ambigiousTypeDef != NULL)
+		{
+			mPassInstance->Fail(StrFormat("Found multiple declarations of require type '%s'", typeName.c_str()), typeDef->GetRefNode());
+			mPassInstance->MoreInfo("See additional declaration", ambigiousTypeDef->GetRefNode());			
+			if (typeDef->mProject != corlibProject)
+			{
+				auto rootTypeDef = mSystem->FindTypeDef(typeName, genericArgCount, corlibProject);
+				if (rootTypeDef != NULL)
+					typeDef = rootTypeDef;
+			}
+		}
+
+		if (corlibProject == NULL)
+			corlibProject = typeDef->mProject;
 		return typeDef;
 	};
 

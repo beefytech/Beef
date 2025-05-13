@@ -10,6 +10,7 @@
 #include "util/Vector.h"
 #include "util/PerfTimer.h"
 #include "util/TLSingleton.h"
+#include "util/MemLogger.h"
 #include "img/ImgEffects.h"
 
 #include "util/AllocDebug.h"
@@ -926,4 +927,36 @@ BF_EXPORT void BF_CALLTYPE BF_Test()
 
 	for (int i : iArr)
 		OutputDebugStrF("Hey %d\n", i);
+}
+
+BF_EXPORT void* BF_CALLTYPE MemLogger_Create(const char* memName, int size)
+{
+	MemLogger* memLogger = new MemLogger();
+	if (!memLogger->Create(memName, size))
+	{
+		delete memLogger;
+		return NULL;
+	}
+	return memLogger;
+}
+
+BF_EXPORT void BF_CALLTYPE MemLogger_Write(MemLogger* memLogger, void* ptr, int size)
+{
+	memLogger->Write(ptr, size);
+}
+
+BF_EXPORT void BF_CALLTYPE MemLogger_Delete(MemLogger* memLogger)
+{
+	delete memLogger;
+}
+
+BF_EXPORT const char* BF_CALLTYPE MemLogger_Get(const char* memName)
+{
+	MemLogger memLogger;
+
+	String& outString = *gBeefySys_TLStrReturn.Get();
+	outString.Clear();
+	if (!memLogger.Get(memName, outString))
+		return NULL;
+	return outString.c_str();
 }

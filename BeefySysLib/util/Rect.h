@@ -119,13 +119,13 @@ typedef Rect<double> RectD;
 typedef Rect<float> RectF;
 typedef Rect<int32> RectI32;
 
+NS_BF_END;
+
 template <>
-struct BeefHash<RectI32>
+struct BeefHash<Beefy::RectI32>
 {
-	size_t operator()(RectI32 val)
+	size_t operator()(Beefy::RectI32 val)
 	{
 		return (size_t)val.x * 4790557 + (size_t)val.y * 6578863 + (size_t)val.width * 6273881 + (size_t)val.height * 9501077;
 	}
 };
-
-NS_BF_END;

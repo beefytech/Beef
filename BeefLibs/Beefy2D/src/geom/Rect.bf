@@ -212,6 +212,12 @@ namespace Beefy.geom
                     (y >= mY) && (y < mY + mHeight));
         }
 
+		public bool ContainsInclusive(T x, T y)
+		{
+		    return ((x >= mX) && (x <= mX + mWidth) &&
+		            (y >= mY) && (y <= mY + mHeight));
+		}
+
         public bool Contains(Point<T> pt)
         {
             return Contains(pt.x, pt.y);
@@ -219,7 +225,7 @@ namespace Beefy.geom
 
         public bool Contains(Self rect)
         {
-            return Contains(rect.mX, rect.mY) && Contains(rect.mX + rect.mWidth, rect.mY + rect.mHeight);
+            return Contains(rect.mX, rect.mY) && ContainsInclusive(rect.mX + rect.mWidth, rect.mY + rect.mHeight);
         }
 
         public void Offset(T x, T y) mut

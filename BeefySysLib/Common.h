@@ -195,6 +195,7 @@ uint64 BFGetTickCountMicro();
 uint64 BFGetTickCountMicroFast();
 
 extern String vformat(const char* fmt, va_list argPtr);
+extern void vformat(StringImpl& str, const char* fmt, va_list argPtr);
 extern String StrFormat(const char* fmt ...);
 void ExactMinimalFloatToStr(float f, char* str);
 void ExactMinimalDoubleToStr(double d, char* str);
