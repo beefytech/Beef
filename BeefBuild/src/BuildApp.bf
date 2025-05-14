@@ -113,7 +113,7 @@ namespace BeefBuild
 			{
 			    mWorkspace.mName = new String();
 			    Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
-				CustomBuildProperties.Load(false);
+			    CustomBuildProperties.Load(false);
 			    LoadWorkspace(mVerb);                
 			}
 			else
