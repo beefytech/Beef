@@ -3248,23 +3248,6 @@ namespace IDE
 		public Result<Project, ProjectAddError> AddProject(StringView projectName, VerSpec verSpec)
 		{
 			VerSpec useVerSpec = verSpec;
-
-			switch (useVerSpec)
-			{
-			case .None:
-
-			case .SemVer(let ver):
-				String unresolvedVersion = scope String(ver.mVersion);
-
-			case .Path(let path):
-				String unresolvedPath = scope String(path);
-
-			case .Git(let url, let ver):
-				String unresolvedUrl = scope String(url);
-
-				String unresolvedVersion = scope String(ver.mVersion);
-			}
-
 			String verConfigDir = mWorkspace.mDir;
 
 			if (let project = mWorkspace.FindProject(projectName))
@@ -3339,7 +3322,13 @@ namespace IDE
 			switch (useVerSpec)
 			{
 			case .Path(let path):
-				var relPath = scope String(path);
+				Project.Options options = GetCurProjectOptions(project);
+				Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
+
+				var resolvedPath = scope String();
+				ResolveConfigString(mPlatformName, workspaceOptions, project, options, path, "project path", resolvedPath);
+
+				var relPath = scope String(resolvedPath);
 				IDEUtils.FixFilePath(relPath);
 				if (!relPath.EndsWith(IDEUtils.cNativeSlash))
 					relPath.Append(IDEUtils.cNativeSlash);
