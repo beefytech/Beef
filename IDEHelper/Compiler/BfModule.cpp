@@ -6512,7 +6512,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 	}
 
 	int stackCount = 0;
-	if ((typeInstance != NULL) && (typeInstance->mTypeOptionsIdx != -1))
+	if ((typeInstance != NULL) && (typeInstance->mTypeOptionsIdx >= 0))
 	{
 		auto typeOptions = mSystem->GetTypeOptions(typeInstance->mTypeOptionsIdx);
 		if (typeOptions->mAllocStackTraceDepth != -1)
