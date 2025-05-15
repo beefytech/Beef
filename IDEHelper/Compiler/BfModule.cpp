@@ -3708,9 +3708,6 @@ bool BfModule::CheckAccessMemberProtection(BfProtection protection, BfTypeInstan
 
 bool BfModule::CheckDefineMemberProtection(BfProtection protection, BfType* memberType)
 {
-	// Use 'min' - exporting a 'public' from a 'private' class is really just 'private' still
-	protection = std::min(protection, mCurTypeInstance->mTypeDef->mProtection);
-
 	auto memberTypeInstance = memberType->ToTypeInstance();
 
 	if (memberTypeInstance == NULL)
@@ -3719,6 +3716,20 @@ bool BfModule::CheckDefineMemberProtection(BfProtection protection, BfType* memb
 		if (underlyingType != NULL)
 			return CheckDefineMemberProtection(protection, underlyingType);
 		return true;
+	}
+
+	if (memberTypeInstance->mTypeDef->mProtection < protection)
+	{
+		// Check for any definition up to the actual declared member type
+		auto commonOuterType = FindCommonOuterType(memberTypeInstance->mTypeDef, mCurTypeInstance->mTypeDef);		
+		if (commonOuterType == memberTypeInstance->mTypeDef)
+			commonOuterType = commonOuterType->mOuterType;
+		auto checkTypeDef = mCurTypeInstance->mTypeDef;
+		while ((checkTypeDef != NULL) && (checkTypeDef != commonOuterType))
+		{
+			protection = std::min(protection, checkTypeDef->mProtection);
+			checkTypeDef = checkTypeDef->mOuterType;
+		}
 	}
 
 	if (memberTypeInstance->mTypeDef->mProtection < protection)
