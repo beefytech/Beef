@@ -18,7 +18,7 @@ namespace IDE.ui
 
 		class DirectoryTask : Task
 		{
-			class Entry
+			public class Entry
 			{
 				public bool mIsDirectory;
 				public String mFileName ~ delete _;
