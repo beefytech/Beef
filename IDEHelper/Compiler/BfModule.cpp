@@ -10461,9 +10461,11 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 				llvmArgs.push_back(objectPtr);
 				llvmArgs.push_back(origSizeValue);
 				llvmArgs.push_back(vDataRef);
+				if (isAllocEx)
+					llvmArgs.push_back(mBfIRBuilder->CreateConst(BfTypeCode_Int8, allocFlags));
 				auto objectCreatedMethod = GetInternalMethod(isAllocEx ?
 					(isResultInitialized ? "Dbg_ObjectCreatedEx" : "Dbg_ObjectAllocatedEx") :
-					(isResultInitialized ? "Dbg_ObjectCreated" : "Dbg_ObjectAllocated"));
+					(isResultInitialized ? "Dbg_ObjectCreated" : "Dbg_ObjectAllocated"));				
 				mBfIRBuilder->CreateCall(objectCreatedMethod.mFunc, llvmArgs);
 
 				if (wasAllocated)

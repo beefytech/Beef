@@ -292,11 +292,11 @@ namespace System
 		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_ObjectCreated(Object obj, int size, ClassVData* classVData);
 		[CallingConvention(.Cdecl)]
-		public static extern void Dbg_ObjectCreatedEx(Object obj, int size, ClassVData* classVData);
+		public static extern void Dbg_ObjectCreatedEx(Object obj, int size, ClassVData* classVData, uint8 allocFlags);
 		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_ObjectAllocated(Object obj, int size, ClassVData* classVData);
 		[CallingConvention(.Cdecl)]
-		public static extern void Dbg_ObjectAllocatedEx(Object obj, int size, ClassVData* classVData);
+		public static extern void Dbg_ObjectAllocatedEx(Object obj, int size, ClassVData* classVData, uint8 allocFlags);
 		[CallingConvention(.Cdecl)]
 		public static extern int Dbg_PrepareStackTrace(int baseAllocSize, int maxStackTraceDepth);
 		[CallingConvention(.Cdecl)]

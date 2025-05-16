@@ -46,9 +46,9 @@ namespace bf
 			BFRT_EXPORT void Dbg_ReserveMetadataBytes(intptr metadataBytes, intptr& curAllocBytes);
 			BFRT_EXPORT void* Dbg_GetMetadata(System::Object* obj);
 			BFRT_EXPORT static void Dbg_ObjectCreated(bf::System::Object* result, intptr size, bf::System::ClassVData* classVData);
-			BFRT_EXPORT static void Dbg_ObjectCreatedEx(bf::System::Object* result, intptr size, bf::System::ClassVData* classVData);
+			BFRT_EXPORT static void Dbg_ObjectCreatedEx(bf::System::Object* result, intptr size, bf::System::ClassVData* classVData, uint8 allocFlags);
 			BFRT_EXPORT static void Dbg_ObjectAllocated(bf::System::Object* result, intptr size, bf::System::ClassVData* classVData);
-			BFRT_EXPORT static void Dbg_ObjectAllocatedEx(bf::System::Object* result, intptr size, bf::System::ClassVData* classVData);
+			BFRT_EXPORT static void Dbg_ObjectAllocatedEx(bf::System::Object* result, intptr size, bf::System::ClassVData* classVData, uint8 allocFlags);
 			BFRT_EXPORT static Object* Dbg_ObjectAlloc(bf::System::Reflection::TypeInstance* typeInst, intptr size);
 			BFRT_EXPORT static Object* Dbg_ObjectAlloc(bf::System::ClassVData* classVData, intptr size, intptr align, intptr maxStackTraceDept, uint8 allocFlags);
 			BFRT_EXPORT static void Dbg_MarkObjectDeleted(bf::System::Object* obj);
@@ -455,7 +455,7 @@ void Internal::Dbg_ObjectStackInit(bf::System::Object* result, bf::System::Class
 #endif
 }
 
-static void SetupDbgAllocInfo(bf::System::Object* result, intptr origSize)
+static void SetupDbgAllocInfo(bf::System::Object* result, intptr origSize, uint8 allocFlags)
 {
 #ifndef BFRT_NODBGFLAGS
 	if (gPendingAllocState.mStackTraceCount == 0)
@@ -472,13 +472,13 @@ static void SetupDbgAllocInfo(bf::System::Object* result, intptr origSize)
 	{
 		result->mClassVData |= (intptr)BfObjectFlag_AllocInfo;
 		result->mDbgAllocInfo = origSize;
-		*(intptr*)((uint8*)result + origSize) = gPendingAllocState.mStackTraceCount;
+		*(intptr*)((uint8*)result + origSize) = (gPendingAllocState.mStackTraceCount << 8) | allocFlags;
 		memcpy((uint8*)result + origSize + sizeof(intptr), gPendingAllocState.mStackTrace, gPendingAllocState.mStackTraceCount * sizeof(intptr));
 	}
 	else
 	{
 		result->mClassVData |= (intptr)BfObjectFlag_AllocInfo_Short;
-		result->mDbgAllocInfo = (origSize << 16) | gPendingAllocState.mStackTraceCount;
+		result->mDbgAllocInfo = (origSize << 16) | (((intptr)allocFlags) << 8) | gPendingAllocState.mStackTraceCount;
 		memcpy((uint8*)result + origSize, gPendingAllocState.mStackTrace, gPendingAllocState.mStackTraceCount * sizeof(intptr));
 	}
 #endif
@@ -493,12 +493,12 @@ void Internal::Dbg_ObjectCreated(bf::System::Object* result, intptr size, bf::Sy
 #endif
 }
 
-void Internal::Dbg_ObjectCreatedEx(bf::System::Object* result, intptr origSize, bf::System::ClassVData* classVData)
+void Internal::Dbg_ObjectCreatedEx(bf::System::Object* result, intptr origSize, bf::System::ClassVData* classVData, uint8 allocFlags)
 {
 	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 #ifndef BFRT_NODBGFLAGS	
 	BF_ASSERT_REL((result->mClassVData & ~(BfObjectFlag_Allocated | BfObjectFlag_Mark3)) == (intptr)classVData);
-	SetupDbgAllocInfo(result, origSize);
+	SetupDbgAllocInfo(result, origSize, allocFlags);
 #endif
 }
 
@@ -511,11 +511,11 @@ void Internal::Dbg_ObjectAllocated(bf::System::Object* result, intptr size, bf::
 #endif
 }
 
-void Internal::Dbg_ObjectAllocatedEx(bf::System::Object* result, intptr origSize, bf::System::ClassVData* classVData)
+void Internal::Dbg_ObjectAllocatedEx(bf::System::Object* result, intptr origSize, bf::System::ClassVData* classVData, uint8 allocFlags)
 {
 	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 	result->mClassVData = (intptr)classVData;
-	SetupDbgAllocInfo(result, origSize);
+	SetupDbgAllocInfo(result, origSize, allocFlags);
 }
 
 void Internal::Dbg_ObjectPreDelete(bf::System::Object* object)
