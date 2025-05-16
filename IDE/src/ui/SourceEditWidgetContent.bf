@@ -4692,7 +4692,7 @@ namespace IDE.ui
 
             if (((keyCode == KeyCode.Up) || (keyCode == KeyCode.Down) || (keyCode == KeyCode.PageUp) || (keyCode == KeyCode.PageDown)))
             {
-				if ((!autoCompleteRequireControl) || (mWidgetWindow.IsKeyDown(KeyCode.Control)))
+				if ((IsPrimaryTextCursor()) && ((!autoCompleteRequireControl) || (mWidgetWindow.IsKeyDown(KeyCode.Control))))
 				{
 	                if ((mAutoComplete != null) && (mAutoComplete.IsShowing()))
 	                {
