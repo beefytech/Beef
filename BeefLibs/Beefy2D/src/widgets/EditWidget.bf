@@ -2557,7 +2557,7 @@ namespace Beefy.widgets
 
 			void PasteFragment(String cursorText, StringView cursorExtra)
 			{
-				if ((cursorExtra.Length == 0) || (HasSelection()))
+				if ((cursorExtra.Length == 0) || (HasSelection()) || (!mAllowVirtualCursor))
 				{
 					PasteText(cursorText);
 				}
