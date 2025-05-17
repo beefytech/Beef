@@ -7965,9 +7965,9 @@ BfTypeInstance* BfModule::GetWrappedStructType(BfType* type, bool allowSpecializ
 		else
 			return ResolveTypeDef(mCompiler->mSizedArrayTypeDef, BfPopulateType_Data)->ToTypeInstance();
 	}
-
-	BF_ASSERT(type->IsPrimitiveType());
-	return GetPrimitiveStructType(((BfPrimitiveType*)type)->mTypeDef->mTypeCode);
+	if (type->IsPrimitiveType())
+		return GetPrimitiveStructType(((BfPrimitiveType*)type)->mTypeDef->mTypeCode);
+	return NULL;
 }
 
 BfPrimitiveType* BfModule::GetPrimitiveType(BfTypeCode typeCode)
