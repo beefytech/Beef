@@ -20376,7 +20376,8 @@ bool BfExprEvaluator::CheckModifyResult(BfTypedValue& typedVal, BfAstNode* refNo
 	else if (typedVal.mValue.IsArg())
 	{
 		auto methodState = mModule->mCurMethodState->GetNonCaptureState();
-		localVar = methodState->mLocals[typedVal.mValue.mId];
+		if (typedVal.mValue.mId < methodState->mLocals.mSize)
+			localVar = methodState->mLocals[typedVal.mValue.mId];
 	}	
 
 	if ((typedVal.mKind == BfTypedValueKind_MutableValue) && (onlyNeedsMut))
