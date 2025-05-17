@@ -17210,6 +17210,7 @@ void BfModule::EmitReturn(const BfTypedValue& val)
 				}
 				else if (mIsComptimeModule)
 				{
+					mBfIRBuilder->PopulateType(val.mType);
 					if (!val.mType->IsValuelessType())
 						mBfIRBuilder->CreateSetRet(val.mValue, val.mType->mTypeId);
 					else
