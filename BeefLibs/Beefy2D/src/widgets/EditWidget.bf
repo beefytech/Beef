@@ -2376,7 +2376,10 @@ namespace Beefy.widgets
 
 				// ...
 				ExtractString(selection.mStartPos, selection.Length, cursorText);
-				cursorText.Append('\n');
+
+				// Skip new line for last fragment
+				if (@cursor.Index+1 < mTextCursors.Count)
+					cursorText.Append('\n');
 
 				text.Append(cursorText);
 				extra.AppendF("{0}:{1};", cursorExtra, cursorText.Length);
@@ -2556,8 +2559,6 @@ namespace Beefy.widgets
 			{
 				if ((cursorExtra.Length == 0) || (HasSelection()))
 				{
-					/*if ((cursorExtra.Length == 0) && (cursorText[cursorText.Length-1] == '\n'))
-						cursorText.RemoveFromEnd(1);*/
 					PasteText(cursorText);
 				}
 				else// if (fragment.mExtra == "line")
@@ -2602,8 +2603,6 @@ namespace Beefy.widgets
 				{
 					var fragment = fragments[idx];
 					var length = fragment.mText.Length;
-					if (idx + 1 == fragments.Count)
-						length--;
 
 					PasteFragment(scope String(fragment.mText, 0, length), "");
 					if (idx + 1 < fragments.Count)
@@ -2653,7 +2652,9 @@ namespace Beefy.widgets
 
 				var fragment = fragments[idx--];
 				String cursorText = scope String(fragment.mText, 0, fragment.mText.Length);
-				cursorText.RemoveFromEnd(1);
+
+				if (@cursor.Index+1 < sortedCursors.Count)
+					cursorText.RemoveFromEnd(1);
 
 				mData.mUndoManager.Add(new SetCursorAction(this));
 				PasteFragment(cursorText, fragment.mExtra);
