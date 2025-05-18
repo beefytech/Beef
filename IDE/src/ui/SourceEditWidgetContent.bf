@@ -7322,5 +7322,13 @@ namespace IDE.ui
 
 			RehupLineCoords(animIdx, animLines);
 		}
+
+		public override void RemoveSecondaryTextCursors(bool force = true)
+		{
+			if ((!force) && (mAutoComplete != null))
+				return;
+
+			base.RemoveSecondaryTextCursors(force);
+		}
     }
 }

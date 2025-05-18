@@ -4260,7 +4260,7 @@ namespace Beefy.widgets
 			}
 		}
 
-		public void RemoveSecondaryTextCursors()
+		public virtual void RemoveSecondaryTextCursors(bool force = true)
 		{
 			if (mTextCursors.Count == 1)
 				return;
@@ -4657,7 +4657,7 @@ namespace Beefy.widgets
 			}
 			else if (keyEvent.mKeyCode == .Escape)
 			{
-				ewc.RemoveSecondaryTextCursors();
+				ewc.RemoveSecondaryTextCursors(force: false);
 				isSingleInvoke = true;
 			}
 
