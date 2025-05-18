@@ -16568,7 +16568,7 @@ BfScopeData* BfModule::FindScope(BfAstNode* scopeName, BfMixinState* fromMixinSt
 
 	if (auto tokenNode = BfNodeDynCast<BfTokenNode>(scopeName))
 	{
-		if (tokenNode->GetToken() == BfToken_Colon)
+		if ((tokenNode->GetToken() == BfToken_Colon) || (tokenNode->GetToken() == BfToken_ColonColon))
 		{
 			if ((!allowAcrossDeferredBlock) && (mCurMethodState->mInDeferredBlock))
 			{

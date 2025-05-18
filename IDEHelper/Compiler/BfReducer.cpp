@@ -4248,6 +4248,11 @@ BfAstNode* BfReducer::DoCreateStatement(BfAstNode* node, CreateStmtFlags createS
 						FailAfter("Expected scope name", deferStmt);
 					}
 				}
+				else if (nextTokenNode->GetToken() == BfToken_ColonColon)
+				{
+					MEMBER_SET(deferStmt, mColonToken, nextTokenNode);
+					mVisitorPos.MoveNext();
+				}
 				else if (nextTokenNode->GetToken() == BfToken_LParen)
 				{
 					mPassInstance->Warn(0, "Syntax deprecated", nextTokenNode);
@@ -5868,7 +5873,7 @@ BfTypeReference* BfReducer::CreateRefTypeRef(BfTypeReference* elementType, BfTok
 	return refTypeRef;
 }
 
-BfIdentifierNode* BfReducer::CompactQualifiedName(BfAstNode* leftNode)
+BfIdentifierNode* BfReducer::CompactQualifiedName(BfAstNode* leftNode, bool allowGlobalLookup)
 {
 	AssertCurrentNode(leftNode);
 
@@ -5879,9 +5884,15 @@ BfIdentifierNode* BfReducer::CompactQualifiedName(BfAstNode* leftNode)
 	auto leftIdentifier = (BfIdentifierNode*)leftNode;
 	while (true)
 	{
+		bool isGlobalLookup = false;
+
 		auto nextToken = mVisitorPos.Get(mVisitorPos.mReadPos + 1);
 		auto tokenNode = BfNodeDynCast<BfTokenNode>(nextToken);
-		if ((tokenNode == NULL) || ((tokenNode->GetToken() != BfToken_Dot) /*&& (tokenNode->GetToken() != BfToken_QuestionDot)*/))
+		if ((tokenNode != NULL) && (tokenNode->mToken == BfToken_ColonColon) && (leftNode->IsExact<BfIdentifierNode>()) && (leftNode->Equals("global")) && (allowGlobalLookup))
+		{
+			isGlobalLookup = true;
+		}
+		else if ((tokenNode == NULL) || ((tokenNode->GetToken() != BfToken_Dot) /*&& (tokenNode->GetToken() != BfToken_QuestionDot)*/))
 			return leftIdentifier;
 
 		auto nextNextToken = mVisitorPos.Get(mVisitorPos.mReadPos + 2);
@@ -5904,6 +5915,22 @@ BfIdentifierNode* BfReducer::CompactQualifiedName(BfAstNode* leftNode)
 
 			if (rightIdentifier == NULL)
 				return leftIdentifier;
+		}
+
+		if (isGlobalLookup)
+		{
+			// For 'global::', we put 'global' on the left and the rest on the right which is different from normal
+			mVisitorPos.MoveNext(); // past .
+			mVisitorPos.MoveNext(); // past right
+			auto rightSide = CompactQualifiedName(rightIdentifier, false);
+			
+			auto qualifiedNameNode = mAlloc->Alloc<BfQualifiedNameNode>();
+			ReplaceNode(leftIdentifier, qualifiedNameNode);
+			qualifiedNameNode->mLeft = leftIdentifier;
+			MEMBER_SET(qualifiedNameNode, mDot, tokenNode);
+			MEMBER_SET(qualifiedNameNode, mRight, rightSide);
+
+			return qualifiedNameNode;
 		}
 
 		// If the previous dotted span failed (IE: had chevrons) then don't insert qualified names in the middle of it
@@ -7935,7 +7962,7 @@ BfInvocationExpression* BfReducer::CreateInvocationExpression(BfAstNode* target,
 
 				if (auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
 				{
-					if (nextToken->GetToken() == BfToken_Colon)
+					if ((nextToken->GetToken() == BfToken_Colon) || (nextToken->GetToken() == BfToken_ColonColon))
 					{
 						auto scopedInvocationTarget = CreateScopedInvocationTarget(invocationExpr->mTarget, nextToken);
 						invocationExpr->SetSrcEnd(scopedInvocationTarget->GetSrcEnd());
@@ -8317,6 +8344,10 @@ BfScopedInvocationTarget* BfReducer::CreateScopedInvocationTarget(BfAstNode*& ta
 	MEMBER_SET(scopedInvocationTarget, mColonToken, colonToken);
 
 	mVisitorPos.MoveNext();
+
+	if (colonToken->mToken == BfToken_ColonColon)
+		return scopedInvocationTarget;
+
 	if (auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
 	{
 		if ((nextToken->GetToken() == BfToken_Colon) || (nextToken->GetToken() == BfToken_Mixin))
@@ -8473,7 +8504,7 @@ BfAstNode* BfReducer::CreateAllocNode(BfTokenNode* allocToken)
 		auto nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());
 		if (nextToken == NULL)
 			return allocToken;
-		if ((nextToken->mToken != BfToken_Colon) && (nextToken->mToken != BfToken_LBracket))
+		if ((nextToken->mToken != BfToken_Colon) && (nextToken->mToken != BfToken_ColonColon) && (nextToken->mToken != BfToken_LBracket))
 			return allocToken;
 
 		auto scopeNode = mAlloc->Alloc<BfScopeNode>();
@@ -8503,6 +8534,11 @@ BfAstNode* BfReducer::CreateAllocNode(BfTokenNode* allocToken)
 			{
 				FailAfter("Expected scope name", scopeNode);
 			}
+		}
+		else if (nextToken->mToken == BfToken_ColonColon)
+		{
+			MEMBER_SET(scopeNode, mColonToken, nextToken);
+			mVisitorPos.MoveNext();
 		}
 
 		nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext());

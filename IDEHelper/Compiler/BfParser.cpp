@@ -2630,6 +2630,13 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 				mToken = BfToken_Dot;
 				mSyntaxToken = BfSyntaxToken_Token;
 			}
+			else if (mSrc[mSrcIdx] == ':')
+			{
+				mSrcIdx++;
+				mTokenEnd = mSrcIdx;
+				mToken = BfToken_ColonColon;
+				mSyntaxToken = BfSyntaxToken_Token;
+			}
 			else
 			{
 				mToken = BfToken_Colon;

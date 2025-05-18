@@ -231,7 +231,7 @@ public:
 	void ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, BfBlock* block);
 	BfAstNode* ReadTypeMember(BfTokenNode* node, bool declStarted = false, int depth = 0, BfAstNode* deferredHeadNode = NULL);
 	BfAstNode* ReadTypeMember(BfAstNode* node, bool declStarted = false, int depth = 0, BfAstNode* deferredHeadNode = NULL);
-	BfIdentifierNode* CompactQualifiedName(BfAstNode* leftNode);
+	BfIdentifierNode* CompactQualifiedName(BfAstNode* leftNode, bool allowGlobalLookup = true);
 	void TryIdentifierConvert(int readPos);
 	void CreateQualifiedNames(BfAstNode* node);
 	BfFieldDtorDeclaration* CreateFieldDtorDeclaration(BfAstNode* srcNode);

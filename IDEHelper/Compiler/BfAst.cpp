@@ -1611,6 +1611,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return ";";
 	case BfToken_Colon:
 		return ":";
+	case BfToken_ColonColon:
+		return "::";
 	case BfToken_Comma:
 		return ",";
 	case BfToken_Dot:

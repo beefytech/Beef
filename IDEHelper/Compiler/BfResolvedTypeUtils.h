@@ -42,7 +42,8 @@ enum BfResolveTypeRefFlags
 	BfResolveTypeRefFlag_AllowUnboundGeneric = 0x40000,
 	BfResolveTypeRefFlag_ForceUnboundGeneric = 0x80000,
 	BfResolveTypeRefFlag_IgnoreProtection = 0x100000,
-	BfResolveTypeRefFlag_SpecializedProject = 0x200000
+	BfResolveTypeRefFlag_SpecializedProject = 0x200000,
+	BfResolveTypeRefFlag_GlobalLookup = 0x400000
 };
 
 enum BfTypeNameFlags : uint16
@@ -1735,7 +1736,7 @@ struct BfTypeLookupEntry
 	enum Flags : uint8
 	{
 		Flags_None,
-		Flags_SpecializedProject
+		Flags_SpecializedProject,
 	};
 
 	BfAtomComposite mName;

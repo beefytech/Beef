@@ -7387,6 +7387,8 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 
 	BfScopeData* scope = NULL;
 
+	auto scopeNameNode = deferStmt->GetScopeNameNode();
+
 	if (deferStmt->mScopeToken != NULL)
 	{
 		if (deferStmt->mScopeToken->GetToken() == BfToken_Scope)
@@ -7394,9 +7396,9 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 		else
 			scope = &mCurMethodState->mHeadScope;
 	}
-	else if (deferStmt->mScopeName != NULL)
+	else if (scopeNameNode != NULL)
 	{
-		scope = FindScope(deferStmt->mScopeName, true);
+		scope = FindScope(scopeNameNode, true);
 
 		if (scope == NULL)
 		{

@@ -17223,8 +17223,8 @@ void BfExprEvaluator::ResolveAllocTarget(BfAllocTarget& allocTarget, BfAstNode* 
 	{
 		if (auto scopeNode = BfNodeDynCast<BfScopeNode>(allocNode))
 		{
-			newToken = scopeNode->mScopeToken;
-			allocTarget.mScopeData = mModule->FindScope(scopeNode->mTargetNode, true);
+			newToken = scopeNode->mScopeToken;						
+			allocTarget.mScopeData = mModule->FindScope(scopeNode->GetTargetNode(), true);
 
 			if (autoComplete != NULL)
 			{
@@ -17799,7 +17799,9 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	}
 	auto targetNameNode = targetSrc;
 	if (scopedInvocationTarget != NULL)
-		targetNameNode = scopedInvocationTarget->mTarget;
+	{		
+		targetNameNode = scopedInvocationTarget->GetScopeNameNode();		
+	}
 
 	while (true)
 	{
@@ -18214,7 +18216,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	auto checkNode = origTargetSrc;
 	if (scopedInvocationTarget != NULL)
 	{
-		auto targetScope = mModule->FindScope(scopedInvocationTarget->mScopeName, curMethodState->mMixinState);
+		auto targetScope = mModule->FindScope(scopedInvocationTarget->GetScopeNameNode(), curMethodState->mMixinState);
 		if (targetScope != NULL)
 		{
 			mixinState->mTargetScope = targetScope;
@@ -19106,7 +19108,20 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		if (GetAutoComplete() != NULL)
 			GetAutoComplete()->CheckMemberReference(qualifiedName->mLeft, qualifiedName->mDot, qualifiedName->mRight);
 
-		if (qualifiedName->mLeft->GetSrcLength() == 4)
+		bool isGlobalLookup = false;
+		if (auto qualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(target))
+ 		{
+ 			if (qualifiedNameNode->IsGlobalLookup())
+ 			{					
+ 				if (auto subQualifiedNameNode = BfNodeDynCast<BfQualifiedNameNode>(qualifiedNameNode->mRight))
+ 				{					
+ 					qualifiedName = subQualifiedNameNode;
+					isGlobalLookup = true;
+ 				}			
+ 			}
+ 		}		
+		
+		if ((!isGlobalLookup) && (qualifiedName->mLeft->GetSrcLength() == 4))
 		{
 			if (CheckIsBase(qualifiedName->mLeft))
 				bypassVirtual = true;
@@ -19127,7 +19142,8 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 			targetFunctionName = qualifiedName->mRight->ToString();
 
 		bool hadError = false;
-		thisValue = LookupIdentifier(qualifiedName->mLeft, true, &hadError);
+		if (!isGlobalLookup)
+			thisValue = LookupIdentifier(qualifiedName->mLeft, true, &hadError);
 
 		CheckResultForReading(thisValue);
 		if (mPropDef != NULL)
@@ -19141,18 +19157,22 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 
 		if ((!thisValue) && (mPropDef == NULL))
 		{
+			auto typeLookupFlags = (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowGlobalContainer | BfResolveTypeRefFlag_IgnoreLookupError);
+			if (isGlobalLookup)
+				typeLookupFlags = (BfResolveTypeRefFlags)(typeLookupFlags | BfResolveTypeRefFlag_GlobalLookup);
+
 			// Identifier not found. Static method? Just check speculatively don't throw error
 			BfType* type;
 			{
 				//SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
-				type = mModule->ResolveTypeRef(qualifiedName->mLeft, NULL, BfPopulateType_DataAndMethods, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowGlobalContainer | BfResolveTypeRefFlag_IgnoreLookupError));
+				type = mModule->ResolveTypeRef(qualifiedName->mLeft, NULL, BfPopulateType_DataAndMethods, typeLookupFlags);
 			}
 
 			if (type == NULL)
 			{
 				//SetAndRestoreValue<bool> prevIgnoreErrors(mModule->mIgnoreErrors, true);
 
-				type = mModule->ResolveTypeRef(qualifiedName, methodGenericArguments, BfPopulateType_DataAndMethods, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_NoResolveGenericParam | BfResolveTypeRefFlag_AllowGlobalContainer | BfResolveTypeRefFlag_IgnoreLookupError));
+				type = mModule->ResolveTypeRef(qualifiedName, methodGenericArguments, BfPopulateType_DataAndMethods, typeLookupFlags);
 				if (type != NULL)
 				{
 					// This is a CTOR call, treat it as such

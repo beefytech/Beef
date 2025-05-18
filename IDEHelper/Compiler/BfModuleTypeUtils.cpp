@@ -10519,12 +10519,15 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 		if (mSystem->mTypeDefs.TryGet(findName, NULL))
 			mSystem->FindTypeDef(findName, numGenericArgs, useProject, BfAtomComposite(), allowPrivate, &lookupCtx);
 
-		for (auto& checkNamespace : useTypeDef->mNamespaceSearch)
+		if ((resolveFlags & BfResolveTypeRefFlag_GlobalLookup) == 0)
 		{
-			BfAtom* atom = findName.mParts[0];
-			BfAtom* prevAtom = checkNamespace.mParts[checkNamespace.mSize - 1];
-			if (atom->mPrevNamesMap.ContainsKey(prevAtom))
-				mSystem->FindTypeDef(findName, numGenericArgs, useProject, checkNamespace, allowPrivate, &lookupCtx);
+			for (auto& checkNamespace : useTypeDef->mNamespaceSearch)
+			{
+				BfAtom* atom = findName.mParts[0];
+				BfAtom* prevAtom = checkNamespace.mParts[checkNamespace.mSize - 1];
+				if (atom->mPrevNamesMap.ContainsKey(prevAtom))
+					mSystem->FindTypeDef(findName, numGenericArgs, useProject, checkNamespace, allowPrivate, &lookupCtx);
+			}
 		}
 	}
 
@@ -10550,7 +10553,7 @@ BfTypeDef* BfModule::FindTypeDefRaw(const BfAtomComposite& findName, int numGene
 		}
 	}
 
-	if ((!lookupCtx.HasValidMatch()) && (typeInstance == NULL))
+	if ((!lookupCtx.HasValidMatch()) && (typeInstance == NULL) && ((resolveFlags & BfResolveTypeRefFlag_GlobalLookup) == 0))
 	{
 		if (useTypeDef->mOuterType != NULL)
 			return FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef->mOuterType, error);
@@ -10590,6 +10593,12 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 
 	if (useTypeDef != NULL)
 		useTypeDef = useTypeDef->GetDefinition();
+
+	if ((resolveFlags & BfResolveTypeRefFlag_GlobalLookup) != 0)
+	{
+		// No need to cache
+		return FindTypeDefRaw(findName, numGenericArgs, typeInstance, useTypeDef, error, NULL, resolveFlags);
+	}
 
 	if ((typeInstance == NULL) && (useTypeDef == NULL))
 	{
@@ -10648,7 +10657,7 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 	BfTypeLookupEntry typeLookupEntry;
 	typeLookupEntry.mName.Reference(findName);
 	typeLookupEntry.mNumGenericParams = numGenericArgs;
-	typeLookupEntry.mFlags = ((resolveFlags & BfResolveTypeRefFlag_SpecializedProject) != 0) ? BfTypeLookupEntry::Flags_SpecializedProject : BfTypeLookupEntry::Flags_None;
+	typeLookupEntry.mFlags = ((resolveFlags & BfResolveTypeRefFlag_SpecializedProject) != 0) ? BfTypeLookupEntry::Flags_SpecializedProject : BfTypeLookupEntry::Flags_None;	
 	typeLookupEntry.mUseTypeDef = useTypeDef;
 
 	BfTypeLookupEntry* typeLookupEntryPtr = NULL;
@@ -11589,6 +11598,12 @@ BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType po
 
 	if (auto qualifiedTypeRef = BfNodeDynCast<BfQualifiedTypeReference>(typeRef))
 	{
+		if (qualifiedTypeRef->IsGlobalLookup())
+		{			
+			resolveFlags = (BfResolveTypeRefFlags)(resolveFlags | BfResolveTypeRefFlag_GlobalLookup);
+			return ResolveTypeRef_Ref(qualifiedTypeRef->mRight, populateType, resolveFlags, numGenericArgs);
+		}
+
 		//TODO: Determine why we had this prevIgnoreErrors set here.  It causes things like IEnumerator<Hey.Test<INVALIDNAME>> not fail
 		//  properly on INVALIDNAME
 		SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, /*true*/mIgnoreErrors);
