@@ -153,12 +153,16 @@ namespace System
 
 			static void* ClassVData_GetTypeData(ClassVData* classVData)
 			{
+#if BF_DBG_RUNTIME
 #if BF_32_BIT
 				Type type = Type.[Friend]GetType_(classVData.mType2);
 #else
 				Type type = Type.[Friend]GetType_((.)(classVData.mType >> 32));
 #endif
 				return &type.[Friend]mSize;
+#else
+				return null;
+#endif
 			}
 
 			static Type Object_GetType(Object obj)
