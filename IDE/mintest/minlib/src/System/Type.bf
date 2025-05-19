@@ -1266,7 +1266,7 @@ namespace System.Reflection
 			int32 stackCount = Compiler.Options.AllocStackCount;
 			if (mAllocStackCountOverride != 0)
 				stackCount = mAllocStackCountOverride;
-			obj = Internal.Dbg_ObjectAlloc([Friend]mTypeClassVData, arraySize, [Friend]mInstAlign, stackCount);
+			obj = Internal.Dbg_ObjectAlloc([Friend]mTypeClassVData, arraySize, [Friend]mInstAlign, stackCount, 0);
 #else
 			void* mem = new [Align(16)] uint8[arraySize]* (?);
 			obj = Internal.UnsafeCastToObject(mem);
