@@ -49,6 +49,18 @@ public:
 		}
 	};
 
+	struct ChildQueueState
+	{
+		Array<StateModify>* mQueue;
+		int mIdx;
+
+		ChildQueueState()
+		{
+			mQueue = NULL;
+			mIdx = 0;
+		}
+	};
+
 	BfSourceData* mSource;
 	BfParserData* mParser;
 
@@ -62,6 +74,7 @@ public:
 
 	int mTriviaIdx;
 	int mCurSrcIdx;
+	Array<ChildQueueState*> mActiveChildQueues;
 	Array<StateModify> mChildNodeQueue;
 	int mFormatStart;
 	int mFormatEnd;

@@ -209,14 +209,39 @@ void BfPrinter::FlushVisitChild()
 
 	std::stable_sort(nodeQueue.begin(), nodeQueue.end(), CompareNodeStart);
 
-	for (auto& node : nodeQueue)
-	{
-		mNextStateModify = node;
+	ChildQueueState childQueueState;
+	childQueueState.mQueue = &nodeQueue;	
+	mActiveChildQueues.Add(&childQueueState);	
 
-		VisitChild(node.mQueuedNode);
-		if (mVirtualNewLineIdx == mNextStateModify.mWantNewLineIdx)
-			mVirtualNewLineIdx = node.mWantNewLineIdx;
+	auto _HandleStateNotify = [&](StateModify node)
+		{
+			mNextStateModify = node;
+
+			VisitChild(node.mQueuedNode);
+			if (mVirtualNewLineIdx == mNextStateModify.mWantNewLineIdx)
+				mVirtualNewLineIdx = node.mWantNewLineIdx;
+		};
+
+	while (childQueueState.mIdx < childQueueState.mQueue->mSize)
+	{
+		auto node = (*childQueueState.mQueue)[childQueueState.mIdx++];		
+		if (mActiveChildQueues.mSize > 1)
+		{
+			// Check for nodes in the prev queue that are actual inside the new queue (can happen with inline type declarations)
+			auto prevQueue = mActiveChildQueues[mActiveChildQueues.mSize - 2];
+			while (true)
+			{
+				auto prevQueueNode = (*prevQueue->mQueue)[prevQueue->mIdx];
+				if (prevQueueNode.mQueuedNode->mSrcStart >= node.mQueuedNode->mSrcStart)
+					break;
+				prevQueue->mIdx++;
+				_HandleStateNotify(prevQueueNode);				
+			}
+		}	
+		_HandleStateNotify(node);		
 	}
+
+	mActiveChildQueues.pop_back();
 }
 
 void BfPrinter::VisitChildWithPrecedingSpace(BfAstNode* bfAstNode)
