@@ -14159,6 +14159,8 @@ BfIRValue BfModule::ExtractValue(BfTypedValue typedValue, int dataIdx)
 		auto addrVal = mBfIRBuilder->CreateInBoundsGEP(typedValue.mValue, 0, dataIdx);
 		return mBfIRBuilder->CreateAlignedLoad(addrVal, typedValue.mType->mAlign);
 	}
+	if (typedValue.IsSplat())
+		typedValue = LoadOrAggregateValue(typedValue);
 	return mBfIRBuilder->CreateExtractValue(typedValue.mValue, dataIdx);
 }
 

@@ -1519,9 +1519,14 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			if (!resolvedType->IsNullable())
 			{
 				if (initValue.IsAddr())
+				{
 					initValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(initValue.mValue, 0, 1), initValue.mType->GetUnderlyingType(), true);
+				}
 				else
+				{
+					initValue = LoadOrAggregateValue(initValue);
 					initValue = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, 1), initValue.mType->GetUnderlyingType());
+				}
 			}
 
 			if ((initValue) && (!initValue.mType->IsValuelessType()))
@@ -1600,7 +1605,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 					{
 						auto nullableElementType = initValue.mType->GetUnderlyingType();
 						auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
-						initValue = LoadValue(initValue);
+						initValue = LoadOrAggregateValue(initValue);
 						exprEvaluator->mResult = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, nullableElementType->IsValuelessType() ? 1 : 2), boolType);
 						handledExprBoolResult = true;
 						if (!nullableElementType->IsValuelessType())
