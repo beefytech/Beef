@@ -7192,6 +7192,11 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 
 			mBfIRBuilder->CreateBr(endBB);
 		}
+		else if (!getNextMethodInst)
+		{
+			AssertErrorState();
+			mBfIRBuilder->CreateBr(endBB);
+		}
 		else
 		{
 			BfExprEvaluator exprEvaluator(this);
@@ -7315,7 +7320,11 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		}
 		else
 		{
-			if (needsValCopy)
+			if (nextEmbeddedType->IsVar())
+			{
+				AssertErrorState();
+			}
+			else if (needsValCopy)
 			{
 				auto nextVal = BfTypedValue(mBfIRBuilder->CreateBitCast(nextResult.mValue, mBfIRBuilder->MapType(CreatePointerType(nextEmbeddedType))), nextEmbeddedType, true);
 				if (isRefExpression)
