@@ -225,11 +225,11 @@ void BfPrinter::FlushVisitChild()
 	while (childQueueState.mIdx < childQueueState.mQueue->mSize)
 	{
 		auto node = (*childQueueState.mQueue)[childQueueState.mIdx++];		
-		if (mActiveChildQueues.mSize > 1)
+		if (mActiveChildQueues.mSize >= 2)
 		{
 			// Check for nodes in the prev queue that are actual inside the new queue (can happen with inline type declarations)
 			auto prevQueue = mActiveChildQueues[mActiveChildQueues.mSize - 2];
-			while (true)
+			while (prevQueue->mIdx < prevQueue->mQueue->mSize)
 			{
 				auto prevQueueNode = (*prevQueue->mQueue)[prevQueue->mIdx];
 				if (prevQueueNode.mQueuedNode->mSrcStart >= node.mQueuedNode->mSrcStart)
