@@ -1027,6 +1027,12 @@ namespace IDE
 			AddBuildFileDependency(project.mWindowsOptions.mIconFile);
 			AddBuildFileDependency(project.mWindowsOptions.mManifestFile);
 
+			String fileVersion = scope String();
+			gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, project.mWindowsOptions.mFileVersion, "file version", fileVersion);
+
+			String productVersion = scope String();
+			gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, project.mWindowsOptions.mProductVersion, "product version", productVersion);
+
 			switch (mPlatformType)
 			{
 			case .Windows:
@@ -1035,8 +1041,8 @@ namespace IDE
 				cacheStr.AppendF("Company\t{}\n", project.mWindowsOptions.mCompany);
 				cacheStr.AppendF("Product\t{}\n", project.mWindowsOptions.mProduct);
 				cacheStr.AppendF("Copyright\t{}\n", project.mWindowsOptions.mCopyright);
-				cacheStr.AppendF("FileVersion\t{}\n", project.mWindowsOptions.mFileVersion);
-				cacheStr.AppendF("ProductVersion\t{}\n", project.mWindowsOptions.mProductVersion);
+				cacheStr.AppendF("FileVersion\t{}\n", fileVersion);
+				cacheStr.AppendF("ProductVersion\t{}\n", productVersion);
 			case .Linux:
 				cacheStr.AppendF("Options\t{}\n", project.mLinuxOptions.mOptions);
 			case .Wasm:
@@ -1265,11 +1271,17 @@ namespace IDE
 								}
 							}
 
+							String fileVersion = scope String();
+							gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, winOptions.mFileVersion, "file version", fileVersion);
+
+							String productVersion = scope String();
+							gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, winOptions.mProductVersion, "product version", productVersion);
+
 							let targetFileName = scope String();
 							Path.GetFileName(targetPath, targetFileName);
 
 							if (resGen.AddVersion(winOptions.mDescription, winOptions.mComments, winOptions.mCompany, winOptions.mProduct,
-		                        winOptions.mCopyright, winOptions.mFileVersion, winOptions.mProductVersion, targetFileName) case .Err)
+		                        winOptions.mCopyright, fileVersion, productVersion, targetFileName) case .Err)
 							{
 								gApp.OutputErrorLine("Failed to add version");
 								return .Err;
