@@ -1555,6 +1555,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 
 	mCurTypeDef->mSystem = mSystem;
 	mCurTypeDef->mProject = mCurSource->mProject;
+	mCurTypeDef->mIsStatic = typeDeclaration->mStaticSpecifier != NULL;
 	mCurTypeDef->mNamespace = mNamespace;
 	mSystem->AddNamespaceUsage(mCurTypeDef->mNamespace, mCurTypeDef->mProject);
 	if ((typeDeclaration->mTypeNode == NULL) && (!isAnonymous))
@@ -1571,10 +1572,15 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 
 		if (mCurTypeDef->mName == NULL)
 		{
-			// Global
-			mCurTypeDef->mName = mSystem->mGlobalsAtom;
+			if (mCurTypeDef->mIsStatic)
+			{
+				// Global
+				mCurTypeDef->mName = mSystem->mGlobalsAtom;
+			}
+			else
+				mCurTypeDef->mName = mSystem->mHiddenAtom;
 			mCurTypeDef->mName->Ref();
-			BF_ASSERT(mCurTypeDef->mSystem != NULL);
+			BF_ASSERT(mCurTypeDef->mSystem != NULL);			
 		}		
 	}
 	else
@@ -1791,8 +1797,7 @@ void BfDefBuilder::Visit(BfTypeDeclaration* typeDeclaration)
 	mCurTypeDef->mSource = mCurSource;
 	mCurTypeDef->mSource->mRefCount++;
 	mCurTypeDef->mTypeDeclaration = typeDeclaration;
-	mCurTypeDef->mIsAbstract = (typeDeclaration->mAbstractSpecifier != NULL) && (typeDeclaration->mAbstractSpecifier->GetToken() == BfToken_Abstract);	
-	mCurTypeDef->mIsStatic = typeDeclaration->mStaticSpecifier != NULL;
+	mCurTypeDef->mIsAbstract = (typeDeclaration->mAbstractSpecifier != NULL) && (typeDeclaration->mAbstractSpecifier->GetToken() == BfToken_Abstract);		
 	mCurTypeDef->mIsDelegate = false;
 	mCurTypeDef->mIsFunction = false;
 
