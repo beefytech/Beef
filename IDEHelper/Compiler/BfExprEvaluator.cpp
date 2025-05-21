@@ -4341,6 +4341,30 @@ BfTypedValue BfExprEvaluator::LoadLocal(BfLocalVariable* varDecl, bool allowRef)
 	else if (varDecl->mConstValue)
 	{
 		localResult = BfTypedValue(varDecl->mConstValue, varDecl->mResolvedType, false);
+
+		if ((varDecl->mResolvedType->IsRef()) && (!allowRef))
+		{
+			BfRefType* refType = (BfRefType*)varDecl->mResolvedType;
+			BfType* innerType = refType->mElementType;
+
+			if (innerType->IsValuelessNonOpaqueType())
+			{
+				if (refType->mRefKind == BfRefType::RefKind_Mut)
+					return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), innerType, BfTypedValueKind_MutableValue);
+				return BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), innerType, varDecl->mIsReadOnly ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
+			}
+
+			if (refType->mRefKind == BfRefType::RefKind_Mut)
+			{
+				if (innerType->IsGenericParam())
+				{
+					localResult = BfTypedValue(varDecl->mConstValue, innerType, BfTypedValueKind_MutableValue);
+					return localResult;
+				}
+			}
+
+			localResult = BfTypedValue(varDecl->mConstValue, innerType, varDecl->mIsReadOnly ? BfTypedValueKind_ReadOnlyAddr : BfTypedValueKind_Addr);
+		}
 	}
 	else if (varDecl->mIsSplat)
 	{
