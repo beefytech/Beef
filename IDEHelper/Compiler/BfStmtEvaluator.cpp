@@ -1714,10 +1714,10 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			localDef->mIsReadOnly = true;
 			if (initValue)
 			{
-				if ((initValue.mValue) && (initValue.mValue.IsConst()))
+				if (mBfIRBuilder->IsConstValue(initValue.mValue))
 				{
 					isConst = true;
-				}
+				}				
 			}
 		}
 	}
