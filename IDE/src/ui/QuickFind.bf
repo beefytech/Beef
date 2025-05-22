@@ -225,6 +225,13 @@ namespace IDE.ui
 
             if (evt.mKeyCode == KeyCode.Return)
             {
+				var keyFlags = mWidgetWindow.GetKeyFlags(true);
+				if (keyFlags.HasFlag(.Alt))
+				{
+					SelectAllMatches(keyFlags.HasFlag(.Shift));
+					Close();
+					return;
+				}
                 if (evt.mSender == mFindEditWidget)
                 {
                     FindNext(1, true);
@@ -248,6 +255,108 @@ namespace IDE.ui
             if ((evt.mKeyCode == (KeyCode)'A') && (mWidgetWindow.IsKeyDown(KeyCode.Menu)))
                 DoReplace(true);            
         }
+
+		bool SelectAllMatches(bool caseSensitive)
+		{
+			var ewc = mEditWidget.Content;
+			var sewc = ewc as SourceEditWidgetContent;
+			ewc.SetPrimaryTextCursor();
+
+			String findText = scope String();
+			mFindEditWidget.GetText(findText);
+			sLastSearchString.Set(findText);
+			if (findText.Length == 0)
+			    return false;
+
+			String findTextLower = scope String(findText);
+			findTextLower.ToLower();
+			String findTextUpper = scope String(findText);
+			findTextUpper.ToUpper();
+
+			int32 selStart = (mSelectionStart != null) ? mSelectionStart.mIndex : 0;
+			int32 selEnd = (mSelectionEnd != null) ? mSelectionEnd.mIndex : ewc.mData.mTextLength;
+
+
+			bool Matches(int32 idx)
+			{
+				if (idx + findText.Length >= ewc.mData.mTextLength)
+					return false;
+
+				for (var i = 0; i < findText.Length; i++)
+				{
+					var char = ewc.mData.mText[idx+i].mChar;
+
+					if (caseSensitive)
+					{
+						if (findText[i] != char)
+							return false;
+					}
+					else if ((findTextLower[i] != char) && (findTextUpper[i] != char))
+					{
+						return false;
+					}
+				}
+
+				return true;
+			}
+
+			var primaryCursor = ewc.mTextCursors.Front;
+			var initialCursorPos = primaryCursor.mCursorTextPos;
+			EditWidgetContent.TextCursor swapCursor = null;
+
+			ewc.RemoveSecondaryTextCursors();
+
+			primaryCursor.mJustInsertedCharPair = false;
+			primaryCursor.mCursorImplicitlyMoved = false;
+			primaryCursor.mVirtualCursorPos = null;
+
+			var isFirstMatch = true;
+
+			for (var idx = selStart; idx < selEnd; idx++)
+			{
+				if (!Matches(idx))
+					continue;
+
+				if (!isFirstMatch)
+				{
+					var cursor = ewc.mTextCursors.Add(.. new EditWidgetContent.TextCursor(-1, primaryCursor));
+					if (cursor.mCursorTextPos == initialCursorPos)
+						swapCursor = cursor;
+				}
+
+				isFirstMatch = false;
+
+				primaryCursor.mCursorTextPos = (int32)(idx + findText.Length);
+				primaryCursor.mSelection = EditSelection(idx, primaryCursor.mCursorTextPos);
+
+				idx += (int32)findText.Length;
+			}
+
+			// Remove selection when at least one match has been found
+			if ((sewc != null) && (!isFirstMatch))
+			{
+				if (mSelectionStart != null)
+				{
+					sewc.PersistentTextPositions.Remove(mSelectionStart);
+					DeleteAndNullify!(mSelectionStart);
+				}
+
+				if (mSelectionEnd != null)
+				{
+					sewc.PersistentTextPositions.Remove(mSelectionEnd);
+					DeleteAndNullify!(mSelectionEnd);
+				}
+			}
+
+			// Making sure that primary cursor is at the position where QuickFind found first match.
+			if (swapCursor != null)
+			{
+				Swap!(primaryCursor.mCursorTextPos, swapCursor.mCursorTextPos);
+				Swap!(primaryCursor.mSelection.Value, swapCursor.mSelection.Value);
+			}
+
+			return (!isFirstMatch);
+		}
 
         void EditWidgetSubmit(EditEvent editEvent)
         {            

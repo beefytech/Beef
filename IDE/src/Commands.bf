@@ -340,6 +340,8 @@ namespace IDE
 			Add("Zoom Out", new => gApp.Cmd_ZoomOut);
 			Add("Zoom Reset", new => gApp.Cmd_ZoomReset);
 			Add("Attach to Process", new => gApp.[Friend]DoAttach);
+			Add("Select Next Match", new => gApp.Cmd_SelectNextMatch);
+			Add("Skip Current Match and Select Next", new => gApp.Cmd_SkipCurrentMatchAndSelectNext);
 
 			Add("Test Enable Console", new => gApp.Cmd_TestEnableConsole);
 		}

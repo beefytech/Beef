@@ -1323,7 +1323,7 @@ namespace IDE.ui
 
 								embedSource.mTypeName = new .(useTypeName);
 								if (embedHasFocus)
-									embedSource.mCursorIdx = (.)embedSourceViewPanel.mEditWidget.mEditWidgetContent.CursorTextPos;
+									embedSource.mCursorIdx = (.)embedSourceViewPanel.mEditWidget.mEditWidgetContent.mTextCursors.Front.mCursorTextPos;
 								else
 									embedSource.mCursorIdx = -1;
 								resolveParams.mEmitEmbeds.Add(embedSource);
@@ -1385,7 +1385,7 @@ namespace IDE.ui
 				{
 	                if ((useResolveType == .Autocomplete) || (useResolveType == .GetSymbolInfo) || (mIsClang))
 					{
-						resolveParams.mOverrideCursorPos = (.)mEditWidget.Content.CursorTextPos;
+						resolveParams.mOverrideCursorPos = (.)mEditWidget.Content.mTextCursors.Front.mCursorTextPos;
 						/*if (useResolveType == .Autocomplete)
 							resolveParams.mOverrideCursorPos--;*/
 					}
@@ -2042,7 +2042,7 @@ namespace IDE.ui
 
 			ProjectSource projectSource = FilteredProjectSource;
 
-			int cursorPos = mEditWidget.mEditWidgetContent.CursorTextPos;
+			int cursorPos = mEditWidget.mEditWidgetContent.mTextCursors.Front.mCursorTextPos;
 
 			if ((resolveParams != null) && (resolveParams.mOverrideCursorPos != -1))
 				cursorPos = resolveParams.mOverrideCursorPos;
@@ -5254,7 +5254,10 @@ namespace IDE.ui
 
 			var sourceEditWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
 			if (!sourceEditWidgetContent.CheckReadOnly())
+			{
+				sourceEditWidgetContent.RemoveSecondaryTextCursors();
             	ShowSymbolReferenceHelper(SymbolReferenceHelper.Kind.Rename);
+			}
         }
 
 		public void FindAllReferences()
