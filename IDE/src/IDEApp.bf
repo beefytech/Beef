@@ -984,6 +984,7 @@ namespace IDE
 			mWorkspace.mName = new String();
 			Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
 
+			CustomBuildProperties.Load();
 			LoadWorkspace(.OpenOrNew);
 			FinishShowingNewWorkspace();
 		}
@@ -3191,6 +3192,7 @@ namespace IDE
 			CloseWorkspace();
 			mWorkspace.mDir = new String(workspaceDir);
 			mWorkspace.mName = new String(workspaceName);
+			CustomBuildProperties.Load();
 			LoadWorkspace(.Open);
 			FinishShowingNewWorkspace();
 		}
@@ -3320,7 +3322,13 @@ namespace IDE
 			switch (useVerSpec)
 			{
 			case .Path(let path):
-				var relPath = scope String(path);
+				Project.Options options = GetCurProjectOptions(project);
+				Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
+
+				var resolvedPath = scope String();
+				ResolveConfigString(mPlatformName, workspaceOptions, project, options, path, "project path", resolvedPath);
+
+				var relPath = scope String(resolvedPath);
 				IDEUtils.FixFilePath(relPath);
 				if (!relPath.EndsWith(IDEUtils.cNativeSlash))
 					relPath.Append(IDEUtils.cNativeSlash);
@@ -10961,6 +10969,12 @@ namespace IDE
 								case "BeefPath":
 									newString = gApp.mInstallDir;
 								default:
+									// Check if any custom properties match the string.
+									if (CustomBuildProperties.Contains(replaceStr))
+									{
+										newString = scope:ReplaceBlock String();
+										newString.Append(CustomBuildProperties.Get(replaceStr));
+									}
 								}
 							}
 
@@ -12869,12 +12883,14 @@ namespace IDE
 			{
 				mWorkspace.mName = new String();
 				Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
+				CustomBuildProperties.Load();
 				LoadWorkspace(mVerb);
 			}
 			else if (mWorkspace.IsSingleFileWorkspace)
 			{
 				mWorkspace.mName = new String();
 				Path.GetFileNameWithoutExtension(mWorkspace.mCompositeFile.mFilePath, mWorkspace.mName);
+				CustomBuildProperties.Load();
 				LoadWorkspace(mVerb);
 			}
 
