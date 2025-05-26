@@ -30,7 +30,7 @@ namespace IDE.ui
             int lineCheck = Math.Max(0, line + lineOfs);            
             GetLinePosition(lineCheck, out lineStart, out lineEnd);
             
-            mSelection = EditSelection(lineStart, lineEnd);
+            CurSelection = EditSelection(lineStart, lineEnd);
 			var selectionText = scope String();
             GetSelectionText(selectionText);
 
@@ -223,7 +223,7 @@ namespace IDE.ui
 			{
 				bool selectLine = lineOfs == 0;
 				if (!selectLine)
-				    mSelection = null;
+				    CurSelection = null;
 				CursorTextPos = lineStart;
 				EnsureCursorVisible();
 				return true;

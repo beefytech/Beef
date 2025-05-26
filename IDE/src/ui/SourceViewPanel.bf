@@ -887,7 +887,7 @@ namespace IDE.ui
                     return false;
             }
             int32 cursorPos = data.GetInt("CursorPos");
-            mEditWidget.Content.mCursorTextPos = Math.Min(cursorPos, mEditWidget.mEditWidgetContent.mData.mTextLength);
+            mEditWidget.Content.CurCursorTextPos = Math.Min(cursorPos, mEditWidget.mEditWidgetContent.mData.mTextLength);
             mDesiredVertPos = data.GetFloat("VertPos");
 
             return true;
@@ -2462,10 +2462,10 @@ namespace IDE.ui
                             mEditWidget.Content.CursorTextPos = searchIdx;
                             if (mWidgetWindow.IsKeyDown(KeyCode.Shift))
                             {
-                                mEditWidget.Content.mSelection = EditSelection(cursorStartPos, mEditWidget.Content.CursorTextPos);
+                                mEditWidget.Content.CurSelection = EditSelection(cursorStartPos, mEditWidget.Content.CursorTextPos);
                             }
                             else
-                                mEditWidget.Content.mSelection = null;
+                                mEditWidget.Content.CurSelection = null;
                             mEditWidget.Content.CursorMoved();
                             mEditWidget.Content.EnsureCursorVisible();
                             break;
@@ -2522,14 +2522,14 @@ namespace IDE.ui
 
             int32 prevLine = mEditWidget.Content.CursorLineAndColumn.mLine;
 			
-            mEditWidget.Content.mSelection = null;
+            mEditWidget.Content.CurSelection = null;
 
 			int wantCursorPos = Math.Min(mEditWidget.Content.mData.mTextLength - 1, cursorIdx);
 			if (wantCursorPos >= 0)
             	mEditWidget.Content.CursorTextPos = wantCursorPos;
             mEditWidget.Content.CursorMoved();
             mEditWidget.Content.EnsureCursorVisible(true, true);
-			mEditWidget.Content.mCursorImplicitlyMoved = true;
+			mEditWidget.Content.CurCursorImplicitlyMoved = true;
             if (mJustShown) // Jump to whatever position we're scrolling to
             {
                 mEditWidget.mVertPos.mPct = 1.0f;
@@ -5187,7 +5187,7 @@ namespace IDE.ui
             }
 
             if ((mEditWidget.Content.HasSelection()) && (!ignoreSelection))
-                parser.ReformatInto(mEditWidget, mEditWidget.Content.mSelection.Value.MinPos, mEditWidget.Content.mSelection.Value.MaxPos);
+                parser.ReformatInto(mEditWidget, mEditWidget.Content.CurSelection.Value.MinPos, mEditWidget.Content.CurSelection.Value.MaxPos);
             else
                 parser.ReformatInto(mEditWidget, 0, text.Length);
 
@@ -5409,9 +5409,9 @@ namespace IDE.ui
 
 				bool doSimpleMouseover = false;
 
-	            if ((editWidgetContent.mSelection != null) &&
-	                (textIdx >= editWidgetContent.mSelection.Value.MinPos) &&
-	                (textIdx < editWidgetContent.mSelection.Value.MaxPos))
+	            if ((editWidgetContent.CurSelection != null) &&
+	                (textIdx >= editWidgetContent.CurSelection.Value.MinPos) &&
+	                (textIdx < editWidgetContent.CurSelection.Value.MaxPos))
 	            {
 	                debugExpr = scope:: String();
 	                editWidgetContent.GetSelectionText(debugExpr);
@@ -6827,7 +6827,7 @@ namespace IDE.ui
                     int cursorIdx = sourceEditWidgetContent.CursorTextPos;
 
                     bool hasFlag = false;
-					if (!sourceEditWidgetContent.mVirtualCursorPos.HasValue)
+					if (!sourceEditWidgetContent.CurVirtualCursorPos.HasValue)
 					{
 	                    for (int32 ofs = -1; ofs <= 0; ofs++)
 	                    {
@@ -6866,7 +6866,7 @@ namespace IDE.ui
             if ((gApp.mSettings.mEditorSettings.mHiliteCursorReferences) && (!gApp.mDeterministic) && (HasFocus(true)) &&
 				((mProjectSource != null) || (mEmbedKind != .None)) /*&& (IDEApp.sApp.mSymbolReferenceHelper == null)*/)
             {
-                if ((mEditWidget.mHasFocus) && (mIsBeefSource) && (sourceEditWidgetContent.mCursorStillTicks == 10) && (!sourceEditWidgetContent.mCursorImplicitlyMoved) && (!sourceEditWidgetContent.mVirtualCursorPos.HasValue))
+                if ((mEditWidget.mHasFocus) && (mIsBeefSource) && (sourceEditWidgetContent.mCursorStillTicks == 10) && (!sourceEditWidgetContent.CurCursorImplicitlyMoved) && (!sourceEditWidgetContent.CurVirtualCursorPos.HasValue))
                 {
 					var symbolReferenceHelper = IDEApp.sApp.mSymbolReferenceHelper;
                     if (symbolReferenceHelper == null)

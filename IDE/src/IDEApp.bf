@@ -5963,15 +5963,15 @@ namespace IDE
 		}
 
 		[IDECommand]
-		public void Cmd_SelectNextMatch()
+		public void Cmd_AddSelectionToNextFindMatch()
 		{
-			GetActiveSourceEditWidgetContent()?.SelectNextMatch();
+			GetActiveSourceEditWidgetContent()?.AddSelectionToNextFindMatch();
 		}
 
 		[IDECommand]
-		public void Cmd_SkipCurrentMatchAndSelectNext()
+		public void Cmd_MoveLastSelectionToNextFindMatch()
 		{
-			GetActiveSourceEditWidgetContent()?.SkipCurrentMatchAndSelectNext();
+			GetActiveSourceEditWidgetContent()?.MoveLastSelectionToNextFindMatch();
 		}
 
 		public void UpdateMenuItem_HasActivePanel(IMenu menu)
@@ -8799,7 +8799,7 @@ namespace IDE
 						c = c.ToLower;
 				}*/
 
-				var prevSel = ewc.mSelection.Value;
+				var prevSel = ewc.CurSelection.Value;
 
 				var str = scope String();
 				ewc.GetSelectionText(str);
@@ -8818,7 +8818,7 @@ namespace IDE
 				ewc.CreateMultiCursorUndoBatch("IDEApp.ChangeCase()");
 				ewc.InsertAtCursor(str);
 
-				ewc.mSelection = prevSel;
+				ewc.CurSelection = prevSel;
 			}
 			ewc.CloseMultiCursorUndoBatch();
 			ewc.SetPrimaryTextCursor();

@@ -2310,7 +2310,7 @@ namespace IDE
 			sel.mStartPos = (.)ewc.CursorTextPos;
 			ewc.CursorLineAndColumn = prevPos;
 			sel.mEndPos = (.)ewc.CursorTextPos;
-			ewc.mSelection = sel;
+			ewc.CurSelection = sel;
 		}
 
 		[IDECommand]
@@ -2321,7 +2321,7 @@ namespace IDE
 				return;
 
 			var ewc = textPanel.EditWidget.mEditWidgetContent;
-			ewc.mSelection = null;
+			ewc.CurSelection = null;
 		}
 
 		[IDECommand]
@@ -2429,7 +2429,7 @@ namespace IDE
 			{
 				var text = ewc.mData.mText;
 
-				ewc.mSelection = EditSelection(startPos, startPos + 1);
+				ewc.CurSelection = EditSelection(startPos, startPos + 1);
 				ewc.DeleteSelection();
 
 				checkIdx = (.)startPos;
@@ -2443,7 +2443,7 @@ namespace IDE
 							(text[checkIdx + 3].mChar == '*') &&
 							(text[checkIdx + 4].mChar == '/'))
 						{
-							ewc.mSelection = EditSelection(checkIdx, checkIdx + 3);
+							ewc.CurSelection = EditSelection(checkIdx, checkIdx + 3);
 							ewc.DeleteSelection();
 							break;
 						}

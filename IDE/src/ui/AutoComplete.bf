@@ -2834,10 +2834,10 @@ namespace IDE.ui
 					if (focusChange)
 						sourceEditWidgetContent.EnsureCursorVisible(true, true);
 
-					sourceEditWidgetContent.mSelection = null;
+					sourceEditWidgetContent.CurSelection = null;
 					if (fixitLen > 0)
 					{
-						sourceEditWidgetContent.mSelection = EditSelection(fixitIdx, fixitIdx + fixitLen);
+						sourceEditWidgetContent.CurSelection = EditSelection(fixitIdx, fixitIdx + fixitLen);
 						sourceEditWidgetContent.DeleteSelection();
 						fixitLen = 0;
 					}
@@ -3105,8 +3105,8 @@ namespace IDE.ui
 				if ((prevText.Length > 0) && (insertText == prevText))
 					continue;
 
-				sewc.mSelection = editSelection;
-				sewc.mCursorTextPos = (int32)editSelection.MaxPos;
+				sewc.CurSelection = editSelection;
+				sewc.CurCursorTextPos = (int32)editSelection.MaxPos;
 
 				if (insertText.EndsWith("<>"))
 				{

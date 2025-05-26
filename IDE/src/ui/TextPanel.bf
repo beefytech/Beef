@@ -45,7 +45,7 @@ namespace IDE.ui
             var editWidget = EditWidget;
             if (editWidget.Content.HasSelection())
             {
-                editWidget.Content.mSelection = null;
+                editWidget.Content.CurSelection = null;
                 return true;
             }
 

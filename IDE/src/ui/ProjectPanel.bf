@@ -2723,7 +2723,7 @@ namespace IDE.ui
 				int lastDot = str.LastIndexOf('.');
 				if (lastDot != -1)
 				{
-					mListView.mEditWidget.mEditWidgetContent.mSelection = .(0, lastDot);
+					mListView.mEditWidget.mEditWidgetContent.CurSelection = .(0, lastDot);
 					mListView.mEditWidget.mEditWidgetContent.CursorTextPos = lastDot;
 				}
 			}

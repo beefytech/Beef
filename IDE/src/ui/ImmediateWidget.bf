@@ -91,15 +91,15 @@ namespace IDE.ui
 
         void CheckSelection()
         {
-            if ((mSelection != null) && (!mSkipCheckSelection))
+            if ((CurSelection != null) && (!mSkipCheckSelection))
             {
-                if ((!IsInsideEntry(mSelection.Value.MinPos) && (IsInsideEntry(mSelection.Value.MaxPos))))
+                if ((!IsInsideEntry(CurSelection.Value.MinPos) && (IsInsideEntry(CurSelection.Value.MaxPos))))
                 {
                     var immediateWidget = (ImmediateWidget)mEditWidget;
-                    mSelection = EditSelection(immediateWidget.mEntryStartPos.mIndex + 1, mSelection.Value.MaxPos);
+                    CurSelection = EditSelection(immediateWidget.mEntryStartPos.mIndex + 1, CurSelection.Value.MaxPos);
                 }
 
-                if ((!IsInsideEntry(mSelection.Value.mStartPos)) || (!IsInsideEntry(mSelection.Value.mEndPos)))
+                if ((!IsInsideEntry(CurSelection.Value.mStartPos)) || (!IsInsideEntry(CurSelection.Value.mEndPos)))
                     return;
             }
         }
@@ -122,7 +122,7 @@ namespace IDE.ui
 
         public override void Backspace()
         {
-            if (!IsInsideEntry(mCursorTextPos - 1))
+            if (!IsInsideEntry(CurCursorTextPos - 1))
                 return;
             base.Backspace();
         }
@@ -134,9 +134,9 @@ namespace IDE.ui
                 immediateWidget.mHistoryIdx = -1;
 
             CheckSelection();
-            if (!IsInsideEntry(mCursorTextPos))
+            if (!IsInsideEntry(CurCursorTextPos))
             {
-				mSelection = null;
+				CurSelection = null;
 				MoveCursorToIdx(mData.mTextLength);
 			}
 
@@ -446,7 +446,7 @@ namespace IDE.ui
 			if (c == '\x7F') // Ctrl+Backspace
 			{
 				var editWidgetContent = (ImmediateWidgetContent)mEditWidgetContent;
-				if (!editWidgetContent.IsInsideEntry(editWidgetContent.mCursorTextPos - 1))
+				if (!editWidgetContent.IsInsideEntry(editWidgetContent.CurCursorTextPos - 1))
 					return;
 			}
 
@@ -497,7 +497,7 @@ namespace IDE.ui
 		
         void SelectEntry()
         {
-            mEditWidgetContent.mSelection = EditSelection(mEntryStartPos.mIndex + 1, mEditWidgetContent.mData.mTextLength);
+            mEditWidgetContent.CurSelection = EditSelection(mEntryStartPos.mIndex + 1, mEditWidgetContent.mData.mTextLength);
             mEditWidgetContent.CursorTextPos = mEntryStartPos.mIndex + 1;
         }
 
@@ -688,8 +688,8 @@ namespace IDE.ui
         {
             mEditWidgetContent.AppendText("> ");
 			mEditWidgetContent.mData.mUndoManager.Clear();
-            mEditWidgetContent.mSelection = null;
-            mEditWidgetContent.mCursorTextPos = mEditWidgetContent.mData.mTextLength;
+            mEditWidgetContent.CurSelection = null;
+            mEditWidgetContent.CurCursorTextPos = mEditWidgetContent.mData.mTextLength;
 			mEditWidgetContent.mIsReadOnly = false;
             mEntryStartPos.mWasDeleted = false;
             mEntryStartPos.mIndex = mEditWidgetContent.mData.mTextLength - 1;
@@ -702,8 +702,8 @@ namespace IDE.ui
 			var subItem1 = listViewItem.GetSubItem(1);
 			
 			var content = Content;
-			let prevSelection = content.mSelection;
-			defer { content.mSelection = prevSelection; }
+			let prevSelection = content.CurSelection;
+			defer { content.CurSelection = prevSelection; }
 			
 			int line;
 			int lineChar;
@@ -718,7 +718,7 @@ namespace IDE.ui
 			replaceStr.Append("   ");
 			replaceStr.Append(subItem1.Label);
 
-			content.mSelection = EditSelection(lineStart, lineEnd);
+			content.CurSelection = EditSelection(lineStart, lineEnd);
 			content.CursorTextPos = lineStart;
 			content.InsertAtCursor(replaceStr);
 

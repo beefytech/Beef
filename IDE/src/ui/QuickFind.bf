@@ -120,8 +120,8 @@ namespace IDE.ui
             var sourceContent = editWidget.Content as SourceEditWidgetContent;
             if (content.HasSelection())
             {
-                int selStart = content.mSelection.Value.MinPos;
-                int selEnd = content.mSelection.Value.MaxPos;
+                int selStart = content.CurSelection.Value.MinPos;
+                int selEnd = content.CurSelection.Value.MaxPos;
                 bool isMultiline = false;
                 for (int i = selStart; i < selEnd; i++)
                 {
@@ -154,7 +154,7 @@ namespace IDE.ui
                     mFindEditWidget.Content.SelectAll();
                 }
 
-				content.mSelection = null;
+				content.CurSelection = null;
             }
         }
 
@@ -170,7 +170,7 @@ namespace IDE.ui
                 mHasNewActiveCursorPos = true;
                 mLastActiveCursorPos = (int32)mEditWidget.Content.CursorTextPos;
                 if (mEditWidget.Content.HasSelection())
-                    mLastActiveCursorPos = (int32)mEditWidget.Content.mSelection.Value.MinPos;
+                    mLastActiveCursorPos = (int32)mEditWidget.Content.CurSelection.Value.MinPos;
             }
         }
 
@@ -428,7 +428,7 @@ namespace IDE.ui
             editWidgetContent.MoveCursorToIdx(mCurFindIdx + (int32)findText.Length, true, .QuickFind);
 
 
-			editWidgetContent.mSelection = EditSelection(mCurFindIdx, mCurFindIdx + (int32)findText.Length);
+			editWidgetContent.CurSelection = EditSelection(mCurFindIdx, mCurFindIdx + (int32)findText.Length);
 
 			/*for (int32 idx = mCurFindIdx; idx < mCurFindIdx + findText.Length; idx++)
 			{
@@ -744,10 +744,10 @@ namespace IDE.ui
 	                EditSelection selection = EditSelection();
 	                selection.mStartPos = selStart;
 	                selection.mEndPos = selEnd + 1;
-	                ewc.mSelection = selection;
+	                ewc.CurSelection = selection;
 				}
 				else
-					selStart = (.)ewc.mSelection.Value.MinPos;
+					selStart = (.)ewc.CurSelection.Value.MinPos;
 				EditWidgetContent.InsertFlags insertFlags = .NoMoveCursor | .NoRestoreSelectionOnUndo | .IsGroupPart;
 				if (searchCount == 0)
 					insertFlags |= .IsGroupStart;
@@ -851,7 +851,7 @@ namespace IDE.ui
             if (mSelectionStart != null)
 			{
 				if (mSelectionEnd != null)
-					sourceContent.mSelection = .(mSelectionStart.mIndex, mSelectionEnd.mIndex);
+					sourceContent.CurSelection = .(mSelectionStart.mIndex, mSelectionEnd.mIndex);
 				if (sourceContent != null)
                 	sourceContent.PersistentTextPositions.Remove(mSelectionStart);
 				DeleteAndNullify!(mSelectionStart);

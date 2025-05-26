@@ -554,9 +554,9 @@ namespace Beefy.theme.dark
             int selStartIdx = -1;
             int selEndIdx = -1;
 
-            if (mSelection != null)
+            if (CurSelection != null)
             {                
-                mSelection.Value.GetAsForwardSelect(out selStartIdx, out selEndIdx);
+                CurSelection.Value.GetAsForwardSelect(out selStartIdx, out selEndIdx);
                 GetLineCharAtIdx(selStartIdx, out selStartLine, out selStartCharIdx);
                 GetLineCharAtIdx(selEndIdx, out selEndLine, out selEndCharIdx);
             }
@@ -721,17 +721,17 @@ namespace Beefy.theme.dark
                     if ((mEditWidget.mHasFocus) && (!drewCursor))
                     {
                         float aX = -1;
-                        if (mVirtualCursorPos != null)
+                        if (CurVirtualCursorPos != null)
                         {
-                            if ((lineIdx == mVirtualCursorPos.Value.mLine) && (lineDrawEnd == lineEnd))
+                            if ((lineIdx == CurVirtualCursorPos.Value.mLine) && (lineDrawEnd == lineEnd))
                             {
-                                aX = mVirtualCursorPos.Value.mColumn * mCharWidth;
+                                aX = CurVirtualCursorPos.Value.mColumn * mCharWidth;
                             }
                         }
-                        else if (mCursorTextPos >= lineDrawStart)
+                        else if (CurCursorTextPos >= lineDrawStart)
                         {
-                            bool isInside = mCursorTextPos < lineDrawEnd;
-                            if ((mCursorTextPos == lineDrawEnd) && (lineDrawEnd == lineEnd))
+                            bool isInside = CurCursorTextPos < lineDrawEnd;
+                            if ((CurCursorTextPos == lineDrawEnd) && (lineDrawEnd == lineEnd))
                             {                                
                                 if (lineDrawEnd == mData.mTextLength)
                                     isInside = true;
@@ -746,8 +746,8 @@ namespace Beefy.theme.dark
 
                             if (isInside)
                             {
-								String subText = new:ScopedAlloc! String(mCursorTextPos - lineDrawStart);
-								subText.Append(sectionText, 0, mCursorTextPos - lineDrawStart);
+								String subText = new:ScopedAlloc! String(CurCursorTextPos - lineDrawStart);
+								subText.Append(sectionText, 0, CurCursorTextPos - lineDrawStart);
                                 aX = GetTabbedWidth(subText, curX);
                             }
                         }                        
@@ -793,7 +793,7 @@ namespace Beefy.theme.dark
 					if (!HasSelection())
 						return;
 
-					mSelection.Value.GetAsForwardSelect(var startPos, var endPos);
+					CurSelection.Value.GetAsForwardSelect(var startPos, var endPos);
 					GetLineColumnAtIdx(startPos, var startLine, var startColumn);
 					GetLineColumnAtIdx(endPos, var endLine, var endColumn);
 

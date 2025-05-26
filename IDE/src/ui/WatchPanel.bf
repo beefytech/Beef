@@ -1595,7 +1595,7 @@ namespace IDE.ui
             String textPosString = scope String();
             if (mEditWidget.Content.HasSelection())
             {
-                var selection = mEditWidget.Content.mSelection;
+                var selection = mEditWidget.Content.CurSelection;
                 textPosString.AppendF("Start {0}  Len {1}", selection.Value.MinPos, selection.Value.MaxPos - selection.Value.MinPos);
             }
             else

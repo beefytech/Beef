@@ -170,7 +170,6 @@ namespace Beefy.utils
 
 			mUndoIdx = (.)mUndoList.Count;
 
-			Debug.WriteLine("SUCCESS: Merged");
 			return true;
 		}
 

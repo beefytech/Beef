@@ -347,7 +347,7 @@ namespace IDE.ui
 						int lineCount = 1;
 
 						var data = activeEditWidget.mEditWidgetContent.mData;
-						var sel = activeEditWidget.mEditWidgetContent.mSelection.GetValueOrDefault();
+						var sel = activeEditWidget.mEditWidgetContent.CurSelection.GetValueOrDefault();
 						for (int i in sel.MinPos..<sel.MaxPos-1)
 						{
 							var c = data.mText[i].mChar;

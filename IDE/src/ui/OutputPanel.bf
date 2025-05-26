@@ -127,7 +127,7 @@ namespace IDE.ui
 
 		public override void FocusForKeyboard()
 		{
-			mOutputWidget.mEditWidgetContent.mSelection = null;
+			mOutputWidget.mEditWidgetContent.CurSelection = null;
 			mOutputWidget.mEditWidgetContent.CursorLineAndColumn = EditWidgetContent.LineAndColumn(mOutputWidget.mEditWidgetContent.GetLineCount() - 1, 0);
 			mOutputWidget.mEditWidgetContent.EnsureCursorVisible();
 		}

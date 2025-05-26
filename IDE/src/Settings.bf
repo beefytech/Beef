@@ -707,6 +707,7 @@ namespace IDE
 			public bool mFuzzyAutoComplete = false;
 			public bool mShowLocatorAnim = true;
 			public bool mHiliteCursorReferences = true;
+			public bool mDebugMultiCursor = false;
 			public bool mHiliteCurrentLine = false;
 			public bool mLockEditing;
 			public LockWhileDebuggingKind mLockEditingWhenDebugging = .WhenNotHotSwappable;// Only applicable for
@@ -858,6 +859,7 @@ namespace IDE
 
 			public void SetDefaults()
 			{
+				Add("Add Selection to Next Find Match", "Ctrl+D");
 				Add("Autocomplete", "Ctrl+Space");
 				Add("Bookmark Next", "F2");
 				Add("Bookmark Prev", "Shift+F2");
@@ -882,7 +884,6 @@ namespace IDE
 				Add("Comment Lines", "Ctrl+K, Ctrl+/");
 				Add("Comment Toggle", "Ctrl+K, Ctrl+T");
 				Add("Debug Comptime", "Alt+F7");
-				Add("Duplicate Line", "Ctrl+D");
 				Add("Find Class", "Alt+Shift+L");
 				Add("Find in Document", "Ctrl+F");
 				Add("Find in Files", "Ctrl+Shift+F");
@@ -896,6 +897,7 @@ namespace IDE
 				Add("Make Uppercase", "Ctrl+Shift+U");
 				Add("Match Brace Select", "Ctrl+Shift+RBracket");
 				Add("Match Brace", "Ctrl+RBracket");
+				//Add("Move Last Selection to Next Find Match, "Ctrl+K, Ctrl+D");
 				Add("Move Line Down", "Alt+Shift+Down");
 				Add("Move Line Up", "Alt+Shift+Up");
 				Add("Move Statement Down", "Ctrl+Shift+Down");
@@ -1253,6 +1255,7 @@ namespace IDE
 			{
 				sd.Add("WakaTimeKey", mWakaTimeKey);
 				sd.Add("EnableDevMode", mEnableDevMode);
+				sd.Add("DebugMultiCursor", mEditorSettings.mDebugMultiCursor);
 			}
 
 			using (sd.CreateObject("TutorialsFinished"))
@@ -1353,6 +1356,7 @@ namespace IDE
 			{
 				sd.Get("WakaTimeKey", mWakaTimeKey);
 				sd.Get("EnableDevMode", ref mEnableDevMode);
+				sd.Get("DebugMultiCursor", ref mEditorSettings.mDebugMultiCursor);
 			}
 
 			using (sd.Open("TutorialsFinished"))

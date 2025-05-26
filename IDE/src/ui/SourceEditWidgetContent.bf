@@ -42,19 +42,19 @@ namespace IDE.ui
                 editWidgetContent.mData.mUndoManager.Add(firstUndoAction);
             editWidgetContent.mData.mUndoManager.Add(new EditWidgetContent.SetCursorAction(editWidgetContent));
 
-			mVirtualCursorPos = editWidgetContent.mVirtualCursorPos;
+			mVirtualCursorPos = editWidgetContent.CurVirtualCursorPos;
             mTrackedCursorPosition = new PersistentTextPosition((int32)editWidgetContent.CursorTextPos);
             editWidgetContent.PersistentTextPositions.Add(mTrackedCursorPosition);
             
             if (editWidgetContent.HasSelection())
             {
-                mSelStartPostion = new PersistentTextPosition(editWidgetContent.mSelection.Value.mStartPos);
+                mSelStartPostion = new PersistentTextPosition(editWidgetContent.CurSelection.Value.mStartPos);
                 editWidgetContent.PersistentTextPositions.Add(mSelStartPostion);
 
-                mSelEndPostion = new PersistentTextPosition(editWidgetContent.mSelection.Value.mEndPos);
+                mSelEndPostion = new PersistentTextPosition(editWidgetContent.CurSelection.Value.mEndPos);
                 editWidgetContent.PersistentTextPositions.Add(mSelEndPostion);
             }
-            editWidgetContent.mSelection = null;
+            editWidgetContent.CurSelection = null;
         }
 
         public void Finish(UndoAction lastUndoAction = null)
@@ -70,7 +70,7 @@ namespace IDE.ui
 
             if (mSelStartPostion != null)
             {
-                editWidgetContent.mSelection = EditSelection(mSelStartPostion.mIndex, mSelEndPostion.mIndex);
+                editWidgetContent.CurSelection = EditSelection(mSelStartPostion.mIndex, mSelEndPostion.mIndex);
                 editWidgetContent.PersistentTextPositions.Remove(mSelEndPostion);
 				delete mSelEndPostion;
                 editWidgetContent.PersistentTextPositions.Remove(mSelStartPostion);
@@ -162,11 +162,11 @@ namespace IDE.ui
 					g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
 				}
 
-				if ((mEditWidgetContent.mSelection != null) && (mCollapseIndex < mEditWidgetContent.mOrderedCollapseEntries.Count))
+				if ((mEditWidgetContent.CurSelection != null) && (mCollapseIndex < mEditWidgetContent.mOrderedCollapseEntries.Count))
 				{
 					var collapseEntry = mEditWidgetContent.mOrderedCollapseEntries[mCollapseIndex];
 					int32 startIdx = mEditWidgetContent.mData.mLineStarts[collapseEntry.mStartLine];
-					if ((mEditWidgetContent.mSelection.Value.MinPos <= collapseEntry.mEndIdx) && (mEditWidgetContent.mSelection.Value.MaxPos >= startIdx))
+					if ((mEditWidgetContent.CurSelection.Value.MinPos <= collapseEntry.mEndIdx) && (mEditWidgetContent.CurSelection.Value.MaxPos >= startIdx))
 					{
 						using (g.PushColor(mEditWidgetContent.GetSelectionColor(0)))
 							g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
@@ -563,11 +563,11 @@ namespace IDE.ui
 					g.FillRect(rect.mX + 1, rect.mY + 1, rect.mWidth - 2, rect.mHeight - 2);
 				}
 
-				if ((mEditWidgetContent.mSelection != null) && (mCollapseIndex < mEditWidgetContent.mOrderedCollapseEntries.Count))
+				if ((mEditWidgetContent.CurSelection != null) && (mCollapseIndex < mEditWidgetContent.mOrderedCollapseEntries.Count))
 				{
 					var collapseEntry = mEditWidgetContent.mOrderedCollapseEntries[mCollapseIndex];
 					int32 startIdx = mEditWidgetContent.mData.mLineStarts[collapseEntry.mStartLine];
-					if ((mEditWidgetContent.mSelection.Value.MinPos <= collapseEntry.mEndIdx) && (mEditWidgetContent.mSelection.Value.MaxPos >= startIdx))
+					if ((mEditWidgetContent.CurSelection.Value.MinPos <= collapseEntry.mEndIdx) && (mEditWidgetContent.CurSelection.Value.MaxPos >= startIdx))
 					{
 						using (g.PushColor(mEditWidgetContent.GetSelectionColor(0)))
 							g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
@@ -934,7 +934,7 @@ namespace IDE.ui
 		    UndoBatchStart undoBatchStart = new UndoBatchStart("applyDiff");
 		    editWidgetContent.mData.mUndoManager.Add(undoBatchStart);
 
-		    editWidgetContent.mSelection = null;
+		    editWidgetContent.CurSelection = null;
 
 		    int32 curSrcLineIdx = -1;
 		    List<TextLineSegment> deletedLineSegments = scope List<TextLineSegment>();
@@ -982,7 +982,7 @@ namespace IDE.ui
 		            }
 
 		            editWidgetContent.mHadPersistentTextPositionDeletes = false;
-		            editWidgetContent.mSelection = EditSelection(pos, pos + len);
+		            editWidgetContent.CurSelection = EditSelection(pos, pos + len);
 		            editWidgetContent.DeleteSelection(false);
 
 		            // If we have modified a section of text containing breakpoint (for example), this gets encoded by
@@ -1913,7 +1913,7 @@ namespace IDE.ui
 				{
 					int startPos;
 					int endPos;
-					mSelection.Value.GetAsForwardSelect(out startPos, out endPos);
+					CurSelection.Value.GetAsForwardSelect(out startPos, out endPos);
 					int line;
 					int lineChar;
 					GetLineCharAtIdx(startPos, out line, out lineChar);
@@ -2154,7 +2154,7 @@ namespace IDE.ui
 			if ((HasSelection()) && (gApp.mSymbolReferenceHelper != null) && (gApp.mSymbolReferenceHelper.mKind == .Rename))
 			{
 				bool hasSymbolSelection = true;
-				mSelection.Value.GetAsForwardSelect(var startPos, var endPos);
+				CurSelection.Value.GetAsForwardSelect(var startPos, var endPos);
 				var text = mEditWidget.mEditWidgetContent.mData.mText;
 				for (int i = startPos; i < endPos; i++)
 				{
@@ -2311,7 +2311,7 @@ namespace IDE.ui
                 int maxLineIdx = 0;
                 int maxLineCharIdx = 0;
 
-				var selection = mSelection.Value;
+				var selection = CurSelection.Value;
 
                 GetLineCharAtIdx(selection.MinPos, out minLineIdx, out minLineCharIdx);
                 GetLineCharAtIdx(selection.MaxPos, out maxLineIdx, out maxLineCharIdx);
@@ -2349,7 +2349,7 @@ namespace IDE.ui
 							undoBatchStart = new UndoBatchStart("embeddedOpenCodeBlock");
 							mData.mUndoManager.Add(undoBatchStart);
 
-							mSelection = null;
+							CurSelection = null;
 							CursorTextPos = i;
 							InsertAtCursor("\n");
 							embeddedEndIdx = i;
@@ -2422,7 +2422,7 @@ namespace IDE.ui
                 EditSelection newSel = selection;
 
                 selection.MakeForwardSelect();        
-				mSelection = selection;
+				CurSelection = selection;
 
                 int startAdjust = 0;
                 int endAdjust = 0;
@@ -2562,7 +2562,7 @@ namespace IDE.ui
 				if (undoBatchStart != null)
 					mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 
-                mSelection = newSel;
+                CurSelection = newSel;
                 return true;
             }
 
@@ -2761,8 +2761,8 @@ namespace IDE.ui
 			if (!HasSelection())
 				return false;
 
-			int minIdx = mSelection.Value.MinPos;
-			int maxIdx = mSelection.Value.MaxPos;
+			int minIdx = CurSelection.Value.MinPos;
+			int maxIdx = CurSelection.Value.MaxPos;
 
 			while (true)
 			{
@@ -2798,7 +2798,7 @@ namespace IDE.ui
 
 			UndoBatchStart undoBatchStart = new UndoBatchStart("closeCodeBlock");
 			mData.mUndoManager.Add(undoBatchStart);
-			mSelection = EditSelection(maxIdx - 1, maxIdx);
+			CurSelection = EditSelection(maxIdx - 1, maxIdx);
 			GetLineCharAtIdx(maxIdx - 1, var endLine, var endLineChar);
 			String endStr = scope .();
 			ExtractLine(endLine, endStr);
@@ -2812,7 +2812,7 @@ namespace IDE.ui
 			else
 				DeleteSelection();
 
-			mSelection = EditSelection(minIdx, minIdx + 1);
+			CurSelection = EditSelection(minIdx, minIdx + 1);
 			GetLineCharAtIdx(minIdx, var startLine, var startLineChar);
 			String startStr = scope .();
 			ExtractLine(startLine, startStr);
@@ -2838,7 +2838,7 @@ namespace IDE.ui
 			}
 			CursorTextPos = startLineStart;
 
-			mSelection = EditSelection(startLineStart, endLineEnd);
+			CurSelection = EditSelection(startLineStart, endLineEnd);
 			
 			if (undoBatchStart != null)
 				mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
@@ -2857,7 +2857,7 @@ namespace IDE.ui
 
 				var startLineAndCol = CursorLineAndColumn;
 				int startTextPos = CursorTextPos;
-				var prevSelection = mSelection;
+				var prevSelection = CurSelection;
 				bool hadSelection = HasSelection();
 
 				if (!HasSelection())
@@ -2865,7 +2865,7 @@ namespace IDE.ui
 					CursorToLineEnd();
 					int cursorEndPos = CursorTextPos;
 					CursorToLineStart(false);
-					mSelection = EditSelection(CursorTextPos, cursorEndPos);
+					CurSelection = EditSelection(CursorTextPos, cursorEndPos);
 				}
 
 				if (HasSelection())
@@ -2876,9 +2876,9 @@ namespace IDE.ui
 					setCursorAction.mCursorTextPos = (int32)startTextPos;
 					mData.mUndoManager.Add(setCursorAction);
 
-					int minPos = mSelection.GetValueOrDefault().MinPos;
-					int maxPos = mSelection.GetValueOrDefault().MaxPos;
-					mSelection = null;
+					int minPos = CurSelection.GetValueOrDefault().MinPos;
+					int maxPos = CurSelection.GetValueOrDefault().MaxPos;
+					CurSelection = null;
 
 					var str = scope String();
 					ExtractString(minPos, maxPos - minPos, str);
@@ -2899,7 +2899,7 @@ namespace IDE.ui
 					CursorTextPos = lastCharPos + 2;
 					InsertAtCursor("*/");
 
-					mSelection = EditSelection(firstCharPos, lastCharPos + 4);
+					CurSelection = EditSelection(firstCharPos, lastCharPos + 4);
 
 					if (startTextPos <= minPos)
 						CursorLineAndColumn = startLineAndCol;
@@ -2907,7 +2907,7 @@ namespace IDE.ui
 						CursorTextPos = startTextPos + 2;
 
 					if (!hadSelection)
-						mSelection = null;
+						CurSelection = null;
 				}
 			}
 
@@ -2935,7 +2935,7 @@ namespace IDE.ui
 				SetTextCursor(cursor);
 
 				var startTextPos = CursorTextPos;
-				var prevSelection = mSelection;
+				var prevSelection = CurSelection;
 				var hadSelection = HasSelection();
 				var startLineAndCol = CursorLineAndColumn;
 				if (!HasSelection())
@@ -2943,7 +2943,7 @@ namespace IDE.ui
 					CursorToLineEnd();
 					int cursorEndPos = CursorTextPos;
 					CursorToLineStart(false);
-					mSelection = .(CursorTextPos, cursorEndPos);
+					CurSelection = .(CursorTextPos, cursorEndPos);
 				}
 
 				var setCursorAction = new SetCursorAction(this);
@@ -2951,9 +2951,9 @@ namespace IDE.ui
 				setCursorAction.mCursorTextPos = (int32)startTextPos;
 				mData.mUndoManager.Add(setCursorAction);
 
-				int minPos = mSelection.Value.MinPos;
-				int maxPos = mSelection.Value.MaxPos;
-				mSelection = null;
+				int minPos = CurSelection.Value.MinPos;
+				int maxPos = CurSelection.Value.MaxPos;
+				CurSelection = null;
 
 				while (minPos > 0)
 				{
@@ -3070,7 +3070,7 @@ namespace IDE.ui
 							appendedCount += str.Length;
 					}
 				}
-				mSelection = EditSelection(minPos, maxPos);
+				CurSelection = EditSelection(minPos, maxPos);
 
 				if (appendedCount > 0)
 					CursorTextPos = startTextPos + appendedCount;
@@ -3078,7 +3078,7 @@ namespace IDE.ui
 					CursorLineAndColumn = startLineAndCol;
 
 				if (!hadSelection)
-					mSelection = null;
+					CurSelection = null;
 			}
 
 			CloseMultiCursorUndoBatch();
@@ -3091,11 +3091,11 @@ namespace IDE.ui
 		{
 			if (!HasSelection())
 				return;
-			if (CursorTextPos >= mSelection.Value.MaxPos)
-				CursorTextPos = mSelection.Value.MaxPos;
-			if (mSelection.Value.MaxPos - mSelection.Value.MinPos <= 1)
+			if (CursorTextPos >= CurSelection.Value.MaxPos)
+				CursorTextPos = CurSelection.Value.MaxPos;
+			if (CurSelection.Value.MaxPos - CurSelection.Value.MinPos <= 1)
 			{
-				mSelection = null;
+				CurSelection = null;
 				return;
 			}
 		}	
@@ -3116,7 +3116,7 @@ namespace IDE.ui
 
 				int startTextPos = CursorTextPos;
 				bool doLineComment = false;
-				var prevSelection = mSelection;
+				var prevSelection = CurSelection;
 				var cursorAtEndPos = true;
 
 				LineAndColumn? startLineAndCol = CursorLineAndColumn;
@@ -3125,12 +3125,12 @@ namespace IDE.ui
 					CursorToLineEnd();
 					int cursorEndPos = CursorTextPos;
 					CursorToLineStart(false);
-					mSelection = EditSelection(CursorTextPos, cursorEndPos);
+					CurSelection = EditSelection(CursorTextPos, cursorEndPos);
 					doLineComment = true;
 				}
 				else
 				{
-					cursorAtEndPos = (mSelection.Value.mStartPos == mCursorTextPos);
+					cursorAtEndPos = (CurSelection.Value.mStartPos == CurCursorTextPos);
 				}
 
 				if (HasSelection())
@@ -3142,9 +3142,9 @@ namespace IDE.ui
 					setCursorAction.mCursorTextPos = (int32)startTextPos;
 					mData.mUndoManager.Add(setCursorAction);
 
-					var minPos = mSelection.GetValueOrDefault().MinPos;
-					var maxPos = mSelection.GetValueOrDefault().MaxPos;
-					mSelection = null;
+					var minPos = CurSelection.GetValueOrDefault().MinPos;
+					var maxPos = CurSelection.GetValueOrDefault().MaxPos;
+					CurSelection = null;
 
 					var str = scope String();
 					ExtractString(minPos, (maxPos - minPos), str);
@@ -3165,7 +3165,7 @@ namespace IDE.ui
 						CursorLineAndColumn = startLineAndCol.Value;
 
 						if (doComment == null)
-							mSelection = null;
+							CurSelection = null;
 
 						//return false; // not sure if this should be false in blank/only whitespace selection case
 						continue;
@@ -3180,7 +3180,7 @@ namespace IDE.ui
 							{
 								if (SafeGetChar(i - 0) == '/' && SafeGetChar(i + 1) == '/')
 								{
-									mSelection = EditSelection(i - 0, i + 2);
+									CurSelection = EditSelection(i - 0, i + 2);
 									DeleteSelection();
 									lastCharPos -= 2;
 									while (i < maxPos && SafeGetChar(i) != '\n')
@@ -3194,20 +3194,20 @@ namespace IDE.ui
 						startLineAndCol = null;
 						CursorToLineEnd();
 						int cursorEndPos = CursorTextPos;
-						mSelection = .(minPos, cursorEndPos);
+						CurSelection = .(minPos, cursorEndPos);
 					}
 					else if ((doComment != true) && trimmedStr.StartsWith("/*"))
 					{
 						didComment = true;
 						if (trimmedStr.EndsWith("*/\n"))
 						{
-							mSelection = EditSelection(firstCharPos, firstCharPos + 2);
+							CurSelection = EditSelection(firstCharPos, firstCharPos + 2);
 							DeleteChar();
-							mSelection = EditSelection(lastCharPos - 4, lastCharPos - 2);
+							CurSelection = EditSelection(lastCharPos - 4, lastCharPos - 2);
 							DeleteChar();
 
 							if (prevSelection != null)
-								mSelection = EditSelection(firstCharPos, lastCharPos - 4);
+								CurSelection = EditSelection(firstCharPos, lastCharPos - 4);
 						}
 					}
 					else if (doComment != false)
@@ -3227,7 +3227,7 @@ namespace IDE.ui
 							InsertAtCursor("*/");
 						}
 
-						mSelection = EditSelection(firstCharPos, lastCharPos + 4);
+						CurSelection = EditSelection(firstCharPos, lastCharPos + 4);
 						if (startTextPos <= minPos)
 							CursorLineAndColumn = startLineAndCol.Value;
 						else
@@ -3236,25 +3236,25 @@ namespace IDE.ui
 					}
 					else
 					{
-						mSelection = prevSelection;
+						CurSelection = prevSelection;
 					}
 
 					if (startLineAndCol != null)
 						CursorLineAndColumn = startLineAndCol.Value;
 
 					if (prevSelection == null)
-						mSelection = null;
+						CurSelection = null;
 
 					ClampCursor();
 					FixSelection();
 
-					if (mSelection.HasValue)
+					if (CurSelection.HasValue)
 					{
 						// Placing cursor where it was before, meaning
 						// at the start or at the end of the selection.
-						mCursorTextPos = (cursorAtEndPos)
-							? (int32)mSelection.Value.mStartPos
-							: (int32)mSelection.Value.mEndPos
+						CurCursorTextPos = (cursorAtEndPos)
+							? (int32)CurSelection.Value.mStartPos
+							: (int32)CurSelection.Value.mEndPos
 							;
 					}
 				}
@@ -3273,7 +3273,7 @@ namespace IDE.ui
 			int endPos;
 			if (HasSelection())
 			{
-				mSelection.ValueRef.GetAsForwardSelect(out startPos, out endPos);
+				CurSelection.ValueRef.GetAsForwardSelect(out startPos, out endPos);
 			}
 			else
 			{
@@ -3294,9 +3294,9 @@ namespace IDE.ui
 				return;
 			}
 
-			mSelection = EditSelection();
-			mSelection.ValueRef.mStartPos = (int32)startPos;
-			mSelection.ValueRef.mEndPos = (int32)endPos;
+			CurSelection = EditSelection();
+			CurSelection.ValueRef.mStartPos = (int32)startPos;
+			CurSelection.ValueRef.mEndPos = (int32)endPos;
 			DeleteSelection();
 
 			CursorTextPos = startPos;
@@ -3323,12 +3323,12 @@ namespace IDE.ui
 
 				var line = CursorLineAndColumn.mLine;
 				var column = CursorLineAndColumn.mColumn;
-				var prevCursorPos = mCursorTextPos;
+				var prevCursorPos = CurCursorTextPos;
 
 				lineText.Clear();
 				GetLineText(line, lineText);
 
-				mSelection = null;
+				CurSelection = null;
 				CursorLineAndColumn = LineAndColumn(line+1, 0);
 
 				InsertAtCursor("\n");
@@ -3601,8 +3601,8 @@ namespace IDE.ui
 
 			var prevCursorLineAndColumn = CursorLineAndColumn;
 			var str = scope String();
-			int startSelPos = mSelection.Value.MinPos;
-			ExtractString(mSelection.Value.MinPos, mSelection.Value.Length, str);
+			int startSelPos = CurSelection.Value.MinPos;
+			ExtractString(CurSelection.Value.MinPos, CurSelection.Value.Length, str);
 			DeleteSelection();
 
 			if (str.EndsWith('\n'))
@@ -3762,7 +3762,7 @@ namespace IDE.ui
 			}
 			GetLinePosition(endLineNum, ?, var lineEnd);
 
-			mSelection = .(lineStart, Math.Min(lineEnd + 1, mData.mTextLength));
+			CurSelection = .(lineStart, Math.Min(lineEnd + 1, mData.mTextLength));
 
 			if (dir == .Down)
 				MoveSelection(endLineNum + (int)dir, false);
@@ -3801,7 +3801,7 @@ namespace IDE.ui
 
 			mData.mUndoManager.Add(new SetCursorAction(this));
 
-			mSelection = .(lineStart, selEnd);
+			CurSelection = .(lineStart, selEnd);
 
 			int toLine = Math.Clamp(lineNum + (int)dir, 0, GetLineCount());
 			if (dir == .Down)
@@ -3907,14 +3907,14 @@ namespace IDE.ui
                 {
                     if (HasSelection())
                     {
-                        mSelection = null;
+                        CurSelection = null;
                         return;
                     }
                 }
                 else if (keyChar == '\b')
                 {
                     if (HasSelection())                    
-                        mSelection = null;                    
+                        CurSelection = null;                    
                 }
             }
 
@@ -3957,10 +3957,10 @@ namespace IDE.ui
 			if ((IsPrimaryTextCursor()) && (isEndingChar))
             {
 				bool forceAsyncFinish = false;
-				if (mCursorTextPos > 0)
+				if (CurCursorTextPos > 0)
 				{
-					char8 c = mData.mText[mCursorTextPos - 1].mChar;
-					var displayType = (SourceElementType)mData.mText[mCursorTextPos - 1].mDisplayTypeId;
+					char8 c = mData.mText[CurCursorTextPos - 1].mChar;
+					var displayType = (SourceElementType)mData.mText[CurCursorTextPos - 1].mDisplayTypeId;
 					if ((displayType != .Comment) && (displayType != .Literal))
 					{
 						if ((c.IsLetterOrDigit) || (c == '_'))
@@ -4004,7 +4004,7 @@ namespace IDE.ui
 
             if ((IsPrimaryTextCursor()) && (mAutoComplete != null) && (mAutoComplete.mAutoCompleteListWidget != null))
             {
-				if ((mAutoComplete.mInsertEndIdx != -1) && (mAutoComplete.mInsertEndIdx != mCursorTextPos) && (keyChar != '\t') && (keyChar != '\r') && (keyChar != '\n'))
+				if ((mAutoComplete.mInsertEndIdx != -1) && (mAutoComplete.mInsertEndIdx != CurCursorTextPos) && (keyChar != '\t') && (keyChar != '\r') && (keyChar != '\n'))
 					doAutocomplete = false;
 				
                 /*if ((mAutoComplete.IsInsertEmpty()) && (!mAutoComplete.mIsFixit) && (keyChar != '.') && (keyChar != '\t') && (keyChar != '\r'))
@@ -4134,13 +4134,13 @@ namespace IDE.ui
 					if (!HasSelection())
 					{
 						// Select whitespace at the end of the line so we trim it as we InsertAtCursor
-						mSelection = EditSelection(CursorTextPos, CursorTextPos);
+						CurSelection = EditSelection(CursorTextPos, CursorTextPos);
 						for (int checkIdx = beforeCursorLineText.Length - 1; checkIdx >= 0; checkIdx--)
 						{
 							char8 c = beforeCursorLineText[checkIdx];
 							if (!c.IsWhiteSpace)
 								break;
-							mSelection.ValueRef.mStartPos--;
+							CurSelection.ValueRef.mStartPos--;
 						}
 						insertFlags |= .NoRestoreSelectionOnUndo;
 					}
@@ -4310,7 +4310,7 @@ namespace IDE.ui
 	                            ((keyChar == '"') || (keyChar == '\'') || (keyChar == ')') || (keyChar == ']') || (keyChar == '>') || (keyChar == '}')) &&
 								(IsCurrentPairClosing(cursorTextPos, true)))
 	                        {
-	                            mJustInsertedCharPair = false;
+	                            CurJustInsertedCharPair = false;
 	                            CursorTextPos++;
 	                            return;
 	                        }
@@ -4371,9 +4371,9 @@ namespace IDE.ui
 						UndoBatchStart undoBatchStart = new UndoBatchStart("blockSurround");
 						mData.mUndoManager.Add(undoBatchStart);                
 
-						int minPos = mSelection.GetValueOrDefault().MinPos;
-						int maxPos = mSelection.GetValueOrDefault().MaxPos;
-						mSelection = null;
+						int minPos = CurSelection.GetValueOrDefault().MinPos;
+						int maxPos = CurSelection.GetValueOrDefault().MaxPos;
+						CurSelection = null;
 						CursorTextPos = minPos;
 						String insertStr = scope String();
 						insertStr.Append(keyChar);
@@ -4557,19 +4557,19 @@ namespace IDE.ui
 	                        int32 columnPos = (int32)(GetTabbedWidth(tabStartStr, 0) / mCharWidth + 0.001f);
 	                        if (columnPos >= wantLineColumn + gApp.mSettings.mEditorSettings.mTabSize)
 	                        {
-	                            mSelection = EditSelection();
-	                            mSelection.ValueRef.mEndPos = (int32)(cursorTextIdx - trimmedLineText.Length);
+	                            CurSelection = EditSelection();
+	                            CurSelection.ValueRef.mEndPos = (int32)(cursorTextIdx - trimmedLineText.Length);
 	                            if (lineText.EndsWith(scope String("    ", trimmedLineText), StringComparison.Ordinal))
-	                                mSelection.ValueRef.mStartPos = mSelection.Value.mEndPos - 4;
+	                                CurSelection.ValueRef.mStartPos = CurSelection.Value.mEndPos - 4;
 	                            else if (lineText.EndsWith(scope String("\t", trimmedLineText), StringComparison.Ordinal))
-	                                mSelection.ValueRef.mStartPos = mSelection.Value.mEndPos - 1;
-	                            if (mSelection.Value.mStartPos > 0)
+	                                CurSelection.ValueRef.mStartPos = CurSelection.Value.mEndPos - 1;
+	                            if (CurSelection.Value.mStartPos > 0)
 	                            {
 									CreateMultiCursorUndoBatch("SEWC.KeyChar(case)");
 	                                DeleteSelection();
 	                                CursorToLineEnd();
 	                            }
-	                            mSelection = null;
+	                            CurSelection = null;
 	                        }
 						}
                     }
@@ -4593,9 +4593,9 @@ namespace IDE.ui
 							insertStr.Append("else");
 
                             var cursorPos = CursorTextPos;
-                            mSelection = EditSelection();
-                            mSelection.ValueRef.mStartPos = (int32)cursorPos - 4;
-                            mSelection.ValueRef.mEndPos = (int32)cursorPos;
+                            CurSelection = EditSelection();
+                            CurSelection.ValueRef.mStartPos = (int32)cursorPos - 4;
+                            CurSelection.ValueRef.mEndPos = (int32)cursorPos;
                             InsertAtCursor(insertStr, .NoRestoreSelectionOnUndo);
 
                             //var indentTextAction = new EditWidgetContent.IndentTextAction(this);
@@ -4610,7 +4610,7 @@ namespace IDE.ui
                 }
             }
 
-			mCursorImplicitlyMoved = true;
+			CurCursorImplicitlyMoved = true;
         }
 
 		public void ShowAutoComplete(bool isUserRequested)
@@ -4685,9 +4685,9 @@ namespace IDE.ui
                 return;
             }
 
-            if ((keyCode == KeyCode.Escape) && (mSelection != null) && (mSelection.Value.HasSelection))
+            if ((keyCode == KeyCode.Escape) && (CurSelection != null) && (CurSelection.Value.HasSelection))
             {
-                mSelection = null;
+                CurSelection = null;
             }
 
             if (((keyCode == KeyCode.Up) || (keyCode == KeyCode.Down) || (keyCode == KeyCode.PageUp) || (keyCode == KeyCode.PageDown)))
@@ -4767,13 +4767,13 @@ namespace IDE.ui
 				{
 					if (mWidgetWindow.IsKeyDown(.Shift))
 					{
-						if (mSelection == null)
-							mSelection = .(CursorTextPos, wantCursorPos);
+						if (CurSelection == null)
+							CurSelection = .(CursorTextPos, wantCursorPos);
 						else
-							mSelection.ValueRef.mEndPos = (.)wantCursorPos;
+							CurSelection.ValueRef.mEndPos = (.)wantCursorPos;
 					}
 					else
-						mSelection = null;
+						CurSelection = null;
 
 					CursorTextPos = wantCursorPos;
 					return;
@@ -4820,8 +4820,8 @@ namespace IDE.ui
 
         void ReplaceWord(int leftIdx, int rightIdx, String origWord, String newWord)
         {
-            mSelection.ValueRef.mStartPos = (int32)leftIdx;
-            mSelection.ValueRef.mEndPos = (int32)rightIdx;
+            CurSelection.ValueRef.mStartPos = (int32)leftIdx;
+            CurSelection.ValueRef.mEndPos = (int32)rightIdx;
             InsertAtCursor(newWord, .NoRestoreSelectionOnUndo);
         }
 
@@ -5013,9 +5013,9 @@ namespace IDE.ui
 	                                BfPassInstance passInstance = null;
 	                                BfParser parser = null;
 
-	                                if ((mSelection != null) &&
-	                                    (textIdx >= mSelection.Value.MinPos) &&
-	                                    (textIdx < mSelection.Value.MaxPos))
+	                                if ((CurSelection != null) &&
+	                                    (textIdx >= CurSelection.Value.MinPos) &&
+	                                    (textIdx < CurSelection.Value.MaxPos))
 	                                {
 	                                    GetSelectionText(debugExpr);
 	                                }
@@ -5624,7 +5624,7 @@ namespace IDE.ui
 		{
 			base.ClampCursor();
 
-			if (mVirtualCursorPos == null)
+			if (CurVirtualCursorPos == null)
 				return;
 			if (gApp.mSettings.mEditorSettings.mFreeCursorMovement)
 				return;
@@ -5640,7 +5640,7 @@ namespace IDE.ui
 			GetLineText(line, curLineStr);
 			int32 lineEnd = (int32)curLineStr.NumCodePoints;
 
-			mVirtualCursorPos.ValueRef.mColumn = (.)Math.Min(mVirtualCursorPos.Value.mColumn, Math.Max(virtualEnd, lineEnd));
+			CurVirtualCursorPos.ValueRef.mColumn = (.)Math.Min(CurVirtualCursorPos.Value.mColumn, Math.Max(virtualEnd, lineEnd));
 		}
 
 		bool CheckCollapseOpen(int checkLine, CursorMoveKind cursorMoveKind = .Unknown)
@@ -5682,14 +5682,14 @@ namespace IDE.ui
 		{
 			bool hadSelection = HasSelection();
 
-			if ((dir > 0) && (HasSelection()) && (mSelection.Value.Length > 1) && (!mWidgetWindow.IsKeyDown(.Shift)))
+			if ((dir > 0) && (HasSelection()) && (CurSelection.Value.Length > 1) && (!mWidgetWindow.IsKeyDown(.Shift)))
 			{
-				GetLineCharAtIdx(mSelection.Value.MaxPos - 1, var maxLine, ?);
+				GetLineCharAtIdx(CurSelection.Value.MaxPos - 1, var maxLine, ?);
 				if (IsLineCollapsed(maxLine))
 				{
 					if (hadSelection)
 					{
-						mSelection = null;
+						CurSelection = null;
 						CursorToLineEnd();
 						return true;
 					}
@@ -5705,7 +5705,7 @@ namespace IDE.ui
 					CursorLineAndColumn = .(anchorLine, 0);
 					base.CursorToLineEnd();
 					if ((mWidgetWindow.IsKeyDown(.Shift)) && (HasSelection()))
-						mSelection.ValueRef.mEndPos = (.)CursorTextPos;
+						CurSelection.ValueRef.mEndPos = (.)CursorTextPos;
 					return true;
 				}
 			}
@@ -5733,13 +5733,13 @@ namespace IDE.ui
 				mSourceViewPanel?.mQuickFind?.SetFindIdx(CursorTextPos, !moveKind.IsFromTyping);
 			}
 
-			if (mVirtualCursorPos != null)
+			if (CurVirtualCursorPos != null)
 			{
-				CheckCollapseOpen(mVirtualCursorPos.Value.mLine, moveKind);
+				CheckCollapseOpen(CurVirtualCursorPos.Value.mLine, moveKind);
 			}
 			else
 			{
-				GetLineCharAtIdx(mCursorTextPos, var checkLine, ?);
+				GetLineCharAtIdx(CurCursorTextPos, var checkLine, ?);
 				CheckCollapseOpen(checkLine, moveKind);
 			}
 
@@ -6735,12 +6735,12 @@ namespace IDE.ui
 			}
 
 			int32 startIdx = mData.mLineStarts[entry.mStartLine];
-			if ((!wantOpen) && (mSelection != null) && (mSelection.Value.MinPos >= startIdx) && (mSelection.Value.MinPos <= entry.mEndIdx))
+			if ((!wantOpen) && (CurSelection != null) && (CurSelection.Value.MinPos >= startIdx) && (CurSelection.Value.MinPos <= entry.mEndIdx))
 			{
-				if (mSelection.Value.MaxPos > entry.mEndIdx + 1)
-					mSelection = .(entry.mEndIdx + 1, mSelection.Value.MaxPos);
+				if (CurSelection.Value.MaxPos > entry.mEndIdx + 1)
+					CurSelection = .(entry.mEndIdx + 1, CurSelection.Value.MaxPos);
 				else
-					mSelection = null;
+					CurSelection = null;
 			}
 
 			if ((!wantOpen) && (cursorLineAndColumn.mLine >= entry.mStartLine) && (cursorLineAndColumn.mLine <= entry.mEndLine))
