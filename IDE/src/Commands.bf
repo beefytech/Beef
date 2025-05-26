@@ -33,9 +33,9 @@ namespace IDE
 			mKeyCode.ToString(strBuffer);
 		}
 
-		public static void ToString(List<KeyState> keyStates, String strBuffer)
+		public static void ToString(Span<KeyState> keyStates, String strBuffer)
 		{
-			for (int i < keyStates.Count)
+			for (int i < keyStates.Length)
 			{
 				if (i > 0)
 					strBuffer.Append(", ");
@@ -105,10 +105,28 @@ namespace IDE
 	{
 		public enum ContextFlags
 		{
-			None = 0,
-			MainWindow = 1,
-			WorkWindow = 2,
-			Editor = 4,
+			case None = 0,
+				MainWindow = 1,
+				WorkWindow = 2,
+				Editor = 4;
+
+			public void ContextToString(String str)
+			{
+				bool isFirst = true;
+
+				void AddFlagStr(StringView flagStr)
+				{
+					if (isFirst)
+					{
+						str.Append(", ");
+						isFirst = false;
+					}
+					str.Append(flagStr);
+				}
+
+				if (this.HasFlag(.Editor))
+					AddFlagStr("Editor");
+			}
 		}
 
 		public String mName ~ delete _;

@@ -186,24 +186,6 @@ namespace IDE.ui
 			category.Open(true, true);
 		}
 
-		void CommandContextToString(IDECommand.ContextFlags contextFlags, String str)
-		{
-			bool isFirst = true;
-
-			void AddFlagStr(StringView flagStr)
-			{
-				if (isFirst)
-				{
-					str.Append(", ");
-					isFirst = false;
-				}
-				str.Append(flagStr);
-			}
-
-			if (contextFlags.HasFlag(.Editor))
-				AddFlagStr("Editor");
-		}
-
 		void UpdateKeyStates()
 		{
 			Debug.Assert((CategoryType)mPropPage.mCategoryType == .Keys);
@@ -223,7 +205,7 @@ namespace IDE.ui
 				let keyEntryStr = new String();
 				KeyState.ToString(keys, keyEntryStr);
 				keyEntryStr.Append(" ");
-				CommandContextToString(keyEntry.mContextFlags, keyEntryStr);
+				keyEntry.mContextFlags.ContextToString(keyEntryStr);
 
 				String* keyPtr;
 				KeyEntry* valuePtr;
@@ -253,7 +235,7 @@ namespace IDE.ui
 					let keyEntryStr = scope String();
 					KeyState.ToString(keys, keyEntryStr);
 					keyEntryStr.Append(" ");
-					CommandContextToString(keyEntry.mContextFlags, keyEntryStr);
+					keyEntry.mContextFlags.ContextToString(keyEntryStr);
 
 					if (mappedEntries.TryGet(keyEntryStr, var keyPtr, var valuePtr))
 					{

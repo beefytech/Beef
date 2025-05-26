@@ -1095,6 +1095,35 @@ namespace IDE
 				List<String> allocatedStrs = scope .();
 				defer { ClearAndDeleteItems(allocatedStrs); }
 
+				Dictionary<String, Entry> mappedEntries = scope .();
+
+				void AddEntry(List<Entry> newEntries, Entry entry, bool isNew)
+				{
+					newEntries.Add(entry);
+
+					// Delete previous command bindings when we are adding new entries
+					let keyEntryStr = scope String();
+					KeyState.ToString(entry.mKeys, keyEntryStr);
+					//keyEntryStr.Append(" ");
+					//entry.mContextFlags.To keyEntryStr);
+
+					String* keyPtr;
+					Entry* valuePtr;
+					if (mappedEntries.TryAdd(keyEntryStr, out keyPtr, out valuePtr))
+					{
+						*keyPtr = new String(keyEntryStr);
+						*valuePtr = entry;
+					}
+					else
+					{
+						if (isNew)
+						{
+							newEntries.Remove(*valuePtr);
+							delete *valuePtr;
+						}
+					}
+				}
+
 				List<Entry> newEntries = new .();
 				for (let cmdStr in sd.Enumerate())
 				{
@@ -1123,20 +1152,23 @@ namespace IDE
 					keyList.CopyTo(keyArr);
 					entry.mKeys = keyArr;
 
-					newEntries.Add(entry);
 					usedCommands.Add(entry.mCommand);
+					AddEntry(newEntries, entry, false);
 				}
 
 				for (var entry in mEntries)
 				{
 					if (usedCommands.Contains(entry.mCommand))
 						continue;
-					newEntries.Add(entry);
 					mEntries[@entry.Index] = null;
+					AddEntry(newEntries, entry, true);
 				}
 
 				DeleteContainerAndItems!(mEntries);
 				mEntries = newEntries;
+
+				for (let keyEntryStr in mappedEntries.Keys)
+					delete keyEntryStr;
 			}
 		}
 
