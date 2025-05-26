@@ -859,6 +859,8 @@ namespace IDE
 
 			public void SetDefaults()
 			{
+				Add("Add Cursor Above", "Ctrl+Alt+Up");
+				Add("Add Cursor Below", "Ctrl+Alt+Down");
 				Add("Add Selection to Next Find Match", "Ctrl+D");
 				Add("Autocomplete", "Ctrl+Space");
 				Add("Bookmark Next", "F2");
@@ -1255,7 +1257,7 @@ namespace IDE
 			{
 				sd.Add("WakaTimeKey", mWakaTimeKey);
 				sd.Add("EnableDevMode", mEnableDevMode);
-				sd.Add("DebugMultiCursor", mEditorSettings.mDebugMultiCursor);
+				sd.Add("DebugMultiCursor", DarkEditWidgetContent.sDebugMultiCursor);
 			}
 
 			using (sd.CreateObject("TutorialsFinished"))
@@ -1356,7 +1358,7 @@ namespace IDE
 			{
 				sd.Get("WakaTimeKey", mWakaTimeKey);
 				sd.Get("EnableDevMode", ref mEnableDevMode);
-				sd.Get("DebugMultiCursor", ref mEditorSettings.mDebugMultiCursor);
+				sd.Get("DebugMultiCursor", ref DarkEditWidgetContent.sDebugMultiCursor);
 			}
 
 			using (sd.Open("TutorialsFinished"))

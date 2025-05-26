@@ -4622,11 +4622,12 @@ namespace IDE.ui
 			}
 		}
 
-        /// summary = "Hey This is a summary"
-        /// param.keyCode = "Keycode of pressed key"
-        /// param.isRepeat = "Whether the key is repeated"
-        public override void KeyDown(KeyCode keyCode, bool isRepeat)
-        {
+		public override void HandleKey(KeyCode keyCode, KeyFlags keyFlags, bool isRepeat)
+		{
+			bool shiftDown = keyFlags.HasFlag(.Shift);
+			bool ctrlDown = keyFlags.HasFlag(.Ctrl);
+			bool altDown = keyFlags.HasFlag(.Alt);
+
 			mIgnoreKeyChar = false;
 			mEmbedSelected = null;
 
@@ -4638,7 +4639,7 @@ namespace IDE.ui
 				(autoCompleteRequireControl) &&
 				(!gApp.mSettings.mTutorialsFinished.mCtrlCursor))
 			{
-				if (mWidgetWindow.IsKeyDown(.Control))
+				if (ctrlDown)
 				{
 					if ((DarkTooltipManager.sTooltip != null) && (DarkTooltipManager.sTooltip.mAllowMouseOutside))
 						DarkTooltipManager.CloseTooltip();
@@ -4660,12 +4661,12 @@ namespace IDE.ui
 				Thread.Sleep(300);
 			}*/
 
-            /*if ((keyCode == KeyCode.Space) && (mWidgetWindow.IsKeyDown(KeyCode.Control)))
-            {
+		    /*if ((keyCode == KeyCode.Space) && (mWidgetWindow.IsKeyDown(KeyCode.Control)))
+		    {
 				//Debug.WriteLine("CursorPos: {0}", CursorTextPos);
 				ShowAutoComplete();
-                return;
-            }*/
+		        return;
+		    }*/
 
 			if (keyCode == KeyCode.Apps)
 			{
@@ -4674,28 +4675,28 @@ namespace IDE.ui
 				return;
 			}
 
-            if ((keyCode == KeyCode.Escape) && (mAutoComplete != null) && (mAutoComplete.IsShowing()))
-            {                
-                mAutoComplete.Close();
-                return;
-            }
+		    if ((keyCode == KeyCode.Escape) && (mAutoComplete != null) && (mAutoComplete.IsShowing()))
+		    {                
+		        mAutoComplete.Close();
+		        return;
+		    }
 
-            if ((keyCode == KeyCode.Escape) && (mOnEscape != null) && (mOnEscape()))
-            {
-                return;
-            }
+		    if ((keyCode == KeyCode.Escape) && (mOnEscape != null) && (mOnEscape()))
+		    {
+		        return;
+		    }
 
-            if ((keyCode == KeyCode.Escape) && (CurSelection != null) && (CurSelection.Value.HasSelection))
-            {
-                CurSelection = null;
-            }
+		    if ((keyCode == KeyCode.Escape) && (CurSelection != null) && (CurSelection.Value.HasSelection))
+		    {
+		        CurSelection = null;
+		    }
 
-            if (((keyCode == KeyCode.Up) || (keyCode == KeyCode.Down) || (keyCode == KeyCode.PageUp) || (keyCode == KeyCode.PageDown)))
-            {
-				if ((IsPrimaryTextCursor()) && ((!autoCompleteRequireControl) || (mWidgetWindow.IsKeyDown(KeyCode.Control))))
+		    if (((keyCode == KeyCode.Up) || (keyCode == KeyCode.Down) || (keyCode == KeyCode.PageUp) || (keyCode == KeyCode.PageDown)))
+		    {
+				if ((IsPrimaryTextCursor()) && ((!autoCompleteRequireControl) || (ctrlDown)))
 				{
-	                if ((mAutoComplete != null) && (mAutoComplete.IsShowing()))
-	                {
+		            if ((mAutoComplete != null) && (mAutoComplete.IsShowing()))
+		            {
 						bool wantListCursors = false;
 
 						if (mAutoComplete.mAutoCompleteListWidget != null)
@@ -4704,37 +4705,37 @@ namespace IDE.ui
 								wantListCursors = true;
 						}
 
-	                    if (wantListCursors)
-	                    {
-	                        int32 pageSize = (int32)(mAutoComplete.mAutoCompleteListWidget.mScrollContentContainer.mHeight / mAutoComplete.mAutoCompleteListWidget.mItemSpacing - 0.5f);
-	                        int32 moveDir = 0;
-	                        switch (keyCode)
-	                        {
-	                        case KeyCode.Up: moveDir = -1;
-	                        case KeyCode.Down: moveDir = 1;
-	                        case KeyCode.PageUp: moveDir = -pageSize;
-	                        case KeyCode.PageDown: moveDir = pageSize;
+		                if (wantListCursors)
+		                {
+		                    int32 pageSize = (int32)(mAutoComplete.mAutoCompleteListWidget.mScrollContentContainer.mHeight / mAutoComplete.mAutoCompleteListWidget.mItemSpacing - 0.5f);
+		                    int32 moveDir = 0;
+		                    switch (keyCode)
+		                    {
+		                    case KeyCode.Up: moveDir = -1;
+		                    case KeyCode.Down: moveDir = 1;
+		                    case KeyCode.PageUp: moveDir = -pageSize;
+		                    case KeyCode.PageDown: moveDir = pageSize;
 							default:
-	                        }
-	                        mAutoComplete.mAutoCompleteListWidget.SelectDirection(moveDir);
-	                    }
-	                    else if (mAutoComplete.mInvokeWidget != null)
-	                    {
+		                    }
+		                    mAutoComplete.mAutoCompleteListWidget.SelectDirection(moveDir);
+		                }
+		                else if (mAutoComplete.mInvokeWidget != null)
+		                {
 							// Close the list if we had !wantListCursors
-	                        if (mAutoComplete.mInvokeWidget.SelectDirection(((keyCode == KeyCode.Up) || (keyCode == KeyCode.PageUp)) ? -1 : 1))
+		                    if (mAutoComplete.mInvokeWidget.SelectDirection(((keyCode == KeyCode.Up) || (keyCode == KeyCode.PageUp)) ? -1 : 1))
 							{
 								mAutoComplete?.CloseListWindow();
 								mAutoComplete?.Update();
 							}
-	                    }
+		                }
 						return;
-	                }
+		            }
 				}
 
 				// Disabled window-scroll code for ctrl+up/ctrl+down when autocomplete is not up
-				if (mWidgetWindow.IsKeyDown(KeyCode.Control))
+				if (ctrlDown)
 					return;
-            }
+		    }
 
 			if (mSourceViewPanel?.mRenameSymbolDialog?.mKind == .Rename)
 			{
@@ -4765,7 +4766,7 @@ namespace IDE.ui
 
 				if (wantCursorPos != -1)
 				{
-					if (mWidgetWindow.IsKeyDown(.Shift))
+					if (shiftDown)
 					{
 						if (CurSelection == null)
 							CurSelection = .(CursorTextPos, wantCursorPos);
@@ -4780,43 +4781,43 @@ namespace IDE.ui
 				}
 			}
 
-            //var lineAndColumn = CursorLineAndColumn;
+		    //var lineAndColumn = CursorLineAndColumn;
 
-            int prevCursorPos;
-            TryGetCursorTextPos(out prevCursorPos);
-            int prevTextLength = mData.mTextLength;
-            base.KeyDown(keyCode, isRepeat);
+		    int prevCursorPos;
+		    TryGetCursorTextPos(out prevCursorPos);
+		    int prevTextLength = mData.mTextLength;
+		    base.HandleKey(keyCode, keyFlags, isRepeat);
 
-            if ((IsPrimaryTextCursor()) && (mAutoComplete != null) &&
+		    if ((IsPrimaryTextCursor()) && (mAutoComplete != null) &&
 				(keyCode != .Control) &&
 				(keyCode != .Shift))
-            {
+		    {
 				mAutoComplete.MarkDirty();
-                bool isCursorInRange = prevCursorPos == CursorTextPos;
-                if (mAutoComplete.mInvokeSrcPositions != null)
-                {
-                    isCursorInRange = (CursorTextPos > mAutoComplete.mInvokeSrcPositions[0]) &&
-                        (CursorTextPos <= mAutoComplete.mInvokeSrcPositions[mAutoComplete.mInvokeSrcPositions.Count - 1]);
-                }
+		        bool isCursorInRange = prevCursorPos == CursorTextPos;
+		        if (mAutoComplete.mInvokeSrcPositions != null)
+		        {
+		            isCursorInRange = (CursorTextPos > mAutoComplete.mInvokeSrcPositions[0]) &&
+		                (CursorTextPos <= mAutoComplete.mInvokeSrcPositions[mAutoComplete.mInvokeSrcPositions.Count - 1]);
+		        }
 
-                bool wasNormalTyping =
-                    ((isCursorInRange) && (prevTextLength == mData.mTextLength))/* ||
-                    ((prevCursorPos + 1 == CursorTextPos) && (prevTextLength + 1 == mTextLength)) ||
-                    ((prevCursorPos - 1 == CursorTextPos) && (prevTextLength - 1 == mTextLength))*/;
+		        bool wasNormalTyping =
+		            ((isCursorInRange) && (prevTextLength == mData.mTextLength))/* ||
+		            ((prevCursorPos + 1 == CursorTextPos) && (prevTextLength + 1 == mTextLength)) ||
+		            ((prevCursorPos - 1 == CursorTextPos) && (prevTextLength - 1 == mTextLength))*/;
 
-                /*if ((lineAndColumn.mColumn != CursorLineAndColumn.mColumn) && (prevTextLength == mTextLength))
-                    wasNormalTyping = false; // Moved into virtual space*/
+		        /*if ((lineAndColumn.mColumn != CursorLineAndColumn.mColumn) && (prevTextLength == mTextLength))
+		            wasNormalTyping = false; // Moved into virtual space*/
 
-                if (!wasNormalTyping)
-                {
-                    mAutoComplete.CloseInvoke();                    
-                }
+		        if (!wasNormalTyping)
+		        {
+		            mAutoComplete.CloseInvoke();                    
+		        }
 				else if ((keyCode == .Right) || (keyCode == .Left))
 				{
 					mAutoComplete.CloseListWindow();
 				}
-            }
-        }
+		    }
+		}
 
         void ReplaceWord(int leftIdx, int rightIdx, String origWord, String newWord)
         {

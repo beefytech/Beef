@@ -2801,9 +2801,11 @@ namespace Beefy.widgets
 			}
 		}
 
-        public override void KeyDown(KeyCode keyCode, bool isRepeat)
+        public virtual void HandleKey(KeyCode keyCode, KeyFlags keyFlags, bool isRepeat)
         {
-            base.KeyDown(keyCode, isRepeat);
+			bool shiftDown = keyFlags.HasFlag(.Shift);
+			bool ctrlDown = keyFlags.HasFlag(.Ctrl);
+			bool altDown = keyFlags.HasFlag(.Alt);
 
             if (keyCode == KeyCode.Escape)
             {
@@ -2871,7 +2873,7 @@ namespace Beefy.widgets
 						{
 							bool doVirtualMove = true;
 
-							if ((mWidgetWindow.IsKeyDown(KeyCode.Shift)) || (mWidgetWindow.IsKeyDown(KeyCode.Control)))
+							if ((shiftDown) || (ctrlDown))
 								doVirtualMove = false;
 							else
 							{
@@ -2907,7 +2909,7 @@ namespace Beefy.widgets
 
 						
                         wasMoveKey = true;
-						SelectLeft(lineIdx, lineChar, mWidgetWindow.IsKeyDown(KeyCode.Control), mWidgetWindow.IsKeyDown(KeyCode.Alt));
+						SelectLeft(lineIdx, lineChar, ctrlDown, altDown);
                     }
                 }
                 break;
@@ -2919,7 +2921,7 @@ namespace Beefy.widgets
 						{
 							bool doVirtualMove = true;
 
-							if ((mWidgetWindow.IsKeyDown(KeyCode.Shift)) || (mWidgetWindow.IsKeyDown(KeyCode.Control)))
+							if ((shiftDown) || (ctrlDown))
 								doVirtualMove = false;
 							else
 							{
@@ -2947,7 +2949,7 @@ namespace Beefy.widgets
 						}
 
                         wasMoveKey = true;
-						SelectRight(lineIdx, lineChar, mWidgetWindow.IsKeyDown(KeyCode.Control), mWidgetWindow.IsKeyDown(KeyCode.Alt));
+						SelectRight(lineIdx, lineChar, ctrlDown, altDown);
                     }
                 }
                 break;
@@ -2956,7 +2958,8 @@ namespace Beefy.widgets
             case KeyCode.Down:
                 {                        
                     int32 aDir = (keyCode == KeyCode.Up) ? -1 : 1;
-					if ((HasSelection()) && (!mWidgetWindow.IsKeyDown(KeyCode.Shift)))
+
+					if ((HasSelection()) && (!shiftDown))
 					{
 						if (mAllowVirtualCursor)
 						{
@@ -2972,7 +2975,7 @@ namespace Beefy.widgets
                     
                     GetCursorLineChar(out lineIdx, out lineChar);
 
-                    if (mWidgetWindow.IsKeyDown(KeyCode.Control))
+                    if (ctrlDown)
                     {
                         mEditWidget.VertScrollTo(mEditWidget.mVertPos.mDest + aDir * mEditWidget.mScrollContentContainer.mHeight * 0.25f);
                         EnsureCursorVisible(false);
@@ -3028,7 +3031,7 @@ namespace Beefy.widgets
             case KeyCode.Home:
                 PrepareForCursorMove(-1);
                 wasMoveKey = true;
-                if (mWidgetWindow.IsKeyDown(KeyCode.Control))
+                if (ctrlDown)
                     CursorToStart();
                 else
                     CursorToLineStart(true);
@@ -3037,7 +3040,7 @@ namespace Beefy.widgets
             case KeyCode.End:
                 PrepareForCursorMove(1);
                 wasMoveKey = true;
-                if (mWidgetWindow.IsKeyDown(KeyCode.Control))
+                if (ctrlDown)
                 {
                     CursorToEnd();
                 }
@@ -3185,7 +3188,7 @@ namespace Beefy.widgets
 
             if (wasMoveKey)
             {
-                if (mWidgetWindow.IsKeyDown(KeyCode.Shift))
+                if (shiftDown)
                 {
                     if (!HasSelection())
                     {
@@ -3200,6 +3203,12 @@ namespace Beefy.widgets
                 EnsureCursorVisible();
             }
         }
+
+		public override void KeyDown(KeyCode keyCode, bool isRepeat)
+		{
+			base.KeyDown(keyCode, isRepeat);
+			HandleKey(keyCode, mWidgetWindow.GetKeyFlags(true), isRepeat);
+		}
         
         public float GetCursorScreenRelY()
         {
@@ -4350,7 +4359,7 @@ namespace Beefy.widgets
 			return !((lhsSelection.mEndPos <= rhsSelection.mStartPos) || (rhsSelection.mEndPos <= lhsSelection.mStartPos));
 		}
 
-		public void AddSelectionToNextFindMatch(bool createCursor = true, bool exhaustiveSearch = false)
+		public virtual void AddSelectionToNextFindMatch(bool createCursor = true, bool exhaustiveSearch = false)
 		{
 			SetPrimaryTextCursor();
 
@@ -4431,6 +4440,38 @@ namespace Beefy.widgets
 		public void MoveLastSelectionToNextFindMatch()
 		{
 			AddSelectionToNextFindMatch(createCursor: false);
+		}
+
+		public void AddMultiCursor(int32 dir)
+		{
+			var refTextCursor = mCurrentTextCursor;
+			var refTextPos = CursorTextPos;
+
+			for (var cursor in mTextCursors)
+			{
+				SetTextCursor(cursor);
+				var textPos = CursorTextPos;
+
+				if (Math.Sign(textPos <=> refTextPos) == dir)
+				{
+					refTextCursor = cursor;
+					refTextPos = textPos;
+				}
+			}
+
+			var newCursor = new TextCursor(-1, refTextCursor);
+			mTextCursors.Add(newCursor);
+
+			SetTextCursor(mTextCursors.Back);
+			var startCursorPos = CursorLineAndColumn;
+			HandleKey((dir < 0) ? .Up : .Down, .None, false);
+			bool moved = startCursorPos != CursorLineAndColumn;
+			SetPrimaryTextCursor();
+			if (!moved)
+			{
+				mTextCursors.Remove(newCursor);
+				delete newCursor;
+			}
 		}
     }
 

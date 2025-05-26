@@ -188,6 +188,20 @@ namespace IDE.ui
 
 			return base.WantsUnfocus();
 		}
+
+		public override void KeyDown(KeyDownEvent keyEvent)
+		{
+			if (keyEvent.mKeyCode == .Escape)
+			{
+				if (mPanel.mQuickFind.mWidgetWindow != null)
+				{
+					mPanel.mQuickFind.Close();
+					return;
+				}
+			}
+
+			base.KeyDown(keyEvent);
+		}
     }
 
     public class TrackedTextElementView
@@ -7742,6 +7756,59 @@ namespace IDE.ui
 
 			mExplicitEmitTypes.Add(new .(typeName));
 			return true;
+		}
+
+		public void AddSelectionToNextFindMatch(bool createCursor = true, bool exhaustiveSearch = false)
+		{
+			var ewc = mEditWidget.mEditWidgetContent as SourceEditWidgetContent;
+
+			if (mQuickFind != null)
+			{
+				int usedCursorCount = 0;
+				for (var range in mQuickFind.mFoundRanges)
+				{
+					EditWidgetContent.TextCursor cursor = null;
+					if (@range.Index < ewc.mTextCursors.Count)
+					{
+						cursor = ewc.mTextCursors[@range.Index];
+					}
+					else
+					{
+						cursor = new EditWidgetContent.TextCursor(-1);
+						ewc.mTextCursors.Add(cursor);
+					}
+
+					usedCursorCount++;
+
+					EditSelection wantSel = .(range.Start, range.End);
+					if (wantSel == cursor.mSelection)
+						continue;
+
+					cursor.mCursorTextPos = (.)range.End;
+					cursor.mSelection = wantSel;
+					break;
+				}
+
+				if (usedCursorCount > 0)
+				{
+					while (ewc.mTextCursors.Count > usedCursorCount)
+					{
+						var cursor = ewc.mTextCursors.PopBack();
+						delete cursor;
+					}
+				}
+
+				mEditWidget.SetFocus();
+				return;
+			}
+
+			ewc.AddSelectionToNextFindMatch(createCursor, exhaustiveSearch);
+		}
+
+		public void MoveLastSelectionToNextFindMatch()
+		{
+			var ewc = mEditWidget.mEditWidgetContent as SourceEditWidgetContent;
+			ewc.MoveLastSelectionToNextFindMatch();
 		}
     }
 }

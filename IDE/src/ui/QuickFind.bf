@@ -87,11 +87,11 @@ namespace IDE.ui
         bool mFoundMatches;        
         public bool mIsShowingMatches = false;
         static String sLastSearchString = new String() ~ delete _;
+		public List<Range> mFoundRanges = new .() ~ delete _;
 
 		public bool mOwnsSelection;
         PersistentTextPosition mSelectionStart ~ { Debug.Assert(_ == null); };
         PersistentTextPosition mSelectionEnd ~ { Debug.Assert(_ == null); };
-		
 
         public this(Widget parent, EditWidget editWidget, bool isReplace)
         {
@@ -394,6 +394,7 @@ namespace IDE.ui
             mCurFindCount = 0;
             //mSearchDidWrap = false;
 
+			mFoundRanges.Clear();
             ClearFlags(true, true);
 			if (mSelectionStart != null)
 			{
@@ -404,10 +405,21 @@ namespace IDE.ui
 				}
 			}
 
+			bool DoFindNext(bool select)
+			{
+				if (var range = FindNext(1, select, ErrorReportType.None))
+				{
+					mFoundRanges.Add(range);
+					return true;
+				}
+				return false;
+			}
+
 			if (doSelect)
-            	FindNext(1, true, ErrorReportType.None);
+				DoFindNext(true);
+            	
             int32 curFindIdx = mCurFindIdx;
-            while (FindNext(1, false, ErrorReportType.None))
+            while (DoFindNext(false))
             {
             }
             mCurFindIdx = curFindIdx;
@@ -483,7 +495,7 @@ namespace IDE.ui
                 return;
             }
 
-            if (FindNext(dir, true, showMessage ? ErrorReportType.MessageBox : ErrorReportType.Sound))
+            if (FindNext(dir, true, showMessage ? ErrorReportType.MessageBox : ErrorReportType.Sound) case .Ok)
             {
 				ShowCurrentSelection();
 			}
@@ -506,7 +518,7 @@ namespace IDE.ui
             }
         }
 
-        public bool FindNext(int32 dir, bool isSelection, ErrorReportType errorType)
+        public Result<Range> FindNext(int32 dir, bool isSelection, ErrorReportType errorType)
         {
             var editContent = mEditWidget.Content;
 
@@ -514,7 +526,7 @@ namespace IDE.ui
             mFindEditWidget.GetText(findText);
             sLastSearchString.Set(findText);
             if (findText.Length == 0)
-                return false;
+                return .Err;
 
             String findTextLower = scope String(findText);
             findTextLower.ToLower();
@@ -610,7 +622,7 @@ namespace IDE.ui
 				        
 				    mCurFindIdx = mCurFindStart + 1;
 				    mCurFindCount = 0;
-				    return false;
+				    return .Err;
 				}
 			}
 			else
@@ -623,7 +635,7 @@ namespace IDE.ui
 	                    
 	                mCurFindIdx = mCurFindStart - 1;
 	                mCurFindCount = 0;
-	                return false;
+	                return .Err;
 	            }
 			}
 
@@ -646,7 +658,7 @@ namespace IDE.ui
                 }
                 
                 mCurFindIdx = nextIdx;
-                return true;
+                return Range(mCurFindIdx, mCurFindIdx + findText.Length);
             }
             else
             {                
@@ -668,7 +680,7 @@ namespace IDE.ui
                     ShowDoneError(errorType);
                     mCurFindCount = 0;
                 }
-                return false;
+                return .Err;
             }
 
             mCurFindIdx = -1;

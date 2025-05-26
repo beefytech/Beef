@@ -194,6 +194,9 @@ namespace IDE
 		public void Init()
 		{
 			Add("About", new => gApp.ShowAbout);
+			Add("Add Selection to Next Find Match", new => gApp.Cmd_AddSelectionToNextFindMatch);
+			Add("Add Cursor Above", new => gApp.Cmd_AddCursorAbove);
+			Add("Add Cursor Below", new => gApp.Cmd_AddCursorBelow);
 			Add("Autocomplete", new => gApp.Cmd_ShowAutoComplete, .None);
 			Add("Bookmark Next", new => gApp.Cmd_NextBookmark, .Editor);
 			Add("Bookmark Prev", new => gApp.Cmd_PrevBookmark, .Editor);
@@ -340,7 +343,6 @@ namespace IDE
 			Add("Zoom Out", new => gApp.Cmd_ZoomOut);
 			Add("Zoom Reset", new => gApp.Cmd_ZoomReset);
 			Add("Attach to Process", new => gApp.[Friend]DoAttach);
-			Add("Add Selection to Next Find Match", new => gApp.Cmd_AddSelectionToNextFindMatch);
 			Add("Move Last Selection to Next Find Match", new => gApp.Cmd_MoveLastSelectionToNextFindMatch);
 
 			Add("Test Enable Console", new => gApp.Cmd_TestEnableConsole);

@@ -5965,13 +5965,25 @@ namespace IDE
 		[IDECommand]
 		public void Cmd_AddSelectionToNextFindMatch()
 		{
-			GetActiveSourceEditWidgetContent()?.AddSelectionToNextFindMatch();
+			GetActiveSourceViewPanel()?.AddSelectionToNextFindMatch();
 		}
 
 		[IDECommand]
 		public void Cmd_MoveLastSelectionToNextFindMatch()
 		{
-			GetActiveSourceEditWidgetContent()?.MoveLastSelectionToNextFindMatch();
+			GetActiveSourceViewPanel()?.MoveLastSelectionToNextFindMatch();
+		}
+
+		[IDECommand]
+		public void Cmd_AddCursorAbove()
+		{
+			GetActiveSourceEditWidgetContent()?.AddMultiCursor(-1);
+		}
+
+		[IDECommand]
+		public void Cmd_AddCursorBelow()
+		{
+			GetActiveSourceEditWidgetContent()?.AddMultiCursor(1);
 		}
 
 		public void UpdateMenuItem_HasActivePanel(IMenu menu)
@@ -8574,11 +8586,6 @@ namespace IDE
 
 		void SysKeyDown(KeyDownEvent evt)
 		{
-			if (evt.mKeyCode != .Alt)
-			{
-				NOP!();
-			}
-
 			if (!evt.mKeyFlags.HeldKeys.HasFlag(.Alt))
 			{
 #if BF_PLATFORM_WINDOWS
@@ -8755,6 +8762,13 @@ namespace IDE
 					//OutputLine("Unknown key: {0}", (int)evt.mKeycode);
 					break;
 				}
+			}
+
+			if ((evt.mKeyCode == .Return) && (evt.mKeyFlags.HasFlag(.Alt)))
+			{
+				// Don't "beep" for any Enter key combinations
+				window.mFocusWidget?.KeyDown(evt);
+				evt.mHandled = true;
 			}
 		}
 

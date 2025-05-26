@@ -68,6 +68,7 @@ namespace Beefy.theme.dark
 		public Range? mLineRange;
 
 		protected static uint32[] sDefaultColors = new uint32[] ( Color.White ) ~ delete _;
+		public static bool sDebugMultiCursor;
 
 		public float LineHeight => Math.Max(Math.Round(mFont.GetLineSpacing() * mLineHeightScale), 1);
 
@@ -573,7 +574,7 @@ namespace Beefy.theme.dark
 
 			bool drewCursor = false;
 
-			void DrawCursor(float x, float y)
+			void DrawCursor(float x, float y, bool isSecondary = false)
 			{
 				if (mHiliteCurrentLine && selStartIdx == selEndIdx)
 				{
@@ -618,8 +619,18 @@ namespace Beefy.theme.dark
 			    }
 			    else
 			    {
+					float cursorY = y + textYOffset;
+					float cursorHeight = fontLineSpacing;
+					float cursorWidth = Math.Max(1.0f, GS!(1));
+
+					if ((sDebugMultiCursor) && (mTextCursors.Count > 1))
+					{
+						if (isSecondary)
+							cursorColor.A = (.)(cursorColor.A * 0.5f);
+					}
+
 					using (g.PushColor(Color.Mult(cursorColor, Color.Get(brightness))))
-			            g.FillRect(x, y + textYOffset, Math.Max(1.0f, GS!(1)), fontLineSpacing);
+			            g.FillRect(x, cursorY, cursorWidth, cursorHeight);
 			    }
 			    drewCursor = true;
 			}
@@ -859,8 +870,7 @@ namespace Beefy.theme.dark
 						y = mLineCoords[eStartLine];
 					}
 
-					using (g.PushColor(0xFF80FFB3))
-						DrawCursor(x, y);
+					DrawCursor(x, y, true);
 				}
 				SetTextCursor(prevTextCursor);
 			}
