@@ -5627,6 +5627,64 @@ namespace IDE.ui
 									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
 									debugExpr.Append(showString);
 								}
+
+								// Display Author if there is one documented
+								if (!String.IsNullOrEmpty(docParser.mAuthorString))
+								{
+									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.Append(scope $"Author: {docParser.mAuthorString}");
+								}
+
+								// Display version if there is any documented
+								if (!String.IsNullOrEmpty(docParser.mTODOString))
+								{
+									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.Append(scope $"Version: {docParser.mVersionString}");
+								}
+
+								// Display remarks if there is any documented
+								if (!String.IsNullOrEmpty(docParser.mRemarksString))
+								{
+									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.Append(scope $"Remarks: {docParser.mRemarksString}");
+								}
+
+								// Display note if there is any documented
+								if (!String.IsNullOrEmpty(docParser.mNoteString))
+								{
+									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.Append(scope $"Note: {docParser.mNoteString}");
+								}
+
+								// Display todo if there is any documented
+								if (!String.IsNullOrEmpty(docParser.mTODOString))
+								{
+									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.Append(scope $"TODO: {docParser.mTODOString}");
+								}
+
+								// Display all parameters on hover
+								if (docParser.mParamInfo.Count > 0)
+								{
+									debugExpr.Append("\n");
+									debugExpr.Append("Parameters:");
+
+									for (var param in docParser.mParamInfo)
+									{
+										debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+										debugExpr.Append(scope $"{param.key} {param.value}");
+									}
+								}
+
+								// Display Return value if there is one documented
+								if (!String.IsNullOrEmpty(docParser.mReturnString))
+								{
+									debugExpr.Append("\n");
+									debugExpr.Append("Returns:");
+
+									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.Append(scope $"{docParser.mReturnString}");
+								}
 							}
 						}
 					}
