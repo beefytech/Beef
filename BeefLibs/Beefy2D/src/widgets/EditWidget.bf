@@ -2625,7 +2625,7 @@ namespace Beefy.widgets
 			}
 
 			// Case, when we have multiple cursors
-			var identicalCountOfCusrors = ((mTextCursors.Count == fragments.Count) || (mTextCursors.Count == 1 && fragments.Count == 0));
+			var identicalCountOfCursors = ((mTextCursors.Count == fragments.Count) || (mTextCursors.Count == 1 && fragments.Count == 0));
 			var sortedCursors = GetSortedCursors(.. scope List<TextCursor>());
 			var idx = sortedCursors.Count-1;
 
@@ -2633,11 +2633,6 @@ namespace Beefy.widgets
 			UndoBatchStart undoBatchStart = null;
 			if (sortedCursors.Count == 1)
 				undoBatchStart = mData.mUndoManager.Add(.. new UndoBatchStart("paste"));
-
-			if (!identicalCountOfCusrors)
-			{
-				text.RemoveFromEnd(1);
-			}
 
 			for (var cursor in sortedCursors.Reversed)
 			{
@@ -2648,7 +2643,7 @@ namespace Beefy.widgets
 					PasteFragment(text, extra);
 					continue;
 				}
-				else if (!identicalCountOfCusrors)
+				else if (!identicalCountOfCursors)
 				{
 					PasteFragment(text, fragments[0].mExtra);
 					continue;
