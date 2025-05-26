@@ -5636,7 +5636,7 @@ namespace IDE.ui
 								}
 
 								// Display version if there is any documented
-								if (!String.IsNullOrEmpty(docParser.mTODOString))
+								if (!String.IsNullOrEmpty(docParser.mVersionString))
 								{
 									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
 									debugExpr.Append(scope $"Version: {docParser.mVersionString}");
