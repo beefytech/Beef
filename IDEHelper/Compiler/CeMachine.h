@@ -1275,12 +1275,15 @@ public:
 	bool mDbgPaused;
 	bool mSpecialCheck;
 	bool mDbgWantBreak;
+	String mFailString;
 
 public:
 	CeMachine(BfCompiler* compiler);
 	~CeMachine();
 
-	void Init();
+	void Fail(const StringImpl& error);
+	bool HasFailed();
+	void Init();	
 	BeContext* GetBeContext();
 	BeModule* GetBeModule();
 

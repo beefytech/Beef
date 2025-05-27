@@ -2079,16 +2079,16 @@ void CeBuilder::Build()
 	SetAndRestoreValue<CeDbgState*> prevDbgState;
 	if (mCeMachine->mDebugger != NULL)
 		prevDbgState.Init(mCeMachine->mDebugger->mCurDbgState, NULL);
-
+	
 	auto irCodeGen = mCeMachine->mCeModule->mBfIRBuilder->mBeIRCodeGen;
 	auto irBuilder = mCeMachine->mCeModule->mBfIRBuilder;
-	auto beModule = irCodeGen->mBeModule;
+	auto beModule = irCodeGen->mBeModule;	
 
 	mCeFunction->mFailed = true;
 
-	auto methodInstance = mCeFunction->mMethodInstance;
+	auto methodInstance = mCeFunction->mMethodInstance;	
 
-	if (methodInstance != NULL)
+	if ((methodInstance != NULL) && (!mCeMachine->HasFailed()))	
 	{
 		BfMethodInstance dupMethodInstance;
 		dupMethodInstance.CopyFrom(methodInstance);
@@ -3605,6 +3605,18 @@ void CeBuilder::Build()
 	{
 		auto& ceBlock = mBlocks[jumpEntry.mBlockIdx];
 		*((int32*)(&mCeFunction->mCode[0] + jumpEntry.mEmitPos)) = ceBlock.mEmitOfs - jumpEntry.mEmitPos - 4;
+	}	
+
+	if (irCodeGen->mFailed)
+	{
+		mCeMachine->Fail(StrFormat("IRCodeGen Failed: %s", irCodeGen->mErrorMsg.c_str()));
+		irCodeGen->mFailed = false;
+	}
+
+	if (mCeMachine->HasFailed())
+	{
+		Fail("ConstEval machine failed");
+		return;
 	}
 
 	if (mCeFunction->mCode.size() == 0)
@@ -3616,7 +3628,7 @@ void CeBuilder::Build()
 	if (mCeFunction->mGenError.IsEmpty())
 		mCeFunction->mFailed = false;
 
-	mCeFunction->mFrameSize = mFrameSize;
+	mCeFunction->mFrameSize = mFrameSize;	
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -5103,7 +5115,8 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 
 	if (bfType->IsPointer())
 	{
-		if ((mCurEvalFlags & CeEvalFlags_IgnoreConstEncodeFailure) == 0)
+		addr_ce addr = *(addr_ce*)(ptr);
+		if ((addr != 0) && ((mCurEvalFlags & CeEvalFlags_IgnoreConstEncodeFailure) == 0))
 			Fail(StrFormat("Pointer type '%s' return value not allowed", module->TypeToString(bfType).c_str()));
 		return irBuilder->CreateConstNull(irBuilder->MapType(bfType));
 	}
@@ -5209,7 +5222,7 @@ BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfI
 }
 
 BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType)
-{
+{	
 	// DISABLED
 	//return BfTypedValue();
 
@@ -5273,6 +5286,12 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 				return BfTypedValue();
 			}
 		}
+	}
+
+	if (mCeMachine->HasFailed())
+	{
+		Fail("ConstEval machine failed");
+		return BfTypedValue();
 	}
 
 	int thisArgIdx = -1;
@@ -9604,6 +9623,17 @@ CeMachine::~CeMachine()
 	}
 }
 
+void CeMachine::Fail(const StringImpl& error)
+{
+	if (mFailString.IsEmpty())
+		mFailString = error;
+}
+
+bool CeMachine::HasFailed()
+{
+	return !mFailString.IsEmpty();
+}
+
 void CeMachine::Init()
 {
 	BF_ASSERT(mCeModule == NULL);
@@ -9650,6 +9680,7 @@ void CeMachine::CompileStarted()
 	mRevision++;
 	mMethodBindRevision++;
 	mDbgWantBreak = false;
+	mFailString.Clear();
 	if (mCeModule != NULL)
 	{
 		delete mCeModule;

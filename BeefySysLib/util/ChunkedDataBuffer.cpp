@@ -149,11 +149,22 @@ int ChunkedDataBuffer::GetReadPos()
 }
 
 void ChunkedDataBuffer::SetReadPos(int pos)
-{
+{	
 	mReadPoolIdx = pos / ALLOC_SIZE;
-	mReadCurAlloc = mPools[mReadPoolIdx];
-	mReadCurPtr = mReadCurAlloc + pos % ALLOC_SIZE;
-	mReadNextAlloc = mReadCurPtr + ALLOC_SIZE;
+	if (mReadPoolIdx < mPools.mSize)
+	{
+		mReadCurAlloc = mPools[mReadPoolIdx];
+		mReadCurPtr = mReadCurAlloc + pos % ALLOC_SIZE;
+		mReadNextAlloc = mReadCurPtr + ALLOC_SIZE;
+	}
+	else
+	{
+		// Place at end of last pool
+		mReadPoolIdx = mPools.mSize - 1;
+		mReadCurAlloc = mPools[mReadPoolIdx];
+		mReadCurPtr = mReadCurAlloc + ALLOC_SIZE;
+		mReadNextAlloc = mReadCurPtr;
+	}	
 }
 
 void ChunkedDataBuffer::NextReadPool()
