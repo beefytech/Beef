@@ -1910,7 +1910,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			initValue = GetDefaultTypedValue(localDef->mResolvedType);
 
 		if (!localDef->mResolvedType->IsValuelessType())
-			localDef->mAddr = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapType(localDef->mResolvedType), false, BfIRLinkageType_Internal, initValue.mValue, name);;
+			localDef->mAddr = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapType(localDef->mResolvedType, BfIRPopulateType_Full), false, BfIRLinkageType_Internal, initValue.mValue, name);;
 		initHandled = true;
 	}
 
