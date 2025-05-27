@@ -2426,11 +2426,6 @@ namespace IDE.ui
 					}
 					continue;
 				}
-				else if (entryDisplay.Length == 0)
-				{
-					// Skip entry that has no name
-					continue;
-				}
 
                 switch (entryType)
                 {

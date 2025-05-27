@@ -842,6 +842,8 @@ void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, Bf
 
 void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, const StringImpl& filter)
 {
+	if (propDef->mName.IsEmpty())
+		return;
 	int wantPrefixCount = 0;
 	const char* filterStr = filter.c_str();
 	while (filterStr[0] == '@')
