@@ -2880,6 +2880,7 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 											MEMBER_SET(memberRefExpr, mDotToken, nextTokenNode);
 											MEMBER_SET(memberRefExpr, mTarget, typeRef);
 											MEMBER_SET(memberRefExpr, mMemberName, identifierNode);
+											memberRefExpr->mTriviaStart = typeRef->mTriviaStart;
 											exprLeft = memberRefExpr;
 											mVisitorPos.mReadPos = checkIdx + 2;
 											didSplit = true;
