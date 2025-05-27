@@ -14954,7 +14954,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 			mModule->DoAddLocalVariable(localVar);			
 
 			auto resolvePassData = mModule->mCompiler->mResolvePassData;
-			if (resolvePassData != NULL)
+			if ((resolvePassData != NULL) && (localVar->mNameNode != NULL))
 				resolvePassData->HandleLocalReference(BfNodeDynCast<BfIdentifierNode>(localVar->mNameNode), mModule->mCurTypeInstance->mTypeDef,
 					mModule->mCurMethodInstance->mMethodDef, localVar->mLocalVarId);
 		}
