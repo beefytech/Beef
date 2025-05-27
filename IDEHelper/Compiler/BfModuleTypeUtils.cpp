@@ -12107,6 +12107,7 @@ BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType po
 					genericTypeInst->mGenericTypeInfo->mGenericParams.push_back(parentGenericTypeInstance->mGenericTypeInfo->mGenericParams[i]->AddRef());
 					genericTypeInst->mGenericTypeInfo->mTypeGenericArguments.push_back(parentGenericTypeInstance->mGenericTypeInfo->mTypeGenericArguments[i]);
 				}
+				genericTypeInst->mGenericTypeInfo->mMaxGenericDepth = BF_MAX(genericTypeInst->mGenericTypeInfo->mMaxGenericDepth, parentGenericTypeInstance->GetGenericDepth() + 1);
 
 				CheckUnspecializedGenericType(genericTypeInst, populateType);
 				resolvedEntry->mValue = genericTypeInst;
@@ -12428,7 +12429,7 @@ BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType po
 
 		if (genericTypeInst->mGenericTypeInfo->mMaxGenericDepth > 64)
 		{
-			Fail("Maximum generic depth exceeded", typeRef);
+			Fail("Maximum generic depth (64) exceeded", typeRef);
 			delete genericTypeInst;
 			return ResolveTypeResult(typeRef, NULL, populateType, resolveFlags);
 		}
