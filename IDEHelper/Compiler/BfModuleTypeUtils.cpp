@@ -6121,11 +6121,18 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		{
 			int dataCount = 0;
 
-			std::function<void(BfType*)> splatIterate;
-			splatIterate = [&](BfType* checkType)
+			std::function<void(BfType*, int)> splatIterate;
+			splatIterate = [&](BfType* checkType, int depth)
 			{
 				if (hadNonSplattable)
 					return;
+
+				if (depth > 64)
+				{
+					// Stop trying
+					hadNonSplattable = true;
+					return;
+				}
 
 				if (checkType->IsValueType())
 					PopulateType(checkType, BfPopulateType_Data);
@@ -6144,7 +6151,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				{
 					auto checkTypeInstance = checkType->ToTypeInstance();
 					if (checkTypeInstance->mBaseType != NULL)
-						splatIterate(checkTypeInstance->mBaseType);
+						splatIterate(checkTypeInstance->mBaseType, depth + 1);
 
 					if (checkTypeInstance->mIsUnion)
 					{
@@ -6153,7 +6160,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						if (!wantSplat)
 							hadNonSplattable = true;
 
-						splatIterate(unionInnerType);
+						splatIterate(unionInnerType, depth + 1);
 
 						if (checkTypeInstance->IsEnum())
 							dataCount++; // Discriminator
@@ -6172,7 +6179,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 							}
 
 							if (fieldInstance->mDataIdx >= 0)
-								splatIterate(fieldInstance->GetResolvedType());
+								splatIterate(fieldInstance->GetResolvedType(), depth + 1);
 						}
 					}
 				}
@@ -6184,7 +6191,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					dataCount += checkType->GetSplatCount();
 				}
 			};
-			splatIterate(typeInstance);
+			splatIterate(typeInstance, 0);
 
 			if (isCRepr)
 			{
@@ -10678,7 +10685,9 @@ BfTypeDef* BfModule::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 			isValid = mCurMethodInstance->mMethodDef->mDeclaringType == useTypeDef;
 		}
 
-		BF_ASSERT(isValid);
+		if (!isValid)
+			InternalError("Invalid useTypeDef in FindTypeDef");
+		//BF_ASSERT(isValid);
 
 		typeLookupEntryPtr->mAtomUpdateIdx = typeLookupEntry.mName.GetAtomUpdateIdx();
 
