@@ -477,7 +477,7 @@ public:
 
 public:
 	bool IsTypeAccessible(BfType* checkType, BfProject* curProject);
-	bool IsTypeUsed(BfType* checkType, BfProject* curProject);
+	bool IsTypeUsed(BfType* checkType, BfProject* curProject, bool conservativeCheck = false);
 	bool IsModuleAccessible(BfModule* module, BfProject* curProject);
 	void FixVDataHash(BfModule* bfModule);
 	void CheckModuleStringRefs(BfModule* module, BfVDataModule* vdataModule, int lastModuleRevision, HashSet<int>& foundStringIds, HashSet<int>& dllNameSet, Array<BfMethodInstance*>& dllMethods, Array<BfCompiler::StringValueEntry>& stringValueEntries);
