@@ -7,6 +7,19 @@ namespace Tests
 {
 	class Constraints
 	{
+		struct Vector2<T>
+		{
+			public T mX;
+			public T mY;
+		}
+
+		extension Vector2<T> where T : float
+		{
+			public T LengthSquared => mX * mX + mY * mY;
+		    public T Length => Math.Sqrt(LengthSquared);
+			public T NegX = -mX;
+		}
+
 		class Dicto : Dictionary<int, float>
 		{
 		   

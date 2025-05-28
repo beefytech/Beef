@@ -23367,6 +23367,15 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			mResult = opResult;
 			return;
 		}
+
+		auto typeConstraint = mModule->GetGenericParamInstanceTypeConstraint(mResult.mType);
+		if ((typeConstraint != NULL) && (!typeConstraint->IsGenericParam()))
+		{
+			// Handle cases such as 'where T : float'
+			mResult.mType = typeConstraint;
+			PerformUnaryOperation_OnResult(unaryOpExpr, unaryOp, opToken, opFlags);
+			return;
+		}
 	}
 
 	switch (unaryOp)
@@ -24947,7 +24956,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			BfBinaryOp findBinaryOp = binaryOp;
 
 			bool isComparison = (binaryOp >= BfBinaryOp_Equality) && (binaryOp <= BfBinaryOp_LessThanOrEqual);
-
+			
 			for (int pass = 0; pass < 2; pass++)
 			{
 				BfBinaryOp oppositeBinaryOp = BfGetOppositeBinaryOp(findBinaryOp);
@@ -25314,6 +25323,48 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				auto flippedBinaryOp = BfGetFlippedBinaryOp(findBinaryOp);
 				if (flippedBinaryOp != BfBinaryOp_None)
 					findBinaryOp = flippedBinaryOp;
+			}
+
+			auto _FixOpCheckGenericParam = [&](BfTypedValue& typedVal)
+				{
+					if ((typedVal.mType != NULL) && (typedVal.mType->IsGenericParam()))
+					{
+						auto genericParamInstance = mModule->GetGenericParamInstance((BfGenericParamType*)typedVal.mType);
+						if (genericParamInstance->mTypeConstraint != NULL)
+						{
+							typedVal.mType = genericParamInstance->mTypeConstraint;
+							return true;
+						}
+					}
+					return false;
+				};
+
+			auto leftTypeConstraint = mModule->GetGenericParamInstanceTypeConstraint(leftValue.mType);
+			auto rightTypeConstraint = mModule->GetGenericParamInstanceTypeConstraint(rightValue.mType);
+			if ((leftTypeConstraint != NULL) || (rightTypeConstraint != NULL))
+			{
+				// Handle cases such as 'where T : float'
+				bool needNewCheck = false;
+
+				BfTypedValue newLeftValue = leftValue;
+				if ((leftTypeConstraint != NULL) && (!leftTypeConstraint->IsGenericParam()))
+				{
+					newLeftValue.mType = leftTypeConstraint;
+					needNewCheck = true;
+				}
+
+				BfTypedValue newRightValue = rightValue;
+				if ((rightTypeConstraint != NULL) && (!rightTypeConstraint->IsGenericParam()))
+				{
+					newRightValue.mType = rightTypeConstraint;
+					needNewCheck = true;
+				}
+
+				if (needNewCheck)
+				{
+					PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, flags, newLeftValue, newRightValue);
+					return;
+				}
 			}
 
 			bool resultHandled = false;

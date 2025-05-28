@@ -9861,6 +9861,16 @@ BfGenericParamInstance* BfModule::GetGenericParamInstance(BfGenericParamType* ty
 	return GetGenericTypeParamInstance(type->mGenericParamIdx, failHandleKind);
 }
 
+BfType* BfModule::GetGenericParamInstanceTypeConstraint(BfType* type, bool checkMixinBind, BfFailHandleKind failHandleKind)
+{
+	if (!type->IsGenericParam())
+		return NULL;
+	auto genericParamInstance = GetGenericParamInstance((BfGenericParamType*)type, checkMixinBind, failHandleKind);
+	if (genericParamInstance != NULL)
+		return genericParamInstance->mTypeConstraint;
+	return NULL;
+}
+
 bool BfModule::ResolveTypeResult_Validate(BfAstNode* typeRef, BfType* resolvedTypeRef)
 {
 	if ((typeRef == NULL) || (resolvedTypeRef == NULL))
