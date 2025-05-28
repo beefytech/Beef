@@ -12,12 +12,14 @@ public:
 	{
 		int mLastSpaceOffset;
 		bool mDoInlineBlock;
+		bool mIsCompact;
 		int mIndentStart;
 
 		BlockState()
 		{
 			mLastSpaceOffset = 0;
 			mDoInlineBlock = false;
+			mIsCompact = false;
 			mIndentStart = 0;
 		}
 	};
@@ -129,6 +131,7 @@ public:
 	void VisitChildNextLine(BfAstNode* node);
 	void DoBlockOpen(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState);
 	void DoBlockClose(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState);
+	void HandleBlock(BfBlock* block, bool isCompact = false);
 	void QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration);
 	int CalcOrigLineSpacing(BfAstNode* bfAstNode, int* lineStartIdx);
 	void WriteIgnoredNode(BfAstNode* node);
