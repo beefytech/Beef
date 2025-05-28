@@ -883,7 +883,7 @@ namespace IDE.ui
 			}
 
 			while (curIdx < listViewItem.GetChildCount())
-				listViewItem.RemoveChildItemAt(curIdx);
+				listViewItem.RemoveChildItemAt(listViewItem.GetChildCount() - 1);
 			listViewItem.TryUnmakeParent();
 		}
 
