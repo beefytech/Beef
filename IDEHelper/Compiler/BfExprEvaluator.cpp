@@ -19704,16 +19704,23 @@ void BfExprEvaluator::DoInvocation(BfInvocationExpression* invocationExpr)
 				typeState.mArrayInitializerSize = (int)invocationExpr->mArguments.size();
 				SetAndRestoreValue<BfTypeState*> prevTypeState(mModule->mContext->mCurTypeState, &typeState);
 
+				BfType* undefSizeParam = NULL;
+
 				if (indexerExpr->mArguments.size() != 0)
 				{
 					BfConstResolver constResolver(mModule);
 					auto arg = indexerExpr->mArguments[0];
 					constResolver.mExpectingType = mModule->GetPrimitiveType(BfTypeCode_IntPtr);
-
+					constResolver.mBfEvalExprFlags = (BfEvalExprFlags)(constResolver.mBfEvalExprFlags | BfEvalExprFlags_AllowGenericConstValue);
+					
 					if (arg != NULL)
 						constResolver.Resolve(arg, NULL, BfConstResolveFlag_ArrayInitSize);
 
-					if (constResolver.mResult.mValue.IsConst())
+					if (constResolver.mResult.mKind == BfTypedValueKind_GenericConstValue)
+					{
+						undefSizeParam = constResolver.mResult.mType;
+					}
+					else if (constResolver.mResult.mValue.IsConst())
 					{
 						auto constant = mModule->mBfIRBuilder->GetConstant(constResolver.mResult.mValue);
 
@@ -19721,14 +19728,17 @@ void BfExprEvaluator::DoInvocation(BfInvocationExpression* invocationExpr)
 						{
 							arrSize = constant->mInt32;
 						}
-						else if (constant->mConstType != BfConstType_Undef)
-							mModule->Fail("Non-negative integer expected", indexerExpr->mArguments[0]);
+						else if (constant->mConstType != BfConstType_Undef)												
+							mModule->Fail("Non-negative integer expected", indexerExpr->mArguments[0]);						
 					}
 				}
 				else
 					arrSize = invocationExpr->mArguments.size();
 
-				curType = mModule->CreateSizedArrayType(curType, arrSize);
+				if (undefSizeParam != NULL)
+					curType = mModule->CreateUnknownSizedArrayType(curType, undefSizeParam);
+				else
+					curType = mModule->CreateSizedArrayType(curType, arrSize);
 			}
 
 			InitializedSizedArray((BfSizedArrayType*)curType, invocationExpr->mOpenParen, invocationExpr->mArguments, invocationExpr->mCommas, invocationExpr->mCloseParen, NULL);
