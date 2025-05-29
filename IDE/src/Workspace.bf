@@ -9,13 +9,14 @@ using System.Threading;
 using IDE.Util;
 using IDE.util;
 using System.IO;
+using IDE.ui;
 
 namespace IDE
 {
 	public class WorkspaceFolder
 	{
 		public String mName ~ delete _;
-		public IDE.ui.ProjectListViewItem mListView;
+		public ProjectListViewItem mListViewItem;
 		public List<Project> mProjects = new List<Project>() ~ delete _;
 		public Self mParent;
 

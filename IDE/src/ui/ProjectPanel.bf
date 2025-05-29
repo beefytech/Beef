@@ -85,7 +85,7 @@ namespace IDE.ui
 
             if (mRefObject != null)
             {
-				float changeX = g.mFont.GetWidth(mLabel) + mLabelOffset + LabelX + GS!(1);
+				float changeX = mLabelOffset + ((DarkListView)mListView).mLabelX + GS!(1);
 
                 bool hasChanged = false;
                 var workspace = mRefObject as Workspace;
@@ -107,8 +107,11 @@ namespace IDE.ui
 					}
 				}
                 if (hasChanged)
+				{
+					changeX += g.mFont.GetWidth(mLabel);
                     g.DrawString("*", changeX, 0);
-            }
+				}
+            } 
         }
 
 		public override void DrawAll(Graphics g)
@@ -299,7 +302,7 @@ namespace IDE.ui
 					ListViewItem folderListView;
 					WorkspaceFolder targetFolder = null;
 					if (mListViewToWorkspaceFolderMap.GetValue(target) case .Ok(out targetFolder))
-					    folderListView = targetFolder.mListView;
+					    folderListView = targetFolder.mListViewItem;
 					else if (target == mWorkspaceListViewItem)
 					    folderListView = mListView.GetRoot();
 					else
@@ -539,29 +542,21 @@ namespace IDE.ui
 			{
 				let root = mListView.GetRoot();
 				root.RemoveChildItem(projectListViewItem, false);
-				workspaceFolder.mListView.MakeParent();
-				workspaceFolder.mListView.AddChild(projectListViewItem);
-				workspaceFolder.mListView.Open(true);
+				workspaceFolder.mListViewItem.MakeParent();
+				workspaceFolder.mListViewItem.AddChild(projectListViewItem);
+				workspaceFolder.mListViewItem.Open(true);
 				mProjectToWorkspaceFolderMap[project.mRootFolder] = workspaceFolder;
 
 				workspaceFolder.mProjects.Add(project);
-				QueueSortItem(workspaceFolder.mListView);
+				QueueSortItem(workspaceFolder.mListViewItem);
 			}
         }
 
         public void RebuildUI()
         {
             mListView.GetRoot().Clear();
-
-			/*if (gApp.mWorkspace.mDebugSession != null)
-			{
-				var debugSessionItem = (ProjectListViewItem)mListView.GetRoot().CreateChildItem();
-				debugSessionItem.Label = "Debug Session";
-				debugSessionItem.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Workspace);            
-				debugSessionItem.mLabelOffset = GS!(-16);
-				debugSessionItem.mRefObject = IDEApp.sApp.mWorkspace;
-				SetupItem(debugSessionItem, true);
-			}*/
+			for (var workspaceFolder in gApp.mWorkspace.mWorkspaceFolders)
+				workspaceFolder.mListViewItem = null;
 
 			if (!gApp.mWorkspace.IsInitialized)
 			{
@@ -588,27 +583,27 @@ namespace IDE.ui
 			mListViewToWorkspaceFolderMap.Clear();
 			mProjectToWorkspaceFolderMap.Clear();
 
-            for (var project in IDEApp.sApp.mWorkspace.mProjects)
+            for (var project in gApp.mWorkspace.mProjects)
                 InitProject(project, null);
 
 			let root = mListView.GetRoot();
 
 			HashSet<String> folderMap = scope .();
-			for (var workspaceFolder in IDEApp.sApp.mWorkspace.mWorkspaceFolders)
+			for (var workspaceFolder in gApp.mWorkspace.mWorkspaceFolders)
 			{
 				void AddFolder(WorkspaceFolder folder)
 				{
-					if (folder.mListView == null && folderMap.Add(folder.mName))
+					if (folder.mListViewItem == null && folderMap.Add(folder.mName))
 					{
 						ProjectListViewItem parentListViewItem;
 						if (folder.mParent == null)
 							parentListViewItem = (ProjectListViewItem)mListView.GetRoot();
 						else
 						{
-							if (folder.mParent.mListView == null)
+							if (folder.mParent.mListViewItem == null)
 								AddFolder(folder.mParent);
 
-							parentListViewItem = folder.mParent.mListView;
+							parentListViewItem = folder.mParent.mListViewItem;
 							if (parentListViewItem == null)
 								return;
 						}
@@ -616,7 +611,7 @@ namespace IDE.ui
 						ProjectListViewItem listViewItem;
 						listViewItem = (ProjectListViewItem)parentListViewItem.CreateChildItem();
 
-						folder.mListView = listViewItem;
+						folder.mListViewItem = listViewItem;
 						listViewItem.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.ProjectFolder);
 						listViewItem.Label = folder.mName;
 						listViewItem.mRefObject = folder;
@@ -633,12 +628,12 @@ namespace IDE.ui
 					if (mProjectToListViewMap.TryGetValue(project.mRootFolder, let viewItem))
 					{
 						root.RemoveChildItem(viewItem, false);
-						workspaceFolder.mListView.MakeParent();
-						workspaceFolder.mListView.AddChild(viewItem);
+						workspaceFolder.mListViewItem.MakeParent();
+						workspaceFolder.mListViewItem.AddChild(viewItem);
 						mProjectToWorkspaceFolderMap[project.mRootFolder] = workspaceFolder;
 					}
 				}
-				QueueSortItem(workspaceFolder.mListView);
+				QueueSortItem(workspaceFolder.mListViewItem);
 			}	
 
 			RehupProjects();
@@ -1802,7 +1797,7 @@ namespace IDE.ui
 		                if (mListViewToWorkspaceFolderMap.GetValue(selectedItem) case .Ok(let folder))
 		                {
 		                    foldersToDelete.Add(folder);
-							mListViewToWorkspaceFolderMap.Remove(folder.mListView);
+							mListViewToWorkspaceFolderMap.Remove(folder.mListViewItem);
 		                    selectedItem.WithItems(scope [&] (item) => {
 		                        if (mListViewToProjectMap.GetValue(item) case .Ok(let project))
 		                        {
@@ -1812,7 +1807,7 @@ namespace IDE.ui
 								else if (mListViewToWorkspaceFolderMap.GetValue(item) case .Ok(let itemFolder))
 								{
 									foldersToDelete.Add(itemFolder);
-									mListViewToWorkspaceFolderMap.Remove(itemFolder.mListView);
+									mListViewToWorkspaceFolderMap.Remove(itemFolder.mListViewItem);
 								}
 		                    });
 		                }
@@ -1845,7 +1840,7 @@ namespace IDE.ui
 		            {
 						if (!HasDeletedParent(folder))
 						{
-							let folderItem = folder.mListView;
+							let folderItem = folder.mListViewItem;
 							folderItem.mParentItem.RemoveChildItem(folderItem);
 						}
 
@@ -2546,6 +2541,7 @@ namespace IDE.ui
             {
 				bool changeLabel = true;
 				var parentLvItem = (ProjectListViewItem)listViewItem.mParentItem;
+				bool isWorkspaceFolder = parentLvItem.mRefObject is WorkspaceFolder;
 
                 if (column == 0)
                 {
@@ -2702,7 +2698,8 @@ namespace IDE.ui
 				if (projectItem.mIncludeKind != .Auto)
                 	projectItem.mProject.SetChanged();
 
-				QueueSortItem(parentLvItem);
+				if (!isWorkspaceFolder)
+					QueueSortItem(parentLvItem);
 				Sort();
             }
 
@@ -2746,7 +2743,7 @@ namespace IDE.ui
 		{
 			for (let (k,v) in mListViewToWorkspaceFolderMap)
 			{
-			    if (v.mListView != currentItem && String.Compare(v.mName, name, true) == 0)
+			    if (v.mListViewItem != currentItem && String.Compare(v.mName, name, true) == 0)
 			    {
 			        return false;
 			    }
@@ -2774,7 +2771,7 @@ namespace IDE.ui
 
 		    let folder = new WorkspaceFolder();
 		    folder.mName = name;
-		    folder.mListView = listViewItem;
+		    folder.mListViewItem = listViewItem;
 		    gApp.mWorkspace.mWorkspaceFolders.Add(folder);
 		    
 		    listViewItem.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.ProjectFolder);
@@ -3108,7 +3105,7 @@ namespace IDE.ui
 						var workspaceFolder = GetSelectedWorkspaceFolder();
 						if (workspaceFolder != null)
 						{
-							let newFolder = AddWorkspaceFolder(workspaceFolder.mListView);
+							let newFolder = AddWorkspaceFolder(workspaceFolder.mListViewItem);
 							newFolder.mParent = workspaceFolder;
 						}
 						else
@@ -3116,6 +3113,14 @@ namespace IDE.ui
 							AddWorkspaceFolder((ProjectListViewItem)mListView.GetRoot());
 						}
 					});
+
+					if (gApp.mSettings.mEnableDevMode)
+					{
+						anItem = menu.AddItem("Rebuild UI");
+						anItem.mOnMenuItemSelected.Add(new (item) => {
+							RebuildUI();
+						});
+					}
 				}
 
 				if (mListViewToWorkspaceFolderMap.TryGetValue(focusedItem, let folder))
