@@ -3410,6 +3410,16 @@ bool BfExprEvaluator::IsComptimeEntry()
 	return ((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0);
 }
 
+void BfExprEvaluator::EnsureResultNotConstant()
+{
+	if ((mResult.mValue.IsConst()) && (!mResult.mType->IsValuelessType()))
+	{		
+		auto newTypedValue = mModule->GetDefaultTypedValue(mResult.mType, true, Beefy::BfDefaultValueKind_Addr);		
+		mModule->mBfIRBuilder->CreateStore(mResult.mValue, newTypedValue.mValue);
+		mResult = newTypedValue;
+	}
+}
+
 int BfExprEvaluator::GetStructRetIdx(BfMethodInstance* methodInstance, bool forceStatic)
 {
 	if (IsComptime())
@@ -25374,6 +25384,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 				if (needNewCheck)
 				{
 					PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, flags, newLeftValue, newRightValue);
+					EnsureResultNotConstant();
 					return;
 				}
 			}

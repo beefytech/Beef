@@ -458,6 +458,7 @@ public:
 	bool IsComptime();
 	bool IsConstEval();
 	bool IsComptimeEntry();
+	void EnsureResultNotConstant();
 	int GetStructRetIdx(BfMethodInstance* methodInstance, bool forceStatic = false);
 	BfTypedValue SetupNullConditional(BfTypedValue target, BfTokenNode* dotToken);
 	void Evaluate(BfAstNode* astNode, bool propogateNullConditional = false, bool ignoreNullConditional = false, bool allowSplat = true);
