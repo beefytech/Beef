@@ -5310,6 +5310,17 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 	auto fieldInstance = &typeInstance->mFieldInstances[fieldDef->mIdx];
 
 	bool isResolvingFields = typeInstance->mResolvingConstField || typeInstance->mResolvingVarField;
+	if (typeInstance->mDefineState < BfTypeDefineState_Defined)
+	{
+		// Check for cases like a member like 'uint8[sizeof(decltype(PrevMember))] NextMember;'
+		auto checkTypeState = mModule->mContext->mCurTypeState;
+		while (checkTypeState != NULL)
+		{
+			if ((checkTypeState->mType == typeInstance) && (checkTypeState->mResolveKind == BfTypeState::ResolveKind_FieldType))
+				isResolvingFields = true;
+			checkTypeState = checkTypeState->mPrevState;
+		}
+	}
 
 	if (fieldDef->mIsVolatile)
 		mIsVolatileReference = true;
@@ -5570,7 +5581,7 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 	}
 	else if (!target)
 	{
-		if (((mBfEvalExprFlags & BfEvalExprFlags_NameOf) == 0) && (mModule->PreFail()))
+		if (((mBfEvalExprFlags & (BfEvalExprFlags_NameOf | BfEvalExprFlags_DeclType)) == 0) && (mModule->PreFail()))
 		{
 			if ((flags & BfLookupFieldFlag_CheckingOuter) != 0)
 				mModule->Fail(StrFormat("An instance reference is required to reference non-static outer field '%s.%s'", mModule->TypeToString(typeInstance).c_str(), fieldDef->mName.c_str()),
