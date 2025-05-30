@@ -428,6 +428,21 @@ namespace Tests
 			}
 		}
 
+		struct A<T>
+		{
+			public int mA;
+
+			public static Self operator implicit<U>(U value)
+			{
+				return default;
+			}
+
+			public void operator +=<U>(A<U> r) mut
+			{
+				mA += r.mA;
+			}
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -521,6 +536,11 @@ namespace Tests
 
 			int iVal = 123;
 			Test.Assert(IntPtrTest(&iVal) == 123);
+
+			A<int> a = .() { mA = 10 };
+			A<float> b = .() { mA = 2 };
+			a += b;
+			Test.Assert(a.mA == 12);
 		}
 	}
 

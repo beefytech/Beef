@@ -13786,7 +13786,9 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			// For these casts, it's just important we get *A* value to work with here,
 			//  as this is just use for unspecialized parsing.  We don't use the generated code
 			{
-				auto genericParamInst = GetGenericParamInstance((BfGenericParamType*)typedVal.mType);
+				auto genericParamInst = GetGenericParamInstance((BfGenericParamType*)typedVal.mType, false, BfFailHandleKind_Soft);
+				if (genericParamInst == NULL)
+					return BfIRValue();
 				retVal = _CheckGenericParamInstance(genericParamInst);
 				if (retVal)
 					return retVal;
@@ -13822,7 +13824,9 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 			}
 		}
 
-		auto genericParamInst = GetGenericParamInstance((BfGenericParamType*)toType);
+		auto genericParamInst = GetGenericParamInstance((BfGenericParamType*)toType, false, BfFailHandleKind_Soft);
+		if (genericParamInst == NULL)
+			return GetDefaultValue(toType);
 		if (genericParamInst->mGenericParamFlags & BfGenericParamFlag_Var)
 			return GetDefaultValue(toType);
 

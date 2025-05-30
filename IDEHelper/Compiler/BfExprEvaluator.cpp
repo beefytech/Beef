@@ -21040,6 +21040,31 @@ BfTypedValue BfExprEvaluator::PerformAssignment_CheckOp(BfAssignmentExpression* 
 				continue;
 
 			auto paramType = methodInst->GetParamType(0);
+
+			BfModuleMethodInstance moduleMethodInstance;
+
+			if (methodInst->mIsUnspecialized)
+			{
+				BfTypeVector checkMethodGenericArguments;
+				checkMethodGenericArguments.resize(methodInst->GetNumGenericArguments());
+
+				BfGenericInferContext genericInferContext;
+				genericInferContext.mModule = mModule;
+				genericInferContext.mCheckMethodGenericArguments = &checkMethodGenericArguments;
+
+				if (!genericInferContext.InferGenericArgument(methodInst, rightValue.mType, paramType, rightValue.mValue))
+					continue;
+				bool genericsInferred = true;
+				for (int i = 0; i < checkMethodGenericArguments.mSize; i++)
+					if ((checkMethodGenericArguments[i] == NULL) || (checkMethodGenericArguments[i]->IsVar()))
+						genericsInferred = false;
+				if (!genericsInferred)
+					continue;
+
+				moduleMethodInstance = mModule->GetMethodInstance(checkTypeInst, operatorDef, checkMethodGenericArguments);
+				paramType = moduleMethodInstance.mMethodInstance->GetParamType(0);
+			}
+
 			if (deferBinop)
 			{
 				if (argValues.mArguments == NULL)
@@ -21073,7 +21098,8 @@ BfTypedValue BfExprEvaluator::PerformAssignment_CheckOp(BfAssignmentExpression* 
 					autoComplete->SetDefinitionLocation(operatorDef->mOperatorDeclaration->mOpTypeToken);
 			}
 
-			auto moduleMethodInstance = mModule->GetMethodInstance(checkTypeInst, operatorDef, BfTypeVector());
+			if (!moduleMethodInstance)
+				moduleMethodInstance = mModule->GetMethodInstance(checkTypeInst, operatorDef, BfTypeVector());
 
 			BfExprEvaluator exprEvaluator(mModule);
 			SizedArray<BfIRValue, 1> args;

@@ -8746,7 +8746,9 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	int checkGenericParamFlags = 0;
 	if (checkArgType->IsGenericParam())
 	{
-		BfGenericParamInstance* checkGenericParamInst = GetGenericParamInstance((BfGenericParamType*)checkArgType);
+		BfGenericParamInstance* checkGenericParamInst = GetGenericParamInstance((BfGenericParamType*)checkArgType, false, BfFailHandleKind_Soft);
+		if (checkGenericParamInst == NULL)
+			return false;
 		checkGenericParamFlags = checkGenericParamInst->mGenericParamFlags;
 		if (checkGenericParamInst->mTypeConstraint != NULL)
 			checkArgType = checkGenericParamInst->mTypeConstraint;
