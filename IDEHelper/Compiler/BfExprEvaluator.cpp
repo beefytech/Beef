@@ -949,6 +949,10 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 						//else if ((!prevWasGenericParam) && (IsType(arg, prevParamType)) && (!IsType(arg, paramType)))
 						else if ((!wasArgDeferred) && (!prevWasGenericParam) && (IsType(arg, prevParamType)) && ((resolvedArg == NULL) || (paramType != resolvedArg->mBestBoundType)))
 							isWorse = true;
+						else if ((wasArgDeferred) && (paramType != prevParamType) && (paramType == arg.mType) && (paramType == resolvedArg->mBestBoundType))
+							isBetter = true;
+						else if ((wasArgDeferred) && (paramType != prevParamType) && (prevParamType == arg.mType) && (prevParamType == resolvedArg->mBestBoundType))
+							isWorse = true;
 						else
 						{
 							bool canCastFromCurToPrev = mModule->CanCast(mModule->GetFakeTypedValue(paramType), prevParamType, implicitCastFlags);
