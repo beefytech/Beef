@@ -8653,6 +8653,8 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 
 				if (checkEquality)
 				{
+					if (genericParamInstance->mTypeConstraint != NULL)
+						Fail("Only one concrete type constraint may be specified", constraintTypeRef);
 					genericParamInstance->mTypeConstraint = constraintType;
 				}
 				else if (constraintType->IsInterface())
