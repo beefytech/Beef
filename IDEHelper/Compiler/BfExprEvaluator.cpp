@@ -24485,7 +24485,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 	PerformBinaryOperation(leftExpression, rightExpression, binaryOp, opToken, flags, leftValue);
 }
 
-bool BfExprEvaluator::CheckConstCompare(BfBinaryOp binaryOp, BfAstNode* opToken, const BfTypedValue& leftValue, const BfTypedValue& rightValue)
+bool BfExprEvaluator::CheckConstCompare(BfBinaryOp binaryOp, BfAstNode* opToken, const BfTypedValue& leftValue, const BfTypedValue& rightValue, bool invert)
 {
 	if ((binaryOp < BfBinaryOp_Equality) || (binaryOp > BfBinaryOp_LessThanOrEqual))
 		return false;
@@ -24613,13 +24613,16 @@ bool BfExprEvaluator::CheckConstCompare(BfBinaryOp binaryOp, BfAstNode* opToken,
 		}
 	}
 
+	if ((invert) && (constResult >= 0))
+		constResult ^= 1;
+
 	if (constResult == 0)
 	{
 		mModule->Warn(0, "The result of this operation is always 'false'", opToken);
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0), mModule->GetPrimitiveType(BfTypeCode_Boolean));
 		return true;
 	}
-	else  if (constResult == 1)
+	else if (constResult == 1)
 	{
 		mModule->Warn(0, "The result of this operation is always 'true'", opToken);
 		mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 1), mModule->GetPrimitiveType(BfTypeCode_Boolean));
@@ -24672,7 +24675,7 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 	}
 	else if ((leftValue.mValue.IsConst()) && (!rightValue.mValue.IsConst()))
 	{
-		if (CheckConstCompare(BfGetOppositeBinaryOp(binaryOp), opToken, rightValue, leftValue))
+		if (CheckConstCompare(BfGetOppositeBinaryOp(binaryOp), opToken, rightValue, leftValue, true))
 			return;
 	}
 
