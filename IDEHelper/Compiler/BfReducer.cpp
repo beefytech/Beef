@@ -10932,7 +10932,7 @@ BfGenericConstraintsDeclaration* BfReducer::CreateGenericConstraintsDeclaration(
 				bool handled = false;
 				if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
 				{
-					if (tokenNode->mToken == BfToken_FatArrow)
+					if ((tokenNode->mToken == BfToken_FatArrow) || (tokenNode->mToken == BfToken_Colon))
 					{
 						isDone = true;
 						break;
