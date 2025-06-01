@@ -104,6 +104,7 @@ public:
 	virtual void HadSrcRealloc() {}
 
 	BfErrorNode* CreateErrorNode(BfAstNode* astNode);
+	bool HasPendingError(BfAstNode* astNode);
 	void AddErrorNode(BfAstNode* astNode);
 	int AllocChars(int charCount);
 	void FinishSideNodes();

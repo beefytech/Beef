@@ -238,7 +238,7 @@ void BfReducer::AddErrorNode(BfAstNode* astNode, bool removeNode)
 		mSource->AddErrorNode(astNode);
 	if (removeNode)
 		astNode->RemoveSelf();
-	mLastErrorSrcEnd = astNode->mSrcEnd;
+	mLastErrorSrcEnd = BF_MAX(mLastErrorSrcEnd, astNode->mSrcEnd);
 }
 
 bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int endNode, int* retryNode, int* outEndNode, bool* couldBeExpr, bool* isGenericType, bool* isTuple)
@@ -5837,13 +5837,20 @@ BfTypeReference* BfReducer::CreateTypeRefAfter(BfAstNode* astNode, CreateTypeRef
 	{
 		if (mLastErrorSrcEnd > startPos)
 		{
-			// We added an error node and made progress
+			// We added an error node and made progress			
+			for (int checkIdx = mVisitorPos.mReadPos - 1; checkIdx >= startPos - 1; checkIdx--)
+			{
+				auto checkNode = mVisitorPos.Get(checkIdx);
+				if (checkNode->mSrcEnd <= mLastErrorSrcEnd)
+					break;
+				mVisitorPos.mReadPos = checkIdx;
+			}
 		}
 		else
 		{
 			BF_ASSERT(mVisitorPos.mReadPos == startPos);			
-		}
-		mVisitorPos.mReadPos--;
+			mVisitorPos.mReadPos = startPos - 1;
+		}		
 	}
 	return typeRef;
 }
@@ -6055,9 +6062,19 @@ BfAttributeDirective* BfReducer::CreateAttributeDirective(BfTokenNode* startToke
 
 	if (!isHandled)
 	{
+		int prevReadPos = mVisitorPos.mReadPos;
 		auto typeRef = CreateTypeRefAfter(attributeDirective);
 		if (typeRef == NULL)
 		{
+			if (mVisitorPos.mReadPos != prevReadPos)
+			{
+				AddErrorNode(attributeDirective);
+				auto curNode = mVisitorPos.GetCurrent();
+				if ((mSource != NULL) && (!mSource->HasPendingError(curNode)))
+					mSource->AddErrorNode(curNode);
+				return NULL;
+			}
+			
 			auto nextNode = mVisitorPos.GetNext();
 			if (BfTokenNode* endToken = BfNodeDynCast<BfTokenNode>(nextNode))
 			{
@@ -6067,7 +6084,7 @@ BfAttributeDirective* BfReducer::CreateAttributeDirective(BfTokenNode* startToke
 					MEMBER_SET(attributeDirective, mCtorCloseParen, endToken);
 					return attributeDirective;
 				}
-			}
+			}			
 
 			return attributeDirective;
 		}
@@ -11118,7 +11135,7 @@ void BfReducer::HandleBlock(BfBlock* block, bool allowEndingExpression)
 			flags = (CreateStmtFlags)(flags | CreateStmtFlags_AllowUnterminatedExpression);
 
 		auto statement = CreateStatement(node, flags);
-		if ((statement == NULL) && (mSource != NULL))
+		if ((statement == NULL) && (mSource != NULL) && (!mSource->HasPendingError(node)))
 			statement = mSource->CreateErrorNode(node);
 
 		isDone = !mVisitorPos.MoveNext();
