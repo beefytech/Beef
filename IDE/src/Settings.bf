@@ -1187,6 +1187,7 @@ namespace IDE
 			RedirectToImmediate,
 		}
 
+		public bool mSettingsValid;
 		public bool mLoadedSettings;
 		public String mSettingFileText ~ delete _;
 		public DateTime mSettingFileDateTime;
@@ -1243,6 +1244,9 @@ namespace IDE
 
 		public void Save()
 		{
+			if (!mSettingsValid)
+				return;
+
 			String path = scope .();
 			GetSettingsPath(path);
 
@@ -1331,12 +1335,47 @@ namespace IDE
 
 		public void Load()
 		{
+			mSettingsValid = true;
+
 			String path = scope .();
 			GetSettingsPath(path);
+			IDEUtils.FixFilePath(path);
 
-			let sd = scope StructuredData();
-			if (sd.Load(path) case .Err)
+			if (!File.Exists(path))
+			{
 				return;
+			}
+
+			StructuredData sd = null;
+			LoadLoop: while (true)
+			{
+				sd = scope:: StructuredData();
+				if (sd.Load(path) case .Err(let err))
+				{
+					int result = 0;
+#if !CLI && BF_PLATFORM_WINDOWS
+					result = Windows.MessageBoxA(default, scope $"Failed to load settings file '{path}' with error '{err}'", "BEEF IDE SETTINGS FAILED",
+						Windows.MB_ICONHAND | (.)2);
+#endif
+					if (result == 3) // Abort
+					{
+						mSettingsValid = false;
+						return;
+					}
+					else if (result == 4) // Retry
+					{
+						continue;
+					}
+					else // Ignore
+					{
+						return;
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
 
 			if (File.GetLastWriteTime(path) case .Ok(let dt))
 				mSettingFileDateTime = dt;
