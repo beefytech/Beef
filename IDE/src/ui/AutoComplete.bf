@@ -17,6 +17,13 @@ namespace IDE.ui
 	{
 		public String mDocString = new String(256) ~ delete _;
 		public String mBriefString ~ delete _;
+		public String mAuthorString ~ delete _;
+		public String mReturnString ~ delete _;
+		public String mRemarksString ~ delete _;
+		public String mNoteString ~ delete _;
+		public String mTODOString ~ delete _;
+		public String mSeeAlsoString ~ delete _;
+		public String mVersionString ~ delete _;
 		public Dictionary<String, String> mParamInfo ~ DeleteDictionaryAndKeysAndValues!(_);
 
 		public String ShowDocString
@@ -36,6 +43,24 @@ namespace IDE.ui
 			bool docStringDone = false;
 			bool lineHadContent = false;
 			String curDocStr = null;
+
+			// Helper function to support adding various documentation strings without bloating code size
+			[System.Inline]
+			void AddPragma(ref String resultString, StringView pragma, StringSplitEnumerator splitEnum)
+			{
+				if (resultString == null)
+					resultString = new String(pragma.Length);
+				else if (resultString != null)
+				{
+					if (!resultString[resultString.Length - 1].IsWhiteSpace)
+						resultString.Append(" ");
+				}
+				var briefStr = StringView(pragma, splitEnum.MatchPos + 1);
+				briefStr.Trim();
+				resultString.Append(briefStr);
+				curDocStr = resultString;
+				lineHadContent = true;
+			}
 
 			for (int idx = 0; idx < info.Length; idx++)
 			{
@@ -128,24 +153,43 @@ namespace IDE.ui
 									if (mParamInfo == null)
 										mParamInfo = new .();
 									curDocStr = new String(pragma, Math.Min(splitEnum.MatchPos + 1, pragma.Length));
+									curDocStr.Trim();
+
 									mParamInfo[new String(paramName)] = curDocStr;
 									lineHadContent = true;
 								}
 							}
 							else if (pragmaName == "brief")
 							{
-								if (mBriefString == null)
-									mBriefString = new String(pragma.Length);
-								else if (mBriefString != null)
-								{
-									if (!mBriefString[mBriefString.Length - 1].IsWhiteSpace)
-										mBriefString.Append(" ");
-								}
-								var briefStr = StringView(pragma, splitEnum.MatchPos + 1);
-								briefStr.Trim();
-								mBriefString.Append(briefStr);
-								curDocStr = mBriefString;
-								lineHadContent = true;
+								AddPragma(ref mBriefString, pragma, splitEnum);
+							}
+							else if (pragmaName == "author")
+							{
+								AddPragma(ref mAuthorString, pragma, splitEnum);
+							}
+							else if (pragmaName == "return" || pragmaName == "retVal")
+							{
+								AddPragma(ref mReturnString, pragma, splitEnum);
+							}
+							else if (pragmaName == "remarks")
+							{
+								AddPragma(ref mRemarksString, pragma, splitEnum);
+							}
+							else if (pragmaName == "note")
+							{
+								AddPragma(ref mNoteString, pragma, splitEnum);
+							}
+							else if (pragmaName == "todo" || pragmaName == "TODO")
+							{
+								AddPragma(ref mTODOString, pragma, splitEnum);
+							}
+							else if (pragmaName == "see")
+							{
+								AddPragma(ref mSeeAlsoString, pragma, splitEnum);
+							}
+							else if (pragmaName == "version")
+							{
+								AddPragma(ref mVersionString, pragma, splitEnum);
 							}
 						}
 
@@ -1218,7 +1262,7 @@ namespace IDE.ui
 
 					if (docParser.mParamInfo != null)
 					{
-						if (docParser.mParamInfo.TryGetValue(scope String(paramName), var paramDoc))
+						if (docParser.mParamInfo.TryGetValue(scope String(paramName), var paramDoc) || paramName.IsEmpty)
 						{
 							curY += font.GetLineSpacing() + GS!(4);
 							if (g != null)
