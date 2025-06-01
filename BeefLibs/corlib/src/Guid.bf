@@ -67,17 +67,7 @@ struct Guid : IHashable, IParseable<Guid>
 	{
 		Guid guid = ?;
 		Platform.BfpSystem_CreateGUID(&guid);
-		return Guid(guid.[Friend]mA,
-			guid.[Friend]mB,
-			guid.[Friend]mC,
-			guid.[Friend]mD,
-			guid.[Friend]mE,
-			guid.[Friend]mF,
-			guid.[Friend]mG,
-			guid.[Friend]mH,
-			guid.[Friend]mI,
-			guid.[Friend]mJ,
-			guid.[Friend]mK);
+		return guid;
 	}
 
 	public void ToString(String strBuffer, char8 format = 'D')
