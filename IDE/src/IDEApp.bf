@@ -169,6 +169,7 @@ namespace IDE
 		public bool mDbgDelayedAutocomplete;
 		public bool mDbgTimeAutocomplete;
 		public bool mDbgPerfAutocomplete;
+		public bool mStopPending;
 		public BeefConfig mBeefConfig = new BeefConfig() ~ delete _;
 		public List<String> mDeferredFails = new .() ~ DeleteContainerAndItems!(_);
 		public String mInitialCWD = new .() ~ delete _;
@@ -15171,7 +15172,7 @@ namespace IDE
 			if (mUpdateCnt % 120 == 0)
 				VerifyModifiedBuffers();
 
-			if (!mSettings.mSettingsValid)
+			if (mStopPending)
 				Stop();
 
 			if (mWantShowOutput)

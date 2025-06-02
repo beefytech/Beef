@@ -1359,6 +1359,7 @@ namespace IDE
 #endif
 					if (result == 3) // Abort
 					{
+						gApp.mStopPending = true;
 						mSettingsValid = false;
 						return;
 					}
