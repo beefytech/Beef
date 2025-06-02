@@ -155,8 +155,16 @@ namespace IDE.ui
 									curDocStr = new String(pragma, Math.Min(splitEnum.MatchPos + 1, pragma.Length));
 									curDocStr.Trim();
 
-									mParamInfo[new String(paramName)] = curDocStr;
-									lineHadContent = true;
+									if (mParamInfo.TryAddAlt(paramName, var keyPtr, var valuePtr))
+									{
+										*keyPtr = new String(paramName);
+										*valuePtr = curDocStr;
+										lineHadContent = true;
+									}
+									else
+									{
+										defer:: delete curDocStr;
+									}
 								}
 							}
 							else if (pragmaName == "brief")

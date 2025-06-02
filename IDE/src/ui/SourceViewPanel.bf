@@ -5678,7 +5678,7 @@ namespace IDE.ui
 								}
 
 								// Display all parameters on hover
-								if (docParser.mParamInfo.Count > 0)
+								if (docParser.mParamInfo?.Count > 0)
 								{
 									debugExpr.Append("\n");
 									debugExpr.Append("Parameters:");
