@@ -1416,11 +1416,12 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		return;
 	}
 
-	BfTypeInstance* stringType = bfModule->ResolveTypeDef(mStringTypeDef, BfPopulateType_Data)->ToTypeInstance();
-	BfTypeInstance* stringViewType = bfModule->ResolveTypeDef(mStringViewTypeDef, BfPopulateType_Data)->ToTypeInstance();
-	BfTypeInstance* reflectSpecializedTypeInstance = bfModule->ResolveTypeDef(mReflectSpecializedGenericType)->ToTypeInstance();
-	BfTypeInstance* reflectUnspecializedTypeInstance = bfModule->ResolveTypeDef(mReflectUnspecializedGenericType)->ToTypeInstance();
-	BfTypeInstance* reflectArrayTypeInstance = bfModule->ResolveTypeDef(mReflectArrayType)->ToTypeInstance();
+	auto typeResolveModule = mContext->mUnreifiedModule;
+	BfTypeInstance* stringType = typeResolveModule->ResolveTypeDef(mStringTypeDef, BfPopulateType_Data)->ToTypeInstance();
+	BfTypeInstance* stringViewType = typeResolveModule->ResolveTypeDef(mStringViewTypeDef, BfPopulateType_Data)->ToTypeInstance();
+	BfTypeInstance* reflectSpecializedTypeInstance = typeResolveModule->ResolveTypeDef(mReflectSpecializedGenericType)->ToTypeInstance();
+	BfTypeInstance* reflectUnspecializedTypeInstance = typeResolveModule->ResolveTypeDef(mReflectUnspecializedGenericType)->ToTypeInstance();
+	BfTypeInstance* reflectArrayTypeInstance = typeResolveModule->ResolveTypeDef(mReflectArrayType)->ToTypeInstance();
 
 	bool madeBfTypeData = false;
 
