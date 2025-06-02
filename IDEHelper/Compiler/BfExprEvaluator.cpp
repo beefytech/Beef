@@ -22687,7 +22687,7 @@ void BfExprEvaluator::Visit(BfIndexerExpression* indexerExpr)
 
 void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, BfTypedValue target)
 {
-	BfAstNode* refNode = indexerExpr->mOpenBracket;
+ 	BfAstNode* refNode = indexerExpr->mOpenBracket;
 	if (refNode == NULL)
 		refNode = indexerExpr->mTarget;
 	
@@ -23048,6 +23048,8 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 		if ((sizedArrayType->IsUndefSizedArray()) || (isUndefIndex))
 		{
 			mResult = mModule->GetDefaultTypedValue(underlyingType, false, BfDefaultValueKind_Addr);
+			if ((!target.CanModify()) && (mResult.IsAddr()))
+				mResult.mKind = BfTypedValueKind_ReadOnlyAddr;
 		}
 		else if (sizedArrayType->IsValuelessType())
 		{
@@ -23057,6 +23059,8 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 			{
 				mResult = mModule->GetDefaultTypedValue(underlyingType, false, BfDefaultValueKind_Addr);
 			}
+			if ((!target.CanModify()) && (mResult.IsAddr()))
+				mResult.mKind = BfTypedValueKind_ReadOnlyAddr;
 		}
 		else if (target.IsAddr())
 		{

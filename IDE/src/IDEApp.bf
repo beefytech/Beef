@@ -15171,6 +15171,9 @@ namespace IDE
 			if (mUpdateCnt % 120 == 0)
 				VerifyModifiedBuffers();
 
+			if (!mSettings.mSettingsValid)
+				Stop();
+
 			if (mWantShowOutput)
 			{
 				ShowOutput();
