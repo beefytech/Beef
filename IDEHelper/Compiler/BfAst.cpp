@@ -1273,7 +1273,8 @@ String BfTypeReference::ToCleanAttributeString()
 		if (typeRefName.EndsWith("Attribute"))
 			typeRefName.RemoveFromEnd(9);
 	}
-
+	if (typeRefName.StartsWith("System."))
+		typeRefName.Remove(0, 7);
 	return typeRefName;
 }
 
