@@ -1308,7 +1308,7 @@ namespace IDE.ui
 			else
 				useWidth = listView.mWidth;
 
-			if ((wantWordWrap) && (useWidth < wantWidth))
+			if (wantWordWrap)
 			{
 				float actualMaxWidth = 0;
 
