@@ -7820,7 +7820,7 @@ namespace IDE.ui
 		{
 			var ewc = mEditWidget.mEditWidgetContent as SourceEditWidgetContent;
 
-			if (mQuickFind != null)
+			if ((mQuickFind != null) && (mQuickFind.mIsShowingMatches))
 			{
 				int usedCursorCount = 0;
 				for (var range in mQuickFind.mFoundRanges)
