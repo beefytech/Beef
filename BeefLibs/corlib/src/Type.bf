@@ -784,6 +784,7 @@ namespace System
 		static extern Type Comptime_GetTypeByName(StringView name);
 		static extern String Comptime_Type_ToString(int32 typeId);
 		static extern String Comptime_TypeName_ToString(int32 typeId);
+		static extern String Comptime_TypeDocumentation_ToString(int32 typeId);
 		static extern String Comptime_Namespace_ToString(int32 typeId);
 		static extern Type Comptime_GetSpecializedType(Type unspecializedType, Span<Type> typeArgs);
 		static extern bool Comptime_Type_GetCustomAttribute(int32 typeId, int32 attributeIdx, void* dataPtr);
@@ -796,10 +797,12 @@ namespace System
 		static extern int64 Comptime_GetMethod(int32 typeId, int32 methodIdx);
 		static extern String Comptime_Method_ToString(int64 methodHandle);
 		static extern String Comptime_Method_GetName(int64 methodHandle);
+		static extern String Comptime_Method_GetDocumentation(int64 methodHandle);
 		static extern ComptimeMethodData Comptime_Method_GetInfo(int64 methodHandle);
 		static extern ComptimeParamInfo Comptime_Method_GetParamInfo(int64 methodHandle, int32 paramIdx);
 		static extern Type Comptime_Method_GetGenericArg(int64 methodHandle, int32 genericArgIdx);
 		static extern String Comptime_Field_GetName(int64 fieldHandle);
+		static extern String Comptime_Field_GetDocumentation(int32 typeId, int32 fieldIndex);
 		static extern ComptimeFieldInfo Comptime_Field_GetInfo(int64 fieldHandle);
 		static extern void* Comptime_Field_GetStatic(int32 typeId, int32 fieldIdx);
 
@@ -875,6 +878,12 @@ namespace System
         {
             GetBasicName(strBuffer);
         }
+
+		public virtual void GetDocumentation(String strBuffer)
+		{
+			if (Compiler.IsComptime)
+				strBuffer.Append(Comptime_TypeDocumentation_ToString((.)mTypeId));
+		}
 
 		// Putting this in causes sTypes to be required when Object.ToString is reified
         /*public override void ToString(String strBuffer)

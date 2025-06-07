@@ -6446,7 +6446,27 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
 				CeSetAddrVal(stackPtr + 0, GetString(str), ptrSize);
 				_FixVariables();
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_TypeDocumentation_ToString)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
+
+				BfType* type = GetBfType(typeId);
+				if (type == NULL)
+				{
+					_Fail("Invalid type");
+					return false;
 				}
+
+				String str;
+				if (auto typeInst = type->ToTypeInstance())
+					typeInst->mTypeDef->mTypeDeclaration->mDocumentation->GetDocString(str);
+
+				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, mCallerMethodInstance);
+				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
+				CeSetAddrVal(stackPtr + 0, GetString(str), ptrSize);
+				_FixVariables();
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Namespace_ToString)
 			{
 				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
@@ -6671,6 +6691,24 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				CeSetAddrVal(stackPtr + 0, GetString(methodInstance->mMethodDef->GetReflectName()), ptrSize);
 				_FixVariables();
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetDocumentation)
+			{
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + ptrSize);
+
+				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
+				if (methodInstance == NULL)
+				{
+					_Fail("Invalid method instance");
+					return false;
+				}
+
+				String docs;
+				if (auto decl = BfNodeDynCast<BfMethodDeclaration>(methodInstance->mMethodDef->mMethodDeclaration))
+					decl->mDocumentation->GetDocString(docs);
+
+				CeSetAddrVal(stackPtr + 0, GetString(docs), ptrSize);
+				_FixVariables();
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetInfo)
 			{
 				// int32 mReturnType
@@ -6767,6 +6805,36 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto reflectType = GetReflectType(methodInstance->mMethodInfoEx->mMethodGenericArguments[genericArgIdx]->mTypeId);
 				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Field_GetDocumentation)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
+				int32 fieldIdx = *(int32*)((uint8*)stackPtr + ptrSize + 4);
+
+				BfType* type = GetBfType(typeId);
+				if (type == NULL)
+				{
+					_Fail("Invalid type");
+					return false;
+				}
+				String docs;
+				if (type != NULL)
+				{
+					if (auto typeInst = type->ToTypeInstance())
+					{
+						if (fieldIdx < 0 || fieldIdx >= typeInst->mFieldInstances.size())
+						{
+							_Fail("Invalid field");
+							return false;
+						}
+						auto fieldInstance = typeInst->mFieldInstances[fieldIdx];
+						if (auto decl = BfNodeDynCast<BfFieldDeclaration>(fieldInstance.GetFieldDef()->mFieldDeclaration))
+							decl->mDocumentation->GetDocString(docs);
+					}
+				}
+
+				CeSetAddrVal(stackPtr + 0, GetString(docs), ptrSize);
+				_FixVariables();
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Field_GetStatic)
 			{
@@ -10154,6 +10222,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_TypeName_ToString;
 				}
+				else if (methodDef->mName == "Comptime_TypeDocumentation_ToString")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_TypeDocumentation_ToString;
+				}
 				else if (methodDef->mName == "Comptime_Namespace_ToString")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Namespace_ToString;
@@ -10198,6 +10270,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Method_GetName;
 				}
+				else if (methodDef->mName == "Comptime_Method_GetDocumentation")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Method_GetDocumentation;
+				}
 				else if (methodDef->mName == "Comptime_Method_GetInfo")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Method_GetInfo;
@@ -10209,6 +10285,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_Method_GetGenericArg")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Method_GetGenericArg;
+				}
+				else if (methodDef->mName == "Comptime_Field_GetDocumentation")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Field_GetDocumentation;
 				}
 				else if (methodDef->mName == "Comptime_Field_GetStatic")
 				{

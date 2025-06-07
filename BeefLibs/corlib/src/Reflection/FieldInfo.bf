@@ -37,6 +37,9 @@ namespace System.Reflection
 		public int32 FieldIdx => Compiler.IsComptime ?
 			mFieldData.mCustomAttributesIdx :
 			-1;
+		public StringView Documentation => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Field_GetDocumentation((.)mTypeInstance.TypeId, FieldIdx) :
+			null;
 
 		public void GetSourceName(String outStr)
 		{
