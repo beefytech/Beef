@@ -66,6 +66,9 @@ namespace System.Reflection
 		public StringView Name => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetName(mData.mComptimeMethodInstance) :
 			mData.mMethodData.[Friend]mName;
+		public StringView Documentation => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Method_GetDocumentation(mData.mComptimeMethodInstance) :
+			null;
 		public void* Ptr => Compiler.IsComptime ?
 			null :
 			mData.mMethodData.[Friend]mFuncPtr;
