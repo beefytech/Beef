@@ -3743,6 +3743,9 @@ namespace IDE.ui
 
 		public void MoveLine(VertDir dir)
 		{
+			if (CheckReadOnly())
+				return;
+
 			RemoveSecondaryTextCursors();
 			int lineNum = CursorLineAndColumn.mLine;
 
