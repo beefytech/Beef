@@ -9563,13 +9563,7 @@ BfTypedValue BfExprEvaluator::CheckEnumCreation(BfAstNode* targetSrc, BfTypeInst
 					continue;
 
 				argValue = mModule->AggregateSplat(argValue);
-				argValues.mResolvedArgs[tupleFieldIdx].mExpectedType = resolvedFieldType;
-				if ((argValues.mResolvedArgs[tupleFieldIdx].mArgFlags & (BfArgFlag_DelegateBindAttempt | BfArgFlag_LambdaBindAttempt | BfArgFlag_UnqualifiedDotAttempt)) != 0)
-				{
-					auto expr = BfNodeDynCast<BfExpression>(argValues.mResolvedArgs[tupleFieldIdx].mExpression);
-					BF_ASSERT(expr != NULL);
-					argValue = mModule->CreateValueFromExpression(expr, resolvedFieldType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
-				}
+				argValues.mResolvedArgs[tupleFieldIdx].mExpectedType = resolvedFieldType;				
 
 				if (argValue)
 				{
