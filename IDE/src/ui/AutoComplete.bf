@@ -2796,7 +2796,7 @@ namespace IDE.ui
 
 			var targetSourceEditWidgetContent = mTargetEditWidget.Content as SourceEditWidgetContent;
 			var sourceEditWidgetContent = targetSourceEditWidgetContent;
-			var prevCursorPosition = sourceEditWidgetContent.mTextCursors.Front.mCursorTextPos;
+			var prevCursorPosition = sourceEditWidgetContent.CursorTextPos;
 			var prevScrollPos = mTargetEditWidget.mVertPos.mDest;
 
 			UndoBatchStart undoBatchStart = null;
@@ -2877,7 +2877,7 @@ namespace IDE.ui
 						return;
 					}
 	
-					sourceEditWidgetContent.mTextCursors.Front.mCursorTextPos = fixitIdx;
+					sourceEditWidgetContent.CursorTextPos = fixitIdx;
 					if (focusChange)
 						sourceEditWidgetContent.EnsureCursorVisible(true, true);
 
@@ -2894,7 +2894,7 @@ namespace IDE.ui
 					else
 						InsertImplText(sourceEditWidgetContent, fixitInsert);
 
-					fixitIdx = (.)sourceEditWidgetContent.mTextCursors.Front.mCursorTextPos;
+					fixitIdx = (.)sourceEditWidgetContent.CursorTextPos;
 					insertCount++;
 				}
 			}
@@ -2902,9 +2902,10 @@ namespace IDE.ui
 			if (!focusChange)
 			{
 				mTargetEditWidget.VertScrollTo(prevScrollPos, true);
-				sourceEditWidgetContent.mTextCursors.Front.mCursorTextPos = prevCursorPosition;
+				sourceEditWidgetContent.CursorTextPos = prevCursorPosition;
 				int addedSize = sourceEditWidgetContent.mData.mTextLength - prevTextLength;
 				sourceEditWidgetContent.[Friend]AdjustCursorsAfterExternalEdit(fixitIdx, addedSize, 0);
+				sourceEditWidgetContent.CurCursorTextPos += (int32)addedSize;
 			}
 
 			if (historyEntry != null)
