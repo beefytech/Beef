@@ -16,7 +16,6 @@ namespace System
 {
 	using System;
 	using System.Globalization;
-	using System.Diagnostics.Contracts;
 	using System.Diagnostics;
 	using System.Threading;
 
@@ -197,7 +196,7 @@ namespace System
       ==============================================================================*/
 		public virtual int32 Next(int32 minValue, int32 maxValue)
 		{
-			Debug.Assert(minValue < maxValue);
+			Debug.Assert(minValue <= maxValue);
 
 			int64 range = (int64)maxValue - minValue;
 			if (range <= Int32.MaxValue)
@@ -218,7 +217,7 @@ namespace System
 		==============================================================================*/
 		public virtual int64 Next(int64 minValue, int64 maxValue)
 		{
-			Debug.Assert(minValue < maxValue);
+			Debug.Assert(minValue <= maxValue);
 
 			uint64 range = (uint64)(maxValue - minValue);
 			if (range <= Int32.MaxValue)
