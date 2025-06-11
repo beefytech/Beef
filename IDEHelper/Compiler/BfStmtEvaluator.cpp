@@ -1909,7 +1909,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		if (!initValue)
 			initValue = GetDefaultTypedValue(localDef->mResolvedType);
 
-		if (!localDef->mResolvedType->IsValuelessType())
+		if ((!localDef->mResolvedType->IsValuelessType()) && (!localDef->mResolvedType->IsVar()))
 			localDef->mAddr = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapType(localDef->mResolvedType, BfIRPopulateType_Full), false, BfIRLinkageType_Internal, initValue.mValue, name);;
 		initHandled = true;
 	}
@@ -6493,11 +6493,16 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 		// Soldier on
 		target = GetDefaultTypedValue(varType);
 	}
-	if (forEachStmt->mInToken->mToken == BfToken_LessEquals)
-		conditionValue = mBfIRBuilder->CreateCmpLTE(localVal, target.mValue, varType->IsSigned());
-	else
-		conditionValue = mBfIRBuilder->CreateCmpLT(localVal, target.mValue, varType->IsSigned());
-	mBfIRBuilder->CreateCondBr(conditionValue, bodyBB, endBB);
+	
+	if (!target.mValue.IsFake())
+	{
+		if (forEachStmt->mInToken->mToken == BfToken_LessEquals)
+			conditionValue = mBfIRBuilder->CreateCmpLTE(localVal, target.mValue, varType->IsSigned());
+		else
+			conditionValue = mBfIRBuilder->CreateCmpLT(localVal, target.mValue, varType->IsSigned());
+		mBfIRBuilder->CreateCondBr(conditionValue, bodyBB, endBB);
+	}	
+
 	ValueScopeEnd(valueScopeStart);
 
 	mBfIRBuilder->AddBlock(bodyBB);
