@@ -7861,6 +7861,8 @@ namespace IDE.ui
 			}
 
 			ewc.AddSelectionToNextFindMatch(createCursor, exhaustiveSearch);
+			ewc.mDragSelectionUnion = null;
+			ewc.mDragSelectionKind = .None;
 		}
 
 		public void MoveLastSelectionToNextFindMatch()
