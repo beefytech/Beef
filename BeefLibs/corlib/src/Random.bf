@@ -197,14 +197,10 @@ namespace System
       ==============================================================================*/
 		public virtual int32 Next(int32 minValue, int32 maxValue)
 		{
-			if (minValue > maxValue)
-			{
-				Runtime.FatalError();
-			}
-			Contract.EndContractBlock();
+			Debug.Assert(minValue < maxValue);
 
 			int64 range = (int64)maxValue - minValue;
-			if (range <= (int64)Int32.MaxValue)
+			if (range <= Int32.MaxValue)
 			{
 				return ((int32)(Sample() * range) + minValue);
 			}
@@ -214,22 +210,34 @@ namespace System
 			}
 		}
 
+		/*=====================================Next=====================================
+		**Returns: An int [minvalue..maxvalue)
+		**Arguments: minValue -- the least legal value for the Random number.
+		**           maxValue -- One greater than the greatest legal return value.
+		**Exceptions: None.
+		==============================================================================*/
 		public virtual int64 Next(int64 minValue, int64 maxValue)
 		{
-			if (minValue > maxValue)
-			{
-				Runtime.FatalError();
-			}
-			Contract.EndContractBlock();
+			Debug.Assert(minValue < maxValue);
 
-			int64 range = (int64)maxValue - minValue;
-			if (range <= (int64)Int32.MaxValue)
+			uint64 range = (uint64)(maxValue - minValue);
+			if (range <= Int32.MaxValue)
 			{
-				return ((int32)(Sample() * range) + minValue);
+				return ((int64)(Sample() * range) + minValue);
 			}
 			else
 			{
-				return (int32)((int64)(GetSampleForLargeRange() * range) + minValue);
+				// In order to ensure we produce equally distributed numbers we reroll the
+				// range of numbers that would cause unequal distribution
+				bool is_power_of_2(uint64 x) => x == x & (.)-(int64)x;
+				uint64 excludeRange = is_power_of_2(range) ? 0 : ~(uint64)0 % range + 1;
+				uint64 res = 0;
+				repeat
+				{
+					res = NextU64();
+				}
+				while (res < excludeRange);
+				return minValue + (.)(res % range);
 			}
 		}
     
@@ -241,21 +249,13 @@ namespace System
       ==============================================================================*/
 		public virtual int32 Next(int32 maxValue)
 		{
-			if (maxValue < 0)
-			{
-				Runtime.FatalError();
-			}
-			Contract.EndContractBlock();
+			Debug.Assert(maxValue >= 0);
 			return (.)(Sample() * maxValue);
 		}
 
 		public virtual int64 Next(int64 maxValue)
 		{
-			if (maxValue < 0)
-			{
-				Runtime.FatalError();
-			}
-			Contract.EndContractBlock();
+			Debug.Assert(maxValue >= 0);
 			return (.)(Sample() * maxValue);
 		}
     
