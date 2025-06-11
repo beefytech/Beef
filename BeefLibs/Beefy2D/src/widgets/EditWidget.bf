@@ -3193,7 +3193,11 @@ namespace Beefy.widgets
                     SelectToCursor();                
                 }
                 else
+                {
                     CurSelection = null;
+                    mDragSelectionUnion = null;
+                    mDragSelectionKind = .None;
+                }
 
                 EnsureCursorVisible();
             }
