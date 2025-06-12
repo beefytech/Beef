@@ -889,7 +889,7 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 
 			bool paramWasConstExpr = false;
 			bool prevParamWasConstExpr = false;
-
+						
 			bool paramWasUnspecialized = paramType->IsUnspecializedType();
 			if ((genericArgumentsSubstitute != NULL) && (paramWasUnspecialized))
 			{
@@ -952,9 +952,16 @@ void BfMethodMatcher::CompareMethods(BfMethodInstance* prevMethodInstance, BfTyp
 						else if ((wasArgDeferred) && (paramType != prevParamType) && (paramType == arg.mType) && (paramType == resolvedArg->mBestBoundType))
 							isBetter = true;
 						else if ((wasArgDeferred) && (paramType != prevParamType) && (prevParamType == arg.mType) && (prevParamType == resolvedArg->mBestBoundType))
-							isWorse = true;
+							isWorse = true;						
+						else if ((argIdx == -1) && (anyIsExtension))
+						{							
+							if ((newMethodInstance->mMethodDef->mMethodType == BfMethodType_Extension) && (wasGenericParam) && (!prevWasGenericParam))
+								isWorse = true;
+							else if ((prevMethodInstance->mMethodDef->mMethodType == BfMethodType_Extension) && (prevWasGenericParam) && (!wasGenericParam))
+								isBetter = true;
+						}
 						else
-						{
+						{							
 							bool canCastFromCurToPrev = mModule->CanCast(mModule->GetFakeTypedValue(paramType), prevParamType, implicitCastFlags);
 							bool canCastFromPrevToCur = mModule->CanCast(mModule->GetFakeTypedValue(prevParamType), paramType, implicitCastFlags);
 
