@@ -295,7 +295,7 @@ namespace IDE
 			Add("Reload Settings", new => gApp.ReloadSettings);
 			Add("Remove All Breakpoints", new => gApp.[Friend]RemoveAllBreakpoints);
 			Add("Rename Item", new => gApp.Cmd_RenameItem);
-			Add("Rename Symbol", new => gApp.Cmd_RenameSymbol);
+			Add("Rename Symbol", new => gApp.Cmd_RenameSymbol, .Editor);
 			Add("Replace in Document", new => gApp.Cmd_Document__Replace);
 			Add("Replace in Files", new => gApp.Cmd_Replace);
 			Add("Report Memory", new => gApp.[Friend]ReportMemory);
