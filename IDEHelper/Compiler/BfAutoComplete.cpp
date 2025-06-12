@@ -2892,49 +2892,52 @@ void BfAutoComplete::AddCtorPassthroughs()
 		declMethods.Add(methodInst);
 	}
 	
-	for (auto methodDef : baseType->mTypeDef->mMethods)
+	if (baseType != NULL)
 	{
-		if (methodDef->mShow != BfShow_Show)
-			continue;
-		if (methodDef->mProtection < BfProtection_Protected)
-			continue;
-		if (methodDef->mIsStatic)
-			continue;
-
-		auto& methodGroup = baseType->mMethodInstanceGroups[methodDef->mIdx];
-		auto methodInst = methodGroup.mDefault;
-		if (methodInst == NULL)		
-			continue;
-		if (methodDef->mMethodType != BfMethodType_Ctor)
-			continue;
-		
-		if (methodInst->GetParamCount() == 0)
-			continue;
-
-		bool hasDecl = false;
-		for (auto declMethod : declMethods)
+		for (auto methodDef : baseType->mTypeDef->mMethods)
 		{
-			if (mModule->CompareMethodSignatures(methodInst, declMethod))
+			if (methodDef->mShow != BfShow_Show)
+				continue;
+			if (methodDef->mProtection < BfProtection_Protected)
+				continue;
+			if (methodDef->mIsStatic)
+				continue;
+
+			auto& methodGroup = baseType->mMethodInstanceGroups[methodDef->mIdx];
+			auto methodInst = methodGroup.mDefault;
+			if (methodInst == NULL)
+				continue;
+			if (methodDef->mMethodType != BfMethodType_Ctor)
+				continue;
+
+			if (methodInst->GetParamCount() == 0)
+				continue;
+
+			bool hasDecl = false;
+			for (auto declMethod : declMethods)
 			{
-				hasDecl = true;
-				break;
+				if (mModule->CompareMethodSignatures(methodInst, declMethod))
+				{
+					hasDecl = true;
+					break;
+				}
 			}
-		}
-		if (hasDecl)
-			continue;
+			if (hasDecl)
+				continue;
 
-		StringT<512> insertString;
-		GetMethodInfo(methodInst, &insertString, &insertString, true, false);
-		if (insertString.IsEmpty())
-			continue;
-		AddEntry(AutoCompleteEntry("this", insertString), "");
+			StringT<512> insertString;
+			GetMethodInfo(methodInst, &insertString, &insertString, true, false);
+			if (insertString.IsEmpty())
+				continue;
+			AddEntry(AutoCompleteEntry("this", insertString), "");
 
-		int tabPos = (int)insertString.IndexOf('\t');
-		if (tabPos >= 0)
-		{
- 			if (!totalInsertString.IsEmpty())
- 				totalInsertString += "\r\r";
-			totalInsertString += insertString.Substring(tabPos + 1);
+			int tabPos = (int)insertString.IndexOf('\t');
+			if (tabPos >= 0)
+			{
+				if (!totalInsertString.IsEmpty())
+					totalInsertString += "\r\r";
+				totalInsertString += insertString.Substring(tabPos + 1);
+			}
 		}
 	}
 
@@ -4087,7 +4090,7 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 {
 	auto baseType = typeInstance->mBaseType;
 	auto parser = typeInstance->mTypeDef->GetDefinition()->mSource->ToParser();
-	if (parser != NULL)
+	if ((parser != NULL) && (baseType != NULL))
 	{
 		for (auto methodDef : baseType->mTypeDef->mMethods)
 		{
