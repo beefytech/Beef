@@ -77,25 +77,30 @@ bool BfReducer::StringEquals(BfAstNode* node, BfAstNode* node2)
 }
 
 int gAssertCurrentNodeIdx = 0;
-void BfReducer::AssertCurrentNode(BfAstNode* node)
+bool BfReducer::AssertCurrentNode(BfAstNode* node)
 {
 	if (mSkipCurrentNodeAssert)
-		return;
-
+		return true;
+	
+	bool success = true;
 	auto currentNode = mVisitorPos.GetCurrent();
 	if (currentNode == NULL)
-		return;
+		return success;
 	if ((!node->LocationEndEquals(currentNode)) && (mLastErrorSrcEnd != currentNode->mSrcEnd))
 	{
 		const char* lastCPtr = &node->GetSourceData()->mSrc[node->GetSrcEnd() - 1];
 		// We have an "exceptional" case where breaking a double chevron will look like a position error
 		if ((lastCPtr[0] != '>') || (lastCPtr[1] != '>'))
 		{
-			BF_FATAL("Internal parsing error");
+			//BF_FATAL("Internal parsing error");			
+			Fail("Internal parsing error", currentNode);
+			AddErrorNode(currentNode);
+			success = false;
 		}
 	}
 	gAssertCurrentNodeIdx++;
 	mAssertCurrentNodeIdx++;
+	return success;
 }
 
 // For autocomplete we only do a reduce on nodes the cursor is in
@@ -243,7 +248,8 @@ void BfReducer::AddErrorNode(BfAstNode* astNode, bool removeNode)
 
 bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int endNode, int* retryNode, int* outEndNode, bool* couldBeExpr, bool* isGenericType, bool* isTuple)
 {
-	AssertCurrentNode(checkNode);
+	if (!AssertCurrentNode(checkNode))
+		return false;
 
 	if (couldBeExpr != NULL)
 		*couldBeExpr = true;
@@ -1081,7 +1087,8 @@ bool BfReducer::IsTypeReference(BfAstNode* checkNode, BfToken successToken, int 
 
 bool BfReducer::IsLocalMethod(BfAstNode* nameNode)
 {
-	AssertCurrentNode(nameNode);
+	if (!AssertCurrentNode(nameNode))
+		return false;
 
 	int parenDepth = 0;
 	bool hadParens = false;
@@ -1608,7 +1615,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 		}
 	}
 
-	AssertCurrentNode(node);
+	if (!AssertCurrentNode(node))
+		return NULL;
 
 	auto rhsCreateExprFlags = (CreateExprFlags)(createExprFlags & CreateExprFlags_BreakOnRChevron);
 
@@ -3154,7 +3162,8 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 
 BfExpression* BfReducer::CreateExpressionAfter(BfAstNode* node, CreateExprFlags createExprFlags)
 {
-	AssertCurrentNode(node);
+	if (!AssertCurrentNode(node))
+		return NULL;
 	auto nextNode = mVisitorPos.GetNext();
 	bool isEmpty = false;
 	if (auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode))
@@ -4876,7 +4885,8 @@ bool BfReducer::IsTerminatingExpression(BfAstNode* node)
 
 BfAstNode* BfReducer::CreateStatement(BfAstNode* node, CreateStmtFlags createStmtFlags)
 {
-	AssertCurrentNode(node);
+	if (!AssertCurrentNode(node))
+		return NULL;
 
 	if ((createStmtFlags & CreateStmtFlags_CheckStack) != 0)
 	{
@@ -4989,7 +4999,8 @@ BfAstNode* BfReducer::CreateStatement(BfAstNode* node, CreateStmtFlags createStm
 
 BfAstNode* BfReducer::CreateStatementAfter(BfAstNode* node, CreateStmtFlags createStmtFlags)
 {
-	AssertCurrentNode(node);
+	if (!AssertCurrentNode(node))
+		return NULL;
 	auto nextNode = mVisitorPos.GetNext();
 	if (nextNode == NULL)
 	{
@@ -5062,7 +5073,8 @@ BfTypeReference* BfReducer::DoCreateNamedTypeRef(BfIdentifierNode* identifierNod
 
 BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefFlags createTypeRefFlags, int endNode)
 {
-	AssertCurrentNode(firstNode);
+	if (!AssertCurrentNode(firstNode))
+		return NULL;
 
 	bool parseArrayBracket = (createTypeRefFlags & CreateTypeRefFlags_NoParseArrayBrackets) == 0;
 
@@ -5822,7 +5834,8 @@ BfTypeReference* BfReducer::CreateTypeRef(BfAstNode* firstNode, CreateTypeRefFla
 
 BfTypeReference* BfReducer::CreateTypeRefAfter(BfAstNode* astNode, CreateTypeRefFlags createTypeRefFlags)
 {
-	AssertCurrentNode(astNode);
+	if (!AssertCurrentNode(astNode))
+		return NULL;
 	auto nextNode = mVisitorPos.GetNext();
 	if (nextNode == NULL)
 	{
@@ -5883,7 +5896,8 @@ BfTypeReference* BfReducer::CreateRefTypeRef(BfTypeReference* elementType, BfTok
 
 BfIdentifierNode* BfReducer::CompactQualifiedName(BfAstNode* leftNode, bool allowGlobalLookup)
 {
-	AssertCurrentNode(leftNode);
+	if (!AssertCurrentNode(leftNode))
+		return NULL;
 
 	if ((leftNode == NULL) || (!leftNode->IsA<BfIdentifierNode>()))
 		return NULL;
@@ -7357,7 +7371,10 @@ BfAstNode* BfReducer::ReadTypeMember(BfAstNode* node, bool declStarted, int dept
 	// 		prevTypeMemberNodeStart.Set();
 
 	if (mCurTypeDecl != NULL)
-		AssertCurrentNode(node);
+	{
+		if (!AssertCurrentNode(node))
+			return NULL;		
+	}
 
 	BfTokenNode* refToken = NULL;
 
@@ -9127,8 +9144,9 @@ BfAstNode* BfReducer::HandleTopLevel(BfBlock* node)
 }
 
 BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDirective* attributes, BfAstNode* deferredHeadNode, bool isAnonymous)
-{
-	AssertCurrentNode(tokenNode);
+{	
+	if (!AssertCurrentNode(tokenNode))
+		return NULL;
 
 	bool isSimpleEnum = false;
 	if (tokenNode->GetToken() == BfToken_Enum)
@@ -9914,7 +9932,8 @@ BfAstNode* BfReducer::CreateTopLevelObject(BfTokenNode* tokenNode, BfAttributeDi
 
 BfTokenNode* BfReducer::ExpectTokenAfter(BfAstNode* node, BfToken token)
 {
-	AssertCurrentNode(node);
+	if (!AssertCurrentNode(node))
+		return NULL;
 	auto nextNode = mVisitorPos.GetNext();
 	auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
 	if ((tokenNode == NULL) ||
@@ -9929,7 +9948,8 @@ BfTokenNode* BfReducer::ExpectTokenAfter(BfAstNode* node, BfToken token)
 
 BfTokenNode* BfReducer::ExpectTokenAfter(BfAstNode* node, BfToken tokenA, BfToken tokenB)
 {
-	AssertCurrentNode(node);
+	if (!AssertCurrentNode(node))
+		return NULL;
 	auto nextNode = mVisitorPos.GetNext();
 	auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
 	if ((tokenNode == NULL) ||
@@ -9944,7 +9964,8 @@ BfTokenNode* BfReducer::ExpectTokenAfter(BfAstNode* node, BfToken tokenA, BfToke
 
 BfTokenNode* BfReducer::ExpectTokenAfter(BfAstNode* node, BfToken tokenA, BfToken tokenB, BfToken tokenC)
 {
-	AssertCurrentNode(node);
+	if (!AssertCurrentNode(node))
+		return NULL;
 	auto nextNode = mVisitorPos.GetNext();
 	auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
 
@@ -9963,7 +9984,8 @@ BfTokenNode* BfReducer::ExpectTokenAfter(BfAstNode* node, BfToken tokenA, BfToke
 
 BfTokenNode* BfReducer::ExpectTokenAfter(BfAstNode* node, BfToken tokenA, BfToken tokenB, BfToken tokenC, BfToken tokenD)
 {
-	AssertCurrentNode(node);
+	if (!AssertCurrentNode(node))
+		return NULL;
 	auto nextNode = mVisitorPos.GetNext();
 	auto tokenNode = BfNodeDynCast<BfTokenNode>(nextNode);
 	BfToken token = BfToken_Null;
@@ -9981,7 +10003,8 @@ BfTokenNode* BfReducer::ExpectTokenAfter(BfAstNode* node, BfToken tokenA, BfToke
 
 BfIdentifierNode* BfReducer::ExpectIdentifierAfter(BfAstNode* node, const char* typeName)
 {
-	AssertCurrentNode(node);
+	if (!AssertCurrentNode(node))
+		return NULL;
 	auto nextNode = mVisitorPos.GetNext();
 	auto identifierNode = BfNodeDynCast<BfIdentifierNode>(nextNode);
 	if (identifierNode == NULL)
@@ -9998,7 +10021,8 @@ BfIdentifierNode* BfReducer::ExpectIdentifierAfter(BfAstNode* node, const char* 
 
 BfBlock* BfReducer::ExpectBlockAfter(BfAstNode* node)
 {
-	AssertCurrentNode(node);
+	if (!AssertCurrentNode(node))
+		return NULL;
 	auto nextNode = mVisitorPos.GetNext();
 	auto block = BfNodeDynCast<BfBlock>(nextNode);
 	if (block == NULL)

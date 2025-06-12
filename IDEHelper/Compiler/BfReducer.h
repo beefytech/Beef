@@ -209,7 +209,7 @@ public:
 	BfTokenNode* BreakQuestionLBracket(BfTokenNode* tokenNode);
 	BfCommentNode* FindDocumentation(BfAstNode* defNodeHead, BfAstNode* defNodeEnd = NULL, bool checkDocAfter = false);
 
-	void AssertCurrentNode(BfAstNode* node);
+	bool AssertCurrentNode(BfAstNode* node);
 	bool IsNodeRelevant(BfAstNode* astNode);
 	bool IsCursorInside(BfAstNode* astNode);
 	bool IsNodeRelevant(BfAstNode* startNode, BfAstNode* endNode);
