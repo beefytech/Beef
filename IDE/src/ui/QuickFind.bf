@@ -352,7 +352,7 @@ namespace IDE.ui
 			if (swapCursor != null)
 			{
 				Swap!(primaryCursor.mCursorTextPos, swapCursor.mCursorTextPos);
-				Swap!(primaryCursor.mSelection.Value, swapCursor.mSelection.Value);
+				Swap!(primaryCursor.mSelection.ValueRef, swapCursor.mSelection.ValueRef);
 			}
 
 			return (!isFirstMatch);
