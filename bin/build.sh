@@ -44,7 +44,7 @@ else
 fi
 
 LLVM_CONFIG=$(command -v llvm-config-19 2>/dev/null ||
-              command -v /usr/lib/llvm18/bin/llvm-config 2>/dev/null ||
+              command -v /usr/lib/llvm19/bin/llvm-config 2>/dev/null ||
               command -v llvm-config 2>/dev/null)
 LLVM_FOUND=0
 LLVM_DIR=""
