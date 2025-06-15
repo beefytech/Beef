@@ -279,7 +279,7 @@ namespace IDE.ui
 
 			bool Matches(int32 idx)
 			{
-				if (idx + findText.Length >= ewc.mData.mTextLength)
+				if (idx + findText.Length > ewc.mData.mTextLength)
 					return false;
 
 				for (var i = 0; i < findText.Length; i++)
