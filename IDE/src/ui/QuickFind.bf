@@ -279,7 +279,7 @@ namespace IDE.ui
 
 			bool Matches(int32 idx)
 			{
-				if (idx + findText.Length >= ewc.mData.mTextLength)
+				if (idx + findText.Length > ewc.mData.mTextLength)
 					return false;
 
 				for (var i = 0; i < findText.Length; i++)
@@ -352,7 +352,7 @@ namespace IDE.ui
 			if (swapCursor != null)
 			{
 				Swap!(primaryCursor.mCursorTextPos, swapCursor.mCursorTextPos);
-				Swap!(primaryCursor.mSelection.Value, swapCursor.mSelection.Value);
+				Swap!(primaryCursor.mSelection.ValueRef, swapCursor.mSelection.ValueRef);
 			}
 
 			return (!isFirstMatch);
