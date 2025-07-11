@@ -306,8 +306,10 @@ namespace System
 		}
 	}
 
+#if !BF_RUNTIME_DISABLE
 	static
 	{
 		public static Random gRand = new Random() ~ delete _;
 	}
+#endif
 }
