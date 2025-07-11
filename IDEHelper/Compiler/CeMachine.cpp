@@ -6460,7 +6460,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String str;
 				if (auto typeInst = type->ToTypeInstance())
-					typeInst->mTypeDef->mTypeDeclaration->mDocumentation->GetDocString(str);
+					if(typeInst->mTypeDef->mTypeDeclaration->mDocumentation != NULL)
+						typeInst->mTypeDef->mTypeDeclaration->mDocumentation->GetDocString(str);
 
 				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, mCallerMethodInstance);
 				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
@@ -6704,7 +6705,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				String docs;
 				if (auto decl = BfNodeDynCast<BfMethodDeclaration>(methodInstance->mMethodDef->mMethodDeclaration))
-					decl->mDocumentation->GetDocString(docs);
+					if(decl->mDocumentation != NULL)	
+						decl->mDocumentation->GetDocString(docs);
 
 				CeSetAddrVal(stackPtr + 0, GetString(docs), ptrSize);
 				_FixVariables();
@@ -6829,7 +6831,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 						}
 						auto fieldInstance = typeInst->mFieldInstances[fieldIdx];
 						if (auto decl = BfNodeDynCast<BfFieldDeclaration>(fieldInstance.GetFieldDef()->mFieldDeclaration))
-							decl->mDocumentation->GetDocString(docs);
+							if(decl->mDocumentation != NULL)	
+								decl->mDocumentation->GetDocString(docs);
 					}
 				}
 
