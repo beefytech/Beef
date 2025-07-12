@@ -1451,6 +1451,12 @@ void BfPrinter::Visit(BfStringInterpolationExpression* stringInterpolationExpres
 			if (expr->mSrcStart == curSrcIdx)
 			{
 				_Flush(strIdx);
+
+				// Avoid any additional formatting before the block
+				mExpectingNewLine = false;
+				mVirtualNewLineIdx = mNextStateModify.mWantNewLineIdx;
+				mNextStateModify.mExpectingSpace = false;
+
 				if (auto block = BfNodeDynCast<BfBlock>(expr))
 					HandleBlock(block, true);
 				else
