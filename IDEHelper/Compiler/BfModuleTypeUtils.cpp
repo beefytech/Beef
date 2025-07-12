@@ -6664,10 +6664,13 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 		auto _CheckEntry = [&](BfTypeDef* typeDef)
 		{
-			auto parser = typeDef->mTypeDeclaration->GetParser();
-			if (parser != NULL)
-				if (mCompiler->mResolvePassData->GetSourceClassifier(parser) != NULL)
-					isCurrentEntry = true;
+			if (typeDef->mTypeDeclaration != NULL)
+			{
+				auto parser = typeDef->mTypeDeclaration->GetParser();
+				if (parser != NULL)
+					if (mCompiler->mResolvePassData->GetSourceClassifier(parser) != NULL)
+						isCurrentEntry = true;
+			}
 		};
 
 		_CheckEntry(typeInstance->mTypeDef);
