@@ -5182,9 +5182,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 		bool hadSoftFail = false;
 
-		for (auto& fieldInstanceRef : typeInstance->mFieldInstances)
+		for (int fieldIdx = 0; fieldIdx < typeInstance->mFieldInstances.mSize; fieldIdx++)
 		{
-			auto fieldInstance = &fieldInstanceRef;
+			auto fieldInstance = &typeInstance->mFieldInstances[fieldIdx];
 			auto fieldDef = fieldInstance->GetFieldDef();
 			auto resolvedFieldType = fieldInstance->GetResolvedType();
 

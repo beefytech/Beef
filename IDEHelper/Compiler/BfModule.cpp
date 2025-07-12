@@ -14749,6 +14749,22 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 
 					BfLogSysM("REIFIED(GetMethodInstance QueueSpecializationRequest): %s %s MethodDef:%p RefModule:%s RefMethod:%p\n", TypeToString(typeInst).c_str(), methodDef->mName.c_str(), methodDef, mModuleName.c_str(), mCurMethodInstance);
 
+					// Sanity check
+					{
+						int methodIdx = methodDef->mIdx;
+						BfMethodDef* checkMethod = NULL;
+						if (foreignType != NULL)
+							checkMethod = foreignType->mTypeDef->mMethods[methodIdx];
+						else
+							checkMethod = typeInst->mTypeDef->mMethods[methodIdx];
+						if (checkMethod != methodDef)
+						{
+							BfLogSysM(" MISMATCH. Got:%p Expected:%p\n", checkMethod, methodDef);
+							BF_ASSERT(checkMethod->mName == methodDef->mName);
+							methodDef = checkMethod;
+						}						
+					}
+
 					// This ensures that the method will actually be created when it gets reified
 					BfMethodSpecializationRequest* specializationRequest = mContext->mMethodSpecializationWorkList.Alloc();
 					specializationRequest->mFromModule = typeInst->mModule;
