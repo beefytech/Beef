@@ -193,7 +193,7 @@ namespace IDE.ui
 		{
 			if (keyEvent.mKeyCode == .Escape)
 			{
-				if (mPanel.mQuickFind?.mWidgetWindow != null)
+				if (mPanel?.mQuickFind?.mWidgetWindow != null)
 				{
 					mPanel.mQuickFind.Close();
 					return;
