@@ -1085,7 +1085,7 @@ namespace IDE.ui
 
 				var parentWidget = GetParentWidget();
 
-				BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized /*| BFWindow.Flags.PopupPosition*/ | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha;
+				BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized /*| BFWindow.Flags.PopupPosition*/ | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha | BFWindow.Flags.Tooltip;
 #unwarn
 				WidgetWindow widgetWindow = new WidgetWindow(parentWidget.mWidgetWindow,
 				    "HoverWatch",
@@ -1685,7 +1685,7 @@ namespace IDE.ui
 			/*float screenWidth = mListView.mWidth + 8;
 			float screenHeight = mListView.mHeight + 8;
 
-            BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized /*| BFWindow.Flags.PopupPosition*/ | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha;
+            BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized /*| BFWindow.Flags.PopupPosition*/ | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha | BFWindow.Flags.Tooltip;
 #unwarn
             WidgetWindow widgetWindow = new WidgetWindow(parentWidget.mWidgetWindow,
                 "HoverWatch",

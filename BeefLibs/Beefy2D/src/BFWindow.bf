@@ -52,6 +52,7 @@ namespace Beefy
 			AcceptFiles = 0x1000'0000,
 			NoShow = 0x2000'0000,
 			NoMouse = 0x4000'0000,
+            Tooltip = 0x8000'0000
         };
 
 		[AllowDuplicates]

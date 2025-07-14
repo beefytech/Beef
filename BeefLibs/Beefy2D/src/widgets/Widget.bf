@@ -12,13 +12,8 @@ namespace Beefy.widgets
     public enum MouseFlag
     {
         Left = 1,
-#if BF_PLATFORM_WINDOWS
         Right = 2,
         Middle = 4,
-#else
-        Right = 4,
-        Middle = 2,
-#endif
         Kbd = 8
     }
     

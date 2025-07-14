@@ -7,6 +7,7 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_events.h>
 #include <SDL2/SDL_platform.h>
+#include <SDL2/SDL_rect.h>
 #include <SDL2/SDL_video.h>
 #include <cstddef>
 #include <dlfcn.h>
@@ -36,6 +37,10 @@ const char* (SDLCALL* bf_SDL_GetError)(void);
 SDL_GLContext (SDLCALL* bf_SDL_GL_CreateContext)(SDL_Window* window);
 int (SDLCALL* bf_SDL_GL_MakeCurrent)(SDL_Window* window, SDL_GLContext context);
 void (SDLCALL* bf_SDL_Quit)(void);
+int (SDLCALL* bf_SDL_GetNumVideoDisplays)(void);
+int (SDLCALL* bf_SDL_GetDisplayBounds)(int displayIndex, SDL_Rect* rect);
+
+static int bfMouseBtnOf[4] = {NULL, 0, 2, 1}; // Translate SDL mouse buttons to what Beef expects.
 
 static HMODULE gSDLModule;
 
@@ -82,9 +87,42 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	sdlWindowFlags |= SDL_WINDOW_OPENGL;
 	if (windowFlags & BFWINDOW_FULLSCREEN)
 		sdlWindowFlags |= SDL_WINDOW_FULLSCREEN;
+	if (!(windowFlags & BFWINDOW_BORDER))
+		sdlWindowFlags |= SDL_WINDOW_BORDERLESS;
+	if (windowFlags & BFWINDOW_TOOLTIP)
+		sdlWindowFlags |= SDL_WINDOW_TOOLTIP;
 #ifdef BF_PLATFORM_FULLSCREEN
     sdlWindowFlags |= SDL_WINDOW_FULLSCREEN;
 #endif
+
+	if (windowFlags & BFWINDOW_POPUP_POSITION)
+	{
+		SDL_Rect adjustRect = { x, y, width, height };
+		SDL_Rect wantRect = { x, y, x + width, y + height };
+
+		int monCount = bf_SDL_GetNumVideoDisplays();
+		for (int i = 0; i < monCount; i++)
+		{
+			SDL_Rect bounds;
+			if (bf_SDL_GetDisplayBounds(i, &bounds))
+			{
+				if (adjustRect.x < bounds.x)
+					adjustRect.x = bounds.x;
+				else if (adjustRect.x + adjustRect.w >= (bounds.x + bounds.w))
+					adjustRect.x = BF_MAX((int)bounds.x, bounds.x + bounds.w - adjustRect.w);
+
+				if (adjustRect.y < bounds.y)
+					adjustRect.y = bounds.y;
+				else if (adjustRect.y + adjustRect.h >= bounds.y + bounds.h)
+					adjustRect.y = BF_MAX((int)bounds.y, bounds.y + bounds.h - adjustRect.h);
+			}
+		}
+
+		x = adjustRect.x;
+		y = adjustRect.y;
+		width = adjustRect.w;
+		height = adjustRect.h;
+	}
 
 	mSDLWindow = bf_SDL_CreateWindow(title.c_str(), x, y, width, height, sdlWindowFlags);
 
@@ -279,6 +317,8 @@ SdlBFApp::SdlBFApp()
 		BF_GET_SDLPROC(SDL_GL_CreateContext);
 		BF_GET_SDLPROC(SDL_GL_MakeCurrent);
 		BF_GET_SDLPROC(SDL_Quit);
+		BF_GET_SDLPROC(SDL_GetNumVideoDisplays);
+		BF_GET_SDLPROC(SDL_GetDisplayBounds);
 	}
 
 	mDataDir = mInstallDir;
@@ -332,14 +372,14 @@ void SdlBFApp::Run()
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 					if (sdlBFWindow != NULL)
-						sdlBFWindow->mMouseUpFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, sdlEvent.button.button - 1);
+						sdlBFWindow->mMouseUpFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button]);
 				}
 				break;
 			case SDL_MOUSEBUTTONDOWN:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 					if (sdlBFWindow != NULL)
-						sdlBFWindow->mMouseDownFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, sdlEvent.button.button - 1, 1);
+						sdlBFWindow->mMouseDownFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button], 1);
 				}
 				break;
 			case SDL_MOUSEMOTION:
