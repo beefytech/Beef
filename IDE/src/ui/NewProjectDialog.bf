@@ -142,7 +142,8 @@ namespace IDE.ui
 				DeleteAndNullify!(app.mWorkspace.mDir);
 				app.mWorkspace.mDir = new String(projDirectory);
 				app.mWorkspace.mName = new String(projName);
-				
+
+				CustomBuildProperties.Load();
 				app.[Friend]LoadWorkspace(.OpenOrNew);
 				app.[Friend]FinishShowingNewWorkspace(false);
 

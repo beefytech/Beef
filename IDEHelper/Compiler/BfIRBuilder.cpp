@@ -666,6 +666,10 @@ bool BfIRConstHolder::IsConstValue(BfIRValue value)
 		return false;
 	if (constant->mConstType == BfConstType_Undef)
 		return false;
+	if (constant->mConstType == BfConstType_GEP32_2)	
+		return IsConstValue(BfIRValue(BfIRValueFlags_Const, ((BfConstantGEP32_2*)constant)->mTarget));	
+	if (constant->mConstType == BfConstType_BitCast)
+		return IsConstValue(BfIRValue(BfIRValueFlags_Const, ((BfConstantBitCast*)constant)->mTarget));
 
 	return true;
 }

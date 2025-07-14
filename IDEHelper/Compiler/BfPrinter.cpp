@@ -209,14 +209,39 @@ void BfPrinter::FlushVisitChild()
 
 	std::stable_sort(nodeQueue.begin(), nodeQueue.end(), CompareNodeStart);
 
-	for (auto& node : nodeQueue)
-	{
-		mNextStateModify = node;
+	ChildQueueState childQueueState;
+	childQueueState.mQueue = &nodeQueue;	
+	mActiveChildQueues.Add(&childQueueState);	
 
-		VisitChild(node.mQueuedNode);
-		if (mVirtualNewLineIdx == mNextStateModify.mWantNewLineIdx)
-			mVirtualNewLineIdx = node.mWantNewLineIdx;
+	auto _HandleStateNotify = [&](StateModify node)
+		{
+			mNextStateModify = node;
+
+			VisitChild(node.mQueuedNode);
+			if (mVirtualNewLineIdx == mNextStateModify.mWantNewLineIdx)
+				mVirtualNewLineIdx = node.mWantNewLineIdx;
+		};
+
+	while (childQueueState.mIdx < childQueueState.mQueue->mSize)
+	{
+		auto node = (*childQueueState.mQueue)[childQueueState.mIdx++];		
+		if (mActiveChildQueues.mSize >= 2)
+		{
+			// Check for nodes in the prev queue that are actual inside the new queue (can happen with inline type declarations)
+			auto prevQueue = mActiveChildQueues[mActiveChildQueues.mSize - 2];
+			while (prevQueue->mIdx < prevQueue->mQueue->mSize)
+			{
+				auto prevQueueNode = (*prevQueue->mQueue)[prevQueue->mIdx];
+				if (prevQueueNode.mQueuedNode->mSrcStart >= node.mQueuedNode->mSrcStart)
+					break;
+				prevQueue->mIdx++;
+				_HandleStateNotify(prevQueueNode);				
+			}
+		}	
+		_HandleStateNotify(node);		
 	}
+
+	mActiveChildQueues.pop_back();
 }
 
 void BfPrinter::VisitChildWithPrecedingSpace(BfAstNode* bfAstNode)
@@ -1401,9 +1426,51 @@ void BfPrinter::Visit(BfLiteralExpression* literalExpr)
 void BfPrinter::Visit(BfStringInterpolationExpression* stringInterpolationExpression)
 {
 	Visit(stringInterpolationExpression->ToBase());
+
 	String str;
 	stringInterpolationExpression->ToString(str);
-	Write(str);
+
+	int startIdx = 0;
+	int exprIdx = 0;
+	
+	auto _Flush = [&](int endIdx)
+		{
+			Write(StringView(str, startIdx, endIdx - startIdx));
+			startIdx = endIdx;
+		};
+
+	for (int strIdx = 0; strIdx < str.mLength; strIdx++)
+	{
+		char c = str[strIdx];
+
+		int curSrcIdx = stringInterpolationExpression->mSrcStart + strIdx;
+
+		if (exprIdx < stringInterpolationExpression->mExpressions.mSize)
+		{
+			auto expr = stringInterpolationExpression->mExpressions[exprIdx];
+			if (expr->mSrcStart == curSrcIdx)
+			{
+				_Flush(strIdx);
+
+				// Avoid any additional formatting before the block
+				mExpectingNewLine = false;
+				mVirtualNewLineIdx = mNextStateModify.mWantNewLineIdx;
+				mNextStateModify.mExpectingSpace = false;
+
+				if (auto block = BfNodeDynCast<BfBlock>(expr))
+					HandleBlock(block, true);
+				else
+					VisitChild(expr);
+				exprIdx++;
+
+				strIdx = expr->mSrcEnd - stringInterpolationExpression->mSrcStart;
+				startIdx = strIdx;
+				continue;
+			}			
+		}
+	}
+	
+	_Flush(str.mLength);	
 }
 
 void BfPrinter::Visit(BfIdentifierNode* identifierNode)
@@ -3226,7 +3293,7 @@ void BfPrinter::DoBlockOpen(BfAstNode* prevNode, BfTokenNode* blockOpen, BfToken
 		if (prevNode != NULL)
 			ExpectIndent();
 	}
-	else
+	else if (!blockState.mIsCompact)
 		ExpectSpace();
 	if (queue)
 		QueueVisitChild(blockOpen);
@@ -3234,7 +3301,7 @@ void BfPrinter::DoBlockOpen(BfAstNode* prevNode, BfTokenNode* blockOpen, BfToken
 		VisitChild(blockOpen);
 	if (!doInlineBlock)
 		ExpectIndent();
-	else
+	else if (!blockState.mIsCompact)
 		ExpectSpace();
 	blockState.mDoInlineBlock = doInlineBlock;
 }
@@ -3246,7 +3313,7 @@ void BfPrinter::DoBlockClose(BfAstNode* prevNode, BfTokenNode* blockOpen, BfToke
 		ExpectUnindent();
 		mNextStateModify.mDoingBlockClose = true;
 	}
-	else
+	else if (!blockState.mIsCompact)
 		ExpectSpace();
 	if (queue)
 		QueueVisitChild(blockClose);
@@ -3260,10 +3327,11 @@ void BfPrinter::DoBlockClose(BfAstNode* prevNode, BfTokenNode* blockOpen, BfToke
 	}
 }
 
-void BfPrinter::Visit(BfBlock* block)
+void BfPrinter::HandleBlock(BfBlock* block, bool isCompact)
 {
 	BlockState blockState;
 	SetAndRestoreValue<BlockState*> prevBlockState(mCurBlockState, &blockState);
+	blockState.mIsCompact = isCompact;
 
 	DoBlockOpen(NULL, block->mOpenBrace, block->mCloseBrace, false, blockState);
 	for (auto& childNodeRef : *block)
@@ -3278,6 +3346,11 @@ void BfPrinter::Visit(BfBlock* block)
 	DoBlockClose(NULL, block->mOpenBrace, block->mCloseBrace, false, blockState);
 
 	ExpectNewLine();
+}
+
+void BfPrinter::Visit(BfBlock* block)
+{
+	HandleBlock(block);
 }
 
 void BfPrinter::Visit(BfRootNode* rootNode)

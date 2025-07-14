@@ -2079,16 +2079,16 @@ void CeBuilder::Build()
 	SetAndRestoreValue<CeDbgState*> prevDbgState;
 	if (mCeMachine->mDebugger != NULL)
 		prevDbgState.Init(mCeMachine->mDebugger->mCurDbgState, NULL);
-
+	
 	auto irCodeGen = mCeMachine->mCeModule->mBfIRBuilder->mBeIRCodeGen;
 	auto irBuilder = mCeMachine->mCeModule->mBfIRBuilder;
-	auto beModule = irCodeGen->mBeModule;
+	auto beModule = irCodeGen->mBeModule;	
 
 	mCeFunction->mFailed = true;
 
-	auto methodInstance = mCeFunction->mMethodInstance;
+	auto methodInstance = mCeFunction->mMethodInstance;	
 
-	if (methodInstance != NULL)
+	if ((methodInstance != NULL) && (!mCeMachine->HasFailed()))	
 	{
 		BfMethodInstance dupMethodInstance;
 		dupMethodInstance.CopyFrom(methodInstance);
@@ -3605,6 +3605,18 @@ void CeBuilder::Build()
 	{
 		auto& ceBlock = mBlocks[jumpEntry.mBlockIdx];
 		*((int32*)(&mCeFunction->mCode[0] + jumpEntry.mEmitPos)) = ceBlock.mEmitOfs - jumpEntry.mEmitPos - 4;
+	}	
+
+	if (irCodeGen->mFailed)
+	{
+		mCeMachine->Fail(StrFormat("IRCodeGen Failed: %s", irCodeGen->mErrorMsg.c_str()));
+		irCodeGen->mFailed = false;
+	}
+
+	if (mCeMachine->HasFailed())
+	{
+		Fail("ConstEval machine failed");
+		return;
 	}
 
 	if (mCeFunction->mCode.size() == 0)
@@ -3616,7 +3628,7 @@ void CeBuilder::Build()
 	if (mCeFunction->mGenError.IsEmpty())
 		mCeFunction->mFailed = false;
 
-	mCeFunction->mFrameSize = mFrameSize;
+	mCeFunction->mFrameSize = mFrameSize;	
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -5103,7 +5115,8 @@ BfIRValue CeContext::CreateConstant(BfModule* module, uint8* ptr, BfType* bfType
 
 	if (bfType->IsPointer())
 	{
-		if ((mCurEvalFlags & CeEvalFlags_IgnoreConstEncodeFailure) == 0)
+		addr_ce addr = *(addr_ce*)(ptr);
+		if ((addr != 0) && ((mCurEvalFlags & CeEvalFlags_IgnoreConstEncodeFailure) == 0))
 			Fail(StrFormat("Pointer type '%s' return value not allowed", module->TypeToString(bfType).c_str()));
 		return irBuilder->CreateConstNull(irBuilder->MapType(bfType));
 	}
@@ -5209,7 +5222,7 @@ BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfI
 }
 
 BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType)
-{
+{	
 	// DISABLED
 	//return BfTypedValue();
 
@@ -5273,6 +5286,12 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 				return BfTypedValue();
 			}
 		}
+	}
+
+	if (mCeMachine->HasFailed())
+	{
+		Fail("ConstEval machine failed");
+		return BfTypedValue();
 	}
 
 	int thisArgIdx = -1;
@@ -6427,7 +6446,28 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
 				CeSetAddrVal(stackPtr + 0, GetString(str), ptrSize);
 				_FixVariables();
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_TypeDocumentation_ToString)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
+
+				BfType* type = GetBfType(typeId);
+				if (type == NULL)
+				{
+					_Fail("Invalid type");
+					return false;
 				}
+
+				String str;
+				if (auto typeInst = type->ToTypeInstance())
+					if(typeInst->mTypeDef->mTypeDeclaration->mDocumentation != NULL)
+						typeInst->mTypeDef->mTypeDeclaration->mDocumentation->GetDocString(str);
+
+				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, mCallerMethodInstance);
+				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
+				CeSetAddrVal(stackPtr + 0, GetString(str), ptrSize);
+				_FixVariables();
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Namespace_ToString)
 			{
 				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
@@ -6652,6 +6692,25 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				CeSetAddrVal(stackPtr + 0, GetString(methodInstance->mMethodDef->GetReflectName()), ptrSize);
 				_FixVariables();
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetDocumentation)
+			{
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + ptrSize);
+
+				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
+				if (methodInstance == NULL)
+				{
+					_Fail("Invalid method instance");
+					return false;
+				}
+
+				String docs;
+				if (auto decl = BfNodeDynCast<BfMethodDeclaration>(methodInstance->mMethodDef->mMethodDeclaration))
+					if(decl->mDocumentation != NULL)	
+						decl->mDocumentation->GetDocString(docs);
+
+				CeSetAddrVal(stackPtr + 0, GetString(docs), ptrSize);
+				_FixVariables();
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetInfo)
 			{
 				// int32 mReturnType
@@ -6748,6 +6807,37 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				auto reflectType = GetReflectType(methodInstance->mMethodInfoEx->mMethodGenericArguments[genericArgIdx]->mTypeId);
 				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Field_GetDocumentation)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
+				int32 fieldIdx = *(int32*)((uint8*)stackPtr + ptrSize + 4);
+
+				BfType* type = GetBfType(typeId);
+				if (type == NULL)
+				{
+					_Fail("Invalid type");
+					return false;
+				}
+				String docs;
+				if (type != NULL)
+				{
+					if (auto typeInst = type->ToTypeInstance())
+					{
+						if (fieldIdx < 0 || fieldIdx >= typeInst->mFieldInstances.size())
+						{
+							_Fail("Invalid field");
+							return false;
+						}
+						auto fieldInstance = typeInst->mFieldInstances[fieldIdx];
+						if (auto decl = BfNodeDynCast<BfFieldDeclaration>(fieldInstance.GetFieldDef()->mFieldDeclaration))
+							if(decl->mDocumentation != NULL)	
+								decl->mDocumentation->GetDocString(docs);
+					}
+				}
+
+				CeSetAddrVal(stackPtr + 0, GetString(docs), ptrSize);
+				_FixVariables();
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Field_GetStatic)
 			{
@@ -9604,6 +9694,17 @@ CeMachine::~CeMachine()
 	}
 }
 
+void CeMachine::Fail(const StringImpl& error)
+{
+	if (mFailString.IsEmpty())
+		mFailString = error;
+}
+
+bool CeMachine::HasFailed()
+{
+	return !mFailString.IsEmpty();
+}
+
 void CeMachine::Init()
 {
 	BF_ASSERT(mCeModule == NULL);
@@ -9650,6 +9751,7 @@ void CeMachine::CompileStarted()
 	mRevision++;
 	mMethodBindRevision++;
 	mDbgWantBreak = false;
+	mFailString.Clear();
 	if (mCeModule != NULL)
 	{
 		delete mCeModule;
@@ -10123,6 +10225,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_TypeName_ToString;
 				}
+				else if (methodDef->mName == "Comptime_TypeDocumentation_ToString")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_TypeDocumentation_ToString;
+				}
 				else if (methodDef->mName == "Comptime_Namespace_ToString")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Namespace_ToString;
@@ -10167,6 +10273,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Method_GetName;
 				}
+				else if (methodDef->mName == "Comptime_Method_GetDocumentation")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Method_GetDocumentation;
+				}
 				else if (methodDef->mName == "Comptime_Method_GetInfo")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Method_GetInfo;
@@ -10178,6 +10288,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_Method_GetGenericArg")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Method_GetGenericArg;
+				}
+				else if (methodDef->mName == "Comptime_Field_GetDocumentation")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Field_GetDocumentation;
 				}
 				else if (methodDef->mName == "Comptime_Field_GetStatic")
 				{

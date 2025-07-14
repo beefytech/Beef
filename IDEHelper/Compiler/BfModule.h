@@ -1972,6 +1972,7 @@ public:
 	bool IsUnboundGeneric(BfType* type);
 	BfGenericParamInstance* GetGenericTypeParamInstance(int paramIdx, BfFailHandleKind failHandleKind = BfFailHandleKind_Normal);
 	BfGenericParamInstance* GetGenericParamInstance(BfGenericParamType* type, bool checkMixinBind = false, BfFailHandleKind failHandleKind = BfFailHandleKind_Normal);
+	BfType* GetGenericParamInstanceTypeConstraint(BfType* type, bool checkMixinBind = false, BfFailHandleKind failHandleKind = BfFailHandleKind_Normal);
 	void GetActiveTypeGenericParamInstances(SizedArray<BfGenericParamInstance*, 4>& genericParamInstance);
 	BfGenericParamInstance* GetMergedGenericParamData(BfType* type, BfGenericParamFlags& outFlags, BfType*& outTypeConstraint);
 	BfTypeInstance* GetBaseType(BfTypeInstance* typeInst);

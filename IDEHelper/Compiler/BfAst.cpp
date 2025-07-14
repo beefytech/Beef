@@ -1273,7 +1273,8 @@ String BfTypeReference::ToCleanAttributeString()
 		if (typeRefName.EndsWith("Attribute"))
 			typeRefName.RemoveFromEnd(9);
 	}
-
+	if (typeRefName.StartsWith("System."))
+		typeRefName.Remove(0, 7);
 	return typeRefName;
 }
 
@@ -1611,6 +1612,8 @@ const char* Beefy::BfTokenToString(BfToken token)
 		return ";";
 	case BfToken_Colon:
 		return ":";
+	case BfToken_ColonColon:
+		return "::";
 	case BfToken_Comma:
 		return ",";
 	case BfToken_Dot:

@@ -842,6 +842,8 @@ void BfAutoComplete::AddField(BfTypeInstance* typeInst, BfFieldDef* fieldDef, Bf
 
 void BfAutoComplete::AddProp(BfTypeInstance* typeInst, BfPropertyDef* propDef, const StringImpl& filter)
 {
+	if (propDef->mName.IsEmpty())
+		return;
 	int wantPrefixCount = 0;
 	const char* filterStr = filter.c_str();
 	while (filterStr[0] == '@')
@@ -1853,7 +1855,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		{
 			"alignof", "append", "as", "asm", "base", "break", "case", "catch", "checked", "continue", "const", "default", "defer",
 			"delegate", "delete", "do", "else", "false", "finally",
-			"fixed", "for", "function", "if", "implicit", "in", "internal", "is", "isconst", "new", "mixin", "not", "null",
+			"fixed", "for", "function", "global", "if", "implicit", "in", "internal", "is", "isconst", "new", "mixin", "not", "null",
 			"offsetof", "out", "params", "readonly", "ref", "rettype", "return",
 			"sealed", "sizeof", "scope", "static", "strideof", "struct", "switch", /*"this",*/ "try", "true", "typeof", "unchecked",
 			"using", "var", "virtual", "volatile", "where", "while",
@@ -1873,7 +1875,7 @@ void BfAutoComplete::CheckIdentifier(BfAstNode* identifierNode, bool isInExpress
 		const char* tokens[] =
 		{
 			"abstract", "append", "base", "class", "concrete", "const",
-			"delegate", "extern", "enum", "explicit", "extension", "function",
+			"delegate", "extern", "enum", "explicit", "extension", "function", "global",
 			"interface", "in", "implicit", "internal", "mixin", "namespace", "new",
 			"operator", "out", "override", "params", "private", "protected", "public", "readonly", "ref", "rettype", "return",
 			"scope", "sealed", "static", "struct", "this", "typealias",
@@ -1925,6 +1927,16 @@ bool BfAutoComplete::CheckMemberReference(BfAstNode* target, BfAstNode* dotToken
 {
 	if (!WantsEntries())
 		return false;
+
+	bool isGlobalLookup = true;
+	if (auto dotTokenNode = BfNodeDynCast<BfTokenNode>(dotToken))
+	{
+		if (dotTokenNode->mToken == BfToken_ColonColon)
+		{
+			CheckNode(memberName, false, false);
+			return false;
+		}
+	}
 
 	BfAttributedIdentifierNode* attrIdentifier = NULL;
 	bool isAutocompletingName = false;
@@ -2880,49 +2892,52 @@ void BfAutoComplete::AddCtorPassthroughs()
 		declMethods.Add(methodInst);
 	}
 	
-	for (auto methodDef : baseType->mTypeDef->mMethods)
+	if (baseType != NULL)
 	{
-		if (methodDef->mShow != BfShow_Show)
-			continue;
-		if (methodDef->mProtection < BfProtection_Protected)
-			continue;
-		if (methodDef->mIsStatic)
-			continue;
-
-		auto& methodGroup = baseType->mMethodInstanceGroups[methodDef->mIdx];
-		auto methodInst = methodGroup.mDefault;
-		if (methodInst == NULL)		
-			continue;
-		if (methodDef->mMethodType != BfMethodType_Ctor)
-			continue;
-		
-		if (methodInst->GetParamCount() == 0)
-			continue;
-
-		bool hasDecl = false;
-		for (auto declMethod : declMethods)
+		for (auto methodDef : baseType->mTypeDef->mMethods)
 		{
-			if (mModule->CompareMethodSignatures(methodInst, declMethod))
+			if (methodDef->mShow != BfShow_Show)
+				continue;
+			if (methodDef->mProtection < BfProtection_Protected)
+				continue;
+			if (methodDef->mIsStatic)
+				continue;
+
+			auto& methodGroup = baseType->mMethodInstanceGroups[methodDef->mIdx];
+			auto methodInst = methodGroup.mDefault;
+			if (methodInst == NULL)
+				continue;
+			if (methodDef->mMethodType != BfMethodType_Ctor)
+				continue;
+
+			if (methodInst->GetParamCount() == 0)
+				continue;
+
+			bool hasDecl = false;
+			for (auto declMethod : declMethods)
 			{
-				hasDecl = true;
-				break;
+				if (mModule->CompareMethodSignatures(methodInst, declMethod))
+				{
+					hasDecl = true;
+					break;
+				}
 			}
-		}
-		if (hasDecl)
-			continue;
+			if (hasDecl)
+				continue;
 
-		StringT<512> insertString;
-		GetMethodInfo(methodInst, &insertString, &insertString, true, false);
-		if (insertString.IsEmpty())
-			continue;
-		AddEntry(AutoCompleteEntry("this", insertString), "");
+			StringT<512> insertString;
+			GetMethodInfo(methodInst, &insertString, &insertString, true, false);
+			if (insertString.IsEmpty())
+				continue;
+			AddEntry(AutoCompleteEntry("this", insertString), "");
 
-		int tabPos = (int)insertString.IndexOf('\t');
-		if (tabPos >= 0)
-		{
- 			if (!totalInsertString.IsEmpty())
- 				totalInsertString += "\r\r";
-			totalInsertString += insertString.Substring(tabPos + 1);
+			int tabPos = (int)insertString.IndexOf('\t');
+			if (tabPos >= 0)
+			{
+				if (!totalInsertString.IsEmpty())
+					totalInsertString += "\r\r";
+				totalInsertString += insertString.Substring(tabPos + 1);
+			}
 		}
 	}
 
@@ -4075,7 +4090,7 @@ void BfAutoComplete::FixitAddConstructor(BfTypeInstance *typeInstance)
 {
 	auto baseType = typeInstance->mBaseType;
 	auto parser = typeInstance->mTypeDef->GetDefinition()->mSource->ToParser();
-	if (parser != NULL)
+	if ((parser != NULL) && (baseType != NULL))
 	{
 		for (auto methodDef : baseType->mTypeDef->mMethods)
 		{

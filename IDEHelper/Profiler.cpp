@@ -525,7 +525,12 @@ void DbgProfiler::AddEntries(String& str, Array<ProfileProcEntry*>& procEntries,
 					continue;
 
 				// The range should only contain candidates
-				BF_ASSERT(procEntry->mSize > stackIdx);
+				//BF_ASSERT(procEntry->mSize > stackIdx);
+
+				if (stackIdx >= procEntry->mSize)
+				{
+					continue;
+				}
 
 				auto curProc = procEntry->mData[procEntry->mSize - 1 - stackIdx];
 

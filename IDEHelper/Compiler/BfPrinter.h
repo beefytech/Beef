@@ -12,12 +12,14 @@ public:
 	{
 		int mLastSpaceOffset;
 		bool mDoInlineBlock;
+		bool mIsCompact;
 		int mIndentStart;
 
 		BlockState()
 		{
 			mLastSpaceOffset = 0;
 			mDoInlineBlock = false;
+			mIsCompact = false;
 			mIndentStart = 0;
 		}
 	};
@@ -49,6 +51,18 @@ public:
 		}
 	};
 
+	struct ChildQueueState
+	{
+		Array<StateModify>* mQueue;
+		int mIdx;
+
+		ChildQueueState()
+		{
+			mQueue = NULL;
+			mIdx = 0;
+		}
+	};
+
 	BfSourceData* mSource;
 	BfParserData* mParser;
 
@@ -62,6 +76,7 @@ public:
 
 	int mTriviaIdx;
 	int mCurSrcIdx;
+	Array<ChildQueueState*> mActiveChildQueues;
 	Array<StateModify> mChildNodeQueue;
 	int mFormatStart;
 	int mFormatEnd;
@@ -116,6 +131,7 @@ public:
 	void VisitChildNextLine(BfAstNode* node);
 	void DoBlockOpen(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState);
 	void DoBlockClose(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState);
+	void HandleBlock(BfBlock* block, bool isCompact = false);
 	void QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration);
 	int CalcOrigLineSpacing(BfAstNode* bfAstNode, int* lineStartIdx);
 	void WriteIgnoredNode(BfAstNode* node);

@@ -1818,6 +1818,7 @@ public:
 	Array<BfCompiler*> mCompilers;
 
 	BfAtom* mGlobalsAtom;
+	BfAtom* mHiddenAtom;
 	BfAtom* mEmptyAtom;
 	BfAtom* mBfAtom;
 	CritSect mSystemLock; // long-lived, hold while compiling

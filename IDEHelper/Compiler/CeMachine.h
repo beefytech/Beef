@@ -442,6 +442,7 @@ enum CeFunctionKind
 	CeFunctionKind_GetReflectSpecializedType,
 	CeFunctionKind_Type_ToString,
 	CeFunctionKind_TypeName_ToString,
+	CeFunctionKind_TypeDocumentation_ToString,
 	CeFunctionKind_Namespace_ToString,
 	CeFunctionKind_Type_GetCustomAttribute,
 	CeFunctionKind_Field_GetCustomAttribute,
@@ -453,9 +454,11 @@ enum CeFunctionKind
 	CeFunctionKind_GetMethod,
 	CeFunctionKind_Method_ToString,
 	CeFunctionKind_Method_GetName,
+	CeFunctionKind_Method_GetDocumentation,
 	CeFunctionKind_Method_GetInfo,
 	CeFunctionKind_Method_GetParamInfo,
 	CeFunctionKind_Method_GetGenericArg,
+	CeFunctionKind_Field_GetDocumentation,
 	CeFunctionKind_Field_GetStatic,
 
 	CeFunctionKind_SetReturnType,
@@ -1275,12 +1278,15 @@ public:
 	bool mDbgPaused;
 	bool mSpecialCheck;
 	bool mDbgWantBreak;
+	String mFailString;
 
 public:
 	CeMachine(BfCompiler* compiler);
 	~CeMachine();
 
-	void Init();
+	void Fail(const StringImpl& error);
+	bool HasFailed();
+	void Init();	
 	BeContext* GetBeContext();
 	BeModule* GetBeModule();
 

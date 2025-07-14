@@ -283,8 +283,10 @@ void BfSourceClassifier::Visit(BfIdentifierNode* identifier)
 void BfSourceClassifier::Visit(BfQualifiedNameNode* qualifiedName)
 {
 	Visit((BfAstNode*)qualifiedName);
-
+	
 	VisitChild(qualifiedName->mLeft);
+	if (qualifiedName->IsGlobalLookup())
+		SetElementType(qualifiedName->mLeft, BfSourceElementType_Namespace);
 	VisitChild(qualifiedName->mDot);
 	VisitChild(qualifiedName->mRight);
 	if (BfNodeIsExact<BfIdentifierNode>(qualifiedName->mRight))
@@ -350,6 +352,8 @@ void BfSourceClassifier::Visit(BfQualifiedTypeReference* qualifiedType)
 	Visit((BfAstNode*)qualifiedType);
 
 	VisitChild(qualifiedType->mLeft);
+	if (qualifiedType->IsGlobalLookup())
+		SetElementType(qualifiedType->mLeft, BfSourceElementType_Namespace);
 	VisitChild(qualifiedType->mDot);
 	VisitChild(qualifiedType->mRight);
 }
@@ -495,6 +499,8 @@ void BfSourceClassifier::Visit(BfInvocationExpression* invocationExpr)
 	if (auto qualifiedName = BfNodeDynCast<BfQualifiedNameNode>(target))
 	{
 		VisitChild(qualifiedName->mLeft);
+		if (qualifiedName->IsGlobalLookup())
+			SetElementType(qualifiedName->mLeft, BfSourceElementType_Namespace);
 		VisitChild(qualifiedName->mDot);
 		VisitChild(qualifiedName->mRight);
 		identifier = qualifiedName->mRight;

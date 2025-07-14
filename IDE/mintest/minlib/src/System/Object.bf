@@ -172,6 +172,12 @@ namespace System
 		}
 #endif
 
+		[NoShow]
+		public virtual Object DynamicCastToSignature(int32 sig)
+		{
+		    return null;
+		}
+
 		int IHashable.GetHashCode()
 		{
 		    return (int)Internal.UnsafeCastToPtr(this);

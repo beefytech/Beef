@@ -33,9 +33,9 @@ namespace IDE
 			mKeyCode.ToString(strBuffer);
 		}
 
-		public static void ToString(List<KeyState> keyStates, String strBuffer)
+		public static void ToString(Span<KeyState> keyStates, String strBuffer)
 		{
-			for (int i < keyStates.Count)
+			for (int i < keyStates.Length)
 			{
 				if (i > 0)
 					strBuffer.Append(", ");
@@ -105,10 +105,28 @@ namespace IDE
 	{
 		public enum ContextFlags
 		{
-			None = 0,
-			MainWindow = 1,
-			WorkWindow = 2,
-			Editor = 4,
+			case None = 0,
+				MainWindow = 1,
+				WorkWindow = 2,
+				Editor = 4;
+
+			public void ContextToString(String str)
+			{
+				bool isFirst = true;
+
+				void AddFlagStr(StringView flagStr)
+				{
+					if (isFirst)
+					{
+						str.Append(", ");
+						isFirst = false;
+					}
+					str.Append(flagStr);
+				}
+
+				if (this.HasFlag(.Editor))
+					AddFlagStr("Editor");
+			}
 		}
 
 		public String mName ~ delete _;
@@ -194,6 +212,9 @@ namespace IDE
 		public void Init()
 		{
 			Add("About", new => gApp.ShowAbout);
+			Add("Add Selection to Next Find Match", new => gApp.Cmd_AddSelectionToNextFindMatch);
+			Add("Add Cursor Above", new => gApp.Cmd_AddCursorAbove);
+			Add("Add Cursor Below", new => gApp.Cmd_AddCursorBelow);
 			Add("Autocomplete", new => gApp.Cmd_ShowAutoComplete, .None);
 			Add("Bookmark Next", new => gApp.Cmd_NextBookmark, .Editor);
 			Add("Bookmark Prev", new => gApp.Cmd_PrevBookmark, .Editor);
@@ -274,7 +295,7 @@ namespace IDE
 			Add("Reload Settings", new => gApp.ReloadSettings);
 			Add("Remove All Breakpoints", new => gApp.[Friend]RemoveAllBreakpoints);
 			Add("Rename Item", new => gApp.Cmd_RenameItem);
-			Add("Rename Symbol", new => gApp.Cmd_RenameSymbol);
+			Add("Rename Symbol", new => gApp.Cmd_RenameSymbol, .Editor);
 			Add("Replace in Document", new => gApp.Cmd_Document__Replace);
 			Add("Replace in Files", new => gApp.Cmd_Replace);
 			Add("Report Memory", new => gApp.[Friend]ReportMemory);
@@ -340,6 +361,7 @@ namespace IDE
 			Add("Zoom Out", new => gApp.Cmd_ZoomOut);
 			Add("Zoom Reset", new => gApp.Cmd_ZoomReset);
 			Add("Attach to Process", new => gApp.[Friend]DoAttach);
+			Add("Move Last Selection to Next Find Match", new => gApp.Cmd_MoveLastSelectionToNextFindMatch);
 
 			Add("Test Enable Console", new => gApp.Cmd_TestEnableConsole);
 		}

@@ -3916,9 +3916,14 @@ int BfResolvedTypeSet::DoHash(BfTypeReference* typeRef, LookupContext* ctx, BfHa
 			if (!ctx->mFailed)
 			{
 				auto resolvedType = ctx->mModule->ResolveTypeDef(elementTypeDef, typeAliasGenericArgs);
-				if ((resolvedType != NULL) && (resolvedType->IsTypeAlias()))
+				if (resolvedType != NULL)
 				{
-					auto underlyingType = resolvedType->GetUnderlyingType();
+					auto underlyingType = resolvedType;
+					while ((underlyingType != NULL) && (underlyingType->IsTypeAlias()))
+					{
+						ctx->mModule->PopulateType(underlyingType);
+						underlyingType = underlyingType->GetUnderlyingType();
+					}
 					if (underlyingType == NULL)
 					{
 						ctx->mFailed = true;

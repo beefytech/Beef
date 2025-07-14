@@ -169,6 +169,7 @@ namespace IDE
 		public bool mDbgDelayedAutocomplete;
 		public bool mDbgTimeAutocomplete;
 		public bool mDbgPerfAutocomplete;
+		public bool mStopPending;
 		public BeefConfig mBeefConfig = new BeefConfig() ~ delete _;
 		public List<String> mDeferredFails = new .() ~ DeleteContainerAndItems!(_);
 		public String mInitialCWD = new .() ~ delete _;
@@ -984,6 +985,7 @@ namespace IDE
 			mWorkspace.mName = new String();
 			Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
 
+			CustomBuildProperties.Load();
 			LoadWorkspace(.OpenOrNew);
 			FinishShowingNewWorkspace();
 		}
@@ -3191,6 +3193,7 @@ namespace IDE
 			CloseWorkspace();
 			mWorkspace.mDir = new String(workspaceDir);
 			mWorkspace.mName = new String(workspaceName);
+			CustomBuildProperties.Load();
 			LoadWorkspace(.Open);
 			FinishShowingNewWorkspace();
 		}
@@ -3320,7 +3323,13 @@ namespace IDE
 			switch (useVerSpec)
 			{
 			case .Path(let path):
-				var relPath = scope String(path);
+				Project.Options options = GetCurProjectOptions(project);
+				Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
+
+				var resolvedPath = scope String();
+				ResolveConfigString(mPlatformName, workspaceOptions, project, options, path, "project path", resolvedPath);
+
+				var relPath = scope String(resolvedPath);
 				IDEUtils.FixFilePath(relPath);
 				if (!relPath.EndsWith(IDEUtils.cNativeSlash))
 					relPath.Append(IDEUtils.cNativeSlash);
@@ -4292,6 +4301,7 @@ namespace IDE
 			var sourceViewPanel = GetActiveSourceViewPanel();
 			if (sourceViewPanel != null)
 			{
+				sourceViewPanel.EditWidget.Content.RemoveSecondaryTextCursors();
 				sourceViewPanel.GotoLine();
 				return;
 			}
@@ -5471,7 +5481,7 @@ namespace IDE
 				if (ewc.HasSelection())
 					ewc.GetSelectionText(debugExpr);
 				else
-					sourceViewPanel.GetDebugExpressionAt(ewc.CursorTextPos, debugExpr);
+					sourceViewPanel.GetDebugExpressionAt(ewc.mTextCursors.Front.mCursorTextPos, debugExpr);
 				dialog.Init(debugExpr);
 			}
 			else if (let immediatePanel = activePanel as ImmediatePanel)
@@ -5951,6 +5961,30 @@ namespace IDE
 		{
 			let ideCommand = gApp.mCommands.mCommandMap["Test Enable Console"];
 			ToggleCheck(ideCommand.mMenuItem, ref mTestEnableConsole);
+		}
+
+		[IDECommand]
+		public void Cmd_AddSelectionToNextFindMatch()
+		{
+			GetActiveSourceViewPanel()?.AddSelectionToNextFindMatch();
+		}
+
+		[IDECommand]
+		public void Cmd_MoveLastSelectionToNextFindMatch()
+		{
+			GetActiveSourceViewPanel()?.MoveLastSelectionToNextFindMatch();
+		}
+
+		[IDECommand]
+		public void Cmd_AddCursorAbove()
+		{
+			GetActiveSourceEditWidgetContent()?.AddMultiCursor(-1);
+		}
+
+		[IDECommand]
+		public void Cmd_AddCursorBelow()
+		{
+			GetActiveSourceEditWidgetContent()?.AddMultiCursor(1);
 		}
 
 		public void UpdateMenuItem_HasActivePanel(IMenu menu)
@@ -7854,6 +7888,7 @@ namespace IDE
 					if (!sourceViewPanel.[Friend]mWantsFullRefresh)
 						sourceViewPanel.UpdateQueuedEmitShowData();
 
+					sourceViewPanel.EditWidget?.Content.RemoveSecondaryTextCursors();
 					return sourceViewPanel;
 				}
 			}
@@ -7865,6 +7900,7 @@ namespace IDE
 				svTabButton.mIsTemp = true;
 			sourceViewPanel.ShowHotFileIdx(showHotIdx);
 			sourceViewPanel.ShowFileLocation(refHotIdx, Math.Max(0, line), Math.Max(0, column), hilitePosition);
+			sourceViewPanel.EditWidget?.Content.RemoveSecondaryTextCursors();
 			return sourceViewPanel;
 		}
 
@@ -8551,11 +8587,6 @@ namespace IDE
 
 		void SysKeyDown(KeyDownEvent evt)
 		{
-			if (evt.mKeyCode != .Alt)
-			{
-				NOP!();
-			}
-
 			if (!evt.mKeyFlags.HeldKeys.HasFlag(.Alt))
 			{
 #if BF_PLATFORM_WINDOWS
@@ -8733,6 +8764,13 @@ namespace IDE
 					break;
 				}
 			}
+
+			if ((evt.mKeyCode == .Return) && (evt.mKeyFlags.HasFlag(.Alt)))
+			{
+				// Don't "beep" for any Enter key combinations
+				window.mFocusWidget?.KeyDown(evt);
+				evt.mHandled = true;
+			}
 		}
 
 		void SysKeyUp(KeyCode keyCode)
@@ -8760,38 +8798,45 @@ namespace IDE
 				return;
 
 			var ewc = sourceViewPanel.mEditWidget.mEditWidgetContent;
-			if (!ewc.HasSelection())
-				return;
-
-			/*ewc.mSelection.Value.GetAsForwardSelect(var startPos, var endPos);
-			for (int i = startPos; i < endPos; i++)
+			for (var cursor in ewc.mTextCursors)
 			{
-				var c = ref ewc.mData.mText[i].mChar;
+				ewc.SetTextCursor(cursor);
+				if (!ewc.HasSelection())
+					continue;
+
+				/*ewc.mSelection.Value.GetAsForwardSelect(var startPos, var endPos);
+				for (int i = startPos; i < endPos; i++)
+				{
+					var c = ref ewc.mData.mText[i].mChar;
+					if (toUpper)
+						c = c.ToUpper;
+					else
+						c = c.ToLower;
+				}*/
+
+				var prevSel = ewc.CurSelection.Value;
+
+				var str = scope String();
+				ewc.GetSelectionText(str);
+
+				var prevStr = scope String();
+				prevStr.Append(str);
+
 				if (toUpper)
-					c = c.ToUpper;
+					str.ToUpper();
 				else
-					c = c.ToLower;
-			}*/
+					str.ToLower();
 
-			var prevSel = ewc.mSelection.Value;
+				if (str == prevStr)
+					continue;
 
-			var str = scope String();
-			ewc.GetSelectionText(str);
+				ewc.CreateMultiCursorUndoBatch("IDEApp.ChangeCase()");
+				ewc.InsertAtCursor(str);
 
-			var prevStr = scope String();
-			prevStr.Append(str);
-
-			if (toUpper)
-				str.ToUpper();
-			else
-				str.ToLower();
-
-			if (str == prevStr)
-				return;
-
-			ewc.InsertAtCursor(str);
-
-			ewc.mSelection = prevSel;
+				ewc.CurSelection = prevSel;
+			}
+			ewc.CloseMultiCursorUndoBatch();
+			ewc.SetPrimaryTextCursor();
 		}
 
 		public bool IsFilteredOut(String fileName)
@@ -10961,6 +11006,12 @@ namespace IDE
 								case "BeefPath":
 									newString = gApp.mInstallDir;
 								default:
+									// Check if any custom properties match the string.
+									if (CustomBuildProperties.Contains(replaceStr))
+									{
+										newString = scope:ReplaceBlock String();
+										newString.Append(CustomBuildProperties.Get(replaceStr));
+									}
 								}
 							}
 
@@ -12869,12 +12920,14 @@ namespace IDE
 			{
 				mWorkspace.mName = new String();
 				Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
+				CustomBuildProperties.Load();
 				LoadWorkspace(mVerb);
 			}
 			else if (mWorkspace.IsSingleFileWorkspace)
 			{
 				mWorkspace.mName = new String();
 				Path.GetFileNameWithoutExtension(mWorkspace.mCompositeFile.mFilePath, mWorkspace.mName);
+				CustomBuildProperties.Load();
 				LoadWorkspace(mVerb);
 			}
 
@@ -15118,6 +15171,9 @@ namespace IDE
 
 			if (mUpdateCnt % 120 == 0)
 				VerifyModifiedBuffers();
+
+			if (mStopPending)
+				Stop();
 
 			if (mWantShowOutput)
 			{

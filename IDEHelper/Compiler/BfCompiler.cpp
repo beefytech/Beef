@@ -545,7 +545,7 @@ bool BfCompiler::IsTypeAccessible(BfType* checkType, BfProject* curProject)
 	return true;
 }
 
-bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject)
+bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject, bool conservativeCheck)
 {
 	if (mOptions.mCompileOnDemandKind == BfCompileOnDemandKind_AlwaysInclude)
 		return IsTypeAccessible(checkType, curProject);
@@ -561,17 +561,17 @@ bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject)
 // 		}
 
 		if (checkType->IsInterface())
-			return typeInst->mIsReified;
+			return typeInst->mIsReified || conservativeCheck;
 
 		//TODO: We could check to see if this project has any reified specialized instances...
 		if (checkType->IsUnspecializedType())
-			return typeInst->mIsReified;
+			return typeInst->mIsReified || conservativeCheck;
 
 		if (checkType->IsTuple())
 		{
 			for (auto&& fieldInst : typeInst->mFieldInstances)
 			{
-				if (!IsTypeUsed(fieldInst.mResolvedType, curProject))
+				if (!IsTypeUsed(fieldInst.mResolvedType, curProject, true))
 					return false;
 			}
 		}
@@ -580,7 +580,7 @@ bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject)
 		if (genericTypeInst != NULL)
 		{
 			for (auto genericArg : genericTypeInst->mGenericTypeInfo->mTypeGenericArguments)
-				if (!IsTypeUsed(genericArg, curProject))
+				if (!IsTypeUsed(genericArg, curProject, true))
 					return false;
 		}
 
@@ -1264,8 +1264,9 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 			continue;
 
 		auto typeInst = type->ToTypeInstance();
+
 		if ((typeInst != NULL) && (!typeInst->IsReified()) && (!typeInst->IsUnspecializedType()))
-			continue;
+			continue;		
 
 		if (!IsTypeUsed(type, project))
 			continue;
@@ -1279,7 +1280,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		{
 			auto module = typeInst->mModule;
 			if (module == NULL)
-				continue;
+				continue;			
 
 			if (type->IsEnum())
 			{
@@ -1415,11 +1416,12 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		return;
 	}
 
-	BfTypeInstance* stringType = bfModule->ResolveTypeDef(mStringTypeDef, BfPopulateType_Data)->ToTypeInstance();
-	BfTypeInstance* stringViewType = bfModule->ResolveTypeDef(mStringViewTypeDef, BfPopulateType_Data)->ToTypeInstance();
-	BfTypeInstance* reflectSpecializedTypeInstance = bfModule->ResolveTypeDef(mReflectSpecializedGenericType)->ToTypeInstance();
-	BfTypeInstance* reflectUnspecializedTypeInstance = bfModule->ResolveTypeDef(mReflectUnspecializedGenericType)->ToTypeInstance();
-	BfTypeInstance* reflectArrayTypeInstance = bfModule->ResolveTypeDef(mReflectArrayType)->ToTypeInstance();
+	auto typeResolveModule = mContext->mUnreifiedModule;
+	BfTypeInstance* stringType = typeResolveModule->ResolveTypeDef(mStringTypeDef, BfPopulateType_Data)->ToTypeInstance();
+	BfTypeInstance* stringViewType = typeResolveModule->ResolveTypeDef(mStringViewTypeDef, BfPopulateType_Data)->ToTypeInstance();
+	BfTypeInstance* reflectSpecializedTypeInstance = typeResolveModule->ResolveTypeDef(mReflectSpecializedGenericType)->ToTypeInstance();
+	BfTypeInstance* reflectUnspecializedTypeInstance = typeResolveModule->ResolveTypeDef(mReflectUnspecializedGenericType)->ToTypeInstance();
+	BfTypeInstance* reflectArrayTypeInstance = typeResolveModule->ResolveTypeDef(mReflectArrayType)->ToTypeInstance();
 
 	bool madeBfTypeData = false;
 

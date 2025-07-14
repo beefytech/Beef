@@ -64,6 +64,17 @@ BfErrorNode* BfSource::CreateErrorNode(BfAstNode* astNode)
 	return errorNode;
 }
 
+bool BfSource::HasPendingError(BfAstNode* astNode)
+{
+	for (auto errorNode : mPendingErrorNodes)
+	{
+		if ((astNode->mSrcStart >= errorNode->mSrcStart) && (astNode->mSrcEnd <= errorNode->mSrcEnd))
+			return true;
+	}
+
+	return false;
+}
+
 void BfSource::AddErrorNode(BfAstNode* astNode)
 {
 	mPendingErrorNodes.push_back(CreateErrorNode(astNode));

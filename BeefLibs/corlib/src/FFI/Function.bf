@@ -131,7 +131,8 @@ namespace System.FFI
 	{
 		OK,
 		BadTypeDef,
-		BadABI
+		BadABI,
+		NoBeefCRT,
 	}
 
 #if BF_PLATFORM_WINDOWS
@@ -199,9 +200,11 @@ namespace System.FFI
 			uint32 mFlags;
 		}
 
+#if !BF_CRT_DISABLE
 		public static extern void* ClosureAlloc(int size, void** outFunc);
 		public static extern FFIResult PrepCif(FFICIF* cif, FFIABI abi, int32 nargs, FFIType* rtype, FFIType** argTypes);
 		public static extern void Call(FFICIF* cif, void* funcPtr, void* rvalue, void** args);
+#endif
 	}
 
 	struct FFICaller
@@ -210,15 +213,23 @@ namespace System.FFI
 
 		public Result<void, FFIResult> Prep(FFIABI abi, int32 nargs, FFIType* rtype, FFIType** argTypes) mut
 		{
+#if !BF_CRT_DISABLE
 			let res = FFILIB.PrepCif(&mCIF, abi, nargs, rtype, argTypes);
 			if (res == .OK)
 				return .Ok;
 			return .Err(res);
+#else
+			return .Err(.NoBeefCRT);
+#endif
 		}
 
 		public void Call(void* funcPtr, void* rvalue, void** args) mut
 		{
+#if !BF_CRT_DISABLE
 			FFILIB.Call(&mCIF, funcPtr, rvalue, args);
+#else
+			Internal.FatalError("FFI requires Beef runtime.");
+#endif
 		}
 	}
 }

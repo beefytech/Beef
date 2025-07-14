@@ -5,7 +5,39 @@ using System;
 namespace Tests
 {
 	class Protection
-	{        
+	{
+		class TypeA
+		{
+		    private struct TypeB { }
+
+			public TypeA mValA;
+			public TypeB mValB; //FAIL
+			public TypeC mValC; //FAIL
+
+		    private class TypeC
+		    {
+				private class TypeD { }
+
+				public class TypeE
+				{
+					private class TypeF { }
+
+					public TypeA mValA;
+					public TypeB mValB;
+					public TypeC mValC;
+					public TypeD mValD; //FAIL
+					public TypeE mValE;
+					public TypeF mValF; //FAIL
+				}
+
+				public TypeA mValA;
+				public TypeB mValB;
+				public TypeC mValC;
+				public TypeD mValD; //FAIL
+				public TypeE mValE;
+		    }
+		}
+
 		class ClassA
 		{
 			private int mAPriv;

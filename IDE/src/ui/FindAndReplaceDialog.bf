@@ -86,10 +86,10 @@ namespace IDE.ui
 				bool isMultiline = false;
 
 				var content = editWidget.mEditWidgetContent;
-				if (content.mSelection.HasValue)
+				if (content.CurSelection.HasValue)
 				{
-					int selStart = content.mSelection.Value.MinPos;
-					int selEnd = content.mSelection.Value.MaxPos;
+					int selStart = content.CurSelection.Value.MinPos;
+					int selEnd = content.CurSelection.Value.MaxPos;
 					for (int i = selStart; i < selEnd; i++)
 					{
 					    if (content.mData.mText[i].mChar == '\n')

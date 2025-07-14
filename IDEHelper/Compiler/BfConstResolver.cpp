@@ -425,7 +425,7 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 			if ((mModule->mCurMethodInstance == NULL) || (mModule->mCurMethodInstance->mMethodDef->mMethodType != BfMethodType_Mixin))
 				requiresConst = true;
 
-			if ((requiresConst) && (argValue.mValue.IsFake()) && (!argValue.mType->IsValuelessType()))
+			if ((requiresConst) && (!mModule->mBfIRBuilder->IsConstValue(argValue.mValue)) && (!argValue.mType->IsValuelessType()))
 			{
 				mModule->Fail("Expression does not evaluate to a constant value", argExpr);
 			}

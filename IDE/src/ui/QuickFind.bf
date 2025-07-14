@@ -87,11 +87,11 @@ namespace IDE.ui
         bool mFoundMatches;        
         public bool mIsShowingMatches = false;
         static String sLastSearchString = new String() ~ delete _;
+		public List<Range> mFoundRanges = new .() ~ delete _;
 
 		public bool mOwnsSelection;
         PersistentTextPosition mSelectionStart ~ { Debug.Assert(_ == null); };
         PersistentTextPosition mSelectionEnd ~ { Debug.Assert(_ == null); };
-		
 
         public this(Widget parent, EditWidget editWidget, bool isReplace)
         {
@@ -120,8 +120,8 @@ namespace IDE.ui
             var sourceContent = editWidget.Content as SourceEditWidgetContent;
             if (content.HasSelection())
             {
-                int selStart = content.mSelection.Value.MinPos;
-                int selEnd = content.mSelection.Value.MaxPos;
+                int selStart = content.CurSelection.Value.MinPos;
+                int selEnd = content.CurSelection.Value.MaxPos;
                 bool isMultiline = false;
                 for (int i = selStart; i < selEnd; i++)
                 {
@@ -154,7 +154,7 @@ namespace IDE.ui
                     mFindEditWidget.Content.SelectAll();
                 }
 
-				content.mSelection = null;
+				content.CurSelection = null;
             }
         }
 
@@ -170,7 +170,7 @@ namespace IDE.ui
                 mHasNewActiveCursorPos = true;
                 mLastActiveCursorPos = (int32)mEditWidget.Content.CursorTextPos;
                 if (mEditWidget.Content.HasSelection())
-                    mLastActiveCursorPos = (int32)mEditWidget.Content.mSelection.Value.MinPos;
+                    mLastActiveCursorPos = (int32)mEditWidget.Content.CurSelection.Value.MinPos;
             }
         }
 
@@ -225,6 +225,13 @@ namespace IDE.ui
 
             if (evt.mKeyCode == KeyCode.Return)
             {
+				var keyFlags = mWidgetWindow.GetKeyFlags(true);
+				if (keyFlags.HasFlag(.Alt))
+				{
+					SelectAllMatches(keyFlags.HasFlag(.Shift));
+					Close();
+					return;
+				}
                 if (evt.mSender == mFindEditWidget)
                 {
                     FindNext(1, true);
@@ -248,6 +255,108 @@ namespace IDE.ui
             if ((evt.mKeyCode == (KeyCode)'A') && (mWidgetWindow.IsKeyDown(KeyCode.Menu)))
                 DoReplace(true);            
         }
+
+		bool SelectAllMatches(bool caseSensitive)
+		{
+			var ewc = mEditWidget.Content;
+			var sewc = ewc as SourceEditWidgetContent;
+			ewc.SetPrimaryTextCursor();
+
+			String findText = scope String();
+			mFindEditWidget.GetText(findText);
+			sLastSearchString.Set(findText);
+			if (findText.Length == 0)
+			    return false;
+
+			String findTextLower = scope String(findText);
+			findTextLower.ToLower();
+			String findTextUpper = scope String(findText);
+			findTextUpper.ToUpper();
+
+			int32 selStart = (mSelectionStart != null) ? mSelectionStart.mIndex : 0;
+			int32 selEnd = (mSelectionEnd != null) ? mSelectionEnd.mIndex : ewc.mData.mTextLength;
+
+
+			bool Matches(int32 idx)
+			{
+				if (idx + findText.Length > ewc.mData.mTextLength)
+					return false;
+
+				for (var i = 0; i < findText.Length; i++)
+				{
+					var char = ewc.mData.mText[idx+i].mChar;
+
+					if (caseSensitive)
+					{
+						if (findText[i] != char)
+							return false;
+					}
+					else if ((findTextLower[i] != char) && (findTextUpper[i] != char))
+					{
+						return false;
+					}
+				}
+
+				return true;
+			}
+
+			var primaryCursor = ewc.mTextCursors.Front;
+			var initialCursorPos = primaryCursor.mCursorTextPos;
+			EditWidgetContent.TextCursor swapCursor = null;
+
+			ewc.RemoveSecondaryTextCursors();
+
+			primaryCursor.mJustInsertedCharPair = false;
+			primaryCursor.mCursorImplicitlyMoved = false;
+			primaryCursor.mVirtualCursorPos = null;
+
+			var isFirstMatch = true;
+
+			for (var idx = selStart; idx < selEnd; idx++)
+			{
+				if (!Matches(idx))
+					continue;
+
+				if (!isFirstMatch)
+				{
+					var cursor = ewc.mTextCursors.Add(.. new EditWidgetContent.TextCursor(-1, primaryCursor));
+					if (cursor.mCursorTextPos == initialCursorPos)
+						swapCursor = cursor;
+				}
+
+				isFirstMatch = false;
+
+				primaryCursor.mCursorTextPos = (int32)(idx + findText.Length);
+				primaryCursor.mSelection = EditSelection(idx, primaryCursor.mCursorTextPos);
+
+				idx += (int32)findText.Length;
+			}
+
+			// Remove selection when at least one match has been found
+			if ((sewc != null) && (!isFirstMatch))
+			{
+				if (mSelectionStart != null)
+				{
+					sewc.PersistentTextPositions.Remove(mSelectionStart);
+					DeleteAndNullify!(mSelectionStart);
+				}
+
+				if (mSelectionEnd != null)
+				{
+					sewc.PersistentTextPositions.Remove(mSelectionEnd);
+					DeleteAndNullify!(mSelectionEnd);
+				}
+			}
+
+			// Making sure that primary cursor is at the position where QuickFind found first match.
+			if (swapCursor != null)
+			{
+				Swap!(primaryCursor.mCursorTextPos, swapCursor.mCursorTextPos);
+				Swap!(primaryCursor.mSelection.ValueRef, swapCursor.mSelection.ValueRef);
+			}
+
+			return (!isFirstMatch);
+		}
 
         void EditWidgetSubmit(EditEvent editEvent)
         {            
@@ -285,6 +394,7 @@ namespace IDE.ui
             mCurFindCount = 0;
             //mSearchDidWrap = false;
 
+			mFoundRanges.Clear();
             ClearFlags(true, true);
 			if (mSelectionStart != null)
 			{
@@ -295,10 +405,21 @@ namespace IDE.ui
 				}
 			}
 
+			bool DoFindNext(bool select)
+			{
+				if (var range = FindNext(1, select, ErrorReportType.None))
+				{
+					mFoundRanges.Add(range);
+					return true;
+				}
+				return false;
+			}
+
 			if (doSelect)
-            	FindNext(1, true, ErrorReportType.None);
+				DoFindNext(true);
+            	
             int32 curFindIdx = mCurFindIdx;
-            while (FindNext(1, false, ErrorReportType.None))
+            while (DoFindNext(false))
             {
             }
             mCurFindIdx = curFindIdx;
@@ -319,7 +440,7 @@ namespace IDE.ui
             editWidgetContent.MoveCursorToIdx(mCurFindIdx + (int32)findText.Length, true, .QuickFind);
 
 
-			editWidgetContent.mSelection = EditSelection(mCurFindIdx, mCurFindIdx + (int32)findText.Length);
+			editWidgetContent.CurSelection = EditSelection(mCurFindIdx, mCurFindIdx + (int32)findText.Length);
 
 			/*for (int32 idx = mCurFindIdx; idx < mCurFindIdx + findText.Length; idx++)
 			{
@@ -374,7 +495,7 @@ namespace IDE.ui
                 return;
             }
 
-            if (FindNext(dir, true, showMessage ? ErrorReportType.MessageBox : ErrorReportType.Sound))
+            if (FindNext(dir, true, showMessage ? ErrorReportType.MessageBox : ErrorReportType.Sound) case .Ok)
             {
 				ShowCurrentSelection();
 			}
@@ -397,7 +518,7 @@ namespace IDE.ui
             }
         }
 
-        public bool FindNext(int32 dir, bool isSelection, ErrorReportType errorType)
+        public Result<Range> FindNext(int32 dir, bool isSelection, ErrorReportType errorType)
         {
             var editContent = mEditWidget.Content;
 
@@ -405,7 +526,7 @@ namespace IDE.ui
             mFindEditWidget.GetText(findText);
             sLastSearchString.Set(findText);
             if (findText.Length == 0)
-                return false;
+                return .Err;
 
             String findTextLower = scope String(findText);
             findTextLower.ToLower();
@@ -501,7 +622,7 @@ namespace IDE.ui
 				        
 				    mCurFindIdx = mCurFindStart + 1;
 				    mCurFindCount = 0;
-				    return false;
+				    return .Err;
 				}
 			}
 			else
@@ -514,7 +635,7 @@ namespace IDE.ui
 	                    
 	                mCurFindIdx = mCurFindStart - 1;
 	                mCurFindCount = 0;
-	                return false;
+	                return .Err;
 	            }
 			}
 
@@ -537,7 +658,7 @@ namespace IDE.ui
                 }
                 
                 mCurFindIdx = nextIdx;
-                return true;
+                return Range(mCurFindIdx, mCurFindIdx + findText.Length);
             }
             else
             {                
@@ -559,7 +680,7 @@ namespace IDE.ui
                     ShowDoneError(errorType);
                     mCurFindCount = 0;
                 }
-                return false;
+                return .Err;
             }
 
             mCurFindIdx = -1;
@@ -635,10 +756,10 @@ namespace IDE.ui
 	                EditSelection selection = EditSelection();
 	                selection.mStartPos = selStart;
 	                selection.mEndPos = selEnd + 1;
-	                ewc.mSelection = selection;
+	                ewc.CurSelection = selection;
 				}
 				else
-					selStart = (.)ewc.mSelection.Value.MinPos;
+					selStart = (.)ewc.CurSelection.Value.MinPos;
 				EditWidgetContent.InsertFlags insertFlags = .NoMoveCursor | .NoRestoreSelectionOnUndo | .IsGroupPart;
 				if (searchCount == 0)
 					insertFlags |= .IsGroupStart;
@@ -742,7 +863,7 @@ namespace IDE.ui
             if (mSelectionStart != null)
 			{
 				if (mSelectionEnd != null)
-					sourceContent.mSelection = .(mSelectionStart.mIndex, mSelectionEnd.mIndex);
+					sourceContent.CurSelection = .(mSelectionStart.mIndex, mSelectionEnd.mIndex);
 				if (sourceContent != null)
                 	sourceContent.PersistentTextPositions.Remove(mSelectionStart);
 				DeleteAndNullify!(mSelectionStart);

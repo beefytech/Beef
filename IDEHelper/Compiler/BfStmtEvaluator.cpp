@@ -1519,9 +1519,14 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			if (!resolvedType->IsNullable())
 			{
 				if (initValue.IsAddr())
+				{
 					initValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(initValue.mValue, 0, 1), initValue.mType->GetUnderlyingType(), true);
+				}
 				else
+				{
+					initValue = LoadOrAggregateValue(initValue);
 					initValue = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, 1), initValue.mType->GetUnderlyingType());
+				}
 			}
 
 			if ((initValue) && (!initValue.mType->IsValuelessType()))
@@ -1600,7 +1605,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 					{
 						auto nullableElementType = initValue.mType->GetUnderlyingType();
 						auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
-						initValue = LoadValue(initValue);
+						initValue = LoadOrAggregateValue(initValue);
 						exprEvaluator->mResult = BfTypedValue(mBfIRBuilder->CreateExtractValue(initValue.mValue, nullableElementType->IsValuelessType() ? 1 : 2), boolType);
 						handledExprBoolResult = true;
 						if (!nullableElementType->IsValuelessType())
@@ -1709,10 +1714,10 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 			localDef->mIsReadOnly = true;
 			if (initValue)
 			{
-				if ((initValue.mValue) && (initValue.mValue.IsConst()))
+				if (mBfIRBuilder->IsConstValue(initValue.mValue))
 				{
 					isConst = true;
-				}
+				}				
 			}
 		}
 	}
@@ -1904,8 +1909,8 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 		if (!initValue)
 			initValue = GetDefaultTypedValue(localDef->mResolvedType);
 
-		if (!localDef->mResolvedType->IsValuelessType())
-			localDef->mAddr = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapType(localDef->mResolvedType), false, BfIRLinkageType_Internal, initValue.mValue, name);;
+		if ((!localDef->mResolvedType->IsValuelessType()) && (!localDef->mResolvedType->IsVar()))
+			localDef->mAddr = mBfIRBuilder->CreateGlobalVariable(mBfIRBuilder->MapType(localDef->mResolvedType, BfIRPopulateType_Full), false, BfIRLinkageType_Internal, initValue.mValue, name);;
 		initHandled = true;
 	}
 
@@ -6488,11 +6493,16 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 		// Soldier on
 		target = GetDefaultTypedValue(varType);
 	}
-	if (forEachStmt->mInToken->mToken == BfToken_LessEquals)
-		conditionValue = mBfIRBuilder->CreateCmpLTE(localVal, target.mValue, varType->IsSigned());
-	else
-		conditionValue = mBfIRBuilder->CreateCmpLT(localVal, target.mValue, varType->IsSigned());
-	mBfIRBuilder->CreateCondBr(conditionValue, bodyBB, endBB);
+	
+	if (!target.mValue.IsFake())
+	{
+		if (forEachStmt->mInToken->mToken == BfToken_LessEquals)
+			conditionValue = mBfIRBuilder->CreateCmpLTE(localVal, target.mValue, varType->IsSigned());
+		else
+			conditionValue = mBfIRBuilder->CreateCmpLT(localVal, target.mValue, varType->IsSigned());
+		mBfIRBuilder->CreateCondBr(conditionValue, bodyBB, endBB);
+	}	
+
 	ValueScopeEnd(valueScopeStart);
 
 	mBfIRBuilder->AddBlock(bodyBB);
@@ -7187,6 +7197,11 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 
 			mBfIRBuilder->CreateBr(endBB);
 		}
+		else if (!getNextMethodInst)
+		{
+			AssertErrorState();
+			mBfIRBuilder->CreateBr(endBB);
+		}
 		else
 		{
 			BfExprEvaluator exprEvaluator(this);
@@ -7310,7 +7325,11 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 		}
 		else
 		{
-			if (needsValCopy)
+			if (nextEmbeddedType->IsVar())
+			{
+				AssertErrorState();
+			}
+			else if (needsValCopy)
 			{
 				auto nextVal = BfTypedValue(mBfIRBuilder->CreateBitCast(nextResult.mValue, mBfIRBuilder->MapType(CreatePointerType(nextEmbeddedType))), nextEmbeddedType, true);
 				if (isRefExpression)
@@ -7387,6 +7406,8 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 
 	BfScopeData* scope = NULL;
 
+	auto scopeNameNode = deferStmt->GetScopeNameNode();
+
 	if (deferStmt->mScopeToken != NULL)
 	{
 		if (deferStmt->mScopeToken->GetToken() == BfToken_Scope)
@@ -7394,9 +7415,9 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 		else
 			scope = &mCurMethodState->mHeadScope;
 	}
-	else if (deferStmt->mScopeName != NULL)
+	else if (scopeNameNode != NULL)
 	{
-		scope = FindScope(deferStmt->mScopeName, true);
+		scope = FindScope(scopeNameNode, true);
 
 		if (scope == NULL)
 		{

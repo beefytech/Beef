@@ -1,3 +1,4 @@
+#pragma warning disable 4200
 #pragma warning disable 168
 
 using System;
@@ -127,6 +128,13 @@ namespace Tests
 			D = 4
 		}
 
+		public enum EnumO
+		{
+			case None;
+			case EnumN(EnumN n);
+			case Delegate(delegate void());
+		}
+
 		[Test]
 		static void TestBasic()
 		{
@@ -227,6 +235,16 @@ namespace Tests
 
 			const EnumE e0 = .A;
 			const EnumE e1 = .B(1);
+
+			EnumO eo = .Delegate((delegate void()) new () => {});
+			if (eo case .Delegate(var dlg))
+				delete dlg;
+
+			eo = .EnumN(.A);
+
+			eo = .Delegate(new () => {});
+			if (eo case .Delegate(var dlg))
+				delete dlg;
 		}
 
 		[Test]

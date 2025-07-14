@@ -745,7 +745,7 @@ namespace IDE.ui
 								if (matches)
 								{
 									editWidgetContent.CursorTextPos = i;
-									editWidgetContent.mSelection = EditSelection(i, i + mSearchOptions.mSearchString.Length);
+									editWidgetContent.CurSelection = EditSelection(i, i + mSearchOptions.mSearchString.Length);
 									var insertTextAction = new EditWidgetContent.InsertTextAction(editWidgetContent, mSearchOptions.mReplaceString, .None);
 									insertTextAction.mMoveCursor = false;
 									editWidgetContent.mData.mUndoManager.Add(insertTextAction);

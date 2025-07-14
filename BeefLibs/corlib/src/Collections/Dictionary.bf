@@ -269,6 +269,13 @@ namespace System.Collections
 			return .Err;
 		}
 
+		public Result<TValue> GetValueAlt<TAltKey>(TAltKey key) where TAltKey : IHashable where bool : operator TKey == TAltKey
+		{
+			int_cosize i = (int_cosize)FindEntryAlt(key);
+			if (i >= 0) return mEntries[i].mValue;
+			return .Err;
+		}
+
 		public void Clear()
 		{
 			if (mCount > 0)

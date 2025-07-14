@@ -175,6 +175,7 @@ namespace IDE.ui
 				*keyPtr = new String(entry.mText);
 			*valPtr = sCurrentMRUIndex++;
 
+            mSourceViewPanel.EditWidget?.Content.RemoveSecondaryTextCursors();
             mSourceViewPanel.ShowFileLocation(-1, entry.mLine, entry.mLineChar, LocatorType.Always);            
         }
 

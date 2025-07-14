@@ -209,7 +209,7 @@ public:
 	BfTokenNode* BreakQuestionLBracket(BfTokenNode* tokenNode);
 	BfCommentNode* FindDocumentation(BfAstNode* defNodeHead, BfAstNode* defNodeEnd = NULL, bool checkDocAfter = false);
 
-	void AssertCurrentNode(BfAstNode* node);
+	bool AssertCurrentNode(BfAstNode* node);
 	bool IsNodeRelevant(BfAstNode* astNode);
 	bool IsCursorInside(BfAstNode* astNode);
 	bool IsNodeRelevant(BfAstNode* startNode, BfAstNode* endNode);
@@ -231,7 +231,7 @@ public:
 	void ReadPropertyBlock(BfPropertyDeclaration* propertyDeclaration, BfBlock* block);
 	BfAstNode* ReadTypeMember(BfTokenNode* node, bool declStarted = false, int depth = 0, BfAstNode* deferredHeadNode = NULL);
 	BfAstNode* ReadTypeMember(BfAstNode* node, bool declStarted = false, int depth = 0, BfAstNode* deferredHeadNode = NULL);
-	BfIdentifierNode* CompactQualifiedName(BfAstNode* leftNode);
+	BfIdentifierNode* CompactQualifiedName(BfAstNode* leftNode, bool allowGlobalLookup = true);
 	void TryIdentifierConvert(int readPos);
 	void CreateQualifiedNames(BfAstNode* node);
 	BfFieldDtorDeclaration* CreateFieldDtorDeclaration(BfAstNode* srcNode);

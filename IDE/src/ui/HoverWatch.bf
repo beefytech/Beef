@@ -411,6 +411,9 @@ namespace IDE.ui
 	            return;
 			}
 
+			if ((!mListViews.IsEmpty) && (mListViews[0].mVertScrollbar != null))
+				return;
+
 			if (evt.mSender != mWidgetWindow)
 			{
 				var widgetWindow = evt.mSender as BFWindow;
@@ -1198,61 +1201,68 @@ namespace IDE.ui
             float height = childHeights + GS!(6);
 
             float maxHeight = font.GetLineSpacing() * 12 + 6.001f;
-            if (height > maxHeight)
-            {
-                if (listView.mVertScrollbar == null)
-				{
-                    listView.InitScrollbars(false, true);
-					listView.mVertScrollbar.mOnScrollEvent.Add(new (dlg) =>
+			void CheckScrollbar()
+			{
+	            if (height > maxHeight)
+	            {
+	                if (listView.mVertScrollbar == null)
+					{
+	                    listView.InitScrollbars(false, true);
+						listView.mVertScrollbar.mOnScrollEvent.Add(new (dlg) =>
+							{
+								if (mEditWidget != null)
+									HandleEditLostFocus(mEditWidget);
+							});
+						var thumb = listView.mVertScrollbar.mThumb;
+						if (!wantWordWrap)
 						{
-							if (mEditWidget != null)
-								HandleEditLostFocus(mEditWidget);
-						});
-					var thumb = listView.mVertScrollbar.mThumb;
-					thumb.mOnDrag.Add(new (deltaX, deltaY) =>
-                        {
-							// Only allow size to grow between what it is current at and what we want it to be at.
-							// For exactly-sized scroll areas this means it wouldn't change at all.
-							/*float haveWidth = listView.mWidth;
-							float setWidth = listView.mWidth + parentX;
-							float wantWidth = listView.mColumns[0].mWidth + listView.mColumns[1].mWidth + GS!(26);
-							if (haveWidth < wantWidth)
-								setWidth = Math.Max(haveWidth, Math.Min(setWidth, wantWidth));
-							else
-								setWidth = Math.Min(haveWidth, Math.Max(setWidth, wantWidth));*/
+							thumb.mOnDrag.Add(new (deltaX, deltaY) =>
+		                        {
+									// Only allow size to grow between what it is current at and what we want it to be at.
+									// For exactly-sized scroll areas this means it wouldn't change at all.
+									/*float haveWidth = listView.mWidth;
+									float setWidth = listView.mWidth + parentX;
+									float wantWidth = listView.mColumns[0].mWidth + listView.mColumns[1].mWidth + GS!(26);
+									if (haveWidth < wantWidth)
+										setWidth = Math.Max(haveWidth, Math.Min(setWidth, wantWidth));
+									else
+										setWidth = Math.Min(haveWidth, Math.Max(setWidth, wantWidth));*/
 
-							float setWidth = listView.mWidth;
-							float thumbX = thumb.mDraggableHelper.mMouseX;
+									float setWidth = listView.mWidth;
+									float thumbX = thumb.mDraggableHelper.mMouseX;
 
-							if (thumbX < 0)
-							{
-								float transX;
-								float transY;
-								thumb.SelfToOtherTranslate(listView, thumbX, 0, out transX, out transY);
-								setWidth = transX + thumb.mWidth;
-							}
-							else if (thumbX > thumb.mWidth)
-							{
-								float wantWidth = listView.mColumns[0].mWidth + listView.mColumns[1].mWidth + GS!(26);
-								float transX;
-								float transY;
-								thumb.SelfToOtherTranslate(listView, thumbX, 0, out transX, out transY);
-								setWidth = Math.Min(transX, wantWidth);
-								setWidth = Math.Max(setWidth, listView.mWidth);
-							}
+									if (thumbX < 0)
+									{
+										float transX;
+										float transY;
+										thumb.SelfToOtherTranslate(listView, thumbX, 0, out transX, out transY);
+										setWidth = transX + thumb.mWidth;
+									}
+									else if (thumbX > thumb.mWidth)
+									{
+										float wantWidth = listView.mColumns[0].mWidth + listView.mColumns[1].mWidth + GS!(26);
+										float transX;
+										float transY;
+										thumb.SelfToOtherTranslate(listView, thumbX, 0, out transX, out transY);
+										setWidth = Math.Min(transX, wantWidth);
+										setWidth = Math.Max(setWidth, listView.mWidth);
+									}
 
-							setWidth = Math.Max(setWidth, listView.mColumns[0].mWidth + GS!(64));
+									setWidth = Math.Max(setWidth, listView.mColumns[0].mWidth + GS!(64));
 
-							if (setWidth != listView.mWidth)
-							{
-								listView.Resize(listView.mX, listView.mY, setWidth, listView.mHeight);
-								ResizeWindow();
-							}
-                        });
-				}
-                height = maxHeight;
-                wantWidth += GS!(20);
-            }
+									if (setWidth != listView.mWidth)
+									{
+										listView.Resize(listView.mX, listView.mY, setWidth, listView.mHeight);
+										ResizeWindow();
+									}
+		                        });
+						}
+					}
+	                height = maxHeight;
+	                wantWidth += GS!(20);
+	            }
+			}
+			CheckScrollbar();
 
 			int workspaceX;
 			int workspaceY;
@@ -1276,6 +1286,9 @@ namespace IDE.ui
 				maxWidth = Math.Min(maxWidth, mTextPanel.mWidgetWindow.mWindowWidth);
 			}
 
+			if (wantWordWrap)
+				maxWidth -= GS!(20);
+
 			var useWidth = Math.Min(wantWidth, maxWidth);
 
 			if (!listView.mIsReversed)
@@ -1298,7 +1311,7 @@ namespace IDE.ui
 			else
 				useWidth = listView.mWidth;
 
-			if ((wantWordWrap) && (useWidth < wantWidth))
+			if (wantWordWrap)
 			{
 				float actualMaxWidth = 0;
 
@@ -1321,6 +1334,10 @@ namespace IDE.ui
 				useWidth = actualMaxWidth + GS!(32);
 
 				listView.mColumns[0].mWidth = useWidth - GS!(2);
+
+				CheckScrollbar();
+				if (listView.mVertScrollbar != null)
+					useWidth += GS!(20);
 			}
 
 			height += GS!(2);

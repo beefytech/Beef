@@ -2093,6 +2093,7 @@ BfSystem::BfSystem()
 	mEmptyAtom = GetAtom("");
 	mBfAtom = GetAtom("bf");
 	mGlobalsAtom = GetAtom("@");
+	mHiddenAtom = GetAtom("?");
 	mTypeDot = NULL;
 
 	if (gBfParserCache == NULL)
@@ -2159,6 +2160,7 @@ BfSystem::~BfSystem()
 		delete project;
 
 	ReleaseAtom(mGlobalsAtom);
+	ReleaseAtom(mHiddenAtom);
 	ReleaseAtom(mBfAtom);
 	ReleaseAtom(mEmptyAtom);
 	ProcessAtomGraveyard();
@@ -2729,7 +2731,8 @@ BfTypeDef* BfSystem::FindTypeDef(const BfAtomComposite& findName, int numGeneric
 				partialStartEntryIdx = -1;
 			}
 
-			if ((typeDef->mFullName == qualifiedFindName) && (CheckTypeDefReference(typeDef, project)))
+			if ((typeDef->mFullName == qualifiedFindName) && (CheckTypeDefReference(typeDef, project)) /*&&
+				((allowGlobal) || (!typeDef->IsGlobalsContainer()))*/)
 			{
 				int curPri = curNamespacePri;
 				if (typeDef->mGenericParamDefs.size() != numGenericArgs)

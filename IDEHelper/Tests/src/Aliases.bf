@@ -7,6 +7,9 @@ namespace Tests
 {
 	class Aliases
 	{
+		typealias IntrusivePtr<T> = T;
+		typealias ConstPtr<T> = IntrusivePtr<T>;
+
 		class ClassA<T>
 		{
 			public typealias AliasA0 = int32;
@@ -49,6 +52,11 @@ namespace Tests
 			ClassA<T>.AliasA8 arr2 = arr1;
 		}
 
+		class MyClass
+		{
+		    public int Member;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
@@ -71,6 +79,12 @@ namespace Tests
 			ClassA<float>.AliasA6<double> v3 = t2;
 
 			ClassB<double>.MethodB0(scope List<(double a, float b, int c)>());
+
+			List<ConstPtr<MyClass>> myClasses = scope .();
+			for(var item in myClasses)
+			{
+			    item.Member = 1;
+			}
 		}
 	}
 }

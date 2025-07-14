@@ -113,6 +113,7 @@ namespace BeefBuild
 			{
 			    mWorkspace.mName = new String();
 			    Path.GetFileName(mWorkspace.mDir, mWorkspace.mName);
+			    CustomBuildProperties.Load(false);
 			    LoadWorkspace(mVerb);                
 			}
 			else
@@ -306,6 +307,27 @@ namespace BeefBuild
 					if (mPackMan.mCleanHashSet.TryAddAlt(value, var entryPtr))
 						*entryPtr = new .(value);
 					return true;
+				case "-property":
+					int splitIdx = (int)value.IndexOf('=');
+					if (splitIdx != -1)
+					{
+						String propertyName = new String();
+						StringView propertyKeyView = value.Substring(0, splitIdx);
+						propertyKeyView.ToString(propertyName);
+
+						String propertyValue = new String();
+						StringView propertyValueView = value.Substring(splitIdx + 1, value.Length - splitIdx - 1);
+						propertyValueView.ToString(propertyValue);
+
+						if (!CustomBuildProperties.TryAddProperty(propertyName, propertyValue))
+						{
+							delete propertyName;
+							delete propertyValue;
+							return false;
+						}
+
+						return true;
+					}
 				}
 			}
 

@@ -319,6 +319,17 @@ namespace Tests
 			Test.Assert((ms.mVal == 1) && (ms.mVal2 == 111) && (ms.mVal3 == 222));
 			ms = .(1, 2);
 			Test.Assert((ms.mVal == 1) && (ms.mVal2 == 2) && (ms.mVal3 == 222));
+
+			List<int32> intList = scope .();
+			for (int32 i < 100)
+				intList.Add(i);
+			Span<int32> intSpan = intList;
+
+			var span = intSpan.ToRawData();
+			Test.Assert(span.Length == 400);
+
+			span = ((int32)123).ToRawData();
+			Test.Assert(span.Length == 4);
 		}
 
 		[Test]
@@ -429,4 +440,13 @@ namespace Tests
 			Test.Assert(indirectResult == 30);
 		}
 	}
+}
+
+static
+{
+    public static Span<uint8> ToRawData<T>(this T self) where T : struct
+    {
+        #unwarn
+        return .((uint8*)&self, sizeof(T));
+    }
 }

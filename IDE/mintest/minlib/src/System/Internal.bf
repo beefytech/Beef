@@ -13,6 +13,33 @@ namespace System
 	[AlwaysInclude]
     static class Internal
     {
+		enum BfObjectFlags : uint8
+		{
+			None			= 0,
+			Mark1			= 0x01,
+			Mark2			= 0x02,
+			Mark3			= 0x03,
+			Allocated		= 0x04,
+			StackAlloc		= 0x08,
+			AppendAlloc		= 0x10,
+			AllocInfo		= 0x20,
+			AllocInfo_Short = 0x40,	
+			Deleted			= 0x80
+		};
+
+		struct AppendAllocEntry
+		{
+			public enum Kind
+			{
+				case None;
+				case Object(Object obj);
+				case Raw(void* ptr, DbgRawAllocData* allocData);
+			}
+
+			public Kind mKind;
+			public AppendAllocEntry* mNext;
+		}
+
 		[Intrinsic("cast")]
         public static extern Object UnsafeCastToObject(void* ptr);
 		[Intrinsic("cast")]
@@ -64,19 +91,19 @@ namespace System
 		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_ObjectCreated(Object obj, int size, ClassVData* classVData);
 		[CallingConvention(.Cdecl)]
-		public static extern void Dbg_ObjectCreatedEx(Object obj, int size, ClassVData* classVData);
+		public static extern void Dbg_ObjectCreatedEx(Object obj, int size, ClassVData* classVData, uint8 allocFlags);
 		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_ObjectAllocated(Object obj, int size, ClassVData* classVData);
 		[CallingConvention(.Cdecl)]
-		public static extern void Dbg_ObjectAllocatedEx(Object obj, int size, ClassVData* classVData);
+		public static extern void Dbg_ObjectAllocatedEx(Object obj, int size, ClassVData* classVData, uint8 allocFlags);
 		[CallingConvention(.Cdecl)]
 		public static extern int Dbg_PrepareStackTrace(int baseAllocSize, int maxStackTraceDepth);
 		[CallingConvention(.Cdecl)]
-		public static extern void Dbg_ObjectStackInit(Object object, ClassVData* classVData);
+		public static extern void Dbg_ObjectStackInit(Object object, ClassVData* classVData, int size, uint8 allocFlags);
 		[CallingConvention(.Cdecl)]
 		public static extern Object Dbg_ObjectAlloc(TypeInstance typeInst, int size);
 		[CallingConvention(.Cdecl)]
-		public static extern Object Dbg_ObjectAlloc(ClassVData* classVData, int size, int align, int maxStackTraceDepth);
+		public static extern Object Dbg_ObjectAlloc(ClassVData* classVData, int size, int align, int maxStackTraceDepth, uint8 flags);
 		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_ObjectPreDelete(Object obj);
 		[CallingConvention(.Cdecl)]
@@ -91,6 +118,188 @@ namespace System
 		public static extern void* Dbg_RawAlloc(int size, DbgRawAllocData* rawAllocData);
 		[CallingConvention(.Cdecl)]
 		public static extern void Dbg_RawFree(void* ptr);
+
+		#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+		static void AddAppendInfo(Object rootObj, AppendAllocEntry.Kind kind)
+		{
+			Compiler.Assert(sizeof(AppendAllocEntry) <= sizeof(int)*4);
+
+			void Handle(AppendAllocEntry* headAllocEntry)
+			{
+				if (headAllocEntry.mKind case .None)
+				{
+					headAllocEntry.mKind = kind;
+				}
+				else
+				{
+					AppendAllocEntry* newAppendAllocEntry = (.)new uint8[sizeof(AppendAllocEntry)]*;
+					newAppendAllocEntry.mKind = kind;
+					newAppendAllocEntry.mNext = headAllocEntry.mNext;
+					headAllocEntry.mNext = newAppendAllocEntry;
+				}
+			}
+
+			if (rootObj.[Friend]mClassVData & (int)BfObjectFlags.AllocInfo_Short != 0)
+			{
+				var dbgAllocInfo = rootObj.[DisableObjectAccessChecks, Friend]mDbgAllocInfo;
+				uint8 allocFlag = (.)(dbgAllocInfo >> 8);
+				//Debug.Assert(allocFlag == 1);
+				if ((allocFlag & 1) != 0)
+				{
+					int allocSize = (.)(dbgAllocInfo >> 16);
+					int capturedTraceCount = (uint8)(dbgAllocInfo);
+					uint8* ptr = (.)Internal.UnsafeCastToPtr(rootObj);
+					ptr += allocSize + capturedTraceCount * sizeof(int);
+					Handle((.)ptr);
+				}
+			}
+			else if (rootObj.[Friend]mClassVData & (int)BfObjectFlags.AllocInfo != 0)
+			{
+				var dbgAllocInfo = rootObj.[DisableObjectAccessChecks, Friend]mDbgAllocInfo;
+				int allocSize = dbgAllocInfo;
+				uint8* ptr = (.)Internal.UnsafeCastToPtr(rootObj);
+				int info = *(int*)(ptr + allocSize);
+				int capturedTraceCount = info >> 8;
+				uint8 allocFlag = (.)info;
+				//Debug.Assert(allocFlag == 1);
+				if ((allocFlag & 1) != 0)
+				{
+					ptr += allocSize + capturedTraceCount * sizeof(int) + sizeof(int);
+					Handle((.)ptr);
+				}
+			}
+		}
+#endif
+
+		public static void Dbg_ObjectAppended(Object rootObj, Object appendObj)
+		{
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			AddAppendInfo(rootObj, .Object(appendObj));
+#endif
+		}
+
+		public static void Dbg_RawAppended(Object rootObj, void* ptr, DbgRawAllocData* rawAllocData)
+		{
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			AddAppendInfo(rootObj, .Raw(ptr, rawAllocData));
+#endif
+		}
+
+		public static void Dbg_MarkAppended(Object rootObj)
+		{
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			void Handle(AppendAllocEntry* checkAllocEntry)
+			{
+				var checkAllocEntry;
+				while (checkAllocEntry != null)
+				{
+					switch (checkAllocEntry.mKind)
+					{
+					case .Object(let obj):
+						obj.[Friend]GCMarkMembers();
+					case .Raw(let rawPtr, let allocData):
+						((function void(void*))allocData.mMarkFunc)(rawPtr);
+					default:
+					}
+
+					checkAllocEntry = checkAllocEntry.mNext;
+				}
+			}
+
+			if (rootObj.[DisableObjectAccessChecks, Friend]mClassVData & (int)BfObjectFlags.AllocInfo_Short != 0)
+			{
+				var dbgAllocInfo = rootObj.[DisableObjectAccessChecks, Friend]mDbgAllocInfo;
+				uint8 allocFlag = (.)(dbgAllocInfo >> 8);
+				if ((allocFlag & 1) != 0)
+				{
+					int allocSize = (.)(dbgAllocInfo >> 16);
+					int capturedTraceCount = (uint8)(dbgAllocInfo);
+					uint8* ptr = (.)Internal.UnsafeCastToPtr(rootObj);
+					ptr += allocSize + capturedTraceCount * sizeof(int);
+					Handle((.)ptr);
+				}
+			}
+			else if (rootObj.[DisableObjectAccessChecks, Friend]mClassVData & (int)BfObjectFlags.AllocInfo != 0)
+			{
+				var dbgAllocInfo = rootObj.[DisableObjectAccessChecks, Friend]mDbgAllocInfo;
+				int allocSize = dbgAllocInfo;
+				uint8* ptr = (.)Internal.UnsafeCastToPtr(rootObj);
+				int info = *(int*)(ptr + allocSize);
+				int capturedTraceCount = info >> 8;
+				uint8 allocFlag = (.)info;
+				if ((allocFlag & 1) != 0)
+				{
+					ptr += allocSize + capturedTraceCount * sizeof(int) + sizeof(int);
+					Handle((.)ptr);
+				}
+			}
+#endif
+		}
+
+		public static void Dbg_AppendDeleted(Object rootObj, bool doChecks)
+		{
+#if BF_ENABLE_OBJECT_DEBUG_FLAGS
+			void Handle(AppendAllocEntry* headAllocEntry)
+			{
+				AppendAllocEntry* checkAllocEntry = headAllocEntry;
+				while (checkAllocEntry != null)
+				{
+					switch (checkAllocEntry.mKind)
+					{
+					case .Object(let obj):
+						if (doChecks)
+						{
+#unwarn
+							if (!obj.[DisableObjectAccessChecks]IsDeleted())
+							{
+								if (obj.GetType().HasDestructor)
+								{
+									Runtime.FatalError("Appended object not deleted with 'delete:append'");
+								}
+							}
+						}
+					case .Raw(let rawPtr, let allocData):
+					default:
+					}
+
+					var nextAllocEntry = checkAllocEntry.mNext;
+					if (checkAllocEntry == headAllocEntry)
+						*checkAllocEntry = default;
+					else
+						delete (uint8*)checkAllocEntry;
+					checkAllocEntry = nextAllocEntry;
+				}
+			}
+
+			if (rootObj.[DisableObjectAccessChecks, Friend]mClassVData & (int)BfObjectFlags.AllocInfo_Short != 0)
+			{
+				var dbgAllocInfo = rootObj.[DisableObjectAccessChecks, Friend]mDbgAllocInfo;
+				uint8 allocFlag = (.)(dbgAllocInfo >> 8);
+				if ((allocFlag & 1) != 0)
+				{
+					int allocSize = (.)(dbgAllocInfo >> 16);
+					int capturedTraceCount = (uint8)(dbgAllocInfo);
+					uint8* ptr = (.)Internal.UnsafeCastToPtr(rootObj);
+					ptr += allocSize + capturedTraceCount * sizeof(int);
+					Handle((.)ptr);
+				}
+			}
+			else if (rootObj.[DisableObjectAccessChecks, Friend]mClassVData & (int)BfObjectFlags.AllocInfo != 0)
+			{
+				var dbgAllocInfo = rootObj.[DisableObjectAccessChecks, Friend]mDbgAllocInfo;
+				int allocSize = dbgAllocInfo;
+				uint8* ptr = (.)Internal.UnsafeCastToPtr(rootObj);
+				int info = *(int*)(ptr + allocSize);
+				int capturedTraceCount = info >> 8;
+				uint8 allocFlag = (.)info;
+				if ((allocFlag & 1) != 0)
+				{
+					ptr += allocSize + capturedTraceCount * sizeof(int) + sizeof(int);
+					Handle((.)ptr);
+				}
+			}
+#endif
+		}
 
 		[CallingConvention(.Cdecl)]
 		static extern void Shutdown_Internal();

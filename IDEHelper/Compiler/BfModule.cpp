@@ -3708,9 +3708,6 @@ bool BfModule::CheckAccessMemberProtection(BfProtection protection, BfTypeInstan
 
 bool BfModule::CheckDefineMemberProtection(BfProtection protection, BfType* memberType)
 {
-	// Use 'min' - exporting a 'public' from a 'private' class is really just 'private' still
-	protection = std::min(protection, mCurTypeInstance->mTypeDef->mProtection);
-
 	auto memberTypeInstance = memberType->ToTypeInstance();
 
 	if (memberTypeInstance == NULL)
@@ -3719,6 +3716,20 @@ bool BfModule::CheckDefineMemberProtection(BfProtection protection, BfType* memb
 		if (underlyingType != NULL)
 			return CheckDefineMemberProtection(protection, underlyingType);
 		return true;
+	}
+
+	if (memberTypeInstance->mTypeDef->mProtection < protection)
+	{
+		// Check for any definition up to the actual declared member type
+		auto commonOuterType = FindCommonOuterType(memberTypeInstance->mTypeDef, mCurTypeInstance->mTypeDef);		
+		if (commonOuterType == memberTypeInstance->mTypeDef)
+			commonOuterType = commonOuterType->mOuterType;
+		auto checkTypeDef = mCurTypeInstance->mTypeDef;
+		while ((checkTypeDef != NULL) && (checkTypeDef != commonOuterType))
+		{
+			protection = std::min(protection, checkTypeDef->mProtection);
+			checkTypeDef = checkTypeDef->mOuterType;
+		}
 	}
 
 	if (memberTypeInstance->mTypeDef->mProtection < protection)
@@ -6512,7 +6523,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 	}
 
 	int stackCount = 0;
-	if ((typeInstance != NULL) && (typeInstance->mTypeOptionsIdx != -1))
+	if ((typeInstance != NULL) && (typeInstance->mTypeOptionsIdx >= 0))
 	{
 		auto typeOptions = mSystem->GetTypeOptions(typeInstance->mTypeOptionsIdx);
 		if (typeOptions->mAllocStackTraceDepth != -1)
@@ -8642,6 +8653,8 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 
 				if (checkEquality)
 				{
+					if (genericParamInstance->mTypeConstraint != NULL)
+						Fail("Only one concrete type constraint may be specified", constraintTypeRef);
 					genericParamInstance->mTypeConstraint = constraintType;
 				}
 				else if (constraintType->IsInterface())
@@ -8735,7 +8748,9 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	int checkGenericParamFlags = 0;
 	if (checkArgType->IsGenericParam())
 	{
-		BfGenericParamInstance* checkGenericParamInst = GetGenericParamInstance((BfGenericParamType*)checkArgType);
+		BfGenericParamInstance* checkGenericParamInst = GetGenericParamInstance((BfGenericParamType*)checkArgType, false, BfFailHandleKind_Soft);
+		if (checkGenericParamInst == NULL)
+			return false;
 		checkGenericParamFlags = checkGenericParamInst->mGenericParamFlags;
 		if (checkGenericParamInst->mTypeConstraint != NULL)
 			checkArgType = checkGenericParamInst->mTypeConstraint;
@@ -10450,9 +10465,11 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 				llvmArgs.push_back(objectPtr);
 				llvmArgs.push_back(origSizeValue);
 				llvmArgs.push_back(vDataRef);
+				if (isAllocEx)
+					llvmArgs.push_back(mBfIRBuilder->CreateConst(BfTypeCode_Int8, allocFlags));
 				auto objectCreatedMethod = GetInternalMethod(isAllocEx ?
 					(isResultInitialized ? "Dbg_ObjectCreatedEx" : "Dbg_ObjectAllocatedEx") :
-					(isResultInitialized ? "Dbg_ObjectCreated" : "Dbg_ObjectAllocated"));
+					(isResultInitialized ? "Dbg_ObjectCreated" : "Dbg_ObjectAllocated"));				
 				mBfIRBuilder->CreateCall(objectCreatedMethod.mFunc, llvmArgs);
 
 				if (wasAllocated)
@@ -14146,6 +14163,8 @@ BfIRValue BfModule::ExtractValue(BfTypedValue typedValue, int dataIdx)
 		auto addrVal = mBfIRBuilder->CreateInBoundsGEP(typedValue.mValue, 0, dataIdx);
 		return mBfIRBuilder->CreateAlignedLoad(addrVal, typedValue.mType->mAlign);
 	}
+	if (typedValue.IsSplat())
+		typedValue = LoadOrAggregateValue(typedValue);
 	return mBfIRBuilder->CreateExtractValue(typedValue.mValue, dataIdx);
 }
 
@@ -14729,6 +14748,22 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 					}
 
 					BfLogSysM("REIFIED(GetMethodInstance QueueSpecializationRequest): %s %s MethodDef:%p RefModule:%s RefMethod:%p\n", TypeToString(typeInst).c_str(), methodDef->mName.c_str(), methodDef, mModuleName.c_str(), mCurMethodInstance);
+
+					// Sanity check
+					{
+						int methodIdx = methodDef->mIdx;
+						BfMethodDef* checkMethod = NULL;
+						if (foreignType != NULL)
+							checkMethod = foreignType->mTypeDef->mMethods[methodIdx];
+						else
+							checkMethod = typeInst->mTypeDef->mMethods[methodIdx];
+						if (checkMethod != methodDef)
+						{
+							BfLogSysM(" MISMATCH. Got:%p Expected:%p\n", checkMethod, methodDef);
+							BF_ASSERT(checkMethod->mName == methodDef->mName);
+							methodDef = checkMethod;
+						}						
+					}
 
 					// This ensures that the method will actually be created when it gets reified
 					BfMethodSpecializationRequest* specializationRequest = mContext->mMethodSpecializationWorkList.Alloc();
@@ -16555,7 +16590,7 @@ BfScopeData* BfModule::FindScope(BfAstNode* scopeName, BfMixinState* fromMixinSt
 
 	if (auto tokenNode = BfNodeDynCast<BfTokenNode>(scopeName))
 	{
-		if (tokenNode->GetToken() == BfToken_Colon)
+		if ((tokenNode->GetToken() == BfToken_Colon) || (tokenNode->GetToken() == BfToken_ColonColon))
 		{
 			if ((!allowAcrossDeferredBlock) && (mCurMethodState->mInDeferredBlock))
 			{
@@ -17197,6 +17232,7 @@ void BfModule::EmitReturn(const BfTypedValue& val)
 				}
 				else if (mIsComptimeModule)
 				{
+					mBfIRBuilder->PopulateType(val.mType);
 					if (!val.mType->IsValuelessType())
 						mBfIRBuilder->CreateSetRet(val.mValue, val.mType->mTypeId);
 					else

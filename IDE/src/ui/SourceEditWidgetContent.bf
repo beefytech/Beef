@@ -42,19 +42,19 @@ namespace IDE.ui
                 editWidgetContent.mData.mUndoManager.Add(firstUndoAction);
             editWidgetContent.mData.mUndoManager.Add(new EditWidgetContent.SetCursorAction(editWidgetContent));
 
-			mVirtualCursorPos = editWidgetContent.mVirtualCursorPos;
+			mVirtualCursorPos = editWidgetContent.CurVirtualCursorPos;
             mTrackedCursorPosition = new PersistentTextPosition((int32)editWidgetContent.CursorTextPos);
             editWidgetContent.PersistentTextPositions.Add(mTrackedCursorPosition);
             
             if (editWidgetContent.HasSelection())
             {
-                mSelStartPostion = new PersistentTextPosition(editWidgetContent.mSelection.Value.mStartPos);
+                mSelStartPostion = new PersistentTextPosition(editWidgetContent.CurSelection.Value.mStartPos);
                 editWidgetContent.PersistentTextPositions.Add(mSelStartPostion);
 
-                mSelEndPostion = new PersistentTextPosition(editWidgetContent.mSelection.Value.mEndPos);
+                mSelEndPostion = new PersistentTextPosition(editWidgetContent.CurSelection.Value.mEndPos);
                 editWidgetContent.PersistentTextPositions.Add(mSelEndPostion);
             }
-            editWidgetContent.mSelection = null;
+            editWidgetContent.CurSelection = null;
         }
 
         public void Finish(UndoAction lastUndoAction = null)
@@ -70,7 +70,7 @@ namespace IDE.ui
 
             if (mSelStartPostion != null)
             {
-                editWidgetContent.mSelection = EditSelection(mSelStartPostion.mIndex, mSelEndPostion.mIndex);
+                editWidgetContent.CurSelection = EditSelection(mSelStartPostion.mIndex, mSelEndPostion.mIndex);
                 editWidgetContent.PersistentTextPositions.Remove(mSelEndPostion);
 				delete mSelEndPostion;
                 editWidgetContent.PersistentTextPositions.Remove(mSelStartPostion);
@@ -162,11 +162,11 @@ namespace IDE.ui
 					g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
 				}
 
-				if ((mEditWidgetContent.mSelection != null) && (mCollapseIndex < mEditWidgetContent.mOrderedCollapseEntries.Count))
+				if ((mEditWidgetContent.CurSelection != null) && (mCollapseIndex < mEditWidgetContent.mOrderedCollapseEntries.Count))
 				{
 					var collapseEntry = mEditWidgetContent.mOrderedCollapseEntries[mCollapseIndex];
 					int32 startIdx = mEditWidgetContent.mData.mLineStarts[collapseEntry.mStartLine];
-					if ((mEditWidgetContent.mSelection.Value.MinPos <= collapseEntry.mEndIdx) && (mEditWidgetContent.mSelection.Value.MaxPos >= startIdx))
+					if ((mEditWidgetContent.CurSelection.Value.MinPos <= collapseEntry.mEndIdx) && (mEditWidgetContent.CurSelection.Value.MaxPos >= startIdx))
 					{
 						using (g.PushColor(mEditWidgetContent.GetSelectionColor(0)))
 							g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
@@ -563,11 +563,11 @@ namespace IDE.ui
 					g.FillRect(rect.mX + 1, rect.mY + 1, rect.mWidth - 2, rect.mHeight - 2);
 				}
 
-				if ((mEditWidgetContent.mSelection != null) && (mCollapseIndex < mEditWidgetContent.mOrderedCollapseEntries.Count))
+				if ((mEditWidgetContent.CurSelection != null) && (mCollapseIndex < mEditWidgetContent.mOrderedCollapseEntries.Count))
 				{
 					var collapseEntry = mEditWidgetContent.mOrderedCollapseEntries[mCollapseIndex];
 					int32 startIdx = mEditWidgetContent.mData.mLineStarts[collapseEntry.mStartLine];
-					if ((mEditWidgetContent.mSelection.Value.MinPos <= collapseEntry.mEndIdx) && (mEditWidgetContent.mSelection.Value.MaxPos >= startIdx))
+					if ((mEditWidgetContent.CurSelection.Value.MinPos <= collapseEntry.mEndIdx) && (mEditWidgetContent.CurSelection.Value.MaxPos >= startIdx))
 					{
 						using (g.PushColor(mEditWidgetContent.GetSelectionColor(0)))
 							g.FillRect(rect.mX, rect.mY, rect.mWidth, rect.mHeight);
@@ -776,6 +776,7 @@ namespace IDE.ui
         public SourceViewPanel mSourceViewPanel;
         //public bool mAsyncAutocomplete;
         public bool mIsInKeyChar;
+		public bool mDidAutoComplete;
         public bool mDbgDoTest;
         public int32 mCursorStillTicks;
         public static bool sReadOnlyErrorShown;
@@ -933,7 +934,7 @@ namespace IDE.ui
 		    UndoBatchStart undoBatchStart = new UndoBatchStart("applyDiff");
 		    editWidgetContent.mData.mUndoManager.Add(undoBatchStart);
 
-		    editWidgetContent.mSelection = null;
+		    editWidgetContent.CurSelection = null;
 
 		    int32 curSrcLineIdx = -1;
 		    List<TextLineSegment> deletedLineSegments = scope List<TextLineSegment>();
@@ -981,7 +982,7 @@ namespace IDE.ui
 		            }
 
 		            editWidgetContent.mHadPersistentTextPositionDeletes = false;
-		            editWidgetContent.mSelection = EditSelection(pos, pos + len);
+		            editWidgetContent.CurSelection = EditSelection(pos, pos + len);
 		            editWidgetContent.DeleteSelection(false);
 
 		            // If we have modified a section of text containing breakpoint (for example), this gets encoded by
@@ -1893,6 +1894,7 @@ namespace IDE.ui
 			bool startsWithNewline = (forceMatchIndent) && (str.StartsWith("\n"));
 			bool isMultiline = str.Contains("\n");
 
+			CreateMultiCursorUndoBatch("SEWC.PasteText(str, forceMatchIndent)");
 			if (startsWithNewline || isMultiline)
 			{
 				var undoBatchStart = new UndoBatchStart("pasteText");
@@ -1911,7 +1913,7 @@ namespace IDE.ui
 				{
 					int startPos;
 					int endPos;
-					mSelection.Value.GetAsForwardSelect(out startPos, out endPos);
+					CurSelection.Value.GetAsForwardSelect(out startPos, out endPos);
 					int line;
 					int lineChar;
 					GetLineCharAtIdx(startPos, out line, out lineChar);
@@ -2152,7 +2154,7 @@ namespace IDE.ui
 			if ((HasSelection()) && (gApp.mSymbolReferenceHelper != null) && (gApp.mSymbolReferenceHelper.mKind == .Rename))
 			{
 				bool hasSymbolSelection = true;
-				mSelection.Value.GetAsForwardSelect(var startPos, var endPos);
+				CurSelection.Value.GetAsForwardSelect(var startPos, var endPos);
 				var text = mEditWidget.mEditWidgetContent.mData.mText;
 				for (int i = startPos; i < endPos; i++)
 				{
@@ -2222,6 +2224,7 @@ namespace IDE.ui
 
 		public void ScopePrev()
 		{
+			RemoveSecondaryTextCursors();
 			int pos = CursorTextPos - 1;
 			int openCount = 0;
 
@@ -2254,6 +2257,7 @@ namespace IDE.ui
 
 		public void ScopeNext()
 		{
+			RemoveSecondaryTextCursors();
 			int pos = CursorTextPos;
 			int openCount = 0;
 
@@ -2297,6 +2301,7 @@ namespace IDE.ui
 
         public bool OpenCodeBlock()
         {
+			CreateMultiCursorUndoBatch("SEWC.OpenCodeBlock()");
             int lineIdx;
 
             if (HasSelection())
@@ -2306,7 +2311,7 @@ namespace IDE.ui
                 int maxLineIdx = 0;
                 int maxLineCharIdx = 0;
 
-				var selection = mSelection.Value;
+				var selection = CurSelection.Value;
 
                 GetLineCharAtIdx(selection.MinPos, out minLineIdx, out minLineCharIdx);
                 GetLineCharAtIdx(selection.MaxPos, out maxLineIdx, out maxLineCharIdx);
@@ -2344,7 +2349,7 @@ namespace IDE.ui
 							undoBatchStart = new UndoBatchStart("embeddedOpenCodeBlock");
 							mData.mUndoManager.Add(undoBatchStart);
 
-							mSelection = null;
+							CurSelection = null;
 							CursorTextPos = i;
 							InsertAtCursor("\n");
 							embeddedEndIdx = i;
@@ -2417,7 +2422,7 @@ namespace IDE.ui
                 EditSelection newSel = selection;
 
                 selection.MakeForwardSelect();        
-				mSelection = selection;
+				CurSelection = selection;
 
                 int startAdjust = 0;
                 int endAdjust = 0;
@@ -2557,7 +2562,7 @@ namespace IDE.ui
 				if (undoBatchStart != null)
 					mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 
-                mSelection = newSel;
+                CurSelection = newSel;
                 return true;
             }
 
@@ -2756,8 +2761,8 @@ namespace IDE.ui
 			if (!HasSelection())
 				return false;
 
-			int minIdx = mSelection.Value.MinPos;
-			int maxIdx = mSelection.Value.MaxPos;
+			int minIdx = CurSelection.Value.MinPos;
+			int maxIdx = CurSelection.Value.MaxPos;
 
 			while (true)
 			{
@@ -2793,7 +2798,7 @@ namespace IDE.ui
 
 			UndoBatchStart undoBatchStart = new UndoBatchStart("closeCodeBlock");
 			mData.mUndoManager.Add(undoBatchStart);
-			mSelection = EditSelection(maxIdx - 1, maxIdx);
+			CurSelection = EditSelection(maxIdx - 1, maxIdx);
 			GetLineCharAtIdx(maxIdx - 1, var endLine, var endLineChar);
 			String endStr = scope .();
 			ExtractLine(endLine, endStr);
@@ -2807,7 +2812,7 @@ namespace IDE.ui
 			else
 				DeleteSelection();
 
-			mSelection = EditSelection(minIdx, minIdx + 1);
+			CurSelection = EditSelection(minIdx, minIdx + 1);
 			GetLineCharAtIdx(minIdx, var startLine, var startLineChar);
 			String startStr = scope .();
 			ExtractLine(startLine, startStr);
@@ -2833,7 +2838,7 @@ namespace IDE.ui
 			}
 			CursorTextPos = startLineStart;
 
-			mSelection = EditSelection(startLineStart, endLineEnd);
+			CurSelection = EditSelection(startLineStart, endLineEnd);
 			
 			if (undoBatchStart != null)
 				mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
@@ -2843,78 +2848,73 @@ namespace IDE.ui
 
 		public bool CommentBlock()
 		{
-			bool? doComment = true;
-
 			if (CheckReadOnly())
 				return false;
 
-			var startLineAndCol = CursorLineAndColumn;
-			int startTextPos = CursorTextPos;
-			var prevSelection = mSelection;
-			bool hadSelection = HasSelection();
-
-			if ((!HasSelection()) && (doComment != null))
+			for (var cursor in mTextCursors)
 			{
-				CursorToLineEnd();
-				int cursorEndPos = CursorTextPos;
-				CursorToLineStart(false);
-				mSelection = .(CursorTextPos, cursorEndPos);
-			}
+				SetTextCursor(cursor);
 
-			if ((HasSelection()) && (mSelection.Value.Length > 1))
-			{
-				UndoBatchStart undoBatchStart = new UndoBatchStart("embeddedCommentBlock");
-				mData.mUndoManager.Add(undoBatchStart);
+				var startLineAndCol = CursorLineAndColumn;
+				int startTextPos = CursorTextPos;
+				var prevSelection = CurSelection;
+				bool hadSelection = HasSelection();
 
-				var setCursorAction = new SetCursorAction(this);
-				setCursorAction.mSelection = prevSelection;
-				setCursorAction.mCursorTextPos = (.)startTextPos;
-				mData.mUndoManager.Add(setCursorAction);
-
-				int minPos = mSelection.GetValueOrDefault().MinPos;
-				int maxPos = mSelection.GetValueOrDefault().MaxPos;
-				mSelection = null;
-
-				var str = scope String();
-				ExtractString(minPos, maxPos - minPos, str);
-				
-				var trimmedStr = scope String();
-				trimmedStr.Append(str);
-				int32 startLen = (int32)trimmedStr.Length;
-				trimmedStr.TrimStart();
-				int32 afterTrimStart = (int32)trimmedStr.Length;
-				trimmedStr.TrimEnd();
-				int32 afterTrimEnd = (int32)trimmedStr.Length;
-
-				int firstCharPos = minPos + (startLen - afterTrimStart);
-				int lastCharPos = maxPos - (afterTrimStart - afterTrimEnd);
-
-				if (doComment != false)
+				if (!HasSelection())
 				{
+					CursorToLineEnd();
+					int cursorEndPos = CursorTextPos;
+					CursorToLineStart(false);
+					CurSelection = EditSelection(CursorTextPos, cursorEndPos);
+				}
+
+				if (HasSelection())
+				{
+					CreateMultiCursorUndoBatch("SEWC.CommentBlock()");
+					var setCursorAction = new SetCursorAction(this);
+					setCursorAction.mSelection = prevSelection;
+					setCursorAction.mCursorTextPos = (int32)startTextPos;
+					mData.mUndoManager.Add(setCursorAction);
+
+					int minPos = CurSelection.GetValueOrDefault().MinPos;
+					int maxPos = CurSelection.GetValueOrDefault().MaxPos;
+					CurSelection = null;
+
+					var str = scope String();
+					ExtractString(minPos, maxPos - minPos, str);
+					
+					var trimmedStr = scope String();
+					trimmedStr.Append(str);
+					int32 startLen = (int32)trimmedStr.Length;
+					trimmedStr.TrimStart();
+					int32 afterTrimStart = (int32)trimmedStr.Length;
+					trimmedStr.TrimEnd();
+					int32 afterTrimEnd = (int32)trimmedStr.Length;
+
+					int firstCharPos = minPos + (startLen - afterTrimStart);
+					int lastCharPos = maxPos - (afterTrimStart - afterTrimEnd);
+
 					CursorTextPos = firstCharPos;
 					InsertAtCursor("/*");
 					CursorTextPos = lastCharPos + 2;
 					InsertAtCursor("*/");
 
-					if (doComment != null)
-						mSelection = EditSelection(firstCharPos, lastCharPos + 4);
+					CurSelection = EditSelection(firstCharPos, lastCharPos + 4);
+
+					if (startTextPos <= minPos)
+						CursorLineAndColumn = startLineAndCol;
+					else if (startTextPos < maxPos)
+						CursorTextPos = startTextPos + 2;
+
+					if (!hadSelection)
+						CurSelection = null;
 				}
-
-				if (undoBatchStart != null)
-					mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
-
-				if (startTextPos <= minPos)
-					CursorLineAndColumn = startLineAndCol;
-				else if (startTextPos < maxPos)
-					CursorTextPos = startTextPos + 2;
-
-				if ((doComment == null) || (!hadSelection))
-					mSelection = null;
-
-			    return true;
 			}
 
-			return false;
+			CloseMultiCursorUndoBatch();
+			SetPrimaryTextCursor();
+
+			return true;
 		}
 
 		public bool CommentLines()
@@ -2922,157 +2922,167 @@ namespace IDE.ui
 			if (CheckReadOnly())
 				return false;
 
-			int startTextPos = CursorTextPos;
-			var prevSelection = mSelection;
-			bool hadSelection = HasSelection();
-			var startLineAndCol = CursorLineAndColumn;
-			if (!HasSelection())
+			var sortedCursors = mTextCursors;
+			if (mTextCursors.Count > 1)
+				sortedCursors = GetSortedCursors(.. scope :: List<TextCursor>());
+
+			// Forcing creation of undo batch, because even single cursor has
+			// multiple undo-actions.
+			CreateMultiCursorUndoBatch("SEWC.CommentLines()", force: true);
+
+			for (var cursor in sortedCursors)
 			{
-				CursorToLineEnd();
-				int cursorEndPos = CursorTextPos;
-				CursorToLineStart(false);
-				mSelection = .(CursorTextPos, cursorEndPos);
-			}
+				SetTextCursor(cursor);
 
-			UndoBatchStart undoBatchStart = new UndoBatchStart("embeddedCommentLines");
-			mData.mUndoManager.Add(undoBatchStart);
-
-			var setCursorAction = new SetCursorAction(this);
-			setCursorAction.mSelection = prevSelection;
-			setCursorAction.mCursorTextPos = (.)startTextPos;
-			mData.mUndoManager.Add(setCursorAction);
-
-			int minPos = mSelection.GetValueOrDefault().MinPos;
-			int maxPos = mSelection.GetValueOrDefault().MaxPos;
-			mSelection = null;
-
-			while (minPos > 0)
-			{
-				var c = mData.mText[minPos - 1].mChar;
-				if (c == '\n')
-					break;
-				minPos--;
-			}
-
-			bool hadMaxChar = false;
-			int checkMaxPos = maxPos;
-			while (checkMaxPos > 0)
-			{
-				var c = mData.mText[checkMaxPos - 1].mChar;
-				if (c == '\n')
-					break;
-				if ((c != '\t') && (c != ' '))
+				var startTextPos = CursorTextPos;
+				var prevSelection = CurSelection;
+				var hadSelection = HasSelection();
+				var startLineAndCol = CursorLineAndColumn;
+				if (!HasSelection())
 				{
-					hadMaxChar = true;
-					break;
+					CursorToLineEnd();
+					int cursorEndPos = CursorTextPos;
+					CursorToLineStart(false);
+					CurSelection = .(CursorTextPos, cursorEndPos);
 				}
-				checkMaxPos--;
-			}
 
-			if (!hadMaxChar)
-			{
-				checkMaxPos = maxPos;
-				while (checkMaxPos < mData.mTextLength)
+				var setCursorAction = new SetCursorAction(this);
+				setCursorAction.mSelection = prevSelection;
+				setCursorAction.mCursorTextPos = (int32)startTextPos;
+				mData.mUndoManager.Add(setCursorAction);
+
+				int minPos = CurSelection.Value.MinPos;
+				int maxPos = CurSelection.Value.MaxPos;
+				CurSelection = null;
+
+				while (minPos > 0)
 				{
-					var c = mData.mText[checkMaxPos].mChar;
+					var c = mData.mText[minPos - 1].mChar;
+					if (c == '\n')
+						break;
+					minPos--;
+				}
+
+				bool hadMaxChar = false;
+				int checkMaxPos = maxPos;
+				while (checkMaxPos > 0)
+				{
+					var c = mData.mText[checkMaxPos - 1].mChar;
 					if (c == '\n')
 						break;
 					if ((c != '\t') && (c != ' '))
 					{
-						maxPos = checkMaxPos + 1;
+						hadMaxChar = true;
 						break;
 					}
-					checkMaxPos++;
+					checkMaxPos--;
 				}
-			}
-		
-			int wantLineCol = -1;
-			int lineStartCol = 0;
-			bool didLineComment = false;
 
-			for (int i = minPos; i < maxPos; i++)
-			{
-				var c = mData.mText[i].mChar;
-				if (didLineComment)
+				if (!hadMaxChar)
 				{
-					if (c == '\n')
+					checkMaxPos = maxPos;
+					while (checkMaxPos < mData.mTextLength)
 					{
-						didLineComment = false;
-						lineStartCol = 0;
+						var c = mData.mText[checkMaxPos].mChar;
+						if (c == '\n')
+							break;
+						if ((c != '\t') && (c != ' '))
+						{
+							maxPos = checkMaxPos + 1;
+							break;
+						}
+						checkMaxPos++;
 					}
-					continue;
 				}
-				if (c == '\t')
-					lineStartCol += gApp.mSettings.mEditorSettings.mTabSize;
-				else if (c == ' ')
-					lineStartCol++;
-				else
-				{
-					if (wantLineCol == -1)
-						wantLineCol = lineStartCol;
-					else
-						wantLineCol = Math.Min(wantLineCol, lineStartCol);
-					didLineComment = true;
-				}
-			}
-			wantLineCol = Math.Max(0, wantLineCol);
 
-			didLineComment = false;
-			lineStartCol = 0;
-			int appendedCount = 0;
-			for (int i = minPos; i < maxPos; i++)
-			{
-				var c = mData.mText[i].mChar;
-				if (didLineComment)
+				int wantLineCol = -1;
+				int lineStartCol = 0;
+				bool didLineComment = false;
+
+				for (int i = minPos; i < maxPos; i++)
 				{
-					if (c == '\n')
+					var c = mData.mText[i].mChar;
+					if (didLineComment)
 					{
-						didLineComment = false;
-						lineStartCol = 0;
+						if (c == '\n')
+						{
+							didLineComment = false;
+							lineStartCol = 0;
+						}
+						continue;
 					}
-					continue;
-				}
-
-				bool commentNow = false;
-				if ((wantLineCol != -1) && (lineStartCol >= wantLineCol))
-					commentNow = true;
-
-				if (c == '\t')
-					lineStartCol += gApp.mSettings.mEditorSettings.mTabSize;
-				else if (c == ' ')
-					lineStartCol++;
-				else
-					commentNow = true;
-
-				if (commentNow)
-				{
-					CursorTextPos = i;
-					String str = scope .();
-					while (lineStartCol + gApp.mSettings.mEditorSettings.mTabSize <= wantLineCol)
-					{
+					if (c == '\t')
 						lineStartCol += gApp.mSettings.mEditorSettings.mTabSize;
-						str.Append("\t");
+					else if (c == ' ')
+						lineStartCol++;
+					else
+					{
+						if (wantLineCol == -1)
+							wantLineCol = lineStartCol;
+						else
+							wantLineCol = Math.Min(wantLineCol, lineStartCol);
+						didLineComment = true;
 					}
-					str.Append("//");
-					InsertAtCursor(str);
-					didLineComment = true;
-					maxPos += str.Length;
-					if (i <= startTextPos + appendedCount)
-						appendedCount += str.Length;
 				}
+				wantLineCol = Math.Max(0, wantLineCol);
+
+				didLineComment = false;
+				lineStartCol = 0;
+				int appendedCount = 0;
+				for (int i = minPos; i < maxPos; i++)
+				{
+					var c = mData.mText[i].mChar;
+					if (didLineComment)
+					{
+						if (c == '\n')
+						{
+							didLineComment = false;
+							lineStartCol = 0;
+						}
+						continue;
+					}
+
+					bool commentNow = false;
+					if ((wantLineCol != -1) && (lineStartCol >= wantLineCol))
+						commentNow = true;
+
+					if (c == '\t')
+						lineStartCol += gApp.mSettings.mEditorSettings.mTabSize;
+					else if (c == ' ')
+						lineStartCol++;
+					else
+						commentNow = true;
+
+					if (commentNow)
+					{
+						CursorTextPos = i;
+						String str = scope .();
+						while (lineStartCol + gApp.mSettings.mEditorSettings.mTabSize <= wantLineCol)
+						{
+							lineStartCol += gApp.mSettings.mEditorSettings.mTabSize;
+							str.Append("\t");
+						}
+						str.Append("//");
+						InsertAtCursor(str);
+						didLineComment = true;
+						maxPos += str.Length;
+						if (i <= startTextPos + appendedCount)
+							appendedCount += str.Length;
+					}
+				}
+				CurSelection = EditSelection(minPos, maxPos);
+
+				if (appendedCount > 0)
+					CursorTextPos = startTextPos + appendedCount;
+				else
+					CursorLineAndColumn = startLineAndCol;
+
+				if (!hadSelection)
+					CurSelection = null;
 			}
-			mSelection = EditSelection(minPos, maxPos);
 
-			if (undoBatchStart != null)
-				mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
-
-			if (appendedCount > 0)
-				CursorTextPos = startTextPos + appendedCount;
-			else
-				CursorLineAndColumn = startLineAndCol;
-
-			if (!hadSelection)
-				mSelection = null;
+			CloseMultiCursorUndoBatch();
+			SetPrimaryTextCursor();
 
 			return true;
 		}
@@ -3081,11 +3091,11 @@ namespace IDE.ui
 		{
 			if (!HasSelection())
 				return;
-			if (CursorTextPos >= mSelection.Value.MaxPos)
-				CursorTextPos = mSelection.Value.MaxPos;
-			if (mSelection.Value.MaxPos - mSelection.Value.MinPos <= 1)
+			if (CursorTextPos >= CurSelection.Value.MaxPos)
+				CursorTextPos = CurSelection.Value.MaxPos;
+			if (CurSelection.Value.MaxPos - CurSelection.Value.MinPos <= 1)
 			{
-				mSelection = null;
+				CurSelection = null;
 				return;
 			}
 		}	
@@ -3095,151 +3105,175 @@ namespace IDE.ui
 			if (CheckReadOnly())
 				return false;
 
-			int startTextPos = CursorTextPos;
-			bool doLineComment = false;
-			var prevSelection = mSelection;
+			var sortedCursors = mTextCursors;
+			if (mTextCursors.Count > 1)
+				sortedCursors = GetSortedCursors(.. scope :: List<TextCursor>());
 
-			LineAndColumn? startLineAndCol = CursorLineAndColumn;
-			if (!HasSelection())
+			var didComment = false;
+			for (var cursor in sortedCursors)
 			{
-				CursorToLineEnd();
-				int cursorEndPos = CursorTextPos;
-				CursorToLineStart(false);
-				mSelection = .(CursorTextPos, cursorEndPos);
-				doLineComment = true;
-			}
+				SetTextCursor(cursor);
 
-			if ((HasSelection()) && (mSelection.Value.Length > 0))
-			{
-				UndoBatchStart undoBatchStart = new UndoBatchStart("embeddedToggleComment");
-				mData.mUndoManager.Add(undoBatchStart);
+				int startTextPos = CursorTextPos;
+				bool doLineComment = false;
+				var prevSelection = CurSelection;
+				var cursorAtEndPos = true;
 
-				var setCursorAction = new SetCursorAction(this);
-				setCursorAction.mSelection = prevSelection;
-				setCursorAction.mCursorTextPos = (.)startTextPos;
-				mData.mUndoManager.Add(setCursorAction);
-
-				int minPos = mSelection.GetValueOrDefault().MinPos;
-				int maxPos = mSelection.GetValueOrDefault().MaxPos;
-				mSelection = null;
-
-				var str = scope String();
-				ExtractString(minPos, maxPos - minPos, str);
-				var trimmedStr = scope String();
-				trimmedStr.Append(str);
-				int32 startLen = (int32)trimmedStr.Length;
-				trimmedStr.TrimStart();
-				int32 afterTrimStart = (int32)trimmedStr.Length;
-				trimmedStr.TrimEnd();
-				int32 afterTrimEnd = (int32)trimmedStr.Length;
-				trimmedStr.Append('\n');
-
-				int firstCharPos = minPos + (startLen - afterTrimStart);
-				int lastCharPos = maxPos - (afterTrimStart - afterTrimEnd);
-
-				if (afterTrimEnd == 0)
+				LineAndColumn? startLineAndCol = CursorLineAndColumn;
+				if (!HasSelection())
 				{
-					if (undoBatchStart != null)
-						mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
-
-					CursorLineAndColumn = startLineAndCol.Value;
-
-					if (doComment == null)
-						mSelection = null;
-
-					return false; // not sure if this should be false in blank/only whitespace selection case
-				}
-				else if ((doComment != true) && (trimmedStr.StartsWith("//"))) 
-				{
-					for (int i = firstCharPos; i <= lastCharPos; i++)
-					{
-						if (((minPos == 0) && (i == 0)) ||
-							((minPos >= 0) && (SafeGetChar(i - 1) == '\n') || (SafeGetChar(i - 1) == '\t') || (SafeGetChar(i - 1) == ' ')))
-						{
-							if (SafeGetChar(i - 0) == '/' && SafeGetChar(i + 1) == '/')
-							{
-								mSelection = EditSelection(i - 0, i + 2);
-								DeleteSelection();
-								lastCharPos -= 2;
-								while (i < maxPos && SafeGetChar(i) != '\n')
-								{
-									i++;
-								}
-							}
-						}
-					}
-
-					startLineAndCol = null;
 					CursorToLineEnd();
 					int cursorEndPos = CursorTextPos;
-					mSelection = .(minPos, cursorEndPos);
-				}
-				else if ((doComment != true) && (trimmedStr.StartsWith("/*")))
-				{
-					if (trimmedStr.EndsWith("*/\n"))
-					{
-						mSelection = EditSelection(firstCharPos, firstCharPos + 2);
-						DeleteChar();
-						mSelection = EditSelection(lastCharPos - 4, lastCharPos - 2);
-						DeleteChar();
-
-						if (prevSelection != null)
-							mSelection = EditSelection(firstCharPos, lastCharPos - 4);
-					}
-				}
-				else if (doComment != false)
-				{
-					//if selection is from beginning of the line then we want to use // comment, that's why the check for line count and ' ' and tab
-					if (doLineComment)
-					{
-						CursorTextPos = minPos;
-						InsertAtCursor("//"); //goes here if no selection
-					}
-					else
-					{
-						CursorTextPos = firstCharPos;
-						InsertAtCursor("/*");
-						CursorTextPos = lastCharPos + 2;
-						InsertAtCursor("*/");
-					}
-
-					mSelection = EditSelection(firstCharPos, lastCharPos + 4);
-					if (startTextPos <= minPos)
-						CursorLineAndColumn = startLineAndCol.Value;
-					else
-						CursorTextPos = startTextPos + 2;
-					startLineAndCol = null;
+					CursorToLineStart(false);
+					CurSelection = EditSelection(CursorTextPos, cursorEndPos);
+					doLineComment = true;
 				}
 				else
 				{
-					mSelection = prevSelection;
+					cursorAtEndPos = (CurSelection.Value.mStartPos == CurCursorTextPos);
 				}
 
-				if (undoBatchStart != null)
-					mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
+				if (HasSelection())
+				{
+					CreateMultiCursorUndoBatch("SEWC.ToggleComment()", force: true);
 
-				if (startLineAndCol != null)
-					CursorLineAndColumn = startLineAndCol.Value;
+					var setCursorAction = new SetCursorAction(this);
+					setCursorAction.mSelection = prevSelection;
+					setCursorAction.mCursorTextPos = (int32)startTextPos;
+					mData.mUndoManager.Add(setCursorAction);
 
-				if (prevSelection == null)
-					mSelection = null;
+					var minPos = CurSelection.GetValueOrDefault().MinPos;
+					var maxPos = CurSelection.GetValueOrDefault().MaxPos;
+					CurSelection = null;
 
-				ClampCursor();
-				FixSelection();
+					var str = scope String();
+					ExtractString(minPos, (maxPos - minPos), str);
+					var trimmedStr = scope String();
+					trimmedStr.Append(str);
+					int32 startLen = (int32)trimmedStr.Length;
+					trimmedStr.TrimStart();
+					int32 afterTrimStart = (int32)trimmedStr.Length;
+					trimmedStr.TrimEnd();
+					int32 afterTrimEnd = (int32)trimmedStr.Length;
+					trimmedStr.Append('\n');
 
-				return true;
+					int firstCharPos = minPos + (startLen - afterTrimStart);
+					int lastCharPos = maxPos - (afterTrimStart - afterTrimEnd);
+
+					if (afterTrimEnd == 0)
+					{
+						CursorLineAndColumn = startLineAndCol.Value;
+
+						if (doComment == null)
+							CurSelection = null;
+
+						//return false; // not sure if this should be false in blank/only whitespace selection case
+						continue;
+					}
+					else if ((doComment != true) && (trimmedStr.StartsWith("//")))
+					{
+						didComment = true;
+						for (int i = firstCharPos; i <= lastCharPos; i++)
+						{
+							if (((minPos == 0) && (i == 0)) ||
+								((minPos >= 0) && (SafeGetChar(i - 1) == '\n') || (SafeGetChar(i - 1) == '\t') || (SafeGetChar(i - 1) == ' ')))
+							{
+								if (SafeGetChar(i - 0) == '/' && SafeGetChar(i + 1) == '/')
+								{
+									CurSelection = EditSelection(i - 0, i + 2);
+									DeleteSelection();
+									lastCharPos -= 2;
+									while (i < maxPos && SafeGetChar(i) != '\n')
+									{
+										i++;
+									}
+								}
+							}
+						}
+
+						startLineAndCol = null;
+						CursorToLineEnd();
+						int cursorEndPos = CursorTextPos;
+						CurSelection = .(minPos, cursorEndPos);
+					}
+					else if ((doComment != true) && trimmedStr.StartsWith("/*"))
+					{
+						didComment = true;
+						if (trimmedStr.EndsWith("*/\n"))
+						{
+							CurSelection = EditSelection(firstCharPos, firstCharPos + 2);
+							DeleteChar();
+							CurSelection = EditSelection(lastCharPos - 4, lastCharPos - 2);
+							DeleteChar();
+
+							if (prevSelection != null)
+								CurSelection = EditSelection(firstCharPos, lastCharPos - 4);
+						}
+					}
+					else if (doComment != false)
+					{
+						didComment = true;
+						//if selection is from beginning of the line then we want to use // comment, that's why the check for line count and ' ' and tab
+						if (doLineComment)
+						{
+							CursorTextPos = minPos;
+							InsertAtCursor("//"); //goes here if no selection
+						}
+						else
+						{
+							CursorTextPos = firstCharPos;
+							InsertAtCursor("/*");
+							CursorTextPos = lastCharPos + 2;
+							InsertAtCursor("*/");
+						}
+
+						CurSelection = EditSelection(firstCharPos, lastCharPos + 4);
+						if (startTextPos <= minPos)
+							CursorLineAndColumn = startLineAndCol.Value;
+						else
+							CursorTextPos = startTextPos + 2;
+						startLineAndCol = null;
+					}
+					else
+					{
+						CurSelection = prevSelection;
+					}
+
+					if (startLineAndCol != null)
+						CursorLineAndColumn = startLineAndCol.Value;
+
+					if (prevSelection == null)
+						CurSelection = null;
+
+					ClampCursor();
+					FixSelection();
+
+					if (CurSelection.HasValue)
+					{
+						// Placing cursor where it was before, meaning
+						// at the start or at the end of the selection.
+						CurCursorTextPos = (cursorAtEndPos)
+							? (int32)CurSelection.Value.mStartPos
+							: (int32)CurSelection.Value.mEndPos
+							;
+					}
+				}
+
 			}
 
-			return false;
+			CloseMultiCursorUndoBatch();
+			SetPrimaryTextCursor();
+
+			return (didComment);
 		}
-		
+
 		public void DeleteAllRight()
 		{
 			int startPos;
 			int endPos;
 			if (HasSelection())
 			{
-				mSelection.ValueRef.GetAsForwardSelect(out startPos, out endPos);
+				CurSelection.ValueRef.GetAsForwardSelect(out startPos, out endPos);
 			}
 			else
 			{
@@ -3260,9 +3294,9 @@ namespace IDE.ui
 				return;
 			}
 
-			mSelection = EditSelection();
-			mSelection.ValueRef.mStartPos = (int32)startPos;
-			mSelection.ValueRef.mEndPos = (int32)endPos;
+			CurSelection = EditSelection();
+			CurSelection.ValueRef.mStartPos = (int32)startPos;
+			CurSelection.ValueRef.mEndPos = (int32)endPos;
 			DeleteSelection();
 
 			CursorTextPos = startPos;
@@ -3273,22 +3307,45 @@ namespace IDE.ui
 			if ((CheckReadOnly()) || (!mAllowVirtualCursor))
 				return;
 
-			UndoBatchStart undoBatchStart = new UndoBatchStart("duplicateLine");
-			mData.mUndoManager.Add(undoBatchStart);
+			var lineText = scope String();
+			var sortedCursors = mTextCursors;
+			if (mTextCursors.Count > 1)
+				sortedCursors = GetSortedCursors(.. scope :: List<TextCursor>());
 
-			mData.mUndoManager.Add(new SetCursorAction(this));
+			// Forcing creation of undo batch, because even single cursor has
+			// multiple undo-actions (SetCursorAction + InsertTextAction).
+			CreateMultiCursorUndoBatch("SEWC.DuplicateLine()", force: true);
 
-			var prevCursorLineAndColumn = CursorLineAndColumn;
-			int lineNum = CursorLineAndColumn.mLine;
-			GetLinePosition(lineNum, var lineStart, var lineEnd);
-			var str = scope String();
-			GetLineText(lineNum, str);
-			mSelection = null;
-			CursorLineAndColumn = LineAndColumn(lineNum, 0);
-			PasteText(str, "line");
-			CursorLineAndColumn = LineAndColumn(prevCursorLineAndColumn.mLine + 1, prevCursorLineAndColumn.mColumn);
+			for (var cursor in sortedCursors.Reversed)
+			{
+				SetTextCursor(cursor);
+				mData.mUndoManager.Add(new SetCursorAction(this));
 
-			mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
+				var line = CursorLineAndColumn.mLine;
+				var column = CursorLineAndColumn.mColumn;
+				var prevCursorPos = CurCursorTextPos;
+
+				lineText.Clear();
+				GetLineText(line, lineText);
+
+				CurSelection = null;
+				CursorLineAndColumn = LineAndColumn(line+1, 0);
+
+				InsertAtCursor("\n");
+				CursorLineAndColumn = LineAndColumn(line+1, 0);
+
+				InsertAtCursor(lineText);
+				CursorLineAndColumn = LineAndColumn(line+1, column);
+
+				// Forcing calculation of CursorTextPos,
+				// if this cursor had one before.
+				if (prevCursorPos != -1)
+					var _ = CursorTextPos;
+			}
+
+			CloseMultiCursorUndoBatch();
+			SetPrimaryTextCursor();
+			EnsureCursorVisible();
 		}
 
 		enum StatementRangeFlags
@@ -3529,6 +3586,7 @@ namespace IDE.ui
 
 		void MoveSelection(int toLinePos, bool isStatementAware)
 		{
+			RemoveSecondaryTextCursors();
 			/*if (GetStatementRange(CursorTextPos, var startIdx, var endIdx))
 			{
 				mSelection = .(startIdx, endIdx);
@@ -3543,8 +3601,8 @@ namespace IDE.ui
 
 			var prevCursorLineAndColumn = CursorLineAndColumn;
 			var str = scope String();
-			int startSelPos = mSelection.Value.MinPos;
-			ExtractString(mSelection.Value.MinPos, mSelection.Value.Length, str);
+			int startSelPos = CurSelection.Value.MinPos;
+			ExtractString(CurSelection.Value.MinPos, CurSelection.Value.Length, str);
 			DeleteSelection();
 
 			if (str.EndsWith('\n'))
@@ -3685,6 +3743,10 @@ namespace IDE.ui
 
 		public void MoveLine(VertDir dir)
 		{
+			if (CheckReadOnly())
+				return;
+
+			RemoveSecondaryTextCursors();
 			int lineNum = CursorLineAndColumn.mLine;
 
 			if ((dir == .Up && lineNum < 1) || (dir == .Down && lineNum >= GetLineCount() - 1))
@@ -3703,7 +3765,7 @@ namespace IDE.ui
 			}
 			GetLinePosition(endLineNum, ?, var lineEnd);
 
-			mSelection = .(lineStart, Math.Min(lineEnd + 1, mData.mTextLength));
+			CurSelection = .(lineStart, Math.Min(lineEnd + 1, mData.mTextLength));
 
 			if (dir == .Down)
 				MoveSelection(endLineNum + (int)dir, false);
@@ -3713,6 +3775,7 @@ namespace IDE.ui
 
 		public void MoveStatement(VertDir dir)
 		{
+			RemoveSecondaryTextCursors();
 			int lineNum = CursorLineAndColumn.mLine;
 			int origLineNum = lineNum;
 			GetLinePosition(lineNum, var lineStart, var lineEnd);
@@ -3741,7 +3804,7 @@ namespace IDE.ui
 
 			mData.mUndoManager.Add(new SetCursorAction(this));
 
-			mSelection = .(lineStart, selEnd);
+			CurSelection = .(lineStart, selEnd);
 
 			int toLine = Math.Clamp(lineNum + (int)dir, 0, GetLineCount());
 			if (dir == .Down)
@@ -3795,6 +3858,7 @@ namespace IDE.ui
 
 		void InsertCharPair(String charPair)
 		{
+			CreateMultiCursorUndoBatch("SEWC.InsertCharPair()");
 			base.InsertCharPair(charPair);
 			mCurParenPairIdSet.Add(mData.mNextCharId - 2);
 		}
@@ -3803,12 +3867,18 @@ namespace IDE.ui
         {
 			scope AutoBeefPerf("SEWC.KeyChar");
 
+			if (IsPrimaryTextCursor())
+				mDidAutoComplete = false;
+
 			var keyChar;
 			
 
 			if (mIgnoreKeyChar)
 			{
-				mIgnoreKeyChar = false;
+				// Only flip the flag when we are processing last cursor
+				if (mTextCursors.Back.mId == mCurrentTextCursor.mId)
+					mIgnoreKeyChar = false;
+
 				return;
 			}
 
@@ -3825,6 +3895,10 @@ namespace IDE.ui
 				 ((keyChar == '\r') && (autoCompleteOnEnter))) &&
 				(!mWidgetWindow.IsKeyDown(.Shift));
 
+			// Skip completion-char for secondary cursors when AutoComplete just happened
+			if ((isCompletionChar) && (!IsPrimaryTextCursor()) && (mDidAutoComplete))
+				return;
+
             if ((gApp.mSymbolReferenceHelper != null) && (gApp.mSymbolReferenceHelper.IsRenaming))
             {         
                 if ((keyChar == '\r') || (keyChar == '\n'))
@@ -3836,14 +3910,14 @@ namespace IDE.ui
                 {
                     if (HasSelection())
                     {
-                        mSelection = null;
+                        CurSelection = null;
                         return;
                     }
                 }
                 else if (keyChar == '\b')
                 {
                     if (HasSelection())                    
-                        mSelection = null;                    
+                        CurSelection = null;                    
                 }
             }
 
@@ -3883,13 +3957,13 @@ namespace IDE.ui
 			}
 
 			bool forceAutoCompleteInsert = false;
-			if (isEndingChar)
+			if ((IsPrimaryTextCursor()) && (isEndingChar))
             {
 				bool forceAsyncFinish = false;
-				if (mCursorTextPos > 0)
+				if (CurCursorTextPos > 0)
 				{
-					char8 c = mData.mText[mCursorTextPos - 1].mChar;
-					var displayType = (SourceElementType)mData.mText[mCursorTextPos - 1].mDisplayTypeId;
+					char8 c = mData.mText[CurCursorTextPos - 1].mChar;
+					var displayType = (SourceElementType)mData.mText[CurCursorTextPos - 1].mDisplayTypeId;
 					if ((displayType != .Comment) && (displayType != .Literal))
 					{
 						if ((c.IsLetterOrDigit) || (c == '_'))
@@ -3927,13 +4001,13 @@ namespace IDE.ui
             }
 			else
 			{
-				if ((doAutocomplete) && (mOnFinishAsyncAutocomplete != null))
+				if ((IsPrimaryTextCursor()) && (doAutocomplete) && (mOnFinishAsyncAutocomplete != null))
 					mOnFinishAsyncAutocomplete();
 			}
 
-            if ((mAutoComplete != null) && (mAutoComplete.mAutoCompleteListWidget != null))
+            if ((IsPrimaryTextCursor()) && (mAutoComplete != null) && (mAutoComplete.mAutoCompleteListWidget != null))
             {
-				if ((mAutoComplete.mInsertEndIdx != -1) && (mAutoComplete.mInsertEndIdx != mCursorTextPos) && (keyChar != '\t') && (keyChar != '\r') && (keyChar != '\n'))
+				if ((mAutoComplete.mInsertEndIdx != -1) && (mAutoComplete.mInsertEndIdx != CurCursorTextPos) && (keyChar != '\t') && (keyChar != '\r') && (keyChar != '\n'))
 					doAutocomplete = false;
 				
                 /*if ((mAutoComplete.IsInsertEmpty()) && (!mAutoComplete.mIsFixit) && (keyChar != '.') && (keyChar != '\t') && (keyChar != '\r'))
@@ -3965,6 +4039,8 @@ namespace IDE.ui
 					if (mOnFinishAsyncAutocomplete != null)
 						mOnFinishAsyncAutocomplete();
 
+					mDidAutoComplete = true;
+					CreateMultiCursorUndoBatch("SEWC.KeyChar(autocomplete)");
                     UndoBatchStart undoBatchStart = new UndoBatchStart("autocomplete");
                     mData.mUndoManager.Add(undoBatchStart);
 
@@ -4033,6 +4109,7 @@ namespace IDE.ui
 
             if (((keyChar == '\n') || (keyChar == '\r')) && (!HasSelection()) && (mIsMultiline) && (!CheckReadOnly()))
             {
+				CreateMultiCursorUndoBatch("SEWC.KeyChar(\n||\r)");
                 UndoBatchStart undoBatchStart = new UndoBatchStart("newline");
                 mData.mUndoManager.Add(undoBatchStart);                
 
@@ -4060,13 +4137,13 @@ namespace IDE.ui
 					if (!HasSelection())
 					{
 						// Select whitespace at the end of the line so we trim it as we InsertAtCursor
-						mSelection = EditSelection(CursorTextPos, CursorTextPos);
+						CurSelection = EditSelection(CursorTextPos, CursorTextPos);
 						for (int checkIdx = beforeCursorLineText.Length - 1; checkIdx >= 0; checkIdx--)
 						{
 							char8 c = beforeCursorLineText[checkIdx];
 							if (!c.IsWhiteSpace)
 								break;
-							mSelection.ValueRef.mStartPos--;
+							CurSelection.ValueRef.mStartPos--;
 						}
 						insertFlags |= .NoRestoreSelectionOnUndo;
 					}
@@ -4133,7 +4210,7 @@ namespace IDE.ui
 					}
                 }
                 
-                if ((mAutoComplete != null) && (mAutoComplete.mInvokeWidget != null))
+                if ((IsPrimaryTextCursor()) && (mAutoComplete != null) && (mAutoComplete.mInvokeWidget != null))
                 {
                     // Update the position of the invoke widget
 					if (IsCursorVisible(false))
@@ -4149,11 +4226,13 @@ namespace IDE.ui
 				}
 				else
 				{
-					if (mAutoComplete != null)
+					if (IsPrimaryTextCursor() && mAutoComplete != null)
 						mAutoComplete.CloseListWindow();
+						//shouldCloseAutoComplete = true;
 				}
-				
-				mAutoComplete?.UpdateAsyncInfo();
+
+				if (IsPrimaryTextCursor())
+					mAutoComplete?.UpdateAsyncInfo();
 
                 return;
             }
@@ -4176,6 +4255,7 @@ namespace IDE.ui
 							(mData.mText[cursorTextPos - 1].mChar == '*') &&
 							(mData.mText[cursorTextPos].mChar == '\n'))
 						{
+							CreateMultiCursorUndoBatch("SEWC.KeyChar(comment)");
 							InsertAtCursor("*");
 							let prevLineAndColumn = mEditWidget.mEditWidgetContent.CursorLineAndColumn;
 							int column = GetLineEndColumn(prevLineAndColumn.mLine, false, true, true);
@@ -4233,7 +4313,7 @@ namespace IDE.ui
 	                            ((keyChar == '"') || (keyChar == '\'') || (keyChar == ')') || (keyChar == ']') || (keyChar == '>') || (keyChar == '}')) &&
 								(IsCurrentPairClosing(cursorTextPos, true)))
 	                        {
-	                            mJustInsertedCharPair = false;
+	                            CurJustInsertedCharPair = false;
 	                            CursorTextPos++;
 	                            return;
 	                        }
@@ -4290,12 +4370,13 @@ namespace IDE.ui
 					}
 					else if ((keyChar == '{') || (keyChar == '('))
 					{
+						CreateMultiCursorUndoBatch("SEWC.KeyChar(blockSurround)");
 						UndoBatchStart undoBatchStart = new UndoBatchStart("blockSurround");
 						mData.mUndoManager.Add(undoBatchStart);                
 
-						int minPos = mSelection.GetValueOrDefault().MinPos;
-						int maxPos = mSelection.GetValueOrDefault().MaxPos;
-						mSelection = null;
+						int minPos = CurSelection.GetValueOrDefault().MinPos;
+						int maxPos = CurSelection.GetValueOrDefault().MaxPos;
+						CurSelection = null;
 						CursorTextPos = minPos;
 						String insertStr = scope String();
 						insertStr.Append(keyChar);
@@ -4385,7 +4466,7 @@ namespace IDE.ui
                 mIsInKeyChar = false;
             }
 
-            if ((keyChar == '\b') || (keyChar == '\r') || (keyChar >= (char8)32))
+            if (IsPrimaryTextCursor() && ((keyChar == '\b') || (keyChar == '\r') || (keyChar >= (char8)32)))
             {
                 bool isHighPri = (keyChar == '(') || (keyChar == '.');
 				bool needsFreshAutoComplete = ((isHighPri) /*|| (!mAsyncAutocomplete)*/ || (mAutoComplete == null) || (mAutoComplete.mAutoCompleteListWidget == null));
@@ -4414,7 +4495,7 @@ namespace IDE.ui
             }
             else if (mData.mCurTextVersionId != startRevision)
             {
-                if (mAutoComplete != null)
+                if (IsPrimaryTextCursor() && mAutoComplete != null)
                     mAutoComplete.CloseListWindow();
             }
 
@@ -4479,18 +4560,19 @@ namespace IDE.ui
 	                        int32 columnPos = (int32)(GetTabbedWidth(tabStartStr, 0) / mCharWidth + 0.001f);
 	                        if (columnPos >= wantLineColumn + gApp.mSettings.mEditorSettings.mTabSize)
 	                        {
-	                            mSelection = EditSelection();
-	                            mSelection.ValueRef.mEndPos = (int32)(cursorTextIdx - trimmedLineText.Length);
+	                            CurSelection = EditSelection();
+	                            CurSelection.ValueRef.mEndPos = (int32)(cursorTextIdx - trimmedLineText.Length);
 	                            if (lineText.EndsWith(scope String("    ", trimmedLineText), StringComparison.Ordinal))
-	                                mSelection.ValueRef.mStartPos = mSelection.Value.mEndPos - 4;
+	                                CurSelection.ValueRef.mStartPos = CurSelection.Value.mEndPos - 4;
 	                            else if (lineText.EndsWith(scope String("\t", trimmedLineText), StringComparison.Ordinal))
-	                                mSelection.ValueRef.mStartPos = mSelection.Value.mEndPos - 1;
-	                            if (mSelection.Value.mStartPos > 0)
+	                                CurSelection.ValueRef.mStartPos = CurSelection.Value.mEndPos - 1;
+	                            if (CurSelection.Value.mStartPos > 0)
 	                            {
+									CreateMultiCursorUndoBatch("SEWC.KeyChar(case)");
 	                                DeleteSelection();
 	                                CursorToLineEnd();
 	                            }
-	                            mSelection = null;
+	                            CurSelection = null;
 	                        }
 						}
                     }
@@ -4509,13 +4591,14 @@ namespace IDE.ui
                         int32 columnPos = (int32)(GetTabbedWidth(tabStartStr, 0) / mCharWidth + 0.001f);
                         if (wantLineColumn > columnPos)
                         {
+							CreateMultiCursorUndoBatch("SEWC.KeyChar(else)");
                             String insertStr = scope String(' ', wantLineColumn - columnPos);
 							insertStr.Append("else");
 
                             var cursorPos = CursorTextPos;
-                            mSelection = EditSelection();
-                            mSelection.ValueRef.mStartPos = (int32)cursorPos - 4;
-                            mSelection.ValueRef.mEndPos = (int32)cursorPos;
+                            CurSelection = EditSelection();
+                            CurSelection.ValueRef.mStartPos = (int32)cursorPos - 4;
+                            CurSelection.ValueRef.mEndPos = (int32)cursorPos;
                             InsertAtCursor(insertStr, .NoRestoreSelectionOnUndo);
 
                             //var indentTextAction = new EditWidgetContent.IndentTextAction(this);
@@ -4530,7 +4613,7 @@ namespace IDE.ui
                 }
             }
 
-			mCursorImplicitlyMoved = true;
+			CurCursorImplicitlyMoved = true;
         }
 
 		public void ShowAutoComplete(bool isUserRequested)
@@ -4542,11 +4625,12 @@ namespace IDE.ui
 			}
 		}
 
-        /// summary = "Hey This is a summary"
-        /// param.keyCode = "Keycode of pressed key"
-        /// param.isRepeat = "Whether the key is repeated"
-        public override void KeyDown(KeyCode keyCode, bool isRepeat)
-        {
+		public override void HandleKey(KeyCode keyCode, KeyFlags keyFlags, bool isRepeat)
+		{
+			bool shiftDown = keyFlags.HasFlag(.Shift);
+			bool ctrlDown = keyFlags.HasFlag(.Ctrl);
+			bool altDown = keyFlags.HasFlag(.Alt);
+
 			mIgnoreKeyChar = false;
 			mEmbedSelected = null;
 
@@ -4558,7 +4642,7 @@ namespace IDE.ui
 				(autoCompleteRequireControl) &&
 				(!gApp.mSettings.mTutorialsFinished.mCtrlCursor))
 			{
-				if (mWidgetWindow.IsKeyDown(.Control))
+				if (ctrlDown)
 				{
 					if ((DarkTooltipManager.sTooltip != null) && (DarkTooltipManager.sTooltip.mAllowMouseOutside))
 						DarkTooltipManager.CloseTooltip();
@@ -4580,12 +4664,12 @@ namespace IDE.ui
 				Thread.Sleep(300);
 			}*/
 
-            /*if ((keyCode == KeyCode.Space) && (mWidgetWindow.IsKeyDown(KeyCode.Control)))
-            {
+		    /*if ((keyCode == KeyCode.Space) && (mWidgetWindow.IsKeyDown(KeyCode.Control)))
+		    {
 				//Debug.WriteLine("CursorPos: {0}", CursorTextPos);
 				ShowAutoComplete();
-                return;
-            }*/
+		        return;
+		    }*/
 
 			if (keyCode == KeyCode.Apps)
 			{
@@ -4594,28 +4678,28 @@ namespace IDE.ui
 				return;
 			}
 
-            if ((keyCode == KeyCode.Escape) && (mAutoComplete != null) && (mAutoComplete.IsShowing()))
-            {                
-                mAutoComplete.Close();
-                return;
-            }
+		    if ((keyCode == KeyCode.Escape) && (mAutoComplete != null) && (mAutoComplete.IsShowing()))
+		    {                
+		        mAutoComplete.Close();
+		        return;
+		    }
 
-            if ((keyCode == KeyCode.Escape) && (mOnEscape != null) && (mOnEscape()))
-            {
-                return;
-            }
+		    if ((keyCode == KeyCode.Escape) && (mOnEscape != null) && (mOnEscape()))
+		    {
+		        return;
+		    }
 
-            if ((keyCode == KeyCode.Escape) && (mSelection != null) && (mSelection.Value.HasSelection))
-            {
-                mSelection = null;
-            }
+		    if ((keyCode == KeyCode.Escape) && (CurSelection != null) && (CurSelection.Value.HasSelection))
+		    {
+		        CurSelection = null;
+		    }
 
-            if (((keyCode == KeyCode.Up) || (keyCode == KeyCode.Down) || (keyCode == KeyCode.PageUp) || (keyCode == KeyCode.PageDown)))
-            {
-				if ((!autoCompleteRequireControl) || (mWidgetWindow.IsKeyDown(KeyCode.Control)))
+		    if (((keyCode == KeyCode.Up) || (keyCode == KeyCode.Down) || (keyCode == KeyCode.PageUp) || (keyCode == KeyCode.PageDown)))
+		    {
+				if ((IsPrimaryTextCursor()) && ((!autoCompleteRequireControl) || (ctrlDown)))
 				{
-	                if ((mAutoComplete != null) && (mAutoComplete.IsShowing()))
-	                {
+		            if ((mAutoComplete != null) && (mAutoComplete.IsShowing()))
+		            {
 						bool wantListCursors = false;
 
 						if (mAutoComplete.mAutoCompleteListWidget != null)
@@ -4624,37 +4708,37 @@ namespace IDE.ui
 								wantListCursors = true;
 						}
 
-	                    if (wantListCursors)
-	                    {
-	                        int32 pageSize = (int32)(mAutoComplete.mAutoCompleteListWidget.mScrollContentContainer.mHeight / mAutoComplete.mAutoCompleteListWidget.mItemSpacing - 0.5f);
-	                        int32 moveDir = 0;
-	                        switch (keyCode)
-	                        {
-	                        case KeyCode.Up: moveDir = -1;
-	                        case KeyCode.Down: moveDir = 1;
-	                        case KeyCode.PageUp: moveDir = -pageSize;
-	                        case KeyCode.PageDown: moveDir = pageSize;
+		                if (wantListCursors)
+		                {
+		                    int32 pageSize = (int32)(mAutoComplete.mAutoCompleteListWidget.mScrollContentContainer.mHeight / mAutoComplete.mAutoCompleteListWidget.mItemSpacing - 0.5f);
+		                    int32 moveDir = 0;
+		                    switch (keyCode)
+		                    {
+		                    case KeyCode.Up: moveDir = -1;
+		                    case KeyCode.Down: moveDir = 1;
+		                    case KeyCode.PageUp: moveDir = -pageSize;
+		                    case KeyCode.PageDown: moveDir = pageSize;
 							default:
-	                        }
-	                        mAutoComplete.mAutoCompleteListWidget.SelectDirection(moveDir);
-	                    }
-	                    else if (mAutoComplete.mInvokeWidget != null)
-	                    {
+		                    }
+		                    mAutoComplete.mAutoCompleteListWidget.SelectDirection(moveDir);
+		                }
+		                else if (mAutoComplete.mInvokeWidget != null)
+		                {
 							// Close the list if we had !wantListCursors
-	                        if (mAutoComplete.mInvokeWidget.SelectDirection(((keyCode == KeyCode.Up) || (keyCode == KeyCode.PageUp)) ? -1 : 1))
+		                    if (mAutoComplete.mInvokeWidget.SelectDirection(((keyCode == KeyCode.Up) || (keyCode == KeyCode.PageUp)) ? -1 : 1))
 							{
 								mAutoComplete?.CloseListWindow();
 								mAutoComplete?.Update();
 							}
-	                    }
+		                }
 						return;
-	                }
+		            }
 				}
 
 				// Disabled window-scroll code for ctrl+up/ctrl+down when autocomplete is not up
-				if (mWidgetWindow.IsKeyDown(KeyCode.Control))
+				if (ctrlDown)
 					return;
-            }
+		    }
 
 			if (mSourceViewPanel?.mRenameSymbolDialog?.mKind == .Rename)
 			{
@@ -4685,63 +4769,63 @@ namespace IDE.ui
 
 				if (wantCursorPos != -1)
 				{
-					if (mWidgetWindow.IsKeyDown(.Shift))
+					if (shiftDown)
 					{
-						if (mSelection == null)
-							mSelection = .(CursorTextPos, wantCursorPos);
+						if (CurSelection == null)
+							CurSelection = .(CursorTextPos, wantCursorPos);
 						else
-							mSelection.ValueRef.mEndPos = (.)wantCursorPos;
+							CurSelection.ValueRef.mEndPos = (.)wantCursorPos;
 					}
 					else
-						mSelection = null;
+						CurSelection = null;
 
 					CursorTextPos = wantCursorPos;
 					return;
 				}
 			}
 
-            //var lineAndColumn = CursorLineAndColumn;
+		    //var lineAndColumn = CursorLineAndColumn;
 
-            int prevCursorPos;
-            TryGetCursorTextPos(out prevCursorPos);
-            int prevTextLength = mData.mTextLength;
-            base.KeyDown(keyCode, isRepeat);
+		    int prevCursorPos;
+		    TryGetCursorTextPos(out prevCursorPos);
+		    int prevTextLength = mData.mTextLength;
+		    base.HandleKey(keyCode, keyFlags, isRepeat);
 
-            if ((mAutoComplete != null) &&
+		    if ((IsPrimaryTextCursor()) && (mAutoComplete != null) &&
 				(keyCode != .Control) &&
 				(keyCode != .Shift))
-            {
+		    {
 				mAutoComplete.MarkDirty();
-                bool isCursorInRange = prevCursorPos == CursorTextPos;
-                if (mAutoComplete.mInvokeSrcPositions != null)
-                {
-                    isCursorInRange = (CursorTextPos > mAutoComplete.mInvokeSrcPositions[0]) &&
-                        (CursorTextPos <= mAutoComplete.mInvokeSrcPositions[mAutoComplete.mInvokeSrcPositions.Count - 1]);
-                }
+		        bool isCursorInRange = prevCursorPos == CursorTextPos;
+		        if (mAutoComplete.mInvokeSrcPositions != null)
+		        {
+		            isCursorInRange = (CursorTextPos > mAutoComplete.mInvokeSrcPositions[0]) &&
+		                (CursorTextPos <= mAutoComplete.mInvokeSrcPositions[mAutoComplete.mInvokeSrcPositions.Count - 1]);
+		        }
 
-                bool wasNormalTyping =
-                    ((isCursorInRange) && (prevTextLength == mData.mTextLength))/* ||
-                    ((prevCursorPos + 1 == CursorTextPos) && (prevTextLength + 1 == mTextLength)) ||
-                    ((prevCursorPos - 1 == CursorTextPos) && (prevTextLength - 1 == mTextLength))*/;
+		        bool wasNormalTyping =
+		            ((isCursorInRange) && (prevTextLength == mData.mTextLength))/* ||
+		            ((prevCursorPos + 1 == CursorTextPos) && (prevTextLength + 1 == mTextLength)) ||
+		            ((prevCursorPos - 1 == CursorTextPos) && (prevTextLength - 1 == mTextLength))*/;
 
-                /*if ((lineAndColumn.mColumn != CursorLineAndColumn.mColumn) && (prevTextLength == mTextLength))
-                    wasNormalTyping = false; // Moved into virtual space*/
+		        /*if ((lineAndColumn.mColumn != CursorLineAndColumn.mColumn) && (prevTextLength == mTextLength))
+		            wasNormalTyping = false; // Moved into virtual space*/
 
-                if (!wasNormalTyping)
-                {
-                    mAutoComplete.CloseInvoke();                    
-                }
+		        if (!wasNormalTyping)
+		        {
+		            mAutoComplete.CloseInvoke();                    
+		        }
 				else if ((keyCode == .Right) || (keyCode == .Left))
 				{
 					mAutoComplete.CloseListWindow();
 				}
-            }
-        }
+		    }
+		}
 
         void ReplaceWord(int leftIdx, int rightIdx, String origWord, String newWord)
         {
-            mSelection.ValueRef.mStartPos = (int32)leftIdx;
-            mSelection.ValueRef.mEndPos = (int32)rightIdx;
+            CurSelection.ValueRef.mStartPos = (int32)leftIdx;
+            CurSelection.ValueRef.mEndPos = (int32)rightIdx;
             InsertAtCursor(newWord, .NoRestoreSelectionOnUndo);
         }
 
@@ -4933,9 +5017,9 @@ namespace IDE.ui
 	                                BfPassInstance passInstance = null;
 	                                BfParser parser = null;
 
-	                                if ((mSelection != null) &&
-	                                    (textIdx >= mSelection.Value.MinPos) &&
-	                                    (textIdx < mSelection.Value.MaxPos))
+	                                if ((CurSelection != null) &&
+	                                    (textIdx >= CurSelection.Value.MinPos) &&
+	                                    (textIdx < CurSelection.Value.MaxPos))
 	                                {
 	                                    GetSelectionText(debugExpr);
 	                                }
@@ -5020,6 +5104,7 @@ namespace IDE.ui
 						menuItem = menu.AddItem("Cut|Ctrl+X");
 						menuItem.mOnMenuItemSelected.Add(new (menu) =>
 							{
+								SetPrimaryTextCursor();
 								CutText();
 							});
 						menuItem.SetDisabled(!hasSelection);
@@ -5034,6 +5119,7 @@ namespace IDE.ui
 						menuItem = menu.AddItem("Paste|Ctrl+V");
 						menuItem.mOnMenuItemSelected.Add(new (menu) =>
 							{
+								SetPrimaryTextCursor();
 								PasteText();
 							});
 
@@ -5542,7 +5628,7 @@ namespace IDE.ui
 		{
 			base.ClampCursor();
 
-			if (mVirtualCursorPos == null)
+			if (CurVirtualCursorPos == null)
 				return;
 			if (gApp.mSettings.mEditorSettings.mFreeCursorMovement)
 				return;
@@ -5558,7 +5644,7 @@ namespace IDE.ui
 			GetLineText(line, curLineStr);
 			int32 lineEnd = (int32)curLineStr.NumCodePoints;
 
-			mVirtualCursorPos.ValueRef.mColumn = (.)Math.Min(mVirtualCursorPos.Value.mColumn, Math.Max(virtualEnd, lineEnd));
+			CurVirtualCursorPos.ValueRef.mColumn = (.)Math.Min(CurVirtualCursorPos.Value.mColumn, Math.Max(virtualEnd, lineEnd));
 		}
 
 		bool CheckCollapseOpen(int checkLine, CursorMoveKind cursorMoveKind = .Unknown)
@@ -5600,14 +5686,14 @@ namespace IDE.ui
 		{
 			bool hadSelection = HasSelection();
 
-			if ((dir > 0) && (HasSelection()) && (mSelection.Value.Length > 1) && (!mWidgetWindow.IsKeyDown(.Shift)))
+			if ((dir > 0) && (HasSelection()) && (CurSelection.Value.Length > 1) && (!mWidgetWindow.IsKeyDown(.Shift)))
 			{
-				GetLineCharAtIdx(mSelection.Value.MaxPos - 1, var maxLine, ?);
+				GetLineCharAtIdx(CurSelection.Value.MaxPos - 1, var maxLine, ?);
 				if (IsLineCollapsed(maxLine))
 				{
 					if (hadSelection)
 					{
-						mSelection = null;
+						CurSelection = null;
 						CursorToLineEnd();
 						return true;
 					}
@@ -5623,7 +5709,7 @@ namespace IDE.ui
 					CursorLineAndColumn = .(anchorLine, 0);
 					base.CursorToLineEnd();
 					if ((mWidgetWindow.IsKeyDown(.Shift)) && (HasSelection()))
-						mSelection.ValueRef.mEndPos = (.)CursorTextPos;
+						CurSelection.ValueRef.mEndPos = (.)CursorTextPos;
 					return true;
 				}
 			}
@@ -5651,13 +5737,13 @@ namespace IDE.ui
 				mSourceViewPanel?.mQuickFind?.SetFindIdx(CursorTextPos, !moveKind.IsFromTyping);
 			}
 
-			if (mVirtualCursorPos != null)
+			if (CurVirtualCursorPos != null)
 			{
-				CheckCollapseOpen(mVirtualCursorPos.Value.mLine, moveKind);
+				CheckCollapseOpen(CurVirtualCursorPos.Value.mLine, moveKind);
 			}
 			else
 			{
-				GetLineCharAtIdx(mCursorTextPos, var checkLine, ?);
+				GetLineCharAtIdx(CurCursorTextPos, var checkLine, ?);
 				CheckCollapseOpen(checkLine, moveKind);
 			}
 
@@ -6653,12 +6739,12 @@ namespace IDE.ui
 			}
 
 			int32 startIdx = mData.mLineStarts[entry.mStartLine];
-			if ((!wantOpen) && (mSelection != null) && (mSelection.Value.MinPos >= startIdx) && (mSelection.Value.MinPos <= entry.mEndIdx))
+			if ((!wantOpen) && (CurSelection != null) && (CurSelection.Value.MinPos >= startIdx) && (CurSelection.Value.MinPos <= entry.mEndIdx))
 			{
-				if (mSelection.Value.MaxPos > entry.mEndIdx + 1)
-					mSelection = .(entry.mEndIdx + 1, mSelection.Value.MaxPos);
+				if (CurSelection.Value.MaxPos > entry.mEndIdx + 1)
+					CurSelection = .(entry.mEndIdx + 1, CurSelection.Value.MaxPos);
 				else
-					mSelection = null;
+					CurSelection = null;
 			}
 
 			if ((!wantOpen) && (cursorLineAndColumn.mLine >= entry.mStartLine) && (cursorLineAndColumn.mLine <= entry.mEndLine))
@@ -7239,6 +7325,14 @@ namespace IDE.ui
 			}
 
 			RehupLineCoords(animIdx, animLines);
+		}
+
+		public override void RemoveSecondaryTextCursors(bool force = true)
+		{
+			if ((!force) && (mAutoComplete != null))
+				return;
+
+			base.RemoveSecondaryTextCursors(force);
 		}
     }
 }

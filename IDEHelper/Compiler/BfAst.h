@@ -304,6 +304,7 @@ enum BfToken : uint8
 	BfToken_RDblChevron,
 	BfToken_Semicolon,
 	BfToken_Colon,
+	BfToken_ColonColon,
 	BfToken_Comma,
 	BfToken_Dot,
 	BfToken_DotDot,
@@ -2014,6 +2015,13 @@ public:
 	BfTokenNode* mColonToken;
 	BfAstNode* mTargetNode; // . : or identifier
 	BfAttributeDirective* mAttributes;
+
+	BfAstNode* GetTargetNode()
+	{
+		if ((mColonToken != NULL) && (mColonToken->mToken == BfToken_ColonColon))
+			return mColonToken;
+		return mTargetNode;
+	}
 };	BF_AST_DECL(BfScopeNode, BfAstNode);
 
 class BfNewNode : public BfAstNode
@@ -2108,6 +2116,12 @@ public:
 	ASTREF(BfIdentifierNode*) mLeft;
 	ASTREF(BfTokenNode*) mDot;
 	ASTREF(BfIdentifierNode*) mRight;
+
+	bool IsGlobalLookup()
+	{
+		return (mDot != NULL) && (mDot->mToken == BfToken_ColonColon);
+	}
+
 };	BF_AST_DECL(BfQualifiedNameNode, BfIdentifierNode);
 
 class BfUsingDirective : public BfStatement
@@ -2599,6 +2613,12 @@ public:
 	ASTREF(BfTypeReference*) mLeft;
 	ASTREF(BfTokenNode*) mDot;
 	ASTREF(BfTypeReference*) mRight;
+
+	bool IsGlobalLookup()
+	{
+		return (mDot != NULL) && (mDot->mToken == BfToken_ColonColon);
+	}
+
 };	BF_AST_DECL(BfQualifiedTypeReference, BfTypeReference);
 
 class BfResolvedTypeReference : public BfTypeReference
@@ -3036,6 +3056,13 @@ public:
 
 	BfAstNode* mTargetNode;
 
+	BfAstNode* GetScopeNameNode()
+	{
+		if ((mColonToken != NULL) && (mColonToken->mToken == BfToken_ColonColon))
+			return mColonToken;
+		return mScopeName;
+	}
+
 // 	virtual bool IsMissingSemicolon() override
 // 	{
 // 		return BfNodeDynCastExact<BfBlock>(mTargetNode) == NULL;
@@ -3059,6 +3086,13 @@ public:
 	BfAstNode* mTarget;
 	BfTokenNode* mColonToken;
 	BfAstNode* mScopeName; // :, mixin, or identifier
+
+	BfAstNode* GetScopeNameNode()
+	{
+		if ((mColonToken != NULL) && (mColonToken->mToken == BfToken_ColonColon))
+			return mColonToken;
+		return mScopeName;
+	}
 };	BF_AST_DECL(BfScopedInvocationTarget, BfAstNode);
 
 class BfInvocationExpression : public BfMethodBoundExpression

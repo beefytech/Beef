@@ -707,6 +707,7 @@ namespace IDE
 			public bool mFuzzyAutoComplete = false;
 			public bool mShowLocatorAnim = true;
 			public bool mHiliteCursorReferences = true;
+			public bool mDebugMultiCursor = false;
 			public bool mHiliteCurrentLine = false;
 			public bool mLockEditing;
 			public LockWhileDebuggingKind mLockEditingWhenDebugging = .WhenNotHotSwappable;// Only applicable for
@@ -858,6 +859,9 @@ namespace IDE
 
 			public void SetDefaults()
 			{
+				Add("Add Cursor Above", "Ctrl+Alt+Up");
+				Add("Add Cursor Below", "Ctrl+Alt+Down");
+				Add("Add Selection to Next Find Match", "Ctrl+D");
 				Add("Autocomplete", "Ctrl+Space");
 				Add("Bookmark Next", "F2");
 				Add("Bookmark Prev", "Shift+F2");
@@ -882,7 +886,6 @@ namespace IDE
 				Add("Comment Lines", "Ctrl+K, Ctrl+/");
 				Add("Comment Toggle", "Ctrl+K, Ctrl+T");
 				Add("Debug Comptime", "Alt+F7");
-				Add("Duplicate Line", "Ctrl+D");
 				Add("Find Class", "Alt+Shift+L");
 				Add("Find in Document", "Ctrl+F");
 				Add("Find in Files", "Ctrl+Shift+F");
@@ -896,6 +899,7 @@ namespace IDE
 				Add("Make Uppercase", "Ctrl+Shift+U");
 				Add("Match Brace Select", "Ctrl+Shift+RBracket");
 				Add("Match Brace", "Ctrl+RBracket");
+				//Add("Move Last Selection to Next Find Match, "Ctrl+K, Ctrl+D");
 				Add("Move Line Down", "Alt+Shift+Down");
 				Add("Move Line Up", "Alt+Shift+Up");
 				Add("Move Statement Down", "Ctrl+Shift+Down");
@@ -1091,6 +1095,35 @@ namespace IDE
 				List<String> allocatedStrs = scope .();
 				defer { ClearAndDeleteItems(allocatedStrs); }
 
+				Dictionary<String, Entry> mappedEntries = scope .();
+
+				void AddEntry(List<Entry> newEntries, Entry entry, bool isNew)
+				{
+					newEntries.Add(entry);
+
+					// Delete previous command bindings when we are adding new entries
+					let keyEntryStr = scope String();
+					KeyState.ToString(entry.mKeys, keyEntryStr);
+					//keyEntryStr.Append(" ");
+					//entry.mContextFlags.To keyEntryStr);
+
+					String* keyPtr;
+					Entry* valuePtr;
+					if (mappedEntries.TryAdd(keyEntryStr, out keyPtr, out valuePtr))
+					{
+						*keyPtr = new String(keyEntryStr);
+						*valuePtr = entry;
+					}
+					else
+					{
+						if (isNew)
+						{
+							newEntries.Remove(*valuePtr);
+							delete *valuePtr;
+						}
+					}
+				}
+
 				List<Entry> newEntries = new .();
 				for (let cmdStr in sd.Enumerate())
 				{
@@ -1119,20 +1152,23 @@ namespace IDE
 					keyList.CopyTo(keyArr);
 					entry.mKeys = keyArr;
 
-					newEntries.Add(entry);
 					usedCommands.Add(entry.mCommand);
+					AddEntry(newEntries, entry, false);
 				}
 
 				for (var entry in mEntries)
 				{
 					if (usedCommands.Contains(entry.mCommand))
 						continue;
-					newEntries.Add(entry);
 					mEntries[@entry.Index] = null;
+					AddEntry(newEntries, entry, true);
 				}
 
 				DeleteContainerAndItems!(mEntries);
 				mEntries = newEntries;
+
+				for (let keyEntryStr in mappedEntries.Keys)
+					delete keyEntryStr;
 			}
 		}
 
@@ -1151,6 +1187,7 @@ namespace IDE
 			RedirectToImmediate,
 		}
 
+		public bool mSettingsValid;
 		public bool mLoadedSettings;
 		public String mSettingFileText ~ delete _;
 		public DateTime mSettingFileDateTime;
@@ -1207,6 +1244,9 @@ namespace IDE
 
 		public void Save()
 		{
+			if (!mSettingsValid)
+				return;
+
 			String path = scope .();
 			GetSettingsPath(path);
 
@@ -1253,6 +1293,7 @@ namespace IDE
 			{
 				sd.Add("WakaTimeKey", mWakaTimeKey);
 				sd.Add("EnableDevMode", mEnableDevMode);
+				sd.Add("DebugMultiCursor", DarkEditWidgetContent.sDebugMultiCursor);
 			}
 
 			using (sd.CreateObject("TutorialsFinished"))
@@ -1294,12 +1335,48 @@ namespace IDE
 
 		public void Load()
 		{
+			mSettingsValid = true;
+
 			String path = scope .();
 			GetSettingsPath(path);
+			IDEUtils.FixFilePath(path);
 
-			let sd = scope StructuredData();
-			if (sd.Load(path) case .Err)
+			if (!File.Exists(path))
+			{
 				return;
+			}
+
+			StructuredData sd = null;
+			LoadLoop: while (true)
+			{
+				sd = scope:: StructuredData();
+				if (sd.Load(path) case .Err(let err))
+				{
+					int result = 0;
+#if !CLI && BF_PLATFORM_WINDOWS
+					result = Windows.MessageBoxA(default, scope $"Failed to load settings file '{path}' with error '{err}'", "BEEF IDE SETTINGS FAILED",
+						Windows.MB_ICONHAND | (.)2);
+#endif
+					if (result == 3) // Abort
+					{
+						gApp.mStopPending = true;
+						mSettingsValid = false;
+						return;
+					}
+					else if (result == 4) // Retry
+					{
+						continue;
+					}
+					else // Ignore
+					{
+						return;
+					}
+				}
+				else
+				{
+					break;
+				}
+			}
 
 			if (File.GetLastWriteTime(path) case .Ok(let dt))
 				mSettingFileDateTime = dt;
@@ -1353,6 +1430,7 @@ namespace IDE
 			{
 				sd.Get("WakaTimeKey", mWakaTimeKey);
 				sd.Get("EnableDevMode", ref mEnableDevMode);
+				sd.Get("DebugMultiCursor", ref DarkEditWidgetContent.sDebugMultiCursor);
 			}
 
 			using (sd.Open("TutorialsFinished"))

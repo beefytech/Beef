@@ -188,6 +188,20 @@ namespace IDE.ui
 
 			return base.WantsUnfocus();
 		}
+
+		public override void KeyDown(KeyDownEvent keyEvent)
+		{
+			if (keyEvent.mKeyCode == .Escape)
+			{
+				if (mPanel?.mQuickFind?.mWidgetWindow != null)
+				{
+					mPanel.mQuickFind.Close();
+					return;
+				}
+			}
+
+			base.KeyDown(keyEvent);
+		}
     }
 
     public class TrackedTextElementView
@@ -887,7 +901,7 @@ namespace IDE.ui
                     return false;
             }
             int32 cursorPos = data.GetInt("CursorPos");
-            mEditWidget.Content.mCursorTextPos = Math.Min(cursorPos, mEditWidget.mEditWidgetContent.mData.mTextLength);
+            mEditWidget.Content.CurCursorTextPos = Math.Min(cursorPos, mEditWidget.mEditWidgetContent.mData.mTextLength);
             mDesiredVertPos = data.GetFloat("VertPos");
 
             return true;
@@ -1323,7 +1337,7 @@ namespace IDE.ui
 
 								embedSource.mTypeName = new .(useTypeName);
 								if (embedHasFocus)
-									embedSource.mCursorIdx = (.)embedSourceViewPanel.mEditWidget.mEditWidgetContent.CursorTextPos;
+									embedSource.mCursorIdx = (.)embedSourceViewPanel.mEditWidget.mEditWidgetContent.mTextCursors.Front.mCursorTextPos;
 								else
 									embedSource.mCursorIdx = -1;
 								resolveParams.mEmitEmbeds.Add(embedSource);
@@ -1385,7 +1399,7 @@ namespace IDE.ui
 				{
 	                if ((useResolveType == .Autocomplete) || (useResolveType == .GetSymbolInfo) || (mIsClang))
 					{
-						resolveParams.mOverrideCursorPos = (.)mEditWidget.Content.CursorTextPos;
+						resolveParams.mOverrideCursorPos = (.)mEditWidget.Content.mTextCursors.Front.mCursorTextPos;
 						/*if (useResolveType == .Autocomplete)
 							resolveParams.mOverrideCursorPos--;*/
 					}
@@ -2042,7 +2056,7 @@ namespace IDE.ui
 
 			ProjectSource projectSource = FilteredProjectSource;
 
-			int cursorPos = mEditWidget.mEditWidgetContent.CursorTextPos;
+			int cursorPos = mEditWidget.mEditWidgetContent.mTextCursors.Front.mCursorTextPos;
 
 			if ((resolveParams != null) && (resolveParams.mOverrideCursorPos != -1))
 				cursorPos = resolveParams.mOverrideCursorPos;
@@ -2462,10 +2476,10 @@ namespace IDE.ui
                             mEditWidget.Content.CursorTextPos = searchIdx;
                             if (mWidgetWindow.IsKeyDown(KeyCode.Shift))
                             {
-                                mEditWidget.Content.mSelection = EditSelection(cursorStartPos, mEditWidget.Content.CursorTextPos);
+                                mEditWidget.Content.CurSelection = EditSelection(cursorStartPos, mEditWidget.Content.CursorTextPos);
                             }
                             else
-                                mEditWidget.Content.mSelection = null;
+                                mEditWidget.Content.CurSelection = null;
                             mEditWidget.Content.CursorMoved();
                             mEditWidget.Content.EnsureCursorVisible();
                             break;
@@ -2522,14 +2536,14 @@ namespace IDE.ui
 
             int32 prevLine = mEditWidget.Content.CursorLineAndColumn.mLine;
 			
-            mEditWidget.Content.mSelection = null;
+            mEditWidget.Content.CurSelection = null;
 
 			int wantCursorPos = Math.Min(mEditWidget.Content.mData.mTextLength - 1, cursorIdx);
 			if (wantCursorPos >= 0)
             	mEditWidget.Content.CursorTextPos = wantCursorPos;
             mEditWidget.Content.CursorMoved();
             mEditWidget.Content.EnsureCursorVisible(true, true);
-			mEditWidget.Content.mCursorImplicitlyMoved = true;
+			mEditWidget.Content.CurCursorImplicitlyMoved = true;
             if (mJustShown) // Jump to whatever position we're scrolling to
             {
                 mEditWidget.mVertPos.mPct = 1.0f;
@@ -5187,7 +5201,7 @@ namespace IDE.ui
             }
 
             if ((mEditWidget.Content.HasSelection()) && (!ignoreSelection))
-                parser.ReformatInto(mEditWidget, mEditWidget.Content.mSelection.Value.MinPos, mEditWidget.Content.mSelection.Value.MaxPos);
+                parser.ReformatInto(mEditWidget, mEditWidget.Content.CurSelection.Value.MinPos, mEditWidget.Content.CurSelection.Value.MaxPos);
             else
                 parser.ReformatInto(mEditWidget, 0, text.Length);
 
@@ -5254,7 +5268,10 @@ namespace IDE.ui
 
 			var sourceEditWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
 			if (!sourceEditWidgetContent.CheckReadOnly())
+			{
+				sourceEditWidgetContent.RemoveSecondaryTextCursors();
             	ShowSymbolReferenceHelper(SymbolReferenceHelper.Kind.Rename);
+			}
         }
 
 		public void FindAllReferences()
@@ -5406,9 +5423,9 @@ namespace IDE.ui
 
 				bool doSimpleMouseover = false;
 
-	            if ((editWidgetContent.mSelection != null) &&
-	                (textIdx >= editWidgetContent.mSelection.Value.MinPos) &&
-	                (textIdx < editWidgetContent.mSelection.Value.MaxPos))
+	            if ((editWidgetContent.CurSelection != null) &&
+	                (textIdx >= editWidgetContent.CurSelection.Value.MinPos) &&
+	                (textIdx < editWidgetContent.CurSelection.Value.MaxPos))
 	            {
 	                debugExpr = scope:: String();
 	                editWidgetContent.GetSelectionText(debugExpr);
@@ -5623,6 +5640,64 @@ namespace IDE.ui
 								{
 									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
 									debugExpr.Append(showString);
+								}
+
+								// Display Author if there is one documented
+								if (!String.IsNullOrEmpty(docParser.mAuthorString))
+								{
+									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.Append(scope $"Author: {docParser.mAuthorString}");
+								}
+
+								// Display version if there is any documented
+								if (!String.IsNullOrEmpty(docParser.mVersionString))
+								{
+									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.Append(scope $"Version: {docParser.mVersionString}");
+								}
+
+								// Display remarks if there is any documented
+								if (!String.IsNullOrEmpty(docParser.mRemarksString))
+								{
+									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.Append(scope $"Remarks: {docParser.mRemarksString}");
+								}
+
+								// Display note if there is any documented
+								if (!String.IsNullOrEmpty(docParser.mNoteString))
+								{
+									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.Append(scope $"Note: {docParser.mNoteString}");
+								}
+
+								// Display todo if there is any documented
+								if (!String.IsNullOrEmpty(docParser.mTODOString))
+								{
+									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.Append(scope $"TODO: {docParser.mTODOString}");
+								}
+
+								// Display all parameters on hover
+								if (docParser.mParamInfo?.Count > 0)
+								{
+									debugExpr.Append("\n");
+									debugExpr.Append("Parameters:");
+
+									for (var param in docParser.mParamInfo)
+									{
+										debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+										debugExpr.Append(scope $"{param.key} {param.value}");
+									}
+								}
+
+								// Display Return value if there is one documented
+								if (!String.IsNullOrEmpty(docParser.mReturnString))
+								{
+									debugExpr.Append("\n");
+									debugExpr.Append("Returns:");
+
+									debugExpr.AppendF("\n{}", Font.EncodeColor(0xFFC0C0C0));
+									debugExpr.Append(scope $"{docParser.mReturnString}");
 								}
 							}
 						}
@@ -6824,7 +6899,7 @@ namespace IDE.ui
                     int cursorIdx = sourceEditWidgetContent.CursorTextPos;
 
                     bool hasFlag = false;
-					if (!sourceEditWidgetContent.mVirtualCursorPos.HasValue)
+					if (!sourceEditWidgetContent.CurVirtualCursorPos.HasValue)
 					{
 	                    for (int32 ofs = -1; ofs <= 0; ofs++)
 	                    {
@@ -6863,7 +6938,7 @@ namespace IDE.ui
             if ((gApp.mSettings.mEditorSettings.mHiliteCursorReferences) && (!gApp.mDeterministic) && (HasFocus(true)) &&
 				((mProjectSource != null) || (mEmbedKind != .None)) /*&& (IDEApp.sApp.mSymbolReferenceHelper == null)*/)
             {
-                if ((mEditWidget.mHasFocus) && (mIsBeefSource) && (sourceEditWidgetContent.mCursorStillTicks == 10) && (!sourceEditWidgetContent.mCursorImplicitlyMoved) && (!sourceEditWidgetContent.mVirtualCursorPos.HasValue))
+                if ((mEditWidget.mHasFocus) && (mIsBeefSource) && (sourceEditWidgetContent.mCursorStillTicks == 10) && (!sourceEditWidgetContent.CurCursorImplicitlyMoved) && (!sourceEditWidgetContent.CurVirtualCursorPos.HasValue))
                 {
 					var symbolReferenceHelper = IDEApp.sApp.mSymbolReferenceHelper;
                     if (symbolReferenceHelper == null)
@@ -7739,6 +7814,61 @@ namespace IDE.ui
 
 			mExplicitEmitTypes.Add(new .(typeName));
 			return true;
+		}
+
+		public void AddSelectionToNextFindMatch(bool createCursor = true, bool exhaustiveSearch = false)
+		{
+			var ewc = mEditWidget.mEditWidgetContent as SourceEditWidgetContent;
+
+			if ((mQuickFind != null) && (mQuickFind.mIsShowingMatches))
+			{
+				int usedCursorCount = 0;
+				for (var range in mQuickFind.mFoundRanges)
+				{
+					EditWidgetContent.TextCursor cursor = null;
+					if (@range.Index < ewc.mTextCursors.Count)
+					{
+						cursor = ewc.mTextCursors[@range.Index];
+					}
+					else
+					{
+						cursor = new EditWidgetContent.TextCursor(-1);
+						ewc.mTextCursors.Add(cursor);
+					}
+
+					usedCursorCount++;
+
+					EditSelection wantSel = .(range.Start, range.End);
+					if (wantSel == cursor.mSelection)
+						continue;
+
+					cursor.mCursorTextPos = (.)range.End;
+					cursor.mSelection = wantSel;
+					break;
+				}
+
+				if (usedCursorCount > 0)
+				{
+					while (ewc.mTextCursors.Count > usedCursorCount)
+					{
+						var cursor = ewc.mTextCursors.PopBack();
+						delete cursor;
+					}
+				}
+
+				mEditWidget.SetFocus();
+				return;
+			}
+
+			ewc.AddSelectionToNextFindMatch(createCursor, exhaustiveSearch);
+			ewc.mDragSelectionUnion = null;
+			ewc.mDragSelectionKind = .None;
+		}
+
+		public void MoveLastSelectionToNextFindMatch()
+		{
+			var ewc = mEditWidget.mEditWidgetContent as SourceEditWidgetContent;
+			ewc.MoveLastSelectionToNextFindMatch();
 		}
     }
 }

@@ -2630,6 +2630,13 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 				mToken = BfToken_Dot;
 				mSyntaxToken = BfSyntaxToken_Token;
 			}
+			else if (mSrc[mSrcIdx] == ':')
+			{
+				mSrcIdx++;
+				mTokenEnd = mSrcIdx;
+				mToken = BfToken_ColonColon;
+				mSyntaxToken = BfSyntaxToken_Token;
+			}
 			else
 			{
 				mToken = BfToken_Colon;
@@ -3609,6 +3616,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 	SizedArray<BfAstNode*, 32> childArr;
 
 	int parenDepth = 0;
+	int bracketDepth = 0;
 
 	while (true)
 	{
@@ -3620,7 +3628,7 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 				isAsmBlock = true;
 		}
 
-		NextToken(-1, isInterpolate && (parenDepth == 0) && (!forceAllowNext));
+		NextToken(-1, isInterpolate && (parenDepth == 0) && (bracketDepth == 0) && (!forceAllowNext));
 		forceAllowNext = false;
 
 		if (mPreprocessorIgnoredSectionNode != NULL)
@@ -3723,7 +3731,12 @@ void BfParser::ParseBlock(BfBlock* astNode, int depth, bool isInterpolate)
 			else if (mToken == BfToken_RParen)
 				parenDepth--;
 
-			if ((isInterpolate) && (parenDepth == 0))
+			if (mToken == BfToken_LBracket)
+				bracketDepth++;
+			else if (mToken == BfToken_RBracket)
+				bracketDepth--;
+
+			if ((isInterpolate) && (parenDepth == 0) && (bracketDepth == 0))
 			{
 				if (mToken == BfToken_Question)
 				{
