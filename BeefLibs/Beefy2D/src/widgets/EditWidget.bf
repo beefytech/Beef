@@ -2594,33 +2594,10 @@ namespace Beefy.widgets
 				}
 			}
 
-			// When clipboard contains text with multiple cursors, but we only have one,
-			// We create cursor for each fragment and make it so that the primary cursor
-			// is the last one in the document.
+			// When clipboard contains text with multiple cursors, but we only have one.
 			if ((mTextCursors.Count == 1) && (fragments.Count > 1))
 			{
-				// By default, undo-batch is only created when we have multiple cursors
-				CreateMultiCursorUndoBatch("EWC.PasteText(text, extra)", force: true);
-				SetPrimaryTextCursor();
-
-				for (var idx = 0; idx < fragments.Count; idx++)
-				{
-					var fragment = fragments[idx];
-					var length = fragment.mText.Length;
-
-					PasteFragment(scope String(fragment.mText, 0, length), "");
-					if (idx + 1 < fragments.Count)
-					{
-						var secondary = mTextCursors.Add(.. new TextCursor(-1, mCurrentTextCursor));
-						secondary.mSelection = null;
-						if (secondary.mCursorTextPos > 0)
-							secondary.mCursorTextPos--;
-					}
-					else if ((CurCursorTextPos > 0) && (idx + 1 != fragments.Count))
-					{
-						CursorTextPos--;
-					}
-				}
+				PasteFragment(text, "");
 				return;
 			}
 
