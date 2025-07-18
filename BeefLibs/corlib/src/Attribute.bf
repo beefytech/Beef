@@ -559,7 +559,7 @@ namespace System
 
 	/// If [NoDiscard] is used on a method, the the compiler will show a warning if the result is discarded.
 	/// If used on a type, the compiler will show an warning if any method returns that type and the caller discards the result.
-	[AttributeUsage(.Method | .Class | .Struct)]
+	[AttributeUsage(.Method | .Types)]
 	public struct NoDiscardAttribute : Attribute
 	{
 		public this()
