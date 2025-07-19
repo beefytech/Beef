@@ -4,13 +4,19 @@
 #include "GLRenderDevice.h"
 #include "platform/PlatformHelper.h"
 #include "platform/PlatformInterface.h"
-#include <SDL2/SDL.h>
-#include <SDL2/SDL_events.h>
-#include <SDL2/SDL_platform.h>
-#include <SDL2/SDL_rect.h>
-#include <SDL2/SDL_video.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_opengl.h>
+#include <SDL3/SDL_platform.h>
+#include <SDL3/SDL_properties.h>
+#include <SDL3/SDL_rect.h>
+#include <SDL3/SDL_video.h>
 #include <cstddef>
+#include <cstdint>
+#include <cstdio>
 #include <dlfcn.h>
+#include <iostream>
+#include <memory>
 
 USING_NS_BF;
 
@@ -19,26 +25,38 @@ USING_NS_BF;
 #pragma comment(lib, "imm32.lib")
 #pragma comment(lib, "version.lib")
 
-SDL_Window* (SDLCALL* bf_SDL_CreateWindow)(const char* title, int x, int y, int w, int h, Uint32 flags);
-int (SDLCALL* bf_SDL_GL_SetAttribute)(SDL_GLattr attr, int value);
-Uint32 (SDLCALL* bf_SDL_GetWindowID)(SDL_Window* window);
-void (SDLCALL* bf_SDL_DestroyWindow)(SDL_Window* window);
-int (SDLCALL* bf_SDL_Init)(Uint32 flags);
-void (SDLCALL* bf_SDL_GetWindowPosition)(SDL_Window* window,int* x, int* y);
-char* (SDLCALL* bf_SDL_GetClipboardText)(void);
-int (SDLCALL* bf_SDL_SetClipboardText)(const char* text);
-void* (SDLCALL* bf_SDL_GL_GetProcAddress)(const char* proc);
-void (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
-void (SDLCALL* bf_SDL_GL_SwapWindow)(SDL_Window* window);
-void (SDLCALL* bf_SDL_free)(void* mem);
-void (SDLCALL* bf_SDL_SetWindowPosition)(SDL_Window* window, int x, int y);
-int (SDLCALL* bf_SDL_PollEvent)(SDL_Event* event);
-const char* (SDLCALL* bf_SDL_GetError)(void);
-SDL_GLContext (SDLCALL* bf_SDL_GL_CreateContext)(SDL_Window* window);
-int (SDLCALL* bf_SDL_GL_MakeCurrent)(SDL_Window* window, SDL_GLContext context);
+bool (SDLCALL* bf_SDL_Init)(SDL_InitFlags flags);
 void (SDLCALL* bf_SDL_Quit)(void);
-int (SDLCALL* bf_SDL_GetNumVideoDisplays)(void);
-int (SDLCALL* bf_SDL_GetDisplayBounds)(int displayIndex, SDL_Rect* rect);
+void (SDLCALL* bf_SDL_free)(void* mem);
+
+SDL_PropertiesID (SDLCALL* bf_SDL_CreateProperties)(void);
+bool (SDLCALL* bf_SDL_SetNumberProperty)(SDL_PropertiesID props, const char* name, int64_t value);
+bool (SDLCALL* bf_SDL_SetBooleanProperty)(SDL_PropertiesID props, const char* name, bool value);
+bool (SDLCALL* bf_SDL_SetStringProperty)(SDL_PropertiesID props, const char* name, const char* value);
+bool (SDLCALL* bf_SDL_SetPointerProperty)(SDL_PropertiesID props, const char *name, void *value);  
+
+SDL_Window* (SDLCALL* bf_SDL_CreateWindowWithProperties)(SDL_PropertiesID props); 
+SDL_WindowID (SDLCALL* bf_SDL_GetWindowID)(SDL_Window* window);
+void (SDLCALL* bf_SDL_DestroyWindow)(SDL_Window* window);
+bool (SDLCALL* bf_SDL_GetWindowPosition)(SDL_Window* window,int* x, int* y);
+bool (SDLCALL* bf_SDL_SetWindowPosition)(SDL_Window* window, int x, int y);
+bool (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
+
+char* (SDLCALL* bf_SDL_GetClipboardText)(void);
+bool (SDLCALL* bf_SDL_SetClipboardText)(const char* text);
+
+bool (SDLCALL* bf_SDL_PollEvent)(SDL_Event* event);
+const char* (SDLCALL* bf_SDL_GetError)(void);
+
+SDL_DisplayID* (SDLCALL* bf_SDL_GetDisplays)(int* count);
+bool (SDLCALL* bf_SDL_GetDisplayBounds)(SDL_DisplayID displayID, SDL_Rect* rect);
+
+SDL_GLContext (SDLCALL* bf_SDL_GL_CreateContext)(SDL_Window* window);
+bool (SDLCALL* bf_SDL_GL_MakeCurrent)(SDL_Window* window, SDL_GLContext context);
+bool (SDLCALL* bf_SDL_GL_SetAttribute)(SDL_GLAttr attr, int value);
+void* (SDLCALL* bf_SDL_GL_GetProcAddress)(const char* proc);
+bool (SDLCALL* bf_SDL_GL_SwapWindow)(SDL_Window* window);
+
 
 static int bfMouseBtnOf[4] = {NULL, 0, 2, 1}; // Translate SDL mouse buttons to what Beef expects.
 
@@ -49,19 +67,19 @@ static HMODULE GetSDLModule(const StringImpl& installDir)
 	if (gSDLModule == NULL)
 	{
 #if defined (BF_PLATFORM_WINDOWS)
-		String loadPath = installDir + "SDL2.dll";
+		String loadPath = installDir + "SDL3.dll";
 		gSDLModule = ::LoadLibraryA(loadPath.c_str());
 #elif defined (BF_PLATFORM_LINUX)
-		String loadPath = "/usr/lib/libSDL2.so";
+		String loadPath = "/usr/lib/libSDL3.so";
 		gSDLModule = dlopen(loadPath.c_str(), RTLD_LAZY);
 #endif
 		if (gSDLModule == NULL)
 		{
 #ifdef BF_PLATFORM_WINDOWS
-			::MessageBoxA(NULL, "Failed to load SDL2.dll", "FATAL ERROR", MB_OK | MB_ICONERROR);
+			::MessageBoxA(NULL, "Failed to load SDL3.dll", "FATAL ERROR", MB_OK | MB_ICONERROR);
 			::ExitProcess(1);
 #endif
-			BF_FATAL("Failed to load libSDL2.so");
+			BF_FATAL("Failed to load libSDL3.so");
 		}
 	}
 	return gSDLModule;
@@ -81,50 +99,31 @@ static void BFGetSDLProc(T& proc, const char* name, const StringImpl& installDir
 
 SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
 {
-	int sdlWindowFlags = 0;
-	if (windowFlags & BFWINDOW_RESIZABLE)
-		sdlWindowFlags |= SDL_WINDOW_RESIZABLE;
-	sdlWindowFlags |= SDL_WINDOW_OPENGL;
-	if (windowFlags & BFWINDOW_FULLSCREEN)
-		sdlWindowFlags |= SDL_WINDOW_FULLSCREEN;
-	if (!(windowFlags & BFWINDOW_BORDER))
-		sdlWindowFlags |= SDL_WINDOW_BORDERLESS;
-	if (windowFlags & BFWINDOW_TOOLTIP)
-		sdlWindowFlags |= SDL_WINDOW_TOOLTIP;
+	SDL_PropertiesID props = bf_SDL_CreateProperties();
+
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, true);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, (windowFlags & BFWINDOW_RESIZABLE) > 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN, (windowFlags & BFWINDOW_FULLSCREEN) > 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, (windowFlags & BFWINDOW_BORDER) == 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TOOLTIP_BOOLEAN, (windowFlags & BFWINDOW_TOOLTIP) > 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, (windowFlags & BFWINDOW_DEST_ALPHA) > 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MENU_BOOLEAN, (windowFlags & BFWINDOW_FAKEFOCUS) > 0);
+
+	if (parent != NULL) 
+		bf_SDL_SetPointerProperty(props, SDL_PROP_WINDOW_CREATE_PARENT_POINTER, ((SdlBFWindow*)parent)->mSDLWindow);
+
+	if (windowFlags)
 #ifdef BF_PLATFORM_FULLSCREEN
-    sdlWindowFlags |= SDL_WINDOW_FULLSCREEN;
+		bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN, true);
 #endif
 
-	if (windowFlags & BFWINDOW_POPUP_POSITION)
-	{
-		SDL_Rect adjustRect = { x, y, width, height };
-		SDL_Rect wantRect = { x, y, x + width, y + height };
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, x);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, y);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, width);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, height);
+	bf_SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, title.c_str());
 
-		int monCount = bf_SDL_GetNumVideoDisplays();
-		for (int i = 0; i < monCount; i++)
-		{
-			SDL_Rect bounds;
-			if (bf_SDL_GetDisplayBounds(i, &bounds))
-			{
-				if (adjustRect.x < bounds.x)
-					adjustRect.x = bounds.x;
-				else if (adjustRect.x + adjustRect.w >= (bounds.x + bounds.w))
-					adjustRect.x = BF_MAX((int)bounds.x, bounds.x + bounds.w - adjustRect.w);
-
-				if (adjustRect.y < bounds.y)
-					adjustRect.y = bounds.y;
-				else if (adjustRect.y + adjustRect.h >= bounds.y + bounds.h)
-					adjustRect.y = BF_MAX((int)bounds.y, bounds.y + bounds.h - adjustRect.h);
-			}
-		}
-
-		x = adjustRect.x;
-		y = adjustRect.y;
-		width = adjustRect.w;
-		height = adjustRect.h;
-	}
-
-	mSDLWindow = bf_SDL_CreateWindow(title.c_str(), x, y, width, height, sdlWindowFlags);
+	mSDLWindow = bf_SDL_CreateWindowWithProperties(props);
 
 #ifndef BF_PLATFORM_OPENGL_ES2
 	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -297,33 +296,44 @@ SdlBFApp::SdlBFApp()
 
     mInstallDir += "/";
 
-	if (bf_SDL_CreateWindow == NULL)
+	if (bf_SDL_Init == NULL)
 	{
-		BF_GET_SDLPROC(SDL_CreateWindow);
-		BF_GET_SDLPROC(SDL_GL_SetAttribute);
+		BF_GET_SDLPROC(SDL_Init);
+		BF_GET_SDLPROC(SDL_Quit);
+		BF_GET_SDLPROC(SDL_free);
+
+		BF_GET_SDLPROC(SDL_CreateProperties);
+		BF_GET_SDLPROC(SDL_SetNumberProperty);
+		BF_GET_SDLPROC(SDL_SetBooleanProperty);
+		BF_GET_SDLPROC(SDL_SetStringProperty);
+		BF_GET_SDLPROC(SDL_SetPointerProperty);
+
+		BF_GET_SDLPROC(SDL_CreateWindowWithProperties);
 		BF_GET_SDLPROC(SDL_GetWindowID);
 		BF_GET_SDLPROC(SDL_DestroyWindow);
-		BF_GET_SDLPROC(SDL_Init);
 		BF_GET_SDLPROC(SDL_GetWindowPosition);
+		BF_GET_SDLPROC(SDL_SetWindowPosition);
+		BF_GET_SDLPROC(SDL_GetWindowSize);
+
 		BF_GET_SDLPROC(SDL_GetClipboardText);
 		BF_GET_SDLPROC(SDL_SetClipboardText);
-		BF_GET_SDLPROC(SDL_GL_GetProcAddress);
-		BF_GET_SDLPROC(SDL_GetWindowSize);
-		BF_GET_SDLPROC(SDL_GL_SwapWindow);
-		BF_GET_SDLPROC(SDL_free);
-		BF_GET_SDLPROC(SDL_SetWindowPosition);
+
 		BF_GET_SDLPROC(SDL_PollEvent);
 		BF_GET_SDLPROC(SDL_GetError);
+
+		BF_GET_SDLPROC(SDL_GetDisplays);
+		BF_GET_SDLPROC(SDL_GetDisplayBounds);
+
 		BF_GET_SDLPROC(SDL_GL_CreateContext);
 		BF_GET_SDLPROC(SDL_GL_MakeCurrent);
-		BF_GET_SDLPROC(SDL_Quit);
-		BF_GET_SDLPROC(SDL_GetNumVideoDisplays);
-		BF_GET_SDLPROC(SDL_GetDisplayBounds);
+		BF_GET_SDLPROC(SDL_GL_SetAttribute);
+		BF_GET_SDLPROC(SDL_GL_GetProcAddress);
+		BF_GET_SDLPROC(SDL_GL_SwapWindow);
 	}
 
 	mDataDir = mInstallDir;
 
-	if (bf_SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0)
+	if (bf_SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) < 0)
 		BF_FATAL(StrFormat("Unable to initialize SDL: %s", bf_SDL_GetError()).c_str());
 }
 
@@ -364,44 +374,44 @@ void SdlBFApp::Run()
 
 			switch (sdlEvent.type)
 			{
-			case SDL_QUIT:
+			case SDL_EVENT_QUIT:
 				//gBFApp->RemoveWindow(sdlEvent.window);
 				Shutdown();
 				break;
-			case SDL_MOUSEBUTTONUP:
+			case SDL_EVENT_MOUSE_BUTTON_UP:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 					if (sdlBFWindow != NULL)
 						sdlBFWindow->mMouseUpFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button]);
 				}
 				break;
-			case SDL_MOUSEBUTTONDOWN:
+			case SDL_EVENT_MOUSE_BUTTON_DOWN:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 					if (sdlBFWindow != NULL)
 						sdlBFWindow->mMouseDownFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button], 1);
 				}
 				break;
-			case SDL_MOUSEMOTION:
+			case SDL_EVENT_MOUSE_MOTION:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 					if (sdlBFWindow != NULL)
 						sdlBFWindow->mMouseMoveFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y);
 				}
 				break;
-			case SDL_MOUSEWHEEL:
+			case SDL_EVENT_MOUSE_WHEEL:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.wheel.windowID);
 					if(sdlBFWindow != NULL)
-						sdlBFWindow->mMouseWheelFunc(sdlBFWindow, sdlEvent.wheel.mouseX, sdlEvent.wheel.mouseY, sdlEvent.wheel.preciseX, sdlEvent.wheel.preciseY);
+						sdlBFWindow->mMouseWheelFunc(sdlBFWindow, sdlEvent.wheel.mouse_x, sdlEvent.wheel.mouse_y, sdlEvent.wheel.x, sdlEvent.wheel.y);
 				}
-			case SDL_KEYDOWN:
+			case SDL_EVENT_KEY_DOWN:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
 					if (sdlBFWindow != NULL)
 					{
-						sdlBFWindow->mKeyDownFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.keysym.scancode), sdlEvent.key.repeat);
-						switch (sdlEvent.key.keysym.scancode) // These keys are not handled by SDL_TEXTINPUT
+						sdlBFWindow->mKeyDownFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.key), sdlEvent.key.repeat);
+						switch (sdlEvent.key.key) // These keys are not handled by SDL_TEXTINPUT
 						{
 							case SDL_SCANCODE_RETURN:
 								sdlBFWindow->mKeyCharFunc(sdlBFWindow, '\n');
@@ -417,7 +427,7 @@ void SdlBFApp::Run()
 					}
 				}
 				break;
-			case SDL_TEXTINPUT:
+			case SDL_EVENT_TEXT_INPUT:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
 					if (sdlBFWindow != NULL)
@@ -426,34 +436,28 @@ void SdlBFApp::Run()
 					}
 				}
 				break;
-			case SDL_KEYUP:
+			case SDL_EVENT_KEY_UP:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
 					if (sdlBFWindow != NULL)
-						sdlBFWindow->mKeyUpFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.keysym.scancode));
+						sdlBFWindow->mKeyUpFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.key));
 				}
 				break;
-			case SDL_WINDOWEVENT:
+			case SDL_EVENT_WINDOW_MOVED:
+			case SDL_EVENT_WINDOW_RESIZED:
+			case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
 				{
-					switch(sdlEvent.window.event)
+					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
+					if (sdlBFWindow != NULL)
 					{
-					case SDL_WINDOWEVENT_MOVED:
-					case SDL_WINDOWEVENT_RESIZED:
-					case SDL_WINDOWEVENT_SIZE_CHANGED:
-					    {
-							SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
-							if (sdlBFWindow != NULL)
-							{
-								sdlBFWindow->mMovedFunc(sdlBFWindow);
-								if (sdlEvent.window.event == SDL_WINDOWEVENT_SIZE_CHANGED) {
-									sdlBFWindow->mRenderWindow->Resized();
-								}
-							}
+						sdlBFWindow->mMovedFunc(sdlBFWindow);
+						if (sdlEvent.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
+							sdlBFWindow->mRenderWindow->Resized();
 						}
-						break;
 					}
 				}
 				break;
+			
 			}
 		}
 
@@ -471,7 +475,7 @@ void SdlBFApp::Draw()
     glDisable(GL_SCISSOR_TEST);
     glDisable(GL_CULL_FACE);
     glDisable(GL_DEPTH_TEST);
-    glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
+    glClearColor(0.0f, 0.0f, 0.0f, 0.0f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     gPixelsDrawn = 0;
@@ -499,10 +503,14 @@ void SdlBFWindow::GetPosition(int* x, int* y, int* width, int* height, int* clie
 	bf_SDL_GetWindowPosition(mSDLWindow, x, y);
 	bf_SDL_GetWindowSize(mSDLWindow, width, height);
 
-	*clientX = *x;
-	*clientY = *y;
-	*clientWidth = *width;
-	*clientHeight = *height;
+	if (clientX)
+		*clientX = *x;
+	if (clientY)
+		*clientY = *y;
+	if (clientWidth)
+		*clientWidth = *width;
+	if (clientHeight)
+		*clientHeight = *height;
 }
 
 void SdlBFApp::PhysSetCursor()
