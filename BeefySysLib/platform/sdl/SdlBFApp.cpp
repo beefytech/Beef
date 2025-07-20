@@ -29,6 +29,7 @@ USING_NS_BF;
 bool (SDLCALL* bf_SDL_Init)(SDL_InitFlags flags);
 void (SDLCALL* bf_SDL_Quit)(void);
 void (SDLCALL* bf_SDL_free)(void* mem);
+void (SDLCALL* bf_SDL_memset)(void* dest, int c, size_t len);
 
 SDL_PropertiesID (SDLCALL* bf_SDL_CreateProperties)(void);
 bool (SDLCALL* bf_SDL_SetNumberProperty)(SDL_PropertiesID props, const char* name, int64_t value);
@@ -49,6 +50,7 @@ bool (SDLCALL* bf_SDL_StartTextInput)(SDL_Window* window);
 bool (SDLCALL* bf_SDL_StopTextInput)(SDL_Window* window);
 
 bool (SDLCALL* bf_SDL_PollEvent)(SDL_Event* event);
+bool (SDLCALL* bf_SDL_PushEvent)(SDL_Event* event);
 const char* (SDLCALL* bf_SDL_GetError)(void);
 
 SDL_DisplayID* (SDLCALL* bf_SDL_GetDisplays)(int* count);
@@ -172,6 +174,7 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	mRenderWindow->mWindow = this;
 	gBFApp->mRenderDevice->AddRenderWindow(mRenderWindow);
 
+	mParent = parent;
 	if (parent != NULL)
 		parent->mChildren.push_back(this);
 }
@@ -194,8 +197,12 @@ void SdlBFWindow::Destroy()
 
 bool SdlBFWindow::TryClose()
 {
-	Destroy();
-	return true;
+	SDL_Event closeEvent;
+	bf_SDL_memset(&closeEvent, 0, sizeof(SDL_Event));
+	closeEvent.type = SDL_EVENT_WINDOW_CLOSE_REQUESTED;
+	closeEvent.window.windowID = bf_SDL_GetWindowID(this->mSDLWindow);
+	
+	return bf_SDL_PushEvent(&closeEvent);
 }
 
 static int SDLConvertScanCode(int scanCode)
@@ -312,6 +319,7 @@ SdlBFApp::SdlBFApp()
 		BF_GET_SDLPROC(SDL_Init);
 		BF_GET_SDLPROC(SDL_Quit);
 		BF_GET_SDLPROC(SDL_free);
+		BF_GET_SDLPROC(SDL_memset);
 
 		BF_GET_SDLPROC(SDL_CreateProperties);
 		BF_GET_SDLPROC(SDL_SetNumberProperty);
@@ -332,6 +340,7 @@ SdlBFApp::SdlBFApp()
 		BF_GET_SDLPROC(SDL_StopTextInput);
 
 		BF_GET_SDLPROC(SDL_PollEvent);
+		BF_GET_SDLPROC(SDL_PushEvent);
 		BF_GET_SDLPROC(SDL_GetError);
 
 		BF_GET_SDLPROC(SDL_GetDisplays);
