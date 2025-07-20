@@ -14,6 +14,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdio>
+#include <cwchar>
 #include <dlfcn.h>
 #include <iostream>
 #include <memory>
@@ -44,6 +45,8 @@ bool (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
 
 char* (SDLCALL* bf_SDL_GetClipboardText)(void);
 bool (SDLCALL* bf_SDL_SetClipboardText)(const char* text);
+bool (SDLCALL* bf_SDL_StartTextInput)(SDL_Window* window);
+bool (SDLCALL* bf_SDL_StopTextInput)(SDL_Window* window);
 
 bool (SDLCALL* bf_SDL_PollEvent)(SDL_Event* event);
 const char* (SDLCALL* bf_SDL_GetError)(void);
@@ -125,6 +128,8 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 
 	mSDLWindow = bf_SDL_CreateWindowWithProperties(props);
 
+	bf_SDL_StartTextInput(mSDLWindow);
+
 #ifndef BF_PLATFORM_OPENGL_ES2
 	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
@@ -174,16 +179,22 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 SdlBFWindow::~SdlBFWindow()
 {
 	if (mSDLWindow != NULL)
-		TryClose();
+		Destroy();
 }
 
-bool SdlBFWindow::TryClose()
+void SdlBFWindow::Destroy()
 {
 	SdlBFApp* app = (SdlBFApp*)gBFApp;
 	app->mSdlWindowMap.Remove(bf_SDL_GetWindowID(mSDLWindow));
 
+	bf_SDL_StopTextInput(mSDLWindow);
 	bf_SDL_DestroyWindow(mSDLWindow);
 	mSDLWindow = NULL;
+}
+
+bool SdlBFWindow::TryClose()
+{
+	Destroy();
 	return true;
 }
 
@@ -317,6 +328,8 @@ SdlBFApp::SdlBFApp()
 
 		BF_GET_SDLPROC(SDL_GetClipboardText);
 		BF_GET_SDLPROC(SDL_SetClipboardText);
+		BF_GET_SDLPROC(SDL_StartTextInput);
+		BF_GET_SDLPROC(SDL_StopTextInput);
 
 		BF_GET_SDLPROC(SDL_PollEvent);
 		BF_GET_SDLPROC(SDL_GetError);
@@ -375,8 +388,13 @@ void SdlBFApp::Run()
 			switch (sdlEvent.type)
 			{
 			case SDL_EVENT_QUIT:
-				//gBFApp->RemoveWindow(sdlEvent.window);
 				Shutdown();
+				break;
+			case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+				{
+					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
+					gBFApp->RemoveWindow(sdlBFWindow);
+				}
 				break;
 			case SDL_EVENT_MOUSE_BUTTON_UP:
 				{
@@ -410,8 +428,8 @@ void SdlBFApp::Run()
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
 					if (sdlBFWindow != NULL)
 					{
-						sdlBFWindow->mKeyDownFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.key), sdlEvent.key.repeat);
-						switch (sdlEvent.key.key) // These keys are not handled by SDL_TEXTINPUT
+						sdlBFWindow->mKeyDownFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.scancode), sdlEvent.key.repeat);
+						switch (sdlEvent.key.scancode) // These keys are not handled by SDL_TEXTINPUT
 						{
 							case SDL_SCANCODE_RETURN:
 								sdlBFWindow->mKeyCharFunc(sdlBFWindow, '\n');
@@ -429,10 +447,12 @@ void SdlBFApp::Run()
 				break;
 			case SDL_EVENT_TEXT_INPUT:
 				{
-					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
+					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.text.windowID);
 					if (sdlBFWindow != NULL)
 					{
-						sdlBFWindow->mKeyCharFunc(sdlBFWindow, *(wchar_t*)sdlEvent.text.text);
+						wchar_t wchar;
+						mbstowcs(&wchar, sdlEvent.text.text, 1);
+						sdlBFWindow->mKeyCharFunc(sdlBFWindow, wchar);
 					}
 				}
 				break;
@@ -440,7 +460,7 @@ void SdlBFApp::Run()
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
 					if (sdlBFWindow != NULL)
-						sdlBFWindow->mKeyUpFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.key));
+						sdlBFWindow->mKeyUpFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.scancode));
 				}
 				break;
 			case SDL_EVENT_WINDOW_MOVED:

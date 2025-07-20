@@ -24,7 +24,7 @@ public:
 	~SdlBFWindow();
 
 	virtual void*			GetUnderlying() {return mSDLWindow; };
-	virtual void			Destroy() { }
+	virtual void			Destroy() override;
 
 	virtual void			SetTitle(const char* title) override {}
 	virtual void			SetMinimumSize(int minWidth, int minHeight, bool clientSized) override {}
