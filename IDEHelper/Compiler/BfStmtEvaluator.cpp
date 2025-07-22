@@ -3592,13 +3592,21 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 						localMethod->mDeclMixinState->mHasDeferredUsage = true;
 					mCurMethodState->mLocalMethods.push_back(localMethod);
 
+					bool valid = true;
+
 					String* namePtr;
 					if (!mCurMethodState->mLocalMethodMap.TryAdd(localMethod->mMethodName, &namePtr, &localMethodPtr))
 					{
-						BF_ASSERT(localMethod != *localMethodPtr);
-						localMethod->mNextWithSameName = *localMethodPtr;
+						if (localMethod == *localMethodPtr)
+						{
+							valid = false;
+							Fail("Duplicate local method name", localMethodDecl->mMethodDeclaration->mNameNode);
+						}						
+						if (valid)
+							localMethod->mNextWithSameName = *localMethodPtr;
 					}
-					*localMethodPtr = localMethod;
+					if (valid)
+						*localMethodPtr = localMethod;
 				}
 			}
 			++itr;
@@ -3650,23 +3658,29 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 			else if (localMethodDecl->mMethodDeclaration->mNameNode != NULL)
 			{
 				BfLocalMethod* localMethod = mCurMethodState->mLocalMethods[curLocalMethodIdx];
-				BF_ASSERT(localMethod->mMethodDeclaration == localMethodDecl->mMethodDeclaration);
 
-				bool wantsLocalMethod = (wantsAllLocalMethods) || (autoComplete->IsAutocompleteNode(localMethod->mMethodDeclaration));
-
-				if ((!wantsLocalMethod) && (mCurMethodInstance->mMethodDef->mIsLocalMethod))
-					wantsLocalMethod = true;
-
-				if (wantsLocalMethod)
+				if (localMethod->mMethodDeclaration != localMethodDecl->mMethodDeclaration)
 				{
-					if (!mCurMethodInstance->IsSpecializedGenericMethodOrType())
-						GetLocalMethodInstance(localMethod, BfTypeVector(), NULL, true); // Only necessary on unspecialized pass
+					AssertErrorState();
 				}
+				else
+				{
+					bool wantsLocalMethod = (wantsAllLocalMethods) || (autoComplete->IsAutocompleteNode(localMethod->mMethodDeclaration));
 
-				if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
-					mCompiler->mResolvePassData->mAutoComplete->CheckMethod(localMethod->mMethodDeclaration, true);
+					if ((!wantsLocalMethod) && (mCurMethodInstance->mMethodDef->mIsLocalMethod))
+						wantsLocalMethod = true;
 
-				curLocalMethodIdx++;
+					if (wantsLocalMethod)
+					{
+						if (!mCurMethodInstance->IsSpecializedGenericMethodOrType())
+							GetLocalMethodInstance(localMethod, BfTypeVector(), NULL, true); // Only necessary on unspecialized pass
+					}
+
+					if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
+						mCompiler->mResolvePassData->mAutoComplete->CheckMethod(localMethod->mMethodDeclaration, true);
+
+					curLocalMethodIdx++;
+				}
 			}
 
 			++itr;
@@ -3811,8 +3825,9 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 
 #if _DEBUG
 			BfLocalMethod** localMethodPtr = NULL;
-			mCurMethodState->mLocalMethodMap.TryGetValue(localMethod->mMethodName, &localMethodPtr);
-			BF_ASSERT(*localMethodPtr == localMethod);
+			mCurMethodState->mLocalMethodMap.TryGetValue(localMethod->mMethodName, &localMethodPtr);			
+			if ((localMethodPtr == NULL) || (*localMethodPtr != localMethod))
+				AssertErrorState();
 #endif
 			if (localMethod->mNextWithSameName == NULL)
 				mCurMethodState->mLocalMethodMap.Remove(localMethod->mMethodName);
