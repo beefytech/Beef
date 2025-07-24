@@ -113,6 +113,8 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TOOLTIP_BOOLEAN, (windowFlags & BFWINDOW_TOOLTIP) > 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, (windowFlags & BFWINDOW_DEST_ALPHA) > 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MENU_BOOLEAN, (windowFlags & BFWINDOW_FAKEFOCUS) > 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MODAL_BOOLEAN, (windowFlags & BFWINDOW_MODAL) > 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, (windowFlags & BFWINDOW_TOPMOST) > 0);
 
 	if (parent != NULL) 
 		bf_SDL_SetPointerProperty(props, SDL_PROP_WINDOW_CREATE_PARENT_POINTER, ((SdlBFWindow*)parent)->mSDLWindow);
@@ -197,6 +199,8 @@ void SdlBFWindow::Destroy()
 
 bool SdlBFWindow::TryClose()
 {
+	mLostFocusFunc(this);
+
 	SDL_Event closeEvent;
 	bf_SDL_memset(&closeEvent, 0, sizeof(SDL_Event));
 	closeEvent.type = SDL_EVENT_WINDOW_CLOSE_REQUESTED;
@@ -403,6 +407,20 @@ void SdlBFApp::Run()
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
 					gBFApp->RemoveWindow(sdlBFWindow);
+				}
+				break;
+			case SDL_EVENT_WINDOW_FOCUS_GAINED:
+				{
+					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
+					if(sdlBFWindow != NULL)
+						sdlBFWindow->mGotFocusFunc(sdlBFWindow);
+				}
+				break;
+			case SDL_EVENT_WINDOW_FOCUS_LOST:
+				{
+					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
+					if(sdlBFWindow != NULL)
+						sdlBFWindow->mLostFocusFunc(sdlBFWindow);
 				}
 				break;
 			case SDL_EVENT_MOUSE_BUTTON_UP:
