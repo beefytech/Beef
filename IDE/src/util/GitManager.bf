@@ -315,6 +315,11 @@ class GitManager
 		return StartGit(scope $"clone -v --progress --recurse-submodules {url} \"{path}\"");
 	}
 
+	public GitInstance CloneShallow(StringView url, StringView path, StringView hash)
+	{
+		return StartGit(scope $"clone -v --progress --recurse-submodules --shallow-submodules --revision={hash} --depth 1 {url} \"{path}\"");
+	}
+
 	public GitInstance Checkout(StringView path, StringView hash)
 	{
 		return StartGit(scope $"checkout -b BeefManaged {hash}", path);

@@ -19,6 +19,7 @@ namespace IDE.util
 				None,
 				FindVersion,
 				Clone,
+				CloneShallow,
 				Checkout,
 				Setup
 			}
@@ -276,7 +277,7 @@ namespace IDE.util
 			}
 
 			WorkItem workItem = new .();
-			workItem.mKind = .Clone;
+			workItem.mKind = .CloneShallow;
 			workItem.mProjectName = new .(projectName);
 			workItem.mURL = new .(url);
 			workItem.mTag = new .(tag);
@@ -452,7 +453,7 @@ namespace IDE.util
 						}
 					case .Clone:
 						Checkout(workItem.mProjectName, workItem.mURL, workItem.mPath, workItem.mTag, workItem.mHash);
-					case .Checkout:
+					case .Checkout, .CloneShallow:
 						if (gApp.mVerbosity >= .Normal)
 							gApp.OutputLine($"Git cloning library '{workItem.mProjectName}' done.");
 
@@ -505,6 +506,8 @@ namespace IDE.util
 						workItem.mGitInstance = gApp.mGitManager.Checkout(workItem.mPath, workItem.mHash)..AddRef();
 					case .Clone:
 						workItem.mGitInstance = gApp.mGitManager.Clone(workItem.mURL, workItem.mPath)..AddRef();
+					case .CloneShallow:
+						workItem.mGitInstance = gApp.mGitManager.CloneShallow(workItem.mURL, workItem.mPath, workItem.mHash)..AddRef();
 					default:
 					}
 				}
