@@ -18,6 +18,7 @@ public:
 	SDL_Window*				mSDLWindow;
 	bool					mIsMouseInside;
 	int						mModalCount;
+	bool 					mHasPositionInit;
 
 public:
 	SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags);

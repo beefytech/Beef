@@ -132,6 +132,8 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 
 	mSDLWindow = bf_SDL_CreateWindowWithProperties(props);
 
+//	printf("Created %i : %s\n", bf_SDL_GetWindowID(mSDLWindow), title.c_str());
+
 	bf_SDL_StartTextInput(mSDLWindow);
 
 #ifndef BF_PLATFORM_OPENGL_ES2
@@ -172,6 +174,7 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 #endif
 
 	mIsMouseInside = false;
+	mHasPositionInit = false;
 	mRenderWindow = new GLRenderWindow((GLRenderDevice*)gBFApp->mRenderDevice, mSDLWindow);
 	mRenderWindow->mWindow = this;
 	gBFApp->mRenderDevice->AddRenderWindow(mRenderWindow);
@@ -189,6 +192,8 @@ SdlBFWindow::~SdlBFWindow()
 
 void SdlBFWindow::Destroy()
 {
+//	printf("Destroy %i\n", bf_SDL_GetWindowID(this->mSDLWindow));
+
 	SdlBFApp* app = (SdlBFApp*)gBFApp;
 	app->mSdlWindowMap.Remove(bf_SDL_GetWindowID(mSDLWindow));
 
@@ -199,6 +204,8 @@ void SdlBFWindow::Destroy()
 
 bool SdlBFWindow::TryClose()
 {
+//	printf("TryClose %i\n", bf_SDL_GetWindowID(this->mSDLWindow));
+
 	mLostFocusFunc(this);
 
 	SDL_Event closeEvent;
@@ -497,9 +504,17 @@ void SdlBFApp::Run()
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
 					if (sdlBFWindow != NULL)
 					{
-						sdlBFWindow->mMovedFunc(sdlBFWindow);
-						if (sdlEvent.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) {
-							sdlBFWindow->mRenderWindow->Resized();
+						if (sdlBFWindow->mHasPositionInit)
+						{
+							sdlBFWindow->mMovedFunc(sdlBFWindow);
+							if (sdlEvent.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) 
+							{
+								sdlBFWindow->mRenderWindow->Resized();
+							}
+						}
+						else
+						{
+							sdlBFWindow->mHasPositionInit = true;
 						}
 					}
 				}
