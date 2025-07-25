@@ -311,6 +311,9 @@ namespace System.Net
 		static extern int32 getaddrinfo(char8* pNodeName, char8* pServiceName, AddrInfo* pHints, AddrInfo** ppResult);
 
 		[CLink, CallingConvention(.Stdcall)]
+		static extern void freeaddrinfo(AddrInfo* pAddrInfo);
+
+		[CLink, CallingConvention(.Stdcall)]
 		static extern HSocket socket(int32 af, int32 type, int32 protocol);
 
 		[CLink, CallingConvention(.Stdcall)]
@@ -557,12 +560,16 @@ namespace System.Net
 
 			sockAddr = addrInfo.ai_addr;
 			addrFamily = addrInfo.ai_family;
+			let addrlen = addrInfo.ai_addrlen;
 
-			mHandle = socket(addrInfo.ai_family, SOCK_STREAM, IPPROTO_TCP);
+			addrInfo.ai_addr = null;
+			freeaddrinfo(addrInfo);
+
+			mHandle = socket((.)addrFamily, SOCK_STREAM, IPPROTO_TCP);
 			if (mHandle == INVALID_SOCKET)
 				return .Err;
 
-			if (connect(mHandle, sockAddr, (.)addrInfo.ai_addrlen) == SOCKET_ERROR)
+			if (connect(mHandle, sockAddr, (.)addrlen) == SOCKET_ERROR)
 				return .Err;
 
 			if (mHandle == INVALID_SOCKET)
