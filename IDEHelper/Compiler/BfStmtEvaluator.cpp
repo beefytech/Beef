@@ -4774,6 +4774,15 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	HashSet<int64> condCases;
 	for (BfSwitchCase* switchCase : switchStmt->mSwitchCases)
 	{
+		if (switchCase->mCaseExpressions.mSize == 1)
+		{
+			if (auto defaultExpr = BfNodeDynCast<BfDefaultExpression>(switchCase->mCaseExpressions[0]))
+			{
+				if (defaultExpr->mOpenParen == NULL)
+					Warn(0, "Potentially unintended 'case default:'. Consider rewriting as 'default:' or 'case (.)default:' to clarify intention.", defaultExpr);
+			}
+		}
+
 		deferredLocalAssignDataVec[blockIdx].mScopeData = mCurMethodState->mCurScope;
 		deferredLocalAssignDataVec[blockIdx].ExtendFrom(mCurMethodState->mDeferredLocalAssignData);
 		SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(mCurMethodState->mDeferredLocalAssignData, &deferredLocalAssignDataVec[blockIdx]);
@@ -5881,6 +5890,12 @@ void BfModule::Visit(BfFallthroughStatement* fallthroughStmt)
 		{
 			if (breakData->mIRFallthroughBlock)
 				break;
+			if (breakData->mIRBreakBlock)
+			{
+				// Catches the cases where we have a falltrhough in a 'default:' block
+				breakData = NULL;
+				break;
+			}
 			breakData = breakData->mPrevBreakData;
 		}
 	}
