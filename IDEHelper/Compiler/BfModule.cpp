@@ -4146,9 +4146,11 @@ BfModuleOptions BfModule::GetModuleOptions()
 		return *mModuleOptions;
 	BfModuleOptions moduleOptions;
 	moduleOptions.mEmitDebugInfo = mCompiler->mOptions.mEmitDebugInfo ? 1 : mCompiler->mOptions.mEmitLineInfo ? 2 : 0;
+	moduleOptions.mSIMDSetting = mCompiler->mOptions.mSIMDSetting;	
 	if (mProject != NULL)
 	{
-		moduleOptions.mSIMDSetting = mProject->mCodeGenOptions.mSIMDSetting;
+		if (mProject->mCodeGenOptions.mSIMDSetting != BfSIMDSetting_NotSet)
+			moduleOptions.mSIMDSetting = mProject->mCodeGenOptions.mSIMDSetting;
 		moduleOptions.mOptLevel = mProject->mCodeGenOptions.mOptLevel;
 	}
 

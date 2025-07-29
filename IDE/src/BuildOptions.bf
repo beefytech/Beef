@@ -37,8 +37,10 @@ namespace IDE
 		    SSE3,
 		    SSE4,
 		    SSE41,
+			SSE42,
 		    AVX,
-		    AVX2,            
+		    AVX2,
+			AVX512,
 		}
 
 		[Reflect]

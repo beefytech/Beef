@@ -116,16 +116,6 @@ enum BfIRSizeAlignKind
 	BfIRSizeAlignKind_Aligned,
 };
 
-enum BfIRSimdType
-{
-	BfIRSimdType_None,
-	BfIRSimdType_SSE,
-	BfIRSimdType_SSE2,
-	BfIRSimdType_AVX,
-	BfIRSimdType_AVX2,
-	BfIRSimdType_AVX512
-};
-
 class BfIRCodeGen : public BfIRCodeGenBase
 {
 public:
@@ -171,7 +161,7 @@ public:
 	Dictionary<BfIRTypeEx*, int> mTypeToTypeIdMap;
 	HashSet<llvm::BasicBlock*> mLockedBlocks;
 	OwnedArray<BfIRIntrinsicData> mIntrinsicData;
-	Dictionary<llvm::Function*, BfIRSimdType> mFunctionsUsingSimd;
+	Dictionary<llvm::Function*, BfSIMDSetting> mFunctionsUsingSimd;
 	Array<BfIRTypeEx*> mIRTypeExs;
 	BfIRTypedValue mLastFuncCalled;
 
@@ -282,9 +272,9 @@ public:
 	void SetCodeGenOptions(BfCodeGenOptions codeGenOptions);
 	void SetConfigConst(int idx, int value) override;
 
-	void SetActiveFunctionSimdType(BfIRSimdType type);
-	String GetSimdTypeString(BfIRSimdType type);
-	BfIRSimdType GetSimdTypeFromFunction(llvm::Function* function);
+	void SetActiveFunctionSimdType(BfSIMDSetting type);
+	String GetSimdTypeString(BfSIMDSetting type);
+	BfSIMDSetting GetSimdTypeFromFunction(llvm::Function* function);
 
 	BfIRTypedValue GetTypedValue(int streamId);
 	llvm::Value* GetLLVMValue(int streamId);

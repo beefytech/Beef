@@ -11200,11 +11200,17 @@ namespace IDE
 			case .SSE41:
 				clangOptions.Append("-msse4.1 ");
 				break;
+			case .SSE42:
+				clangOptions.Append("-msse4.2 ");
+				break;
 			case .AVX:
 				clangOptions.Append("-mavx ");
 				break;
 			case .AVX2:
 				clangOptions.Append("-mavx2 ");
+				break;
+			case .AVX512:
+				clangOptions.Append("-mavx512 ");
 				break;
 			default:
 			}
