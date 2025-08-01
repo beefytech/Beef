@@ -208,6 +208,18 @@ namespace System.Net
 			public SockAddr* ai_next;
 		}
 
+		public struct SockAddrInfo : IDisposable
+		{
+			private AddrInfo* addrInfo;
+
+			public int32 AddressFamily => addrInfo.ai_family;
+			public uint16 Port => ((SockAddr_in*)addrInfo.ai_addr).sin_port;
+			public IPv4Address IPv4 => ((SockAddr_in*)addrInfo.ai_addr).sin_addr;
+			public IPv6Address IPv6 => ((SockAddr_in6*)addrInfo.ai_addr).sin6_addr;
+
+			public void Dispose() => freeaddrinfo(addrInfo);
+		}
+
 		public const HSocket INVALID_SOCKET = (HSocket)-1;
 		public const int32 SOCKET_ERROR = -1;
 		public const int AF_INET = 2;
@@ -545,11 +557,8 @@ namespace System.Net
 			return .Ok;
 		}
 
-		public Result<void> Connect(StringView addr, int32 port, out SockAddr* sockAddr, out int addrFamily)
+		public Result<void> Connect(StringView addr, int32 port, SockAddrInfo* addrInfoOut)
 		{
-			sockAddr = null;
-			addrFamily = default;
-
 			AddrInfo hints = default;
 			hints.ai_socktype = SOCK_STREAM;
 			hints.ai_protocol = IPPROTO_TCP;
@@ -558,18 +567,11 @@ namespace System.Net
 			if (getaddrinfo(addr.Ptr, null, &hints, &addrInfo) < 0)
 				return .Err;
 
-			sockAddr = addrInfo.ai_addr;
-			addrFamily = addrInfo.ai_family;
-			let addrlen = addrInfo.ai_addrlen;
-
-			addrInfo.ai_addr = null;
-			freeaddrinfo(addrInfo);
-
-			mHandle = socket((.)addrFamily, SOCK_STREAM, IPPROTO_TCP);
+			mHandle = socket(addrInfo.ai_family, SOCK_STREAM, IPPROTO_TCP);
 			if (mHandle == INVALID_SOCKET)
 				return .Err;
 
-			if (connect(mHandle, sockAddr, (.)addrlen) == SOCKET_ERROR)
+			if (connect(mHandle, addrInfo.ai_addr, (.)addrInfo.ai_addrlen) == SOCKET_ERROR)
 				return .Err;
 
 			if (mHandle == INVALID_SOCKET)
@@ -581,6 +583,15 @@ namespace System.Net
 
 			mIsConnected = true;
 			RehupSettings();
+
+			if(addrInfoOut == null)
+			{
+				freeaddrinfo(addrInfo);
+			}
+			else
+			{
+				addrInfoOut.[Friend]addrInfo = addrInfo;
+			}
 
 			return .Ok;
 		}
