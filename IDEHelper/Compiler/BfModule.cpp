@@ -18420,7 +18420,7 @@ void BfModule::EmitDtorBody()
 				{
 					auto fieldDecl = fieldDef->GetFieldDeclaration();
 
-					if ((fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldDef->mFieldDeclaration != NULL) &&
+					if ((fieldDecl != NULL) && (fieldDef->mIsStatic == methodDef->mIsStatic) && (fieldDef->mFieldDeclaration != NULL) &&
 						(fieldDecl->mFieldDtor != NULL) && (mCompiler->mResolvePassData->mIsClassifying))
 					{
 						BfType* fieldType = NULL;
