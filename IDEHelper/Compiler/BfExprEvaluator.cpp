@@ -4688,7 +4688,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 
 				if ((varDecl != NULL) && (varDecl->mNotCaptured))
 				{
-					mModule->Fail("Local variable is not captured", refNode);
+					mModule->Fail(StrFormat("Local variable '%s' is not captured", findName.c_str()), refNode);
 				}
 
 				if ((varSkipCountLeft == 0) && (varDecl != NULL))
@@ -15819,14 +15819,14 @@ void BfExprEvaluator::Visit(BfLambdaBindExpression* lambdaBindExpr)
 			auto& capturedEntry = lambdaInstance->mCaptures[captureIdx];
 			auto& closureCaptureEntry = lambdaInstance->mMethodInstance->mMethodInfoEx->mClosureInstanceInfo->mCaptureEntries[captureIdx];
 			BfIdentifierNode* identifierNode = closureCaptureEntry.mNameNode;
-
+			
 			BfIRValue capturedValue;
 			auto fieldInstance = &closureTypeInst->mFieldInstances[fieldIdx];
 			BfTypedValue capturedTypedVal;
 			if (identifierNode != NULL)
 				capturedTypedVal = DoImplicitArgCapture(NULL, identifierNode, closureCaptureEntry.mShadowIdx);
 			else
-				capturedTypedVal = LookupIdentifier(NULL, capturedEntry.mName);
+				capturedTypedVal = LookupIdentifier(lambdaBindExpr, capturedEntry.mName);
 			if (!fieldInstance->mResolvedType->IsRef())
 				capturedTypedVal = mModule->LoadOrAggregateValue(capturedTypedVal);
 			else if (!capturedTypedVal.IsAddr())
