@@ -4241,7 +4241,7 @@ namespace IDE
 			if ((activeDoumentPanel == null) && (mActiveDocumentsTabbedView != null))
 			{
 				var activeTab = mActiveDocumentsTabbedView.GetActiveTab();
-				activeTab.Activate();
+				activeTab?.Activate();
 				return;
 			}
 
