@@ -19068,13 +19068,19 @@ void BfModule::EmitCtorBody(bool& skipBody)
 						String linkageName;
 						if ((mIsComptimeModule) && (mCompiler->mCeMachine->mCurBuilder != NULL))
 							linkageName = StrFormat("%d", mCompiler->mCeMachine->mCurBuilder->DbgCreateMethodRef(mCurMethodInstance, "$initFields"));
-						mCurMethodState->mCurScope->mDIScope = mBfIRBuilder->DbgCreateFunction(mBfIRBuilder->DbgGetTypeInst(mCurTypeInstance), "this$initFields", linkageName, mCurFilePosition.mFileInstance->mDIFile,
-							mCurFilePosition.mCurLine + 1, diFuncType, false, true, mCurFilePosition.mCurLine + 1, flags, false, BfIRValue());
+
+						if (!mBfIRBuilder->mIgnoreWrites)
+							mCurMethodState->mCurScope->mDIScope = mBfIRBuilder->DbgCreateFunction(mBfIRBuilder->DbgGetTypeInst(mCurTypeInstance), "this$initFields", linkageName, mCurFilePosition.mFileInstance->mDIFile,
+								mCurFilePosition.mCurLine + 1, diFuncType, false, true, mCurFilePosition.mCurLine + 1, flags, false, BfIRValue());
 
 						UpdateSrcPos(node);
 
-						auto diVariable = mBfIRBuilder->DbgCreateAutoVariable(mCurMethodState->mCurScope->mDIScope,
-							"this", mCurFilePosition.mFileInstance->mDIFile, mCurFilePosition.mCurLine, mBfIRBuilder->DbgGetType(thisType));
+						BfIRMDNode diVariable;
+						if (!mBfIRBuilder->mIgnoreWrites)
+						{
+							diVariable = mBfIRBuilder->DbgCreateAutoVariable(mCurMethodState->mCurScope->mDIScope,
+								"this", mCurFilePosition.mFileInstance->mDIFile, mCurFilePosition.mCurLine, mBfIRBuilder->DbgGetType(thisType));
+						}
 
 						if (!mCurTypeInstance->IsValuelessType())
 						{
