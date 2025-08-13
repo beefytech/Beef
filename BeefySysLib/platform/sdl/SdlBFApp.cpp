@@ -207,6 +207,10 @@ bool SdlBFWindow::TryClose()
 //	printf("TryClose %i\n", bf_SDL_GetWindowID(this->mSDLWindow));
 
 	mLostFocusFunc(this);
+	if(this->mParent != NULL)
+	{
+		mGotFocusFunc(this->mParent);
+	}
 
 	SDL_Event closeEvent;
 	bf_SDL_memset(&closeEvent, 0, sizeof(SDL_Event));
