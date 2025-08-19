@@ -276,8 +276,12 @@ namespace IDE.util
 					gApp.OutputLine($"Git cloning library '{projectName}' tag '{tag}' at {hash.Substring(0, 7)}");
 			}
 
+			bool hasShallowClone = false;
+			if (GitManager.GetGitVersion() case .Ok(let ver))
+				hasShallowClone = ver.Major > 2 || (ver.Major == 2 && ver.Minor >= 49);
+
 			WorkItem workItem = new .();
-			workItem.mKind = .CloneShallow;
+			workItem.mKind = hasShallowClone ? .CloneShallow : .Clone;
 			workItem.mProjectName = new .(projectName);
 			workItem.mURL = new .(url);
 			workItem.mTag = new .(tag);
