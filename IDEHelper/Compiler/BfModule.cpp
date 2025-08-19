@@ -14634,7 +14634,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		flags = (BfGetMethodInstanceFlags)(flags & ~BfGetMethodInstanceFlag_ForceInline);
 	}
 
-	if (methodDef->mIsExtern)
+	if ((methodDef->mIsExtern) || (methodDef->mIsVirtual))
 		flags = (BfGetMethodInstanceFlags)(flags & ~BfGetMethodInstanceFlag_ForceInline);
 
 	bool processNow = false;
