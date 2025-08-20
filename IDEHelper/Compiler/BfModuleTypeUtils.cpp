@@ -14656,8 +14656,16 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 		}
 	}
 
+	bool wantUserConversion = (((castFlags & BfCastFlags_NoConversionOperator) == 0) && (toType != mContext->mBfObjectType));
+
+	if ((wantUserConversion) && (typedVal.mType->IsPrimitiveType()) && (toType->IsPrimitiveType()))
+	{
+		// Disallow primitive-to-primitive casts
+		wantUserConversion = false;
+	}
+
 	// Check user-defined operators
-	if (((castFlags & BfCastFlags_NoConversionOperator) == 0) && (toType != mContext->mBfObjectType))
+	if (wantUserConversion)
 	{
 		BfType* walkFromType = typedVal.mType;
 		if (walkFromType->IsWrappableType())
