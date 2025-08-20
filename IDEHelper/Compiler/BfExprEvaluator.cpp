@@ -24744,8 +24744,8 @@ void BfExprEvaluator::PerformBinaryOperation(BfAstNode* leftExpression, BfAstNod
 			handled = true;
 		}
 		else if ((expectingType != NULL) &&
-			(mModule->CanCast(leftValue, expectingType, BfCastFlags_NoBox)) &&
-			(mModule->CanCast(rightValue, expectingType, BfCastFlags_NoBox)) &&
+			(mModule->CanCast(leftValue, expectingType, (BfCastFlags)(BfCastFlags_NoBox | BfCastFlags_NoConversionOperator))) &&
+			(mModule->CanCast(rightValue, expectingType, (BfCastFlags)(BfCastFlags_NoBox | BfCastFlags_NoConversionOperator))) &&
 			(!leftValue.mType->IsVar()) && (!rightValue.mType->IsVar()))
 		{
 			resultType = expectingType;
