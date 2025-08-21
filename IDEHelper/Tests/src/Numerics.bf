@@ -39,6 +39,47 @@ namespace Tests
 			Test.Assert(v8.GetType() == typeof(uint32));
 			var v9 = r2 + r0;
 			Test.Assert(v9.GetType() == typeof(uint32));
+
+			Test.Assert(uint8.Parse("255") == 255);
+			Test.Assert(uint8.Parse("0xFF", .AllowHexSpecifier) == 255);
+			Test.Assert(uint8.Parse("256") == .Err(.Overflow));
+			Test.Assert(uint8.Parse("789") == .Err(.Overflow));
+			Test.Assert(uint8.Parse("999") == .Err(.Overflow));
+
+			Test.Assert(int8.Parse("-128") == -128);
+			Test.Assert(int8.Parse("-129") == .Err(.Overflow));
+			Test.Assert(int8.Parse("127") == 127);
+			Test.Assert(int8.Parse("128") == .Err(.Overflow));
+
+			Test.Assert(uint16.Parse("65535") == 65535);
+			Test.Assert(uint16.Parse("0xFFFF", .AllowHexSpecifier) == 65535);
+			Test.Assert(uint16.Parse("65536") == .Err(.Overflow));
+			Test.Assert(uint16.Parse("70000") == .Err(.Overflow));
+			Test.Assert(uint16.Parse("80000") == .Err(.Overflow));
+			Test.Assert(uint16.Parse("90000") == .Err(.Overflow));
+
+			Test.Assert(int16.Parse("-32768") == -32768);
+			Test.Assert(int16.Parse("-32769") == .Err(.Overflow));
+			Test.Assert(int16.Parse("32767") == 32767);
+			Test.Assert(int16.Parse("32768") == .Err(.Overflow));
+
+			Test.Assert(uint32.Parse("4294967295") == 4294967295);
+			Test.Assert(uint32.Parse("0xFFFFFFFF", .AllowHexSpecifier) == 4294967295);
+			Test.Assert(uint32.Parse("4294967296") == .Err(.Overflow));
+			Test.Assert(uint32.Parse("5'000'000'000") == .Err(.Overflow));
+
+			Test.Assert(int32.Parse("-2147483648") == -2147483648);
+			Test.Assert(int32.Parse("-2147483649") == .Err(.Overflow));
+			Test.Assert(int32.Parse("2147483647") == 2147483647);
+			Test.Assert(int32.Parse("2147483648") == .Err(.Overflow));
+			Test.Assert(int32.Parse("3000000000") == .Err(.Overflow));
+			Test.Assert(int32.Parse("4000000000") == .Err(.Overflow));
+			Test.Assert(int32.Parse("5000000000") == .Err(.Overflow));
+			Test.Assert(int32.Parse("6000000000") == .Err(.Overflow));
+			Test.Assert(int32.Parse("-3000000000") == .Err(.Overflow));
+			Test.Assert(int32.Parse("-4000000000") == .Err(.Overflow));
+			Test.Assert(int32.Parse("-5000000000") == .Err(.Overflow));
+			Test.Assert(int32.Parse("-6000000000") == .Err(.Overflow));
 		}
 	}
 }

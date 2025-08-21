@@ -86,15 +86,13 @@ namespace System
 				return .Err(.NoValue);
 
 			bool digitsFound = false;
-			uint8 result = 0;
-			uint8 prevResult = 0;
+			uint16 result = 0;
 
 			uint8 radix = style.HasFlag(.Hex) ? 0x10 : 10;
 
 			for (int32 i = 0; i < val.Length; i++)
 			{
 				char8 c = val[i];
-
 				if ((c >= '0') && (c <= '9'))
 				{
 					result &*= radix;
@@ -104,7 +102,7 @@ namespace System
 				else if ((c >= 'a') && (c <= 'f'))
 				{
 					if (radix != 0x10)
-						return .Err(.InvalidChar(result));
+						return .Err(.InvalidChar((.)result));
 					result &*= radix;
 					result &+= (uint8)(c - 'a' + 10);
 					digitsFound = true;
@@ -112,7 +110,7 @@ namespace System
 				else if ((c >= 'A') && (c <= 'F'))
 				{
 					if (radix != 0x10)
-						return .Err(.InvalidChar(result));
+						return .Err(.InvalidChar((.)result));
 					result &*= radix;
 					result &+= (uint8)(c - 'A' + 10);
 					digitsFound = true;
@@ -120,7 +118,7 @@ namespace System
 				else if ((c == 'X') || (c == 'x'))
 				{
 					if ((!style.HasFlag(.AllowHexSpecifier)) || (i == 0) || (result != 0))
-						return .Err(.InvalidChar(result));
+						return .Err(.InvalidChar((.)result));
 					radix = 0x10;
 					digitsFound = false;
 				}
@@ -133,17 +131,16 @@ namespace System
 					// Ignore
 				}
 				else
-					return .Err(.InvalidChar(result));
+					return .Err(.InvalidChar((.)result));
 
-				if (result < prevResult)
+				if (result > MaxValue)
 					return .Err(.Overflow);
-				prevResult = result;
 			}
 
 			if (!digitsFound)
 				return .Err(.NoValue);
 
-			return result;
+			return (.)result;
 		}
 
 		public static Result<uint8, ParseError> IParseable<uint8, ParseError>.Parse(StringView val)

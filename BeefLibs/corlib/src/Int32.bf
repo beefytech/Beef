@@ -152,6 +152,8 @@ namespace System
 
 				if ((c >= '0') && (c <= '9'))
 				{
+					if ((radix == 10) && (result >= (0x7FFFFFFF / 10) + 1))
+						return .Err(.Overflow);
 					result &*= radix;
 					result &+= (int32)(c - '0');
 					digitsFound = true;
