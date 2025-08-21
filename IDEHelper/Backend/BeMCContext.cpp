@@ -8488,7 +8488,8 @@ void BeMCContext::DoRegAssignPass()
 	}
 
 #ifdef _DEBUG
-	BF_ASSERT(mColorizer.Validate());
+	if (!mColorizer.Validate())
+		SoftFail("mColorizer.Validate failed");
 
 	for (int vregIdx = 0; vregIdx < (int)mVRegInfo.size(); vregIdx++)
 	{
