@@ -6,7 +6,7 @@ namespace System.Net
 {
 	class Socket
 	{
-		const uint16 WINSOCK_VERSION = 0x101;
+		const uint16 WINSOCK_VERSION = 0x0202;
 		const int32 WSAENETRESET    = 10052;
 		const int32 WSAECONNABORTED = 10053;
 		const int32 WSAECONNRESET   = 10054;
