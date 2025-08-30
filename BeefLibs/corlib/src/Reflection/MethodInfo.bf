@@ -765,7 +765,17 @@ namespace System.Reflection
 
 					Type underlyingType = argType.UnderlyingType;
 					if (underlyingType == paramType)
+					{
 						handled = true;
+					}
+					else if ((paramType.IsValueType) && (underlyingType == typeof(Pointer<void>)))
+					{
+						ffiParamList.Add(&FFIType.Pointer);
+						ffiArgList.Add(dataPtr);
+						dataPtr = *(void**)dataPtr;
+						handled = true;
+						added = true;
+					}
 
 					if ((paramType.IsPrimitive) && (underlyingType.IsTypedPrimitive)) // Boxed primitive?
 						underlyingType = underlyingType.UnderlyingType;

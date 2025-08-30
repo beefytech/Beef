@@ -62,6 +62,30 @@ namespace Tests
 
 		}
 
+		[AttributeUsage(.Method, .ReflectAttribute | .AlwaysIncludeTarget)]
+		struct AttrEAttribute : Attribute
+		{
+		    public int mNumber;
+
+		    public this(int number)
+		    {
+		        mNumber = number;
+		    }
+		}
+
+		[AttributeUsage(.Method, .ReflectAttribute | .AlwaysIncludeTarget)]
+		struct AttrFAttribute : AttrEAttribute
+		{
+			public int mNumber1;
+			public int mNumber2;
+
+		    public this(int number1, int number2) : base(number1 + number2)
+		    {
+				mNumber1 = number1;
+				mNumber2 = number2;
+		    }
+		}
+
 		[Reflect]
 		class ClassA
 		{
@@ -187,6 +211,18 @@ namespace Tests
 		{
 			public int mA = 1;
 			public int mB = 2;
+
+			[AttrE(2)]
+			public static void TestLog()
+			{
+			    
+			}
+
+			[AttrF(3, 2)]
+			public static void TestLog2()
+			{
+			    
+			}
 		}
 
 		class ClassD
@@ -491,6 +527,31 @@ namespace Tests
 
 			ClassD cd = scope .();
 			Test.Assert(typeof(ClassD).GetField("mA") case .Err);
+
+			int methodIdx = 0;
+			for (let methodInfo in typeof(ClassC).GetMethods())
+			{
+				switch (methodIdx)
+				{
+				case 0:
+					Test.Assert(methodInfo.Name == "this");
+				case 1:
+					Test.Assert(methodInfo.Name == "TestLog");
+					var attrE = methodInfo.GetCustomAttribute<AttrEAttribute>().Value;
+				case 2:
+					Test.Assert(methodInfo.Name == "TestLog2");
+					var attrE = methodInfo.GetCustomAttribute<AttrEAttribute>().Value;
+					Test.Assert(attrE.mNumber == 5);
+					var attrF = methodInfo.GetCustomAttribute<AttrFAttribute>().Value;
+					Test.Assert(attrF.mNumber == 5);
+					Test.Assert(attrF.mNumber1 == 3);
+					Test.Assert(attrF.mNumber2 == 2);
+				default:
+					Test.FatalError(); // Shouldn't have any more
+				}
+				methodIdx++;
+			}
+			Test.Assert(methodIdx == 3);
 
 			// Should this reified call cause fields to be reflected?
 			/*ClassE ce = scope .();
