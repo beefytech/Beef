@@ -1362,8 +1362,10 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 				auto genericParamType = (BfGenericParamType*)thisType;
 				if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
 				{
+					BfTypeVector genericTypeVector;
+					genericTypeVector.Add(targetType);
 					auto& genericParams = methodInstance->mMethodInfoEx->mGenericParams;
-					if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), targetType, NULL, genericParams[genericParamType->mGenericParamIdx], NULL, NULL))
+					if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), targetType, NULL, genericParams[genericParamType->mGenericParamIdx], &genericTypeVector, NULL))
 						continue;
 					paramValidated = true;
 				}
