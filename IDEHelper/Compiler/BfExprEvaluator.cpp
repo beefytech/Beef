@@ -8889,7 +8889,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 				else if (expandedParamAlloca)
 				{
 					argValue = mModule->LoadOrAggregateValue(argValue);
-					auto addr = mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamAlloca, extendedParamIdx);
+					if (!mModule->mBfIRBuilder->mIgnoreWrites)
+						mModule->FixValueActualization(argValue);
+					auto addr = mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamAlloca, extendedParamIdx);					
 					auto storeInst = mModule->mBfIRBuilder->CreateAlignedStore(argValue.mValue, addr, argValue.mType->mAlign);
 				}
 				else
