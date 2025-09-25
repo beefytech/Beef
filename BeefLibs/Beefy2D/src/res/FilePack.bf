@@ -50,7 +50,7 @@ class FilePack
 		return null;
 	}
 
-	public virtual FileEntry GetFileEntry(StringView path)
+	public virtual FileEntry GetFileEntry(StringView path, bool isFullPath)
 	{
 		return null;
 	}
@@ -156,6 +156,7 @@ class ZipFilePack : FilePack
 		}
 	}
 
+	String mPatialPathMatch ~ delete _;
 	String mPath ~ delete _;
 	MiniZ.ZipFile mZipFile ~ delete _;
 	Dictionary<String, ZipFileEntry> mFileMap ~ DeleteDictionaryAndKeysAndValues!(_);
@@ -183,6 +184,13 @@ class ZipFilePack : FilePack
 		mZipFile = new MiniZ.ZipFile();
 		Try!(mZipFile.OpenMapped(path));
 		return .Ok;
+	}
+
+	public Result<void> Init(StringView path, StringView partialPathMatch)
+	{
+		mPatialPathMatch = new .(partialPathMatch);
+		mPatialPathMatch.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+		return Init(path);
 	}
 
 	public Result<void> Init(StringView path, Range range)
@@ -234,8 +242,24 @@ class ZipFilePack : FilePack
 		}
 	}
 
-	public override FileEntry GetFileEntry(StringView path)
+	public override FileEntry GetFileEntry(StringView path, bool isFullPath)
 	{
+		if (isFullPath)
+		{
+			if (mPatialPathMatch == null)
+				return null;
+			if (path.Length <= mPatialPathMatch.Length)
+				return null;
+
+			var path;
+			if (path.Contains(Path.AltDirectorySeparatorChar))
+				path = scope:: String(path)..Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+
+			if (!path.StartsWith(mPatialPathMatch))
+				return null;
+			return GetFileEntry(path.Substring(mPatialPathMatch.Length), false);
+		}
+
 		var path;
 		FillFileMap();
 		if (path.StartsWith('/'))
@@ -540,10 +564,16 @@ static class FilePackManager
 				{
 					if (filePack.PathPackMatches(packPath))
 					{
-						return filePack.GetFileEntry(filePath);
+						return filePack.GetFileEntry(filePath, false);
 					}
 				}
 			}
+		}
+		for (var filePack in sFilePacks)
+		{
+			var fileEntry = filePack.GetFileEntry(path, true);
+			if (fileEntry != null)
+				return fileEntry;
 		}
 		return null;
 	}

@@ -228,10 +228,10 @@ namespace Beefy.gfx
             }
         }
 
-		public Image[] CreateImageCels(int32 cols, int32 rows)
+		public Image[] CreateImageCels(int cols, int rows)
 		{
-		    int32 celW = mSrcWidth / cols;
-		    int32 celH = mSrcHeight / rows;
+		    int32 celW = (.)(mSrcWidth / cols);
+		    int32 celH = (.)(mSrcHeight / rows);
 
 		    Debug.Assert(celW * cols == mSrcWidth);
 		    Debug.Assert(celH * rows == mSrcHeight);
