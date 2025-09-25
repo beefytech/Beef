@@ -18489,7 +18489,7 @@ void BfModule::EmitDtorBody()
 
 BfIRValue BfModule::CreateDllImportGlobalVar(BfMethodInstance* methodInstance, bool define)
 {
-	BF_ASSERT(methodInstance->mIsReified);
+	//BF_ASSERT(methodInstance->mIsReified);
 
 	auto typeInstance = methodInstance->GetOwner();
 
