@@ -12,6 +12,7 @@ using Beefy.res;
 using Beefy.geom;
 using System.Threading;
 using Beefy.sound;
+using res;
 #if MONOTOUCH
 using MonoTouch;
 #endif
@@ -348,6 +349,14 @@ namespace Beefy
 			}
 		}
 
+		public virtual void Run(String[] args)
+		{
+			ParseCommandLine(args);
+			Init();
+			Run();
+			Shutdown();
+		}
+
 		public static void Startup(String[] args, Action startupCallback)
 		{
 			/*string[] newArgs = new string[args.Length + 1];
@@ -536,9 +545,19 @@ namespace Beefy
 			mSoundManager.[Friend]mNativeSoundManager = BFApp_GetSoundManager();
 
             Interlocked.Fence();
-       
-            mInstallDir = new String(BFApp_GetInstallDir());
-            mUserDataDir = new String(mInstallDir);
+
+			mInstallDir = new String(BFApp_GetInstallDir());
+			mUserDataDir = new String(mInstallDir);
+
+#if BF_DEPENDS_MINIZ
+			var zipFilePath = scope $"{mInstallDir}Beefy.zip";
+			if (File.Exists(zipFilePath))
+			{
+				var zipFilePack = new ZipFilePack();
+				zipFilePack.Init(zipFilePath, mInstallDir);
+				FilePackManager.AddFilePack(zipFilePack);
+			}
+#endif
 
             mResourceManager = new ResourceManager();
             String resFileName = scope String();
