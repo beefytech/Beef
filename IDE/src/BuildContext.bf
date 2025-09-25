@@ -780,6 +780,9 @@ namespace IDE
 					if (!workspaceOptions.mRuntimeChecks)
 						linkLine.Append(" -s ASSERTIONS=0");
 
+					if (project.mWasmOptions.mEnableFetch)
+						linkLine.Append(" -s FETCH=1");
+
 					linkLine.Replace('\\', '/');
 
 					var targetDir = Path.GetDirectoryPath(actualTargetPath, .. scope .());
@@ -1047,6 +1050,7 @@ namespace IDE
 				cacheStr.AppendF("Options\t{}\n", project.mLinuxOptions.mOptions);
 			case .Wasm:
 				cacheStr.AppendF("EnableThreads\t{}\n", project.mWasmOptions.mEnableThreads);
+				cacheStr.AppendF("EnableFetch\t{}\n", project.mWasmOptions.mEnableFetch);
 			default:
 			}
 			if (depPaths != null)

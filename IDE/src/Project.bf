@@ -1077,14 +1077,19 @@ namespace IDE
 			[Reflect]
 			public bool mEnableThreads = false;
 
+			[Reflect]
+			public bool mEnableFetch = false;
+
 			public void Deserialize(StructuredData data)
 			{
 				mEnableThreads = data.GetBool("EnableThreads", false);
+				mEnableFetch = data.GetBool("EnableFetch", false);
 			}
 
 			public void Serialize(StructuredData data)
 			{
 				data.ConditionalAdd("EnableThreads", mEnableThreads, false);
+				data.ConditionalAdd("EnableFetch", mEnableFetch, false);
 			}
 		}
 

@@ -692,6 +692,7 @@ namespace IDE.ui
 		    category.mIsBold = true;
 		    category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE8E8E8);
 			AddPropertiesItem(category, "Enable Threads", "mEnableThreads");
+			AddPropertiesItem(category, "Enable Fetch", "mEnableFetch");
 		    //parent.MakeParent();
 		    category.Open(true, true);
 		}
