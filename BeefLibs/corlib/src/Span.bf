@@ -62,6 +62,12 @@ namespace System
 			mLength = length;
 		}
 
+		[Inline]
+		public this(params Self span)
+		{
+			this = span;
+		}
+
 		/*public static implicit operator Span<T> (ArraySegment<T> arraySegment)
 		{
 
