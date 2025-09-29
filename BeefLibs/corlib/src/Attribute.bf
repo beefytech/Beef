@@ -509,7 +509,7 @@ namespace System
 	{
 	}
 
-	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias | .Interface | .Property)]
+	[AttributeUsage(.All ^ (.MemberAccess | .Alloc | .Delete | .Block | .Assembly))]
 	public struct ObsoleteAttribute : Attribute
 	{
 		public this()
