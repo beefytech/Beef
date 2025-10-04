@@ -11157,7 +11157,7 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 
 	if (options->mTargetTriple.StartsWith("x86_64-"))
 		options->mMachineType = BfMachineType_x64;
-	else if (options->mTargetTriple.StartsWith("i686-"))
+	else if ((options->mTargetTriple.StartsWith("i686-")) || (options->mTargetTriple.StartsWith("i386-")))
 		options->mMachineType = BfMachineType_x86;
 	else if ((options->mTargetTriple.StartsWith("arm64")) || (options->mTargetTriple.StartsWith("aarch64")))
 		options->mMachineType = BfMachineType_AArch64;
