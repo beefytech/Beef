@@ -1018,7 +1018,7 @@ namespace System
 		static char8[] sEmtpyBuf = new char8[0] ~ delete _;
 
 		//part of the private stringbuffer
-		private char8[] _cbuf ~ if (cbufOnHeap > 0) delete _;
+		private char8[] _cbuf ~ if (cbufOnHeap) delete _;
 		private bool cbufOnHeap;
 		private int32 mBufSize;
 
@@ -1467,21 +1467,21 @@ namespace System
 			_ind = 0;
 			if (_cbuf.Count < size)
 			{
-				if (_cbuf.Count > 0)
+				if (cbufOnHeap)
 					delete _cbuf;
 				_cbuf = new char8 [size];
+				cbufOnHeap = true;
 			}
 		}
 
 		private void Resize (int len)
 		{
-			//Array.Resize(ref _cbuf, len);
-
 			char8[] newBuf = new char8[len];
 			Array.Copy(_cbuf, 0, newBuf, 0, _cbuf.Count);
-			if (_cbuf.Count > 0)
+			if (cbufOnHeap)
 				delete _cbuf;
 			_cbuf = newBuf;
+			cbufOnHeap = true;
 		}
 
 		private void Append (char8 c)
