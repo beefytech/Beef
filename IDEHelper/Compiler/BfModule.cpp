@@ -69,18 +69,23 @@ void BfLocalVariable::Init()
 		if ((resolvedTypeRef->IsPointer()) || (resolvedTypeRef->IsRef()))
 			resolvedTypeRef = resolvedTypeRef->GetUnderlyingType();
 		auto typeInstance = resolvedTypeRef->ToTypeInstance();
-		mUnassignedFieldFlags = (1 << typeInstance->mMergedFieldDataCount) - 1;
+
+		int selfFieldStart = 0;
 		if ((mIsThis) && (typeInstance->mBaseType != NULL))
 		{
 			// Base ctor is responsible for initializing its own fields
-			mUnassignedFieldFlags &= ~(((int64)1 << typeInstance->mBaseType->mMergedFieldDataCount) - 1);
+			selfFieldStart = typeInstance->mBaseType->mMergedFieldDataCount;
 		}
-		if (mUnassignedFieldFlags == 0)
+		mUnassignedFieldFlags.Resize(typeInstance->mMergedFieldDataCount);
+		mUnassignedFieldFlags.Set(selfFieldStart, typeInstance->mMergedFieldDataCount - selfFieldStart);
+
+		if (mUnassignedFieldFlags.IsClear())
 			mAssignedKind = BfLocalVarAssignKind_Unconditional;
 	}
 	else
 	{
-		mUnassignedFieldFlags = 1;
+		mUnassignedFieldFlags.Resize(1);
+		mUnassignedFieldFlags.Set(0);		
 	}
 }
 
@@ -299,16 +304,16 @@ void BfMethodState::LocalDefined(BfLocalVariable* localVar, int fieldIdx, BfLoca
 		else if ((deferredLocalAssignData == NULL) || (localVar->mLocalVarId >= deferredLocalAssignData->mVarIdBarrier))
 		{
 			if (fieldIdx >= 0)
-			{
-				localVar->mUnassignedFieldFlags &= ~((int64)1 << fieldIdx);
+			{				
+				localVar->mUnassignedFieldFlags.Clear(fieldIdx);
 
 				if (localVar->mResolvedType->IsUnion())
 				{
 					// We need more 'smarts' to determine assignment of unions
-					localVar->mUnassignedFieldFlags = 0;
+					localVar->mUnassignedFieldFlags.Clear();
 				}
 
-				if (localVar->mUnassignedFieldFlags == 0)
+				if (localVar->mUnassignedFieldFlags.IsClear())
 				{
 					if (localVar->mAssignedKind == BfLocalVarAssignKind_None)
 						localVar->mAssignedKind = assignKind;
@@ -2322,15 +2327,14 @@ bool BfModule::TryLocalVariableInit(BfLocalVariable* localVar)
 		{
 			if (fieldInstance.mMergedDataIdx != -1)
 			{
-				int64 checkMask = 1;
+				int checkBitCount = 1;
 				if (auto fieldTypeInst = fieldInstance.mResolvedType->ToTypeInstance())
 				{
 					if (fieldTypeInst->IsValueType())
-						checkMask = (1 << fieldTypeInst->mMergedFieldDataCount) - 1;
+						checkBitCount = fieldTypeInst->mMergedFieldDataCount;
 				}
-				checkMask <<= fieldInstance.mMergedDataIdx;
 
-				if ((localVar->mUnassignedFieldFlags & checkMask) != 0)
+				if (localVar->mUnassignedFieldFlags.IsSet(fieldInstance.mMergedDataIdx, checkBitCount))
 				{
 					// For fields added in extensions, we automatically initialize those if necessary
 					auto fieldDef = fieldInstance.GetFieldDef();
@@ -2371,9 +2375,9 @@ bool BfModule::TryLocalVariableInit(BfLocalVariable* localVar)
 						mBfIRBuilder->SetInsertPoint(curInsertBlock);
 						mBfIRBuilder->RestoreDebugLocation();
 					}
-
-					localVar->mUnassignedFieldFlags &= ~checkMask;
-					if (localVar->mUnassignedFieldFlags == 0)
+					
+					localVar->mUnassignedFieldFlags.Clear(fieldInstance.mMergedDataIdx);
+					if (localVar->mUnassignedFieldFlags.IsClear())
 						localVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 				}
 			}
@@ -2403,7 +2407,7 @@ void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 
 		if ((localVar->mReadFromId == -1) || (isOut) || ((localVar->mIsThis) && (mCurTypeInstance->IsStruct())))
 		{
-			if ((localVar->mAssignedKind != BfLocalVarAssignKind_Unconditional) & (localVar->IsParam()))
+			if ((localVar->mAssignedKind != BfLocalVarAssignKind_Unconditional) && (localVar->IsParam()))
 				TryLocalVariableInit(localVar);
 
 			// We may skip processing of local methods, so we won't know if it bind to any of our local variables or not
@@ -2436,8 +2440,7 @@ void BfModule::LocalVariableDone(BfLocalVariable* localVar, bool isMethodExit)
 							if (fieldInstance.mMergedDataIdx == -1)
 								continue;
 
-							int checkMask = 1 << fieldInstance.mMergedDataIdx;
-							if ((localVar->mUnassignedFieldFlags & checkMask) != 0)
+							if (localVar->mUnassignedFieldFlags.IsSet(fieldInstance.mMergedDataIdx))
 							{
 								auto fieldDef = fieldInstance.GetFieldDef();
 

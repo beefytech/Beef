@@ -171,7 +171,7 @@ struct BfCreateTypeDataContext
 class BfLocalVariable
 {
 public:
-	int64 mUnassignedFieldFlags;
+	BitSet mUnassignedFieldFlags;
 	BfType* mResolvedType;
 	BfIdentifierNode* mNameNode;
 	String mName;
