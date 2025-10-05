@@ -1018,7 +1018,8 @@ namespace System
 		static char8[] sEmtpyBuf = new char8[0] ~ delete _;
 
 		//part of the private stringbuffer
-		private char8[] _cbuf ~ if (_cbuf.Count > 0) delete _;
+		private char8[] _cbuf ~ if (cbufOnHeap > 0) delete _;
+		private bool cbufOnHeap;
 		private int32 mBufSize;
 
 		private bool _NaN;
@@ -3197,3 +3198,4 @@ namespace System
 		#endregion
 	}
 }
+
