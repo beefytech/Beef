@@ -19149,6 +19149,12 @@ void BfModule::EmitCtorBody(bool& skipBody)
 					if (initializer != NULL)
 					{
 						_CheckInitBlock(initializer);
+
+						if (BfNodeIsA<BfUninitializedExpression>(initializer))
+						{
+							MarkFieldInitialized(fieldInst);
+							continue;
+						}
 					}
 
 					BfIRValue fieldAddr;
