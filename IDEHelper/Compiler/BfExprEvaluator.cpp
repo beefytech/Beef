@@ -20271,12 +20271,12 @@ void BfExprEvaluator::CheckResultForReading(BfTypedValue& typedValue)
 			if (localVar->mAssignedKind == BfLocalVarAssignKind_None)
 			{
 				auto methodStateForLocal = mModule->mCurMethodState->GetMethodStateForLocal(localVar);
-
+								
 				bool isAssigned = false;
 				BitSet undefinedFieldFlags = localVar->mUnassignedFieldFlags;
 				auto deferredLocalAssignData = methodStateForLocal->mDeferredLocalAssignData;
 				while ((deferredLocalAssignData != NULL) && (deferredLocalAssignData->mIsChained))
-					deferredLocalAssignData = deferredLocalAssignData->mChainedAssignData;
+					deferredLocalAssignData = deferredLocalAssignData->mChainedAssignData;				
 
 				if (deferredLocalAssignData != NULL)
 				{
@@ -20287,12 +20287,12 @@ void BfExprEvaluator::CheckResultForReading(BfTypedValue& typedValue)
 						{
 							int assignedFieldIdx = assignedVar.mLocalVarField;
 							if (assignedFieldIdx >= 0)
-							{
-								//undefinedFieldFlags &= ~((int64)1 << assignedFieldIdx);
-								undefinedFieldFlags.Clear(assignedFieldIdx);
+							{								
+								if (undefinedFieldFlags.Contains(assignedFieldIdx))
+									undefinedFieldFlags.Clear(assignedFieldIdx);
 							}
 							else
-								undefinedFieldFlags = 0;
+								undefinedFieldFlags.Clear();
 						}
 					}
 					if (deferredLocalAssignData->mLeftBlockUncond)
@@ -20301,15 +20301,14 @@ void BfExprEvaluator::CheckResultForReading(BfTypedValue& typedValue)
 
 				if (fieldIdx == -1)
 				{
-					if (undefinedFieldFlags == 0)
+					if (undefinedFieldFlags.IsClear())
 						isAssigned = true;
 				}
 				else
 				{
 					isAssigned = true;
-					for (int i = 0; i < mResultLocalVarFieldCount; i++)
-						//if ((undefinedFieldFlags & (1LL << (fieldIdx + i))) != 0)
-						if (undefinedFieldFlags.IsSet(fieldIdx + i))
+					for (int i = 0; i < mResultLocalVarFieldCount; i++)		
+						if ((undefinedFieldFlags.Contains(fieldIdx + i)) && (undefinedFieldFlags.IsSet(fieldIdx + i)))
 							isAssigned = false;
 				}
 

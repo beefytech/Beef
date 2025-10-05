@@ -25,6 +25,7 @@ public:
 	BitSet(int numBits)
 	{
 		mNumBits = 0;
+		mInner = 0;
 		mBits = NULL;
 		this->Resize(numBits);
 	}
@@ -32,7 +33,8 @@ public:
 	BitSet(BitSet&& other)
 	{
 		mNumBits = other.mNumBits;
-		mBits = other.mBits;
+		mInner = other.mInner;
+		mBits = other.mBits;		
 		other.mNumBits = 0;
 		other.mBits = NULL;
 	}
@@ -40,6 +42,7 @@ public:
 	BitSet(const BitSet& other)
 	{
 		mNumBits = 0;
+		mInner = 0;
 		mBits = NULL;
 		*this = other;
 	}
@@ -204,6 +207,11 @@ public:
 				lengthLeft--;
 			}
 		}
+	}
+
+	bool Contains(int idx)
+	{
+		return ((uintptr)idx < (uintptr)mNumBits);
 	}
 
 	void Clear(int idx)
