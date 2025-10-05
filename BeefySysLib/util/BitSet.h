@@ -220,6 +220,13 @@ public:
 		this->mBits[idx / BF_BITSET_ELEM_BITCOUNT] &= ~((uintptr)1 << (idx % BF_BITSET_ELEM_BITCOUNT));
 	}
 
+	void SafeClear(int idx)
+	{
+		if ((uintptr)idx >= (uintptr)mNumBits)
+			return;
+		this->mBits[idx / BF_BITSET_ELEM_BITCOUNT] &= ~((uintptr)1 << (idx % BF_BITSET_ELEM_BITCOUNT));
+	}
+
 	bool IsClear()
 	{
 		int curNumInts = (mNumBits + BF_BITSET_ELEM_BITCOUNT - 1) / BF_BITSET_ELEM_BITCOUNT;

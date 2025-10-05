@@ -209,8 +209,7 @@ public:
 
 public:
 	BfLocalVariable()
-	{
-		mUnassignedFieldFlags = 0;
+	{		
 		mResolvedType = NULL;
 		mNameNode = NULL;
 		mLocalVarIdx = -1;

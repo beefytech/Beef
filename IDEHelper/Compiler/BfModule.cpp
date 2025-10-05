@@ -305,7 +305,7 @@ void BfMethodState::LocalDefined(BfLocalVariable* localVar, int fieldIdx, BfLoca
 		{
 			if (fieldIdx >= 0)
 			{				
-				localVar->mUnassignedFieldFlags.Clear(fieldIdx);
+				localVar->mUnassignedFieldFlags.SafeClear(fieldIdx);
 
 				if (localVar->mResolvedType->IsUnion())
 				{
@@ -19426,7 +19426,7 @@ void BfModule::EmitCtorBody(bool& skipBody)
 				auto thisVariable = GetThisVariable();
 				if (thisVariable != NULL)
 				{
-					thisVariable->mUnassignedFieldFlags = 0;
+					thisVariable->mUnassignedFieldFlags.Clear();
 					thisVariable->mAssignedKind = BfLocalVarAssignKind_Unconditional;
 				}
 			}
