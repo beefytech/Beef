@@ -28,6 +28,8 @@ namespace Tests
 				mA = a;
 				mB = b;
 			}
+
+			public int GetA() => mA;
 		}
 
 		struct StructC
@@ -194,6 +196,10 @@ namespace Tests
 			sb0 = .{ mA = 3, mB = 4 };
 			Test.Assert(sb0.mA == 3);
 			Test.Assert(sb0.mB == 4);
+
+			StructB sb2;
+			sb2.this(100, 200);
+			Test.Assert(sb2.GetA() == 100);
 
 			StructL sl = .(12, 23);
 			Test.Assert(sl.a == 12);

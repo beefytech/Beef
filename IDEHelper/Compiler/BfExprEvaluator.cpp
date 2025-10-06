@@ -19034,7 +19034,13 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 			bool hadError = false;
 			thisValue = LookupIdentifier(leftIdentifier, true, &hadError);
 
-			CheckResultForReading(thisValue);
+			if ((memberRefExpression->mMemberName != NULL) && (memberRefExpression->mMemberName->Equals("this")))
+			{
+				// We mark as assigned even if the call fails
+				MarkResultAssigned();
+			}
+			else
+				CheckResultForReading(thisValue);			
 			if (mPropDef != NULL)
 				thisValue = GetResult(true);
 
