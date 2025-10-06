@@ -4683,7 +4683,7 @@ bool BfModule::IsThreadLocal(BfFieldInstance * fieldInstance)
 	return false;
 }
 
-BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, BfExpression* initializer, BfFieldDef* fieldDef, BfType* fieldType, bool doStore)
+BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, BfExpression* initializer, BfFieldDef* fieldDef, BfType* fieldType, bool doStore, BfTypedValue receivingValue)
 {
 	if (fieldDef == NULL)
 		fieldDef = fieldInstance->GetFieldDef();
@@ -4694,9 +4694,7 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 		if (fieldDef == NULL)
 			return BfTypedValue();
 		initializer = fieldDef->GetInitializer();
-	}
-
-	BfTypedValue staticVarRef;
+	}	
 
 	BfTypedValue result;
 	if (initializer == NULL)
@@ -4772,8 +4770,12 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 		BfExprEvaluator exprEvaluator(this);
 		if (doStore)
 		{
-			staticVarRef = ReferenceStaticField(fieldInstance);
-			exprEvaluator.mReceivingValue = &staticVarRef;
+			if (!receivingValue)			
+			{
+				BF_ASSERT(fieldInstance->GetFieldDef()->mIsStatic);
+				receivingValue = ReferenceStaticField(fieldInstance);				
+			}
+			exprEvaluator.mReceivingValue = &receivingValue;
 		}
 
 		if (fieldType->IsDeleting())
@@ -4806,7 +4808,7 @@ BfTypedValue BfModule::GetFieldInitializerValue(BfFieldInstance* fieldInstance, 
 		{
 			result = LoadValue(result);
 			if (!result.mType->IsValuelessType())
-				mBfIRBuilder->CreateAlignedStore(result.mValue, staticVarRef.mValue, result.mType->mAlign);
+				mBfIRBuilder->CreateAlignedStore(result.mValue, receivingValue.mValue, result.mType->mAlign);
 		}
 	}
 
@@ -9460,6 +9462,8 @@ BfTypedValue BfModule::CreateValueFromExpression(BfExprEvaluator& exprEvaluator,
 
 	if (!exprEvaluator.mResult)
 	{
+		if ((exprEvaluator.mResult.mType != NULL) && ((flags & BfEvalExprFlags_AllowNoValue) != 0))
+			return exprEvaluator.mResult;
 		if ((flags & BfEvalExprFlags_InferReturnType) != 0)
 			return exprEvaluator.mResult;
 		if (!mCompiler->mPassInstance->HasFailed())
@@ -19161,7 +19165,11 @@ void BfModule::EmitCtorBody(bool& skipBody)
 					}
 
 					BfIRValue fieldAddr;
-					if ((!mCurTypeInstance->IsTypedPrimitive()) && (!fieldInst->mResolvedType->IsVar()))
+					if ((fieldInst->mResolvedType->IsVar()) || (fieldInst->mResolvedType->IsValuelessType()))
+					{
+						// Do nothing
+					}
+					else if (!mCurTypeInstance->IsTypedPrimitive())
 					{
 						fieldAddr = mBfIRBuilder->CreateInBoundsGEP(mCurMethodState->mLocals[0]->mValue, 0, fieldInst->mDataIdx /*, fieldDef->mName*/);
 					}
@@ -19169,16 +19177,21 @@ void BfModule::EmitCtorBody(bool& skipBody)
 					{
 						// Failed
 					}
-					auto assignValue = GetFieldInitializerValue(fieldInst);
 
-					if (mCurTypeInstance->IsUnion())
+					if ((fieldAddr) && (mCurTypeInstance->IsUnion()))
 					{
 						auto fieldPtrType = CreatePointerType(fieldInst->mResolvedType);
 						fieldAddr = mBfIRBuilder->CreateBitCast(fieldAddr, mBfIRBuilder->MapType(fieldPtrType));
 					}
 
-					if ((fieldAddr) && (assignValue))
-						mBfIRBuilder->CreateAlignedStore(assignValue.mValue, fieldAddr, fieldInst->mResolvedType->mAlign);
+					BfTypedValue receivingValue;
+					if (fieldAddr)
+						receivingValue = BfTypedValue(fieldAddr, fieldInst->mResolvedType, true);
+
+					auto assignValue = GetFieldInitializerValue(fieldInst, NULL, NULL, NULL, receivingValue, receivingValue);
+
+// 					if ((fieldAddr) && (assignValue))
+// 						mBfIRBuilder->CreateAlignedStore(assignValue.mValue, fieldAddr, fieldInst->mResolvedType->mAlign);
 				}
 			}
 

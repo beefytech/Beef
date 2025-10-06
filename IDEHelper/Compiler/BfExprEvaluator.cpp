@@ -7915,6 +7915,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 
 	Array<BfTypedValue> argCascades;
 	BfTypedValue target = inTarget;
+	bool allocatedTarget = false; // True if we did a static ctor invocation
 
 	if (!skipThis)
 	{
@@ -7959,6 +7960,34 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 						}
 					}
 				}
+			}
+
+			if ((!target) && (methodDef->mMethodType == BfMethodType_Ctor) && (methodInstance->GetOwner()->IsValueType()))
+			{				
+				auto resolvedTypeInstance = methodInstance->GetOwner();
+
+				BfTypedValue structInst;
+				mModule->PopulateType(resolvedTypeInstance);
+				if (!resolvedTypeInstance->IsValuelessType())
+				{
+					if ((mReceivingValue != NULL) && (mReceivingValue->mType == resolvedTypeInstance) && (mReceivingValue->IsAddr()))
+					{
+						structInst = *mReceivingValue;
+						mReceivingValue = NULL;
+					}
+					else
+					{
+						auto allocaInst = mModule->CreateAlloca(resolvedTypeInstance);
+						structInst = BfTypedValue(allocaInst, resolvedTypeInstance, true);
+					}
+					mResultIsTempComposite = true;
+				}
+				else
+				{
+					structInst = BfTypedValue(mModule->mBfIRBuilder->GetFakeVal(), resolvedTypeInstance, true);
+				}
+				target = structInst;
+				allocatedTarget = true;
 			}
 
 			if (!target)
@@ -9067,6 +9096,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 	auto func = moduleMethodInstance.mFunc;
 	BfTypedValue callResult = CreateCall(targetSrc, methodInstance, func, bypassVirtual, irArgs, NULL, physCallFlags, origTarget.mType);
 
+	if (allocatedTarget)	
+		callResult = target;	
+
 	prevIgnoreWrites.Restore();
 	if ((methodInstance->mMethodDef->mIsNoReturn) && ((mBfEvalExprFlags & BfEvalExprFlags_IsExpressionBody) != 0) &&
 		(mExpectingType != NULL) && (callResult.mType != mExpectingType))
@@ -10011,6 +10043,12 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 	methodMatcher.mAllowStatic = !target.mValue;
 	methodMatcher.mAllowNonStatic = !methodMatcher.mAllowStatic;
 	methodMatcher.mAutoFlushAmbiguityErrors = !wantsExtensionCheck;
+	if (methodName == "this")
+	{
+		methodMatcher.mMethodType = BfMethodType_Ctor;
+		methodMatcher.mMethodName = "__BfCtor";
+	}
+
 	if (allowImplicitThis)
 	{
 		if (mModule->mCurMethodState == NULL)
@@ -19109,7 +19147,7 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 					}
 				}
 				if (expr != NULL)
-					mResult = mModule->CreateValueFromExpression(expr, expectingTargetType, flags);
+					mResult = mModule->CreateValueFromExpression(expr, expectingTargetType, (BfEvalExprFlags)(flags | BfEvalExprFlags_AllowNoValue));
 			}
 		}
 
