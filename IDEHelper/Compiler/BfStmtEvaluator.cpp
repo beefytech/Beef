@@ -4769,6 +4769,7 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	auto startingLocalVarId = mCurMethodState->GetRootMethodState()->mCurLocalVarId;
 
 	bool prevHadFallthrough = false;
+	bool prevWasConstIgnore = false;
 
 	Dictionary<int64, _CaseState> handledCases;
 	HashSet<int64> condCases;
@@ -5190,9 +5191,10 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 
 		prevHadFallthrough = mCurMethodState->mDeferredLocalAssignData->mHadFallthrough;
+		prevWasConstIgnore = isConstIgnore;
 
 		blockIdx++;
-	}
+	}	
 
 	// Check for comprehensiveness
 	bool isComprehensive = true;
@@ -5353,7 +5355,11 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		}
 	}
 
-	if (!hadConstMatch)
+	// Even if we had a const match, if the final case had a fallthrough that was not const-ignored then we still need the default block
+	bool constSkipDefault = hadConstMatch &&
+		((!prevHadFallthrough) || (prevWasConstIgnore));
+
+	if (!constSkipDefault)
 		mBfIRBuilder->CreateBr(defaultBlock);
 
 	mBfIRBuilder->SetInsertPoint(switchBlock);
@@ -5366,8 +5372,8 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 
 	if (switchStmt->mDefaultCase != NULL)
 	{
-		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true, hadConstMatch);
-		SetAndRestoreValue<bool> prevInConstIgnore(mCurMethodState->mCurScope->mInConstIgnore, true, hadConstMatch);
+		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true, constSkipDefault);
+		SetAndRestoreValue<bool> prevInConstIgnore(mCurMethodState->mCurScope->mInConstIgnore, true, constSkipDefault);
 
 		mBfIRBuilder->AddBlock(defaultBlock);
 		mBfIRBuilder->SetInsertPoint(defaultBlock);
