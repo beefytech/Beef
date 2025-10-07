@@ -10162,6 +10162,7 @@ bool BeMCContext::DoLegalization()
 							if ((vregInfo != NULL) && (vregInfo->mIsExpr))
 							{
 								ReplaceWithNewVReg(inst->mArg1, instIdx, true);
+								isFinalRun = false;
 							}
 						}
 
