@@ -982,7 +982,7 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 		bool canUseMethod;
 		canUseMethod = (methodDef->mMethodType == BfMethodType_Normal) || (methodDef->mMethodType == BfMethodType_Mixin);
 
-		if ((methodDef->mMethodType == BfMethodType_Ctor) && (typeInst->IsValueType()))
+		if ((methodDef->mMethodType == BfMethodType_Ctor) && (typeInst->IsStruct()))
 		{
 			AddMethod(typeInst, methodDef, NULL, methodDef->GetMethodDeclaration(), "this", filter);
 			continue;

@@ -100,6 +100,15 @@ namespace IDE.Compiler
 		public bool mDoFuzzyAutoComplete;
 		public Stopwatch mStopwatch ~ delete _;
 		public ProfileInstance mProfileInstance ~ _.Dispose();
+
+		public PersistentTextPosition mCursorTextPosition ~ delete _;
+		public SourceEditWidgetContent mEditWidgetContent;
+
+		public ~this()
+		{
+			if (mCursorTextPosition != null)
+				mEditWidgetContent.PersistentTextPositions.Remove(mCursorTextPosition);
+		}
     }
 
     public class BfParser : ILeakIdentifiable

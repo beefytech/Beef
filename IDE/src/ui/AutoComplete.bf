@@ -1312,6 +1312,64 @@ namespace IDE.ui
 			}
         }
 
+		public class TextPos
+		{
+			public AutoComplete mAutoComplete;
+			public PersistentTextPosition mPersistentTextPosition ~ delete _;
+			public int32 mTextPos;
+
+			public this(AutoComplete autoComplete, int textPos)
+			{
+				mAutoComplete = autoComplete;
+				mTextPos = (.)textPos;
+
+				if (var ewc = mAutoComplete.mTargetEditWidget.Content as SourceEditWidgetContent)
+				{
+					if (ewc.HasTextCursorBefore(textPos))
+					{
+						mPersistentTextPosition = new PersistentTextPosition(mTextPos);
+						ewc.PersistentTextPositions.Add(mPersistentTextPosition);
+					}
+				}
+			}
+
+			public ~this()
+			{
+				if (mPersistentTextPosition != null)
+				{
+					if (var ewc = mAutoComplete.mTargetEditWidget.Content as SourceEditWidgetContent)
+					{
+						ewc.PersistentTextPositions.Remove(mPersistentTextPosition);
+					}
+				}
+			}
+
+			public int32 Value
+			{
+				get
+				{
+					if (mPersistentTextPosition != null)
+					{
+						int32 textPos = mPersistentTextPosition.mIndex;
+						if (textPos != mTextPos)
+						{
+							NOP!();
+						}
+						return textPos;
+					}
+					return mTextPos;
+				}
+			}
+
+			public static Self operator++(Self self)
+			{
+				self.mTextPos++;
+				if (self.mPersistentTextPosition != null)
+					self.mPersistentTextPosition.mIndex++;
+				return self;
+			}
+		}
+
 		public Stopwatch mStopwatch ~ delete _;
         public EditWidget mTargetEditWidget;
         public Event<Action> mOnAutoCompleteInserted ~ _.Dispose();
@@ -1321,7 +1379,7 @@ namespace IDE.ui
         public WidgetWindow mInvokeWindow;
         public InvokeWidget mInvokeWidget;
         public List<InvokeWidget> mInvokeStack = new List<InvokeWidget>() ~ delete _; // Previous invokes (from async)
-        public int32 mInsertStartIdx = -1;
+        public TextPos mInsertStartIdx ~ delete _;
         public int32 mInsertEndIdx = -1;
 		public String mInfoFilter ~ delete _;
         public List<int32> mInvokeSrcPositions ~ delete _;
@@ -1344,6 +1402,8 @@ namespace IDE.ui
 		float mWantY;
 
 		public bool HasInteracted;
+
+		public int32 InsertStartIdx => (mInsertStartIdx != null) ? mInsertStartIdx.Value : -1;
 
         public this(EditWidget targetEditWidget)
         {
@@ -1379,7 +1439,9 @@ namespace IDE.ui
 
             float x;
             float y;
-            mTargetEditWidget.Content.GetTextCoordAtLineChar(line, column, out x, out y);            
+            mTargetEditWidget.Content.GetTextCoordAtLineChar(line, column, out x, out y);
+
+			//Debug.WriteLine($"UpdateWindow GetTextCoordAtLineChar TextIdx:{textIdx} {x},{y}");
 
 			mTargetEditWidget.Content.GetTextCoordAtCursor(var cursorX, var cursorY);
 
@@ -1463,6 +1525,7 @@ namespace IDE.ui
 
             if (widgetWindow == null)
             {
+				//Debug.WriteLine($"UpdateWindow Create {screenX},{screenY}");
 
                 BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized | BFWindow.Flags.PopupPosition | BFWindow.Flags.NoActivate | BFWindow.Flags.NoMouseActivate | BFWindow.Flags.DestAlpha;
                 widgetWindow = new WidgetWindow(mTargetEditWidget.mWidgetWindow,
@@ -1474,6 +1537,8 @@ namespace IDE.ui
             }
             else 
             {
+				//Debug.WriteLine($"UpdateWindow Update {screenX},{screenY}");
+
                 if (widgetWindow.mRootWidget != rootWidget)
 				{
 					var prevRoot = widgetWindow.mRootWidget;
@@ -1528,7 +1593,7 @@ namespace IDE.ui
 					mInvokeWidget.ResizeContent(false);
                     UpdateWindow(ref mInvokeWindow, mInvokeWidget, mInvokeSrcPositions[0], (int32)mInvokeWidget.mWidth, (int32)mInvokeWidget.mHeight);                    
                     if (mListWindow != null)
-                        UpdateWindow(ref mListWindow, mAutoCompleteListWidget, mInsertStartIdx, mListWindow.mWindowWidth, mListWindow.mWindowHeight);
+                        UpdateWindow(ref mListWindow, mAutoCompleteListWidget, mInsertStartIdx.Value, mListWindow.mWindowWidth, mListWindow.mWindowHeight);
                     mIgnoreMove--;
                 }
             }
@@ -1613,59 +1678,30 @@ namespace IDE.ui
 
 		public void GetFilter(String outFilter)
 		{
-			if ((mInsertEndIdx != -1) && (mInsertStartIdx != -1))
+			if ((mInsertEndIdx != -1) && (mInsertStartIdx != null))
 			{
-				var length = Math.Abs(mInsertEndIdx - mInsertStartIdx);
+				var length = Math.Abs(mInsertEndIdx - mInsertStartIdx.Value);
 				if (length == 0)
 					return;
-				var start = Math.Min(mInsertStartIdx, mInsertEndIdx);
+				var start = Math.Min(mInsertStartIdx.Value, mInsertEndIdx);
 				mTargetEditWidget.Content.ExtractString(start, length, outFilter);
 			}
 		}
 
         public void GetAsyncTextPos()
         {
-			//Debug.WriteLine("GetAsyncTextPos start {0} {1}", mInsertStartIdx, mInsertEndIdx);
+			if (mInsertStartIdx == null)
+				return;
 
-            mInsertEndIdx = (int32)mTargetEditWidget.Content.mTextCursors.Front.mCursorTextPos;
-			/*while ((mInsertStartIdx != -1) && (mInsertStartIdx < mInsertEndIdx))
+            mInsertEndIdx = (int32)mTargetEditWidget.Content.CursorTextPos;
+			while ((mInsertStartIdx != null) && (mInsertStartIdx.Value < mInsertEndIdx))
 			{
-				char8 c = (char8)mTargetEditWidget.Content.mData.mText[mInsertStartIdx].mChar;
-				Debug.WriteLine("StartIdx: {}, EndIdx: {}, mData.mText[startIdx]: '{}'", mInsertStartIdx, mInsertEndIdx, c);
+				char8 c = (char8)mTargetEditWidget.Content.mData.mText[mInsertStartIdx.Value].mChar;
+				//Debug.WriteLine("StartIdx: {}, EndIdx: {}, mData.mText[startIdx]: '{}'", mInsertStartIdx, mInsertEndIdx, c);
 				if ((c != ' ') && (c != ',') && (c != '('))
 				    break;
 				mInsertStartIdx++;
-			}*/
-			mInsertStartIdx = mInsertEndIdx-1;
-			while ((mInsertStartIdx <= mInsertEndIdx) && (mInsertStartIdx > 0))
-			{
-				var data = mTargetEditWidget.Content.mData.mText[mInsertStartIdx - 1];
-				var type = (SourceElementType)data.mDisplayTypeId;
-				var char = data.mChar;
-
-				// Explicit delimeters
-				if ((char == '\n') || (char == '}') || (char == ';') || (char == '.'))
-					break;
-
-				if (char.IsWhiteSpace)
-					break;
-
-				if ((!char.IsLetterOrDigit) && (char != '_') && (type != .Keyword) && (!char.IsWhiteSpace) && (data.mChar != '@'))
-					break;
-
-				mInsertStartIdx--;
 			}
-
-            /*mInsertStartIdx = mInsertEndIdx;
-            while (mInsertStartIdx > 0)
-            {
-                char8 c = (char8)mTargetEditWidget.Content.mData.mText[mInsertStartIdx - 1].mChar;
-                if ((!c.IsLetterOrDigit) && (c != '_'))
-                {
-                    break;
-                }
-                mInsertStartIdx--;
-            }*/
 
             if ((mInvokeWidget != null) && (mInvokeSrcPositions != null) && (mInvokeWidget.mEntryList.Count > 0))
             {
@@ -1989,7 +2025,9 @@ namespace IDE.ui
 
         void UpdateData(String selectString, bool changedAfterInfo)
         {
-			if ((mInsertEndIdx != -1) && (mInsertEndIdx < mInsertStartIdx))
+			int32 insertStartIdx = InsertStartIdx;
+
+			if ((mInsertEndIdx != -1) && (mInsertEndIdx < insertStartIdx))
 			{
 				mPopulating = false;
 				Close();
@@ -2007,7 +2045,7 @@ namespace IDE.ui
                 else
 				{
 					curString = scope:: String();
-                    mTargetEditWidget.Content.ExtractString(mInsertStartIdx, mInsertEndIdx - mInsertStartIdx, curString);
+                    mTargetEditWidget.Content.ExtractString(insertStartIdx, mInsertEndIdx - insertStartIdx, curString);
 				}
                 
                 //if (selectString == null)
@@ -2308,9 +2346,11 @@ namespace IDE.ui
 				contentHeight += GS!(8);
 				mAutoCompleteListWidget.ResizeContent(windowWidth, contentHeight, wantScrollbar);
 				//mAutoCompleteListWidget.UpdateWidth();
-				if ((mInsertStartIdx != -1) && (!IsInPanel()))
+				if ((mInsertStartIdx != null) && (!IsInPanel()))
 				{
-					UpdateWindow(ref mListWindow, mAutoCompleteListWidget, mInsertStartIdx, windowWidth, windowHeight);
+					//Debug.WriteLine($"HandleAutoCompleteListWidget mInsertStartIdx:{mInsertStartIdx}");
+
+					UpdateWindow(ref mListWindow, mAutoCompleteListWidget, mInsertStartIdx.Value, windowWidth, windowHeight);
 					mAutoCompleteListWidget.mWantHeight = windowHeight;
 				}
 				mAutoCompleteListWidget.UpdateScrollbars();
@@ -2345,6 +2385,8 @@ namespace IDE.ui
 
         public void SetInfo(String info, bool clearList = true, int32 textOffset = 0, bool changedAfterInfo = false)
         {
+			//Debug.WriteLine($"AutoComplete TextOffset:{textOffset} SetInfo:{info}");
+
 			scope AutoBeefPerf("AutoComplete.SetInfo");
 
 			DeleteAndNullify!(mInfoFilter);
@@ -2355,7 +2397,7 @@ namespace IDE.ui
 			Debug.Assert(!mClosed);
 
 			mIsFixit = false;
-            mInsertStartIdx = -1;
+			DeleteAndNullify!(mInsertStartIdx);
             mInsertEndIdx = -1;
 			delete mInvokeSrcPositions;
             mInvokeSrcPositions = null;
@@ -2525,7 +2567,7 @@ namespace IDE.ui
 							String str = scope String();
 							//infoSections[0].ToString(str);
 							str.Append(StringView(entryDisplay, 0, spacePos));
-	                        mInsertStartIdx = int32.Parse(str).Get() + textOffset;
+	                        mInsertStartIdx = new .(this, int32.Parse(str).Get() + textOffset);
 							str.Clear();
 							str.Append(StringView(entryDisplay, spacePos + 1));
 							//infoSections[1].ToString(str);
@@ -2624,7 +2666,16 @@ namespace IDE.ui
                     oldInvokeWidget.Cleanup();
                 }*/
             }
-            
+
+			/*for (int i in mInsertStartIdx.Value..<mInsertEndIdx)
+			{
+				var data = mTargetEditWidget.Content.mData.mText[i];
+				var char = data.mChar;
+				if (char.IsWhiteSpace)
+					mInsertSpanSpaceCount++;
+			}
+			Debug.WriteLine($"AutoComplete SetInfo mInsertSpanSpaceCount:{mInsertSpanSpaceCount}");*/
+
             if ((changedAfterInfo) || (mTargetEditWidget.Content.mTextCursors.Count > 1))
             {
                 GetAsyncTextPos();                
@@ -2648,7 +2699,11 @@ namespace IDE.ui
 			UpdateData(selectString, changedAfterInfo);
 			mPopulating = false;
 
-			//Debug.WriteLine("SetInfo {0} {1}", mInsertStartIdx, mInsertEndIdx);
+			/*if ((mInsertStartIdx != null) && (mInsertEndIdx != -1))
+			{
+				var insertSpanStr = mTargetEditWidget.Content.ExtractString(mInsertStartIdx.Value, mInsertEndIdx - mInsertStartIdx.Value, .. scope .());
+				Debug.WriteLine("SetInfo {0}-{1} '{2}'", mInsertStartIdx.Value, mInsertEndIdx, insertSpanStr);
+			}*/
         }
 
         public bool HasSelection()
@@ -2779,7 +2834,10 @@ namespace IDE.ui
 
         public bool IsInsertEmpty()
         {
-            return mInsertStartIdx == mInsertEndIdx;
+			if (mInsertStartIdx == null)
+				return true;
+
+            return mInsertStartIdx.Value == mInsertEndIdx;
         }
 
 		void ApplyFixit(String data)

@@ -4190,6 +4190,31 @@ namespace Beefy.widgets
 			return (mCurrentTextCursor.mId == 0);
 		}
 
+		public bool HasTextCursorBeforePrimary()
+		{
+			if (mTextCursors.Count < 2)
+				return false;
+			return HasTextCursorBefore(CursorTextPos);
+		}
+
+		public bool HasTextCursorBefore(int cursorPos)
+		{
+			var curTextCursor = mCurrentTextCursor;
+			defer
+			{
+				SetTextCursor(curTextCursor);
+			}
+
+			for (var textCursor in mTextCursors)
+			{
+				SetTextCursor(textCursor);
+				if (CursorTextPos < cursorPos)
+					return true;
+			}
+			
+			return false;
+		}
+
 		public void SetTextCursor(int32 id)
 		{
 			if (id == 0)
