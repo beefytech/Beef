@@ -1985,7 +1985,7 @@ namespace IDE.ui
 					bool changedAfterInfo = (resolveParams != null) && (resolveParams.mTextVersion != Content.mData.mCurTextVersionId);
 
 					int32 textPosOffset = 0;
-					if (resolveParams.mCursorTextPosition != null)
+					if (resolveParams?.mCursorTextPosition != null)
 						textPosOffset = resolveParams.mCursorTextPosition.mIndex - resolveParams.mOverrideCursorPos;
 
 					var autoComplete = GetAutoComplete();
