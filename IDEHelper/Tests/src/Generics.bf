@@ -105,18 +105,18 @@ namespace Tests
 
 		struct Disposer<T>
 		{
-			static void UseDispose(IDisposable disp)
+			public static void UseDispose(IDisposable disp)
 			{
 
 			}
 
-			static void DoDisposeA(mut T val) where T : IDisposable
+			public static void DoDisposeA(mut T val) where T : IDisposable
 			{
 				val.Dispose();
 				UseDispose(val);
 			}
 
-			static void DoDisposeB(mut T val) where T : IDisposable
+			public static void DoDisposeB(mut T val) where T : IDisposable
 			{
 				val.Dispose();
 			}
@@ -446,6 +446,8 @@ namespace Tests
 		[Test]
 		public static void TestBasics()
 		{
+			StructA sa = default;
+
 			Alloc2<StructA>();
 			Alloc3<StructA*>();
 
@@ -463,6 +465,9 @@ namespace Tests
 			ClassB cb = scope .();
 			Test.Assert(LibA.LibA0.GetVal(ca) == 123);
 			Test.Assert(LibA.LibA0.GetVal(cb) == 234);
+
+			Disposer<StructA>.DoDisposeA(mut sa);
+			Disposer<ClassB>.DoDisposeA(cb);
 
 			LibA.LibA0.Dispose(ca);
 			LibA.LibA0.Dispose(cb);

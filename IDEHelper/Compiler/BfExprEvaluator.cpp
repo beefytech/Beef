@@ -10168,17 +10168,33 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 				auto genericParamInstance = mModule->GetGenericParamInstance(genericParamTarget, true);
 				_HandleGenericParamInstance(genericParamInstance);
 
-				// Check method generic constraints
-				if ((mModule->mCurMethodInstance != NULL) && (mModule->mCurMethodInstance->mIsUnspecialized) && (mModule->mCurMethodInstance->mMethodInfoEx != NULL))
+				if (genericParamTarget->mGenericParamKind == BfGenericParamKind_Type)
 				{
-					for (int genericParamIdx = (int)mModule->mCurMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
-						genericParamIdx < mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+					BfMethodInstance* unspecializedMethodInstance = NULL;
+					if (mModule->mCurMethodInstance != NULL)
 					{
-						auto genericParam = mModule->mCurMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
-						if (genericParam->mExternType == lookupType)
-							_HandleGenericParamInstance(genericParam);
+						if (mModule->mCurMethodInstance->mIsUnspecialized)
+						{
+							unspecializedMethodInstance = mModule->mCurMethodInstance;
+						}
+						else if ((methodMatcher.mBestMethodDef == NULL) && (mModule->mCurMethodInstance->IsSpecializedGenericMethod()))
+						{
+							unspecializedMethodInstance = mModule->GetUnspecializedMethodInstance(mModule->mCurMethodInstance, true);
+						}
 					}
-				}
+
+					// Check method generic constraints
+					if ((unspecializedMethodInstance != NULL) && (unspecializedMethodInstance->mMethodInfoEx != NULL))
+					{
+						for (int genericParamIdx = (int)unspecializedMethodInstance->mMethodInfoEx->mMethodGenericArguments.size();
+							genericParamIdx < unspecializedMethodInstance->mMethodInfoEx->mGenericParams.size(); genericParamIdx++)
+						{
+							auto genericParam = unspecializedMethodInstance->mMethodInfoEx->mGenericParams[genericParamIdx];
+							if (genericParam->mExternType == lookupType)
+								_HandleGenericParamInstance(genericParam);
+						}
+					}
+				}				
 			}
 		}
 
