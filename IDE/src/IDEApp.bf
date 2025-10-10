@@ -4241,7 +4241,7 @@ namespace IDE
 			if ((activeDoumentPanel == null) && (mActiveDocumentsTabbedView != null))
 			{
 				var activeTab = mActiveDocumentsTabbedView.GetActiveTab();
-				activeTab.Activate();
+				activeTab?.Activate();
 				return;
 			}
 
@@ -10678,6 +10678,8 @@ namespace IDE
 			return passInstance;
 		}
 
+		[CLink] static extern char8* getenv(char8*);
+
 		public bool DoResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String error, String result)
 		{
 			int startIdx = result.Length;
@@ -10776,6 +10778,20 @@ namespace IDE
 										cmdErr = "Invalid number of arguments";
 								case "Var":
 									break ReplaceBlock;
+								case "Env":
+									if (args.Count == 1)
+									{
+										let env = getenv(args[0]);
+										if (env == null)
+											cmdErr = scope:ReplaceBlock $"No such enviorment variable: {args[0]}";
+										else
+										{
+											newString = scope:ReplaceBlock .();
+											newString.Append(env);
+										}
+									}
+									else
+										cmdErr = "Invalid number of arguments";
 								case "Arguments",
 									"BuildDir",
 									"LinkFlags",
@@ -11005,6 +11021,15 @@ namespace IDE
 									}
 								case "BeefPath":
 									newString = gApp.mInstallDir;
+								case "TargetTriple":
+									if (workspaceOptions.mTargetTriple.IsWhiteSpace)
+									{
+										newString = scope:ReplaceBlock String();
+										if (!Workspace.PlatformType.GetTargetTripleByName(mPlatformName, workspaceOptions.mToolsetType, newString))
+											newString.Append(mPlatformName);
+									}
+									else
+										newString = workspaceOptions.mTargetTriple;
 								default:
 									// Check if any custom properties match the string.
 									if (CustomBuildProperties.Contains(replaceStr))
@@ -11200,11 +11225,17 @@ namespace IDE
 			case .SSE41:
 				clangOptions.Append("-msse4.1 ");
 				break;
+			case .SSE42:
+				clangOptions.Append("-msse4.2 ");
+				break;
 			case .AVX:
 				clangOptions.Append("-mavx ");
 				break;
 			case .AVX2:
 				clangOptions.Append("-mavx2 ");
+				break;
+			case .AVX512:
+				clangOptions.Append("-mavx512 ");
 				break;
 			default:
 			}

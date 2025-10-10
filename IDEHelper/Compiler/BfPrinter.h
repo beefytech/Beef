@@ -131,7 +131,7 @@ public:
 	void VisitChildNextLine(BfAstNode* node);
 	void DoBlockOpen(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState);
 	void DoBlockClose(BfAstNode* prevNode, BfTokenNode* blockOpen, BfTokenNode* blockClose, bool queue, BlockState& blockState);
-	void HandleBlock(BfBlock* block, bool isCompact = false);
+	void HandleBlock(BfBlock* block, bool isCompact = false, StringImpl* endString = NULL);
 	void QueueMethodDeclaration(BfMethodDeclaration* methodDeclaration);
 	int CalcOrigLineSpacing(BfAstNode* bfAstNode, int* lineStartIdx);
 	void WriteIgnoredNode(BfAstNode* node);

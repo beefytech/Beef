@@ -3988,7 +3988,7 @@ namespace IDE.ui
 					doAutocomplete = true;
 				}
 
-				if ((mAutoComplete != null) && (!doAutocomplete) && (mAutoComplete.mInsertStartIdx == mAutoComplete.mInsertEndIdx) && (!keyChar.IsWhiteSpace))
+				if ((mAutoComplete != null) && (!doAutocomplete) && (mAutoComplete.IsInsertEmpty()) && (!keyChar.IsWhiteSpace))
 				{
 					// Handle tag insertion even if we have no text
 					var insertText = mAutoComplete.GetInsertText(.. scope .());
@@ -4016,7 +4016,7 @@ namespace IDE.ui
                     doAutocomplete = false;
                 }*/
 
-				if ((keyChar == '[') && (mAutoComplete.mInsertStartIdx >= 0) && (mData.mText[mAutoComplete.mInsertStartIdx].mChar != '.'))
+				if ((keyChar == '[') && (mAutoComplete.mInsertStartIdx.Value >= 0) && (mData.mText[mAutoComplete.mInsertStartIdx.Value].mChar != '.'))
 				{
 					// Don't autocomplete for ".[" (member access attributes)
 					doAutocomplete = false;

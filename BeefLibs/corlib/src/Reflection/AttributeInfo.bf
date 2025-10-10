@@ -1,5 +1,6 @@
 using System.Collections;
 using System.Threading;
+using System.Diagnostics;
 
 namespace System.Reflection
 {
@@ -40,7 +41,10 @@ namespace System.Reflection
 
 		public static Result<void> GetCustomAttribute(void* inAttrData, Type attributeType, Object targetAttr)
 		{
+			void* superTargetData = null;
+
 			TypeId findTypeId = attributeType.[Friend]mTypeId;
+			var findType = Type.[Friend]GetType(findTypeId);
 
 			void* data = inAttrData;
 			data++;
@@ -56,8 +60,13 @@ namespace System.Reflection
 			    var typeId = Decode!<TypeId>(data);
 			    if (typeId != findTypeId)
 			    {
-			        data = endPtr;
-			        continue;
+					var type = Type.[Friend]GetType(typeId);
+					if (!type.IsSubtypeOf(findType))
+					{
+				        data = endPtr;
+				        continue;
+					}
+					superTargetData = scope:: uint8[type.InstanceSize]*;
 			    }
 			    
 			    var methodIdx = Decode!<uint16>(data);
@@ -130,8 +139,20 @@ namespace System.Reflection
 					argIdx++;
 			    }
 				
-				if (methodInfo.Invoke(targetAttr, params args) case .Ok(var val))
+				if (methodInfo.Invoke((superTargetData != null) ? superTargetData : targetAttr, params args) case .Ok(var val))
+				{
 					val.Dispose();
+					if (superTargetData != null)
+					{
+						var targetAttrType = targetAttr.[Friend]RawGetType();
+						if (!targetAttrType.IsBoxed)
+							return .Err;
+						void* destDataPtr = (uint8*)Internal.UnsafeCastToPtr(targetAttr) + targetAttrType.[Friend]mMemberDataOffset;
+						if (targetAttrType.IsBoxedStructPtr)
+							destDataPtr = *(void**)destDataPtr;
+						Internal.MemCpy(destDataPtr, superTargetData, targetAttrType.InstanceSize - targetAttrType.[Friend]mMemberDataOffset);
+					}
+				}
 				else
 					return .Err;
 			    return .Ok;

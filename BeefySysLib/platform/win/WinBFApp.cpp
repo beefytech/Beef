@@ -1047,7 +1047,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 
 				if (!mIsMenuKeyHandled)
 				{
-					if ((CheckKeyReleases(true)) && (mKeyDownFunc(this, keyCode, (lParam & 0x7FFF) != 0)))
+					if ((CheckKeyReleases(true)) && (mKeyDownFunc(this, keyCode, (lParam & 0x40000000) != 0)))
 					{
 						mIsMenuKeyHandled = true;
 						doResult = true;

@@ -208,6 +208,38 @@ namespace System.Net
 			public SockAddr* ai_next;
 		}
 
+		public struct SockAddrInfo : IDisposable
+		{
+			public AddrInfo* addrInfo;
+
+			public int32 AddressFamily => addrInfo.ai_family;
+			public uint16 Port => ((SockAddr_in*)addrInfo.ai_addr).sin_port;
+			public IPv4Address IPv4
+			{
+				get
+				{
+					Debug.Assert(AddressFamily == AF_INET);
+					return ((SockAddr_in*)addrInfo.ai_addr).sin_addr;
+				}
+				
+			}
+			public IPv6Address IPv6
+			{
+				get
+				{
+					Debug.Assert(AddressFamily == AF_INET6);
+					return ((SockAddr_in6*)addrInfo.ai_addr).sin6_addr;
+				}
+			}
+
+			public void Dispose() mut
+			{
+				if (addrInfo != null)
+					freeaddrinfo(addrInfo);
+				addrInfo = null;
+			}
+		}
+
 		public const HSocket INVALID_SOCKET = (HSocket)-1;
 		public const int32 SOCKET_ERROR = -1;
 		public const int AF_INET = 2;
@@ -307,8 +339,19 @@ namespace System.Net
 		[CLink, CallingConvention(.Stdcall)]
 		static extern HostEnt* gethostbyname(char8* name);
 
+#if BF_PLATFORM_WINDOWS
+		[Import("Ws2_32.lib"), CLink, CallingConvention(.Stdcall)]
+		static extern int32 getaddrinfo(char8* pNodeName, char8* pServiceName, AddrInfo* pHints, AddrInfo** ppResult);
+
+		[Import("Ws2_32.lib"), CLink, CallingConvention(.Stdcall)]
+		static extern void freeaddrinfo(AddrInfo* pAddrInfo);
+#else
 		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 getaddrinfo(char8* pNodeName, char8* pServiceName, AddrInfo* pHints, AddrInfo** ppResult);
+
+		[CLink, CallingConvention(.Stdcall)]
+		static extern void freeaddrinfo(AddrInfo* pAddrInfo);
+#endif
 
 		[CLink, CallingConvention(.Stdcall)]
 		static extern HSocket socket(int32 af, int32 type, int32 protocol);
@@ -542,28 +585,45 @@ namespace System.Net
 			return .Ok;
 		}
 
-		public Result<void> Connect(StringView addr, int32 port, out SockAddr* sockAddr, out int addrFamily)
+		public Result<void> ConnectEx(StringView addr, int32 port, out SockAddrInfo sockAddrInfo)
 		{
-			sockAddr = null;
-			addrFamily = default;
+			sockAddrInfo = default;
 
 			AddrInfo hints = default;
 			hints.ai_socktype = SOCK_STREAM;
 			hints.ai_protocol = IPPROTO_TCP;
 
 			AddrInfo* addrInfo = null;
+			defer
+			{
+				if (addrInfo != null)
+					freeaddrinfo(addrInfo);
+			}
+
 			if (getaddrinfo(addr.Ptr, null, &hints, &addrInfo) < 0)
 				return .Err;
-
-			sockAddr = addrInfo.ai_addr;
-			addrFamily = addrInfo.ai_family;
 
 			mHandle = socket(addrInfo.ai_family, SOCK_STREAM, IPPROTO_TCP);
 			if (mHandle == INVALID_SOCKET)
 				return .Err;
 
-			if (connect(mHandle, sockAddr, (.)addrInfo.ai_addrlen) == SOCKET_ERROR)
+			if (addrInfo.ai_family == AF_INET)
+			{
+				SockAddr_in* sockAddrIn = (.)addrInfo.ai_addr;
+				sockAddrIn.sin_port = (uint16)htons((int16)port);
+			}
+			else if (addrInfo.ai_family == AF_INET6)
+			{
+				SockAddr_in6* sockAddrIn = (.)addrInfo.ai_addr;
+				sockAddrIn.sin6_port = (uint16)htons((int16)port);
+			}
+
+			if (connect(mHandle, addrInfo.ai_addr, (.)addrInfo.ai_addrlen) == SOCKET_ERROR)
+			{
+#unwarn
+				int32 err = GetLastError();
 				return .Err;
+			}
 
 			if (mHandle == INVALID_SOCKET)
 			{
@@ -574,6 +634,9 @@ namespace System.Net
 
 			mIsConnected = true;
 			RehupSettings();
+
+			sockAddrInfo.[Friend]addrInfo = addrInfo;
+			addrInfo = null;
 
 			return .Ok;
 		}

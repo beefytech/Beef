@@ -4720,7 +4720,9 @@ BF_EXPORT void BF_CALLTYPE BfProject_SetOptions(BfProject* bfProject, int target
 	codeGenOptions.mMergeFunctions = (flags & BfProjectFlags_MergeFunctions) != 0;
 	codeGenOptions.mLoadCombine = (flags & BfProjectFlags_CombineLoads) != 0;
 	codeGenOptions.mLoopVectorize = (flags & BfProjectFlags_VectorizeLoops) != 0;
-	codeGenOptions.mSLPVectorize = (flags & BfProjectFlags_VectorizeSLP) != 0;
+	codeGenOptions.mSLPVectorize = (flags & BfProjectFlags_VectorizeSLP) != 0;	
+	codeGenOptions.mSIMDSetting = BfSIMDSetting_NotSet;
+
 	if ((flags & BfProjectFlags_AsmOutput) != 0)
 	{
 		static bool setLLVMAsmKind = false;

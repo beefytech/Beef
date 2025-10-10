@@ -77,30 +77,11 @@ class GitManager
 			ProcessStartInfo psi = scope ProcessStartInfo();
 
 			String gitPath = scope .();
+			GitManager.GetGitPath(gitPath);
+
 #if BF_PLATFORM_WINDOWS
-			Path.GetAbsolutePath(gApp.mInstallDir, "git/cmd/git.exe", gitPath);
-			if (!File.Exists(gitPath))
-				gitPath.Clear();
-
-			if (gitPath.IsEmpty)
-			{
-				Path.GetAbsolutePath(gApp.mInstallDir, "../../bin/git/cmd/git.exe", gitPath);
-				if (!File.Exists(gitPath))
-					gitPath.Clear();
-			}
-
-			if (gitPath.IsEmpty)
-			{
-				Path.GetAbsolutePath(gApp.mInstallDir, "../../../bin/git/cmd/git.exe", gitPath);
-				if (!File.Exists(gitPath))
-					gitPath.Clear();
-			}
-
 			psi.UseShellExecute = false;
 #endif
-			if (gitPath.IsEmpty)
-				gitPath.Set("git");
-
 			psi.SetFileName(gitPath);
 			psi.SetArguments(mArgs);
 			if (mPath != null)
@@ -315,6 +296,11 @@ class GitManager
 		return StartGit(scope $"clone -v --progress --recurse-submodules {url} \"{path}\"");
 	}
 
+	public GitInstance CloneShallow(StringView url, StringView path, StringView hash)
+	{
+		return StartGit(scope $"clone -v --progress --recurse-submodules --shallow-submodules --revision={hash} --depth 1 {url} \"{path}\"");
+	}
+
 	public GitInstance Checkout(StringView path, StringView hash)
 	{
 		return StartGit(scope $"checkout -b BeefManaged {hash}", path);
@@ -343,5 +329,75 @@ class GitManager
 				gitInstance.ReleaseRef();
 			}
 		}
+	}
+
+	public static void GetGitPath(String gitPath)
+	{
+#if BF_PLATFORM_WINDOWS
+		Path.GetAbsolutePath(gApp.mInstallDir, "git/cmd/git.exe", gitPath);
+		if (!File.Exists(gitPath))
+			gitPath.Clear();
+
+		if (gitPath.IsEmpty)
+		{
+			Path.GetAbsolutePath(gApp.mInstallDir, "../../bin/git/cmd/git.exe", gitPath);
+			if (!File.Exists(gitPath))
+				gitPath.Clear();
+		}
+
+		if (gitPath.IsEmpty)
+		{
+			Path.GetAbsolutePath(gApp.mInstallDir, "../../../bin/git/cmd/git.exe", gitPath);
+			if (!File.Exists(gitPath))
+				gitPath.Clear();
+		}
+#endif
+
+		if (gitPath.IsEmpty)
+			gitPath.Set("git");
+	}
+
+	public static Result<Version> GetGitVersion()
+	{
+		static Version cache = default;
+		if (cache.Major != 0)
+			return cache;
+
+		let psi = scope ProcessStartInfo();
+
+		let gitPath = GetGitPath(.. scope .());
+		
+#if BF_PLATFORM_WINDOWS
+		psi.UseShellExecute = false;
+#endif
+		psi.SetFileName(gitPath);
+		psi.SetArguments("--version");
+		psi.RedirectStandardOutput = true;
+		psi.CreateNoWindow = true;
+
+		let process = scope SpawnedProcess();
+		if (process.Start(psi) case .Err)
+			return .Err;
+
+		let fs = scope FileStream();
+		let sr = scope StreamReader(fs);
+		process.AttachStandardOutput(fs);
+		process.WaitFor();
+
+		let output = scope String();
+		sr.ReadToEnd(output);
+
+		let prefix = "git version ";
+		int versionIdx = output.IndexOf(prefix);
+		if (versionIdx == -1)
+			return .Err;
+		output.Remove(0, versionIdx + prefix.Length);
+
+		var parts = output.Split('.');
+		let major = uint32.Parse(Try!(parts.GetNext())).GetValueOrDefault();
+		let minor = uint32.Parse(Try!(parts.GetNext())).GetValueOrDefault();
+		let build = uint32.Parse(Try!(parts.GetNext())).GetValueOrDefault();
+
+		return .Ok(cache = .(major, minor, build));
 	}
 }

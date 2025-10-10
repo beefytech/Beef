@@ -7183,7 +7183,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				if (endAddr != 0)
 				{
 					CE_CHECKADDR(endAddr, ptrSize);
-					CeSetAddrVal(endPtr, (uint8*)endPtr - memStart, ptrSize);
+					CeSetAddrVal(endPtr, (uint8*)*endPtr - memStart, ptrSize);
 				}
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Double_Ftoa)

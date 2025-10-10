@@ -175,7 +175,7 @@ namespace Tests
 			ee = default;
 			switch (ee)
 			{
-			case default:
+			case (.)default:
 				Test.Assert(true);
 			default:
 				Test.Assert(false);
@@ -184,7 +184,7 @@ namespace Tests
 			ee = .B(123);
 			switch (ee)
 			{
-			case default:
+			case (.)default:
 				Test.Assert(false);
 			default:
 				Test.Assert(true);

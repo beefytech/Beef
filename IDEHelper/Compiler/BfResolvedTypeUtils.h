@@ -2725,7 +2725,8 @@ public:
 		BfHashFlag_AllowRef = 1,
 		BfHashFlag_AllowGenericParamConstValue = 2,
 		BfHashFlag_AllowDotDotDot = 4,
-		BfHashFlag_DisallowPointer = 8
+		BfHashFlag_DisallowPointer = 8,
+		BfHashFlag_DisallowUnknownSizedArray = 0x10,
 	};
 
 	struct BfExprResult

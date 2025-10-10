@@ -981,6 +981,13 @@ void BfAutoComplete::AddTypeMembers(BfTypeInstance* typeInst, bool addStatic, bo
 
 		bool canUseMethod;
 		canUseMethod = (methodDef->mMethodType == BfMethodType_Normal) || (methodDef->mMethodType == BfMethodType_Mixin);
+
+		if ((methodDef->mMethodType == BfMethodType_Ctor) && (typeInst->IsStruct()))
+		{
+			AddMethod(typeInst, methodDef, NULL, methodDef->GetMethodDeclaration(), "this", filter);
+			continue;
+		}
+
 		if (isInterface)
 		{
 			// Always allow
@@ -1362,8 +1369,10 @@ void BfAutoComplete::AddExtensionMethods(BfTypeInstance* targetType, BfTypeInsta
 				auto genericParamType = (BfGenericParamType*)thisType;
 				if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
 				{
+					BfTypeVector genericTypeVector;
+					genericTypeVector.Add(targetType);
 					auto& genericParams = methodInstance->mMethodInfoEx->mGenericParams;
-					if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), targetType, NULL, genericParams[genericParamType->mGenericParamIdx], NULL, NULL))
+					if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), targetType, NULL, genericParams[genericParamType->mGenericParamIdx], &genericTypeVector, NULL))
 						continue;
 					paramValidated = true;
 				}

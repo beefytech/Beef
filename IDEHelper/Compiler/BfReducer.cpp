@@ -3094,19 +3094,14 @@ BfExpression* BfReducer::CreateExpression(BfAstNode* node, CreateExprFlags creat
 				{
 					if (nextToken->mToken == BfToken_This)
 					{
-						int outNodeIdx = -1;
-						bool isGenericType;
-						bool isTypeRef = ((IsTypeReference(exprLeft, BfToken_This, -1, &outNodeIdx, NULL, &isGenericType)) &&
-							(outNodeIdx != -1));
-
-						if (isTypeRef)
-						{
-							auto invocationExpr = CreateObjectCreateExpression(NULL, exprLeft);
-							if (invocationExpr == NULL)
-								return exprLeft;
-							exprLeft = invocationExpr;
-							continue;
-						}
+						exprLeft = CreateMemberReferenceExpression(exprLeft);
+						if (exprLeft == NULL)
+							return NULL;
+						auto invocationExpr = CreateInvocationExpression(exprLeft);
+						if (invocationExpr == NULL)
+							return exprLeft;
+						exprLeft = invocationExpr;
+						continue;
 					}
 				}
 			}
@@ -5083,6 +5078,12 @@ BfTypeReference* BfReducer::DoCreateTypeRef(BfAstNode* firstNode, CreateTypeRefF
 	{
 		if (auto memberReferenceExpression = BfNodeDynCast<BfMemberReferenceExpression>(firstNode))
 		{
+			if (memberReferenceExpression->mTarget == NULL)
+			{
+				Fail("Invalid type reference", memberReferenceExpression);
+				return NULL;
+			}
+
 			SetAndRestoreValue<bool> prevSkipCurrentNodeAssert(mSkipCurrentNodeAssert, true);
 
 			auto qualifiedTypeRef = mAlloc->Alloc<BfQualifiedTypeReference>();

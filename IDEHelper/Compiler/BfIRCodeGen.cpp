@@ -929,6 +929,8 @@ void BfIRCodeGen::ProcessBfIRData(const BfSizedArray<uint8>& buffer)
 		HandleNextCmd();
 	}
 
+	ApplySimdFeatures();
+
 	BF_ASSERT((mFailed) || (mStream->GetReadPos() == buffer.mSize));
 }
 
@@ -2002,6 +2004,8 @@ void BfIRCodeGen::InitTarget()
 		featuresStr = "+sse4";
 	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE41)
 		featuresStr = "+sse4.1";
+	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE42)
+		featuresStr = "+sse4.2";
 	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_AVX)
 		featuresStr = "+avx";
 	else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_AVX2)
@@ -3444,6 +3448,11 @@ void BfIRCodeGen::HandleNextCmd()
 				func = llvm::Function::Create((llvm::FunctionType*)type->mLLVMType, LLVMMapLinkageType(linkageType), name.c_str(), mLLVMModule);
 			result.mValue = func;
 			SetResult(curId, result);
+
+			func->addFnAttr("no-trapping-math", "true");
+			func->addFnAttr("min-legal-vector-width", "0");
+			func->addFnAttr("tune-cpu", "generic");
+			mFunctionsUsingSimd[func] = mCodeGenOptions.mSIMDSetting;
 		}
 		break;
 	case BfIRCmd_SetFunctionName:
@@ -3861,17 +3870,17 @@ void BfIRCodeGen::HandleNextCmd()
 							if (elemCount == 4)
 							{
 								funcName = isMin ? "llvm.x86.sse.min.ps" : "llvm.x86.sse.max.ps";
-								SetActiveFunctionSimdType(BfIRSimdType_SSE);
+								SetActiveFunctionSimdType(BfSIMDSetting_SSE);
 							}
 							else if (elemCount == 8)
 							{
 								funcName = isMin ? "llvm.x86.avx.min.ps.256" : "llvm.x86.avx.max.ps.256";
-								SetActiveFunctionSimdType(BfIRSimdType_AVX2);
+								SetActiveFunctionSimdType(BfSIMDSetting_AVX2);
 							}
 							else if (elemCount == 16)
 							{
 								funcName = isMin ? "llvm.x86.avx512.min.ps.512" : "llvm.x86.avx512.max.ps.512";
-								SetActiveFunctionSimdType(BfIRSimdType_AVX512);
+								SetActiveFunctionSimdType(BfSIMDSetting_AVX512);
 							}
 							else
 								FatalError("Intrinsic argument error");
@@ -3881,17 +3890,17 @@ void BfIRCodeGen::HandleNextCmd()
 							if (elemCount == 2)
 							{
 								funcName = isMin ? "llvm.x86.sse.min.pd" : "llvm.x86.sse.max.pd";
-								SetActiveFunctionSimdType(BfIRSimdType_SSE);
+								SetActiveFunctionSimdType(BfSIMDSetting_SSE);
 							}
 							else if (elemCount == 4)
 							{
 								funcName = isMin ? "llvm.x86.avx.min.pd.256" : "llvm.x86.avx.max.pd.256";
-								SetActiveFunctionSimdType(BfIRSimdType_AVX2);
+								SetActiveFunctionSimdType(BfSIMDSetting_AVX2);
 							}
 							else if (elemCount == 8)
 							{
 								funcName = isMin ? "llvm.x86.avx512.min.pd.512" : "llvm.x86.avx512.max.pd.512";
-								SetActiveFunctionSimdType(BfIRSimdType_AVX512);
+								SetActiveFunctionSimdType(BfSIMDSetting_AVX512);
 							}
 							else
 								FatalError("Intrinsic argument error");
@@ -5627,53 +5636,63 @@ void BfIRCodeGen::SetConfigConst(int idx, int value)
 	mConfigConsts64.Add(constVal);
 }
 
-void BfIRCodeGen::SetActiveFunctionSimdType(BfIRSimdType type)
+void BfIRCodeGen::SetActiveFunctionSimdType(BfSIMDSetting type)
 {
-	BfIRSimdType currentType;
+	BfSIMDSetting currentType;
 	bool contains = mFunctionsUsingSimd.TryGetValue(mActiveFunction, &currentType);
 
 	if (!contains || type > currentType)
 		mFunctionsUsingSimd[mActiveFunction] = type;
 }
 
-String BfIRCodeGen::GetSimdTypeString(BfIRSimdType type)
+String BfIRCodeGen::GetSimdTypeString(BfSIMDSetting type)
 {
 	switch (type)
 	{
-	case BfIRSimdType_SSE:
-		return "+sse,+mmx";
-	case BfIRSimdType_SSE2:
-		return "+sse2,+sse,+mmx";
-	case BfIRSimdType_AVX:
-		return "+avx,+sse4.2,+sse4.1,+sse3,+sse2,+sse,+mmx";
-	case BfIRSimdType_AVX2:
-		return "+avx2,+avx,+sse4.2,+sse4.1,+sse3,+sse2,+sse,+mmx";
-	case BfIRSimdType_AVX512:
-		return "+avx512f,+avx2,+avx,+sse4.2,+sse4.1,+sse3,+sse2,+sse,+mmx";
+	case BfSIMDSetting_SSE:
+		return "+cmov,+cx8,+fxsr,+mmx,+sse,+x87";
+	case BfSIMDSetting_SSE2:
+		return "+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87";
+	case BfSIMDSetting_SSE4:
+		return "+cmov,+crc32,+cx16,+cx8,+fxsr,+mmx,+popcnt,+sahf,+sse,+sse2,+sse3,+ssse3,+x87";
+	case BfSIMDSetting_SSE41:
+		return "+cmov,+crc32,+cx16,+cx8,+fxsr,+mmx,+popcnt,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87";
+	case BfSIMDSetting_SSE42:
+		return "+cmov,+crc32,+cx16,+cx8,+fxsr,+mmx,+popcnt,+sahf,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87";
+	case BfSIMDSetting_AVX:
+		return "+avx,+bmi,+bmi2,+cmov,+crc32,+cx16,+cx8,+f16c,+fma,+fxsr,+lzcnt,+mmx,+movbe,+popcnt,+sahf,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave";
+	case BfSIMDSetting_AVX2:
+		return "+avx,+avx2,+bmi,+bmi2,+cmov,+crc32,+cx16,+cx8,+f16c,+fma,+fxsr,+lzcnt,+mmx,+movbe,+popcnt,+sahf,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave";
+	case BfSIMDSetting_AVX512:
+		return "+avx,+avx2,+avx512bw,+avx512cd,+avx512dq,+avx512f,+avx512vl,+bmi,+bmi2,+cmov,+crc32,+cx16,+cx8,+evex512,+f16c,+fma,+fxsr,+lzcnt,+mmx,+movbe,+popcnt,+sahf,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave";
 	default:
 		return "";
 	}
 }
 
-BfIRSimdType BfIRCodeGen::GetSimdTypeFromFunction(llvm::Function* function)
+BfSIMDSetting BfIRCodeGen::GetSimdTypeFromFunction(llvm::Function* function)
 {
 	if (function->hasFnAttribute("target-features"))
 	{
 		auto str = function->getFnAttribute("target-features").getValueAsString();
 
 		if (str.contains("+avx512f"))
-			return BfIRSimdType_AVX512;
+			return BfSIMDSetting_AVX512;
 		if (str.contains("+avx2"))
-			return BfIRSimdType_AVX2;
+			return BfSIMDSetting_AVX2;
 		if (str.contains("+avx"))
-			return BfIRSimdType_AVX;
+			return BfSIMDSetting_AVX;
+		if (str.contains("+sse4.1"))
+			return BfSIMDSetting_SSE41;
+		if (str.contains("+sse4.2"))
+			return BfSIMDSetting_SSE42;
 		if (str.contains("+sse2"))
-			return BfIRSimdType_SSE2;
+			return BfSIMDSetting_SSE2;
 		if (str.contains("+sse"))
-			return BfIRSimdType_SSE;
+			return BfSIMDSetting_SSE;
 	}
 
-	return BfIRSimdType_None;
+	return BfSIMDSetting_None;
 }
 
 BfIRTypedValue BfIRCodeGen::GetTypedValue(int id)
@@ -6122,8 +6141,6 @@ void BfIRCodeGen::RunOptimizationPipeline(const llvm::Triple& targetTriple)
 
 bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName)
 {
-	ApplySimdFeatures();
-
 	// 	{
 	// 		PassManagerBuilderWrapper pmBuilder;
 	//
@@ -6248,11 +6265,12 @@ bool BfIRCodeGen::WriteIR(const StringImpl& outFileName, StringImpl& error)
 	}
 	mLLVMModule->print(outStream, NULL);
 	return true;
+
 }
 
 void BfIRCodeGen::ApplySimdFeatures()
 {
-	Array<std::tuple<llvm::Function*, BfIRSimdType>> functionsToProcess;
+	Array<std::tuple<llvm::Function*, BfSIMDSetting>> functionsToProcess;
 
 	for (auto pair : mFunctionsUsingSimd)
 		functionsToProcess.Add({ pair.mKey, pair.mValue });

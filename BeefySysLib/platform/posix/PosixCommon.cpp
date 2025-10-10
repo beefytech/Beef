@@ -961,7 +961,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_GetProcessName(BfpProcess* process, char
         if (len != -1)
         {
             name_buf[len] = '\0';
-            process->mImageName.Append(basename(name_buf));
+            process->mImageName.Append(GetFileName(name_buf));
         }
         else
         {

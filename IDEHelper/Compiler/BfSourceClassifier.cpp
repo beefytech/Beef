@@ -264,8 +264,8 @@ void BfSourceClassifier::Visit(BfAttributeDirective* attributeDirective)
 		VisitChild(arg);
 	for (auto& comma : attributeDirective->mCommas)
 		VisitChild(comma);
-
-	VisitChild(attributeDirective->mNextAttribute);
+	
+	// mNextAttribute is handled in BfElementVisitor
 }
 
 void BfSourceClassifier::Visit(BfIdentifierNode* identifier)

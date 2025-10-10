@@ -28,6 +28,8 @@ namespace Tests
 				mA = a;
 				mB = b;
 			}
+
+			public int GetA() => mA;
 		}
 
 		struct StructC
@@ -153,6 +155,29 @@ namespace Tests
 			return sn;
 		}
 
+		public struct StructS
+		{
+			public int mA = 123;
+			public static StructS* sPtr;
+
+			public this()
+			{
+				sPtr = &this;
+			}
+		}
+
+		public struct StructT
+		{
+			public int mA = 234;
+			public int mB = ?;
+			public StructS mS = .();
+
+			public this()
+			{
+				mB++;
+			}
+		}
+
 		[Test]
 		static void TestBasics()
 		{
@@ -171,6 +196,10 @@ namespace Tests
 			sb0 = .{ mA = 3, mB = 4 };
 			Test.Assert(sb0.mA == 3);
 			Test.Assert(sb0.mB == 4);
+
+			StructB sb2;
+			sb2.this(100, 200);
+			Test.Assert(sb2.GetA() == 100);
 
 			StructL sl = .(12, 23);
 			Test.Assert(sl.a == 12);
@@ -203,6 +232,14 @@ namespace Tests
 			count = ptr9B - ptr0;
 			Test.Assert(ptr9 == ptr9B);
 			Test.Assert(count == 9);
+
+			StructT st = .();
+			Test.Assert(&st.mS == StructS.sPtr);
+
+			st.mB = 300;
+			st.this();
+			Test.Assert(&st.mS == StructS.sPtr);
+			Test.Assert(st.mB == 301);
 		}
 
 		[Align(16)]

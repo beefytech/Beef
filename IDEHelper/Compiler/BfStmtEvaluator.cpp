@@ -3592,13 +3592,21 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 						localMethod->mDeclMixinState->mHasDeferredUsage = true;
 					mCurMethodState->mLocalMethods.push_back(localMethod);
 
+					bool valid = true;
+
 					String* namePtr;
 					if (!mCurMethodState->mLocalMethodMap.TryAdd(localMethod->mMethodName, &namePtr, &localMethodPtr))
 					{
-						BF_ASSERT(localMethod != *localMethodPtr);
-						localMethod->mNextWithSameName = *localMethodPtr;
+						if (localMethod == *localMethodPtr)
+						{
+							valid = false;
+							Fail("Duplicate local method name", localMethodDecl->mMethodDeclaration->mNameNode);
+						}						
+						if (valid)
+							localMethod->mNextWithSameName = *localMethodPtr;
 					}
-					*localMethodPtr = localMethod;
+					if (valid)
+						*localMethodPtr = localMethod;
 				}
 			}
 			++itr;
@@ -3650,23 +3658,29 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 			else if (localMethodDecl->mMethodDeclaration->mNameNode != NULL)
 			{
 				BfLocalMethod* localMethod = mCurMethodState->mLocalMethods[curLocalMethodIdx];
-				BF_ASSERT(localMethod->mMethodDeclaration == localMethodDecl->mMethodDeclaration);
 
-				bool wantsLocalMethod = (wantsAllLocalMethods) || (autoComplete->IsAutocompleteNode(localMethod->mMethodDeclaration));
-
-				if ((!wantsLocalMethod) && (mCurMethodInstance->mMethodDef->mIsLocalMethod))
-					wantsLocalMethod = true;
-
-				if (wantsLocalMethod)
+				if (localMethod->mMethodDeclaration != localMethodDecl->mMethodDeclaration)
 				{
-					if (!mCurMethodInstance->IsSpecializedGenericMethodOrType())
-						GetLocalMethodInstance(localMethod, BfTypeVector(), NULL, true); // Only necessary on unspecialized pass
+					AssertErrorState();
 				}
+				else
+				{
+					bool wantsLocalMethod = (wantsAllLocalMethods) || (autoComplete->IsAutocompleteNode(localMethod->mMethodDeclaration));
 
-				if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
-					mCompiler->mResolvePassData->mAutoComplete->CheckMethod(localMethod->mMethodDeclaration, true);
+					if ((!wantsLocalMethod) && (mCurMethodInstance->mMethodDef->mIsLocalMethod))
+						wantsLocalMethod = true;
 
-				curLocalMethodIdx++;
+					if (wantsLocalMethod)
+					{
+						if (!mCurMethodInstance->IsSpecializedGenericMethodOrType())
+							GetLocalMethodInstance(localMethod, BfTypeVector(), NULL, true); // Only necessary on unspecialized pass
+					}
+
+					if ((mCompiler->mResolvePassData != NULL) && (mCompiler->mResolvePassData->mAutoComplete != NULL))
+						mCompiler->mResolvePassData->mAutoComplete->CheckMethod(localMethod->mMethodDeclaration, true);
+
+					curLocalMethodIdx++;
+				}
 			}
 
 			++itr;
@@ -3811,8 +3825,9 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 
 #if _DEBUG
 			BfLocalMethod** localMethodPtr = NULL;
-			mCurMethodState->mLocalMethodMap.TryGetValue(localMethod->mMethodName, &localMethodPtr);
-			BF_ASSERT(*localMethodPtr == localMethod);
+			mCurMethodState->mLocalMethodMap.TryGetValue(localMethod->mMethodName, &localMethodPtr);			
+			if ((localMethodPtr == NULL) || (*localMethodPtr != localMethod))
+				AssertErrorState();
 #endif
 			if (localMethod->mNextWithSameName == NULL)
 				mCurMethodState->mLocalMethodMap.Remove(localMethod->mMethodName);
@@ -4754,11 +4769,21 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 	auto startingLocalVarId = mCurMethodState->GetRootMethodState()->mCurLocalVarId;
 
 	bool prevHadFallthrough = false;
+	bool prevWasConstIgnore = false;
 
 	Dictionary<int64, _CaseState> handledCases;
 	HashSet<int64> condCases;
 	for (BfSwitchCase* switchCase : switchStmt->mSwitchCases)
 	{
+		if (switchCase->mCaseExpressions.mSize == 1)
+		{
+			if (auto defaultExpr = BfNodeDynCast<BfDefaultExpression>(switchCase->mCaseExpressions[0]))
+			{
+				if (defaultExpr->mOpenParen == NULL)
+					Warn(0, "Potentially unintended 'case default:'. Consider rewriting as 'default:' or 'case (.)default:' to clarify intention.", defaultExpr);
+			}
+		}
+
 		deferredLocalAssignDataVec[blockIdx].mScopeData = mCurMethodState->mCurScope;
 		deferredLocalAssignDataVec[blockIdx].ExtendFrom(mCurMethodState->mDeferredLocalAssignData);
 		SetAndRestoreValue<BfDeferredLocalAssignData*> prevDLA(mCurMethodState->mDeferredLocalAssignData, &deferredLocalAssignDataVec[blockIdx]);
@@ -5166,9 +5191,10 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 
 		prevHadFallthrough = mCurMethodState->mDeferredLocalAssignData->mHadFallthrough;
+		prevWasConstIgnore = isConstIgnore;
 
 		blockIdx++;
-	}
+	}	
 
 	// Check for comprehensiveness
 	bool isComprehensive = true;
@@ -5329,7 +5355,11 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		}
 	}
 
-	if (!hadConstMatch)
+	// Even if we had a const match, if the final case had a fallthrough that was not const-ignored then we still need the default block
+	bool constSkipDefault = hadConstMatch &&
+		((!prevHadFallthrough) || (prevWasConstIgnore));
+
+	if (!constSkipDefault)
 		mBfIRBuilder->CreateBr(defaultBlock);
 
 	mBfIRBuilder->SetInsertPoint(switchBlock);
@@ -5342,8 +5372,8 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 
 	if (switchStmt->mDefaultCase != NULL)
 	{
-		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true, hadConstMatch);
-		SetAndRestoreValue<bool> prevInConstIgnore(mCurMethodState->mCurScope->mInConstIgnore, true, hadConstMatch);
+		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, true, constSkipDefault);
+		SetAndRestoreValue<bool> prevInConstIgnore(mCurMethodState->mCurScope->mInConstIgnore, true, constSkipDefault);
 
 		mBfIRBuilder->AddBlock(defaultBlock);
 		mBfIRBuilder->SetInsertPoint(defaultBlock);
@@ -5866,6 +5896,12 @@ void BfModule::Visit(BfFallthroughStatement* fallthroughStmt)
 		{
 			if (breakData->mIRFallthroughBlock)
 				break;
+			if (breakData->mIRBreakBlock)
+			{
+				// Catches the cases where we have a falltrhough in a 'default:' block
+				breakData = NULL;
+				break;
+			}
 			breakData = breakData->mPrevBreakData;
 		}
 	}

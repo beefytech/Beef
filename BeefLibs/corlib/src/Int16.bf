@@ -87,7 +87,7 @@ namespace System
 
 			bool isNeg = false;
 			bool digitsFound = false;
-			int16 result = 0;
+			int32 result = 0;
 
 			int16 radix = style.HasFlag(.Hex) ? 0x10 : 10;
 
@@ -110,7 +110,7 @@ namespace System
 				else if ((c >= 'a') && (c <= 'f'))
 				{
 					if (radix != 0x10)
-						return .Err(.InvalidChar(result));
+						return .Err(.InvalidChar((.)result));
 					result &*= radix;
 					result &+= c - 'a' + 10;
 					digitsFound = true;
@@ -118,7 +118,7 @@ namespace System
 				else if ((c >= 'A') && (c <= 'F'))
 				{
 					if (radix != 0x10)
-						return .Err(.InvalidChar(result));
+						return .Err(.InvalidChar((.)result));
 					result &*= radix;
 					result &+= c - 'A' + 10;
 					digitsFound = true;
@@ -126,7 +126,7 @@ namespace System
 				else if ((c == 'X') || (c == 'x'))
 				{
 					if ((!style.HasFlag(.AllowHexSpecifier)) || (i == 0) || (result != 0))
-						return .Err(.InvalidChar(result));
+						return .Err(.InvalidChar((.)result));
 					radix = 0x10;
 					digitsFound = false;
 				}
@@ -139,16 +139,16 @@ namespace System
 					// Ignore
 				}
 				else
-					return .Err(.InvalidChar(result));
+					return .Err(.InvalidChar((.)result));
 
-				if (isNeg ? (uint16)result > (uint16)MinValue : (uint16)result > (uint16)MaxValue)
+				if (isNeg ? result > MaxValue + 1 : result > MaxValue)
 					return .Err(.Overflow);
 			}
 
 			if (!digitsFound)
 				return .Err(.NoValue);
 
-			return isNeg ? -result : result;
+			return isNeg ? (.)-result : (.)result;
 		}
 
 		public static Result<int16, ParseError> IParseable<int16, ParseError>.Parse(StringView val)

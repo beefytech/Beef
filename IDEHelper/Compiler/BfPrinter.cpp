@@ -1457,13 +1457,28 @@ void BfPrinter::Visit(BfStringInterpolationExpression* stringInterpolationExpres
 				mVirtualNewLineIdx = mNextStateModify.mWantNewLineIdx;
 				mNextStateModify.mExpectingSpace = false;
 
+				int strEndIdx = expr->mSrcEnd - stringInterpolationExpression->mSrcStart;
+
 				if (auto block = BfNodeDynCast<BfBlock>(expr))
-					HandleBlock(block, true);
+				{
+					int lastChildSrcIdx = exprIdx + 1;
+					if (block->mChildArr.mSize > 0)
+						lastChildSrcIdx = block->mChildArr.back()->mSrcEnd - stringInterpolationExpression->mSrcStart;
+
+					String formatStr;
+					for (int i = lastChildSrcIdx; i < strEndIdx - 1; i++)					
+						formatStr += str[i];					
+					formatStr = Trim(formatStr);
+					
+					int startOutStrLen = mOutString.mLength;
+
+					HandleBlock(block, true, &formatStr);					
+				}
 				else
 					VisitChild(expr);
 				exprIdx++;
 
-				strIdx = expr->mSrcEnd - stringInterpolationExpression->mSrcStart;
+				strIdx = strEndIdx;
 				startIdx = strIdx;
 				continue;
 			}			
@@ -3327,7 +3342,7 @@ void BfPrinter::DoBlockClose(BfAstNode* prevNode, BfTokenNode* blockOpen, BfToke
 	}
 }
 
-void BfPrinter::HandleBlock(BfBlock* block, bool isCompact)
+void BfPrinter::HandleBlock(BfBlock* block, bool isCompact, StringImpl* endString)
 {
 	BlockState blockState;
 	SetAndRestoreValue<BlockState*> prevBlockState(mCurBlockState, &blockState);
@@ -3343,6 +3358,8 @@ void BfPrinter::HandleBlock(BfBlock* block, bool isCompact)
 		CheckRawNode(child);
 		child->Accept(this);
 	}
+	if (endString != NULL)
+		Write(*endString);
 	DoBlockClose(NULL, block->mOpenBrace, block->mCloseBrace, false, blockState);
 
 	ExpectNewLine();

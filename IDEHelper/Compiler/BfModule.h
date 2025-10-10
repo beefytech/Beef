@@ -94,6 +94,7 @@ enum BfEvalExprFlags : int64
 	BfEvalExprFlags_NameOf = 0x100000000LL,
 	BfEvalExprFlags_NameOfSuccess = 0x200000000LL,
 	BfEvalExprFlags_InParamsExpr = 0x400000000LL,
+	BfEvalExprFlags_AllowNoValue = 0x800000000LL,
 
 	BfEvalExprFlags_InheritFlags = BfEvalExprFlags_NoAutoComplete | BfEvalExprFlags_Comptime | BfEvalExprFlags_DeclType
 };
@@ -171,7 +172,7 @@ struct BfCreateTypeDataContext
 class BfLocalVariable
 {
 public:
-	int64 mUnassignedFieldFlags;
+	BitSet mUnassignedFieldFlags;
 	BfType* mResolvedType;
 	BfIdentifierNode* mNameNode;
 	String mName;
@@ -209,8 +210,7 @@ public:
 
 public:
 	BfLocalVariable()
-	{
-		mUnassignedFieldFlags = 0;
+	{		
 		mResolvedType = NULL;
 		mNameNode = NULL;
 		mLocalVarIdx = -1;
@@ -1896,7 +1896,7 @@ public:
 	BfFieldInstance* GetFieldByName(BfTypeInstance* typeInstance, const StringImpl& fieldName, bool isRequired = true, BfAstNode* refNode = NULL);
 	void CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLocal = false);
 	void ResolveConstField(BfTypeInstance* typeInst, BfFieldInstance* fieldInstance, BfFieldDef* field, bool forceResolve = false);
-	BfTypedValue GetFieldInitializerValue(BfFieldInstance* fieldInstance, BfExpression* initializer = NULL, BfFieldDef* fieldDef = NULL, BfType* fieldType = NULL, bool doStore = false);
+	BfTypedValue GetFieldInitializerValue(BfFieldInstance* fieldInstance, BfExpression* initializer = NULL, BfFieldDef* fieldDef = NULL, BfType* fieldType = NULL, bool doStore = false, BfTypedValue receivingValue = BfTypedValue());
 	bool TryGetAppendedObjectInfo(BfFieldInstance* fieldInstance, int& dataSize, int& alignSize);
 	void AppendedObjectInit(BfFieldInstance* fieldInstance);
 	void MarkFieldInitialized(BfFieldInstance* fieldInstance);

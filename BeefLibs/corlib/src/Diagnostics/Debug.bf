@@ -17,7 +17,7 @@ namespace System.Diagnostics
 				failStr.Append(" in ", filePath);
 				Internal.FatalError(failStr, 1);
 #else
-				Internal.FatalError("Assert failed", 1);
+				Internal.FatalError(error, 1);
 #endif
 			}
 		}

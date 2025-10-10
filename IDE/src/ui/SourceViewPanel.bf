@@ -1389,20 +1389,29 @@ namespace IDE.ui
                     bfSystem.PerfZoneStart("DoBackground");
 				//ProcessResolveData();
 
-				bool hasFocus = mEditWidget.mHasFocus;
+				//sbool hasFocus = mEditWidget.mHasFocus;
 
 				//Debug.Assert(mProcessResolveCharData == null);
                 DuplicateEditState(out resolveParams.mCharData, out resolveParams.mCharIdSpan);
 				//Debug.WriteLine("Edit State: {0}", mProcessResolveCharData);
 
-				if (hasFocus)
+				/*if (hasFocus)
 				{
 	                if ((useResolveType == .Autocomplete) || (useResolveType == .GetSymbolInfo) || (mIsClang))
 					{
-						resolveParams.mOverrideCursorPos = (.)mEditWidget.Content.mTextCursors.Front.mCursorTextPos;
+						resolveParams.mOverrideCursorPos = (.)mEditWidget.Content.CursorTextPos;
 						/*if (useResolveType == .Autocomplete)
 							resolveParams.mOverrideCursorPos--;*/
 					}
+				}*/
+
+				resolveParams.mEditWidgetContent = ewc;
+				resolveParams.mOverrideCursorPos = (.)ewc.CursorTextPos;
+
+				if (ewc.HasTextCursorBefore(resolveParams.mOverrideCursorPos))
+				{
+					resolveParams.mCursorTextPosition = new .(resolveParams.mOverrideCursorPos);
+					ewc.PersistentTextPositions.Add(resolveParams.mCursorTextPosition);
 				}
                     
                 //Debug.Assert(mCurParser == null);
@@ -1424,6 +1433,12 @@ namespace IDE.ui
                     mBackgroundResolveType = useResolveType;
                     mIsPerformingBackgroundClassify = true;
 					mResolveJobCount++;
+
+					if (useResolveType == .Autocomplete)
+					{
+						//Debug.WriteLine($"DoBackground {useResolveType} CursorPos:{resolveParams.mOverrideCursorPos}");
+					}
+
                     if (useResolveType == .Autocomplete)
                         compiler.DoBackgroundHi(new () => { DoClassify(.Autocomplete, resolveParams, true); }, new => ClassifyThreadDone);
 						//BackgroundResolve(new () => { DoClassify(.Autocomplete, resolveParams); });
@@ -1665,7 +1680,7 @@ namespace IDE.ui
 			}
 		}
 
-        void HandleAutocompleteInfo(ResolveType resolveType, String autocompleteInfo, bool clearList, bool changedAfterInfo)
+        void HandleAutocompleteInfo(ResolveType resolveType, String autocompleteInfo, bool clearList, bool changedAfterInfo, int32 textPosOffset = 0)
         {
             var editWidgetContent = (SourceEditWidgetContent)mEditWidget.Content;
 
@@ -1702,7 +1717,7 @@ namespace IDE.ui
 				if (editWidgetContent.mAutoComplete.mIsDocumentationPass)
 					editWidgetContent.mAutoComplete.UpdateInfo(autocompleteInfo);
 				else
-                	editWidgetContent.mAutoComplete.SetInfo(autocompleteInfo, clearList, 0, changedAfterInfo);
+                	editWidgetContent.mAutoComplete.SetInfo(autocompleteInfo, clearList, textPosOffset, changedAfterInfo);
             }
             else if ((editWidgetContent.mAutoComplete != null) && (!editWidgetContent.mAutoComplete.mIsDocumentationPass))
                 editWidgetContent.mAutoComplete.Close();
@@ -1969,10 +1984,14 @@ namespace IDE.ui
 				{
 					bool changedAfterInfo = (resolveParams != null) && (resolveParams.mTextVersion != Content.mData.mCurTextVersionId);
 
+					int32 textPosOffset = 0;
+					if (resolveParams?.mCursorTextPosition != null)
+						textPosOffset = resolveParams.mCursorTextPosition.mIndex - resolveParams.mOverrideCursorPos;
+
 					var autoComplete = GetAutoComplete();
 					if ((autoComplete != null) && (resolveParams != null))
 						autoComplete.mIsDocumentationPass = resolveParams.mDocumentationName != null;
-				    HandleAutocompleteInfo(resolveType, autocompleteInfo, true, changedAfterInfo);
+				    HandleAutocompleteInfo(resolveType, autocompleteInfo, true, changedAfterInfo, textPosOffset);
 					autoComplete = GetAutoComplete();
 					if (autoComplete != null)
 					{
@@ -1991,9 +2010,6 @@ namespace IDE.ui
         public void DoClassify(ResolveType resolveType, ResolveParams resolveParams = null, bool isInterrupt = false)
         {
 			scope AutoBeefPerf("SourceViewPanel.DoClassify");
-
-			if (gApp.mDbgDelayedAutocomplete)
-				Thread.Sleep(250);
 
 			if ((resolveType == .Classify) || (resolveType == .ClassifyFullRefresh))
 				gApp.mErrorsPanel.SetNeedsResolveAll();
@@ -2056,10 +2072,23 @@ namespace IDE.ui
 
 			ProjectSource projectSource = FilteredProjectSource;
 
-			int cursorPos = mEditWidget.mEditWidgetContent.mTextCursors.Front.mCursorTextPos;
+			if (resolveType == .Autocomplete)
+			{
+				NOP!();
+			}
+
+			int cursorPos = 0;//mEditWidget.mEditWidgetContent.CursorTextPos;
+
+			if (resolveParams == null)
+				cursorPos = mEditWidget.mEditWidgetContent.CursorTextPos;
 
 			if ((resolveParams != null) && (resolveParams.mOverrideCursorPos != -1))
 				cursorPos = resolveParams.mOverrideCursorPos;
+
+			if (cursorPos == 0)
+			{
+				NOP!();
+			}
 
 			bool emitHasCursor = false;
 			if (resolveParams != null)
@@ -2256,6 +2285,9 @@ namespace IDE.ui
                 //  and building defs
                 parser.SetAutocomplete(Math.Max(0, mEditWidget.mEditWidgetContent.CursorTextPos - 1));
             }*/
+
+			if (gApp.mDbgDelayedAutocomplete)
+				Thread.Sleep(250);
 
 			if ((!isFastClassify) && (bfCompiler != null))
             {

@@ -337,6 +337,7 @@ enum BfToolsetType
 
 enum BfSIMDSetting
 {
+	BfSIMDSetting_NotSet = -1,
 	BfSIMDSetting_None,
 	BfSIMDSetting_MMX,
 	BfSIMDSetting_SSE,
@@ -344,8 +345,10 @@ enum BfSIMDSetting
 	BfSIMDSetting_SSE3,
 	BfSIMDSetting_SSE4,
 	BfSIMDSetting_SSE41,
+	BfSIMDSetting_SSE42,
 	BfSIMDSetting_AVX,
 	BfSIMDSetting_AVX2,
+	BfSIMDSetting_AVX512,
 };
 
 enum BfAsmKind
