@@ -14129,11 +14129,62 @@ void BeMCContext::DoCodeEmission()
 					auto arg1Type = GetType(inst->mArg1);
 					switch (arg0Type->mTypeCode)
 					{
+					case BeTypeCode_Int8:
+						switch (arg1Type->mTypeCode)
+						{
+						case BeTypeCode_Float:
+							// CVTSS2SI							
+							{
+								BF_ASSERT(inst->mArg0.IsNativeReg());
+								BeMCOperand resizedArg0 = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, 4));
+								Emit(0xF3); EmitREX(resizedArg0, inst->mArg1, false);
+								Emit(0x0F); Emit(0x2C);
+								EmitModRM(resizedArg0, inst->mArg1);
+							}
+							break;
+						case BeTypeCode_Double:
+							// cvttsd2si
+							{
+								BF_ASSERT(inst->mArg0.IsNativeReg());
+								BeMCOperand resizedArg0 = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, 4));
+								Emit(0xF2); EmitREX(resizedArg0, inst->mArg1, false);
+								Emit(0x0F); Emit(0x2C);
+								EmitModRM(resizedArg0, inst->mArg1);
+							}
+							break;
+						default: NotImpl();
+						}
+						break;
 					case BeTypeCode_Int16:
-						BF_ASSERT(arg1Type->mTypeCode == BeTypeCode_Int8);
-						Emit(0x66);
-						EmitREX(inst->mArg0, inst->mArg1, false);
-						Emit(0x0F); Emit(0xBE); EmitModRM(inst->mArg0, inst->mArg1);
+						switch (arg1Type->mTypeCode)
+						{
+						case BeTypeCode_Float:
+							// CVTSS2SI							
+							{
+								BF_ASSERT(inst->mArg0.IsNativeReg());
+								BeMCOperand resizedArg0 = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, 4));
+								Emit(0xF3); EmitREX(resizedArg0, inst->mArg1, false);
+								Emit(0x0F); Emit(0x2C);
+								EmitModRM(resizedArg0, inst->mArg1);
+							}
+							break;
+						case BeTypeCode_Double:
+							// cvttsd2si
+							{
+								BF_ASSERT(inst->mArg0.IsNativeReg());
+								BeMCOperand resizedArg0 = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, 4));
+								Emit(0xF2); EmitREX(resizedArg0, inst->mArg1, false);
+								Emit(0x0F); Emit(0x2C);
+								EmitModRM(resizedArg0, inst->mArg1);
+							}
+							break;
+						default:
+							BF_ASSERT(arg1Type->mTypeCode == BeTypeCode_Int8);
+							Emit(0x66);
+							EmitREX(inst->mArg0, inst->mArg1, false);
+							Emit(0x0F); Emit(0xBE); EmitModRM(inst->mArg0, inst->mArg1);
+							break;
+						}
 						break;
 					case BeTypeCode_Int32:
 						switch (arg1Type->mTypeCode)
