@@ -28,8 +28,10 @@ USING_NS_BF;
 
 bool (SDLCALL* bf_SDL_Init)(SDL_InitFlags flags);
 void (SDLCALL* bf_SDL_Quit)(void);
+void* (SDLCALL* bf_SDL_malloc)(size_t size);
 void (SDLCALL* bf_SDL_free)(void* mem);
 void (SDLCALL* bf_SDL_memset)(void* dest, int c, size_t len);
+void* (SDLCALL* bf_SDL_memcpy)(void *dst, const void *src, size_t len);
 
 SDL_PropertiesID (SDLCALL* bf_SDL_CreateProperties)(void);
 bool (SDLCALL* bf_SDL_SetNumberProperty)(SDL_PropertiesID props, const char* name, int64_t value);
@@ -46,11 +48,14 @@ bool (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
 
 char* (SDLCALL* bf_SDL_GetClipboardText)(void);
 bool (SDLCALL* bf_SDL_SetClipboardText)(const char* text);
+void* (SDLCALL* bf_SDL_GetClipboardData)(const char *mime_type, size_t *size);
+bool (SDLCALL* bf_SDL_SetClipboardData)(SDL_ClipboardDataCallback callback, SDL_ClipboardCleanupCallback cleanup, void *userdata, const char **mime_types, size_t num_mime_types);
 bool (SDLCALL* bf_SDL_StartTextInput)(SDL_Window* window);
 bool (SDLCALL* bf_SDL_StopTextInput)(SDL_Window* window);
 
 bool (SDLCALL* bf_SDL_PollEvent)(SDL_Event* event);
 bool (SDLCALL* bf_SDL_PushEvent)(SDL_Event* event);
+bool (SDLCALL* bf_SDL_SetError)(const char *fmt, ...);
 const char* (SDLCALL* bf_SDL_GetError)(void);
 
 SDL_DisplayID* (SDLCALL* bf_SDL_GetDisplays)(int* count);
@@ -64,6 +69,13 @@ bool (SDLCALL* bf_SDL_GL_SwapWindow)(SDL_Window* window);
 
 
 static int bfMouseBtnOf[4] = {NULL, 0, 2, 1}; // Translate SDL mouse buttons to what Beef expects.
+
+static const char* mimeTypes[] = 
+{ 
+	"text/plain;charset=utf-8",
+	"text/vnd.beeflang.bf-text",
+	"text/vnd.beeflang.file-list"
+};
 
 static HMODULE gSDLModule;
 
@@ -309,6 +321,7 @@ SdlBFApp::SdlBFApp()
 {
 	mRunning = false;
 	mRenderDevice = NULL;
+	mSdlClipboardData = new SdlClipboardData();
 
 	Beefy::String exePath;
 	BfpGetStrHelper(exePath, [](char* outStr, int* inOutStrSize, BfpResult* result)
@@ -333,8 +346,10 @@ SdlBFApp::SdlBFApp()
 	{
 		BF_GET_SDLPROC(SDL_Init);
 		BF_GET_SDLPROC(SDL_Quit);
+		BF_GET_SDLPROC(SDL_malloc);
 		BF_GET_SDLPROC(SDL_free);
 		BF_GET_SDLPROC(SDL_memset);
+		BF_GET_SDLPROC(SDL_memcpy);
 
 		BF_GET_SDLPROC(SDL_CreateProperties);
 		BF_GET_SDLPROC(SDL_SetNumberProperty);
@@ -351,11 +366,14 @@ SdlBFApp::SdlBFApp()
 
 		BF_GET_SDLPROC(SDL_GetClipboardText);
 		BF_GET_SDLPROC(SDL_SetClipboardText);
+		BF_GET_SDLPROC(SDL_GetClipboardData);
+		BF_GET_SDLPROC(SDL_SetClipboardData);
 		BF_GET_SDLPROC(SDL_StartTextInput);
 		BF_GET_SDLPROC(SDL_StopTextInput);
 
 		BF_GET_SDLPROC(SDL_PollEvent);
 		BF_GET_SDLPROC(SDL_PushEvent);
+		BF_GET_SDLPROC(SDL_SetError);
 		BF_GET_SDLPROC(SDL_GetError);
 
 		BF_GET_SDLPROC(SDL_GetDisplays);
@@ -376,6 +394,7 @@ SdlBFApp::SdlBFApp()
 
 SdlBFApp::~SdlBFApp()
 {
+	delete mSdlClipboardData;
 }
 
 SdlBFWindow* SdlBFApp::GetSdlWindowFromId(uint32 id)
@@ -597,14 +616,29 @@ void SdlBFWindow::SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVis
 	// Not supported
 }
 
-uint32 SdlBFApp::GetClipboardFormat(const StringImpl& format)
+const char* SdlBFApp::GetClipboardFormat(const StringImpl& format)
 {
-	return /*CF_TEXT*/1;
+	if (format == "text" || format == "atext")
+	{
+		return "text/plain;charset=utf-8";
+	}
+	if (format == "bf_text")
+	{
+		return "text/vnd.beeflang.bf-text";
+	}
+	if (format == "code/file-list")
+	{
+		return "text/vnd.beeflang.file-list";
+	}
+	return format.c_str();
 }
 
 void* SdlBFApp::GetClipboardData(const StringImpl& format, int* size)
 {
-	return bf_SDL_GetClipboardText();
+	size_t outSize;
+	void* data = bf_SDL_GetClipboardData(GetClipboardFormat(format), &outSize);
+	*size = outSize;
+	return data;
 }
 
 void SdlBFApp::ReleaseClipboardData(void* ptr)
@@ -612,9 +646,39 @@ void SdlBFApp::ReleaseClipboardData(void* ptr)
 	bf_SDL_free(ptr);
 }
 
+const void* SDLClipboardCallback(void* userData, const char* mimeType, size_t* outSize)
+{
+	SdlClipboardData* clipboard = *(SdlClipboardData**)userData;
+
+	void* data;
+	if (clipboard->TryGetValue(StringImpl::MakeRef(mimeType), &data))
+	{
+		*outSize = strlen((const char*) data);
+	}
+	return data;
+}
+
 void SdlBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard)
 {
-	bf_SDL_SetClipboardText((const char*)ptr);
+	void* buffer = bf_SDL_malloc(size);
+	if (buffer == NULL)
+	{
+		bf_SDL_SetError("Out of memory for clipboard");
+	}
+	else 
+	{
+		StringImpl mime = StringImpl::MakeRef(GetClipboardFormat(format));
+
+		void* previous;
+		if (mSdlClipboardData->TryGetValue(mime, &previous))
+		{
+			bf_SDL_free(previous);
+		}
+		bf_SDL_memcpy(buffer, ptr, size);
+		(*mSdlClipboardData)[mime] = buffer;
+
+		bf_SDL_SetClipboardData(SDLClipboardCallback, NULL, &mSdlClipboardData, mimeTypes, 3);
+	}
 }
 
 BFMenu* SdlBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck)

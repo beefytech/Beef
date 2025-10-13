@@ -50,19 +50,21 @@ public:
 };
 
 typedef Dictionary<uint32, SdlBFWindow*> SdlWindowMap;
+typedef Dictionary<StringImpl, void*> SdlClipboardData;
 
 class SdlBFApp : public BFApp
 {
 public:
 	bool					mInMsgProc;
 	SdlWindowMap			mSdlWindowMap;
+	SdlClipboardData*       mSdlClipboardData;
 	SDL_GLContext           mGLContext;
 
 protected:
 	virtual void			Draw() override;
 	virtual void			PhysSetCursor() override;
 
-	uint32					GetClipboardFormat(const StringImpl& format);
+	const char*				GetClipboardFormat(const StringImpl& format);
 	SdlBFWindow*			GetSdlWindowFromId(uint32 id);
 
 public:
