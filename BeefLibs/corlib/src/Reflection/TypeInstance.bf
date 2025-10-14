@@ -85,10 +85,12 @@ namespace System
 			return .Err(.NoResults);
 		}
 
-		public virtual Result<Object> CreateObject()
+		public virtual Result<Object> CreateObject(IRawAllocator allocator)
 		{
 			return .Err;
 		}
+
+		public Result<Object> CreateObject() => CreateObject(null);
 
 		public virtual Result<void*> CreateValue()
 		{
@@ -124,7 +126,7 @@ namespace System.Reflection
 			return MethodInfo(this, &mMethodDataPtr[methodIdx]);
 		}
 
-		public override Result<Object> CreateObject()
+		public override Result<Object> CreateObject(IRawAllocator allocator)
 		{
 			if (mTypeClassVData == null)
 				return .Err;
@@ -178,14 +180,30 @@ namespace System.Reflection
 			int32 stackCount = Compiler.Options.AllocStackCount;
 			if (mAllocStackCountOverride != 0)
 				stackCount = mAllocStackCountOverride;
-			obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, allocSize, mInstAlign, stackCount, 0);
+
+			if (allocator != null)
+			{
+				int stackTraceSize = Internal.Dbg_PrepareStackTrace(allocSize, stackCount);
+				int totalAllocSize = allocSize + stackTraceSize;
+				obj = Internal.UnsafeCastToObject(allocator.Alloc(totalAllocSize, mInstAlign));
+				Internal.Dbg_ObjectAllocatedEx(obj, allocSize, (.)(void*)mTypeClassVData, 0);
+			}
+			else
+			{
+				obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, allocSize, mInstAlign, stackCount, 0);
+			}
 #else
-			void* mem = new [Align(16)] uint8[allocSize]* (?);
+			void* mem;
+			if (allocator != null)
+				mem = allocator.Alloc(allocSize, mInstAlign);
+			else
+				mem = new [Align(16)] uint8[allocSize]* (?);
 			obj = Internal.UnsafeCastToObject(mem);
 			*(void**)mem = (void*)mTypeClassVData;
 #if BF_ENABLE_OBJECT_DEBUG_FLAGS
 			Internal.Dbg_ObjectAllocated(obj, allocSize, (.)(void*)mTypeClassVData);
-			*(int*)mem |= 0x04/*BfObjectFlag_Allocate*/;
+			if (allocator == null)
+				*(int*)mem |= 0x04/*BfObjectFlag_Allocate*/;
 #else
 			*(void**)mem = (void*)mTypeClassVData;
 #endif
