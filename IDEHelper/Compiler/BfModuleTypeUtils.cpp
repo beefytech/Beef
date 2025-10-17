@@ -6981,8 +6981,9 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 				methodInstance = moduleMethodInstance.mMethodInstance;
 				if (methodInstance == NULL)
-				{
-					BF_ASSERT(typeInstance->IsGenericTypeInstance() && (typeInstance->mTypeDef->mIsCombinedPartial));
+				{					
+					BF_ASSERT(typeInstance->IsBoxed() ||
+						(typeInstance->IsGenericTypeInstance() && (typeInstance->mTypeDef->mIsCombinedPartial)));
 					continue;
 				}
 

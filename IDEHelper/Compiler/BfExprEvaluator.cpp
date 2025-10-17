@@ -3244,6 +3244,13 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* ori
 			BfBoxedType* vBoxedType = (BfBoxedType*)methodRef.mImplementingMethod.mTypeInstance;
 			mBestMethodTypeInstance = vBoxedType->mElementType->ToTypeInstance();
 			mBestMethodInstance = mModule->GetMethodInstance(mBestMethodTypeInstance, boxedMethodInstance.mMethodInstance->mMethodDef, BfTypeVector());
+			if (mBestMethodInstance == NULL)
+			{
+				auto declMethodInstance = useModule->ReferenceExternalMethodInstance(methodRef.mDeclaringMethod);
+				mBestMethodTypeInstance = methodRef.mDeclaringMethod.mTypeInstance;
+				mBestMethodInstance = mModule->GetMethodInstance(mBestMethodTypeInstance, declMethodInstance.mMethodInstance->mMethodDef, BfTypeVector());
+			}
+
 			mBestMethodDef = mBestMethodInstance.mMethodInstance->mMethodDef;
 		}
 		else

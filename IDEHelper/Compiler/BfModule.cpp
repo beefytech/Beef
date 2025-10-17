@@ -22488,7 +22488,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				methodGenericArguments = methodInstance->mMethodInfoEx->mMethodGenericArguments;
 			auto innerMethodInstance = GetMethodInstance(innerType, methodDef, methodGenericArguments, flags, methodInstance->GetForeignType());
 
-			if (innerMethodInstance.mMethodInstance->IsSkipCall())
+			if ((innerMethodInstance == NULL) || (innerMethodInstance.mMethodInstance->IsSkipCall()))
 			{
 				if (!methodInstance->mReturnType->IsValuelessType())
 				{

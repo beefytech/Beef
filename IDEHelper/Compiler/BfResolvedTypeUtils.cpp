@@ -2732,6 +2732,15 @@ bool BfTypeInstance::HasVarConstraints()
 
 bool BfTypeInstance::IsTypeMemberIncluded(BfTypeDef* typeDef, BfTypeDef* activeTypeDef, BfModule* module)
 {
+	if (IsBoxed())
+	{
+		auto boxedType = (BfBoxedType*)this;		
+		auto unboxedTypeInst = boxedType->mElementType->ToTypeInstance();
+		if (unboxedTypeInst != NULL)
+			return unboxedTypeInst->IsTypeMemberIncluded(typeDef, activeTypeDef, module);
+		return false;
+	}
+
 	if (mGenericTypeInfo == NULL)
 		return true;
 	if (mGenericTypeInfo->mGenericExtensionInfo == NULL)
