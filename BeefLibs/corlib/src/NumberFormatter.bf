@@ -1706,8 +1706,13 @@ namespace System
 
 		#region public number formatting methods
 
-		[ThreadStatic]
-		static NumberFormatter threadNumberFormatter;
+		static LazyTLS<NumberFormatter> threadNumberFormatter = new .(
+			new () => new NumberFormatter(CultureInfo.CurrentCulture),
+			new (nf) => { delete nf; }) ~ delete _;
+
+		static LazyTLS<NumberFormatter> userNumberFormatter = new .(
+			new () => new NumberFormatter(null),
+			new (nf) => { delete nf; }) ~ delete _;
 
 		[ThreadStatic]
 		static NumberFormatter userFormatProvider;
@@ -1716,25 +1721,13 @@ namespace System
 		{
 			if (fp != null)
 			{
-				if (userFormatProvider == null)
-				{
-					userFormatProvider = new NumberFormatter(null);
-					if (!Compiler.IsComptime)
-						Thread.CurrentThread.AddExitNotify(new () => { delete userFormatProvider; });
-				}
-				return userFormatProvider;
+				return userNumberFormatter.Value;
 			}
 			else
 			{
-				if (threadNumberFormatter == null)
-				{
-					threadNumberFormatter = new NumberFormatter(CultureInfo.CurrentCulture);
-					if (!Compiler.IsComptime)
-						Thread.CurrentThread.AddExitNotify(new () => { delete threadNumberFormatter; });
-				}
-				else
-					threadNumberFormatter.CurrentCulture = CultureInfo.CurrentCulture;
-				return threadNumberFormatter;
+				var nf = threadNumberFormatter.Value;
+				nf.CurrentCulture = CultureInfo.CurrentCulture;
+				return nf;
 			}
 		}
 
