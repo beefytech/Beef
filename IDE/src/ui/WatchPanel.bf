@@ -271,6 +271,7 @@ namespace IDE.ui
 			mIconX = GS!(4);
 			mOpenButtonX = GS!(4);
 			mLabelX = GS!(44);
+			mLabelY = GS!(-1);
 			mChildIndent = GS!(16);
 			mHiliteOffset = GS!(-2);
 		}
