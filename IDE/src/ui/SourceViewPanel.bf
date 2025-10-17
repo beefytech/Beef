@@ -1406,7 +1406,8 @@ namespace IDE.ui
 				}*/
 
 				resolveParams.mEditWidgetContent = ewc;
-				resolveParams.mOverrideCursorPos = (.)ewc.CursorTextPos;
+				if (resolveParams.mOverrideCursorPos == -1)
+					resolveParams.mOverrideCursorPos = (.)ewc.CursorTextPos;
 
 				if (ewc.HasTextCursorBefore(resolveParams.mOverrideCursorPos))
 				{
@@ -2072,11 +2073,6 @@ namespace IDE.ui
 
 			ProjectSource projectSource = FilteredProjectSource;
 
-			if (resolveType == .Autocomplete)
-			{
-				NOP!();
-			}
-
 			int cursorPos = 0;//mEditWidget.mEditWidgetContent.CursorTextPos;
 
 			if (resolveParams == null)
@@ -2084,11 +2080,6 @@ namespace IDE.ui
 
 			if ((resolveParams != null) && (resolveParams.mOverrideCursorPos != -1))
 				cursorPos = resolveParams.mOverrideCursorPos;
-
-			if (cursorPos == 0)
-			{
-				NOP!();
-			}
 
 			bool emitHasCursor = false;
 			if (resolveParams != null)
