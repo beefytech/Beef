@@ -2929,7 +2929,7 @@ namespace MiniZ
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern int32 _fseeki64(FILE* stream, int64 offset, int32 origin);
-		[CallingConvention(.Stdcall), CLink]
+		[CallingConvention(.Cdecl), CLink]
 		static extern int32 fseeko(FILE* stream, int64 offset, int32 origin);
 
 		[CallingConvention(.Stdcall), CLink]
