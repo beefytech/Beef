@@ -16197,6 +16197,13 @@ BfIRValue BfModule::AllocLocalVariable(BfType* type, const StringImpl& name, boo
 
 BfTypedValue BfModule::CreateOutVariable(BfAstNode* refNode, BfVariableDeclaration* variableDeclaration, BfAstNode* paramNameNode, BfType* variableType, BfTypedValue initValue)
 {
+	if (variableType->IsDeleting())
+	{
+		mCompiler->RequestExtraCompile();
+		InternalError("CreateOutVariable using deleted type", refNode);
+		return BfTypedValue();
+	}
+
 	bool isRef = false;
 	bool isLet = (variableDeclaration != NULL) && (variableDeclaration->mTypeRef->IsExact<BfLetTypeReference>());
 	bool isVar = (variableDeclaration == NULL) || (variableDeclaration->mTypeRef->IsExact<BfVarTypeReference>());
@@ -25242,6 +25249,13 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				// If we failed a lookup here then we better have also failed it in the original type
 				BF_ASSERT(boxedType->mElementType->ToTypeInstance()->mModule->mHadBuildError || mContext->mFailTypes.ContainsKey(boxedType->mElementType->ToTypeInstance()));
 			}
+		}
+
+		if (resolvedParamType->IsDeleting())
+		{
+			mCompiler->RequestExtraCompile();
+			InternalError("Method using deleted type", methodDef->GetRefNode());
+			return;
 		}
 
 		BF_ASSERT(!resolvedParamType->IsDeleting());

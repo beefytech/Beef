@@ -8526,6 +8526,8 @@ BfTypeInstance* BfModule::SantizeTupleType(BfTypeInstance* tupleType)
 
 BfRefType* BfModule::CreateRefType(BfType* resolvedTypeRef, BfRefType::RefKind refKind)
 {
+	BF_ASSERT(!resolvedTypeRef->IsDeleting());
+
 	auto refType = mContext->mRefTypePool.Get();
 	refType->mContext = mContext;
 	refType->mElementType = resolvedTypeRef;
