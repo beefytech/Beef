@@ -12,7 +12,7 @@ namespace System
 		{
 			public static HashSet<String> sReservedNameSet = new .() ~ delete _;
 
-			const String[?] cReservedNames = .("abstract", "alignof", "alloctype", "append", "as", "asm", "base", "break",
+			const String[?] cReservedNames = .("abstract", "alignof", "alloctype", "append", "as", "asm", "base", "box", "break",
 				"case", "catch", "checked", "class", "comptype", "const", "continue", "decltype", "default", "defer", "delegate",
 				"delete", "do", "else", "enum", "explicit", "extension", "extern", "false", "finally", "fixed", "for", "function",
 				"if", "implicit", "in", "interface", "internal", "is", "isconst", "mixin", "namespace", "new", "null", "nullable",
