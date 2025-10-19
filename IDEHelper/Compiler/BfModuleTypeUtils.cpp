@@ -2750,6 +2750,11 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 
 void BfModule::CEMixin(BfAstNode* refNode, const StringImpl& code)
 {
+	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
+	{
+		refNode = mCurMethodState->mMixinState->mSource;
+	}
+
 	if (code.IsEmpty())
 		return;
 
