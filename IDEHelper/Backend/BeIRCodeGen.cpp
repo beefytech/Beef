@@ -1352,7 +1352,11 @@ void BeIRCodeGen::HandleNextCmd()
 				for (int i = 0; i < (int)values.size(); i++)
 				{
 					auto val = values[i];
-					BF_ASSERT(mBeContext->AreTypesEqual(((BeStructType*)type)->mMembers[i].mType, val->GetType()));
+					if (!mBeContext->AreTypesEqual(((BeStructType*)type)->mMembers[i].mType, val->GetType()))
+					{
+						Fail("CreateConstAgg failed");
+						break;
+					}
 					constStruct->mMemberValues.push_back(BeValueDynCast<BeConstant>(val));
 				}
 			}

@@ -23994,6 +23994,14 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			ResolveGenericType();
 			if (mResult.mType->IsVar())
 				break;
+
+			if (mResult.mType->IsDeleting())
+			{
+				mModule->mCompiler->RequestExtraCompile();
+				mModule->InternalError("BfUnaryOp using deleted type");
+				return;
+			}
+
 			mResult = BfTypedValue(mResult.mValue, mModule->CreateRefType(mResult.mType, (unaryOp == BfUnaryOp_Ref) ? BfRefType::RefKind_Ref : BfRefType::RefKind_Mut));
 		}
 		break;

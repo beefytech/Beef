@@ -4036,6 +4036,9 @@ addr_ce CeContext::GetReflectType(int typeId)
 	BfCreateTypeDataContext createTypeDataCtx;
 	auto irData = ceModule->CreateTypeData(bfType, createTypeDataCtx, true, true, true, false);
 
+	if (mCeMachine->mCeModule->mBfIRBuilder->mBeIRCodeGen->mFailed)
+		return 0;
+
 	BeValue* beValue = NULL;
 	if (auto constant = mCeMachine->mCeModule->mBfIRBuilder->GetConstant(irData))
 	{
