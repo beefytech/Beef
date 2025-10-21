@@ -23359,6 +23359,9 @@ void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp
 	{
 		SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags);
 
+		// Disallow 'out ref'
+		mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags & ~BfEvalExprFlags_AllowRefExpr);
+
 		BfType* prevExpedcting = mExpectingType;
 		switch (unaryOp)
 		{
