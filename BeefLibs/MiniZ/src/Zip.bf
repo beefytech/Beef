@@ -2904,25 +2904,33 @@ namespace MiniZ
 		[CallingConvention(.Stdcall), CLink]
 		static extern int32 fflush(FILE* stream);
 
-		//[CallingConvention(.Stdcall), CLink]
-		//static extern int64 ftell64(FILE* stream);
 		static int64 ftell64(FILE* stream)
 		{
+#if BF_PLATFORM_WINDOWS
 			return _ftelli64(stream);
+#else
+			return ftello(stream);
+#endif
 		}
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern int64 _ftelli64(FILE* stream);
+		[CallingConvention(.Cdecl), CLink]
+		static extern int64 ftello(FILE* stream);
 
-		//[CallingConvention(.Stdcall), CLink]
-		//static extern int64 fseek64(FILE* stream, int64 offset, int32 origin);
 		static int32 fseek64(FILE* stream, int64 offset, int32 origin)
 		{
+#if BF_PLATFORM_WINDOWS
 			return _fseeki64(stream, offset, origin);
+#else
+			return fseeko(stream, offset, origin);
+#endif
 		}
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern int32 _fseeki64(FILE* stream, int64 offset, int32 origin);
+		[CallingConvention(.Cdecl), CLink]
+		static extern int32 fseeko(FILE* stream, int64 offset, int32 origin);
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern int fread(void* buf, int elementSize, int elementCount, FILE* stream);
