@@ -557,6 +557,7 @@ namespace IDE.ui
 						}
 
 						String fileName = default;
+						String fileExt = default;
 						StringView genText = default;
 						bool hadError = false;
 
@@ -658,6 +659,8 @@ namespace IDE.ui
 								gApp.Fail(line.Substring(6).UnQuoteString(.. scope .()));
 							case "fileName":
 								fileName = line.Substring(9).UnQuoteString(.. scope:: .());
+							case "fileExt":
+								fileExt = line.Substring(9).UnQuoteString(.. scope:: .());
 							case "options":
 							case "data":
 								genText = .(mUIData, @line.MatchPos + 1);
@@ -688,6 +691,9 @@ namespace IDE.ui
 								gApp.Fail("Geneator failed to specify file name");
 								hadError = true;
 							}
+
+							if (fileExt != null)
+								fileName.Append(".", fileExt);
 						}
 
 						if ((!hadError) && (genText != default) && (fileName != null))
