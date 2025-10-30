@@ -1143,7 +1143,7 @@ namespace MiniZ
 								code_len = TINFL_FAST_LOOKUP_BITS;
 								repeat
 								{
-									temp = (uint16)pHuff.m_tree[~temp + (int32)((bit_buf >> code_len++) & 1)];
+									temp = pHuff.m_tree[~temp + (int32)((bit_buf >> code_len++) & 1)];
 								}
 								while ((temp < 0) && (num_bits >= (code_len + 1)));
 								if (temp >= 0)
