@@ -84,6 +84,7 @@ public:
 	virtual BFSysBitmap*	LoadSysBitmap(const wchar_t* fileName) override;
 	virtual void            GetDesktopResolution(int& width, int& height) override;
 	virtual void            GetWorkspaceRect(int& x, int& y, int& width, int& height) override;
+	virtual void			GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fromHeight, int& outX, int& outY, int& outWidth, int& outHeight) override;
 };
 
 NS_BF_END;

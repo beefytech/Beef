@@ -6,6 +6,7 @@
 #include "platform/PlatformInterface.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
+#include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL_platform.h>
 #include <SDL3/SDL_properties.h>
@@ -16,8 +17,6 @@
 #include <cstdio>
 #include <cwchar>
 #include <dlfcn.h>
-#include <iostream>
-#include <memory>
 
 USING_NS_BF;
 
@@ -58,8 +57,11 @@ bool (SDLCALL* bf_SDL_PushEvent)(SDL_Event* event);
 bool (SDLCALL* bf_SDL_SetError)(const char *fmt, ...);
 const char* (SDLCALL* bf_SDL_GetError)(void);
 
+SDL_DisplayID (SDLCALL* bf_SDL_GetPrimaryDisplay)(void);
 SDL_DisplayID* (SDLCALL* bf_SDL_GetDisplays)(int* count);
 bool (SDLCALL* bf_SDL_GetDisplayBounds)(SDL_DisplayID displayID, SDL_Rect* rect);
+SDL_DisplayMode* (SDLCALL* bf_SDL_GetDesktopDisplayMode)(SDL_DisplayID displayID);
+bool (SDLCALL* bf_SDL_HasRectIntersection)(const SDL_Rect* A, const SDL_Rect* B);
 
 SDL_GLContext (SDLCALL* bf_SDL_GL_CreateContext)(SDL_Window* window);
 bool (SDLCALL* bf_SDL_GL_MakeCurrent)(SDL_Window* window, SDL_GLContext context);
@@ -67,6 +69,14 @@ bool (SDLCALL* bf_SDL_GL_SetAttribute)(SDL_GLAttr attr, int value);
 void* (SDLCALL* bf_SDL_GL_GetProcAddress)(const char* proc);
 bool (SDLCALL* bf_SDL_GL_SwapWindow)(SDL_Window* window);
 
+struct AdjustedMonRect
+{
+	int mMonCount;
+	int mX;
+	int mY;
+	int mWidth;
+	int mHeight;
+};
 
 static int bfMouseBtnOf[4] = {NULL, 0, 2, 1}; // Translate SDL mouse buttons to what Beef expects.
 
@@ -125,6 +135,7 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TOOLTIP_BOOLEAN, (windowFlags & BFWINDOW_TOOLTIP) > 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, (windowFlags & BFWINDOW_DEST_ALPHA) > 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MENU_BOOLEAN, (windowFlags & BFWINDOW_FAKEFOCUS) > 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN, (windowFlags & BFWINDOW_FAKEFOCUS) == 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MODAL_BOOLEAN, (windowFlags & BFWINDOW_MODAL) > 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, (windowFlags & BFWINDOW_TOPMOST) > 0);
 
@@ -224,12 +235,8 @@ bool SdlBFWindow::TryClose()
 		mGotFocusFunc(this->mParent);
 	}
 
-	SDL_Event closeEvent;
-	bf_SDL_memset(&closeEvent, 0, sizeof(SDL_Event));
-	closeEvent.type = SDL_EVENT_WINDOW_CLOSE_REQUESTED;
-	closeEvent.window.windowID = bf_SDL_GetWindowID(this->mSDLWindow);
-	
-	return bf_SDL_PushEvent(&closeEvent);
+	gBFApp->RemoveWindow(this);
+	return mSDLWindow == NULL;
 }
 
 static int SDLConvertScanCode(int scanCode)
@@ -376,8 +383,11 @@ SdlBFApp::SdlBFApp()
 		BF_GET_SDLPROC(SDL_SetError);
 		BF_GET_SDLPROC(SDL_GetError);
 
+		BF_GET_SDLPROC(SDL_GetPrimaryDisplay);
 		BF_GET_SDLPROC(SDL_GetDisplays);
 		BF_GET_SDLPROC(SDL_GetDisplayBounds);
+		BF_GET_SDLPROC(SDL_GetDesktopDisplayMode);
+		BF_GET_SDLPROC(SDL_HasRectIntersection);
 
 		BF_GET_SDLPROC(SDL_GL_CreateContext);
 		BF_GET_SDLPROC(SDL_GL_MakeCurrent);
@@ -436,7 +446,8 @@ void SdlBFApp::Run()
 			case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
-					gBFApp->RemoveWindow(sdlBFWindow);
+					if(sdlBFWindow != NULL)
+						gBFApp->RemoveWindow(sdlBFWindow);
 				}
 				break;
 			case SDL_EVENT_WINDOW_FOCUS_GAINED:
@@ -716,14 +727,97 @@ DrawLayer* SdlBFApp::CreateDrawLayer(BFWindow* window)
 
 void SdlBFApp::GetDesktopResolution(int& width, int& height)
 {
-	width = 1024;
-	height = 768;
+	SDL_DisplayID display = bf_SDL_GetPrimaryDisplay();
+    if (display != 0) 
+	{
+		SDL_DisplayMode* displayMode = bf_SDL_GetDesktopDisplayMode(display);
+		if (displayMode != NULL) {
+			width = displayMode->w;
+			height = displayMode->h;
+		}
+	}
+}
+
+static bool InflateRectToMonitor(SDL_DisplayID monitor, AdjustedMonRect* inflatedRect)
+{
+	SDL_Rect bounds;
+	if(!bf_SDL_GetDisplayBounds(monitor, &bounds))
+		return false;
+
+	inflatedRect->mMonCount++;
+	if (inflatedRect->mMonCount == 1)
+	{
+		inflatedRect->mX = bounds.x;
+		inflatedRect->mY = bounds.y;
+		inflatedRect->mWidth = bounds.w;
+		inflatedRect->mHeight = bounds.h;
+	}
+	else
+	{
+		int minLeft = BF_MIN(inflatedRect->mX, bounds.x);
+		int minTop = BF_MIN(inflatedRect->mY, bounds.y);
+		int maxRight = BF_MAX(inflatedRect->mX + inflatedRect->mWidth, bounds.x + bounds.w);
+		int maxBottom = BF_MAX(inflatedRect->mY + inflatedRect->mHeight, bounds.y + bounds.h);
+
+		inflatedRect->mX = minLeft;
+		inflatedRect->mY = minTop;
+		inflatedRect->mWidth = maxRight - minLeft;
+		inflatedRect->mHeight = maxBottom - minTop;
+	}
+
+	return true;
 }
 
 void SdlBFApp::GetWorkspaceRect(int& x, int& y, int& width, int& height)
 {
-	x = 0;
-	y = 0;
-	width = 1024;
-	height = 768;
+	AdjustedMonRect inflateRect = { 0 };
+
+	int displayCount;
+	SDL_DisplayID* displays = bf_SDL_GetDisplays(&displayCount);
+    if (!displays)
+        return;
+
+    for (int i = 0; i < displayCount; i++) 
+	{
+        InflateRectToMonitor(displays[i], &inflateRect);
+    }
+    bf_SDL_free(displays);
+	
+	x = inflateRect.mX;
+	y = inflateRect.mY;
+	width = inflateRect.mWidth;
+	height = inflateRect.mHeight;
+}
+
+void SdlBFApp::GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fromHeight, int& outX, int& outY, int& outWidth, int& outHeight)
+{
+	SDL_Rect bounds;
+	SDL_Rect clip = {fromX, fromY, fromWidth == 0 ? 1 : fromWidth, fromHeight == 0 ? 1 : fromHeight};
+	AdjustedMonRect inflateRect = { 0 };
+
+	int displayCount;
+	SDL_DisplayID* displays = bf_SDL_GetDisplays(&displayCount);
+    if (displays == NULL)
+        return;
+
+    for (int i = 0; i < displayCount; i++) 
+	{
+		bf_SDL_GetDisplayBounds(displays[i], &bounds);
+		if (bf_SDL_HasRectIntersection(&clip, &bounds))
+		{
+        	InflateRectToMonitor(displays[i], &inflateRect);
+		}
+    }
+    bf_SDL_free(displays);
+
+	if (inflateRect.mMonCount == 0)
+	{
+		GetWorkspaceRect(outX, outY, outWidth, outHeight);
+		return;
+	}
+	
+	outX = inflateRect.mX;
+	outY = inflateRect.mY;
+	outWidth = inflateRect.mWidth;
+	outHeight = inflateRect.mHeight;
 }
