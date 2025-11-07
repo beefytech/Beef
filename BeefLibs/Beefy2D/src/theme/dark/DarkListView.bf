@@ -348,7 +348,7 @@ namespace Beefy.theme.dark
 					FontOverflowMode overflowMode = ((nextContentColumn != -1) || (listView.mEndInEllipsis)) ? .Ellipsis : .Overflow;
 					if (listView.mWordWrap)
 						overflowMode = .Wrap;
-                    g.DrawString(mLabel, labelX, 0, .Left, wantWidth, overflowMode);
+                    g.DrawString(mLabel, labelX, listView.mLabelY, .Left, wantWidth, overflowMode);
 				}
 
 				if (mOpenButton != null)
@@ -747,6 +747,13 @@ namespace Beefy.theme.dark
                     g.Draw(img, mWidth / 2 - img.mWidth / 2, mHeight - img.mHeight);*/
                 }
             }*/
+
+			/*if ((mColumnIdx == 0) && (mParentItem != null))
+			{
+				//TODO: Debugging
+				using (g.PushColor(0x20FF0000))
+					g.FillRect(1, 1, mWidth - 2, mHeight - 2);
+			}*/
         }
 
         public override bool Open(bool open, bool immediate = false)
@@ -982,7 +989,8 @@ namespace Beefy.theme.dark
         public bool mShowHeader = true;
 		public bool mEndInEllipsis;
 		public bool mWordWrap;
-        public float mLabelX = DarkTheme.sUnitSize;        
+        public float mLabelX = DarkTheme.sUnitSize;
+		public float mLabelY = 0;
         public float mChildIndent = DarkTheme.sUnitSize;
         public float mOpenButtonX = 0;
         public float mIconX = GS!(4);

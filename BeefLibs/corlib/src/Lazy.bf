@@ -174,6 +174,12 @@ namespace System
 			public T mValue;
 		}
 
+#if BF_PLATFORM_WINDOWS && BF_32_BIT
+		// Fixes Win32 leak detection
+		[ThreadStatic]
+		static T sTLSValue;
+#endif
+
 		void* mData;
 		delegate T() mCreateDlg ~ delete _;
 		delegate void(T value) mReleaseDlg ~ delete _;
@@ -190,22 +196,29 @@ namespace System
 			InitTLS();
 		}
 
+		[CallingConvention(.Stdcall)]
+		static void TLSRelease(void* ptr)
+		{
+			var entry = (Entry*)ptr;
+			if (entry.mSingleton.mReleaseDlg != null)
+				entry.mSingleton.mReleaseDlg(entry.mValue);
+			else
+				entry.mSingleton.ReleaseValue(mut entry.mValue);
+			delete entry;
+		}
+
 		void InitTLS()
 		{
-			mData = Platform.BfpTLS_Create((ptr) =>
-				{
-					var entry = (Entry*)ptr;
-					if (entry.mSingleton.mReleaseDlg != null)
-						entry.mSingleton.mReleaseDlg(entry.mValue);
-					else
-						entry.mSingleton.ReleaseValue(mut entry.mValue);
-					delete entry;
-				});
+			if (!Compiler.IsComptime)
+				mData = Platform.BfpTLS_Create( => TLSRelease);
 		}
 
 		public ~this()
 		{
-			Platform.BfpTLS_Release((.)mData);
+			if (!Compiler.IsComptime)
+				Platform.BfpTLS_Release((.)mData);
+			else
+				delete mData;
 		}
 
 		protected T DefaultCreateValue()
@@ -243,7 +256,6 @@ namespace System
 			val.Dispose();
 		}
 
-
 		protected void DefaultReleaseValue(mut T val) where T : class
 		{
 			delete (Object)val;
@@ -258,7 +270,13 @@ namespace System
 		{
 			get
 			{
-				void* ptr = Platform.BfpTLS_GetValue((.)mData);
+				void* ptr;
+
+				if (!Compiler.IsComptime)
+					ptr = Platform.BfpTLS_GetValue((.)mData);
+				else
+					ptr = mData;
+
 				if (ptr != null)
 					return ref ((Entry*)ptr).mValue;
 
@@ -268,12 +286,20 @@ namespace System
 					entry.mValue = mCreateDlg();
 				else
 					entry.mValue = CreateValue();
-				Platform.BfpTLS_SetValue((.)mData, entry);
+
+#if BF_PLATFORM_WINDOWS && BF_32_BIT
+				sTLSValue = entry.mValue;
+#endif
+
+				if (!Compiler.IsComptime)
+					Platform.BfpTLS_SetValue((.)mData, entry);
+				else
+					mData = entry;
 				return ref entry.mValue;
 			}
 		}
 
-		public bool IsValueCreated => Platform.BfpTLS_GetValue((.)mData) != null;
+		public bool IsValueCreated => (!Compiler.IsComptime) ? (Platform.BfpTLS_GetValue((.)mData) != null) : (mData != null);
 
 		public static ref T operator->(Self self) => ref self.[Inline]Value;
 

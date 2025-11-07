@@ -12,7 +12,7 @@ namespace System
 		{
 			public static HashSet<String> sReservedNameSet = new .() ~ delete _;
 
-			const String[?] cReservedNames = .("abstract", "alignof", "alloctype", "append", "as", "asm", "base", "break",
+			const String[?] cReservedNames = .("abstract", "alignof", "alloctype", "append", "as", "asm", "base", "box", "break",
 				"case", "catch", "checked", "class", "comptype", "const", "continue", "decltype", "default", "defer", "delegate",
 				"delete", "do", "else", "enum", "explicit", "extension", "extern", "false", "finally", "fixed", "for", "function",
 				"if", "implicit", "in", "interface", "internal", "is", "isconst", "mixin", "namespace", "new", "null", "nullable",
@@ -39,7 +39,8 @@ namespace System
 			public enum Flags
 			{
 				None = 0,
-				AllowRegenerate = 1
+				AllowRegenerate = 1,
+				AllowFileExt = 2
 			}
 
 			public String mCmdInfo = new String() ~ delete _;
@@ -181,6 +182,23 @@ namespace System
 				String outText = scope .();
 				Flags flags = .None;
 				val.Generate(fileName, outText, ref flags);
+
+				if (flags.HasFlag(.AllowFileExt))
+				{
+					String origFileName = scope .(fileName);
+
+					var fileExt = Path.GetExtension(origFileName, .. scope .());
+					if (!fileExt.IsEmpty)
+					{
+						val.mCmdInfo.Append("fileExt\t");
+						fileExt.Quote(val.mCmdInfo);
+						val.mCmdInfo.Append("\n");
+					}
+
+					fileName.Clear();
+					Path.GetFileNameWithoutExtension(origFileName, fileName);
+				}
+
 				val.mCmdInfo.Append("fileName\t");
 				fileName.Quote(val.mCmdInfo);
 				val.mCmdInfo.Append("\n");

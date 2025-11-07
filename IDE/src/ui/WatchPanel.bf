@@ -271,6 +271,7 @@ namespace IDE.ui
 			mIconX = GS!(4);
 			mOpenButtonX = GS!(4);
 			mLabelX = GS!(44);
+			mLabelY = GS!(-1);
 			mChildIndent = GS!(16);
 			mHiliteOffset = GS!(-2);
 		}
@@ -4504,7 +4505,7 @@ namespace IDE.ui
 						});
 				}
 
-				if (!watchEntry.IsConstant)
+				if ((gApp.mDebugger.IsRunning) && (!watchEntry.IsConstant))
 				{
 					anItem = menu.AddItem("Break When Value Changes");
 					if (watchEntry.mMemoryBreakpointAddr == 0)
@@ -4571,8 +4572,9 @@ namespace IDE.ui
 				{
 					if (int.Parse(watchEntry.mPointer ?? watchEntry.mEditInitialize, .AllowHexSpecifier) case .Ok(let addr))
 					{
-						int threadId;
-						gApp.mDebugger.GetStackAllocInfo(addr, out threadId, null);
+						int threadId = 0;
+						if (gApp.mDebugger.IsRunning)
+							gApp.mDebugger.GetStackAllocInfo(addr, out threadId, null);
 						if (threadId != 0)
 						{
 							anItem = menu.AddItem("Find on Stack");

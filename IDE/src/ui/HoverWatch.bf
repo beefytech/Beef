@@ -1311,6 +1311,8 @@ namespace IDE.ui
 			else
 				useWidth = listView.mWidth;
 
+			var prevUseWidth = useWidth;
+
 			if (wantWordWrap)
 			{
 				float actualMaxWidth = 0;
@@ -1338,9 +1340,11 @@ namespace IDE.ui
 				CheckScrollbar();
 				if (listView.mVertScrollbar != null)
 					useWidth += GS!(20);
+				else if (prevUseWidth == wantWidth)
+					useWidth = Math.Max(useWidth, prevUseWidth);
 			}
 
-			height += GS!(2);
+			height -= GS!(2);
 
             listView.Resize(popupX, popupY, useWidth, height);
 			listView.mListSizeDirty = true;

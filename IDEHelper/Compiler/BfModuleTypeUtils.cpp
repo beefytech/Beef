@@ -2750,6 +2750,11 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 
 void BfModule::CEMixin(BfAstNode* refNode, const StringImpl& code)
 {
+	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
+	{
+		refNode = mCurMethodState->mMixinState->mSource;
+	}
+
 	if (code.IsEmpty())
 		return;
 
@@ -6981,8 +6986,9 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 
 				methodInstance = moduleMethodInstance.mMethodInstance;
 				if (methodInstance == NULL)
-				{
-					BF_ASSERT(typeInstance->IsGenericTypeInstance() && (typeInstance->mTypeDef->mIsCombinedPartial));
+				{					
+					BF_ASSERT(typeInstance->IsBoxed() ||
+						(typeInstance->IsGenericTypeInstance() && (typeInstance->mTypeDef->mIsCombinedPartial)));
 					continue;
 				}
 
@@ -8525,6 +8531,8 @@ BfTypeInstance* BfModule::SantizeTupleType(BfTypeInstance* tupleType)
 
 BfRefType* BfModule::CreateRefType(BfType* resolvedTypeRef, BfRefType::RefKind refKind)
 {
+	BF_ASSERT(!resolvedTypeRef->IsDeleting());
+
 	auto refType = mContext->mRefTypePool.Get();
 	refType->mContext = mContext;
 	refType->mElementType = resolvedTypeRef;

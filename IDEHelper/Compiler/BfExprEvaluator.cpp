@@ -3244,6 +3244,13 @@ void BfMethodMatcher::TryDevirtualizeCall(BfTypedValue target, BfTypedValue* ori
 			BfBoxedType* vBoxedType = (BfBoxedType*)methodRef.mImplementingMethod.mTypeInstance;
 			mBestMethodTypeInstance = vBoxedType->mElementType->ToTypeInstance();
 			mBestMethodInstance = mModule->GetMethodInstance(mBestMethodTypeInstance, boxedMethodInstance.mMethodInstance->mMethodDef, BfTypeVector());
+			if (mBestMethodInstance == NULL)
+			{
+				auto declMethodInstance = useModule->ReferenceExternalMethodInstance(methodRef.mDeclaringMethod);
+				mBestMethodTypeInstance = methodRef.mDeclaringMethod.mTypeInstance;
+				mBestMethodInstance = mModule->GetMethodInstance(mBestMethodTypeInstance, declMethodInstance.mMethodInstance->mMethodDef, BfTypeVector());
+			}
+
 			mBestMethodDef = mBestMethodInstance.mMethodInstance->mMethodDef;
 		}
 		else
@@ -18208,7 +18215,71 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 		_AddArg(expr);
  	}
 
-	if ((int)args.size() < explicitParamCount)
+	bool hasParamsArray = methodInstance->HasParamsArray();
+	BfType* expandedParamsElementType = NULL;
+	BfTypedValue expandedParamsArray;
+	BfIRValue expandedParamAlloca;
+
+	if (hasParamsArray)
+	{	
+		int numElements = (int)args.size() - (explicitParamCount - 1);
+
+		auto wantType = methodInstance->GetParamType(methodInstance->GetParamCount() - 1);
+		if (wantType->IsArray())
+		{
+			BfScopeData* boxScopeData = mModule->mCurMethodState->mCurScope;
+
+			BfArrayType* arrayType = (BfArrayType*)wantType;
+			mModule->PopulateType(arrayType, BfPopulateType_DataAndMethods);
+			expandedParamsElementType = arrayType->mGenericTypeInfo->mTypeGenericArguments[0];
+
+			int arrayClassSize = arrayType->mInstSize - expandedParamsElementType->mSize;
+
+			expandedParamsArray = BfTypedValue(mModule->AllocFromType(arrayType->GetUnderlyingType(), boxScopeData, BfIRValue(), mModule->GetConstValue(numElements), 1, BfAllocFlags_None),
+				arrayType, false);
+
+			BfResolvedArgs resolvedArgs;
+			MatchConstructor(targetSrc, NULL, expandedParamsArray, arrayType, resolvedArgs, false, BfMethodGenericArguments(), BfAllowAppendKind_No);
+
+			//TODO: Assert 'length' var is at slot 1
+			auto arrayBits = mModule->mBfIRBuilder->CreateBitCast(expandedParamsArray.mValue, mModule->mBfIRBuilder->MapType(arrayType->mBaseType));
+			int arrayLengthBitCount = arrayType->GetLengthBitCount();
+			if (arrayLengthBitCount == 0)
+			{
+				mModule->Fail("INTERNAL ERROR: Unable to find array 'length' field", targetSrc);
+				return;
+			}
+
+			auto& fieldInstance = arrayType->mBaseType->mFieldInstances[0];
+			auto addr = mModule->mBfIRBuilder->CreateInBoundsGEP(arrayBits, 0, fieldInstance.mDataIdx);
+			if (arrayLengthBitCount == 64)
+				mModule->mBfIRBuilder->CreateAlignedStore(mModule->GetConstValue64(numElements), addr, 8);
+			else
+				mModule->mBfIRBuilder->CreateAlignedStore(mModule->GetConstValue32(numElements), addr, 4);			
+		}
+		else if (wantType->IsInstanceOf(mModule->mCompiler->mSpanTypeDef))
+		{			
+			mModule->PopulateType(wantType);
+			mModule->mBfIRBuilder->PopulateType(wantType);
+			auto genericTypeInst = wantType->ToGenericTypeInstance();
+			expandedParamsElementType = genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0];
+
+			expandedParamsArray = BfTypedValue(mModule->CreateAlloca(wantType), wantType, true);
+			expandedParamAlloca = mModule->CreateAlloca(genericTypeInst->mGenericTypeInfo->mTypeGenericArguments[0], true, NULL, mModule->GetConstValue(numElements));
+			mModule->mBfIRBuilder->CreateAlignedStore(expandedParamAlloca, mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 1), mModule->mSystem->mPtrSize);
+			mModule->mBfIRBuilder->CreateAlignedStore(mModule->GetConstValue(numElements), mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, 2), mModule->mSystem->mPtrSize);
+		}
+		else
+		{
+			mModule->Fail(StrFormat("Unsupported mixin params type '%s", mModule->TypeToString(wantType).c_str()), targetSrc);
+		}		
+	}
+
+	if ((hasParamsArray) && (args.size() >= explicitParamCount - 1))
+	{
+		// Allowed
+	}
+	else if ((int)args.size() < explicitParamCount)
 	{
 		BfError* error = mModule->Fail(StrFormat("Not enough arguments specified, expected %d more.", explicitParamCount - (int)arguments.size()), targetSrc);
 		if ((error != NULL) && (methodInstance->mMethodDef->GetRefNode() != NULL))
@@ -18227,12 +18298,54 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	auto argExprEvaluatorItr = argExprEvaluators.begin();
 	for (int argIdx = 0; argIdx < (int)args.size(); argIdx++)
 	{
+		auto& arg = args[argIdx];
+
 		auto exprEvaluator = *argExprEvaluatorItr;
 		//auto paramType = methodInstance->GetParamKind(paramIdx);
 
-		BfType* wantType = methodInstance->mParams[paramIdx].mResolvedType;
+		if ((hasParamsArray) && (argIdx >= explicitParamCount - 1))
+		{	
+			int extendedParamIdx = argIdx - (explicitParamCount - 1);
+			if (expandedParamAlloca)
+			{
+				BfType* wantType = expandedParamsElementType;
 
-		auto& arg = args[argIdx];
+				exprEvaluator->FinishExpressionResult();
+				arg.mTypedValue = mModule->LoadValue(arg.mTypedValue);
+				arg.mTypedValue = mModule->Cast(arg.mExpression, arg.mTypedValue, wantType);
+
+				if (arg.mTypedValue)
+				{
+					auto argValue = mModule->LoadOrAggregateValue(arg.mTypedValue);
+					if (!mModule->mBfIRBuilder->mIgnoreWrites)
+						mModule->FixValueActualization(argValue);
+					auto addr = mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamAlloca, extendedParamIdx);
+					auto storeInst = mModule->mBfIRBuilder->CreateAlignedStore(argValue.mValue, addr, argValue.mType->mAlign);
+				}
+			}
+			else if (expandedParamsArray)
+			{
+				auto firstElem = mModule->GetFieldByName(expandedParamsArray.mType->ToTypeInstance(), "mFirstElement");
+				if (firstElem != NULL)
+				{
+					auto argValue = mModule->LoadOrAggregateValue(arg.mTypedValue);
+
+					auto firstAddr = mModule->mBfIRBuilder->CreateInBoundsGEP(expandedParamsArray.mValue, 0, firstElem->mDataIdx);
+					auto indexedAddr = mModule->CreateIndexedValue(argValue.mType, firstAddr, extendedParamIdx);
+					if (argValue.IsSplat())
+						mModule->AggregateSplatIntoAddr(argValue, indexedAddr);
+					else
+						mModule->mBfIRBuilder->CreateAlignedStore(argValue.mValue, indexedAddr, argValue.mType->mAlign);
+				}
+			}
+
+			paramIdx++;
+			argExprEvaluatorItr++;
+
+			continue;
+		}
+
+		BfType* wantType = methodInstance->mParams[paramIdx].mResolvedType;		
 
 		if ((arg.mArgFlags & BfArgFlag_VariableDeclaration) != 0)
 		{
@@ -18610,7 +18723,27 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 	argExprEvaluatorItr = argExprEvaluators.begin();
 	for (int argIdx = methodDef->mIsStatic ? 0 : -1; argIdx < (int)explicitParamCount; argIdx++)
 	{
-		int paramIdx = argIdx;
+		int paramIdx = argIdx;		
+
+		if ((hasParamsArray) && (argIdx >= explicitParamCount - 1))
+		{
+			if (expandedParamsArray)
+			{
+				BfLocalVariable* localVar = new BfLocalVariable();
+				
+				auto paramDef = methodDef->mParams[paramIdx];
+				localVar->mName = paramDef->mName;
+				if (expandedParamsArray.mType->IsValueType())
+					localVar->mAddr = expandedParamsArray.mValue;
+				else
+					localVar->mValue = expandedParamsArray.mValue;
+				localVar->mResolvedType = expandedParamsArray.mType;
+				localVar->mAssignedKind = BfLocalVarAssignKind_Unconditional;
+				_AddLocalVariable(localVar, NULL);
+			}
+			
+			break;
+		}		
 
 		auto exprEvaluator = *argExprEvaluatorItr;
 
@@ -23226,6 +23359,9 @@ void BfExprEvaluator::PerformUnaryOperation(BfExpression* unaryOpExpr, BfUnaryOp
 	{
 		SetAndRestoreValue<BfEvalExprFlags> prevFlags(mBfEvalExprFlags);
 
+		// Disallow 'out ref'
+		mBfEvalExprFlags = (BfEvalExprFlags)(mBfEvalExprFlags & ~BfEvalExprFlags_AllowRefExpr);
+
 		BfType* prevExpedcting = mExpectingType;
 		switch (unaryOp)
 		{
@@ -23861,6 +23997,14 @@ void BfExprEvaluator::PerformUnaryOperation_OnResult(BfExpression* unaryOpExpr, 
 			ResolveGenericType();
 			if (mResult.mType->IsVar())
 				break;
+
+			if (mResult.mType->IsDeleting())
+			{
+				mModule->mCompiler->RequestExtraCompile();
+				mModule->InternalError("BfUnaryOp using deleted type");
+				return;
+			}
+
 			mResult = BfTypedValue(mResult.mValue, mModule->CreateRefType(mResult.mType, (unaryOp == BfUnaryOp_Ref) ? BfRefType::RefKind_Ref : BfRefType::RefKind_Mut));
 		}
 		break;

@@ -563,7 +563,7 @@ namespace IDE.ui
 					g.FillRect(rect.mX + 1, rect.mY + 1, rect.mWidth - 2, rect.mHeight - 2);
 				}
 
-				if ((mEditWidgetContent.CurSelection != null) && (mCollapseIndex < mEditWidgetContent.mOrderedCollapseEntries.Count))
+				if ((mEditWidgetContent.CurSelection != null) && (mCollapseIndex >= 0) && (mCollapseIndex < mEditWidgetContent.mOrderedCollapseEntries.Count))
 				{
 					var collapseEntry = mEditWidgetContent.mOrderedCollapseEntries[mCollapseIndex];
 					int32 startIdx = mEditWidgetContent.mData.mLineStarts[collapseEntry.mStartLine];

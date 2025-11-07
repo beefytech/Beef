@@ -155,9 +155,29 @@ namespace Tests
 			}
 		}
 
+		static mixin ExtendSpan<T>(Span<T> args, params Span<T> newArgs)
+		{
+			T[] aggArgs = scope:mixin T[args.Length + newArgs.Length];
+			args.CopyTo(aggArgs);
+			newArgs.CopyTo(.(aggArgs.Ptr + args.Length, newArgs.Length));
+			aggArgs
+		}
+
+		static int Accumulate(params Span<int> args)
+		{
+			int total = 0;
+			for (int val in args)
+				total += val;
+			return total;
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
+			int[] arr = scope .(1000, 200);
+			int acc = Accumulate(params ExtendSpan!(arr, 30, 4));
+			Test.Assert(acc == 1234);
+
 			MixClass mc = scope MixClass();
 			mc.MixA!(10);
 			Test.Assert(mc.mA == 110);
