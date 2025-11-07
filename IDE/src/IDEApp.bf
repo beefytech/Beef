@@ -12856,6 +12856,7 @@ namespace IDE
 			}
 
 			Font.AddFontFailEntry("Segoe UI", scope String()..AppendF("{}fonts/NotoSans-Regular.ttf", mInstallDir));
+			Font.AddFontFailEntry("Segoe UI Bold", scope String()..AppendF("{}fonts/NotoSans-Bold.ttf", mInstallDir));
 
 			DarkTheme aTheme = new DarkTheme();
 			mSettings.mUISettings.Apply(); // Apply again to set actual theme
