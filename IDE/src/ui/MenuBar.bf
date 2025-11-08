@@ -4,6 +4,7 @@ using Beefy.widgets;
 using Beefy.theme.dark;
 using Beefy.geom;
 using IDE;
+using IDE.util;
 using System;
 using System.Diagnostics;
 
@@ -155,8 +156,11 @@ public class MenuBar : Widget
 		AddMenuItem(openMenu, "Open Crash Dump...", "Open Crash Dump");
 
 		let recentMenu = subMenu.AddItem("Open Recent");
-		recentMenu.SetDisabled(true); //TODO: recent
-
+		PopulateRecentMenu(.OpenedWorkspace, recentMenu.AddItem("Open Recent Workspace"));
+		PopulateRecentMenu(.OpenedDebugSession, recentMenu.AddItem("Open Recent Debug Session"));
+		PopulateRecentMenu(.OpenedFile, recentMenu.AddItem("Open Recent File"));
+		PopulateRecentMenu(.OpenedCrashDump, recentMenu.AddItem("Open Recent Crash Dump"));
+			  
 		AddMenuItem(subMenu, "Save File", "Save File", gApp.GetActiveDocumentPanel() == null);
 		AddMenuItem(subMenu, "Save As...", "Save As", gApp.GetActiveDocumentPanel() == null);
 		AddMenuItem(subMenu, "Save All", "Save All");
@@ -170,6 +174,22 @@ public class MenuBar : Widget
 
 		let menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(subMenu);
 		menuWidget.Init(mFileButton, 0, mHeight);
+	}
+
+	void PopulateRecentMenu(RecentFiles.RecentKind kind, Menu menu)
+	{
+		let recents = gApp.mSettings.mRecentFiles.GetRecentList(kind);
+		let itemCount = Math.Min(recents.Count, 10);
+
+		menu.SetDisabled(itemCount < 1);
+		
+		for(int i = 0; i < itemCount; i++)
+		{
+			AddMenuItem(menu, scope $"{i+1} {recents[i]}", new (evt) =>
+				{
+					gApp.[Friend]ShowRecentFile(kind, i);
+				});
+		}
 	}
 
 	void ShowEditMenu()
