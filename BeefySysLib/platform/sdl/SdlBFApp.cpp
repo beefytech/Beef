@@ -475,7 +475,7 @@ void SdlBFApp::Run()
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 					if (sdlBFWindow != NULL)
-						sdlBFWindow->mMouseDownFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button], 1);
+						sdlBFWindow->mMouseDownFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button], sdlEvent.button.clicks);
 				}
 				break;
 			case SDL_EVENT_MOUSE_MOTION:
