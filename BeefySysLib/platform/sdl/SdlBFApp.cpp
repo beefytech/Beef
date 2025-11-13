@@ -6,6 +6,7 @@
 #include "platform/PlatformInterface.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
+#include <SDL3/SDL_hints.h>
 #include <SDL3/SDL_oldnames.h>
 #include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL_platform.h>
@@ -44,6 +45,7 @@ void (SDLCALL* bf_SDL_DestroyWindow)(SDL_Window* window);
 bool (SDLCALL* bf_SDL_GetWindowPosition)(SDL_Window* window,int* x, int* y);
 bool (SDLCALL* bf_SDL_SetWindowPosition)(SDL_Window* window, int x, int y);
 bool (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
+bool (SDLCALL* bf_SDL_SetWindowSize)(SDL_Window* window, int w, int h);
 
 char* (SDLCALL* bf_SDL_GetClipboardText)(void);
 bool (SDLCALL* bf_SDL_SetClipboardText)(const char* text);
@@ -54,8 +56,12 @@ bool (SDLCALL* bf_SDL_StopTextInput)(SDL_Window* window);
 
 bool (SDLCALL* bf_SDL_PollEvent)(SDL_Event* event);
 bool (SDLCALL* bf_SDL_PushEvent)(SDL_Event* event);
+void (SDLCALL* bf_SDL_PumpEvents)(void);
+int (SDLCALL* bf_SDL_PeepEvents)(SDL_Event *events, int numevents, SDL_EventAction action, Uint32 minType, Uint32 maxType);
 bool (SDLCALL* bf_SDL_SetError)(const char *fmt, ...);
 const char* (SDLCALL* bf_SDL_GetError)(void);
+
+bool (SDLCALL* bf_SDL_SetHint)(const char *name, const char *value);
 
 SDL_DisplayID (SDLCALL* bf_SDL_GetPrimaryDisplay)(void);
 SDL_DisplayID* (SDLCALL* bf_SDL_GetDisplays)(int* count);
@@ -370,6 +376,7 @@ SdlBFApp::SdlBFApp()
 		BF_GET_SDLPROC(SDL_GetWindowPosition);
 		BF_GET_SDLPROC(SDL_SetWindowPosition);
 		BF_GET_SDLPROC(SDL_GetWindowSize);
+		BF_GET_SDLPROC(SDL_SetWindowSize);
 
 		BF_GET_SDLPROC(SDL_GetClipboardText);
 		BF_GET_SDLPROC(SDL_SetClipboardText);
@@ -380,8 +387,12 @@ SdlBFApp::SdlBFApp()
 
 		BF_GET_SDLPROC(SDL_PollEvent);
 		BF_GET_SDLPROC(SDL_PushEvent);
+		BF_GET_SDLPROC(SDL_PumpEvents);
+		BF_GET_SDLPROC(SDL_PeepEvents);
 		BF_GET_SDLPROC(SDL_SetError);
 		BF_GET_SDLPROC(SDL_GetError);
+
+		BF_GET_SDLPROC(SDL_SetHint);
 
 		BF_GET_SDLPROC(SDL_GetPrimaryDisplay);
 		BF_GET_SDLPROC(SDL_GetDisplays);
@@ -418,6 +429,8 @@ void SdlBFApp::Init()
 {
 	mRunning = true;
 	mInMsgProc = false;
+
+//	bf_SDL_SetHint(SDL_HINT_EVENT_LOGGING, "1");
 
 	mRenderDevice = new GLRenderDevice();
 	mRenderDevice->Init(this);
@@ -532,7 +545,7 @@ void SdlBFApp::Run()
 				}
 				break;
 			case SDL_EVENT_WINDOW_MOVED:
-			case SDL_EVENT_WINDOW_RESIZED:
+//			case SDL_EVENT_WINDOW_RESIZED:
 			case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
@@ -553,7 +566,6 @@ void SdlBFApp::Run()
 					}
 				}
 				break;
-			
 			}
 		}
 
@@ -618,8 +630,45 @@ void SdlBFWindow::SetClientPosition(int x, int y)
 {
 	bf_SDL_SetWindowPosition(mSDLWindow, x, y);
 
-	if (mMovedFunc != NULL)
-		mMovedFunc(this);
+	SDL_Event e;
+	bool hasHandled;
+	while (bf_SDL_PeepEvents(&e, 1, SDL_GETEVENT, SDL_EVENT_WINDOW_MOVED, SDL_EVENT_WINDOW_MOVED) > 0) 
+	{
+    	if (mMovedFunc != NULL && !hasHandled)
+		{
+			mRenderWindow->Resized();
+			mMovedFunc(this);
+
+			hasHandled = true;
+			mHasPositionInit = false;
+		}
+	}
+}
+
+void SdlBFWindow::Resize(int x, int y, int width, int height, ShowKind showKind)
+{
+	bf_SDL_SetWindowPosition(mSDLWindow, x, y);
+	bf_SDL_SetWindowSize(mSDLWindow, width, height);
+
+	SDL_Event e;
+	bool hasHandled;
+	while (bf_SDL_PeepEvents(&e, 1, SDL_GETEVENT, SDL_EVENT_WINDOW_MOVED, SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) > 0) 
+	{
+    	if (mMovedFunc != NULL && !hasHandled)
+		{
+			mRenderWindow->Resized();
+			mMovedFunc(this);
+
+			hasHandled = true;
+			mHasPositionInit = false;
+		}
+	}
+}
+
+void SdlBFWindow::GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind)
+{
+	bf_SDL_GetWindowPosition(mSDLWindow, normX, normY);
+	bf_SDL_GetWindowSize(mSDLWindow, normWidth, normHeight);
 }
 
 void SdlBFWindow::SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVisible)
