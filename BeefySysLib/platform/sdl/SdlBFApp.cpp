@@ -453,14 +453,12 @@ void SdlBFApp::Run()
 
 			switch (sdlEvent.type)
 			{
-			case SDL_EVENT_QUIT:
-				Shutdown();
-				break;
 			case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
 					if(sdlBFWindow != NULL)
-						gBFApp->RemoveWindow(sdlBFWindow);
+						if (sdlBFWindow->mCloseQueryFunc(sdlBFWindow) != 0)
+							gBFApp->RemoveWindow(sdlBFWindow);
 				}
 				break;
 			case SDL_EVENT_WINDOW_FOCUS_GAINED:
