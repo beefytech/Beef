@@ -2,6 +2,7 @@
 
 #include "BFApp.h"
 #include "BFWindow.h"
+#include <SDL3/SDL_video.h>
 #include <map>
 #include "util/Dictionary.h"
 
@@ -17,18 +18,19 @@ public:
 	SDL_Window*				mSDLWindow;
 	bool					mIsMouseInside;
 	int						mModalCount;
+	bool 					mHasPositionInit;
 
 public:
 	SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags);
 	~SdlBFWindow();
 
 	virtual void*			GetUnderlying() {return mSDLWindow; };
-	virtual void			Destroy() { }
+	virtual void			Destroy() override;
 
 	virtual void			SetTitle(const char* title) override {}
 	virtual void			SetMinimumSize(int minWidth, int minHeight, bool clientSized) override {}
-	virtual void			GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind) override { }
-	virtual void			Resize(int x, int y, int width, int height, ShowKind showKind) override {}
+	virtual void			GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind) override;
+	virtual void			Resize(int x, int y, int width, int height, ShowKind showKind) override;
 	virtual void			SetMouseVisible(bool isMouseVisible) override {}
 
 	virtual bool			TryClose() override;
@@ -48,18 +50,21 @@ public:
 };
 
 typedef Dictionary<uint32, SdlBFWindow*> SdlWindowMap;
+typedef Dictionary<StringImpl, void*> SdlClipboardData;
 
 class SdlBFApp : public BFApp
 {
 public:
 	bool					mInMsgProc;
 	SdlWindowMap			mSdlWindowMap;
+	SdlClipboardData*       mSdlClipboardData;
+	SDL_GLContext           mGLContext;
 
 protected:
 	virtual void			Draw() override;
 	virtual void			PhysSetCursor() override;
 
-	uint32					GetClipboardFormat(const StringImpl& format);
+	const char*				GetClipboardFormat(const StringImpl& format);
 	SdlBFWindow*			GetSdlWindowFromId(uint32 id);
 
 public:
@@ -79,6 +84,7 @@ public:
 	virtual BFSysBitmap*	LoadSysBitmap(const wchar_t* fileName) override;
 	virtual void            GetDesktopResolution(int& width, int& height) override;
 	virtual void            GetWorkspaceRect(int& x, int& y, int& width, int& height) override;
+	virtual void			GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fromHeight, int& outX, int& outY, int& outWidth, int& outHeight) override;
 };
 
 NS_BF_END;

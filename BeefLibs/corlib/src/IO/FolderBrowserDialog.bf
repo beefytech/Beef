@@ -246,7 +246,14 @@ public class FolderBrowserDialog : CommonDialog
 		}
 		set
 		{
-			mInitialDir.Set(value);
+			if(mInitialDir == null)
+			{
+				mInitialDir = new .(value);
+			}
+			else
+			{
+				mInitialDir.Set(value);
+			}
 		}
 	}
 
