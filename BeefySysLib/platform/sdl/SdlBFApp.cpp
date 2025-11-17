@@ -254,7 +254,6 @@ static int SDLConvertKeyCode(SDL_Keycode scanCode)
 
 	switch (scanCode)
 	{
-	case SDLK_9: return '0';
     case SDLK_CANCEL: return 0x03;
     case SDLK_BACKSPACE: return 0x08;
     case SDLK_TAB: return 0x09;
@@ -264,7 +263,8 @@ static int SDLConvertKeyCode(SDL_Keycode scanCode)
 	case SDLK_RSHIFT: return 0x10;
     case SDLK_LCTRL: return 0x11;
 	case SDLK_RCTRL: return 0x11;
-    case SDLK_MENU: return 0x12;
+    case SDLK_LALT: return 0x12;
+    case SDLK_RALT: return 0x12;
     case SDLK_PAUSE: return 0x13;
     case SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LANG1): return 0x15;
     case SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LANG2): return 0x15;
@@ -354,6 +354,8 @@ SdlBFApp::SdlBFApp()
 #endif
 
     mInstallDir += "/";
+
+	mIsControlDown = false;
 
 	if (bf_SDL_Init == NULL)
 	{
@@ -472,7 +474,10 @@ void SdlBFApp::Run()
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
 					if(sdlBFWindow != NULL)
+					{
 						sdlBFWindow->mLostFocusFunc(sdlBFWindow);
+						mIsControlDown = false;
+					}
 				}
 				break;
 			case SDL_EVENT_MOUSE_BUTTON_UP:
@@ -514,11 +519,15 @@ void SdlBFApp::Run()
 								sdlBFWindow->mKeyCharFunc(sdlBFWindow, '\n');
 								break;
 							case SDLK_BACKSPACE: 
-								sdlBFWindow->mKeyCharFunc(sdlBFWindow, '\b');
+								sdlBFWindow->mKeyCharFunc(sdlBFWindow, mIsControlDown ? '\x7F' : '\b');
 								break;
 							case SDLK_TAB: 
 								sdlBFWindow->mKeyCharFunc(sdlBFWindow, '\t');
 								break;
+							case SDLK_LCTRL:
+								mIsControlDown = true;
+								break;
+
 							default:;
 						}
 					}
@@ -529,9 +538,9 @@ void SdlBFApp::Run()
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.text.windowID);
 					if (sdlBFWindow != NULL)
 					{
-						wchar_t wchar;
-						mbstowcs(&wchar, sdlEvent.text.text, 1);
-						sdlBFWindow->mKeyCharFunc(sdlBFWindow, wchar);
+						const auto wideString = Beefy::UTF8Decode(sdlEvent.text.text);
+						for (int i = 0; i < wideString.length(); i++)
+							sdlBFWindow->mKeyCharFunc(sdlBFWindow, wideString[i]);
 					}
 				}
 				break;
@@ -540,6 +549,9 @@ void SdlBFApp::Run()
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
 					if (sdlBFWindow != NULL)
 						sdlBFWindow->mKeyUpFunc(sdlBFWindow, SDLConvertKeyCode(sdlEvent.key.key));
+
+					if (sdlEvent.key.key == SDLK_LCTRL)
+						mIsControlDown = false;
 				}
 				break;
 			case SDL_EVENT_WINDOW_MOVED:
