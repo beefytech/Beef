@@ -508,9 +508,10 @@ void SdlBFApp::Run()
 				break;
 			case SDL_EVENT_MOUSE_WHEEL:
 				{
+					uint ucNumLines = 3; // Default
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.wheel.windowID);
 					if(sdlBFWindow != NULL)
-						sdlBFWindow->mMouseWheelFunc(sdlBFWindow, sdlEvent.wheel.mouse_x, sdlEvent.wheel.mouse_y, sdlEvent.wheel.x, sdlEvent.wheel.y);
+						sdlBFWindow->mMouseWheelFunc(sdlBFWindow, sdlEvent.wheel.mouse_x, sdlEvent.wheel.mouse_y, sdlEvent.wheel.x, sdlEvent.wheel.y * (float)ucNumLines);
 				}
 			case SDL_EVENT_KEY_DOWN:
 				{
