@@ -1527,7 +1527,7 @@ namespace IDE.ui
             {
 				//Debug.WriteLine($"UpdateWindow Create {screenX},{screenY}");
 
-                BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized | BFWindow.Flags.PopupPosition | BFWindow.Flags.NoActivate | BFWindow.Flags.NoMouseActivate | BFWindow.Flags.DestAlpha;
+                BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized | BFWindow.Flags.PopupPosition | BFWindow.Flags.NoActivate | BFWindow.Flags.NoMouseActivate | BFWindow.Flags.DestAlpha | BFWindow.Flags.Tooltip;
                 widgetWindow = new WidgetWindow(mTargetEditWidget.mWidgetWindow,
                     "Autocomplete",
                     (int32)screenX, (int32)screenY,

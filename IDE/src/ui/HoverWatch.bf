@@ -459,20 +459,23 @@ namespace IDE.ui
         {
             base.Update();
 
-			for (let item in mListView.GetRoot().mChildItems)
-			{
-				let listViewItem = (HoverListViewItem)item;
-				if (listViewItem.mWatchEntry?.mIsPending == true)
-				{
-					if ((gApp.mDebugger.IsPaused(true)) && (!gApp.mDebugger.HasMessages()))
-					{
-						let listView = (HoverListView)listViewItem.mListView;
-						DoListViewItem(listView, listViewItem, listViewItem.mWatchEntry.mName, listViewItem.mWatchEntry.mEvalStr, true);
-						FinishListView(listView, listView.mX, listView.mY, true);
-						gApp.RefreshVisibleViews();
-					}
-				}
-			}
+            if(mListView != null)
+            {
+                for (let item in mListView.GetRoot().mChildItems)
+                {
+                    let listViewItem = (HoverListViewItem)item;
+                    if (listViewItem.mWatchEntry?.mIsPending == true)
+                    {
+                        if ((gApp.mDebugger.IsPaused(true)) && (!gApp.mDebugger.HasMessages()))
+                        {
+                            let listView = (HoverListView)listViewItem.mListView;
+                            DoListViewItem(listView, listViewItem, listViewItem.mWatchEntry.mName, listViewItem.mWatchEntry.mEvalStr, true);
+                            FinishListView(listView, listView.mX, listView.mY, true);
+                            gApp.RefreshVisibleViews();
+                        }
+                    }
+                }
+            }
 
             if (mCloseDelay > 1)
                mCloseDelay--;
@@ -1082,7 +1085,7 @@ namespace IDE.ui
 
 				var parentWidget = GetParentWidget();
 
-				BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized /*| BFWindow.Flags.PopupPosition*/ | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha;
+				BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized /*| BFWindow.Flags.PopupPosition*/ | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha | BFWindow.Flags.Tooltip;
 #unwarn
 				WidgetWindow widgetWindow = new WidgetWindow(parentWidget.mWidgetWindow,
 				    "HoverWatch",
@@ -1686,7 +1689,7 @@ namespace IDE.ui
 			/*float screenWidth = mListView.mWidth + 8;
 			float screenHeight = mListView.mHeight + 8;
 
-            BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized /*| BFWindow.Flags.PopupPosition*/ | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha;
+            BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized /*| BFWindow.Flags.PopupPosition*/ | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha | BFWindow.Flags.Tooltip;
 #unwarn
             WidgetWindow widgetWindow = new WidgetWindow(parentWidget.mWidgetWindow,
                 "HoverWatch",
