@@ -145,8 +145,18 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MODAL_BOOLEAN, (windowFlags & BFWINDOW_MODAL) > 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, (windowFlags & BFWINDOW_TOPMOST) > 0);
 
-	if (parent != NULL) 
-		bf_SDL_SetPointerProperty(props, SDL_PROP_WINDOW_CREATE_PARENT_POINTER, ((SdlBFWindow*)parent)->mSDLWindow);
+	if (parent != NULL)
+	{
+		SDL_Window* parentWindow = ((SdlBFWindow*)parent)->mSDLWindow;
+		bf_SDL_SetPointerProperty(props, SDL_PROP_WINDOW_CREATE_PARENT_POINTER, parentWindow);
+		if ((windowFlags & BFWINDOW_TOOLTIP | BFWINDOW_FAKEFOCUS) > 0) // Tooltips and menus have relative positioning to their parent.
+		{
+			int parentX, parentY;
+			bf_SDL_GetWindowPosition(parentWindow, &parentX, &parentY);
+			x -= parentX;
+			y -= parentY;
+		}
+	}
 
 	if (windowFlags)
 #ifdef BF_PLATFORM_FULLSCREEN
