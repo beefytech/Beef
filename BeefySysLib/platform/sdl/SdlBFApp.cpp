@@ -46,6 +46,11 @@ bool (SDLCALL* bf_SDL_GetWindowPosition)(SDL_Window* window,int* x, int* y);
 bool (SDLCALL* bf_SDL_SetWindowPosition)(SDL_Window* window, int x, int y);
 bool (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
 bool (SDLCALL* bf_SDL_SetWindowSize)(SDL_Window* window, int w, int h);
+bool (SDLCALL* bf_SDL_SetWindowMinimumSize)(SDL_Window* window, int min_w, int min_h);
+bool (SDLCALL* bf_SDL_SetWindowTitle)(SDL_Window* window, const char* title);
+
+bool (SDLCALL* bf_SDL_ShowCursor)(void);
+bool (SDLCALL* bf_SDL_HideCursor)(void);
 
 char* (SDLCALL* bf_SDL_GetClipboardText)(void);
 bool (SDLCALL* bf_SDL_SetClipboardText)(const char* text);
@@ -387,6 +392,11 @@ SdlBFApp::SdlBFApp()
 		BF_GET_SDLPROC(SDL_SetWindowPosition);
 		BF_GET_SDLPROC(SDL_GetWindowSize);
 		BF_GET_SDLPROC(SDL_SetWindowSize);
+		BF_GET_SDLPROC(SDL_SetWindowMinimumSize);
+		BF_GET_SDLPROC(SDL_SetWindowTitle);
+
+		BF_GET_SDLPROC(SDL_ShowCursor);
+		BF_GET_SDLPROC(SDL_HideCursor);
 
 		BF_GET_SDLPROC(SDL_GetClipboardText);
 		BF_GET_SDLPROC(SDL_SetClipboardText);
@@ -768,6 +778,28 @@ void SdlBFWindow::ModalsRemoved()
 {
 	//::EnableWindow(mHWnd, TRUE);
 	//::SetFocus(mHWnd);
+}
+
+void SdlBFWindow::SetTitle(const char* title)
+{
+	bf_SDL_SetWindowTitle(mSDLWindow, title);
+}
+
+void SdlBFWindow::SetMinimumSize(int minWidth, int minHeight, bool clientSized)
+{
+	bf_SDL_SetWindowMinimumSize(mSDLWindow, minWidth, minHeight);
+}
+
+void SdlBFWindow::SetMouseVisible(bool isMouseVisible)
+{
+	if (isMouseVisible)
+	{
+		bf_SDL_ShowCursor();
+	}
+	else 
+	{
+		bf_SDL_HideCursor();
+	}
 }
 
 DrawLayer* SdlBFApp::CreateDrawLayer(BFWindow* window)

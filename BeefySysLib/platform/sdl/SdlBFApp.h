@@ -24,14 +24,14 @@ public:
 	SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags);
 	~SdlBFWindow();
 
-	virtual void*			GetUnderlying() {return mSDLWindow; };
+	virtual void*			GetUnderlying() { return mSDLWindow; };
 	virtual void			Destroy() override;
 
-	virtual void			SetTitle(const char* title) override {}
-	virtual void			SetMinimumSize(int minWidth, int minHeight, bool clientSized) override {}
+	virtual void			SetTitle(const char* title) override;
+	virtual void			SetMinimumSize(int minWidth, int minHeight, bool clientSized) override;
 	virtual void			GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind) override;
 	virtual void			Resize(int x, int y, int width, int height, ShowKind showKind) override;
-	virtual void			SetMouseVisible(bool isMouseVisible) override {}
+	virtual void			SetMouseVisible(bool isMouseVisible) override;
 
 	virtual bool			TryClose() override;
 	virtual void			GetPosition(int* x, int* y, int* width, int* height, int* clientX, int* clientY, int* clientWidth, int* clientHeight) override;
