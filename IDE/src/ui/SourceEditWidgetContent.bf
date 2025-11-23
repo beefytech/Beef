@@ -5055,6 +5055,7 @@ namespace IDE.ui
 						if ((mSourceViewPanel.mIsBeefSource) && (mSourceViewPanel.FilteredProjectSource != null) && (gApp.mSymbolReferenceHelper?.IsLocked != true))
 						{
 							ResolveParams resolveParams = scope .();
+							resolveParams.mOverrideCursorPos = (.)CursorTextPos;
 							mSourceViewPanel.DoClassify(ResolveType.GetFixits, resolveParams, true);
 							menuItem = menu.AddItem("Fixit");
 							
