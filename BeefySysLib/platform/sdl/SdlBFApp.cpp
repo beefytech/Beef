@@ -218,6 +218,7 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 #endif
 
 	mIsMouseInside = false;
+	mIsMouseVisible = true;
 	mHasPositionInit = false;
 	mRenderWindow = new GLRenderWindow((GLRenderDevice*)gBFApp->mRenderDevice, mSDLWindow);
 	mRenderWindow->mWindow = this;
@@ -523,6 +524,19 @@ void SdlBFApp::Run()
 					if(sdlBFWindow != NULL)
 						sdlBFWindow->mMouseWheelFunc(sdlBFWindow, sdlEvent.wheel.mouse_x, sdlEvent.wheel.mouse_y, sdlEvent.wheel.x, sdlEvent.wheel.y * (float)ucNumLines);
 				}
+			case SDL_EVENT_WINDOW_MOUSE_ENTER:
+				{
+					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
+					if(sdlBFWindow != NULL)
+						if (sdlBFWindow->mIsMouseVisible)
+						{
+							bf_SDL_ShowCursor();
+						}
+						else 
+						{
+							bf_SDL_HideCursor();
+						}
+				}
 			case SDL_EVENT_KEY_DOWN:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
@@ -792,6 +806,7 @@ void SdlBFWindow::SetMinimumSize(int minWidth, int minHeight, bool clientSized)
 
 void SdlBFWindow::SetMouseVisible(bool isMouseVisible)
 {
+	mIsMouseVisible = isMouseVisible;
 	if (isMouseVisible)
 	{
 		bf_SDL_ShowCursor();
