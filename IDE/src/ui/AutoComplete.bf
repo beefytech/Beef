@@ -288,7 +288,7 @@ namespace IDE.ui
 						return;
 				}
 
-                if ((mAutoComplete.mIgnoreMove == 0) && (mWidgetWindow != null) && (!mWidgetWindow.mHasClosed))
+                if ((mWidgetWindow != null) && (!mWidgetWindow.mHasClosed) && (window != mWidgetWindow))
                     mAutoComplete.Close();
             }
 
@@ -645,11 +645,9 @@ namespace IDE.ui
 
 					int windowHeight = (int)(mWantHeight + Math.Max(0, mDocHeight - GS!(32)));
 
-					mAutoComplete.mIgnoreMove++;
 					mWidgetWindow.Resize(mWidgetWindow.mNormX, mWidgetWindow.mNormY, windowWidth, windowHeight);
 					mScrollContent.mWidth = mWidth;
 					//Resize(0, 0, mWidgetWindow.mClientWidth, mWidgetWindow.mClientHeight);
-					mAutoComplete.mIgnoreMove--;
 					ResizeContent(-1, -1, mVertScrollbar != null);
 				}
 			}
@@ -997,9 +995,7 @@ namespace IDE.ui
 				{
 					if (mOwnsWindow)
 					{
-						mAutoComplete.mIgnoreMove++;
 						mAutoComplete.UpdateWindow(ref mWidgetWindow, this, mAutoComplete.mInvokeSrcPositions[0], (int32)extWidth, (int32)extHeight);
-						mAutoComplete.mIgnoreMove--;
 					}
 					else
 					{
@@ -1395,7 +1391,6 @@ namespace IDE.ui
 		public bool mIsDocumentationPass;
 		public bool mIsUserRequested;
 
-		public int mIgnoreMove;
 		bool mClosed;
 		bool mPopulating;
 		float mWantX;
@@ -1558,8 +1553,6 @@ namespace IDE.ui
 
         public void Update()
         {
-			Debug.Assert((mIgnoreMove >= 0) && (mIgnoreMove <= 4));
-
             if ((mInvokeWindow != null) && (!mInvokeWidget.mIsAboveText))
             {
                 int textIdx = mTargetEditWidget.Content.mTextCursors.Front.mCursorTextPos;
@@ -1588,13 +1581,11 @@ namespace IDE.ui
 				int insertLine = line;
 				if ((insertLine != invokeLine) && ((insertLine - invokeLine) * gApp.mCodeFont.GetHeight() < GS!(40)))
                 {
-                    mIgnoreMove++;
                     mInvokeWidget.mIsAboveText = true;
 					mInvokeWidget.ResizeContent(false);
                     UpdateWindow(ref mInvokeWindow, mInvokeWidget, mInvokeSrcPositions[0], (int32)mInvokeWidget.mWidth, (int32)mInvokeWidget.mHeight);                    
                     if (mListWindow != null)
                         UpdateWindow(ref mListWindow, mAutoCompleteListWidget, mInsertStartIdx.Value, mListWindow.mWindowWidth, mListWindow.mWindowHeight);
-                    mIgnoreMove--;
                 }
             }
 
@@ -1915,11 +1906,6 @@ namespace IDE.ui
             return hadMatch;
         }
 
-		public void SetIgnoreMove(bool ignoreMove)
-		{
-			mIgnoreMove += ignoreMove ? 1 : -1;
-		}
-
 		// IDEHelper/third_party/FtsFuzzyMatch.h 
 		[CallingConvention(.Stdcall), CLink]
 		static extern bool fts_fuzzy_match(char8* pattern, char8* str, ref int32 outScore, uint8* matches, int maxMatches);
@@ -2157,8 +2143,6 @@ namespace IDE.ui
                 SelectEntry("");
             }
 
-            SetIgnoreMove(true);
-
 			gApp.mAutoCompletePanel.StartBind(this);
 
 			int32 prevInvokeSelect = 0;
@@ -2200,7 +2184,6 @@ namespace IDE.ui
 				HandleAutoCompleteListWidget(visibleCount);
             }
 			gApp.mAutoCompletePanel.FinishBind();
-            SetIgnoreMove(false);
 
             if ((mAutoCompleteListWidget != null) && (!mAutoCompleteListWidget.mIsInitted))
                 mAutoCompleteListWidget.Init();
@@ -2407,7 +2390,6 @@ namespace IDE.ui
             {
                 if (mAutoCompleteListWidget != null)
                 {
-					mIgnoreMove++;
 					if (IsInPanel())
 					{
 						mAutoCompleteListWidget.RemoveSelf();
@@ -2421,7 +2403,6 @@ namespace IDE.ui
 					else
 						delete mAutoCompleteListWidget;
                     mAutoCompleteListWidget = null;
-					mIgnoreMove--;
                 }
             }
             if (mAutoCompleteListWidget == null)

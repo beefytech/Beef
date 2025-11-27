@@ -1111,11 +1111,7 @@ namespace IDE.ui
 					autocomplete = watchEditWidgetContent.mAutoComplete;
 				}
 
-				if (autocomplete != null)
-					autocomplete.SetIgnoreMove(true);
                 mWidgetWindow.Resize((int32)(mOrigScreenX - mTaskbarXOffset + minX), (int32)(mOrigScreenY - mTaskbarYOffset + minY), (int32)(maxX - minX), (int32)(maxY - minY));
-				if (autocomplete != null)
-					autocomplete.SetIgnoreMove(false);
 			}
         }
 

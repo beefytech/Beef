@@ -586,11 +586,11 @@ void SdlBFApp::Run()
 					{
 						if (sdlBFWindow->mHasPositionInit)
 						{
-							sdlBFWindow->mMovedFunc(sdlBFWindow);
 							if (sdlEvent.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) 
 							{
 								sdlBFWindow->mRenderWindow->Resized();
 							}
+							sdlBFWindow->mMovedFunc(sdlBFWindow);
 						}
 						else
 						{
@@ -662,40 +662,12 @@ void SdlBFApp::PhysSetCursor()
 void SdlBFWindow::SetClientPosition(int x, int y)
 {
 	bf_SDL_SetWindowPosition(mSDLWindow, x, y);
-
-	SDL_Event e;
-	bool hasHandled;
-	while (bf_SDL_PeepEvents(&e, 1, SDL_GETEVENT, SDL_EVENT_WINDOW_MOVED, SDL_EVENT_WINDOW_MOVED) > 0) 
-	{
-    	if (mMovedFunc != NULL && !hasHandled)
-		{
-			mRenderWindow->Resized();
-			mMovedFunc(this);
-
-			hasHandled = true;
-			mHasPositionInit = false;
-		}
-	}
 }
 
 void SdlBFWindow::Resize(int x, int y, int width, int height, ShowKind showKind)
 {
 	bf_SDL_SetWindowPosition(mSDLWindow, x, y);
 	bf_SDL_SetWindowSize(mSDLWindow, width, height);
-
-	SDL_Event e;
-	bool hasHandled;
-	while (bf_SDL_PeepEvents(&e, 1, SDL_GETEVENT, SDL_EVENT_WINDOW_MOVED, SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED) > 0) 
-	{
-    	if (mMovedFunc != NULL && !hasHandled)
-		{
-			mRenderWindow->Resized();
-			mMovedFunc(this);
-
-			hasHandled = true;
-			mHasPositionInit = false;
-		}
-	}
 }
 
 void SdlBFWindow::GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind)
