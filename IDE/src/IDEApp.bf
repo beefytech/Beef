@@ -7,6 +7,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Interop;
 using Beefy;
 using Beefy.widgets;
 using Beefy.gfx;
@@ -120,6 +121,14 @@ namespace IDE
 	{
 		public static String sRTVersionStr = "042";
 		public const String cVersion = "0.43.6";
+
+#if BF_PLATFORM_LINUX
+		public const uint8[?] cAppIcon = [IgnoreErrors]{ Compiler.ReadBinary("Resources/beef.ico") };
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BFApp_RegisterAppIcon(void* imageData, c_size size);
+#endif
+
 
 #if BF_PLATFORM_WINDOWS
 		public static readonly String sPlatform64Name = "Win64";
@@ -12816,6 +12825,11 @@ namespace IDE
 
 			mGitManager.Init();
 
+#if BF_PLATFORM_LINUX
+			let icon = (Span<uint8>)cAppIcon;
+			BFApp_RegisterAppIcon(icon.Ptr, (.)icon.Length);
+#endif
+
 			//Yoop();
 
 			/*for (int i = 0; i < 100*1024*1024; i++)
@@ -12856,6 +12870,7 @@ namespace IDE
 			}
 
 			Font.AddFontFailEntry("Segoe UI", scope String()..AppendF("{}fonts/NotoSans-Regular.ttf", mInstallDir));
+			Font.AddFontFailEntry("Segoe UI Bold", scope String()..AppendF("{}fonts/NotoSans-Bold.ttf", mInstallDir));
 
 			DarkTheme aTheme = new DarkTheme();
 			mSettings.mUISettings.Apply(); // Apply again to set actual theme
