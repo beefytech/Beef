@@ -288,7 +288,7 @@ namespace IDE.ui
 						return;
 				}
 
-                if ((mWidgetWindow != null) && (!mWidgetWindow.mHasClosed) && (window != mWidgetWindow))
+                if ((mWidgetWindow != null) && (!mWidgetWindow.mHasClosed) && (mWidgetWindow.HasParent(window)))
                     mAutoComplete.Close();
             }
 
