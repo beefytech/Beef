@@ -7,11 +7,13 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_hints.h>
+#include <SDL3/SDL_iostream.h>
 #include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_opengl.h>
 #include <SDL3/SDL_platform.h>
 #include <SDL3/SDL_properties.h>
 #include <SDL3/SDL_rect.h>
+#include <SDL3/SDL_surface.h>
 #include <SDL3/SDL_video.h>
 #include <cstddef>
 #include <cstdint>
@@ -48,6 +50,7 @@ bool (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
 bool (SDLCALL* bf_SDL_SetWindowSize)(SDL_Window* window, int w, int h);
 bool (SDLCALL* bf_SDL_SetWindowMinimumSize)(SDL_Window* window, int min_w, int min_h);
 bool (SDLCALL* bf_SDL_SetWindowTitle)(SDL_Window* window, const char* title);
+bool (SDLCALL* bf_SDL_SetWindowIcon)(SDL_Window* window, SDL_Surface* icon);
 
 bool (SDLCALL* bf_SDL_ShowCursor)(void);
 bool (SDLCALL* bf_SDL_HideCursor)(void);
@@ -74,6 +77,9 @@ bool (SDLCALL* bf_SDL_GetDisplayBounds)(SDL_DisplayID displayID, SDL_Rect* rect)
 SDL_DisplayMode* (SDLCALL* bf_SDL_GetDesktopDisplayMode)(SDL_DisplayID displayID);
 bool (SDLCALL* bf_SDL_HasRectIntersection)(const SDL_Rect* A, const SDL_Rect* B);
 
+SDL_IOStream* (SDLCALL* bf_SDL_IOFromMem)(void* mem, size_t size);
+SDL_Surface* (SDLCALL* bf_IMG_Load_IO)(SDL_IOStream* src, bool closeio);
+
 SDL_GLContext (SDLCALL* bf_SDL_GL_CreateContext)(SDL_Window* window);
 bool (SDLCALL* bf_SDL_GL_MakeCurrent)(SDL_Window* window, SDL_GLContext context);
 bool (SDLCALL* bf_SDL_GL_SetAttribute)(SDL_GLAttr attr, int value);
@@ -99,6 +105,7 @@ static const char* mimeTypes[] =
 };
 
 static HMODULE gSDLModule;
+static HMODULE gSDLImageModule;
 
 static HMODULE GetSDLModule(const StringImpl& installDir)
 {
@@ -123,6 +130,29 @@ static HMODULE GetSDLModule(const StringImpl& installDir)
 	return gSDLModule;
 }
 
+static HMODULE GetSDLImageModule(const StringImpl& installDir)
+{
+		if (gSDLImageModule == NULL)
+	{
+#if defined (BF_PLATFORM_WINDOWS)
+		String loadPath = installDir + "SDL3_image.dll";
+		gSDLImageModule = ::LoadLibraryA(loadPath.c_str());
+#elif defined (BF_PLATFORM_LINUX)
+		String loadPath = "libSDL3_image.so";
+		gSDLImageModule = dlopen(loadPath.c_str(), RTLD_LAZY);
+#endif
+		if (gSDLImageModule == NULL)
+		{
+#ifdef BF_PLATFORM_WINDOWS
+			::MessageBoxA(NULL, "Failed to load SDL3_image.dll", "FATAL ERROR", MB_OK | MB_ICONERROR);
+			::ExitProcess(1);
+#endif
+			BF_FATAL("Failed to load libSDL3_image.so");
+		}
+	}
+	return gSDLImageModule;
+}
+
 template <typename T>
 static void BFGetSDLProc(T& proc, const char* name, const StringImpl& installDir)
 {
@@ -134,6 +164,29 @@ static void BFGetSDLProc(T& proc, const char* name, const StringImpl& installDir
 }
 
 #define BF_GET_SDLPROC(name) BFGetSDLProc(bf_##name, #name, mInstallDir)
+
+template <typename T>
+static void BFGetSDLImageProc(T& proc, const char* name, const StringImpl& installDir)
+{
+#if defined (BF_PLATFORM_WINDOWS)
+	proc = (T)::GetProcAddress(GetSDLImageModule(installDir), name);
+#elif defined (BF_PLATFORM_LINUX)
+	proc = (T)dlsym(GetSDLImageModule(installDir), name);
+#endif
+}
+
+#define BF_GET_SDL_IMAGEPROC(name) BFGetSDLImageProc(bf_##name, #name, mInstallDir)
+
+static SDL_Surface* gAppIconSurface;
+
+BF_EXPORT void BF_CALLTYPE BFApp_RegisterAppIcon(void* imageData, size_t size)
+{
+	SDL_IOStream* stream = bf_SDL_IOFromMem(imageData, size);
+	if (!stream)
+		return;
+	
+	gAppIconSurface = bf_IMG_Load_IO(stream, true);
+}
 
 SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
 {
@@ -178,6 +231,8 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 
 //	printf("Created %i : %s\n", bf_SDL_GetWindowID(mSDLWindow), title.c_str());
 
+	if (gAppIconSurface)
+		bf_SDL_SetWindowIcon(mSDLWindow, gAppIconSurface);
 	bf_SDL_StartTextInput(mSDLWindow);
 
 #ifndef BF_PLATFORM_OPENGL_ES2
@@ -395,6 +450,7 @@ SdlBFApp::SdlBFApp()
 		BF_GET_SDLPROC(SDL_SetWindowSize);
 		BF_GET_SDLPROC(SDL_SetWindowMinimumSize);
 		BF_GET_SDLPROC(SDL_SetWindowTitle);
+		BF_GET_SDLPROC(SDL_SetWindowIcon);
 
 		BF_GET_SDLPROC(SDL_ShowCursor);
 		BF_GET_SDLPROC(SDL_HideCursor);
@@ -420,6 +476,9 @@ SdlBFApp::SdlBFApp()
 		BF_GET_SDLPROC(SDL_GetDisplayBounds);
 		BF_GET_SDLPROC(SDL_GetDesktopDisplayMode);
 		BF_GET_SDLPROC(SDL_HasRectIntersection);
+
+		BF_GET_SDLPROC(SDL_IOFromMem);
+		BF_GET_SDL_IMAGEPROC(IMG_Load_IO);
 
 		BF_GET_SDLPROC(SDL_GL_CreateContext);
 		BF_GET_SDLPROC(SDL_GL_MakeCurrent);
@@ -898,3 +957,4 @@ void SdlBFApp::GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fro
 	outWidth = inflateRect.mWidth;
 	outHeight = inflateRect.mHeight;
 }
+

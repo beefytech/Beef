@@ -7,6 +7,7 @@ using System.IO;
 using System.Reflection;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Interop;
 using Beefy;
 using Beefy.widgets;
 using Beefy.gfx;
@@ -120,6 +121,14 @@ namespace IDE
 	{
 		public static String sRTVersionStr = "042";
 		public const String cVersion = "0.43.6";
+
+#if BF_PLATFORM_LINUX
+		public const uint8[?] cAppIcon = [IgnoreErrors]{ Compiler.ReadBinary("Resources/beef.ico") };
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BFApp_RegisterAppIcon(void* imageData, c_size size);
+#endif
+
 
 #if BF_PLATFORM_WINDOWS
 		public static readonly String sPlatform64Name = "Win64";
@@ -12815,6 +12824,11 @@ namespace IDE
 			mSettings.Apply();
 
 			mGitManager.Init();
+
+#if BF_PLATFORM_LINUX
+			let icon = (Span<uint8>)cAppIcon;
+			BFApp_RegisterAppIcon(icon.Ptr, (.)icon.Length);
+#endif
 
 			//Yoop();
 
