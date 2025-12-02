@@ -4,12 +4,13 @@
 #include "GLRenderDevice.h"
 #include "platform/PlatformHelper.h"
 #include "platform/PlatformInterface.h"
+#include "img/PNGData.h"
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_events.h>
 #include <SDL3/SDL_hints.h>
-#include <SDL3/SDL_iostream.h>
 #include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_opengl.h>
+#include <SDL3/SDL_pixels.h>
 #include <SDL3/SDL_platform.h>
 #include <SDL3/SDL_properties.h>
 #include <SDL3/SDL_rect.h>
@@ -77,8 +78,7 @@ bool (SDLCALL* bf_SDL_GetDisplayBounds)(SDL_DisplayID displayID, SDL_Rect* rect)
 SDL_DisplayMode* (SDLCALL* bf_SDL_GetDesktopDisplayMode)(SDL_DisplayID displayID);
 bool (SDLCALL* bf_SDL_HasRectIntersection)(const SDL_Rect* A, const SDL_Rect* B);
 
-SDL_IOStream* (SDLCALL* bf_SDL_IOFromMem)(void* mem, size_t size);
-SDL_Surface* (SDLCALL* bf_IMG_Load_IO)(SDL_IOStream* src, bool closeio);
+SDL_Surface* (SDLCALL* bf_SDL_CreateSurfaceFrom)(int width, int height, SDL_PixelFormat format, void *pixels, int pitch);
 
 SDL_GLContext (SDLCALL* bf_SDL_GL_CreateContext)(SDL_Window* window);
 bool (SDLCALL* bf_SDL_GL_MakeCurrent)(SDL_Window* window, SDL_GLContext context);
@@ -130,29 +130,6 @@ static HMODULE GetSDLModule(const StringImpl& installDir)
 	return gSDLModule;
 }
 
-static HMODULE GetSDLImageModule(const StringImpl& installDir)
-{
-		if (gSDLImageModule == NULL)
-	{
-#if defined (BF_PLATFORM_WINDOWS)
-		String loadPath = installDir + "SDL3_image.dll";
-		gSDLImageModule = ::LoadLibraryA(loadPath.c_str());
-#elif defined (BF_PLATFORM_LINUX)
-		String loadPath = "libSDL3_image.so";
-		gSDLImageModule = dlopen(loadPath.c_str(), RTLD_LAZY);
-#endif
-		if (gSDLImageModule == NULL)
-		{
-#ifdef BF_PLATFORM_WINDOWS
-			::MessageBoxA(NULL, "Failed to load SDL3_image.dll", "FATAL ERROR", MB_OK | MB_ICONERROR);
-			::ExitProcess(1);
-#endif
-			BF_FATAL("Failed to load libSDL3_image.so");
-		}
-	}
-	return gSDLImageModule;
-}
-
 template <typename T>
 static void BFGetSDLProc(T& proc, const char* name, const StringImpl& installDir)
 {
@@ -165,27 +142,13 @@ static void BFGetSDLProc(T& proc, const char* name, const StringImpl& installDir
 
 #define BF_GET_SDLPROC(name) BFGetSDLProc(bf_##name, #name, mInstallDir)
 
-template <typename T>
-static void BFGetSDLImageProc(T& proc, const char* name, const StringImpl& installDir)
-{
-#if defined (BF_PLATFORM_WINDOWS)
-	proc = (T)::GetProcAddress(GetSDLImageModule(installDir), name);
-#elif defined (BF_PLATFORM_LINUX)
-	proc = (T)dlsym(GetSDLImageModule(installDir), name);
-#endif
-}
-
-#define BF_GET_SDL_IMAGEPROC(name) BFGetSDLImageProc(bf_##name, #name, mInstallDir)
-
 static SDL_Surface* gAppIconSurface;
 
-BF_EXPORT void BF_CALLTYPE BFApp_RegisterAppIcon(void* imageData, size_t size)
+BF_EXPORT void BF_CALLTYPE BFApp_RegisterAppIcon(uint8* imageData, int size)
 {
-	SDL_IOStream* stream = bf_SDL_IOFromMem(imageData, size);
-	if (!stream)
-		return;
-	
-	gAppIconSurface = bf_IMG_Load_IO(stream, true);
+	PNGData* image = new PNGData();
+	image->LoadFromMemory(imageData, size);
+	gAppIconSurface = bf_SDL_CreateSurfaceFrom(image->mWidth, image->mHeight, SDL_PIXELFORMAT_ABGR8888, image->mBits, image->mWidth*4);
 }
 
 SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
@@ -477,8 +440,7 @@ SdlBFApp::SdlBFApp()
 		BF_GET_SDLPROC(SDL_GetDesktopDisplayMode);
 		BF_GET_SDLPROC(SDL_HasRectIntersection);
 
-		BF_GET_SDLPROC(SDL_IOFromMem);
-		BF_GET_SDL_IMAGEPROC(IMG_Load_IO);
+		BF_GET_SDLPROC(SDL_CreateSurfaceFrom);
 
 		BF_GET_SDLPROC(SDL_GL_CreateContext);
 		BF_GET_SDLPROC(SDL_GL_MakeCurrent);
