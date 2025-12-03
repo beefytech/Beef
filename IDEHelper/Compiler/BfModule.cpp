@@ -3919,7 +3919,7 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 					return; // Circular!
 			}
 
-			AddDependency(underlyingType, userType, depFlag);
+			AddDependency(underlyingType, userType, depFlag, depContext);
 		}
 	}
 	else if (!usedType->IsGenericTypeInstance())
