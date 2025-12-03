@@ -92,6 +92,20 @@ namespace System.Diagnostics
 				});
 		}
 
+		public bool WaitFor(int waitMS = -1)
+		{
+			if (mProcess == null)
+			{
+				return true;
+			}
+
+			int code = 0;
+			Platform.BfpProcessResult processResult = 0;
+			let exited = Platform.BfpProcess_WaitFor(mProcess, waitMS, &code, &processResult);
+
+			return exited;
+		}
+
 		public static Result<void> GetProcesses(List<Process> processes)
 		{
 			let result = Platform.GetSizedHelper<Platform.BfpProcess*>(scope (outPtr, outSize, outResult) =>
