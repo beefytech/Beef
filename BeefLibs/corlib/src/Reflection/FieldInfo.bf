@@ -680,8 +680,18 @@ namespace System.Reflection
 						continue;
 					}
 					var fieldData = &mTypeInstance.[Friend]mFieldDataPtr[mIdx];
-					bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (fieldData.mFlags.HasFlag(FieldFlags.Static)));
-					matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!fieldData.mFlags.HasFlag(FieldFlags.Static)));
+					bool matches =
+						(mBindingFlags.HasFlag(.Static) && (fieldData.mFlags.HasFlag(.Static))) ||
+						(mBindingFlags.HasFlag(.Instance) && (!fieldData.mFlags.HasFlag(.Static)));
+
+					// For backwards compatibility we treat missing protection specifiers the same as '.Public | .NonPublic'
+					if (mBindingFlags & (.Public | .NonPublic) != 0)
+					{
+						matches &=
+							(mBindingFlags.HasFlag(.Public) && (fieldData.mFlags.HasFlag(.Public))) ||
+							(mBindingFlags.HasFlag(.NonPublic) && (!fieldData.mFlags.HasFlag(.Public)));
+					}
+
 					if (matches)
 						break;
 				}
