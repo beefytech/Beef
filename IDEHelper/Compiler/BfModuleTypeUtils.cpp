@@ -3550,6 +3550,43 @@ void BfModule::DoPopulateType_TypeAlias(BfTypeAliasType* typeAlias)
  	if ((typeAlias->mAliasToType != NULL) && (typeAlias->mAliasToType != aliasToType) && (!typeAlias->mDependencyMap.IsEmpty()))
  		mContext->QueueMidCompileRebuildDependentTypes(typeAlias, "type alias remapped");
 
+	if (aliasToType != NULL)
+	{
+		int aliasDepth = 0;
+		HashSet<BfType*> seenAliases;
+		bool isRecursive = false;
+
+		BfType* resolvedTypeRef = aliasToType;
+		while ((resolvedTypeRef != NULL) && (resolvedTypeRef->IsTypeAlias()))
+		{
+			if (resolvedTypeRef == typeAlias)
+			{
+				isRecursive = true;
+				break;
+			}
+			aliasDepth++;
+			if (aliasDepth > 8)
+			{
+				if (!seenAliases.Add(resolvedTypeRef))
+				{
+					isRecursive = true;
+					break;
+				}
+			}
+
+			resolvedTypeRef = resolvedTypeRef->GetUnderlyingType();
+		}
+		
+		if (isRecursive)
+		{
+			BfAstNode* refNode = typeAliasDecl;
+			if (typeAliasDecl->mAliasToType)
+				refNode = typeAliasDecl->mAliasToType;
+			Fail(StrFormat("Type alias '%s' has a recursive definition", TypeToString(aliasToType).c_str()), refNode);
+			aliasToType = NULL;
+		}
+	}
+	
 	typeAlias->mAliasToType = aliasToType;
 
 	if (aliasToType != NULL)

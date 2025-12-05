@@ -256,7 +256,9 @@ namespace System
 		
 		public static int32 BfpProcess_GetProcessId(BfpProcess* process) => Runtime.NotImplemented();
 
-		public static int BfpSpawn_GetProcessId(BfpSpawn* spawn) => Runtime.NotImplemented();;
+		public static int BfpSpawn_GetProcessId(BfpSpawn* spawn) => Runtime.NotImplemented();
+
+		public static bool BfpProcess_WaitFor(BfpProcess* process, int waitMS, int* outExitCode, BfpProcessResult* outResult) => Runtime.NotImplemented();
 #endif
 
 		public enum BfpSpawnFlags : int32

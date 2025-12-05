@@ -108,7 +108,7 @@ namespace System
 
 			HashSet<String> foundSigs = scope .();
 
-			for (var methodInfo in typeof(T).GetMethods(.Public | .DeclaredOnly))
+			for (var methodInfo in typeof(T).GetMethods(.Public | .DeclaredOnly | .Instance))
 			{
 				if (methodInfo.IsStatic)
 					continue;
@@ -207,7 +207,7 @@ namespace System
 		{
 			String emitStr = scope .();
 
-			for (var methodInfo in typeof(T).GetMethods(.Public | .DeclaredOnly))
+			for (var methodInfo in typeof(T).GetMethods(.Public | .DeclaredOnly | .Instance))
 			{
 				if (methodInfo.IsStatic)
 					continue;

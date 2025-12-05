@@ -1,10 +1,14 @@
 #include "Common.h"
 #include "BFPlatform.h"
 #include <sys/stat.h>
+#ifdef BF_PLATFORM_LINUX
+#include <sys/syscall.h>
+#endif
 #ifndef BF_PLATFORM_DARWIN
 #include <sys/sysinfo.h>
 #endif
 #include <sys/wait.h>
+#include <poll.h>
 #include <wchar.h>
 #include <fcntl.h>
 #include <time.h>
@@ -22,6 +26,7 @@
 #include "../../util/CritSect.h"
 #include "../../util/Dictionary.h"
 #include "../../util/Hash.h"
+#include "../../util/HashSet.h"
 #include "../../third_party/putty/wildcard.h"
 #ifdef BFP_HAS_EXECINFO
 #include <execinfo.h>
@@ -354,6 +359,165 @@ static BfpGlobalData* BfpGetGlobalData()
 	return gBfpGlobal;
 }
 
+struct BfpGlobalSpawnData
+{
+	static BfpGlobalSpawnData* s_gBfpGlobalSpawnData;
+	static BfpGlobalSpawnData* Get()
+	{
+		if (s_gBfpGlobalSpawnData == NULL)
+		{
+			BfpGlobalSpawnData* spawnData = new BfpGlobalSpawnData();
+			if (auto prevValue = __sync_val_compare_and_swap(&s_gBfpGlobalSpawnData, NULL, spawnData))
+			{
+				delete spawnData;
+				return (BfpGlobalSpawnData*)prevValue;
+			}
+		}
+
+		return s_gBfpGlobalSpawnData;
+	}
+
+	static void Shutdown()
+	{
+		BfpGlobalSpawnData* spawnData = __sync_lock_test_and_set(&s_gBfpGlobalSpawnData, NULL);
+		if (spawnData == NULL)
+			return;
+
+		// Restore the previous signal handler if ours wasn't replaced
+		struct sigaction sigact = {};
+		if ((sigaction(SIGCHLD, NULL, &sigact) == 0) && (sigact.sa_sigaction == HandleSigchld))
+		{
+			sigaction(SIGCHLD, &spawnData->mOldSigaction, NULL);
+		}
+
+		spawnData->mRunning = false;
+		write(spawnData->mPipeFd[1], "X", 1);
+		close(spawnData->mPipeFd[1]);
+		spawnData->mPipeFd[1] = -1;
+	}
+
+	CritSect mCritSect;
+	Array<pid_t> mDetachedProcesses;
+
+	volatile bool mRunning;
+	volatile bool mThreadExited;
+	pthread_t mReaperThread;
+	int mPipeFd[2];
+	struct sigaction mOldSigaction;
+
+	BfpGlobalSpawnData()
+	{
+		mThreadExited = true;
+		mRunning = false;
+		mPipeFd[0] = -1;
+		mPipeFd[1] = -1;
+	}
+
+	void InitAndStartThread()
+	{
+		if (mRunning)
+			return;
+
+		mRunning = true;
+
+		if (pipe(mPipeFd) == -1)
+			return;
+
+		int flags = fcntl(mPipeFd[1], F_GETFL);
+		fcntl(mPipeFd[1], F_SETFL, flags | O_NONBLOCK);
+
+		struct sigaction sa = {};
+		sa.sa_sigaction = HandleSigchld;
+		sa.sa_flags = SA_SIGINFO | SA_RESTART | SA_NOCLDSTOP; // SA_NOCLDSTOP = Don't signal on stop/resume
+		sigemptyset(&sa.sa_mask);
+		if (sigaction(SIGCHLD, &sa, &mOldSigaction) == -1)
+			return;
+
+		if (pthread_create(&mReaperThread, NULL, &SpawnReaperThreadProc, this) != 0)
+		{
+			sigaction(SIGCHLD, &mOldSigaction, NULL);
+			close(mPipeFd[0]);
+			mPipeFd[0] = -1;
+		}
+	}
+
+	void AddDetachedProcess(pid_t pid)
+	{
+		AutoCrit autoCrit(mCritSect);
+		InitAndStartThread();
+		mDetachedProcesses.Add(pid);
+	}
+
+	static void HandleSigchld(int sig, siginfo_t *info, void *ucontext)
+	{
+		int saved_errno = errno;
+		BfpGlobalSpawnData* spawnData = BfpGlobalSpawnData::Get();
+		write(spawnData->mPipeFd[1], "W", 1);
+		errno = saved_errno;
+
+		if (spawnData->mOldSigaction.sa_handler != SIG_IGN && spawnData->mOldSigaction.sa_handler != SIG_DFL)
+		{
+			if ((spawnData->mOldSigaction.sa_flags & SA_SIGINFO) != 0)
+				spawnData->mOldSigaction.sa_sigaction(sig, info, ucontext);
+			else
+				spawnData->mOldSigaction.sa_handler(sig);
+		}
+	}
+
+	static void* SpawnReaperThreadProc(void* pUserdata)
+	{
+		BfpGlobalSpawnData* spawnData = (BfpGlobalSpawnData*)pUserdata;
+
+		Array<pid_t> detachedProcesses;
+		char buffer[16];
+		while (spawnData->mRunning)
+		{
+			ssize_t n = read(spawnData->mPipeFd[0], buffer, sizeof(buffer));
+			if (n <= 0)
+			{
+				break;
+			}
+
+			// Copy the global list to local variable
+			do
+			{
+				AutoCrit critSect(spawnData->mCritSect);
+				if (spawnData->mDetachedProcesses.size() > 0)
+				{
+					detachedProcesses.Reserve(detachedProcesses.size() + spawnData->mDetachedProcesses.size());
+					for (pid_t pid : spawnData->mDetachedProcesses)
+						detachedProcesses.Add(pid);
+					spawnData->mDetachedProcesses.Clear();
+				}
+			}
+			while (false);
+
+			intptr i = 0;
+			while ((spawnData->mRunning) && (i < detachedProcesses.size()))
+			{
+				pid_t pid = detachedProcesses[i];
+				int status;
+				pid_t res = waitpid(pid, &status, WNOHANG);
+				if (res > 0)
+				{
+					detachedProcesses.RemoveAtFast(i);
+					continue;
+				}
+
+				i++;
+			}
+		}
+
+		close(spawnData->mPipeFd[0]);
+		spawnData->mPipeFd[0] = -1;
+
+		return NULL;
+	}
+};
+
+BfpGlobalSpawnData* BfpGlobalSpawnData::s_gBfpGlobalSpawnData = NULL;
+
+
 #ifdef BFP_HAS_BACKTRACE
 
 struct bt_ctx {
@@ -649,6 +813,8 @@ void BfpSystem_Shutdown()
         gFileWatchManager->Shutdown();
         gFileWatchManager = NULL;
     }
+
+	BfpGlobalSpawnData::Shutdown();
 }
 
 BFP_EXPORT uint32 BFP_CALLTYPE BfpSystem_TickCount()
@@ -940,7 +1106,67 @@ BFP_EXPORT void BFP_CALLTYPE BfpProcess_Release(BfpProcess* process)
 
 BFP_EXPORT bool BFP_CALLTYPE BfpProcess_WaitFor(BfpProcess* process, int waitMS, int* outExitCode, BfpProcessResult* outResult)
 {
-    NOT_IMPL;
+#ifdef BF_PLATFORM_LINUX
+	const int processFd = syscall(SYS_pidfd_open, process->mProcessId, 0);
+	if (processFd < 0)
+	{
+		if (errno == ESRCH)
+		{
+			OUTRESULT(BfpProcessResult_NotFound);
+			return true;
+		}
+
+		OUTRESULT(BfpProcessResult_UnknownError);
+		return false;
+	}
+	defer( close(processFd) );
+
+	pollfd pfd = { processFd, POLLIN, 0};
+	if (poll(&pfd, 1, waitMS) == -1)
+	{
+		OUTRESULT(BfpProcessResult_UnknownError);
+		return false;
+	}
+
+	if ((pfd.revents & POLLIN) == POLLIN)
+	{
+		siginfo_t info = {0};
+
+		if (waitid(P_PIDFD, processFd, &info, WEXITED | WNOHANG) == -1)
+		{
+			OUTRESULT(BfpProcessResult_UnknownError);
+			return true;
+		}
+
+		switch (info.si_code)
+		{
+			case CLD_EXITED: // fallthrough
+			case CLD_KILLED: // fallthrough
+			case CLD_DUMPED:
+			{
+				OUTRESULT(BfpProcessResult_Ok);
+				if (outExitCode != NULL)
+					*outExitCode = info.si_status;
+				break;
+			}
+
+			default:
+			{
+				OUTRESULT(BfpProcessResult_UnknownError);
+				break;
+			}
+		}
+
+		return true;
+	}
+
+	OUTRESULT(BfpProcessResult_Ok);
+	return false;
+
+#else
+	NOT_IMPL;
+	return false;
+#endif
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpProcess_GetMainWindowTitle(BfpProcess* process, char* outTitle, int* inOutTitleSize, BfpProcessResult* outResult)
@@ -1329,9 +1555,10 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 
 void BfpSpawn_Release(BfpSpawn* spawn)
 {
-    // We don't support 'detaching' currently- this can create zombie processes since we
-    //  don't have a reaper strategy
-    BfpSpawn_WaitFor(spawn, -1, NULL, NULL);
+	if (!BfpSpawn_WaitFor(spawn, 0, NULL, NULL))
+    {
+		BfpGlobalSpawnData::Get()->AddDetachedProcess(spawn->mPid);
+    }
 
     delete spawn;
 }
@@ -1364,29 +1591,79 @@ BFP_EXPORT int BFP_CALLTYPE BfpSpawn_GetProcessId(BfpSpawn* spawn)
 
 bool BfpSpawn_WaitFor(BfpSpawn* spawn, int waitMS, int* outExitCode, BfpSpawnResult* outResult)
 {
-    OUTRESULT(BfpSpawnResult_Ok);
-    if (!spawn->mExited)
+    if (spawn->mExited)
     {
-        int flags = 0;
-        if (waitMS != -1)
-        {
-            flags = WNOHANG;
-        }
-        //TODO: Implement values other than 0 or -1 for waitMS?
-
-        pid_t result = waitpid(spawn->mPid, &spawn->mStatus, flags);
-        if (result != spawn->mPid)
-            return false;
-
-        spawn->mExited = true;
+		OUTRESULT(BfpSpawnResult_Ok);
+		return true;
     }
 
-    if (!WIFEXITED(spawn->mStatus) && !WIFSIGNALED(spawn->mStatus))
-        return false;
+	int flags = 0;
+	if (waitMS != -1)
+	{
+		flags = WNOHANG;
+	}
 
-    if (outExitCode != NULL)
-        *outExitCode = WEXITSTATUS(spawn->mStatus);
-    return true;
+	// "Fast" path for 0 and -1 wait values
+	if (waitMS <= 0)
+	{
+		OUTRESULT(BfpSpawnResult_Ok);
+		pid_t result = waitpid(spawn->mPid, &spawn->mStatus, flags);
+		if (result != spawn->mPid)
+			return false;
+
+		spawn->mExited = true;
+		if (!WIFEXITED(spawn->mStatus) && !WIFSIGNALED(spawn->mStatus))
+			return false;
+
+		*outExitCode = WEXITSTATUS(spawn->mStatus);
+		return true;
+	}
+
+#ifdef BF_PLATFORM_LINUX
+	const int childFd = (int)syscall(SYS_pidfd_open, spawn->mPid, 0);
+	if (childFd == -1)
+	{
+		OUTRESULT(BfpSpawnResult_UnknownError);
+		return false;
+	}
+	defer ( close(childFd) );
+
+	struct pollfd pollFd = {
+		.fd = childFd,
+		.events = POLLIN,
+		.revents =  0
+	};
+
+	if (poll(&pollFd, 1, (int)waitMS) == -1)
+	{
+		OUTRESULT(BfpSpawnResult_UnknownError);
+		return false;
+	}
+
+	if ((pollFd.revents & POLLIN) == 0)
+	{
+		OUTRESULT(BfpSpawnResult_Ok);
+		return false;
+	}
+
+	siginfo_t siginfo = {0};
+	if (waitid(P_PIDFD, (id_t)childFd, &siginfo, WEXITED) == -1)
+	{
+		OUTRESULT(BfpSpawnResult_UnknownError);
+		return true;
+	}
+
+	OUTRESULT(BfpSpawnResult_Ok);
+
+	if (!WIFEXITED(spawn->mStatus) && !WIFSIGNALED(spawn->mStatus))
+		return false;
+
+	if (outExitCode != NULL)
+		*outExitCode = WEXITSTATUS(spawn->mStatus);
+#else
+	NOT_IMPL;
+#endif
+	return true;
 }
 
 // BfpFileWatcher
@@ -1573,8 +1850,141 @@ BFP_EXPORT bool BFP_CALLTYPE BfpThread_WaitFor(BfpThread* thread, int waitMS)
 
 BFP_EXPORT void BFP_CALLTYPE BfpSpawn_Kill(BfpSpawn* spawn, int exitCode, BfpKillFlags killFlags, BfpSpawnResult* outResult)
 {
-	//TODO: Implement
-	OUTRESULT(BfpSpawnResult_UnknownError);
+	if (spawn->mExited)
+	{
+		OUTRESULT(BfpSpawnResult_Ok);
+		return;
+	}
+
+	if ((killFlags & BfpKillFlag_KillChildren) == BfpKillFlag_KillChildren)
+	{
+		do
+		{
+			if (kill(spawn->mPid, SIGSTOP) != 0)
+			{
+				if (errno != ESRCH)
+				{
+					break;
+				}
+			}
+
+#ifdef BF_PLATFORM_LINUX
+			// Enumerates '/proc' dir and finds descendant processes to our spawn
+			// Sends SIGSTOP to prevent further child spawning
+			// after all children are collected and stopped sends SIGKILL to each of them
+			// if we were to send SIGKILL right as we are enumerating there is a possibility
+			// that the children are reparented and we don't find them
+
+			HashSet<pid_t> processTree;
+
+			DIR* procDir = opendir("/proc");
+			if (!procDir)
+			{
+				break;
+			}
+
+			bool didAdd = true;
+			while (didAdd)
+			{
+				didAdd = false;
+
+				struct dirent* entry;
+				while ((entry = readdir(procDir)) != NULL)
+				{
+					const char* name = entry->d_name;
+					bool isPid = name[0] != '\0';
+					for (const char* p = name; *p; ++p)
+					{
+						if (*p < '0' || *p > '9')
+						{
+							isPid = false;
+							break;
+						}
+					}
+
+					if (!isPid)
+						continue;
+
+					const pid_t pid = static_cast<pid_t>(atoi(name));
+					if (pid == 0)
+						continue;
+
+					if (processTree.Contains(pid))
+						continue;
+
+					char statPath[64];
+					snprintf(statPath, sizeof(statPath), "/proc/%s/stat", entry->d_name);
+					FILE* f = fopen(statPath, "r");
+					if (!f)
+					{
+						continue;
+					}
+					defer ( fclose(f) );
+
+					char buffer[1024];
+					if (fgets(buffer, sizeof(buffer), f) == NULL)
+					{
+						continue;
+					}
+
+					char* lastParen = strrchr(buffer, ')');
+					if (lastParen == NULL)
+					{
+						continue;
+					}
+
+					lastParen += 4; // Skip ') S '
+					if (lastParen >= (buffer + sizeof(buffer)))
+					{
+						continue;
+					}
+
+					if (*lastParen == '0')
+						continue;
+
+					const pid_t parentPid = static_cast<pid_t>(atoi(lastParen));
+					if ((parentPid != 0) && ((parentPid == spawn->mPid) || processTree.Contains(parentPid)))
+					{
+						// Prevent spawning new children
+						if (kill(pid, SIGSTOP) != 0)
+						{
+							if (errno != ESRCH)
+							{
+								continue;
+							}
+						}
+
+						didAdd |= processTree.Add(pid);
+					}
+				}
+
+				rewinddir(procDir);
+			}
+
+			closedir(procDir);
+
+			for (pid_t pid : processTree)
+			{
+				kill(pid, SIGKILL) ;
+			}
+		}
+		while (false);
+
+#else
+		NOT_IMPL;
+#endif
+	}
+
+	if (kill(spawn->mPid, SIGKILL) != 0)
+	{
+		if (errno != ESRCH)
+		{
+			OUTRESULT(BfpSpawnResult_UnknownError);
+			return;
+		}
+	}
+
+	OUTRESULT(BfpSpawnResult_Ok);
 }
 
 BFP_EXPORT BfpThreadPriority BFP_CALLTYPE BfpThread_GetPriority(BfpThread* thread, BfpThreadResult* outResult)
@@ -2335,13 +2745,155 @@ BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFile_GetTime_LastWrite(const char* path)
 
 BFP_EXPORT BfpFileAttributes BFP_CALLTYPE BfpFile_GetAttributes(const char* path, BfpFileResult* outResult)
 {
-    NOT_IMPL;
-    return (BfpFileAttributes)0;
+	struct stat fileStat = {0};
+	if(lstat(path, &fileStat) < 0)
+	{
+		switch (errno)
+		{
+			case EACCES:
+				OUTRESULT(BfpFileResult_AccessError);
+				break;
+			case ENAMETOOLONG:
+				OUTRESULT(BfpFileResult_InvalidParameter);
+				break;
+			case ENOENT:
+			case ENOTDIR:
+				OUTRESULT(BfpFileResult_NotFound);
+				break;
+			default:
+				OUTRESULT(BfpFileResult_UnknownError);
+				break;
+		}
+		return BfpFileAttribute_None;
+	}
+
+	BfpFileAttributes attributes = BfpFileAttribute_None;
+	if (S_ISDIR(fileStat.st_mode))
+		attributes = (BfpFileAttributes)(attributes | BfpFileAttribute_Directory);
+
+	if (S_ISLNK(fileStat.st_mode))
+		attributes = (BfpFileAttributes)(attributes | BfpFileAttribute_SymLink);
+
+	// Check file uid, gid and determine if it is readonly for current user
+	const bool userReadonly = (fileStat.st_mode & (S_IRUSR | S_IWUSR)) == S_IRUSR;
+	const bool groupReadonly = (fileStat.st_mode & (S_IRGRP | S_IWGRP)) == S_IRGRP;
+	const bool othersReadonly = (fileStat.st_mode & (S_IROTH | S_IWOTH)) == S_IROTH;
+
+	const __uid_t uid = geteuid();
+	if (fileStat.st_uid == uid)
+	{
+		if (userReadonly)
+			attributes = (BfpFileAttributes)(attributes | BfpFileAttribute_ReadOnly);
+	}
+	else
+	{
+		if (fileStat.st_gid == getegid())
+		{
+			if (groupReadonly)
+				attributes = (BfpFileAttributes)(attributes | BfpFileAttribute_ReadOnly);
+		}
+		else
+		{
+			bool inGroup = false;
+
+			__gid_t groups[64];
+			const int size = getgroups(0, NULL);
+			__gid_t* const ptr = (size > 64) ? new  __gid_t[size] : groups;
+			if (getgroups(size, ptr) > 0)
+			{
+				for (int i = 0; i < size; ++i)
+				{
+					if (ptr[i] == fileStat.st_gid)
+					{
+						inGroup = true;
+						break;
+					}
+				}
+			}
+
+			if (ptr != groups)
+				delete[] ptr;
+
+			if (inGroup)
+			{
+				if (groupReadonly)
+					attributes = (BfpFileAttributes)(attributes | BfpFileAttribute_ReadOnly);
+			}
+			else
+			{
+				if (othersReadonly)
+					attributes = (BfpFileAttributes)(attributes | BfpFileAttribute_ReadOnly);
+			}
+		}
+	}
+
+	const bool isBlock = (S_ISCHR(fileStat.st_mode) || S_ISBLK(fileStat.st_mode) || S_ISFIFO(fileStat.st_mode) || S_ISSOCK(fileStat.st_mode));
+
+	if (S_ISREG(fileStat.st_mode) && (!isBlock) && (attributes == BfpFileAttribute_None))
+		attributes = (BfpFileAttributes)(attributes | BfpFileAttribute_Normal);
+
+	return attributes;
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_SetAttributes(const char* path, BfpFileAttributes attribs, BfpFileResult* outResult)
 {
-    NOT_IMPL;
+	struct stat fileStat = {0};
+	if(stat(path, &fileStat) < 0)
+	{
+		switch (errno)
+		{
+			case EACCES:
+				OUTRESULT(BfpFileResult_AccessError);
+				break;
+			case ENAMETOOLONG:
+				OUTRESULT(BfpFileResult_InvalidParameter);
+				break;
+			case ENOENT:
+			case ENOTDIR:
+				OUTRESULT(BfpFileResult_NotFound);
+				break;
+			default:
+				OUTRESULT(BfpFileResult_UnknownError);
+				break;
+		}
+		return;
+	}
+
+	__mode_t newMode = fileStat.st_mode;
+	if ((attribs & BfpFileAttribute_ReadOnly) != 0)
+	{
+		newMode &= ~(S_IWUSR | S_IWGRP | S_IWOTH);
+	}
+	else if (fileStat.st_mode & S_IRUSR)
+	{
+		newMode |= S_IWUSR;
+	}
+
+	if (newMode != fileStat.st_mode)
+	{
+		if (chmod(path, newMode) < 0)
+		{
+			switch (errno)
+			{
+				case EACCES:
+					OUTRESULT(BfpFileResult_AccessError);
+					break;
+				case EFAULT:
+				case ENAMETOOLONG:
+					OUTRESULT(BfpFileResult_InvalidParameter);
+					break;
+				case ENOENT:
+				case ENOTDIR:
+					OUTRESULT(BfpFileResult_NotFound);
+					break;
+				default:
+					OUTRESULT(BfpFileResult_UnknownError);
+			}
+			return;
+		}
+	}
+
+	OUTRESULT(BfpFileResult_Ok);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Copy(const char* oldPath, const char* newPath, BfpFileCopyKind copyKind, BfpFileResult* outResult)
@@ -2418,7 +2970,36 @@ out_error:
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Rename(const char* oldPath, const char* newPath, BfpFileResult* outResult)
 {
-    NOT_IMPL;
+	if (rename(oldPath, newPath) != 0)
+	{
+		switch (errno)
+		{
+			case EACCES:
+				OUTRESULT(BfpFileResult_AccessError);
+				break;
+			case ENOENT:
+				OUTRESULT(BfpFileResult_NotFound);
+				break;
+
+			case ENOTEMPTY:
+			case EEXIST:
+			case EISDIR:
+				OUTRESULT(BfpFileResult_AlreadyExists);
+				break;
+
+			case EFAULT:
+			case EINVAL:
+			case ELOOP:
+			case ENAMETOOLONG:
+				OUTRESULT(BfpFileResult_InvalidParameter);
+				break;
+
+			default:
+				OUTRESULT(BfpFileResult_UnknownError);
+		}
+		return;
+	}
+	OUTRESULT(BfpFileResult_Ok);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_Delete(const char* path, BfpFileResult* outResult)

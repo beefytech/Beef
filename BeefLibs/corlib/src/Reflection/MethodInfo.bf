@@ -1142,10 +1142,19 @@ namespace System.Reflection
 						let info = Type.[Friend]Comptime_Method_GetInfo(nativeMethodHandle);
 						if (info.mComptimeMethodFlags.HasFlag(.NoReflect))
 							continue;
-						bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (info.mMethodFlags.HasFlag(.Static)));
-						matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!info.mMethodFlags.HasFlag(.Static)));
-						matches |= (mBindingFlags.HasFlag(BindingFlags.Public) && (info.mMethodFlags.HasFlag(.Public)));
-						matches |= (mBindingFlags.HasFlag(BindingFlags.NonPublic) && (!info.mMethodFlags.HasFlag(.Public)));
+
+						bool matches =
+							(mBindingFlags.HasFlag(.Static) && (info.mMethodFlags.HasFlag(.Static))) ||
+							(mBindingFlags.HasFlag(.Instance) && (!info.mMethodFlags.HasFlag(.Static)));
+
+						// For backwards compatibility we treat missing protection specifiers the same as '.Public | .NonPublic'
+						if (mBindingFlags & (.Public | .NonPublic) != 0)
+						{
+							matches &=
+								(mBindingFlags.HasFlag(.Public) && (info.mMethodFlags.HasFlag(.Public))) ||
+								(mBindingFlags.HasFlag(.NonPublic) && (!info.mMethodFlags.HasFlag(.Public)));
+						}
+
 						if (matches)
 							break;
 					}
@@ -1166,10 +1175,18 @@ namespace System.Reflection
 							continue;
 						}	
 						var methodData = &mTypeInstance.[Friend]mMethodDataPtr[mIdx];
-						bool matches = (mBindingFlags.HasFlag(BindingFlags.Static) && (methodData.mFlags.HasFlag(.Static)));
-						matches |= (mBindingFlags.HasFlag(BindingFlags.Instance) && (!methodData.mFlags.HasFlag(.Static)));
-						matches |= (mBindingFlags.HasFlag(BindingFlags.Public) && (methodData.mFlags.HasFlag(.Public)));
-						matches |= (mBindingFlags.HasFlag(BindingFlags.NonPublic) && (!methodData.mFlags.HasFlag(.Public)));
+						bool matches =
+							(mBindingFlags.HasFlag(.Static) && (methodData.mFlags.HasFlag(.Static))) ||
+							(mBindingFlags.HasFlag(.Instance) && (!methodData.mFlags.HasFlag(.Static)));
+
+						// For backwards compatibility we treat missing protection specifiers the same as '.Public | .NonPublic'
+						if (mBindingFlags & (.Public | .NonPublic) != 0)
+						{
+							matches &=
+								(mBindingFlags.HasFlag(.Public) && (methodData.mFlags.HasFlag(.Public))) ||
+								(mBindingFlags.HasFlag(.NonPublic) && (!methodData.mFlags.HasFlag(.Public)));
+						}
+
 						if (matches)
 							break;
 					}
