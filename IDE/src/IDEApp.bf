@@ -13681,7 +13681,9 @@ namespace IDE
 						DeleteAndNullify!(mBfBuildSystem);
 
 						///
+#if BF_PLATFORM_WINDOWS
 						mDebugger.FullReportMemory();
+#endif
 
 						var workspaceBuildDir = scope String();
 						GetWorkspaceBuildDir(workspaceBuildDir);
