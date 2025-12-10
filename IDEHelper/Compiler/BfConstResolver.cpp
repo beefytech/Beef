@@ -424,10 +424,14 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 			bool requiresConst = false;
 			if ((mModule->mCurMethodInstance == NULL) || (mModule->mCurMethodInstance->mMethodDef->mMethodType != BfMethodType_Mixin))
 				requiresConst = true;
-
-			if ((requiresConst) && (!mModule->mBfIRBuilder->IsConstValue(argValue.mValue)) && (!argValue.mType->IsValuelessType()))
+			
+			if ((requiresConst) && (!argValue.mType->IsValuelessType()))
 			{
-				mModule->Fail("Expression does not evaluate to a constant value", argExpr);
+				auto constant = mModule->mBfIRBuilder->GetConstant(argValue.mValue);
+				if ((constant == NULL) || ((!mModule->mBfIRBuilder->IsConstValue(argValue.mValue)) && (constant->mConstType != BfConstType_Undef)))
+				{
+					mModule->Fail("Expression does not evaluate to a constant value", argExpr);
+				}
 			}
 
 			if (!argValue.mType->IsVar())
