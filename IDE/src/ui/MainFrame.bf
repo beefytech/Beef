@@ -15,12 +15,20 @@ namespace IDE.ui
         public StatusBar mStatusBar;
         public DarkDockingFrame mDockingFrame;
 
+#if BF_PLATFORM_LINUX
+		public MenuBar mMenuBar;
+#endif
+
         public this()
         {
             mStatusBar = new StatusBar();
             AddWidget(mStatusBar);
             mDockingFrame = (DarkDockingFrame)ThemeFactory.mDefault.CreateDockingFrame();
             AddWidget(mDockingFrame);
+#if BF_PLATFORM_LINUX
+			mMenuBar = new MenuBar();
+			AddWidget(mMenuBar);
+#endif
         }
 
 		public void Reset()
@@ -40,8 +48,15 @@ namespace IDE.ui
         public override void Resize(float x, float y, float width, float height)
         {
             base.Resize(x, y, width, height);
-            int32 statusHeight = GS!(20);
+
+			int32 statusHeight = GS!(20);
+#if BF_PLATFORM_LINUX
+			int32 menuHeight = GS!(20);
+			mDockingFrame.Resize(0, menuHeight, width, height - statusHeight - menuHeight);
+			mMenuBar.Resize(0, 0, width, menuHeight);
+#else
             mDockingFrame.Resize(0, 0, width, height - statusHeight);
+#endif
             mStatusBar.Resize(0, mHeight - statusHeight, width, statusHeight);
         }
     }

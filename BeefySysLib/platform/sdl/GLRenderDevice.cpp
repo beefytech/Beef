@@ -1,9 +1,10 @@
 #include "GLRenderDevice.h"
+#include "BFApp.h"
 #include "SdlBFApp.h"
 #include "BFWindow.h"
 #include "img/ImageData.h"
 #include "util/PerfTimer.h"
-#include <SDL2/SDL_video.h>
+#include <SDL3/SDL_video.h>
 
 USING_NS_BF;
 
@@ -11,7 +12,7 @@ USING_NS_BF;
 #define NOT_IMPL throw "Not implemented"
 #endif
 
-//#pragma comment(lib, "SDL2.lib")
+//#pragma comment(lib, "SDL3.lib")
 
 #ifdef _WIN32
 #ifdef BF_PLATFORM_OPENGL_ES2
@@ -39,8 +40,9 @@ USING_NS_BF;
 #endif
 
 extern void* (SDLCALL* bf_SDL_GL_GetProcAddress)(const char* proc);
-extern void (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
-extern void (SDLCALL* bf_SDL_GL_SwapWindow)(SDL_Window* window);
+extern bool (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
+extern bool (SDLCALL* bf_SDL_GL_SwapWindow)(SDL_Window* window);
+extern bool (SDLCALL* bf_SDL_GL_MakeCurrent)(SDL_Window* window, SDL_GLContext context);
 
 typedef void (APIENTRYP GL_DEBUGPROC)(GLenum source, GLenum type, GLuint id, GLenum severity, GLsizei length, const GLchar* message, const void* userParam);
 
@@ -427,6 +429,8 @@ GLRenderWindow::~GLRenderWindow()
 
 void GLRenderWindow::PhysSetAsTarget()
 {
+    bf_SDL_GL_MakeCurrent(mSDLWindow, ((SdlBFApp*)gBFApp)->mGLContext );
+
 	GLfloat matrix[4][4];
 	CreateOrthographicOffCenter(0.0f, (float)mWidth, (float)mHeight, 0.0f, -100.0f, 100.0f, matrix);
     glViewport(0, 0, (GLsizei)mWidth, (GLsizei)mHeight);
@@ -439,6 +443,7 @@ void GLRenderWindow::SetAsTarget()
 	//TODO: Handle this more elegantly when we actually handle draw layers properly...
 	//if (mRenderDevice->mCurRenderTarget != NULL)
 		//mRenderDevice->mCurDrawLayer->Flush();
+	bf_SDL_GL_MakeCurrent(mSDLWindow, ((SdlBFApp*)gBFApp)->mGLContext );
 
 	mHasBeenTargeted = true;
 	mRenderDevice->mCurRenderTarget = this;
