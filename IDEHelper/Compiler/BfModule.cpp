@@ -13205,11 +13205,14 @@ void BfModule::ProcessTypeInstCustomAttributes(int& packing, bool& isUnion, bool
 				{
 					auto alignConstant = mCurTypeInstance->mConstHolder->GetConstant(customAttribute.mCtorArgs[0]);
 
-					int checkPacking = alignConstant->mInt32;
-					if (((checkPacking & (checkPacking - 1)) == 0) && (packing > 0) && (packing < 256))
-						packing = checkPacking;
-					else
-						Fail("Packing must be a power of 2", customAttribute.GetRefNode());
+					if ((alignConstant != NULL) && (alignConstant->mConstType != BfConstType_Undef))
+					{
+						int checkPacking = alignConstant->mInt32;
+						if (((checkPacking & (checkPacking - 1)) == 0) && (packing > 0) && (packing < 256))
+							packing = checkPacking;
+						else
+							Fail("Packing must be a power of 2", customAttribute.GetRefNode());
+					}
 				}
 			}
 			else if (typeName == "System.UnionAttribute")
@@ -13251,12 +13254,14 @@ void BfModule::ProcessTypeInstCustomAttributes(int& packing, bool& isUnion, bool
 				if (customAttribute.mCtorArgs.size() >= 1)
 				{
 					auto alignConstant = mCurTypeInstance->mConstHolder->GetConstant(customAttribute.mCtorArgs[0]);
-
-					int checkAlign = alignConstant->mInt32;
-					if ((checkAlign & (checkAlign - 1)) == 0)
-						alignOverride = checkAlign;
-					else
-						Fail("Alignment must be a power of 2", customAttribute.GetRefNode());
+					if ((alignConstant != NULL) && (alignConstant->mConstType != BfConstType_Undef))
+					{
+						int checkAlign = alignConstant->mInt32;
+						if ((checkAlign & (checkAlign - 1)) == 0)
+							alignOverride = checkAlign;
+						else
+							Fail("Alignment must be a power of 2", customAttribute.GetRefNode());
+					}
 				}
 			}
 			else if (typeName == "System.UnderlyingArrayAttribute")
@@ -13265,7 +13270,7 @@ void BfModule::ProcessTypeInstCustomAttributes(int& packing, bool& isUnion, bool
 				{
 					auto typeConstant = mCurTypeInstance->mConstHolder->GetConstant(customAttribute.mCtorArgs[0]);
 					auto sizeConstant = mCurTypeInstance->mConstHolder->GetConstant(customAttribute.mCtorArgs[1]);
-					if ((typeConstant != NULL) && (sizeConstant != NULL) && (typeConstant->mConstType == BfConstType_TypeOf))
+					if ((typeConstant != NULL) && (sizeConstant != NULL) && (typeConstant->mConstType == BfConstType_TypeOf) && (sizeConstant->mConstType != BfConstType_Undef))
 					{
 						underlyingArrayType = (BfType*)(intptr)typeConstant->mInt64;
 						underlyingArraySize = sizeConstant->mInt32;
