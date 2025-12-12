@@ -1,14 +1,17 @@
-
-/* pngconf.h - machine configurable file for libpng
+/* pngconf.h - machine-configurable file for libpng
  *
- * libpng 1.0.5 - October 15, 1999
- * For conditions of distribution and use, see copyright notice in png.h
- * Copyright (c) 1995, 1996 Guy Eric Schalnat, Group 42, Inc.
- * Copyright (c) 1996, 1997 Andreas Dilger
- * Copyright (c) 1998, 1999 Glenn Randers-Pehrson
- */
-
-/* Any machine specific code is near the front of this file, so if you
+ * libpng version 1.6.53
+ *
+ * Copyright (c) 2018-2025 Cosmin Truta
+ * Copyright (c) 1998-2002,2004,2006-2016,2018 Glenn Randers-Pehrson
+ * Copyright (c) 1996-1997 Andreas Dilger
+ * Copyright (c) 1995-1996 Guy Eric Schalnat, Group 42, Inc.
+ *
+ * This code is released under the libpng license.
+ * For conditions of distribution and use, see the disclaimer
+ * and license in png.h
+ *
+ * Any machine specific code is near the front of this file, so if you
  * are configuring libpng for a machine, you may want to read the section
  * starting here down to where it starts to typedef png_color, png_text,
  * and png_info.
@@ -17,707 +20,596 @@
 #ifndef PNGCONF_H
 #define PNGCONF_H
 
-/* This is the size of the compression buffer, and thus the size of
- * an IDAT chunk.  Make this whatever size you feel is best for your
- * machine.  One of these will be allocated per png_struct.  When this
- * is full, it writes the data to the disk, and does some other
- * calculations.  Making this an extremely small size will slow
- * the library down, but you may want to experiment to determine
- * where it becomes significant, if you are concerned with memory
- * usage.  Note that zlib allocates at least 32Kb also.  For readers,
- * this describes the size of the buffer available to read the data in.
- * Unless this gets smaller than the size of a row (compressed),
- * it should not make much difference how big this is.
+#ifndef PNG_BUILDING_SYMBOL_TABLE /* else includes may cause problems */
+
+/* From libpng 1.6.0 libpng requires an ANSI X3.159-1989 ("ISOC90") compliant C
+ * compiler for correct compilation.  The following header files are required by
+ * the standard.  If your compiler doesn't provide these header files, or they
+ * do not match the standard, you will need to provide/improve them.
  */
+#include <limits.h>
+#include <stddef.h>
 
-#ifndef PNG_ZBUF_SIZE
-#define PNG_ZBUF_SIZE 8192
-#endif
-
-/* If you are running on a machine where you cannot allocate more
- * than 64K of memory at once, uncomment this.  While libpng will not
- * normally need that much memory in a chunk (unless you load up a very
- * large file), zlib needs to know how big of a chunk it can use, and
- * libpng thus makes sure to check any memory allocation to verify it
- * will fit into memory.
-#define PNG_MAX_MALLOC_64K
- */
-#if defined(MAXSEG_64K) && !defined(PNG_MAX_MALLOC_64K)
-#define PNG_MAX_MALLOC_64K
-#endif
-
-/* This protects us against compilers that run on a windowing system
- * and thus don't have or would rather us not use the stdio types:
- * stdin, stdout, and stderr.  The only one currently used is stderr
- * in png_error() and png_warning().  #defining PNG_NO_CONSOLE_IO will
- * prevent these from being compiled and used. #defining PNG_NO_STDIO
- * will also prevent these, plus will prevent the entire set of stdio
- * macros and functions (FILE *, printf, etc.) from being compiled and used,
- * unless (PNG_DEBUG > 0) has been #defined.
+/* Library header files.  These header files are all defined by ISOC90; libpng
+ * expects conformant implementations, however, an ISOC90 conformant system need
+ * not provide these header files if the functionality cannot be implemented.
+ * In this case it will be necessary to disable the relevant parts of libpng in
+ * the build of pnglibconf.h.
  *
- * #define PNG_NO_CONSOLE_IO
- * #define PNG_NO_STDIO
+ * Prior to 1.6.0 string.h was included here; the API changes in 1.6.0 to not
+ * include this unnecessary header file.
  */
 
-#  ifdef PNG_NO_STDIO
-#    ifndef PNG_NO_CONSOLE_IO
-#      define PNG_NO_CONSOLE_IO
-#    endif
-#    ifdef PNG_DEBUG
-#      if (PNG_DEBUG > 0)
-#        include <stdio.h>
-#      endif
-#    endif
-#  else
-#    include <stdio.h>
-#  endif
+#ifdef PNG_STDIO_SUPPORTED
+   /* Required for the definition of FILE: */
+#  include <stdio.h>
+#endif
 
-/* This macro protects us against machines that don't have function
- * prototypes (ie K&R style headers).  If your compiler does not handle
- * function prototypes, define this macro and use the included ansi2knr.
- * I've always been able to use _NO_PROTO as the indicator, but you may
- * need to drag the empty declaration out in front of here, or change the
- * ifdef to suit your own needs.
+#ifdef PNG_SETJMP_SUPPORTED
+   /* Required for the definition of jmp_buf and the declaration of longjmp: */
+#  include <setjmp.h>
+#endif
+
+#ifdef PNG_CONVERT_tIME_SUPPORTED
+   /* Required for struct tm: */
+#  include <time.h>
+#endif
+
+#endif /* PNG_BUILDING_SYMBOL_TABLE */
+
+/* Prior to 1.6.0, it was possible to turn off 'const' in declarations,
+ * using PNG_NO_CONST.  This is no longer supported.
+ */
+#define PNG_CONST const /* backward compatibility only */
+
+/* This controls optimization of the reading of 16-bit and 32-bit
+ * values from PNG files.  It can be set on a per-app-file basis: it
+ * just changes whether a macro is used when the function is called.
+ * The library builder sets the default; if read functions are not
+ * built into the library the macro implementation is forced on.
+ */
+#ifndef PNG_READ_INT_FUNCTIONS_SUPPORTED
+#  define PNG_USE_READ_MACROS
+#endif
+#if !defined(PNG_NO_USE_READ_MACROS) && !defined(PNG_USE_READ_MACROS)
+#  if PNG_DEFAULT_READ_MACROS
+#    define PNG_USE_READ_MACROS
+#  endif
+#endif
+
+/* COMPILER SPECIFIC OPTIONS.
+ *
+ * These options are provided so that a variety of difficult compilers
+ * can be used.  Some are fixed at build time (e.g. PNG_API_RULE
+ * below) but still have compiler specific implementations, others
+ * may be changed on a per-file basis when compiling against libpng.
+ */
+
+/* The PNGARG macro was used in versions of libpng prior to 1.6.0 to protect
+ * against legacy (pre ISOC90) compilers that did not understand function
+ * prototypes.  [Deprecated.]
  */
 #ifndef PNGARG
-
-#ifdef OF /* zlib prototype munger */
-#define PNGARG(arglist) OF(arglist)
-#else
-
-#ifdef _NO_PROTO
-#define PNGARG(arglist) ()
-#else
-#define PNGARG(arglist) arglist
-#endif /* _NO_PROTO */
-
-#endif /* OF */
-
-#endif /* PNGARG */
-
-/* Try to determine if we are compiling on a Mac.  Note that testing for
- * just __MWERKS__ is not good enough, because the Codewarrior is now used
- * on non-Mac platforms.
- */
-#ifndef MACOS
-#if (defined(__MWERKS__) && defined(macintosh)) || defined(applec) || \
-    defined(THINK_C) || defined(__SC__) || defined(TARGET_OS_MAC)
-#define MACOS
-#endif
+#  define PNGARG(arglist) arglist
 #endif
 
-/* enough people need this for various reasons to include it here */
-#if !defined(MACOS) && !defined(RISCOS) && !defined(RVL_OS) && !defined(__psp2__)
-#include <sys/types.h>
-#endif
-
-/* This is an attempt to force a single setjmp behaviour on Linux.  If
- * the X config stuff didn't define _BSD_SOURCE we wouldn't need this.
- */
-#ifdef __linux__
-#ifdef _BSD_SOURCE
-#define _PNG_SAVE_BSD_SOURCE
-#undef _BSD_SOURCE
-#endif
-#ifdef _SETJMP_H
-__png.h__ already includes setjmp.h
-__dont__ include it again
-#endif
-#endif /* __linux__ */
-
-/* include setjmp.h for error handling */
-#include <setjmp.h>
-
-#ifdef __linux__
-#ifdef _PNG_SAVE_BSD_SOURCE
-#define _BSD_SOURCE
-#undef _PNG_SAVE_BSD_SOURCE
-#endif
-#endif /* __linux__ */
-
-#ifdef BSD
-#include <strings.h>
-#else
-#include <string.h>
-#endif
-
-/* Other defines for things like memory and the like can go here.  */
-#ifdef PNG_INTERNAL
-#include <stdlib.h>
-
-/* The functions exported by PNG_EXTERN are PNG_INTERNAL functions, which
- * aren't usually used outside the library (as far as I know), so it is
- * debatable if they should be exported at all.  In the future, when it is
- * possible to have run-time registry of chunk-handling functions, some of
- * these will be made available again.
-#define PNG_EXTERN extern
- */
-#define PNG_EXTERN
-
-/* Other defines specific to compilers can go here.  Try to keep
- * them inside an appropriate ifdef/endif pair for portability.
+/* Function calling conventions.
+ * =============================
+ * Normally it is not necessary to specify to the compiler how to call
+ * a function - it just does it - however on x86 systems derived from
+ * Microsoft and Borland C compilers ('IBM PC', 'DOS', 'Windows' systems
+ * and some others) there are multiple ways to call a function and the
+ * default can be changed on the compiler command line.  For this reason
+ * libpng specifies the calling convention of every exported function and
+ * every function called via a user supplied function pointer.  This is
+ * done in this file by defining the following macros:
+ *
+ * PNGAPI    Calling convention for exported functions.
+ * PNGCBAPI  Calling convention for user provided (callback) functions.
+ * PNGCAPI   Calling convention used by the ANSI-C library (required
+ *           for longjmp callbacks and sometimes used internally to
+ *           specify the calling convention for zlib).
+ *
+ * These macros should never be overridden.  If it is necessary to
+ * change calling convention in a private build this can be done
+ * by setting PNG_API_RULE (which defaults to 0) to one of the values
+ * below to select the correct 'API' variants.
+ *
+ * PNG_API_RULE=0 Use PNGCAPI - the 'C' calling convention - throughout.
+ *                This is correct in every known environment.
+ * PNG_API_RULE=1 Use the operating system convention for PNGAPI and
+ *                the 'C' calling convention (from PNGCAPI) for
+ *                callbacks (PNGCBAPI).  This is no longer required
+ *                in any known environment - if it has to be used
+ *                please post an explanation of the problem to the
+ *                libpng mailing list.
+ *
+ * These cases only differ if the operating system does not use the C
+ * calling convention, at present this just means the above cases
+ * (x86 DOS/Windows systems) and, even then, this does not apply to
+ * Cygwin running on those systems.
+ *
+ * Note that the value must be defined in pnglibconf.h so that what
+ * the application uses to call the library matches the conventions
+ * set when building the library.
  */
 
-#if defined(MACOS)
-/* We need to check that <math.h> hasn't already been included earlier
- * as it seems it doesn't agree with <fp.h>, yet we should really use
- * <fp.h> if possible.
- */
-#if !defined(__MATH_H__) && !defined(__MATH_H) && !defined(__cmath__)
-#include <fp.h>
-#endif
-#else
-#include <math.h>
-#endif
-
-/* Codewarrior on NT has linking problems without this. */
-#if (defined(__MWERKS__) && defined(WIN32)) || defined(__STDC__)
-#define PNG_ALWAYS_EXTERN
-#endif
-
-/* For some reason, Borland C++ defines memcmp, etc. in mem.h, not
- * stdlib.h like it should (I think).  Or perhaps this is a C++
- * "feature"?
- */
-#ifdef __TURBOC__
-#include <mem.h>
-#include "alloc.h"
-#endif
-
-#ifdef _MSC_VER
-#include <malloc.h>
-#endif
-
-/* This controls how fine the dithering gets.  As this allocates
- * a largish chunk of memory (32K), those who are not as concerned
- * with dithering quality can decrease some or all of these.
- */
-#ifndef PNG_DITHER_RED_BITS
-#define PNG_DITHER_RED_BITS 5
-#endif
-#ifndef PNG_DITHER_GREEN_BITS
-#define PNG_DITHER_GREEN_BITS 5
-#endif
-#ifndef PNG_DITHER_BLUE_BITS
-#define PNG_DITHER_BLUE_BITS 5
-#endif
-
-/* This controls how fine the gamma correction becomes when you
- * are only interested in 8 bits anyway.  Increasing this value
- * results in more memory being used, and more pow() functions
- * being called to fill in the gamma tables.  Don't set this value
- * less then 8, and even that may not work (I haven't tested it).
+/* Symbol export
+ * =============
+ * When building a shared library it is almost always necessary to tell
+ * the compiler which symbols to export.  The png.h macro 'PNG_EXPORT'
+ * is used to mark the symbols.  On some systems these symbols can be
+ * extracted at link time and need no special processing by the compiler,
+ * on other systems the symbols are flagged by the compiler and just
+ * the declaration requires a special tag applied (unfortunately) in a
+ * compiler dependent way.  Some systems can do either.
+ *
+ * A small number of older systems also require a symbol from a DLL to
+ * be flagged to the program that calls it.  This is a problem because
+ * we do not know in the header file included by application code that
+ * the symbol will come from a shared library, as opposed to a statically
+ * linked one.  For this reason the application must tell us by setting
+ * the magic flag PNG_USE_DLL to turn on the special processing before
+ * it includes png.h.
+ *
+ * Four additional macros are used to make this happen:
+ *
+ * PNG_IMPEXP The magic (if any) to cause a symbol to be exported from
+ *            the build or imported if PNG_USE_DLL is set - compiler
+ *            and system specific.
+ *
+ * PNG_EXPORT_TYPE(type) A macro that pre or appends PNG_IMPEXP to
+ *                       'type', compiler specific.
+ *
+ * PNG_DLL_EXPORT Set to the magic to use during a libpng build to
+ *                make a symbol exported from the DLL.  Not used in the
+ *                public header files; see pngpriv.h for how it is used
+ *                in the libpng build.
+ *
+ * PNG_DLL_IMPORT Set to the magic to force the libpng symbols to come
+ *                from a DLL - used to define PNG_IMPEXP when
+ *                PNG_USE_DLL is set.
  */
 
-#ifndef PNG_MAX_GAMMA_8
-#define PNG_MAX_GAMMA_8 11
-#endif
-
-/* This controls how much a difference in gamma we can tolerate before
- * we actually start doing gamma conversion.
+/* System specific discovery.
+ * ==========================
+ * This code is used at build time to find PNG_IMPEXP, the API settings
+ * and PNG_EXPORT_TYPE(), it may also set a macro to indicate the DLL
+ * import processing is possible.  On Windows systems it also sets
+ * compiler-specific macros to the values required to change the calling
+ * conventions of the various functions.
  */
-#ifndef PNG_GAMMA_THRESHOLD
-#define PNG_GAMMA_THRESHOLD 0.05
+#if defined(_WIN32) || defined(__WIN32__) || defined(__NT__) || \
+    defined(__CYGWIN__)
+  /* Windows system (DOS doesn't support DLLs).  Includes builds under Cygwin or
+   * MinGW on any architecture currently supported by Windows.  Also includes
+   * Watcom builds but these need special treatment because they are not
+   * compatible with GCC or Visual C because of different calling conventions.
+   */
+#  if PNG_API_RULE == 2
+   /* If this line results in an error, either because __watcall is not
+    * understood or because of a redefine just below you cannot use *this*
+    * build of the library with the compiler you are using.  *This* build was
+    * build using Watcom and applications must also be built using Watcom!
+    */
+#    define PNGCAPI __watcall
+#  endif
+
+#  if defined(__GNUC__) || (defined(_MSC_VER) && (_MSC_VER >= 800))
+#    define PNGCAPI __cdecl
+#    if PNG_API_RULE == 1
+   /* If this line results in an error __stdcall is not understood and
+    * PNG_API_RULE should not have been set to '1'.
+    */
+#      define PNGAPI __stdcall
+#    endif
+#  else
+   /* An older compiler, or one not detected (erroneously) above,
+    * if necessary override on the command line to get the correct
+    * variants for the compiler.
+    */
+#    ifndef PNGCAPI
+#      define PNGCAPI _cdecl
+#    endif
+#    if PNG_API_RULE == 1 && !defined(PNGAPI)
+#      define PNGAPI _stdcall
+#    endif
+#  endif /* compiler/api */
+
+  /* NOTE: PNGCBAPI always defaults to PNGCAPI. */
+
+#  if defined(PNGAPI) && !defined(PNG_USER_PRIVATEBUILD)
+#     error PNG_USER_PRIVATEBUILD must be defined if PNGAPI is changed
+#  endif
+
+#  define PNG_DLL_EXPORT __declspec(dllexport)
+#  ifndef PNG_DLL_IMPORT
+#    define PNG_DLL_IMPORT __declspec(dllimport)
+#  endif
+
+#else /* !Windows */
+#  if (defined(__IBMC__) || defined(__IBMCPP__)) && defined(__OS2__)
+#    define PNGAPI _System
+#  else /* !Windows/x86 && !OS/2 */
+   /* Use the defaults, or define PNG*API on the command line (but
+    * this will have to be done for every compile!)
+    */
+#  endif /* other system, !OS/2 */
+#endif /* !Windows/x86 */
+
+/* Now do all the defaulting . */
+#ifndef PNGCAPI
+#  define PNGCAPI
+#endif
+#ifndef PNGCBAPI
+#  define PNGCBAPI PNGCAPI
+#endif
+#ifndef PNGAPI
+#  define PNGAPI PNGCAPI
 #endif
 
-#endif /* PNG_INTERNAL */
-
-/* The following uses const char * instead of char * for error
- * and warning message functions, so some compilers won't complain.
- * If you do not want to use const, define PNG_NO_CONST here.
+/* PNG_IMPEXP may be set on the compilation system command line or (if not set)
+ * then in an internal header file when building the library, otherwise (when
+ * using the library) it is set here.
  */
+#ifndef PNG_IMPEXP
+#  if defined(PNG_USE_DLL) && defined(PNG_DLL_IMPORT)
+   /* This forces use of a DLL, disallowing static linking */
+#    define PNG_IMPEXP PNG_DLL_IMPORT
+#  endif
 
-#ifndef PNG_NO_CONST
-#  define PNG_CONST const
-#else
-#  define PNG_CONST
-#endif
-
-/* The following defines give you the ability to remove code from the
- * library that you will not be using.  I wish I could figure out how to
- * automate this, but I can't do that without making it seriously hard
- * on the users.  So if you are not using an ability, change the #define
- * to and #undef, and that part of the library will not be compiled.  If
- * your linker can't find a function, you may want to make sure the
- * ability is defined here.  Some of these depend upon some others being
- * defined.  I haven't figured out all the interactions here, so you may
- * have to experiment awhile to get everything to compile.  If you are
- * creating or using a shared library, you probably shouldn't touch this,
- * as it will affect the size of the structures, and this will cause bad
- * things to happen if the library and/or application ever change.
- */
-
-/* Any transformations you will not be using can be undef'ed here */
-
-/* GR-P, 0.96a: Set "*TRANSFORMS_SUPPORTED as default but allow user
-   to turn it off with "*TRANSFORMS_NOT_SUPPORTED" or *PNG_NO_*_TRANSFORMS
-   on the compile line, then pick and choose which ones to define without
-   having to edit this file. It is safe to use the *TRANSFORMS_NOT_SUPPORTED
-   if you only want to have a png-compliant reader/writer but don't need
-   any of the extra transformations.  This saves about 80 kbytes in a
-   typical installation of the library. (PNG_NO_* form added in version
-   1.0.1c, for consistency)
- */
-
-
-#if !defined(PNG_READ_TRANSFORMS_NOT_SUPPORTED) && \
-    !defined(PNG_NO_READ_TRANSFORMS)
-#define PNG_READ_TRANSFORMS_SUPPORTED
-#endif
-#if !defined(PNG_WRITE_TRANSFORMS_NOT_SUPPORTED) && \
-    !defined(PNG_NO_WRITE_TRANSFORMS)
-#define PNG_WRITE_TRANSFORMS_SUPPORTED
-#endif
-
-#ifdef PNG_READ_TRANSFORMS_SUPPORTED
-#ifndef PNG_NO_READ_EXPAND
-#define PNG_READ_EXPAND_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_SHIFT
-#define PNG_READ_SHIFT_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_PACK
-#define PNG_READ_PACK_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_BGR
-#define PNG_READ_BGR_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_SWAP
-#define PNG_READ_SWAP_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_PACKSWAP
-#define PNG_READ_PACKSWAP_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_INVERT
-#define PNG_READ_INVERT_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_DITHER
-#define PNG_READ_DITHER_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_BACKGROUND
-#define PNG_READ_BACKGROUND_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_16_TO_8
-#define PNG_READ_16_TO_8_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_FILLER
-#define PNG_READ_FILLER_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_GAMMA
-#define PNG_READ_GAMMA_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_GRAY_TO_RGB
-#define PNG_READ_GRAY_TO_RGB_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_SWAP_ALPHA
-#define PNG_READ_SWAP_ALPHA_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_INVERT_ALPHA
-#define PNG_READ_INVERT_ALPHA_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_STRIP_ALPHA
-#define PNG_READ_STRIP_ALPHA_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_USER_TRANSFORM
-#define PNG_READ_USER_TRANSFORM_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_RGB_TO_GRAY
-#define PNG_READ_RGB_TO_GRAY_SUPPORTED
-#endif
-#endif /* PNG_READ_TRANSFORMS_SUPPORTED */
-
-#if !defined(PNG_NO_PROGRESSIVE_READ) && \
- !defined(PNG_PROGRESSIVE_READ_NOT_SUPPORTED) /* if you don't do progressive   */
-#define PNG_PROGRESSIVE_READ_SUPPORTED       /* reading.  This is not talking */
-#endif                               /* about interlacing capability!  You'll */
-              /* still have interlacing unless you change the following line: */
-#define PNG_READ_INTERLACING_SUPPORTED /* required for PNG-compliant decoders */
-
-#ifndef PNG_NO_READ_COMPOSITED_NODIV
-#define PNG_READ_COMPOSITE_NODIV_SUPPORTED    /* well tested on Intel and SGI */
-#endif
-
-#ifndef PNG_NO_READ_EMPTY_PLTE
-#define PNG_READ_EMPTY_PLTE_SUPPORTED  /* useful for MNG applications */
-#endif
-
-#ifdef PNG_WRITE_TRANSFORMS_SUPPORTED
-#ifndef PNG_NO_WRITE_SHIFT
-#define PNG_WRITE_SHIFT_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_PACK
-#define PNG_WRITE_PACK_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_BGR
-#define PNG_WRITE_BGR_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_SWAP
-#define PNG_WRITE_SWAP_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_PACKSWAP
-#define PNG_WRITE_PACKSWAP_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_INVERT
-#define PNG_WRITE_INVERT_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_FILLER
-#define PNG_WRITE_FILLER_SUPPORTED  /* This is the same as WRITE_STRIP_ALPHA */
-#endif
-#ifndef PNG_NO_WRITE_SWAP_ALPHA
-#define PNG_WRITE_SWAP_ALPHA_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_INVERT_ALPHA
-#define PNG_WRITE_INVERT_ALPHA_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_USER_TRANSFORM
-#define PNG_WRITE_USER_TRANSFORM_SUPPORTED
-#endif
-#endif /* PNG_WRITE_TRANSFORMS_SUPPORTED */
-
-#define PNG_WRITE_INTERLACING_SUPPORTED  /* not required for PNG-compliant
-                                            encoders, but can cause trouble
-                                            if left undefined */
-
-#ifndef PNG_NO_WRITE_WEIGHTED_FILTER
-#define PNG_WRITE_WEIGHTED_FILTER_SUPPORTED
-#endif
-
-#ifndef PNG_NO_WRITE_FLUSH
-#define PNG_WRITE_FLUSH_SUPPORTED
-#endif
-
-#ifndef PNG_NO_WRITE_EMPTY_PLTE
-#define PNG_WRITE_EMPTY_PLTE_SUPPORTED  /* useful for MNG applications */
-#endif
-
-#ifndef PNG_NO_STDIO
-#define PNG_TIME_RFC1123_SUPPORTED
-#endif
-
-/* This adds extra functions in pngget.c for accessing data from the
- * info pointer (added in version 0.99)
- * png_get_image_width()
- * png_get_image_height()
- * png_get_bit_depth()
- * png_get_color_type()
- * png_get_compression_type()
- * png_get_filter_type()
- * png_get_interlace_type()
- * png_get_pixel_aspect_ratio()
- * png_get_pixels_per_meter()
- * png_get_x_offset_pixels()
- * png_get_y_offset_pixels()
- * png_get_x_offset_microns()
- * png_get_y_offset_microns()
- */
-#ifndef PNG_NO_EASY_ACCESS
-#define PNG_EASY_ACCESS_SUPPORTED
-#endif
-
-#ifndef PNG_NO_ASSEMBLER_CODE
-#define PNG_ASSEMBLER_CODE_SUPPORTED
-#endif
-
-/* These are currently experimental features, define them if you want */
-
-/* very little testing */
-/*
-#define PNG_READ_16_TO_8_ACCURATE_SCALE_SUPPORTED
-#define PNG_USER_MEM_SUPPORTED
-*/
-
-/* This is only for PowerPC big-endian and 680x0 systems */
-/* some testing */
-/*
-#define PNG_READ_BIG_ENDIAN_SUPPORTED
-*/
-
-/* These functions are turned off by default, as they will be phased out. */
-/*
-#define  PNG_USELESS_TESTS_SUPPORTED
-#define  PNG_CORRECT_PALETTE_SUPPORTED
-*/
-
-/* Any chunks you are not interested in, you can undef here.  The
- * ones that allocate memory may be expecially important (hIST,
- * tEXt, zTXt, tRNS, pCAL).  Others will just save time and make png_info
- * a bit smaller.
- */
-
-#if !defined(PNG_READ_ANCILLARY_CHUNKS_NOT_SUPPORTED) && \
-    !defined(PNG_NO_READ_ANCILLARY_CHUNKS)
-#define PNG_READ_ANCILLARY_CHUNKS_SUPPORTED
-#endif
-#if !defined(PNG_WRITE_ANCILLARY_CHUNKS_NOT_SUPPORTED) && \
-    !defined(PNG_NO_WRITE_ANCILLARY_CHUNKS)
-#define PNG_WRITE_ANCILLARY_CHUNKS_SUPPORTED
-#endif
-
-#ifdef PNG_READ_ANCILLARY_CHUNKS_SUPPORTED
-#ifndef PNG_NO_READ_bKGD
-#define PNG_READ_bKGD_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_cHRM
-#define PNG_READ_cHRM_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_gAMA
-#define PNG_READ_gAMA_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_hIST
-#define PNG_READ_hIST_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_oFFs
-#define PNG_READ_oFFs_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_pCAL
-#define PNG_READ_pCAL_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_pHYs
-#define PNG_READ_pHYs_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_sBIT
-#define PNG_READ_sBIT_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_sRGB
-#define PNG_READ_sRGB_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_tEXt
-#define PNG_READ_tEXt_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_tIME
-#define PNG_READ_tIME_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_tRNS
-#define PNG_READ_tRNS_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_zTXt
-#define PNG_READ_zTXt_SUPPORTED
-#endif
-#ifndef PNG_NO_READ_OPT_PLTE
-#define PNG_READ_OPT_PLTE_SUPPORTED /* only affects support of the optional */
-#endif                              /* PLTE chunk in RGB and RGBA images */
-#endif /* PNG_READ_ANCILLARY_CHUNKS_SUPPORTED */
-
-#ifdef PNG_WRITE_ANCILLARY_CHUNKS_SUPPORTED
-#ifndef PNG_NO_WRITE_bKGD
-#define PNG_WRITE_bKGD_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_cHRM
-#define PNG_WRITE_cHRM_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_gAMA
-#define PNG_WRITE_gAMA_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_hIST
-#define PNG_WRITE_hIST_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_oFFs
-#define PNG_WRITE_oFFs_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_pCAL
-#define PNG_WRITE_pCAL_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_pHYs
-#define PNG_WRITE_pHYs_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_sBIT
-#define PNG_WRITE_sBIT_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_sRGB
-#define PNG_WRITE_sRGB_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_tEXt
-#define PNG_WRITE_tEXt_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_tIME
-#define PNG_WRITE_tIME_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_tRNS
-#define PNG_WRITE_tRNS_SUPPORTED
-#endif
-#ifndef PNG_NO_WRITE_zTXt
-#define PNG_WRITE_zTXt_SUPPORTED
-#endif
-#endif /* PNG_WRITE_ANCILLARY_CHUNKS_SUPPORTED */
-
-/* need the time information for reading tIME chunks */
-#if defined(PNG_READ_tIME_SUPPORTED) || defined(PNG_WRITE_tIME_SUPPORTED)
-#include <time.h>
-#endif
-
-/* Some typedefs to get us started.  These should be safe on most of the
- * common platforms.  The typedefs should be at least as large as the
- * numbers suggest (a png_uint_32 must be at least 32 bits long), but they
- * don't have to be exactly that size.  Some compilers dislike passing
- * unsigned shorts as function parameters, so you may be better off using
- * unsigned int for png_uint_16.  Likewise, for 64-bit systems, you may
- * want to have unsigned int for png_uint_32 instead of unsigned long.
- */
-
-typedef unsigned long png_uint_32;
-typedef long png_int_32;
-typedef unsigned short png_uint_16;
-typedef short png_int_16;
-typedef unsigned char png_byte;
-
-/* This is usually size_t.  It is typedef'ed just in case you need it to
-   change (I'm not sure if you will or not, so I thought I'd be safe) */
-typedef size_t png_size_t;
-
-/* The following is needed for medium model support.  It cannot be in the
- * PNG_INTERNAL section.  Needs modification for other compilers besides
- * MSC.  Model independent support declares all arrays and pointers to be
- * large using the far keyword.  The zlib version used must also support
- * model independent data.  As of version zlib 1.0.4, the necessary changes
- * have been made in zlib.  The USE_FAR_KEYWORD define triggers other
- * changes that are needed. (Tim Wegner)
- */
-
-/* Separate compiler dependencies (problem here is that zlib.h always
-   defines FAR. (SJT) */
-#ifdef __BORLANDC__
-#if defined(__LARGE__) || defined(__HUGE__) || defined(__COMPACT__)
-#define LDATA 1
-#else
-#define LDATA 0
-#endif
-
-#if !defined(__WIN32__) && !defined(__FLAT__)
-#define PNG_MAX_MALLOC_64K
-#if (LDATA != 1)
-#ifndef FAR
-#define FAR __far
-#endif
-#define USE_FAR_KEYWORD
-#endif   /* LDATA != 1 */
-
-/* Possibly useful for moving data out of default segment.
- * Uncomment it if you want. Could also define FARDATA as
- * const if your compiler supports it. (SJT)
-#  define FARDATA FAR
- */
-#endif  /* __WIN32__, __FLAT__ */
-
-#endif   /* __BORLANDC__ */
-
-
-/* Suggest testing for specific compiler first before testing for
- * FAR.  The Watcom compiler defines both __MEDIUM__ and M_I86MM,
- * making reliance oncertain keywords suspect. (SJT)
- */
-
-/* MSC Medium model */
-#if defined(FAR)
-#  if defined(M_I86MM)
-#     define USE_FAR_KEYWORD
-#     define FARDATA FAR
-#     include <dos.h>
+#  ifndef PNG_IMPEXP
+#    define PNG_IMPEXP
 #  endif
 #endif
 
-/* SJT: default case */
-#ifndef FAR
-#   define FAR
+/* In 1.5.2 the definition of PNG_FUNCTION has been changed to always treat
+ * 'attributes' as a storage class - the attributes go at the start of the
+ * function definition, and attributes are always appended regardless of the
+ * compiler.  This considerably simplifies these macros but may cause problems
+ * if any compilers both need function attributes and fail to handle them as
+ * a storage class (this is unlikely.)
+ */
+#ifndef PNG_FUNCTION
+#  define PNG_FUNCTION(type, name, args, attributes) attributes type name args
 #endif
 
-/* At this point FAR is always defined */
-#ifndef FARDATA
-#define FARDATA
+#ifndef PNG_EXPORT_TYPE
+#  define PNG_EXPORT_TYPE(type) PNG_IMPEXP type
 #endif
+
+   /* The ordinal value is only relevant when preprocessing png.h for symbol
+    * table entries, so we discard it here.  See the .dfn files in the
+    * scripts directory.
+    */
+
+#ifndef PNG_EXPORTA
+#  define PNG_EXPORTA(ordinal, type, name, args, attributes) \
+      PNG_FUNCTION(PNG_EXPORT_TYPE(type), (PNGAPI name), args, \
+      PNG_LINKAGE_API attributes)
+#endif
+
+/* ANSI-C (C90) does not permit a macro to be invoked with an empty argument,
+ * so make something non-empty to satisfy the requirement:
+ */
+#define PNG_EMPTY /*empty list*/
+
+#define PNG_EXPORT(ordinal, type, name, args) \
+   PNG_EXPORTA(ordinal, type, name, args, PNG_EMPTY)
+
+/* Use PNG_REMOVED to comment out a removed interface. */
+#ifndef PNG_REMOVED
+#  define PNG_REMOVED(ordinal, type, name, args, attributes)
+#endif
+
+#ifndef PNG_CALLBACK
+#  define PNG_CALLBACK(type, name, args) type (PNGCBAPI name) args
+#endif
+
+/* Support for compiler specific function attributes.  These are used
+ * so that where compiler support is available incorrect use of API
+ * functions in png.h will generate compiler warnings.
+ *
+ * Added at libpng-1.2.41.
+ */
+
+#ifndef PNG_NO_PEDANTIC_WARNINGS
+#  ifndef PNG_PEDANTIC_WARNINGS_SUPPORTED
+#    define PNG_PEDANTIC_WARNINGS_SUPPORTED
+#  endif
+#endif
+
+#ifdef PNG_PEDANTIC_WARNINGS_SUPPORTED
+  /* Support for compiler specific function attributes.  These are used
+   * so that where compiler support is available, incorrect use of API
+   * functions in png.h will generate compiler warnings.  Added at libpng
+   * version 1.2.41.  Disabling these removes the warnings but may also produce
+   * less efficient code.
+   */
+#  if defined(__clang__) && defined(__has_attribute)
+   /* Clang defines both __clang__ and __GNUC__. Check __clang__ first. */
+#    if !defined(PNG_USE_RESULT) && __has_attribute(__warn_unused_result__)
+#      define PNG_USE_RESULT __attribute__((__warn_unused_result__))
+#    endif
+#    if !defined(PNG_NORETURN) && __has_attribute(__noreturn__)
+#      define PNG_NORETURN __attribute__((__noreturn__))
+#    endif
+#    if !defined(PNG_ALLOCATED) && __has_attribute(__malloc__)
+#      define PNG_ALLOCATED __attribute__((__malloc__))
+#    endif
+#    if !defined(PNG_DEPRECATED) && __has_attribute(__deprecated__)
+#      define PNG_DEPRECATED __attribute__((__deprecated__))
+#    endif
+#    if !defined(PNG_PRIVATE)
+#      ifdef __has_extension
+#        if __has_extension(attribute_unavailable_with_message)
+#          define PNG_PRIVATE __attribute__((__unavailable__(\
+             "This function is not exported by libpng.")))
+#        endif
+#      endif
+#    endif
+#    ifndef PNG_RESTRICT
+#      define PNG_RESTRICT __restrict
+#    endif
+
+#  elif defined(__GNUC__)
+#    ifndef PNG_USE_RESULT
+#      define PNG_USE_RESULT __attribute__((__warn_unused_result__))
+#    endif
+#    ifndef PNG_NORETURN
+#      define PNG_NORETURN   __attribute__((__noreturn__))
+#    endif
+#    if __GNUC__ >= 3
+#      ifndef PNG_ALLOCATED
+#        define PNG_ALLOCATED  __attribute__((__malloc__))
+#      endif
+#      ifndef PNG_DEPRECATED
+#        define PNG_DEPRECATED __attribute__((__deprecated__))
+#      endif
+#      ifndef PNG_PRIVATE
+#        if 0 /* Doesn't work so we use deprecated instead*/
+#          define PNG_PRIVATE \
+            __attribute__((warning("This function is not exported by libpng.")))
+#        else
+#          define PNG_PRIVATE \
+            __attribute__((__deprecated__))
+#        endif
+#      endif
+#      if ((__GNUC__ > 3) || !defined(__GNUC_MINOR__) || (__GNUC_MINOR__ >= 1))
+#        ifndef PNG_RESTRICT
+#          define PNG_RESTRICT __restrict
+#        endif
+#      endif /* __GNUC__.__GNUC_MINOR__ > 3.0 */
+#    endif /* __GNUC__ >= 3 */
+
+#  elif defined(_MSC_VER)  && (_MSC_VER >= 1300)
+#    ifndef PNG_USE_RESULT
+#      define PNG_USE_RESULT /* not supported */
+#    endif
+#    ifndef PNG_NORETURN
+#      define PNG_NORETURN   __declspec(noreturn)
+#    endif
+#    ifndef PNG_ALLOCATED
+#      if (_MSC_VER >= 1400)
+#        define PNG_ALLOCATED __declspec(restrict)
+#      endif
+#    endif
+#    ifndef PNG_DEPRECATED
+#      define PNG_DEPRECATED __declspec(deprecated)
+#    endif
+#    ifndef PNG_PRIVATE
+#      define PNG_PRIVATE __declspec(deprecated)
+#    endif
+#    ifndef PNG_RESTRICT
+#      if (_MSC_VER >= 1400)
+#        define PNG_RESTRICT __restrict
+#      endif
+#    endif
+
+#  elif defined(__WATCOMC__)
+#    ifndef PNG_RESTRICT
+#      define PNG_RESTRICT __restrict
+#    endif
+#  endif
+#endif /* PNG_PEDANTIC_WARNINGS */
+
+#ifndef PNG_DEPRECATED
+#  define PNG_DEPRECATED  /* Use of this function is deprecated */
+#endif
+#ifndef PNG_USE_RESULT
+#  define PNG_USE_RESULT  /* The result of this function must be checked */
+#endif
+#ifndef PNG_NORETURN
+#  define PNG_NORETURN    /* This function does not return */
+#endif
+#ifndef PNG_ALLOCATED
+#  define PNG_ALLOCATED   /* The result of the function is new memory */
+#endif
+#ifndef PNG_PRIVATE
+#  define PNG_PRIVATE     /* This is a private libpng function */
+#endif
+#ifndef PNG_RESTRICT
+#  define PNG_RESTRICT    /* The C99 "restrict" feature */
+#endif
+
+#ifndef PNG_FP_EXPORT     /* A floating point API. */
+#  ifdef PNG_FLOATING_POINT_SUPPORTED
+#     define PNG_FP_EXPORT(ordinal, type, name, args)\
+         PNG_EXPORT(ordinal, type, name, args);
+#  else                   /* No floating point APIs */
+#     define PNG_FP_EXPORT(ordinal, type, name, args)
+#  endif
+#endif
+#ifndef PNG_FIXED_EXPORT  /* A fixed point API. */
+#  ifdef PNG_FIXED_POINT_SUPPORTED
+#     define PNG_FIXED_EXPORT(ordinal, type, name, args)\
+         PNG_EXPORT(ordinal, type, name, args);
+#  else                   /* No fixed point APIs */
+#     define PNG_FIXED_EXPORT(ordinal, type, name, args)
+#  endif
+#endif
+
+#ifndef PNG_BUILDING_SYMBOL_TABLE
+/* Some typedefs to get us started.  These should be safe on most of the common
+ * platforms.
+ *
+ * png_uint_32 and png_int_32 may, currently, be larger than required to hold a
+ * 32-bit value however this is not normally advisable.
+ *
+ * png_uint_16 and png_int_16 should always be two bytes in size - this is
+ * verified at library build time.
+ *
+ * png_byte must always be one byte in size.
+ *
+ * The checks below use constants from limits.h, as defined by the ISOC90
+ * standard.
+ */
+#if CHAR_BIT == 8 && UCHAR_MAX == 255
+   typedef unsigned char png_byte;
+#else
+#  error libpng requires 8-bit bytes
+#endif
+
+#if INT_MIN == -32768 && INT_MAX == 32767
+   typedef int png_int_16;
+#elif SHRT_MIN == -32768 && SHRT_MAX == 32767
+   typedef short png_int_16;
+#else
+#  error libpng requires a signed 16-bit integer type
+#endif
+
+#if UINT_MAX == 65535
+   typedef unsigned int png_uint_16;
+#elif USHRT_MAX == 65535
+   typedef unsigned short png_uint_16;
+#else
+#  error libpng requires an unsigned 16-bit integer type
+#endif
+
+#if INT_MIN < -2147483646 && INT_MAX > 2147483646
+   typedef int png_int_32;
+#elif LONG_MIN < -2147483646 && LONG_MAX > 2147483646
+   typedef long int png_int_32;
+#else
+#  error libpng requires a signed 32-bit (or longer) integer type
+#endif
+
+#if UINT_MAX > 4294967294U
+   typedef unsigned int png_uint_32;
+#elif ULONG_MAX > 4294967294U
+   typedef unsigned long int png_uint_32;
+#else
+#  error libpng requires an unsigned 32-bit (or longer) integer type
+#endif
+
+/* Prior to 1.6.0, it was possible to disable the use of size_t and ptrdiff_t.
+ * From 1.6.0 onwards, an ISO C90 compiler, as well as a standard-compliant
+ * behavior of sizeof and ptrdiff_t are required.
+ * The legacy typedefs are provided here for backwards compatibility.
+ */
+typedef size_t png_size_t;
+typedef ptrdiff_t png_ptrdiff_t;
+
+/* libpng needs to know the maximum value of 'size_t' and this controls the
+ * definition of png_alloc_size_t, below.  This maximum value of size_t limits
+ * but does not control the maximum allocations the library makes - there is
+ * direct application control of this through png_set_user_limits().
+ */
+#ifndef PNG_SMALL_SIZE_T
+   /* Compiler specific tests for systems where size_t is known to be less than
+    * 32 bits (some of these systems may no longer work because of the lack of
+    * 'far' support; see above.)
+    */
+#  if (defined(__TURBOC__) && !defined(__FLAT__)) ||\
+   (defined(_MSC_VER) && defined(MAXSEG_64K))
+#     define PNG_SMALL_SIZE_T
+#  endif
+#endif
+
+/* png_alloc_size_t is guaranteed to be no smaller than size_t, and no smaller
+ * than png_uint_32.  Casts from size_t or png_uint_32 to png_alloc_size_t are
+ * not necessary; in fact, it is recommended not to use them at all, so that
+ * the compiler can complain when something turns out to be problematic.
+ *
+ * Casts in the other direction (from png_alloc_size_t to size_t or
+ * png_uint_32) should be explicitly applied; however, we do not expect to
+ * encounter practical situations that require such conversions.
+ *
+ * PNG_SMALL_SIZE_T must be defined if the maximum value of size_t is less than
+ * 4294967295 - i.e. less than the maximum value of png_uint_32.
+ */
+#ifdef PNG_SMALL_SIZE_T
+   typedef png_uint_32 png_alloc_size_t;
+#else
+   typedef size_t png_alloc_size_t;
+#endif
+
+/* Prior to 1.6.0 libpng offered limited support for Microsoft C compiler
+ * implementations of Intel CPU specific support of user-mode segmented address
+ * spaces, where 16-bit pointers address more than 65536 bytes of memory using
+ * separate 'segment' registers.  The implementation requires two different
+ * types of pointer (only one of which includes the segment value.)
+ *
+ * If required this support is available in version 1.2 of libpng and may be
+ * available in versions through 1.5, although the correctness of the code has
+ * not been verified recently.
+ */
+
+/* Typedef for floating-point numbers that are converted to fixed-point with a
+ * multiple of 100,000, e.g., gamma
+ */
+typedef png_int_32 png_fixed_point;
 
 /* Add typedefs for pointers */
-typedef void            FAR * png_voidp;
-typedef png_byte        FAR * png_bytep;
-typedef png_uint_32     FAR * png_uint_32p;
-typedef png_int_32      FAR * png_int_32p;
-typedef png_uint_16     FAR * png_uint_16p;
-typedef png_int_16      FAR * png_int_16p;
-typedef PNG_CONST char  FAR * png_const_charp;
-typedef char            FAR * png_charp;
-typedef double          FAR * png_doublep;
+typedef void                  * png_voidp;
+typedef const void            * png_const_voidp;
+typedef png_byte              * png_bytep;
+typedef const png_byte        * png_const_bytep;
+typedef png_uint_32           * png_uint_32p;
+typedef const png_uint_32     * png_const_uint_32p;
+typedef png_int_32            * png_int_32p;
+typedef const png_int_32      * png_const_int_32p;
+typedef png_uint_16           * png_uint_16p;
+typedef const png_uint_16     * png_const_uint_16p;
+typedef png_int_16            * png_int_16p;
+typedef const png_int_16      * png_const_int_16p;
+typedef char                  * png_charp;
+typedef const char            * png_const_charp;
+typedef png_fixed_point       * png_fixed_point_p;
+typedef const png_fixed_point * png_const_fixed_point_p;
+typedef size_t                * png_size_tp;
+typedef const size_t          * png_const_size_tp;
+
+#ifdef PNG_FLOATING_POINT_SUPPORTED
+typedef double       * png_doublep;
+typedef const double * png_const_doublep;
+#endif
 
 /* Pointers to pointers; i.e. arrays */
-typedef png_byte        FAR * FAR * png_bytepp;
-typedef png_uint_32     FAR * FAR * png_uint_32pp;
-typedef png_int_32      FAR * FAR * png_int_32pp;
-typedef png_uint_16     FAR * FAR * png_uint_16pp;
-typedef png_int_16      FAR * FAR * png_int_16pp;
-typedef PNG_CONST char  FAR * FAR * png_const_charpp;
-typedef char            FAR * FAR * png_charpp;
-typedef double          FAR * FAR * png_doublepp;
+typedef png_byte        * * png_bytepp;
+typedef png_uint_32     * * png_uint_32pp;
+typedef png_int_32      * * png_int_32pp;
+typedef png_uint_16     * * png_uint_16pp;
+typedef png_int_16      * * png_int_16pp;
+typedef const char      * * png_const_charpp;
+typedef char            * * png_charpp;
+typedef png_fixed_point * * png_fixed_point_pp;
+#ifdef PNG_FLOATING_POINT_SUPPORTED
+typedef double          * * png_doublepp;
+#endif
 
-/* Pointers to pointers to pointers; i.e. pointer to array */
-typedef char            FAR * FAR * FAR * png_charppp;
+/* Pointers to pointers to pointers; i.e., pointer to array */
+typedef char            * * * png_charppp;
 
-/* libpng typedefs for types in zlib. If zlib changes
- * or another compression library is used, then change these.
- * Eliminates need to change all the source files.
+#ifdef PNG_STDIO_SUPPORTED
+/* With PNG_STDIO_SUPPORTED it was possible to use I/O streams that were
+ * not necessarily stdio FILE streams, to allow building Windows applications
+ * before Win32 and Windows CE applications before WinCE 3.0, but that kind
+ * of support has long been discontinued.
  */
-typedef charf *         png_zcharp;
-typedef charf * FAR *   png_zcharpp;
-typedef z_stream FAR *  png_zstreamp;
-
-
-#ifndef PNG_EXPORT
-   /* allow for compilation as dll under MS Windows */
-#  ifdef __WIN32DLL__
-#    define PNG_EXPORT(type,symbol) __declspec(dllexport) type symbol
-#  endif
-
-   /* this variant is used in Mozilla; may correspond to MSVC++ 6.0 changes */
-#  ifdef ALT_WIN32_DLL
-#    define PNG_EXPORT(type,symbol) type __attribute__((dllexport)) symbol
-#  endif
-
-   /* allow for compilation as dll with Borland C++ 5.0 */
-#  if defined(__BORLANDC__) && defined(_Windows) && defined(__DLL__)
-#    define PNG_EXPORT(type,symbol) type _export symbol
-#  endif
-
-   /* allow for compilation as shared lib under BeOS */
-#  ifdef __BEOSDLL__
-#    define PNG_EXPORT(type,symbol) __declspec(export) type symbol
-#  endif
+typedef FILE            * png_FILE_p; /* [Deprecated] */
 #endif
 
-#ifndef PNG_EXPORT
-#  define PNG_EXPORT(type,symbol) type symbol
-#endif
-
-
-/* User may want to use these so not in PNG_INTERNAL. Any library functions
- * that are passed far data must be model independent.
- */
-
-#if defined(USE_FAR_KEYWORD)  /* memory model independent fns */
-/* use this to make far-to-near assignments */
-#   define CHECK   1
-#   define NOCHECK 0
-#   define CVT_PTR(ptr) (png_far_to_near(png_ptr,ptr,CHECK))
-#   define CVT_PTR_NOCHECK(ptr) (png_far_to_near(png_ptr,ptr,NOCHECK))
-#   define png_strcpy _fstrcpy
-#   define png_strlen _fstrlen
-#   define png_memcmp _fmemcmp      /* SJT: added */
-#   define png_memcpy _fmemcpy
-#   define png_memset _fmemset
-#else /* use the usual functions */
-#   define CVT_PTR(ptr)         (ptr)
-#   define CVT_PTR_NOCHECK(ptr) (ptr)
-#   define png_strcpy strcpy
-#   define png_strlen strlen
-#   define png_memcmp memcmp     /* SJT: added */
-#   define png_memcpy memcpy
-#   define png_memset memset
-#endif
-/* End of memory model independent support */
-
-/* Just a double check that someone hasn't tried to define something
- * contradictory.
- */
-#if (PNG_ZBUF_SIZE > 65536) && defined(PNG_MAX_MALLOC_64K)
-#undef PNG_ZBUF_SIZE
-#define PNG_ZBUF_SIZE 65536
-#endif
+#endif /* PNG_BUILDING_SYMBOL_TABLE */
 
 #endif /* PNGCONF_H */
-

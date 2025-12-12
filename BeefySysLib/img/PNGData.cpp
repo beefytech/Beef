@@ -12,7 +12,7 @@ static void PNGError(png_structp ptr, png_const_charp err)
 
 static void png_buffer_read_data(png_structp png_ptr, png_bytep data, png_size_t length)
 {
-	PNGData* aData = (PNGData*)png_ptr->io_ptr;
+	PNGData* aData = (PNGData*)png_get_io_ptr(png_ptr);
 	png_size_t bytesAvailable = aData->mSrcDataLen - aData->mReadPos;
 	png_size_t bytesToRead = std::min( length, bytesAvailable );	
 	memcpy(data, aData->mSrcData + aData->mReadPos, length);
@@ -47,7 +47,7 @@ bool PNGData::ReadData()
 	}
 		
 	png_set_read_fn( png_ptr, (png_voidp)this, &png_buffer_read_data );
-	png_ptr->error_fn = PNGError;
+	png_set_error_fn(png_ptr, this, PNGError, NULL);
 		
 	/* Allocate/initialize the memory for image information.  REQUIRED. */
 	info_ptr = png_create_info_struct(png_ptr);
@@ -61,7 +61,8 @@ bool PNGData::ReadData()
 		* the normal method of doing things with libpng).  REQUIRED unless you
 		* set up your own error handlers in the png_create_read_struct() earlier.
 		*/
-	if (setjmp(png_ptr->jmpbuf))
+	
+	if (setjmp(png_jmpbuf(png_ptr)))
 	{
 		/* Free all of the memory associated with the png_ptr and info_ptr */
 		png_destroy_read_struct(&png_ptr, &info_ptr, (png_infopp)NULL);
@@ -216,8 +217,8 @@ bool PNGData::WriteToFile(const StringImpl& path)
 	// Set error handling if you are using the setjmp/longjmp method (this is
 	// the normal method of doing things with libpng).  REQUIRED unless you
 	// set up your own error handlers in the png_create_write_struct() earlier.
-
-	if (setjmp(png_ptr->jmpbuf))
+	
+	if (setjmp(png_jmpbuf(png_ptr)))
 	{
 		// Free all of the memory associated with the png_ptr and info_ptr
 		png_destroy_write_struct(&png_ptr, &info_ptr);
