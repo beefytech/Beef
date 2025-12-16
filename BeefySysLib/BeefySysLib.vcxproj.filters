@@ -113,96 +113,6 @@
     <ClCompile Include="gfx\RenderDevice.cpp">
       <Filter>src\gfx</Filter>
     </ClCompile>
-    <ClCompile Include="third_party\png\png.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngerror.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngget.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngmem.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngpread.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngread.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngrio.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngrtran.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngrutil.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngset.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngtrans.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngvcrd.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngwio.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngwrite.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngwtran.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\png\pngwutil.c">
-      <Filter>src\third_party\png</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\adler32.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\compress.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\crc32.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\deflate.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\gzio.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\infblock.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\infcodes.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\inffast.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\inflate.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\inftrees.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\infutil.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\trees.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\uncompr.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\zlib\zutil.c">
-      <Filter>src\third_party\zlib</Filter>
-    </ClCompile>
     <ClCompile Include="img\ImageData.cpp">
       <Filter>src\img</Filter>
     </ClCompile>
@@ -746,6 +656,96 @@
     <ClCompile Include="util\MemLogger.cpp">
       <Filter>src\util</Filter>
     </ClCompile>
+    <ClCompile Include="third_party\zlib\adler32.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\compress.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\crc32.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\deflate.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\gzclose.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\gzlib.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\gzread.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\gzwrite.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\infback.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\inffast.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\inflate.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\inftrees.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\trees.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\uncompr.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\zlib\zutil.c">
+      <Filter>src\third_party\zlib</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\png.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngerror.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngget.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngmem.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngpread.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngread.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngrio.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngrtran.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngrutil.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngset.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngtrans.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngwio.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngwrite.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngwtran.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\png\pngwutil.c">
+      <Filter>src\third_party\png</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -774,48 +774,6 @@
     </ClInclude>
     <ClInclude Include="BFWindow.h">
       <Filter>src</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\png\png.h">
-      <Filter>src\third_party\png</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\png\pngasmrd.h">
-      <Filter>src\third_party\png</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\png\pngconf.h">
-      <Filter>src\third_party\png</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\zlib\deflate.h">
-      <Filter>src\third_party\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\zlib\infblock.h">
-      <Filter>src\third_party\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\zlib\infcodes.h">
-      <Filter>src\third_party\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\zlib\inffast.h">
-      <Filter>src\third_party\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\zlib\inffixed.h">
-      <Filter>src\third_party\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\zlib\inftrees.h">
-      <Filter>src\third_party\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\zlib\infutil.h">
-      <Filter>src\third_party\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\zlib\trees.h">
-      <Filter>src\third_party\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\zlib\zconf.h">
-      <Filter>src\third_party\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\zlib\zlib.h">
-      <Filter>src\third_party\zlib</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\zlib\zutil.h">
-      <Filter>src\third_party\zlib</Filter>
     </ClInclude>
     <ClInclude Include="img\ImageData.h">
       <Filter>src\img</Filter>
@@ -1152,6 +1110,60 @@
     </ClInclude>
     <ClInclude Include="util\MemLogger.h">
       <Filter>src\util</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\zutil.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\crc32.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\deflate.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\gzguts.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\inffast.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\inffixed.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\inflate.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\inftrees.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\trees.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\zconf.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\zlib\zlib.h">
+      <Filter>src\third_party\zlib</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\png\png.h">
+      <Filter>src\third_party\png</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\png\pngconf.h">
+      <Filter>src\third_party\png</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\png\pngdebug.h">
+      <Filter>src\third_party\png</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\png\pnginfo.h">
+      <Filter>src\third_party\png</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\png\pnglibconf.h">
+      <Filter>src\third_party\png</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\png\pngpriv.h">
+      <Filter>src\third_party\png</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\png\pngstruct.h">
+      <Filter>src\third_party\png</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
