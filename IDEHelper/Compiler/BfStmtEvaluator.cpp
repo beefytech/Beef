@@ -1483,7 +1483,11 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 
 				BfIRValue dscVal = ExtractValue(initValue, dscDataIdx);
 				auto eqVal = mBfIRBuilder->CreateCmpEQ(dscVal, GetConstValue(tagId, dscType));
-				exprEvaluator->mResult = BfTypedValue(eqVal, boolType);
+
+				auto eqAlloca = CreateAlloca(boolType);				
+				mBfIRBuilder->CreateStore(eqVal, eqAlloca);
+				auto eqLoaded = mBfIRBuilder->CreateLoad(eqAlloca);
+				exprEvaluator->mResult = BfTypedValue(eqLoaded, boolType);
 
 				PopulateType(outType);
 				if (!outType->IsValuelessType())
@@ -1497,7 +1501,7 @@ BfLocalVariable* BfModule::HandleVariableDeclaration(BfVariableDeclaration* varD
 						(initValue.mKind == BfTypedValueKind_TempAddr) ||
 						(initValue.mKind == BfTypedValueKind_ReadOnlyTempAddr))
 						payload.mKind = initValue.mKind;
-					_EmitCond(eqVal, payload);
+					_EmitCond(eqLoaded, payload);
 				}
 
 				handled = true;
