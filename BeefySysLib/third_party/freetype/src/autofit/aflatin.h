@@ -1,20 +1,20 @@
-/***************************************************************************/
-/*                                                                         */
-/*  aflatin.h                                                              */
-/*                                                                         */
-/*    Auto-fitter hinting routines for latin writing system                */
-/*    (specification).                                                     */
-/*                                                                         */
-/*  Copyright 2003-2017 by                                                 */
-/*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
-/*                                                                         */
-/*  This file is part of the FreeType project, and may only be used,       */
-/*  modified, and distributed under the terms of the FreeType project      */
-/*  license, LICENSE.TXT.  By continuing to use, modify, or distribute     */
-/*  this file you indicate that you have read the license and              */
-/*  understand and accept it fully.                                        */
-/*                                                                         */
-/***************************************************************************/
+/****************************************************************************
+ *
+ * aflatin.h
+ *
+ *   Auto-fitter hinting routines for latin writing system
+ *   (specification).
+ *
+ * Copyright (C) 2003-2025 by
+ * David Turner, Robert Wilhelm, and Werner Lemberg.
+ *
+ * This file is part of the FreeType project, and may only be used,
+ * modified, and distributed under the terms of the FreeType project
+ * license, LICENSE.TXT.  By continuing to use, modify, or distribute
+ * this file you indicate that you have read the license and
+ * understand and accept it fully.
+ *
+ */
 
 
 #ifndef AFLATIN_H_
@@ -45,9 +45,9 @@ FT_BEGIN_HEADER
 
 
   /*
-   *  The following declarations could be embedded in the file `aflatin.c';
-   *  they have been made semi-public to allow alternate writing system
-   *  hinters to re-use some of them.
+   * The following declarations could be embedded in the file `aflatin.c';
+   * they have been made semi-public to allow alternate writing system
+   * hinters to re-use some of them.
    */
 
 
@@ -61,17 +61,26 @@ FT_BEGIN_HEADER
           ( (b)->properties & AF_BLUE_PROPERTY_LATIN_X_HEIGHT )
 #define AF_LATIN_IS_LONG_BLUE( b ) \
           ( (b)->properties & AF_BLUE_PROPERTY_LATIN_LONG )
+#define AF_LATIN_IS_CAPITAL_BOTTOM_BLUE( b ) \
+          ( (b)->properties & AF_BLUE_PROPERTY_LATIN_CAPITAL_BOTTOM )
+#define AF_LATIN_IS_SMALL_BOTTOM_BLUE( b ) \
+          ( (b)->properties & AF_BLUE_PROPERTY_LATIN_SMALL_BOTTOM )
 
 #define AF_LATIN_MAX_WIDTHS  16
 
 
-#define AF_LATIN_BLUE_ACTIVE      ( 1U << 0 ) /* zone height is <= 3/4px   */
-#define AF_LATIN_BLUE_TOP         ( 1U << 1 ) /* we have a top blue zone   */
-#define AF_LATIN_BLUE_SUB_TOP     ( 1U << 2 ) /* we have a subscript top   */
-                                              /* blue zone                 */
-#define AF_LATIN_BLUE_NEUTRAL     ( 1U << 3 ) /* we have neutral blue zone */
-#define AF_LATIN_BLUE_ADJUSTMENT  ( 1U << 4 ) /* used for scale adjustment */
-                                              /* optimization              */
+#define AF_LATIN_BLUE_ACTIVE        ( 1U << 0 ) /* zone height is <= 3/4px */
+#define AF_LATIN_BLUE_TOP           ( 1U << 1 ) /* we have a top blue zone */
+#define AF_LATIN_BLUE_SUB_TOP       ( 1U << 2 ) /* we have a subscript     */
+                                                /* top blue zone           */
+#define AF_LATIN_BLUE_NEUTRAL       ( 1U << 3 ) /* we have a neutral blue  */
+                                                /* zone                    */
+#define AF_LATIN_BLUE_ADJUSTMENT    ( 1U << 4 ) /* used for scale adjustm. */
+                                                /* optimization            */
+#define AF_LATIN_BLUE_BOTTOM        ( 1U << 5 ) /* we have a capital       */
+                                                /* letter bottom blue zone */
+#define AF_LATIN_BLUE_BOTTOM_SMALL  ( 1U << 6 ) /* we have a small letter  */
+                                                /* bottom blue zone        */
 
 
   typedef struct  AF_LatinBlueRec_
@@ -98,7 +107,7 @@ FT_BEGIN_HEADER
 
     /* ignored for horizontal metrics */
     FT_UInt          blue_count;
-    AF_LatinBlueRec  blues[AF_BLUE_STRINGSET_MAX];
+    AF_LatinBlueRec  blues[AF_BLUE_STRINGSET_MAX_LEN];
 
     FT_Fixed         org_scale;
     FT_Pos           org_delta;
@@ -116,11 +125,11 @@ FT_BEGIN_HEADER
 
 
   FT_LOCAL( FT_Error )
-  af_latin_metrics_init( AF_LatinMetrics  metrics,
+  af_latin_metrics_init( AF_StyleMetrics  metrics,
                          FT_Face          face );
 
   FT_LOCAL( void )
-  af_latin_metrics_scale( AF_LatinMetrics  metrics,
+  af_latin_metrics_scale( AF_StyleMetrics  metrics,
                           AF_Scaler        scaler );
 
   FT_LOCAL( void )
@@ -161,8 +170,8 @@ FT_BEGIN_HEADER
 
 
   /*
-   *  The next functions shouldn't normally be exported.  However, other
-   *  writing systems might like to use these functions as-is.
+   * The next functions shouldn't normally be exported.  However, other
+   * writing systems might like to use these functions as-is.
    */
   FT_LOCAL( FT_Error )
   af_latin_hints_compute_segments( AF_GlyphHints  hints,

@@ -180,8 +180,10 @@ file(GLOB SRC_FILES
     third_party/freetype/src/pshinter/pshinter.c
     third_party/freetype/src/psnames/psmodule.c
     third_party/freetype/src/raster/raster.c
+    third_party/freetype/src/sdf/sdf.c
     third_party/freetype/src/sfnt/sfnt.c
     third_party/freetype/src/smooth/smooth.c
+    third_party/freetype/src/svg/svg.c
     third_party/freetype/src/truetype/truetype.c
     third_party/freetype/src/type1/type1.c
     third_party/freetype/src/type42/type42.c
