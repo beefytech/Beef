@@ -192,10 +192,10 @@ namespace IDE.ui
         {
 			public enum Flags
 			{
-				None,
-				BrowseForFile,
-				BrowseForFolder,
-				Percent
+				None = 0x00,
+				BrowseForFile = 0x01,
+				BrowseForFolder = 0x02,
+				Percent = 0x04
 			}
 
 			public enum MultiEncodeKind
@@ -2022,7 +2022,7 @@ namespace IDE.ui
 			    		subItem.mOnMouseDown.Add(new => PropValueClicked);
 				}
 
-				if ((flags.HasFlag(.BrowseForFile)) | (flags.HasFlag(.BrowseForFolder)))
+				if ((flags.HasFlag(.BrowseForFile)) || (flags.HasFlag(.BrowseForFolder)))
 				{
 					propEntry.mEditInsets = new .();
 					
