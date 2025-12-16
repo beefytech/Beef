@@ -1130,33 +1130,9 @@ BFP_EXPORT bool BFP_CALLTYPE BfpProcess_WaitFor(BfpProcess* process, int waitMS,
 
 	if ((pfd.revents & POLLIN) == POLLIN)
 	{
-		siginfo_t info = {0};
-
-		if (waitid(P_PIDFD, processFd, &info, WEXITED | WNOHANG) == -1)
-		{
-			OUTRESULT(BfpProcessResult_UnknownError);
-			return true;
-		}
-
-		switch (info.si_code)
-		{
-			case CLD_EXITED: // fallthrough
-			case CLD_KILLED: // fallthrough
-			case CLD_DUMPED:
-			{
-				OUTRESULT(BfpProcessResult_Ok);
-				if (outExitCode != NULL)
-					*outExitCode = info.si_status;
-				break;
-			}
-
-			default:
-			{
-				OUTRESULT(BfpProcessResult_UnknownError);
-				break;
-			}
-		}
-
+		// No reliable way to check for exit code
+		if (outExitCode != NULL)
+			*outExitCode = 0;
 		return true;
 	}
 
@@ -1615,7 +1591,8 @@ bool BfpSpawn_WaitFor(BfpSpawn* spawn, int waitMS, int* outExitCode, BfpSpawnRes
 		if (!WIFEXITED(spawn->mStatus) && !WIFSIGNALED(spawn->mStatus))
 			return false;
 
-		*outExitCode = WEXITSTATUS(spawn->mStatus);
+		if (outExitCode != NULL)
+			*outExitCode = WEXITSTATUS(spawn->mStatus);
 		return true;
 	}
 
@@ -1646,20 +1623,22 @@ bool BfpSpawn_WaitFor(BfpSpawn* spawn, int waitMS, int* outExitCode, BfpSpawnRes
 		return false;
 	}
 
-	siginfo_t siginfo = {0};
-	if (waitid(P_PIDFD, (id_t)childFd, &siginfo, WEXITED) == -1)
+	OUTRESULT(BfpSpawnResult_Ok);
+	pid_t result = waitpid(spawn->mPid, &spawn->mStatus, flags);
+	if (result != spawn->mPid)
 	{
 		OUTRESULT(BfpSpawnResult_UnknownError);
-		return true;
+		return false;
 	}
 
-	OUTRESULT(BfpSpawnResult_Ok);
-
+	spawn->mExited = true;
 	if (!WIFEXITED(spawn->mStatus) && !WIFSIGNALED(spawn->mStatus))
 		return false;
 
 	if (outExitCode != NULL)
 		*outExitCode = WEXITSTATUS(spawn->mStatus);
+
+	return true;
 #else
 	NOT_IMPL;
 #endif
