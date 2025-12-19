@@ -518,13 +518,7 @@
     <ClCompile Include="third_party\freetype\src\base\ftbbox.c">
       <Filter>src\third_party\freetype\FT_MODULES</Filter>
     </ClCompile>
-    <ClCompile Include="third_party\freetype\src\base\ftfntfmt.c">
-      <Filter>src\third_party\freetype\FT_MODULES</Filter>
-    </ClCompile>
     <ClCompile Include="third_party\freetype\src\base\ftgxval.c">
-      <Filter>src\third_party\freetype\FT_MODULES</Filter>
-    </ClCompile>
-    <ClCompile Include="third_party\freetype\src\base\ftlcdfil.c">
       <Filter>src\third_party\freetype\FT_MODULES</Filter>
     </ClCompile>
     <ClCompile Include="third_party\freetype\src\base\ftmm.c">
@@ -745,6 +739,12 @@
     </ClCompile>
     <ClCompile Include="third_party\png\pngwutil.c">
       <Filter>src\third_party\png</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\svg\svg.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\freetype\src\sdf\sdf.c">
+      <Filter>src\third_party\freetype\FT_MODULES</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>

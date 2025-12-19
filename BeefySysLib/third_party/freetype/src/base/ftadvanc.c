@@ -1,30 +1,29 @@
-/***************************************************************************/
-/*                                                                         */
-/*  ftadvanc.c                                                             */
-/*                                                                         */
-/*    Quick computation of advance widths (body).                          */
-/*                                                                         */
-/*  Copyright 2008-2017 by                                                 */
-/*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
-/*                                                                         */
-/*  This file is part of the FreeType project, and may only be used,       */
-/*  modified, and distributed under the terms of the FreeType project      */
-/*  license, LICENSE.TXT.  By continuing to use, modify, or distribute     */
-/*  this file you indicate that you have read the license and              */
-/*  understand and accept it fully.                                        */
-/*                                                                         */
-/***************************************************************************/
+/****************************************************************************
+ *
+ * ftadvanc.c
+ *
+ *   Quick computation of advance widths (body).
+ *
+ * Copyright (C) 2008-2025 by
+ * David Turner, Robert Wilhelm, and Werner Lemberg.
+ *
+ * This file is part of the FreeType project, and may only be used,
+ * modified, and distributed under the terms of the FreeType project
+ * license, LICENSE.TXT.  By continuing to use, modify, or distribute
+ * this file you indicate that you have read the license and
+ * understand and accept it fully.
+ *
+ */
 
 
-#include <ft2build.h>
-#include FT_INTERNAL_DEBUG_H
+#include <freetype/internal/ftdebug.h>
 
-#include FT_ADVANCES_H
-#include FT_INTERNAL_OBJECTS_H
+#include <freetype/ftadvanc.h>
+#include <freetype/internal/ftobjs.h>
 
 
   static FT_Error
-  _ft_face_scale_advances( FT_Face    face,
+  ft_face_scale_advances_( FT_Face    face,
                            FT_Fixed*  advances,
                            FT_UInt    count,
                            FT_Int32   flags )
@@ -97,7 +96,7 @@
 
       error = func( face, gindex, 1, flags, padvance );
       if ( !error )
-        return _ft_face_scale_advances( face, padvance, 1, flags );
+        return ft_face_scale_advances_( face, padvance, 1, flags );
 
       if ( FT_ERR_NEQ( error, Unimplemented_Feature ) )
         return error;
@@ -116,9 +115,12 @@
                    FT_Int32   flags,
                    FT_Fixed  *padvances )
   {
+    FT_Error  error = FT_Err_Ok;
+
     FT_Face_GetAdvancesFunc  func;
-    FT_UInt                  num, end, nn;
-    FT_Error                 error = FT_Err_Ok;
+
+    FT_UInt  num, end, nn;
+    FT_Int   factor;
 
 
     if ( !face )
@@ -140,7 +142,7 @@
     {
       error = func( face, start, count, flags, padvances );
       if ( !error )
-        return _ft_face_scale_advances( face, padvances, count, flags );
+        return ft_face_scale_advances_( face, padvances, count, flags );
 
       if ( FT_ERR_NEQ( error, Unimplemented_Feature ) )
         return error;
@@ -152,16 +154,17 @@
       return FT_THROW( Unimplemented_Feature );
 
     flags |= (FT_UInt32)FT_LOAD_ADVANCE_ONLY;
+    factor = ( flags & FT_LOAD_NO_SCALE ) ? 1 : 1024;
     for ( nn = 0; nn < count; nn++ )
     {
       error = FT_Load_Glyph( face, start + nn, flags );
       if ( error )
         break;
 
-      /* scale from 26.6 to 16.16 */
+      /* scale from 26.6 to 16.16, unless NO_SCALE was requested */
       padvances[nn] = ( flags & FT_LOAD_VERTICAL_LAYOUT )
-                      ? face->glyph->advance.y * 1024
-                      : face->glyph->advance.x * 1024;
+                      ? face->glyph->advance.y * factor
+                      : face->glyph->advance.x * factor;
     }
 
     return error;

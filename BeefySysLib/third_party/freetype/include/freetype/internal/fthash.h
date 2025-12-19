@@ -1,10 +1,10 @@
-/***************************************************************************/
-/*                                                                         */
-/*  fthash.h                                                               */
-/*                                                                         */
-/*    Hashing functions (specification).                                   */
-/*                                                                         */
-/***************************************************************************/
+/****************************************************************************
+ *
+ * fthash.h
+ *
+ *   Hashing functions (specification).
+ *
+ */
 
 /*
  * Copyright 2000 Computing Research Labs, New Mexico State University
@@ -30,21 +30,20 @@
  * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-  /*************************************************************************/
-  /*                                                                       */
-  /*  This file is based on code from bdf.c,v 1.22 2000/03/16 20:08:50     */
-  /*                                                                       */
-  /*  taken from Mark Leisher's xmbdfed package                            */
-  /*                                                                       */
-  /*************************************************************************/
+  /**************************************************************************
+   *
+   * This file is based on code from bdf.c,v 1.22 2000/03/16 20:08:50
+   *
+   * taken from Mark Leisher's xmbdfed package
+   *
+   */
 
 
 #ifndef FTHASH_H_
 #define FTHASH_H_
 
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
+#include <freetype/freetype.h>
 
 
 FT_BEGIN_HEADER
@@ -118,6 +117,18 @@ FT_BEGIN_HEADER
                       FT_Hash    hash,
                       FT_Memory  memory );
 
+  FT_Error
+  ft_hash_str_insert_no_overwrite( const char*  key,
+                                   size_t       data,
+                                   FT_Hash      hash,
+                                   FT_Memory    memory );
+
+  FT_Error
+  ft_hash_num_insert_no_overwrite( FT_Int     num,
+                                   size_t     data,
+                                   FT_Hash    hash,
+                                   FT_Memory  memory );
+
   size_t*
   ft_hash_str_lookup( const char*  key,
                       FT_Hash      hash );
@@ -126,6 +137,17 @@ FT_BEGIN_HEADER
   ft_hash_num_lookup( FT_Int   num,
                       FT_Hash  hash );
 
+  FT_Bool
+  ft_hash_num_iterator( FT_UInt  *idx,
+                        FT_Int   *key,
+                        size_t   *value,
+                        FT_Hash   hash );
+
+  FT_Bool
+  ft_hash_str_iterator( FT_UInt      *idx,
+                        const char*  *key,
+                        size_t       *value,
+                        FT_Hash       hash );
 
 FT_END_HEADER
 

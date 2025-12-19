@@ -1,19 +1,19 @@
-/***************************************************************************/
-/*                                                                         */
-/*  afstyles.h                                                             */
-/*                                                                         */
-/*    Auto-fitter styles (specification only).                             */
-/*                                                                         */
-/*  Copyright 2013-2017 by                                                 */
-/*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
-/*                                                                         */
-/*  This file is part of the FreeType project, and may only be used,       */
-/*  modified, and distributed under the terms of the FreeType project      */
-/*  license, LICENSE.TXT.  By continuing to use, modify, or distribute     */
-/*  this file you indicate that you have read the license and              */
-/*  understand and accept it fully.                                        */
-/*                                                                         */
-/***************************************************************************/
+/****************************************************************************
+ *
+ * afstyles.h
+ *
+ *   Auto-fitter styles (specification only).
+ *
+ * Copyright (C) 2013-2025 by
+ * David Turner, Robert Wilhelm, and Werner Lemberg.
+ *
+ * This file is part of the FreeType project, and may only be used,
+ * modified, and distributed under the terms of the FreeType project
+ * license, LICENSE.TXT.  By continuing to use, modify, or distribute
+ * this file you indicate that you have read the license and
+ * understand and accept it fully.
+ *
+ */
 
 
   /* The following part can be included multiple times. */
@@ -50,36 +50,36 @@
                  AF_COVERAGE_ ## C )
 
 #undef  META_STYLE_LATIN
-#define META_STYLE_LATIN( s, S, ds )                     \
-          STYLE_LATIN( s, S, c2cp, C2CP, ds,             \
+#define META_STYLE_LATIN( s, S, ds )                    \
+          STYLE_LATIN( s, S, c2cp, C2CP, ds,            \
                        "petite capitals from capitals", \
-                       PETITE_CAPITALS_FROM_CAPITALS )   \
-          STYLE_LATIN( s, S, c2sc, C2SC, ds,             \
+                       PETITE_CAPITALS_FROM_CAPITALS )  \
+          STYLE_LATIN( s, S, c2sc, C2SC, ds,            \
                        "small capitals from capitals",  \
-                       SMALL_CAPITALS_FROM_CAPITALS )    \
-          STYLE_LATIN( s, S, ordn, ORDN, ds,             \
-                       "ordinals",                       \
-                       ORDINALS )                        \
-          STYLE_LATIN( s, S, pcap, PCAP, ds,             \
-                       "petite capitals",                \
-                       PETITE_CAPITALS )                 \
-          STYLE_LATIN( s, S, sinf, SINF, ds,             \
-                       "scientific inferiors",           \
-                       SCIENTIFIC_INFERIORS )            \
-          STYLE_LATIN( s, S, smcp, SMCP, ds,             \
-                       "small capitals",                 \
-                       SMALL_CAPITALS )                  \
-          STYLE_LATIN( s, S, subs, SUBS, ds,             \
-                       "subscript",                      \
-                       SUBSCRIPT )                       \
-          STYLE_LATIN( s, S, sups, SUPS, ds,             \
-                       "superscript",                    \
-                       SUPERSCRIPT )                     \
-          STYLE_LATIN( s, S, titl, TITL, ds,             \
-                       "titling",                        \
-                       TITLING )                         \
-          STYLE_LATIN( s, S, dflt, DFLT, ds,             \
-                       "default",                        \
+                       SMALL_CAPITALS_FROM_CAPITALS )   \
+          STYLE_LATIN( s, S, ordn, ORDN, ds,            \
+                       "ordinals",                      \
+                       ORDINALS )                       \
+          STYLE_LATIN( s, S, pcap, PCAP, ds,            \
+                       "petite capitals",               \
+                       PETITE_CAPITALS )                \
+          STYLE_LATIN( s, S, sinf, SINF, ds,            \
+                       "scientific inferiors",          \
+                       SCIENTIFIC_INFERIORS )           \
+          STYLE_LATIN( s, S, smcp, SMCP, ds,            \
+                       "small capitals",                \
+                       SMALL_CAPITALS )                 \
+          STYLE_LATIN( s, S, subs, SUBS, ds,            \
+                       "subscript",                     \
+                       SUBSCRIPT )                      \
+          STYLE_LATIN( s, S, sups, SUPS, ds,            \
+                       "superscript",                   \
+                       SUPERSCRIPT )                    \
+          STYLE_LATIN( s, S, titl, TITL, ds,            \
+                       "titling",                       \
+                       TITLING )                        \
+          STYLE_LATIN( s, S, dflt, DFLT, ds,            \
+                       "default",                       \
                        DEFAULT )
 
 
@@ -299,15 +299,6 @@
          AF_BLUE_STRINGSET_LATP,
          AF_COVERAGE_DEFAULT )
 
-#ifdef FT_OPTION_AUTOFIT2
-  STYLE( ltn2_dflt, LTN2_DFLT,
-         "Latin 2 default style",
-         AF_WRITING_SYSTEM_LATIN2,
-         AF_SCRIPT_LATN,
-         AF_BLUE_STRINGSET_LATN,
-         AF_COVERAGE_DEFAULT )
-#endif
-
   STYLE( lisu_dflt, LISU_DFLT,
          "Lisu default style",
          AF_WRITING_SYSTEM_LATIN,
@@ -320,6 +311,20 @@
          AF_WRITING_SYSTEM_LATIN,
          AF_SCRIPT_MLYM,
          AF_BLUE_STRINGSET_MLYM,
+         AF_COVERAGE_DEFAULT )
+
+  STYLE( medf_dflt, MEDF_DFLT,
+         "Medefaidrin default style",
+         AF_WRITING_SYSTEM_LATIN,
+         AF_SCRIPT_MEDF,
+         AF_BLUE_STRINGSET_MEDF,
+         AF_COVERAGE_DEFAULT )
+
+  STYLE( mong_dflt, MONG_DFLT,
+         "Mongolian default style",
+         AF_WRITING_SYSTEM_LATIN,
+         AF_SCRIPT_MONG,
+         AF_BLUE_STRINGSET_MONG,
          AF_COVERAGE_DEFAULT )
 
   STYLE( mymr_dflt, MYMR_DFLT,
@@ -369,6 +374,13 @@
          AF_WRITING_SYSTEM_LATIN,
          AF_SCRIPT_OSMA,
          AF_BLUE_STRINGSET_OSMA,
+         AF_COVERAGE_DEFAULT )
+
+  STYLE( rohg_dflt, ROHG_DFLT,
+         "Hanifi Rohingya default style",
+         AF_WRITING_SYSTEM_LATIN,
+         AF_SCRIPT_ROHG,
+         AF_BLUE_STRINGSET_ROHG,
          AF_COVERAGE_DEFAULT )
 
   STYLE( saur_dflt, SAUR_DFLT,
