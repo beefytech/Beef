@@ -3452,7 +3452,9 @@ void BfIRCodeGen::HandleNextCmd()
 			func->addFnAttr("no-trapping-math", "true");
 			func->addFnAttr("min-legal-vector-width", "0");
 			func->addFnAttr("tune-cpu", "generic");
-			mFunctionsUsingSimd[func] = mCodeGenOptions.mSIMDSetting;
+
+			if (mCodeGenOptions.mSIMDSetting > BfSIMDSetting_None)
+				SetFunctionSimdType(func, mCodeGenOptions.mSIMDSetting);
 		}
 		break;
 	case BfIRCmd_SetFunctionName:
@@ -5636,13 +5638,26 @@ void BfIRCodeGen::SetConfigConst(int idx, int value)
 	mConfigConsts64.Add(constVal);
 }
 
+void BfIRCodeGen::SetFunctionSimdType(llvm::Function* function, BfSIMDSetting type)
+{
+	BfSIMDSetting currentType = BfSIMDSetting_None;
+	bool contains = mFunctionsUsingSimd.TryGetValue(function, &currentType);
+
+	if (type > BfSIMDSetting_None)
+	{
+		if (type > currentType)
+			mFunctionsUsingSimd.ForceAdd(function, type);
+	}
+	else
+	{
+		if (contains)
+			mFunctionsUsingSimd.Remove(function);
+	}
+}
+
 void BfIRCodeGen::SetActiveFunctionSimdType(BfSIMDSetting type)
 {
-	BfSIMDSetting currentType;
-	bool contains = mFunctionsUsingSimd.TryGetValue(mActiveFunction, &currentType);
-
-	if (!contains || type > currentType)
-		mFunctionsUsingSimd[mActiveFunction] = type;
+	SetFunctionSimdType(mActiveFunction, type);
 }
 
 String BfIRCodeGen::GetSimdTypeString(BfSIMDSetting type)

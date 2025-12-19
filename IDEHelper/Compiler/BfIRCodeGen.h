@@ -272,6 +272,7 @@ public:
 	void SetCodeGenOptions(BfCodeGenOptions codeGenOptions);
 	void SetConfigConst(int idx, int value) override;
 
+	void SetFunctionSimdType(llvm::Function* function, BfSIMDSetting type);
 	void SetActiveFunctionSimdType(BfSIMDSetting type);
 	String GetSimdTypeString(BfSIMDSetting type);
 	BfSIMDSetting GetSimdTypeFromFunction(llvm::Function* function);
