@@ -3449,13 +3449,12 @@ void BfIRCodeGen::HandleNextCmd()
 			result.mValue = func;
 			SetResult(curId, result);
 
+			func->addFnAttr("no-trapping-math", "true");
+			func->addFnAttr("min-legal-vector-width", "0");
+			func->addFnAttr("tune-cpu", "generic");
+
 			if (mCodeGenOptions.mSIMDSetting > BfSIMDSetting_None)
-			{
-				func->addFnAttr("no-trapping-math", "true");
-				func->addFnAttr("min-legal-vector-width", "0");
-				func->addFnAttr("tune-cpu", "generic");
 				SetFunctionSimdType(func, mCodeGenOptions.mSIMDSetting);
-			}
 		}
 		break;
 	case BfIRCmd_SetFunctionName:
