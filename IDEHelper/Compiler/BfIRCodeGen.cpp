@@ -6388,7 +6388,7 @@ int BF_LinuxFixLinkage()
 //#include "X86InstrInfo.h"
 
 #ifdef BF_PLATFORM_MACOS
-#include "AArch64/MCTargetDesc/AArch64MCTargetDesc.h"
+//#include "AArch64/MCTargetDesc/AArch64MCTargetDesc.h"
 //#include "AArch64/MCTargetDesc/AArch64BaseInfo.h"
 //#include "../X86InstrInfo.h"
 

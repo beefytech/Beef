@@ -1,7 +1,7 @@
 /* -----------------------------------------------------------------------
-   ffi.c - Copyright (C) 2012, 2013  Anthony Green
-   
-   Moxie Foreign Function Interface 
+   ffi.c - Copyright (C) 2012, 2013, 2018, 2021, 2022  Anthony Green
+
+   Moxie Foreign Function Interface
 
    Permission is hereby granted, free of charge, to any person obtaining
    a copy of this software and associated documentation files (the
@@ -54,14 +54,14 @@ void *ffi_prep_args(char *stack, extended_cif *ecif)
        i--, p_arg++)
     {
       size_t z;
-      
+
       z = (*p_arg)->size;
 
       if ((*p_arg)->type == FFI_TYPE_STRUCT)
 	{
 	  z = sizeof(void*);
 	  *(void **) argp = *p_argv;
-	} 
+	}
       else if (z < sizeof(int))
 	{
 	  z = sizeof(int);
@@ -70,19 +70,19 @@ void *ffi_prep_args(char *stack, extended_cif *ecif)
 	    case FFI_TYPE_SINT8:
 	      *(signed int *) argp = (signed int)*(SINT8 *)(* p_argv);
 	      break;
-	      
+
 	    case FFI_TYPE_UINT8:
 	      *(unsigned int *) argp = (unsigned int)*(UINT8 *)(* p_argv);
 	      break;
-	      
+
 	    case FFI_TYPE_SINT16:
 	      *(signed int *) argp = (signed int)*(SINT16 *)(* p_argv);
 	      break;
-		  
+
 	    case FFI_TYPE_UINT16:
 	      *(unsigned int *) argp = (unsigned int)*(UINT16 *)(* p_argv);
 	      break;
-		  
+
 	    default:
 	      FFI_ASSERT(0);
 	    }
@@ -100,7 +100,7 @@ void *ffi_prep_args(char *stack, extended_cif *ecif)
       count += z;
     }
 
-  return (stack + ((count > 24) ? 24 : ALIGN_DOWN(count, 8)));
+  return (stack + ((count > 24) ? 24 : FFI_ALIGN_DOWN(count, 8)));
 }
 
 /* Perform machine dependent cif processing */
@@ -111,31 +111,33 @@ ffi_status ffi_prep_cif_machdep(ffi_cif *cif)
   else
     cif->flags = cif->rtype->size;
 
-  cif->bytes = ALIGN (cif->bytes, 8);
+  cif->bytes = FFI_ALIGN (cif->bytes, 8);
 
   return FFI_OK;
 }
 
-extern void ffi_call_EABI(void *(*)(char *, extended_cif *), 
-			  extended_cif *, 
-			  unsigned, unsigned, 
-			  unsigned *, 
+extern void ffi_call_EABI(void *(*)(char *, extended_cif *),
+			  extended_cif *,
+			  unsigned, unsigned,
+			  unsigned *,
 			  void (*fn)(void));
 
-void ffi_call(ffi_cif *cif, 
-	      void (*fn)(void), 
-	      void *rvalue, 
+void ffi_call(ffi_cif *cif,
+	      void (*fn)(void),
+	      void *rvalue,
 	      void **avalue)
 {
   extended_cif ecif;
+  ffi_type **arg_types = cif->arg_types;
+  int i, nargs = cif->nargs;
 
   ecif.cif = cif;
   ecif.avalue = avalue;
-  
+
   /* If the return value is a struct and we don't have a return	*/
   /* value address then we need to make one		        */
 
-  if ((rvalue == NULL) && 
+  if ((rvalue == NULL) &&
       (cif->rtype->type == FFI_TYPE_STRUCT))
     {
       ecif.rvalue = alloca(cif->rtype->size);
@@ -143,10 +145,24 @@ void ffi_call(ffi_cif *cif,
   else
     ecif.rvalue = rvalue;
 
-  switch (cif->abi) 
+  /* If we have any large structure arguments, make a copy so we are passing
+     by value.  */
+  for (i = 0; i < nargs; i++)
+    {
+      ffi_type *at = arg_types[i];
+      int size = at->size;
+      if (at->type == FFI_TYPE_STRUCT) /*  && size > 4) All struct args?? */
+        {
+          char *argcopy = alloca (size);
+          memcpy (argcopy, avalue[i], size);
+          avalue[i] = argcopy;
+        }
+    }
+
+  switch (cif->abi)
     {
     case FFI_EABI:
-      ffi_call_EABI(ffi_prep_args, &ecif, cif->bytes, 
+      ffi_call_EABI(ffi_prep_args, &ecif, cif->bytes,
 		    cif->flags, ecif.rvalue, fn);
       break;
     default:
@@ -159,7 +175,7 @@ void ffi_closure_eabi (unsigned arg1, unsigned arg2, unsigned arg3,
 		       unsigned arg4, unsigned arg5, unsigned arg6)
 {
   /* This function is called by a trampoline.  The trampoline stows a
-     pointer to the ffi_closure object in $r7.  We must save this
+     pointer to the ffi_closure object in $r12.  We must save this
      pointer in a place that will persist while we do our work.  */
   register ffi_closure *creg __asm__ ("$r12");
   ffi_closure *closure = creg;
@@ -172,7 +188,7 @@ void ffi_closure_eabi (unsigned arg1, unsigned arg2, unsigned arg3,
   void *struct_rvalue = (void *) arg1;
 
   /* 6 words reserved for register args + 3 words from jsr */
-  char *stack_args = frame_pointer + 9*4; 
+  char *stack_args = frame_pointer + 9*4;
 
   /* Lay the register arguments down in a continuous chunk of memory.  */
   unsigned register_args[6] =
@@ -211,11 +227,31 @@ void ffi_closure_eabi (unsigned arg1, unsigned arg2, unsigned arg3,
 	  avalue[i] = ptr;
 	  break;
 	case FFI_TYPE_STRUCT:
-	  avalue[i] = *(void**)ptr;
+          {
+            if (arg_types[i]->size > 4)
+              {
+                void *copy = alloca(arg_types[i]->size);
+                memcpy(copy, *(void**)ptr, arg_types[i]->size);
+                avalue[i] = copy;
+              }
+            else
+              avalue[i] = *(void**)ptr;
+          }
 	  break;
 	default:
 	  /* This is an 8-byte value.  */
-	  avalue[i] = ptr;
+	  if (ptr == (char *) &register_args[5])
+	    {
+	      /* The value is split across two locations */
+	      unsigned *ip = alloca(8);
+	      avalue[i] = ip;
+	      ip[0] = *(unsigned *) ptr;
+	      ip[1] = *(unsigned *) stack_args;
+	    }
+	  else
+	    {
+	      avalue[i] = ptr;
+	    }
 	  ptr += 4;
 	  break;
 	}
@@ -223,8 +259,10 @@ void ffi_closure_eabi (unsigned arg1, unsigned arg2, unsigned arg3,
 
       /* If we've handled more arguments than fit in registers,
 	 start looking at the those passed on the stack.  */
-      if (ptr == &register_args[6])
+      if (ptr == (char *) &register_args[6])
 	ptr = stack_args;
+      else if (ptr == (char *) &register_args[7])
+	ptr = stack_args + 4;
     }
 
   /* Invoke the closure.  */
@@ -257,7 +295,7 @@ ffi_prep_closure_loc (ffi_closure* closure,
 
   fn = (unsigned long) ffi_closure_eabi;
 
-  tramp[0] = 0x01e0; /* ldi.l $r7, .... */
+  tramp[0] = 0x01e0; /* ldi.l $r12, .... */
   tramp[1] = cls >> 16;
   tramp[2] = cls & 0xffff;
   tramp[3] = 0x1a00; /* jmpa .... */

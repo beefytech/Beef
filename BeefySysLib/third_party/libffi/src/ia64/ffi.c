@@ -38,7 +38,11 @@
 /* A 64-bit pointer value.  In LP64 mode, this is effectively a plain
    pointer.  In ILP32 mode, it's a pointer that's been extended to 
    64 bits by "addp4".  */
+#ifdef __hpux
+typedef void *PTR64;
+#else // some other unix
 typedef void *PTR64 __attribute__((mode(DI)));
+#endif
 
 /* Memory image of fp register contents.  This is the implementation
    specific format used by ldf.fill/stf.spill.  All we care about is
@@ -76,14 +80,22 @@ endian_adjust (void *addr, size_t len)
    point types without type conversions.  Type conversion to long double breaks
    the denorm support.  */
 
+#ifdef __hpux
+#define stf_spill(addr, value)
+#else
 #define stf_spill(addr, value)	\
   asm ("stf.spill %0 = %1%P0" : "=m" (*addr) : "f"(value));
+#endif
 
 /* Load a value from ADDR, which is in the current cpu implementation's
    fp spill format.  As above, this must also be a macro.  */
 
+#ifdef __hpux
+#define ldf_fill(result, addr)
+#else
 #define ldf_fill(result, addr)	\
   asm ("ldf.fill %0 = %1%P1" : "=f"(result) : "m"(*addr));
+#endif
 
 /* Return the size of the C type associated with with TYPE.  Which will
    be one of the FFI_IA64_TYPE_HFA_* values.  */
@@ -220,8 +232,8 @@ hfa_element_type (ffi_type *type, int nested)
 
 /* Perform machine dependent cif processing. */
 
-ffi_status
-ffi_prep_cif_machdep(ffi_cif *cif)
+static ffi_status
+ffi_prep_cif_machdep_core(ffi_cif *cif)
 {
   int flags;
 
@@ -269,6 +281,22 @@ ffi_prep_cif_machdep(ffi_cif *cif)
   cif->flags = flags;
 
   return FFI_OK;
+}
+
+ffi_status
+ffi_prep_cif_machdep(ffi_cif *cif)
+{
+  cif->nfixedargs = cif->nargs;
+  return ffi_prep_cif_machdep_core(cif);
+}
+
+ffi_status
+ffi_prep_cif_machdep_var(ffi_cif *cif,
+			 unsigned int nfixedargs,
+			 unsigned int ntotalargs MAYBE_UNUSED)
+{
+  cif->nfixedargs = nfixedargs;
+  return ffi_prep_cif_machdep_core(cif);
 }
 
 extern int ffi_call_unix (struct ia64_args *, PTR64, void (*)(void), UINT64);
@@ -401,7 +429,7 @@ ffi_call(ffi_cif *cif, void (*fn)(void), void *rvalue, void **avalue)
    the closure (in the "trampoline" area), but we replace the gp
    pointer with a pointer to the closure itself.  We also add the real
    gp pointer to the closure.  This allows the function entry code to
-   both retrieve the user data, and to restire the correct gp pointer.  */
+   both retrieve the user data, and to restore the correct gp pointer.  */
 
 extern void ffi_closure_unix ();
 
@@ -454,10 +482,11 @@ ffi_closure_unix_inner (ffi_closure *closure, struct ia64_args *stack,
   ffi_cif *cif;
   void **avalue;
   ffi_type **p_arg;
-  long i, avn, gpcount, fpcount;
+  long i, avn, gpcount, fpcount, nfixedargs;
 
   cif = closure->cif;
   avn = cif->nargs;
+  nfixedargs = cif->nfixedargs;
   avalue = alloca (avn * sizeof (void *));
 
   /* If the structure return value is passed in memory get that location
@@ -468,6 +497,7 @@ ffi_closure_unix_inner (ffi_closure *closure, struct ia64_args *stack,
   gpcount = fpcount = 0;
   for (i = 0, p_arg = cif->arg_types; i < avn; i++, p_arg++)
     {
+      int named = i < nfixedargs;
       switch ((*p_arg)->type)
 	{
 	case FFI_TYPE_SINT8:
@@ -491,7 +521,7 @@ ffi_closure_unix_inner (ffi_closure *closure, struct ia64_args *stack,
 	  break;
 
 	case FFI_TYPE_FLOAT:
-	  if (gpcount < 8 && fpcount < 8)
+	  if (named && gpcount < 8 && fpcount < 8)
 	    {
 	      fpreg *addr = &stack->fp_regs[fpcount++];
 	      float result;
@@ -505,7 +535,7 @@ ffi_closure_unix_inner (ffi_closure *closure, struct ia64_args *stack,
 	  break;
 
 	case FFI_TYPE_DOUBLE:
-	  if (gpcount < 8 && fpcount < 8)
+	  if (named && gpcount < 8 && fpcount < 8)
 	    {
 	      fpreg *addr = &stack->fp_regs[fpcount++];
 	      double result;
@@ -521,7 +551,7 @@ ffi_closure_unix_inner (ffi_closure *closure, struct ia64_args *stack,
 	case FFI_TYPE_LONGDOUBLE:
 	  if (gpcount & 1)
 	    gpcount++;
-	  if (LDBL_MANT_DIG == 64 && gpcount < 8 && fpcount < 8)
+	  if (LDBL_MANT_DIG == 64 && named && gpcount < 8 && fpcount < 8)
 	    {
 	      fpreg *addr = &stack->fp_regs[fpcount++];
 	      __float80 result;

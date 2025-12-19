@@ -1678,6 +1678,9 @@ struct BfpThread
 
     ~BfpThread()
     {
+#ifndef BFP_HAS_PTHREAD_TIMEDJOIN_NP
+    BfpEvent_Release(mDoneEvent);
+#endif
     }
 
     void Release()
@@ -1755,9 +1758,6 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_Release(BfpThread* thread)
     if (thread == NULL)
         return;
 
-#ifndef BFP_HAS_PTHREAD_TIMEDJOIN_NP
-    BfpEvent_Release(thread->mDoneEvent);
-#endif
     if (!thread->mPThreadReleased)
     {
         pthread_detach(thread->mPThread);
@@ -1946,12 +1946,12 @@ BFP_EXPORT void BFP_CALLTYPE BfpSpawn_Kill(BfpSpawn* spawn, int exitCode, BfpKil
 			{
 				kill(pid, SIGKILL) ;
 			}
-		}
-		while (false);
 
 #else
-		NOT_IMPL;
+            NOT_IMPL;
 #endif
+		}
+		while (false);
 	}
 
 	if (kill(spawn->mPid, SIGKILL) != 0)
@@ -2758,7 +2758,7 @@ BFP_EXPORT BfpFileAttributes BFP_CALLTYPE BfpFile_GetAttributes(const char* path
 	const bool groupReadonly = (fileStat.st_mode & (S_IRGRP | S_IWGRP)) == S_IRGRP;
 	const bool othersReadonly = (fileStat.st_mode & (S_IROTH | S_IWOTH)) == S_IROTH;
 
-	const __uid_t uid = geteuid();
+	const uid_t uid = geteuid();
 	if (fileStat.st_uid == uid)
 	{
 		if (userReadonly)
@@ -2775,9 +2775,9 @@ BFP_EXPORT BfpFileAttributes BFP_CALLTYPE BfpFile_GetAttributes(const char* path
 		{
 			bool inGroup = false;
 
-			__gid_t groups[64];
+			gid_t groups[64];
 			const int size = getgroups(0, NULL);
-			__gid_t* const ptr = (size > 64) ? new  __gid_t[size] : groups;
+			gid_t* const ptr = (size > 64) ? new gid_t[size] : groups;
 			if (getgroups(size, ptr) > 0)
 			{
 				for (int i = 0; i < size; ++i)
@@ -2838,7 +2838,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_SetAttributes(const char* path, BfpFileAttr
 		return;
 	}
 
-	__mode_t newMode = fileStat.st_mode;
+	mode_t newMode = fileStat.st_mode;
 	if ((attribs & BfpFileAttribute_ReadOnly) != 0)
 	{
 		newMode &= ~(S_IWUSR | S_IWGRP | S_IWOTH);
