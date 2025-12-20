@@ -5191,6 +5191,9 @@ void BfModule::CreateDynamicCastMethod()
 
 void BfModule::EmitEquals(BfTypedValue leftValue, BfTypedValue rightValue, BfIRBlock exitBB, bool strictEquals)
 {
+	mBfIRBuilder->PopulateType(leftValue.mType);
+	mBfIRBuilder->PopulateType(rightValue.mType);
+
 	BfExprEvaluator exprEvaluator(this);
 	exprEvaluator.mExpectingType = mCurMethodInstance->mReturnType;
 
