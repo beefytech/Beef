@@ -746,6 +746,12 @@
     <ClCompile Include="third_party\freetype\src\sdf\sdf.c">
       <Filter>src\third_party\freetype\FT_MODULES</Filter>
     </ClCompile>
+    <ClCompile Include="third_party\libffi\src\tramp.c">
+      <Filter>src\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="third_party\libffi\src\x86\ffiw64.c">
+      <Filter>src\third_party\libffi\x86</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="Common.h">
@@ -888,12 +894,6 @@
     </ClInclude>
     <ClInclude Include="sound\WwiseSound.h">
       <Filter>src\sound</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\libffi\i686-pc-cygwin\include\ffi.h">
-      <Filter>src\third_party\libffi</Filter>
-    </ClInclude>
-    <ClInclude Include="third_party\libffi\i686-pc-cygwin\include\ffitarget.h">
-      <Filter>src\third_party\libffi</Filter>
     </ClInclude>
     <ClInclude Include="platform\win\BFPlatform.h">
       <Filter>src\platform\win</Filter>
@@ -1165,12 +1165,18 @@
     <ClInclude Include="third_party\png\pngstruct.h">
       <Filter>src\third_party\png</Filter>
     </ClInclude>
+    <ClInclude Include="third_party\libffi\x86_64-pc-cygwin\include\ffi.h">
+      <Filter>src\third_party\libffi</Filter>
+    </ClInclude>
+    <ClInclude Include="third_party\libffi\x86_64-pc-cygwin\include\ffitarget.h">
+      <Filter>src\third_party\libffi</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="third_party\libffi\i686-pc-cygwin\src\x86\win32.asm">
+    <CustomBuild Include="third_party\libffi\x86_64-pc-cygwin\src\x86\win64_intel.asm">
       <Filter>src\third_party\libffi\x86</Filter>
     </CustomBuild>
-    <CustomBuild Include="third_party\libffi\i686-pc-cygwin\src\x86\win64.asm">
+    <CustomBuild Include="third_party\libffi\x86_64-pc-cygwin\src\x86\sysv_intel.asm">
       <Filter>src\third_party\libffi\x86</Filter>
     </CustomBuild>
   </ItemGroup>

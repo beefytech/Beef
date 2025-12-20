@@ -105,6 +105,12 @@
     <ClCompile Include="..\BeefySysLib\util\AllocDebug.cpp">
       <Filter>BeefySysLib\util</Filter>
     </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\libffi\src\tramp.c">
+      <Filter>BeefySysLib\third_party\libffi</Filter>
+    </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\libffi\src\x86\ffiw64.c">
+      <Filter>BeefySysLib\third_party\libffi\x86</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="rt\BfObjects.h">
@@ -137,26 +143,26 @@
     <ClInclude Include="..\BeefySysLib\platform\win\CrashCatcher.h">
       <Filter>BeefySysLib\platform\win</Filter>
     </ClInclude>
-    <ClInclude Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\include\ffi.h">
-      <Filter>BeefySysLib\third_party\libffi</Filter>
-    </ClInclude>
-    <ClInclude Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\include\ffitarget.h">
-      <Filter>BeefySysLib\third_party\libffi</Filter>
-    </ClInclude>
     <ClInclude Include="..\BeefySysLib\util\BeefPerf.h">
       <Filter>BeefySysLib\util</Filter>
     </ClInclude>
+    <ClInclude Include="..\BeefySysLib\third_party\libffi\x86_64-pc-cygwin\include\ffitarget.h">
+      <Filter>BeefySysLib\third_party\libffi</Filter>
+    </ClInclude>
+    <ClInclude Include="..\BeefySysLib\third_party\libffi\x86_64-pc-cygwin\include\ffi.h">
+      <Filter>BeefySysLib\third_party\libffi</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\src\x86\win64.asm">
-      <Filter>BeefySysLib\third_party\libffi\x86</Filter>
-    </CustomBuild>
-    <CustomBuild Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\src\x86\win32.asm">
-      <Filter>BeefySysLib\third_party\libffi\x86</Filter>
-    </CustomBuild>
     <ClInclude Include="..\BeefySysLib\third_party\putty\wildcard.h">
       <Filter>BeefySysLib\third_party\putty</Filter>
     </ClInclude>
+    <CustomBuild Include="..\BeefySysLib\third_party\libffi\x86_64-pc-cygwin\src\x86\win64_intel.asm">
+      <Filter>BeefySysLib\third_party\libffi\x86</Filter>
+    </CustomBuild>
+    <CustomBuild Include="..\BeefySysLib\third_party\libffi\x86_64-pc-cygwin\src\x86\sysv_intel.asm">
+      <Filter>BeefySysLib\third_party\libffi\x86</Filter>
+    </CustomBuild>
   </ItemGroup>
   <ItemGroup>
     <None Include="BeefRT.def" />

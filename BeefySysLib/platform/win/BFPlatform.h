@@ -34,14 +34,6 @@
 #define DIR_SEP_CHAR '\\'
 #define DIR_SEP_CHAR_ALT '/'
 
-#ifndef BF_NO_FFI
-extern "C"
-{
-	#define FFI_BUILDING
-	#include "libffi/i686-pc-cygwin/include/ffi.h"
-}
-#endif
-
 //#define BF_FORCE_SDL
 
 #ifdef SDL_FORCE_OPENGL_ES2

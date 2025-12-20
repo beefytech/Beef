@@ -94,6 +94,12 @@ fi
 
 ### LIBS ###
 
+if [[ "$OSTYPE" == "darwin"* ]] && \
+	[ "$(command -v brew)" ]; then
+	export LIBRARY_PATH=$(brew --prefix llvm@19)/lib
+	export LD_RUN_PATH=$(brew --prefix llvm@19)/lib
+fi
+
 cd ..
 if [ ! -d jbuild_d ]; then
 	mkdir jbuild_d

@@ -168,7 +168,11 @@ BootApp::BootApp()
 #ifdef BF_PLATFORM_WINDOWS
 	mTargetTriple = "x86_64-pc-windows-msvc";
 #elif defined BF_PLATFORM_MACOS
-	mTargetTriple = "x86_64-apple-macosx10.8.0";
+	#if defined(__aarch64__) || defined(__arm64__)
+		mTargetTriple = "aarch64-apple-macosx11.0.0";
+	#else
+		mTargetTriple = "x86_64-apple-macosx10.8.0";
+	#endif
 #else
 	mTargetTriple = "x86_64-unknown-linux-gnu";
 #endif
@@ -425,7 +429,7 @@ void BootApp::QueueFile(const StringImpl& path, void* project)
 		worked &= BfParser_Reduce(bfParser, mPassInstance);
 		worked &= BfParser_BuildDefs(bfParser, mPassInstance, NULL, false);
 		
-		delete data;
+		delete[] data;
 	}
 }
 

@@ -32,6 +32,7 @@ add_definitions(
    -DFT2_BUILD_LIBRARY
    -DBFSYSLIB_DYNAMIC
    -DBP_DYNAMIC
+   -DPNG_ARM_NEON_OPT=0
 )
 
 INCLUDE(CheckIncludeFileCXX)

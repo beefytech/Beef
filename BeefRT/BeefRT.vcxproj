@@ -209,6 +209,20 @@
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">TurnOffAllWarnings</WarningLevel>
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">TurnOffAllWarnings</WarningLevel>
     </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\libffi\src\tramp.c">
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">TurnOffAllWarnings</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">TurnOffAllWarnings</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">TurnOffAllWarnings</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">TurnOffAllWarnings</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">TurnOffAllWarnings</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">TurnOffAllWarnings</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">TurnOffAllWarnings</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">TurnOffAllWarnings</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">TurnOffAllWarnings</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">TurnOffAllWarnings</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">TurnOffAllWarnings</WarningLevel>
+      <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">TurnOffAllWarnings</WarningLevel>
+    </ClCompile>
     <ClCompile Include="..\BeefySysLib\third_party\libffi\src\types.c">
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">TurnOffAllWarnings</WarningLevel>
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">TurnOffAllWarnings</WarningLevel>
@@ -251,6 +265,7 @@
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">TurnOffAllWarnings</WarningLevel>
       <WarningLevel Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">TurnOffAllWarnings</WarningLevel>
     </ClCompile>
+    <ClCompile Include="..\BeefySysLib\third_party\libffi\src\x86\ffiw64.c" />
     <ClCompile Include="..\BeefySysLib\third_party\utf8proc\utf8proc.c" />
     <ClCompile Include="..\BeefySysLib\third_party\putty\wildcard.c" />
     <ClCompile Include="..\BeefySysLib\util\AllocDebug.cpp" />
@@ -269,8 +284,8 @@
     <ClInclude Include="..\BeefySysLib\Common.h" />
     <ClInclude Include="..\BeefySysLib\platform\win\BFPlatform.h" />
     <ClInclude Include="..\BeefySysLib\platform\win\CrashCatcher.h" />
-    <ClInclude Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\include\ffi.h" />
-    <ClInclude Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\include\ffitarget.h" />
+    <ClInclude Include="..\BeefySysLib\third_party\libffi\x86_64-pc-cygwin\include\ffi.h" />
+    <ClInclude Include="..\BeefySysLib\third_party\libffi\x86_64-pc-cygwin\include\ffitarget.h" />
     <ClInclude Include="..\BeefySysLib\third_party\utf8proc\utf8proc.h" />
     <ClInclude Include="..\BeefySysLib\third_party\putty\wildcard.h" />
     <ClInclude Include="..\BeefySysLib\util\BeefPerf.h" />
@@ -282,89 +297,96 @@
     <ClInclude Include="rt\ThreadLocalStorage.h" />
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\src\x86\win64.asm">
+    <CustomBuild Include="..\BeefySysLib\third_party\libffi\x86_64-pc-cygwin\src\x86\win64_intel.asm">
       <FileType>Document</FileType>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">Executing MASM</Message>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)$(TargetName).obj</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">$(OutDir)$(TargetName).obj</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">$(OutDir)$(TargetName).obj</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)$(TargetName).obj</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">$(OutDir)$(TargetName).obj</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">$(OutDir)$(TargetName).obj</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)$(TargetName).obj</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">$(OutDir)$(TargetName).obj</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">$(OutDir)$(TargetName).obj</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)$(TargetName).obj</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">$(OutDir)$(TargetName).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(OutDir)$(TargetName).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(OutDir)$(TargetName).obj</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">$(OutDir)$(TargetName).obj</Outputs>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-    </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
-    <CustomBuild Include="..\BeefySysLib\third_party\libffi\i686-pc-cygwin\src\x86\win32.asm">
-      <FileType>Document</FileType>
-      <DeploymentContent>false</DeploymentContent>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">false</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">true</ExcludedFromBuild>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)$(TargetName).obj</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">$(OutDir)$(TargetName).obj</Outputs>
       <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">$(OutDir)$(TargetName).obj</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">$(OutDir)$(TargetName).obj</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">$(OutDir)$(TargetName).obj</Outputs>
-      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)$(TargetName).obj</Outputs>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">Executing MASM</Message>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">$(OutDir)$(TargetName).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">$(OutDir)$(TargetName).obj</Outputs>
       <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">Executing MASM</Message>
-      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Executing MASM</Message>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
-      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">Executing MASM</Message>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml64.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">true</ExcludedFromBuild>
     </CustomBuild>
-  </ItemGroup>
-  <ItemGroup>
+    <CustomBuild Include="..\BeefySysLib\third_party\libffi\x86_64-pc-cygwin\src\x86\sysv_intel.asm">
+      <FileType>Document</FileType>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">$(OutDir)$(TargetName).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">$(OutDir)$(TargetName).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">$(OutDir)$(TargetName).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">$(OutDir)$(TargetName).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(OutDir)$(TargetName).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(OutDir)$(TargetName).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">$(OutDir)$(TargetName).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">$(OutDir)$(TargetName).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">$(OutDir)$(TargetName).obj</Outputs>
+      <Outputs Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">$(OutDir)$(TargetName).obj</Outputs>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">Executing MASM</Message>
+      <Message Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">Executing MASM</Message>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">false</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">true</ExcludedFromBuild>
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">false</ExcludedFromBuild>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static CStatic|x64'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static|x64'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|x64'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Release Static CStatic|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|x64'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+      <Command Condition="'$(Configuration)|$(Platform)'=='Debug Static|Win32'">ml.exe /c /nologo /Zi /Fo"$(OutDir)$(TargetName).obj" /Fl"" /W3 /errorReport:prompt /Ta "%(FullPath)"</Command>
+    </CustomBuild>
     <None Include="BeefRT.def" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
@@ -474,8 +496,8 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BF_SMALL;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -495,8 +517,8 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BF_SMALL;BF_NO_BFAPP;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebugDLL</RuntimeLibrary>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -515,8 +537,8 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BF_SMALL;BF_NO_BFAPP;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreadedDebug</RuntimeLibrary>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -535,8 +557,8 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BF_SMALL;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -561,8 +583,8 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BF_SMALL;BF_NO_BFAPP;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -585,8 +607,8 @@
       </PrecompiledHeader>
       <WarningLevel>Level3</WarningLevel>
       <Optimization>Disabled</Optimization>
-      <PreprocessorDefinitions>BF_SMALL;BF_NO_BFAPP;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;WIN32;_DEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
       <DisableSpecificWarnings>
       </DisableSpecificWarnings>
       <SupportJustMyCode>false</SupportJustMyCode>
@@ -611,8 +633,8 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BP_DISABLED;BF_SMALL;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FFI_STATIC_BUILD;BP_DISABLED;BF_SMALL;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -635,8 +657,8 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BF_SMALL;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <BufferSecurityCheck>false</BufferSecurityCheck>
     </ClCompile>
@@ -656,8 +678,8 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BF_SMALL;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
       <LanguageStandard>stdcpp17</LanguageStandard>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
@@ -678,8 +700,8 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BP_DISABLED;BF_SMALL;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FFI_STATIC_BUILD;BP_DISABLED;BF_SMALL;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
@@ -706,8 +728,8 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BF_SMALL;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
@@ -732,8 +754,8 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>BF_SMALL;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
-      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/i686-pc-cygwin;../BeefySysLib/third_party/libffi/i686-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <RuntimeTypeInfo>false</RuntimeTypeInfo>
