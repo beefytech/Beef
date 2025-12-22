@@ -1,39 +1,37 @@
-/***************************************************************************/
-/*                                                                         */
-/*  ttkern.c                                                               */
-/*                                                                         */
-/*    Load the basic TrueType kerning table.  This doesn't handle          */
-/*    kerning data within the GPOS table at the moment.                    */
-/*                                                                         */
-/*  Copyright 1996-2017 by                                                 */
-/*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
-/*                                                                         */
-/*  This file is part of the FreeType project, and may only be used,       */
-/*  modified, and distributed under the terms of the FreeType project      */
-/*  license, LICENSE.TXT.  By continuing to use, modify, or distribute     */
-/*  this file you indicate that you have read the license and              */
-/*  understand and accept it fully.                                        */
-/*                                                                         */
-/***************************************************************************/
+/****************************************************************************
+ *
+ * ttkern.c
+ *
+ *   Routines to parse and access the 'kern' table for kerning (body).
+ *
+ * Copyright (C) 1996-2025 by
+ * David Turner, Robert Wilhelm, and Werner Lemberg.
+ *
+ * This file is part of the FreeType project, and may only be used,
+ * modified, and distributed under the terms of the FreeType project
+ * license, LICENSE.TXT.  By continuing to use, modify, or distribute
+ * this file you indicate that you have read the license and
+ * understand and accept it fully.
+ *
+ */
 
 
-#include <ft2build.h>
-#include FT_INTERNAL_DEBUG_H
-#include FT_INTERNAL_STREAM_H
-#include FT_TRUETYPE_TAGS_H
+#include <freetype/internal/ftdebug.h>
+#include <freetype/internal/ftstream.h>
+#include <freetype/tttags.h>
 #include "ttkern.h"
 
 #include "sferrors.h"
 
 
-  /*************************************************************************/
-  /*                                                                       */
-  /* The macro FT_COMPONENT is used in trace mode.  It is an implicit      */
-  /* parameter of the FT_TRACE() and FT_ERROR() macros, used to print/log  */
-  /* messages during execution.                                            */
-  /*                                                                       */
+  /**************************************************************************
+   *
+   * The macro FT_COMPONENT is used in trace mode.  It is an implicit
+   * parameter of the FT_TRACE() and FT_ERROR() macros, used to print/log
+   * messages during execution.
+   */
 #undef  FT_COMPONENT
-#define FT_COMPONENT  trace_ttkern
+#define FT_COMPONENT  ttkern
 
 
 #undef  TT_KERN_INDEX
@@ -95,7 +93,7 @@
 
       p_next = p;
 
-      p += 2; /* skip version */
+      p       += 2; /* skip version */
       length   = FT_NEXT_USHORT( p );
       coverage = FT_NEXT_USHORT( p );
 
@@ -127,8 +125,8 @@
       avail |= mask;
 
       /*
-       *  Now check whether the pairs in this table are ordered.
-       *  We then can use binary search.
+       * Now check whether the pairs in this table are ordered.
+       * We then can use binary search.
        */
       if ( num_pairs > 0 )
       {
@@ -145,7 +143,7 @@
 
 
           cur_pair = FT_NEXT_ULONG( p );
-          if ( cur_pair <= old_pair )
+          if ( cur_pair < old_pair )
             break;
 
           p += 2;
@@ -188,11 +186,18 @@
                        FT_UInt  left_glyph,
                        FT_UInt  right_glyph )
   {
-    FT_Int    result = 0;
-    FT_UInt   count, mask;
-    FT_Byte*  p       = face->kern_table;
-    FT_Byte*  p_limit = p + face->kern_table_size;
+    FT_Int   result = 0;
+    FT_UInt  count, mask;
 
+    FT_Byte*  p;
+    FT_Byte*  p_limit;
+
+
+    if ( !face->kern_table )
+      return result;
+
+    p       = face->kern_table;
+    p_limit = p + face->kern_table_size;
 
     p   += 4;
     mask = 0x0001;
@@ -283,8 +288,8 @@
         break;
 
        /*
-        *  We don't support format 2 because we haven't seen a single font
-        *  using it in real life...
+        * We don't support format 2 because we haven't seen a single font
+        * using it in real life...
         */
 
       default:

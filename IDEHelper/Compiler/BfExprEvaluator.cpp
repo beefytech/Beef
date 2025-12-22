@@ -17359,7 +17359,7 @@ void BfExprEvaluator::ResolveAllocTarget(BfAllocTarget& allocTarget, BfAstNode* 
 					{
 						BfIRConstHolder* constHolder = mModule->mCurTypeInstance->mConstHolder;
 						auto constant = constHolder->GetConstant(attrib.mCtorArgs[0]);
-						if (constant != NULL)
+						if ((constant != NULL) && (constant->mConstType != BfConstType_Undef))
 						{
 							int alignOverride = (int)BF_MAX(1, constant->mInt64);
 							if ((alignOverride & (alignOverride - 1)) == 0)
@@ -19771,12 +19771,15 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 		checkTypeInst = mModule->mCurTypeInstance;
 	}
 
+	bool foundNameInThis = false;
+
 	while (checkTypeInst != NULL)
 	{
 		checkTypeInst->mTypeDef->PopulateMemberSets();
 		BfMemberSetEntry* memberSetEntry;
 		if (checkTypeInst->mTypeDef->mMethodSet.TryGetWith(targetFunctionName, &memberSetEntry))
 		{
+			foundNameInThis = true;
 			BfMethodDef* methodDef = (BfMethodDef*)memberSetEntry->mMemberDef;
 			while (methodDef != NULL)
 			{
@@ -19788,6 +19791,44 @@ void BfExprEvaluator::DoInvocation(BfAstNode* target, BfMethodBoundExpression* m
 			}
 		}
 		checkTypeInst = checkTypeInst->mBaseType;
+	}
+
+	if ((thisValue.mType == NULL) && ((!foundNameInThis) || (!allowImplicitThis)))
+	{
+		if (mModule->mContext->mCurTypeState != NULL)
+		{
+			BfGlobalLookup globalLookup;
+			globalLookup.mKind = BfGlobalLookup::Kind_Method;
+			globalLookup.mName = targetFunctionName;
+			mModule->PopulateGlobalContainersList(globalLookup);
+
+			for (auto& globalContainer : mModule->mContext->mCurTypeState->mGlobalContainers)
+			{
+				if (globalContainer.mTypeInst == NULL)
+					continue;
+				
+				auto curTypeDef = globalContainer.mTypeInst->mTypeDef;
+				if ((curTypeDef == NULL) || (!curTypeDef->mIsStatic))
+					continue;
+
+				curTypeDef->PopulateMemberSets();
+
+				BfMemberSetEntry* entry;
+				if (curTypeDef->mMethodSet.TryGetWith(targetFunctionName, &entry))
+				{
+					BfMethodDef* methodDef = (BfMethodDef*)entry->mMemberDef;
+					while (methodDef != NULL)
+					{
+						if (methodDef->mIsSkipCall)
+							mayBeSkipCall = true;
+						if (methodDef->mHasComptime)
+							mayBeComptimeCall = true;
+						methodDef = methodDef->mNextWithSameName;
+					}
+
+				}
+			}
+		}
 	}
 
 	SizedArray<BfExpression*, 8> copiedArgs;

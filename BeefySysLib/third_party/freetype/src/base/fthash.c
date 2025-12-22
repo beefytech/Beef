@@ -1,10 +1,10 @@
-/***************************************************************************/
-/*                                                                         */
-/*  fthash.c                                                               */
-/*                                                                         */
-/*    Hashing functions (body).                                            */
-/*                                                                         */
-/***************************************************************************/
+/****************************************************************************
+ *
+ * fthash.c
+ *
+ *   Hashing functions (body).
+ *
+ */
 
 /*
  * Copyright 2000 Computing Research Labs, New Mexico State University
@@ -30,18 +30,18 @@
  * THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
 
-  /*************************************************************************/
-  /*                                                                       */
-  /*  This file is based on code from bdf.c,v 1.22 2000/03/16 20:08:50     */
-  /*                                                                       */
-  /*  taken from Mark Leisher's xmbdfed package                            */
-  /*                                                                       */
-  /*************************************************************************/
+  /**************************************************************************
+   *
+   * This file is based on code from bdf.c,v 1.22 2000/03/16 20:08:50
+   *
+   * taken from Mark Leisher's xmbdfed package
+   *
+   */
 
 
-#include <ft2build.h>
-#include FT_INTERNAL_HASH_H
-#include FT_INTERNAL_MEMORY_H
+#include <freetype/internal/fthash.h>
+#include <freetype/internal/ftmemory.h>
+#include <freetype/internal/ftobjs.h>
 
 
 #define INITIAL_HT_SIZE  241
@@ -234,7 +234,8 @@
   hash_insert( FT_Hashkey  key,
                size_t      data,
                FT_Hash     hash,
-               FT_Memory   memory )
+               FT_Memory   memory,
+               FT_Bool     overwrite )
   {
     FT_Hashnode   nn;
     FT_Hashnode*  bp    = hash_bucket( key, hash );
@@ -244,7 +245,7 @@
     nn = *bp;
     if ( !nn )
     {
-      if ( FT_NEW( nn ) )
+      if ( FT_QNEW( nn ) )
         goto Exit;
       *bp = nn;
 
@@ -260,7 +261,7 @@
 
       hash->used++;
     }
-    else
+    else if ( overwrite )
       nn->data = data;
 
   Exit:
@@ -279,7 +280,7 @@
 
     hk.str = key;
 
-    return hash_insert( hk, data, hash, memory );
+    return hash_insert( hk, data, hash, memory, TRUE );
   }
 
 
@@ -294,7 +295,37 @@
 
     hk.num = num;
 
-    return hash_insert( hk, data, hash, memory );
+    return hash_insert( hk, data, hash, memory, TRUE );
+  }
+
+
+  FT_Error
+  ft_hash_str_insert_no_overwrite( const char*  key,
+                                   size_t       data,
+                                   FT_Hash      hash,
+                                   FT_Memory    memory )
+  {
+    FT_Hashkey  hk;
+
+
+    hk.str = key;
+
+    return hash_insert( hk, data, hash, memory, FALSE );
+  }
+
+
+  FT_Error
+  ft_hash_num_insert_no_overwrite( FT_Int     num,
+                                   size_t     data,
+                                   FT_Hash    hash,
+                                   FT_Memory  memory )
+  {
+    FT_Hashkey  hk;
+
+
+    hk.num = num;
+
+    return hash_insert( hk, data, hash, memory, FALSE );
   }
 
 
@@ -333,6 +364,70 @@
     hk.num = num;
 
     return hash_lookup( hk, hash );
+  }
+
+
+  FT_Bool
+  ft_hash_num_iterator( FT_UInt  *idx,
+                        FT_Int   *key,
+                        size_t   *value,
+                        FT_Hash   hash )
+  {
+    FT_Hashnode  nn = NULL;
+
+
+    while ( 1 )
+    {
+      if ( *idx >= hash->size )
+        return 0;
+
+      nn = hash->table[*idx];
+      if ( nn )
+        break;
+
+      (*idx)++;
+    }
+
+    if ( key )
+      *key = nn->key.num;
+    if ( value )
+      *value = nn->data;
+
+    (*idx)++;
+
+    return 1;
+  }
+
+
+  FT_Bool
+  ft_hash_str_iterator( FT_UInt      *idx,
+                        const char*  *key,
+                        size_t       *value,
+                        FT_Hash       hash )
+  {
+    FT_Hashnode  nn = NULL;
+
+
+    while ( 1 )
+    {
+      if ( *idx >= hash->size )
+        return 0;
+
+      nn = hash->table[*idx];
+      if ( nn )
+        break;
+
+      (*idx)++;
+    }
+
+    if ( key )
+      *key = nn->key.str;
+    if ( value )
+      *value = nn->data;
+
+    (*idx)++;
+
+    return 1;
   }
 
 

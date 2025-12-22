@@ -632,7 +632,7 @@ int BfFieldInstance::GetAlign(int packing)
 				{
 					BfIRConstHolder* constHolder = module->mCurTypeInstance->mConstHolder;
 					auto constant = constHolder->GetConstant(attrib.mCtorArgs[0]);
-					if (constant != NULL)
+					if ((constant != NULL) && (constant->mConstType != BfConstType_Undef))
 					{
 						int alignOverride = (int)BF_MAX(1, constant->mInt64);
 						if ((alignOverride & (alignOverride - 1)) == 0)

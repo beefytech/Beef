@@ -158,8 +158,8 @@ public:
 	Array<llvm::Constant*> mConfigConsts64;
 	Dictionary<BfIRTypeEx*, BfIRTypedValue> mReflectDataMap;
 	Dictionary<BfIRTypeEx*, BfIRTypeEx*> mAlignedTypeToNormalType;
-	Dictionary<BfIRTypeEx*, int> mTypeToTypeIdMap;
-	HashSet<llvm::BasicBlock*> mLockedBlocks;
+	Dictionary<BfIRTypeEx*, int> mTypeToTypeIdMap;	
+	Dictionary<llvm::BasicBlock*, llvm::BasicBlock*> mRemappedEndingBlocks;
 	OwnedArray<BfIRIntrinsicData> mIntrinsicData;
 	Dictionary<llvm::Function*, BfSIMDSetting> mFunctionsUsingSimd;
 	Array<BfIRTypeEx*> mIRTypeExs;
@@ -171,6 +171,7 @@ public:
 	void FixValues(llvm::StructType* structType, llvm::SmallVector<llvm::Constant*, 8>& values);
 	void FixIndexer(llvm::Value*& val);
 	void FixTypedValue(BfIRTypedValue& typedValue);
+	void FixEndingBlock(llvm::BasicBlock*& basicBlock);
 	BfTypeCode GetTypeCode(llvm::Type* type, bool isSigned);
 	llvm::Type* GetLLVMType(BfTypeCode typeCode, bool& isSigned);
 	BfIRTypeEx* GetTypeEx(llvm::Type* llvmType);
@@ -272,6 +273,7 @@ public:
 	void SetCodeGenOptions(BfCodeGenOptions codeGenOptions);
 	void SetConfigConst(int idx, int value) override;
 
+	void SetFunctionSimdType(llvm::Function* function, BfSIMDSetting type);
 	void SetActiveFunctionSimdType(BfSIMDSetting type);
 	String GetSimdTypeString(BfSIMDSetting type);
 	BfSIMDSetting GetSimdTypeFromFunction(llvm::Function* function);

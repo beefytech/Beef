@@ -103,51 +103,103 @@ ffi_call_pa32:
 
 	/* Prepare to store the result; we need to recover flags and rvalue.  */
 	ldw -48(%r3), %r21                      /* r21 <- flags */
+
+	/* Adjust flags range from [-8, 15] to  [0, 23].  */
+	addi 8, %r21, %r21
+
+	blr %r21, %r0
 	ldw -52(%r3), %r20                      /* r20 <- rvalue */
+
+	/* Giant jump table */
+	/* 8-byte small struct */
+	b,n	.Lsmst8
+	nop
+	/* 7-byte small struct */
+	b,n	.Lsmst7
+	nop
+	/* 6-byte small struct */
+	b,n	.Lsmst6
+	nop
+	/* 5-byte small struct */
+	b,n	.Lsmst5
+	nop
+	/* 4-byte small struct */
+	b,n	.Lsmst4
+	nop
+	/* 3-byte small struct */
+	b,n	.Lsmst3
+	nop
+	/* 2-byte small struct */
+	b,n	.Lsmst2
+	nop
+	/* 1-byte small struct */
+	b	.Ldone
+	stb	%ret0, 0(%r20)
+	/* void */
+	b,n	.Ldone
+	nop
+	/* int */
+	b	.Ldone
+	stw	%ret0, 0(%r20)
+	/* float */
+	b	.Ldone
+	fstw	%fr4L,0(%r20)
+	/* double */
+	b	.Ldone
+	fstd	%fr4,0(%r20)
+	/* long double */
+	b	.Ldone
+	fstd	%fr4,0(%r20)
+	/* unsigned int8 */
+	b	.Ldone
+	stw	%ret0, 0(%r20)
+	/* sint8 */
+	b	.Ldone
+	stw	%ret0, 0(%r20)
+	/* unsigned int16 */
+	b	.Ldone
+	stw	%ret0, 0(%r20)
+	/* sint16 */
+	b	.Ldone
+	stw	%ret0, 0(%r20)
+	/* unsigned int32 */
+	b	.Ldone
+	stw	%ret0, 0(%r20)
+	/* sint32 */
+	b	.Ldone
+	stw	%ret0, 0(%r20)
+	/* unsigned int64 */
+	b,n	.Luint64
+	nop
+	/* signed int64 */
+	b,n	.Lsint64
+	nop
+	/* large struct */
+	b,n	.Ldone
+	nop
+	/* pointer */
+	b	.Ldone
+	stw	%ret0, 0(%r20)
+	/* complex */
+	b,n	.Ldone
+	nop
 
 	/* Store the result according to the return type.  */
 
-.Lcheckint:
-	comib,<>,n FFI_TYPE_INT, %r21, .Lcheckint8
-	b	.Ldone
-	stw	%ret0, 0(%r20)
-
-.Lcheckint8:
-	comib,<>,n FFI_TYPE_UINT8, %r21, .Lcheckint16
-	b	.Ldone
-	stb	%ret0, 0(%r20)
-
-.Lcheckint16:
-	comib,<>,n FFI_TYPE_UINT16, %r21, .Lcheckdbl
-	b	.Ldone
-	sth	%ret0, 0(%r20)
-
-.Lcheckdbl:
-	comib,<>,n FFI_TYPE_DOUBLE, %r21, .Lcheckfloat
-	b	.Ldone
-	fstd	%fr4,0(%r20)
-
-.Lcheckfloat:
-	comib,<>,n FFI_TYPE_FLOAT, %r21, .Lcheckll
-	b	.Ldone
-	fstw	%fr4L,0(%r20)
-
-.Lcheckll:
-	comib,<>,n FFI_TYPE_UINT64, %r21, .Lchecksmst2
+.Luint64:
+.Lsint64:
 	stw	%ret0, 0(%r20)
 	b	.Ldone
 	stw	%ret1, 4(%r20)
 
-.Lchecksmst2:
-	comib,<>,n FFI_TYPE_SMALL_STRUCT2, %r21, .Lchecksmst3
+.Lsmst2:
 	/* 2-byte structs are returned in ret0 as ????xxyy.  */
 	extru	%ret0, 23, 8, %r22
 	stbs,ma	%r22, 1(%r20)
 	b	.Ldone
 	stb	%ret0, 0(%r20)
 
-.Lchecksmst3:
-	comib,<>,n FFI_TYPE_SMALL_STRUCT3, %r21, .Lchecksmst4
+.Lsmst3:
 	/* 3-byte structs are returned in ret0 as ??xxyyzz.  */
 	extru	%ret0, 15, 8, %r22
 	stbs,ma	%r22, 1(%r20)
@@ -156,8 +208,7 @@ ffi_call_pa32:
 	b	.Ldone
 	stb	%ret0, 0(%r20)
 
-.Lchecksmst4:
-	comib,<>,n FFI_TYPE_SMALL_STRUCT4, %r21, .Lchecksmst5
+.Lsmst4:
 	/* 4-byte structs are returned in ret0 as wwxxyyzz.  */
 	extru	%ret0, 7, 8, %r22
 	stbs,ma	%r22, 1(%r20)
@@ -168,8 +219,7 @@ ffi_call_pa32:
 	b	.Ldone
 	stb	%ret0, 0(%r20)
 
-.Lchecksmst5:
-	comib,<>,n FFI_TYPE_SMALL_STRUCT5, %r21, .Lchecksmst6
+.Lsmst5:
 	/* 5 byte values are returned right justified:
 	      ret0     ret1
 	   5: ??????aa bbccddee */
@@ -183,8 +233,7 @@ ffi_call_pa32:
 	b	.Ldone
 	stb	%ret1, 0(%r20)
 
-.Lchecksmst6:
-	comib,<>,n FFI_TYPE_SMALL_STRUCT6, %r21, .Lchecksmst7
+.Lsmst6:
 	/* 6 byte values are returned right justified:
 	      ret0     ret1
 	   6: ????aabb ccddeeff */
@@ -200,8 +249,7 @@ ffi_call_pa32:
 	b	.Ldone
 	stb	%ret1, 0(%r20)
 
-.Lchecksmst7:
-	comib,<>,n FFI_TYPE_SMALL_STRUCT7, %r21, .Lchecksmst8
+.Lsmst7:
 	/* 7 byte values are returned right justified:
 	      ret0     ret1
 	   7: ??aabbcc ddeeffgg */
@@ -219,8 +267,7 @@ ffi_call_pa32:
 	b	.Ldone
 	stb	%ret1, 0(%r20)
 
-.Lchecksmst8:
-	comib,<>,n FFI_TYPE_SMALL_STRUCT8, %r21, .Ldone
+.Lsmst8:
 	/* 8 byte values are returned right justified:
 	      ret0     ret1
 	   8: aabbccdd eeffgghh */
@@ -252,7 +299,7 @@ ffi_call_pa32:
 .LFE1:
 
 	/* void ffi_closure_pa32(void);
-	   Called with closure argument in %r21 */
+	   Called with closure argument in %r19 */
 	.export ffi_closure_pa32,code
 	.import ffi_closure_inner_pa32,code
 
@@ -277,7 +324,9 @@ ffi_closure_pa32:
 	stw %arg2, -44(%r3)
 	stw %arg3, -48(%r3)
 
-	copy %r21, %arg0
+	/* Retrieve closure pointer and real gp.  */
+	copy    %r19, %arg0
+	ldw     8(%r19), %r19
 	bl ffi_closure_inner_pa32, %r2
 	copy %r3, %arg1
 
@@ -297,10 +346,18 @@ ffi_closure_pa32:
 .LSCIE1:
 	.word   0x0     ;# CIE Identifier Tag
 	.byte   0x1     ;# CIE Version
+#ifdef __PIC__
+	.ascii  "zR\0"  ;# CIE Augmentation: 'z' - data, 'R' - DW_EH_PE_... data
+#else
 	.ascii "\0"     ;# CIE Augmentation
+#endif
 	.uleb128 0x1    ;# CIE Code Alignment Factor
 	.sleb128 4      ;# CIE Data Alignment Factor
 	.byte   0x2     ;# CIE RA Column
+#ifdef __PIC__
+	.uleb128 0x1    ;# Augmentation size
+	.byte	0x1b    ;# FDE Encoding (DW_EH_PE_pcrel|DW_EH_PE_sdata4)
+#endif
 	.byte   0xc     ;# DW_CFA_def_cfa
 	.uleb128 0x1e
 	.uleb128 0x0
@@ -310,9 +367,15 @@ ffi_closure_pa32:
 	.word   .LEFDE1-.LASFDE1        ;# FDE Length
 .LASFDE1:
 	.word   .LASFDE1-.Lframe1       ;# FDE CIE offset
-	.word   .LFB1   ;# FDE initial location
+#ifdef __PIC__
+	.word	.LFB1-. ;# FDE initial location
+#else
+	.word	.LFB1   ;# FDE initial location
+#endif
 	.word   .LFE1-.LFB1     ;# FDE address range
-
+#ifdef __PIC__
+	.uleb128 0x0	;# Augmentation size: no data
+#endif
 	.byte   0x4     ;# DW_CFA_advance_loc4
 	.word   .LCFI11-.LFB1
 	.byte	0x83	;# DW_CFA_offset, column 0x3
@@ -338,8 +401,15 @@ ffi_closure_pa32:
 	.word   .LEFDE2-.LASFDE2        ;# FDE Length
 .LASFDE2:
 	.word   .LASFDE2-.Lframe1       ;# FDE CIE offset
+#ifdef __PIC__
+	.word   .LFB2-. ;# FDE initial location
+#else
 	.word   .LFB2   ;# FDE initial location
+#endif
 	.word   .LFE2-.LFB2     ;# FDE address range
+#ifdef __PIC__
+	.uleb128 0x0	;# Augmentation size: no data
+#endif
 	.byte   0x4     ;# DW_CFA_advance_loc4
 	.word   .LCFI21-.LFB2
 	.byte   0x83    ;# DW_CFA_offset, column 0x3
@@ -355,3 +425,7 @@ ffi_closure_pa32:
 
 	.align 4
 .LEFDE2:
+
+#if defined(__ELF__) && defined(__linux__)
+.section .note.GNU-stack,"",%progbits
+#endif

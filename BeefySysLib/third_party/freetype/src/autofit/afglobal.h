@@ -1,20 +1,20 @@
-/***************************************************************************/
-/*                                                                         */
-/*  afglobal.h                                                             */
-/*                                                                         */
-/*    Auto-fitter routines to compute global hinting values                */
-/*    (specification).                                                     */
-/*                                                                         */
-/*  Copyright 2003-2017 by                                                 */
-/*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
-/*                                                                         */
-/*  This file is part of the FreeType project, and may only be used,       */
-/*  modified, and distributed under the terms of the FreeType project      */
-/*  license, LICENSE.TXT.  By continuing to use, modify, or distribute     */
-/*  this file you indicate that you have read the license and              */
-/*  understand and accept it fully.                                        */
-/*                                                                         */
-/***************************************************************************/
+/****************************************************************************
+ *
+ * afglobal.h
+ *
+ *   Auto-fitter routines to compute global hinting values
+ *   (specification).
+ *
+ * Copyright (C) 2003-2025 by
+ * David Turner, Robert Wilhelm, and Werner Lemberg.
+ *
+ * This file is part of the FreeType project, and may only be used,
+ * modified, and distributed under the terms of the FreeType project
+ * license, LICENSE.TXT.  By continuing to use, modify, or distribute
+ * this file you indicate that you have read the license and
+ * understand and accept it fully.
+ *
+ */
 
 
 #ifndef AFGLOBAL_H_
@@ -60,8 +60,8 @@ FT_BEGIN_HEADER
 
 
   /*
-   *  Default values and flags for both autofitter globals (found in
-   *  AF_ModuleRec) and face globals (in AF_FaceGlobalsRec).
+   * Default values and flags for both autofitter globals (found in
+   * AF_ModuleRec) and face globals (in AF_FaceGlobalsRec).
    */
 
   /* index of fallback style in `af_style_classes' */
@@ -73,15 +73,17 @@ FT_BEGIN_HEADER
   /* default script for OpenType; ignored if HarfBuzz isn't used */
 #define AF_SCRIPT_DEFAULT    AF_SCRIPT_LATN
 
-  /* a bit mask for AF_DIGIT and AF_NONBASE */
-#define AF_STYLE_MASK        0x3FFF
+  /* a bit mask for AF_DIGIT, AF_NONBASE, and AF_HAS_CMAP_ENTRY */
+#define AF_STYLE_MASK        0x1FFF
   /* an uncovered glyph      */
 #define AF_STYLE_UNASSIGNED  AF_STYLE_MASK
 
-  /* if this flag is set, we have an ASCII digit   */
+  /* if this flag is set, we have an ASCII digit */
 #define AF_DIGIT             0x8000U
   /* if this flag is set, we have a non-base character */
 #define AF_NONBASE           0x4000U
+  /* if this flag is set, the glyph has a (direct) cmap entry */
+#define AF_HAS_CMAP_ENTRY    0x2000U
 
   /* `increase-x-height' property */
 #define AF_PROP_INCREASE_X_HEIGHT_MIN  6
@@ -98,19 +100,24 @@ FT_BEGIN_HEADER
 
 
   /*
-   *  Note that glyph_styles[] maps each glyph to an index into the
-   *  `af_style_classes' array.
+   * Note that glyph_styles[] maps each glyph to an index into the
+   * `af_style_classes' array.
    *
    */
   typedef struct  AF_FaceGlobalsRec_
   {
     FT_Face          face;
-    FT_Long          glyph_count;    /* same as face->num_glyphs */
+    FT_UInt          glyph_count;    /* unsigned face->num_glyphs */
     FT_UShort*       glyph_styles;
 
 #ifdef FT_CONFIG_OPTION_USE_HARFBUZZ
     hb_font_t*       hb_font;
     hb_buffer_t*     hb_buf;           /* for feature comparison */
+
+    /* The GSUB table. */
+    FT_Byte*         gsub;
+    /* Lookup offsets, with only SingleSubst and AlternateSubst non-NULL. */
+    FT_UInt32*       gsub_lookups_single_alternate;
 #endif
 
     /* per-face auto-hinter properties */
@@ -140,8 +147,8 @@ FT_BEGIN_HEADER
 
 
   /*
-   *  model the global hints data for a given face, decomposed into
-   *  style-specific items
+   * model the global hints data for a given face, decomposed into
+   * style-specific items
    */
 
   FT_LOCAL( FT_Error )
@@ -156,9 +163,9 @@ FT_BEGIN_HEADER
                                AF_StyleMetrics  *ametrics );
 
   FT_LOCAL( void )
-  af_face_globals_free( AF_FaceGlobals  globals );
+  af_face_globals_free( void*  globals );
 
-  FT_LOCAL_DEF( FT_Bool )
+  FT_LOCAL( FT_Bool )
   af_face_globals_is_digit( AF_FaceGlobals  globals,
                             FT_UInt         gindex );
 

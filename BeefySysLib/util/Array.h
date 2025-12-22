@@ -101,6 +101,12 @@ public:
 			return *this;
 		}
 
+		iterator& operator-=(intptr offset) 
+		{
+			mPtr -= offset;
+			return *this;
+		}
+
 		bool operator!=(const iterator& itr) const
 		{
 			return itr.mPtr != mPtr;

@@ -1,39 +1,35 @@
-/***************************************************************************/
-/*                                                                         */
-/*  afshaper.h                                                             */
-/*                                                                         */
-/*    HarfBuzz interface for accessing OpenType features (specification).  */
-/*                                                                         */
-/*  Copyright 2013-2017 by                                                 */
-/*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
-/*                                                                         */
-/*  This file is part of the FreeType project, and may only be used,       */
-/*  modified, and distributed under the terms of the FreeType project      */
-/*  license, LICENSE.TXT.  By continuing to use, modify, or distribute     */
-/*  this file you indicate that you have read the license and              */
-/*  understand and accept it fully.                                        */
-/*                                                                         */
-/***************************************************************************/
+/****************************************************************************
+ *
+ * afshaper.h
+ *
+ *   HarfBuzz interface for accessing OpenType features (specification).
+ *
+ * Copyright (C) 2013-2025 by
+ * David Turner, Robert Wilhelm, and Werner Lemberg.
+ *
+ * This file is part of the FreeType project, and may only be used,
+ * modified, and distributed under the terms of the FreeType project
+ * license, LICENSE.TXT.  By continuing to use, modify, or distribute
+ * this file you indicate that you have read the license and
+ * understand and accept it fully.
+ *
+ */
 
 
 #ifndef AFSHAPER_H_
 #define AFSHAPER_H_
 
 
-#include <ft2build.h>
-#include FT_FREETYPE_H
-
-
-#ifdef FT_CONFIG_OPTION_USE_HARFBUZZ
-
-#include <hb.h>
-#include <hb-ot.h>
-#include <hb-ft.h>
-
-#endif
+#include <freetype/freetype.h>
 
 
 FT_BEGIN_HEADER
+
+#ifdef FT_CONFIG_OPTION_USE_HARFBUZZ
+  FT_LOCAL_ARRAY( hb_script_t )
+  af_hb_scripts[];
+#endif
+
 
   FT_Error
   af_shaper_get_coverage( AF_FaceGlobals  globals,
@@ -43,11 +39,11 @@ FT_BEGIN_HEADER
 
 
   void*
-  af_shaper_buf_create( FT_Face  face );
+  af_shaper_buf_create( AF_FaceGlobals  globals );
 
   void
-  af_shaper_buf_destroy( FT_Face  face,
-                         void*    buf );
+  af_shaper_buf_destroy( AF_FaceGlobals  globals,
+                         void*           buf );
 
   const char*
   af_shaper_get_cluster( const char*      p,

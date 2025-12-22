@@ -3,7 +3,7 @@
 #
 
 
-# Copyright 1996-2017 by
+# Copyright (C) 1996-2025 by
 # David Turner, Robert Wilhelm, and Werner Lemberg.
 #
 # This file is part of the FreeType project, and may only be used, modified,
@@ -33,9 +33,7 @@ TT_DRV_SRC := $(TT_DIR)/ttdriver.c \
               $(TT_DIR)/ttgxvar.c  \
               $(TT_DIR)/ttinterp.c \
               $(TT_DIR)/ttobjs.c   \
-              $(TT_DIR)/ttpic.c    \
-              $(TT_DIR)/ttpload.c  \
-              $(TT_DIR)/ttsubpix.c
+              $(TT_DIR)/ttpload.c
 
 # TrueType driver headers
 #

@@ -1143,9 +1143,13 @@ namespace System.Reflection
 						if (info.mComptimeMethodFlags.HasFlag(.NoReflect))
 							continue;
 
-						bool matches =
-							(mBindingFlags.HasFlag(.Static) && (info.mMethodFlags.HasFlag(.Static))) ||
-							(mBindingFlags.HasFlag(.Instance) && (!info.mMethodFlags.HasFlag(.Static)));
+						bool matches = true;
+						if (mBindingFlags & (.Static | .Instance) != 0)
+						{
+							matches &=
+								(mBindingFlags.HasFlag(.Static) && (info.mMethodFlags.HasFlag(.Static))) ||
+								(mBindingFlags.HasFlag(.Instance) && (!info.mMethodFlags.HasFlag(.Static)));
+						}
 
 						// For backwards compatibility we treat missing protection specifiers the same as '.Public | .NonPublic'
 						if (mBindingFlags & (.Public | .NonPublic) != 0)
@@ -1175,9 +1179,13 @@ namespace System.Reflection
 							continue;
 						}	
 						var methodData = &mTypeInstance.[Friend]mMethodDataPtr[mIdx];
-						bool matches =
-							(mBindingFlags.HasFlag(.Static) && (methodData.mFlags.HasFlag(.Static))) ||
-							(mBindingFlags.HasFlag(.Instance) && (!methodData.mFlags.HasFlag(.Static)));
+						bool matches = true;
+						if (mBindingFlags & (.Static | .Instance) != 0)
+						{
+							matches &=
+								(mBindingFlags.HasFlag(.Static) && (methodData.mFlags.HasFlag(.Static))) ||
+								(mBindingFlags.HasFlag(.Instance) && (!methodData.mFlags.HasFlag(.Static)));
+						}
 
 						// For backwards compatibility we treat missing protection specifiers the same as '.Public | .NonPublic'
 						if (mBindingFlags & (.Public | .NonPublic) != 0)

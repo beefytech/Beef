@@ -265,6 +265,19 @@ namespace Tests
 			int32 mB;
 		}
 
+		[Align(alignof(T))]
+		struct StructG<T>
+		{
+			int8 mA;
+		}
+
+		[Align(CVal)]
+		struct StructV<CVal> where CVal : const int
+		{
+			int8 mA;
+		}
+		
+
 		[Test]
 		static void TestLayouts()
 		{
@@ -311,6 +324,15 @@ namespace Tests
 			Test.Assert(sizeof(StructR) == 6);
 			Test.Assert(alignof(StructR) == 2);
 			Test.Assert(strideof(StructR) == 6);
+
+			Test.Assert(sizeof(StructG<int32>) == 1);
+			Test.Assert(alignof(StructG<int32>) == 4);
+			Test.Assert(strideof(StructG<int32>) == 4);
+
+			Test.Assert(sizeof(StructV<const 16>) == 1);
+			Test.Assert(alignof(StructV<const 16>) == 16);
+			Test.Assert(strideof(StructV<const 16>) == 16);
+
 		}
 
 		public int Test<T>(T val)

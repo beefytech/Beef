@@ -1,26 +1,25 @@
-/***************************************************************************/
-/*                                                                         */
-/*  pngshim.c                                                              */
-/*                                                                         */
-/*    PNG Bitmap glyph support.                                            */
-/*                                                                         */
-/*  Copyright 2013-2017 by                                                 */
-/*  Google, Inc.                                                           */
-/*  Written by Stuart Gill and Behdad Esfahbod.                            */
-/*                                                                         */
-/*  This file is part of the FreeType project, and may only be used,       */
-/*  modified, and distributed under the terms of the FreeType project      */
-/*  license, LICENSE.TXT.  By continuing to use, modify, or distribute     */
-/*  this file you indicate that you have read the license and              */
-/*  understand and accept it fully.                                        */
-/*                                                                         */
-/***************************************************************************/
+/****************************************************************************
+ *
+ * pngshim.c
+ *
+ *   PNG Bitmap glyph support.
+ *
+ * Copyright (C) 2013-2025 by
+ * Google, Inc.
+ * Written by Stuart Gill and Behdad Esfahbod.
+ *
+ * This file is part of the FreeType project, and may only be used,
+ * modified, and distributed under the terms of the FreeType project
+ * license, LICENSE.TXT.  By continuing to use, modify, or distribute
+ * this file you indicate that you have read the license and
+ * understand and accept it fully.
+ *
+ */
 
 
-#include <ft2build.h>
-#include FT_INTERNAL_DEBUG_H
-#include FT_INTERNAL_STREAM_H
-#include FT_TRUETYPE_TAGS_H
+#include <freetype/internal/ftdebug.h>
+#include <freetype/internal/ftstream.h>
+#include <freetype/tttags.h>
 #include FT_CONFIG_STANDARD_LIBRARY_H
 
 
@@ -61,13 +60,19 @@
     /* predates clang; the `__BYTE_ORDER__' preprocessor symbol was */
     /* introduced in gcc 4.6 and clang 3.2, respectively.           */
     /* `__builtin_shuffle' for gcc was introduced in gcc 4.7.0.     */
-#if ( ( defined( __GNUC__ )                                &&             \
+    /*                                                              */
+    /* Intel compilers do not currently support __builtin_shuffle;  */
+
+    /* The Intel check must be first. */
+#if !defined( __INTEL_COMPILER )                                       && \
+    ( ( defined( __GNUC__ )                                &&             \
         ( ( __GNUC__ >= 5 )                              ||               \
         ( ( __GNUC__ == 4 ) && ( __GNUC_MINOR__ >= 7 ) ) ) )         ||   \
       ( defined( __clang__ )                                       &&     \
         ( ( __clang_major__ >= 4 )                               ||       \
         ( ( __clang_major__ == 3 ) && ( __clang_minor__ >= 2 ) ) ) ) ) && \
     defined( __OPTIMIZE__ )                                            && \
+    defined( __SSE__ )                                                 && \
     __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__
 
 #ifdef __clang__
@@ -82,42 +87,45 @@
     typedef unsigned short  v82 __attribute__(( vector_size( 16 ) ));
 
 
-    /* process blocks of 16 bytes in one rush, which gives a nice speed-up */
-    limit = row_info->rowbytes - 16 + 1;
-    for ( ; i < limit; i += 16 )
+    if ( row_info->rowbytes > 15 )
     {
-      unsigned char*  base = &data[i];
+      /* process blocks of 16 bytes in one rush, which gives a nice speed-up */
+      limit = row_info->rowbytes - 16 + 1;
+      for ( ; i < limit; i += 16 )
+      {
+        unsigned char*  base = &data[i];
 
-      v82  s, s0, s1, a;
+        v82  s, s0, s1, a;
 
-      /* clang <= 3.9 can't apply scalar values to vectors */
-      /* (or rather, it needs a different syntax)          */
-      v82  n0x80 = { 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80 };
-      v82  n0xFF = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
-      v82  n8    = { 8, 8, 8, 8, 8, 8, 8, 8 };
+        /* clang <= 3.9 can't apply scalar values to vectors */
+        /* (or rather, it needs a different syntax)          */
+        v82  n0x80 = { 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80 };
+        v82  n0xFF = { 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF, 0xFF };
+        v82  n8    = { 8, 8, 8, 8, 8, 8, 8, 8 };
 
-      v82  ma = { 1, 1, 3, 3, 5, 5, 7, 7 };
-      v82  o1 = { 0, 0xFF, 0, 0xFF, 0, 0xFF, 0, 0xFF };
-      v82  m0 = { 1, 0, 3, 2, 5, 4, 7, 6 };
+        v82  ma = { 1, 1, 3, 3, 5, 5, 7, 7 };
+        v82  o1 = { 0, 0xFF, 0, 0xFF, 0, 0xFF, 0, 0xFF };
+        v82  m0 = { 1, 0, 3, 2, 5, 4, 7, 6 };
 
 
-      memcpy( &s, base, 16 );               /* RGBA RGBA RGBA RGBA */
-      s0 = s & n0xFF;                       /*  R B  R B  R B  R B */
-      s1 = s >> n8;                         /*  G A  G A  G A  G A */
+        ft_memcpy( &s, base, 16 );            /* RGBA RGBA RGBA RGBA */
+        s0 = s & n0xFF;                       /*  R B  R B  R B  R B */
+        s1 = s >> n8;                         /*  G A  G A  G A  G A */
 
-      a   = vector_shuffle( s1, ma );       /*  A A  A A  A A  A A */
-      s1 |= o1;                             /*  G 1  G 1  G 1  G 1 */
-      s0  = vector_shuffle( s0, m0 );       /*  B R  B R  B R  B R */
+        a   = vector_shuffle( s1, ma );       /*  A A  A A  A A  A A */
+        s1 |= o1;                             /*  G 1  G 1  G 1  G 1 */
+        s0  = vector_shuffle( s0, m0 );       /*  B R  B R  B R  B R */
 
-      s0 *= a;
-      s1 *= a;
-      s0 += n0x80;
-      s1 += n0x80;
-      s0  = ( s0 + ( s0 >> n8 ) ) >> n8;
-      s1  = ( s1 + ( s1 >> n8 ) ) >> n8;
+        s0 *= a;
+        s1 *= a;
+        s0 += n0x80;
+        s1 += n0x80;
+        s0  = ( s0 + ( s0 >> n8 ) ) >> n8;
+        s1  = ( s1 + ( s1 >> n8 ) ) >> n8;
 
-      s = s0 | ( s1 << n8 );
-      memcpy( base, &s, 16 );
+        s = s0 | ( s1 << n8 );
+        ft_memcpy( base, &s, 16 );
+      }
     }
 #endif /* use `vector_size' */
 
@@ -231,10 +239,10 @@
       *e = FT_THROW( Invalid_Stream_Read );
       png_error( png, NULL );
 
-      return;
+      /* return; (never reached) */
     }
 
-    memcpy( data, stream->cursor, length );
+    ft_memcpy( data, stream->cursor, length );
 
     FT_FRAME_EXIT();
   }
@@ -262,7 +270,10 @@
 
     int         bitdepth, color_type, interlace;
     FT_Int      i;
-    png_byte*  *rows = NULL; /* pacify compiler */
+
+    /* `rows` gets modified within a 'setjmp' scope; */
+    /* we thus need the `volatile` keyword.          */
+    png_byte* *volatile  rows = NULL;
 
 
     if ( x_offset < 0 ||
@@ -324,6 +335,13 @@
 
     if ( populate_map_and_metrics )
     {
+      /* reject too large bitmaps similarly to the rasterizer */
+      if ( imgHeight > 0x7FFF || imgWidth > 0x7FFF )
+      {
+        error = FT_THROW( Array_Too_Large );
+        goto DestroyExit;
+      }
+
       metrics->width  = (FT_UShort)imgWidth;
       metrics->height = (FT_UShort)imgHeight;
 
@@ -332,13 +350,6 @@
       map->pixel_mode = FT_PIXEL_MODE_BGRA;
       map->pitch      = (int)( map->width * 4 );
       map->num_grays  = 256;
-
-      /* reject too large bitmaps similarly to the rasterizer */
-      if ( map->rows > 0x7FFF || map->width > 0x7FFF )
-      {
-        error = FT_THROW( Array_Too_Large );
-        goto DestroyExit;
-      }
     }
 
     /* convert palette/gray image to rgb */
@@ -356,7 +367,7 @@
     }
 
     /* transform transparency to alpha */
-    if ( png_get_valid(png, info, PNG_INFO_tRNS ) )
+    if ( png_get_valid( png, info, PNG_INFO_tRNS ) )
       png_set_tRNS_to_alpha( png );
 
     if ( bitdepth == 16 )
@@ -376,7 +387,7 @@
     png_set_filler( png, 0xFF, PNG_FILLER_AFTER );
 
     /* recheck header after setting EXPAND options */
-    png_read_update_info(png, info );
+    png_read_update_info( png, info );
     png_get_IHDR( png, info,
                   &imgWidth, &imgHeight,
                   &bitdepth, &color_type, &interlace,
@@ -395,9 +406,7 @@
 
     switch ( color_type )
     {
-    default:
-      /* Shouldn't happen, but fall through. */
-
+    default:  /* Shouldn't happen, but ... */
     case PNG_COLOR_TYPE_RGB_ALPHA:
       png_set_read_user_transform_fn( png, premultiply_data );
       break;
@@ -419,7 +428,7 @@
         goto DestroyExit;
     }
 
-    if ( FT_NEW_ARRAY( rows, imgHeight ) )
+    if ( FT_QNEW_ARRAY( rows, imgHeight ) )
     {
       error = FT_THROW( Out_Of_Memory );
       goto DestroyExit;
@@ -430,11 +439,11 @@
 
     png_read_image( png, rows );
 
-    FT_FREE( rows );
-
     png_read_end( png, info );
 
   DestroyExit:
+    /* even if reading fails with longjmp, rows must be freed */
+    FT_FREE( rows );
     png_destroy_read_struct( &png, &info, NULL );
     FT_Stream_Close( &stream );
 
@@ -445,7 +454,7 @@
 #else /* !(TT_CONFIG_OPTION_EMBEDDED_BITMAPS && FT_CONFIG_OPTION_USE_PNG) */
 
   /* ANSI C doesn't like empty source files */
-  typedef int  _pngshim_dummy;
+  typedef int  pngshim_dummy_;
 
 #endif /* !(TT_CONFIG_OPTION_EMBEDDED_BITMAPS && FT_CONFIG_OPTION_USE_PNG) */
 

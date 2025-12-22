@@ -1,33 +1,33 @@
-/***************************************************************************/
-/*                                                                         */
-/*  otvbase.c                                                              */
-/*                                                                         */
-/*    OpenType BASE table validation (body).                               */
-/*                                                                         */
-/*  Copyright 2004-2017 by                                                 */
-/*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
-/*                                                                         */
-/*  This file is part of the FreeType project, and may only be used,       */
-/*  modified, and distributed under the terms of the FreeType project      */
-/*  license, LICENSE.TXT.  By continuing to use, modify, or distribute     */
-/*  this file you indicate that you have read the license and              */
-/*  understand and accept it fully.                                        */
-/*                                                                         */
-/***************************************************************************/
+/****************************************************************************
+ *
+ * otvbase.c
+ *
+ *   OpenType BASE table validation (body).
+ *
+ * Copyright (C) 2004-2025 by
+ * David Turner, Robert Wilhelm, and Werner Lemberg.
+ *
+ * This file is part of the FreeType project, and may only be used,
+ * modified, and distributed under the terms of the FreeType project
+ * license, LICENSE.TXT.  By continuing to use, modify, or distribute
+ * this file you indicate that you have read the license and
+ * understand and accept it fully.
+ *
+ */
 
 
 #include "otvalid.h"
 #include "otvcommn.h"
 
 
-  /*************************************************************************/
-  /*                                                                       */
-  /* The macro FT_COMPONENT is used in trace mode.  It is an implicit      */
-  /* parameter of the FT_TRACE() and FT_ERROR() macros, used to print/log  */
-  /* messages during execution.                                            */
-  /*                                                                       */
+  /**************************************************************************
+   *
+   * The macro FT_COMPONENT is used in trace mode.  It is an implicit
+   * parameter of the FT_TRACE() and FT_ERROR() macros, used to print/log
+   * messages during execution.
+   */
 #undef  FT_COMPONENT
-#define FT_COMPONENT  trace_otvbase
+#define FT_COMPONENT  otvbase
 
 
   static void
@@ -44,7 +44,7 @@
     BaseCoordFormat = FT_NEXT_USHORT( p );
     p += 2;     /* skip Coordinate */
 
-    OTV_TRACE(( " (format %d)\n", BaseCoordFormat ));
+    OTV_TRACE(( " (format %u)\n", BaseCoordFormat ));
 
     switch ( BaseCoordFormat )
     {
@@ -83,7 +83,7 @@
 
     BaseTagCount = FT_NEXT_USHORT( p );
 
-    OTV_TRACE(( " (BaseTagCount = %d)\n", BaseTagCount ));
+    OTV_TRACE(( " (BaseTagCount = %u)\n", BaseTagCount ));
 
     OTV_LIMIT_CHECK( BaseTagCount * 4 );          /* BaselineTag */
 
@@ -106,7 +106,7 @@
     p             += 2;                     /* skip DefaultIndex */
     BaseCoordCount = FT_NEXT_USHORT( p );
 
-    OTV_TRACE(( " (BaseCoordCount = %d)\n", BaseCoordCount ));
+    OTV_TRACE(( " (BaseCoordCount = %u)\n", BaseCoordCount ));
 
     OTV_LIMIT_CHECK( BaseCoordCount * 2 );
 
@@ -138,7 +138,7 @@
     OTV_OPTIONAL_OFFSET( MaxCoord );
     FeatMinMaxCount = FT_NEXT_USHORT( p );
 
-    OTV_TRACE(( " (FeatMinMaxCount = %d)\n", FeatMinMaxCount ));
+    OTV_TRACE(( " (FeatMinMaxCount = %u)\n", FeatMinMaxCount ));
 
     table_size = FeatMinMaxCount * 8 + 6;
 
@@ -192,7 +192,7 @@
     OTV_OPTIONAL_OFFSET( DefaultMinMax );
     BaseLangSysCount = FT_NEXT_USHORT( p );
 
-    OTV_TRACE(( " (BaseLangSysCount = %d)\n", BaseLangSysCount ));
+    OTV_TRACE(( " (BaseLangSysCount = %u)\n", BaseLangSysCount ));
 
     table_size = BaseLangSysCount * 6 + 6;
 
@@ -231,7 +231,7 @@
     OTV_LIMIT_CHECK( 2 );
     BaseScriptCount = FT_NEXT_USHORT( p );
 
-    OTV_TRACE(( " (BaseScriptCount = %d)\n", BaseScriptCount ));
+    OTV_TRACE(( " (BaseScriptCount = %u)\n", BaseScriptCount ));
 
     OTV_LIMIT_CHECK( BaseScriptCount * 6 );
 
@@ -284,9 +284,12 @@
     OTV_Validator     otvalid = &otvalidrec;
     FT_Bytes          p       = table;
     FT_UInt           table_size;
+    FT_UShort         version;
 
     OTV_OPTIONAL_TABLE( HorizAxis );
     OTV_OPTIONAL_TABLE( VertAxis  );
+
+    OTV_OPTIONAL_TABLE32( itemVarStore );
 
 
     otvalid->root = ftvalid;
@@ -294,12 +297,28 @@
     FT_TRACE3(( "validating BASE table\n" ));
     OTV_INIT;
 
-    OTV_LIMIT_CHECK( 6 );
+    OTV_LIMIT_CHECK( 4 );
 
-    if ( FT_NEXT_ULONG( p ) != 0x10000UL )      /* Version */
+    if ( FT_NEXT_USHORT( p ) != 1 )  /* majorVersion */
       FT_INVALID_FORMAT;
 
-    table_size = 6;
+    version = FT_NEXT_USHORT( p );   /* minorVersion */
+
+    table_size = 8;
+    switch ( version )
+    {
+    case 0:
+      OTV_LIMIT_CHECK( 4 );
+      break;
+
+    case 1:
+      OTV_LIMIT_CHECK( 8 );
+      table_size += 4;
+      break;
+
+    default:
+      FT_INVALID_FORMAT;
+    }
 
     OTV_OPTIONAL_OFFSET( HorizAxis );
     OTV_SIZE_CHECK( HorizAxis );
@@ -310,6 +329,14 @@
     OTV_SIZE_CHECK( VertAxis );
     if ( VertAxis )
       otv_Axis_validate( table + VertAxis, otvalid );
+
+    if ( version > 0 )
+    {
+      OTV_OPTIONAL_OFFSET32( itemVarStore );
+      OTV_SIZE_CHECK32( itemVarStore );
+      if ( itemVarStore )
+        OTV_TRACE(( "  [omitting itemVarStore validation]\n" )); /* XXX */
+    }
 
     FT_TRACE4(( "\n" ));
   }

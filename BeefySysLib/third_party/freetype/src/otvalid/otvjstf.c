@@ -1,19 +1,19 @@
-/***************************************************************************/
-/*                                                                         */
-/*  otvjstf.c                                                              */
-/*                                                                         */
-/*    OpenType JSTF table validation (body).                               */
-/*                                                                         */
-/*  Copyright 2004-2017 by                                                 */
-/*  David Turner, Robert Wilhelm, and Werner Lemberg.                      */
-/*                                                                         */
-/*  This file is part of the FreeType project, and may only be used,       */
-/*  modified, and distributed under the terms of the FreeType project      */
-/*  license, LICENSE.TXT.  By continuing to use, modify, or distribute     */
-/*  this file you indicate that you have read the license and              */
-/*  understand and accept it fully.                                        */
-/*                                                                         */
-/***************************************************************************/
+/****************************************************************************
+ *
+ * otvjstf.c
+ *
+ *   OpenType JSTF table validation (body).
+ *
+ * Copyright (C) 2004-2025 by
+ * David Turner, Robert Wilhelm, and Werner Lemberg.
+ *
+ * This file is part of the FreeType project, and may only be used,
+ * modified, and distributed under the terms of the FreeType project
+ * license, LICENSE.TXT.  By continuing to use, modify, or distribute
+ * this file you indicate that you have read the license and
+ * understand and accept it fully.
+ *
+ */
 
 
 #include "otvalid.h"
@@ -21,14 +21,14 @@
 #include "otvgpos.h"
 
 
-  /*************************************************************************/
-  /*                                                                       */
-  /* The macro FT_COMPONENT is used in trace mode.  It is an implicit      */
-  /* parameter of the FT_TRACE() and FT_ERROR() macros, used to print/log  */
-  /* messages during execution.                                            */
-  /*                                                                       */
+  /**************************************************************************
+   *
+   * The macro FT_COMPONENT is used in trace mode.  It is an implicit
+   * parameter of the FT_TRACE() and FT_ERROR() macros, used to print/log
+   * messages during execution.
+   */
 #undef  FT_COMPONENT
-#define FT_COMPONENT  trace_otvjstf
+#define FT_COMPONENT  otvjstf
 
 
 #define JstfPriorityFunc  otv_JstfPriority_validate
@@ -163,7 +163,7 @@
     OTV_OPTIONAL_OFFSET( DefJstfLangSys );
     JstfLangSysCount = FT_NEXT_USHORT( p );
 
-    OTV_TRACE(( " (JstfLangSysCount = %d)\n", JstfLangSysCount ));
+    OTV_TRACE(( " (JstfLangSysCount = %u)\n", JstfLangSysCount ));
 
     table_size = JstfLangSysCount * 6 + 6;
 
@@ -227,7 +227,7 @@
 
     JstfScriptCount = FT_NEXT_USHORT( p );
 
-    FT_TRACE3(( " (JstfScriptCount = %d)\n", JstfScriptCount ));
+    FT_TRACE3(( " (JstfScriptCount = %u)\n", JstfScriptCount ));
 
     OTV_LIMIT_CHECK( JstfScriptCount * 6 );
 
