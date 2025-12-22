@@ -32,6 +32,7 @@ namespace System.Net
 
 	class Socket
 	{
+
 		public enum SocketError : int32
 		{
 #if BF_PLATFORM_WINDOWS
@@ -44,7 +45,7 @@ namespace System.Net
 			WouldBlock               = 10035,
 			InProgress               = 10036,
 			Already                  = 10037,
-			NotASocket               = 10039,
+			NotASocket               = 10038,
 			DestAddressRequired      = 10039,
 			MessageTooLong           = 10040,
 			WrongProtocolType        = 10041,
