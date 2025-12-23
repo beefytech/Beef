@@ -86,6 +86,10 @@ bool (SDLCALL* bf_SDL_GL_SetAttribute)(SDL_GLAttr attr, int value);
 void* (SDLCALL* bf_SDL_GL_GetProcAddress)(const char* proc);
 bool (SDLCALL* bf_SDL_GL_SwapWindow)(SDL_Window* window);
 
+static SDL_Cursor* (SDLCALL* bf_SDL_GetDefaultCursor)();
+static SDL_Cursor* (SDLCALL* bf_SDL_CreateSystemCursor)(SDL_SystemCursor id);
+static bool (SDLCALL* bf_SDL_SetCursor)(SDL_Cursor* cursor);
+
 struct AdjustedMonRect
 {
 	int mMonCount;
@@ -449,6 +453,10 @@ SdlBFApp::SdlBFApp()
 		BF_GET_SDLPROC(SDL_GL_SetAttribute);
 		BF_GET_SDLPROC(SDL_GL_GetProcAddress);
 		BF_GET_SDLPROC(SDL_GL_SwapWindow);
+
+		BF_GET_SDLPROC(SDL_GetDefaultCursor);
+		BF_GET_SDLPROC(SDL_CreateSystemCursor);
+		BF_GET_SDLPROC(SDL_SetCursor);
 	}
 
 	mDataDir = mInstallDir;
@@ -689,7 +697,24 @@ void SdlBFWindow::GetPosition(int* x, int* y, int* width, int* height, int* clie
 
 void SdlBFApp::PhysSetCursor()
 {
+	static SDL_Cursor* cursors[] =
+	{
+		bf_SDL_GetDefaultCursor(),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT),
 
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NOT_ALLOWED),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NESW_RESIZE),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_WAIT),
+		NULL
+	};
+
+	bf_SDL_SetCursor(cursors[mCursor]);
 }
 
 void SdlBFWindow::SetClientPosition(int x, int y)
