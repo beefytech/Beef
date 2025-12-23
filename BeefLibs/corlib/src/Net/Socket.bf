@@ -861,7 +861,7 @@ namespace System.Net
 			return result;
 		}
 
-		public Result<int> SendTo(void* ptr, int size, SockAddr* to, int toLen, MessageFlags flags = 0)
+		public Result<int, SocketError> SendTo(void* ptr, int size, SockAddr* to, int toLen, MessageFlags flags = 0)
 		{
 			int32 result = sendto(mHandle, ptr, (int32)size, (.)flags, to, (.)toLen);
 			if (result < 0)
@@ -873,9 +873,9 @@ namespace System.Net
 		}
 
 #unwarn
-		public Result<int> SendTo(void* ptr, int size, SockAddr_in to, MessageFlags flags = 0) => SendTo(ptr, size, &to, sizeof(SockAddr_in), flags);
+		public Result<int, SocketError> SendTo(void* ptr, int size, SockAddr_in to, MessageFlags flags = 0) => SendTo(ptr, size, &to, sizeof(SockAddr_in), flags);
 #unwarn
-		public Result<int> SendTo(void* ptr, int size, SockAddr_in6 to, MessageFlags flags = 0) => SendTo(ptr, size, &to, sizeof(SockAddr_in6), flags);
+		public Result<int, SocketError> SendTo(void* ptr, int size, SockAddr_in6 to, MessageFlags flags = 0) => SendTo(ptr, size, &to, sizeof(SockAddr_in6), flags);
 		
 		public void Close()
 		{
