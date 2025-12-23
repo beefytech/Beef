@@ -32,6 +32,7 @@ namespace System.Net
 
 	class Socket
 	{
+
 		public enum SocketError : int32
 		{
 #if BF_PLATFORM_WINDOWS
@@ -44,7 +45,7 @@ namespace System.Net
 			WouldBlock               = 10035,
 			InProgress               = 10036,
 			Already                  = 10037,
-			NotASocket               = 10039,
+			NotASocket               = 10038,
 			DestAddressRequired      = 10039,
 			MessageTooLong           = 10040,
 			WrongProtocolType        = 10041,
@@ -861,7 +862,7 @@ namespace System.Net
 			return result;
 		}
 
-		public Result<int> SendTo(void* ptr, int size, SockAddr* to, int toLen, MessageFlags flags = 0)
+		public Result<int, SocketError> SendTo(void* ptr, int size, SockAddr* to, int toLen, MessageFlags flags = 0)
 		{
 			int32 result = sendto(mHandle, ptr, (int32)size, (.)flags, to, (.)toLen);
 			if (result < 0)
@@ -873,9 +874,9 @@ namespace System.Net
 		}
 
 #unwarn
-		public Result<int> SendTo(void* ptr, int size, SockAddr_in to, MessageFlags flags = 0) => SendTo(ptr, size, &to, sizeof(SockAddr_in), flags);
+		public Result<int, SocketError> SendTo(void* ptr, int size, SockAddr_in to, MessageFlags flags = 0) => SendTo(ptr, size, &to, sizeof(SockAddr_in), flags);
 #unwarn
-		public Result<int> SendTo(void* ptr, int size, SockAddr_in6 to, MessageFlags flags = 0) => SendTo(ptr, size, &to, sizeof(SockAddr_in6), flags);
+		public Result<int, SocketError> SendTo(void* ptr, int size, SockAddr_in6 to, MessageFlags flags = 0) => SendTo(ptr, size, &to, sizeof(SockAddr_in6), flags);
 		
 		public void Close()
 		{
