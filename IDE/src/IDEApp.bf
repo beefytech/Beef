@@ -12868,8 +12868,8 @@ namespace IDE
 #endif
 			}
 
-			Font.AddFontFailEntry("Segoe UI", scope String()..AppendF("{}fonts/NotoSans-Regular.ttf", mInstallDir));
-			Font.AddFontFailEntry("Segoe UI Bold", scope String()..AppendF("{}fonts/NotoSans-Bold.ttf", mInstallDir));
+			Font.AddFontFailEntry("Segoe UI", scope $"Noto Sans\0{mInstallDir}fonts/NotoSans-Regular.ttf");
+			Font.AddFontFailEntry("Segoe UI Bold", scope $"Noto Sans Bold\0{mInstallDir}fonts/NotoSans-Bold.ttf");
 
 			DarkTheme aTheme = new DarkTheme();
 			mSettings.mUISettings.Apply(); // Apply again to set actual theme
