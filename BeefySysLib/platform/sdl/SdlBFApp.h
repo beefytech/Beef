@@ -57,9 +57,11 @@ class SdlBFApp : public BFApp
 {
 public:
 	bool					mInMsgProc;
+	bool 					mIsControlDown;
 	SdlWindowMap			mSdlWindowMap;
 	SdlClipboardData*       mSdlClipboardData;
 	SDL_GLContext           mGLContext;
+
 
 protected:
 	virtual void			Draw() override;
