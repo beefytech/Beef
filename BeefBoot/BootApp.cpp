@@ -818,6 +818,12 @@ bool BootApp::Compile()
 	mDefines.Append("\n");
 	mDefines.Append(BF_PLATFORM_NAME);
 
+#if defined(__aarch64__) || defined(__arm64__) || defined (_M_ARM64)
+	mDefines.Append("\nBF_MACHINE_AARCH64");
+#else
+	mDefines.Append("\nBF_MACHINE_X64");
+#endif
+
 	int ltoType = 0;
 	BfProjectFlags flags = BfProjectFlags_None;
 	if (mIsCERun)

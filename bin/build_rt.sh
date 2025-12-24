@@ -37,7 +37,7 @@ set -e
 if [ ! -f ../BeefySysLib/third_party/libffi/Makefile ]; then
 	echo Building libffi...
 	cd ../BeefySysLib/third_party/libffi
-	./configure
+	./configure --disable-docs
 	make
 	cd $SCRIPTPATH
 fi
