@@ -1,0 +1,43 @@
+name: Build
+on: [push, pull_request]
+jobs:
+  build-windows:
+    name: Build on Windows
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, windows-11-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - run: bin/build.bat
+  build-linux:
+    name: Build on Linux
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, ubuntu-24.04-arm]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          sudo apt-get update
+          sudo apt-get install llvm-19-dev
+      - run: bin/build.sh
+  build-macos:
+    name: Build on macOS
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, macos-15-intel]
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    steps:
+      - uses: actions/checkout@v5
+      - run: |
+          brew update
+          brew install llvm@19
+          brew link llvm@19 --force
+      - run: bin/build.sh
