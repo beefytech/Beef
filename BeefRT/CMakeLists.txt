@@ -284,20 +284,26 @@ elseif (${ANDROID})
         ../BeefySysLib/platform/android/AndroidCommon.cpp
     )
 elseif ((${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64") AND (NOT DEFINED BF_DISABLE_FFI))
+    if(EXISTS "../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu")
+      set(TARGET_TRIPLE_DIR "x86_64-unknown-linux-gnu")
+    elseif(EXISTS "../BeefySysLib/third_party/libffi/86_64-pc-linux-gnu")
+      set(TARGET_TRIPLE_DIR "x86_64-pc-linux-gnu")
+    endif()
+
     file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/linux/BFPlatform.cpp
         ../BeefySysLib/platform/linux/LinuxCommon.cpp
-        ../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu/src/prep_cif.o
-        ../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu/src/types.o
-        ../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu/src/raw_api.o
-        ../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu/src/java_raw_api.o
-        ../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu/src/closures.o
-        ../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu/src/tramp.o
-        ../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu/src/x86/ffi64.o
-        ../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu/src/x86/unix64.o
-        ../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu/src/x86/unix64.o
-        ../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu/src/x86/ffiw64.o
-        ../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu/src/x86/win64.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/prep_cif.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/types.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/raw_api.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/java_raw_api.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/closures.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/tramp.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/ffi64.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/unix64.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/unix64.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/ffiw64.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/win64.o
     )
 else()
   file(GLOB SRC_FILES_OS
