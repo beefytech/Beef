@@ -4021,8 +4021,11 @@ void BfIRCodeGen::HandleNextCmd()
 							mIRBuilder->CreateStore(args[2].mValue, gep);
 						else
 						{
+							auto ptrType = GetTypeMember(args[0].mTypeEx, 0);
+							auto elemType = GetTypeMember(ptrType, 0);
+
 							BfIRTypedValue result;
-							result.mTypeEx = GetTypeMember(args[0].mTypeEx, 0);
+							result.mTypeEx = elemType;
 							result.mValue = mIRBuilder->CreateLoad(result.mTypeEx->mLLVMType, gep);
 							SetResult(curId, result);
 						}

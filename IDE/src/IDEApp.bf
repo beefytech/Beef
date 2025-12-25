@@ -143,6 +143,12 @@ namespace IDE
 		public static readonly String sPlatform32Name = "Unknown32";
 #endif
 
+#if BF_MACHINE_AARCH64
+		public static readonly String sArch64Name = "aarch64";
+#else
+		public static readonly String sArch64Name = "x86_64";
+#endif
+
 		public static bool sExitTest;
 
 		public Verbosity mVerbosity = .Default;
