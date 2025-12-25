@@ -55,7 +55,7 @@ if (${IOS})
     ../BeefySysLib/
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include
-    ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/include
+    ../BeefySysLib/third_party/libffi/aarch64-apple-ios/include
     ../
     ../extern
     ../extern/llvm/include
@@ -240,13 +240,14 @@ if (${IOS})
     file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/darwin/BFPlatform.cpp
         ../BeefySysLib/platform/darwin/DarwinCommon.cpp
-        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/.libs/prep_cif.o
-        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/.libs/types.o
-        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/.libs/raw_api.o
-        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/.libs/java_raw_api.o
-        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/.libs/closures.o
-        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/aarch64/.libs/ffi.o
-        ../BeefySysLib/third_party/libffi/build_iphoneos-arm64/src/aarch64/.libs/sysv.o
+        ../BeefySysLib/third_party/libffi/aarch64-apple-ios/src/prep_cif.o
+        ../BeefySysLib/third_party/libffi/aarch64-apple-ios/src/types.o
+        ../BeefySysLib/third_party/libffi/aarch64-apple-ios/src/raw_api.o
+        ../BeefySysLib/third_party/libffi/aarch64-apple-ios/src/java_raw_api.o
+        ../BeefySysLib/third_party/libffi/aarch64-apple-ios/src/closures.o
+        ../BeefySysLib/third_party/libffi/aarch64-apple-ios/src/tramp.o
+        ../BeefySysLib/third_party/libffi/aarch64-apple-ios/src/aarch64/ffi.o
+        ../BeefySysLib/third_party/libffi/aarch64-apple-ios/src/aarch64/sysv.o
     )
     # Simulator
     # src/prep_cif.o src/types.o src/raw_api.o src/java_raw_api.o src/closures.o src/x86/ffi64.o src/x86/unix64.o src/x86/ffiw64.o src/x86/win64.o
@@ -275,7 +276,9 @@ elseif (${APPLE})
         ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/closures.o
         ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/tramp.o
         ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/x86/ffi64.o
-        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/x86/darwin64.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/x86/unix64.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/x86/ffiw64.o
+        ../BeefySysLib/third_party/libffi/x86_64-apple-darwin${CMAKE_HOST_SYSTEM_VERSION}/src/x86/win64.o
     )
   endif()
 elseif (${ANDROID})
@@ -300,7 +303,6 @@ elseif ((${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64") AND (NOT DEFINED BF_D
         ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/closures.o
         ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/tramp.o
         ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/ffi64.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/unix64.o
         ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/unix64.o
         ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/ffiw64.o
         ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/win64.o
