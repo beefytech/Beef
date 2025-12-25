@@ -289,7 +289,7 @@ elseif (${ANDROID})
 elseif ((${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64") AND (NOT DEFINED BF_DISABLE_FFI))
     if(EXISTS "../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu")
       set(TARGET_TRIPLE_DIR "x86_64-unknown-linux-gnu")
-    elseif(EXISTS "../BeefySysLib/third_party/libffi/86_64-pc-linux-gnu")
+    elseif(EXISTS "../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu")
       set(TARGET_TRIPLE_DIR "x86_64-pc-linux-gnu")
     endif()
 
