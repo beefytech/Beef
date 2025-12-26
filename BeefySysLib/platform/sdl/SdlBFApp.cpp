@@ -52,6 +52,7 @@ bool (SDLCALL* bf_SDL_SetWindowSize)(SDL_Window* window, int w, int h);
 bool (SDLCALL* bf_SDL_SetWindowMinimumSize)(SDL_Window* window, int min_w, int min_h);
 bool (SDLCALL* bf_SDL_SetWindowTitle)(SDL_Window* window, const char* title);
 bool (SDLCALL* bf_SDL_SetWindowIcon)(SDL_Window* window, SDL_Surface* icon);
+SDL_Window* (SDLCALL* bf_SDL_GetMouseFocus)();
 
 bool (SDLCALL* bf_SDL_ShowCursor)(void);
 bool (SDLCALL* bf_SDL_HideCursor)(void);
@@ -283,6 +284,18 @@ bool SdlBFWindow::TryClose()
 	return mSDLWindow == NULL;
 }
 
+static void RefreshMouseVisibility(SdlBFWindow* window)
+{
+	if (window->mIsMouseVisible)
+	{
+		bf_SDL_ShowCursor();
+	}
+	else 
+	{
+		bf_SDL_HideCursor();
+	}
+}
+
 static int SDLConvertKeyCode(SDL_Keycode scanCode)
 {
 	if ((scanCode >= SDLK_A) && (scanCode <= SDLK_Z))
@@ -420,6 +433,7 @@ SdlBFApp::SdlBFApp()
 		BF_GET_SDLPROC(SDL_SetWindowMinimumSize);
 		BF_GET_SDLPROC(SDL_SetWindowTitle);
 		BF_GET_SDLPROC(SDL_SetWindowIcon);
+		BF_GET_SDLPROC(SDL_GetMouseFocus);
 
 		BF_GET_SDLPROC(SDL_ShowCursor);
 		BF_GET_SDLPROC(SDL_HideCursor);
@@ -558,19 +572,21 @@ void SdlBFApp::Run()
 					if(sdlBFWindow != NULL)
 						sdlBFWindow->mMouseWheelFunc(sdlBFWindow, sdlEvent.wheel.mouse_x, sdlEvent.wheel.mouse_y, sdlEvent.wheel.x, sdlEvent.wheel.y * (float)ucNumLines);
 				}
+				break;
 			case SDL_EVENT_WINDOW_MOUSE_ENTER:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
 					if(sdlBFWindow != NULL)
-						if (sdlBFWindow->mIsMouseVisible)
-						{
-							bf_SDL_ShowCursor();
-						}
-						else 
-						{
-							bf_SDL_HideCursor();
-						}
+						RefreshMouseVisibility(sdlBFWindow);
 				}
+				break;
+			case SDL_EVENT_WINDOW_DESTROYED:
+				{
+					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(bf_SDL_GetWindowID(bf_SDL_GetMouseFocus()));
+					if(sdlBFWindow != NULL)
+						RefreshMouseVisibility(sdlBFWindow);
+				}
+				break;
 			case SDL_EVENT_KEY_DOWN:
 				{
 					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
