@@ -752,13 +752,24 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_ShutdownCrashCatcher()
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
 {
+#ifdef BF_PLATFORM_DARWIN
+    char path[4096];
+    uint32_t size = sizeof(path);
+    if (_NSGetExecutablePath(path, &size) == 0)
+        gExePath = path;
+
+    // When when running with a './file', we end up with an annoying '/./' in our path
+    gExePath.Replace("/./", "/");
+#else
     char exePath[PATH_MAX] = { 0 };
     int nchar = readlink("/proc/self/exe", exePath, PATH_MAX);
     if (nchar > 0)
     {
         gExePath = exePath;
     }
-    else
+#endif
+
+    if (gExePath.IsEmpty())
     {
         char* relPath = argv[0];
         char* cwd = getcwd(NULL, 0);
@@ -898,19 +909,6 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetCommandLine(char* outStr, int* inOutSt
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetExecutablePath(char* outStr, int* inOutStrSize, BfpSystemResult* outResult)
 {
-#ifdef BF_PLATFORM_DARWIN
-    if (gExePath.IsEmpty())
-    {
-        char path[4096];
-        uint32_t size = sizeof(path);
-        if (_NSGetExecutablePath(path, &size) == 0)
-            gExePath = path;
-
-        // When when running with a './file', we end up with an annoying '/./' in our path
-        gExePath.Replace("/./", "/");
-    }
-#endif
-
 	TryStringOut(gExePath, outStr, inOutStrSize, (BfpResult*)outResult);
 }
 
