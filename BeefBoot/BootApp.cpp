@@ -174,7 +174,11 @@ BootApp::BootApp()
 		mTargetTriple = "x86_64-apple-macosx10.8.0";
 	#endif
 #else
-	mTargetTriple = "x86_64-unknown-linux-gnu";
+	#if defined(__aarch64__) || defined(__arm64__)
+		mTargetTriple = "aarch64-unknown-linux-gnu";
+	#else
+		mTargetTriple = "x86_64-unknown-linux-gnu";
+	#endif
 #endif
 	
 	GetConsoleColor(gConsoleFGColor, gConsoleBGColor);
