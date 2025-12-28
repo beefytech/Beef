@@ -543,10 +543,21 @@ namespace System.Reflection
 			FFIType* ffiRetType = null;
 			if (retType.IsStruct)
 			{
+#if BF_MACHINE_AARCH64
+				let ffiRetElements = scope:: List<FFIType*>(8);
+				for (let fi in retType.GetFields(.Instance | .DeclaredOnly))
+				{
+					let ffiType = GetFFIType!::(fi.FieldType);
+					ffiRetElements.Add(ffiType);
+				}
+				ffiRetElements.Add(null);
+				ffiRetType = scope::FFIType(Math.Max(24, retType.Size), retType.Align, .Struct, ffiRetElements.Ptr); // Force use of indirect return
+#else
 				ffiRetType = &FFIType.Void;
 				ffiParamList.Add(&FFIType.Pointer);
 				ffiArgList.Add(&variantData);
 				retData = &unusedRetVal;
+#endif
 			}
 			else
 				ffiRetType = GetFFIType!::(retType);
@@ -947,10 +958,21 @@ namespace System.Reflection
 			FFIType* ffiRetType = null;
 			if (retType.IsStruct)
 			{
+#if BF_MACHINE_AARCH64
+				let ffiRetElements = scope:: List<FFIType*>(8);
+				for (let fi in retType.GetFields(.Instance | .DeclaredOnly))
+				{
+					let ffiType = GetFFIType!::(fi.FieldType);
+					ffiRetElements.Add(ffiType);
+				}
+				ffiRetElements.Add(null);
+				ffiRetType = scope::FFIType(Math.Max(24, retType.Size), retType.Align, .Struct, ffiRetElements.Ptr); // Force use of indirect return
+#else
 				ffiRetType = &FFIType.Void;
 				ffiParamList.Add(&FFIType.Pointer);
 				ffiArgList.Add(&variantData);
 				retData = &unusedRetVal;
+#endif
 			}
 			else
 				ffiRetType = GetFFIType!::(retType);
