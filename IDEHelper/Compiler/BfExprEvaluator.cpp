@@ -18667,17 +18667,20 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 				mModule->UpdateSrcPos(methodDeclaration->mNameNode);
 				mModule->SetIllegalSrcPos();
 
-				auto refType = mModule->CreateRefType(newLocalVar->mResolvedType);
-				auto allocaVal = mModule->CreateAlloca(refType);
-
-				mModule->mBfIRBuilder->CreateStore(newLocalVar->mAddr, allocaVal);
-
-				if (!mModule->mBfIRBuilder->mIgnoreWrites)
+				if (!newLocalVar->mResolvedType->IsValuelessType())
 				{
-					auto diType = mModule->mBfIRBuilder->DbgGetType(refType);
-					auto diVariable = mModule->mBfIRBuilder->DbgCreateAutoVariable(mModule->mCurMethodState->mCurScope->mDIScope,
-						newLocalVar->mName, mModule->mCurFilePosition.mFileInstance->mDIFile, mModule->mCurFilePosition.mCurLine, diType);
-					mModule->mBfIRBuilder->DbgInsertDeclare(allocaVal, diVariable);
+					auto refType = mModule->CreateRefType(newLocalVar->mResolvedType);
+					auto allocaVal = mModule->CreateAlloca(refType);
+
+					mModule->mBfIRBuilder->CreateStore(newLocalVar->mAddr, allocaVal);
+
+					if (!mModule->mBfIRBuilder->mIgnoreWrites)
+					{
+						auto diType = mModule->mBfIRBuilder->DbgGetType(refType);
+						auto diVariable = mModule->mBfIRBuilder->DbgCreateAutoVariable(mModule->mCurMethodState->mCurScope->mDIScope,
+							newLocalVar->mName, mModule->mCurFilePosition.mFileInstance->mDIFile, mModule->mCurFilePosition.mCurLine, diType);
+						mModule->mBfIRBuilder->DbgInsertDeclare(allocaVal, diVariable);
+					}
 				}
 			}
 			else if (newLocalVar->mValue)
