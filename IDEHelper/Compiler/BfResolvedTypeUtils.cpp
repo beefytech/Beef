@@ -2197,6 +2197,15 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 				bool writeOutCode = (typeUsage != BfTypeUsage_Return_NonStatic) && (typeUsage != BfTypeUsage_Return_Static);
 
 				if ((types[0] == BfTypeCode_Float) &&
+					(types[1] == BfTypeCode_None)  &&
+				    (types[2] == BfTypeCode_None))
+				{
+					if ((outTypeCode != NULL) && (writeOutCode))
+						*outTypeCode = BfTypeCode_FloatX1;
+					return true;
+				}
+
+				if ((types[0] == BfTypeCode_Float) &&
 					(types[1] == BfTypeCode_Float) &&
 					(types[2] == BfTypeCode_None))
 				{
@@ -2223,6 +2232,14 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 				{
 					if ((outTypeCode != NULL) && (writeOutCode))
 						*outTypeCode = BfTypeCode_FloatX4;
+					return true;
+				}
+
+				if ((types[0] == BfTypeCode_Double) &&
+					(types[2] == BfTypeCode_None))
+				{
+					if ((outTypeCode != NULL) && (writeOutCode))
+						*outTypeCode = BfTypeCode_DoubleX1;
 					return true;
 				}
 
