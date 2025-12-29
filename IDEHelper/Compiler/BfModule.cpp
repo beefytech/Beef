@@ -18264,7 +18264,7 @@ void BfModule::EmitDtorBody()
 					else
 					{
 						localDef->mAddr = value;
-						if ((mBfIRBuilder->DbgHasInfo()) && (!IsTargetingBeefBackend()))
+						if ((mBfIRBuilder->DbgHasInfo()) && (!IsTargetingBeefBackend()) && (!fieldInst->mResolvedType->IsValuelessType()))
 						{
 							// Create another pointer indirection, a ref to the gep
 							auto refFieldType = CreateRefType(fieldInst->mResolvedType);

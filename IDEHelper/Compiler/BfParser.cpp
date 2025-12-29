@@ -3019,7 +3019,7 @@ void BfParser::NextToken(int endIdx, bool outerIsInterpolate, bool disablePrepro
 						}
 						mTokenEnd = mSrcIdx;
 						mLiteral.mTypeCode = BfTypeCode_UIntPtr;
-						mLiteral.mUInt32 = (uint32)val;
+						mLiteral.mUInt64 = (uint32)val;
 						if ((hadOverflow) || ((uint64)val != (uint64)mLiteral.mUInt32))
 							mPassInstance->FailAt("Value doesn't fit into uint32", mSourceData, mTokenStart, mSrcIdx - mTokenStart);
 						mSyntaxToken = BfSyntaxToken_Literal;
