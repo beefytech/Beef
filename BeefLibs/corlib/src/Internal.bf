@@ -32,7 +32,7 @@ namespace System
 	[CRepr]
 	struct VarArgs
 	{
-#if BF_PLATFORM_WINDOWS || BF_PLATFORM_WASM
+#if BF_PLATFORM_WINDOWS || BF_PLATFORM_WASM || (BF_PLATFORM_MACOS && BF_MACHINE_AARCH64)
 		void* mVAList;
 #else
 		int[5] mVAList; // Conservative size for va_list
@@ -67,7 +67,7 @@ namespace System
 
 		public void* ToVAList() mut
 		{
-#if BF_PLATFORM_WINDOWS || BF_PLATFORM_WASM
+#if BF_PLATFORM_WINDOWS || BF_PLATFORM_WASM || (BF_PLATFORM_MACOS && BF_MACHINE_AARCH64)
 			return mVAList;
 #else
 			return &mVAList;
