@@ -7261,7 +7261,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 		if (methodInstance->mIsIntrinsic)
 			break;
 
-		if ((sret != NULL) && (argIdx == GetStructRetIdx(methodInstance)))
+		if (((sret != NULL) || (isDelegateThunk)) && (argIdx == GetStructRetIdx(methodInstance, ((callFlags & BfCreateCallFlags_DelegateThunkStatic) != 0))))
 		{
 			mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_StructRet);
 			argIdx++;
