@@ -1706,6 +1706,7 @@ namespace System
 
 		#region public number formatting methods
 
+#if !BF_RUNTIME_DISABLE
 		static LazyTLS<NumberFormatter> threadNumberFormatter = new .(
 			new () => new NumberFormatter(CultureInfo.CurrentCulture),
 			new (nf) => { delete nf; }) ~ delete _;
@@ -1713,12 +1714,14 @@ namespace System
 		static LazyTLS<NumberFormatter> userNumberFormatter = new .(
 			new () => new NumberFormatter(null),
 			new (nf) => { delete nf; }) ~ delete _;
+#endif
 
 		[ThreadStatic]
 		static NumberFormatter userFormatProvider;
 
 		private static NumberFormatter GetInstance(IFormatProvider fp)
 		{
+#if !BF_RUNTIME_DISABLE
 			if (fp != null)
 			{
 				return userNumberFormatter.Value;
@@ -1729,6 +1732,9 @@ namespace System
 				nf.CurrentCulture = CultureInfo.CurrentCulture;
 				return nf;
 			}
+#else
+			Runtime.NotImplemented();
+#endif
 		}
 
 		public static void NumberToString (StringView format, uint32 value, IFormatProvider fp, String outString)
