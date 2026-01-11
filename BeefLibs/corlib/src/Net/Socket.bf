@@ -463,13 +463,13 @@ namespace System.Net
 		}
 
 #if BF_PLATFORM_WINDOWS
-		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
+		[Import("Ws2_32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int32 WSAStartup(uint16 versionRequired, WSAData* wsaData);
 		
-		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
+		[Import("Ws2_32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int32 WSACleanup();
 
-		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
+		[Import("Ws2_32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int32 WSAGetLastError();
 #elif BF_PLATFORM_LINUX
 		[LinkName("__errno_location")]
@@ -507,7 +507,7 @@ namespace System.Net
 		static extern int32 connect(HSocket s, SockAddr* name, int32 nameLen);
     
 #if BF_PLATFORM_WINDOWS
-		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
+		[Import("Ws2_32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int32 closesocket(HSocket s);
 #else
 		[CLink, CallingConvention(.Stdcall)]
