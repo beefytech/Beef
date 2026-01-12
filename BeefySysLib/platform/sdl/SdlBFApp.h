@@ -46,8 +46,8 @@ public:
 
 	virtual void			ModalsRemoved() override;
 
-	virtual void			Show(ShowKind showKind) {}
-	virtual void			SetForeground() override {};
+	virtual void			Show(ShowKind showKind) override;
+	virtual void			SetForeground() override;
 };
 
 typedef Dictionary<uint32, SdlBFWindow*> SdlWindowMap;
@@ -61,7 +61,7 @@ public:
 	SdlWindowMap			mSdlWindowMap;
 	SdlClipboardData*       mSdlClipboardData;
 	SDL_GLContext           mGLContext;
-
+	SDL_Window*				mGLContextWindow;
 
 protected:
 	virtual void			Draw() override;
@@ -69,6 +69,7 @@ protected:
 
 	const char*				GetClipboardFormat(const StringImpl& format);
 	SdlBFWindow*			GetSdlWindowFromId(uint32 id);
+	void					ProcessSDLEvents();
 
 public:
 	SdlBFApp();

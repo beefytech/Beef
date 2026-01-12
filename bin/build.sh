@@ -19,7 +19,6 @@ do
 	if [[ $i == "sdl" ]]; then
 		echo "Using SDL"
 		USE_SDL="-DBF_ENABLE_SDL=1"
-		SDL_LINKOPTS="-lGL"
 	fi
 
 	if [[ $i == "no_ffi" ]]; then
@@ -147,7 +146,7 @@ ln -s -f $ROOTPATH/jbuild/Release/bin/libIDEHelper.a ../../BeefLibs/Beefy2D/dist
 ### DEBUG ###
 
 echo Building BeefBuild_bootd
-../../jbuild_d/Debug/bin/BeefBoot --out="BeefBuild_bootd" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --define=DEBUG --startup=BeefBuild.Program --linkparams="./libBeefRT_d.a ./libIDEHelper_d.a ./libBeefySysLib_d.a ./libhunspell.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs_d.txt) $SDL_LINKOPTS $LINKOPTS"
+../../jbuild_d/Debug/bin/BeefBoot --out="BeefBuild_bootd" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --define=DEBUG --startup=BeefBuild.Program --linkparams="./libBeefRT_d.a ./libIDEHelper_d.a ./libBeefySysLib_d.a ./libhunspell.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs_d.txt) $LINKOPTS"
 echo Building BeefBuild_d
 ./BeefBuild_bootd -clean -proddir=../../BeefBuild -config=Debug
 echo Testing IDEHelper/Tests in BeefBuild_d
@@ -156,7 +155,7 @@ echo Testing IDEHelper/Tests in BeefBuild_d
 ### RELEASE ###
 
 echo Building BeefBuild_boot
-../../jbuild/Release/bin/BeefBoot --out="BeefBuild_boot" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --startup=BeefBuild.Program --linkparams="./libBeefRT.a ./libIDEHelper.a ./libBeefySysLib.a ./libhunspell.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs.txt) $SDL_LINKOPTS $LINKOPTS"
+../../jbuild/Release/bin/BeefBoot --out="BeefBuild_boot" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --startup=BeefBuild.Program --linkparams="./libBeefRT.a ./libIDEHelper.a ./libBeefySysLib.a ./libhunspell.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs.txt) $LINKOPTS"
 echo Building BeefBuild
 ./BeefBuild_boot -clean -proddir=../../BeefBuild -config=Release
 echo Testing IDEHelper/Tests in BeefBuild
