@@ -3533,6 +3533,7 @@ void BeMCContext::CreateCondBr(BeMCBlock* mcBlock, BeMCOperand& testVal, const B
 {
 	if (testVal.IsImmediate())
 	{
+		mcBlock->mRemovedCondBr = true;
 		if (testVal.mImmediate != 0)
 			AllocInst(BeMCInstKind_Br, trueBlock);
 		else
@@ -3645,7 +3646,13 @@ void BeMCContext::CreateCondBr(BeMCBlock* mcBlock, BeMCOperand& testVal, const B
 
 				_CheckBlock(phiVal.mBlockFrom);
 
-				BEMC_ASSERT(found);
+				if (!found)
+				{
+					// Probably optimized out
+					if (!phiVal.mBlockFrom->mRemovedCondBr)
+						Fail("Invalid PHI from block");
+					continue;
+				}
 			}
 
 			if (isFalseCmpResult)
