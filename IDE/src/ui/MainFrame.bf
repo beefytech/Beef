@@ -15,7 +15,7 @@ namespace IDE.ui
         public StatusBar mStatusBar;
         public DarkDockingFrame mDockingFrame;
 
-#if BF_PLATFORM_LINUX
+#if !BF_PLATFORM_WINDOWS
 		public MenuBar mMenuBar;
 #endif
 
@@ -25,7 +25,7 @@ namespace IDE.ui
             AddWidget(mStatusBar);
             mDockingFrame = (DarkDockingFrame)ThemeFactory.mDefault.CreateDockingFrame();
             AddWidget(mDockingFrame);
-#if BF_PLATFORM_LINUX
+#if !BF_PLATFORM_WINDOWS
 			mMenuBar = new MenuBar();
 			AddWidget(mMenuBar);
 #endif
@@ -50,7 +50,7 @@ namespace IDE.ui
             base.Resize(x, y, width, height);
 
 			int32 statusHeight = GS!(20);
-#if BF_PLATFORM_LINUX
+#if !BF_PLATFORM_WINDOWS
 			int32 menuHeight = GS!(20);
 			mDockingFrame.Resize(0, menuHeight, width, height - statusHeight - menuHeight);
 			mMenuBar.Resize(0, 0, width, menuHeight);
