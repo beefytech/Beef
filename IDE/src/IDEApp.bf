@@ -6063,7 +6063,13 @@ namespace IDE
 		{
 			scope AutoBeefPerf("IDEApp.CreateMenu");
 
-			SysMenu root = mMainWindow.mSysMenu;
+			SysMenu root;
+#if BF_PLATFORM_WINDOWS
+			root = mMainWindow.mSysMenu;
+#else
+			root = mMainFrame.mMenuBar.mSysMenuRoot;
+			defer mMainFrame.RehupSize();
+#endif
 
 			String keyStr = scope String();
 
@@ -6147,11 +6153,18 @@ namespace IDE
 
 			void AddLineEndingKind(String name, LineEndingKind lineEndingKind)
 			{
+				bool allowLast;
+#if !BF_PLATFORM_WINDOWS
+				allowLast = true;
+#else
+				allowLast = false;
+#endif
+
 				lineEndingMenu.AddMenuItem(name, null,
 					new (menu) =>
 					{
 						var sysMenu = (SysMenu)menu;
-						var sourceViewPanel = GetActiveSourceViewPanel();
+						var sourceViewPanel = GetActiveSourceViewPanel(allowLast);
 						if (sourceViewPanel != null)
 						{
 							if (sourceViewPanel.mEditData.mLineEndingKind != lineEndingKind)
@@ -6166,7 +6179,7 @@ namespace IDE
 					{
 						var sysMenu = (SysMenu)menu;
 
-						var sourceViewPanel = GetActiveSourceViewPanel();
+						var sourceViewPanel = GetActiveSourceViewPanel(allowLast);
 						if (sourceViewPanel != null)
 						{
 							sysMenu.Modify(null, null, null, true, (sourceViewPanel.mEditData.mLineEndingKind == lineEndingKind) ? 1 : 0, true);
