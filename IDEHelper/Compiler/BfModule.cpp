@@ -18264,7 +18264,7 @@ void BfModule::EmitDtorBody()
 					else
 					{
 						localDef->mAddr = value;
-						if ((mBfIRBuilder->DbgHasInfo()) && (!IsTargetingBeefBackend()))
+						if ((mBfIRBuilder->DbgHasInfo()) && (!IsTargetingBeefBackend()) && (!fieldInst->mResolvedType->IsValuelessType()))
 						{
 							// Create another pointer indirection, a ref to the gep
 							auto refFieldType = CreateRefType(fieldInst->mResolvedType);
@@ -25302,6 +25302,14 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 				typeState.mCurTypeDef = methodDef->mDeclaringType;
 				//typeState.mCurMethodDef = methodDef;
 				SetAndRestoreValue<BfTypeState*> prevTypeState(mContext->mCurTypeState, &typeState);
+
+				// Strip 'in'
+				if (resolvedParamType->IsRef())
+				{					
+ 					auto refType = (BfRefType*)resolvedParamType;
+ 					if (refType->mRefKind == BfRefType::RefKind_In) 					
+						resolvedParamType = resolvedParamType->GetUnderlyingType();  					
+				}
 
 				BfConstResolver constResolver(this);
 				defaultValue = constResolver.Resolve(paramDef->mParamDeclaration->mInitializer, resolvedParamType, (BfConstResolveFlags)(BfConstResolveFlag_NoCast | BfConstResolveFlag_AllowGlobalVariable));

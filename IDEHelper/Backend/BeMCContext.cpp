@@ -3533,6 +3533,7 @@ void BeMCContext::CreateCondBr(BeMCBlock* mcBlock, BeMCOperand& testVal, const B
 {
 	if (testVal.IsImmediate())
 	{
+		mcBlock->mRemovedCondBr = true;
 		if (testVal.mImmediate != 0)
 			AllocInst(BeMCInstKind_Br, trueBlock);
 		else
@@ -3645,7 +3646,13 @@ void BeMCContext::CreateCondBr(BeMCBlock* mcBlock, BeMCOperand& testVal, const B
 
 				_CheckBlock(phiVal.mBlockFrom);
 
-				BEMC_ASSERT(found);
+				if (!found)
+				{
+					// Probably optimized out
+					if (!phiVal.mBlockFrom->mRemovedCondBr)
+						Fail("Invalid PHI from block");
+					continue;
+				}
 			}
 
 			if (isFalseCmpResult)
@@ -11468,7 +11475,14 @@ bool BeMCContext::DoJumpRemovePass()
 
 void BeMCContext::DoRegFinalization()
 {
-	SizedArray<int, 32> savedVolatileVRegs;
+	struct SaveEntry
+	{
+		int mVRegIdx;
+		bool mIsSaved;
+		bool mWantRestore;
+	};
+
+	SizedArray<SaveEntry, 32> savedVolatileVRegs;
 
 	mUsedRegs.Clear();
 
@@ -11645,14 +11659,23 @@ void BeMCContext::DoRegFinalization()
 
 					auto vregInfo = mVRegInfo[checkVRegIdx];
 					if (vregInfo->mReg != X64Reg_None)
-					{
-						// Do we specify a particular reg, or just all volatiles?
-						if ((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg != GetFullRegister(vregInfo->mReg)))
-							continue;
+					{	
+						auto vregFullRegister = GetFullRegister(vregInfo->mReg);
 
-						if (!mLivenessContext.IsSet(restoreInst->mLiveness, liveVRegIdx))
-						{
-							// This vreg doesn't survive until the PreserveRegs -- it's probably used for params or the call addr
+						// Do we specify a particular reg, or just all volatiles?
+						if ((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg != vregFullRegister))
+							continue;
+						
+						bool potentialScratchReg =
+							(vregFullRegister == X64Reg_XMM5_f32) ||
+							(vregFullRegister == X64Reg_XMM5_f64) ||
+							(vregFullRegister == X64Reg_R11);
+
+						// If this vreg doesn't survive until the PreserveRegs then it's probably used for params or the call addr
+						bool vregPersists = mLivenessContext.IsSet(restoreInst->mLiveness, liveVRegIdx);
+
+						if ((!potentialScratchReg) && (!vregPersists))
+						{							
 							continue;
 						}
 
@@ -11667,12 +11690,20 @@ void BeMCContext::DoRegFinalization()
 								vregInfo->mVolatileVRegSave = savedVReg.mVRegIdx;
 							}
 
-							savedVolatileVRegs.push_back(checkVRegIdx);
-							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromVReg(vregInfo->mVolatileVRegSave), GetVReg(checkVRegIdx), insertIdx++);
-							if (insertIdx > instEnum.mReadIdx)
-								instEnum.Next();
-							else
-								instEnum.mWriteIdx++;
+							SaveEntry saveEntry;
+							saveEntry.mVRegIdx = checkVRegIdx;
+							saveEntry.mIsSaved = vregPersists;
+							saveEntry.mWantRestore = vregPersists;
+
+							savedVolatileVRegs.push_back(saveEntry);
+							if (saveEntry.mIsSaved)
+							{
+								AllocInst(BeMCInstKind_Mov, BeMCOperand::FromVReg(vregInfo->mVolatileVRegSave), GetVReg(checkVRegIdx), insertIdx++);
+								if (insertIdx > instEnum.mReadIdx)
+									instEnum.Next();
+								else
+									instEnum.mWriteIdx++;
+							}
 						}
 					}
 				}
@@ -11845,12 +11876,20 @@ void BeMCContext::DoRegFinalization()
 													scratchReg = X64Reg_R11;
 
 												int volatileVRegSave = -1;
-												for (auto vregIdx : savedVolatileVRegs)
+												for (auto& saveInfo : savedVolatileVRegs)
 												{
+													int vregIdx = saveInfo.mVRegIdx;
 													auto vregInfo = mVRegInfo[vregIdx];
 													if (GetFullRegister(vregInfo->mReg) == scratchReg)
 													{
 														volatileVRegSave = vregInfo->mVolatileVRegSave;
+
+														if (!saveInfo.mIsSaved)
+														{															
+															saveInfo.mIsSaved = true;
+															AllocInst(BeMCInstKind_Mov, BeMCOperand::FromVReg(volatileVRegSave), BeMCOperand::FromReg(scratchReg), instIdx++);
+															instEndIdx++;
+														}
 													}
 												}
 
@@ -11890,8 +11929,11 @@ void BeMCContext::DoRegFinalization()
 
 				if (doRestore)
 				{
-					for (auto vregIdx : savedVolatileVRegs)
+					for (auto& saveInfo : savedVolatileVRegs)
 					{
+						if (!saveInfo.mWantRestore)
+							continue;
+						int vregIdx = saveInfo.mVRegIdx;
 						auto vregInfo = mVRegInfo[vregIdx];
 						int insertIdx = instEnum.mWriteIdx;
 						AllocInst(BeMCInstKind_Mov, GetVReg(vregIdx), BeMCOperand::FromVReg(vregInfo->mVolatileVRegSave), insertIdx++);

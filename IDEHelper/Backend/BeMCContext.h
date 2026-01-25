@@ -660,6 +660,7 @@ public:
 	int mMaxDeclBlockId; // If blocks merge, this is the highest index
 	bool mIsLooped;
 	bool mHasFakeBr;
+	bool mRemovedCondBr;
 	BeVTrackingList* mSuccLiveness;
 	BeVTrackingList* mSuccVRegsInitialized;
 	BeVTrackingList* mPredVRegsInitialized;
@@ -673,6 +674,7 @@ public:
 		mLabelIdx = -1;
 		mIsLooped = false;
 		mHasFakeBr = false;
+		mRemovedCondBr = false;
 		mBlockIdx = -1;
 		mMaxDeclBlockId = -1;
 		mSuccLiveness = NULL;

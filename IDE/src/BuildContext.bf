@@ -775,7 +775,7 @@ namespace IDE
 						linkLine.Append(" -pthread");
 
 					if (workspaceOptions.mEmitDebugInfo != .No)
-						linkLine.Append(" -gseparate-dwarf");
+						linkLine.Append(" -gseparate-dwarf -gsource-map");
 
 					if (!workspaceOptions.mRuntimeChecks)
 						linkLine.Append(" -s ASSERTIONS=0");

@@ -387,6 +387,7 @@ void BfCodeGenThread::RunLoop()
 				BeHashContext hashCtx;
 				hashCtx.Mixin(request->mOptions.mHash);
 				beIRCodeGen->Hash(hashCtx);
+				hashCtx.Flush();
 				auto newOrderedHash = hashCtx.Finish128();
 				BfLogX(2, "Ordered hash for %s New:%s Old:%s\n", cacheFileName.c_str(), newOrderedHash.ToString().c_str(), orderedHash.ToString().c_str());
 				hasCacheMatch = newOrderedHash == orderedHash;

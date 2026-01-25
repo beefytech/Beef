@@ -33,15 +33,27 @@ enum BeTypeCode
 	BeTypeCode_COUNT
 };
 
+class BeHashble;
+
 class BeHashContext : public HashContext
 {
 public:
+	Array<BeHashble*> mDeferred;
 	int mCurHashId;
+	int mDepth;
 
 	BeHashContext()
 	{
 		mCurHashId = 1;
+		mDepth = 0;
 	}
+
+	~BeHashContext()
+	{
+		BF_ASSERT(mDeferred.IsEmpty());
+	}
+
+	void Flush();
 };
 
 class BeHashble
@@ -58,14 +70,22 @@ public:
 
 	void HashReference(BeHashContext& hashCtx)
 	{
+		hashCtx.mDepth++;
+
 		if (mHashId == -1)
 		{
 			mHashId = hashCtx.mCurHashId++;
 			hashCtx.Mixin(mHashId);
-			HashContent(hashCtx);
+
+			if (hashCtx.mDepth > 128)
+				hashCtx.mDeferred.Add(this);
+			else
+				HashContent(hashCtx);
 		}
 		else
 			hashCtx.Mixin(mHashId);
+
+		hashCtx.mDepth--;
 	}
 };
 

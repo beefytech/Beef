@@ -2,6 +2,13 @@
 
 USING_NS_BF;
 
+void BeHashContext::Flush()
+{
+	for (int i = 0; i < mDeferred.size(); i++)
+		mDeferred[i]->HashContent(*this);
+	mDeferred.Clear();
+}
+
 BeContext::BeContext()
 {
 	mPointerSize = 8;

@@ -155,7 +155,7 @@ else()
     ../BeefySysLib/
     ../BeefySysLib/third_party
     ../BeefySysLib/third_party/freetype/include
-    ../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu/include
+    ../BeefySysLib/third_party/libffi/${CMAKE_HOST_SYSTEM_PROCESSOR}-unknown-linux-gnu/include
     ../
     ../extern
     ../extern/llvm/include
@@ -286,14 +286,15 @@ elseif (${ANDROID})
         ../BeefySysLib/platform/android/BFPlatform.cpp
         ../BeefySysLib/platform/android/AndroidCommon.cpp
     )
-elseif ((${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64") AND (NOT DEFINED BF_DISABLE_FFI))
-    if(EXISTS "../BeefySysLib/third_party/libffi/x86_64-unknown-linux-gnu")
-      set(TARGET_TRIPLE_DIR "x86_64-unknown-linux-gnu")
-    elseif(EXISTS "../BeefySysLib/third_party/libffi/x86_64-pc-linux-gnu")
-      set(TARGET_TRIPLE_DIR "x86_64-pc-linux-gnu")
+elseif ((NOT DEFINED BF_DISABLE_FFI))
+    if(EXISTS "../BeefySysLib/third_party/libffi/${CMAKE_HOST_SYSTEM_PROCESSOR}-unknown-linux-gnu")
+      set(TARGET_TRIPLE_DIR "${CMAKE_HOST_SYSTEM_PROCESSOR}-unknown-linux-gnu")
+    elseif(EXISTS "../BeefySysLib/third_party/libffi/${CMAKE_HOST_SYSTEM_PROCESSOR}-pc-linux-gnu")
+      set(TARGET_TRIPLE_DIR "${CMAKE_HOST_SYSTEM_PROCESSOR}-pc-linux-gnu")
     endif()
 
-    file(GLOB SRC_FILES_OS
+    if (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64")
+      file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/linux/BFPlatform.cpp
         ../BeefySysLib/platform/linux/LinuxCommon.cpp
         ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/prep_cif.o
@@ -306,7 +307,22 @@ elseif ((${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64") AND (NOT DEFINED BF_D
         ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/unix64.o
         ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/ffiw64.o
         ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/win64.o
-    )
+      )
+    else()
+      file(GLOB SRC_FILES_OS
+        ../BeefySysLib/platform/linux/BFPlatform.cpp
+        ../BeefySysLib/platform/linux/LinuxCommon.cpp
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/prep_cif.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/types.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/raw_api.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/java_raw_api.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/closures.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/tramp.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/aarch64/ffi.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/aarch64/sysv.o
+      )
+    endif()
+
 else()
   file(GLOB SRC_FILES_OS
     ../BeefySysLib/platform/linux/BFPlatform.cpp

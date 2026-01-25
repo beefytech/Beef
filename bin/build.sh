@@ -81,7 +81,7 @@ set -e
 
 if [ $LLVM_FOUND == 0 ]; then
 	echo "ERROR: LLVM 19.1 was not detected on your system. Please install the package 'llvm-19-dev' and try again." >&2
-	exit
+	exit 1
 fi
 
 if [ ! -f ../BeefySysLib/third_party/libffi/Makefile ]; then
