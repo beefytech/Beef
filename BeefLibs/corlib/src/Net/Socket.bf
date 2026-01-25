@@ -642,7 +642,8 @@ namespace System.Net
 			SetBlocking(mIsBlocking);
 		}
 
-        public Result<void, SocketError> Listen(int32 port, int32 backlog = 5) => Listen(.(127, 0, 0, 1), port, backlog);
+        public Result<void, SocketError> Listen(int32 port, int32 backlog = 5) => Listen(.(0, 0, 0, 0), port, backlog);
+		public Result<void, SocketError> ListenLocal(int32 port, int32 backlog = 5) => Listen(.(127, 0, 0, 1), port, backlog);
 		public Result<void, SocketError> Listen(IPv4Address address, int32 port, int32 backlog = 5) => OpenEx(address, port, .Stream, .TCP, backlog);
 		public Result<void, SocketError> Listen(IPv6Address address, int32 port, int32 backlog = 5, bool v6Only = false)
 			=> OpenEx(
