@@ -604,7 +604,7 @@ namespace System.Net
 		public static Result<void, SocketError> GetAddrInfo(StringView addr, StringView service, AddrInfo hints, AddrInfo** res)
 		{
 			var hints;
-			return (getaddrinfo(addr.Ptr, service.Ptr, &hints, res) == SOCKET_ERROR) ? .Err(GetLastError()) : .Ok;
+			return (getaddrinfo(addr.Ptr, service.Ptr, &hints, res) != 0) ? .Err(GetLastError()) : .Ok;
 		}
 
 		public static Result<SockAddrInfo, SocketError> GetAddrInfo(StringView addr, AddrInfo hints = default) => GetAddrInfo(addr, (StringView)default, hints);
