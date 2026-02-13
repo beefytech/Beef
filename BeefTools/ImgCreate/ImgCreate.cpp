@@ -2,7 +2,6 @@
 #include "BeefySysLib/util/Array.h"
 #include "BeefySysLib/img/PSDReader.h"
 #include "BeefySysLib/img/PNGData.h"
-#include <direct.h>
 
 USING_NS_BF;
 
@@ -290,8 +289,11 @@ int main()
 	};
 
 	if (isThemeDir)
-		_mkdir("cache");
-
+	{
+		BfpFileResult result;
+		BfpDirectory_Create("cache", &result);
+	}
+	
 	for (int size = 0; size < 3; size++)
 	{
 		int scale = 1 << size;

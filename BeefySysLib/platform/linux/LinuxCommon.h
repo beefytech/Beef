@@ -25,6 +25,7 @@
 #include <pthread.h>
 #include <wctype.h>
 #include <stddef.h>
+#include <dlfcn.h>
 
 //#define offsetof(type, member)  __builtin_offsetof (type, member)
 

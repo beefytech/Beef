@@ -2993,6 +2993,7 @@ namespace IDE.ui
 
 						if (!path.IsWhiteSpace)
 						{
+#if BF_PLATFORM_WINDOWS
 							ProcessStartInfo psi = scope ProcessStartInfo();
 							psi.SetFileName(path);
 							psi.UseShellExecute = true;
@@ -3000,6 +3001,46 @@ namespace IDE.ui
 
 							var process = scope SpawnedProcess();
 							process.Start(psi).IgnoreError();
+#elif BF_PLATFORM_LINUX
+							if (!Linux.IsSystemdAvailable)
+								return;
+
+							Linux.DBus* userDBus = ?;
+							if (Linux.SdBusOpenUser(&userDBus) < 0)
+								return;
+							defer Linux.SdBusUnref(userDBus);
+
+							Linux.DBusMsg* msg = ?;
+							if (Linux.SdBusNewMethodCall(userDBus, &msg,
+								"org.freedesktop.FileManager1",
+								"/org/freedesktop/FileManager1",
+								"org.freedesktop.FileManager1",
+								"ShowFolders") < 0)
+									return;
+							defer Linux.SdBusMessageUnref(msg);
+
+							if (Linux.SdBusMessageOpenContainer(msg, .Array, "s") < 0)
+								return;
+
+							String arg = new:ScopedAlloc! .(path.Length + 10);
+							arg..Append("file://")..Append(path);
+								
+							if (Linux.SdBusMessageAppend(msg, "s", arg.CStr()) < 0)
+								return;
+
+							if (Linux.SdBusMessageCloseContainer(msg) < 0)
+								return;
+
+							if (Linux.SdBusMessageAppend(msg, "s", "".CStr()) < 0)
+								return;
+
+							Linux.DBusErr error = default;
+							if (Linux.SdBusCall(userDBus, msg, 0, &error, null) < 0)
+							{
+								Linux.SdBusErrorFree(&error);
+								return;
+							}
+#endif
 						}
 				    });
 

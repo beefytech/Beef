@@ -121,6 +121,14 @@ namespace IDE
 		public static String sRTVersionStr = "042";
 		public const String cVersion = "0.43.6";
 
+#if BF_PLATFORM_LINUX
+		public const uint8[?] cAppIcon = [IgnoreErrors]{ Compiler.ReadBinary("Resources/beef.ico.png") };
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BFApp_RegisterAppIcon(uint8* imageData, int size);
+#endif
+
+
 #if BF_PLATFORM_WINDOWS
 		public static readonly String sPlatform64Name = "Win64";
 		public static readonly String sPlatform32Name = "Win32";
@@ -6055,7 +6063,13 @@ namespace IDE
 		{
 			scope AutoBeefPerf("IDEApp.CreateMenu");
 
-			SysMenu root = mMainWindow.mSysMenu;
+			SysMenu root;
+#if BF_PLATFORM_WINDOWS
+			root = mMainWindow.mSysMenu;
+#else
+			root = mMainFrame.mMenuBar.mSysMenuRoot;
+			defer mMainFrame.RehupSize();
+#endif
 
 			String keyStr = scope String();
 
@@ -6139,11 +6153,18 @@ namespace IDE
 
 			void AddLineEndingKind(String name, LineEndingKind lineEndingKind)
 			{
+				bool allowLast;
+#if !BF_PLATFORM_WINDOWS
+				allowLast = true;
+#else
+				allowLast = false;
+#endif
+
 				lineEndingMenu.AddMenuItem(name, null,
 					new (menu) =>
 					{
 						var sysMenu = (SysMenu)menu;
-						var sourceViewPanel = GetActiveSourceViewPanel();
+						var sourceViewPanel = GetActiveSourceViewPanel(allowLast);
 						if (sourceViewPanel != null)
 						{
 							if (sourceViewPanel.mEditData.mLineEndingKind != lineEndingKind)
@@ -6158,7 +6179,7 @@ namespace IDE
 					{
 						var sysMenu = (SysMenu)menu;
 
-						var sourceViewPanel = GetActiveSourceViewPanel();
+						var sourceViewPanel = GetActiveSourceViewPanel(allowLast);
 						if (sourceViewPanel != null)
 						{
 							sysMenu.Modify(null, null, null, true, (sourceViewPanel.mEditData.mLineEndingKind == lineEndingKind) ? 1 : 0, true);
@@ -12822,6 +12843,11 @@ namespace IDE
 
 			mGitManager.Init();
 
+#if BF_PLATFORM_LINUX
+			let icon = (Span<uint8>)cAppIcon;
+			BFApp_RegisterAppIcon(icon.Ptr, icon.Length);
+#endif
+
 			//Yoop();
 
 			/*for (int i = 0; i < 100*1024*1024; i++)
@@ -12861,7 +12887,8 @@ namespace IDE
 #endif
 			}
 
-			Font.AddFontFailEntry("Segoe UI", scope String()..AppendF("{}fonts/NotoSans-Regular.ttf", mInstallDir));
+			Font.AddFontFailEntry("Segoe UI", scope $"Noto Sans\0{mInstallDir}fonts/NotoSans-Regular.ttf");
+			Font.AddFontFailEntry("Segoe UI Bold", scope $"Noto Sans Bold\0{mInstallDir}fonts/NotoSans-Bold.ttf");
 
 			DarkTheme aTheme = new DarkTheme();
 			mSettings.mUISettings.Apply(); // Apply again to set actual theme
@@ -13673,7 +13700,9 @@ namespace IDE
 						DeleteAndNullify!(mBfBuildSystem);
 
 						///
+#if BF_PLATFORM_WINDOWS
 						mDebugger.FullReportMemory();
+#endif
 
 						var workspaceBuildDir = scope String();
 						GetWorkspaceBuildDir(workspaceBuildDir);

@@ -327,10 +327,11 @@ else()
 endif()
 
 if (DEFINED BF_ENABLE_SDL)
-    file(GLOB SRC_FILES_OS
+    file(GLOB SRC_FILES_SDL
         platform/sdl/SdlBFApp.cpp
         platform/sdl/GLRenderDevice.cpp
     )
+    list(APPEND SRC_FILES_OS ${SRC_FILES_SDL})
 endif()
 
 # Add library to build.

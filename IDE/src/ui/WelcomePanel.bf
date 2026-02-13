@@ -70,17 +70,17 @@ namespace IDE.ui
 
 		public this()
 		{
-			mSampleImg0 = Image.LoadFromFile(scope String()..AppendF(@"{}\images\welcome_sample0.png", gApp.mInstallDir));
-			mSampleImg1 = Image.LoadFromFile(scope String()..AppendF(@"{}\images\welcome_sample1.png", gApp.mInstallDir));
+			mSampleImg0 = Image.LoadFromFile(scope String()..AppendF(@"{}/images/welcome_sample0.png", gApp.mInstallDir));
+			mSampleImg1 = Image.LoadFromFile(scope String()..AppendF(@"{}/images/welcome_sample1.png", gApp.mInstallDir));
 
 			mSampleBtn0 = new .();
-			mSampleBtn0.mPath = new String()..AppendF(@"{}\..\Samples\SpaceGame\BeefSpace.toml", gApp.mInstallDir);
+			mSampleBtn0.mPath = new String()..AppendF(@"{}/../Samples/SpaceGame/BeefSpace.toml", gApp.mInstallDir);
 			mSampleBtn0.mLabel = new String("Space Game");
 			mSampleBtn0.mImage = mSampleImg0;
 			AddWidget(mSampleBtn0);
 
 			mSampleBtn1 = new .();
-			mSampleBtn1.mPath = new String()..AppendF(@"{}\..\Samples\HelloWorld\BeefSpace.toml", gApp.mInstallDir);
+			mSampleBtn1.mPath = new String()..AppendF(@"{}/../Samples/HelloWorld/BeefSpace.toml", gApp.mInstallDir);
 			mSampleBtn1.mLabel = new String("Hello World");
 			mSampleBtn1.mImage = mSampleImg1;
 			AddWidget(mSampleBtn1);

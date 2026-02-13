@@ -160,3 +160,13 @@ echo Building BeefBuild
 ./BeefBuild_boot -clean -proddir=../../BeefBuild -config=Release
 echo Testing IDEHelper/Tests in BeefBuild
 ./BeefBuild -proddir=../../IDEHelper/Tests -test
+
+### IDE ###
+if [ -n "$USE_SDL" ]; then
+
+	echo Building BeefIDE_d
+	./BeefBuild -clean -proddir=../ -config=Debug
+	echo Building BeefIDE
+	./BeefBuild -clean -proddir=../ -config=Release
+
+fi
