@@ -422,6 +422,13 @@ namespace System.Net
 			}
 		}
 
+		public enum ShutdownDirection : int32
+		{
+			Recieve = 0,
+			Send    = 1,
+			Both    = 2
+		}
+
 		public const HSocket INVALID_SOCKET = (HSocket)-1;
 		public const int32 SOCKET_ERROR = -1;
 		public const int AF_INET = 2;
@@ -544,9 +551,15 @@ namespace System.Net
 #if BF_PLATFORM_WINDOWS
 		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int32 closesocket(HSocket s);
+
+		[Import("Ws2_32.lib"), CLink, CallingConvention(.Stdcall)]
+		static extern int32 shutdown(HSocket s, ShutdownDirection how);
 #else
 		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 close(HSocket s);
+
+		[CLink, CallingConvention(.Stdcall)]
+		static extern int32 shutdown(HSocket s, ShutdownDirection how);
 #endif
 
 		[CLink, CallingConvention(.Stdcall)]
@@ -595,6 +608,7 @@ namespace System.Net
 		public ~this()
 		{
 			if (mHandle != INVALID_SOCKET)
+				shutdown(mHandle, .Both);
 #if BF_PLATFORM_WINDOWS
 				closesocket(mHandle);
 #else
@@ -934,6 +948,7 @@ namespace System.Net
 		public void Close()
 		{
 			mIsConnected = false;
+			shutdown(mHandle, .Both);
 #if BF_PLATFORM_WINDOWS
 			closesocket(mHandle);
 #else
