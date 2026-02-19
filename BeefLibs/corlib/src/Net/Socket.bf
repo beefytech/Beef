@@ -608,7 +608,6 @@ namespace System.Net
 		public ~this()
 		{
 			if (mHandle != INVALID_SOCKET)
-				shutdown(mHandle, .Both);
 #if BF_PLATFORM_WINDOWS
 				closesocket(mHandle);
 #else
@@ -948,13 +947,24 @@ namespace System.Net
 		public void Close()
 		{
 			mIsConnected = false;
-			shutdown(mHandle, .Both);
 #if BF_PLATFORM_WINDOWS
 			closesocket(mHandle);
 #else
 			close(mHandle);
 #endif
 			mHandle = INVALID_SOCKET;
+		}
+
+		public Result<void, SocketError> Shutdown(ShutdownDirection how = .Both)
+		{
+			if (shutdown(mHandle, how) == SOCKET_ERROR)
+			{
+				let err = GetLastError();
+				return .Err(err);
+			}
+
+			mIsConnected = false;
+			return .Ok;
 		}
 
 		
