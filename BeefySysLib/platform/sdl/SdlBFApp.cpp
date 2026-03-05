@@ -1,7 +1,26 @@
 #include "SdlBFApp.h"
+#include "BFApp.h"
+#include "Common.h"
 #include "GLRenderDevice.h"
 #include "platform/PlatformHelper.h"
-#include <SDL2/SDL.h>
+#include "platform/PlatformInterface.h"
+#include "img/PNGData.h"
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_events.h>
+#include <SDL3/SDL_hints.h>
+#include <SDL3/SDL_keycode.h>
+#include <SDL3/SDL_opengl.h>
+#include <SDL3/SDL_pixels.h>
+#include <SDL3/SDL_platform.h>
+#include <SDL3/SDL_properties.h>
+#include <SDL3/SDL_rect.h>
+#include <SDL3/SDL_surface.h>
+#include <SDL3/SDL_video.h>
+#include <cstddef>
+#include <cstdint>
+#include <cstdio>
+#include <cwchar>
+#include <dlfcn.h>
 
 USING_NS_BF;
 
@@ -10,39 +29,122 @@ USING_NS_BF;
 #pragma comment(lib, "imm32.lib")
 #pragma comment(lib, "version.lib")
 
-SDL_Window* (SDLCALL* bf_SDL_CreateWindow)(const char* title, int x, int y, int w, int h, Uint32 flags);
-int (SDLCALL* bf_SDL_GL_SetAttribute)(SDL_GLattr attr, int value);
-Uint32 (SDLCALL* bf_SDL_GetWindowID)(SDL_Window* window);
-void (SDLCALL* bf_SDL_DestroyWindow)(SDL_Window* window);
-int (SDLCALL* bf_SDL_Init)(Uint32 flags);
-void (SDLCALL* bf_SDL_GetWindowPosition)(SDL_Window* window,int* x, int* y);
-char* (SDLCALL* bf_SDL_GetClipboardText)(void);
-int (SDLCALL* bf_SDL_SetClipboardText)(const char* text);
-void* (SDLCALL* bf_SDL_GL_GetProcAddress)(const char* proc);
-void (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
-void (SDLCALL* bf_SDL_GL_SwapWindow)(SDL_Window* window);
-void (SDLCALL* bf_SDL_free)(void* mem);
-void (SDLCALL* bf_SDL_SetWindowPosition)(SDL_Window* window, int x, int y);
-int (SDLCALL* bf_SDL_PollEvent)(SDL_Event* event);
-const char* (SDLCALL* bf_SDL_GetError)(void);
-SDL_GLContext (SDLCALL* bf_SDL_GL_CreateContext)(SDL_Window* window);
+bool (SDLCALL* bf_SDL_Init)(SDL_InitFlags flags);
 void (SDLCALL* bf_SDL_Quit)(void);
+void* (SDLCALL* bf_SDL_malloc)(size_t size);
+void (SDLCALL* bf_SDL_free)(void* mem);
+void (SDLCALL* bf_SDL_memset)(void* dest, int c, size_t len);
+void* (SDLCALL* bf_SDL_memcpy)(void *dst, const void *src, size_t len);
+
+SDL_PropertiesID (SDLCALL* bf_SDL_CreateProperties)(void);
+void (SDLCALL* bf_SDL_DestroyProperties)(SDL_PropertiesID props);
+
+bool (SDLCALL* bf_SDL_SetNumberProperty)(SDL_PropertiesID props, const char* name, int64_t value);
+bool (SDLCALL* bf_SDL_SetBooleanProperty)(SDL_PropertiesID props, const char* name, bool value);
+bool (SDLCALL* bf_SDL_SetStringProperty)(SDL_PropertiesID props, const char* name, const char* value);
+bool (SDLCALL* bf_SDL_SetPointerProperty)(SDL_PropertiesID props, const char *name, void *value);  
+
+SDL_Window* (SDLCALL* bf_SDL_CreateWindowWithProperties)(SDL_PropertiesID props); 
+SDL_WindowID (SDLCALL* bf_SDL_GetWindowID)(SDL_Window* window);
+void (SDLCALL* bf_SDL_DestroyWindow)(SDL_Window* window);
+bool (SDLCALL* bf_SDL_SyncWindow)(SDL_Window* window);
+bool (SDLCALL* bf_SDL_GetWindowPosition)(SDL_Window* window,int* x, int* y);
+bool (SDLCALL* bf_SDL_SetWindowPosition)(SDL_Window* window, int x, int y);
+bool (SDLCALL* bf_SDL_GetWindowSizeInPixels)(SDL_Window* window, int* w, int* h);
+bool (SDLCALL* bf_SDL_GetWindowSize)(SDL_Window* window, int* w, int* h);
+bool (SDLCALL* bf_SDL_SetWindowSize)(SDL_Window* window, int w, int h);
+bool (SDLCALL* bf_SDL_SetWindowMinimumSize)(SDL_Window* window, int min_w, int min_h);
+bool (SDLCALL* bf_SDL_SetWindowTitle)(SDL_Window* window, const char* title);
+bool (SDLCALL* bf_SDL_SetWindowIcon)(SDL_Window* window, SDL_Surface* icon);
+SDL_Window* (SDLCALL* bf_SDL_GetMouseFocus)();
+
+bool (SDLCALL* bf_SDL_ShowCursor)(void);
+bool (SDLCALL* bf_SDL_HideCursor)(void);
+
+char* (SDLCALL* bf_SDL_GetClipboardText)(void);
+bool (SDLCALL* bf_SDL_SetClipboardText)(const char* text);
+void* (SDLCALL* bf_SDL_GetClipboardData)(const char *mime_type, size_t *size);
+bool (SDLCALL* bf_SDL_SetClipboardData)(SDL_ClipboardDataCallback callback, SDL_ClipboardCleanupCallback cleanup, void *userdata, const char **mime_types, size_t num_mime_types);
+bool (SDLCALL* bf_SDL_StartTextInput)(SDL_Window* window);
+bool (SDLCALL* bf_SDL_StopTextInput)(SDL_Window* window);
+
+bool (SDLCALL* bf_SDL_PollEvent)(SDL_Event* event);
+bool (SDLCALL* bf_SDL_PushEvent)(SDL_Event* event);
+void (SDLCALL* bf_SDL_PumpEvents)(void);
+int (SDLCALL* bf_SDL_PeepEvents)(SDL_Event *events, int numevents, SDL_EventAction action, Uint32 minType, Uint32 maxType);
+bool (SDLCALL* bf_SDL_SetError)(const char *fmt, ...);
+const char* (SDLCALL* bf_SDL_GetError)(void);
+
+bool (SDLCALL* bf_SDL_SetHint)(const char *name, const char *value);
+
+SDL_DisplayID (SDLCALL* bf_SDL_GetPrimaryDisplay)(void);
+SDL_DisplayID* (SDLCALL* bf_SDL_GetDisplays)(int* count);
+bool (SDLCALL* bf_SDL_GetDisplayBounds)(SDL_DisplayID displayID, SDL_Rect* rect);
+SDL_DisplayMode* (SDLCALL* bf_SDL_GetDesktopDisplayMode)(SDL_DisplayID displayID);
+bool (SDLCALL* bf_SDL_HasRectIntersection)(const SDL_Rect* A, const SDL_Rect* B);
+SDL_DisplayID (SDLCALL* bf_SDL_GetDisplayForWindow)(SDL_Window *window);
+const SDL_DisplayMode* (SDLCALL* bf_SDL_GetCurrentDisplayMode)(SDL_DisplayID displayID);
+
+SDL_Surface* (SDLCALL* bf_SDL_CreateSurfaceFrom)(int width, int height, SDL_PixelFormat format, void *pixels, int pitch);
+
+SDL_GLContext (SDLCALL* bf_SDL_GL_CreateContext)(SDL_Window* window);
+SDL_GLContext (SDLCALL* bf_SDL_GL_GetCurrentContext)();
+SDL_Window* (SDLCALL* bf_SDL_GL_GetCurrentWindow)();
+bool (SDLCALL* bf_SDL_GL_MakeCurrent)(SDL_Window* window, SDL_GLContext context);
+bool (SDLCALL* bf_SDL_GL_SetAttribute)(SDL_GLAttr attr, int value);
+void* (SDLCALL* bf_SDL_GL_GetProcAddress)(const char* proc);
+bool (SDLCALL* bf_SDL_GL_SwapWindow)(SDL_Window* window);
+
+static SDL_Cursor* (SDLCALL* bf_SDL_GetDefaultCursor)();
+static SDL_Cursor* (SDLCALL* bf_SDL_CreateSystemCursor)(SDL_SystemCursor id);
+static bool (SDLCALL* bf_SDL_SetCursor)(SDL_Cursor* cursor);
+static SDL_WindowFlags (SDLCALL* bf_SDL_GetWindowFlags)(SDL_Window *window);
+static bool (SDLCALL* bf_SDL_HideWindow)(SDL_Window *window);
+static bool (SDLCALL* bf_SDL_RestoreWindow)(SDL_Window *window);
+static bool (SDLCALL* bf_SDL_MinimizeWindow)(SDL_Window *window);
+static bool (SDLCALL* bf_SDL_MaximizeWindow)(SDL_Window *window);
+static bool (SDLCALL* bf_SDL_ShowWindow)(SDL_Window *window);
+static bool (SDLCALL* bf_SDL_RaiseWindow)(SDL_Window* window);
+
+struct AdjustedMonRect
+{
+	int mMonCount;
+	int mX;
+	int mY;
+	int mWidth;
+	int mHeight;
+};
+
+static int bfMouseBtnOf[4] = {NULL, 0, 2, 1}; // Translate SDL mouse buttons to what Beef expects.
+
+static const char* mimeTypes[] = 
+{ 
+	"text/plain;charset=utf-8",
+	"text/vnd.beeflang.bf-text",
+	"text/vnd.beeflang.file-list"
+};
 
 static HMODULE gSDLModule;
+static HMODULE gSDLImageModule;
 
 static HMODULE GetSDLModule(const StringImpl& installDir)
 {
 	if (gSDLModule == NULL)
 	{
-		String loadPath = installDir + "SDL2.dll";
+#if defined (BF_PLATFORM_WINDOWS)
+		String loadPath = installDir + "SDL3.dll";
 		gSDLModule = ::LoadLibraryA(loadPath.c_str());
+#elif defined (BF_PLATFORM_LINUX)
+		String loadPath = "libSDL3.so";
+		gSDLModule = dlopen(loadPath.c_str(), RTLD_LAZY);
+#endif
 		if (gSDLModule == NULL)
 		{
 #ifdef BF_PLATFORM_WINDOWS
-			::MessageBoxA(NULL, "Failed to load SDL2.dll", "FATAL ERROR", MB_OK | MB_ICONERROR);
+			::MessageBoxA(NULL, "Failed to load SDL3.dll", "FATAL ERROR", MB_OK | MB_ICONERROR);
 			::ExitProcess(1);
 #endif
-			BF_FATAL("Failed to load SDL2.dll");
+			BF_FATAL("Failed to load libSDL3.so");
 		}
 	}
 	return gSDLModule;
@@ -51,64 +153,113 @@ static HMODULE GetSDLModule(const StringImpl& installDir)
 template <typename T>
 static void BFGetSDLProc(T& proc, const char* name, const StringImpl& installDir)
 {
+#if defined (BF_PLATFORM_WINDOWS)
 	proc = (T)::GetProcAddress(GetSDLModule(installDir), name);
+#elif defined (BF_PLATFORM_LINUX)
+	proc = (T)dlsym(GetSDLModule(installDir), name);
+#endif
 }
 
 #define BF_GET_SDLPROC(name) BFGetSDLProc(bf_##name, #name, mInstallDir)
 
+static SDL_Surface* gAppIconSurface;
+
+BF_EXPORT void BF_CALLTYPE BFApp_RegisterAppIcon(uint8* imageData, int size)
+{
+	PNGData* image = new PNGData();
+	image->LoadFromMemory(imageData, size);
+	gAppIconSurface = bf_SDL_CreateSurfaceFrom(image->mWidth, image->mHeight, SDL_PIXELFORMAT_ABGR8888, image->mBits, image->mWidth*4);
+}
+
 SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
 {
-	int sdlWindowFlags = 0;
-	if (windowFlags & BFWINDOW_RESIZABLE)
-		sdlWindowFlags |= SDL_WINDOW_RESIZABLE;
-	sdlWindowFlags |= SDL_WINDOW_OPENGL;
-	if (windowFlags & BFWINDOW_FULLSCREEN)
-		sdlWindowFlags |= SDL_WINDOW_FULLSCREEN;
-#ifdef BF_PLATFORM_FULLSCREEN
-    sdlWindowFlags |= SDL_WINDOW_FULLSCREEN;
-#endif
+	SDL_PropertiesID props = bf_SDL_CreateProperties();
 
-	mSDLWindow = bf_SDL_CreateWindow(title.c_str(), x, y, width, height, sdlWindowFlags);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, true);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, (windowFlags & BFWINDOW_RESIZABLE) != 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN, (windowFlags & BFWINDOW_FULLSCREEN) != 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, (windowFlags & BFWINDOW_BORDER) == 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TOOLTIP_BOOLEAN, (windowFlags & BFWINDOW_TOOLTIP) != 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, (windowFlags & BFWINDOW_DEST_ALPHA) != 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MENU_BOOLEAN, (windowFlags & BFWINDOW_FAKEFOCUS) != 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN, (windowFlags & BFWINDOW_FAKEFOCUS) == 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MODAL_BOOLEAN, (windowFlags & BFWINDOW_MODAL) != 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, (windowFlags & BFWINDOW_TOPMOST) != 0);
 
-#ifndef BF_PLATFORM_OPENGL_ES2
-	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
-	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
-	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
-#endif
-
-	if (!bf_SDL_GL_CreateContext(mSDLWindow))
+	if (parent != NULL)
 	{
-		String str = StrFormat(
-#ifdef BF_PLATFORM_OPENGL_ES2
-			"Unable to create SDL OpenGLES context: %s"
-#else
-			"Unable to create SDL OpenGL context: %s"
-#endif
-			, bf_SDL_GetError());
-
-
-		BF_FATAL(str.c_str());
-		bf_SDL_Quit();
-		exit(2);
+		SDL_Window* parentWindow = ((SdlBFWindow*)parent)->mSDLWindow;
+		bf_SDL_SetPointerProperty(props, SDL_PROP_WINDOW_CREATE_PARENT_POINTER, parentWindow);
+		if ((windowFlags & BFWINDOW_TOOLTIP | BFWINDOW_FAKEFOCUS) != 0) // Tooltips and menus have relative positioning to their parent.
+		{
+			int parentX, parentY;
+			bf_SDL_GetWindowPosition(parentWindow, &parentX, &parentY);
+			x -= parentX;
+			y -= parentY;
+		}
 	}
 
-#ifndef BF_PLATFORM_OPENGL_ES2
-	glEnable(GL_DEBUG_OUTPUT);
-	glEnable(GL_DEBUG_OUTPUT_SYNCHRONOUS);
+	if (windowFlags)
+#ifdef BF_PLATFORM_FULLSCREEN
+		bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN, true);
 #endif
 
-	glEnable(GL_BLEND);
-	glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, x);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, y);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, width);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, height);
+	bf_SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, title.c_str());
+
+	mSDLWindow = bf_SDL_CreateWindowWithProperties(props);
+
+	bf_SDL_DestroyProperties(props);
+//	printf("Created %i : %s\n", bf_SDL_GetWindowID(mSDLWindow), title.c_str());
+
+	if (gAppIconSurface)
+		bf_SDL_SetWindowIcon(mSDLWindow, gAppIconSurface);
+	bf_SDL_StartTextInput(mSDLWindow);
 
 #ifndef BF_PLATFORM_OPENGL_ES2
-	//glEnableClientState(GL_INDEX_ARRAY);
+	int contextFlags = SDL_GL_CONTEXT_PROFILE_CORE;
+#ifdef _DEBUG
+	contextFlags |= SDL_GL_CONTEXT_DEBUG_FLAG;
 #endif
+
+	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
+	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
+	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, contextFlags);
+#endif
+
+	auto sdlApp = (SdlBFApp*)gBFApp;
+	if(sdlApp->mGLContext == NULL)
+	{
+		sdlApp->mGLContextWindow = mSDLWindow;
+		sdlApp->mGLContext = bf_SDL_GL_CreateContext(mSDLWindow);
+		if (sdlApp->mGLContext == NULL)
+		{
+			String str = StrFormat(
+	#ifdef BF_PLATFORM_OPENGL_ES2
+				"Unable to create SDL OpenGLES context: %s"
+	#else
+				"Unable to create SDL OpenGL context: %s"
+	#endif
+				, bf_SDL_GetError());
+
+
+			BF_FATAL(str.c_str());
+			bf_SDL_Quit();
+			exit(2);
+		}
+	}
 
 	mIsMouseInside = false;
+	mIsMouseVisible = true;
+	mHasPositionInit = false;
 	mRenderWindow = new GLRenderWindow((GLRenderDevice*)gBFApp->mRenderDevice, mSDLWindow);
 	mRenderWindow->mWindow = this;
 	gBFApp->mRenderDevice->AddRenderWindow(mRenderWindow);
 
+	mParent = parent;
 	if (parent != NULL)
 		parent->mChildren.push_back(this);
 }
@@ -116,96 +267,133 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 SdlBFWindow::~SdlBFWindow()
 {
 	if (mSDLWindow != NULL)
-		TryClose();
+		Destroy();
+}
+
+void SdlBFWindow::Destroy()
+{
+//	printf("Destroy %i\n", bf_SDL_GetWindowID(this->mSDLWindow));
+
+	SdlBFApp* app = (SdlBFApp*)gBFApp;
+	app->mSdlWindowMap.Remove(bf_SDL_GetWindowID(mSDLWindow));
+
+	SDL_Window* currentContextWindow = bf_SDL_GL_GetCurrentWindow();
+
+	bf_SDL_StopTextInput(mSDLWindow);
+	bf_SDL_DestroyWindow(mSDLWindow);
+
+	// Make sure we have valid gl context in case we call any GL functions between frames
+	auto sdlApp = (SdlBFApp*)gBFApp;
+	if ((currentContextWindow == mSDLWindow) && (mSDLWindow != sdlApp->mGLContextWindow))
+	{
+		bf_SDL_GL_MakeCurrent(sdlApp->mGLContextWindow, sdlApp->mGLContext);
+	}
+	mSDLWindow = NULL;
 }
 
 bool SdlBFWindow::TryClose()
 {
-	SdlBFApp* app = (SdlBFApp*)gBFApp;
-	app->mSdlWindowMap.Remove(bf_SDL_GetWindowID(mSDLWindow));
+//	printf("TryClose %i\n", bf_SDL_GetWindowID(this->mSDLWindow));
 
-	bf_SDL_DestroyWindow(mSDLWindow);
-	mSDLWindow = NULL;
-	return true;
+	mLostFocusFunc(this);
+	if(this->mParent != NULL)
+	{
+		mGotFocusFunc(this->mParent);
+	}
+
+	gBFApp->RemoveWindow(this);
+	return mSDLWindow == NULL;
 }
 
-static int SDLConvertScanCode(int scanCode)
+static void RefreshMouseVisibility(SdlBFWindow* window)
 {
-	if ((scanCode >= SDL_SCANCODE_A) && (scanCode <= SDL_SCANCODE_Z))
-		return (scanCode - SDL_SCANCODE_A) + 'A';
-	if ((scanCode >= SDL_SCANCODE_1) && (scanCode <= SDL_SCANCODE_9))
-		return (scanCode - SDL_SCANCODE_1) + '1';
+	if (window->mIsMouseVisible)
+	{
+		bf_SDL_ShowCursor();
+	}
+	else 
+	{
+		bf_SDL_HideCursor();
+	}
+}
+
+static int SDLConvertKeyCode(SDL_Keycode scanCode)
+{
+	if ((scanCode >= SDLK_A) && (scanCode <= SDLK_Z))
+		return (scanCode - SDLK_A) + 'A';
+	if ((scanCode >= SDLK_1) && (scanCode <= SDLK_9))
+		return (scanCode - SDLK_1) + '1';
 
 	switch (scanCode)
 	{
-	case SDL_SCANCODE_9: return '0';
-    case SDL_SCANCODE_CANCEL: return 0x03;
-    case SDL_SCANCODE_AC_BACK: return 0x08;
-    case SDL_SCANCODE_TAB: return 0x09;
-    case SDL_SCANCODE_CLEAR: return 0x0C;
-    case SDL_SCANCODE_RETURN: return 0x0D;
-    case SDL_SCANCODE_LSHIFT: return 0x10;
-	case SDL_SCANCODE_RSHIFT: return 0x10;
-    case SDL_SCANCODE_LCTRL: return 0x11;
-	case SDL_SCANCODE_RCTRL: return 0x11;
-    case SDL_SCANCODE_MENU: return 0x12;
-    case SDL_SCANCODE_PAUSE: return 0x13;
-    case SDL_SCANCODE_LANG1: return 0x15;
-    case SDL_SCANCODE_LANG2: return 0x15;
-    case SDL_SCANCODE_LANG3: return 0x17;
-    case SDL_SCANCODE_LANG4: return 0x18;
-    case SDL_SCANCODE_LANG5: return 0x19;
-    case SDL_SCANCODE_LANG6: return 0x19;
-    case SDL_SCANCODE_ESCAPE: return 0x1B;
-    case SDL_SCANCODE_SPACE: return 0x20;
-    case SDL_SCANCODE_PAGEUP: return 0x21;
-    case SDL_SCANCODE_PAGEDOWN: return 0x22;
-    case SDL_SCANCODE_END: return 0x23;
-    case SDL_SCANCODE_HOME: return 0x24;
-    case SDL_SCANCODE_LEFT: return 0x25;
-    case SDL_SCANCODE_UP: return 0x26;
-    case SDL_SCANCODE_RIGHT: return 0x27;
-    case SDL_SCANCODE_DOWN: return 0x28;
-    case SDL_SCANCODE_SELECT: return 0x29;
-    case SDL_SCANCODE_PRINTSCREEN: return 0x2A;
-    case SDL_SCANCODE_EXECUTE: return 0x2B;
-    case SDL_SCANCODE_INSERT: return 0x2D;
-    case SDL_SCANCODE_DELETE: return 0x2E;
-    case SDL_SCANCODE_HELP: return 0x2F;
-    case SDL_SCANCODE_LGUI: return 0x5B;
-    case SDL_SCANCODE_RGUI: return 0x5C;
-	case SDL_SCANCODE_KP_0: return 0x60;
-	case SDL_SCANCODE_KP_1: return 0x61;
-    case SDL_SCANCODE_KP_2: return 0x62;
-    case SDL_SCANCODE_KP_3: return 0x63;
-    case SDL_SCANCODE_KP_4: return 0x64;
-    case SDL_SCANCODE_KP_5: return 0x65;
-    case SDL_SCANCODE_KP_6: return 0x66;
-    case SDL_SCANCODE_KP_7: return 0x67;
-    case SDL_SCANCODE_KP_8: return 0x68;
-    case SDL_SCANCODE_KP_9: return 0x69;
-    case SDL_SCANCODE_KP_MULTIPLY: return 0x6A;
-    case SDL_SCANCODE_KP_PLUS: return 0x6B;
-    case SDL_SCANCODE_SEPARATOR: return 0x6C;
-    case SDL_SCANCODE_KP_MINUS: return 0x6D;
-    case SDL_SCANCODE_KP_PERIOD: return 0x6E;
-    case SDL_SCANCODE_KP_DIVIDE: return 0x6F;
-    case SDL_SCANCODE_F1: return 0x70;
-    case SDL_SCANCODE_F2: return 0x71;
-    case SDL_SCANCODE_F3: return 0x72;
-    case SDL_SCANCODE_F4: return 0x73;
-    case SDL_SCANCODE_F5: return 0x74;
-    case SDL_SCANCODE_F6: return 0x75;
-    case SDL_SCANCODE_F7: return 0x76;
-    case SDL_SCANCODE_F8: return 0x77;
-    case SDL_SCANCODE_F9: return 0x78;
-    case SDL_SCANCODE_F10: return 0x79;
-    case SDL_SCANCODE_F11: return 0x7A;
-    case SDL_SCANCODE_F12: return 0x7B;
-    case SDL_SCANCODE_NUMLOCKCLEAR: return 0x90;
-    case SDL_SCANCODE_SCROLLLOCK: return 0x91;
-    case SDL_SCANCODE_GRAVE: return 0xC0;
-    //case SDL_SCANCODE_COMMAND: return 0xF0;
+    case SDLK_CANCEL: return 0x03;
+    case SDLK_BACKSPACE: return 0x08;
+    case SDLK_TAB: return 0x09;
+    case SDLK_CLEAR: return 0x0C;
+    case SDLK_RETURN: return 0x0D;
+    case SDLK_LSHIFT: return 0x10;
+	case SDLK_RSHIFT: return 0x10;
+    case SDLK_LCTRL: return 0x11;
+	case SDLK_RCTRL: return 0x11;
+    case SDLK_LALT: return 0x12;
+    case SDLK_RALT: return 0x12;
+    case SDLK_PAUSE: return 0x13;
+    case SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LANG1): return 0x15;
+    case SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LANG2): return 0x15;
+    case SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LANG3): return 0x17;
+    case SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LANG4): return 0x18;
+    case SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LANG5): return 0x19;
+    case SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LANG6): return 0x19;
+    case SDLK_ESCAPE: return 0x1B;
+    case SDLK_SPACE: return 0x20;
+    case SDLK_PAGEUP: return 0x21;
+    case SDLK_PAGEDOWN: return 0x22;
+    case SDLK_END: return 0x23;
+    case SDLK_HOME: return 0x24;
+    case SDLK_LEFT: return 0x25;
+    case SDLK_UP: return 0x26;
+    case SDLK_RIGHT: return 0x27;
+    case SDLK_DOWN: return 0x28;
+    case SDLK_SELECT: return 0x29;
+    case SDLK_PRINTSCREEN: return 0x2A;
+    case SDLK_EXECUTE: return 0x2B;
+    case SDLK_INSERT: return 0x2D;
+    case SDLK_DELETE: return 0x2E;
+    case SDLK_HELP: return 0x2F;
+    case SDLK_LGUI: return 0x5B;
+    case SDLK_RGUI: return 0x5C;
+	case SDLK_KP_0: return 0x60;
+	case SDLK_KP_1: return 0x61;
+    case SDLK_KP_2: return 0x62;
+    case SDLK_KP_3: return 0x63;
+    case SDLK_KP_4: return 0x64;
+    case SDLK_KP_5: return 0x65;
+    case SDLK_KP_6: return 0x66;
+    case SDLK_KP_7: return 0x67;
+    case SDLK_KP_8: return 0x68;
+    case SDLK_KP_9: return 0x69;
+    case SDLK_KP_MULTIPLY: return 0x6A;
+    case SDLK_KP_PLUS: return 0x6B;
+    case SDLK_SEPARATOR: return 0x6C;
+    case SDLK_KP_MINUS: return 0x6D;
+    case SDLK_KP_PERIOD: return 0x6E;
+    case SDLK_KP_DIVIDE: return 0x6F;
+    case SDLK_F1: return 0x70;
+    case SDLK_F2: return 0x71;
+    case SDLK_F3: return 0x72;
+    case SDLK_F4: return 0x73;
+    case SDLK_F5: return 0x74;
+    case SDLK_F6: return 0x75;
+    case SDLK_F7: return 0x76;
+    case SDLK_F8: return 0x77;
+    case SDLK_F9: return 0x78;
+    case SDLK_F10: return 0x79;
+    case SDLK_F11: return 0x7A;
+    case SDLK_F12: return 0x7B;
+    case SDLK_NUMLOCKCLEAR: return 0x90;
+    case SDLK_SCROLLLOCK: return 0x91;
+    case SDLK_GRAVE: return 0xC0;
+    //case SDLK_COMMAND: return 0xF0;
 	}
 	return 0;
 }
@@ -218,6 +406,7 @@ SdlBFApp::SdlBFApp()
 {
 	mRunning = false;
 	mRenderDevice = NULL;
+	mSdlClipboardData = new SdlClipboardData();
 
 	Beefy::String exePath;
 	BfpGetStrHelper(exePath, [](char* outStr, int* inOutStrSize, BfpResult* result)
@@ -238,35 +427,98 @@ SdlBFApp::SdlBFApp()
 
     mInstallDir += "/";
 
-	if (bf_SDL_CreateWindow == NULL)
+	mIsControlDown = false;
+
+	if (bf_SDL_Init == NULL)
 	{
-		BF_GET_SDLPROC(SDL_CreateWindow);
-		BF_GET_SDLPROC(SDL_GL_SetAttribute);
+		BF_GET_SDLPROC(SDL_Init);
+		BF_GET_SDLPROC(SDL_Quit);
+		BF_GET_SDLPROC(SDL_malloc);
+		BF_GET_SDLPROC(SDL_free);
+		BF_GET_SDLPROC(SDL_memset);
+		BF_GET_SDLPROC(SDL_memcpy);
+
+		BF_GET_SDLPROC(SDL_CreateProperties);
+		BF_GET_SDLPROC(SDL_DestroyProperties);
+		BF_GET_SDLPROC(SDL_SetNumberProperty);
+		BF_GET_SDLPROC(SDL_SetBooleanProperty);
+		BF_GET_SDLPROC(SDL_SetStringProperty);
+		BF_GET_SDLPROC(SDL_SetPointerProperty);
+
+		BF_GET_SDLPROC(SDL_CreateWindowWithProperties);
 		BF_GET_SDLPROC(SDL_GetWindowID);
 		BF_GET_SDLPROC(SDL_DestroyWindow);
-		BF_GET_SDLPROC(SDL_Init);
+		BF_GET_SDLPROC(SDL_SyncWindow);
 		BF_GET_SDLPROC(SDL_GetWindowPosition);
+		BF_GET_SDLPROC(SDL_SetWindowPosition);
+		BF_GET_SDLPROC(SDL_GetWindowSizeInPixels);
+		BF_GET_SDLPROC(SDL_GetWindowSize);
+		BF_GET_SDLPROC(SDL_SetWindowSize);
+		BF_GET_SDLPROC(SDL_SetWindowMinimumSize);
+		BF_GET_SDLPROC(SDL_SetWindowTitle);
+		BF_GET_SDLPROC(SDL_SetWindowIcon);
+		BF_GET_SDLPROC(SDL_GetMouseFocus);
+
+		BF_GET_SDLPROC(SDL_ShowCursor);
+		BF_GET_SDLPROC(SDL_HideCursor);
+
 		BF_GET_SDLPROC(SDL_GetClipboardText);
 		BF_GET_SDLPROC(SDL_SetClipboardText);
-		BF_GET_SDLPROC(SDL_GL_GetProcAddress);
-		BF_GET_SDLPROC(SDL_GetWindowSize);
-		BF_GET_SDLPROC(SDL_GL_SwapWindow);
-		BF_GET_SDLPROC(SDL_free);
-		BF_GET_SDLPROC(SDL_SetWindowPosition);
+		BF_GET_SDLPROC(SDL_GetClipboardData);
+		BF_GET_SDLPROC(SDL_SetClipboardData);
+		BF_GET_SDLPROC(SDL_StartTextInput);
+		BF_GET_SDLPROC(SDL_StopTextInput);
+
 		BF_GET_SDLPROC(SDL_PollEvent);
+		BF_GET_SDLPROC(SDL_PushEvent);
+		BF_GET_SDLPROC(SDL_PumpEvents);
+		BF_GET_SDLPROC(SDL_PeepEvents);
+		BF_GET_SDLPROC(SDL_SetError);
 		BF_GET_SDLPROC(SDL_GetError);
+
+		BF_GET_SDLPROC(SDL_SetHint);
+
+		BF_GET_SDLPROC(SDL_GetPrimaryDisplay);
+		BF_GET_SDLPROC(SDL_GetDisplays);
+		BF_GET_SDLPROC(SDL_GetDisplayBounds);
+		BF_GET_SDLPROC(SDL_GetDesktopDisplayMode);
+		BF_GET_SDLPROC(SDL_HasRectIntersection);
+		BF_GET_SDLPROC(SDL_GetDisplayForWindow);
+		BF_GET_SDLPROC(SDL_GetCurrentDisplayMode);
+
+		BF_GET_SDLPROC(SDL_CreateSurfaceFrom);
+
 		BF_GET_SDLPROC(SDL_GL_CreateContext);
-		BF_GET_SDLPROC(SDL_Quit);
+		BF_GET_SDLPROC(SDL_GL_GetCurrentContext);
+		BF_GET_SDLPROC(SDL_GL_GetCurrentWindow);
+		BF_GET_SDLPROC(SDL_GL_MakeCurrent);
+		BF_GET_SDLPROC(SDL_GL_SetAttribute);
+		BF_GET_SDLPROC(SDL_GL_GetProcAddress);
+		BF_GET_SDLPROC(SDL_GL_SwapWindow);
+
+		BF_GET_SDLPROC(SDL_GetDefaultCursor);
+		BF_GET_SDLPROC(SDL_CreateSystemCursor);
+		BF_GET_SDLPROC(SDL_SetCursor);
+		BF_GET_SDLPROC(SDL_GetWindowFlags);
+		BF_GET_SDLPROC(SDL_HideWindow);
+		BF_GET_SDLPROC(SDL_RestoreWindow);
+		BF_GET_SDLPROC(SDL_MinimizeWindow);
+		BF_GET_SDLPROC(SDL_MaximizeWindow);
+		BF_GET_SDLPROC(SDL_ShowWindow);
+		BF_GET_SDLPROC(SDL_RaiseWindow);
 	}
 
 	mDataDir = mInstallDir;
 
-	if (bf_SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMECONTROLLER) < 0)
+	if (bf_SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) < 0)
 		BF_FATAL(StrFormat("Unable to initialize SDL: %s", bf_SDL_GetError()).c_str());
+
+	bf_SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 }
 
 SdlBFApp::~SdlBFApp()
 {
+	delete mSdlClipboardData;
 }
 
 SdlBFWindow* SdlBFApp::GetSdlWindowFromId(uint32 id)
@@ -276,10 +528,167 @@ SdlBFWindow* SdlBFApp::GetSdlWindowFromId(uint32 id)
 	return window;
 }
 
+void SdlBFApp::ProcessSDLEvents()
+{
+	SDL_Event sdlEvent;
+	while (bf_SDL_PollEvent(&sdlEvent))
+	{
+		switch (sdlEvent.type)
+		{
+		case SDL_EVENT_WINDOW_CLOSE_REQUESTED:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
+				if(sdlBFWindow != NULL)
+					if (sdlBFWindow->mCloseQueryFunc(sdlBFWindow) != 0)
+						gBFApp->RemoveWindow(sdlBFWindow);
+			}
+			break;
+		case SDL_EVENT_WINDOW_FOCUS_GAINED:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
+				if(sdlBFWindow != NULL)
+					sdlBFWindow->mGotFocusFunc(sdlBFWindow);
+			}
+			break;
+		case SDL_EVENT_WINDOW_FOCUS_LOST:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
+				if(sdlBFWindow != NULL)
+				{
+					sdlBFWindow->mLostFocusFunc(sdlBFWindow);
+					mIsControlDown = false;
+				}
+			}
+			break;
+		case SDL_EVENT_MOUSE_BUTTON_UP:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
+				if (sdlBFWindow != NULL)
+					sdlBFWindow->mMouseUpFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button]);
+			}
+			break;
+		case SDL_EVENT_MOUSE_BUTTON_DOWN:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
+				if (sdlBFWindow != NULL)
+					sdlBFWindow->mMouseDownFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button], sdlEvent.button.clicks);
+			}
+			break;
+		case SDL_EVENT_MOUSE_MOTION:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
+				if (sdlBFWindow != NULL)
+					sdlBFWindow->mMouseMoveFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y);
+			}
+			break;
+		case SDL_EVENT_MOUSE_WHEEL:
+			{
+				uint ucNumLines = 3; // Default
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.wheel.windowID);
+				if(sdlBFWindow != NULL)
+					sdlBFWindow->mMouseWheelFunc(sdlBFWindow, sdlEvent.wheel.mouse_x, sdlEvent.wheel.mouse_y, sdlEvent.wheel.x, sdlEvent.wheel.y * (float)ucNumLines);
+			}
+			break;
+		case SDL_EVENT_WINDOW_MOUSE_ENTER:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
+				if(sdlBFWindow != NULL)
+					RefreshMouseVisibility(sdlBFWindow);
+			}
+			break;
+		case SDL_EVENT_WINDOW_DESTROYED:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(bf_SDL_GetWindowID(bf_SDL_GetMouseFocus()));
+				if(sdlBFWindow != NULL)
+					RefreshMouseVisibility(sdlBFWindow);
+			}
+			break;
+		case SDL_EVENT_KEY_DOWN:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
+				if (sdlBFWindow != NULL)
+				{
+					sdlBFWindow->mKeyDownFunc(sdlBFWindow, SDLConvertKeyCode(sdlEvent.key.key), sdlEvent.key.repeat);
+					switch (sdlEvent.key.key) // These keys are not handled by SDL_TEXTINPUT
+					{
+						case SDLK_RETURN:
+							sdlBFWindow->mKeyCharFunc(sdlBFWindow, '\n');
+							break;
+						case SDLK_BACKSPACE:
+							sdlBFWindow->mKeyCharFunc(sdlBFWindow, mIsControlDown ? '\x7F' : '\b');
+							break;
+						case SDLK_TAB:
+							sdlBFWindow->mKeyCharFunc(sdlBFWindow, '\t');
+							break;
+						case SDLK_LCTRL:
+							mIsControlDown = true;
+							break;
+
+						default:;
+					}
+				}
+			}
+			break;
+		case SDL_EVENT_TEXT_INPUT:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.text.windowID);
+				if (sdlBFWindow != NULL)
+				{
+					const auto wideString = Beefy::UTF8Decode(sdlEvent.text.text);
+					for (int i = 0; i < wideString.length(); i++)
+						sdlBFWindow->mKeyCharFunc(sdlBFWindow, wideString[i]);
+				}
+			}
+			break;
+		case SDL_EVENT_KEY_UP:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
+				if (sdlBFWindow != NULL)
+					sdlBFWindow->mKeyUpFunc(sdlBFWindow, SDLConvertKeyCode(sdlEvent.key.key));
+
+				if (sdlEvent.key.key == SDLK_LCTRL)
+					mIsControlDown = false;
+			}
+			break;
+		case SDL_EVENT_WINDOW_MOVED:
+		case SDL_EVENT_WINDOW_RESIZED:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
+				if (sdlBFWindow != NULL)
+				{
+					sdlBFWindow->mMovedFunc(sdlBFWindow);
+
+					// if (sdlBFWindow->mHasPositionInit)
+					// {
+					// 	if (sdlEvent.type == SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED)
+					// 		sdlBFWindow->mRenderWindow->Resized();
+					//
+					//
+					// }
+					// else
+					// {
+					// 	sdlBFWindow->mHasPositionInit = true;
+					// }
+				}
+			}
+			break;
+		case SDL_EVENT_WINDOW_PIXEL_SIZE_CHANGED:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
+				if (sdlBFWindow != NULL)
+					sdlBFWindow->mRenderWindow->Resized();
+			}
+			break;
+		}
+	}
+}
+
 void SdlBFApp::Init()
 {
 	mRunning = true;
 	mInMsgProc = false;
+
+//	bf_SDL_SetHint(SDL_HINT_EVENT_LOGGING, "1");
 
 	mRenderDevice = new GLRenderDevice();
 	mRenderDevice->Init(this);
@@ -289,72 +698,7 @@ void SdlBFApp::Run()
 {
 	while (mRunning)
 	{
-		SDL_Event sdlEvent;
-		while (true)
-		{
-            {
-                //Beefy::DebugTimeGuard suspendTimeGuard(30, "BFApp::Run1");
-                if (!bf_SDL_PollEvent(&sdlEvent))
-                    break;
-            }
-
-            //Beefy::DebugTimeGuard suspendTimeGuard(30, "BFApp::Run2");
-
-			switch (sdlEvent.type)
-			{
-			case SDL_QUIT:
-				//gBFApp->RemoveWindow(sdlEvent.window);
-				Shutdown();
-				break;
-			case SDL_MOUSEBUTTONUP:
-				{
-					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
-					if (sdlBFWindow != NULL)
-						sdlBFWindow->mMouseUpFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, sdlEvent.button.button);
-				}
-				break;
-			case SDL_MOUSEBUTTONDOWN:
-				{
-					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
-					if (sdlBFWindow != NULL)
-						sdlBFWindow->mMouseDownFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, sdlEvent.button.button, 1);
-				}
-				break;
-			case SDL_MOUSEMOTION:
-				{
-					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
-					if (sdlBFWindow != NULL)
-						sdlBFWindow->mMouseMoveFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y);
-				}
-				break;
-			case SDL_KEYDOWN:
-				{
-					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
-					if (sdlBFWindow != NULL)
-					{
-						sdlBFWindow->mKeyDownFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.keysym.scancode), sdlEvent.key.repeat);
-					}
-				}
-				break;
-			case SDL_TEXTINPUT:
-				{
-					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
-					if (sdlBFWindow != NULL)
-					{
-						sdlBFWindow->mKeyCharFunc(sdlBFWindow, *(wchar_t*)sdlEvent.text.text);
-					}
-				}
-				break;
-			case SDL_KEYUP:
-				{
-					SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
-					if (sdlBFWindow != NULL)
-						sdlBFWindow->mKeyUpFunc(sdlBFWindow, SDLConvertScanCode(sdlEvent.key.keysym.scancode));
-				}
-				break;
-			}
-		}
-
+		ProcessSDLEvents();
         Process();
 	}
 }
@@ -365,12 +709,6 @@ int gBFDrawBatchCount = 0;
 void SdlBFApp::Draw()
 {
     //Beefy::DebugTimeGuard suspendTimeGuard(30, "SdlBFApp::Draw");
-
-    glDisable(GL_SCISSOR_TEST);
-    glDisable(GL_CULL_FACE);
-    glDisable(GL_DEPTH_TEST);
-    glClearColor(1.0f, 0.0f, 1.0f, 1.0f);
-    glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
     gPixelsDrawn = 0;
     gBFDrawBatchCount = 0;
@@ -396,21 +734,69 @@ void SdlBFWindow::GetPosition(int* x, int* y, int* width, int* height, int* clie
 {
 	bf_SDL_GetWindowPosition(mSDLWindow, x, y);
 	bf_SDL_GetWindowSize(mSDLWindow, width, height);
-	*clientWidth = *width;
-	*clientHeight = *height;
+
+	if (clientX)
+		*clientX = *x;
+	if (clientY)
+		*clientY = *y;
+	bf_SDL_GetWindowSizeInPixels(mSDLWindow, clientWidth, clientHeight);
 }
 
 void SdlBFApp::PhysSetCursor()
 {
+	static SDL_Cursor* cursors[] =
+	{
+		bf_SDL_GetDefaultCursor(),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT),
 
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NOT_ALLOWED),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NESW_RESIZE),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE),
+		bf_SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_WAIT),
+		NULL
+	};
+
+	bf_SDL_SetCursor(cursors[mCursor]);
 }
 
 void SdlBFWindow::SetClientPosition(int x, int y)
 {
 	bf_SDL_SetWindowPosition(mSDLWindow, x, y);
+}
 
+void SdlBFWindow::Resize(int x, int y, int width, int height, ShowKind showKind)
+{
+	bf_SDL_SetWindowPosition(mSDLWindow, x, y);
+	bf_SDL_SyncWindow(mSDLWindow);
+	bf_SDL_SetWindowSize(mSDLWindow, width, height);
+	bf_SDL_SyncWindow(mSDLWindow);
+	Show(showKind);
+	bf_SDL_SyncWindow(mSDLWindow);
+
+	if (mRenderWindow != NULL)
+		mRenderWindow->Resized();
 	if (mMovedFunc != NULL)
 		mMovedFunc(this);
+}
+
+void SdlBFWindow::GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind)
+{
+	bf_SDL_GetWindowPosition(mSDLWindow, normX, normY);
+	bf_SDL_GetWindowSize(mSDLWindow, normWidth, normHeight);
+	SDL_WindowFlags flags = bf_SDL_GetWindowFlags(mSDLWindow);
+	if ((flags & SDL_WINDOW_HIDDEN) == SDL_WINDOW_HIDDEN)
+		*showKind = ShowKind_Hide;
+	else if ((flags & SDL_WINDOW_MAXIMIZED) == SDL_WINDOW_MAXIMIZED)
+		*showKind = ShowKind_ShowMaximized;
+	else if ((flags & SDL_WINDOW_MINIMIZED) == SDL_WINDOW_MINIMIZED)
+		*showKind = ShowKind_ShowMinimized;
+	else
+		*showKind = ShowKind_ShowNormal;
 }
 
 void SdlBFWindow::SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVisible)
@@ -418,14 +804,29 @@ void SdlBFWindow::SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVis
 	// Not supported
 }
 
-uint32 SdlBFApp::GetClipboardFormat(const StringImpl& format)
+const char* SdlBFApp::GetClipboardFormat(const StringImpl& format)
 {
-	return /*CF_TEXT*/1;
+	if (format == "text" || format == "atext")
+	{
+		return "text/plain;charset=utf-8";
+	}
+	if (format == "bf_text")
+	{
+		return "text/vnd.beeflang.bf-text";
+	}
+	if (format == "code/file-list")
+	{
+		return "text/vnd.beeflang.file-list";
+	}
+	return format.c_str();
 }
 
 void* SdlBFApp::GetClipboardData(const StringImpl& format, int* size)
 {
-	return bf_SDL_GetClipboardText();
+	size_t outSize;
+	void* data = bf_SDL_GetClipboardData(GetClipboardFormat(format), &outSize);
+	*size = outSize;
+	return data;
 }
 
 void SdlBFApp::ReleaseClipboardData(void* ptr)
@@ -433,9 +834,39 @@ void SdlBFApp::ReleaseClipboardData(void* ptr)
 	bf_SDL_free(ptr);
 }
 
+const void* SDLClipboardCallback(void* userData, const char* mimeType, size_t* outSize)
+{
+	SdlClipboardData* clipboard = *(SdlClipboardData**)userData;
+
+	void* data;
+	if (clipboard->TryGetValue(StringImpl::MakeRef(mimeType), &data))
+	{
+		*outSize = strlen((const char*) data);
+	}
+	return data;
+}
+
 void SdlBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard)
 {
-	bf_SDL_SetClipboardText((const char*)ptr);
+	void* buffer = bf_SDL_malloc(size);
+	if (buffer == NULL)
+	{
+		bf_SDL_SetError("Out of memory for clipboard");
+	}
+	else 
+	{
+		StringImpl mime = StringImpl::MakeRef(GetClipboardFormat(format));
+
+		void* previous;
+		if (mSdlClipboardData->TryGetValue(mime, &previous))
+		{
+			bf_SDL_free(previous);
+		}
+		bf_SDL_memcpy(buffer, ptr, size);
+		(*mSdlClipboardData)[mime] = buffer;
+
+		bf_SDL_SetClipboardData(SDLClipboardCallback, NULL, &mSdlClipboardData, mimeTypes, 3);
+	}
 }
 
 BFMenu* SdlBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck)
@@ -458,6 +889,68 @@ void SdlBFWindow::ModalsRemoved()
 	//::SetFocus(mHWnd);
 }
 
+void SdlBFWindow::Show(ShowKind showKind)
+{
+	switch (showKind)
+	{
+		case BFWindow::ShowKind_Hide:
+			bf_SDL_HideWindow(mSDLWindow);
+			break;
+		case BFWindow::ShowKind_Normal:
+			bf_SDL_RestoreWindow(mSDLWindow);
+			break;
+		case BFWindow::ShowKind_Minimized:
+			bf_SDL_MinimizeWindow(mSDLWindow);
+			break;
+		case BFWindow::ShowKind_Maximized:
+			bf_SDL_MaximizeWindow(mSDLWindow);
+			break;
+		case BFWindow::ShowKind_Show:
+			bf_SDL_ShowWindow(mSDLWindow);
+			break;
+		case BFWindow::ShowKind_ShowNormal:
+			bf_SDL_RestoreWindow(mSDLWindow);
+			bf_SDL_ShowWindow(mSDLWindow);
+			break;
+		case BFWindow::ShowKind_ShowMinimized:
+			bf_SDL_MinimizeWindow(mSDLWindow);
+			bf_SDL_ShowWindow(mSDLWindow);
+			break;
+		case BFWindow::ShowKind_ShowMaximized:
+			bf_SDL_MaximizeWindow(mSDLWindow);
+			bf_SDL_ShowWindow(mSDLWindow);
+			break;
+	}
+}
+
+void SdlBFWindow::SetForeground()
+{
+	bf_SDL_RaiseWindow(mSDLWindow);
+}
+
+void SdlBFWindow::SetTitle(const char* title)
+{
+	bf_SDL_SetWindowTitle(mSDLWindow, title);
+}
+
+void SdlBFWindow::SetMinimumSize(int minWidth, int minHeight, bool clientSized)
+{
+	bf_SDL_SetWindowMinimumSize(mSDLWindow, minWidth, minHeight);
+}
+
+void SdlBFWindow::SetMouseVisible(bool isMouseVisible)
+{
+	mIsMouseVisible = isMouseVisible;
+	if (isMouseVisible)
+	{
+		bf_SDL_ShowCursor();
+	}
+	else 
+	{
+		bf_SDL_HideCursor();
+	}
+}
+
 DrawLayer* SdlBFApp::CreateDrawLayer(BFWindow* window)
 {
 	GLDrawLayer* drawLayer = new GLDrawLayer();
@@ -473,14 +966,98 @@ DrawLayer* SdlBFApp::CreateDrawLayer(BFWindow* window)
 
 void SdlBFApp::GetDesktopResolution(int& width, int& height)
 {
-	width = 1024;
-	height = 768;
+	SDL_DisplayID display = bf_SDL_GetPrimaryDisplay();
+    if (display != 0) 
+	{
+		SDL_DisplayMode* displayMode = bf_SDL_GetDesktopDisplayMode(display);
+		if (displayMode != NULL) {
+			width = displayMode->w;
+			height = displayMode->h;
+		}
+	}
+}
+
+static bool InflateRectToMonitor(SDL_DisplayID monitor, AdjustedMonRect* inflatedRect)
+{
+	SDL_Rect bounds;
+	if(!bf_SDL_GetDisplayBounds(monitor, &bounds))
+		return false;
+
+	inflatedRect->mMonCount++;
+	if (inflatedRect->mMonCount == 1)
+	{
+		inflatedRect->mX = bounds.x;
+		inflatedRect->mY = bounds.y;
+		inflatedRect->mWidth = bounds.w;
+		inflatedRect->mHeight = bounds.h;
+	}
+	else
+	{
+		int minLeft = BF_MIN(inflatedRect->mX, bounds.x);
+		int minTop = BF_MIN(inflatedRect->mY, bounds.y);
+		int maxRight = BF_MAX(inflatedRect->mX + inflatedRect->mWidth, bounds.x + bounds.w);
+		int maxBottom = BF_MAX(inflatedRect->mY + inflatedRect->mHeight, bounds.y + bounds.h);
+
+		inflatedRect->mX = minLeft;
+		inflatedRect->mY = minTop;
+		inflatedRect->mWidth = maxRight - minLeft;
+		inflatedRect->mHeight = maxBottom - minTop;
+	}
+
+	return true;
 }
 
 void SdlBFApp::GetWorkspaceRect(int& x, int& y, int& width, int& height)
 {
-	x = 0;
-	y = 0;
-	width = 1024;
-	height = 768;
+	AdjustedMonRect inflateRect = { 0 };
+
+	int displayCount;
+	SDL_DisplayID* displays = bf_SDL_GetDisplays(&displayCount);
+    if (!displays)
+        return;
+
+    for (int i = 0; i < displayCount; i++) 
+	{
+        InflateRectToMonitor(displays[i], &inflateRect);
+    }
+    bf_SDL_free(displays);
+	
+	x = inflateRect.mX;
+	y = inflateRect.mY;
+	width = inflateRect.mWidth;
+	height = inflateRect.mHeight;
 }
+
+void SdlBFApp::GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fromHeight, int& outX, int& outY, int& outWidth, int& outHeight)
+{
+	SDL_Rect bounds;
+	SDL_Rect clip = {fromX, fromY, fromWidth == 0 ? 1 : fromWidth, fromHeight == 0 ? 1 : fromHeight};
+	AdjustedMonRect inflateRect = { 0 };
+
+	int displayCount;
+	SDL_DisplayID* displays = bf_SDL_GetDisplays(&displayCount);
+    if (displays == NULL)
+        return;
+
+    for (int i = 0; i < displayCount; i++) 
+	{
+		bf_SDL_GetDisplayBounds(displays[i], &bounds);
+		if (bf_SDL_HasRectIntersection(&clip, &bounds))
+		{
+        	InflateRectToMonitor(displays[i], &inflateRect);
+		}
+    }
+    bf_SDL_free(displays);
+
+	if (inflateRect.mMonCount == 0)
+	{
+		GetWorkspaceRect(outX, outY, outWidth, outHeight);
+		return;
+	}
+	
+	outX = inflateRect.mX;
+	outY = inflateRect.mY;
+	outWidth = inflateRect.mWidth;
+	outHeight = inflateRect.mHeight;
+}
+

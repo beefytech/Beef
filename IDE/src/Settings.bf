@@ -529,7 +529,14 @@ namespace IDE
 						mColors.Deserialize(sd);
 				}
 
-				String imgCreatePath = scope String(gApp.mInstallDir, "images/ImgCreate.exe");
+				const String EXECUTABLE_PATH = 
+#if BF_PLATFORM_WINDOWS
+					"images/ImgCreate.exe";
+#else
+					"images/ImgCreate";
+#endif
+
+				String imgCreatePath = scope String(gApp.mInstallDir, EXECUTABLE_PATH);
 				let imgCreateExeTime = File.GetLastWriteTime(imgCreatePath).GetValueOrDefault();
 
 				for (let theme in mTheme)
