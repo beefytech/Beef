@@ -1,5 +1,9 @@
 #include "Common.h"
 #include "BFPlatform.h"
+#include <corecrt.h>
+#include <cstddef>
+#include <cstring>
+#include <stdlib.h>
 #include <sys/stat.h>
 #ifdef BF_PLATFORM_LINUX
 #include <sys/syscall.h>
@@ -930,6 +934,25 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentStrings(char* outStr, int* 
     }
 
     TryStringOut(env, outStr, inOutStrSize, (BfpResult*)outResult);
+}
+
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentVariable(char* var, char* outStr, int* inOutStrSize, BfpSystemResult* outResult)
+{
+    char* value = getenv(var);
+    if (!value)
+    {
+        OUTRESULT((BfpSystemResult)(int)BfpResult_UnknownError);
+        return;
+    }
+    TryStringOut(String(value), outStr, inOutStrSize, (BfpResult*)outResult);
+}
+
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetEnvironmentVariable(char* var, char* value, BfpSystemResult* outResult)
+{
+    if (setenv(var, value, 1/* override exisiting entry */))
+        OUTRESULT((BfpSystemResult)(int)BfpResult_UnknownError);
+    else
+        OUTRESULT(BfpSystemResult_Ok);
 }
 
 BFP_EXPORT int BFP_CALLTYPE BfpSystem_GetNumLogicalCPUs(BfpSystemResult* outResult)
