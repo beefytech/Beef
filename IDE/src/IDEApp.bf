@@ -10173,7 +10173,7 @@ namespace IDE
 				return null;
 
 			Workspace.ConfigSelection configSelection;
-			workspaceOptions.mConfigSelections.TryGetValue(project, out configSelection);
+			workspaceOptions.mConfigSelections.TryGetValue(project.mProjectName, out configSelection);
 			if ((configSelection == null) || (!configSelection.mEnabled))
 				return null;
 
@@ -10474,6 +10474,20 @@ namespace IDE
 				{
 					dep.mProjectName.Set(newName);
 					mWorkspace.SetChanged();
+				}
+			}
+
+			for (var config in mWorkspace.mConfigs.Values)
+			{
+				for (var platform in config.mPlatforms.Values)
+				{
+					for (var platformProjectName in platform.mConfigSelections.Keys)
+					{
+						if (platformProjectName == project.mProjectName)
+						{
+							platformProjectName.Set(newName);
+						}
+					}
 				}
 			}
 

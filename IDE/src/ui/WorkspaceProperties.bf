@@ -566,7 +566,7 @@ namespace IDE.ui
 				{
 					Workspace.ConfigSelection configSelection;
 					var curWorkspaceOptions = mCurWorkspaceOptions[optionsIdx];
-	                curWorkspaceOptions.mConfigSelections.TryGetValue(project, out configSelection);
+	                curWorkspaceOptions.mConfigSelections.TryGetValue(project.mProjectName, out configSelection);
 	                if (configSelection == null)
 	                    continue;
 
@@ -593,7 +593,7 @@ namespace IDE.ui
 	                propEntry.mApplyAction = new () =>
 	                    {
 	                        Workspace.ConfigSelection setConfigSelection;
-	                        curWorkspaceOptions.mConfigSelections.TryGetValue(project, out setConfigSelection);
+	                        curWorkspaceOptions.mConfigSelections.TryGetValue(project.mProjectName, out setConfigSelection);
 	                        if (setConfigSelection == null)
 	                        {
 	                            IDEApp.sApp.Fail(scope String()..AppendF("Project '{0}' not in workspace", project.mProjectName));
