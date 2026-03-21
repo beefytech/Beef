@@ -5896,8 +5896,7 @@ namespace IDE
 			return (mTestManager != null);
 		}
 
-		[IDECommand]
-		protected void RunTests(bool includeIgnored, bool debug)
+		protected void DoRunTests(bool includeIgnored, bool debug, Project project)
 		{
 			var workspaceOptions = GetCurWorkspaceOptions();
 			if (CurrentPlatform == .Wasm)
@@ -5948,6 +5947,8 @@ namespace IDE
 			mTestManager.mPrevConfigName = new String(prevConfigName);
 			mTestManager.mDebug = debug && (platformType != .Wasm);
 			mTestManager.mIncludeIgnored = includeIgnored;
+			if (project != null)
+				mTestManager.mTargetTestProject = new .(project.mProjectName);
 
 			if (mOutputPanel != null)
 				mOutputPanel.Clear();
@@ -5960,6 +5961,12 @@ namespace IDE
 			{
 				OutputLineSmart("WARNING: No projects have a test configuration specified");
 			}
+		}
+
+		[IDECommand]
+		protected void RunTests(bool includeIgnored, bool debug)
+		{
+			DoRunTests(includeIgnored, debug, null);
 		}
 
 		[IDECommand]
@@ -10297,7 +10304,7 @@ namespace IDE
 					if (workspaceOptions.mBuildKind == .Test)
 					{
 						targetType = .BeefTest;
-						if (mTestManager != null)
+						if ((mTestManager != null) && (mTestManager.WantsTestProject(project)))
 						{
 							String workingDirRel = scope String();
 							ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(WorkingDir)", "debug working directory", workingDirRel);
