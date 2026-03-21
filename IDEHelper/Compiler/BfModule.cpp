@@ -15702,6 +15702,10 @@ void BfModule::HadSlotCountDependency()
 
 BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 {
+	BfProject* project = mProject;
+	if ((project == NULL) && (mCurMethodState != NULL))
+		project = mCurMethodState->mMethodInstance->mMethodDef->mDeclaringType->mProject;
+
 	if (str == "#IsComptime")
 	{
 		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Boolean, mIsComptimeModule ? 1 : 0), GetPrimitiveType(BfTypeCode_Boolean));
@@ -15728,12 +15732,41 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 	}
 	if (str == "#ProjectName")
 	{
-		if (mProject != NULL)
-			return BfTypedValue(GetStringObjectValue(mProject->mName), ResolveTypeDef(mCompiler->mStringTypeDef));
+		if (project != NULL)
+			return BfTypedValue(GetStringObjectValue(project->mName), ResolveTypeDef(mCompiler->mStringTypeDef));
+	}
+	if (str == "#ProjectDir")
+	{
+		if (project != NULL)
+			return BfTypedValue(GetStringObjectValue(project->mDirectory), ResolveTypeDef(mCompiler->mStringTypeDef));
+	}
+	if (str == "#BuildDir")
+	{
+		return BfTypedValue(GetStringObjectValue(mCompiler->mOutputDirectory), ResolveTypeDef(mCompiler->mStringTypeDef));
 	}
 	if (str == "#AllocStackCount")
 	{
 		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mAllocStackCount), GetPrimitiveType(BfTypeCode_Int32));
+	}
+	if (str == "#Platform")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mPlatformType), GetPrimitiveType(BfTypeCode_Int32));
+	}
+	if (str == "#Architecture")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mMachineType), GetPrimitiveType(BfTypeCode_Int32));
+	}
+	if (str == "#Toolset")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mToolsetType), GetPrimitiveType(BfTypeCode_Int32));
+	}
+	if (str == "#TargetTriple")
+	{
+		return BfTypedValue(GetStringObjectValue(mCompiler->mOptions.mTargetTriple), ResolveTypeDef(mCompiler->mStringTypeDef));
+	}
+	if (str == "#OptimizationLevel")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, project->mCodeGenOptions.mOptLevel), GetPrimitiveType(BfTypeCode_Int32));
 	}
 
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))

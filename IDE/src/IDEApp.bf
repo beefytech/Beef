@@ -10798,7 +10798,7 @@ namespace IDE
 										switch (Environment.GetVariable(args[0], env))
 										{
 										case .Err:
-											cmdErr = scope:ReplaceBlock $"No such enviorment variable: {args[0]}";
+											cmdErr = scope:ReplaceBlock $"No such environment variable: {args[0]}";
 										case .Ok:
 											newString = env;
 										}
