@@ -5904,8 +5904,7 @@ namespace IDE
 			return (mTestManager != null);
 		}
 
-		[IDECommand]
-		protected void RunTests(bool includeIgnored, bool debug)
+		protected void DoRunTests(bool includeIgnored, bool debug, Project project)
 		{
 			var workspaceOptions = GetCurWorkspaceOptions();
 			if (CurrentPlatform == .Wasm)
@@ -5956,6 +5955,8 @@ namespace IDE
 			mTestManager.mPrevConfigName = new String(prevConfigName);
 			mTestManager.mDebug = debug && (platformType != .Wasm);
 			mTestManager.mIncludeIgnored = includeIgnored;
+			if (project != null)
+				mTestManager.mTargetTestProject = new .(project.mProjectName);
 
 			if (mOutputPanel != null)
 				mOutputPanel.Clear();
@@ -5968,6 +5969,12 @@ namespace IDE
 			{
 				OutputLineSmart("WARNING: No projects have a test configuration specified");
 			}
+		}
+
+		[IDECommand]
+		protected void RunTests(bool includeIgnored, bool debug)
+		{
+			DoRunTests(includeIgnored, debug, null);
 		}
 
 		[IDECommand]
@@ -10229,7 +10236,7 @@ namespace IDE
 				return null;
 
 			Workspace.ConfigSelection configSelection;
-			workspaceOptions.mConfigSelections.TryGetValue(project, out configSelection);
+			workspaceOptions.mConfigSelections.TryGetValue(project.mProjectName, out configSelection);
 			if ((configSelection == null) || (!configSelection.mEnabled))
 				return null;
 
@@ -10353,7 +10360,7 @@ namespace IDE
 					if (workspaceOptions.mBuildKind == .Test)
 					{
 						targetType = .BeefTest;
-						if (mTestManager != null)
+						if ((mTestManager != null) && (mTestManager.WantsTestProject(project)))
 						{
 							String workingDirRel = scope String();
 							ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(WorkingDir)", "debug working directory", workingDirRel);
@@ -10530,6 +10537,20 @@ namespace IDE
 				{
 					dep.mProjectName.Set(newName);
 					mWorkspace.SetChanged();
+				}
+			}
+
+			for (var config in mWorkspace.mConfigs.Values)
+			{
+				for (var platform in config.mPlatforms.Values)
+				{
+					for (var platformProjectName in platform.mConfigSelections.Keys)
+					{
+						if (platformProjectName == project.mProjectName)
+						{
+							platformProjectName.Set(newName);
+						}
+					}
 				}
 			}
 
@@ -10854,7 +10875,19 @@ namespace IDE
 										switch (Environment.GetVariable(args[0], env))
 										{
 										case .Err:
+											newString = "";
 											cmdErr = scope:ReplaceBlock $"No such environment variable: {args[0]}";
+										case .Ok:
+											newString = env;
+										}
+									}
+									else if (args.Count == 2)
+									{
+										String env = scope:ReplaceBlock .();
+										switch (Environment.GetVariable(args[0], env))
+										{
+										case .Err:
+											newString = args[1];
 										case .Ok:
 											newString = env;
 										}

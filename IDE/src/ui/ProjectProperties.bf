@@ -52,7 +52,7 @@ namespace IDE.ui
             var app = IDEApp.sApp;            
             Workspace.ConfigSelection configSelection;
             var options = app.mWorkspace.mConfigs[app.mConfigName].mPlatforms[app.mPlatformName];            
-            options.mConfigSelections.TryGetValue(project, out configSelection);            
+            options.mConfigSelections.TryGetValue(project.mProjectName, out configSelection);            
             if (configSelection != null)
             {
 				ClearAndDeleteItems(mConfigNames);
@@ -247,7 +247,7 @@ namespace IDE.ui
 							for (let platform in workspaceConfig.mPlatforms.Values)
 							{
 								Workspace.ConfigSelection configSelection;
-								if (platform.mConfigSelections.TryGetValue(mProject, out configSelection))
+								if (platform.mConfigSelections.TryGetValue(mProject.mProjectName, out configSelection))
 								{
 									String newConfig;
 									if (configNameMap.TryGetValue(configSelection.mConfig, out newConfig))

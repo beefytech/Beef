@@ -1080,7 +1080,7 @@ namespace IDE
 			}
 		}
 
-		bool QueueProjectMSLink(Project project, String targetPath, String configName, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
+		bool QueueProjectMSLink(Project project, String targetPath, String configName, Workspace.Options workspaceOptions, Project.Options options, String objectsArg, CompileKind compileKind)
 		{
 			if (options.mBuildOptions.mBuildKind == .Intermediate)
 				return true;
@@ -1249,7 +1249,11 @@ namespace IDE
 
 				UpdateCacheStr(project, linkLine, workspaceOptions, options, depPaths, libPaths);
 
-				if (project.mNeedsTargetRebuild)
+				if (!WantsProjectBuild(project, compileKind))
+				{
+					// We will catch the mNeedsTargetRebuild later when we do a proper build
+				}
+				else if (project.mNeedsTargetRebuild)
 				{
 					String projectBuildDir = scope String();
 					gApp.GetProjectBuildDir(project, projectBuildDir);
@@ -1405,6 +1409,21 @@ namespace IDE
 			return true;
 		}
 
+		public bool WantsProjectBuild(Project project, CompileKind compileKind)
+		{
+			switch (compileKind)
+			{
+			case .DebugAfter, .RunAfter, .WhileRunning:
+				return project == gApp.mWorkspace.mStartupProject;
+			case .Test:
+				if (gApp.mTestManager != null)
+					return gApp.mTestManager.WantsTestProject(project);
+				return true;
+			default:
+				return true;
+			}
+		}
+
 		public bool QueueProjectCompile(Project project, Project hotProject, IDEApp.BuildCompletedCmd completedCompileCmd, List<String> hotFileNames, CompileKind compileKind)
 		{
 			project.mLastDidBuild = false;
@@ -1508,7 +1527,7 @@ namespace IDE
 
 			mTargetPathMap[project] = new String(targetPath);
 
-			if (hotProject == null)
+			if ((hotProject == null) && (WantsProjectBuild(project, compileKind)))
 			{
 				switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPreBuildCmds))
 				{
@@ -1692,7 +1711,7 @@ namespace IDE
 					}
 					else
 					{
-						if (!QueueProjectMSLink(project, targetPath, configSelection.mConfig, workspaceOptions, options, objectsArg))
+						if (!QueueProjectMSLink(project, targetPath, configSelection.mConfig, workspaceOptions, options, objectsArg, compileKind))
 							return false;
 					}
 				}
@@ -1715,14 +1734,17 @@ namespace IDE
 			if (targetPath == null)
 				return false;
 
-			QueueBuildLogic(project, .PostBuild);
-
-			switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
+			if (WantsProjectBuild(project, compileKind))
 			{
-			case .NoCommands:
-			case .HadCommands:
-			case .Failed:
-				completedCompileCmd.mFailed = true;
+				QueueBuildLogic(project, .PostBuild);
+
+				switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
+				{
+				case .NoCommands:
+				case .HadCommands:
+				case .Failed:
+					completedCompileCmd.mFailed = true;
+				}
 			}
 
 			return true;

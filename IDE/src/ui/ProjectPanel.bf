@@ -3299,6 +3299,40 @@ namespace IDE.ui
 					if (!isFailedLoad)
 					{
 						AddOpenContainingFolder();
+
+						var testMenu = menu.AddItem("Test");
+						var testRunMenu = testMenu.AddItem("Run");
+						item = testRunMenu.AddItem("Normal Tests");
+						item.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								var projectItem = GetSelectedProjectItem();
+								if (projectItem != null)
+									gApp.[Friend]DoRunTests(false, false, projectItem.mProject);
+							});
+						item = testRunMenu.AddItem("All Tests");
+						item.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								var projectItem = GetSelectedProjectItem();
+								if (projectItem != null)
+									gApp.[Friend]DoRunTests(true, false, projectItem.mProject);
+							});
+
+						var testDebugMenu = testMenu.AddItem("Debug");
+						item = testDebugMenu.AddItem("Normal Tests");
+						item.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								var projectItem = GetSelectedProjectItem();
+								if (projectItem != null)
+									gApp.[Friend]DoRunTests(false, true, projectItem.mProject);
+							});
+						item = testDebugMenu.AddItem("All Tests");
+						item.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								var projectItem = GetSelectedProjectItem();
+								if (projectItem != null)
+									gApp.[Friend]DoRunTests(true, true, projectItem.mProject);
+							});
+
 						menu.AddItem();
 					}
 				}
