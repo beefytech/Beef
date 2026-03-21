@@ -169,9 +169,9 @@ namespace System
 		
 		public static void BfpSystem_GetEnvironmentStrings(char8* outStr, int32* inOutStrSize, BfpSystemResult* outResult) => Runtime.NotImplemented();
 
-		public static extern void BfpSystem_GetEnvironmentVariable(char8* varName, char8* outStr, int32* inOutStrSize, BfpSystemResult* outResult) => Runtime.NotImplemented();
+		public static void BfpSystem_GetEnvironmentVariable(char8* varName, char8* outStr, int32* inOutStrSize, BfpSystemResult* outResult) => Runtime.NotImplemented();
 
-		public static extern void BfpSystem_SetEnvironmentVariable(char8* varName, char8* value, BfpSystemResult* outResult) => Runtime.NotImplemented();
+		public static void BfpSystem_SetEnvironmentVariable(char8* varName, char8* value, BfpSystemResult* outResult) => Runtime.NotImplemented();
 		
 		public static int32 BfpSystem_GetNumLogicalCPUs(BfpSystemResult* outResult) => Runtime.NotImplemented();
 		
