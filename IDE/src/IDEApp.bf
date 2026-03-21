@@ -10698,8 +10698,6 @@ namespace IDE
 			return passInstance;
 		}
 
-		[CLink] static extern char8* getenv(char8*);
-
 		public bool DoResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String error, String result, ScriptManager.Context scriptContext = null)
 		{
 			int startIdx = result.Length;
@@ -10810,13 +10808,13 @@ namespace IDE
 								case "Env":
 									if (args.Count == 1)
 									{
-										let env = getenv(args[0]);
-										if (env == null)
-											cmdErr = scope:ReplaceBlock $"No such enviorment variable: {args[0]}";
-										else
+										String env = scope:ReplaceBlock .();
+										switch (Environment.GetVariable(args[0], env))
 										{
-											newString = scope:ReplaceBlock .();
-											newString.Append(env);
+										case .Err:
+											cmdErr = scope:ReplaceBlock $"No such environment variable: {args[0]}";
+										case .Ok:
+											newString = env;
 										}
 									}
 									else
