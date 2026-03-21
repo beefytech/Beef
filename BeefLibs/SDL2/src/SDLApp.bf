@@ -250,6 +250,16 @@ namespace SDL2
 			y = (.)((y - scaleRect.y) / scaleRect.h);
 		}
 
+		public void TranslatePhysToVirt(ref float x, ref float y)
+		{
+			if (!mScaleContent)
+				return;
+
+			var scaleRect = GetVirtToPhys();
+			x = (.)((x - scaleRect.x) / scaleRect.w);
+			y = (.)((y - scaleRect.y) / scaleRect.h);
+		}
+
 		public virtual void Init()
 		{
 			mDidInit = true;
@@ -342,6 +352,21 @@ namespace SDL2
 		}
 
 		public virtual void MouseMove(SDL.MouseMotionEvent evt)
+		{
+
+		}
+
+		public virtual void TouchDown(SDL.TouchFingerEvent evt)
+		{
+
+		}
+
+		public virtual void TouchUp(SDL.TouchFingerEvent evt)
+		{
+
+		}
+
+		public virtual void TouchMove(SDL.TouchFingerEvent evt)
 		{
 
 		}
@@ -549,6 +574,21 @@ namespace SDL2
 						Resize(event.window.data1, event.window.data2);
 					default:
 					}
+				case .FingerDown:
+					event.tfinger.x *= mPhysWidth;
+					event.tfinger.y *= mPhysHeight;
+					TranslatePhysToVirt(ref event.tfinger.x, ref event.tfinger.y);
+					TouchDown(event.tfinger);
+				case .FingerUp:
+					event.tfinger.x *= mPhysWidth;
+					event.tfinger.y *= mPhysHeight;
+					TranslatePhysToVirt(ref event.tfinger.x, ref event.tfinger.y);
+					TouchUp(event.tfinger);
+				case .FingerMotion:
+					event.tfinger.x *= mPhysWidth;
+					event.tfinger.y *= mPhysHeight;
+					TranslatePhysToVirt(ref event.tfinger.x, ref event.tfinger.y);
+					TouchMove(event.tfinger);
 				default:
 				}
 
