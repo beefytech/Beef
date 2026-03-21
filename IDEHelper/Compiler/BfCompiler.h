@@ -393,6 +393,7 @@ public:
 	BfTypeDef* mPlatformTypeDef;
 	BfTypeDef* mCompilerTypeDef;
 	BfTypeDef* mCompilerGeneratorTypeDef;
+	BfTypeDef* mCompilerBuildLogicTypeDef;
 	BfTypeDef* mDiagnosticsDebugTypeDef;
 	BfTypeDef* mIDisposableTypeDef;
 	BfTypeDef* mIIntegerTypeDef;
@@ -550,11 +551,14 @@ public:
 	void RequestFastFinish();
 	void RequestExtraCompile();
 	String GetTypeDefList(bool includeLocation);
-	String GetGeneratorString(BfTypeDef* typeDef, BfTypeInstance* typeInst, const StringImpl& generatorMethodName, const StringImpl* args);
+	String ExecuteUserDefinedMethod(BfTypeDef* typeDef, BfTypeInstance* typeInst, BfTypeDef* parentClass, const StringImpl& generatorMethodName, const StringImpl* args);
 	void HandleGeneratorErrors(StringImpl& result);
 	String GetGeneratorTypeDefList();
 	String GetGeneratorInitData(const StringImpl& typeName, const StringImpl& args);
 	String GetGeneratorGenData(const StringImpl& typeName, const StringImpl& args);
+	bool ValidateBuildLogic(const StringImpl& typeName);
+	String ExecuteBuildLogicPreBuild(const StringImpl& typeName);
+	String ExecuteBuildLogicPostBuild(const StringImpl& typeName);
 	String GetTypeDefMatches(const StringImpl& searchSrc, bool includeLocation);
 	void GetTypeDefs(const StringImpl& typeName, Array<BfTypeDef*>& typeDefs);
 	String GetTypeDefInfo(const StringImpl& typeName);

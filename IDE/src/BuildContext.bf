@@ -173,6 +173,18 @@ namespace IDE
 			return didCommands ? .HadCommands : .NoCommands;
 		}
 
+		public void QueueBuildLogic(Project project, IDEApp.BuildLogicCmd.Stage stage)
+		{
+			if (project.mBeefGlobalOptions.mBuildLogicObject.IsEmpty)
+				return;
+
+			gApp.mExecutionQueue.Add(new IDEApp.BuildLogicCmd()
+				{
+					mObject = new String(project.mBeefGlobalOptions.mBuildLogicObject),
+					mStage = stage,
+				});
+		}
+
 		bool QueueProjectGNUArchive(Project project, String targetPath, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
 		{
 #if BF_PLATFORM_WINDOWS
@@ -1505,6 +1517,8 @@ namespace IDE
 				case .Failed:
 					completedCompileCmd.mFailed = true;
 				}
+
+				QueueBuildLogic(project, .PreBuild);
 			}
 				
 			if (project.mGeneralOptions.mTargetType == .CustomBuild)
@@ -1700,6 +1714,8 @@ namespace IDE
 			mTargetPathMap.TryGetValue(project, out targetPath);
 			if (targetPath == null)
 				return false;
+
+			QueueBuildLogic(project, .PostBuild);
 
 			switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
 			{

@@ -258,6 +258,15 @@ namespace System
 
 		public abstract class BuildLogic
 		{
+			public String mCmdInfo = new .() ~ delete _;
+
+			public void AddLibPath(StringView lib)
+			{
+				mCmdInfo.Append("addLibPath\t");
+				lib.QuoteString(mCmdInfo);
+				mCmdInfo.Append('\n');
+			}
+
 			public virtual void PreBuild()
 			{
 			}
@@ -265,13 +274,17 @@ namespace System
 			{
 			}
 
-			static void PreBuild<T>() where T : BuildLogic
+			static String PreBuild<T>() where T : BuildLogic
 			{
-				scope T().PreBuild();
+				T val = scope T();
+				val.PreBuild();
+				return val.mCmdInfo;
 			}
-			static void PostBuild<T>() where T : BuildLogic
+			static String PostBuild<T>() where T : BuildLogic
 			{
-				scope T().PostBuild();
+				T val = scope T();
+				val.PostBuild();
+				return val.mCmdInfo;
 			}
 		}
 

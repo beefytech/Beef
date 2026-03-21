@@ -1105,6 +1105,8 @@ namespace IDE
 			[Reflect]
 			public String mStartupObject = new String("") ~ delete _;
 			[Reflect]
+			public String mBuildLogicObject = new String() ~ delete _;
+			[Reflect]
 			public String mDefaultNamespace = new String() ~ delete _;
 			[Reflect]
 			public List<String> mPreprocessorMacros = new List<String>() ~ DeleteContainerAndItems!(_);
@@ -1657,6 +1659,7 @@ namespace IDE
 				data.ConditionalAdd("Version", mGeneralOptions.mVersion.mVersion);
 				data.ConditionalAdd("TargetType", mGeneralOptions.mTargetType, GetDefaultTargetType());
 				data.ConditionalAdd("StartupObject", mBeefGlobalOptions.mStartupObject, IsSingleFile ? "Program" : "");
+				data.ConditionalAdd("BuildLogicObject", mBeefGlobalOptions.mBuildLogicObject);
 				var defaultNamespace = scope String();
 				GetSanitizedName(mProjectName, defaultNamespace, true);
 				data.ConditionalAdd("DefaultNamespace", mBeefGlobalOptions.mDefaultNamespace, defaultNamespace);
@@ -2014,6 +2017,7 @@ namespace IDE
 				data.GetString("Version", mGeneralOptions.mVersion.mVersion);
 				ReadStrings("Aliases", mGeneralOptions.mAliases);
 				data.GetString("StartupObject", mBeefGlobalOptions.mStartupObject, IsSingleFile ? "Program" : "");
+				data.GetString("BuildLogicObject", mBeefGlobalOptions.mBuildLogicObject);
 				var defaultNamespace = scope String();
 				GetSanitizedName(mProjectName, defaultNamespace, true);
 				data.GetString("DefaultNamespace", mBeefGlobalOptions.mDefaultNamespace, defaultNamespace);

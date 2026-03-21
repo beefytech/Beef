@@ -476,6 +476,14 @@ namespace IDE
 			public String mPath ~ delete _;
 		}
 
+		public class BuildLogicCmd : ExecutionCmd
+		{
+			public enum Stage { PreBuild, PostBuild }
+
+			public String mObject ~ delete _;
+			public Stage mStage;
+		}
+
 		public enum ArgsFileKind
 		{
 			None,
@@ -9860,6 +9868,54 @@ namespace IDE
 				{
 					// Already handled
 					(void)scriptCmd;
+				}
+				else if (var buildLogicCmd = next as BuildLogicCmd) do
+				{
+					mBfBuildSystem.Lock(0);
+					defer mBfBuildSystem.Unlock();
+
+					Stopwatch stopwatch = scope .()..Start();
+
+					if (!mBfBuildCompiler.ValidateBuildLogic(buildLogicCmd.mObject))
+					{
+						OutputErrorLine($"Invalid Compiler.BuildLogic object: {buildLogicCmd.mObject}");
+						buildFailed = true;
+						break;
+					}
+
+					String output = scope .();
+					switch (buildLogicCmd.mStage)
+					{
+					case .PreBuild: mBfBuildCompiler.ExecuteBuildLogicPreBuild(buildLogicCmd.mObject, output);
+					case .PostBuild: mBfBuildCompiler.ExecuteBuildLogicPostBuild(buildLogicCmd.mObject, output);
+					}
+
+					for (let line in output.Split('\n', .RemoveEmptyEntries))
+					{
+						int index = line.IndexOf('\t');
+						if (index < 0)
+						{
+							OutputErrorLine($"Malformed build logic execution result: {line}");
+							buildFailed = true;
+							continue;
+						}
+
+						switch (line[..<index])
+						{
+						case "addLibPath": //TODO
+							//String path = new .();
+							//line[(index+1)...].UnQuoteString(path);
+							//mDynamicallyAddedLibPaths.Add(path);
+						case "!error":
+							OutputLine($"{line[(index+1)...]}");
+							buildFailed = true;
+						default:
+							OutputErrorLine($"Invalid build logic execution command: {_}");
+							buildFailed = true;
+						}
+
+						OutputLineSmart($"Build logic '{buildLogicCmd.mObject}.{buildLogicCmd.mStage}' finished in {stopwatch.ElapsedMilliseconds / 1000.0f:0.00}s");
+					}
 				}
 				else if (var writeEmitCmd = next as WriteEmitCmd)
 				{
