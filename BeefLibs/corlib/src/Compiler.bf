@@ -256,25 +256,6 @@ namespace System
 			}
 		}
 
-		public abstract class BuildLogic
-		{
-			public virtual void PreBuild()
-			{
-			}
-			public virtual void PostBuild()
-			{
-			}
-
-			static void PreBuild<T>() where T : BuildLogic
-			{
-				scope T().PreBuild();
-			}
-			static void PostBuild<T>() where T : BuildLogic
-			{
-				scope T().PostBuild();
-			}
-		}
-
 		public struct MethodBuilder
 		{
 			void* mNative;
