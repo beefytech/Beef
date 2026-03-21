@@ -2688,7 +2688,7 @@ void BfIRBuilder::NewCmdInserted()
 	// This is for debug only - for checking the stream after each command. Useful when debugging IR generation errors
 	BF_ASSERT(mStream.GetReadPos() < mStream.GetSize());
 	mIRCodeGen->HandleNextCmd();
-	BF_ASSERT(mStream.GetReadPos() == mStream.GetSize());
+	BF_ASSERT((mStream.GetReadPos() == mStream.GetSize()) || (mIRCodeGen->mFailed));
 }
 
 BfIRMDNode BfIRBuilder::CreateNamespaceScope(BfType* type, BfIRMDNode fileDIScope)
