@@ -424,7 +424,10 @@ namespace BeefBuild
 					{
 						targetProject = mWorkspace.FindProject(mTargetProject);
 						if (targetProject == null)
+						{
 							Fail(scope $"Failed to locate target project '{mTargetProject}'");
+							return;
+						}
 					}
 
 					mHandledVerb = true;

@@ -84,7 +84,7 @@ namespace IDE
 		{
 			if (mTargetTestProject == null)
 				return true;
-			return project.mProjectName == mTargetTestProject;
+			return project.mProjectName.Equals(mTargetTestProject, .OrdinalIgnoreCase);
 		}
 
 		public void AddProject(Project project, StringView workingDir)
