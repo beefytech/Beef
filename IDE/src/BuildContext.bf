@@ -185,12 +185,12 @@ namespace IDE
 			return didCommands ? .HadCommands : .NoCommands;
 		}
 
-		public void QueueBuildLogic(Project project, IDEApp.BuildLogicCmd.Stage stage)
+		public void QueueBuildLogic(Project project, IDEApp.StartCustomBuildLogicCmd.Stage stage)
 		{
 			if (project.mBeefGlobalOptions.mBuildLogicObject.IsEmpty)
 				return;
 
-			gApp.mExecutionQueue.Add(new IDEApp.BuildLogicCmd()
+			gApp.mExecutionQueue.Add(new IDEApp.StartCustomBuildLogicCmd()
 				{
 					mObject = new String(project.mBeefGlobalOptions.mBuildLogicObject),
 					mStage = stage,
