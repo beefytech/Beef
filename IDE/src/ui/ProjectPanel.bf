@@ -3300,6 +3300,18 @@ namespace IDE.ui
 					{
 						AddOpenContainingFolder();
 
+						menu.AddItem();
+						item = menu.AddItem("Build");
+						item.mOnMenuItemSelected.Add(new (menu) =>
+							{
+								var projectItem = GetSelectedProjectItem();
+								if (projectItem != null)
+								{
+									gApp.[Friend]Compile(.NormalTargeted(new .(projectItem.mProject.mProjectName)));
+								}
+									//gApp.[Friend](false, false, projectItem.mProject);
+							});
+
 						var testMenu = menu.AddItem("Test");
 						var testRunMenu = testMenu.AddItem("Run");
 						item = testRunMenu.AddItem("Normal Tests");

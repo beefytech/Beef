@@ -10,13 +10,15 @@ using Beefy.theme.dark;
 
 namespace IDE
 {
-	enum CompileKind
+	enum CompileKind : IDisposable
 	{
 		case Normal;
+		case NormalTargeted(String projectName);
 		case RunAfter;
 		case DebugAfter;
 		case DebugComptime;
 		case Test;
+		case TestTargeted;
 		case WhileRunning;
 
 		public bool WantsRunAfter
@@ -24,6 +26,16 @@ namespace IDE
 			get
 			{
 				return (this == .RunAfter) || (this == .DebugAfter);
+			}
+		}
+
+		public void Dispose()
+		{
+			switch (this)
+			{
+			case .NormalTargeted(let projectName):
+				delete projectName;
+			default:
 			}
 		}
 	}
@@ -1413,6 +1425,8 @@ namespace IDE
 		{
 			switch (compileKind)
 			{
+			case .NormalTargeted(let projectName):
+				return project.mProjectName == projectName;
 			case .DebugAfter, .RunAfter, .WhileRunning:
 				return project == gApp.mWorkspace.mStartupProject;
 			case .Test:

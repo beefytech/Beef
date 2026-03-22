@@ -1015,10 +1015,11 @@ namespace IDE
 				{
 					void Add(String name, Project project)
 					{
-						bool added = mProjectNameMap.TryAdd(name, var keyPtr, var valuePtr);
+						String nameUpper = scope .(name)..ToUpper();
+						bool added = mProjectNameMap.TryAdd(nameUpper, var keyPtr, var valuePtr);
 						if (!added)
 							return;
-						*keyPtr = new String(name);
+						*keyPtr = new String(nameUpper);
 						*valuePtr = project;
 					}
 
@@ -1036,7 +1037,8 @@ namespace IDE
 					}
 				}
 
-	            if (mProjectNameMap.TryGetAlt(projectName, var matchKey, var value))
+				String projectNameUpper = scope .(projectName)..ToUpper();
+	            if (mProjectNameMap.TryGet(projectNameUpper, var matchKey, var value))
 				{
 					return value;
 				}

@@ -420,7 +420,7 @@ namespace IDE
 		class ProcessBfCompileCmd : ExecutionCmd
 		{
 			public BfPassInstance mBfPassInstance ~ delete _;
-			public CompileKind mCompileKind;
+			public CompileKind mCompileKind ~ _.Dispose();
 			public Project mHotProject;
 			public Stopwatch mStopwatch ~ delete _;
 			public Profiler mProfiler;
