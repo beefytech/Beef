@@ -7049,6 +7049,21 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				CeSetAddrVal(stackPtr + 0, GetString(string), ptrSize);
 				_FixVariables();
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_WriteToOutput)
+			{
+				if (mCeMachine->mWriteToOutputCallback != NULL)
+				{
+					addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr);
+					String text;
+					if (!GetStringFromStringView(strViewPtr, text))
+					{
+						_Fail("Invalid StringView");
+						return false;
+					}
+
+					mCeMachine->mWriteToOutputCallback(mCeMachine->mWriteToOutputUserData, text.GetPtr(), text.GetLength());
+				}
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Sleep)
 			{
 				int32 sleepMS = *(int32*)((uint8*)stackPtr);
@@ -9639,6 +9654,8 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mRevisionExecuteTime = 0;
 	mCurBuilder = NULL;
 	mPreparingFunction = NULL;
+	mWriteToOutputUserData = NULL;
+	mWriteToOutputCallback = NULL;
 
 	mCurEmitContext = NULL;
 
@@ -10334,6 +10351,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_GetStringById")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_GetStringById;
+				}
+				else if (methodDef->mName == "Comptime_WriteToOutput")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_WriteToOutput;
 				}
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mDiagnosticsDebugTypeDef))

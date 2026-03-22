@@ -155,6 +155,11 @@ namespace IDE.Compiler
             void* hotProject, int32 hotIdx, char8* targetTriple, char8* targetCPU, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
             OptionFlags optionsFlags, char8* mallocName, char8* freeName);
 
+		[CallingConvention(.Stdcall)]
+		public function void ComptimeWriteToOutputCallback(void* userdata, char8* ptr, int32 len);
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BfCompiler_SetComptimeWriteToOutputCallback(void* bfCompiler, void* userdata, ComptimeWriteToOutputCallback callback);
+
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_ForceRebuild(void* bfCompiler);
 
@@ -351,6 +356,11 @@ namespace IDE.Compiler
                 (hotProject != null) ? hotProject.mNativeBfProject : null, hotIdx,
                 targetTriple, targetCPU, toolsetType, simdSetting, allocStackCount, maxWorkerThreads, optionFlags, mallocFuncName, freeFuncName);
         }
+
+		public void SetComptimeWriteToOutputCallback(void* userdata, ComptimeWriteToOutputCallback callback)
+		{
+			BfCompiler_SetComptimeWriteToOutputCallback(mNativeBfCompiler, userdata, callback);
+		}
 
 		public void ForceRebuild()
 		{
@@ -792,6 +802,12 @@ namespace IDE.Compiler
 					mBfSystem.AddTypeOptions(typeOption);
 				for (let typeOption in options.mDistinctBuildOptions)
 					mBfSystem.AddTypeOptions(typeOption);
+
+				SetComptimeWriteToOutputCallback(Internal.UnsafeCastToPtr(IDEApp.sApp), (userdata, ptr, len) =>
+					{
+						IDEApp app = (.)Internal.UnsafeCastToObject(userdata);
+						app.Output(scope String(ptr, len));
+					});
 			}
 		}
 

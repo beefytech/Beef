@@ -469,6 +469,7 @@ enum CeFunctionKind
 	CeFunctionKind_EmitMethodExit,
 	CeFunctionKind_EmitMixin,
 	CeFunctionKind_GetStringById,
+	CeFunctionKind_WriteToOutput,
 
 	CeFunctionKind_BfpDirectory_Create,
 	CeFunctionKind_BfpDirectory_Rename,
@@ -1239,6 +1240,8 @@ public:
 	}
 };
 
+typedef void (BF_CALLTYPE* CeWriteToOutputCallback)(void* userdata, const char* ptr, int len);
+
 class CeMachine
 {
 public:
@@ -1266,6 +1269,8 @@ public:
 	CeCallSource* mCurCallSource;
 	CeBuilder* mCurBuilder;
 	CeFunction* mPreparingFunction;
+	void* mWriteToOutputUserData;
+	CeWriteToOutputCallback mWriteToOutputCallback;
 
 	BfParser* mTempParser;
 	BfReducer* mTempReducer;
