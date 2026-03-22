@@ -15703,7 +15703,7 @@ void BfModule::HadSlotCountDependency()
 BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 {
 	BfProject* project = mProject;
-	if ((project == NULL) && (mCurMethodState != NULL))
+	if ((project == NULL) && (mCurMethodState != NULL) && (mCurMethodState->mMethodInstance != NULL))	
 		project = mCurMethodState->mMethodInstance->mMethodDef->mDeclaringType->mProject;
 
 	if (str == "#IsComptime")
