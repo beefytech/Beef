@@ -1423,19 +1423,28 @@ namespace IDE
 
 		public bool WantsProjectBuild(Project project, CompileKind compileKind)
 		{
+			Project targetedProject = null;
+
 			switch (compileKind)
 			{
 			case .NormalTargeted(let projectName):
-				return project.mProjectName == projectName;
+				targetedProject = gApp.mWorkspace.FindProject(projectName);
 			case .DebugAfter, .RunAfter, .WhileRunning:
-				return project == gApp.mWorkspace.mStartupProject;
+				targetedProject = gApp.mWorkspace.mStartupProject;
 			case .Test:
-				if (gApp.mTestManager != null)
-					return gApp.mTestManager.WantsTestProject(project);
-				return true;
+				if ((gApp.mTestManager != null) && (gApp.mTestManager.mTargetTestProject != null))
+					targetedProject = gApp.mWorkspace.FindProject(gApp.mTestManager.mTargetTestProject);
 			default:
-				return true;
 			}
+
+			if (targetedProject != null)
+			{
+				if (targetedProject == project)
+					return true;
+				return targetedProject.HasDependency(project.mProjectName);
+			}
+
+			return true;
 		}
 
 		public bool QueueProjectCompile(Project project, Project hotProject, IDEApp.BuildCompletedCmd completedCompileCmd, List<String> hotFileNames, CompileKind compileKind)

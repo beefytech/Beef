@@ -985,9 +985,10 @@ namespace IDE
 
 				void Add(String name, Project project)
 				{
-					if (mProjectNameMap.TryAdd(name, var keyPtr, var valuePtr))
+					String nameUpper = scope .(name)..ToUpper();
+					if (mProjectNameMap.TryAdd(nameUpper, var keyPtr, var valuePtr))
 					{
-						*keyPtr = new String(name);
+						*keyPtr = new String(nameUpper);
 						*valuePtr = project;
 					}
 					else
