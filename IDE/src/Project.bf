@@ -1680,7 +1680,7 @@ namespace IDE
 
 			if (!isDefaultDependencies)
 			{
-				using (data.CreateObject("Dependencies", true))
+				using (data.CreateObject("Dependencies"))
 				{
 				    for (var dependency in mDependencies)
 				    {
