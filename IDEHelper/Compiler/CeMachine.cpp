@@ -6159,6 +6159,18 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				_Fail("Dynamic cast check failed");
 				return false;
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Console_PutChars)
+			{
+				if (mCeMachine->mWriteToOutputCallback != NULL)
+				{
+					int32 ptrVal = *(int32*)((uint8*)stackPtr + 0);
+					int32 size = *(int32*)(stackPtr + ceModule->mSystem->mPtrSize);
+					CE_CHECKADDR(ptrVal, size);
+					char* strPtr = (char*)(ptrVal + memStart);
+
+					mCeMachine->mWriteToOutputCallback(mCeMachine->mWriteToOutputUserData, strPtr, size);
+				}
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_DebugWrite)
 			{
 				int32 ptrVal = *(int32*)((uint8*)stackPtr + 0);
@@ -7048,21 +7060,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				CeSetAddrVal(stackPtr + 0, GetString(string), ptrSize);
 				_FixVariables();
-			}
-			else if (checkFunction->mFunctionKind == CeFunctionKind_WriteToOutput)
-			{
-				if (mCeMachine->mWriteToOutputCallback != NULL)
-				{
-					addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr);
-					String text;
-					if (!GetStringFromStringView(strViewPtr, text))
-					{
-						_Fail("Invalid StringView");
-						return false;
-					}
-
-					mCeMachine->mWriteToOutputCallback(mCeMachine->mWriteToOutputUserData, text.GetPtr(), text.GetLength());
-				}
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Sleep)
 			{
@@ -10352,9 +10349,12 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_GetStringById;
 				}
-				else if (methodDef->mName == "Comptime_WriteToOutput")
+			}
+			else if (owner->IsInstanceOf(mCeModule->mCompiler->mConsoleTypeDef))
+			{
+				if (methodDef->mName == "PutChars")
 				{
-					ceFunction->mFunctionKind = CeFunctionKind_WriteToOutput;
+					ceFunction->mFunctionKind = CeFunctionKind_Console_PutChars;
 				}
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mDiagnosticsDebugTypeDef))

@@ -394,6 +394,7 @@ public:
 	BfTypeDef* mCompilerTypeDef;
 	BfTypeDef* mCompilerGeneratorTypeDef;
 	BfTypeDef* mCompilerBuildLogicTypeDef;
+	BfTypeDef* mConsoleTypeDef;
 	BfTypeDef* mDiagnosticsDebugTypeDef;
 	BfTypeDef* mIDisposableTypeDef;
 	BfTypeDef* mIIntegerTypeDef;

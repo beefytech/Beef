@@ -450,7 +450,6 @@ namespace System
 		static extern void Comptime_EmitMethodExit(int64 methodHandle, StringView text);
 		static extern void Comptime_EmitMixin(StringView text);
 		static extern String Comptime_GetStringById(int32 id);
-		static extern void Comptime_WriteToOutput(StringView text);
 
 		[Comptime(OnlyFromComptime=true)]
 		public static MethodBuilder CreateMethod(Type owner, StringView methodName, Type returnType, MethodFlags methodFlags)
@@ -494,19 +493,6 @@ namespace System
 		public static void EmitMethodExit(MethodInfo methodHandle, StringView text)
 		{
 			Comptime_EmitMethodExit(methodHandle.[Friend]mData.mComptimeMethodInstance, text);
-		}
-
-		[Comptime(OnlyFromComptime=true)]
-		public static void Write(StringView text)
-		{
-			Comptime_WriteToOutput(text);
-		}
-
-		[Comptime(OnlyFromComptime=true)]
-		public static void WriteLine(StringView text)
-		{
-			Comptime_WriteToOutput(text);
-			Comptime_WriteToOutput("\n");
 		}
 
 		[Comptime(ConstEval=true)]

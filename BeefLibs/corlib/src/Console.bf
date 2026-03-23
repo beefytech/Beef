@@ -185,6 +185,7 @@ namespace System
 
 		public static this()
 		{
+			if (Compiler.IsComptime) return;
 			let handle = GetStdHandle(STD_OUTPUT_HANDLE);
 			CONSOLE_SCREEN_BUFFER_INFO consoleInfo = .();
 			if (GetConsoleScreenBufferInfo(handle, out consoleInfo) != 0)
