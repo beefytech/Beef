@@ -449,6 +449,10 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mIOnTypeDoneTypeDef = NULL;
 	mIOnFieldInitTypeDef = NULL;
 	mIOnMethodInitTypeDef = NULL;
+	mCompilerOptionsPlatformTypeTypeDef = NULL;
+	mCompilerOptionsMachineTypeTypeDef = NULL;
+	mCompilerOptionsToolsetTypeTypeDef = NULL;
+	mCompilerOptionsOptLevelTypeDef = NULL;
 	mLinkNameAttributeTypeDef = NULL;
 	mCallingConventionAttributeTypeDef = NULL;
 	mMethodRefTypeDef = NULL;
@@ -7336,6 +7340,11 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mIOnTypeDoneTypeDef = _GetRequiredType("System.IOnTypeDone");
 	mIOnFieldInitTypeDef = _GetRequiredType("System.IOnFieldInit");
 	mIOnMethodInitTypeDef = _GetRequiredType("System.IOnMethodInit");
+
+	mCompilerOptionsPlatformTypeTypeDef = _GetRequiredType("System.Compiler.Options.PlatformType");
+	mCompilerOptionsMachineTypeTypeDef = _GetRequiredType("System.Compiler.Options.MachineType");
+	mCompilerOptionsToolsetTypeTypeDef = _GetRequiredType("System.Compiler.Options.ToolsetType");
+	mCompilerOptionsOptLevelTypeDef = _GetRequiredType("System.Compiler.Options.OptLevel");
 
 	mLinkNameAttributeTypeDef = _GetRequiredType("System.LinkNameAttribute");
 	mCallingConventionAttributeTypeDef = _GetRequiredType("System.CallingConventionAttribute");
