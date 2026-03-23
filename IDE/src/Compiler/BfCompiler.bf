@@ -160,6 +160,11 @@ namespace IDE.Compiler
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_SetComptimeWriteToOutputCallback(void* bfCompiler, void* userdata, ComptimeWriteToOutputCallback callback);
 
+		[CallingConvention(.Stdcall)]
+		public function Platform.BfpSpawn* ComptimeRunShellCommandCallback(void* userdata, char8* cmd, int32* outExitCode);
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BfCompiler_SetComptimeRunShellCommandCallback(void* bfCompiler, void* userdata, ComptimeRunShellCommandCallback callback);
+
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_ForceRebuild(void* bfCompiler);
 
@@ -360,6 +365,11 @@ namespace IDE.Compiler
 		public void SetComptimeWriteToOutputCallback(void* userdata, ComptimeWriteToOutputCallback callback)
 		{
 			BfCompiler_SetComptimeWriteToOutputCallback(mNativeBfCompiler, userdata, callback);
+		}
+
+		public void SetComptimeRunShellCommandCallback(void* userdata, ComptimeRunShellCommandCallback callback)
+		{
+			BfCompiler_SetComptimeRunShellCommandCallback(mNativeBfCompiler, userdata, callback);
 		}
 
 		public void ForceRebuild()
@@ -807,6 +817,12 @@ namespace IDE.Compiler
 					{
 						IDEApp app = (.)Internal.UnsafeCastToObject(userdata);
 						app.Output(scope String(ptr, len));
+					});
+				SetComptimeRunShellCommandCallback(Internal.UnsafeCastToPtr(IDEApp.sApp), (userdata, cmd, outExitCode) =>
+					{
+						IDEApp app = (.)Internal.UnsafeCastToObject(userdata);
+						let inst = app.DoRun("", StringView(cmd), app.mWorkspace.mDir, .None, null, null, .ShellCommand);
+						return inst.mProcess.[Friend]mSpawn;
 					});
 			}
 		}

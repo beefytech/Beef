@@ -6171,6 +6171,26 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					mCeMachine->mWriteToOutputCallback(mCeMachine->mWriteToOutputUserData, strPtr, size);
 				}
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Console_RunShellCommand)
+			{
+				if (mCeMachine->mRunShellCommandCallback == NULL)
+				{
+					_Fail("Console.RunShellCommand is only avaliable when building");
+				}
+				else
+				{
+					int32 ptrVal = *(int32*)(stackPtr + 4);
+					char* strPtr = (char*)(ptrVal + memStart);
+
+					int32 exitCode;
+					auto waitEvent = mCeMachine->mRunShellCommandCallback(mCeMachine->mRunShellCommandUserData, strPtr, &exitCode);
+
+					if (waitEvent != NULL)
+						BfpSpawn_WaitFor(waitEvent, -1, &exitCode, NULL);
+
+					*((int32*)stackPtr) = exitCode;
+				}
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_DebugWrite)
 			{
 				int32 ptrVal = *(int32*)((uint8*)stackPtr + 0);
@@ -9651,8 +9671,11 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mRevisionExecuteTime = 0;
 	mCurBuilder = NULL;
 	mPreparingFunction = NULL;
+
 	mWriteToOutputUserData = NULL;
 	mWriteToOutputCallback = NULL;
+	mRunShellCommandUserData = NULL;
+	mRunShellCommandCallback = NULL;
 
 	mCurEmitContext = NULL;
 
@@ -10355,6 +10378,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				if (methodDef->mName == "PutChars")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Console_PutChars;
+				}
+				else if (methodDef->mName == "RunShellCommand")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Console_RunShellCommand;
 				}
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mDiagnosticsDebugTypeDef))

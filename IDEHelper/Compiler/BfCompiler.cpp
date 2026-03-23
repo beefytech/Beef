@@ -11341,6 +11341,12 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetComptimeWriteToOutputCallback(BfCompile
 	bfCompiler->mCeMachine->mWriteToOutputCallback = callback;
 }
 
+BF_EXPORT void BF_CALLTYPE BfCompiler_SetComptimeRunShellCommandCallback(BfCompiler* bfCompiler, void* userdata, CeRunShellCommandCallback callback)
+{
+	bfCompiler->mCeMachine->mRunShellCommandUserData = userdata;
+	bfCompiler->mCeMachine->mRunShellCommandCallback = callback;
+}
+
 BF_EXPORT void BF_CALLTYPE BfCompiler_ForceRebuild(BfCompiler* bfCompiler)
 {
 	bfCompiler->mOptions.mForceRebuildIdx++;

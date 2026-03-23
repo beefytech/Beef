@@ -429,6 +429,7 @@ enum CeFunctionKind
 	CeFunctionKind_DynCheckFailed,
 	CeFunctionKind_FatalError,
 	CeFunctionKind_Console_PutChars,
+	CeFunctionKind_Console_RunShellCommand,
 	CeFunctionKind_DebugWrite,
 	CeFunctionKind_DebugWrite_Int,	
 	CeFunctionKind_GetReflectTypeDeclById,
@@ -1241,6 +1242,7 @@ public:
 };
 
 typedef void (BF_CALLTYPE* CeWriteToOutputCallback)(void* userdata, const char* ptr, int len);
+typedef BfpSpawn* (BF_CALLTYPE* CeRunShellCommandCallback)(void* userdata, const char* cmd, int* outExitcode);
 
 class CeMachine
 {
@@ -1269,8 +1271,11 @@ public:
 	CeCallSource* mCurCallSource;
 	CeBuilder* mCurBuilder;
 	CeFunction* mPreparingFunction;
+
 	void* mWriteToOutputUserData;
 	CeWriteToOutputCallback mWriteToOutputCallback;
+	void* mRunShellCommandUserData;
+	CeRunShellCommandCallback mRunShellCommandCallback;
 
 	BfParser* mTempParser;
 	BfReducer* mTempReducer;

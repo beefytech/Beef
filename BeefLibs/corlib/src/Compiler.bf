@@ -267,12 +267,9 @@ namespace System
 				mCmdInfo.Append('\n');
 			}
 
-			[Comptime]
 			public virtual void PreBuild()
 			{
 			}
-
-			[Comptime]
 			public virtual void PostBuild()
 			{
 			}

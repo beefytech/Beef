@@ -468,5 +468,8 @@ namespace System
 			Write("\x1B[H\x1B[J");
 #endif
 		}
+
+		[LinkName("system")]
+		public static extern int32 RunShellCommand(char8* command);
 	}
 }
