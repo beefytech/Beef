@@ -9940,10 +9940,10 @@ namespace IDE
 
 						switch (line[..<index])
 						{
-						case "addLibPath": //TODO
-							//String path = new .();
-							//line[(index+1)...].UnQuoteString(path);
-							//mDynamicallyAddedLibPaths.Add(path);
+						/*case "addLibPath":
+							String path = new .();
+							line[(index+1)...].UnQuoteString(path);
+							mDynamicallyAddedLibPaths.Add(path);*/
 						case "!error":
 							OutputLineSmart($"{line[(index+1)...]}");
 							failed = true;

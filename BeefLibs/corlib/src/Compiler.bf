@@ -260,12 +260,12 @@ namespace System
 		{
 			public String mCmdInfo = new .() ~ delete _;
 
-			public void AddLibPath(StringView lib)
+			/*public void AddLibPath(StringView lib)
 			{
 				mCmdInfo.Append("addLibPath\t");
 				lib.QuoteString(mCmdInfo);
 				mCmdInfo.Append('\n');
-			}
+			}*/
 
 			public virtual void PreBuild()
 			{
