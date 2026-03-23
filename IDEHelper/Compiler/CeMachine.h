@@ -518,6 +518,8 @@ enum CeFunctionKind
 	CeFunctionKind_BfpSpawn_WaitFor,
 
 	CeFunctionKind_BfpSystem_GetTimeStamp,
+	CeFunctionKind_BfpSystem_GetEnvironmentVariable,
+	CeFunctionKind_BfpSystem_SetEnvironmentVariable,
 	CeFunctionKind_Sleep,
 
 	CeFunctionKind_Char32_ToLower,

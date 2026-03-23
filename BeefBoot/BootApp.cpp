@@ -30,6 +30,8 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(void* bfCompiler, void* hotProj
 	Beefy::BfCompilerOptionFlags optionFlags, const char* mallocLinkName, const char* freeLinkName);
 BF_EXPORT void BF_CALLTYPE BfCompiler_SetComptimeWriteToOutputCallback(void* bfCompiler, void* userdata, 
 	void (BF_CALLTYPE* callback)(void* userdata, char* ptr, int len));
+BF_EXPORT void BF_CALLTYPE BfCompiler_SetComptimeRunShellCommandCallback(void* bfCompiler, void* userdata,
+	void* (BF_CALLTYPE* callback)(void* userdata, char* cmd, int* outExitcode));
 BF_IMPORT void BF_CALLTYPE BfCompiler_ClearBuildCache(void* bfCompiler);
 BF_IMPORT bool BF_CALLTYPE BfCompiler_Compile(void* bfCompiler, void* bfPassInstance, const char* outputPath);
 BF_IMPORT float BF_CALLTYPE BfCompiler_GetCompletionPercentage(void* bfCompiler);
@@ -798,6 +800,12 @@ static void BF_CALLTYPE ComptimeWriteToOutputCallback(void* userdata, char* ptr,
 	gApp->OutputLine(text, OutputPri_Normal);
 }
 
+static void* BF_CALLTYPE ComptimeRunShellCommandCallback(void* userdata, char* cmd, int* outExitcode)
+{
+	*outExitcode = system(cmd);
+	return NULL;
+}
+
 bool BootApp::Compile()
 {
 	DWORD startTick = BFTickCount();
@@ -822,6 +830,7 @@ bool BootApp::Compile()
 		BfProjectFlags flags = BfProjectFlags_None;
 		BfProject_SetOptions(mCELibProject, BfTargetType_BeefLib, "", mDefines.c_str(), mOptLevel, 0, 0, 0, flags);		
 		BfCompiler_SetComptimeWriteToOutputCallback(mCompiler, NULL, ComptimeWriteToOutputCallback);
+		BfCompiler_SetComptimeRunShellCommandCallback(mCompiler, NULL, ComptimeRunShellCommandCallback);
 	}
 
 	if (!mDefines.IsEmpty())
