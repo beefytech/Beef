@@ -192,7 +192,7 @@ namespace System.Collections
 
 		public void CopyTo(Span<T> array)
 		{
-			Debug.Assert(array.Length < Count);
+			Debug.Assert(array.Length >= Count);
 
 			LinkedListNode<T> node = mHead;
 			if (node != null)
@@ -487,4 +487,36 @@ namespace System.Collections
 			}
 		}
 	}
+	#if TEST
+	class LinkedListTests
+	{
+		[Test]
+		public static void CopyTo_CorrectSize()
+		{
+			LinkedList<int> list = scope .();
+			list.AddLast(1);
+			list.AddLast(2);
+			list.AddLast(3);
+
+			int[3] arr = ?;
+			list.CopyTo(.(&arr, 3));
+			Test.Assert(arr[0] == 1);
+			Test.Assert(arr[1] == 2);
+			Test.Assert(arr[2] == 3);
+		}
+
+		[Test]
+		public static void CopyTo_LargerArray()
+		{
+			LinkedList<int> list = scope .();
+			list.AddLast(10);
+			list.AddLast(20);
+
+			int[5] arr = .(0, 0, 0, 0, 0);
+			list.CopyTo(.(&arr, 5));
+			Test.Assert(arr[0] == 10);
+			Test.Assert(arr[1] == 20);
+		}
+	}
+#endif
 }
