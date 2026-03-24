@@ -94,14 +94,14 @@ namespace System
 				}
 				else
 				{
-					double fraction = modff(curValue, out curValue);
-					if (Abs(fraction) > 0.5d)
+					// Round-to-nearest-even via IEEE 754 boundary trick:
+					// Adding 2^23 forces the float into integer range where
+					// the FPU's default round-to-nearest-even mode applies.
+					const float kBoundary = 8388608.0f; // 2^23
+					if (Abs(curValue) < kBoundary)
 					{
-						curValue += Sign(fraction);
-					}
-					else if (Abs(fraction) == 0.5d && ((int64)curValue & 1) != 0)
-					{
-						curValue += Sign(fraction);
+						float temp = (curValue >= 0) ? kBoundary : -kBoundary;
+						curValue = (curValue + temp) - temp;
 					}
 				}
 				curValue /= power10;
@@ -127,16 +127,11 @@ namespace System
 				}
 				else
 				{
-					double fraction = modf(curValue, out curValue);
-					if (Abs(fraction) > 0.5d)
+					const double kBoundary = 4503599627370496.0; // 2^52
+					if (Abs(curValue) < kBoundary)
 					{
-						curValue += Sign(fraction);
-					}
-					else if (Abs(fraction) == 0.5d)
-					{
-						double halfCheck;
-						if (modf(curValue * 0.5, out halfCheck) != 0)
-							curValue += Sign(fraction);
+						double temp = (curValue >= 0) ? kBoundary : -kBoundary;
+						curValue = (curValue + temp) - temp;
 					}
 				}
 				curValue /= power10;
