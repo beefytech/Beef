@@ -185,8 +185,8 @@ namespace System.Text
 			{
 				if (dest.Length >= 4)
 				{
-                    *((char16*)dest.Ptr) = (char16)((int32)c >> 10) + 0xD800;
-					*((char16*)dest.Ptr + 1) = (char16)(((int32)c & 0x3FF) + 0xDC00);
+                    *((char16*)dest.Ptr) = (char16)((((int32)c - 0x10000) >> 10) + 0xD800);
+					*((char16*)dest.Ptr + 1) = (char16)((((int32)c - 0x10000) & 0x3FF) + 0xDC00);
 				}
 				return 4;
 			}
@@ -217,9 +217,9 @@ namespace System.Text
 				}
 				else
 				{
-					int32 valLeft = (int32)c;
-					EncodeChar((char16)(valLeft >> 10) + 0xD800);
-					EncodeChar((char16)(valLeft & 0x3FF) + 0xDC00);
+					int32 valLeft = (int32)c - 0x10000;
+					EncodeChar((char16)((valLeft >> 10) + 0xD800));
+					EncodeChar((char16)((valLeft & 0x3FF) + 0xDC00));
 				}
 			}
 
@@ -236,4 +236,73 @@ namespace System.Text
 					return i;
 		}
 	}
+#if TEST
+	class UTF16Tests
+	{
+		[Test]
+		public static void Encode_BMP()
+		{
+			uint8[4] buf = ?;
+			int size = UTF16.Encode('A', .(&buf, 4));
+			Test.Assert(size == 2);
+			Test.Assert(*((char16*)&buf) == 'A');
+		}
+
+		[Test]
+		public static void Encode_SurrogatePair()
+		{
+			// U+1F600 (Grinning Face) should encode as surrogate pair D83D DE00
+			uint8[8] buf = ?;
+			int size = UTF16.Encode((char32)0x1F600, .(&buf, 8));
+			Test.Assert(size == 4);
+
+			char16 high = *((char16*)&buf);
+			char16 low = *((char16*)&buf + 1);
+			Test.Assert(high == (char16)0xD83D);
+			Test.Assert(low == (char16)0xDE00);
+		}
+
+		[Test]
+		public static void Encode_SurrogatePair_U10000()
+		{
+			// U+10000 - first supplementary character
+			uint8[8] buf = ?;
+			UTF16.Encode((char32)0x10000, .(&buf, 8));
+
+			char16 high = *((char16*)&buf);
+			char16 low = *((char16*)&buf + 1);
+			Test.Assert(high == (char16)0xD800);
+			Test.Assert(low == (char16)0xDC00);
+		}
+
+		[Test]
+		public static void Encode_SurrogatePair_U10FFFF()
+		{
+			// U+10FFFF - last valid Unicode codepoint
+			uint8[8] buf = ?;
+			UTF16.Encode((char32)0x10FFFF, .(&buf, 8));
+
+			char16 high = *((char16*)&buf);
+			char16 low = *((char16*)&buf + 1);
+			Test.Assert(high == (char16)0xDBFF);
+			Test.Assert(low == (char16)0xDFFF);
+		}
+
+		[Test]
+		public static void Encode_Roundtrip()
+		{
+			// Encode then decode should give back the same codepoint
+			char32 original = (char32)0x1F600;
+			uint8[8] buf = ?;
+			UTF16.Encode(original, .(&buf, 8));
+
+			char16* ptr = (char16*)&buf;
+			let (decoded, len) = UTF16.Decode(ptr, 2);
+			Test.Assert(decoded == original);
+			Test.Assert(len == 2);
+		}
+	}
+#endif
+
 }
+
