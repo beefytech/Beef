@@ -94,8 +94,15 @@ namespace System
 				}
 				else
 				{
-					// On X86 this can be inlined to just a few instructions
-					curValue = Round(curValue);
+					double fraction = modff(curValue, out curValue);
+					if (Abs(fraction) > 0.5d)
+					{
+						curValue += Sign(fraction);
+					}
+					else if (Abs(fraction) == 0.5d && ((int64)curValue & 1) != 0)
+					{
+						curValue += Sign(fraction);
+					}
 				}
 				curValue /= power10;
 				return curValue;
@@ -120,8 +127,17 @@ namespace System
 				}
 				else
 				{
-					// On X86 this can be inlined to just a few instructions
-					curValue = Round(curValue);
+					double fraction = modf(curValue, out curValue);
+					if (Abs(fraction) > 0.5d)
+					{
+						curValue += Sign(fraction);
+					}
+					else if (Abs(fraction) == 0.5d)
+					{
+						double halfCheck;
+						if (modf(curValue * 0.5, out halfCheck) != 0)
+							curValue += Sign(fraction);
+					}
 				}
 				curValue /= power10;
 				return curValue;
