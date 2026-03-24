@@ -112,7 +112,7 @@ namespace IDE.Util
 			{
 			case .None:
 			case .Git(var path, var ver):
-				using (data.CreateObject(name))
+				using (data.CreateObject(name, true))
 				{
 					data.Add("Git", path);
 					if ((ver != null) && (!ver.mVersion.IsEmpty))
@@ -121,7 +121,7 @@ namespace IDE.Util
 			case .SemVer(var ver):
 				data.Add(name, ver.mVersion);
 			case .Path(var path):
-				using (data.CreateObject(name))
+				using (data.CreateObject(name, true))
 				{
 					data.Add("Path", path);
 				}
@@ -240,7 +240,7 @@ namespace IDE.Util
 			{
 			case .None:
 			case .Git(var path, var ver):
-				using (data.CreateObject(name))
+				using (data.CreateObject(name, true))
 				{
 					data.Add("Git", path);
 					if (ver != null)
@@ -249,7 +249,7 @@ namespace IDE.Util
 			case .SemVer(var ver):
 				data.Add(name, ver.mVersion);
 			case .Path(var path):
-				using (data.CreateObject(name))
+				using (data.CreateObject(name, true))
 				{
 					data.Add("Path", path);
 				}
