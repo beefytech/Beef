@@ -94,8 +94,15 @@ namespace System
 				}
 				else
 				{
-					// On X86 this can be inlined to just a few instructions
-					curValue = Round(curValue);
+					// Round-to-nearest-even via IEEE 754 boundary trick:
+					// Adding 2^23 forces the float into integer range where
+					// the FPU's default round-to-nearest-even mode applies.
+					const float kBoundary = 8388608.0f; // 2^23
+					if (Abs(curValue) < kBoundary)
+					{
+						float temp = (curValue >= 0) ? kBoundary : -kBoundary;
+						curValue = (curValue + temp) - temp;
+					}
 				}
 				curValue /= power10;
 				return curValue;
@@ -120,8 +127,12 @@ namespace System
 				}
 				else
 				{
-					// On X86 this can be inlined to just a few instructions
-					curValue = Round(curValue);
+					const double kBoundary = 4503599627370496.0; // 2^52
+					if (Abs(curValue) < kBoundary)
+					{
+						double temp = (curValue >= 0) ? kBoundary : -kBoundary;
+						curValue = (curValue + temp) - temp;
+					}
 				}
 				curValue /= power10;
 				return curValue;
