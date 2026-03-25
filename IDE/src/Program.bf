@@ -64,6 +64,10 @@ namespace IDE
 #endif
 			return retVal;
         }
+
+		[CallingConvention(.Stdcall), CLink]
+		public static void BfpSystem_GetEnvironmentVariable(char8* varName, char8* outStr, int32* inOutStrSize, Platform.BfpSystemResult* outResult)
+			=> Runtime.NotImplemented();
     }
 }
 

@@ -476,24 +476,6 @@ namespace IDE
 			public String mPath ~ delete _;
 		}
 
-		public class StartCustomBuildLogicCmd : ExecutionCmd
-		{
-			public enum Stage { PreBuild, PostBuild }
-
-			public String mObject ~ delete _;
-			public Stage mStage;
-		}
-
-		public class ProcessCustomBuildLogicCmd : ExecutionCmd
-		{
-			public String mTypeName ~ delete _;
-			public StartCustomBuildLogicCmd.Stage mStage;
-
-			public String mOutput ~ delete _;
-			public Thread mThread ~ delete _;
-			public Stopwatch mStopwatch ~ delete _;
-		}
-
 		public enum ArgsFileKind
 		{
 			None,
@@ -9638,12 +9620,6 @@ namespace IDE
 					}
 				}
 
-				if (var processBuildLogicCmd = next as ProcessCustomBuildLogicCmd)
-				{
-					if (processBuildLogicCmd.mThread.IsAlive)
-						return;
-				}
-
 #if BF_PLATFORM_WINDOWS
 				if (let startDebugCmd = next as StartDebugCmd)
 				{
@@ -9891,72 +9867,6 @@ namespace IDE
 				{
 					// Already handled
 					(void)scriptCmd;
-				}
-				else if (var cmd = next as StartCustomBuildLogicCmd) do
-				{
-					if (!mBfBuildCompiler.ValidateBuildLogic(cmd.mObject))
-					{
-						OutputErrorLine($"Invalid Compiler.BuildLogic: {cmd.mObject}");
-						ClearAndDeleteItems(mExecutionQueue);
-						break;
-					}
-
-					ProcessCustomBuildLogicCmd process = new .();
-					process.mOutput = new .();
-					process.mTypeName = new .(cmd.mObject);
-					process.mStage = cmd.mStage;
-					process.mStopwatch = new .();
-
-					process.mThread = new .(new () =>
-						{
-							mBfBuildSystem.Lock(0);
-							switch (process.mStage)
-							{
-							case .PreBuild: mBfBuildCompiler.ExecuteBuildLogicPreBuild(process.mTypeName, process.mOutput);
-							case .PostBuild: mBfBuildCompiler.ExecuteBuildLogicPostBuild(process.mTypeName, process.mOutput);
-							}
-							mBfBuildSystem.Unlock();
-						});
-					process.mThread.AutoDelete = false;
-					process.mThread.SetJoinOnDelete(true);
-
-					process.mStopwatch.Start();
-					process.mThread.Start();
-					mExecutionQueue.AddFront(process);
-				}
-				else if (var cmd = next as ProcessCustomBuildLogicCmd)
-				{
-					// thread has ended
-					bool failed = false;
-					for (let line in cmd.mOutput.Split('\n', .RemoveEmptyEntries))
-					{
-						int index = line.IndexOf('\t');
-						if (index < 0)
-						{
-							OutputErrorLine($"Malformed build logic execution result: {line}");
-							CancelBuild();
-							continue;
-						}
-
-						switch (line[..<index])
-						{
-						/*case "addLibPath":
-							String path = new .();
-							line[(index+1)...].UnQuoteString(path);
-							mDynamicallyAddedLibPaths.Add(path);*/
-						case "!error":
-							OutputLineSmart($"{line[(index+1)...]}");
-							failed = true;
-						default:
-							OutputErrorLine($"Invalid build logic execution command: {_}");
-							failed = true;
-						}
-					}
-
-					if (failed)
-						ClearAndDeleteItems(mExecutionQueue);
-					else
-						OutputLine($"{cmd.mTypeName}.{cmd.mStage} finished in {cmd.mStopwatch.ElapsedMilliseconds / 1000.0f:0.00}s");
 				}
 				else if (var writeEmitCmd = next as WriteEmitCmd)
 				{

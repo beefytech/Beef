@@ -256,38 +256,6 @@ namespace System
 			}
 		}
 
-		public abstract class BuildLogic
-		{
-			public String mCmdInfo = new .() ~ delete _;
-
-			/*public void AddLibPath(StringView lib)
-			{
-				mCmdInfo.Append("addLibPath\t");
-				lib.QuoteString(mCmdInfo);
-				mCmdInfo.Append('\n');
-			}*/
-
-			public virtual void PreBuild()
-			{
-			}
-			public virtual void PostBuild()
-			{
-			}
-
-			static String PreBuild<T>() where T : BuildLogic
-			{
-				T val = scope T();
-				val.PreBuild();
-				return val.mCmdInfo;
-			}
-			static String PostBuild<T>() where T : BuildLogic
-			{
-				T val = scope T();
-				val.PostBuild();
-				return val.mCmdInfo;
-			}
-		}
-
 		public struct MethodBuilder
 		{
 			void* mNative;

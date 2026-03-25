@@ -557,7 +557,7 @@ public:
 	void RequestFastFinish();
 	void RequestExtraCompile();
 	String GetTypeDefList(bool includeLocation);
-	String ExecuteUserDefinedMethod(BfTypeDef* typeDef, BfTypeInstance* typeInst, BfTypeDef* parentClass, const StringImpl& generatorMethodName, const StringImpl* args);
+	String GetGeneratorString(BfTypeDef* typeDef, BfTypeInstance* typeInst, const StringImpl& generatorMethodName, const StringImpl* args);
 	void HandleGeneratorErrors(StringImpl& result);
 	String GetGeneratorTypeDefList();
 	String GetGeneratorInitData(const StringImpl& typeName, const StringImpl& args);

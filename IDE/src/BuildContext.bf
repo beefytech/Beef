@@ -1559,8 +1559,6 @@ namespace IDE
 				case .Failed:
 					completedCompileCmd.mFailed = true;
 				}
-
-				QueueBuildLogic(project, .PreBuild);
 			}
 				
 			if (project.mGeneralOptions.mTargetType == .CustomBuild)
@@ -1759,8 +1757,6 @@ namespace IDE
 
 			if (WantsProjectBuild(project, compileKind))
 			{
-				QueueBuildLogic(project, .PostBuild);
-
 				switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
 				{
 				case .NoCommands:

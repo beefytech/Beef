@@ -124,15 +124,6 @@ namespace IDE.Compiler
 		static extern char8* BfCompiler_GetGeneratorGenData(void* bfCompiler, char8* typeDefName, char8* args);
 
 		[CallingConvention(.Stdcall), CLink]
-		static extern bool BfCompiler_ValidateBuildLogic(void* bfCompiler, char8* typeDefName);
-
-		[CallingConvention(.Stdcall), CLink]
-		static extern char8* BfCompiler_ExecuteBuildLogicPreBuild(void* bfCompiler, char8* typeDefName);
-
-		[CallingConvention(.Stdcall), CLink]
-		static extern char8* BfCompiler_ExecuteBuildLogicPostBuild(void* bfCompiler, char8* typeDefName);
-
-		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_GetTypeDefList(void* bfCompiler, bool includeLocation);
 
 		[CallingConvention(.Stdcall), CLink]
@@ -890,21 +881,6 @@ namespace IDE.Compiler
 		public void GetGeneratorGenData(String typeDefName, String args, String outStr)
 		{
 			outStr.Append(BfCompiler_GetGeneratorGenData(mNativeBfCompiler, typeDefName, args));
-		}
-
-		public bool ValidateBuildLogic(String typeDefName)
-		{
-			return BfCompiler_ValidateBuildLogic(mNativeBfCompiler, typeDefName);
-		}
-
-		public void ExecuteBuildLogicPreBuild(String typeDefName, String outStr)
-		{
-			outStr.Append(BfCompiler_ExecuteBuildLogicPreBuild(mNativeBfCompiler, typeDefName));
-		}
-
-		public void ExecuteBuildLogicPostBuild(String typeDefName, String outStr)
-		{
-			outStr.Append(BfCompiler_ExecuteBuildLogicPostBuild(mNativeBfCompiler, typeDefName));
 		}
 
 		public void GetTypeDefList(String outStr, bool includeLocation = false)

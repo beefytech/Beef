@@ -9094,7 +9094,7 @@ String BfCompiler::GetTypeDefList(bool includeLocation)
 	return result;
 }
 
-String BfCompiler::ExecuteUserDefinedMethod(BfTypeDef* typeDef, BfTypeInstance* typeInst, BfTypeDef* parentClass, const StringImpl& generatorMethodName, const StringImpl* args)
+String BfCompiler::GetGeneratorString(BfTypeDef* typeDef, BfTypeInstance* typeInst, const StringImpl& generatorMethodName, const StringImpl* args)
 {
 	if (typeInst == NULL)
 	{
@@ -9108,7 +9108,7 @@ String BfCompiler::ExecuteUserDefinedMethod(BfTypeDef* typeDef, BfTypeInstance* 
 	BfTypeVector typeVector;
 	typeVector.Add(typeInst);
 
-	auto generatorTypeInst = mContext->mUnreifiedModule->ResolveTypeDef(parentClass)->ToTypeInstance();
+	auto generatorTypeInst = mContext->mUnreifiedModule->ResolveTypeDef(mCompilerGeneratorTypeDef)->ToTypeInstance();
 	auto methodDef = generatorTypeInst->mTypeDef->GetMethodByName(generatorMethodName);
 	auto moduleMethodInstance = mContext->mUnreifiedModule->GetMethodInstance(generatorTypeInst, methodDef, typeVector);
 
@@ -9178,7 +9178,7 @@ String BfCompiler::GetGeneratorTypeDefList()
 				result += typeDef->mProject->mName;
 				result += ":";
 				result += BfTypeUtils::TypeToString(typeDef, BfTypeNameFlag_InternalName);
-				String nameString = ExecuteUserDefinedMethod(typeDef, typeInst, mCompilerGeneratorTypeDef, "GetName", NULL);
+				String nameString = GetGeneratorString(typeDef, typeInst, "GetName", NULL);
 				if (!nameString.IsEmpty())
 					result += "\t" + nameString;
 				result += "\n";
@@ -9204,7 +9204,7 @@ String BfCompiler::GetGeneratorInitData(const StringImpl& typeName, const String
 	String result;
 	for (auto typeDef : typeDefs)
 	{
-		result += ExecuteUserDefinedMethod(typeDef, NULL, mCompilerGeneratorTypeDef, "InitUI", &args);
+		result += GetGeneratorString(typeDef, NULL, "InitUI", &args);
 		if (!result.IsEmpty())
 			break;
 	}
@@ -9227,56 +9227,13 @@ String BfCompiler::GetGeneratorGenData(const StringImpl& typeName, const StringI
 	String result;
 	for (auto typeDef : typeDefs)
 	{
-		result += ExecuteUserDefinedMethod(typeDef, NULL, mCompilerGeneratorTypeDef, "Generate", &args);
+		result += GetGeneratorString(typeDef, NULL, "Generate", &args);
 		if (!result.IsEmpty())
 			break;
 	}
 
 	HandleGeneratorErrors(result);
 
-	return result;
-}
-
-bool BfCompiler::ValidateBuildLogic(const StringImpl& typeName)
-{
-	BfType* type = GetType(typeName);
-
-	BfTypeInstance* typeInst = NULL;
-	if (type != NULL)
-		typeInst = type->ToTypeInstance();
-
-	return ((typeInst != NULL) &&
-		(typeInst->mBaseType != NULL) &&
-		(typeInst->mBaseType->IsInstanceOf(mCompilerBuildLogicTypeDef)));
-}
-
-String BfCompiler::ExecuteBuildLogicPreBuild(const StringImpl& typeName)
-{
-	BfResolvePassData resolvePassData;
-	SetAndRestoreValue<BfResolvePassData*> prevResolvePassData(mResolvePassData, &resolvePassData);
-	BfPassInstance passInstance(mSystem);
-	SetAndRestoreValue<BfPassInstance*> prevPassInstance(mPassInstance, &passInstance);
-
-	BfTypeInstance* typeInst = GetType(typeName)->ToTypeInstance();
-
-	String result = ExecuteUserDefinedMethod(typeInst->mTypeDef, typeInst, mCompilerBuildLogicTypeDef, "PreBuild", NULL);
-
-	HandleGeneratorErrors(result);
-	return result;
-}
-
-String BfCompiler::ExecuteBuildLogicPostBuild(const StringImpl& typeName)
-{
-	BfResolvePassData resolvePassData;
-	SetAndRestoreValue<BfResolvePassData*> prevResolvePassData(mResolvePassData, &resolvePassData);
-	BfPassInstance passInstance(mSystem);
-	SetAndRestoreValue<BfPassInstance*> prevPassInstance(mPassInstance, &passInstance);
-
-	BfTypeInstance* typeInst = GetType(typeName)->ToTypeInstance();
-
-	String result = ExecuteUserDefinedMethod(typeInst->mTypeDef, typeInst, mCompilerBuildLogicTypeDef, "PostBuild", NULL);
-
-	HandleGeneratorErrors(result);
 	return result;
 }
 
@@ -10735,30 +10692,6 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetGeneratorGenData(BfCompiler* bfC
 	String& outString = *gTLStrReturn.Get();
 	outString.clear();
 	outString = bfCompiler->GetGeneratorGenData(typeDefName, args);
-	return outString.c_str();
-}
-
-BF_EXPORT bool BF_CALLTYPE BfCompiler_ValidateBuildLogic(BfCompiler* bfCompiler, char* typeDefName)
-{
-	String name(typeDefName);
-	return bfCompiler->ValidateBuildLogic(name);
-}
-
-BF_EXPORT const char* BF_CALLTYPE BfCompiler_ExecuteBuildLogicPreBuild(BfCompiler* bfCompiler, char* typeDefName)
-{
-	String name(typeDefName);
-	String& outString = *gTLStrReturn.Get();
-	outString.clear();
-	outString = bfCompiler->ExecuteBuildLogicPreBuild(name);
-	return outString.c_str();
-}
-
-BF_EXPORT const char* BF_CALLTYPE BfCompiler_ExecuteBuildLogicPostBuild(BfCompiler* bfCompiler, char* typeDefName)
-{
-	String name(typeDefName);
-	String& outString = *gTLStrReturn.Get();
-	outString.clear();
-	outString = bfCompiler->ExecuteBuildLogicPostBuild(name);
 	return outString.c_str();
 }
 
