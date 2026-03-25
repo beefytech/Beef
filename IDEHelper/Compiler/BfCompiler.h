@@ -393,7 +393,6 @@ public:
 	BfTypeDef* mPlatformTypeDef;
 	BfTypeDef* mCompilerTypeDef;
 	BfTypeDef* mCompilerGeneratorTypeDef;
-	BfTypeDef* mCompilerBuildLogicTypeDef;
 	BfTypeDef* mConsoleTypeDef;
 	BfTypeDef* mDiagnosticsDebugTypeDef;
 	BfTypeDef* mIDisposableTypeDef;
@@ -562,9 +561,6 @@ public:
 	String GetGeneratorTypeDefList();
 	String GetGeneratorInitData(const StringImpl& typeName, const StringImpl& args);
 	String GetGeneratorGenData(const StringImpl& typeName, const StringImpl& args);
-	bool ValidateBuildLogic(const StringImpl& typeName);
-	String ExecuteBuildLogicPreBuild(const StringImpl& typeName);
-	String ExecuteBuildLogicPostBuild(const StringImpl& typeName);
 	String GetTypeDefMatches(const StringImpl& searchSrc, bool includeLocation);
 	void GetTypeDefs(const StringImpl& typeName, Array<BfTypeDef*>& typeDefs);
 	String GetTypeDefInfo(const StringImpl& typeName);

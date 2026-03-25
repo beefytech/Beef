@@ -985,7 +985,6 @@ namespace IDE.ui
 		    category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFE8E8E8);
 			
 			AddPropertiesItem(category, "Startup Object", "mStartupObject");
-			AddPropertiesItem(category, "Build Logic Object", "mBuildLogicObject");
 			AddPropertiesItem(category, "Default Namespace", "mDefaultNamespace");
 			AddPropertiesItem(category, "Preprocessor Macros", "mPreprocessorMacros");
 			DistinctOptionBuilder dictinctOptionBuilder = scope .(this);

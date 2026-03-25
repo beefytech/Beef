@@ -436,7 +436,6 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mPlatformTypeDef = NULL;
 	mCompilerTypeDef = NULL;
 	mCompilerGeneratorTypeDef = NULL;
-	mCompilerBuildLogicTypeDef = NULL;
 	mConsoleTypeDef = NULL;
 	mDiagnosticsDebugTypeDef = NULL;
 	mIDisposableTypeDef = NULL;
@@ -7327,7 +7326,6 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mPlatformTypeDef = _GetRequiredType("System.Platform");
 	mCompilerTypeDef = _GetRequiredType("System.Compiler");
 	mCompilerGeneratorTypeDef = _GetRequiredType("System.Compiler.Generator");
-	mCompilerBuildLogicTypeDef = _GetRequiredType("System.Compiler.BuildLogic");
 	mConsoleTypeDef = _GetRequiredType("System.Console");
 	mDiagnosticsDebugTypeDef = _GetRequiredType("System.Diagnostics.Debug");
 	mIDisposableTypeDef = _GetRequiredType("System.IDisposable");
