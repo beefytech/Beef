@@ -321,6 +321,13 @@ namespace IDE.ui
 			}
 		}
 
+		public void WriteColoredTextLine(StringView text, SourceElementType elementType)
+		{
+			mQueuedDisplayChanges.Add(QueuedDisplayChange(mQueuedText.Length, text.Length, (.)elementType));
+			Write(text);
+			Write("\n");
+		}
+
 		public void AddInlineWidget(Widget widget)
 		{
 			mQueuedDisplayChanges.Add(QueuedDisplayChange(mQueuedText.Length, widget));

@@ -469,6 +469,7 @@ enum CeFunctionKind
 	CeFunctionKind_EmitMethodExit,
 	CeFunctionKind_EmitMixin,
 	CeFunctionKind_GetStringById,
+	CeFunctionKind_Output,
 
 	CeFunctionKind_BfpDirectory_Create,
 	CeFunctionKind_BfpDirectory_Rename,
@@ -516,6 +517,8 @@ enum CeFunctionKind
 	CeFunctionKind_BfpSpawn_WaitFor,
 
 	CeFunctionKind_BfpSystem_GetTimeStamp,
+	CeFunctionKind_BfpSystem_GetEnvironmentVariable,
+	CeFunctionKind_BfpSystem_SetEnvironmentVariable,
 	CeFunctionKind_Sleep,
 
 	CeFunctionKind_Char32_ToLower,
@@ -868,6 +871,7 @@ public:
 	CeBuilder()
 	{
 		mParentBuilder = NULL;
+		mIntPtrType = NULL;
 		mPtrSize = 0;
 		mRecursiveDepth = -1;
 		mCeFunction = NULL;

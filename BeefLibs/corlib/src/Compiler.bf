@@ -414,6 +414,7 @@ namespace System
 		static extern void Comptime_EmitMethodEntry(int64 methodHandle, StringView text);
 		static extern void Comptime_EmitMethodExit(int64 methodHandle, StringView text);
 		static extern void Comptime_EmitMixin(StringView text);
+		static extern void Comptime_Output(StringView text);
 		static extern String Comptime_GetStringById(int32 id);
 
 		[Comptime(OnlyFromComptime=true)]
@@ -422,6 +423,12 @@ namespace System
 			MethodBuilder builder = .();
 			builder.[Friend]mNative = Comptime_CreateMethod((.)owner.TypeId, methodName, returnType, methodFlags);
 			return builder;
+		}
+
+		[Comptime(OnlyFromComptime=true)]
+		public static void Output(StringView text)
+		{
+			Comptime_Output(text);
 		}
 
 		[Comptime(OnlyFromComptime=true)]

@@ -1306,7 +1306,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentStrings(char* outStr, int* 
 	TryStringOut(env, outStr, inOutStrSize, (BfpResult*)outResult);
 }
 
-BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentVariable(char* var, char* outStr, int* inOutStrSize, BfpSystemResult* outResult)
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentVariable(const char* var, char* outStr, int* inOutStrSize, BfpSystemResult* outResult)
 {
 	int bufferSize = *inOutStrSize;
 	int valueSize = ::GetEnvironmentVariableA(var, outStr, *inOutStrSize);
@@ -1319,7 +1319,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentVariable(char* var, char* o
 		OUTRESULT(BfpSystemResult_PartialData);
 }
 
-BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetEnvironmentVariable(char* var, char* value, BfpSystemResult* outResult)
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetEnvironmentVariable(const char* var, const char* value, BfpSystemResult* outResult)
 {
 	if (::SetEnvironmentVariableA(var, value))
 		OUTRESULT(BfpSystemResult_Ok);

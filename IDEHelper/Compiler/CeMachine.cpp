@@ -2177,6 +2177,8 @@ void CeBuilder::Build()
 		mBeFunction = mCeFunction->mCeInnerFunctionInfo->mBeFunction;
 		BF_ASSERT(mBeFunction != NULL);
 		mCeFunction->mCeInnerFunctionInfo->mBeFunction = NULL;
+
+		mIntPtrType = irCodeGen->mBeContext->GetPrimitiveType((mPtrSize == 4) ? BeTypeCode_Int32 : BeTypeCode_Int64);
 	}
 
 	SetAndRestoreValue<BeFunction*> prevBeFunction(beModule->mActiveFunction, mBeFunction);
@@ -7049,6 +7051,36 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				CeSetAddrVal(stackPtr + 0, GetString(string), ptrSize);
 				_FixVariables();
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Output)
+			{
+				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr);
+				String str;
+				if (!GetStringFromStringView(strViewPtr, str))
+				{
+					_Fail("Invalid StringView");
+					return false;
+				}
+
+				auto frame = _GetCurFrame();
+
+				int curPos = 0;
+
+				while (curPos < str.length())
+				{
+					int crPos = str.IndexOf('\n', curPos);
+					if (crPos == -1)
+					{
+						mCeMachine->mCompiler->mPassInstance->OutputLine(":text " + str.Substring(curPos));
+						break;
+					}
+
+					int endPos = crPos;
+					if ((endPos > 0) && (str[endPos - 1] == '\r'))
+						endPos--;
+					mCeMachine->mCompiler->mPassInstance->OutputLine(":text_line " + str.Substring(curPos, endPos - curPos));					
+					curPos = crPos + 1;
+				}
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Sleep)
 			{
 				int32 sleepMS = *(int32*)((uint8*)stackPtr);
@@ -7071,6 +7103,43 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			{
 				int64& result = *(int64*)((uint8*)stackPtr + 0);
 				result = BfpSystem_GetTimeStamp();
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSystem_GetEnvironmentVariable)
+			{
+				// char8* varName, char8* outStr, int32* inOutStrSize, BfpSystemResult* outResult
+				addr_ce varNameAddr = *(addr_ce*)((uint8*)stackPtr);
+				addr_ce outStrAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce inOutStrSizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
+				
+				String varName;
+				CE_CHECKADDR_STR(varName, varNameAddr);
+
+				CE_CHECKADDR(inOutStrSizeAddr, 4);
+				int* inOutStrSize = (int*)(memStart + inOutStrSizeAddr);
+				CE_CHECKADDR(outStrAddr, *inOutStrSize);
+				char* outStr = (char*)(memStart + outStrAddr);
+				CE_CHECKADDR(outResultAddr, 4);
+				BfpSystemResult* outResult = (BfpSystemResult*)(memStart + outResultAddr);
+
+				BfpSystem_GetEnvironmentVariable(varName.c_str(), outStr, inOutStrSize, outResult);
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSystem_SetEnvironmentVariable)
+			{
+				// char8* varName, char8* value, BfpSystemResult* outResult
+				addr_ce varNameAddr = *(addr_ce*)((uint8*)stackPtr);
+				addr_ce valueAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);				
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+
+				String varName;
+				CE_CHECKADDR_STR(varName, varNameAddr);
+				String value;
+				CE_CHECKADDR_STR(value, valueAddr);
+				
+				CE_CHECKADDR(outResultAddr, 4);
+				BfpSystemResult* outResult = (BfpSystemResult*)(memStart + outResultAddr);
+
+				BfpSystem_SetEnvironmentVariable(varName.c_str(), value.c_str(), outResult);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_ToLower)
 			{
@@ -10335,6 +10404,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_GetStringById;
 				}
+				else if (methodDef->mName == "Comptime_Output")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Output;
+				}
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mDiagnosticsDebugTypeDef))
 			{
@@ -10456,6 +10529,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 
 				else if (methodDef->mName == "BfpSystem_GetTimeStamp")
 						ceFunction->mFunctionKind = CeFunctionKind_BfpSystem_GetTimeStamp;
+				else if (methodDef->mName == "BfpSystem_GetEnvironmentVariable")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpSystem_GetEnvironmentVariable;
+				else if (methodDef->mName == "BfpSystem_SetEnvironmentVariable")
+					ceFunction->mFunctionKind = CeFunctionKind_BfpSystem_SetEnvironmentVariable;
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mChar32TypeDef))
 			{

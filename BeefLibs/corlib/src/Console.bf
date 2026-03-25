@@ -115,7 +115,15 @@ namespace System
 
 		static void OutString_Simple(StringView str)
 		{
-			PutChars(str.Ptr, (.)str.Length);
+			if (Compiler.IsComptime)
+			{
+				Compiler.[Friend]Comptime_Output(str);
+				return;
+			}
+			else
+			{
+				PutChars(str.Ptr, (.)str.Length);
+			}
 		}
 
 		static void OutString_Ex(StringView str)
@@ -185,14 +193,17 @@ namespace System
 
 		public static this()
 		{
-			let handle = GetStdHandle(STD_OUTPUT_HANDLE);
-			CONSOLE_SCREEN_BUFFER_INFO consoleInfo = .();
-			if (GetConsoleScreenBufferInfo(handle, out consoleInfo) != 0)
+			if (!Compiler.IsComptime)
 			{
-				sOriginalForegroundColor.ConsoleTextAttribute = (uint8)(consoleInfo.mAttributes & 0xF);
-				sOriginalBackgroundColor.ConsoleTextAttribute = (uint8)(consoleInfo.mAttributes >> 4);
+				let handle = GetStdHandle(STD_OUTPUT_HANDLE);
+				CONSOLE_SCREEN_BUFFER_INFO consoleInfo = .();
+				if (GetConsoleScreenBufferInfo(handle, out consoleInfo) != 0)
+				{
+					sOriginalForegroundColor.ConsoleTextAttribute = (uint8)(consoleInfo.mAttributes & 0xF);
+					sOriginalBackgroundColor.ConsoleTextAttribute = (uint8)(consoleInfo.mAttributes >> 4);
+				}
+				SetConsoleOutputCP(/*CP_UTF8*/65001);
 			}
-			SetConsoleOutputCP(/*CP_UTF8*/65001);
 		}
 
 		public static int32 CursorTop
