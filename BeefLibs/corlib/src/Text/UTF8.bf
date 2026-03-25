@@ -4,33 +4,33 @@ namespace System.Text
 	static class UTF8
 	{
 		public const int8[256] sTrailingBytesForUTF8 =
-		.(
-		    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-		    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-		    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-		    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-		    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-		    0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0, 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
-		    1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1, 1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,
-		    2,2,2,2,2,2,2,2,2,2,2,2,2,2,2,2, 3,3,3,3,3,3,3,3,4,4,4,4,5,5,5,5
-		);
+			.(
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+			1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1,
+			2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 4, 4, 4, 4, 5, 5, 5, 5
+			);
 
 		public const uint32[6] sOffsetsFromUTF8 =
-		.(
+			.(
 			0x00000000, 0x00003080, 0x000E2080,
-		    0x03C82080, 0xFA082080, 0x82082080
-		);
+			0x03C82080, 0xFA082080, 0x82082080
+			);
 
 		public static int GetEncodedLength(char32 c)
 		{
-			if (c <(char32)0x80)
-				return 1;			
+			if (c < (char32)0x80)
+				return 1;
 			else if (c < (char32)0x800)
-				return 2;			
+				return 2;
 			else if (c < (char32)0x10000)
-				return 3;			
+				return 3;
 			else if (c < (char32)0x110000)
-				return 4;			
+				return 4;
 			return 5;
 		}
 
@@ -49,8 +49,8 @@ namespace System.Text
 		{
 			char32 c = *buf;
 			int8 trailingBytes = UTF8.sTrailingBytesForUTF8[c];
-			if (trailingBytes > bufSize)
-				return ((char32)-1, trailingBytes + 1);
+			if (trailingBytes >= bufSize)
+				return ((char32) - 1, trailingBytes + 1);
 
 			int bufIdx = 1;
 			switch (trailingBytes)
@@ -74,7 +74,7 @@ namespace System.Text
 		{
 			char32 c = *buf;
 			int8 trailingBytes = UTF8.sTrailingBytesForUTF8[c];
-			if (trailingBytes > bufSize)
+			if (trailingBytes >= bufSize)
 				return .Err(.BufferTooSmall(trailingBytes + 1));
 
 			switch (trailingBytes)
@@ -123,14 +123,14 @@ namespace System.Text
 			char8* curDest = dest.Ptr;
 			int len = 0;
 			if (c < (char32)0x80)
-            {
+			{
 				if (curDest >= destEnd)
 					return 1;
 				len = 1;
 				*curDest++ = (char8)c;
 			}
 			else if (c < (char32)0x800)
-            {
+			{
 				if (curDest >= destEnd - 1)
 					return 2;
 				len = 2;
@@ -138,7 +138,7 @@ namespace System.Text
 				*curDest++ = (.)(((uint32)c & 0x3F) | 0x80);
 			}
 			else if (c < (char32)0x10000)
-            {
+			{
 				if (curDest >= destEnd - 2)
 					return 3;
 				len = 3;
@@ -147,7 +147,7 @@ namespace System.Text
 				*curDest++ = (.)(((uint32)c & 0x3F) | 0x80);
 			}
 			else if (c < (char32)0x110000)
-            {
+			{
 				if (curDest >= destEnd - 3)
 					return 4;
 				len = 4;
@@ -162,23 +162,22 @@ namespace System.Text
 		public static void Encode(char32 c, ref char8* dest)
 		{
 			if (c < (char32)0x80)
-		    {
+			{
 				*dest++ = (char8)c;
 			}
 			else if (c < (char32)0x800)
-		    {
+			{
 				*dest++ = (.)(((uint32)c >> 6) | 0xC0);
 				*dest++ = (.)(((uint32)c & 0x3F) | 0x80);
 			}
 			else if (c < (char32)0x10000)
-		    {
-				
+			{
 				*dest++ = (.)(((uint32)c >> 12) | 0xE0);
 				*dest++ = (.)((((uint32)c >> 6) & 0x3F) | 0x80);
 				*dest++ = (.)(((uint32)c & 0x3F) | 0x80);
 			}
 			else if (c < (char32)0x110000)
-		    {
+			{
 				*dest++ = (.)(((uint32)c >> 18) | 0xF0);
 				*dest++ = (.)((((uint32)c >> 12) & 0x3F) | 0x80);
 				*dest++ = (.)((((uint32)c >> 6) & 0x3F) | 0x80);
@@ -186,4 +185,49 @@ namespace System.Text
 			}
 		}
 	}
+
+#if TEST
+class UTF8Tests
+{
+	[Test]
+	public static void Decode_SingleByte()
+	{
+		char8[1] buf = .('A');
+		let (c, len) = UTF8.Decode(&buf, 1);
+		Test.Assert(c == 'A');
+		Test.Assert(len == 1);
+	}
+
+	[Test]
+	public static void Decode_TwoByte_BufferTooSmall()
+	{
+		// 0xC3 is the start of a 2-byte sequence (trailingBytes=1)
+		// With bufSize=1, we only have the lead byte - should fail
+		uint8[1] buf = .(0xC3);
+		let (c, len) = UTF8.Decode((char8*)&buf, 1);
+		Test.Assert(c == (char32)-1);
+		Test.Assert(len == 2);
+	}
+
+	[Test]
+	public static void Decode_TwoByte_Success()
+	{
+		// U+00E9 (e-acute) = C3 A9
+		uint8[2] buf = .(0xC3, 0xA9);
+		let (c, len) = UTF8.Decode((char8*)&buf, 2);
+		Test.Assert(c == (char32)0xE9);
+		Test.Assert(len == 2);
+	}
+
+	[Test]
+	public static void TryDecode_BufferTooSmall()
+	{
+		// 0xE2 starts a 3-byte sequence (trailingBytes=2)
+		// bufSize=2 means only 2 bytes available, need 3
+		uint8[2] buf = .(0xE2, 0x80);
+		let result = UTF8.TryDecode((char8*)&buf, 2);
+		Test.Assert(result case .Err);
+	}
+}
+#endif
 }

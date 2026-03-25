@@ -730,7 +730,7 @@ namespace IDE
 
 			if (!mProjectSpecs.IsEmpty)
 			{
-				using (data.CreateObject("Projects", true))
+				using (data.CreateObject("Projects"))
 				{
 					for (var projSpec in mProjectSpecs)
 					{
@@ -775,7 +775,7 @@ namespace IDE
 
 			if (!mWorkspaceFolders.IsEmpty)
 			{
-			    using (data.CreateObject("WorkspaceFolders", true))
+			    using (data.CreateObject("WorkspaceFolders"))
 			    {
 					String fullPathBuffer = scope .();
 			        for (let folder in mWorkspaceFolders)
