@@ -122,7 +122,7 @@ namespace IDE
 		public const String cVersion = "0.43.6";
 
 #if BF_PLATFORM_LINUX
-		public const uint8[?] cAppIcon = [IgnoreErrors]{ Compiler.ReadBinary("Resources/beef.ico.png") };
+		public const uint8[?] cAppIcon = [IgnoreErrors]{ Compiler.ReadBinary("Resources/beeflang.png") };
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BFApp_RegisterAppIcon(uint8* imageData, int size);
