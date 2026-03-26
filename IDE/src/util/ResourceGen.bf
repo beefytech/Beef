@@ -290,30 +290,39 @@ namespace IDE.util
 			AddString("ProductName", product);
 			AddString("ProductVersion", productVersion);
 
-			int verSectionCount = 0;
-			uint64 version = 0;
-			for (let verSection in fileVersion.Split('.'))
+			uint64 GetVersionVal(StringView str)
 			{
-				int32 verSect = 0;
-				bool endNow = false;
-				switch (int32.Parse(verSection))
+				int verSectionCount = 0;
+
+				uint64 version = 0;
+				for (let verSection in str.Split('.'))
 				{
-				case .Ok(out verSect):
-				case .Err(.InvalidChar(out verSect)):
-					endNow = true;
-				default:
+					int32 verSect = 0;
+					bool endNow = false;
+					switch (int32.Parse(verSection))
+					{
+					case .Ok(out verSect):
+					case .Err(.InvalidChar(out verSect)):
+						endNow = true;
+					default:
+					}
+
+					version <<= 16;
+					version |= (uint64)verSect;
+					if (++verSectionCount == 4)
+						break;
+					if (endNow)
+						break;
 				}
 
-				version <<= 16;
-				version |= (uint64)verSect;
-				if (++verSectionCount == 4)
-					break;
-				if (endNow)
-					break;
+				if (verSectionCount < 4)
+					version <<= (int)(16 * (4 - verSectionCount));
+				return version;
 			}
 
-			if (verSectionCount < 4)
-				version <<= (int)(16 * (4 - verSectionCount));
+			int verSectionCount = 0;
+			uint64 fileVersionI = GetVersionVal(fileVersion);
+			uint64 productVersionI = GetVersionVal(productVersion);
 
 			int strTableSize = strStream.Length;
 
@@ -338,10 +347,10 @@ namespace IDE.util
 			VsFixedFileInfo ffi;
 			ffi.mSignature = 0xFEEF04BD;
 			ffi.mStrucVersion = 0x10000;
-			ffi.mFileVersionMS = (uint32)(version >> 32);
-			ffi.mFileVersionLS = (uint32)(version);
-			ffi.mProductVersionMS = (uint32)(version >> 32);
-			ffi.mProductVersionLS = (uint32)(version);
+			ffi.mFileVersionMS = (uint32)(fileVersionI >> 32);
+			ffi.mFileVersionLS = (uint32)(fileVersionI);
+			ffi.mProductVersionMS = (uint32)(productVersionI >> 32);
+			ffi.mProductVersionLS = (uint32)(productVersionI);
 			ffi.mFileFlagsMask = 0x3F;
 			ffi.mFileFlags = 0;
 			ffi.mFileOS = 0x40004;
@@ -355,13 +364,13 @@ namespace IDE.util
 			Try!(mOutStream.Write(ffi));
 
 			// StringFileInfo
-			Try!(mOutStream.Write((uint16)(strTableSize + 0x3A)));
+			Try!(mOutStream.Write((uint16)(strTableSize + 0x3C)));
 			Try!(mOutStream.Write((uint16)0)); // wValueLength
 			Try!(mOutStream.Write((uint16)1)); // wType
 			WriteStr16(mOutStream, "StringFileInfo", 15);
 
 			// StringTable
-			Try!(mOutStream.Write((uint16)(strTableSize + 0x16))); // wLength
+			Try!(mOutStream.Write((uint16)(strTableSize + 0x18))); // wLength
 			Try!(mOutStream.Write((uint16)0)); // mValueLength
 			Try!(mOutStream.Write((uint16)1)); // mType
 			WriteStr16(mOutStream, "040904b0", 9); // szKey
