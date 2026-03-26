@@ -265,7 +265,7 @@ namespace Beefy.gfx
 		const String FONTCONFIG_LIB = "libfontconfig.so";
 		static bool IsFontconfigAvailable { get; private set; } = true;
 
-		[StaticInitPriority(100)]
+		[AlwaysInclude, StaticInitPriority(100)]
 		private static class FontconfigAllowFail
 		{
 			static this()
