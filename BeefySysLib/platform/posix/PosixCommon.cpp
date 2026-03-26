@@ -1,8 +1,5 @@
 #include "Common.h"
 #include "BFPlatform.h"
-#include <corecrt.h>
-#include <cstddef>
-#include <cstring>
 #include <stdlib.h>
 #include <sys/stat.h>
 #ifdef BF_PLATFORM_LINUX
