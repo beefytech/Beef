@@ -8663,6 +8663,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 						argValue = BfTypedValue(mModule->GetStringObjectValue(projectName),
 							mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
 					}
+					else if (strcmp(globalVar->mName, "#ProjectDir") == 0)
+					{
+						String projectDir = methodInstance->mMethodDef->mDeclaringType->mProject->mDirectory;
+						argValue = BfTypedValue(mModule->GetStringObjectValue(projectDir),
+							mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+					}
 					else
 					{
 						argValue = mModule->GetCompilerFieldValue(globalVar->mName);

@@ -7,6 +7,12 @@ using System.Interop;
 class WebAssembly
 {
 	[CLink]
+	private static extern void emscripten_run_script(char8* code);
+	[CLink]
+	private static extern int32 emscripten_run_script_int(char8* code);
+	[CLink]
+	private static extern char8* emscripten_run_script_string(char8* code);
+	[CLink]
 	private static extern int32 emscripten_asm_const_int(char8* code, char8* arg_sigs, ...);
 	[CLink]
 	private static extern void emscripten_asm_const_ptr(char8* code, char8* arg_sigs, ...);

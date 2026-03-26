@@ -111,9 +111,9 @@ namespace System.Text
 
 		public static int Encode(char32 c, Span<uint8> dest)
 		{
-			if (dest.Length >= 2)
+			if (dest.Length >= 4)
 				*((char32*)dest.Ptr) = (char32)c;
-			return 2;
+			return 4;
 		}
 
 		public static Result<int, EncodeError> Encode(StringView str, char32* oututf32Buf, int bufLen)

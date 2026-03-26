@@ -4716,7 +4716,9 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 					}
 					else
 					{
-						SoftFail("VReg lifetime error");
+						//TODO: Triggered on https://github.com/beefytech/Beef/issues/2397
+						// Put back if we determine the cause
+						//SoftFail("VReg lifetime error");
 					}
 				}
 			}

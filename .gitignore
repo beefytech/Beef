@@ -28,6 +28,7 @@ IDE/Tests/NewProject*/*
 *.csproj.user
 builds/*
 wasm/*
+IDE/wasm/*
 BeefManaged/*
 BeefPerf.txt
 IDE/Tests/Rando

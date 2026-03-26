@@ -273,8 +273,62 @@ namespace System
 
 		public static class Options
 		{
+			public enum PlatformType : int32
+			{
+				Unknown,
+				Windows,
+				Linux,
+				macOS,
+				iOS,
+				Android,
+				Wasm,
+			}
+
+			public enum MachineType : int32
+			{
+				Unknown,
+				x86,
+				x64,
+				ARM,
+				AArch64,
+				Wasm32,
+				Wasm64,
+			}
+
+			public enum ToolsetType : int32
+			{
+				GNU,
+				Microsoft,
+				LLVM
+			}
+
+			public enum OptLevel : int32
+			{
+				O0,
+				O1,
+				O2,
+				O3,
+				Og,
+				OgPlus
+			}
+
 			[LinkName("#AllocStackCount")]
 			public static extern int32 AllocStackCount;
+
+			[LinkName("#Platform")]
+			public static extern PlatformType Platform;
+
+			[LinkName("#Architecture")]
+			public static extern MachineType Architecture;
+
+			[LinkName("#Toolset")]
+			public static extern ToolsetType Toolset;
+
+			[LinkName("#TargetTriple")]
+			public static extern String TargetTriple;
+
+			[LinkName("#OptimizationLevel")]
+			public static extern OptLevel OptimizationLevel;
 		}
 
 		[LinkName("#CallerLineNum")]
@@ -331,6 +385,12 @@ namespace System
 		[LinkName("#NextId")]
 		public static extern int64 NextId;
 
+		[LinkName("#ProjectDir")]
+		public static extern String ProjectDir;
+
+		[LinkName("#BuildDir")]
+		public static extern String BuildDir;
+
 		[Comptime(ConstEval=true)]
 		public static void Assert(bool cond)
 		{
@@ -354,6 +414,7 @@ namespace System
 		static extern void Comptime_EmitMethodEntry(int64 methodHandle, StringView text);
 		static extern void Comptime_EmitMethodExit(int64 methodHandle, StringView text);
 		static extern void Comptime_EmitMixin(StringView text);
+		static extern void Comptime_Output(StringView text);
 		static extern String Comptime_GetStringById(int32 id);
 
 		[Comptime(OnlyFromComptime=true)]
@@ -362,6 +423,12 @@ namespace System
 			MethodBuilder builder = .();
 			builder.[Friend]mNative = Comptime_CreateMethod((.)owner.TypeId, methodName, returnType, methodFlags);
 			return builder;
+		}
+
+		[Comptime(OnlyFromComptime=true)]
+		public static void Output(StringView text)
+		{
+			Comptime_Output(text);
 		}
 
 		[Comptime(OnlyFromComptime=true)]

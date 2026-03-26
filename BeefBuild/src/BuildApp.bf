@@ -26,6 +26,7 @@ namespace BeefBuild
 		public bool mHandledVerb;
 		public String mRunArgs ~ delete _;
 		public String mStartingDirectory = new .() ~ delete _;
+		public String mTargetProject ~ delete _;
 		MainVerbState mMainVerbState;
 
 		/*void Test()
@@ -281,6 +282,9 @@ namespace BeefBuild
 				case "-config":
 					mConfigName.Set(value);
 					return true;
+				case "-project":
+					String.NewOrSet!(mTargetProject, value);
+					return true;
 				case "-platform":
 					mPlatformName.Set(value);
 					return true;
@@ -415,17 +419,33 @@ namespace BeefBuild
 			{
 				if ((!mFailed) && (!mHandledVerb))
 				{
+					Project targetProject = null;
+					if (mTargetProject != null)
+					{
+						targetProject = mWorkspace.FindProject(mTargetProject);
+						if (targetProject == null)
+						{
+							Fail(scope $"Failed to locate target project '{mTargetProject}'");
+							return;
+						}
+					}
+
 					mHandledVerb = true;
 					if (mIsTest)
 					{
-						RunTests(mTestIncludeIgnored, false);
+						DoRunTests(mTestIncludeIgnored, false, targetProject);
 					}
 					else if (mVerb == .Update)
 					{
 						// No-op here
 					}
 					else if (mVerb != .New)
-						Compile(.Normal, null);
+					{
+						if (targetProject != null)
+							Compile(.NormalTargeted(new .(targetProject.mProjectName)), null);
+						else
+							Compile(.Normal, null);
+					}
 				}
 
 				if (mCompilingBeef)

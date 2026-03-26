@@ -45,6 +45,7 @@ namespace IDE.ui
 
         Error,
 
+		BuildText,
 		BuildError,
 		BuildWarning,
 		BuildSuccess,

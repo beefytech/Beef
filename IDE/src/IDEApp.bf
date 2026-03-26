@@ -184,6 +184,7 @@ namespace IDE
 		public bool mDbgTimeAutocomplete;
 		public bool mDbgPerfAutocomplete;
 		public bool mStopPending;
+		public String mDeferredCompilerText = new .() ~ delete _;
 		public BeefConfig mBeefConfig = new BeefConfig() ~ delete _;
 		public List<String> mDeferredFails = new .() ~ DeleteContainerAndItems!(_);
 		public String mInitialCWD = new .() ~ delete _;
@@ -428,7 +429,7 @@ namespace IDE
 		class ProcessBfCompileCmd : ExecutionCmd
 		{
 			public BfPassInstance mBfPassInstance ~ delete _;
-			public CompileKind mCompileKind;
+			public CompileKind mCompileKind ~ _.Dispose();
 			public Project mHotProject;
 			public Stopwatch mStopwatch ~ delete _;
 			public Profiler mProfiler;
@@ -5904,8 +5905,7 @@ namespace IDE
 			return (mTestManager != null);
 		}
 
-		[IDECommand]
-		protected void RunTests(bool includeIgnored, bool debug)
+		protected void DoRunTests(bool includeIgnored, bool debug, Project project)
 		{
 			var workspaceOptions = GetCurWorkspaceOptions();
 			if (CurrentPlatform == .Wasm)
@@ -5956,6 +5956,8 @@ namespace IDE
 			mTestManager.mPrevConfigName = new String(prevConfigName);
 			mTestManager.mDebug = debug && (platformType != .Wasm);
 			mTestManager.mIncludeIgnored = includeIgnored;
+			if (project != null)
+				mTestManager.mTargetTestProject = new .(project.mProjectName);
 
 			if (mOutputPanel != null)
 				mOutputPanel.Clear();
@@ -5968,6 +5970,12 @@ namespace IDE
 			{
 				OutputLineSmart("WARNING: No projects have a test configuration specified");
 			}
+		}
+
+		[IDECommand]
+		protected void RunTests(bool includeIgnored, bool debug)
+		{
+			DoRunTests(includeIgnored, debug, null);
 		}
 
 		[IDECommand]
@@ -9854,6 +9862,7 @@ namespace IDE
 
 					CompileResult(buildCompletedCmd.mHotProjectName, !buildCompletedCmd.mFailed);
 
+					FlushDeferredCompilerText(true);
 					if (buildCompletedCmd.mFailed)
 						OutputLineSmart("ERROR: BUILD FAILED. Total build time: {0:0.00}s", buildCompletedCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
 					else if ((mVerbosity >= .Detailed) && (buildCompletedCmd.mStopwatch != null))
@@ -10194,7 +10203,7 @@ namespace IDE
 				return null;
 
 			Workspace.ConfigSelection configSelection;
-			workspaceOptions.mConfigSelections.TryGetValue(project, out configSelection);
+			workspaceOptions.mConfigSelections.TryGetValue(project.mProjectName, out configSelection);
 			if ((configSelection == null) || (!configSelection.mEnabled))
 				return null;
 
@@ -10318,7 +10327,7 @@ namespace IDE
 					if (workspaceOptions.mBuildKind == .Test)
 					{
 						targetType = .BeefTest;
-						if (mTestManager != null)
+						if ((mTestManager != null) && (mTestManager.WantsTestProject(project)))
 						{
 							String workingDirRel = scope String();
 							ResolveConfigString(mPlatformName, workspaceOptions, project, options, "$(WorkingDir)", "debug working directory", workingDirRel);
@@ -10495,6 +10504,20 @@ namespace IDE
 				{
 					dep.mProjectName.Set(newName);
 					mWorkspace.SetChanged();
+				}
+			}
+
+			for (var config in mWorkspace.mConfigs.Values)
+			{
+				for (var platform in config.mPlatforms.Values)
+				{
+					for (var platformProjectName in platform.mConfigSelections.Keys)
+					{
+						if (platformProjectName == project.mProjectName)
+						{
+							platformProjectName.Set(newName);
+						}
+					}
 				}
 			}
 
@@ -10705,9 +10728,7 @@ namespace IDE
 			return passInstance;
 		}
 
-		[CLink] static extern char8* getenv(char8*);
-
-		public bool DoResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String error, String result)
+		public bool DoResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String error, String result, ScriptManager.Context scriptContext = null)
 		{
 			int startIdx = result.Length;
 			int i = startIdx;
@@ -10804,17 +10825,38 @@ namespace IDE
 									else
 										cmdErr = "Invalid number of arguments";
 								case "Var":
-									break ReplaceBlock;
+									if ((scriptContext != null) && (args.Count > 0))
+									{
+										if (scriptContext.mVars.TryGetValueAlt(args[0], var value))
+										{
+											if (value.VariantType == typeof(String))
+												newString = scope:ReplaceBlock .(value.Get<String>());
+										}
+									}
+									else
+										break ReplaceBlock;
 								case "Env":
 									if (args.Count == 1)
 									{
-										let env = getenv(args[0]);
-										if (env == null)
-											cmdErr = scope:ReplaceBlock $"No such enviorment variable: {args[0]}";
-										else
+										String env = scope:ReplaceBlock .();
+										switch (Environment.GetEnvironmentVariable(args[0], env))
 										{
-											newString = scope:ReplaceBlock .();
-											newString.Append(env);
+										case .Err:
+											newString = "";
+											cmdErr = scope:ReplaceBlock $"No such environment variable: {args[0]}";
+										case .Ok:
+											newString = env;
+										}
+									}
+									else if (args.Count == 2)
+									{
+										String env = scope:ReplaceBlock .();
+										switch (Environment.GetEnvironmentVariable(args[0], env))
+										{
+										case .Err:
+											newString = args[1];
+										case .Ok:
+											newString = env;
 										}
 									}
 									else
@@ -11179,10 +11221,10 @@ namespace IDE
 			}
 		}
 
-		public bool ResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String errorContext, String outResult)
+		public bool ResolveConfigString(String platformName, Workspace.Options workspaceOptions, Project project, Project.Options options, StringView configString, String errorContext, String outResult, ScriptManager.Context scriptContext = null)
 		{
 			String errorString = scope String();
-			if (!DoResolveConfigString(platformName, workspaceOptions, project, options, configString, errorString, outResult))
+			if (!DoResolveConfigString(platformName, workspaceOptions, project, options, configString, errorString, outResult, scriptContext))
 			{
 				OutputErrorLine("Invalid macro in {0}: {1}", errorContext, errorString);
 				return false;
@@ -11704,6 +11746,28 @@ namespace IDE
 			}
 		}
 
+		void FlushDeferredCompilerText(bool flushAll)
+		{
+			if (mDeferredCompilerText.IsEmpty)
+				return;
+
+			for (var line in mDeferredCompilerText.Split('\n'))
+			{
+				if ((!flushAll) && (!@line.HasMore))
+				{
+					if (line.Length < mDeferredCompilerText.Length)
+					{
+						// Put fragment back
+						mDeferredCompilerText.Set(line);
+					}
+					return;
+				}
+
+				mOutputPanel.WriteColoredTextLine(line, .BuildText);
+			}
+			mDeferredCompilerText.Clear();
+		}
+
 		void ProcessBeefCompileResults(BfPassInstance passInstance, CompileKind compileKind, Project hotProject, Stopwatch startStopWatch)
 		{
 			bool didCompileSucceed = true;
@@ -11741,12 +11805,21 @@ namespace IDE
 								wantsDisp = mVerbosity >= .Detailed;
 							else if (msgType == ":med")
 								wantsDisp = mVerbosity >= .Normal;
+							else if ((msgType == ":text") || (msgType == ":text_line"))
+							{
+								mDeferredCompilerText.Append(str.Substring(spacePos + 1));
+								FlushDeferredCompilerText(msgType == ":text_line");
+								continue;
+							}
+
 							if (!wantsDisp)
 								continue;
 
 							str.Remove(0, spacePos + 1);
 						}
 					}
+
+					FlushDeferredCompilerText(true);
 
 					str.Append("\n");
 					OutputSmart(str);

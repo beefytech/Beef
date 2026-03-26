@@ -166,6 +166,11 @@ namespace IDE.ui
 				}
 			case .Apps:
 				mThreadPanel.[Friend]ShowRightClickMenu(this);
+			case (KeyCode)'C':
+				if (mWidgetWindow.GetKeyFlags(true) == KeyFlags.Ctrl)
+				{
+					mThreadPanel.CopySelected();
+				}
 			default:
 			}
 		}
@@ -253,6 +258,34 @@ namespace IDE.ui
             return base.Deserialize(data);
         }
 
+		public void CopySelected()
+		{
+			String text = scope .();
+
+			mListView.GetRoot().WithSelectedItems(scope [&] (item) =>
+				{
+					if (item.mIconImage != null)
+						text.Append(">");
+					else
+						text.Append(" ");
+					text.Append("\t");
+					Font.StrRemoveColors(item.Label, text);
+
+					var subItem = item.GetSubItem(1);
+					text.Append("\t");
+					Font.StrRemoveColors(subItem.Label, text);
+
+					subItem = item.GetSubItem(2);
+					text.Append("\t");
+					Font.StrRemoveColors(subItem.Label, text);
+
+					text.Append("\n");
+				});
+
+			if (!text.IsEmpty)
+			gApp.SetClipboardText(text);
+		}
+
 		protected override void ShowRightClickMenu(Widget relWidget, float x, float y)
 		{
 			mDeselectOnFocusLost = false;
@@ -262,6 +295,24 @@ namespace IDE.ui
 				return;
 
 			Menu menu = new Menu();
+			Menu item;
+
+			item = menu.AddItem("Copy|Ctrl+C");
+			item.mOnMenuItemSelected.Add(new (menu) =>
+				{
+					CopySelected();
+				});
+
+			item = menu.AddItem("Select All|Ctrl+A");
+			item.mOnMenuItemSelected.Add(new (menu) =>
+				{
+					mListView.GetRoot().WithItems(scope (listViewItem) =>
+						{
+						    listViewItem.Selected = true;
+						});
+				});
+
+			item = menu.AddItem();
 
 			bool hasFrozen = false;
 			bool hasThawed = false;
@@ -274,7 +325,6 @@ namespace IDE.ui
 						hasThawed = true;
 				});
 
-			Menu item;
 			if (hasThawed)
 			{
 				item = menu.AddItem("Freeze");

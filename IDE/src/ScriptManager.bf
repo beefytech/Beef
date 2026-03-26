@@ -456,7 +456,7 @@ namespace IDE
 
 								String newStr = scope:: .();
 								String err = scope .();
-								if (!gApp.DoResolveConfigString("", workspaceOptions, project, projectOptions, str, err, newStr))
+								if (!gApp.DoResolveConfigString("", workspaceOptions, project, projectOptions, str, err, newStr, mContext))
 								{
 									Fail(scope String()..AppendF("Unknown macro string '{}' in '{}'", err, str));
 								}

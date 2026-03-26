@@ -1306,6 +1306,27 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentStrings(char* outStr, int* 
 	TryStringOut(env, outStr, inOutStrSize, (BfpResult*)outResult);
 }
 
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentVariable(const char* var, char* outStr, int* inOutStrSize, BfpSystemResult* outResult)
+{
+	int bufferSize = *inOutStrSize;
+	int valueSize = ::GetEnvironmentVariableA(var, outStr, *inOutStrSize);
+	*inOutStrSize = valueSize + 1;
+	if (valueSize == 0)
+		OUTRESULT((BfpSystemResult)(int)BfpResult_NoResults);
+	else if (valueSize <= bufferSize)
+		OUTRESULT(BfpSystemResult_Ok);
+	else
+		OUTRESULT(BfpSystemResult_PartialData);
+}
+
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetEnvironmentVariable(const char* var, const char* value, BfpSystemResult* outResult)
+{
+	if (::SetEnvironmentVariableA(var, value))
+		OUTRESULT(BfpSystemResult_Ok);
+	else
+		OUTRESULT((BfpSystemResult)(int)BfpResult_UnknownError);
+}
+
 BFP_EXPORT int BFP_CALLTYPE BfpSystem_GetNumLogicalCPUs(BfpSystemResult* outResult)
 {
 	SYSTEM_INFO sysInfo;

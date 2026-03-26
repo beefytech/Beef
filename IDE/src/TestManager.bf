@@ -57,6 +57,7 @@ namespace IDE
 		public bool mDebug;
 		public bool mIncludeIgnored;
 		public bool mFailed;
+		public String mTargetTestProject ~ delete _;
 
 		public bool HasProjects
 		{
@@ -77,6 +78,13 @@ namespace IDE
 		public bool IsRunning()
 		{
 			return true;
+		}
+
+		public bool WantsTestProject(Project project)
+		{
+			if (mTargetTestProject == null)
+				return true;
+			return project.mProjectName.Equals(mTargetTestProject, .OrdinalIgnoreCase);
 		}
 
 		public void AddProject(Project project, StringView workingDir)

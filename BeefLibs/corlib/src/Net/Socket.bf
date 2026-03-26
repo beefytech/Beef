@@ -387,6 +387,48 @@ namespace System.Net
 			}
 		}
 
+		public enum PollEvents : int16
+		{
+			None     = 0,
+#if BF_PLATFORM_WINDOWS
+			In       = 0x300,
+			Priority = 0x400,
+			Out      = 0x010,
+			Error    = 0x001,
+			Hangup   = 0x002,
+			Invalid  = 0x004
+#else
+			In       = 0x01,
+			Priority = 0x02,
+			Out      = 0x04,
+			Error    = 0x08,
+			Hangup   = 0x10,
+			Invalid  = 0x20
+#endif
+		}
+
+		[CRepr]
+		public struct PollFD
+		{
+			public HSocket fd;
+			public PollEvents events;
+			public PollEvents revents;
+
+			public this(HSocket fd, PollEvents requested)
+			{
+				this.fd = fd;
+				this.events = requested;
+				this.revents = 0;
+			}
+		}
+
+		public enum ShutdownDirection : int32
+		{
+			Recieve = 0,
+			Send    = 1,
+			Both    = 2
+		}
+
 		public const HSocket INVALID_SOCKET = (HSocket)-1;
 		public const int32 SOCKET_ERROR = -1;
 		public const int AF_INET = 2;
@@ -509,9 +551,15 @@ namespace System.Net
 #if BF_PLATFORM_WINDOWS
 		[Import("wsock32.lib"), CLink, CallingConvention(.Stdcall)]
 		static extern int32 closesocket(HSocket s);
+
+		[Import("Ws2_32.lib"), CLink, CallingConvention(.Stdcall)]
+		static extern int32 shutdown(HSocket s, ShutdownDirection how);
 #else
 		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 close(HSocket s);
+
+		[CLink, CallingConvention(.Stdcall)]
+		static extern int32 shutdown(HSocket s, ShutdownDirection how);
 #endif
 
 		[CLink, CallingConvention(.Stdcall)]
@@ -548,6 +596,14 @@ namespace System.Net
 
 		[CLink, CallingConvention(.Stdcall)]
 		static extern int32 sendto(HSocket s, void* ptr, int32 len, int32 flags, SockAddr* to, int32 toLen);
+
+#if BF_PLATFORM_WINDOWS
+		[Import("Ws2_32.lib"), CLink, CallingConvention(.Stdcall)]
+		static extern int32 WSAPoll(PollFD* fdArray, uint32 fds, int32 timeout);
+#else
+		[CLink, CallingConvention(.Stdcall)]
+		static extern int32 poll(PollFD* fds, uint64 nfds, int32 timeout);
+#endif
 
 		public ~this()
 		{
@@ -604,7 +660,7 @@ namespace System.Net
 		public static Result<void, SocketError> GetAddrInfo(StringView addr, StringView service, AddrInfo hints, AddrInfo** res)
 		{
 			var hints;
-			return (getaddrinfo(addr.Ptr, service.Ptr, &hints, res) == SOCKET_ERROR) ? .Err(GetLastError()) : .Ok;
+			return (getaddrinfo(addr.Ptr, service.Ptr, &hints, res) != 0) ? .Err(GetLastError()) : .Ok;
 		}
 
 		public static Result<SockAddrInfo, SocketError> GetAddrInfo(StringView addr, AddrInfo hints = default) => GetAddrInfo(addr, (StringView)default, hints);
@@ -642,7 +698,8 @@ namespace System.Net
 			SetBlocking(mIsBlocking);
 		}
 
-        public Result<void, SocketError> Listen(int32 port, int32 backlog = 5) => Listen(.(127, 0, 0, 1), port, backlog);
+		public Result<void, SocketError> Listen(int32 port, int32 backlog = 5) => Listen((IPv6Address)default, port, backlog, false);
+		public Result<void, SocketError> ListenLocal(int32 port, int32 backlog = 5) => Listen(.(127, 0, 0, 1), port, backlog);
 		public Result<void, SocketError> Listen(IPv4Address address, int32 port, int32 backlog = 5) => OpenEx(address, port, .Stream, .TCP, backlog);
 		public Result<void, SocketError> Listen(IPv6Address address, int32 port, int32 backlog = 5, bool v6Only = false)
 			=> OpenEx(
@@ -781,6 +838,15 @@ namespace System.Net
 			return select(nfds, readFDS, writeFDS, exceptFDS, timeVal);
 		}
 
+		public static int32 Poll(PollFD* fds, uint nfds, int timeout)
+		{
+#if BF_PLATFORM_WINDOWS
+			return WSAPoll(fds, (.)nfds, (.)timeout);
+#else
+			return poll(fds, (.)nfds, (.)timeout);
+#endif
+		}
+
 		public int32 DbgRecv(void* ptr, int32 size)
 		{
 			int32 result = recv(mHandle, ptr, size, 0);
@@ -887,6 +953,18 @@ namespace System.Net
 			close(mHandle);
 #endif
 			mHandle = INVALID_SOCKET;
+		}
+
+		public Result<void, SocketError> Shutdown(ShutdownDirection how = .Both)
+		{
+			if (shutdown(mHandle, how) == SOCKET_ERROR)
+			{
+				let err = GetLastError();
+				return .Err(err);
+			}
+
+			mIsConnected = false;
+			return .Ok;
 		}
 
 		

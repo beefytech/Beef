@@ -1702,7 +1702,41 @@ void BeIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BeValue*, val);
 			CMD_PARAM(int, idx0);
 			CMD_PARAM(int, idx1);
-			BF_ASSERT(val->GetType()->IsPointer());
+
+			auto valType = val->GetType();
+			if (!val->GetType()->IsPointer())
+			{
+				Fail("GEP value not pointer");
+				break;
+			}
+
+			BePointerType* pointerType = (BePointerType*)valType;
+			if (!pointerType->mElementType->IsComposite())
+			{
+				Fail("GEP value not pointer to composite");
+				break;
+			}
+
+			if (pointerType->mElementType->IsStruct())
+			{
+				BeStructType* structType = (BeStructType*)pointerType->mElementType;
+				if (idx1 >= structType->mMembers.size())
+				{
+					Fail("GEP idx1 out of range");
+					break;
+				}
+			}
+
+			if (pointerType->mElementType->IsSizedArray())
+			{
+				BeSizedArrayType* arrayType = (BeSizedArrayType*)pointerType->mElementType;
+				if (idx1 >= arrayType->mLength)
+				{
+					Fail("GEP idx1 out of range");
+					break;
+				}
+			}
+			
 			BeType* int32Type = mBeContext->GetPrimitiveType(BeTypeCode_Int32);
 			SetResult(curId, mBeModule->CreateGEP(val, mBeModule->GetConstant(int32Type, (int64)idx0), mBeModule->GetConstant(int32Type, (int64)idx1)));
 		}

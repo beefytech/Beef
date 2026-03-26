@@ -733,6 +733,12 @@ BfIRTypeEx* BfIRCodeGen::GetTypeEx(BfTypeCode typeCode, bool& isSigned)
 		BfIRTypeEx* typeEx = new BfIRTypeEx();
 		typeEx->mLLVMType = GetLLVMType(typeCode, isSigned);
 
+		if (typeEx->mLLVMType == NULL)
+		{
+			Fail("Invalid type in BfIRCodeGen::GetTypeEx");
+			typeEx->mLLVMType = llvm::Type::getInt8Ty(*mLLVMContext);
+		}
+
 		if (typeEx->mLLVMType->isPointerTy())
 		{
 			// Make void* actually be an i8*

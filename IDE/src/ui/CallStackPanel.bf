@@ -102,6 +102,21 @@ namespace IDE.ui
             DarkVirtualListViewItem headItem = (DarkVirtualListViewItem)GetRoot().GetMainItem();
             headItem.mVirtualCount = callStackCount;            
         }
+
+		public override void KeyDown(KeyCode keyCode, bool isRepeat)
+		{
+			base.KeyDown(keyCode, isRepeat);
+
+			switch (keyCode)
+			{
+			case (KeyCode)'C':
+			    if (mWidgetWindow.GetKeyFlags(true) == KeyFlags.Ctrl)
+			    {
+			        mCallStackPanel.CopySelected(false);
+			    }
+			default:
+			}
+		}
     }
 
     public class CallStackPanel : Panel
@@ -116,6 +131,7 @@ namespace IDE.ui
 		public int mThreadId = -1;
 		public int32 mActiveCallStackIdx = -1;
 		public int32 mSelectedCallStackIdx = -1;
+		public bool mDeselectOnFocusLost = true;
 
 		public int32 ActiveCallStackIdx
 		{
@@ -143,7 +159,11 @@ namespace IDE.ui
             mListView.mHorzScrollbar.mContentSize = GS!(500);
             mListView.mVertScrollbar.mPageSize = GS!(100);
             mListView.mVertScrollbar.mContentSize = GS!(500);
-			mListView.mOnLostFocus.Add(new (evt) => { mListView.GetRoot().SelectItemExclusively(null); });
+			mListView.mOnLostFocus.Add(new (evt) =>
+				{
+					if (mDeselectOnFocusLost)
+						mListView.GetRoot().SelectItemExclusively(null);
+				});
 			mListView.mAutoFocus = true;
             mListView.UpdateScrollbars();
 
@@ -210,19 +230,22 @@ namespace IDE.ui
             }
         }
 
-        public void ValueClicked(MouseEvent theEvent)
+        public void ValueClicked(MouseEvent evt)
         {
 			SetStackFrame!();
 
-            DarkVirtualListViewItem clickedItem = (DarkVirtualListViewItem)theEvent.mSender;
+            DarkVirtualListViewItem clickedItem = (DarkVirtualListViewItem)evt.mSender;
             DarkVirtualListViewItem item = (DarkVirtualListViewItem)clickedItem.GetSubItem(0);
 
             mListView.SetFocus();
 
-			if (theEvent.mBtn == 1)
+			if (evt.mBtn == 1)
 			{
 				if (!item.Selected)
 					mListView.GetRoot().SelectItem(item, true);
+				var widget = (Widget)evt.mSender;
+				widget.SelfToOtherTranslate(mListView.GetRoot(), evt.mX, evt.mY, var x, var y);
+				ShowRightClickMenu(mListView, x, y);
 			}
 			else
 			{
@@ -230,7 +253,7 @@ namespace IDE.ui
 				//mListView.GetRoot().SelectItemExclusively(item);
 			}
 
-            if ((theEvent.mBtn == 0) && (theEvent.mBtnCount > 1))
+            if ((evt.mBtn == 0) && (evt.mBtnCount > 1))
             {
                 for (int32 childIdx = 1; childIdx < mListView.GetRoot().GetChildCount(); childIdx++)
                 {
@@ -246,6 +269,104 @@ namespace IDE.ui
 
             UpdateIcons();
         }
+
+		public void CopySelected(bool copyWithPath)
+		{
+			String text = scope .();
+
+			if (copyWithPath)
+			{
+				gApp.mDebugger.CheckCallStack();
+			}
+
+			mListView.GetRoot().WithSelectedItems(scope [&] (item) =>
+				{
+					if (copyWithPath)
+					{
+						Font.StrRemoveColors(item.Label, text);
+
+						var callStackItem = (CallStackListViewItem)item;
+						int32 stackIdx = callStackItem.mVirtualIdx;
+
+						int addr;
+						String file = scope String();
+						int hotIdx;
+						int defLineStart;
+						int defLineEnd;
+						int line;
+						int column;
+						int language;
+						int stackSize;
+						String label = scope String();
+						DebugManager.FrameFlags frameFlags;
+						gApp.mDebugger.GetStackFrameInfo(stackIdx, label, out addr, file, out hotIdx, out defLineStart, out defLineEnd, out line, out column, out language, out stackSize, out frameFlags);
+
+						if (!file.IsEmpty)
+						{
+							int hashIdx = file.IndexOf('#');
+							if (hashIdx != -1)
+								file.RemoveToEnd(hashIdx);
+							text.AppendF($"\n\tat {file}({line})\n");
+						}
+					}
+					else
+					{
+						if (item.mIconImage != null)
+							text.Append(">");
+						else
+							text.Append(" ");
+						text.Append("\t");
+						Font.StrRemoveColors(item.Label, text);
+
+						var subItem = item.GetSubItem(2);
+						if (subItem.Label.Length > 0)
+						{
+							text.Append("\t");
+							Font.StrRemoveColors(subItem.Label, text);
+						}
+						text.Append("\n");
+					}
+				});
+
+			if (!text.IsEmpty)
+				gApp.SetClipboardText(text);
+		}
+
+		protected override void ShowRightClickMenu(Widget relWidget, float x, float y)
+		{
+			mDeselectOnFocusLost = false;
+			defer:: { mDeselectOnFocusLost = true; }
+
+			if (mListView.GetRoot().FindFirstSelectedItem() == null)
+				return;
+
+			Menu menu = new Menu();
+
+
+			Menu item;
+
+			item = menu.AddItem("Copy|Ctrl+C");
+			item.mOnMenuItemSelected.Add(new (menu) =>
+				{
+					CopySelected(false);
+				});
+			item = menu.AddItem("Copy with Source Paths");
+			item.mOnMenuItemSelected.Add(new (menu) =>
+				{
+					CopySelected(true);
+				});
+			item = menu.AddItem("Select All|Ctrl+A");
+			item.mOnMenuItemSelected.Add(new (menu) =>
+				{
+					mListView.GetRoot().WithItems(scope (listViewItem) =>
+						{
+						    listViewItem.Selected = true;
+						});
+				});
+
+			MenuWidget menuWidget = ThemeFactory.mDefault.CreateMenuWidget(menu);
+			menuWidget.Init(mListView.GetRoot(), x, y);
+		}
 
         public override void Resize(float x, float y, float width, float height)
         {

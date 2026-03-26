@@ -274,7 +274,7 @@ namespace System.Text
 				*(destPtr++) = 0xBF;
 			}
 
-			switch (base.Encode(str, .(dest.Ptr, dest.Length - 3)))
+			switch (base.Encode(str, .(destPtr, dest.Length - 3)))
 			{
 			case .Ok(let encSize):
 				return .Ok(3 + encSize);
@@ -376,7 +376,7 @@ namespace System.Text
 				*(destPtr++) = 0xFE;
 			}
 
-			switch (base.Encode(str, .(dest.Ptr, dest.Length - 2)))
+			switch (base.Encode(str, .(destPtr, dest.Length - 2)))
 			{
 			case .Ok(let encSize):
 				return .Ok(2 + encSize);
@@ -384,7 +384,7 @@ namespace System.Text
 				switch (err)
 				{
 				case .PartialEncode(let inChars, let encodedBytes):
-					return .Err(.PartialEncode(inChars, 3 + encodedBytes));
+					return .Err(.PartialEncode(inChars, 2 + encodedBytes));
 				}
 			}
 		}
@@ -418,4 +418,43 @@ namespace System.Text
 			encoding.Encode(str, .(mData, mSize));
 		}
 	}
+
+#if TEST
+	class EncodingTests
+	{
+		[Test]
+		public static void UTF16WithBOM_Encode_PreservesBOM()
+		{
+			StringView str = "A";
+			let encoding = Encoding.UTF16WithBOM;
+			int size = encoding.GetEncodedSize(str);
+			uint8[] buf = scope uint8[size];
+			encoding.Encode(str, .(buf.Ptr, size));
+
+			// BOM should be FF FE (little-endian)
+			Test.Assert(buf[0] == 0xFF);
+			Test.Assert(buf[1] == 0xFE);
+			// 'A' in UTF-16LE is 0x41 0x00
+			Test.Assert(buf[2] == 0x41);
+			Test.Assert(buf[3] == 0x00);
+		}
+
+		[Test]
+		public static void UTF8WithBOM_Encode_PreservesBOM()
+		{
+			StringView str = "A";
+			let encoding = Encoding.UTF8WithBOM;
+			int size = encoding.GetEncodedSize(str);
+			uint8[] buf = scope uint8[size];
+			encoding.Encode(str, .(buf.Ptr, size));
+
+			// BOM should be EF BB BF
+			Test.Assert(buf[0] == 0xEF);
+			Test.Assert(buf[1] == 0xBB);
+			Test.Assert(buf[2] == 0xBF);
+			// 'A' in UTF-8 is 0x41
+			Test.Assert(buf[3] == 0x41);
+		}
+	}
+#endif
 }

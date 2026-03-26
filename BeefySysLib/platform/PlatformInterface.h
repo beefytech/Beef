@@ -131,6 +131,8 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_FatalError(const char* error, const char*
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetCommandLine(char* outStr, int* inOutStrSize, BfpSystemResult* outResult);
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetExecutablePath(char* outStr, int* inOutStrSize, BfpSystemResult* outResult);
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentStrings(char* outStr, int* inOutStrSize, BfpSystemResult* outResult);
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentVariable(const char* var, char* outStr, int* inOutStrSize, BfpSystemResult* outResult);
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetEnvironmentVariable(const char* var, const char* value, BfpSystemResult* outResult);
 BFP_EXPORT int BFP_CALLTYPE BfpSystem_GetNumLogicalCPUs(BfpSystemResult* outResult);
 BFP_EXPORT int64 BFP_CALLTYPE BfpSystem_GetCPUTick();
 BFP_EXPORT int64 BFP_CALLTYPE BfpSystem_GetCPUTickFreq();

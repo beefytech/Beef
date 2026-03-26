@@ -205,5 +205,22 @@ namespace System
 
 		[LinkName("exit")]
 		public static extern void Exit(int exitCode);
+
+		public static Result<void> GetEnvironmentVariable(StringView varName, String outString)
+		{
+			Try!(Platform.GetStrHelper(outString, scope (outPtr, outSize, outResult) =>
+				{
+					Platform.BfpSystem_GetEnvironmentVariable(varName.ToScopeCStr!(), outPtr, outSize, (.)outResult);
+				}));
+			return .Ok;
+		}
+
+		public static Result<void> SetEnvironmentVariable(StringView varName, StringView value)
+		{
+			Platform.Result result = ?;
+			Platform.BfpSystem_SetEnvironmentVariable(varName.ToScopeCStr!(), value.ToScopeCStr!(4096), (.)&result);
+			if (result == .Ok) return .Ok;
+			return .Err;
+		}
 	}
 }

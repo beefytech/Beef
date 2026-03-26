@@ -105,9 +105,16 @@ namespace System
       ==============================================================================*/
 		protected virtual double Sample()
 		{
-          //Including this division at the end gives us significantly improved
-          //random number distribution.
+			//Including this division at the end gives us significantly improved
+			//random number distribution.
 			return ((InternalSample() & Int32.MaxValue) * (1.0 / Int32.MaxValue));
+		}
+
+		protected virtual float SampleF()
+		{
+			//Including this division at the end gives us significantly improved
+			//random number distribution.
+			return ((InternalSample() & Int32.MaxValue) * (1.0f / Int32.MaxValue));
 		}
 
 		private int32 InternalSample()
@@ -268,6 +275,8 @@ namespace System
 		{
 			return Sample();
 		}
+
+		public virtual float NextFloat() => (.)SampleF();
 
 		public virtual double NextDoubleSigned()
 		{

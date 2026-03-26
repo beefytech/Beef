@@ -242,6 +242,7 @@ BfParserData::~BfParserData()
 {
 	if (mParseFileData != NULL)
 	{
+		AutoCrit autoCrit(gBfParserCache->mCritSect);
 		BF_ASSERT(mParseFileData->mRefCount >= 0);
 		mParseFileData->mRefCount--;
 		if (mParseFileData->mRefCount == 0)
@@ -259,6 +260,7 @@ void BfParserData::InitFileData()
 {
 	BF_ASSERT(mParseFileData == NULL);
 
+	AutoCrit autoCrit(gBfParserCache->mCritSect);
 	BfParseFileData** valuePtr = NULL;
 	if (gBfParserCache->mParseFileDataMap.TryAdd(mFileName, NULL, &valuePtr))
 	{

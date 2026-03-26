@@ -8622,9 +8622,9 @@ BfType* BfModule::ResolveTypeDef(BfTypeDef* typeDef, BfPopulateType populateType
 
 	//BF_ASSERT(typeDef->mTypeCode != BfTypeCode_Extension);
 	BF_ASSERT(!typeDef->mIsPartial || typeDef->mIsCombinedPartial);
-
-	BF_ASSERT(typeDef->mDefState != BfTypeDef::DefState_Deleted);
-	BF_ASSERT((typeDef->mOuterType == NULL) || (typeDef->mOuterType->mDefState != BfTypeDef::DefState_Deleted));
+	
+	BF_ASSERT((typeDef->mDefState != BfTypeDef::DefState_Deleted) || ((resolveFlags & BfResolveTypeRefFlag_AllowDeletedTypeDef) != 0));
+	BF_ASSERT((typeDef->mOuterType == NULL) || (typeDef->mOuterType->mDefState != BfTypeDef::DefState_Deleted) || ((resolveFlags & BfResolveTypeRefFlag_AllowDeletedTypeDef) != 0));
 
 	if (typeDef->mGenericParamDefs.size() != 0)
 		return ResolveTypeDef(typeDef, BfTypeVector(), populateType, resolveFlags);
@@ -8919,7 +8919,7 @@ BfTypeInstance* BfModule::GetOuterType(BfType* type)
 	typeGenericArguments.resize(outerTypeDef->mGenericParamDefs.size());
 
 	//auto outerType = ResolveTypeDef(outerTypeDef, typeGenericArguments, BfPopulateType_Declaration);
-	auto outerType = ResolveTypeDef(outerTypeDef, typeGenericArguments, BfPopulateType_Identity);
+	auto outerType = ResolveTypeDef(outerTypeDef, typeGenericArguments, BfPopulateType_Identity, BfResolveTypeRefFlag_AllowDeletedTypeDef);
 	if (outerType == NULL)
 		return NULL;
 	return outerType->ToTypeInstance();

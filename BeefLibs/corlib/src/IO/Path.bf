@@ -427,7 +427,7 @@ namespace System.IO
 		    if (curPath1.Contains(Path.AltDirectorySeparatorChar))
 		        curPath1.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
 		    if (curPath2.Contains(Path.AltDirectorySeparatorChar))
-		        curPath1.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
+		        curPath2.Replace(Path.AltDirectorySeparatorChar, Path.DirectorySeparatorChar);
 
 		    String driveString1 = scope String();
 		    GetDriveStringTo(driveString1, curPath1);

@@ -189,10 +189,34 @@ namespace SDL2
 		public bool mHasAudio;
 		public bool mDidInit;
 
+		public bool mScaleContent;
+		public int32 mPhysWidth;
+		public int32 mPhysHeight;
+		public uint32 mScaleBorderColor = 0xFF000000;
+		public SDL.Texture* mScreenTexture;
+
 		private Stopwatch mFPSStopwatch = new .() ~ delete _;
 		private int32 mFPSCount;
 		private Stopwatch mStopwatch = new .() ~ delete _;
 		private int mCurPhysTickCount = 0;
+
+		SDL.FRect GetVirtToPhys()
+		{
+			if ((mWidth == mPhysWidth) && (mHeight == mPhysHeight))
+				return .(0, 0, 1, 1);
+
+			float scaleW = (float)mPhysWidth / (float)mWidth;
+			float scaleH = (float)mPhysHeight / (float)mHeight;
+
+			if (scaleW > scaleH)
+			{
+				return .((scaleW - scaleH) * 0.5f * mWidth, 0, scaleH, scaleH);
+			}
+			else
+			{
+				return .(0, (scaleH - scaleW) * 0.5f * mHeight, scaleW, scaleW);
+			}
+		}
 
 		public this()
 		{
@@ -205,6 +229,8 @@ namespace SDL2
 				SDL.DestroyRenderer(mRenderer);
 			if (mWindow != null)
 				SDL.DestroyWindow(mWindow);
+			if (mScreenTexture != null)
+				SDL.DestroyTexture(mScreenTexture);
 		}
 
 		public void PreInit()
@@ -214,9 +240,34 @@ namespace SDL2
 #endif
 		}
 
+		public void TranslatePhysToVirt(ref int32 x, ref int32 y)
+		{
+			if (!mScaleContent)
+				return;
+
+			var scaleRect = GetVirtToPhys();
+			x = (.)((x - scaleRect.x) / scaleRect.w);
+			y = (.)((y - scaleRect.y) / scaleRect.h);
+		}
+
+		public void TranslatePhysToVirt(ref float x, ref float y)
+		{
+			if (!mScaleContent)
+				return;
+
+			var scaleRect = GetVirtToPhys();
+			x = (.)((x - scaleRect.x) / scaleRect.w);
+			y = (.)((y - scaleRect.y) / scaleRect.h);
+		}
+
 		public virtual void Init()
 		{
 			mDidInit = true;
+
+			if ((mPhysWidth == 0) || (!mScaleContent))
+				mPhysWidth = mWidth;
+			if ((mPhysHeight == 0) || (!mScaleContent))
+				mPhysHeight = mHeight;
 
 			String exePath = scope .();
 			Environment.GetExecutableFilePath(exePath);
@@ -234,7 +285,7 @@ namespace SDL2
 			SDL.EventState(.JoyDeviceRemoved, .Disable);
 
 			//mWindow = SDL.CreateWindow(mTitle, .Undefined, .Undefined, mWidth, mHeight, .Hidden); // Initially hide window
-			mWindow = SDL.CreateWindow(mTitle, .Undefined, .Undefined, mWidth, mHeight, .Shown); // Initially hide window
+			mWindow = SDL.CreateWindow(mTitle, .Undefined, .Undefined, mPhysWidth, mPhysHeight, .Shown); // Initially hide window
 
 			mRenderer = SDL.CreateRenderer(mWindow, -1, .Accelerated);
 			mScreen = SDL.GetWindowSurface(mWindow);
@@ -251,6 +302,20 @@ namespace SDL2
 			if (mKeyboardState == null)
 				return false;
 			return mKeyboardState[(int)scancode];
+		}
+
+		public virtual void Resize(int width, int height)
+		{
+			if (mScaleContent)
+			{
+				mPhysWidth = (.)width;
+				mPhysHeight = (.)height;
+			}
+			else
+			{
+				mPhysWidth = mWidth = (.)width;
+				mPhysHeight = mHeight = (.)height;
+			}
 		}
 
 		public virtual void Update()
@@ -282,6 +347,26 @@ namespace SDL2
 		}
 
 		public virtual void MouseUp(SDL.MouseButtonEvent evt)
+		{
+
+		}
+
+		public virtual void MouseMove(SDL.MouseMotionEvent evt)
+		{
+
+		}
+
+		public virtual void TouchDown(SDL.TouchFingerEvent evt)
+		{
+
+		}
+
+		public virtual void TouchUp(SDL.TouchFingerEvent evt)
+		{
+
+		}
+
+		public virtual void TouchMove(SDL.TouchFingerEvent evt)
 		{
 
 		}
@@ -379,7 +464,38 @@ namespace SDL2
 		{
 			SDL.SetRenderDrawColor(mRenderer, 0, 0, 0, 255);
 			SDL.RenderClear(mRenderer);
+
+			if (mScreenTexture != null)
+			{
+				SDL.QueryTexture(mScreenTexture, ?, ?, var texWidth, var texHeight);
+				if ((texWidth != mWidth) || (texHeight != mHeight))
+				{
+					SDL.DestroyTexture(mScreenTexture);
+					mScreenTexture = null;
+				}
+			}
+
+			if (((mPhysWidth != mWidth) || (mPhysHeight != mHeight)) && (mScreenTexture == null))
+			{
+				mScreenTexture = SDL.CreateTexture(mRenderer, SDL.PIXELFORMAT_ABGR8888, (.)SDL.TextureAccess.Target, mWidth, mHeight);
+				SDL.SetTextureScaleMode(mScreenTexture, .Best);
+			}
+
+			if (mScreenTexture != null)
+				SDL.SetRenderTarget(mRenderer, mScreenTexture);
 			Draw();
+			if (mScreenTexture != null)
+			{
+				var scaleRect = GetVirtToPhys();
+
+				SDL.SetRenderTarget(mRenderer, null);
+				SDL.Rect srcRect = .(0, 0, mWidth, mHeight);
+				SDL.Rect destRect = .((int32)scaleRect.x, (int32)scaleRect.y, (int32)Math.Round(mWidth * scaleRect.w), (int32)Math.Round(mHeight * scaleRect.h));
+
+				//destRect = srcRect;
+
+				SDL.RenderCopy(mRenderer, mScreenTexture, &srcRect, &destRect);
+			}
 			SDL.RenderPresent(mRenderer);
 		}
 
@@ -422,10 +538,9 @@ namespace SDL2
 		{
 			if (!mFPSStopwatch.IsRunning)
 				mFPSStopwatch.Start();
-			mFPSCount++;
 			if (mFPSStopwatch.ElapsedMilliseconds > 1000)
 			{
-				//Debug.WriteLine($"FPS: {mFPSCount} @ {mStopwatch.Elapsed} now: {emscripten_get_now()}");
+				//Debug.WriteLine($"FPS: {mFPSCount} @ {mStopwatch.Elapsed}");
 				mFPSCount = 0;
 				mFPSStopwatch.Restart();
 			}
@@ -444,9 +559,36 @@ namespace SDL2
 				case .KeyUp:
 					KeyUp(event.key);
 				case .MouseButtonDown:
+					TranslatePhysToVirt(ref event.button.x, ref event.button.y);
 					MouseDown(event.button);
 				case .MouseButtonUp:
+					TranslatePhysToVirt(ref event.button.x, ref event.button.y);
 					MouseUp(event.button);
+				case .MouseMotion:
+					TranslatePhysToVirt(ref event.motion.x, ref event.motion.y);
+					MouseMove(event.motion);
+				case .WindowEvent:
+					switch (event.window.windowEvent)
+					{
+					case .SizeChanged:
+						Resize(event.window.data1, event.window.data2);
+					default:
+					}
+				case .FingerDown:
+					event.tfinger.x *= mPhysWidth;
+					event.tfinger.y *= mPhysHeight;
+					TranslatePhysToVirt(ref event.tfinger.x, ref event.tfinger.y);
+					TouchDown(event.tfinger);
+				case .FingerUp:
+					event.tfinger.x *= mPhysWidth;
+					event.tfinger.y *= mPhysHeight;
+					TranslatePhysToVirt(ref event.tfinger.x, ref event.tfinger.y);
+					TouchUp(event.tfinger);
+				case .FingerMotion:
+					event.tfinger.x *= mPhysWidth;
+					event.tfinger.y *= mPhysHeight;
+					TranslatePhysToVirt(ref event.tfinger.x, ref event.tfinger.y);
+					TouchMove(event.tfinger);
 				default:
 				}
 
@@ -479,6 +621,7 @@ namespace SDL2
 						mUpdateCnt++;
 						Update();
 					}
+					mFPSCount++;
 					Render();
 				}
 				else

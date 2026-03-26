@@ -364,12 +364,10 @@ namespace IDE
 			[Reflect]
 			public List<DistinctBuildOptions> mDistinctBuildOptions = new List<DistinctBuildOptions>() ~ DeleteContainerAndItems!(_);
 
-            public Dictionary<Project, ConfigSelection> mConfigSelections = new Dictionary<Project, ConfigSelection>() ~ delete _;
+            public Dictionary<String, ConfigSelection> mConfigSelections = new Dictionary<String, ConfigSelection>() ~ DeleteDictionaryAndKeysAndValues!(_);
 
 			public ~this()
 			{
-				for (var configSel in mConfigSelections.Values)
-					delete configSel;
 			}
 
 			public bool LeakCheckingEnabled
@@ -426,7 +424,7 @@ namespace IDE
 				{
 					let prevConfig = typeOptionKV.value;
 					let newConfig = prevConfig.Duplicate();
-					mConfigSelections[typeOptionKV.key] = newConfig;
+					mConfigSelections[new .(typeOptionKV.key)] = newConfig;
 				}
 
 				for (var typeOption in prev.mDistinctBuildOptions)
@@ -732,7 +730,7 @@ namespace IDE
 
 			if (!mProjectSpecs.IsEmpty)
 			{
-				using (data.CreateObject("Projects", true))
+				using (data.CreateObject("Projects"))
 				{
 					for (var projSpec in mProjectSpecs)
 					{
@@ -777,7 +775,7 @@ namespace IDE
 
 			if (!mWorkspaceFolders.IsEmpty)
 			{
-			    using (data.CreateObject("WorkspaceFolders", true))
+			    using (data.CreateObject("WorkspaceFolders"))
 			    {
 					String fullPathBuffer = scope .();
 			        for (let folder in mWorkspaceFolders)
@@ -884,7 +882,7 @@ namespace IDE
                                 {
                                     for (var configPair in options.mConfigSelections)
                                     {
-										let projectName = configPair.key.mProjectName;
+										let projectName = configPair.key;
                                         
 										var configSelection = configPair.value;
 										bool wantEntry = configSelection.mEnabled != true;
@@ -987,9 +985,10 @@ namespace IDE
 
 				void Add(String name, Project project)
 				{
-					if (mProjectNameMap.TryAdd(name, var keyPtr, var valuePtr))
+					String nameUpper = scope .(name)..ToUpper();
+					if (mProjectNameMap.TryAdd(nameUpper, var keyPtr, var valuePtr))
 					{
-						*keyPtr = new String(name);
+						*keyPtr = new String(nameUpper);
 						*valuePtr = project;
 					}
 					else
@@ -1017,10 +1016,11 @@ namespace IDE
 				{
 					void Add(String name, Project project)
 					{
-						bool added = mProjectNameMap.TryAdd(name, var keyPtr, var valuePtr);
+						String nameUpper = scope .(name)..ToUpper();
+						bool added = mProjectNameMap.TryAdd(nameUpper, var keyPtr, var valuePtr);
 						if (!added)
 							return;
-						*keyPtr = new String(name);
+						*keyPtr = new String(nameUpper);
 						*valuePtr = project;
 					}
 
@@ -1038,7 +1038,8 @@ namespace IDE
 					}
 				}
 
-	            if (mProjectNameMap.TryGetAlt(projectName, var matchKey, var value))
+				String projectNameUpper = scope .(projectName)..ToUpper();
+	            if (mProjectNameMap.TryGet(projectNameUpper, var matchKey, var value))
 				{
 					return value;
 				}
@@ -1207,24 +1208,22 @@ namespace IDE
 
                     for (var projectName in data.Enumerate("ConfigSelections"))
                     {
+						String expectConfig = configName;
+
 						Project project = FindProject(scope String(projectName));
-                        if (project != null)
-                        {
-							String expectConfig = configName;
-							if (isTest)
-							{
-								if (project != mProjects[0])
-									expectConfig = "Debug";
-							}
-                            
-                            var configSelection = new ConfigSelection();
-                            configSelection.mEnabled = data.GetBool("Enabled", true);
-                            configSelection.mConfig = new String();
-                            data.GetString("Config", configSelection.mConfig, expectConfig);
-                            configSelection.mPlatform = new String();
-                            data.GetString("Platform", configSelection.mPlatform, platformName);
-                            options.mConfigSelections[project] = configSelection;
-                        }
+						if (isTest)
+						{
+							if (project != mProjects[0])
+								expectConfig = "Debug";
+						}
+
+						var configSelection = new ConfigSelection();
+						configSelection.mEnabled = data.GetBool("Enabled", true);
+						configSelection.mConfig = new String();
+						data.GetString("Config", configSelection.mConfig, expectConfig);
+						configSelection.mPlatform = new String();
+						data.GetString("Platform", configSelection.mPlatform, platformName);
+						options.mConfigSelections[new .(projectName)] = configSelection;
                     }
 
 					for (data.Enumerate("DistinctOptions"))
@@ -1366,30 +1365,22 @@ namespace IDE
 				options = *optionsPtr;
 			}
 			
-			var removeList = scope List<Project>();
-            for (var project in options.mConfigSelections.Keys)
+            for (var kv in options.mConfigSelections)
             {
-                if (!mProjects.Contains(project))
-                {
-                    // This project is no longer in the workspace
-					removeList.Add(project);
+				var project = FindProject(kv.key);
+				if (project == null)
+				{
+					// Project no longer exists, remove
+					delete kv.key;
+					delete kv.value;
+                    @kv.Remove();
                 }
             }
-
-			for (var project in removeList)
-			{
-				var value = options.mConfigSelections.GetValue(project);
-				if (value case .Ok)
-				{
-					delete value.Get();
-					options.mConfigSelections.Remove(project);
-				}
-			}
 
             for (var project in mProjects)
             {
                 ConfigSelection configSelection;
-                options.mConfigSelections.TryGetValue(project, out configSelection);
+                options.mConfigSelections.TryGetValue(project.mProjectName, out configSelection);
 
                 String findConfig = configName;
                 String findPlatform = platformName;
@@ -1423,7 +1414,7 @@ namespace IDE
                         configSelection = new ConfigSelection();
 						configSelection.mConfig = new String(findConfig);
 						configSelection.mPlatform = new String(findPlatform);
-						options.mConfigSelections[project] = configSelection;
+						options.mConfigSelections[new .(project.mProjectName)] = configSelection;
 						configSelection.mEnabled = true;
 					}
 

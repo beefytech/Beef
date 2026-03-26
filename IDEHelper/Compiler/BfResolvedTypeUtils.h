@@ -43,7 +43,8 @@ enum BfResolveTypeRefFlags
 	BfResolveTypeRefFlag_ForceUnboundGeneric = 0x80000,
 	BfResolveTypeRefFlag_IgnoreProtection = 0x100000,
 	BfResolveTypeRefFlag_SpecializedProject = 0x200000,
-	BfResolveTypeRefFlag_GlobalLookup = 0x400000
+	BfResolveTypeRefFlag_GlobalLookup = 0x400000,
+	BfResolveTypeRefFlag_AllowDeletedTypeDef = 0x800000,
 };
 
 enum BfTypeNameFlags : uint16

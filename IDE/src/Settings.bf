@@ -349,6 +349,7 @@ namespace IDE
 			public Color mDisassemblyText = 0xFFB0B0B0;
 			public Color mDisassemblyFileName = 0XFFFF0000;
 			public Color mError = 0xFFFF0000;
+			public Color mBuildText = 0xFF808080;
 			public Color mBuildError = 0xFFFF8080;
 			public Color mBuildWarning = 0xFFFFFF80;
 			public Color mBuildSuccess = 0xFF80FF80;
@@ -425,6 +426,7 @@ namespace IDE
 				GetColor("DisassemblyText", ref mDisassemblyText);
 				GetColor("DisassemblyFileName", ref mDisassemblyFileName);
 				GetColor("Error", ref mError);
+				GetColor("BuildText", ref mBuildText);
 				GetColor("BuildError", ref mBuildError);
 				GetColor("BuildWarning", ref mBuildWarning);
 				GetColor("BuildSuccess", ref mBuildSuccess);
@@ -457,6 +459,7 @@ namespace IDE
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Disassembly_Text] = mDisassemblyText;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Disassembly_FileName] = mDisassemblyFileName;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.Error] = mError;
+				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildText] = mBuildText;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildError] = mBuildError;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildWarning] = mBuildWarning;
 				SourceEditWidgetContent.sTextColors[(.)SourceElementType.BuildSuccess] = mBuildSuccess;

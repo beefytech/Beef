@@ -9134,11 +9134,31 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		bool implementsInterface = false;
 		if (origCheckArgType != checkArgType)
 		{
-			implementsInterface = CanCast(BfTypedValue(BfIRValue::sValueless, origCheckArgType), convCheckConstraint);
+			if (origCheckArgType->IsTypeInstance())
+			{
+				if (TypeIsSubTypeOf(origCheckArgType->ToTypeInstance(), typeConstraintInst))
+					implementsInterface = true;
+			}
+			else
+			{
+				if (CanCast(BfTypedValue(BfIRValue::sValueless, origCheckArgType), convCheckConstraint))
+					implementsInterface = true;
+			}
 		}
 
 		if (!implementsInterface)
-			implementsInterface = CanCast(BfTypedValue(BfIRValue::sValueless, checkArgType), convCheckConstraint);
+		{
+			if (checkArgType->IsTypeInstance())
+			{
+				if (TypeIsSubTypeOf(checkArgType->ToTypeInstance(), typeConstraintInst))
+					implementsInterface = true;
+			}
+			else
+			{
+				if (CanCast(BfTypedValue(BfIRValue::sValueless, checkArgType), convCheckConstraint))
+					implementsInterface = true;
+			}
+		}
 
 		if ((!implementsInterface) && (origCheckArgType->IsWrappableType()))
 		{
@@ -15682,6 +15702,10 @@ void BfModule::HadSlotCountDependency()
 
 BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 {
+	BfProject* project = mProject;
+	if ((project == NULL) && (mCurMethodState != NULL) && (mCurMethodState->mMethodInstance != NULL))	
+		project = mCurMethodState->mMethodInstance->mMethodDef->mDeclaringType->mProject;
+
 	if (str == "#IsComptime")
 	{
 		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Boolean, mIsComptimeModule ? 1 : 0), GetPrimitiveType(BfTypeCode_Boolean));
@@ -15708,12 +15732,41 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 	}
 	if (str == "#ProjectName")
 	{
-		if (mProject != NULL)
-			return BfTypedValue(GetStringObjectValue(mProject->mName), ResolveTypeDef(mCompiler->mStringTypeDef));
+		if (project != NULL)
+			return BfTypedValue(GetStringObjectValue(project->mName), ResolveTypeDef(mCompiler->mStringTypeDef));
+	}
+	if (str == "#ProjectDir")
+	{
+		if (project != NULL)
+			return BfTypedValue(GetStringObjectValue(project->mDirectory), ResolveTypeDef(mCompiler->mStringTypeDef));
+	}
+	if (str == "#BuildDir")
+	{
+		return BfTypedValue(GetStringObjectValue(mCompiler->mOutputDirectory), ResolveTypeDef(mCompiler->mStringTypeDef));
 	}
 	if (str == "#AllocStackCount")
 	{
 		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mAllocStackCount), GetPrimitiveType(BfTypeCode_Int32));
+	}
+	if (str == "#Platform")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mPlatformType), GetPrimitiveType(BfTypeCode_Int32));
+	}
+	if (str == "#Architecture")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mMachineType), GetPrimitiveType(BfTypeCode_Int32));
+	}
+	if (str == "#Toolset")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mToolsetType), GetPrimitiveType(BfTypeCode_Int32));
+	}
+	if (str == "#TargetTriple")
+	{
+		return BfTypedValue(GetStringObjectValue(mCompiler->mOptions.mTargetTriple), ResolveTypeDef(mCompiler->mStringTypeDef));
+	}
+	if (str == "#OptimizationLevel")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, project->mCodeGenOptions.mOptLevel), GetPrimitiveType(BfTypeCode_Int32));
 	}
 
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
@@ -16152,9 +16205,34 @@ bool BfModule::IsInSpecializedGeneric()
 {
 	if ((mCurTypeInstance != NULL) && (mCurTypeInstance->IsSpecializedType()))
 		return true;
-	if ((mCurMethodInstance == NULL) || (mCurMethodInstance->mIsUnspecialized))
-		return false;
-	return (mCurMethodInstance->GetNumGenericArguments() != 0);
+
+	auto checkMethodInstance = mCurMethodInstance;
+	auto checkMethodState = mCurMethodState;
+
+	// If we are in a lambda/local then we need to see if our outer method is generic, as well
+	while (true)
+	{
+		if (checkMethodInstance == NULL)
+			return false;
+
+		if ((!checkMethodInstance->mIsUnspecialized) && (checkMethodInstance->GetNumGenericArguments() > 0))
+			return true;
+
+		if (checkMethodState == NULL)
+			break;
+		if (checkMethodState->mMethodInstance != checkMethodInstance)
+			break;
+
+		if (checkMethodState->mClosureState == NULL)
+			break;
+
+		checkMethodState = checkMethodState->mPrevMethodState;
+		if (checkMethodState == NULL)
+			break;
+		checkMethodInstance = checkMethodState->mMethodInstance;
+	}
+
+	return false;
 }
 
 bool BfModule::IsInSpecializedSection()
