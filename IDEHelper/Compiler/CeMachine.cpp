@@ -2176,6 +2176,8 @@ void CeBuilder::Build()
 		mBeFunction = mCeFunction->mCeInnerFunctionInfo->mBeFunction;
 		BF_ASSERT(mBeFunction != NULL);
 		mCeFunction->mCeInnerFunctionInfo->mBeFunction = NULL;
+
+		mIntPtrType = irCodeGen->mBeContext->GetPrimitiveType((mPtrSize == 4) ? BeTypeCode_Int32 : BeTypeCode_Int64);
 	}
 
 	SetAndRestoreValue<BeFunction*> prevBeFunction(beModule->mActiveFunction, mBeFunction);
@@ -6158,18 +6160,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				_Fail("Dynamic cast check failed");
 				return false;
 			}
-			else if (checkFunction->mFunctionKind == CeFunctionKind_Console_PutChars)
-			{
-				if (mCeMachine->mWriteToOutputCallback != NULL)
-				{
-					int32 ptrVal = *(int32*)((uint8*)stackPtr + 0);
-					int32 size = *(int32*)(stackPtr + ceModule->mSystem->mPtrSize);
-					CE_CHECKADDR(ptrVal, size);
-					char* strPtr = (char*)(ptrVal + memStart);
-
-					mCeMachine->mWriteToOutputCallback(mCeMachine->mWriteToOutputUserData, strPtr, size);
-				}
-			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Console_RunShellCommand)
 			{
 				if (mCeMachine->mRunShellCommandCallback == NULL)
@@ -7080,6 +7070,36 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				CeSetAddrVal(stackPtr + 0, GetString(string), ptrSize);
 				_FixVariables();
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Output)
+			{
+				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr);
+				String str;
+				if (!GetStringFromStringView(strViewPtr, str))
+				{
+					_Fail("Invalid StringView");
+					return false;
+				}
+
+				auto frame = _GetCurFrame();
+
+				int curPos = 0;
+
+				while (curPos < str.length())
+				{
+					int crPos = str.IndexOf('\n', curPos);
+					if (crPos == -1)
+					{
+						mCeMachine->mCompiler->mPassInstance->OutputLine(":text " + str.Substring(curPos));
+						break;
+					}
+
+					int endPos = crPos;
+					if ((endPos > 0) && (str[endPos - 1] == '\r'))
+						endPos--;
+					mCeMachine->mCompiler->mPassInstance->OutputLine(":text_line " + str.Substring(curPos, endPos - curPos));					
+					curPos = crPos + 1;
+				}
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Sleep)
 			{
 				int32 sleepMS = *(int32*)((uint8*)stackPtr);
@@ -7105,28 +7125,40 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSystem_GetEnvironmentVariable)
 			{
-				intptr offset = 0;
-#define CE_NEXT_PTR_ARG(type, name) \
-					int32 name##PtrVal = *(int32*)((intptr)stackPtr + offset); \
-					type name = (type)(name##PtrVal + memStart); \
-					offset += ptrSize
+				// char8* varName, char8* outStr, int32* inOutStrSize, BfpSystemResult* outResult
+				addr_ce varNameAddr = *(addr_ce*)((uint8*)stackPtr);
+				addr_ce outStrAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);
+				addr_ce inOutStrSizeAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize + ptrSize);
+				
+				String varName;
+				CE_CHECKADDR_STR(varName, varNameAddr);
 
-				CE_NEXT_PTR_ARG(char*, varName);
-				CE_NEXT_PTR_ARG(char*, outStr);
-				CE_NEXT_PTR_ARG(int32*, inOutStrSize);
-				CE_NEXT_PTR_ARG(BfpSystemResult*, outResult);
+				CE_CHECKADDR(inOutStrSizeAddr, 4);
+				int* inOutStrSize = (int*)(memStart + inOutStrSizeAddr);
+				CE_CHECKADDR(outStrAddr, *inOutStrSize);
+				char* outStr = (char*)(memStart + outStrAddr);
+				CE_CHECKADDR(outResultAddr, 4);
+				BfpSystemResult* outResult = (BfpSystemResult*)(memStart + outResultAddr);
 
-				BfpSystem_GetEnvironmentVariable(varName, outStr, inOutStrSize, outResult);
+				BfpSystem_GetEnvironmentVariable(varName.c_str(), outStr, inOutStrSize, outResult);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpSystem_SetEnvironmentVariable)
 			{
-				intptr offset = 0;
-				CE_NEXT_PTR_ARG(char*, varName);
-				CE_NEXT_PTR_ARG(char*, value);
-				CE_NEXT_PTR_ARG(BfpSystemResult*, outResult);
-#undef CE_NEXT_PTR_ARG
+				// char8* varName, char8* value, BfpSystemResult* outResult
+				addr_ce varNameAddr = *(addr_ce*)((uint8*)stackPtr);
+				addr_ce valueAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize);				
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + ptrSize + ptrSize);
 
-				BfpSystem_SetEnvironmentVariable(varName, value, outResult);
+				String varName;
+				CE_CHECKADDR_STR(varName, varNameAddr);
+				String value;
+				CE_CHECKADDR_STR(value, valueAddr);
+				
+				CE_CHECKADDR(outResultAddr, 4);
+				BfpSystemResult* outResult = (BfpSystemResult*)(memStart + outResultAddr);
+
+				BfpSystem_SetEnvironmentVariable(varName.c_str(), value.c_str(), outResult);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Char32_ToLower)
 			{
@@ -10396,14 +10428,14 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_GetStringById;
 				}
+				else if (methodDef->mName == "Comptime_Output")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Output;
+				}
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mConsoleTypeDef))
 			{
-				if (methodDef->mName == "PutChars")
-				{
-					ceFunction->mFunctionKind = CeFunctionKind_Console_PutChars;
-				}
-				else if (methodDef->mName == "RunShellCommand")
+				if (methodDef->mName == "RunShellCommand")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Console_RunShellCommand;
 				}

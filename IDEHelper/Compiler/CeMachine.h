@@ -428,7 +428,6 @@ enum CeFunctionKind
 	CeFunctionKind_Free,
 	CeFunctionKind_DynCheckFailed,
 	CeFunctionKind_FatalError,
-	CeFunctionKind_Console_PutChars,
 	CeFunctionKind_Console_RunShellCommand,
 	CeFunctionKind_DebugWrite,
 	CeFunctionKind_DebugWrite_Int,	
@@ -471,6 +470,7 @@ enum CeFunctionKind
 	CeFunctionKind_EmitMethodExit,
 	CeFunctionKind_EmitMixin,
 	CeFunctionKind_GetStringById,
+	CeFunctionKind_Output,
 
 	CeFunctionKind_BfpDirectory_Create,
 	CeFunctionKind_BfpDirectory_Rename,
@@ -872,6 +872,7 @@ public:
 	CeBuilder()
 	{
 		mParentBuilder = NULL;
+		mIntPtrType = NULL;
 		mPtrSize = 0;
 		mRecursiveDepth = -1;
 		mCeFunction = NULL;

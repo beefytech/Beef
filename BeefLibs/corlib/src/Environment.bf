@@ -206,7 +206,7 @@ namespace System
 		[LinkName("exit")]
 		public static extern void Exit(int exitCode);
 
-		public static Result<void> GetVariable(StringView varName, String outString)
+		public static Result<void> GetEnvironmentVariable(StringView varName, String outString)
 		{
 			Try!(Platform.GetStrHelper(outString, scope (outPtr, outSize, outResult) =>
 				{
@@ -215,7 +215,7 @@ namespace System
 			return .Ok;
 		}
 
-		public static Result<void> SetVariable(StringView varName, StringView value)
+		public static Result<void> SetEnvironmentVariable(StringView varName, StringView value)
 		{
 			Platform.Result result = ?;
 			Platform.BfpSystem_SetEnvironmentVariable(varName.ToScopeCStr!(), value.ToScopeCStr!(4096), (.)&result);

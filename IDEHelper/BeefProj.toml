@@ -1,9 +1,13 @@
 FileVersion = 1
-Dependencies = {corlib = "*", Debugger64 = "*", BeefySysLib = "*"}
 
 [Project]
 Name = "IDEHelper"
 TargetType = "CustomBuild"
+
+[Dependencies]
+corlib = "*"
+Debugger64 = "*"
+BeefySysLib = "*"
 
 [Configs.Debug.Win32]
 TargetDirectory = "$(WorkspaceDir)/../IDE/dist"

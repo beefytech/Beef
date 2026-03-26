@@ -1,8 +1,5 @@
 #include "Common.h"
 #include "BFPlatform.h"
-#include <corecrt.h>
-#include <cstddef>
-#include <cstring>
 #include <stdlib.h>
 #include <sys/stat.h>
 #ifdef BF_PLATFORM_LINUX
@@ -936,7 +933,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentStrings(char* outStr, int* 
     TryStringOut(env, outStr, inOutStrSize, (BfpResult*)outResult);
 }
 
-BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentVariable(char* var, char* outStr, int* inOutStrSize, BfpSystemResult* outResult)
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentVariable(const char* var, char* outStr, int* inOutStrSize, BfpSystemResult* outResult)
 {
     char* value = getenv(var);
     if (!value)
@@ -947,7 +944,7 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_GetEnvironmentVariable(char* var, char* o
     TryStringOut(String(value), outStr, inOutStrSize, (BfpResult*)outResult);
 }
 
-BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetEnvironmentVariable(char* var, char* value, BfpSystemResult* outResult)
+BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetEnvironmentVariable(const char* var, const char* value, BfpSystemResult* outResult)
 {
     if (setenv(var, value, 1/* override exisiting entry */))
         OUTRESULT((BfpSystemResult)(int)BfpResult_UnknownError);
