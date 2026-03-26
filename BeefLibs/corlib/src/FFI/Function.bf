@@ -133,6 +133,7 @@ namespace System.FFI
 		BadTypeDef,
 		BadABI,
 		NoBeefCRT,
+		NoFFI
 	}
 
 #if BF_PLATFORM_WINDOWS

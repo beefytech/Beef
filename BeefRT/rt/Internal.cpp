@@ -173,7 +173,14 @@ namespace bf
 		namespace FFI
 		{
 			enum FFIABI : int32;
-			enum FFIResult : int32;
+			enum FFIResult : int32
+			{
+				FFIResult_OK,
+				FFIResult_BadTypeDef,
+				FFIResult_BadABI,
+				FFIResult_NoBeefCRT,
+				FFIResult_NoFFI
+			};
 
 			struct FFIType;
 
@@ -996,7 +1003,7 @@ bf::System::FFI::FFIResult bf::System::FFI::FFILIB::PrepCif(bf::System::FFI::FFI
 #ifndef BF_DISABLE_FFI
 	return (bf::System::FFI::FFIResult)ffi_prep_cif((ffi_cif*)cif, (ffi_abi)abi, nargs, (ffi_type*)rtype, (ffi_type**)argTypes);
 #else
-	return (bf::System::FFI::FFIResult)0;
+	return bf::System::FFI::FFIResult::FFIResult_NoFFI;
 #endif
 }
 
