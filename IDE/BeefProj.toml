@@ -9,7 +9,6 @@ StartupObject = "IDE.Program"
 Beefy2D = "*"
 corlib = "*"
 curl = "*"
-IDEHelper = "*"
 
 [Platform.Windows]
 IconFile = "$(ProjectDir)/Resources/Beef.ico"
