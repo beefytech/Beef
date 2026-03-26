@@ -147,11 +147,6 @@ namespace IDE.Compiler
             OptionFlags optionsFlags, char8* mallocName, char8* freeName);
 
 		[CallingConvention(.Stdcall)]
-		public function void ComptimeWriteToOutputCallback(void* userdata, char8* ptr, int32 len);
-		[CallingConvention(.Stdcall), CLink]
-		static extern void BfCompiler_SetComptimeWriteToOutputCallback(void* bfCompiler, void* userdata, ComptimeWriteToOutputCallback callback);
-
-		[CallingConvention(.Stdcall)]
 		public function Platform.BfpSpawn* ComptimeRunShellCommandCallback(void* userdata, char8* cmd, int32* outExitCode);
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_SetComptimeRunShellCommandCallback(void* bfCompiler, void* userdata, ComptimeRunShellCommandCallback callback);
@@ -352,11 +347,6 @@ namespace IDE.Compiler
                 (hotProject != null) ? hotProject.mNativeBfProject : null, hotIdx,
                 targetTriple, targetCPU, toolsetType, simdSetting, allocStackCount, maxWorkerThreads, optionFlags, mallocFuncName, freeFuncName);
         }
-
-		public void SetComptimeWriteToOutputCallback(void* userdata, ComptimeWriteToOutputCallback callback)
-		{
-			BfCompiler_SetComptimeWriteToOutputCallback(mNativeBfCompiler, userdata, callback);
-		}
 
 		public void SetComptimeRunShellCommandCallback(void* userdata, ComptimeRunShellCommandCallback callback)
 		{
@@ -804,11 +794,6 @@ namespace IDE.Compiler
 				for (let typeOption in options.mDistinctBuildOptions)
 					mBfSystem.AddTypeOptions(typeOption);
 
-				SetComptimeWriteToOutputCallback(Internal.UnsafeCastToPtr(IDEApp.sApp), (userdata, ptr, len) =>
-					{
-						IDEApp app = (.)Internal.UnsafeCastToObject(userdata);
-						app.Output(scope String(ptr, len));
-					});
 				SetComptimeRunShellCommandCallback(Internal.UnsafeCastToPtr(IDEApp.sApp), (userdata, cmd, outExitCode) =>
 					{
 						IDEApp app = (.)Internal.UnsafeCastToObject(userdata);

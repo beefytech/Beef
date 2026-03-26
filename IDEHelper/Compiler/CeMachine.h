@@ -1244,7 +1244,6 @@ public:
 	}
 };
 
-typedef void (BF_CALLTYPE* CeWriteToOutputCallback)(void* userdata, const char* ptr, int len);
 typedef BfpSpawn* (BF_CALLTYPE* CeRunShellCommandCallback)(void* userdata, const char* cmd, int* outExitcode);
 
 class CeMachine
@@ -1275,8 +1274,6 @@ public:
 	CeBuilder* mCurBuilder;
 	CeFunction* mPreparingFunction;
 
-	void* mWriteToOutputUserData;
-	CeWriteToOutputCallback mWriteToOutputCallback;
 	void* mRunShellCommandUserData;
 	CeRunShellCommandCallback mRunShellCommandCallback;
 

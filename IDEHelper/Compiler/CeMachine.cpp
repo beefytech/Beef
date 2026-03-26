@@ -9728,8 +9728,6 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mCurBuilder = NULL;
 	mPreparingFunction = NULL;
 
-	mWriteToOutputUserData = NULL;
-	mWriteToOutputCallback = NULL;
 	mRunShellCommandUserData = NULL;
 	mRunShellCommandCallback = NULL;
 

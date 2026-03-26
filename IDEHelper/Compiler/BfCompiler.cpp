@@ -11275,12 +11275,6 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 	}
 }
 
-BF_EXPORT void BF_CALLTYPE BfCompiler_SetComptimeWriteToOutputCallback(BfCompiler* bfCompiler, void* userdata, CeWriteToOutputCallback callback)
-{
-	bfCompiler->mCeMachine->mWriteToOutputUserData = userdata;
-	bfCompiler->mCeMachine->mWriteToOutputCallback = callback;
-}
-
 BF_EXPORT void BF_CALLTYPE BfCompiler_SetComptimeRunShellCommandCallback(BfCompiler* bfCompiler, void* userdata, CeRunShellCommandCallback callback)
 {
 	bfCompiler->mCeMachine->mRunShellCommandUserData = userdata;
