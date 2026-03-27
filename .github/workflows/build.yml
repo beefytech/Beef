@@ -51,7 +51,7 @@ jobs:
       - run: |
           sudo apt-get update
           sudo apt-get install llvm-19-dev libsystemd-dev libcurl4-openssl-dev
-      - run: bin/build.sh sdl
+      - run: bin/build.sh ide
   build-macos:
     name: Build on macOS
     strategy:

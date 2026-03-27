@@ -16,9 +16,10 @@ do
 		exit
 	fi
 
-	if [[ $i == "sdl" ]]; then
-		echo "Using SDL"
+	if [[ $i == "ide" ]]; then
+		echo "Enabled IDE build"
 		USE_SDL="-DBF_ENABLE_SDL=1"
+		BUILD_IDE=1
 	fi
 
 	if [[ $i == "no_ffi" ]]; then
@@ -162,7 +163,7 @@ echo Testing IDEHelper/Tests in BeefBuild
 ./BeefBuild -proddir=../../IDEHelper/Tests -test
 
 ### IDE ###
-if [ -n "$USE_SDL" ]; then
+if [ -n "$BUILD_IDE" ]; then
 
 	echo Building BeefIDE_d
 	./BeefBuild -clean -proddir=../ -config=Debug
