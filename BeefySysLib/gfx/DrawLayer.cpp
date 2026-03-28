@@ -194,7 +194,7 @@ DrawBatch* DrawLayer::AllocateBatch(int minVtxCount, int minIdxCount)
 	int vtxSize = mRenderDevice->mCurRenderState->mShader->mVertexSize;
 
 	minIdxCount = BF_MAX(minIdxCount, 512);
-	minVtxCount = BF_MAX(minIdxCount, 512);
+	minVtxCount = BF_MAX(minVtxCount, 512);
 
 	BF_ASSERT(minIdxCount * sizeof(uint16) <= DRAWBUFFER_IDXBUFFER_SIZE);
 	BF_ASSERT(minVtxCount * vtxSize <= DRAWBUFFER_VTXBUFFER_SIZE);
