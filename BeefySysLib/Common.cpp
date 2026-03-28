@@ -147,7 +147,7 @@ bool Beefy::StrEndsWith(const StringImpl& str, const StringImpl& subStr)
 	if (subStr.length() < str.length())
 		return false;
 
-	return strncmp(str.c_str() - (str.length() - subStr.length()), subStr.c_str(), subStr.length()) == 0;
+	return strncmp(str.c_str() + (str.length() - subStr.length()), subStr.c_str(), subStr.length()) == 0;
 }
 
 #ifndef BF_SMALL
