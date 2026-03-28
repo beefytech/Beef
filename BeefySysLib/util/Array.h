@@ -285,7 +285,7 @@ public:
 		for (intptr i = 0; i < mSize; i++)
 			if (mVals[i] != arrB.mVals[i])
 				return true;
-		return true;
+		return false;
 	}
 
 	const_iterator begin() const
