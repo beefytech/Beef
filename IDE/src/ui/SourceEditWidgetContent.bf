@@ -806,7 +806,7 @@ namespace IDE.ui
 
                 0xFFFF0000, // Error
 
-				0xFFC0C0C0, // BuildText,
+				0xFF808080, // BuildText,
 				0xFFFF8080, // BuildError
 				0xFFFFFF80, // BuildWarning
 				0xFF80FF80, // BuildSuccess
