@@ -428,7 +428,6 @@ enum CeFunctionKind
 	CeFunctionKind_Free,
 	CeFunctionKind_DynCheckFailed,
 	CeFunctionKind_FatalError,
-	CeFunctionKind_Console_RunShellCommand,
 	CeFunctionKind_DebugWrite,
 	CeFunctionKind_DebugWrite_Int,	
 	CeFunctionKind_GetReflectTypeDeclById,
@@ -1273,9 +1272,6 @@ public:
 	CeCallSource* mCurCallSource;
 	CeBuilder* mCurBuilder;
 	CeFunction* mPreparingFunction;
-
-	void* mRunShellCommandUserData;
-	CeRunShellCommandCallback mRunShellCommandCallback;
 
 	BfParser* mTempParser;
 	BfReducer* mTempReducer;

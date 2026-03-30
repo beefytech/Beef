@@ -146,11 +146,6 @@ namespace IDE.Compiler
             void* hotProject, int32 hotIdx, char8* targetTriple, char8* targetCPU, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
             OptionFlags optionsFlags, char8* mallocName, char8* freeName);
 
-		[CallingConvention(.Stdcall)]
-		public function Platform.BfpSpawn* ComptimeRunShellCommandCallback(void* userdata, char8* cmd, int32* outExitCode);
-		[CallingConvention(.Stdcall), CLink]
-		static extern void BfCompiler_SetComptimeRunShellCommandCallback(void* bfCompiler, void* userdata, ComptimeRunShellCommandCallback callback);
-
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_ForceRebuild(void* bfCompiler);
 
@@ -347,11 +342,6 @@ namespace IDE.Compiler
                 (hotProject != null) ? hotProject.mNativeBfProject : null, hotIdx,
                 targetTriple, targetCPU, toolsetType, simdSetting, allocStackCount, maxWorkerThreads, optionFlags, mallocFuncName, freeFuncName);
         }
-
-		public void SetComptimeRunShellCommandCallback(void* userdata, ComptimeRunShellCommandCallback callback)
-		{
-			BfCompiler_SetComptimeRunShellCommandCallback(mNativeBfCompiler, userdata, callback);
-		}
 
 		public void ForceRebuild()
 		{
@@ -793,13 +783,6 @@ namespace IDE.Compiler
 					mBfSystem.AddTypeOptions(typeOption);
 				for (let typeOption in options.mDistinctBuildOptions)
 					mBfSystem.AddTypeOptions(typeOption);
-
-				SetComptimeRunShellCommandCallback(Internal.UnsafeCastToPtr(IDEApp.sApp), (userdata, cmd, outExitCode) =>
-					{
-						IDEApp app = (.)Internal.UnsafeCastToObject(userdata);
-						let inst = app.DoRun("", StringView(cmd), app.mWorkspace.mDir, .None, null, null, .ShellCommand);
-						return inst.mProcess.[Friend]mSpawn;
-					});
 			}
 		}
 

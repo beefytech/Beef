@@ -6160,26 +6160,6 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				_Fail("Dynamic cast check failed");
 				return false;
 			}
-			else if (checkFunction->mFunctionKind == CeFunctionKind_Console_RunShellCommand)
-			{
-				if (mCeMachine->mRunShellCommandCallback == NULL)
-				{
-					_Fail("Console.RunShellCommand is only avaliable when building");
-				}
-				else
-				{
-					int32 ptrVal = *(int32*)(stackPtr + 4);
-					char* strPtr = (char*)(ptrVal + memStart);
-
-					int32 exitCode;
-					auto waitEvent = mCeMachine->mRunShellCommandCallback(mCeMachine->mRunShellCommandUserData, strPtr, &exitCode);
-
-					if (waitEvent != NULL)
-						BfpSpawn_WaitFor(waitEvent, -1, &exitCode, NULL);
-
-					*((int32*)stackPtr) = exitCode;
-				}
-			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_DebugWrite)
 			{
 				int32 ptrVal = *(int32*)((uint8*)stackPtr + 0);
@@ -9728,9 +9708,6 @@ CeMachine::CeMachine(BfCompiler* compiler)
 	mCurBuilder = NULL;
 	mPreparingFunction = NULL;
 
-	mRunShellCommandUserData = NULL;
-	mRunShellCommandCallback = NULL;
-
 	mCurEmitContext = NULL;
 
 	mAppendAllocInfo = NULL;
@@ -10429,13 +10406,6 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_Output")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_Output;
-				}
-			}
-			else if (owner->IsInstanceOf(mCeModule->mCompiler->mConsoleTypeDef))
-			{
-				if (methodDef->mName == "RunShellCommand")
-				{
-					ceFunction->mFunctionKind = CeFunctionKind_Console_RunShellCommand;
 				}
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mDiagnosticsDebugTypeDef))

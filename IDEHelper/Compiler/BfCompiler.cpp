@@ -436,7 +436,6 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mPlatformTypeDef = NULL;
 	mCompilerTypeDef = NULL;
 	mCompilerGeneratorTypeDef = NULL;
-	mConsoleTypeDef = NULL;
 	mDiagnosticsDebugTypeDef = NULL;
 	mIDisposableTypeDef = NULL;
 	mIIntegerTypeDef = NULL;
@@ -7326,7 +7325,6 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mPlatformTypeDef = _GetRequiredType("System.Platform");
 	mCompilerTypeDef = _GetRequiredType("System.Compiler");
 	mCompilerGeneratorTypeDef = _GetRequiredType("System.Compiler.Generator");
-	mConsoleTypeDef = _GetRequiredType("System.Console");
 	mDiagnosticsDebugTypeDef = _GetRequiredType("System.Diagnostics.Debug");
 	mIDisposableTypeDef = _GetRequiredType("System.IDisposable");
 	mIIntegerTypeDef = _GetRequiredType("System.IInteger");
@@ -11273,12 +11271,6 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 		options->mEmitDynamicCastCheck = false;
 		options->mRuntimeChecks = (optionFlags & BfCompilerOptionFlag_RuntimeChecks) != 0;
 	}
-}
-
-BF_EXPORT void BF_CALLTYPE BfCompiler_SetComptimeRunShellCommandCallback(BfCompiler* bfCompiler, void* userdata, CeRunShellCommandCallback callback)
-{
-	bfCompiler->mCeMachine->mRunShellCommandUserData = userdata;
-	bfCompiler->mCeMachine->mRunShellCommandCallback = callback;
 }
 
 BF_EXPORT void BF_CALLTYPE BfCompiler_ForceRebuild(BfCompiler* bfCompiler)

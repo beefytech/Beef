@@ -393,7 +393,6 @@ public:
 	BfTypeDef* mPlatformTypeDef;
 	BfTypeDef* mCompilerTypeDef;
 	BfTypeDef* mCompilerGeneratorTypeDef;
-	BfTypeDef* mConsoleTypeDef;
 	BfTypeDef* mDiagnosticsDebugTypeDef;
 	BfTypeDef* mIDisposableTypeDef;
 	BfTypeDef* mIIntegerTypeDef;
