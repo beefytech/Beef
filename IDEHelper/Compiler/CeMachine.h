@@ -1243,8 +1243,6 @@ public:
 	}
 };
 
-typedef BfpSpawn* (BF_CALLTYPE* CeRunShellCommandCallback)(void* userdata, const char* cmd, int* outExitcode);
-
 class CeMachine
 {
 public:
