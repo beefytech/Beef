@@ -698,6 +698,16 @@ llvm::Type* BfIRCodeGen::GetLLVMType(BfTypeCode typeCode, bool& isSigned)
 		return llvm::Type::getDoubleTy(*mLLVMContext);
 	case BfTypeCode_Float2:
 		return llvm::FixedVectorType::get(llvm::Type::getFloatTy(*mLLVMContext), 2);
+	case BfTypeCode_Float4:
+		return llvm::FixedVectorType::get(llvm::Type::getFloatTy(*mLLVMContext), 4);
+	case BfTypeCode_Int32_4:
+		return llvm::FixedVectorType::get(llvm::Type::getInt32Ty(*mLLVMContext), 4);
+	case BfTypeCode_Bool2:
+		return llvm::FixedVectorType::get(llvm::Type::getInt1Ty(*mLLVMContext), 2);
+	case BfTypeCode_Bool4:
+		return llvm::FixedVectorType::get(llvm::Type::getInt1Ty(*mLLVMContext), 4);
+	case BfTypeCode_V128:
+		return llvm::FixedVectorType::get(llvm::Type::getInt8Ty(*mLLVMContext), 16);
 	case BfTypeCode_FloatX1:
 		return llvm::ArrayType::get(llvm::Type::getFloatTy(*mLLVMContext), 1);
 	case BfTypeCode_FloatX2:

@@ -7447,7 +7447,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			BfIRType loweredIRType = mModule->GetIRLoweredType(loweredRetType, loweredRetType2);
 			loweredIRType = mModule->mBfIRBuilder->GetPointerTo(loweredIRType);
 			auto castedRetVal = mModule->mBfIRBuilder->CreateBitCast(retVal, loweredIRType);
-			mModule->mBfIRBuilder->CreateStore(callInst, castedRetVal);
+			mModule->mBfIRBuilder->CreateAlignedStore(callInst, castedRetVal, methodInstance->mReturnType->mAlign);
 			result = BfTypedValue(retVal, methodInstance->mReturnType, BfTypedValueKind_RestrictedTempAddr);
 		}
 		else
@@ -7670,11 +7670,12 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 					auto primType = mModule->mBfIRBuilder->GetPrimitiveType(loweredTypeCode);
 					auto ptrType = mModule->mBfIRBuilder->GetPointerTo(primType);
 					BfIRValue primPtrVal = mModule->mBfIRBuilder->CreateBitCast(argPtrVal, ptrType);
-					auto primVal = mModule->mBfIRBuilder->CreateLoad(primPtrVal);
-					irArgs.push_back(primVal);
-
+					
 					if (loweredTypeCode2 != BfTypeCode_None)
 					{
+						auto primVal = mModule->mBfIRBuilder->CreateLoad(primPtrVal);
+						irArgs.push_back(primVal);
+
 						auto primType2 = mModule->mBfIRBuilder->GetPrimitiveType(loweredTypeCode2);
 						auto ptrType2 = mModule->mBfIRBuilder->GetPointerTo(primType2);
 						BfIRValue primPtrVal2;
@@ -7685,6 +7686,11 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 
 						auto primVal2 = mModule->mBfIRBuilder->CreateLoad(primPtrVal2);
 						irArgs.Add(primVal2);
+					}
+					else 
+					{
+						auto primVal = mModule->mBfIRBuilder->CreateAlignedLoad(primPtrVal, argVal.mType->mAlign);
+						irArgs.push_back(primVal);
 					}
 					return;
 				}

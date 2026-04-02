@@ -2094,7 +2094,63 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 	if ((mTypeDef->mTypeCode != BfTypeCode_Struct) || (IsBoxed()) || (mIsSplattable))
 		return false;
 	if (mHasUnderlyingArray)
+	{
+		BfType* underlyingArrayType = NULL;
+		int underlyingArraySize = -1;
+		bool underlyingIsVector = false;
+		GetUnderlyingArray(underlyingArrayType, underlyingArraySize, underlyingIsVector);
+
+		if(!underlyingArrayType->IsPrimitiveType())
+			return false;
+		auto primType = (BfPrimitiveType*)underlyingArrayType;
+		auto underlyingArrayTypeCode = primType->mTypeDef->mTypeCode;
+		
+		if ((underlyingArrayTypeCode == BfTypeCode_Float) && (underlyingArraySize == 2))
+		{
+			if (outTypeCode != NULL)
+				*outTypeCode = underlyingIsVector ? BfTypeCode_Float2 : BfTypeCode_FloatX2;
+			return true;
+		}
+		if ((underlyingArrayTypeCode == BfTypeCode_Float) && (underlyingArraySize == 4))
+		{
+			if (outTypeCode != NULL)
+				*outTypeCode = underlyingIsVector ? BfTypeCode_Float4 : BfTypeCode_FloatX4;
+			return true;
+		}
+		if ((underlyingArrayTypeCode == BfTypeCode_Int32) && (underlyingArraySize == 4))
+		{
+			if (!underlyingIsVector)
+				return false;
+			if (outTypeCode != NULL)
+				*outTypeCode = BfTypeCode_Int32_4;
+			return true;
+		}
+		if ((underlyingArrayTypeCode == BfTypeCode_Boolean) && (underlyingArraySize == 2))
+		{
+			if (!underlyingIsVector)
+				return false;
+			if (outTypeCode != NULL)
+				*outTypeCode = BfTypeCode_Bool2;
+			return true;
+		}
+		if ((underlyingArrayTypeCode == BfTypeCode_Boolean) && (underlyingArraySize == 4))
+		{
+			if (!underlyingIsVector)
+				return false;
+			if (outTypeCode != NULL)
+				*outTypeCode = BfTypeCode_Bool4;
+			return true;
+		}
+		if ((underlyingArrayTypeCode == BfTypeCode_UInt8) && (underlyingArraySize == 16))
+		{
+			if (!underlyingIsVector)
+				return false;
+			if (outTypeCode != NULL)
+				*outTypeCode = BfTypeCode_V128;
+			return true;
+		}
 		return false;
+	}
 
 	bool deepCheck = false;
 

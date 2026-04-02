@@ -11318,7 +11318,7 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					AggregateSplatIntoAddr(typedVal, valPtr);
 				}
 				else
-					mBfIRBuilder->CreateStore(typedVal.mValue, valPtr, typedVal.mType->mAlign);
+					mBfIRBuilder->CreateAlignedStore(typedVal.mValue, valPtr, typedVal.mType->mAlign);
 			}
 		}
 
