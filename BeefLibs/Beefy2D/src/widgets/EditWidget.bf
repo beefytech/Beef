@@ -1011,7 +1011,7 @@ namespace Beefy.widgets
 			{
 				GetLineCharAtCoord(x, y, var line, var lineChar, ?);
 				int textPos = GetTextIdx(line, lineChar);
-				if ((textPos > CurSelection.Value.MinPos) && (textPos < CurSelection.Value.MaxPos))
+				if (GetTextCursorAtIdx(textPos) != null)
 				{
 					// Leave selection
 					mDragSelectionKind = .ClickedInside;
@@ -4314,52 +4314,6 @@ namespace Beefy.widgets
 			return (lhsSelection.mStartPos <=> rhsSelection.mStartPos);
 		}
 
-		public void RemoveIntersectingTextCursors()
-		{
-			if (mTextCursors.Count == 1)
-				return;
-
-			for (var x = mTextCursors.Count-1; x >= 0; x--)
-			{
-				for (var y = mTextCursors.Count-1; y >= 0; y--)
-				{
-					if (x == y)
-						continue;
-
-					var lhs = mTextCursors[x];
-					var rhs = mTextCursors[y];
-
-					if (TextCursorsIntersects(lhs, rhs))
-					{
-						if (lhs.mId != 0)
-						{
-							delete mTextCursors[x];
-							mTextCursors.RemoveAt(x);
-						}
-						else
-						{
-							delete mTextCursors[y];
-							mTextCursors.RemoveAt(y);
-						}
-
-						break;
-					}
-				}
-			}
-		}
-
-		public bool TextCursorsIntersects(TextCursor lhs, TextCursor rhs)
-		{
-			// Returns true if two text cursors intersect or collide with each other
-			var lhsSelection = GetAsSelection(lhs, true);
-			var rhsSelection = GetAsSelection(rhs, true);
-
-			if (lhsSelection.mStartPos == rhsSelection.mStartPos)
-				return true;
-
-			return !((lhsSelection.mEndPos <= rhsSelection.mStartPos) || (rhsSelection.mEndPos <= lhsSelection.mStartPos));
-		}
-
 		public virtual void AddSelectionToNextFindMatch(bool createCursor = true, bool exhaustiveSearch = false)
 		{
 			SetPrimaryTextCursor();
@@ -4473,6 +4427,98 @@ namespace Beefy.widgets
 				mTextCursors.Remove(newCursor);
 				delete newCursor;
 			}
+		}
+
+		public void MergeIntersectingTextCursors()
+		{
+			if (mTextCursors.Count == 1)
+				return;
+
+			var primarySelection = GetAsSelection(mTextCursors.Front, false);
+			var direction = (primarySelection.mStartPos <= primarySelection.mEndPos)
+				? +1 : -1;
+
+			for (var x = mTextCursors.Count-1; x >= 0; x--)
+			{
+				var lhs = mTextCursors[x];
+				var lhsSelection = GetAsSelection(lhs, true);
+
+				for (var y = mTextCursors.Count-1; y >= 0; y--)
+				{
+					if (x == y)
+						continue;
+
+					var rhs = mTextCursors[y];
+					var rhsSelection = GetAsSelection(rhs, true);
+
+					if (TextCursorsIntersect(lhsSelection, rhsSelection))
+					{
+						if (lhs.mId != 0)
+						{
+							MergeTextCursors(rhs, rhsSelection, lhs, lhsSelection, direction);
+							delete lhs;
+							mTextCursors.RemoveAt(x);
+							break;
+						}
+						else
+						{
+							MergeTextCursors(lhs, lhsSelection, rhs, rhsSelection, direction);
+							delete rhs;
+							mTextCursors.RemoveAt(y);
+						}
+					}
+				}
+
+				if (mTextCursors.Count == 1)
+					break;
+			}
+		}
+
+		public bool TextCursorsIntersect(EditSelection lhs, EditSelection rhs)
+		{
+			// Selections expected to be forward
+			Debug.Assert(lhs.mStartPos <= lhs.mEndPos);
+			Debug.Assert(rhs.mStartPos <= rhs.mEndPos);
+
+			if ((!lhs.HasSelection) || (!rhs.HasSelection))
+			{
+				if ((lhs.mStartPos == rhs.mStartPos) || (lhs.mEndPos == rhs.mEndPos))
+					return true;
+			}
+
+			return !((lhs.mEndPos <= rhs.mStartPos) || (rhs.mEndPos <= lhs.mStartPos));
+		}
+
+		void MergeTextCursors(TextCursor lhs, EditSelection lhsSelection, TextCursor rhs, EditSelection rhsSelection, int direction)
+		{
+			var startPos = Math.Min(lhsSelection.mStartPos, rhsSelection.mStartPos);
+			var endPos = Math.Max(lhsSelection.mEndPos, rhsSelection.mEndPos);
+
+			if (direction == -1)
+				Swap!(startPos, endPos);
+
+			lhs.mSelection = EditSelection(startPos, endPos);
+			lhs.mVirtualCursorPos = null;
+			lhs.mCursorTextPos = endPos;
+			lhs.mCursorImplicitlyMoved = false;
+			lhs.mJustInsertedCharPair = false;
+
+			if (mDragSelectionKind != .None)
+				mDragSelectionKind = .Dragging;
+		}
+
+		public TextCursor GetTextCursorAtIdx(int idx)
+		{
+			for (var cursor in mTextCursors)
+			{
+				if (!cursor.mSelection.HasValue)
+					continue;
+
+				if ((idx > cursor.mSelection.Value.MinPos) && (idx < cursor.mSelection.Value.MaxPos))
+					return cursor;
+			}
+
+			return null;
 		}
     }
 
@@ -4680,8 +4726,6 @@ namespace Beefy.widgets
 				isSingleInvoke = true;
 			}
 
-			ewc.RemoveIntersectingTextCursors();
-
 			for (var cursor in ewc.mTextCursors)
 			{
 				ewc.SetTextCursor(cursor);
@@ -4690,6 +4734,7 @@ namespace Beefy.widgets
 					break;
 			}
 			
+			ewc.MergeIntersectingTextCursors();
 			ewc.SetPrimaryTextCursor();
 			ewc.CloseMultiCursorUndoBatch();
 		}
@@ -4697,7 +4742,7 @@ namespace Beefy.widgets
 		public override void KeyChar(KeyCharEvent keyEvent)
 		{
 			var ewc = Content;
-			ewc.RemoveIntersectingTextCursors();
+			ewc.MergeIntersectingTextCursors();
 			for (var cursor in ewc.mTextCursors)
 			{
 				ewc.SetTextCursor(cursor);
