@@ -136,7 +136,7 @@ bool Beefy::StrReplace(StringImpl& str, const StringImpl& from, const StringImpl
 
 bool Beefy::StrStartsWith(const StringImpl& str, const StringImpl& subStr)
 {
-	if (subStr.length() < str.length())
+	if (subStr.length() > str.length())
 		return false;
 
 	return strncmp(str.c_str(), subStr.c_str(), subStr.length()) == 0;
@@ -144,10 +144,10 @@ bool Beefy::StrStartsWith(const StringImpl& str, const StringImpl& subStr)
 
 bool Beefy::StrEndsWith(const StringImpl& str, const StringImpl& subStr)
 {
-	if (subStr.length() < str.length())
+	if (subStr.length() > str.length())
 		return false;
 
-	return strncmp(str.c_str() - (str.length() - subStr.length()), subStr.c_str(), subStr.length()) == 0;
+	return strncmp(str.c_str() + (str.length() - subStr.length()), subStr.c_str(), subStr.length()) == 0;
 }
 
 #ifndef BF_SMALL
