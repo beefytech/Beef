@@ -40,7 +40,7 @@ TargetName = "$(ProjectName)_d"
 OtherLinkFlags = "$(LinkFlags) ./libIDEHelper_d.a ./libBeefySysLib_d.a ./libhunspell.so $(Var IDEHelperLibs) -Wl,-rpath -Wl,$ORIGIN"
 CLibType = "Dynamic"
 PreBuildCmds = ["ReadFile(\"$(WorkspaceDir)/../IDE/dist/IDEHelper_libs_d.txt\", \"IDEHelperLibs\")"]
-DebugCommandArguments = "-proddir=..\\ -config=Debug -platform=Win64"
+DebugCommandArguments = "-proddir=..\\ -config=Debug -platform=Linux64"
 DebugWorkingDirectory = "$(WorkspaceDir)/../IDE/dist"
 PreprocessorMacros = ["DEBUG", "CLI"]
 
@@ -58,7 +58,7 @@ TargetDirectory = "$(WorkspaceDir)/../IDE/dist"
 OtherLinkFlags = "$(LinkFlags) ./libIDEHelper.a ./libBeefySysLib.a ./libhunspell.so $(Var IDEHelperLibs) -Wl,-rpath -Wl,$ORIGIN"
 CLibType = "Dynamic"
 PreBuildCmds = ["ReadFile(\"$(WorkspaceDir)/../IDE/dist/IDEHelper_libs.txt\", \"IDEHelperLibs\")"]
-DebugCommandArguments = "-proddir=..\\ -config=Debug -platform=Win64"
+DebugCommandArguments = "-proddir=..\\ -config=Debug -platform=Linux64"
 DebugWorkingDirectory = "$(WorkspaceDir)/../IDE/dist"
 PreprocessorMacros = ["CLI"]
 

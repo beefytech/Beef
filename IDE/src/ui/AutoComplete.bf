@@ -288,7 +288,7 @@ namespace IDE.ui
 						return;
 				}
 
-                if ((mAutoComplete.mIgnoreMove == 0) && (mWidgetWindow != null) && (!mWidgetWindow.mHasClosed))
+                if ((mAutoComplete.mIgnoreMove == 0) && (mWidgetWindow != null) && (!mWidgetWindow.mHasClosed) && (mWidgetWindow.HasParent(window)))
                     mAutoComplete.Close();
             }
 
@@ -381,7 +381,6 @@ namespace IDE.ui
 	                using (g.PushColor(0xFFFFFFFF))
 	                    g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Menu), 0, 0, boxWidth - GS!(6), drawHeight - GS!(8));
 				}
-
                 g.SetFont(IDEApp.sApp.mCodeFont);
 
 				/*using (g.PushColor(0x80FF0000))
@@ -1527,7 +1526,7 @@ namespace IDE.ui
             {
 				//Debug.WriteLine($"UpdateWindow Create {screenX},{screenY}");
 
-                BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized | BFWindow.Flags.PopupPosition | BFWindow.Flags.NoActivate | BFWindow.Flags.NoMouseActivate | BFWindow.Flags.DestAlpha;
+                BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized | BFWindow.Flags.PopupPosition | BFWindow.Flags.NoActivate | BFWindow.Flags.NoMouseActivate | BFWindow.Flags.DestAlpha | BFWindow.Flags.Tooltip;
                 widgetWindow = new WidgetWindow(mTargetEditWidget.mWidgetWindow,
                     "Autocomplete",
                     (int32)screenX, (int32)screenY,
@@ -2052,7 +2051,7 @@ namespace IDE.ui
 				if (changedAfterInfo)
                 {
 					mAutoCompleteListWidget.mSelectIdx = -1;
-
+					
                     if ((curString.Length == 0) && (!mIsMember) && (mInvokeSrcPositions == null))
                     {
 						mPopulating = false;

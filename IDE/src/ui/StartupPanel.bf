@@ -229,7 +229,7 @@ namespace IDE.ui
 					ShowNotFoundDialog();
 					return;
 				}
-
+#if BF_PLATFORM_WINDOWS
 				ProcessStartInfo psi = scope ProcessStartInfo();
 				psi.SetFileName(mPath);
 				psi.UseShellExecute = true;
@@ -237,6 +237,46 @@ namespace IDE.ui
 
 				var process = scope SpawnedProcess();
 				process.Start(psi).IgnoreError();
+#elif BF_PLATFORM_LINUX
+				if (!Linux.IsSystemdAvailable)
+					return;
+
+				Linux.DBus* userDBus = ?;
+				if (Linux.SdBusOpenUser(&userDBus) < 0)
+					return;
+				defer Linux.SdBusUnref(userDBus);
+
+				Linux.DBusMsg* msg = ?;
+				if (Linux.SdBusNewMethodCall(userDBus, &msg,
+					"org.freedesktop.FileManager1",
+					"/org/freedesktop/FileManager1",
+					"org.freedesktop.FileManager1",
+					"ShowFolders") < 0)
+						return;
+				defer Linux.SdBusMessageUnref(msg);
+
+				if (Linux.SdBusMessageOpenContainer(msg, .Array, "s") < 0)
+					return;
+
+				String arg = new:ScopedAlloc! .(mPath.Length + 10);
+				arg..Append("file://")..Append(mPath);
+					
+				if (Linux.SdBusMessageAppend(msg, "s", arg.CStr()) < 0)
+					return;
+
+				if (Linux.SdBusMessageCloseContainer(msg) < 0)
+					return;
+
+				if (Linux.SdBusMessageAppend(msg, "s", "".CStr()) < 0)
+					return;
+
+				Linux.DBusErr error = default;
+				if (Linux.SdBusCall(userDBus, msg, 0, &error, null) < 0)
+				{
+					Linux.SdBusErrorFree(&error);
+					return;
+				}
+#endif
 			}
 
 			void OpenInTerminal()
@@ -251,7 +291,6 @@ namespace IDE.ui
 				psi.SetFileName(gApp.mSettings.mWindowsTerminal);
 				psi.UseShellExecute = true;
 				psi.SetWorkingDirectory(mPath);
-
 				var process = scope SpawnedProcess();
 				process.Start(psi).IgnoreError();
 			}
@@ -412,13 +451,50 @@ namespace IDE.ui
 
 		void OpenDocumentation()
 		{
+			const String DOCS_URL = "https://www.beeflang.org/docs/";
+#if BF_PLATFORM_WINDOWS
 			ProcessStartInfo psi = scope ProcessStartInfo();
-			psi.SetFileName("https://www.beeflang.org/docs/");
+			psi.SetFileName(DOCS_URL);
 			psi.UseShellExecute = true;
 			psi.SetVerb("Open");
 
 			var process = scope SpawnedProcess();
 			process.Start(psi).IgnoreError();
+#elif BF_PLATFORM_LINUX
+			if (!Linux.IsSystemdAvailable)
+				return;
+
+			Linux.DBus* userDBus = ?;
+			if (Linux.SdBusOpenUser(&userDBus) < 0)
+				return;
+			defer Linux.SdBusUnref(userDBus);
+
+			Linux.DBusMsg* msg = ?;
+			if (Linux.SdBusNewMethodCall(userDBus, &msg,
+				"org.freedesktop.portal.Desktop",
+				"/org/freedesktop/portal/desktop",
+				"org.freedesktop.portal.OpenURI",
+				"OpenURI") < 0)
+					return;
+
+			defer Linux.SdBusMessageUnref(msg);
+
+			if (Linux.SdBusMessageAppend(msg, "ss", "".CStr(), DOCS_URL.CStr()) < 0)
+				return;
+
+			if (Linux.SdBusMessageOpenContainer(msg, .Array, "{sv}") < 0)
+				return;
+
+			if (Linux.SdBusMessageCloseContainer(msg) < 0)
+				return;
+
+			Linux.DBusErr error = default;
+			if (Linux.SdBusCall(userDBus, msg, 0, &error, null) < 0)
+			{
+				Linux.SdBusErrorFree(&error);
+				return;
+			}
+#endif
 		}
 	}
 }
