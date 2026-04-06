@@ -2085,6 +2085,7 @@ void CeBuilder::Build()
 	auto beModule = irCodeGen->mBeModule;	
 
 	mCeFunction->mFailed = true;
+	mIntPtrType = irCodeGen->mBeContext->GetPrimitiveType((mPtrSize == 4) ? BeTypeCode_Int32 : BeTypeCode_Int64);
 
 	auto methodInstance = mCeFunction->mMethodInstance;	
 
@@ -2129,8 +2130,6 @@ void CeBuilder::Build()
 			mCeFunction->mFailed = true;
 			return;
 		}
-
-		mIntPtrType = irCodeGen->mBeContext->GetPrimitiveType((mPtrSize == 4) ? BeTypeCode_Int32 : BeTypeCode_Int64);
 
 		for (int funcIdx = startFunctionCount; funcIdx < (int)beModule->mFunctions.size(); funcIdx++)
 		{
@@ -10528,7 +10527,7 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 					ceFunction->mFunctionKind = CeFunctionKind_BfpFindFileData_Release;
 
 				else if (methodDef->mName == "BfpSystem_GetTimeStamp")
-						ceFunction->mFunctionKind = CeFunctionKind_BfpSystem_GetTimeStamp;
+					ceFunction->mFunctionKind = CeFunctionKind_BfpSystem_GetTimeStamp;
 				else if (methodDef->mName == "BfpSystem_GetEnvironmentVariable")
 					ceFunction->mFunctionKind = CeFunctionKind_BfpSystem_GetEnvironmentVariable;
 				else if (methodDef->mName == "BfpSystem_SetEnvironmentVariable")

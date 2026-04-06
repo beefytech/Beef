@@ -15703,7 +15703,7 @@ void BfModule::HadSlotCountDependency()
 BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 {
 	BfProject* project = mProject;
-	if ((project == NULL) && (mCurMethodState != NULL) && (mCurMethodState->mMethodInstance != NULL))	
+	if ((project == NULL) && (mCurMethodState != NULL) && (mCurMethodState->mMethodInstance != NULL))
 		project = mCurMethodState->mMethodInstance->mMethodDef->mDeclaringType->mProject;
 
 	if (str == "#IsComptime")
@@ -15750,15 +15750,15 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 	}
 	if (str == "#Platform")
 	{
-		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mPlatformType), GetPrimitiveType(BfTypeCode_Int32));
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mPlatformType), ResolveTypeDef(mCompiler->mCompilerOptionsPlatformTypeTypeDef));
 	}
 	if (str == "#Architecture")
 	{
-		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mMachineType), GetPrimitiveType(BfTypeCode_Int32));
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mMachineType), ResolveTypeDef(mCompiler->mCompilerOptionsMachineTypeTypeDef));
 	}
 	if (str == "#Toolset")
 	{
-		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mToolsetType), GetPrimitiveType(BfTypeCode_Int32));
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mToolsetType), ResolveTypeDef(mCompiler->mCompilerOptionsToolsetTypeTypeDef));
 	}
 	if (str == "#TargetTriple")
 	{
@@ -15766,7 +15766,7 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 	}
 	if (str == "#OptimizationLevel")
 	{
-		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, project->mCodeGenOptions.mOptLevel), GetPrimitiveType(BfTypeCode_Int32));
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, project->mCodeGenOptions.mOptLevel), ResolveTypeDef(mCompiler->mCompilerOptionsOptLevelTypeDef));
 	}
 
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))

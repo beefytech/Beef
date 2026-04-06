@@ -405,6 +405,11 @@ public:
 	BfTypeDef* mIOnFieldInitTypeDef;
 	BfTypeDef* mIOnMethodInitTypeDef;
 
+	BfTypeDef* mCompilerOptionsPlatformTypeTypeDef;
+	BfTypeDef* mCompilerOptionsMachineTypeTypeDef;
+	BfTypeDef* mCompilerOptionsToolsetTypeTypeDef;
+	BfTypeDef* mCompilerOptionsOptLevelTypeDef;
+
 	BfTypeDef* mMethodRefTypeDef;
 	BfTypeDef* mNullableTypeDef;
 

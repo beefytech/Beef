@@ -812,7 +812,7 @@ bool BootApp::Compile()
 		mCELibProject = BfSystem_CreateProject(mSystem, "BeefLib", GetFileDir(mTargetPath).c_str());
 
 		BfProjectFlags flags = BfProjectFlags_None;
-		BfProject_SetOptions(mCELibProject, BfTargetType_BeefLib, "", mDefines.c_str(), mOptLevel, 0, 0, 0, flags);		
+		BfProject_SetOptions(mCELibProject, BfTargetType_BeefLib, "", mDefines.c_str(), mOptLevel, 0, 0, 0, flags);
 	}
 
 	if (!mDefines.IsEmpty())
