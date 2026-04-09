@@ -314,13 +314,19 @@ namespace IDE
 							if (filePath.IsEmpty)
 								break;
 
-							int32 dataSize = fs.Read<int32>();
-							List<uint8> list = new List<uint8>();
-							mDB[new String(filePath)] = list;
-
-							list.Resize(dataSize);
-							if (fs.TryRead(.(list.Ptr, dataSize)) case .Err)
+							if(fs.Read<int32>() case .Ok(let dataSize))
+							{
+								List<uint8> list = new List<uint8>();
+								mDB[new String(filePath)] = list;
+	
+								list.Resize(dataSize);
+								if (fs.TryRead(.(list.Ptr, dataSize)) case .Err)
+									break;
+							}
+							else
+							{
 								break;
+							}	
 						}
 					}
 				}
