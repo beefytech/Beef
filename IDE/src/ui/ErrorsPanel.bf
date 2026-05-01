@@ -81,6 +81,63 @@ namespace IDE.ui
 			}
 		}
 
+		public class ErrorSeverityToggleButton : ToggleButton
+		{
+			private String mNounSingular ~ delete _;
+			private String mNounPlural ~ delete _;
+			public Image mIcon;
+			private int mCount;
+
+			public int Count
+			{
+				get => mCount;
+				set
+				{
+					if (value != mCount)
+					{
+						mCount = value;
+						UpdateLabel();
+					}
+				}
+			}
+
+			public StringView NounSingular
+			{
+				get => mNounSingular;
+				set => String.NewOrSet!(mNounSingular, value);
+			}
+			public StringView NounPlural
+			{
+				get => mNounPlural;
+				set => String.NewOrSet!(mNounPlural, value);
+			}
+
+			public this()
+			{
+				mLabelAlign = .Left;
+			}
+
+			public override void Draw(Graphics g)
+			{
+				if (mIcon != null)
+				{
+					mLabelXOfs = GS!(2) + mIcon.mWidth;
+					base.Draw(g);
+					g.DrawBox(mIcon, GS!(2), GS!(2), mHeight - GS!(4), mHeight - GS!(4));
+				}
+				else
+				{
+					base.Draw(g);
+				}
+			}
+
+			public void UpdateLabel()
+			{
+				var noun = (mCount == 1) ? mNounSingular : mNounPlural;
+				Label = scope $"{mCount} {noun}";
+			}
+		}
+
 		public ErrorsListView mErrorLV;
 
 		public bool mNeedsResolveAll;
@@ -94,6 +151,20 @@ namespace IDE.ui
 
 		public int mErrorCount;
 		public int mWarningCount;
+
+		public ErrorSeverityToggleButton mErrorsToggle;
+		public ErrorSeverityToggleButton mWarningsToggle;
+		
+		public bool ShowErrors
+		{
+			get => mErrorsToggle.mToggled;
+			set => mErrorsToggle.mToggled = value;
+		}
+		public bool ShowWarnings
+		{
+			get => mWarningsToggle.mToggled;
+			set => mWarningsToggle.mToggled = value;
+		}
 
 		public this()
 		{
@@ -126,6 +197,26 @@ namespace IDE.ui
 			//newItem.Label = "Hey";
 
 			AddWidget(mErrorLV);
+
+			mErrorsToggle = new ErrorSeverityToggleButton();
+			mErrorsToggle.mIcon = DarkTheme.sDarkTheme.GetImage(.CodeError);
+			mErrorsToggle.NounSingular = "Error";
+			mErrorsToggle.NounPlural = "Errors";
+			mErrorsToggle.mToggled = true;
+			mErrorsToggle.HoverText = "Toggle visibility of errors";
+			mErrorsToggle.mOnMouseDown.Add(new (evt) => { InvalidateErrorList(); });
+			mErrorsToggle.UpdateLabel();
+			AddWidget(mErrorsToggle);
+
+			mWarningsToggle = new ErrorSeverityToggleButton();
+			mWarningsToggle.mIcon = DarkTheme.sDarkTheme.GetImage(.CodeWarning);
+			mWarningsToggle.NounSingular = "Warning";
+			mWarningsToggle.NounPlural = "Warnings";
+			mWarningsToggle.mToggled = true;
+			mWarningsToggle.HoverText = "Toggle visibility of warnings";
+			mWarningsToggle.mOnMouseDown.Add(new (evt) => { InvalidateErrorList(); });
+			mWarningsToggle.UpdateLabel();
+			AddWidget(mWarningsToggle);
 		}
 
 		public ~this()
@@ -138,12 +229,38 @@ namespace IDE.ui
 		    base.Serialize(data);
 
 		    data.Add("Type", "ErrorsPanel");
+
+			data.Add("ShowErrors", ShowErrors);
+			data.Add("ShowWarnings", ShowWarnings);
+		}
+
+		public override bool Deserialize(StructuredData data)
+		{
+		    base.Deserialize(data);
+
+			ShowErrors = data.GetBool("ShowErrors", true);
+			ShowWarnings = data.GetBool("ShowWarnings", true);
+
+			return true;
 		}
 
 		public override void Resize(float x, float y, float width, float height)
 		{
 			base.Resize(x, y, width, height);
-			mErrorLV.Resize(0, 0, width, height);
+
+			float toolbarHeight = GS!(28);
+			float btnY = GS!(2);
+			float btnH = toolbarHeight - GS!(4);
+			float btnX = GS!(4);
+
+			float errW = GS!(96);
+			float warnW = GS!(112);
+
+			mErrorsToggle.Resize(btnX, btnY, errW, btnH);
+			btnX += errW + GS!(4);
+			mWarningsToggle.Resize(btnX, btnY, warnW, btnH);
+
+			mErrorLV.Resize(0, toolbarHeight, width, Math.Max(height - toolbarHeight, 0));
 		}
 
 		public enum ResolveKind
@@ -226,6 +343,14 @@ namespace IDE.ui
 				}
 			}
 		}
+		
+		void InvalidateErrorList()
+		{
+			mErrorListId = -1;
+			// Force rebuild of error list so filter changes take effect immediately,
+			// even while the compiler is busy (which keeps mDirtyTicks > 0).
+			ProcessErrors();
+		}
 
 		public void ClearParserErrors(String filePath)
 		{
@@ -289,6 +414,9 @@ namespace IDE.ui
 					int idx = 0;
 					void HandleError(BfPassInstance.BfError error)
 					{
+						if (error.mIsWarning ? !ShowWarnings : !ShowErrors)
+							return;
+
 						ErrorsListViewItem item;
 
 						bool changed = false;
@@ -404,7 +532,10 @@ namespace IDE.ui
 		public override void Update()
 		{
 			base.Update();
-			
+
+			mErrorsToggle.Count = mErrorCount;
+			mWarningsToggle.Count = mWarningCount;
+
 			if (!mVisible)
 			{
 				// Very dirty
