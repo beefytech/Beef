@@ -12,6 +12,12 @@ namespace IDE.ui
 {
 	class ErrorsPanel : Panel
 	{
+        public static String sCurrentDocument = "Current File";
+        public static String sOpenDocuments = "Open Files";
+		public static String sCurrentProject = "Current Project";
+        public static String sEntireSolution = "Entire Solution";
+		public static String[] sLocationStrings = new .(sEntireSolution, sCurrentDocument, sOpenDocuments, sCurrentProject) ~ delete _;
+
 		public class ErrorsListView : IDEListView
 		{
 			protected override ListViewItem CreateListViewItem()
@@ -86,16 +92,30 @@ namespace IDE.ui
 			private String mNounSingular ~ delete _;
 			private String mNounPlural ~ delete _;
 			public Image mIcon;
-			private int mCount;
-
-			public int Count
+			private int? mFilteredCount;
+			private int mTotalCount;
+			
+			public int? FilteredCount
 			{
-				get => mCount;
+				get => mFilteredCount;
 				set
 				{
-					if (value != mCount)
+					if (value != mFilteredCount)
 					{
-						mCount = value;
+						mFilteredCount = value;
+						UpdateLabel();
+					}
+				}
+			}
+
+			public int TotalCount
+			{
+				get => mTotalCount;
+				set
+				{
+					if (value != mTotalCount)
+					{
+						mTotalCount = value;
 						UpdateLabel();
 					}
 				}
@@ -133,8 +153,17 @@ namespace IDE.ui
 
 			public void UpdateLabel()
 			{
-				var noun = (mCount == 1) ? mNounSingular : mNounPlural;
-				Label = scope $"{mCount} {noun}";
+				var noun = (mTotalCount == 1) ? mNounSingular : mNounPlural;
+
+				if (mFilteredCount.HasValue)
+				{
+					Label = scope $"{mFilteredCount.Value} of {mTotalCount} {noun}";
+				}
+				else
+				{
+					Label = scope $"{mTotalCount} {noun}";
+				}
+
 			}
 
 			public float CalcWidth()
@@ -143,7 +172,7 @@ namespace IDE.ui
 
 				if (mIcon != null)
 				{
-					w += GS!(2) + mLabelXOfs;
+					w += GS!(2) + mIcon.mWidth;
 				}
 
 				var font = DarkTheme.sDarkTheme.mSmallFont;
@@ -168,9 +197,12 @@ namespace IDE.ui
 
 		public int mErrorCount;
 		public int mWarningCount;
+		public int? mFilteredErrorCount = null;
+		public int? mFilteredWarningCount = null;
 
 		public ErrorSeverityToggleButton mErrorsToggle;
 		public ErrorSeverityToggleButton mWarningsToggle;
+		public DarkComboBox mScopeFilterCombo;
 		
 		public bool ShowErrors
 		{
@@ -215,6 +247,11 @@ namespace IDE.ui
 
 			AddWidget(mErrorLV);
 
+			mScopeFilterCombo = new DarkComboBox();
+			mScopeFilterCombo.Label = sEntireSolution;
+			mScopeFilterCombo.mPopulateMenuAction.Add(new => PopulateLocationMenu);
+			AddWidget(mScopeFilterCombo);
+
 			mErrorsToggle = new ErrorSeverityToggleButton();
 			mErrorsToggle.mIcon = DarkTheme.sDarkTheme.GetImage(.CodeError);
 			mErrorsToggle.NounSingular = "Error";
@@ -236,6 +273,19 @@ namespace IDE.ui
 			AddWidget(mWarningsToggle);
 		}
 
+		void PopulateLocationMenu(Menu menu)
+		{
+			for (var str in sLocationStrings)
+			{
+				var item = menu.AddItem(str);
+				item.mOnMenuItemSelected.Add(new (dlg) =>
+				{
+					mScopeFilterCombo.Label = str;
+					InvalidateErrorList();
+				});
+			}
+		}
+
 		public ~this()
 		{
 			ClearParserErrors(null);
@@ -249,6 +299,7 @@ namespace IDE.ui
 
 			data.Add("ShowErrors", ShowErrors);
 			data.Add("ShowWarnings", ShowWarnings);
+			data.Add("Scope", mScopeFilterCombo.Label);
 		}
 
 		public override bool Deserialize(StructuredData data)
@@ -257,6 +308,11 @@ namespace IDE.ui
 
 			ShowErrors = data.GetBool("ShowErrors", true);
 			ShowWarnings = data.GetBool("ShowWarnings", true);
+
+			String scopeLabel = scope .();
+			data.GetString("Scope", scopeLabel);
+			if (sLocationStrings.Contains(scopeLabel))
+				mScopeFilterCombo.Label = scopeLabel;
 
 			return true;
 		}
@@ -267,6 +323,10 @@ namespace IDE.ui
 			float btnY = GS!(2);
 			float btnH = toolbarHeight - GS!(4);
 			float btnX = GS!(4);
+
+			float comboW = GS!(120);
+			mScopeFilterCombo.Resize(btnX, btnY, comboW, btnH);
+			btnX += comboW + GS!(4);
 
 			float errW = mErrorsToggle.CalcWidth();
 			mErrorsToggle.Resize(btnX, btnY, errW, btnH);
@@ -365,13 +425,31 @@ namespace IDE.ui
 				}
 			}
 		}
-		
+
+		/// Invalidates the error list and forces a rebuild,
+		/// so filter changes can take effect immediately in the next update,
+		/// even while the compiler is busy (which keeps mDirtyTicks > 0).
 		void InvalidateErrorList()
 		{
 			mErrorListId = -1;
-			// Force rebuild of error list so filter changes take effect immediately,
-			// even while the compiler is busy (which keeps mDirtyTicks > 0).
-			ProcessErrors();
+		}
+
+		public void OnActiveSourceViewChanged()
+		{
+			if (mScopeFilterCombo.Label != sEntireSolution)
+				InvalidateErrorList();
+		}
+
+		public void OnSourceViewClosed()
+		{
+			if (mScopeFilterCombo.Label == sOpenDocuments || mScopeFilterCombo.Label == sCurrentDocument)
+				InvalidateErrorList();
+		}
+
+		public void OnSourceViewOpened()
+		{
+			if (mScopeFilterCombo.Label == sOpenDocuments || mScopeFilterCombo.Label == sCurrentDocument)
+				InvalidateErrorList();
 		}
 
 		public void ClearParserErrors(String filePath)
@@ -433,11 +511,81 @@ namespace IDE.ui
 				{
 					let root = mErrorLV.GetRoot();
 
+					String activeProjectName = null;
+					List<String> openFilePaths = scope .();
+					bool hasPathFilter = false;
+					bool hasProjectFilter = false;
+					bool hasFilter = false;
+
+					switch (mScopeFilterCombo.Label)
+					{
+					case sEntireSolution:
+						// Nothing to do.
+					case sCurrentDocument:
+						hasFilter = true;
+						hasPathFilter = true;
+						var svp = gApp.GetActiveSourceViewPanel(true);
+						if (svp?.mFilePath != null)
+						{
+							openFilePaths.Add(svp.mFilePath);
+						}
+					case sCurrentProject:
+						hasFilter = true;
+						hasProjectFilter = true;
+						var svp = gApp.GetActiveSourceViewPanel(true);
+						activeProjectName = svp?.mProjectSource?.mProject?.mProjectName;
+					case sOpenDocuments:
+						hasFilter = true;
+						hasPathFilter = true;
+						gApp.WithSourceViewPanels(scope (svp) =>
+							{
+								if (svp.mFilePath != null)
+								{
+									openFilePaths.Add(svp.mFilePath);
+								}
+							});
+					}
+
+					if (hasFilter)
+					{
+						mFilteredErrorCount = 0;
+						mFilteredWarningCount = 0;
+					}
+					else
+					{
+						mFilteredErrorCount = null;
+						mFilteredWarningCount = null;
+					}
+
 					int idx = 0;
 					void HandleError(BfPassInstance.BfError error)
 					{
 						if (error.mIsWarning ? !ShowWarnings : !ShowErrors)
 							return;
+
+						if (hasProjectFilter
+							&& ((activeProjectName == null) || (error.mProject != activeProjectName)))
+						{
+							return;
+						}
+
+						if (hasPathFilter)
+						{
+							if (error.mFilePath == null)
+								return;
+
+							bool matched = false;
+							for (String openFilePath in openFilePaths)
+							{
+								if (Path.Equals(error.mFilePath, openFilePath))
+								{
+									matched = true;
+									break;
+								}
+							}
+							if (!matched)
+								return;
+						}
 
 						ErrorsListViewItem item;
 
@@ -506,6 +654,14 @@ namespace IDE.ui
 							item.Focused = false;
 
 						idx++;
+
+						if (hasFilter)
+						{
+							if (error.mIsWarning)
+								mFilteredWarningCount += 1;
+							else
+								mFilteredErrorCount += 1;
+						}
 					}
 
 					if (!mParseErrors.IsEmpty)
@@ -555,10 +711,13 @@ namespace IDE.ui
 		{
 			base.Update();
 
-			if ((mErrorsToggle.Count != mErrorCount) || (mWarningsToggle.Count != mWarningCount))
+			if ((mErrorsToggle.TotalCount != mErrorCount) || (mErrorsToggle.FilteredCount != mFilteredErrorCount)
+				 || (mWarningsToggle.TotalCount != mWarningCount) || (mWarningsToggle.FilteredCount != mFilteredWarningCount))
 			{
-				mErrorsToggle.Count = mErrorCount;
-				mWarningsToggle.Count = mWarningCount;
+				mErrorsToggle.TotalCount = mErrorCount;
+				mErrorsToggle.FilteredCount = mFilteredErrorCount;
+				mWarningsToggle.TotalCount = mWarningCount;
+				mWarningsToggle.FilteredCount = mFilteredWarningCount;
 				LayoutToolbar();
 			}
 
@@ -576,7 +735,8 @@ namespace IDE.ui
 			else
 				mDirtyTicks++;
 
-			if(mDirtyTicks==0)
+			// mErrorListId = -1 -> force processing
+			if (mErrorListId == -1 || mDirtyTicks == 0)
 				ProcessErrors();
 		}
 		

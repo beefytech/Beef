@@ -2967,6 +2967,8 @@ namespace IDE.ui
 				{
 					SyncWithWorkspacePanel();
 				}
+
+				gApp.mErrorsPanel?.OnActiveSourceViewChanged();
 			}
         }
 

@@ -7342,6 +7342,8 @@ namespace IDE
 			if ((setFocus) && (sourceViewPanel.mWidgetWindow != null))
 				sourceViewPanel.FocusEdit();
 
+			mErrorsPanel?.OnSourceViewOpened();
+
 			return (sourceViewPanel, newTabButton);
 		}
 
@@ -7655,6 +7657,8 @@ namespace IDE
 					documentTabbedView.GetActiveTab().Activate();
 				}
 			}
+
+			mErrorsPanel?.OnSourceViewClosed();
 
 			//var intDict = scope Dictionary<String, int>();
 
