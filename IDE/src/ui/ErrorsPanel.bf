@@ -123,7 +123,7 @@ namespace IDE.ui
 				{
 					mLabelXOfs = GS!(2) + mIcon.mWidth;
 					base.Draw(g);
-					g.DrawBox(mIcon, GS!(2), GS!(2), mHeight - GS!(4), mHeight - GS!(4));
+					g.Draw(mIcon, GS!(2), (mHeight - mIcon.mHeight) / 2);
 				}
 				else
 				{
@@ -135,6 +135,23 @@ namespace IDE.ui
 			{
 				var noun = (mCount == 1) ? mNounSingular : mNounPlural;
 				Label = scope $"{mCount} {noun}";
+			}
+
+			public float CalcWidth()
+			{
+				float w = GS!(2);
+
+				if (mIcon != null)
+				{
+					w += GS!(2) + mLabelXOfs;
+				}
+
+				var font = DarkTheme.sDarkTheme.mSmallFont;
+				if (mLabel != null)
+					w += font.GetWidth(mLabel);
+
+				w += GS!(6);
+				return w;
 			}
 		}
 
@@ -244,22 +261,27 @@ namespace IDE.ui
 			return true;
 		}
 
-		public override void Resize(float x, float y, float width, float height)
+		private float LayoutToolbar()
 		{
-			base.Resize(x, y, width, height);
-
 			float toolbarHeight = GS!(28);
 			float btnY = GS!(2);
 			float btnH = toolbarHeight - GS!(4);
 			float btnX = GS!(4);
 
-			float errW = GS!(96);
-			float warnW = GS!(112);
-
+			float errW = mErrorsToggle.CalcWidth();
 			mErrorsToggle.Resize(btnX, btnY, errW, btnH);
 			btnX += errW + GS!(4);
+
+			float warnW = mWarningsToggle.CalcWidth();
 			mWarningsToggle.Resize(btnX, btnY, warnW, btnH);
 
+			return toolbarHeight;
+		}
+
+		public override void Resize(float x, float y, float width, float height)
+		{
+			base.Resize(x, y, width, height);
+			float toolbarHeight = LayoutToolbar();
 			mErrorLV.Resize(0, toolbarHeight, width, Math.Max(height - toolbarHeight, 0));
 		}
 
@@ -533,8 +555,12 @@ namespace IDE.ui
 		{
 			base.Update();
 
-			mErrorsToggle.Count = mErrorCount;
-			mWarningsToggle.Count = mWarningCount;
+			if ((mErrorsToggle.Count != mErrorCount) || (mWarningsToggle.Count != mWarningCount))
+			{
+				mErrorsToggle.Count = mErrorCount;
+				mWarningsToggle.Count = mWarningCount;
+				LayoutToolbar();
+			}
 
 			if (!mVisible)
 			{
