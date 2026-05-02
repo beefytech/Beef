@@ -203,6 +203,7 @@ namespace IDE.ui
 		public ErrorSeverityToggleButton mErrorsToggle;
 		public ErrorSeverityToggleButton mWarningsToggle;
 		public DarkComboBox mScopeFilterCombo;
+		public DarkComboBox mSearchTextCombo;
 		
 		public bool ShowErrors
 		{
@@ -271,6 +272,14 @@ namespace IDE.ui
 			mWarningsToggle.mOnMouseDown.Add(new (evt) => { InvalidateErrorList(); });
 			mWarningsToggle.UpdateLabel();
 			AddWidget(mWarningsToggle);
+
+			mSearchTextCombo = new DarkComboBox();
+			mSearchTextCombo.MakeEditable();
+			mSearchTextCombo.mEditWidget.mOnContentChanged.Add(new (evt) =>
+				{
+					InvalidateErrorList();
+				});
+			AddWidget(mSearchTextCombo);
 		}
 
 		void PopulateLocationMenu(Menu menu)
@@ -322,18 +331,24 @@ namespace IDE.ui
 			float toolbarHeight = GS!(28);
 			float btnY = GS!(2);
 			float btnH = toolbarHeight - GS!(4);
-			float btnX = GS!(4);
+			float curX = GS!(4);
 
-			float comboW = GS!(120);
-			mScopeFilterCombo.Resize(btnX, btnY, comboW, btnH);
-			btnX += comboW + GS!(4);
+			float scopeSelectW = GS!(120);
+			mScopeFilterCombo.Resize(curX, btnY, scopeSelectW, btnH);
+			curX += scopeSelectW + GS!(4);
 
 			float errW = mErrorsToggle.CalcWidth();
-			mErrorsToggle.Resize(btnX, btnY, errW, btnH);
-			btnX += errW + GS!(4);
+			mErrorsToggle.Resize(curX, btnY, errW, btnH);
+			curX += errW + GS!(4);
 
 			float warnW = mWarningsToggle.CalcWidth();
-			mWarningsToggle.Resize(btnX, btnY, warnW, btnH);
+			mWarningsToggle.Resize(curX, btnY, warnW, btnH);
+			curX += warnW;
+
+			float searchMinWidth = GS!(100);
+			float searchWantWidth = GS!(250);
+			float searchWidth = Math.Clamp(mWidth - curX - GS!(4), searchMinWidth, searchWantWidth);
+			mSearchTextCombo.Resize(mWidth - searchWidth, btnY, searchWidth - GS!(4), btnH);
 
 			return toolbarHeight;
 		}
@@ -511,11 +526,13 @@ namespace IDE.ui
 				{
 					let root = mErrorLV.GetRoot();
 
+					StringView textFilter = null;
 					String activeProjectName = null;
 					List<String> openFilePaths = scope .();
 					bool hasPathFilter = false;
 					bool hasProjectFilter = false;
 					bool hasFilter = false;
+					bool hasTextFilter = false;
 
 					switch (mScopeFilterCombo.Label)
 					{
@@ -544,6 +561,14 @@ namespace IDE.ui
 									openFilePaths.Add(svp.mFilePath);
 								}
 							});
+					}
+
+					if (!mSearchTextCombo.Label.IsEmpty)
+					{
+						hasTextFilter = true;
+						hasFilter = true;
+						
+						textFilter = mSearchTextCombo.Label;
 					}
 
 					if (hasFilter)
@@ -587,6 +612,67 @@ namespace IDE.ui
 								return;
 						}
 
+						int codeDigitStartIdx = int32.MaxValue;
+						String codeStr = scope String(32);
+						char8[5] codeColorRaw = Font.EncodeColor(error.mIsWarning ? 0xFFFFFF80 : 0xFFFF8080);
+						StringView encodedCodeColor = StringView(&codeColorRaw, codeColorRaw.Count);
+						codeStr.AppendF(error.mIsWarning ? "{}Warning" : "{}Error", encodedCodeColor);
+						if (error.mCode != 0)
+						{
+							// + 1: we add a space before code
+							codeDigitStartIdx = codeStr.Length + 1;
+							codeStr.AppendF(" {}", error.mCode);
+						}
+						codeStr.AppendF("{}", Font.EncodePopColor());
+
+						// Copy project name to allow marking the matched filter.
+						let projectName = error.mProject == null ? null : scope String(error.mProject);
+
+						let fileName = scope String(128);
+						Path.GetFileName(error.mFilePath, fileName);
+						
+						char8[5] matchColorRaw = Font.EncodeColor(DarkTheme.COLOR_MENU_FOCUSED);
+						StringView encodedMatchColor = StringView(&matchColorRaw, matchColorRaw.Count);
+
+						int errorDescMatchIdx = -1;
+
+						if (hasTextFilter)
+						{
+							errorDescMatchIdx = error.mError.IndexOf(textFilter, true);
+							int fileNameIdx = fileName.IndexOf(textFilter, true);
+							int projectNameIdx = projectName?.IndexOf(textFilter, true) ?? -1;
+							int codeMatchIdx = codeStr.IndexOf(textFilter, codeDigitStartIdx);
+
+							if (errorDescMatchIdx == -1 &&
+								fileNameIdx == -1 &&
+								projectNameIdx == -1 &&
+								codeMatchIdx == -1)
+							{
+								return;
+							}
+							
+							// Mark the matched text
+
+							if (fileNameIdx != -1)
+							{
+								fileName.Insert(fileNameIdx + textFilter.Length, Font.EncodePopColor());
+								fileName.Insert(fileNameIdx, encodedMatchColor);
+							}
+							if (projectNameIdx != -1)
+							{
+								projectName.Insert(projectNameIdx + textFilter.Length, Font.EncodePopColor());
+								projectName.Insert(projectNameIdx, encodedMatchColor);
+							}
+							if (codeMatchIdx != -1)
+							{
+								// If we don't match the digits until the end, reapply color for code
+								if (codeMatchIdx + textFilter.Length < codeStr.Length - 1)
+									codeStr.Insert(codeMatchIdx + textFilter.Length, encodedCodeColor);
+
+								codeStr.Insert(codeMatchIdx, encodedMatchColor);
+							}
+						}
+
 						ErrorsListViewItem item;
 
 						bool changed = false;
@@ -616,11 +702,6 @@ namespace IDE.ui
 						item.mLine = error.mLine;
 						item.mColumn = error.mColumn;
 
-						String codeStr = scope String(32);
-						codeStr.AppendF(error.mIsWarning ? "{}Warning" : "{}Error", Font.EncodeColor(error.mIsWarning ? 0xFFFFFF80 : 0xFFFF8080));
-						if (error.mCode != 0)
-							codeStr.AppendF(" {}", error.mCode);
-						codeStr.AppendF("{}", Font.EncodePopColor());
 						SetLabel(item, codeStr);
 
 						let descItem = item.GetSubItem(1);
@@ -635,14 +716,19 @@ namespace IDE.ui
 							errStr.Append(error.mError);
 						errStr.Replace('\n', ' ');
 
+						// Mark the matched text in the error description.
+						if (errorDescMatchIdx != -1 && errorDescMatchIdx < errStr.Length)
+						{
+							errStr.Insert(Math.Min(errorDescMatchIdx + textFilter.Length, errStr.Length), Font.EncodePopColor());
+							errStr.Insert(errorDescMatchIdx, encodedMatchColor);
+						}
+
 						SetLabel(descItem, errStr);
 
 						let projectItem = item.GetSubItem(2);
-						SetLabel(projectItem, error.mProject);
+						SetLabel(projectItem, projectName);
 
 						let fileNameItem = item.GetSubItem(3);
-						let fileName = scope String(128);
-						Path.GetFileName(error.mFilePath, fileName);
 						SetLabel(fileNameItem, fileName);
 						let lineNumberItem = item.GetSubItem(4);
 						if (error.mLine != -1)
@@ -719,6 +805,7 @@ namespace IDE.ui
 				mWarningsToggle.TotalCount = mWarningCount;
 				mWarningsToggle.FilteredCount = mFilteredWarningCount;
 				LayoutToolbar();
+				MarkDirty();
 			}
 
 			if (!mVisible)
