@@ -5545,8 +5545,8 @@ void BfIRCodeGen::HandleNextCmd()
 				}
 			}
 
-			// STUB: skip dbg.value emission while migrating to LLVM 22 DbgRecord format
-			(void)val; (void)diVariable;
+			mDIBuilder->insertDbgValueIntrinsic(val, diVariable, mDIBuilder->createExpression(),
+				mIRBuilder->getCurrentDebugLocation(), mIRBuilder->GetInsertPoint());
 		}
 		break;
 	case BfIRCmd_DbgInsertDeclare:
@@ -5559,8 +5559,14 @@ void BfIRCodeGen::HandleNextCmd()
 			if (insertBefore != NULL)
 				insertBeforeInst = llvm::dyn_cast<llvm::Instruction>(insertBefore);
 
-			// STUB: skip dbg.declare emission while migrating to LLVM 22 DbgRecord format
-			(void)insertBeforeInst; (void)varInfo;
+			if (mIRBuilder->getCurrentDebugLocation())
+			{
+				llvm::InsertPosition insertPos = insertBeforeInst != NULL
+					? llvm::InsertPosition(insertBeforeInst->getIterator())
+					: llvm::InsertPosition(mIRBuilder->GetInsertPoint());
+				mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
+					mIRBuilder->getCurrentDebugLocation(), insertPos);
+			}
 			SetResultAligned(curId, val);
 		}
 		break;
