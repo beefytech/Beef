@@ -86,7 +86,7 @@
 #include "llvm/Transforms/IPO/FunctionAttrs.h"
 #include "llvm/Transforms/IPO/InferFunctionAttrs.h"
 #include "llvm/Transforms/IPO/AlwaysInliner.h"
-#include "llvm/Transforms/Instrumentation.h"
+#include "llvm/Transforms/Utils/Instrumentation.h"
 #include "llvm/Transforms/Scalar.h"
 #include "llvm/Transforms/Scalar/GVN.h"
 //#include "llvm/Transforms/Vectorize.h"
@@ -1675,7 +1675,7 @@ bool BfIRCodeGen::TryMemCpy(const BfIRTypedValue& ptr, llvm::Value* val)
 {
 	auto valType = val->getType();
 
-	auto dataLayout = llvm::DataLayout(mLLVMModule);
+	auto& dataLayout = mLLVMModule->getDataLayout();
 	int arrayBytes = (int)dataLayout.getTypeSizeInBits(valType) / 8;
 
 	// LLVM has perf issues with large aggregates - it treats each element as a unique value,
@@ -5225,7 +5225,7 @@ void BfIRCodeGen::HandleNextCmd()
 			public:
 				void Resize(int64 newSize, int32 newAlign)
 				{
-					init(getLine(), newSize, newAlign, getOffsetInBits(), getFlags());
+					init(getLine(), newSize, newAlign, getOffsetInBits(), getNumExtraInhabitants(), getFlags());
 				}
 			};
 
@@ -5549,14 +5549,14 @@ void BfIRCodeGen::HandleNextCmd()
 				{
 					auto dbgResult = mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
 						mIRBuilder->getCurrentDebugLocation(), insertBeforeInst);
-					auto inst = dbgResult.get<llvm::Instruction*>();
+					auto inst = llvm::cast<llvm::Instruction *>(dbgResult);
 					SetResult(curId, inst);
 				}
 				else
 				{
 					auto dbgResult = mDIBuilder->insertDeclare(val, (llvm::DILocalVariable*)varInfo, mDIBuilder->createExpression(),
 						mIRBuilder->getCurrentDebugLocation(), mIRBuilder->GetInsertBlock());
-					auto inst = dbgResult.get<llvm::Instruction*>();
+					auto inst = llvm::cast<llvm::Instruction *>(dbgResult);
 					SetResult(curId, inst);
 				}
 			}

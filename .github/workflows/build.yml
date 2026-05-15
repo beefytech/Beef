@@ -24,7 +24,7 @@ jobs:
       - uses: actions/checkout@v5
       - run: |
           sudo apt-get update
-          sudo apt-get install llvm-19-dev
+          sudo apt-get install llvm-20-dev
       - run: bin/build.sh
   build-macos:
     name: Build on macOS
@@ -38,6 +38,6 @@ jobs:
       - uses: actions/checkout@v5
       - run: |
           brew update
-          brew install llvm@19
-          brew link llvm@19 --force
+          brew install llvm@20
+          brew link llvm@20 --force
       - run: bin/build.sh
