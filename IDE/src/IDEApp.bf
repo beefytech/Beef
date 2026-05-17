@@ -12222,6 +12222,8 @@ namespace IDE
 					canCompile = true; // Use WSL
 			case .Wasm:
 				canCompile = true;
+			case .None:
+				canCompile = true;
 			default:
 			}
 
