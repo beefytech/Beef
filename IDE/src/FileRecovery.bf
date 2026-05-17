@@ -314,7 +314,7 @@ namespace IDE
 							if (filePath.IsEmpty)
 								break;
 
-							if(fs.Read<int32>() case .Ok(let dataSize))
+							if (int32 dataSize = fs.Read<int32>())
 							{
 								List<uint8> list = new List<uint8>();
 								mDB[new String(filePath)] = list;
