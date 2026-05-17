@@ -98,6 +98,9 @@ BfLocalMethod::~BfLocalMethod()
 		BF_ASSERT(mSource->mRefCount >= 0);
 	}
 
+	BF_ASSERT(mContext != NULL);
+	if (mContext != NULL)
+		mMethodInstanceGroup->RemoveMethodsFromCEMachine(mContext->mCompiler);
 	delete mMethodInstanceGroup;
 	delete mMethodDef;
 }
@@ -15194,7 +15197,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				if (methodInstance->mHasBeenProcessed)
 				{
 					BfLogSysM("Deleting processed but unreified specialized method instance %p\n", methodInstance);
-
+					
+					methodInstance->RemoveMethodFromCEMachine(mCompiler);
 					delete methodInstance;
 					methodInstGroup->mMethodSpecializationMap->Remove(lookupMethodGenericArguments);
 					methodInstance = NULL;
@@ -15203,6 +15207,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				{
 					BfLogSysM("Deleting declared but uncreated specialized method instance %p\n", methodInstance);
 
+					methodInstance->RemoveMethodFromCEMachine(mCompiler);
 					delete methodInstance;
 					methodInstGroup->mMethodSpecializationMap->Remove(lookupMethodGenericArguments);
 					methodInstance = NULL;
