@@ -47,6 +47,8 @@ namespace IDE.Util
 				case "wasm32",
 					 "wasm64":
 					return .Wasm;
+				case "none":
+					return .None;
 				}
 			}
 
