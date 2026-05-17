@@ -144,6 +144,7 @@ namespace IDE
 		public static bool sExitTest;
 
 		public Verbosity mVerbosity = .Default;
+		public List<String> mExtraWorkspacePreprocessorMacros = new .() ~ DeleteContainerAndItems!(_);
 		public BeefVerb mVerb;
 		public bool mDbgCompileDump;
 		public int mDbgCompileIdx = -1;
@@ -10265,6 +10266,7 @@ namespace IDE
 			AddMacros(options.mBeefOptions.mPreprocessorMacros);
 			AddMacros(mWorkspace.mBeefGlobalOptions.mPreprocessorMacros);
 			AddMacros(workspaceOptions.mPreprocessorMacros);
+			AddMacros(mExtraWorkspacePreprocessorMacros);
 			GetBeefPreprocessorMacros(preprocessorMacros);
 
 			var optimizationLevel = workspaceOptions.mBfOptimizationLevel;
