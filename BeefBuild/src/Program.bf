@@ -25,8 +25,8 @@ namespace BeefBuild
 					    -verbosity=<verbosity>  Set verbosity level to: quiet/minimal/normal/detailed/diagnostic
 					    -version                Get version
 					    -workspace=<path>       Sets workspace path (defaults to current working directory)
-						-project=<name>         Constrain build to a specific project within workspace");
-						-define=<name>          Add workspace preprocessor define
+					    -project=<name>         Constrain build to a specific project within workspace");
+					    -define=<name>          Add workspace preprocessor define
 					""");
 				return 0;
 			}
