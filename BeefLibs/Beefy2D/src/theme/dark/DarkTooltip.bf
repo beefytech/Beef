@@ -71,7 +71,7 @@ namespace Beefy.theme.dark
             screenX += relWidget.mWidgetWindow.mClientX;
             screenY += relWidget.mWidgetWindow.mClientY;
             
-            BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized | BFWindow.Flags.PopupPosition | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha;                                        
+            BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized | BFWindow.Flags.PopupPosition | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha | BFWindow.Flags.Tooltip;                                        
             WidgetWindow widgetWindow = new WidgetWindow(relWidget.mWidgetWindow,
                 "Tooltip",
                 (int32)(screenX), (int32)(screenY),
