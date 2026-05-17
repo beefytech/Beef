@@ -1930,13 +1930,11 @@ BfIRValue BfModule::GetStringObjectValue(int strId, bool define, bool force)
 }
 
 BfIRValue BfModule::GetStringObjectValue(const StringImpl& str, bool define, bool force)
-{
-	auto stringType = ResolveTypeDef(mCompiler->mStringTypeDef, define ? BfPopulateType_Data : BfPopulateType_Declaration);
-	mBfIRBuilder->PopulateType(stringType);
-
+{	
 	int strId = mContext->GetStringLiteralId(str);
 
-	if ((mBfIRBuilder->mIgnoreWrites) && (!force))
+	if (((mBfIRBuilder->mIgnoreWrites) || (!mBfIRBuilder->mHasStarted)) &&
+		(!force))
 	{
 		auto refModule = this;
 		if ((this == mContext->mUnreifiedModule) && (mCurTypeInstance != NULL))
@@ -1944,6 +1942,9 @@ BfIRValue BfModule::GetStringObjectValue(const StringImpl& str, bool define, boo
 		refModule->mUnreifiedStringPoolRefs.Add(strId);
 		return mBfIRBuilder->CreateConst(BfTypeCode_StringId, strId);
 	}
+
+	auto stringType = ResolveTypeDef(mCompiler->mStringTypeDef, define ? BfPopulateType_Data : BfPopulateType_Declaration);
+	mBfIRBuilder->PopulateType(stringType);
 
 	BfIRValue* irValuePtr = NULL;
 	if (mStringObjectPool.TryGetValue(strId, &irValuePtr))
