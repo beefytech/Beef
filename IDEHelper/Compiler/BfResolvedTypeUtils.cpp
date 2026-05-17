@@ -2185,6 +2185,8 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 						if (typeInst->mBaseType != NULL)
 							_CheckType(typeInst->mBaseType, offset);
 
+						mModule->PopulateType(typeInst, BfPopulateType_Data);
+
 						for (auto& fieldInstance : typeInst->mFieldInstances)
 						{
 							if (fieldInstance.mDataOffset >= 0)
