@@ -22,6 +22,11 @@ do
 		BUILD_IDE=1
 	fi
 
+	if [[ $i == "package" ]]; then
+		echo "Building for packaging"
+		PACKAGE_DEFINE="-define=LINUX_PACKAGE"
+	fi
+
 	if [[ $i == "no_ffi" ]]; then
 		echo "Disabling FFI"
 		USE_FFI="-DBF_DISABLE_FFI=1"
@@ -149,7 +154,7 @@ ln -s -f $ROOTPATH/jbuild/Release/bin/libIDEHelper.a ../../BeefLibs/Beefy2D/dist
 echo Building BeefBuild_bootd
 ../../jbuild_d/Debug/bin/BeefBoot --out="BeefBuild_bootd" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --define=DEBUG --startup=BeefBuild.Program --linkparams="./libBeefRT_d.a ./libIDEHelper_d.a ./libBeefySysLib_d.a ./libhunspell.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs_d.txt) $LINKOPTS"
 echo Building BeefBuild_d
-./BeefBuild_bootd -clean -proddir=../../BeefBuild -config=Debug
+./BeefBuild_bootd -clean -proddir=../../BeefBuild -config=Debug $PACKAGE_DEFINE
 echo Testing IDEHelper/Tests in BeefBuild_d
 ./BeefBuild_d -proddir=../../IDEHelper/Tests -test
 
@@ -158,7 +163,7 @@ echo Testing IDEHelper/Tests in BeefBuild_d
 echo Building BeefBuild_boot
 ../../jbuild/Release/bin/BeefBoot --out="BeefBuild_boot" --src=../src --src=../../BeefBuild/src --src=../../BeefLibs/corlib/src --src=../../BeefLibs/Beefy2D/src --define=CLI --startup=BeefBuild.Program --linkparams="./libBeefRT.a ./libIDEHelper.a ./libBeefySysLib.a ./libhunspell.$LIBEXT $(< ../../IDE/dist/IDEHelper_libs.txt) $LINKOPTS"
 echo Building BeefBuild
-./BeefBuild_boot -clean -proddir=../../BeefBuild -config=Release
+./BeefBuild_boot -clean -proddir=../../BeefBuild -config=Release $PACKAGE_DEFINE
 echo Testing IDEHelper/Tests in BeefBuild
 ./BeefBuild -proddir=../../IDEHelper/Tests -test
 
@@ -166,8 +171,8 @@ echo Testing IDEHelper/Tests in BeefBuild
 if [ -n "$BUILD_IDE" ]; then
 
 	echo Building BeefIDE_d
-	./BeefBuild -clean -proddir=../ -config=Debug
+	./BeefBuild -clean -proddir=../ -config=Debug $PACKAGE_DEFINE
 	echo Building BeefIDE
-	./BeefBuild -clean -proddir=../ -config=Release
+	./BeefBuild -clean -proddir=../ -config=Release $PACKAGE_DEFINE
 
 fi

@@ -544,7 +544,7 @@ namespace IDE
 
 				for (let theme in mTheme)
 				{
-					String relPath = scope .()..Append(gApp.mInstallDir, "themes/");
+					String relPath = scope .()..Append(gApp.mUserDataDir, "themes/");
 					String absPath = scope .();
 					Path.GetAbsolutePath(theme, relPath, absPath);
 
@@ -1249,7 +1249,7 @@ namespace IDE
 
 		void GetSettingsPath(String outPath)
 		{
-			outPath.Append(gApp.mInstallDir, "/BeefSettings.toml");
+			outPath.Append(gApp.mUserDataDir, "/BeefSettings.toml");
 		}
 
 		public void Save()
