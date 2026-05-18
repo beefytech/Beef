@@ -14,14 +14,14 @@ PUSHD %~dp0..\
 mkdir stats
 :STATS_HAS
 
-@IF EXIST BeefDep1_Done.txt GOTO DEPS0_HAS
+@IF EXIST BeefDep2_Done.txt GOTO DEPS0_HAS
 @ECHO Downloading dependencies (LLVM)...
-bin\curl.exe -O https://www.beeflang.org/BeefDep1.zip
+bin\curl.exe -O https://www.beeflang.org/BeefDep2.zip
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 @ECHO Extracting dependencies (takes a while)...
-bin\tar.exe -xf BeefDep1.zip
+bin\tar.exe -xf BeefDep2.zip
 @IF %ERRORLEVEL% NEQ 0 GOTO
-del BeefDep1.zip
+del BeefDep2.zip
 :DEPS0_HAS
 
 copy BeefLibs\SDL2\dist\SDL2.dll IDE\dist
