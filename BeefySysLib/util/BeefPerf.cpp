@@ -23,11 +23,13 @@ typedef fd_set FD_SET;
 #include <mach/mach.h>
 #endif
 
+#ifdef BF_PLATFORM_WINDOWS
+#pragma comment(lib,"ws2_32.lib")
+#endif
+
 #ifdef BF_PLATFORM_POSIX
 #include <cerrno>
 #endif
-
-#pragma comment(lib,"wsock32.lib")
 
 #pragma warning(disable:4996)
 

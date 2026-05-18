@@ -21,10 +21,10 @@ extern "C"
 #ifdef BF_PLATFORM_WINDOWS
 #include <shellapi.h>
 #include <direct.h>
+#pragma comment(lib, "winmm.lib")
 #endif
 
 #pragma warning(disable:4996)
-#pragma comment(lib, "winmm.lib")
 
 int gBFArgC;
 char** gBFArgV;
