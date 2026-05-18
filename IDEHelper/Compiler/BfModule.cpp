@@ -9357,7 +9357,7 @@ BfTypedValue BfModule::FlushNullConditional(BfTypedValue result, bool ignoreNull
 
 		// Now that we have the nullableTypedValue we can set that, or just jump if we didn't need it
 		mBfIRBuilder->SetInsertPoint(notNullBB);
-		result = LoadValue(result);
+		result = LoadOrAggregateValue(result);
 		if (nullableTypedValue)
 		{
 			auto elementType = nullableType->GetUnderlyingType();
