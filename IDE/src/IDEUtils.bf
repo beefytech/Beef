@@ -403,6 +403,7 @@ namespace IDE
 			int chevronDepth = 0;
 			int parenDepth = 0;
 			bool hadParen = false;
+			bool foundFunctionName = false;
 
 			int lastTopStart = -1;
 			int lastTopEnd = -1;
@@ -589,6 +590,7 @@ namespace IDE
 						foundOpenParen = true;
 						if (lastTopStart != -1)
 						{
+							foundFunctionName = true;
 							char8* insertChars = label.CStr() + lastTopStart;
 							uint32 color = SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Method];
 							*(uint32*)(insertChars + 1) = (color >> 1) & 0x7F7F7F7F;
@@ -608,6 +610,7 @@ namespace IDE
 							}
 							if (checkIdx >= 0)
 							{
+								foundFunctionName = true;
 		                        InsertColorChange(label, checkIdx, SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Method]);
 								i += 5;
 							}
@@ -649,6 +652,15 @@ namespace IDE
 					chevronDepth++;
 				else if (c == '>')
 					chevronDepth--;
+			}
+
+			if (!foundFunctionName)
+			{
+				if (prevStart != -1)
+				{
+					InsertColorChange(label, prevStart, SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Method]);
+					prevStart = label.Length;
+				}
 			}
 
 			if ((prevStart != -1) &&
