@@ -332,6 +332,9 @@ namespace BeefBuild
 
 						return true;
 					}
+				case "-define":
+					mExtraWorkspacePreprocessorMacros.Add(new .(value));
+					return true;
 				}
 			}
 

@@ -1304,7 +1304,9 @@ BF_EXPORT StringView BF_CALLTYPE Debugger_Evaluate(const char* expr, int callSta
 
 	String& outString = *gTLStrReturn.Get();
 	outString.clear();
+#ifdef BF_PLATFORM_WINDOWS
 	outString = debugger->Evaluate(expr, callStackIdx, cursorPos, language, (DwEvalExpressionFlags)expressionFlags);
+#endif
 #ifdef BF_WANTS_LOG_DBG
 	{
 		int crPos = (int)outString.IndexOf('\n');

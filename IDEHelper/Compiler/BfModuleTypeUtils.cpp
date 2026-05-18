@@ -7629,6 +7629,7 @@ void BfModule::RebuildMethods(BfTypeInstance* typeInstance)
 	typeInstance->mNeedsMethodProcessing = true;
 	typeInstance->mDefineState = BfTypeDefineState_Defined;
 	typeInstance->mTypeIncomplete = true;
+	typeInstance->RemoveMethodsFromCEMachine();
 
 	for (auto& methodInstanceGroup : typeInstance->mMethodInstanceGroups)
 	{

@@ -255,6 +255,7 @@ class BfLocalMethod
 {
 public:
 	BfSystem* mSystem;
+	BfContext* mContext;
 	BfModule* mModule;
 	BfSource* mSource;
 	BfMethodDeclaration* mMethodDeclaration;
@@ -278,6 +279,7 @@ public:
 	{
 		mModule = NULL;
 		mSystem = NULL;
+		mContext = NULL;
 		mSource = NULL;
 		mMethodDeclaration = NULL;
 		mMethodDef = NULL;

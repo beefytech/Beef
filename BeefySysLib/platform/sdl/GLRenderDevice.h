@@ -4,9 +4,9 @@
 #include "util/Dictionary.h"
 
 #ifdef BF_PLATFORM_OPENGL_ES2
-#include <SDL2/SDL_opengles2.h>
+#include <SDL3/SDL_opengles2.h>
 #else
-#include <SDL2/SDL_opengl.h>
+#include <SDL3/SDL_opengl.h>
 #endif
 
 #include "gfx/Shader.h"
@@ -28,14 +28,14 @@ public:
 	GLuint					mGLTexture;
 	GLuint					mGLTexture2;
 	ImageData*				mImageData;
-	//IGL10RenderTargetView*	mGLRenderTargetView;
 
 public:
 	GLTexture();
-	~GLTexture();
+	virtual ~GLTexture();
 
-	virtual void			PhysSetAsTarget();
+	virtual void			PhysSetAsTarget() override;
 	virtual void			Blt(ImageData* imageData, int x, int y) override;
+	virtual void			SetBits(int destX, int destY, int destWidth, int destHeight, int srcPitch, uint32 *bits) override;
 };
 
 class GLShaderParam : public ShaderParam
@@ -47,7 +47,7 @@ public:
 	GLShaderParam();
 	~GLShaderParam();
 
-	virtual void			SetTexture(Texture* texture);
+	virtual void			SetTexture(Texture* texture) override;
 	virtual void			SetFloat4(float x, float y, float z, float w) override;
 };
 
@@ -56,18 +56,17 @@ typedef Dictionary<String, GLShaderParam*> GLShaderParamMap;
 class GLShader : public Shader
 {
 public:
-	//IGL10Effect*			mGLEffect;
+	GLuint				mGLVertexShader;
+	GLuint				mGLFragmentShader;
+	GLuint				mGLProgram;
+	GLint				mAttribPosition;
+	GLint				mAttribTexCoord0;
+	GLint				mAttribColor;
+	GLint				mAttribTex0;
+	GLint				mAttribTex1;
+	GLint				mScreenUniformLoc;
 
-	GLuint mGLVertexShader;
-	GLuint mGLFragmentShader;
-	GLuint mGLProgram;
-	GLint mAttribPosition;
-	GLint mAttribTexCoord0;
-	GLint mAttribColor;
-	GLint mAttribTex0;
-	GLint mAttribTex1;
-
-	GLShaderParamMap		mParamsMap;
+	GLShaderParamMap	mParamsMap;
 
 public:
 	GLShader();
@@ -90,7 +89,7 @@ public:
 class GLDrawBatch : public DrawBatch
 {
 public:
-	//IGL10Buffer*			mGLBuffer;
+
 
 public:
 	GLDrawBatch();
@@ -126,13 +125,14 @@ public:
 
 public:
 	GLRenderWindow(GLRenderDevice* renderDevice, SDL_Window* sdlWindow);
-	~GLRenderWindow();
+	virtual ~GLRenderWindow();
 
 	void					SetAsTarget() override;
 	void					Resized() override;
-	virtual void			Present() override;
+	void					Present() override;
 
 	void					CopyBitsTo(uint32* dest, int width, int height);
+	float					GetRefreshRate() override;
 };
 
 class GLRenderDevice : public RenderDevice
@@ -167,7 +167,7 @@ public:
 	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) override;
 	Texture*				CreateRenderTarget(int width, int height, bool destAlpha) override;
 
-	virtual Texture*		CreateDynTexture(int width, int height) override { return NULL; }
+	virtual Texture*		CreateDynTexture(int width, int height) override;
 	virtual void			SetRenderState(RenderState* renderState) override;
 
 	/*void					SetShader(Shader* shader) override;
