@@ -10,7 +10,8 @@ git clone --depth 1 --branch llvmorg-22.1.5 --config core.autocrlf=false https:/
 mkdir llvm_win64_22_1_5
 cd llvm_win64_22_1_5
 @REM cmake ../llvm-project_22_1_5/llvm -G"Visual Studio 17 2022" -Ax64 -Thost=x64 -DLLVM_ENABLE_PROJECTS=clang -D CMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly"
-cmake ../llvm-project_22_1_5/llvm -G"Visual Studio 17 2022" -Ax64 -Thost=x64 -D CMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly"
+cmake ../llvm-project_22_1_5/llvm -G Ninja -DLLVM_ENABLE_PROJECTS="clang;lldb" -G"Visual Studio 17 2022" -Ax64 -Thost=x64 -D CMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly"
+
 @REM cmake ../llvm-project_22_1_5/llvm -G"Visual Studio 17 2022"
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 @GOTO DOBUILD

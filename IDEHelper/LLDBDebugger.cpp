@@ -3,10 +3,19 @@
 
 #ifdef LLDB_ENABLED
 
+#ifdef __linux__
+#include <unistd.h>
+#endif
+#ifdef __APPLE__
+#include <mach/mach.h>
+#endif
+
 USING_NS_BF;
 
 void LLDBLog(const char* fmt ...)
 {
+	return;
+
 	va_list argList;
 	va_start(argList, fmt);
 	String aResult = vformat(fmt, argList);
@@ -14,6 +23,51 @@ void LLDBLog(const char* fmt ...)
 
 	OutputDebugStr("LLDB: ");
 	OutputDebugStr(aResult);
+}
+
+// Populate exception address/code/description from a stopped thread.
+static void CollectExceptionInfo(lldb::SBThread& thread, lldb::SBProcess& process,
+	uint64& outAddress, uint32& outCode, String& outDescription)
+{
+	lldb::SBFrame frame = thread.GetFrameAtIndex(0);
+	outAddress = frame.IsValid() ? (uint64)frame.GetPC() : 0;
+
+	lldb::StopReason reason = thread.GetStopReason();
+	if (reason == lldb::eStopReasonSignal)
+	{
+		outCode = (uint32)thread.GetStopReasonDataAtIndex(0);
+		lldb::SBUnixSignals signals = process.GetUnixSignals();
+		const char* sigName = signals.GetSignalAsCString((int32_t)outCode);
+		if (sigName != NULL)
+			outDescription = StrFormat("%s in thread %d", sigName, (int)thread.GetThreadID());
+		else
+			outDescription = StrFormat("Signal %d in thread %d", (int)outCode, (int)thread.GetThreadID());
+	}
+	else if (reason == lldb::eStopReasonException)
+	{
+		outCode = (uint32)thread.GetStopReasonDataAtIndex(0);
+		char descBuf[256] = {};
+		thread.GetStopDescription(descBuf, sizeof(descBuf));
+		if (descBuf[0] != '\0')
+			outDescription = descBuf;
+		else
+			outDescription = StrFormat("Exception in thread %d", (int)thread.GetThreadID());
+	}
+	else
+	{
+		outCode = 0;
+		char descBuf[256] = {};
+		thread.GetStopDescription(descBuf, sizeof(descBuf));
+		outDescription = (descBuf[0] != '\0') ? String(descBuf) : String("Crash");
+	}
+}
+
+// Return true if the signal number corresponds to a fatal/crash signal.
+static bool IsCrashSignal(uint32 signo)
+{
+	// SIGILL=4, SIGABRT=6, SIGBUS=7(Linux)/10(macOS), SIGFPE=8, SIGSEGV=11
+	return ((signo == 4) || (signo == 6) || (signo == 7) ||
+	        (signo == 8) || (signo == 10) || (signo == 11));
 }
 
 // Translate an LLDB function name to IDE display form.
@@ -61,6 +115,10 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mBreakStackFrameIdx = 0;
 	mCallStackDirty = false;
 	mDidAttach = false;
+	mNeedBreakpointRebind = false;
+	mAutoStepRemaining = 0;
+	mExceptionAddress = 0;
+	mExceptionCode = 0;
 	mHotSwapEnabled = false;
 	mOpenFileFlags = DbgOpenFileFlag_None;
 	mLaunchThread = NULL;
@@ -68,8 +126,75 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 
 LLDBDebugger::~LLDBDebugger()
 {
+	WaitForLaunchThread();
 	for (auto bp : mBreakpoints)
 		delete bp;
+}
+
+void LLDBDebugger::DumpSymbolAddrs(const StringImpl& sym)
+{	
+	lldb::SBSymbolContextList symList = mLLDBTarget.FindSymbols(sym.c_str());
+	uint32 numSymbols = symList.GetSize();
+	LLDBLog("FindSymbols('%s'): %d result(s)\n", sym.c_str(), (int)numSymbols);
+	for (uint32 i = 0; i < numSymbols; i++)
+	{
+		lldb::SBSymbolContext ctx = symList.GetContextAtIndex(i);
+		lldb::SBSymbol symbol = ctx.GetSymbol();
+		lldb::SBModule module = ctx.GetModule();
+
+		const char* symNameStr = symbol.IsValid() ? symbol.GetName() : "(invalid)";
+		const char* modNameStr = "(none)";
+		if (module.IsValid())
+		{
+			const char* fn = module.GetFileSpec().GetFilename();
+			if ((fn != NULL) && (fn[0] != '\0'))
+				modNameStr = fn;
+		}
+
+		lldb::addr_t loadAddr = LLDB_INVALID_ADDRESS;
+		if (symbol.IsValid())
+		{
+			lldb::SBAddress startAddr = symbol.GetStartAddress();
+			if (startAddr.IsValid())
+				loadAddr = startAddr.GetLoadAddress(mLLDBTarget);
+		}
+
+		if (loadAddr != LLDB_INVALID_ADDRESS)
+			LLDBLog("  [%d] module='%s' sym='%s' addr=0x%llX\n", (int)i, modNameStr, symNameStr, (uint64)loadAddr);
+		else
+			LLDBLog("  [%d] module='%s' sym='%s' addr=(unresolved)\n", (int)i, modNameStr, symNameStr);
+	}	
+}
+
+void LLDBDebugger::DoCreateBreakpointByName(LLDBBreakpoint* bp)
+{
+	// A leading "-" means the breakpoint should only bind within the main
+	// executable module (not any loaded library).  Strip the prefix and
+	// restrict via a module list containing just the target executable.
+	const char* sym = bp->mSymbolName.c_str();
+	bool mainModuleOnly = (sym[0] == '-');
+	if (mainModuleOnly)
+		sym++;
+
+	DumpSymbolAddrs(sym);
+
+	if (mainModuleOnly)
+	{
+		lldb::SBFileSpecList moduleList;
+		moduleList.Append(mLLDBTarget.GetExecutable());
+		if (moduleList.GetSize() > 0)
+		{
+			lldb::SBFileSpecList compUnitList;  // empty — match all compile units
+			bp->mLLDBBreakpoint = mLLDBTarget.BreakpointCreateByName(
+				sym, lldb::eFunctionNameTypeAuto, moduleList, compUnitList);
+		}
+		else
+			bp->mLLDBBreakpoint = mLLDBTarget.BreakpointCreateByName(sym);
+	}
+	else
+	{
+		bp->mLLDBBreakpoint = mLLDBTarget.BreakpointCreateByName(sym);
+	}
 }
 
 //----------------------------------------------------------------------------
@@ -98,7 +223,7 @@ void LLDBDebugger::OutputRawMessage(const StringImpl& msg)
 
 int LLDBDebugger::GetAddrSize()
 {
-	return 8;
+	return sizeof(addr_target);
 }
 
 bool LLDBDebugger::CanOpen(const StringImpl& fileName, DebuggerResult* outResult)
@@ -154,26 +279,7 @@ void LLDBDebugger::DoLaunch()
 		AutoCrit autoCrit(mDebugManager->mCritSect);
 		mRunState = RunState_Terminated;
 		return;
-	}
-
-	// Re-register any breakpoints that were created before launch.
-	{
-		AutoCrit autoCrit(mDebugManager->mCritSect);
-		for (auto bp : mBreakpoints)
-		{
-			if ((!bp->mFilePath.IsEmpty()) && (bp->mRequestedLineNum >= 0))
-			{
-				lldb::SBFileSpec fileSpec(bp->mFilePath.c_str(), false);
-				bp->mLLDBBreakpoint = target.BreakpointCreateByLocation(fileSpec, (uint32)(bp->mRequestedLineNum + 1));
-			}
-			else if (!bp->mSymbolName.IsEmpty())
-			{
-				bp->mLLDBBreakpoint = target.BreakpointCreateByName(bp->mSymbolName.c_str());
-			}
-			if (bp->mLLDBBreakpoint.IsValid())
-				mBreakpointIdMap.ForceAdd((int)bp->mLLDBBreakpoint.GetID(), bp);
-		}
-	}
+	}	
 
 	// Parse the args string into a vector of strings.
 	Array<String> argStrings;
@@ -258,6 +364,7 @@ void LLDBDebugger::DoLaunch()
 	mLLDBTarget = target;
 	mLLDBProcess = process;
 	mProcessId = (int)process.GetProcessID();
+	mNeedBreakpointRebind = true;
 	mRunState = RunState_Running;
 }
 
@@ -321,6 +428,19 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 			mRequestedStackFrameIdx = 0;
 			mBreakStackFrameIdx = 0;
 			mActiveBreakpoint = NULL;
+
+			lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
+			if ((!thread.IsValid()) && (mLLDBProcess.GetNumThreads() > 0))
+				thread = mLLDBProcess.GetThreadAtIndex(0);
+			if (thread.IsValid())
+				CollectExceptionInfo(thread, mLLDBProcess, mExceptionAddress, mExceptionCode, mExceptionDescription);
+			else
+			{
+				mExceptionAddress = 0;
+				mExceptionCode = 0;
+				mExceptionDescription = "Crash";
+			}
+
 			mRunState = RunState_Exception;
 		}
 		return;
@@ -331,6 +451,17 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 	{
 		if ((mRunState == RunState_Running) || (mRunState == RunState_Running_ToTempBreakpoint))
 		{
+			// On the first stop after launch (stop-at-entry), the process image is
+			// fully loaded and symbols are resolved.  Walk every breakpoint and call
+			// CheckBreakpoint so their load addresses are populated and they appear
+			// as bound in the IDE.
+			if (mNeedBreakpointRebind)
+			{
+				mNeedBreakpointRebind = false;
+				for (auto bp : mBreakpoints)
+					CheckBreakpoint(bp);
+			}
+
 			ClearCallStack();
 			mRequestedStackFrameIdx = 0;
 			mBreakStackFrameIdx = 0;
@@ -343,6 +474,24 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 			auto threadStopReason = thread.IsValid() ? thread.GetStopReason() : lldb::eStopReasonNone;
 
 			LLDBLog("HandleProcessEvent Stopped. ThreadIsValid:%d StopReason:%d\n", thread.IsValid(), threadStopReason);
+
+			// Execute the next queued auto-step when a planned step has completed.
+			// A breakpoint, signal, or any other non-plan-complete stop cancels the
+			// sequence so the user sees the real event rather than stepping past it.
+			if (mAutoStepRemaining > 0)
+			{
+				if ((thread.IsValid()) && (threadStopReason == lldb::eStopReasonPlanComplete))
+				{
+					if (mAutoStepRemaining == 2)
+						thread.StepInto();
+					else  // mAutoStepRemaining == 1
+						thread.StepOver();
+					mAutoStepRemaining--;
+					mRunState = RunState_Running;
+					return;
+				}
+				mAutoStepRemaining = 0;  // Unexpected stop — cancel the sequence
+			}
 
 			if ((thread.IsValid()) && (threadStopReason == lldb::eStopReasonBreakpoint))
 			{
@@ -364,6 +513,16 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 				}
 
 				mRunState = RunState_Breakpoint;
+			}
+			else if ((thread.IsValid()) &&
+			         ((threadStopReason == lldb::eStopReasonSignal) || (threadStopReason == lldb::eStopReasonException)) &&
+			         ((threadStopReason == lldb::eStopReasonException) ||
+			          IsCrashSignal((uint32)thread.GetStopReasonDataAtIndex(0))))
+			{
+				// Fatal signal or hardware exception — treat as crash
+				CollectExceptionInfo(thread, mLLDBProcess, mExceptionAddress, mExceptionCode, mExceptionDescription);
+				mActiveBreakpoint = NULL;
+				mRunState = RunState_Exception;
 			}
 			else
 			{
@@ -408,6 +567,7 @@ void LLDBDebugger::ContinueDebugEvent()
 
 	LLDBLog("ContinueDebugEvent\n");
 
+	mAutoStepRemaining = 0;
 	ClearCallStack();
 	mActiveBreakpoint = NULL;
 	mRunState = RunState_Running;
@@ -436,6 +596,20 @@ void LLDBDebugger::StepInto(bool inAssembly)
 	lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
 	if (thread.IsValid())
 	{
+		// Any explicit user step resets the auto-step sequence.
+		mAutoStepRemaining = 0;
+
+		// When stepping into source code while at the stop-at-entry landing pad
+		// inside BeefStartProgram, queue two additional automatic steps so the
+		// user lands at the first line of their Program.Main rather than deep
+		// inside the Beef runtime bootstrap.
+		if (!inAssembly && !mCallStack.IsEmpty())
+		{
+			const char* funcName = mCallStack[0].GetFunctionName();
+			if ((funcName != NULL) && (strstr(funcName, "BeefStartProgram") != NULL))
+				mAutoStepRemaining = 2;  // on next stop: StepInto, then StepOver
+		}
+
 		ClearCallStack();
 		mRunState = RunState_Running;
 		if (inAssembly)
@@ -456,6 +630,7 @@ void LLDBDebugger::StepOver(bool inAssembly)
 	lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
 	if (thread.IsValid())
 	{
+		mAutoStepRemaining = 0;
 		ClearCallStack();
 		mRunState = RunState_Running;
 		if (inAssembly)
@@ -472,6 +647,7 @@ void LLDBDebugger::StepOut(bool inAssembly)
 	lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
 	if (thread.IsValid())
 	{
+		mAutoStepRemaining = 0;
 		ClearCallStack();
 		mRunState = RunState_Running;
 		thread.StepOut();
@@ -514,13 +690,18 @@ Breakpoint* LLDBDebugger::CreateMemoryBreakpoint(intptr addr, int byteCount)
 
 Breakpoint* LLDBDebugger::CreateSymbolBreakpoint(const StringImpl& symbolName)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	LLDBLog("CreateSymbolBreakpoint '%s'\n", symbolName.c_str());
+
 	LLDBBreakpoint* bp = new LLDBBreakpoint();
 	bp->mSymbolName = symbolName;
 	mBreakpoints.push_back(bp);
 
 	if (mLLDBTarget.IsValid())
-	{
-		bp->mLLDBBreakpoint = mLLDBTarget.BreakpointCreateByName(symbolName.c_str());
+	{				
+		DoCreateBreakpointByName(bp);
+
 		if (bp->mLLDBBreakpoint.IsValid())
 			mBreakpointIdMap.ForceAdd((int)bp->mLLDBBreakpoint.GetID(), bp);
 	}
@@ -530,6 +711,8 @@ Breakpoint* LLDBDebugger::CreateSymbolBreakpoint(const StringImpl& symbolName)
 
 Breakpoint* LLDBDebugger::CreateAddressBreakpoint(intptr address)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	LLDBBreakpoint* bp = new LLDBBreakpoint();
 	bp->mResolvedAddr = (uintptr)address;
 	mBreakpoints.push_back(bp);
@@ -549,6 +732,8 @@ Breakpoint* LLDBDebugger::CreateAddressBreakpoint(intptr address)
 
 void LLDBDebugger::CheckBreakpoint(Breakpoint* checkBreakpoint)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	LLDBBreakpoint* bp = (LLDBBreakpoint*)checkBreakpoint;
 
 	// If the LLDB breakpoint hasn't been created yet (e.g., called before OpenFile),
@@ -562,7 +747,7 @@ void LLDBDebugger::CheckBreakpoint(Breakpoint* checkBreakpoint)
 		}
 		else if (!bp->mSymbolName.IsEmpty())
 		{
-			bp->mLLDBBreakpoint = mLLDBTarget.BreakpointCreateByName(bp->mSymbolName.c_str());
+			DoCreateBreakpointByName(bp);			
 		}
 
 		if (bp->mLLDBBreakpoint.IsValid())
@@ -595,6 +780,8 @@ void LLDBDebugger::HotBindBreakpoint(Breakpoint* wdBreakpoint, int lineNum, int 
 
 void LLDBDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	LLDBBreakpoint* bp = (LLDBBreakpoint*)breakpoint;
 
 	if (bp == mActiveBreakpoint)
@@ -624,6 +811,8 @@ void LLDBDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
 
 void LLDBDebugger::DetachBreakpoint(Breakpoint* breakpoint)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	LLDBBreakpoint* bp = (LLDBBreakpoint*)breakpoint;
 
 	// Disable the physical breakpoint but keep the object alive
@@ -643,6 +832,8 @@ void LLDBDebugger::DetachBreakpoint(Breakpoint* breakpoint)
 
 void LLDBDebugger::MoveBreakpoint(Breakpoint* breakpoint, int lineNum, int wantColumn, bool rebindNow)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	LLDBBreakpoint* bp = (LLDBBreakpoint*)breakpoint;
 
 	// Remove the old binding
@@ -683,6 +874,8 @@ void LLDBDebugger::MoveMemoryBreakpoint(Breakpoint* wdBreakpoint, intptr addr, i
 
 void LLDBDebugger::DisableBreakpoint(Breakpoint* breakpoint)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	LLDBBreakpoint* bp = (LLDBBreakpoint*)breakpoint;
 	if (bp->mLLDBBreakpoint.IsValid())
 		bp->mLLDBBreakpoint.SetEnabled(false);
@@ -690,6 +883,8 @@ void LLDBDebugger::DisableBreakpoint(Breakpoint* breakpoint)
 
 void LLDBDebugger::SetBreakpointCondition(Breakpoint* breakpoint, const StringImpl& condition)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	LLDBBreakpoint* bp = (LLDBBreakpoint*)breakpoint;
 	if (bp->mLLDBBreakpoint.IsValid())
 		bp->mLLDBBreakpoint.SetCondition(condition.IsEmpty() ? NULL : condition.c_str());
@@ -701,6 +896,8 @@ void LLDBDebugger::SetBreakpointLogging(Breakpoint* wdBreakpoint, const StringIm
 
 Breakpoint* LLDBDebugger::FindBreakpointAt(intptr address)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	LLDBBreakpoint* bp = NULL;
 	mBreakpointAddrMap.TryGetValue((uintptr)address, &bp);
 	return bp;
@@ -708,6 +905,8 @@ Breakpoint* LLDBDebugger::FindBreakpointAt(intptr address)
 
 Breakpoint* LLDBDebugger::GetActiveBreakpoint()
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	if ((mActiveBreakpoint != NULL) && (mActiveBreakpoint->mHead != NULL))
 		return mActiveBreakpoint->mHead;
 	return mActiveBreakpoint;
@@ -725,6 +924,8 @@ void LLDBDebugger::ClearCallStack()
 
 void LLDBDebugger::UpdateCallStack(bool slowEarlyOut)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	if (!mCallStackDirty)
 		return;
 	if (!mLLDBProcess.IsValid())
@@ -782,6 +983,8 @@ void LLDBDebugger::UpdateRegisterUsage(int stackFrameIdx)
 
 String LLDBDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd, int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	*addr = 0;
 	*outFile = "";
 	*outHotIdx = 0;
@@ -996,7 +1199,88 @@ DbgMemoryFlags LLDBDebugger::GetMemoryFlags(intptr address)
 
 String LLDBDebugger::GetProcessInfo()
 {
-	return String();
+	if (!mLLDBProcess.IsValid())
+		return String();
+
+	String result;
+
+#ifdef __linux__
+	// Virtual / working set from /proc/<pid>/status
+	{
+		char path[64];
+		snprintf(path, sizeof(path), "/proc/%d/status", mProcessId);
+		FILE* f = fopen(path, "r");
+		if (f != NULL)
+		{
+			uint64 vmSize = 0, vmRSS = 0;
+			char line[256];
+			while (fgets(line, sizeof(line), f) != NULL)
+			{
+				unsigned long val = 0;
+				if (sscanf(line, "VmSize: %lu kB", &val) == 1)
+					vmSize = (uint64)val * 1024ULL;
+				else if (sscanf(line, "VmRSS: %lu kB", &val) == 1)
+					vmRSS = (uint64)val * 1024ULL;
+			}
+			fclose(f);
+			result += StrFormat("VirtualMemory\t%llu\n", vmSize);
+			result += StrFormat("WorkingMemory\t%llu\n", vmRSS);
+		}
+	}
+	// CPU times from /proc/<pid>/stat (fields 14=utime, 15=stime, clock ticks)
+	{
+		char path[64];
+		snprintf(path, sizeof(path), "/proc/%d/stat", mProcessId);
+		FILE* f = fopen(path, "r");
+		if (f != NULL)
+		{
+			int pid;
+			char comm[256];
+			char state;
+			int ppid, pgrp, session, tty, tpgid;
+			unsigned long flags, minflt, cminflt, majflt, cmajflt, utime, stime;
+			if (fscanf(f, "%d %255s %c %d %d %d %d %d %lu %lu %lu %lu %lu %lu %lu",
+				&pid, comm, &state, &ppid, &pgrp, &session, &tty, &tpgid,
+				&flags, &minflt, &cminflt, &majflt, &cmajflt, &utime, &stime) == 15)
+			{
+				long clkTck = sysconf(_SC_CLK_TCK);
+				if (clkTck <= 0)
+					clkTck = 100;
+				// Convert clock ticks → 100-nanosecond units (matches WinDebugger)
+				uint64 utimeHns = (uint64)utime * 10000000ULL / (uint64)clkTck;
+				uint64 stimeHns = (uint64)stime * 10000000ULL / (uint64)clkTck;
+				result += StrFormat("UserTime\t%llu\n",   utimeHns);
+				result += StrFormat("KernelTime\t%llu\n", stimeHns);
+			}
+			fclose(f);
+		}
+	}
+#elif defined(__APPLE__)
+	// macOS: use task_info for memory and times
+	{
+		struct mach_task_basic_info info;
+		mach_msg_type_number_t count = MACH_TASK_BASIC_INFO_COUNT;
+		task_t task;
+		if (task_for_pid(mach_task_self(), mProcessId, &task) == KERN_SUCCESS)
+		{
+			if (task_info(task, MACH_TASK_BASIC_INFO, (task_info_t)&info, &count) == KERN_SUCCESS)
+			{
+				result += StrFormat("VirtualMemory\t%llu\n",  (uint64)info.virtual_size);
+				result += StrFormat("WorkingMemory\t%llu\n",  (uint64)info.resident_size);
+				// user_time / system_time are in microseconds (struct time_value_t)
+				uint64 utimeHns  = (uint64)info.user_time.seconds   * 10000000ULL
+				                 + (uint64)info.user_time.microseconds * 10ULL;
+				uint64 stimeHns  = (uint64)info.system_time.seconds  * 10000000ULL
+				                 + (uint64)info.system_time.microseconds * 10ULL;
+				result += StrFormat("UserTime\t%llu\n",   utimeHns);
+				result += StrFormat("KernelTime\t%llu\n", stimeHns);
+			}
+			mach_port_deallocate(mach_task_self(), task);
+		}
+	}
+#endif
+
+	return result;
 }
 
 int LLDBDebugger::GetProcessId()
@@ -1006,11 +1290,96 @@ int LLDBDebugger::GetProcessId()
 
 String LLDBDebugger::GetThreadInfo()
 {
-	return String();
+	if (!mLLDBProcess.IsValid())
+		return String();
+
+	lldb::SBThread activeThread = mLLDBProcess.GetSelectedThread();
+	int activeThreadId = activeThread.IsValid() ? (int)activeThread.GetThreadID() : 0;
+
+	// First line: active thread ID
+	String result;
+	result += StrFormat("%d\n", activeThreadId);
+
+	uint32 numThreads = mLLDBProcess.GetNumThreads();
+	for (uint32 i = 0; i < numThreads; i++)
+	{
+		lldb::SBThread thread = mLLDBProcess.GetThreadAtIndex(i);
+		if (!thread.IsValid())
+			continue;
+
+		int threadId = (int)thread.GetThreadID();
+
+		// Thread name: use LLDB name, fall back to ordinal labels
+		String threadName;
+		const char* name = thread.GetName();
+		if ((name != NULL) && (name[0] != '\0'))
+			threadName = name;
+		else if (i == 0)
+			threadName = "Main Thread";
+		else
+			threadName = StrFormat("Worker Thread %d", threadId);
+
+		// Location: module!function from the topmost frame, or raw PC
+		String locString;
+		lldb::SBFrame frame = thread.GetFrameAtIndex(0);
+		if (frame.IsValid())
+		{
+			lldb::SBModule module = frame.GetModule();
+			if (module.IsValid())
+			{
+				const char* moduleName = module.GetFileSpec().GetFilename();
+				if ((moduleName != NULL) && (moduleName[0] != '\0'))
+				{
+					locString += moduleName;
+					locString += '!';
+				}
+			}
+
+			const char* funcName = frame.GetDisplayFunctionName();
+			if ((funcName == NULL) || (funcName[0] == '\0'))
+				funcName = frame.GetFunctionName();
+			if ((funcName != NULL) && (funcName[0] != '\0'))
+				locString += FixBeefFunctionName(funcName);
+			else
+				locString += StrFormat("0x%llX", (uint64)frame.GetPC());
+		}
+		else
+		{
+			locString = StrFormat("0x%llX", (uint64)0);
+		}
+
+		result += StrFormat("%d\t", threadId);
+		result += threadName;
+		result += '\t';
+		result += locString;
+
+		// Mark frozen threads with "Fr" attribute (matching WinDebugger format)
+		if (thread.IsSuspended())
+			result += "\tFr";
+
+		result += '\n';
+	}
+
+	return result;
 }
 
 void LLDBDebugger::SetActiveThread(int threadId)
 {
+	if (!mLLDBProcess.IsValid())
+		return;
+
+	// Nothing to do if the requested thread is already selected
+	lldb::SBThread current = mLLDBProcess.GetSelectedThread();
+	if (current.IsValid() && ((int)current.GetThreadID() == threadId))
+		return;
+
+	if (mLLDBProcess.SetSelectedThreadByID((lldb::tid_t)threadId))
+	{
+		// The call stack belongs to a specific thread — discard it so
+		// UpdateCallStack() will rebuild it for the newly selected thread.
+		ClearCallStack();
+		mCallStackDirty = true;
+	}
 }
 
 int LLDBDebugger::GetActiveThread()
@@ -1036,7 +1405,24 @@ bool LLDBDebugger::IsActiveThreadWaiting()
 
 String LLDBDebugger::GetCurrentException()
 {
-	return String();
+	if (mRunState != RunState_Exception)
+		return String();
+
+	// Format: address\nexceptionCode\ndescription
+	// Matches what WinDebugger returns (addr / %08X code / description string).
+	String result;
+	result += StrFormat("0x%llX", mExceptionAddress);
+	result += '\n';
+	result += StrFormat("%08X", mExceptionCode);
+	result += '\n';
+	result += mExceptionDescription;
+
+	// Transition to Paused so the IDE can use eval / step from this state,
+	// mirroring the WinDebugger behaviour where GetCurrentException clears the
+	// "exception pending" flag.
+	mRunState = RunState_Paused;
+
+	return result;
 }
 
 //----------------------------------------------------------------------------
@@ -1349,19 +1735,18 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 	String result;
 	result += displayVal;
 	result += '\n';
-	result += typeName;
-	result += '\n';
+	result += typeName;	
 
 	if (isPointer || isReference)
 	{
-		result += ":type\tpointer\n";
+		result += "\n:type\tpointer";
 		uint64 addr = value.GetValueAsUnsigned(0);
 		if ((addr != 0) && !fmt.mNoAddress)
 		{
-			result += StrFormat(":pointer\t0x%llX\n", addr);
+			result += StrFormat("\n:pointer\t0x%llX", addr);
 			String pointeeName = FixBeefFunctionName(valueType.GetPointeeType().GetName());
-			result += StrFormat(":pointeeExpr\t(%s)0x%llX\n", pointeeName.c_str(), addr);
-			result += StrFormat(":addrValueExpr\t(%s*)0x%llX\n", typeName.c_str(), addr);
+			result += StrFormat("\n:pointeeExpr\t(%s)0x%llX", pointeeName.c_str(), addr);
+			result += StrFormat("\n:addrValueExpr\t(%s*)0x%llX", typeName.c_str(), addr);
 		}
 	}
 	else
@@ -1409,9 +1794,8 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 
 		if (typeCategory != NULL)
 		{
-			result += ":type\t";
-			result += typeCategory;
-			result += '\n';
+			result += "\n:type\t";
+			result += typeCategory;			
 		}
 
 		lldb::addr_t loadAddr = value.GetLoadAddress();
@@ -1424,8 +1808,35 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 			// Expose address so the IDE can navigate members, unless suppressed
 			if ((loadAddr != LLDB_INVALID_ADDRESS) && !fmt.mNoAddress && !fmt.mNoMembers)
 			{
-				result += StrFormat(":pointer\t0x%llX\n", (uint64)loadAddr);
-				result += StrFormat(":addrValueExpr\t(%s*)0x%llX\n", typeName.c_str(), (uint64)loadAddr);
+				result += StrFormat("\n:pointer\t0x%llX", (uint64)loadAddr);
+				result += StrFormat("\n:addrValueExpr\t(%s*)0x%llX", typeName.c_str(), (uint64)loadAddr);
+			}
+
+			// Append member list: alternating name/expression-template pairs.
+			// The expression template uses "{0}" as a placeholder for the parent's
+			// eval string — WatchPanel substitutes it via AppendF when expanding.
+			if (!fmt.mNoMembers)
+			{
+				result += '\n';
+
+				uint32 numChildren = value.GetNumChildren();
+				for (uint32 i = 0; i < numChildren; i++)
+				{
+					lldb::SBValue child = value.GetChildAtIndex(i);
+					if (!child.IsValid())
+						continue;
+					const char* childName = child.GetName();
+					if ((childName == NULL) || (childName[0] == '\0'))
+						continue;
+					// Skip array-index synthetic children (e.g. "[0]", "[1]")
+					if (childName[0] == '[')
+						continue;
+
+					result += '\n';
+					result += childName;
+					result += '\t';
+					result += StrFormat("({0}).%s", childName);					
+				}
 			}
 		}
 		else
@@ -1433,10 +1844,9 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 			// Primitive/enum — mark editable if it lives in addressable memory
 			if (loadAddr != LLDB_INVALID_ADDRESS)
 			{
-				result += ":canEdit\n";
-				result += ":editVal\t";
-				result += displayVal;
-				result += '\n';
+				result += "\n:canEdit";
+				result += "\n:editVal\t";
+				result += displayVal;				
 			}
 		}
 	}
@@ -1450,7 +1860,7 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 
 String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int cursorPos, int language, DwEvalExpressionFlags expressionFlags)
 {
-	LLDBLog("Evaluate '%s'\n", expr);
+	LLDBLog("Evaluate '%s'\n", expr.c_str());
 
 	if (!mLLDBProcess.IsValid())
 		return "!Not running";
@@ -1517,7 +1927,7 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 		result += fmtInfo.mRefId;		
 	}
 
-	LLDBLog(" Result: %s\n", result.c_str());
+	//LLDBLog(" Result: %s\n", result.c_str());
 	return result;
 }
 
@@ -1741,6 +2151,8 @@ void LLDBDebugger::Detach()
 	// Leave mRunState as NotStarted so the debugger can be reused for a new session.
 	mRunState = RunState_NotStarted;
 	mDidAttach = false;
+	mNeedBreakpointRebind = false;
+	mAutoStepRemaining = 0;
 }
 
 //----------------------------------------------------------------------------

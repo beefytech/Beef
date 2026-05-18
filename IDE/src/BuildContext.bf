@@ -1204,21 +1204,6 @@ namespace IDE
 				IDEUtils.AppendWithOptionalQuotes(linkLine, pdbName);
 				linkLine.Append(" ");
 
-				// LLDB can hold onto file references. Deleting those files clears that up.
-				void CheckFileWrite(StringView path)
-				{
-					switch (scope UnbufferedFileStream().Open(path, .ReadWrite))
-					{
-					case .Ok:
-						return;
-					case .Err(let err):
-						if (err == .SharingViolation)
-							File.Delete(path).IgnoreError();
-					}
-				}
-				CheckFileWrite(pdbName);
-				CheckFileWrite(targetPath);
-
 				//TODO: Only add -debug if we have some debug info?
 				//if (isDebug)
 				if (workspaceOptions.mEmitDebugInfo != .No)
@@ -1394,6 +1379,21 @@ namespace IDE
 						writeEmitCmd.mProjectName = new .(project.mProjectName);
 						gApp.mExecutionQueue.Add(writeEmitCmd);
 					}
+
+					// LLDB can hold onto file references. Deleting those files clears that up.
+					void CheckFileWrite(StringView path)
+					{
+						switch (scope UnbufferedFileStream().Open(path, .ReadWrite))
+						{
+						case .Ok:
+							return;
+						case .Err(let err):
+							if (err == .SharingViolation)
+								File.Delete(path).IgnoreError();
+						}
+					}
+					CheckFileWrite(pdbName);
+					CheckFileWrite(targetPath);
 
 			        var runCmd = gApp.QueueRun(linkerPath, linkLine, gApp.mInstallDir, .UTF16WithBom);
 					runCmd.mReference = new .(project.mProjectName);

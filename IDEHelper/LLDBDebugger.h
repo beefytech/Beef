@@ -1,7 +1,8 @@
 #pragma once
 
-#ifdef BF_DBG_64
-#define LLDB_ENABLED
+#if defined BF_DBG_64 && defined BF_PLATFORM_WINDOWS
+// Set LLDB_ENABLED below to test LLDB debugger on Windows
+//#define LLDB_ENABLED
 #endif
 
 #include "Debugger.h"
@@ -47,6 +48,13 @@ public:
 
 	int mProcessId;
 	bool mDidAttach;
+	bool mNeedBreakpointRebind;  // true after launch until first stop event
+	int mAutoStepRemaining;      // >0 while auto-stepping through BeefStartProgram (2=StepInto, 1=StepOver)
+
+	// Exception info (populated when RunState_Exception is set)
+	uint64 mExceptionAddress;
+	uint32 mExceptionCode;
+	String mExceptionDescription;
 
 	// Stored launch parameters — set by OpenFile, consumed by the launch thread
 	String mLaunchPath;
@@ -58,6 +66,10 @@ public:
 
 	// Background launch thread
 	BfpThread* mLaunchThread;
+
+protected:
+	void DumpSymbolAddrs(const StringImpl& sym);
+	void DoCreateBreakpointByName(LLDBBreakpoint* bp);
 
 public:
 	LLDBDebugger(DebugManager* debugManager);
