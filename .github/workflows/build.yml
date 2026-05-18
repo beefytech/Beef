@@ -69,5 +69,5 @@ jobs:
       - run: |
           brew update
           brew install llvm@22
-          brew link llvm@22 --force
+          echo "$(brew --prefix llvm@22)/bin" >> $GITHUB_PATH
       - run: bin/build.sh
