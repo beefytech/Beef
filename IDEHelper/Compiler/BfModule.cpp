@@ -98,6 +98,9 @@ BfLocalMethod::~BfLocalMethod()
 		BF_ASSERT(mSource->mRefCount >= 0);
 	}
 
+	BF_ASSERT(mContext != NULL);
+	if (mContext != NULL)
+		mMethodInstanceGroup->RemoveMethodsFromCEMachine(mContext->mCompiler);
 	delete mMethodInstanceGroup;
 	delete mMethodDef;
 }
@@ -1927,13 +1930,11 @@ BfIRValue BfModule::GetStringObjectValue(int strId, bool define, bool force)
 }
 
 BfIRValue BfModule::GetStringObjectValue(const StringImpl& str, bool define, bool force)
-{
-	auto stringType = ResolveTypeDef(mCompiler->mStringTypeDef, define ? BfPopulateType_Data : BfPopulateType_Declaration);
-	mBfIRBuilder->PopulateType(stringType);
-
+{	
 	int strId = mContext->GetStringLiteralId(str);
 
-	if ((mBfIRBuilder->mIgnoreWrites) && (!force))
+	if (((mBfIRBuilder->mIgnoreWrites) || (!mBfIRBuilder->mHasStarted)) &&
+		(!force))
 	{
 		auto refModule = this;
 		if ((this == mContext->mUnreifiedModule) && (mCurTypeInstance != NULL))
@@ -1941,6 +1942,9 @@ BfIRValue BfModule::GetStringObjectValue(const StringImpl& str, bool define, boo
 		refModule->mUnreifiedStringPoolRefs.Add(strId);
 		return mBfIRBuilder->CreateConst(BfTypeCode_StringId, strId);
 	}
+
+	auto stringType = ResolveTypeDef(mCompiler->mStringTypeDef, define ? BfPopulateType_Data : BfPopulateType_Declaration);
+	mBfIRBuilder->PopulateType(stringType);
 
 	BfIRValue* irValuePtr = NULL;
 	if (mStringObjectPool.TryGetValue(strId, &irValuePtr))
@@ -15194,7 +15198,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				if (methodInstance->mHasBeenProcessed)
 				{
 					BfLogSysM("Deleting processed but unreified specialized method instance %p\n", methodInstance);
-
+					
+					methodInstance->RemoveMethodFromCEMachine(mCompiler);
 					delete methodInstance;
 					methodInstGroup->mMethodSpecializationMap->Remove(lookupMethodGenericArguments);
 					methodInstance = NULL;
@@ -15203,6 +15208,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				{
 					BfLogSysM("Deleting declared but uncreated specialized method instance %p\n", methodInstance);
 
+					methodInstance->RemoveMethodFromCEMachine(mCompiler);
 					delete methodInstance;
 					methodInstGroup->mMethodSpecializationMap->Remove(lookupMethodGenericArguments);
 					methodInstance = NULL;

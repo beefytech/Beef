@@ -15,6 +15,9 @@ ConfigSelections = {IDEHelper = {Enabled = false}}
 [Configs.Debug.Win64]
 EnableSideStack = true
 
+[Configs.Debug.Linux64]
+EnableSideStack = true
+
 [Configs.Release.Win32]
 BfOptimizationLevel = "OgPlus"
 EmitDebugInfo = "No"
@@ -22,6 +25,10 @@ AllocStackTraceDepth = 0
 ConfigSelections = {IDEHelper = {Enabled = false}}
 
 [Configs.Release.Win64]
+BfOptimizationLevel = "O3"
+AllocStackTraceDepth = 0
+
+[Configs.Release.Linux64]
 BfOptimizationLevel = "O3"
 AllocStackTraceDepth = 0
 
@@ -43,6 +50,15 @@ EmitObjectAccessCheck = false
 EnableRealtimeLeakCheck = false
 ConfigSelections = {IDE = {Config = "Debug"}, Beefy2D = {Config = "Debug"}, IDEHelper = {Config = "Debug"}, Debugger64 = {Config = "Debug"}, BeefySysLib = {Config = "Debug"}}
 
+[Configs.Debug-IDE.Linux64]
+BfOptimizationLevel = "O0"
+EmitDebugInfo = "No"
+EmitDynamicCastCheck = false
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+EnableRealtimeLeakCheck = false
+ConfigSelections = {IDE = {Config = "Debug"}, Beefy2D = {Config = "Debug"}, IDEHelper = {Config = "Debug"}, Debugger64 = {Config = "Debug"}, BeefySysLib = {Config = "Debug"}}
+
 [Configs.Debug2.Win32]
 EmitDebugInfo = "No"
 EmitDynamicCastCheck = false
@@ -56,6 +72,10 @@ ConfigSelections = {Beefy2D = {Config = "Debug"}, IDEHelper = {Config = "Debug"}
 PreprocessorMacros = ["NEWFONT"]
 ConfigSelections = {Beefy2D = {Config = "Debug"}, IDEHelper = {Enabled = false, Config = "Debug"}, Debugger64 = {Enabled = false, Config = "Debug"}, BeefySysLib = {Enabled = false, Config = "Debug"}}
 
+[Configs.Debug2.Linux64]
+PreprocessorMacros = ["NEWFONT"]
+ConfigSelections = {Beefy2D = {Config = "Debug"}, IDEHelper = {Enabled = false, Config = "Debug"}, Debugger64 = {Enabled = false, Config = "Debug"}, BeefySysLib = {Enabled = false, Config = "Debug"}}
+
 [Configs.Paranoid.Win32]
 EmitDynamicCastCheck = false
 EnableObjectDebugFlags = false
@@ -65,6 +85,15 @@ EnableSideStack = false
 COptimizationLevel = "O2"
 
 [Configs.Paranoid.Win64]
+EmitDynamicCastCheck = false
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+EnableRealtimeLeakCheck = false
+EnableSideStack = false
+COptimizationLevel = "O2"
+ConfigSelections = {IDEHelper = {Config = "Debug"}, Debugger64 = {Config = "Debug"}, BeefySysLib = {Config = "Debug"}}
+
+[Configs.Paranoid.Linux64]
 EmitDynamicCastCheck = false
 EnableObjectDebugFlags = false
 EmitObjectAccessCheck = false
@@ -87,6 +116,13 @@ EmitObjectAccessCheck = false
 EnableRealtimeLeakCheck = false
 COptimizationLevel = "O2"
 
+[Configs.Test.Linux64]
+EmitDynamicCastCheck = false
+EnableObjectDebugFlags = false
+EmitObjectAccessCheck = false
+EnableRealtimeLeakCheck = false
+COptimizationLevel = "O2"
+
 [Configs.Debug3.Win32]
 EmitDebugInfo = "No"
 EmitDynamicCastCheck = false
@@ -100,6 +136,10 @@ AllocStackTraceDepth = 0
 BfOptimizationLevel = "O0"
 ConfigSelections = {Beefy2D = {Config = "Debug"}, IDEHelper = {Config = "Debug"}, Debugger64 = {Config = "Debug"}, BeefySysLib = {Config = "Debug"}}
 
+[Configs.Debug3.Linux64]
+BfOptimizationLevel = "O0"
+ConfigSelections = {Beefy2D = {Config = "Debug"}, IDEHelper = {Config = "Debug"}, Debugger64 = {Config = "Debug"}, BeefySysLib = {Config = "Debug"}}
+
 [Configs.Debug_NoDeps.Win32]
 InitLocalVariables = true
 EmitObjectAccessCheck = false
@@ -108,5 +148,9 @@ AllocStackTraceDepth = 0
 ConfigSelections = {IDEHelper = {Enabled = false, Config = "Debug"}, IDE = {Config = "Debug"}, Beefy2D = {Config = "Debug"}, Debugger64 = {Config = "Debug"}, BeefySysLib = {Config = "Debug"}}
 
 [Configs.Debug_NoDeps.Win64]
+EnableSideStack = true
+ConfigSelections = {IDE = {Config = "Debug"}, Beefy2D = {Config = "Debug"}, IDEHelper = {Enabled = false, Config = "Debug"}, Debugger64 = {Enabled = false, Config = "Debug"}, BeefySysLib = {Enabled = false, Config = "Debug"}}
+
+[Configs.Debug_NoDeps.Linux64]
 EnableSideStack = true
 ConfigSelections = {IDE = {Config = "Debug"}, Beefy2D = {Config = "Debug"}, IDEHelper = {Enabled = false, Config = "Debug"}, Debugger64 = {Enabled = false, Config = "Debug"}, BeefySysLib = {Enabled = false, Config = "Debug"}}

@@ -14914,6 +14914,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 			BfLocalMethod* localMethod = new BfLocalMethod();
 			localMethod->mMethodName = "anon";
 			localMethod->mSystem = mModule->mSystem;
+			localMethod->mContext = mModule->mContext;
 			localMethod->mModule = mModule;
 
 			localMethod->mExpectedFullName = mModule->GetLocalMethodName(localMethod->mMethodName, lambdaBindExpr->mFatArrowToken, mModule->mCurMethodState, mModule->mCurMethodState->mMixinState);

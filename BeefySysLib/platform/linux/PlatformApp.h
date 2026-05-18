@@ -1,6 +1,8 @@
 #pragma once
 
+#ifdef BF_ENABLE_SDL
 #include "../sdl/SdlBFApp.h"
+#endif
 #include "../HeadlessApp.h"
 
 NS_BF_BEGIN;

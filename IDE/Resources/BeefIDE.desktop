@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Exec=beefide
+Path=/opt/BeefLang/bin
+Terminal=false
+
+Name=Beef IDE
+Comment=IDE for the Beef programming language
+Version=0.43.6
+Categories=Application;Development;IDE;
+Icon=beeflang

@@ -3,6 +3,10 @@
 #include "BeefySysLib/util/BeefPerf.h"
 #include "BeefySysLib/util/Hash.h"
 
+#ifdef _DEBUG
+#define BE_EXTRA_CHECKS
+#endif
+
 #ifdef BF_PLATFORM_WINDOWS
 #include <io.h>
 #endif
@@ -4557,6 +4561,11 @@ void BfIRCodeGen::HandleNextCmd()
 	case BfIRCmd_CreateRet:
 		{
 			CMD_PARAM(llvm::Value*, val);
+
+#ifdef BE_EXTRA_CHECKS
+			BF_ASSERT(val->getType() == mActiveFunction->getReturnType());
+#endif
+
 			SetResult(curId, mIRBuilder->CreateRet(val));
 		}
 		break;
