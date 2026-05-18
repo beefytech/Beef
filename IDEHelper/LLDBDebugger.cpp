@@ -61,6 +61,9 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mBreakStackFrameIdx = 0;
 	mCallStackDirty = false;
 	mDidAttach = false;
+	mHotSwapEnabled = false;
+	mOpenFileFlags = DbgOpenFileFlag_None;
+	mLaunchThread = NULL;
 }
 
 LLDBDebugger::~LLDBDebugger()
@@ -111,20 +114,33 @@ void LLDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targ
 {
 	LLDBLog("OpenFile\n");
 
-	// Initialize LLDB the first time we launch.
+	// Store all parameters; the actual LLDB initialisation happens on a background
+	// thread started by Run() so we don't block the main thread.
+	mLaunchPath = launchPath;
+	mLaunchArgs = args;
+	mWorkingDir = workingDir;
+	mEnvBlock = envBlock;
+	mHotSwapEnabled = hotSwapEnabled;
+	mOpenFileFlags = openFileFlags;
+}
+
+void LLDBDebugger::DoLaunch()
+{
+	LLDBLog("DoLaunch\n");
+
 	lldb::SBDebugger::Initialize();
 
-	mLLDBDebugger = lldb::SBDebugger::Create(/*source_init_files=*/false);
-	mLLDBDebugger.SetAsync(true);
+	lldb::SBDebugger debugger = lldb::SBDebugger::Create(/*source_init_files=*/false);
+	debugger.SetAsync(true);
 
 	// Create a target from the executable path.
 	lldb::SBError targetError;
-	mLLDBTarget = mLLDBDebugger.CreateTarget(launchPath.c_str(), NULL, NULL,
+	lldb::SBTarget target = debugger.CreateTarget(mLaunchPath.c_str(), NULL, NULL,
 		/*add_dependent_modules=*/true, targetError);
-	if (!mLLDBTarget.IsValid())
+	if (!target.IsValid())
 	{
 		String msg = "LLDB: Failed to create target for '";
-		msg += launchPath;
+		msg += mLaunchPath;
 		msg += "'";
 		if (targetError.IsValid())
 		{
@@ -133,15 +149,37 @@ void LLDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targ
 		}
 		msg += "\n";
 		OutputMessage(msg);
+		lldb::SBDebugger::Destroy(debugger);
+		lldb::SBDebugger::Terminate();
+		AutoCrit autoCrit(mDebugManager->mCritSect);
+		mRunState = RunState_Terminated;
 		return;
 	}
 
-	// Parse the args string into a vector of strings, then into a const char** array.
-	// Args are space-separated; quoted strings are not currently handled.
+	// Re-register any breakpoints that were created before launch.
+	{
+		AutoCrit autoCrit(mDebugManager->mCritSect);
+		for (auto bp : mBreakpoints)
+		{
+			if ((!bp->mFilePath.IsEmpty()) && (bp->mRequestedLineNum >= 0))
+			{
+				lldb::SBFileSpec fileSpec(bp->mFilePath.c_str(), false);
+				bp->mLLDBBreakpoint = target.BreakpointCreateByLocation(fileSpec, (uint32)(bp->mRequestedLineNum + 1));
+			}
+			else if (!bp->mSymbolName.IsEmpty())
+			{
+				bp->mLLDBBreakpoint = target.BreakpointCreateByName(bp->mSymbolName.c_str());
+			}
+			if (bp->mLLDBBreakpoint.IsValid())
+				mBreakpointIdMap.ForceAdd((int)bp->mLLDBBreakpoint.GetID(), bp);
+		}
+	}
+
+	// Parse the args string into a vector of strings.
 	Array<String> argStrings;
 	Array<const char*> argv;
 	{
-		const char* p = args.c_str();
+		const char* p = mLaunchArgs.c_str();
 		while (*p != '\0')
 		{
 			while (*p == ' ')
@@ -149,7 +187,7 @@ void LLDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targ
 			if (*p == '\0')
 				break;
 			const char* start = p;
-			while (*p != '\0' && *p != ' ')
+			while ((*p != '\0') && (*p != ' '))
 				++p;
 			argStrings.push_back(String(start, (int)(p - start)));
 		}
@@ -162,40 +200,43 @@ void LLDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targ
 	Array<String> envStrings;
 	Array<const char*> envp;
 	{
-		const uint8* p = &envBlock.front();
-		const uint8* end = p + envBlock.size();
-		while ((p < end) && (*p != '\0'))
+		if (!mEnvBlock.IsEmpty())
 		{
-			const uint8* start = p;
+			const uint8* p = &mEnvBlock.front();
+			const uint8* end = p + mEnvBlock.size();
 			while ((p < end) && (*p != '\0'))
-				++p;
-			envStrings.push_back(String((const char*)start, (int)(p - start)));
-			if (p < end)
-				++p; // skip null terminator
+			{
+				const uint8* start = p;
+				while ((p < end) && (*p != '\0'))
+					++p;
+				envStrings.push_back(String((const char*)start, (int)(p - start)));
+				if (p < end)
+					++p;
+			}
 		}
 		for (auto& s : envStrings)
 			envp.push_back(s.c_str());
 		envp.push_back(NULL);
 	}
 
-	// Launch the process.
+	// Launch the process stopped at entry so the IDE can set up before running.
 	lldb::SBError launchError;
-	mLLDBProcess = mLLDBTarget.Launch(
-		mLLDBDebugger.GetListener(),
+	lldb::SBProcess process = target.Launch(
+		debugger.GetListener(),
 		argv.size() > 1 ? &argv.front() : NULL,
 		envp.size() > 1 ? &envp.front() : NULL,
 		NULL, // stdin
 		NULL, // stdout
 		NULL, // stderr
-		workingDir.IsEmpty() ? NULL : workingDir.c_str(),
+		mWorkingDir.IsEmpty() ? NULL : mWorkingDir.c_str(),
 		0,    // launch flags
 		true, // stop at entry
 		launchError);
 
-	if ((!mLLDBProcess.IsValid()) || launchError.Fail())
+	if ((!process.IsValid()) || launchError.Fail())
 	{
 		String msg = "LLDB: Failed to launch '";
-		msg += launchPath;
+		msg += mLaunchPath;
 		msg += "'";
 		if (launchError.IsValid())
 		{
@@ -204,12 +245,25 @@ void LLDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targ
 		}
 		msg += "\n";
 		OutputMessage(msg);
-		lldb::SBDebugger::Destroy(mLLDBDebugger);
+		lldb::SBDebugger::Destroy(debugger);
+		lldb::SBDebugger::Terminate();
+		AutoCrit autoCrit(mDebugManager->mCritSect);
+		mRunState = RunState_Terminated;
 		return;
 	}
 
-	mProcessId = (int)mLLDBProcess.GetProcessID();
+	// Publish to the shared state under the lock so Update() sees a consistent view.
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	mLLDBDebugger = debugger;
+	mLLDBTarget = target;
+	mLLDBProcess = process;
+	mProcessId = (int)process.GetProcessID();
 	mRunState = RunState_Running;
+}
+
+void BFP_CALLTYPE LLDBDebugger::LaunchThreadProc(void* param)
+{
+	((LLDBDebugger*)param)->DoLaunch();
 }
 
 bool LLDBDebugger::Attach(int processId, BfDbgAttachFlags attachFlags)
@@ -222,11 +276,21 @@ void LLDBDebugger::GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFil
 {
 }
 
+void LLDBDebugger::WaitForLaunchThread()
+{
+	if (mLaunchThread != NULL)
+	{
+		BfpThread_WaitFor(mLaunchThread, -1);
+		BfpThread_Release(mLaunchThread);
+		mLaunchThread = NULL;
+	}
+}
+
 void LLDBDebugger::Run()
 {
-	// Resume a process that was stopped at entry or after a breakpoint.
-	if (mLLDBProcess.IsValid())
-		mLLDBProcess.Continue();
+	// Kick off the background launch thread if OpenFile has stored params for us.
+	if (!mLaunchPath.IsEmpty())
+		mLaunchThread = BfpThread_Create(LaunchThreadProc, (void*)this, 128 * 1024, BfpThreadCreateFlag_StackSizeReserve);
 }
 
 //----------------------------------------------------------------------------
@@ -976,12 +1040,485 @@ String LLDBDebugger::GetCurrentException()
 }
 
 //----------------------------------------------------------------------------
-// Expression evaluation (stubs)
+// Expression evaluation helpers
+//----------------------------------------------------------------------------
+
+struct LLDBFormatInfo
+{
+	DwIntDisplayType mIntDisplayType;
+	String mRefId;       // refid=XXX  — reference ID for persistent display formatting
+	String mThisExpr;    // this=EXPR  — implicit "this" context for member access
+	bool mNoMembers;     // nm         — suppress member expansion
+	bool mNoAddress;     // na         — suppress address metadata
+	bool mRawString;     // rawStr     — don't escape string content
+	int mMaxCount;       // count=N / maxcount=N / arraysize=N
+
+	LLDBFormatInfo()
+	{
+		mIntDisplayType = DwIntDisplayType_Default;
+		mNoMembers      = false;
+		mNoAddress      = false;
+		mRawString      = false;
+		mMaxCount       = -1;
+	}
+};
+
+// Try to interpret a single specifier token (everything after a comma).
+// Returns true and updates fmtInfo if the token is a recognised specifier.
+static bool TryParseSpecifier(const char* spec, LLDBFormatInfo& fmtInfo)
+{
+	if (strcmp(spec, "x") == 0)
+	{
+		fmtInfo.mIntDisplayType = DwIntDisplayType_HexadecimalLower;
+		return true;
+	}
+	if ((strcmp(spec, "X") == 0) || (strcmp(spec, "Xh") == 0))
+	{
+		fmtInfo.mIntDisplayType = DwIntDisplayType_HexadecimalUpper;
+		return true;
+	}
+	if (strcmp(spec, "d") == 0)
+	{
+		fmtInfo.mIntDisplayType = DwIntDisplayType_Decimal;
+		return true;
+	}
+	// String display hints
+	if ((strcmp(spec, "s")   == 0) || (strcmp(spec, "s8")  == 0) ||
+	    (strcmp(spec, "s16") == 0) || (strcmp(spec, "s32") == 0))
+		return true;
+	if (strcmp(spec, "rawStr") == 0)
+	{
+		fmtInfo.mRawString = true;
+		return true;
+	}
+	// Suppression flags
+	if (strcmp(spec, "nm") == 0) { fmtInfo.mNoMembers = true; return true; }
+	if (strcmp(spec, "na") == 0) { fmtInfo.mNoAddress = true; return true; }
+	// Silently consume other two-char "n*" flags (nd, ne, nv) for compatibility
+	if ((spec[0] == 'n') && (spec[1] != '\0') && (spec[2] == '\0'))
+		return true;
+
+	// Key=value specifiers
+	if (strncmp(spec, "refid=", 6) == 0)
+	{
+		fmtInfo.mRefId = spec + 6;
+		return true;
+	}
+	if (strncmp(spec, "this=", 5) == 0)
+	{
+		fmtInfo.mThisExpr = spec + 5;
+		return true;
+	}
+	if ((strncmp(spec, "count=",     6) == 0) ||
+	    (strncmp(spec, "maxcount=",  9) == 0) ||
+	    (strncmp(spec, "arraysize=", 10) == 0))
+	{
+		fmtInfo.mMaxCount = atoi(strchr(spec, '=') + 1);
+		return true;
+	}
+	// Silently consume specifiers we accept but don't act on yet
+	if ((strncmp(spec, "assign=",          7) == 0) ||
+	    (strncmp(spec, "action=",          7) == 0) ||
+	    (strncmp(spec, "_=",               2) == 0) ||
+	    (strncmp(spec, "expectedType=",   13) == 0) ||
+	    (strncmp(spec, "namespaceSearch=", 16) == 0))
+		return true;
+
+	return false;
+}
+
+// Parse an expression string into a bare expression and a populated LLDBFormatInfo.
+// Specifiers are comma-separated tokens appended after the expression and are
+// consumed right-to-left, so multiple specifiers can be stacked
+// (e.g. "expr,x,refid=foo,this=(String*)0x1234").
+// Note: commas inside a specifier value (e.g. template args in a this= type)
+// are not supported; use a typedef or pointer cast to avoid them.
+static void ParseExprAndFormat(const StringImpl& expr, String& outExpr, LLDBFormatInfo& outFmt)
+{
+	outExpr = expr;
+	outFmt  = LLDBFormatInfo();
+
+	// Strip a leading language prefix (@Beef: / @C:)
+	{
+		const char* src = outExpr.c_str();
+		if ((src[0] == '@') && (src[1] != '\0'))
+		{
+			const char* colon = strchr(src + 1, ':');
+			if (colon != NULL)
+				outExpr = String(colon + 1);
+		}
+	}
+
+	// Consume specifiers right-to-left until we hit something unrecognised
+	while (true)
+	{
+		const char* p   = outExpr.c_str();
+		int         len = (int)strlen(p);
+
+		int commaPos = -1;
+		for (int i = len - 1; i >= 0; --i)
+		{
+			if (p[i] == ',')
+			{
+				commaPos = i;
+				break;
+			}
+		}
+		if (commaPos < 0)
+			break;
+
+		if (!TryParseSpecifier(p + commaPos + 1, outFmt))
+			break;
+
+		outExpr = String(p, commaPos);
+	}
+}
+
+// Parse an LLDB expression error string into the IDE error wire format:
+//   "!LINE\tCOL\tmessage"
+// LLDB errors look like:
+//   warning: ...\n
+//   error: <user expression N>:LINE:COL: message\n
+//       N | expr\n
+//         | ^~~\n
+static String FormatLLDBError(const char* errMsg)
+{
+	if ((errMsg == NULL) || (errMsg[0] == '\0'))
+		return "!Unknown error";
+
+	// Scan lines looking for the first "error:" line (skip warnings)
+	const char* errorPayload = NULL;
+	const char* p = errMsg;
+	while (*p != '\0')
+	{
+		if (strncmp(p, "error: ", 7) == 0)
+		{
+			errorPayload = p + 7;
+			break;
+		}
+		while ((*p != '\0') && (*p != '\n'))
+			++p;
+		if (*p == '\n')
+			++p;
+	}
+
+	if (errorPayload == NULL)
+	{
+		// No "error:" line — return the raw message, first line only
+		String msg = "!";
+		const char* q = errMsg;
+		while ((*q != '\0') && (*q != '\n'))
+			msg += *q++;
+		return msg;
+	}
+
+	// Skip optional "<user expression N>" source-file token
+	const char* src = errorPayload;
+	if (*src == '<')
+	{
+		const char* gt = strchr(src, '>');
+		if (gt != NULL)
+		{
+			src = gt + 1;
+			if (*src == ':')
+				++src;
+		}
+	}
+
+	// Parse LINE:COL: message
+	char* end;
+	long line = strtol(src, &end, 10);
+	if ((end != src) && (*end == ':'))
+	{
+		const char* colStart = end + 1;
+		long col = strtol(colStart, &end, 10);
+		if ((end != colStart) && (*end == ':'))
+		{
+			const char* msgStart = end + 1;
+			while (*msgStart == ' ')
+				++msgStart;
+
+			// Take just the first line of the message
+			String message;
+			const char* q = msgStart;
+			while ((*q != '\0') && (*q != '\n'))
+				message += *q++;
+
+			int errLen = 1; // We don't get a length from LLDB
+			return StrFormat("!%d\t%d\t", (int)col - 1, errLen) + message;
+		}
+	}
+
+	// Fallback: return error payload as-is (first line only)
+	String msg = "!";
+	const char* q = errorPayload;
+	while ((*q != '\0') && (*q != '\n'))
+		msg += *q++;
+	return msg;
+}
+
+// Format a single SBValue into the IDE wire format:
+//   line 0 : display value
+//   line 1 : type name
+//   line 2+: ":key[\tval]" metadata lines
+static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& fmt)
+{
+	lldb::SBError error = value.GetError();
+	if (error.Fail())
+		return FormatLLDBError(error.GetCString());
+	if (!value.IsValid())
+		return FormatLLDBError("error: invalid expression result");
+
+	lldb::SBType valueType = value.GetType();
+	String typeName = FixBeefFunctionName(valueType.GetName());
+
+	bool isPointer   = valueType.IsPointerType();
+	bool isReference = valueType.IsReferenceType();
+	lldb::BasicType basicType = valueType.GetCanonicalType().GetBasicType();
+	lldb::TypeClass typeClass = valueType.GetTypeClass();
+
+	DwIntDisplayType intDisplayType = fmt.mIntDisplayType;
+
+	String displayVal;
+
+	// ---- Compute display value ----
+	if (isPointer || isReference)
+	{
+		uint64 addr = value.GetValueAsUnsigned(0);
+		if (addr == 0)
+		{
+			displayVal = "null";
+		}
+		else
+		{
+			// For char*, prefer the string summary LLDB already builds
+			lldb::BasicType ptBasic = valueType.GetPointeeType().GetBasicType();
+			const char* summary = value.GetSummary();
+			if ((summary != NULL) &&
+				((ptBasic == lldb::eBasicTypeChar) ||
+				 (ptBasic == lldb::eBasicTypeSignedChar) ||
+				 (ptBasic == lldb::eBasicTypeUnsignedChar)))
+				displayVal = summary;
+			else
+				displayVal = StrFormat("0x%llX", addr);
+		}
+	}
+	else if (intDisplayType != DwIntDisplayType_Default)
+	{
+		// User-requested numeric override
+		bool isSigned = ((basicType == lldb::eBasicTypeShort) ||
+		                 (basicType == lldb::eBasicTypeInt) ||
+		                 (basicType == lldb::eBasicTypeLong) ||
+		                 (basicType == lldb::eBasicTypeLongLong));
+		uint64 uval = value.GetValueAsUnsigned(0);
+		if (intDisplayType == DwIntDisplayType_HexadecimalLower)
+			displayVal = StrFormat("0x%llx", uval);
+		else if (intDisplayType == DwIntDisplayType_HexadecimalUpper)
+			displayVal = StrFormat("0x%llX", uval);
+		else
+		{
+			if (isSigned)
+				displayVal = StrFormat("%lld", (int64)uval);
+			else
+				displayVal = StrFormat("%llu", uval);
+		}
+	}
+	else
+	{
+		// Fall back to LLDB's own value string
+		const char* valStr = value.GetValue();
+		if ((valStr == NULL) || (valStr[0] == '\0'))
+		{
+			// Composite type — try summary or load address
+			const char* summary = value.GetSummary();
+			lldb::addr_t loadAddr = value.GetLoadAddress();
+			if (summary != NULL)
+				displayVal = summary;
+			else if (loadAddr != LLDB_INVALID_ADDRESS)
+				displayVal = StrFormat("{...} @ 0x%llX", (uint64)loadAddr);
+			else
+				displayVal = "{...}";
+		}
+		else
+		{
+			displayVal = valStr;
+		}
+	}
+
+	// ---- Build the result string ----
+	String result;
+	result += displayVal;
+	result += '\n';
+	result += typeName;
+	result += '\n';
+
+	if (isPointer || isReference)
+	{
+		result += ":type\tpointer\n";
+		uint64 addr = value.GetValueAsUnsigned(0);
+		if ((addr != 0) && !fmt.mNoAddress)
+		{
+			result += StrFormat(":pointer\t0x%llX\n", addr);
+			String pointeeName = FixBeefFunctionName(valueType.GetPointeeType().GetName());
+			result += StrFormat(":pointeeExpr\t(%s)0x%llX\n", pointeeName.c_str(), addr);
+			result += StrFormat(":addrValueExpr\t(%s*)0x%llX\n", typeName.c_str(), addr);
+		}
+	}
+	else
+	{
+		// Determine type category
+		const char* typeCategory = NULL;
+		switch (basicType)
+		{
+		case lldb::eBasicTypeBool:
+		case lldb::eBasicTypeChar:
+		case lldb::eBasicTypeSignedChar:
+		case lldb::eBasicTypeUnsignedChar:
+		case lldb::eBasicTypeWChar:
+		case lldb::eBasicTypeChar16:
+		case lldb::eBasicTypeChar32:
+		case lldb::eBasicTypeShort:
+		case lldb::eBasicTypeUnsignedShort:
+		case lldb::eBasicTypeInt:
+		case lldb::eBasicTypeUnsignedInt:
+		case lldb::eBasicTypeLong:
+		case lldb::eBasicTypeUnsignedLong:
+		case lldb::eBasicTypeLongLong:
+		case lldb::eBasicTypeUnsignedLongLong:
+		case lldb::eBasicTypeInt128:
+		case lldb::eBasicTypeUnsignedInt128:
+			typeCategory = "int";
+			break;
+		case lldb::eBasicTypeHalf:
+		case lldb::eBasicTypeFloat:
+		case lldb::eBasicTypeDouble:
+		case lldb::eBasicTypeLongDouble:
+			typeCategory = "float";
+			break;
+		default:
+			if (typeClass == lldb::eTypeClassEnumeration)
+				typeCategory = "int";
+			else if ((typeClass == lldb::eTypeClassStruct) ||
+			         (typeClass == lldb::eTypeClassClass) ||
+			         (typeClass == lldb::eTypeClassUnion))
+				typeCategory = "object";
+			else
+				typeCategory = "valuetype";
+			break;
+		}
+
+		if (typeCategory != NULL)
+		{
+			result += ":type\t";
+			result += typeCategory;
+			result += '\n';
+		}
+
+		lldb::addr_t loadAddr = value.GetLoadAddress();
+
+		bool isComposite = ((typeClass == lldb::eTypeClassStruct) ||
+		                    (typeClass == lldb::eTypeClassClass) ||
+		                    (typeClass == lldb::eTypeClassUnion));
+		if (isComposite)
+		{
+			// Expose address so the IDE can navigate members, unless suppressed
+			if ((loadAddr != LLDB_INVALID_ADDRESS) && !fmt.mNoAddress && !fmt.mNoMembers)
+			{
+				result += StrFormat(":pointer\t0x%llX\n", (uint64)loadAddr);
+				result += StrFormat(":addrValueExpr\t(%s*)0x%llX\n", typeName.c_str(), (uint64)loadAddr);
+			}
+		}
+		else
+		{
+			// Primitive/enum — mark editable if it lives in addressable memory
+			if (loadAddr != LLDB_INVALID_ADDRESS)
+			{
+				result += ":canEdit\n";
+				result += ":editVal\t";
+				result += displayVal;
+				result += '\n';
+			}
+		}
+	}
+
+	return result;
+}
+
+//----------------------------------------------------------------------------
+// Expression evaluation
 //----------------------------------------------------------------------------
 
 String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int cursorPos, int language, DwEvalExpressionFlags expressionFlags)
 {
-	return String();
+	LLDBLog("Evaluate '%s'\n", expr);
+
+	if (!mLLDBProcess.IsValid())
+		return "!Not running";
+	if ((mRunState != RunState_Paused) && (mRunState != RunState_Breakpoint) &&
+		(mRunState != RunState_Exception))
+		return "!Not paused";
+
+	if (mCallStack.IsEmpty())
+		UpdateCallStack();
+	if ((callStackIdx < 0) || (callStackIdx >= (int)mCallStack.size()))
+		return "!Invalid stack frame";
+
+	lldb::SBFrame frame = mCallStack[callStackIdx];
+	if (!frame.IsValid())
+		return "!Invalid stack frame";
+
+	// Strip trailing format specifiers and language prefix
+	String evalExpr;
+	LLDBFormatInfo fmtInfo;
+	ParseExprAndFormat(expr, evalExpr, fmtInfo);
+
+	// Configure evaluation options
+	lldb::SBExpressionOptions options;
+	options.SetUnwindOnError(true);
+	options.SetTryAllThreads(false);
+	bool allowSideEffects = ((expressionFlags & DwEvalExpressionFlag_AllowSideEffects) != 0) ||
+	                        ((expressionFlags & DwEvalExpressionFlag_AllowCalls) != 0);
+	options.SetAllowJIT(allowSideEffects);
+	if (!allowSideEffects)
+		options.SetSuppressPersistentResult(true);
+
+	// Validate-only mode: just check that the expression compiles
+	if ((expressionFlags & DwEvalExpressionFlag_ValidateOnly) != 0)
+	{
+		lldb::SBValue val = frame.EvaluateExpression(evalExpr.c_str(), options);
+		lldb::SBError err = val.GetError();
+		return err.Fail() ? FormatLLDBError(err.GetCString()) : String();
+	}
+
+	// Evaluate the expression directly
+	lldb::SBValue value = frame.EvaluateExpression(evalExpr.c_str(), options);
+
+	// "this=" fallback: if direct evaluation failed and a this-context was specified,
+	// retry as "(thisExpr)->expr".  This mirrors WinDebugger behaviour where a bare
+	// member name resolves against the implicit this when not found as a local.
+	if ((value.GetError().Fail() || !value.IsValid()) && !fmtInfo.mThisExpr.IsEmpty())
+	{
+		String memberExpr = "(";
+		memberExpr += fmtInfo.mThisExpr;
+		memberExpr += ")->";
+		memberExpr += evalExpr;
+		lldb::SBValue memberValue = frame.EvaluateExpression(memberExpr.c_str(), options);
+		if (!memberValue.GetError().Fail() && memberValue.IsValid())
+			value = memberValue;
+	}
+
+	String result = FormatSBValueToResult(value, fmtInfo);
+
+	// Append reference ID if one was specified — the IDE uses this to associate
+	// a persistent display format with this particular watch expression
+	if (!fmtInfo.mRefId.IsEmpty())
+	{
+		result += "\n:referenceId\t";
+		result += fmtInfo.mRefId;		
+	}
+
+	LLDBLog(" Result: %s\n", result.c_str());
+	return result;
 }
 
 String LLDBDebugger::EvaluateContinue()
@@ -1090,6 +1627,8 @@ void LLDBDebugger::StopDebugging()
 {
 	LLDBLog("StopDebugging\n");
 
+	WaitForLaunchThread();
+
 	// Release SBFrame refs before destroying so LLDB can fully drop module handles.
 	ClearCallStack();
 	mActiveBreakpoint = NULL;
@@ -1117,6 +1656,8 @@ void LLDBDebugger::Terminate()
 {
 	LLDBLog("Terminate\n");
 
+	WaitForLaunchThread();
+
 	mRunState = RunState_Terminating;
 
 	ClearCallStack();
@@ -1139,6 +1680,8 @@ void LLDBDebugger::Terminate()
 void LLDBDebugger::Detach()
 {
 	LLDBLog("Detach\n");
+
+	WaitForLaunchThread();
 
 	// Release SBFrame refs before destroying so LLDB can fully drop module handles.
 	mCallStack.Clear();
@@ -1189,11 +1732,15 @@ void LLDBDebugger::Detach()
 	mBreakStackFrameIdx = 0;
 	mHadImageFindError = false;
 
+	// Clear stored launch params so a subsequent OpenFile starts fresh.
+	mLaunchPath.Clear();
+	mLaunchArgs.Clear();
+	mWorkingDir.Clear();
+	mEnvBlock.Clear();
+
 	// Leave mRunState as NotStarted so the debugger can be reused for a new session.
 	mRunState = RunState_NotStarted;
-	mDidAttach = false;	
-
-	//lldb::SBDebugger::Terminate();
+	mDidAttach = false;
 }
 
 //----------------------------------------------------------------------------

@@ -48,6 +48,17 @@ public:
 	int mProcessId;
 	bool mDidAttach;
 
+	// Stored launch parameters — set by OpenFile, consumed by the launch thread
+	String mLaunchPath;
+	String mLaunchArgs;
+	String mWorkingDir;
+	Array<uint8> mEnvBlock;
+	DbgOpenFileFlags mOpenFileFlags;
+	bool mHotSwapEnabled;
+
+	// Background launch thread
+	BfpThread* mLaunchThread;
+
 public:
 	LLDBDebugger(DebugManager* debugManager);
 	~LLDBDebugger();
@@ -64,6 +75,9 @@ public:
 	virtual void InitiateHotResolve(DbgHotResolveFlags flags) override;
 	virtual intptr GetDbgAllocHeapSize() override;
 	virtual String GetDbgAllocInfo() override;
+	void DoLaunch();
+	static void BFP_CALLTYPE LaunchThreadProc(void* param);
+	void WaitForLaunchThread();
 	void HandleProcessEvent(lldb::StateType state);
 	virtual void Update() override;
 	virtual void ContinueDebugEvent() override;
