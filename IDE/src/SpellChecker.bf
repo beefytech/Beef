@@ -84,7 +84,7 @@ namespace IDE
 
         static void GetUserDirectFileName(String path)
         {
-            path.Append(IDEApp.sApp.mInstallDir, "userdict.txt");
+            path.Append(IDEApp.sApp.mUserDataDir, "userdict.txt");
         }
 
 		public static void ResetWordList()
