@@ -12923,6 +12923,10 @@ namespace IDE
 #if BF_PLATFORM_LINUX
 			let icon = (Span<uint8>)cAppIcon;
 			BFApp_RegisterAppIcon(icon.Ptr, icon.Length);
+
+#if LINUX_PACKAGE
+			mUserDataDir = new $"{Environment.GetEnvironmentVariable("HOME", .. scope .())}/.config/beeflang/";
+#endif
 #endif
 
 			//Yoop();
