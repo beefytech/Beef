@@ -23,8 +23,10 @@ jobs:
     steps:
       - uses: actions/checkout@v5
       - run: |
-          sudo apt-get update
-          sudo apt-get install llvm-22-dev
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22
+          sudo apt-get install -y llvm-22-dev
       - run: bin/build.sh
   build-linux-ide:
     name: Build IDE on Linux
@@ -49,8 +51,10 @@ jobs:
         name: Build SDL3
       - uses: actions/checkout@v5
       - run: |
-          sudo apt-get update
-          sudo apt-get install llvm-19-dev libsystemd-dev libcurl4-openssl-dev
+          wget https://apt.llvm.org/llvm.sh
+          chmod +x llvm.sh
+          sudo ./llvm.sh 22
+          sudo apt-get install -y llvm-22-dev libsystemd-dev libcurl4-openssl-dev
       - run: bin/build.sh ide
   build-macos:
     name: Build on macOS
