@@ -21,7 +21,10 @@ typedef fd_set FD_SET;
 #include <sys/socket.h>
 #include <mach/error.h>
 #include <mach/mach.h>
-#pragma comment(lib,"wsock32.lib")
+#endif
+
+#ifdef BF_PLATFORM_WINDOWS
+#pragma comment(lib,"ws2_32.lib")
 #endif
 
 #ifdef BF_PLATFORM_POSIX
