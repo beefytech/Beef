@@ -545,6 +545,7 @@ GLRenderWindow::GLRenderWindow(GLRenderDevice* renderDevice, SDL_Window* sdlWind
 	//glEnableClientState(GL_INDEX_ARRAY);
 #endif
 
+	mRefreshRate = 0;
 	mSDLWindow = sdlWindow;
 	mRenderDevice = renderDevice;
 	Resized();
@@ -613,13 +614,18 @@ void GLRenderWindow::CopyBitsTo(uint32* dest, int width, int height)
 
 float GLRenderWindow::GetRefreshRate()
 {
-	SDL_DisplayID displayID = bf_SDL_GetDisplayForWindow(mSDLWindow);
-	const SDL_DisplayMode *mode = bf_SDL_GetCurrentDisplayMode(displayID);
+	if (mRefreshRate == 0)
+	{
+		SDL_DisplayID displayID = bf_SDL_GetDisplayForWindow(mSDLWindow);
+		const SDL_DisplayMode* mode = bf_SDL_GetCurrentDisplayMode(displayID);
+		if (mode != NULL)
+			mRefreshRate = mode->refresh_rate;
+	}
 
-	if (mode != NULL)
-		return mode->refresh_rate;
+	if (mRefreshRate == 0)
+		mRefreshRate = RenderWindow::GetRefreshRate();
 
-	return RenderWindow::GetRefreshRate();
+	return mRefreshRate;
 }
 
 ///

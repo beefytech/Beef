@@ -684,6 +684,16 @@ void SdlBFApp::ProcessSDLEvents()
 					sdlBFWindow->mRenderWindow->Resized();
 			}
 			break;
+		case SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED:
+			{
+				for (auto kv : mSdlWindowMap)
+				{
+					GLRenderWindow* sdlRenderWindow = (GLRenderWindow*)kv.mValue->mRenderWindow;
+					if (sdlRenderWindow != NULL)
+						sdlRenderWindow->mRefreshRate = 0;
+				}
+			}
+			break;
 		}
 	}
 }

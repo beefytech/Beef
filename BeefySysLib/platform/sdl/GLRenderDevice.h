@@ -119,6 +119,7 @@ public:
 	bool					mResizePending;
 	int						mPendingWidth;
 	int						mPendingHeight;
+	float					mRefreshRate;
 
 public:
 	virtual void			PhysSetAsTarget();
