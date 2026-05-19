@@ -12917,13 +12917,8 @@ namespace IDE
 
 			mGitManager.Init();
 
-#if BF_PLATFORM_LINUX
-			let icon = (Span<uint8>)cAppIcon;
-			BFApp_RegisterAppIcon(icon.Ptr, icon.Length);
-
-#if LINUX_PACKAGE
+#if BF_PLATFORM_LINUX && LINUX_PACKAGE
 			mUserDataDir = new $"{Environment.GetEnvironmentVariable("HOME", .. scope .())}/.config/beeflang/";
-#endif
 #endif
 
 			//Yoop();
@@ -13122,6 +13117,11 @@ namespace IDE
 					(int32)mRequestedWindowRect.mY, (int32)mRequestedWindowRect.mWidth, (int32)mRequestedWindowRect.mHeight,
 					flags, mMainFrame);
 			}
+
+#if BF_PLATFORM_LINUX
+			let icon = (Span<uint8>)cAppIcon;
+			BFApp_RegisterAppIcon(icon.Ptr, icon.Length);
+#endif
 
 			if (mIsFirstRun)
 			{
