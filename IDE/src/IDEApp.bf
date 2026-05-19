@@ -197,7 +197,6 @@ namespace IDE
 		public DarkDockingFrame mDockingFrame;
 		public MainFrame mMainFrame;
 		public GlobalUndoManager mGlobalUndoManager = new GlobalUndoManager() ~ delete _;
-		public SourceControl mSourceControl = new SourceControl() ~ delete _;
 		public GitManager mGitManager = new .() ~ delete _;
 
 		public WidgetWindow mPopupWindow;
@@ -1537,8 +1536,6 @@ namespace IDE
 
 			if (Utils.WriteTextFile(path, useText) case .Err)
 			{
-				if (gApp.mSettings.mEditorSettings.mPerforceAutoCheckout)
-					mSourceControl.Checkout(path);
 				Thread.Sleep(10);
 				if (Utils.WriteTextFile(path, useText) case .Err)
 				{
