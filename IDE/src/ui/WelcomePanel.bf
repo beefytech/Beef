@@ -2,6 +2,7 @@ using Beefy.gfx;
 using Beefy.theme.dark;
 using System;
 using Beefy.widgets;
+using System.IO;
 
 namespace IDE.ui
 {
@@ -13,6 +14,9 @@ namespace IDE.ui
 			public String mLabel ~ delete _;
 			public Font mFont;
 			public String mPath ~ delete _;
+#if BF_PLATFORM_LINUX && LINUX_PACKAGE
+			public String mUserPath ~ delete _;
+#endif
 
 			public override void Draw(Graphics g)
 			{
@@ -41,7 +45,21 @@ namespace IDE.ui
 				base.MouseClicked(x, y, origX, origY, btn);
 
 				gApp.[Friend]mDeferredOpen = .Workspace;
+#if BF_PLATFORM_LINUX && LINUX_PACKAGE
+				String.NewOrSet!(gApp.[Friend]mDeferredOpenFileName, mUserPath);
+
+				if (!File.Exists(mUserPath))
+				{
+					let installedSamplesDir = scope String();
+					let userSamplesDir = scope String();
+					if (Path.GetDirectoryPath(mPath, installedSamplesDir) case .Ok && Path.GetDirectoryPath(mUserPath, userSamplesDir) case .Ok)
+					{
+						Directory.Copy(installedSamplesDir, userSamplesDir).IgnoreError();
+					}
+				}
+#else
 				String.NewOrSet!(gApp.[Friend]mDeferredOpenFileName, mPath);
+#endif
 			}
 		}
 
@@ -75,12 +93,18 @@ namespace IDE.ui
 
 			mSampleBtn0 = new .();
 			mSampleBtn0.mPath = new String()..AppendF(@"{}/../Samples/SpaceGame/BeefSpace.toml", gApp.mInstallDir);
+#if BF_PLATFORM_LINUX && LINUX_PACKAGE
+			mSampleBtn0.mUserPath = new $"{gApp.mUserDataDir}/Samples/SpaceGame/BeefSpace.toml";
+#endif
 			mSampleBtn0.mLabel = new String("Space Game");
 			mSampleBtn0.mImage = mSampleImg0;
 			AddWidget(mSampleBtn0);
 
 			mSampleBtn1 = new .();
 			mSampleBtn1.mPath = new String()..AppendF(@"{}/../Samples/HelloWorld/BeefSpace.toml", gApp.mInstallDir);
+#if BF_PLATFORM_LINUX && LINUX_PACKAGE
+			mSampleBtn1.mUserPath = new $"{gApp.mUserDataDir}/Samples/HelloWorld/BeefSpace.toml";
+#endif
 			mSampleBtn1.mLabel = new String("Hello World");
 			mSampleBtn1.mImage = mSampleImg1;
 			AddWidget(mSampleBtn1);
