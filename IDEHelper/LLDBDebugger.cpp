@@ -4,7 +4,11 @@
 #ifdef LLDB_ENABLED
 
 #ifdef __linux__
+#include <limits.h>
 #include <unistd.h>
+#ifndef MAX_PATH
+#define MAX_PATH PATH_MAX
+#endif
 #endif
 #ifdef __APPLE__
 #include <mach/mach.h>
@@ -327,8 +331,9 @@ void LLDBDebugger::DoLaunch()
 
 	// Launch the process stopped at entry so the IDE can set up before running.
 	lldb::SBError launchError;
+	lldb::SBListener listener = debugger.GetListener();
 	lldb::SBProcess process = target.Launch(
-		debugger.GetListener(),
+		listener,
 		argv.size() > 1 ? &argv.front() : NULL,
 		envp.size() > 1 ? &envp.front() : NULL,
 		NULL, // stdin
