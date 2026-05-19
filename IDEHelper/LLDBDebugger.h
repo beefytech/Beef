@@ -1,5 +1,9 @@
 #pragma once
 
+#if !defined BF_DBG_64 && !defined BF_DBG_32
+#define BF_DBG_64
+#endif
+
 #if defined BF_DBG_64 && defined BF_PLATFORM_WINDOWS
 // Set LLDB_ENABLED below to test LLDB debugger on Windows
 //#define LLDB_ENABLED

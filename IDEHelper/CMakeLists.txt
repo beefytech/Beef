@@ -122,6 +122,7 @@ file(GLOB SRC_FILES
     SpellChecker.cpp
     Targets.cpp
     X86XmmInfo.cpp
+    LLDBDebugger.cpp
 
     Beef/BfCommon.cpp
     Clang/CDepChecker.cpp
@@ -181,42 +182,24 @@ else()
   message(FATAL_ERROR "LLVM not found")
 endif()
 
-set(DBG64_OBJECTS)
-
-# Windows builds debugger backends through separate Debugger32/Debugger64
-# Visual Studio projects, with BF_DBG_32/BF_DBG_64 defined at the target
-# level; those Windows debugger backend targets are not currently modeled in
-# CMake.  Do the same for Linux debugger sources here instead of compiling
-# them as part of the common IDEHelper source list.
 if(UNIX AND NOT APPLE)
-  set(DBG64_SRC LinuxDebugger.cpp)
   find_path(LLDB_INCLUDE_DIR lldb/API/LLDB.h HINTS ${LLVM_INCLUDE_DIRS})
   find_library(LLDB_LIBRARY NAMES lldb liblldb lldb-22 liblldb-22 HINTS ${LLVM_LIBRARY_DIRS})
 
   if (LLDB_INCLUDE_DIR AND LLDB_LIBRARY)
     message(STATUS "Found LLDB: ${LLDB_LIBRARY}")
-    list(APPEND DBG64_SRC LLDBDebugger.cpp)
+    add_definitions(-DLLDB_ENABLED)
     string(APPEND TARGET_LIBS_OS " ${LLDB_LIBRARY}")
     string(STRIP ${TARGET_LIBS_OS} TARGET_LIBS_OS)
   else()
     message(WARNING "LLDB was not found; Linux IDE debugger support will be disabled")
   endif()
 
-  add_library(IDEHelperDebugger64 OBJECT ${DBG64_SRC})
-  target_compile_definitions(IDEHelperDebugger64 PRIVATE BF_DBG_64)
-  if (LLDB_INCLUDE_DIR AND LLDB_LIBRARY)
-    target_compile_definitions(IDEHelperDebugger64 PRIVATE LLDB_ENABLED)
-    target_include_directories(IDEHelperDebugger64 PRIVATE ${LLDB_INCLUDE_DIR})
-  endif()
-  set(DBG64_OBJECTS $<TARGET_OBJECTS:IDEHelperDebugger64>)
-else()
-  list(APPEND SRC_FILES LinuxDebugger.cpp)
 endif()
 
 # Add library to build.
 add_library(${PROJECT_NAME} STATIC
    ${SRC_FILES}
-   ${DBG64_OBJECTS}
 )
 
 if (HAVE_BACKTRACE_HEADERS)

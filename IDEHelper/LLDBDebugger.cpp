@@ -2188,4 +2188,26 @@ bool LLDBDebugger::GetEmitSource(const StringImpl& filePath, String& outText)
 	return false;
 }
 
+#else
+
+USING_NS_BF;
+
+#endif
+
+#ifndef BF_PLATFORM_WINDOWS
+
+Beefy::Debugger* Beefy::CreateDebugger32(DebugManager* debugManager, DbgMiniDump* miniDump)
+{
+	return NULL;
+}
+
+Beefy::Debugger* Beefy::CreateDebugger64(DebugManager* debugManager, DbgMiniDump* miniDump)
+{
+#ifdef LLDB_ENABLED
+	return new LLDBDebugger(debugManager);
+#else
+	return NULL;
+#endif
+}
+
 #endif
