@@ -723,7 +723,6 @@ namespace IDE
 			public LockWhileDebuggingKind mLockEditingWhenDebugging = .WhenNotHotSwappable;// Only applicable for
 			public CompilerKind mEmitCompiler;
 			// non-Beef sources
-			public bool mPerforceAutoCheckout = true;
 			public bool mSpellCheckEnabled = true;
 			public bool mShowLineNumbers = true;
 			public bool mFreeCursorMovement;
@@ -757,7 +756,6 @@ namespace IDE
 				sd.Add("LockEditing", mLockEditing);
 				sd.Add("LockEditingWhenDebugging", mLockEditingWhenDebugging);
 				sd.Add("EmitCompiler", mEmitCompiler);
-				sd.Add("PerforceAutoCheckout", mPerforceAutoCheckout);
 				sd.Add("SpellCheckEnabled", mSpellCheckEnabled);
 				sd.Add("ShowLineNumbers", mShowLineNumbers);
 				sd.Add("FreeCursorMovement", mFreeCursorMovement);
@@ -795,7 +793,6 @@ namespace IDE
 				sd.Get("LockEditing", ref mLockEditing);
 				sd.Get("LockEditingWhenDebugging", ref mLockEditingWhenDebugging);
 				sd.Get("EmitCompiler", ref mEmitCompiler);
-				sd.Get("PerforceAutoCheckout", ref mPerforceAutoCheckout);
 				sd.Get("SpellCheckEnabled", ref mSpellCheckEnabled);
 				sd.Get("ShowLineNumbers", ref mShowLineNumbers);
 				sd.Get("FreeCursorMovement", ref mFreeCursorMovement);
