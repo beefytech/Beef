@@ -4239,7 +4239,7 @@ BfIRType BfIRBuilder::MapType(BfType* type, BfIRPopulateType populateType)
 {
 	if (!mIgnoreWrites)
 	{
-		PopulateType(type, populateType);
+		PopulateType(type, mHasStarted ? populateType : BfIRPopulateType_Identity);
 	}
 	BF_ASSERT(type->mTypeId > 0);
 	BfIRType retType;
