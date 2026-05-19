@@ -44,30 +44,28 @@ class Linux
 
 	public typealias DBusMsgHandler = function int32(DBusMsg *m, void *userdata, DBusErr *ret_error);
 
-	public static bool IsSystemdAvailable { get; private set; } = true;
+	public static bool IsSystemdAvailable { get; private set; }
 
 	[AlwaysInclude, StaticInitPriority(100)]
 	static class AllowFail
 	{
 		public static this()
 		{
-			Runtime.AddErrorHandler(new => Handle);
-		}
-
-		public static Runtime.ErrorHandlerResult Handle(Runtime.ErrorStage errorStage, Runtime.Error error)
-		{
-			if (errorStage == .PreFail)
-			{
-				if (var loadLibaryError = error as Runtime.LoadSharedLibraryError)
+			IsSystemdAvailable = true;
+			Runtime.AddErrorHandler(new (stage, error) => {
+				if (stage == .PreFail)
 				{
-					if (loadLibaryError.mPath == "libsystemd.so")
+					if (var loadLibaryError = error as Runtime.LoadSharedLibraryError)
 					{
-						IsSystemdAvailable = false;
-						return .Ignore;
+						if (loadLibaryError.mPath == "libsystemd.so")
+						{
+							IsSystemdAvailable = false;
+							return .Ignore;
+						}
 					}
 				}
-			}
-			return .ContinueFailure;
+				return .ContinueFailure;
+			});
 		}
 	}
 

@@ -589,9 +589,9 @@ enum DialogResult
 
 abstract class CommonDialog
 {
-	protected Linux.DBus* mBus ~ Linux.SdBusUnref(_);
-	protected Linux.DBusMsg* mRequest ~ Linux.SdBusMessageUnref(_);
-	protected Linux.DBusErr mError ~ Linux.SdBusErrorFree(&_);
+	protected Linux.DBus* mBus ~ if (_ != null) Linux.SdBusUnref(_);
+	protected Linux.DBusMsg* mRequest ~ if (_ != null) Linux.SdBusMessageUnref(_);
+	protected Linux.DBusErr mError ~ if (_ != default) Linux.SdBusErrorFree(&_);
 	protected String mTitle ~ delete _;
 	protected String mInitialDir ~ delete _;
 	protected String[] mFileNames ~ DeleteContainerAndItems!(_);
