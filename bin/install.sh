@@ -37,6 +37,8 @@ if [ -f "IDE/dist/BeefIDE" ]; then
     install -Dm644 -t "${INSTALL_PATH}/bin/" "IDE/dist/en_US.aff"
     install -Dm644 -t "${INSTALL_PATH}/bin/" "IDE/dist/en_US.dic"
 
+    install -Dm644 -t "${INSTALL_PATH}/bin/" "IDE/dist/BeefDbgVis.toml"
+
     find IDE/dist/fonts -type f -exec install -Dm644 -t "${INSTALL_PATH}/bin/fonts" "{}" \;
     find IDE/dist/images -type f -exec install -Dm644 -t "${INSTALL_PATH}/bin/images" "{}" \;
     find IDE/dist/shaders -type f -exec install -Dm644 -t "${INSTALL_PATH}/bin/shaders" "{}" \;
