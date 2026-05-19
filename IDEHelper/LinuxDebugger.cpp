@@ -1,6 +1,7 @@
 #include "BeefySysLib/Common.h"
 #include "LinuxDebugger.h"
 #include "Debugger.h"
+#include "LLDBDebugger.h"
 #include "X86Target.h"
 
 namespace Beefy
@@ -21,7 +22,11 @@ Beefy::Debugger* CreateDebugger64(DebugManager* debugManager, DbgMiniDump* miniD
 {
 	//if (gX86Target == NULL)
 	//	gX86Target = new X86Target();
+#ifdef LLDB_ENABLED
+	return new LLDBDebugger(debugManager);
+#else
 	return NULL;
+#endif
 }
 
 NS_BF_END
