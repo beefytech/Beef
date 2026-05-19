@@ -63,8 +63,10 @@ public:
 	SdlClipboardData*       mSdlClipboardData;
 	SDL_GLContext           mGLContext;
 	SDL_Window*				mGLContextWindow;
+	bool					mSDLInitialized;
 
 protected:
+	void					SDLInit();
 	virtual void			Draw() override;
 	virtual void			PhysSetCursor() override;
 

@@ -432,6 +432,18 @@ SdlBFApp::SdlBFApp()
     mInstallDir += "/";
 
 	mIsControlDown = false;
+	mSDLInitialized = false;
+	
+
+	mDataDir = mInstallDir;	
+}
+
+void SdlBFApp::SDLInit()
+{
+	if (mSDLInitialized)
+		return;
+
+	mSDLInitialized = true;
 
 	if (bf_SDL_Init == NULL)
 	{
@@ -512,8 +524,6 @@ SdlBFApp::SdlBFApp()
 		BF_GET_SDLPROC(SDL_RaiseWindow);
 	}
 
-	mDataDir = mInstallDir;
-
 	if (!bf_SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
 		printf("Unable to initialize SDL: %s\n", bf_SDL_GetError());
 
@@ -534,6 +544,9 @@ SdlBFWindow* SdlBFApp::GetSdlWindowFromId(uint32 id)
 
 void SdlBFApp::ProcessSDLEvents()
 {
+	if (!mSDLInitialized)
+		return;
+
 	SDL_Event sdlEvent;
 	while (bf_SDL_PollEvent(&sdlEvent))
 	{
@@ -720,6 +733,7 @@ void SdlBFApp::Run()
 extern int gPixelsDrawn;
 int gFrameCount = 0;
 int gBFDrawBatchCount = 0;
+
 void SdlBFApp::Draw()
 {
     //Beefy::DebugTimeGuard suspendTimeGuard(30, "SdlBFApp::Draw");
@@ -738,6 +752,8 @@ void SdlBFApp::Draw()
 
 BFWindow* SdlBFApp::CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
 {
+	SDLInit();
+
 	SdlBFWindow* aWindow = new SdlBFWindow(parent, title, x, y, width, height, windowFlags);
 	mSdlWindowMap[bf_SDL_GetWindowID(aWindow->mSDLWindow)] = aWindow;
 	mWindowList.push_back(aWindow);
