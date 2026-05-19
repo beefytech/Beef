@@ -203,8 +203,7 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	}
 
 #ifdef BF_PLATFORM_FULLSCREEN
-	if (windowFlags)
-		bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN, true);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN, true);
 #endif
 
 	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, x);
@@ -516,7 +515,7 @@ SdlBFApp::SdlBFApp()
 	mDataDir = mInstallDir;
 
 	if (!bf_SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
-		BF_FATAL(StrFormat("Unable to initialize SDL: %s", bf_SDL_GetError()).c_str());
+		printf("Unable to initialize SDL: %s\n", bf_SDL_GetError());
 
 	bf_SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
 }
