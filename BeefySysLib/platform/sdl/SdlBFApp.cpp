@@ -20,7 +20,10 @@
 #include <cstdint>
 #include <cstdio>
 #include <cwchar>
+
+#ifndef _WIN32
 #include <dlfcn.h>
+#endif
 
 USING_NS_BF;
 
@@ -115,7 +118,7 @@ struct AdjustedMonRect
 	int mHeight;
 };
 
-static int bfMouseBtnOf[4] = {NULL, 0, 2, 1}; // Translate SDL mouse buttons to what Beef expects.
+static int bfMouseBtnOf[4] = {0, 0, 2, 1}; // Translate SDL mouse buttons to what Beef expects.
 
 static const char* mimeTypes[] = 
 { 
@@ -199,8 +202,8 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		}
 	}
 
-	if (windowFlags)
 #ifdef BF_PLATFORM_FULLSCREEN
+	if (windowFlags)
 		bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN, true);
 #endif
 
@@ -407,6 +410,8 @@ SdlBFApp::SdlBFApp()
 	mRunning = false;
 	mRenderDevice = NULL;
 	mSdlClipboardData = new SdlClipboardData();
+	mGLContext = NULL;
+	mGLContextWindow = NULL;
 
 	Beefy::String exePath;
 	BfpGetStrHelper(exePath, [](char* outStr, int* inOutStrSize, BfpResult* result)
@@ -416,7 +421,7 @@ SdlBFApp::SdlBFApp()
 
 	mInstallDir = GetFileDir(exePath) + "/";
 
-	int lastSlash = std::max((int)mInstallDir.LastIndexOf('\\'), (int)mInstallDir.LastIndexOf('/'));
+	int lastSlash = BF_MAX((int)mInstallDir.LastIndexOf('\\'), (int)mInstallDir.LastIndexOf('/'));
 	if (lastSlash != -1)
 		mInstallDir = mInstallDir.Substring(0, lastSlash);
 
@@ -510,7 +515,7 @@ SdlBFApp::SdlBFApp()
 
 	mDataDir = mInstallDir;
 
-	if (bf_SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD) < 0)
+	if (!bf_SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
 		BF_FATAL(StrFormat("Unable to initialize SDL: %s", bf_SDL_GetError()).c_str());
 
 	bf_SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
@@ -564,21 +569,21 @@ void SdlBFApp::ProcessSDLEvents()
 			{
 				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 				if (sdlBFWindow != NULL)
-					sdlBFWindow->mMouseUpFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button]);
+					sdlBFWindow->mMouseUpFunc(sdlBFWindow, (int)sdlEvent.button.x, (int)sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button]);
 			}
 			break;
 		case SDL_EVENT_MOUSE_BUTTON_DOWN:
 			{
 				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 				if (sdlBFWindow != NULL)
-					sdlBFWindow->mMouseDownFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button], sdlEvent.button.clicks);
+					sdlBFWindow->mMouseDownFunc(sdlBFWindow, (int)sdlEvent.button.x, (int)sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button], sdlEvent.button.clicks);
 			}
 			break;
 		case SDL_EVENT_MOUSE_MOTION:
 			{
 				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 				if (sdlBFWindow != NULL)
-					sdlBFWindow->mMouseMoveFunc(sdlBFWindow, sdlEvent.button.x, sdlEvent.button.y);
+					sdlBFWindow->mMouseMoveFunc(sdlBFWindow, (int)sdlEvent.button.x, (int)sdlEvent.button.y);
 			}
 			break;
 		case SDL_EVENT_MOUSE_WHEEL:
@@ -586,7 +591,7 @@ void SdlBFApp::ProcessSDLEvents()
 				uint ucNumLines = 3; // Default
 				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.wheel.windowID);
 				if(sdlBFWindow != NULL)
-					sdlBFWindow->mMouseWheelFunc(sdlBFWindow, sdlEvent.wheel.mouse_x, sdlEvent.wheel.mouse_y, sdlEvent.wheel.x, sdlEvent.wheel.y * (float)ucNumLines);
+					sdlBFWindow->mMouseWheelFunc(sdlBFWindow, (int)sdlEvent.wheel.mouse_x, (int)sdlEvent.wheel.mouse_y, sdlEvent.wheel.x, sdlEvent.wheel.y * (float)ucNumLines);
 			}
 			break;
 		case SDL_EVENT_WINDOW_MOUSE_ENTER:
@@ -825,7 +830,7 @@ void* SdlBFApp::GetClipboardData(const StringImpl& format, int* size)
 {
 	size_t outSize;
 	void* data = bf_SDL_GetClipboardData(GetClipboardFormat(format), &outSize);
-	*size = outSize;
+	*size = (int)outSize;
 	return data;
 }
 

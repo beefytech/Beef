@@ -1,6 +1,8 @@
 #include "DInputManager.h"
 #include "WinBFApp.h"
 
+#ifndef BF_FORCE_SDL
+
 #pragma comment (lib, "dinput8.lib")
 #pragma comment (lib, "dxguid.lib")
 
@@ -137,3 +139,5 @@ String DInputDevice::GetState()
 
 	return str;
 }
+
+#endif

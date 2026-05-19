@@ -5,6 +5,13 @@
 #include "BFWindow.h"
 #include "util/Dictionary.h"
 
+//#define BF_FORCE_SDL
+
+#ifdef BF_FORCE_SDL
+
+#include "../sdl/SdlBFApp.h"
+
+#else
 
 NS_BF_BEGIN;
 
@@ -142,3 +149,5 @@ public:
 };
 
 NS_BF_END;
+
+#endif

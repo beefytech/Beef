@@ -1,12 +1,13 @@
 #pragma once
 
+#include "Common.h"
 #include "BFApp.h"
 #include "BFWindow.h"
-#include <SDL3/SDL_video.h>
-#include <map>
 #include "util/Dictionary.h"
 
 struct SDL_Window;
+struct SDL_GLContextState;
+typedef struct SDL_GLContextState* SDL_GLContext;
 
 NS_BF_BEGIN;
 

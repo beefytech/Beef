@@ -1,5 +1,13 @@
 #include <dsound.h>
 #include "WinBFApp.h"
+
+#ifdef BF_FORCE_SDL
+
+#include "..\sdl\SdlBFApp.cpp"
+#include "..\sdl\GLRenderDevice.cpp"
+
+#else
+
 #include "DXRenderDevice.h"
 #include <signal.h>
 #include "../../util/BeefPerf.h"
@@ -2179,3 +2187,4 @@ DrawLayer* WinBFApp::CreateDrawLayer(BFWindow* window)
 	return drawLayer;
 }
 
+#endif
