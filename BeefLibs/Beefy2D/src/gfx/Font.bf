@@ -263,13 +263,14 @@ namespace Beefy.gfx
 #if BF_PLATFORM_LINUX
 
 		const String FONTCONFIG_LIB = "libfontconfig.so";
-		static bool IsFontconfigAvailable { get; private set; } = true;
+		static bool IsFontconfigAvailable { get; private set; }
 
 		[AlwaysInclude, StaticInitPriority(100)]
 		private static class FontconfigAllowFail
 		{
 			static this()
 			{
+				SelfOuter.IsFontconfigAvailable = true;
 				Runtime.AddErrorHandler(new (stage, error) => {
 					if (stage == .PreFail)
 					{
