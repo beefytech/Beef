@@ -1039,6 +1039,8 @@ static bool InflateRectToMonitor(SDL_DisplayID monitor, AdjustedMonRect* inflate
 
 void SdlBFApp::GetWorkspaceRect(int& x, int& y, int& width, int& height)
 {
+	SDLInit();
+
 	AdjustedMonRect inflateRect = { 0 };
 
 	int displayCount;
