@@ -1111,6 +1111,13 @@ const void* SDLClipboardCallback(void* userData, const char* mimeType, size_t* o
 
 void SdlBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard)
 {
+	if (format == "text")
+	{
+		StringImpl str((const char*)ptr, size);
+		bf_SDL_SetClipboardText(str.c_str());
+		return;
+	}
+
 	StringImpl mime = StringImpl::MakeRef(GetClipboardFormat(format));
 	if (mime.empty())
 	{
