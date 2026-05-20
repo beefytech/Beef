@@ -124,8 +124,8 @@ static int bfMouseBtnOf[4] = {0, 0, 2, 1}; // Translate SDL mouse buttons to wha
 
 static const char* mimeTypes[] =
 {
-	"text/plain;charset=utf-8",
-	"text/vnd.beeflang.bf-text",
+	"text/plain",
+	"",
 	"text/vnd.beeflang.file-list"
 };
 
@@ -1067,11 +1067,12 @@ const char* SdlBFApp::GetClipboardFormat(const StringImpl& format)
 {
 	if (format == "text" || format == "atext")
 	{
-		return "text/plain;charset=utf-8";
+		return "text/plain";
 	}
 	if (format == "bf_text")
 	{
-		return "text/vnd.beeflang.bf-text";
+		// This format is a hack to fix broken clipboards on Windows, not needed here
+		return "";
 	}
 	if (format == "code/file-list")
 	{
@@ -1085,6 +1086,9 @@ void* SdlBFApp::GetClipboardData(const StringImpl& format, int* size)
 	size_t outSize;
 	void* data = bf_SDL_GetClipboardData(GetClipboardFormat(format), &outSize);
 	*size = (int)outSize;
+
+	//printf("GetClipboardData %s: %.*s\n", GetClipboardFormat(format), *size, (const char*)data);
+
 	return data;
 }
 
@@ -1107,25 +1111,29 @@ const void* SDLClipboardCallback(void* userData, const char* mimeType, size_t* o
 
 void SdlBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard)
 {
+	StringImpl mime = StringImpl::MakeRef(GetClipboardFormat(format));
+	if (mime.empty())
+	{
+		//printf("SetClipboardData %s: Unsupported format\n", format.c_str());
+		return;
+	}
+
 	void* buffer = bf_SDL_malloc(size);
 	if (buffer == NULL)
 	{
 		bf_SDL_SetError("Out of memory for clipboard");
 	}
-	else
+
+	for (auto kv : *mSdlClipboardData)
 	{
-		StringImpl mime = StringImpl::MakeRef(GetClipboardFormat(format));
-
-		void* previous;
-		if (mSdlClipboardData->TryGetValue(mime, &previous))
-		{
-			bf_SDL_free(previous);
-		}
-		bf_SDL_memcpy(buffer, ptr, size);
-		(*mSdlClipboardData)[mime] = buffer;
-
-		bf_SDL_SetClipboardData(SDLClipboardCallback, NULL, &mSdlClipboardData, mimeTypes, 3);
+		bf_SDL_free(kv.mValue);
 	}
+	bf_SDL_memcpy(buffer, ptr, size);
+	(*mSdlClipboardData)[mime] = buffer;
+
+	//printf("SetClipboardData %s: %.*s\n", mime.c_str(), size, (const char*)ptr);
+
+	bf_SDL_SetClipboardData(SDLClipboardCallback, NULL, &mSdlClipboardData, mimeTypes, 3);
 }
 
 BFMenu* SdlBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck)
