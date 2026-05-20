@@ -16,7 +16,7 @@ public:
 	virtual void			GetDesktopResolution(int& width, int& height) override { }
 	virtual void			GetWorkspaceRect(int& x, int& y, int& width, int& height) override {}
 
-	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags) override { return NULL; }
+	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags) override { return NULL; }
 	virtual DrawLayer*		CreateDrawLayer(BFWindow* window) override { return NULL; }
 
 	virtual void*			GetClipboardData(const StringImpl& format, int* size) override { return NULL; }
