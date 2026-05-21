@@ -184,7 +184,7 @@ endif()
 
 if(UNIX AND NOT APPLE)
   find_path(LLDB_INCLUDE_DIR lldb/API/LLDB.h HINTS ${LLVM_INCLUDE_DIRS})
-  find_library(LLDB_LIBRARY NAMES lldb liblldb lldb-22 liblldb-22 HINTS ${LLVM_LIBRARY_DIRS})
+  find_library(LLDB_LIBRARY NAMES lldb-22 liblldb-22 lldb liblldb HINTS ${LLVM_LIBRARY_DIRS})
 
   if (LLDB_INCLUDE_DIR AND LLDB_LIBRARY)
     message(STATUS "Found LLDB: ${LLDB_LIBRARY}")

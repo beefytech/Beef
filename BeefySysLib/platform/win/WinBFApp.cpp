@@ -1527,7 +1527,7 @@ void WinBFApp::GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fro
 	outHeight = inflateRect.mHeight;
 }
 
-BFWindow* WinBFApp::CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
+BFWindow* WinBFApp::CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags)
 {
 	AutoCrit autoCrit(mCritSect);
 

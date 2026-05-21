@@ -242,7 +242,7 @@ BF_EXPORT void BF_CALLTYPE BFApp_SetCallbacks(BFApp_UpdateFunc updateFunc, BFApp
 	//public delegate void UpdateProc();
 }
 
-BF_EXPORT BFWindow* BF_CALLTYPE BFApp_CreateWindow(BFWindow* parent, const char* title, int x, int y, int width, int height, int windowFlags)
+BF_EXPORT BFWindow* BF_CALLTYPE BFApp_CreateWindow(BFWindow* parent, const char* title, int x, int y, int width, int height, int64 windowFlags)
 {
 	return gBFApp->CreateNewWindow(parent, title, x, y, width, height, windowFlags);
 }

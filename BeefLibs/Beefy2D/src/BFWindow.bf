@@ -52,7 +52,8 @@ namespace Beefy
 			AcceptFiles = 0x1000'0000,
 			NoShow = 0x2000'0000,
 			NoMouse = 0x4000'0000,
-            Tooltip = 0x8000'0000
+            Tooltip = 0x8000'0000,
+            LogicalCoords = 0x1'0000'0000,
         };
 
 		[AllowDuplicates]
@@ -85,7 +86,7 @@ namespace Beefy
             TopRight = 14,
             Transparent = -1,
             VScroll = 7,
-            Zoom = 9            
+            Zoom = 9
         }
 
 		public enum ShowKind
@@ -106,7 +107,7 @@ namespace Beefy
 
         public virtual void Draw(Graphics g)
         {
-            
+
         }
 
         public virtual void PreDraw(Graphics g)
@@ -177,7 +178,7 @@ namespace Beefy
         public float mAlpha = 1.0f;
         public Flags mWindowFlags;
         private bool mMouseVisible;
-        public bool mHasFocus = false;        
+        public bool mHasFocus = false;
         public bool mHasClosed;
 		public bool mIsDirty = true;
         public BFWindow mParent;
@@ -204,13 +205,13 @@ namespace Beefy
         static NativeDragDropFileDelegate sNativeDragDropFileDelegate ~ delete _;
 
         [CallingConvention(.Stdcall), CLink]
-        static extern void* BFApp_CreateWindow(void* parent, char8* title, int32 x, int32 y, int32 width, int32 height, int32 windowFlags);
+        static extern void* BFApp_CreateWindow(void* parent, char8* title, int32 x, int32 y, int32 width, int32 height, int64 windowFlags);
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void* BFWindow_GetNativeUnderlying(void* window);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern void BFWindow_SetCallbacks(void* window, void* movedDelegate, void* closeQueryDelegate, void* closedDelegate, 
+        static extern void BFWindow_SetCallbacks(void* window, void* movedDelegate, void* closeQueryDelegate, void* closedDelegate,
             void* gotFocusDelegate, void* lostFocusDelegate,
 			void* keyCharDelegate, void* keyDownDelegate, void* keyUpDelegate, void* hitTestDelegate,
             void* mouseMoveDelegate, void* mouseProxyMoveDelegate, void* mouseDownDelegate, void* mouseUpDelegate, void* mouseWheelDelegate, void* mouseLeaveDelegate,
@@ -318,7 +319,7 @@ namespace Beefy
 		static void Static_NativeKeyCharDelegate(void* window, char32 c) { GetBFWindow(window).KeyChar(c); }
 		static bool Static_NativeKeyDownDelegate(void* window, int32 key, int32 isRepeat) { return GetBFWindow(window).KeyDown(key, isRepeat); }
 		static void Static_NativeKeyUpDelegate(void* window, int32 key) { GetBFWindow(window).KeyUp(key); }
-        static int32 Static_NativeHitTestDelegate(void* window, int32 x, int32 y) { return (int32)GetBFWindow(window).HitTest(x, y); }        
+        static int32 Static_NativeHitTestDelegate(void* window, int32 x, int32 y) { return (int32)GetBFWindow(window).HitTest(x, y); }
         static void Static_NativeMouseMoveDelegate(void* window, int32 mouseX, int32 mouseY) { GetBFWindow(window).MouseMove(mouseX, mouseY); }
 		static void Static_NativeMouseProxyMoveDelegate(void* window, int32 mouseX, int32 mouseY) { GetBFWindow(window).MouseProxyMove(mouseX, mouseY); }
 		static void Static_NativeMouseDownDelegate(void* window, int32 mouseX, int32 mouseY, int32 btnNum, int32 btnCount) { GetBFWindow(window).MouseDown(mouseX, mouseY, btnNum, btnCount); }
@@ -331,7 +332,7 @@ namespace Beefy
 
 		public Rect<int32> ClientRect => .(mClientX, mClientY, mClientWidth, mClientHeight);
 		public Rect<int32> WindowRect => .(mX, mY, mWindowWidth, mWindowHeight);
- 		
+
 		public this()
 		{
 		}
@@ -364,7 +365,7 @@ namespace Beefy
 			if (windowFlags.HasFlag(.NoShow))
 				mVisible = false;
 
-            mNativeWindow = BFApp_CreateWindow((parent != null) ? (parent.mNativeWindow) : null, title, (int32)x, (int32)y, (int32)width, (int32)height, (int32)useFlags);
+            mNativeWindow = BFApp_CreateWindow((parent != null) ? (parent.mNativeWindow) : null, title, (int32)x, (int32)y, (int32)width, (int32)height, (.)useFlags);
             sWindowDictionary[(int)mNativeWindow] = this;
 
             if (sNativeMovedDelegate == null)
@@ -391,7 +392,7 @@ namespace Beefy
             BFWindow_SetCallbacks(mNativeWindow, sNativeMovedDelegate.GetFuncPtr(), sNativeCloseQueryDelegate.GetFuncPtr(), sNativeClosedDelegate.GetFuncPtr(), sNativeGotFocusDelegate.GetFuncPtr(), sNativeLostFocusDelegate.GetFuncPtr(),
                 sNativeKeyCharDelegate.GetFuncPtr(), sNativeKeyDownDelegate.GetFuncPtr(), sNativeKeyUpDelegate.GetFuncPtr(), sNativeHitTestDelegate.GetFuncPtr(),
                 sNativeMouseMoveDelegate.GetFuncPtr(), sNativeMouseProxyMoveDelegate.GetFuncPtr(), sNativeMouseDownDelegate.GetFuncPtr(), sNativeMouseUpDelegate.GetFuncPtr(), sNativeMouseWheelDelegate.GetFuncPtr(), sNativeMouseLeaveDelegate.GetFuncPtr(),
-                sNativeMenuItemSelectedDelegate.GetFuncPtr(), sNativeDragDropFileDelegate.GetFuncPtr());            
+                sNativeMenuItemSelectedDelegate.GetFuncPtr(), sNativeDragDropFileDelegate.GetFuncPtr());
             BFApp.sApp.mWindows.Add(this);
 
             mDefaultDrawLayer = new DrawLayer(this);
@@ -399,7 +400,7 @@ namespace Beefy
             if (windowFlags.HasFlag(Flags.Menu))
             {
                 mSysMenu = new SysMenu();
-                mSysMenu.mWindow = this;                
+                mSysMenu.mWindow = this;
             }
             mWindowFlags = windowFlags;
 
@@ -445,8 +446,8 @@ namespace Beefy
         }
 
         public virtual void Dispose()
-        {            
-            Close(true);            
+        {
+            Close(true);
         }
 
         public virtual int32 CloseQuery()
@@ -462,7 +463,7 @@ namespace Beefy
 				return;
 			mNativeWindowClosed = true;*/
 
-			while (mChildWindows.Count > 0)	
+			while (mChildWindows.Count > 0)
 				mChildWindows[mChildWindows.Count - 1].Close(force);
 
 			//for (var childWindow in mChildWindows)
@@ -506,7 +507,7 @@ namespace Beefy
         {
             // Does checking of mouse coords against all window even when this window has mouse capture,
             //  helps some dragging scenarios.  Gets turned off automatically on mouse up.
-            BFWindow_SetNonExclusiveMouseCapture(mNativeWindow);            
+            BFWindow_SetNonExclusiveMouseCapture(mNativeWindow);
         }
 
 		public bool HasParent(BFWindow widgetWindow)
@@ -533,7 +534,7 @@ namespace Beefy
 
             if (mWindowFlags.HasFlag(Flags.QuitOnClose))
                 BFApp.sApp.Stop();
-            
+
             if (mParent != null)
             {
                 mParent.mChildWindows.Remove(this);
@@ -562,7 +563,7 @@ namespace Beefy
 		}
 
         public virtual void Moved()
-        {            
+        {
             RehupSize();
         }
 
@@ -618,7 +619,7 @@ namespace Beefy
         public virtual void NativeMenuItemSelected(void* menu)
         {
             SysMenu aSysMenu = mSysMenuMap[(int)menu];
-            MenuItemSelected(aSysMenu);                      
+            MenuItemSelected(aSysMenu);
         }
 
 		public virtual void DragDropFile(StringView filePath)
@@ -639,12 +640,12 @@ namespace Beefy
         }
 
         public virtual void LostFocus(BFWindow newFocus)
-        {			
+        {
             if (!mHasFocus)
                 return;
 			mHasFocus = false;
             if (mNativeWindow != null)
-                BFWindow_LostFocus(mNativeWindow, (newFocus != null) ? newFocus.mNativeWindow : null);            
+                BFWindow_LostFocus(mNativeWindow, (newFocus != null) ? newFocus.mNativeWindow : null);
 
 			//TODO: REMOVE
             //Debug.WriteLine("LostFocus {0}", mTitle);
@@ -654,7 +655,7 @@ namespace Beefy
 		{
 			return BFWindow_GetDPI(mNativeWindow);
 		}
-        
+
         public virtual void KeyChar(char32 theChar)
         {
         }
@@ -666,7 +667,7 @@ namespace Beefy
 
         public virtual void KeyUp(int32 keyCode)
         {
-			
+
         }
 
         public virtual HitTestResult HitTest(int32 x, int32 y)
@@ -703,7 +704,7 @@ namespace Beefy
         }
 
         public virtual void Update()
-        {            
+        {
         }
 
 		public virtual void UpdateF(float updatePct)
@@ -713,7 +714,7 @@ namespace Beefy
     }
 #else
     public class BFWindow : BFWindowBase, IStudioClientWindow
-    {        
+    {
         //IStudioWidgetWindow mProxy;
         public int mClientWidth;
         public int mClientHeight;
@@ -722,7 +723,7 @@ namespace Beefy
         public float mAlpha = 1.0f;
         public bool mVisible = true;
         public Flags mWindowFlags;
-        
+
         public IPCProxy<IStudioHostWindow> mRemoteWindow;
         public IPCEndpoint<IStudioClientWindow> mStudioClientWindow;
 
@@ -816,7 +817,7 @@ namespace Beefy
 
         public virtual void KeyChar(char32 theChar)
         {
-        }        
+        }
 
         public virtual void KeyDown(int keyCode, int isRepeat)
         {
@@ -849,13 +850,13 @@ namespace Beefy
         public virtual void MouseLeave()
         {
         }
-                
+
         public virtual void Update()
         {
         }
 
         public override void PreDraw(Graphics g)
-        {                        
+        {
             base.PreDraw(g);
             mRemoteWindow.Proxy.RemoteDrawingStarted();
         }

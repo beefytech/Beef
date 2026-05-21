@@ -107,7 +107,7 @@ public:
 	virtual void			GetWorkspaceRect(int& x, int& y, int& width, int& height) = 0;
 	virtual void			GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fromHeight, int& outX, int& outY, int& outWidth, int& outHeight) { GetWorkspaceRect(outX, outY, outWidth, outHeight); }
 
-	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags) = 0;
+	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags) = 0;
 	virtual void			RemoveWindow(BFWindow* window);
 	virtual DrawLayer*		CreateDrawLayer(BFWindow* window) = 0;
 

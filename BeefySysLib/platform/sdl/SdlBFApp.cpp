@@ -45,9 +45,9 @@ void (SDLCALL* bf_SDL_DestroyProperties)(SDL_PropertiesID props);
 bool (SDLCALL* bf_SDL_SetNumberProperty)(SDL_PropertiesID props, const char* name, int64_t value);
 bool (SDLCALL* bf_SDL_SetBooleanProperty)(SDL_PropertiesID props, const char* name, bool value);
 bool (SDLCALL* bf_SDL_SetStringProperty)(SDL_PropertiesID props, const char* name, const char* value);
-bool (SDLCALL* bf_SDL_SetPointerProperty)(SDL_PropertiesID props, const char *name, void *value);  
+bool (SDLCALL* bf_SDL_SetPointerProperty)(SDL_PropertiesID props, const char *name, void *value);
 
-SDL_Window* (SDLCALL* bf_SDL_CreateWindowWithProperties)(SDL_PropertiesID props); 
+SDL_Window* (SDLCALL* bf_SDL_CreateWindowWithProperties)(SDL_PropertiesID props);
 SDL_WindowID (SDLCALL* bf_SDL_GetWindowID)(SDL_Window* window);
 void (SDLCALL* bf_SDL_DestroyWindow)(SDL_Window* window);
 bool (SDLCALL* bf_SDL_SyncWindow)(SDL_Window* window);
@@ -59,6 +59,7 @@ bool (SDLCALL* bf_SDL_SetWindowSize)(SDL_Window* window, int w, int h);
 bool (SDLCALL* bf_SDL_SetWindowMinimumSize)(SDL_Window* window, int min_w, int min_h);
 bool (SDLCALL* bf_SDL_SetWindowTitle)(SDL_Window* window, const char* title);
 bool (SDLCALL* bf_SDL_SetWindowIcon)(SDL_Window* window, SDL_Surface* icon);
+float (SDLCALL* bf_SDL_GetWindowDisplayScale)(SDL_Window* window);
 SDL_Window* (SDLCALL* bf_SDL_GetMouseFocus)();
 
 bool (SDLCALL* bf_SDL_ShowCursor)(void);
@@ -87,6 +88,7 @@ SDL_DisplayMode* (SDLCALL* bf_SDL_GetDesktopDisplayMode)(SDL_DisplayID displayID
 bool (SDLCALL* bf_SDL_HasRectIntersection)(const SDL_Rect* A, const SDL_Rect* B);
 SDL_DisplayID (SDLCALL* bf_SDL_GetDisplayForWindow)(SDL_Window *window);
 const SDL_DisplayMode* (SDLCALL* bf_SDL_GetCurrentDisplayMode)(SDL_DisplayID displayID);
+
 
 SDL_Surface* (SDLCALL* bf_SDL_CreateSurfaceFrom)(int width, int height, SDL_PixelFormat format, void *pixels, int pitch);
 
@@ -120,10 +122,10 @@ struct AdjustedMonRect
 
 static int bfMouseBtnOf[4] = {0, 0, 2, 1}; // Translate SDL mouse buttons to what Beef expects.
 
-static const char* mimeTypes[] = 
-{ 
-	"text/plain;charset=utf-8",
-	"text/vnd.beeflang.bf-text",
+static const char* mimeTypes[] =
+{
+	"text/plain",
+	"",
 	"text/vnd.beeflang.file-list"
 };
 
@@ -165,6 +167,36 @@ static void BFGetSDLProc(T& proc, const char* name, const StringImpl& installDir
 
 #define BF_GET_SDLPROC(name) BFGetSDLProc(bf_##name, #name, mInstallDir)
 
+static float SDLGetDisplayScale(SDL_DisplayID displayID)
+{
+	if (displayID == 0)
+		return 1.0f;
+
+	SDL_Rect bounds;
+	if (!bf_SDL_GetDisplayBounds(displayID, &bounds))
+		return 1.0f;
+
+	SDL_PropertiesID props = bf_SDL_CreateProperties();
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN, true);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, true);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, bounds.x);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, bounds.y);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, 1);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, 1);
+	bf_SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, "SDLDisplayScaleProbe");
+
+	SDL_Window* probeWindow = bf_SDL_CreateWindowWithProperties(props);
+	bf_SDL_DestroyProperties(props);
+
+	if (probeWindow == NULL)
+		return 1.0f;
+
+	float scale = bf_SDL_GetWindowDisplayScale(probeWindow);
+	bf_SDL_DestroyWindow(probeWindow);
+
+	return (scale > 0.0f) ? scale : 1.0f;
+}
+
 static SDL_Surface* gAppIconSurface;
 
 BF_EXPORT void BF_CALLTYPE BFApp_RegisterAppIcon(uint8* imageData, int size)
@@ -174,9 +206,63 @@ BF_EXPORT void BF_CALLTYPE BFApp_RegisterAppIcon(uint8* imageData, int size)
 	gAppIconSurface = bf_SDL_CreateSurfaceFrom(image->mWidth, image->mHeight, SDL_PIXELFORMAT_ABGR8888, image->mBits, image->mWidth*4);
 }
 
-SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
+SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags)
 {
 	SDL_PropertiesID props = bf_SDL_CreateProperties();
+
+	bool wantScale = (windowFlags & BFWINDOW_LOGICAL_COORDS) == 0;
+
+	// Determine assumed scale: use another window's scale if available, else 1.0
+	float assumedScale = 0.0f;
+	SdlBFApp* sdlApp = (SdlBFApp*)gBFApp;
+
+	if (wantScale)
+	{
+		if ((sdlApp != NULL) && (sdlApp->mWindowList.size() > 0))
+		{
+			// Get scale from first existing window
+			SdlBFWindow* existingWindow = (SdlBFWindow*)sdlApp->mWindowList.front();
+			if (existingWindow != NULL)
+			{
+				assumedScale = bf_SDL_GetWindowDisplayScale(existingWindow->mSDLWindow);
+				//printf("Assuming scale of %f based on existing window\n", assumedScale);
+			}
+		}
+
+		if (assumedScale == 0)
+		{
+			int displayCount = 0;
+			SDL_DisplayID* displays = bf_SDL_GetDisplays(&displayCount);
+			if (displays != NULL)
+			{
+				for (int di = 0; di < displayCount; di++)
+				{
+					float scale = SDLGetDisplayScale(displays[di]);
+					if (scale > 0)
+					{
+						assumedScale = scale;
+						//printf("Assuming scale of %f based on display %d\n", assumedScale, di);
+						break;
+					}
+				}
+				bf_SDL_free(displays);
+			}
+		}
+	}
+
+	if (assumedScale == 0.0f)
+	{
+		//printf("No existing window or display scale info found, assuming scale of 1.0. wantScale:%d\n", wantScale);
+		assumedScale = 1.0f;
+	}
+
+	// Convert incoming pixel coordinates to logical using assumed scale
+	int logicalX = (int)(x / assumedScale + 0.5f);
+	int logicalY = (int)(y / assumedScale + 0.5f);
+	int logicalW = (int)(width / assumedScale + 0.5f);
+	int logicalH = (int)(height / assumedScale + 0.5f);
+
+	//printf("Creating window '%s' at %d,%d %dx%d parent:%p (logical coords: %d,%d %dx%d) Scale:%f WantScale:%d Flags:%llX\n", title.c_str(), x, y, width, height, parent, logicalX, logicalY, logicalW, logicalH, assumedScale, wantScale, windowFlags);
 
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, true);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, (windowFlags & BFWINDOW_RESIZABLE) != 0);
@@ -188,6 +274,8 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN, (windowFlags & BFWINDOW_FAKEFOCUS) == 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MODAL_BOOLEAN, (windowFlags & BFWINDOW_MODAL) != 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, (windowFlags & BFWINDOW_TOPMOST) != 0);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, true);
+	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN, true);
 
 	if (parent != NULL)
 	{
@@ -197,8 +285,8 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		{
 			int parentX, parentY;
 			bf_SDL_GetWindowPosition(parentWindow, &parentX, &parentY);
-			x -= parentX;
-			y -= parentY;
+			logicalX -= parentX;
+			logicalY -= parentY;
 		}
 	}
 
@@ -206,16 +294,16 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN, true);
 #endif
 
-	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, x);
-	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, y);
-	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, width);
-	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, height);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_X_NUMBER, logicalX);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_Y_NUMBER, logicalY);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, logicalW);
+	bf_SDL_SetNumberProperty(props, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, logicalH);
 	bf_SDL_SetStringProperty(props, SDL_PROP_WINDOW_CREATE_TITLE_STRING, title.c_str());
 
 	mSDLWindow = bf_SDL_CreateWindowWithProperties(props);
 
 	bf_SDL_DestroyProperties(props);
-//	printf("Created %i : %s\n", bf_SDL_GetWindowID(mSDLWindow), title.c_str());
+	//printf("Created %i : %s Scale:%f\n", bf_SDL_GetWindowID(mSDLWindow), title.c_str(), bf_SDL_GetWindowDisplayScale(mSDLWindow));
 
 	if (gAppIconSurface)
 		bf_SDL_SetWindowIcon(mSDLWindow, gAppIconSurface);
@@ -232,7 +320,6 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, contextFlags);
 #endif
 
-	auto sdlApp = (SdlBFApp*)gBFApp;
 	if(sdlApp->mGLContext == NULL)
 	{
 		sdlApp->mGLContextWindow = mSDLWindow;
@@ -254,6 +341,33 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		}
 	}
 
+	// Adjust position if actual scale differs from assumed scale
+
+	float actualScale = bf_SDL_GetWindowDisplayScale(mSDLWindow);
+	//printf("Actual scale: %f\n", actualScale);
+	if ((actualScale > 0.0f) && (fabs(actualScale - assumedScale) > 0.01f) && (wantScale))
+	{
+		// Scale was different; recalculate logical position and size from original pixel coords
+		int correctedLogicalX = (int)(x / actualScale + 0.5f);
+		int correctedLogicalY = (int)(y / actualScale + 0.5f);
+		int correctedLogicalW = (int)(width / actualScale + 0.5f);
+		int correctedLogicalH = (int)(height / actualScale + 0.5f);
+		if (parent != NULL)
+		{
+			SDL_Window* parentWindow = ((SdlBFWindow*)parent)->mSDLWindow;
+			int parentX, parentY;
+			bf_SDL_GetWindowPosition(parentWindow, &parentX, &parentY);
+			if ((windowFlags & BFWINDOW_TOOLTIP | BFWINDOW_FAKEFOCUS) != 0)
+			{
+				correctedLogicalX -= parentX;
+				correctedLogicalY -= parentY;
+			}
+		}
+		//printf("Correcting position and size to Pixel: %d,%d %dx%d Logical: %d,%d %dx%d\n", x, y, width, height, correctedLogicalX, correctedLogicalY, correctedLogicalW, correctedLogicalH);
+		bf_SDL_SetWindowPosition(mSDLWindow, correctedLogicalX, correctedLogicalY);
+		bf_SDL_SetWindowSize(mSDLWindow, correctedLogicalW, correctedLogicalH);
+	}
+
 	mIsMouseInside = false;
 	mIsMouseVisible = true;
 	mHasPositionInit = false;
@@ -264,6 +378,12 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	mParent = parent;
 	if (parent != NULL)
 		parent->mChildren.push_back(this);
+
+	// Show window after positioning adjustment
+	if ((windowFlags & BFWINDOW_NOSHOW) == 0)
+	{
+		bf_SDL_ShowWindow(mSDLWindow);
+	}
 }
 
 SdlBFWindow::~SdlBFWindow()
@@ -313,10 +433,66 @@ static void RefreshMouseVisibility(SdlBFWindow* window)
 	{
 		bf_SDL_ShowCursor();
 	}
-	else 
+	else
 	{
 		bf_SDL_HideCursor();
 	}
+}
+
+static void SDLLogicalToPixel(SDL_Window* window, int logicalX, int logicalY, int* outX, int* outY)
+{
+	if (outX)
+		*outX = logicalX;
+	if (outY)
+		*outY = logicalY;
+	if ((window == NULL) || ((outX == NULL) && (outY == NULL)))
+		return;
+
+	int logicalW = 0;
+	int logicalH = 0;
+	int pixelW = 0;
+	int pixelH = 0;
+	if (!bf_SDL_GetWindowSize(window, &logicalW, &logicalH))
+		return;
+	if (!bf_SDL_GetWindowSizeInPixels(window, &pixelW, &pixelH))
+		return;
+	if ((logicalW <= 0) || (logicalH <= 0) || ((pixelW == logicalW) && (pixelH == logicalH)))
+		return;
+
+	float scaleX = (float)pixelW / (float)logicalW;
+	float scaleY = (float)pixelH / (float)logicalH;
+	if (outX)
+		*outX = (int)(logicalX * scaleX + 0.5f);
+	if (outY)
+		*outY = (int)(logicalY * scaleY + 0.5f);
+}
+
+static void SDLPixelToLogical(SDL_Window* window, int pixelX, int pixelY, int* outX, int* outY)
+{
+	if (outX)
+		*outX = pixelX;
+	if (outY)
+		*outY = pixelY;
+	if ((window == NULL) || ((outX == NULL) && (outY == NULL)))
+		return;
+
+	int logicalW = 0;
+	int logicalH = 0;
+	int pixelW = 0;
+	int pixelH = 0;
+	if (!bf_SDL_GetWindowSize(window, &logicalW, &logicalH))
+		return;
+	if (!bf_SDL_GetWindowSizeInPixels(window, &pixelW, &pixelH))
+		return;
+	if ((logicalW <= 0) || (logicalH <= 0) || ((pixelW == logicalW) && (pixelH == logicalH)))
+		return;
+
+	float scaleX = (float)logicalW / (float)pixelW;
+	float scaleY = (float)logicalH / (float)pixelH;
+	if (outX)
+		*outX = (int)(pixelX * scaleX + 0.5f);
+	if (outY)
+		*outY = (int)(pixelY * scaleY + 0.5f);
 }
 
 static int SDLConvertKeyCode(SDL_Keycode scanCode)
@@ -433,9 +609,9 @@ SdlBFApp::SdlBFApp()
 
 	mIsControlDown = false;
 	mSDLInitialized = false;
-	
 
-	mDataDir = mInstallDir;	
+
+	mDataDir = mInstallDir;
 }
 
 void SdlBFApp::SDLInit()
@@ -473,6 +649,7 @@ void SdlBFApp::SDLInit()
 		BF_GET_SDLPROC(SDL_SetWindowMinimumSize);
 		BF_GET_SDLPROC(SDL_SetWindowTitle);
 		BF_GET_SDLPROC(SDL_SetWindowIcon);
+		BF_GET_SDLPROC(SDL_GetWindowDisplayScale);
 		BF_GET_SDLPROC(SDL_GetMouseFocus);
 
 		BF_GET_SDLPROC(SDL_ShowCursor);
@@ -497,6 +674,7 @@ void SdlBFApp::SDLInit()
 		BF_GET_SDLPROC(SDL_GetPrimaryDisplay);
 		BF_GET_SDLPROC(SDL_GetDisplays);
 		BF_GET_SDLPROC(SDL_GetDisplayBounds);
+		BF_GET_SDLPROC(SDL_GetWindowDisplayScale);
 		BF_GET_SDLPROC(SDL_GetDesktopDisplayMode);
 		BF_GET_SDLPROC(SDL_HasRectIntersection);
 		BF_GET_SDLPROC(SDL_GetDisplayForWindow);
@@ -581,21 +759,36 @@ void SdlBFApp::ProcessSDLEvents()
 			{
 				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 				if (sdlBFWindow != NULL)
-					sdlBFWindow->mMouseUpFunc(sdlBFWindow, (int)sdlEvent.button.x, (int)sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button]);
+				{
+					int x = (int)sdlEvent.button.x;
+					int y = (int)sdlEvent.button.y;
+					SDLLogicalToPixel(sdlBFWindow->mSDLWindow, x, y, &x, &y);
+					sdlBFWindow->mMouseUpFunc(sdlBFWindow, x, y, bfMouseBtnOf[sdlEvent.button.button]);
+				}
 			}
 			break;
 		case SDL_EVENT_MOUSE_BUTTON_DOWN:
 			{
 				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 				if (sdlBFWindow != NULL)
-					sdlBFWindow->mMouseDownFunc(sdlBFWindow, (int)sdlEvent.button.x, (int)sdlEvent.button.y, bfMouseBtnOf[sdlEvent.button.button], sdlEvent.button.clicks);
+				{
+					int x = (int)sdlEvent.button.x;
+					int y = (int)sdlEvent.button.y;
+					SDLLogicalToPixel(sdlBFWindow->mSDLWindow, x, y, &x, &y);
+					sdlBFWindow->mMouseDownFunc(sdlBFWindow, x, y, bfMouseBtnOf[sdlEvent.button.button], sdlEvent.button.clicks);
+				}
 			}
 			break;
 		case SDL_EVENT_MOUSE_MOTION:
 			{
 				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
 				if (sdlBFWindow != NULL)
-					sdlBFWindow->mMouseMoveFunc(sdlBFWindow, (int)sdlEvent.button.x, (int)sdlEvent.button.y);
+				{
+					int x = (int)sdlEvent.button.x;
+					int y = (int)sdlEvent.button.y;
+					SDLLogicalToPixel(sdlBFWindow->mSDLWindow, x, y, &x, &y);
+					sdlBFWindow->mMouseMoveFunc(sdlBFWindow, x, y);
+				}
 			}
 			break;
 		case SDL_EVENT_MOUSE_WHEEL:
@@ -603,7 +796,12 @@ void SdlBFApp::ProcessSDLEvents()
 				uint ucNumLines = 3; // Default
 				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.wheel.windowID);
 				if(sdlBFWindow != NULL)
-					sdlBFWindow->mMouseWheelFunc(sdlBFWindow, (int)sdlEvent.wheel.mouse_x, (int)sdlEvent.wheel.mouse_y, sdlEvent.wheel.x, sdlEvent.wheel.y * (float)ucNumLines);
+				{
+					int x = (int)sdlEvent.wheel.mouse_x;
+					int y = (int)sdlEvent.wheel.mouse_y;
+					SDLLogicalToPixel(sdlBFWindow->mSDLWindow, x, y, &x, &y);
+					sdlBFWindow->mMouseWheelFunc(sdlBFWindow, x, y, sdlEvent.wheel.x, sdlEvent.wheel.y * (float)ucNumLines);
+				}
 			}
 			break;
 		case SDL_EVENT_WINDOW_MOUSE_ENTER:
@@ -698,11 +896,15 @@ void SdlBFApp::ProcessSDLEvents()
 			break;
 		case SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED:
 			{
+				//printf("SDL_EVENT_DISPLAY_CURRENT_MODE_CHANGED\n");
 				for (auto kv : mSdlWindowMap)
 				{
 					GLRenderWindow* sdlRenderWindow = (GLRenderWindow*)kv.mValue->mRenderWindow;
 					if (sdlRenderWindow != NULL)
+					{
 						sdlRenderWindow->mRefreshRate = 0;
+						sdlRenderWindow->mWindow->mMovedFunc(sdlRenderWindow->mWindow);
+					}
 				}
 			}
 			break;
@@ -750,7 +952,7 @@ void SdlBFApp::Draw()
         //OutputDebugStrF("Pixels: %d  Batches: %d\n", gPixelsDrawn / 1000, gBFDrawBatchCount);
 }
 
-BFWindow* SdlBFApp::CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
+BFWindow* SdlBFApp::CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags)
 {
 	SDLInit();
 
@@ -763,13 +965,16 @@ BFWindow* SdlBFApp::CreateNewWindow(BFWindow* parent, const StringImpl& title, i
 void SdlBFWindow::GetPosition(int* x, int* y, int* width, int* height, int* clientX, int* clientY, int* clientWidth, int* clientHeight)
 {
 	bf_SDL_GetWindowPosition(mSDLWindow, x, y);
-	bf_SDL_GetWindowSize(mSDLWindow, width, height);
+	bf_SDL_GetWindowSizeInPixels(mSDLWindow, width, height);
 
 	if (clientX)
 		*clientX = *x;
 	if (clientY)
 		*clientY = *y;
-	bf_SDL_GetWindowSizeInPixels(mSDLWindow, clientWidth, clientHeight);
+	if (clientWidth)
+		*clientWidth = *width;
+	if (clientHeight)
+		*clientHeight = *height;
 }
 
 void SdlBFApp::PhysSetCursor()
@@ -796,14 +1001,28 @@ void SdlBFApp::PhysSetCursor()
 
 void SdlBFWindow::SetClientPosition(int x, int y)
 {
-	bf_SDL_SetWindowPosition(mSDLWindow, x, y);
+	int logicalX = x;
+	int logicalY = y;
+	SDLPixelToLogical(mSDLWindow, x, y, &logicalX, &logicalY);
+	bf_SDL_SetWindowPosition(mSDLWindow, logicalX, logicalY);
+
+	//printf("SetClientPosition to Pixel: %d,%d Logical: %d,%d\n", x, y, logicalX, logicalY);
 }
 
 void SdlBFWindow::Resize(int x, int y, int width, int height, ShowKind showKind)
 {
-	bf_SDL_SetWindowPosition(mSDLWindow, x, y);
+	int logicalX = x;
+	int logicalY = y;
+	int logicalW = width;
+	int logicalH = height;
+	SDLPixelToLogical(mSDLWindow, x, y, &logicalX, &logicalY);
+	SDLPixelToLogical(mSDLWindow, width, height, &logicalW, &logicalH);
+
+	//printf("Resize to Pixel: %d,%d %dx%d Logical: %d,%d %dx%d\n", x, y, width, height, logicalX, logicalY, logicalW, logicalH);
+
+	bf_SDL_SetWindowPosition(mSDLWindow, logicalX, logicalY);
 	bf_SDL_SyncWindow(mSDLWindow);
-	bf_SDL_SetWindowSize(mSDLWindow, width, height);
+	bf_SDL_SetWindowSize(mSDLWindow, logicalW, logicalH);
 	bf_SDL_SyncWindow(mSDLWindow);
 	Show(showKind);
 	bf_SDL_SyncWindow(mSDLWindow);
@@ -816,8 +1035,18 @@ void SdlBFWindow::Resize(int x, int y, int width, int height, ShowKind showKind)
 
 void SdlBFWindow::GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind)
 {
-	bf_SDL_GetWindowPosition(mSDLWindow, normX, normY);
-	bf_SDL_GetWindowSize(mSDLWindow, normWidth, normHeight);
+	int logicalX = 0;
+	int logicalY = 0;
+	bf_SDL_GetWindowPosition(mSDLWindow, &logicalX, &logicalY);
+	SDLLogicalToPixel(mSDLWindow, logicalX, logicalY, normX, normY);
+
+	bf_SDL_GetWindowSizeInPixels(mSDLWindow, normWidth, normHeight);
+
+	int checkWidth = 0, checkHeight = 0;
+	bf_SDL_GetWindowSize(mSDLWindow, &checkWidth, &checkHeight);
+
+	//printf("GetPlacement Pixels: %d,%d %dx%d Logical: %d,%d	 %dx%d\n", *normX, *normY, *normWidth, *normHeight, logicalX, logicalY, checkWidth, checkHeight);
+
 	SDL_WindowFlags flags = bf_SDL_GetWindowFlags(mSDLWindow);
 	if ((flags & SDL_WINDOW_HIDDEN) == SDL_WINDOW_HIDDEN)
 		*showKind = ShowKind_Hide;
@@ -838,11 +1067,12 @@ const char* SdlBFApp::GetClipboardFormat(const StringImpl& format)
 {
 	if (format == "text" || format == "atext")
 	{
-		return "text/plain;charset=utf-8";
+		return "text/plain";
 	}
 	if (format == "bf_text")
 	{
-		return "text/vnd.beeflang.bf-text";
+		// This format is a hack to fix broken clipboards on Windows, not needed here
+		return "";
 	}
 	if (format == "code/file-list")
 	{
@@ -856,6 +1086,9 @@ void* SdlBFApp::GetClipboardData(const StringImpl& format, int* size)
 	size_t outSize;
 	void* data = bf_SDL_GetClipboardData(GetClipboardFormat(format), &outSize);
 	*size = (int)outSize;
+
+	//printf("GetClipboardData %s: %.*s\n", GetClipboardFormat(format), *size, (const char*)data);
+
 	return data;
 }
 
@@ -878,25 +1111,36 @@ const void* SDLClipboardCallback(void* userData, const char* mimeType, size_t* o
 
 void SdlBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard)
 {
+	if (format == "text")
+	{
+		StringImpl str((const char*)ptr, size);
+		bf_SDL_SetClipboardText(str.c_str());
+		return;
+	}
+
+	StringImpl mime = StringImpl::MakeRef(GetClipboardFormat(format));
+	if (mime.empty())
+	{
+		//printf("SetClipboardData %s: Unsupported format\n", format.c_str());
+		return;
+	}
+
 	void* buffer = bf_SDL_malloc(size);
 	if (buffer == NULL)
 	{
 		bf_SDL_SetError("Out of memory for clipboard");
 	}
-	else 
+
+	for (auto kv : *mSdlClipboardData)
 	{
-		StringImpl mime = StringImpl::MakeRef(GetClipboardFormat(format));
-
-		void* previous;
-		if (mSdlClipboardData->TryGetValue(mime, &previous))
-		{
-			bf_SDL_free(previous);
-		}
-		bf_SDL_memcpy(buffer, ptr, size);
-		(*mSdlClipboardData)[mime] = buffer;
-
-		bf_SDL_SetClipboardData(SDLClipboardCallback, NULL, &mSdlClipboardData, mimeTypes, 3);
+		bf_SDL_free(kv.mValue);
 	}
+	bf_SDL_memcpy(buffer, ptr, size);
+	(*mSdlClipboardData)[mime] = buffer;
+
+	//printf("SetClipboardData %s: %.*s\n", mime.c_str(), size, (const char*)ptr);
+
+	bf_SDL_SetClipboardData(SDLClipboardCallback, NULL, &mSdlClipboardData, mimeTypes, 3);
 }
 
 BFMenu* SdlBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck)
@@ -958,6 +1202,12 @@ void SdlBFWindow::SetForeground()
 	bf_SDL_RaiseWindow(mSDLWindow);
 }
 
+int	SdlBFWindow::GetDPI()
+{
+	float scale = bf_SDL_GetWindowDisplayScale(mSDLWindow);
+	return (int)(96.0f * scale);
+}
+
 void SdlBFWindow::SetTitle(const char* title)
 {
 	bf_SDL_SetWindowTitle(mSDLWindow, title);
@@ -975,7 +1225,7 @@ void SdlBFWindow::SetMouseVisible(bool isMouseVisible)
 	{
 		bf_SDL_ShowCursor();
 	}
-	else 
+	else
 	{
 		bf_SDL_HideCursor();
 	}
@@ -997,12 +1247,14 @@ DrawLayer* SdlBFApp::CreateDrawLayer(BFWindow* window)
 void SdlBFApp::GetDesktopResolution(int& width, int& height)
 {
 	SDL_DisplayID display = bf_SDL_GetPrimaryDisplay();
-    if (display != 0) 
+    if (display != 0)
 	{
 		SDL_DisplayMode* displayMode = bf_SDL_GetDesktopDisplayMode(display);
-		if (displayMode != NULL) {
+		if (displayMode != NULL)
+		{
 			width = displayMode->w;
 			height = displayMode->h;
+			//printf("Desktop: %d,%d %dx%d\n", 0, 0, width, height);
 		}
 	}
 }
@@ -1012,6 +1264,17 @@ static bool InflateRectToMonitor(SDL_DisplayID monitor, AdjustedMonRect* inflate
 	SDL_Rect bounds;
 	if(!bf_SDL_GetDisplayBounds(monitor, &bounds))
 		return false;
+
+	float scale = SDLGetDisplayScale(monitor);
+	if (scale > 1.0f)
+	{
+		bounds.x = (int)(bounds.x * scale + 0.5f);
+		bounds.y = (int)(bounds.y * scale + 0.5f);
+		bounds.w = (int)(bounds.w * scale + 0.5f);
+		bounds.h = (int)(bounds.h * scale + 0.5f);
+	}
+
+	//printf("Monitor %d: %d,%d %dx%d\n", monitor, bounds.x, bounds.y, bounds.w, bounds.h);
 
 	inflatedRect->mMonCount++;
 	if (inflatedRect->mMonCount == 1)
@@ -1034,11 +1297,15 @@ static bool InflateRectToMonitor(SDL_DisplayID monitor, AdjustedMonRect* inflate
 		inflatedRect->mHeight = maxBottom - minTop;
 	}
 
+	//printf("Inflated: %d,%d %dx%d\n", inflatedRect->mX, inflatedRect->mY, inflatedRect->mWidth, inflatedRect->mHeight);
+
 	return true;
 }
 
 void SdlBFApp::GetWorkspaceRect(int& x, int& y, int& width, int& height)
 {
+	SDLInit();
+
 	AdjustedMonRect inflateRect = { 0 };
 
 	int displayCount;
@@ -1046,12 +1313,12 @@ void SdlBFApp::GetWorkspaceRect(int& x, int& y, int& width, int& height)
     if (!displays)
         return;
 
-    for (int i = 0; i < displayCount; i++) 
+    for (int i = 0; i < displayCount; i++)
 	{
         InflateRectToMonitor(displays[i], &inflateRect);
     }
     bf_SDL_free(displays);
-	
+
 	x = inflateRect.mX;
 	y = inflateRect.mY;
 	width = inflateRect.mWidth;
@@ -1069,7 +1336,7 @@ void SdlBFApp::GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fro
     if (displays == NULL)
         return;
 
-    for (int i = 0; i < displayCount; i++) 
+    for (int i = 0; i < displayCount; i++)
 	{
 		bf_SDL_GetDisplayBounds(displays[i], &bounds);
 		if (bf_SDL_HasRectIntersection(&clip, &bounds))
@@ -1084,10 +1351,15 @@ void SdlBFApp::GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fro
 		GetWorkspaceRect(outX, outY, outWidth, outHeight);
 		return;
 	}
-	
+
 	outX = inflateRect.mX;
 	outY = inflateRect.mY;
 	outWidth = inflateRect.mWidth;
 	outHeight = inflateRect.mHeight;
 }
 
+void SdlBFApp::Update(bool batchStart)
+{
+	BFApp::Update(batchStart);
+
+}

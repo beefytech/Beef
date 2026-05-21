@@ -23,7 +23,7 @@ public:
 	bool                    mIsMouseVisible;
 
 public:
-	SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags);
+	SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags);
 	~SdlBFWindow();
 
 	virtual void*			GetUnderlying() { return mSDLWindow; };
@@ -49,6 +49,7 @@ public:
 
 	virtual void			Show(ShowKind showKind) override;
 	virtual void			SetForeground() override;
+	virtual int				GetDPI() override;
 };
 
 typedef Dictionary<uint32, SdlBFWindow*> SdlWindowMap;
@@ -74,6 +75,9 @@ protected:
 	SdlBFWindow*			GetSdlWindowFromId(uint32 id);
 	void					ProcessSDLEvents();
 
+protected:
+	virtual void			Update(bool batchStart) override;
+
 public:
 	SdlBFApp();
 	virtual ~SdlBFApp();
@@ -81,7 +85,7 @@ public:
 	virtual void			Init() override;
 	virtual void			Run() override;
 
-	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags) override;
+	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags) override;
 	virtual DrawLayer*		CreateDrawLayer(BFWindow* window) override;
 
 	virtual void*			GetClipboardData(const StringImpl& format, int* size) override;
