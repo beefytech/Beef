@@ -3,6 +3,10 @@
 
 #ifdef LLDB_ENABLED
 
+#ifdef BF_PLATFORM_WINDOWS
+#pragma comment(lib, "liblldb.lib")
+#endif
+
 #ifdef __linux__
 #include <limits.h>
 #include <unistd.h>
