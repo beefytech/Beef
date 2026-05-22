@@ -1418,3 +1418,66 @@ bool Beefy::ParseMemorySpan(const StringImpl& str, void*& outPtr, int& outSize, 
 #endif
 	return false;
 }
+
+// Convert a Windows path (e.g. "C:\foo\bar") to a WSL /mnt/ path ("/mnt/c/foo/bar").
+// If the path doesn't look like a Windows absolute path it is returned with
+// backslashes replaced by forward slashes and otherwise unchanged.
+String Beefy::ConvertToWSLPath(const StringImpl& winPath)
+{
+	const char* p = winPath.c_str();
+	char drive = p[0];
+
+	bool hasDriveLetter = (((drive >= 'A') && (drive <= 'Z')) || ((drive >= 'a') && (drive <= 'z'))) && (p[1] == ':');
+	if (hasDriveLetter)
+	{
+		String result = "/mnt/";
+		result += (char)tolower(drive);
+		p += 2;  // skip drive letter + colon
+		for (; *p != '\0'; ++p)
+			result += ((*p == '\\') ? '/' : *p);
+		return result;
+	}
+
+	// No drive letter � just normalize backslashes
+	String result;
+	for (; *p != '\0'; ++p)
+		result += ((*p == '\\') ? '/' : *p);
+	return result;
+}
+
+String Beefy::ConvertFromWSLPath(const StringImpl& wslPath)
+{
+	const char* p = wslPath.c_str();
+
+	// Windows paths that come across with a "./" prefix: "./c:\dir\name" -> "c:\dir\name"
+	if ((p[0] == '.') && (p[1] == '/') && (wslPath.Contains('\\')))
+		return wslPath.Substring(2);
+
+	// WSL mount paths: /mnt/<drive>/... -> <DRIVE>:\...
+	// e.g. /mnt/c/Users/foo/bar.exe -> C:\Users\foo\bar.exe
+	if (strncmp(p, "/mnt/", 5) == 0)
+	{
+		char drive = p[5];
+		if (((drive >= 'a') && (drive <= 'z')) || ((drive >= 'A') && (drive <= 'Z')))
+		{
+			char next = p[6];
+			if ((next == '/') || (next == '\0'))
+			{
+				String result;
+				result += (char)toupper(drive);
+				result += ':';
+				result += '\\';
+				if (next != '\0')
+				{
+					const char* rest = p + 7;
+					for (; *rest != '\0'; ++rest)
+						result += ((*rest == '/') ? '\\' : *rest);
+				}
+				return result;
+			}
+		}
+	}
+
+	// Not a WSL path — return as-is
+	return wslPath;
+}

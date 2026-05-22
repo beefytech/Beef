@@ -244,6 +244,8 @@ bool DirectoryExists(const StringImpl& path, String* outActualName = NULL);
 bool RecursiveCreateDirectory(const StringImpl& dirName);
 bool RecursiveDeleteDirectory(const StringImpl& dirName);
 bool ParseMemorySpan(const StringImpl& str, void*& outPtr, int& outSize, StringImpl* outKey = NULL);
+String ConvertToWSLPath(const StringImpl& winPath);
+String ConvertFromWSLPath(const StringImpl& wslPath);
 
 #define CHARTAG(val) FromBIGEndian(val)
 
