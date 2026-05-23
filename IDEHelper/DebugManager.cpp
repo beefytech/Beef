@@ -911,6 +911,24 @@ BF_EXPORT bool BF_CALLTYPE Debugger_Attach(int processId, BfDbgAttachFlags attac
 	return false;
 }
 
+BF_EXPORT bool BF_CALLTYPE Debugger_ConnectRemote(const char* host, int32 port, const char* elfPath)
+{
+	BF_ASSERT(gDebugger == NULL);
+
+	if (gDebugManager->mDebugger64->ConnectRemote(host, port, elfPath != NULL ? elfPath : ""))
+	{
+		gDebugger = gDebugManager->mDebugger64;
+		return true;
+	}
+
+	return false;
+}
+
+BF_EXPORT bool BF_CALLTYPE Debugger_SupportsRemoteConnect()
+{
+	return gDebugManager->mDebugger64->SupportsRemoteConnect();
+}
+
 BF_EXPORT void Debugger_GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr)
 {
 	if (gDebugger != NULL)

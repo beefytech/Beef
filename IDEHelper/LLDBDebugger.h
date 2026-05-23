@@ -70,8 +70,19 @@ public:
 	DbgOpenFileFlags mOpenFileFlags;
 	bool mHotSwapEnabled;
 
+	// Remote connection parameters — set by ConnectRemote, consumed by the launch thread
+	String mRemoteHost;
+	int    mRemotePort;
+	bool   mIsRemoteConnect;
+	String mElfPath;
+
 	// Background launch thread
 	BfpThread* mLaunchThread;
+
+	// Background event pump thread — processes all LLDB events off the main
+	// thread so blocking GDB-remote socket calls never freeze the IDE.
+	bool mEventThreadStop;
+	BfpThread* mEventThread;
 
 protected:
 	void DumpSymbolAddrs(const StringImpl& sym);
@@ -87,6 +98,12 @@ public:
 	virtual bool CanOpen(const StringImpl& fileName, DebuggerResult* outResult) override;
 	virtual void OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled, DbgOpenFileFlags openFileFlags) override;
 	virtual bool Attach(int processId, BfDbgAttachFlags attachFlags) override;
+	virtual bool ConnectRemote(const StringImpl& host, int port, const StringImpl& elfPath) override;
+	virtual bool SupportsRemoteConnect() override { return true; }
+	void DoConnectRemote();
+	void DoEventPump();
+	static void BFP_CALLTYPE EventPumpThreadProc(void* param);
+	void WaitForEventThread();
 	virtual void GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr) override;
 	virtual void Run() override;
 	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) override;
