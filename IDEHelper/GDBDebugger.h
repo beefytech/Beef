@@ -162,6 +162,7 @@ protected:
 	// Stack frame indices
 	int mRequestedStackFrameIdx;
 	int mBreakStackFrameIdx;
+	int mEvalStackFrameIdx;
 
 	int mProcessId;
 	bool mDidAttach;
@@ -217,8 +218,8 @@ protected:
 	void DoLaunch();
 	void ReadStdout();
 
-	// Helper: translate a GDB function name to IDE display form
-	static String FixBeefFunctionName(const char* name);
+	// Helper: translate a GDB name to IDE display form
+	static String FixBeefName(const char* name);
 
 	// Breakpoint helpers
 	GDBMIRecord* InsertBreakpointByLocation(const char* file, int lineNum1Based);

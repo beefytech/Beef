@@ -704,6 +704,90 @@ namespace IDE
 				outStr.Append(c);
 			}
 		}
+
+		public static Result<int> Execute(StringView path, StringView args, String outText = null, String outError = null)
+		{
+			var outText;
+			if (outText == null)
+				outText = scope:: .();
+
+			ProcessStartInfo procInfo = scope ProcessStartInfo();
+			procInfo.UseShellExecute = false;
+			procInfo.RedirectStandardError = true;
+			procInfo.RedirectStandardOutput = true;
+			procInfo.SetFileName(path);
+			procInfo.CreateNoWindow = true;
+			if (!args.IsEmpty)
+				procInfo.SetArguments(args);
+
+			SpawnedProcess process = scope SpawnedProcess();
+			if (process.Start(procInfo) case .Err)
+				return .Err;
+
+			FileStream fileStream = scope FileStream();
+			process.AttachStandardError(fileStream);
+			StreamReader streamReader = scope StreamReader(fileStream, null, false, 4096);
+			if (outText != null)
+				streamReader.ReadToEnd(outText).IgnoreError();
+
+			FileStream fileStreamOut = scope FileStream();
+			process.AttachStandardOutput(fileStreamOut);
+			StreamReader streamReaderOut = scope StreamReader(fileStreamOut, null, false, 4096);
+			if ((outError ?? outText) != null)
+				streamReaderOut.ReadToEnd(outError ?? outText).IgnoreError();
+
+			return .Ok(process.ExitCode);
+		}
+
+		public static void WSLPathFix(String str)
+		{
+			for (int i = 1; i < str.Length - 1; i++)
+			{
+				if (str[i] == ':')
+				{
+					if (str[i - 1].IsLetter)
+					{
+						int j = i;
+						for ( ; j < str.Length; j++)
+						{
+							char8 cj = str[j];
+							if (cj == '\\')
+								str[j] = '/';
+							if ((cj.IsWhiteSpace) || (cj == '"'))
+								break;
+						}
+
+						str.Remove(i);
+						str[i - 1] = str[i - 1].ToLower;
+						str.Insert(i - 1, "/mnt/");
+					}
+				}
+			}
+		}
+
+		public static bool IsLinuxPath(StringView path)
+		{
+			return (path.StartsWith('/')) || (path.StartsWith('~'));
+		}
+
+		public static Result<void> WSLCopy(StringView fromPath, StringView toPath)
+		{
+			var fromPath;
+			var toPath;
+
+			if (!IsLinuxPath(fromPath))
+				fromPath = WSLPathFix(.. scope:: .(fromPath));
+			if (!IsLinuxPath(toPath))
+				toPath = WSLPathFix(.. scope:: .(toPath));
+
+			switch (Execute("wsl.exe", scope $"cp {fromPath} {toPath}"))
+			{
+			case .Err(let err):
+				return .Err;
+			case .Ok:
+				return .Ok;
+			}
+		}
     }
 }
 

@@ -100,7 +100,7 @@ static BOOL KeyboardLayoutHasAltGr(HKL layout)
 	return hasAltGr;
 }
 
-WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
+WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags)
 {
 	//OutputDebugStrF("Wnd %p Create\n", this);
 

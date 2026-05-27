@@ -21,6 +21,7 @@ lld-link.exe
 stats/
 bin/Git
 **/dist/*
+!**/dist/gdb
 BeefySysLib/third_party/*
 BeefTools/RandoCode/*
 jbuild*/
@@ -37,3 +38,4 @@ JEMalloc/
 .cache
 .vscode
 *_Done.txt
+extern/temp/

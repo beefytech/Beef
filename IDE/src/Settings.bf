@@ -141,6 +141,12 @@ namespace IDE
 
 		public class DebuggerSettings
 		{
+			public enum DebuggerKind
+			{
+				Default,
+				GDB
+			}
+
 			public enum SymbolServerKind
 			{
 				Yes,
@@ -148,6 +154,7 @@ namespace IDE
 				Ask
 			}
 
+			public DebuggerKind mDebuggerKind = .Default;
 			public SymbolServerKind mUseSymbolServers = .Yes;
 			public String mSymCachePath = new .("C:\\SymCache") ~ delete _;
 			public List<String> mSymbolSearchPath = new .() ~ DeleteContainerAndItems!(_);
@@ -158,6 +165,7 @@ namespace IDE
 
 			public void Serialize(StructuredData sd)
 			{
+				sd.Add("Debugger", mDebuggerKind);
 				sd.Add("UseSymbolServers", mUseSymbolServers);
 				sd.Add("SymCachePath", mSymCachePath);
 				using (sd.CreateArray("SymbolSearchPath"))
@@ -201,6 +209,7 @@ namespace IDE
 
 			public void Deserialize(StructuredData sd)
 			{
+				sd.Get("Debugger", ref mDebuggerKind);
 				sd.Get("UseSymbolServers", ref mUseSymbolServers);
 				sd.Get("SymCachePath", mSymCachePath);
 				ClearAndDeleteItems(mSymbolSearchPath);
@@ -1215,6 +1224,7 @@ namespace IDE
 		public bool mEmscriptenPendingInstall;
 		public bool mEnableDevMode;
 		public TutorialsFinished mTutorialsFinished = .();
+		public String mWSLBeefBinPath = new .() ~ delete _;
 
 		public this()
 		{
@@ -1301,6 +1311,7 @@ namespace IDE
 				sd.Add("WakaTimeKey", mWakaTimeKey);
 				sd.Add("EnableDevMode", mEnableDevMode);
 				sd.Add("DebugMultiCursor", DarkEditWidgetContent.sDebugMultiCursor);
+				sd.Add("WSLBeefBinPath", mWSLBeefBinPath);
 			}
 
 			using (sd.CreateObject("TutorialsFinished"))
@@ -1438,6 +1449,7 @@ namespace IDE
 				sd.Get("WakaTimeKey", mWakaTimeKey);
 				sd.Get("EnableDevMode", ref mEnableDevMode);
 				sd.Get("DebugMultiCursor", ref DarkEditWidgetContent.sDebugMultiCursor);
+				sd.Get("WSLBeefBinPath", mWSLBeefBinPath);
 			}
 
 			using (sd.Open("TutorialsFinished"))

@@ -111,6 +111,12 @@ namespace IDE
 			case Android;
 			case Wasm;
 			case None; //Bare-metal
+
+#if BF_PLATFORM_WINDOWS
+			public bool IsWSL => this == .Linux;
+#else
+			public bool IsWSL => false;
+#endif
 			
 			public static PlatformType GetFromName(StringView name, StringView targetTriple = default)
 			{

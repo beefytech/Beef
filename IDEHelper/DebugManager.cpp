@@ -81,6 +81,7 @@ DebugManager::DebugManager()
 
 	mDebugger32 = NULL;
 	mDebugger64 = NULL;
+	mDebuggerGDB = NULL;
 	mNetManager = new NetManager();
 	mNetManager->mDebugManager = this;
 
@@ -107,8 +108,9 @@ DebugManager::~DebugManager()
 	}
 
 	delete mNetManager;
+	delete mDebuggerGDB;
 	delete mDebugger64;
-	delete mDebugger32;
+	delete mDebugger32;	
 	/*for (auto stepFilter : mStepFilters)
 	{
 	}*/
@@ -666,6 +668,8 @@ BF_EXPORT void BF_CALLTYPE Debugger_Create()
 	gDebugManager->mDebugger64 = CreateDebugger64(gDebugManager, NULL);
 #endif
 
+	gDebugManager->mDebuggerGDB = CreateDebuggerGDB(gDebugManager);
+
 #ifdef BF_PLATFORM_WINDOWS
 	::AllowSetForegroundWindow(ASFW_ANY);
 #endif
@@ -757,18 +761,31 @@ BF_EXPORT int BF_CALLTYPE Debugger_GetAddrSize()
 BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char* targetPath, const char* args, const char* workingDir, void* envBlockPtr, int envBlockSize, bool hotSwapEnabled, DbgOpenFileFlags openFileFlags)
 {
 	BF_ASSERT(gDebugger == NULL);
-
-	if (!FileExists(launchPath))
-	{
-		gDebugManager->mOutMessages.push_back(StrFormat("error Unable to locate specified launch target '%s'", launchPath));
-		return false;
-	}
-
+	
 	DebuggerResult debuggerResult = DebuggerResult_Ok;
-	if ((gDebugManager->mDebugger64 != NULL) && (gDebugManager->mDebugger64->CanOpen(launchPath, &debuggerResult)))
-		gDebugger = gDebugManager->mDebugger64;
+
+	if ((strstr(launchPath, "@gdb") != NULL) || (strstr(launchPath, "gdb:") != NULL))
+	{		
+		gDebugger = gDebugManager->mDebuggerGDB;
+	}
 	else
-		gDebugger = gDebugManager->mDebugger32;
+	{
+		if (!FileExists(launchPath))
+		{
+			gDebugManager->mOutMessages.push_back(StrFormat("error Unable to locate specified launch target '%s'", launchPath));
+			return false;
+		}
+
+		if (gDebugManager->mDebugger64 != NULL)
+		{
+			if (gDebugManager->mDebugger64->CanOpen(launchPath, &debuggerResult))
+				gDebugger = gDebugManager->mDebugger64;
+			else
+				gDebugger = gDebugManager->mDebugger32;
+		}
+		else
+			gDebugger = gDebugManager->mDebuggerGDB;
+	}
 
 	if (gDebugger == NULL)
 	{

@@ -72,7 +72,7 @@ public:
 	void					GotFocus();
 
 public:
-	WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags);
+	WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags);
 	~WinBFWindow();
 
 	virtual void*			GetUnderlying() override;

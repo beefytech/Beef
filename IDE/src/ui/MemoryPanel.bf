@@ -863,7 +863,7 @@ namespace IDE.ui
             {
                 mBinaryDataWidget.ResetPosition(position);
             }
-            else
+            else if (!mLastAddressValue.IsEmpty)
             {
                 String evalResultStr = scope String();
                 if (EvalExpression(mLastAddressValue, evalResultStr))

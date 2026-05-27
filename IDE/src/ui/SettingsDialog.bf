@@ -324,7 +324,8 @@ namespace IDE.ui
 			mCurPropertiesTarget = gApp.mSettings.mDebuggerSettings;
 
 			var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
-			
+
+			AddPropertiesItem(root, "Debugger", "mDebuggerKind");
 			AddPropertiesItem(root, "Use Symbol Servers", "mUseSymbolServers");
 			AddPropertiesItem(root, "Symbol Cache Path", "mSymCachePath");
 			AddPropertiesItem(root, "Symbol File Locations", "mSymbolSearchPath");

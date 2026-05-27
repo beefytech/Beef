@@ -9276,7 +9276,15 @@ namespace IDE
 		{
 			//Debug.Assert(executionInstance == null);
 
+			bool isWSL = false;
+
 			String fileName = scope String(inFileName);
+			if (fileName == "@wsl")
+			{
+				isWSL = true;
+				fileName.Set("wsl.exe");
+			}
+
 			QuoteIfNeeded(fileName);
 
 			ProcessStartInfo startInfo = scope ProcessStartInfo();
@@ -9347,6 +9355,12 @@ namespace IDE
 				String tempFileName = scope String();
 				Path.GetTempFileName(tempFileName);
 
+				if (isWSL)
+				{
+					tempFileName.Replace(".tmp", "");
+					tempFileName.Append(".sh");
+				}
+
 				Encoding encoding = Encoding.UTF8;
 				if (useArgsFile == .UTF16WithBom)
 					encoding = Encoding.UTF16WithBOM;
@@ -9355,11 +9369,31 @@ namespace IDE
 				if (result case .Err)
 					OutputLine("Failed to create temporary param file");
 				String arguments = scope String();
-				arguments.Concat("@", tempFileName);
-				startInfo.SetArguments(arguments);
+
+				if (isWSL)
+				{
+					arguments.Append(tempFileName);
+					IDEUtils.WSLPathFix(arguments);
+					startInfo.SetArguments(arguments);
+				}
+				else
+				{
+					arguments.Concat("@", tempFileName);
+					startInfo.SetArguments(arguments);
+				}
 
 				delete executionInstance.mTempFileName;
 				executionInstance.mTempFileName = new String(tempFileName);
+			}
+			else
+			{
+				if (isWSL)
+				{
+					String arguments = scope .();
+					arguments.Append("-- ");
+					arguments.Append(args);
+					startInfo.SetArguments(arguments);
+				}
 			}
 
 			if (mVerbosity >= .Detailed)
@@ -10820,6 +10854,15 @@ namespace IDE
 									{
 										newString = scope:ReplaceBlock .();
 										args[0].Quote(newString);
+									}
+									else
+										cmdErr = "Invalid number of arguments";
+								case "WSLPath":
+									if (args.Count == 1)
+									{
+										newString = scope:ReplaceBlock .();
+										newString.Set(args[0]);
+										IDEUtils.WSLPathFix(newString);
 									}
 									else
 										cmdErr = "Invalid number of arguments";
@@ -12510,6 +12553,12 @@ namespace IDE
 					}
 				});
 
+			dbgVis.AppendF($"\n{mInstallDir}");
+			for (var project in mWorkspace.mProjects)
+			{
+				dbgVis.AppendF($"\n{project.mProjectDir}{IDE.IDEUtils.cNativeSlash}");
+			}
+
 			mDebugger.LoadDebugVisualizers(dbgVis);
 			//mDebugger.LoadDebugVisualizers(scope String(mInstallDir, "BeefDbgVis.toml"));
 		}
@@ -12538,6 +12587,8 @@ namespace IDE
 			mTargetHadFirstBreak = false;
 
 			//options.mDebugOptions.mCommand
+
+			var platformType = Workspace.PlatformType.GetFromName(mPlatformName, workspaceOptions.mTargetTriple);
 
 			String launchPathRel = scope String();
 			ResolveConfigString(mPlatformName, workspaceOptions, project, options, options.mDebugOptions.mCommand, "debug command", launchPathRel);
@@ -12628,6 +12679,19 @@ namespace IDE
 
 			if ((mSettings.mDebugConsoleKind == .RedirectToImmediate) || (mSettings.mDebugConsoleKind == .RedirectToOutput))
 				openFileFlags |= .RedirectStdOutput | .RedirectStdError;
+
+			//
+
+			if (platformType.IsWSL)
+			{
+				//IDEUtils.WSLPathFix(launchPath);
+				launchPath.Append("@gdb_wsl");
+			}
+			else if (!launchPath.Contains('@'))
+			{
+				if (mSettings.mDebuggerSettings.mDebuggerKind == .GDB)
+					launchPath.Append("@gdb");
+			}
 
 			if (!mDebugger.OpenFile(launchPath, targetPath, arguments, workingDir, envBlock, wasCompiled, workspaceOptions.mAllowHotSwapping, openFileFlags))
 			{

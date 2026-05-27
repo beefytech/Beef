@@ -1,3 +1,4 @@
+
 #include "DebugVisualizers.h"
 
 USING_NS_BF;
@@ -347,6 +348,8 @@ bool DebugVisualizers::ReadFileTOML(const StringImpl& fileName)
 
 bool DebugVisualizers::Load(const StringImpl& fileNamesStr)
 {
+	mCheckDirectories.Clear();
+
 	bool hasError = !mErrorString.IsEmpty();
 	mErrorString.Clear();
 
@@ -355,13 +358,17 @@ bool DebugVisualizers::Load(const StringImpl& fileNamesStr)
 	while (true)
 	{
 		int crPos = (int)fileNamesStr.IndexOf('\n', startIdx);
+		String fileName;
 		if (crPos == -1)
-		{
-			fileNames.Add(fileNamesStr.Substring(startIdx));
+			fileName = fileNamesStr.Substring(startIdx);
+		else
+			 fileName = fileNamesStr.Substring(startIdx, crPos - startIdx);
+		if ((fileName.EndsWith('\\')) || (fileName.EndsWith('/')))
+			mCheckDirectories.Add(fileName);
+		else
+			fileNames.Add(fileName);
+		if (crPos == -1)
 			break;
-		}
-
-		fileNames.Add(fileNamesStr.Substring(startIdx, crPos - startIdx));
 		startIdx = crPos + 1;
 	}
 

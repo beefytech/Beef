@@ -2805,10 +2805,14 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 	bool wantsDIPartialDef = false;
 	if (wantsDIForwardDecl)
 	{
-		if ((!mIsBeefBackend) && (type->IsValueType()))
-		{
-			wantsDIPartialDef = true;
-			wantsDIForwardDecl = false;
+		if (mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows)
+		{	
+			// Hack required for LLVM COFF? Don't remember exactly why.
+			if ((!mIsBeefBackend) && (type->IsValueType()))
+			{				
+				wantsDIPartialDef = true;
+				wantsDIForwardDecl = false;
+			}
 		}
 	}
 	if (mModule->mExtensionCount != 0)

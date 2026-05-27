@@ -87,6 +87,7 @@ public:
 	String mCurFileName;
 	const char* mSrcStr;
 	OwnedVector<DebugVisualizerEntry> mDebugVisualizers;
+	Array<String> mCheckDirectories;
 
 	void Fail(const StringImpl& error);
 	void Fail(const StringImpl& error, const toml::Value& value);

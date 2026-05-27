@@ -44,6 +44,7 @@ namespace IDE.ui
 		public String mStackFrameId ~ delete _;
 		public bool mWantsStackFrameId;
         public String mEvalStr ~ delete _;
+		public String mResultStr ~ delete _;
 		public String mAddrValueExpr ~ delete _;
 		public String mPointeeExpr ~ delete _;
         public bool mCanEdit;
@@ -3710,7 +3711,14 @@ namespace IDE.ui
 				if (watch.mIsNewExpression)
 					flags |= .AllowSideEffects | .AllowCalls;
 
-				gApp.DebugEvaluate(null, evalStr, val, -1, watch.mLanguage, flags);
+				if (watch.mResultStr != null)
+				{
+					val.Set(watch.mResultStr);
+				}
+				else
+				{
+					gApp.DebugEvaluate(null, evalStr, val, -1, watch.mLanguage, flags);
+				}
                 watch.mIsNewExpression = false;                
             }
 			watch.mIsPending = false;
@@ -4056,6 +4064,15 @@ namespace IDE.ui
 						evalStr.Append("Format Error: {0}", scope String(memberVals[1]));
 					}
                     String.NewOrSet!(memberWatch.mEvalStr, evalStr);
+
+					if (memberVals.Count > 3)
+					{
+						// Note: this only occurs on GDB/LLDB debuggers
+						String.NewOrSet!(memberWatch.mResultStr, memberVals[2]);
+						memberWatch.mResultStr.Append("\n");
+						memberWatch.mResultStr..Append(memberVals[3]);
+					}
+
                     memberItem.Label = memberWatch.mName;
                     memberCount++;
                 }

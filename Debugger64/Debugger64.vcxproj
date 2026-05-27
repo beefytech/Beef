@@ -31,6 +31,7 @@
     <ClInclude Include="..\IDEHelper\DbgModule.h" />
     <ClInclude Include="..\IDEHelper\DWARFInfo.h" />
     <ClInclude Include="..\IDEHelper\DwAutoComplete.h" />
+    <ClInclude Include="..\IDEHelper\GDBDebugger.h" />
     <ClInclude Include="..\IDEHelper\HandleDbg.h" />
     <ClInclude Include="..\IDEHelper\HotHeap.h" />
     <ClInclude Include="..\IDEHelper\HotScanner.h" />
@@ -48,6 +49,7 @@
     <ClCompile Include="..\IDEHelper\DbgTypeMap.cpp" />
     <ClCompile Include="..\IDEHelper\DebugTarget.cpp" />
     <ClCompile Include="..\IDEHelper\DbgModule.cpp" />
+    <ClCompile Include="..\IDEHelper\GDBDebugger.cpp" />
     <ClCompile Include="..\IDEHelper\HandleDbg.cpp" />
     <ClCompile Include="..\IDEHelper\HotHeap.cpp" />
     <ClCompile Include="..\IDEHelper\HotScanner.cpp" />

@@ -2733,15 +2733,23 @@ BfFileInstance* BfModule::GetFileFromNode(BfAstNode* astNode)
 
 		if ((mBfIRBuilder != NULL) && (mBfIRBuilder->DbgHasLineInfo()))
 		{
-			String fileName = bfParser->mFileName;
+			String fileName = bfParser->mFileName.Substring(slashPos + 1);
+			String dirName = bfParser->mFileName.Substring(0, BF_MAX(slashPos, 0));
 
-			for (int i = 0; i < (int)fileName.length(); i++)
+			if (mCompiler->mOptions.IsWSL())
 			{
-				if (fileName[i] == DIR_SEP_CHAR_ALT)
-					fileName[i] = DIR_SEP_CHAR;
+				dirName = ConvertToWSLPath(dirName);
+			}
+			else
+			{
+				for (int i = 0; i < (int)fileName.length(); i++)
+				{
+					if (dirName[i] == DIR_SEP_CHAR_ALT)
+						dirName[i] = DIR_SEP_CHAR;
+				}
 			}
 
-			bfFileInstance->mDIFile = mBfIRBuilder->DbgCreateFile(fileName.Substring(slashPos + 1), fileName.Substring(0, BF_MAX(slashPos, 0)), bfParser->mMD5Hash);
+			bfFileInstance->mDIFile = mBfIRBuilder->DbgCreateFile(fileName, dirName, bfParser->mMD5Hash);
 		}
 		return bfFileInstance;
 	}
