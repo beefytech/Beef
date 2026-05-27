@@ -1,5 +1,9 @@
 #pragma once
 
+#if !defined BF_DBG_64 && !defined BF_DBG_32
+#define BF_DBG_64
+#endif
+
 #include "BFPlatform.h"
 
 #include "Debugger.h"
@@ -167,7 +171,7 @@ protected:
 	int mProcessId;
 	bool mDidAttach;
 	bool mNeedBreakpointRebind;
-	bool mNeedsExecRun;	
+	bool mNeedsExecRun;
 	int mAutoStepRemaining;
 
 	// Exception info

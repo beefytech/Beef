@@ -123,6 +123,7 @@ file(GLOB SRC_FILES
     Targets.cpp
     X86XmmInfo.cpp
     LLDBDebugger.cpp
+    GDBDebugger.cpp
 
     Beef/BfCommon.cpp
     Clang/CDepChecker.cpp
