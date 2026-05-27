@@ -99,7 +99,7 @@ BfLocalMethod::~BfLocalMethod()
 	}
 
 	BF_ASSERT(mContext != NULL);
-	if (mContext != NULL)
+	if ((mContext != NULL) && (mMethodInstanceGroup != NULL))
 		mMethodInstanceGroup->RemoveMethodsFromCEMachine(mContext->mCompiler);
 	delete mMethodInstanceGroup;
 	delete mMethodDef;
