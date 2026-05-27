@@ -1224,7 +1224,21 @@ String Beefy::GetAbsPath(const StringImpl& relPathIn, const StringImpl& dir)
 
 	//newPath = driveString + newPath + tempRelPath;
 	newPath = driveString + newPath;
-	newPath += relPath.Substring(relIdx);
+
+	StringView endStr(relPath, relIdx);	
+	if (endStr == ".")
+	{
+		// Ignore
+	}
+	else if (endStr == "..")
+	{
+		int lastDirStart = (int)newPath.length() - 1;
+		while ((lastDirStart > 0) && (newPath[lastDirStart - 1] != '\\') && (newPath[lastDirStart - 1] != '/'))
+			lastDirStart--;
+		newPath.RemoveToEnd(lastDirStart);
+	}
+	else
+		newPath += endStr;
 
 	return newPath;
 }
