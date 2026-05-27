@@ -8,12 +8,13 @@
 #ifdef __linux__
 #include <limits.h>
 #include <unistd.h>
-#ifndef MAX_PATH
-#define MAX_PATH PATH_MAX
-#endif
 #endif
 #ifdef __APPLE__
 #include <mach/mach.h>
+#endif
+
+#ifndef MAX_PATH
+#define MAX_PATH PATH_MAX
 #endif
 
 #include <cstdlib>
@@ -379,7 +380,7 @@ GDBDebugger::GDBDebugger(DebugManager* debugManager)
 	mLaunchMode = GDBLaunchMode_Local;
 	mGDBReady = false;
 	mRunning = false;
-	mNeedsExecRun = false;	
+	mNeedsExecRun = false;
 }
 
 GDBDebugger::~GDBDebugger()
@@ -542,7 +543,7 @@ void GDBDebugger::ReadStdout()
 				mIncomingRecords.push_back(rec);
 			}
 		}
-	}	
+	}
 }
 
 //----------------------------------------------------------------------------
@@ -575,7 +576,7 @@ void GDBDebugger::ProcessRecord(GDBMIRecord* rec)
 			OutputMessage(rec->mClass);
 	}
 	else if (rec->mType == GDBMIRecordType::LogStream)
-	{		
+	{
 		if (rec->mClass.StartsWith("Python Exception"))
 			OutputRawMessage("errorsoft " + Trim(rec->mClass));
 		else
@@ -784,12 +785,8 @@ void GDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targe
 			mLaunchMode = GDBLaunchMode_GDBServer;
 			mGDBServerHost = location + 4;
 		}
-		// else: unknown tag — ignore and treat the whole string as the path
 
-		if (mLaunchMode != GDBLaunchMode_Local)
-			mLaunchPath = String(rawPath, (int)(atSign - rawPath));
-		else
-			mLaunchPath = launchPath;
+		mLaunchPath = String(rawPath, (int)(atSign - rawPath));
 	}
 	else
 	{
@@ -849,14 +846,23 @@ void GDBDebugger::DoLaunch()
 			workingDirForGDB = ConvertToWSLPath(mWorkingDir);
 	}
 
+	GDBLog("Launching GDB with exe='%s' args='%s'\n", gdbExe.c_str(), gdbBaseArgs.c_str());
+
+	BfpSpawnFlags spawnFlags = (BfpSpawnFlags)(
+		BfpSpawnFlag_RedirectStdInput | BfpSpawnFlag_RedirectStdOutput |
+		BfpSpawnFlag_RedirectStdError | BfpSpawnFlag_NoWindow);
+
+#ifndef BF_PLATFORM_WINDOWS
+	spawnFlags = (BfpSpawnFlags)(spawnFlags | BfpSpawnFlag_UseShellExecute);
+#endif
+
 	BfpSpawnResult spawnResult = BfpSpawnResult_Ok;
 	BfpSpawn* spawn = BfpSpawn_Create(
 		gdbExe.c_str(),
 		gdbBaseArgs.c_str(),
-		mWorkingDir.IsEmpty() ? NULL : mWorkingDir.c_str(),
+		NULL, //mWorkingDir.IsEmpty() ? NULL : mWorkingDir.c_str(),
 		NULL,
-		(BfpSpawnFlags)(BfpSpawnFlag_RedirectStdInput | BfpSpawnFlag_RedirectStdOutput |
-		                BfpSpawnFlag_RedirectStdError | BfpSpawnFlag_NoWindow),
+		spawnFlags,
 		&spawnResult);
 
 	if ((spawn == NULL) || (spawnResult != BfpSpawnResult_Ok))
@@ -867,12 +873,6 @@ void GDBDebugger::DoLaunch()
 		return;
 	}
 
-	{
-		AutoCrit autoCrit(mDebugManager->mCritSect);
-		mGDBSpawn = spawn;
-		mProcessId = BfpSpawn_GetProcessId(spawn);
-	}
-
 	// Get stdin/stdout handles
 	BfpFile* gdbStdin = NULL;
 	BfpFile* gdbStdout = NULL;
@@ -881,6 +881,8 @@ void GDBDebugger::DoLaunch()
 
 	{
 		AutoCrit autoCrit(mDebugManager->mCritSect);
+		mGDBSpawn = spawn;
+		mProcessId = BfpSpawn_GetProcessId(spawn);
 		mGDBStdin = gdbStdin;
 		mGDBStdout = gdbStdout;
 		mGDBStderr = gdbStderr;
@@ -912,11 +914,18 @@ void GDBDebugger::DoLaunch()
 				break;
 			BfpThread_Sleep(5);
 			waited += 5;
+
+			if (BfpThread_WaitFor(mStdoutThread, 0))
+			{
+				GDBLog("GDB process exited while waiting for prompt\n");
+				break;
+			}
 		}
 
 		if (!gotPrompt)
 		{
-			OutputMessage("GDB: Timed out waiting for GDB prompt\n");
+			GDBLog("Timed out waiting for GDB prompt\n");
+			OutputMessage("error GDB failed to launch\n");
 			AutoCrit autoCrit(mDebugManager->mCritSect);
 			mRunState = RunState_Terminated;
 			return;
@@ -956,7 +965,7 @@ void GDBDebugger::DoLaunch()
 
 	SendSyncNoResult("-interpreter-exec console \"set pagination off\"");
 	SendSyncNoResult("-interpreter-exec console \"set debuginfod enabled on\"");
-	SendSyncNoResult("-gdb-set auto-solib-add on");	
+	SendSyncNoResult("-gdb-set auto-solib-add on");
 	SendSyncNoResult("-enable-pretty-printing");
 
 	// Set working directory if specified (WSL and SSH use the converted/remote path)
@@ -1095,7 +1104,7 @@ void GDBDebugger::DoLaunch()
 		}
 
 		AutoCrit autoCrit(mDebugManager->mCritSect);
-		CheckBreakpoints(true);		
+		CheckBreakpoints(true);
 		mNeedsExecRun = true;
 	}
 
@@ -1378,7 +1387,7 @@ GDBMIRecord* GDBDebugger::InsertBreakpointByLocation(const char* file, int lineN
 }
 
 GDBMIRecord* GDBDebugger::InsertBreakpointByName(const char* sym, bool mainModuleOnly)
-{	
+{
 	String cmd = StrFormat("-break-insert \"%s\"", sym);
 	return SendSync(cmd.c_str());
 }
@@ -1731,7 +1740,7 @@ void GDBDebugger::UpdateCallStack(bool slowEarlyOut)
 				frame.mFile = ConvertFromWSLPath(frame.mFile);
 				frame.mFullFile = ConvertFromWSLPath(frame.mFullFile);
 			}
-			
+
 			String lineStr = f->GetStr("line");
 			if (!lineStr.IsEmpty())
 			{
@@ -1741,7 +1750,7 @@ void GDBDebugger::UpdateCallStack(bool slowEarlyOut)
 			}
 
 			String func = f->GetStr("func");
-			
+
 			// Check if this looks like a Beef frame (bf:: prefix)
 			frame.mIsBeef = (strncmp(func.c_str(), "bf::", 4) == 0) ||
 			                StringView(frame.mFullFile).EndsWith(".bf", StringView::CompareKind_OrdinalIgnoreCase);
@@ -2405,13 +2414,13 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 			(!isPointer));
 
 		String result;
-		
+
 		result += displayVal;
 		if (pass == 1)
 			result += StrFormat(" @ 0x%@", ptrAddr);
 		result += '\n';
 		result += typeName;
-		
+
 		if (pass == 1)
 			result += "*";
 
@@ -2526,7 +2535,7 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 								{
 									result += '\n';
 									result += childExp;
-									result += '\t';									
+									result += '\t';
 									result += collPtrValue;
 									result += childExp;
 									continue;
@@ -2542,20 +2551,20 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 									result += StrFormat("({0}).%s", childExp.c_str());
 
 								bool useChildValue = !childType.EndsWith("*");
-								
+
 								if ((childExp == "[Ptr]") && (childValuePtr != NULL))
 								{
 									collPtrValue = "((" + childType + ")" + *childValuePtr + ")";
 									useChildValue = true;
 								}
-																
+
 								if ((childValuePtr != NULL) && (useChildValue))
 								{
 									result += '\t';
 									result += *childValuePtr;
 									result += '\t';
 									result += childType;
-								}								
+								}
 							}
 						}
 					}
@@ -2700,7 +2709,7 @@ void GDBDebugger::StopDebugging()
 	mActiveBreakpoint = NULL;
 
 	if (mGDBSpawn != NULL)
-	{		
+	{
 		// Ask GDB to quit gracefully
 		if (mGDBStdin != NULL)
 			SendSync("-gdb-exit", 2000);
@@ -2810,7 +2819,7 @@ void GDBDebugger::Detach()
 			GDBMIRecord* rec = SendSync("-target-detach");
 			delete rec;
 		}
-		
+
 		GDBMIRecord* rec = SendSync("-gdb-exit", 2000);
 		delete rec;
 
@@ -2873,7 +2882,7 @@ void GDBDebugger::Detach()
 	mGDBServerHost = "";
 	mGDBReady = false;
 	mRunning = false;
-	mNeedsExecRun = false;	
+	mNeedsExecRun = false;
 }
 
 //----------------------------------------------------------------------------

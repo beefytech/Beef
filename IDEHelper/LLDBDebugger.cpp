@@ -10,12 +10,13 @@
 #ifdef __linux__
 #include <limits.h>
 #include <unistd.h>
-#ifndef MAX_PATH
-#define MAX_PATH PATH_MAX
-#endif
 #endif
 #ifdef __APPLE__
 #include <mach/mach.h>
+#endif
+
+#ifndef MAX_PATH
+#define MAX_PATH PATH_MAX
 #endif
 
 USING_NS_BF;
@@ -140,7 +141,7 @@ LLDBDebugger::~LLDBDebugger()
 }
 
 void LLDBDebugger::DumpSymbolAddrs(const StringImpl& sym)
-{	
+{
 	lldb::SBSymbolContextList symList = mLLDBTarget.FindSymbols(sym.c_str());
 	uint32 numSymbols = symList.GetSize();
 	LLDBLog("FindSymbols('%s'): %d result(s)\n", sym.c_str(), (int)numSymbols);
@@ -171,7 +172,7 @@ void LLDBDebugger::DumpSymbolAddrs(const StringImpl& sym)
 			LLDBLog("  [%d] module='%s' sym='%s' addr=0x%llX\n", (int)i, modNameStr, symNameStr, (uint64)loadAddr);
 		else
 			LLDBLog("  [%d] module='%s' sym='%s' addr=(unresolved)\n", (int)i, modNameStr, symNameStr);
-	}	
+	}
 }
 
 void LLDBDebugger::DoCreateBreakpointByName(LLDBBreakpoint* bp)
@@ -261,6 +262,7 @@ void LLDBDebugger::DoLaunch()
 {
 	LLDBLog("DoLaunch\n");
 
+
 	lldb::SBDebugger::Initialize();
 
 	lldb::SBDebugger debugger = lldb::SBDebugger::Create(/*source_init_files=*/false);
@@ -287,7 +289,7 @@ void LLDBDebugger::DoLaunch()
 		AutoCrit autoCrit(mDebugManager->mCritSect);
 		mRunState = RunState_Terminated;
 		return;
-	}	
+	}
 
 	// Parse the args string into a vector of strings.
 	Array<String> argStrings;
@@ -708,7 +710,7 @@ Breakpoint* LLDBDebugger::CreateSymbolBreakpoint(const StringImpl& symbolName)
 	mBreakpoints.push_back(bp);
 
 	if (mLLDBTarget.IsValid())
-	{				
+	{
 		DoCreateBreakpointByName(bp);
 
 		if (bp->mLLDBBreakpoint.IsValid())
@@ -756,7 +758,7 @@ void LLDBDebugger::CheckBreakpoint(Breakpoint* checkBreakpoint)
 		}
 		else if (!bp->mSymbolName.IsEmpty())
 		{
-			DoCreateBreakpointByName(bp);			
+			DoCreateBreakpointByName(bp);
 		}
 
 		if (bp->mLLDBBreakpoint.IsValid())
@@ -1069,7 +1071,7 @@ String LLDBDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* 
 
 	char filePath [MAX_PATH] ;
 	filePath[0] = 0;
-	lineEntry.GetFileSpec().GetPath(filePath, MAX_PATH);	
+	lineEntry.GetFileSpec().GetPath(filePath, MAX_PATH);
 	if (filePath[0] != 0)
 	{
 		if (outFile != NULL)
@@ -1080,7 +1082,7 @@ String LLDBDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* 
 	}
 
 	*outLanguage = language;
-		
+
 	// Function name — prefer the display name which includes inlined context.
 	// Normalize "bf::Namespace::Method" → "Namespace.Method" for Beef frames.
 	const char* funcName = frame.GetDisplayFunctionName();
@@ -1744,7 +1746,7 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 	String result;
 	result += displayVal;
 	result += '\n';
-	result += typeName;	
+	result += typeName;
 
 	if (isPointer || isReference)
 	{
@@ -1804,7 +1806,7 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 		if (typeCategory != NULL)
 		{
 			result += "\n:type\t";
-			result += typeCategory;			
+			result += typeCategory;
 		}
 
 		lldb::addr_t loadAddr = value.GetLoadAddress();
@@ -1844,7 +1846,7 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 					result += '\n';
 					result += childName;
 					result += '\t';
-					result += StrFormat("({0}).%s", childName);					
+					result += StrFormat("({0}).%s", childName);
 				}
 			}
 		}
@@ -1855,7 +1857,7 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 			{
 				result += "\n:canEdit";
 				result += "\n:editVal\t";
-				result += displayVal;				
+				result += displayVal;
 			}
 		}
 	}
@@ -1933,7 +1935,7 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 	if (!fmtInfo.mRefId.IsEmpty())
 	{
 		result += "\n:referenceId\t";
-		result += fmtInfo.mRefId;		
+		result += fmtInfo.mRefId;
 	}
 
 	//LLDBLog(" Result: %s\n", result.c_str());
@@ -2055,7 +2057,7 @@ void LLDBDebugger::StopDebugging()
 	if (mLLDBProcess.IsValid())
 		mLLDBProcess.Destroy();
 	mLLDBProcess = lldb::SBProcess();
-	
+
 	if (mLLDBTarget.IsValid())
 		mLLDBDebugger.DeleteTarget(mLLDBTarget);
 	mLLDBTarget = lldb::SBTarget();
@@ -2066,7 +2068,7 @@ void LLDBDebugger::StopDebugging()
 		lldb::SBDebugger::Destroy(mLLDBDebugger);
 	}
 	mLLDBDebugger = lldb::SBDebugger();
-	
+
 	mProcessId = 0;
 	mRunState = RunState_Terminated;
 }
@@ -2091,7 +2093,7 @@ void LLDBDebugger::Terminate()
 	if (mLLDBDebugger.IsValid())
 		lldb::SBDebugger::Destroy(mLLDBDebugger);
 	mLLDBDebugger = lldb::SBDebugger();
-	
+
 	mProcessId = 0;
 	mRunState = RunState_Terminated;
 }
@@ -2130,7 +2132,7 @@ void LLDBDebugger::Detach()
 	{
 		lldb::SBDebugger::Destroy(mLLDBDebugger);
 		mLLDBDebugger = lldb::SBDebugger();
-	}	
+	}
 
 	// Invalidate the LLDB-side handles stored in each breakpoint object, but do
 	// NOT delete the breakpoints themselves — the IDE layer owns them and will

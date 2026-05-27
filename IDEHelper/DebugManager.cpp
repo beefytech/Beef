@@ -110,7 +110,7 @@ DebugManager::~DebugManager()
 	delete mNetManager;
 	delete mDebuggerGDB;
 	delete mDebugger64;
-	delete mDebugger32;	
+	delete mDebugger32;
 	/*for (auto stepFilter : mStepFilters)
 	{
 	}*/
@@ -761,11 +761,11 @@ BF_EXPORT int BF_CALLTYPE Debugger_GetAddrSize()
 BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char* targetPath, const char* args, const char* workingDir, void* envBlockPtr, int envBlockSize, bool hotSwapEnabled, DbgOpenFileFlags openFileFlags)
 {
 	BF_ASSERT(gDebugger == NULL);
-	
+
 	DebuggerResult debuggerResult = DebuggerResult_Ok;
 
 	if ((strstr(launchPath, "@gdb") != NULL) || (strstr(launchPath, "gdb:") != NULL))
-	{		
+	{
 		gDebugger = gDebugManager->mDebuggerGDB;
 	}
 	else
@@ -1321,9 +1321,8 @@ BF_EXPORT StringView BF_CALLTYPE Debugger_Evaluate(const char* expr, int callSta
 
 	String& outString = *gTLStrReturn.Get();
 	outString.clear();
-#ifdef BF_PLATFORM_WINDOWS
-	outString = debugger->Evaluate(expr, callStackIdx, cursorPos, language, (DwEvalExpressionFlags)expressionFlags);
-#endif
+	if (debugger != NULL)
+		outString = debugger->Evaluate(expr, callStackIdx, cursorPos, language, (DwEvalExpressionFlags)expressionFlags);
 #ifdef BF_WANTS_LOG_DBG
 	{
 		int crPos = (int)outString.IndexOf('\n');
