@@ -4593,7 +4593,8 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 	if (constant->mConstType == BfConstType_AggZero)
 	{
 		BF_ASSERT(type->IsComposite());
-		memset(mMemory.mVals + addr, 0, type->mSize);
+		if (type->mSize > 0)
+			memset(mMemory.mVals + addr, 0, type->mSize);
 		return true;
 	}
 
@@ -4605,7 +4606,8 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 
 	if (constant->mConstType == BfConstType_Undef)
 	{
-		memset(mMemory.mVals + addr, 0, type->mSize);
+		if (type->mSize > 0)
+			memset(mMemory.mVals + addr, 0, type->mSize);
 		return true;
 	}
 
@@ -4683,7 +4685,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 	if (constant->mConstType == BfConstType_BitCastNull)
 	{
 		BF_ASSERT(type->IsPointer() || type->IsObjectOrInterface());
-		memset(mMemory.mVals + addr, 0, type->mSize);
+		memset(mMemory.mVals + addr, 0, ptrSize);
 		return true;
 	}
 
