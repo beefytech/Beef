@@ -668,6 +668,7 @@ BF_EXPORT void BF_CALLTYPE Debugger_Create()
 	gDebugManager->mDebugger64 = CreateDebugger64(gDebugManager, NULL);
 #endif
 
+	gDebugManager->mDebuggerLLDB = CreateDebuggerLLDB(gDebugManager);
 	gDebugManager->mDebuggerGDB = CreateDebuggerGDB(gDebugManager);
 
 #ifdef BF_PLATFORM_WINDOWS
@@ -768,6 +769,15 @@ BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char*
 	{
 		gDebugger = gDebugManager->mDebuggerGDB;
 	}
+	else if ((strstr(launchPath, "@lldb") != NULL) || (strstr(launchPath, "lldb:") != NULL))
+	{
+		gDebugger = gDebugManager->mDebuggerLLDB;
+		if (gDebugger == NULL)
+		{
+			gDebugManager->mOutMessages.push_back("error LLDB is not enabled in this BeefIDE build");
+			return false;
+		}
+	}
 	else
 	{
 		if (!FileExists(launchPath))
@@ -783,6 +793,8 @@ BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char*
 			else
 				gDebugger = gDebugManager->mDebugger32;
 		}
+		else if (gDebugManager->mDebuggerLLDB != NULL)
+			gDebugger = gDebugManager->mDebuggerLLDB;
 		else
 			gDebugger = gDebugManager->mDebuggerGDB;
 	}
@@ -791,6 +803,8 @@ BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char*
 	{
 		if (debuggerResult == DebuggerResult_WrongBitSize)
 			gDebugManager->mOutMessages.push_back(StrFormat("error The file 32-bit file '%s' cannot be debugged because 32-bit debugger has been disabled", launchPath));
+		else
+			gDebugManager->mOutMessages.push_back("error Failed to start a debugger");
 		return false;
 	}
 

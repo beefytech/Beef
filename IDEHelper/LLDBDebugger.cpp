@@ -248,9 +248,24 @@ void LLDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targ
 {
 	LLDBLog("OpenFile\n");
 
-	// Store all parameters; the actual LLDB initialisation happens on a background
-	// thread started by Run() so we don't block the main thread.
-	mLaunchPath = launchPath;
+	const char* rawPath = launchPath.c_str();
+	const char* atSign = strchr(rawPath, '@');
+	if (atSign != NULL)
+	{
+		const char* location = atSign + 1;
+
+		if (strncmp(location, "lldb:", 4) == 0)
+		{			
+			//TODO: mLLDBServerHost = location + 5;
+		}		
+		
+		mLaunchPath = String(rawPath, (int)(atSign - rawPath));		
+	}
+	else
+	{
+		mLaunchPath = launchPath;
+	}
+	
 	mLaunchArgs = args;
 	mWorkingDir = workingDir;
 	mEnvBlock = envBlock;
@@ -2200,14 +2215,7 @@ USING_NS_BF;
 
 #endif
 
-#ifndef BF_PLATFORM_WINDOWS
-
-Beefy::Debugger* Beefy::CreateDebugger32(DebugManager* debugManager, DbgMiniDump* miniDump)
-{
-	return NULL;
-}
-
-Beefy::Debugger* Beefy::CreateDebugger64(DebugManager* debugManager, DbgMiniDump* miniDump)
+Debugger* Beefy::CreateDebuggerLLDB(DebugManager* debugManager)
 {
 #ifdef LLDB_ENABLED
 	return new LLDBDebugger(debugManager);
@@ -2215,5 +2223,3 @@ Beefy::Debugger* Beefy::CreateDebugger64(DebugManager* debugManager, DbgMiniDump
 	return NULL;
 #endif
 }
-
-#endif

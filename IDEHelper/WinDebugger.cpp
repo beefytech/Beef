@@ -13869,11 +13869,8 @@ Debugger* Beefy::CreateDebugger64(DebugManager* debugManager, DbgMiniDump* miniD
 
 		return debugger;
 	}
-#ifdef LLDB_ENABLED
-	return new LLDBDebugger(debugManager);
-#else
+
 	return new WinDebugger(debugManager);
-#endif
 }
 
 #ifdef BF_DBG_32

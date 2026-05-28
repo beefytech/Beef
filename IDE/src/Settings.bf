@@ -144,7 +144,8 @@ namespace IDE
 			public enum DebuggerKind
 			{
 				Default,
-				GDB
+				GDB,
+				LLDB
 			}
 
 			public enum SymbolServerKind

@@ -12691,6 +12691,8 @@ namespace IDE
 			{
 				if (mSettings.mDebuggerSettings.mDebuggerKind == .GDB)
 					launchPath.Append("@gdb");
+				else if (mSettings.mDebuggerSettings.mDebuggerKind == .LLDB)
+					launchPath.Append("@lldb");
 			}
 
 			if (!mDebugger.OpenFile(launchPath, targetPath, arguments, workingDir, envBlock, wasCompiled, workspaceOptions.mAllowHotSwapping, openFileFlags))
