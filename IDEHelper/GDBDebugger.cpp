@@ -25,6 +25,63 @@ USING_NS_BF;
 
 static CritSect gGDBLogCritSect;
 
+// Escape a chunk of dump text so it can be embedded as the content of a
+// Python single-quoted string literal inside a GDB/MI "..." C-string, i.e.:
+//   -interpreter-exec console "python var = 'ESCAPED'"
+//
+// Two layers of escaping apply:
+//   1. GDB/MI C-string:  \\ → \,  \" → ",  \n → newline,  \t → tab
+//   2. Python string:    \\ → \,  \' → ',  \n → newline,   \t → tab, \xNN → chr(NN)
+//
+// Strategy: for each source character, emit a sequence that survives both
+// layers and yields the original character when Python evaluates the string.
+static String EscapeDumpForPythonString(const StringImpl& text, int startIdx, int count)
+{
+	String out;
+	int end = startIdx + count;
+	for (int i = startIdx; i < end && i < (int)text.length(); i++)
+	{
+		unsigned char c = (unsigned char)text[i];
+		if (c == '\n')
+		{
+			// GDB/MI "\\n" → Python "\n" → newline
+			out += '\\'; out += '\\'; out += 'n';
+		}
+		else if (c == '\t')
+		{
+			// GDB/MI "\\t" → Python "\t" → tab
+			out += '\\'; out += '\\'; out += 't';
+		}
+		else if (c == '\\')
+		{
+			// GDB/MI "\\\\" → Python "\\" → backslash
+			out += '\\'; out += '\\'; out += '\\'; out += '\\';
+		}
+		else if (c == '\'')
+		{
+			// Use Python hex escape: GDB/MI "\\x27" → Python "\x27" → single quote
+			out += '\\'; out += '\\'; out += 'x'; out += '2'; out += '7';
+		}
+		else if (c == '"')
+		{
+			// GDB/MI requires \" inside "..."; Python sees " inside '...' — fine
+			out += '\\'; out += '"';
+		}
+		else if (c < 32 || c > 126)
+		{
+			// Use Python hex escape for any other non-printable / non-ASCII byte
+			char hex[8];
+			snprintf(hex, sizeof(hex), "\\\\x%02x", (unsigned)c);
+			out += hex;
+		}
+		else
+		{
+			out += (char)c;
+		}
+	}
+	return out;
+}
+
 static void GDBLog(const char* fmt ...)
 {
 	//return;
@@ -1086,14 +1143,19 @@ void GDBDebugger::DoLaunch()
 	}
 	else
 	{
-		// Load pretty printers
+		// Load pretty printers.
+		// Pass 1: source all *.py files except beef_dbgvis.py, recording the
+		//         beef_dbgvis.py path for later.
+		// Pass 2: inject the debug-visualizer dump as a base64-encoded Python
+		//         variable, then source beef_dbgvis.py so it reads from that
+		//         variable instead of from dbgvis_dump.txt.
+
+		String beefDbgVisPath; // GDB-friendly path to beef_dbgvis.py (empty if not found)
+
 		for (auto checkDir : mDebugManager->mDebugVisualizers->mCheckDirectories)
 		{
 			String gdbDir = checkDir + "gdb/";
-			// BfpFindFileData_FindFirstFile takes a glob pattern
-			
-			//String gdbDirPattern = gdbDir + "*.py";
-			String gdbDirPattern = gdbDir + "beef_dbgvis.py";
+			String gdbDirPattern = gdbDir + "*.py";
 
 			BfpFileResult findResult = BfpFileResult_Ok;
 			BfpFindFileData* findData = BfpFindFileData_FindFirstFile(gdbDirPattern.c_str(), BfpFindFileFlag_Files, &findResult);
@@ -1117,6 +1179,14 @@ void GDBDebugger::DoLaunch()
 							pyFilePathForGDB[i] = '/';
 					}
 
+					// beef_dbgvis.py is sourced last, after we inject the dump data
+					if (String(fileNameBuf) == "beef_dbgvis.py")
+					{
+						if (beefDbgVisPath.IsEmpty())
+							beefDbgVisPath = pyFilePathForGDB;
+						continue;
+					}
+
 					String sourceCmd = StrFormat("-interpreter-exec console \"source %s\"", pyFilePathForGDB.c_str());
 					GDBMIRecord* pyRec = SendSync(sourceCmd.c_str(), 5000);
 					if (pyRec != NULL)
@@ -1137,6 +1207,57 @@ void GDBDebugger::DoLaunch()
 				} while (BfpFindFileData_FindNextFile(findData));
 
 				BfpFindFileData_Release(findData);
+			}
+		}
+
+		// Inject the debug-visualizer dump data into GDB's Python interpreter,
+		// then source beef_dbgvis.py so it picks it up from the variable.
+		if (!beefDbgVisPath.IsEmpty())
+		{
+			String dumpText = mDebugManager->mDebugVisualizers->Dump();
+
+			// Inject dump text directly as a Python string variable, chunked to
+			// keep individual command lines at a manageable length.
+			// Each raw-text chunk is escaped for a Python single-quoted string
+			// inside a GDB/MI C-string (see EscapeDumpForPythonString).
+			const int kChunkSize = 2000; // raw chars per chunk
+			int totalLen = (int)dumpText.length();
+			for (int offset = 0; offset < totalLen; offset += kChunkSize)
+			{
+				int chunkLen = std::min(kChunkSize, totalLen - offset);
+				String escaped = EscapeDumpForPythonString(dumpText, offset, chunkLen);
+				String injectCmd;
+				if (offset == 0)
+					injectCmd = StrFormat(
+						"-interpreter-exec console \"python _beef_dbgvis_data = '%s'\"",
+						escaped.c_str());
+				else
+					injectCmd = StrFormat(
+						"-interpreter-exec console \"python _beef_dbgvis_data += '%s'\"",
+						escaped.c_str());
+				SendSyncNoResult(injectCmd.c_str());
+			}
+			// Handle empty dump: ensure the variable always exists
+			if (totalLen == 0)
+				SendSyncNoResult("-interpreter-exec console \"python _beef_dbgvis_data = ''\"");
+
+			// Now source beef_dbgvis.py — it will read _beef_dbgvis_data
+			String sourceCmd = StrFormat("-interpreter-exec console \"source %s\"", beefDbgVisPath.c_str());
+			GDBMIRecord* pyRec = SendSync(sourceCmd.c_str(), 5000);
+			if (pyRec != NULL)
+			{
+				if (pyRec->mClass == "error")
+				{
+					String errMsg = "GDB: Failed to load pretty-printer: beef_dbgvis.py";
+					if ((pyRec->mValue != NULL) && (!pyRec->mValue->GetStr("msg").IsEmpty()))
+					{
+						errMsg += ": ";
+						errMsg += pyRec->mValue->GetStr("msg");
+					}
+					errMsg += "\n";
+					OutputMessage(errMsg);
+				}
+				delete pyRec;
 			}
 		}
 

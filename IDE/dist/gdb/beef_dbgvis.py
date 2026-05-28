@@ -57,47 +57,67 @@ class _DvEntry:
         self.items = []             # [(label, value_expr, cond_expr), ...]
 
 
-def _load_dump(path):
+def _parse_dump_text(text):
+    """Parse dump text (as produced by DebugVisualizers::Dump()) into a list of _DvEntry."""
     result = []
     cur = None
+    for raw in text.splitlines():
+        p = raw.split('\t')
+        k = p[0]
+        def g(n, d=''):
+            return p[n] if len(p) > n else d
+        if k == 'Entry':
+            cur = _DvEntry(g(1))
+            result.append(cur)
+        elif cur is None:
+            pass
+        elif k == 'Flavor':               cur.flavor = g(1) or None
+        elif k == 'CollectionType':       cur.collection_type = g(1) or None
+        elif k == 'DisplayString':        cur.display_strings.append((g(1), g(2)))
+        elif k == 'StringView':           cur.string_views.append((g(1), g(2)))
+        elif k == 'Action':               cur.action = g(1)
+        elif k == 'Condition':            cur.condition = g(1)
+        elif k == 'Size':                 cur.size = g(1)
+        elif k == 'LowerDimSize':         cur.lower_dim_sizes.append(g(1))
+        elif k == 'HeadPointer':          cur.head_pointer = g(1)
+        elif k == 'EndPointer':           cur.end_pointer = g(1)
+        elif k == 'NextPointer':          cur.next_pointer = g(1)
+        elif k == 'LeftPointer':          cur.left_pointer = g(1)
+        elif k == 'RightPointer':         cur.right_pointer = g(1)
+        elif k == 'ValueType':            cur.value_type = g(1)
+        elif k == 'ValuePointer':         cur.value_pointer = g(1)
+        elif k == 'TargetPointer':        cur.target_pointer = g(1)
+        elif k == 'Buckets':              cur.buckets = g(1)
+        elif k == 'Entries':              cur.entries = g(1)
+        elif k == 'Key':                  cur.key = g(1)
+        elif k == 'DynValueType':         cur.dyn_value_type = g(1)
+        elif k == 'DynValueTypeIdAppend': cur.dyn_value_type_id_append = g(1)
+        elif k == 'ShowElementAddrs':     cur.show_element_addrs = (g(1) == '1')
+        elif k == 'Item':                 cur.items.append((g(1), g(2), g(3)))
+    return result
+
+
+def _load_dump(path):
+    """Load dump entries, preferring the injected _beef_dbgvis_data global over the file."""
+    # When beef_dbgvis.py is sourced after GDBDebugger.cpp injects the dump,
+    # _beef_dbgvis_data will already be a global in __main__ (same namespace).
+    injected = globals().get('_beef_dbgvis_data')
+    if injected is not None:
+        try:
+            result = _parse_dump_text(injected)
+            print("[beef_dbgvis] Loaded {} entries from injected data".format(len(result)))
+            return result
+        except Exception as ex:
+            print("[beef_dbgvis] Could not parse injected dump data: {}".format(ex))
+    # Fall back to reading the dump file (useful during development / testing)
     try:
         with open(path, 'r', encoding='utf-8') as fh:
-            for raw in fh:
-                p = raw.rstrip('\n').split('\t')
-                k = p[0]
-                def g(n, d=''):
-                    return p[n] if len(p) > n else d
-                if k == 'Entry':
-                    cur = _DvEntry(g(1))
-                    result.append(cur)
-                elif cur is None:
-                    pass
-                elif k == 'Flavor':               cur.flavor = g(1) or None
-                elif k == 'CollectionType':       cur.collection_type = g(1) or None
-                elif k == 'DisplayString':        cur.display_strings.append((g(1), g(2)))
-                elif k == 'StringView':           cur.string_views.append((g(1), g(2)))
-                elif k == 'Action':               cur.action = g(1)
-                elif k == 'Condition':            cur.condition = g(1)
-                elif k == 'Size':                 cur.size = g(1)
-                elif k == 'LowerDimSize':         cur.lower_dim_sizes.append(g(1))
-                elif k == 'HeadPointer':          cur.head_pointer = g(1)
-                elif k == 'EndPointer':           cur.end_pointer = g(1)
-                elif k == 'NextPointer':          cur.next_pointer = g(1)
-                elif k == 'LeftPointer':          cur.left_pointer = g(1)
-                elif k == 'RightPointer':         cur.right_pointer = g(1)
-                elif k == 'ValueType':            cur.value_type = g(1)
-                elif k == 'ValuePointer':         cur.value_pointer = g(1)
-                elif k == 'TargetPointer':        cur.target_pointer = g(1)
-                elif k == 'Buckets':              cur.buckets = g(1)
-                elif k == 'Entries':              cur.entries = g(1)
-                elif k == 'Key':                  cur.key = g(1)
-                elif k == 'DynValueType':         cur.dyn_value_type = g(1)
-                elif k == 'DynValueTypeIdAppend': cur.dyn_value_type_id_append = g(1)
-                elif k == 'ShowElementAddrs':     cur.show_element_addrs = (g(1) == '1')
-                elif k == 'Item':                 cur.items.append((g(1), g(2), g(3)))
+            result = _parse_dump_text(fh.read())
+            print("[beef_dbgvis] Loaded {} entries from '{}'".format(len(result), path))
+            return result
     except Exception as ex:
         print("[beef_dbgvis] Could not load '{}': {}".format(path, ex))
-    return result
+    return []
 
 
 _ALL_ENTRIES = _load_dump(_DUMP_PATH)
@@ -1075,4 +1095,4 @@ def _beef_dbgvis_lookup(val):
 
 
 gdb.pretty_printers.append(_beef_dbgvis_lookup)
-print("[beef_dbgvis] Loaded {} entries from '{}'".format(len(_ALL_ENTRIES), _DUMP_PATH))
+
