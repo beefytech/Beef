@@ -1,10 +1,15 @@
 FileVersion = 1
-Dependencies = {Beefy2D = "*", corlib = "*", curl = "*"}
 
 [Project]
 Name = "IDE"
 TargetType = "BeefGUIApplication"
 StartupObject = "IDE.Program"
+
+[Dependencies]
+Beefy2D = "*"
+corlib = "*"
+curl = "*"
+IDEHelper = "*"
 
 [Platform.Windows]
 IconFile = "$(ProjectDir)/Resources/Beef.ico"

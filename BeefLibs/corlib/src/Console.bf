@@ -2,6 +2,7 @@ using System.Text;
 using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Diagnostics;
 
 namespace System
 {
@@ -477,6 +478,48 @@ namespace System
 #else
 			Write("\x1B[H\x1B[J");
 #endif
+		}
+
+		[CLink]
+		private static extern int32 system(char8* cmd);
+
+		public static Result<void, int> RunCommand(StringView command)
+		{
+			if (!Compiler.IsComptime)
+			{
+				int exitcode = system(command.ToScopeCStr!());
+				return exitcode == 0 ? .Ok : .Err(exitcode);
+			}
+
+			ProcessStartInfo startInfo = scope .();
+			startInfo.SetFileNameAndArguments(command);
+			startInfo.UseShellExecute = false;
+			startInfo.RedirectStandardOutput = true;
+			startInfo.RedirectStandardError = true;
+			startInfo.CreateNoWindow = true;
+
+			SpawnedProcess proc = scope .();
+			if (proc.Start(startInfo) case .Err)
+			    return .Err(0);
+
+			FileStream output = scope .();
+			FileStream error = scope .();
+			StreamReader outputReader = scope .(output);
+			StreamReader errorReader = scope .(output);
+			proc.AttachStandardOutput(output);
+			proc.AttachStandardError(error);
+
+			String buffer = scope .(1024);
+			while (!proc.HasExited)
+			{
+				outputReader.ReadToEnd(buffer).IgnoreError();
+				errorReader.ReadToEnd(buffer).IgnoreError();
+				if (!buffer.IsEmpty)
+					OutString(buffer);
+			}
+
+			int exitcode = proc.ExitCode;
+			return exitcode == 0 ? .Ok : .Err(exitcode);
 		}
 	}
 }
