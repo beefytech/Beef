@@ -878,7 +878,7 @@ public:
 
 	void TrimExcess()
 	{
-		if (this->mSize > this->mAllocSize)
+		if (this->mSize < this->mAllocSize)
 			SetBufferSize(this->mSize);
 	}
 
