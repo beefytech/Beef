@@ -2330,271 +2330,213 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 	}
 
 	uint64 ptrAddr = 0;
+	
+	// Use varobj for richer type/member information
+		// Generate a unique varobj name
+	String varobjName = StrFormat("bfeval__%d", mNextToken);
+	
+	String createCmd = StrFormat("-var-create \"%s\" @ \"%s\"",
+		varobjName.c_str(), evalExpr.c_str());
+	GDBMIRecord* createRec = SendSync(createCmd.c_str());
 
-	// Pass 1 = deref pointer pass
-	for (int pass = 0; pass < 2; pass++)
+	if ((createRec == NULL) || (createRec->mClass != "done") || (createRec->mValue == NULL))
 	{
-		// Use varobj for richer type/member information
-			// Generate a unique varobj name
-		String varobjName = StrFormat("bfeval__%d", mNextToken);
-
-		if (pass == 1)
+		String errMsg = "!";
+		if ((createRec != NULL) && (createRec->mValue != NULL))
 		{
-			evalExpr = "*(" + evalExpr + ")";
-		}
-
-		String createCmd = StrFormat("-var-create \"%s\" @ \"%s\"",
-			varobjName.c_str(), evalExpr.c_str());
-		GDBMIRecord* createRec = SendSync(createCmd.c_str());
-
-		if ((createRec == NULL) || (createRec->mClass != "done") || (createRec->mValue == NULL))
-		{
-			String errMsg = "!";
-			if ((createRec != NULL) && (createRec->mValue != NULL))
-			{
-				String msg = createRec->mValue->GetStr("msg");
-				if (!msg.IsEmpty())
-					errMsg += msg;
-				else
-					errMsg += "Evaluation failed";
-			}
+			String msg = createRec->mValue->GetStr("msg");
+			if (!msg.IsEmpty())
+				errMsg += msg;
 			else
-			{
 				errMsg += "Evaluation failed";
-			}
-			delete createRec;
-			return errMsg;
 		}
-
-		String typeName = createRec->mValue->GetStr("type");
-		String displayVal = createRec->mValue->GetStr("value");
-		int numChildren = createRec->mValue->GetInt("numchild");
-		bool hasMore = createRec->mValue->GetInt("has_more") > 0;
+		else
+		{
+			errMsg += "Evaluation failed";
+		}
 		delete createRec;
+		return errMsg;
+	}
 
-		// Apply int display overrides
-		if ((intDisplay != DwIntDisplayType_Default) && (!displayVal.IsEmpty()))
+	String typeName = createRec->mValue->GetStr("type");
+	String displayVal = createRec->mValue->GetStr("value");
+	int numChildren = createRec->mValue->GetInt("numchild");
+	bool hasMore = createRec->mValue->GetInt("has_more") > 0;
+	delete createRec;
+
+	// Apply int display overrides
+	if ((intDisplay != DwIntDisplayType_Default) && (!displayVal.IsEmpty()))
+	{
+		// Try to reinterpret as integer
+		char* end = NULL;
+		long long ival = strtoll(displayVal.c_str(), &end, 0);
+		if ((end != NULL) && (*end == '\0'))
 		{
-			// Try to reinterpret as integer
-			char* end = NULL;
-			long long ival = strtoll(displayVal.c_str(), &end, 0);
-			if ((end != NULL) && (*end == '\0'))
-			{
-				if (intDisplay == DwIntDisplayType_HexadecimalLower)
-					displayVal = StrFormat("0x%llx", (uint64)ival);
-				else if (intDisplay == DwIntDisplayType_HexadecimalUpper)
-					displayVal = StrFormat("0x%llX", (uint64)ival);
-				// Decimal is already the GDB default
-			}
+			if (intDisplay == DwIntDisplayType_HexadecimalLower)
+				displayVal = StrFormat("0x%llx", (uint64)ival);
+			else if (intDisplay == DwIntDisplayType_HexadecimalUpper)
+				displayVal = StrFormat("0x%llX", (uint64)ival);
+			// Decimal is already the GDB default
 		}
+	}
 
-		if (displayVal.IsEmpty())
-			displayVal = "{...}";
+	if (displayVal.IsEmpty())
+		displayVal = "{...}";
 
-		// Fix type name for Beef
+	// Fix type name for Beef
 
-		if (language == DbgLanguage_Beef)
-			typeName = FixBeefName(typeName.c_str());
+	if (language == DbgLanguage_Beef)
+		typeName = FixBeefName(typeName.c_str());
 
-		// Determine type category
-		bool isPointer = (!typeName.IsEmpty() && (typeName[typeName.length() - 1] == '*'));
+	bool isPointer = (!typeName.IsEmpty() && (typeName[typeName.length() - 1] == '*'));
+	bool isComposite = (numChildren > 0) || (hasMore);
 
-		if ((isPointer) && (pass == 0))
-		{
-			const char* p = displayVal.c_str();
-			if ((p[0] == '0') && ((p[1] == 'x') || (p[1] == 'X')))
-			{
-				ptrAddr = (uint64)strtoull(p + 2, NULL, 16);
-				if (ptrAddr != 0)
-					continue;
-			}
-		}
+	String result;
 
-		bool isComposite = (((numChildren > 0) || (hasMore)) &&
-			(!isPointer));
+	result += displayVal;	
+	result += '\n';
+	result += typeName;
+	
+	if (isComposite && !noMembers)
+	{
+		result += "\n:type\tobject";
 
-		String result;
+		// Recursively expand one level of -var-list-children, transparently
+		// descending into GDB protection-level pseudo-children.
+		//
+		// GDB inserts fake grouping nodes named "public", "protected", "private"
+		// (and sometimes "base class" or other labels) with no "type" field to
+		// represent C++ access sections.  These must not appear in the member
+		// list shown to the user; instead we recurse into them to collect the
+		// real typed members they contain.
+		//
+		// A child is a protection pseudo-node when its "type" string is empty.
+		// We use a small fixed-depth work-list to avoid unbounded recursion on
+		// pathological varobjs.
 
-		result += displayVal;
-		if (pass == 1)
-			result += StrFormat(" @ 0x%@", ptrAddr);
+		// Work-list: varobj child names to expand.  Starts with the root varobj.
+		Array<String> toExpand;
+		toExpand.push_back(varobjName);
+
 		result += '\n';
-		result += typeName;
 
-		if (pass == 1)
-			result += "*";
+		String collPtrValue;
 
-		if (isPointer)
+		const int kMaxDepth = 8;
+		for (int depth = 0; (depth < kMaxDepth) && (!toExpand.IsEmpty()); depth++)
 		{
-			result += "\n:type\tpointer";
-			// Try to get address
-			String getValCmd = StrFormat("-var-evaluate-expression --thread-group i1 \"%s\"", varobjName.c_str());
-			// We already have the value; just use displayVal as the address string
-			// (GDB returns pointer values as "0xADDR")
-			uint64 addr = 0;
-			const char* p = displayVal.c_str();
-			if ((p[0] == '0') && ((p[1] == 'x') || (p[1] == 'X')))
-				addr = (uint64)strtoull(p + 2, NULL, 16);
-			if (addr != 0)
+			Array<String> nextExpand;
+
+			for (int wi = 0; wi < (int)toExpand.size(); wi++)
 			{
-				result += StrFormat("\n:pointer\t0x%llX", addr);
-				String pointeeType = typeName;
-				// Strip trailing '*'
-				if ((!pointeeType.IsEmpty()) && (pointeeType[pointeeType.length() - 1] == '*'))
-					pointeeType = pointeeType.Substring(0, (int)pointeeType.length() - 1);
-				// Trim trailing space
-				while ((!pointeeType.IsEmpty()) && (pointeeType[pointeeType.length() - 1] == ' '))
-					pointeeType = pointeeType.Substring(0, (int)pointeeType.length() - 1);
-				result += StrFormat("\n:pointeeExpr\t(%s)0x%llX", pointeeType.c_str(), addr);
-				result += StrFormat("\n:addrValueExpr\t(%s*)0x%llX", pointeeType.c_str(), addr);
-			}
-		}
-		else if (isComposite && !noMembers)
-		{
-			result += "\n:type\tobject";
-
-			// Recursively expand one level of -var-list-children, transparently
-			// descending into GDB protection-level pseudo-children.
-			//
-			// GDB inserts fake grouping nodes named "public", "protected", "private"
-			// (and sometimes "base class" or other labels) with no "type" field to
-			// represent C++ access sections.  These must not appear in the member
-			// list shown to the user; instead we recurse into them to collect the
-			// real typed members they contain.
-			//
-			// A child is a protection pseudo-node when its "type" string is empty.
-			// We use a small fixed-depth work-list to avoid unbounded recursion on
-			// pathological varobjs.
-
-			// Work-list: varobj child names to expand.  Starts with the root varobj.
-			Array<String> toExpand;
-			toExpand.push_back(varobjName);
-
-			result += '\n';
-
-			String collPtrValue;
-
-			const int kMaxDepth = 8;
-			for (int depth = 0; (depth < kMaxDepth) && (!toExpand.IsEmpty()); depth++)
-			{
-				Array<String> nextExpand;
-
-				for (int wi = 0; wi < (int)toExpand.size(); wi++)
+				String listCmd = StrFormat("-var-list-children --simple-values \"%s\" 0 1000", toExpand[wi].c_str());
+				GDBMIRecord* listRec = SendSync(listCmd.c_str());
+				if ((listRec == NULL) || (listRec->mClass != "done") || (listRec->mValue == NULL))
 				{
-					String listCmd = StrFormat("-var-list-children --simple-values \"%s\" 0 1000", toExpand[wi].c_str());
-					GDBMIRecord* listRec = SendSync(listCmd.c_str());
-					if ((listRec == NULL) || (listRec->mClass != "done") || (listRec->mValue == NULL))
-					{
-						delete listRec;
-						continue;
-					}
+					delete listRec;
+					continue;
+				}
 
-					GDBMIValue* children = listRec->mValue->Get("children");
-					if (children != NULL)
+				GDBMIValue* children = listRec->mValue->Get("children");
+				if (children != NULL)
+				{
+					for (int i = 0; i < (int)children->mChildren.size(); i++)
 					{
-						for (int i = 0; i < (int)children->mChildren.size(); i++)
+						GDBMIValue* child = children->mChildren[i];
+						if (child == NULL)
+							continue;
+
+						String childExp = child->GetStr("exp");
+						String childType = child->GetStr("type");
+						String childName = child->GetStr("name");  // fully-qualified varobj name
+						String* childValuePtr = child->GetStrPtr("value");
+
+						if (childExp.IsEmpty())
+							continue;
+
+						if ((childValuePtr == NULL) && (depth == 0) && (wi == 0))
 						{
-							GDBMIValue* child = children->mChildren[i];
-							if (child == NULL)
+							if (childType == "System::ValueType")
+							{
+								// Don't list
 								continue;
-
-							String childExp = child->GetStr("exp");
-							String childType = child->GetStr("type");
-							String childName = child->GetStr("name");  // fully-qualified varobj name
-							String* childValuePtr = child->GetStrPtr("value");
-
-							if (childExp.IsEmpty())
-								continue;
-
-							if ((childValuePtr == NULL) && (depth == 0) && (wi == 0))
-							{
-								if (childType == "System::ValueType")
-								{
-									// Don't list
-									continue;
-								}
-
-								// This is a base type
-								result += '\n';
-								result += "[base]";
-								result += '\t';
-								result += StrFormat("(%s)({0})", childExp.c_str());
 							}
-							else if (childType.IsEmpty())
-							{
-								// No type — this is a protection pseudo-node ("public",
-								// "protected", "private", or a base-class grouping).
-								// Queue it for expansion rather than emitting it.
-								if (!childName.IsEmpty())
-									nextExpand.push_back(childName);
-							}
-							else
-							{
-								if ((!collPtrValue.IsEmpty()) && (childExp.StartsWith('[')) && (childExp.length() > 2) &&
-									(isdigit(childExp[1])))
-								{
-									result += '\n';
-									result += childExp;
-									result += '\t';
-									result += collPtrValue;
-									result += childExp;
-									continue;
-								}
 
-								// Real typed member — emit it
+							// This is a base type
+							result += '\n';
+							result += "[base]";
+							result += '\t';
+							result += StrFormat("(%s)({0})", childExp.c_str());
+						}
+						else if (childType.IsEmpty())
+						{
+							// No type — this is a protection pseudo-node ("public",
+							// "protected", "private", or a base-class grouping).
+							// Queue it for expansion rather than emitting it.
+							if (!childName.IsEmpty())
+								nextExpand.push_back(childName);
+						}
+						else
+						{
+							if ((!collPtrValue.IsEmpty()) && (childExp.StartsWith('[')) && (childExp.length() > 2) &&
+								(isdigit(childExp[1])))
+							{
 								result += '\n';
 								result += childExp;
 								result += '\t';
-								if (childExp.StartsWith('['))
-									result += StrFormat("({0})%s", childExp.c_str());
-								else
-									result += StrFormat("({0}).%s", childExp.c_str());
+								result += collPtrValue;
+								result += childExp;
+								continue;
+							}
 
-								bool useChildValue = !childType.EndsWith("*");
+							// Real typed member — emit it
+							result += '\n';
+							result += childExp;
+							result += '\t';
+							if (childExp.StartsWith('['))
+								result += StrFormat("({0})%s", childExp.c_str());
+							else
+								result += StrFormat("({0}).%s", childExp.c_str());
 
-								if ((childExp == "[Ptr]") && (childValuePtr != NULL))
-								{
-									collPtrValue = "((" + childType + ")" + *childValuePtr + ")";
-									useChildValue = true;
-								}
+							if ((childExp == "[Ptr]") && (childValuePtr != NULL))
+							{
+								collPtrValue = "((" + childType + ")" + *childValuePtr + ")";								
+							}
 
-								if ((childValuePtr != NULL) && (useChildValue))
-								{
-									result += '\t';
-									result += *childValuePtr;
-									result += '\t';
-									result += childType;
-								}
+							if (childValuePtr != NULL)
+							{
+								result += '\t';
+								result += *childValuePtr;
+								result += '\t';
+								result += childType;
 							}
 						}
 					}
-
-					delete listRec;
 				}
 
-				toExpand = nextExpand;
+				delete listRec;
 			}
-		}
-		else if (!isComposite && !isPointer)
-		{
-			result += "\n:type\tint";
-			result += "\n:canEdit";
-			result += "\n:editVal\t";
-			result += displayVal;
-		}
 
-		// Clean up the varobj
-		{
-			String deleteCmd = StrFormat("-var-delete \"%s\"", varobjName.c_str());
-			GDBMIRecord* delRec = SendSync(deleteCmd.c_str());
-			delete delRec;
+			toExpand = nextExpand;
 		}
-
-		// Reached end
-		return result;
+	}
+	else if (!isComposite)
+	{
+		result += "\n:type\tint";
+		result += "\n:canEdit";
+		result += "\n:editVal\t";
+		result += displayVal;
 	}
 
-	return "";
+	// Clean up the varobj
+	{
+		String deleteCmd = StrFormat("-var-delete \"%s\"", varobjName.c_str());
+		GDBMIRecord* delRec = SendSync(deleteCmd.c_str());
+		delete delRec;
+	}
+
+	// Reached end
+	return result;
 }
 
 String GDBDebugger::EvaluateContinue()

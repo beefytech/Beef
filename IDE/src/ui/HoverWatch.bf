@@ -20,6 +20,7 @@ namespace IDE.ui
         {
             public String mName ~ delete _;
             public String mEvalStr ~ delete _;
+			public String mResultStr ~ delete _;
             //public WatchSeriesInfo mWatchSeriesInfo ~ delete _;
 			public WatchSeriesInfo mWatchSeriesInfo ~ { if (_ != null) _.ReleaseRef(); };
 
@@ -469,7 +470,7 @@ namespace IDE.ui
                         if ((gApp.mDebugger.IsPaused(true)) && (!gApp.mDebugger.HasMessages()))
                         {
                             let listView = (HoverListView)listViewItem.mListView;
-                            DoListViewItem(listView, listViewItem, listViewItem.mWatchEntry.mName, listViewItem.mWatchEntry.mEvalStr, true);
+                            DoListViewItem(listView, listViewItem, listViewItem.mWatchEntry.mName, listViewItem.mWatchEntry.mEvalStr, listViewItem.mWatchEntry.mResultStr, true);
                             FinishListView(listView, listView.mX, listView.mY, true);
                             gApp.RefreshVisibleViews();
                         }
@@ -581,7 +582,7 @@ namespace IDE.ui
                 listViewItem.mChildrenListView = childrenListView;
                 for (var pendingEntry in listViewItem.mPendingWatches)
                 {
-                    var watchListViewItem = DoListViewItem(listViewItem.mChildrenListView, null, pendingEntry.mName, pendingEntry.mEvalStr, false, listViewItem.mWatchEntry);
+                    var watchListViewItem = DoListViewItem(listViewItem.mChildrenListView, null, pendingEntry.mName, pendingEntry.mEvalStr, pendingEntry.mResultStr, false, listViewItem.mWatchEntry);
 					if (watchListViewItem == null)
 						continue;
 
@@ -623,7 +624,7 @@ namespace IDE.ui
         {
             for (HoverListViewItem listViewItem in listView.GetRoot().mChildItems)
             {
-                DoListViewItem(listView, listViewItem, listViewItem.mWatchEntry.mName, listViewItem.mWatchEntry.mEvalStr, false);
+                DoListViewItem(listView, listViewItem, listViewItem.mWatchEntry.mName, listViewItem.mWatchEntry.mEvalStr, listViewItem.mWatchEntry.mResultStr, false);
 				if (listViewItem.mChildrenListView != null)
 					RefreshListView(listViewItem.mChildrenListView);
             }
@@ -645,7 +646,7 @@ namespace IDE.ui
 			hoverListView.mSizeDirty = true;
 			if (WantsHorzResize(hoverListView))
             	hoverListView.mWantsHorzResize = true;
-            DoListViewItem(hoverListView, (HoverListViewItem)listViewItem, name, evalStr, false);
+            DoListViewItem(hoverListView, (HoverListViewItem)listViewItem, name, evalStr, null, false);
         }
 
 		void RefreshWatch()
@@ -653,7 +654,7 @@ namespace IDE.ui
 			Refresh();
 		}
 
-        HoverListViewItem DoListViewItem(HoverListView listView, HoverListViewItem listViewItem, String displayString, String evalString, bool isPending, WatchEntry parentWatchEntry = null)
+        HoverListViewItem DoListViewItem(HoverListView listView, HoverListViewItem listViewItem, String displayString, String evalString, String resultString, bool isPending, WatchEntry parentWatchEntry = null)
         {
 			if ((displayString.StartsWith(":")) && (displayString.Contains('\n')))
 			{
@@ -665,7 +666,7 @@ namespace IDE.ui
 					if (displayIdx == 0)
 					{
 						let str = scope String(displayLine);
-						headListView = DoListViewItem(listView, listViewItem, str, str, isPending);
+						headListView = DoListViewItem(listView, listViewItem, str, str, null, isPending);
 					}
 					else
 					{
@@ -696,7 +697,7 @@ namespace IDE.ui
 								}
 								columnIdx++;
 							}
-							var subListViewItem = DoListViewItem(listView, listViewItem, str, str, isPending);
+							var subListViewItem = DoListViewItem(listView, listViewItem, str, str, null, isPending);
 							subListViewItem.mTextAction = cmd;
 							subListViewItem.mTextColor = HoverListViewItem.cActionColor;
 						}
@@ -704,7 +705,7 @@ namespace IDE.ui
 						{
 							let str = scope String(":");
 							str.Append(line);
-							DoListViewItem(listView, listViewItem, str, str, isPending);
+							DoListViewItem(listView, listViewItem, str, str, null, isPending);
 						}
 					}
 
@@ -734,6 +735,8 @@ namespace IDE.ui
             var watch = useListViewItem.mWatchEntry;
             String.NewOrSet!(watch.mName, displayString);
             String.NewOrSet!(watch.mEvalStr, evalString);
+			if (resultString != null)
+				String.NewOrSet!(watch.mResultStr, resultString);
 
 			if (watch.mEvalStr.StartsWith("!raw"))
 			{
@@ -789,7 +792,14 @@ namespace IDE.ui
 					DebugManager.Language language = mLanguage;
 					if (parentWatchEntry != null)
 						language = parentWatchEntry.mLanguage;
-					gApp.DebugEvaluate(null, watch.mEvalStr, val, -1, language, flags);
+					if (watch.mResultStr != null)
+					{
+						val.Set(watch.mResultStr);
+					}
+					else
+					{
+						gApp.DebugEvaluate(null, watch.mEvalStr, val, -1, language, flags);
+					}
 				}
 				if (val == "!pending")
 				{
@@ -985,6 +995,14 @@ namespace IDE.ui
 					String evalStr = scope String();
 					evalStr.AppendF(scope String(memberVals[1]), watch.mEvalStr).IgnoreError();
 					String.NewOrSet!(memberWatch.mEvalStr, evalStr);
+
+					if (memberVals.Count > 3)
+					{
+						// Note: this only occurs on GDB/LLDB debuggers
+						String.NewOrSet!(memberWatch.mResultStr, memberVals[2]);
+						memberWatch.mResultStr.Append("\n");
+						memberWatch.mResultStr.Append(memberVals[3]);
+					}
 
                     useListViewItem.mPendingWatches.Add(memberWatch);
                     memberCount++;
@@ -1561,7 +1579,7 @@ namespace IDE.ui
             	mListView = CreateListView();
 			else
 				mListView.GetRoot().Clear();
-            return DoListViewItem(mListView, null, displayString, evalString, isPending);
+            return DoListViewItem(mListView, null, displayString, evalString, null, isPending);
         }
 
         public void SetListView(HoverListView listView)

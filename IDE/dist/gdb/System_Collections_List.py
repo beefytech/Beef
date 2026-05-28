@@ -14,6 +14,7 @@
 #   DynAllocFlag = 0x80000000  -- set when mItems is a heap-allocated buffer
 #
 # Children:
+#   [Ptr]        mItems pointer
 #   [Count]      mSize
 #   [AllocSize]  mAllocSizeAndFlags & SizeFlags
 #   [0]..[N-1]   elements read from mItems
@@ -32,21 +33,63 @@ def _safe_int(value, default=0):
         return default
 
 
+def _symbol_for_address(addr):
+    """Return ' <sym_name>' for the given address, or '' if no symbol is found."""
+    try:
+        info = gdb.execute(
+            "info symbol 0x{:x}".format(addr), to_string=True
+        ).strip()
+        # Output is e.g. "__bfListObj12 in section .data of /path/to/exe"
+        # or "No symbol matches 0x..."
+        if not info.startswith("No symbol"):
+            sym_name = info.split(" ")[0]
+            return " <{}>".format(sym_name)
+    except Exception:
+        pass
+    return ""
+
+
 class BeefListPrinter:
     def __init__(self, val):
+        # Record whether the original value was a pointer so that to_string()
+        # can prefix the address and symbol name in that case.
+        self.is_ptr = (val.type.code == gdb.TYPE_CODE_PTR)
+        if self.is_ptr:
+            self.ptr_addr = _safe_int(val, 0)
+            if self.ptr_addr != 0:
+                val = val.dereference()
+        else:
+            self.ptr_addr = 0
         self.val = val
 
     def to_string(self):
+        if self.is_ptr and self.ptr_addr == 0:
+            return "0x0"
+
         try:
             size = _safe_int(self.val["mSize"], 0)
-            return "size={}".format(size)
+        except gdb.MemoryError:
+            if self.is_ptr:
+                return "0x{:x} <unreadable>".format(self.ptr_addr)
+            return "<List unreadable memory>"
         except Exception as e:
+            if self.is_ptr:
+                return "0x{:x} <error: {}>".format(self.ptr_addr, e)
             return "<List error: {}>".format(e)
+
+        if self.is_ptr:
+            sym = _symbol_for_address(self.ptr_addr)
+            return "0x{:x}{} size={}".format(self.ptr_addr, sym, size)
+
+        return "size={}".format(size)
 
     def display_hint(self):
         return "array"
 
     def children(self):
+        if self.is_ptr and self.ptr_addr == 0:
+            return
+
         try:
             size        = _safe_int(self.val["mSize"], 0)
             alloc_flags = _safe_int(self.val["mAllocSizeAndFlags"], 0)
@@ -79,22 +122,17 @@ class BeefListPrinter:
             yield ("<error>", str(e))
 
 
-def _get_or_create_beef_collection():
-    """Return the existing global 'Beef' printer collection (or create it).
-    Returns (collection, needs_registration)."""
-    for pp in gdb.pretty_printers:
-        if getattr(pp, 'name', None) == 'Beef':
-            return pp, False
-    return gdb.printing.RegexpCollectionPrettyPrinter("Beef"), True
+def ListPtrLookup(val):
+    type_str = str(val.type.unqualified())
+    # Match both the direct type and pointer-to-type for any T.
+    # Type names look like "System::Collections::List<int32>"
+    # or "System::Collections::List<int32> *"
+    if (type_str.startswith("System::Collections::List<") and
+            (type_str.endswith(">") or type_str.endswith("> *"))):
+        return BeefListPrinter(val)
+    return None
 
 
-_beef_pp, _needs_reg = _get_or_create_beef_collection()
-_beef_pp.add_printer(
-    "System::Collections::List",
-    "^System::Collections::List<.*>$",
-    BeefListPrinter,
-)
-if _needs_reg:
-    gdb.printing.register_pretty_printer(None, _beef_pp)
+gdb.pretty_printers.append(ListPtrLookup)
 
 print("[List] pretty-printers registered")

@@ -4070,7 +4070,7 @@ namespace IDE.ui
 						// Note: this only occurs on GDB/LLDB debuggers
 						String.NewOrSet!(memberWatch.mResultStr, memberVals[2]);
 						memberWatch.mResultStr.Append("\n");
-						memberWatch.mResultStr..Append(memberVals[3]);
+						memberWatch.mResultStr.Append(memberVals[3]);
 					}
 
                     memberItem.Label = memberWatch.mName;

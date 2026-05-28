@@ -40,6 +40,8 @@ def _safe_int(value, default=0):
 
 
 def _escape_bytes(data):
+    """Decode bytes as UTF-8; fall back to hex-escaping for non-UTF-8 bytes.
+    Returns a str that may contain raw control characters (newlines etc.)."""
     try:
         return data.decode("utf-8")
     except Exception:
@@ -50,8 +52,51 @@ def _escape_bytes(data):
         )
 
 
+def _escape_for_display(text):
+    """Escape control characters so the string can be shown inside double-quotes.
+    e.g. newline -> \\n, tab -> \\t, backslash -> \\\\, quote -> \\\"."""
+    result = []
+    for ch in text:
+        o = ord(ch)
+        if   ch == '\n': result.append('\\n')
+        elif ch == '\r': result.append('\\r')
+        elif ch == '\t': result.append('\\t')
+        elif ch == '\\': result.append('\\\\')
+        elif ch == '"':  result.append('\\"')
+        elif o < 32 or o == 127:
+            result.append('\\x{:02x}'.format(o))
+        else:
+            result.append(ch)
+    return ''.join(result)
+
+
+def _symbol_for_address(addr):
+    """Return ' <sym_name>' for the given address, or '' if no symbol is found."""
+    try:
+        info = gdb.execute(
+            "info symbol 0x{:x}".format(addr), to_string=True
+        ).strip()
+        # Output is e.g. "__bfStrObj96 in section .data of /path/to/exe"
+        # or "No symbol matches 0x4b49a0."
+        if not info.startswith("No symbol"):
+            sym_name = info.split(" ")[0]
+            return " <{}>".format(sym_name)
+    except Exception:
+        pass
+    return ""
+
+
 class BeefStringPrinter:
     def __init__(self, val):
+        # Record whether the original value was a pointer so that to_string()
+        # can prefix the address and symbol name in that case.
+        self.is_ptr = (val.type.code == gdb.TYPE_CODE_PTR)
+        if self.is_ptr:
+            self.ptr_addr = _safe_int(val, 0)
+            if self.ptr_addr != 0:
+                val = val.dereference()
+        else:
+            self.ptr_addr = 0
         self.val = val
 
     def _decode(self):
@@ -63,58 +108,80 @@ class BeefStringPrinter:
         alloc_size  = alloc_flags & _cSizeFlags
         return length, has_str_ptr, has_dyn, alloc_size
 
-    def to_string(self):
-        print("String to_string called")
-
-        try:
-            length, has_str_ptr, has_dyn, alloc_size = self._decode()
-        except Exception as e:
-            return "<String field error: {}>".format(e)
-
-        try:
-            if (self.val["mLength"].is_optimized_out or
-                    self.val["mAllocSizeAndFlags"].is_optimized_out):
-                return "<String optimized out>"
-        except Exception:
-            pass
+    def _read_content(self):
+        """Read and return the string content as a Python str, or raise."""
+        length, has_str_ptr, has_dyn, alloc_size = self._decode()
 
         if length < 0:
-            return "<String invalid length={}>".format(length)
-
+            raise ValueError("invalid length={}".format(length))
         if length == 0:
             return ""
 
         preview_len = min(length, MAX_PREVIEW_BYTES)
+        inferior = gdb.selected_inferior()
+
+        if has_str_ptr:
+            ptr_addr = _safe_int(self.val["mPtrOrBuffer"], 0)
+            if ptr_addr == 0:
+                raise ValueError("null mPtrOrBuffer, length={}".format(length))
+            mem = inferior.read_memory(ptr_addr, preview_len)
+        else:
+            # Inline buffer: char8 data lives at the address of mPtrOrBuffer
+            # itself and extends past it into appended allocation.
+            buf_addr = int(self.val["mPtrOrBuffer"].address)
+            mem = inferior.read_memory(buf_addr, preview_len)
+
+        content = _escape_bytes(bytes(mem))
+        if length > MAX_PREVIEW_BYTES:
+            content += "..."
+        return content
+
+    def to_string(self):
+        # Null pointer: nothing to dereference.
+        if self.is_ptr and self.ptr_addr == 0:
+            return "0x0"
 
         try:
-            inferior = gdb.selected_inferior()
+            if (self.val["mLength"].is_optimized_out or
+                    self.val["mAllocSizeAndFlags"].is_optimized_out):
+                if self.is_ptr:
+                    return "0x{:x} <optimized out>".format(self.ptr_addr)
+                return "<String optimized out>"
+        except Exception:
+            pass
 
-            if has_str_ptr:
-                # mPtrOrBuffer holds a real pointer to the character data
-                ptr_addr = _safe_int(self.val["mPtrOrBuffer"], 0)
-                if ptr_addr == 0:
-                    return "<String null ptr length={}>".format(length)
-                mem = inferior.read_memory(ptr_addr, preview_len)
-            else:
-                # Inline buffer: char8 data lives at the address of mPtrOrBuffer
-                # itself and extends past it into appended allocation.
-                buf_addr = int(self.val["mPtrOrBuffer"].address)
-                mem = inferior.read_memory(buf_addr, preview_len)
-
+        try:
+            content = self._read_content()
         except gdb.MemoryError:
-            return "<String unreadable memory length={}>".format(length)
+            if self.is_ptr:
+                return "0x{:x} <unreadable>".format(self.ptr_addr)
+            return "<String unreadable memory>"
         except Exception as e:
-            return "<String read error: {}>".format(e)
+            if self.is_ptr:
+                return "0x{:x} <error: {}>".format(self.ptr_addr, e)
+            return "<String error: {}>".format(e)
 
-        escaped = _escape_bytes(bytes(mem))
-        if length > MAX_PREVIEW_BYTES:
-            escaped += "..."
-        return escaped
+        if self.is_ptr:
+            escaped = _escape_for_display(content)
+            return '0x{:x} "{}"'.format(self.ptr_addr, escaped)
+
+        # Direct value: return raw content; display_hint="string" lets the IDE
+        # wrap it in quotes and handle any further escaping.
+        return content
 
     def display_hint(self):
+        # For pointers, to_string() already builds the full formatted line
+        # (address + symbol + quoted string), so we must NOT return "string"
+        # or the IDE would wrap our entire formatted result in another layer of
+        # quotes.  Returning None causes the value to be shown verbatim.
+        if self.is_ptr:
+            return None
         return "string"
 
     def children(self):
+        if self.is_ptr and self.ptr_addr == 0:
+            return
+
         try:
             length, has_str_ptr, has_dyn, alloc_size = self._decode()
         except Exception:
@@ -133,18 +200,13 @@ class BeefStringPrinter:
             yield ("[InternalSize]", alloc_size)
 
 
-def _get_or_create_beef_collection():
-    """Return the existing global 'Beef' printer collection (or create it).
-    Returns (collection, needs_registration)."""
-    for pp in gdb.pretty_printers:
-        if getattr(pp, 'name', None) == 'Beef':
-            return pp, False
-    return gdb.printing.RegexpCollectionPrettyPrinter("Beef"), True
+def StringPtrLookup(val):
+    type_str = str(val.type.unqualified())
+    if type_str == "System::String *" or type_str == "System::String":
+        return BeefStringPrinter(val)
+    return None
 
 
-_beef_pp, _needs_reg = _get_or_create_beef_collection()
-_beef_pp.add_printer("System::String", "^System::String$", BeefStringPrinter)
-if _needs_reg:
-    gdb.printing.register_pretty_printer(None, _beef_pp)
+gdb.pretty_printers.append(StringPtrLookup)
 
 print("[String] pretty-printers registered")
