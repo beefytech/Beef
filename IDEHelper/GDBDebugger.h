@@ -196,6 +196,7 @@ protected:
 	bool mGDBReady;
 	// Whether the debuggee is currently running
 	bool mRunning;
+	Array<String> mGDBRetainedVariables;
 
 protected:
 	// MI I/O

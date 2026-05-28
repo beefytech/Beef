@@ -452,6 +452,33 @@ GDBMIRecord* GDBDebugger::WaitForToken(int token, int timeoutMS)
 			}
 		}
 
+		// Drain stream records that arrived while waiting so that console output
+		// (e.g. Python pretty-printer error tracebacks) is visible immediately
+		// rather than being deferred until the next Update() tick.
+		while (true)
+		{
+			GDBMIRecord* streamRec = NULL;
+			{
+				AutoCrit autoCrit(mRecordCritSect);
+				for (int i = 0; i < (int)mIncomingRecords.size(); i++)
+				{
+					GDBMIRecord* r = mIncomingRecords[i];
+					if ((r->mType == GDBMIRecordType::ConsoleStream) ||
+					    (r->mType == GDBMIRecordType::TargetStream) ||
+					    (r->mType == GDBMIRecordType::LogStream))
+					{
+						streamRec = r;
+						mIncomingRecords.erase(mIncomingRecords.begin() + i);
+						break;
+					}
+				}
+			}
+			if (streamRec == NULL)
+				break;
+			ProcessRecord(streamRec);
+			delete streamRec;
+		}
+
 		// Check if GDB process died
 		if (mGDBSpawn == NULL)
 			return NULL;
@@ -577,10 +604,16 @@ void GDBDebugger::ProcessRecord(GDBMIRecord* rec)
 	}
 	else if (rec->mType == GDBMIRecordType::LogStream)
 	{
-		if (rec->mClass.StartsWith("Python Exception"))
+		// LogStream content is already newline-terminated (decoded by ParseCString).
+		// Route Python-related lines as soft errors; everything else as plain messages.
+		if (rec->mClass.StartsWith("Python Exception") ||
+		    rec->mClass.StartsWith("Traceback") ||
+		    rec->mClass.StartsWith("  File ") ||
+		    rec->mClass.StartsWith("[beef_dbgvis]") ||
+		    rec->mClass.StartsWith("[System_"))
 			OutputRawMessage("errorsoft " + Trim(rec->mClass));
 		else
-			OutputMessage(rec->mClass + "\n");
+			OutputMessage(rec->mClass);
 	}
 }
 
@@ -965,6 +998,8 @@ void GDBDebugger::DoLaunch()
 
 	SendSyncNoResult("-interpreter-exec console \"set pagination off\"");
 	SendSyncNoResult("-interpreter-exec console \"set debuginfod enabled on\"");
+	SendSyncNoResult("-interpreter-exec console \"set python print-stack full\"");
+
 	SendSyncNoResult("-gdb-set auto-solib-add on");
 	SendSyncNoResult("-enable-pretty-printing");
 
@@ -1056,7 +1091,9 @@ void GDBDebugger::DoLaunch()
 		{
 			String gdbDir = checkDir + "gdb/";
 			// BfpFindFileData_FindFirstFile takes a glob pattern
-			String gdbDirPattern = gdbDir + "*.py";
+			
+			//String gdbDirPattern = gdbDir + "*.py";
+			String gdbDirPattern = gdbDir + "beef_dbgvis.py";
 
 			BfpFileResult findResult = BfpFileResult_Ok;
 			BfpFindFileData* findData = BfpFindFileData_FindFirstFile(gdbDirPattern.c_str(), BfpFindFileFlag_Files, &findResult);
@@ -1213,6 +1250,8 @@ void GDBDebugger::Update()
 
 void GDBDebugger::ContinueDebugEvent()
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	if (mGDBSpawn == NULL)
 		return;
 	if ((mRunState != RunState_Paused) && (mRunState != RunState_Breakpoint) && (mRunState != RunState_Exception))
@@ -1224,6 +1263,14 @@ void GDBDebugger::ContinueDebugEvent()
 	ClearCallStack();
 	mActiveBreakpoint = NULL;
 	mRunState = RunState_Running;
+
+	if (!mGDBRetainedVariables.IsEmpty())
+	{
+		// Watches need to be refreshed when we continue
+		for (auto varobjName : mGDBRetainedVariables)			
+			SendSyncNoResult(StrFormat("-var-delete \"%s\"", varobjName.c_str()).c_str());
+		mGDBRetainedVariables.Clear();
+	}
 
 	if (mNeedsExecRun)
 	{
@@ -2297,6 +2344,8 @@ static void GDBParseExprAndFormat(const StringImpl& expr, String& outExpr, DwInt
 
 String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int cursorPos, int language, DwEvalExpressionFlags expressionFlags)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	GDBLog("Evaluate '%s'\n", expr.c_str());
 
 	if (mGDBSpawn == NULL)
@@ -2330,73 +2379,96 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 	}
 
 	uint64 ptrAddr = 0;
-	
-	// Use varobj for richer type/member information
-		// Generate a unique varobj name
-	String varobjName = StrFormat("bfeval__%d", mNextToken);
-	
-	String createCmd = StrFormat("-var-create \"%s\" @ \"%s\"",
-		varobjName.c_str(), evalExpr.c_str());
-	GDBMIRecord* createRec = SendSync(createCmd.c_str());
 
-	if ((createRec == NULL) || (createRec->mClass != "done") || (createRec->mValue == NULL))
+	String varobjName;
+	String typeName;
+	String displayVal;
+	bool isPointer   = false;
+	bool isComposite = false;
+	bool retainObj   = false;
+
+	if (evalExpr.StartsWith("!children "))
 	{
-		String errMsg = "!";
-		if ((createRec != NULL) && (createRec->mValue != NULL))
+		// The IDE is asking us to expand a composite child whose varobj already
+		// exists.  Skip -var-create entirely and go straight to child listing.
+		varobjName = evalExpr.Substring(10);
+
+		int spacePos = (int)varobjName.IndexOf(' ');
+		if (spacePos != -1)
 		{
-			String msg = createRec->mValue->GetStr("msg");
-			if (!msg.IsEmpty())
-				errMsg += msg;
+			typeName = varobjName.Substring(spacePos + 1);
+			varobjName.RemoveToEnd(spacePos);
+			if (language == DbgLanguage_Beef)
+				typeName = FixBeefName(typeName.c_str());
+		}
+
+		isComposite = true;   // only tagged !children when we know it has children
+		retainObj   = true;   // we didn't create this varobj, so don't delete it
+	}
+	else
+	{
+		// Normal path: create a new varobj for the expression.
+		varobjName = StrFormat("bfeval__%d", mNextToken);
+
+		String createCmd = StrFormat("-var-create \"%s\" @ \"%s\"",
+			varobjName.c_str(), evalExpr.c_str());
+		GDBMIRecord* createRec = SendSync(createCmd.c_str());
+
+		if ((createRec == NULL) || (createRec->mClass != "done") || (createRec->mValue == NULL))
+		{
+			String errMsg = "!";
+			if ((createRec != NULL) && (createRec->mValue != NULL))
+			{
+				String msg = createRec->mValue->GetStr("msg");
+				if (!msg.IsEmpty())
+					errMsg += msg;
+				else
+					errMsg += "Evaluation failed";
+			}
 			else
+			{
 				errMsg += "Evaluation failed";
+			}
+			delete createRec;
+			return errMsg;
 		}
-		else
-		{
-			errMsg += "Evaluation failed";
-		}
+
+		typeName   = createRec->mValue->GetStr("type");
+		displayVal = createRec->mValue->GetStr("value");
+		int numChildren = createRec->mValue->GetInt("numchild");
+		bool hasMore    = createRec->mValue->GetInt("has_more") > 0;
 		delete createRec;
-		return errMsg;
-	}
 
-	String typeName = createRec->mValue->GetStr("type");
-	String displayVal = createRec->mValue->GetStr("value");
-	int numChildren = createRec->mValue->GetInt("numchild");
-	bool hasMore = createRec->mValue->GetInt("has_more") > 0;
-	delete createRec;
-
-	// Apply int display overrides
-	if ((intDisplay != DwIntDisplayType_Default) && (!displayVal.IsEmpty()))
-	{
-		// Try to reinterpret as integer
-		char* end = NULL;
-		long long ival = strtoll(displayVal.c_str(), &end, 0);
-		if ((end != NULL) && (*end == '\0'))
+		// Apply int display overrides
+		if ((intDisplay != DwIntDisplayType_Default) && (!displayVal.IsEmpty()))
 		{
-			if (intDisplay == DwIntDisplayType_HexadecimalLower)
-				displayVal = StrFormat("0x%llx", (uint64)ival);
-			else if (intDisplay == DwIntDisplayType_HexadecimalUpper)
-				displayVal = StrFormat("0x%llX", (uint64)ival);
-			// Decimal is already the GDB default
+			char* end = NULL;
+			long long ival = strtoll(displayVal.c_str(), &end, 0);
+			if ((end != NULL) && (*end == '\0'))
+			{
+				if (intDisplay == DwIntDisplayType_HexadecimalLower)
+					displayVal = StrFormat("0x%llx", (uint64)ival);
+				else if (intDisplay == DwIntDisplayType_HexadecimalUpper)
+					displayVal = StrFormat("0x%llX", (uint64)ival);
+				// Decimal is already the GDB default
+			}
 		}
+
+		if (displayVal.IsEmpty())
+			displayVal = "{...}";
+
+		if (language == DbgLanguage_Beef)
+			typeName = FixBeefName(typeName.c_str());
+
+		isPointer   = (!typeName.IsEmpty() && (typeName[typeName.length() - 1] == '*'));
+		isComposite = (numChildren > 0) || (hasMore);
 	}
-
-	if (displayVal.IsEmpty())
-		displayVal = "{...}";
-
-	// Fix type name for Beef
-
-	if (language == DbgLanguage_Beef)
-		typeName = FixBeefName(typeName.c_str());
-
-	bool isPointer = (!typeName.IsEmpty() && (typeName[typeName.length() - 1] == '*'));
-	bool isComposite = (numChildren > 0) || (hasMore);
 
 	String result;
-
-	result += displayVal;	
+	result += displayVal;
 	result += '\n';
 	result += typeName;
-	
+
 	if (isComposite && !noMembers)
 	{
 		result += "\n:type\tobject";
@@ -2454,20 +2526,37 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 						if (childExp.IsEmpty())
 							continue;
 
-						if ((childValuePtr == NULL) && (depth == 0) && (wi == 0))
+						if (childValuePtr == NULL)
 						{
-							if (childType == "System::ValueType")
+							if ((depth == 0) && (wi == 0))
 							{
-								// Don't list
-								continue;
+								if (childType == "System::ValueType")
+								{
+									// Don't list
+									continue;
+								}
+
+								if (childType.Contains("::"))
+								{
+									// This is a base type
+									result += '\n';
+									result += "[base]";
+									result += '\t';
+									result += StrFormat("(%s)({0})", childExp.c_str());
+									continue;
+								}
 							}
 
-							// This is a base type
+							retainObj = true;
 							result += '\n';
-							result += "[base]";
+							result += childExp;
 							result += '\t';
-							result += StrFormat("(%s)({0})", childExp.c_str());
-						}
+							result += "!children ";
+							result += childName;
+							result += " ";
+							result += childType;
+							continue;
+						}						
 						else if (childType.IsEmpty())
 						{
 							// No type — this is a protection pseudo-node ("public",
@@ -2527,12 +2616,15 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 		result += "\n:editVal\t";
 		result += displayVal;
 	}
-
-	// Clean up the varobj
+	
+	if (retainObj)
 	{
+		mGDBRetainedVariables.Add(varobjName);
+	}
+	else
+	{		
 		String deleteCmd = StrFormat("-var-delete \"%s\"", varobjName.c_str());
-		GDBMIRecord* delRec = SendSync(deleteCmd.c_str());
-		delete delRec;
+		SendSyncNoResult(deleteCmd.c_str());
 	}
 
 	// Reached end

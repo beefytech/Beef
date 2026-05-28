@@ -102,9 +102,11 @@ public:
 
 	bool ReadFileTOML(const StringImpl& fileName);
 	bool Load(const StringImpl& fileNamesStr);
+	String Dump();
+
 	DebugVisualizerEntry* FindEntryForType(const StringImpl& typeName, DbgFlavor wantFlavor, Array<String>* wildcardCaptures);
 
-	String DoStringReplace(const StringImpl& origStr, const Array<String>& wildcardCaptures);
+	String DoStringReplace(const StringImpl& origStr, const Array<String>& wildcardCaptures);	
 };
 
 NS_BF_END
