@@ -656,13 +656,13 @@ BF_EXPORT void BF_CALLTYPE Debugger_Create()
 	//_CrtSetBreakAlloc(621);
 
 	gDebugManager = new DebugManager();
-#ifdef ENABLE_DBG_32
+#if defined(ENABLE_DBG_32) && defined(BF_PLATFORM_WINDOWS)
 	gDebugManager->mDebugger32 = CreateDebugger32(gDebugManager, NULL);
 #else
 	gDebugManager->mDebugger32 = NULL;
 #endif
 
-#ifdef BF32
+#if defined(BF32) || !defined(BF_PLATFORM_WINDOWS)
 	gDebugManager->mDebugger64 = NULL;
 #else
 	gDebugManager->mDebugger64 = CreateDebugger64(gDebugManager, NULL);
