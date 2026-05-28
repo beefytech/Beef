@@ -2522,6 +2522,7 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 						String childType = child->GetStr("type");
 						String childName = child->GetStr("name");  // fully-qualified varobj name
 						String* childValuePtr = child->GetStrPtr("value");
+						bool isDynamic = child->GetInt("dynamic") > 0;
 
 						if (childExp.IsEmpty())
 							continue;
@@ -2556,7 +2557,7 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 							result += " ";
 							result += childType;
 							continue;
-						}						
+						}
 						else if (childType.IsEmpty())
 						{
 							// No type — this is a protection pseudo-node ("public",
@@ -2567,25 +2568,36 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 						}
 						else
 						{
-							if ((!collPtrValue.IsEmpty()) && (childExp.StartsWith('[')) && (childExp.length() > 2) &&
-								(isdigit(childExp[1])))
-							{
-								result += '\n';
-								result += childExp;
-								result += '\t';
-								result += collPtrValue;
-								result += childExp;
-								continue;
-							}
-
-							// Real typed member — emit it
 							result += '\n';
 							result += childExp;
-							result += '\t';
-							if (childExp.StartsWith('['))
-								result += StrFormat("({0})%s", childExp.c_str());
+
+							if (isDynamic)
+							{
+								retainObj = true;								
+								result += '\t';
+								result += "!children ";
+								result += childName;
+								result += " ";
+								result += childType;
+							}
 							else
-								result += StrFormat("({0}).%s", childExp.c_str());
+							{
+								if ((!collPtrValue.IsEmpty()) && (childExp.StartsWith('[')) && (childExp.length() > 2) &&
+									(isdigit(childExp[1])))
+								{
+									result += '\t';
+									result += collPtrValue;
+									result += childExp;
+									continue;
+								}
+
+								// Real typed member — emit it								
+								result += '\t';
+								if (childExp.StartsWith('['))
+									result += StrFormat("({0})%s", childExp.c_str());
+								else
+									result += StrFormat("({0}).%s", childExp.c_str());
+							}
 
 							if ((childExp == "[Ptr]") && (childValuePtr != NULL))
 							{

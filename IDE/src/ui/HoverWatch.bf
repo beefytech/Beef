@@ -35,6 +35,7 @@ namespace IDE.ui
 			public const uint cActionColor = 0xFFB0B0FF;
 			public const uint cActionOverColor = 0xFFE0E0FF;
 
+			public String mPendingChildrenEvalStr ~ delete _;
             public List<PendingWatch> mPendingWatches = new List<PendingWatch>() ~ DeleteContainerAndItems!(_);
             public HoverListView mChildrenListView;
 
@@ -565,6 +566,44 @@ namespace IDE.ui
 
             if (isOpening)
             {
+				if ((listViewItem.mPendingChildrenEvalStr != null) && (listViewItem.mPendingWatches.IsEmpty))
+				{
+					String val = scope .();
+					DebugManager.Language language = mLanguage;
+					DebugManager.EvalExpressionFlags flags = default;
+					gApp.DebugEvaluate(null, listViewItem.mPendingChildrenEvalStr, val, -1, language, flags);
+
+					var vals = scope List<StringView>(val.Split('\n'));
+					int cmdStringCount = Math.Max(0, vals.Count - 2);
+					for (int32 memberIdx = 0; memberIdx < cmdStringCount; memberIdx++)
+					{
+					    var memberVals = scope List<StringView>(scope String(vals[memberIdx + 2]).Split('\t'));
+						var memberVals0 = scope String(memberVals[0]);
+
+						if (memberVals0.StartsWith(":"))
+							continue;
+
+						if (memberVals.Count >= 2)
+						{
+							var memberWatch = new PendingWatch();
+							String.NewOrSet!(memberWatch.mName, memberVals[0]);
+							//String evalStr = scope String();
+							//evalStr.AppendF(scope String(memberVals[1]), watch.mEvalStr).IgnoreError();
+							String.NewOrSet!(memberWatch.mEvalStr, memberVals[1]);
+
+							if (memberVals.Count > 3)
+							{
+								// Note: this only occurs on GDB/LLDB debuggers
+								String.NewOrSet!(memberWatch.mResultStr, memberVals[2]);
+								memberWatch.mResultStr.Append("\n");
+								memberWatch.mResultStr.Append(memberVals[3]);
+							}
+
+							listViewItem.mPendingWatches.Add(memberWatch);
+						}
+					}
+				}
+
                 //IDEApp.sApp.mBfResolveSystem.StartTiming();
                 //IDEApp.sApp.mBfResolveSystem.mIsTiming = false;
                 //mIsTiming = true;
@@ -580,6 +619,8 @@ namespace IDE.ui
                 mContentWidget.AddWidget(childrenListView);
                 mListViews.Add(childrenListView);
                 listViewItem.mChildrenListView = childrenListView;
+				childrenListView.GetRoot().MakeParent();
+
                 for (var pendingEntry in listViewItem.mPendingWatches)
                 {
                     var watchListViewItem = DoListViewItem(listViewItem.mChildrenListView, null, pendingEntry.mName, pendingEntry.mEvalStr, pendingEntry.mResultStr, false, listViewItem.mWatchEntry);
@@ -753,6 +794,7 @@ namespace IDE.ui
             useListViewItem.mOnMouseDown.Add(new (evt) => { listView.mHoverWatch.ValueMouseDown(evt); });
             useListViewItem.mOpenOnDoubleClick = false;
 
+			bool hasDeferredChildren = false;
             bool isStringLiteral = false;
             String val = scope String();
             if (evalString.StartsWith(":", StringComparison.Ordinal))
@@ -792,13 +834,31 @@ namespace IDE.ui
 					DebugManager.Language language = mLanguage;
 					if (parentWatchEntry != null)
 						language = parentWatchEntry.mLanguage;
-					if (watch.mResultStr != null)
+					if ((watch.mResultStr != null) /*&& (!useListViewItem.IsOpen)*/)
 					{
-						val.Set(watch.mResultStr);
+						if (watch.mEvalStr.StartsWith("!children "))
+							hasDeferredChildren = true;
 					}
 					else
 					{
 						gApp.DebugEvaluate(null, watch.mEvalStr, val, -1, language, flags);
+					}
+
+					if (watch.mResultStr != null)
+					{
+						int crCount = watch.mResultStr.Count('\n') + 1;
+						int crPos = -1;
+						for (int i < crCount)
+						{
+							crPos = (.)val.IndexOf('\n', crPos + 1);
+							if (crPos == -1)
+								break;
+						}
+						if (crPos == -1)
+							crPos = val.Length;
+
+						val.Remove(0, crPos);
+						val.Insert(0, watch.mResultStr);
 					}
 				}
 				if (val == "!pending")
@@ -1012,6 +1072,12 @@ namespace IDE.ui
                     watch.mResultType = WatchResultType.None;
             }
 
+			if (hasDeferredChildren)
+			{
+				memberCount++;
+				String.NewOrSet!(useListViewItem.mPendingChildrenEvalStr, watch.mEvalStr);
+			}
+
             /*if ((watch.mReferenceId == null) && (watch.mEvalStr.Length > 0) && (!valueSubItem.mFailed))
             {
                 // Allocate a referenceId if we didn't get one (was a temporary expression)
@@ -1153,6 +1219,7 @@ namespace IDE.ui
 
             listView.mLabelX = GS!(40);
             float childHeights = 0;
+
             for (WatchListViewItem listViewItem in listView.GetRoot().mChildItems)
             {
                 childHeights += listViewItem.mSelfHeight + listViewItem.mChildAreaHeight + listViewItem.mBottomPadding;

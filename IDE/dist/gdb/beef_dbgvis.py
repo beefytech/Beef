@@ -573,6 +573,69 @@ def _apply_format_specs(gv, specs, ctx_val, wildcards, index):
 # 5.  Display-string formatter
 # ─────────────────────────────────────────────────────────────────────────────
 
+def _try_eval_stringview(expr, ctx_val, wildcards, index):
+    """
+    If *expr* is a bare ``__stringView(ptr, length)`` call, evaluate both
+    arguments, read *length* bytes from *ptr*, and return a quoted UTF-8
+    string.  Returns None if the expression is not a __stringView call so
+    the caller can fall back to normal GDB evaluation.
+
+    The optional trailing ',s8' format specifier that may follow the call in
+    the source template is already stripped by _parse_format_specs before we
+    are called, so we do not need to handle it here.
+    """
+    s = expr.strip()
+    if not s.startswith('__stringView'):
+        return None
+    rest = s[len('__stringView'):].lstrip()
+    if not rest.startswith('('):
+        return None
+
+    # Find the closing ')' that matches the opening '('
+    depth = 0
+    end = -1
+    for i, c in enumerate(rest):
+        if   c == '(': depth += 1
+        elif c == ')':
+            depth -= 1
+            if depth == 0: end = i; break
+    if end == -1:
+        return None
+    # Nothing significant should follow the closing ')'
+    if rest[end + 1:].strip():
+        return None
+
+    args_str = rest[1:end]
+
+    # Split at the first depth-0 comma to get ptr and length arguments
+    depth = 0
+    split = -1
+    for i, c in enumerate(args_str):
+        if c in '(<[':  depth += 1
+        elif c in ')>]': depth -= 1
+        elif c == ',' and depth == 0: split = i; break
+    if split == -1:
+        return None     # need exactly two arguments
+
+    ptr_expr = args_str[:split].strip()
+    len_expr = args_str[split + 1:].strip()
+
+    ptr_v = _eval_expr(ptr_expr, ctx_val, wildcards, index)
+    len_v = _eval_expr(len_expr, ctx_val, wildcards, index)
+    if ptr_v is None or len_v is None:
+        return '<??>'
+
+    try:
+        addr   = int(ptr_v)
+        length = int(len_v)
+        if addr == 0 or length <= 0:
+            return '""'
+        raw = bytes(gdb.selected_inferior().read_memory(addr, min(length, 4096)))
+        return _quote_string(raw.decode('utf-8', errors='replace'))
+    except Exception:
+        return '<??>'
+
+
 def _expand_template(tmpl, ctx_val, wildcards, index=None):
     """
     Expand a display-string template:
@@ -602,14 +665,19 @@ def _expand_template(tmpl, ctx_val, wildcards, index=None):
                         depth -= 1
                     j += 1
                 raw_expr = tmpl[i+1:j]
-                # Parse format specifiers out of the expression first so we can
-                # apply them to the result value after GDB evaluation.
+                # Strip format specifiers (e.g. ',s8') before evaluating.
                 bare_expr, fmt_specs = _parse_format_specs(raw_expr)
-                v = _eval_expr(bare_expr, ctx_val, wildcards, index)
-                if v is not None:
-                    out.append(_apply_format_specs(v, fmt_specs, ctx_val, wildcards, index))
+                # __stringView(ptr, length) is a virtual display function that
+                # reads memory directly; intercept it before GDB sees the expr.
+                sv = _try_eval_stringview(bare_expr, ctx_val, wildcards, index)
+                if sv is not None:
+                    out.append(sv)
                 else:
-                    out.append('<??>')
+                    v = _eval_expr(bare_expr, ctx_val, wildcards, index)
+                    if v is not None:
+                        out.append(_apply_format_specs(v, fmt_specs, ctx_val, wildcards, index))
+                    else:
+                        out.append('<??>')
                 i = j + 1
         elif c == '}' and i+1 < n and tmpl[i+1] == '}':
             out.append('}'); i += 2
@@ -835,21 +903,7 @@ def _gen_dictionary_items(entry, val, wildcards):
         except Exception:
             pass  # type has no mHashCode — iterate sequentially
 
-        # Evaluate key/value in context of the entry struct
-        key_v = val_v = None
-        if entry.key:
-            try: key_v = e[entry.key]
-            except Exception:
-                key_v = _eval_in(entry.key, e, wildcards)
-        if entry.value_pointer:
-            try: val_v = e[entry.value_pointer]
-            except Exception:
-                val_v = _eval_in(entry.value_pointer, e, wildcards)
-
-        if key_v is not None:
-            yield ('[{}].key'.format(yielded), key_v)
-        if val_v is not None:
-            yield ('[{}].value'.format(yielded), val_v)
+        yield ('[{}]'.format(yielded), e)
         yielded += 1
         idx += 1
 
@@ -907,15 +961,20 @@ def _gen_collection_children(entry, val, wildcards):
 # ─────────────────────────────────────────────────────────────────────────────
 
 class _BeefDbgVisPrinter:
-    def __init__(self, val, entry, wildcards):
+    def __init__(self, val, entry, wildcards, ptr_addr=0):
         self.val      = val
         self.entry    = entry
         self.wildcards = wildcards
+        self.ptr_addr  = ptr_addr   # non-zero when the original value was a pointer
 
     def to_string(self):
         try:
             s = _pick_display_string(self.entry, self.val, self.wildcards)
-            return s if s is not None else ''
+            if s is None:
+                s = ''
+            if self.ptr_addr:
+                return '0x{:x} {}'.format(self.ptr_addr, s)
+            return s
         except Exception:
             gdb.write('[beef_dbgvis] to_string error for {}:\n{}'.format(
                 self.entry.name, _traceback.format_exc()), gdb.STDERR)
@@ -941,9 +1000,6 @@ class _BeefDbgVisPrinter:
                 try:
                     bare_expr, item_specs = _parse_format_specs(val_expr)
                     v = _eval_expr(bare_expr, val, wc)
-
-                    print("Evaluating child item '{}' with expr '{}' → {}".format(label, bare_expr, v))
-
                     if v is not None:
                         # If arraySize=N is specified, cast the pointer to a
                         # typed array so GDB expands it as indexed children.
@@ -985,10 +1041,17 @@ def _beef_dbgvis_lookup(val):
         t = val.type.unqualified()
         # Auto-dereference class pointers
         is_ptr = (t.code == gdb.TYPE_CODE_PTR)
+        ptr_addr = 0
         if is_ptr:
             inner = t.target().unqualified()
             if inner.code == gdb.TYPE_CODE_VOID: return None
             t = inner
+            try:
+                ptr_addr = int(val)
+            except Exception:
+                pass
+            if ptr_addr == 0:
+                return None   # let GDB render null pointers natively
 
         if t.code not in (gdb.TYPE_CODE_STRUCT, gdb.TYPE_CODE_UNION):
             return None
@@ -1004,7 +1067,7 @@ def _beef_dbgvis_lookup(val):
             if _eval_bool(entry.condition, actual_val, wildcards) is False:
                 return None
 
-        return _BeefDbgVisPrinter(actual_val, entry, wildcards)
+        return _BeefDbgVisPrinter(actual_val, entry, wildcards, ptr_addr)
     except Exception:
         gdb.write('[beef_dbgvis] lookup error for {}:\n{}'.format(
             val.type, _traceback.format_exc()), gdb.STDERR)
