@@ -8,7 +8,7 @@
 
 #if defined BF_DBG_64 && defined BF_PLATFORM_WINDOWS
 // Set LLDB_ENABLED below to test LLDB debugger on Windows
-#define LLDB_ENABLED
+//#define LLDB_ENABLED
 #endif
 
 #include "Debugger.h"
