@@ -26,9 +26,6 @@ public class MenuBar : Widget
 			if (text != null)
 			{
 				sysMenu.mText = new String(text);
-				let bindIndex = sysMenu.mText.IndexOf('&');
-				if (bindIndex != -1)
-					sysMenu.mText.Remove(bindIndex);
 			}
 			if ((hotKey != null) && (hotKey.Length != 0) && ((hotKey.Length > 1 ) || (hotKey[0] != '#')))
 			{
@@ -59,9 +56,6 @@ public class MenuBar : Widget
 				if (text.Length > 0)
 				{
 					String.NewOrSet!(mText, text);
-					let bindIndex = mText.IndexOf('&');
-					if (bindIndex != -1)
-						mText.Remove(bindIndex);
 				}
 				else
 					DeleteAndNullify!(mText);
@@ -99,6 +93,7 @@ public class MenuBar : Widget
 			let button = new Button();
 			button.Label = text;
 			button.mSysMenu = item;
+			button.mMenuBar = mRootMenuBar;
 			button.mOnMouseClick.Add(new (evt) => {
 				mOnMenuItemSelected(this);
 				mRootMenuBar.ShowMenu(button);
@@ -110,6 +105,8 @@ public class MenuBar : Widget
 
 	public class Button : ButtonWidget
 	{
+		public MenuBar mMenuBar;
+		public MenuWidget mMenuWidget;
 		private String mLabel ~ delete _;
 
 		public StringView Label
@@ -127,6 +124,8 @@ public class MenuBar : Widget
 
 		public SysMenu mSysMenu;
 
+		public KeyCode MenuKey => DarkMenuWidget.GetMenuKey(mLabel);
+		
 		public override void Draw(Graphics g)
 		{
 			base.Draw(g);
@@ -147,6 +146,29 @@ public class MenuBar : Widget
 					using (g.PushColor(DarkTheme.COLOR_TEXT))
 						DarkTheme.DrawUnderlined(g, mLabel, GS!(2), (mHeight - GS!(20)) / 2, .Centered, mWidth - GS!(4), .Truncate);
 			    }
+			}
+		}
+
+		public override void MouseEnter()
+		{
+			base.MouseEnter();
+
+			// If we already have a different menu open then we should open our menu now
+			for (var button in mMenuBar.mButtons)
+			{
+				if (button.mMenuWidget != null)
+				{
+					if (button == this)
+					{
+						// Already opened
+						return;
+					}
+
+					// Close the old menu, open the new ones
+					button.mMenuWidget.Close();
+					mMenuBar.ShowMenu(this);
+					return;
+				}
 			}
 		}
 	}
@@ -180,8 +202,14 @@ public class MenuBar : Widget
 		let menu = new Menu();
 		btn.mSysMenu.mOnMenuItemUpdate(btn.mSysMenu);
 		PopulateMenu(menu, btn.mSysMenu);
-		let menuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
-		menuWidget.Init(btn, 0, mHeight);
+		btn.mMenuWidget = DarkTheme.sDarkTheme.CreateMenuWidget(menu);
+		btn.mMenuWidget.Init(btn, 0, mHeight);
+
+		btn.mMenuWidget.mOnRemovedFromParent.Add(new (widget, prevParent, widgetWindow) =>
+			{
+				btn.mMenuWidget = null;
+			});
+		btn.mMenuWidget.SetFocus();
 	}
 
 	void PopulateMenu(Menu parentMenu, SysMenu sysMenu)

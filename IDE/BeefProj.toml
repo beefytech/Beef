@@ -1,10 +1,14 @@
 FileVersion = 1
-Dependencies = {Beefy2D = "*", corlib = "*", curl = "*"}
 
 [Project]
 Name = "IDE"
 TargetType = "BeefGUIApplication"
 StartupObject = "IDE.Program"
+
+[Dependencies]
+Beefy2D = "*"
+corlib = "*"
+curl = "*"
 
 [Platform.Windows]
 IconFile = "$(ProjectDir)/Resources/Beef.ico"
@@ -34,8 +38,8 @@ TargetDirectory = "$(ProjectDir)/dist"
 TargetName = "BeefIDE_d"
 OtherLinkFlags = "$(LinkFlags) libIDEHelper_d.a libBeefySysLib_d.a libhunspell.so $(Var IDEHelperLibs)"
 PreBuildCmds = ["ReadFile(\"$(WorkspaceDir)/dist/IDEHelper_libs_d.txt\", \"IDEHelperLibs\")"]
-DebugCommandArguments = "-proddir=\"$(ProjectDir)\\..\\BeefBuild\""
-DebugWorkingDirectory = "$(ProjectDir)\\.."
+DebugCommandArguments = "-proddir=\"~\\BeefTest\""
+DebugWorkingDirectory = "$(ProjectDir)/dist"
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 PreprocessorMacros = ["DEBUG,HASGIT"]
 
@@ -55,7 +59,7 @@ PreprocessorMacros = ["RELEASE,HASGIT"]
 [Configs.Release.Linux64]
 TargetDirectory = "$(ProjectDir)/dist"
 TargetName = "BeefIDE"
-OtherLinkFlags = "libBeefRT.a libIDEHelper.a libBeefySysLib.a libhunspell.so $(Var IDEHelperLibs)"
+OtherLinkFlags = "$(LinkFlags) libBeefRT.a libIDEHelper.a libBeefySysLib.a libhunspell.so $(Var IDEHelperLibs)"
 PreBuildCmds = ["ReadFile(\"$(WorkspaceDir)/dist/IDEHelper_libs_d.txt\", \"IDEHelperLibs\")"]
 DebugCommandArguments = "-proddir=\"$(ProjectDir)\\..\\BeefBuild\""
 DebugWorkingDirectory = "$(ProjectDir)\\dist"

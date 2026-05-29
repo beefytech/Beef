@@ -823,9 +823,9 @@ String Beefy::vformat(const char* fmt, va_list argPtr)
 }
 
 void Beefy::vformat(StringImpl& str, const char* fmt, va_list argPtr)
-{	
+{
 	char buf[STB_SPRINTF_MIN];
-	BF_stbsp_vsprintfcb(StbspCallback, (void*)&str, buf, fmt, argPtr);	
+	BF_stbsp_vsprintfcb(StbspCallback, (void*)&str, buf, fmt, argPtr);
 }
 #endif
 
@@ -1159,6 +1159,16 @@ String Beefy::GetAbsPath(const StringImpl& relPathIn, const StringImpl& dir)
 
 	if ((relPath.length() >= 2) && (relPath[1] == ':'))
 		return relPath;
+	if ((relPath == "~") || (relPath.StartsWith("~/")))
+	{
+#ifndef BF_PLATFORM_WINDOWS
+		String homeDir = getenv("HOME");
+		if (homeDir.IsEmpty())
+			return relPath;
+		return homeDir + relPath.Substring(1);
+#endif
+	}
+
 
 	char slashChar = DIR_SEP_CHAR;
 
@@ -1225,7 +1235,7 @@ String Beefy::GetAbsPath(const StringImpl& relPathIn, const StringImpl& dir)
 	//newPath = driveString + newPath + tempRelPath;
 	newPath = driveString + newPath;
 
-	StringView endStr(relPath, relIdx);	
+	StringView endStr(relPath, relIdx);
 	if (endStr == ".")
 	{
 		// Ignore

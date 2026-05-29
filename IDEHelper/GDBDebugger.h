@@ -199,6 +199,8 @@ protected:
 	Array<String> mGDBRetainedVariables;
 
 protected:
+	void OutputMessageLine(const StringImpl& msg);
+
 	// MI I/O
 	void SendRaw(const char* line);
 	int SendCommand(const char* cmd);    // returns token

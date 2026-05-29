@@ -428,14 +428,16 @@ namespace Beefy.widgets
 
 		BFWindow GetFakeFocusWindow()
 		{
-			/*for (int windowIdx = BFApp.sApp.mWindows.Count - 1; windowIdx >= 0; windowIdx--)
+#if !BF_PLATFORM_WINDOWS
+			for (int windowIdx = BFApp.sApp.mWindows.Count - 1; windowIdx >= 0; windowIdx--)
 			{
 				var checkWindow = BFApp.sApp.mWindows[windowIdx];
 				if (checkWindow == this)
 					return null;
 				if ((checkWindow.mWindowFlags.HasFlag(.FakeFocus)) && (checkWindow.mHasFocus))
 					return checkWindow;
-			}*/
+			}
+#endif
 			return null;
 		}
 

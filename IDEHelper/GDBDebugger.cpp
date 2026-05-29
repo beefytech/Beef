@@ -460,6 +460,14 @@ void GDBDebugger::OutputMessage(const StringImpl& msg)
 	mDebugManager->mOutMessages.push_back("msg " + msg);
 }
 
+void GDBDebugger::OutputMessageLine(const StringImpl& msg)
+{
+	if (msg.EndsWith("\n"))
+		OutputMessage(msg);
+	else
+		OutputMessage(msg + "\n");
+}
+
 void GDBDebugger::OutputRawMessage(const StringImpl& msg)
 {
 	if (this == NULL)
@@ -652,12 +660,12 @@ void GDBDebugger::ProcessRecord(GDBMIRecord* rec)
 	{
 		// Forward target output to the IDE output panel
 		if (!rec->mClass.IsEmpty())
-			OutputMessage(rec->mClass);
+			OutputMessageLine(rec->mClass);
 	}
 	else if (rec->mType == GDBMIRecordType::TargetStream)
 	{
 		if (!rec->mClass.IsEmpty())
-			OutputMessage(rec->mClass);
+			OutputMessageLine(rec->mClass);
 	}
 	else if (rec->mType == GDBMIRecordType::LogStream)
 	{
@@ -670,7 +678,7 @@ void GDBDebugger::ProcessRecord(GDBMIRecord* rec)
 		    rec->mClass.StartsWith("[System_"))
 			OutputRawMessage("errorsoft " + Trim(rec->mClass));
 		else
-			OutputMessage(rec->mClass);
+			OutputMessageLine(rec->mClass);
 	}
 }
 
@@ -1054,7 +1062,8 @@ void GDBDebugger::DoLaunch()
 	}*/
 
 	SendSyncNoResult("-interpreter-exec console \"set pagination off\"");
-	SendSyncNoResult("-interpreter-exec console \"set debuginfod enabled on\"");
+	//SendSyncNoResult("-interpreter-exec console \"set debuginfod enabled on\"");
+	SendSyncNoResult("-interpreter-exec console \"set target-async on\"");
 	SendSyncNoResult("-interpreter-exec console \"set python print-stack full\"");
 
 	SendSyncNoResult("-gdb-set auto-solib-add on");
@@ -1388,7 +1397,7 @@ void GDBDebugger::ContinueDebugEvent()
 	if (!mGDBRetainedVariables.IsEmpty())
 	{
 		// Watches need to be refreshed when we continue
-		for (auto varobjName : mGDBRetainedVariables)			
+		for (auto varobjName : mGDBRetainedVariables)
 			SendSyncNoResult(StrFormat("-var-delete \"%s\"", varobjName.c_str()).c_str());
 		mGDBRetainedVariables.Clear();
 	}
@@ -1493,7 +1502,7 @@ void GDBDebugger::StepOver(bool inAssembly)
 
 	mAutoStepRemaining = 0;
 	ClearCallStack();
-	mRunState = RunState_Running;	
+	mRunState = RunState_Running;
 
 	if (inAssembly)
 		SendCommand("-exec-next-instruction");
@@ -2707,7 +2716,7 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 
 							if (isDynamic)
 							{
-								retainObj = true;								
+								retainObj = true;
 								result += '\t';
 								result += "!children ";
 								result += childName;
@@ -2725,7 +2734,7 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 									continue;
 								}
 
-								// Real typed member — emit it								
+								// Real typed member — emit it
 								result += '\t';
 								if (childExp.StartsWith('['))
 									result += StrFormat("({0})%s", childExp.c_str());
@@ -2735,7 +2744,7 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 
 							if ((childExp == "[Ptr]") && (childValuePtr != NULL))
 							{
-								collPtrValue = "((" + childType + ")" + *childValuePtr + ")";								
+								collPtrValue = "((" + childType + ")" + *childValuePtr + ")";
 							}
 
 							if (childValuePtr != NULL)
@@ -2762,13 +2771,13 @@ String GDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curso
 		result += "\n:editVal\t";
 		result += displayVal;
 	}
-	
+
 	if (retainObj)
 	{
 		mGDBRetainedVariables.Add(varobjName);
 	}
 	else
-	{		
+	{
 		String deleteCmd = StrFormat("-var-delete \"%s\"", varobjName.c_str());
 		SendSyncNoResult(deleteCmd.c_str());
 	}

@@ -21,6 +21,7 @@ public:
 	int						mModalCount;
 	bool 					mHasPositionInit;
 	bool                    mIsMouseVisible;
+	bool					mWindowReady;
 
 public:
 	SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags);

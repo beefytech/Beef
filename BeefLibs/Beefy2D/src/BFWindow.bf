@@ -163,6 +163,7 @@ namespace Beefy
         public String mTitle ~ delete _;
         public int32 mX;
         public int32 mY;
+		public bool mPositionKnown;
         public int32 mWindowWidth;
         public int32 mWindowHeight;
 		public int32 mNormX;
@@ -553,7 +554,15 @@ namespace Beefy
 
 		public virtual void RehupSize()
 		{
+			mPositionKnown = true;
 			BFWindow_GetPosition(mNativeWindow, out mX, out mY, out mWindowWidth, out mWindowHeight, out mClientX, out mClientY, out mClientWidth, out mClientHeight);
+			//Console.WriteLine($"BFWindow_GetPosition {mX},{mY},{mWindowWidth},{mWindowHeight}");
+			if (mX == Int32.MinValue)
+			{
+				mX = 0;
+				mY = 0;
+				mPositionKnown = false;
+			}
 
 			int32 showKind = 0;
 			BFWindow_GetPlacement(mNativeWindow, out mNormX, out mNormY, out mNormWidth, out mNormHeight, out showKind);
