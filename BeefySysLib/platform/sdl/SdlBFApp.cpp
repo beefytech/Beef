@@ -46,6 +46,7 @@ bool (SDLCALL* bf_SDL_SetNumberProperty)(SDL_PropertiesID props, const char* nam
 bool (SDLCALL* bf_SDL_SetBooleanProperty)(SDL_PropertiesID props, const char* name, bool value);
 bool (SDLCALL* bf_SDL_SetStringProperty)(SDL_PropertiesID props, const char* name, const char* value);
 bool (SDLCALL* bf_SDL_SetPointerProperty)(SDL_PropertiesID props, const char *name, void *value);
+bool (SDLCALL* bf_SDL_HasProperty)(SDL_PropertiesID props, const char* name);
 
 SDL_Window* (SDLCALL* bf_SDL_CreateWindowWithProperties)(SDL_PropertiesID props);
 SDL_WindowID (SDLCALL* bf_SDL_GetWindowID)(SDL_Window* window);
@@ -61,9 +62,11 @@ bool (SDLCALL* bf_SDL_SetWindowTitle)(SDL_Window* window, const char* title);
 bool (SDLCALL* bf_SDL_SetWindowIcon)(SDL_Window* window, SDL_Surface* icon);
 float (SDLCALL* bf_SDL_GetWindowDisplayScale)(SDL_Window* window);
 SDL_Window* (SDLCALL* bf_SDL_GetMouseFocus)();
+SDL_PropertiesID (SDLCALL* bf_SDL_GetWindowProperties)(SDL_Window* window);
 
 bool (SDLCALL* bf_SDL_ShowCursor)(void);
 bool (SDLCALL* bf_SDL_HideCursor)(void);
+uint32_t (SDLCALL* bf_SDL_GetMouseState)(int* x, int* y);
 
 char* (SDLCALL* bf_SDL_GetClipboardText)(void);
 bool (SDLCALL* bf_SDL_SetClipboardText)(const char* text);
@@ -208,6 +211,8 @@ BF_EXPORT void BF_CALLTYPE BFApp_RegisterAppIcon(uint8* imageData, int size)
 
 SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags)
 {
+	mWindowReady = false;
+
 	SDL_PropertiesID props = bf_SDL_CreateProperties();
 
 	bool wantScale = (windowFlags & BFWINDOW_LOGICAL_COORDS) == 0;
@@ -636,6 +641,7 @@ void SdlBFApp::SDLInit()
 		BF_GET_SDLPROC(SDL_SetBooleanProperty);
 		BF_GET_SDLPROC(SDL_SetStringProperty);
 		BF_GET_SDLPROC(SDL_SetPointerProperty);
+		BF_GET_SDLPROC(SDL_HasProperty);
 
 		BF_GET_SDLPROC(SDL_CreateWindowWithProperties);
 		BF_GET_SDLPROC(SDL_GetWindowID);
@@ -651,9 +657,11 @@ void SdlBFApp::SDLInit()
 		BF_GET_SDLPROC(SDL_SetWindowIcon);
 		BF_GET_SDLPROC(SDL_GetWindowDisplayScale);
 		BF_GET_SDLPROC(SDL_GetMouseFocus);
+		BF_GET_SDLPROC(SDL_GetWindowProperties);
 
 		BF_GET_SDLPROC(SDL_ShowCursor);
 		BF_GET_SDLPROC(SDL_HideCursor);
+		BF_GET_SDLPROC(SDL_GetMouseState);
 
 		BF_GET_SDLPROC(SDL_GetClipboardText);
 		BF_GET_SDLPROC(SDL_SetClipboardText);
@@ -782,7 +790,23 @@ void SdlBFApp::ProcessSDLEvents()
 		case SDL_EVENT_MOUSE_MOTION:
 			{
 				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
-				if (sdlBFWindow != NULL)
+				if ((sdlEvent.motion.xrel == 0) && (sdlEvent.motion.yrel == 0) && (!sdlBFWindow->mWindowReady))
+				{
+					// Ignore the initial mouse motion event that SDL sends when creating a window if it is under the mouse cursor
+					break;
+				}
+				sdlBFWindow->mWindowReady = true;
+
+				for (auto child : sdlBFWindow->mChildren)
+				{
+					// If we get a move inside ourselves then the mouse must not be over a child
+					SdlBFWindow* childSdlBFWindow = (SdlBFWindow*)child;
+					childSdlBFWindow->mWindowReady = true;
+				}
+
+				//printf("Mouse motion in child window %p WindowReady: %d %f,%f Rel:%f,%f\n", sdlBFWindow, sdlBFWindow->mWindowReady, sdlEvent.motion.x, sdlEvent.motion.y, sdlEvent.motion.xrel, sdlEvent.motion.yrel);
+
+				if ((sdlBFWindow != NULL) && (sdlBFWindow->mWindowReady))
 				{
 					int x = (int)sdlEvent.button.x;
 					int y = (int)sdlEvent.button.y;
@@ -975,6 +999,17 @@ void SdlBFWindow::GetPosition(int* x, int* y, int* width, int* height, int* clie
 		*clientWidth = *width;
 	if (clientHeight)
 		*clientHeight = *height;
+
+	if ((mParent == NULL) && (*x == 0) && (*y == 0))
+	{
+		SDL_PropertiesID props = bf_SDL_GetWindowProperties(mSDLWindow);
+		if (bf_SDL_HasProperty(props, "SDL.window.wayland.surface"))
+		{
+			// Indicate that we don't know the position, since Wayland doesn't provide it
+			*x = INT32_MIN;
+			*y = INT32_MIN;
+		}
+	}
 }
 
 void SdlBFApp::PhysSetCursor()
