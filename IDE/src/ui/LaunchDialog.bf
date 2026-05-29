@@ -235,8 +235,10 @@ namespace IDE.ui
 		public static void DoLaunch(LaunchDialog dialog, String targetPath, String arguments, String workingDir, String envVarStr, bool startPaused, bool debug)
 		{
 			var workingDir;
+
+			bool validatePaths = !targetPath.Contains('@');
 			
-			if (!File.Exists(targetPath))
+			if ((validatePaths) && (!File.Exists(targetPath)))
 			{
 				dialog?.mTargetCombo.SetFocus();
 				gApp.Fail(scope String()..AppendF("Unable to locate target file '{0}'", targetPath));
@@ -251,7 +253,7 @@ namespace IDE.ui
 			if (workingDir.EndsWith('\\') || workingDir.EndsWith('/'))
 				workingDir.RemoveFromEnd(1);
 
-			if (!Directory.Exists(workingDir))
+			if ((validatePaths) && (!Directory.Exists(workingDir)))
 			{
 				dialog?.mWorkingDirCombo.SetFocus();
 				gApp.Fail(scope String()..AppendF("Unable to locate working directory '{0}'", workingDir));

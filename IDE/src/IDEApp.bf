@@ -379,6 +379,14 @@ namespace IDE
 
 		class LaunchData
 		{
+			public enum Kind
+			{
+				Normal,
+				GDB,
+				GDB_WSL
+			}
+
+			public Kind mKind;
 			public String mTargetPath ~ delete _;
 			public String mArgs ~ delete _;
 			public String mWorkingDir ~ delete _;
@@ -8180,6 +8188,13 @@ namespace IDE
 			{
 				if (mLaunchData.mArgs != null)
 				{
+					if (mLaunchData.mTargetPath == null)
+					{
+						mLaunchData.mTargetPath = new .();
+						mLaunchData.mTargetPath.Append(key);
+						return true;
+					}
+
 					if (!mLaunchData.mArgs.IsEmpty)
 						mLaunchData.mArgs.Append(" ");
 					mLaunchData.mArgs.Append(key);
@@ -8215,9 +8230,23 @@ namespace IDE
 					mWantsClean = true;
 				case "-dbgCompileDump":
 					mDbgCompileDump = true;
+				case "-gdb":
+					if (mLaunchData == null)
+						mLaunchData = new .();
+					mLaunchData.mKind = .GDB;
+					mLaunchData.mPaused = true;
+				case "-gdb_wsl":
+					if (mLaunchData == null)
+						mLaunchData = new .();
+					if (mLaunchData.mArgs == null)
+						mLaunchData.mArgs = new .();
+					mLaunchData.mKind = .GDB_WSL;
+					mLaunchData.mPaused = true;
 				case "-launch":
 					if (mLaunchData == null)
 						mLaunchData = new .();
+					if (mLaunchData.mArgs == null)
+						mLaunchData.mArgs = new .();
 				case "-launchPaused":
 					if (mLaunchData != null)
 						mLaunchData.mPaused = true;
@@ -13271,7 +13300,18 @@ namespace IDE
 						CompileAndRun(true);
 				}
 				else
+				{
+					switch (mLaunchData.mKind)
+					{
+					case .GDB:
+						mLaunchData.mTargetPath.Append("@gdb");
+					case .GDB_WSL:
+						mLaunchData.mTargetPath.Append("@gdb_wsl");
+					default:
+					}
+					
 					LaunchDialog.DoLaunch(null, mLaunchData.mTargetPath, mLaunchData.mArgs ?? "", mLaunchData.mWorkingDir ?? "", "", mLaunchData.mPaused, true);
+				}
 			}
 
 			mInitialized = true;

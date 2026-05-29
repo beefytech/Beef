@@ -1456,6 +1456,8 @@ static bool GDBIsAtBeefStartProgram(const Array<GDBFrame>& callStack)
 
 void GDBDebugger::StepInto(bool inAssembly)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	if (mGDBSpawn == NULL)
 		return;
 
@@ -1478,12 +1480,21 @@ void GDBDebugger::StepIntoSpecific(intptr addr)
 
 void GDBDebugger::StepOver(bool inAssembly)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	if (mGDBSpawn == NULL)
 		return;
 
+	if (mNeedsExecRun)
+	{
+		ContinueDebugEvent();
+		return;
+	}
+
 	mAutoStepRemaining = 0;
 	ClearCallStack();
-	mRunState = RunState_Running;
+	mRunState = RunState_Running;	
+
 	if (inAssembly)
 		SendCommand("-exec-next-instruction");
 	else
@@ -1492,6 +1503,8 @@ void GDBDebugger::StepOver(bool inAssembly)
 
 void GDBDebugger::StepOut(bool inAssembly)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
 	if (mGDBSpawn == NULL)
 		return;
 
