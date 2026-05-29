@@ -263,7 +263,7 @@ namespace IDE.ui
 		{
 			mCurPropertiesTarget = gApp.mSettings.mKeySettings;
 			var root = (DarkListViewItem)mPropPage.mPropertiesListView.GetRoot();
-			
+
 			var map = scope Dictionary<String, KeyEntry>();
 			mKeyEntries = new List<KeyEntry>();
 
@@ -272,7 +272,7 @@ namespace IDE.ui
 				var keyEntry = new KeyEntry();
 				keyEntry.mCommand.Set(kv.key);
 				keyEntry.mContextFlags = kv.value.mContextFlags;
-				
+
 				mKeyEntries.Add(keyEntry);
 				map[keyEntry.mCommand] = keyEntry;
 			}
@@ -514,7 +514,7 @@ namespace IDE.ui
 				{
 					mHideVSHelper = true;
 				}
-				
+
 			}
 		}
 
@@ -522,6 +522,7 @@ namespace IDE.ui
 		{
 			base.DrawAll(g);
 
+#if BF_PLATFORM_WINDOWS
 			if ((mPropPage?.mCategoryType == 4) && (!mHideVSHelper))
 			{
 				var rect = mPropPage.mPropertiesListView.GetRect();
@@ -542,6 +543,7 @@ namespace IDE.ui
 					g.DrawString(helpStr, rect.mX + GS!(20), rect.mY + GS!(20), .Left, rect.mWidth - GS!(40), .Wrap);
 				}
 			}
+#endif
 		}
 	}
 }

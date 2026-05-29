@@ -555,6 +555,7 @@ static int SDLConvertKeyCode(SDL_Keycode scanCode)
     case SDLK_KP_7: return 0x67;
     case SDLK_KP_8: return 0x68;
     case SDLK_KP_9: return 0x69;
+	case SDLK_PERIOD: return 0xBE;
     case SDLK_KP_MULTIPLY: return 0x6A;
     case SDLK_KP_PLUS: return 0x6B;
     case SDLK_SEPARATOR: return 0x6C;
