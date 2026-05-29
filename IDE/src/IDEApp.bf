@@ -8833,6 +8833,20 @@ namespace IDE
 				window.mFocusWidget?.KeyDown(evt);
 				evt.mHandled = true;
 			}
+
+#if !BF_PLATFORM_WINDOWS
+			if (evt.mKeyFlags.HeldKeys == .Alt)
+			{
+				for (var btn in mMainFrame.mMenuBar.mButtons)
+				{
+					if (evt.mKeyCode == btn.MenuKey)
+					{
+						mMainFrame.mMenuBar.ShowMenu(btn);
+						break;
+					}
+				}
+			}
+#endif
 		}
 
 		void SysKeyUp(KeyCode keyCode)
