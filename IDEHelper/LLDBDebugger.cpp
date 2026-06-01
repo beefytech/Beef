@@ -130,7 +130,11 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mExceptionCode = 0;
 	mHotSwapEnabled = false;
 	mOpenFileFlags = DbgOpenFileFlag_None;
+	mRemotePort = 0;
+	mIsRemoteConnect = false;
 	mLaunchThread = NULL;
+	mEventThreadStop = false;
+	mEventThread = NULL;
 }
 
 LLDBDebugger::~LLDBDebugger()
@@ -396,13 +400,176 @@ void LLDBDebugger::DoLaunch()
 
 void BFP_CALLTYPE LLDBDebugger::LaunchThreadProc(void* param)
 {
-	((LLDBDebugger*)param)->DoLaunch();
+	LLDBDebugger* self = (LLDBDebugger*)param;
+	if (self->mIsRemoteConnect)
+		self->DoConnectRemote();
+	else
+		self->DoLaunch();
 }
 
 bool LLDBDebugger::Attach(int processId, BfDbgAttachFlags attachFlags)
 {
 	mDidAttach = true;
 	return false;
+}
+
+void LLDBDebugger::DoConnectRemote()
+{
+	lldb::SBDebugger::Initialize();
+
+	lldb::SBDebugger debugger = lldb::SBDebugger::Create(false);
+	debugger.SetAsync(false);
+
+	debugger.HandleCommand("settings set plugin.process.gdb-remote.packet-timeout 5");
+	debugger.HandleCommand("settings set thread.max-backtrace-depth 32");
+
+	if (mElfPath.empty())
+		OutputMessage("remote-connect: WARNING: no ELF path set");
+
+	lldb::SBError mLastError;
+	lldb::SBTarget target = debugger.CreateTarget(
+		mElfPath.empty() ? "" : mElfPath.c_str(),
+		nullptr, nullptr, false, mLastError);
+
+	if (!target.IsValid())
+	{
+		OutputMessage("remote-connect: target creation failed");
+		lldb::SBDebugger::Destroy(debugger);
+		mRunState = RunState_Terminated;
+		return;
+	}
+
+	String connectTarget = StrFormat("%s:%d", mRemoteHost.c_str(), mRemotePort);
+
+	lldb::SBCommandReturnObject connectResult;
+	debugger.GetCommandInterpreter().HandleCommand(
+		StrFormat("process connect --plugin gdb-remote connect://%s",
+			connectTarget.c_str()).c_str(),
+		connectResult);
+
+	if (!connectResult.Succeeded())
+	{
+		const char* errMsg = connectResult.GetError();
+		OutputMessage(StrFormat("remote-connect: connect to %s failed: %s",
+			connectTarget.c_str(),
+			((errMsg != NULL) && (errMsg[0] != '\0')) ? errMsg : "(no details)"));
+		lldb::SBDebugger::Destroy(debugger);
+		mRunState = RunState_Terminated;
+		return;
+	}
+
+	lldb::SBProcess process = target.GetProcess();
+
+	if (!process.IsValid())
+	{
+		OutputMessage("remote-connect: invalid process after connect");
+		lldb::SBDebugger::Destroy(debugger);
+		mRunState = RunState_Terminated;
+		return;
+	}
+
+	lldb::StateType state = process.GetState();
+
+	if ((state == lldb::eStateExited) || (state == lldb::eStateDetached) || (state == lldb::eStateCrashed))
+	{
+		OutputMessage("remote-connect: process terminated during connect");
+		lldb::SBDebugger::Destroy(debugger);
+		mRunState = RunState_Terminated;
+		return;
+	}
+
+	lldb::SBThread stopThread;
+	lldb::SBThread fallbackThread;
+
+	uint32 threadCount = process.GetNumThreads();
+
+	for (uint32 i = 0; i < threadCount; i++)
+	{
+		lldb::SBThread t = process.GetThreadAtIndex(i);
+
+		if (!fallbackThread.IsValid())
+			fallbackThread = t;
+
+		if (t.IsValid() &&
+			t.GetStopReason() != lldb::eStopReasonNone)
+		{
+			stopThread = t;
+			break;
+		}
+	}
+
+	if (!stopThread.IsValid())
+		stopThread = fallbackThread;
+
+	if (!stopThread.IsValid())
+	{
+		OutputMessage("remote-connect: no valid thread found");
+
+		lldb::SBDebugger::Destroy(debugger);
+		mRunState = RunState_Terminated;
+		return;
+	}
+
+	process.SetSelectedThread(stopThread);
+	lldb::StateType finalState = state;
+
+	{
+		AutoCrit autoCrit(mDebugManager->mCritSect);
+
+		mLLDBDebugger = debugger;
+		mLLDBTarget = target;
+		mLLDBProcess = process;
+		mDidAttach = true;
+
+		switch (finalState)
+		{
+		case lldb::eStateStopped:
+			mRunState = RunState_Paused;
+			break;
+
+		case lldb::eStateExited:
+		case lldb::eStateDetached:
+		case lldb::eStateCrashed:
+			mRunState = RunState_Terminated;
+			break;
+
+		default:
+			mRunState = RunState_Running;
+			break;
+		}
+	}
+
+	{
+		AutoCrit autoCrit(mDebugManager->mCritSect);
+		for (auto bp : mBreakpoints)
+			CheckBreakpoint(bp);
+	}
+
+	debugger.SetAsync(true);
+
+	//not having this as its own thread causes IDE to freeze (which is annoying)
+	mEventThreadStop = false;
+	mEventThread = BfpThread_Create(
+		EventPumpThreadProc,
+		(void*)this,
+		128 * 1024,
+		BfpThreadCreateFlag_StackSizeReserve);
+}
+
+bool LLDBDebugger::ConnectRemote(const StringImpl& host, int port, const StringImpl& elfPath)
+{
+	mRemoteHost = host;
+	mRemotePort = port;
+	mElfPath = elfPath;
+	mIsRemoteConnect = true;
+
+	{
+		AutoCrit autoCrit(mDebugManager->mCritSect);
+		mRunState = RunState_Running;
+	}
+
+	mLaunchThread = BfpThread_Create(LaunchThreadProc, (void*)this, 128 * 1024, BfpThreadCreateFlag_StackSizeReserve);
+	return true;
 }
 
 void LLDBDebugger::GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr)
@@ -419,6 +586,62 @@ void LLDBDebugger::WaitForLaunchThread()
 	}
 }
 
+void LLDBDebugger::WaitForEventThread()
+{
+	if (mEventThread != NULL)
+	{
+		mEventThreadStop = true;
+		BfpThread_WaitFor(mEventThread, -1);
+		BfpThread_Release(mEventThread);
+		mEventThread = NULL;
+		mEventThreadStop = false;
+	}
+}
+
+void BFP_CALLTYPE LLDBDebugger::EventPumpThreadProc(void* param)
+{
+	((LLDBDebugger*)param)->DoEventPump();
+}
+
+void LLDBDebugger::DoEventPump()
+{
+	lldb::SBListener listener = mLLDBDebugger.GetListener();
+
+	if ((mRunState == RunState_Running) && mLLDBProcess.IsValid())
+	{
+		lldb::StateType initState = mLLDBProcess.GetState();
+		OutputMessage(StrFormat("remote-connect: Event pump initial state check: %d", (int)initState));
+		if (initState == lldb::eStateStopped)
+		{
+			AutoCrit autoCrit(mDebugManager->mCritSect);
+			// Re-check mRunState under the lock in case ContinueDebugEvent ran
+			// concurrently and already set it back to Running.
+			if (mRunState == RunState_Running)
+			{
+				ClearCallStack();
+				mActiveBreakpoint = NULL;
+				mRunState = RunState_Paused;
+				OutputMessage("remote-connect: Event pump detected halted target — enabling Continue");
+			}
+		}
+	}
+
+	while (!mEventThreadStop)
+	{
+		lldb::SBEvent event;
+		
+		if (listener.WaitForEvent(1, event))
+		{
+			if (lldb::SBProcess::EventIsProcessEvent(event))
+			{
+				lldb::StateType state = lldb::SBProcess::GetStateFromEvent(event);
+				LLDBLog("DoEventPump got state:%d\n", (int)state);
+				HandleProcessEvent(state);
+			}
+		}
+	}
+}
+
 void LLDBDebugger::Run()
 {
 	// Kick off the background launch thread if OpenFile has stored params for us.
@@ -432,6 +655,13 @@ void LLDBDebugger::Run()
 
 void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 {
+	if (state == lldb::eStateRunning)
+	{
+		if ((mRunState == RunState_Paused) || (mRunState == RunState_Breakpoint))
+			mRunState = RunState_Running;
+		return;
+	}
+
 	// Process exited or was detached
 	if ((state == lldb::eStateExited) || (state == lldb::eStateDetached))
 	{
@@ -561,6 +791,9 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 
 void LLDBDebugger::Update()
 {
+	if (mIsRemoteConnect)
+		return;
+
 	if (!mLLDBProcess.IsValid())
 		return;
 	if ((mRunState == RunState_NotStarted) || (mRunState == RunState_Terminating) || (mRunState == RunState_Terminated))
@@ -703,7 +936,11 @@ Breakpoint* LLDBDebugger::CreateBreakpoint(const StringImpl& fileName, int lineN
 		lldb::SBFileSpec fileSpec(fileName.c_str(), /*resolve=*/false);
 		bp->mLLDBBreakpoint = mLLDBTarget.BreakpointCreateByLocation(fileSpec, (uint32)(lineNum + 1));
 		if (bp->mLLDBBreakpoint.IsValid())
+		{
+			if (mIsRemoteConnect)
+				bp->mLLDBBreakpoint.SetIsHardware(true);
 			mBreakpointIdMap.ForceAdd((int)bp->mLLDBBreakpoint.GetID(), bp);
+		}
 	}
 
 	return bp;
@@ -729,7 +966,11 @@ Breakpoint* LLDBDebugger::CreateSymbolBreakpoint(const StringImpl& symbolName)
 		DoCreateBreakpointByName(bp);
 
 		if (bp->mLLDBBreakpoint.IsValid())
+		{
+			if (mIsRemoteConnect)
+				bp->mLLDBBreakpoint.SetIsHardware(true);
 			mBreakpointIdMap.ForceAdd((int)bp->mLLDBBreakpoint.GetID(), bp);
+		}
 	}
 
 	return bp;
@@ -748,6 +989,8 @@ Breakpoint* LLDBDebugger::CreateAddressBreakpoint(intptr address)
 		bp->mLLDBBreakpoint = mLLDBTarget.BreakpointCreateByAddress((lldb::addr_t)address);
 		if (bp->mLLDBBreakpoint.IsValid())
 		{
+			if (mIsRemoteConnect)
+				bp->mLLDBBreakpoint.SetIsHardware(true);
 			mBreakpointIdMap.ForceAdd((int)bp->mLLDBBreakpoint.GetID(), bp);
 			mBreakpointAddrMap.ForceAdd((uintptr)address, bp);
 		}
@@ -777,7 +1020,11 @@ void LLDBDebugger::CheckBreakpoint(Breakpoint* checkBreakpoint)
 		}
 
 		if (bp->mLLDBBreakpoint.IsValid())
+		{
+			if (mIsRemoteConnect)
+				bp->mLLDBBreakpoint.SetIsHardware(true);
 			mBreakpointIdMap.ForceAdd((int)bp->mLLDBBreakpoint.GetID(), bp);
+		}
 	}
 
 	// Try to resolve the load address so FindBreakpointAt() works.

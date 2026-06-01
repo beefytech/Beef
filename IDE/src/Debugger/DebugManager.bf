@@ -174,6 +174,12 @@ namespace IDE.Debugger
 		static extern bool Debugger_Attach(int32 processId, AttachFlags attachFlags);
 
 		[CallingConvention(.Stdcall),CLink]
+		static extern bool Debugger_ConnectRemote(char8* host, int32 port, char8* elfPath);
+
+		[CallingConvention(.Stdcall),CLink]
+		public static extern bool Debugger_SupportsRemoteConnect();
+
+		[CallingConvention(.Stdcall),CLink]
 		public static extern void Debugger_GetStdHandles(Platform.BfpFile** outStdIn, Platform.BfpFile** outStdOut, Platform.BfpFile** outStdErr);
 
 		[CallingConvention(.Stdcall),CLink]
@@ -1204,6 +1210,15 @@ namespace IDE.Debugger
 			mIsComptimeDebug = false;
 			mIsRunningWithHotSwap = false;
 			return Debugger_Attach(process.Id, attachFlags);
+		}
+
+		public bool ConnectRemote(String host, int32 port, String elfPath)
+		{
+			mIsRunningCompiled = false;
+			mIsComptimeDebug = false;
+			mIsRunningWithHotSwap = false;
+			mIsRunning = Debugger_ConnectRemote(host, port, elfPath);
+			return mIsRunning;
 		}
 
 		public void GetStdHandles(Platform.BfpFile** outStdIn, Platform.BfpFile** outStdOut, Platform.BfpFile** outStdErr)

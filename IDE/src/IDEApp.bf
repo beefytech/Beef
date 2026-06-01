@@ -5787,6 +5787,45 @@ namespace IDE
 		}
 
 		[IDECommand]
+		void DoConnectRemote()
+		{
+			var widgetWindow = GetCurrentWindow();
+			if (widgetWindow != null)
+			{
+				var dialog = new RemoteDebugDialog();
+				dialog.PopupWindow(mMainWindow);
+			}
+		}
+
+		public void ConnectRemoteDebugger(String host, int32 port, String elfPath)
+		{
+			if (mDebugger.mIsRunning)
+			{
+				Fail("Already debugging a target");
+				return;
+			}
+
+			mExecutionPaused = false;
+			// Remote targets are already halted at connect time; treating the first
+			// stop as the "init break" would trigger auto-continue into ROM hardware
+			// breakpoints.  Mark it handled so the IDE goes straight to Paused.
+			mTargetDidInitBreak = true;
+			mTargetHadFirstBreak = false;
+
+			if (!mDebugger.ConnectRemote(host, port, elfPath))
+			{
+				Fail("Failed to initiate remote connection");
+				return;
+			}
+
+			OutputLine("Connecting to remote target at {0}:{1} (ELF: {2})", host, port, elfPath);
+			CheckDebugVisualizers();
+			mDebugger.IncrementSessionIdx();
+			mDebugger.RehupBreakpoints(true);
+			mIsAttachPendingSourceShow = true;
+		}
+
+		[IDECommand]
 		void DoLaunch()
 		{
 			if (mLaunchDialog != null)
@@ -6329,6 +6368,10 @@ namespace IDE
 			AddMenuItem(subMenu, "Start With&out Compiling", "Start Without Compiling", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(subMenu, "&Launch Process...", "Launch Process", new => UpdateMenuItem_DebugStopped);
 			AddMenuItem(subMenu, "&Attach to Process...", "Attach to Process", new => UpdateMenuItem_DebugStopped);
+			AddMenuItem(subMenu, "Connect to &Remote Target...", "Connect Remote Debugger", new (item) =>
+			{
+				item.SetDisabled(mDebugger.mIsRunning || !DebugManager.Debugger_SupportsRemoteConnect());
+			});
 			AddMenuItem(subMenu, "&Stop Debugging", "Stop Debugging", new => UpdateMenuItem_DebugOrTestRunning);
 			AddMenuItem(subMenu, "Break All", "Break All", new => UpdateMenuItem_DebugNotPaused);
 			AddMenuItem(subMenu, "Remove All Breakpoints", "Remove All Breakpoints");
