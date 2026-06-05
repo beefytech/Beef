@@ -403,6 +403,7 @@ namespace IDE
 			int chevronDepth = 0;
 			int parenDepth = 0;
 			bool hadParen = false;
+			bool foundFunctionName = false;
 
 			int lastTopStart = -1;
 			int lastTopEnd = -1;
@@ -589,6 +590,7 @@ namespace IDE
 						foundOpenParen = true;
 						if (lastTopStart != -1)
 						{
+							foundFunctionName = true;
 							char8* insertChars = label.CStr() + lastTopStart;
 							uint32 color = SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Method];
 							*(uint32*)(insertChars + 1) = (color >> 1) & 0x7F7F7F7F;
@@ -608,6 +610,7 @@ namespace IDE
 							}
 							if (checkIdx >= 0)
 							{
+								foundFunctionName = true;
 		                        InsertColorChange(label, checkIdx, SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Method]);
 								i += 5;
 							}
@@ -651,6 +654,15 @@ namespace IDE
 					chevronDepth--;
 			}
 
+			if (!foundFunctionName)
+			{
+				if (prevStart != -1)
+				{
+					InsertColorChange(label, prevStart, SourceEditWidgetContent.sTextColors[(int32)SourceElementType.Method]);
+					prevStart = label.Length;
+				}
+			}
+
 			if ((prevStart != -1) &&
 				((codeKind == .Type) || (!hadParen)))
 			{
@@ -690,6 +702,90 @@ namespace IDE
 					i += 2;
 				}
 				outStr.Append(c);
+			}
+		}
+
+		public static Result<int> Execute(StringView path, StringView args, String outText = null, String outError = null)
+		{
+			var outText;
+			if (outText == null)
+				outText = scope:: .();
+
+			ProcessStartInfo procInfo = scope ProcessStartInfo();
+			procInfo.UseShellExecute = false;
+			procInfo.RedirectStandardError = true;
+			procInfo.RedirectStandardOutput = true;
+			procInfo.SetFileName(path);
+			procInfo.CreateNoWindow = true;
+			if (!args.IsEmpty)
+				procInfo.SetArguments(args);
+
+			SpawnedProcess process = scope SpawnedProcess();
+			if (process.Start(procInfo) case .Err)
+				return .Err;
+
+			FileStream fileStream = scope FileStream();
+			process.AttachStandardError(fileStream);
+			StreamReader streamReader = scope StreamReader(fileStream, null, false, 4096);
+			if (outText != null)
+				streamReader.ReadToEnd(outText).IgnoreError();
+
+			FileStream fileStreamOut = scope FileStream();
+			process.AttachStandardOutput(fileStreamOut);
+			StreamReader streamReaderOut = scope StreamReader(fileStreamOut, null, false, 4096);
+			if ((outError ?? outText) != null)
+				streamReaderOut.ReadToEnd(outError ?? outText).IgnoreError();
+
+			return .Ok(process.ExitCode);
+		}
+
+		public static void WSLPathFix(String str)
+		{
+			for (int i = 1; i < str.Length - 1; i++)
+			{
+				if (str[i] == ':')
+				{
+					if (str[i - 1].IsLetter)
+					{
+						int j = i;
+						for ( ; j < str.Length; j++)
+						{
+							char8 cj = str[j];
+							if (cj == '\\')
+								str[j] = '/';
+							if ((cj.IsWhiteSpace) || (cj == '"'))
+								break;
+						}
+
+						str.Remove(i);
+						str[i - 1] = str[i - 1].ToLower;
+						str.Insert(i - 1, "/mnt/");
+					}
+				}
+			}
+		}
+
+		public static bool IsLinuxPath(StringView path)
+		{
+			return (path.StartsWith('/')) || (path.StartsWith('~'));
+		}
+
+		public static Result<void> WSLCopy(StringView fromPath, StringView toPath)
+		{
+			var fromPath;
+			var toPath;
+
+			if (!IsLinuxPath(fromPath))
+				fromPath = WSLPathFix(.. scope:: .(fromPath));
+			if (!IsLinuxPath(toPath))
+				toPath = WSLPathFix(.. scope:: .(toPath));
+
+			switch (Execute("wsl.exe", scope $"cp {fromPath} {toPath}"))
+			{
+			case .Err(let err):
+				return .Err;
+			case .Ok:
+				return .Ok;
 			}
 		}
     }

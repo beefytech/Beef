@@ -110,6 +110,13 @@ namespace IDE
 			case iOS;
 			case Android;
 			case Wasm;
+			case None; //Bare-metal
+
+#if BF_PLATFORM_WINDOWS
+			public bool IsWSL => this == .Linux;
+#else
+			public bool IsWSL => false;
+#endif
 			
 			public static PlatformType GetFromName(StringView name, StringView targetTriple = default)
 			{
@@ -123,6 +130,7 @@ namespace IDE
 				case "macOS": return .macOS;
 				case "iOS": return .iOS;
 				case "wasm32", "wasm64": return .Wasm;
+				case "none": return .None;
 				default:
 					return TargetTriple.GetPlatformType(name);
 				}

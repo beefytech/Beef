@@ -4,6 +4,7 @@ using System.Text;
 using Beefy.widgets;
 using Beefy.gfx;
 using System.Diagnostics;
+using Beefy.events;
 
 namespace Beefy.theme.dark
 {
@@ -43,7 +44,9 @@ namespace Beefy.theme.dark
 						leftStr.RemoveToEnd(barIdx);
 					}
 
-					g.DrawString(leftStr, GS!(36), 0);
+					//g.DrawString(leftStr, GS!(36), 0);
+					DarkTheme.DrawUnderlined(g, leftStr, GS!(36), 0);
+
 					if (!rightStr.IsEmpty)
 						g.DrawString(rightStr, mWidth - GS!(8), 0, .Right);
 				}
@@ -270,6 +273,14 @@ namespace Beefy.theme.dark
             mPopupInsets.Set(GS!(2), GS!(2), GS!(10), GS!(10));
         }
 
+		public static KeyCode GetMenuKey(StringView label)
+		{
+			int andPos = label.IndexOf('&');
+			if (andPos != -1)
+				return (.)label[andPos + 1].ToUpper;
+			return 0;
+		}
+
         public override MenuContainer CreateMenuContainer()
         {
             DarkMenuContainer menuContainer = new DarkMenuContainer();
@@ -430,44 +441,84 @@ namespace Beefy.theme.dark
             
         }
 
-		public override void KeyDown(KeyCode keyCode, bool isRepeat)
+		public override void KeyDown(KeyDownEvent keyEvent)
 		{
-			base.KeyDown(keyCode, isRepeat);
+			base.KeyDown(keyEvent);
 
-			switch (keyCode)
+			if (keyEvent.mKeyFlags.HeldKeys == default)
 			{
-			case .Right:
-				if (mSelectIdx != -1)
+				switch (keyEvent.mKeyCode)
 				{
-					var darkMenuItem = (DarkMenuItem)mItemWidgets[mSelectIdx];
-					if (darkMenuItem.mSubMenu == null)
+				case .Right:
+					if (mSelectIdx != -1)
 					{
-						if (darkMenuItem.mMenuItem.mItems.Count > 0)
-							darkMenuItem.OpenSubMenu(true);
-					}
-					else
-					{
-						mOpeningSubMenu = true;
-						darkMenuItem.mSubMenu.SetFocus();
-						if (darkMenuItem.mSubMenu.mSelectIdx == -1)
+						var darkMenuItem = (DarkMenuItem)mItemWidgets[mSelectIdx];
+						if (darkMenuItem.mSubMenu == null)
 						{
-							darkMenuItem.mSubMenu.mSelectIdx = 0;
-							darkMenuItem.mSubMenu.MarkDirty();
+							if (darkMenuItem.mMenuItem.mItems.Count > 0)
+								darkMenuItem.OpenSubMenu(true);
 						}
-						darkMenuItem.mSubMenu.mWidgetWindow.SetForeground();
-						mOpeningSubMenu = false;
+						else
+						{
+							mOpeningSubMenu = true;
+							darkMenuItem.mSubMenu.SetFocus();
+							if (darkMenuItem.mSubMenu.mSelectIdx == -1)
+							{
+								darkMenuItem.mSubMenu.mSelectIdx = 0;
+								darkMenuItem.mSubMenu.MarkDirty();
+							}
+							darkMenuItem.mSubMenu.mWidgetWindow.SetForeground();
+							mOpeningSubMenu = false;
+						}
+					}
+				case .Left:
+					if (mParentMenuItemWidget != null)
+					{
+						var darkMenuItem = (DarkMenuItem)mParentMenuItemWidget;
+						int32 selectIdx = darkMenuItem.mMenuWidget.mSelectIdx;
+						darkMenuItem.CloseSubMenu();
+						darkMenuItem.mMenuWidget.mSelectIdx = selectIdx;
+					}
+				default:
+				}
+			}
+
+			if ((keyEvent.mKeyFlags.HeldKeys == default) || (keyEvent.mKeyFlags.HeldKeys == .Alt))
+			{
+				Menu useMenu = mMenu;
+				if (mItemSelected != null)
+					useMenu = mItemSelected;
+
+				MenuWidget useMenuWidget = this;
+				while (true)
+				{
+					for (var itemWidget in useMenuWidget.mItemWidgets)
+					{
+						if (itemWidget.mSubMenu != null)
+						{
+							useMenuWidget = itemWidget.mSubMenu;
+							continue;
+						}
+					}
+					break;
+				}
+
+				for (var itemWidget in useMenuWidget.mItemWidgets)
+				{
+					if (keyEvent.mKeyCode == GetMenuKey(itemWidget.mMenuItem.mLabel))
+					{
+						useMenuWidget.SetSelection(@itemWidget.Index);
+						var darkMenuItem = itemWidget as DarkMenuItem;
+						if (itemWidget.mMenuItem.IsParent)
+						{
+							darkMenuItem.OpenSubMenu(true);
+						}
+						else
+						{
+							useMenuWidget.SubmitSelection();
+						}
 					}
 				}
-			case .Left:
-				
-				if (mParentMenuItemWidget != null)
-				{
-					var darkMenuItem = (DarkMenuItem)mParentMenuItemWidget;
-					int32 selectIdx = darkMenuItem.mMenuWidget.mSelectIdx;
-					darkMenuItem.CloseSubMenu();
-					darkMenuItem.mMenuWidget.mSelectIdx = selectIdx;
-				}
-			default:
 			}
 		}
     }

@@ -194,6 +194,15 @@ public:
 			return false;
 #endif
 		}
+
+		bool IsWSL()
+		{
+#ifdef BF_PLATFORM_WINDOWS
+			return mPlatformType == BfPlatformType_Linux;
+#else
+			return false;
+#endif
+		}
 	};
 	Options mOptions;
 

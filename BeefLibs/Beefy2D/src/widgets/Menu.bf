@@ -319,6 +319,15 @@ namespace Beefy.widgets
 
             MenuContainer menuContainer;
 
+			void FixWindowPos(BFWindow parentWindow, ref float screenY, ref float screenHeight)
+			{
+				if ((parentWindow != null) && (!parentWindow.mPositionKnown))
+				{
+					// We can't adjust height based on staying "on-screen" on window managers that hide our true window position
+					screenHeight = Math.Min(screenHeight, parentWindow.mClientHeight - screenY);
+				}
+			}
+
             if (curWidgetWindow == null)
             {
                 menuContainer = CreateMenuContainer();                                
@@ -334,6 +343,7 @@ namespace Beefy.widgets
 				screenHeight = Math.Max(screenHeight, 32);
 
 				WidgetWindow parentWindow = (relativeWidget != null) ? relativeWidget.mWidgetWindow : null;
+				FixWindowPos(parentWindow, ref screenY, ref screenHeight);
                 curWidgetWindow = new WidgetWindow(parentWindow,
                     "Popup",
                     (int32)(screenX), (int32)(screenY),
@@ -366,6 +376,7 @@ namespace Beefy.widgets
                 float screenHeight;
                 CalcContainerSize(x, y, menuContainer, allowScrollable, ref screenX, ref screenY, out screenWidth, out screenHeight);
 
+				FixWindowPos(curWidgetWindow.mParent, ref screenY, ref screenHeight);
                 curWidgetWindow.Resize((int32)(screenX), (int32)(screenY),
                     (int32)screenWidth, (int32)screenHeight);
             }

@@ -1492,7 +1492,7 @@ int CeBuilder::GetCallTableIdx(BeFunction* beFunction, CeOperand* outOperand)
 			auto callerType = mCeFunction->GetOwner();
 			auto calleeType = ceFunctionInfo->GetOwner();
 
-			if ((callerType != NULL) && (calleeType != NULL))
+			if ((callerType != NULL) && (calleeType != NULL) && !calleeType->IsDeleting())
 			{
 				// This will generally already be set, but there are some error cases (such as duplicate type names)
 				//  where this will not be set yet
@@ -2095,6 +2095,8 @@ void CeBuilder::Build()
 		dupMethodInstance.CopyFrom(methodInstance);
 		auto methodDef = methodInstance->mMethodDef;
 
+		BfLogSys(methodInstance->GetOwner()->mModule->mSystem, "CeBuilder::Build dupMethodInstance created %p\n", &dupMethodInstance);
+
 		bool isGenericVariation = (methodInstance->mIsUnspecializedVariation) || (methodInstance->GetOwner()->IsUnspecializedTypeVariation());
 		int dependentGenericStartIdx = 0;
 		if ((((methodInstance->mMethodInfoEx != NULL) && ((int)methodInstance->mMethodInfoEx->mMethodGenericArguments.size() > dependentGenericStartIdx)) ||
@@ -2169,6 +2171,8 @@ void CeBuilder::Build()
 			mCeMachine->mCeModule->mHadBuildError = false;
 			return;
 		}
+
+		dupMethodInstance.mInCEMachine = false;
 	}
 	else
 	{
@@ -4588,7 +4592,8 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 	if (constant->mConstType == BfConstType_AggZero)
 	{
 		BF_ASSERT(type->IsComposite());
-		memset(mMemory.mVals + addr, 0, type->mSize);
+		if (type->mSize > 0)
+			memset(mMemory.mVals + addr, 0, type->mSize);
 		return true;
 	}
 
@@ -4600,7 +4605,8 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 
 	if (constant->mConstType == BfConstType_Undef)
 	{
-		memset(mMemory.mVals + addr, 0, type->mSize);
+		if (type->mSize > 0)
+			memset(mMemory.mVals + addr, 0, type->mSize);
 		return true;
 	}
 
@@ -4678,7 +4684,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 	if (constant->mConstType == BfConstType_BitCastNull)
 	{
 		BF_ASSERT(type->IsPointer() || type->IsObjectOrInterface());
-		memset(mMemory.mVals + addr, 0, type->mSize);
+		memset(mMemory.mVals + addr, 0, ptrSize);
 		return true;
 	}
 
@@ -9960,7 +9966,18 @@ void CeMachine::RemoveMethod(BfMethodInstance* methodInstance)
 
 			if (methodInstance->mMethodDef->mIsLocalMethod)
 			{
-				// We can't rebuild these anyway
+				// We can't rebuild these anyway, so remove from the named map immediately.
+				// Without this, a zombie ceFunctionInfo (mMethodInstance=NULL, mMethodRef empty)
+				// stays reachable via mNamedFunctionMap when mRefCount > 1, causing GetCallTableIdx
+				// to silently drop dependency edges and causing "Method not generated" failures
+				// at execution-time rebind rather than a clear compile-time error.
+				if (!ceFunctionInfo->mName.IsEmpty())
+				{
+					auto itr = mNamedFunctionMap.Find(ceFunctionInfo->mName);
+					if (itr->mValue == ceFunctionInfo)
+						mNamedFunctionMap.Remove(itr);
+					ceFunctionInfo->mName.Clear();
+				}
 			}
 			else if (ceFunctionInfo->mRefCount > 1)
 			{

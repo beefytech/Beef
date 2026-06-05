@@ -1,3 +1,4 @@
+
 #include "DebugVisualizers.h"
 
 USING_NS_BF;
@@ -347,6 +348,8 @@ bool DebugVisualizers::ReadFileTOML(const StringImpl& fileName)
 
 bool DebugVisualizers::Load(const StringImpl& fileNamesStr)
 {
+	mCheckDirectories.Clear();
+
 	bool hasError = !mErrorString.IsEmpty();
 	mErrorString.Clear();
 
@@ -355,13 +358,17 @@ bool DebugVisualizers::Load(const StringImpl& fileNamesStr)
 	while (true)
 	{
 		int crPos = (int)fileNamesStr.IndexOf('\n', startIdx);
+		String fileName;
 		if (crPos == -1)
-		{
-			fileNames.Add(fileNamesStr.Substring(startIdx));
+			fileName = fileNamesStr.Substring(startIdx);
+		else
+			 fileName = fileNamesStr.Substring(startIdx, crPos - startIdx);
+		if ((fileName.EndsWith('\\')) || (fileName.EndsWith('/')))
+			mCheckDirectories.Add(fileName);
+		else
+			fileNames.Add(fileName);
+		if (crPos == -1)
 			break;
-		}
-
-		fileNames.Add(fileNamesStr.Substring(startIdx, crPos - startIdx));
 		startIdx = crPos + 1;
 	}
 
@@ -392,6 +399,121 @@ bool DebugVisualizers::Load(const StringImpl& fileNamesStr)
 		mCurFileName.Clear();
 	}
 	return success;
+}
+
+String DebugVisualizers::Dump()
+{
+	String dump;
+
+	for (auto entry : mDebugVisualizers)
+	{
+		dump += "Entry\t";
+		dump += entry->mName;
+		dump += "\n";
+
+#define EMIT_STR(label, field) \
+		if (!entry->field.IsEmpty()) { dump += label "\t"; dump += entry->field; dump += "\n"; }
+
+		// Flavor (skip DbgFlavor_Unknown)
+		if (entry->mFlavor == DbgFlavor_GNU)
+			dump += "Flavor\tGNU\n";
+		else if (entry->mFlavor == DbgFlavor_MS)
+			dump += "Flavor\tMS\n";
+
+		// CollectionType (skip CollectionType_None)
+		switch (entry->mCollectionType)
+		{
+		case DebugVisualizerEntry::CollectionType_Array:        dump += "CollectionType\tArrayItems\n";       break;
+		case DebugVisualizerEntry::CollectionType_IndexItems:   dump += "CollectionType\tIndexListItems\n";   break;
+		case DebugVisualizerEntry::CollectionType_TreeItems:    dump += "CollectionType\tTreeItems\n";        break;
+		case DebugVisualizerEntry::CollectionType_LinkedList:   dump += "CollectionType\tLinkedListItems\n";  break;
+		case DebugVisualizerEntry::CollectionType_Delegate:     dump += "CollectionType\tDelegate\n";         break;
+		case DebugVisualizerEntry::CollectionType_Dictionary:   dump += "CollectionType\tDictionaryItems\n";  break;
+		case DebugVisualizerEntry::CollectionType_ExpandedItem: dump += "CollectionType\tExpandedItem\n";     break;
+		case DebugVisualizerEntry::CollectionType_CallStackList:dump += "CollectionType\tCallStackList\n";    break;
+		default: break;
+		}
+
+		// DisplayStrings — one line each: "DisplayString\t{condition}\t{string}"
+		for (auto ds : entry->mDisplayStrings)
+		{
+			if (!ds->mString.IsEmpty())
+			{
+				dump += "DisplayString\t";
+				dump += ds->mCondition;
+				dump += "\t";
+				dump += ds->mString;
+				dump += "\n";
+			}
+		}
+
+		// StringViews — one line each: "StringView\t{condition}\t{string}"
+		for (auto sv : entry->mStringViews)
+		{
+			if (!sv->mString.IsEmpty())
+			{
+				dump += "StringView\t";
+				dump += sv->mCondition;
+				dump += "\t";
+				dump += sv->mString;
+				dump += "\n";
+			}
+		}
+
+		EMIT_STR("Action",              mAction);
+		EMIT_STR("Condition",           mCondition);
+		EMIT_STR("Size",                mSize);
+
+		// LowerDimSizes — one line per dimension
+		for (auto& dimSize : entry->mLowerDimSizes)
+		{
+			if (!dimSize.IsEmpty())
+			{
+				dump += "LowerDimSize\t";
+				dump += dimSize;
+				dump += "\n";
+			}
+		}
+
+		EMIT_STR("HeadPointer",         mHeadPointer);
+		EMIT_STR("EndPointer",          mEndPointer);
+		EMIT_STR("NextPointer",         mNextPointer);
+		EMIT_STR("LeftPointer",         mLeftPointer);
+		EMIT_STR("RightPointer",        mRightPointer);
+		EMIT_STR("ValueType",           mValueType);
+		EMIT_STR("ValuePointer",        mValuePointer);
+		EMIT_STR("TargetPointer",       mTargetPointer);
+		EMIT_STR("Buckets",             mBuckets);
+		EMIT_STR("Entries",             mEntries);
+		EMIT_STR("Key",                 mKey);
+		EMIT_STR("DynValueType",        mDynValueType);
+		EMIT_STR("DynValueTypeIdAppend",mDynValueTypeIdAppend);
+
+		if (entry->mShowElementAddrs)
+			dump += "ShowElementAddrs\t1\n";
+
+		// ExpandItems — one line each: "Item\t{name}\t{value}" or with condition tab-appended
+		for (auto item : entry->mExpandItems)
+		{
+			if ((!item->mName.IsEmpty()) || (!item->mValue.IsEmpty()))
+			{
+				dump += "Item\t";
+				dump += item->mName;
+				dump += "\t";
+				dump += item->mValue;
+				if (!item->mCondition.IsEmpty())
+				{
+					dump += "\t";
+					dump += item->mCondition;
+				}
+				dump += "\n";
+			}
+		}
+
+#undef EMIT_STR
+	}
+
+	return dump;
 }
 
 DebugVisualizerEntry* DebugVisualizers::FindEntryForType(const StringImpl& typeName, DbgFlavor wantFlavor, Array<String>* wildcardCaptures)

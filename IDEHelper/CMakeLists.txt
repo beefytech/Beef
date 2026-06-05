@@ -122,8 +122,8 @@ file(GLOB SRC_FILES
     SpellChecker.cpp
     Targets.cpp
     X86XmmInfo.cpp
-
-    LinuxDebugger.cpp
+    LLDBDebugger.cpp
+    GDBDebugger.cpp
 
     Beef/BfCommon.cpp
     Clang/CDepChecker.cpp
@@ -168,7 +168,7 @@ file(GLOB SRC_FILES
     Backend/BeModule.cpp
 )
 
-find_package(LLVM 19.1 CONFIG COMPONENTS)
+find_package(LLVM 22.1 CONFIG COMPONENTS)
 
 if (LLVM_FOUND)
   message(STATUS "Found LLVM ${LLVM_PACKAGE_VERSION}")
@@ -177,10 +177,25 @@ if (LLVM_FOUND)
   include_directories(${LLVM_INCLUDE_DIRS})
   add_definitions(${LLVM_DEFINITIONS})
 
-  string(APPEND TARGET_LIBS_OS "-lLLVM-19 ${LLVM_SYSTEM_LIBS}")
+  string(APPEND TARGET_LIBS_OS "-lLLVM-22 ${LLVM_SYSTEM_LIBS}")
   string(STRIP ${TARGET_LIBS_OS} TARGET_LIBS_OS)
 else()
   message(FATAL_ERROR "LLVM not found")
+endif()
+
+if(UNIX AND NOT APPLE)
+  find_path(LLDB_INCLUDE_DIR lldb/API/LLDB.h HINTS ${LLVM_INCLUDE_DIRS})
+  find_library(LLDB_LIBRARY NAMES lldb-22 liblldb-22 lldb liblldb HINTS ${LLVM_LIBRARY_DIRS})
+
+  if (LLDB_INCLUDE_DIR AND LLDB_LIBRARY)
+    message(STATUS "Found LLDB: ${LLDB_LIBRARY}")
+    add_definitions(-DLLDB_ENABLED)
+    string(APPEND TARGET_LIBS_OS " ${LLDB_LIBRARY}")
+    string(STRIP ${TARGET_LIBS_OS} TARGET_LIBS_OS)
+  else()
+    message(WARNING "LLDB was not found; Linux IDE debugger support will be disabled")
+  endif()
+
 endif()
 
 # Add library to build.
@@ -190,6 +205,10 @@ add_library(${PROJECT_NAME} STATIC
 
 if (HAVE_BACKTRACE_HEADERS)
   string(APPEND TARGET_LIBS_OS " -lbacktrace")
+  string(STRIP ${TARGET_LIBS_OS} TARGET_LIBS_OS)
+endif()
+
+if (DEFINED BF_ENABLE_SDL)
   string(STRIP ${TARGET_LIBS_OS} TARGET_LIBS_OS)
 endif()
 

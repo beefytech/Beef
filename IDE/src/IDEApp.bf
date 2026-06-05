@@ -121,6 +121,14 @@ namespace IDE
 		public static String sRTVersionStr = "042";
 		public const String cVersion = "0.43.6";
 
+#if BF_PLATFORM_LINUX
+		public const uint8[?] cAppIcon = [IgnoreErrors]{ Compiler.ReadBinary("Resources/beeflang.png") };
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BFApp_RegisterAppIcon(uint8* imageData, int size);
+#endif
+
+
 #if BF_PLATFORM_WINDOWS
 		public static readonly String sPlatform64Name = "Win64";
 		public static readonly String sPlatform32Name = "Win32";
@@ -144,6 +152,7 @@ namespace IDE
 		public static bool sExitTest;
 
 		public Verbosity mVerbosity = .Default;
+		public List<String> mExtraWorkspacePreprocessorMacros = new .() ~ DeleteContainerAndItems!(_);
 		public BeefVerb mVerb;
 		public bool mDbgCompileDump;
 		public int mDbgCompileIdx = -1;
@@ -188,7 +197,6 @@ namespace IDE
 		public DarkDockingFrame mDockingFrame;
 		public MainFrame mMainFrame;
 		public GlobalUndoManager mGlobalUndoManager = new GlobalUndoManager() ~ delete _;
-		public SourceControl mSourceControl = new SourceControl() ~ delete _;
 		public GitManager mGitManager = new .() ~ delete _;
 
 		public WidgetWindow mPopupWindow;
@@ -371,6 +379,14 @@ namespace IDE
 
 		class LaunchData
 		{
+			public enum Kind
+			{
+				Normal,
+				GDB,
+				GDB_WSL
+			}
+
+			public Kind mKind;
 			public String mTargetPath ~ delete _;
 			public String mArgs ~ delete _;
 			public String mWorkingDir ~ delete _;
@@ -1528,8 +1544,6 @@ namespace IDE
 
 			if (Utils.WriteTextFile(path, useText) case .Err)
 			{
-				if (gApp.mSettings.mEditorSettings.mPerforceAutoCheckout)
-					mSourceControl.Checkout(path);
 				Thread.Sleep(10);
 				if (Utils.WriteTextFile(path, useText) case .Err)
 				{
@@ -6063,7 +6077,13 @@ namespace IDE
 		{
 			scope AutoBeefPerf("IDEApp.CreateMenu");
 
-			SysMenu root = mMainWindow.mSysMenu;
+			SysMenu root;
+#if BF_PLATFORM_WINDOWS
+			root = mMainWindow.mSysMenu;
+#else
+			root = mMainFrame.mMenuBar.mSysMenuRoot;
+			defer mMainFrame.RehupSize();
+#endif
 
 			String keyStr = scope String();
 
@@ -6147,11 +6167,18 @@ namespace IDE
 
 			void AddLineEndingKind(String name, LineEndingKind lineEndingKind)
 			{
+				bool allowLast;
+#if !BF_PLATFORM_WINDOWS
+				allowLast = true;
+#else
+				allowLast = false;
+#endif
+
 				lineEndingMenu.AddMenuItem(name, null,
 					new (menu) =>
 					{
 						var sysMenu = (SysMenu)menu;
-						var sourceViewPanel = GetActiveSourceViewPanel();
+						var sourceViewPanel = GetActiveSourceViewPanel(allowLast);
 						if (sourceViewPanel != null)
 						{
 							if (sourceViewPanel.mEditData.mLineEndingKind != lineEndingKind)
@@ -6166,7 +6193,7 @@ namespace IDE
 					{
 						var sysMenu = (SysMenu)menu;
 
-						var sourceViewPanel = GetActiveSourceViewPanel();
+						var sourceViewPanel = GetActiveSourceViewPanel(allowLast);
 						if (sourceViewPanel != null)
 						{
 							sysMenu.Modify(null, null, null, true, (sourceViewPanel.mEditData.mLineEndingKind == lineEndingKind) ? 1 : 0, true);
@@ -8161,6 +8188,13 @@ namespace IDE
 			{
 				if (mLaunchData.mArgs != null)
 				{
+					if (mLaunchData.mTargetPath == null)
+					{
+						mLaunchData.mTargetPath = new .();
+						mLaunchData.mTargetPath.Append(key);
+						return true;
+					}
+
 					if (!mLaunchData.mArgs.IsEmpty)
 						mLaunchData.mArgs.Append(" ");
 					mLaunchData.mArgs.Append(key);
@@ -8196,9 +8230,23 @@ namespace IDE
 					mWantsClean = true;
 				case "-dbgCompileDump":
 					mDbgCompileDump = true;
+				case "-gdb":
+					if (mLaunchData == null)
+						mLaunchData = new .();
+					mLaunchData.mKind = .GDB;
+					mLaunchData.mPaused = true;
+				case "-gdb_wsl":
+					if (mLaunchData == null)
+						mLaunchData = new .();
+					if (mLaunchData.mArgs == null)
+						mLaunchData.mArgs = new .();
+					mLaunchData.mKind = .GDB_WSL;
+					mLaunchData.mPaused = true;
 				case "-launch":
 					if (mLaunchData == null)
 						mLaunchData = new .();
+					if (mLaunchData.mArgs == null)
+						mLaunchData.mArgs = new .();
 				case "-launchPaused":
 					if (mLaunchData != null)
 						mLaunchData.mPaused = true;
@@ -8785,6 +8833,20 @@ namespace IDE
 				window.mFocusWidget?.KeyDown(evt);
 				evt.mHandled = true;
 			}
+
+#if !BF_PLATFORM_WINDOWS
+			if (evt.mKeyFlags.HeldKeys == .Alt)
+			{
+				for (var btn in mMainFrame.mMenuBar.mButtons)
+				{
+					if (evt.mKeyCode == btn.MenuKey)
+					{
+						mMainFrame.mMenuBar.ShowMenu(btn);
+						break;
+					}
+				}
+			}
+#endif
 		}
 
 		void SysKeyUp(KeyCode keyCode)
@@ -9257,7 +9319,15 @@ namespace IDE
 		{
 			//Debug.Assert(executionInstance == null);
 
+			bool isWSL = false;
+
 			String fileName = scope String(inFileName);
+			if (fileName == "@wsl")
+			{
+				isWSL = true;
+				fileName.Set("wsl.exe");
+			}
+
 			QuoteIfNeeded(fileName);
 
 			ProcessStartInfo startInfo = scope ProcessStartInfo();
@@ -9328,6 +9398,12 @@ namespace IDE
 				String tempFileName = scope String();
 				Path.GetTempFileName(tempFileName);
 
+				if (isWSL)
+				{
+					tempFileName.Replace(".tmp", "");
+					tempFileName.Append(".sh");
+				}
+
 				Encoding encoding = Encoding.UTF8;
 				if (useArgsFile == .UTF16WithBom)
 					encoding = Encoding.UTF16WithBOM;
@@ -9336,11 +9412,31 @@ namespace IDE
 				if (result case .Err)
 					OutputLine("Failed to create temporary param file");
 				String arguments = scope String();
-				arguments.Concat("@", tempFileName);
-				startInfo.SetArguments(arguments);
+
+				if (isWSL)
+				{
+					arguments.Append(tempFileName);
+					IDEUtils.WSLPathFix(arguments);
+					startInfo.SetArguments(arguments);
+				}
+				else
+				{
+					arguments.Concat("@", tempFileName);
+					startInfo.SetArguments(arguments);
+				}
 
 				delete executionInstance.mTempFileName;
 				executionInstance.mTempFileName = new String(tempFileName);
+			}
+			else
+			{
+				if (isWSL)
+				{
+					String arguments = scope .();
+					arguments.Append("-- ");
+					arguments.Append(args);
+					startInfo.SetArguments(arguments);
+				}
 			}
 
 			if (mVerbosity >= .Detailed)
@@ -10265,6 +10361,7 @@ namespace IDE
 			AddMacros(options.mBeefOptions.mPreprocessorMacros);
 			AddMacros(mWorkspace.mBeefGlobalOptions.mPreprocessorMacros);
 			AddMacros(workspaceOptions.mPreprocessorMacros);
+			AddMacros(mExtraWorkspacePreprocessorMacros);
 			GetBeefPreprocessorMacros(preprocessorMacros);
 
 			var optimizationLevel = workspaceOptions.mBfOptimizationLevel;
@@ -10800,6 +10897,15 @@ namespace IDE
 									{
 										newString = scope:ReplaceBlock .();
 										args[0].Quote(newString);
+									}
+									else
+										cmdErr = "Invalid number of arguments";
+								case "WSLPath":
+									if (args.Count == 1)
+									{
+										newString = scope:ReplaceBlock .();
+										newString.Set(args[0]);
+										IDEUtils.WSLPathFix(newString);
 									}
 									else
 										cmdErr = "Invalid number of arguments";
@@ -12220,6 +12326,8 @@ namespace IDE
 					canCompile = true; // Use WSL
 			case .Wasm:
 				canCompile = true;
+			case .None:
+				canCompile = true;
 			default:
 			}
 
@@ -12337,7 +12445,7 @@ namespace IDE
 						Beef requires the Microsoft C++ build tools for Visual Studio 2013 or later, but they don't seem to be installed.
 
 						Install just Microsoft Visual C++ Build Tools or the entire Visual Studio suite from:
-						    https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022
+						    https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2026
 						""";
 
 #if CLI
@@ -12348,7 +12456,7 @@ namespace IDE
 					dlg.AddOkCancelButtons(new (dlg) =>
 						{
 							ProcessStartInfo psi = scope ProcessStartInfo();
-							psi.SetFileName("https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2022");
+							psi.SetFileName("https://visualstudio.microsoft.com/downloads/#build-tools-for-visual-studio-2026");
 							psi.UseShellExecute = true;
 							psi.SetVerb("Open");
 							var process = scope SpawnedProcess();
@@ -12488,6 +12596,12 @@ namespace IDE
 					}
 				});
 
+			dbgVis.AppendF($"\n{mInstallDir}");
+			for (var project in mWorkspace.mProjects)
+			{
+				dbgVis.AppendF($"\n{project.mProjectDir}{IDE.IDEUtils.cNativeSlash}");
+			}
+
 			mDebugger.LoadDebugVisualizers(dbgVis);
 			//mDebugger.LoadDebugVisualizers(scope String(mInstallDir, "BeefDbgVis.toml"));
 		}
@@ -12516,6 +12630,8 @@ namespace IDE
 			mTargetHadFirstBreak = false;
 
 			//options.mDebugOptions.mCommand
+
+			var platformType = Workspace.PlatformType.GetFromName(mPlatformName, workspaceOptions.mTargetTriple);
 
 			String launchPathRel = scope String();
 			ResolveConfigString(mPlatformName, workspaceOptions, project, options, options.mDebugOptions.mCommand, "debug command", launchPathRel);
@@ -12606,6 +12722,21 @@ namespace IDE
 
 			if ((mSettings.mDebugConsoleKind == .RedirectToImmediate) || (mSettings.mDebugConsoleKind == .RedirectToOutput))
 				openFileFlags |= .RedirectStdOutput | .RedirectStdError;
+
+			//
+
+			if (platformType.IsWSL)
+			{
+				//IDEUtils.WSLPathFix(launchPath);
+				launchPath.Append("@gdb_wsl");
+			}
+			else if (!launchPath.Contains('@'))
+			{
+				if (mSettings.mDebuggerSettings.mDebuggerKind == .GDB)
+					launchPath.Append("@gdb");
+				else if (mSettings.mDebuggerSettings.mDebuggerKind == .LLDB)
+					launchPath.Append("@lldb");
+			}
 
 			if (!mDebugger.OpenFile(launchPath, targetPath, arguments, workingDir, envBlock, wasCompiled, workspaceOptions.mAllowHotSwapping, openFileFlags))
 			{
@@ -12895,6 +13026,10 @@ namespace IDE
 
 			mGitManager.Init();
 
+#if BF_PLATFORM_LINUX && LINUX_PACKAGE
+			mUserDataDir = new $"{Environment.GetEnvironmentVariable("HOME", .. scope .())}/.config/beeflang/";
+#endif
+
 			//Yoop();
 
 			/*for (int i = 0; i < 100*1024*1024; i++)
@@ -12934,7 +13069,8 @@ namespace IDE
 #endif
 			}
 
-			Font.AddFontFailEntry("Segoe UI", scope String()..AppendF("{}fonts/NotoSans-Regular.ttf", mInstallDir));
+			Font.AddFontFailEntry("Segoe UI", scope $"Noto Sans\0{mInstallDir}fonts/NotoSans-Regular.ttf");
+			Font.AddFontFailEntry("Segoe UI Bold", scope $"Noto Sans Bold\0{mInstallDir}fonts/NotoSans-Bold.ttf");
 
 			DarkTheme aTheme = new DarkTheme();
 			mSettings.mUISettings.Apply(); // Apply again to set actual theme
@@ -13091,6 +13227,11 @@ namespace IDE
 					flags, mMainFrame);
 			}
 
+#if BF_PLATFORM_LINUX
+			let icon = (Span<uint8>)cAppIcon;
+			BFApp_RegisterAppIcon(icon.Ptr, icon.Length);
+#endif
+
 			if (mIsFirstRun)
 			{
 				// If this is our first time running, set up a scale based on DPI
@@ -13173,7 +13314,18 @@ namespace IDE
 						CompileAndRun(true);
 				}
 				else
+				{
+					switch (mLaunchData.mKind)
+					{
+					case .GDB:
+						mLaunchData.mTargetPath.Append("@gdb");
+					case .GDB_WSL:
+						mLaunchData.mTargetPath.Append("@gdb_wsl");
+					default:
+					}
+					
 					LaunchDialog.DoLaunch(null, mLaunchData.mTargetPath, mLaunchData.mArgs ?? "", mLaunchData.mWorkingDir ?? "", "", mLaunchData.mPaused, true);
+				}
 			}
 
 			mInitialized = true;
@@ -13746,7 +13898,9 @@ namespace IDE
 						DeleteAndNullify!(mBfBuildSystem);
 
 						///
+#if BF_PLATFORM_WINDOWS
 						mDebugger.FullReportMemory();
+#endif
 
 						var workspaceBuildDir = scope String();
 						GetWorkspaceBuildDir(workspaceBuildDir);

@@ -5,6 +5,13 @@
 #include "BFWindow.h"
 #include "util/Dictionary.h"
 
+//#define BF_FORCE_SDL
+
+#ifdef BF_FORCE_SDL
+
+#include "../sdl/SdlBFApp.h"
+
+#else
 
 NS_BF_BEGIN;
 
@@ -65,7 +72,7 @@ public:
 	void					GotFocus();
 
 public:
-	WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags);
+	WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags);
 	~WinBFWindow();
 
 	virtual void*			GetUnderlying() override;
@@ -123,7 +130,7 @@ public:
 	virtual void			GetDesktopResolution(int& width, int& height) override;
 	virtual void			GetWorkspaceRect(int& x, int& y, int& width, int& height) override;
 	virtual void			GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fromHeight, int& outX, int& outY, int& outWidth, int& outHeight) override;
-	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags) override;
+	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags) override;
 	virtual DrawLayer*		CreateDrawLayer(BFWindow* window);
 
 	virtual void*			GetClipboardData(const StringImpl& format, int* size) override;
@@ -142,3 +149,5 @@ public:
 };
 
 NS_BF_END;
+
+#endif

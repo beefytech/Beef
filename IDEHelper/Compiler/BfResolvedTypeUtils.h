@@ -976,6 +976,7 @@ public:
 
 	~BfMethodInstance();
 	void Dispose(bool isDeleting = false);
+	void RemoveMethodFromCEMachine(BfCompiler* compiler);
 
 	void CopyFrom(BfMethodInstance* methodInstance);
 
@@ -1384,7 +1385,7 @@ public:
 	}
 
 	BfMethodInstanceGroup(BfMethodInstanceGroup&& prev) noexcept;
-	~BfMethodInstanceGroup();
+	~BfMethodInstanceGroup();	
 
 	bool IsImplemented()
 	{
@@ -1392,6 +1393,8 @@ public:
 			(mOnDemandKind == BfMethodOnDemandKind_Referenced) ||
 			(mOnDemandKind == BfMethodOnDemandKind_InWorkList);
 	}
+
+	void RemoveMethodsFromCEMachine(BfCompiler* compiler);
 };
 
 class BfFieldInstance
@@ -2231,6 +2234,7 @@ public:
 	bool HasAppendCtor();
 	bool BaseHasAppendCtor();
 	bool HasAppendedField(bool checkBase);
+	void RemoveMethodsFromCEMachine();
 
 	virtual void ReportMemory(MemReporter* memReporter) override;
 };

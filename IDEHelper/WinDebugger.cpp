@@ -6,6 +6,7 @@
 #define NTDDI_VERSION 0x06020000
 
 #include "WinDebugger.h"
+#include "LLDBDebugger.h"
 #include "CPU.h"
 #include "DbgModule.h"
 #include "DebugVisualizers.h"
@@ -13868,6 +13869,7 @@ Debugger* Beefy::CreateDebugger64(DebugManager* debugManager, DbgMiniDump* miniD
 
 		return debugger;
 	}
+
 	return new WinDebugger(debugManager);
 }
 

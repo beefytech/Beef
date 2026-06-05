@@ -1,5 +1,13 @@
 #include <dsound.h>
 #include "WinBFApp.h"
+
+#ifdef BF_FORCE_SDL
+
+#include "..\sdl\SdlBFApp.cpp"
+#include "..\sdl\GLRenderDevice.cpp"
+
+#else
+
 #include "DXRenderDevice.h"
 #include <signal.h>
 #include "../../util/BeefPerf.h"
@@ -92,7 +100,7 @@ static BOOL KeyboardLayoutHasAltGr(HKL layout)
 	return hasAltGr;
 }
 
-WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
+WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags)
 {
 	//OutputDebugStrF("Wnd %p Create\n", this);
 
@@ -1519,7 +1527,7 @@ void WinBFApp::GetWorkspaceRectFrom(int fromX, int fromY, int fromWidth, int fro
 	outHeight = inflateRect.mHeight;
 }
 
-BFWindow* WinBFApp::CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int windowFlags)
+BFWindow* WinBFApp::CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags)
 {
 	AutoCrit autoCrit(mCritSect);
 
@@ -2179,3 +2187,4 @@ DrawLayer* WinBFApp::CreateDrawLayer(BFWindow* window)
 	return drawLayer;
 }
 
+#endif

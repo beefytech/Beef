@@ -15,9 +15,9 @@
 
 #include "util/AllocDebug.h"
 
-#ifdef BF_PLATFORM_WINDOWS
-#include "platform/sdl/SdlBFApp.h"
-#endif
+//#ifdef BF_PLATFORM_WINDOWS
+//#include "platform/sdl/SdlBFApp.h"
+//#endif
 
 //#include "third_party/freetype/include/ft2build.h"
 //#include FT_FREETYPE_H
@@ -92,23 +92,23 @@ BF_EXPORT void BF_CALLTYPE BFApp_GetWorkspaceRectFrom(int fromX, int fromY, int 
 
 static bool gForceSDL = false;
 
-BF_EXPORT void BF_CALLTYPE BFApp_SetOptionString(const char* name, const char* value)
-{
-	if (strcmp(name, "SDL") == 0)
-	{
-		gForceSDL = strcmp(value, "1") == 0;
-	}
-}
+//BF_EXPORT void BF_CALLTYPE BFApp_SetOptionString(const char* name, const char* value)
+//{
+//	if (strcmp(name, "SDL") == 0)
+//	{
+//		gForceSDL = strcmp(value, "1") == 0;
+//	}
+//}
 
 BF_EXPORT void BF_CALLTYPE BFApp_Create()
 {
-#ifdef BF_PLATFORM_WINDOWS
-	if (gForceSDL)
-	{
-		new SdlBFApp();
-		return;
-	}
-#endif
+//#ifdef BF_PLATFORM_WINDOWS
+//	if (gForceSDL)
+//	{
+//		new SdlBFApp();
+//		return;
+//	}
+//#endif
 
 	new PlatformBFApp();
 }
@@ -242,7 +242,7 @@ BF_EXPORT void BF_CALLTYPE BFApp_SetCallbacks(BFApp_UpdateFunc updateFunc, BFApp
 	//public delegate void UpdateProc();
 }
 
-BF_EXPORT BFWindow* BF_CALLTYPE BFApp_CreateWindow(BFWindow* parent, const char* title, int x, int y, int width, int height, int windowFlags)
+BF_EXPORT BFWindow* BF_CALLTYPE BFApp_CreateWindow(BFWindow* parent, const char* title, int x, int y, int width, int height, int64 windowFlags)
 {
 	return gBFApp->CreateNewWindow(parent, title, x, y, width, height, windowFlags);
 }

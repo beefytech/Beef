@@ -1,6 +1,9 @@
+#include "WinBFApp.h"
+
+#ifndef BF_FORCE_SDL
+
 #include "Common.h"
 #include "DXRenderDevice.h"
-#include "WinBFApp.h"
 #include "BFWindow.h"
 #include "img/ImageData.h"
 #include "util/PerfTimer.h"
@@ -24,7 +27,6 @@ using namespace DirectX;
 #include "util/AllocDebug.h"
 
 USING_NS_BF;
-
 
 #pragma warning (disable:4996)
 
@@ -2560,4 +2562,4 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, bool destAlph
 	return aRenderTarget;
 }
 
-
+#endif

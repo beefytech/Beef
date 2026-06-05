@@ -87,6 +87,8 @@ namespace IDE
 			if (trigger == .Never)
 				return .NoCommands;
 
+			bool isWSL = mPlatformType.IsWSL;
+
 			List<Project> depProjectList = scope .();
 			gApp.GetDependentProjectList(project, depProjectList);
 
@@ -157,6 +159,8 @@ namespace IDE
 				else
 				{
 					customCmd.Append("%exec ");
+					if (isWSL)
+						customCmd.Append("wsl.exe ");
 					gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, origCustomCmd, "custom command", customCmd);
 
 					// For multi-line execs
@@ -370,32 +374,6 @@ namespace IDE
 			return true;
 		}
 
-		void WSLPathFix(String str)
-		{
-			for (int i = 1; i < str.Length - 1; i++)
-			{
-				if (str[i] == ':')
-				{
-					if (str[i - 1].IsLetter)
-					{
-						int j = i;
-						for ( ; j < str.Length; j++)
-						{
-							char8 cj = str[j];
-							if (cj == '\\')
-								str[j] = '/';
-							if ((cj.IsWhiteSpace) || (cj == '"'))
-								break;
-						}
-
-						str.Remove(i);
-						str[i - 1] = str[i - 1].ToLower;
-						str.Insert(i - 1, "/mnt/");
-					}
-				}
-			}
-		}
-
 		bool QueueProjectGNULink(Project project, String targetPath, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
 		{
 			if (options.mBuildOptions.mBuildKind == .Intermediate)
@@ -405,15 +383,22 @@ namespace IDE
 
 			bool isMinGW = false;
 
-#if BF_PLATFORM_WINDOWS
-			bool isWSL = mPlatformType == .Linux;
-			String llvmDir = scope String(IDEApp.sApp.mInstallDir);
-			IDEUtils.FixFilePath(llvmDir);
-			llvmDir.Append("llvm/");
-#else
-		    String llvmDir = "";
-			bool isWSL = false;
-#endif
+			bool isWSL = mPlatformType.IsWSL;
+
+			String llvmDir = scope String();
+
+			if (isWSL)
+			{
+				llvmDir.Set(IDEApp.sApp.mInstallDir);
+				IDEUtils.FixFilePath(llvmDir);
+				llvmDir.Append("llvm/");
+
+				if (gApp.mSettings.mWSLBeefBinPath.IsEmpty)
+				{
+					gApp.OutputLineSmart($"ERROR: '{project}' Linux compilation on Windows requires WSL settings to be configured in BeefSettings.toml");
+					return false;
+				}
+			}
 
 		    //String error = scope String();
 
@@ -616,8 +601,10 @@ namespace IDE
 					{
 						linkLine.Insert(0, " ");
 						linkLine.Insert(0, compilerExePath);
-						compilerExePath = "wsl.exe";
-						WSLPathFix(linkLine);
+						compilerExePath = "@wsl";
+						IDEUtils.WSLPathFix(linkLine);
+
+						linkLine.Insert(0, scope $"cd {gApp.mSettings.mWSLBeefBinPath}; ");
 					}
 
 			        var runCmd = gApp.QueueRun(compilerExePath, linkLine, workingDir, .UTF8);
@@ -892,6 +879,13 @@ namespace IDE
 
 		bool CopyLibFiles(String targetPath, Workspace.Options workspaceOptions, Project.Options options)
 		{
+#if BF_PLATFORM_WINDOWS
+			bool isWSL = mPlatformType == .Linux;
+#else
+			bool isWSL = false;
+#endif
+
+
 		    List<String> stdLibFileNames = scope .(2);
 		    String fromDir;
 		    
@@ -907,7 +901,21 @@ namespace IDE
 				toPath.Append("/", dllName);
 				if (File.CopyIfNewer(fromPath, toPath) case .Err(let err))
 				{
-					gApp.OutputLine("Failed to copy lib file '{0}' to '{1}'", fromPath, toPath);
+					do
+					{
+						if (isWSL)
+						{
+							String beefPath = @"/home/brian/Beef/IDE/dist";
+							fromPath.Set(beefPath);
+							if (!fromPath.EndsWith('/'))
+								fromPath.Append('/');
+							fromPath.Append(dllName);
+							if (IDEUtils.WSLCopy(fromPath, toPath) case .Ok)
+								break;
+						}
+
+						gApp.OutputLine("Failed to copy lib file '{0}' to '{1}'", fromPath, toPath);
+					}
 					return false;
 				}
 				return true;
@@ -1379,6 +1387,21 @@ namespace IDE
 						writeEmitCmd.mProjectName = new .(project.mProjectName);
 						gApp.mExecutionQueue.Add(writeEmitCmd);
 					}
+
+					// LLDB can hold onto file references. Deleting those files clears that up.
+					void CheckFileWrite(StringView path)
+					{
+						switch (scope UnbufferedFileStream().Open(path, .ReadWrite))
+						{
+						case .Ok:
+							return;
+						case .Err(let err):
+							if (err == .SharingViolation)
+								File.Delete(path).IgnoreError();
+						}
+					}
+					CheckFileWrite(pdbName);
+					CheckFileWrite(targetPath);
 
 			        var runCmd = gApp.QueueRun(linkerPath, linkLine, gApp.mInstallDir, .UTF16WithBom);
 					runCmd.mReference = new .(project.mProjectName);

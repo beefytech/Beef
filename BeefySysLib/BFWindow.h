@@ -25,7 +25,7 @@ typedef void (*BFWindow_MouseLeave)(BFWindow* window);
 typedef void (*BFWindow_MenuItemSelectedFunc)(BFWindow* window, BFMenu* menu);
 typedef void (*BFWindow_DragDropFileFunc)(BFWindow* window, const char* filePath);
 
-enum
+enum : int64
 {
 	BFWINDOW_BORDER			= 0x000001,
 	BFWINDOW_THICKFRAME		= 0x000002,
@@ -57,8 +57,9 @@ enum
 	BFWINDOW_ALLOW_FULLSCREEN = 0x8000000,
 	BFWINDOW_ACCEPTFILES	= 0x10000000,
 	BFWINDOW_NOSHOW			= 0x20000000,
-	BFWINDOW_NO_MOUSE       = 0x40000000
-
+	BFWINDOW_NO_MOUSE       = 0x40000000,
+	BFWINDOW_TOOLTIP        = 0x80000000,
+	BFWINDOW_LOGICAL_COORDS	= 0x100000000
 };
 
 class RenderWindow;
@@ -112,7 +113,7 @@ public:
 public:
 	BFWindow*				mParent;
 	Array<BFWindow*>		mChildren;
-	int						mFlags;
+	int64					mFlags;
 	bool					mIsKeyDown[KEYCODE_MAX];
 	bool					mIsMouseDown[MOUSEBUTTON_MAX];
 	BFCoord					mMouseDownCoords[MOUSEBUTTON_MAX];

@@ -1,22 +1,23 @@
 PUSHD %~dp0
 
-@IF EXIST llvm-project_19_1_7 GOTO LLVM_HAS
-git clone --depth 1 --branch llvmorg-19.1.7 --config core.autocrlf=false https://github.com/llvm/llvm-project.git llvm-project_19_1_7
+@IF EXIST llvm-project_22_1_5 GOTO LLVM_HAS
+git clone --depth 1 --branch llvmorg-22.1.5 --config core.autocrlf=false https://github.com/llvm/llvm-project.git llvm-project_22_1_5
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
 :LLVM_HAS
 
-@IF EXIST llvm_win64_19_1_7 GOTO HAS_CONFIG
-mkdir llvm_win64_19_1_7
-cd llvm_win64_19_1_7
-@REM cmake ../llvm-project_19_1_7/llvm -G"Visual Studio 17 2022" -Ax64 -Thost=x64 -DLLVM_ENABLE_PROJECTS=clang -D CMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly"
-cmake ../llvm-project_19_1_7/llvm -G"Visual Studio 17 2022" -Ax64 -Thost=x64 -D CMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly"
-@REM cmake ../llvm-project_19_1_7/llvm -G"Visual Studio 17 2022"
+@IF EXIST llvm_win64_22_1_5 GOTO HAS_CONFIG
+mkdir llvm_win64_22_1_5
+cd llvm_win64_22_1_5
+@REM cmake ../llvm-project_22_1_5/llvm -G"Visual Studio 17 2022" -Ax64 -Thost=x64 -DLLVM_ENABLE_PROJECTS=clang -D CMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly"
+cmake ../llvm-project_22_1_5/llvm -G Ninja -DLLVM_ENABLE_PROJECTS="clang;lldb" -G"Visual Studio 17 2022" -Ax64 -Thost=x64 -D CMAKE_MSVC_RUNTIME_LIBRARY="MultiThreaded$<$<CONFIG:Debug>:Debug>" -DLLVM_TARGETS_TO_BUILD="AArch64;ARM;X86;WebAssembly"
+
+@REM cmake ../llvm-project_22_1_5/llvm -G"Visual Studio 17 2022"
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 @GOTO DOBUILD
 
 :HAS_CONFIG
-cd llvm_win64_19_1_7
+cd llvm_win64_22_1_5
 @GOTO DOBUILD
 
 :DOBUILD

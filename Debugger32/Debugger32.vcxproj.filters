@@ -64,6 +64,9 @@
     </ClInclude>
     <ClInclude Include="..\IDEHelper\DbgSymSrv.h" />
     <ClInclude Include="..\IDEHelper\HotScanner.h" />
+    <ClInclude Include="..\IDEHelper\LLDBDebugger.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\IDEHelper\DbgExprEvaluator.cpp">
@@ -103,6 +106,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\IDEHelper\HotScanner.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\IDEHelper\LLDBDebugger.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>

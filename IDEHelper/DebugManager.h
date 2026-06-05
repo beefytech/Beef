@@ -78,6 +78,8 @@ class DebugManager
 public:
 	Debugger* mDebugger32;
 	Debugger* mDebugger64;
+	Debugger* mDebuggerLLDB;
+	Debugger* mDebuggerGDB;
 
 	CritSect mCritSect;
 	Dictionary<String, StepFilter> mStepFilters;
@@ -114,5 +116,7 @@ extern PerfManager* gDbgPerfManager;
 
 Debugger* CreateDebugger32(DebugManager* debugManager, DbgMiniDump* miniDump);
 Debugger* CreateDebugger64(DebugManager* debugManager, DbgMiniDump* miniDump);
+Debugger* CreateDebuggerLLDB(DebugManager* debugManager);
+Debugger* CreateDebuggerGDB(DebugManager* debugManager);
 
 NS_BF_END

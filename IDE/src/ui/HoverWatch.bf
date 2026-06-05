@@ -20,6 +20,7 @@ namespace IDE.ui
         {
             public String mName ~ delete _;
             public String mEvalStr ~ delete _;
+			public String mResultStr ~ delete _;
             //public WatchSeriesInfo mWatchSeriesInfo ~ delete _;
 			public WatchSeriesInfo mWatchSeriesInfo ~ { if (_ != null) _.ReleaseRef(); };
 
@@ -34,6 +35,7 @@ namespace IDE.ui
 			public const uint cActionColor = 0xFFB0B0FF;
 			public const uint cActionOverColor = 0xFFE0E0FF;
 
+			public String mPendingChildrenEvalStr ~ delete _;
             public List<PendingWatch> mPendingWatches = new List<PendingWatch>() ~ DeleteContainerAndItems!(_);
             public HoverListView mChildrenListView;
 
@@ -459,20 +461,23 @@ namespace IDE.ui
         {
             base.Update();
 
-			for (let item in mListView.GetRoot().mChildItems)
-			{
-				let listViewItem = (HoverListViewItem)item;
-				if (listViewItem.mWatchEntry?.mIsPending == true)
-				{
-					if ((gApp.mDebugger.IsPaused(true)) && (!gApp.mDebugger.HasMessages()))
-					{
-						let listView = (HoverListView)listViewItem.mListView;
-						DoListViewItem(listView, listViewItem, listViewItem.mWatchEntry.mName, listViewItem.mWatchEntry.mEvalStr, true);
-						FinishListView(listView, listView.mX, listView.mY, true);
-						gApp.RefreshVisibleViews();
-					}
-				}
-			}
+            if(mListView != null)
+            {
+                for (let item in mListView.GetRoot().mChildItems)
+                {
+                    let listViewItem = (HoverListViewItem)item;
+                    if (listViewItem.mWatchEntry?.mIsPending == true)
+                    {
+                        if ((gApp.mDebugger.IsPaused(true)) && (!gApp.mDebugger.HasMessages()))
+                        {
+                            let listView = (HoverListView)listViewItem.mListView;
+                            DoListViewItem(listView, listViewItem, listViewItem.mWatchEntry.mName, listViewItem.mWatchEntry.mEvalStr, listViewItem.mWatchEntry.mResultStr, true);
+                            FinishListView(listView, listView.mX, listView.mY, true);
+                            gApp.RefreshVisibleViews();
+                        }
+                    }
+                }
+            }
 
             if (mCloseDelay > 1)
                mCloseDelay--;
@@ -561,6 +566,44 @@ namespace IDE.ui
 
             if (isOpening)
             {
+				if ((listViewItem.mPendingChildrenEvalStr != null) && (listViewItem.mPendingWatches.IsEmpty))
+				{
+					String val = scope .();
+					DebugManager.Language language = mLanguage;
+					DebugManager.EvalExpressionFlags flags = default;
+					gApp.DebugEvaluate(null, listViewItem.mPendingChildrenEvalStr, val, -1, language, flags);
+
+					var vals = scope List<StringView>(val.Split('\n'));
+					int cmdStringCount = Math.Max(0, vals.Count - 2);
+					for (int32 memberIdx = 0; memberIdx < cmdStringCount; memberIdx++)
+					{
+					    var memberVals = scope List<StringView>(scope String(vals[memberIdx + 2]).Split('\t'));
+						var memberVals0 = scope String(memberVals[0]);
+
+						if (memberVals0.StartsWith(":"))
+							continue;
+
+						if (memberVals.Count >= 2)
+						{
+							var memberWatch = new PendingWatch();
+							String.NewOrSet!(memberWatch.mName, memberVals[0]);
+							//String evalStr = scope String();
+							//evalStr.AppendF(scope String(memberVals[1]), watch.mEvalStr).IgnoreError();
+							String.NewOrSet!(memberWatch.mEvalStr, memberVals[1]);
+
+							if (memberVals.Count > 3)
+							{
+								// Note: this only occurs on GDB/LLDB debuggers
+								String.NewOrSet!(memberWatch.mResultStr, memberVals[2]);
+								memberWatch.mResultStr.Append("\n");
+								memberWatch.mResultStr.Append(memberVals[3]);
+							}
+
+							listViewItem.mPendingWatches.Add(memberWatch);
+						}
+					}
+				}
+
                 //IDEApp.sApp.mBfResolveSystem.StartTiming();
                 //IDEApp.sApp.mBfResolveSystem.mIsTiming = false;
                 //mIsTiming = true;
@@ -576,9 +619,11 @@ namespace IDE.ui
                 mContentWidget.AddWidget(childrenListView);
                 mListViews.Add(childrenListView);
                 listViewItem.mChildrenListView = childrenListView;
+				childrenListView.GetRoot().MakeParent();
+
                 for (var pendingEntry in listViewItem.mPendingWatches)
                 {
-                    var watchListViewItem = DoListViewItem(listViewItem.mChildrenListView, null, pendingEntry.mName, pendingEntry.mEvalStr, false, listViewItem.mWatchEntry);
+                    var watchListViewItem = DoListViewItem(listViewItem.mChildrenListView, null, pendingEntry.mName, pendingEntry.mEvalStr, pendingEntry.mResultStr, false, listViewItem.mWatchEntry);
 					if (watchListViewItem == null)
 						continue;
 
@@ -620,7 +665,7 @@ namespace IDE.ui
         {
             for (HoverListViewItem listViewItem in listView.GetRoot().mChildItems)
             {
-                DoListViewItem(listView, listViewItem, listViewItem.mWatchEntry.mName, listViewItem.mWatchEntry.mEvalStr, false);
+                DoListViewItem(listView, listViewItem, listViewItem.mWatchEntry.mName, listViewItem.mWatchEntry.mEvalStr, listViewItem.mWatchEntry.mResultStr, false);
 				if (listViewItem.mChildrenListView != null)
 					RefreshListView(listViewItem.mChildrenListView);
             }
@@ -642,7 +687,7 @@ namespace IDE.ui
 			hoverListView.mSizeDirty = true;
 			if (WantsHorzResize(hoverListView))
             	hoverListView.mWantsHorzResize = true;
-            DoListViewItem(hoverListView, (HoverListViewItem)listViewItem, name, evalStr, false);
+            DoListViewItem(hoverListView, (HoverListViewItem)listViewItem, name, evalStr, null, false);
         }
 
 		void RefreshWatch()
@@ -650,7 +695,7 @@ namespace IDE.ui
 			Refresh();
 		}
 
-        HoverListViewItem DoListViewItem(HoverListView listView, HoverListViewItem listViewItem, String displayString, String evalString, bool isPending, WatchEntry parentWatchEntry = null)
+        HoverListViewItem DoListViewItem(HoverListView listView, HoverListViewItem listViewItem, String displayString, String evalString, String resultString, bool isPending, WatchEntry parentWatchEntry = null)
         {
 			if ((displayString.StartsWith(":")) && (displayString.Contains('\n')))
 			{
@@ -662,7 +707,7 @@ namespace IDE.ui
 					if (displayIdx == 0)
 					{
 						let str = scope String(displayLine);
-						headListView = DoListViewItem(listView, listViewItem, str, str, isPending);
+						headListView = DoListViewItem(listView, listViewItem, str, str, null, isPending);
 					}
 					else
 					{
@@ -693,7 +738,7 @@ namespace IDE.ui
 								}
 								columnIdx++;
 							}
-							var subListViewItem = DoListViewItem(listView, listViewItem, str, str, isPending);
+							var subListViewItem = DoListViewItem(listView, listViewItem, str, str, null, isPending);
 							subListViewItem.mTextAction = cmd;
 							subListViewItem.mTextColor = HoverListViewItem.cActionColor;
 						}
@@ -701,7 +746,7 @@ namespace IDE.ui
 						{
 							let str = scope String(":");
 							str.Append(line);
-							DoListViewItem(listView, listViewItem, str, str, isPending);
+							DoListViewItem(listView, listViewItem, str, str, null, isPending);
 						}
 					}
 
@@ -731,6 +776,8 @@ namespace IDE.ui
             var watch = useListViewItem.mWatchEntry;
             String.NewOrSet!(watch.mName, displayString);
             String.NewOrSet!(watch.mEvalStr, evalString);
+			if (resultString != null)
+				String.NewOrSet!(watch.mResultStr, resultString);
 
 			if (watch.mEvalStr.StartsWith("!raw"))
 			{
@@ -747,6 +794,7 @@ namespace IDE.ui
             useListViewItem.mOnMouseDown.Add(new (evt) => { listView.mHoverWatch.ValueMouseDown(evt); });
             useListViewItem.mOpenOnDoubleClick = false;
 
+			bool hasDeferredChildren = false;
             bool isStringLiteral = false;
             String val = scope String();
             if (evalString.StartsWith(":", StringComparison.Ordinal))
@@ -786,7 +834,32 @@ namespace IDE.ui
 					DebugManager.Language language = mLanguage;
 					if (parentWatchEntry != null)
 						language = parentWatchEntry.mLanguage;
-					gApp.DebugEvaluate(null, watch.mEvalStr, val, -1, language, flags);
+					if ((watch.mResultStr != null) /*&& (!useListViewItem.IsOpen)*/)
+					{
+						if (watch.mEvalStr.StartsWith("!children "))
+							hasDeferredChildren = true;
+					}
+					else
+					{
+						gApp.DebugEvaluate(null, watch.mEvalStr, val, -1, language, flags);
+					}
+
+					if (watch.mResultStr != null)
+					{
+						int crCount = watch.mResultStr.Count('\n') + 1;
+						int crPos = -1;
+						for (int i < crCount)
+						{
+							crPos = (.)val.IndexOf('\n', crPos + 1);
+							if (crPos == -1)
+								break;
+						}
+						if (crPos == -1)
+							crPos = val.Length;
+
+						val.Remove(0, crPos);
+						val.Insert(0, watch.mResultStr);
+					}
 				}
 				if (val == "!pending")
 				{
@@ -983,6 +1056,14 @@ namespace IDE.ui
 					evalStr.AppendF(scope String(memberVals[1]), watch.mEvalStr).IgnoreError();
 					String.NewOrSet!(memberWatch.mEvalStr, evalStr);
 
+					if (memberVals.Count > 3)
+					{
+						// Note: this only occurs on GDB/LLDB debuggers
+						String.NewOrSet!(memberWatch.mResultStr, memberVals[2]);
+						memberWatch.mResultStr.Append("\n");
+						memberWatch.mResultStr.Append(memberVals[3]);
+					}
+
                     useListViewItem.mPendingWatches.Add(memberWatch);
                     memberCount++;
                 }
@@ -990,6 +1071,12 @@ namespace IDE.ui
                 if (watch.mEvalStr.Length == 0)
                     watch.mResultType = WatchResultType.None;
             }
+
+			if (hasDeferredChildren)
+			{
+				memberCount++;
+				String.NewOrSet!(useListViewItem.mPendingChildrenEvalStr, watch.mEvalStr);
+			}
 
             /*if ((watch.mReferenceId == null) && (watch.mEvalStr.Length > 0) && (!valueSubItem.mFailed))
             {
@@ -1082,7 +1169,7 @@ namespace IDE.ui
 
 				var parentWidget = GetParentWidget();
 
-				BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized /*| BFWindow.Flags.PopupPosition*/ | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha;
+				BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized /*| BFWindow.Flags.PopupPosition*/ | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha | BFWindow.Flags.Tooltip;
 #unwarn
 				WidgetWindow widgetWindow = new WidgetWindow(parentWidget.mWidgetWindow,
 				    "HoverWatch",
@@ -1108,11 +1195,7 @@ namespace IDE.ui
 					autocomplete = watchEditWidgetContent.mAutoComplete;
 				}
 
-				if (autocomplete != null)
-					autocomplete.SetIgnoreMove(true);
                 mWidgetWindow.Resize((int32)(mOrigScreenX - mTaskbarXOffset + minX), (int32)(mOrigScreenY - mTaskbarYOffset + minY), (int32)(maxX - minX), (int32)(maxY - minY));
-				if (autocomplete != null)
-					autocomplete.SetIgnoreMove(false);
 			}
         }
 
@@ -1136,6 +1219,7 @@ namespace IDE.ui
 
             listView.mLabelX = GS!(40);
             float childHeights = 0;
+
             for (WatchListViewItem listViewItem in listView.GetRoot().mChildItems)
             {
                 childHeights += listViewItem.mSelfHeight + listViewItem.mChildAreaHeight + listViewItem.mBottomPadding;
@@ -1562,7 +1646,7 @@ namespace IDE.ui
             	mListView = CreateListView();
 			else
 				mListView.GetRoot().Clear();
-            return DoListViewItem(mListView, null, displayString, evalString, isPending);
+            return DoListViewItem(mListView, null, displayString, evalString, null, isPending);
         }
 
         public void SetListView(HoverListView listView)
@@ -1686,7 +1770,7 @@ namespace IDE.ui
 			/*float screenWidth = mListView.mWidth + 8;
 			float screenHeight = mListView.mHeight + 8;
 
-            BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized /*| BFWindow.Flags.PopupPosition*/ | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha;
+            BFWindow.Flags windowFlags = BFWindow.Flags.ClientSized /*| BFWindow.Flags.PopupPosition*/ | BFWindow.Flags.NoActivate | BFWindow.Flags.DestAlpha | BFWindow.Flags.Tooltip;
 #unwarn
             WidgetWindow widgetWindow = new WidgetWindow(parentWidget.mWidgetWindow,
                 "HoverWatch",

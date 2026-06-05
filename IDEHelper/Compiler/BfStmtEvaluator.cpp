@@ -3566,6 +3566,7 @@ void BfModule::VisitCodeBlock(BfBlock* block)
 					{
 						localMethod = new BfLocalMethod();
 						localMethod->mSystem = mSystem;
+						localMethod->mContext = mContext;
 						localMethod->mModule = this;
 						localMethod->mMethodDeclaration = localMethodDecl->mMethodDeclaration;
 						localMethod->mSource = mCurTypeInstance->mTypeDef->mSource;

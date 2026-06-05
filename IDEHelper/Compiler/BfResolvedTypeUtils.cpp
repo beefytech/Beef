@@ -740,6 +740,7 @@ void BfMethodInstance::Dispose(bool isDeleting)
 	if (mMethodInstanceGroup != NULL)
 	{
 		BfLogSys(GetOwner()->mModule->mSystem, "BfMethodInstance::~BfMethodInstance %p Local:%d InCEMachine:%d Deleting:%d\n", this, mMethodDef->mIsLocalMethod, mInCEMachine, isDeleting);
+		BF_ASSERT(!mInCEMachine);
 	}
 	else
 	{
@@ -766,6 +767,12 @@ void BfMethodInstance::Dispose(bool isDeleting)
 	}
 }
 
+void BfMethodInstance::RemoveMethodFromCEMachine(BfCompiler* compiler)
+{
+	if (mInCEMachine)
+		compiler->mCeMachine->RemoveMethod(this);
+}
+
 void BfMethodInstance::CopyFrom(BfMethodInstance* methodInstance)
 {
 	*this = *methodInstance;
@@ -783,6 +790,7 @@ void BfMethodInstance::CopyFrom(BfMethodInstance* methodInstance)
 			*mMethodInfoEx->mClosureInstanceInfo = *methodInstance->mMethodInfoEx->mClosureInstanceInfo;
 		}
 	}
+	mInCEMachine = false;
 	mHasMethodRefType = false;
 	mHasBeenProcessed = false;
 	mIRFunction = BfIRValue();
@@ -1801,6 +1809,20 @@ BfMethodInstanceGroup::~BfMethodInstanceGroup()
 	delete mDefaultCustomAttributes;
 }
 
+void BfMethodInstanceGroup::RemoveMethodsFromCEMachine(BfCompiler* compiler)
+{
+	if (mDefault != NULL)
+		mDefault->RemoveMethodFromCEMachine(compiler);
+	if (mMethodSpecializationMap != NULL)
+	{
+		for (auto& methodSpecializationItr : *mMethodSpecializationMap)
+		{
+			auto methodInstance = methodSpecializationItr.mValue;
+			methodInstance->RemoveMethodFromCEMachine(compiler);			
+		}
+	}
+}
+
 //////////////////////////////////////////////////////////////////////////
 
 BfTypeInstance::~BfTypeInstance()
@@ -2162,6 +2184,8 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 					{
 						if (typeInst->mBaseType != NULL)
 							_CheckType(typeInst->mBaseType, offset);
+
+						mModule->PopulateType(typeInst, BfPopulateType_Data);
 
 						for (auto& fieldInstance : typeInst->mFieldInstances)
 						{
@@ -2554,6 +2578,14 @@ bool BfTypeInstance::HasAppendedField(bool checkBase)
 		return mBaseType->HasAppendedField(checkBase);
 
 	return false;
+}
+
+void BfTypeInstance::RemoveMethodsFromCEMachine()
+{	
+	for (auto& methodInstGroup : mMethodInstanceGroups)
+	{
+		methodInstGroup.RemoveMethodsFromCEMachine(mContext->mCompiler);
+	}		
 }
 
 void BfTypeInstance::ReportMemory(MemReporter* memReporter)

@@ -87,6 +87,7 @@ public:
 	String mCurFileName;
 	const char* mSrcStr;
 	OwnedVector<DebugVisualizerEntry> mDebugVisualizers;
+	Array<String> mCheckDirectories;
 
 	void Fail(const StringImpl& error);
 	void Fail(const StringImpl& error, const toml::Value& value);
@@ -101,9 +102,11 @@ public:
 
 	bool ReadFileTOML(const StringImpl& fileName);
 	bool Load(const StringImpl& fileNamesStr);
+	String Dump();
+
 	DebugVisualizerEntry* FindEntryForType(const StringImpl& typeName, DbgFlavor wantFlavor, Array<String>* wildcardCaptures);
 
-	String DoStringReplace(const StringImpl& origStr, const Array<String>& wildcardCaptures);
+	String DoStringReplace(const StringImpl& origStr, const Array<String>& wildcardCaptures);	
 };
 
 NS_BF_END
