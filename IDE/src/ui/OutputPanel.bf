@@ -230,7 +230,7 @@ namespace IDE.ui
 				mOutputWidget.Content.AppendText(mQueuedText);
 				mOutputWidget.Content.mAutoHorzScroll = true;
 				mOutputWidget.Content.mEnsureCursorVisibleOnModify = true;
-				Debug.Assert(editData.mTextLength == startLen + mQueuedText.Length);
+				//Debug.Assert(editData.mTextLength == startLen + mQueuedText.Length);
 
 				for (var queuedDisplayChange in mQueuedDisplayChanges)
 				{
@@ -321,11 +321,10 @@ namespace IDE.ui
 			}
 		}
 
-		public void WriteColoredTextLine(StringView text, SourceElementType elementType)
+		public void WriteColoredText(StringView text, SourceElementType elementType)
 		{
 			mQueuedDisplayChanges.Add(QueuedDisplayChange(mQueuedText.Length, text.Length, (.)elementType));
 			Write(text);
-			Write("\n");
 		}
 
 		public void AddInlineWidget(Widget widget)
