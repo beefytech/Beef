@@ -39,6 +39,9 @@ namespace IDE.Compiler
 
         [CallingConvention(.Stdcall), CLink]
         static extern bool BfPassInstance_HadSignatureChanges(void* mNativeResolvePassData);
+		
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BfPassInstance_SetOnComptimeOutput(void* mNativeResolvePassData, function void(void* userData, char8* ptr, int32 len) mOnComptimeOutput, void* userData);
 
         public class BfError
         {
@@ -161,5 +164,10 @@ namespace IDE.Compiler
         {
             return BfPassInstance_HadSignatureChanges(mNativeBfPassInstance);
         }
+
+		public void SetOnComptimeOutput(function void(void* userData, char8* ptr, int32 len) mOnComptimeOutput, void* userData)
+		{
+			BfPassInstance_SetOnComptimeOutput(mNativeBfPassInstance, mOnComptimeOutput, userData);
+		}
     }
 }

@@ -1631,6 +1631,8 @@ public:
 	uint8 mClassifierPassId;
 	HashSet<BfSourceData*> mFilterErrorsTo;
 	bool mHadSignatureChanges;
+	void (*mOnComptimeOutput)(void* userData, const char* ptr, int len);
+	void* mOnComptimeOutputUserData;
 
 public:
 	BfPassInstance(BfSystem* bfSystem)
@@ -1647,6 +1649,8 @@ public:
 		mDeferredErrorCount = 0;
 		mIgnoreCount = 0;
 		mHadSignatureChanges = false;
+		mOnComptimeOutput = NULL;
+		mOnComptimeOutputUserData = NULL;
 	}
 
 	~BfPassInstance();
@@ -1658,6 +1662,7 @@ public:
 	bool HasFailed();
 	bool HasMessages();
 	void OutputLine(const StringImpl& str);
+	void ComptimeOutput(const StringImpl& str);
 	bool PopOutString(String* outString);
 	bool WantsRangeRecorded(BfSourceData* bfSource, int srcIdx, int srcLen, bool isWarning, bool isDeferred = false);
 	bool WantsRangeDisplayed(BfSourceData* bfSource, int srcIdx, int srcLen, bool isWarning, bool isDeferred = false);

@@ -7067,25 +7067,8 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}
 
-				auto frame = _GetCurFrame();
-
-				int curPos = 0;
-
-				while (curPos < str.length())
-				{
-					int crPos = str.IndexOf('\n', curPos);
-					if (crPos == -1)
-					{
-						mCeMachine->mCompiler->mPassInstance->OutputLine(":text " + str.Substring(curPos));
-						break;
-					}
-
-					int endPos = crPos;
-					if ((endPos > 0) && (str[endPos - 1] == '\r'))
-						endPos--;
-					mCeMachine->mCompiler->mPassInstance->OutputLine(":text_line " + str.Substring(curPos, endPos - curPos));					
-					curPos = crPos + 1;
-				}
+				if (!str.IsEmpty())
+					mCeMachine->mCompiler->mPassInstance->ComptimeOutput(str);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Sleep)
 			{

@@ -185,7 +185,6 @@ namespace IDE
 		public bool mDbgTimeAutocomplete;
 		public bool mDbgPerfAutocomplete;
 		public bool mStopPending;
-		public String mDeferredCompilerText = new .() ~ delete _;
 		public BeefConfig mBeefConfig = new BeefConfig() ~ delete _;
 		public List<String> mDeferredFails = new .() ~ DeleteContainerAndItems!(_);
 		public String mInitialCWD = new .() ~ delete _;
@@ -9937,7 +9936,6 @@ namespace IDE
 
 					CompileResult(buildCompletedCmd.mHotProjectName, !buildCompletedCmd.mFailed);
 
-					FlushDeferredCompilerText(true);
 					if (buildCompletedCmd.mFailed)
 						OutputLineSmart("ERROR: BUILD FAILED. Total build time: {0:0.00}s", buildCompletedCmd.mStopwatch.ElapsedMilliseconds / 1000.0f);
 					else if ((mVerbosity >= .Detailed) && (buildCompletedCmd.mStopwatch != null))
@@ -10697,6 +10695,10 @@ namespace IDE
 			BfSystem bfSystem = mBfBuildSystem;
 			BfCompiler bfCompiler = mBfBuildCompiler;
 			BfPassInstance passInstance = bfSystem.CreatePassInstance();
+			passInstance.SetOnComptimeOutput((userData, ptr, len) =>
+				{
+					((OutputPanel)Internal.UnsafeCastToObject(userData)).WriteColoredText(StringView(ptr, len), .BuildText);
+				}, Internal.UnsafeCastToPtr(mOutputPanel));
 			bfCompiler.QueueSetPassInstance(passInstance);
 
 			bfCompiler.QueueSetWorkspaceOptions(hotProject, hotIdx);
@@ -11831,28 +11833,6 @@ namespace IDE
 			}
 		}
 
-		void FlushDeferredCompilerText(bool flushAll)
-		{
-			if (mDeferredCompilerText.IsEmpty)
-				return;
-
-			for (var line in mDeferredCompilerText.Split('\n'))
-			{
-				if ((!flushAll) && (!@line.HasMore))
-				{
-					if (line.Length < mDeferredCompilerText.Length)
-					{
-						// Put fragment back
-						mDeferredCompilerText.Set(line);
-					}
-					return;
-				}
-
-				mOutputPanel.WriteColoredTextLine(line, .BuildText);
-			}
-			mDeferredCompilerText.Clear();
-		}
-
 		void ProcessBeefCompileResults(BfPassInstance passInstance, CompileKind compileKind, Project hotProject, Stopwatch startStopWatch)
 		{
 			bool didCompileSucceed = true;
@@ -11890,12 +11870,6 @@ namespace IDE
 								wantsDisp = mVerbosity >= .Detailed;
 							else if (msgType == ":med")
 								wantsDisp = mVerbosity >= .Normal;
-							else if ((msgType == ":text") || (msgType == ":text_line"))
-							{
-								mDeferredCompilerText.Append(str.Substring(spacePos + 1));
-								FlushDeferredCompilerText(msgType == ":text_line");
-								continue;
-							}
 
 							if (!wantsDisp)
 								continue;
@@ -11903,8 +11877,6 @@ namespace IDE
 							str.Remove(0, spacePos + 1);
 						}
 					}
-
-					FlushDeferredCompilerText(true);
 
 					str.Append("\n");
 					OutputSmart(str);

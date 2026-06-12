@@ -1284,6 +1284,11 @@ void BfPassInstance::OutputLine(const StringImpl& str)
 	mOutStream.push_back(str);
 }
 
+void BfPassInstance::ComptimeOutput(const StringImpl& str)
+{
+	mOnComptimeOutput(mOnComptimeOutputUserData, str.GetPtr(), str.GetLength());
+}
+
 bool BfPassInstance::PopOutString(String* outString)
 {
 	if (mOutStream.size() == 0)
@@ -4423,6 +4428,12 @@ BF_EXPORT const char* BfPassInstance_Error_GetMoreInfoData(BfPassInstance* bfPas
 BF_EXPORT bool BF_CALLTYPE BfPassInstance_HadSignatureChanges(BfPassInstance* bfPassInstance)
 {
 	return bfPassInstance->mHadSignatureChanges;
+}
+
+BF_EXPORT void BF_CALLTYPE BfPassInstance_SetOnComptimeOutput(BfPassInstance* bfPassInstance, void (*mOnComptimeOutput)(void* userData, const char* ptr, int len), void* userData)
+{
+	bfPassInstance->mOnComptimeOutput = mOnComptimeOutput;
+	bfPassInstance->mOnComptimeOutputUserData = userData;
 }
 
 BF_EXPORT void BF_CALLTYPE BfPassInstance_Delete(BfPassInstance* bfPassInstance)
