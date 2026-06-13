@@ -10696,9 +10696,15 @@ namespace IDE
 			BfCompiler bfCompiler = mBfBuildCompiler;
 			BfPassInstance passInstance = bfSystem.CreatePassInstance();
 			passInstance.SetOnComptimeOutput((userData, ptr, len) =>
+#if CLI
+				{
+					Console.Write(StringView(ptr, len));
+				}, null);
+#else
 				{
 					((OutputPanel)Internal.UnsafeCastToObject(userData)).WriteColoredText(StringView(ptr, len), .BuildText);
 				}, Internal.UnsafeCastToPtr(mOutputPanel));
+#endif
 			bfCompiler.QueueSetPassInstance(passInstance);
 
 			bfCompiler.QueueSetWorkspaceOptions(hotProject, hotIdx);
