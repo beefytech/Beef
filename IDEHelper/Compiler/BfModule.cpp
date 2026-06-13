@@ -6094,12 +6094,8 @@ BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAt
 
 	int typeId = 0;
 	auto fieldType = fieldInstance->GetResolvedType();
-	if (fieldType->IsGenericParam())
-	{
-		//TODO:
-	}
-	else
-		typeId = fieldType->mTypeId;
+	//NOTE: This was originally not populated for IsGenericParam types. Can't remember why.
+	typeId = fieldType->mTypeId;
 
 	BfFieldFlags fieldFlags = (BfFieldFlags)0;
 
