@@ -6085,6 +6085,9 @@ void BeMCContext::DisableRegister(const BeMCOperand& operand, X64CPURegister reg
 	case X64Reg_SIL:
 		vregInfo->mDisableEx = true;
 		break;
+	case X64Reg_R11:
+		vregInfo->mDisableR11 = true;
+		break;
 	default:
 		NotImpl();
 	}
@@ -10657,6 +10660,8 @@ bool BeMCContext::DoLegalization()
 							int movInstIdx = instIdx;
 							if (needsSaveRegs)
 							{
+								DisableRegister(inst->mArg0, X64Reg_R11);
+
 								AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_R11), BeMCOperand(), instIdx);
 								instIdx += 1;
 
