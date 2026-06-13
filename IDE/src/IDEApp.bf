@@ -9687,7 +9687,12 @@ namespace IDE
 				waitForBuildClang = (mDepClang.mCompileWaitsForQueueEmpty) && (mDepClang.HasQueuedCommands());
 #endif
 				if ((next is ProcessBfCompileCmd) && (mBfBuildCompiler.HasQueuedCommands() || (waitForBuildClang)))
+				{
+					var processCompileCmd = (ProcessBfCompileCmd)next;
+					if (processCompileCmd.mBfPassInstance != null)
+						ShowBeefCompileMessages(processCompileCmd.mBfPassInstance);
 					return;
+				}
 
 				/*if (next is BuildCompletedCmd)
 				{
@@ -11854,6 +11859,82 @@ namespace IDE
 			mDeferredCompilerText.Clear();
 		}
 
+		void ShowBeefCompileMessages(BfPassInstance passInstance)
+		{
+			while (true)
+			{
+				String str = scope String();
+				if (!passInstance.PopOutString(str))
+					break;
+
+				if (mVerbosity == .Quiet)
+					continue;
+
+				if (str.StartsWith(":mark "))
+				{
+					int crPos = str.IndexOf('\n');
+					if (crPos != -1)
+					{
+						var sv = str.Substring(":mark ".Length, crPos - ":mark ".Length);
+						int32 markId = int32.Parse(sv).GetValueOrDefault();
+						mOutputPanel.Mark(markId);
+					}
+					str.Remove(0, crPos + 1);
+				}
+				else if (str.StartsWith(":mark_undo "))
+				{
+					int crPos = str.IndexOf('\n');
+					if (crPos != -1)
+					{
+						var sv = str.Substring(":mark_undo ".Length, crPos - ":mark_undo ".Length);
+						int32 markId = int32.Parse(sv).GetValueOrDefault();
+						mOutputPanel.MarkUndo(markId);
+					}
+					str.Remove(0, crPos + 1);
+				}
+
+				if (str.StartsWith(":"))
+				{
+					int spacePos = str.IndexOf(' ');
+					if (spacePos > 0)
+					{
+						bool wantsDisp = true;
+						StringView msgType = StringView(str, 0, spacePos);
+						if (msgType == ":warn")
+						{
+							mLastCompileHadMessages = true;
+							wantsDisp = mVerbosity >= .Minimal;
+						}
+						else if (msgType == ":error")
+						{
+							mLastCompileHadMessages = true;
+						}
+						else if (msgType == ":low")
+							wantsDisp = mVerbosity >= .Detailed;
+						else if (msgType == ":med")
+							wantsDisp = mVerbosity >= .Normal;
+						else if ((msgType == ":text") || (msgType == ":text_line"))
+						{
+							mDeferredCompilerText.Append(str.Substring(spacePos + 1));
+							FlushDeferredCompilerText(msgType == ":text_line");
+							continue;
+						}
+
+						if (!wantsDisp)
+							continue;
+
+						str.Remove(0, spacePos + 1);
+					}
+				}
+
+				FlushDeferredCompilerText(true);
+
+				str.Append("\n");
+				OutputSmart(str);
+				//OutputLine(str);
+			}
+		}
+
 		void ProcessBeefCompileResults(BfPassInstance passInstance, CompileKind compileKind, Project hotProject, Stopwatch startStopWatch)
 		{
 			bool didCompileSucceed = true;
@@ -11862,55 +11943,7 @@ namespace IDE
 				if (mProfileCompileProfileId != 0)
 					mProfileCompileProfileId.Dispose();
 
-				while (true)
-				{
-					String str = scope String();
-					if (!passInstance.PopOutString(str))
-						break;
-
-					if (mVerbosity == .Quiet)
-						continue;
-
-					if (str.StartsWith(":"))
-					{
-						int spacePos = str.IndexOf(' ');
-						if (spacePos > 0)
-						{
-							bool wantsDisp = true;
-							StringView msgType = StringView(str, 0, spacePos);
-							if (msgType == ":warn")
-							{
-								mLastCompileHadMessages = true;
-								wantsDisp = mVerbosity >= .Minimal;
-							}
-							else if (msgType == ":error")
-							{
-								mLastCompileHadMessages = true;
-							}
-							else if (msgType == ":low")
-								wantsDisp = mVerbosity >= .Detailed;
-							else if (msgType == ":med")
-								wantsDisp = mVerbosity >= .Normal;
-							else if ((msgType == ":text") || (msgType == ":text_line"))
-							{
-								mDeferredCompilerText.Append(str.Substring(spacePos + 1));
-								FlushDeferredCompilerText(msgType == ":text_line");
-								continue;
-							}
-
-							if (!wantsDisp)
-								continue;
-
-							str.Remove(0, spacePos + 1);
-						}
-					}
-
-					FlushDeferredCompilerText(true);
-
-					str.Append("\n");
-					OutputSmart(str);
-					//OutputLine(str);
-				}
+				ShowBeefCompileMessages(passInstance);
 
 				if ((passInstance.mFailed) && (passInstance.mCompileSucceeded))
 				{

@@ -79,6 +79,13 @@ namespace IDE.ui
 			}
 		}
 
+		struct MarkInfo
+		{
+			public int32 mLength;
+			public double mScrollPos;
+			public int32 mInlineWidgetCount;
+		}
+
         public OutputWidget mOutputWidget;
 		String mQueuedText = new String() ~ delete _;
 		List<QueuedDisplayChange> mQueuedDisplayChanges = new List<QueuedDisplayChange>() ~ delete _;
@@ -86,6 +93,7 @@ namespace IDE.ui
 		public int32 mHoverWatchLine;
 		public float mLastInlineMinY;
 		public float mLastInlineMaxY;
+		Dictionary<int32, MarkInfo> mMarkPositions = new .() ~ delete _;
 
         public override SourceEditWidget EditWidget
         {
@@ -144,6 +152,7 @@ namespace IDE.ui
 				delete widgetEntry.mWidget;
 			}
 			mInlineWidgets.Clear();
+			mMarkPositions.Clear();
         }
 
 		public override void RehupScale(float oldScale, float newScale)
@@ -355,5 +364,39 @@ namespace IDE.ui
             base.Resize(x, y, width, height);
             mOutputWidget.Resize(0, 0, width, height);
         }
+
+		public void Mark(int32 id)
+		{
+			var content = (OutputWidgetContent)mOutputWidget.Content;
+
+			MarkInfo markInfo;
+			markInfo.mLength = content.mData.mTextLength;
+			markInfo.mScrollPos = mOutputWidget.mVertPos.mDest;
+			markInfo.mInlineWidgetCount = (.)mInlineWidgets.Count;
+			mMarkPositions[id] = markInfo;
+		}
+
+		public void MarkUndo(int32 id)
+		{
+			if (mMarkPositions.GetValue(id) case .Ok(let markInfo))
+			{
+				while (mInlineWidgets.Count > markInfo.mInlineWidgetCount)
+				{
+					var widgetEntry = mInlineWidgets.Back;
+					if (widgetEntry.mWidget.mParent != null)
+						widgetEntry.mWidget.RemoveSelf();
+					delete widgetEntry.mWidget;
+					mInlineWidgets.PopBack();
+				}
+				
+				var content = (OutputWidgetContent)mOutputWidget.Content;
+				content.CurSelection = EditSelection();
+				content.CurSelection.ValueRef.mStartPos = markInfo.mLength;
+				content.CurSelection.ValueRef.mEndPos = content.mData.mTextLength;
+				content.DeleteSelection();
+				if (!content.IsCursorVisible())
+					mOutputWidget.VertScrollTo(markInfo.mScrollPos, true);
+			}
+		}
     }
 }
