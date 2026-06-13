@@ -270,6 +270,7 @@ public:
 	BfIRMDNode mDeclDIScope;
 	BfMixinState* mDeclMixinState;
 	OwnedVector<BfDirectTypeReference> mDirectTypeRefs;
+	OwnedVector<BfParameterDeclaration> mParamDecls;
 	bool mDeclOnly;
 	bool mDidBodyErrorPass;
 	BfLocalMethod* mNextWithSameName;
