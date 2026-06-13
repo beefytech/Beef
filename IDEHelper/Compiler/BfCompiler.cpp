@@ -7253,7 +7253,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 			}
 		}
 
-		if (corlibProject == NULL)
+		if ((corlibProject == NULL) && (typeDef != NULL))
 			corlibProject = typeDef->mProject;
 		return typeDef;
 	};

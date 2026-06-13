@@ -5750,7 +5750,10 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 				unionTypedValue = mModule->MakeAddressable(unionTypedValue);
 			BfIRType llvmPtrType = mModule->mBfIRBuilder->GetPointerTo(mModule->mBfIRBuilder->MapType(resolvedFieldType));
 			retVal.mValue = mModule->mBfIRBuilder->CreateBitCast(unionTypedValue.mValue, llvmPtrType);
-			retVal.mKind = unionTypedValue.mKind;
+			if (unionTypedValue.IsAddr())
+				retVal.mKind = unionTypedValue.mKind;
+			else
+				retVal.mKind = BfTypedValueKind_ReadOnlyAddr;
 		}
 	}
 

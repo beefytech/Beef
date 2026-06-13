@@ -412,6 +412,24 @@ void BfSourceClassifier::Visit(BfVariableDeclaration* varDecl)
 		SetElementType(varDecl->mNameNode, BfSourceElementType_Local);
 }
 
+void BfSourceClassifier::Visit(BfForEachStatement* forEachStmt)
+{
+	BfElementVisitor::Visit(forEachStmt);
+
+	if (forEachStmt->mVariableName != NULL)
+	{
+		if (auto tupleExpr = BfNodeDynCast<BfTupleExpression>(forEachStmt->mVariableName))
+		{
+			for (auto val : tupleExpr->mValues)
+				SetElementType(val, BfSourceElementType_Local);
+		}
+		else
+		{
+			SetElementType(forEachStmt->mVariableName, BfSourceElementType_Local);
+		}
+	}
+}
+
 void BfSourceClassifier::Visit(BfLambdaBindExpression* lambdaBindExpr)
 {
 	BfElementVisitor::Visit(lambdaBindExpr);

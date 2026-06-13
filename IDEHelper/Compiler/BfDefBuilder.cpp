@@ -1117,7 +1117,8 @@ void BfDefBuilder::Visit(BfPropertyDeclaration* propertyDeclaration)
 				auto paramDef = new BfParameterDef();
 				BfParameterDeclaration* paramDecl = indexerDeclaration->mParams[paramIdx];
 				paramDef->mParamDeclaration = paramDecl;
-				paramDef->SetName(paramDecl->mNameNode);
+				if (paramDecl->mNameNode != NULL)
+					paramDef->SetName(paramDecl->mNameNode);
 				paramDef->mTypeRef = paramDecl->mTypeRef;
 				paramDef->mMethodGenericParamIdx = mSystem->GetGenericParamIdx(methodDef->mGenericParams, paramDef->mTypeRef);
 				if (paramDecl->mModToken == NULL)
