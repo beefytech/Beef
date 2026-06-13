@@ -6094,12 +6094,8 @@ BfIRValue BfModule::CreateFieldData(BfFieldInstance* fieldInstance, int customAt
 
 	int typeId = 0;
 	auto fieldType = fieldInstance->GetResolvedType();
-	if (fieldType->IsGenericParam())
-	{
-		//TODO:
-	}
-	else
-		typeId = fieldType->mTypeId;
+	//NOTE: This was originally not populated for IsGenericParam types. Can't remember why.
+	typeId = fieldType->mTypeId;
 
 	BfFieldFlags fieldFlags = (BfFieldFlags)0;
 
@@ -13685,8 +13681,9 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 		{
 			return BfTypedValue(loadedVal, typedValue.mType, false);
 		}
-
+		
 		PopulateType(typedValue.mType, BfPopulateType_Data);
+		mBfIRBuilder->PopulateType(typedValue.mType);
 		loadedVal = mBfIRBuilder->CreateAlignedLoad(loadedVal, std::max(1, (int)typedValue.mType->mAlign), isVolatile || typedValue.IsVolatile());
 	}
 	return BfTypedValue(loadedVal, typedValue.mType, false);
@@ -23601,15 +23598,24 @@ BfMethodDef* BfModule::GetLocalMethodDef(BfLocalMethod* localMethod)
  		for (int paramIdx = 0; paramIdx < invokeMethod->GetParamCount(); paramIdx++)
  		{
  			auto paramType = invokeMethod->GetParamType(paramIdx);
- 			String paramName;
- 			if (paramIdx < (int)localMethod->mLambdaBindExpr->mParams.size())
- 				paramName = localMethod->mLambdaBindExpr->mParams[paramIdx]->ToString();
- 			else
- 				paramName = invokeMethod->GetParamName(paramIdx);
-
  			auto paramDef = new BfParameterDef();
  			paramDef->mTypeRef = _AllocDirectTypeRef(paramType);
- 			paramDef->mName = paramName;
+
+ 			if (paramIdx < (int)localMethod->mLambdaBindExpr->mParams.size())
+ 			{
+ 				// Allocate a zeroed-out declaration so GetParamNameNode can find the name node
+ 				// for local-reference tracking (HandleLocalReference via AddLocalVariableDef).
+ 				auto paramDecl = localMethod->mParamDecls.Alloc();
+ 				BfAstNode::Zero(paramDecl);
+ 				paramDecl->mNameNode = localMethod->mLambdaBindExpr->mParams[paramIdx];
+ 				paramDef->mParamDeclaration = paramDecl;
+ 				paramDef->mName = paramDecl->mNameNode->ToString();
+ 			}
+ 			else
+ 			{
+ 				paramDef->mName = invokeMethod->GetParamName(paramIdx);
+ 			}
+
  			methodDef->mParams.Add(paramDef);
  		}
 

@@ -165,6 +165,7 @@ namespace IDE
 		public String mDeferredRelaunchCmd ~ delete _;
 		public int? mTargetExitCode;
 		public FileVersionInfo mVersionInfo ~ delete _;
+		public uint64 mCompilerId = ((uint64)Process.CurrentId << 32) ^ (uint64)Platform.BfpSystem_GetTimeStamp();
 
 		//public ToolboxPanel mToolboxPanel;
 		public Monitor mMonitor = new Monitor() ~ delete _;
@@ -12453,6 +12454,37 @@ namespace IDE
 			if (mProfileCompile)
 				mProfileCompileProfileId = Profiler.StartSampling("Compile");
 
+			var compilerCacheFilePath = scope String();
+			GetWorkspaceBuildDir(compilerCacheFilePath);
+			Directory.CreateDirectory(compilerCacheFilePath).IgnoreError();
+			compilerCacheFilePath.Append("/cache.dat");
+
+			// Validate compiler cache - perform a clean build if a different compiler instance modified the files in the workspace build directory
+			const uint64 cacheMagic = 0xBEEF0001;
+			(uint64 magic, uint64 id) cacheData = default;
+			int32 cacheSize = sizeof(decltype(cacheData));
+			if ((workspaceOptions.mIncrementalBuild) && (mCompileSinceCleanCount > 0))
+			{
+				bool cacheValid = false;
+				List<uint8> fileData = scope .();
+				File.ReadAll(compilerCacheFilePath, fileData).IgnoreError();
+				if (fileData.Count == cacheSize)
+				{
+					Internal.MemCpy(&cacheData, fileData.Ptr, cacheSize);
+					if ((cacheData.magic == cacheMagic) && (cacheData.id == mCompilerId))
+						cacheValid = true;
+				}
+
+				if (!cacheValid)
+				{
+					OutputLine("Compiler cache invalid, performing clean rebuild");
+					mWantsBeefClean = true;
+				}
+			}
+			cacheData.magic = cacheMagic;
+			cacheData.id = mCompilerId;
+			File.WriteAll(compilerCacheFilePath, .((uint8*)(void*)&cacheData, cacheSize)).IgnoreError();
+			
 			if (mWantsBeefClean)
 			{
 				// We must finish cleaning before we can compile
@@ -13864,7 +13896,7 @@ namespace IDE
 						((mBfResolveCompiler == null) || (!mBfResolveCompiler.HasQueuedCommands())))
 					{
 						didClean = true;
-						OutputLine("Cleaned Beef.");
+						OutputLine("Cleaned Beef");
 
 						if (mErrorsPanel != null)
 							mErrorsPanel.ClearParserErrors(null);
