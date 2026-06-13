@@ -327,13 +327,13 @@ namespace IDE.ui
 
 		private float LayoutToolbar()
 		{
-			float toolbarHeight = GS!(28);
+			float toolbarHeight = GS!(26);
 			float btnY = GS!(2);
 			float btnH = toolbarHeight - GS!(4);
 			float curX = GS!(4);
 
 			float scopeSelectW = GS!(120);
-			mScopeFilterCombo.Resize(curX, btnY, scopeSelectW, btnH);
+			mScopeFilterCombo.Resize(curX, btnY + GS!(2), scopeSelectW, btnH);
 			curX += scopeSelectW + GS!(4);
 
 			float errW = mErrorsToggle.CalcWidth();
@@ -342,11 +342,10 @@ namespace IDE.ui
 
 			float warnW = mWarningsToggle.CalcWidth();
 			mWarningsToggle.Resize(curX, btnY, warnW, btnH);
-			curX += warnW;
+			curX += warnW + GS!(4);
 
 			float searchMinWidth = GS!(100);
 			float searchWantWidth = GS!(250);
-			float searchWidth = Math.Clamp(mWidth - curX - GS!(4), searchMinWidth, searchWantWidth);
 			float searchWidth = Math.Clamp(mWidth - curX, searchMinWidth, searchWantWidth);
 			mSearchEdit.Resize(mWidth - searchWidth, btnY, searchWidth - GS!(4), btnH);
 
