@@ -203,7 +203,7 @@ namespace IDE.ui
 		public ErrorSeverityToggleButton mErrorsToggle;
 		public ErrorSeverityToggleButton mWarningsToggle;
 		public DarkComboBox mScopeFilterCombo;
-		public DarkComboBox mSearchTextCombo;
+		public SearchEditWidget mSearchEdit;
 		
 		public bool ShowErrors
 		{
@@ -273,13 +273,12 @@ namespace IDE.ui
 			mWarningsToggle.UpdateLabel();
 			AddWidget(mWarningsToggle);
 
-			mSearchTextCombo = new DarkComboBox();
-			mSearchTextCombo.MakeEditable();
-			mSearchTextCombo.mEditWidget.mOnContentChanged.Add(new (evt) =>
+			mSearchEdit = new SearchEditWidget();
+			mSearchEdit.mOnContentChanged.Add(new (evt) =>
 				{
 					InvalidateErrorList();
 				});
-			AddWidget(mSearchTextCombo);
+			AddWidget(mSearchEdit);
 		}
 
 		void PopulateLocationMenu(Menu menu)
@@ -348,7 +347,8 @@ namespace IDE.ui
 			float searchMinWidth = GS!(100);
 			float searchWantWidth = GS!(250);
 			float searchWidth = Math.Clamp(mWidth - curX - GS!(4), searchMinWidth, searchWantWidth);
-			mSearchTextCombo.Resize(mWidth - searchWidth, btnY, searchWidth - GS!(4), btnH);
+			float searchWidth = Math.Clamp(mWidth - curX, searchMinWidth, searchWantWidth);
+			mSearchEdit.Resize(mWidth - searchWidth, btnY, searchWidth - GS!(4), btnH);
 
 			return toolbarHeight;
 		}
@@ -562,13 +562,19 @@ namespace IDE.ui
 								}
 							});
 					}
+					
+					String searchStr = scope String();
+					if (mSearchEdit != null)
+					{
+						mSearchEdit.GetText(searchStr);
+					}
 
-					if (!mSearchTextCombo.Label.IsEmpty)
+					if (!searchStr.IsEmpty)
 					{
 						hasTextFilter = true;
 						hasFilter = true;
 						
-						textFilter = mSearchTextCombo.Label;
+						textFilter = searchStr;
 					}
 
 					if (hasFilter)
@@ -859,6 +865,13 @@ namespace IDE.ui
 			let lvItem = (ErrorsListViewItem)root.GetChildAtIndex(0);
 			lvItem.Focused = true;
 			lvItem.Goto();
+		}
+
+		public override void DrawAll(Graphics g)
+		{
+			base.DrawAll(g);
+
+			g.Draw(DarkTheme.sDarkTheme.GetImage(.Search), mSearchEdit.mX + GS!(2), mSearchEdit.mY + GS!(1));
 		}
 	}
 }
