@@ -15764,15 +15764,15 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 	}
 	if (str == "#Platform")
 	{
-		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mPlatformType), ResolveTypeDef(mCompiler->mCompilerOptionsPlatformTypeTypeDef));
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mPlatformType), GetPrimitiveType(BfTypeCode_Int32));
 	}
 	if (str == "#Architecture")
 	{
-		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mMachineType), ResolveTypeDef(mCompiler->mCompilerOptionsMachineTypeTypeDef));
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mMachineType), GetPrimitiveType(BfTypeCode_Int32));
 	}
 	if (str == "#Toolset")
 	{
-		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mToolsetType), ResolveTypeDef(mCompiler->mCompilerOptionsToolsetTypeTypeDef));
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mToolsetType), GetPrimitiveType(BfTypeCode_Int32));
 	}
 	if (str == "#TargetTriple")
 	{
@@ -15780,8 +15780,7 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 	}
 	if (str == "#OptimizationLevel")
 	{
-		if (project != NULL)
-			return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, project->mCodeGenOptions.mOptLevel), ResolveTypeDef(mCompiler->mCompilerOptionsOptLevelTypeDef));
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, project->mCodeGenOptions.mOptLevel), GetPrimitiveType(BfTypeCode_Int32));
 	}
 
 	if ((mCurMethodState != NULL) && (mCurMethodState->mMixinState != NULL))
