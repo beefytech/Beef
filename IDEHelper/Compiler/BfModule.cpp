@@ -13685,8 +13685,9 @@ BfTypedValue BfModule::LoadValue(BfTypedValue typedValue, BfAstNode* refNode, bo
 		{
 			return BfTypedValue(loadedVal, typedValue.mType, false);
 		}
-
+		
 		PopulateType(typedValue.mType, BfPopulateType_Data);
+		mBfIRBuilder->PopulateType(typedValue.mType);
 		loadedVal = mBfIRBuilder->CreateAlignedLoad(loadedVal, std::max(1, (int)typedValue.mType->mAlign), isVolatile || typedValue.IsVolatile());
 	}
 	return BfTypedValue(loadedVal, typedValue.mType, false);
