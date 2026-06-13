@@ -24,6 +24,13 @@ namespace IDE.ui
 			{
 				return new ErrorsListViewItem();
 			}
+
+			public override void ChangeSort(DarkListView.SortType sortType)
+			{
+				base.ChangeSort(sortType);
+				mSortType = sortType;
+				gApp.mErrorsPanel.InvalidateErrorList();
+			}
 		}
 
 		public class ErrorsListViewItem : IDEListViewItem
@@ -769,7 +776,10 @@ namespace IDE.ui
 						}
 					}
 
-					for (let error in mResolveErrors)
+					List<BfPassInstance.BfError> sortedErrors = new:ScopedAlloc! .(mResolveErrors);
+					sortedErrors.Sort((a, b) => SortErrorEntries(mErrorLV, a, b));
+					
+					for (let error in sortedErrors)
 						HandleError(error);
 
 					while (root.GetChildCount() > idx)
@@ -779,6 +789,58 @@ namespace IDE.ui
 					MarkDirty();
 				}
 			}
+		}
+
+		private static int SortErrorEntries(ErrorsListView mErrorLV, BfPassInstance.BfError a, BfPassInstance.BfError b)
+		{
+			int order = 0;
+
+			if (mErrorLV.mSortType.mColumn == 0)
+			{
+				// Sort by Error/Warning-Code
+			   	// Column contains Error/Warning + Number
+			   	if (a.mIsWarning != b.mIsWarning)
+			   	{
+					// Sort Error and Warning alphabetically
+				   	order = a.mIsWarning ? 1 : -1;
+			   	}
+			   	else
+			   	{
+					// If both are an error or both are a warning -> sort by code.
+					order = a.mCode <=> b.mCode;
+			   	}
+			}
+			if (mErrorLV.mSortType.mColumn == 1)
+			{
+				// Sort by description
+				order = a.mError <=> b.mError;
+			}
+			if (mErrorLV.mSortType.mColumn == 2)
+			{
+				// Sort by project name
+				order = a.mProject <=> b.mProject;
+			}
+			if (mErrorLV.mSortType.mColumn == 3)
+			{
+				// Sort by file name
+				// TODO: we call GetFileName like a bazillion times -> maybe prepare when the error-entry is created
+				let fileNameA = scope String(128);
+				let fileNameB = scope String(128);
+				Path.GetFileName(a.mFilePath, fileNameA);
+				Path.GetFileName(b.mFilePath, fileNameB);
+
+				order = fileNameA <=> fileNameB;
+			}
+			if (mErrorLV.mSortType.mColumn == 4)
+			{
+				// Sort by line
+				order = a.mLine <=> b.mLine;
+			}
+
+			if (mErrorLV.mSortType.mReverse)
+				return -order;
+			else
+				return order;
 		}
 
 		public void UpdateAlways()
