@@ -11,6 +11,22 @@ namespace System
 		{
 			[LinkName("#AllocStackCount")]
 			public static extern int32 AllocStackCount;
+
+			public enum PlatformType : int32
+			{
+			}
+
+			public enum MachineType : int32
+			{
+			}
+
+			public enum ToolsetType : int32
+			{
+			}
+
+			public enum OptLevel : int32
+			{
+			}
 		}
 
 		[LinkName("#CallerLineNum")]
