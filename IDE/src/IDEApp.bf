@@ -11877,7 +11877,7 @@ namespace IDE
 					{
 						var sv = str.Substring(":mark ".Length, crPos - ":mark ".Length);
 						int32 markId = int32.Parse(sv).GetValueOrDefault();
-						mOutputPanel.Mark(markId);
+						mOutputPanel?.Mark(markId);
 					}
 					str.Remove(0, crPos + 1);
 				}
@@ -11888,7 +11888,7 @@ namespace IDE
 					{
 						var sv = str.Substring(":mark_undo ".Length, crPos - ":mark_undo ".Length);
 						int32 markId = int32.Parse(sv).GetValueOrDefault();
-						mOutputPanel.MarkUndo(markId);
+						mOutputPanel?.MarkUndo(markId);
 					}
 					str.Remove(0, crPos + 1);
 				}
