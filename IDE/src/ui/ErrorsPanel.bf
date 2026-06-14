@@ -447,7 +447,7 @@ namespace IDE.ui
 			float curX = GS!(4);
 
 			float scopeSelectW = GS!(140);
-			mScopeFilterCombo.Resize(curX, btnY + GS!(2), scopeSelectW, btnH);
+			mScopeFilterCombo.Resize(curX, btnY + GS!(1), scopeSelectW, GS!(24));
 			curX += scopeSelectW + GS!(4);
 
 			float errW = mErrorsToggle.CalcWidth();
