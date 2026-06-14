@@ -15,7 +15,7 @@ namespace IDE.ui
         public static String sCurrentDocument = "Current File";
         public static String sOpenDocuments = "Open Files";
 		public static String sCurrentProject = "Current Project";
-        public static String sEntireSolution = "Entire Solution";
+        public static String sEntireSolution = "Entire Workspace";
 		public static String[] sLocationStrings = new .(sEntireSolution, sCurrentDocument, sOpenDocuments, sCurrentProject) ~ delete _;
 
 		public class ErrorsListView : IDEListView
@@ -446,7 +446,7 @@ namespace IDE.ui
 			float btnH = toolbarHeight - GS!(4);
 			float curX = GS!(4);
 
-			float scopeSelectW = GS!(120);
+			float scopeSelectW = GS!(140);
 			mScopeFilterCombo.Resize(curX, btnY + GS!(2), scopeSelectW, btnH);
 			curX += scopeSelectW + GS!(4);
 
