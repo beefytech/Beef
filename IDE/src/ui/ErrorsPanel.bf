@@ -923,7 +923,6 @@ namespace IDE.ui
 					order = (lhs.mProject ?? "") <=> (rhs.mProject ?? "");
 				case 3:
 					// Sort by file name
-					// TODO: we call GetFileName like a bazillion times -> maybe prepare when the error-entry is created
 					let fileNameLhs = scope String(128);
 					let fileNameRhs = scope String(128);
 					Path.GetFileName(lhs.mFilePath, fileNameLhs);
