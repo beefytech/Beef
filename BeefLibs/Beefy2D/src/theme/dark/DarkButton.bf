@@ -11,6 +11,8 @@ namespace Beefy.theme.dark
     {
         public String mLabel ~ delete _;
 		public float mDrawDownPct;
+		public FontAlign mLabelAlign = .Centered;
+		public float mLabelXOfs;
 		public float mLabelYOfs;
 
         [DesignEditable(DefaultEditString=true)]
@@ -79,7 +81,7 @@ namespace Beefy.theme.dark
                 using (g.PushColor(mDisabled ? 0x80FFFFFF : Color.White))
                 {
 					using (g.PushColor(DarkTheme.COLOR_TEXT))
-						DarkTheme.DrawUnderlined(g, mLabel, GS!(2), (mHeight - GS!(20)) / 2 + mLabelYOfs, .Centered, mWidth - GS!(4), .Truncate);
+						DarkTheme.DrawUnderlined(g, mLabel, GS!(2) + mLabelXOfs, (mHeight - GS!(20)) / 2 + mLabelYOfs, mLabelAlign, mWidth - GS!(4) - mLabelXOfs, .Truncate);
                 }
             }
         }

@@ -12,11 +12,132 @@ namespace IDE.ui
 {
 	class ErrorsPanel : Panel
 	{
+        public static String sCurrentDocument = "Current File";
+        public static String sOpenDocuments = "Open Files";
+		public static String sCurrentProject = "Current Project";
+        public static String sEntireSolution = "Entire Workspace";
+		public static String[] sLocationStrings = new .(sEntireSolution, sCurrentDocument, sOpenDocuments, sCurrentProject) ~ delete _;
+
 		public class ErrorsListView : IDEListView
 		{
+			public enum SortOrder
+			{
+				None,
+				Forward,
+				Reverse
+			}
+
+			public struct SortKey
+			{
+				public int mColumn;
+				public SortOrder mOrder;
+
+				public this()
+				{
+					mColumn = -1;
+					mOrder = .None;
+				}
+
+				public this(int column, SortOrder order)
+				{
+					mColumn = column;
+					mOrder = order;
+				}
+			}
+			
+			public List<SortKey> mDefaultSortKeys = new .() ~ delete _;
+			public List<SortKey> mSortKeys = new .() ~ delete _;
+
+			public List<SortKey> SortKeysOrDefault
+			{
+				get
+				{
+					if (mSortKeys.Count > 0 && mSortKeys.FindIndex(scope (s) => s.mOrder != .None) != -1)
+					{
+						return mSortKeys;
+					}
+					else
+					{
+						// If we have no user set keys (or all keys are unordered) we return the default list
+						return mDefaultSortKeys;
+					}
+				}
+			}
+
 			protected override ListViewItem CreateListViewItem()
 			{
 				return new ErrorsListViewItem();
+			}
+			
+			public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
+			{
+			    base.MouseDown(x, y, btn, btnCount);
+
+			    let (column, isSplitter) = GetColumnAt(x, y);
+				if ((column != -1) && (!isSplitter))
+				{
+					int sortKeyIdx = mSortKeys.FindIndex(scope (s) => s.mColumn == column);
+
+					SortKey sortKey = .(column, SortOrder.Forward);
+
+					if (sortKeyIdx != -1)
+					{
+						sortKey = mSortKeys[sortKeyIdx];
+
+						// Cycle through the sort orders.
+						if (sortKey.mOrder == .None)
+							sortKey.mOrder = .Forward;
+						else if (sortKey.mOrder == .Forward)
+							sortKey.mOrder = .Reverse;
+						else if (sortKey.mOrder == .Reverse)
+							sortKey.mOrder = .None;
+					}
+
+					if (mWidgetWindow.IsKeyDown(.Shift))
+					{
+						if (sortKeyIdx != -1)
+							mSortKeys[sortKeyIdx] = sortKey;
+						else
+							mSortKeys.Add(sortKey);
+					}
+					else
+					{
+						// Make the clicked column the only sorted one
+						mSortKeys.Clear();
+
+						// If no order is specified, we leave it empty so we can fall back to the default order
+						if (sortKey.mOrder != .None)
+							mSortKeys.Add(sortKey);
+					}
+
+					gApp.mErrorsPanel.InvalidateErrorList();
+				}
+			}
+
+			public override void DrawColumn(Graphics g, int32 columnIdx)
+			{
+				base.DrawColumn(g, columnIdx);
+				
+				// We don't set mSortType, so base doesn't draw any sort arrows. We do that ourselves here.
+				var column = mColumns[columnIdx];
+				float sortArrowX = g.mFont.GetWidth(column.mLabel) + DarkTheme.sUnitSize/2;
+
+				int sortKeyIdx = mSortKeys.FindIndex(scope (s) => s.mColumn == columnIdx);
+
+				if (sortKeyIdx != -1)
+				{
+					SortKey sortKey = mSortKeys[sortKeyIdx];
+
+					if (sortKey.mOrder == .Reverse)
+					{
+						using (g.PushScale(1.0f, -1.0f, column.mWidth - DarkTheme.sUnitSize, DarkTheme.sUnitSize/2))
+							g.Draw(DarkTheme.sDarkTheme.GetImage(.ListViewSortArrow), sortArrowX, 0);
+					}
+					else if (sortKey.mOrder == .Forward)
+					{
+						g.Draw(DarkTheme.sDarkTheme.GetImage(.ListViewSortArrow), sortArrowX, 0);
+					}
+				}
 			}
 		}
 
@@ -81,6 +202,103 @@ namespace IDE.ui
 			}
 		}
 
+		public class ErrorSeverityToggleButton : ToggleButton
+		{
+			private String mNounSingular ~ delete _;
+			private String mNounPlural ~ delete _;
+			public Image mIcon;
+			private int? mFilteredCount;
+			private int mTotalCount;
+			
+			public int? FilteredCount
+			{
+				get => mFilteredCount;
+				set
+				{
+					if (value != mFilteredCount)
+					{
+						mFilteredCount = value;
+						UpdateLabel();
+					}
+				}
+			}
+
+			public int TotalCount
+			{
+				get => mTotalCount;
+				set
+				{
+					if (value != mTotalCount)
+					{
+						mTotalCount = value;
+						UpdateLabel();
+					}
+				}
+			}
+
+			public StringView NounSingular
+			{
+				get => mNounSingular;
+				set => String.NewOrSet!(mNounSingular, value);
+			}
+			public StringView NounPlural
+			{
+				get => mNounPlural;
+				set => String.NewOrSet!(mNounPlural, value);
+			}
+
+			public this()
+			{
+				mLabelAlign = .Left;
+			}
+
+			public override void Draw(Graphics g)
+			{
+				if (mIcon != null)
+				{
+					mLabelXOfs = GS!(2) + mIcon.mWidth;
+					base.Draw(g);
+					g.Draw(mIcon, GS!(2), (mHeight - mIcon.mHeight) / 2);
+				}
+				else
+				{
+					base.Draw(g);
+				}
+			}
+
+			public void UpdateLabel()
+			{
+				var noun = (mTotalCount == 1) ? mNounSingular : mNounPlural;
+
+				if (mFilteredCount.HasValue)
+				{
+					Label = scope $"{mFilteredCount.Value} of {mTotalCount} {noun}";
+				}
+				else
+				{
+					Label = scope $"{mTotalCount} {noun}";
+				}
+
+			}
+
+			public float CalcWidth()
+			{
+				float w = GS!(2);
+
+				if (mIcon != null)
+				{
+					w += GS!(2) + mIcon.mWidth;
+				}
+
+				var font = DarkTheme.sDarkTheme.mSmallFont;
+				if (mLabel != null)
+					w += font.GetWidth(mLabel);
+
+				w += GS!(6);
+				return w;
+			}
+		}
+
 		public ErrorsListView mErrorLV;
 
 		public bool mNeedsResolveAll;
@@ -94,15 +312,30 @@ namespace IDE.ui
 
 		public int mErrorCount;
 		public int mWarningCount;
+		public int? mFilteredErrorCount = null;
+		public int? mFilteredWarningCount = null;
+
+		public ErrorSeverityToggleButton mErrorsToggle;
+		public ErrorSeverityToggleButton mWarningsToggle;
+		public DarkComboBox mScopeFilterCombo;
+		public SearchEditWidget mSearchEdit;
+		
+		public bool ShowErrors
+		{
+			get => mErrorsToggle.mToggled;
+			set => mErrorsToggle.mToggled = value;
+		}
+		public bool ShowWarnings
+		{
+			get => mWarningsToggle.mToggled;
+			set => mWarningsToggle.mToggled = value;
+		}
 
 		public this()
 		{
 			mErrorLV = new .();
-			//mErrorLV.mPanel = this;
-			//mErrorLV.SetShowHeader(false);
 			mErrorLV.InitScrollbars(true, true);
 			mErrorLV.mLabelX = GS!(6);
-			//mErrorLV.mOnItemMouseDown.Add(new => ItemMouseDown);
 			mErrorLV.mOnItemMouseClicked.Add(new => ListViewItemMouseClicked);
 			mErrorLV.mOnKeyDown.Add(new => ListViewKeyDown_ShowMenu);
 			mErrorLV.AddColumn(100, "Code");
@@ -122,10 +355,57 @@ namespace IDE.ui
 
 					//mErrorLV.GetRoot().SelectItemExclusively()
 				});
-			//let newItem = mErrorLV.GetRoot().CreateChildItem();
-			//newItem.Label = "Hey";
+			// Sort Project -> File -> Line by default
+			mErrorLV.mDefaultSortKeys.Add(.(2, .Forward));
+			mErrorLV.mDefaultSortKeys.Add(.(3, .Forward));
+			mErrorLV.mDefaultSortKeys.Add(.(4, .Forward));
 
 			AddWidget(mErrorLV);
+
+			mScopeFilterCombo = new DarkComboBox();
+			mScopeFilterCombo.Label = sEntireSolution;
+			mScopeFilterCombo.mPopulateMenuAction.Add(new => PopulateLocationMenu);
+			AddWidget(mScopeFilterCombo);
+
+			mErrorsToggle = new ErrorSeverityToggleButton();
+			mErrorsToggle.mIcon = DarkTheme.sDarkTheme.GetImage(.CodeError);
+			mErrorsToggle.NounSingular = "Error";
+			mErrorsToggle.NounPlural = "Errors";
+			mErrorsToggle.mToggled = true;
+			mErrorsToggle.HoverText = "Toggle visibility of errors";
+			mErrorsToggle.mOnMouseDown.Add(new (evt) => { InvalidateErrorList(); });
+			mErrorsToggle.UpdateLabel();
+			AddWidget(mErrorsToggle);
+
+			mWarningsToggle = new ErrorSeverityToggleButton();
+			mWarningsToggle.mIcon = DarkTheme.sDarkTheme.GetImage(.CodeWarning);
+			mWarningsToggle.NounSingular = "Warning";
+			mWarningsToggle.NounPlural = "Warnings";
+			mWarningsToggle.mToggled = true;
+			mWarningsToggle.HoverText = "Toggle visibility of warnings";
+			mWarningsToggle.mOnMouseDown.Add(new (evt) => { InvalidateErrorList(); });
+			mWarningsToggle.UpdateLabel();
+			AddWidget(mWarningsToggle);
+
+			mSearchEdit = new SearchEditWidget();
+			mSearchEdit.mOnContentChanged.Add(new (evt) =>
+				{
+					InvalidateErrorList();
+				});
+			AddWidget(mSearchEdit);
+		}
+
+		void PopulateLocationMenu(Menu menu)
+		{
+			for (var str in sLocationStrings)
+			{
+				var item = menu.AddItem(str);
+				item.mOnMenuItemSelected.Add(new (dlg) =>
+				{
+					mScopeFilterCombo.Label = str;
+					InvalidateErrorList();
+				});
+			}
 		}
 
 		public ~this()
@@ -138,12 +418,59 @@ namespace IDE.ui
 		    base.Serialize(data);
 
 		    data.Add("Type", "ErrorsPanel");
+
+			data.Add("ShowErrors", ShowErrors);
+			data.Add("ShowWarnings", ShowWarnings);
+			data.Add("Scope", mScopeFilterCombo.Label);
+		}
+
+		public override bool Deserialize(StructuredData data)
+		{
+		    base.Deserialize(data);
+
+			ShowErrors = data.GetBool("ShowErrors", true);
+			ShowWarnings = data.GetBool("ShowWarnings", true);
+
+			String scopeLabel = scope .();
+			data.GetString("Scope", scopeLabel);
+			if (sLocationStrings.Contains(scopeLabel))
+				mScopeFilterCombo.Label = scopeLabel;
+
+			return true;
+		}
+
+		private float LayoutToolbar()
+		{
+			float toolbarHeight = GS!(26);
+			float btnY = GS!(2);
+			float btnH = toolbarHeight - GS!(4);
+			float curX = GS!(4);
+
+			float scopeSelectW = GS!(140);
+			mScopeFilterCombo.Resize(curX, btnY + GS!(2), scopeSelectW, btnH);
+			curX += scopeSelectW + GS!(4);
+
+			float errW = mErrorsToggle.CalcWidth();
+			mErrorsToggle.Resize(curX, btnY, errW, btnH);
+			curX += errW + GS!(4);
+
+			float warnW = mWarningsToggle.CalcWidth();
+			mWarningsToggle.Resize(curX, btnY, warnW, btnH);
+			curX += warnW + GS!(4);
+
+			float searchMinWidth = GS!(100);
+			float searchWantWidth = GS!(250);
+			float searchWidth = Math.Clamp(mWidth - curX, searchMinWidth, searchWantWidth);
+			mSearchEdit.Resize(mWidth - searchWidth, btnY, searchWidth - GS!(4), btnH);
+
+			return toolbarHeight;
 		}
 
 		public override void Resize(float x, float y, float width, float height)
 		{
 			base.Resize(x, y, width, height);
-			mErrorLV.Resize(0, 0, width, height);
+			float toolbarHeight = LayoutToolbar();
+			mErrorLV.Resize(0, toolbarHeight, width, Math.Max(height - toolbarHeight, 0));
 		}
 
 		public enum ResolveKind
@@ -227,6 +554,32 @@ namespace IDE.ui
 			}
 		}
 
+		/// Invalidates the error list and forces a rebuild,
+		/// so filter changes can take effect immediately in the next update,
+		/// even while the compiler is busy (which keeps mDirtyTicks > 0).
+		void InvalidateErrorList()
+		{
+			mErrorListId = -1;
+		}
+
+		public void OnActiveSourceViewChanged()
+		{
+			if (mScopeFilterCombo.Label != sEntireSolution)
+				InvalidateErrorList();
+		}
+
+		public void OnSourceViewClosed()
+		{
+			if (mScopeFilterCombo.Label == sOpenDocuments || mScopeFilterCombo.Label == sCurrentDocument)
+				InvalidateErrorList();
+		}
+
+		public void OnSourceViewOpened()
+		{
+			if (mScopeFilterCombo.Label == sOpenDocuments || mScopeFilterCombo.Label == sCurrentDocument)
+				InvalidateErrorList();
+		}
+
 		public void ClearParserErrors(String filePath)
 		{
 			using (mMonitor.Enter())
@@ -286,9 +639,159 @@ namespace IDE.ui
 				{
 					let root = mErrorLV.GetRoot();
 
+					StringView textFilter = null;
+					String activeProjectName = null;
+					List<String> openFilePaths = scope .();
+					bool hasPathFilter = false;
+					bool hasProjectFilter = false;
+					bool hasFilter = false;
+					bool hasTextFilter = false;
+
+					switch (mScopeFilterCombo.Label)
+					{
+					case sEntireSolution:
+						// Nothing to do.
+					case sCurrentDocument:
+						hasFilter = true;
+						hasPathFilter = true;
+						var svp = gApp.GetActiveSourceViewPanel(true);
+						if (svp?.mFilePath != null)
+						{
+							openFilePaths.Add(svp.mFilePath);
+						}
+					case sCurrentProject:
+						hasFilter = true;
+						hasProjectFilter = true;
+						var svp = gApp.GetActiveSourceViewPanel(true);
+						activeProjectName = svp?.mProjectSource?.mProject?.mProjectName;
+					case sOpenDocuments:
+						hasFilter = true;
+						hasPathFilter = true;
+						gApp.WithSourceViewPanels(scope (svp) =>
+							{
+								if (svp.mFilePath != null)
+								{
+									openFilePaths.Add(svp.mFilePath);
+								}
+							});
+					}
+					
+					String searchStr = scope String();
+					if (mSearchEdit != null)
+					{
+						mSearchEdit.GetText(searchStr);
+					}
+
+					if (!searchStr.IsEmpty)
+					{
+						hasTextFilter = true;
+						hasFilter = true;
+						
+						textFilter = searchStr;
+					}
+
+					if (hasFilter)
+					{
+						mFilteredErrorCount = 0;
+						mFilteredWarningCount = 0;
+					}
+					else
+					{
+						mFilteredErrorCount = null;
+						mFilteredWarningCount = null;
+					}
+
 					int idx = 0;
 					void HandleError(BfPassInstance.BfError error)
 					{
+						if (error.mIsWarning ? !ShowWarnings : !ShowErrors)
+							return;
+
+						if (hasProjectFilter
+							&& ((activeProjectName == null) || (error.mProject != activeProjectName)))
+						{
+							return;
+						}
+
+						if (hasPathFilter)
+						{
+							if (error.mFilePath == null)
+								return;
+
+							bool matched = false;
+							for (String openFilePath in openFilePaths)
+							{
+								if (Path.Equals(error.mFilePath, openFilePath))
+								{
+									matched = true;
+									break;
+								}
+							}
+							if (!matched)
+								return;
+						}
+
+						int codeDigitStartIdx = int32.MaxValue;
+						String codeStr = scope String(32);
+						char8[5] codeColorRaw = Font.EncodeColor(error.mIsWarning ? 0xFFFFFF80 : 0xFFFF8080);
+						StringView encodedCodeColor = StringView(&codeColorRaw, codeColorRaw.Count);
+						codeStr.AppendF(error.mIsWarning ? "{}Warning" : "{}Error", encodedCodeColor);
+						if (error.mCode != 0)
+						{
+							// + 1: we add a space before code
+							codeDigitStartIdx = codeStr.Length + 1;
+							codeStr.AppendF(" {}", error.mCode);
+						}
+						codeStr.AppendF("{}", Font.EncodePopColor());
+
+						// Copy project name to allow marking the matched filter.
+						let projectName = error.mProject == null ? null : scope String(error.mProject);
+
+						let fileName = scope String(128);
+						Path.GetFileName(error.mFilePath, fileName);
+						
+						char8[5] matchColorRaw = Font.EncodeColor(DarkTheme.COLOR_MENU_FOCUSED);
+						StringView encodedMatchColor = StringView(&matchColorRaw, matchColorRaw.Count);
+
+						int errorDescMatchIdx = -1;
+
+						if (hasTextFilter)
+						{
+							errorDescMatchIdx = error.mError.IndexOf(textFilter, true);
+							int fileNameIdx = fileName.IndexOf(textFilter, true);
+							int projectNameIdx = projectName?.IndexOf(textFilter, true) ?? -1;
+							int codeMatchIdx = codeStr.IndexOf(textFilter, codeDigitStartIdx);
+
+							if (errorDescMatchIdx == -1 &&
+								fileNameIdx == -1 &&
+								projectNameIdx == -1 &&
+								codeMatchIdx == -1)
+							{
+								return;
+							}
+							
+							// Mark the matched text
+
+							if (fileNameIdx != -1)
+							{
+								fileName.Insert(fileNameIdx + textFilter.Length, Font.EncodePopColor());
+								fileName.Insert(fileNameIdx, encodedMatchColor);
+							}
+							if (projectNameIdx != -1)
+							{
+								projectName.Insert(projectNameIdx + textFilter.Length, Font.EncodePopColor());
+								projectName.Insert(projectNameIdx, encodedMatchColor);
+							}
+							if (codeMatchIdx != -1)
+							{
+								// If we don't match the digits until the end, reapply color for code
+								if (codeMatchIdx + textFilter.Length < codeStr.Length - 1)
+									codeStr.Insert(codeMatchIdx + textFilter.Length, encodedCodeColor);
+
+								codeStr.Insert(codeMatchIdx, encodedMatchColor);
+							}
+						}
+
 						ErrorsListViewItem item;
 
 						bool changed = false;
@@ -318,11 +821,6 @@ namespace IDE.ui
 						item.mLine = error.mLine;
 						item.mColumn = error.mColumn;
 
-						String codeStr = scope String(32);
-						codeStr.AppendF(error.mIsWarning ? "{}Warning" : "{}Error", Font.EncodeColor(error.mIsWarning ? 0xFFFFFF80 : 0xFFFF8080));
-						if (error.mCode != 0)
-							codeStr.AppendF(" {}", error.mCode);
-						codeStr.AppendF("{}", Font.EncodePopColor());
 						SetLabel(item, codeStr);
 
 						let descItem = item.GetSubItem(1);
@@ -337,14 +835,19 @@ namespace IDE.ui
 							errStr.Append(error.mError);
 						errStr.Replace('\n', ' ');
 
+						// Mark the matched text in the error description.
+						if (errorDescMatchIdx != -1 && errorDescMatchIdx < errStr.Length)
+						{
+							errStr.Insert(Math.Min(errorDescMatchIdx + textFilter.Length, errStr.Length), Font.EncodePopColor());
+							errStr.Insert(errorDescMatchIdx, encodedMatchColor);
+						}
+
 						SetLabel(descItem, errStr);
 
 						let projectItem = item.GetSubItem(2);
-						SetLabel(projectItem, error.mProject);
+						SetLabel(projectItem, projectName);
 
 						let fileNameItem = item.GetSubItem(3);
-						let fileName = scope String(128);
-						Path.GetFileName(error.mFilePath, fileName);
 						SetLabel(fileNameItem, fileName);
 						let lineNumberItem = item.GetSubItem(4);
 						if (error.mLine != -1)
@@ -356,23 +859,26 @@ namespace IDE.ui
 							item.Focused = false;
 
 						idx++;
-					}
 
-					if (!mParseErrors.IsEmpty)
-					{
-						List<String> paths = scope .();
-						for (var path in mParseErrors.Keys)
-							paths.Add(path);
-						paths.Sort();
-
-						for (var path in paths)
+						if (hasFilter)
 						{
-							for (var error in mParseErrors[path])
-								HandleError(error);
+							if (error.mIsWarning)
+								mFilteredWarningCount += 1;
+							else
+								mFilteredErrorCount += 1;
 						}
 					}
+					
+					List<BfPassInstance.BfError> sortedErrors = new:ScopedAlloc! .(mResolveErrors);
 
-					for (let error in mResolveErrors)
+					for (var errors in mParseErrors.Values)
+					{
+						sortedErrors.AddRange(errors);
+					}
+
+					sortedErrors.Sort((lhs, rhs) => SortErrorEntries(lhs, rhs, mErrorLV.SortKeysOrDefault));
+					
+					for (let error in sortedErrors)
 						HandleError(error);
 
 					while (root.GetChildCount() > idx)
@@ -382,6 +888,62 @@ namespace IDE.ui
 					MarkDirty();
 				}
 			}
+		}
+
+		private static int SortErrorEntries(BfPassInstance.BfError lhs, BfPassInstance.BfError rhs, List<ErrorsListView.SortKey> sortKeys)
+		{
+			for (var sortKey in sortKeys)
+			{
+				int order = 0;
+
+				// Nothing to do for this column
+				if (sortKey.mOrder == .None)
+					continue;
+
+				switch (sortKey.mColumn)
+				{
+				case 0:
+					// Sort by Error/Warning-Code
+					// Column contains Error/Warning + Number
+					if (lhs.mIsWarning != rhs.mIsWarning)
+					{
+						// Sort Error and Warning alphabetically
+						order = lhs.mIsWarning ? 1 : -1;
+					}
+					else
+					{
+						// If both are an error or both are a warning -> sort by code.
+						order = lhs.mCode <=> rhs.mCode;
+					}
+				case 1:
+					// Sort by description
+					order = (lhs.mError ?? "") <=> (rhs.mError ?? "");
+				case 2:
+					// Sort by project name
+					order = (lhs.mProject ?? "") <=> (rhs.mProject ?? "");
+				case 3:
+					// Sort by file name
+					let fileNameLhs = scope String(128);
+					let fileNameRhs = scope String(128);
+					Path.GetFileName(lhs.mFilePath, fileNameLhs);
+					Path.GetFileName(rhs.mFilePath, fileNameRhs);
+
+					order = fileNameLhs <=> fileNameRhs;
+				case 4:
+					// Sort by line
+					order = lhs.mLine <=> rhs.mLine;
+				}
+
+				if (order != 0)
+				{
+					if (sortKey.mOrder == .Reverse)
+						return -order;
+					else
+						return order;
+				}
+			}
+
+			return 0;
 		}
 
 		public void UpdateAlways()
@@ -404,7 +966,18 @@ namespace IDE.ui
 		public override void Update()
 		{
 			base.Update();
-			
+
+			if ((mErrorsToggle.TotalCount != mErrorCount) || (mErrorsToggle.FilteredCount != mFilteredErrorCount)
+				 || (mWarningsToggle.TotalCount != mWarningCount) || (mWarningsToggle.FilteredCount != mFilteredWarningCount))
+			{
+				mErrorsToggle.TotalCount = mErrorCount;
+				mErrorsToggle.FilteredCount = mFilteredErrorCount;
+				mWarningsToggle.TotalCount = mWarningCount;
+				mWarningsToggle.FilteredCount = mFilteredWarningCount;
+				LayoutToolbar();
+				MarkDirty();
+			}
+
 			if (!mVisible)
 			{
 				// Very dirty
@@ -419,7 +992,8 @@ namespace IDE.ui
 			else
 				mDirtyTicks++;
 
-			if(mDirtyTicks==0)
+			// mErrorListId = -1 -> force processing
+			if (mErrorListId == -1 || mDirtyTicks == 0)
 				ProcessErrors();
 		}
 		
@@ -455,6 +1029,19 @@ namespace IDE.ui
 			let lvItem = (ErrorsListViewItem)root.GetChildAtIndex(0);
 			lvItem.Focused = true;
 			lvItem.Goto();
+		}
+
+		public override void DrawAll(Graphics g)
+		{
+			base.DrawAll(g);
+
+			g.Draw(DarkTheme.sDarkTheme.GetImage(.Search), mSearchEdit.mX + GS!(2), mSearchEdit.mY + GS!(1));
+
+			if (mDirtyTicks != 0)
+			{
+            	var image = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.WaitSegment);
+				IDEUtils.DrawWait(g, mWidth - image.mWidth/2, mHeight - image.mHeight/2, mDirtyTicks);
+			}
 		}
 	}
 }
