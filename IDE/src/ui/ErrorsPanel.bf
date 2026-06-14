@@ -20,16 +20,124 @@ namespace IDE.ui
 
 		public class ErrorsListView : IDEListView
 		{
+			public enum SortOrder
+			{
+				None,
+				Forward,
+				Reverse
+			}
+
+			public struct SortKey
+			{
+				public int mColumn;
+				public SortOrder mOrder;
+
+				public this()
+				{
+					mColumn = -1;
+					mOrder = .None;
+				}
+
+				public this(int column, SortOrder order)
+				{
+					mColumn = column;
+					mOrder = order;
+				}
+			}
+			
+			public List<SortKey> mDefaultSortKeys = new .() ~ delete _;
+			public List<SortKey> mSortKeys = new .() ~ delete _;
+
+			public List<SortKey> SortKeysOrDefault
+			{
+				get
+				{
+					if (mSortKeys.Count > 0 && mSortKeys.FindIndex(scope (s) => s.mOrder != .None) != -1)
+					{
+						return mSortKeys;
+					}
+					else
+					{
+						// If we have no user set keys (or all keys are unordered) we return the default list
+						return mDefaultSortKeys;
+					}
+				}
+			}
+
 			protected override ListViewItem CreateListViewItem()
 			{
 				return new ErrorsListViewItem();
 			}
-
-			public override void ChangeSort(DarkListView.SortType sortType)
+			
+			public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
 			{
-				base.ChangeSort(sortType);
-				mSortType = sortType;
-				gApp.mErrorsPanel.InvalidateErrorList();
+			    base.MouseDown(x, y, btn, btnCount);
+
+			    let (column, isSplitter) = GetColumnAt(x, y);
+				if ((column != -1) && (!isSplitter))
+				{
+					int sortKeyIdx = mSortKeys.FindIndex(scope (s) => s.mColumn == column);
+
+					SortKey sortKey = .(column, SortOrder.Forward);
+
+					if (sortKeyIdx != -1)
+					{
+						sortKey = mSortKeys[sortKeyIdx];
+
+						// Cycle through the sort orders.
+						if (sortKey.mOrder == .None)
+							sortKey.mOrder = .Forward;
+						else if (sortKey.mOrder == .Forward)
+							sortKey.mOrder = .Reverse;
+						else if (sortKey.mOrder == .Reverse)
+							sortKey.mOrder = .None;
+					}
+
+					if (mWidgetWindow.IsKeyDown(.Shift))
+					{
+						if (sortKeyIdx != -1)
+							mSortKeys[sortKeyIdx] = sortKey;
+						else
+							mSortKeys.Add(sortKey);
+					}
+					else
+					{
+						// Make the clicked column the only sorted one
+						mSortKeys.Clear();
+
+						// If no order is specified, we leave it empty so we can fall back to the default order
+						if (sortKey.mOrder != .None)
+							mSortKeys.Add(sortKey);
+					}
+
+					gApp.mErrorsPanel.InvalidateErrorList();
+				}
+			}
+
+			public override void DrawColumn(Graphics g, int32 columnIdx)
+			{
+				base.DrawColumn(g, columnIdx);
+				
+				// We don't set mSortType, so base doesn't draw any sort arrows. We do that ourselves here.
+				var column = mColumns[columnIdx];
+				float sortArrowX = g.mFont.GetWidth(column.mLabel) + DarkTheme.sUnitSize/2;
+
+				int sortKeyIdx = mSortKeys.FindIndex(scope (s) => s.mColumn == columnIdx);
+
+				if (sortKeyIdx != -1)
+				{
+					SortKey sortKey = mSortKeys[sortKeyIdx];
+
+					if (sortKey.mOrder == .Reverse)
+					{
+						using (g.PushScale(1.0f, -1.0f, column.mWidth - DarkTheme.sUnitSize, DarkTheme.sUnitSize/2))
+							g.Draw(DarkTheme.sDarkTheme.GetImage(.ListViewSortArrow), sortArrowX, 0);
+					}
+					else if (sortKey.mOrder == .Forward)
+					{
+						g.Draw(DarkTheme.sDarkTheme.GetImage(.ListViewSortArrow), sortArrowX, 0);
+					}
+				}
 			}
 		}
 
@@ -226,11 +334,8 @@ namespace IDE.ui
 		public this()
 		{
 			mErrorLV = new .();
-			//mErrorLV.mPanel = this;
-			//mErrorLV.SetShowHeader(false);
 			mErrorLV.InitScrollbars(true, true);
 			mErrorLV.mLabelX = GS!(6);
-			//mErrorLV.mOnItemMouseDown.Add(new => ItemMouseDown);
 			mErrorLV.mOnItemMouseClicked.Add(new => ListViewItemMouseClicked);
 			mErrorLV.mOnKeyDown.Add(new => ListViewKeyDown_ShowMenu);
 			mErrorLV.AddColumn(100, "Code");
@@ -250,8 +355,10 @@ namespace IDE.ui
 
 					//mErrorLV.GetRoot().SelectItemExclusively()
 				});
-			//let newItem = mErrorLV.GetRoot().CreateChildItem();
-			//newItem.Label = "Hey";
+			// Sort Project -> File -> Line by default
+			mErrorLV.mDefaultSortKeys.Add(.(2, .Forward));
+			mErrorLV.mDefaultSortKeys.Add(.(3, .Forward));
+			mErrorLV.mDefaultSortKeys.Add(.(4, .Forward));
 
 			AddWidget(mErrorLV);
 
@@ -761,23 +868,15 @@ namespace IDE.ui
 								mFilteredErrorCount += 1;
 						}
 					}
+					
+					List<BfPassInstance.BfError> sortedErrors = new:ScopedAlloc! .(mResolveErrors);
 
-					if (!mParseErrors.IsEmpty)
+					for (var errors in mParseErrors.Values)
 					{
-						List<String> paths = scope .();
-						for (var path in mParseErrors.Keys)
-							paths.Add(path);
-						paths.Sort();
-
-						for (var path in paths)
-						{
-							for (var error in mParseErrors[path])
-								HandleError(error);
-						}
+						sortedErrors.AddRange(errors);
 					}
 
-					List<BfPassInstance.BfError> sortedErrors = new:ScopedAlloc! .(mResolveErrors);
-					sortedErrors.Sort((a, b) => SortErrorEntries(mErrorLV, a, b));
+					sortedErrors.Sort((lhs, rhs) => SortErrorEntries(lhs, rhs, mErrorLV.SortKeysOrDefault));
 					
 					for (let error in sortedErrors)
 						HandleError(error);
@@ -791,56 +890,61 @@ namespace IDE.ui
 			}
 		}
 
-		private static int SortErrorEntries(ErrorsListView mErrorLV, BfPassInstance.BfError a, BfPassInstance.BfError b)
+		private static int SortErrorEntries(BfPassInstance.BfError lhs, BfPassInstance.BfError rhs, List<ErrorsListView.SortKey> sortKeys)
 		{
-			int order = 0;
+			for (var sortKey in sortKeys)
+			{
+				int order = 0;
 
-			if (mErrorLV.mSortType.mColumn == 0)
-			{
-				// Sort by Error/Warning-Code
-			   	// Column contains Error/Warning + Number
-			   	if (a.mIsWarning != b.mIsWarning)
-			   	{
-					// Sort Error and Warning alphabetically
-				   	order = a.mIsWarning ? 1 : -1;
-			   	}
-			   	else
-			   	{
-					// If both are an error or both are a warning -> sort by code.
-					order = a.mCode <=> b.mCode;
-			   	}
-			}
-			if (mErrorLV.mSortType.mColumn == 1)
-			{
-				// Sort by description
-				order = a.mError <=> b.mError;
-			}
-			if (mErrorLV.mSortType.mColumn == 2)
-			{
-				// Sort by project name
-				order = a.mProject <=> b.mProject;
-			}
-			if (mErrorLV.mSortType.mColumn == 3)
-			{
-				// Sort by file name
-				// TODO: we call GetFileName like a bazillion times -> maybe prepare when the error-entry is created
-				let fileNameA = scope String(128);
-				let fileNameB = scope String(128);
-				Path.GetFileName(a.mFilePath, fileNameA);
-				Path.GetFileName(b.mFilePath, fileNameB);
+				// Nothing to do for this column
+				if (sortKey.mOrder == .None)
+					continue;
 
-				order = fileNameA <=> fileNameB;
-			}
-			if (mErrorLV.mSortType.mColumn == 4)
-			{
-				// Sort by line
-				order = a.mLine <=> b.mLine;
+				switch (sortKey.mColumn)
+				{
+				case 0:
+					// Sort by Error/Warning-Code
+					// Column contains Error/Warning + Number
+					if (lhs.mIsWarning != rhs.mIsWarning)
+					{
+						// Sort Error and Warning alphabetically
+						order = lhs.mIsWarning ? 1 : -1;
+					}
+					else
+					{
+						// If both are an error or both are a warning -> sort by code.
+						order = lhs.mCode <=> rhs.mCode;
+					}
+				case 1:
+					// Sort by description
+					order = (lhs.mError ?? "") <=> (rhs.mError ?? "");
+				case 2:
+					// Sort by project name
+					order = (lhs.mProject ?? "") <=> (rhs.mProject ?? "");
+				case 3:
+					// Sort by file name
+					// TODO: we call GetFileName like a bazillion times -> maybe prepare when the error-entry is created
+					let fileNameLhs = scope String(128);
+					let fileNameRhs = scope String(128);
+					Path.GetFileName(lhs.mFilePath, fileNameLhs);
+					Path.GetFileName(rhs.mFilePath, fileNameRhs);
+
+					order = fileNameLhs <=> fileNameRhs;
+				case 4:
+					// Sort by line
+					order = lhs.mLine <=> rhs.mLine;
+				}
+
+				if (order != 0)
+				{
+					if (sortKey.mOrder == .Reverse)
+						return -order;
+					else
+						return order;
+				}
 			}
 
-			if (mErrorLV.mSortType.mReverse)
-				return -order;
-			else
-				return order;
+			return 0;
 		}
 
 		public void UpdateAlways()
