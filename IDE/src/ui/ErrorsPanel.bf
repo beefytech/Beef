@@ -1037,6 +1037,12 @@ namespace IDE.ui
 			base.DrawAll(g);
 
 			g.Draw(DarkTheme.sDarkTheme.GetImage(.Search), mSearchEdit.mX + GS!(2), mSearchEdit.mY + GS!(1));
+
+			if (mDirtyTicks != 0)
+			{
+            	var image = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.WaitSegment);
+				IDEUtils.DrawWait(g, mWidth - image.mWidth/2, mHeight - image.mHeight/2, mDirtyTicks);
+			}
 		}
 	}
 }
