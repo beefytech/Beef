@@ -450,17 +450,21 @@ bool DebugTarget::FindSymbolAt(addr_target addr, String* outSymbol, addr_target*
 
 addr_target DebugTarget::FindSymbolAddr(const StringImpl& name)
 {
-	//TODO: Search through all modules?
-
-	auto dbgModule = GetMainDbgModule();
-	if (dbgModule != NULL)
+	auto mainModule = GetMainDbgModule();
+	if (mainModule != NULL)
 	{
+		auto entry = mainModule->mSymbolNameMap.Find(name.c_str());
+		if (entry != NULL)
+			return entry->mValue->mAddress;
+	}
+	for (auto dbgModule : mDbgModules)
+	{
+		if (dbgModule == mainModule)
+			continue;
+		dbgModule->ParseSymbolData();
 		auto entry = dbgModule->mSymbolNameMap.Find(name.c_str());
-		if (entry!= NULL)
-		{
-			DbgSymbol* dwSymbol = entry->mValue;
-			return dwSymbol->mAddress;
-		}
+		if (entry != NULL)
+			return entry->mValue->mAddress;
 	}
 	return (addr_target)-1;
 }
