@@ -305,6 +305,8 @@ class WinNativeConsoleProvider : ConsoleProvider
 
 	[CLink]
 	public static extern Windows.IntBool FillConsoleOutputAttribute(Windows.Handle handle, uint16 attribute, int32 length, POINT writeCoord, out int32 numCharsWritten);
+
+	public static function int32 (Windows.HWnd hwnd) sGetDpiForWindow;
 #endif
 
 	ScreenInfo mScreenInfo ~ delete _;
@@ -360,6 +362,16 @@ class WinNativeConsoleProvider : ConsoleProvider
 	public override bool CursorVisible => (mScreenInfo != null) ? (mScreenInfo.mCursorInfo.mVisible != 0) : true;
 	public override float CursorHeight => (mScreenInfo != null) ? (mScreenInfo.mCursorInfo.mSize / 100.0f) : 0.15f;
 
+
+	public this()
+	{
+		if (sGetDpiForWindow == null)
+		{
+			var lib = Windows.LoadLibraryA("user32.dll");
+			sGetDpiForWindow = (.)Windows.GetProcAddress(lib, "GetDpiForWindow");
+		}
+	}
+
 	public ~this()
 	{
 		mCmdSpawn?.Kill();
@@ -389,6 +401,8 @@ class WinNativeConsoleProvider : ConsoleProvider
 		if (mScreenInfo.mFullCharInfo != null)
 		{
 			int bufRow = row + mScreenInfo.mScrollTop;
+			if (col >= mScreenInfo.mInfo.mWidth)
+				return default;
 			int idx = bufRow * mScreenInfo.mInfo.mWidth + col;
 			int maxIdx = (int)mScreenInfo.mInfo.mWidth * mScreenInfo.mInfo.mHeight;
 			if ((idx < 0) || (idx >= maxIdx))
@@ -397,8 +411,12 @@ class WinNativeConsoleProvider : ConsoleProvider
 			return .() { mChar = info.mChar, mAttributes = info.mAttributes };
 		}
 
-		int idx = row * mScreenInfo.mInfo.mWindowRect.Width + col;
-		int maxIdx = (int)mScreenInfo.mInfo.mWindowRect.Width * mScreenInfo.mInfo.mWindowRect.Height;
+		int cols = mScreenInfo.mInfo.mWindowRect.Width;
+		int rows = mScreenInfo.mInfo.mWindowRect.Height;
+		if (col >= cols)
+			return default;
+		int idx = row * cols + col;
+		int maxIdx = (int)cols * rows;
 		if ((idx < 0) || (idx >= maxIdx))
 			return default;
 		var info = mScreenInfo.mCharInfo[idx];
@@ -539,7 +557,24 @@ class WinNativeConsoleProvider : ConsoleProvider
 		uint32 style = (.)Windows.GetWindowLong(window, Windows.GWL_STYLE);
 		uint32 styleEx = (.)Windows.GetWindowLong(window, Windows.GWL_EXSTYLE);
 
-		Windows.Rect rect = .(0, 0, (.)(cols * fontInfo.mSize.x), (.)(rows * fontInfo.mSize.y));
+		float colsF = cols;
+		float rowsF = rows;
+
+		float scale = 1.0f;
+		if (sGetDpiForWindow != null)
+		{
+			int32 dpi = sGetDpiForWindow(window);
+			if ((dpi > 0) && (dpi != 96))
+			{
+				scale = dpi / 96.0f;
+				fontInfo.mSize.x = (.)(fontInfo.mSize.x * scale + 0.05f);
+				fontInfo.mSize.y = (.)(fontInfo.mSize.y * scale + 0.05f);
+				colsF -= 0.85f;
+				rowsF -= 0.85f;
+			}
+		}
+
+		Windows.Rect rect = .(0, 0, (.)(colsF * fontInfo.mSize.x), (.)(rowsF * fontInfo.mSize.y));
 		Windows.AdjustWindowRectEx(ref rect, style, false, styleEx);
 
 		Windows.SetWindowPos(window, default, 0, 0, rect.Width, rect.Height,
