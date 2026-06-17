@@ -18322,8 +18322,8 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 
 				exprEvaluator->FinishExpressionResult();
 				arg.mTypedValue = mModule->LoadValue(arg.mTypedValue);
-				arg.mTypedValue = mModule->Cast(arg.mExpression, arg.mTypedValue, wantType);
-
+				if (arg.mTypedValue)
+					arg.mTypedValue = mModule->Cast(arg.mExpression, arg.mTypedValue, wantType);
 				if (arg.mTypedValue)
 				{
 					auto argValue = mModule->LoadOrAggregateValue(arg.mTypedValue);
