@@ -435,6 +435,7 @@ GDBDebugger::GDBDebugger(DebugManager* debugManager)
 	mHotSwapEnabled = false;
 	mOpenFileFlags = DbgOpenFileFlag_None;
 	mLaunchMode = GDBLaunchMode_Local;
+	mUseHardwareBreakpoints = false;
 	mGDBReady = false;
 	mRunning = false;
 	mNeedsExecRun = false;
@@ -747,6 +748,11 @@ void GDBDebugger::HandleStoppedRecord(GDBMIRecord* rec)
 			{
 				GDBBreakpoint* bp = NULL;
 				mBreakpointNumMap.TryGetValue(bpNum, &bp);
+				if (bp != NULL)
+				{
+					Breakpoint* head = (bp->mHead != NULL) ? bp->mHead : bp;
+					head->mHitCount++;
+				}
 				mActiveBreakpoint = bp;
 
 				// Record resolved address from the frame
@@ -860,8 +866,12 @@ void GDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targe
 	//   gdb_wsl          — run "wsl gdb"; paths converted to WSL /mnt/ form
 	//   gdb_ssh:server   — run "ssh <server> gdb"; path is already a remote path
 	//   gdb:host:port    — run GDB locally; connect to gdbserver on <host:port>
+	// The host portion may carry an optional GDB executable override after a ';':
+	//   gdb:host:port;arm-none-eabi-gdb   — use a specific (cross) GDB binary
 	mLaunchMode = GDBLaunchMode_Local;
 	mGDBServerHost = "";
+	mGDBExe = "";
+	mUseHardwareBreakpoints = false;
 
 	const char* rawPath = launchPath.c_str();
 	const char* atSign = strchr(rawPath, '@');
@@ -878,10 +888,24 @@ void GDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targe
 			mLaunchMode = GDBLaunchMode_SSH;
 			mGDBServerHost = location + 8;
 		}
+		else if (strncmp(location, "gdb_hw:", 7) == 0)
+		{
+			mLaunchMode = GDBLaunchMode_GDBServer;
+			mGDBServerHost = location + 7;
+			mUseHardwareBreakpoints = true;
+		}
 		else if (strncmp(location, "gdb:", 4) == 0)
 		{
 			mLaunchMode = GDBLaunchMode_GDBServer;
 			mGDBServerHost = location + 4;
+		}
+
+		// Split off an optional ";<gdbExe>" override from the host portion.
+		int semiPos = (int)mGDBServerHost.IndexOf(';');
+		if (semiPos >= 0)
+		{
+			mGDBExe = mGDBServerHost.Substring(semiPos + 1);
+			mGDBServerHost.RemoveToEnd(semiPos);
 		}
 
 		mLaunchPath = String(rawPath, (int)(atSign - rawPath));
@@ -918,7 +942,11 @@ void GDBDebugger::DoLaunch()
 	{
 	case GDBLaunchMode_Local:
 	case GDBLaunchMode_GDBServer:
-		gdbExe = "gdb";
+		// Use the override (e.g. "arm-none-eabi-gdb" for embedded ARM targets) when set,
+		// otherwise the default "gdb" on PATH. A target-specific GDB is required for
+		// remote embedded debugging so it correctly recognizes the architecture
+		// (e.g. Cortex-M / Thumb) instead of falling back to generic ARM.
+		gdbExe = mGDBExe.IsEmpty() ? "gdb" : mGDBExe;
 		gdbBaseArgs = "--interpreter=mi2 --nx";
 		break;
 	case GDBLaunchMode_WSL:
@@ -935,6 +963,8 @@ void GDBDebugger::DoLaunch()
 
 	// For WSL mode, convert both the executable path and working directory to
 	// WSL /mnt/... paths before passing them to GDB inside WSL.
+	// For all other modes, replace backslashes with forward slashes so that
+	// the path is safe inside a GDB/MI C-string (backslashes are escape chars there).
 	String launchPathForGDB = mLaunchPath;
 	String workingDirForGDB = mWorkingDir;
 	if (mLaunchMode == GDBLaunchMode_WSL)
@@ -942,6 +972,15 @@ void GDBDebugger::DoLaunch()
 		launchPathForGDB = ConvertToWSLPath(mLaunchPath);
 		if (!mWorkingDir.IsEmpty())
 			workingDirForGDB = ConvertToWSLPath(mWorkingDir);
+	}
+	else
+	{
+		for (int i = 0; i < (int)launchPathForGDB.length(); i++)
+			if (launchPathForGDB[i] == '\\')
+				launchPathForGDB[i] = '/';
+		for (int i = 0; i < (int)workingDirForGDB.length(); i++)
+			if (workingDirForGDB[i] == '\\')
+				workingDirForGDB[i] = '/';
 	}
 
 	GDBLog("Launching GDB with exe='%s' args='%s'\n", gdbExe.c_str(), gdbBaseArgs.c_str());
@@ -1563,22 +1602,31 @@ String GDBDebugger::FixBeefName(const char* name)
 
 GDBMIRecord* GDBDebugger::InsertBreakpointByLocation(const char* file, int lineNum1Based)
 {
-	String wslPath;
+	String fixedPath;
 	if (mLaunchMode == GDBLaunchMode_WSL)
 	{
-		wslPath = ConvertToWSLPath(file);
-		file = wslPath.c_str();
+		fixedPath = ConvertToWSLPath(file);
+		file = fixedPath.c_str();
+	}
+	else if (mLaunchMode == GDBLaunchMode_GDBServer)
+	{
+		// Cross-compilers store source paths with forward slashes in DWARF even on
+		// Windows. Convert so GDB can match the path against its source table.
+		fixedPath = file;
+		for (int i = 0; i < (int)fixedPath.length(); i++)
+			if (fixedPath[i] == '\\') fixedPath[i] = '/';
+		file = fixedPath.c_str();
 	}
 
-	// -break-insert "file:line"
-	//String cmd = StrFormat("-break-insert -f \"%s:%d\"", file, lineNum1Based);
-	String cmd = StrFormat("-break-insert -f %s:%d", file, lineNum1Based);
+	const char* hwFlag = mUseHardwareBreakpoints ? "-h " : "";
+	String cmd = StrFormat("-break-insert %s-f %s:%d", hwFlag, file, lineNum1Based);
 	return SendSync(cmd.c_str());
 }
 
 GDBMIRecord* GDBDebugger::InsertBreakpointByName(const char* sym, bool mainModuleOnly)
 {
-	String cmd = StrFormat("-break-insert \"%s\"", sym);
+	const char* hwFlag = mUseHardwareBreakpoints ? "-h " : "";
+	String cmd = StrFormat("-break-insert %s\"%s\"", hwFlag, sym);
 	return SendSync(cmd.c_str());
 }
 
@@ -1685,7 +1733,8 @@ Breakpoint* GDBDebugger::CreateAddressBreakpoint(intptr address)
 
 	if (mGDBReady)
 	{
-		String cmd = StrFormat("-break-insert *0x%llX", (uint64)address);
+		const char* hwFlag = mUseHardwareBreakpoints ? "-h " : "";
+		String cmd = StrFormat("-break-insert %s*0x%llX", hwFlag, (uint64)address);
 		GDBMIRecord* rec = SendSync(cmd.c_str());
 		BindBreakpointFromResult(bp, rec);
 		delete rec;
@@ -1720,7 +1769,8 @@ void GDBDebugger::DoCheckBreakpoint(Breakpoint* checkBreakpoint, bool force)
 		}
 		else if (bp->mResolvedAddr != 0)
 		{
-			String cmd = StrFormat("-break-insert *0x%llX", (uint64)bp->mResolvedAddr);
+			const char* hwFlag = mUseHardwareBreakpoints ? "-h " : "";
+			String cmd = StrFormat("-break-insert %s*0x%llX", hwFlag, (uint64)bp->mResolvedAddr);
 			rec = SendSync(cmd.c_str());
 		}
 
@@ -3069,6 +3119,7 @@ void GDBDebugger::Detach()
 	mAutoStepRemaining = 0;
 	mLaunchMode = GDBLaunchMode_Local;
 	mGDBServerHost = "";
+	mGDBExe = "";
 	mGDBReady = false;
 	mRunning = false;
 	mNeedsExecRun = false;

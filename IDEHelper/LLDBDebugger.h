@@ -19,6 +19,12 @@
 
 NS_BF_BEGIN
 
+enum LLDBLaunchMode
+{
+	LLDBLaunchMode_Local,
+	LLDBLaunchMode_Remote   // GDB RSP over TCP (compatible with OpenOCD, lldb-server --gdbserver)
+};
+
 class LLDBBreakpoint : public Breakpoint
 {
 public:
@@ -69,6 +75,11 @@ public:
 	Array<uint8> mEnvBlock;
 	DbgOpenFileFlags mOpenFileFlags;
 	bool mHotSwapEnabled;
+
+	// Remote debugging
+	LLDBLaunchMode mLaunchMode;
+	String mRemoteHost;            // "host:port" for LLDBLaunchMode_Remote
+	bool mUseHardwareBreakpoints;  // when true, require-hardware-breakpoint setting is applied
 
 	// Background launch thread
 	BfpThread* mLaunchThread;

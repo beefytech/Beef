@@ -346,6 +346,7 @@ namespace IDE
 		public FileChangedDialog mFileChangedDialog;
 		public FindAndReplaceDialog mFindAndReplaceDialog;
 		public LaunchDialog mLaunchDialog;
+		public RemoteDebugDialog mRemoteDebugDialog;
 		public SymbolReferenceHelper mSymbolReferenceHelper;
 		public WrappedMenuValue mViewWhiteSpace = .(false);
 		public bool mEnableGCCollect = true;
@@ -5801,6 +5802,20 @@ namespace IDE
 			mLaunchDialog.mOnClosed.Add(new () => { mLaunchDialog = null; });
 		}
 
+		[IDECommand]
+		void DoRemoteDebug()
+		{
+			if (mRemoteDebugDialog != null)
+			{
+				mRemoteDebugDialog.mWidgetWindow.SetForeground();
+				return;
+			}
+
+			mRemoteDebugDialog = new RemoteDebugDialog();
+			mRemoteDebugDialog.PopupWindow(mMainWindow);
+			mRemoteDebugDialog.mOnClosed.Add(new () => { mRemoteDebugDialog = null; });
+		}
+
 		void DoProfile()
 		{
 			if (gApp.mProfilePanel.mUserProfiler != null)
@@ -6330,6 +6345,7 @@ namespace IDE
 			AddMenuItem(subMenu, "Start With&out Compiling", "Start Without Compiling", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			AddMenuItem(subMenu, "&Launch Process...", "Launch Process", new => UpdateMenuItem_DebugStopped);
 			AddMenuItem(subMenu, "&Attach to Process...", "Attach to Process", new => UpdateMenuItem_DebugStopped);
+			AddMenuItem(subMenu, "Remote &Debug...", "Remote Debug", new => UpdateMenuItem_DebugStopped);
 			AddMenuItem(subMenu, "&Stop Debugging", "Stop Debugging", new => UpdateMenuItem_DebugOrTestRunning);
 			AddMenuItem(subMenu, "Break All", "Break All", new => UpdateMenuItem_DebugNotPaused);
 			AddMenuItem(subMenu, "Remove All Breakpoints", "Remove All Breakpoints");
