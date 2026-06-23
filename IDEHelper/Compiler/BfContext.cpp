@@ -3110,6 +3110,9 @@ void BfContext::QueueMethodSpecializations(BfTypeInstance* typeInst, bool checkS
 
 void BfContext::MarkAsReferenced(BfDependedType* depType)
 {
+	if (depType->IsDeleting())
+		return;
+
 	BF_ASSERT((depType->mRebuildFlags & BfTypeRebuildFlag_AwaitingReference) != 0);
 	depType->mRebuildFlags = (BfTypeRebuildFlags)(depType->mRebuildFlags & ~BfTypeRebuildFlag_AwaitingReference);
 
