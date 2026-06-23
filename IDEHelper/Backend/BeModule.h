@@ -612,6 +612,8 @@ public:
 		return (!mParams.IsEmpty()) && (mParams[0].mStructRet);
 	}
 
+	int GetInstructionCount();
+
 	virtual void HashContent(BeHashContext& hashCtx) override;
 };
 
