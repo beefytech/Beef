@@ -940,7 +940,7 @@ void BeMCColorizer::Prepare()
 	}
 }
 
-void BeMCColorizer::AddEdge(int vreg0, int vreg1, int reserveSize)
+void BeMCColorizer::AddEdge(int vreg0, int vreg1)
 {
 	int checkVRegIdx0 = mContext->GetUnderlyingVReg(vreg0);
 	int checkVRegIdx1 = mContext->GetUnderlyingVReg(vreg1);
@@ -952,15 +952,9 @@ void BeMCColorizer::AddEdge(int vreg0, int vreg1, int reserveSize)
 	auto node1 = &mNodes[checkVRegIdx1];
 
 	if ((node0->mWantsReg) && (node1->mWantsReg))
-	{		
-		if (node0->mEdges.mAllocSize == 0)
-			node0->mEdges.Reserve(reserveSize);
+	{
 		if (node0->mEdges.Add(checkVRegIdx1))
-		{
-			if (node1->mEdges.mAllocSize == 0)
-				node0->mEdges.Reserve(reserveSize);
 			node1->mEdges.Add(checkVRegIdx0);
-		}
 	}
 }
 
@@ -4312,20 +4306,18 @@ void BeMCContext::MarkLive(BeVTrackingList* liveRegs, SizedArrayImpl<int>& newRe
 			return;
 
 	if (!mColorizer.mNodes.empty())
-	{		
-		int reserveSize = liveRegs->mSize + 1;
-
+	{
 		// Is new
 		for (int i = 0; i < liveRegs->mSize; i++)
 		{
 			int checkReg = liveRegs->mEntries[i];
 			if (checkReg >= mLivenessContext.mNumItems)
 				continue;
-			mColorizer.AddEdge(checkReg, operand.mVRegIdx, reserveSize);
+			mColorizer.AddEdge(checkReg, operand.mVRegIdx);
 		}
 
 		for (auto checkReg : newRegs)
-			mColorizer.AddEdge(checkReg, operand.mVRegIdx, reserveSize);
+			mColorizer.AddEdge(checkReg, operand.mVRegIdx);
 	}
 
 	if (vregInfo->mHasDynLife)
@@ -8981,8 +8973,22 @@ bool BeMCContext::DoLegalization()
 
 	SetCurrentInst(NULL);
 
+	String rerunReasons;
+	int rerunReasonCount = 0;
 	int regPreserveDepth = 0;
 
+	auto _Rerun = [&](const char* reason)
+		{
+			isFinalRun = false;
+			rerunReasonCount++;
+			/*if (rerunReasonCount < 10)
+			{
+				if (rerunReasonCount > 0)
+					rerunReasons += "\n";
+				rerunReasons += reason;
+			}*/
+		};
+	
 	for (auto mcBlock : mBlocks)
 	{
 		mActiveBlock = mcBlock;
@@ -8994,6 +9000,18 @@ bool BeMCContext::DoLegalization()
 			auto inst = mcBlock->mInstructions[instIdx];
 			SetCurrentInst(inst);
 			mActiveInst = inst;
+
+			auto _Rerun = [&](const char* reason)
+				{
+					isFinalRun = false;
+					rerunReasonCount++;
+					/*if (rerunReasonCount < 10)
+					{						
+						rerunReasons += reason;
+						rerunReasons += " : ";
+						ToString(inst, rerunReasons, true, true);
+					}*/
+				};
 			
 			if (inst->mKind == BeMCInstKind_Mov)
 			{
@@ -9036,7 +9054,7 @@ bool BeMCContext::DoLegalization()
 				inst->mArg0 = inst->mResult;
 				inst->mArg1 = BeMCOperand();
 				inst->mResult = BeMCOperand();
-				isFinalRun = false;
+				_Rerun("Sub fix");
 				instIdx++;
 				continue;
 			}
@@ -9202,7 +9220,7 @@ bool BeMCContext::DoLegalization()
 								}
 
 								replacedOpr = true;
-								isFinalRun = false;
+								_Rerun("BadOperand");
 								if (debugging)
 									OutputDebugStrF(" BadOperand %d\n", rmInfo.mErrorVReg);
 							}
@@ -9221,7 +9239,7 @@ bool BeMCContext::DoLegalization()
 				if ((HasSymbolAddr(inst->mArg0)) && (inst->mKind != BeMCInstKind_Call))
 				{
 					ReplaceWithNewVReg(inst->mArg0, instIdx, true, false, true);
-					isFinalRun = false;
+					_Rerun("HasSymbolAddr:Call");
 					// 				if (debugging)
 					// 					OutputDebugStrF(" SymbolAddr0\n");
 				}
@@ -9230,7 +9248,7 @@ bool BeMCContext::DoLegalization()
 				if ((HasSymbolAddr(inst->mArg1)) && (inst->mKind != BeMCInstKind_Mov))
 				{
 					ReplaceWithNewVReg(inst->mArg1, instIdx, true, false);
-					isFinalRun = false;
+					_Rerun("HasSymbolAddr:Mov");
 					// 				if (debugging)
 					// 					OutputDebugStrF(" SymbolAddr1\n");
 				}
@@ -9350,7 +9368,7 @@ bool BeMCContext::DoLegalization()
 								AllocInst(BeMCInstKind_Mov, prevDest, inst->mArg0, instIdx + 1);
 								IntroduceVRegs(inst->mArg0, mcBlock, instIdx, instIdx + 2);
 								instIdx++;
-								isFinalRun = false;
+								_Rerun("badOps float");
 								continue;
 							}
 						}
@@ -9367,7 +9385,7 @@ bool BeMCContext::DoLegalization()
 
 							// Don't process the changed instructions until after another reg pass
 							instIdx += 2;
-							isFinalRun = false;
+							_Rerun("BadOps");
 							if (debugging)
 								OutputDebugStrF(" BadOps\n");
 							continue;
@@ -9395,7 +9413,7 @@ bool BeMCContext::DoLegalization()
 							AllocInst(BeMCInstKind_Mov, inst->mResult, inst->mArg0, instIdx + 1);
 							IntroduceVRegs(inst->mArg0, mcBlock, instIdx, instIdx + 2);
 							inst->mResult = BeMCOperand();
-							isFinalRun = false;
+							_Rerun("Float RegOnDest");
 							if (debugging)
 								OutputDebugStrF(" Float RegOnDest\n");
 							instIdx++;
@@ -9449,7 +9467,7 @@ bool BeMCContext::DoLegalization()
 									FixVRegInitFlags(inst, inst->mArg0);
 									if (debugging)
 										OutputDebugStrF(" Result\n");
-									isFinalRun = false;
+									_Rerun("Result");
 								}
 							}
 							continue;
@@ -9485,7 +9503,7 @@ bool BeMCContext::DoLegalization()
 								prevDest = *prevDestPtr;
 
 							ReplaceWithNewVReg(inst->mArg0, instIdx, true);
-							isFinalRun = false;
+							_Rerun("Float arg0");
 							if (debugging)
 								OutputDebugStrF(" Float Arg0\n");
 
@@ -9540,7 +9558,7 @@ bool BeMCContext::DoLegalization()
 					AllocInst(BeMCInstKind_Mov, prevDest, inst->mArg0, instIdx + 1);
 					IntroduceVRegs(inst->mArg0, mcBlock, instIdx, instIdx + 2);
 					instIdx++;
-					isFinalRun = false;
+					_Rerun("Float reg dest");
 					if (debugging)
 						OutputDebugStrF(" Float reg dest\n");
 					continue;
@@ -9618,7 +9636,7 @@ bool BeMCContext::DoLegalization()
 								{
 									BF_ASSERT(!isFinalRun);
 									vregExprChangeSet.Add(inst->mArg0.mVRegIdx);
-									isFinalRun = false;
+									_Rerun("Def directRelTo");
 								}
 							}
 						}
@@ -9676,7 +9694,7 @@ bool BeMCContext::DoLegalization()
 														relVRegInfo->mAlign = relVRegInfo->mType->mAlign;
 														if (debugging)
 															OutputDebugStrF(" Def MovSX\n");
-														isFinalRun = false;
+														_Rerun("Def MovSX");
 													}
 													break;
 												}
@@ -9696,7 +9714,7 @@ bool BeMCContext::DoLegalization()
 										vregExprChangeSet.Add(relOfs64.mVRegIdx);
 										if (debugging)
 											OutputDebugStrF(" Def MovSX 2\n");
-										isFinalRun = false;
+										_Rerun("Def MovSX 2");
 									}
 								}
 							}
@@ -9720,7 +9738,7 @@ bool BeMCContext::DoLegalization()
 										vregInfo->mRelTo = BeMCOperand();
 										vregInfo->mForceReg = true;
 										CheckForce(vregInfo);
-										isFinalRun = false;
+										_Rerun("Symbol Addr");
 										if (debugging)
 											OutputDebugStrF(" Symbol Addr\n");
 										break;
@@ -9739,7 +9757,7 @@ bool BeMCContext::DoLegalization()
 									MarkInvalidRMRegs(inst->mArg0);
 									if (debugging)
 										OutputDebugStrF(" GetRMParams invalid indices\n");
-									isFinalRun = false;
+									_Rerun("GetRMParams invalid indices");
 									break;
 								}
 
@@ -9778,7 +9796,7 @@ bool BeMCContext::DoLegalization()
 									vregInfo->mWantsExprActualize = true;
 									hasPendingActualizations = true;
 								}
-								isFinalRun = false;
+								_Rerun("1");
 							}
 							else if (!isValid)
 							{
@@ -9789,7 +9807,7 @@ bool BeMCContext::DoLegalization()
 									errorVRegInfo->mWantsExprActualize = true;
 									hasPendingActualizations = true;
 									vregExprChangeSet.Add(rmInfo.mErrorVReg);
-									isFinalRun = false;
+									_Rerun("RM not valid, actualize");
 									if (debugging)
 										OutputDebugStrF(" RM not valid, actualize\n");
 								}
@@ -9840,7 +9858,7 @@ bool BeMCContext::DoLegalization()
 
 											CreateDefineVReg(scratchReg, instIdx++);
 											AllocInst(BeMCInstKind_Mov, scratchReg, errorVReg, instIdx++);
-											isFinalRun = false;
+											_Rerun("RM failed, scratch vreg");
 											if (debugging)
 												OutputDebugStrF(" RM failed, scratch vreg\n");
 											vregExprChangeSet.Add(scratchReg.mVRegIdx);
@@ -9866,7 +9884,7 @@ bool BeMCContext::DoLegalization()
 
 											CreateDefineVReg(scratchReg, instIdx++);
 											AllocInst(BeMCInstKind_Mov, scratchReg, errorVRegLoad, instIdx++);
-											isFinalRun = false;
+											_Rerun("RM failed, scratch vreg 2");
 											if (debugging)
 												OutputDebugStrF(" RM failed, scratch vreg\n");
 											vregExprChangeSet.Add(scratchReg.mVRegIdx);
@@ -9956,8 +9974,7 @@ bool BeMCContext::DoLegalization()
 					}
 
 					if (isInvalid)
-					{
-						isFinalRun = false;
+					{						
 						/*ReplaceWithNewVReg(inst->mArg0, instIdx, true, false);
 
 						// The debug value is not representable, so copy it.  This can only occur within mixins where we are pointing
@@ -9974,7 +9991,7 @@ bool BeMCContext::DoLegalization()
 						vregInfo->mWantsExprActualize = true;
 						hasPendingActualizations = true;
 						vregExprChangeSet.Add(inst->mArg0.mVRegIdx);
-						isFinalRun = false;
+						_Rerun("Debug valid not representable");
 
 						break;
 					}
@@ -10017,7 +10034,7 @@ bool BeMCContext::DoLegalization()
 								AllocInst(BeMCInstKind_Mov, scratchReg, mcArg, insertPos + 1);
 								*argIdxPtr = scratchReg.mVRegIdx;
 								instIdx += 2;
-								isFinalRun = false;
+								_Rerun("MemCpy");
 								if (debugging)
 									OutputDebugStrF(" MemCpy\n");
 							}
@@ -10041,7 +10058,7 @@ bool BeMCContext::DoLegalization()
 							AllocInst(BeMCInstKind_Mov, scratchReg, inst->mArg1, insertPos + 1);
 							inst->mArg1 = scratchReg;
 							instIdx += 2;
-							isFinalRun = false;
+							_Rerun("MemSet");
 							if (debugging)
 								OutputDebugStrF(" MemSet\n");
 						}
@@ -10089,7 +10106,7 @@ bool BeMCContext::DoLegalization()
 
 								inst->mKind = BeMCInstKind_Shr;
 								inst->mArg1 = BeMCOperand::FromImmediate(shiftCount);
-								isFinalRun = false;
+								_Rerun("Div SHR");
 								if (debugging)
 									OutputDebugStrF(" Div SHR\n");
 								break;
@@ -10098,7 +10115,7 @@ bool BeMCContext::DoLegalization()
 							{
 								inst->mKind = BeMCInstKind_And;
 								inst->mArg1 = BeMCOperand::FromImmediate(inst->mArg1.mImmediate - 1);
-								isFinalRun = false;
+								_Rerun("Div REM");
 								if (debugging)
 									OutputDebugStrF(" Div REM\n");
 								break;
@@ -10110,7 +10127,7 @@ bool BeMCContext::DoLegalization()
 					{
 						// Oops, must be 'rm'
 						ReplaceWithNewVReg(inst->mArg1, instIdx, true, false);
-						isFinalRun = false;
+						_Rerun("Div/Rem not RM");
 						if (debugging)
 							OutputDebugStrF(" Div/Rem not RM\n");
 					}
@@ -10147,7 +10164,7 @@ bool BeMCContext::DoLegalization()
 								{
 									vregInfo->mDisableRAX = true;
 									vregInfo->mDisableRDX = true;
-									isFinalRun = false;
+									_Rerun("Div/Rem invalid reg");
 									if (debugging)
 										OutputDebugStrF(" Div/Rem invalid reg\n");
 								}
@@ -10191,7 +10208,7 @@ bool BeMCContext::DoLegalization()
 								{
 									vregInfo->mDisableRAX = true;
 									vregInfo->mDisableRDX = true;
-									isFinalRun = false;
+									_Rerun("Div/Rem invalid reg");
 									if (debugging)
 										OutputDebugStrF(" Div/Rem invalid reg\n");
 								}
@@ -10203,7 +10220,7 @@ bool BeMCContext::DoLegalization()
 							if ((vregInfo != NULL) && (vregInfo->mIsExpr))
 							{
 								ReplaceWithNewVReg(inst->mArg1, instIdx, true);
-								isFinalRun = false;
+								_Rerun("Div/Rem 2");
 							}
 						}
 
@@ -10263,7 +10280,7 @@ bool BeMCContext::DoLegalization()
 								AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++ + 1);
 							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++ + 1);
 
-							isFinalRun = false;
+							_Rerun("Div/Rem setup");
 							if (debugging)
 								OutputDebugStrF(" Div/Rem Setup\n");
 						}
@@ -10275,7 +10292,7 @@ bool BeMCContext::DoLegalization()
 								{
 									AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++);
 									AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++ + 1);
-									isFinalRun = false; // Reassign regs
+									_Rerun("Div/rem preserve");
 									if (debugging)
 										OutputDebugStrF(" Div/Rem Preserve\n");
 								}
@@ -10294,7 +10311,7 @@ bool BeMCContext::DoLegalization()
 						inst->mResult = BeMCOperand();
 						inst->mArg1 = fmodVal;
 
-						isFinalRun = false;
+						_Rerun("FMod");
 
 						if (debugging)
 							OutputDebugStrF(" FMod\n");
@@ -10326,7 +10343,7 @@ bool BeMCContext::DoLegalization()
 							inst->mResult = BeMCOperand();
 							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++ + 1);
 
-							isFinalRun = false;
+							_Rerun("Mul Size 1");
 							if (debugging)
 								OutputDebugStrF(" Mul Size 1\n");
 							break;
@@ -10361,7 +10378,7 @@ bool BeMCContext::DoLegalization()
 							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++ + 1);
 							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++ + 1);
 
-							isFinalRun = false;
+							_Rerun("Mul 2");
 							break;
 						}
 
@@ -10385,7 +10402,7 @@ bool BeMCContext::DoLegalization()
 							{
 								DisableRegister(inst->mArg1, X64Reg_RAX);
 								DisableRegister(inst->mArg1, X64Reg_RDX);
-								isFinalRun = false;
+								_Rerun("Mul 3");
 							}
 						}
 					}
@@ -10431,7 +10448,7 @@ bool BeMCContext::DoLegalization()
 								if (debugging)
 									OutputDebugStrF(" Mul 3-form not reg\n");
 
-								isFinalRun = false;
+								_Rerun("Mul 3-form not reg");
 								instIdx += 2;
 								break;
 							}
@@ -10443,7 +10460,7 @@ bool BeMCContext::DoLegalization()
 								auto prevArg0 = inst->mArg0;
 								ReplaceWithNewVReg(inst->mArg0, instIdx, true);
 								AllocInst(BeMCInstKind_Mov, prevArg0, inst->mArg0, instIdx + 1);
-								isFinalRun = false;
+								_Rerun("Mul not reg");
 								if (debugging)
 									OutputDebugStrF(" Mul not reg\n");
 								instIdx++;
@@ -10482,7 +10499,7 @@ bool BeMCContext::DoLegalization()
 						AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_CL), mcShift, instIdx++);
 						AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RCX), instIdx++ + 1);
 						inst->mArg1 = BeMCOperand::FromReg(X64Reg_RCX);
-						isFinalRun = false;
+						_Rerun("Shift by CL");
 						if (debugging)
 							OutputDebugStrF(" Shift by CL\n");
 						continue;
@@ -10522,7 +10539,7 @@ bool BeMCContext::DoLegalization()
 						{
 							// We need an <xmm> for reg0. We're not allowed to reorder SwapCmpSides due to NaN handling
 							ReplaceWithNewVReg(inst->mArg0, instIdx, true, true);
-							isFinalRun = false;
+							_Rerun("Cmp float");
 							break;
 						}
 
@@ -10667,7 +10684,7 @@ bool BeMCContext::DoLegalization()
 							RemoveInst(mcBlock, instIdx);
 							CreateMemSet(OperandToAddr(arg0), 0, arg0Type->mSize, arg0Type->mAlign);
 							instIdx--;
-							isFinalRun = false;
+							_Rerun("Zero init");
 							if (debugging)
 								OutputDebugStrF(" Zero init\n");
 							break;
@@ -10718,7 +10735,7 @@ bool BeMCContext::DoLegalization()
 
 								AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_R11), BeMCOperand(), instIdx + 1);
 								instIdx += 1;
-								isFinalRun = false;
+								_Rerun("Mov ConstAgg");
 							}
 
 							BeRMParamsInfo rmInfo;
@@ -10736,7 +10753,7 @@ bool BeMCContext::DoLegalization()
 								vregInfo->mDisableR11 = true;
 								instIdx += 2;
 
-								isFinalRun = false;
+								_Rerun("Mov rmmode invalid");
 							}
 							continue;
 						}
@@ -10748,7 +10765,7 @@ bool BeMCContext::DoLegalization()
 							RemoveInst(mcBlock, instIdx);
 							CreateMemCpy(arg0Addr, arg1Addr, BF_MIN(arg0Type->mSize, arg1Type->mSize), BF_MIN(arg0Type->mAlign, arg1Type->mAlign));
 							instIdx--;
-							isFinalRun = false;
+							_Rerun("Mov memcpy");
 							if (debugging)
 								OutputDebugStrF(" Mov MemCpy\n");
 							break;
@@ -10787,7 +10804,7 @@ bool BeMCContext::DoLegalization()
 							if (debugging)
 								OutputDebugStrF(" uint64->float\n");
 
-							isFinalRun = false;
+							_Rerun("uint64->float");
 							instIdx--;
 							continue; // Rerun from PreserveVolatiles
 						}
@@ -10816,7 +10833,7 @@ bool BeMCContext::DoLegalization()
 									AllocInst(BeMCInstKind_Mov, mcScratch, inst->mArg1, instIdx++);
 								inst->mKind = BeMCInstKind_MovSX;
 								inst->mArg1 = mcScratch;
-								isFinalRun = false;
+								_Rerun("MovSX");
 
 								if (debugging)
 									OutputDebugStrF(" MovSX\n");
@@ -10868,7 +10885,7 @@ bool BeMCContext::DoLegalization()
 							inst->mArg0 = castedVReg;
 							inst->mArg1 = scratchReg;
 
-							isFinalRun = false;
+							_Rerun("MovSD");
 							if (debugging)
 								OutputDebugStrF(" Movsd\n");
 						}
@@ -10883,7 +10900,7 @@ bool BeMCContext::DoLegalization()
 						if (!isCompat)
 						{
 							ReplaceWithNewVReg(inst->mArg0, instIdx, false);
-							isFinalRun = false;
+							_Rerun("Mov float rm");
 							if (debugging)
 								OutputDebugStrF(" Mov float rm\n");
 						}
@@ -10909,7 +10926,7 @@ bool BeMCContext::DoLegalization()
 									auto newVReg = ReplaceWithNewVReg(origOperand, instIdx, true, true);
 									auto newVRegInfo = GetVRegInfo(newVReg);
 									newVRegInfo->mDisableRAX = true;
-									isFinalRun = false;
+									_Rerun("XAdd");
 								}
 							}
 						}
@@ -10932,14 +10949,14 @@ bool BeMCContext::DoLegalization()
 							{
 								if (!vregInfo->mIsExpr)
 								{
-									isFinalRun = false;
+									_Rerun("CmpXChg");
 									vregInfo->mDisableRAX = true;
 									continue;
 								}
 								else
 								{
 									int safeIdx = FindSafeInstInsertPos(instIdx, true);
-									isFinalRun = false;
+									_Rerun("CmpXChg 2");
 
 									auto origType = GetType(origOperand);
 									BeMCOperand scratchReg = AllocVirtualReg(mModule->mContext->GetPointerTo(origType), 2, false);
@@ -10964,7 +10981,7 @@ bool BeMCContext::DoLegalization()
 									auto newVReg = ReplaceWithNewVReg(origOperand, safeIdx, true, true);
 									auto newVRegInfo = GetVRegInfo(newVReg);
 									newVRegInfo->mDisableRAX = true;
-									isFinalRun = false;
+									_Rerun("CmpXChg 3");
 								}
 							}
 						}
@@ -10982,7 +10999,7 @@ bool BeMCContext::DoLegalization()
 						// Load %vreg0, [%scratch]
 						ReplaceWithNewVReg(inst->mArg1, instIdx, true);
 						arg1 = GetFixedOperand(inst->mArg1);
-						isFinalRun = false;
+						_Rerun("Load");;
 						if (debugging)
 							OutputDebugStrF(" Load\n");
 					}
@@ -10994,7 +11011,7 @@ bool BeMCContext::DoLegalization()
 						// Load %scratch, [%vreg1]
 						// Mov %vreg0, %scratch
 						ReplaceWithNewVReg(inst->mArg0, instIdx, false);
-						isFinalRun = false;
+						_Rerun("Load 2");
 						if (debugging)
 							OutputDebugStrF(" Load 2\n");
 					}
@@ -11009,7 +11026,7 @@ bool BeMCContext::DoLegalization()
 						// Mov %scratch, %vreg0
 						// Store %scratch, [%vreg1]
 						ReplaceWithNewVReg(inst->mArg0, instIdx, true);
-						isFinalRun = false;
+						_Rerun("Store");
 						if (debugging)
 							OutputDebugStrF(" Store\n");
 					}
@@ -11020,7 +11037,7 @@ bool BeMCContext::DoLegalization()
 						// Mov %scratch, %vreg1
 						// Store %vreg0, [%scratch]
 						ReplaceWithNewVReg(inst->mArg1, instIdx, true);
-						isFinalRun = false;
+						_Rerun("Store 2");
 						if (debugging)
 							OutputDebugStrF(" Store2\n");
 					}
@@ -11084,10 +11101,13 @@ bool BeMCContext::DoLegalization()
 	if (hasPendingActualizations)
 	{
 		DoActualization();
-		isFinalRun = false;
+		_Rerun("DoActualizations");
 		if (debugging)
 			OutputDebugStrF(" DoActualizations\n");
 	}
+
+	if (!rerunReasons.IsEmpty())
+		BpEvent("DoLegalization clear isFinalRun", StrFormat("Reasons:\n%s", rerunReasons.c_str()).c_str());
 
 	mLegalizationIterations++;
 	return isFinalRun;

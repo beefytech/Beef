@@ -1049,12 +1049,79 @@ public:
 
 #define BE_BUMP_SIZE  0x2000
 
+class BeMCIntHashSet
+{
+public:
+	int* mValues;        // Dense array of values for cache-friendly sequential iteration
+	int* mBuckets;       // Hash table: 1-based index into mValues (0 = empty slot)
+	int  mCount;         // Number of stored elements
+	int  mBucketMask;    // (bucketCount - 1), where bucketCount is always a power of 2
+	BumpAllocatorT<BE_BUMP_SIZE>* mAlloc;
+
+	int* begin() const { return mValues; }
+	int* end()   const { return mValues + mCount; }
+
+	// Insert val. Returns true if val was new (not already present).
+	bool Add(int val)
+	{
+		if ((mBuckets == NULL) || ((unsigned)(mCount * 2) >= (unsigned)(mBucketMask + 1)))
+			Grow();
+
+		int bucket = (unsigned)val & (unsigned)mBucketMask;
+		for (;;)
+		{
+			int slot = mBuckets[bucket];
+			if (slot == 0)
+			{
+				mBuckets[bucket] = ++mCount;
+				mValues[mCount - 1] = val;
+				return true;
+			}
+			if (mValues[slot - 1] == val)
+				return false;
+			bucket = (bucket + 1) & mBucketMask;
+		}
+	}
+
+private:
+	void Grow()
+	{
+		int newBucketCount = (mBucketMask == 0) ? 16 : ((mBucketMask + 1) * 2);
+		int newMask = newBucketCount - 1;
+		// At 50% load factor, values capacity equals half the bucket count.
+		// This invariant ensures mValues always has room before the next Grow().
+		int newValuesCap = newBucketCount >> 1;
+
+		// BumpAllocatorT zero-initializes each pool (SetPool does memset(pool, 0, ALLOC_SIZE)).
+		// So the newBuckets array starts as all-zeros, which already encodes "all slots empty"
+		// (slot value 0 means empty in our encoding). No explicit memset needed.
+		int* newBuckets = (int*)mAlloc->AllocBytes(newBucketCount * sizeof(int), sizeof(int));
+		int* newValues  = (int*)mAlloc->AllocBytes(newValuesCap  * sizeof(int), sizeof(int));
+
+		if (mCount > 0)
+			memcpy(newValues, mValues, mCount * sizeof(int));
+
+		for (int i = 0; i < mCount; i++)
+		{
+			int v = mValues[i];
+			int bucket = (unsigned)v & (unsigned)newMask;
+			while (newBuckets[bucket] != 0)
+				bucket = (bucket + 1) & newMask;
+			newBuckets[bucket] = i + 1;
+		}
+
+		mValues     = newValues;
+		mBuckets    = newBuckets;
+		mBucketMask = newMask;
+	}
+};
+
 class BeMCColorizer
 {
 public:
 	struct Node
 	{
-		HashSet<int, AllocatorBumpT<BE_BUMP_SIZE>> mEdges;
+		BeMCIntHashSet mEdges;
 		int mGraphEdgeCount;
 		bool mInGraph;
 		bool mSpilled;
@@ -1120,7 +1187,7 @@ public:
 	BeMCColorizer(BeMCContext* mcContext);
 
 	void Prepare();
-	void AddEdge(int vreg0, int vreg1, int reserveSize = 8);
+	void AddEdge(int vreg0, int vreg1);
 	void PropogateMemCost(const BeMCOperand& operand, int memCost);
 	void GenerateRegCosts();
 	void AssignRegs(RegKind regKind); // Returns false if we had spills - we need to rerun
