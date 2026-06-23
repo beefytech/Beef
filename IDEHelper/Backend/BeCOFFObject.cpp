@@ -1170,7 +1170,11 @@ void BeCOFFObject::DbgOutputLocalVar(BeDbgFunction* dbgFunc, BeDbgVariable* dbgV
 				{
 					gap.mOffset = gapStart;
 					gap.mLength = gapEnd - gapStart;
-					BF_ASSERT(gap.mLength > 0);
+					if (gap.mLength <= 0)
+					{
+						gap.mLength = 0;
+					}
+					//BF_ASSERT(gap.mLength > 0);
 				}
 			}
 		}

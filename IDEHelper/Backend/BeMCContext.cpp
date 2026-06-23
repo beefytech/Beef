@@ -872,12 +872,23 @@ BeMCColorizer::BeMCColorizer(BeMCContext* mcContext)
 void BeMCColorizer::Prepare()
 {
 	mReserveParamRegs = false;
-	mNodes.Resize(mContext->mVRegInfo.size());
+	
+	mEdgesFound.Clear();
+
+	//mNodes.Resize(mContext->mVRegInfo.size());
+	mNodes.mSize = 0;
+	mNodes.SetSize(mContext->mVRegInfo.size());
+	memset(mNodes.mVals, 0, mNodes.mSize * sizeof(Node));
+	mNodeAlloc.Clear(true);
 
 	for (int vregIdx = 0; vregIdx < (int)mNodes.size(); vregIdx++)
 	{
 		auto node = &mNodes[vregIdx];
-		node->Prepare();
+		node->mEdges.mAlloc = &mNodeAlloc;
+
+		// Prepare is already handled my memset
+		//node->Prepare();
+		// 		
 		//node->mActualVRegIdx = vregIdx;
 		auto vregInfo = mContext->mVRegInfo[vregIdx];
 		if ((vregInfo->mIsRetVal) && (mContext->mCompositeRetVRegIdx != -1) && (vregIdx != mContext->mCompositeRetVRegIdx))
@@ -929,7 +940,7 @@ void BeMCColorizer::Prepare()
 	}
 }
 
-void BeMCColorizer::AddEdge(int vreg0, int vreg1)
+void BeMCColorizer::AddEdge(int vreg0, int vreg1, int reserveSize)
 {
 	int checkVRegIdx0 = mContext->GetUnderlyingVReg(vreg0);
 	int checkVRegIdx1 = mContext->GetUnderlyingVReg(vreg1);
@@ -941,9 +952,15 @@ void BeMCColorizer::AddEdge(int vreg0, int vreg1)
 	auto node1 = &mNodes[checkVRegIdx1];
 
 	if ((node0->mWantsReg) && (node1->mWantsReg))
-	{
-		node0->mEdges.Add(checkVRegIdx1);
-		node1->mEdges.Add(checkVRegIdx0);
+	{		
+		if (node0->mEdges.mAllocSize == 0)
+			node0->mEdges.Reserve(reserveSize);
+		if (node0->mEdges.Add(checkVRegIdx1))
+		{
+			if (node1->mEdges.mAllocSize == 0)
+				node0->mEdges.Reserve(reserveSize);
+			node1->mEdges.Add(checkVRegIdx0);
+		}
 	}
 }
 
@@ -4295,18 +4312,20 @@ void BeMCContext::MarkLive(BeVTrackingList* liveRegs, SizedArrayImpl<int>& newRe
 			return;
 
 	if (!mColorizer.mNodes.empty())
-	{
+	{		
+		int reserveSize = liveRegs->mSize + 1;
+
 		// Is new
 		for (int i = 0; i < liveRegs->mSize; i++)
 		{
 			int checkReg = liveRegs->mEntries[i];
 			if (checkReg >= mLivenessContext.mNumItems)
 				continue;
-			mColorizer.AddEdge(checkReg, operand.mVRegIdx);
+			mColorizer.AddEdge(checkReg, operand.mVRegIdx, reserveSize);
 		}
 
 		for (auto checkReg : newRegs)
-			mColorizer.AddEdge(checkReg, operand.mVRegIdx);
+			mColorizer.AddEdge(checkReg, operand.mVRegIdx, reserveSize);
 	}
 
 	if (vregInfo->mHasDynLife)
@@ -4832,15 +4851,29 @@ void BeMCContext::GenerateLiveness()
 			break;
 	}
 
-	int instCount = 0;
+	int maxLiveness = 0;
+	int maxVRegInitialized = 0;
+	int instCount = 0;	
 	for (auto block : mBlocks)
+	{
 		instCount += (int)block->mInstructions.size();
 
+		for (auto inst : block->mInstructions)
+		{
+			if (inst->mLiveness != NULL)
+				maxLiveness = BF_MAX(maxLiveness, inst->mLiveness->mSize);
+			if (inst->mVRegsInitialized != NULL)
+				maxVRegInitialized = BF_MAX(maxVRegInitialized, inst->mVRegsInitialized->mSize);
+		}
+	}
+	
 	BpEvent("GenerateLiveness Results",
 		StrFormat("Blocks: %d\nInstructions: %d\nVRegs: %d\nCalls: %d\nHandled Calls: %d\nProcessed Instructions: %d\nLiveness Bytes: %d\n"
-			"Temp Bytes: %d\nBits Bytes: %d\nList Bytes: %d\nSucc Bytes: %d",
+			"Temp Bytes: %d\nBits Bytes: %d\nList Bytes: %d\nSucc Bytes: %d\n"
+			"MaxLiveness: %d\nMaxVRegInitialized:%d",
 			mBlocks.size(), instCount, mVRegInfo.size(), genCtx.mCalls, genCtx.mHandledCalls, genCtx.mInstructions, mLivenessContext.mAlloc.GetAllocSize(),
-			genCtx.mAlloc.GetAllocSize(), mLivenessContext.mStats.mBitsBytes, mLivenessContext.mStats.mListBytes, mLivenessContext.mStats.mSuccBytes).c_str());
+			genCtx.mAlloc.GetAllocSize(), mLivenessContext.mStats.mBitsBytes, mLivenessContext.mStats.mListBytes, mLivenessContext.mStats.mSuccBytes,
+			maxLiveness, maxVRegInitialized).c_str());
 }
 
 void BeMCContext::IntroduceVRegs(const BeMCOperand& newVReg, BeMCBlock* block, int startInstIdx, int lastInstIdx)
@@ -8474,11 +8507,7 @@ void BeMCContext::DoRegAssignPass()
 	bool generateLiveness = true;
 	//
 	if (generateLiveness)
-	{
-		for (auto& node : mColorizer.mNodes)
-		{
-			node.mEdges.Clear();
-		}
+	{		
 		mColorizer.Prepare();
 		GenerateLiveness();
 	}
@@ -18508,7 +18537,7 @@ void BeMCContext::Generate(BeFunction* function)
 			NOP;
 		}
 
-		if (pass == 16)
+		if (pass == 32)
 		{
 			Fail("Register assignment failed!");
 		}

@@ -55,6 +55,19 @@ public:
 	Dictionary<String, BumpAllocTrackedEntry> mTrackedAllocs;
 #endif
 
+protected:
+	void SetPool(uint8* pool)
+	{
+		mCurChunkNum = (int)mPools.size();
+		int curSize = (int)(mCurPtr - mCurAlloc);
+		mPrevSizes += curSize;
+		mSizes.push_back(curSize);
+		mCurAlloc = pool;
+		memset(mCurAlloc, 0, ALLOC_SIZE);
+		mPools.push_back(mCurAlloc);
+		mCurPtr = mCurAlloc;
+	}
+
 public:
 	BumpAllocatorT()
 	{
@@ -75,20 +88,34 @@ public:
 		Clear();		
 	}	
 
-	void Clear()
+	void Clear(bool wantReuse = false)
 	{
+		uint8* reusePool = NULL;		
+
 		mCurAlloc = NULL;
 		mCurPtr = (uint8*)(intptr)ALLOC_SIZE;
-		for (auto ptr : mPools)
+		for (int i = 0; i < mPools.mSize; i++)		
+		{
+			auto ptr = mPools[i];
+			if ((i == 0) && (wantReuse))
+			{
+				reusePool = ptr;
+				continue;
+			}
+
 #ifdef BUMPALLOC_STOMPALLOC
 			StompFree(ptr);
 #else
 			free(ptr);
 #endif
+		}
 		mPools.Clear();
 		mSizes.Clear();
 		mCurChunkNum = -1;
 		mPrevSizes = 0;
+
+		if (reusePool != NULL)
+			SetPool(reusePool);
 
 #ifdef BUMPALLOC_TRACKALLOCS
 		mTrackedAllocs.Clear();
@@ -136,18 +163,12 @@ public:
 
 	void GrowPool()
 	{
-		mCurChunkNum = (int)mPools.size();
-		int curSize = (int)(mCurPtr - mCurAlloc);
-		mPrevSizes += curSize;
-		mSizes.push_back(curSize);
 #ifdef BUMPALLOC_STOMPALLOC
-		mCurAlloc = (uint8*)StompAlloc(ALLOC_SIZE);			
+		uint8* pool = (uint8*)StompAlloc(ALLOC_SIZE);
 #else
-		mCurAlloc = (uint8*)malloc(ALLOC_SIZE);
+		uint8* pool = (uint8*)malloc(ALLOC_SIZE);
 #endif
-		memset(mCurAlloc, 0, ALLOC_SIZE);
-		mPools.push_back(mCurAlloc);			
-		mCurPtr = mCurAlloc;		
+		SetPool(pool);
 	}
 
 	template <typename T>

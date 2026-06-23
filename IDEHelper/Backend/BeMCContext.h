@@ -1047,12 +1047,14 @@ public:
 	void DetectLoops();
 };
 
+#define BE_BUMP_SIZE  0x2000
+
 class BeMCColorizer
 {
 public:
 	struct Node
 	{
-		HashSet<int> mEdges;
+		HashSet<int, AllocatorBumpT<BE_BUMP_SIZE>> mEdges;
 		int mGraphEdgeCount;
 		bool mInGraph;
 		bool mSpilled;
@@ -1107,16 +1109,18 @@ public:
 		RegKind_Floats,
 	};
 
+	HashSet<int64> mEdgesFound;
 	Array<BlockInfo> mBlockInfo;
 	Array<Node> mNodes;
 	BeMCContext* mContext;
 	bool mReserveParamRegs;
+	BumpAllocatorT<BE_BUMP_SIZE> mNodeAlloc;
 
 public:
 	BeMCColorizer(BeMCContext* mcContext);
 
 	void Prepare();
-	void AddEdge(int vreg0, int vreg1);
+	void AddEdge(int vreg0, int vreg1, int reserveSize = 8);
 	void PropogateMemCost(const BeMCOperand& operand, int memCost);
 	void GenerateRegCosts();
 	void AssignRegs(RegKind regKind); // Returns false if we had spills - we need to rerun
