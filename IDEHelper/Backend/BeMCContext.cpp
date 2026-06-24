@@ -25,13 +25,7 @@ USING_NS_BF;
 const int BF_REP_MOV_LIMIT = 128;
 
 static const X64CPURegister gVolatileRegs[] = { X64Reg_RAX, X64Reg_RCX, X64Reg_RDX, X64Reg_R8, X64Reg_R9, X64Reg_R10, X64Reg_R11,
-	X64Reg_M128_XMM0, X64Reg_M128_XMM1, X64Reg_M128_XMM2, X64Reg_M128_XMM3, X64Reg_M128_XMM4, X64Reg_M128_XMM5 };
-
-static const int sRegCostIdxMap[X64Reg_COUNT] = { 0, 3, 2, 1, 4, 5, -1, -1, 6, 7, 8, 9, 10, 11, 12, 13, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
-	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
-	12, 13, 14, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1};
+	X64Reg_XMM0_f64, X64Reg_XMM1_f64, X64Reg_XMM2_f64, X64Reg_XMM3_f64, X64Reg_XMM4_f64, X64Reg_XMM5_f64 };
 
 static const char* gOpName[] =
 {
@@ -838,7 +832,7 @@ BeVTrackingList* BeVTrackingContext::MergeChanges(BeVTrackingList* prevDestEntry
 	return newList;
 }
 
-BeVTrackingList * BeVTrackingContext::RemoveChange(BeVTrackingList* prevDestEntry, int idx)
+BeVTrackingList* BeVTrackingContext::RemoveChange(BeVTrackingList* prevDestEntry, int idx)
 {
 	int newSize = prevDestEntry->mSize;
 	int allocBytes = (int)(sizeof(int) * (2 + newSize + prevDestEntry->mNumChanges - 1));
@@ -869,80 +863,22 @@ BeVTrackingList * BeVTrackingContext::RemoveChange(BeVTrackingList* prevDestEntr
 
 //////////////////////////////////////////////////////////////////////////
 
-void BeMCColorizer::Node::AdjustRegCost(X64CPURegister reg, int adjust)
-{
-	BF_ASSERT((int)reg >= 0);
-	BF_ASSERT((int)reg < X64Reg_COUNT);
-
-	int costIdx = sRegCostIdxMap[(int)reg];
-	if (costIdx == -1)
-		return;
-	int newCost = mRegCost[costIdx] + adjust;
-	mRegCost[costIdx] = newCost;
-	if (newCost < mLowestRegCost)
-		mLowestRegCost = newCost;
-}
-
-int BeMCColorizer::Node::GetRegCost(X64CPURegister reg)
-{
-	BF_ASSERT((int)reg >= 0);
-	BF_ASSERT((int)reg < X64Reg_COUNT);
-
-	int costIdx = sRegCostIdxMap[(int)reg];
-	if (costIdx == -1)
-		return 0;
-	return mRegCost[costIdx];
-}
-
-//////////////////////////////////////////////////////////////////////////
-
 BeMCColorizer::BeMCColorizer(BeMCContext* mcContext)
 {
 	mContext = mcContext;
 	mReserveParamRegs = false;
-	mIntRegs = { 
-		X64Reg_RAX, X64Reg_RBX, X64Reg_RCX, X64Reg_RDX, X64Reg_RSI, X64Reg_RDI, X64Reg_R8,
-		X64Reg_R9, X64Reg_R10, X64Reg_R11, X64Reg_R12, X64Reg_R13, X64Reg_R14, X64Reg_R15 };
-	mFloatRegs = {
-		X64Reg_M128_XMM0, X64Reg_M128_XMM1, X64Reg_M128_XMM2, X64Reg_M128_XMM3,
-		X64Reg_M128_XMM4, X64Reg_M128_XMM5, X64Reg_M128_XMM6, X64Reg_M128_XMM7,
-		X64Reg_M128_XMM8, X64Reg_M128_XMM9, X64Reg_M128_XMM10, X64Reg_M128_XMM11,
-		X64Reg_M128_XMM12, X64Reg_M128_XMM13, X64Reg_M128_XMM14 /*, X64Reg_M128_XMM15*/}; // Leave X64Reg_M128_XMM15 as a scratch reg
-
-	BF_ASSERT(mIntRegs.mSize <= BE_REGCOST_SIZE);
-	BF_ASSERT(mFloatRegs.mSize <= BE_REGCOST_SIZE);
-
-	/*for (int i = 0; i < X64Reg_COUNT; i++)	
-		sRegCostIdxMap[i] = -1;	
-	for (int i = 0; i < mIntRegs.mSize; i++)
-		sRegCostIdxMap[mIntRegs[i]] = i;
-	for (int i = 0; i < mFloatRegs.mSize; i++)
-		sRegCostIdxMap[mFloatRegs[i]] = i;
-
-	String str = "sRegCostIdxMap = (";
-	for (int i = 0; i < X64Reg_COUNT; i++)
-	{
-		str += StrFormat("%d, ", sRegCostIdxMap[i]);
-	}
-	str += ");\n";
-	OutputDebugStr(str);*/
 }
 
 void BeMCColorizer::Prepare()
 {
 	mReserveParamRegs = false;
-	
-	mEdgesFound.Clear();
 
-	int nodeAllocSize = (int)mContext->mVRegInfo.size();
-	// Allocate enough that we are unlikely to reallocate during subsequent passes
-	nodeAllocSize += nodeAllocSize / 10 + 2;
+	mEdgesFound.Clear();
 
 	//mNodes.Resize(mContext->mVRegInfo.size());
 	mNodes.mSize = 0;
-	mNodes.Reserve(nodeAllocSize);
 	mNodes.SetSize(mContext->mVRegInfo.size());
-	memset(mNodes.mVals, 0, nodeAllocSize * sizeof(Node));
+	memset(mNodes.mVals, 0, mNodes.mSize * sizeof(Node));
 	mNodeAlloc.Clear(true);
 
 	for (int vregIdx = 0; vregIdx < (int)mNodes.size(); vregIdx++)
@@ -1022,7 +958,7 @@ void BeMCColorizer::AddEdge(int vreg0, int vreg1)
 	}
 }
 
-void BeMCColorizer::PropogateMemCost(const BeMCOperand & operand, int memCost)
+void BeMCColorizer::PropogateMemCost(const BeMCOperand& operand, int memCost)
 {
 	if (operand.IsVRegAny())
 	{
@@ -1223,8 +1159,7 @@ void BeMCColorizer::GenerateRegCosts()
 						if ((checkInst->mKind == BeMCInstKind_Mov) && (checkInst->mArg0.IsNativeReg()))
 						{
 							// This can save us from needing to mov the call addr to RAX before the call
-							auto fullReg = mContext->GetFullRegister(checkInst->mArg0.mReg);
-							mNodes[inst->mArg0.mVRegIdx].AdjustRegCost(fullReg, 2 * costMult);
+							mNodes[inst->mArg0.mVRegIdx].AdjustRegCost(checkInst->mArg0.mReg, 2 * costMult);
 						}
 						else
 							break;
@@ -1333,25 +1268,22 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 	int totalRegs32 = 0;
 	int totalRegs16 = 0;
 
-	bool clearCosts = false;
-
 	SizedArray<X64CPURegister, 32> validRegs;
 	if (regKind == BeMCColorizer::RegKind_Ints)
-	{		
-		validRegs = mIntRegs;
-		highestReg = validRegs.back();
+	{
+		highestReg = X64Reg_R15;
+		validRegs = { X64Reg_RAX, X64Reg_RBX, X64Reg_RCX, X64Reg_RDX, X64Reg_RSI, X64Reg_RDI, X64Reg_R8,
+			X64Reg_R9, X64Reg_R10, X64Reg_R11, X64Reg_R12, X64Reg_R13, X64Reg_R14, X64Reg_R15 };
 	}
 	else
-	{		
-		validRegs = mFloatRegs;
-		highestReg = validRegs.back();
-		clearCosts = true;
-	}	
-
-	/*for (int i = 0; i < X64Reg_COUNT; i++)
 	{
-		mRegCostIdxMap
-	}*/
+		highestReg = X64Reg_M128_XMM14; // Leave X64Reg_M128_XMM15 as a scratch reg
+		validRegs = {
+			X64Reg_M128_XMM0, X64Reg_M128_XMM1, X64Reg_M128_XMM2, X64Reg_M128_XMM3,
+			X64Reg_M128_XMM4, X64Reg_M128_XMM5, X64Reg_M128_XMM6, X64Reg_M128_XMM7,
+			X64Reg_M128_XMM8, X64Reg_M128_XMM9, X64Reg_M128_XMM10, X64Reg_M128_XMM11,
+			X64Reg_M128_XMM12, X64Reg_M128_XMM13, X64Reg_M128_XMM14 /*, X64Reg_M128_XMM15*/ };
+	}
 
 	int totalRegs = (int)validRegs.size();
 
@@ -1393,15 +1325,13 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 
 				if (canBeReg)
 				{
-					if (clearCosts)
-						node->ClearRegCosts();
 					node->mInGraph = true;
 					node->mGraphEdgeCount = 0;
 					vregGraph.push_back(vregIdx);
 				}
 				else
 				{
-					node->mInGraph = false;					
+					node->mInGraph = false;
 				}
 			}
 		}
@@ -1524,9 +1454,9 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 					}
 
 					std::sort(orderedSpillList.begin(), orderedSpillList.end(), [&](int lhs, int rhs)
-					{
-						return mNodes[lhs].mMemCost > mNodes[rhs].mMemCost;
-					});
+						{
+							return mNodes[lhs].mMemCost > mNodes[rhs].mMemCost;
+						});
 				}
 
 				/*int bestSpillVReg = -1;
@@ -1589,10 +1519,7 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 		{
 			auto affinityVRegInfo = mContext->mVRegInfo[vregInfo->mVRegAffinity];
 			if (affinityVRegInfo->mReg != X64Reg_None)
-			{
-				auto fullReg = mContext->GetFullRegister(affinityVRegInfo->mReg);
-				node->AdjustRegCost(fullReg, -2);
-			}
+				node->AdjustRegCost(affinityVRegInfo->mReg, -2);
 		}
 
 		for (int i = 0; i <= highestReg; i++)
@@ -1640,7 +1567,7 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 			auto validReg = validRegs[regIdx];
 			if (!regUsedVec[(int)validReg])
 			{
-				int checkCost = node->GetRegCost(validReg);
+				int checkCost = node->mRegCost[(int)validReg];
 				// If this register is non-volatile then we'd have to save and restore it, which costs... unless
 				//  some other vreg has already used this, then there's no additional cost
 				if ((!globalRegUsedVec[(int)validReg]) && (!mContext->IsVolatileReg(validReg)))
@@ -1724,7 +1651,7 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 							if (connVRegInfo->mForceReg)
 								continue;
 
-							if (node->GetRegCost(usedReg) < 0x07FFFFFFF)
+							if (node->mRegCost[usedReg] < 0x07FFFFFFF)
 							{
 								if (connVRegInfo->mRefCount < bestSpillCost)
 								{
@@ -2005,7 +1932,7 @@ BeMCContext::BeMCContext(BeCOFFObject* coffObject) : mOut(coffObject->mTextSect.
 	mDebugging = false;
 	mFailed = false;
 	mDetectLoopIdx = 0;
-	mLegalizationIterations = 0;	
+	mLegalizationIterations = 0;
 }
 
 void BeMCContext::NotImpl()
@@ -2190,8 +2117,8 @@ String BeMCContext::ToString(const BeMCOperand& operand)
 		if (cmpResult.mResultVRegIdx != -1)
 			result += StrFormat("<vreg%d>", cmpResult.mResultVRegIdx);
 		result += " ";
- 		if (cmpResult.mInverted)
- 			result += "!";
+		if (cmpResult.mInverted)
+			result += "!";
 		result += BeDumpContext::ToString(cmpResult.mCmpKind);
 		return result;
 	}
@@ -2244,244 +2171,244 @@ BeMCOperand BeMCContext::GetOperand(BeValue* value, bool allowMetaResult, bool a
 	switch (value->GetTypeId())
 	{
 	case BeGlobalVariable::TypeId:
+	{
+		auto globalVar = (BeGlobalVariable*)value;
+		if ((globalVar->mIsTLS) && (mTLSVRegIdx == -1))
 		{
-			auto globalVar = (BeGlobalVariable*)value;
-			if ((globalVar->mIsTLS) && (mTLSVRegIdx == -1))
-			{
-				auto tlsVReg = AllocVirtualReg(mNativeIntType);
-				auto vregInfo = GetVRegInfo(tlsVReg);
-				vregInfo->mMustExist = true;
-				vregInfo->mForceReg = true;
-				vregInfo->mDisableR12 = true;
-				vregInfo->mDisableR13 = true;
-				mTLSVRegIdx = tlsVReg.mVRegIdx;
-			}
-
-			auto sym = mCOFFObject->GetSymbol(globalVar);
-			if (sym != NULL)
-			{
-				BeMCOperand mcOperand;
-				mcOperand.mKind = BeMCOperandKind_SymbolAddr;
-				mcOperand.mSymbolIdx = sym->mIdx;
-				return mcOperand;
-			}
+			auto tlsVReg = AllocVirtualReg(mNativeIntType);
+			auto vregInfo = GetVRegInfo(tlsVReg);
+			vregInfo->mMustExist = true;
+			vregInfo->mForceReg = true;
+			vregInfo->mDisableR12 = true;
+			vregInfo->mDisableR13 = true;
+			mTLSVRegIdx = tlsVReg.mVRegIdx;
 		}
-		break;
-	case BeCastConstant::TypeId:
-		{
-			auto constant = (BeCastConstant*)value;
 
+		auto sym = mCOFFObject->GetSymbol(globalVar);
+		if (sym != NULL)
+		{
 			BeMCOperand mcOperand;
-			auto relTo = GetOperand(constant->mTarget);
-			if (relTo.mKind == BeMCOperandKind_Immediate_Null)
+			mcOperand.mKind = BeMCOperandKind_SymbolAddr;
+			mcOperand.mSymbolIdx = sym->mIdx;
+			return mcOperand;
+		}
+	}
+	break;
+	case BeCastConstant::TypeId:
+	{
+		auto constant = (BeCastConstant*)value;
+
+		BeMCOperand mcOperand;
+		auto relTo = GetOperand(constant->mTarget);
+		if (relTo.mKind == BeMCOperandKind_Immediate_Null)
+		{
+			mcOperand.mKind = BeMCOperandKind_Immediate_Null;
+			mcOperand.mType = constant->mType;
+			return mcOperand;
+		}
+
+		mcOperand = AllocVirtualReg(constant->mType);
+		auto vregInfo = GetVRegInfo(mcOperand);
+		vregInfo->mDefOnFirstUse = true;
+		vregInfo->mRelTo = relTo;
+		vregInfo->mIsExpr = true;
+
+		return mcOperand;
+	}
+	break;
+	case BeConstant::TypeId:
+	{
+		auto constant = (BeConstant*)value;
+		BeMCOperand mcOperand;
+		switch (constant->mType->mTypeCode)
+		{
+		case BeTypeCode_Boolean:
+		case BeTypeCode_Int8: mcOperand.mKind = BeMCOperandKind_Immediate_i8; break;
+		case BeTypeCode_Int16: mcOperand.mKind = BeMCOperandKind_Immediate_i16; break;
+		case BeTypeCode_Int32: mcOperand.mKind = BeMCOperandKind_Immediate_i32; break;
+		case BeTypeCode_Int64: mcOperand.mKind = BeMCOperandKind_Immediate_i64; break;
+		case BeTypeCode_Float:
+			mcOperand.mImmF32 = constant->mDouble;
+			mcOperand.mKind = BeMCOperandKind_Immediate_f32;
+			return mcOperand;
+		case BeTypeCode_Double:
+			mcOperand.mImmF64 = constant->mDouble;
+			mcOperand.mKind = BeMCOperandKind_Immediate_f64;
+			return mcOperand;
+		case BeTypeCode_Pointer:
+		{
+			if (constant->mTarget == NULL)
 			{
 				mcOperand.mKind = BeMCOperandKind_Immediate_Null;
 				mcOperand.mType = constant->mType;
 				return mcOperand;
 			}
-
-			mcOperand = AllocVirtualReg(constant->mType);
-			auto vregInfo = GetVRegInfo(mcOperand);
-			vregInfo->mDefOnFirstUse = true;
-			vregInfo->mRelTo = relTo;
-			vregInfo->mIsExpr = true;
-
-			return mcOperand;
-		}
-		break;
-	case BeConstant::TypeId:
-		{
-			auto constant = (BeConstant*)value;
-			BeMCOperand mcOperand;
-			switch (constant->mType->mTypeCode)
+			else
 			{
-			case BeTypeCode_Boolean:
-			case BeTypeCode_Int8: mcOperand.mKind = BeMCOperandKind_Immediate_i8; break;
-			case BeTypeCode_Int16: mcOperand.mKind = BeMCOperandKind_Immediate_i16; break;
-			case BeTypeCode_Int32: mcOperand.mKind = BeMCOperandKind_Immediate_i32; break;
-			case BeTypeCode_Int64: mcOperand.mKind = BeMCOperandKind_Immediate_i64; break;
-			case BeTypeCode_Float:
-				mcOperand.mImmF32 = constant->mDouble;
-				mcOperand.mKind = BeMCOperandKind_Immediate_f32;
-				return mcOperand;
-			case BeTypeCode_Double:
-				mcOperand.mImmF64 = constant->mDouble;
-				mcOperand.mKind = BeMCOperandKind_Immediate_f64;
-				return mcOperand;
-			case BeTypeCode_Pointer:
-			{
-				if (constant->mTarget == NULL)
+				auto relTo = GetOperand(constant->mTarget);
+
+				if (relTo.mKind == BeMCOperandKind_Immediate_Null)
 				{
 					mcOperand.mKind = BeMCOperandKind_Immediate_Null;
 					mcOperand.mType = constant->mType;
 					return mcOperand;
 				}
-				else
-				{
-					auto relTo = GetOperand(constant->mTarget);
 
-					if (relTo.mKind == BeMCOperandKind_Immediate_Null)
-					{
-						mcOperand.mKind = BeMCOperandKind_Immediate_Null;
-						mcOperand.mType = constant->mType;
-						return mcOperand;
-					}
+				mcOperand = AllocVirtualReg(constant->mType);
+				auto vregInfo = GetVRegInfo(mcOperand);
+				vregInfo->mDefOnFirstUse = true;
+				vregInfo->mRelTo = relTo;
+				vregInfo->mIsExpr = true;
 
-					mcOperand = AllocVirtualReg(constant->mType);
-					auto vregInfo = GetVRegInfo(mcOperand);
-					vregInfo->mDefOnFirstUse = true;
-					vregInfo->mRelTo = relTo;
-					vregInfo->mIsExpr = true;
-
-					return mcOperand;
-				}
-			}
-			break;
-			case BeTypeCode_Struct:
-			case BeTypeCode_SizedArray:
-			case BeTypeCode_Vector:
-				mcOperand.mImmediate = constant->mInt64;
-				mcOperand.mKind = BeMCOperandKind_Immediate_i64;
-				break;
-			default:
-				Fail("Unhandled constant type");
-			}
-			mcOperand.mImmediate = constant->mInt64;
-			return mcOperand;
-		}
-		break;
-	case BeStructConstant::TypeId:
-		{
-			auto structConstant = (BeStructConstant*)value;
-
-			BeMCOperand mcOperand;
-			mcOperand.mKind = BeMCOperandKind_ConstAgg;
-			mcOperand.mConstant = structConstant;
-
-			return mcOperand;
-		}
-		break;
-	case BeGEP1Constant::TypeId:
-		{
-			auto gepConstant = (BeGEP1Constant*)value;
-
-			auto mcVal = GetOperand(gepConstant->mTarget);
-
-			BePointerType* ptrType = (BePointerType*)GetType(mcVal);
-			BEMC_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
-
-			auto result = mcVal;
-
-			// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
-			int byteOffset = 0;
-			BeType* elementType = ptrType->mElementType;
-			byteOffset += gepConstant->mIdx0 * ptrType->mElementType->GetStride();
-
-			result = AllocRelativeVirtualReg(ptrType, result, GetImmediate(byteOffset), 1);
-			// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
-			auto vregInfo = GetVRegInfo(result);
-			vregInfo->mDefOnFirstUse = true;
-			result.mKind = BeMCOperandKind_VReg;
-
-			return result;
-		}
-		break;
-	case BeGEP2Constant::TypeId:
-		{
-			auto gepConstant = (BeGEP2Constant*)value;
-
-			auto mcVal = GetOperand(gepConstant->mTarget);
-
-			BePointerType* ptrType = (BePointerType*)GetType(mcVal);
-			BEMC_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
-
-			auto result = mcVal;
-
-			// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
-			int byteOffset = 0;
-			BeType* elementType = NULL;
-			byteOffset += gepConstant->mIdx0 * ptrType->mElementType->GetStride();
-
-			if (ptrType->mElementType->mTypeCode == BeTypeCode_Struct)
-			{
-				BeStructType* structType = (BeStructType*)ptrType->mElementType;
-				auto& structMember = structType->mMembers[gepConstant->mIdx1];
-				elementType = structMember.mType;
-				byteOffset = structMember.mByteOffset;
-			}
-			else if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
-			{
-				BEMC_ASSERT(ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray);
-				auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
-				elementType = arrayType->mElementType;
-				byteOffset = gepConstant->mIdx1 * elementType->GetStride();
-			}
-			else
-			{
-				BEMC_ASSERT(ptrType->mElementType->mTypeCode == BeTypeCode_Vector);
-				auto arrayType = (BeVectorType*)ptrType->mElementType;
-				elementType = arrayType->mElementType;
-				byteOffset = gepConstant->mIdx1 * elementType->GetStride();
-			}
-
-			auto elementPtrType = mModule->mContext->GetPointerTo(elementType);
-			result = AllocRelativeVirtualReg(elementPtrType, result, GetImmediate(byteOffset), 1);
-			// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
-			auto vregInfo = GetVRegInfo(result);
-			vregInfo->mDefOnFirstUse = true;
-			result.mKind = BeMCOperandKind_VReg;
-
-			return result;
-		}
-		break;
-	case BeExtractValueConstant::TypeId:
-		{
-			// Note: this only handles zero-aggregates
-			auto extractConstant = (BeExtractValueConstant*)value;
-			auto elementType = extractConstant->GetType();
-
-			auto mcVal = GetOperand(extractConstant->mTarget);
-			auto valType = GetType(mcVal);
-
-			BeConstant beConstant;
-			beConstant.mType = elementType;
-			beConstant.mUInt64 = 0;
-			return GetOperand(&beConstant);
-		}
-		break;
-	case BeUndefConstant::TypeId:
-		{
-			auto undefConstant = (BeUndefConstant*)value;
-			BeConstant beConstant;
-			beConstant.mType = undefConstant->mType;
-			beConstant.mUInt64 = 0;
-			return GetOperand(&beConstant);
-		}
-		break;
-	case BeFunction::TypeId:
-		{
-			auto sym = mCOFFObject->GetSymbol(value);
-			BEMC_ASSERT(sym != NULL);
-			if (sym != NULL)
-			{
-				BeMCOperand mcOperand;
-				mcOperand.mKind = BeMCOperandKind_SymbolAddr;
-				mcOperand.mSymbolIdx = sym->mIdx;
 				return mcOperand;
 			}
 		}
 		break;
+		case BeTypeCode_Struct:
+		case BeTypeCode_SizedArray:
+		case BeTypeCode_Vector:
+			mcOperand.mImmediate = constant->mInt64;
+			mcOperand.mKind = BeMCOperandKind_Immediate_i64;
+			break;
+		default:
+			Fail("Unhandled constant type");
+		}
+		mcOperand.mImmediate = constant->mInt64;
+		return mcOperand;
+	}
+	break;
+	case BeStructConstant::TypeId:
+	{
+		auto structConstant = (BeStructConstant*)value;
+
+		BeMCOperand mcOperand;
+		mcOperand.mKind = BeMCOperandKind_ConstAgg;
+		mcOperand.mConstant = structConstant;
+
+		return mcOperand;
+	}
+	break;
+	case BeGEP1Constant::TypeId:
+	{
+		auto gepConstant = (BeGEP1Constant*)value;
+
+		auto mcVal = GetOperand(gepConstant->mTarget);
+
+		BePointerType* ptrType = (BePointerType*)GetType(mcVal);
+		BEMC_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
+
+		auto result = mcVal;
+
+		// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
+		int byteOffset = 0;
+		BeType* elementType = ptrType->mElementType;
+		byteOffset += gepConstant->mIdx0 * ptrType->mElementType->GetStride();
+
+		result = AllocRelativeVirtualReg(ptrType, result, GetImmediate(byteOffset), 1);
+		// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
+		auto vregInfo = GetVRegInfo(result);
+		vregInfo->mDefOnFirstUse = true;
+		result.mKind = BeMCOperandKind_VReg;
+
+		return result;
+	}
+	break;
+	case BeGEP2Constant::TypeId:
+	{
+		auto gepConstant = (BeGEP2Constant*)value;
+
+		auto mcVal = GetOperand(gepConstant->mTarget);
+
+		BePointerType* ptrType = (BePointerType*)GetType(mcVal);
+		BEMC_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
+
+		auto result = mcVal;
+
+		// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
+		int byteOffset = 0;
+		BeType* elementType = NULL;
+		byteOffset += gepConstant->mIdx0 * ptrType->mElementType->GetStride();
+
+		if (ptrType->mElementType->mTypeCode == BeTypeCode_Struct)
+		{
+			BeStructType* structType = (BeStructType*)ptrType->mElementType;
+			auto& structMember = structType->mMembers[gepConstant->mIdx1];
+			elementType = structMember.mType;
+			byteOffset = structMember.mByteOffset;
+		}
+		else if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
+		{
+			BEMC_ASSERT(ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray);
+			auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
+			elementType = arrayType->mElementType;
+			byteOffset = gepConstant->mIdx1 * elementType->GetStride();
+		}
+		else
+		{
+			BEMC_ASSERT(ptrType->mElementType->mTypeCode == BeTypeCode_Vector);
+			auto arrayType = (BeVectorType*)ptrType->mElementType;
+			elementType = arrayType->mElementType;
+			byteOffset = gepConstant->mIdx1 * elementType->GetStride();
+		}
+
+		auto elementPtrType = mModule->mContext->GetPointerTo(elementType);
+		result = AllocRelativeVirtualReg(elementPtrType, result, GetImmediate(byteOffset), 1);
+		// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
+		auto vregInfo = GetVRegInfo(result);
+		vregInfo->mDefOnFirstUse = true;
+		result.mKind = BeMCOperandKind_VReg;
+
+		return result;
+	}
+	break;
+	case BeExtractValueConstant::TypeId:
+	{
+		// Note: this only handles zero-aggregates
+		auto extractConstant = (BeExtractValueConstant*)value;
+		auto elementType = extractConstant->GetType();
+
+		auto mcVal = GetOperand(extractConstant->mTarget);
+		auto valType = GetType(mcVal);
+
+		BeConstant beConstant;
+		beConstant.mType = elementType;
+		beConstant.mUInt64 = 0;
+		return GetOperand(&beConstant);
+	}
+	break;
+	case BeUndefConstant::TypeId:
+	{
+		auto undefConstant = (BeUndefConstant*)value;
+		BeConstant beConstant;
+		beConstant.mType = undefConstant->mType;
+		beConstant.mUInt64 = 0;
+		return GetOperand(&beConstant);
+	}
+	break;
+	case BeFunction::TypeId:
+	{
+		auto sym = mCOFFObject->GetSymbol(value);
+		BEMC_ASSERT(sym != NULL);
+		if (sym != NULL)
+		{
+			BeMCOperand mcOperand;
+			mcOperand.mKind = BeMCOperandKind_SymbolAddr;
+			mcOperand.mSymbolIdx = sym->mIdx;
+			return mcOperand;
+		}
+	}
+	break;
 	case BeCallInst::TypeId:
-		{
-			auto callInst = (BeCallInst*)value;
-			if (callInst->mInlineResult != NULL)
-				return GetOperand(callInst->mInlineResult);
-		}
-		break;
+	{
+		auto callInst = (BeCallInst*)value;
+		if (callInst->mInlineResult != NULL)
+			return GetOperand(callInst->mInlineResult);
+	}
+	break;
 	case BeDbgVariable::TypeId:
-		{
-		}
-		break;
+	{
+	}
+	break;
 	}
 
 	BeMCOperand* operandPtr = NULL;
@@ -2820,7 +2747,7 @@ BeMCInst* BeMCContext::AllocInst(int insertIdx)
 	else if ((insertIdx < mActiveBlock->mInstructions.mSize) && (mActiveBlock->mInstructions[insertIdx] == NULL))
 		mActiveBlock->mInstructions[insertIdx] = mcInst;
 	else
-		mActiveBlock->mInstructions.Insert(insertIdx, mcInst);	
+		mActiveBlock->mInstructions.Insert(insertIdx, mcInst);
 	return mcInst;
 }
 
@@ -2951,7 +2878,7 @@ BeMCOperand BeMCContext::GetCallArgVReg(int argIdx, BeTypeCode typeCode)
 	}
 }
 
-BeMCOperand BeMCContext::CreateCall(const BeMCOperand &func, const SizedArrayImpl<BeValue*>& args, BeType* retType, BfIRCallingConv callingConv, bool structRet, bool noReturn, int varArgStart)
+BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImpl<BeValue*>& args, BeType* retType, BfIRCallingConv callingConv, bool structRet, bool noReturn, int varArgStart)
 {
 	SizedArray<BeMCOperand, 4> opArgs;
 	for (auto itr = args.begin(); itr != args.end(); ++itr)
@@ -2974,11 +2901,11 @@ BeMCOperand BeMCContext::CreateLoad(const BeMCOperand& mcTarget)
 	}
 
 	if (HasImmediateTarget(mcTarget))
-	{		
+	{
 		BeMCOperand scratchReg = AllocVirtualReg(GetType(mcTarget), 2);
 		CreateDefineVReg(scratchReg);
-		AllocInst(BeMCInstKind_Mov, scratchReg, mcTarget);			
-		return CreateLoad(scratchReg);		
+		AllocInst(BeMCInstKind_Mov, scratchReg, mcTarget);
+		return CreateLoad(scratchReg);
 	}
 
 	BeMCOperand result;
@@ -3136,13 +3063,13 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 
 	bool didPreserveRegs = false;
 	auto _AddPreserveRegs = [&]()
-	{
-		if (noReturn)
-			AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromPreserveFlag(BeMCPreserveFlag_NoRestore));
-		else
-			AllocInst(BeMCInstKind_PreserveVolatiles);
-		didPreserveRegs = true;
-	};
+		{
+			if (noReturn)
+				AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromPreserveFlag(BeMCPreserveFlag_NoRestore));
+			else
+				AllocInst(BeMCInstKind_PreserveVolatiles);
+			didPreserveRegs = true;
+		};
 
 	int argCount = (int)args.size() + argOfs;
 	int dynStackSize = 0;
@@ -3167,7 +3094,7 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 		bool isVarArg = (varArgStart != -1) && (argIdx >= varArgStart);
 
 		auto mcValue = args[argIdx];
-		auto argType = GetType(mcValue);		
+		auto argType = GetType(mcValue);
 
 		X64CPURegister useReg = X64Reg_None;
 		int useArgIdx = argIdx + argOfs;
@@ -3209,7 +3136,7 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 			}
 
 			if (isVarArg)
-			{				
+			{
 				X64CPURegister shadowReg = X64Reg_None;
 				switch (useArgIdx)
 				{
@@ -3225,7 +3152,7 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 				case 3:
 					shadowReg = X64Reg_R9;
 					break;
-				}				
+				}
 
 				if ((shadowReg != X64Reg_None) && (useReg != X64Reg_None))
 				{
@@ -3626,7 +3553,7 @@ void BeMCContext::CreateCondBr(BeMCBlock* mcBlock, BeMCOperand& testVal, const B
 	else if (testVal.mKind == BeMCOperandKind_CmpResult)
 	{
 		// Beef-specific: assuming CMP results aren't stomped
-		auto& cmpResult = mCmpResults[testVal.mCmpResultIdx];		
+		auto& cmpResult = mCmpResults[testVal.mCmpResultIdx];
 		if (cmpResult.mInverted)
 		{
 			AllocInst(BeMCInstKind_CondBr, falseBlock, BeMCOperand::FromCmpKind(cmpResult.mCmpKind));
@@ -3701,32 +3628,32 @@ void BeMCContext::CreateCondBr(BeMCBlock* mcBlock, BeMCOperand& testVal, const B
 				bool found = false;
 
 				auto _CheckBlock = [&](BeMCBlock* block)
-				{
-					for (int checkIdx = (int)block->mInstructions.size() - 1; checkIdx >= 0; checkIdx--)
 					{
-						auto checkInst = block->mInstructions[checkIdx];
-						if ((checkInst->mArg0.mKind == BeMCOperandKind_Block) &&
-							(checkInst->mArg0.mBlock == phi->mBlock))
+						for (int checkIdx = (int)block->mInstructions.size() - 1; checkIdx >= 0; checkIdx--)
 						{
-							brInstIdx = checkIdx;
-							checkInst->mArg0 = landinglabel;
-							found = true;
-							// Don't break, if we're are chained to another PHI then we need to modify all the labels
-
-							isFalseCmpResult = false;
-							if ((checkIdx >= 2) && (checkInst->mKind == BeMCInstKind_Br))
+							auto checkInst = block->mInstructions[checkIdx];
+							if ((checkInst->mArg0.mKind == BeMCOperandKind_Block) &&
+								(checkInst->mArg0.mBlock == phi->mBlock))
 							{
-								auto prevInst = block->mInstructions[checkIdx - 1];
-								auto prevPrevInst = block->mInstructions[checkIdx - 2];
-								if ((prevPrevInst->mKind == BeMCInstKind_Cmp) && (prevPrevInst->mResult == phiVal.mValue) &&
-									(prevInst->mKind == BeMCInstKind_CondBr) && (prevInst->mArg1.mCmpKind == BeCmpKind_EQ))
+								brInstIdx = checkIdx;
+								checkInst->mArg0 = landinglabel;
+								found = true;
+								// Don't break, if we're are chained to another PHI then we need to modify all the labels
+
+								isFalseCmpResult = false;
+								if ((checkIdx >= 2) && (checkInst->mKind == BeMCInstKind_Br))
 								{
-									isFalseCmpResult = true;
+									auto prevInst = block->mInstructions[checkIdx - 1];
+									auto prevPrevInst = block->mInstructions[checkIdx - 2];
+									if ((prevPrevInst->mKind == BeMCInstKind_Cmp) && (prevPrevInst->mResult == phiVal.mValue) &&
+										(prevInst->mKind == BeMCInstKind_CondBr) && (prevInst->mArg1.mCmpKind == BeCmpKind_EQ))
+									{
+										isFalseCmpResult = true;
+									}
 								}
 							}
 						}
-					}
-				};
+					};
 
 				_CheckBlock(phiVal.mBlockFrom);
 
@@ -3819,42 +3746,42 @@ void BeMCContext::CreatePhiAssign(BeMCBlock* mcBlock, const BeMCOperand& testVal
 				bool found = false;
 
 				auto _CheckBlock = [&](BeMCBlock* block)
-				{
-					SetAndRestoreValue<BeMCBlock*> prevActiveBlock(mActiveBlock, block);
-					for (int checkIdx = (int)block->mInstructions.size() - 1; checkIdx >= 0; checkIdx--)
 					{
-						auto checkInst = block->mInstructions[checkIdx];
-						if ((checkInst->mArg0.mKind == BeMCOperandKind_Block) &&
-							(checkInst->mArg0.mBlock == phi->mBlock))
+						SetAndRestoreValue<BeMCBlock*> prevActiveBlock(mActiveBlock, block);
+						for (int checkIdx = (int)block->mInstructions.size() - 1; checkIdx >= 0; checkIdx--)
 						{
-							// Don't use an explicit dbgLoc
-							SetAndRestoreValue<BeDbgLoc*> prevDbgLoc(mCurDbgLoc, NULL);
-
-							if (checkInst->mKind == BeMCInstKind_CondBr)
+							auto checkInst = block->mInstructions[checkIdx];
+							if ((checkInst->mArg0.mKind == BeMCOperandKind_Block) &&
+								(checkInst->mArg0.mBlock == phi->mBlock))
 							{
-								auto falseLabel = BeMCOperand::FromLabel(mCurLabelIdx++);
-								auto prevDest = checkInst->mArg0;
+								// Don't use an explicit dbgLoc
+								SetAndRestoreValue<BeDbgLoc*> prevDbgLoc(mCurDbgLoc, NULL);
 
-								checkInst->mArg0 = falseLabel;
-								checkInst->mArg1.mCmpKind = BeModule::InvertCmp(checkInst->mArg1.mCmpKind);
+								if (checkInst->mKind == BeMCInstKind_CondBr)
+								{
+									auto falseLabel = BeMCOperand::FromLabel(mCurLabelIdx++);
+									auto prevDest = checkInst->mArg0;
 
-								int insertIdx = checkIdx + 1;
-								SetAndRestoreValue<int*> prevInsertIdxRef(mInsertInstIdxRef, &insertIdx);
-								CreateStore(BeMCInstKind_Mov, phiVal.mValue, OperandToAddr(result));
-								AllocInst(BeMCInstKind_Br, prevDest);
-								AllocInst(BeMCInstKind_Label, falseLabel);
+									checkInst->mArg0 = falseLabel;
+									checkInst->mArg1.mCmpKind = BeModule::InvertCmp(checkInst->mArg1.mCmpKind);
+
+									int insertIdx = checkIdx + 1;
+									SetAndRestoreValue<int*> prevInsertIdxRef(mInsertInstIdxRef, &insertIdx);
+									CreateStore(BeMCInstKind_Mov, phiVal.mValue, OperandToAddr(result));
+									AllocInst(BeMCInstKind_Br, prevDest);
+									AllocInst(BeMCInstKind_Label, falseLabel);
+								}
+								else
+								{
+									int insertIdx = checkIdx;
+									SetAndRestoreValue<int*> prevInsertIdxRef(mInsertInstIdxRef, &insertIdx);
+									CreateStore(BeMCInstKind_Mov, phiVal.mValue, OperandToAddr(result));
+								}
+
+								found = true;
 							}
-							else
-							{
-								int insertIdx = checkIdx;
-								SetAndRestoreValue<int*> prevInsertIdxRef(mInsertInstIdxRef, &insertIdx);
-								CreateStore(BeMCInstKind_Mov, phiVal.mValue, OperandToAddr(result));
-							}
-
-							found = true;
 						}
-					}
-				};
+					};
 
 				_CheckBlock(phiVal.mBlockFrom);
 
@@ -3953,7 +3880,7 @@ int BeMCContext::GetUnderlyingVReg(int vregIdx)
 	}
 }
 
-bool BeMCContext::HasForceRegs(const BeMCOperand &operand)
+bool BeMCContext::HasForceRegs(const BeMCOperand& operand)
 {
 	if (!operand.IsVRegAny())
 		return false;
@@ -4576,37 +4503,37 @@ void BeMCContext::GenerateLiveness(BeMCBlock* block, BeVTrackingGenContext* genC
 		if ((inst->mVRegsInitialized != NULL) && (inst->mVRegsInitialized != vregsInitialized))
 		{
 			auto _VRegUninit = [&](int vregIdxEx)
-			{
-				int vregIdx = vregIdxEx % mVRegInitializedContext.mNumItems;
-
-				auto vregInfo = mVRegInfo[vregIdx];
-
-				if (!vregInfo->mHasDynLife)
-					return;
-
-				bool doClear = false;
-
-				if (vregInfo->mDoConservativeLife)
 				{
-					// Only do liveness clear when both 'init' and 'non-init' is set
-					int otherVRegIdxEx = vregIdx;
-					if (vregIdxEx < mVRegInitializedContext.mNumItems)
-						otherVRegIdxEx += mVRegInitializedContext.mNumItems;
-					if (!mVRegInitializedContext.IsSet(inst->mVRegsInitialized, otherVRegIdxEx))
-						doClear = true;
-				}
-				else
-				{
-					// Only do liveness clear on 'init' clearing out
-					if (vregIdx < mVRegInitializedContext.mNumItems)
-						doClear = true;
-				}
+					int vregIdx = vregIdxEx % mVRegInitializedContext.mNumItems;
 
-				if (doClear)
-				{
-					DedupPushBack(removeVec, vregIdx);
-				}
-			};
+					auto vregInfo = mVRegInfo[vregIdx];
+
+					if (!vregInfo->mHasDynLife)
+						return;
+
+					bool doClear = false;
+
+					if (vregInfo->mDoConservativeLife)
+					{
+						// Only do liveness clear when both 'init' and 'non-init' is set
+						int otherVRegIdxEx = vregIdx;
+						if (vregIdxEx < mVRegInitializedContext.mNumItems)
+							otherVRegIdxEx += mVRegInitializedContext.mNumItems;
+						if (!mVRegInitializedContext.IsSet(inst->mVRegsInitialized, otherVRegIdxEx))
+							doClear = true;
+					}
+					else
+					{
+						// Only do liveness clear on 'init' clearing out
+						if (vregIdx < mVRegInitializedContext.mNumItems)
+							doClear = true;
+					}
+
+					if (doClear)
+					{
+						DedupPushBack(removeVec, vregIdx);
+					}
+				};
 
 			if (needsManualVRegInitDiff)
 			{
@@ -4918,7 +4845,7 @@ void BeMCContext::GenerateLiveness()
 
 	int maxLiveness = 0;
 	int maxVRegInitialized = 0;
-	int instCount = 0;	
+	int instCount = 0;
 	for (auto block : mBlocks)
 	{
 		instCount += (int)block->mInstructions.size();
@@ -4931,7 +4858,7 @@ void BeMCContext::GenerateLiveness()
 				maxVRegInitialized = BF_MAX(maxVRegInitialized, inst->mVRegsInitialized->mSize);
 		}
 	}
-	
+
 	BpEvent("GenerateLiveness Results",
 		StrFormat("Blocks: %d\nInstructions: %d\nVRegs: %d\nCalls: %d\nHandled Calls: %d\nProcessed Instructions: %d\nLiveness Bytes: %d\n"
 			"Temp Bytes: %d\nBits Bytes: %d\nList Bytes: %d\nSucc Bytes: %d\n"
@@ -6161,7 +6088,7 @@ bool BeMCContext::HasImmediateTarget(const BeMCOperand& operand)
 		return true;
 	auto vregInfo = GetVRegInfo(operand);
 	if (vregInfo == NULL)
-		return false;	
+		return false;
 	if (vregInfo->mRelTo)
 		return HasImmediateTarget(vregInfo->mRelTo);
 	return false;
@@ -7241,7 +7168,7 @@ void BeMCContext::GenerateVRegInitFlags(BeVTrackingGenContext& genCtx)
 
 	BpEvent("GenerateVRegInitFlags Results",
 		StrFormat("Blocks: %d\nInstructions: %d\nVRegs: %d\nCalls: %d\nHandled Calls: %d\nProcessed Instructions: %d\nVRegInit Bytes: %d\nTemp Bytes: %d",
-		(int)mBlocks.size(), instCount, (int)mVRegInfo.size(), genCtx.mCalls, genCtx.mHandledCalls, genCtx.mInstructions, mVRegInitializedContext.mAlloc.GetAllocSize(), genCtx.mAlloc.GetAllocSize()).c_str());
+			(int)mBlocks.size(), instCount, (int)mVRegInfo.size(), genCtx.mCalls, genCtx.mHandledCalls, genCtx.mInstructions, mVRegInitializedContext.mAlloc.GetAllocSize(), genCtx.mAlloc.GetAllocSize()).c_str());
 }
 
 bool BeMCContext::DoInitializedPass()
@@ -8028,7 +7955,7 @@ void BeMCContext::DoInstCombinePass()
 			// Remap %vreg0 to %vreg1 if this is the only assignment, and thus an immutable definition, and vreg1 doesn't change
 			if ((nextDestOperand) &&
 				(((inst->mKind == BeMCInstKind_Def) && (arg0 == nextDestOperand)) ||
-				((inst->mKind == BeMCInstKind_LifetimeStart) && (BeMCOperand::ToLoad(arg0) == nextDestOperand))))
+					((inst->mKind == BeMCInstKind_LifetimeStart) && (BeMCOperand::ToLoad(arg0) == nextDestOperand))))
 			{
 				lastDefDidMerge = false;
 
@@ -8439,63 +8366,63 @@ void BeMCContext::DoInstCombinePass()
 	}
 
 	auto _RemapVReg = [&](int& vregIdx)
-	{
-		int* regIdxPtr = NULL;
-		if (regRemapMap.TryGetValue(vregIdx, &regIdxPtr))
-		{
-			int regIdx = *regIdxPtr;
-			if (regIdx < 0)
-			{
-				Fail("Invalid reg remap");
-			}
-			else
-				vregIdx = regIdx;
-		}
-	};
-
-	auto _RemapOperand = [&](BeMCOperand* operand)
-	{
-		if (operand->IsVRegAny())
 		{
 			int* regIdxPtr = NULL;
-			if (regRemapMap.TryGetValue(operand->mVRegIdx, &regIdxPtr))
+			if (regRemapMap.TryGetValue(vregIdx, &regIdxPtr))
 			{
 				int regIdx = *regIdxPtr;
 				if (regIdx < 0)
 				{
-					if (operand->mKind == BeMCOperandKind_VRegLoad)
-						operand->mKind = BeMCOperandKind_VReg;
-					else
-						NotImpl();
-					operand->mVRegIdx = -regIdx;
+					Fail("Invalid reg remap");
 				}
 				else
+					vregIdx = regIdx;
+			}
+		};
+
+	auto _RemapOperand = [&](BeMCOperand* operand)
+		{
+			if (operand->IsVRegAny())
+			{
+				int* regIdxPtr = NULL;
+				if (regRemapMap.TryGetValue(operand->mVRegIdx, &regIdxPtr))
 				{
-					operand->mVRegIdx = regIdx;
+					int regIdx = *regIdxPtr;
+					if (regIdx < 0)
+					{
+						if (operand->mKind == BeMCOperandKind_VRegLoad)
+							operand->mKind = BeMCOperandKind_VReg;
+						else
+							NotImpl();
+						operand->mVRegIdx = -regIdx;
+					}
+					else
+					{
+						operand->mVRegIdx = regIdx;
+					}
 				}
 			}
-		}
 
-		if (operand->mKind == BeMCOperandKind_VRegPair)
-		{
-			_RemapVReg(operand->mVRegPair.mVRegIdx0);
-			_RemapVReg(operand->mVRegPair.mVRegIdx1);
-		}
-
-		if (operand->IsVRegAny())
-		{
-			if (wantUnwrapVRegs.Contains(operand->mVRegIdx))
+			if (operand->mKind == BeMCOperandKind_VRegPair)
 			{
-				// Replace any rel-to symbol info with direct references to those symbols
-				auto vregInfo = mVRegInfo[operand->mVRegIdx];
-				BF_ASSERT(vregInfo->IsDirectRelToAny());
-				if (operand->mKind == BeMCOperandKind_VReg)
-					*operand = vregInfo->mRelTo;
-				else if (operand->mKind == BeMCOperandKind_VRegAddr)
-					*operand = OperandToAddr(vregInfo->mRelTo);
+				_RemapVReg(operand->mVRegPair.mVRegIdx0);
+				_RemapVReg(operand->mVRegPair.mVRegIdx1);
 			}
-		}
-	};
+
+			if (operand->IsVRegAny())
+			{
+				if (wantUnwrapVRegs.Contains(operand->mVRegIdx))
+				{
+					// Replace any rel-to symbol info with direct references to those symbols
+					auto vregInfo = mVRegInfo[operand->mVRegIdx];
+					BF_ASSERT(vregInfo->IsDirectRelToAny());
+					if (operand->mKind == BeMCOperandKind_VReg)
+						*operand = vregInfo->mRelTo;
+					else if (operand->mKind == BeMCOperandKind_VRegAddr)
+						*operand = OperandToAddr(vregInfo->mRelTo);
+				}
+			}
+		};
 
 	Dictionary<BeVTrackingList*, BeVTrackingList*> initRemapMap;
 
@@ -8572,7 +8499,7 @@ void BeMCContext::DoRegAssignPass()
 	bool generateLiveness = true;
 	//
 	if (generateLiveness)
-	{		
+	{
 		mColorizer.Prepare();
 		GenerateLiveness();
 	}
@@ -9061,7 +8988,7 @@ bool BeMCContext::DoLegalization()
 				rerunReasons += reason;
 			}*/
 		};
-	
+
 	for (auto mcBlock : mBlocks)
 	{
 		mActiveBlock = mcBlock;
@@ -9079,13 +9006,13 @@ bool BeMCContext::DoLegalization()
 					isFinalRun = false;
 					rerunReasonCount++;
 					/*if (rerunReasonCount < 10)
-					{						
+					{
 						rerunReasons += reason;
 						rerunReasons += " : ";
 						ToString(inst, rerunReasons, true, true);
 					}*/
 				};
-			
+
 			if (inst->mKind == BeMCInstKind_Mov)
 			{
 				// Useless mov, remove it
@@ -9097,7 +9024,7 @@ bool BeMCContext::DoLegalization()
 					continue;
 				}
 			}
-			
+
 			BeMCInst* nextInst = NULL;
 			if (instIdx < mcBlock->mInstructions.size() - 1)
 			{
@@ -9232,7 +9159,7 @@ bool BeMCContext::DoLegalization()
 								BeMCOperand newOperand;
 
 								bool replaceLoad = origOperand.mKind == BeMCOperandKind_VRegLoad;
-								
+
 								// If we have a load on both the target and a load on a failed arg then do *not* keep the load-ness of the replaced arg								
 								if ((replaceLoad) &&
 									((inst->mArg0 == origOperand) || (inst->mArg1 == origOperand)) &&
@@ -9377,7 +9304,7 @@ bool BeMCContext::DoLegalization()
 
 				// Int 3-form mul does not follow these rules
 				if (doStdCheck)
-				{					
+				{
 					bool isIncOrDec = false;
 					isIncOrDec = (((inst->mKind == BeMCInstKind_Add) || (inst->mKind == BeMCInstKind_Sub)) &&
 						(arg1.IsImmediateInt()) && (arg1.mImmediate == 1));
@@ -9463,7 +9390,7 @@ bool BeMCContext::DoLegalization()
 								OutputDebugStrF(" BadOps\n");
 							continue;
 						}
-					}					
+					}
 
 					if (inst->mResult)
 					{
@@ -9522,10 +9449,10 @@ bool BeMCContext::DoLegalization()
 								// Check for exact quality or potential aliasing
 								if ((OperandsEqual(inst->mResult, inst->mArg1)) ||
 									((HasLoad(inst->mResult)) && (HasLoad(inst->mArg1))))
-								{									
+								{
 									// We need a scratch reg for this
 									ReplaceWithNewVReg(inst->mArg1, instIdx, true);
-									IntroduceVRegs(inst->mArg1, mcBlock, instIdx, instIdx + 2);									
+									IntroduceVRegs(inst->mArg1, mcBlock, instIdx, instIdx + 2);
 								}
 
 								if (!handled)
@@ -9680,537 +9607,537 @@ bool BeMCContext::DoLegalization()
 				regPreserveDepth--;
 				break;
 			case BeMCInstKind_DefLoad:
-				{
-					SoftFail("DefLoad- DoLoads should have removed these");
-				}
-				break;
+			{
+				SoftFail("DefLoad- DoLoads should have removed these");
+			}
+			break;
 			case BeMCInstKind_Def:
+			{
+				auto vregInfo = mVRegInfo[inst->mArg0.mVRegIdx];
+				// Legalize vreg exprs
+				if ((vregInfo->mRefCount > 0) && (vregInfo->mRelTo) && (!vregInfo->IsDirectRelToAny()))
 				{
-					auto vregInfo = mVRegInfo[inst->mArg0.mVRegIdx];
-					// Legalize vreg exprs
-					if ((vregInfo->mRefCount > 0) && (vregInfo->mRelTo) && (!vregInfo->IsDirectRelToAny()))
+					if (vregInfo->mRelTo.mKind == BeMCOperandKind_SymbolAddr)
+						continue; // Just leave it
+					if (vregInfo->mRelTo.mKind == BeMCOperandKind_Symbol)
 					{
-						if (vregInfo->mRelTo.mKind == BeMCOperandKind_SymbolAddr)
-							continue; // Just leave it
-						if (vregInfo->mRelTo.mKind == BeMCOperandKind_Symbol)
-						{
-							continue;
-						}
+						continue;
+					}
 
-						if (vregInfo->IsDirectRelTo())
+					if (vregInfo->IsDirectRelTo())
+					{
+						if (vregInfo->mRelTo.IsVRegAny())
 						{
-							if (vregInfo->mRelTo.IsVRegAny())
+							// Propagate change to the directRel
+							//auto itr = vregExprChangeSet.find(vregInfo->mRelTo.mVRegIdx);
+							//if (itr != vregExprChangeSet.end())
+
+							if (vregExprChangeSet.Contains(vregInfo->mRelTo.mVRegIdx))
 							{
-								// Propagate change to the directRel
-								//auto itr = vregExprChangeSet.find(vregInfo->mRelTo.mVRegIdx);
-								//if (itr != vregExprChangeSet.end())
-
-								if (vregExprChangeSet.Contains(vregInfo->mRelTo.mVRegIdx))
-								{
-									BF_ASSERT(!isFinalRun);
-									vregExprChangeSet.Add(inst->mArg0.mVRegIdx);
-									_Rerun("Def directRelTo");
-								}
+								BF_ASSERT(!isFinalRun);
+								vregExprChangeSet.Add(inst->mArg0.mVRegIdx);
+								_Rerun("Def directRelTo");
 							}
 						}
-						else
+					}
+					else
+					{
+						if (vregInfo->mRelOffset)
 						{
-							if (vregInfo->mRelOffset)
+							auto relOfsType = GetType(vregInfo->mRelOffset);
+							// We can only do offsets by int64s
+							if (relOfsType->mTypeCode != BeTypeCode_Int64)
 							{
-								auto relOfsType = GetType(vregInfo->mRelOffset);
-								// We can only do offsets by int64s
-								if (relOfsType->mTypeCode != BeTypeCode_Int64)
+								bool didExtend = false;
+								if (vregInfo->mRelOffset.IsVReg())
 								{
-									bool didExtend = false;
-									if (vregInfo->mRelOffset.IsVReg())
+									// First we try to resize the original vreg, which we are allowed to do
+									//  if there's only one mov and the vreg dies by the end of the block
+									int relVRegIdx = vregInfo->mRelOffset.mVRegIdx;
+									bool foundDef = false;
+									BeMCInst* setInst = NULL;
+									for (int checkIdx = 0; checkIdx < (int)mcBlock->mInstructions.size(); checkIdx++)
 									{
-										// First we try to resize the original vreg, which we are allowed to do
-										//  if there's only one mov and the vreg dies by the end of the block
-										int relVRegIdx = vregInfo->mRelOffset.mVRegIdx;
-										bool foundDef = false;
-										BeMCInst* setInst = NULL;
-										for (int checkIdx = 0; checkIdx < (int)mcBlock->mInstructions.size(); checkIdx++)
+										auto checkInst = mcBlock->mInstructions[checkIdx];
+										if ((checkInst->mKind == BeMCInstKind_Def) && (checkInst->mArg0.mVRegIdx == relVRegIdx))
+											foundDef = true;
+										if (foundDef)
 										{
-											auto checkInst = mcBlock->mInstructions[checkIdx];
-											if ((checkInst->mKind == BeMCInstKind_Def) && (checkInst->mArg0.mVRegIdx == relVRegIdx))
-												foundDef = true;
-											if (foundDef)
+											if ((checkInst->mKind == BeMCInstKind_Mov) && (checkInst->mArg0 == vregInfo->mRelOffset))
 											{
-												if ((checkInst->mKind == BeMCInstKind_Mov) && (checkInst->mArg0 == vregInfo->mRelOffset))
+												if (setInst != NULL)
+													break; // Only one set is allowed
+												setInst = checkInst;
+											}
+											else
+											{
+												// If we also use this reg for a non-offset reason then we can't just extend the size
+												bool hasNonOffsetRef = false;
+												auto operands = { &checkInst->mResult, &checkInst->mArg0, &checkInst->mArg1 };
+												for (auto operand : operands)
+													if (ContainsNonOffsetRef(*operand, vregInfo->mRelOffset))
+														hasNonOffsetRef = true;
+												if (hasNonOffsetRef)
 												{
-													if (setInst != NULL)
-														break; // Only one set is allowed
-													setInst = checkInst;
-												}
-												else
-												{
-													// If we also use this reg for a non-offset reason then we can't just extend the size
-													bool hasNonOffsetRef = false;
-													auto operands = { &checkInst->mResult, &checkInst->mArg0, &checkInst->mArg1 };
-													for (auto operand : operands)
-														if (ContainsNonOffsetRef(*operand, vregInfo->mRelOffset))
-															hasNonOffsetRef = true;
-													if (hasNonOffsetRef)
-													{
-														break;
-													}
-												}
-
-												if (!mLivenessContext.IsSet(checkInst->mLiveness, relVRegIdx))
-												{
-													if (setInst != NULL)
-													{
-														didExtend = true;
-														auto relVRegInfo = mVRegInfo[relVRegIdx];
-														setInst->mKind = BeMCInstKind_MovSX;
-														relVRegInfo->mType = mModule->mContext->GetPrimitiveType(BeTypeCode_Int64);
-														relVRegInfo->mAlign = relVRegInfo->mType->mAlign;
-														if (debugging)
-															OutputDebugStrF(" Def MovSX\n");
-														_Rerun("Def MovSX");
-													}
 													break;
 												}
 											}
+
+											if (!mLivenessContext.IsSet(checkInst->mLiveness, relVRegIdx))
+											{
+												if (setInst != NULL)
+												{
+													didExtend = true;
+													auto relVRegInfo = mVRegInfo[relVRegIdx];
+													setInst->mKind = BeMCInstKind_MovSX;
+													relVRegInfo->mType = mModule->mContext->GetPrimitiveType(BeTypeCode_Int64);
+													relVRegInfo->mAlign = relVRegInfo->mType->mAlign;
+													if (debugging)
+														OutputDebugStrF(" Def MovSX\n");
+													_Rerun("Def MovSX");
+												}
+												break;
+											}
 										}
 									}
+								}
 
-									if (!didExtend)
-									{
-										auto relOfs64 = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64), 2);
-										CreateDefineVReg(relOfs64, instIdx);
-										AllocInst(BeMCInstKind_MovSX, relOfs64, vregInfo->mRelOffset, instIdx + 1);
-										IntroduceVRegs(inst->mArg0, mcBlock, instIdx, instIdx + 2);
+								if (!didExtend)
+								{
+									auto relOfs64 = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64), 2);
+									CreateDefineVReg(relOfs64, instIdx);
+									AllocInst(BeMCInstKind_MovSX, relOfs64, vregInfo->mRelOffset, instIdx + 1);
+									IntroduceVRegs(inst->mArg0, mcBlock, instIdx, instIdx + 2);
 
-										instIdx += 2;
-										vregInfo->mRelOffset = relOfs64;
-										vregExprChangeSet.Add(relOfs64.mVRegIdx);
-										if (debugging)
-											OutputDebugStrF(" Def MovSX 2\n");
-										_Rerun("Def MovSX 2");
-									}
+									instIdx += 2;
+									vregInfo->mRelOffset = relOfs64;
+									vregExprChangeSet.Add(relOfs64.mVRegIdx);
+									if (debugging)
+										OutputDebugStrF(" Def MovSX 2\n");
+									_Rerun("Def MovSX 2");
 								}
 							}
+						}
 
-							BeRMParamsInfo rmInfo;
-							GetRMParams(inst->mArg0, rmInfo);
-							bool isValid = rmInfo.mMode != BeMCRMMode_Invalid;
+						BeRMParamsInfo rmInfo;
+						GetRMParams(inst->mArg0, rmInfo);
+						bool isValid = rmInfo.mMode != BeMCRMMode_Invalid;
 
-							if (!isValid)
+						if (!isValid)
+						{
+							if (rmInfo.mErrorVReg == -1)
 							{
-								if (rmInfo.mErrorVReg == -1)
+								BF_ASSERT(!vregInfo->mRelOffset);
+								if (vregInfo->mType->IsPointer())
 								{
-									BF_ASSERT(!vregInfo->mRelOffset);
-									if (vregInfo->mType->IsPointer())
-									{
-										// This must be a cast like "(void*)gGlobalVar".  We need to actualize the symbol address
-										//  in a native register now.
-										vregExprChangeSet.Add(inst->mArg0.mVRegIdx);
-										AllocInst(BeMCInstKind_Mov, inst->mArg0, vregInfo->mRelTo, instIdx++ + 1);
-										vregInfo->mIsExpr = false;
-										vregInfo->mRelTo = BeMCOperand();
-										vregInfo->mForceReg = true;
-										CheckForce(vregInfo);
-										_Rerun("Symbol Addr");
-										if (debugging)
-											OutputDebugStrF(" Symbol Addr\n");
-										break;
-									}
-									else
-									{
-										// This could be a special case like
-										//  MOV (int64)floatVal, reg64
-										// For two-step loading of immediates into memory without using .rdata
-										continue;
-									}
-								}
-								else if (rmInfo.mErrorVReg == -2)
-								{
+									// This must be a cast like "(void*)gGlobalVar".  We need to actualize the symbol address
+									//  in a native register now.
 									vregExprChangeSet.Add(inst->mArg0.mVRegIdx);
-									MarkInvalidRMRegs(inst->mArg0);
+									AllocInst(BeMCInstKind_Mov, inst->mArg0, vregInfo->mRelTo, instIdx++ + 1);
+									vregInfo->mIsExpr = false;
+									vregInfo->mRelTo = BeMCOperand();
+									vregInfo->mForceReg = true;
+									CheckForce(vregInfo);
+									_Rerun("Symbol Addr");
 									if (debugging)
-										OutputDebugStrF(" GetRMParams invalid indices\n");
-									_Rerun("GetRMParams invalid indices");
+										OutputDebugStrF(" Symbol Addr\n");
 									break;
-								}
-
-								//if (vregExprChangeSet.find(errorVRegIdx) != vregExprChangeSet.end())
-								if (vregExprChangeSet.Contains(rmInfo.mErrorVReg))
-								{
-									// This means we have already modified some dependent vregs, so we may be legalized already.
-									//  Wait till next iteration to determine that.
-									BF_ASSERT(!isFinalRun);
-									isValid = true; //
-								}
-							}
-
-							// The only valid form is [<reg>*<1/2/4/8>+<imm>]
-							//  If we violate that then we have to break it up
-							//if ((vregInfo->mRelOffsetScale != 1) && (vregInfo->mRelOffsetScale != 2) && (vregInfo->mRelOffsetScale != 4) && (vregInfo->mRelOffsetScale != 8))
-							if ((!isValid) && (rmInfo.mErrorVReg == inst->mArg0.mVRegIdx))
-							{
-								vregExprChangeSet.Add(rmInfo.mErrorVReg);
-								if ((vregInfo->mRelOffsetScale != 1) && (vregInfo->mRelOffsetScale != 2) && (vregInfo->mRelOffsetScale != 4) && (vregInfo->mRelOffsetScale != 8))
-								{
-									auto relOffsetType = GetType(vregInfo->mRelOffset);
-									BeMCOperand scratchReg = AllocVirtualReg(relOffsetType, 2, true);
-									CreateDefineVReg(scratchReg, instIdx++);
-									auto newInst = AllocInst(BeMCInstKind_IMul, vregInfo->mRelOffset, BeMCOperand::FromImmediate(vregInfo->mRelOffsetScale), instIdx++);
-									newInst->mResult = scratchReg;
-									vregInfo->mRelOffset = scratchReg;
-									vregInfo->mRelOffsetScale = 1;
-									if (debugging)
-										OutputDebugStrF(" Invalid RM combo\n");
-
-									vregExprChangeSet.Add(scratchReg.mVRegIdx);
-								}
-								else if (!vregInfo->mRelTo.IsVRegAny())
-								{
-									vregInfo->mWantsExprActualize = true;
-									hasPendingActualizations = true;
-								}
-								_Rerun("1");
-							}
-							else if (!isValid)
-							{
-								auto errorVRegInfo = mVRegInfo[rmInfo.mErrorVReg];
-
-								if ((errorVRegInfo->mIsExpr) && (!errorVRegInfo->IsDirectRelTo()))
-								{
-									errorVRegInfo->mWantsExprActualize = true;
-									hasPendingActualizations = true;
-									vregExprChangeSet.Add(rmInfo.mErrorVReg);
-									_Rerun("RM not valid, actualize");
-									if (debugging)
-										OutputDebugStrF(" RM not valid, actualize\n");
 								}
 								else
 								{
-									// We don't want to have too many concurrent ForceReg vregs at once, since that causes too much register pressure and
-									//  can cause register allocation to fail at the extreme end.  The scratchReg adds another ForceReg for the lifetime
-									//  of the def vreg, so if the def vreg doesn't immediately die and there are already too many ForceRegs active then
-									//  we need to actualize ourselves
-									bool actualizeSelf = false;
-									if (instIdx < mcBlock->mInstructions.size() - 2)
-									{
-										auto checkInst = mcBlock->mInstructions[instIdx + 2];
-										if (mLivenessContext.IsSet(checkInst->mLiveness, inst->mArg0.mVRegIdx))
-										{
-											actualizeSelf = true;
-										}
-									}
-									else
+									// This could be a special case like
+									//  MOV (int64)floatVal, reg64
+									// For two-step loading of immediates into memory without using .rdata
+									continue;
+								}
+							}
+							else if (rmInfo.mErrorVReg == -2)
+							{
+								vregExprChangeSet.Add(inst->mArg0.mVRegIdx);
+								MarkInvalidRMRegs(inst->mArg0);
+								if (debugging)
+									OutputDebugStrF(" GetRMParams invalid indices\n");
+								_Rerun("GetRMParams invalid indices");
+								break;
+							}
+
+							//if (vregExprChangeSet.find(errorVRegIdx) != vregExprChangeSet.end())
+							if (vregExprChangeSet.Contains(rmInfo.mErrorVReg))
+							{
+								// This means we have already modified some dependent vregs, so we may be legalized already.
+								//  Wait till next iteration to determine that.
+								BF_ASSERT(!isFinalRun);
+								isValid = true; //
+							}
+						}
+
+						// The only valid form is [<reg>*<1/2/4/8>+<imm>]
+						//  If we violate that then we have to break it up
+						//if ((vregInfo->mRelOffsetScale != 1) && (vregInfo->mRelOffsetScale != 2) && (vregInfo->mRelOffsetScale != 4) && (vregInfo->mRelOffsetScale != 8))
+						if ((!isValid) && (rmInfo.mErrorVReg == inst->mArg0.mVRegIdx))
+						{
+							vregExprChangeSet.Add(rmInfo.mErrorVReg);
+							if ((vregInfo->mRelOffsetScale != 1) && (vregInfo->mRelOffsetScale != 2) && (vregInfo->mRelOffsetScale != 4) && (vregInfo->mRelOffsetScale != 8))
+							{
+								auto relOffsetType = GetType(vregInfo->mRelOffset);
+								BeMCOperand scratchReg = AllocVirtualReg(relOffsetType, 2, true);
+								CreateDefineVReg(scratchReg, instIdx++);
+								auto newInst = AllocInst(BeMCInstKind_IMul, vregInfo->mRelOffset, BeMCOperand::FromImmediate(vregInfo->mRelOffsetScale), instIdx++);
+								newInst->mResult = scratchReg;
+								vregInfo->mRelOffset = scratchReg;
+								vregInfo->mRelOffsetScale = 1;
+								if (debugging)
+									OutputDebugStrF(" Invalid RM combo\n");
+
+								vregExprChangeSet.Add(scratchReg.mVRegIdx);
+							}
+							else if (!vregInfo->mRelTo.IsVRegAny())
+							{
+								vregInfo->mWantsExprActualize = true;
+								hasPendingActualizations = true;
+							}
+							_Rerun("1");
+						}
+						else if (!isValid)
+						{
+							auto errorVRegInfo = mVRegInfo[rmInfo.mErrorVReg];
+
+							if ((errorVRegInfo->mIsExpr) && (!errorVRegInfo->IsDirectRelTo()))
+							{
+								errorVRegInfo->mWantsExprActualize = true;
+								hasPendingActualizations = true;
+								vregExprChangeSet.Add(rmInfo.mErrorVReg);
+								_Rerun("RM not valid, actualize");
+								if (debugging)
+									OutputDebugStrF(" RM not valid, actualize\n");
+							}
+							else
+							{
+								// We don't want to have too many concurrent ForceReg vregs at once, since that causes too much register pressure and
+								//  can cause register allocation to fail at the extreme end.  The scratchReg adds another ForceReg for the lifetime
+								//  of the def vreg, so if the def vreg doesn't immediately die and there are already too many ForceRegs active then
+								//  we need to actualize ourselves
+								bool actualizeSelf = false;
+								if (instIdx < mcBlock->mInstructions.size() - 2)
+								{
+									auto checkInst = mcBlock->mInstructions[instIdx + 2];
+									if (mLivenessContext.IsSet(checkInst->mLiveness, inst->mArg0.mVRegIdx))
 									{
 										actualizeSelf = true;
 									}
+								}
+								else
+								{
+									actualizeSelf = true;
+								}
 
-									if (actualizeSelf)
+								if (actualizeSelf)
+								{
+									auto vregInfo = mVRegInfo[inst->mArg0.mVRegIdx];
+									// DirectRel cannot actualize
+									if (vregInfo->IsDirectRelTo())
+										actualizeSelf = false;
+								}
+
+								if (actualizeSelf)
+								{
+									auto vregInfo = mVRegInfo[inst->mArg0.mVRegIdx];
+									vregInfo->mWantsExprActualize = true;
+									hasPendingActualizations = true;
+								}
+								else
+								{
+									// This may be a local variable that failed to be assigned to a reg, create a scratch local with a forced reg
+									auto errorVReg = BeMCOperand::FromVReg(rmInfo.mErrorVReg);
+									auto errorVRegLoad = BeMCOperand::ToLoad(errorVReg);
+
+									if ((vregInfo->mRelTo == errorVReg) || (vregInfo->mRelOffset == errorVReg))
 									{
-										auto vregInfo = mVRegInfo[inst->mArg0.mVRegIdx];
-										// DirectRel cannot actualize
-										if (vregInfo->IsDirectRelTo())
-											actualizeSelf = false;
+										auto scratchReg = AllocVirtualReg(errorVRegInfo->mType, 2, false);
+										auto scratchVRegInfo = mVRegInfo[scratchReg.mVRegIdx];
+
+										CreateDefineVReg(scratchReg, instIdx++);
+										AllocInst(BeMCInstKind_Mov, scratchReg, errorVReg, instIdx++);
+										_Rerun("RM failed, scratch vreg");
+										if (debugging)
+											OutputDebugStrF(" RM failed, scratch vreg\n");
+										vregExprChangeSet.Add(scratchReg.mVRegIdx);
+
+										if (vregInfo->mRelTo == errorVReg)
+										{
+											scratchVRegInfo->mForceReg = true;
+											CheckForce(scratchVRegInfo);
+											vregInfo->mRelTo.mVRegIdx = scratchReg.mVRegIdx;
+										}
+										else if (vregInfo->mRelOffset == errorVReg)
+										{
+											scratchVRegInfo->mForceReg = true;
+											CheckForce(scratchVRegInfo);
+											vregInfo->mRelOffset.mVRegIdx = scratchReg.mVRegIdx;
+										}
 									}
-
-									if (actualizeSelf)
+									else if ((vregInfo->mRelTo == errorVRegLoad) || (vregInfo->mRelOffset == errorVRegLoad))
 									{
-										auto vregInfo = mVRegInfo[inst->mArg0.mVRegIdx];
-										vregInfo->mWantsExprActualize = true;
-										hasPendingActualizations = true;
+										auto scratchType = GetType(errorVRegLoad);
+										auto scratchReg = AllocVirtualReg(scratchType, 2, false);
+										auto scratchVRegInfo = mVRegInfo[scratchReg.mVRegIdx];
+
+										CreateDefineVReg(scratchReg, instIdx++);
+										AllocInst(BeMCInstKind_Mov, scratchReg, errorVRegLoad, instIdx++);
+										_Rerun("RM failed, scratch vreg 2");
+										if (debugging)
+											OutputDebugStrF(" RM failed, scratch vreg\n");
+										vregExprChangeSet.Add(scratchReg.mVRegIdx);
+
+										if (vregInfo->mRelTo == errorVRegLoad)
+										{
+											scratchVRegInfo->mForceReg = true;
+											CheckForce(scratchVRegInfo);
+											vregInfo->mRelTo = scratchReg;
+										}
+										else if (vregInfo->mRelOffset == errorVRegLoad)
+										{
+											scratchVRegInfo->mForceReg = true;
+											CheckForce(scratchVRegInfo);
+											vregInfo->mRelOffset = scratchReg;
+										}
 									}
 									else
 									{
-										// This may be a local variable that failed to be assigned to a reg, create a scratch local with a forced reg
-										auto errorVReg = BeMCOperand::FromVReg(rmInfo.mErrorVReg);
-										auto errorVRegLoad = BeMCOperand::ToLoad(errorVReg);
-
-										if ((vregInfo->mRelTo == errorVReg) || (vregInfo->mRelOffset == errorVReg))
+										// This should be impossible - a previous def for an inner expr should have caught this case
+										if ((vregExprChangeSet.IsEmpty()) && (!hasPendingActualizations))
 										{
-											auto scratchReg = AllocVirtualReg(errorVRegInfo->mType, 2, false);
-											auto scratchVRegInfo = mVRegInfo[scratchReg.mVRegIdx];
-
-											CreateDefineVReg(scratchReg, instIdx++);
-											AllocInst(BeMCInstKind_Mov, scratchReg, errorVReg, instIdx++);
-											_Rerun("RM failed, scratch vreg");
-											if (debugging)
-												OutputDebugStrF(" RM failed, scratch vreg\n");
-											vregExprChangeSet.Add(scratchReg.mVRegIdx);
-
-											if (vregInfo->mRelTo == errorVReg)
-											{
-												scratchVRegInfo->mForceReg = true;
-												CheckForce(scratchVRegInfo);
-												vregInfo->mRelTo.mVRegIdx = scratchReg.mVRegIdx;
-											}
-											else if (vregInfo->mRelOffset == errorVReg)
-											{
-												scratchVRegInfo->mForceReg = true;
-												CheckForce(scratchVRegInfo);
-												vregInfo->mRelOffset.mVRegIdx = scratchReg.mVRegIdx;
-											}
-										}
-										else if ((vregInfo->mRelTo == errorVRegLoad) || (vregInfo->mRelOffset == errorVRegLoad))
-										{
-											auto scratchType = GetType(errorVRegLoad);
-											auto scratchReg = AllocVirtualReg(scratchType, 2, false);
-											auto scratchVRegInfo = mVRegInfo[scratchReg.mVRegIdx];
-
-											CreateDefineVReg(scratchReg, instIdx++);
-											AllocInst(BeMCInstKind_Mov, scratchReg, errorVRegLoad, instIdx++);
-											_Rerun("RM failed, scratch vreg 2");
-											if (debugging)
-												OutputDebugStrF(" RM failed, scratch vreg\n");
-											vregExprChangeSet.Add(scratchReg.mVRegIdx);
-
-											if (vregInfo->mRelTo == errorVRegLoad)
-											{
-												scratchVRegInfo->mForceReg = true;
-												CheckForce(scratchVRegInfo);
-												vregInfo->mRelTo = scratchReg;
-											}
-											else if (vregInfo->mRelOffset == errorVRegLoad)
-											{
-												scratchVRegInfo->mForceReg = true;
-												CheckForce(scratchVRegInfo);
-												vregInfo->mRelOffset = scratchReg;
-											}
-										}
-										else
-										{
-											// This should be impossible - a previous def for an inner expr should have caught this case
-											if ((vregExprChangeSet.IsEmpty()) && (!hasPendingActualizations))
-											{
-												SoftFail("Error legalizing vreg expression", NULL);
-											}
+											SoftFail("Error legalizing vreg expression", NULL);
 										}
 									}
 								}
 							}
 						}
 					}
-
-					if ((vregInfo->mDbgVariable != NULL) && (vregInfo->mDbgVariable->mPendingInitType != BfIRInitType_NotNeeded))
-						pendingInitKind = vregInfo->mDbgVariable->mPendingInitType;
 				}
-				break;
+
+				if ((vregInfo->mDbgVariable != NULL) && (vregInfo->mDbgVariable->mPendingInitType != BfIRInitType_NotNeeded))
+					pendingInitKind = vregInfo->mDbgVariable->mPendingInitType;
+			}
+			break;
 			case BeMCInstKind_DbgDecl:
+			{
+				bool isInvalid = false;
+
+				int vregIdx = inst->mArg0.mVRegIdx;
+				auto vregInfo = mVRegInfo[vregIdx];
+				auto dbgVar = vregInfo->mDbgVariable;
+
+				BeRMParamsInfo rmInfo;
+
+				if (dbgVar->mIsValue)
+					GetRMParams(inst->mArg0, rmInfo);
+				else
 				{
-					bool isInvalid = false;
-
-					int vregIdx = inst->mArg0.mVRegIdx;
-					auto vregInfo = mVRegInfo[vregIdx];
-					auto dbgVar = vregInfo->mDbgVariable;
-
-					BeRMParamsInfo rmInfo;
-
-					if (dbgVar->mIsValue)
-						GetRMParams(inst->mArg0, rmInfo);
+					if (inst->mArg0.mKind == BeMCOperandKind_VRegAddr)
+						GetRMParams(BeMCOperand::ToLoad(inst->mArg0), rmInfo);
 					else
 					{
-						if (inst->mArg0.mKind == BeMCOperandKind_VRegAddr)
-							GetRMParams(BeMCOperand::ToLoad(inst->mArg0), rmInfo);
+						GetRMParams(inst->mArg0, rmInfo);
+						if ((rmInfo.mMode != BeMCRMMode_Direct) && (rmInfo.mBScale != 1) && (rmInfo.mDisp != 0))
+							isInvalid = true;
+					}
+				}
+
+				if (rmInfo.mMode == BeMCRMMode_Invalid)
+				{
+					if (vregInfo->mType->mSize != 0)
+					{
+						isInvalid = true;
+					}
+				}
+				else if (rmInfo.mMode == BeMCRMMode_Direct)
+				{
+					if ((rmInfo.mRegB != X64Reg_None) || (rmInfo.mDisp != 0) || (rmInfo.mBScale != 1))
+					{
+						if ((vregInfo->mIsExpr) && (vregInfo->mRelTo.mKind == BeMCOperandKind_Immediate_i64))
+						{
+							// Zero-sized alloc, allow
+						}
 						else
 						{
-							GetRMParams(inst->mArg0, rmInfo);
-							if ((rmInfo.mMode != BeMCRMMode_Direct) && (rmInfo.mBScale != 1) && (rmInfo.mDisp != 0))
-								isInvalid = true;
-						}
-					}
-
-					if (rmInfo.mMode == BeMCRMMode_Invalid)
-					{
-						if (vregInfo->mType->mSize != 0)
-						{
 							isInvalid = true;
-						}
-					}
-					else if (rmInfo.mMode == BeMCRMMode_Direct)
-					{
-						if ((rmInfo.mRegB != X64Reg_None) || (rmInfo.mDisp != 0) || (rmInfo.mBScale != 1))
-						{
-							if ((vregInfo->mIsExpr) && (vregInfo->mRelTo.mKind == BeMCOperandKind_Immediate_i64))
-							{
-								// Zero-sized alloc, allow
-							}
-							else
-							{
-								isInvalid = true;
-							}
-						}
-					}
-					else if (rmInfo.mMode == BeMCRMMode_Deref)
-					{
-						if ((rmInfo.mRegB != X64Reg_None) || (rmInfo.mBScale != 1))
-						{
-							isInvalid = true;
-						}
-					}
-
-					if (isInvalid)
-					{						
-						/*ReplaceWithNewVReg(inst->mArg0, instIdx, true, false);
-
-						// The debug value is not representable, so copy it.  This can only occur within mixins where we are pointing
-						//  to composed values
-						BF_ASSERT(inst->mArg0.mKind == BeMCOperandKind_VReg);
-						inst->mArg0.mKind = BeMCOperandKind_VRegAddr;
-						dbgVar->mIsValue = false;
-						auto newVRegInfo = mVRegInfo[inst->mArg0.mVRegIdx];
-						vregInfo->mDbgVariable = NULL;
-						newVRegInfo->mDbgVariable = dbgVar;*/
-
-						// The debug value is not representable
-						inst->mArg0.mKind = BeMCOperandKind_VReg;
-						vregInfo->mWantsExprActualize = true;
-						hasPendingActualizations = true;
-						vregExprChangeSet.Add(inst->mArg0.mVRegIdx);
-						_Rerun("Debug valid not representable");
-
-						break;
-					}
-
-					if (!mVRegInitializedContext.IsSet(inst->mVRegsInitialized, vregIdx))
-					{
-						if ((dbgVar->mPendingInitType != BfIRInitType_NotNeeded) && (dbgVar->mPendingInitType != BfIRInitType_NotNeeded_AliveOnDecl))
-						{
-							Fail("Shouldn't happen here anymore");
-							/*pendingInitKind = dbgVar->mPendingInitType;
-							// We don't need dynLife anymore since we're explicitly writing this
-							vregInfo->mHasDynLife = false;
-							AllocInst(BeMCInstKind_Def, inst->mArg0, instIdx);
-
-							// We don't definitively need this, it's just to make sure this doesn't cause a liveness error
-							isFinalRun = false;*/
 						}
 					}
 				}
-				break;
+				else if (rmInfo.mMode == BeMCRMMode_Deref)
+				{
+					if ((rmInfo.mRegB != X64Reg_None) || (rmInfo.mBScale != 1))
+					{
+						isInvalid = true;
+					}
+				}
+
+				if (isInvalid)
+				{
+					/*ReplaceWithNewVReg(inst->mArg0, instIdx, true, false);
+
+					// The debug value is not representable, so copy it.  This can only occur within mixins where we are pointing
+					//  to composed values
+					BF_ASSERT(inst->mArg0.mKind == BeMCOperandKind_VReg);
+					inst->mArg0.mKind = BeMCOperandKind_VRegAddr;
+					dbgVar->mIsValue = false;
+					auto newVRegInfo = mVRegInfo[inst->mArg0.mVRegIdx];
+					vregInfo->mDbgVariable = NULL;
+					newVRegInfo->mDbgVariable = dbgVar;*/
+
+					// The debug value is not representable
+					inst->mArg0.mKind = BeMCOperandKind_VReg;
+					vregInfo->mWantsExprActualize = true;
+					hasPendingActualizations = true;
+					vregExprChangeSet.Add(inst->mArg0.mVRegIdx);
+					_Rerun("Debug valid not representable");
+
+					break;
+				}
+
+				if (!mVRegInitializedContext.IsSet(inst->mVRegsInitialized, vregIdx))
+				{
+					if ((dbgVar->mPendingInitType != BfIRInitType_NotNeeded) && (dbgVar->mPendingInitType != BfIRInitType_NotNeeded_AliveOnDecl))
+					{
+						Fail("Shouldn't happen here anymore");
+						/*pendingInitKind = dbgVar->mPendingInitType;
+						// We don't need dynLife anymore since we're explicitly writing this
+						vregInfo->mHasDynLife = false;
+						AllocInst(BeMCInstKind_Def, inst->mArg0, instIdx);
+
+						// We don't definitively need this, it's just to make sure this doesn't cause a liveness error
+						isFinalRun = false;*/
+					}
+				}
+			}
+			break;
 			case BeMCInstKind_MemCpy:
+			{
+				if (inst->mArg1)
 				{
-					if (inst->mArg1)
-					{
-						BF_ASSERT(inst->mArg1.mKind == BeMCOperandKind_VRegPair);
+					BF_ASSERT(inst->mArg1.mKind == BeMCOperandKind_VRegPair);
 
-						int* vregIndices[] = { &inst->mArg1.mVRegPair.mVRegIdx0, &inst->mArg1.mVRegPair.mVRegIdx1 };
-						for (int* argIdxPtr : vregIndices)
-						{
-							auto mcArg = BeMCOperand::FromEncoded(*argIdxPtr);
-							BeRMParamsInfo rmInfo;
-							GetRMParams(mcArg, rmInfo);
-							if ((rmInfo.mMode != BeMCRMMode_Direct) || (rmInfo.mRegB != X64Reg_None) || (rmInfo.mRegA == X64Reg_R11))
-							{
-								BeMCOperand scratchReg = AllocVirtualReg(GetType(mcArg), 2, true);
-								auto vregInfo = GetVRegInfo(scratchReg);
-								vregInfo->mDisableR11 = true;
-								int insertPos = FindSafeInstInsertPos(instIdx);
-								CreateDefineVReg(scratchReg, insertPos);
-								AllocInst(BeMCInstKind_Mov, scratchReg, mcArg, insertPos + 1);
-								*argIdxPtr = scratchReg.mVRegIdx;
-								instIdx += 2;
-								_Rerun("MemCpy");
-								if (debugging)
-									OutputDebugStrF(" MemCpy\n");
-							}
-						}
-					}
-				}
-				break;
-			case BeMCInstKind_MemSet:
-				{
-					if (inst->mArg1)
+					int* vregIndices[] = { &inst->mArg1.mVRegPair.mVRegIdx0, &inst->mArg1.mVRegPair.mVRegIdx1 };
+					for (int* argIdxPtr : vregIndices)
 					{
+						auto mcArg = BeMCOperand::FromEncoded(*argIdxPtr);
 						BeRMParamsInfo rmInfo;
-						GetRMParams(inst->mArg1, rmInfo);
-						if ((rmInfo.mMode != BeMCRMMode_Direct) || (rmInfo.mRegB != X64Reg_None) || (rmInfo.mRegA == X64Reg_R11) || (rmInfo.mDisp != 0))
+						GetRMParams(mcArg, rmInfo);
+						if ((rmInfo.mMode != BeMCRMMode_Direct) || (rmInfo.mRegB != X64Reg_None) || (rmInfo.mRegA == X64Reg_R11))
 						{
-							BeMCOperand scratchReg = AllocVirtualReg(GetType(inst->mArg1), 2, true);
+							BeMCOperand scratchReg = AllocVirtualReg(GetType(mcArg), 2, true);
 							auto vregInfo = GetVRegInfo(scratchReg);
 							vregInfo->mDisableR11 = true;
 							int insertPos = FindSafeInstInsertPos(instIdx);
 							CreateDefineVReg(scratchReg, insertPos);
-							AllocInst(BeMCInstKind_Mov, scratchReg, inst->mArg1, insertPos + 1);
-							inst->mArg1 = scratchReg;
+							AllocInst(BeMCInstKind_Mov, scratchReg, mcArg, insertPos + 1);
+							*argIdxPtr = scratchReg.mVRegIdx;
 							instIdx += 2;
-							_Rerun("MemSet");
+							_Rerun("MemCpy");
 							if (debugging)
-								OutputDebugStrF(" MemSet\n");
+								OutputDebugStrF(" MemCpy\n");
 						}
 					}
 				}
-				break;
-			case BeMCInstKind_Neg:
+			}
+			break;
+			case BeMCInstKind_MemSet:
+			{
+				if (inst->mArg1)
 				{
-					if (arg0Type->IsFloat())
+					BeRMParamsInfo rmInfo;
+					GetRMParams(inst->mArg1, rmInfo);
+					if ((rmInfo.mMode != BeMCRMMode_Direct) || (rmInfo.mRegB != X64Reg_None) || (rmInfo.mRegA == X64Reg_R11) || (rmInfo.mDisp != 0))
 					{
-						inst->mKind = BeMCInstKind_Xor;
-						if (arg0Type->mTypeCode == BeTypeCode_Float)
-						{
-							inst->mArg1.mKind = BeMCOperandKind_Immediate_f32_Packed128;
-							inst->mArg1.mImmF32 = -0.0;
-						}
-						else
-						{
-							inst->mArg1.mKind = BeMCOperandKind_Immediate_f64_Packed128;
-							inst->mArg1.mImmF64 = -0.0;
-						}
+						BeMCOperand scratchReg = AllocVirtualReg(GetType(inst->mArg1), 2, true);
+						auto vregInfo = GetVRegInfo(scratchReg);
+						vregInfo->mDisableR11 = true;
+						int insertPos = FindSafeInstInsertPos(instIdx);
+						CreateDefineVReg(scratchReg, insertPos);
+						AllocInst(BeMCInstKind_Mov, scratchReg, inst->mArg1, insertPos + 1);
+						inst->mArg1 = scratchReg;
+						instIdx += 2;
+						_Rerun("MemSet");
+						if (debugging)
+							OutputDebugStrF(" MemSet\n");
 					}
 				}
-				break;
+			}
+			break;
+			case BeMCInstKind_Neg:
+			{
+				if (arg0Type->IsFloat())
+				{
+					inst->mKind = BeMCInstKind_Xor;
+					if (arg0Type->mTypeCode == BeTypeCode_Float)
+					{
+						inst->mArg1.mKind = BeMCOperandKind_Immediate_f32_Packed128;
+						inst->mArg1.mImmF32 = -0.0;
+					}
+					else
+					{
+						inst->mArg1.mKind = BeMCOperandKind_Immediate_f64_Packed128;
+						inst->mArg1.mImmF64 = -0.0;
+					}
+				}
+			}
+			break;
 			case BeMCInstKind_Div:
 			case BeMCInstKind_IDiv:
 			case BeMCInstKind_Rem:
 			case BeMCInstKind_IRem:
+			{
+				// Unsigned div and rem can be implemented with bitwise operations
+				//  Negative values cannot (at least following C standards, because of rounding issues)
+				if ((inst->mKind == BeMCInstKind_Div) || (inst->mKind == BeMCInstKind_Rem))
 				{
-					// Unsigned div and rem can be implemented with bitwise operations
-					//  Negative values cannot (at least following C standards, because of rounding issues)
-					if ((inst->mKind == BeMCInstKind_Div) || (inst->mKind == BeMCInstKind_Rem))
+					if ((!inst->mResult) && (inst->mArg1.IsImmediateInt()) && (IsPowerOfTwo(inst->mArg1.mImmediate)))
 					{
-						if ((!inst->mResult) && (inst->mArg1.IsImmediateInt()) && (IsPowerOfTwo(inst->mArg1.mImmediate)))
+						if (inst->mKind == BeMCInstKind_Div)
 						{
-							if (inst->mKind == BeMCInstKind_Div)
+							int64 divVal = inst->mArg1.mImmediate;
+							int shiftCount = 0;
+							while (divVal > 1)
 							{
-								int64 divVal = inst->mArg1.mImmediate;
-								int shiftCount = 0;
-								while (divVal > 1)
-								{
-									shiftCount++;
-									divVal >>= 1;
-								}
+								shiftCount++;
+								divVal >>= 1;
+							}
 
-								inst->mKind = BeMCInstKind_Shr;
-								inst->mArg1 = BeMCOperand::FromImmediate(shiftCount);
-								_Rerun("Div SHR");
-								if (debugging)
-									OutputDebugStrF(" Div SHR\n");
-								break;
-							}
-							else if (inst->mKind == BeMCInstKind_Rem)
-							{
-								inst->mKind = BeMCInstKind_And;
-								inst->mArg1 = BeMCOperand::FromImmediate(inst->mArg1.mImmediate - 1);
-								_Rerun("Div REM");
-								if (debugging)
-									OutputDebugStrF(" Div REM\n");
-								break;
-							}
+							inst->mKind = BeMCInstKind_Shr;
+							inst->mArg1 = BeMCOperand::FromImmediate(shiftCount);
+							_Rerun("Div SHR");
+							if (debugging)
+								OutputDebugStrF(" Div SHR\n");
+							break;
+						}
+						else if (inst->mKind == BeMCInstKind_Rem)
+						{
+							inst->mKind = BeMCInstKind_And;
+							inst->mArg1 = BeMCOperand::FromImmediate(inst->mArg1.mImmediate - 1);
+							_Rerun("Div REM");
+							if (debugging)
+								OutputDebugStrF(" Div REM\n");
+							break;
 						}
 					}
+				}
 
-					if (arg1.IsImmediate())
-					{
-						// Oops, must be 'rm'
-						ReplaceWithNewVReg(inst->mArg1, instIdx, true, false);
-						_Rerun("Div/Rem not RM");
-						if (debugging)
-							OutputDebugStrF(" Div/Rem not RM\n");
-					}
+				if (arg1.IsImmediate())
+				{
+					// Oops, must be 'rm'
+					ReplaceWithNewVReg(inst->mArg1, instIdx, true, false);
+					_Rerun("Div/Rem not RM");
+					if (debugging)
+						OutputDebugStrF(" Div/Rem not RM\n");
+				}
 
-					auto arg0Type = GetType(arg0);
-					if (arg0Type->IsInt())
-					{
-						// We can't allow division by RDX because we need RAX:RDX for the dividend
-						bool needRegDisable = false;
-						std::function<void(BeMCOperand)> _CheckReg = [&](BeMCOperand operand)
+				auto arg0Type = GetType(arg0);
+				if (arg0Type->IsInt())
+				{
+					// We can't allow division by RDX because we need RAX:RDX for the dividend
+					bool needRegDisable = false;
+					std::function<void(BeMCOperand)> _CheckReg = [&](BeMCOperand operand)
 						{
 							if (!operand)
 								return;
@@ -10244,886 +10171,886 @@ bool BeMCContext::DoLegalization()
 							}
 						};
 
-						needRegDisable = false;
-						_CheckReg(arg1);
-						if ((instIdx > 0) && (regPreserveDepth > 0))
+					needRegDisable = false;
+					_CheckReg(arg1);
+					if ((instIdx > 0) && (regPreserveDepth > 0))
+					{
+						auto prevInst = mcBlock->mInstructions[instIdx - 1];
+						if (prevInst->mKind == BeMCInstKind_Mov)
 						{
-							auto prevInst = mcBlock->mInstructions[instIdx - 1];
-							if (prevInst->mKind == BeMCInstKind_Mov)
+							// Check replaced 'mov' (which is inside PreserveVolatile sections)
+							needRegDisable = false;
+							_CheckReg(prevInst->mArg1);
+						}
+					}
+
+					///
+
+					auto checkArg1 = arg1;
+					if (checkArg1.mKind == BeMCOperandKind_VRegLoad)
+					{
+						// Handle '*vreg<RAX>' case
+						checkArg1.mKind = BeMCOperandKind_VReg;
+						checkArg1 = GetFixedOperand(checkArg1);
+					}
+
+					if (checkArg1.mKind == BeMCOperandKind_NativeReg)
+					{
+						// We can't allow division by RDX because we need RAX:RDX for the dividend
+						auto divisorReg = GetFullRegister(checkArg1.mReg);
+						if ((checkArg1.IsNativeReg()) &&
+							((divisorReg == X64Reg_RDX) || (divisorReg == X64Reg_RAX)))
+						{
+							BF_ASSERT(inst->mArg1.IsVRegAny());
+							int vregIdx = GetUnderlyingVReg(inst->mArg1.mVRegIdx);
+							auto vregInfo = mVRegInfo[vregIdx];
+							if (vregInfo != NULL)
 							{
-								// Check replaced 'mov' (which is inside PreserveVolatile sections)
-								needRegDisable = false;
-								_CheckReg(prevInst->mArg1);
+								vregInfo->mDisableRAX = true;
+								vregInfo->mDisableRDX = true;
+								_Rerun("Div/Rem invalid reg");
+								if (debugging)
+									OutputDebugStrF(" Div/Rem invalid reg\n");
 							}
 						}
-
-						///
-
-						auto checkArg1 = arg1;
-						if (checkArg1.mKind == BeMCOperandKind_VRegLoad)
+					}
+					else
+					{
+						auto vregInfo = GetVRegInfo(arg1);
+						if ((vregInfo != NULL) && (vregInfo->mIsExpr))
 						{
-							// Handle '*vreg<RAX>' case
-							checkArg1.mKind = BeMCOperandKind_VReg;
-							checkArg1 = GetFixedOperand(checkArg1);
+							ReplaceWithNewVReg(inst->mArg1, instIdx, true);
+							_Rerun("Div/Rem 2");
 						}
+					}
 
-						if (checkArg1.mKind == BeMCOperandKind_NativeReg)
+					// DIV/IDIV can only operate on the RDX:RAX pair, except for i8 divide which just uses AX
+					bool isRegADividend = (arg0.mReg == X64Reg_RAX) || (arg0.mReg == X64Reg_EAX) || (arg0.mReg == X64Reg_AX) || (arg0.mReg == X64Reg_AL);
+					if ((!arg0.IsNativeReg()) || (!isRegADividend) ||
+						(inst->mKind == BeMCInstKind_Rem) || (inst->mKind == BeMCInstKind_IRem))
+					{
+						bool preserveRDX = (arg0Type->mSize != 1) && (regPreserveDepth == 0);
+						auto mcScratch = BeMCOperand::FromReg(ResizeRegister(X64Reg_RAX, arg0Type));
+						BF_ASSERT(!inst->mResult);
+						BeMCInst* preserveRAXInst = AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++);
+						BeMCInst* preserveRDXInst = NULL;
+						if (preserveRDX)
+							preserveRDXInst = AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++);
+						AllocInst(BeMCInstKind_Mov, mcScratch, inst->mArg0, instIdx++);
+						if ((inst->mKind == BeMCInstKind_Rem) || (inst->mKind == BeMCInstKind_IRem))
 						{
-							// We can't allow division by RDX because we need RAX:RDX for the dividend
-							auto divisorReg = GetFullRegister(checkArg1.mReg);
-							if ((checkArg1.IsNativeReg()) &&
-								((divisorReg == X64Reg_RDX) || (divisorReg == X64Reg_RAX)))
+							if (inst->mKind == BeMCInstKind_Rem)
+								inst->mKind = BeMCInstKind_Div;
+							else
+								inst->mKind = BeMCInstKind_IDiv;
+							BeMCOperand mcRemaindier;
+							if (arg0Type->mSize == 1)
 							{
-								BF_ASSERT(inst->mArg1.IsVRegAny());
-								int vregIdx = GetUnderlyingVReg(inst->mArg1.mVRegIdx);
-								auto vregInfo = mVRegInfo[vregIdx];
-								if (vregInfo != NULL)
-								{
-									vregInfo->mDisableRAX = true;
-									vregInfo->mDisableRDX = true;
-									_Rerun("Div/Rem invalid reg");
-									if (debugging)
-										OutputDebugStrF(" Div/Rem invalid reg\n");
-								}
-							}
-						}
-						else
-						{
-							auto vregInfo = GetVRegInfo(arg1);
-							if ((vregInfo != NULL) && (vregInfo->mIsExpr))
-							{
-								ReplaceWithNewVReg(inst->mArg1, instIdx, true);
-								_Rerun("Div/Rem 2");
-							}
-						}
-
-						// DIV/IDIV can only operate on the RDX:RAX pair, except for i8 divide which just uses AX
-						bool isRegADividend = (arg0.mReg == X64Reg_RAX) || (arg0.mReg == X64Reg_EAX) || (arg0.mReg == X64Reg_AX) || (arg0.mReg == X64Reg_AL);
-						if ((!arg0.IsNativeReg()) || (!isRegADividend) ||
-							(inst->mKind == BeMCInstKind_Rem) || (inst->mKind == BeMCInstKind_IRem))
-						{
-							bool preserveRDX = (arg0Type->mSize != 1) && (regPreserveDepth == 0);
-							auto mcScratch = BeMCOperand::FromReg(ResizeRegister(X64Reg_RAX, arg0Type));
-							BF_ASSERT(!inst->mResult);
-							BeMCInst* preserveRAXInst = AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++);
-							BeMCInst* preserveRDXInst = NULL;
-							if (preserveRDX)
-								preserveRDXInst = AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++);
-							AllocInst(BeMCInstKind_Mov, mcScratch, inst->mArg0, instIdx++);
-							if ((inst->mKind == BeMCInstKind_Rem) || (inst->mKind == BeMCInstKind_IRem))
-							{
-								if (inst->mKind == BeMCInstKind_Rem)
-									inst->mKind = BeMCInstKind_Div;
-								else
-									inst->mKind = BeMCInstKind_IDiv;
-								BeMCOperand mcRemaindier;
-								if (arg0Type->mSize == 1)
-								{
-									mcRemaindier = BeMCOperand::FromReg(ResizeRegister(X64Reg_AL, arg0Type));
-									preserveRAXInst->mArg1 = inst->mArg0; // RAX preserve elision exception
-									DisableRegister(inst->mArg0, X64Reg_SIL); // Disable Hi8
-									DisableRegister(inst->mArg0, X64Reg_RAX);
-									AllocInst(BeMCInstKind_Shr, BeMCOperand::FromReg(X64Reg_AX), BeMCOperand::FromImmediate(8), instIdx++ + 1);
-									AllocInst(BeMCInstKind_Mov, inst->mArg0, mcRemaindier, instIdx++ + 1);
-								}
-								else
-								{
-									mcRemaindier = BeMCOperand::FromReg(ResizeRegister(X64Reg_RDX, arg0Type));
-									preserveRDXInst->mArg1 = inst->mArg0; // RDX preserve elision exception
-
-									// This is to avoid overlap with PreserveRAX
-									DisableRegister(inst->mArg0, X64Reg_RAX);
-									if (preserveRDX)
-										DisableRegister(inst->mArg0, X64Reg_RDX);
-									AllocInst(BeMCInstKind_Mov, inst->mArg0, mcRemaindier, instIdx++ + 1);
-								}
+								mcRemaindier = BeMCOperand::FromReg(ResizeRegister(X64Reg_AL, arg0Type));
+								preserveRAXInst->mArg1 = inst->mArg0; // RAX preserve elision exception
+								DisableRegister(inst->mArg0, X64Reg_SIL); // Disable Hi8
+								DisableRegister(inst->mArg0, X64Reg_RAX);
+								AllocInst(BeMCInstKind_Shr, BeMCOperand::FromReg(X64Reg_AX), BeMCOperand::FromImmediate(8), instIdx++ + 1);
+								AllocInst(BeMCInstKind_Mov, inst->mArg0, mcRemaindier, instIdx++ + 1);
 							}
 							else
 							{
-								preserveRAXInst->mArg1 = inst->mArg0; // RAX preserve elision exception
-								AllocInst(BeMCInstKind_Mov, inst->mArg0, mcScratch, instIdx++ + 1);
+								mcRemaindier = BeMCOperand::FromReg(ResizeRegister(X64Reg_RDX, arg0Type));
+								preserveRDXInst->mArg1 = inst->mArg0; // RDX preserve elision exception
 
 								// This is to avoid overlap with PreserveRAX
 								DisableRegister(inst->mArg0, X64Reg_RAX);
 								if (preserveRDX)
 									DisableRegister(inst->mArg0, X64Reg_RDX);
+								AllocInst(BeMCInstKind_Mov, inst->mArg0, mcRemaindier, instIdx++ + 1);
 							}
-							inst->mArg0 = mcScratch;
-							if (preserveRDX)
-								AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++ + 1);
-							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++ + 1);
-
-							_Rerun("Div/Rem setup");
-							if (debugging)
-								OutputDebugStrF(" Div/Rem Setup\n");
 						}
 						else
 						{
-							if (regPreserveDepth == 0)
+							preserveRAXInst->mArg1 = inst->mArg0; // RAX preserve elision exception
+							AllocInst(BeMCInstKind_Mov, inst->mArg0, mcScratch, instIdx++ + 1);
+
+							// This is to avoid overlap with PreserveRAX
+							DisableRegister(inst->mArg0, X64Reg_RAX);
+							if (preserveRDX)
+								DisableRegister(inst->mArg0, X64Reg_RDX);
+						}
+						inst->mArg0 = mcScratch;
+						if (preserveRDX)
+							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++ + 1);
+						AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++ + 1);
+
+						_Rerun("Div/Rem setup");
+						if (debugging)
+							OutputDebugStrF(" Div/Rem Setup\n");
+					}
+					else
+					{
+						if (regPreserveDepth == 0)
+						{
+							if (arg0Type->mSize != 1)
 							{
-								if (arg0Type->mSize != 1)
-								{
-									AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++);
-									AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++ + 1);
-									_Rerun("Div/rem preserve");
-									if (debugging)
-										OutputDebugStrF(" Div/Rem Preserve\n");
-								}
+								AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++);
+								AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++ + 1);
+								_Rerun("Div/rem preserve");
+								if (debugging)
+									OutputDebugStrF(" Div/Rem Preserve\n");
 							}
 						}
 					}
-					else if (inst->mKind == BeMCInstKind_IRem)
-					{
-						SetAndRestoreValue<int*> insertPtr(mInsertInstIdxRef, &instIdx);
-
-						SizedArray<BeMCOperand, 3> args = { inst->mArg0, inst->mArg1 };
-						auto mcFunc = BeMCOperand::FromSymbolAddr(mCOFFObject->GetSymbolRef((arg0Type->mTypeCode == BeTypeCode_Double) ? "fmod" : "fmodf")->mIdx);
-						auto fmodVal = CreateCall(mcFunc, args, arg0Type);
-
-						inst->mKind = BeMCInstKind_Mov;
-						inst->mResult = BeMCOperand();
-						inst->mArg1 = fmodVal;
-
-						_Rerun("FMod");
-
-						if (debugging)
-							OutputDebugStrF(" FMod\n");
-					}
 				}
-				break;
+				else if (inst->mKind == BeMCInstKind_IRem)
+				{
+					SetAndRestoreValue<int*> insertPtr(mInsertInstIdxRef, &instIdx);
+
+					SizedArray<BeMCOperand, 3> args = { inst->mArg0, inst->mArg1 };
+					auto mcFunc = BeMCOperand::FromSymbolAddr(mCOFFObject->GetSymbolRef((arg0Type->mTypeCode == BeTypeCode_Double) ? "fmod" : "fmodf")->mIdx);
+					auto fmodVal = CreateCall(mcFunc, args, arg0Type);
+
+					inst->mKind = BeMCInstKind_Mov;
+					inst->mResult = BeMCOperand();
+					inst->mArg1 = fmodVal;
+
+					_Rerun("FMod");
+
+					if (debugging)
+						OutputDebugStrF(" FMod\n");
+				}
+			}
+			break;
 			case BeMCInstKind_Mul:
 			case BeMCInstKind_IMul:
+			{
+				bool handled = false;
+
+				if ((arg0Type->mSize == 1) && (arg0Type->IsIntable()))
 				{
-					bool handled = false;
-
-					if ((arg0Type->mSize == 1) && (arg0Type->IsIntable()))
+					if ((!arg0.IsNativeReg()) || (arg0.mReg != X64Reg_AL) || (inst->mResult))
 					{
-						if ((!arg0.IsNativeReg()) || (arg0.mReg != X64Reg_AL) || (inst->mResult))
-						{
-							auto srcVRegInfo = GetVRegInfo(inst->mArg0);
-							// Int8 multiplies can only be done on AL
-							AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++);
+						auto srcVRegInfo = GetVRegInfo(inst->mArg0);
+						// Int8 multiplies can only be done on AL
+						AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++);
 
-							DisableRegister(inst->mArg0, X64Reg_RAX);
-							DisableRegister(inst->mArg1, X64Reg_RAX);
+						DisableRegister(inst->mArg0, X64Reg_RAX);
+						DisableRegister(inst->mArg1, X64Reg_RAX);
 
-							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AL), inst->mArg1, instIdx++);
-							AllocInst(BeMCInstKind_Shl, BeMCOperand::FromReg(X64Reg_AX), BeMCOperand::FromImmediate(8), instIdx++);
-							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AL), inst->mArg0, instIdx++);
-							AllocInst(BeMCInstKind_Mov, inst->mResult ? inst->mResult : inst->mArg0, BeMCOperand::FromReg(X64Reg_AL), instIdx++ + 1);
-							inst->mArg0 = BeMCOperand::FromReg(X64Reg_AL);
-							inst->mArg1 = BeMCOperand::FromReg(X64Reg_AH);
-							inst->mResult = BeMCOperand();
-							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++ + 1);
+						AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AL), inst->mArg1, instIdx++);
+						AllocInst(BeMCInstKind_Shl, BeMCOperand::FromReg(X64Reg_AX), BeMCOperand::FromImmediate(8), instIdx++);
+						AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_AL), inst->mArg0, instIdx++);
+						AllocInst(BeMCInstKind_Mov, inst->mResult ? inst->mResult : inst->mArg0, BeMCOperand::FromReg(X64Reg_AL), instIdx++ + 1);
+						inst->mArg0 = BeMCOperand::FromReg(X64Reg_AL);
+						inst->mArg1 = BeMCOperand::FromReg(X64Reg_AH);
+						inst->mResult = BeMCOperand();
+						AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++ + 1);
 
-							_Rerun("Mul Size 1");
-							if (debugging)
-								OutputDebugStrF(" Mul Size 1\n");
-							break;
-						}
-
-						if (inst->mArg1.IsImmediateInt())
-						{
-							ReplaceWithNewVReg(inst->mArg1, instIdx, true, false);
-						}
-
-						BF_ASSERT(!inst->mResult);
-						handled = true;
+						_Rerun("Mul Size 1");
+						if (debugging)
+							OutputDebugStrF(" Mul Size 1\n");
+						break;
 					}
-					else if ((inst->mKind == BeMCInstKind_Mul) && (arg0Type->IsIntable()))
-					{
-						auto wantReg0 = ResizeRegister(X64Reg_RAX, arg0Type->mSize);
 
-						if ((!arg0.IsNativeReg()) || (arg0.mReg != wantReg0) || (inst->mResult))
+					if (inst->mArg1.IsImmediateInt())
+					{
+						ReplaceWithNewVReg(inst->mArg1, instIdx, true, false);
+					}
+
+					BF_ASSERT(!inst->mResult);
+					handled = true;
+				}
+				else if ((inst->mKind == BeMCInstKind_Mul) && (arg0Type->IsIntable()))
+				{
+					auto wantReg0 = ResizeRegister(X64Reg_RAX, arg0Type->mSize);
+
+					if ((!arg0.IsNativeReg()) || (arg0.mReg != wantReg0) || (inst->mResult))
+					{
+						auto srcVRegInfo = GetVRegInfo(inst->mArg0);
+						// unsigned multiplies can only be done on AX/EAX/RAX
+						AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++);
+						AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++);
+						DisableRegister(inst->mArg0, X64Reg_RAX);
+						DisableRegister(inst->mArg0, X64Reg_RDX);
+						DisableRegister(inst->mArg1, X64Reg_RAX);
+						DisableRegister(inst->mArg1, X64Reg_RDX);
+						AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(wantReg0), inst->mArg0, instIdx++);
+						AllocInst(BeMCInstKind_Mov, inst->mResult ? inst->mResult : inst->mArg0, BeMCOperand::FromReg(wantReg0), instIdx++ + 1);
+						inst->mArg0 = BeMCOperand::FromReg(wantReg0);
+						inst->mResult = BeMCOperand();
+						AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++ + 1);
+						AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++ + 1);
+
+						_Rerun("Mul 2");
+						break;
+					}
+
+					if (inst->mArg1.IsImmediateInt())
+					{
+						ReplaceWithNewVReg(inst->mArg1, instIdx, true, false);
+					}
+
+					BF_ASSERT(!inst->mResult);
+					handled = true;
+				}
+
+				if (inst->mArg0.IsNativeReg())
+				{
+					auto vregInfo1 = GetVRegInfo(inst->mArg1);
+					if (vregInfo1 != NULL)
+					{
+						auto arg1 = GetFixedOperand(inst->mArg1);
+						if ((arg1.IsNativeReg()) && (inst->mArg0.mReg == arg1.mReg) &&
+							((ResizeRegister(arg1.mReg, 8) == X64Reg_RAX) || (ResizeRegister(arg1.mReg, 8) == X64Reg_RDX)))
 						{
-							auto srcVRegInfo = GetVRegInfo(inst->mArg0);
-							// unsigned multiplies can only be done on AX/EAX/RAX
-							AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++);
-							AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++);
-							DisableRegister(inst->mArg0, X64Reg_RAX);
-							DisableRegister(inst->mArg0, X64Reg_RDX);
 							DisableRegister(inst->mArg1, X64Reg_RAX);
 							DisableRegister(inst->mArg1, X64Reg_RDX);
-							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(wantReg0), inst->mArg0, instIdx++);
-							AllocInst(BeMCInstKind_Mov, inst->mResult ? inst->mResult : inst->mArg0, BeMCOperand::FromReg(wantReg0), instIdx++ + 1);
-							inst->mArg0 = BeMCOperand::FromReg(wantReg0);
-							inst->mResult = BeMCOperand();
-							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RDX), instIdx++ + 1);
-							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), instIdx++ + 1);
+							_Rerun("Mul 3");
+						}
+					}
+				}
 
-							_Rerun("Mul 2");
+				if (!handled)
+				{
+					if (inst->mResult)
+					{
+						// The 3-op form of MUL must be in "reg, r/m64, imm" form
+						if (!inst->mArg1.IsImmediateInt())
+						{
+							SoftFail("Not supported");
+							//isFinalRun = false;
 							break;
 						}
-
-						if (inst->mArg1.IsImmediateInt())
-						{
-							ReplaceWithNewVReg(inst->mArg1, instIdx, true, false);
-						}
-
-						BF_ASSERT(!inst->mResult);
-						handled = true;
 					}
 
-					if (inst->mArg0.IsNativeReg())
+					// Convert from %vreg0 = mul %vreg1, %vreg2
+					// To: %scratch = mul %vreg1, %vreg2
+					//     mov %reg0, %scratch
+					if (inst->mResult)
 					{
-						auto vregInfo1 = GetVRegInfo(inst->mArg1);
-						if (vregInfo1 != NULL)
+						bool isLegal = true;
+						int64 immediateInt = inst->mArg1.GetImmediateInt();
+
+						// 							if (inst->mKind == BeMCInstKind_Mul)
+						// 							{
+						// 								if (immediateInt > 0xFFFFFFFFLL)
+						// 									isLegal = false;
+						// 							}
+						// 							else
+						// 							{
+						// 								if ((immediateInt < -0x80000000LL) || (immediateInt > 0x7FFFFFFF))
+						// 									isLegal = false;
+						// 							}
+
+						if (!GetFixedOperand(inst->mResult).IsNativeReg())
 						{
-							auto arg1 = GetFixedOperand(inst->mArg1);
-							if ((arg1.IsNativeReg()) && (inst->mArg0.mReg == arg1.mReg) &&
-								((ResizeRegister(arg1.mReg, 8) == X64Reg_RAX) || (ResizeRegister(arg1.mReg, 8) == X64Reg_RDX)))
-							{
-								DisableRegister(inst->mArg1, X64Reg_RAX);
-								DisableRegister(inst->mArg1, X64Reg_RDX);
-								_Rerun("Mul 3");
-							}
+							BeMCOperand scratchReg = AllocVirtualReg(GetType(inst->mResult), 2, true);
+							CreateDefineVReg(scratchReg, instIdx);
+							AllocInst(BeMCInstKind_Mov, inst->mResult, scratchReg, instIdx + 2);
+							inst->mResult = scratchReg;
+							if (debugging)
+								OutputDebugStrF(" Mul 3-form not reg\n");
+
+							_Rerun("Mul 3-form not reg");
+							instIdx += 2;
+							break;
 						}
 					}
-
-					if (!handled)
+					else
 					{
-						if (inst->mResult)
+						if (!GetFixedOperand(inst->mArg0).IsNativeReg())
 						{
-							// The 3-op form of MUL must be in "reg, r/m64, imm" form
-							if (!inst->mArg1.IsImmediateInt())
-							{
-								SoftFail("Not supported");
-								//isFinalRun = false;
-								break;
-							}
-						}
-
-						// Convert from %vreg0 = mul %vreg1, %vreg2
-						// To: %scratch = mul %vreg1, %vreg2
-						//     mov %reg0, %scratch
-						if (inst->mResult)
-						{
-							bool isLegal = true;
-							int64 immediateInt = inst->mArg1.GetImmediateInt();
-
-							// 							if (inst->mKind == BeMCInstKind_Mul)
-							// 							{
-							// 								if (immediateInt > 0xFFFFFFFFLL)
-							// 									isLegal = false;
-							// 							}
-							// 							else
-							// 							{
-							// 								if ((immediateInt < -0x80000000LL) || (immediateInt > 0x7FFFFFFF))
-							// 									isLegal = false;
-							// 							}
-
-							if (!GetFixedOperand(inst->mResult).IsNativeReg())
-							{
-								BeMCOperand scratchReg = AllocVirtualReg(GetType(inst->mResult), 2, true);
-								CreateDefineVReg(scratchReg, instIdx);
-								AllocInst(BeMCInstKind_Mov, inst->mResult, scratchReg, instIdx + 2);
-								inst->mResult = scratchReg;
-								if (debugging)
-									OutputDebugStrF(" Mul 3-form not reg\n");
-
-								_Rerun("Mul 3-form not reg");
-								instIdx += 2;
-								break;
-							}
-						}
-						else
-						{
-							if (!GetFixedOperand(inst->mArg0).IsNativeReg())
-							{
-								auto prevArg0 = inst->mArg0;
-								ReplaceWithNewVReg(inst->mArg0, instIdx, true);
-								AllocInst(BeMCInstKind_Mov, prevArg0, inst->mArg0, instIdx + 1);
-								_Rerun("Mul not reg");
-								if (debugging)
-									OutputDebugStrF(" Mul not reg\n");
-								instIdx++;
-								break;
-							}
+							auto prevArg0 = inst->mArg0;
+							ReplaceWithNewVReg(inst->mArg0, instIdx, true);
+							AllocInst(BeMCInstKind_Mov, prevArg0, inst->mArg0, instIdx + 1);
+							_Rerun("Mul not reg");
+							if (debugging)
+								OutputDebugStrF(" Mul not reg\n");
+							instIdx++;
+							break;
 						}
 					}
 				}
-				// Fallthrough
+			}
+			// Fallthrough
 			case BeMCInstKind_Add:
 			case BeMCInstKind_Sub:
-				{
-				}
-				break;
+			{
+			}
+			break;
 			case BeMCInstKind_Shl:
 			case BeMCInstKind_Shr:
 			case BeMCInstKind_Sar:
+			{
+				if ((!inst->mArg1.IsNativeReg()) && (!inst->mArg1.IsImmediateInt()))
 				{
-					if ((!inst->mArg1.IsNativeReg()) && (!inst->mArg1.IsImmediateInt()))
+					auto mcShift = inst->mArg1;
+					auto shiftType = GetType(mcShift);
+					BF_ASSERT(shiftType->IsInt());
+					if (shiftType->mSize != 1)
 					{
-						auto mcShift = inst->mArg1;
-						auto shiftType = GetType(mcShift);
-						BF_ASSERT(shiftType->IsInt());
-						if (shiftType->mSize != 1)
-						{
-							auto mcShift8 = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int8), 2);
-							CreateDefineVReg(mcShift8, instIdx++);
-							auto vregInfo = GetVRegInfo(mcShift8);
-							vregInfo->mIsExpr = true;
-							vregInfo->mRelTo = mcShift;
-							mcShift = mcShift8;
-						}
-
-						// The only non-constant shift is by 'CL'
-						AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RCX), instIdx++);
-						AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_CL), mcShift, instIdx++);
-						AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RCX), instIdx++ + 1);
-						inst->mArg1 = BeMCOperand::FromReg(X64Reg_RCX);
-						_Rerun("Shift by CL");
-						if (debugging)
-							OutputDebugStrF(" Shift by CL\n");
-						continue;
+						auto mcShift8 = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int8), 2);
+						CreateDefineVReg(mcShift8, instIdx++);
+						auto vregInfo = GetVRegInfo(mcShift8);
+						vregInfo->mIsExpr = true;
+						vregInfo->mRelTo = mcShift;
+						mcShift = mcShift8;
 					}
 
-					if (inst->mArg1.IsNativeReg())
+					// The only non-constant shift is by 'CL'
+					AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RCX), instIdx++);
+					AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_CL), mcShift, instIdx++);
+					AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RCX), instIdx++ + 1);
+					inst->mArg1 = BeMCOperand::FromReg(X64Reg_RCX);
+					_Rerun("Shift by CL");
+					if (debugging)
+						OutputDebugStrF(" Shift by CL\n");
+					continue;
+				}
+
+				if (inst->mArg1.IsNativeReg())
+				{
+					BF_ASSERT(inst->mArg1.mReg == X64Reg_RCX);
+
+					X64CPURegister regs[2] = { X64Reg_None, X64Reg_None };
+					GetUsedRegs(inst->mArg0, regs[0], regs[1]);
+					if ((regs[0] == X64Reg_RCX) || (regs[1] == X64Reg_RCX))
 					{
-						BF_ASSERT(inst->mArg1.mReg == X64Reg_RCX);
+						// Bad reg!
+						auto mcTarget = inst->mArg0;
 
-						X64CPURegister regs[2] = { X64Reg_None, X64Reg_None };
-						GetUsedRegs(inst->mArg0, regs[0], regs[1]);
-						if ((regs[0] == X64Reg_RCX) || (regs[1] == X64Reg_RCX))
-						{
-							// Bad reg!
-							auto mcTarget = inst->mArg0;
+						int insertIdx = instIdx - 1;
+						ReplaceWithNewVReg(inst->mArg0, insertIdx, true);
 
-							int insertIdx = instIdx - 1;
-							ReplaceWithNewVReg(inst->mArg0, insertIdx, true);
-
-							BF_ASSERT(mcBlock->mInstructions[instIdx + 3]->mKind == BeMCInstKind_RestoreVolatiles);
-							AllocInst(BeMCInstKind_Mov, mcTarget, inst->mArg0, instIdx + 4);
-						}
+						BF_ASSERT(mcBlock->mInstructions[instIdx + 3]->mKind == BeMCInstKind_RestoreVolatiles);
+						AllocInst(BeMCInstKind_Mov, mcTarget, inst->mArg0, instIdx + 4);
 					}
 				}
-				break;
+			}
+			break;
 			case BeMCInstKind_Cmp:
+			{
+				bool needSwap = false;
+
+				// Cmp <imm>, <r/m> is not legal, so we need to swap LHS/RHS, which means also modifying the instruction that uses the result of the cmp
+				if (arg0.IsImmediate())
+					needSwap = true;
+
+				if (arg0Type->IsFloat())
 				{
-					bool needSwap = false;
+					if (!arg0.IsNativeReg())
+					{
+						// We need an <xmm> for reg0. We're not allowed to reorder SwapCmpSides due to NaN handling
+						ReplaceWithNewVReg(inst->mArg0, instIdx, true, true);
+						_Rerun("Cmp float");
+						break;
+					}
 
-					// Cmp <imm>, <r/m> is not legal, so we need to swap LHS/RHS, which means also modifying the instruction that uses the result of the cmp
-					if (arg0.IsImmediate())
+					// Cmp <r/m>, <xmm> is not valid, only Cmp <xmm>, <r/m>
+					if ((!arg0.IsNativeReg()) && (arg1.IsNativeReg()))
+					{
 						needSwap = true;
-
-					if (arg0Type->IsFloat())
+					}
+					else
 					{
 						if (!arg0.IsNativeReg())
 						{
-							// We need an <xmm> for reg0. We're not allowed to reorder SwapCmpSides due to NaN handling
-							ReplaceWithNewVReg(inst->mArg0, instIdx, true, true);
-							_Rerun("Cmp float");
-							break;
-						}
-
-						// Cmp <r/m>, <xmm> is not valid, only Cmp <xmm>, <r/m>
-						if ((!arg0.IsNativeReg()) && (arg1.IsNativeReg()))
-						{
-							needSwap = true;
-						}
-						else
-						{
-							if (!arg0.IsNativeReg())
-							{
-								SoftFail("xmm reg required");
-							}
+							SoftFail("xmm reg required");
 						}
 					}
+				}
 
-					if (needSwap)
+				if (needSwap)
+				{
+					bool hasConstResult = false;
+					int constResult = 0;
+					if (inst->mArg1.IsImmediate())
 					{
-						bool hasConstResult = false;
-						int constResult = 0;
-						if (inst->mArg1.IsImmediate())
-						{
-							//constResult = inst->mArg0.mImmediate - inst->mArg1.mImmediate;
-							// Should have been handled in the frontend
-							ReplaceWithNewVReg(inst->mArg0, instIdx, true);
-							break;
-						}
-
-						int checkInstIdx = instIdx + 1;
-						auto checkBlock = mcBlock;
-
-						for (; checkInstIdx < (int)checkBlock->mInstructions.size(); checkInstIdx++)
-						{
-							auto checkInst = checkBlock->mInstructions[checkInstIdx];
-							if ((checkInst->mKind == BeMCInstKind_CondBr) || (checkInst->mKind == BeMCInstKind_CmpToBool))
-							{
-								if (constResult)
-								{
-									NotImpl();
-									//mcBlock->RemoveInst(instIdx);
-									//instIdx--;
-								}
-								else
-								{
-									BeMCOperand& cmpArg = (checkInst->mKind == BeMCInstKind_CondBr) ? checkInst->mArg1 : checkInst->mArg0;
-
-									BF_SWAP(inst->mArg0, inst->mArg1);
-									BF_ASSERT(cmpArg.mKind == BeMCOperandKind_CmpKind);
-									cmpArg.mCmpKind = BeModule::SwapCmpSides(cmpArg.mCmpKind);
-								}
-								break;
-							}
-							else if (checkInst->mKind == BeMCInstKind_Br)
-							{
-								// Sometimes the matching use is in another block
-								FindTarget(checkInst->mArg0, checkBlock, checkInstIdx);
-							}
-							else if (
-								(checkInst->mKind != BeMCInstKind_Def) &&
-								(checkInst->mKind != BeMCInstKind_DbgDecl) &&
-								(checkInst->mKind != BeMCInstKind_ValueScopeSoftEnd) &&
-								(checkInst->mKind != BeMCInstKind_ValueScopeHardEnd) &&
-								(checkInst->mKind != BeMCInstKind_LifetimeEnd))
-							{
-								SoftFail("Malformed");
-							}
-						}
+						//constResult = inst->mArg0.mImmediate - inst->mArg1.mImmediate;
+						// Should have been handled in the frontend
+						ReplaceWithNewVReg(inst->mArg0, instIdx, true);
 						break;
 					}
-				}
-				break;
-			case BeMCInstKind_CmpToBool:
-				{
-					if (inst->mResult.IsVRegAny())
-					{
-						if (!mVRegInitializedContext.IsSet(mCurVRegsInit, inst->mResult.mVRegIdx))
-						{
-							SizedArray<int, 1> addVec = { inst->mResult.mVRegIdx };
-							mCurVRegsInit = mVRegInitializedContext.Add(mCurVRegsInit, addVec, true);
 
-							BF_ASSERT(instIdx < (int)mcBlock->mInstructions.size() - 1);
-							if (instIdx < (int)mcBlock->mInstructions.size() - 1)
+					int checkInstIdx = instIdx + 1;
+					auto checkBlock = mcBlock;
+
+					for (; checkInstIdx < (int)checkBlock->mInstructions.size(); checkInstIdx++)
+					{
+						auto checkInst = checkBlock->mInstructions[checkInstIdx];
+						if ((checkInst->mKind == BeMCInstKind_CondBr) || (checkInst->mKind == BeMCInstKind_CmpToBool))
+						{
+							if (constResult)
 							{
-								auto nextInst = mcBlock->mInstructions[instIdx + 1];
-								if (nextInst->mVRegsInitialized != NULL)
-								{
-									auto fixedVRegsInit = mVRegInitializedContext.RemoveChange(nextInst->mVRegsInitialized, inst->mResult.mVRegIdx);
-									ReplaceVRegsInit(mcBlock, instIdx + 1, nextInst->mVRegsInitialized, fixedVRegsInit);
-								}
+								NotImpl();
+								//mcBlock->RemoveInst(instIdx);
+								//instIdx--;
+							}
+							else
+							{
+								BeMCOperand& cmpArg = (checkInst->mKind == BeMCInstKind_CondBr) ? checkInst->mArg1 : checkInst->mArg0;
+
+								BF_SWAP(inst->mArg0, inst->mArg1);
+								BF_ASSERT(cmpArg.mKind == BeMCOperandKind_CmpKind);
+								cmpArg.mCmpKind = BeModule::SwapCmpSides(cmpArg.mCmpKind);
+							}
+							break;
+						}
+						else if (checkInst->mKind == BeMCInstKind_Br)
+						{
+							// Sometimes the matching use is in another block
+							FindTarget(checkInst->mArg0, checkBlock, checkInstIdx);
+						}
+						else if (
+							(checkInst->mKind != BeMCInstKind_Def) &&
+							(checkInst->mKind != BeMCInstKind_DbgDecl) &&
+							(checkInst->mKind != BeMCInstKind_ValueScopeSoftEnd) &&
+							(checkInst->mKind != BeMCInstKind_ValueScopeHardEnd) &&
+							(checkInst->mKind != BeMCInstKind_LifetimeEnd))
+						{
+							SoftFail("Malformed");
+						}
+					}
+					break;
+				}
+			}
+			break;
+			case BeMCInstKind_CmpToBool:
+			{
+				if (inst->mResult.IsVRegAny())
+				{
+					if (!mVRegInitializedContext.IsSet(mCurVRegsInit, inst->mResult.mVRegIdx))
+					{
+						SizedArray<int, 1> addVec = { inst->mResult.mVRegIdx };
+						mCurVRegsInit = mVRegInitializedContext.Add(mCurVRegsInit, addVec, true);
+
+						BF_ASSERT(instIdx < (int)mcBlock->mInstructions.size() - 1);
+						if (instIdx < (int)mcBlock->mInstructions.size() - 1)
+						{
+							auto nextInst = mcBlock->mInstructions[instIdx + 1];
+							if (nextInst->mVRegsInitialized != NULL)
+							{
+								auto fixedVRegsInit = mVRegInitializedContext.RemoveChange(nextInst->mVRegsInitialized, inst->mResult.mVRegIdx);
+								ReplaceVRegsInit(mcBlock, instIdx + 1, nextInst->mVRegsInitialized, fixedVRegsInit);
 							}
 						}
 					}
-
-					// Do this with a CMOV instead?
-					auto result = inst->mResult;
-					inst->mResult.mKind = BeMCOperandKind_None;
-					inst->mKind = BeMCInstKind_CondBr;
-					inst->mArg1 = inst->mArg0; // Move cmpType
-					inst->mArg0 = BeMCOperand::FromLabel(mCurLabelIdx);
-
-					int insertInstIdx = instIdx + 1;
-					//auto mcInst = AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(mCurLabelIdx), BeMCOperand::FromCmpKind(BeCmpKind_EQ), insertInstIdx++);
-					auto mcInst = AllocInst(BeMCInstKind_Mov, result, BeMCOperand::FromImmediate(0), insertInstIdx++);
-					mcInst = AllocInst(BeMCInstKind_Br, BeMCOperand::FromLabel(mCurLabelIdx + 1), insertInstIdx++);
-					CreateLabel(insertInstIdx++);
-					mcInst = AllocInst(BeMCInstKind_Mov, result, BeMCOperand::FromImmediate(1), insertInstIdx++);
-					CreateLabel(insertInstIdx++);
 				}
-				break;
+
+				// Do this with a CMOV instead?
+				auto result = inst->mResult;
+				inst->mResult.mKind = BeMCOperandKind_None;
+				inst->mKind = BeMCInstKind_CondBr;
+				inst->mArg1 = inst->mArg0; // Move cmpType
+				inst->mArg0 = BeMCOperand::FromLabel(mCurLabelIdx);
+
+				int insertInstIdx = instIdx + 1;
+				//auto mcInst = AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(mCurLabelIdx), BeMCOperand::FromCmpKind(BeCmpKind_EQ), insertInstIdx++);
+				auto mcInst = AllocInst(BeMCInstKind_Mov, result, BeMCOperand::FromImmediate(0), insertInstIdx++);
+				mcInst = AllocInst(BeMCInstKind_Br, BeMCOperand::FromLabel(mCurLabelIdx + 1), insertInstIdx++);
+				CreateLabel(insertInstIdx++);
+				mcInst = AllocInst(BeMCInstKind_Mov, result, BeMCOperand::FromImmediate(1), insertInstIdx++);
+				CreateLabel(insertInstIdx++);
+			}
+			break;
 			case BeMCInstKind_MovSX:
 			case BeMCInstKind_Mov:
+			{
+				bool isSignedExt = inst->mKind == BeMCInstKind_MovSX;
+
+				auto arg0Type = GetType(inst->mArg0);
+				auto arg1Type = GetType(inst->mArg1);
+
+				if (inst->mArg1.mKind == BeMCOperandKind_VRegAddr)
 				{
-					bool isSignedExt = inst->mKind == BeMCInstKind_MovSX;
-
-					auto arg0Type = GetType(inst->mArg0);
-					auto arg1Type = GetType(inst->mArg1);
-
-					if (inst->mArg1.mKind == BeMCOperandKind_VRegAddr)
+					auto vregInfo = mVRegInfo[inst->mArg1.mVRegIdx];
+					if ((!vregInfo->mIsExpr) && (!vregInfo->mForceMem))
 					{
-						auto vregInfo = mVRegInfo[inst->mArg1.mVRegIdx];
-						if ((!vregInfo->mIsExpr) && (!vregInfo->mForceMem))
-						{
-							SoftFail("VRegAddr used without ForceMem");
-						}
-					}
-
-					if (arg0Type->mSize == 0)
-					{
-						RemoveInst(mcBlock, instIdx);
-						instIdx--;
-						continue;
-					}
-
-					if (arg0Type->IsNonVectorComposite())
-					{
-						if (arg1.mKind == BeMCOperandKind_Immediate_i64)
-						{
-							// This is just a "zero initializer" marker
-							BF_ASSERT(arg1.mImmediate == 0);
-							SetAndRestoreValue<int*> insertPtr(mInsertInstIdxRef, &instIdx);
-							RemoveInst(mcBlock, instIdx);
-							CreateMemSet(OperandToAddr(arg0), 0, arg0Type->mSize, arg0Type->mAlign);
-							instIdx--;
-							_Rerun("Zero init");
-							if (debugging)
-								OutputDebugStrF(" Zero init\n");
-							break;
-						}
-						else if (arg1.mKind == BeMCOperandKind_ConstAgg)
-						{
-							bool needsSaveRegs = true;
-
-							if (instIdx > 0)
-							{
-								auto prevInst = mcBlock->mInstructions[instIdx - 1];
-								if ((prevInst->mKind == BeMCInstKind_PreserveVolatiles) /*&& (prevInst->mArg0.mReg == X64Reg_R11)*/)
-									needsSaveRegs = false;
-							}
-
-							auto argType = GetType(arg1);
-							bool useRep = argType->mSize >= BF_REP_MOV_LIMIT;
-
-							int movInstIdx = instIdx;
-							if (needsSaveRegs)
-							{
-								DisableRegister(inst->mArg0, X64Reg_R11);
-
-								AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_R11), BeMCOperand(), instIdx);
-								instIdx += 1;
-
-								if (useRep)
-								{
-									AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand(), instIdx);
-									instIdx += 1;
-									AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RDI), BeMCOperand(), instIdx);
-									instIdx += 1;
-									AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RCX), BeMCOperand(), instIdx);
-									instIdx += 1;
-								}
-
-								movInstIdx = instIdx;
-
-								if (useRep)
-								{
-									AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RCX), BeMCOperand(), instIdx + 1);
-									instIdx += 1;
-									AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RDI), BeMCOperand(), instIdx + 1);
-									instIdx += 1;
-									AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand(), instIdx + 1);
-									instIdx += 1;
-								}
-
-								AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_R11), BeMCOperand(), instIdx + 1);
-								instIdx += 1;
-								_Rerun("Mov ConstAgg");
-							}
-
-							BeRMParamsInfo rmInfo;
-							GetRMParams(inst->mArg0, rmInfo);
-							if (rmInfo.mMode == BeMCRMMode_Invalid)
-							{
-								if (inst->mArg0.IsSymbol())
-								{
-									// Just make it an addr so we can replace it with a temporary
-									inst->mArg0.mKind = BeMCOperandKind_SymbolAddr;
-								}
-
-								ReplaceWithNewVReg(inst->mArg0, movInstIdx, true, false, true);
-								auto vregInfo = GetVRegInfo(inst->mArg0);
-								vregInfo->mDisableR11 = true;
-								instIdx += 2;
-
-								_Rerun("Mov rmmode invalid");
-							}
-							continue;
-						}
-						else // Struct = Struct
-						{
-							auto arg0Addr = OperandToAddr(arg0);
-							auto arg1Addr = OperandToAddr(arg1);
-							SetAndRestoreValue<int*> insertPtr(mInsertInstIdxRef, &instIdx);
-							RemoveInst(mcBlock, instIdx);
-							CreateMemCpy(arg0Addr, arg1Addr, BF_MIN(arg0Type->mSize, arg1Type->mSize), BF_MIN(arg0Type->mAlign, arg1Type->mAlign));
-							instIdx--;
-							_Rerun("Mov memcpy");
-							if (debugging)
-								OutputDebugStrF(" Mov MemCpy\n");
-							break;
-						}
-					}
-
-					if ((arg0Type->IsFloat()) && (arg1Type->IsIntable()))
-					{
-						if ((arg1Type->mTypeCode == BeTypeCode_Int64) && (!isSignedExt))
-						{
-							//uint64->float
-
-							AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand(), instIdx);
-							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_RAX), inst->mArg1, instIdx + 1);
-							inst->mArg1 = BeMCOperand::FromReg(X64Reg_RAX);
-							inst->mKind = BeMCInstKind_MovSX;
-
-							int labelIdx = CreateLabel(instIdx + 3);
-							AllocInst(BeMCInstKind_Test, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand::FromReg(X64Reg_RAX), instIdx + 3);
-							AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(labelIdx), BeMCOperand::FromCmpKind(BeCmpKind_SGE), instIdx + 4);
-							BeMCOperand mcOffset;
-							if (arg0Type->mSize == 8)
-							{
-								mcOffset.mKind = BeMCOperandKind_Immediate_f64;
-								mcOffset.mImmF64 = 1.8446744073709552e+19;
-							}
-							else
-							{
-								mcOffset.mKind = BeMCOperandKind_Immediate_f32;
-								mcOffset.mImmF32 = 1.8446744073709552e+19;
-							}
-
-							AllocInst(BeMCInstKind_Add, inst->mArg0, mcOffset, instIdx + 5);
-							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand(), instIdx + 7);
-
-							if (debugging)
-								OutputDebugStrF(" uint64->float\n");
-
-							_Rerun("uint64->float");
-							instIdx--;
-							continue; // Rerun from PreserveVolatiles
-						}
-						else if ((!isSignedExt) || (arg1Type->mSize < 4))
-						{
-							// Int->Float conversions only work on 32 and 64-bit signed values, so we
-							// zero-extend into a larger scratch vreg and then we do the signed conversion on that.
-							// Convert from
-							//   mov float, uint<bits>
-							// to
-							//   mov scratch int<bits*2>, uint<bits>
-							//   mov float, scratch int<bits*2>
-
-							if ((arg1.IsNativeReg()) && (arg1Type->mSize == 4))
-							{
-								// If we already have a 32-bit register, then we know that the upper 32-bits are zeroed
-								//  so during emission we just use the 64-bit version of that register
-							}
-							else
-							{
-								auto mcScratch = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64), 2, true);
-								CreateDefineVReg(mcScratch, instIdx++);
-								if ((isSignedExt) && (arg1Type->mSize < 8))
-									AllocInst(BeMCInstKind_MovSX, mcScratch, inst->mArg1, instIdx++);
-								else
-									AllocInst(BeMCInstKind_Mov, mcScratch, inst->mArg1, instIdx++);
-								inst->mKind = BeMCInstKind_MovSX;
-								inst->mArg1 = mcScratch;
-								_Rerun("MovSX");
-
-								if (debugging)
-									OutputDebugStrF(" MovSX\n");
-							}
-						}
-					}
-
-					if (!arg0.IsNativeReg())
-					{
-						// With f32s we can do a imm32 mov into memory, but there's no imm64 version of that
-						if ((arg0Type->mTypeCode == BeTypeCode_Double) && (arg1.IsImmediate()))
-						{
-							// One option would be to do a "movsd xmm, .rdata" to load up the immediate...
-							//  and that would leave arg0 with the possibility of binding to a register
-							//  in a subsequent reg pass, but we don't do that.
-							//ReplaceWithNewVReg(inst->mArg1, instIdx, true);
-
-							// We do an int64 load/store, so arg0 must never be allowed to be a register
-							if (arg0.IsVReg())
-							{
-								auto vregInfo = mVRegInfo[arg0.mVRegIdx];
-								vregInfo->mForceMem = true;
-								CheckForce(vregInfo);
-							}
-
-							BeMCOperand castedVReg;
-							if (inst->mArg0.mKind == BeMCOperandKind_VRegLoad)
-							{
-								// Maintain the load-ness (don't wrap a load)
-								castedVReg = AllocVirtualReg(mModule->mContext->GetPointerTo(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64)), 2, false);
-								CreateDefineVReg(castedVReg, instIdx++);
-								auto castedVRegInfo = GetVRegInfo(castedVReg);
-								castedVRegInfo->mIsExpr = true;
-								castedVRegInfo->mRelTo = BeMCOperand::FromVReg(inst->mArg0.mVRegIdx);
-								castedVReg.mKind = BeMCOperandKind_VRegLoad;
-							}
-							else
-							{
-								castedVReg = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64), 2, false);
-								CreateDefineVReg(castedVReg, instIdx++);
-								auto castedVRegInfo = GetVRegInfo(castedVReg);
-								castedVRegInfo->mIsExpr = true;
-								castedVRegInfo->mRelTo = inst->mArg0;
-							}
-
-							BeMCOperand scratchReg = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64), 2, true);
-							CreateDefineVReg(scratchReg, instIdx++);
-							AllocInst(BeMCInstKind_Mov, scratchReg, BeMCOperand::FromImmediate(arg1.mImmediate), instIdx++);
-							inst->mArg0 = castedVReg;
-							inst->mArg1 = scratchReg;
-
-							_Rerun("MovSD");
-							if (debugging)
-								OutputDebugStrF(" Movsd\n");
-						}
-
-						// Conversion types only work in "r, rm" format
-						auto arg0Type = GetType(inst->mArg0);
-						auto arg1Type = GetType(inst->mArg1);
-						bool isCompat = arg0Type->mSize == arg1Type->mSize;
-						if ((arg0Type->IsFloat()) != arg1Type->IsFloat())
-							isCompat = false;
-
-						if (!isCompat)
-						{
-							ReplaceWithNewVReg(inst->mArg0, instIdx, false);
-							_Rerun("Mov float rm");
-							if (debugging)
-								OutputDebugStrF(" Mov float rm\n");
-						}
+						SoftFail("VRegAddr used without ForceMem");
 					}
 				}
-				break;
-			case BeMCInstKind_XAdd:
+
+				if (arg0Type->mSize == 0)
 				{
-					for (int oprIdx = 0; oprIdx < 2; oprIdx++)
-					{
-						BeMCOperand& origOperand = (oprIdx == 0) ? inst->mArg0 : inst->mArg1;
-						if (origOperand.IsVRegAny())
-						{
-							BeRMParamsInfo rmInfo;
-							GetRMParams(origOperand, rmInfo);
-
-							auto vregInfo = GetVRegInfo(origOperand);
-							bool isValid = true;
-							if (oprIdx == 1)
-							{
-								if (rmInfo.mMode != BeMCRMMode_Direct)
-								{
-									auto newVReg = ReplaceWithNewVReg(origOperand, instIdx, true, true);
-									auto newVRegInfo = GetVRegInfo(newVReg);
-									newVRegInfo->mDisableRAX = true;
-									_Rerun("XAdd");
-								}
-							}
-						}
-					}
-				}
-				break;
-			case BeMCInstKind_CmpXChg:
-				{
-					for (int oprIdx = 0; oprIdx < 2; oprIdx++)
-					{
-						BeMCOperand& origOperand = (oprIdx == 0) ? inst->mArg0 : inst->mArg1;
-						if (origOperand.IsVRegAny())
-						{
-							BeRMParamsInfo rmInfo;
-							GetRMParams(origOperand, rmInfo);
-
-							auto vregInfo = GetVRegInfo(origOperand);
-
-							if ((ResizeRegister(rmInfo.mRegA, 8) == X64Reg_RAX) || (ResizeRegister(rmInfo.mRegB, 8) == X64Reg_RAX))
-							{
-								if (!vregInfo->mIsExpr)
-								{
-									_Rerun("CmpXChg");
-									vregInfo->mDisableRAX = true;
-									continue;
-								}
-								else
-								{
-									int safeIdx = FindSafeInstInsertPos(instIdx, true);
-									_Rerun("CmpXChg 2");
-
-									auto origType = GetType(origOperand);
-									BeMCOperand scratchReg = AllocVirtualReg(mModule->mContext->GetPointerTo(origType), 2, false);
-									CreateDefineVReg(scratchReg, safeIdx++);
-									AllocInst(BeMCInstKind_Mov, scratchReg, OperandToAddr(origOperand), safeIdx++);
-
-									auto newVRegInfo = GetVRegInfo(scratchReg);
-									newVRegInfo->mDisableRAX = true;
-
-									origOperand = scratchReg;
-									origOperand.mKind = BeMCOperandKind_VRegLoad;
-									continue;
-								}
-							}
-
-							bool isValid = true;
-							if (oprIdx == 1)
-							{
-								if (rmInfo.mMode != BeMCRMMode_Direct)
-								{
-									int safeIdx = FindSafeInstInsertPos(instIdx, true);
-									auto newVReg = ReplaceWithNewVReg(origOperand, safeIdx, true, true);
-									auto newVRegInfo = GetVRegInfo(newVReg);
-									newVRegInfo->mDisableRAX = true;
-									_Rerun("CmpXChg 3");
-								}
-							}
-						}
-					}
-				}
-				break;
-			case BeMCInstKind_Load:
-				{
-					// And Load gets converted to a "Load %reg0, [%reg1]"
-					// So both mArg0 and mArg1 must be a register
-					if (!IsAddressable(arg1))
-					{
-						// Convert to
-						// Mov %scratch, %vreg1
-						// Load %vreg0, [%scratch]
-						ReplaceWithNewVReg(inst->mArg1, instIdx, true);
-						arg1 = GetFixedOperand(inst->mArg1);
-						_Rerun("Load");;
-						if (debugging)
-							OutputDebugStrF(" Load\n");
-					}
-
-					// Do this one second since the 'insert after' makes instIdx no longer point to the Load inst
-					if (!arg0.IsNativeReg())
-					{
-						// Convert to
-						// Load %scratch, [%vreg1]
-						// Mov %vreg0, %scratch
-						ReplaceWithNewVReg(inst->mArg0, instIdx, false);
-						_Rerun("Load 2");
-						if (debugging)
-							OutputDebugStrF(" Load 2\n");
-					}
-				}
-				break;
-			case BeMCInstKind_Store:
-				{
-					// Store gets converted to a "Store [reg], reg"
-					if (!IsAddressable(arg0))
-					{
-						// Convert to
-						// Mov %scratch, %vreg0
-						// Store %scratch, [%vreg1]
-						ReplaceWithNewVReg(inst->mArg0, instIdx, true);
-						_Rerun("Store");
-						if (debugging)
-							OutputDebugStrF(" Store\n");
-					}
-
-					if (!arg1.IsNativeReg())
-					{
-						// Convert to
-						// Mov %scratch, %vreg1
-						// Store %vreg0, [%scratch]
-						ReplaceWithNewVReg(inst->mArg1, instIdx, true);
-						_Rerun("Store 2");
-						if (debugging)
-							OutputDebugStrF(" Store2\n");
-					}
-				}
-				break;
-			case BeMCInstKind_DefPhi:
-				{
-					// This is from a PHI whose value was not used
 					RemoveInst(mcBlock, instIdx);
 					instIdx--;
 					continue;
 				}
-				break;
+
+				if (arg0Type->IsNonVectorComposite())
+				{
+					if (arg1.mKind == BeMCOperandKind_Immediate_i64)
+					{
+						// This is just a "zero initializer" marker
+						BF_ASSERT(arg1.mImmediate == 0);
+						SetAndRestoreValue<int*> insertPtr(mInsertInstIdxRef, &instIdx);
+						RemoveInst(mcBlock, instIdx);
+						CreateMemSet(OperandToAddr(arg0), 0, arg0Type->mSize, arg0Type->mAlign);
+						instIdx--;
+						_Rerun("Zero init");
+						if (debugging)
+							OutputDebugStrF(" Zero init\n");
+						break;
+					}
+					else if (arg1.mKind == BeMCOperandKind_ConstAgg)
+					{
+						bool needsSaveRegs = true;
+
+						if (instIdx > 0)
+						{
+							auto prevInst = mcBlock->mInstructions[instIdx - 1];
+							if ((prevInst->mKind == BeMCInstKind_PreserveVolatiles) /*&& (prevInst->mArg0.mReg == X64Reg_R11)*/)
+								needsSaveRegs = false;
+						}
+
+						auto argType = GetType(arg1);
+						bool useRep = argType->mSize >= BF_REP_MOV_LIMIT;
+
+						int movInstIdx = instIdx;
+						if (needsSaveRegs)
+						{
+							DisableRegister(inst->mArg0, X64Reg_R11);
+
+							AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_R11), BeMCOperand(), instIdx);
+							instIdx += 1;
+
+							if (useRep)
+							{
+								AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand(), instIdx);
+								instIdx += 1;
+								AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RDI), BeMCOperand(), instIdx);
+								instIdx += 1;
+								AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RCX), BeMCOperand(), instIdx);
+								instIdx += 1;
+							}
+
+							movInstIdx = instIdx;
+
+							if (useRep)
+							{
+								AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RCX), BeMCOperand(), instIdx + 1);
+								instIdx += 1;
+								AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RDI), BeMCOperand(), instIdx + 1);
+								instIdx += 1;
+								AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand(), instIdx + 1);
+								instIdx += 1;
+							}
+
+							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_R11), BeMCOperand(), instIdx + 1);
+							instIdx += 1;
+							_Rerun("Mov ConstAgg");
+						}
+
+						BeRMParamsInfo rmInfo;
+						GetRMParams(inst->mArg0, rmInfo);
+						if (rmInfo.mMode == BeMCRMMode_Invalid)
+						{
+							if (inst->mArg0.IsSymbol())
+							{
+								// Just make it an addr so we can replace it with a temporary
+								inst->mArg0.mKind = BeMCOperandKind_SymbolAddr;
+							}
+
+							ReplaceWithNewVReg(inst->mArg0, movInstIdx, true, false, true);
+							auto vregInfo = GetVRegInfo(inst->mArg0);
+							vregInfo->mDisableR11 = true;
+							instIdx += 2;
+
+							_Rerun("Mov rmmode invalid");
+						}
+						continue;
+					}
+					else // Struct = Struct
+					{
+						auto arg0Addr = OperandToAddr(arg0);
+						auto arg1Addr = OperandToAddr(arg1);
+						SetAndRestoreValue<int*> insertPtr(mInsertInstIdxRef, &instIdx);
+						RemoveInst(mcBlock, instIdx);
+						CreateMemCpy(arg0Addr, arg1Addr, BF_MIN(arg0Type->mSize, arg1Type->mSize), BF_MIN(arg0Type->mAlign, arg1Type->mAlign));
+						instIdx--;
+						_Rerun("Mov memcpy");
+						if (debugging)
+							OutputDebugStrF(" Mov MemCpy\n");
+						break;
+					}
+				}
+
+				if ((arg0Type->IsFloat()) && (arg1Type->IsIntable()))
+				{
+					if ((arg1Type->mTypeCode == BeTypeCode_Int64) && (!isSignedExt))
+					{
+						//uint64->float
+
+						AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand(), instIdx);
+						AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_RAX), inst->mArg1, instIdx + 1);
+						inst->mArg1 = BeMCOperand::FromReg(X64Reg_RAX);
+						inst->mKind = BeMCInstKind_MovSX;
+
+						int labelIdx = CreateLabel(instIdx + 3);
+						AllocInst(BeMCInstKind_Test, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand::FromReg(X64Reg_RAX), instIdx + 3);
+						AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(labelIdx), BeMCOperand::FromCmpKind(BeCmpKind_SGE), instIdx + 4);
+						BeMCOperand mcOffset;
+						if (arg0Type->mSize == 8)
+						{
+							mcOffset.mKind = BeMCOperandKind_Immediate_f64;
+							mcOffset.mImmF64 = 1.8446744073709552e+19;
+						}
+						else
+						{
+							mcOffset.mKind = BeMCOperandKind_Immediate_f32;
+							mcOffset.mImmF32 = 1.8446744073709552e+19;
+						}
+
+						AllocInst(BeMCInstKind_Add, inst->mArg0, mcOffset, instIdx + 5);
+						AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand(), instIdx + 7);
+
+						if (debugging)
+							OutputDebugStrF(" uint64->float\n");
+
+						_Rerun("uint64->float");
+						instIdx--;
+						continue; // Rerun from PreserveVolatiles
+					}
+					else if ((!isSignedExt) || (arg1Type->mSize < 4))
+					{
+						// Int->Float conversions only work on 32 and 64-bit signed values, so we
+						// zero-extend into a larger scratch vreg and then we do the signed conversion on that.
+						// Convert from
+						//   mov float, uint<bits>
+						// to
+						//   mov scratch int<bits*2>, uint<bits>
+						//   mov float, scratch int<bits*2>
+
+						if ((arg1.IsNativeReg()) && (arg1Type->mSize == 4))
+						{
+							// If we already have a 32-bit register, then we know that the upper 32-bits are zeroed
+							//  so during emission we just use the 64-bit version of that register
+						}
+						else
+						{
+							auto mcScratch = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64), 2, true);
+							CreateDefineVReg(mcScratch, instIdx++);
+							if ((isSignedExt) && (arg1Type->mSize < 8))
+								AllocInst(BeMCInstKind_MovSX, mcScratch, inst->mArg1, instIdx++);
+							else
+								AllocInst(BeMCInstKind_Mov, mcScratch, inst->mArg1, instIdx++);
+							inst->mKind = BeMCInstKind_MovSX;
+							inst->mArg1 = mcScratch;
+							_Rerun("MovSX");
+
+							if (debugging)
+								OutputDebugStrF(" MovSX\n");
+						}
+					}
+				}
+
+				if (!arg0.IsNativeReg())
+				{
+					// With f32s we can do a imm32 mov into memory, but there's no imm64 version of that
+					if ((arg0Type->mTypeCode == BeTypeCode_Double) && (arg1.IsImmediate()))
+					{
+						// One option would be to do a "movsd xmm, .rdata" to load up the immediate...
+						//  and that would leave arg0 with the possibility of binding to a register
+						//  in a subsequent reg pass, but we don't do that.
+						//ReplaceWithNewVReg(inst->mArg1, instIdx, true);
+
+						// We do an int64 load/store, so arg0 must never be allowed to be a register
+						if (arg0.IsVReg())
+						{
+							auto vregInfo = mVRegInfo[arg0.mVRegIdx];
+							vregInfo->mForceMem = true;
+							CheckForce(vregInfo);
+						}
+
+						BeMCOperand castedVReg;
+						if (inst->mArg0.mKind == BeMCOperandKind_VRegLoad)
+						{
+							// Maintain the load-ness (don't wrap a load)
+							castedVReg = AllocVirtualReg(mModule->mContext->GetPointerTo(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64)), 2, false);
+							CreateDefineVReg(castedVReg, instIdx++);
+							auto castedVRegInfo = GetVRegInfo(castedVReg);
+							castedVRegInfo->mIsExpr = true;
+							castedVRegInfo->mRelTo = BeMCOperand::FromVReg(inst->mArg0.mVRegIdx);
+							castedVReg.mKind = BeMCOperandKind_VRegLoad;
+						}
+						else
+						{
+							castedVReg = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64), 2, false);
+							CreateDefineVReg(castedVReg, instIdx++);
+							auto castedVRegInfo = GetVRegInfo(castedVReg);
+							castedVRegInfo->mIsExpr = true;
+							castedVRegInfo->mRelTo = inst->mArg0;
+						}
+
+						BeMCOperand scratchReg = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int64), 2, true);
+						CreateDefineVReg(scratchReg, instIdx++);
+						AllocInst(BeMCInstKind_Mov, scratchReg, BeMCOperand::FromImmediate(arg1.mImmediate), instIdx++);
+						inst->mArg0 = castedVReg;
+						inst->mArg1 = scratchReg;
+
+						_Rerun("MovSD");
+						if (debugging)
+							OutputDebugStrF(" Movsd\n");
+					}
+
+					// Conversion types only work in "r, rm" format
+					auto arg0Type = GetType(inst->mArg0);
+					auto arg1Type = GetType(inst->mArg1);
+					bool isCompat = arg0Type->mSize == arg1Type->mSize;
+					if ((arg0Type->IsFloat()) != arg1Type->IsFloat())
+						isCompat = false;
+
+					if (!isCompat)
+					{
+						ReplaceWithNewVReg(inst->mArg0, instIdx, false);
+						_Rerun("Mov float rm");
+						if (debugging)
+							OutputDebugStrF(" Mov float rm\n");
+					}
+				}
+			}
+			break;
+			case BeMCInstKind_XAdd:
+			{
+				for (int oprIdx = 0; oprIdx < 2; oprIdx++)
+				{
+					BeMCOperand& origOperand = (oprIdx == 0) ? inst->mArg0 : inst->mArg1;
+					if (origOperand.IsVRegAny())
+					{
+						BeRMParamsInfo rmInfo;
+						GetRMParams(origOperand, rmInfo);
+
+						auto vregInfo = GetVRegInfo(origOperand);
+						bool isValid = true;
+						if (oprIdx == 1)
+						{
+							if (rmInfo.mMode != BeMCRMMode_Direct)
+							{
+								auto newVReg = ReplaceWithNewVReg(origOperand, instIdx, true, true);
+								auto newVRegInfo = GetVRegInfo(newVReg);
+								newVRegInfo->mDisableRAX = true;
+								_Rerun("XAdd");
+							}
+						}
+					}
+				}
+			}
+			break;
+			case BeMCInstKind_CmpXChg:
+			{
+				for (int oprIdx = 0; oprIdx < 2; oprIdx++)
+				{
+					BeMCOperand& origOperand = (oprIdx == 0) ? inst->mArg0 : inst->mArg1;
+					if (origOperand.IsVRegAny())
+					{
+						BeRMParamsInfo rmInfo;
+						GetRMParams(origOperand, rmInfo);
+
+						auto vregInfo = GetVRegInfo(origOperand);
+
+						if ((ResizeRegister(rmInfo.mRegA, 8) == X64Reg_RAX) || (ResizeRegister(rmInfo.mRegB, 8) == X64Reg_RAX))
+						{
+							if (!vregInfo->mIsExpr)
+							{
+								_Rerun("CmpXChg");
+								vregInfo->mDisableRAX = true;
+								continue;
+							}
+							else
+							{
+								int safeIdx = FindSafeInstInsertPos(instIdx, true);
+								_Rerun("CmpXChg 2");
+
+								auto origType = GetType(origOperand);
+								BeMCOperand scratchReg = AllocVirtualReg(mModule->mContext->GetPointerTo(origType), 2, false);
+								CreateDefineVReg(scratchReg, safeIdx++);
+								AllocInst(BeMCInstKind_Mov, scratchReg, OperandToAddr(origOperand), safeIdx++);
+
+								auto newVRegInfo = GetVRegInfo(scratchReg);
+								newVRegInfo->mDisableRAX = true;
+
+								origOperand = scratchReg;
+								origOperand.mKind = BeMCOperandKind_VRegLoad;
+								continue;
+							}
+						}
+
+						bool isValid = true;
+						if (oprIdx == 1)
+						{
+							if (rmInfo.mMode != BeMCRMMode_Direct)
+							{
+								int safeIdx = FindSafeInstInsertPos(instIdx, true);
+								auto newVReg = ReplaceWithNewVReg(origOperand, safeIdx, true, true);
+								auto newVRegInfo = GetVRegInfo(newVReg);
+								newVRegInfo->mDisableRAX = true;
+								_Rerun("CmpXChg 3");
+							}
+						}
+					}
+				}
+			}
+			break;
+			case BeMCInstKind_Load:
+			{
+				// And Load gets converted to a "Load %reg0, [%reg1]"
+				// So both mArg0 and mArg1 must be a register
+				if (!IsAddressable(arg1))
+				{
+					// Convert to
+					// Mov %scratch, %vreg1
+					// Load %vreg0, [%scratch]
+					ReplaceWithNewVReg(inst->mArg1, instIdx, true);
+					arg1 = GetFixedOperand(inst->mArg1);
+					_Rerun("Load");;
+					if (debugging)
+						OutputDebugStrF(" Load\n");
+				}
+
+				// Do this one second since the 'insert after' makes instIdx no longer point to the Load inst
+				if (!arg0.IsNativeReg())
+				{
+					// Convert to
+					// Load %scratch, [%vreg1]
+					// Mov %vreg0, %scratch
+					ReplaceWithNewVReg(inst->mArg0, instIdx, false);
+					_Rerun("Load 2");
+					if (debugging)
+						OutputDebugStrF(" Load 2\n");
+				}
+			}
+			break;
+			case BeMCInstKind_Store:
+			{
+				// Store gets converted to a "Store [reg], reg"
+				if (!IsAddressable(arg0))
+				{
+					// Convert to
+					// Mov %scratch, %vreg0
+					// Store %scratch, [%vreg1]
+					ReplaceWithNewVReg(inst->mArg0, instIdx, true);
+					_Rerun("Store");
+					if (debugging)
+						OutputDebugStrF(" Store\n");
+				}
+
+				if (!arg1.IsNativeReg())
+				{
+					// Convert to
+					// Mov %scratch, %vreg1
+					// Store %vreg0, [%scratch]
+					ReplaceWithNewVReg(inst->mArg1, instIdx, true);
+					_Rerun("Store 2");
+					if (debugging)
+						OutputDebugStrF(" Store2\n");
+				}
+			}
+			break;
+			case BeMCInstKind_DefPhi:
+			{
+				// This is from a PHI whose value was not used
+				RemoveInst(mcBlock, instIdx);
+				instIdx--;
+				continue;
+			}
+			break;
 			}
 
 			if ((pendingInitKind != BfIRInitType_NotNeeded) && (pendingInitKind != BfIRInitType_NotNeeded_AliveOnDecl))
@@ -11339,10 +11266,8 @@ bool BeMCContext::DoJumpRemovePass()
 		for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
 		{
 			auto inst = mcBlock->mInstructions[instIdx];
-			if (inst == NULL)
-				continue;
-
 			bool goBackToLastBranch = false;
+
 			bool removeInst = false;
 
 			// If we're just jumping to the next label, remove jump
@@ -11354,8 +11279,6 @@ bool BeMCContext::DoJumpRemovePass()
 					for (int labelInstIdx = instIdx + 1; labelInstIdx < (int)mcBlock->mInstructions.size(); labelInstIdx++)
 					{
 						auto labelInst = mcBlock->mInstructions[labelInstIdx];
-						if (labelInst == NULL)
-							continue;
 						if (labelInst->mKind != BeMCInstKind_Label)
 						{
 							if (labelInst->IsPsuedo())
@@ -11377,9 +11300,8 @@ bool BeMCContext::DoJumpRemovePass()
 
 			if (removeInst)
 			{
-				//mcBlock->mInstructions.RemoveAt(instIdx);
-				//instIdx--;
-				mcBlock->mInstructions[instIdx] = NULL;
+				mcBlock->mInstructions.RemoveAt(instIdx);
+				instIdx--;
 				continue;
 			}
 
@@ -11392,7 +11314,7 @@ bool BeMCContext::DoJumpRemovePass()
 					bool allowRemove = true;
 					auto nextInst = mcBlock->mInstructions[instIdx + 1];
 					auto nextNextInst = mcBlock->mInstructions[instIdx + 2];
-					if ((nextInst != NULL) && (nextNextInst != NULL) && (nextInst->mKind == BeMCInstKind_Br) &&
+					if ((nextInst->mKind == BeMCInstKind_Br) &&
 						((inst->mDbgLoc == NULL) || (inst->mDbgLoc == nextNextInst->mDbgLoc)) &&
 						(!labelStats[inst->mArg0.mLabelIdx].mForceKeepLabel))
 					{
@@ -11401,11 +11323,7 @@ bool BeMCContext::DoJumpRemovePass()
 						{
 							auto prevInst = mcBlock->mInstructions[checkIdx];
 
-							if (prevInst == NULL)
-							{
-								// Ignore
-							}
-							else if (prevInst->mKind == BeMCInstKind_Label)
+							if (prevInst->mKind == BeMCInstKind_Label)
 							{
 								// Keep looking
 							}
@@ -11426,13 +11344,11 @@ bool BeMCContext::DoJumpRemovePass()
 							allowRemove = false;*/
 
 						didWork = true;
-						//RemoveInst(mcBlock, instIdx); // Remove label
-						mcBlock->mInstructions[instIdx] = NULL;
+						RemoveInst(mcBlock, instIdx); // Remove label
 						labelRemaps.TryAdd(inst->mArg0.mLabelIdx, nextInst->mArg0.mLabelIdx);
 						if (allowRemove)
 						{
-							//RemoveInst(mcBlock, instIdx); // Remove branch
-							mcBlock->mInstructions[instIdx + 1] = NULL;
+							RemoveInst(mcBlock, instIdx); // Remove branch
 							goBackToLastBranch = true;
 						}
 					}
@@ -11446,11 +11362,7 @@ bool BeMCContext::DoJumpRemovePass()
 				while (checkIdx >= 0)
 				{
 					auto checkInst = mcBlock->mInstructions[checkIdx];
-					if (checkInst == NULL)
-					{
-						// Ignore
-					}
-					else if (checkInst->mKind == BeMCInstKind_Br)
+					if (checkInst->mKind == BeMCInstKind_Br)
 					{
 						instIdx = checkIdx - 1;
 						break;
@@ -11473,9 +11385,13 @@ bool BeMCContext::DoJumpRemovePass()
 			bool didRemapMerge = false;
 			for (auto& remapPair : labelRemaps)
 			{
+				//auto itr = labelRemaps.find(remapPair.second);
+				//if (itr != labelRemaps.end())
+
 				int* valuePtr = NULL;
 				if (labelRemaps.TryGetValue(remapPair.mValue, &valuePtr))
 				{
+					//remapPair.second = itr->second;
 					remapPair.mValue = *valuePtr;
 					didRemapMerge = true;
 				}
@@ -11489,17 +11405,20 @@ bool BeMCContext::DoJumpRemovePass()
 			for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
 			{
 				auto inst = mcBlock->mInstructions[instIdx];
-				if (inst == NULL)
-					continue;
+
 				auto operands = { &inst->mArg0, &inst->mArg1 };
 				for (auto operand : operands)
 				{
 					if (operand->mKind == BeMCOperandKind_Label)
 					{
+						//auto itr = labelRemaps.find(operand->mLabelIdx);
+						//if (itr != labelRemaps.end())
+
 						int* valuePtr = NULL;
 						if (labelRemaps.TryGetValue(operand->mLabelIdx, &valuePtr))
 						{
 							labelStats[operand->mLabelIdx].mHasRefs = false;
+							//operand->mLabelIdx = itr->second;
 							operand->mLabelIdx = *valuePtr;
 							labelStats[operand->mLabelIdx].mHasRefs = true;
 						}
@@ -11522,138 +11441,88 @@ bool BeMCContext::DoJumpRemovePass()
 	for (auto mcBlock : mBlocks)
 	{
 		bool doMorePasses = false;
-		bool isUnreachable = false;	
+		bool isUnreachable = false;
 
-		// This loop also compacts any NULL holes in the instruction list from previous removals
+		for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
 		{
-			int outInstIdx = 0;
-			for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
+			auto inst = mcBlock->mInstructions[instIdx];
+
+			if (inst->mKind == BeMCInstKind_Label)
 			{
-				auto inst = mcBlock->mInstructions[instIdx];
-				bool doRemove = false;
+				isUnreachable = false;
 
-				if (inst == NULL)
-				{
-					doRemove = true;
-				}
-				else if (inst->mKind == BeMCInstKind_Label)
-				{
-					isUnreachable = false;
-
-					if (!labelStats[inst->mArg0.mLabelIdx].mHasRefs)
-					{
-						doRemove = true;
-					}
-				}
-				else if (inst->mKind == BeMCInstKind_CondBr)
-				{
-					doMorePasses = true;
-				}
-				else if (inst->mKind == BeMCInstKind_Br)
-				{
-					if (isUnreachable)
-					{
-						// We can't possible reach this branch.  This is an artifact of other br removals
-						doRemove = true;
-					}
-					else
-						isUnreachable = true;
-				}
-
-				if (doRemove)
+				if (!labelStats[inst->mArg0.mLabelIdx].mHasRefs)
 				{
 					didWork = true;
-				}
-				else
-				{
-					if (outInstIdx != instIdx)
-						mcBlock->mInstructions[outInstIdx] = inst;
-					outInstIdx++;
+					mcBlock->mInstructions.RemoveAt(instIdx);
+					instIdx--;
 				}
 			}
-			mcBlock->mInstructions.mSize = outInstIdx;
+
+			if (inst->mKind == BeMCInstKind_CondBr)
+				doMorePasses = true;
+
+			if (inst->mKind == BeMCInstKind_Br)
+			{
+				if (isUnreachable)
+				{
+					// We can't possible reach this branch.  This is an artifact of other br removals
+					didWork = true;
+					RemoveInst(mcBlock, instIdx);
+					instIdx--;
+					continue;
+				}
+
+				isUnreachable = true;
+			}
 		}
 
 		if (doMorePasses)
 		{
-			int outInstIdx = 0;
-
-			// This loop compacts NULLs
 			for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
 			{
-				bool doRemove = false;
-				auto inst = mcBlock->mInstructions[instIdx];				
+				auto inst = mcBlock->mInstructions[instIdx];
 
-				if (inst == NULL)
+				// For the form:
+				//   CondBr %label0, eq
+				//   Br %label1
+				//   %label0:
+				// Invert condition and convert that to
+				//   CondBr %label1, neq
+				//   %label0:
+				// We perform this after the jump-removal process to ensure we compare against the correct
+				//  final label positions, otherwise there are cases where we would incorrectly apply this
+				//  transformation early and end up with worse results than just not doing it
+				if (inst->mKind == BeMCInstKind_CondBr)
 				{
-					doRemove = true;
-				}
-				else if (inst->mKind == BeMCInstKind_CondBr)
-				{					
-					// For the form:
-					//   CondBr %label0, eq
-					//   Br %label1
-					//   %label0:
-					// Invert condition and convert that to
-					//   CondBr %label1, neq
-					//   %label0:
-					// We perform this after the jump-removal process to ensure we compare against the correct
-					//  final label positions, otherwise there are cases where we would incorrectly apply this
-					//  transformation early and end up with worse results than just not doing it					
 					if (instIdx < (int)mcBlock->mInstructions.size() - 2)
 					{
-						bool canRemove = true;
-
 						int nextIdx = instIdx + 1;
 						int nextNextIdx = instIdx + 2;
 						auto nextInst = mcBlock->mInstructions[nextIdx];
-						if ((nextInst != NULL) && (nextInst->mKind == BeMCInstKind_EnsureInstructionAt))
+						if (nextInst->mKind == BeMCInstKind_EnsureInstructionAt)
 						{
 							if (nextInst->mDbgLoc != inst->mDbgLoc)
-							{
-								canRemove = false;
-							}
-							else
-							{
-								nextIdx++;
-								nextNextIdx++;
-								nextInst = mcBlock->mInstructions[nextIdx];
-							}
+								continue;
+							nextIdx++;
+							nextNextIdx++;
+							nextInst = mcBlock->mInstructions[nextIdx];
 						}
 
-						if (canRemove)
+						auto nextNextInst = mcBlock->mInstructions[nextNextIdx];
+						if ((nextInst->mKind == BeMCInstKind_Br) &&
+							(nextNextInst->mKind == BeMCInstKind_Label) && (inst->mArg0 == nextNextInst->mArg0) &&
+							(!BeModule::IsCmpOrdered(inst->mArg1.mCmpKind)))
 						{
-							auto nextNextInst = mcBlock->mInstructions[nextNextIdx];
-							if ((nextInst != NULL) && (nextNextInst != NULL) && (nextInst->mKind == BeMCInstKind_Br) &&
-								(nextNextInst->mKind == BeMCInstKind_Label) && (inst->mArg0 == nextNextInst->mArg0) &&
-								(!BeModule::IsCmpOrdered(inst->mArg1.mCmpKind)))
-							{
-								didWork = true;
-								inst->mArg0 = nextInst->mArg0;
-								BF_ASSERT(inst->mArg1.mKind == BeMCOperandKind_CmpKind);
-								inst->mArg1.mCmpKind = BeModule::InvertCmp(inst->mArg1.mCmpKind);
-
-								// Remove- compacted later
-								mcBlock->mInstructions[nextIdx] = NULL;
-								//RemoveInst(mcBlock, nextIdx);
-							}
+							didWork = true;
+							inst->mArg0 = nextInst->mArg0;
+							BF_ASSERT(inst->mArg1.mKind == BeMCOperandKind_CmpKind);
+							inst->mArg1.mCmpKind = BeModule::InvertCmp(inst->mArg1.mCmpKind);
+							mcBlock->mInstructions.RemoveAt(nextIdx);
 						}
 					}
 				}
-
-				if (doRemove)
-				{
-					didWork = true;
-				}
-				else
-				{
-					if (outInstIdx != instIdx)
-						mcBlock->mInstructions[outInstIdx] = inst;
-					outInstIdx++;
-				}
 			}
-
-			mcBlock->mInstructions.mSize = outInstIdx;
 		}
 	}
 
@@ -11846,13 +11715,13 @@ void BeMCContext::DoRegFinalization()
 
 					auto vregInfo = mVRegInfo[checkVRegIdx];
 					if (vregInfo->mReg != X64Reg_None)
-					{	
+					{
 						auto vregFullRegister = GetFullRegister(vregInfo->mReg);
 
 						// Do we specify a particular reg, or just all volatiles?
 						if ((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg != vregFullRegister))
 							continue;
-						
+
 						bool potentialScratchReg =
 							(vregFullRegister == X64Reg_XMM5_f32) ||
 							(vregFullRegister == X64Reg_XMM5_f64) ||
@@ -11862,7 +11731,7 @@ void BeMCContext::DoRegFinalization()
 						bool vregPersists = mLivenessContext.IsSet(restoreInst->mLiveness, liveVRegIdx);
 
 						if ((!potentialScratchReg) && (!vregPersists))
-						{							
+						{
 							continue;
 						}
 
@@ -12072,7 +11941,7 @@ void BeMCContext::DoRegFinalization()
 														volatileVRegSave = vregInfo->mVolatileVRegSave;
 
 														if (!saveInfo.mIsSaved)
-														{															
+														{
 															saveInfo.mIsSaved = true;
 															AllocInst(BeMCInstKind_Mov, BeMCOperand::FromVReg(volatileVRegSave), BeMCOperand::FromReg(scratchReg), instIdx++);
 															instEndIdx++;
@@ -12198,7 +12067,7 @@ BeMCInstForm BeMCContext::GetInstForm(BeMCInst* inst)
 	if ((arg0Type != NULL) && (arg1Type != NULL) &&
 		((arg0Type->IsVector()) || (arg1Type->IsVector())))
 	{
-		if (((arg0Type->IsVector()) && (arg0Type->mSize == 8)) || 
+		if (((arg0Type->IsVector()) && (arg0Type->mSize == 8)) ||
 			((arg1Type->IsVector()) && (arg1Type->mSize == 8)))
 		{
 			if (arg0.IsNativeReg())
@@ -12608,7 +12477,7 @@ void BeMCContext::EmitStdInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcod
 	}
 }
 
-void BeMCContext::EmitStdInst(BeMCInstForm instForm, BeMCInst * inst, uint8 opcode_rm_r, uint8 opcode_r_rm, uint8 opcode_rm_imm, uint8 opcode_rm_imm_rx, uint8 opcode_rm_imm8, uint8 opcode_rm_imm8_rx)
+void BeMCContext::EmitStdInst(BeMCInstForm instForm, BeMCInst* inst, uint8 opcode_rm_r, uint8 opcode_r_rm, uint8 opcode_rm_imm, uint8 opcode_rm_imm_rx, uint8 opcode_rm_imm8, uint8 opcode_rm_imm8_rx)
 {
 	switch (instForm)
 	{
@@ -12664,64 +12533,64 @@ bool BeMCContext::EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 op
 	case BeMCInstForm_XMM64_IMM:
 	case BeMCInstForm_XMM64_FRM64:
 	case BeMCInstForm_XMM32_FRM64:
+	{
+		//cvttsd2si
+		auto arg0 = GetFixedOperand(inst->mArg0);
+		auto arg1 = GetFixedOperand(inst->mArg1);
+
+		if ((instForm == BeMCInstForm_R32_F64) && (arg0.IsNativeReg()))
 		{
-			//cvttsd2si
-			auto arg0 = GetFixedOperand(inst->mArg0);
-			auto arg1 = GetFixedOperand(inst->mArg1);
-
-			if ((instForm == BeMCInstForm_R32_F64) && (arg0.IsNativeReg()))
-			{
-				// For xmm->uint32 conversions we need to do xmm->int64 and then truncate
-				arg0.mReg = ResizeRegister(arg0.mReg, 8);
-				is64Bit = true;
-			}
-
-			Emit(0xF2); EmitREX(arg0, arg1, is64Bit);
-			Emit(0x0F); Emit(opcode);
-			EmitModRM(arg0, arg1);
+			// For xmm->uint32 conversions we need to do xmm->int64 and then truncate
+			arg0.mReg = ResizeRegister(arg0.mReg, 8);
+			is64Bit = true;
 		}
-		return true;
+
+		Emit(0xF2); EmitREX(arg0, arg1, is64Bit);
+		Emit(0x0F); Emit(opcode);
+		EmitModRM(arg0, arg1);
+	}
+	return true;
 	case BeMCInstForm_XMM128_RM128:
+	{
+		BeTypeCode elemType = BeTypeCode_Float;
+		auto arg0 = GetFixedOperand(inst->mArg0);
+		auto arg1 = GetFixedOperand(inst->mArg1);
+
+		auto arg0Type = GetType(inst->mArg0);
+		auto arg1Type = GetType(inst->mArg1);
+		if (arg0Type->IsExplicitVectorType())
 		{
-			BeTypeCode elemType = BeTypeCode_Float;
-			auto arg0 = GetFixedOperand(inst->mArg0);
-			auto arg1 = GetFixedOperand(inst->mArg1);
+			auto vecType = (BeVectorType*)arg0Type;
+			elemType = vecType->mElementType->mTypeCode;
+		}
 
-			auto arg0Type = GetType(inst->mArg0);
-			auto arg1Type = GetType(inst->mArg1);
-			if (arg0Type->IsExplicitVectorType())
-			{
-				auto vecType = (BeVectorType*)arg0Type;
-				elemType = vecType->mElementType->mTypeCode;
-			}
-
-			if (arg1Type->IsFloat())
-			{
-				if (elemType == BeTypeCode_Double)
-					Emit(0x66);
-				EmitREX(arg1, arg1, false);
-				Emit(0x0F); Emit(0xC6); // SHUFPS / SHUFPD
-				EmitModRM(arg1, arg1);
-				Emit(0);
-			}
-
+		if (arg1Type->IsFloat())
+		{
 			if (elemType == BeTypeCode_Double)
 				Emit(0x66);
-			EmitREX(arg0, arg1, is64Bit);
-			Emit(0x0F); Emit(opcode);
-			EmitModRM(arg0, arg1);
-			return true;
+			EmitREX(arg1, arg1, false);
+			Emit(0x0F); Emit(0xC6); // SHUFPS / SHUFPD
+			EmitModRM(arg1, arg1);
+			Emit(0);
 		}
-		break;
- 	case BeMCInstForm_FRM128_XMM128:
-// 		{
-// 			Emit(0xF2); EmitREX(inst->mArg0, inst->mArg1, is64Bit);
-// 			Emit(0x0F); Emit(opcode);
-// 			EmitModRM(inst->mArg0, inst->mArg1);
-// 		}
+
+		if (elemType == BeTypeCode_Double)
+			Emit(0x66);
+		EmitREX(arg0, arg1, is64Bit);
+		Emit(0x0F); Emit(opcode);
+		EmitModRM(arg0, arg1);
+		return true;
+	}
+	break;
+	case BeMCInstForm_FRM128_XMM128:
+		// 		{
+		// 			Emit(0xF2); EmitREX(inst->mArg0, inst->mArg1, is64Bit);
+		// 			Emit(0x0F); Emit(opcode);
+		// 			EmitModRM(inst->mArg0, inst->mArg1);
+		// 		}
 		NOP;
 
- 		break;
+		break;
 	}
 
 	return false;
@@ -12733,23 +12602,23 @@ bool BeMCContext::EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 op
 	switch (instForm)
 	{
 	case BeMCInstForm_FRM32_XMM32:
-		{
-			auto arg0 = GetFixedOperand(inst->mArg0);
-			auto arg1 = GetFixedOperand(inst->mArg1);
-			Emit(0xF3); EmitREX(arg1, arg0, is64Bit);
-			Emit(0x0F); Emit(opcode_dest_frm);
-			EmitModRM(arg1, arg0);
-		}
-		return true;
+	{
+		auto arg0 = GetFixedOperand(inst->mArg0);
+		auto arg1 = GetFixedOperand(inst->mArg1);
+		Emit(0xF3); EmitREX(arg1, arg0, is64Bit);
+		Emit(0x0F); Emit(opcode_dest_frm);
+		EmitModRM(arg1, arg0);
+	}
+	return true;
 	case BeMCInstForm_FRM64_XMM64:
-		{
-			auto arg0 = GetFixedOperand(inst->mArg0);
-			auto arg1 = GetFixedOperand(inst->mArg1);
-			Emit(0xF2); EmitREX(arg1, arg0, is64Bit);
-			Emit(0x0F); Emit(opcode_dest_frm);
-			EmitModRM(arg1, arg0);
-		}
-		return true;
+	{
+		auto arg0 = GetFixedOperand(inst->mArg0);
+		auto arg1 = GetFixedOperand(inst->mArg1);
+		Emit(0xF2); EmitREX(arg1, arg0, is64Bit);
+		Emit(0x0F); Emit(opcode_dest_frm);
+		EmitModRM(arg1, arg0);
+	}
+	return true;
 	default:
 		return EmitStdXMMInst(instForm, inst, opcode);
 	}
@@ -12771,14 +12640,14 @@ bool BeMCContext::EmitPackedXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8
 	case BeMCInstForm_XMM32_IMM:
 	case BeMCInstForm_XMM32_FRM32:
 	case BeMCInstForm_XMM64_FRM32: // CVTSS2SD
-		{
-			auto arg0 = GetFixedOperand(inst->mArg0);
-			auto arg1 = GetFixedOperand(inst->mArg1);
-			EmitREX(arg0, arg1, is64Bit);
-			Emit(0x0F); Emit(opcode);
-			EmitModRM(arg0, arg1);
-		}
-		return true;
+	{
+		auto arg0 = GetFixedOperand(inst->mArg0);
+		auto arg1 = GetFixedOperand(inst->mArg1);
+		EmitREX(arg0, arg1, is64Bit);
+		Emit(0x0F); Emit(opcode);
+		EmitModRM(arg0, arg1);
+	}
+	return true;
 
 	case BeMCInstForm_R64_F64:
 	case BeMCInstForm_XMM64_RM64:
@@ -12789,14 +12658,14 @@ bool BeMCContext::EmitPackedXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8
 	case BeMCInstForm_XMM64_IMM:
 	case BeMCInstForm_XMM64_FRM64:
 	case BeMCInstForm_XMM32_FRM64: // CVTSD2SS
-		{
-			auto arg0 = GetFixedOperand(inst->mArg0);
-			auto arg1 = GetFixedOperand(inst->mArg1);
-			EmitREX(arg0, arg1, is64Bit);
-			Emit(0x0F); Emit(opcode);
-			EmitModRM(arg0, arg1);
-		}
-		return true;
+	{
+		auto arg0 = GetFixedOperand(inst->mArg0);
+		auto arg1 = GetFixedOperand(inst->mArg1);
+		EmitREX(arg0, arg1, is64Bit);
+		Emit(0x0F); Emit(opcode);
+		EmitModRM(arg0, arg1);
+	}
+	return true;
 	}
 
 	return false;
@@ -12957,60 +12826,60 @@ void BeMCContext::EmitAggMov(const BeMCOperand& dest, const BeMCOperand& src)
 	int64 curVal = 0;
 
 	auto _EmitMovR11 = [&](int64 val)
-	{
-		int64 prevVal = curVal;
-		bool wasValRegSet = isValRegSet;
-		isValRegSet = true;
-		curVal = val;
-
-		if ((wasValRegSet) && (val == prevVal))
-			return;
-
-		if (val == 0)
 		{
-			// xor r11, r11
-			Emit(0x4D); Emit(0x31); Emit(0xDB);
-			return;
-		}
+			int64 prevVal = curVal;
+			bool wasValRegSet = isValRegSet;
+			isValRegSet = true;
+			curVal = val;
 
-		if (wasValRegSet)
-		{
-			if ((val & ~0xFF) == (prevVal & ~0xFF))
+			if ((wasValRegSet) && (val == prevVal))
+				return;
+
+			if (val == 0)
 			{
-				// mov r11b, val8
-				Emit(0x41); Emit(0xB3);
-				Emit((int8)val);
+				// xor r11, r11
+				Emit(0x4D); Emit(0x31); Emit(0xDB);
 				return;
 			}
 
-			if ((val & ~0xFFFF) == (prevVal & ~0xFFFF))
+			if (wasValRegSet)
 			{
-				// mov r11w, val16
-				Emit(0x66); Emit(0x41); Emit(0xBB);
-				mOut.Write((int16)val);
-				return;
-			}
-		}
+				if ((val & ~0xFF) == (prevVal & ~0xFF))
+				{
+					// mov r11b, val8
+					Emit(0x41); Emit(0xB3);
+					Emit((int8)val);
+					return;
+				}
 
-		if ((val >= 0) && (val <= 0x7FFFFFFF))
-		{
-			// mov r11d, val32
-			Emit(0x41); Emit(0xBB);
-			mOut.Write((int32)val);
-		}
-		else if ((val >= -0x80000000LL) && (val <= 0x7FFFFFFF))
-		{
-			// mov r11, val32 (sign extended)
-			Emit(0x49); Emit(0xC7); Emit(0xC3);
-			mOut.Write((int32)val);
-		}
-		else
-		{
-			// movabs r11, val64
-			Emit(0x49); Emit(0xBB);
-			mOut.Write((int64)val);
-		}
-	};
+				if ((val & ~0xFFFF) == (prevVal & ~0xFFFF))
+				{
+					// mov r11w, val16
+					Emit(0x66); Emit(0x41); Emit(0xBB);
+					mOut.Write((int16)val);
+					return;
+				}
+			}
+
+			if ((val >= 0) && (val <= 0x7FFFFFFF))
+			{
+				// mov r11d, val32
+				Emit(0x41); Emit(0xBB);
+				mOut.Write((int32)val);
+			}
+			else if ((val >= -0x80000000LL) && (val <= 0x7FFFFFFF))
+			{
+				// mov r11, val32 (sign extended)
+				Emit(0x49); Emit(0xC7); Emit(0xC3);
+				mOut.Write((int32)val);
+			}
+			else
+			{
+				// movabs r11, val64
+				Emit(0x49); Emit(0xBB);
+				mOut.Write((int64)val);
+			}
+		};
 
 	for (; curOfs <= memSize - 8; )
 	{
@@ -13514,94 +13383,94 @@ void BeMCContext::DoCodeEmission()
 			switch (inst->mKind)
 			{
 			case BeMCInstKind_DbgDecl:
+			{
+				auto vregInfo = GetVRegInfo(inst->mArg0);
+				auto dbgVar = vregInfo->mDbgVariable;
+				dbgVar->mDeclStart = funcCodePos;
+
+				while (vregInfo->IsDirectRelTo())
 				{
-					auto vregInfo = GetVRegInfo(inst->mArg0);
-					auto dbgVar = vregInfo->mDbgVariable;
-					dbgVar->mDeclStart = funcCodePos;
+					if (vregInfo->mRelTo.IsNativeReg())
+					{
+						break;
+					}
+					else
+						vregInfo = GetVRegInfo(vregInfo->mRelTo);
+				}
 
-					while (vregInfo->IsDirectRelTo())
-					{
-						if (vregInfo->mRelTo.IsNativeReg())
-						{
-							break;
-						}
-						else
-							vregInfo = GetVRegInfo(vregInfo->mRelTo);
-					}
+				BeMCOperand defArg = inst->mArg0;
+				if ((vregInfo->mIsRetVal) && (mCompositeRetVRegIdx != -1) && (mCompositeRetVRegIdx != inst->mArg0.mVRegIdx))
+				{
+					defArg = BeMCOperand::FromVReg(mCompositeRetVRegIdx);
+					if ((inst->mArg0.mKind == BeMCOperandKind_VReg) && (vregInfo->mType->IsNonVectorComposite()))
+						defArg.mKind = BeMCOperandKind_VRegLoad;
+					vregInfo = mVRegInfo[mCompositeRetVRegIdx];
+				}
 
-					BeMCOperand defArg = inst->mArg0;
-					if ((vregInfo->mIsRetVal) && (mCompositeRetVRegIdx != -1) && (mCompositeRetVRegIdx != inst->mArg0.mVRegIdx))
-					{
-						defArg = BeMCOperand::FromVReg(mCompositeRetVRegIdx);
-						if ((inst->mArg0.mKind == BeMCOperandKind_VReg) && (vregInfo->mType->IsNonVectorComposite()))
-							defArg.mKind = BeMCOperandKind_VRegLoad;
-						vregInfo = mVRegInfo[mCompositeRetVRegIdx];
-					}
-
-					if (vregInfo->mReg != X64Reg_None)
-					{
-						if ((defArg.mKind == BeMCOperandKind_VRegAddr) || (dbgVar->mIsValue))
-							dbgVar->mPrimaryLoc.mKind = BeDbgVariableLoc::Kind_Reg;
-						else
-							dbgVar->mPrimaryLoc.mKind = BeDbgVariableLoc::Kind_Indexed;
-						dbgVar->mPrimaryLoc.mReg = vregInfo->mReg;
-						dbgVar->mPrimaryLoc.mOfs = 0;
-					}
-					else if (vregInfo->mRelTo.IsNativeReg())
-					{
-						if ((defArg.mKind == BeMCOperandKind_VRegAddr) || (dbgVar->mIsValue))
-							dbgVar->mPrimaryLoc.mKind = BeDbgVariableLoc::Kind_Reg;
-						else
-							dbgVar->mPrimaryLoc.mKind = BeDbgVariableLoc::Kind_Indexed;
-						dbgVar->mPrimaryLoc.mReg = vregInfo->mRelTo.mReg;
-						if (vregInfo->mRelOffset.IsImmediateInt())
-						{
-							dbgVar->mPrimaryLoc.mOfs = vregInfo->mRelOffset.mImmediate;
-						}
-						else
-							BF_ASSERT(!vregInfo->mRelOffset);
-					}
-					else if (vregInfo->mRelTo.mKind == BeMCOperandKind_SymbolAddr)
-					{
-						SoftFail("Not supported SymbolAddr");
-						//dbgVar->mPrimaryLoc.mKind = BeDbgVariableLoc::Kind_SymbolAddr;
-						//dbgVar->mPrimaryLoc.mOfs = vregInfo->mRelTo.mSymbolIdx;
-					}
-
-					if ((dbgVar->mPrimaryLoc.mKind == BeDbgVariableLoc::Kind_None) && (vregInfo->mType->mSize != 0))
-					{
+				if (vregInfo->mReg != X64Reg_None)
+				{
+					if ((defArg.mKind == BeMCOperandKind_VRegAddr) || (dbgVar->mIsValue))
+						dbgVar->mPrimaryLoc.mKind = BeDbgVariableLoc::Kind_Reg;
+					else
 						dbgVar->mPrimaryLoc.mKind = BeDbgVariableLoc::Kind_Indexed;
-						GetValAddr(BeMCOperand::FromVRegAddr(inst->mArg0.mVRegIdx), dbgVar->mPrimaryLoc.mReg, dbgVar->mPrimaryLoc.mOfs);
-					}
-
-					if (!mVRegInitializedContext.IsSet(vregsInitialized, inst->mArg0.mVRegIdx))
+					dbgVar->mPrimaryLoc.mReg = vregInfo->mReg;
+					dbgVar->mPrimaryLoc.mOfs = 0;
+				}
+				else if (vregInfo->mRelTo.IsNativeReg())
+				{
+					if ((defArg.mKind == BeMCOperandKind_VRegAddr) || (dbgVar->mIsValue))
+						dbgVar->mPrimaryLoc.mKind = BeDbgVariableLoc::Kind_Reg;
+					else
+						dbgVar->mPrimaryLoc.mKind = BeDbgVariableLoc::Kind_Indexed;
+					dbgVar->mPrimaryLoc.mReg = vregInfo->mRelTo.mReg;
+					if (vregInfo->mRelOffset.IsImmediateInt())
 					{
-						bool inGap = false;
-						if (!dbgVar->mGaps.empty())
-							inGap = dbgVar->mGaps.back().mLength == -1;
+						dbgVar->mPrimaryLoc.mOfs = vregInfo->mRelOffset.mImmediate;
+					}
+					else
+						BF_ASSERT(!vregInfo->mRelOffset);
+				}
+				else if (vregInfo->mRelTo.mKind == BeMCOperandKind_SymbolAddr)
+				{
+					SoftFail("Not supported SymbolAddr");
+					//dbgVar->mPrimaryLoc.mKind = BeDbgVariableLoc::Kind_SymbolAddr;
+					//dbgVar->mPrimaryLoc.mOfs = vregInfo->mRelTo.mSymbolIdx;
+				}
 
-						if (!inGap)
+				if ((dbgVar->mPrimaryLoc.mKind == BeDbgVariableLoc::Kind_None) && (vregInfo->mType->mSize != 0))
+				{
+					dbgVar->mPrimaryLoc.mKind = BeDbgVariableLoc::Kind_Indexed;
+					GetValAddr(BeMCOperand::FromVRegAddr(inst->mArg0.mVRegIdx), dbgVar->mPrimaryLoc.mReg, dbgVar->mPrimaryLoc.mOfs);
+				}
+
+				if (!mVRegInitializedContext.IsSet(vregsInitialized, inst->mArg0.mVRegIdx))
+				{
+					bool inGap = false;
+					if (!dbgVar->mGaps.empty())
+						inGap = dbgVar->mGaps.back().mLength == -1;
+
+					if (!inGap)
+					{
+						if (mDebugging)
 						{
-							if (mDebugging)
-							{
-								dbgStr += StrFormat(" Dbg Starting Gap %s\n", dbgVar->mName.c_str());
-							}
-
-							BeDbgVariableRange range;
-							range.mOffset = funcCodePos;
-							range.mLength = -1;
-							dbgVar->mGaps.push_back(range);
+							dbgStr += StrFormat(" Dbg Starting Gap %s\n", dbgVar->mName.c_str());
 						}
-					}
 
-					if (vregInfo->mVolatileVRegSave != -1)
-					{
-						auto savedVRegInfo = mVRegInfo[vregInfo->mVolatileVRegSave];
-						dbgVar->mSavedLoc.mKind = BeDbgVariableLoc::Kind_Indexed;
-						GetValAddr(BeMCOperand::FromVRegAddr(vregInfo->mVolatileVRegSave), dbgVar->mSavedLoc.mReg, dbgVar->mSavedLoc.mOfs);
+						BeDbgVariableRange range;
+						range.mOffset = funcCodePos;
+						range.mLength = -1;
+						dbgVar->mGaps.push_back(range);
 					}
 				}
-				break;
+
+				if (vregInfo->mVolatileVRegSave != -1)
+				{
+					auto savedVRegInfo = mVRegInfo[vregInfo->mVolatileVRegSave];
+					dbgVar->mSavedLoc.mKind = BeDbgVariableLoc::Kind_Indexed;
+					GetValAddr(BeMCOperand::FromVRegAddr(vregInfo->mVolatileVRegSave), dbgVar->mSavedLoc.mReg, dbgVar->mSavedLoc.mOfs);
+				}
+			}
+			break;
 			case BeMCInstKind_LifetimeExtend:
 				break;
 			case BeMCInstKind_LifetimeStart:
@@ -13609,298 +13478,298 @@ void BeMCContext::DoCodeEmission()
 			case BeMCInstKind_LifetimeEnd:
 				break;
 			case BeMCInstKind_LifetimeSoftEnd:
+			{
+				auto vregInfo = GetVRegInfo(inst->mArg0);
+				if ((vregInfo != NULL) && (vregInfo->mDbgVariable != NULL))
 				{
-					auto vregInfo = GetVRegInfo(inst->mArg0);
-					if ((vregInfo != NULL) && (vregInfo->mDbgVariable != NULL))
+					auto dbgVar = vregInfo->mDbgVariable;
+					if (dbgVar->mDeclStart != -1)
 					{
-						auto dbgVar = vregInfo->mDbgVariable;
-						if (dbgVar->mDeclStart != -1)
-						{
-							dbgVar->mDeclEnd = funcCodePos;
-							dbgVar->mDeclLifetimeExtend = false;
-							dbgVar->mDbgLifeEnded = true;
-							BF_ASSERT((uint)dbgVar->mDeclEnd >= (uint)dbgVar->mDeclStart);
-						}
+						dbgVar->mDeclEnd = funcCodePos;
+						dbgVar->mDeclLifetimeExtend = false;
+						dbgVar->mDbgLifeEnded = true;
+						BF_ASSERT((uint)dbgVar->mDeclEnd >= (uint)dbgVar->mDeclStart);
 					}
 				}
-				break;
+			}
+			break;
 			case BeMCInstKind_ValueScopeSoftEnd:
 				break;
 			case BeMCInstKind_ValueScopeHardEnd:
 				break;
 			case BeMCInstKind_MemSet:
+			{
+				// This doesn't currently attempt to align properly
+				int memSize = inst->mArg0.mMemSetInfo.mSize;
+				uint8 memValue = inst->mArg0.mMemSetInfo.mValue;
+				int curOfs = 0;
+
+				X64CPURegister destReg = X64Reg_R10;
+				int destOfs = 0;
+
+				if (inst->mArg1.IsNativeReg())
 				{
-					// This doesn't currently attempt to align properly
-					int memSize = inst->mArg0.mMemSetInfo.mSize;
-					uint8 memValue = inst->mArg0.mMemSetInfo.mValue;
-					int curOfs = 0;
-
-					X64CPURegister destReg = X64Reg_R10;
-					int destOfs = 0;
-
-					if (inst->mArg1.IsNativeReg())
-					{
-						destReg = inst->mArg1.mReg;
-					}
-					else if (inst->mArg1)
-					{
-						//BF_ASSERT(inst->mArg1.mKind == BeMCOperandKind_VReg);
-						GetValAddr(inst->mArg1, destReg, destOfs);
-					}
-
-					if (memValue == 0)
-					{
-						// xor r11, r11
-						Emit(0x4D); Emit(0x31); Emit(0xDB);
-					}
-					else
-					{
-						// mov r11, memValue*8
-						Emit(0x49); Emit(0xBB);
-						for (int i = 0; i < 8; i++)
-							Emit(memValue);
-					}
-
-					for (; curOfs <= memSize - 8; curOfs += 8)
-					{
-						EmitREX(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(destReg), true);
-						Emit(0x89);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11), destReg, X64Reg_None, 1, curOfs + destOfs);
-					}
-
-					// If there's more that one 'small' write required then we just do another 64-bit move
-					//  which overlaps partially into the previous 64-bit move
-					if ((memSize > 8) && (curOfs < memSize) && (memSize - curOfs != 4) &&
-						(memSize - curOfs != 2) && (memSize - curOfs != 1))
-					{
-						EmitREX(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(destReg), true);
-						Emit(0x89);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11), destReg, X64Reg_None, 1, (memSize - 8) + destOfs);
-
-						curOfs = memSize;
-					}
-
-					for (; curOfs <= memSize - 4; curOfs += 4)
-					{
-						EmitREX(BeMCOperand::FromReg(X64Reg_R11D), BeMCOperand::FromReg(destReg), false);
-						Emit(0x89);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11D), destReg, X64Reg_None, 1, curOfs + destOfs);
-					}
-
-					for (; curOfs <= memSize - 2; curOfs += 2)
-					{
-						Emit(0x66); EmitREX(BeMCOperand::FromReg(X64Reg_R11W), BeMCOperand::FromReg(destReg), false);
-						Emit(0x89);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11W), destReg, X64Reg_None, 1, curOfs + destOfs);
-					}
-
-					for (; curOfs <= memSize - 1; curOfs += 1)
-					{
-						EmitREX(BeMCOperand::FromReg(X64Reg_R11B), BeMCOperand::FromReg(destReg), false); //-V530
-						Emit(0x89 - 1);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11B), destReg, X64Reg_None, 1, curOfs + destOfs);
-					}
+					destReg = inst->mArg1.mReg;
 				}
-				break;
+				else if (inst->mArg1)
+				{
+					//BF_ASSERT(inst->mArg1.mKind == BeMCOperandKind_VReg);
+					GetValAddr(inst->mArg1, destReg, destOfs);
+				}
+
+				if (memValue == 0)
+				{
+					// xor r11, r11
+					Emit(0x4D); Emit(0x31); Emit(0xDB);
+				}
+				else
+				{
+					// mov r11, memValue*8
+					Emit(0x49); Emit(0xBB);
+					for (int i = 0; i < 8; i++)
+						Emit(memValue);
+				}
+
+				for (; curOfs <= memSize - 8; curOfs += 8)
+				{
+					EmitREX(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(destReg), true);
+					Emit(0x89);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11), destReg, X64Reg_None, 1, curOfs + destOfs);
+				}
+
+				// If there's more that one 'small' write required then we just do another 64-bit move
+				//  which overlaps partially into the previous 64-bit move
+				if ((memSize > 8) && (curOfs < memSize) && (memSize - curOfs != 4) &&
+					(memSize - curOfs != 2) && (memSize - curOfs != 1))
+				{
+					EmitREX(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(destReg), true);
+					Emit(0x89);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11), destReg, X64Reg_None, 1, (memSize - 8) + destOfs);
+
+					curOfs = memSize;
+				}
+
+				for (; curOfs <= memSize - 4; curOfs += 4)
+				{
+					EmitREX(BeMCOperand::FromReg(X64Reg_R11D), BeMCOperand::FromReg(destReg), false);
+					Emit(0x89);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11D), destReg, X64Reg_None, 1, curOfs + destOfs);
+				}
+
+				for (; curOfs <= memSize - 2; curOfs += 2)
+				{
+					Emit(0x66); EmitREX(BeMCOperand::FromReg(X64Reg_R11W), BeMCOperand::FromReg(destReg), false);
+					Emit(0x89);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11W), destReg, X64Reg_None, 1, curOfs + destOfs);
+				}
+
+				for (; curOfs <= memSize - 1; curOfs += 1)
+				{
+					EmitREX(BeMCOperand::FromReg(X64Reg_R11B), BeMCOperand::FromReg(destReg), false); //-V530
+					Emit(0x89 - 1);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11B), destReg, X64Reg_None, 1, curOfs + destOfs);
+				}
+			}
+			break;
 			case BeMCInstKind_MemCpy:
+			{
+				// This doesn't currently attempt to align properly
+				int memSize = inst->mArg0.mMemCpyInfo.mSize;
+				int curOfs = 0;
+
+				X64CPURegister destReg = X64Reg_R10;
+				X64CPURegister srcReg = X64Reg_R11;
+				int destOfs = 0;
+				int srcOfs = 0;
+
+				if (inst->mArg1)
 				{
-					// This doesn't currently attempt to align properly
-					int memSize = inst->mArg0.mMemCpyInfo.mSize;
-					int curOfs = 0;
-
-					X64CPURegister destReg = X64Reg_R10;
-					X64CPURegister srcReg = X64Reg_R11;
-					int destOfs = 0;
-					int srcOfs = 0;
-
-					if (inst->mArg1)
-					{
-						BF_ASSERT(inst->mArg1.mKind == BeMCOperandKind_VRegPair);
-						GetValAddr(BeMCOperand::FromEncoded(inst->mArg1.mVRegPair.mVRegIdx0), destReg, destOfs);
-						GetValAddr(BeMCOperand::FromEncoded(inst->mArg1.mVRegPair.mVRegIdx1), srcReg, srcOfs);
-					}
-
-					if ((srcReg == destReg) && (srcOfs == destOfs))
-						break;
-
-					for (; curOfs <= memSize - 8; curOfs += 8)
-					{
-						EmitREX(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(srcReg), true);
-						Emit(0x8B);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11), srcReg, X64Reg_None, 1, curOfs + srcOfs);
-
-						EmitREX(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(destReg), true);
-						Emit(0x89);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11), destReg, X64Reg_None, 1, curOfs + destOfs);
-					}
-
-					// If there's more that one 'small' write required then we just do another 64-bit move
-					//  which overlaps partially into the previous 64-bit move
-					if ((memSize > 8) && (curOfs < memSize) && (memSize - curOfs != 4) &&
-						(memSize - curOfs != 2) && (memSize - curOfs != 1))
-					{
-						EmitREX(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(srcReg), true);
-						Emit(0x8B);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11), srcReg, X64Reg_None, 1, (memSize - 8) + srcOfs);
-
-						EmitREX(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(destReg), true);
-						Emit(0x89);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11), destReg, X64Reg_None, 1, (memSize - 8) + destOfs);
-
-						curOfs = memSize;
-					}
-
-					for (; curOfs <= memSize - 4; curOfs += 4)
-					{
-						EmitREX(BeMCOperand::FromReg(X64Reg_R11D), BeMCOperand::FromReg(srcReg), false);
-						Emit(0x8B);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11D), srcReg, X64Reg_None, 1, curOfs + srcOfs);
-
-						EmitREX(BeMCOperand::FromReg(X64Reg_R11D), BeMCOperand::FromReg(destReg), false);
-						Emit(0x89);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11D), destReg, X64Reg_None, 1, curOfs + destOfs);
-					}
-
-					for (; curOfs <= memSize - 2; curOfs += 2)
-					{
-						Emit(0x66); EmitREX(BeMCOperand::FromReg(X64Reg_R11W), BeMCOperand::FromReg(srcReg), false);
-						Emit(0x8B);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11W), srcReg, X64Reg_None, 1, curOfs + srcOfs);
-
-						Emit(0x66); EmitREX(BeMCOperand::FromReg(X64Reg_R11W), BeMCOperand::FromReg(destReg), false);
-						Emit(0x89);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11W), destReg, X64Reg_None, 1, curOfs + destOfs);
-					}
-
-					for (; curOfs <= memSize - 1; curOfs += 1)
-					{
-						EmitREX(BeMCOperand::FromReg(X64Reg_R11B), BeMCOperand::FromReg(srcReg), false);
-						Emit(0x8B - 1);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11B), srcReg, X64Reg_None, 1, curOfs + srcOfs);
-
-						EmitREX(BeMCOperand::FromReg(X64Reg_R11B), BeMCOperand::FromReg(destReg), false);
-						Emit(0x89 - 1);
-						EmitModRMRel(EncodeRegNum(X64Reg_R11B), destReg, X64Reg_None, 1, curOfs + destOfs);
-					}
+					BF_ASSERT(inst->mArg1.mKind == BeMCOperandKind_VRegPair);
+					GetValAddr(BeMCOperand::FromEncoded(inst->mArg1.mVRegPair.mVRegIdx0), destReg, destOfs);
+					GetValAddr(BeMCOperand::FromEncoded(inst->mArg1.mVRegPair.mVRegIdx1), srcReg, srcOfs);
 				}
-				break;
+
+				if ((srcReg == destReg) && (srcOfs == destOfs))
+					break;
+
+				for (; curOfs <= memSize - 8; curOfs += 8)
+				{
+					EmitREX(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(srcReg), true);
+					Emit(0x8B);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11), srcReg, X64Reg_None, 1, curOfs + srcOfs);
+
+					EmitREX(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(destReg), true);
+					Emit(0x89);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11), destReg, X64Reg_None, 1, curOfs + destOfs);
+				}
+
+				// If there's more that one 'small' write required then we just do another 64-bit move
+				//  which overlaps partially into the previous 64-bit move
+				if ((memSize > 8) && (curOfs < memSize) && (memSize - curOfs != 4) &&
+					(memSize - curOfs != 2) && (memSize - curOfs != 1))
+				{
+					EmitREX(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(srcReg), true);
+					Emit(0x8B);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11), srcReg, X64Reg_None, 1, (memSize - 8) + srcOfs);
+
+					EmitREX(BeMCOperand::FromReg(X64Reg_R11), BeMCOperand::FromReg(destReg), true);
+					Emit(0x89);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11), destReg, X64Reg_None, 1, (memSize - 8) + destOfs);
+
+					curOfs = memSize;
+				}
+
+				for (; curOfs <= memSize - 4; curOfs += 4)
+				{
+					EmitREX(BeMCOperand::FromReg(X64Reg_R11D), BeMCOperand::FromReg(srcReg), false);
+					Emit(0x8B);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11D), srcReg, X64Reg_None, 1, curOfs + srcOfs);
+
+					EmitREX(BeMCOperand::FromReg(X64Reg_R11D), BeMCOperand::FromReg(destReg), false);
+					Emit(0x89);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11D), destReg, X64Reg_None, 1, curOfs + destOfs);
+				}
+
+				for (; curOfs <= memSize - 2; curOfs += 2)
+				{
+					Emit(0x66); EmitREX(BeMCOperand::FromReg(X64Reg_R11W), BeMCOperand::FromReg(srcReg), false);
+					Emit(0x8B);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11W), srcReg, X64Reg_None, 1, curOfs + srcOfs);
+
+					Emit(0x66); EmitREX(BeMCOperand::FromReg(X64Reg_R11W), BeMCOperand::FromReg(destReg), false);
+					Emit(0x89);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11W), destReg, X64Reg_None, 1, curOfs + destOfs);
+				}
+
+				for (; curOfs <= memSize - 1; curOfs += 1)
+				{
+					EmitREX(BeMCOperand::FromReg(X64Reg_R11B), BeMCOperand::FromReg(srcReg), false);
+					Emit(0x8B - 1);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11B), srcReg, X64Reg_None, 1, curOfs + srcOfs);
+
+					EmitREX(BeMCOperand::FromReg(X64Reg_R11B), BeMCOperand::FromReg(destReg), false);
+					Emit(0x89 - 1);
+					EmitModRMRel(EncodeRegNum(X64Reg_R11B), destReg, X64Reg_None, 1, curOfs + destOfs);
+				}
+			}
+			break;
 			case BeMCInstKind_FastCheckStack:
-				{
-					// CMP RSP, [RSP]
-					BF_ASSERT(inst->mArg0 == BeMCOperand::FromReg(X64Reg_RSP));
-					Emit(0x48);
-					Emit(0x3B);
-					Emit(0x24);
-					Emit(0x24);
-				}
-				break;
+			{
+				// CMP RSP, [RSP]
+				BF_ASSERT(inst->mArg0 == BeMCOperand::FromReg(X64Reg_RSP));
+				Emit(0x48);
+				Emit(0x3B);
+				Emit(0x24);
+				Emit(0x24);
+			}
+			break;
 			case BeMCInstKind_TLSSetup:
+			{
+				if (inst->mArg1) // Alt
 				{
-					if (inst->mArg1) // Alt
-					{
-						BF_ASSERT(inst->mArg0.IsNativeReg());
+					BF_ASSERT(inst->mArg0.IsNativeReg());
 
-						// mov arg0, qword ptr gs:[0x58]
-						Emit(0x65);
-						EmitREX(inst->mArg0, BeMCOperand(), true);
-						Emit(0x8B); Emit(0x04 | (EncodeRegNum(inst->mArg0.mReg) << 3)); Emit(0x25);
-						mOut.Write((int32)0x58);
-					}
-					else
-					{
-						// mov eax, _tls_index
-						Emit(0x8B); Emit(0x05);
-						auto sym = mCOFFObject->GetSymbolRef("_tls_index");
-
-						BeMCRelocation reloc;
-						reloc.mKind = BeMCRelocationKind_REL32;
-						reloc.mOffset = mOut.GetPos();
-						reloc.mSymTableIdx = sym->mIdx;
-						mCOFFObject->mTextSect.mRelocs.push_back(reloc);
-						mTextRelocs.push_back((int)mCOFFObject->mTextSect.mRelocs.size() - 1);
-
-						mOut.Write((int32)0);
-
-						auto vregInfo = mVRegInfo[mTLSVRegIdx];
-						BF_ASSERT(vregInfo->mReg != X64Reg_None);
-						auto tlsOperand = BeMCOperand::FromReg(vregInfo->mReg);
-
-						// mov tlsReg, qword ptr gs:[0x58]
-						Emit(0x65);
-						EmitREX(tlsOperand, BeMCOperand(), true);
-						Emit(0x8B); Emit(0x04 | (EncodeRegNum(vregInfo->mReg) << 3)); Emit(0x25);
-						mOut.Write((int32)0x58);
-
-						// mov tlsReg, qword ptr [tlsReg + 8*rax]
-						EmitREX(tlsOperand, tlsOperand, true);
-						Emit(0x8B);
-						EmitModRMRel(EncodeRegNum(vregInfo->mReg), vregInfo->mReg, X64Reg_RAX, 8, 0);
-					}
+					// mov arg0, qword ptr gs:[0x58]
+					Emit(0x65);
+					EmitREX(inst->mArg0, BeMCOperand(), true);
+					Emit(0x8B); Emit(0x04 | (EncodeRegNum(inst->mArg0.mReg) << 3)); Emit(0x25);
+					mOut.Write((int32)0x58);
 				}
-				break;
+				else
+				{
+					// mov eax, _tls_index
+					Emit(0x8B); Emit(0x05);
+					auto sym = mCOFFObject->GetSymbolRef("_tls_index");
+
+					BeMCRelocation reloc;
+					reloc.mKind = BeMCRelocationKind_REL32;
+					reloc.mOffset = mOut.GetPos();
+					reloc.mSymTableIdx = sym->mIdx;
+					mCOFFObject->mTextSect.mRelocs.push_back(reloc);
+					mTextRelocs.push_back((int)mCOFFObject->mTextSect.mRelocs.size() - 1);
+
+					mOut.Write((int32)0);
+
+					auto vregInfo = mVRegInfo[mTLSVRegIdx];
+					BF_ASSERT(vregInfo->mReg != X64Reg_None);
+					auto tlsOperand = BeMCOperand::FromReg(vregInfo->mReg);
+
+					// mov tlsReg, qword ptr gs:[0x58]
+					Emit(0x65);
+					EmitREX(tlsOperand, BeMCOperand(), true);
+					Emit(0x8B); Emit(0x04 | (EncodeRegNum(vregInfo->mReg) << 3)); Emit(0x25);
+					mOut.Write((int32)0x58);
+
+					// mov tlsReg, qword ptr [tlsReg + 8*rax]
+					EmitREX(tlsOperand, tlsOperand, true);
+					Emit(0x8B);
+					EmitModRMRel(EncodeRegNum(vregInfo->mReg), vregInfo->mReg, X64Reg_RAX, 8, 0);
+				}
+			}
+			break;
 			case BeMCInstKind_PreserveVolatiles:
+			{
+				for (int vregIdx : *inst->mLiveness)
 				{
-					for (int vregIdx : *inst->mLiveness)
-					{
-						if (vregIdx >= mLivenessContext.mNumItems)
-							continue;
+					if (vregIdx >= mLivenessContext.mNumItems)
+						continue;
 
-						auto vregInfo = mVRegInfo[vregIdx];
-						if ((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg != vregInfo->mReg))
-							continue;
-						if (vregInfo->mVolatileVRegSave != -1)
+					auto vregInfo = mVRegInfo[vregIdx];
+					if ((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg != vregInfo->mReg))
+						continue;
+					if (vregInfo->mVolatileVRegSave != -1)
+					{
+						if (vregInfo->mDbgVariable != NULL)
 						{
-							if (vregInfo->mDbgVariable != NULL)
-							{
-								BeDbgVariableRange range;
-								range.mOffset = funcCodePos;
-								range.mLength = -1;
-								vregInfo->mDbgVariable->mSavedRanges.push_back(range);
-							}
+							BeDbgVariableRange range;
+							range.mOffset = funcCodePos;
+							range.mLength = -1;
+							vregInfo->mDbgVariable->mSavedRanges.push_back(range);
 						}
 					}
 				}
-				break;
+			}
+			break;
 			case BeMCInstKind_RestoreVolatiles:
+			{
+				for (int vregIdx : *inst->mLiveness)
 				{
-					for (int vregIdx : *inst->mLiveness)
+					if (vregIdx >= mLivenessContext.mNumItems)
+						continue;
+
+					auto vregInfo = mVRegInfo[vregIdx];
+					if ((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg != vregInfo->mReg))
+						continue;
+					if (vregInfo->mVolatileVRegSave != -1)
 					{
-						if (vregIdx >= mLivenessContext.mNumItems)
-							continue;
-
-						auto vregInfo = mVRegInfo[vregIdx];
-						if ((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg != vregInfo->mReg))
-							continue;
-						if (vregInfo->mVolatileVRegSave != -1)
+						if ((vregInfo->mDbgVariable != NULL) && (!vregInfo->mDbgVariable->mSavedRanges.empty()))
 						{
-							if ((vregInfo->mDbgVariable != NULL) && (!vregInfo->mDbgVariable->mSavedRanges.empty()))
+							BeDbgVariableRange& range = vregInfo->mDbgVariable->mSavedRanges.back();
+							range.mLength = funcCodePos - range.mOffset;
+
+							bool handled = false;
+							if (!vregInfo->mDbgVariable->mGaps.empty())
 							{
-								BeDbgVariableRange& range = vregInfo->mDbgVariable->mSavedRanges.back();
-								range.mLength = funcCodePos - range.mOffset;
-
-								bool handled = false;
-								if (!vregInfo->mDbgVariable->mGaps.empty())
+								auto& lastGap = vregInfo->mDbgVariable->mGaps.back();
+								if (lastGap.mLength == -1)
 								{
-									auto& lastGap = vregInfo->mDbgVariable->mGaps.back();
-									if (lastGap.mLength == -1)
-									{
-										lastGap.mLength = funcCodePos - lastGap.mOffset;
-										handled = true;
-									}
+									lastGap.mLength = funcCodePos - lastGap.mOffset;
+									handled = true;
 								}
+							}
 
-								if (!handled)
-								{
-									BeDbgVariableRange gapRange = range;
-									// 									gapRange.mOffset++;
-									// 									gapRange.mLength--;
-									vregInfo->mDbgVariable->mGaps.push_back(gapRange);
-								}
+							if (!handled)
+							{
+								BeDbgVariableRange gapRange = range;
+								// 									gapRange.mOffset++;
+								// 									gapRange.mLength--;
+								vregInfo->mDbgVariable->mGaps.push_back(gapRange);
 							}
 						}
 					}
 				}
-				break;
+			}
+			break;
 
 			case BeMCInstKind_None:
 				break;
@@ -13909,11 +13778,11 @@ void BeMCContext::DoCodeEmission()
 			case BeMCInstKind_Unwind_PushReg:
 			case BeMCInstKind_Unwind_SaveXMM:
 			case BeMCInstKind_Unwind_SetBP:
-				{
-					BeMCDeferredUnwind deferredUnwind = { inst, funcCodePos };
-					deferredUnwinds.push_back(deferredUnwind);
-				}
-				break;
+			{
+				BeMCDeferredUnwind deferredUnwind = { inst, funcCodePos };
+				deferredUnwinds.push_back(deferredUnwind);
+			}
+			break;
 
 			case BeMCInstKind_Label:
 				while (funcCodePos < hotJumpLen)
@@ -13951,1734 +13820,1734 @@ void BeMCContext::DoCodeEmission()
 				Emit(0x0F); Emit(0xAE); Emit(0xF0);
 				break;
 			case BeMCInstKind_Mov:
+			{
+				if (inst->mArg1.mKind == BeMCOperandKind_ConstAgg)
 				{
-					if (inst->mArg1.mKind == BeMCOperandKind_ConstAgg)
+					EmitAggMov(inst->mArg0, inst->mArg1);
+					break;
+				}
+
+				auto vregInfo = GetVRegInfo(inst->mArg1);
+				auto arg0Type = GetType(inst->mArg0);
+				auto arg1Type = GetType(inst->mArg1);
+
+				// 					auto arg1 = inst->mArg1;
+				// 					while (arg1.IsVReg())
+				// 					{
+				// 						auto vregInfo = GetVRegInfo(arg1);
+				// 						if (vregInfo->IsDirectRelTo())
+				// 							arg1 = vregInfo->mRelTo;
+				// 					}
+
+				if (instForm == BeMCInstForm_Unknown)
+				{
+					if ((inst->mArg0.IsNativeReg()) && (inst->mArg1.IsNativeReg()))
 					{
-						EmitAggMov(inst->mArg0, inst->mArg1);
-						break;
-					}
-
-					auto vregInfo = GetVRegInfo(inst->mArg1);
-					auto arg0Type = GetType(inst->mArg0);
-					auto arg1Type = GetType(inst->mArg1);
-
-// 					auto arg1 = inst->mArg1;
-// 					while (arg1.IsVReg())
-// 					{
-// 						auto vregInfo = GetVRegInfo(arg1);
-// 						if (vregInfo->IsDirectRelTo())
-// 							arg1 = vregInfo->mRelTo;
-// 					}
-
-					if (instForm == BeMCInstForm_Unknown)
-					{
-						if ((inst->mArg0.IsNativeReg()) && (inst->mArg1.IsNativeReg()))
+						if ((arg0Type->IsInt()) && (arg0Type->mSize < arg1Type->mSize))
 						{
-							if ((arg0Type->IsInt()) && (arg0Type->mSize < arg1Type->mSize))
+							// Reduce arg1 to arg0 size
+							BeMCOperand mcDest;
+							BeMCOperand mcSrc = BeMCOperand::FromReg(ResizeRegister(inst->mArg1.mReg, arg0Type));
+							BeTypeCode useTypeCode = BeTypeCode_None;
+							if (mcSrc.mReg != X64Reg_None)
 							{
-								// Reduce arg1 to arg0 size
-								BeMCOperand mcDest;
-								BeMCOperand mcSrc = BeMCOperand::FromReg(ResizeRegister(inst->mArg1.mReg, arg0Type));
-								BeTypeCode useTypeCode = BeTypeCode_None;
-								if (mcSrc.mReg != X64Reg_None)
-								{
-									// Reduction worked
-									mcDest = inst->mArg0;
-									useTypeCode = arg0Type->mTypeCode;
-								}
-								else
-								{
-									SoftFail("Error in Mov");
-								}
-
-								switch (useTypeCode)
-								{
-								case BeTypeCode_Int8:
-									EmitREX(mcDest, mcSrc, false);
-									Emit(0x8A); EmitModRM(mcDest, mcSrc);
-									break;
-								case BeTypeCode_Int16: Emit(0x66); // Fallthrough
-								case BeTypeCode_Int32:
-								case BeTypeCode_Int64:
-									EmitREX(mcDest, mcSrc, arg0Type->mTypeCode == BeTypeCode_Int64);
-									Emit(0x8B); EmitModRM(mcDest, mcSrc);
-									break;
-								default: NotImpl();
-								}
-								break;
+								// Reduction worked
+								mcDest = inst->mArg0;
+								useTypeCode = arg0Type->mTypeCode;
 							}
-						}
-
-						if (inst->mArg0.IsNativeReg())
-						{
-							BF_ASSERT(arg0Type->IsIntable());
-							BF_ASSERT(arg1Type->IsIntable());
-							BF_ASSERT(arg0Type->mSize > arg1Type->mSize);
-							// Zero extend 'dest' to 'src', emit movzx
-							switch (arg0Type->mTypeCode)
+							else
 							{
-							case BeTypeCode_Int16:
-								BF_ASSERT(arg1Type->mTypeCode == BeTypeCode_Int8);
-								Emit(0x66);
-								EmitREX(inst->mArg0, inst->mArg1, false);
-								Emit(0x0F); Emit(0xB6); EmitModRM(inst->mArg0, inst->mArg1);
+								SoftFail("Error in Mov");
+							}
+
+							switch (useTypeCode)
+							{
+							case BeTypeCode_Int8:
+								EmitREX(mcDest, mcSrc, false);
+								Emit(0x8A); EmitModRM(mcDest, mcSrc);
 								break;
+							case BeTypeCode_Int16: Emit(0x66); // Fallthrough
 							case BeTypeCode_Int32:
-								switch (arg1Type->mTypeCode)
-								{
-								case BeTypeCode_Int8:
-								case BeTypeCode_Boolean:
-									EmitREX(inst->mArg0, inst->mArg1, false);
-									Emit(0x0F); Emit(0xB6); EmitModRM(inst->mArg0, inst->mArg1);
-									break;
-								case BeTypeCode_Int16:
-									EmitREX(inst->mArg0, inst->mArg1, false);
-									Emit(0x0F); Emit(0xB7); EmitModRM(inst->mArg0, inst->mArg1);
-									break;
-								default: NotImpl();
-								}
-								break;
 							case BeTypeCode_Int64:
-								switch (arg1Type->mTypeCode)
-								{
-								case BeTypeCode_Int8:
-								case BeTypeCode_Boolean:
-									EmitREX(inst->mArg0, inst->mArg1, true);
-									Emit(0x0F); Emit(0xB6); EmitModRM(inst->mArg0, inst->mArg1); break;
-								case BeTypeCode_Int16:
-									EmitREX(inst->mArg0, inst->mArg1, true);
-									Emit(0x0F); Emit(0xB7); EmitModRM(inst->mArg0, inst->mArg1); break;
-								case BeTypeCode_Int32:
-									{
-										// We convert from a "mov r64, r32" to a "mov r32, r32", which forces high 32 bits of original r64 to zero
-										BeMCOperand mcDest = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, arg1Type));
-										EmitREX(mcDest, inst->mArg1, false);
-										Emit(0x8B); EmitModRM(mcDest, inst->mArg1);
-									}
-									break;
-								}
+								EmitREX(mcDest, mcSrc, arg0Type->mTypeCode == BeTypeCode_Int64);
+								Emit(0x8B); EmitModRM(mcDest, mcSrc);
 								break;
-							default:
-								NotImpl();
+							default: NotImpl();
 							}
-							break; // from inst switch
-						}
-
-						if (arg0Type->mTypeCode == BeTypeCode_Float)
-						{
-							if (inst->mArg1.IsImmediate())
-							{
-								// Emit as a int32 mov
-								EmitREX(BeMCOperand(), inst->mArg0, false);
-								Emit(0xC7);
-								EmitModRM(0, inst->mArg0, -4);
-								float val = inst->mArg1.mImmF32;
-								mOut.Write(*(int32*)&val);
-								break;
-							}
+							break;
 						}
 					}
 
-					if (inst->mArg1.mKind == BeMCOperandKind_CmpResult)
+					if (inst->mArg0.IsNativeReg())
 					{
-						BF_ASSERT(instForm == BeMCInstForm_R8_RM8);
-
-						// SETcc
-						auto& cmpResult = mCmpResults[inst->mArg1.mCmpResultIdx];
-						uint8 opCode = GetJumpOpCode(cmpResult.mCmpKind, false) + 0x20;
-						EmitREX(BeMCOperand(), inst->mArg0, false);
-						Emit(0x0F);
-						Emit(opCode);
-						EmitModRM(0, inst->mArg0);
-						break;
-					}
-
-					bool isLEA = inst->mArg1.mKind == BeMCOperandKind_SymbolAddr;
-					if ((instForm == BeMCInstForm_R64_RM64) && (inst->mArg1.IsVRegAny()))
-					{
-						bool isMulti = false;
-						if (GetRMForm(inst->mArg1, isMulti) == BeMCRMMode_Direct)
+						BF_ASSERT(arg0Type->IsIntable());
+						BF_ASSERT(arg1Type->IsIntable());
+						BF_ASSERT(arg0Type->mSize > arg1Type->mSize);
+						// Zero extend 'dest' to 'src', emit movzx
+						switch (arg0Type->mTypeCode)
 						{
-							// LEA
-							auto modInst = *inst;
-							BF_ASSERT(modInst.mArg1.IsVRegAny());
-							modInst.mArg1 = BeMCOperand::ToLoad(modInst.mArg1);
-							EmitInst(BeMCInstForm_R64_RM64, 0x8D, &modInst);
-							break;
-						}
-						else
-						{
-							auto vregInfo1 = GetVRegInfo(inst->mArg1);
-							if (vregInfo1->mRelTo.mKind == BeMCOperandKind_SymbolAddr)
-								isLEA = true;
-						}
-					}
-
-					if (inst->mArg1.mKind == BeMCOperandKind_VRegAddr)
-					{
-						NotImpl();
-
-						/*// LEA
-						switch (instForm)
-						{
-						case BeMCInstForm_R64_RM64: EmitInst(BeMCInstForm_R64_RM64, 0x8D, inst); break;
-						default:
-							NotImpl();
-						}*/
-					}
-					else if (isLEA)
-					{
-						// LEA
-						switch (instForm)
-						{
-						case BeMCInstForm_R64_RM64: EmitInst(BeMCInstForm_R64_RM64, 0x8D, inst); break;
-						default:
-							NotImpl();
-						}
-					}
-					// ??
-					/*else if ((vregInfo != NULL) && (vregInfo->mIsExpr))
-					{
-						// LEA
-						switch (instForm)
-						{
-						case BeMCInstForm_R64_RM64: EmitInst(BeMCInstForm_R64_RM64_ADDR, 0x8D, inst); break;
-						default:
-							NotImpl();
-						}
-					}*/
-					else if ((inst->mArg0.IsNativeReg()) && (inst->mArg1.IsZero()))
-					{
-						auto type = GetType(inst->mArg0);
-
-						if (type->mSize == 1)
-						{
-							// Emit as XOR <arg0>, <arg0>
-							EmitREX(inst->mArg0, inst->mArg0, false);
-							mOut.Write((uint8)0x30); // r, r/m64
-							EmitModRM(inst->mArg0, inst->mArg0);
-						}
-						else
-						{
-							// Emit as XOR <arg0>, <arg0>
-							EmitREX(inst->mArg0, inst->mArg0, type->mSize == 8);
-							mOut.Write((uint8)0x33); // r, r/m64
-							EmitModRM(inst->mArg0, inst->mArg0);
-						}
-					}
-					else
-					{
-						switch (instForm)
-						{
-						case BeMCInstForm_XMM32_RM32:
-							{
-								BF_ASSERT(inst->mArg1.IsNativeReg());
-								// CVTSI2SS - use zero-extended 64-bit register
-								EmitStdXMMInst(BeMCInstForm_XMM32_RM64, inst, 0x2A);
-							}
-							break;
-						case BeMCInstForm_XMM64_RM32:
-							{
-								BF_ASSERT(inst->mArg1.IsNativeReg());
-								// CVTSI2SD - use zero-extended 64-bit register
-								EmitStdXMMInst(BeMCInstForm_XMM64_RM64, inst, 0x2A);
-							}
-							break;						
-						case BeMCInstForm_XMM64_FRM32:
-						case BeMCInstForm_XMM32_FRM64:
-							{
-								// CVTSS2SD / CVTSD2SS
-								EmitStdXMMInst(instForm, inst, 0x5A);
-							}
-							break;
-						case BeMCInstForm_R32_F32:
-						case BeMCInstForm_R32_F64:
-						case BeMCInstForm_R64_F32:
-						case BeMCInstForm_R64_F64:
-							{
-								// CVTTSS2SI
-								EmitStdXMMInst(instForm, inst, 0x2C);
-							}
-							break;
-						case BeMCInstForm_XMM128_RM128:
-							{
-								// MOVUPS
-								EmitREX(arg0, arg1, true);
-								Emit(0x0F); Emit(0x10);
-
-								if (arg1.IsImmediateInt())
-									arg1.mKind = BeMCOperandKind_Immediate_int32x4;
-
-								EmitModRM(arg0, arg1);
-							}
-							break;
-						case BeMCInstForm_FRM128_XMM128:
-							{
-								if (arg0Type->mSize == 4)
-								{
-									BeMCOperand imm1;
-									imm1.mImmediate = 1;
-									imm1.mKind = BeMCOperandKind_Immediate_int32x4;
-
-									BeMCOperand xmm15;
-									xmm15.mReg = X64Reg_M128_XMM15;
-									xmm15.mKind = BeMCOperandKind_NativeReg;
-
-									// MOVUPS
-									EmitREX(xmm15, arg1, true);
-									Emit(0x0F); Emit(0x10);
-									EmitModRM(xmm15, arg1);
-
-									// ANDPS xmm15, <1, 1, 1, 1>
-									EmitREX(xmm15, imm1, true);
-									Emit(0x0F); Emit(0x54);
-									EmitModRM(xmm15, imm1);
-
-									// PACKUSWB xmm15, xmm15
-									Emit(0x66); EmitREX(xmm15, xmm15, true);
-									Emit(0x0F); Emit(0x67);
-									EmitModRM(xmm15, xmm15);
-
-									// PACKUSWB xmm15, xmm15
-									Emit(0x66); EmitREX(xmm15, xmm15, true);
-									Emit(0x0F); Emit(0x67);
-									EmitModRM(xmm15, xmm15);
-
-									// MOVD <arg0>, xmm15
-									Emit(0x66); EmitREX(xmm15, arg0, false);
-									Emit(0x0F); Emit(0x7E);
-									EmitModRM(xmm15, arg0);
-								}
-								else
-								{
-									// MOVUPS
-									EmitREX(arg1, arg0, true);
-									Emit(0x0F); Emit(0x11);
-									EmitModRM(arg1, arg0);
-								}
-							}
-							break;
-						case BeMCInstForm_XMM64_RM64:
-						case BeMCInstForm_XMM32_RM64:
-							{
-								if ((arg0Type->IsVector()) && (arg1Type->IsVector()))
-								{
-									// Fall through
-								}
-								else
-								{
-									// uint64->xmm Not implemented
-									// We do a signed transform instead
-
-									// CVTSI2SS / CVTSI2SD
-									EmitStdXMMInst(instForm, inst, 0x2A);
-									break;
-								}
-							}							
-							// Fall through
-						default:
-							{
-								// MOVSS/MOVSD
-								if (EmitStdXMMInst(instForm, inst, 0x10, 0x11))
-									break;
-
-								if ((inst->mArg0.IsNativeReg()) && (arg1.IsImmediateInt()))
-								{
-									auto arg0Type = GetType(inst->mArg0);
-									if (arg0Type->mTypeCode == BeTypeCode_Int16)
-									{
-										Emit(0x66);
-										EmitREX(BeMCOperand(), inst->mArg0, false);
-										Emit(0xB8 + EncodeRegNum(inst->mArg0.mReg));
-										mOut.Write((int16)arg1.mImmediate);
-										break;
-									}
-									else if ((arg0Type->mTypeCode == BeTypeCode_Int32) || (arg0Type->mTypeCode == BeTypeCode_Int64))
-									{
-										// For 64-bit writes, we would like to use 32-bit zero extension but we resort to the full
-										//  64-bits if necessary
-										auto arg0 = inst->mArg0;
-										if (arg0Type->mTypeCode == BeTypeCode_Int64)
-										{
-											auto resizedReg = ResizeRegister(arg0.mReg, 4);
-											if ((resizedReg != X64Reg_None) && (inst->mArg1.mImmediate < 0) && (inst->mArg1.mImmediate >= -0x80000000LL))
-											{
-												// Do sign-extend R32 mov
-												EmitREX(BeMCOperand(), inst->mArg0, true);
-												Emit(0xC7);
-												EmitModRM(0, inst->mArg0);
-												mOut.Write((int32)inst->mArg1.mImmediate);
-												break;
-											}
-
-											if ((resizedReg == X64Reg_None) || (inst->mArg1.mImmediate < 0) || (inst->mArg1.mImmediate >= 0x100000000LL))
-											{
-												EmitREX(BeMCOperand(), inst->mArg0, true);
-												Emit(0xB8 + EncodeRegNum(inst->mArg0.mReg));
-												mOut.Write((int64)inst->mArg1.mImmediate);
-												break;
-											}
-											else
-												arg0.mReg = resizedReg;
-										}
-
-										EmitREX(BeMCOperand(), arg0, false);
-										Emit(0xB8 + EncodeRegNum(arg0.mReg));
-										mOut.Write((int32)inst->mArg1.mImmediate);
-										break;
-									}
-								}
-
-								EmitStdInst(instForm, inst, 0x89, 0x8B, 0xC7, 0x0);
-							}
-						}
-					}
-				}
-				break;
-			case BeMCInstKind_MovRaw:
-				{
-					auto arg0Type = GetType(inst->mArg0);
-					auto arg1Type = GetType(inst->mArg1);
-
-					if ((arg0Type->mTypeCode == BeTypeCode_Int64) && (arg1Type->mTypeCode == BeTypeCode_Double))
-					{
-						Emit(0x66); EmitREX(inst->mArg1, inst->mArg0, true);
-						Emit(0x0F); Emit(0x7E);
-						EmitModRM(inst->mArg1, inst->mArg0);
-					}
-					else
-					{
-						NotImpl();
-					}
-				}
-				break;
-			case BeMCInstKind_MovSX:
-				{
-					auto arg0Type = GetType(inst->mArg0);
-					auto arg1Type = GetType(inst->mArg1);
-					switch (arg0Type->mTypeCode)
-					{
-					case BeTypeCode_Int8:
-						switch (arg1Type->mTypeCode)
-						{
-						case BeTypeCode_Float:
-							// CVTSS2SI							
-							{
-								BF_ASSERT(inst->mArg0.IsNativeReg());
-								BeMCOperand resizedArg0 = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, 4));
-								Emit(0xF3); EmitREX(resizedArg0, inst->mArg1, false);
-								Emit(0x0F); Emit(0x2C);
-								EmitModRM(resizedArg0, inst->mArg1);
-							}
-							break;
-						case BeTypeCode_Double:
-							// cvttsd2si
-							{
-								BF_ASSERT(inst->mArg0.IsNativeReg());
-								BeMCOperand resizedArg0 = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, 4));
-								Emit(0xF2); EmitREX(resizedArg0, inst->mArg1, false);
-								Emit(0x0F); Emit(0x2C);
-								EmitModRM(resizedArg0, inst->mArg1);
-							}
-							break;
-						default: NotImpl();
-						}
-						break;
-					case BeTypeCode_Int16:
-						switch (arg1Type->mTypeCode)
-						{
-						case BeTypeCode_Float:
-							// CVTSS2SI							
-							{
-								BF_ASSERT(inst->mArg0.IsNativeReg());
-								BeMCOperand resizedArg0 = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, 4));
-								Emit(0xF3); EmitREX(resizedArg0, inst->mArg1, false);
-								Emit(0x0F); Emit(0x2C);
-								EmitModRM(resizedArg0, inst->mArg1);
-							}
-							break;
-						case BeTypeCode_Double:
-							// cvttsd2si
-							{
-								BF_ASSERT(inst->mArg0.IsNativeReg());
-								BeMCOperand resizedArg0 = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, 4));
-								Emit(0xF2); EmitREX(resizedArg0, inst->mArg1, false);
-								Emit(0x0F); Emit(0x2C);
-								EmitModRM(resizedArg0, inst->mArg1);
-							}
-							break;
-						default:
+						case BeTypeCode_Int16:
 							BF_ASSERT(arg1Type->mTypeCode == BeTypeCode_Int8);
 							Emit(0x66);
 							EmitREX(inst->mArg0, inst->mArg1, false);
-							Emit(0x0F); Emit(0xBE); EmitModRM(inst->mArg0, inst->mArg1);
+							Emit(0x0F); Emit(0xB6); EmitModRM(inst->mArg0, inst->mArg1);
 							break;
-						}
-						break;
-					case BeTypeCode_Int32:
-						switch (arg1Type->mTypeCode)
-						{
-						case BeTypeCode_Int8:
-							EmitREX(inst->mArg0, inst->mArg1, false);
-							Emit(0x0F); Emit(0xBE); EmitModRM(inst->mArg0, inst->mArg1);
-							break;
-						case BeTypeCode_Int16:
-							EmitREX(inst->mArg0, inst->mArg1, false);
-							Emit(0x0F); Emit(0xBF); EmitModRM(inst->mArg0, inst->mArg1);
-							break;
-						case BeTypeCode_Float:
-							// CVTSS2SI
-							Emit(0xF3); EmitREX(inst->mArg0, inst->mArg1, false);
-							Emit(0x0F); Emit(0x2C);
-							EmitModRM(inst->mArg0, inst->mArg1);
-							break;
-						case BeTypeCode_Double:
-							// cvttsd2si
-							Emit(0xF2); EmitREX(inst->mArg0, inst->mArg1, false);
-							Emit(0x0F); Emit(0x2C);
-							EmitModRM(inst->mArg0, inst->mArg1);
-							break;
-						default: NotImpl();
-						}
-						break;
-					case BeTypeCode_Int64:
-						switch (arg1Type->mTypeCode)
-						{
-						case BeTypeCode_Int8:
-							EmitREX(inst->mArg0, inst->mArg1, true);
-							Emit(0x0F); Emit(0xBE); EmitModRM(inst->mArg0, inst->mArg1); break;
-						case BeTypeCode_Int16:
-							EmitREX(inst->mArg0, inst->mArg1, true);
-							Emit(0x0F); Emit(0xBF); EmitModRM(inst->mArg0, inst->mArg1); break;
 						case BeTypeCode_Int32:
-							EmitREX(inst->mArg0, inst->mArg1, true);
-							Emit(0x63); EmitModRM(inst->mArg0, inst->mArg1); break;
-						case BeTypeCode_Float:
-							// CVTSS2SI
-							Emit(0xF3); EmitREX(inst->mArg0, inst->mArg1, true);
-							Emit(0x0F); Emit(0x2C);
-							EmitModRM(inst->mArg0, inst->mArg1);
-							break;
-						case BeTypeCode_Double:
-							// cvttsd2si
-							Emit(0xF2); EmitREX(inst->mArg0, inst->mArg1, true);
-							Emit(0x0F); Emit(0x2C);
-							EmitModRM(inst->mArg0, inst->mArg1);
-							break;
-						default: NotImpl();
-						}
-						break;
-
-					case BeTypeCode_Float:
-					case BeTypeCode_Double:
-						{
-							if (arg1Type->IsInt())
+							switch (arg1Type->mTypeCode)
 							{
-								// CVTSI2SS / CVTSI2SD
-								EmitStdXMMInst(instForm, inst, 0x2A);
-							}
-							else
-								NotImpl();
-
-							/*switch (arg1Type->mTypeCode)
-							{
-							case BeTypeCode_Double:
-								EmitStdXMMInst(BeMCInstForm_XMM32_RM64, inst, 0x5A);
+							case BeTypeCode_Int8:
+							case BeTypeCode_Boolean:
+								EmitREX(inst->mArg0, inst->mArg1, false);
+								Emit(0x0F); Emit(0xB6); EmitModRM(inst->mArg0, inst->mArg1);
 								break;
-							default:
-								NotImpl();
+							case BeTypeCode_Int16:
+								EmitREX(inst->mArg0, inst->mArg1, false);
+								Emit(0x0F); Emit(0xB7); EmitModRM(inst->mArg0, inst->mArg1);
 								break;
-							}*/
-						}
-						break;
-					default: NotImpl();
-					}
-				}
-				break;
-			case BeMCInstKind_CmpXChg:
-				{
-					auto arg0Type = GetType(inst->mArg0);
-
-					if (inst->mArg1.IsNativeReg())
-					{
-						switch (instForm)
-						{
-						case BeMCInstForm_R8_RM8:
-							instForm = BeMCInstForm_RM8_R8;
-							break;
-						case BeMCInstForm_R16_RM16:
-							instForm = BeMCInstForm_RM16_R16;
-							break;
-						case BeMCInstForm_R32_RM32:
-							instForm = BeMCInstForm_RM32_R32;
-							break;
-						case BeMCInstForm_R64_RM64:
-							instForm = BeMCInstForm_RM64_R64;
-							break;
-						}
-					}
-
-					if (!inst->mArg0.IsNativeReg())
-						Emit(0xF0); // LOCK
-
-					switch (instForm)
-					{
-					case BeMCInstForm_RM8_R8:
-						EmitREX(inst->mArg1, inst->mArg0, false);
-						Emit(0x0F); Emit(0xB0); EmitModRM(inst->mArg1, inst->mArg0);
-						break;
-					case BeMCInstForm_RM16_R16:
-						EmitREX(inst->mArg1, inst->mArg0, false);
-						Emit(0x66); Emit(0x0F); Emit(0xB0); EmitModRM(inst->mArg1, inst->mArg0);
-						break;
-					case BeMCInstForm_RM32_R32:
-						EmitREX(inst->mArg1, inst->mArg0, false);
-						Emit(0x0F); Emit(0xB1); EmitModRM(inst->mArg1, inst->mArg0);
-						break;
-					case BeMCInstForm_RM64_R64:
-						EmitREX(inst->mArg1, inst->mArg0, true);
-						Emit(0x0F); Emit(0xB1); EmitModRM(inst->mArg1, inst->mArg0);
-						break;
-					default:
-						SoftFail("Invalid CmpXChg args");
-					}
-				}
-				break;
-			case BeMCInstKind_XAdd:
-				{
-					auto arg0Type = GetType(inst->mArg0);
-
-					switch (instForm)
-					{
-					case BeMCInstForm_R8_RM8:
-						if (inst->mArg1.IsNativeReg())
-							instForm = BeMCInstForm_RM8_R8;
-						break;
-					case BeMCInstForm_R16_RM16:
-						if (inst->mArg1.IsNativeReg())
-							instForm = BeMCInstForm_RM16_R16;
-						break;
-					case BeMCInstForm_R32_RM32:
-						if (inst->mArg1.IsNativeReg())
-							instForm = BeMCInstForm_RM32_R32;
-						break;
-					case BeMCInstForm_R64_RM64:
-						if (inst->mArg1.IsNativeReg())
-							instForm = BeMCInstForm_RM64_R64;
-						break;
-					}
-
-					if (!inst->mArg0.IsNativeReg())
-						Emit(0xF0); // LOCK
-
-					switch (instForm)
-					{
-					case BeMCInstForm_RM8_R8:
-						EmitREX(inst->mArg1, inst->mArg0, false);
-						Emit(0x0F); Emit(0xC0); EmitModRM(inst->mArg1, inst->mArg0);
-						break;
-					case BeMCInstForm_RM16_R16:
-						EmitREX(inst->mArg1, inst->mArg0, false);
-						Emit(0x66); Emit(0x0F); Emit(0xC0); EmitModRM(inst->mArg1, inst->mArg0);
-						break;
-					case BeMCInstForm_RM32_R32:
-						EmitREX(inst->mArg1, inst->mArg0, false);
-						Emit(0x0F); Emit(0xC1); EmitModRM(inst->mArg1, inst->mArg0);
-						break;
-					case BeMCInstForm_RM64_R64:
-						EmitREX(inst->mArg1, inst->mArg0, true);
-						Emit(0x0F); Emit(0xC1); EmitModRM(inst->mArg1, inst->mArg0);
-						break;
-					default:
-						SoftFail("Invalid XAdd args");
-					}
-				}
-				break;
-			case BeMCInstKind_XChg:
-				{
-					EmitStdInst(instForm, inst, 0x87, 0x87, 0x00, 0x0);
-				}
-				break;
-			case BeMCInstKind_Load:
-				{
-					if (inst->mArg1.IsSymbol())
-					{
-						BF_ASSERT(inst->mArg0.IsNativeReg());
-					}
-
-					switch (instForm)
-					{
-					case BeMCInstForm_XMM64_FRM64:
-					case BeMCInstForm_XMM32_FRM32:
-						// MOVSS/MOVSD
-						EmitStdXMMInst(instForm, inst, 0x10);
-						break;
-					case BeMCInstForm_R32_RM32:
-						EmitInst(BeMCInstForm_R32_RM64_ADDR, 0x8B, inst);
-						break;
-					case BeMCInstForm_R64_RM64:
-						EmitInst(BeMCInstForm_R64_RM64_ADDR, 0x8B, inst);
-						break;
-					case BeMCInstForm_XMM32_RM64:
-					case BeMCInstForm_XMM64_RM64:
-						// MOVSS / MOVSD
-						BF_ASSERT(inst->mArg0.IsNativeReg());
-						if (instForm == BeMCInstForm_XMM64_RM64)
-							Emit(0xF2);
-						else
-							Emit(0xF3);
-						EmitREX(inst->mArg0, inst->mArg1, false);
-						Emit(0x0F); Emit(0x10);
-						EmitModRM_Addr(inst->mArg0, inst->mArg1);
-						break;
-					default:
-						{
-							BF_ASSERT(inst->mArg0.IsNativeReg());
-							auto arg0Type = GetType(inst->mArg0);
-							auto arg1Type = GetType(inst->mArg1);
-							BF_ASSERT(arg1Type->mSize == 8);
-
-							switch (arg0Type->mSize)
-							{
-							case 1: EmitInst(BeMCInstForm_R8_RM64_ADDR, 0x8B, inst); break;
-							case 2: EmitInst(BeMCInstForm_R16_RM64_ADDR, 0x8B, inst); break;
-							case 4: EmitInst(BeMCInstForm_R32_RM64_ADDR, 0x8B, inst); break;
-							case 8: EmitInst(BeMCInstForm_R64_RM64_ADDR, 0x8B, inst); break;
+							default: NotImpl();
 							}
-						}
-					}
-
-					/*BF_ASSERT(inst->mArg0.mKind == BeMCOperandKind_NativeReg);
-					BF_ASSERT(inst->mArg1.mKind == BeMCOperandKind_NativeReg);
-
-					EmitREX(inst->mArg0, inst->mArg1);
-					mOut.Write((uint8)0x8B);
-					uint8 modRM = (0x0 << 6) | (EncodeRegNum(inst->mArg1.mReg)) | (EncodeRegNum(inst->mArg0.mReg)); // <arg0>, [<arg1>]
-					mOut.Write(modRM);*/
-				}
-				break;
-			case BeMCInstKind_Store:
-				{
-					switch (instForm)
-					{
-						/*case BeMCInstForm_R64_RM64:
+							break;
+						case BeTypeCode_Int64:
+							switch (arg1Type->mTypeCode)
 							{
-								// Make sure its really R64, R64
-								BF_ASSERT(inst->mArg1.IsNativeReg());
-								EmitInst(BeMCInstForm_RM64_R64_ADDR, 0x89, inst);
+							case BeTypeCode_Int8:
+							case BeTypeCode_Boolean:
+								EmitREX(inst->mArg0, inst->mArg1, true);
+								Emit(0x0F); Emit(0xB6); EmitModRM(inst->mArg0, inst->mArg1); break;
+							case BeTypeCode_Int16:
+								EmitREX(inst->mArg0, inst->mArg1, true);
+								Emit(0x0F); Emit(0xB7); EmitModRM(inst->mArg0, inst->mArg1); break;
+							case BeTypeCode_Int32:
+							{
+								// We convert from a "mov r64, r32" to a "mov r32, r32", which forces high 32 bits of original r64 to zero
+								BeMCOperand mcDest = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, arg1Type));
+								EmitREX(mcDest, inst->mArg1, false);
+								Emit(0x8B); EmitModRM(mcDest, inst->mArg1);
 							}
-							break;*/
-					case BeMCInstForm_RM64_R64:	EmitInst(BeMCInstForm_RM64_R64_ADDR, 0x89, inst); break;
-					case BeMCInstForm_FRM32_XMM32:
-					case BeMCInstForm_FRM64_XMM64:
-						// MOVSS/MOVSD
-						EmitStdXMMInst(instForm, inst, 0x10, 0x11);
-						break;
-					case BeMCInstForm_R64_F64:
-					case BeMCInstForm_R64_F32:
-						// MOVSS / MOVSD
-						BF_ASSERT(inst->mArg1.IsNativeReg());
-						if (instForm == BeMCInstForm_R64_F64)
-							Emit(0xF2);
-						else
-							Emit(0xF3);
-						EmitREX(inst->mArg1, inst->mArg0, false);
-						Emit(0x0F); Emit(0x11);
-						EmitModRM_Addr(inst->mArg1, inst->mArg0);
-						break;
-					default:
-						{
-							BF_ASSERT(inst->mArg0.IsNativeReg());
-							BF_ASSERT(inst->mArg1.IsNativeReg());
-							auto arg0Type = GetType(inst->mArg0);
-							auto arg1Type = GetType(inst->mArg1);
-							BF_ASSERT(arg0Type->mSize == 8);
-
-							switch (arg1Type->mSize)
-							{
-							case 1: EmitInst(BeMCInstForm_RM64_R8_ADDR, 0x89, inst); break;
-							case 2: EmitInst(BeMCInstForm_RM64_R16_ADDR, 0x89, inst); break;
-							case 4: EmitInst(BeMCInstForm_RM64_R32_ADDR, 0x89, inst); break;
-							case 8: EmitInst(BeMCInstForm_RM64_R64_ADDR, 0x89, inst); break;
-							}
-						}
-					}
-				}
-				break;
-			case BeMCInstKind_Push:
-				{
-					auto arg0Type = GetType(inst->mArg0);
-					if (inst->mArg1)
-					{
-						BF_ASSERT(IsXMMReg(inst->mArg0.mReg));
-						BF_ASSERT(inst->mArg1.IsImmediate());
-						// Is there a performance benefit to properly using MOVAPD vs MOVAPS if we only
-						//  use this register for double storage?
-						// MOVAPS
-						EmitREX(inst->mArg0, BeMCOperand(), false);
-						Emit(0x0F); Emit(0x29);
-						EmitModRMRel(EncodeRegNum(inst->mArg0.mReg), X64Reg_RSP, X64Reg_None, 1, (int)inst->mArg1.mImmediate);
-						break;
-					}
-
-					if (arg0Type->IsFloat())
-					{
-						BF_ASSERT(IsXMMReg(inst->mArg0.mReg));
-
-						// sub rsp, sizeof(arg0)
-						Emit(0x48); Emit(0x83); Emit(0xEC); Emit(arg0Type->mSize);
-
-						Emit((arg0Type->mSize == 4) ? 0xF3 : 0xF2);
-						EmitREX(inst->mArg0, BeMCOperand(), false);
-						Emit(0x0F); Emit(0x11);
-						EmitModRMRel(EncodeRegNum(inst->mArg0.mReg), X64Reg_RSP, X64Reg_None, 1, 0);
-						break;
-					}
-
-					// This is used in combination with register pops, and we can't pop 32-bit registers
-					//  so we need to make sure we're always pushing a full 64 bits
-					switch (instForm)
-					{
-					case BeMCInstForm_R8: // Always use full reg (always push 64 bits)
-					case BeMCInstForm_R16:
-					case BeMCInstForm_R32:
-					case BeMCInstForm_R64:
-						EmitREX(BeMCOperand(), inst->mArg0, true);
-						mOut.Write((uint8)(0x50 + EncodeRegNum(inst->mArg0.mReg)));
-						break;
-					case BeMCInstForm_RM64:
-						EmitREX(BeMCOperand(), inst->mArg0, true);
-						Emit(0xFF); EmitModRM(6, inst->mArg0);
-						break;
-					case BeMCInstForm_IMM32: // Always pad to 64 bits
-						{
-							Emit(0x68); mOut.Write((int32)inst->mArg0.mImmediate);
-							// Emit padded 0
-							Emit(0x68); mOut.Write((int32)0);
-						}
-						break;
-					default:
-						NotImpl();
-					}
-				}
-				break;
-			case BeMCInstKind_Pop:
-				{
-					auto arg0Type = GetType(inst->mArg0);
-					if (inst->mArg1)
-					{
-						BF_ASSERT(IsXMMReg(inst->mArg0.mReg));
-						BF_ASSERT(inst->mArg1.IsImmediate());
-						// Is there a performance benefit to properly using MOVAPD vs MOVAPS if we only
-						//  use this register for double storage?
-						// MOVAPS
-						EmitREX(inst->mArg0, BeMCOperand(), false);
-						Emit(0x0F); Emit(0x28);
-						// Push always uses RSP (required for stack unwinding), but Pop uses RBP when applicable
-						//  because it is still set up at that point
-						EmitModRMRelStack(EncodeRegNum(inst->mArg0.mReg), (int)inst->mArg1.mImmediate, 1);
-						break;
-					}
-
-					if (arg0Type->IsFloat())
-					{
-						BF_ASSERT(IsXMMReg(inst->mArg0.mReg));
-
-						Emit((arg0Type->mSize == 4) ? 0xF3 : 0xF2);
-						EmitREX(inst->mArg0, BeMCOperand(), false);
-						Emit(0x0F); Emit(0x10);
-						EmitModRMRel(EncodeRegNum(inst->mArg0.mReg), X64Reg_RSP, X64Reg_None, 1, 0);
-
-						// add rsp, sizeof(arg0)
-						Emit(0x48); Emit(0x83); Emit(0xC4); Emit(arg0Type->mSize);
-						break;
-					}
-
-					switch (instForm)
-					{
-					case BeMCInstForm_R64:
-						EmitREX(BeMCOperand(), inst->mArg0, true);
-						mOut.Write((uint8)(0x58 + EncodeRegNum(inst->mArg0.mReg)));
-						break;
-					case BeMCInstForm_RM64:
-						EmitREX(BeMCOperand(), inst->mArg0, true);
-						Emit(0x8F); EmitModRM(0, inst->mArg0);
-					default:
-						NotImpl();
-					}
-				}
-				break;
-			case BeMCInstKind_Neg:
-				{
-					auto typeCode = GetType(inst->mArg0)->mTypeCode;
-					switch (typeCode)
-					{
-					case BeTypeCode_Int8:
-						EmitREX(BeMCOperand(), inst->mArg0, false);
-						Emit(0xF6);
-						EmitModRM(3, inst->mArg0);
-						break;
-					case BeTypeCode_Int16: Emit(0x66); // Fallthrough
-					case BeTypeCode_Int32:
-					case BeTypeCode_Int64:
-						EmitREX(BeMCOperand(), inst->mArg0, typeCode == BeTypeCode_Int64);
-						Emit(0xF7); EmitModRM(3, inst->mArg0);
-						break;
-					default:
-						NotImpl();
-					}
-				}
-				break;
-			case BeMCInstKind_Not:
-				{
-					auto typeCode = GetType(inst->mArg0)->mTypeCode;
-					switch (typeCode)
-					{
-					case BeTypeCode_Int8:
-						EmitREX(BeMCOperand(), inst->mArg0, false);
-						Emit(0xF6);
-						EmitModRM(2, inst->mArg0);
-						break;
-					case BeTypeCode_Int16: Emit(0x66); // Fallthrough
-					case BeTypeCode_Int32:
-					case BeTypeCode_Int64:
-						EmitREX(BeMCOperand(), inst->mArg0, typeCode == BeTypeCode_Int64);
-						Emit(0xF7); EmitModRM(2, inst->mArg0);
-						break;
-					default:
-						NotImpl();
-					}
-				}
-				break;
-			case BeMCInstKind_Add:
-				{
-					if ((inst->mResult) && (inst->mResult != inst->mArg0) && (!inst->mDisableShortForm))
-					{
-						BF_ASSERT(!inst->mDisableShortForm);
-						BF_ASSERT(inst->mResult.IsNativeReg());
-						BF_ASSERT(inst->mArg0.IsNativeReg());
-						BF_ASSERT(inst->mArg1.IsImmediate());
-
-						// LEA form
-						auto resultType = GetType(inst->mArg0);
-						switch (resultType->mTypeCode)
-						{
-						case BeTypeCode_Int16:
-							Emit(0x66);
-						case BeTypeCode_Int32:
-						case BeTypeCode_Int64:
-							EmitREX(inst->mResult, inst->mArg0, resultType->mTypeCode == BeTypeCode_Int64);
-							Emit(0x8D); EmitModRMRel(EncodeRegNum(inst->mResult.mReg), ResizeRegister(inst->mArg0.mReg, 8), X64Reg_None, 1, (int)inst->mArg1.mImmediate);
 							break;
-						default:
-							NotImpl();
-						}
-					}
-					else if ((inst->mArg1.IsImmediateInt()) && (inst->mArg1.mImmediate == 1) && (!inst->mDisableShortForm))
-					{
-						// Emit as INC <arg0>
-						auto typeCode = GetType(inst->mArg0)->mTypeCode;
-						switch (typeCode)
-						{
-						case BeTypeCode_Int8:
-							EmitREX(BeMCOperand(), inst->mArg0, false);
-							Emit(0xFE); EmitModRM(0, inst->mArg0);
-							break;
-						case BeTypeCode_Int16: Emit(0x66); // Fallthrough
-						case BeTypeCode_Int32:
-						case BeTypeCode_Int64:
-							EmitREX(BeMCOperand(), inst->mArg0, typeCode == BeTypeCode_Int64);
-							Emit(0xFF); EmitModRM(0, inst->mArg0);
-							break;
-						default:
-							NotImpl();
-						}
-					}
-					else if (((inst->mArg1.IsImmediateInt()) && (inst->mArg1.mImmediate == -1)) && (!inst->mDisableShortForm))
-					{
-						// Emit as DEC <arg0>
-						auto typeCode = GetType(inst->mArg0)->mTypeCode;
-						switch (typeCode)
-						{
-						case BeTypeCode_Int8:
-							EmitREX(BeMCOperand(), inst->mArg0, false);
-							Emit(0xFE); EmitModRM(1, inst->mArg0);
-							break;
-						case BeTypeCode_Int16: Emit(0x66); // Fallthrough
-						case BeTypeCode_Int32:
-						case BeTypeCode_Int64:
-							EmitREX(BeMCOperand(), inst->mArg0, typeCode == BeTypeCode_Int64);
-							Emit(0xFF); EmitModRM(1, inst->mArg0);
-							break;
-						default:
-							NotImpl();
-						}
-					}
-					else
-					{
-						if (((instForm == BeMCInstForm_RM64_IMM16) || (instForm == BeMCInstForm_RM64_IMM32)) &&
-							(inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_RAX))
-						{
-							// Emit as ADD RAX, <imm32>
-							EmitREX(inst->mArg0, BeMCOperand(), true);
-							mOut.Write((uint8)0x05);
-							mOut.Write((int32)inst->mArg1.mImmediate);
-							break;
-						}
-
-						if (EmitIntXMMInst(instForm, inst, 0xFC)) // PADD?
-							break;
-						if (EmitStdXMMInst(instForm, inst, 0x58))
-							break;
-						EmitStdInst(instForm, inst, 0x01, 0x03, 0x81, 0x0, 0x83, 0x0);
-					}
-				}
-				break;
-			case BeMCInstKind_Sub:
-				{
-					if ((inst->mArg1.IsImmediateInt()) && (inst->mArg1.mImmediate == 1) && (!inst->mDisableShortForm))
-					{
-						// Emit as DEC <arg0>
-						auto typeCode = GetType(inst->mArg0)->mTypeCode;
-						switch (typeCode)
-						{
-						case BeTypeCode_Int8:
-							EmitREX(BeMCOperand(), inst->mArg0, false);
-							Emit(0xFE); EmitModRM(1, inst->mArg0);
-							break;
-						case BeTypeCode_Int16: Emit(0x66); // Fallthrough
-						case BeTypeCode_Int32:
-						case BeTypeCode_Int64:
-							EmitREX(BeMCOperand(), inst->mArg0, typeCode == BeTypeCode_Int64);
-							Emit(0xFF); EmitModRM(1, inst->mArg0);
-							break;
-						default:
-							NotImpl();
-						}
-					}
-					else
-					{
-						if (((instForm == BeMCInstForm_RM64_IMM16) || (instForm == BeMCInstForm_RM64_IMM32)) &&
-							(inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_RAX))
-						{
-							// Emit as SUB RAX, <imm32>
-							EmitREX(inst->mArg0, BeMCOperand(), true);
-							mOut.Write((uint8)0x2D);
-							mOut.Write((int32)inst->mArg1.mImmediate);
-							break;
-						}
-
-						if (EmitIntXMMInst(instForm, inst, 0xF8)) // PSUB?
-							break;
-						if (EmitStdXMMInst(instForm, inst, 0x5C))
-							break;
-						EmitStdInst(instForm, inst, 0x29, 0x2B, 0x81, 0x5, 0x83, 0x5);
-					}
-				}
-				break;
-			case BeMCInstKind_Mul:
-				{
-					if (arg0Type->IsIntable())
-					{
-						bool isValid = true;
-						auto typeCode = GetType(inst->mArg1)->mTypeCode;
-						switch (typeCode)
-						{
-						case BeTypeCode_Int8:
-							isValid = inst->mArg0 == BeMCOperand::FromReg(X64Reg_AL);
-							break;
-						case BeTypeCode_Int16:
-							isValid = inst->mArg0 == BeMCOperand::FromReg(X64Reg_AX);
-							break;
-						case BeTypeCode_Int32:
-							isValid = inst->mArg0 == BeMCOperand::FromReg(X64Reg_EAX);
-							break;
-						case BeTypeCode_Int64:
-							isValid = inst->mArg0 == BeMCOperand::FromReg(X64Reg_RAX);
-							break;
-						default:
-							isValid = false;
-						}
-						if (!isValid)
-							SoftFail("Invalid mul arguments");
-
-						switch (typeCode)
-						{
-						case BeTypeCode_Int8:
-							EmitREX(BeMCOperand(), inst->mArg1, false);
-							Emit(0xF6);
-							EmitModRM(4, inst->mArg1);
-							break;
-						case BeTypeCode_Int16: Emit(0x66); // Fallthrough
-						case BeTypeCode_Int32:
-						case BeTypeCode_Int64:
-							EmitREX(BeMCOperand(), inst->mArg1, typeCode == BeTypeCode_Int64);
-							Emit(0xF7); EmitModRM(4, inst->mArg1);
-							break;
-						default:
-							NotImpl();
-						}
-						break;
-					}
-				}
-				//Fallthrough
-			case BeMCInstKind_IMul:
-				{
-					if (instForm == BeMCInstForm_XMM128_RM128)
-					{
-						if (arg0Type->IsExplicitVectorType())
-						{
-							auto vecType = (BeVectorType*)arg0Type;
-							if (vecType->mElementType->mTypeCode == BeTypeCode_Int32)
-							{
-								Emit(0x66);
-								EmitREX(arg0, arg1, false);
-								Emit(0x0F);
-								if (inst->mKind == BeMCInstKind_IMul)
-									Emit(0xD5); // PMULLW
-								else
-								{
-									Emit(0x38); Emit(0x40); // PMULLD
-								}
-								EmitModRM(arg0, arg1);
-								break;
-							}
-						}
-					}
-
-					if (EmitStdXMMInst(instForm, inst, 0x59))
-						break;
-
-					BeMCOperand result = inst->mResult;
-					if ((!result) && (inst->mArg1.IsImmediate()))
-						result = inst->mArg0; // Do as 3-form anyway
-					if (result)
-					{
-						BF_ASSERT(inst->mArg1.IsImmediate());
-						if ((inst->mArg0.IsNativeReg()) && (!inst->mDisableShortForm) &&
-							((inst->mArg1.mImmediate == 2) || (inst->mArg1.mImmediate == 4) || (inst->mArg1.mImmediate == 8)))
-						{
-							// LEA form
-							auto resultType = GetType(inst->mArg0);
-							if (resultType->mTypeCode != BeTypeCode_Int8)
-							{
-								switch (resultType->mTypeCode)
-								{
-								case BeTypeCode_Int16:
-									Emit(0x66);
-								case BeTypeCode_Int32:
-								case BeTypeCode_Int64:
-									uint8 rex = GetREX(result, inst->mArg0, resultType->mTypeCode == BeTypeCode_Int64);
-									if (rex != 0)
-									{
-										if (rex & 1)
-										{
-											// Mov REX flag from RM to SiB
-											rex = (rex & ~1) | 2;
-										}
-										Emit(rex);
-									}
-									Emit(0x8D); EmitModRMRel(EncodeRegNum(result.mReg), X64Reg_None, inst->mArg0.mReg, (int)inst->mArg1.mImmediate, 0);
-									break;
-								}
-								break;
-							}
-						}
-
-						auto typeCode = GetType(inst->mArg0)->mTypeCode;
-						switch (typeCode)
-						{
-						case BeTypeCode_Int16:
-							Emit(0x66);
-							// Fall through
-						case BeTypeCode_Int32:
-						case BeTypeCode_Int64:
-							EmitREX(result, inst->mArg0, typeCode == BeTypeCode_Int64);
-
-							if ((inst->mArg1.mImmediate >= -0x80) && (inst->mArg1.mImmediate <= 0x7F))
-							{
-								Emit(0x6B);
-								EmitModRM(result, inst->mArg0, -1);
-								mOut.Write((int8)inst->mArg1.mImmediate);
-							}
-							else
-							{
-								Emit(0x69);
-								EmitModRM(result, inst->mArg0, (typeCode == BeTypeCode_Int16) ? -2 : -4);
-								if (typeCode == BeTypeCode_Int16)
-									mOut.Write((int16)inst->mArg1.mImmediate);
-								else
-									mOut.Write((int32)inst->mArg1.mImmediate);
 							}
 							break;
 						default:
 							NotImpl();
 						}
+						break; // from inst switch
 					}
-					else
+
+					if (arg0Type->mTypeCode == BeTypeCode_Float)
 					{
 						if (inst->mArg1.IsImmediate())
 						{
-							int64 multVal = inst->mArg1.mImmediate;
-							if (IsPowerOfTwo(multVal))
-							{
-								int shiftCount = 0;
-								while (multVal > 1)
-								{
-									shiftCount++;
-									multVal >>= 1;
-								}
-
-								auto arg0Type = GetType(inst->mArg0);
-								switch (arg0Type->mTypeCode)
-								{
-								case BeTypeCode_Int64:
-									EmitREX(inst->mArg0, BeMCOperand(), true);
-									// Fall through
-								case BeTypeCode_Int32:
-									Emit(0xC1); Emit((0x4 << 3) | (3 << 6) | (EncodeRegNum(inst->mArg0.mReg)));
-									Emit((uint8)shiftCount);
-									break;
-								default:
-									NotImpl();
-								}
-								break;
-							}
-						}
-
-						switch (instForm)
-						{
-						case BeMCInstForm_R8_RM8:
-							BF_ASSERT(inst->mArg0.mReg == X64Reg_AL);
-							EmitREX(BeMCOperand(), inst->mArg1, false);
-							Emit(0xF6);
-							EmitModRM(0x5, inst->mArg1);
+							// Emit as a int32 mov
+							EmitREX(BeMCOperand(), inst->mArg0, false);
+							Emit(0xC7);
+							EmitModRM(0, inst->mArg0, -4);
+							float val = inst->mArg1.mImmF32;
+							mOut.Write(*(int32*)&val);
 							break;
-						case BeMCInstForm_R16_RM16:
-						case BeMCInstForm_R32_RM32:
-						case BeMCInstForm_R64_RM64: EmitInst(instForm, 0xAF0F, inst); break;
-						default:
-							NotImpl();
 						}
 					}
 				}
-				break;
-			case BeMCInstKind_Div:
-				{
-					auto arg0Type = GetType(inst->mArg0);
-					switch (arg0Type->mTypeCode)
-					{
-					case BeTypeCode_Int8:
-						BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_AL));
-						// XOR ah, ah
-						Emit(0x30); Emit(0xE4);
-						// DIV rm
-						EmitREX(BeMCOperand::FromReg(X64Reg_AX), inst->mArg1, false);
-						Emit(0xF6); EmitModRM(0x6, inst->mArg1);
-						break;
-					case BeTypeCode_Int16:
-						BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_AX));
-						// XOR dx, dx
-						Emit(0x66); Emit(0x31); Emit(0xD2);
-						// DIV rm
-						Emit(0x66);
-						EmitREX(BeMCOperand::FromReg(X64Reg_AX), inst->mArg1, false);
-						Emit(0xF7); EmitModRM(0x6, inst->mArg1);
-						break;
-					case BeTypeCode_Int32:
-						BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_EAX));
-						// XOR edx, edx
-						Emit(0x31); Emit(0xD2);
-						// DIV rm
-						EmitREX(BeMCOperand::FromReg(X64Reg_EAX), inst->mArg1, false);
-						Emit(0xF7); EmitModRM(0x6, inst->mArg1);
-						break;
-					case BeTypeCode_Int64:
-						BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_RAX));
-						// XOR rdx, rdx
-						Emit(0x48); Emit(0x31); Emit(0xD2);
-						// DIV rm
-						EmitREX(BeMCOperand::FromReg(X64Reg_RAX), inst->mArg1, true);
-						Emit(0xF7); EmitModRM(0x6, inst->mArg1);
-						break;
-					}
-				}
-				break;
-			case BeMCInstKind_IDiv:
-				{
-					if (EmitStdXMMInst(instForm, inst, 0x5E))
-						break;
 
-					auto arg0Type = GetType(inst->mArg0);
-					switch (arg0Type->mTypeCode)
+				if (inst->mArg1.mKind == BeMCOperandKind_CmpResult)
+				{
+					BF_ASSERT(instForm == BeMCInstForm_R8_RM8);
+
+					// SETcc
+					auto& cmpResult = mCmpResults[inst->mArg1.mCmpResultIdx];
+					uint8 opCode = GetJumpOpCode(cmpResult.mCmpKind, false) + 0x20;
+					EmitREX(BeMCOperand(), inst->mArg0, false);
+					Emit(0x0F);
+					Emit(opCode);
+					EmitModRM(0, inst->mArg0);
+					break;
+				}
+
+				bool isLEA = inst->mArg1.mKind == BeMCOperandKind_SymbolAddr;
+				if ((instForm == BeMCInstForm_R64_RM64) && (inst->mArg1.IsVRegAny()))
+				{
+					bool isMulti = false;
+					if (GetRMForm(inst->mArg1, isMulti) == BeMCRMMode_Direct)
 					{
-					case BeTypeCode_Int8:
-						BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_AL));
-						// CBW
-						Emit(0x66); Emit(0x98);
-						// IDIV rm
-						EmitREX(BeMCOperand::FromReg(X64Reg_AX), inst->mArg1, false);
-						Emit(0xF6); EmitModRM(0x7, inst->mArg1);
-						break;
-					case BeTypeCode_Int16:
-						BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_AX));
-						// CWD
-						Emit(0x66); Emit(0x99);
-						// IDIV rm
-						Emit(0x66);
-						EmitREX(BeMCOperand::FromReg(X64Reg_AX), inst->mArg1, false);
-						Emit(0xF7); EmitModRM(0x7, inst->mArg1);
-						break;
-					case BeTypeCode_Int32:
-						BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_EAX));
-						// CDQ
-						Emit(0x99);
-						// IDIV rm
-						EmitREX(BeMCOperand::FromReg(X64Reg_EAX), inst->mArg1, false);
-						Emit(0xF7); EmitModRM(0x7, inst->mArg1);
-						break;
-					case BeTypeCode_Int64:
-						BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_RAX));
-						// CQO
-						Emit(0x48); Emit(0x99);
-						// IDIV rm
-						EmitREX(BeMCOperand::FromReg(X64Reg_RAX), inst->mArg1, true);
-						Emit(0xF7); EmitModRM(0x7, inst->mArg1);
+						// LEA
+						auto modInst = *inst;
+						BF_ASSERT(modInst.mArg1.IsVRegAny());
+						modInst.mArg1 = BeMCOperand::ToLoad(modInst.mArg1);
+						EmitInst(BeMCInstForm_R64_RM64, 0x8D, &modInst);
 						break;
 					}
+					else
+					{
+						auto vregInfo1 = GetVRegInfo(inst->mArg1);
+						if (vregInfo1->mRelTo.mKind == BeMCOperandKind_SymbolAddr)
+							isLEA = true;
+					}
 				}
-				break;
-			case BeMCInstKind_IRem:
+
+				if (inst->mArg1.mKind == BeMCOperandKind_VRegAddr)
 				{
 					NotImpl();
-					//if (EmitStdXMMInst(instForm, inst, 0x5E))
-						//break;
+
+					/*// LEA
+					switch (instForm)
+					{
+					case BeMCInstForm_R64_RM64: EmitInst(BeMCInstForm_R64_RM64, 0x8D, inst); break;
+					default:
+						NotImpl();
+					}*/
 				}
-				break;
-			case BeMCInstKind_Cmp:
+				else if (isLEA)
+				{
+					// LEA
+					switch (instForm)
+					{
+					case BeMCInstForm_R64_RM64: EmitInst(BeMCInstForm_R64_RM64, 0x8D, inst); break;
+					default:
+						NotImpl();
+					}
+				}
+				// ??
+				/*else if ((vregInfo != NULL) && (vregInfo->mIsExpr))
+				{
+					// LEA
+					switch (instForm)
+					{
+					case BeMCInstForm_R64_RM64: EmitInst(BeMCInstForm_R64_RM64_ADDR, 0x8D, inst); break;
+					default:
+						NotImpl();
+					}
+				}*/
+				else if ((inst->mArg0.IsNativeReg()) && (inst->mArg1.IsZero()))
+				{
+					auto type = GetType(inst->mArg0);
+
+					if (type->mSize == 1)
+					{
+						// Emit as XOR <arg0>, <arg0>
+						EmitREX(inst->mArg0, inst->mArg0, false);
+						mOut.Write((uint8)0x30); // r, r/m64
+						EmitModRM(inst->mArg0, inst->mArg0);
+					}
+					else
+					{
+						// Emit as XOR <arg0>, <arg0>
+						EmitREX(inst->mArg0, inst->mArg0, type->mSize == 8);
+						mOut.Write((uint8)0x33); // r, r/m64
+						EmitModRM(inst->mArg0, inst->mArg0);
+					}
+				}
+				else
 				{
 					switch (instForm)
 					{
-					case BeMCInstForm_XMM32_FRM32:
-					case BeMCInstForm_XMM32_IMM:
-						// UCOMISS
-						EmitREX(inst->mArg0, inst->mArg1, false);
-						Emit(0x0F); Emit(0x2E);
-						EmitModRM(inst->mArg0, inst->mArg1);
-						break;
-					case BeMCInstForm_XMM64_FRM64:
-					case BeMCInstForm_XMM64_IMM:
-						// UCOMISD
-						Emit(0x66);
-						EmitREX(inst->mArg0, inst->mArg1, false);
-						Emit(0x0F); Emit(0x2E);
-						EmitModRM(inst->mArg0, inst->mArg1);
-						break;
-					default:
-						{
-							if (((inst->mArg0.IsNativeReg()) && (inst->mArg1.IsImmediateInt())) && (inst->mArg1.GetImmediateInt() == 0))
-							{
-								// Test
-								auto typeCode = GetType(inst->mArg0)->mTypeCode;
-								switch (typeCode)
-								{
-								case BeTypeCode_Int8:
-									EmitREX(inst->mArg0, inst->mArg0, false);
-									Emit(0x84);
-									EmitModRM(inst->mArg0, inst->mArg0);
-									break;
-								case BeTypeCode_Int16: Emit(0x66); // Fallthrough
-								case BeTypeCode_Int32:
-								case BeTypeCode_Int64:
-									EmitREX(inst->mArg0, inst->mArg0, typeCode == BeTypeCode_Int64);
-									Emit(0x85); EmitModRM(inst->mArg0, inst->mArg0);
-									break;
-								default:
-									NotImpl();
-								}
-
-								/*if (arg0Type->mSize == 2)
-									Emit(0x66);
-								// Emit as TEST <arg0>, <arg0>
-								EmitREX(inst->mArg0, inst->mArg0, GetType(inst->mArg0)->mSize == 8);
-								mOut.Write((uint8)0x85); // r/m64, r
-								EmitModRM(inst->mArg0, inst->mArg0);*/
-							}
-							else
-							{
-								EmitStdInst(instForm, inst, 0x39, 0x3B, 0x81, 0x7, 0x83, 0x7);
-							}
-						}
-					}
-				}
-				break;
-			case BeMCInstKind_And:
-				{
-					if (EmitIntBitwiseXMMInst(instForm, inst, 0xDB)) //PAND
-						break;
-
-					BeMCInst modInst = *inst;
-
-					bool isZeroing = false;
-
-					// Use a shorter form if the upper bytes are masked in
-					if ((instForm == BeMCInstForm_RM32_IMM32) || (instForm == BeMCInstForm_RM64_IMM32))
+					case BeMCInstForm_XMM32_RM32:
 					{
-						if ((modInst.mArg1.mImmediate & 0xFFFF0000) == 0xFFFF0000)
-						{
-							if (modInst.mArg0.IsNativeReg())
-								modInst.mArg0.mReg = ResizeRegister(modInst.mArg0.mReg, 2);
-							instForm = BeMCInstForm_RM16_IMM16;
-							if ((modInst.mArg1.mImmediate & 0xFFFF) == 0)
-								isZeroing = true;
-						}
-						else if (instForm == BeMCInstForm_RM32_IMM32)
-						{
-							if ((modInst.mArg1.mImmediate & 0xFFFFFFFF) == 0)
-							{
-								isZeroing = true;
-							}
-						}
+						BF_ASSERT(inst->mArg1.IsNativeReg());
+						// CVTSI2SS - use zero-extended 64-bit register
+						EmitStdXMMInst(BeMCInstForm_XMM32_RM64, inst, 0x2A);
 					}
-
-					if ((instForm == BeMCInstForm_RM16_IMM16) || (instForm == BeMCInstForm_RM32_IMM16) || (instForm == BeMCInstForm_RM64_IMM16))
+					break;
+					case BeMCInstForm_XMM64_RM32:
 					{
-						if ((modInst.mArg1.mImmediate & 0xFFFFFF00) == 0xFFFFFF00)
-						{
-							if (modInst.mArg0.IsNativeReg())
-								modInst.mArg0.mReg = ResizeRegister(modInst.mArg0.mReg, 1);
-							instForm = BeMCInstForm_RM8_IMM8;
-						}
-						else if (instForm == BeMCInstForm_RM16_IMM16)
-						{
-							if ((modInst.mArg1.mImmediate & 0xFFFF) == 0)
-							{
-								isZeroing = true;
-							}
-						}
+						BF_ASSERT(inst->mArg1.IsNativeReg());
+						// CVTSI2SD - use zero-extended 64-bit register
+						EmitStdXMMInst(BeMCInstForm_XMM64_RM64, inst, 0x2A);
 					}
-
-					if (instForm == BeMCInstForm_RM8_IMM8)
+					break;
+					case BeMCInstForm_XMM64_FRM32:
+					case BeMCInstForm_XMM32_FRM64:
 					{
-						// Are we really just zeroing out the lower byte?
-						if (((modInst.mArg1.mImmediate & 0xFF) == 0) && (modInst.mArg0.IsNativeReg()))
-						{
-							isZeroing = true;
-						}
+						// CVTSS2SD / CVTSD2SS
+						EmitStdXMMInst(instForm, inst, 0x5A);
 					}
-
-					if (isZeroing)
+					break;
+					case BeMCInstForm_R32_F32:
+					case BeMCInstForm_R32_F64:
+					case BeMCInstForm_R64_F32:
+					case BeMCInstForm_R64_F64:
 					{
-						int size = 0;
-						switch (instForm)
-						{
-						case BeMCInstForm_RM32_IMM32:
-							instForm = BeMCInstForm_RM32_R32;
-							break;
-						case BeMCInstForm_RM16_IMM16:
-							instForm = BeMCInstForm_RM16_R16;
-							break;
-						case BeMCInstForm_RM8_IMM8:
-							instForm = BeMCInstForm_RM8_R8;
-							break;
-						default:
-							NotImpl();
-						}
-
-						//XOR arg0, arg0
-						modInst.mKind = BeMCInstKind_Xor;
-						modInst.mArg1 = modInst.mArg0;
-						EmitStdInst(instForm, &modInst, 0x31, 0x33, 0x81, 0x6, 0x83, 0x6);
-						break;
+						// CVTTSS2SI
+						EmitStdXMMInst(instForm, inst, 0x2C);
 					}
-
-					if (modInst.mArg1.IsImmediateFloat())
-					{ //ANDPS
-						bool is64Bit = (modInst.mArg1.mKind == BeMCOperandKind_Immediate_f64_Packed128);
-						EmitREX(inst->mArg0, inst->mArg1, is64Bit);
-						Emit(0x0F); Emit(0x54);
-						EmitModRM(inst->mArg0, inst->mArg1);
-						break;
-					}
-
-					EmitStdInst(instForm, &modInst, 0x21, 0x23, 0x81, 0x4, 0x83, 0x4);
-				}
-				break;
-			case BeMCInstKind_Or:
-				{
-					if (EmitIntBitwiseXMMInst(instForm, inst, 0xEB)) //POR
-						break;
-					EmitStdInst(instForm, inst, 0x09, 0x0B, 0x81, 0x1, 0x83, 0x1);
-				}
-				break;
-			case BeMCInstKind_Xor:
-				{
-					if (EmitIntBitwiseXMMInst(instForm, inst, 0xEF)) //PXOR
-						break;
-					if (EmitPackedXMMInst(instForm, inst, 0x57))
-						break;
-					EmitStdInst(instForm, inst, 0x31, 0x33, 0x81, 0x6, 0x83, 0x6);
-				}
-				break;
-			case BeMCInstKind_Shl:
-			case BeMCInstKind_Shr:
-			case BeMCInstKind_Sar:
-				{
-					if (instForm == Beefy::BeMCInstForm_XMM128_RM128)
+					break;
+					case BeMCInstForm_XMM128_RM128:
 					{
-						if (arg1.IsImmediate())
+						// MOVUPS
+						EmitREX(arg0, arg1, true);
+						Emit(0x0F); Emit(0x10);
+
+						if (arg1.IsImmediateInt())
+							arg1.mKind = BeMCOperandKind_Immediate_int32x4;
+
+						EmitModRM(arg0, arg1);
+					}
+					break;
+					case BeMCInstForm_FRM128_XMM128:
+					{
+						if (arg0Type->mSize == 4)
 						{
-							Emit(0x66);
-							EmitREX(arg1, arg0, false);
-							Emit(0x0F);
-							int rx = 0;
-							switch (inst->mKind)
-							{
-							case BeMCInstKind_Shl:
-								rx = 6;
-								break;
-							case BeMCInstKind_Shr:
-								rx = 2;
-								break;
-							case BeMCInstKind_Sar:
-								rx = 4;
-								break;
-							}
-							Emit(0x71); // PSLLW / PSRAW / PSRLW
-							EmitModRM(rx, arg0);
-							Emit((uint8)arg1.mImmediate);
+							BeMCOperand imm1;
+							imm1.mImmediate = 1;
+							imm1.mKind = BeMCOperandKind_Immediate_int32x4;
+
+							BeMCOperand xmm15;
+							xmm15.mReg = X64Reg_M128_XMM15;
+							xmm15.mKind = BeMCOperandKind_NativeReg;
+
+							// MOVUPS
+							EmitREX(xmm15, arg1, true);
+							Emit(0x0F); Emit(0x10);
+							EmitModRM(xmm15, arg1);
+
+							// ANDPS xmm15, <1, 1, 1, 1>
+							EmitREX(xmm15, imm1, true);
+							Emit(0x0F); Emit(0x54);
+							EmitModRM(xmm15, imm1);
+
+							// PACKUSWB xmm15, xmm15
+							Emit(0x66); EmitREX(xmm15, xmm15, true);
+							Emit(0x0F); Emit(0x67);
+							EmitModRM(xmm15, xmm15);
+
+							// PACKUSWB xmm15, xmm15
+							Emit(0x66); EmitREX(xmm15, xmm15, true);
+							Emit(0x0F); Emit(0x67);
+							EmitModRM(xmm15, xmm15);
+
+							// MOVD <arg0>, xmm15
+							Emit(0x66); EmitREX(xmm15, arg0, false);
+							Emit(0x0F); Emit(0x7E);
+							EmitModRM(xmm15, arg0);
 						}
 						else
+						{
+							// MOVUPS
+							EmitREX(arg1, arg0, true);
+							Emit(0x0F); Emit(0x11);
+							EmitModRM(arg1, arg0);
+						}
+					}
+					break;
+					case BeMCInstForm_XMM64_RM64:
+					case BeMCInstForm_XMM32_RM64:
+					{
+						if ((arg0Type->IsVector()) && (arg1Type->IsVector()))
+						{
+							// Fall through
+						}
+						else
+						{
+							// uint64->xmm Not implemented
+							// We do a signed transform instead
+
+							// CVTSI2SS / CVTSI2SD
+							EmitStdXMMInst(instForm, inst, 0x2A);
+							break;
+						}
+					}
+					// Fall through
+					default:
+					{
+						// MOVSS/MOVSD
+						if (EmitStdXMMInst(instForm, inst, 0x10, 0x11))
+							break;
+
+						if ((inst->mArg0.IsNativeReg()) && (arg1.IsImmediateInt()))
+						{
+							auto arg0Type = GetType(inst->mArg0);
+							if (arg0Type->mTypeCode == BeTypeCode_Int16)
+							{
+								Emit(0x66);
+								EmitREX(BeMCOperand(), inst->mArg0, false);
+								Emit(0xB8 + EncodeRegNum(inst->mArg0.mReg));
+								mOut.Write((int16)arg1.mImmediate);
+								break;
+							}
+							else if ((arg0Type->mTypeCode == BeTypeCode_Int32) || (arg0Type->mTypeCode == BeTypeCode_Int64))
+							{
+								// For 64-bit writes, we would like to use 32-bit zero extension but we resort to the full
+								//  64-bits if necessary
+								auto arg0 = inst->mArg0;
+								if (arg0Type->mTypeCode == BeTypeCode_Int64)
+								{
+									auto resizedReg = ResizeRegister(arg0.mReg, 4);
+									if ((resizedReg != X64Reg_None) && (inst->mArg1.mImmediate < 0) && (inst->mArg1.mImmediate >= -0x80000000LL))
+									{
+										// Do sign-extend R32 mov
+										EmitREX(BeMCOperand(), inst->mArg0, true);
+										Emit(0xC7);
+										EmitModRM(0, inst->mArg0);
+										mOut.Write((int32)inst->mArg1.mImmediate);
+										break;
+									}
+
+									if ((resizedReg == X64Reg_None) || (inst->mArg1.mImmediate < 0) || (inst->mArg1.mImmediate >= 0x100000000LL))
+									{
+										EmitREX(BeMCOperand(), inst->mArg0, true);
+										Emit(0xB8 + EncodeRegNum(inst->mArg0.mReg));
+										mOut.Write((int64)inst->mArg1.mImmediate);
+										break;
+									}
+									else
+										arg0.mReg = resizedReg;
+								}
+
+								EmitREX(BeMCOperand(), arg0, false);
+								Emit(0xB8 + EncodeRegNum(arg0.mReg));
+								mOut.Write((int32)inst->mArg1.mImmediate);
+								break;
+							}
+						}
+
+						EmitStdInst(instForm, inst, 0x89, 0x8B, 0xC7, 0x0);
+					}
+					}
+				}
+			}
+			break;
+			case BeMCInstKind_MovRaw:
+			{
+				auto arg0Type = GetType(inst->mArg0);
+				auto arg1Type = GetType(inst->mArg1);
+
+				if ((arg0Type->mTypeCode == BeTypeCode_Int64) && (arg1Type->mTypeCode == BeTypeCode_Double))
+				{
+					Emit(0x66); EmitREX(inst->mArg1, inst->mArg0, true);
+					Emit(0x0F); Emit(0x7E);
+					EmitModRM(inst->mArg1, inst->mArg0);
+				}
+				else
+				{
+					NotImpl();
+				}
+			}
+			break;
+			case BeMCInstKind_MovSX:
+			{
+				auto arg0Type = GetType(inst->mArg0);
+				auto arg1Type = GetType(inst->mArg1);
+				switch (arg0Type->mTypeCode)
+				{
+				case BeTypeCode_Int8:
+					switch (arg1Type->mTypeCode)
+					{
+					case BeTypeCode_Float:
+						// CVTSS2SI							
+					{
+						BF_ASSERT(inst->mArg0.IsNativeReg());
+						BeMCOperand resizedArg0 = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, 4));
+						Emit(0xF3); EmitREX(resizedArg0, inst->mArg1, false);
+						Emit(0x0F); Emit(0x2C);
+						EmitModRM(resizedArg0, inst->mArg1);
+					}
+					break;
+					case BeTypeCode_Double:
+						// cvttsd2si
+					{
+						BF_ASSERT(inst->mArg0.IsNativeReg());
+						BeMCOperand resizedArg0 = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, 4));
+						Emit(0xF2); EmitREX(resizedArg0, inst->mArg1, false);
+						Emit(0x0F); Emit(0x2C);
+						EmitModRM(resizedArg0, inst->mArg1);
+					}
+					break;
+					default: NotImpl();
+					}
+					break;
+				case BeTypeCode_Int16:
+					switch (arg1Type->mTypeCode)
+					{
+					case BeTypeCode_Float:
+						// CVTSS2SI							
+					{
+						BF_ASSERT(inst->mArg0.IsNativeReg());
+						BeMCOperand resizedArg0 = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, 4));
+						Emit(0xF3); EmitREX(resizedArg0, inst->mArg1, false);
+						Emit(0x0F); Emit(0x2C);
+						EmitModRM(resizedArg0, inst->mArg1);
+					}
+					break;
+					case BeTypeCode_Double:
+						// cvttsd2si
+					{
+						BF_ASSERT(inst->mArg0.IsNativeReg());
+						BeMCOperand resizedArg0 = BeMCOperand::FromReg(ResizeRegister(inst->mArg0.mReg, 4));
+						Emit(0xF2); EmitREX(resizedArg0, inst->mArg1, false);
+						Emit(0x0F); Emit(0x2C);
+						EmitModRM(resizedArg0, inst->mArg1);
+					}
+					break;
+					default:
+						BF_ASSERT(arg1Type->mTypeCode == BeTypeCode_Int8);
+						Emit(0x66);
+						EmitREX(inst->mArg0, inst->mArg1, false);
+						Emit(0x0F); Emit(0xBE); EmitModRM(inst->mArg0, inst->mArg1);
+						break;
+					}
+					break;
+				case BeTypeCode_Int32:
+					switch (arg1Type->mTypeCode)
+					{
+					case BeTypeCode_Int8:
+						EmitREX(inst->mArg0, inst->mArg1, false);
+						Emit(0x0F); Emit(0xBE); EmitModRM(inst->mArg0, inst->mArg1);
+						break;
+					case BeTypeCode_Int16:
+						EmitREX(inst->mArg0, inst->mArg1, false);
+						Emit(0x0F); Emit(0xBF); EmitModRM(inst->mArg0, inst->mArg1);
+						break;
+					case BeTypeCode_Float:
+						// CVTSS2SI
+						Emit(0xF3); EmitREX(inst->mArg0, inst->mArg1, false);
+						Emit(0x0F); Emit(0x2C);
+						EmitModRM(inst->mArg0, inst->mArg1);
+						break;
+					case BeTypeCode_Double:
+						// cvttsd2si
+						Emit(0xF2); EmitREX(inst->mArg0, inst->mArg1, false);
+						Emit(0x0F); Emit(0x2C);
+						EmitModRM(inst->mArg0, inst->mArg1);
+						break;
+					default: NotImpl();
+					}
+					break;
+				case BeTypeCode_Int64:
+					switch (arg1Type->mTypeCode)
+					{
+					case BeTypeCode_Int8:
+						EmitREX(inst->mArg0, inst->mArg1, true);
+						Emit(0x0F); Emit(0xBE); EmitModRM(inst->mArg0, inst->mArg1); break;
+					case BeTypeCode_Int16:
+						EmitREX(inst->mArg0, inst->mArg1, true);
+						Emit(0x0F); Emit(0xBF); EmitModRM(inst->mArg0, inst->mArg1); break;
+					case BeTypeCode_Int32:
+						EmitREX(inst->mArg0, inst->mArg1, true);
+						Emit(0x63); EmitModRM(inst->mArg0, inst->mArg1); break;
+					case BeTypeCode_Float:
+						// CVTSS2SI
+						Emit(0xF3); EmitREX(inst->mArg0, inst->mArg1, true);
+						Emit(0x0F); Emit(0x2C);
+						EmitModRM(inst->mArg0, inst->mArg1);
+						break;
+					case BeTypeCode_Double:
+						// cvttsd2si
+						Emit(0xF2); EmitREX(inst->mArg0, inst->mArg1, true);
+						Emit(0x0F); Emit(0x2C);
+						EmitModRM(inst->mArg0, inst->mArg1);
+						break;
+					default: NotImpl();
+					}
+					break;
+
+				case BeTypeCode_Float:
+				case BeTypeCode_Double:
+				{
+					if (arg1Type->IsInt())
+					{
+						// CVTSI2SS / CVTSI2SD
+						EmitStdXMMInst(instForm, inst, 0x2A);
+					}
+					else
+						NotImpl();
+
+					/*switch (arg1Type->mTypeCode)
+					{
+					case BeTypeCode_Double:
+						EmitStdXMMInst(BeMCInstForm_XMM32_RM64, inst, 0x5A);
+						break;
+					default:
+						NotImpl();
+						break;
+					}*/
+				}
+				break;
+				default: NotImpl();
+				}
+			}
+			break;
+			case BeMCInstKind_CmpXChg:
+			{
+				auto arg0Type = GetType(inst->mArg0);
+
+				if (inst->mArg1.IsNativeReg())
+				{
+					switch (instForm)
+					{
+					case BeMCInstForm_R8_RM8:
+						instForm = BeMCInstForm_RM8_R8;
+						break;
+					case BeMCInstForm_R16_RM16:
+						instForm = BeMCInstForm_RM16_R16;
+						break;
+					case BeMCInstForm_R32_RM32:
+						instForm = BeMCInstForm_RM32_R32;
+						break;
+					case BeMCInstForm_R64_RM64:
+						instForm = BeMCInstForm_RM64_R64;
+						break;
+					}
+				}
+
+				if (!inst->mArg0.IsNativeReg())
+					Emit(0xF0); // LOCK
+
+				switch (instForm)
+				{
+				case BeMCInstForm_RM8_R8:
+					EmitREX(inst->mArg1, inst->mArg0, false);
+					Emit(0x0F); Emit(0xB0); EmitModRM(inst->mArg1, inst->mArg0);
+					break;
+				case BeMCInstForm_RM16_R16:
+					EmitREX(inst->mArg1, inst->mArg0, false);
+					Emit(0x66); Emit(0x0F); Emit(0xB0); EmitModRM(inst->mArg1, inst->mArg0);
+					break;
+				case BeMCInstForm_RM32_R32:
+					EmitREX(inst->mArg1, inst->mArg0, false);
+					Emit(0x0F); Emit(0xB1); EmitModRM(inst->mArg1, inst->mArg0);
+					break;
+				case BeMCInstForm_RM64_R64:
+					EmitREX(inst->mArg1, inst->mArg0, true);
+					Emit(0x0F); Emit(0xB1); EmitModRM(inst->mArg1, inst->mArg0);
+					break;
+				default:
+					SoftFail("Invalid CmpXChg args");
+				}
+			}
+			break;
+			case BeMCInstKind_XAdd:
+			{
+				auto arg0Type = GetType(inst->mArg0);
+
+				switch (instForm)
+				{
+				case BeMCInstForm_R8_RM8:
+					if (inst->mArg1.IsNativeReg())
+						instForm = BeMCInstForm_RM8_R8;
+					break;
+				case BeMCInstForm_R16_RM16:
+					if (inst->mArg1.IsNativeReg())
+						instForm = BeMCInstForm_RM16_R16;
+					break;
+				case BeMCInstForm_R32_RM32:
+					if (inst->mArg1.IsNativeReg())
+						instForm = BeMCInstForm_RM32_R32;
+					break;
+				case BeMCInstForm_R64_RM64:
+					if (inst->mArg1.IsNativeReg())
+						instForm = BeMCInstForm_RM64_R64;
+					break;
+				}
+
+				if (!inst->mArg0.IsNativeReg())
+					Emit(0xF0); // LOCK
+
+				switch (instForm)
+				{
+				case BeMCInstForm_RM8_R8:
+					EmitREX(inst->mArg1, inst->mArg0, false);
+					Emit(0x0F); Emit(0xC0); EmitModRM(inst->mArg1, inst->mArg0);
+					break;
+				case BeMCInstForm_RM16_R16:
+					EmitREX(inst->mArg1, inst->mArg0, false);
+					Emit(0x66); Emit(0x0F); Emit(0xC0); EmitModRM(inst->mArg1, inst->mArg0);
+					break;
+				case BeMCInstForm_RM32_R32:
+					EmitREX(inst->mArg1, inst->mArg0, false);
+					Emit(0x0F); Emit(0xC1); EmitModRM(inst->mArg1, inst->mArg0);
+					break;
+				case BeMCInstForm_RM64_R64:
+					EmitREX(inst->mArg1, inst->mArg0, true);
+					Emit(0x0F); Emit(0xC1); EmitModRM(inst->mArg1, inst->mArg0);
+					break;
+				default:
+					SoftFail("Invalid XAdd args");
+				}
+			}
+			break;
+			case BeMCInstKind_XChg:
+			{
+				EmitStdInst(instForm, inst, 0x87, 0x87, 0x00, 0x0);
+			}
+			break;
+			case BeMCInstKind_Load:
+			{
+				if (inst->mArg1.IsSymbol())
+				{
+					BF_ASSERT(inst->mArg0.IsNativeReg());
+				}
+
+				switch (instForm)
+				{
+				case BeMCInstForm_XMM64_FRM64:
+				case BeMCInstForm_XMM32_FRM32:
+					// MOVSS/MOVSD
+					EmitStdXMMInst(instForm, inst, 0x10);
+					break;
+				case BeMCInstForm_R32_RM32:
+					EmitInst(BeMCInstForm_R32_RM64_ADDR, 0x8B, inst);
+					break;
+				case BeMCInstForm_R64_RM64:
+					EmitInst(BeMCInstForm_R64_RM64_ADDR, 0x8B, inst);
+					break;
+				case BeMCInstForm_XMM32_RM64:
+				case BeMCInstForm_XMM64_RM64:
+					// MOVSS / MOVSD
+					BF_ASSERT(inst->mArg0.IsNativeReg());
+					if (instForm == BeMCInstForm_XMM64_RM64)
+						Emit(0xF2);
+					else
+						Emit(0xF3);
+					EmitREX(inst->mArg0, inst->mArg1, false);
+					Emit(0x0F); Emit(0x10);
+					EmitModRM_Addr(inst->mArg0, inst->mArg1);
+					break;
+				default:
+				{
+					BF_ASSERT(inst->mArg0.IsNativeReg());
+					auto arg0Type = GetType(inst->mArg0);
+					auto arg1Type = GetType(inst->mArg1);
+					BF_ASSERT(arg1Type->mSize == 8);
+
+					switch (arg0Type->mSize)
+					{
+					case 1: EmitInst(BeMCInstForm_R8_RM64_ADDR, 0x8B, inst); break;
+					case 2: EmitInst(BeMCInstForm_R16_RM64_ADDR, 0x8B, inst); break;
+					case 4: EmitInst(BeMCInstForm_R32_RM64_ADDR, 0x8B, inst); break;
+					case 8: EmitInst(BeMCInstForm_R64_RM64_ADDR, 0x8B, inst); break;
+					}
+				}
+				}
+
+				/*BF_ASSERT(inst->mArg0.mKind == BeMCOperandKind_NativeReg);
+				BF_ASSERT(inst->mArg1.mKind == BeMCOperandKind_NativeReg);
+
+				EmitREX(inst->mArg0, inst->mArg1);
+				mOut.Write((uint8)0x8B);
+				uint8 modRM = (0x0 << 6) | (EncodeRegNum(inst->mArg1.mReg)) | (EncodeRegNum(inst->mArg0.mReg)); // <arg0>, [<arg1>]
+				mOut.Write(modRM);*/
+			}
+			break;
+			case BeMCInstKind_Store:
+			{
+				switch (instForm)
+				{
+					/*case BeMCInstForm_R64_RM64:
+						{
+							// Make sure its really R64, R64
+							BF_ASSERT(inst->mArg1.IsNativeReg());
+							EmitInst(BeMCInstForm_RM64_R64_ADDR, 0x89, inst);
+						}
+						break;*/
+				case BeMCInstForm_RM64_R64:	EmitInst(BeMCInstForm_RM64_R64_ADDR, 0x89, inst); break;
+				case BeMCInstForm_FRM32_XMM32:
+				case BeMCInstForm_FRM64_XMM64:
+					// MOVSS/MOVSD
+					EmitStdXMMInst(instForm, inst, 0x10, 0x11);
+					break;
+				case BeMCInstForm_R64_F64:
+				case BeMCInstForm_R64_F32:
+					// MOVSS / MOVSD
+					BF_ASSERT(inst->mArg1.IsNativeReg());
+					if (instForm == BeMCInstForm_R64_F64)
+						Emit(0xF2);
+					else
+						Emit(0xF3);
+					EmitREX(inst->mArg1, inst->mArg0, false);
+					Emit(0x0F); Emit(0x11);
+					EmitModRM_Addr(inst->mArg1, inst->mArg0);
+					break;
+				default:
+				{
+					BF_ASSERT(inst->mArg0.IsNativeReg());
+					BF_ASSERT(inst->mArg1.IsNativeReg());
+					auto arg0Type = GetType(inst->mArg0);
+					auto arg1Type = GetType(inst->mArg1);
+					BF_ASSERT(arg0Type->mSize == 8);
+
+					switch (arg1Type->mSize)
+					{
+					case 1: EmitInst(BeMCInstForm_RM64_R8_ADDR, 0x89, inst); break;
+					case 2: EmitInst(BeMCInstForm_RM64_R16_ADDR, 0x89, inst); break;
+					case 4: EmitInst(BeMCInstForm_RM64_R32_ADDR, 0x89, inst); break;
+					case 8: EmitInst(BeMCInstForm_RM64_R64_ADDR, 0x89, inst); break;
+					}
+				}
+				}
+			}
+			break;
+			case BeMCInstKind_Push:
+			{
+				auto arg0Type = GetType(inst->mArg0);
+				if (inst->mArg1)
+				{
+					BF_ASSERT(IsXMMReg(inst->mArg0.mReg));
+					BF_ASSERT(inst->mArg1.IsImmediate());
+					// Is there a performance benefit to properly using MOVAPD vs MOVAPS if we only
+					//  use this register for double storage?
+					// MOVAPS
+					EmitREX(inst->mArg0, BeMCOperand(), false);
+					Emit(0x0F); Emit(0x29);
+					EmitModRMRel(EncodeRegNum(inst->mArg0.mReg), X64Reg_RSP, X64Reg_None, 1, (int)inst->mArg1.mImmediate);
+					break;
+				}
+
+				if (arg0Type->IsFloat())
+				{
+					BF_ASSERT(IsXMMReg(inst->mArg0.mReg));
+
+					// sub rsp, sizeof(arg0)
+					Emit(0x48); Emit(0x83); Emit(0xEC); Emit(arg0Type->mSize);
+
+					Emit((arg0Type->mSize == 4) ? 0xF3 : 0xF2);
+					EmitREX(inst->mArg0, BeMCOperand(), false);
+					Emit(0x0F); Emit(0x11);
+					EmitModRMRel(EncodeRegNum(inst->mArg0.mReg), X64Reg_RSP, X64Reg_None, 1, 0);
+					break;
+				}
+
+				// This is used in combination with register pops, and we can't pop 32-bit registers
+				//  so we need to make sure we're always pushing a full 64 bits
+				switch (instForm)
+				{
+				case BeMCInstForm_R8: // Always use full reg (always push 64 bits)
+				case BeMCInstForm_R16:
+				case BeMCInstForm_R32:
+				case BeMCInstForm_R64:
+					EmitREX(BeMCOperand(), inst->mArg0, true);
+					mOut.Write((uint8)(0x50 + EncodeRegNum(inst->mArg0.mReg)));
+					break;
+				case BeMCInstForm_RM64:
+					EmitREX(BeMCOperand(), inst->mArg0, true);
+					Emit(0xFF); EmitModRM(6, inst->mArg0);
+					break;
+				case BeMCInstForm_IMM32: // Always pad to 64 bits
+				{
+					Emit(0x68); mOut.Write((int32)inst->mArg0.mImmediate);
+					// Emit padded 0
+					Emit(0x68); mOut.Write((int32)0);
+				}
+				break;
+				default:
+					NotImpl();
+				}
+			}
+			break;
+			case BeMCInstKind_Pop:
+			{
+				auto arg0Type = GetType(inst->mArg0);
+				if (inst->mArg1)
+				{
+					BF_ASSERT(IsXMMReg(inst->mArg0.mReg));
+					BF_ASSERT(inst->mArg1.IsImmediate());
+					// Is there a performance benefit to properly using MOVAPD vs MOVAPS if we only
+					//  use this register for double storage?
+					// MOVAPS
+					EmitREX(inst->mArg0, BeMCOperand(), false);
+					Emit(0x0F); Emit(0x28);
+					// Push always uses RSP (required for stack unwinding), but Pop uses RBP when applicable
+					//  because it is still set up at that point
+					EmitModRMRelStack(EncodeRegNum(inst->mArg0.mReg), (int)inst->mArg1.mImmediate, 1);
+					break;
+				}
+
+				if (arg0Type->IsFloat())
+				{
+					BF_ASSERT(IsXMMReg(inst->mArg0.mReg));
+
+					Emit((arg0Type->mSize == 4) ? 0xF3 : 0xF2);
+					EmitREX(inst->mArg0, BeMCOperand(), false);
+					Emit(0x0F); Emit(0x10);
+					EmitModRMRel(EncodeRegNum(inst->mArg0.mReg), X64Reg_RSP, X64Reg_None, 1, 0);
+
+					// add rsp, sizeof(arg0)
+					Emit(0x48); Emit(0x83); Emit(0xC4); Emit(arg0Type->mSize);
+					break;
+				}
+
+				switch (instForm)
+				{
+				case BeMCInstForm_R64:
+					EmitREX(BeMCOperand(), inst->mArg0, true);
+					mOut.Write((uint8)(0x58 + EncodeRegNum(inst->mArg0.mReg)));
+					break;
+				case BeMCInstForm_RM64:
+					EmitREX(BeMCOperand(), inst->mArg0, true);
+					Emit(0x8F); EmitModRM(0, inst->mArg0);
+				default:
+					NotImpl();
+				}
+			}
+			break;
+			case BeMCInstKind_Neg:
+			{
+				auto typeCode = GetType(inst->mArg0)->mTypeCode;
+				switch (typeCode)
+				{
+				case BeTypeCode_Int8:
+					EmitREX(BeMCOperand(), inst->mArg0, false);
+					Emit(0xF6);
+					EmitModRM(3, inst->mArg0);
+					break;
+				case BeTypeCode_Int16: Emit(0x66); // Fallthrough
+				case BeTypeCode_Int32:
+				case BeTypeCode_Int64:
+					EmitREX(BeMCOperand(), inst->mArg0, typeCode == BeTypeCode_Int64);
+					Emit(0xF7); EmitModRM(3, inst->mArg0);
+					break;
+				default:
+					NotImpl();
+				}
+			}
+			break;
+			case BeMCInstKind_Not:
+			{
+				auto typeCode = GetType(inst->mArg0)->mTypeCode;
+				switch (typeCode)
+				{
+				case BeTypeCode_Int8:
+					EmitREX(BeMCOperand(), inst->mArg0, false);
+					Emit(0xF6);
+					EmitModRM(2, inst->mArg0);
+					break;
+				case BeTypeCode_Int16: Emit(0x66); // Fallthrough
+				case BeTypeCode_Int32:
+				case BeTypeCode_Int64:
+					EmitREX(BeMCOperand(), inst->mArg0, typeCode == BeTypeCode_Int64);
+					Emit(0xF7); EmitModRM(2, inst->mArg0);
+					break;
+				default:
+					NotImpl();
+				}
+			}
+			break;
+			case BeMCInstKind_Add:
+			{
+				if ((inst->mResult) && (inst->mResult != inst->mArg0) && (!inst->mDisableShortForm))
+				{
+					BF_ASSERT(!inst->mDisableShortForm);
+					BF_ASSERT(inst->mResult.IsNativeReg());
+					BF_ASSERT(inst->mArg0.IsNativeReg());
+					BF_ASSERT(inst->mArg1.IsImmediate());
+
+					// LEA form
+					auto resultType = GetType(inst->mArg0);
+					switch (resultType->mTypeCode)
+					{
+					case BeTypeCode_Int16:
+						Emit(0x66);
+					case BeTypeCode_Int32:
+					case BeTypeCode_Int64:
+						EmitREX(inst->mResult, inst->mArg0, resultType->mTypeCode == BeTypeCode_Int64);
+						Emit(0x8D); EmitModRMRel(EncodeRegNum(inst->mResult.mReg), ResizeRegister(inst->mArg0.mReg, 8), X64Reg_None, 1, (int)inst->mArg1.mImmediate);
+						break;
+					default:
+						NotImpl();
+					}
+				}
+				else if ((inst->mArg1.IsImmediateInt()) && (inst->mArg1.mImmediate == 1) && (!inst->mDisableShortForm))
+				{
+					// Emit as INC <arg0>
+					auto typeCode = GetType(inst->mArg0)->mTypeCode;
+					switch (typeCode)
+					{
+					case BeTypeCode_Int8:
+						EmitREX(BeMCOperand(), inst->mArg0, false);
+						Emit(0xFE); EmitModRM(0, inst->mArg0);
+						break;
+					case BeTypeCode_Int16: Emit(0x66); // Fallthrough
+					case BeTypeCode_Int32:
+					case BeTypeCode_Int64:
+						EmitREX(BeMCOperand(), inst->mArg0, typeCode == BeTypeCode_Int64);
+						Emit(0xFF); EmitModRM(0, inst->mArg0);
+						break;
+					default:
+						NotImpl();
+					}
+				}
+				else if (((inst->mArg1.IsImmediateInt()) && (inst->mArg1.mImmediate == -1)) && (!inst->mDisableShortForm))
+				{
+					// Emit as DEC <arg0>
+					auto typeCode = GetType(inst->mArg0)->mTypeCode;
+					switch (typeCode)
+					{
+					case BeTypeCode_Int8:
+						EmitREX(BeMCOperand(), inst->mArg0, false);
+						Emit(0xFE); EmitModRM(1, inst->mArg0);
+						break;
+					case BeTypeCode_Int16: Emit(0x66); // Fallthrough
+					case BeTypeCode_Int32:
+					case BeTypeCode_Int64:
+						EmitREX(BeMCOperand(), inst->mArg0, typeCode == BeTypeCode_Int64);
+						Emit(0xFF); EmitModRM(1, inst->mArg0);
+						break;
+					default:
+						NotImpl();
+					}
+				}
+				else
+				{
+					if (((instForm == BeMCInstForm_RM64_IMM16) || (instForm == BeMCInstForm_RM64_IMM32)) &&
+						(inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_RAX))
+					{
+						// Emit as ADD RAX, <imm32>
+						EmitREX(inst->mArg0, BeMCOperand(), true);
+						mOut.Write((uint8)0x05);
+						mOut.Write((int32)inst->mArg1.mImmediate);
+						break;
+					}
+
+					if (EmitIntXMMInst(instForm, inst, 0xFC)) // PADD?
+						break;
+					if (EmitStdXMMInst(instForm, inst, 0x58))
+						break;
+					EmitStdInst(instForm, inst, 0x01, 0x03, 0x81, 0x0, 0x83, 0x0);
+				}
+			}
+			break;
+			case BeMCInstKind_Sub:
+			{
+				if ((inst->mArg1.IsImmediateInt()) && (inst->mArg1.mImmediate == 1) && (!inst->mDisableShortForm))
+				{
+					// Emit as DEC <arg0>
+					auto typeCode = GetType(inst->mArg0)->mTypeCode;
+					switch (typeCode)
+					{
+					case BeTypeCode_Int8:
+						EmitREX(BeMCOperand(), inst->mArg0, false);
+						Emit(0xFE); EmitModRM(1, inst->mArg0);
+						break;
+					case BeTypeCode_Int16: Emit(0x66); // Fallthrough
+					case BeTypeCode_Int32:
+					case BeTypeCode_Int64:
+						EmitREX(BeMCOperand(), inst->mArg0, typeCode == BeTypeCode_Int64);
+						Emit(0xFF); EmitModRM(1, inst->mArg0);
+						break;
+					default:
+						NotImpl();
+					}
+				}
+				else
+				{
+					if (((instForm == BeMCInstForm_RM64_IMM16) || (instForm == BeMCInstForm_RM64_IMM32)) &&
+						(inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_RAX))
+					{
+						// Emit as SUB RAX, <imm32>
+						EmitREX(inst->mArg0, BeMCOperand(), true);
+						mOut.Write((uint8)0x2D);
+						mOut.Write((int32)inst->mArg1.mImmediate);
+						break;
+					}
+
+					if (EmitIntXMMInst(instForm, inst, 0xF8)) // PSUB?
+						break;
+					if (EmitStdXMMInst(instForm, inst, 0x5C))
+						break;
+					EmitStdInst(instForm, inst, 0x29, 0x2B, 0x81, 0x5, 0x83, 0x5);
+				}
+			}
+			break;
+			case BeMCInstKind_Mul:
+			{
+				if (arg0Type->IsIntable())
+				{
+					bool isValid = true;
+					auto typeCode = GetType(inst->mArg1)->mTypeCode;
+					switch (typeCode)
+					{
+					case BeTypeCode_Int8:
+						isValid = inst->mArg0 == BeMCOperand::FromReg(X64Reg_AL);
+						break;
+					case BeTypeCode_Int16:
+						isValid = inst->mArg0 == BeMCOperand::FromReg(X64Reg_AX);
+						break;
+					case BeTypeCode_Int32:
+						isValid = inst->mArg0 == BeMCOperand::FromReg(X64Reg_EAX);
+						break;
+					case BeTypeCode_Int64:
+						isValid = inst->mArg0 == BeMCOperand::FromReg(X64Reg_RAX);
+						break;
+					default:
+						isValid = false;
+					}
+					if (!isValid)
+						SoftFail("Invalid mul arguments");
+
+					switch (typeCode)
+					{
+					case BeTypeCode_Int8:
+						EmitREX(BeMCOperand(), inst->mArg1, false);
+						Emit(0xF6);
+						EmitModRM(4, inst->mArg1);
+						break;
+					case BeTypeCode_Int16: Emit(0x66); // Fallthrough
+					case BeTypeCode_Int32:
+					case BeTypeCode_Int64:
+						EmitREX(BeMCOperand(), inst->mArg1, typeCode == BeTypeCode_Int64);
+						Emit(0xF7); EmitModRM(4, inst->mArg1);
+						break;
+					default:
+						NotImpl();
+					}
+					break;
+				}
+			}
+			//Fallthrough
+			case BeMCInstKind_IMul:
+			{
+				if (instForm == BeMCInstForm_XMM128_RM128)
+				{
+					if (arg0Type->IsExplicitVectorType())
+					{
+						auto vecType = (BeVectorType*)arg0Type;
+						if (vecType->mElementType->mTypeCode == BeTypeCode_Int32)
 						{
 							Emit(0x66);
 							EmitREX(arg0, arg1, false);
 							Emit(0x0F);
-							switch (inst->mKind)
+							if (inst->mKind == BeMCInstKind_IMul)
+								Emit(0xD5); // PMULLW
+							else
 							{
-							case BeMCInstKind_Shl:
-								Emit(0xF1); // PSLLW
-								break;
-							case BeMCInstKind_Shr:
-								Emit(0xD1); // PSRLW
-								break;
-							case BeMCInstKind_Sar:
-								Emit(0xE1); // PSRAW
+								Emit(0x38); Emit(0x40); // PMULLD
+							}
+							EmitModRM(arg0, arg1);
+							break;
+						}
+					}
+				}
+
+				if (EmitStdXMMInst(instForm, inst, 0x59))
+					break;
+
+				BeMCOperand result = inst->mResult;
+				if ((!result) && (inst->mArg1.IsImmediate()))
+					result = inst->mArg0; // Do as 3-form anyway
+				if (result)
+				{
+					BF_ASSERT(inst->mArg1.IsImmediate());
+					if ((inst->mArg0.IsNativeReg()) && (!inst->mDisableShortForm) &&
+						((inst->mArg1.mImmediate == 2) || (inst->mArg1.mImmediate == 4) || (inst->mArg1.mImmediate == 8)))
+					{
+						// LEA form
+						auto resultType = GetType(inst->mArg0);
+						if (resultType->mTypeCode != BeTypeCode_Int8)
+						{
+							switch (resultType->mTypeCode)
+							{
+							case BeTypeCode_Int16:
+								Emit(0x66);
+							case BeTypeCode_Int32:
+							case BeTypeCode_Int64:
+								uint8 rex = GetREX(result, inst->mArg0, resultType->mTypeCode == BeTypeCode_Int64);
+								if (rex != 0)
+								{
+									if (rex & 1)
+									{
+										// Mov REX flag from RM to SiB
+										rex = (rex & ~1) | 2;
+									}
+									Emit(rex);
+								}
+								Emit(0x8D); EmitModRMRel(EncodeRegNum(result.mReg), X64Reg_None, inst->mArg0.mReg, (int)inst->mArg1.mImmediate, 0);
 								break;
 							}
-
-							EmitModRM(arg0, arg1);
+							break;
 						}
-						break;
 					}
 
-					int rx = 0;
-					switch (inst->mKind)
+					auto typeCode = GetType(inst->mArg0)->mTypeCode;
+					switch (typeCode)
 					{
-					case BeMCInstKind_Shl:
-						rx = 4;
-						break;
-					case BeMCInstKind_Shr:
-						rx = 5;
-						break;
-					case BeMCInstKind_Sar:
-						rx = 7;
-						break;
-					}
+					case BeTypeCode_Int16:
+						Emit(0x66);
+						// Fall through
+					case BeTypeCode_Int32:
+					case BeTypeCode_Int64:
+						EmitREX(result, inst->mArg0, typeCode == BeTypeCode_Int64);
 
-					bool handled = false;
-					switch (instForm)
-					{
-					case BeMCInstForm_RM8_IMM8:
-					case BeMCInstForm_RM16_IMM8:
-					case BeMCInstForm_RM32_IMM8:
-					case BeMCInstForm_RM64_IMM8:
-						if (inst->mArg1.mImmediate == 1)
+						if ((inst->mArg1.mImmediate >= -0x80) && (inst->mArg1.mImmediate <= 0x7F))
 						{
-							// Shift by one has a short form
-							if (instForm == BeMCInstForm_RM16_IMM8) Emit(0x66);
-							EmitREX(inst->mArg1, inst->mArg0, instForm == BeMCInstForm_RM64_IMM8);
-							if (instForm == BeMCInstForm_RM8_IMM8)
-								Emit(0xD0);
-							else
-								Emit(0xD1);
-							EmitModRM(rx, inst->mArg0);
-							handled = true;
+							Emit(0x6B);
+							EmitModRM(result, inst->mArg0, -1);
+							mOut.Write((int8)inst->mArg1.mImmediate);
 						}
 						else
 						{
-							if (instForm == BeMCInstForm_RM16_IMM8) Emit(0x66);
-							EmitREX(inst->mArg1, inst->mArg0, instForm == BeMCInstForm_RM64_IMM8);
-							if (instForm == BeMCInstForm_RM8_IMM8)
-								Emit(0xC0);
+							Emit(0x69);
+							EmitModRM(result, inst->mArg0, (typeCode == BeTypeCode_Int16) ? -2 : -4);
+							if (typeCode == BeTypeCode_Int16)
+								mOut.Write((int16)inst->mArg1.mImmediate);
 							else
-								Emit(0xC1);
-							EmitModRM(rx, inst->mArg0);
-							Emit((uint8)inst->mArg1.mImmediate);
-							handled = true;
+								mOut.Write((int32)inst->mArg1.mImmediate);
 						}
 						break;
 					default:
-						{
-							BF_ASSERT(inst->mArg1.IsNativeReg());
-							BF_ASSERT(inst->mArg1.mReg == X64Reg_RCX);
-							int destSize = GetType(inst->mArg0)->mSize;
-
-							if (destSize == 2) Emit(0x66);
-							EmitREX(BeMCOperand(), inst->mArg0, destSize == 8);
-							if (destSize == 1)
-								Emit(0xD2);
-							else
-								Emit(0xD3);
-							EmitModRM(rx, inst->mArg0);
-							handled = true;
-						}
-						break;
+						NotImpl();
 					}
 				}
-				break;
-			case BeMCInstKind_Test:
+				else
 				{
-					if (instForm == BeMCInstForm_R64_RM64)
+					if (inst->mArg1.IsImmediate())
 					{
-						BF_SWAP(inst->mArg0, inst->mArg1);
-						instForm = BeMCInstForm_RM64_R64;
-					}
-
-					EmitStdInst(instForm, inst, 0x85, 0x00, 0xF7, 0x0);
-				}
-				break;
-			case BeMCInstKind_CondBr:
-				{
-					for (int pass = 0; pass < 2; pass++)
-					{						
-						if (inst->mArg0.mKind == BeMCOperandKind_Immediate_i64)
+						int64 multVal = inst->mArg1.mImmediate;
+						if (IsPowerOfTwo(multVal))
 						{
-							if (pass == 1)
-								break;
-
-							mOut.Write(GetJumpOpCode(inst->mArg1.mCmpKind, false));
-							mOut.Write((uint8)inst->mArg0.mImmediate);
-						}
-						else
-						{
-							BeCmpKind cmpKind = inst->mArg1.mCmpKind;
-							if (pass == 1)
+							int shiftCount = 0;
+							while (multVal > 1)
 							{
-								switch (cmpKind)
-								{
-								case BeCmpKind_OEQ:
-									cmpKind = BeCmpKind_EQ;
-									break;
-								case BeCmpKind_UNE:
-									cmpKind = BeCmpKind_NE;
-									break;
-								default:
-									cmpKind = BeCmpKind_None;
-								}
-
-								if (cmpKind == BeCmpKind_None)
-									break;
+								shiftCount++;
+								multVal >>= 1;
 							}
 
-							BF_ASSERT(inst->mArg0.mKind == BeMCOperandKind_Label);
-							BeMCJump jump;
-							jump.mCodeOffset = funcCodePos;
-							jump.mLabelIdx = inst->mArg0.mLabelIdx;
-							// Speculative make it a short jump
-							jump.mJumpKind = 0;
-							jump.mCmpKind = cmpKind;;
-							deferredJumps.push_back(jump);
-
-							mOut.Write(GetJumpOpCode(jump.mCmpKind, false));
-							mOut.Write((uint8)0);
-							funcCodePos += 2;
+							auto arg0Type = GetType(inst->mArg0);
+							switch (arg0Type->mTypeCode)
+							{
+							case BeTypeCode_Int64:
+								EmitREX(inst->mArg0, BeMCOperand(), true);
+								// Fall through
+							case BeTypeCode_Int32:
+								Emit(0xC1); Emit((0x4 << 3) | (3 << 6) | (EncodeRegNum(inst->mArg0.mReg)));
+								Emit((uint8)shiftCount);
+								break;
+							default:
+								NotImpl();
+							}
+							break;
 						}
 					}
-				}
-				break;
-			case BeMCInstKind_Br:
-				{
-					if (inst->mArg1.mKind == BeMCOperandKind_Immediate_i8)
-					{
-						if (inst->mArg1.mImmediate == 2) // Fake?
-							break;
-					}
 
-					if (inst->mArg0.mKind == BeMCOperandKind_Label)
+					switch (instForm)
 					{
-						BeMCJump jump;
-						jump.mCodeOffset = funcCodePos;
-						jump.mLabelIdx = inst->mArg0.mLabelIdx;
-						// Speculatively make it a short jump
-						jump.mJumpKind = 0;
-						jump.mCmpKind = BeCmpKind_None;
-						deferredJumps.push_back(jump);
-						mOut.Write((uint8)0xEB);
-						mOut.Write((uint8)0);
+					case BeMCInstForm_R8_RM8:
+						BF_ASSERT(inst->mArg0.mReg == X64Reg_AL);
+						EmitREX(BeMCOperand(), inst->mArg1, false);
+						Emit(0xF6);
+						EmitModRM(0x5, inst->mArg1);
+						break;
+					case BeMCInstForm_R16_RM16:
+					case BeMCInstForm_R32_RM32:
+					case BeMCInstForm_R64_RM64: EmitInst(instForm, 0xAF0F, inst); break;
+					default:
+						NotImpl();
+					}
+				}
+			}
+			break;
+			case BeMCInstKind_Div:
+			{
+				auto arg0Type = GetType(inst->mArg0);
+				switch (arg0Type->mTypeCode)
+				{
+				case BeTypeCode_Int8:
+					BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_AL));
+					// XOR ah, ah
+					Emit(0x30); Emit(0xE4);
+					// DIV rm
+					EmitREX(BeMCOperand::FromReg(X64Reg_AX), inst->mArg1, false);
+					Emit(0xF6); EmitModRM(0x6, inst->mArg1);
+					break;
+				case BeTypeCode_Int16:
+					BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_AX));
+					// XOR dx, dx
+					Emit(0x66); Emit(0x31); Emit(0xD2);
+					// DIV rm
+					Emit(0x66);
+					EmitREX(BeMCOperand::FromReg(X64Reg_AX), inst->mArg1, false);
+					Emit(0xF7); EmitModRM(0x6, inst->mArg1);
+					break;
+				case BeTypeCode_Int32:
+					BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_EAX));
+					// XOR edx, edx
+					Emit(0x31); Emit(0xD2);
+					// DIV rm
+					EmitREX(BeMCOperand::FromReg(X64Reg_EAX), inst->mArg1, false);
+					Emit(0xF7); EmitModRM(0x6, inst->mArg1);
+					break;
+				case BeTypeCode_Int64:
+					BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_RAX));
+					// XOR rdx, rdx
+					Emit(0x48); Emit(0x31); Emit(0xD2);
+					// DIV rm
+					EmitREX(BeMCOperand::FromReg(X64Reg_RAX), inst->mArg1, true);
+					Emit(0xF7); EmitModRM(0x6, inst->mArg1);
+					break;
+				}
+			}
+			break;
+			case BeMCInstKind_IDiv:
+			{
+				if (EmitStdXMMInst(instForm, inst, 0x5E))
+					break;
+
+				auto arg0Type = GetType(inst->mArg0);
+				switch (arg0Type->mTypeCode)
+				{
+				case BeTypeCode_Int8:
+					BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_AL));
+					// CBW
+					Emit(0x66); Emit(0x98);
+					// IDIV rm
+					EmitREX(BeMCOperand::FromReg(X64Reg_AX), inst->mArg1, false);
+					Emit(0xF6); EmitModRM(0x7, inst->mArg1);
+					break;
+				case BeTypeCode_Int16:
+					BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_AX));
+					// CWD
+					Emit(0x66); Emit(0x99);
+					// IDIV rm
+					Emit(0x66);
+					EmitREX(BeMCOperand::FromReg(X64Reg_AX), inst->mArg1, false);
+					Emit(0xF7); EmitModRM(0x7, inst->mArg1);
+					break;
+				case BeTypeCode_Int32:
+					BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_EAX));
+					// CDQ
+					Emit(0x99);
+					// IDIV rm
+					EmitREX(BeMCOperand::FromReg(X64Reg_EAX), inst->mArg1, false);
+					Emit(0xF7); EmitModRM(0x7, inst->mArg1);
+					break;
+				case BeTypeCode_Int64:
+					BF_ASSERT((inst->mArg0.IsNativeReg()) && (inst->mArg0.mReg == X64Reg_RAX));
+					// CQO
+					Emit(0x48); Emit(0x99);
+					// IDIV rm
+					EmitREX(BeMCOperand::FromReg(X64Reg_RAX), inst->mArg1, true);
+					Emit(0xF7); EmitModRM(0x7, inst->mArg1);
+					break;
+				}
+			}
+			break;
+			case BeMCInstKind_IRem:
+			{
+				NotImpl();
+				//if (EmitStdXMMInst(instForm, inst, 0x5E))
+					//break;
+			}
+			break;
+			case BeMCInstKind_Cmp:
+			{
+				switch (instForm)
+				{
+				case BeMCInstForm_XMM32_FRM32:
+				case BeMCInstForm_XMM32_IMM:
+					// UCOMISS
+					EmitREX(inst->mArg0, inst->mArg1, false);
+					Emit(0x0F); Emit(0x2E);
+					EmitModRM(inst->mArg0, inst->mArg1);
+					break;
+				case BeMCInstForm_XMM64_FRM64:
+				case BeMCInstForm_XMM64_IMM:
+					// UCOMISD
+					Emit(0x66);
+					EmitREX(inst->mArg0, inst->mArg1, false);
+					Emit(0x0F); Emit(0x2E);
+					EmitModRM(inst->mArg0, inst->mArg1);
+					break;
+				default:
+				{
+					if (((inst->mArg0.IsNativeReg()) && (inst->mArg1.IsImmediateInt())) && (inst->mArg1.GetImmediateInt() == 0))
+					{
+						// Test
+						auto typeCode = GetType(inst->mArg0)->mTypeCode;
+						switch (typeCode)
+						{
+						case BeTypeCode_Int8:
+							EmitREX(inst->mArg0, inst->mArg0, false);
+							Emit(0x84);
+							EmitModRM(inst->mArg0, inst->mArg0);
+							break;
+						case BeTypeCode_Int16: Emit(0x66); // Fallthrough
+						case BeTypeCode_Int32:
+						case BeTypeCode_Int64:
+							EmitREX(inst->mArg0, inst->mArg0, typeCode == BeTypeCode_Int64);
+							Emit(0x85); EmitModRM(inst->mArg0, inst->mArg0);
+							break;
+						default:
+							NotImpl();
+						}
+
+						/*if (arg0Type->mSize == 2)
+							Emit(0x66);
+						// Emit as TEST <arg0>, <arg0>
+						EmitREX(inst->mArg0, inst->mArg0, GetType(inst->mArg0)->mSize == 8);
+						mOut.Write((uint8)0x85); // r/m64, r
+						EmitModRM(inst->mArg0, inst->mArg0);*/
 					}
 					else
 					{
-						auto arg0Type = GetType(inst->mArg0);
-						BF_ASSERT(arg0Type->mTypeCode == BeTypeCode_Int64);
-
-						uint8 rex = GetREX(BeMCOperand(), inst->mArg0, true);
-						if (rex != 0x40)
-							Emit(rex);
-
-						Emit(0xFF);
-						EmitModRM(4, inst->mArg0);
+						EmitStdInst(instForm, inst, 0x39, 0x3B, 0x81, 0x7, 0x83, 0x7);
 					}
 				}
+				}
+			}
+			break;
+			case BeMCInstKind_And:
+			{
+				if (EmitIntBitwiseXMMInst(instForm, inst, 0xDB)) //PAND
+					break;
+
+				BeMCInst modInst = *inst;
+
+				bool isZeroing = false;
+
+				// Use a shorter form if the upper bytes are masked in
+				if ((instForm == BeMCInstForm_RM32_IMM32) || (instForm == BeMCInstForm_RM64_IMM32))
+				{
+					if ((modInst.mArg1.mImmediate & 0xFFFF0000) == 0xFFFF0000)
+					{
+						if (modInst.mArg0.IsNativeReg())
+							modInst.mArg0.mReg = ResizeRegister(modInst.mArg0.mReg, 2);
+						instForm = BeMCInstForm_RM16_IMM16;
+						if ((modInst.mArg1.mImmediate & 0xFFFF) == 0)
+							isZeroing = true;
+					}
+					else if (instForm == BeMCInstForm_RM32_IMM32)
+					{
+						if ((modInst.mArg1.mImmediate & 0xFFFFFFFF) == 0)
+						{
+							isZeroing = true;
+						}
+					}
+				}
+
+				if ((instForm == BeMCInstForm_RM16_IMM16) || (instForm == BeMCInstForm_RM32_IMM16) || (instForm == BeMCInstForm_RM64_IMM16))
+				{
+					if ((modInst.mArg1.mImmediate & 0xFFFFFF00) == 0xFFFFFF00)
+					{
+						if (modInst.mArg0.IsNativeReg())
+							modInst.mArg0.mReg = ResizeRegister(modInst.mArg0.mReg, 1);
+						instForm = BeMCInstForm_RM8_IMM8;
+					}
+					else if (instForm == BeMCInstForm_RM16_IMM16)
+					{
+						if ((modInst.mArg1.mImmediate & 0xFFFF) == 0)
+						{
+							isZeroing = true;
+						}
+					}
+				}
+
+				if (instForm == BeMCInstForm_RM8_IMM8)
+				{
+					// Are we really just zeroing out the lower byte?
+					if (((modInst.mArg1.mImmediate & 0xFF) == 0) && (modInst.mArg0.IsNativeReg()))
+					{
+						isZeroing = true;
+					}
+				}
+
+				if (isZeroing)
+				{
+					int size = 0;
+					switch (instForm)
+					{
+					case BeMCInstForm_RM32_IMM32:
+						instForm = BeMCInstForm_RM32_R32;
+						break;
+					case BeMCInstForm_RM16_IMM16:
+						instForm = BeMCInstForm_RM16_R16;
+						break;
+					case BeMCInstForm_RM8_IMM8:
+						instForm = BeMCInstForm_RM8_R8;
+						break;
+					default:
+						NotImpl();
+					}
+
+					//XOR arg0, arg0
+					modInst.mKind = BeMCInstKind_Xor;
+					modInst.mArg1 = modInst.mArg0;
+					EmitStdInst(instForm, &modInst, 0x31, 0x33, 0x81, 0x6, 0x83, 0x6);
+					break;
+				}
+
+				if (modInst.mArg1.IsImmediateFloat())
+				{ //ANDPS
+					bool is64Bit = (modInst.mArg1.mKind == BeMCOperandKind_Immediate_f64_Packed128);
+					EmitREX(inst->mArg0, inst->mArg1, is64Bit);
+					Emit(0x0F); Emit(0x54);
+					EmitModRM(inst->mArg0, inst->mArg1);
+					break;
+				}
+
+				EmitStdInst(instForm, &modInst, 0x21, 0x23, 0x81, 0x4, 0x83, 0x4);
+			}
+			break;
+			case BeMCInstKind_Or:
+			{
+				if (EmitIntBitwiseXMMInst(instForm, inst, 0xEB)) //POR
+					break;
+				EmitStdInst(instForm, inst, 0x09, 0x0B, 0x81, 0x1, 0x83, 0x1);
+			}
+			break;
+			case BeMCInstKind_Xor:
+			{
+				if (EmitIntBitwiseXMMInst(instForm, inst, 0xEF)) //PXOR
+					break;
+				if (EmitPackedXMMInst(instForm, inst, 0x57))
+					break;
+				EmitStdInst(instForm, inst, 0x31, 0x33, 0x81, 0x6, 0x83, 0x6);
+			}
+			break;
+			case BeMCInstKind_Shl:
+			case BeMCInstKind_Shr:
+			case BeMCInstKind_Sar:
+			{
+				if (instForm == Beefy::BeMCInstForm_XMM128_RM128)
+				{
+					if (arg1.IsImmediate())
+					{
+						Emit(0x66);
+						EmitREX(arg1, arg0, false);
+						Emit(0x0F);
+						int rx = 0;
+						switch (inst->mKind)
+						{
+						case BeMCInstKind_Shl:
+							rx = 6;
+							break;
+						case BeMCInstKind_Shr:
+							rx = 2;
+							break;
+						case BeMCInstKind_Sar:
+							rx = 4;
+							break;
+						}
+						Emit(0x71); // PSLLW / PSRAW / PSRLW
+						EmitModRM(rx, arg0);
+						Emit((uint8)arg1.mImmediate);
+					}
+					else
+					{
+						Emit(0x66);
+						EmitREX(arg0, arg1, false);
+						Emit(0x0F);
+						switch (inst->mKind)
+						{
+						case BeMCInstKind_Shl:
+							Emit(0xF1); // PSLLW
+							break;
+						case BeMCInstKind_Shr:
+							Emit(0xD1); // PSRLW
+							break;
+						case BeMCInstKind_Sar:
+							Emit(0xE1); // PSRAW
+							break;
+						}
+
+						EmitModRM(arg0, arg1);
+					}
+					break;
+				}
+
+				int rx = 0;
+				switch (inst->mKind)
+				{
+				case BeMCInstKind_Shl:
+					rx = 4;
+					break;
+				case BeMCInstKind_Shr:
+					rx = 5;
+					break;
+				case BeMCInstKind_Sar:
+					rx = 7;
+					break;
+				}
+
+				bool handled = false;
+				switch (instForm)
+				{
+				case BeMCInstForm_RM8_IMM8:
+				case BeMCInstForm_RM16_IMM8:
+				case BeMCInstForm_RM32_IMM8:
+				case BeMCInstForm_RM64_IMM8:
+					if (inst->mArg1.mImmediate == 1)
+					{
+						// Shift by one has a short form
+						if (instForm == BeMCInstForm_RM16_IMM8) Emit(0x66);
+						EmitREX(inst->mArg1, inst->mArg0, instForm == BeMCInstForm_RM64_IMM8);
+						if (instForm == BeMCInstForm_RM8_IMM8)
+							Emit(0xD0);
+						else
+							Emit(0xD1);
+						EmitModRM(rx, inst->mArg0);
+						handled = true;
+					}
+					else
+					{
+						if (instForm == BeMCInstForm_RM16_IMM8) Emit(0x66);
+						EmitREX(inst->mArg1, inst->mArg0, instForm == BeMCInstForm_RM64_IMM8);
+						if (instForm == BeMCInstForm_RM8_IMM8)
+							Emit(0xC0);
+						else
+							Emit(0xC1);
+						EmitModRM(rx, inst->mArg0);
+						Emit((uint8)inst->mArg1.mImmediate);
+						handled = true;
+					}
+					break;
+				default:
+				{
+					BF_ASSERT(inst->mArg1.IsNativeReg());
+					BF_ASSERT(inst->mArg1.mReg == X64Reg_RCX);
+					int destSize = GetType(inst->mArg0)->mSize;
+
+					if (destSize == 2) Emit(0x66);
+					EmitREX(BeMCOperand(), inst->mArg0, destSize == 8);
+					if (destSize == 1)
+						Emit(0xD2);
+					else
+						Emit(0xD3);
+					EmitModRM(rx, inst->mArg0);
+					handled = true;
+				}
 				break;
+				}
+			}
+			break;
+			case BeMCInstKind_Test:
+			{
+				if (instForm == BeMCInstForm_R64_RM64)
+				{
+					BF_SWAP(inst->mArg0, inst->mArg1);
+					instForm = BeMCInstForm_RM64_R64;
+				}
+
+				EmitStdInst(instForm, inst, 0x85, 0x00, 0xF7, 0x0);
+			}
+			break;
+			case BeMCInstKind_CondBr:
+			{
+				for (int pass = 0; pass < 2; pass++)
+				{
+					if (inst->mArg0.mKind == BeMCOperandKind_Immediate_i64)
+					{
+						if (pass == 1)
+							break;
+
+						mOut.Write(GetJumpOpCode(inst->mArg1.mCmpKind, false));
+						mOut.Write((uint8)inst->mArg0.mImmediate);
+					}
+					else
+					{
+						BeCmpKind cmpKind = inst->mArg1.mCmpKind;
+						if (pass == 1)
+						{
+							switch (cmpKind)
+							{
+							case BeCmpKind_OEQ:
+								cmpKind = BeCmpKind_EQ;
+								break;
+							case BeCmpKind_UNE:
+								cmpKind = BeCmpKind_NE;
+								break;
+							default:
+								cmpKind = BeCmpKind_None;
+							}
+
+							if (cmpKind == BeCmpKind_None)
+								break;
+						}
+
+						BF_ASSERT(inst->mArg0.mKind == BeMCOperandKind_Label);
+						BeMCJump jump;
+						jump.mCodeOffset = funcCodePos;
+						jump.mLabelIdx = inst->mArg0.mLabelIdx;
+						// Speculative make it a short jump
+						jump.mJumpKind = 0;
+						jump.mCmpKind = cmpKind;;
+						deferredJumps.push_back(jump);
+
+						mOut.Write(GetJumpOpCode(jump.mCmpKind, false));
+						mOut.Write((uint8)0);
+						funcCodePos += 2;
+					}
+				}
+			}
+			break;
+			case BeMCInstKind_Br:
+			{
+				if (inst->mArg1.mKind == BeMCOperandKind_Immediate_i8)
+				{
+					if (inst->mArg1.mImmediate == 2) // Fake?
+						break;
+				}
+
+				if (inst->mArg0.mKind == BeMCOperandKind_Label)
+				{
+					BeMCJump jump;
+					jump.mCodeOffset = funcCodePos;
+					jump.mLabelIdx = inst->mArg0.mLabelIdx;
+					// Speculatively make it a short jump
+					jump.mJumpKind = 0;
+					jump.mCmpKind = BeCmpKind_None;
+					deferredJumps.push_back(jump);
+					mOut.Write((uint8)0xEB);
+					mOut.Write((uint8)0);
+				}
+				else
+				{
+					auto arg0Type = GetType(inst->mArg0);
+					BF_ASSERT(arg0Type->mTypeCode == BeTypeCode_Int64);
+
+					uint8 rex = GetREX(BeMCOperand(), inst->mArg0, true);
+					if (rex != 0x40)
+						Emit(rex);
+
+					Emit(0xFF);
+					EmitModRM(4, inst->mArg0);
+				}
+			}
+			break;
 			case BeMCInstKind_Ret:
 				mOut.Write((uint8)0xC3);
 				break;
 			case BeMCInstKind_Call:
+			{
+				switch (instForm)
 				{
-					switch (instForm)
-					{
-					case BeMCInstForm_Symbol:
-						{
-							// Call [rip+<X>]
-							mOut.Write((uint8)0xFF);
-							mOut.Write((uint8)0x15);
+				case BeMCInstForm_Symbol:
+				{
+					// Call [rip+<X>]
+					mOut.Write((uint8)0xFF);
+					mOut.Write((uint8)0x15);
 
-							BeMCRelocation reloc;
-							reloc.mKind = BeMCRelocationKind_REL32;
-							reloc.mOffset = mOut.GetPos();
-							reloc.mSymTableIdx = inst->mArg0.mSymbolIdx;
-							mCOFFObject->mTextSect.mRelocs.push_back(reloc);
-							mTextRelocs.push_back((int)mCOFFObject->mTextSect.mRelocs.size() - 1);
+					BeMCRelocation reloc;
+					reloc.mKind = BeMCRelocationKind_REL32;
+					reloc.mOffset = mOut.GetPos();
+					reloc.mSymTableIdx = inst->mArg0.mSymbolIdx;
+					mCOFFObject->mTextSect.mRelocs.push_back(reloc);
+					mTextRelocs.push_back((int)mCOFFObject->mTextSect.mRelocs.size() - 1);
 
-							mOut.Write((int32)0);
-						}
-						break;
-					case BeMCInstForm_SymbolAddr:
-						{
-							// Call <X>
-							mOut.Write((uint8)0xE8);
-
-							BeMCRelocation reloc;
-							reloc.mKind = BeMCRelocationKind_REL32;
-							reloc.mOffset = mOut.GetPos();
-							reloc.mSymTableIdx = inst->mArg0.mSymbolIdx;
-							mCOFFObject->mTextSect.mRelocs.push_back(reloc);
-							mTextRelocs.push_back((int)mCOFFObject->mTextSect.mRelocs.size() - 1);
-
-							mOut.Write((int32)0);
-						}
-						break;
-					default:
-						{
-							EmitREX(BeMCOperand(), inst->mArg0, true);
-							mOut.Write((uint8)0xFF);
-							EmitModRM(0x2, inst->mArg0);
-						}
-						break;
-					}
+					mOut.Write((int32)0);
 				}
-				//mOut.Write((uint8)0xC3);
 				break;
+				case BeMCInstForm_SymbolAddr:
+				{
+					// Call <X>
+					mOut.Write((uint8)0xE8);
+
+					BeMCRelocation reloc;
+					reloc.mKind = BeMCRelocationKind_REL32;
+					reloc.mOffset = mOut.GetPos();
+					reloc.mSymTableIdx = inst->mArg0.mSymbolIdx;
+					mCOFFObject->mTextSect.mRelocs.push_back(reloc);
+					mTextRelocs.push_back((int)mCOFFObject->mTextSect.mRelocs.size() - 1);
+
+					mOut.Write((int32)0);
+				}
+				break;
+				default:
+				{
+					EmitREX(BeMCOperand(), inst->mArg0, true);
+					mOut.Write((uint8)0xFF);
+					EmitModRM(0x2, inst->mArg0);
+				}
+				break;
+				}
+			}
+			//mOut.Write((uint8)0xC3);
+			break;
 			default:
 				SoftFail("Unhandled instruction in DoCodeEmission", inst->mDbgLoc);
 				break;
@@ -15842,95 +15711,95 @@ void BeMCContext::DoCodeEmission()
 		switch (inst->mKind)
 		{
 		case BeMCInstKind_Unwind_Alloc:
-			{
-				xdata.Write((uint8)(codePos));
+		{
+			xdata.Write((uint8)(codePos));
 
-				int allocSize = (int)inst->mArg0.mImmediate;
-				if (allocSize <= 128)
-				{
-					// UWOP_ALLOC_SMALL
-					xdata.Write((uint8)((2) | ((allocSize / 8 - 1) << 4)));
-				}
-				else if ((allocSize <= 0x7FFF8) && ((allocSize & 7) == 0)) // up to 512k-8 bytes
-				{
-					// UWOP_ALLOC_LARGE
-					xdata.Write((uint8)((1) | ((0) << 4)));
-					xdata.Write((uint8)((allocSize / 8) & 0xFF));
-					xdata.Write((uint8)((allocSize / 8) >> 8));
-				}
-				else
-				{
-					// UWOP_ALLOC_LARGE+
-					xdata.Write((uint8)((1) | ((1) << 4)));
-					xdata.Write((int32)allocSize);
-				}
+			int allocSize = (int)inst->mArg0.mImmediate;
+			if (allocSize <= 128)
+			{
+				// UWOP_ALLOC_SMALL
+				xdata.Write((uint8)((2) | ((allocSize / 8 - 1) << 4)));
 			}
-			break;
+			else if ((allocSize <= 0x7FFF8) && ((allocSize & 7) == 0)) // up to 512k-8 bytes
+			{
+				// UWOP_ALLOC_LARGE
+				xdata.Write((uint8)((1) | ((0) << 4)));
+				xdata.Write((uint8)((allocSize / 8) & 0xFF));
+				xdata.Write((uint8)((allocSize / 8) >> 8));
+			}
+			else
+			{
+				// UWOP_ALLOC_LARGE+
+				xdata.Write((uint8)((1) | ((1) << 4)));
+				xdata.Write((int32)allocSize);
+			}
+		}
+		break;
 		case BeMCInstKind_Unwind_PushReg:
-			{
-				xdata.Write((uint8)(codePos));
+		{
+			xdata.Write((uint8)(codePos));
 
-				int regNum = 0;
-				switch (inst->mArg0.mReg)
-				{
-				case X64Reg_RAX: regNum = 0; break;
-				case X64Reg_RCX: regNum = 1; break;
-				case X64Reg_RDX: regNum = 2; break;
-				case X64Reg_RBX: regNum = 3; break;
-				case X64Reg_RSP: regNum = 4; break;
-				case X64Reg_RBP: regNum = 5; break;
-				case X64Reg_RSI: regNum = 6; break;
-				case X64Reg_RDI: regNum = 7; break;
-				case X64Reg_R8: regNum = 8; break;
-				case X64Reg_R9: regNum = 9; break;
-				case X64Reg_R10: regNum = 10; break;
-				case X64Reg_R11: regNum = 11; break;
-				case X64Reg_R12: regNum = 12; break;
-				case X64Reg_R13: regNum = 13; break;
-				case X64Reg_R14: regNum = 14; break;
-				case X64Reg_R15: regNum = 15; break;
-				default: NotImpl();
-				}
-				// UWOP_PUSH_NONVOL
-				xdata.Write((uint8)((0) | (regNum << 4)));
+			int regNum = 0;
+			switch (inst->mArg0.mReg)
+			{
+			case X64Reg_RAX: regNum = 0; break;
+			case X64Reg_RCX: regNum = 1; break;
+			case X64Reg_RDX: regNum = 2; break;
+			case X64Reg_RBX: regNum = 3; break;
+			case X64Reg_RSP: regNum = 4; break;
+			case X64Reg_RBP: regNum = 5; break;
+			case X64Reg_RSI: regNum = 6; break;
+			case X64Reg_RDI: regNum = 7; break;
+			case X64Reg_R8: regNum = 8; break;
+			case X64Reg_R9: regNum = 9; break;
+			case X64Reg_R10: regNum = 10; break;
+			case X64Reg_R11: regNum = 11; break;
+			case X64Reg_R12: regNum = 12; break;
+			case X64Reg_R13: regNum = 13; break;
+			case X64Reg_R14: regNum = 14; break;
+			case X64Reg_R15: regNum = 15; break;
+			default: NotImpl();
 			}
-			break;
+			// UWOP_PUSH_NONVOL
+			xdata.Write((uint8)((0) | (regNum << 4)));
+		}
+		break;
 		case BeMCInstKind_Unwind_SaveXMM:
+		{
+			xdata.Write((uint8)(codePos));
+			int regNum = 0;
+			switch (inst->mArg0.mReg)
 			{
-				xdata.Write((uint8)(codePos));
-				int regNum = 0;
-				switch (inst->mArg0.mReg)
-				{
-				case X64Reg_M128_XMM0: regNum = 0; break;
-				case X64Reg_M128_XMM1: regNum = 1; break;
-				case X64Reg_M128_XMM2: regNum = 2; break;
-				case X64Reg_M128_XMM3: regNum = 3; break;
-				case X64Reg_M128_XMM4: regNum = 4; break;
-				case X64Reg_M128_XMM5: regNum = 5; break;
-				case X64Reg_M128_XMM6: regNum = 6; break;
-				case X64Reg_M128_XMM7: regNum = 7; break;
-				case X64Reg_M128_XMM8: regNum = 8; break;
-				case X64Reg_M128_XMM9: regNum = 9; break;
-				case X64Reg_M128_XMM10: regNum = 10; break;
-				case X64Reg_M128_XMM11: regNum = 11; break;
-				case X64Reg_M128_XMM12: regNum = 12; break;
-				case X64Reg_M128_XMM13: regNum = 13; break;
-				case X64Reg_M128_XMM14: regNum = 14; break;
-				case X64Reg_M128_XMM15: regNum = 15; break;
-				default: NotImpl();
-				}
-				// UWOP_SAVE_XMM128
-				xdata.Write((uint8)((8) | (regNum << 4)));
-				xdata.Write((int16)(inst->mArg1.mImmediate / 16));
+			case X64Reg_M128_XMM0: regNum = 0; break;
+			case X64Reg_M128_XMM1: regNum = 1; break;
+			case X64Reg_M128_XMM2: regNum = 2; break;
+			case X64Reg_M128_XMM3: regNum = 3; break;
+			case X64Reg_M128_XMM4: regNum = 4; break;
+			case X64Reg_M128_XMM5: regNum = 5; break;
+			case X64Reg_M128_XMM6: regNum = 6; break;
+			case X64Reg_M128_XMM7: regNum = 7; break;
+			case X64Reg_M128_XMM8: regNum = 8; break;
+			case X64Reg_M128_XMM9: regNum = 9; break;
+			case X64Reg_M128_XMM10: regNum = 10; break;
+			case X64Reg_M128_XMM11: regNum = 11; break;
+			case X64Reg_M128_XMM12: regNum = 12; break;
+			case X64Reg_M128_XMM13: regNum = 13; break;
+			case X64Reg_M128_XMM14: regNum = 14; break;
+			case X64Reg_M128_XMM15: regNum = 15; break;
+			default: NotImpl();
 			}
-			break;
+			// UWOP_SAVE_XMM128
+			xdata.Write((uint8)((8) | (regNum << 4)));
+			xdata.Write((int16)(inst->mArg1.mImmediate / 16));
+		}
+		break;
 		case BeMCInstKind_Unwind_SetBP:
-			{
-				xdata.Write((uint8)(codePos));
-				// UWOP_SET_FPREG
-				xdata.Write((uint8)((3) | (0 << 4)));
-			}
-			break;
+		{
+			xdata.Write((uint8)(codePos));
+			// UWOP_SET_FPREG
+			xdata.Write((uint8)((3) | (0 << 4)));
+		}
+		break;
 		}
 	}
 
@@ -16496,21 +16365,14 @@ String BeMCContext::ToString(bool showVRegFlags, bool showVRegDetails)
 	return str;
 }
 
-void BeMCContext::Print(bool showVRegFlags, bool showVRegDetails)
-{
-	OutputDebugStr(ToString(showVRegFlags, showVRegDetails));
-}
-
 void BeMCContext::Print()
 {
 	OutputDebugStr(ToString(true, false));
 }
 
-void BeMCContext::Print(BeMCInst* inst)
+void BeMCContext::Print(bool showVRegFlags, bool showVRegDetails)
 {
-	String str;
-	ToString(inst, str, true, false);
-	OutputDebugStr(str);
+	OutputDebugStr(ToString(showVRegFlags, showVRegDetails));
 }
 
 BeMCOperand BeMCContext::AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand& lhs, const BeMCOperand& rhs, BeMCBinIdentityKind identityKind, BeMCOverflowCheckKind overflowCheckKind)
@@ -16663,42 +16525,42 @@ void BeMCContext::Generate(BeFunction* function)
 			switch (instType)
 			{
 			case BeAllocaInst::TypeId:
-				{
-					auto castedInst = (BeAllocaInst*)inst;
-					if ((!inHeadAlloca) || (castedInst->mAlign > 16))
-						mUseBP = true;
-				}
-				break;
+			{
+				auto castedInst = (BeAllocaInst*)inst;
+				if ((!inHeadAlloca) || (castedInst->mAlign > 16))
+					mUseBP = true;
+			}
+			break;
 			case BeNumericCastInst::TypeId:
 			case BeBitCastInst::TypeId:
 				break;
 			case BeStackSaveInst::TypeId:
-				{
-					auto stackVReg = AllocVirtualReg(mNativeIntType);
-					stackSaveVRegs.push_back(stackVReg.mVRegIdx);
-				}
-				break;
+			{
+				auto stackVReg = AllocVirtualReg(mNativeIntType);
+				stackSaveVRegs.push_back(stackVReg.mVRegIdx);
+			}
+			break;
 			case BeCallInst::TypeId:
-				{
-					auto castedInst = (BeCallInst*)inst;
+			{
+				auto castedInst = (BeCallInst*)inst;
 
-					if (auto intrin = BeValueDynCast<BeIntrinsic>(castedInst->mFunc))
+				if (auto intrin = BeValueDynCast<BeIntrinsic>(castedInst->mFunc))
+				{
+					// Not a real call
+					switch (intrin->mKind)
 					{
-						// Not a real call
-						switch (intrin->mKind)
-						{
-						case BfIRIntrinsic_VAStart:
-							mHasVAStart = true;
-							break;
-						}
+					case BfIRIntrinsic_VAStart:
+						mHasVAStart = true;
+						break;
 					}
 				}
-				break;
+			}
+			break;
 			case BeMemSetInst::TypeId:
-				{
-					//mMaxCallParamCount = BF_MAX(mMaxCallParamCount, 4);
-				}
-				break;
+			{
+				//mMaxCallParamCount = BF_MAX(mMaxCallParamCount, 4);
+			}
+			break;
 			default:
 				inHeadAlloca = false;
 				break;
@@ -16706,8 +16568,8 @@ void BeMCContext::Generate(BeFunction* function)
 		}
 	}
 
-// 	if (mMaxCallParamCount != -1)
-// 		mMaxCallParamCount = BF_MAX(mMaxCallParamCount, 4);
+	// 	if (mMaxCallParamCount != -1)
+	// 		mMaxCallParamCount = BF_MAX(mMaxCallParamCount, 4);
 
 	int retCount = 0;
 	bool isFirstBlock = true;
@@ -16748,422 +16610,406 @@ void BeMCContext::Generate(BeFunction* function)
 			switch (instType)
 			{
 			case BeNopInst::TypeId:
-				{
-					auto mcInst = AllocInst();
-					mcInst->mKind = BeMCInstKind_Nop;
-				}
-				break;
+			{
+				auto mcInst = AllocInst();
+				mcInst->mKind = BeMCInstKind_Nop;
+			}
+			break;
 			case BeUnreachableInst::TypeId:
-				{
-					auto mcInst = AllocInst();
-					mcInst->mKind = BeMCInstKind_Unreachable;
+			{
+				auto mcInst = AllocInst();
+				mcInst->mKind = BeMCInstKind_Unreachable;
 
-					// 					if (instIdx == beBlock->mInstructions.size() - 1)
-					// 					{
-					// 						// Fake branch to exit
-					// 						mcInst = AllocInst();
-					// 						mcInst->mKind = BeMCInstKind_Br;
-					// 						mcInst->mArg0 = BeMCOperand::FromBlock(mBlocks.back());
-					// 						mcInst->mArg0.mBlock->AddPred(mcBlock);
-					// 					}
-				}
-				break;
+				// 					if (instIdx == beBlock->mInstructions.size() - 1)
+				// 					{
+				// 						// Fake branch to exit
+				// 						mcInst = AllocInst();
+				// 						mcInst->mKind = BeMCInstKind_Br;
+				// 						mcInst->mArg0 = BeMCOperand::FromBlock(mBlocks.back());
+				// 						mcInst->mArg0.mBlock->AddPred(mcBlock);
+				// 					}
+			}
+			break;
 			case BeEnsureInstructionAtInst::TypeId:
-				{
-					auto mcInst = AllocInst();
-					mcInst->mKind = BeMCInstKind_EnsureInstructionAt;
-				}
-				break;
+			{
+				auto mcInst = AllocInst();
+				mcInst->mKind = BeMCInstKind_EnsureInstructionAt;
+			}
+			break;
 			case BeUndefValueInst::TypeId:
-				{
-					auto castedInst = (BeUndefValueInst*)inst;
-					result = AllocVirtualReg(castedInst->mType);
-					CreateDefineVReg(result);
-				}
-				break;
+			{
+				auto castedInst = (BeUndefValueInst*)inst;
+				result = AllocVirtualReg(castedInst->mType);
+				CreateDefineVReg(result);
+			}
+			break;
 			case BeExtractValueInst::TypeId:
+			{
+				auto castedInst = (BeExtractValueInst*)inst;
+
+				BeConstant* constant = BeValueDynCast<BeConstant>(castedInst->mAggVal);
+				BeMCOperand mcAgg;
+
+				if (constant == NULL)
 				{
-					auto castedInst = (BeExtractValueInst*)inst;
-
-					BeConstant* constant = BeValueDynCast<BeConstant>(castedInst->mAggVal);
-					BeMCOperand mcAgg;
-
-					if (constant == NULL)
+					mcAgg = GetOperand(castedInst->mAggVal);
+					if (mcAgg.mKind == BeMCOperandKind_ConstAgg)
 					{
-						mcAgg = GetOperand(castedInst->mAggVal);
-						if (mcAgg.mKind == BeMCOperandKind_ConstAgg)
-						{
-							constant = mcAgg.mConstant;
-						}
+						constant = mcAgg.mConstant;
 					}
-
-					if (constant != NULL)
-					{
-						result.mImmediate = 0;
-						BeType* wantDefaultType = NULL;
-						if (constant->mType->IsStruct())
-						{
-							BeStructType* structType = (BeStructType*)constant->mType;
-							auto& member = structType->mMembers[castedInst->mIdx];
-							wantDefaultType = member.mType;
-						}
-						else if (constant->mType->IsSizedArray())
-						{
-							BeSizedArrayType* arrayType = (BeSizedArrayType*)constant->mType;
-							wantDefaultType = arrayType->mElementType;
-						}
-
-						if (wantDefaultType != NULL)
-						{
-							switch (wantDefaultType->mTypeCode)
-							{
-							case BeTypeCode_Boolean:
-							case BeTypeCode_Int8:
-								result.mKind = BeMCOperandKind_Immediate_i8;
-								break;
-							case BeTypeCode_Int16:
-								result.mKind = BeMCOperandKind_Immediate_i16;
-								break;
-							case BeTypeCode_Int32:
-								result.mKind = BeMCOperandKind_Immediate_i32;
-								break;
-							case BeTypeCode_Int64:
-								result.mKind = BeMCOperandKind_Immediate_i64;
-								break;
-							case BeTypeCode_Float:
-								result.mKind = BeMCOperandKind_Immediate_f32;
-								break;
-							case BeTypeCode_Double:
-								result.mKind = BeMCOperandKind_Immediate_f64;
-								break;
-							case BeTypeCode_Pointer:
-								result.mKind = BeMCOperandKind_Immediate_Null;
-								result.mType = wantDefaultType;
-								break;
-							case BeTypeCode_Struct:
-							case BeTypeCode_SizedArray:
-								{
-									auto subConst = mAlloc.Alloc<BeConstant>();
-									subConst->mType = wantDefaultType;
-									result.mConstant = subConst;
-									result.mKind = BeMCOperandKind_ConstAgg;
-								}
-								break;
-							default:
-								NotImpl();
-							}
-						}
-
-						break;
-					}
-
-					auto aggType = GetType(mcAgg);
-					int byteOffset = 0;
-					BeType* memberType = NULL;
-
-					if (aggType->IsSizedArray())
-					{
-						auto sizedArray = (BeSizedArrayType*)aggType;
-						memberType = sizedArray->mElementType;
-						byteOffset = BF_ALIGN(memberType->mSize, memberType->mAlign) * castedInst->mIdx;
-					}
-					else
-					{
-						BF_ASSERT(aggType->IsStruct());
-						BeStructType* structType = (BeStructType*)aggType;
-						auto& structMember = structType->mMembers[castedInst->mIdx];
-						byteOffset = structMember.mByteOffset;
-						memberType = structMember.mType;
-					}
-
-					if (mcAgg.mKind == BeMCOperandKind_VReg)
-						mcAgg.mKind = BeMCOperandKind_VRegAddr;
-					else if (mcAgg.mKind == BeMCOperandKind_VRegLoad)
-						mcAgg.mKind = BeMCOperandKind_VReg;
-					else
-						NotImpl();
-					auto memberPtrType = mModule->mContext->GetPointerTo(memberType);
-					result = AllocRelativeVirtualReg(memberPtrType, mcAgg, BeMCOperand::FromImmediate(byteOffset), 1);
-					result.mKind = BeMCOperandKind_VRegLoad;
-					CreateDefineVReg(result);
 				}
-				break;
-			case BeInsertValueInst::TypeId:
+
+				if (constant != NULL)
 				{
-					auto castedInst = (BeInsertValueInst*)inst;
-					auto mcAgg = GetOperand(castedInst->mAggVal);
-					auto mcValue = GetOperand(castedInst->mMemberVal);
-					auto aggType = GetType(mcAgg);
+					result.mImmediate = 0;
+					BeType* wantDefaultType = NULL;
+					if (constant->mType->IsStruct())
+					{
+						BeStructType* structType = (BeStructType*)constant->mType;
+						auto& member = structType->mMembers[castedInst->mIdx];
+						wantDefaultType = member.mType;
+					}
+					else if (constant->mType->IsSizedArray())
+					{
+						BeSizedArrayType* arrayType = (BeSizedArrayType*)constant->mType;
+						wantDefaultType = arrayType->mElementType;
+					}
+
+					if (wantDefaultType != NULL)
+					{
+						switch (wantDefaultType->mTypeCode)
+						{
+						case BeTypeCode_Boolean:
+						case BeTypeCode_Int8:
+							result.mKind = BeMCOperandKind_Immediate_i8;
+							break;
+						case BeTypeCode_Int16:
+							result.mKind = BeMCOperandKind_Immediate_i16;
+							break;
+						case BeTypeCode_Int32:
+							result.mKind = BeMCOperandKind_Immediate_i32;
+							break;
+						case BeTypeCode_Int64:
+							result.mKind = BeMCOperandKind_Immediate_i64;
+							break;
+						case BeTypeCode_Float:
+							result.mKind = BeMCOperandKind_Immediate_f32;
+							break;
+						case BeTypeCode_Double:
+							result.mKind = BeMCOperandKind_Immediate_f64;
+							break;
+						case BeTypeCode_Pointer:
+							result.mKind = BeMCOperandKind_Immediate_Null;
+							result.mType = wantDefaultType;
+							break;
+						case BeTypeCode_Struct:
+						case BeTypeCode_SizedArray:
+						{
+							auto subConst = mAlloc.Alloc<BeConstant>();
+							subConst->mType = wantDefaultType;
+							result.mConstant = subConst;
+							result.mKind = BeMCOperandKind_ConstAgg;
+						}
+						break;
+						default:
+							NotImpl();
+						}
+					}
+
+					break;
+				}
+
+				auto aggType = GetType(mcAgg);
+				int byteOffset = 0;
+				BeType* memberType = NULL;
+
+				if (aggType->IsSizedArray())
+				{
+					auto sizedArray = (BeSizedArrayType*)aggType;
+					memberType = sizedArray->mElementType;
+					byteOffset = BF_ALIGN(memberType->mSize, memberType->mAlign) * castedInst->mIdx;
+				}
+				else
+				{
 					BF_ASSERT(aggType->IsStruct());
 					BeStructType* structType = (BeStructType*)aggType;
 					auto& structMember = structType->mMembers[castedInst->mIdx];
-
-					BF_ASSERT(mcAgg.mKind = BeMCOperandKind_VReg);
-					auto mcAggRef = mcAgg;
-					mcAggRef.mKind = BeMCOperandKind_VRegAddr;
-					auto memberPtrType = mModule->mContext->GetPointerTo(structMember.mType);
-					auto mcMemberRef = AllocRelativeVirtualReg(memberPtrType, mcAggRef, BeMCOperand::FromImmediate(structMember.mByteOffset), 1);
-					CreateDefineVReg(mcMemberRef);
-					mcMemberRef.mKind = BeMCOperandKind_VRegLoad;
-
-					AllocInst(BeMCInstKind_Mov, mcMemberRef, mcValue);
-					// Our InsertValue always modifies the source aggregate, it does not make a copy like LLVM's InsertValue would infer.
-					//  This is okay because of Beef front end knowledge, but is not general purpose.
-					result = mcAgg;
+					byteOffset = structMember.mByteOffset;
+					memberType = structMember.mType;
 				}
-				break;
-			case BeNumericCastInst::TypeId:
-				{
-					auto castedInst = (BeNumericCastInst*)inst;
-					auto mcValue = GetOperand(castedInst->mValue);
-					auto fromType = GetType(mcValue);
 
-					if (fromType == castedInst->mToType)
+				if (mcAgg.mKind == BeMCOperandKind_VReg)
+					mcAgg.mKind = BeMCOperandKind_VRegAddr;
+				else if (mcAgg.mKind == BeMCOperandKind_VRegLoad)
+					mcAgg.mKind = BeMCOperandKind_VReg;
+				else
+					NotImpl();
+				auto memberPtrType = mModule->mContext->GetPointerTo(memberType);
+				result = AllocRelativeVirtualReg(memberPtrType, mcAgg, BeMCOperand::FromImmediate(byteOffset), 1);
+				result.mKind = BeMCOperandKind_VRegLoad;
+				CreateDefineVReg(result);
+			}
+			break;
+			case BeInsertValueInst::TypeId:
+			{
+				auto castedInst = (BeInsertValueInst*)inst;
+				auto mcAgg = GetOperand(castedInst->mAggVal);
+				auto mcValue = GetOperand(castedInst->mMemberVal);
+				auto aggType = GetType(mcAgg);
+				BF_ASSERT(aggType->IsStruct());
+				BeStructType* structType = (BeStructType*)aggType;
+				auto& structMember = structType->mMembers[castedInst->mIdx];
+
+				BF_ASSERT(mcAgg.mKind = BeMCOperandKind_VReg);
+				auto mcAggRef = mcAgg;
+				mcAggRef.mKind = BeMCOperandKind_VRegAddr;
+				auto memberPtrType = mModule->mContext->GetPointerTo(structMember.mType);
+				auto mcMemberRef = AllocRelativeVirtualReg(memberPtrType, mcAggRef, BeMCOperand::FromImmediate(structMember.mByteOffset), 1);
+				CreateDefineVReg(mcMemberRef);
+				mcMemberRef.mKind = BeMCOperandKind_VRegLoad;
+
+				AllocInst(BeMCInstKind_Mov, mcMemberRef, mcValue);
+				// Our InsertValue always modifies the source aggregate, it does not make a copy like LLVM's InsertValue would infer.
+				//  This is okay because of Beef front end knowledge, but is not general purpose.
+				result = mcAgg;
+			}
+			break;
+			case BeNumericCastInst::TypeId:
+			{
+				auto castedInst = (BeNumericCastInst*)inst;
+				auto mcValue = GetOperand(castedInst->mValue);
+				auto fromType = GetType(mcValue);
+
+				if (fromType == castedInst->mToType)
+				{
+					// If it's just a sign change then leave it alone
+					result = mcValue;
+				}
+				else
+				{
+					auto toType = castedInst->mToType;
+					auto toValue = AllocVirtualReg(castedInst->mToType);
+					CreateDefineVReg(toValue);
+					if ((toType->IsIntable()) && (fromType->IsIntable()) && (toType->mSize < fromType->mSize))
 					{
-						// If it's just a sign change then leave it alone
-						result = mcValue;
+						// For truncating values, no actual instructions are needed, so we can just do a vreg relto ref
+						auto vregInfo = mVRegInfo[toValue.mVRegIdx];
+						vregInfo->mIsExpr = true;
+						vregInfo->mRelTo = mcValue;
+					}
+					else if ((toType->IsFloat()) && (fromType->IsIntable()) && (fromType->mSize == 8) && (!castedInst->mValSigned))
+					{
+						// uint64 to float - basically, when we are signed then we shift down one bit (so it's unsigned) and then double the result. There's a 1-bit correction factor.
+						AllocInst(BeMCInstKind_Test, mcValue, mcValue);
+						AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(mCurLabelIdx), BeMCOperand::FromCmpKind(BeCmpKind_Sign));
+						AllocInst(BeMCInstKind_MovSX, toValue, mcValue);
+						AllocInst(BeMCInstKind_Br, BeMCOperand::FromLabel(mCurLabelIdx + 1));
+						CreateLabel();
+
+						auto temp0 = AllocVirtualReg(GetType(mcValue));
+						CreateDefineVReg(temp0);
+						auto temp1 = AllocVirtualReg(GetType(mcValue));
+						CreateDefineVReg(temp1);
+						AllocInst(BeMCInstKind_Mov, temp0, mcValue);
+						AllocInst(BeMCInstKind_Shr, temp0, BeMCOperand::FromImmediate(1));
+						AllocInst(BeMCInstKind_Mov, temp1, mcValue);
+						AllocInst(BeMCInstKind_And, temp1, BeMCOperand::FromImmediate(1));
+						AllocInst(BeMCInstKind_Or, temp0, temp1);
+						AllocInst(BeMCInstKind_MovSX, toValue, temp0);
+						AllocInst(BeMCInstKind_Add, toValue, toValue);
+						CreateLabel();
 					}
 					else
 					{
-						auto toType = castedInst->mToType;
-						auto toValue = AllocVirtualReg(castedInst->mToType);
-						CreateDefineVReg(toValue);
-						if ((toType->IsIntable()) && (fromType->IsIntable()) && (toType->mSize < fromType->mSize))
-						{
-							// For truncating values, no actual instructions are needed, so we can just do a vreg relto ref
-							auto vregInfo = mVRegInfo[toValue.mVRegIdx];
-							vregInfo->mIsExpr = true;
-							vregInfo->mRelTo = mcValue;
-						}
-						else if ((toType->IsFloat()) && (fromType->IsIntable()) && (fromType->mSize == 8) && (!castedInst->mValSigned))
-						{
-							// uint64 to float - basically, when we are signed then we shift down one bit (so it's unsigned) and then double the result. There's a 1-bit correction factor.
-							AllocInst(BeMCInstKind_Test, mcValue, mcValue);
-							AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(mCurLabelIdx), BeMCOperand::FromCmpKind(BeCmpKind_Sign));							
-							AllocInst(BeMCInstKind_MovSX, toValue, mcValue);
-							AllocInst(BeMCInstKind_Br, BeMCOperand::FromLabel(mCurLabelIdx + 1));
-							CreateLabel();
+						bool doSignExtension = (toType->IsIntable()) && (fromType->IsIntable()) && (toType->mSize > fromType->mSize) && (castedInst->mToSigned) && (castedInst->mValSigned);
+						if ((toType->IsFloat()) && (fromType->IsIntable()) && (castedInst->mValSigned))
+							doSignExtension = true;
+						if ((toType->IsIntable()) && (fromType->IsFloat()) && (castedInst->mToSigned))
+							doSignExtension = true;
 
-							auto temp0 = AllocVirtualReg(GetType(mcValue));
-							CreateDefineVReg(temp0);
-							auto temp1 = AllocVirtualReg(GetType(mcValue));
-							CreateDefineVReg(temp1);
-							AllocInst(BeMCInstKind_Mov, temp0, mcValue);
-							AllocInst(BeMCInstKind_Shr, temp0, BeMCOperand::FromImmediate(1));
-							AllocInst(BeMCInstKind_Mov, temp1, mcValue);
-							AllocInst(BeMCInstKind_And, temp1, BeMCOperand::FromImmediate(1));
-							AllocInst(BeMCInstKind_Or, temp0, temp1);
-							AllocInst(BeMCInstKind_MovSX, toValue, temp0);
-							AllocInst(BeMCInstKind_Add, toValue, toValue);
-							CreateLabel();										
+						if (mcValue.IsImmediate())
+							doSignExtension = false;
+
+						if (doSignExtension)
+						{
+							AllocInst(BeMCInstKind_MovSX, toValue, mcValue);
 						}
 						else
-						{
-							bool doSignExtension = (toType->IsIntable()) && (fromType->IsIntable()) && (toType->mSize > fromType->mSize) && (castedInst->mToSigned) && (castedInst->mValSigned);
-							if ((toType->IsFloat()) && (fromType->IsIntable()) && (castedInst->mValSigned))
-								doSignExtension = true;
-							if ((toType->IsIntable()) && (fromType->IsFloat()) && (castedInst->mToSigned))
-								doSignExtension = true;
-
-							if (mcValue.IsImmediate())
-								doSignExtension = false;
-
-							if (doSignExtension)
-							{
-								AllocInst(BeMCInstKind_MovSX, toValue, mcValue);
-							}
-							else
-								AllocInst(BeMCInstKind_Mov, toValue, mcValue);
-						}
-						result = toValue;
+							AllocInst(BeMCInstKind_Mov, toValue, mcValue);
 					}
+					result = toValue;
 				}
-				break;
+			}
+			break;
 			case BeNegInst::TypeId:
-				{
-					auto castedInst = (BeNumericCastInst*)inst;
-					auto mcValue = GetOperand(castedInst->mValue);
+			{
+				auto castedInst = (BeNumericCastInst*)inst;
+				auto mcValue = GetOperand(castedInst->mValue);
 
-					result = AllocVirtualReg(GetType(mcValue));
-					CreateDefineVReg(result);
-					AllocInst(BeMCInstKind_Mov, result, mcValue);
-					AllocInst(BeMCInstKind_Neg, result);
-				}
-				break;
+				result = AllocVirtualReg(GetType(mcValue));
+				CreateDefineVReg(result);
+				AllocInst(BeMCInstKind_Mov, result, mcValue);
+				AllocInst(BeMCInstKind_Neg, result);
+			}
+			break;
 			case BeNotInst::TypeId:
+			{
+				auto castedInst = (BeNumericCastInst*)inst;
+				auto mcValue = GetOperand(castedInst->mValue, true);
+
+				// Phi's are easy - just make a new one with the true and false branches swapped
+// 					if (mcValue.mKind == BeMCOperandKind_Phi)
+// 					{
+// 						BeMCPhi* origPhi = mcValue.mPhi;
+// 						BeMCPhi* newPhi = mPhiAlloc.Alloc();
+//
+// 						*newPhi = *origPhi;
+// 						BF_SWAP(newPhi->mBrTrue, newPhi->mBrFalse);
+// 						result.mKind = BeMCOperandKind_Phi;
+// 						result.mPhi = newPhi;
+// 						break;
+// 					}
+//
+// 					if (mcValue.mKind == BeMCOperandKind_CmpResult)
+// 					{
+// 						auto origCmpResult = mCmpResults[mcValue.mCmpResultIdx];
+//
+// 						auto cmpResultIdx = (int)mCmpResults.size();
+// 						BeCmpResult cmpResult;
+// 						cmpResult.mCmpKind = BeModule::InvertCmp(origCmpResult.mCmpKind);
+// 						mCmpResults.push_back(cmpResult);
+// 						result.mKind = BeMCOperandKind_CmpResult;
+// 						result.mCmpResultIdx = cmpResultIdx;
+// 						break;
+// 					}
+
+				if (mcValue.mKind == BeMCOperandKind_NotResult)
 				{
-					auto castedInst = (BeNumericCastInst*)inst;
-					auto mcValue = GetOperand(castedInst->mValue, true);
+					// Double negative! Just unwrap the NotResult.
+					result = GetOperand(mcValue.mNotResult->mValue, true);
+					break;
+				}
+				else if ((mcValue.mKind == BeMCOperandKind_Phi) || (mcValue.mKind == BeMCOperandKind_CmpResult))
+				{
+					auto notResult = mAlloc.Alloc<BeNotResult>();
+					notResult->mValue = castedInst->mValue;
+					result.mKind = BeMCOperandKind_NotResult;
+					result.mNotResult = notResult;
+					break;
+				}
 
-					// Phi's are easy - just make a new one with the true and false branches swapped
-	// 					if (mcValue.mKind == BeMCOperandKind_Phi)
-	// 					{
-	// 						BeMCPhi* origPhi = mcValue.mPhi;
-	// 						BeMCPhi* newPhi = mPhiAlloc.Alloc();
-	//
-	// 						*newPhi = *origPhi;
-	// 						BF_SWAP(newPhi->mBrTrue, newPhi->mBrFalse);
-	// 						result.mKind = BeMCOperandKind_Phi;
-	// 						result.mPhi = newPhi;
-	// 						break;
-	// 					}
-	//
-	// 					if (mcValue.mKind == BeMCOperandKind_CmpResult)
-	// 					{
-	// 						auto origCmpResult = mCmpResults[mcValue.mCmpResultIdx];
-	//
-	// 						auto cmpResultIdx = (int)mCmpResults.size();
-	// 						BeCmpResult cmpResult;
-	// 						cmpResult.mCmpKind = BeModule::InvertCmp(origCmpResult.mCmpKind);
-	// 						mCmpResults.push_back(cmpResult);
-	// 						result.mKind = BeMCOperandKind_CmpResult;
-	// 						result.mCmpResultIdx = cmpResultIdx;
-	// 						break;
-	// 					}
+				// LLVM does a weird thing for Not:  val = (val ^ 0xFF) & 1
+				// Which turns a '2' into a '1' which is True to True - non-conformant to C standard?
+				// Visual Studio does an actual conditional branch.  For Beef, bools are defined as 1 or 0.
+				/*result = AllocVirtualReg(GetType(mcValue));
+				CreateDefineVReg(result);
+				AllocInst(BeMCInstKind_Mov, result, mcValue);
+				BeMCOperand xorVal;
+				xorVal.mKind = BeMCOperandKind_Immediate_i8;
+				xorVal.mImmediate = 0xFF;
+				AllocInst(BeMCInstKind_Xor, result, xorVal);
+				BeMCOperand andVal;
+				andVal.mKind = BeMCOperandKind_Immediate_i8;
+				andVal.mImmediate = 0x1;
+				AllocInst(BeMCInstKind_And, result, andVal);*/
 
-					if (mcValue.mKind == BeMCOperandKind_NotResult)
-					{
-						// Double negative! Just unwrap the NotResult.
-						result = GetOperand(mcValue.mNotResult->mValue, true);
-						break;
-					}
-					else if ((mcValue.mKind == BeMCOperandKind_Phi) || (mcValue.mKind == BeMCOperandKind_CmpResult))
-					{
-						auto notResult = mAlloc.Alloc<BeNotResult>();
-						notResult->mValue = castedInst->mValue;
-						result.mKind = BeMCOperandKind_NotResult;
-						result.mNotResult = notResult;
-						break;
-					}
+				auto type = castedInst->mValue->GetType();
 
-					// LLVM does a weird thing for Not:  val = (val ^ 0xFF) & 1
-					// Which turns a '2' into a '1' which is True to True - non-conformant to C standard?
-					// Visual Studio does an actual conditional branch.  For Beef, bools are defined as 1 or 0.
-					/*result = AllocVirtualReg(GetType(mcValue));
-					CreateDefineVReg(result);
-					AllocInst(BeMCInstKind_Mov, result, mcValue);
+				result = AllocVirtualReg(GetType(mcValue));
+				CreateDefineVReg(result);
+				AllocInst(BeMCInstKind_Mov, result, mcValue);
+
+				if (type->mTypeCode == BeTypeCode_Boolean)
+				{
 					BeMCOperand xorVal;
 					xorVal.mKind = BeMCOperandKind_Immediate_i8;
-					xorVal.mImmediate = 0xFF;
+					xorVal.mImmediate = 0x1;
 					AllocInst(BeMCInstKind_Xor, result, xorVal);
-					BeMCOperand andVal;
-					andVal.mKind = BeMCOperandKind_Immediate_i8;
-					andVal.mImmediate = 0x1;
-					AllocInst(BeMCInstKind_And, result, andVal);*/
-
-					auto type = castedInst->mValue->GetType();
-
-					result = AllocVirtualReg(GetType(mcValue));
-					CreateDefineVReg(result);
-					AllocInst(BeMCInstKind_Mov, result, mcValue);
-
-					if (type->mTypeCode == BeTypeCode_Boolean)
-					{
-						BeMCOperand xorVal;
-						xorVal.mKind = BeMCOperandKind_Immediate_i8;
-						xorVal.mImmediate = 0x1;
-						AllocInst(BeMCInstKind_Xor, result, xorVal);
-					}
-					else
-					{
-						AllocInst(BeMCInstKind_Not, result);
-					}
 				}
-				break;
+				else
+				{
+					AllocInst(BeMCInstKind_Not, result);
+				}
+			}
+			break;
 			case BeBinaryOpInst::TypeId:
+			{
+				auto castedInst = (BeBinaryOpInst*)inst;
+				auto mcLHS = GetOperand(castedInst->mLHS);
+				auto mcRHS = GetOperand(castedInst->mRHS);
+
+				if (castedInst->mOpKind == BeBinaryOpKind_Subtract)
 				{
-					auto castedInst = (BeBinaryOpInst*)inst;
-					auto mcLHS = GetOperand(castedInst->mLHS);
-					auto mcRHS = GetOperand(castedInst->mRHS);
-
-					if (castedInst->mOpKind == BeBinaryOpKind_Subtract)
+					if (((mcLHS.IsImmediateFloat()) && (mcLHS.GetImmediateDouble() == 0.0)) ||
+						((mcLHS.IsImmediateInt()) && (mcLHS.mImmediate == 0)))
 					{
-						if (((mcLHS.IsImmediateFloat()) && (mcLHS.GetImmediateDouble() == 0.0)) ||
-							((mcLHS.IsImmediateInt()) && (mcLHS.mImmediate == 0)))
-						{
-							auto castedInst = (BeNumericCastInst*)inst;
+						auto castedInst = (BeNumericCastInst*)inst;
 
-							result = AllocVirtualReg(GetType(mcRHS));
-							CreateDefineVReg(result);
-							AllocInst(BeMCInstKind_Mov, result, mcRHS);
-							AllocInst(BeMCInstKind_Neg, result);
-							break;
-						}
-					}
-
-					auto type = GetType(mcLHS);
-
-					switch (castedInst->mOpKind)
-					{
-					case BeBinaryOpKind_Add: result = AllocBinaryOp(BeMCInstKind_Add, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero,
-						((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? BeMCOverflowCheckKind_O :
-						((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Unsigned) != 0) ? BeMCOverflowCheckKind_B : BeMCOverflowCheckKind_None);
+						result = AllocVirtualReg(GetType(mcRHS));
+						CreateDefineVReg(result);
+						AllocInst(BeMCInstKind_Mov, result, mcRHS);
+						AllocInst(BeMCInstKind_Neg, result);
 						break;
-					case BeBinaryOpKind_Subtract: result = AllocBinaryOp(BeMCInstKind_Sub, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsZero,
-						((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? BeMCOverflowCheckKind_O :
-						((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Unsigned) != 0) ? BeMCOverflowCheckKind_B : BeMCOverflowCheckKind_None);
-						break;
-					case BeBinaryOpKind_Multiply: result = AllocBinaryOp(((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Unsigned) != 0) ? BeMCInstKind_Mul : BeMCInstKind_IMul, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsOne,
-						((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? BeMCOverflowCheckKind_O :
-						((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Unsigned) != 0) ? BeMCOverflowCheckKind_O : BeMCOverflowCheckKind_None);
-						break;
-					case BeBinaryOpKind_SDivide: result = AllocBinaryOp(BeMCInstKind_IDiv, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsOne); break;
-					case BeBinaryOpKind_UDivide: result = AllocBinaryOp(BeMCInstKind_Div, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsOne); break;
-					case BeBinaryOpKind_SModulus: result = AllocBinaryOp(BeMCInstKind_IRem, mcLHS, mcRHS, type->IsFloat() ? BeMCBinIdentityKind_None : BeMCBinIdentityKind_Right_IsOne_Result_Zero); break;
-					case BeBinaryOpKind_UModulus: result = AllocBinaryOp(BeMCInstKind_Rem, mcLHS, mcRHS, type->IsFloat() ? BeMCBinIdentityKind_None : BeMCBinIdentityKind_Right_IsOne_Result_Zero); break;
-					case BeBinaryOpKind_BitwiseAnd: result = AllocBinaryOp(BeMCInstKind_And, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
-					case BeBinaryOpKind_BitwiseOr: result = AllocBinaryOp(BeMCInstKind_Or, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
-					case BeBinaryOpKind_ExclusiveOr: result = AllocBinaryOp(BeMCInstKind_Xor, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
-					case BeBinaryOpKind_LeftShift: result = AllocBinaryOp(BeMCInstKind_Shl, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
-					case BeBinaryOpKind_RightShift: result = AllocBinaryOp(BeMCInstKind_Shr, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
-					case BeBinaryOpKind_ARightShift: result = AllocBinaryOp(BeMCInstKind_Sar, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
 					}
 				}
-				break;
-			case BeBitCastInst::TypeId:
+
+				auto type = GetType(mcLHS);
+
+				switch (castedInst->mOpKind)
 				{
-					auto castedInst = (BeBitCastInst*)inst;
-					auto mcValue = GetOperand(castedInst->mValue);
-					if (castedInst->mToType->IsInt())
+				case BeBinaryOpKind_Add: result = AllocBinaryOp(BeMCInstKind_Add, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero,
+					((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? BeMCOverflowCheckKind_O :
+					((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Unsigned) != 0) ? BeMCOverflowCheckKind_B : BeMCOverflowCheckKind_None);
+					break;
+				case BeBinaryOpKind_Subtract: result = AllocBinaryOp(BeMCInstKind_Sub, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsZero,
+					((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? BeMCOverflowCheckKind_O :
+					((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Unsigned) != 0) ? BeMCOverflowCheckKind_B : BeMCOverflowCheckKind_None);
+					break;
+				case BeBinaryOpKind_Multiply: result = AllocBinaryOp(((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Unsigned) != 0) ? BeMCInstKind_Mul : BeMCInstKind_IMul, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsOne,
+					((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? BeMCOverflowCheckKind_O :
+					((castedInst->mOverflowCheckKind & BfOverflowCheckKind_Unsigned) != 0) ? BeMCOverflowCheckKind_O : BeMCOverflowCheckKind_None);
+					break;
+				case BeBinaryOpKind_SDivide: result = AllocBinaryOp(BeMCInstKind_IDiv, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsOne); break;
+				case BeBinaryOpKind_UDivide: result = AllocBinaryOp(BeMCInstKind_Div, mcLHS, mcRHS, BeMCBinIdentityKind_Right_IsOne); break;
+				case BeBinaryOpKind_SModulus: result = AllocBinaryOp(BeMCInstKind_IRem, mcLHS, mcRHS, type->IsFloat() ? BeMCBinIdentityKind_None : BeMCBinIdentityKind_Right_IsOne_Result_Zero); break;
+				case BeBinaryOpKind_UModulus: result = AllocBinaryOp(BeMCInstKind_Rem, mcLHS, mcRHS, type->IsFloat() ? BeMCBinIdentityKind_None : BeMCBinIdentityKind_Right_IsOne_Result_Zero); break;
+				case BeBinaryOpKind_BitwiseAnd: result = AllocBinaryOp(BeMCInstKind_And, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+				case BeBinaryOpKind_BitwiseOr: result = AllocBinaryOp(BeMCInstKind_Or, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
+				case BeBinaryOpKind_ExclusiveOr: result = AllocBinaryOp(BeMCInstKind_Xor, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
+				case BeBinaryOpKind_LeftShift: result = AllocBinaryOp(BeMCInstKind_Shl, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
+				case BeBinaryOpKind_RightShift: result = AllocBinaryOp(BeMCInstKind_Shr, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
+				case BeBinaryOpKind_ARightShift: result = AllocBinaryOp(BeMCInstKind_Sar, mcLHS, mcRHS, BeMCBinIdentityKind_Any_IsZero); break;
+				}
+			}
+			break;
+			case BeBitCastInst::TypeId:
+			{
+				auto castedInst = (BeBitCastInst*)inst;
+				auto mcValue = GetOperand(castedInst->mValue);
+				if (castedInst->mToType->IsInt())
+				{
+					BF_ASSERT(castedInst->mToType->mSize == 8);
+				}
+				else
+					BF_ASSERT(castedInst->mToType->IsPointer());
+				auto toType = castedInst->mToType;
+
+				if (mcValue.IsImmediate())
+				{
+					if (mcValue.mImmediate == 0)
 					{
-						BF_ASSERT(castedInst->mToType->mSize == 8);
+						BeMCOperand newImmediate;
+						newImmediate.mKind = BeMCOperandKind_Immediate_Null;
+						newImmediate.mType = toType;
+						result = newImmediate;
 					}
 					else
-						BF_ASSERT(castedInst->mToType->IsPointer());
-					auto toType = castedInst->mToType;
-
-					if (mcValue.IsImmediate())
 					{
-						if (mcValue.mImmediate == 0)
-						{
-							BeMCOperand newImmediate;
-							newImmediate.mKind = BeMCOperandKind_Immediate_Null;
-							newImmediate.mType = toType;
-							result = newImmediate;
-						}
-						else
-						{
-							// Non-zero constant.  Weird case, just do an actual MOV
-							result = AllocVirtualReg(toType);
-							CreateDefineVReg(result);
-							auto vregInfo = GetVRegInfo(result);
-							AllocInst(BeMCInstKind_Mov, result, mcValue);
-
-							if (mcValue.mKind == BeMCOperandKind_VRegAddr)
-							{
-								auto srcVRegInfo = GetVRegInfo(mcValue);
-								srcVRegInfo->mForceMem = true;
-								CheckForce(srcVRegInfo);
-							}
-						}
-					}
-					else
-					{
+						// Non-zero constant.  Weird case, just do an actual MOV
 						result = AllocVirtualReg(toType);
 						CreateDefineVReg(result);
 						auto vregInfo = GetVRegInfo(result);
-						vregInfo->mRelTo = mcValue;
-						vregInfo->mIsExpr = true;
+						AllocInst(BeMCInstKind_Mov, result, mcValue);
 
 						if (mcValue.mKind == BeMCOperandKind_VRegAddr)
 						{
@@ -17173,1413 +17019,1429 @@ void BeMCContext::Generate(BeFunction* function)
 						}
 					}
 				}
-				break;
-			case BeCmpInst::TypeId:
+				else
 				{
-					auto castedInst = (BeCmpInst*)inst;
-					auto mcLHS = GetOperand(castedInst->mLHS);
-					auto mcRHS = GetOperand(castedInst->mRHS);
-
-					auto valType = castedInst->mLHS->GetType();
-
-					auto mcInst = AllocInst(BeMCInstKind_Cmp, mcLHS, mcRHS);
-
-					auto cmpResultIdx = (int)mCmpResults.size();
-					BeCmpResult cmpResult;
-					cmpResult.mCmpKind = castedInst->mCmpKind;
-
-					if (valType->IsFloat())
-					{
-						// These operations are set up to properly handle NaN comparisons
-						switch (cmpResult.mCmpKind)
-						{
-						case BeCmpKind_SLT:
-							cmpResult.mCmpKind = BeCmpKind_OLE;
-							cmpResult.mInverted = true;
-							BF_SWAP(mcInst->mArg0, mcInst->mArg1);
-							break;
-						case BeCmpKind_SLE:
-							cmpResult.mCmpKind = BeCmpKind_OLT;
-							cmpResult.mInverted = true;
-							BF_SWAP(mcInst->mArg0, mcInst->mArg1);
-							break;
-						case BeCmpKind_SGT:
-							cmpResult.mCmpKind = BeCmpKind_OGT;
-							break;
-						case BeCmpKind_SGE:
-							cmpResult.mCmpKind = BeCmpKind_OGE;
-							break;
-						case BeCmpKind_EQ:
-							cmpResult.mCmpKind = BeCmpKind_UNE;
-							cmpResult.mInverted = true;
-							break;
-						case BeCmpKind_NE:
-							cmpResult.mCmpKind = BeCmpKind_UNE;							
-							break;
-						}
-					}
-
-					mCmpResults.push_back(cmpResult);
-
-					result.mKind = BeMCOperandKind_CmpResult;
-					result.mCmpResultIdx = cmpResultIdx;
-
-					mcInst->mResult = result;
-					break;
-				}
-				break;
-			case BeObjectAccessCheckInst::TypeId:
-				{
-					auto castedInst = (BeObjectAccessCheckInst*)inst;
-					auto mcValue = GetOperand(castedInst->mValue);
-
-					auto int8Type = mModule->mContext->GetPrimitiveType(BeTypeCode_Int8);
-					auto int8PtrType = mModule->mContext->GetPointerTo(int8Type);
-
-					auto int8PtrVal = AllocVirtualReg(int8PtrType);
-					CreateDefineVReg(int8PtrVal);
-					auto vregInfo = GetVRegInfo(int8PtrVal);
+					result = AllocVirtualReg(toType);
+					CreateDefineVReg(result);
+					auto vregInfo = GetVRegInfo(result);
 					vregInfo->mRelTo = mcValue;
 					vregInfo->mIsExpr = true;
 
-					int labelNum = mCurLabelIdx++;
-					BeMCOperand mcImm;
-					mcImm.mKind = BeMCOperandKind_Immediate_i8;
-					mcImm.mImmediate = -0x80;
-
-					BeMCOperand int8Val;
-					int8Val.mKind = BeMCOperandKind_VRegLoad;
-					int8Val.mVRegIdx = int8PtrVal.mVRegIdx;
-
-					AllocInst(BeMCInstKind_Cmp, int8Val, mcImm);
-					AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(labelNum), BeMCOperand::FromCmpKind(BeCmpKind_ULT));
-					AllocInst(BeMCInstKind_DbgBreak);
-					AllocInst(BeMCInstKind_Label, BeMCOperand::FromLabel(labelNum));
-				}
-				break;
-			case BeAllocaInst::TypeId:
-				{
-					//int homeSize = BF_ALIGN(BF_MAX(mMaxCallParamCount, 4) * 8, 16);
-					auto castedInst = (BeAllocaInst*)inst;
-					auto mcSize = BeMCOperand::FromImmediate(castedInst->mType->mSize);
-					bool isAligned16 = false;
-					int align = castedInst->mAlign;
-					BeType* allocType = castedInst->mType;
-					bool preservedVolatiles = false;
-					bool doPtrCast = false;
-					if (castedInst->mArraySize != NULL)
+					if (mcValue.mKind == BeMCOperandKind_VRegAddr)
 					{
-						mcSize = BeMCOperand::FromImmediate(castedInst->mType->GetStride());
-
-						auto mcArraySize = GetOperand(castedInst->mArraySize);
-						if (mcArraySize.IsImmediate())
-						{
-							mcSize.mImmediate = mcSize.mImmediate * mcArraySize.mImmediate;
-							allocType = mModule->mContext->CreateSizedArrayType(castedInst->mType, mcArraySize.mImmediate);
-							doPtrCast = true;
-						}
-						else
-						{
-							preservedVolatiles = true;
-							AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
-
-							inHeadAlloca = false;
-							if (mcSize.mImmediate == 1)
-							{
-								mcSize = mcArraySize;
-							}
-							else
-							{
-								auto mcInst = AllocInst(BeMCInstKind_IMul, mcArraySize, mcSize);
-								mcInst->mResult = BeMCOperand::FromReg(X64Reg_RAX);
-								mcSize = mcInst->mResult;
-							}
-						}
+						auto srcVRegInfo = GetVRegInfo(mcValue);
+						srcVRegInfo->mForceMem = true;
+						CheckForce(srcVRegInfo);
 					}
+				}
+			}
+			break;
+			case BeCmpInst::TypeId:
+			{
+				auto castedInst = (BeCmpInst*)inst;
+				auto mcLHS = GetOperand(castedInst->mLHS);
+				auto mcRHS = GetOperand(castedInst->mRHS);
 
-					// The stack is 16-byte aligned on entry - we have to manually adjust for any alignment greater than that
-					if ((inHeadAlloca) && (align <= 16))
+				auto valType = castedInst->mLHS->GetType();
+
+				auto mcInst = AllocInst(BeMCInstKind_Cmp, mcLHS, mcRHS);
+
+				auto cmpResultIdx = (int)mCmpResults.size();
+				BeCmpResult cmpResult;
+				cmpResult.mCmpKind = castedInst->mCmpKind;
+
+				if (valType->IsFloat())
+				{
+					// These operations are set up to properly handle NaN comparisons
+					switch (cmpResult.mCmpKind)
 					{
-						result = AllocVirtualReg(allocType);
-						auto vregInfo = mVRegInfo[result.mVRegIdx];
-						vregInfo->mAlign = castedInst->mAlign;
-						vregInfo->mHasDynLife = true;
-						if (castedInst->mForceMem)
-							vregInfo->mForceMem = true;
-						if (allocType->IsNonVectorComposite())
-							vregInfo->mForceMem = true;
-						result.mKind = BeMCOperandKind_VRegAddr;
+					case BeCmpKind_SLT:
+						cmpResult.mCmpKind = BeCmpKind_OLE;
+						cmpResult.mInverted = true;
+						BF_SWAP(mcInst->mArg0, mcInst->mArg1);
+						break;
+					case BeCmpKind_SLE:
+						cmpResult.mCmpKind = BeCmpKind_OLT;
+						cmpResult.mInverted = true;
+						BF_SWAP(mcInst->mArg0, mcInst->mArg1);
+						break;
+					case BeCmpKind_SGT:
+						cmpResult.mCmpKind = BeCmpKind_OGT;
+						break;
+					case BeCmpKind_SGE:
+						cmpResult.mCmpKind = BeCmpKind_OGE;
+						break;
+					case BeCmpKind_EQ:
+						cmpResult.mCmpKind = BeCmpKind_UNE;
+						cmpResult.mInverted = true;
+						break;
+					case BeCmpKind_NE:
+						cmpResult.mCmpKind = BeCmpKind_UNE;
+						break;
+					}
+				}
 
-						if (doPtrCast)
-						{
-							BF_ASSERT(allocType->IsSizedArray());
-							auto resultType = mModule->mContext->GetPointerTo(castedInst->mType);
+				mCmpResults.push_back(cmpResult);
 
-							auto ptrResult = AllocVirtualReg(resultType);
-							auto vregInfo = mVRegInfo[ptrResult.mVRegIdx];
-							vregInfo->mIsExpr = true;
-							vregInfo->mRelTo = result;
-							vregInfo->mType = resultType;
-							vregInfo->mAlign = resultType->mSize;
-							CreateDefineVReg(ptrResult);
+				result.mKind = BeMCOperandKind_CmpResult;
+				result.mCmpResultIdx = cmpResultIdx;
 
-							result = ptrResult;
-						}
+				mcInst->mResult = result;
+				break;
+			}
+			break;
+			case BeObjectAccessCheckInst::TypeId:
+			{
+				auto castedInst = (BeObjectAccessCheckInst*)inst;
+				auto mcValue = GetOperand(castedInst->mValue);
+
+				auto int8Type = mModule->mContext->GetPrimitiveType(BeTypeCode_Int8);
+				auto int8PtrType = mModule->mContext->GetPointerTo(int8Type);
+
+				auto int8PtrVal = AllocVirtualReg(int8PtrType);
+				CreateDefineVReg(int8PtrVal);
+				auto vregInfo = GetVRegInfo(int8PtrVal);
+				vregInfo->mRelTo = mcValue;
+				vregInfo->mIsExpr = true;
+
+				int labelNum = mCurLabelIdx++;
+				BeMCOperand mcImm;
+				mcImm.mKind = BeMCOperandKind_Immediate_i8;
+				mcImm.mImmediate = -0x80;
+
+				BeMCOperand int8Val;
+				int8Val.mKind = BeMCOperandKind_VRegLoad;
+				int8Val.mVRegIdx = int8PtrVal.mVRegIdx;
+
+				AllocInst(BeMCInstKind_Cmp, int8Val, mcImm);
+				AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(labelNum), BeMCOperand::FromCmpKind(BeCmpKind_ULT));
+				AllocInst(BeMCInstKind_DbgBreak);
+				AllocInst(BeMCInstKind_Label, BeMCOperand::FromLabel(labelNum));
+			}
+			break;
+			case BeAllocaInst::TypeId:
+			{
+				//int homeSize = BF_ALIGN(BF_MAX(mMaxCallParamCount, 4) * 8, 16);
+				auto castedInst = (BeAllocaInst*)inst;
+				auto mcSize = BeMCOperand::FromImmediate(castedInst->mType->mSize);
+				bool isAligned16 = false;
+				int align = castedInst->mAlign;
+				BeType* allocType = castedInst->mType;
+				bool preservedVolatiles = false;
+				bool doPtrCast = false;
+				if (castedInst->mArraySize != NULL)
+				{
+					mcSize = BeMCOperand::FromImmediate(castedInst->mType->GetStride());
+
+					auto mcArraySize = GetOperand(castedInst->mArraySize);
+					if (mcArraySize.IsImmediate())
+					{
+						mcSize.mImmediate = mcSize.mImmediate * mcArraySize.mImmediate;
+						allocType = mModule->mContext->CreateSizedArrayType(castedInst->mType, mcArraySize.mImmediate);
+						doPtrCast = true;
 					}
 					else
 					{
-						bool needsChkStk = !castedInst->mNoChkStk;
-						bool doFastChkStk = false;
-						if (instIdx < (int)beBlock->mInstructions.size() - 1)
+						preservedVolatiles = true;
+						AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
+
+						inHeadAlloca = false;
+						if (mcSize.mImmediate == 1)
 						{
-							if (auto memSetInstr = BeValueDynCast<BeMemSetInst>(beBlock->mInstructions[instIdx + 1]))
-							{
-								if (memSetInstr->mAddr == inst)
-								{
-									// If we're clearing out this memory immediately after allocation then we don't
-									//  need to do stack probing - the memset will ensure stack pages are committed
-									needsChkStk = false;
-
-									if (mcSize.IsImmediate())
-									{
-										if (auto sizeConst = BeValueDynCast<BeConstant>(memSetInstr->mSize))
-										{
-											if (sizeConst->mInt64 < mcSize.mImmediate)
-											{
-												// We haven't actually cleared out everything so we still need to chkStk
-												needsChkStk = true;
-											}
-										}
-									}
-								}
-							}
-						}
-
-						int stackAlign = BF_MAX(align, 16);
-
-						BeMCOperand mcFunc;
-						mcFunc.mKind = BeMCOperandKind_SymbolAddr;
-						mcFunc.mSymbolIdx = mCOFFObject->GetSymbolRef("__chkstk")->mIdx;
-
-						if (mcSize.IsImmediate())
-						{
-							// Align to 16 bytes
-							mcSize.mImmediate = (mcSize.mImmediate + 0xF) & ~0xF;
-						}
-
-						if ((mcSize.IsImmediate()) && (!preservedVolatiles) && (!needsChkStk))
-						{
-							AllocInst(BeMCInstKind_Sub, BeMCOperand::FromReg(X64Reg_RSP), mcSize);
+							mcSize = mcArraySize;
 						}
 						else
 						{
-							if (needsChkStk)
-							{
-								if ((mcSize.IsImmediate()) && (mcSize.mImmediate < 4096))
-								{
-									// We can do a fast __chkstk in this case since we have a max of one page to handle
-									doFastChkStk = true;
-								}
-							}
+							auto mcInst = AllocInst(BeMCInstKind_IMul, mcArraySize, mcSize);
+							mcInst->mResult = BeMCOperand::FromReg(X64Reg_RAX);
+							mcSize = mcInst->mResult;
+						}
+					}
+				}
 
-							if (doFastChkStk)
+				// The stack is 16-byte aligned on entry - we have to manually adjust for any alignment greater than that
+				if ((inHeadAlloca) && (align <= 16))
+				{
+					result = AllocVirtualReg(allocType);
+					auto vregInfo = mVRegInfo[result.mVRegIdx];
+					vregInfo->mAlign = castedInst->mAlign;
+					vregInfo->mHasDynLife = true;
+					if (castedInst->mForceMem)
+						vregInfo->mForceMem = true;
+					if (allocType->IsNonVectorComposite())
+						vregInfo->mForceMem = true;
+					result.mKind = BeMCOperandKind_VRegAddr;
+
+					if (doPtrCast)
+					{
+						BF_ASSERT(allocType->IsSizedArray());
+						auto resultType = mModule->mContext->GetPointerTo(castedInst->mType);
+
+						auto ptrResult = AllocVirtualReg(resultType);
+						auto vregInfo = mVRegInfo[ptrResult.mVRegIdx];
+						vregInfo->mIsExpr = true;
+						vregInfo->mRelTo = result;
+						vregInfo->mType = resultType;
+						vregInfo->mAlign = resultType->mSize;
+						CreateDefineVReg(ptrResult);
+
+						result = ptrResult;
+					}
+				}
+				else
+				{
+					bool needsChkStk = !castedInst->mNoChkStk;
+					bool doFastChkStk = false;
+					if (instIdx < (int)beBlock->mInstructions.size() - 1)
+					{
+						if (auto memSetInstr = BeValueDynCast<BeMemSetInst>(beBlock->mInstructions[instIdx + 1]))
+						{
+							if (memSetInstr->mAddr == inst)
 							{
-								AllocInst(BeMCInstKind_Sub, BeMCOperand::FromReg(X64Reg_RSP), mcSize);
-								AllocInst(BeMCInstKind_FastCheckStack, BeMCOperand::FromReg(X64Reg_RSP));
-							}
-							else
-							{
-								if (!preservedVolatiles)
-									AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
+								// If we're clearing out this memory immediately after allocation then we don't
+								//  need to do stack probing - the memset will ensure stack pages are committed
+								needsChkStk = false;
 
 								if (mcSize.IsImmediate())
 								{
-									AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_RAX), mcSize);
-
-									// It's tempting to not do a chkstk when we do an alloc less than 4k, but this isn't valid
-									//  because we could break the system by doing three 2k allocs and access the third one first
-									//  and BOOM.  We rely on the front-end to tell us when we can omit it.
+									if (auto sizeConst = BeValueDynCast<BeConstant>(memSetInstr->mSize))
+									{
+										if (sizeConst->mInt64 < mcSize.mImmediate)
+										{
+											// We haven't actually cleared out everything so we still need to chkStk
+											needsChkStk = true;
+										}
+									}
 								}
-								else if (!isAligned16)
-								{
-									AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_RAX), mcSize);
-									AllocInst(BeMCInstKind_Add, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand::FromImmediate(0xF));
-									AllocInst(BeMCInstKind_And, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand::FromImmediate(~0xF));
-								}
-
-								if ((needsChkStk) && (!doFastChkStk))
-								{
-									AllocInst(BeMCInstKind_Call, mcFunc);
-								}
-
-								AllocInst(BeMCInstKind_Sub, BeMCOperand::FromReg(X64Reg_RSP), BeMCOperand::FromReg(X64Reg_RAX));
-								if (doFastChkStk)
-								{
-									AllocInst(BeMCInstKind_FastCheckStack, BeMCOperand::FromReg(X64Reg_RSP));
-								}
-
-								AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
 							}
-						}
-
-						auto resultType = mModule->mContext->GetPointerTo(castedInst->mType);
-
-						auto intType = mModule->mContext->GetPrimitiveType(BeTypeCode_Int64);
-						BeMCOperand ptrValue;
-						if (mUseBP)
-						{
-							ptrValue = AllocVirtualReg(intType);
-							auto vregInfo = mVRegInfo[ptrValue.mVRegIdx];
-							vregInfo->mIsExpr = true;
-							vregInfo->mRelTo = BeMCOperand::FromReg(X64Reg_RSP);
-							vregInfo->mRelOffset.mKind = BeMCOperandKind::BeMCOperandKind_Immediate_HomeSize;
-							CreateDefineVReg(ptrValue);
-						}
-						else
-						{
-							ptrValue = BeMCOperand::FromReg(X64Reg_RSP);
-						}
-
-						result = AllocVirtualReg(resultType);
-						auto vregInfo = mVRegInfo[result.mVRegIdx];
-						vregInfo->mHasDynLife = true;
-						CreateDefineVReg(result);
-
-						AllocInst(BeMCInstKind_Mov, result, ptrValue);
-
-						if (stackAlign > 16)
-						{
-							// We have to align after everything - note that we always have to keep the 'homeSize' space available from RSP for calls,
-							//  so the ANDing for alignment must be done here
-							AllocInst(BeMCInstKind_And, result, BeMCOperand::FromImmediate(~(stackAlign - 1)));
-							AllocInst(BeMCInstKind_Sub, BeMCOperand::FromReg(X64Reg_RSP), BeMCOperand::FromImmediate(stackAlign - 16));
-						}
-
-						BF_ASSERT(mUseBP);
-					}
-				}
-				break;
-			case BeAliasValueInst::TypeId:
-				{
-					auto castedInst = (BeAliasValueInst*)inst;
-					auto mcPtr = GetOperand(castedInst->mPtr, false, true);
-					result = AllocVirtualReg(GetType(mcPtr));
-					auto vregInfo = mVRegInfo[result.mVRegIdx];
-					vregInfo->mIsExpr = true;
-					vregInfo->mRelTo = mcPtr;
-					vregInfo->mHasDynLife = true;
-					CreateDefineVReg(result);
-				}
-				break;
-			case BeLifetimeStartInst::TypeId:
-				{
-					auto castedInst = (BeLifetimeEndInst*)inst;
-					auto mcPtr = GetOperand(castedInst->mPtr, false, true, true);
-					if (mcPtr)
-					{
-						auto vregInfo = GetVRegInfo(mcPtr);
-						if ((vregInfo != NULL) && (vregInfo->mHasDynLife))
-						{
-							// This alloca had an assignment (ie: `mov vregX, [RBP+homeSize0]`) so it must be defined at the mov
-							// This may indicate incorrectly generated code where we thought an alloca would be in the head but it isn't
-						}
-						else
-							AllocInst(BeMCInstKind_LifetimeStart, mcPtr);
-					}
-				}
-				break;
-			case BeLifetimeExtendInst::TypeId:
-				{
-					auto castedInst = (BeLifetimeEndInst*)inst;
-					auto mcPtr = GetOperand(castedInst->mPtr, false, true, true);
-					if (mcPtr)
-						AllocInst(BeMCInstKind_LifetimeExtend, mcPtr);
-				}
-				break;
-			case BeLifetimeEndInst::TypeId:
-				{
-					auto castedInst = (BeLifetimeEndInst*)inst;
-					auto mcPtr = GetOperand(castedInst->mPtr, false, true, true);
-					if (mcPtr.IsVRegAny())
-					{
-						AllocInst(BeMCInstKind_LifetimeEnd, mcPtr);
-					}
-				}
-				break;
-			case BeLifetimeSoftEndInst::TypeId:
-				{
-					auto castedInst = (BeLifetimeSoftEndInst*)inst;
-					auto mcPtr = GetOperand(castedInst->mPtr, false, true, true);
-					if (mcPtr.IsVRegAny())
-					{
-						AllocInst(BeMCInstKind_LifetimeSoftEnd, mcPtr);
-					}
-				}
-				break;
-			case BeValueScopeStartInst::TypeId:
-				{
-					result = BeMCOperand::FromImmediate((int)mVRegInfo.size());
-				}
-				break;
-			case BeValueScopeRetainInst::TypeId:
-				{
-					auto castedInst = (BeValueScopeRetainInst*)inst;
-					auto mcValue = GetOperand(castedInst->mValue, false, true);
-					auto vregInfo = GetVRegInfo(mcValue);
-					if (vregInfo != NULL)
-						vregInfo->mValueScopeRetainedKind = BeMCValueScopeRetainKind_Soft;
-				}
-				break;
-			case BeValueScopeEndInst::TypeId:
-				{
-					auto castedInst = (BeValueScopeEndInst*)inst;
-					BeMCOperand mcScopeStart = GetOperand(castedInst->mScopeStart, false, true);
-					// There are some recordering cases where we have a ValueScopeStart moved after a ValueScopeEnd
-					//  Just ignore those. This is just an optimization anyway.
-					if (mcScopeStart)
-						AllocInst(castedInst->mIsSoft ? BeMCInstKind_ValueScopeSoftEnd : BeMCInstKind_ValueScopeHardEnd, mcScopeStart, BeMCOperand::FromImmediate((int)mVRegInfo.size()));
-				}
-				break;
-			case BeLifetimeFenceInst::TypeId:
-				{
-					auto castedInst = (BeLifetimeFenceInst*)inst;
-					auto mcPtr = GetOperand(castedInst->mPtr, false);
-					auto fenceBlock = GetOperand(castedInst->mFenceBlock);
-
-					auto vregInfo = GetVRegInfo(mcPtr);
-					vregInfo->mChainLifetimeEnd = true;
-
-					SetAndRestoreValue<BeMCBlock*> prevBlock(mActiveBlock, fenceBlock.mBlock);
-					auto lifetimeStart = AllocInst(BeMCInstKind_LifetimeStart, mcPtr);
-					lifetimeStart->mDbgLoc = NULL;
-				}
-				break;
-			case BeLoadInst::TypeId:
-				{
-					auto castedInst = (BeLoadInst*)inst;
-					auto mcTarget = GetOperand(castedInst->mTarget, false, false, true);
-					result = CreateLoad(mcTarget);
-				}
-				break;
-			case BeStoreInst::TypeId:
-				{
-					auto castedInst = (BeStoreInst*)inst;
-					auto mcVal = GetOperand(castedInst->mVal);
-					auto mcPtr = GetOperand(castedInst->mPtr, false, false, true);
-
-					bool handled = false;
-
-					CreateStore(BeMCInstKind_Mov, mcVal, mcPtr);
-				}
-				break;
-			case BeSetCanMergeInst::TypeId:
-				{
-					auto castedInst = (BeSetCanMergeInst*)inst;
-					auto mcVal = GetOperand(castedInst->mVal, false, false, true);
-					auto vregInfo = GetVRegInfo(mcVal);
-					vregInfo->mForceMerge = true;
-				}
-				break;
-			case BeMemSetInst::TypeId:
-				{
-					auto castedInst = (BeMemSetInst*)inst;
-
-					if (auto constVal = BeValueDynCast<BeConstant>(castedInst->mVal))
-					{
-						if (auto constSize = BeValueDynCast<BeConstant>(castedInst->mSize))
-						{
-							CreateMemSet(GetOperand(castedInst->mAddr), constVal->mUInt8, constSize->mInt64, castedInst->mAlignment);
-							break;
 						}
 					}
 
-					SizedArray<BeValue*, 3> args = { castedInst->mAddr, castedInst->mVal, castedInst->mSize };
-					auto mcFunc = BeMCOperand::FromSymbolAddr(mCOFFObject->GetSymbolRef("memset")->mIdx);
-					CreateCall(mcFunc, args);
-				}
-				break;
-			case BeFenceInst::TypeId:
-				{
-					AllocInst(BeMCInstKind_MFence);
-				}
-				break;
-			case BeStackSaveInst::TypeId:
-				{
-					auto stackVReg = BeMCOperand::FromVReg(stackSaveVRegs.back());
-					stackSaveVRegs.pop_back();
-					CreateDefineVReg(stackVReg);
-					AllocInst(BeMCInstKind_Mov, stackVReg, BeMCOperand::FromReg(X64Reg_RSP));
-					result = stackVReg;
-				}
-				break;
-			case BeStackRestoreInst::TypeId:
-				{
-					auto castedInst = (BeStackRestoreInst*)inst;
+					int stackAlign = BF_MAX(align, 16);
 
-					auto mcStackVal = GetOperand(castedInst->mStackVal);
-					AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_RSP), mcStackVal);
-				}
-				break;
-			case BeGEPInst::TypeId:
-				{
-					auto castedInst = (BeGEPInst*)inst;
+					BeMCOperand mcFunc;
+					mcFunc.mKind = BeMCOperandKind_SymbolAddr;
+					mcFunc.mSymbolIdx = mCOFFObject->GetSymbolRef("__chkstk")->mIdx;
 
-					auto mcVal = GetOperand(castedInst->mPtr);
-					auto mcIdx0 = GetOperand(castedInst->mIdx0);
-
-					BePointerType* ptrType = (BePointerType*)GetType(mcVal);
-					BF_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
-
-					result = mcVal;
-					if (castedInst->mIdx1 != NULL)
+					if (mcSize.IsImmediate())
 					{
-						// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
-						BF_ASSERT(castedInst->mIdx0);
+						// Align to 16 bytes
+						mcSize.mImmediate = (mcSize.mImmediate + 0xF) & ~0xF;
+					}
 
-						auto mcIdx1 = GetOperand(castedInst->mIdx1);
-						if (!mcIdx1.IsImmediate())
-						{
-							// This path is used when we have a const array that gets indexed by a non-const index value
-							if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
-							{
-								auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
-
-								auto elementPtrType = mModule->mContext->GetPointerTo(arrayType->mElementType);
-
-								auto ptrValue = AllocVirtualReg(elementPtrType);
-								auto ptrInfo = GetVRegInfo(ptrValue);
-								ptrInfo->mIsExpr = true;
-								ptrInfo->mRelTo = result;
-								CreateDefineVReg(ptrValue);
-								result = ptrValue;
-
-								BeMCOperand mcRelOffset;
-								int relScale = 1;
-								if (mcIdx1.IsImmediate())
-								{
-									mcRelOffset = BeMCOperand::FromImmediate(mcIdx1.mImmediate * arrayType->mElementType->GetStride());
-								}
-								else
-								{
-									mcRelOffset = mcIdx1;
-									relScale = arrayType->mElementType->GetStride();
-								}
-
-								result = AllocRelativeVirtualReg(elementPtrType, result, mcRelOffset, relScale);
-								// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
-								CreateDefineVReg(result);
-								//TODO: Always correct?
-								result.mKind = BeMCOperandKind_VReg;
-							}
-							else
-								SoftFail("Invalid GEP", inst->mDbgLoc);
-						}
-						else
-						{
-							BF_ASSERT(mcIdx1.IsImmediate());
-							int byteOffset = 0;
-							BeType* elementType = NULL;
-							if (ptrType->mElementType->mTypeCode == BeTypeCode_Struct)
-							{
-								BeStructType* structType = (BeStructType*)ptrType->mElementType;
-								auto& structMember = structType->mMembers[mcIdx1.mImmediate];
-								elementType = structMember.mType;
-								byteOffset = structMember.mByteOffset;
-							}
-							else if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
-							{
-								auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
-								elementType = arrayType->mElementType;
-								byteOffset = mcIdx1.mImmediate * elementType->GetStride();
-							}
-							else if (ptrType->mElementType->mTypeCode == BeTypeCode_Vector)
-							{
-								auto arrayType = (BeVectorType*)ptrType->mElementType;
-								elementType = arrayType->mElementType;
-								byteOffset = mcIdx1.mImmediate * elementType->GetStride();
-							}
-							else
-							{
-								Fail("Invalid gep target");
-							}
-
-							auto elementPtrType = mModule->mContext->GetPointerTo(elementType);
-							result = AllocRelativeVirtualReg(elementPtrType, result, GetImmediate(byteOffset), 1);
-							// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
-							CreateDefineVReg(result);
-							result.mKind = BeMCOperandKind_VReg;
-						}
+					if ((mcSize.IsImmediate()) && (!preservedVolatiles) && (!needsChkStk))
+					{
+						AllocInst(BeMCInstKind_Sub, BeMCOperand::FromReg(X64Reg_RSP), mcSize);
 					}
 					else
 					{
-						// It's temping to do a (IsNonZero) precondition, but if we make a reference to a VReg that is NOT in Addr form,
-						//  then this will encode that so we will know we need to do a Load on that value at the Def during legalization
-
-						BeMCOperand mcRelOffset;
-						int relScale = 1;
-						if (mcIdx0.IsImmediate())
+						if (needsChkStk)
 						{
-							mcRelOffset = BeMCOperand::FromImmediate(mcIdx0.mImmediate * ptrType->mElementType->GetStride());
+							if ((mcSize.IsImmediate()) && (mcSize.mImmediate < 4096))
+							{
+								// We can do a fast __chkstk in this case since we have a max of one page to handle
+								doFastChkStk = true;
+							}
+						}
+
+						if (doFastChkStk)
+						{
+							AllocInst(BeMCInstKind_Sub, BeMCOperand::FromReg(X64Reg_RSP), mcSize);
+							AllocInst(BeMCInstKind_FastCheckStack, BeMCOperand::FromReg(X64Reg_RSP));
 						}
 						else
 						{
-							mcRelOffset = mcIdx0;
-							relScale = ptrType->mElementType->GetStride();
+							if (!preservedVolatiles)
+								AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
+
+							if (mcSize.IsImmediate())
+							{
+								AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_RAX), mcSize);
+
+								// It's tempting to not do a chkstk when we do an alloc less than 4k, but this isn't valid
+								//  because we could break the system by doing three 2k allocs and access the third one first
+								//  and BOOM.  We rely on the front-end to tell us when we can omit it.
+							}
+							else if (!isAligned16)
+							{
+								AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_RAX), mcSize);
+								AllocInst(BeMCInstKind_Add, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand::FromImmediate(0xF));
+								AllocInst(BeMCInstKind_And, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand::FromImmediate(~0xF));
+							}
+
+							if ((needsChkStk) && (!doFastChkStk))
+							{
+								AllocInst(BeMCInstKind_Call, mcFunc);
+							}
+
+							AllocInst(BeMCInstKind_Sub, BeMCOperand::FromReg(X64Reg_RSP), BeMCOperand::FromReg(X64Reg_RAX));
+							if (doFastChkStk)
+							{
+								AllocInst(BeMCInstKind_FastCheckStack, BeMCOperand::FromReg(X64Reg_RSP));
+							}
+
+							AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
+						}
+					}
+
+					auto resultType = mModule->mContext->GetPointerTo(castedInst->mType);
+
+					auto intType = mModule->mContext->GetPrimitiveType(BeTypeCode_Int64);
+					BeMCOperand ptrValue;
+					if (mUseBP)
+					{
+						ptrValue = AllocVirtualReg(intType);
+						auto vregInfo = mVRegInfo[ptrValue.mVRegIdx];
+						vregInfo->mIsExpr = true;
+						vregInfo->mRelTo = BeMCOperand::FromReg(X64Reg_RSP);
+						vregInfo->mRelOffset.mKind = BeMCOperandKind::BeMCOperandKind_Immediate_HomeSize;
+						CreateDefineVReg(ptrValue);
+					}
+					else
+					{
+						ptrValue = BeMCOperand::FromReg(X64Reg_RSP);
+					}
+
+					result = AllocVirtualReg(resultType);
+					auto vregInfo = mVRegInfo[result.mVRegIdx];
+					vregInfo->mHasDynLife = true;
+					CreateDefineVReg(result);
+
+					AllocInst(BeMCInstKind_Mov, result, ptrValue);
+
+					if (stackAlign > 16)
+					{
+						// We have to align after everything - note that we always have to keep the 'homeSize' space available from RSP for calls,
+						//  so the ANDing for alignment must be done here
+						AllocInst(BeMCInstKind_And, result, BeMCOperand::FromImmediate(~(stackAlign - 1)));
+						AllocInst(BeMCInstKind_Sub, BeMCOperand::FromReg(X64Reg_RSP), BeMCOperand::FromImmediate(stackAlign - 16));
+					}
+
+					BF_ASSERT(mUseBP);
+				}
+			}
+			break;
+			case BeAliasValueInst::TypeId:
+			{
+				auto castedInst = (BeAliasValueInst*)inst;
+				auto mcPtr = GetOperand(castedInst->mPtr, false, true);
+				result = AllocVirtualReg(GetType(mcPtr));
+				auto vregInfo = mVRegInfo[result.mVRegIdx];
+				vregInfo->mIsExpr = true;
+				vregInfo->mRelTo = mcPtr;
+				vregInfo->mHasDynLife = true;
+				CreateDefineVReg(result);
+			}
+			break;
+			case BeLifetimeStartInst::TypeId:
+			{
+				auto castedInst = (BeLifetimeEndInst*)inst;
+				auto mcPtr = GetOperand(castedInst->mPtr, false, true, true);
+				if (mcPtr)
+				{
+					auto vregInfo = GetVRegInfo(mcPtr);
+					if ((vregInfo != NULL) && (vregInfo->mHasDynLife))
+					{
+						// This alloca had an assignment (ie: `mov vregX, [RBP+homeSize0]`) so it must be defined at the mov
+						// This may indicate incorrectly generated code where we thought an alloca would be in the head but it isn't
+					}
+					else
+						AllocInst(BeMCInstKind_LifetimeStart, mcPtr);
+				}
+			}
+			break;
+			case BeLifetimeExtendInst::TypeId:
+			{
+				auto castedInst = (BeLifetimeEndInst*)inst;
+				auto mcPtr = GetOperand(castedInst->mPtr, false, true, true);
+				if (mcPtr)
+					AllocInst(BeMCInstKind_LifetimeExtend, mcPtr);
+			}
+			break;
+			case BeLifetimeEndInst::TypeId:
+			{
+				auto castedInst = (BeLifetimeEndInst*)inst;
+				auto mcPtr = GetOperand(castedInst->mPtr, false, true, true);
+				if (mcPtr.IsVRegAny())
+				{
+					AllocInst(BeMCInstKind_LifetimeEnd, mcPtr);
+				}
+			}
+			break;
+			case BeLifetimeSoftEndInst::TypeId:
+			{
+				auto castedInst = (BeLifetimeSoftEndInst*)inst;
+				auto mcPtr = GetOperand(castedInst->mPtr, false, true, true);
+				if (mcPtr.IsVRegAny())
+				{
+					AllocInst(BeMCInstKind_LifetimeSoftEnd, mcPtr);
+				}
+			}
+			break;
+			case BeValueScopeStartInst::TypeId:
+			{
+				result = BeMCOperand::FromImmediate((int)mVRegInfo.size());
+			}
+			break;
+			case BeValueScopeRetainInst::TypeId:
+			{
+				auto castedInst = (BeValueScopeRetainInst*)inst;
+				auto mcValue = GetOperand(castedInst->mValue, false, true);
+				auto vregInfo = GetVRegInfo(mcValue);
+				if (vregInfo != NULL)
+					vregInfo->mValueScopeRetainedKind = BeMCValueScopeRetainKind_Soft;
+			}
+			break;
+			case BeValueScopeEndInst::TypeId:
+			{
+				auto castedInst = (BeValueScopeEndInst*)inst;
+				BeMCOperand mcScopeStart = GetOperand(castedInst->mScopeStart, false, true);
+				// There are some recordering cases where we have a ValueScopeStart moved after a ValueScopeEnd
+				//  Just ignore those. This is just an optimization anyway.
+				if (mcScopeStart)
+					AllocInst(castedInst->mIsSoft ? BeMCInstKind_ValueScopeSoftEnd : BeMCInstKind_ValueScopeHardEnd, mcScopeStart, BeMCOperand::FromImmediate((int)mVRegInfo.size()));
+			}
+			break;
+			case BeLifetimeFenceInst::TypeId:
+			{
+				auto castedInst = (BeLifetimeFenceInst*)inst;
+				auto mcPtr = GetOperand(castedInst->mPtr, false);
+				auto fenceBlock = GetOperand(castedInst->mFenceBlock);
+
+				auto vregInfo = GetVRegInfo(mcPtr);
+				vregInfo->mChainLifetimeEnd = true;
+
+				SetAndRestoreValue<BeMCBlock*> prevBlock(mActiveBlock, fenceBlock.mBlock);
+				auto lifetimeStart = AllocInst(BeMCInstKind_LifetimeStart, mcPtr);
+				lifetimeStart->mDbgLoc = NULL;
+			}
+			break;
+			case BeLoadInst::TypeId:
+			{
+				auto castedInst = (BeLoadInst*)inst;
+				auto mcTarget = GetOperand(castedInst->mTarget, false, false, true);
+				result = CreateLoad(mcTarget);
+			}
+			break;
+			case BeStoreInst::TypeId:
+			{
+				auto castedInst = (BeStoreInst*)inst;
+				auto mcVal = GetOperand(castedInst->mVal);
+				auto mcPtr = GetOperand(castedInst->mPtr, false, false, true);
+
+				bool handled = false;
+
+				CreateStore(BeMCInstKind_Mov, mcVal, mcPtr);
+			}
+			break;
+			case BeSetCanMergeInst::TypeId:
+			{
+				auto castedInst = (BeSetCanMergeInst*)inst;
+				auto mcVal = GetOperand(castedInst->mVal, false, false, true);
+				auto vregInfo = GetVRegInfo(mcVal);
+				vregInfo->mForceMerge = true;
+			}
+			break;
+			case BeMemSetInst::TypeId:
+			{
+				auto castedInst = (BeMemSetInst*)inst;
+
+				if (auto constVal = BeValueDynCast<BeConstant>(castedInst->mVal))
+				{
+					if (auto constSize = BeValueDynCast<BeConstant>(castedInst->mSize))
+					{
+						CreateMemSet(GetOperand(castedInst->mAddr), constVal->mUInt8, constSize->mInt64, castedInst->mAlignment);
+						break;
+					}
+				}
+
+				SizedArray<BeValue*, 3> args = { castedInst->mAddr, castedInst->mVal, castedInst->mSize };
+				auto mcFunc = BeMCOperand::FromSymbolAddr(mCOFFObject->GetSymbolRef("memset")->mIdx);
+				CreateCall(mcFunc, args);
+			}
+			break;
+			case BeFenceInst::TypeId:
+			{
+				AllocInst(BeMCInstKind_MFence);
+			}
+			break;
+			case BeStackSaveInst::TypeId:
+			{
+				auto stackVReg = BeMCOperand::FromVReg(stackSaveVRegs.back());
+				stackSaveVRegs.pop_back();
+				CreateDefineVReg(stackVReg);
+				AllocInst(BeMCInstKind_Mov, stackVReg, BeMCOperand::FromReg(X64Reg_RSP));
+				result = stackVReg;
+			}
+			break;
+			case BeStackRestoreInst::TypeId:
+			{
+				auto castedInst = (BeStackRestoreInst*)inst;
+
+				auto mcStackVal = GetOperand(castedInst->mStackVal);
+				AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_RSP), mcStackVal);
+			}
+			break;
+			case BeGEPInst::TypeId:
+			{
+				auto castedInst = (BeGEPInst*)inst;
+
+				auto mcVal = GetOperand(castedInst->mPtr);
+				auto mcIdx0 = GetOperand(castedInst->mIdx0);
+
+				BePointerType* ptrType = (BePointerType*)GetType(mcVal);
+				BF_ASSERT(ptrType->mTypeCode == BeTypeCode_Pointer);
+
+				result = mcVal;
+				if (castedInst->mIdx1 != NULL)
+				{
+					// We assume we never do both an idx0 and idx1 at once.  Fix if we change that.
+					BF_ASSERT(castedInst->mIdx0);
+
+					auto mcIdx1 = GetOperand(castedInst->mIdx1);
+					if (!mcIdx1.IsImmediate())
+					{
+						// This path is used when we have a const array that gets indexed by a non-const index value
+						if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
+						{
+							auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
+
+							auto elementPtrType = mModule->mContext->GetPointerTo(arrayType->mElementType);
+
+							auto ptrValue = AllocVirtualReg(elementPtrType);
+							auto ptrInfo = GetVRegInfo(ptrValue);
+							ptrInfo->mIsExpr = true;
+							ptrInfo->mRelTo = result;
+							CreateDefineVReg(ptrValue);
+							result = ptrValue;
+
+							BeMCOperand mcRelOffset;
+							int relScale = 1;
+							if (mcIdx1.IsImmediate())
+							{
+								mcRelOffset = BeMCOperand::FromImmediate(mcIdx1.mImmediate * arrayType->mElementType->GetStride());
+							}
+							else
+							{
+								mcRelOffset = mcIdx1;
+								relScale = arrayType->mElementType->GetStride();
+							}
+
+							result = AllocRelativeVirtualReg(elementPtrType, result, mcRelOffset, relScale);
+							// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
+							CreateDefineVReg(result);
+							//TODO: Always correct?
+							result.mKind = BeMCOperandKind_VReg;
+						}
+						else
+							SoftFail("Invalid GEP", inst->mDbgLoc);
+					}
+					else
+					{
+						BF_ASSERT(mcIdx1.IsImmediate());
+						int byteOffset = 0;
+						BeType* elementType = NULL;
+						if (ptrType->mElementType->mTypeCode == BeTypeCode_Struct)
+						{
+							BeStructType* structType = (BeStructType*)ptrType->mElementType;
+							auto& structMember = structType->mMembers[mcIdx1.mImmediate];
+							elementType = structMember.mType;
+							byteOffset = structMember.mByteOffset;
+						}
+						else if (ptrType->mElementType->mTypeCode == BeTypeCode_SizedArray)
+						{
+							auto arrayType = (BeSizedArrayType*)ptrType->mElementType;
+							elementType = arrayType->mElementType;
+							byteOffset = mcIdx1.mImmediate * elementType->GetStride();
+						}
+						else if (ptrType->mElementType->mTypeCode == BeTypeCode_Vector)
+						{
+							auto arrayType = (BeVectorType*)ptrType->mElementType;
+							elementType = arrayType->mElementType;
+							byteOffset = mcIdx1.mImmediate * elementType->GetStride();
+						}
+						else
+						{
+							Fail("Invalid gep target");
 						}
 
-						result = AllocRelativeVirtualReg(ptrType, result, mcRelOffset, relScale);
+						auto elementPtrType = mModule->mContext->GetPointerTo(elementType);
+						result = AllocRelativeVirtualReg(elementPtrType, result, GetImmediate(byteOffset), 1);
 						// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
 						CreateDefineVReg(result);
-						//TODO: Always correct?
 						result.mKind = BeMCOperandKind_VReg;
 					}
 				}
-				break;
+				else
+				{
+					// It's temping to do a (IsNonZero) precondition, but if we make a reference to a VReg that is NOT in Addr form,
+					//  then this will encode that so we will know we need to do a Load on that value at the Def during legalization
+
+					BeMCOperand mcRelOffset;
+					int relScale = 1;
+					if (mcIdx0.IsImmediate())
+					{
+						mcRelOffset = BeMCOperand::FromImmediate(mcIdx0.mImmediate * ptrType->mElementType->GetStride());
+					}
+					else
+					{
+						mcRelOffset = mcIdx0;
+						relScale = ptrType->mElementType->GetStride();
+					}
+
+					result = AllocRelativeVirtualReg(ptrType, result, mcRelOffset, relScale);
+					// The def is primary to create a single 'master location' for the GEP vreg to become legalized before use
+					CreateDefineVReg(result);
+					//TODO: Always correct?
+					result.mKind = BeMCOperandKind_VReg;
+				}
+			}
+			break;
 			case BeBrInst::TypeId:
+			{
+				auto castedInst = (BeBrInst*)inst;
+
+				auto mcInst = AllocInst();
+				mcInst->mKind = BeMCInstKind_Br;
+				mcInst->mArg0 = GetOperand(castedInst->mTargetBlock);
+				mcInst->mArg0.mBlock->AddPred(mcBlock);
+
+				if (castedInst->mNoCollapse)
 				{
-					auto castedInst = (BeBrInst*)inst;
-
-					auto mcInst = AllocInst();
-					mcInst->mKind = BeMCInstKind_Br;
-					mcInst->mArg0 = GetOperand(castedInst->mTargetBlock);
-					mcInst->mArg0.mBlock->AddPred(mcBlock);
-
-					if (castedInst->mNoCollapse)
-					{
-						mcInst->mArg1.mKind = BeMCOperandKind_Immediate_i8;
-						mcInst->mArg1.mImmediate = 1;
-					}
-					else if (castedInst->mIsFake)
-					{
-						mcInst->mArg1.mKind = BeMCOperandKind_Immediate_i8;
-						mcInst->mArg1.mImmediate = 2;
-						mcBlock->mHasFakeBr = true;
-					}
+					mcInst->mArg1.mKind = BeMCOperandKind_Immediate_i8;
+					mcInst->mArg1.mImmediate = 1;
 				}
-				break;
+				else if (castedInst->mIsFake)
+				{
+					mcInst->mArg1.mKind = BeMCOperandKind_Immediate_i8;
+					mcInst->mArg1.mImmediate = 2;
+					mcBlock->mHasFakeBr = true;
+				}
+			}
+			break;
 			case BeCondBrInst::TypeId:
-				{
-					auto castedInst = (BeCondBrInst*)inst;
-					auto testVal = GetOperand(castedInst->mCond, true);
-					auto trueBlock = GetOperand(castedInst->mTrueBlock);
-					auto falseBlock = GetOperand(castedInst->mFalseBlock);
-					trueBlock.mBlock->AddPred(mcBlock);
-					falseBlock.mBlock->AddPred(mcBlock);
-					CreateCondBr(mcBlock, testVal, trueBlock, falseBlock);
-				}
-				break;
+			{
+				auto castedInst = (BeCondBrInst*)inst;
+				auto testVal = GetOperand(castedInst->mCond, true);
+				auto trueBlock = GetOperand(castedInst->mTrueBlock);
+				auto falseBlock = GetOperand(castedInst->mFalseBlock);
+				trueBlock.mBlock->AddPred(mcBlock);
+				falseBlock.mBlock->AddPred(mcBlock);
+				CreateCondBr(mcBlock, testVal, trueBlock, falseBlock);
+			}
+			break;
 			case BePhiInst::TypeId:
+			{
+				auto castedInst = (BePhiInst*)inst;
+
+				BeMCPhi* mcPhi = mPhiAlloc.Alloc();
+				mcPhi->mBlock = mcBlock;
+				mcPhi->mIdx = mCurPhiIdx++;
+
+				//if (mDebugging)
 				{
-					auto castedInst = (BePhiInst*)inst;
-
-					BeMCPhi* mcPhi = mPhiAlloc.Alloc();
-					mcPhi->mBlock = mcBlock;
-					mcPhi->mIdx = mCurPhiIdx++;
-
-					//if (mDebugging)
+					for (auto phiIncoming : castedInst->mIncoming)
 					{
-						for (auto phiIncoming : castedInst->mIncoming)
+						auto blockFrom = GetOperand(phiIncoming->mBlock).mBlock;;
+						int insertIdx = blockFrom->mInstructions.size() - 1;
+						SetAndRestoreValue<BeMCBlock*> prevActiveBlock(mActiveBlock, blockFrom);
+						SetAndRestoreValue<int*> prevInsertIdxPtr(mInsertInstIdxRef, &insertIdx);
+						BeMCPhiValue phiVal;
+						phiVal.mBlockFrom = blockFrom;
+						phiVal.mValue = GetOperand(phiIncoming->mValue, true);
+						if (phiVal.mValue.mKind == BeMCOperandKind_VRegAddr)
 						{
-							auto blockFrom = GetOperand(phiIncoming->mBlock).mBlock;;
-							int insertIdx = blockFrom->mInstructions.size() - 1;
-							SetAndRestoreValue<BeMCBlock*> prevActiveBlock(mActiveBlock, blockFrom);
-							SetAndRestoreValue<int*> prevInsertIdxPtr(mInsertInstIdxRef, &insertIdx);
-							BeMCPhiValue phiVal;
-							phiVal.mBlockFrom = blockFrom;
-							phiVal.mValue = GetOperand(phiIncoming->mValue, true);
-							if (phiVal.mValue.mKind == BeMCOperandKind_VRegAddr)
+							auto vregInfo = GetVRegInfo(phiVal.mValue);
+							if (!vregInfo->mIsExpr)
 							{
-								auto vregInfo = GetVRegInfo(phiVal.mValue);
-								if (!vregInfo->mIsExpr)
-								{
-									vregInfo->mForceMem = true;
-									CheckForce(vregInfo);
-								}
+								vregInfo->mForceMem = true;
+								CheckForce(vregInfo);
 							}
-
-							mcPhi->mValues.push_back(phiVal);
 						}
+
+						mcPhi->mValues.push_back(phiVal);
 					}
-					/*else
-					{
-						for (auto phiIncoming : castedInst->mIncoming)
-						{
-							BeMCPhiValue phiVal;
-							phiVal.mBlockFrom = GetOperand(phiIncoming->mBlock).mBlock;
-							phiVal.mValue = GetOperand(phiIncoming->mValue, true);
-							mcPhi->mValues.push_back(phiVal);
-						}
-					}*/
-
-					result.mKind = BeMCOperandKind_Phi;
-					result.mPhi = mcPhi;
-
-					// DefPhi is important because when we convert a CondBr of a PHI, because we will need to create jumps to the correct
-					//  location when we create it as a value (specifically in the bool case)
-					AllocInst(BeMCInstKind_DefPhi, result);
 				}
-				break;
+				/*else
+				{
+					for (auto phiIncoming : castedInst->mIncoming)
+					{
+						BeMCPhiValue phiVal;
+						phiVal.mBlockFrom = GetOperand(phiIncoming->mBlock).mBlock;
+						phiVal.mValue = GetOperand(phiIncoming->mValue, true);
+						mcPhi->mValues.push_back(phiVal);
+					}
+				}*/
+
+				result.mKind = BeMCOperandKind_Phi;
+				result.mPhi = mcPhi;
+
+				// DefPhi is important because when we convert a CondBr of a PHI, because we will need to create jumps to the correct
+				//  location when we create it as a value (specifically in the bool case)
+				AllocInst(BeMCInstKind_DefPhi, result);
+			}
+			break;
 			case BeSwitchInst::TypeId:
-				{
-					auto castedInst = (BeSwitchInst*)inst;
+			{
+				auto castedInst = (BeSwitchInst*)inst;
 
-					std::stable_sort(castedInst->mCases.begin(), castedInst->mCases.end(), [&](const BeSwitchCase& lhs, const BeSwitchCase& rhs)
-						{
-							return lhs.mValue->mInt64 < rhs.mValue->mInt64;
-						});
-
-					int numVals = castedInst->mCases.size();
-
-					if (numVals > 0)
+				std::stable_sort(castedInst->mCases.begin(), castedInst->mCases.end(), [&](const BeSwitchCase& lhs, const BeSwitchCase& rhs)
 					{
-						int64 loVal = castedInst->mCases.front().mValue->mInt64;
-						int64 hiVal = castedInst->mCases.back().mValue->mInt64;
+						return lhs.mValue->mInt64 < rhs.mValue->mInt64;
+					});
 
-						uint64 avgSpacing = (uint64)(hiVal - loVal) / numVals;
-						// Only use a table if we have a lot of values and the values are 'tight' enough
-						if ((numVals > 6) && (avgSpacing <= 8))
-							CreateTableSwitchSection(castedInst, 0, castedInst->mCases.size());
-						else
-							CreateBinarySwitchSection(castedInst, 0, castedInst->mCases.size());
-					}
-					auto mcDefaultBlock = GetOperand(castedInst->mDefaultBlock);
-					AllocInst(BeMCInstKind_Br, mcDefaultBlock);
-					mcDefaultBlock.mBlock->AddPred(mActiveBlock);
+				int numVals = castedInst->mCases.size();
+
+				if (numVals > 0)
+				{
+					int64 loVal = castedInst->mCases.front().mValue->mInt64;
+					int64 hiVal = castedInst->mCases.back().mValue->mInt64;
+
+					uint64 avgSpacing = (uint64)(hiVal - loVal) / numVals;
+					// Only use a table if we have a lot of values and the values are 'tight' enough
+					if ((numVals > 6) && (avgSpacing <= 8))
+						CreateTableSwitchSection(castedInst, 0, castedInst->mCases.size());
+					else
+						CreateBinarySwitchSection(castedInst, 0, castedInst->mCases.size());
 				}
-				break;
+				auto mcDefaultBlock = GetOperand(castedInst->mDefaultBlock);
+				AllocInst(BeMCInstKind_Br, mcDefaultBlock);
+				mcDefaultBlock.mBlock->AddPred(mActiveBlock);
+			}
+			break;
 			case BeRetInst::TypeId:
+			{
+				auto castedInst = (BeRetInst*)inst;
+				if (castedInst->mRetValue != NULL)
 				{
-					auto castedInst = (BeRetInst*)inst;
-					if (castedInst->mRetValue != NULL)
+					auto retVal = GetOperand(castedInst->mRetValue);
+					auto retType = GetType(retVal);
+					if (retType->IsNonVectorComposite())
 					{
-						auto retVal = GetOperand(castedInst->mRetValue);
-						auto retType = GetType(retVal);
-						if (retType->IsNonVectorComposite())
-						{
-							BF_ASSERT(mCompositeRetVRegIdx != -1);
-							BF_ASSERT(retVal.IsVReg());
-							auto vregInfo = GetVRegInfo(retVal);
+						BF_ASSERT(mCompositeRetVRegIdx != -1);
+						BF_ASSERT(retVal.IsVReg());
+						auto vregInfo = GetVRegInfo(retVal);
 
-							vregInfo->SetRetVal();
-						}
-						else if (retType->IsVector())
-						{
-							X64CPURegister reg = X64Reg_M128_XMM0;
-							auto movInst = AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(reg), retVal);
-						}
-						else
-						{
-							X64CPURegister reg = X64Reg_RAX;
-							if (retType->IsIntable())
-							{
-								if (retType->mSize == 4)
-									reg = X64Reg_EAX;
-								else if (retType->mSize == 2)
-									reg = X64Reg_AX;
-								else if (retType->mSize == 1)
-									reg = X64Reg_AL;
-							}
-							else if (retType->mTypeCode == BeTypeCode_Float)
-								reg = X64Reg_XMM0_f32;
-							else if (retType->mTypeCode == BeTypeCode_Double)
-								reg = X64Reg_XMM0_f64;
-							auto movInst = AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(reg), retVal);
-						}
+						vregInfo->SetRetVal();
 					}
-
-					if (mBeFunction->HasStructRet())
+					else if (retType->IsVector())
 					{
-						for (int vregIdx = 0; vregIdx < (int)mVRegInfo.size(); vregIdx++)
-						{
-							auto vregInfo = mVRegInfo[vregIdx];
-							if (vregInfo->mIsRetVal)
-							{
-								AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand::FromVReg(vregIdx));
-								break;
-							}
-						}
+						X64CPURegister reg = X64Reg_M128_XMM0;
+						auto movInst = AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(reg), retVal);
 					}
-
-					auto mcInst = AllocInst();
-					mcInst->mKind = BeMCInstKind_Ret;
-					retCount++;
+					else
+					{
+						X64CPURegister reg = X64Reg_RAX;
+						if (retType->IsIntable())
+						{
+							if (retType->mSize == 4)
+								reg = X64Reg_EAX;
+							else if (retType->mSize == 2)
+								reg = X64Reg_AX;
+							else if (retType->mSize == 1)
+								reg = X64Reg_AL;
+						}
+						else if (retType->mTypeCode == BeTypeCode_Float)
+							reg = X64Reg_XMM0_f32;
+						else if (retType->mTypeCode == BeTypeCode_Double)
+							reg = X64Reg_XMM0_f64;
+						auto movInst = AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(reg), retVal);
+					}
 				}
-				break;
-			case BeCallInst::TypeId:
+
+				if (mBeFunction->HasStructRet())
 				{
-					auto castedInst = (BeCallInst*)inst;
-					BeMCOperand mcFunc;
-					BeType* returnType = NULL;
-					int varArgStart = -1;
-
-					bool useAltArgs = false;
-					SizedArray<BeValue*, 6> args;
-
-					if (auto intrin = BeValueDynCast<BeIntrinsic>(castedInst->mFunc))
+					for (int vregIdx = 0; vregIdx < (int)mVRegInfo.size(); vregIdx++)
 					{
+						auto vregInfo = mVRegInfo[vregIdx];
+						if (vregInfo->mIsRetVal)
+						{
+							AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(X64Reg_RAX), BeMCOperand::FromVReg(vregIdx));
+							break;
+						}
+					}
+				}
+
+				auto mcInst = AllocInst();
+				mcInst->mKind = BeMCInstKind_Ret;
+				retCount++;
+			}
+			break;
+			case BeCallInst::TypeId:
+			{
+				auto castedInst = (BeCallInst*)inst;
+				BeMCOperand mcFunc;
+				BeType* returnType = NULL;
+				int varArgStart = -1;
+
+				bool useAltArgs = false;
+				SizedArray<BeValue*, 6> args;
+
+				if (auto intrin = BeValueDynCast<BeIntrinsic>(castedInst->mFunc))
+				{
+					switch (intrin->mKind)
+					{
+					case BfIRIntrinsic_Add:
+					case BfIRIntrinsic_And:
+					case BfIRIntrinsic_Div:
+					case BfIRIntrinsic_Eq:
+					case BfIRIntrinsic_Gt:
+					case BfIRIntrinsic_GtE:
+					case BfIRIntrinsic_Lt:
+					case BfIRIntrinsic_LtE:
+					case BfIRIntrinsic_Mod:
+					case BfIRIntrinsic_Mul:
+					case BfIRIntrinsic_Neq:
+					case BfIRIntrinsic_Or:
+					case BfIRIntrinsic_SAR:
+					case BfIRIntrinsic_SHL:
+					case BfIRIntrinsic_SHR:
+					case BfIRIntrinsic_Sub:
+					case BfIRIntrinsic_Xor:
+					{
+						auto mcLHS = TryToVector(castedInst->mArgs[0].mValue);
+						BeMCOperand mcRHS;
+
+						if ((intrin->mKind == BfIRIntrinsic_SAR) ||
+							(intrin->mKind == BfIRIntrinsic_SHL) ||
+							(intrin->mKind == BfIRIntrinsic_SHR))
+						{
+							mcRHS = GetOperand(castedInst->mArgs[1].mValue);
+							if (!mcRHS.IsImmediateInt())
+								mcRHS = BeMCOperand();
+						}
+
+						if (!mcRHS)
+							mcRHS = TryToVector(castedInst->mArgs[1].mValue);
+
 						switch (intrin->mKind)
 						{
 						case BfIRIntrinsic_Add:
+							result = AllocBinaryOp(BeMCInstKind_Add, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+							break;
 						case BfIRIntrinsic_And:
-						case BfIRIntrinsic_Div:
-						case BfIRIntrinsic_Eq:
-						case BfIRIntrinsic_Gt:
-						case BfIRIntrinsic_GtE:
-						case BfIRIntrinsic_Lt:
-						case BfIRIntrinsic_LtE:
-						case BfIRIntrinsic_Mod:
+							result = AllocBinaryOp(BeMCInstKind_And, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+							break;
 						case BfIRIntrinsic_Mul:
-						case BfIRIntrinsic_Neq:
+							result = AllocBinaryOp(BeMCInstKind_IMul, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+							break;
 						case BfIRIntrinsic_Or:
+							result = AllocBinaryOp(BeMCInstKind_Or, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+							break;
 						case BfIRIntrinsic_SAR:
+							result = AllocBinaryOp(BeMCInstKind_Sar, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+							break;
 						case BfIRIntrinsic_SHL:
+							result = AllocBinaryOp(BeMCInstKind_Shl, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+							break;
 						case BfIRIntrinsic_SHR:
+							result = AllocBinaryOp(BeMCInstKind_Shr, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+							break;
 						case BfIRIntrinsic_Sub:
+							result = AllocBinaryOp(BeMCInstKind_Sub, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+							break;
 						case BfIRIntrinsic_Xor:
-							{
-								auto mcLHS = TryToVector(castedInst->mArgs[0].mValue);
-								BeMCOperand mcRHS;
-
-								if ((intrin->mKind == BfIRIntrinsic_SAR) ||
-									(intrin->mKind == BfIRIntrinsic_SHL) ||
-									(intrin->mKind == BfIRIntrinsic_SHR))
-								{
-									mcRHS = GetOperand(castedInst->mArgs[1].mValue);
-									if (!mcRHS.IsImmediateInt())
-										mcRHS = BeMCOperand();
-								}
-
-								if (!mcRHS)
-									mcRHS = TryToVector(castedInst->mArgs[1].mValue);
-
-								switch (intrin->mKind)
-								{
-								case BfIRIntrinsic_Add:
-									result = AllocBinaryOp(BeMCInstKind_Add, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
-									break;
-								case BfIRIntrinsic_And:
-									result = AllocBinaryOp(BeMCInstKind_And, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
-									break;
-								case BfIRIntrinsic_Mul:
-									result = AllocBinaryOp(BeMCInstKind_IMul, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
-									break;
-								case BfIRIntrinsic_Or:
-									result = AllocBinaryOp(BeMCInstKind_Or, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
-									break;
-								case BfIRIntrinsic_SAR:
-									result = AllocBinaryOp(BeMCInstKind_Sar, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
-									break;
-								case BfIRIntrinsic_SHL:
-									result = AllocBinaryOp(BeMCInstKind_Shl, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
-									break;
-								case BfIRIntrinsic_SHR:
-									result = AllocBinaryOp(BeMCInstKind_Shr, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
-									break;
-								case BfIRIntrinsic_Sub:
-									result = AllocBinaryOp(BeMCInstKind_Sub, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
-									break;
-								case BfIRIntrinsic_Xor:
-									result = AllocBinaryOp(BeMCInstKind_Xor, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
-									break;
-								default:
-									SoftFail("Unhandled intrinsic");
-								}
-							}
-							break;
-// 						case BfIRIntrinsic_Cast:
-// 							{
-//
-// 							}
-// 							break;
-						case BfIRIntrinsic_Not:
-							{
-								auto mcLHS = TryToVector(castedInst->mArgs[0].mValue);
-								BeMCOperand mcRHS = BeMCOperand::FromImmediate(-1);
-								result = AllocBinaryOp(BeMCInstKind_Xor, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
-							}
-							break;
-
-						case BfIRIntrinsic_Abs:
-							{
-								auto mcValue = GetOperand(castedInst->mArgs[0].mValue);
-
-								auto mcType = GetType(mcValue);
-								BeMCOperand andValue;
-
-								if (mcType->mSize == 4)
-								{
-									andValue.mKind = BeMCOperandKind_Immediate_f32_Packed128;
-									andValue.mImmediate = 0x7FFFFFFF;
-								}
-								else
-								{
-									andValue.mKind = BeMCOperandKind_Immediate_f64_Packed128;
-									andValue.mImmediate = 0x7FFFFFFFFFFFFFFFLL;
-								}
-
-								result = AllocVirtualReg(GetType(mcValue));
-								CreateDefineVReg(result);
-								AllocInst(BeMCInstKind_Mov, result, mcValue);
-								AllocInst(BeMCInstKind_And, result, andValue);
-							}
-							break;
-						case BfIRIntrinsic_AtomicAdd:
-						case BfIRIntrinsic_AtomicSub:
-							{
-								auto mcPtr = GetOperand(castedInst->mArgs[0].mValue);
-								auto mcVal = GetOperand(castedInst->mArgs[1].mValue);
-								auto valType = GetType(mcVal);
-								if (!valType->IsFloat())
-								{
-									auto mcMemKind = GetOperand(castedInst->mArgs[2].mValue);
-									if (!mcMemKind.IsImmediateInt())
-									{
-										SoftFail("Non-constant success ordering on AtomicLoad", castedInst->mDbgLoc);
-										break;
-									}
-
-									BeMCOperand scratchReg = AllocVirtualReg(valType);
-									auto vregInfo = GetVRegInfo(scratchReg);
-									vregInfo->mMustExist = true;
-									CreateDefineVReg(scratchReg);
-									if ((intrin->mKind == BfIRIntrinsic_AtomicSub) && (mcVal.IsImmediate()))
-									{
-										BeMCOperand mcNeg = mcVal;
-										if (mcVal.mKind == BeMCOperandKind_Immediate_f32)
-											mcNeg.mImmF32 = -mcNeg.mImmF32;
-										else if (mcVal.mKind == BeMCOperandKind_Immediate_f64)
-											mcNeg.mImmF64 = -mcNeg.mImmF64;
-										else
-											mcNeg.mImmediate = -mcNeg.mImmediate;
-										AllocInst(BeMCInstKind_Mov, scratchReg, mcNeg);
-									}
-									else
-									{
-										AllocInst(BeMCInstKind_Mov, scratchReg, mcVal);
-										if (intrin->mKind == BfIRIntrinsic_AtomicSub)
-											AllocInst(BeMCInstKind_Neg, scratchReg);
-									}
-									CreateStore(BeMCInstKind_XAdd, scratchReg, mcPtr);
-
-									if ((mcMemKind.mImmediate & BfIRAtomicOrdering_ReturnModified) != 0)
-									{
-										if (intrin->mKind == BfIRIntrinsic_AtomicSub)
-											AllocInst(BeMCInstKind_Sub, scratchReg, mcVal);
-										else
-											AllocInst(BeMCInstKind_Add, scratchReg, mcVal);
-									}
-
-									result = scratchReg;
-									break;
-								}
-							}
-							// Fallthrough
-						case BfIRIntrinsic_AtomicAnd:
-						case BfIRIntrinsic_AtomicMax:
-						case BfIRIntrinsic_AtomicMin:
-						case BfIRIntrinsic_AtomicNAnd:
-						case BfIRIntrinsic_AtomicOr:
-						case BfIRIntrinsic_AtomicUMax:
-						case BfIRIntrinsic_AtomicUMin:
-						case BfIRIntrinsic_AtomicXor:
-							{
-								auto mcPtr = GetOperand(castedInst->mArgs[0].mValue);
-								auto mcVal = GetOperand(castedInst->mArgs[1].mValue);
-								auto mcMemKind = GetOperand(castedInst->mArgs[2].mValue);
-								if (!mcMemKind.IsImmediateInt())
-								{
-									SoftFail("Non-constant ordering on atomic instruction", castedInst->mDbgLoc);
-									break;
-								}
-
-								auto valType = GetType(mcVal);
-								auto origValType = valType;
-								bool isFloat = valType->IsFloat();
-								auto mcTarget = BeMCOperand::ToLoad(mcPtr);
-								auto useReg = ResizeRegister(X64Reg_RAX, valType->mSize);
-								auto origTarget = mcTarget;
-
-								if (isFloat)
-								{
-									if (valType->mSize == 4)
-										valType = mModule->mContext->GetPrimitiveType(BeTypeCode_Int32);
-									else
-										valType = mModule->mContext->GetPrimitiveType(BeTypeCode_Int64);
-
-									BeMCOperand castedTarget = AllocVirtualReg(valType);
-									auto vregInfo = GetVRegInfo(castedTarget);
-									vregInfo->mMustExist = true;
-									vregInfo->mType = valType;
-									vregInfo->mAlign = valType->mAlign;
-									vregInfo->mIsExpr = true;
-									vregInfo->mRelTo = mcTarget;
-									CreateDefineVReg(castedTarget);
-									mcTarget = castedTarget;
-								}
-
-								int labelIdx = CreateLabel();
-
-								BeMCOperand mcPrev = AllocVirtualReg(valType);
-								auto vregInfo = GetVRegInfo(mcPrev);
-								vregInfo->mMustExist = true;
-								CreateDefineVReg(mcPrev);
-
-								BeMCOperand mcNext = AllocVirtualReg(valType);
-								vregInfo = GetVRegInfo(mcNext);
-								vregInfo->mMustExist = true;
-								vregInfo->mForceMem = isFloat;
-								CreateDefineVReg(mcNext);
-
-								AllocInst(BeMCInstKind_Mov, mcPrev, mcTarget);
-								AllocInst(BeMCInstKind_Mov, mcNext, mcPrev);
-
-								if (isFloat)
-								{
-									BeMCOperand mcFNext = AllocVirtualReg(origValType);
-									vregInfo = GetVRegInfo(mcFNext);
-									vregInfo->mIsExpr = true;
-									vregInfo->mRelTo = mcNext;
-									CreateDefineVReg(mcFNext);
-
-									if (intrin->mKind == BfIRIntrinsic_AtomicAdd)
-										AllocInst(BeMCInstKind_Add, mcFNext, mcVal);
-									else
-										AllocInst(BeMCInstKind_Sub, mcFNext, mcVal);
-								}
-								else
-								{
-									switch (intrin->mKind)
-									{
-									case BfIRIntrinsic_AtomicAdd:
-										AllocInst(BeMCInstKind_Add, mcNext, mcVal);
-										break;
-									case BfIRIntrinsic_AtomicAnd:
-										AllocInst(BeMCInstKind_Or, mcNext, mcVal);
-										break;
-									case BfIRIntrinsic_AtomicMax:
-									case BfIRIntrinsic_AtomicMin:
-									case BfIRIntrinsic_AtomicUMax:
-									case BfIRIntrinsic_AtomicUMin:
-										{
-											int cmpLabelIdx = mCurLabelIdx++;
-											AllocInst(BeMCInstKind_Cmp, mcNext, mcVal);
-
-											BeCmpKind cmpKind = BeCmpKind_None;
-											switch (intrin->mKind)
-											{
-											case BfIRIntrinsic_AtomicMax:
-												cmpKind = BeCmpKind_SGE;
-												break;
-											case BfIRIntrinsic_AtomicMin:
-												cmpKind = BeCmpKind_SLE;
-												break;
-											case BfIRIntrinsic_AtomicUMax:
-												cmpKind = BeCmpKind_UGE;
-												break;
-											case BfIRIntrinsic_AtomicUMin:
-												cmpKind = BeCmpKind_ULE;
-												break;
-											}
-
-											AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(cmpLabelIdx), BeMCOperand::FromCmpKind(cmpKind));
-											AllocInst(BeMCInstKind_Mov, mcNext, mcVal);
-											CreateLabel(-1, cmpLabelIdx);
-										}
-										break;
-									case BfIRIntrinsic_AtomicNAnd:
-										AllocInst(BeMCInstKind_And, mcNext, mcVal);
-										AllocInst(BeMCInstKind_Not, mcNext);
-										break;
-									case BfIRIntrinsic_AtomicOr:
-										AllocInst(BeMCInstKind_Or, mcNext, mcVal);
-										break;
-									case BfIRIntrinsic_AtomicSub:
-										AllocInst(BeMCInstKind_Sub, mcNext, mcVal);
-										break;
-									case BfIRIntrinsic_AtomicXor:
-										AllocInst(BeMCInstKind_Xor, mcNext, mcVal);
-										break;
-									}
-								}
-
-								AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
-								AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(useReg), mcPrev);
-								auto cmpXChgInst = AllocInst(BeMCInstKind_CmpXChg, mcTarget, mcNext);
-								AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
-
-								AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(labelIdx), BeMCOperand::FromCmpKind(BeCmpKind_NE));
-
-								if ((mcMemKind.mImmediate & BfIRAtomicOrdering_ReturnModified) != 0)
-									result = mcNext;
-								else
-									result = mcPrev;
-							}
-							break;
-						case BfIRIntrinsic_AtomicCmpStore:
-						case BfIRIntrinsic_AtomicCmpStore_Weak:
-						case BfIRIntrinsic_AtomicCmpXChg:
-							{
-								auto mcPtr = GetOperand(castedInst->mArgs[0].mValue);
-								auto mcComparand = GetOperand(castedInst->mArgs[1].mValue);
-								auto mcVal = GetOperand(castedInst->mArgs[2].mValue);
-								auto mcMemKind = GetOperand(castedInst->mArgs[3].mValue);
-								if (!mcMemKind.IsImmediate())
-								{
-									SoftFail("Non-constant success ordering on atomic operation", castedInst->mDbgLoc);
-									break;
-								}
-
-								auto valType = GetType(mcVal);
-								auto useReg = ResizeRegister(X64Reg_RAX, valType->mSize);
-
-								BeMCOperand scratchReg = AllocVirtualReg(GetType(mcVal));
-								auto vregInfo = GetVRegInfo(scratchReg);
-								vregInfo->mMustExist = true;
-								CreateDefineVReg(scratchReg);
-								AllocInst(BeMCInstKind_Mov, scratchReg, mcVal);
-
-								AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
-								AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(useReg), mcComparand);
-								auto cmpXChgInst = AllocInst(BeMCInstKind_CmpXChg, BeMCOperand::ToLoad(mcPtr), scratchReg);
-								if (intrin->mKind == BfIRIntrinsic_AtomicCmpXChg)
-								{
-									AllocInst(BeMCInstKind_Mov, scratchReg, BeMCOperand::FromReg(useReg));
-									result = scratchReg;
-								}
-								else
-								{
-									auto cmpResultIdx = (int)mCmpResults.size();
-									BeCmpResult cmpResult;
-									cmpResult.mCmpKind = BeCmpKind_EQ;
-									mCmpResults.push_back(cmpResult);
-
-									result.mKind = BeMCOperandKind_CmpResult;
-									result.mCmpResultIdx = cmpResultIdx;
-
-									cmpXChgInst->mResult = result;
-								}
-								AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
-							}
-							break;
-						case BfIRIntrinsic_AtomicLoad:
-							{
-								auto mcTarget = GetOperand(castedInst->mArgs[0].mValue);
-								result = CreateLoad(mcTarget);
-							}
-							break;
-						case BfIRIntrinsic_AtomicFence:
-							{
-								if (castedInst->mArgs.size() == 0)
-								{
-									// Compiler fence- do nothing.
-									break;
-								}
-
-								auto mcMemKind = GetOperand(castedInst->mArgs[0].mValue);
-								if (!mcMemKind.IsImmediateInt())
-								{
-									SoftFail("Non-constant success ordering on AtomicFence", castedInst->mDbgLoc);
-									break;
-								}
-								if (mcMemKind.mImmediate == BfIRAtomicOrdering_SeqCst)
-									AllocInst(BeMCInstKind_MFence);
-							}
-							break;
-						case BfIRIntrinsic_AtomicStore:
-							{
-								auto mcPtr = GetOperand(castedInst->mArgs[0].mValue);
-								auto mcVal = GetOperand(castedInst->mArgs[1].mValue);
-								auto mcMemKind = GetOperand(castedInst->mArgs[2].mValue);
-								if (!mcMemKind.IsImmediateInt())
-								{
-									SoftFail("Non-constant success ordering on AtomicLoad", castedInst->mDbgLoc);
-									break;
-								}
-								if (mcMemKind.mImmediate == BfIRAtomicOrdering_SeqCst)
-								{
-									BeMCOperand scratchReg = AllocVirtualReg(GetType(mcVal));
-									auto vregInfo = GetVRegInfo(scratchReg);
-									vregInfo->mMustExist = true;
-									CreateDefineVReg(scratchReg);
-									AllocInst(BeMCInstKind_Mov, scratchReg, mcVal);
-
-									CreateStore(BeMCInstKind_XChg, scratchReg, mcPtr);
-								}
-								else
-								{
-									CreateStore(BeMCInstKind_Mov, mcVal, mcPtr);
-								}
-							}
-							break;
-						case BfIRIntrinsic_AtomicXChg:
-							{
-								auto mcPtr = GetOperand(castedInst->mArgs[0].mValue);
-								auto mcVal = GetOperand(castedInst->mArgs[1].mValue);
-								auto mcMemKind = GetOperand(castedInst->mArgs[2].mValue);
-								if (!mcMemKind.IsImmediateInt())
-								{
-									SoftFail("Non-constant success ordering on AtomicXChg", castedInst->mDbgLoc);
-									break;
-								}
-
-								BeMCOperand scratchReg = AllocVirtualReg(GetType(mcVal));
-								auto vregInfo = GetVRegInfo(scratchReg);
-								vregInfo->mMustExist = true;
-								CreateDefineVReg(scratchReg);
-								AllocInst(BeMCInstKind_Mov, scratchReg, mcVal);
-
-								CreateStore(BeMCInstKind_XChg, scratchReg, mcPtr);
-								result = scratchReg;
-							}
-							break;
-						case BfIRIntrinsic_Cast:
-							{
-								result = AllocVirtualReg(intrin->mReturnType);
-								CreateDefineVReg(result);
-								auto vregInfo = GetVRegInfo(result);
-								vregInfo->mRelTo = TryToVector(castedInst->mArgs[0].mValue);
-								vregInfo->mIsExpr = true;
-							}
-							break;
-						case BfIRIntrinsic_DebugTrap:
-							{
-								AllocInst(BeMCInstKind_DbgBreak);
-							}
-							break;
-						case BfIRIntrinsic_Index:
-							{
-								auto valPtr = GetOperand(castedInst->mArgs[0].mValue);
-								auto idx = GetOperand(castedInst->mArgs[1].mValue);
-
-								auto valType = GetType(valPtr);
-								if (!valType->IsPointer())
-								{
-									SoftFail("Non-pointer index target", castedInst->mDbgLoc);
-									break;
-								}
-								valType = ((BePointerType*)valType)->mElementType;
-
-								if (!valType->IsVector())
-								{
-									SoftFail("Non-vector index target", castedInst->mDbgLoc);
-									break;
-								}
-
-								auto vectorType = (BeVectorType*)valType;
-
-								auto elementPtrType = mModule->mContext->GetPointerTo(vectorType->mElementType);
-
-								result = AllocVirtualReg(elementPtrType);
-								CreateDefineVReg(result);
-								auto vregInfo = GetVRegInfo(result);
-								vregInfo->mRelTo = valPtr;
-								vregInfo->mRelOffset = idx;
-								vregInfo->mRelOffsetScale = vectorType->mElementType->mSize;
-								vregInfo->mIsExpr = true;
-
-								result = CreateLoad(result);
-							}
-							break;
-						case BfIRIntrinsic_MemSet:
-							{
-								if (auto constVal = BeValueDynCast<BeConstant>(castedInst->mArgs[1].mValue))
-								{
-									if (auto constSize = BeValueDynCast<BeConstant>(castedInst->mArgs[2].mValue))
-									{
-										if (auto constAlign = BeValueDynCast<BeConstant>(castedInst->mArgs[3].mValue))
-										{
-											CreateMemSet(GetOperand(castedInst->mArgs[0].mValue), constVal->mUInt8, constSize->mInt64, constAlign->mInt32);
-											break;
-										}
-									}
-								}
-
-								mcFunc = BeMCOperand::FromSymbolAddr(mCOFFObject->GetSymbolRef("memset")->mIdx);
-								for (int i = 0; i < 3; i++)
-									args.Add(castedInst->mArgs[i].mValue);
-								useAltArgs = true;
-							}
-							break;
-						case BfIRIntrinsic_MemCpy:
-							{
-								if (auto constSize = BeValueDynCast<BeConstant>(castedInst->mArgs[2].mValue))
-								{
-									if (auto constAlign = BeValueDynCast<BeConstant>(castedInst->mArgs[3].mValue))
-									{
-										CreateMemCpy(GetOperand(castedInst->mArgs[0].mValue), GetOperand(castedInst->mArgs[1].mValue), constSize->mInt64, constAlign->mInt32);
-										break;
-									}
-								}
-
-								mcFunc = BeMCOperand::FromSymbolAddr(mCOFFObject->GetSymbolRef("memcpy")->mIdx);
-								//altArgs.insert(altArgs.begin(), castedInst->mArgs.begin(), castedInst->mArgs.begin() + 3);
-								for (int i = 0; i < 3; i++)
-									args.Add(castedInst->mArgs[i].mValue);
-								useAltArgs = true;
-							}
-							break;
-						case BfIRIntrinsic_MemMove:
-							{
-								mcFunc = BeMCOperand::FromSymbolAddr(mCOFFObject->GetSymbolRef("memmove")->mIdx);
-								//altArgs.insert(altArgs.begin(), castedInst->mArgs.begin(), castedInst->mArgs.begin() + 3);
-								for (int i = 0; i < 3; i++)
-									args.Add(castedInst->mArgs[i].mValue);
-								useAltArgs = true;
-							}
-							break;
-						case BfIRIntrinsic_ReturnAddress:
-							{
-								result = AllocVirtualReg(intrin->mReturnType);
-								CreateDefineVReg(result);
- 								auto vregInfo = GetVRegInfo(result);
-								vregInfo->mFrameOffset = 0;
-							}
-							break;
-						case BfIRIntrinsic_VAArg:
-							{
-								auto mcListPtr = GetOperand(castedInst->mArgs[0].mValue);
-								auto mcDestVoidPtr = GetOperand(castedInst->mArgs[1].mValue);
-								auto mcType = GetOperand(castedInst->mArgs[2].mValue);
-
-								BeType* beType = mModule->mBeIRCodeGen->GetBeTypeById((int32)mcType.mImmediate);
-
-								auto mcList = AllocVirtualReg(mModule->mContext->GetPointerTo(mModule->mContext->GetPrimitiveType(BeTypeCode_NullPtr)));
-								CreateDefineVReg(mcList);
-								auto listVRegInfo = GetVRegInfo(mcList);
-								listVRegInfo->mRelTo = mcListPtr;
-								listVRegInfo->mIsExpr = true;
-
-								auto mcSrc = AllocVirtualReg(mModule->mContext->GetPointerTo(beType));
-								CreateDefineVReg(mcSrc);
-								auto srcVRegInfo = GetVRegInfo(mcSrc);
-								srcVRegInfo->mRelTo = BeMCOperand::ToLoad(mcList);
-								srcVRegInfo->mIsExpr = true;
-
-								auto mcDest = AllocVirtualReg(mModule->mContext->GetPointerTo(beType));
-								CreateDefineVReg(mcDest);
-								auto destVRegInfo = GetVRegInfo(mcDest);
-								destVRegInfo->mRelTo = mcDestVoidPtr;
-								destVRegInfo->mIsExpr = true;
-
-								AllocInst(BeMCInstKind_Mov, BeMCOperand::ToLoad(mcDest), BeMCOperand::ToLoad(mcSrc));
-								AllocInst(BeMCInstKind_Add, BeMCOperand::ToLoad(mcList), BeMCOperand::FromImmediate(8));
-							}
-							break;
-						case BfIRIntrinsic_VAEnd:
-							break;
-						case BfIRIntrinsic_VAStart:
-							{
-								auto mcTarget = GetOperand(castedInst->mArgs[0].mValue);
-
-								auto destVal = AllocVirtualReg(mModule->mContext->GetPointerTo(mModule->mContext->GetPrimitiveType(BeTypeCode_NullPtr)));
-								auto destVRegInfo = GetVRegInfo(destVal);
-								destVRegInfo->mRelTo = mcTarget;
-								destVRegInfo->mIsExpr = true;
-								CreateDefineVReg(destVal);
-
-								auto nullPtrType = mModule->mContext->GetPrimitiveType(BeTypeCode_NullPtr);
-								auto vaStartVal = AllocVirtualReg(nullPtrType);
-								auto vRegInfo = GetVRegInfo(vaStartVal);
-								vRegInfo->mMustExist = true;
-								vRegInfo->mForceMem = true;
-								vRegInfo->mFrameOffset = (int)mBeFunction->mParams.size() * 8 + 8;
-								vRegInfo->mRefCount++;
-								CreateDefineVReg(vaStartVal);
-
-								AllocInst(BeMCInstKind_Mov, BeMCOperand::ToLoad(destVal), BeMCOperand::FromVRegAddr(vaStartVal.mVRegIdx));
-							}
+							result = AllocBinaryOp(BeMCInstKind_Xor, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
 							break;
 						default:
-							SoftFail(StrFormat("Intrinsic not handled: '%s'", intrin->mName.c_str()), castedInst->mDbgLoc);
+							SoftFail("Unhandled intrinsic");
+						}
+					}
+					break;
+					// 						case BfIRIntrinsic_Cast:
+					// 							{
+					//
+					// 							}
+					// 							break;
+					case BfIRIntrinsic_Not:
+					{
+						auto mcLHS = TryToVector(castedInst->mArgs[0].mValue);
+						BeMCOperand mcRHS = BeMCOperand::FromImmediate(-1);
+						result = AllocBinaryOp(BeMCInstKind_Xor, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
+					}
+					break;
+
+					case BfIRIntrinsic_Abs:
+					{
+						auto mcValue = GetOperand(castedInst->mArgs[0].mValue);
+
+						auto mcType = GetType(mcValue);
+						BeMCOperand andValue;
+
+						if (mcType->mSize == 4)
+						{
+							andValue.mKind = BeMCOperandKind_Immediate_f32_Packed128;
+							andValue.mImmediate = 0x7FFFFFFF;
+						}
+						else
+						{
+							andValue.mKind = BeMCOperandKind_Immediate_f64_Packed128;
+							andValue.mImmediate = 0x7FFFFFFFFFFFFFFFLL;
+						}
+
+						result = AllocVirtualReg(GetType(mcValue));
+						CreateDefineVReg(result);
+						AllocInst(BeMCInstKind_Mov, result, mcValue);
+						AllocInst(BeMCInstKind_And, result, andValue);
+					}
+					break;
+					case BfIRIntrinsic_AtomicAdd:
+					case BfIRIntrinsic_AtomicSub:
+					{
+						auto mcPtr = GetOperand(castedInst->mArgs[0].mValue);
+						auto mcVal = GetOperand(castedInst->mArgs[1].mValue);
+						auto valType = GetType(mcVal);
+						if (!valType->IsFloat())
+						{
+							auto mcMemKind = GetOperand(castedInst->mArgs[2].mValue);
+							if (!mcMemKind.IsImmediateInt())
+							{
+								SoftFail("Non-constant success ordering on AtomicLoad", castedInst->mDbgLoc);
+								break;
+							}
+
+							BeMCOperand scratchReg = AllocVirtualReg(valType);
+							auto vregInfo = GetVRegInfo(scratchReg);
+							vregInfo->mMustExist = true;
+							CreateDefineVReg(scratchReg);
+							if ((intrin->mKind == BfIRIntrinsic_AtomicSub) && (mcVal.IsImmediate()))
+							{
+								BeMCOperand mcNeg = mcVal;
+								if (mcVal.mKind == BeMCOperandKind_Immediate_f32)
+									mcNeg.mImmF32 = -mcNeg.mImmF32;
+								else if (mcVal.mKind == BeMCOperandKind_Immediate_f64)
+									mcNeg.mImmF64 = -mcNeg.mImmF64;
+								else
+									mcNeg.mImmediate = -mcNeg.mImmediate;
+								AllocInst(BeMCInstKind_Mov, scratchReg, mcNeg);
+							}
+							else
+							{
+								AllocInst(BeMCInstKind_Mov, scratchReg, mcVal);
+								if (intrin->mKind == BfIRIntrinsic_AtomicSub)
+									AllocInst(BeMCInstKind_Neg, scratchReg);
+							}
+							CreateStore(BeMCInstKind_XAdd, scratchReg, mcPtr);
+
+							if ((mcMemKind.mImmediate & BfIRAtomicOrdering_ReturnModified) != 0)
+							{
+								if (intrin->mKind == BfIRIntrinsic_AtomicSub)
+									AllocInst(BeMCInstKind_Sub, scratchReg, mcVal);
+								else
+									AllocInst(BeMCInstKind_Add, scratchReg, mcVal);
+							}
+
+							result = scratchReg;
 							break;
 						}
 					}
-					else
+					// Fallthrough
+					case BfIRIntrinsic_AtomicAnd:
+					case BfIRIntrinsic_AtomicMax:
+					case BfIRIntrinsic_AtomicMin:
+					case BfIRIntrinsic_AtomicNAnd:
+					case BfIRIntrinsic_AtomicOr:
+					case BfIRIntrinsic_AtomicUMax:
+					case BfIRIntrinsic_AtomicUMin:
+					case BfIRIntrinsic_AtomicXor:
 					{
-						auto funcPtrType = castedInst->mFunc->GetType();
-						if (funcPtrType->IsPointer())
+						auto mcPtr = GetOperand(castedInst->mArgs[0].mValue);
+						auto mcVal = GetOperand(castedInst->mArgs[1].mValue);
+						auto mcMemKind = GetOperand(castedInst->mArgs[2].mValue);
+						if (!mcMemKind.IsImmediateInt())
 						{
-							auto elementType = ((BePointerType*)funcPtrType)->mElementType;
-							if (elementType->mTypeCode == BeTypeCode_Function)
+							SoftFail("Non-constant ordering on atomic instruction", castedInst->mDbgLoc);
+							break;
+						}
+
+						auto valType = GetType(mcVal);
+						auto origValType = valType;
+						bool isFloat = valType->IsFloat();
+						auto mcTarget = BeMCOperand::ToLoad(mcPtr);
+						auto useReg = ResizeRegister(X64Reg_RAX, valType->mSize);
+						auto origTarget = mcTarget;
+
+						if (isFloat)
+						{
+							if (valType->mSize == 4)
+								valType = mModule->mContext->GetPrimitiveType(BeTypeCode_Int32);
+							else
+								valType = mModule->mContext->GetPrimitiveType(BeTypeCode_Int64);
+
+							BeMCOperand castedTarget = AllocVirtualReg(valType);
+							auto vregInfo = GetVRegInfo(castedTarget);
+							vregInfo->mMustExist = true;
+							vregInfo->mType = valType;
+							vregInfo->mAlign = valType->mAlign;
+							vregInfo->mIsExpr = true;
+							vregInfo->mRelTo = mcTarget;
+							CreateDefineVReg(castedTarget);
+							mcTarget = castedTarget;
+						}
+
+						int labelIdx = CreateLabel();
+
+						BeMCOperand mcPrev = AllocVirtualReg(valType);
+						auto vregInfo = GetVRegInfo(mcPrev);
+						vregInfo->mMustExist = true;
+						CreateDefineVReg(mcPrev);
+
+						BeMCOperand mcNext = AllocVirtualReg(valType);
+						vregInfo = GetVRegInfo(mcNext);
+						vregInfo->mMustExist = true;
+						vregInfo->mForceMem = isFloat;
+						CreateDefineVReg(mcNext);
+
+						AllocInst(BeMCInstKind_Mov, mcPrev, mcTarget);
+						AllocInst(BeMCInstKind_Mov, mcNext, mcPrev);
+
+						if (isFloat)
+						{
+							BeMCOperand mcFNext = AllocVirtualReg(origValType);
+							vregInfo = GetVRegInfo(mcFNext);
+							vregInfo->mIsExpr = true;
+							vregInfo->mRelTo = mcNext;
+							CreateDefineVReg(mcFNext);
+
+							if (intrin->mKind == BfIRIntrinsic_AtomicAdd)
+								AllocInst(BeMCInstKind_Add, mcFNext, mcVal);
+							else
+								AllocInst(BeMCInstKind_Sub, mcFNext, mcVal);
+						}
+						else
+						{
+							switch (intrin->mKind)
 							{
-								BeFunctionType* funcType = (BeFunctionType*)elementType;
-								if (funcType->mIsVarArg)
-									varArgStart = funcType->mParams.mSize;
+							case BfIRIntrinsic_AtomicAdd:
+								AllocInst(BeMCInstKind_Add, mcNext, mcVal);
+								break;
+							case BfIRIntrinsic_AtomicAnd:
+								AllocInst(BeMCInstKind_Or, mcNext, mcVal);
+								break;
+							case BfIRIntrinsic_AtomicMax:
+							case BfIRIntrinsic_AtomicMin:
+							case BfIRIntrinsic_AtomicUMax:
+							case BfIRIntrinsic_AtomicUMin:
+							{
+								int cmpLabelIdx = mCurLabelIdx++;
+								AllocInst(BeMCInstKind_Cmp, mcNext, mcVal);
+
+								BeCmpKind cmpKind = BeCmpKind_None;
+								switch (intrin->mKind)
+								{
+								case BfIRIntrinsic_AtomicMax:
+									cmpKind = BeCmpKind_SGE;
+									break;
+								case BfIRIntrinsic_AtomicMin:
+									cmpKind = BeCmpKind_SLE;
+									break;
+								case BfIRIntrinsic_AtomicUMax:
+									cmpKind = BeCmpKind_UGE;
+									break;
+								case BfIRIntrinsic_AtomicUMin:
+									cmpKind = BeCmpKind_ULE;
+									break;
+								}
+
+								AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(cmpLabelIdx), BeMCOperand::FromCmpKind(cmpKind));
+								AllocInst(BeMCInstKind_Mov, mcNext, mcVal);
+								CreateLabel(-1, cmpLabelIdx);
+							}
+							break;
+							case BfIRIntrinsic_AtomicNAnd:
+								AllocInst(BeMCInstKind_And, mcNext, mcVal);
+								AllocInst(BeMCInstKind_Not, mcNext);
+								break;
+							case BfIRIntrinsic_AtomicOr:
+								AllocInst(BeMCInstKind_Or, mcNext, mcVal);
+								break;
+							case BfIRIntrinsic_AtomicSub:
+								AllocInst(BeMCInstKind_Sub, mcNext, mcVal);
+								break;
+							case BfIRIntrinsic_AtomicXor:
+								AllocInst(BeMCInstKind_Xor, mcNext, mcVal);
+								break;
 							}
 						}
 
-						returnType = castedInst->GetType();
-						mcFunc = GetOperand(castedInst->mFunc);
-					}
+						AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
+						AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(useReg), mcPrev);
+						auto cmpXChgInst = AllocInst(BeMCInstKind_CmpXChg, mcTarget, mcNext);
+						AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
 
-					if (mcFunc)
+						AllocInst(BeMCInstKind_CondBr, BeMCOperand::FromLabel(labelIdx), BeMCOperand::FromCmpKind(BeCmpKind_NE));
+
+						if ((mcMemKind.mImmediate & BfIRAtomicOrdering_ReturnModified) != 0)
+							result = mcNext;
+						else
+							result = mcPrev;
+					}
+					break;
+					case BfIRIntrinsic_AtomicCmpStore:
+					case BfIRIntrinsic_AtomicCmpStore_Weak:
+					case BfIRIntrinsic_AtomicCmpXChg:
 					{
-						if (!useAltArgs)
+						auto mcPtr = GetOperand(castedInst->mArgs[0].mValue);
+						auto mcComparand = GetOperand(castedInst->mArgs[1].mValue);
+						auto mcVal = GetOperand(castedInst->mArgs[2].mValue);
+						auto mcMemKind = GetOperand(castedInst->mArgs[3].mValue);
+						if (!mcMemKind.IsImmediate())
 						{
-							BF_ASSERT(args.IsEmpty());
-							for (auto& arg : castedInst->mArgs)
-								args.Add(arg.mValue);
+							SoftFail("Non-constant success ordering on atomic operation", castedInst->mDbgLoc);
+							break;
 						}
 
-						result = CreateCall(mcFunc, args, returnType, castedInst->mCallingConv, castedInst->HasStructRet(), castedInst->mNoReturn, varArgStart);
+						auto valType = GetType(mcVal);
+						auto useReg = ResizeRegister(X64Reg_RAX, valType->mSize);
+
+						BeMCOperand scratchReg = AllocVirtualReg(GetType(mcVal));
+						auto vregInfo = GetVRegInfo(scratchReg);
+						vregInfo->mMustExist = true;
+						CreateDefineVReg(scratchReg);
+						AllocInst(BeMCInstKind_Mov, scratchReg, mcVal);
+
+						AllocInst(BeMCInstKind_PreserveVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
+						AllocInst(BeMCInstKind_Mov, BeMCOperand::FromReg(useReg), mcComparand);
+						auto cmpXChgInst = AllocInst(BeMCInstKind_CmpXChg, BeMCOperand::ToLoad(mcPtr), scratchReg);
+						if (intrin->mKind == BfIRIntrinsic_AtomicCmpXChg)
+						{
+							AllocInst(BeMCInstKind_Mov, scratchReg, BeMCOperand::FromReg(useReg));
+							result = scratchReg;
+						}
+						else
+						{
+							auto cmpResultIdx = (int)mCmpResults.size();
+							BeCmpResult cmpResult;
+							cmpResult.mCmpKind = BeCmpKind_EQ;
+							mCmpResults.push_back(cmpResult);
+
+							result.mKind = BeMCOperandKind_CmpResult;
+							result.mCmpResultIdx = cmpResultIdx;
+
+							cmpXChgInst->mResult = result;
+						}
+						AllocInst(BeMCInstKind_RestoreVolatiles, BeMCOperand::FromReg(X64Reg_RAX));
 					}
-				}
-				break;
-			case BeDbgDeclareInst::TypeId:
-				{
-					auto castedInst = (BeDbgDeclareInst*)inst;
-					auto dbgVar = castedInst->mDbgVar;
-					auto mcValue = GetOperand(castedInst->mValue, false, false, true);
-					auto mcVReg = mcValue;
-					auto vregInfo = GetVRegInfo(mcVReg);
-
-					if ((vregInfo != NULL) && (vregInfo->mDbgVariable != NULL))
+					break;
+					case BfIRIntrinsic_AtomicLoad:
 					{
-						auto shadowVReg = AllocVirtualReg(vregInfo->mType);
-						CreateDefineVReg(shadowVReg);
-						auto shadowVRegInfo = GetVRegInfo(shadowVReg);
-						shadowVRegInfo->mIsExpr = true;
-						shadowVRegInfo->mValueScopeRetainedKind = BeMCValueScopeRetainKind_Hard;
-						shadowVRegInfo->mRelTo = mcVReg;
-						shadowVRegInfo->mRelTo.mKind = BeMCOperandKind_VReg;
-						shadowVReg.mKind = mcVReg.mKind;
-						mcValue = shadowVReg;
-						mcVReg = shadowVReg;
-						vregInfo = shadowVRegInfo;
-						mValueToOperand[dbgVar] = shadowVReg;
+						auto mcTarget = GetOperand(castedInst->mArgs[0].mValue);
+						result = CreateLoad(mcTarget);
 					}
-					else
+					break;
+					case BfIRIntrinsic_AtomicFence:
 					{
-						mValueToOperand[dbgVar] = mcVReg;
+						if (castedInst->mArgs.size() == 0)
+						{
+							// Compiler fence- do nothing.
+							break;
+						}
+
+						auto mcMemKind = GetOperand(castedInst->mArgs[0].mValue);
+						if (!mcMemKind.IsImmediateInt())
+						{
+							SoftFail("Non-constant success ordering on AtomicFence", castedInst->mDbgLoc);
+							break;
+						}
+						if (mcMemKind.mImmediate == BfIRAtomicOrdering_SeqCst)
+							AllocInst(BeMCInstKind_MFence);
 					}
-
-					dbgVar->mValue = castedInst->mValue;
-					dbgVar->mDeclDbgLoc = inst->mDbgLoc;
-					dbgVar->mIsValue = castedInst->mIsValue;
-
-					if (!mcVReg.IsVRegAny())
+					break;
+					case BfIRIntrinsic_AtomicStore:
 					{
-						mcVReg = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_None));
-						vregInfo = GetVRegInfo(mcVReg);
+						auto mcPtr = GetOperand(castedInst->mArgs[0].mValue);
+						auto mcVal = GetOperand(castedInst->mArgs[1].mValue);
+						auto mcMemKind = GetOperand(castedInst->mArgs[2].mValue);
+						if (!mcMemKind.IsImmediateInt())
+						{
+							SoftFail("Non-constant success ordering on AtomicLoad", castedInst->mDbgLoc);
+							break;
+						}
+						if (mcMemKind.mImmediate == BfIRAtomicOrdering_SeqCst)
+						{
+							BeMCOperand scratchReg = AllocVirtualReg(GetType(mcVal));
+							auto vregInfo = GetVRegInfo(scratchReg);
+							vregInfo->mMustExist = true;
+							CreateDefineVReg(scratchReg);
+							AllocInst(BeMCInstKind_Mov, scratchReg, mcVal);
 
-						// Allocate a vreg just to properly track the lifetime of this local constant
-						/*auto constType = GetType(mcVReg);
-						auto newVReg = AllocVirtualReg(constType);
-						vregInfo = GetVRegInfo(newVReg);
+							CreateStore(BeMCInstKind_XChg, scratchReg, mcPtr);
+						}
+						else
+						{
+							CreateStore(BeMCInstKind_Mov, mcVal, mcPtr);
+						}
+					}
+					break;
+					case BfIRIntrinsic_AtomicXChg:
+					{
+						auto mcPtr = GetOperand(castedInst->mArgs[0].mValue);
+						auto mcVal = GetOperand(castedInst->mArgs[1].mValue);
+						auto mcMemKind = GetOperand(castedInst->mArgs[2].mValue);
+						if (!mcMemKind.IsImmediateInt())
+						{
+							SoftFail("Non-constant success ordering on AtomicXChg", castedInst->mDbgLoc);
+							break;
+						}
+
+						BeMCOperand scratchReg = AllocVirtualReg(GetType(mcVal));
+						auto vregInfo = GetVRegInfo(scratchReg);
+						vregInfo->mMustExist = true;
+						CreateDefineVReg(scratchReg);
+						AllocInst(BeMCInstKind_Mov, scratchReg, mcVal);
+
+						CreateStore(BeMCInstKind_XChg, scratchReg, mcPtr);
+						result = scratchReg;
+					}
+					break;
+					case BfIRIntrinsic_Cast:
+					{
+						result = AllocVirtualReg(intrin->mReturnType);
+						CreateDefineVReg(result);
+						auto vregInfo = GetVRegInfo(result);
+						vregInfo->mRelTo = TryToVector(castedInst->mArgs[0].mValue);
 						vregInfo->mIsExpr = true;
-						vregInfo->mRelTo = mcVReg;
-						mcVReg = newVReg;*/
+					}
+					break;
+					case BfIRIntrinsic_DebugTrap:
+					{
+						AllocInst(BeMCInstKind_DbgBreak);
+					}
+					break;
+					case BfIRIntrinsic_Index:
+					{
+						auto valPtr = GetOperand(castedInst->mArgs[0].mValue);
+						auto idx = GetOperand(castedInst->mArgs[1].mValue);
+
+						auto valType = GetType(valPtr);
+						if (!valType->IsPointer())
+						{
+							SoftFail("Non-pointer index target", castedInst->mDbgLoc);
+							break;
+						}
+						valType = ((BePointerType*)valType)->mElementType;
+
+						if (!valType->IsVector())
+						{
+							SoftFail("Non-vector index target", castedInst->mDbgLoc);
+							break;
+						}
+
+						auto vectorType = (BeVectorType*)valType;
+
+						auto elementPtrType = mModule->mContext->GetPointerTo(vectorType->mElementType);
+
+						result = AllocVirtualReg(elementPtrType);
+						CreateDefineVReg(result);
+						auto vregInfo = GetVRegInfo(result);
+						vregInfo->mRelTo = valPtr;
+						vregInfo->mRelOffset = idx;
+						vregInfo->mRelOffsetScale = vectorType->mElementType->mSize;
+						vregInfo->mIsExpr = true;
+
+						result = CreateLoad(result);
+					}
+					break;
+					case BfIRIntrinsic_MemSet:
+					{
+						if (auto constVal = BeValueDynCast<BeConstant>(castedInst->mArgs[1].mValue))
+						{
+							if (auto constSize = BeValueDynCast<BeConstant>(castedInst->mArgs[2].mValue))
+							{
+								if (auto constAlign = BeValueDynCast<BeConstant>(castedInst->mArgs[3].mValue))
+								{
+									CreateMemSet(GetOperand(castedInst->mArgs[0].mValue), constVal->mUInt8, constSize->mInt64, constAlign->mInt32);
+									break;
+								}
+							}
+						}
+
+						mcFunc = BeMCOperand::FromSymbolAddr(mCOFFObject->GetSymbolRef("memset")->mIdx);
+						for (int i = 0; i < 3; i++)
+							args.Add(castedInst->mArgs[i].mValue);
+						useAltArgs = true;
+					}
+					break;
+					case BfIRIntrinsic_MemCpy:
+					{
+						if (auto constSize = BeValueDynCast<BeConstant>(castedInst->mArgs[2].mValue))
+						{
+							if (auto constAlign = BeValueDynCast<BeConstant>(castedInst->mArgs[3].mValue))
+							{
+								CreateMemCpy(GetOperand(castedInst->mArgs[0].mValue), GetOperand(castedInst->mArgs[1].mValue), constSize->mInt64, constAlign->mInt32);
+								break;
+							}
+						}
+
+						mcFunc = BeMCOperand::FromSymbolAddr(mCOFFObject->GetSymbolRef("memcpy")->mIdx);
+						//altArgs.insert(altArgs.begin(), castedInst->mArgs.begin(), castedInst->mArgs.begin() + 3);
+						for (int i = 0; i < 3; i++)
+							args.Add(castedInst->mArgs[i].mValue);
+						useAltArgs = true;
+					}
+					break;
+					case BfIRIntrinsic_MemMove:
+					{
+						mcFunc = BeMCOperand::FromSymbolAddr(mCOFFObject->GetSymbolRef("memmove")->mIdx);
+						//altArgs.insert(altArgs.begin(), castedInst->mArgs.begin(), castedInst->mArgs.begin() + 3);
+						for (int i = 0; i < 3; i++)
+							args.Add(castedInst->mArgs[i].mValue);
+						useAltArgs = true;
+					}
+					break;
+					case BfIRIntrinsic_ReturnAddress:
+					{
+						result = AllocVirtualReg(intrin->mReturnType);
+						CreateDefineVReg(result);
+						auto vregInfo = GetVRegInfo(result);
+						vregInfo->mFrameOffset = 0;
+					}
+					break;
+					case BfIRIntrinsic_VAArg:
+					{
+						auto mcListPtr = GetOperand(castedInst->mArgs[0].mValue);
+						auto mcDestVoidPtr = GetOperand(castedInst->mArgs[1].mValue);
+						auto mcType = GetOperand(castedInst->mArgs[2].mValue);
+
+						BeType* beType = mModule->mBeIRCodeGen->GetBeTypeById((int32)mcType.mImmediate);
+
+						auto mcList = AllocVirtualReg(mModule->mContext->GetPointerTo(mModule->mContext->GetPrimitiveType(BeTypeCode_NullPtr)));
+						CreateDefineVReg(mcList);
+						auto listVRegInfo = GetVRegInfo(mcList);
+						listVRegInfo->mRelTo = mcListPtr;
+						listVRegInfo->mIsExpr = true;
+
+						auto mcSrc = AllocVirtualReg(mModule->mContext->GetPointerTo(beType));
+						CreateDefineVReg(mcSrc);
+						auto srcVRegInfo = GetVRegInfo(mcSrc);
+						srcVRegInfo->mRelTo = BeMCOperand::ToLoad(mcList);
+						srcVRegInfo->mIsExpr = true;
+
+						auto mcDest = AllocVirtualReg(mModule->mContext->GetPointerTo(beType));
+						CreateDefineVReg(mcDest);
+						auto destVRegInfo = GetVRegInfo(mcDest);
+						destVRegInfo->mRelTo = mcDestVoidPtr;
+						destVRegInfo->mIsExpr = true;
+
+						AllocInst(BeMCInstKind_Mov, BeMCOperand::ToLoad(mcDest), BeMCOperand::ToLoad(mcSrc));
+						AllocInst(BeMCInstKind_Add, BeMCOperand::ToLoad(mcList), BeMCOperand::FromImmediate(8));
+					}
+					break;
+					case BfIRIntrinsic_VAEnd:
+						break;
+					case BfIRIntrinsic_VAStart:
+					{
+						auto mcTarget = GetOperand(castedInst->mArgs[0].mValue);
+
+						auto destVal = AllocVirtualReg(mModule->mContext->GetPointerTo(mModule->mContext->GetPrimitiveType(BeTypeCode_NullPtr)));
+						auto destVRegInfo = GetVRegInfo(destVal);
+						destVRegInfo->mRelTo = mcTarget;
+						destVRegInfo->mIsExpr = true;
+						CreateDefineVReg(destVal);
+
+						auto nullPtrType = mModule->mContext->GetPrimitiveType(BeTypeCode_NullPtr);
+						auto vaStartVal = AllocVirtualReg(nullPtrType);
+						auto vRegInfo = GetVRegInfo(vaStartVal);
+						vRegInfo->mMustExist = true;
+						vRegInfo->mForceMem = true;
+						vRegInfo->mFrameOffset = (int)mBeFunction->mParams.size() * 8 + 8;
+						vRegInfo->mRefCount++;
+						CreateDefineVReg(vaStartVal);
+
+						AllocInst(BeMCInstKind_Mov, BeMCOperand::ToLoad(destVal), BeMCOperand::FromVRegAddr(vaStartVal.mVRegIdx));
+					}
+					break;
+					default:
+						SoftFail(StrFormat("Intrinsic not handled: '%s'", intrin->mName.c_str()), castedInst->mDbgLoc);
+						break;
+					}
+				}
+				else
+				{
+					auto funcPtrType = castedInst->mFunc->GetType();
+					if (funcPtrType->IsPointer())
+					{
+						auto elementType = ((BePointerType*)funcPtrType)->mElementType;
+						if (elementType->mTypeCode == BeTypeCode_Function)
+						{
+							BeFunctionType* funcType = (BeFunctionType*)elementType;
+							if (funcType->mIsVarArg)
+								varArgStart = funcType->mParams.mSize;
+						}
 					}
 
-					vregInfo->mDbgVariable = dbgVar;
-					vregInfo->mMustExist = true;
-
-					dbgVar->mScope = mCurDbgLoc->mDbgScope;
-
-					dbgVar->mDeclMCBlockId = mcBlock->mBlockIdx;
-					AllocInst(BeMCInstKind_DbgDecl, mcVReg);
+					returnType = castedInst->GetType();
+					mcFunc = GetOperand(castedInst->mFunc);
 				}
-				break;
+
+				if (mcFunc)
+				{
+					if (!useAltArgs)
+					{
+						BF_ASSERT(args.IsEmpty());
+						for (auto& arg : castedInst->mArgs)
+							args.Add(arg.mValue);
+					}
+
+					result = CreateCall(mcFunc, args, returnType, castedInst->mCallingConv, castedInst->HasStructRet(), castedInst->mNoReturn, varArgStart);
+				}
+			}
+			break;
+			case BeDbgDeclareInst::TypeId:
+			{
+				auto castedInst = (BeDbgDeclareInst*)inst;
+				auto dbgVar = castedInst->mDbgVar;
+				auto mcValue = GetOperand(castedInst->mValue, false, false, true);
+				auto mcVReg = mcValue;
+				auto vregInfo = GetVRegInfo(mcVReg);
+
+				if ((vregInfo != NULL) && (vregInfo->mDbgVariable != NULL))
+				{
+					auto shadowVReg = AllocVirtualReg(vregInfo->mType);
+					CreateDefineVReg(shadowVReg);
+					auto shadowVRegInfo = GetVRegInfo(shadowVReg);
+					shadowVRegInfo->mIsExpr = true;
+					shadowVRegInfo->mValueScopeRetainedKind = BeMCValueScopeRetainKind_Hard;
+					shadowVRegInfo->mRelTo = mcVReg;
+					shadowVRegInfo->mRelTo.mKind = BeMCOperandKind_VReg;
+					shadowVReg.mKind = mcVReg.mKind;
+					mcValue = shadowVReg;
+					mcVReg = shadowVReg;
+					vregInfo = shadowVRegInfo;
+					mValueToOperand[dbgVar] = shadowVReg;
+				}
+				else
+				{
+					mValueToOperand[dbgVar] = mcVReg;
+				}
+
+				dbgVar->mValue = castedInst->mValue;
+				dbgVar->mDeclDbgLoc = inst->mDbgLoc;
+				dbgVar->mIsValue = castedInst->mIsValue;
+
+				if (!mcVReg.IsVRegAny())
+				{
+					mcVReg = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_None));
+					vregInfo = GetVRegInfo(mcVReg);
+
+					// Allocate a vreg just to properly track the lifetime of this local constant
+					/*auto constType = GetType(mcVReg);
+					auto newVReg = AllocVirtualReg(constType);
+					vregInfo = GetVRegInfo(newVReg);
+					vregInfo->mIsExpr = true;
+					vregInfo->mRelTo = mcVReg;
+					mcVReg = newVReg;*/
+				}
+
+				vregInfo->mDbgVariable = dbgVar;
+				vregInfo->mMustExist = true;
+
+				dbgVar->mScope = mCurDbgLoc->mDbgScope;
+
+				dbgVar->mDeclMCBlockId = mcBlock->mBlockIdx;
+				AllocInst(BeMCInstKind_DbgDecl, mcVReg);
+			}
+			break;
 			default:
 				Fail("Unhandled BeInst type");
 				break;
