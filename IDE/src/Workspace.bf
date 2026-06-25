@@ -123,17 +123,19 @@ namespace IDE
 				if (!targetTriple.IsWhiteSpace)
 					return TargetTriple.GetPlatformType(targetTriple);
 
-				switch (name)
-				{
-				case "Win32", "Win64": return .Windows;
-				case "Linux32", "Linux64": return .Linux;
-				case "macOS": return .macOS;
-				case "iOS": return .iOS;
-				case "wasm32", "wasm64": return .Wasm;
-				case "none": return .None;
-				default:
-					return TargetTriple.GetPlatformType(name);
-				}
+				if ((name.Equals("Win32", true)) || (name.Equals("Win64", true)))
+					return .Windows;
+				if ((name.Equals("Linux32", true)) || (name.Equals("Linux64", true)))
+					return .Linux;
+				if (name.Equals("macOS", true))
+					return .macOS;
+				if (name.Equals("iOS", true))
+					return .iOS;
+				if ((name.Equals("wasm32", true)) || (name.Equals("wasm64", true)))
+					return .Wasm;
+				if (name.Equals("none", true))
+					return .None;
+				return TargetTriple.GetPlatformType(name);
 			}
 
 			public static PlatformType GetHostPlatform()
@@ -158,42 +160,43 @@ namespace IDE
 			{
 				if ((name.EndsWith("32")) && (!TargetTriple.IsTargetTriple(name)))
 					return 4;
-				if (name.StartsWith("armv"))
+				if (name.StartsWith("armv", .OrdinalIgnoreCase))
 					return 4;
-				if (name.StartsWith("i686-"))
+				if (name.StartsWith("i686-", .OrdinalIgnoreCase))
 					return 4;
 				return 8;
 			}
 
 			public static bool GetTargetTripleByName(String name, ToolsetType toolsetType, String outTriple)
 			{
-				switch (name)
-				{
-				case "Win32":
+				if (name.Equals("Win32", .OrdinalIgnoreCase))
 					outTriple.Append((toolsetType == .GNU) ? "i686-pc-windows-gnu" : "i686-pc-windows-msvc");
-				case "Win64":
+				else if (name.Equals("Win64", .OrdinalIgnoreCase))
 					outTriple.Append((toolsetType == .GNU) ? "x86_64-pc-windows-gnu" : "x86_64-pc-windows-msvc");
-				case "Linux32":
+				else if (name.Equals("Linux32", .OrdinalIgnoreCase))
 					outTriple.Append("i686-unknown-linux-gnu");
-				case "Linux64":
+				else if (name.Equals("Linux64", .OrdinalIgnoreCase))
+				{
 					if (IDEApp.sArch64Name == "aarch64")
 						outTriple.Append("aarch64-unknown-linux-gnu");
 					else
 						outTriple.Append("x86_64-unknown-linux-gnu");
-				case "macOS":
+				}
+				else if (name.Equals("macOS", .OrdinalIgnoreCase))
+				{
 					if (IDEApp.sArch64Name == "aarch64")
 						outTriple.Append("aarch64-apple-macosx11.0.0");
 					else
 						outTriple.Append("x86_64-apple-macosx10.8.0");
-				case "iOS":
-					outTriple.Append("arm64-apple-ios");
-				case "wasm32":
-					outTriple.Append("wasm32-unknown-emscripten");
-				case "wasm64":
-					outTriple.Append("wasm64-unknown-emscripten");
-				default:
-					return false;
 				}
+				else if (name.Equals("iOS", .OrdinalIgnoreCase))
+					outTriple.Append("arm64-apple-ios");
+				else if (name.Equals("wasm32", .OrdinalIgnoreCase))
+					outTriple.Append("wasm32-unknown-emscripten");
+				else if (name.Equals("wasm64", .OrdinalIgnoreCase))
+					outTriple.Append("wasm64-unknown-emscripten");
+				else
+					return false;
 				return true;
 			}
 		}

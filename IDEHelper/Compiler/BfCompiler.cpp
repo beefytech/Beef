@@ -11164,18 +11164,20 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 	options->mTargetTriple = targetTriple;
 	options->mTargetCPU = targetCPU;
 
-	if (options->mTargetTriple.StartsWith("x86_64-"))
+	if (options->mTargetTriple.StartsWith("x86_64-", StringImpl::CompareKind_OrdinalIgnoreCase))
 		options->mMachineType = BfMachineType_x64;
-	else if ((options->mTargetTriple.StartsWith("i686-")) || (options->mTargetTriple.StartsWith("i386-")))
+	else if ((options->mTargetTriple.StartsWith("i686-", StringImpl::CompareKind_OrdinalIgnoreCase)) || (options->mTargetTriple.StartsWith("i386-", StringImpl::CompareKind_OrdinalIgnoreCase)))
 		options->mMachineType = BfMachineType_x86;
-	else if ((options->mTargetTriple.StartsWith("arm64")) || (options->mTargetTriple.StartsWith("aarch64")))
+	else if ((options->mTargetTriple.StartsWith("arm64", StringImpl::CompareKind_OrdinalIgnoreCase)) || (options->mTargetTriple.StartsWith("aarch64", StringImpl::CompareKind_OrdinalIgnoreCase)))
 		options->mMachineType = BfMachineType_AArch64;
-	else if (options->mTargetTriple.StartsWith("armv"))
+	else if (options->mTargetTriple.StartsWith("armv", StringImpl::CompareKind_OrdinalIgnoreCase))
 		options->mMachineType = BfMachineType_ARM;
-	else if (options->mTargetTriple.StartsWith("wasm32"))
+	else if (options->mTargetTriple.StartsWith("wasm32", StringImpl::CompareKind_OrdinalIgnoreCase))
 		options->mMachineType = BfMachineType_Wasm32;
-	else if (options->mTargetTriple.StartsWith("wasm64"))
+	else if (options->mTargetTriple.StartsWith("wasm64", StringImpl::CompareKind_OrdinalIgnoreCase))
 		options->mMachineType = BfMachineType_Wasm64;
+	else if (options->mTargetTriple.EndsWith("32"))
+		options->mMachineType = BfMachineType_Wasm32;
 	else
 		options->mMachineType = BfMachineType_x64; // Default
 
