@@ -1116,6 +1116,8 @@ private:
 	}
 };
 
+#define BE_REGCOST_SIZE 15
+
 class BeMCColorizer
 {
 public:
@@ -1126,7 +1128,12 @@ public:
 		bool mInGraph;
 		bool mSpilled;
 		bool mWantsReg;
+#ifdef BE_REGCOST_SIZE
+		int mRegCost[BE_REGCOST_SIZE];
+#else
 		int mRegCost[X64Reg_COUNT];
+#endif
+
 		int mLowestRegCost;
 		int mMemCost;
 		//int mActualVRegIdx;
@@ -1136,15 +1143,15 @@ public:
 			Prepare();
 		}
 
-		void AdjustRegCost(X64CPURegister reg, int adjust)
+		void AdjustRegCost(X64CPURegister reg, int adjust);
+
+		void ClearRegCosts()
 		{
-			BF_ASSERT((int)reg >= 0);
-			BF_ASSERT((int)reg < X64Reg_COUNT);
-			int newCost = mRegCost[(int)reg] + adjust;
-			mRegCost[(int)reg] = newCost;
-			if (newCost < mLowestRegCost)
-				mLowestRegCost = newCost;
+			mLowestRegCost = 0;
+			memset(mRegCost, 0, sizeof(mRegCost));
 		}
+
+		int GetRegCost(X64CPURegister reg);
 
 		void Prepare()
 		{
@@ -1182,6 +1189,8 @@ public:
 	BeMCContext* mContext;
 	bool mReserveParamRegs;
 	BumpAllocatorT<BE_BUMP_SIZE> mNodeAlloc;
+	SizedArray<X64CPURegister, 32> mIntRegs;
+	SizedArray<X64CPURegister, 32> mFloatRegs;
 
 public:
 	BeMCColorizer(BeMCContext* mcContext);
@@ -1435,6 +1444,7 @@ public:
 	String ToString(bool showVRegFlags = true, bool showVRegDetails = false);
 	void Print(bool showVRegFlags, bool showVRegDetails);
 	void Print();
+	void Print(BeMCInst* inst);
 	BeMCOperand GetOperand(BeValue* value, bool allowMetaResult = false, bool allowFail = false, bool skipForceVRegAddr = false); // Meta results are PHIs or CmpResults
 	BeMCOperand CreateNot(const BeMCOperand& operand);
 	BeMCOperand TryToVector(BeValue* value);

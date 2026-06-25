@@ -25,7 +25,16 @@ USING_NS_BF;
 const int BF_REP_MOV_LIMIT = 128;
 
 static const X64CPURegister gVolatileRegs[] = { X64Reg_RAX, X64Reg_RCX, X64Reg_RDX, X64Reg_R8, X64Reg_R9, X64Reg_R10, X64Reg_R11,
-	X64Reg_XMM0_f64, X64Reg_XMM1_f64, X64Reg_XMM2_f64, X64Reg_XMM3_f64, X64Reg_XMM4_f64, X64Reg_XMM5_f64 };
+	X64Reg_M128_XMM0, X64Reg_M128_XMM1, X64Reg_M128_XMM2, X64Reg_M128_XMM3, X64Reg_M128_XMM4, X64Reg_M128_XMM5 };
+
+
+#ifdef BE_REGCOST_SIZE
+static const int sRegCostIdxMap[X64Reg_COUNT] = { 0, 3, 2, 1, 4, 5, -1, -1, 6, 7, 8, 9, 10, 11, 12, 13, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1,
+	-1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, 0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11,
+	12, 13, 14, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1, -1 };
+#endif
 
 static const char* gOpName[] =
 {
@@ -863,10 +872,73 @@ BeVTrackingList* BeVTrackingContext::RemoveChange(BeVTrackingList* prevDestEntry
 
 //////////////////////////////////////////////////////////////////////////
 
+void BeMCColorizer::Node::AdjustRegCost(X64CPURegister reg, int adjust)
+{
+	BF_ASSERT((int)reg >= 0);
+	BF_ASSERT((int)reg < X64Reg_COUNT);
+
+#ifdef BE_REGCOST_SIZE
+	int costIdx = sRegCostIdxMap[(int)reg];
+#else
+	int costIdx = (int)reg;
+#endif
+	if (costIdx == -1)
+		return;
+	int newCost = mRegCost[costIdx] + adjust;
+	mRegCost[costIdx] = newCost;
+	if (newCost < mLowestRegCost)
+		mLowestRegCost = newCost;
+}
+
+int BeMCColorizer::Node::GetRegCost(X64CPURegister reg)
+{
+	BF_ASSERT((int)reg >= 0);
+	BF_ASSERT((int)reg < X64Reg_COUNT);
+
+#ifdef BE_REGCOST_SIZE
+	int costIdx = sRegCostIdxMap[(int)reg];
+#else
+	int costIdx = (int)reg;
+#endif
+	if (costIdx == -1)
+		return 0;
+	return mRegCost[costIdx];
+}
+
+//////////////////////////////////////////////////////////////////////////
+
 BeMCColorizer::BeMCColorizer(BeMCContext* mcContext)
 {
 	mContext = mcContext;
 	mReserveParamRegs = false;
+	mIntRegs = {
+		X64Reg_RAX, X64Reg_RBX, X64Reg_RCX, X64Reg_RDX, X64Reg_RSI, X64Reg_RDI, X64Reg_R8,
+		X64Reg_R9, X64Reg_R10, X64Reg_R11, X64Reg_R12, X64Reg_R13, X64Reg_R14, X64Reg_R15 };
+	mFloatRegs = {
+		X64Reg_M128_XMM0, X64Reg_M128_XMM1, X64Reg_M128_XMM2, X64Reg_M128_XMM3,
+		X64Reg_M128_XMM4, X64Reg_M128_XMM5, X64Reg_M128_XMM6, X64Reg_M128_XMM7,
+		X64Reg_M128_XMM8, X64Reg_M128_XMM9, X64Reg_M128_XMM10, X64Reg_M128_XMM11,
+		X64Reg_M128_XMM12, X64Reg_M128_XMM13, X64Reg_M128_XMM14 /*, X64Reg_M128_XMM15*/ }; // Leave X64Reg_M128_XMM15 as a scratch reg
+
+#ifdef BE_REGCOST_SIZE
+	BF_ASSERT(mIntRegs.mSize <= BE_REGCOST_SIZE);
+	BF_ASSERT(mFloatRegs.mSize <= BE_REGCOST_SIZE);
+#endif
+
+	/*for (int i = 0; i < X64Reg_COUNT; i++)
+		sRegCostIdxMap[i] = -1;
+	for (int i = 0; i < mIntRegs.mSize; i++)
+		sRegCostIdxMap[mIntRegs[i]] = i;
+	for (int i = 0; i < mFloatRegs.mSize; i++)
+		sRegCostIdxMap[mFloatRegs[i]] = i;
+
+	String str = "sRegCostIdxMap = (";
+	for (int i = 0; i < X64Reg_COUNT; i++)
+	{
+		str += StrFormat("%d, ", sRegCostIdxMap[i]);
+	}
+	str += ");\n";
+	OutputDebugStr(str);*/
 }
 
 void BeMCColorizer::Prepare()
@@ -875,10 +947,15 @@ void BeMCColorizer::Prepare()
 
 	mEdgesFound.Clear();
 
+	int nodeAllocSize = (int)mContext->mVRegInfo.size();
+	// Allocate enough that we are unlikely to reallocate during subsequent passes
+	nodeAllocSize += nodeAllocSize / 10 + 2;
+
 	//mNodes.Resize(mContext->mVRegInfo.size());
 	mNodes.mSize = 0;
+	mNodes.Reserve(nodeAllocSize);
 	mNodes.SetSize(mContext->mVRegInfo.size());
-	memset(mNodes.mVals, 0, mNodes.mSize * sizeof(Node));
+	memset(mNodes.mVals, 0, nodeAllocSize * sizeof(Node));
 	mNodeAlloc.Clear(true);
 
 	for (int vregIdx = 0; vregIdx < (int)mNodes.size(); vregIdx++)
@@ -1159,7 +1236,8 @@ void BeMCColorizer::GenerateRegCosts()
 						if ((checkInst->mKind == BeMCInstKind_Mov) && (checkInst->mArg0.IsNativeReg()))
 						{
 							// This can save us from needing to mov the call addr to RAX before the call
-							mNodes[inst->mArg0.mVRegIdx].AdjustRegCost(checkInst->mArg0.mReg, 2 * costMult);
+							auto fullReg = mContext->GetFullRegister(checkInst->mArg0.mReg);
+							mNodes[inst->mArg0.mVRegIdx].AdjustRegCost(fullReg, 2 * costMult);							
 						}
 						else
 							break;
@@ -1268,22 +1346,27 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 	int totalRegs32 = 0;
 	int totalRegs16 = 0;
 
+	bool clearCosts = false;
+
 	SizedArray<X64CPURegister, 32> validRegs;
 	if (regKind == BeMCColorizer::RegKind_Ints)
 	{
-		highestReg = X64Reg_R15;
-		validRegs = { X64Reg_RAX, X64Reg_RBX, X64Reg_RCX, X64Reg_RDX, X64Reg_RSI, X64Reg_RDI, X64Reg_R8,
-			X64Reg_R9, X64Reg_R10, X64Reg_R11, X64Reg_R12, X64Reg_R13, X64Reg_R14, X64Reg_R15 };
+		validRegs = mIntRegs;
+		highestReg = validRegs.back();
 	}
 	else
 	{
-		highestReg = X64Reg_M128_XMM14; // Leave X64Reg_M128_XMM15 as a scratch reg
-		validRegs = {
-			X64Reg_M128_XMM0, X64Reg_M128_XMM1, X64Reg_M128_XMM2, X64Reg_M128_XMM3,
-			X64Reg_M128_XMM4, X64Reg_M128_XMM5, X64Reg_M128_XMM6, X64Reg_M128_XMM7,
-			X64Reg_M128_XMM8, X64Reg_M128_XMM9, X64Reg_M128_XMM10, X64Reg_M128_XMM11,
-			X64Reg_M128_XMM12, X64Reg_M128_XMM13, X64Reg_M128_XMM14 /*, X64Reg_M128_XMM15*/ };
+		validRegs = mFloatRegs;
+		highestReg = validRegs.back();
+#ifdef BE_REGCOST_SIZE
+		clearCosts = true;
+#endif
 	}
+
+	/*for (int i = 0; i < X64Reg_COUNT; i++)
+	{
+		mRegCostIdxMap
+	}*/
 
 	int totalRegs = (int)validRegs.size();
 
@@ -1325,6 +1408,8 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 
 				if (canBeReg)
 				{
+					if (clearCosts)
+						node->ClearRegCosts();
 					node->mInGraph = true;
 					node->mGraphEdgeCount = 0;
 					vregGraph.push_back(vregIdx);
@@ -1519,7 +1604,13 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 		{
 			auto affinityVRegInfo = mContext->mVRegInfo[vregInfo->mVRegAffinity];
 			if (affinityVRegInfo->mReg != X64Reg_None)
+			{
+				//NOTE: This seems like it would be correct but causes a miscompile on BeefIDE
+				//auto fullReg = mContext->GetFullRegister(affinityVRegInfo->mReg);
+				//node->AdjustRegCost(fullReg, -2);
+
 				node->AdjustRegCost(affinityVRegInfo->mReg, -2);
+			}
 		}
 
 		for (int i = 0; i <= highestReg; i++)
@@ -1567,7 +1658,7 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 			auto validReg = validRegs[regIdx];
 			if (!regUsedVec[(int)validReg])
 			{
-				int checkCost = node->mRegCost[(int)validReg];
+				int checkCost = node->GetRegCost(validReg);
 				// If this register is non-volatile then we'd have to save and restore it, which costs... unless
 				//  some other vreg has already used this, then there's no additional cost
 				if ((!globalRegUsedVec[(int)validReg]) && (!mContext->IsVolatileReg(validReg)))
@@ -1651,7 +1742,7 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 							if (connVRegInfo->mForceReg)
 								continue;
 
-							if (node->mRegCost[usedReg] < 0x07FFFFFFF)
+							if (node->GetRegCost(usedReg) < 0x07FFFFFFF)
 							{
 								if (connVRegInfo->mRefCount < bestSpillCost)
 								{
@@ -11266,8 +11357,10 @@ bool BeMCContext::DoJumpRemovePass()
 		for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
 		{
 			auto inst = mcBlock->mInstructions[instIdx];
-			bool goBackToLastBranch = false;
+			if (inst == NULL)
+				continue;
 
+			bool goBackToLastBranch = false;
 			bool removeInst = false;
 
 			// If we're just jumping to the next label, remove jump
@@ -11279,6 +11372,8 @@ bool BeMCContext::DoJumpRemovePass()
 					for (int labelInstIdx = instIdx + 1; labelInstIdx < (int)mcBlock->mInstructions.size(); labelInstIdx++)
 					{
 						auto labelInst = mcBlock->mInstructions[labelInstIdx];
+						if (labelInst == NULL)
+							continue;
 						if (labelInst->mKind != BeMCInstKind_Label)
 						{
 							if (labelInst->IsPsuedo())
@@ -11300,8 +11395,9 @@ bool BeMCContext::DoJumpRemovePass()
 
 			if (removeInst)
 			{
-				mcBlock->mInstructions.RemoveAt(instIdx);
-				instIdx--;
+				//mcBlock->mInstructions.RemoveAt(instIdx);
+				//instIdx--;
+				mcBlock->mInstructions[instIdx] = NULL;
 				continue;
 			}
 
@@ -11314,7 +11410,7 @@ bool BeMCContext::DoJumpRemovePass()
 					bool allowRemove = true;
 					auto nextInst = mcBlock->mInstructions[instIdx + 1];
 					auto nextNextInst = mcBlock->mInstructions[instIdx + 2];
-					if ((nextInst->mKind == BeMCInstKind_Br) &&
+					if ((nextInst != NULL) && (nextNextInst != NULL) && (nextInst->mKind == BeMCInstKind_Br) &&
 						((inst->mDbgLoc == NULL) || (inst->mDbgLoc == nextNextInst->mDbgLoc)) &&
 						(!labelStats[inst->mArg0.mLabelIdx].mForceKeepLabel))
 					{
@@ -11323,7 +11419,11 @@ bool BeMCContext::DoJumpRemovePass()
 						{
 							auto prevInst = mcBlock->mInstructions[checkIdx];
 
-							if (prevInst->mKind == BeMCInstKind_Label)
+							if (prevInst == NULL)
+							{
+								// Ignore
+							}
+							else if (prevInst->mKind == BeMCInstKind_Label)
 							{
 								// Keep looking
 							}
@@ -11344,11 +11444,13 @@ bool BeMCContext::DoJumpRemovePass()
 							allowRemove = false;*/
 
 						didWork = true;
-						RemoveInst(mcBlock, instIdx); // Remove label
+						//RemoveInst(mcBlock, instIdx); // Remove label
+						mcBlock->mInstructions[instIdx] = NULL;
 						labelRemaps.TryAdd(inst->mArg0.mLabelIdx, nextInst->mArg0.mLabelIdx);
 						if (allowRemove)
 						{
-							RemoveInst(mcBlock, instIdx); // Remove branch
+							//RemoveInst(mcBlock, instIdx); // Remove branch
+							mcBlock->mInstructions[instIdx + 1] = NULL;
 							goBackToLastBranch = true;
 						}
 					}
@@ -11362,7 +11464,11 @@ bool BeMCContext::DoJumpRemovePass()
 				while (checkIdx >= 0)
 				{
 					auto checkInst = mcBlock->mInstructions[checkIdx];
-					if (checkInst->mKind == BeMCInstKind_Br)
+					if (checkInst == NULL)
+					{
+						// Ignore
+					}
+					else if (checkInst->mKind == BeMCInstKind_Br)
 					{
 						instIdx = checkIdx - 1;
 						break;
@@ -11385,13 +11491,9 @@ bool BeMCContext::DoJumpRemovePass()
 			bool didRemapMerge = false;
 			for (auto& remapPair : labelRemaps)
 			{
-				//auto itr = labelRemaps.find(remapPair.second);
-				//if (itr != labelRemaps.end())
-
 				int* valuePtr = NULL;
 				if (labelRemaps.TryGetValue(remapPair.mValue, &valuePtr))
 				{
-					//remapPair.second = itr->second;
 					remapPair.mValue = *valuePtr;
 					didRemapMerge = true;
 				}
@@ -11405,20 +11507,17 @@ bool BeMCContext::DoJumpRemovePass()
 			for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
 			{
 				auto inst = mcBlock->mInstructions[instIdx];
-
+				if (inst == NULL)
+					continue;
 				auto operands = { &inst->mArg0, &inst->mArg1 };
 				for (auto operand : operands)
 				{
 					if (operand->mKind == BeMCOperandKind_Label)
 					{
-						//auto itr = labelRemaps.find(operand->mLabelIdx);
-						//if (itr != labelRemaps.end())
-
 						int* valuePtr = NULL;
 						if (labelRemaps.TryGetValue(operand->mLabelIdx, &valuePtr))
 						{
 							labelStats[operand->mLabelIdx].mHasRefs = false;
-							//operand->mLabelIdx = itr->second;
 							operand->mLabelIdx = *valuePtr;
 							labelStats[operand->mLabelIdx].mHasRefs = true;
 						}
@@ -11443,86 +11542,136 @@ bool BeMCContext::DoJumpRemovePass()
 		bool doMorePasses = false;
 		bool isUnreachable = false;
 
-		for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
+		// This loop also compacts any NULL holes in the instruction list from previous removals
 		{
-			auto inst = mcBlock->mInstructions[instIdx];
-
-			if (inst->mKind == BeMCInstKind_Label)
+			int outInstIdx = 0;
+			for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
 			{
-				isUnreachable = false;
+				auto inst = mcBlock->mInstructions[instIdx];
+				bool doRemove = false;
 
-				if (!labelStats[inst->mArg0.mLabelIdx].mHasRefs)
+				if (inst == NULL)
+				{
+					doRemove = true;
+				}
+				else if (inst->mKind == BeMCInstKind_Label)
+				{
+					isUnreachable = false;
+
+					if (!labelStats[inst->mArg0.mLabelIdx].mHasRefs)
+					{
+						doRemove = true;
+					}
+				}
+				else if (inst->mKind == BeMCInstKind_CondBr)
+				{
+					doMorePasses = true;
+				}
+				else if (inst->mKind == BeMCInstKind_Br)
+				{
+					if (isUnreachable)
+					{
+						// We can't possible reach this branch.  This is an artifact of other br removals
+						doRemove = true;
+					}
+					else
+						isUnreachable = true;
+				}
+
+				if (doRemove)
 				{
 					didWork = true;
-					mcBlock->mInstructions.RemoveAt(instIdx);
-					instIdx--;
 				}
-			}
-
-			if (inst->mKind == BeMCInstKind_CondBr)
-				doMorePasses = true;
-
-			if (inst->mKind == BeMCInstKind_Br)
-			{
-				if (isUnreachable)
+				else
 				{
-					// We can't possible reach this branch.  This is an artifact of other br removals
-					didWork = true;
-					RemoveInst(mcBlock, instIdx);
-					instIdx--;
-					continue;
+					if (outInstIdx != instIdx)
+						mcBlock->mInstructions[outInstIdx] = inst;
+					outInstIdx++;
 				}
-
-				isUnreachable = true;
 			}
+			mcBlock->mInstructions.mSize = outInstIdx;
 		}
 
 		if (doMorePasses)
 		{
+			int outInstIdx = 0;
+
+			// This loop compacts NULLs
 			for (int instIdx = 0; instIdx < (int)mcBlock->mInstructions.size(); instIdx++)
 			{
+				bool doRemove = false;
 				auto inst = mcBlock->mInstructions[instIdx];
 
-				// For the form:
-				//   CondBr %label0, eq
-				//   Br %label1
-				//   %label0:
-				// Invert condition and convert that to
-				//   CondBr %label1, neq
-				//   %label0:
-				// We perform this after the jump-removal process to ensure we compare against the correct
-				//  final label positions, otherwise there are cases where we would incorrectly apply this
-				//  transformation early and end up with worse results than just not doing it
-				if (inst->mKind == BeMCInstKind_CondBr)
+				if (inst == NULL)
 				{
+					doRemove = true;
+				}
+				else if (inst->mKind == BeMCInstKind_CondBr)
+				{
+					// For the form:
+					//   CondBr %label0, eq
+					//   Br %label1
+					//   %label0:
+					// Invert condition and convert that to
+					//   CondBr %label1, neq
+					//   %label0:
+					// We perform this after the jump-removal process to ensure we compare against the correct
+					//  final label positions, otherwise there are cases where we would incorrectly apply this
+					//  transformation early and end up with worse results than just not doing it					
 					if (instIdx < (int)mcBlock->mInstructions.size() - 2)
 					{
+						bool canRemove = true;
+
 						int nextIdx = instIdx + 1;
 						int nextNextIdx = instIdx + 2;
 						auto nextInst = mcBlock->mInstructions[nextIdx];
-						if (nextInst->mKind == BeMCInstKind_EnsureInstructionAt)
+						if ((nextInst != NULL) && (nextInst->mKind == BeMCInstKind_EnsureInstructionAt))
 						{
 							if (nextInst->mDbgLoc != inst->mDbgLoc)
-								continue;
-							nextIdx++;
-							nextNextIdx++;
-							nextInst = mcBlock->mInstructions[nextIdx];
+							{
+								canRemove = false;
+							}
+							else
+							{
+								nextIdx++;
+								nextNextIdx++;
+								nextInst = mcBlock->mInstructions[nextIdx];
+							}
 						}
 
-						auto nextNextInst = mcBlock->mInstructions[nextNextIdx];
-						if ((nextInst->mKind == BeMCInstKind_Br) &&
-							(nextNextInst->mKind == BeMCInstKind_Label) && (inst->mArg0 == nextNextInst->mArg0) &&
-							(!BeModule::IsCmpOrdered(inst->mArg1.mCmpKind)))
+						if (canRemove)
 						{
-							didWork = true;
-							inst->mArg0 = nextInst->mArg0;
-							BF_ASSERT(inst->mArg1.mKind == BeMCOperandKind_CmpKind);
-							inst->mArg1.mCmpKind = BeModule::InvertCmp(inst->mArg1.mCmpKind);
-							mcBlock->mInstructions.RemoveAt(nextIdx);
+							auto nextNextInst = mcBlock->mInstructions[nextNextIdx];
+							if ((nextInst != NULL) && (nextNextInst != NULL) && (nextInst->mKind == BeMCInstKind_Br) &&
+								(nextNextInst->mKind == BeMCInstKind_Label) && (inst->mArg0 == nextNextInst->mArg0) &&
+								(!BeModule::IsCmpOrdered(inst->mArg1.mCmpKind)))
+							{
+								didWork = true;
+								inst->mArg0 = nextInst->mArg0;
+								BF_ASSERT(inst->mArg1.mKind == BeMCOperandKind_CmpKind);
+								inst->mArg1.mCmpKind = BeModule::InvertCmp(inst->mArg1.mCmpKind);
+
+								// Remove- compacted later
+								mcBlock->mInstructions[nextIdx] = NULL;
+								//RemoveInst(mcBlock, nextIdx);
+							}
 						}
 					}
 				}
+
+				if (doRemove)
+				{
+					didWork = true;
+				}
+				else
+				{
+					if (outInstIdx != instIdx)
+						mcBlock->mInstructions[outInstIdx] = inst;
+					outInstIdx++;
+				}
 			}
+
+			mcBlock->mInstructions.mSize = outInstIdx;
 		}
 	}
 
@@ -16365,14 +16514,21 @@ String BeMCContext::ToString(bool showVRegFlags, bool showVRegDetails)
 	return str;
 }
 
+void BeMCContext::Print(bool showVRegFlags, bool showVRegDetails)
+{
+	OutputDebugStr(ToString(showVRegFlags, showVRegDetails));
+}
+
 void BeMCContext::Print()
 {
 	OutputDebugStr(ToString(true, false));
 }
 
-void BeMCContext::Print(bool showVRegFlags, bool showVRegDetails)
+void BeMCContext::Print(BeMCInst* inst)
 {
-	OutputDebugStr(ToString(showVRegFlags, showVRegDetails));
+	String str;
+	ToString(inst, str, true, false);
+	OutputDebugStr(str);
 }
 
 BeMCOperand BeMCContext::AllocBinaryOp(BeMCInstKind instKind, const BeMCOperand& lhs, const BeMCOperand& rhs, BeMCBinIdentityKind identityKind, BeMCOverflowCheckKind overflowCheckKind)
