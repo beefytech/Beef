@@ -877,17 +877,18 @@ void BeMCColorizer::Node::AdjustRegCost(X64CPURegister reg, int adjust)
 	BF_ASSERT((int)reg >= 0);
 	BF_ASSERT((int)reg < X64Reg_COUNT);
 
-#ifdef BE_REGCOST_SIZE
+#ifdef BE_REGCOST_SIZE		
 	int costIdx = sRegCostIdxMap[(int)reg];
+	bool isFloat = (reg >= X64Reg_XMM0_f64) && (reg <= X64Reg_M128_XMM15);
+	if (isFloat != mRegCostFloat)
+		costIdx = -1;
 #else
 	int costIdx = (int)reg;
 #endif
 	if (costIdx == -1)
 		return;
 	int newCost = mRegCost[costIdx] + adjust;
-	mRegCost[costIdx] = newCost;
-	if (newCost < mLowestRegCost)
-		mLowestRegCost = newCost;
+	mRegCost[costIdx] = newCost;	
 }
 
 int BeMCColorizer::Node::GetRegCost(X64CPURegister reg)
@@ -897,6 +898,9 @@ int BeMCColorizer::Node::GetRegCost(X64CPURegister reg)
 
 #ifdef BE_REGCOST_SIZE
 	int costIdx = sRegCostIdxMap[(int)reg];
+	bool isFloat = (reg >= X64Reg_XMM0_f64) && (reg <= X64Reg_M128_XMM15);
+	if (isFloat != mRegCostFloat)
+		costIdx = -1;
 #else
 	int costIdx = (int)reg;
 #endif
@@ -1408,8 +1412,10 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 
 				if (canBeReg)
 				{
+#ifdef BE_REGCOST_SIZE
 					if (clearCosts)
-						node->ClearRegCosts();
+						node->SetRegCostFloat();
+#endif
 					node->mInGraph = true;
 					node->mGraphEdgeCount = 0;
 					vregGraph.push_back(vregIdx);

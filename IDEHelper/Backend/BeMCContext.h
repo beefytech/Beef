@@ -1127,14 +1127,13 @@ public:
 		int mGraphEdgeCount;
 		bool mInGraph;
 		bool mSpilled;
-		bool mWantsReg;
+		bool mWantsReg;		
 #ifdef BE_REGCOST_SIZE
-		int mRegCost[BE_REGCOST_SIZE];
+		bool mRegCostFloat;
+		int mRegCost[BE_REGCOST_SIZE];		
 #else
 		int mRegCost[X64Reg_COUNT];
-#endif
-
-		int mLowestRegCost;
+#endif		
 		int mMemCost;
 		//int mActualVRegIdx;
 
@@ -1145,10 +1144,10 @@ public:
 
 		void AdjustRegCost(X64CPURegister reg, int adjust);
 
-		void ClearRegCosts()
-		{
-			mLowestRegCost = 0;
+		void SetRegCostFloat()
+		{			
 			memset(mRegCost, 0, sizeof(mRegCost));
+			mRegCostFloat = true;
 		}
 
 		int GetRegCost(X64CPURegister reg);
@@ -1158,9 +1157,9 @@ public:
 			mWantsReg = false;
 			mInGraph = false;
 			mSpilled = false;
-			mGraphEdgeCount = 0;
-			mLowestRegCost = 0;
+			mGraphEdgeCount = 0;			
 			mMemCost = 0;
+			mRegCostFloat = false;
 			memset(mRegCost, 0, sizeof(mRegCost));
 			//mActualVRegIdx = -1;
 		}
