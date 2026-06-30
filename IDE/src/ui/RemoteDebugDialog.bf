@@ -3,26 +3,66 @@ using System.Collections;
 using Beefy.gfx;
 using Beefy.theme.dark;
 using Beefy.widgets;
-using System.IO;
 
 namespace IDE.ui
 {
 	public class RemoteDebugDialog : DarkDialog
 	{
-		DarkEditWidget mHostEdit;
-		DarkEditWidget mPortEdit;
-		PathComboBox mElfPathCombo;
-		PathComboBox mGdbExeCombo; // Only created when GDB is the active debugger
-		DarkCheckBox mHardwareBreakpointsCheckbox;
+		// Which debugger + connection method is being configured. The remote debugger is chosen
+		// explicitly here (independent of the preferences "debugger kind", which only selects the
+		// default *native* debugger). The selected method drives both the fields shown and the
+		// "@<tag>" suffix appended to the launch path, which is what selects the backend.
+		enum ConnKind
+		{
+			LldbRemote, // <elf>@{lldb_hw|lldb}:<host>:<port>
+			GdbServer,  // <elf>@{gdb_hw|gdb}:<host>:<port>[;<gdbexe>]
+			GdbSsh      // <elf>@{gdb_ssh_hw|gdb_ssh}:<server>
+		}
 
-		// The debugger is chosen globally; LLDB uses in-process liblldb (no external
-		// executable), so the GDB-executable field is only relevant for GDB.
-		bool mUseLLDB = (gApp.mSettings.mDebuggerSettings.mDebuggerKind == .LLDB);
+		enum FieldKind
+		{
+			Host,
+			Port,
+			SshServer,
+			ElfPath,
+			GdbExe,
+			HwBreakpoints
+		}
 
-		static String sLastHost    = new String("localhost") ~ delete _;
-		static String sLastPort    = new String("3333") ~ delete _;
-		static String sLastElfPath = new String() ~ delete _;
-		static String sLastGdbExe  = new String() ~ delete _;
+		struct FieldSpec
+		{
+			public FieldKind mKind;
+			public StringView mLabel;
+			public bool mRemote; // For path fields: true = a path on the remote machine (no "..." browse)
+
+			public this(FieldKind kind, StringView label, bool remote = false)
+			{
+				mKind = kind;
+				mLabel = label;
+				mRemote = remote;
+			}
+		}
+
+		class MethodInfo
+		{
+			public String mName ~ delete _;
+			public ConnKind mConnKind;
+			public List<FieldSpec> mFields = new .() ~ delete _;
+		}
+
+		List<MethodInfo> mMethods = new .() ~ DeleteContainerAndItems!(_);
+		MethodInfo mSelectedMethod;
+
+		DarkComboBox mMethodCombo;
+		Dictionary<FieldKind, Widget> mFieldWidgets = new .() ~ delete _; // Widgets owned by the widget tree
+
+		// Remember last-used selections across opens (independent of the preferences debugger kind).
+		static String sLastMethodName = new String("LLDB - GDB Remote Protocol") ~ delete _;
+		static String sLastHost       = new String("localhost") ~ delete _;
+		static String sLastPort       = new String("3333") ~ delete _;
+		static String sLastSshServer  = new String() ~ delete _;
+		static String sLastElfPath    = new String() ~ delete _;
+		static String sLastGdbExe     = new String() ~ delete _;
 		static bool   sLastHardwareBreakpoints = true;
 
 		public this()
@@ -32,112 +72,258 @@ namespace IDE.ui
 			mButtonBottomMargin = GS!(6);
 			mButtonRightMargin = GS!(6);
 
+			BuildMethods();
+
 			AddOkCancelButtons(new (evt) => { evt.mCloseDialog = false; Connect(); }, null, 0, 1);
 
-			mHostEdit = new DarkEditWidget();
-			mHostEdit.SetText(sLastHost);
-			AddWidget(mHostEdit);
-			AddEdit(mHostEdit);
-
-			mPortEdit = new DarkEditWidget();
-			mPortEdit.SetText(sLastPort);
-			AddWidget(mPortEdit);
-			AddEdit(mPortEdit);
-
-			mElfPathCombo = new PathComboBox();
-			mElfPathCombo.MakeEditable(new PathEditWidget());
-			mElfPathCombo.Label = sLastElfPath;
-			mElfPathCombo.mPopulateMenuAction.Add(new (dlg) =>
+			mMethodCombo = new DarkComboBox();
+			mMethodCombo.mPopulateMenuAction.Add(new (menu) =>
 				{
-					var item = dlg.AddItem("< Browse... >");
-					item.mOnMenuItemSelected.Add(new (selItem) => { BrowseElf(); });
-				});
-			AddWidget(mElfPathCombo);
-			AddEdit(mElfPathCombo.mEditWidget);
-
-			if (!mUseLLDB)
-			{
-				mGdbExeCombo = new PathComboBox();
-				mGdbExeCombo.MakeEditable(new PathEditWidget());
-				mGdbExeCombo.Label = sLastGdbExe;
-				mGdbExeCombo.mPopulateMenuAction.Add(new (dlg) =>
+					for (var method in mMethods)
 					{
-						var item = dlg.AddItem("< Browse... >");
-						item.mOnMenuItemSelected.Add(new (selItem) => { BrowseGdbExe(); });
-					});
-				AddWidget(mGdbExeCombo);
-				AddEdit(mGdbExeCombo.mEditWidget);
-			}
+						var item = menu.AddItem(method.mName);
+						item.mOnMenuItemSelected.Add(new (selItem) => { SelectMethod(selItem.mLabel); });
+					}
+				});
+			AddDialogComponent(mMethodCombo);
 
-			mHardwareBreakpointsCheckbox = new DarkCheckBox();
-			mHardwareBreakpointsCheckbox.Label = "&Hardware Breakpoints";
-			mHardwareBreakpointsCheckbox.Checked = sLastHardwareBreakpoints;
-			AddDialogComponent(mHardwareBreakpointsCheckbox);
+			mSelectedMethod = FindMethod(sLastMethodName) ?? mMethods[0];
+			mMethodCombo.Label = mSelectedMethod.mName;
+
+			RebuildFields();
 		}
 
-		void BrowseElf()
+		void BuildMethods()
 		{
-#if !CLI
-			var fileDialog = scope System.IO.OpenFileDialog();
-			fileDialog.ShowReadOnly = false;
-			fileDialog.Title = "Select ELF / Symbol File";
-			fileDialog.Multiselect = false;
-			fileDialog.ValidateNames = true;
-			fileDialog.SetFilter("ELF files (*.elf)|*.elf|All files (*.*)|*.*");
-			mWidgetWindow.PreModalChild();
-			if (fileDialog.ShowDialog(gApp.GetActiveWindow()) case .Ok)
+			MethodInfo Add(StringView name, ConnKind connKind)
 			{
-				var fileNames = fileDialog.FileNames;
-				if (!fileNames.IsEmpty)
-					mElfPathCombo.Label = fileNames[0];
+				var mi = new MethodInfo();
+				mi.mName = new String(name);
+				mi.mConnKind = connKind;
+				mMethods.Add(mi);
+				return mi;
 			}
-#endif
+
+			var lldb = Add("LLDB - GDB Remote Protocol", .LldbRemote);
+			lldb.mFields.Add(.(.Host, "Host (remote target):"));
+			lldb.mFields.Add(.(.Port, "Port:"));
+			lldb.mFields.Add(.(.ElfPath, "ELF / Symbol File (optional):"));
+			lldb.mFields.Add(.(.HwBreakpoints, "Hardware Breakpoints"));
+
+			var gdbServer = Add("GDB - gdbserver (Remote)", .GdbServer);
+			gdbServer.mFields.Add(.(.Host, "Host (remote target):"));
+			gdbServer.mFields.Add(.(.Port, "Port:"));
+			gdbServer.mFields.Add(.(.ElfPath, "ELF / Symbol File (optional):"));
+			gdbServer.mFields.Add(.(.GdbExe, "GDB Executable (e.g. arm-none-eabi-gdb):"));
+			gdbServer.mFields.Add(.(.HwBreakpoints, "Hardware Breakpoints"));
+
+			var gdbSsh = Add("GDB - SSH", .GdbSsh);
+			gdbSsh.mFields.Add(.(.SshServer, "SSH Server (e.g. user@host):"));
+			gdbSsh.mFields.Add(.(.ElfPath, "ELF / Symbol File:", true));
+			gdbSsh.mFields.Add(.(.HwBreakpoints, "Hardware Breakpoints"));
 		}
 
-		void BrowseGdbExe()
+		MethodInfo FindMethod(StringView name)
 		{
-#if !CLI
-			var fileDialog = scope System.IO.OpenFileDialog();
-			fileDialog.ShowReadOnly = false;
-			fileDialog.Title = "Select GDB Executable";
-			fileDialog.Multiselect = false;
-			fileDialog.ValidateNames = true;
-			fileDialog.SetFilter("Executables (*.exe)|*.exe|All files (*.*)|*.*");
-			mWidgetWindow.PreModalChild();
-			if (fileDialog.ShowDialog(gApp.GetActiveWindow()) case .Ok)
+			for (var method in mMethods)
+				if (method.mName == name)
+					return method;
+			return null;
+		}
+
+		void SelectMethod(StringView name)
+		{
+			var method = FindMethod(name);
+			if ((method == null) || (method == mSelectedMethod))
+				return;
+			mSelectedMethod = method;
+			mMethodCombo.Label = method.mName;
+			sLastMethodName.Set(method.mName);
+			RebuildFields();
+		}
+
+		StringView SeedFor(FieldKind kind)
+		{
+			switch (kind)
 			{
-				var fileNames = fileDialog.FileNames;
-				if (!fileNames.IsEmpty)
-					mGdbExeCombo.Label = fileNames[0];
+			case .Host: return sLastHost;
+			case .Port: return sLastPort;
+			case .SshServer: return sLastSshServer;
+			case .ElfPath: return sLastElfPath;
+			case .GdbExe: return sLastGdbExe;
+			default: return "";
 			}
-#endif
+		}
+
+		Widget CreateFieldWidget(FieldSpec spec)
+		{
+			switch (spec.mKind)
+			{
+			case .Host, .Port, .SshServer:
+				{
+					var editWidget = new DarkEditWidget();
+					editWidget.SetText(scope String(SeedFor(spec.mKind)));
+					return editWidget;
+				}
+			case .ElfPath, .GdbExe:
+				{
+					if (spec.mRemote)
+					{
+						// Path lives on the remote machine - no local "..." browse button.
+						var editWidget = new DarkEditWidget();
+						editWidget.SetText(scope String(SeedFor(spec.mKind)));
+						return editWidget;
+					}
+
+					// Local path - PathEditWidget(.File) provides the "..." browse button.
+					var pathWidget = new PathEditWidget(.File);
+					if ((gApp.mWorkspace != null) && (gApp.mWorkspace.mDir != null))
+						pathWidget.mDefaultFolderPath = new String(gApp.mWorkspace.mDir);
+					pathWidget.SetText(scope String(SeedFor(spec.mKind)));
+					return pathWidget;
+				}
+			case .HwBreakpoints:
+				{
+					var checkbox = new DarkCheckBox();
+					checkbox.Label = "&Hardware Breakpoints";
+					checkbox.Checked = sLastHardwareBreakpoints;
+					return checkbox;
+				}
+			}
+		}
+
+		bool TryGetEditText(FieldKind kind, String outStr)
+		{
+			if (mFieldWidgets.TryGetValue(kind, let widget))
+			{
+				((EditWidget)widget).GetText(outStr);
+				return true;
+			}
+			return false;
+		}
+
+		void SaveFieldsToStatics()
+		{
+			String tmp = scope .();
+			if (TryGetEditText(.Host, tmp..Clear())) sLastHost.Set(tmp);
+			if (TryGetEditText(.Port, tmp..Clear())) sLastPort.Set(tmp);
+			if (TryGetEditText(.SshServer, tmp..Clear())) sLastSshServer.Set(tmp);
+			if (TryGetEditText(.ElfPath, tmp..Clear())) sLastElfPath.Set(tmp);
+			if (TryGetEditText(.GdbExe, tmp..Clear())) sLastGdbExe.Set(tmp);
+			if (mFieldWidgets.TryGetValue(.HwBreakpoints, let widget))
+				sLastHardwareBreakpoints = ((DarkCheckBox)widget).Checked;
+		}
+
+		void RebuildFields()
+		{
+			// Preserve current values so shared fields carry across method switches.
+			if (!mFieldWidgets.IsEmpty)
+				SaveFieldsToStatics();
+
+			// Tear down the existing field widgets.
+			for (var widget in mFieldWidgets.Values)
+			{
+				mTabWidgets.Remove(widget);
+				widget.RemoveSelf();
+				delete widget;
+			}
+			mFieldWidgets.Clear();
+			mDialogEditWidget = null;
+
+			// Build the field widgets for the selected method.
+			for (var spec in mSelectedMethod.mFields)
+			{
+				var widget = CreateFieldWidget(spec);
+				if (let checkbox = widget as DarkCheckBox)
+					AddDialogComponent(checkbox);
+				else
+					AddEdit((EditWidget)widget);
+				mFieldWidgets[spec.mKind] = widget;
+			}
+
+			ApplySize();
+			ResizeComponents();
+		}
+
+		float ComputeHeight()
+		{
+			float curY = GS!(28);
+			curY += GS!(46); // method combo
+
+			var fields = mSelectedMethod.mFields;
+			for (int i = 0; i < fields.Count; i++)
+			{
+				let kind = fields[i].mKind;
+				if (kind == .HwBreakpoints)
+					curY += GS!(28);
+				else if ((kind == .Host) && (i + 1 < fields.Count) && (fields[i + 1].mKind == .Port))
+				{
+					curY += GS!(40);
+					i++; // Host and Port share a row
+				}
+				else
+					curY += GS!(40);
+			}
+
+			curY += GS!(40); // button area
+			return curY;
+		}
+
+		void ApplySize()
+		{
+			mWidth = GS!(440);
+			mHeight = ComputeHeight();
+			if (mWidgetWindow != null)
+			{
+				mWidgetWindow.SetMinimumSize((.)GS!(320), (.)mHeight, true);
+				mWidgetWindow.ResizeClient((.)mWidth, (.)mHeight);
+			}
 		}
 
 		void Connect()
 		{
-			String host = scope String();
-			mHostEdit.GetText(host);
-			host.Trim();
-			String port = scope String();
-			mPortEdit.GetText(port);
-			port.Trim();
-			String elfPath = scope String(mElfPathCombo.Label);
-			elfPath.Trim();
-			IDEUtils.FixFilePath(elfPath);
-			String gdbExe = scope String();
-			if (mGdbExeCombo != null)
-				gdbExe.Set(mGdbExeCombo.Label);
-			gdbExe.Trim();
+			String host = scope .();
+			String port = scope .();
+			String sshServer = scope .();
+			String elfPath = scope .();
+			String gdbExe = scope .();
 
-			if (host.IsEmpty)
+			TryGetEditText(.Host, host);
+			TryGetEditText(.Port, port);
+			TryGetEditText(.SshServer, sshServer);
+			TryGetEditText(.ElfPath, elfPath);
+			TryGetEditText(.GdbExe, gdbExe);
+
+			host.Trim();
+			port.Trim();
+			sshServer.Trim();
+			elfPath.Trim();
+			gdbExe.Trim();
+			IDEUtils.FixFilePath(elfPath);
+
+			bool useHw = false;
+			if (mFieldWidgets.TryGetValue(.HwBreakpoints, let widget))
+				useHw = ((DarkCheckBox)widget).Checked;
+
+			switch (mSelectedMethod.mConnKind)
 			{
-				gApp.Fail("Host address cannot be empty");
-				return;
-			}
-			if (port.IsEmpty)
-			{
-				gApp.Fail("Port cannot be empty");
-				return;
+			case .LldbRemote, .GdbServer:
+				if (host.IsEmpty)
+				{
+					gApp.Fail("Host address cannot be empty");
+					return;
+				}
+				if (port.IsEmpty)
+				{
+					gApp.Fail("Port cannot be empty");
+					return;
+				}
+			case .GdbSsh:
+				if (sshServer.IsEmpty)
+				{
+					gApp.Fail("SSH server cannot be empty");
+					return;
+				}
 			}
 
 			if (gApp.mDebugger.mIsRunning)
@@ -146,32 +332,34 @@ namespace IDE.ui
 				return;
 			}
 
-			bool useHw = mHardwareBreakpointsCheckbox.Checked;
-			bool useLLDB = mUseLLDB;
-
-			String launchPath = scope String();
+			String launchPath = scope .();
 			launchPath.Append(elfPath);
-			if (useLLDB)
-				launchPath.AppendF("@{}:{}:{}", useHw ? "lldb_hw" : "lldb", host, port);
-			else
+			switch (mSelectedMethod.mConnKind)
 			{
+			case .LldbRemote:
+				launchPath.AppendF("@{}:{}:{}", useHw ? "lldb_hw" : "lldb", host, port);
+			case .GdbServer:
 				launchPath.AppendF("@{}:{}:{}", useHw ? "gdb_hw" : "gdb", host, port);
 				if (!gdbExe.IsEmpty)
 					launchPath.AppendF(";{}", gdbExe);
+			case .GdbSsh:
+				launchPath.AppendF("@{}:{}", useHw ? "gdb_ssh_hw" : "gdb_ssh", sshServer);
 			}
 
 			sLastHost.Set(host);
 			sLastPort.Set(port);
+			sLastSshServer.Set(sshServer);
 			sLastElfPath.Set(elfPath);
 			sLastGdbExe.Set(gdbExe);
 			sLastHardwareBreakpoints = useHw;
+			sLastMethodName.Set(mSelectedMethod.mName);
 
 			gApp.[Friend]CheckDebugVisualizers();
 
 			var emptyEnv = scope List<char8>();
 			if (!gApp.mDebugger.OpenFile(launchPath, launchPath, "", "", emptyEnv, false, false, .None))
 			{
-				gApp.Fail(scope String()..AppendF("Unable to connect to remote target '{0}:{1}'", host, port));
+				gApp.Fail("Unable to connect to remote target");
 				return;
 			}
 
@@ -184,46 +372,63 @@ namespace IDE.ui
 
 		public override void CalcSize()
 		{
-			mWidth = GS!(400);
-			mHeight = mUseLLDB ? GS!(180) : GS!(218);
+			mWidth = GS!(440);
+			mHeight = ComputeHeight();
 		}
 
 		public override void ResizeComponents()
 		{
 			base.ResizeComponents();
 
-			float curY = GS!(30);
+			float x = GS!(6);
 			float fullW = mWidth - GS!(12);
+			float curY = GS!(28);
 
-			float portW = GS!(80);
-			float hostW = fullW - portW - GS!(6);
-			mHostEdit.Resize(GS!(6), curY, hostW, GS!(22));
-			mPortEdit.Resize(GS!(6) + hostW + GS!(6), curY, portW, GS!(22));
-			curY += GS!(42);
+			mMethodCombo.Resize(x, curY, fullW, GS!(28));
+			curY += GS!(46);
 
-			// ELF / symbol file path
-			mElfPathCombo.Resize(GS!(6), curY, fullW, GS!(22));
-			curY += GS!(38);
-
-			// GDB executable path (GDB only)
-			if (mGdbExeCombo != null)
+			var fields = mSelectedMethod.mFields;
+			for (int i = 0; i < fields.Count; i++)
 			{
-				mGdbExeCombo.Resize(GS!(6), curY, fullW, GS!(22));
-				curY += GS!(38);
-			}
+				let kind = fields[i].mKind;
+				var widget = mFieldWidgets[kind];
 
-			mHardwareBreakpointsCheckbox.Resize(GS!(6), curY, mHardwareBreakpointsCheckbox.CalcWidth(), GS!(22));
+				if (kind == .HwBreakpoints)
+				{
+					var checkbox = (DarkCheckBox)widget;
+					checkbox.Resize(x, curY, checkbox.CalcWidth(), GS!(22));
+					curY += GS!(28);
+				}
+				else if ((kind == .Host) && (i + 1 < fields.Count) && (fields[i + 1].mKind == .Port))
+				{
+					float portW = GS!(80);
+					float hostW = fullW - portW - GS!(6);
+					widget.Resize(x, curY, hostW, GS!(22));
+					mFieldWidgets[.Port].Resize(x + hostW + GS!(6), curY, portW, GS!(22));
+					curY += GS!(40);
+					i++; // Host and Port share a row
+				}
+				else
+				{
+					widget.Resize(x, curY, fullW, GS!(22));
+					curY += GS!(40);
+				}
+			}
 		}
 
 		public override void Draw(Graphics g)
 		{
 			base.Draw(g);
 
-			g.DrawString("Host:", GS!(6), mHostEdit.mY - GS!(18));
-			g.DrawString("Port:", mPortEdit.mX, mPortEdit.mY - GS!(18));
-			g.DrawString("ELF / Symbol File (optional):", GS!(6), mElfPathCombo.mY - GS!(18));
-			if (mGdbExeCombo != null)
-				g.DrawString("GDB Executable (optional, e.g. arm-none-eabi-gdb):", GS!(6), mGdbExeCombo.mY - GS!(18));
+			g.DrawString("Method:", GS!(6), mMethodCombo.mY - GS!(18));
+
+			for (var spec in mSelectedMethod.mFields)
+			{
+				if (spec.mKind == .HwBreakpoints)
+					continue;
+				if (mFieldWidgets.TryGetValue(spec.mKind, let widget))
+					g.DrawString(spec.mLabel, widget.mX, widget.mY - GS!(18));
+			}
 		}
 
 		public override void Resize(float x, float y, float width, float height)
@@ -235,7 +440,7 @@ namespace IDE.ui
 		public override void AddedToParent()
 		{
 			base.AddedToParent();
-			mWidgetWindow.SetMinimumSize(GS!(300), mUseLLDB ? GS!(180) : GS!(218), true);
+			mWidgetWindow.SetMinimumSize((.)GS!(320), (.)mHeight, true);
 		}
 	}
 }

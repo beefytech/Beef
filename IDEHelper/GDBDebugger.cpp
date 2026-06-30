@@ -863,9 +863,11 @@ void GDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targe
 
 	// Parse optional "path@location" syntax.
 	// Recognised location tags:
-	//   gdb_wsl          — run "wsl gdb"; paths converted to WSL /mnt/ form
-	//   gdb_ssh:server   — run "ssh <server> gdb"; path is already a remote path
-	//   gdb:host:port    — run GDB locally; connect to gdbserver on <host:port>
+	//   gdb_wsl            — run "wsl gdb"; paths converted to WSL /mnt/ form
+	//   gdb_ssh:server     — run "ssh <server> gdb"; path is already a remote path
+	//   gdb_ssh_hw:server  — as gdb_ssh, but use hardware breakpoints
+	//   gdb:host:port      — run GDB locally; connect to gdbserver on <host:port>
+	//   gdb_hw:host:port   — as gdb, but use hardware breakpoints
 	// The host portion may carry an optional GDB executable override after a ';':
 	//   gdb:host:port;arm-none-eabi-gdb   — use a specific (cross) GDB binary
 	mLaunchMode = GDBLaunchMode_Local;
@@ -882,6 +884,12 @@ void GDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targe
 		if (strcmp(location, "gdb_wsl") == 0)
 		{
 			mLaunchMode = GDBLaunchMode_WSL;
+		}
+		else if (strncmp(location, "gdb_ssh_hw:", 11) == 0)
+		{
+			mLaunchMode = GDBLaunchMode_SSH;
+			mGDBServerHost = location + 11;
+			mUseHardwareBreakpoints = true;
 		}
 		else if (strncmp(location, "gdb_ssh:", 8) == 0)
 		{
