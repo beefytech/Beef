@@ -130,6 +130,8 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mExceptionCode = 0;
 	mHotSwapEnabled = false;
 	mOpenFileFlags = DbgOpenFileFlag_None;
+	mLaunchMode = LLDBLaunchMode_Local;
+	mUseHardwareBreakpoints = false;
 	mLaunchThread = NULL;
 }
 
@@ -248,18 +250,29 @@ void LLDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targ
 {
 	LLDBLog("OpenFile\n");
 
+	mLaunchMode = LLDBLaunchMode_Local;
+	mRemoteHost = "";
+	mUseHardwareBreakpoints = false;
+
 	const char* rawPath = launchPath.c_str();
 	const char* atSign = strchr(rawPath, '@');
 	if (atSign != NULL)
 	{
 		const char* location = atSign + 1;
 
-		if (strncmp(location, "lldb:", 4) == 0)
-		{			
-			//TODO: mLLDBServerHost = location + 5;
-		}		
-		
-		mLaunchPath = String(rawPath, (int)(atSign - rawPath));		
+		if (strncmp(location, "lldb_hw:", 8) == 0)
+		{
+			mRemoteHost = location + 8;
+			mLaunchMode = LLDBLaunchMode_Remote;
+			mUseHardwareBreakpoints = true;
+		}
+		else if (strncmp(location, "lldb:", 5) == 0)
+		{
+			mRemoteHost = location + 5;
+			mLaunchMode = LLDBLaunchMode_Remote;
+		}
+
+		mLaunchPath = String(rawPath, (int)(atSign - rawPath));
 	}
 	else
 	{
@@ -282,6 +295,58 @@ void LLDBDebugger::DoLaunch()
 
 	lldb::SBDebugger debugger = lldb::SBDebugger::Create(/*source_init_files=*/false);
 	debugger.SetAsync(true);
+
+	if (mLaunchMode == LLDBLaunchMode_Remote)
+	{
+		//ELF path is optional
+		lldb::SBError targetError;
+		lldb::SBTarget target = debugger.CreateTarget(
+			mLaunchPath.IsEmpty() ? "" : mLaunchPath.c_str(),
+			NULL, NULL, /*add_dependent_modules=*/true, targetError);
+
+		if (mUseHardwareBreakpoints)
+		{
+			// Force all breakpoints to be set as hardware breakpoints.
+			lldb::SBCommandReturnObject res;
+			debugger.GetCommandInterpreter().HandleCommand(
+				"settings set target.require-hardware-breakpoint true", res);
+		}
+
+		// "connect://" with the "gdb-remote" plugin speaks GDB Remote Serial Protocol.
+		lldb::SBListener listener = debugger.GetListener();
+		String connectUrl = StrFormat("connect://%s", mRemoteHost.c_str());
+		lldb::SBError connErr;
+		lldb::SBProcess process = target.ConnectRemote(
+			listener, connectUrl.c_str(), "gdb-remote", connErr);
+
+		if ((!process.IsValid()) || connErr.Fail())
+		{
+			String msg = "LLDB: Failed to connect to '";
+			msg += mRemoteHost;
+			msg += "'";
+			if (connErr.IsValid())
+			{
+				msg += ": ";
+				msg += connErr.GetCString();
+			}
+			msg += "\n";
+			OutputMessage(msg);
+			lldb::SBDebugger::Destroy(debugger);
+			lldb::SBDebugger::Terminate();
+			AutoCrit autoCrit(mDebugManager->mCritSect);
+			mRunState = RunState_Terminated;
+			return;
+		}
+
+		AutoCrit autoCrit(mDebugManager->mCritSect);
+		mLLDBDebugger = debugger;
+		mLLDBTarget = target;
+		mLLDBProcess = process;
+		mProcessId = (int)process.GetProcessID();
+		mNeedBreakpointRebind = true;
+		mRunState = RunState_Running;
+		return;
+	}
 
 	// Create a target from the executable path.
 	lldb::SBError targetError;
@@ -525,6 +590,11 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 				lldb::break_id_t bpId = (lldb::break_id_t)thread.GetStopReasonDataAtIndex(0);
 				LLDBBreakpoint* bp = NULL;
 				mBreakpointIdMap.TryGetValue((int)bpId, &bp);
+				if (bp != NULL)
+				{
+					Breakpoint* head = (bp->mHead != NULL) ? bp->mHead : bp;
+					head->mHitCount++;
+				}
 				mActiveBreakpoint = bp;
 
 				// Record the resolved load address from the PC if not yet known

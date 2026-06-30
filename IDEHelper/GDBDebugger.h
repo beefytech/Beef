@@ -191,6 +191,11 @@ protected:
 	GDBLaunchMode mLaunchMode;
 	// Remote host for SSH and gdbserver modes (e.g. "user@host" or "host:1234")
 	String mGDBServerHost;
+	// Optional GDB executable override (e.g. "arm-none-eabi-gdb" for embedded targets).
+	// Empty = use the default "gdb" on PATH.
+	String mGDBExe;
+	// When true, all -break-insert commands get the -h (hardware breakpoint) flag
+	bool mUseHardwareBreakpoints;
 
 	// Whether GDB has been launched and is ready
 	bool mGDBReady;
