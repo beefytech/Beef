@@ -22,11 +22,40 @@ if(NOT CMAKE_BUILD_TYPE)
   message(STATUS "Build type not specified: Use Debug by default.")
 endif(NOT CMAKE_BUILD_TYPE)
 
+# Definition of Macros
+add_definitions(
+   -DIDEHELPER_EXPORTS
+   -DUNICODE
+   -D_UNICODE
+   -DBF_NO_FBX
+   -DBP_DYNAMIC
+   -DPNG_ARM_NEON_OPT=0
+)
+
+set (CMAKE_CXX_STANDARD 11)
+
 include_directories(
     .
     ../../
     ../../BeefySysLib/
 )
+
+############## Artefacts Output #################
+# Defines outputs , depending Debug or Release. #
+#################################################
+
+if(CMAKE_BUILD_TYPE STREQUAL "Debug")
+  add_definitions(
+    -D_DEBUG
+  )
+  set(EXECUTABLE_OUTPUT_PATH  "${CMAKE_BINARY_DIR}/${OUTPUT_DEBUG}")
+else()
+  set(EXECUTABLE_OUTPUT_PATH  "${CMAKE_BINARY_DIR}/${OUTPUT_RELEASE}")
+endif()
+
+################ Files ################
+#   --   Add files to project.   --   #
+#######################################
 
 file(GLOB SRC_FILES
     ../../BeefySysLib/Common.cpp

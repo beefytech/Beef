@@ -20,5 +20,8 @@ add_subdirectory(extern/hunspell)
 add_subdirectory(IDEHelper)
 add_subdirectory(BeefBoot)
 
+if (DEFINED BUILD_IMGCREATE)
+  add_subdirectory(BeefTools/ImgCreate)
+endif()
 
 endif()
