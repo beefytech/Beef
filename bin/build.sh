@@ -19,6 +19,7 @@ do
 	if [[ $i == "ide" ]]; then
 		echo "Enabled IDE build"
 		USE_SDL="-DBF_ENABLE_SDL=1"
+		BUILD_IMGCREATE="-DBUILD_IMGCREATE=1"
 		BUILD_IDE=1
 	fi
 
@@ -106,7 +107,7 @@ echo cmake -DLLVM_DIR="$LLVM_DIR" $USE_NINJA $USE_SDL -DCMAKE_BUILD_TYPE=Debug .
 cmake -DLLVM_DIR="$LLVM_DIR" $USE_NINJA $USE_SDL $USE_FFI -DCMAKE_BUILD_TYPE=Debug ../
 cmake --build .
 cd ../jbuild
-cmake -DLLVM_DIR="$LLVM_DIR" $USE_NINJA $USE_SDL $USE_FFI -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
+cmake -DLLVM_DIR="$LLVM_DIR" $USE_NINJA $USE_SDL $USE_FFI $BUILD_IMGCREATE -DCMAKE_BUILD_TYPE=RelWithDebInfo ../
 cmake --build .
 
 cd ../IDE/dist
@@ -162,4 +163,5 @@ if [ -n "$BUILD_IDE" ]; then
 	echo Building BeefIDE
 	./BeefBuild -clean -proddir=../ -config=Release $PACKAGE_DEFINE
 
+	ln -s -f $ROOTPATH/jbuild/Release/bin/ImgCreate images/ImgCreate
 fi
