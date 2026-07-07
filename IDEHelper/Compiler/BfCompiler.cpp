@@ -9926,6 +9926,12 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetCollapseRegions(BfCompiler* bfCo
 	String& outString = *gTLStrReturn.Get();
 	outString.Clear();
 
+	if (bfCompiler->mValueTypeTypeDef == NULL)
+	{
+		// Sanity check. Resolve compiler not started
+		return outString.c_str();
+	}
+
 	class CollapseVisitor : public BfElementVisitor
 	{
 	public:
