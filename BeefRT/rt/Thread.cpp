@@ -46,13 +46,6 @@ void Thread::Resume()
 	BfpThread_Resume(GetInternalThread()->mThreadHandle, NULL);
 }
 
-void Thread::SetJoinOnDelete(bool joinOnDelete)
-{
-	auto internalThread = GetInternalThread();
-	Beefy::AutoCrit autoCrit(internalThread->mCritSect);
-	internalThread->mJoinOnDelete = joinOnDelete;
-}
-
 int Thread::GetPriorityNative()
 {
 	return (int)BfpThread_GetPriority(GetInternalThread()->mThreadHandle, NULL) + 2;

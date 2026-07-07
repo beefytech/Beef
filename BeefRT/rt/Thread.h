@@ -42,7 +42,6 @@ namespace bf
 				BFRT_EXPORT void ManualThreadInit();								
 				BFRT_EXPORT int GetPriorityNative();
 				BFRT_EXPORT void SetPriorityNative(int priority);
-				BFRT_EXPORT void SetJoinOnDelete(bool joinOnDelete);
 				BFRT_EXPORT bool GetIsAlive();
 				BFRT_EXPORT bool GetIsThreadPoolThread();
 				BFRT_EXPORT bool JoinInternal(int millisecondsTimeout);
