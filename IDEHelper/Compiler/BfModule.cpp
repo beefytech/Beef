@@ -4294,6 +4294,7 @@ void BfModule::CreateStaticField(BfFieldInstance* fieldInstance, bool isThreadLo
 	else
 	{
 		BfLogSysM("Creating static field Module:%p Type:%p\n", this, fieldType);
+		PopulateType(fieldType);
 		StringT<4096> staticVarName;
 		BfMangler::Mangle(staticVarName, mCompiler->GetMangleKind(), fieldInstance);
 		if ((!fieldType->IsValuelessType()) && (!staticVarName.StartsWith("#")))
