@@ -2295,15 +2295,6 @@ void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfMethodInstance* metho
 void BfMSMangler::Mangle(StringImpl& name, bool is64Bit, BfFieldInstance* fieldInstance)
 {
 	auto fieldDef = fieldInstance->GetFieldDef();
-	if (fieldDef->mFieldDeclaration != NULL)
-	{
-		auto module = fieldInstance->mOwner->mModule;
-		if ((fieldInstance->mCustomAttributes != NULL) && (fieldInstance->mCustomAttributes->Contains(module->mCompiler->mCLinkAttributeTypeDef)))
-		{
-			name += fieldDef->mName;
-			return;
-		}
-	}
 
 	BF_ASSERT(fieldDef->mIsStatic);
 	MangleContext mangleContext;
@@ -2441,6 +2432,11 @@ void BfMangler::HandleCustomAttributes(BfCustomAttributes* customAttributes, BfI
 				}
 			}
 		}
+	}
+
+	if (customAttributes->Contains(module->mCompiler->mCLinkAttributeTypeDef))
+	{
+		isCMangle = true;
 	}
 }
 
