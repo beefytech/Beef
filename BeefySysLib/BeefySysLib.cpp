@@ -816,7 +816,10 @@ BF_EXPORT void BF_CALLTYPE Gfx_CreateRenderState(RenderState* srcRenderState)
 
 BF_EXPORT void BF_CALLTYPE RenderState_Delete(RenderState* renderState)
 {
-	delete renderState;
+	if ((gBFApp != NULL) && (gBFApp->mRenderDevice != NULL))
+		gBFApp->mRenderDevice->ReleaseRenderState(renderState);
+	else
+		delete renderState;
 }
 
 BF_EXPORT void BF_CALLTYPE RenderState_SetTexWrap(RenderState* renderState, bool texWrap)
@@ -884,7 +887,10 @@ BF_EXPORT void BF_CALLTYPE Gfx_SetRenderState(RenderState* renderState)
 
 BF_EXPORT void BF_CALLTYPE Gfx_Shader_Delete(Shader* shader)
 {
-	delete shader;
+	if ((gBFApp != NULL) && (gBFApp->mRenderDevice != NULL))
+		gBFApp->mRenderDevice->ReleaseShader(shader);
+	else
+		delete shader;
 }
 
 BF_EXPORT ShaderParam* BF_CALLTYPE Gfx_GetShaderParam(Shader* shader, const char* shaderName)

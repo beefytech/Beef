@@ -100,7 +100,7 @@ namespace Beefy.gfx
         public Dictionary<String, Animation> mAnimMap = new Dictionary<String, Animation>() ~ DeleteDictionaryAndKeys!(_);
 
         [CallingConvention(.Stdcall), CLink]
-        extern static void* Res_OpenFBX(char8* fileName, void* nativeVertexDef);
+        extern static void* Res_OpenFBX(char8* fileName, char8* baseDir, void* nativeVertexDef);
 
 		[CallingConvention(.Stdcall), CLink]
 		extern static void* Res_OpenGLTF(char8* fileName, char8* baseDir, void* nativeVertexDef);
@@ -168,7 +168,7 @@ namespace Beefy.gfx
 			if (fileName.EndsWith(".gltf", .OrdinalIgnoreCase))
 				nativeModelDef = Res_OpenGLTF(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
 			else if (fileName.EndsWith(".fbx", .OrdinalIgnoreCase))
-            	nativeModelDef = Res_OpenFBX(fileName, VertexDef.sVertexDefinition.mNativeVertexDefinition);
+            	nativeModelDef = Res_OpenFBX(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
 			else
 				nativeModelDef = Res_OpenModel(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
             if (nativeModelDef == null)

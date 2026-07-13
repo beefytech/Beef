@@ -4,10 +4,9 @@
 #include "gfx/DrawLayer.h"
 #include "gfx/ModelInstance.h"
 #include "FileStream.h"
+#include "util/Dictionary.h"
 
 #ifndef BF_NO_FBX
-
-#include "boost/unordered_map.hpp"
 
 #pragma warning(disable:4996)
 
@@ -247,11 +246,11 @@ FBXMesh* FBXReader::LoadMesh(FbxNode* fbxNode, FbxMesh* fbxMesh)
 			FbxProperty prop = fbxMaterial->FindProperty(FbxLayerElement::sTextureChannelNames[channelIdx]);
 			if (!prop.IsValid())
 				break;
-			int texCount = prop.GetSrcObjectCount(FbxTexture::ClassId);
+			int texCount = prop.GetSrcObjectCount<FbxTexture>();
 
 			for (int texIdx = 0; texIdx < texCount; texIdx++)
 			{
-				FbxTexture* texture = FbxCast<FbxTexture>(prop.GetSrcObject(FbxTexture::ClassId, texIdx));								
+				FbxTexture* texture = prop.GetSrcObject<FbxTexture>(texIdx);
 				if (texture != NULL)
 				{
 					FbxFileTexture* fileTexture = FbxCast<FbxFileTexture>(texture);
@@ -261,11 +260,11 @@ FBXMesh* FBXReader::LoadMesh(FbxNode* fbxNode, FbxMesh* fbxMesh)
 						String mediaName = fileTexture->GetMediaName();
 						String fileExt = "";
 
-						int parenPos = (int)mediaName.find(" (");
+						int parenPos = (int)mediaName.IndexOf(" (");
 						String origFileName = fileTexture->GetFileName();
-						int dotPos = (int)origFileName.rfind('.');
+						int dotPos = (int)origFileName.LastIndexOf('.');
 						if (dotPos != -1)
-							fileExt = origFileName.substr(dotPos);
+							fileExt = origFileName.Substring(dotPos);
 						//material->mTexFileName = fileName;
 
 						/*if (parenPos != -1) 
@@ -285,9 +284,9 @@ FBXMesh* FBXReader::LoadMesh(FbxNode* fbxNode, FbxMesh* fbxMesh)
 
 						if (material->mTexFileName.length() == 0)
 						{
-							int slashPos = std::max((int)fileName.rfind('\\'), (int)fileName.rfind('/'));
+							int slashPos = BF_MAX((int)fileName.LastIndexOf('\\'), (int)fileName.LastIndexOf('/'));
 							if (slashPos > 0)
-								fileName = fileName.substr(slashPos + 1);
+								fileName = fileName.Substring(slashPos + 1);
 							material->mTexFileName = fileName;
 						}
 					}
@@ -376,7 +375,7 @@ FBXMesh* FBXReader::LoadMesh(FbxNode* fbxNode, FbxMesh* fbxMesh)
 	if (fbxMesh->GetLayer(0)->GetNormals() == NULL)
 	{		
 		fbxMesh->InitNormals();
-		fbxMesh->ComputeVertexNormals();
+		fbxMesh->GenerateNormals();
 	}
 	
 	//fbxMesh->InitTangents();
@@ -424,8 +423,8 @@ FBXMesh* FBXReader::LoadMesh(FbxNode* fbxNode, FbxMesh* fbxMesh)
 
 	mesh->mVertexData.reserve(numVertices);
 
-	typedef boost::unordered_map<FBXVertexData, int> VertexDataMap;
-	 VertexDataMap usedVertexData;
+	typedef Dictionary<FBXVertexData, int> VertexDataMap;
+	VertexDataMap usedVertexData;
 	int vertexDataSize = numVertices;
 	for (int vtxIdx = 0; vtxIdx < vertexDataSize; vtxIdx++)
 	{
@@ -446,15 +445,15 @@ FBXMesh* FBXReader::LoadMesh(FbxNode* fbxNode, FbxMesh* fbxMesh)
 			vtxData->mCoords.mZ = 0;
 		}*/
 
-		auto itr = usedVertexData.find(*vtxData);
+		auto itr = usedVertexData.Find(*vtxData);
 		if (itr != usedVertexData.end())
 		{
-			mesh->mIndexData.push_back(itr->second);
+			mesh->mIndexData.push_back(itr->mValue);
 		}
 		else
 		{
 			int idx = (int)mesh->mVertexData.size();
-			usedVertexData.insert(VertexDataMap::value_type(*vtxData, idx));
+			usedVertexData[*vtxData] = idx;
 			mesh->mVertexData.push_back(*vtxData);
 			mesh->mIndexData.push_back(idx);
 		}		
@@ -496,7 +495,7 @@ void FBXReader::TranslateNode(FbxNode* fbxNode)
 				if (fbxNode->GetNodeAttributeByIndex(attrIdx)->GetAttributeType() == FbxNodeAttribute::eMesh)
 				{
 					FbxMesh* fbxMesh = (FbxMesh*) fbxNode->GetNodeAttributeByIndex(attrIdx);
-					FbxMesh* triMesh = geometryConverter.TriangulateMesh(fbxMesh);
+					FbxMesh* triMesh = FbxCast<FbxMesh>(geometryConverter.Triangulate(fbxMesh, true));
 					FBXMesh* mesh = LoadMesh(fbxNode, triMesh);
 					mMeshes.push_back(mesh);
 				}
@@ -631,7 +630,7 @@ bool FBXReader::FBXLoadJoint(FbxNode* pNode, FbxAMatrix globalBindPose)
 	while (pParent)
 	{
 		String parentname = pParent->GetName();
-		if (parentname.compare(nodename) == 0)
+		if (parentname == nodename)
 		{
 			//FxOgreFBXLog("Warning! %s joint has a parent by the same name.  Joint names must be unique!  Output file may render incorrectly.", pNode->GetName());
 			pNode = pParent;
@@ -646,7 +645,7 @@ bool FBXReader::FBXLoadJoint(FbxNode* pNode, FbxAMatrix globalBindPose)
 	newJoint.mBoneLength = 0;
 	newJoint.parentIndex = -1;
 	mFBXJoints.push_back(newJoint);
-	int index = mFBXJoints.size() - 1;
+	int index = (int)mFBXJoints.size() - 1;
 	mJointIndexMap[pNode->GetName()] = index;
 
 	mFBXJoints[index].pNode = pNode;
@@ -889,9 +888,9 @@ void FBXReader::GetAnimationBounds()
 
 	// Iterate through all curves to find the start and end time of the animation. Works
 	// for bones and morph targets.
-	for (int i = 0; i < mFBXScene->GetSrcObjectCount(FbxAnimCurve::ClassId); ++i)
+	for (int i = 0; i < mFBXScene->GetSrcObjectCount<FbxAnimCurve>(); ++i)
 	{
-		FbxAnimCurve* pCurve = (FbxAnimCurve*) mFBXScene->GetSrcObject(FbxAnimCurve::ClassId, i);
+		FbxAnimCurve* pCurve = mFBXScene->GetSrcObject<FbxAnimCurve>(i);
 		if (pCurve)
 		{
 			int numKeys = pCurve->KeyGetCount();
@@ -1001,7 +1000,7 @@ void FBXReader::SortJoint(FBXJoint j, std::map<String, int> &sortedJointIndexMap
 		}
 		else
 		{
-			int id = sorted_joints.size();
+			int id = (int)sorted_joints.size();
 
 			sorted_joints.push_back(j);
 			sortedJointIndexMap[j.name] = id;
@@ -1293,7 +1292,8 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 {	
 	bool loadDefData = true;
 
-	mModelDef->mLoadDir = GetFileDir(fileName);
+	if (mModelDef->mLoadDir.IsEmpty())
+		mModelDef->mLoadDir = GetFileDir(fileName);
 
 	String bfModelFileName = fileName + ".bfmodel";
 	if (ReadBFFile(bfModelFileName))
@@ -1301,11 +1301,11 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 
 	String checkFileName2;
 
-	int atPos = (int)fileName.find('@');
+	int atPos = (int)fileName.IndexOf('@');
 	if (atPos != -1)
 	{
 		loadDefData = false;
-		checkFileName2 = fileName.substr(0, atPos) + ".fbx";
+		checkFileName2 = fileName.Substring(0, atPos) + ".fbx";
 
 		if (!ReadFile(checkFileName2, false))
 			return false;
@@ -1427,28 +1427,40 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 
 	if (loadDefData)
 	{
-		mModelDef->mMeshes.resize(mMeshes.size());
-		mModelDef->mJoints.resize(mFBXJoints.size());
+		mModelDef->mMeshes.Resize(mMeshes.size());
+		mModelDef->mJoints.Resize(mFBXJoints.size());
 
-		for (int meshIdx = 0; meshIdx < (int) mMeshes.size(); meshIdx++)
+		for (int meshIdx = 0; meshIdx < (int)mMeshes.size(); meshIdx++)
 		{
 			FBXMesh* fbxMesh = mMeshes[meshIdx];
 			ModelMesh* mesh = &mModelDef->mMeshes[meshIdx];
 
 			mesh->mName = fbxMesh->mName;
-			mesh->mTexFileName = fbxMesh->mMaterial.mTexFileName;
-			mesh->mBumpFileName = fbxMesh->mMaterial.mBumpFileName;
+			
+			mesh->mPrimitives.Add(ModelPrimitives());
+			auto modelPrimitives = &mesh->mPrimitives[0];
+			modelPrimitives->mFlags = (ModelPrimitives::Flags)(
+				ModelPrimitives::Flags_Vertex_Position |
+				ModelPrimitives::Flags_Vertex_Tex0 |
+				ModelPrimitives::Flags_Vertex_Tex1 |
+				ModelPrimitives::Flags_Vertex_Color |
+				ModelPrimitives::Flags_Vertex_Normal |
+				ModelPrimitives::Flags_Vertex_Tangent);
+			
+			modelPrimitives->mTexPaths.Add(fbxMesh->mMaterial.mTexFileName);
+			if (!fbxMesh->mMaterial.mBumpFileName.IsEmpty())
+				modelPrimitives->mTexPaths.Add(fbxMesh->mMaterial.mBumpFileName);
 
-			mesh->mIndices.resize(fbxMesh->mIndexData.size());
+			modelPrimitives->mIndices.Resize(fbxMesh->mIndexData.size());
 			for (int idxIdx = 0; idxIdx < (int) fbxMesh->mIndexData.size(); idxIdx++)
-				mesh->mIndices[idxIdx] = (uint16) fbxMesh->mIndexData[idxIdx];
+				modelPrimitives->mIndices[idxIdx] = (uint16) fbxMesh->mIndexData[idxIdx];
 
 			BF_ASSERT(fbxMesh->mVertexData.size() < 0x10000);
-			mesh->mVertices.resize(fbxMesh->mVertexData.size());
-			for (int vtxIdx = 0; vtxIdx < (int) fbxMesh->mVertexData.size(); vtxIdx++)
+			modelPrimitives->mVertices.Resize(fbxMesh->mVertexData.size());
+			for (int vtxIdx = 0; vtxIdx < (int)fbxMesh->mVertexData.size(); vtxIdx++)
 			{
 				FBXVertexData* fbxVertex = &fbxMesh->mVertexData[vtxIdx];
-				ModelVertex* vertex = &mesh->mVertices[vtxIdx];
+				ModelVertex* vertex = &modelPrimitives->mVertices[vtxIdx];
 
 				vertex->mPosition = fbxVertex->mCoords;
 				vertex->mColor = fbxVertex->mColor;
@@ -1482,7 +1494,7 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 		}
 	}
 
-	mModelDef->mAnims.resize(mAnimations.size());
+	mModelDef->mAnims.Resize(mAnimations.size());
 	for (int animIdx = 0; animIdx < (int)mAnimations.size(); animIdx++)
 	{
 		FBXAnimation* fbxAnimation = &mAnimations[animIdx];		
@@ -1490,9 +1502,9 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 
 		animation->mName = fbxAnimation->mName;
 
-		animation->mFrames.resize((int)fbxAnimation->mTracks[0].mSkeletonKeyframes.size());
+		animation->mFrames.Resize((int)fbxAnimation->mTracks[0].mSkeletonKeyframes.size());
 		for (int frameIdx = 0; frameIdx < (int)animation->mFrames.size(); frameIdx++)
-			animation->mFrames[frameIdx].mJointTranslations.resize(mFBXJoints.size());
+			animation->mFrames[frameIdx].mJointTranslations.Resize(mFBXJoints.size());
 
 		for (int trackIdx = 0; trackIdx < (int)fbxAnimation->mTracks.size(); trackIdx++)
 		{
@@ -1522,7 +1534,9 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 
 bool Beefy::FBXReader::WriteBFFile(const StringImpl& fileName, const StringImpl& checkFile, const StringImpl& checkFile2)
 {
-	FILE* fp = fopen(fileName.c_str(), "wb");
+	return false;
+
+	/*FILE* fp = fopen(fileName.c_str(), "wb");
 	if (fp == NULL)
 		return false;
 
@@ -1536,7 +1550,7 @@ bool Beefy::FBXReader::WriteBFFile(const StringImpl& fileName, const StringImpl&
 	fs.Write(GetFileTimeWrite(checkFile));
 	fs.Write(GetFileName(checkFile2));
 	fs.Write(GetFileTimeWrite(checkFile2));
-	
+
 	fs.Write(mModelDef->mFrameRate);
 
 	fs.Write((int)mModelDef->mMeshes.size());
@@ -1552,7 +1566,7 @@ bool Beefy::FBXReader::WriteBFFile(const StringImpl& fileName, const StringImpl&
 		fs.Write((void*)&modelMesh->mVertices[0], modelMesh->mVertices.size() * sizeof(modelMesh->mVertices[0]));
 
 		fs.Write(modelMesh->mTexFileName);
-		fs.Write(modelMesh->mBumpFileName);		
+		fs.Write(modelMesh->mBumpFileName);
 	}
 
 	fs.Write((int)mModelDef->mJoints.size());
@@ -1569,7 +1583,7 @@ bool Beefy::FBXReader::WriteBFFile(const StringImpl& fileName, const StringImpl&
 	{
 		ModelAnimation* modelAnim = &mModelDef->mAnims[animIdx];
 		fs.Write(modelAnim->mName);
-		
+
 		fs.Write((int)modelAnim->mFrames.size());
 		for (int frameIdx = 0; frameIdx < (int)modelAnim->mFrames.size(); frameIdx++)
 		{
@@ -1578,13 +1592,15 @@ bool Beefy::FBXReader::WriteBFFile(const StringImpl& fileName, const StringImpl&
 			fs.Write((void*)&frame->mJointTranslations[0], (int)frame->mJointTranslations.size() * sizeof(frame->mJointTranslations[0]));
 		}
 	}
-	
-	return true;
+
+	return true;*/
 }
 
 bool Beefy::FBXReader::ReadBFFile(const StringImpl& fileName)
 {
-	FILE* fp = fopen(fileName.c_str(), "rb");
+	return false;
+
+	/*FILE* fp = fopen(fileName.c_str(), "rb");
 	if (fp == NULL)
 		return false;
 
@@ -1654,14 +1670,15 @@ bool Beefy::FBXReader::ReadBFFile(const StringImpl& fileName)
 		}
 	}
 
-	return true;
+	return true;*/
 }
 
 ////
 
-BF_EXPORT ModelDef* BF_CALLTYPE Res_OpenFBX(const char* fileName, VertexDefinition* vertexDefinition)
+BF_EXPORT ModelDef* BF_CALLTYPE Res_OpenFBX(const char* fileName, const char* baseDir, VertexDefinition* vertexDefinition)
 {
 	ModelDef* modelDef = new ModelDef();
+	modelDef->mLoadDir = baseDir;
 	FBXReader fbxReader(modelDef);
 	if (!fbxReader.ReadFile(fileName))
 	{
@@ -1674,7 +1691,7 @@ BF_EXPORT ModelDef* BF_CALLTYPE Res_OpenFBX(const char* fileName, VertexDefiniti
 
 #else
 
-BF_EXPORT void* BF_CALLTYPE Res_OpenFBX(const char* fileName, void* vertexDefinition)
+BF_EXPORT void* BF_CALLTYPE Res_OpenFBX(const char* fileName, const char* baseDir, void* vertexDefinition)
 {
 	return NULL;
 }

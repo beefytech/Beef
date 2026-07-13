@@ -1054,6 +1054,12 @@ RenderState* DXRenderDevice::CreateRenderState(RenderState* srcRenderState)
 	return renderState;
 }
 
+void DXRenderDevice::ReleaseRenderState(RenderState* renderState)
+{
+	mRenderStates.Remove((DXRenderState*)renderState);
+	delete renderState;
+}
+
 struct DXModelVertex
 {
 	Vector3 mPosition;
@@ -1149,7 +1155,11 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 			{
 				if (!modelDef->mLoadDir.IsEmpty())
 					texPath = GetAbsPath(texPath, modelDef->mLoadDir);
-				dxPrimitives->mTextures.Add((DXTexture*)((RenderDevice*)this)->LoadTexture(texPath, TextureFlag_NoPremult));
+
+				DXTexture* texture = (DXTexture*)((RenderDevice*)this)->LoadTexture(texPath, TextureFlag_NoPremult);
+				if (texture == NULL)
+					texture = (DXTexture*)((RenderDevice*)this)->LoadTexture("!white", TextureFlag_NoPremult);
+				dxPrimitives->mTextures.Add(texture);
 			}
 
 			dxPrimitives->mNumIndices = (int)primitives->mIndices.size();
@@ -1434,7 +1444,14 @@ void DXModelInstance::Render(RenderDevice* renderDevice, RenderWindow* renderWin
 				continue;
 
 			for (int i = 0; i < (int)dxPrimitives->mTextures.mSize; i++)
-				mD3DRenderDevice->mD3DDeviceContext->PSSetShaderResources(i, 1, &dxPrimitives->mTextures[i]->mD3DResourceView);
+			{
+				ID3D11ShaderResourceView* const* resView = NULL;
+				if ((i < dxPrimitives->mTextures.size()) && (dxPrimitives->mTextures[i] != NULL))
+				{
+					resView = &dxPrimitives->mTextures[i]->mD3DResourceView;
+					mD3DRenderDevice->mD3DDeviceContext->PSSetShaderResources(i, 1, resView);
+				}
+			}
 
 			// Set vertex buffer
 			UINT stride = sizeof(DXModelVertex);
@@ -1453,6 +1470,8 @@ void Beefy::DXModelInstance::CommandQueued(DrawLayer* drawLayer)
 	drawLayer->mCurTextures[0] = NULL;
 
 #ifndef BF_NO_FBX
+	if (mModelDef->mAnims.IsEmpty())
+		return;
 	ModelAnimation* fbxAnim = &mModelDef->mAnims[0];
 
 	Matrix4 jointsMatrices[BF_MAX_NUM_BONES];
@@ -1489,46 +1508,58 @@ void Beefy::DXModelInstance::CommandQueued(DrawLayer* drawLayer)
 		ModelMesh* mesh = &mModelDef->mMeshes[meshIdx];
 		DXModelMesh* dxMesh = &mDXModelMeshs[meshIdx];
 
-		D3D11_MAPPED_SUBRESOURCE mappedSubResource;
-		DXRenderDevice* dxRenderDevice = (DXRenderDevice*)drawLayer->mRenderDevice;
-		DXCHECK(dxRenderDevice->mD3DDeviceContext->Map(dxMesh->mD3DVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubResource));
-		DXModelVertex* dxVtxData = (DXModelVertex*)mappedSubResource.pData;
-		for (int vtxIdx = 0; vtxIdx < (int) mesh->mVertices.size(); vtxIdx++)
+		for (int primsIdx = 0; primsIdx < (int)dxMesh->mPrimitives.size(); primsIdx++)
 		{
-			ModelVertex* srcVtxData = &mesh->mVertices[vtxIdx];
+			ModelPrimitives* modelPrims = &mesh->mPrimitives[primsIdx];
+			DXModelPrimitives* dxPrims = &dxMesh->mPrimitives[primsIdx];
 
-			Vector3 vtx(0, 0, 0);
-
-			float totalWeight = 0;
-
-			for (int weightIdx = 0; weightIdx < srcVtxData->mNumBoneWeights; weightIdx++)
+			D3D11_MAPPED_SUBRESOURCE mappedSubResource;
+			DXRenderDevice* dxRenderDevice = (DXRenderDevice*)drawLayer->mRenderDevice;
+			DXCHECK(dxRenderDevice->mD3DDeviceContext->Map(dxPrims->mD3DVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubResource));
+			DXModelVertex* dxVtxData = (DXModelVertex*)mappedSubResource.pData;
+			for (int vtxIdx = 0; vtxIdx < (int)modelPrims->mVertices.size(); vtxIdx++)
 			{
-				int jointIdx = srcVtxData->mBoneIndices[weightIdx];
-				float boneWeight = srcVtxData->mBoneWeights[weightIdx];
+				ModelVertex* srcVtxData = &modelPrims->mVertices[vtxIdx];
 
-				Matrix4* mtx = &jointsMatrices[jointIdx];
-				Vector3 origVec = srcVtxData->mPosition;
+				Vector3 vtx(0, 0, 0);
 
-				Vector3 transVec = Vector3::Transform(origVec, *mtx);
-				transVec = transVec * boneWeight;
-				vtx = vtx + transVec;
+				float totalWeight = 0;
 
-				totalWeight += boneWeight;
+				//TODO:
+				vtx = srcVtxData->mPosition;
+
+				/*for (int weightIdx = 0; weightIdx < srcVtxData->mNumBoneWeights; weightIdx++)
+				{
+					int jointIdx = srcVtxData->mBoneIndices[weightIdx];
+					float boneWeight = srcVtxData->mBoneWeights[weightIdx];
+
+					Matrix4* mtx = &jointsMatrices[jointIdx];
+					Vector3 origVec = srcVtxData->mPosition;
+
+					Vector3 transVec = Vector3::Transform(origVec, *mtx);
+					transVec = transVec * boneWeight;
+					vtx = vtx + transVec;
+
+					totalWeight += boneWeight;
+				}
+				BF_ASSERT(fabs(totalWeight - 1.0) < 0.1f);
+				*/				
+
+
+				
+
+				DXModelVertex* destVtx = dxVtxData + vtxIdx;
+
+				//destVtx->mPosition = srcVtxData->mPosition;
+				destVtx->mPosition = vtx;
+				destVtx->mTexCoords = srcVtxData->mTexCoords;
+				destVtx->mBumpTexCoords = srcVtxData->mTexCoords;
+				destVtx->mColor = 0xFFFFFFFF; //TODO: Color
+				destVtx->mTangent = srcVtxData->mTangent;
 			}
 
-			BF_ASSERT(fabs(totalWeight - 1.0) < 0.1f);
-
-			DXModelVertex* destVtx = dxVtxData + vtxIdx;
-
-			//destVtx->mPosition = srcVtxData->mPosition;
-			destVtx->mPosition = vtx;
-			destVtx->mTexCoords = srcVtxData->mTexCoords;
-			destVtx->mBumpTexCoords = srcVtxData->mTexCoords;
-			destVtx->mColor = 0xFFFFFFFF; //TODO: Color
-			destVtx->mTangent = srcVtxData->mTangent;
+			dxRenderDevice->mD3DDeviceContext->Unmap(dxPrims->mD3DVertexBuffer, 0);
 		}
-
-		dxRenderDevice->mD3DDeviceContext->Unmap(dxMesh->mD3DVertexBuffer, 0);
 	}
 #endif
 }
@@ -2473,6 +2504,12 @@ Shader* DXRenderDevice::LoadShader(const StringImpl& fileName, VertexDefinition*
 	}
 	mShaders.Add(dxShader);
 	return dxShader;
+}
+
+void DXRenderDevice::ReleaseShader(Shader* shader)
+{
+	mShaders.Remove((DXShader*)shader);
+	delete shader;
 }
 
 void DXRenderDevice::SetRenderState(RenderState* renderState)

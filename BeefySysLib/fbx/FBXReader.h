@@ -6,9 +6,13 @@
 
 #include "Common.h"
 #include "fbxsdk.h"
-#include "Util/Vector.h"
-#include "Util/Matrix4.h"
-#include "Util/Quaternion.h"
+#include "util/Vector.h"
+#include "util/Matrix4.h"
+#include "util/Quaternion.h"
+#include "util/Hash.h"
+#include <vector>
+#include <map>
+#include <unordered_map>
 
 NS_BF_BEGIN;
 
@@ -224,5 +228,19 @@ public:
 };
 
 NS_BF_END;
+
+namespace std
+{
+	template <>
+	struct hash<Beefy::FBXVertexData >
+	{
+		size_t operator()(const Beefy::FBXVertexData& val) const
+		{
+			auto hash = Beefy::Hash64(&val.mCoords, 3 * sizeof(float));
+			hash = Beefy::Hash64(&val.mNormal, 3 * sizeof(float), hash);
+			return hash;
+		}
+	};
+}
 
 #endif

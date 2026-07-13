@@ -96,6 +96,11 @@ RenderState* RenderDevice::CreateRenderState(RenderState* srcRenderState)
 	return renderState;
 }
 
+void RenderDevice::ReleaseRenderState(RenderState* renderState)
+{
+	delete renderState;
+}
+
 VertexDefinition* Beefy::RenderDevice::CreateVertexDefinition(VertexDefData* elementData, int numElements)
 {
 	VertexDefinition* vertexDefinition = new VertexDefinition();
@@ -188,6 +193,11 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 
 	imageData->Deref();
 	return aTexture;
+}
+
+void RenderDevice::ReleaseShader(Shader* shader)
+{
+	delete shader;
 }
 
 

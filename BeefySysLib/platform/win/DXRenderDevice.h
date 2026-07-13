@@ -317,6 +317,7 @@ public:
 	virtual void			PhysSetRenderWindow(RenderWindow* renderWindow);
 	virtual void			PhysSetRenderTarget(Texture* renderTarget) override;
 	virtual RenderState*	CreateRenderState(RenderState* srcRenderState) override;
+	virtual void			ReleaseRenderState(RenderState* renderState) override;
 	virtual ModelInstance*	CreateModelInstance(ModelDef* modelDef, ModelCreateFlags flags) override;
 
 public:
@@ -334,6 +335,7 @@ public:
 	Texture*				LoadTexture(ImageData* imageData, int flags) override;
 	Texture*				CreateDynTexture(int width, int height) override;
 	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) override;
+	void					ReleaseShader(Shader* shader) override;
 	Texture*				CreateRenderTarget(int width, int height, bool destAlpha) override;
 
 	void					SetRenderState(RenderState* renderState) override;

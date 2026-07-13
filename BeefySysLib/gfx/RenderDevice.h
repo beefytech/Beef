@@ -300,6 +300,8 @@ public:
 	virtual void			RemoveRenderWindow(RenderWindow* renderWindow);
 	
 	virtual RenderState*	CreateRenderState(RenderState* srcRenderState);
+	virtual void			ReleaseRenderState(RenderState* renderState);
+
 	virtual ModelInstance*	CreateModelInstance(ModelDef* modelDef, ModelCreateFlags flags) { return NULL; }
 	virtual VertexDefinition* CreateVertexDefinition(VertexDefData* elementData, int numElements);	
 
@@ -312,6 +314,7 @@ public:
 	virtual Texture*		CreateRenderTarget(int width, int height, bool destAlpha) = 0;
 	
 	virtual Shader*			LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) = 0;
+	virtual void			ReleaseShader(Shader* shader);
 		
 	virtual void			SetRenderState(RenderState* renderState) = 0;
 };
