@@ -5273,7 +5273,9 @@ void BfModule::CreateFakeCallerMethod(const String& funcName)
 		auto paramType = mCurMethodInstance->GetParamType(paramIdx);
 		if (paramType->IsValuelessType())
 			continue;
-		exprEvaluator.PushArg(GetDefaultTypedValue(paramType, true, paramType->IsComposite() ? BfDefaultValueKind_Addr : BfDefaultValueKind_Const), args);
+
+		bool wantsSplat = mCurMethodInstance->GetParamIsSplat(paramIdx);
+		exprEvaluator.PushArg(GetDefaultTypedValue(paramType, true, paramType->IsComposite() ? BfDefaultValueKind_Addr : BfDefaultValueKind_Const), args, !wantsSplat);
 	}
 
 	mBfIRBuilder->CreateCall(mCurMethodInstance->mIRFunction, args);
