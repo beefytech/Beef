@@ -677,6 +677,17 @@ abstract class CommonDialog
 		return (DialogResult)mResult;
 	}
 
+	private static uint8 HexToInt(char8 c)
+	{
+	    if (c >= '0' && c <= '9')
+			return (uint8)(c - '0');
+	    if (c >= 'a' && c <= 'f')
+			return (uint8)(c - 'a' + 10);
+	    if (c >= 'A' && c <= 'F')
+			return (uint8)(c - 'A' + 10);
+	    return 0;
+	}
+
 	private static int32 ParseResponse(Linux.DBusMsg* response, void* ptr, Linux.DBusErr* error)
 	{
 		Self dia = (.)Internal.UnsafeCastToObject(ptr);
@@ -688,7 +699,9 @@ abstract class CommonDialog
 		while(Linux.SdBusMessagePeekType(response, null, null) != 0)
 		{
 		    Linux.SdBusMessageEnterContainer(response, .DictEntry, "sv");
-		    Linux.SdBusMessageReadBasic(response, .String, &key);
+			if (Linux.SdBusMessageReadBasic(response, .String, &key) < 0)
+				key = null;
+
 		    switch(StringView(key))
 		    {
 		    case "uris":
@@ -699,8 +712,34 @@ abstract class CommonDialog
 		        while(Linux.SdBusMessagePeekType(response, null, null) != 0)
 		        {
 		            char8* uri = ?;
-		            Linux.SdBusMessageReadBasic(response, .String, &uri);
-		            uris.Add(new .(StringView(uri+7))); // Removing the "file://" prefix
+		            if (Linux.SdBusMessageReadBasic(response, .String, &uri) < 0)
+						break;
+
+					const String FILE_PREFIX = "file://";
+
+					let uriView = StringView(uri);
+					if (!uriView.StartsWith(FILE_PREFIX))
+						break;
+
+					String parsedUri = new .(uriView.Length - FILE_PREFIX.Length);
+					// Parse URI, skip file:// prefix
+					for (int i = FILE_PREFIX.Length; i < uriView.Length; i++)
+					{
+						let c = uriView[i];
+						if (c == '%')
+						{
+							if (i + 2 < uriView.Length)
+							{
+								let byteVal = (HexToInt(uriView[i + 1]) << 4) | HexToInt(uriView[i + 2]);
+								parsedUri.Append((char8)byteVal);
+							}
+							i += 2;
+							continue;
+						}
+						parsedUri.Append(c);
+					}
+
+		            uris.Add(parsedUri);
 		        }
 		        Linux.SdBusMessageExitContainer(response);
 		        Linux.SdBusMessageExitContainer(response);
