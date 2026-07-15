@@ -23,6 +23,13 @@ namespace Beefy.gfx
 			FatalError = 8
 		}
 
+		public enum RenderTargetFlags
+		{
+			None = 0,
+			DestAlpha = 1,
+			Shared = 2
+		}
+
         public Image mSrcTexture;
         public int32 mSrcX;
         public int32 mSrcY;
@@ -97,6 +104,15 @@ namespace Beefy.gfx
 
             return CreateFromNativeTextureSegment(aNativeTextureSegment);
         }
+
+		public static Image CreateRenderTarget(int32 width, int32 height, RenderTargetFlags flags)
+		{
+		    void* aNativeTextureSegment = Gfx_CreateRenderTarget(width, height, (int32)flags);
+		    if (aNativeTextureSegment == null)
+		        return null;
+
+		    return CreateFromNativeTextureSegment(aNativeTextureSegment);
+		}
 
         public static Image LoadFromFile(StringView fileName, LoadFlags flags = .None)
         {

@@ -874,7 +874,7 @@ void GLRenderDevice::PhysSetRenderState(RenderState* renderState)
 	mPhysRenderState = renderState;
 }
 
-Texture* GLRenderDevice::CreateRenderTarget(int width, int height, bool destAlpha)
+Texture* GLRenderDevice::CreateRenderTarget(int width, int height, int flags)
 {
 	// GLTexture* texture = new GLTexture();
 	// GLuint id;

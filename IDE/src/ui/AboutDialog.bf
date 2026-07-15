@@ -43,7 +43,7 @@ namespace IDE.ui
 
 		public this()
 		{
-			Title = "About Beef IDE";
+			Title = scope $"About {IDEApp.sTitle}";
 
 			mBigFont = new Font();
 			mBigFont.Load("Segoe UI", GS!(80.0f));
@@ -170,7 +170,7 @@ namespace IDE.ui
 
 			float ang = Math.Min((float)(mUpdateCntF * 0.006f), Math.PI_f / 2);
 			g.SetFont(mBigFont);
-			g.DrawString("Beef IDE", 0, GS!(20) + (1.0f - Math.Sin(ang))*GS!(300), .Centered, mWidth);
+			g.DrawString(IDEApp.sTitle, 0, GS!(20) + (1.0f - Math.Sin(ang))*GS!(300), .Centered, mWidth);
 
 			float angMed = Math.Min((float)(mUpdateCntF * 0.0055f), Math.PI_f / 2);
 			float alpha = Math.Clamp((float)(mUpdateCntF * 0.007f) - 1.3f, 0, 1.0f);

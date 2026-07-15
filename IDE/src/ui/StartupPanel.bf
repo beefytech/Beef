@@ -212,7 +212,7 @@ namespace IDE.ui
 				IDEApp.Beep(.Error);
 
 				let aDialog = ThemeFactory.mDefault.CreateDialog(
-					"Beef IDE",
+					IDEApp.sTitle,
 					"Workspace couldn't be found. Do you want to remove the reference from recent list?",
 					DarkTheme.sDarkTheme.mIconError);
 

@@ -2517,8 +2517,11 @@ void DXRenderDevice::SetRenderState(RenderState* renderState)
 	mCurRenderState = renderState;
 }
 
-Texture* DXRenderDevice::CreateRenderTarget(int width, int height, bool destAlpha)
+Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags)
 {
+	bool destAlpha = (flags & 1) != 0;
+	bool makeShared = (flags & 2) != 0;
+
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
 
 	int aWidth = 0;
@@ -2546,6 +2549,9 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, bool destAlph
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.CPUAccessFlags = 0; //D3D11_CPU_ACCESS_WRITE;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+
+	if (makeShared)	
+		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_NTHANDLE | D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;	
 
 	ID3D11Texture2D* d3DTexture = NULL;
 	DXCHECK(mD3DDevice->CreateTexture2D(&desc, NULL, &d3DTexture));

@@ -445,9 +445,9 @@ BF_EXPORT int BF_CALLTYPE BFWindow_GetDPI(BFWindow* window)
 
 ///
 
-BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateRenderTarget(int width, int height, int destAlpha)
+BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateRenderTarget(int width, int height, int flags)
 {
-	Texture* texture = gBFApp->mRenderDevice->CreateRenderTarget(width, height, destAlpha != 0);	
+	Texture* texture = gBFApp->mRenderDevice->CreateRenderTarget(width, height, flags);	
 	texture->mResetClear = true;
 
 	TextureSegment* aTextureSegment = new TextureSegment();

@@ -336,7 +336,7 @@ public:
 	Texture*				CreateDynTexture(int width, int height) override;
 	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) override;
 	void					ReleaseShader(Shader* shader) override;
-	Texture*				CreateRenderTarget(int width, int height, bool destAlpha) override;
+	Texture*				CreateRenderTarget(int width, int height, int flags) override;
 
 	void					SetRenderState(RenderState* renderState) override;
 };
