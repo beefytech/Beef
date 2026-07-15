@@ -267,9 +267,9 @@ namespace Beefy.geom
 
         public static Vector3 TransformNormal(Vector3 normal, Matrix4 matrix)
         {
-            return Vector3((normal.mX * matrix.m11) + (normal.mY * matrix.m21) + (normal.mZ * matrix.m31),
-                                 (normal.mX * matrix.m12) + (normal.mY * matrix.m22) + (normal.mZ * matrix.m32),
-                                 (normal.mX * matrix.m13) + (normal.mY * matrix.m23) + (normal.mZ * matrix.m33));
+            return Vector3((normal.mX * matrix.m00) + (normal.mY * matrix.m01) + (normal.mZ * matrix.m02),
+                                 (normal.mX * matrix.m10) + (normal.mY * matrix.m11) + (normal.mZ * matrix.m12),
+                                 (normal.mX * matrix.m20) + (normal.mY * matrix.m21) + (normal.mZ * matrix.m22));
         }
 
         public static bool operator ==(Vector3 value1, Vector3 value2)

@@ -57,6 +57,16 @@ public:
 	String mName;
 	int mParentIdx;
 	Matrix4 mPoseInvMatrix;
+	ModelJointTranslation mBindPoseLocal;
+
+public:
+	ModelJoint()
+	{
+		mParentIdx = -1;
+		mBindPoseLocal.mTrans = Vector3(0, 0, 0);
+		mBindPoseLocal.mScale = Vector3(1, 1, 1);
+		mBindPoseLocal.mQuat = Quaternion(0, 0, 0, 1);
+	}
 };
 
 class ModelMetalicRoughness
@@ -238,6 +248,7 @@ public:
 	ModelDef();
 	~ModelDef();
 
+	void Scale(const Vector3& scale);
 	void Compact();
 	void GetBounds(Vector3& min, Vector3& max);
 

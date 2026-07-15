@@ -1491,6 +1491,9 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 			for (int row = 0; row < 4; row++)
 				for (int col = 0; col < 4; col++)
 					joint->mPoseInvMatrix.mMat[row][col] = (float) invGlobalMtx.Get(col, row);
+			joint->mBindPoseLocal.mTrans = Vector3((float)fbxJoint->posx, (float)fbxJoint->posy, (float)fbxJoint->posz);
+			joint->mBindPoseLocal.mScale = Vector3(fbxJoint->scalex, fbxJoint->scaley, fbxJoint->scalez);
+			joint->mBindPoseLocal.mQuat = Quaternion((float)fbxJoint->quatx, (float)fbxJoint->quaty, (float)fbxJoint->quatz, (float)fbxJoint->quatw);
 		}
 	}
 

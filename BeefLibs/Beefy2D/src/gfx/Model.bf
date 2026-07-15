@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
@@ -118,6 +118,9 @@ namespace Beefy.gfx
 		extern static void ModelDef_SetBaseDir(void* nativeModel, char8* baseDir);
 
 		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelDef_Scale(void* nativeModel, Vector3 scale);
+
+		[CallingConvention(.Stdcall), CLink]
 		extern static char8* ModelDef_GetInfo(void* nativeModel);
 
 		[CallingConvention(.Stdcall), CLink]
@@ -128,6 +131,9 @@ namespace Beefy.gfx
 
         [CallingConvention(.Stdcall), CLink]
         extern static int32 ModelDef_GetJointCount(void* nativeModel);
+
+        [CallingConvention(.Stdcall), CLink]
+        extern static int32 ModelDef_GetJointParent(void* nativeModel, int32 jointIdx);
 
         [CallingConvention(.Stdcall), CLink]
         extern static int32 ModelDef_GetAnimCount(void* nativeModel);
@@ -200,6 +206,11 @@ namespace Beefy.gfx
 			ModelDef_GetBounds(mNativeModelDef, out min, out max);
 		}
 
+		public int32 GetJointParent(int32 jointIdx)
+		{
+			return ModelDef_GetJointParent(mNativeModelDef, jointIdx);
+		}
+
 		public void Compact()
 		{
 			ModelDef_Compact(mNativeModelDef);
@@ -208,6 +219,11 @@ namespace Beefy.gfx
 		public void SetBaseDir(StringView baseDir)
 		{
 			ModelDef_SetBaseDir(mNativeModelDef, baseDir.ToScopeCStr!());
+		}
+
+		public void Scale(Vector3 scale)
+		{
+			ModelDef_Scale(mNativeModelDef, scale);
 		}
 
 		public void SetTextures(int meshIdx, int primitivesIdx, Span<char8*> paths)
@@ -224,7 +240,7 @@ namespace Beefy.gfx
 		public bool RayIntersect(Matrix4 worldMtx, Vector3 origin, Vector3 vec, out Vector3 outIntersect, out float outDistance)
 		{
 			return ModelDef_RayIntersect(mNativeModelDef, worldMtx, origin, vec, out outIntersect, out outDistance);
-		}	
+		}
     }
 
     public class ModelInstance : RenderCmd
