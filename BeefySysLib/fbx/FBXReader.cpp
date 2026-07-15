@@ -8,6 +8,8 @@
 
 #ifndef BF_NO_FBX
 
+#include "ufbx/ufbx.c"
+
 #pragma warning(disable:4996)
 
 USING_NS_BF;
@@ -16,1280 +18,36 @@ namespace boost
 {
 	static inline std::size_t hash_value(const FBXVertexData& vtxData)
 	{
-		uint32* data = (uint32*) &vtxData.mCoords;
+		uint32* data = (uint32*)&vtxData.mCoords;
 		return (data[0] ^ data[1] ^ data[2]);
 	}
 }
 
-#pragma comment(lib, "libfbxsdk.lib")
-
-#ifdef IOS_REF
-#undef  IOS_REF
-#define IOS_REF (*(pManager->GetIOSettings()))
-#endif
-
-
-bool FBXIsValidMatrix(const FbxAMatrix& mat)
+static Matrix4 UfbxToMatrix4(const ufbx_matrix& m)
 {
-	// Check that scales aren't zero and quaternions don't have //1.#QNAN0 values
-	if (mat.GetQ()[0] != mat.GetQ()[0] ||
-		mat.GetS()[0] == 0)
-	{
-		return false;
-	}
-	return true;
-}
-
-FbxAMatrix FBXCorrectMatrix(const FbxAMatrix& mat)
-{
-	if (!FBXIsValidMatrix(mat))
-	{
-		/*FxOgreFBXLog("Detected invalid matrix:\n");
-		logMatrix(mat);
-		FxOgreFBXLog("Returning identity matrix:\n");*/
-		return FbxAMatrix();
-	}
-	return mat;
-}
-
-static void InitializeSdkObjects(FbxManager*& pManager, FbxScene*& pScene)
-{
-	//The first thing to do is to create the FBX Manager which is the object allocator for almost all the classes in the SDK
-	pManager = FbxManager::Create();
-	if (!pManager)
-	{
-		FBXSDK_printf("Error: Unable to create FBX Manager!\n");
-		exit(1);
-	}
-	else FBXSDK_printf("Autodesk FBX SDK version %s\n", pManager->GetVersion());
-
-	//Create an IOSettings object. This object holds all import/export settings.
-	FbxIOSettings* ios = FbxIOSettings::Create(pManager, IOSROOT);
-	pManager->SetIOSettings(ios);
-
-	//Load plugins from the executable directory (optional)
-	FbxString lPath = FbxGetApplicationDirectory();
-	pManager->LoadPluginsDirectory(lPath.Buffer());
-
-	//Create an FBX scene. This object holds most objects imported/exported from/to files.
-	pScene = FbxScene::Create(pManager, "My Scene");
-	if (!pScene)
-	{
-		FBXSDK_printf("Error: Unable to create FBX scene!\n");
-		exit(1);
-	}
-}
-
-static void DestroySdkObjects(FbxManager* pManager, bool pExitStatus)
-{
-	//Delete the FBX Manager. All the objects that have been allocated using the FBX Manager and that haven't been explicitly destroyed are also automatically destroyed.
-	if (pManager) pManager->Destroy();
-	if (pExitStatus) FBXSDK_printf("Program Success!\n");
-}
-
-static bool LoadScene(FbxManager* pManager, FbxDocument* pScene, const char* pFilename, FbxImporter* pImporter)
-{
-	int lFileMajor, lFileMinor, lFileRevision;
-	int lSDKMajor, lSDKMinor, lSDKRevision;
-	//int lFileFormat = -1;
-	int i, lAnimStackCount;
-	bool lStatus;
-	char lPassword[1024];
-
-	// Get the file version number generate by the FBX SDK.
-	FbxManager::GetFileFormatVersion(lSDKMajor, lSDKMinor, lSDKRevision);
-
-	// Create an importer.
-	//FbxImporter* pImporter = FbxImporter::Create(pManager, "");
-
-	// Initialize the importer by providing a filename.
-	const bool lImportStatus = pImporter->Initialize(pFilename, -1, pManager->GetIOSettings());
-	pImporter->GetFileVersion(lFileMajor, lFileMinor, lFileRevision);
-
-	if (!lImportStatus)
-	{
-		FbxString error = pImporter->GetStatus().GetErrorString();
-		FBXSDK_printf("Call to FbxImporter::Initialize() failed.\n");
-		FBXSDK_printf("Error returned: %s\n\n", error.Buffer());
-
-		if (pImporter->GetStatus().GetCode() == FbxStatus::eInvalidFileVersion)
-		{
-			FBXSDK_printf("FBX file format version for this FBX SDK is %d.%d.%d\n", lSDKMajor, lSDKMinor, lSDKRevision);
-			FBXSDK_printf("FBX file format version for file '%s' is %d.%d.%d\n\n", pFilename, lFileMajor, lFileMinor, lFileRevision);
-		}
-
-		return false;
-	}
-
-	FBXSDK_printf("FBX file format version for this FBX SDK is %d.%d.%d\n", lSDKMajor, lSDKMinor, lSDKRevision);
-
-	if (pImporter->IsFBX())
-	{
-		FBXSDK_printf("FBX file format version for file '%s' is %d.%d.%d\n\n", pFilename, lFileMajor, lFileMinor, lFileRevision);
-
-		// From this point, it is possible to access animation stack information without
-		// the expense of loading the entire file.
-
-		FBXSDK_printf("Animation Stack Information\n");
-
-		lAnimStackCount = pImporter->GetAnimStackCount();
-
-		FBXSDK_printf("    Number of Animation Stacks: %d\n", lAnimStackCount);
-		FBXSDK_printf("    Current Animation Stack: \"%s\"\n", pImporter->GetActiveAnimStackName().Buffer());
-		FBXSDK_printf("\n");
-
-		for (i = 0; i < lAnimStackCount; i++)
-		{
-			FbxTakeInfo* lTakeInfo = pImporter->GetTakeInfo(i);
-
-			FBXSDK_printf("    Animation Stack %d\n", i);
-			FBXSDK_printf("         Name: \"%s\"\n", lTakeInfo->mName.Buffer());
-			FBXSDK_printf("         Description: \"%s\"\n", lTakeInfo->mDescription.Buffer());
-
-			// Change the value of the import name if the animation stack should be imported 
-			// under a different name.
-			FBXSDK_printf("         Import Name: \"%s\"\n", lTakeInfo->mImportName.Buffer());
-
-			// Set the value of the import state to false if the animation stack should be not
-			// be imported. 
-			FBXSDK_printf("         Import State: %s\n", lTakeInfo->mSelect ? "true" : "false");
-			FBXSDK_printf("\n");
-		}
-
-		// Set the import states. By default, the import states are always set to 
-		// true. The code below shows how to change these states.
-		IOS_REF.SetBoolProp(IMP_FBX_MATERIAL, true);
-		IOS_REF.SetBoolProp(IMP_FBX_TEXTURE, true);
-		IOS_REF.SetBoolProp(IMP_FBX_LINK, true);
-		IOS_REF.SetBoolProp(IMP_FBX_SHAPE, true);
-		IOS_REF.SetBoolProp(IMP_FBX_GOBO, true);
-		IOS_REF.SetBoolProp(IMP_FBX_ANIMATION, true);
-		IOS_REF.SetBoolProp(IMP_FBX_GLOBAL_SETTINGS, true);
-	}
-
-	// Import the scene.
-	lStatus = pImporter->Import(pScene);
-
-	if (lStatus == false && pImporter->GetStatus().GetCode() == FbxStatus::ePasswordError)
-	{
-		FBXSDK_printf("Please enter password: ");
-
-		lPassword[0] = '\0';
-
-		FBXSDK_CRT_SECURE_NO_WARNING_BEGIN
-			scanf("%s", lPassword);
-		FBXSDK_CRT_SECURE_NO_WARNING_END
-
-			FbxString lString(lPassword);
-
-		IOS_REF.SetStringProp(IMP_FBX_PASSWORD, lString);
-		IOS_REF.SetBoolProp(IMP_FBX_PASSWORD_ENABLE, true);
-
-		lStatus = pImporter->Import(pScene);
-
-		if (lStatus == false && pImporter->GetStatus().GetCode() == FbxStatus::ePasswordError)
-		{
-			FBXSDK_printf("\nPassword is wrong, import aborted.\n");
-		}
-	}
-
-	// Destroy the importer.
-	//pImporter->Destroy();
-
-	return lStatus;
+	Matrix4 r;
+	r.mMat[0][0] = (float)m.m00; r.mMat[0][1] = (float)m.m01; r.mMat[0][2] = (float)m.m02; r.mMat[0][3] = (float)m.m03;
+	r.mMat[1][0] = (float)m.m10; r.mMat[1][1] = (float)m.m11; r.mMat[1][2] = (float)m.m12; r.mMat[1][3] = (float)m.m13;
+	r.mMat[2][0] = (float)m.m20; r.mMat[2][1] = (float)m.m21; r.mMat[2][2] = (float)m.m22; r.mMat[2][3] = (float)m.m23;
+	r.mMat[3][0] = 0;             r.mMat[3][1] = 0;             r.mMat[3][2] = 0;             r.mMat[3][3] = 1;
+	return r;
 }
 
 FBXReader::FBXReader(ModelDef* modelDef)
 {
 	mModelDef = modelDef;
-	mParamLum = 1.0f;
-	mParamBindframe = 0;
+	mFPS = 30.0f;
 }
 
 FBXReader::~FBXReader()
 {
-	while (mMeshes.size() > 0)
-	{
-		delete mMeshes.back();
-		mMeshes.pop_back();
-	}
-}
-
-//void FBXReader::TranslateNode
-
-FBXMesh* FBXReader::LoadMesh(FbxNode* fbxNode, FbxMesh* fbxMesh)
-{	
-	FBXMesh* mesh = new FBXMesh();
-	mesh->mName = fbxNode->GetName();
-
-	FbxAMatrix nodeTransform = GetBindPose(fbxNode, fbxMesh);
-	nodeTransform = FBXCorrectMatrix(nodeTransform);
-
-	int numSrcVertices = fbxMesh->GetControlPointsCount();
-	int numFaces = fbxMesh->GetPolygonCount();
-	int numVertices = numFaces * 3;
-
-	int elementMatCount = fbxMesh->GetElementMaterialCount();
-
-	int numMaterials = fbxNode->GetMaterialCount();
-
-	FBXMaterial* material = &mesh->mMaterial;
-
-	for (int matIdx = 0; matIdx < numMaterials; matIdx++)
-	{
-		FbxSurfaceMaterial* fbxMaterial = fbxNode->GetMaterial(matIdx);
-		
-		const char* matName = fbxMaterial->GetName();
-
-		for (int channelIdx = 0; true; channelIdx++)
-		{
-			FbxProperty prop = fbxMaterial->FindProperty(FbxLayerElement::sTextureChannelNames[channelIdx]);
-			if (!prop.IsValid())
-				break;
-			int texCount = prop.GetSrcObjectCount<FbxTexture>();
-
-			for (int texIdx = 0; texIdx < texCount; texIdx++)
-			{
-				FbxTexture* texture = prop.GetSrcObject<FbxTexture>(texIdx);
-				if (texture != NULL)
-				{
-					FbxFileTexture* fileTexture = FbxCast<FbxFileTexture>(texture);
-
-					if (fileTexture != NULL)
-					{
-						String mediaName = fileTexture->GetMediaName();
-						String fileExt = "";
-
-						int parenPos = (int)mediaName.IndexOf(" (");
-						String origFileName = fileTexture->GetFileName();
-						int dotPos = (int)origFileName.LastIndexOf('.');
-						if (dotPos != -1)
-							fileExt = origFileName.Substring(dotPos);
-						//material->mTexFileName = fileName;
-
-						/*if (parenPos != -1) 
-						{
-							String suffix = mediaName.substr(parenPos + 1);
-							String fileName = mediaName.substr(0, parenPos);
-
-							fileName += fileExt;
-
-							if (suffix == "(Map)")
-								material->mTexFileName = fileName;
-							if (suffix == "(Normal Map Translator)")
-								material->mBumpFileName = fileName;
-						}*/
-
-						String fileName = fileTexture->GetFileName();
-
-						if (material->mTexFileName.length() == 0)
-						{
-							int slashPos = BF_MAX((int)fileName.LastIndexOf('\\'), (int)fileName.LastIndexOf('/'));
-							if (slashPos > 0)
-								fileName = fileName.Substring(slashPos + 1);
-							material->mTexFileName = fileName;
-						}
-					}
-				}
-			}
-		}
-
-		//material->GetTex
-		int b = 0;
-	}
-
-	/*for (int matIdx = 0; matIdx < matCount; matIdx++)
-	{
-		fbxMesh->GetElementMaterial(matIdx);
-	}*/
-	
-	std::vector<FBXVertexData> unpackedVtxData;
-	unpackedVtxData.resize(numVertices);
-
-	FbxVector4* controlPoints = fbxMesh->GetControlPoints();
-
-	/*std::vector<VertexData> srcVtxData;
-	srcVtxData.resize(numSrcVertices);
-	FbxVector4* controlPoints = fbxMesh->GetControlPoints();
-	for (int i = 0; i < numSrcVertices; i++)
-	{
-		VertexData* vtxData = &srcVtxData[i];
-		FbxVector4 controlPoint = controlPoints[i];
-		vtxData->mCoords = Vector3((float)controlPoint[0], (float)controlPoint[1], (float)controlPoint[2]);
-	}*/
-	
-	for (int uvSetIdx = 0; uvSetIdx < fbxMesh->GetElementUVCount(); uvSetIdx++)
-	{
-		FbxGeometryElementUV* elementUV = fbxMesh->GetElementUV(uvSetIdx);		
-		FbxLayerElement::EMappingMode mappingMode = elementUV->GetMappingMode();
-		if (mappingMode == FbxLayerElement::eByControlPoint)			
-		{						
-			auto directArray = elementUV->GetDirectArray();
-			int uvLen = directArray.GetCount();
-			int maxIdx = 0;
-			/*for (int i = 0; i < uvLen; i++)
-			{
-				FBXVertexData* vtxData = &unpackedVtxData[i];				
-				auto texCoords = directArray.GetAt(i);
-				vtxData->mTexCoords.push_back(TexCoords((float) texCoords[0], (float) texCoords[1]));
-			}*/
-
-			int vtxIdx = 0;
-			for (int faceIdx = 0; faceIdx < numFaces; faceIdx++)
-			{
-				for (int faceVtxIdx = 0; faceVtxIdx < 3; faceVtxIdx++)
-				{					
-					int controlIdx = fbxMesh->GetPolygonVertex(faceIdx, faceVtxIdx);					
-					FBXVertexData* vtxData = &unpackedVtxData[vtxIdx];				
-					auto texCoords = directArray.GetAt(controlIdx);
-					vtxData->mTexCoords.push_back(TexCoords((float) texCoords[0], (float) texCoords[1]));
-					vtxIdx++;
-				}
-			}
-
-			OutputDebugStrF("Max: %d\n", maxIdx);
-		}
-		else if (mappingMode == FbxLayerElement::eByPolygonVertex)
-		{
-			auto idxArray = elementUV->GetIndexArray();
-			int idxLen = idxArray.GetCount();
-			auto directArray = elementUV->GetDirectArray();
-			int uvLen = directArray.GetCount();
-			int maxIdx = 0;
-			for (int i = 0; i < idxLen; i++)
-			{	
-				FBXVertexData* vtxData = &unpackedVtxData[i];
-				int directIdx = idxArray.GetAt(i);
-				maxIdx = std::max(maxIdx, directIdx);
-				auto texCoords = directArray.GetAt(directIdx);
-				vtxData->mTexCoords.push_back(TexCoords((float)texCoords[0], (float)texCoords[1]));
-			}
-			OutputDebugStrF("Max: %d\n", maxIdx);
-		}
-		else
-		{
-			BF_ASSERT("Unsupported UV" == 0);
-		}
-	}
-	
-	if (fbxMesh->GetLayer(0)->GetNormals() == NULL)
-	{		
-		fbxMesh->InitNormals();
-		fbxMesh->GenerateNormals();
-	}
-	
-	//fbxMesh->InitTangents();
-
-	int layerCount = fbxMesh->GetLayerCount();
-
-	//auto tangents = fbxMesh->GetLayer(0)->GetTangents();
-	//auto bionarmals = fbxMesh->GetLayer(0)->GetBinormals();
-
-	FbxLayerElementArrayTemplate<FbxVector4>* tangentArray = NULL;
-	fbxMesh->GetTangents(&tangentArray);
-
-	FbxLayerElementArrayTemplate<int>* tangentIndexArray = NULL;
-	fbxMesh->GetTangentsIndices(&tangentIndexArray);
-
-	tangentIndexArray[0];
-
-	std::vector<BoneWeightVector> boneWeightsVector;
-	boneWeightsVector.resize(numSrcVertices);
-	GetVertexBoneWeights(fbxNode, fbxMesh, boneWeightsVector);
-
-	int vtxIdx = 0;
-	for (int faceIdx = 0; faceIdx < numFaces; faceIdx++)
-	{
-		for (int faceVtxIdx = 0; faceVtxIdx < 3; faceVtxIdx++)
-		{
-			FbxVector4 normal;
-			fbxMesh->GetPolygonVertexNormal(faceIdx, faceVtxIdx, normal);
-			//TODO: Rotate to the bind pose
-			
-			int controlIdx = fbxMesh->GetPolygonVertex(faceIdx, faceVtxIdx);
-
-			FbxVector4 controlPt = controlPoints[controlIdx];
-
-			controlPt = nodeTransform.MultT(controlPt);
-
-			FBXVertexData* vtxData = &unpackedVtxData[vtxIdx];
-			vtxData->mNormal = Vector3((float)normal[0], (float)normal[1], (float)normal[2]);
-			//vtxData->mCoords = Vector3((float)controlPt[0] * 50 + 50, (float)controlPt[1] * 50 + 50, (float)controlPt[2] * 50 + 50);
-			vtxData->mCoords = Vector3((float)controlPt[0], (float)controlPt[1], (float)controlPt[2]);
-			vtxData->mBoneWeights = boneWeightsVector[controlIdx];
-			vtxIdx++;
-		}
-	}	
-
-	mesh->mVertexData.reserve(numVertices);
-
-	typedef Dictionary<FBXVertexData, int> VertexDataMap;
-	VertexDataMap usedVertexData;
-	int vertexDataSize = numVertices;
-	for (int vtxIdx = 0; vtxIdx < vertexDataSize; vtxIdx++)
-	{
-		//VertexData* vtxData = hash
-		FBXVertexData* vtxData = &unpackedVtxData[vtxIdx];
-
-		/*bool hasValidIdx = false;
-		for (int boneIdx = 0; boneIdx < (int)vtxData->mBoneWeights.size(); boneIdx++)
-		{
-			BoneWeight boneWeight = vtxData->mBoneWeights[boneIdx];
-			hasValidIdx |= boneWeight.mBoneIdx <= 45;
-		}
-
-		if (!hasValidIdx)
-		{
-			vtxData->mCoords.mX = 0;
-			vtxData->mCoords.mY = 0;
-			vtxData->mCoords.mZ = 0;
-		}*/
-
-		auto itr = usedVertexData.Find(*vtxData);
-		if (itr != usedVertexData.end())
-		{
-			mesh->mIndexData.push_back(itr->mValue);
-		}
-		else
-		{
-			int idx = (int)mesh->mVertexData.size();
-			usedVertexData[*vtxData] = idx;
-			mesh->mVertexData.push_back(*vtxData);
-			mesh->mIndexData.push_back(idx);
-		}		
-	}
-
-	return mesh;
-}
-
-static bool IsNodeVisible(FbxNode *pNode)
-{
-	bool bIsVisible = false;
-	FbxNode* pParentNode = pNode;
-	while (pParentNode != NULL)
-	{
-		bIsVisible = pParentNode->GetVisibility();
-		if (!bIsVisible)
-		{
-			break;
-		}
-		pParentNode = pParentNode->GetParent();
-	}
-
-	return bIsVisible;
-}
-
-void FBXReader::TranslateNode(FbxNode* fbxNode)
-{
-	if (fbxNode == NULL)
-		return;
-
-	switch (fbxNode->GetNodeAttribute()->GetAttributeType())
-	{
-	case FbxNodeAttribute::eMesh:
-		if (IsNodeVisible(fbxNode))
-		{			
-			FbxGeometryConverter geometryConverter(mFBXManager);
-			for (int attrIdx = 0; attrIdx < fbxNode->GetNodeAttributeCount(); attrIdx++)
-			{
-				if (fbxNode->GetNodeAttributeByIndex(attrIdx)->GetAttributeType() == FbxNodeAttribute::eMesh)
-				{
-					FbxMesh* fbxMesh = (FbxMesh*) fbxNode->GetNodeAttributeByIndex(attrIdx);
-					FbxMesh* triMesh = FbxCast<FbxMesh>(geometryConverter.Triangulate(fbxMesh, true));
-					FBXMesh* mesh = LoadMesh(fbxNode, triMesh);
-					mMeshes.push_back(mesh);
-				}
-			}			
-		}
-	}
-
-	for (int childIdx = 0; childIdx < fbxNode->GetChildCount(); childIdx++)
-	{
-		// Call recursive translateNode once for each child of the root node
-		FbxNode* childNode = fbxNode->GetChild(childIdx);
-		TranslateNode(childNode);
-	}
-}
-
-void FBXReader::FindJoints(FbxNode* fbxNode)
-{
-	if (fbxNode == NULL)
-		return;
-
-	if (fbxNode->GetParent() != NULL)
-	{
-		switch (fbxNode->GetNodeAttribute()->GetAttributeType())
-		{
-		case FbxNodeAttribute::eSkeleton:
-			if (IsNodeVisible(fbxNode))
-			{
-				String jointName = fbxNode->GetName();
-				int idx = mJointIndexMap[jointName];
-				mFBXJoints[idx].pNode = fbxNode;
-			}
-		}
-	}
-
-	for (int childIdx = 0; childIdx < fbxNode->GetChildCount(); childIdx++)
-	{
-		// Call recursive translateNode once for each child of the root node
-		FbxNode* childNode = fbxNode->GetChild(childIdx);
-		FindJoints(childNode);
-	}
-}
-
-static FbxAMatrix FBXConvertMatrix(const FbxMatrix& mat)
-{
-	FbxVector4 trans, shear, scale;
-	FbxQuaternion rot;
-	double sign;
-	mat.GetElements(trans, rot, shear, scale, sign);
-	FbxAMatrix ret;
-	ret.SetT(trans);
-	ret.SetQ(rot);
-	ret.SetS(scale);
-	return ret;
-}
-
-int FBXReader::FBXGetJointIndex(FbxNode* pNode)
-{
-	if (pNode)
-	{
-		if (mJointIndexMap.find(pNode->GetName()) != mJointIndexMap.end())
-		{
-			return mJointIndexMap[pNode->GetName()];
-		}
-	}
-	return -1;
-}
-
-FbxAMatrix FBXReader::GetBindPose(FbxNode *pNode, FbxMesh *pMesh)
-{
-	//if (!params.useanimframebind)
-	{
-		int lSkinCount = pMesh->GetDeformerCount(FbxDeformer::eSkin);
-		for (int i = 0; i != lSkinCount; ++i)
-		{
-			int lClusterCount = ((FbxSkin *) pMesh->GetDeformer(i, FbxDeformer::eSkin))->GetClusterCount();
-			for (int j = 0; j < lClusterCount; ++j)
-			{
-
-				FbxCluster *pCluster = ((FbxSkin *) pMesh->GetDeformer(i, FbxDeformer::eSkin))->GetCluster(j);
-
-				FbxAMatrix geometryBind;
-				pCluster->GetTransformMatrix(geometryBind);
-				if (FBXIsValidMatrix(geometryBind))
-					return geometryBind;
-			}
-		}
-		// It can be difficult to calculate the correct bind position for the mesh because
-		// the FBX Global evaluate functions do not seem to take the inheritance type into account.
-		// eInherit_Rrs nodes can mess things up.
-		//FxOgreFBXLog("Warning: can not find bind pose for mesh %s.  Attempting to calculate it\n", pNode->GetName());
-	}
-
-	FbxAMatrix globalTransform;
-	//if (getSkeleton())
-	{
-		globalTransform = CalculateGlobalTransformWithBind(pNode, FbxTime(mParamBindframe));
-		//globalTransform = getSkeleton()->CalculateGlobalTransformWithBind(pNode, FbxTime(params.bindframe), params);
-	}
-	//else
-	{
-		//globalTransform = CalculateGlobalTransform(pNode, FbxTime(params.bindframe));
-	}
-
-	return globalTransform;
-}
-
-bool FBXReader::FBXLoadJoint(FbxNode* pNode, FbxAMatrix globalBindPose)
-{
-	if (!pNode)
-	{
-		//FxOgreFBXLog("Failed to load joint.\n");
-		return false;
-	}
-	if (mJointIndexMap.find(pNode->GetName()) != mJointIndexMap.end())
-	{
-		// We have already exported this joint.
-		return false;
-	}
-
-	if (!pNode->GetParent())
-	{
-		// Ignore the FBX root node here.
-		return false;
-	}
-
-	// Protect against nodes that have parents with the same name (to avoid infinite recursion)
-	String nodename(pNode->GetName());
-	FbxNode *pParent = pNode->GetParent();
-	String parentName;
-	if (pParent)
-		parentName = pParent->GetName();
-	while (pParent)
-	{
-		String parentname = pParent->GetName();
-		if (parentname == nodename)
-		{
-			//FxOgreFBXLog("Warning! %s joint has a parent by the same name.  Joint names must be unique!  Output file may render incorrectly.", pNode->GetName());
-			pNode = pParent;
-			break;
-		}
-		pParent = pParent->GetParent();
-	}
-
-	globalBindPose = FBXCorrectMatrix(globalBindPose);
-
-	FBXJoint newJoint;
-	newJoint.mBoneLength = 0;
-	newJoint.parentIndex = -1;
-	mFBXJoints.push_back(newJoint);
-	int index = (int)mFBXJoints.size() - 1;
-	mJointIndexMap[pNode->GetName()] = index;
-
-	mFBXJoints[index].pNode = pNode;
-	mFBXJoints[index].name = pNode->GetName();
-	mFBXJoints[index].id = index;
-	mFBXJoints[index].parentName = parentName;
-
-	//FxOgreFBXLog("%s joint added at index %i with global transform:", pNode->GetName(), index);
-	//logMatrix(globalBindPose);
-
-	mFBXJoints[index].globalBindPose = globalBindPose;
-
-	return true;
-}
-
-
-static FbxAMatrix CalculateGlobalTransform(FbxNode* pNode, FbxTime time) 
-{
-    // There seems to be some variance between calculating the global transform and
-    // using the FBX calculate it with EvaluateGlobalTransform.  
-    /*
-    FbxAMatrix lTM = pNode->EvaluateLocalTransform(time);
-
-    if( pNode->GetParent() )
-    {
-        FbxAMatrix parentMatrix = CalculateGlobalTransform(pNode->GetParent(), time);
-        return parentMatrix * lTM;
-    }
-    // root node
-    // params.exportWorldCoords?
-    return lTM;
-    */
-    return pNode->EvaluateGlobalTransform(time);
-}
-
-FbxAMatrix FBXReader::CalculateGlobalTransformWithBind(FbxNode* pNode, FbxTime time)
-{
-	/*if (params.useanimframebind)
-	{
-		return CalculateGlobalTransform(pNode, time);
-	}
-	else*/
-	{
-		FbxAMatrix lTM = pNode->EvaluateLocalTransform(time);
-		if (pNode->GetParent())
-		{
-			FbxAMatrix parentMatrix;
-			if (mJointIndexMap.find(pNode->GetParent()->GetName()) == mJointIndexMap.end())
-			{
-				parentMatrix = CalculateGlobalTransform(pNode->GetParent(), time);
-			}
-			else
-			{
-				int index = mJointIndexMap[pNode->GetParent()->GetName()];
-				parentMatrix = mFBXJoints[index].globalBindPose;
-			}
-			return parentMatrix * lTM;
-		}
-		return lTM;
-	}
-}
-
-#define PRECISION 0.00000001f
-
-static int gKeyFrameCount = 0;
-
-FBXSkeletonKeyframe FBXReader::FBXLoadKeyframe(FBXJoint& j, float time)
-{
-	gKeyFrameCount++;
-
-	FbxTime FbxTime;
-	FbxTime.SetSecondDouble(time);
-	//create keyframe
-	FBXSkeletonKeyframe key;
-	key.time = time;
-
-
-	FbxAMatrix localTMOrig = j.localBindPose;
-	FbxAMatrix localTMAtTime = localTMOrig;	
-
-	FbxAMatrix nodeTM, parentTM;
-	if (j.pNode)
-	{
-
-		//nodeTM = CalculateGlobalTransformWithBind(j.pNode, FbxTime);
-
-		/*if (params.skelBB)
-		{
-			// Bounding box info is output to the MESH file, so this will not impact the
-			// mesh if called from AddFBXAnimationToExisting.
-			m_bbox.merge(Point3(nodeTM.GetT()[0], nodeTM.GetT()[1], nodeTM.GetT()[2]));
-		}
-		else*/
-		{
-			localTMAtTime = j.pNode->EvaluateLocalTransform(FbxTime);			
-		}
-	}
-
-	//FbxAMatrix deltaMat = localTMOrig.Inverse() * localTMAtTime;
-	//FbxVector4 diff = localTMAtTime.GetT() - localTMOrig.GetT();
-
-	//FbxAMatrix deltaMat = localTMAtTime * localTMOrig.Inverse();
-	//FbxAMatrix deltaGlobalMat = nodeTM * j.bindPose.Inverse();
-
-	FbxAMatrix deltaMat = localTMAtTime;
-	FbxVector4 diff = localTMAtTime.GetT();
-
-	//FbxVector4 diff = deltaGlobalMat.GetT();
-
-	// @todo why does calculating the diff vector like below break UTRef?
-	// FbxVector4 diff = deltaMat.GetT();
-
-	Vector3 translation((float)diff[0], (float)diff[1], (float)diff[2]);
-	if (fabs(translation.mX) < PRECISION)
-		translation.mX = 0;
-	if (fabs(translation.mY) < PRECISION)
-		translation.mY = 0;
-	if (fabs(translation.mZ) < PRECISION)
-		translation.mZ = 0;
-
-
-	Vector3 scale((float)deltaMat.GetS()[0], (float)deltaMat.GetS()[1], (float)deltaMat.GetS()[2]);
-	if (fabs(scale.mX) < PRECISION)
-		scale.mX = 0;
-	if (fabs(scale.mY) < PRECISION)
-		scale.mY = 0;
-	if (fabs(scale.mZ) < PRECISION)
-		scale.mZ = 0;
-
-	key.tx = translation.mX * mParamLum;
-	key.ty = translation.mY * mParamLum;
-	key.tz = translation.mZ * mParamLum;
-
-	FbxQuaternion quat = deltaMat.GetQ();	
-	//FbxQuaternion quat = deltaGlobalMat.GetQ();	
-	key.quat_x = quat[0];
-	key.quat_y = quat[1];
-	key.quat_z = quat[2];
-	key.quat_w = quat[3];
-
-	Quaternion quatTest((float)quat[0], (float)quat[1], (float)quat[2], (float)quat[3]);
-
-	Vector3 vecOut = Vector3::Transform(Vector3(0, 1, 0), quatTest);
-
-	key.sx = static_cast<float>(scale.mX);
-	key.sy = static_cast<float>(scale.mY);
-	key.sz = static_cast<float>(scale.mZ);
-
-	return key;
-}
-
-bool FBXReader::FBXLoadClipAnim(String clipName, float start, float stop, float rate, FBXAnimation& a)
-{
-	size_t i, j;
-	std::vector<float> times;
-	times.clear();
-	if (rate <= 0)
-	{
-		//FxOgreFBXLog("invalid sample rate for the clip (must be >0), we skip it\n");
-		return false;
-	}
-	else
-	{
-		for (float t = start; t < stop - 0.00001f; t += rate)
-			times.push_back(t);
-		//times.push_back(stop);
-	}
-	// get animation length
-	float length = 0;
-	if (times.size() >= 0)
-		length = times[times.size() - 1] - times[0];
-	if (length < 0)
-	{
-		//FxOgreFBXLog("invalid time range for the clip, we skip it\n");
-		return false;
-	}
-	a.mName = clipName.c_str();
-	a.mTracks.clear();
-	a.mLength = length;
-
-
-	// create a track for current clip for all joints
-	std::vector<FBXTrack> animTracks;
-	for (i = 0; i < mFBXJoints.size(); i++)
-	{
-		FBXTrack t;
-		t.mType = TT_SKELETON;
-		t.mBone = mFBXJoints[i].name;
-		t.mSkeletonKeyframes.clear();
-		animTracks.push_back(t);
-	}
-
-	// evaluate animation curves at selected times
-	for (i = 0; i < times.size(); i++)
-	{
-		//load a keyframe for every joint at current time
-		for (j = 0; j < mFBXJoints.size(); j++)
-		{
-			FBXSkeletonKeyframe key = FBXLoadKeyframe(mFBXJoints[j], times[i]);
-			key.time = key.time - times[0];
-			//add keyframe to joint track
-			animTracks[j].mSkeletonKeyframes.push_back(key);
-		}		
-	}
-	// add created tracks to current clip
-	for (i = 0; i < animTracks.size(); i++)
-	{
-		a.mTracks.push_back(animTracks[i]);
-	}
-	if (animTracks.size() > 0)
-	{
-		// display info
-		//FxOgreFBXLog("length: %f\n", a.m_length);
-		//FxOgreFBXLog("num keyframes: %d\n", animTracks[0].m_skeletonKeyframes.size());
-	}
-
-	return true;
-}
-
-bool FBXReader::FBXLoadClip(String clipName, float start, float stop, float rate)
-{
-	FBXAnimation a;
-	mAnimations.push_back(a);
-	bool stat = FBXLoadClipAnim(clipName, start, stop, rate, mAnimations[mAnimations.size() - 1]);
-	if (!stat)
-	{
-		mAnimations.pop_back();
-		return false;
-	}
-	return true;
-}
-
-void FBXReader::GetAnimationBounds()
-{	
-	mAnimStart = FLT_MAX;
-	mAnimStop = -FLT_MAX;
-
-	FbxTime kStop = FBXSDK_TIME_MINUS_INFINITE;
-	FbxTime kStart = FBXSDK_TIME_INFINITE;
-
-	// Iterate through all curves to find the start and end time of the animation. Works
-	// for bones and morph targets.
-	for (int i = 0; i < mFBXScene->GetSrcObjectCount<FbxAnimCurve>(); ++i)
-	{
-		FbxAnimCurve* pCurve = mFBXScene->GetSrcObject<FbxAnimCurve>(i);
-		if (pCurve)
-		{
-			int numKeys = pCurve->KeyGetCount();
-			if (numKeys > 0)
-			{
-				float first = (float) pCurve->KeyGet(0).GetTime().GetSecondDouble();
-				float last = first;
-
-				if (numKeys > 1)
-				{
-					last = (float) pCurve->KeyGet(numKeys - 1).GetTime().GetSecondDouble();
-				}
-				if (first < mAnimStart)				
-					mAnimStart = first;				
-				if (last > mAnimStop)				
-					mAnimStop = last;				
-			}
-		}
-	}	
-}
-
-void FBXReader::ComputeBindPoseBoundingBox()
-{
-	// Make sure the bind
-	for (size_t i = 0; i < mFBXJoints.size(); ++i)
-	{
-		//m_bbox.merge(Point3(mJoints[i].globalBindPose.GetT()[0], mJoints[i].globalBindPose.GetT()[1], mJoints[i].globalBindPose.GetT()[2]));
-	}
-}
-
-void FBXReader::SetParentIndexes()
-{
-	// Set the parent indexes, so we know what to sort.
-	for (size_t i = 0; i < mFBXJoints.size(); ++i)
-	{
-		FbxNode *pNode = mFBXJoints[i].pNode;
-		int parentIndex = -1;
-		if (pNode->GetParent())
-		{
-			if (mJointIndexMap.find(pNode->GetParent()->GetName()) != mJointIndexMap.end())
-			{
-				parentIndex = mJointIndexMap[pNode->GetParent()->GetName()];
-			}
-		}
-		mFBXJoints[i].parentIndex = parentIndex;
-	}
-}
-
-void FBXReader::AddParentsOfExistingJoints()
-{
-	// If the parent for this node doesn't exist, add it here.
-	for (size_t i = 0; i < mFBXJoints.size(); ++i)
-	{
-		FbxNode *pNode = mFBXJoints[i].pNode;
-		if (pNode->GetParent())
-		{
-			if (mJointIndexMap.find(pNode->GetParent()->GetName()) == mJointIndexMap.end())
-			{
-				FbxAMatrix global = CalculateGlobalTransformWithBind(pNode->GetParent(), FbxTime(mParamBindframe));
-
-				bool bLoaded = FBXLoadJoint(pNode->GetParent(), global);
-
-				//FxOgreFBXLog("Warning joint %s created with no bind pose information.\n", pNode->GetParent()->GetName());
-				//logMatrix(global);
-			}
-		}
-	}
-}
-
-// Ensure that parents are before their children in mJoints
-void FBXReader::SortAndPruneJoints()
-{
-	// Set the indexes to sort by
-	SetParentIndexes();
-
-	std::map<String, int> sortedJointIndexMap;
-	std::vector<FBXJoint> sorted_joints;
-
-	for (size_t i = 0; i < mFBXJoints.size(); ++i)
-	{
-		SortJoint(mFBXJoints[i], sortedJointIndexMap, sorted_joints);
-	}
-
-	// Update the joint list.
-	mFBXJoints.clear();
-	mFBXJoints = sorted_joints;
-	mJointIndexMap.clear();
-
-	mJointIndexMap = sortedJointIndexMap;
-}
-
-void FBXReader::SortJoint(FBXJoint j, std::map<String, int> &sortedJointIndexMap, std::vector<FBXJoint>& sorted_joints)
-{
-	// Only export if we haven't already.
-	if (sortedJointIndexMap.find(j.name) == sortedJointIndexMap.end())
-	{
-		int newParentIndex = j.parentIndex;
-		if (j.parentIndex != -1)
-		{
-			// Export parents first. 
-			SortJoint(mFBXJoints[j.parentIndex], sortedJointIndexMap, sorted_joints);
-			newParentIndex = sortedJointIndexMap[j.pNode->GetParent()->GetName()];
-		}
-		if (sorted_joints.size() >= BF_MAX_NUM_BONES)
-		{
-			//FxOgreFBXLog("Warning: pruned joint - %s.  Too many bones!\n", j.name.c_str());
-		}
-		else
-		{
-			int id = (int)sorted_joints.size();
-
-			sorted_joints.push_back(j);
-			sortedJointIndexMap[j.name] = id;
-
-			sorted_joints[id].id = id;
-			sorted_joints[id].parentIndex = newParentIndex;
-			//FxOgreFBXLog("%i - %s - parent index: %i.\n", sorted_joints[id].id, sorted_joints[id].name.c_str(), sorted_joints[id].parentIndex);
-		}
-	}
-}
-
-void FBXReader::CalculateLocalTransforms(FbxNode* pRootNode)
-{
-	//FxOgreFBXLog("Calculating local transforms for skeleton bones.\n");
-	// Calculate global transforms.
-	for (size_t i = 0; i < mFBXJoints.size(); ++i)
-	{
-		FbxNode* pNode = mFBXJoints[i].pNode;
-		FbxAMatrix localTM, parentTM;
-
-		localTM = mFBXJoints[i].globalBindPose;
-
-		Quaternion quatOrig(
-			(float)localTM.GetQ()[0],
-			(float)localTM.GetQ()[1],
-			(float)localTM.GetQ()[2],
-			(float)localTM.GetQ()[3]);
-
-		/*if (params.useanimframebind)
-		{
-			// We could calculate the local transforms from the global ones, but
-			// in some circumstances (blake), this produces incorrect values, possibly as
-			// a result of gimble lock.  With useanimframebind, we are relying on the 
-			// FBX SDK to calculate everything, so we rely on the EvaluateLocalTransform
-			// function as opposed to calculating our own values.
-			localTM = mJoints[i].pNode->EvaluateLocalTransform(FbxTime((params.bindframe)));
-		}
-		else*/ if (mFBXJoints[i].parentIndex != -1)
-		{
-			parentTM = mFBXJoints[mFBXJoints[i].parentIndex].globalBindPose;
-			localTM = parentTM.Inverse() * localTM;
-			//localTM = localTM * parentTM.Inverse();
-		}
-
-		mFBXJoints[i].localBindPose = localTM;
-		mFBXJoints[i].bindPose = localTM;
-		
-		Quaternion quat(
-			(float)localTM.GetQ()[0],
-			(float)localTM.GetQ()[1],
-			(float)localTM.GetQ()[2],
-			(float)localTM.GetQ()[3]);
-
-		Matrix4 quatOrigMat = quatOrig.ToMatrix();
-		Matrix4 quatMat = quat.ToMatrix();
-
-		Vector3 translation((float)localTM.GetT()[0], (float)localTM.GetT()[1], (float)localTM.GetT()[2]);
-		if (fabs(translation.mX) < PRECISION)
-			translation.mX = 0;
-		if (fabs(translation.mY) < PRECISION)
-			translation.mY = 0;
-		if (fabs(translation.mZ) < PRECISION)
-			translation.mZ = 0;
-
-		Vector3 scale((float)localTM.GetS()[0], (float)localTM.GetS()[1], (float)localTM.GetS()[2]);
-		if (fabs(scale.mX) < PRECISION)
-			scale.mX = 0;
-		if (fabs(scale.mY) < PRECISION)
-			scale.mY = 0;
-		if (fabs(scale.mZ) < PRECISION)
-			scale.mZ = 0;
-
-		mFBXJoints[i].posx = translation.mX * mParamLum;
-		mFBXJoints[i].posy = translation.mY * mParamLum;
-		mFBXJoints[i].posz = translation.mZ * mParamLum;
-		
-		mFBXJoints[i].quatx = localTM.GetQ()[0];
-		mFBXJoints[i].quaty = localTM.GetQ()[1];
-		mFBXJoints[i].quatz = localTM.GetQ()[2];
-		mFBXJoints[i].quatw = localTM.GetQ()[3];
-
-		mFBXJoints[i].scalex = static_cast<float>(scale.mX);
-		mFBXJoints[i].scaley = static_cast<float>(scale.mY);
-		mFBXJoints[i].scalez = static_cast<float>(scale.mZ);
-
-		mFBXJoints[i].bInheritScale = true;
-
-		if (mFBXJoints[i].parentIndex >= 0)
-		{
-			FBXJoint* parentJoint = &mFBXJoints[mFBXJoints[i].parentIndex];
-
-			mFBXJoints[i].bindPose = parentJoint->bindPose * mFBXJoints[i].bindPose;
-
-			float dx = (float)(mFBXJoints[i].posx - parentJoint->posx);
-			float dy = (float)(mFBXJoints[i].posy - parentJoint->posy);
-			float dz = (float)(mFBXJoints[i].posz - parentJoint->posz);
-
-			float len = sqrt(dx*dx + dy*dy + dz*dz);
-			mFBXJoints[i].mBoneLength = len;
-		}		
-
-		//FxOgreFBXLog("%s - Local Trans:( %f,%f,%f) Quat( %f,%f,%f,%f), Scale(%f,%f,%f).\n", pNode->GetName(), translation.mX, translation.mY, translation.mZ, localTM.GetQ()[3], localTM.GetQ()[0], localTM.GetQ()[1], localTM.GetQ()[2], scale.mX, scale.mY, scale.mZ);
-
-	}
-	ComputeBindPoseBoundingBox();
-}
-
-void FBXReader::LoadBindPose()
-{
-	//if (!params.useanimframebind)
-	{
-		int poseCount = mFBXScene->GetPoseCount();
-		for (int poseIdx = 0; poseIdx < poseCount; poseIdx++)
-		{
-			FbxPose* pPose = mFBXScene->GetPose(poseIdx);
-			if (pPose->IsBindPose())
-			{
-				for (int j = 0; j < pPose->GetCount(); ++j)
-				{
-					FbxNode *pNode = pPose->GetNode(j);
-					if (!IsNodeVisible(pNode))
-					{
-						continue;
-					}
-					// Only export actual joints here.  Otherwise meshes will create joints unnecessarily.
-					if (pNode->GetNodeAttribute()->GetAttributeType() == FbxNodeAttribute::eSkeleton)
-					{
-						FbxAMatrix globalBindPose;
-						globalBindPose = FBXConvertMatrix(pPose->GetMatrix(j));
-
-						int jointIndex = FBXGetJointIndex(pNode);
-						if (-1 == jointIndex)
-						{
-							if (FBXIsValidMatrix(globalBindPose))
-							{
-								FBXLoadJoint(pNode, globalBindPose);
-							}
-						}
-						else if (globalBindPose != mFBXJoints[jointIndex].globalBindPose)
-						{
-							//FxOgreFBXLog("Warning: Multiple bind poses found for joint %s.  Setting bind pose to frame 0 and ignoring all stored bind poses.\n", pNode->GetName());
-							//params.useanimframebind = true;
-							break;
-						}
-					}
-				}
-			}
-		}
-	}
-
-	// Nodes to export using bind pose information calculated from the animation.
-	std::vector<FbxNode*> time0skeletonNodes;
-
-	// Iterate through geometry and look for bones that were not incuded in the bind pose
-	// but the mesh is weighted to.
-	for (int iGeom = 0; iGeom < mFBXScene->GetGeometryCount(); ++iGeom)
-	{
-		FbxGeometry *pGeom = mFBXScene->GetGeometry(iGeom);
-		if (!IsNodeVisible(pGeom->GetNode()))
-		{
-			continue;
-		}
-		bool bIsMeshWeighted = false;
-		int lSkinCount = pGeom->GetDeformerCount(FbxDeformer::eSkin);
-		for (int i = 0; i != lSkinCount; ++i)
-		{
-			int lClusterCount = ((FbxSkin *) pGeom->GetDeformer(i, FbxDeformer::eSkin))->GetClusterCount();
-			for (int j = 0; j < lClusterCount; ++j)
-			{
-				FbxCluster *pCluster = ((FbxSkin *) pGeom->GetDeformer(i, FbxDeformer::eSkin))->GetCluster(j);
-				if (pCluster)
-				{
-					bIsMeshWeighted = true;
-					FbxNode* pNode = pCluster->GetLink();
-					FbxAMatrix globalMatrix;
-					int jointIndex = FBXGetJointIndex(pNode);
-
-					// Add this joint to the sk
-					time0skeletonNodes.push_back(pNode);
-
-					//if (!params.useanimframebind)
-					{
-						pCluster->GetTransformLinkMatrix(globalMatrix);
-						if (-1 == jointIndex)
-						{
-							//If a bind pose was properly set in the FBX file, this is not needed, but just in case.
-							FBXLoadJoint(pNode, globalMatrix);
-						}
-						else if (globalMatrix != mFBXJoints[jointIndex].globalBindPose)
-						{
-							//FxOgreFBXLog("Warning: Multiple bind poses found for joint %s on mesh %s.  Setting bind pose to frame 0 and ignoring all stored bind poses.\n", pNode->GetName(), pGeom->GetName());
-							//params.useanimframebind = true;
-						}
-					}
-				}
-			}
-		}
-	}
-	/*if (params.useanimframebind)
-	{
-		if (m_joints.size() > 0)
-		{
-			FxOgreFBXLog("Recalculating transforms for joints based on bindframe.\n");
-		}
-		// Delete bind pose information stored thus far.
-		clear();
-		for (size_t i = 0; i < time0skeletonNodes.size(); ++i)
-		{
-			FbxAMatrix bindTransform = CalculateGlobalTransform(time0skeletonNodes[i], FbxTime(params.bindframe));
-			loadJoint(time0skeletonNodes[i], params, bindTransform);
-		}
-	}*/
-	// loop through the geometry again and make sure that parents of unweighted meshes are treated as bones.
-	for (int iGeom = 0; iGeom < mFBXScene->GetGeometryCount(); ++iGeom)
-	{
-		FbxGeometry *pGeom = mFBXScene->GetGeometry(iGeom);
-		if (!IsNodeVisible(pGeom->GetNode()))
-		{
-			continue;
-		}
-		bool bIsMeshWeighted = false;
-		int lSkinCount = pGeom->GetDeformerCount(FbxDeformer::eSkin);
-		for (int i = 0; i != lSkinCount; ++i)
-		{
-			int lClusterCount = ((FbxSkin*)pGeom->GetDeformer(i, FbxDeformer::eSkin))->GetClusterCount();
-			for (int j = 0; j < lClusterCount; ++j)
-			{
-				FbxCluster *pCluster = ((FbxSkin*)pGeom->GetDeformer(i, FbxDeformer::eSkin))->GetCluster(j);
-				if (pCluster)
-				{
-					bIsMeshWeighted = true;
-				}
-			}
-		}
-		// If the mesh is unweighted, export it's parent as a bone.
-		if (!bIsMeshWeighted)
-		{
-			FbxNode *pNode = pGeom->GetNode();
-			if (pNode && pNode->GetParent())
-			{
-				// If the mesh is unweighted, export its parent as a bone so we can rigidly skin the mesh.
-				FbxAMatrix bindTransform = CalculateGlobalTransformWithBind(pNode, FbxTime(mParamBindframe));
-
-				if (FBXLoadJoint(pNode->GetParent(), bindTransform))
-				{
-					//FxOgreFBXLog("Unskinned mesh %s found. Added parent %s to the skeleton.\n", pNode->GetName(), pNode->GetParent()->GetName());
-				}
-			}
-		}
-	}
-}
-
-bool FBXReader::GetVertexBoneWeights(FbxNode* pNode, FbxMesh *pMesh, std::vector<BoneWeightVector>& boneWeightsVector)
-{	
-	int lSkinCount = pMesh->GetDeformerCount(FbxDeformer::eSkin);
-	for (int i = 0; i != lSkinCount; ++i)
-	{
-		int lClusterCount = ((FbxSkin*)pMesh->GetDeformer(i, FbxDeformer::eSkin))->GetClusterCount();
-		for (int j = 0; j < lClusterCount; ++j)
-		{
-			FbxCluster *pCluster = ((FbxSkin*)pMesh->GetDeformer(i, FbxDeformer::eSkin))->GetCluster(j);
-			if (pCluster /*&& m_pSkeleton*/)
-			{
-				int boneIndex = FBXGetJointIndex(pCluster->GetLink());
-				int k, lIndexCount = pCluster->GetControlPointIndicesCount();
-				int* lIndices = pCluster->GetControlPointIndices();
-				double* lWeights = pCluster->GetControlPointWeights();
-
-				for (k = 0; k < lIndexCount; k++)
-				{
-					if (boneIndex >= 0)
-					{
-						FBXBoneWeight boneWeight;
-						boneWeight.mBoneIdx = boneIndex;
-						boneWeight.mBoneWeight = (float)lWeights[k];
-						boneWeightsVector[lIndices[k]].push_back(boneWeight);
-
-						//newweights[lIndices[k]].push_back(static_cast<float>(lWeights[k]));
-						//newjointIds[lIndices[k]].push_back(boneIndex);
-					}
-				}
-			}
-		}
-	}
-	return true;
+	for (int i = 0; i < (int)mMeshes.size(); i++)
+		delete mMeshes[i];
+	mMeshes.Clear();
 }
 
 bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
-{	
+{
 	bool loadDefData = true;
 
 	if (mModelDef->mLoadDir.IsEmpty())
@@ -1306,127 +64,407 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 	{
 		loadDefData = false;
 		checkFileName2 = fileName.Substring(0, atPos) + ".fbx";
-
 		if (!ReadFile(checkFileName2, false))
 			return false;
-
-		for (int jointIdx = 0; jointIdx < (int) mFBXJoints.size(); jointIdx++)
-		{
-			FBXJoint* fbxJoint = &mFBXJoints[jointIdx];
-			fbxJoint->pNode = NULL;
-		}
 	}
 
-	FbxManager* sdkManager = NULL;
-	FbxScene* scene = NULL;	
-	
-	// Prepare the FBX SDK.
-	InitializeSdkObjects(sdkManager, scene);
+	ufbx_load_opts opts = {};
+	opts.generate_missing_normals = true;
 
-	mFBXManager = sdkManager;
-	mFBXScene = scene;
-
-	FbxImporter* lImporter = FbxImporter::Create(sdkManager, "");
-
-	if (!LoadScene(sdkManager, scene, fileName.c_str(), lImporter))
-	{
-		lImporter->Destroy();
+	ufbx_error error;
+	ufbx_scene* scene = ufbx_load_file(fileName.c_str(), &opts, &error);
+	if (!scene)
 		return false;
-	}
-	
-	FbxGlobalSettings& globalSettings = scene->GetGlobalSettings();
 
-	FbxTime::EMode timeMode = globalSettings.GetTimeMode();
-	mFrameRate = (float) FbxTime::GetFrameRate(timeMode);	
-	
-	if (!loadDefData)
-	{
-		// Hook joints back up		
-		FindJoints(scene->GetRootNode());		
-	}
-
-	/*clipInfo clip;
-	clip.name = clipName;
-	clip.start = 0;
-	clip.stop = 0;
-	clip.rate = 1;
-	m_params.skelClipList.push_back(clip);
-	return true;*/
-
-	
-	FbxGlobalSettings& lGlobalSettings = mFBXScene->GetGlobalSettings();
-	FbxTime::EMode lTimeMode = lGlobalSettings.GetTimeMode();
-	mFPS = (float) FbxTime::GetFrameRate(lTimeMode);
-	
-	GetAnimationBounds();
-
-	// Loading anims
-	//bool stat;
-	//size_t i;
-	// clear animations list
-	mAnimations.clear();
-
-	LoadBindPose();
-	AddParentsOfExistingJoints();
-	SortAndPruneJoints();
-	CalculateLocalTransforms(mFBXScene->GetRootNode());
-
-	//AddFBXAnimationToExisting("Test", mAnimStart, mAnimStop);
-
-	//stat = FBXLoadClip("Test", 0, 10000, mFPS);
-
-	//FBXLoadClip("Test", mAnimStart, mAnimStop, 1.0f/mFPS);
-
-	if (loadAnims)
-	{
-		int lAnimStackCount = lImporter->GetAnimStackCount();
-		for (int i = 0; i < lAnimStackCount; i++)
-		{
-			FbxTakeInfo* lTakeInfo = lImporter->GetTakeInfo(i);
-
-			FbxTime startTime = lTakeInfo->mLocalTimeSpan.GetStart();
-			FbxTime endTime = lTakeInfo->mLocalTimeSpan.GetStop();
-
-			FbxAnimStack* lAnimStack = scene->GetSrcObject<FbxAnimStack>(i);
-			scene->SetCurrentAnimationStack(lAnimStack);
-			//scene->SetCurrentTake();
-
-			FBXLoadClip(lTakeInfo->mName.Buffer(), (float) startTime.GetSecondDouble(), (float) endTime.GetSecondDouble(), 1.0f / mFPS);
-		}
-	}
-
-	//FxOgreFBXLog("Loading skeleton animations...\n");
-	// load skeleton animation clips for the whole skeleton
-	//for (i = 0; i < mParamsSkelClipList.size(); i++)
-	{
-		//FxOgreFBXLog("Loading clip %s.\n", params.skelClipList[i].name.c_str());
-		/*stat = FBXLoadClip(mParamsSkelClipList[i].name, params.skelClipList[i].start,
-			params.skelClipList[i].stop, params.skelClipList[i].rate);*/
-		/*if (stat == true)
-		{
-			FxOgreFBXLog("Clip successfully loaded\n");
-		}
-		else
-		{
-			FxOgreFBXLog("Failed loading clip\n");
-		}*/
-	}
-
-	FbxNode* rootNode = scene->GetRootNode();
-	if (rootNode != NULL)
-	{
-		for (int childIdx = 0; childIdx < rootNode->GetChildCount(); childIdx++)
-		{
-			// Call recursive translateNode once for each child of the root node
-			FbxNode* childNode = rootNode->GetChild(childIdx);
-			TranslateNode(childNode);
-		}
-	}	
-
+	mFPS = (float)scene->settings.frames_per_second;
+	if (mFPS <= 0.0f)
+		mFPS = 30.0f;
 	mModelDef->mFrameRate = mFPS;
 
+	// --- Collect joints from skin clusters ---
 	if (loadDefData)
 	{
+		mFBXJoints.Clear();
+		mJointIndexMap.Clear();
+
+		// Mark which nodes are bones (referenced by any skin cluster)
+		Dictionary<uint32_t, bool> boneNodeSet;
+		for (size_t si = 0; si < scene->skin_clusters.count; si++)
+		{
+			ufbx_skin_cluster* cluster = scene->skin_clusters.data[si];
+			if (!cluster->bone_node) continue;
+			// Walk up from this bone to mark ancestors too
+			ufbx_node* n = cluster->bone_node;
+			while (n && (n != scene->root_node))
+			{
+				uint32_t id = n->element.typed_id;
+				if (boneNodeSet.Find(id) != boneNodeSet.end())
+					break;
+				boneNodeSet[id] = true;
+				n = n->parent;
+			}
+		}
+
+		// Add joints in parent-first order via recursive helper
+		std::function<void(ufbx_node*)> addJoint = [&](ufbx_node* node)
+		{
+			if (!node || (node == scene->root_node)) return;
+			uint32_t id = node->element.typed_id;
+			//if (boneNodeSet.find(id) == boneNodeSet.end()) return;
+			if (!boneNodeSet.ContainsKey(id)) return;
+			String name = node->name.data;
+			//if (mJointIndexMap.find(name) != mJointIndexMap.end()) return;
+			if (mJointIndexMap.ContainsKey(name)) return;
+
+			// Add parent first
+			if (node->parent && (node->parent != scene->root_node))
+				addJoint(node->parent);
+
+			FBXJoint joint = {};
+			joint.name = node->name.data;
+			joint.parentIndex = -1;
+			joint.mBoneLength = 0;
+			joint.bInheritScale = true;
+
+			if (node->parent && (node->parent != scene->root_node))
+			{
+				joint.parentName = node->parent->name.data;
+				auto it = mJointIndexMap.Find(joint.parentName);
+				if (it != mJointIndexMap.end())
+					joint.parentIndex = it->mValue;
+			}
+
+			// Inverse global bind pose
+			ufbx_matrix invGlobal = ufbx_matrix_invert(&node->node_to_world);
+			joint.mGlobalBindPoseInv = UfbxToMatrix4(invGlobal);
+
+			// Local bind pose TRS from node's rest transform
+			ufbx_transform lt = node->local_transform;
+			joint.posx = lt.translation.x;
+			joint.posy = lt.translation.y;
+			joint.posz = lt.translation.z;
+			joint.quatx = lt.rotation.x;
+			joint.quaty = lt.rotation.y;
+			joint.quatz = lt.rotation.z;
+			joint.quatw = lt.rotation.w;
+			joint.scalex = (float)lt.scale.x;
+			joint.scaley = (float)lt.scale.y;
+			joint.scalez = (float)lt.scale.z;
+
+			// Bone length = distance from parent translation
+			if (joint.parentIndex >= 0)
+			{
+				float dx = (float)joint.posx;
+				float dy = (float)joint.posy;
+				float dz = (float)joint.posz;
+				joint.mBoneLength = sqrtf(dx*dx + dy*dy + dz*dz);
+			}
+
+			if ((int)mFBXJoints.size() < BF_MAX_NUM_BONES)
+			{
+				joint.id = (int)mFBXJoints.size();
+				mJointIndexMap[joint.name] = joint.id;
+				mFBXJoints.Add(joint);
+			}
+		};
+
+		for (size_t si = 0; si < scene->skin_clusters.count; si++)
+		{
+			ufbx_skin_cluster* cluster = scene->skin_clusters.data[si];
+			if (cluster->bone_node)
+				addJoint(cluster->bone_node);
+		}
+	}
+
+	// --- Load meshes ---
+	if (loadDefData)
+	{
+		uint32_t triIndicesBuf[1024];
+
+		for (size_t mi = 0; mi < scene->meshes.count; mi++)
+		{
+			ufbx_mesh* mesh = scene->meshes.data[mi];
+			if (mesh->instances.count == 0) continue;
+			ufbx_node* meshNode = mesh->instances.data[0];
+
+			FBXMesh* fbxMesh = new FBXMesh();
+			fbxMesh->mName = meshNode->name.data;
+
+			// Texture from material
+			if (mesh->materials.count > 0)
+			{
+				ufbx_material* mat = mesh->materials.data[0];
+				if (mat)
+				{
+					ufbx_texture* diffTex = mat->fbx.diffuse_color.texture;
+					if (!diffTex && mat->textures.count > 0)
+						diffTex = mat->textures.data[0].texture;
+					if (diffTex)
+					{
+						String fn = diffTex->filename.data;
+						int slashPos = BF_MAX((int)fn.LastIndexOf('\\'), (int)fn.LastIndexOf('/'));
+						if (slashPos >= 0)
+							fn = fn.Substring(slashPos + 1);
+						fbxMesh->mMaterial.mTexFileName = fn;
+					}
+				}
+			}
+
+			// Build per-position bone weight vectors
+			size_t numPositions = mesh->vertex_position.values.count;
+			std::vector<BoneWeightVector> boneWeights(numPositions);
+
+			if (mesh->skin_deformers.count > 0)
+			{
+				ufbx_skin_deformer* skin = mesh->skin_deformers.data[0];
+				for (size_t ci = 0; ci < skin->clusters.count; ci++)
+				{
+					ufbx_skin_cluster* cluster = skin->clusters.data[ci];
+					if (!cluster->bone_node) continue;
+					String boneName = cluster->bone_node->name.data;
+					auto it = mJointIndexMap.Find(boneName);
+					if (it == mJointIndexMap.end()) continue;
+					int boneIdx = it->mValue;
+
+					for (size_t wi = 0; wi < cluster->vertices.count; wi++)
+					{
+						uint32_t posIdx = cluster->vertices.data[wi];
+						float weight = (float)cluster->weights.data[wi];
+						if ((posIdx < numPositions) && (weight > 0.0f))
+						{
+							FBXBoneWeight bw;
+							bw.mBoneIdx = boneIdx;
+							bw.mBoneWeight = weight;
+							boneWeights[posIdx].Add(bw);
+						}
+					}
+				}
+			}
+
+			// Triangulate faces and collect vertex data
+			std::vector<FBXVertexData> unpackedVtx;
+			unpackedVtx.reserve(mesh->num_indices);
+
+			for (size_t fi = 0; fi < mesh->faces.count; fi++)
+			{
+				ufbx_face face = mesh->faces.data[fi];
+				if (face.num_indices < 3) continue;
+
+				uint32_t numTris = ufbx_triangulate_face(triIndicesBuf, 1024, mesh, face);
+				for (uint32_t ti = 0; ti < numTris; ti++)
+				{
+					for (int vi = 0; vi < 3; vi++)
+					{
+						uint32_t cornerIdx = triIndicesBuf[ti * 3 + vi];
+
+						FBXVertexData vd = {};
+						vd.mColor = 0xFFFFFFFF;
+
+						// Position
+						uint32_t posIdx = mesh->vertex_position.indices.data[cornerIdx];
+						ufbx_vec3 pos = mesh->vertex_position.values.data[posIdx];
+						vd.mCoords = Vector3((float)pos.x, (float)pos.y, (float)pos.z);
+
+						// Normal
+						if (mesh->vertex_normal.exists)
+						{
+							uint32_t normIdx = mesh->vertex_normal.indices.data[cornerIdx];
+							ufbx_vec3 norm = mesh->vertex_normal.values.data[normIdx];
+							vd.mNormal = Vector3((float)norm.x, (float)norm.y, (float)norm.z);
+						}
+
+						// UV
+						if (mesh->vertex_uv.exists)
+						{
+							uint32_t uvIdx = mesh->vertex_uv.indices.data[cornerIdx];
+							ufbx_vec2 uv = mesh->vertex_uv.values.data[uvIdx];
+							vd.mTexCoords.push_back(TexCoords((float)uv.x, (float)uv.y));
+						}
+
+						// Tangent
+						if (mesh->vertex_tangent.exists)
+						{
+							uint32_t tanIdx = mesh->vertex_tangent.indices.data[cornerIdx];
+							ufbx_vec3 tan = mesh->vertex_tangent.values.data[tanIdx];
+							vd.mTangent = Vector3((float)tan.x, (float)tan.y, (float)tan.z);
+						}
+
+						// Bone weights (keyed by position index)
+						vd.mBoneWeights = boneWeights[posIdx];
+
+						unpackedVtx.push_back(vd);
+					}
+				}
+			}
+
+			// Deduplicate vertices
+			typedef Dictionary<FBXVertexData, int> VertexDataMap;
+			VertexDataMap usedVerts;
+			for (int vi = 0; vi < (int)unpackedVtx.size(); vi++)
+			{
+				FBXVertexData* vd = &unpackedVtx[vi];
+				auto itr = usedVerts.Find(*vd);
+				if (itr != usedVerts.end())
+				{
+					fbxMesh->mIndexData.push_back(itr->mValue);
+				}
+				else
+				{
+					int idx = (int)fbxMesh->mVertexData.size();
+					usedVerts[*vd] = idx;
+					fbxMesh->mVertexData.push_back(*vd);
+					fbxMesh->mIndexData.push_back(idx);
+				}
+			}
+
+			mMeshes.push_back(fbxMesh);
+		}
+	}
+
+	// --- Load animations ---
+	if (loadAnims)
+	{
+		mAnimations.Clear();
+
+		for (size_t ai = 0; ai < scene->anim_stacks.count; ai++)
+		{
+			ufbx_anim_stack* stack = scene->anim_stacks.data[ai];
+			double startTime = stack->time_begin;
+			double endTime = stack->time_end;
+			if (endTime <= startTime) continue;
+
+			ufbx_bake_opts bakeOpts = {};
+			bakeOpts.resample_rate = mFPS;
+			bakeOpts.minimum_sample_rate = mFPS;
+
+			ufbx_error bakeErr;
+			ufbx_baked_anim* bake = ufbx_bake_anim(scene, stack->anim, &bakeOpts, &bakeErr);
+			if (!bake) continue;
+
+			// Map joint name -> baked node index
+			std::map<int, int> jointToBakeIdx;
+			for (size_t bni = 0; bni < bake->nodes.count; bni++)
+			{
+				ufbx_baked_node& bn = bake->nodes.data[bni];
+				if (bn.typed_id >= scene->nodes.count) continue;
+				String nodeName = scene->nodes.data[bn.typed_id]->name.data;
+				auto it = mJointIndexMap.Find(nodeName);
+				if (it != mJointIndexMap.end())
+					jointToBakeIdx[it->mValue] = (int)bni;
+			}
+
+			// Determine frame count from any baked joint
+			int numFrames = 0;
+			for (auto& kv : jointToBakeIdx)
+			{
+				ufbx_baked_node& bn = bake->nodes.data[kv.second];
+				int tc = (int)bn.translation_keys.count;
+				if (tc > numFrames) numFrames = tc;
+			}
+
+			if (numFrames == 0)
+			{
+				ufbx_free_baked_anim(bake);
+				continue;
+			}
+
+			FBXAnimation anim;
+			anim.mName = stack->name.data;
+			anim.mLength = (float)(endTime - startTime);
+
+			for (int ji = 0; ji < (int)mFBXJoints.size(); ji++)
+			{
+				FBXTrack track;
+				track.mBone = mFBXJoints[ji].name;
+
+				auto it = jointToBakeIdx.find(ji);
+				if (it != jointToBakeIdx.end())
+				{
+					ufbx_baked_node& bn = bake->nodes.data[it->second];
+					int frameCount = (int)bn.translation_keys.count;
+
+					for (int fi = 0; fi < frameCount; fi++)
+					{
+						FBXSkeletonKeyframe key = {};
+						key.time = (float)(bn.translation_keys.data[fi].time - startTime);
+
+						ufbx_vec3 t = bn.translation_keys.data[fi].value;
+						key.tx = t.x; key.ty = t.y; key.tz = t.z;
+
+						if (fi < (int)bn.rotation_keys.count)
+						{
+							ufbx_quat q = bn.rotation_keys.data[fi].value;
+							key.quat_x = q.x; key.quat_y = q.y;
+							key.quat_z = q.z; key.quat_w = q.w;
+						}
+						else if (bn.rotation_keys.count > 0)
+						{
+							ufbx_quat q = bn.rotation_keys.data[bn.rotation_keys.count - 1].value;
+							key.quat_x = q.x; key.quat_y = q.y;
+							key.quat_z = q.z; key.quat_w = q.w;
+						}
+						else
+						{
+							key.quat_x = 0; key.quat_y = 0; key.quat_z = 0; key.quat_w = 1;
+						}
+
+						if (fi < (int)bn.scale_keys.count)
+						{
+							ufbx_vec3 s = bn.scale_keys.data[fi].value;
+							key.sx = (float)s.x; key.sy = (float)s.y; key.sz = (float)s.z;
+						}
+						else
+						{
+							key.sx = 1.0f; key.sy = 1.0f; key.sz = 1.0f;
+						}
+
+						track.mSkeletonKeyframes.push_back(key);
+					}
+				}
+
+				// Fill missing joint keys with bind-pose TRS
+				if (track.mSkeletonKeyframes.empty())
+				{
+					FBXJoint& fj = mFBXJoints[ji];
+					for (int fi = 0; fi < numFrames; fi++)
+					{
+						FBXSkeletonKeyframe key = {};
+						key.time = fi / mFPS;
+						key.tx = fj.posx; key.ty = fj.posy; key.tz = fj.posz;
+						key.quat_x = fj.quatx; key.quat_y = fj.quaty;
+						key.quat_z = fj.quatz; key.quat_w = fj.quatw;
+						key.sx = fj.scalex; key.sy = fj.scaley; key.sz = fj.scalez;
+						track.mSkeletonKeyframes.push_back(key);
+					}
+				}
+
+				anim.mTracks.push_back(track);
+			}
+
+			if (!anim.mTracks.empty())
+				mAnimations.push_back(anim);
+
+			ufbx_free_baked_anim(bake);
+		}
+	}
+
+	// --- Build ModelDef ---
+	if (loadDefData)
+	{
+		// Collect inverse bind matrices from skin clusters (prefer cluster data over computed)
+		std::map<int, ufbx_matrix> jointInvBindMap;
+		for (size_t si = 0; si < scene->skin_clusters.count; si++)
+		{
+			ufbx_skin_cluster* cluster = scene->skin_clusters.data[si];
+			if (!cluster->bone_node) continue;
+			String boneName = cluster->bone_node->name.data;
+			auto it = mJointIndexMap.Find(boneName);
+			if (it == mJointIndexMap.end()) continue;
+			int ji = it->mValue;
+			if (jointInvBindMap.find(ji) == jointInvBindMap.end())
+				jointInvBindMap[ji] = cluster->geometry_to_bone;
+		}
+
 		mModelDef->mMeshes.Resize(mMeshes.size());
 		mModelDef->mJoints.Resize(mFBXJoints.size());
 
@@ -1434,103 +472,113 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 		{
 			FBXMesh* fbxMesh = mMeshes[meshIdx];
 			ModelMesh* mesh = &mModelDef->mMeshes[meshIdx];
-
 			mesh->mName = fbxMesh->mName;
-			
+
 			mesh->mPrimitives.Add(ModelPrimitives());
-			auto modelPrimitives = &mesh->mPrimitives[0];
-			modelPrimitives->mFlags = (ModelPrimitives::Flags)(
+			ModelPrimitives* prims = &mesh->mPrimitives[0];
+			prims->mFlags = (ModelPrimitives::Flags)(
 				ModelPrimitives::Flags_Vertex_Position |
 				ModelPrimitives::Flags_Vertex_Tex0 |
 				ModelPrimitives::Flags_Vertex_Tex1 |
 				ModelPrimitives::Flags_Vertex_Color |
 				ModelPrimitives::Flags_Vertex_Normal |
 				ModelPrimitives::Flags_Vertex_Tangent);
-			
-			modelPrimitives->mTexPaths.Add(fbxMesh->mMaterial.mTexFileName);
-			if (!fbxMesh->mMaterial.mBumpFileName.IsEmpty())
-				modelPrimitives->mTexPaths.Add(fbxMesh->mMaterial.mBumpFileName);
 
-			modelPrimitives->mIndices.Resize(fbxMesh->mIndexData.size());
-			for (int idxIdx = 0; idxIdx < (int) fbxMesh->mIndexData.size(); idxIdx++)
-				modelPrimitives->mIndices[idxIdx] = (uint16) fbxMesh->mIndexData[idxIdx];
+			prims->mTexPaths.Add(fbxMesh->mMaterial.mTexFileName);
+			if (!fbxMesh->mMaterial.mBumpFileName.IsEmpty())
+				prims->mTexPaths.Add(fbxMesh->mMaterial.mBumpFileName);
+
+			prims->mIndices.Resize(fbxMesh->mIndexData.size());
+			for (int ii = 0; ii < (int)fbxMesh->mIndexData.size(); ii++)
+				prims->mIndices[ii] = (uint16)fbxMesh->mIndexData[ii];
 
 			BF_ASSERT(fbxMesh->mVertexData.size() < 0x10000);
-			modelPrimitives->mVertices.Resize(fbxMesh->mVertexData.size());
-			for (int vtxIdx = 0; vtxIdx < (int)fbxMesh->mVertexData.size(); vtxIdx++)
+			prims->mVertices.Resize(fbxMesh->mVertexData.size());
+			for (int vi = 0; vi < (int)fbxMesh->mVertexData.size(); vi++)
 			{
-				FBXVertexData* fbxVertex = &fbxMesh->mVertexData[vtxIdx];
-				ModelVertex* vertex = &modelPrimitives->mVertices[vtxIdx];
-
-				vertex->mPosition = fbxVertex->mCoords;
-				vertex->mColor = fbxVertex->mColor;
-				if (fbxVertex->mTexCoords.size() != 0)
-					vertex->mTexCoords = TexCoords::FlipV(fbxVertex->mTexCoords[0]);
-				if (fbxVertex->mBumpTexCoords.size() != 0)
-					vertex->mBumpTexCoords = TexCoords::FlipV(fbxVertex->mBumpTexCoords[0]);
-				vertex->mNormal = fbxVertex->mNormal;
-				vertex->mTangent = fbxVertex->mTangent;
-				vertex->mNumBoneWeights = (int) fbxVertex->mBoneWeights.size();
-				BF_ASSERT(vertex->mNumBoneWeights <= MODEL_MAX_BONE_WEIGHTS);
-				for (int boneWeightIdx = 0; boneWeightIdx < vertex->mNumBoneWeights; boneWeightIdx++)
+				FBXVertexData* fv = &fbxMesh->mVertexData[vi];
+				ModelVertex* mv = &prims->mVertices[vi];
+				mv->mPosition = fv->mCoords;
+				mv->mColor = fv->mColor;
+				if (!fv->mTexCoords.empty())
+					mv->mTexCoords = TexCoords::FlipV(fv->mTexCoords[0]);
+				if (!fv->mBumpTexCoords.empty())
+					mv->mBumpTexCoords = TexCoords::FlipV(fv->mBumpTexCoords[0]);
+				mv->mNormal = fv->mNormal;
+				mv->mTangent = fv->mTangent;
+				mv->mNumBoneWeights = (int)fv->mBoneWeights.size();
+				BF_ASSERT(mv->mNumBoneWeights <= MODEL_MAX_BONE_WEIGHTS);
+				for (int bi = 0; bi < mv->mNumBoneWeights; bi++)
 				{
-					vertex->mBoneIndices[boneWeightIdx] = fbxVertex->mBoneWeights[boneWeightIdx].mBoneIdx;
-					vertex->mBoneWeights[boneWeightIdx] = fbxVertex->mBoneWeights[boneWeightIdx].mBoneWeight;
+					mv->mBoneIndices[bi] = fv->mBoneWeights[bi].mBoneIdx;
+					mv->mBoneWeights[bi] = fv->mBoneWeights[bi].mBoneWeight;
 				}
 			}
 		}
 
-		for (int jointIdx = 0; jointIdx < (int) mFBXJoints.size(); jointIdx++)
+		for (int ji = 0; ji < (int)mFBXJoints.size(); ji++)
 		{
-			FBXJoint* fbxJoint = &mFBXJoints[jointIdx];
-			ModelJoint* joint = &mModelDef->mJoints[jointIdx];
+			FBXJoint* fj = &mFBXJoints[ji];
+			ModelJoint* joint = &mModelDef->mJoints[ji];
 
-			joint->mName = fbxJoint->name;
-			joint->mParentIdx = fbxJoint->parentIndex;
-			auto invGlobalMtx = fbxJoint->globalBindPose.Inverse();
-			for (int row = 0; row < 4; row++)
-				for (int col = 0; col < 4; col++)
-					joint->mPoseInvMatrix.mMat[row][col] = (float) invGlobalMtx.Get(col, row);
-			joint->mBindPoseLocal.mTrans = Vector3((float)fbxJoint->posx, (float)fbxJoint->posy, (float)fbxJoint->posz);
-			joint->mBindPoseLocal.mScale = Vector3(fbxJoint->scalex, fbxJoint->scaley, fbxJoint->scalez);
-			joint->mBindPoseLocal.mQuat = Quaternion((float)fbxJoint->quatx, (float)fbxJoint->quaty, (float)fbxJoint->quatz, (float)fbxJoint->quatw);
+			joint->mName = fj->name;
+			joint->mParentIdx = fj->parentIndex;
+
+			auto invIt = jointInvBindMap.find(ji);
+			if (invIt != jointInvBindMap.end())
+				joint->mPoseInvMatrix = UfbxToMatrix4(invIt->second);
+			else
+				joint->mPoseInvMatrix = fj->mGlobalBindPoseInv;
+
+			joint->mBindPoseLocal.mTrans = Vector3(
+				(float)fj->posx, (float)fj->posy, (float)fj->posz);
+			joint->mBindPoseLocal.mScale = Vector3(
+				fj->scalex, fj->scaley, fj->scalez);
+			joint->mBindPoseLocal.mQuat = Quaternion(
+				(float)fj->quatx, (float)fj->quaty,
+				(float)fj->quatz, (float)fj->quatw);
 		}
 	}
 
+	// Animations
 	mModelDef->mAnims.Resize(mAnimations.size());
-	for (int animIdx = 0; animIdx < (int)mAnimations.size(); animIdx++)
+	for (int ai = 0; ai < (int)mAnimations.size(); ai++)
 	{
-		FBXAnimation* fbxAnimation = &mAnimations[animIdx];		
-		ModelAnimation* animation = &mModelDef->mAnims[animIdx];
+		FBXAnimation* fa = &mAnimations[ai];
+		ModelAnimation* ma = &mModelDef->mAnims[ai];
+		ma->mName = fa->mName;
 
-		animation->mName = fbxAnimation->mName;
+		if (fa->mTracks.empty() || fa->mTracks[0].mSkeletonKeyframes.empty())
+			continue;
 
-		animation->mFrames.Resize((int)fbxAnimation->mTracks[0].mSkeletonKeyframes.size());
-		for (int frameIdx = 0; frameIdx < (int)animation->mFrames.size(); frameIdx++)
-			animation->mFrames[frameIdx].mJointTranslations.Resize(mFBXJoints.size());
+		int numFrames = (int)fa->mTracks[0].mSkeletonKeyframes.size();
+		int numJoints = (int)mFBXJoints.size();
 
-		for (int trackIdx = 0; trackIdx < (int)fbxAnimation->mTracks.size(); trackIdx++)
+		ma->mFrames.Resize(numFrames);
+		for (int fi = 0; fi < numFrames; fi++)
+			ma->mFrames[fi].mJointTranslations.Resize(numJoints);
+
+		for (int ti = 0; ti < (int)fa->mTracks.size(); ti++)
 		{
-			FBXTrack* fbxTrack = &fbxAnimation->mTracks[trackIdx];
-
-			for (int frameIdx = 0; frameIdx < (int)fbxTrack->mSkeletonKeyframes.size(); frameIdx++)
+			FBXTrack* track = &fa->mTracks[ti];
+			int frameCount = (int)track->mSkeletonKeyframes.size();
+			for (int fi = 0; fi < BF_MIN(frameCount, numFrames); fi++)
 			{
-				FBXSkeletonKeyframe* fbxSkeletonKeyframe = &fbxTrack->mSkeletonKeyframes[frameIdx];
-				ModelAnimationFrame* animFrame = &animation->mFrames[frameIdx];				
-				ModelJointTranslation* jointPosition = &animFrame->mJointTranslations[trackIdx];
-
-				jointPosition->mQuat = Quaternion((float)fbxSkeletonKeyframe->quat_x, (float)fbxSkeletonKeyframe->quat_y, (float)fbxSkeletonKeyframe->quat_z, (float)fbxSkeletonKeyframe->quat_w);
-				jointPosition->mScale = Vector3((float)fbxSkeletonKeyframe->sx, (float)fbxSkeletonKeyframe->sy, (float)fbxSkeletonKeyframe->sz);
-				jointPosition->mTrans = Vector3((float)fbxSkeletonKeyframe->tx, (float)fbxSkeletonKeyframe->ty, (float)fbxSkeletonKeyframe->tz);
+				FBXSkeletonKeyframe* key = &track->mSkeletonKeyframes[fi];
+				ModelJointTranslation* jt = &ma->mFrames[fi].mJointTranslations[ti];
+				jt->mQuat = Quaternion(
+					(float)key->quat_x, (float)key->quat_y,
+					(float)key->quat_z, (float)key->quat_w);
+				jt->mScale = Vector3((float)key->sx, (float)key->sy, (float)key->sz);
+				jt->mTrans = Vector3((float)key->tx, (float)key->ty, (float)key->tz);
 			}
-		}		
+		}
 	}
-	//mModelDef->mAnims
 
-	lImporter->Destroy();
+	ufbx_free_scene(scene);
 
-	if (loadAnims)	
-		WriteBFFile(bfModelFileName, fileName, checkFileName2);	
+	if (loadAnims)
+		WriteBFFile(bfModelFileName, fileName, checkFileName2);
 
 	return true;
 }
@@ -1596,7 +644,7 @@ bool Beefy::FBXReader::WriteBFFile(const StringImpl& fileName, const StringImpl&
 		}
 	}
 
-	return true;*/
+	return true;*/	
 }
 
 bool Beefy::FBXReader::ReadBFFile(const StringImpl& fileName)

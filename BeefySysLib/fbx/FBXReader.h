@@ -2,10 +2,8 @@
 
 #ifndef BF_NO_FBX
 
-#define FBXSDK_SHARED
-
 #include "Common.h"
-#include "fbxsdk.h"
+#include "util/Dictionary.h"
 #include "util/Vector.h"
 #include "util/Matrix4.h"
 #include "util/Quaternion.h"
@@ -27,16 +25,16 @@ public:
 	float mBoneWeight;
 };
 
-typedef std::vector<FBXBoneWeight> BoneWeightVector;
+typedef Array<FBXBoneWeight> BoneWeightVector;
 
 class FBXVertexData
 {
 public:
 	Vector3 mCoords;
 	uint32 mColor;
-	std::vector<TexCoords> mTexCoords;
+	Array<TexCoords> mTexCoords;
 	Vector3 mNormal;
-	std::vector<TexCoords> mBumpTexCoords;
+	Array<TexCoords> mBumpTexCoords;
 	Vector3 mTangent;
 	BoneWeightVector mBoneWeights;
 
@@ -49,7 +47,7 @@ public:
 
 		if (mTexCoords.size() != check.mTexCoords.size())
 			return false;
-		
+
 		for (int i = 0; i < (int)mTexCoords.size(); i++)
 			if ((mTexCoords[i].mU != check.mTexCoords[i].mU) ||
 				(mTexCoords[i].mV != check.mTexCoords[i].mV))
@@ -70,64 +68,28 @@ class FBXMesh
 {
 public:
 	FBXMaterial mMaterial;
-	String mName;	
-	std::vector<FBXVertexData> mVertexData;
-	std::vector<int> mIndexData;
+	String mName;
+	Array<FBXVertexData> mVertexData;
+	Array<int> mIndexData;
 };
 
 struct FBXJoint
 {
 	String name;
 	int id;
-	FbxNode *pNode;
-	FbxAMatrix globalBindPose, localBindPose;
-	FbxAMatrix bindPose;
-
-	Matrix4 mCurMatrix;
-
-	float mBoneLength; // Length to parent
-
 	int parentIndex;
+	String parentName;
+
+	// Global bind pose and its inverse (stored as Matrix4)
+	Matrix4 mGlobalBindPoseInv;
+
+	// Local bind pose TRS
 	double posx, posy, posz;
-	//double angle;
-	//double axisx,axisy,axisz;
 	double quatw, quatx, quaty, quatz;
 	float scalex, scaley, scalez;
 	bool bInheritScale;
 
-	// Used when loading from an Ogre Skeleton.
-	String parentName;
-};
-
-enum FBXTrackType
-{ 
-	TT_SKELETON, 
-	TT_MORPH, 
-	TT_POSE 
-};
-
-enum FBXTarget
-{ 
-	T_MESH, 
-	T_SUBMESH 
-};
-
-struct FBXVertexPosition
-{
-	float x, y, z;
-};
-
-struct FBXVertexPoseRef
-{
-	int poseIndex;
-	float poseWeight;
-};
-
-struct FBXVertexKeyframe
-{
-	float time;
-	std::vector<FBXVertexPosition> positions;
-	std::vector<FBXVertexPoseRef> poserefs;
+	float mBoneLength;
 };
 
 struct FBXSkeletonKeyframe
@@ -140,35 +102,14 @@ struct FBXSkeletonKeyframe
 
 class FBXTrack
 {
-public:	
-	FBXTrackType mType;
-	FBXTarget mTarget;
-	int mIndex;
-	String mBone;
-	std::vector<FBXVertexKeyframe> mVertexKeyframes;
-	std::vector<FBXSkeletonKeyframe> mSkeletonKeyframes;
-
 public:
-	FBXTrack()
-	{
-		Clear();
-	}
-
-	void Clear()
-	{
-		mType = TT_SKELETON;
-		mTarget = T_MESH;
-		mIndex = 0;
-		mBone = "";
-		mVertexKeyframes.clear();
-		mSkeletonKeyframes.clear();
-	}
+	String mBone;
+	Array<FBXSkeletonKeyframe> mSkeletonKeyframes;
 };
 
 class FBXAnimation
 {
 public:
-	//public members
 	String mName;
 	float mLength;
 	std::vector<FBXTrack> mTracks;
@@ -181,24 +122,12 @@ class FBXReader
 public:
 	ModelDef* mModelDef;
 
-	FbxManager* mFBXManager;
-	FbxScene* mFBXScene;
-	std::vector<FBXMesh*> mMeshes;
-	std::map<String, int> mJointIndexMap;
-	std::vector<FBXJoint> mFBXJoints;	
-	std::vector<FBXAnimation> mAnimations;
+	Array<FBXMesh*> mMeshes;
+	Dictionary<String, int> mJointIndexMap;
+	Array<FBXJoint> mFBXJoints;
+	Array<FBXAnimation> mAnimations;
 
-	int mParamBindframe;
-	float mParamLum;
 	float mFPS;
-	
-	float mFrameRate;
-	float mAnimStart;
-	float mAnimStop;	
-
-protected:
-	FBXMesh* LoadMesh(FbxNode* fbxNode, FbxMesh* fbxMesh);
-	void TranslateNode(FbxNode* fbxNode);
 
 public:
 	FBXReader(ModelDef* modelDef);
@@ -206,25 +135,7 @@ public:
 
 	bool WriteBFFile(const StringImpl& fileName, const StringImpl& checkFile, const StringImpl& checkFile2);
 	bool ReadBFFile(const StringImpl& fileName);
-
 	bool ReadFile(const StringImpl& fileName, bool loadAnims = true);
-	bool FBXLoadJoint(FbxNode* pNode, FbxAMatrix globalBindPose);
-	int FBXGetJointIndex(FbxNode* pNode);
-	bool FBXLoadClip(String clipName, float start, float stop, float rate);
-	bool FBXLoadClipAnim(String clipName, float start, float stop, float rate, FBXAnimation& a);
-	FBXSkeletonKeyframe FBXLoadKeyframe(FBXJoint& j, float time);
-	FbxAMatrix CalculateGlobalTransformWithBind(FbxNode* pNode, FbxTime time);
-	void GetAnimationBounds();	
-	void CalculateLocalTransforms(FbxNode* pRootNode);
-	void ComputeBindPoseBoundingBox();
-	void SetParentIndexes();
-	void SortAndPruneJoints();
-	void SortJoint(FBXJoint j, std::map<String, int> &sortedJointIndexMap, std::vector<FBXJoint>& sorted_joints);
-	void AddParentsOfExistingJoints();
-	void LoadBindPose();
-	bool GetVertexBoneWeights(FbxNode* pNode, FbxMesh *pMesh, std::vector<BoneWeightVector>& boneWeightsVector);
-	FbxAMatrix GetBindPose(FbxNode *pNode, FbxMesh *pMesh);
-	void FindJoints(FbxNode* fbxNode);
 };
 
 NS_BF_END;
@@ -232,7 +143,7 @@ NS_BF_END;
 namespace std
 {
 	template <>
-	struct hash<Beefy::FBXVertexData >
+	struct hash<Beefy::FBXVertexData>
 	{
 		size_t operator()(const Beefy::FBXVertexData& val) const
 		{
