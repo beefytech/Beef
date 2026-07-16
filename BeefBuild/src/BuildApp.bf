@@ -84,6 +84,7 @@ namespace BeefBuild
 				Fail("Platform not specified");
 
 			base.Init();
+			InitUserDataDir();
 
 			mSettings.Load();
 			mSettings.Apply();

@@ -3384,7 +3384,11 @@ namespace IDE
 				}
 				else
 				{
-					mPackMan.GetWithVersion(projectName, url, ver);
+					if (mPackMan.GetWithVersion(projectName, url, ver) case .Err)
+					{
+						Fail(scope $"Failed to initialize managed library support for project '{projectName}'");
+						return .Err(.NotFound);
+					}
 					isDeferredLoad = true;
 				}
 			default:
@@ -13221,6 +13225,14 @@ namespace IDE
 			return mVersionInfo;
 		}
 
+		protected void InitUserDataDir()
+		{
+#if BF_PLATFORM_LINUX && LINUX_PACKAGE
+			delete mUserDataDir;
+			mUserDataDir = new $"{Environment.GetEnvironmentVariable("HOME", .. scope .())}/.config/beeflang/";
+#endif
+		}
+
 #if !CLI
 		public virtual void CreatePanels()
 		{
@@ -13298,10 +13310,7 @@ namespace IDE
 			mSettings.Apply();
 
 			mGitManager.Init();
-
-#if BF_PLATFORM_LINUX && LINUX_PACKAGE
-			mUserDataDir = new $"{Environment.GetEnvironmentVariable("HOME", .. scope .())}/.config/beeflang/";
-#endif
+			InitUserDataDir();
 
 			//Yoop();
 

@@ -233,6 +233,8 @@ namespace IDE
 #endif
 				if (Directory.CreateDirectory(managedPath) case .Ok)
 					mManagedLibPath.Set(managedPath);
+				else
+					gApp.OutputErrorLine("Failed to create managed library directory '{0}'", managedPath);
 			}
 
 			mConfigFiles.Add(configFile);

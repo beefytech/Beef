@@ -290,10 +290,10 @@ namespace IDE.util
 			mWorkItems.Add(workItem);
 		}
 
-		public void GetWithVersion(StringView projectName, StringView url, SemVer semVer)
+		public Result<void> GetWithVersion(StringView projectName, StringView url, SemVer semVer)
 		{
 			if (!CheckInit())
-				return;
+				return .Err;
 
 			bool ignoreLock = false;
 			if (gApp.mWantUpdateVersionLocks != null)
@@ -309,7 +309,7 @@ namespace IDE.util
 				case .Git(let checkURL, let tag, let hash):
 					if (checkURL == url)
 						GetWithHash(projectName, url, tag, hash);
-					return;
+					return .Ok;
 				default:
 				}
 			}
@@ -324,6 +324,7 @@ namespace IDE.util
 			if (semVer?.IsEmpty == false)
 				workItem.mConstraints = new .() { new String(semVer.mVersion) };
 			mWorkItems.Add(workItem);
+			return .Ok;
 		}
 
 		public void UpdateGitConstraint(StringView url, SemVer semVer)
