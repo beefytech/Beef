@@ -455,6 +455,33 @@ BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateRenderTarget(int width, int heig
 	return aTextureSegment;
 }
 
+BF_EXPORT void* BF_CALLTYPE Gfx_RenderTarget_GetSharedHandle(TextureSegment* textureSegment)
+{
+	return textureSegment->mTexture->GetSharedHandle();	
+}
+
+BF_EXPORT bool BF_CALLTYPE Gfx_RenderTarget_KeyedMutex_Acquire(TextureSegment* textureSegment, uint64 key, uint32 timeoutMs)
+{
+	return textureSegment->mTexture->AcquireKeyedMutex(key, timeoutMs);
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_RenderTarget_KeyedMutex_Release(TextureSegment* textureSegment, uint64 key)
+{
+	textureSegment->mTexture->ReleaseKeyedMutex(key);	
+}
+
+BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_OpenSharedRenderTarget(void* handle, int width, int height)
+{
+	Texture* texture = gBFApp->mRenderDevice->OpenSharedRenderTarget(handle, width, height);
+	if (texture == NULL)
+		return NULL;
+	texture->mResetClear = true;
+
+	TextureSegment* seg = new TextureSegment();
+	seg->InitFromTexture(texture);
+	return seg;
+}
+
 BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateDynTexture(int width, int height)
 {
 	Texture* texture = gBFApp->mRenderDevice->CreateDynTexture(width, height);
@@ -483,6 +510,11 @@ BF_EXPORT void BF_CALLTYPE Gfx_Texture_SetBits(TextureSegment* textureSegment, i
 BF_EXPORT void BF_CALLTYPE Gfx_Texture_GetBits(TextureSegment* textureSegment, int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
 {
 	textureSegment->GetBits(srcX, srcY, srcWidth, srcHeight, destPitch, bits);
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_Texture_Clear(TextureSegment* textureSegment)
+{
+	textureSegment->mTexture->mWantsClear = true;	
 }
 
 BF_EXPORT void BF_CALLTYPE Gfx_Texture_Delete(TextureSegment* textureSegment)

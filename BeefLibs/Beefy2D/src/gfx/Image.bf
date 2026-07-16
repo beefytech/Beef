@@ -25,8 +25,8 @@ namespace Beefy.gfx
 
 		public enum RenderTargetFlags
 		{
-			None = 0,
-			DestAlpha = 1,
+			None,
+			Alpha = 1,
 			Shared = 2
 		}
 
@@ -54,6 +54,18 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_CreateRenderTarget(int32 width, int32 height, int32 destAlpha);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void* Gfx_RenderTarget_GetSharedHandle(void* textureSegment);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern bool Gfx_RenderTarget_KeyedMutex_Acquire(void* textureSegment, uint64 key, uint32 timeoutMs);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_RenderTarget_KeyedMutex_Release(void* textureSegment, uint64 key);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void* Gfx_OpenSharedRenderTarget(void* handle, int width, int height);
+
         [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_ModifyTextureSegment(void* destSegment, void* srcTextureSegment, int32 srcX, int32 srcY, int32 srcWidth, int32 srcHeight);
 
@@ -68,6 +80,9 @@ namespace Beefy.gfx
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void Gfx_Texture_GetBits(void* textureSegment, int32 srcX, int32 srcY, int32 srcWidth, int32 srcHeight, int32 destPitch, uint32* bits);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_Texture_Clear(void* textureSegment);
 
         [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_Texture_Delete(void* textureSegment);
@@ -96,18 +111,20 @@ namespace Beefy.gfx
                 color, (int32)mPixelSnapping);            
         }
 
-        public static Image CreateRenderTarget(int32 width, int32 height, bool destAlpha = false)
-        {
-            void* aNativeTextureSegment = Gfx_CreateRenderTarget(width, height, destAlpha ? 1 : 0);
-            if (aNativeTextureSegment == null)
-                return null;
-
-            return CreateFromNativeTextureSegment(aNativeTextureSegment);
-        }
-
 		public static Image CreateRenderTarget(int32 width, int32 height, RenderTargetFlags flags)
 		{
 		    void* aNativeTextureSegment = Gfx_CreateRenderTarget(width, height, (int32)flags);
+		    if (aNativeTextureSegment == null)
+		        return null;
+
+		    return CreateFromNativeTextureSegment(aNativeTextureSegment);
+		}
+
+        public static Image CreateRenderTarget(int32 width, int32 height, bool destAlpha = false) => CreateRenderTarget(width, height, destAlpha ? .Alpha : .None);
+        
+		public static Image OpenSharedRenderTarget(void* handle, int32 width, int32 height)
+		{
+		    void* aNativeTextureSegment = Gfx_OpenSharedRenderTarget(handle, width, height);
 		    if (aNativeTextureSegment == null)
 		        return null;
 
@@ -261,6 +278,36 @@ namespace Beefy.gfx
 		        }
 		    }
 			return celImages;
+		}
+
+		public void* GetSharedHandle()
+		{
+			return Gfx_RenderTarget_GetSharedHandle(mNativeTextureSegment);
+		}
+
+		public bool MutexAcquireRead(uint32 timeout = uint32.MaxValue)
+		{
+			return Gfx_RenderTarget_KeyedMutex_Acquire(mNativeTextureSegment, 1, timeout);
+		}
+
+		public bool MutexAcquireWrite(uint32 timeout = uint32.MaxValue)
+		{
+			return Gfx_RenderTarget_KeyedMutex_Acquire(mNativeTextureSegment, 0, timeout);
+		}
+
+		public void MutexReleaseRead()
+		{
+			Gfx_RenderTarget_KeyedMutex_Release(mNativeTextureSegment, 0);
+		}
+
+		public void MutexReleaseWrite()
+		{
+			Gfx_RenderTarget_KeyedMutex_Release(mNativeTextureSegment, 1);
+		}
+
+		public void Clear()
+		{
+			Gfx_Texture_Clear(mNativeTextureSegment);
 		}
     }
 #else    

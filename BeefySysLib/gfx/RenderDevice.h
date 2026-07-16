@@ -312,6 +312,7 @@ public:
 	virtual Texture*		CreateDynTexture(int width, int height) = 0;
 	virtual Texture*		LoadTexture(const StringImpl& fileName, int flags);
 	virtual Texture*		CreateRenderTarget(int width, int height, int flags) = 0;
+	virtual Texture*		OpenSharedRenderTarget(void* handle, int width, int height) { return NULL; }
 	
 	virtual Shader*			LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) = 0;
 	virtual void			ReleaseShader(Shader* shader);
