@@ -75,6 +75,20 @@ namespace System.IO
 			return .Err(.ReadError(.Unknown));
 		}
 		public abstract Result<int> TryWrite(Span<uint8> data);
+		public virtual Result<int, FileError> TryWrite(Span<uint8> data, int timeout)
+		{
+			if (timeout == -1)
+			{
+				switch (TryWrite(data))
+				{
+				case .Ok(var i):
+					return i;
+				case .Err:
+					return .Err(.WriteError(.Unknown));
+				}
+			}
+			return .Err(.ReadError(.Unknown));
+		}
 		public abstract Result<void> Close();
 
 		//Read value from stream without changing position. Position won't change even if it returns .Err

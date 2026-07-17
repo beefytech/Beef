@@ -90,6 +90,25 @@ namespace System.IO
 			return numBytesWritten;
 		}
 
+		public override Result<int, FileError> TryWrite(Span<uint8> data, int timeoutMS)
+		{
+			Platform.BfpFileResult result = .Ok;
+			int numBytesWritten = Platform.Hook.BfpFile_Write(mBfpFile, data.Ptr, data.Length, timeoutMS, &result);
+			if ((result != .Ok) && (result != .PartialData))
+			{
+				switch (result)
+				{
+				case .Timeout:
+					return .Err(.WriteError(.Timeout));
+				case .PipeListening:
+					return .Err(.PipeListening);
+				default:
+					return .Err(.WriteError(.Unknown));
+				}
+			}	
+			return numBytesWritten;
+		}
+
 		public override Result<void> Close()
 		{
 			if (mBfpFile != null)

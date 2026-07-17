@@ -18,11 +18,18 @@ namespace System.IO
 		Timeout
 	}
 
+	public enum FileWriteError
+	{
+		Unknown,
+		Timeout
+	}
+
 	public enum FileError
 	{
 		case Unknown;
 		case OpenError(FileOpenError);
 		case ReadError(FileReadError);
+		case WriteError(FileWriteError);
 		case SeekError;
 		case PipeListening;
 	}
