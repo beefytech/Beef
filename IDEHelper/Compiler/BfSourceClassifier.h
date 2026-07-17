@@ -17,6 +17,7 @@ enum BfSourceElementType
 	BfSourceElementType_Local,
 	BfSourceElementType_Parameter,
 	BfSourceElementType_Member,
+	BfSourceElementType_Static,
 	BfSourceElementType_Method,
 	BfSourceElementType_Type,
 	BfSourceElementType_PrimitiveType,
