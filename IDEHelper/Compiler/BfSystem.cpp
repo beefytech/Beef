@@ -538,7 +538,7 @@ BfImportKind BfMethodDef::GetImportKindFromPath(const StringImpl& filePath)
 
 
 	// Check for versioned .so libs
-	const int pathLength = filePath.length(); 
+	const int pathLength = (int)filePath.length(); 
 	int allowedDotsRemaining = 4; // Allow 3 version numbers + .so
 	int lastDotIndex = pathLength;
 
