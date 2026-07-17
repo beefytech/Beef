@@ -12736,6 +12736,11 @@ namespace IDE
 			//mDebugger.LoadDebugVisualizers(scope String(mInstallDir, "BeefDbgVis.toml"));
 		}
 
+		protected virtual void StartupProject_SetupEnvVars(Dictionary<String, String> envVars)
+		{
+
+		}
+
 		bool StartupProject(bool doDebug, bool wasCompiled)
 		{
 			mProfilePanel.Clear();
@@ -12818,6 +12823,8 @@ namespace IDE
 					Environment.SetEnvironmentVariable(envVars, StringView(envVar, 0, eqPos), StringView(envVar, eqPos + 1));
 				}
 			}
+
+			StartupProject_SetupEnvVars(envVars);
 
 			var envBlock = scope List<char8>();
 			Environment.EncodeEnvironmentVariables(envVars, envBlock);
