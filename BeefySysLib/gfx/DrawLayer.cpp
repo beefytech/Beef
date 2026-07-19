@@ -186,6 +186,13 @@ void DrawLayer::QueueRenderCmd(RenderCmd* renderCmd)
 	renderCmd->CommandQueued(this);
 }
 
+void DrawLayer::QueueRenderable(Renderable* renderable)
+{
+	RenderableCmd* cmd = AllocRenderCmd<RenderableCmd>();
+	cmd->mRenderable = renderable;
+	QueueRenderCmd(cmd);
+}
+
 DrawBatch* DrawLayer::AllocateBatch(int minVtxCount, int minIdxCount)
 {
 	BP_ZONE("DrawLayer::AllocateBatch");

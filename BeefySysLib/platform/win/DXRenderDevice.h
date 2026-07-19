@@ -255,14 +255,14 @@ class DXModelInstance : public ModelInstance
 {
 public:
 	DXRenderDevice*			mD3DRenderDevice;
-	Array<DXModelMesh>		mDXModelMeshs;
+	Array<DXModelMesh>		mDXModelMeshs;	
 
 public:
 	DXModelInstance(ModelDef* modelDef);
 	~DXModelInstance();
 
-	virtual void CommandQueued(DrawLayer* drawLayer) override;
-	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
+	virtual void CommandQueued(RenderCmd* renderCmd, DrawLayer* drawLayer) override;
+	virtual void Render(RenderCmd* renderCmd, RenderDevice* renderDevice, RenderWindow* renderWindow) override;
 };
 
 class DXVertexDefinition : public VertexDefinition

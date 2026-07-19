@@ -14,6 +14,11 @@ namespace Beefy.gfx
     {
         public void* mNativeRenderCmd;
     }
+
+    public class Renderable
+    {
+        public void* mNativeRenderable;
+    }
 #else
     public class RenderCmd
     {

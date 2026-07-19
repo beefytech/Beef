@@ -831,6 +831,11 @@ BF_EXPORT void BF_CALLTYPE Gfx_QueueRenderCmd(RenderCmd* renderCmd)
 	gBFApp->mRenderDevice->mCurDrawLayer->QueueRenderCmd(renderCmd);
 }
 
+BF_EXPORT void BF_CALLTYPE Gfx_QueueRenderable(Renderable* renderable)
+{
+	gBFApp->mRenderDevice->mCurDrawLayer->QueueRenderable(renderable);
+}
+
 BF_EXPORT VertexDefinition* BF_CALLTYPE Gfx_CreateVertexDefinition(VertexDefData* elementData, int numElements)
 {
 	return gBFApp->mRenderDevice->CreateVertexDefinition(elementData, numElements);

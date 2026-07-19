@@ -1218,12 +1218,10 @@ namespace Beefy.geom
 
 		public override void ToString(System.String strBuffer)
 		{
-			for (int row < 4)
-				for (int col < 4)
-				{
-#unwarn
-					strBuffer.AppendF($"M{row+1}{col+1}:{((float*)&this)[row+col*4]}\n");
-				}
+			strBuffer.AppendF($"M00:{m00}, M01:{m01}, M02:{m02}, M03:{m03}, ");
+			strBuffer.AppendF($"M10:{m10}, M11:{m11}, M12:{m12}, M13:{m13}, ");
+			strBuffer.AppendF($"M20:{m20}, M21:{m21}, M22:{m22}, M23:{m23}, ");
+			strBuffer.AppendF($"M30:{m30}, M31:{m31}, M32:{m32}, M33:{m33}");
 		}
     }
 }

@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections;
 using System.Text;
 using System.Threading.Tasks;
@@ -191,9 +191,11 @@ namespace Beefy.gfx
             return modelInstance;
         }
 
-        public Animation GetAnimation(String name)
+        public Animation GetAnimation(StringView name)
         {
-            return mAnimMap[name];
+			if (mAnimMap.GetValueAlt(name) case .Ok(let val))
+				return val;
+            return null;
         }
 
 		public void GetInfo(String str)
@@ -243,7 +245,7 @@ namespace Beefy.gfx
 		}
     }
 
-    public class ModelInstance : RenderCmd
+    public class ModelInstance : Renderable
     {
         [CallingConvention(.Stdcall), CLink]
         extern static void ModelInstance_SetJointTranslation(void* nativeModelInstance, int32 jointIdx, ref ModelDef.JointTranslation jointTranslation);
@@ -259,7 +261,7 @@ namespace Beefy.gfx
 
         public this(void* nativeModelInstance, ModelDef modelDef)
         {
-            mNativeRenderCmd = nativeModelInstance;
+            mNativeRenderable = nativeModelInstance;
             mModelDef = modelDef;
         }
 
@@ -308,7 +310,7 @@ namespace Beefy.gfx
             RehupAnimState();            
         }
 
-        public void Play(String name, bool loop = false)
+        public void Play(StringView name, bool loop = false)
         {            
             Play(mModelDef.GetAnimation(name), loop);
         }
@@ -320,12 +322,12 @@ namespace Beefy.gfx
 
         public void SetJointTranslation(int32 jointIdx, ref ModelDef.JointTranslation jointTranslation)
         {
-            ModelInstance_SetJointTranslation(mNativeRenderCmd, jointIdx, ref jointTranslation);
+            ModelInstance_SetJointTranslation(mNativeRenderable, jointIdx, ref jointTranslation);
         }
 
         public void SetMeshVisibility(int32 meshIdx, bool visible)
         {
-            ModelInstance_SetMeshVisibility(mNativeRenderCmd, meshIdx, visible ? 1 : 0);
+            ModelInstance_SetMeshVisibility(mNativeRenderable, meshIdx, visible ? 1 : 0);
         }
     }
 #else

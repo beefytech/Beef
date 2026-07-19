@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Common.h"
+#include "gfx/Renderable.h"
 
 NS_BF_BEGIN;
 
@@ -30,6 +31,28 @@ public:
 	virtual void CommandQueued(DrawLayer* drawLayer) {}
 	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) = 0;
 	virtual void Free();
+};
+
+class RenderableCmd : public RenderCmd
+{
+public:
+	Renderable* mRenderable;
+
+public:
+	RenderableCmd()
+	{
+		mRenderable = NULL;
+	}
+
+	virtual void CommandQueued(DrawLayer* drawLayer) override
+	{
+		mRenderable->CommandQueued(this, drawLayer);
+	}
+
+	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override
+	{
+		mRenderable->Render(this, renderDevice, renderWindow);
+	}
 };
 
 NS_BF_END;

@@ -1127,7 +1127,7 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 	};
 
 	auto vertexDefinition = CreateVertexDefinition(vertexDefData, sizeof(vertexDefData) / sizeof(vertexDefData[0]));
-	RenderState* renderState = NULL;
+	/*RenderState* renderState = NULL;
 	if ((flags & ModelCreateFlags_NoSetRenderState) == 0)
 	{
 		renderState = CreateRenderState(mDefaultRenderState);
@@ -1135,10 +1135,10 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 		renderState->mTexWrap = true;
 		renderState->mDepthFunc = DepthFunc_LessEqual;
 		renderState->mWriteDepthBuffer = true;
-	}
+	}*/
 	delete vertexDefinition;
 
-	dxModelInstance->mRenderState = renderState;
+	//dxModelInstance->mRenderState = renderState;
 
 	////
 
@@ -1464,10 +1464,10 @@ DXModelInstance::~DXModelInstance()
 {
 }
 
-void DXModelInstance::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
+void DXModelInstance::Render(RenderCmd* renderCmd, RenderDevice* renderDevice, RenderWindow* renderWindow)
 {
-	if (mRenderState != NULL)
-		SetRenderState();
+	if (renderCmd->mRenderState != NULL)
+		renderCmd->SetRenderState();
 
 	for (int meshIdx = 0; meshIdx < (int)mDXModelMeshs.size(); meshIdx++)
 	{
@@ -1503,10 +1503,10 @@ void DXModelInstance::Render(RenderDevice* renderDevice, RenderWindow* renderWin
 	}
 }
 
-void Beefy::DXModelInstance::CommandQueued(DrawLayer* drawLayer)
+void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* drawLayer)
 {
-	mRenderState = drawLayer->mRenderDevice->mCurRenderState;
-	BF_ASSERT(mRenderState->mShader->mVertexSize == sizeof(DXModelVertex));
+	renderCmd->mRenderState = drawLayer->mRenderDevice->mCurRenderState;
+	BF_ASSERT(renderCmd->mRenderState->mShader->mVertexSize == sizeof(DXModelVertex));
 	//RenderState* layerState = drawLayer->mRenderDevice->mCurRenderState;
 	//BF_ASSERT(layerState->mShader->mVertexSize == sizeof(DXModelVertex));
 	//if (mRenderState != NULL)

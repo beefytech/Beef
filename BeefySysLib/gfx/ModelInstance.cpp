@@ -4,7 +4,6 @@ USING_NS_BF;
 
 ModelInstance::ModelInstance(ModelDef* modelDef)
 {
-	mNext = NULL;
 	mModelDef = modelDef;
 	mJointTranslations.Resize(mModelDef->mJoints.size());
 	for (int i = 0; i < (int)mModelDef->mJoints.size(); i++)

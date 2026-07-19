@@ -467,6 +467,9 @@ namespace Beefy.gfx
         extern static void* Gfx_QueueRenderCmd(void* nativeRenderCmd);
 
         [CallingConvention(.Stdcall), CLink]
+        extern static void* Gfx_QueueRenderable(void* nativeRenderable);
+
+        [CallingConvention(.Stdcall), CLink]
         extern static void Gfx_SetTexture_TextureSegment(int32 textureIdx, void* textureSegment);
         
         public this()
@@ -532,7 +535,14 @@ namespace Beefy.gfx
         {
             Gfx_QueueRenderCmd(renderCmd.mNativeRenderCmd);
         }
-        
+
+        // eg ModelInstance -- unlike Draw(RenderCmd), the same Renderable can be queued this way
+        // more than once (into different DrawLayers, or twice into the same one) in a single frame.
+        public void Draw(Renderable renderable)
+        {
+            Gfx_QueueRenderable(renderable.mNativeRenderable);
+        }
+
         public void Draw(IDrawable drawable, float x = 0, float y = 0)
         {
             Matrix newMatrix = Matrix();
