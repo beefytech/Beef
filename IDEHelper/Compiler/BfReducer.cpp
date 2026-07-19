@@ -1249,6 +1249,9 @@ BfExpression* BfReducer::ApplyToFirstExpression(BfUnaryOperatorExpression* unary
 
 static String DbgNodeToString(BfAstNode* astNode)
 {
+	if (astNode == NULL)
+		return "NULL";
+
 	if (auto binOpExpr = BfNodeDynCast<BfBinaryOperatorExpression>(astNode))
 	{
 		String str;
@@ -1285,6 +1288,10 @@ BfExpression* BfReducer::CheckBinaryOperatorPrecedence(BfBinaryOperatorExpressio
 
 	bool dbg = false;
 
+
+	if (dbg)
+		OutputDebugStrF("-------------------------------------\nCheckBinaryOperatorPrecedence:%s\n", binOpExpression->ToString().c_str());
+
 #ifdef BF_AST_HAS_PARENT_MEMBER
 	BF_ASSERT(BfNodeDynCast<BfBinaryOperatorExpression>(binOpExpression->mParent) == NULL);
 #endif
@@ -1301,6 +1308,9 @@ BfExpression* BfReducer::CheckBinaryOperatorPrecedence(BfBinaryOperatorExpressio
 				break;
 			checkBinOpExpression = deferredChecks.back();
 			deferredChecks.pop_back();
+			// Deferred items are left-subtrees; they have no right-parent chain,
+			// so any accumulated binOpParents from the previous path is stale.
+			binOpParents.Clear();
 		}
 
 		if (dbg)
@@ -1473,17 +1483,17 @@ BfExpression* BfReducer::CheckBinaryOperatorPrecedence(BfBinaryOperatorExpressio
 				OutputDebugStrF("CheckAfter: %s\n", DbgNodeToString(checkBinOpExpression).c_str());
 			}
 
+			if (auto leftBinaryExpr = BfNodeDynCast<BfBinaryOperatorExpression>(checkBinOpExpression->mLeft))
+			{
+				deferredChecks.push_back(leftBinaryExpr);
+			}
+
 			if ((leftPrecedence > rightPrecedence) && (prevBinOpExpression != NULL))
 			{
 				// Backtrack
 				nextBinaryOperatorExpression = prevBinOpExpression;
 				binOpParents.pop_back();
 				break;
-			}
-
-			if (auto leftBinaryExpr = BfNodeDynCast<BfBinaryOperatorExpression>(checkBinOpExpression->mLeft))
-			{
-				deferredChecks.push_back(leftBinaryExpr);
 			}
 		}
 
