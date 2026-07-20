@@ -3554,6 +3554,8 @@ void BfAutoComplete::CheckInterfaceFixit(BfTypeInstance* typeInstance, BfAstNode
 
 		for (int iMethodIdx = 0; iMethodIdx < iMethodCount; iMethodIdx++)
 		{
+			if (iMethodIdx + startIdx >= typeInstance->mInterfaceMethodTable.mSize)
+				continue;
 			auto matchedMethodRef = &typeInstance->mInterfaceMethodTable[iMethodIdx + startIdx].mMethodRef;
 			BfMethodInstance* matchedMethod = *matchedMethodRef;
 			auto ifaceMethodInst = ifaceInst->mMethodInstanceGroups[iMethodIdx].mDefault;

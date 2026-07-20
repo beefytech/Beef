@@ -336,6 +336,8 @@ BfNonGenericMethodRef::operator BfMethodInstance* () const
 		return NULL;
 	if (mMethodNum < 0)
 		return NULL;
+	if (mMethodNum >= mTypeInstance->mMethodInstanceGroups.mSize)
+		return NULL;
 	auto& methodSpecializationGroup = mTypeInstance->mMethodInstanceGroups[mMethodNum];
 	BF_ASSERT((methodSpecializationGroup.mDefault != NULL) || (mTypeInstance->mTypeFailed));
 	return methodSpecializationGroup.mDefault;

@@ -26818,7 +26818,11 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 						methodOverriden = overridenRef;
 
 						doOverride = true;
-						if (methodOverriden->GetOwner() == methodInstance->GetOwner())
+						if (methodOverriden == NULL)
+						{
+							InternalError("AmbiguousRef method lookup error");
+						}
+						else if (methodOverriden->GetOwner() == methodInstance->GetOwner())
 						{
 							bool isBetter = false;
 							bool isWorse = false;
