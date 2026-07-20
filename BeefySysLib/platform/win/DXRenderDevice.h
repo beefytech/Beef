@@ -226,6 +226,8 @@ public:
 	virtual void SetClipRect(const RectF& rect);
 	virtual void SetWriteDepthBuffer(bool writeDepthBuffer);
 	virtual void SetDepthFunc(DepthFunc depthFunc);
+	virtual void SetCullMode(CullMode cullMode);
+	virtual void SetFrontFace(FrontFace frontFace);
 };
 
 class DXModelPrimitives

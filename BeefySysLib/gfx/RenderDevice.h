@@ -145,6 +145,12 @@ enum CullMode : int8
 	CullMode_Back
 };
 
+enum FrontFace : int8
+{
+	FrontFace_Clockwise,
+	FrontFace_CounterClockwise
+};
+
 enum Topology3D : int8
 {
 	Topology3D_TriangleList,
@@ -203,6 +209,7 @@ public:
 	bool					mWireframe;
 	RectF					mClipRect;
 	CullMode				mCullMode;
+	FrontFace				mFrontFace;
 	Topology3D				mTopology;
 
 public:
@@ -217,6 +224,8 @@ public:
 	virtual void SetWriteDepthBuffer(bool writeDepthBuffer) { mWriteDepthBuffer = writeDepthBuffer; }
 	virtual void SetDepthFunc(DepthFunc depthFunc) { mDepthFunc = depthFunc; }
 	virtual void SetTopology(Topology3D topology) { mTopology = topology; }
+	virtual void SetCullMode(CullMode cullMode) { mCullMode = cullMode; }
+	virtual void SetFrontFace(FrontFace frontFace) { mFrontFace = frontFace; }
 };
 
 class PoolData

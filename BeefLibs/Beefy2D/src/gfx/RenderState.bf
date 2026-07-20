@@ -25,6 +25,22 @@ namespace Beefy.gfx
 		LineList
 	}
 
+	// Ordinal order must match the native CullMode enum (RenderDevice.h) exactly -- cast straight
+	// across, same convention as DepthFunc/Topology below.
+	public enum CullMode
+	{
+		None,
+		Front,
+		Back
+	}
+
+	// Ordinal order must match the native FrontFace enum (RenderDevice.h) exactly.
+	public enum FrontFace
+	{
+		Clockwise,
+		CounterClockwise
+	}
+
 #if !STUDIO_CLIENT
     public class RenderState
     {        
@@ -57,6 +73,12 @@ namespace Beefy.gfx
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void RenderState_SetTopology(void* nativeRenderState, int32 topology);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void RenderState_SetCullMode(void* nativeRenderState, int32 cullMode);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void RenderState_SetFrontFace(void* nativeRenderState, int32 frontFace);
 
         public void* mNativeRenderState;
         public bool mIsFromDefaultRenderState;
@@ -141,6 +163,22 @@ namespace Beefy.gfx
 			set
 			{
 				RenderState_SetTopology(mNativeRenderState, (.)value);
+			}
+		}
+
+		public CullMode CullMode
+		{
+			set
+			{
+				RenderState_SetCullMode(mNativeRenderState, (.)value);
+			}
+		}
+
+		public FrontFace FrontFace
+		{
+			set
+			{
+				RenderState_SetFrontFace(mNativeRenderState, (.)value);
 			}
 		}
     }

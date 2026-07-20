@@ -19,6 +19,7 @@ RenderState::RenderState()
 {
 	mWriteDepthBuffer = false;
 	mCullMode = CullMode_None;
+	mFrontFace = FrontFace_Clockwise;
 	mDepthFunc = DepthFunc_Always;
 	mTopology = Topology3D_TriangleList;
 	mShader = NULL;

@@ -994,6 +994,12 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 	if (renderState->mWireframe != mPhysRenderState->mWireframe)
 		setRasterizerState = true;
 
+	if (renderState->mCullMode != mPhysRenderState->mCullMode)
+		setRasterizerState = true;
+
+	if (renderState->mFrontFace != mPhysRenderState->mFrontFace)
+		setRasterizerState = true;
+
 	if (setRasterizerState)
 	{
 		if (dxRenderState->mD3DRasterizerState == NULL)
@@ -1009,7 +1015,7 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 			rasterizerState.CullMode = cullModes[dxRenderState->mCullMode];
 			//rasterizerState.CullMode = D3D11_CULL_BACK;
 			rasterizerState.FillMode = renderState->mWireframe ? D3D11_FILL_WIREFRAME : D3D11_FILL_SOLID;
-			rasterizerState.FrontCounterClockwise = false;
+			rasterizerState.FrontCounterClockwise = dxRenderState->mFrontFace == FrontFace_CounterClockwise;
 			rasterizerState.DepthBias = 0;
 			rasterizerState.DepthBiasClamp = 0;
 			rasterizerState.SlopeScaledDepthBias = 0;
@@ -1452,6 +1458,18 @@ void DXRenderState::SetDepthFunc(DepthFunc depthFunc)
 {
 	mDepthFunc = depthFunc;
 	IndalidateDepthStencilState();
+}
+
+void DXRenderState::SetCullMode(CullMode cullMode)
+{
+	mCullMode = cullMode;
+	InvalidateRasterizerState();
+}
+
+void DXRenderState::SetFrontFace(FrontFace frontFace)
+{
+	mFrontFace = frontFace;
+	InvalidateRasterizerState();
 }
 
 ///

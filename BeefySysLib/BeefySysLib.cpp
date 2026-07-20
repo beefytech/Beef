@@ -911,6 +911,16 @@ BF_EXPORT void BF_CALLTYPE RenderState_SetTopology(RenderState* renderState, int
 	renderState->SetTopology((Topology3D)topology);
 }
 
+BF_EXPORT void BF_CALLTYPE RenderState_SetCullMode(RenderState* renderState, int cullMode)
+{
+	renderState->SetCullMode((CullMode)cullMode);
+}
+
+BF_EXPORT void BF_CALLTYPE RenderState_SetFrontFace(RenderState* renderState, int frontFace)
+{
+	renderState->SetFrontFace((FrontFace)frontFace);
+}
+
 BF_EXPORT Shader* BF_CALLTYPE Gfx_LoadShader(const char* fileName, VertexDefinition* vertexDefinition)
 {
 	return gBFApp->mRenderDevice->LoadShader(fileName, vertexDefinition);

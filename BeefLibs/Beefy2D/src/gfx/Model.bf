@@ -307,7 +307,7 @@ namespace Beefy.gfx
             mLoop = loop;
             mAnim = anim;
             mFrame = 0;
-            RehupAnimState();            
+            RehupAnimState();
         }
 
         public void Play(StringView name, bool loop = false)
