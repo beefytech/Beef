@@ -246,7 +246,7 @@ namespace IDE
 
 		}
 
-		public virtual void Rename(String newName, bool changePath = true)
+		public virtual bool Rename(String newName, bool changePath = true)
 		{
 			bool wasWatching = mIsWatching;
 			if ((wasWatching) && (changePath))
@@ -258,13 +258,15 @@ namespace IDE
 			Path.GetFileName(mPath, fileName);
 
 			bool didNameMatch = mName == fileName;
+			bool success = true;
 
 			if (IncludeInMap)
 			{
 				mParentFolder.mChildMap.Remove(mName);
 				mName.Set(newName);
 				bool added = mParentFolder.mChildMap.TryAdd(mName, this);
-				Debug.Assert(added);
+				if (!added)
+					success = false;
 			}
 
 			if ((didNameMatch) && (changePath))
@@ -281,6 +283,8 @@ namespace IDE
 
 			if ((wasWatching) && (changePath))
 				StartWatching();
+
+			return success;
 		}
 
 		public void RecalcPath()

@@ -12356,7 +12356,7 @@ namespace IDE
 			}
 		}
 
-		protected bool Compile(CompileKind compileKind, Project hotProject)
+		protected virtual bool Compile(CompileKind compileKind, Project hotProject)
 		{
 			Debug.Assert(mBuildContext == null);
 
@@ -15071,10 +15071,16 @@ namespace IDE
 
 					String oldPath = scope String();
 					projectFileItem.GetFullImportPath(oldPath);
-					projectFileItem.Rename(newName);
-
-					FileRenamed(projectFileItem, oldPath, newPath);
-					mProjectPanel?.SortItem((ProjectListViewItem)listViewItem.mParentItem);
+					if (projectFileItem.Rename(newName))
+					{
+						FileRenamed(projectFileItem, oldPath, newPath);
+						mProjectPanel?.SortItem((ProjectListViewItem)listViewItem.mParentItem);
+					}
+					else
+					{
+						// Duplicate
+						mProjectPanel?.DoDeleteItem(listViewItem, null, .ForceRemove);
+					}
 				}
 			}
 			else if (changeType == .Deleted)
