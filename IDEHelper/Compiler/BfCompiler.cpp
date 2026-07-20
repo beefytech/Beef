@@ -1626,10 +1626,23 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		auto stringPtrType = bfModule->CreatePointerType(stringType);
 		auto stringPtrIRType = bfModule->mBfIRBuilder->MapTypeInstPtr(stringType);
 
+		BfIRType int32Type = bfModule->mBfIRBuilder->MapType(bfModule->GetPrimitiveType(BfTypeCode_Int32));
+
+		//
+		StringT<128> stringsIdsVariableName;
+		BfMangler::MangleStaticFieldName(stringsIdsVariableName, GetMangleKind(), stringType->ToTypeInstance(), "sStringIds", stringPtrType);
+		Array<BfIRValue> stringIdList;
+		for (auto& stringValueEntry : stringValueEntries)
+			stringIdList.Add(bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, stringValueEntry.mId));		
+		BfIRType stringIdArrayType = bfModule->mBfIRBuilder->GetSizedArrayType(int32Type, (int)stringIdList.size());
+		auto stringIdArray = bfModule->mBfIRBuilder->CreateConstAgg_Value(stringIdArrayType, stringIdList);		
+		auto stringIdArrayVar = bfModule->mBfIRBuilder->CreateGlobalVariable(stringIdArrayType, true, BfIRLinkageType_Internal, stringIdArray, stringsIdsVariableName);
+		
 		StringT<128> stringsVariableName;
 		BfMangler::MangleStaticFieldName(stringsVariableName, GetMangleKind(), stringType->ToTypeInstance(), "sStringLiterals", stringPtrType);
 		Array<BfIRValue> stringList;
 		stringList.Add(bfModule->mBfIRBuilder->CreateConstNull(stringPtrIRType));
+		stringList.Add(bfModule->mBfIRBuilder->CreateBitCast(stringIdArrayVar, stringPtrIRType));
 		for (auto& stringValueEntry : stringValueEntries)
 			stringList.Add(stringValueEntry.mStringVal);
 		stringList.Add(bfModule->mBfIRBuilder->CreateConstNull(stringPtrIRType));
@@ -1643,7 +1656,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		{
 			auto dbgArrayType = bfModule->mBfIRBuilder->DbgCreateArrayType(stringList.size() * mSystem->mPtrSize * 8, mSystem->mPtrSize * 8, bfModule->mBfIRBuilder->DbgGetType(stringPtrType), (int)stringList.size());
 			bfModule->mBfIRBuilder->DbgCreateGlobalVariable(bfModule->mDICompileUnit, stringsVariableName, stringsVariableName, BfIRMDNode(), 0, dbgArrayType, false, stringArrayVar);
-		}
+		}		
 	}
 
 	// Generate string ID array

@@ -53,6 +53,7 @@ namespace System
 			public static Monitor sMonitor = new Monitor() ~ delete _;
 			public static HashSet<String> sInterns = new .() ~ delete _;
 			public static List<String> sOwnedInterns = new .() ~ DeleteContainerAndItems!(_);
+			public static Dictionary<String, int32> sInternToId ~ delete _;
 		}
 
 		int_strsize mLength;
@@ -2974,7 +2975,7 @@ namespace System
 			}
 		}
 
-		static void CheckLiterals(String* ptr)
+		protected static void CheckLiterals(String* ptr)
 		{
 			var ptr;
 
@@ -2983,6 +2984,9 @@ namespace System
 			{
 				CheckLiterals(prevList);
 			}
+
+			// Skip over ID list
+			ptr++;
 
 			while (true)
 			{
@@ -2993,19 +2997,28 @@ namespace System
 			}
 		}
 
+		protected static void CheckLiteralPass()
+		{
+			bool needsLiteralPass = Interns.sInterns.Count == 0;
+			String* internalLinkPtr = *((String**)(sStringLiterals));
+			if (internalLinkPtr != sPrevInternLinkPtr)
+			{
+				sPrevInternLinkPtr = internalLinkPtr;
+				needsLiteralPass = true;
+			}
+			if (needsLiteralPass)
+			{
+				// After hot compile we may need to regenerate the intern-to-id map
+				DeleteAndNullify!(Interns.sInternToId);
+				CheckLiterals(sStringLiterals);
+			}
+		}
+
 		public String Intern()
 		{
 			using (Interns.sMonitor.Enter())
 			{
-				bool needsLiteralPass = Interns.sInterns.Count == 0;
-				String* internalLinkPtr = *((String**)(sStringLiterals));
-				if (internalLinkPtr != sPrevInternLinkPtr)
-				{
-					sPrevInternLinkPtr = internalLinkPtr;
-					needsLiteralPass = true;
-				}
-				if (needsLiteralPass)
-					CheckLiterals(sStringLiterals);
+				CheckLiteralPass();
 
 				String* entryPtr;
 				if (Interns.sInterns.TryAdd(this, out entryPtr))
@@ -3015,6 +3028,8 @@ namespace System
 					result.EnsureNullTerminator();
 					*entryPtr = result;
 					Interns.sOwnedInterns.Add(result);
+					if (Interns.sInternToId != null)
+						Interns.sInternToId[result] = (.)Interns.sInternToId.Count;
 					return result;
 				}
 				return *entryPtr;
@@ -3029,6 +3044,55 @@ namespace System
 			}
 			else
 				return sIdStringLiterals[id];
+		}
+
+		static void CheckLiteralIds(String* ptr)
+		{
+			var ptr;
+
+			String* prevList = *((String**)(ptr++));
+			if (prevList != null)
+			{
+				CheckLiteralIds(prevList);
+			}
+
+			// Skip over ID list
+			int32* idPtr = *((int32**)(ptr++));
+			if (idPtr == null)
+				return;
+
+			while (true)
+			{
+				String str = *(ptr++);
+				if (str == null)
+					break;
+				Interns.sInternToId[str] = *(idPtr++);
+			}
+		}
+		
+		public static int32 GetInternId(String str)
+		{
+			if (Compiler.IsComptime)
+			{
+				return Compiler.[Friend]Comptime_GetIdByString(str);
+			}
+			else
+			{
+				using (Interns.sMonitor.Enter())
+				{
+					CheckLiteralPass();
+
+					if (Interns.sInternToId == null)
+					{
+						Interns.sInternToId = new .();
+						CheckLiteralIds(sStringLiterals);
+					}
+
+					if (Interns.sInternToId.GetValue(str) case .Ok(let id))
+						return id;
+					return -1;
+				}
+			}
 		}
 
 		public struct RawEnumerator : IRefEnumerator<char8*>, IEnumerator<char8>

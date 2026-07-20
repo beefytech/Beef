@@ -7057,6 +7057,21 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				CeSetAddrVal(stackPtr + 0, GetString(string), ptrSize);
 				_FixVariables();
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_GetIdByString)
+			{
+				int32& result = *(int32*)((uint8*)stackPtr + 0);
+				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr + sizeof(int32));
+				String str;
+				if (!GetStringFromStringView(strViewPtr, str))
+				{
+					_Fail("Invalid StringView");
+					return false;
+				}
+
+				int stringId = mCeMachine->mCeModule->mContext->GetStringLiteralId(str);
+				result = stringId;
+				_FixVariables();
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Output)
 			{
 				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr);
@@ -10420,6 +10435,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_GetStringById")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_GetStringById;
+				}
+				else if (methodDef->mName == "Comptime_GetIdByString")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_GetIdByString;
 				}
 				else if (methodDef->mName == "Comptime_Output")
 				{

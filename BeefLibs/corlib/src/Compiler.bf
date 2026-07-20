@@ -416,6 +416,7 @@ namespace System
 		static extern void Comptime_EmitMixin(StringView text);
 		static extern void Comptime_Output(StringView text);
 		static extern String Comptime_GetStringById(int32 id);
+		static extern int32 Comptime_GetIdByString(StringView str);
 
 		[Comptime(OnlyFromComptime=true)]
 		public static MethodBuilder CreateMethod(Type owner, StringView methodName, Type returnType, MethodFlags methodFlags)

@@ -469,6 +469,7 @@ enum CeFunctionKind
 	CeFunctionKind_EmitMethodExit,
 	CeFunctionKind_EmitMixin,
 	CeFunctionKind_GetStringById,
+	CeFunctionKind_GetIdByString,
 	CeFunctionKind_Output,
 
 	CeFunctionKind_BfpDirectory_Create,
