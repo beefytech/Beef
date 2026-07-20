@@ -627,7 +627,8 @@ void BfCompiler::FixVDataHash(BfModule* bfModule)
 		HASH128_MIXIN(bfModule->mDataHash, bfModule->mHighestUsedStringId);*/
 }
 
-void BfCompiler::CheckModuleStringRefs(BfModule* module, BfVDataModule* vdataModule, int lastModuleRevision, HashSet<int>& foundStringIds, HashSet<int>& dllNameSet, Array<BfMethodInstance*>& dllMethods, Array<BfCompiler::StringValueEntry>& stringValueEntries)
+void BfCompiler::CheckModuleStringRefs(BfModule* module, BfVDataModule* vdataModule, int lastModuleRevision, HashSet<int>& foundStringIds, HashSet<int>& vdataStringIds,
+	HashSet<int>& dllNameSet, Array<BfMethodInstance*>& dllMethods, Array<BfCompiler::StringValueEntry>& stringValueEntries)
 {
 	for (int stringId : module->mStringPoolRefs)
 	{
@@ -645,7 +646,10 @@ void BfCompiler::CheckModuleStringRefs(BfModule* module, BfVDataModule* vdataMod
 			stringEntry.mId = stringId;
 
 			vdataModule->mDefinedStrings.Add(stringId);
-			stringEntry.mStringVal = vdataModule->CreateStringObjectValue(stringPoolEntry.mString, stringId, true);
+			if (vdataStringIds.Contains(stringId))
+				stringEntry.mStringVal = vdataModule->GetStringObjectValue(stringPoolEntry.mString, stringId, false);
+			else
+				stringEntry.mStringVal = vdataModule->CreateStringObjectValue(stringPoolEntry.mString, stringId, true);
 			stringValueEntries.Add(stringEntry);
 
 			CompileLog("String %d %s\n", stringId, stringPoolEntry.mString.c_str());
@@ -661,12 +665,12 @@ void BfCompiler::CheckModuleStringRefs(BfModule* module, BfVDataModule* vdataMod
 	auto altModule = module->mNextAltModule;
 	while (altModule != NULL)
 	{
-		CheckModuleStringRefs(altModule, vdataModule, lastModuleRevision, foundStringIds, dllNameSet, dllMethods, stringValueEntries);
+		CheckModuleStringRefs(altModule, vdataModule, lastModuleRevision, foundStringIds, vdataStringIds, dllNameSet, dllMethods, stringValueEntries);
 		altModule = altModule->mNextAltModule;
 	}
 
 	for (auto& specModulePair : module->mSpecializedMethodModules)
-		CheckModuleStringRefs(specModulePair.mValue, vdataModule, lastModuleRevision, foundStringIds, dllNameSet, dllMethods, stringValueEntries);
+		CheckModuleStringRefs(specModulePair.mValue, vdataModule, lastModuleRevision, foundStringIds, vdataStringIds, dllNameSet, dllMethods, stringValueEntries);
 }
 
 void BfCompiler::HashModuleVData(BfModule* module, HashContext& vdataHash)
@@ -1571,12 +1575,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		BfMangler::MangleStaticFieldName(typeCountVariableName, GetMangleKind(), typeDefType->ToTypeInstance(), "sTypeCount", bfModule->GetPrimitiveType(BfTypeCode_Int32));
 		bfModule->mBfIRBuilder->CreateGlobalVariable(bfModule->mBfIRBuilder->MapType(bfModule->GetPrimitiveType(BfTypeCode_Int32)), true, BfIRLinkageType_External,
 			bfModule->mBfIRBuilder->CreateConst(BfTypeCode_Int32, (int)typeDataVector.size()), typeCountVariableName);
-	}
-
-	HashSet<int> foundStringIds;
-	for (int stringId : bfModule->mStringPoolRefs)
-		foundStringIds.Add(stringId);
-
+	}	
+	
 	Array<BfModule*> orderedUsedModules;
 	for (auto module : usedModuleSet)
 		orderedUsedModules.push_back(module);
@@ -1588,18 +1588,23 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 	Array<BfMethodInstance*> dllMethods;
 
 	Array<BfIRValue> forceLinkValues;
+	
+	HashSet<int> vdataStringIds;
+	for (int stringId : bfModule->mStringPoolRefs)
+		vdataStringIds.Add(stringId);
 
+	HashSet<int> foundStringIds;
 	HashSet<int> dllNameSet;
 	Array<BfCompiler::StringValueEntry> stringValueEntries;
 	for (auto module : orderedUsedModules)
 	{
-		CheckModuleStringRefs(module, bfModule, lastModuleRevision, foundStringIds, dllNameSet, dllMethods, stringValueEntries);
+		CheckModuleStringRefs(module, bfModule, lastModuleRevision, foundStringIds, vdataStringIds, dllNameSet, dllMethods, stringValueEntries);
 
 		if ((module->mHasForceLinkMarker) &&
 			((!isHotCompile) || (module->mHadHotObjectWrites)) &&
 			(mOptions.mPlatformType != BfPlatformType_Wasm))
 			forceLinkValues.Add(bfModule->CreateForceLinkMarker(module, NULL));
-	}
+	}		
 
 	if (!forceLinkValues.IsEmpty())
 	{
