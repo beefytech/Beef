@@ -22,6 +22,10 @@ using namespace DirectX;
 //#include <D3DX11async.h>
 //#include <D3DX10math.h>
 //#include <DxErr.h>
+
+#include <dxgi1_2.h>
+#include <d3d11_1.h>
+
 #pragma warning(pop)
 
 #include "util/AllocDebug.h"
@@ -543,6 +547,7 @@ DXTexture::DXTexture()
 	mRenderDevice = NULL;
 	mD3DDepthBuffer = NULL;
 	mD3DDepthStencilView = NULL;
+	mD3DKeyedMutex = NULL;
 	mContentBits = NULL;
 }
 
@@ -559,6 +564,8 @@ DXTexture::~DXTexture()
 		mD3DDepthStencilView->Release();
 	if (mD3DDepthBuffer != NULL)
 		mD3DDepthBuffer->Release();
+	if (mD3DKeyedMutex != NULL)
+		mD3DKeyedMutex->Release();
 	if (mD3DTexture != NULL)
 		mD3DTexture->Release();
 	if (mRenderDevice != NULL)
@@ -583,6 +590,11 @@ void DXTexture::ReleaseNative()
 	{
 		mD3DDepthBuffer->Release();
 		mD3DDepthBuffer = NULL;
+	}
+	if (mD3DKeyedMutex != NULL)
+	{
+		mD3DKeyedMutex->Release();
+		mD3DKeyedMutex = NULL;
 	}
 	if (mD3DTexture != NULL)
 	{
@@ -737,6 +749,34 @@ void DXTexture::GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int des
 	}
 	mRenderDevice->mD3DDeviceContext->Unmap(texture, 0);
 	texture->Release();
+}
+
+void* DXTexture::GetSharedHandle()
+{
+	IDXGIResource* dxgiResource = NULL;
+	HANDLE handle = NULL;
+	if (SUCCEEDED(mD3DTexture->QueryInterface(__uuidof(IDXGIResource), (void**)&dxgiResource)))
+	{
+		dxgiResource->GetSharedHandle(&handle);
+		dxgiResource->Release();
+	}
+	return handle;
+}
+
+bool DXTexture::AcquireKeyedMutex(uint64 key, uint32 timeoutMs)
+{	
+	if (mD3DKeyedMutex == NULL)
+		return false;
+	auto result = mD3DKeyedMutex->AcquireSync(key, timeoutMs);
+	if ((result == WAIT_ABANDONED) || (result == WAIT_TIMEOUT))
+		return false;
+	return SUCCEEDED(result);
+}
+
+void DXTexture::ReleaseKeyedMutex(uint64 key)
+{	
+	if (mD3DKeyedMutex != NULL)
+		mD3DKeyedMutex->ReleaseSync(key);
 }
 
 ///
@@ -1467,6 +1507,19 @@ void Beefy::DXModelInstance::CommandQueued(DrawLayer* drawLayer)
 {
 	mRenderState = drawLayer->mRenderDevice->mCurRenderState;
 	BF_ASSERT(mRenderState->mShader->mVertexSize == sizeof(DXModelVertex));
+	//RenderState* layerState = drawLayer->mRenderDevice->mCurRenderState;
+	//BF_ASSERT(layerState->mShader->mVertexSize == sizeof(DXModelVertex));
+	//if (mRenderState != NULL)
+	//{
+	//	// Keep our depth/write settings from model creation; only adopt the shader.
+	//	// The draw layer's current state is a 2D state with depth disabled by default.
+	//	mRenderState->mShader = layerState->mShader;
+	//}
+	//else
+	//{
+	//	mRenderState = layerState;
+	//}
+
 	drawLayer->mCurTextures[0] = NULL;
 
 #ifndef BF_NO_FBX	
@@ -2517,8 +2570,12 @@ void DXRenderDevice::SetRenderState(RenderState* renderState)
 	mCurRenderState = renderState;
 }
 
-Texture* DXRenderDevice::CreateRenderTarget(int width, int height, bool destAlpha)
+Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags)
 {
+	bool destAlpha = (flags & 1) != 0;
+	bool makeShared = (flags & 2) != 0;
+	bool createDepth = (flags & 4) != 0;
+
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
 
 	int aWidth = 0;
@@ -2546,6 +2603,9 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, bool destAlph
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.CPUAccessFlags = 0; //D3D11_CPU_ACCESS_WRITE;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+
+	if (makeShared)
+		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
 
 	ID3D11Texture2D* d3DTexture = NULL;
 	DXCHECK(mD3DDevice->CreateTexture2D(&desc, NULL, &d3DTexture));
@@ -2576,6 +2636,8 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, bool destAlph
 	aRenderTarget->mD3DTexture = d3DTexture;
 	aRenderTarget->mD3DResourceView = d3DShaderResourceView;
 	aRenderTarget->mD3DRenderTargetView = d3DRenderTargetView;
+	if (makeShared)
+		d3DTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&aRenderTarget->mD3DKeyedMutex);
 	aRenderTarget->AddRef();
 
 	D3D11_TEXTURE2D_DESC descDepth;
@@ -2598,5 +2660,65 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, bool destAlph
 
 	return aRenderTarget;
 }
+
+Texture* DXRenderDevice::OpenSharedRenderTarget(void* handle, int width, int height)
+{	
+	ID3D11Texture2D* sharedTex = NULL;
+	HRESULT hr = mD3DDevice->OpenSharedResource((HANDLE)handle, __uuidof(ID3D11Texture2D), (void**)&sharedTex);
+	if (FAILED(hr))
+		return NULL;
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srDesc;
+	srDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srDesc.Texture2D.MostDetailedMip = 0;
+	srDesc.Texture2D.MipLevels = 1;
+
+	ID3D11ShaderResourceView* resourceView = NULL;
+	DXCHECK(mD3DDevice->CreateShaderResourceView(sharedTex, &srDesc, &resourceView));
+
+	ID3D11RenderTargetView* rtView = NULL;
+	DXCHECK(mD3DDevice->CreateRenderTargetView(sharedTex, NULL, &rtView));
+
+	IDXGIKeyedMutex* keyedMutex = NULL;
+	sharedTex->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&keyedMutex);
+
+	DXTexture* texture = new DXTexture();
+	texture->mWidth = width;
+	texture->mHeight = height;
+	texture->mRenderDevice = this;
+	texture->mD3DTexture = sharedTex;
+	texture->mD3DResourceView = resourceView;
+	texture->mD3DRenderTargetView = rtView;
+	texture->mD3DKeyedMutex = keyedMutex;
+	texture->AddRef();
+
+	int sampleQuality = 0;
+
+	D3D11_TEXTURE2D_DESC descDepth;
+	ZeroMemory(&descDepth, sizeof(descDepth));
+	descDepth.Width = width;
+	descDepth.Height = height;
+	descDepth.MipLevels = 1;
+	descDepth.ArraySize = 1;
+	descDepth.SampleDesc.Quality = sampleQuality;
+	descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	descDepth.SampleDesc.Count = 1;
+	descDepth.SampleDesc.Quality = 0;
+	descDepth.Usage = D3D11_USAGE_DEFAULT;
+	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	descDepth.CPUAccessFlags = 0;
+	descDepth.MiscFlags = 0;
+	mD3DDevice->CreateTexture2D(&descDepth, NULL, &texture->mD3DDepthBuffer);
+
+	DXCHECK(mD3DDevice->CreateDepthStencilView(texture->mD3DDepthBuffer, NULL, &texture->mD3DDepthStencilView));
+
+	return texture;
+}
+
+//#include <dxgi1_2.h>
+//#include <d3d11_1.h>
+//#include "gfx/Texture.h"
+//#include "BFApp.h"
 
 #endif

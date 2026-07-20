@@ -517,6 +517,12 @@ namespace System.IO
 			if ((relPath.Length > 1) &&
 				((relPath[0] == '/') || (relPath[0] == '\\')))
 			{
+				if ((relToAbsPath.Length >= 2) && (relToAbsPath[1] == ':'))
+				{
+					// Drive letter
+					outAbsPath.Append(relToAbsPath.Substring(0, 2));
+				}
+
 				outAbsPath.Append(relPath);
 				return;
 			}

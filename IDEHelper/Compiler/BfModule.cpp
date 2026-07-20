@@ -12508,7 +12508,12 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 		BfIRType toIRType = fromPtrToInt->mToType;
 		if (toIRType.mKind == BfIRTypeData::TypeKind_TypeId)
 		{
-			auto toType = mContext->mTypes[toIRType.mId];
+			auto toType = mContext->mTypes.GetSafe(toIRType.mId);
+			if (toType == NULL)
+			{
+				InternalError("BfModule::ConstantToCurrent IntToPtr null type error");
+				return BfIRValue();
+			}
 			toIRType = mBfIRBuilder->MapType(toType);
 		}
 		return mBfIRBuilder->CreateIntToPtr(ConstantToCurrent(fromTarget, constHolder, NULL), toIRType);
@@ -12521,7 +12526,12 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 		BfIRType toIRType = bitcast->mToType;
 		if (toIRType.mKind == BfIRTypeData::TypeKind_TypeId)
 		{
-			auto toType = mContext->mTypes[toIRType.mId];
+			auto toType = mContext->mTypes.GetSafe(toIRType.mId);
+			if (toType == NULL)
+			{
+				InternalError("BfModule::ConstantToCurrent BitCast null type error");
+				return BfIRValue();
+			}
 			toIRType = mBfIRBuilder->MapType(toType);
 		}
 		return mBfIRBuilder->CreateBitCast(ConstantToCurrent(fromTarget, constHolder, NULL), toIRType);

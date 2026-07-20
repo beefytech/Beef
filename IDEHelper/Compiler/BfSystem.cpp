@@ -522,14 +522,54 @@ BfMethodDef::~BfMethodDef()
 
 BfImportKind BfMethodDef::GetImportKindFromPath(const StringImpl& filePath)
 {
-	String fileExt = GetFileExtension(filePath);
-
-	if ((fileExt.Equals(".DYLIB", StringImpl::CompareKind_OrdinalIgnoreCase)) ||
-		(fileExt.Equals(".SO", StringImpl::CompareKind_OrdinalIgnoreCase)) ||
-		(fileExt.Equals(".DLL", StringImpl::CompareKind_OrdinalIgnoreCase)) ||
-		(fileExt.Equals(".EXE", StringImpl::CompareKind_OrdinalIgnoreCase)))
+	if ((filePath.EndsWith(".DYLIB", StringImpl::CompareKind_OrdinalIgnoreCase)) ||
+		(filePath.EndsWith(".SO", StringImpl::CompareKind_OrdinalIgnoreCase)) ||
+		(filePath.EndsWith(".DLL", StringImpl::CompareKind_OrdinalIgnoreCase)) ||
+		(filePath.EndsWith(".EXE", StringImpl::CompareKind_OrdinalIgnoreCase)))
 	{
 		return BfImportKind_Import_Dynamic;
+	}
+
+	if ((filePath.EndsWith(".A", StringImpl::CompareKind_OrdinalIgnoreCase)) ||
+		(filePath.EndsWith(".LIB", StringImpl::CompareKind_OrdinalIgnoreCase)))
+	{
+		return BfImportKind_Import_Static;
+	}
+
+
+	// Check for versioned .so libs
+	const int pathLength = (int)filePath.length(); 
+	int allowedDotsRemaining = 4; // Allow 3 version numbers + .so
+	int lastDotIndex = pathLength;
+
+	for (int i = pathLength - 1; i >= 0; i--)
+	{
+		char c = filePath[i];
+		
+		if ((c == '/') || (c == '\\'))
+		{
+			break;
+		}
+
+		if ((c == '.'))
+		{
+			if ((--allowedDotsRemaining >= 0) && (i != lastDotIndex - 1))
+			{
+				lastDotIndex = i;
+				continue;
+			}
+			
+			break;
+		}
+	}
+
+	if ((lastDotIndex != pathLength)) 
+	{
+		String fileExt = filePath.Substring(lastDotIndex);
+		if ((fileExt.StartsWith(".SO.", StringImpl::CompareKind_OrdinalIgnoreCase)))
+		{
+			return BfImportKind_Import_Dynamic;
+		}
 	}
 
 	return BfImportKind_Import_Static;

@@ -150,6 +150,7 @@ namespace IDE
 #endif
 
 		public static bool sExitTest;
+		public static String sTitle = "Beef IDE";
 
 		public Verbosity mVerbosity = .Default;
 		public List<String> mExtraWorkspacePreprocessorMacros = new .() ~ DeleteContainerAndItems!(_);
@@ -704,6 +705,37 @@ namespace IDE
 				});
 		}
 
+		public virtual void DeletePanels()
+		{
+			mixin RemoveAndDelete(var widget)
+			{
+				Widget.RemoveAndDelete(widget);
+				widget = null;
+			}
+
+			RemoveAndDelete!(mProjectPanel);
+			RemoveAndDelete!(mClassViewPanel);
+			RemoveAndDelete!(mOutputPanel);
+#if BF_PLATFORM_WINDOWS
+			RemoveAndDelete!(mTerminalPanel);
+			RemoveAndDelete!(mConsolePanel);
+#endif
+			RemoveAndDelete!(mImmediatePanel);
+			RemoveAndDelete!(mFindResultsPanel);
+			RemoveAndDelete!(mAutoWatchPanel);
+			RemoveAndDelete!(mWatchPanel);
+			RemoveAndDelete!(mMemoryPanel);
+			RemoveAndDelete!(mCallStackPanel);
+			RemoveAndDelete!(mBreakpointPanel);
+			RemoveAndDelete!(mDiagnosticsPanel);
+			RemoveAndDelete!(mModulePanel);
+			RemoveAndDelete!(mThreadPanel);
+			RemoveAndDelete!(mProfilePanel);
+			RemoveAndDelete!(mPropertiesPanel);
+			RemoveAndDelete!(mAutoCompletePanel);
+			RemoveAndDelete!(mBookmarksPanel);
+		}
+
 		void PCChanged()
 		{
 			var disasmPanel = TryGetDisassemblyPanel();
@@ -764,33 +796,7 @@ namespace IDE
 					}
 				});*/
 
-			mixin RemoveAndDelete(var widget)
-			{
-				Widget.RemoveAndDelete(widget);
-				widget = null;
-			}
-
-			RemoveAndDelete!(mProjectPanel);
-			RemoveAndDelete!(mClassViewPanel);
-			RemoveAndDelete!(mOutputPanel);
-#if BF_PLATFORM_WINDOWS
-			RemoveAndDelete!(mTerminalPanel);
-			RemoveAndDelete!(mConsolePanel);
-#endif
-			RemoveAndDelete!(mImmediatePanel);
-			RemoveAndDelete!(mFindResultsPanel);
-			RemoveAndDelete!(mAutoWatchPanel);
-			RemoveAndDelete!(mWatchPanel);
-			RemoveAndDelete!(mMemoryPanel);
-			RemoveAndDelete!(mCallStackPanel);
-			RemoveAndDelete!(mBreakpointPanel);
-			RemoveAndDelete!(mDiagnosticsPanel);
-			RemoveAndDelete!(mModulePanel);
-			RemoveAndDelete!(mThreadPanel);
-			RemoveAndDelete!(mProfilePanel);
-			RemoveAndDelete!(mPropertiesPanel);
-			RemoveAndDelete!(mAutoCompletePanel);
-			RemoveAndDelete!(mBookmarksPanel);
+			DeletePanels();
 
 			if (mSymbolReferenceHelper != null)
 				mSymbolReferenceHelper.Close();
@@ -850,6 +856,12 @@ namespace IDE
 			delete mResolveClang;
 #endif
 			delete mSpellChecker;
+
+			mixin RemoveAndDelete(var widget)
+			{
+				Widget.RemoveAndDelete(widget);
+				widget = null;
+			}
 
 			//NOTE: this must be done after the resolve compiler has been destroyed
 			RemoveAndDelete!(mErrorsPanel);
@@ -3372,7 +3384,11 @@ namespace IDE
 				}
 				else
 				{
-					mPackMan.GetWithVersion(projectName, url, ver);
+					if (mPackMan.GetWithVersion(projectName, url, ver) case .Err)
+					{
+						Fail(scope $"Failed to initialize managed library support for project '{projectName}'");
+						return .Err(.NotFound);
+					}
 					isDeferredLoad = true;
 				}
 			default:
@@ -5305,7 +5321,7 @@ namespace IDE
 			OpenedNew
 		}
 
-		ShowTabResult ShowTab(Widget tabContent, String name, bool ownsContent, bool setFocus)
+		ShowTabResult ShowTab(Widget tabContent, String name, bool ownsContent, bool setFocus, bool isDocument = false)
 		{
 			var result = ShowTabResult.Existing;
 			var tabButton = GetTab(tabContent);
@@ -5323,6 +5339,8 @@ namespace IDE
 						});
 				}
 
+				if ((tabbedView == null) && (isDocument))
+					tabbedView = GetDefaultDocumentTabbedView();
 				if (tabbedView == null)
 					tabbedView = FindTabbedView(mDockingFrame, -1, 1);
 				if (tabbedView == null)
@@ -5351,7 +5369,7 @@ namespace IDE
 				sourceViewPanel.RecordHistoryLocation();
 		}
 
-		void ShowPanel(Panel panel, String label, bool setFocus = true)
+		void ShowPanel(Panel panel, String label, bool setFocus = true, bool isDocument = false)
 		{
 			if (!mInitialized)
 				return;
@@ -5359,7 +5377,7 @@ namespace IDE
 			if (setFocus)
 				mLastActivePanel = panel;
 			RecordHistoryLocation();
-			ShowTab(panel, label, false, setFocus);
+			ShowTab(panel, label, false, setFocus, isDocument);
 			if (setFocus)
 				panel.FocusForKeyboard();
 
@@ -6089,93 +6107,59 @@ namespace IDE
 			menu.SetDisabled(mDebugger.mIsRunning);
 		}
 
-		public void CreateMenu()
+		public virtual void CreateMenu_Populate(MenuInfo root)
 		{
-			scope AutoBeefPerf("IDEApp.CreateMenu");
-
-			SysMenu root;
-#if BF_PLATFORM_WINDOWS
-			root = mMainWindow.mSysMenu;
-#else
-			root = mMainFrame.mMenuBar.mSysMenuRoot;
-			defer mMainFrame.RehupSize();
-#endif
-
-			String keyStr = scope String();
-
-			SysMenu AddMenuItem(SysMenu menu, String dispString, String cmdName, MenuItemUpdateHandler menuItemUpdateHandler = null,
-				SysBitmap bitmap = null, bool enabled = true,  int32 checkState = -1, bool radioCheck = false)
-			{
-				let ideCommand = mCommands.mCommandMap[cmdName];
-				if (ideCommand != null)
-				{
-					keyStr.Clear();
-					ideCommand.ToString(keyStr);
-					keyStr.Insert(0, "#");
-				}
-
-				let itemMenu = menu.AddMenuItem(dispString, (ideCommand != null) ? keyStr : null, new (evt) => ideCommand.mAction(), menuItemUpdateHandler, bitmap, enabled, checkState, radioCheck);
-				if (ideCommand != null)
-				{
-					ideCommand.mMenuItem = itemMenu;
-				}
-
-				return itemMenu;
-			}
-
-			//////////
-
-			SysMenu subMenu = root.AddMenuItem("&File");
+			var subMenu = root.AddMenuItem("&File");
 			let newMenu = subMenu.AddMenuItem("&New");
-			AddMenuItem(newMenu, "New &Workspace", "New Workspace");
-			AddMenuItem(newMenu, "New &Project", "New Project");
-			AddMenuItem(newMenu, "New &Debug Session", "New Debug Session");
-			AddMenuItem(newMenu, "New &File", "New File");
+			newMenu.AddMenuItem("New &Workspace", "New Workspace");
+			newMenu.AddMenuItem("New &Project", "New Project");
+			newMenu.AddMenuItem("New &Debug Session", "New Debug Session");
+			newMenu.AddMenuItem("New &File", "New File");
 
 			let openMenu = subMenu.AddMenuItem("&Open");
 			//openMenu.AddMenuItem("&Open Workspace...", GetCmdKey("Open Workspace"), new (evt) => { OpenWorkspace(); } );
-			AddMenuItem(openMenu, "Open &Workspace...", "Open Workspace");
-			AddMenuItem(openMenu, "Open &Project...", "Open Project");
-			AddMenuItem(openMenu, "Open &Debug Session...", "Open Debug Session");
-			AddMenuItem(openMenu, "Open &File...", "Open File");
-			AddMenuItem(openMenu, "&Open File in Workspace", "Open File in Workspace");
-			AddMenuItem(openMenu, "&Open Corresponding (cpp/h)", "Open Corresponding");
-			AddMenuItem(openMenu, "Open &Crash Dump...", "Open Crash Dump");
+			openMenu.AddMenuItem("Open &Workspace...", "Open Workspace");
+			openMenu.AddMenuItem("Open &Project...", "Open Project");
+			openMenu.AddMenuItem("Open &Debug Session...", "Open Debug Session");
+			openMenu.AddMenuItem("Open &File...", "Open File");
+			openMenu.AddMenuItem("&Open File in Workspace", "Open File in Workspace");
+			openMenu.AddMenuItem("&Open Corresponding (cpp/h)", "Open Corresponding");
+			openMenu.AddMenuItem("Open &Crash Dump...", "Open Crash Dump");
 
 			let recentMenu = subMenu.AddMenuItem("Open &Recent");
-			mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedWorkspace].mMenu = recentMenu.AddMenuItem("Open Recent &Workspace");
-			mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedDebugSession].mMenu = recentMenu.AddMenuItem("Open Recent &Debug Session");
-			mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedFile].mMenu = recentMenu.AddMenuItem("Open Recent &File");
-			mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedCrashDump].mMenu = recentMenu.AddMenuItem("Open Recent &Crash Dump");
+			recentMenu.AddMenuItem("Open Recent &Workspace").mOnCreate = new (menu) => { mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedWorkspace].mMenu = menu; };
+			recentMenu.AddMenuItem("Open Recent &Debug Session").mOnCreate = new (menu) => { mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedDebugSession].mMenu = menu; };
+			recentMenu.AddMenuItem("Open Recent &File").mOnCreate = new (menu) => { mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedFile].mMenu = menu; };
+			recentMenu.AddMenuItem("Open Recent &Crash Dump").mOnCreate = new (menu) => { mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedCrashDump].mMenu = menu; };
 
-			AddMenuItem(subMenu, "&Save File", "Save File", new => UpdateMenuItem_HasActiveDocument);
-			AddMenuItem(subMenu, "Save &As...", "Save As", new => UpdateMenuItem_HasActiveDocument);
-			AddMenuItem(subMenu, "Save A&ll", "Save All");
+			subMenu.AddMenuItem("&Save File", "Save File", new => UpdateMenuItem_HasActiveDocument);
+			subMenu.AddMenuItem("Save &As...", "Save As", new => UpdateMenuItem_HasActiveDocument);
+			subMenu.AddMenuItem("Save A&ll", "Save All");
 			let prefMenu = subMenu.AddMenuItem("&Preferences");
-			AddMenuItem(prefMenu, "&Settings", "Settings");
-			AddMenuItem(prefMenu, "Reload Settings", "Reload Settings");
-			AddMenuItem(prefMenu, "Reset UI", "Reset UI");
-			AddMenuItem(prefMenu, "Safe Mode", "Safe Mode Toggle", new (menu) => { menu.SetCheckState(mSafeMode ? 1 : 0); }, null, true, mSafeMode ? 1 : 0);
-			AddMenuItem(subMenu, "Close Workspace", "Close Workspace", new => UpdateMenuItem_HasWorkspace);
-			AddMenuItem(subMenu, "E&xit", "Exit");
+			prefMenu.AddMenuItem("&Settings", "Settings");
+			prefMenu.AddMenuItem("Reload Settings", "Reload Settings");
+			prefMenu.AddMenuItem("Reset UI", "Reset UI");
+			prefMenu.AddMenuItem("Safe Mode", "Safe Mode Toggle", new (menu) => { menu.SetCheckState(mSafeMode ? 1 : 0); }, null, true, mSafeMode ? 1 : 0);
+			subMenu.AddMenuItem("Close Workspace", "Close Workspace", new => UpdateMenuItem_HasWorkspace);
+			subMenu.AddMenuItem("E&xit", "Exit");
 
 			//////////
 
 			subMenu = root.AddMenuItem("&Edit");
-			AddMenuItem(subMenu, "Quick &Find...", "Find in Document", new => UpdateMenuItem_HasActivePanel);
-			AddMenuItem(subMenu, "Quick &Replace...", "Replace in Document", new => UpdateMenuItem_HasActiveDocument);
-			AddMenuItem(subMenu, "Find in &Files...", "Find in Files");
-			AddMenuItem(subMenu, "Replace in Files...", "Replace in Files");
-			AddMenuItem(subMenu, "Find Prev", "Find Prev", new => UpdateMenuItem_HasActivePanel);
-			AddMenuItem(subMenu, "Find Next", "Find Next", new => UpdateMenuItem_HasActivePanel);
-			AddMenuItem(subMenu, "Show &Current", "Show Current");
+			subMenu.AddMenuItem("Quick &Find...", "Find in Document", new => UpdateMenuItem_HasActivePanel);
+			subMenu.AddMenuItem("Quick &Replace...", "Replace in Document", new => UpdateMenuItem_HasActiveDocument);
+			subMenu.AddMenuItem("Find in &Files...", "Find in Files");
+			subMenu.AddMenuItem("Replace in Files...", "Replace in Files");
+			subMenu.AddMenuItem("Find Prev", "Find Prev", new => UpdateMenuItem_HasActivePanel);
+			subMenu.AddMenuItem("Find Next", "Find Next", new => UpdateMenuItem_HasActivePanel);
+			subMenu.AddMenuItem("Show &Current", "Show Current");
 
-			AddMenuItem(subMenu, "&Goto Line...", "Goto Line", new => UpdateMenuItem_HasActiveDocument);
-			AddMenuItem(subMenu, "Goto &Method...", "Goto Method", new => UpdateMenuItem_HasActiveDocument);
-			AddMenuItem(subMenu, "&Rename Symbol", "Rename Symbol", new => UpdateMenuItem_HasActiveDocument);
-			AddMenuItem(subMenu, "Show Fi&xit", "Show Fixit", new => UpdateMenuItem_HasActiveDocument);
-			AddMenuItem(subMenu, "Find &All References", "Find All References", new => UpdateMenuItem_HasActiveDocument);
-			AddMenuItem(subMenu, "Find C&lass...", "Find Class");
+			subMenu.AddMenuItem("&Goto Line...", "Goto Line", new => UpdateMenuItem_HasActiveDocument);
+			subMenu.AddMenuItem("Goto &Method...", "Goto Method", new => UpdateMenuItem_HasActiveDocument);
+			subMenu.AddMenuItem("&Rename Symbol", "Rename Symbol", new => UpdateMenuItem_HasActiveDocument);
+			subMenu.AddMenuItem("Show Fi&xit", "Show Fixit", new => UpdateMenuItem_HasActiveDocument);
+			subMenu.AddMenuItem("Find &All References", "Find All References", new => UpdateMenuItem_HasActiveDocument);
+			subMenu.AddMenuItem("Find C&lass...", "Find Class");
 			subMenu.AddMenuItem(null);
 
 			var encodingMenu = subMenu.AddMenuItem("Encoding");
@@ -6190,7 +6174,7 @@ namespace IDE
 				allowLast = false;
 #endif
 
-				lineEndingMenu.AddMenuItem(name, null,
+				lineEndingMenu.AddMenuItem(name,
 					new (menu) =>
 					{
 						var sysMenu = (SysMenu)menu;
@@ -6225,47 +6209,47 @@ namespace IDE
 			AddLineEndingKind("Mac OS 9", .Cr);
 
 			var bookmarkMenu = subMenu.AddMenuItem("Boo&kmarks");
-			AddMenuItem(bookmarkMenu, "&Toggle Bookmark", "Bookmark Toggle");
-			AddMenuItem(bookmarkMenu, "&Next Bookmark", "Bookmark Next");
-			AddMenuItem(bookmarkMenu, "&Previous Bookmark", "Bookmark Prev");
-			AddMenuItem(bookmarkMenu, "&Clear Bookmarks", "Bookmark Clear");
+			bookmarkMenu.AddMenuItem("&Toggle Bookmark", "Bookmark Toggle");
+			bookmarkMenu.AddMenuItem("&Next Bookmark", "Bookmark Next");
+			bookmarkMenu.AddMenuItem("&Previous Bookmark", "Bookmark Prev");
+			bookmarkMenu.AddMenuItem("&Clear Bookmarks", "Bookmark Clear");
 
 			var comptimeMenu = subMenu.AddMenuItem("Comptime");
 			var emitViewCompiler = comptimeMenu.AddMenuItem("Emit View Compiler");
-			var subItem = emitViewCompiler.AddMenuItem("Resolve", null,
+			var subItem = emitViewCompiler.AddMenuItem("Resolve",
 				new (menu) => { SetEmbedCompiler(.Resolve); },
 				new (menu) => { menu.SetCheckState((mSettings.mEditorSettings.mEmitCompiler == .Resolve) ? 1 : 0); },
 				null, true, (mSettings.mEditorSettings.mEmitCompiler == .Resolve) ? 1 : 0);
-			subItem = emitViewCompiler.AddMenuItem("Build", null,
+			subItem = emitViewCompiler.AddMenuItem("Build",
 				new (menu) => { SetEmbedCompiler(.Build); },
 				new (menu) => { menu.SetCheckState((mSettings.mEditorSettings.mEmitCompiler == .Build) ? 1 : 0); },
 				null, true, (mSettings.mEditorSettings.mEmitCompiler == .Build) ? 1 : 0);
 
 			var advancedEditMenu = subMenu.AddMenuItem("Advanced");
-			AddMenuItem(advancedEditMenu, "Duplicate Line", "Duplicate Line");
-			AddMenuItem(advancedEditMenu, "Move Line Up", "Move Line Up");
-			AddMenuItem(advancedEditMenu, "Move Line Down", "Move Line Down");
-			AddMenuItem(advancedEditMenu, "Move Statement Up", "Move Statement Up");
-			AddMenuItem(advancedEditMenu, "Move Statement Down", "Move Statement Down");
+			advancedEditMenu.AddMenuItem("Duplicate Line", "Duplicate Line");
+			advancedEditMenu.AddMenuItem("Move Line Up", "Move Line Up");
+			advancedEditMenu.AddMenuItem("Move Line Down", "Move Line Down");
+			advancedEditMenu.AddMenuItem("Move Statement Up", "Move Statement Up");
+			advancedEditMenu.AddMenuItem("Move Statement Down", "Move Statement Down");
 			advancedEditMenu.AddMenuItem(null);
-			AddMenuItem(advancedEditMenu, "Make Uppercase", "Make Uppercase");
-			AddMenuItem(advancedEditMenu, "Make Lowercase", "Make Lowercase");
-			AddMenuItem(advancedEditMenu, "Comment Block", "Comment Block");
-			AddMenuItem(advancedEditMenu, "Comment Lines", "Comment Lines");
-			AddMenuItem(advancedEditMenu, "Comment Toggle", "Comment Toggle");
-			AddMenuItem(advancedEditMenu, "Uncomment Selection", "Uncomment Selection");
-			AddMenuItem(advancedEditMenu, "Reformat Document", "Reformat Document");
-			mViewWhiteSpace.mMenu = AddMenuItem(advancedEditMenu, "View White Space", "View White Space", null, null, true, mViewWhiteSpace.Bool ? 1 : 0);
+			advancedEditMenu.AddMenuItem("Make Uppercase", "Make Uppercase");
+			advancedEditMenu.AddMenuItem("Make Lowercase", "Make Lowercase");
+			advancedEditMenu.AddMenuItem("Comment Block", "Comment Block");
+			advancedEditMenu.AddMenuItem("Comment Lines", "Comment Lines");
+			advancedEditMenu.AddMenuItem("Comment Toggle", "Comment Toggle");
+			advancedEditMenu.AddMenuItem("Uncomment Selection", "Uncomment Selection");
+			advancedEditMenu.AddMenuItem("Reformat Document", "Reformat Document");
+			advancedEditMenu.AddMenuItem("View White Space", "View White Space", null, null, true, mViewWhiteSpace.Bool ? 1 : 0).mOnCreate = new (menu) => { mViewWhiteSpace.mMenu = menu; };
 
 			if (mSettings.mEnableDevMode)
 			{
 				subMenu.AddMenuItem(null);
 				var internalEditMenu = subMenu.AddMenuItem("Internal");
-				internalEditMenu.AddMenuItem("Hilight Cursor References", null, new (menu) => { ToggleCheck(menu, ref gApp.mSettings.mEditorSettings.mHiliteCursorReferences); }, null, null, true, gApp.mSettings.mEditorSettings.mHiliteCursorReferences ? 1 : 0);
-				internalEditMenu.AddMenuItem("Delayed Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgDelayedAutocomplete); }, null, null, true, gApp.mDbgDelayedAutocomplete ? 1 : 0);
-				internalEditMenu.AddMenuItem("Time Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgTimeAutocomplete); }, null, null, true, gApp.mDbgTimeAutocomplete ? 1 : 0);
-				internalEditMenu.AddMenuItem("Perf Autocomplete", null, new (menu) => { ToggleCheck(menu, ref gApp.mDbgPerfAutocomplete); }, null, null, true, gApp.mDbgPerfAutocomplete ? 1 : 0);
-				internalEditMenu.AddMenuItem("Dump Undo Buffer", null, new (menu) =>
+				internalEditMenu.AddMenuItem("Hilight Cursor References", new (menu) => { ToggleCheck(menu, ref gApp.mSettings.mEditorSettings.mHiliteCursorReferences); }, null, null, true, gApp.mSettings.mEditorSettings.mHiliteCursorReferences ? 1 : 0);
+				internalEditMenu.AddMenuItem("Delayed Autocomplete", new (menu) => { ToggleCheck(menu, ref gApp.mDbgDelayedAutocomplete); }, null, null, true, gApp.mDbgDelayedAutocomplete ? 1 : 0);
+				internalEditMenu.AddMenuItem("Time Autocomplete", new (menu) => { ToggleCheck(menu, ref gApp.mDbgTimeAutocomplete); }, null, null, true, gApp.mDbgTimeAutocomplete ? 1 : 0);
+				internalEditMenu.AddMenuItem("Perf Autocomplete", new (menu) => { ToggleCheck(menu, ref gApp.mDbgPerfAutocomplete); }, null, null, true, gApp.mDbgPerfAutocomplete ? 1 : 0);
+				internalEditMenu.AddMenuItem("Dump Undo Buffer", new (menu) =>
 					{
 						if (var panel = GetActiveSourceViewPanel())
 						{
@@ -6278,41 +6262,41 @@ namespace IDE
 			//////////
 
 			subMenu = root.AddMenuItem("&View");
-			AddMenuItem(subMenu, "AutoComplet&e", "Show Autocomplete Panel");
-			AddMenuItem(subMenu, "&Auto Watches", "Show Auto Watches");
-			AddMenuItem(subMenu, "Boo&kmarks", "Show Bookmarks");
-			AddMenuItem(subMenu, "&Breakpoints", "Show Breakpoints");
-			AddMenuItem(subMenu, "&Call Stack", "Show Call Stack");
-			AddMenuItem(subMenu, "C&lass View", "Show Class View");
-			AddMenuItem(subMenu, "&Diagnostics", "Show Diagnostics");
-			AddMenuItem(subMenu, "E&rrors", "Show Errors");
-			AddMenuItem(subMenu, "&Find Results", "Show Find Results");
-			AddMenuItem(subMenu, "&Terminal", "Show Terminal");
-			AddMenuItem(subMenu, "Co&nsole", "Show Console");
-			AddMenuItem(subMenu, "&Immediate Window", "Show Immediate");
-			AddMenuItem(subMenu, "&Memory", "Show Memory");
-			AddMenuItem(subMenu, "Mod&ules", "Show Modules");
-			AddMenuItem(subMenu, "&Output", "Show Output");
-			AddMenuItem(subMenu, "&Profiler", "Show Profiler");
-			AddMenuItem(subMenu, "T&hreads", "Show Threads");
-			AddMenuItem(subMenu, "&Watches", "Show Watches");
-			AddMenuItem(subMenu, "Work&space Explorer", "Show Workspace Explorer");
+			subMenu.AddMenuItem("AutoComplet&e", "Show Autocomplete Panel");
+			subMenu.AddMenuItem("&Auto Watches", "Show Auto Watches");
+			subMenu.AddMenuItem("Boo&kmarks", "Show Bookmarks");
+			subMenu.AddMenuItem("&Breakpoints", "Show Breakpoints");
+			subMenu.AddMenuItem("&Call Stack", "Show Call Stack");
+			subMenu.AddMenuItem("C&lass View", "Show Class View");
+			subMenu.AddMenuItem("&Diagnostics", "Show Diagnostics");
+			subMenu.AddMenuItem("E&rrors", "Show Errors");
+			subMenu.AddMenuItem("&Find Results", "Show Find Results");
+			subMenu.AddMenuItem("&Terminal", "Show Terminal");
+			subMenu.AddMenuItem("Co&nsole", "Show Console");
+			subMenu.AddMenuItem("&Immediate Window", "Show Immediate");
+			subMenu.AddMenuItem("&Memory", "Show Memory");
+			subMenu.AddMenuItem("Mod&ules", "Show Modules");
+			subMenu.AddMenuItem("&Output", "Show Output");
+			subMenu.AddMenuItem("&Profiler", "Show Profiler");
+			subMenu.AddMenuItem("T&hreads", "Show Threads");
+			subMenu.AddMenuItem("&Watches", "Show Watches");
+			subMenu.AddMenuItem("Work&space Explorer", "Show Workspace Explorer");
 			subMenu.AddMenuItem(null);
-			AddMenuItem(subMenu, "Next Document Panel", "Next Document Panel");
-			AddMenuItem(subMenu, "Navigate Backwards", "Navigate Backwards");
-			AddMenuItem(subMenu, "Navigate Forwards", "Navigate Forwards");
+			subMenu.AddMenuItem("Next Document Panel", "Next Document Panel");
+			subMenu.AddMenuItem("Navigate Backwards", "Navigate Backwards");
+			subMenu.AddMenuItem("Navigate Forwards", "Navigate Forwards");
 
 			//////////
 
 			subMenu = root.AddMenuItem("&Build");
-			AddMenuItem(subMenu, "&Build Workspace", "Build Workspace", new => UpdateMenuItem_HasWorkspace);
-			AddMenuItem(subMenu, "&Debug Comptime", "Debug Comptime", new => UpdateMenuItem_DebugStopped_HasWorkspace);
-			AddMenuItem(subMenu, "&Clean", "Clean", new => UpdateMenuItem_DebugStopped_HasWorkspace);
-			AddMenuItem(subMenu, "Clean Beef", "Clean Beef", new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			subMenu.AddMenuItem("&Build Workspace", "Build Workspace", new => UpdateMenuItem_HasWorkspace);
+			subMenu.AddMenuItem("&Debug Comptime", "Debug Comptime", new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			subMenu.AddMenuItem("&Clean", "Clean", new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			subMenu.AddMenuItem("Clean Beef", "Clean Beef", new => UpdateMenuItem_DebugStopped_HasWorkspace);
 			//subMenu.AddMenuItem("Compile Current File", null, new (menu) => { CompileCurrentFile(); });
-			AddMenuItem(subMenu, "Cancel Build", "Cancel Build", new (menu) => { menu.SetDisabled(!IsCompiling); });
+			subMenu.AddMenuItem("Cancel Build", "Cancel Build", new (menu) => { menu.SetDisabled(!IsCompiling); });
 
-			subMenu.AddMenuItem("Verbose", null, new (menu) =>
+			subMenu.AddMenuItem("Verbose", new (menu) =>
 				{
 					if (mVerbosity != .Diagnostic)
 						mVerbosity = .Diagnostic;
@@ -6325,15 +6309,15 @@ namespace IDE
 			if (mSettings.mEnableDevMode)
 			{
 				var internalBuildMenu = subMenu.AddMenuItem("Internal");
-				internalBuildMenu.AddMenuItem("Autobuild (Debug)", null, new (menu) => { mDebugAutoBuild = !mDebugAutoBuild; });
-				internalBuildMenu.AddMenuItem("Autorun (Debug)", null, new (menu) => { mDebugAutoRun = !mDebugAutoRun; });
-				internalBuildMenu.AddMenuItem("Disable Compiling", null, new (menu) => { ToggleCheck(menu, ref mDisableBuilding); }, null, null, true, mDisableBuilding ? 1 : 0);
+				internalBuildMenu.AddMenuItem("Autobuild (Debug)", new (menu) => { mDebugAutoBuild = !mDebugAutoBuild; });
+				internalBuildMenu.AddMenuItem("Autorun (Debug)", new (menu) => { mDebugAutoRun = !mDebugAutoRun; });
+				internalBuildMenu.AddMenuItem("Disable Compiling", new (menu) => { ToggleCheck(menu, ref mDisableBuilding); }, null, null, true, mDisableBuilding ? 1 : 0);
 			}
 
 			//////////
 
 			subMenu = root.AddMenuItem("&Debug");
-			AddMenuItem(subMenu, "&Start Debugging", "Start Debugging", new (item) =>
+			subMenu.AddMenuItem("&Start Debugging", "Start Debugging", new (item) =>
 				{
 					SysMenu sysMenu = (.)item;
 					if (mDebugger.mIsRunning)
@@ -6341,39 +6325,39 @@ namespace IDE
 					else
 						sysMenu.Modify("&Start Debugging", sysMenu.mHotKey, null, mWorkspace.IsInitialized);
 				});
-			AddMenuItem(subMenu, "Start Wit&hout Debugging", "Start Without Debugging", new => UpdateMenuItem_DebugStopped_HasWorkspace);
-			AddMenuItem(subMenu, "Start With&out Compiling", "Start Without Compiling", new => UpdateMenuItem_DebugStopped_HasWorkspace);
-			AddMenuItem(subMenu, "&Launch Process...", "Launch Process", new => UpdateMenuItem_DebugStopped);
-			AddMenuItem(subMenu, "&Attach to Process...", "Attach to Process", new => UpdateMenuItem_DebugStopped);
-			AddMenuItem(subMenu, "Remote &Debug...", "Remote Debug", new => UpdateMenuItem_DebugStopped);
-			AddMenuItem(subMenu, "&Stop Debugging", "Stop Debugging", new => UpdateMenuItem_DebugOrTestRunning);
-			AddMenuItem(subMenu, "Break All", "Break All", new => UpdateMenuItem_DebugNotPaused);
-			AddMenuItem(subMenu, "Remove All Breakpoints", "Remove All Breakpoints");
-			AddMenuItem(subMenu, "Show &Disassembly", "Show Disassembly");
-			AddMenuItem(subMenu, "&Quick Watch", "Show QuickWatch", new => UpdateMenuItem_DebugPaused);
-			AddMenuItem(subMenu, "&Profile", "Profile", new => UpdateMenuItem_HasWorkspace);
+			subMenu.AddMenuItem("Start Wit&hout Debugging", "Start Without Debugging", new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			subMenu.AddMenuItem("Start With&out Compiling", "Start Without Compiling", new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			subMenu.AddMenuItem("&Launch Process...", "Launch Process", new => UpdateMenuItem_DebugStopped);
+			subMenu.AddMenuItem("&Attach to Process...", "Attach to Process", new => UpdateMenuItem_DebugStopped);
+			subMenu.AddMenuItem("Remote &Debug...", "Remote Debug", new => UpdateMenuItem_DebugStopped);
+			subMenu.AddMenuItem("&Stop Debugging", "Stop Debugging", new => UpdateMenuItem_DebugOrTestRunning);
+			subMenu.AddMenuItem("Break All", "Break All", new => UpdateMenuItem_DebugNotPaused);
+			subMenu.AddMenuItem("Remove All Breakpoints", "Remove All Breakpoints");
+			subMenu.AddMenuItem("Show &Disassembly", "Show Disassembly");
+			subMenu.AddMenuItem("&Quick Watch", "Show QuickWatch", new => UpdateMenuItem_DebugPaused);
+			subMenu.AddMenuItem("&Profile", "Profile", new => UpdateMenuItem_HasWorkspace);
 			subMenu.AddMenuItem(null);
-			AddMenuItem(subMenu, "Step Into", "Step Into", new => UpdateMenuItem_DebugPausedOrStopped_HasWorkspace);
-			AddMenuItem(subMenu, "Step Over", "Step Over", new => UpdateMenuItem_DebugPausedOrStopped_HasWorkspace);
-			AddMenuItem(subMenu, "Step Out", "Step Out", new => UpdateMenuItem_DebugPaused);
+			subMenu.AddMenuItem("Step Into", "Step Into", new => UpdateMenuItem_DebugPausedOrStopped_HasWorkspace);
+			subMenu.AddMenuItem("Step Over", "Step Over", new => UpdateMenuItem_DebugPausedOrStopped_HasWorkspace);
+			subMenu.AddMenuItem("Step Out", "Step Out", new => UpdateMenuItem_DebugPaused);
 			subMenu.AddMenuItem(null);
-			AddMenuItem(subMenu, "To&ggle Breakpoint", "Breakpoint Toggle", new => UpdateMenuItem_HasActiveDocument);
-			AddMenuItem(subMenu, "Toggle Thread Breakpoint", "Breakpoint Toggle Thread", new => UpdateMenuItem_HasActiveDocument);
+			subMenu.AddMenuItem("To&ggle Breakpoint", "Breakpoint Toggle", new => UpdateMenuItem_HasActiveDocument);
+			subMenu.AddMenuItem("Toggle Thread Breakpoint", "Breakpoint Toggle Thread", new => UpdateMenuItem_HasActiveDocument);
 			var newBreakpointMenu = subMenu.AddMenuItem("New &Breakpoint");
-			AddMenuItem(newBreakpointMenu, "&Memory Breakpoint...", "Breakpoint Memory", new => UpdateMenuItem_DebugRunning);
-			AddMenuItem(newBreakpointMenu, "&Symbol Breakpoint...", "Breakpoint Symbol");
+			newBreakpointMenu.AddMenuItem("&Memory Breakpoint...", "Breakpoint Memory", new => UpdateMenuItem_DebugRunning);
+			newBreakpointMenu.AddMenuItem("&Symbol Breakpoint...", "Breakpoint Symbol");
 
 			if (mSettings.mEnableDevMode)
 			{
 				var internalDebugMenu = subMenu.AddMenuItem("Internal");
-				internalDebugMenu.AddMenuItem("Error Test", null, new (menu) => { DoErrorTest(); });
-				internalDebugMenu.AddMenuItem("Reconnect BeefPerf", null, new (menu) => { BeefPerf.RetryConnect(); });
-				AddMenuItem(internalDebugMenu, "Report Memory", "Report Memory");
-				internalDebugMenu.AddMenuItem("Crash", null, new (menu) => { int* ptr = null; *ptr = 123; });
-				internalDebugMenu.AddMenuItem("Show Welcome", null, new (menu) => { ShowWelcome(); });
-				internalDebugMenu.AddMenuItem("Exit Test", null, new (menu) => { ExitTest(); });
-				internalDebugMenu.AddMenuItem("Run Test", null, new (menu) => { mRunTest = !mRunTest; });
-				internalDebugMenu.AddMenuItem("GC Collect", null, new (menu) =>
+				internalDebugMenu.AddMenuItem("Error Test", new (menu) => { DoErrorTest(); });
+				internalDebugMenu.AddMenuItem("Reconnect BeefPerf", new (menu) => { BeefPerf.RetryConnect(); });
+				internalDebugMenu.AddMenuItem("Report Memory", "Report Memory");
+				internalDebugMenu.AddMenuItem("Crash", new (menu) => { int* ptr = null; *ptr = 123; });
+				internalDebugMenu.AddMenuItem("Show Welcome", new (menu) => { ShowWelcome(); });
+				internalDebugMenu.AddMenuItem("Exit Test", new (menu) => { ExitTest(); });
+				internalDebugMenu.AddMenuItem("Run Test", new (menu) => { mRunTest = !mRunTest; });
+				internalDebugMenu.AddMenuItem("GC Collect", new (menu) =>
 					{
 						var profileId = Profiler.StartSampling().GetValueOrDefault();
 						for (int i < 10)
@@ -6381,10 +6365,10 @@ namespace IDE
 						if (profileId != 0)
 							profileId.Dispose();
 					});
-				internalDebugMenu.AddMenuItem("Enable GC Collect", null, new (menu) => { ToggleCheck(menu, ref mEnableGCCollect); EnableGCCollect = mEnableGCCollect; }, null, null, true, mEnableGCCollect ? 1 : 0);
-				internalDebugMenu.AddMenuItem("Fast Updating", null, new (menu) => { ToggleCheck(menu, ref mDbgFastUpdate); EnableGCCollect = mDbgFastUpdate; }, null, null, true, mDbgFastUpdate ? 1 : 0);
-				internalDebugMenu.AddMenuItem("Alloc String", null, new (menu) => { new String("Alloc String"); });
-				internalDebugMenu.AddMenuItem("Perform Long Update Checks", null, new (menu) =>
+				internalDebugMenu.AddMenuItem("Enable GC Collect", new (menu) => { ToggleCheck(menu, ref mEnableGCCollect); EnableGCCollect = mEnableGCCollect; }, null, null, true, mEnableGCCollect ? 1 : 0);
+				internalDebugMenu.AddMenuItem("Fast Updating", new (menu) => { ToggleCheck(menu, ref mDbgFastUpdate); EnableGCCollect = mDbgFastUpdate; }, null, null, true, mDbgFastUpdate ? 1 : 0);
+				internalDebugMenu.AddMenuItem("Alloc String", new (menu) => { new String("Alloc String"); }, null);
+				internalDebugMenu.AddMenuItem("Perform Long Update Checks", new (menu) =>
 					{
 						bool wantsLongUpdateCheck = mLongUpdateProfileId != 0;
 						ToggleCheck(menu, ref wantsLongUpdateCheck);
@@ -6403,34 +6387,95 @@ namespace IDE
 			//////////
 
 			var testMenu = root.AddMenuItem("&Test");
-			var testRunMenu = testMenu.AddMenuItem("&Run", null, null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
-			AddMenuItem(testRunMenu, "&Normal Tests", "Run Normal Tests");
-			AddMenuItem(testRunMenu, "&All Tests", "Run All Tests");
+			var testRunMenu = testMenu.AddMenuItem("&Run", (MenuItemSelectedHandler)null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			testRunMenu.AddMenuItem("&Normal Tests", "Run Normal Tests");
+			testRunMenu.AddMenuItem("&All Tests", "Run All Tests");
 
 
-			var testDebugMenu = testMenu.AddMenuItem("&Debug", null, null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
-			AddMenuItem(testDebugMenu, "&Normal Tests", "Debug Normal Tests");
-			AddMenuItem(testDebugMenu, "&All Tests", "Debug All Tests");
+			var testDebugMenu = testMenu.AddMenuItem("&Debug", (MenuItemSelectedHandler)null, new => UpdateMenuItem_DebugStopped_HasWorkspace);
+			testDebugMenu.AddMenuItem("&Normal Tests", "Debug Normal Tests");
+			testDebugMenu.AddMenuItem("&All Tests", "Debug All Tests");
 			testDebugMenu.AddMenuItem(null);
-			testDebugMenu.AddMenuItem("Break on Failure", null, new (menu) =>
+			testDebugMenu.AddMenuItem("Break on Failure", new (menu) =>
 				{
 					ToggleCheck(menu, ref mTestBreakOnFailure);
 				}, null, null, true, mTestBreakOnFailure ? 1 : 0);
 
-			AddMenuItem(testMenu, "Enable Console", "Test Enable Console", null, null, true, mTestEnableConsole ? 1 : 0);
+			testMenu.AddMenuItem("Enable Console", "Test Enable Console", null, null, true, mTestEnableConsole ? 1 : 0);
 
 			//////////
 
-			mWindowMenu = root.AddMenuItem("&Window");
-			AddMenuItem(mWindowMenu, "&Close Document", "Close Document", new => UpdateMenuItem_HasLastActiveDocument);
-			AddMenuItem(mWindowMenu, "Close &Panel", "Close Panel", new => UpdateMenuItem_HasActivePanel);
-			AddMenuItem(mWindowMenu, "&Close All", "Close All Panels");
-			AddMenuItem(mWindowMenu, "Close All Except Current", "Close All Panels Except");
-			AddMenuItem(mWindowMenu, "&New View into File", "View New", new => UpdateMenuItem_HasActiveDocument);
-			AddMenuItem(mWindowMenu, "&Split View", "View Split", new => UpdateMenuItem_HasActiveDocument);
+			var windowMenu = root.AddMenuItem("&Window");
+			windowMenu.mOnCreate = new (menu) => { mWindowMenu = menu; };
+			windowMenu.AddMenuItem("&Close Document", "Close Document", new => UpdateMenuItem_HasLastActiveDocument);
+			windowMenu.AddMenuItem("Close &Panel", "Close Panel", new => UpdateMenuItem_HasActivePanel);
+			windowMenu.AddMenuItem("&Close All", "Close All Panels");
+			windowMenu.AddMenuItem("Close All Except Current", "Close All Panels Except");
+			windowMenu.AddMenuItem("&New View into File", "View New", new => UpdateMenuItem_HasActiveDocument);
+			windowMenu.AddMenuItem("&Split View", "View Split", new => UpdateMenuItem_HasActiveDocument);
 
 			subMenu = root.AddMenuItem("&Help");
-			AddMenuItem(subMenu, "&About", "About");
+			subMenu.AddMenuItem("&About", "About");
+		}
+
+		public void CreateMenu_Children(MenuInfo menuInfo, SysMenu sysMenu)
+		{
+			String keyStr = scope .();
+
+			for (var childInfo in menuInfo.mChildren)
+			{
+				defer
+				{
+					// Pass ownership to SysMenu.AddMenuItem
+					childInfo.mMenuItemSelectedHandler = null;
+					childInfo.mMenuItemUpdateHandler = null;
+				}
+
+				keyStr.Clear();
+				IDECommand ideCommand = null;
+				if (childInfo.mCmdName != null)
+				{
+					ideCommand = mCommands.mCommandMap[childInfo.mCmdName];
+					if (ideCommand != null)
+					{
+						keyStr.Clear();
+						ideCommand.ToString(keyStr);
+						keyStr.Insert(0, "#");
+					}
+				}
+
+				var menuItemSelectedHandler = childInfo.mMenuItemSelectedHandler;
+				if ((menuItemSelectedHandler == null) && (ideCommand != null))
+					menuItemSelectedHandler = new (evt) => ideCommand.mAction();
+
+				let childMenu = sysMenu.AddMenuItem(childInfo.mDispString, (ideCommand != null) ? keyStr : null, menuItemSelectedHandler, childInfo.mMenuItemUpdateHandler, childInfo.mBitmap, childInfo.mEnabled, childInfo.mCheckState, childInfo.mRadioCheck);
+				if (ideCommand != null)
+				{
+					ideCommand.mMenuItem = childMenu;
+				}
+
+				if (childInfo.mOnCreate != null)
+					childInfo.mOnCreate(childMenu);
+
+				if (childInfo.mChildren != null)
+					CreateMenu_Children(childInfo, childMenu);
+			}
+		}
+
+		public void CreateMenu()
+		{
+			MenuInfo rootInfo = scope .();
+			CreateMenu_Populate(rootInfo);
+
+			SysMenu root;
+#if BF_PLATFORM_WINDOWS
+			root = mMainWindow.mSysMenu;
+#else
+			root = mMainFrame.mMenuBar.mSysMenuRoot;
+			defer mMainFrame.RehupSize();
+#endif
+
+			CreateMenu_Children(rootInfo, root);
 		}
 
 		IDETabbedView CreateTabbedView()
@@ -12691,6 +12736,11 @@ namespace IDE
 			//mDebugger.LoadDebugVisualizers(scope String(mInstallDir, "BeefDbgVis.toml"));
 		}
 
+		protected virtual void StartupProject_SetupEnvVars(Dictionary<String, String> envVars)
+		{
+
+		}
+
 		bool StartupProject(bool doDebug, bool wasCompiled)
 		{
 			mProfilePanel.Clear();
@@ -12773,6 +12823,8 @@ namespace IDE
 					Environment.SetEnvironmentVariable(envVars, StringView(envVar, 0, eqPos), StringView(envVar, eqPos + 1));
 				}
 			}
+
+			StartupProject_SetupEnvVars(envVars);
 
 			var envBlock = scope List<char8>();
 			Environment.EncodeEnvironmentVariables(envVars, envBlock);
@@ -12910,6 +12962,105 @@ namespace IDE
 				});
 		}
 
+		public virtual Panel GetPanel(StringView name)
+		{
+			if (name == "CallStackPanel")
+			    return gApp.mCallStackPanel;
+			else if (name == "BreakpointPanel")
+			    return gApp.mBreakpointPanel;
+			else if (name == "ProfilePanel")
+				return gApp.mProfilePanel;
+			else if (name == "OutputPanel")
+			{                
+			    return gApp.mOutputPanel;
+			}
+			else if (name == "TerminalPanel")
+			{
+#if BF_PLATFORM_WINDOWS
+			    return gApp.mTerminalPanel;
+#endif
+			}
+			else if (name == "ImmediatePanel")
+			{                
+			    return gApp.mImmediatePanel;
+			}
+			else if (name == "ErrorsPanel")
+			{                
+			    return gApp.mErrorsPanel;
+			}
+			else if (name == "FindResultsPanel")
+			{                
+			    return gApp.mFindResultsPanel;
+			}
+			else if (name == "ProjectPanel")
+			{             
+			    return gApp.mProjectPanel;
+			}
+			else if (name == "ClassViewPanel")
+			{             
+			    return gApp.mClassViewPanel;
+			}
+			else if (name == "PropertiesPanel")
+			{                
+			    return gApp.mPropertiesPanel;
+			}
+			else if (name == "SourceViewPanel")
+			{
+			    return new SourceViewPanel();
+			}
+			else if (name == "DisassemblyPanel")
+			{
+			    var disassemblyPanel = new DisassemblyPanel();
+			    disassemblyPanel.mIsInitialized = true;
+			    return disassemblyPanel;
+			}
+			else if (name == "ThreadPanel")
+			{
+			    return gApp.mThreadPanel;
+			}
+			else if (name == "WatchPanel")
+			{
+			    return gApp.mWatchPanel;
+			}
+			else if (name == "AutoWatchPanel")
+			{
+			    return gApp.mAutoWatchPanel;
+			}
+			else if (name == "MemoryPanel")
+			{
+			    return gApp.mMemoryPanel;
+			}
+			else if (name == "DiagnosticsPanel")
+			{
+			    return gApp.mDiagnosticsPanel;
+			}
+			else if (name == "AutoCompletePanel")
+			{
+			    return gApp.mAutoCompletePanel;
+			}
+			else if (name == "ModulePanel")
+			{
+			    return gApp.mModulePanel;
+			}
+			else if (name == "BookmarksPanel")
+			{                
+			    return gApp.mBookmarksPanel;
+			}
+			else if (name == "TerminalPanel")
+			{
+#if BF_PLATFORM_WINDOWS
+			    return gApp.mTerminalPanel;
+#endif
+			}
+			else if (name == "ConsolePanel")
+			{
+#if BF_PLATFORM_WINDOWS
+			    return gApp.mConsolePanel;
+#endif
+			}
+			return null;
+		}
+
 		void ShowStartupFile()
 		{
 			bool hasSourceShown = false;
@@ -12939,7 +13090,7 @@ namespace IDE
 			}
 		}
 
-		public void CreateDefaultLayout(bool allowSavedLayout = true)
+		public virtual void CreateDefaultLayout(bool allowSavedLayout = true)
 		{
 			//TODO:
 			//mConfigName.Set("Dbg");
@@ -13026,7 +13177,7 @@ namespace IDE
 				title.Append(titleOverride);
 				title.Append(" - ");
 			}
-			title.Append("Beef IDE");
+			title.Append(sTitle);
 
 			String extraStr = scope .();
 
@@ -13081,7 +13232,63 @@ namespace IDE
 			return mVersionInfo;
 		}
 
+		protected void InitUserDataDir()
+		{
+#if BF_PLATFORM_LINUX && LINUX_PACKAGE
+			delete mUserDataDir;
+			mUserDataDir = new $"{Environment.GetEnvironmentVariable("HOME", .. scope .())}/.config/beeflang/";
+#endif
+		}
+
 #if !CLI
+		public virtual void CreatePanels()
+		{
+			mProjectPanel = new ProjectPanel();
+			mProjectPanel.mAutoDelete = false;
+			mClassViewPanel = new ClassViewPanel();
+			mClassViewPanel.mAutoDelete = false;
+			mOutputPanel = new OutputPanel(true);
+			mOutputPanel.mAutoDelete = false;
+#if BF_PLATFORM_WINDOWS
+			mTerminalPanel = new TerminalPanel();
+			mTerminalPanel .Init();
+			mTerminalPanel.mAutoDelete = false;
+			mConsolePanel = new ConsolePanel();
+			mConsolePanel.Init();
+			mConsolePanel.mAutoDelete = false;
+#endif
+			mImmediatePanel = new ImmediatePanel();
+			mImmediatePanel.mAutoDelete = false;
+			mFindResultsPanel = new FindResultsPanel();
+			mFindResultsPanel.mAutoDelete = false;
+			mAutoWatchPanel = new WatchPanel(true);
+			mAutoWatchPanel.mAutoDelete = false;
+			mWatchPanel = new WatchPanel(false);
+			mWatchPanel.mAutoDelete = false;
+			mMemoryPanel = new MemoryPanel();
+			mMemoryPanel.mAutoDelete = false;
+			mCallStackPanel = new CallStackPanel();
+			mCallStackPanel.mAutoDelete = false;
+			mBreakpointPanel = new BreakpointPanel();
+			mBreakpointPanel.mAutoDelete = false;
+			mDiagnosticsPanel = new DiagnosticsPanel();
+			mDiagnosticsPanel.mAutoDelete = false;
+			mErrorsPanel = new ErrorsPanel();
+			mErrorsPanel.mAutoDelete = false;
+			mModulePanel = new ModulePanel();
+			mModulePanel.mAutoDelete = false;
+			mThreadPanel = new ThreadPanel();
+			mThreadPanel.mAutoDelete = false;
+			mProfilePanel = new ProfilePanel();
+			mProfilePanel.mAutoDelete = false;
+			mPropertiesPanel = new PropertiesPanel();
+			mPropertiesPanel.mAutoDelete = false;
+			mAutoCompletePanel = new AutoCompletePanel();
+			mAutoCompletePanel.mAutoDelete = false;
+			mBookmarksPanel = new BookmarksPanel();
+			mBookmarksPanel.mAutoDelete = false;
+		}
+
 		public override void Init()
 		{
 			scope AutoBeefPerf("IDEApp.Init");
@@ -13110,10 +13317,7 @@ namespace IDE
 			mSettings.Apply();
 
 			mGitManager.Init();
-
-#if BF_PLATFORM_LINUX && LINUX_PACKAGE
-			mUserDataDir = new $"{Environment.GetEnvironmentVariable("HOME", .. scope .())}/.config/beeflang/";
-#endif
+			InitUserDataDir();
 
 			//Yoop();
 
@@ -13185,50 +13389,7 @@ namespace IDE
 				mWantsClean = false;
 			}
 
-			mProjectPanel = new ProjectPanel();
-			mProjectPanel.mAutoDelete = false;
-			mClassViewPanel = new ClassViewPanel();
-			mClassViewPanel.mAutoDelete = false;
-			mOutputPanel = new OutputPanel(true);
-			mOutputPanel.mAutoDelete = false;
-#if BF_PLATFORM_WINDOWS
-			mTerminalPanel = new TerminalPanel();
-			mTerminalPanel .Init();
-			mTerminalPanel.mAutoDelete = false;
-			mConsolePanel = new ConsolePanel();
-			mConsolePanel.Init();
-			mConsolePanel.mAutoDelete = false;
-#endif
-			mImmediatePanel = new ImmediatePanel();
-			mImmediatePanel.mAutoDelete = false;
-			mFindResultsPanel = new FindResultsPanel();
-			mFindResultsPanel.mAutoDelete = false;
-			mAutoWatchPanel = new WatchPanel(true);
-			mAutoWatchPanel.mAutoDelete = false;
-			mWatchPanel = new WatchPanel(false);
-			mWatchPanel.mAutoDelete = false;
-			mMemoryPanel = new MemoryPanel();
-			mMemoryPanel.mAutoDelete = false;
-			mCallStackPanel = new CallStackPanel();
-			mCallStackPanel.mAutoDelete = false;
-			mBreakpointPanel = new BreakpointPanel();
-			mBreakpointPanel.mAutoDelete = false;
-			mDiagnosticsPanel = new DiagnosticsPanel();
-			mDiagnosticsPanel.mAutoDelete = false;
-			mErrorsPanel = new ErrorsPanel();
-			mErrorsPanel.mAutoDelete = false;
-			mModulePanel = new ModulePanel();
-			mModulePanel.mAutoDelete = false;
-			mThreadPanel = new ThreadPanel();
-			mThreadPanel.mAutoDelete = false;
-			mProfilePanel = new ProfilePanel();
-			mProfilePanel.mAutoDelete = false;
-			mPropertiesPanel = new PropertiesPanel();
-			mPropertiesPanel.mAutoDelete = false;
-			mAutoCompletePanel = new AutoCompletePanel();
-			mAutoCompletePanel.mAutoDelete = false;
-			mBookmarksPanel = new BookmarksPanel();
-			mBookmarksPanel.mAutoDelete = false;
+			CreatePanels();
 
 			GetVersionInfo(var exeDate);
 			let localExeDate = exeDate.ToLocalTime();
@@ -13307,7 +13468,7 @@ namespace IDE
 					flags |= .ShowMaximized;
 
 				scope AutoBeefPerf("IDEApp.Init:CreateMainWindow");
-				mMainWindow = new WidgetWindow(null, "Beef IDE", (int32)mRequestedWindowRect.mX,
+				mMainWindow = new WidgetWindow(null, sTitle, (int32)mRequestedWindowRect.mX,
 					(int32)mRequestedWindowRect.mY, (int32)mRequestedWindowRect.mWidth, (int32)mRequestedWindowRect.mHeight,
 					flags, mMainFrame);
 			}

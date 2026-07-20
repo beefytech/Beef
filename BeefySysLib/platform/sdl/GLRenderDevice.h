@@ -166,7 +166,7 @@ public:
 
 	Texture*				LoadTexture(ImageData* imageData, int flags) override;
 	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) override;
-	Texture*				CreateRenderTarget(int width, int height, bool destAlpha) override;
+	Texture*				CreateRenderTarget(int width, int height, int flags) override;
 
 	virtual Texture*		CreateDynTexture(int width, int height) override;
 	virtual void			SetRenderState(RenderState* renderState) override;

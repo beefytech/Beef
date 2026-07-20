@@ -209,7 +209,7 @@ namespace IDE
 			mCommandMap[cmd.mName] = cmd;
 		}
 
-		public void Init()
+		public virtual void Init()
 		{
 			Add("About", new => gApp.ShowAbout);
 			Add("Add Selection to Next Find Match", new => gApp.Cmd_AddSelectionToNextFindMatch);

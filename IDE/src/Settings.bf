@@ -878,7 +878,7 @@ namespace IDE
 				mEntries.Add(entry);
 			}
 
-			public void SetDefaults()
+			public virtual void SetDefaults()
 			{
 				Add("Add Cursor Above", "Ctrl+Alt+Up");
 				Add("Add Cursor Below", "Ctrl+Alt+Down");
