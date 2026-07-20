@@ -11376,7 +11376,22 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 
 	if (!mResult)
 	{
-		mModule->SetHighestElementType(nameNode->mRight, BfSourceElementType_Static);
+		auto type = mModule->ResolveTypeRef(nameLeft, NULL);
+
+		if (type != NULL)
+		{
+			auto target = mModule->GetThis();
+			target.mType = type;
+
+			BfFieldDef* fieldDef = NULL;
+
+			mResult = LookupField(nameRight, target, fieldName, BfLookupFieldFlag_IsImplicitThis, &fieldDef);
+
+			if (fieldDef != NULL && fieldDef->IsNonConstStatic())
+			{
+				mModule->SetHighestElementType(nameRight, BfSourceElementType_Static);
+			}
+		}
 
 		if (!ignoreInitialError)
 			mModule->Fail("Identifier not found", nameNode->mLeft);
@@ -11542,6 +11557,23 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 
 	if (!mResult)
 	{
+		auto type = mModule->ResolveTypeRef(nameLeft, NULL);
+
+		if (type != NULL)
+		{
+			auto target = mModule->GetThis();
+			target.mType = type;
+
+			BfFieldDef* fieldDef = NULL;
+
+			mResult = LookupField(nameRight, target, fieldName, BfLookupFieldFlag_IsImplicitThis, &fieldDef);
+
+			if (fieldDef != NULL && fieldDef->IsNonConstStatic())
+			{
+				mModule->SetHighestElementType(nameRight, BfSourceElementType_Static);
+			}
+		}
+
 		if (!ignoreInitialError)
 			mModule->Fail("Identifier not found", nameLeft);
 		return;
