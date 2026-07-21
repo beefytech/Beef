@@ -16,6 +16,8 @@ struct Guid : IHashable, IParseable<Guid>
 	private uint8 mJ;
 	private uint8 mK;
 
+	public bool IsSet => this != default;
+
 	public this()
 	{
 		this = default;

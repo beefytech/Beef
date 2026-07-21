@@ -27,7 +27,10 @@ namespace Beefy.gfx
 		{
 			None,
 			Alpha = 1,
-			Shared = 2
+			Shared = 2,
+			// Single-channel R32_FLOAT instead of RGBA8 -- for data render targets (eg shadow maps)
+			// that need real float precision rather than 8-bit-per-channel color storage.
+			HighPrecision = 4
 		}
 
         public Image mSrcTexture;

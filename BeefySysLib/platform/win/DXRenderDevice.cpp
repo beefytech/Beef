@@ -2592,7 +2592,7 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags)
 {
 	bool destAlpha = (flags & 1) != 0;
 	bool makeShared = (flags & 2) != 0;
-	bool createDepth = (flags & 4) != 0;
+	bool highPrecision = (flags & 4) != 0;
 
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
 
@@ -2601,6 +2601,8 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags)
 
 	int sampleQuality = 0;
 
+	DXGI_FORMAT format = highPrecision ? DXGI_FORMAT_R32_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
+
 	// Create the render target texture
 	D3D11_TEXTURE2D_DESC desc;
 	ZeroMemory(&desc, sizeof(desc));
@@ -2608,7 +2610,7 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags)
 	desc.Height = height;
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.Format = format;
 	desc.SampleDesc.Count = 1;
 	UINT qualityLevels = 0;
 
