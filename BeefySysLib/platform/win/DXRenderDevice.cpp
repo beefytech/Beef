@@ -656,6 +656,8 @@ void DXTexture::PhysSetAsTarget()
 		viewPort.TopLeftX = 0;
 		viewPort.TopLeftY = 0;
 
+		mRenderDevice->mCurD3DRTV = mD3DRenderTargetView;
+		mRenderDevice->mCurD3DDSV = mD3DDepthStencilView;
 		mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, mD3DDepthStencilView);
 		//mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, ((rand() % 2) != 0) ? NULL : mD3DDepthStencilView);
 		//mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, NULL);
@@ -912,14 +914,20 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 		mD3DDeviceContext->IASetPrimitiveTopology(topology);
 	}
 
-	if ((renderState->mShader != mPhysRenderState->mShader) && (renderState->mShader != NULL))
-	{
-		mD3DDeviceContext->PSSetSamplers(0, 1, renderState->mTexWrap ? &mD3DWrapSamplerState  : &mD3DDefaultSamplerState);
-		mD3DDeviceContext->IASetInputLayout(dxShader->mD3DLayout);
-		mD3DDeviceContext->VSSetShader(dxShader->mD3DVertexShader, NULL, 0);
-		mD3DDeviceContext->PSSetShader(dxShader->mD3DPixelShader, NULL, 0);
+	bool shaderChanged = (renderState->mShader != mPhysRenderState->mShader) && (renderState->mShader != NULL);
+	bool pixelShaderDisableChanged = renderState->mDisablePixelShader != mPhysRenderState->mDisablePixelShader;
 
-		if (dxShader->mHas2DPosition)
+	if (shaderChanged || pixelShaderDisableChanged)
+	{
+		if (shaderChanged)
+		{
+			mD3DDeviceContext->PSSetSamplers(0, 1, renderState->mTexWrap ? &mD3DWrapSamplerState  : &mD3DDefaultSamplerState);
+			mD3DDeviceContext->IASetInputLayout(dxShader->mD3DLayout);
+			mD3DDeviceContext->VSSetShader(dxShader->mD3DVertexShader, NULL, 0);
+		}
+		mD3DDeviceContext->PSSetShader(renderState->mDisablePixelShader ? NULL : dxShader->mD3DPixelShader, NULL, 0);
+
+		if ((shaderChanged) && (dxShader->mHas2DPosition))
 		{
 			HRESULT result = NULL;
 
@@ -1067,6 +1075,14 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 		}
 
 		mD3DDeviceContext->OMSetDepthStencilState(dxRenderState->mD3DDepthStencilState, 1);
+	}
+	
+	if (renderState->mDisableRenderTarget != mPhysRenderState->mDisableRenderTarget)
+	{
+		if (renderState->mDisableRenderTarget)
+			mD3DDeviceContext->OMSetRenderTargets(0, NULL, mCurD3DDSV);
+		else
+			mD3DDeviceContext->OMSetRenderTargets(1, &mCurD3DRTV, mCurD3DDSV);
 	}
 
 	mPhysRenderState = renderState;
@@ -1823,6 +1839,8 @@ void DXRenderWindow::PhysSetAsTarget()
 		viewPort.TopLeftX = 0;
 		viewPort.TopLeftY = 0;
 
+		mDXRenderDevice->mCurD3DRTV = mD3DRenderTargetView;
+		mDXRenderDevice->mCurD3DDSV = mD3DDepthStencilView;
 		mDXRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, mD3DDepthStencilView);
 		mDXRenderDevice->mD3DDeviceContext->RSSetViewports(1, &viewPort);
 	}
@@ -2028,6 +2046,8 @@ DXRenderDevice::DXRenderDevice()
 	mD3DDevice = NULL;
 	mNeedsReinitNative = false;
 	mMatrix2DBuffer = NULL;
+	mCurD3DRTV = NULL;
+	mCurD3DDSV = NULL;
 }
 
 DXRenderDevice::~DXRenderDevice()

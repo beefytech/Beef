@@ -921,6 +921,16 @@ BF_EXPORT void BF_CALLTYPE RenderState_SetFrontFace(RenderState* renderState, in
 	renderState->SetFrontFace((FrontFace)frontFace);
 }
 
+BF_EXPORT void BF_CALLTYPE RenderState_SetDisablePixelShader(RenderState* renderState, bool disable)
+{
+	renderState->SetDisablePixelShader(disable);
+}
+
+BF_EXPORT void BF_CALLTYPE RenderState_SetDisableRenderTarget(RenderState* renderState, bool disable)
+{
+	renderState->SetDisableRenderTarget(disable);
+}
+
 BF_EXPORT Shader* BF_CALLTYPE Gfx_LoadShader(const char* fileName, VertexDefinition* vertexDefinition)
 {
 	return gBFApp->mRenderDevice->LoadShader(fileName, vertexDefinition);

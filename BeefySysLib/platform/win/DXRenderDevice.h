@@ -311,6 +311,9 @@ public:
 	ID3D11Buffer*			mD3DIndexBuffer;
 	int						mVtxByteIdx;
 	int						mIdxByteIdx;
+	
+	ID3D11RenderTargetView*	mCurD3DRTV;
+	ID3D11DepthStencilView*	mCurD3DDSV;
 
 	HashSet<DXRenderState*>	mRenderStates;
 	HashSet<DXTexture*>		mTextures;

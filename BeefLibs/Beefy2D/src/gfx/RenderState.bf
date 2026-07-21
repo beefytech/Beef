@@ -80,6 +80,12 @@ namespace Beefy.gfx
 		[CallingConvention(.Stdcall), CLink]
 		static extern void RenderState_SetFrontFace(void* nativeRenderState, int32 frontFace);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void RenderState_SetDisablePixelShader(void* nativeRenderState, bool disable);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void RenderState_SetDisableRenderTarget(void* nativeRenderState, bool disable);
+
         public void* mNativeRenderState;
         public bool mIsFromDefaultRenderState;
 
@@ -179,6 +185,26 @@ namespace Beefy.gfx
 			set
 			{
 				RenderState_SetFrontFace(mNativeRenderState, (.)value);
+			}
+		}
+
+		// Depth-only passes: skips running the pixel shader stage entirely (binds a NULL PS).
+		public bool DisablePixelShader
+		{
+			set
+			{
+				RenderState_SetDisablePixelShader(mNativeRenderState, value);
+			}
+		}
+
+		// Skips binding any color render target (keeps only the depth-stencil view bound), so
+		// nothing writes to color regardless of what the pixel shader -- if any is still running --
+		// would have produced.
+		public bool DisableRenderTarget
+		{
+			set
+			{
+				RenderState_SetDisableRenderTarget(mNativeRenderState, value);
 			}
 		}
     }

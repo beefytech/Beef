@@ -203,14 +203,16 @@ class RenderState
 public:
 	Shader*					mShader;
 	bool					mWriteDepthBuffer;
-	DepthFunc				mDepthFunc;	
+	DepthFunc				mDepthFunc;
 	bool					mClipped;
 	bool					mTexWrap;
 	bool					mWireframe;
 	RectF					mClipRect;
 	CullMode				mCullMode;
 	FrontFace				mFrontFace;
-	Topology3D				mTopology;
+	Topology3D				mTopology;	
+	bool					mDisablePixelShader;
+	bool					mDisableRenderTarget;
 
 public:
 	RenderState();
@@ -226,6 +228,8 @@ public:
 	virtual void SetTopology(Topology3D topology) { mTopology = topology; }
 	virtual void SetCullMode(CullMode cullMode) { mCullMode = cullMode; }
 	virtual void SetFrontFace(FrontFace frontFace) { mFrontFace = frontFace; }
+	virtual void SetDisablePixelShader(bool disable) { mDisablePixelShader = disable; }
+	virtual void SetDisableRenderTarget(bool disable) { mDisableRenderTarget = disable; }
 };
 
 class PoolData
