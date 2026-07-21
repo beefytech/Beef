@@ -560,6 +560,8 @@ DXTexture::~DXTexture()
 	delete mContentBits;
 	if (mD3DResourceView != NULL)
 		mD3DResourceView->Release();
+	if (mD3DRenderTargetView != NULL)
+		mD3DRenderTargetView->Release();
 	if (mD3DDepthStencilView != NULL)
 		mD3DDepthStencilView->Release();
 	if (mD3DDepthBuffer != NULL)
@@ -580,6 +582,11 @@ void DXTexture::ReleaseNative()
 	{
 		mD3DResourceView->Release();
 		mD3DResourceView = NULL;
+	}
+	if (mD3DRenderTargetView != NULL)
+	{
+		mD3DRenderTargetView->Release();
+		mD3DRenderTargetView = NULL;
 	}
 	if (mD3DDepthStencilView != NULL)
 	{
