@@ -74,11 +74,6 @@ BF_EXPORT void ModelDef_SetBaseDir(ModelDef* modelDef, char* baseDir)
 	modelDef->mLoadDir = baseDir;
 }
 
-BF_EXPORT void ModelDef_Scale(ModelDef* modelDef, Vector3 scale)
-{
-	modelDef->Scale(scale);
-}
-
 BF_EXPORT const char* BF_CALLTYPE ModelDef_GetInfo(ModelDef* modelDef)
 {
 	String& outString = *gModelDef_TLStrReturn.Get();
@@ -171,115 +166,6 @@ ModelDef::~ModelDef()
 	for (auto& materialInstance : mMaterials)
 	{
 		materialInstance.mDef->mRefCount--;
-	}
-}
-
-void ModelDef::Scale(const Vector3& scale)
-{
-	// For quaternion component flipping under axis reflection: sign of each scale component.
-	float signX = (scale.mX < 0.0f) ? -1.0f : 1.0f;
-	float signY = (scale.mY < 0.0f) ? -1.0f : 1.0f;
-	float signZ = (scale.mZ < 0.0f) ? -1.0f : 1.0f;
-
-	// Mesh vertices: positions scale directly; normals transform by S^{-T} = S^{-1} (inverse
-	// of a diagonal scale); tangents are geometric directions and transform the same as positions.
-	for (auto& mesh : mMeshes)
-	{
-		for (auto& prims : mesh.mPrimitives)
-		{
-			for (auto& vtx : prims.mVertices)
-			{
-				vtx.mPosition *= scale;
-				vtx.mNormal = Vector3::Normalize(Vector3(
-					vtx.mNormal.mX / scale.mX,
-					vtx.mNormal.mY / scale.mY,
-					vtx.mNormal.mZ / scale.mZ));
-				vtx.mTangent = Vector3::Normalize(vtx.mTangent * scale);
-			}
-		}
-	}
-
-	// Bone inverse bind-pose matrices transform as S * M * S^{-1}.
-	// For a diagonal scale S, element (i,j) scales by scale[i] / scale[j],
-	// where scale[3] = 1 (homogeneous row/column left unchanged).
-	float scaleArr[4] = { scale.mX, scale.mY, scale.mZ, 1.0f };
-	for (auto& joint : mJoints)
-	{
-		for (int row = 0; row < 4; row++)
-			for (int col = 0; col < 4; col++)
-				joint.mPoseInvMatrix.mMat[row][col] *= scaleArr[row] / scaleArr[col];
-
-		joint.mBindPoseLocal.mTrans *= scale;
-		joint.mBindPoseLocal.mQuat = Quaternion(
-			signY * signZ * joint.mBindPoseLocal.mQuat.mX,
-			signX * signZ * joint.mBindPoseLocal.mQuat.mY,
-			signX * signY * joint.mBindPoseLocal.mQuat.mZ,
-			joint.mBindPoseLocal.mQuat.mW);
-	}
-
-	// Animation frame data: local joint translations are the translation column of
-	// S * L * S^{-1}, which equals S * mTrans.  Under axis reflections the rotation
-	// changes as S * R * S^{-1}; its quaternion form is q_new = (w, sy*sz*x, sx*sz*y, sx*sy*z).
-	for (auto& anim : mAnims)
-	{
-		for (auto& frame : anim.mFrames)
-		{
-			for (auto& jt : frame.mJointTranslations)
-			{
-				jt.mTrans *= scale;
-				jt.mQuat = Quaternion(
-					signY * signZ * jt.mQuat.mX,
-					signX * signZ * jt.mQuat.mY,
-					signX * signY * jt.mQuat.mZ,
-					jt.mQuat.mW);
-			}
-		}
-	}
-
-	// Scene node translations.
-	for (auto& node : mNodes)
-		node.mTranslation *= scale;
-
-	// BVH geometry and derived bounds.
-	if ((mFlags & Flags_HasBVH) != 0)
-	{
-		for (auto& bvVtx : mBVVertices)
-			bvVtx *= scale;
-
-		float maxAbsScale = fabs(scale.mX);
-		if (fabs(scale.mY) > maxAbsScale) maxAbsScale = fabs(scale.mY);
-		if (fabs(scale.mZ) > maxAbsScale) maxAbsScale = fabs(scale.mZ);
-
-		for (auto& bvNode : mBVNodes)
-		{
-			bvNode.mBoundSphere.mCenter *= scale;
-			bvNode.mBoundSphere.mRadius *= maxAbsScale;
-
-			Vector3 newMin = bvNode.mBoundAABB.mMin * scale;
-			Vector3 newMax = bvNode.mBoundAABB.mMax * scale;
-			bvNode.mBoundAABB.mMin = Vector3(
-				(newMin.mX < newMax.mX) ? newMin.mX : newMax.mX,
-				(newMin.mY < newMax.mY) ? newMin.mY : newMax.mY,
-				(newMin.mZ < newMax.mZ) ? newMin.mZ : newMax.mZ);
-			bvNode.mBoundAABB.mMax = Vector3(
-				(newMin.mX > newMax.mX) ? newMin.mX : newMax.mX,
-				(newMin.mY > newMax.mY) ? newMin.mY : newMax.mY,
-				(newMin.mZ > newMax.mZ) ? newMin.mZ : newMax.mZ);
-		}
-	}
-
-	if ((mFlags & Flags_HasBounds) != 0)
-	{
-		Vector3 newMin = mBounds.mMin * scale;
-		Vector3 newMax = mBounds.mMax * scale;
-		mBounds.mMin = Vector3(
-			(newMin.mX < newMax.mX) ? newMin.mX : newMax.mX,
-			(newMin.mY < newMax.mY) ? newMin.mY : newMax.mY,
-			(newMin.mZ < newMax.mZ) ? newMin.mZ : newMax.mZ);
-		mBounds.mMax = Vector3(
-			(newMin.mX > newMax.mX) ? newMin.mX : newMax.mX,
-			(newMin.mY > newMax.mY) ? newMin.mY : newMax.mY,
-			(newMin.mZ > newMax.mZ) ? newMin.mZ : newMax.mZ);
 	}
 }
 

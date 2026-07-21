@@ -2540,6 +2540,9 @@ namespace Beefy.widgets
 			if (CheckReadOnly())
 				return;
 
+			if (text.IsEmpty)
+				return;
+
 			CreateMultiCursorUndoBatch("EWC.PasteText(text, extra)");
 
 			// Decode 'extra' into fragments

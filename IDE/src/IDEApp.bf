@@ -7515,17 +7515,24 @@ namespace IDE
 				mRecentFileSelector.Prev();
 		}
 
+		protected virtual bool ShowSpecialFile(StringView name)
+		{
+			if (name == DisassemblyPanel.sPanelName)
+			{
+				ShowDisassemblyPanel();
+				return true;
+			}
+			return false;
+		}
+
 		void ShowRecentFile(int idx, bool setFocus = true, bool checkIfExists = false)
 		{
 			if (idx >= mRecentlyDisplayedFiles.Count)
 				return;
 
 			String sourceFile = mRecentlyDisplayedFiles[idx];
-			if (sourceFile == DisassemblyPanel.sPanelName)
-			{
-				ShowDisassemblyPanel();
+			if (ShowSpecialFile(sourceFile))
 				return;
-			}
 			if ((checkIfExists) && (!File.Exists(sourceFile)))
 				return;
 			ShowSourceFile(sourceFile, null, SourceShowType.ShowExisting, setFocus);

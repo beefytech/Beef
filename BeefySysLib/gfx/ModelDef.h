@@ -248,7 +248,6 @@ public:
 	ModelDef();
 	~ModelDef();
 
-	void Scale(const Vector3& scale);
 	void Compact();
 	void GetBounds(Vector3& min, Vector3& max);
 

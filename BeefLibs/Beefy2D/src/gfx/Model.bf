@@ -93,9 +93,11 @@ namespace Beefy.gfx
             }
         }        
 
-        public void* mNativeModelDef;        
+        public void* mNativeModelDef;
         public float mFrameRate;
         public int32 mJointCount;
+        // Applied at render time (combined with ModelInstance.mScale), not baked into the mesh data.
+        public Vector3 mScale = .One;
         public Animation[] mAnims ~ DeleteContainerAndItems!(_);
         public Dictionary<String, Animation> mAnimMap = new Dictionary<String, Animation>() ~ DeleteDictionaryAndKeys!(_);
 
@@ -116,9 +118,6 @@ namespace Beefy.gfx
 
 		[CallingConvention(.Stdcall), CLink]
 		extern static void ModelDef_SetBaseDir(void* nativeModel, char8* baseDir);
-
-		[CallingConvention(.Stdcall), CLink]
-		extern static void ModelDef_Scale(void* nativeModel, Vector3 scale);
 
 		[CallingConvention(.Stdcall), CLink]
 		extern static char8* ModelDef_GetInfo(void* nativeModel);
@@ -225,7 +224,7 @@ namespace Beefy.gfx
 
 		public void Scale(Vector3 scale)
 		{
-			ModelDef_Scale(mNativeModelDef, scale);
+			mScale = scale;
 		}
 
 		public void SetTextures(int meshIdx, int primitivesIdx, Span<char8*> paths)
@@ -258,11 +257,22 @@ namespace Beefy.gfx
         public float mFrame;
         public float mAnimSpeed = 1.0f;
         public bool mLoop;
+        public Vector3 mScale = .One;
 
         public this(void* nativeModelInstance, ModelDef modelDef)
         {
             mNativeRenderable = nativeModelInstance;
             mModelDef = modelDef;
+        }
+
+        // Combines this instance's scale with its ModelDef's scale into worldMatrix, since neither
+        // is baked into the mesh data (see ModelDef.mScale).
+        public void Draw(Graphics g, Matrix4 worldMatrix)
+        {
+            Vector3 combinedScale = Vector3.Multiply(mModelDef.mScale, mScale);
+            Matrix4 scaledMatrix = Matrix4.Multiply(Matrix4.CreateScale(combinedScale), worldMatrix);
+            g.SetVertexShaderConstantData(0, scaledMatrix);
+            g.Draw(this);
         }
 
         public void RehupAnimState()
