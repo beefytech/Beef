@@ -14413,7 +14413,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						return BfIRValue();
 
 					auto fakeVal = GetFakeTypedValue(bfType);
-					auto val = CastToValue(srcNode, fakeVal, toType, castFlags);
+					auto val = mContext->mUnreifiedModule->CastToValue(srcNode, fakeVal, toType, castFlags);
 					if (val)
 						return mBfIRBuilder->GetUndefConstValue(mBfIRBuilder->MapType(toType));
 				}
