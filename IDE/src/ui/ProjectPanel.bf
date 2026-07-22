@@ -1491,6 +1491,12 @@ namespace IDE.ui
                     mSelectedParentItem.mOpenButton.Open(true, false);
 
                 String dir = scope String(folderDialog.SelectedPath);
+				// It's possible for the path to end with / on linux
+				if (dir.EndsWith(Path.DirectorySeparatorChar))
+					dir.RemoveFromEnd(1);
+				if (dir.IsEmpty)
+					return;
+
                 int32 totalFileCount = AddFolder(folder, dir, alreadyHadFileList, true);
 				/*int32 totalFileCount = 1;
 				if (AlreadyHasPath(folder, dir))
