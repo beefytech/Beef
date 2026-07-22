@@ -114,6 +114,10 @@ static bool (SDLCALL* bf_SDL_MaximizeWindow)(SDL_Window *window);
 static bool (SDLCALL* bf_SDL_ShowWindow)(SDL_Window *window);
 static bool (SDLCALL* bf_SDL_RaiseWindow)(SDL_Window* window);
 
+#define KEY_SHIFT 0x10
+#define KEY_CONTROL 0x11
+#define KEY_ALT 0x12
+
 struct AdjustedMonRect
 {
 	int mMonCount;
@@ -124,13 +128,6 @@ struct AdjustedMonRect
 };
 
 static int bfMouseBtnOf[4] = {0, 0, 2, 1}; // Translate SDL mouse buttons to what Beef expects.
-
-static const char* mimeTypes[] =
-{
-	"text/plain",
-	"",
-	"text/vnd.beeflang.file-list"
-};
 
 static HMODULE gSDLModule;
 static HMODULE gSDLImageModule;
@@ -211,9 +208,8 @@ BF_EXPORT void BF_CALLTYPE BFApp_RegisterAppIcon(uint8* imageData, int size)
 
 SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags)
 {
+	memset(mIsKeyDown, 0, sizeof(mIsKeyDown));
 	mWindowReady = false;
-
-	SDL_PropertiesID props = bf_SDL_CreateProperties();
 
 	bool wantScale = (windowFlags & BFWINDOW_LOGICAL_COORDS) == 0;
 
@@ -269,23 +265,41 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 
 	//printf("Creating window '%s' at %d,%d %dx%d parent:%p (logical coords: %d,%d %dx%d) Scale:%f WantScale:%d Flags:%llX\n", title.c_str(), x, y, width, height, parent, logicalX, logicalY, logicalW, logicalH, assumedScale, wantScale, windowFlags);
 
+	SDL_PropertiesID props = bf_SDL_CreateProperties();
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_OPENGL_BOOLEAN, true);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_RESIZABLE_BOOLEAN, (windowFlags & BFWINDOW_RESIZABLE) != 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FULLSCREEN_BOOLEAN, (windowFlags & BFWINDOW_FULLSCREEN) != 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_BORDERLESS_BOOLEAN, (windowFlags & BFWINDOW_BORDER) == 0);
-	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TOOLTIP_BOOLEAN, (windowFlags & BFWINDOW_TOOLTIP) != 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TRANSPARENT_BOOLEAN, (windowFlags & BFWINDOW_DEST_ALPHA) != 0);
-	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MENU_BOOLEAN, (windowFlags & BFWINDOW_FAKEFOCUS) != 0);
-	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN, (windowFlags & BFWINDOW_FAKEFOCUS) == 0);
-	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MODAL_BOOLEAN, (windowFlags & BFWINDOW_MODAL) != 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_ALWAYS_ON_TOP_BOOLEAN, (windowFlags & BFWINDOW_TOPMOST) != 0);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_HIGH_PIXEL_DENSITY_BOOLEAN, true);
 	bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_HIDDEN_BOOLEAN, true);
+
+	if ((windowFlags & BFWINDOW_TOOLTIP) != 0)
+	{
+		if ((windowFlags & BFWINDOW_FAKEFOCUS | BFWINDOW_NO_ACTIVATE | BFWINDOW_NO_MOUSE_ACTIVATE) != 0)
+		{
+			bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MENU_BOOLEAN, true);
+			bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN, false);
+		}
+		else
+		{
+			bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_TOOLTIP_BOOLEAN, true);
+			bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN, true);
+		}
+	}
+	else
+	{
+		bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MENU_BOOLEAN, (windowFlags & BFWINDOW_FAKEFOCUS) != 0);
+		bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_FOCUSABLE_BOOLEAN, (windowFlags & (BFWINDOW_NO_ACTIVATE | BFWINDOW_NO_MOUSE_ACTIVATE)) == 0);
+	}
 
 	if (parent != NULL)
 	{
 		SDL_Window* parentWindow = ((SdlBFWindow*)parent)->mSDLWindow;
 		bf_SDL_SetPointerProperty(props, SDL_PROP_WINDOW_CREATE_PARENT_POINTER, parentWindow);
+		bf_SDL_SetBooleanProperty(props, SDL_PROP_WINDOW_CREATE_MODAL_BOOLEAN, (windowFlags & BFWINDOW_MODAL) != 0);
+
 		if ((windowFlags & BFWINDOW_TOOLTIP | BFWINDOW_FAKEFOCUS) != 0) // Tooltips and menus have relative positioning to their parent.
 		{
 			int parentX, parentY;
@@ -323,7 +337,7 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
 	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_MINOR_VERSION, 2);
 	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, contextFlags);
-#endif
+#endif // BF_PLATFORM_OPENGL_ES2
 
 	if(sdlApp->mGLContext == NULL)
 	{
@@ -514,12 +528,12 @@ static int SDLConvertKeyCode(SDL_Keycode scanCode)
     case SDLK_TAB: return 0x09;
     case SDLK_CLEAR: return 0x0C;
     case SDLK_RETURN: return 0x0D;
-    case SDLK_LSHIFT: return 0x10;
-	case SDLK_RSHIFT: return 0x10;
-    case SDLK_LCTRL: return 0x11;
-	case SDLK_RCTRL: return 0x11;
-    case SDLK_LALT: return 0x12;
-    case SDLK_RALT: return 0x12;
+    case SDLK_LSHIFT: return KEY_SHIFT;
+	case SDLK_RSHIFT: return KEY_SHIFT;
+    case SDLK_LCTRL: return KEY_CONTROL;
+	case SDLK_RCTRL: return KEY_CONTROL;
+    case SDLK_LALT: return KEY_ALT;
+    case SDLK_RALT: return KEY_ALT;
     case SDLK_PAUSE: return 0x13;
     case SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LANG1): return 0x15;
     case SDL_SCANCODE_TO_KEYCODE(SDL_SCANCODE_LANG2): return 0x15;
@@ -590,7 +604,6 @@ SdlBFApp::SdlBFApp()
 {
 	mRunning = false;
 	mRenderDevice = NULL;
-	mSdlClipboardData = new SdlClipboardData();
 	mGLContext = NULL;
 	mGLContextWindow = NULL;
 
@@ -613,7 +626,6 @@ SdlBFApp::SdlBFApp()
 
     mInstallDir += "/";
 
-	mIsControlDown = false;
 	mSDLInitialized = false;
 
 
@@ -711,15 +723,27 @@ void SdlBFApp::SDLInit()
 		BF_GET_SDLPROC(SDL_RaiseWindow);
 	}
 
+	bf_SDL_SetHint(SDL_HINT_VIDEO_ALLOW_SCREENSAVER, "1");
+
 	if (!bf_SDL_Init(SDL_INIT_VIDEO | SDL_INIT_GAMEPAD))
 		printf("Unable to initialize SDL: %s\n", bf_SDL_GetError());
 
 	bf_SDL_SetHint(SDL_HINT_MOUSE_FOCUS_CLICKTHROUGH, "1");
+	bf_SDL_SetHint(SDL_HINT_MOUSE_DOUBLE_CLICK_RADIUS, "5");
 }
 
 SdlBFApp::~SdlBFApp()
 {
-	delete mSdlClipboardData;
+	for (const auto& kv :  mSdlClipboardData)
+	{
+		if (kv.mValue.owned)
+			bf_SDL_free(kv.mValue.ptr);
+	}
+
+	if (mSDLInitialized)
+	{
+		bf_SDL_Quit();
+	}
 }
 
 SdlBFWindow* SdlBFApp::GetSdlWindowFromId(uint32 id)
@@ -733,6 +757,8 @@ void SdlBFApp::ProcessSDLEvents()
 {
 	if (!mSDLInitialized)
 		return;
+
+	PushClipboardData();
 
 	SDL_Event sdlEvent;
 	while (bf_SDL_PollEvent(&sdlEvent))
@@ -760,7 +786,7 @@ void SdlBFApp::ProcessSDLEvents()
 				if(sdlBFWindow != NULL)
 				{
 					sdlBFWindow->mLostFocusFunc(sdlBFWindow);
-					mIsControlDown = false;
+					memset(sdlBFWindow->mIsKeyDown, 0, sizeof(sdlBFWindow->mIsKeyDown));
 				}
 			}
 			break;
@@ -791,6 +817,9 @@ void SdlBFApp::ProcessSDLEvents()
 		case SDL_EVENT_MOUSE_MOTION:
 			{
 				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.button.windowID);
+				if ((sdlBFWindow == NULL))
+					break;
+				
 				if ((sdlEvent.motion.xrel == 0) && (sdlEvent.motion.yrel == 0) && (!sdlBFWindow->mWindowReady))
 				{
 					// Ignore the initial mouse motion event that SDL sends when creating a window if it is under the mouse cursor
@@ -807,7 +836,7 @@ void SdlBFApp::ProcessSDLEvents()
 
 				//printf("Mouse motion in child window %p WindowReady: %d %f,%f Rel:%f,%f\n", sdlBFWindow, sdlBFWindow->mWindowReady, sdlEvent.motion.x, sdlEvent.motion.y, sdlEvent.motion.xrel, sdlEvent.motion.yrel);
 
-				if ((sdlBFWindow != NULL) && (sdlBFWindow->mWindowReady))
+				if ((sdlBFWindow->mWindowReady))
 				{
 					int x = (int)sdlEvent.button.x;
 					int y = (int)sdlEvent.button.y;
@@ -836,6 +865,13 @@ void SdlBFApp::ProcessSDLEvents()
 					RefreshMouseVisibility(sdlBFWindow);
 			}
 			break;
+		case SDL_EVENT_WINDOW_MOUSE_LEAVE:
+			{
+				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.window.windowID);
+				if(sdlBFWindow != NULL)
+					sdlBFWindow->mMouseLeaveFunc(sdlBFWindow);
+			}
+			break;
 		case SDL_EVENT_WINDOW_DESTROYED:
 			{
 				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(bf_SDL_GetWindowID(bf_SDL_GetMouseFocus()));
@@ -848,23 +884,27 @@ void SdlBFApp::ProcessSDLEvents()
 				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
 				if (sdlBFWindow != NULL)
 				{
-					sdlBFWindow->mKeyDownFunc(sdlBFWindow, SDLConvertKeyCode(sdlEvent.key.key), sdlEvent.key.repeat);
+					const int key = SDLConvertKeyCode(sdlEvent.key.key);
+					sdlBFWindow->mKeyDownFunc(sdlBFWindow, key, sdlEvent.key.repeat);
+					
+					if (key < KEYCODE_MAX)
+						sdlBFWindow->mIsKeyDown[key] = true;
+
 					switch (sdlEvent.key.key) // These keys are not handled by SDL_TEXTINPUT
 					{
 						case SDLK_RETURN:
 							sdlBFWindow->mKeyCharFunc(sdlBFWindow, '\n');
 							break;
 						case SDLK_BACKSPACE:
-							sdlBFWindow->mKeyCharFunc(sdlBFWindow, mIsControlDown ? '\x7F' : '\b');
-							break;
+						{
+							const bool isControlDown = (key < KEYCODE_MAX) && (sdlBFWindow->mIsKeyDown[KEY_CONTROL]);
+							sdlBFWindow->mKeyCharFunc(sdlBFWindow, isControlDown ? '\x7F' : '\b');
+						}
+						break;
+							
 						case SDLK_TAB:
 							sdlBFWindow->mKeyCharFunc(sdlBFWindow, '\t');
 							break;
-						case SDLK_LCTRL:
-							mIsControlDown = true;
-							break;
-
-						default:;
 					}
 				}
 			}
@@ -884,10 +924,13 @@ void SdlBFApp::ProcessSDLEvents()
 			{
 				SdlBFWindow* sdlBFWindow = GetSdlWindowFromId(sdlEvent.key.windowID);
 				if (sdlBFWindow != NULL)
-					sdlBFWindow->mKeyUpFunc(sdlBFWindow, SDLConvertKeyCode(sdlEvent.key.key));
+				{
+					const int key = SDLConvertKeyCode(sdlEvent.key.key);
+					sdlBFWindow->mKeyUpFunc(sdlBFWindow, key);
+					if (key < KEYCODE_MAX)
+						sdlBFWindow->mIsKeyDown[key] = false;
 
-				if (sdlEvent.key.key == SDLK_LCTRL)
-					mIsControlDown = false;
+				}
 			}
 			break;
 		case SDL_EVENT_WINDOW_MOVED:
@@ -1099,6 +1142,23 @@ void SdlBFWindow::SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVis
 	// Not supported
 }
 
+void SdlBFWindow::LostFocus(BFWindow* newFocus)
+{
+	constexpr int MODE_KEYS[] = {KEY_SHIFT, KEY_CONTROL, KEY_ALT};
+
+	if (newFocus == NULL)
+		return;
+
+	for (const auto key : MODE_KEYS)
+	{
+		if (!mIsKeyDown[key])
+			continue;
+
+		newFocus->mIsKeyDown[key] = true;
+		newFocus->mKeyDownFunc(newFocus, key, 0);
+	}
+}
+
 const char* SdlBFApp::GetClipboardFormat(const StringImpl& format)
 {
 	if (format == "text" || format == "atext")
@@ -1107,8 +1167,7 @@ const char* SdlBFApp::GetClipboardFormat(const StringImpl& format)
 	}
 	if (format == "bf_text")
 	{
-		// This format is a hack to fix broken clipboards on Windows, not needed here
-		return "";
+		return "text/vnd.beeflang.bf-text";
 	}
 	if (format == "code/file-list")
 	{
@@ -1133,27 +1192,92 @@ void SdlBFApp::ReleaseClipboardData(void* ptr)
 	bf_SDL_free(ptr);
 }
 
-const void* SDLClipboardCallback(void* userData, const char* mimeType, size_t* outSize)
+const void* SDLClipboardDataCallback(void* userData, const char* mimeType, size_t* outSize)
 {
-	SdlClipboardData* clipboard = *(SdlClipboardData**)userData;
+	SdlClipboardData* clipboard = (SdlClipboardData*)userData;
 
-	void* data;
+	ClipboardEntry data;
 	if (clipboard->TryGetValue(StringImpl::MakeRef(mimeType), &data))
 	{
-		*outSize = strlen((const char*) data);
+		*outSize = data.size;
+		return data.ptr;
 	}
-	return data;
+
+	*outSize = 0;
+	return NULL;
+}
+
+void SDLClipboardCleanupCallback(void* userData)
+{
+	if (userData == NULL)
+		return;
+
+	SdlClipboardData* clipboard = (SdlClipboardData*)userData;
+
+	for (const auto& kv : *clipboard)
+	{
+		if (kv.mValue.owned)
+			bf_SDL_free(kv.mValue.ptr);
+	}
+	delete clipboard;
+}
+
+// Some DEs have problem when we call multiple SDL_SetClipboardData in same tick
+// so we batch them and send them only once
+void SdlBFApp::PushClipboardData()
+{
+	constexpr const char* TEXT_MIME_TYPES[] = {
+		"text/plain;charset=utf-8",
+		"TEXT",
+		"UTF8_STRING",
+		"STRING"
+	};
+
+	if (mSdlClipboardData.IsEmpty())
+		return;
+
+	SdlClipboardData* clipboard = new SdlClipboardData();
+	for (const auto& kv : mSdlClipboardData)
+	{
+		StringImpl* keyPtr;
+		ClipboardEntry* entryPtr;
+
+		if (!clipboard->TryAdd(kv.mKey, &keyPtr, &entryPtr))
+		{
+			if (entryPtr->owned)
+				bf_SDL_free(entryPtr->ptr);
+		}
+		*entryPtr = kv.mValue;
+
+		if (kv.mKey == "text/plain")
+		{
+			ClipboardEntry alias = kv.mValue;
+			alias.owned = false;
+
+			for (const auto& aliasMimeType : TEXT_MIME_TYPES)
+			{
+				if (!clipboard->TryAdd(aliasMimeType, &keyPtr, &entryPtr))
+				{
+					if (entryPtr->owned)
+						bf_SDL_free(entryPtr->ptr);
+				}
+				*entryPtr = alias;
+			}
+		}
+	}
+	mSdlClipboardData.Clear();
+
+	Array<const char*> mimeTypes;
+	for (const auto& kv : *clipboard)
+		mimeTypes.Add(kv.mKey.c_str());
+
+	//printf("SetClipboardData %s: %.*s\n", mime.c_str(), size, (const char*)ptr);
+
+	bf_SDL_SetClipboardData(SDLClipboardDataCallback, SDLClipboardCleanupCallback, clipboard, &mimeTypes[0], mimeTypes.Count());
 }
 
 void SdlBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int size, bool resetClipboard)
 {
-	if (format == "text")
-	{
-		StringImpl str((const char*)ptr, size);
-		bf_SDL_SetClipboardText(str.c_str());
-		return;
-	}
-
 	StringImpl mime = StringImpl::MakeRef(GetClipboardFormat(format));
 	if (mime.empty())
 	{
@@ -1163,20 +1287,20 @@ void SdlBFApp::SetClipboardData(const StringImpl& format, const void* ptr, int s
 
 	void* buffer = bf_SDL_malloc(size);
 	if (buffer == NULL)
-	{
-		bf_SDL_SetError("Out of memory for clipboard");
-	}
+		return;
 
-	for (auto kv : *mSdlClipboardData)
-	{
-		bf_SDL_free(kv.mValue);
-	}
 	bf_SDL_memcpy(buffer, ptr, size);
-	(*mSdlClipboardData)[mime] = buffer;
 
-	//printf("SetClipboardData %s: %.*s\n", mime.c_str(), size, (const char*)ptr);
-
-	bf_SDL_SetClipboardData(SDLClipboardCallback, NULL, &mSdlClipboardData, mimeTypes, 3);
+	StringImpl* keyPtr;
+	ClipboardEntry* entryPtr;
+	if (!mSdlClipboardData.TryAdd(mime, &keyPtr, &entryPtr))
+	{
+		if (entryPtr->owned)
+			bf_SDL_free(entryPtr->ptr);
+	}
+	entryPtr->ptr = buffer;
+	entryPtr->size = size;
+	entryPtr->owned = true;
 }
 
 BFMenu* SdlBFWindow::AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck)

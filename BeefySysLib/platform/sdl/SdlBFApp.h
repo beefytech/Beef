@@ -22,7 +22,7 @@ public:
 	bool 					mHasPositionInit;
 	bool                    mIsMouseVisible;
 	bool					mWindowReady;
-
+	bool					mIsKeyDown[KEYCODE_MAX];
 public:
 	SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags);
 	~SdlBFWindow();
@@ -44,7 +44,7 @@ public:
 	virtual void			ModifyMenuItem(BFMenu* item, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck) override {}
 	virtual void			RemoveMenuItem(BFMenu* item) override;
 
-	virtual void			LostFocus(BFWindow* newFocus) override {};
+	virtual void			LostFocus(BFWindow* newFocus) override;
 
 	virtual void			ModalsRemoved() override;
 
@@ -54,18 +54,24 @@ public:
 };
 
 typedef Dictionary<uint32, SdlBFWindow*> SdlWindowMap;
-typedef Dictionary<StringImpl, void*> SdlClipboardData;
+struct ClipboardEntry
+{
+	void* ptr;
+	int size;
+	bool owned;
+};
+typedef Dictionary<StringImpl, ClipboardEntry> SdlClipboardData;
 
 class SdlBFApp : public BFApp
 {
 public:
-	bool					mInMsgProc;
-	bool 					mIsControlDown;
 	SdlWindowMap			mSdlWindowMap;
-	SdlClipboardData*       mSdlClipboardData;
+	SdlClipboardData        mSdlClipboardData;
 	SDL_GLContext           mGLContext;
 	SDL_Window*				mGLContextWindow;
+	bool					mInMsgProc;
 	bool					mSDLInitialized;
+
 
 protected:
 	void					SDLInit();
@@ -75,6 +81,7 @@ protected:
 	const char*				GetClipboardFormat(const StringImpl& format);
 	SdlBFWindow*			GetSdlWindowFromId(uint32 id);
 	void					ProcessSDLEvents();
+	void					PushClipboardData();
 
 protected:
 	virtual void			Update(bool batchStart) override;
