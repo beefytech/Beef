@@ -10,11 +10,9 @@ using Beefy.theme.dark;
 
 namespace IDE.ui
 {
-    public abstract class TextPanel : Panel
+    public abstract class TextPanel : ContentPanel
     {
         public HoverWatch mHoverWatch;
-		public bool mDisposed;
-		public int32 mLastFocusTick;
 
         public abstract SourceEditWidget EditWidget
         {
@@ -28,7 +26,7 @@ namespace IDE.ui
 			Widget.RemoveAndDelete(mQuickFind);
 		}
 
-        public virtual bool EscapeHandler()
+        public override bool EscapeHandler()
         {
             if (mHoverWatch != null)
             {
@@ -52,26 +50,18 @@ namespace IDE.ui
             return false;
         }
 
-        public virtual void Dispose()
+        public override void Dispose()
         {
             if (mQuickFind != null)
             {
-                // 
+                //
             }
 
             if (mHoverWatch != null)
                 mHoverWatch.Close();
 
-			mDisposed = true;
+			base.Dispose();
         }
-
-		public override void ParentDeleted()
-		{
-			if (!mDisposed)
-				Dispose();
-
-			base.ParentDeleted();
-		}
 
         public virtual void EditGotFocus()
         {
@@ -210,11 +200,6 @@ namespace IDE.ui
             ResizeComponents();
         }
 
-        public virtual void RecordHistoryLocation(bool ignoreIfClose = false)
-        {
-
-        }
-
         public override void Update()
         {
             base.Update();
@@ -225,11 +210,6 @@ namespace IDE.ui
 				Debug.Assert(mHoverWatch.mTextPanel == this);
 			}
         }
-
-		public virtual void Clear()
-		{
-
-		}
     }
 
 	class EmptyTextPanel : TextPanel

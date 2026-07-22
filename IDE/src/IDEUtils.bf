@@ -791,11 +791,52 @@ namespace IDE
 
 		static Result<bool> IsBinaryData(Span<uint8> data)
 		{
-			for (var b in data)
+			int len = data.Length;
+			if (len == 0)
+				return false; // Empty file - treat as text
+
+			uint8* ptr = data.Ptr;
+
+			// A recognized text byte-order mark means the file is text, even if it contains NUL
+			//  bytes (as UTF-16/UTF-32 encodings do)
+			if ((len >= 3) && (ptr[0] == 0xEF) && (ptr[1] == 0xBB) && (ptr[2] == 0xBF))
+				return false; // UTF-8 BOM
+			if ((len >= 4) && (ptr[0] == 0xFF) && (ptr[1] == 0xFE) && (ptr[2] == 0x00) && (ptr[3] == 0x00))
+				return false; // UTF-32 LE BOM
+			if ((len >= 4) && (ptr[0] == 0x00) && (ptr[1] == 0x00) && (ptr[2] == 0xFE) && (ptr[3] == 0xFF))
+				return false; // UTF-32 BE BOM
+			if ((len >= 2) && (ptr[0] == 0xFF) && (ptr[1] == 0xFE))
+				return false; // UTF-16 LE BOM
+			if ((len >= 2) && (ptr[0] == 0xFE) && (ptr[1] == 0xFF))
+				return false; // UTF-16 BE BOM
+
+			int suspiciousCount = 0;
+			for (int i = 0; i < len; i++)
 			{
+				uint8 b = ptr[i];
+
+				// A NUL byte is a strong, reliable indicator of binary content
 				if (b == 0)
 					return true;
+
+				// Count control characters that essentially never occur in text files.
+				//  Common text controls (tab, LF, VT, FF, CR) are excluded.
+				if (b < 0x20)
+				{
+					switch (b)
+					{
+					case 0x09, 0x0A, 0x0B, 0x0C, 0x0D: // tab, LF, VT, FF, CR
+					default:
+						suspiciousCount++;
+					}
+				}
 			}
+
+			// Be conservative: only report binary if a substantial fraction of the sample
+			//  consists of unexpected control characters. (High bytes >= 0x80 are NOT counted,
+			//  since they legitimately appear in UTF-8 and other extended text encodings.)
+			if (suspiciousCount * 100 / len >= 30)
+				return true;
 
 			return false;
 		}

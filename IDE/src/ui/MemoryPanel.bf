@@ -620,6 +620,7 @@ namespace IDE.ui
     public class MemoryContentProvider : IBinaryDataContentProvider
     {
         public bool IsReadOnly { get { return false; } }
+        public int DataSize { get { return (int)int64.MaxValue; } } // Process memory is effectively unbounded
 
         public uint8[] ReadBinaryData(int offset, int32 size)
         {
@@ -669,6 +670,7 @@ namespace IDE.ui
             mBinaryDataWidget.TrackedExpressionsUpdated.Add(new => OnTrackedExpressionsUpdated);
             mBinaryDataWidget.OnKeyCursorUpdated.Add(new => OnBinaryDataKeyCursorUpdated);
             mBinaryDataWidget.OnActiveWidthChanged.Add(new => OnBinaryDataActiveWidthChanged);
+            mBinaryDataWidget.InitGotoButton();
 			mBinaryDataWidget.mOnGotoAddress.Add(new => GotoAddress);
 
             /*mAddressEditWidget = new DarkEditWidget();
@@ -754,6 +756,8 @@ namespace IDE.ui
 			
 
             //RebuildUI();
+
+			SetDisabled(true);
         }
 
         void ToggleAutoExprRefresh()

@@ -1327,12 +1327,12 @@ namespace IDE
 						}
 					}
 				});
-			WithSourceViewPanels(scope (sourceViewPanel) =>
+			WithContentPanels(scope (contentPanel) =>
 				{
-					if (sourceViewPanel.HasUnsavedChanges())
+					if (contentPanel.HasUnsavedChanges())
 					{
 						var fileName = scope String();
-						Path.GetFileName(sourceViewPanel.mFilePath, fileName);
+						Path.GetFileName(contentPanel.mFilePath, fileName);
 						if (fileName.IsWhiteSpace)
 							fileName.Set("untitled");
 						if (!changedList.Contains(fileName))
@@ -1410,12 +1410,12 @@ namespace IDE
 
 			List<String> changedList = scope List<String>();
 			defer ClearAndDeleteItems(changedList);
-			WithSourceViewPanelsOf(window, scope (sourceViewPanel) =>
+			WithContentPanelsOf(window, scope (contentPanel) =>
 				{
-					if (sourceViewPanel.HasUnsavedChanges())
+					if (contentPanel.HasUnsavedChanges())
 					{
 						var fileName = new String();
-						Path.GetFileName(sourceViewPanel.mFilePath, fileName);
+						Path.GetFileName(contentPanel.mFilePath, fileName);
 						changedList.Add(fileName);
 					}
 				});
@@ -1431,10 +1431,10 @@ namespace IDE
 					bool hadError = false;
 					// We use a close delay after saving so the user can see we actually saved before closing down
 					var _this = this;
-					WithSourceViewPanelsOf(window, scope [&] (sourceViewPanel) =>
+					WithContentPanelsOf(window, scope [&] (contentPanel) =>
 						{
-							if ((!hadError) && (sourceViewPanel.HasUnsavedChanges()))
-								if (!_this.SaveFile(sourceViewPanel))
+							if ((!hadError) && (contentPanel.HasUnsavedChanges()))
+								if (!_this.SaveFile(contentPanel))
 									hadError = true;
 						});
 					if (hadError)
@@ -1445,10 +1445,10 @@ namespace IDE
 			aDialog.AddButton("Don't Save", new (evt) =>
 				{
 					var _this = this;
-					WithSourceViewPanelsOf(window, scope [&] (sourceViewPanel) =>
+					WithContentPanelsOf(window, scope [&] (contentPanel) =>
 						{
-							if (sourceViewPanel.HasUnsavedChanges())
-								_this.RevertSourceViewPanel(sourceViewPanel);
+							if (contentPanel.HasUnsavedChanges())
+								_this.RevertContentPanel(contentPanel);
 						});
 					CloseTabs();
 					CloseWindow();
@@ -1769,6 +1769,16 @@ namespace IDE
 					}
 				}
 			}
+			return true;
+		}
+
+		/// Saves any content panel (source or binary)
+		public bool SaveFile(ContentPanel contentPanel)
+		{
+			if (let sourceViewPanel = contentPanel as SourceViewPanel)
+				return SaveFile(sourceViewPanel);
+			if (let binaryDataPanel = contentPanel as BinaryDataPanel)
+				return binaryDataPanel.Save();
 			return true;
 		}
 
@@ -3537,7 +3547,7 @@ namespace IDE
 			if (data.GetBool("DefaultDocumentsTabbedView"))
 				mActiveDocumentsTabbedView = tabbedView;
 
-			SourceViewTabButton activeTab = null;
+			ContentTabButton activeTab = null;
 			for ( data.Enumerate("Tabs"))
 			{
 				Panel panel = Panel.Create(data);
@@ -3547,7 +3557,7 @@ namespace IDE
 
 				bool isActive = data.GetBool("Active");
 
-				var newTabButton = new SourceViewTabButton();
+				var newTabButton = new ContentTabButton();
 				newTabButton.Label = "";
 				data.GetString("TabLabel", newTabButton.mLabel);
 				newTabButton.mIsPinned = data.GetBool("TabIsPinned");
@@ -3860,7 +3870,13 @@ namespace IDE
 		{
 			var sourceViewPanel = GetActiveSourceViewPanel();
 			if (sourceViewPanel != null)
+			{
 				SaveFile(sourceViewPanel);
+				return;
+			}
+
+			if (let binaryDataPanel = GetActivePanel() as BinaryDataPanel)
+				SaveFile(binaryDataPanel);
 		}
 
 		[IDECommand]
@@ -3987,9 +4003,9 @@ namespace IDE
 		{
 			bool success = true;
 
-			WithSourceViewPanels(scope [&] (sourceViewPanel) =>
+			WithContentPanels(scope [&] (contentPanel) =>
 				{
-					success &= SaveFile(sourceViewPanel);
+					success &= SaveFile(contentPanel);
 				});
 			mWorkspace.WithProjectItems(scope [&] (projectItem) =>
 				{
@@ -4349,6 +4365,10 @@ namespace IDE
 			if (let memoryPanel = activePanel as MemoryPanel)
 			{
 				memoryPanel.GotoAddress();
+			}
+			else if (let binaryDataPanel = activePanel as BinaryDataPanel)
+			{
+				binaryDataPanel.ShowGotoOffset();
 			}
 		}
 
@@ -6683,7 +6703,7 @@ namespace IDE
 		public Widget GetActiveDocumentPanel()
 		{
 			var activePanel = GetActivePanel();
-			if ((activePanel is SourceViewPanel) || (activePanel is DisassemblyPanel))
+			if ((activePanel is SourceViewPanel) || (activePanel is DisassemblyPanel) || (activePanel is BinaryDataPanel))
 				return activePanel;
 			return null;
 		}
@@ -6699,7 +6719,7 @@ namespace IDE
 				if (activeTab != null)
 				{
 					var lastActivePanel = activeTab.mContent;
-					if ((lastActivePanel is SourceViewPanel) || (lastActivePanel is DisassemblyPanel))
+					if ((lastActivePanel is SourceViewPanel) || (lastActivePanel is DisassemblyPanel) || (activePanel is BinaryDataPanel))
 						return lastActivePanel;
 				}
 			}
@@ -6747,6 +6767,22 @@ namespace IDE
 				WithSourceViewPanelsOf(window, func);
 		}
 
+		public void WithContentPanelsOf(BFWindow window, delegate void(ContentPanel) func)
+		{
+			WithTabsOf(window, scope (tab) =>
+				{
+					var contentPanel = tab.mContent as ContentPanel;
+					if (contentPanel != null)
+						func(contentPanel);
+				});
+		}
+
+		public void WithContentPanels(delegate void(ContentPanel) func)
+		{
+			for (let window in mWindows)
+				WithContentPanelsOf(window, func);
+		}
+
 		TabbedView.TabButton SetupTab(TabbedView tabView, String name, float width, Widget content, bool ownsContent) // 2
 		{
 			TabbedView.TabButton tabButton = tabView.AddTab(name, width, content, ownsContent, GetTabInsertIndex(tabView));
@@ -6790,7 +6826,7 @@ namespace IDE
 			disassemblyPanel = new DisassemblyPanel();
 			//diassemblyPanel.Show(filePath);
 
-			var newTabButton = new SourceViewTabButton();
+			var newTabButton = new ContentTabButton();
 			newTabButton.Label = DisassemblyPanel.sPanelName;
 			newTabButton.mWantWidth = newTabButton.GetWantWidth();
 			newTabButton.mHeight = tabbedView.mTabHeight;
@@ -6826,7 +6862,7 @@ namespace IDE
 			return index;
 		}
 
-		public class SourceViewTabButton : DarkTabbedView.DarkTabButton
+		public class ContentTabButton : DarkTabbedView.DarkTabButton
 		{
 			public bool mIsTemp;
 
@@ -6848,6 +6884,8 @@ namespace IDE
 					bool isFillWidget = false;
 					if (mContent is SourceViewPanel)
 						isFillWidget = true;
+					if (mContent is BinaryDataPanel)
+						isFillWidget = true;
 					if (mContent is DisassemblyPanel)
 						isFillWidget = true;
 
@@ -6866,38 +6904,47 @@ namespace IDE
 				if (mWidth < mWantWidth / 2)
 					return;
 
-				var sourceViewPanel = mContent as SourceViewPanel;
-				if (sourceViewPanel != null)
+				// Unsaved-changes indicator works for any content panel (source or binary)
+				bool drewIndicator = false;
+				if (let contentPanel = mContent as ContentPanel)
 				{
-					if (sourceViewPanel.HasUnsavedChanges())
+					if (contentPanel.HasUnsavedChanges())
 					{
 						g.SetFont(IDEApp.sApp.mTinyCodeFont);
 						g.DrawString("*", mWantWidth - DarkTheme.sUnitSize + GS!(2), 0);
-					}
-					else if (sourceViewPanel.mLoadFailed)
-					{
-						g.SetFont(IDEApp.sApp.mCodeFont);
-						using (g.PushColor(0xFFFF8080))
-							g.DrawString("!", mWantWidth - DarkTheme.sUnitSize, 0);
+						drewIndicator = true;
 					}
 				}
-				else if (let findResultsPanel = mContent as FindResultsPanel)
+
+				if (!drewIndicator)
 				{
-					if (findResultsPanel.IsSearching)
+					if (let sourceViewPanel = mContent as SourceViewPanel)
 					{
-						g.SetFont(IDEApp.sApp.mTinyCodeFont);
-						String rotChars = @"/-\|";
-						StringView sv = .(rotChars, (mUpdateCnt / 16) % 4, 1);
-						g.DrawString(sv, mWantWidth - DarkTheme.sUnitSize, 0);
+						if (sourceViewPanel.mLoadFailed)
+						{
+							g.SetFont(IDEApp.sApp.mCodeFont);
+							using (g.PushColor(0xFFFF8080))
+								g.DrawString("!", mWantWidth - DarkTheme.sUnitSize, 0);
+						}
 					}
-				}
-				else if (let profilePanel = mContent as ProfilePanel)
-				{
-					if (profilePanel.IsSamplingHidden)
+					else if (let findResultsPanel = mContent as FindResultsPanel)
 					{
-						//using (g.PushColor(((mUpdateCnt / 20) % 2 == 0) ? 0xFFF0F0F0 : 0xFFFFFFFF))
-						using (g.PushColor(0x80FFFFFF))
-							g.Draw(DarkTheme.sDarkTheme.GetImage(.RedDot), GS!(8), GS!(0));
+						if (findResultsPanel.IsSearching)
+						{
+							g.SetFont(IDEApp.sApp.mTinyCodeFont);
+							String rotChars = @"/-\|";
+							StringView sv = .(rotChars, (mUpdateCnt / 16) % 4, 1);
+							g.DrawString(sv, mWantWidth - DarkTheme.sUnitSize, 0);
+						}
+					}
+					else if (let profilePanel = mContent as ProfilePanel)
+					{
+						if (profilePanel.IsSamplingHidden)
+						{
+							//using (g.PushColor(((mUpdateCnt / 20) % 2 == 0) ? 0xFFF0F0F0 : 0xFFFFFFFF))
+							using (g.PushColor(0x80FFFFFF))
+								g.Draw(DarkTheme.sDarkTheme.GetImage(.RedDot), GS!(8), GS!(0));
+						}
 					}
 				}
 
@@ -7003,9 +7050,9 @@ namespace IDE
 				Point point;
 				if (DarkTooltipManager.CheckMouseover(this, 25, out point))
 				{
-					var sourceViewPanel = mContent as SourceViewPanel;
-					if ((sourceViewPanel != null) && (sourceViewPanel.mFilePath != null))
-						DarkTooltipManager.ShowTooltip(sourceViewPanel.mFilePath, this, point.x, 14);
+					var contentPanel = mContent as ContentPanel;
+					if ((contentPanel != null) && (contentPanel.mFilePath != null))
+						DarkTooltipManager.ShowTooltip(contentPanel.mFilePath, this, point.x, 14);
 				}
 			}
 		}
@@ -7260,6 +7307,14 @@ namespace IDE
 
 		public (SourceViewPanel panel, TabbedView.TabButton tabButton) ShowSourceFile(String filePath, ProjectSource projectSource = null, SourceShowType showType = SourceShowType.ShowExisting, bool setFocus = true)
 		{
+			// Binary files load into a BinaryDataPanel rather than a SourceViewPanel, in which case
+			//  the source-view result is null (the file still successfully opened).
+			var (panel, tabButton) = ShowContentFile(filePath, projectSource, showType, setFocus);
+			return (panel as SourceViewPanel, tabButton);
+		}
+
+		public (ContentPanel panel, TabbedView.TabButton tabButton) ShowContentFile(String filePath, ProjectSource projectSource = null, SourceShowType showType = SourceShowType.ShowExisting, bool setFocus = true)
+		{
 			DeleteAndNullify!(mDeferredShowSource);
 
 			//TODO: PUT BACK!
@@ -7294,8 +7349,8 @@ namespace IDE
 			if ((useFilePath == null) & (showType != .New))
 				return (null, null);
 
-			SourceViewPanel sourceViewPanel = null;
-			DarkTabbedView.DarkTabButton sourceViewPanelTab = null;
+			ContentPanel contentPanel = null;
+			DarkTabbedView.DarkTabButton contentPanelTab = null;
 
 			if ((useProjectSource == null) && (useFilePath != null))
 			{
@@ -7319,21 +7374,21 @@ namespace IDE
 				delegate void(TabbedView.TabButton) tabFunc = scope [&] (tabButton) =>
 					{
 						var darkTabButton = (DarkTabbedView.DarkTabButton)tabButton;
-						if (tabButton.mContent is SourceViewPanel)
+						if (tabButton.mContent is ContentPanel)
 						{
-							var checkSourceViewPanel = (SourceViewPanel)tabButton.mContent;
+							var checkContentPanel = (ContentPanel)tabButton.mContent;
 
-							if (checkSourceViewPanel.FileNameMatches(useFilePath))
+							if (checkContentPanel.FileNameMatches(useFilePath))
 							{
-								if (sourceViewPanel != null)
+								if (contentPanel != null)
 								{
 									// Already found one that matches our active tabbed view?
-									if (sourceViewPanelTab.mTabbedView == mActiveDocumentsTabbedView)
+									if (contentPanelTab.mTabbedView == mActiveDocumentsTabbedView)
 										return;
 								}
 
-								sourceViewPanel = checkSourceViewPanel;
-								sourceViewPanelTab = darkTabButton;
+								contentPanel = checkContentPanel;
+								contentPanelTab = darkTabButton;
 							}
 						}
 					};
@@ -7345,60 +7400,91 @@ namespace IDE
 				else
 					WithTabs(tabFunc);
 
-				if (sourceViewPanelTab != null)
+				if (contentPanelTab != null)
 				{
 					//matchedTabButton = tabButton;
-					if ((sourceViewPanelTab.mIsRightTab) && (showType != SourceShowType.Temp))
+					if ((contentPanelTab.mIsRightTab) && (showType != SourceShowType.Temp))
 					{
-						MakeTabPermanent(sourceViewPanelTab);
+						MakeTabPermanent(contentPanelTab);
 					}
 
-					if ((useProjectSource != null) &&
-						(sourceViewPanel.mProjectSource != useProjectSource))
+					if (var sourceViewPanel = contentPanel as SourceViewPanel)
 					{
-						//TODO: Change project source in view
-						sourceViewPanel.AttachToProjectSource(useProjectSource);
-						//sourceViewPanel.mProjectSource = useProjectSource;
-						//sourceViewPanel.QueueFullRefresh(true);
+						if ((useProjectSource != null) &&
+							(sourceViewPanel.mProjectSource != useProjectSource))
+						{
+							//TODO: Change project source in view
+							sourceViewPanel.AttachToProjectSource(useProjectSource);
+							//sourceViewPanel.mProjectSource = useProjectSource;
+							//sourceViewPanel.QueueFullRefresh(true);
+						}
 					}
 
-					ActivateWindow(sourceViewPanelTab.mWidgetWindow);
-					sourceViewPanelTab.Activate(setFocus);
-					sourceViewPanelTab.mTabbedView.FinishTabAnim();
+					ActivateWindow(contentPanelTab.mWidgetWindow);
+					contentPanelTab.Activate(setFocus);
+					contentPanelTab.mTabbedView.FinishTabAnim();
 					if (setFocus)
-						sourceViewPanel.FocusEdit();
+					{
+						if (var sourceViewPanel = contentPanel as SourceViewPanel)
+							sourceViewPanel.FocusEdit();
+						else
+							contentPanel.SetFocus();
+					}
 
-					sourceViewPanel.CheckEmitRevision();
+					if (var sourceViewPanel = contentPanel as SourceViewPanel)
+						sourceViewPanel.CheckEmitRevision();
 				}
 			}
 
-			if (sourceViewPanel != null)
-				return (sourceViewPanel, sourceViewPanelTab);
+			if (contentPanel != null)
+				return (contentPanel, contentPanelTab);
 
 			//ShowSourceFile(filePath, projectSource, showTemp, setFocus);
 
 			DarkTabbedView tabbedView = GetDefaultDocumentTabbedView();
 			ActivateWindow(tabbedView.mWidgetWindow);
-			sourceViewPanel = new SourceViewPanel();
-			bool success;
-			if (useProjectSource != null)
+
+			bool isBinary = false;
+			if (useFilePath != null)
 			{
-				success = sourceViewPanel.Show(useProjectSource, !mInitialized);
+				if (IDEUtils.IsBinaryFile(useFilePath) case .Ok(let val))
+					isBinary = val;
+			}
+
+			if (isBinary)
+			{
+				var binaryDataPanel = new BinaryDataPanel();
+				if (!binaryDataPanel.Show(useFilePath))
+				{
+					delete binaryDataPanel;
+					return (null, null);
+				}
+				contentPanel = binaryDataPanel;
 			}
 			else
-				success = sourceViewPanel.Show(useFilePath, !mInitialized);
-			sourceViewPanel.mEmitRevision = emitRevision;
-			if (emitRevision != -1)
-				sourceViewPanel.mEditWidget.mEditWidgetContent.mIsReadOnly = true;
-
-			if (!success)
 			{
-				sourceViewPanel.Close();
-				delete sourceViewPanel;
-				return (null, null);
+				var sourceViewPanel = new SourceViewPanel();
+				bool success;
+				if (useProjectSource != null)
+				{
+					success = sourceViewPanel.Show(useProjectSource, !mInitialized);
+				}
+				else
+					success = sourceViewPanel.Show(useFilePath, !mInitialized);
+				sourceViewPanel.mEmitRevision = emitRevision;
+				if (emitRevision != -1)
+					sourceViewPanel.mEditWidget.mEditWidgetContent.mIsReadOnly = true;
+
+				if (!success)
+				{
+					sourceViewPanel.Close();
+					delete sourceViewPanel;
+					return (null, null);
+				}
+				contentPanel = sourceViewPanel;
 			}
 
-			var newTabButton = new SourceViewTabButton();
+			var newTabButton = new ContentTabButton();
 			newTabButton.Label = "";
 			if (useFilePath != null)
 				Path.GetFileName(useFilePath, newTabButton.mLabel);
@@ -7406,7 +7492,7 @@ namespace IDE
 				newTabButton.mLabel.Set("untitled");
 			newTabButton.mWantWidth = newTabButton.GetWantWidth();
 			newTabButton.mHeight = tabbedView.mTabHeight;
-			newTabButton.mContent = sourceViewPanel;
+			newTabButton.mContent = contentPanel;
 
 			if (showType == SourceShowType.Temp)
 			{
@@ -7426,14 +7512,19 @@ namespace IDE
 			}
 			else
 				tabbedView.AddTab(newTabButton, GetTabInsertIndex(tabbedView));
-			newTabButton.mCloseClickedEvent.Add(new () => DocumentCloseClicked(sourceViewPanel));
+			newTabButton.mCloseClickedEvent.Add(new () => DocumentCloseClicked(contentPanel));
 			newTabButton.Activate(setFocus);
-			if ((setFocus) && (sourceViewPanel.mWidgetWindow != null))
-				sourceViewPanel.FocusEdit();
+			if ((setFocus) && (contentPanel.mWidgetWindow != null))
+			{
+				if (var sourceViewPanel = contentPanel as SourceViewPanel)
+					sourceViewPanel.FocusEdit();
+				else
+					contentPanel.SetFocus();
+			}
 
 			mErrorsPanel?.OnSourceViewOpened();
 
-			return (sourceViewPanel, newTabButton);
+			return (contentPanel, newTabButton);
 		}
 
 		int GetRecentFilesIdx(String filePath)
@@ -7564,34 +7655,44 @@ namespace IDE
 
 		void DocumentCloseClicked(Widget documentPanel)
 		{
-			var sourceViewPanel = documentPanel as SourceViewPanel;
-			if (sourceViewPanel == null)
+			var contentPanel = documentPanel as ContentPanel;
+			if (contentPanel == null)
 			{
 				CloseDocument(documentPanel);
 				return;
 			}
 
-			// This is a test
-			// This is a test
+			// For source panels, only prompt if this is the last view of the underlying data
+			bool isLastView = true;
+			if (let sourceViewPanel = contentPanel as SourceViewPanel)
+				isLastView = sourceViewPanel.IsLastViewOfData();
 
-			if ((!sourceViewPanel.HasUnsavedChanges()) || (!sourceViewPanel.IsLastViewOfData()))
+			if ((!contentPanel.HasUnsavedChanges()) || (!isLastView))
 			{
-				CloseDocument(sourceViewPanel);
+				CloseDocument(contentPanel);
 				return;
 			}
 
-			// This is a test
-
 			String fileName = scope String();
-			if (sourceViewPanel.mFilePath != null)
-				Path.GetFileName(sourceViewPanel.mFilePath, fileName);
+			if (contentPanel.mFilePath != null)
+				Path.GetFileName(contentPanel.mFilePath, fileName);
 			else
 				fileName.Append("untitled");
 			Dialog aDialog = ThemeFactory.mDefault.CreateDialog("Save file?", scope String()..AppendF("Save changes to '{0}' before closing?", fileName), DarkTheme.sDarkTheme.mIconWarning);
-			aDialog.mDefaultButton = aDialog.AddButton("Save", new (evt) => { SaveFile(sourceViewPanel); CloseDocument(sourceViewPanel); });
-			aDialog.AddButton("Don't Save", new (evt) => CloseDocument(sourceViewPanel));
+			aDialog.mDefaultButton = aDialog.AddButton("Save", new (evt) => { SaveFile(contentPanel); CloseDocument(contentPanel); });
+			// CloseDocument handles reverting a source panel; a binary panel's in-memory edits are simply discarded on close
+			aDialog.AddButton("Don't Save", new (evt) => CloseDocument(contentPanel));
 			aDialog.mEscButton = aDialog.AddButton("Cancel");
 			aDialog.PopupWindow(mMainWindow);
+		}
+
+		/// Reverts unsaved changes in any content panel (source or binary)
+		void RevertContentPanel(ContentPanel contentPanel)
+		{
+			if (let sourceViewPanel = contentPanel as SourceViewPanel)
+				RevertSourceViewPanel(sourceViewPanel);
+			else if (let binaryDataPanel = contentPanel as BinaryDataPanel)
+				binaryDataPanel.RevertChanges();
 		}
 
 		void RevertSourceViewPanel(SourceViewPanel sourceViewPanel)
@@ -8010,7 +8111,7 @@ namespace IDE
 			var (sourceViewPanel, tabButton) = ShowSourceFile(useFilePath, null, showTemp ? SourceShowType.Temp : SourceShowType.ShowExisting);
 			if (sourceViewPanel == null)
 				return null;
-			if (((filePath.StartsWith("$")) && (var svTabButton = tabButton as SourceViewTabButton)))
+			if (((filePath.StartsWith("$")) && (var svTabButton = tabButton as ContentTabButton)))
 				svTabButton.mIsTemp = true;
 			sourceViewPanel.ShowHotFileIdx(showHotIdx);
 			sourceViewPanel.ShowFileLocation(refHotIdx, Math.Max(0, line), Math.Max(0, column), hilitePosition);
@@ -8181,7 +8282,7 @@ namespace IDE
 				{
 					sourceViewPanel.mIsSourceCode = true; // It's always source code, even if there is no extension (ie: stl types like "vector")
 
-					if ((aliasFilePath != null) && (var svTabButton = tabButton as SourceViewTabButton))
+					if ((aliasFilePath != null) && (var svTabButton = tabButton as ContentTabButton))
 					{
 						svTabButton.mIsTemp = true;
 					}
@@ -12220,7 +12321,7 @@ namespace IDE
 			bool hasTempFiles = false;
 			WithTabs(scope [&] (tabButton) =>
 				{
-					if (var svTabButton = tabButton as SourceViewTabButton)
+					if (var svTabButton = tabButton as ContentTabButton)
 					{
 						if (svTabButton.mIsTemp)
 							hasTempFiles = true;
@@ -12233,10 +12334,10 @@ namespace IDE
 					"Do you want to close temporary files opened from the debugger?");
 				dialog.mDefaultButton = dialog.AddButton("Yes", new (evt) =>
 					{
-						List<SourceViewTabButton> closeTabs = scope .();
+						List<ContentTabButton> closeTabs = scope .();
 						WithTabs(scope [&] (tabButton) =>
 							{
-								if (var svTabButton = tabButton as SourceViewTabButton)
+								if (var svTabButton = tabButton as ContentTabButton)
 								{
 									if (svTabButton.mIsTemp)
 										closeTabs.Add(svTabButton);
@@ -13014,6 +13115,10 @@ namespace IDE
 			else if (name == "SourceViewPanel")
 			{
 			    return new SourceViewPanel();
+			}
+			else if (name == "BinaryDataPanel")
+			{
+			    return new BinaryDataPanel();
 			}
 			else if (name == "DisassemblyPanel")
 			{
@@ -15011,7 +15116,7 @@ namespace IDE
 					{
 						if (Path.Equals(sourceViewPanel.mFilePath, oldPath))
 						{
-							var sourceViewTab = (IDEApp.SourceViewTabButton)tab;
+							var sourceViewTab = (IDEApp.ContentTabButton)tab;
 
 							sourceViewPanel.PathChanged(newPath);
 							tab.Label = newFileName;

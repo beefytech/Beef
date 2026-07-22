@@ -19,6 +19,7 @@ namespace IDE.ui
     public interface IBinaryDataContentProvider
     {
         bool IsReadOnly { get; }
+        int DataSize { get; } // Number of bytes available; int64.MaxValue for unbounded sources (eg: process memory)
         uint8[] ReadBinaryData(int offset, int32 size);
         void WriteBinaryData(uint8[] data, int offset);
     }
@@ -26,6 +27,7 @@ namespace IDE.ui
     class TestBinaryContentDataProvider : IBinaryDataContentProvider
     {
         public bool IsReadOnly { get { return true; } }
+        public int DataSize { get { return (int)int64.MaxValue; } }
 
         public uint8[] ReadBinaryData(int offset, int32 size)
         {
@@ -47,6 +49,7 @@ namespace IDE.ui
             BinaryDataContent mContent;
             public int mBaseOffset;
             public uint8[] mData ~ delete _;
+            public uint8[] mOriginalData ~ delete _; // The on-disk bytes for this range (only populated when the content defers writes)
             public bool mModified;
 
             public this(BinaryDataContent content, int baseOffset, uint8[] data)
@@ -191,14 +194,18 @@ namespace IDE.ui
             public int mPageKey;
             public int mBaseOffset;
             public uint8[] mPageData ~ delete _;
+            public uint8[] mOriginalData ~ delete _; // The on-disk bytes as originally loaded; only populated when mDeferWrites is set
             public int32 mAge;
             public int32 mLockCount;
+            public bool mDirty; // Differs from mOriginalData (has uncommitted modifications); only used when mDeferWrites is set
         }
 
         IBinaryDataContentProvider mProvider;
         Dictionary<int, Page> mPageDict = new Dictionary<int, Page>() ~ { for (let page in _.Values) delete page; delete _; };
         readonly int mPageSize;
         public int mCacheRevision;
+        public bool mNoWatchDirty; // Set for file-backed content, where the debugger watch panel is irrelevant
+        public bool mDeferWrites; // When set, modifications are held in memory until Flush() rather than committed immediately
         const int32 mMaxCachePages = 50;
 
         public this(int pageSize, IBinaryDataContentProvider provider)
@@ -219,7 +226,8 @@ namespace IDE.ui
             //sw.Start();
 
             uint8[] data = new uint8[(int32)size];
-            
+            uint8[] origData = mDeferWrites ? new uint8[(int32)size] : null;
+
             int remainingSize = size;
             int writeOfs = 0;
             int readOfs = (int)offset % mPageSize;
@@ -232,6 +240,8 @@ namespace IDE.ui
 
                 int readSize = Math.Min((int)p.mPageData.Count - readOfs, remainingSize);
                 Array.Copy(p.mPageData, (int32)readOfs, data, (int32)writeOfs, (int32)readSize);
+                if ((origData != null) && (p.mOriginalData != null))
+                    Array.Copy(p.mOriginalData, (int32)readOfs, origData, (int32)writeOfs, (int32)readSize);
 
                 remainingSize -= readSize;
                 writeOfs += readSize;
@@ -246,7 +256,9 @@ namespace IDE.ui
             //if (elapsedMs > 0.001)
               //  Console.WriteLine("STOPWATCH(LockRange): {0}ms", elapsedMs);
 
-            return new LockedRange(this, offset, data);
+            let lockedRange = new LockedRange(this, offset, data);
+            lockedRange.mOriginalData = origData;
+            return lockedRange;
         }
 
         public void UnlockRange(LockedRange range)
@@ -265,7 +277,10 @@ namespace IDE.ui
                 if (range.mModified && !mProvider.IsReadOnly)
                 {
                     Array.Copy(range.mData, (int32)readOfs, p.mPageData, (int32)writeOfs, (int32)writeSize);
-                    CommitPage(p);
+                    if (mDeferWrites)
+                        p.mDirty = PageDiffersFromOriginal(p); // Held in memory until Flush(); clears if edits return to the on-disk state (eg: undo)
+                    else
+                        CommitPage(p);
                 }
                 
                 --p.mLockCount;
@@ -276,7 +291,7 @@ namespace IDE.ui
                 ++curPage;
             }
 
-            if (range.mModified)
+            if ((range.mModified) && (!mNoWatchDirty))
             {
                 IDEApp.sApp.mWatchPanel.MarkWatchesDirty(false);
             }
@@ -292,7 +307,13 @@ namespace IDE.ui
                 p.mBaseOffset = pageNum * mPageSize;
                 p.mPageData = mProvider.ReadBinaryData((int)p.mBaseOffset, (int32)mPageSize);
                 p.mLockCount = 0;
-                
+                if (mDeferWrites)
+                {
+                    // Keep a pristine copy so we can tell which bytes differ from the on-disk state
+                    p.mOriginalData = new uint8[p.mPageData.Count];
+                    Array.Copy(p.mPageData, 0, p.mOriginalData, 0, p.mPageData.Count);
+                }
+
                 mPageDict[p.mPageKey] = p;
             }
 
@@ -305,6 +326,36 @@ namespace IDE.ui
         void CommitPage(Page p)
         {
             mProvider.WriteBinaryData(p.mPageData, (int)p.mBaseOffset);
+        }
+
+        bool PageDiffersFromOriginal(Page p)
+        {
+            if (p.mOriginalData == null)
+                return true; // No baseline to compare against; assume modified
+
+            for (int i = 0; i < p.mPageData.Count; i++)
+            {
+                if (p.mPageData[i] != p.mOriginalData[i])
+                    return true;
+            }
+            return false;
+        }
+
+        /// True for an offset whose current value differs from the on-disk state (used to highlight edited bytes)
+        public bool IsOffsetModified(int offset)
+        {
+            if (!mDeferWrites)
+                return false;
+
+            int pageNum = offset / mPageSize;
+            if (mPageDict.TryGetValue(pageNum, var p))
+            {
+                if (p.mOriginalData == null)
+                    return false;
+                int idx = offset % mPageSize;
+                return p.mPageData[idx] != p.mOriginalData[idx];
+            }
+            return false;
         }
 
         void UpdatePageCache()
@@ -327,6 +378,8 @@ namespace IDE.ui
 					var page = orderedPages[i];
 				    if (page.mLockCount > 0)
 				        continue;
+				    if (page.mDirty)
+				        continue; // Don't evict pages with unsaved modifications
 				    mPageDict.Remove(page.mPageKey);
 					delete page;
 				}
@@ -353,6 +406,40 @@ namespace IDE.ui
             mPageDict.Clear();
             ++mCacheRevision;
         }
+
+        /// True if there are modifications that have not yet been committed to the provider
+        public bool IsDirty
+        {
+            get
+            {
+                for (var p in mPageDict.Values)
+                    if (p.mDirty)
+                        return true;
+                return false;
+            }
+        }
+
+        /// Commit all pending modifications to the provider
+        public void Flush()
+        {
+            for (var p in mPageDict.Values)
+            {
+                if (p.mDirty)
+                {
+                    CommitPage(p);
+                    // The committed data is now the on-disk state, so it's no longer a "change"
+                    if (p.mOriginalData != null)
+                        Array.Copy(p.mPageData, 0, p.mOriginalData, 0, p.mPageData.Count);
+                    p.mDirty = false;
+                }
+            }
+        }
+
+        /// Drop all pending modifications without committing them
+        public void DiscardChanges()
+        {
+            ClearCache();
+        }
     }
 
 #pragma warning disable 0067
@@ -366,7 +453,7 @@ namespace IDE.ui
 			Auto_Mul8,
 		}
 
-		public DarkButton mGotoButton;
+		public DarkButton mGotoButton; // Optional; created via InitGotoButton (used by the memory panel)
 		public AutoResizeType mAutoResizeType = .Auto_Mul8;
         public int mBytesPerDisplayLine;
         public int mCurPosition;
@@ -380,7 +467,11 @@ namespace IDE.ui
         BinaryDataContent mContent ~ delete _;
         
         public InfiniteScrollbar mInfiniteScrollbar;
+        public Scrollbar mFileScrollbar; // Used instead of mInfiniteScrollbar when the content has a known size (mDataSize >= 0)
         public Insets mScrollbarInsets = new Insets() ~ delete _;
+
+        public int mDataSize = -1; // When >= 0, the content is bounded (ie: a file) with this many bytes
+        public bool mNoTrackedExprs; // When true, skip all debugger tracked-expression logic (ie: file view)
 
         int mColumnDisplayStart;
         int mColumnDisplayStride;
@@ -388,6 +479,8 @@ namespace IDE.ui
         int mStrViewDisplayStartOffset;
         int mStrViewDisplayStride;
         int mRegLabelDisplayStart;
+        int mOffsetHexDigits = 8; // Number of hex digits shown for offsets (bounded/file mode)
+        bool mUseOldOffsetFormat = true; // Use the 64-bit "XXXXXXXX'XXXXXXXX" address style (memory, or files > 4GB)
 
         //EditWidget mByteEditWidget;
         Selection mCurHoverSelection = null ~ delete _;
@@ -585,14 +678,6 @@ namespace IDE.ui
 
         public this(IBinaryDataContentProvider provider)
         {
-			mGotoButton = new DarkButton();
-			mGotoButton.Label = "Goto...";
-			AddWidget(mGotoButton);
-			mGotoButton.mOnMouseClick.Add(new (evt) =>
-				{
-					mOnGotoAddress();
-				});
-
              mProvider = provider;
             if (mProvider == null)
                 mProvider = new TestBinaryContentDataProvider();
@@ -627,8 +712,152 @@ namespace IDE.ui
             AddWidgetAtIndex(0, mInfiniteScrollbar);
         }
 
+        /// Adds a "Goto..." button in the header that fires mOnGotoAddress when clicked
+        public void InitGotoButton()
+        {
+            mGotoButton = new DarkButton();
+            mGotoButton.Label = "Goto...";
+            AddWidget(mGotoButton);
+            mGotoButton.mOnMouseClick.Add(new (evt) =>
+                {
+                    mOnGotoAddress();
+                });
+        }
+
+        /// Switches the widget into bounded 'file' mode, using a regular scrollbar over a known-size data set
+        public void SetFileMode(int dataSize)
+        {
+            mDataSize = dataSize;
+            mNoTrackedExprs = true;
+            mContent.mNoWatchDirty = true;
+            mContent.mDeferWrites = true;
+            mCurPosition = 0;
+            mCurPositionDisplayOffset = 0;
+            mShowPositionDisplayOffset = 0;
+
+            mFileScrollbar = ThemeFactory.mDefault.CreateScrollbar(.Vert);
+            mFileScrollbar.Init();
+            mFileScrollbar.mAlignItems = true;
+            mFileScrollbar.mScrollIncrement = 1;
+            mFileScrollbar.mOnScrollEvent.Add(new => HandleFileScroll);
+            AddWidgetAtIndex(0, mFileScrollbar);
+
+            UpdateOffsetLayout();
+        }
+
+        /// For bounded (file) mode, sizes the offset column to just the hex digits needed for the data,
+        ///  and positions the hex columns right after it. Memory mode keeps its default fixed layout.
+        void UpdateOffsetLayout()
+        {
+            if (mDataSize < 0)
+                return;
+
+            int64 maxOffset = (mDataSize > 0) ? (mDataSize - 1) : 0;
+            int digits = 1;
+            while ((digits < 16) && ((maxOffset >> (digits * 4)) != 0)) // cap at 16 (a full 64-bit value)
+                digits++;
+
+            if (digits > 8)
+            {
+                // More than 4GB of data: fall back to the 64-bit address style and its default spacing
+                mUseOldOffsetFormat = true;
+                mColumnDisplayStart = 150;
+                return;
+            }
+
+            mUseOldOffsetFormat = false;
+            mOffsetHexDigits = Math.Max(digits, 4); // never show fewer than 4 hex digits
+
+            String sample = scope String();
+            sample.Append('0', mOffsetHexDigits);
+            float labelWidth = IDEApp.sApp.mTinyCodeFont.GetWidth(sample);
+
+            // Start the hex columns past the offset label, leaving a gap about twice the size of the
+            //  one that separates the hex values from the character view on the right
+            mColumnDisplayStart = (int)(4 + labelWidth / DarkTheme.sScale + mStrViewDisplayStartOffset * 2);
+        }
+
+        int GetTotalLineCount()
+        {
+            if (mDataSize <= 0)
+                return 1;
+            // Add 2 extra lines so there is some empty space visible below the end of the file
+            //  when scrolled all the way down
+            return (mDataSize + mBytesPerDisplayLine - 1) / mBytesPerDisplayLine + 2;
+        }
+
+        /// True if there are edits that have not been saved to the file
+        public bool HasUnsavedChanges()
+        {
+            return mContent.IsDirty;
+        }
+
+        /// Commit pending edits to the file
+        public void Save()
+        {
+            mContent.Flush();
+        }
+
+        /// Discard pending edits without saving
+        public void DiscardChanges()
+        {
+            mContent.DiscardChanges();
+        }
+
+        int GetVisibleLineCount()
+        {
+            float lineSpacing = GetLineSpacing();
+            return Math.Max(1, (int)((mHeight - GS!(mColumnHeaderHeight)) / lineSpacing));
+        }
+
+        /// Clamps mCurPosition so the view stays within a bounded data set
+        void ClampPosition()
+        {
+            if (mDataSize < 0)
+                return;
+
+            int maxTopLine = Math.Max(0, GetTotalLineCount() - GetVisibleLineCount());
+            int maxTop = maxTopLine * mBytesPerDisplayLine;
+            mCurPosition = Math.Min(Math.Max(mCurPosition, 0), maxTop);
+            // Keep aligned to a full display line
+            mCurPosition -= mCurPosition % mBytesPerDisplayLine;
+        }
+
+        /// Keep the cursor and scroll position within the bounds of a bounded (file) data set.
+        /// Must be called immediately after any code that mutates them, so a Draw never sees an out-of-range value.
+        void ClampToBounds()
+        {
+            if (mDataSize < 0)
+                return;
+
+            if ((mCurKeyCursor != null) && (mDataSize > 0))
+                mCurKeyCursor.mSelStart = Math.Min(Math.Max(mCurKeyCursor.mSelStart, 0), mDataSize - 1);
+            ClampPosition();
+            UpdateFileScrollbarData();
+        }
+
+        void HandleFileScroll(ScrollEvent theEvent)
+        {
+            int line = (int)mFileScrollbar.mContentPos;
+            mCurPosition = line * mBytesPerDisplayLine;
+            mShowPositionDisplayOffset = 0;
+            mCurPositionDisplayOffset = 0;
+            MarkDirty();
+        }
+
+        void UpdateFileScrollbarData()
+        {
+            if (mFileScrollbar == null)
+                return;
+
+            mFileScrollbar.mContentSize = GetTotalLineCount();
+            mFileScrollbar.mPageSize = GetVisibleLineCount();
+            mFileScrollbar.mContentPos = mCurPosition / mBytesPerDisplayLine;
+            mFileScrollbar.UpdateData();
+        }
+
         public virtual void UpdateScrollbar()
-        {            
+        {
             if (mInfiniteScrollbar != null)
             {
                 mInfiniteScrollbar.Resize(mWidth - mScrollbarInsets.mRight - mInfiniteScrollbar.mBaseSize, mScrollbarInsets.mTop, mInfiniteScrollbar.mBaseSize,
@@ -637,9 +866,17 @@ namespace IDE.ui
                 float lineSpacing = GetLineSpacing();
                 int lineCount = Math.Max(1, (int)(mHeight / lineSpacing) - 3);
                 mInfiniteScrollbar.mScrollDeltaLevelAmount = (double)lineCount;
-                
+
                 mInfiniteScrollbar.ScrollDeltaLevel(0);
                 mInfiniteScrollbar.ResizeContent();
+            }
+
+            if (mFileScrollbar != null)
+            {
+                ClampPosition();
+                mFileScrollbar.Resize(mWidth - mScrollbarInsets.mRight - mFileScrollbar.mBaseSize, mScrollbarInsets.mTop + GS!(mColumnHeaderHeight),
+                    mFileScrollbar.mBaseSize, Math.Max(mHeight - mScrollbarInsets.mTop - mScrollbarInsets.mBottom - GS!(mColumnHeaderHeight), 0));
+                UpdateFileScrollbarData();
             }
 
             //UpdateScrollbarData();
@@ -721,6 +958,9 @@ namespace IDE.ui
             base.Update();
 
 			CheckClearData();
+
+			ClampToBounds();
+
             ++mCurKeyCursorBlinkTicks;
 
 			if (mHasFocus)
@@ -896,13 +1136,14 @@ namespace IDE.ui
 			int lineCount = (int)(mHeight / lineSpacing) + 3;
 			int minAddr = mCurPosition;
 			int maxAddr = mCurPosition + lineCount*mBytesPerDisplayLine;
+			int dataSize = mProvider.DataSize; // Extent of the data; int64.MaxValue for unbounded (memory) providers
 			BumpAllocator bumpAlloc = scope BumpAllocator();
 
             using (g.PushClip(0, GS!(mColumnHeaderHeight) + GS!(2), mWidth, mHeight - GS!(mColumnHeaderHeight) - GS!(4)))
             {
                 g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.EditBox), 0, GS!(mColumnHeaderHeight), mWidth, mHeight - GS!(mColumnHeaderHeight));
 
-				if (!gApp.mDebugger.mIsRunning)
+				if ((!mNoTrackedExprs) && (!gApp.mDebugger.mIsRunning))
 					return;
                 
                 float displayAdj = (float)(-mShowPositionDisplayOffset * lineSpacing);
@@ -1054,22 +1295,37 @@ namespace IDE.ui
 
                                     if (iPass == 0)
                                     {
-                                        //g.SetFont(DarkTheme.sDarkTheme.mSmallFont);
-                                        g.SetFont(IDEApp.sApp.mTinyCodeFont);
-										var str = scope String();
-										str.AppendF("{0:X16}", mCurPosition + baseOffset);
-										str.Insert(8, '\'');
-										int spaceCount = 0;
-										for (int i < 7)
-										{
-											if (str[i] == '0')
-												spaceCount++;
-										}
-										str.Remove(0, spaceCount);
+                                        // Only show the offset label for lines that actually contain data
+                                        if (mCurPosition + baseOffset < dataSize)
+                                        {
+                                            //g.SetFont(DarkTheme.sDarkTheme.mSmallFont);
+                                            g.SetFont(IDEApp.sApp.mTinyCodeFont);
+											var str = scope String();
+											if (mUseOldOffsetFormat)
+											{
+												// 64-bit address style: "XXXXXXXX'XXXXXXXX" with leading zeros of the high word trimmed
+												str.AppendF("{0:X16}", mCurPosition + baseOffset);
+												str.Insert(8, '\'');
+												int spaceCount = 0;
+												for (int i < 7)
+												{
+													if (str[i] == '0')
+														spaceCount++;
+												}
+												str.Remove(0, spaceCount);
+											}
+											else
+											{
+												// Just the minimum number of hex digits needed for the data size
+												str.AppendF("{0:X}", mCurPosition + baseOffset);
+												while (str.Length < mOffsetHexDigits)
+													str.Insert(0, '0');
+											}
 
-                                        g.DrawString(str, GS!(4), GS!(mColumnHeaderHeight) + (lineIdx * lineSpacing), FontAlign.Left);
+	                                        g.DrawString(str, GS!(4), GS!(mColumnHeaderHeight) + (lineIdx * lineSpacing), FontAlign.Left);
 
-                                        g.SetFont(mFont);
+	                                        g.SetFont(mFont);
+                                        }
 
                                         if (curKeySelection != null)
                                         {
@@ -1086,13 +1342,24 @@ namespace IDE.ui
 
                                     for (int i=0; i<mBytesPerDisplayLine; ++i)
                                     {
+                                        // Don't render bytes past the end of a bounded (file) data set
+                                        if (mCurPosition + baseOffset + i >= dataSize)
+                                            break;
+
                                         if (iPass == 1)
                                         {
                                             // binary view
 
                                             IDisposable colorScope = null;
                                             uint8 val = lockRange.mData[baseOffset + i];
-                                            if (mLastSnapshotDiff.Changed(mCurPosition + baseOffset + i))
+                                            // In file mode a byte is "changed" if it differs from the on-disk state;
+                                            //  in memory mode we use the debugger step-to-step snapshot diff.
+                                            bool byteChanged;
+                                            if (mNoTrackedExprs)
+                                                byteChanged = (lockRange.mOriginalData != null) && (val != lockRange.mOriginalData[baseOffset + i]);
+                                            else
+                                                byteChanged = mLastSnapshotDiff.Changed(mCurPosition + baseOffset + i);
+                                            if (byteChanged)
                                             {
                                                 colorScope = g.PushColor(0xff60C0D0);
                                             }
@@ -1639,9 +1906,12 @@ namespace IDE.ui
 
             base.Resize(x, y, width, height);
 
-			mGotoButton.Resize(GS!(6), GS!(2), GS!(132), GS!(20));
+            if (mGotoButton != null)
+                mGotoButton.Resize(GS!(6), GS!(2), GS!(132), GS!(20));
 
             ClearTrackedExprs(false);
+            // Recompute the offset column width first, as it affects how many hex columns fit (and depends on scale)
+            UpdateOffsetLayout();
             UpdateScrollbar();
 
 			if (mAutoResizeType != .Manual)
@@ -1834,6 +2104,9 @@ namespace IDE.ui
                 DirtyTrackedExprs();
 
             cursor.mSelStart = desiredPosition;
+
+            // Clamp now so a Draw can't observe a position scrolled past the end of the file
+            ClampToBounds();
         }
 
         private void KeyCursorUpdated()
@@ -2059,6 +2332,10 @@ namespace IDE.ui
                             mCurKeyCursor.mSelStart = desiredPosition;
                             mCurKeyCursorBlinkTicks = 0;
 
+                            // Clamp now (not just in Update) so a Draw can't occur with an out-of-range
+                            //  position/cursor - eg: PageUp at the top of the file underflowing the offset
+                            ClampToBounds();
+
                             DeleteAndNullify!(mCurHoverSelection);//GetSelectionForCursor(mCurKeyCursor);
 
                             KeyCursorUpdated();
@@ -2140,6 +2417,8 @@ namespace IDE.ui
             base.MouseWheel(x, y, deltaX, deltaY);
             if (mInfiniteScrollbar != null)
                 mInfiniteScrollbar.MouseWheel(x, y, deltaX, deltaY);
+            if (mFileScrollbar != null)
+                mFileScrollbar.MouseWheel(x, y, deltaX, deltaY);
         }
 
         public void ResetPosition(int position)
@@ -2160,6 +2439,14 @@ namespace IDE.ui
         }
         public void ClearTrackedExprs(bool force)
         {
+            // In file mode there is no debugger context, so there are no tracked expressions to gather
+            if (mNoTrackedExprs)
+            {
+                mDelayedClearTrackedExprsTimer = 0.0f;
+                ClearAndDeleteItems(mTrackedExprs);
+                return;
+            }
+
             float lineSpacing = GetLineSpacing();
             int lineCount = (int)(mHeight / lineSpacing) + 3;
             int lockSize = lineCount * mBytesPerDisplayLine;

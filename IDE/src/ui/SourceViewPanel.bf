@@ -441,7 +441,7 @@ namespace IDE.ui
         public List<BfPassInstance.BfError> mErrorList = new List<BfPassInstance.BfError>() ~ DeleteContainerAndItems!(_);
 		public List<ResolveParams> mDeferredResolveResults = new .() ~ DeleteContainerAndItems!(_);
         public bool mTrackedTextElementViewListDirty;
-        public String mFilePath ~ delete _;
+        // mFilePath is declared in ContentPanel
 		public int32 mEmitRevision = -1;
 		public SourceEmbedKind mEmbedKind;
 		public SourceViewPanel mEmbedParent;
@@ -981,7 +981,7 @@ namespace IDE.ui
 			return mEditWidget == users[users.Count - 1].mEditWidget;
 		}
 
-        public bool HasUnsavedChanges()
+        public override bool HasUnsavedChanges()
         {
             //return mLastFileTextVersion != mEditWidget.Content.mData.mCurTextVersionId;
 			if (mFilePath == null)
@@ -2515,7 +2515,7 @@ namespace IDE.ui
             }
         }
 
-        public bool FileNameMatches(String fileName)
+        public override bool FileNameMatches(String fileName)
         {
 			if (mFilePath == null)
 				return false;
