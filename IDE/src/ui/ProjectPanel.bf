@@ -944,8 +944,8 @@ namespace IDE.ui
             	projectFolder.mPath.Append("src", dirSepStr, projectFolder.mName);
 			else
 				projectFolder.mPath.Append(folder.mPath, dirSepStr, projectFolder.mName);
-			projectFolder.mIncludeKind = folder.mIncludeKind;
-			projectFolder.mAutoInclude = folder.IsAutoInclude();
+			projectFolder.mIncludeKind = .Auto;
+			projectFolder.mAutoInclude = true;
             folder.AddChild(projectFolder);
             let projectItem = AddProjectItem(projectFolder);
 			if (projectItem != null)
@@ -2956,16 +2956,9 @@ namespace IDE.ui
             newProjectDialog.PopupWindow(gApp.GetActiveWindow());
         }
 
-        protected override void ShowRightClickMenu(Widget relWidget, float x, float y)
-        {
-     		ProjectItem projectItem = null;
-            mSelectedParentItem = (DarkListViewItem)GetSelectedParentItem();
-			var focusedItem = mListView.GetRoot().FindFocusedItem();
-			if (focusedItem != null)
-				mListViewToProjectMap.TryGetValue(focusedItem, out projectItem);
-            
-            Menu menu = new Menu();
-            bool handled = false;
+		public virtual void PopulateRightClickMenu(Menu menu, ProjectItem projectItem, ListViewItem focusedItem)
+		{
+			bool handled = false;
 
 			void AddOpenContainingFolder()
 			{
@@ -3108,8 +3101,8 @@ namespace IDE.ui
 					});
 			}
 
-            if (projectItem == null)
-            {
+			if (projectItem == null)
+			{
 				Menu anItem;
 
 				void AddWorkspaceMenuItems()
@@ -3193,14 +3186,14 @@ namespace IDE.ui
 
 					menu.AddItem();
 
-	                AddWorkspaceMenuItems();
+			        AddWorkspaceMenuItems();
 					menu.AddItem();
-	                anItem = menu.AddItem("Properties...");
-	                anItem.mOnMenuItemSelected.Add(new (item) => { ShowWorkspaceProperties(); });
+			        anItem = menu.AddItem("Properties...");
+			        anItem.mOnMenuItemSelected.Add(new (item) => { ShowWorkspaceProperties(); });
 
-	                handled = true;
+			        handled = true;
 				}
-            }
+			}
 
 			bool isProject = false;
 			bool isFailedLoad = false;
@@ -3232,8 +3225,8 @@ namespace IDE.ui
 			    }
 			}
 
-            if ((projectItem != null) && (!handled))
-            {
+			if ((projectItem != null) && (!handled))
+			{
 				Menu item = null;
 
 				if (isProject)
@@ -3390,13 +3383,13 @@ namespace IDE.ui
 					}
 				}
 
-                if ((projectItem != null) && (!isProject))
-                {
-                    item = menu.AddItem("Remove ...|Del");
-                    item.mOnMenuItemSelected.Add(new (item) =>
-                        {
+			    if ((projectItem != null) && (!isProject))
+			    {
+			        item = menu.AddItem("Remove ...|Del");
+			        item.mOnMenuItemSelected.Add(new (item) =>
+			            {
 							RemoveSelectedItems();
-                        });
+			            });
 
 					item = gApp.AddMenuItem(menu, "Rename", "Rename Item");
 					item.mOnMenuItemSelected.Add(new (item) =>
@@ -3410,11 +3403,11 @@ namespace IDE.ui
 					{
 						item = menu.AddItem("Ignore");
 						item.mOnMenuItemSelected.Add(new (item) =>
-                            {
+			                {
 								mListView.GetRoot().WithSelectedItems(scope (selectedItem) =>
 									{
 										ProjectItem projectItem;
-	                                    mListViewToProjectMap.TryGetValue(selectedItem, out projectItem);
+			                            mListViewToProjectMap.TryGetValue(selectedItem, out projectItem);
 										DoDeleteItem(selectedItem, null, .Ignore);
 										if (projectItem != null)
 										{
@@ -3422,7 +3415,7 @@ namespace IDE.ui
 											projectItem.mProject.SetChanged();
 										}
 									});
-                            });
+			                });
 					}
 					else if (projectItem.mIncludeKind == .Manual)
 					{
@@ -3437,21 +3430,21 @@ namespace IDE.ui
 					else if (projectItem.mIncludeKind == .Ignore)
 					{
 						item = menu.AddItem("Unignore");
-                        item.mOnMenuItemSelected.Add(new (item) =>
-                            {
+			            item.mOnMenuItemSelected.Add(new (item) =>
+			                {
 								mListView.GetRoot().WithSelectedItems(scope (selectedItem) =>
 									{
 										ProjectItem projectItem;
 										mListViewToProjectMap.TryGetValue(selectedItem, out projectItem);
 										if (projectItem.mIncludeKind == .Ignore)
-		                                {
+			                            {
 											if (projectItem.mParentFolder.IsIgnored())
 												projectItem.mIncludeKind = .Auto;
 											else
 												Unignore(projectItem);
 										}
 									});
-                            });
+			                });
 					}
 
 					if (projectItem is ProjectSource)
@@ -3536,7 +3529,7 @@ namespace IDE.ui
 							String path = scope String();
 							if (var projectFileItem = projectItem as ProjectFileItem)
 							{
-                                projectFileItem.GetFullImportPath(path);
+			                    projectFileItem.GetFullImportPath(path);
 								gApp.SetClipboardText(path);
 							}
 							
@@ -3545,7 +3538,7 @@ namespace IDE.ui
 					AddOpenContainingFolder();
 
 					menu.AddItem();
-                }
+			    }
 
 				if (!isFailedLoad)
 				{
@@ -3567,7 +3560,7 @@ namespace IDE.ui
 									NewFolder(projectFolder);
 							}
 					    });
-	
+
 					item = menu.AddItem("Generate File...");
 					item.mOnMenuItemSelected.Add(new (item) =>
 					    {
@@ -3581,7 +3574,7 @@ namespace IDE.ui
 
 					item = menu.AddItem("Import File...");
 					item.mOnMenuItemSelected.Add(new (item) => { mImportFileDeferred = true; /* ImportFile();*/ });
-	
+
 					item = menu.AddItem("Import Folder...");
 					item.mOnMenuItemSelected.Add(new (item) => { mImportFolderDeferred = true; /* ImportFile();*/ });
 
@@ -3597,13 +3590,24 @@ namespace IDE.ui
 						    });
 					}
 				}
-            }
-            /*else if (!handled)
-            {
-                Menu anItem = menu.AddItem("Import Project");
-                anItem.mMenuItemSelectedHandler .Add(new (item) => { mImportProjectDeferred = true; };
-            }*/
+			}
+			/*else if (!handled)
+			{
+			    Menu anItem = menu.AddItem("Import Project");
+			    anItem.mMenuItemSelectedHandler .Add(new (item) => { mImportProjectDeferred = true; };
+			}*/
+		}
 
+        protected override void ShowRightClickMenu(Widget relWidget, float x, float y)
+        {
+     		ProjectItem projectItem = null;
+            mSelectedParentItem = (DarkListViewItem)GetSelectedParentItem();
+			var focusedItem = mListView.GetRoot().FindFocusedItem();
+			if (focusedItem != null)
+				mListViewToProjectMap.TryGetValue(focusedItem, out projectItem);
+            
+            Menu menu = new Menu();
+            PopulateRightClickMenu(menu, projectItem, focusedItem);
 			if (menu.mItems.IsEmpty)
 			{
 				delete menu;
