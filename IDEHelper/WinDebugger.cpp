@@ -1385,7 +1385,13 @@ bool WinDebugger::DoOpenFile(const StringImpl& fileName, const StringImpl& args,
 		flags |= CREATE_NO_WINDOW;
 		si.dwFlags = STARTF_USESTDHANDLES;
 		inheritHandles = true;
-	}	
+	}
+
+	if ((openFileFlags & DbgOpenFileFlag_Minimized) != 0)
+	{
+		si.dwFlags |= STARTF_USESHOWWINDOW;
+		si.wShowWindow = SW_SHOWMINNOACTIVE;
+	}
 
 	if (mDbgProcessId != 0)
 	{

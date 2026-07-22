@@ -125,14 +125,30 @@ namespace Beefy
     {
 		public enum ShowKind
 		{
-			Hide,
-			Normal,
-			Minimized,
-			Maximized,
-			Show,
-			ShowNormal,
-			ShowMinimized,
-			ShowMaximized
+			case Hide;
+			case Normal;
+			case Minimized;
+			case Maximized;
+			case Show;
+			case ShowNormal;
+			case ShowMinimized;
+			case ShowMaximized;
+
+			public bool IsVisible
+			{
+				get
+				{
+					switch (this)
+					{
+					case .Hide,
+						 .Minimized,
+						 .ShowMinimized:
+						return false;
+					default:
+						return true;
+					}
+				}
+			}	
 		}
 
         delegate void NativeMovedDelegate(void* window);
@@ -347,6 +363,33 @@ namespace Beefy
 		{
 			bool worked = sWindowDictionary.Remove((int)mNativeWindow);
 			Debug.Assert(worked);
+		}
+
+		public static BFWindow.Flags GetStartupFlags()
+		{
+			BFWindow.Flags flags = default;
+
+#if BF_PLATFORM_WINDOWS
+			Windows.StartupInfo si = .();
+			Windows.GetStartupInfoA(&si);
+			if ((si.mFlags & 1) != 0) // STARTF_USESHOWWINDOW
+			{
+				switch (si.mShowWindow)
+				{
+				case Windows.SW_HIDE:
+					flags |= .NoShow;
+				case Windows.SW_SHOWMINNOACTIVE:
+					flags |= .ShowMinimized | .NoActivate;
+				case Windows.SW_SHOWMINIMIZED:
+					flags |= .ShowMinimized;
+				case Windows.SW_MAXIMIZE:
+					flags |= .Maximize;
+				case Windows.SW_SHOWNOACTIVATE:
+					flags |= .NoActivate;
+				}
+			}
+#endif
+			return flags;
 		}
 
 		void Init(BFWindow parent, String title, int x, int y, int width, int height, BFWindow.Flags windowFlags)

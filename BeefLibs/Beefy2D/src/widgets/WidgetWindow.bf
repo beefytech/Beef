@@ -68,6 +68,8 @@ namespace Beefy.widgets
         public bool mIsKeyDownHandled;
 		public bool mWantsUpdateF;
 		public bool mTempWantsUpdateF;
+		public bool mDrawWhenHidden;
+		public bool mForceDraw = true;
 
 		public Image mContentRenderTarget ~ delete _;
         public int32 mContentClientWidth;
@@ -163,8 +165,13 @@ namespace Beefy.widgets
          	if (mRootWidget == null)
 				 return;
 			
-            base.Draw(g);			
-            mRootWidget.DrawAll(g);            
+            base.Draw(g);
+
+			if ((mDrawWhenHidden) || (mForceDraw) || (mShowKind.IsVisible))
+			{
+				mForceDraw = false;
+            	mRootWidget.DrawAll(g);
+			}
         }
 
         public override void Update()
@@ -305,6 +312,7 @@ namespace Beefy.widgets
 
             mOnWindowMoved(this);
             sOnWindowMoved(this);
+			mForceDraw = true;
         }
 
         public void SetFocus(Widget widget)

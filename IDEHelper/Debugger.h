@@ -205,7 +205,8 @@ enum DbgOpenFileFlags : uint8
 	DbgOpenFileFlag_None = 0,
 	DbgOpenFileFlag_RedirectStdInput = 1,
 	DbgOpenFileFlag_RedirectStdOutput = 2,
-	DbgOpenFileFlag_RedirectStdError = 4
+	DbgOpenFileFlag_RedirectStdError = 4,
+	DbgOpenFileFlag_Minimized = 8
 };
 
 class DbgModuleMemoryCache

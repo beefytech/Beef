@@ -143,7 +143,8 @@ namespace IDE.Debugger
 			None,
 			RedirectStdInput = 1,
 			RedirectStdOutput = 2,
-			RedirectStdError = 4
+			RedirectStdError = 4,
+			Minimized = 8
 		}
 
 		public List<Breakpoint> mBreakpointList = new List<Breakpoint>();
