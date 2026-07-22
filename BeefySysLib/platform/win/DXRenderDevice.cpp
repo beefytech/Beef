@@ -923,12 +923,22 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 
 	bool shaderChanged = (renderState->mShader != mPhysRenderState->mShader) && (renderState->mShader != NULL);
 	bool pixelShaderDisableChanged = renderState->mDisablePixelShader != mPhysRenderState->mDisablePixelShader;
+	bool samplerKindChanged = renderState->mSamplerKind != mPhysRenderState->mSamplerKind;
 
-	if (shaderChanged || pixelShaderDisableChanged)
+	if (shaderChanged || pixelShaderDisableChanged || samplerKindChanged)
 	{
+		if (samplerKindChanged)
+		{
+			ID3D11SamplerState* samplerState = mD3DDefaultSamplerState;
+			if (renderState->mSamplerKind == SamplerKind_Wrap)
+				samplerState = mD3DWrapSamplerState;
+			else if (renderState->mSamplerKind == SamplerKind_Nearest)
+				samplerState = mD3DNearestSamplerState;
+			mD3DDeviceContext->PSSetSamplers(0, 1, &samplerState);
+		}
+
 		if (shaderChanged)
 		{
-			mD3DDeviceContext->PSSetSamplers(0, 1, renderState->mTexWrap ? &mD3DWrapSamplerState  : &mD3DDefaultSamplerState);
 			mD3DDeviceContext->IASetInputLayout(dxShader->mD3DLayout);
 			mD3DDeviceContext->VSSetShader(dxShader->mD3DVertexShader, NULL, 0);
 		}
@@ -1458,9 +1468,9 @@ void DXRenderState::SetClipped(bool clipped)
 	InvalidateRasterizerState();
 }
 
-void DXRenderState::SetTexWrap(bool wrap)
+void DXRenderState::SetSamplerKind(SamplerKind samplerKind)
 {
-	mTexWrap = wrap;
+	mSamplerKind = samplerKind;
 	InvalidateRasterizerState();
 }
 
@@ -1563,7 +1573,11 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 
 	drawLayer->mCurTextures[0] = NULL;
 
-#ifndef BF_NO_FBX	
+	if (!mDirty)
+		return;
+	mDirty = false;
+
+#ifndef BF_NO_FBX
 	Matrix4 jointsMatrices[BF_MAX_NUM_BONES];
 	for (int jointIdx = 0; jointIdx < (int)mJointTranslations.size(); jointIdx++)
 	{
@@ -1890,7 +1904,15 @@ void DXRenderWindow::Resized()
 	GetClientRect(mHWnd, &rect);
 
 	if (rect.right <= rect.left)
+	{		
+		if (mWidth <= 0)
+		{
+			// Defaults to avoid DX init failure
+			mWidth = 16;
+			mHeight = 16;
+		}
 		return;
+	}
 
 	mWidth = rect.right - rect.left;
 	mHeight = rect.bottom - rect.top;
@@ -2180,6 +2202,16 @@ bool DXRenderDevice::Init(BFApp* app)
 	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 	DXCHECK(mD3DDevice->CreateSamplerState(&sampDesc, &mD3DWrapSamplerState));
 
+	ZeroMemory(&sampDesc, sizeof(sampDesc));
+	sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_POINT;
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	sampDesc.MinLOD = 0;
+	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	DXCHECK(mD3DDevice->CreateSamplerState(&sampDesc, &mD3DNearestSamplerState));
+
 	D3D11_BUFFER_DESC bd;
 	bd.Usage = D3D11_USAGE_DYNAMIC;
 	bd.ByteWidth = DX_VTXBUFFER_SIZE;
@@ -2220,6 +2252,8 @@ void DXRenderDevice::ReleaseNative()
 	mD3DDefaultSamplerState = NULL;
 	mD3DWrapSamplerState->Release();
 	mD3DWrapSamplerState = NULL;
+	mD3DNearestSamplerState->Release();
+	mD3DNearestSamplerState = NULL;
 	mD3DDeviceContext->Release();
 	mD3DDeviceContext = NULL;
 

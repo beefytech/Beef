@@ -222,7 +222,7 @@ public:
 	void IndalidateDepthStencilState();
 
 	virtual void SetClipped(bool clipped);
-	virtual void SetTexWrap(bool clipped);
+	virtual void SetSamplerKind(SamplerKind samplerKind);
 	virtual void SetClipRect(const RectF& rect);
 	virtual void SetWriteDepthBuffer(bool writeDepthBuffer);
 	virtual void SetDepthFunc(DepthFunc depthFunc);
@@ -304,6 +304,7 @@ public:
 	ID3D11BlendState*		mD3DNormalBlendState;
 	ID3D11SamplerState*		mD3DDefaultSamplerState;
 	ID3D11SamplerState*		mD3DWrapSamplerState;
+	ID3D11SamplerState*		mD3DNearestSamplerState;
 	bool					mNeedsReinitNative;
 
 	ID3D11Buffer*			mMatrix2DBuffer;

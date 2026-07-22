@@ -157,6 +157,14 @@ enum Topology3D : int8
 	Topology3D_LineLine
 };
 
+// Nearest always clamps (there's no "nearest + wrap" combination in use).
+enum SamplerKind : int8
+{
+	SamplerKind_Wrap,
+	SamplerKind_Clamp,
+	SamplerKind_Nearest
+};
+
 enum TextureFlag : int8
 {
 	TextureFlag_Additive = 1,
@@ -205,7 +213,7 @@ public:
 	bool					mWriteDepthBuffer;
 	DepthFunc				mDepthFunc;
 	bool					mClipped;
-	bool					mTexWrap;
+	SamplerKind				mSamplerKind;
 	bool					mWireframe;
 	RectF					mClipRect;
 	CullMode				mCullMode;
@@ -219,7 +227,7 @@ public:
 	virtual ~RenderState() {}
 
 	virtual void SetShader(Shader* shader) { mShader = shader; }
-	virtual void SetTexWrap(bool wrap) { mTexWrap = wrap; }
+	virtual void SetSamplerKind(SamplerKind samplerKind) { mSamplerKind = samplerKind; }
 	virtual void SetWireframe(bool wireframe) { mWireframe = wireframe; }
 	virtual void SetClipped(bool clipped) { mClipped = clipped; }
 	virtual void SetClipRect(const RectF& rect) { mClipRect = rect; }

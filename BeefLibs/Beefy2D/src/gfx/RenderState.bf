@@ -41,6 +41,15 @@ namespace Beefy.gfx
 		CounterClockwise
 	}
 
+	// Ordinal order must match the native SamplerKind enum (RenderDevice.h) exactly. Nearest always
+	// clamps -- there's no "nearest + wrap" combination in use.
+	public enum SamplerKind
+	{
+		Wrap,
+		Clamp,
+		Nearest
+	}
+
 #if !STUDIO_CLIENT
     public class RenderState
     {        
@@ -54,7 +63,7 @@ namespace Beefy.gfx
         static extern void RenderState_SetClip(void* renderState, float x, float y, float width, float height);
 
 		[CallingConvention(.Stdcall), CLink]
-		static extern void RenderState_SetTexWrap(void* renderState, bool texWrap);
+		static extern void RenderState_SetSamplerKind(void* renderState, int32 samplerKind);
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void RenderState_SetWireframe(void* renderState, bool wireframe);
@@ -148,11 +157,20 @@ namespace Beefy.gfx
             }
         }
 
+		public SamplerKind SamplerKind
+		{
+			set
+			{
+				RenderState_SetSamplerKind(mNativeRenderState, (int32)value);
+			}
+		}
+
+		// Kept for existing call sites; remaps onto SamplerKind (Wrap or Clamp -- never Nearest).
 		public bool TexWrap
 		{
 			set
 			{
-				RenderState_SetTexWrap(mNativeRenderState, value);
+				SamplerKind = value ? .Wrap : .Clamp;
 			}
 		}
 

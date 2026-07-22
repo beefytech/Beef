@@ -859,9 +859,9 @@ BF_EXPORT void BF_CALLTYPE RenderState_Delete(RenderState* renderState)
 		delete renderState;
 }
 
-BF_EXPORT void BF_CALLTYPE RenderState_SetTexWrap(RenderState* renderState, bool texWrap)
+BF_EXPORT void BF_CALLTYPE RenderState_SetSamplerKind(RenderState* renderState, int32 samplerKind)
 {
-	renderState->SetTexWrap(texWrap);
+	renderState->SetSamplerKind((SamplerKind)samplerKind);
 }
 
 BF_EXPORT void BF_CALLTYPE RenderState_SetWireframe(RenderState* renderState, bool wireframe)

@@ -415,6 +415,16 @@ namespace Beefy.gfx
 			PopRenderState();
 		}
 
+		// Scoped override of just the sampler (eg nearest-filtering for a zoomed-in image view),
+		// independent of the TexWrap/clip state tracked above.
+		public DisposeProxy PushSamplerKind(SamplerKind samplerKind)
+		{
+			var renderState = AllocRenderState(mDefaultShader, mClipRect, mTexWrap);
+			renderState.SamplerKind = samplerKind;
+			PushRenderState(renderState);
+			return mRenderStateDisposeProxy;
+		}
+
 		public void PushTextRenderState()
 		{
 			var textRenderState = AllocRenderState(mTextShader, mClipRect, mTexWrap);
