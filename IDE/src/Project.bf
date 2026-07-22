@@ -124,7 +124,10 @@ namespace IDE
 					return true;
 				String dirPath = scope .();
 				Path.GetDirectoryPath(mPath, dirPath);
-				return Path.Equals(dirPath, mParentFolder.mPath);
+				var checkPath = scope String(mParentFolder.mPath);
+				IDEUtils.FixFilePath(checkPath);
+				IDEUtils.FixFilePath(dirPath);
+				return Path.Equals(dirPath, checkPath);
 			}
 		}
 
@@ -660,6 +663,37 @@ namespace IDE
 			}
         }
 
+		public virtual ProjectItem CreateProjectItem(StringView type)
+		{
+			ProjectItem projectItem = null;
+			if (type == "Source")
+			{
+			    projectItem = new ProjectSource();
+				projectItem.mIncludeKind = .Manual;
+			}
+			else if (type == "IgnoreSource")
+			{
+				projectItem = new ProjectSource();
+				projectItem.mIncludeKind = .Ignore;
+			}
+			else if (type == "Folder")
+			{
+			    projectItem = new ProjectFolder();
+				projectItem.mIncludeKind = .Manual;
+			}
+			else if (type == "AutoFolder")
+			{
+			    projectItem = new ProjectFolder();
+				projectItem.mIncludeKind = .Auto;
+			}
+			else if (type == "IgnoreFolder")
+			{
+				projectItem = new ProjectFolder();
+				projectItem.mIncludeKind = .Ignore;
+			}
+			return projectItem;
+		}
+
         public override void Deserialize(StructuredData data)
         {
             base.Deserialize(data);
@@ -689,32 +723,9 @@ namespace IDE
 
 				if (projectItem == null)
 				{
-                    if (type == "Source")
-					{
-                        projectItem = new ProjectSource();
-						projectItem.mIncludeKind = .Manual;
-					}
-					else if (type == "IgnoreSource")
-					{
-						projectItem = new ProjectSource();
-						projectItem.mIncludeKind = .Ignore;
-					}
-                    else if (type == "Folder")
-					{
-                        projectItem = new ProjectFolder();
-						projectItem.mIncludeKind = .Manual;
-					}
-					else if (type == "AutoFolder")
-					{
-					    projectItem = new ProjectFolder();
-						projectItem.mIncludeKind = .Auto;
-					}
-					else if (type == "IgnoreFolder")
-					{
-						projectItem = new ProjectFolder();
-						projectItem.mIncludeKind = .Ignore;
-					}
-					else
+					projectItem = CreateProjectItem(type);
+
+                    if (projectItem == null)
 						continue;
 					
                     projectItem.mProject = mProject;
@@ -1373,6 +1384,7 @@ namespace IDE
         public int32 [] mColorDialogCustomColors;
 
         public ProjectFolder mRootFolder ~ mRootFolder.ReleaseRef();
+		public String mRootFolderName = new .("src");
 
         public int32 mCurResVer;
         public int32 mLastGeneratedResVer;
@@ -1590,7 +1602,7 @@ namespace IDE
             return true;
         }
 
-        public void Serialize(StructuredData data)
+        public virtual void Serialize(StructuredData data)
         {
 			mRootFolder.SortItems();
 
@@ -1969,7 +1981,7 @@ namespace IDE
 			return TargetType.BeefConsoleApplication;
 		}
 
-        public void Deserialize(StructuredData data)
+        public virtual void Deserialize(StructuredData data)
         {
 			//mLastImportDir.Clear();
             //data.GetString("LastImportDir", mLastImportDir);
@@ -2263,7 +2275,7 @@ namespace IDE
 
 			if (!IsSingleFile)
 			{
-				mRootFolder.mPath = new String("src");
+				mRootFolder.mPath = new String(mRootFolderName);
 				using (data.Open("ProjectFolder"))
 					mRootFolder.Deserialize(data);
 				/*if (Directory.Exists(scope String(mProjectDir, "/src")))

@@ -1127,7 +1127,7 @@ namespace Beefy.theme.dark
 
             if (mShowHeader)
             {
-                if (mHeaderImageIdx < DarkTheme.ImageIdx.COUNT)
+                if (mHeaderImageIdx < (.)DarkTheme.sDarkTheme.mImages.Count)
                     g.DrawButton(DarkTheme.sDarkTheme.GetImage(mHeaderImageIdx), 0, 0, mWidth);
             
                 using (g.PushClip(1, 0, mWidth - GS!(2), mHeight))

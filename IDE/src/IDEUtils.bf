@@ -788,6 +788,30 @@ namespace IDE
 				return .Ok;
 			}
 		}
+
+		static Result<bool> IsBinaryData(Span<uint8> data)
+		{
+			for (var b in data)
+			{
+				if (b == 0)
+					return true;
+			}
+
+			return false;
+		}
+
+		public static Result<bool> IsBinaryFile(StringView path)
+		{
+			UnbufferedFileStream fs = scope UnbufferedFileStream();
+			Try!(fs.Open(path, .Read, .ReadWrite));
+
+			uint8[4096] testChunk = ?;
+			if (fs.TryRead(testChunk) case .Ok(let readSize))
+			{
+				return IsBinaryData(.(&testChunk, readSize));
+			}
+			return .Err;
+		}
     }
 }
 

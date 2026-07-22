@@ -190,10 +190,7 @@ namespace Beefy.theme.dark
 			NextBookmark,
 			PrevBookmarkInFolder,
 			NextBookmarkInFolder,
-
 			PinnedTab,
-
-            COUNT
         };
 
 		public static uint32 COLOR_TEXT                   = 0xFFFFFFFF;
@@ -217,8 +214,8 @@ namespace Beefy.theme.dark
 
         public static DarkTheme sDarkTheme ~ delete _;
         Image mThemeImage;
-        public Image[] mImages = new Image[(int32) ImageIdx.COUNT] ~ delete _;
-
+        public Image[] mImages = new Image[(int32)Enum.GetCount<ImageIdx>()] ~ delete _;
+		
         public Font mHeaderFont;
         public Font mSmallFont;
         public Font mSmallBoldFont;
@@ -328,7 +325,7 @@ namespace Beefy.theme.dark
             /*mIconError = Image.LoadFromFile(StringAppend!(tempStr, BFApp.sApp.mInstallDir, "images/IconError.png"));
             mIconWarning = Image.LoadFromFile(StringAppend!(tempStr, BFApp.sApp.mInstallDir, "images/IconWarning.png"));*/
 
-			for (int32 i = 0; i < (int32)ImageIdx.COUNT; i++)
+			for (int32 i = 0; i < mImages.Count; i++)
 			{
 				mImages[i] = new Image();
 			}
@@ -383,7 +380,7 @@ namespace Beefy.theme.dark
 				// Fail (just crashes now)
 			}
 
-			for (int32 i = 0; i < (int32)ImageIdx.COUNT; i++)
+			for (int32 i = 0; i < (int32)mImages.Count; i++)
 			{
 				var image = mImages[i];
 				image.CreateImageSegment(mThemeImage, (i % 20) * sSrcImgUnitSize, (i / 20) * sSrcImgUnitSize, sSrcImgUnitSize, sSrcImgUnitSize);
