@@ -1384,7 +1384,7 @@ namespace IDE
         public int32 [] mColorDialogCustomColors;
 
         public ProjectFolder mRootFolder ~ mRootFolder.ReleaseRef();
-		public String mRootFolderName = new .("src");
+		public String mRootFolderName = new .("src") ~ delete _;
 
         public int32 mCurResVer;
         public int32 mLastGeneratedResVer;
