@@ -16,6 +16,10 @@ public:
 	ModelDef* mModelDef;
 	Array<ModelJointTranslation> mJointTranslations;
 	Array<bool> mMeshesVisible;
+	// Set whenever joint translations or mesh visibility change; cleared once the skinned vertex
+	// buffers have been recomputed. Lets CommandQueued skip re-skinning when nothing has changed,
+	// including across the multiple times a single instance may be queued within the same frame.
+	bool mDirty;
 
 public:
 	ModelInstance(ModelDef* modelDef);
