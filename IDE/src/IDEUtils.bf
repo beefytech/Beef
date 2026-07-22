@@ -835,7 +835,7 @@ namespace IDE
 			// Be conservative: only report binary if a substantial fraction of the sample
 			//  consists of unexpected control characters. (High bytes >= 0x80 are NOT counted,
 			//  since they legitimately appear in UTF-8 and other extended text encodings.)
-			if (suspiciousCount * 100 / len >= 30)
+			if (suspiciousCount * 100 / len > 10)
 				return true;
 
 			return false;

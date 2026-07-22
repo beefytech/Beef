@@ -7313,6 +7313,25 @@ namespace IDE
 			return (panel as SourceViewPanel, tabButton);
 		}
 
+		protected virtual Result<ContentPanel> CreateContentPanel(StringView useFilePath, SourceShowType showType)
+		{
+			if (!useFilePath.IsEmpty)
+			{
+				if (IDEUtils.IsBinaryFile(useFilePath).GetValueOrDefault())
+				{
+					var binaryDataPanel = new BinaryDataPanel();
+					if (!binaryDataPanel.Show(useFilePath))
+					{
+						delete binaryDataPanel;
+						return null;
+					}
+					return binaryDataPanel;
+				}	
+			}
+
+			return .Err;
+		}
+
 		public (ContentPanel panel, TabbedView.TabButton tabButton) ShowContentFile(String filePath, ProjectSource projectSource = null, SourceShowType showType = SourceShowType.ShowExisting, bool setFocus = true)
 		{
 			DeleteAndNullify!(mDeferredShowSource);
@@ -7444,24 +7463,16 @@ namespace IDE
 			DarkTabbedView tabbedView = GetDefaultDocumentTabbedView();
 			ActivateWindow(tabbedView.mWidgetWindow);
 
-			bool isBinary = false;
-			if (useFilePath != null)
+			///
+			switch (CreateContentPanel(useFilePath, showType))
 			{
-				if (IDEUtils.IsBinaryFile(useFilePath) case .Ok(let val))
-					isBinary = val;
+			case .Ok(out contentPanel):
+				if (contentPanel == null)
+					return (null, null);
+			case .Err:
 			}
 
-			if (isBinary)
-			{
-				var binaryDataPanel = new BinaryDataPanel();
-				if (!binaryDataPanel.Show(useFilePath))
-				{
-					delete binaryDataPanel;
-					return (null, null);
-				}
-				contentPanel = binaryDataPanel;
-			}
-			else
+			if (contentPanel == null)
 			{
 				var sourceViewPanel = new SourceViewPanel();
 				bool success;
@@ -12849,7 +12860,7 @@ namespace IDE
 
 		}
 
-		bool StartupProject(bool doDebug, bool wasCompiled)
+		public virtual bool StartupProject(bool doDebug, bool wasCompiled, DebugManager.OpenFileFlags debugFlags = .None)
 		{
 			mProfilePanel.Clear();
 
@@ -12963,7 +12974,7 @@ namespace IDE
 				ShowImmediatePanel();
 			}
 
-			DebugManager.OpenFileFlags openFileFlags = .None;
+			DebugManager.OpenFileFlags openFileFlags = debugFlags;
 
 			if ((mSettings.mDebugConsoleKind == .RedirectToImmediate) || (mSettings.mDebugConsoleKind == .RedirectToOutput))
 				openFileFlags |= .RedirectStdOutput | .RedirectStdError;
