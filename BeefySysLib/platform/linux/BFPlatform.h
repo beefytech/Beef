@@ -24,6 +24,17 @@
 #define BF_RESOURCES_REL_DIR "../Resources"
 #endif
 
+#if ((defined(__clang__)) && (__has_builtin(__builtin_debugtrap)))
+#define BF_DEBUG_BREAK() __builtin_debugtrap()
+#elif (defined(__GNUC__))
+#include <signal.h>
+#ifdef SIGTRAP
+#define BF_DEBUG_BREAK() raise(SIGTRAP)
+#endif
+#endif
+
+#ifndef BF_DEBUG_BREAK
 #define BF_DEBUG_BREAK()
+#endif
 
 #include "../PlatformInterface.h"
