@@ -24,6 +24,10 @@
 #define BF_RESOURCES_REL_DIR "../Resources"
 #endif
 
+#ifndef __has_builtin
+#define __has_builtin(x) 0
+#endif
+
 #if ((defined(__clang__)) && (__has_builtin(__builtin_debugtrap)))
 #define BF_DEBUG_BREAK() __builtin_debugtrap()
 #elif (defined(__GNUC__))
