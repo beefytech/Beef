@@ -3108,6 +3108,19 @@ namespace IDE.ui
 
 			EditSelection CalculateSelection(String implText)
 			{
+				if (sewc.mTextCursors.Count == 1)
+				{
+					// Simple single-cursor case
+					// The more complex calculation below does not properly indent method overrides
+					EditSelection editSelection = EditSelection();            
+					editSelection.mStartPos = mInsertStartIdx.mTextPos;
+					if (mInsertEndIdx != -1)
+					    editSelection.mEndPos = mInsertEndIdx;
+					else
+					    editSelection.mEndPos = mInsertStartIdx.mTextPos;
+					return editSelection;
+				}
+
 				var endPos = (int32)sewc.CursorTextPos;
 				var startPos = endPos;
 				var wentOverWhitespace = false;
