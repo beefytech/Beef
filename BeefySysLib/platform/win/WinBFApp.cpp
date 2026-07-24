@@ -151,8 +151,11 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		mHMenuMap[aMenu->mMenu] = aMenu;
 		mMenu = aMenu;
 	}
+	
+	// We used to set WS_EX_LAYERED here, but this can cause a very brief flicker of a window frame in the upper left
+	//  corner of the screen. This appears to be a Windows bug. Now we add this flag during SetAlpha
+	int windowFlagsEx = 0;
 
-	int windowFlagsEx = /*WS_EX_COMPOSITED |*/ WS_EX_LAYERED;
 	if (windowFlags & BFWINDOW_TOOLWINDOW)
 		windowFlagsEx |= WS_EX_TOOLWINDOW;
 	if (windowFlags & BFWINDOW_BORDER)
@@ -1789,6 +1792,7 @@ void WinBFWindow::SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVis
 	}
 	else
 	{
+		::SetWindowLong(mHWnd, GWL_EXSTYLE, ::GetWindowLong(mHWnd, GWL_EXSTYLE) | WS_EX_LAYERED);
 		::SetLayeredWindowAttributes(mHWnd, 0, (int) (alpha * 255), LWA_ALPHA);
 	}
 	SetMouseVisible(isMouseVisible);

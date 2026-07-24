@@ -20,7 +20,8 @@ namespace Beefy.gfx
 			Additive = 1,
 			NoPremult = 2,
 			AllowRead = 4,
-			FatalError = 8
+			FatalError = 8,
+			Mipmaps = 0x10
 		}
 
 		public enum RenderTargetFlags

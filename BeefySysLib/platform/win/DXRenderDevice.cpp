@@ -1235,9 +1235,9 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 				if (!modelDef->mLoadDir.IsEmpty())
 					texPath = GetAbsPath(texPath, modelDef->mLoadDir);
 
-				DXTexture* texture = (DXTexture*)((RenderDevice*)this)->LoadTexture(texPath, TextureFlag_NoPremult);
+				DXTexture* texture = (DXTexture*)((RenderDevice*)this)->LoadTexture(texPath, TextureFlag_NoPremult | TextureFlag_Mipmaps);
 				if (texture == NULL)
-					texture = (DXTexture*)((RenderDevice*)this)->LoadTexture("!white", TextureFlag_NoPremult);
+					texture = (DXTexture*)((RenderDevice*)this)->LoadTexture("!white", TextureFlag_NoPremult | TextureFlag_Mipmaps);
 				dxPrimitives->mTextures.Add(texture);
 			}
 
@@ -2521,42 +2521,60 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	if ((flags & TextureFlag_NoPremult) == 0)
 		imageData->PremultiplyAlpha();
 
-	int aWidth = 0;
-	int aHeight = 0;
+	bool wantMipmaps = (flags & TextureFlag_Mipmaps) != 0;
 
-	D3D11_SUBRESOURCE_DATA resData;
-	resData.pSysMem = imageData->mBits;
-	resData.SysMemPitch = imageData->mWidth * 4;
-	resData.SysMemSlicePitch = imageData->mWidth * imageData->mHeight * 4;
+	int aWidth = imageData->mWidth;
+	int aHeight = imageData->mHeight;
 
 	// Create the target texture
 	D3D11_TEXTURE2D_DESC desc;
 	ZeroMemory(&desc, sizeof(desc));
-	desc.Width = imageData->mWidth;
-	desc.Height = imageData->mHeight;
-	desc.MipLevels = 1;
+	desc.Width = aWidth;
+	desc.Height = aHeight;
 	desc.ArraySize = 1;
 	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	desc.SampleDesc.Count = 1;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.CPUAccessFlags = 0;
-	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
 
 	//OutputDebugStrF("Creating texture\n");
 
 	ID3D11Texture2D* d3DTexture = NULL;
-	DXCHECK(mD3DDevice->CreateTexture2D(&desc, &resData, &d3DTexture));
 
-	aWidth = imageData->mWidth;
-	aHeight = imageData->mHeight;
+	if (wantMipmaps)
+	{
+		// GenerateMips requires the texture be created empty (MipLevels=0 for a full chain, bound
+		// as both SRV and RT) and populated afterward -- can't supply initial subresource data here.
+		desc.MipLevels = 0;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+		desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+
+		DXCHECK(mD3DDevice->CreateTexture2D(&desc, NULL, &d3DTexture));
+		mD3DDeviceContext->UpdateSubresource(d3DTexture, 0, NULL, imageData->mBits, aWidth * 4, 0);
+	}
+	else
+	{
+		D3D11_SUBRESOURCE_DATA resData;
+		resData.pSysMem = imageData->mBits;
+		resData.SysMemPitch = aWidth * 4;
+		resData.SysMemSlicePitch = aWidth * aHeight * 4;
+
+		desc.MipLevels = 1;
+		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+
+		DXCHECK(mD3DDevice->CreateTexture2D(&desc, &resData, &d3DTexture));
+	}
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC srDesc;
 	srDesc.Format = desc.Format;
 	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	srDesc.Texture2D.MostDetailedMip = 0;
-	srDesc.Texture2D.MipLevels = 1;
+	srDesc.Texture2D.MipLevels = wantMipmaps ? -1 : 1;
 
 	DXCHECK(mD3DDevice->CreateShaderResourceView(d3DTexture, &srDesc, &d3DShaderResourceView));
+
+	if (wantMipmaps)
+		mD3DDeviceContext->GenerateMips(d3DShaderResourceView);
 
 	DXTexture* aTexture = new DXTexture();
 
