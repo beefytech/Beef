@@ -1777,9 +1777,7 @@ namespace IDE
 		{
 			if (let sourceViewPanel = contentPanel as SourceViewPanel)
 				return SaveFile(sourceViewPanel);
-			if (let binaryDataPanel = contentPanel as BinaryDataPanel)
-				return binaryDataPanel.Save();
-			return true;
+			return contentPanel.Save();
 		}
 
 		public ProjectSource FindProjectItem(ProjectFolder projectFolder, String relPath)
@@ -3875,7 +3873,7 @@ namespace IDE
 				return;
 			}
 
-			if (let binaryDataPanel = GetActivePanel() as BinaryDataPanel)
+			if (let binaryDataPanel = GetActivePanel() as ContentPanel)
 				SaveFile(binaryDataPanel);
 		}
 
@@ -6703,7 +6701,7 @@ namespace IDE
 		public Widget GetActiveDocumentPanel()
 		{
 			var activePanel = GetActivePanel();
-			if ((activePanel is SourceViewPanel) || (activePanel is DisassemblyPanel) || (activePanel is BinaryDataPanel))
+			if ((activePanel is SourceViewPanel) || (activePanel is DisassemblyPanel) || (activePanel is ContentPanel))
 				return activePanel;
 			return null;
 		}
@@ -6719,7 +6717,7 @@ namespace IDE
 				if (activeTab != null)
 				{
 					var lastActivePanel = activeTab.mContent;
-					if ((lastActivePanel is SourceViewPanel) || (lastActivePanel is DisassemblyPanel) || (activePanel is BinaryDataPanel))
+					if ((lastActivePanel is SourceViewPanel) || (lastActivePanel is DisassemblyPanel) || (activePanel is ContentPanel))
 						return lastActivePanel;
 				}
 			}

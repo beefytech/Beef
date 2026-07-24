@@ -191,7 +191,7 @@ namespace IDE.ui
         }
 
         /// Commit pending edits to the file
-        public bool Save()
+        public override bool Save()
         {
             if (mBinaryDataWidget != null)
                 mBinaryDataWidget.Save();

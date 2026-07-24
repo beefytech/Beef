@@ -23,6 +23,11 @@ namespace IDE.ui
 			return false;
 		}
 
+		public virtual bool Save()
+		{
+			return false;
+		}
+
         public virtual void Dispose()
         {
 			mDisposed = true;
