@@ -33,16 +33,19 @@ namespace IDE.ui
 			gApp.mFileChangedDialog = null;
 		}
 
-        public void Show(SourceViewPanel sourceViewPanel)
+        public void Show(ContentPanel contentPanel)
         {
-            String fileName = sourceViewPanel.mFilePath;
-            bool exists = File.Exists(fileName);            
+            String fileName = contentPanel.mFilePath;
+            bool exists = File.Exists(fileName);
             mFileNames.Add(new String(fileName));
 
-			if ((sourceViewPanel.mProjectSource != null) && (sourceViewPanel.mProjectSource.mEditData != null))
+			if (var sourceViewPanel = contentPanel as SourceViewPanel)
 			{
-				var editData = sourceViewPanel.mProjectSource.mEditData;
-				editData.mFileDeleted = !exists;
+				if ((sourceViewPanel.mProjectSource != null) && (sourceViewPanel.mProjectSource.mEditData != null))
+				{
+					var editData = sourceViewPanel.mProjectSource.mEditData;
+					editData.mFileDeleted = !exists;
+				}
 			}
 
             if (exists)
@@ -61,10 +64,10 @@ namespace IDE.ui
                 {
                     AddYesNoButtons(new (evt) =>
                     {
-                        sourceViewPanel.Reload();
-                    }, new (evt) => 
+                        contentPanel.Reload();
+                    }, new (evt) =>
                     {
-						sourceViewPanel.RefusedReload();
+						contentPanel.RefusedReload();
                     });
                 }
             }
@@ -90,7 +93,7 @@ namespace IDE.ui
                 {
                     AddYesNoButtons(new (evt) =>
                     {
-                        gApp.CloseDocument(sourceViewPanel);
+                        contentPanel.HandleFileDeleted();
                     });
                 }
             }
@@ -99,9 +102,9 @@ namespace IDE.ui
             button.mOnMouseClick.Add(new (evt) =>
             {
 				if (mDialogKind == .Deleted)
-                	gApp.CloseDocument(sourceViewPanel);
+                	contentPanel.HandleFileDeleted();
 				else
-					sourceViewPanel.Reload();
+					contentPanel.Reload();
                 mApplyAllResult[(int)mDialogKind] = true;
             });
             button = AddButton("No To All");
@@ -112,7 +115,7 @@ namespace IDE.ui
 					// Nothing
 				}
 				else
-					sourceViewPanel.RefusedReload();
+					contentPanel.RefusedReload();
                 mApplyAllResult[(int)mDialogKind] = false;
             });
             PopupWindow(IDEApp.sApp.mMainWindow);

@@ -944,7 +944,7 @@ namespace IDE.ui
             	projectFolder.mPath.Append("src", dirSepStr, projectFolder.mName);
 			else
 				projectFolder.mPath.Append(folder.mPath, dirSepStr, projectFolder.mName);
-			projectFolder.mIncludeKind = .Auto;
+			projectFolder.mIncludeKind = folder.mAutoInclude ? .Auto : .Manual;
 			projectFolder.mAutoInclude = true;
             folder.AddChild(projectFolder);
             let projectItem = AddProjectItem(projectFolder);
@@ -1037,7 +1037,7 @@ namespace IDE.ui
 			}
 
 			ProjectSource projectSource = new ProjectSource();
-			projectSource.mIncludeKind = (folder.mIncludeKind == .Auto) ? .Auto : .Manual;
+			projectSource.mIncludeKind = (folder.mAutoInclude) ? .Auto : .Manual;
 			projectSource.mName.Set(relFileName);
 			projectSource.mPath = new String();
 			folder.mProject.GetProjectRelPath(fullFilePath, projectSource.mPath);
@@ -1128,7 +1128,7 @@ namespace IDE.ui
 			}
 
             ProjectSource projectSource = new ProjectSource();
-			projectSource.mIncludeKind = (folder.mIncludeKind == .Auto) ? .Auto : .Manual;
+			projectSource.mIncludeKind = (folder.mAutoInclude) ? .Auto : .Manual;
             projectSource.mName.Set(relFileName);
 			projectSource.mPath = new String();
             folder.mProject.GetProjectRelPath(fullFilePath, projectSource.mPath);

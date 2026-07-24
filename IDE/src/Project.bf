@@ -32,7 +32,7 @@ namespace IDE
 			SimpleSource,
 		}
 
-		public IncludeKind mIncludeKind;
+		public IncludeKind mIncludeKind; // Indicates whether or not *we* were auto or manually included
         public Project mProject;
         public ProjectFolder mParentFolder;
         public String mName = new String() ~ delete _;
@@ -455,7 +455,7 @@ namespace IDE
 			};
 		public Dictionary<String, ProjectItem> mChildMap = new Dictionary<String, ProjectItem>() ~ delete _;
         //public String mLastImportDir = new String() ~ delete _;
-		public bool mAutoInclude;
+		public bool mAutoInclude; // Indicates that we should auto-include items found inside us
 		public bool mSortDirty;
 
 		public this()

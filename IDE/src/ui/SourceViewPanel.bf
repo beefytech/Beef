@@ -3901,7 +3901,7 @@ namespace IDE.ui
             public String mLine;
         }*/
 
-        public void Reload()
+        public override void Reload()
         {
 			bool needsFreshLoad = mLoadFailed;
 			if ((mEditData != null) && (!Path.Equals(mFilePath, mEditData.mFilePath)))
@@ -4010,7 +4010,7 @@ namespace IDE.ui
 			}
 		}
 
-		public void RefusedReload()
+		public override void RefusedReload()
 		{
 			if (mEditData != null)
 			{

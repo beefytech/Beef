@@ -23,7 +23,7 @@ namespace IDE.ui
         public Result<void> Open(StringView filePath)
         {
             mFileStream = new FileStream();
-            if (mFileStream.Open(filePath, .ReadWrite, .Read) case .Err)
+            if (mFileStream.Open(filePath, .ReadWrite, .Read | .Write | .Delete) case .Err)
             {
                 // Fall back to a read-only view
                 mReadOnly = true;
@@ -146,6 +146,7 @@ namespace IDE.ui
             mProvider = provider;
             mFilePath = new String(filePath);
             IDEUtils.FixFilePath(mFilePath);
+            IDEApp.sApp.mFileWatcher.WatchFile(mFilePath);
 
             mBinaryDataWidget = new BinaryDataWidget(mProvider);
             mBinaryDataWidget.SetFileMode(mProvider.mFileSize);
@@ -155,6 +156,25 @@ namespace IDE.ui
 
             return true;
         }
+
+		public override void Reload()
+		{
+			if (mFilePath == null)
+				return;
+
+			String filePath = scope String(mFilePath);
+
+			Widget.RemoveAndDelete(mBinaryDataWidget);
+			mBinaryDataWidget = null;
+			if (mProvider != null)
+				mProvider.Close();
+			DeleteAndNullify!(mProvider);
+			IDEApp.sApp.mFileWatcher.RemoveWatch(mFilePath);
+			DeleteAndNullify!(mFilePath);
+
+			Show(filePath);
+			Resize(mX, mY, mWidth, mHeight);
+		}
 
         public void ShowGotoOffset()
         {
@@ -216,6 +236,8 @@ namespace IDE.ui
         {
             if (mProvider != null)
                 mProvider.Close();
+            if (mFilePath != null)
+                IDEApp.sApp.mFileWatcher.RemoveWatch(mFilePath);
             base.Dispose();
         }
 

@@ -888,7 +888,7 @@ namespace IDE
 			}
 		}
 
-		void WithStandardPanels(delegate void(Panel panel) dlg)
+		protected virtual void WithStandardPanels(delegate void(Panel panel) dlg)
 		{
 			dlg(mProjectPanel);
 			dlg(mClassViewPanel);
@@ -15139,6 +15139,26 @@ namespace IDE
 								tab.mTabbedView.mNeedResizeTabs = true;
 							}
 						}
+						return;
+					}
+
+					if (let contentPanel = tab.mContent as ContentPanel)
+					{
+						if ((contentPanel.mFilePath != null) && (Path.Equals(contentPanel.mFilePath, oldPath)))
+						{
+							contentPanel.HandleFileRenamed(newPath);
+
+							if (let contentTab = tab as IDEApp.ContentTabButton)
+							{
+								tab.Label = newFileName;
+								float newWidth = contentTab.GetWantWidth();
+								if (newWidth != tab.mWantWidth)
+								{
+									tab.mWantWidth = newWidth;
+									tab.mTabbedView.mNeedResizeTabs = true;
+								}
+							}
+						}
 					}
 				});
 
@@ -15460,6 +15480,54 @@ namespace IDE
 #endif
 
 				FileChanged(fileName);
+
+				// Non-source ContentPanels don't use the EditData/ProjectSource machinery below.
+				ContentPanel matchedContentPanel = null;
+				WithTabs(scope [&] (tabButton) =>
+					{
+						if (matchedContentPanel != null)
+							return;
+						if ((tabButton.mContent is SourceViewPanel))
+							return;
+						if (let contentPanel = tabButton.mContent as ContentPanel)
+						{
+							if (contentPanel.FileNameMatches(fileName))
+								matchedContentPanel = contentPanel;
+						}
+					});
+
+				if (matchedContentPanel != null)
+				{
+					FileChangedDialog.DialogKind dialogKind = File.Exists(fileName) ? .Changed : .Deleted;
+
+					if ((matchedContentPanel.HasUnsavedChanges()) || (dialogKind == .Deleted))
+					{
+						if ((mFileChangedDialog != null) && (mFileChangedDialog.mApplyAllResult[(int)dialogKind].HasValue))
+						{
+							bool doIt = mFileChangedDialog.mApplyAllResult[(int)dialogKind].Value;
+							if (doIt)
+							{
+								if (dialogKind == .Deleted)
+									matchedContentPanel.HandleFileDeleted();
+								else
+									matchedContentPanel.Reload();
+							}
+							continue;
+						}
+						else
+						{
+							mFileChangedDialog = new FileChangedDialog();
+							mFileChangedDialog.Show(matchedContentPanel);
+						}
+						break;
+					}
+					else
+					{
+						matchedContentPanel.Reload();
+					}
+					continue;
+				}
+
 				var editData = GetEditData(fileName, false, false);
 				if (editData == null)
 					continue;

@@ -28,6 +28,29 @@ namespace IDE.ui
 			return false;
 		}
 
+		public virtual void Reload()
+		{
+		}
+
+		public virtual void RefusedReload()
+		{
+		}
+
+		// Default closes this panel/tab; override for panels that shouldn't be (eg a persistent
+		// singleton panel that should instead notify whatever owns the content).
+		public virtual void HandleFileDeleted()
+		{
+			gApp.CloseDocument(this);
+		}
+
+		public virtual void HandleFileRenamed(String newPath)
+		{
+			if (mFilePath != null)
+				IDEApp.sApp.mFileWatcher.RemoveWatch(mFilePath);
+			String.NewOrSet!(mFilePath, newPath);
+			IDEApp.sApp.mFileWatcher.WatchFile(mFilePath);
+		}
+
         public virtual void Dispose()
         {
 			mDisposed = true;
