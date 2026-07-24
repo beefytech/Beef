@@ -7442,10 +7442,7 @@ namespace IDE
 					contentPanelTab.mTabbedView.FinishTabAnim();
 					if (setFocus)
 					{
-						if (var sourceViewPanel = contentPanel as SourceViewPanel)
-							sourceViewPanel.FocusEdit();
-						else
-							contentPanel.SetFocus();
+						contentPanel.Activate();
 					}
 
 					if (var sourceViewPanel = contentPanel as SourceViewPanel)

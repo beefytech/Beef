@@ -79,5 +79,10 @@ namespace IDE.ui
 		{
 
 		}
+
+		public virtual void Activate()
+		{
+			SetFocus();
+		}
     }
 }

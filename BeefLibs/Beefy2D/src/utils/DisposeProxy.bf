@@ -25,4 +25,22 @@ namespace Beefy.utils
             mDisposeProxyDelegate();
         }
     }
+
+	public struct DisposeProxy<T> : IDisposable where T : const int
+	{
+		public IDisposable[T] mDisposables;
+
+		public this(IDisposable[T] disposables)
+		{
+			mDisposables = disposables;
+		}
+
+		public void Dispose()
+		{
+		    for (var dp in mDisposables)
+			{
+				dp.Dispose();
+			}
+		}
+	}
 }

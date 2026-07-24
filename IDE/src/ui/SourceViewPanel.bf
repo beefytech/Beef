@@ -2877,6 +2877,12 @@ namespace IDE.ui
 				EditGotFocus();
         }
 
+		public override void Activate()
+		{
+			base.Activate();
+			FocusEdit();
+		}
+
         public override void SetFocus()
         {			
             //mEditWidget.SetFocus();
