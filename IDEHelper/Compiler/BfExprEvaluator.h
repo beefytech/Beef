@@ -482,7 +482,7 @@ public:
 	bool CheckGenericCtor(BfGenericParamType* genericParamType, BfResolvedArgs& argValues, BfAstNode* targetSrc);
 	BfTypedValue LoadProperty(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfPropertyDef* prop, BfLookupFieldFlags flags, BfCheckedKind checkedKind, bool isInline);
 	BfTypedValue LoadField(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfFieldDef* fieldDef, BfLookupFieldFlags flags);
-	BfTypedValue LookupField(BfAstNode* targetSrc, BfTypedValue target, const StringImpl& fieldName, BfLookupFieldFlags flags = BfLookupFieldFlag_None);
+	BfTypedValue LookupField(BfAstNode* targetSrc, BfTypedValue target, const StringImpl& fieldName, BfLookupFieldFlags flags = BfLookupFieldFlag_None, BfFieldDef** fieldDef = NULL);
 	void CheckObjectCreateTypeRef(BfType* expectingType, BfAstNode* afterNode);
 	void LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ignoreInitialError = false, bool* hadError = NULL);
 	void LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode* nameLeft, BfIdentifierNode* nameRight, bool ignoreInitialError, bool* hadError = NULL);

@@ -4896,9 +4896,10 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 	}
 
 	BfTypedValue result;
+	BfFieldDef* fieldDef = NULL;
 	if (thisValue.HasType())
 	{
-		result = LookupField(identifierNode, thisValue, findName, BfLookupFieldFlag_IsImplicitThis);
+		result = LookupField(identifierNode, thisValue, findName, BfLookupFieldFlag_IsImplicitThis, &fieldDef);
 		if (mResultFieldInstance == NULL)
 		{
 			mResultLocalVar = NULL;
@@ -4933,10 +4934,10 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 				if (globalContainer.mTypeInst == NULL)
 					continue;
 				thisValue = BfTypedValue(globalContainer.mTypeInst);
-				result = LookupField(identifierNode, thisValue, findName);
+				result = LookupField(identifierNode, thisValue, findName, BfLookupFieldFlag_None, &fieldDef);
 				if ((result) || (mPropDef != NULL))
 				{
-					mModule->SetHighestElementType(identifierNode, BfSourceElementType_Member);
+					mModule->SetHighestElementType(identifierNode, fieldDef != NULL && fieldDef->IsNonConstStatic() ? BfSourceElementType_Static : BfSourceElementType_Member);
 					return result;
 				}
 			}
@@ -4948,10 +4949,10 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 			for (auto typeInst : staticSearch->mStaticTypes)
 			{
 				thisValue = BfTypedValue(typeInst);
-				result = LookupField(identifierNode, thisValue, findName);
+				result = LookupField(identifierNode, thisValue, findName, BfLookupFieldFlag_None, &fieldDef);
 				if ((result) || (mPropDef != NULL))
 				{
-					mModule->SetHighestElementType(identifierNode, BfSourceElementType_Member);
+					mModule->SetHighestElementType(identifierNode, fieldDef != NULL && fieldDef->IsNonConstStatic() ? BfSourceElementType_Static : BfSourceElementType_Member);
 					return result;
 				}
 			}
@@ -4959,7 +4960,7 @@ BfTypedValue BfExprEvaluator::LookupIdentifier(BfAstNode* refNode, const StringI
 	}
 	else
 	{
-		mModule->SetHighestElementType(identifierNode, BfSourceElementType_Member);
+		mModule->SetHighestElementType(identifierNode, fieldDef != NULL && fieldDef->IsNonConstStatic() ? BfSourceElementType_Static : BfSourceElementType_Member);
 	}
 
 	if ((!result) && (identifierNode != NULL))
@@ -5781,7 +5782,7 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 	return retVal;
 }
 
-BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue target, const StringImpl& fieldName, BfLookupFieldFlags flags)
+BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue target, const StringImpl& fieldName, BfLookupFieldFlags flags, BfFieldDef** fieldDef)
 {
  	if (target)
  		flags = (BfLookupFieldFlags)(flags | BfLookupFieldFlag_HasInstance);	
@@ -5795,7 +5796,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 		{
 			for (auto iface : genericParamInst->mInterfaceConstraints)
 			{
-				auto result = LookupField(targetSrc, BfTypedValue(target.mValue, iface), fieldName, flags);
+				auto result = LookupField(targetSrc, BfTypedValue(target.mValue, iface), fieldName, flags, fieldDef);
 				if ((result) || (mPropDef != NULL))
 				{
 					return result;
@@ -6065,7 +6066,14 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			}
 
 			if (matchedField != NULL)
+			{
+				if (fieldDef != NULL)
+				{
+					*fieldDef = matchedField;
+				}
+
 				return LoadField(targetSrc, target, curCheckType, matchedField, flags);
+			}
 
 			BfPropertyDef* nextProp = NULL;
 			if (curCheckType->mTypeDef->mPropertySet.TryGetWith(fieldName, &entry))
@@ -6152,7 +6160,14 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 				}
 
 				if (matchedProp != NULL)
+				{
+					if (fieldDef != NULL)
+					{
+						*fieldDef = matchedProp;
+					}
+
 					return LoadProperty(targetSrc, target, curCheckType, matchedProp, flags, checkedKind, isInlined);
+				}
 			}
 
 			if (curCheckType->mTypeDef->mHasUsingFields)
@@ -6314,7 +6329,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			newFlags = (BfLookupFieldFlags)(newFlags | BfLookupFieldFlag_HasInstance);
 
 		// Check statics in outer type
-		return LookupField(targetSrc, BfTypedValue(outerTypeDef), fieldName, newFlags);
+		return LookupField(targetSrc, BfTypedValue(outerTypeDef), fieldName, newFlags, fieldDef);
 	}	
 
 	return BfTypedValue();
@@ -11361,6 +11376,23 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 
 	if (!mResult)
 	{
+		auto type = mModule->ResolveTypeRef(nameLeft, NULL);
+
+		if (type != NULL)
+		{
+			auto target = mModule->GetThis();
+			target.mType = type;
+
+			BfFieldDef* fieldDef = NULL;
+
+			mResult = LookupField(nameRight, target, fieldName, BfLookupFieldFlag_IsImplicitThis, &fieldDef);
+
+			if (fieldDef != NULL && fieldDef->IsNonConstStatic())
+			{
+				mModule->SetHighestElementType(nameRight, BfSourceElementType_Static);
+			}
+		}
+
 		if (!ignoreInitialError)
 			mModule->Fail("Identifier not found", nameNode->mLeft);
 		return;
@@ -11525,6 +11557,23 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 
 	if (!mResult)
 	{
+		auto type = mModule->ResolveTypeRef(nameLeft, NULL);
+
+		if (type != NULL)
+		{
+			auto target = mModule->GetThis();
+			target.mType = type;
+
+			BfFieldDef* fieldDef = NULL;
+
+			mResult = LookupField(nameRight, target, fieldName, BfLookupFieldFlag_IsImplicitThis, &fieldDef);
+
+			if (fieldDef != NULL && fieldDef->IsNonConstStatic())
+			{
+				mModule->SetHighestElementType(nameRight, BfSourceElementType_Static);
+			}
+		}
+
 		if (!ignoreInitialError)
 			mModule->Fail("Identifier not found", nameLeft);
 		return;

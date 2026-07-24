@@ -792,6 +792,7 @@ namespace IDE.ui
 				0xFFFFFFFF, // Local
 				0xFFFFFFFF, // Parameter
 				0xFFFFFFFF, // Member
+				0xFFFFFFFF, // Static
                 0xFFA6E22A, // Method
 				0xFF66D9EF, // Type
 				0xFF66D9EF, // PrimitiveType
