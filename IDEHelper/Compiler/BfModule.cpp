@@ -3006,7 +3006,7 @@ bool BfModule::CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* me
 			else
 			{
 				auto lookupCheckType = curCheckType;
-				while (lookupCheckType->mInheritDepth >= memberOwner->mInheritDepth)
+				while ((lookupCheckType != NULL) && (lookupCheckType->mInheritDepth >= memberOwner->mInheritDepth))
 				{
 					if (lookupCheckType == memberOwner)
 					{
@@ -3022,7 +3022,7 @@ bool BfModule::CheckProtection(BfProtectionCheckFlags& flags, BfTypeInstance* me
 			if (!allowProtected)
 			{
 				// It's possible our outer type is derived from 'memberOwner'
-				while (curCheckType->mTypeDef->mNestDepth > 0)
+				while ((curCheckType != NULL) && (curCheckType->mTypeDef->mNestDepth > 0))
 				{
 					curCheckType = GetOuterType(curCheckType);
 					if (curCheckType == NULL)
