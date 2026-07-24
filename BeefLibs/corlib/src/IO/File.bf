@@ -208,12 +208,18 @@ namespace System.IO
 
 		public static Result<DateTime> GetLastWriteTime(StringView fullPath)
 		{
-			return DateTime.FromFileTime((int64)Platform.Hook.BfpFile_GetTime_LastWrite(fullPath.ToScopeCStr!()));
+			var ft = Platform.Hook.BfpFile_GetTime_LastWrite(fullPath.ToScopeCStr!());
+			if (ft == 0)
+				return .Err;
+			return DateTime.FromFileTime((int64)ft);
 		}
 
 		public static Result<DateTime> GetLastWriteTimeUtc(StringView fullPath)
 		{
-			return DateTime.FromFileTimeUtc((int64)Platform.Hook.BfpFile_GetTime_LastWrite(fullPath.ToScopeCStr!()));
+			var ft = Platform.Hook.BfpFile_GetTime_LastWrite(fullPath.ToScopeCStr!());
+			if (ft == 0)
+				return .Err;
+			return DateTime.FromFileTimeUtc((int64)ft);
 		}
 	}
 
