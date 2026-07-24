@@ -49,6 +49,10 @@
 #include <io.h>
 #endif
 
+#ifdef BF_PLATFORM_LINUX
+#include <sys/ptrace.h>
+#endif
+
 USING_NS_BF;
 
 static Beefy::StringT<0> gCmdLineString;
@@ -221,6 +225,16 @@ using namespace bf::System;
 
 bool IsDebuggerPresent()
 {
+
+#ifdef BF_PLATFORM_LINUX
+	bool debugged = ptrace(PTRACE_TRACEME, 0, 1, 0) < 0;
+	if (!debugged)
+		ptrace(PTRACE_DETACH, 0, 1, 0); // detach when ptrace is successful
+
+	return debugged;
+
+#endif // BF_PLATFORM_LINUX
+
     return false;
 }
 

@@ -13348,6 +13348,9 @@ namespace IDE
 					Debug.Assert(mVersionInfo.FileVersion.StartsWith(cVersion));
 #if BF_PLATFORM_WINDOWS
 				exeTime = File.GetLastWriteTime(exeFilePath).GetValueOrDefault();
+#else
+				const DateTime COMPILE_TIME = DateTime.UtcNow;
+				exeTime = COMPILE_TIME.ToLocalTime();
 #endif
 			}
 			return mVersionInfo;
@@ -13520,7 +13523,7 @@ namespace IDE
 			exeDateStr.Append(" at ");
 			localExeDate.ToShortTimeString(exeDateStr);
 
-			OutputLine("IDE Started. Version {} built {}.", mVersionInfo.FileVersion, exeDateStr);
+			OutputLine("IDE Started. Version {} built {}.", (mVersionInfo.FileVersion ?? cVersion), exeDateStr);
 
 			/*if (!mRunningTestScript)
 			{
