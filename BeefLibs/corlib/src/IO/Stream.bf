@@ -2,6 +2,7 @@
 // of an open-sourcing initiative in 2014 of the C# core libraries.
 // The original source was submitted to https://github.com/Microsoft/referencesource
 
+using System.Collections;
 using System.Diagnostics;
 using System.Diagnostics.Contracts;
 using System.Threading;
@@ -150,6 +151,29 @@ namespace System.IO
 			return ReadStrSized32(size, output);
 		}
 
+		public Result<void> ReadBytesSized32(int size, List<uint8> output)
+		{
+			if (size < 0)
+				return .Err;
+
+			uint8* buf = output.GrowUninitialized(size);
+			switch (TryRead(.(buf, size)))
+			{
+			case .Ok(let readLen):
+				if (readLen < size)
+					output.Count -= (size - readLen);
+				return .Ok;
+			case .Err:
+				return .Err;
+			}
+		}
+
+		public Result<void> ReadBytesSized32(List<uint8> output)
+		{
+			int size = Try!(Read<int32>());
+			return ReadBytesSized32(size, output);
+		}
+
 		/// Reads null terminated ASCII string from the stream. Null terminator is read from stream but isn't appended to output string
 		public Result<void> ReadStrC(String output)
 		{
@@ -204,6 +228,16 @@ namespace System.IO
 			int trySize = val.Length;
 			Try!(Write((int32)trySize));
 			int size = Try!(TryWrite(.((uint8*)val.Ptr, trySize)));
+			if (size != trySize)
+				return .Err;
+			return .Ok;
+		}
+
+		public Result<void> WriteBytesSized32(Span<uint8> val)
+		{
+			int trySize = val.Length;
+			Try!(Write((int32)trySize));
+			int size = Try!(TryWrite(val));
 			if (size != trySize)
 				return .Err;
 			return .Ok;
