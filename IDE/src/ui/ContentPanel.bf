@@ -25,7 +25,7 @@ namespace IDE.ui
 
 		public virtual bool Save()
 		{
-			return false;
+			return true;
 		}
 
 		public virtual void Reload()
