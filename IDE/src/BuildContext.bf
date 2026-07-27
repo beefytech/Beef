@@ -1038,7 +1038,7 @@ namespace IDE
 
 				int64 fileTime = 0;
 				if (!filePath.IsEmpty)
-					fileTime = File.GetLastWriteTime(filePath).GetValueOrDefault().ToFileTime();
+					fileTime = File.GetLastWriteTime(filePath).GetValueOrDefault().ToFileTime().GetValueOrDefault();
 				cacheStr.AppendF("{}\t{}\n", filePath, fileTime);
 			}
 

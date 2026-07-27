@@ -550,7 +550,7 @@ namespace System
 			return DateTime(universalTicks, .Utc);
 		}
 
-		public int64 ToFileTime()
+		public Result<int64> ToFileTime()
 		{
 			return ToUniversalTime().ToFileTimeUtc();
 		}
