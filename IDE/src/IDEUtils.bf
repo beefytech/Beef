@@ -193,7 +193,7 @@ namespace IDE
 
         public static int64 GetLastModifiedTime(String filePath)
         {
-            DateTime dt = File.GetLastWriteTime(filePath);
+            DateTime dt = File.GetLastWriteTime(filePath).GetValueOrDefault();
             //return dt.ToFileTime();
 
 			//ThrowUnimplemented();

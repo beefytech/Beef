@@ -200,7 +200,7 @@ namespace IDE.ui
 				*keyPtr = new String(fixedPath);
 
 				TimeEntry te = new .();
-				te.mLastWriteTime = File.GetLastWriteTime(path);
+				te.mLastWriteTime = File.GetLastWriteTime(path).GetValueOrDefault();
 				te.mCheckedTime = DateTime.Now;
 				*valuePtr = te;
 				return te.mLastWriteTime;
@@ -211,7 +211,7 @@ namespace IDE.ui
 				if ((DateTime.Now - te.mCheckedTime).TotalSeconds > 60)
 				{
 					te.mCheckedTime = DateTime.Now;
-					te.mLastWriteTime = File.GetLastWriteTime(path);
+					te.mLastWriteTime = File.GetLastWriteTime(path).GetValueOrDefault();
 				}
 				return te.mLastWriteTime;
 			}
