@@ -1965,7 +1965,7 @@ namespace IDE
 			return LoadWorkspaceUserData(sd);
 		}
 
-		void SaveWorkspaceUserData(StructuredData sd)
+		protected virtual void SaveWorkspaceUserData(StructuredData sd)
 		{
 			sd.Add("FileVersion", 1);
 			sd.Add("LastConfig", mConfigName);
@@ -3646,7 +3646,7 @@ namespace IDE
 			mRequestedShowKind = data.GetEnum<BFWindow.ShowKind>("ShowKind");
 		}
 
-		bool LoadWorkspaceUserData(StructuredData data)
+		protected virtual bool LoadWorkspaceUserData(StructuredData data)
 		{
 			//
 			{
