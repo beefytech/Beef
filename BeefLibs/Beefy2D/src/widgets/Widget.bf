@@ -372,7 +372,11 @@ namespace Beefy.widgets
 
         public virtual void SetVisible(bool visible)
         {
-            mVisible = visible;
+			if (visible != mVisible)
+			{
+	            mVisible = visible;
+				MarkDirty();
+			}
         }
 
         public virtual void AddedToParent()
