@@ -742,8 +742,12 @@ void BfAutoComplete::AddInnerTypes(BfTypeInstance* typeInst, const StringImpl& f
 			}
 		}
 
-		if (CheckProtection(innerType->mProtection, innerType, allowProtected, allowPrivate))
-			AddTypeDef(innerType, filter);
+		auto useInnerType = innerType;
+		if (useInnerType->mIsPartial)
+			useInnerType = mModule->GetCombinedPartialTypeDef(useInnerType);
+
+		if (CheckProtection(useInnerType->mProtection, useInnerType, allowProtected, allowPrivate))
+			AddTypeDef(useInnerType, filter);
 	}
 
 	allowPrivate = false;
