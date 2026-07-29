@@ -96,7 +96,7 @@ namespace IDE
 			{
 				int64 highestDateTime = 0;
 
-				int64 targetDateTime = File.GetLastWriteTime(targetPath).Get().ToFileTime();
+				int64 targetDateTime = File.GetLastWriteTime(targetPath).GetValueOrDefault().ToFileTime().GetValueOrDefault();
 
 				bool forceRebuild = false;
 
