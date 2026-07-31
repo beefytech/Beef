@@ -160,7 +160,7 @@ void BfSourceClassifier::Visit(BfFieldDeclaration* fieldDecl)
 	VisitChild(fieldDecl->mReadOnlySpecifier);
 	VisitChild(fieldDecl->mTypeRef);
 	VisitChild(fieldDecl->mNameNode);
-	SetElementType(fieldDecl->mNameNode, BfSourceElementType_Member);
+	SetElementType(fieldDecl->mNameNode, fieldDecl->mStaticSpecifier != NULL ? BfSourceElementType_Static : BfSourceElementType_Member);
 }
 
 void BfSourceClassifier::Visit(BfFieldDtorDeclaration* fieldDtorDecl)
@@ -674,7 +674,7 @@ void BfSourceClassifier::Visit(BfPropertyDeclaration* propertyDeclaration)
 
 	BfElementVisitor::Visit(propertyDeclaration);
 
-	SetElementType(propertyDeclaration->mNameNode, BfSourceElementType_Member);
+	SetElementType(propertyDeclaration->mNameNode, propertyDeclaration->mStaticSpecifier != NULL ? BfSourceElementType_Static : BfSourceElementType_Member);
 
 	if (auto expr = BfNodeDynCast<BfPropertyBodyExpression>(propertyDeclaration->mDefinitionBlock))
 		return;
@@ -857,7 +857,7 @@ bool BfSourceClassifier::WantsSkipParentMethod(BfAstNode* node)
 		for (auto methodDeclaration : propDecl->mMethods)
 		{
 			if (node == methodDeclaration->mBody)
-			 	return true;
+				return true;
 		}
 	}
 

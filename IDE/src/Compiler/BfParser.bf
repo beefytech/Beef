@@ -15,13 +15,20 @@ namespace IDE.Compiler
 {
     public enum BfSourceElementType : uint8
     {
-        Normal,
+		Normal,
 		Keyword,
 		Literal,
-		Identifier,	
 		Comment,
+		Identifier,	
+		Local,
+		Parameter,
+		Member,
+		Static,
 		Method,
 		Type,
+		PrimitiveType,
+		Struct,
+		GenericParam,
 		RefType,
 		Interface,
 		Namespace

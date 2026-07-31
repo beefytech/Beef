@@ -31,6 +31,7 @@ namespace IDE.ui
 		Local,
 		Parameter,
 		Member,
+		Static,
         Method,
 		Type,
 		PrimitiveType,
