@@ -84,5 +84,33 @@ namespace IDE.ui
 		{
 			SetFocus();
 		}
+
+		// Finds whichever ProjectItem matches mFilePath and selects it in the project panel. There can
+		// be more than one ProjectItem with the same path across the workspace's projects (eg the same
+		// file linked into multiple projects) -- any match is accepted, but one belonging to the
+		// startup project wins the tie, since that's the project the user's most likely thinking about.
+		public virtual void SyncWithWorkspacePanel()
+		{
+			if (mFilePath == null)
+				return;
+
+			ProjectSource foundItem = null;
+			for (var project in gApp.mWorkspace.mProjects)
+			{
+				String relPath = scope String();
+				project.GetProjectRelPath(mFilePath, relPath);
+
+				var projectItem = gApp.FindProjectItem(project.mRootFolder, relPath);
+				if (projectItem == null)
+					continue;
+
+				foundItem = projectItem;
+				if (project == gApp.mWorkspace.mStartupProject)
+					break;
+			}
+
+			if (foundItem != null)
+				gApp.mProjectPanel.SelectProjectItem(foundItem);
+		}
     }
 }

@@ -2908,20 +2908,10 @@ namespace IDE.ui
 			return false;
 		}
 
-		public void SyncWithWorkspacePanel()
+		public override void SyncWithWorkspacePanel()
 		{
-			if (gApp.mProjectPanel.[Friend]mProjectToListViewMap.TryGet(mProjectSource, var matchKey, var projectListViewItem))
-			{
-				var checkLVItem = projectListViewItem.mParentItem;
-				while (checkLVItem != null)
-				{
-					checkLVItem.Open(true);
-					checkLVItem = (ProjectListViewItem)checkLVItem.mParentItem;
-				}
-
-				projectListViewItem.mListView.GetRoot().SelectItemExclusively(projectListViewItem);
-				projectListViewItem.mListView.EnsureItemVisible(projectListViewItem, false);
-			}
+			if (mProjectSource != null)
+				gApp.mProjectPanel.SelectProjectItem(mProjectSource);
 		}
 
         public override void EditGotFocus()

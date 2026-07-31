@@ -481,7 +481,7 @@ namespace IDE
                 mWatchedFiles[new String(fixedFilePath)] = depInfo;
                             
                 String directoryName = scope String();
-                Path.GetDirectoryPath(fixedFilePath, directoryName);
+                Path.GetDirectoryPath(fixedFilePath, directoryName).IgnoreError();
 
                 mWatchers.TryGetValue(directoryName, var watcherEntry);
                 if (watcherEntry != null)

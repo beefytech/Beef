@@ -1575,10 +1575,29 @@ namespace IDE.ui
             }
 
             mListView.GetRoot().SelectItem(item, checkKeyStates);
-            if (item == null)                            
+            if (item == null)
                 return;
             SetFocus();
         }
+
+		// Opens every ancestor of projectItem's list view entry so it's visible, then selects and
+		// scrolls to it -- used to sync the project panel's selection to whatever's active elsewhere
+		// (see ContentPanel.SyncWithWorkspacePanel).
+		public void SelectProjectItem(ProjectItem projectItem)
+		{
+			if (!mProjectToListViewMap.TryGet(projectItem, var matchKey, var projectListViewItem))
+				return;
+
+			var checkLVItem = projectListViewItem.mParentItem;
+			while (checkLVItem != null)
+			{
+				checkLVItem.Open(true);
+				checkLVItem = (ProjectListViewItem)checkLVItem.mParentItem;
+			}
+
+			projectListViewItem.mListView.GetRoot().SelectItemExclusively(projectListViewItem);
+			projectListViewItem.mListView.EnsureItemVisible(projectListViewItem, false);
+		}
 
         public override void LostFocus()
         {

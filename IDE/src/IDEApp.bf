@@ -6966,18 +6966,19 @@ namespace IDE
 				if (btn == 1)
 				{
 					Menu menu = new Menu();
-					if (var sourceViewPanel = mContent as SourceViewPanel)
+
+					if (var contentPanel = mContent as ContentPanel)
 					{
 						var item = menu.AddItem("Copy Full Path");
 						item.mOnMenuItemSelected.Add(new (menu) =>
 							{
-								gApp.SetClipboardText(sourceViewPanel.mFilePath);
+								gApp.SetClipboardText(contentPanel.mFilePath);
 							});
 						item = menu.AddItem("Open Containing Folder");
 						item.mOnMenuItemSelected.Add(new (menu) =>
 							{
 								let directory = scope String();
-								Path.GetDirectoryPath(sourceViewPanel.mFilePath, directory);
+								Path.GetDirectoryPath(contentPanel.mFilePath, directory);
 
 								ProcessStartInfo procInfo = scope ProcessStartInfo();
 								procInfo.UseShellExecute = true;
@@ -6990,7 +6991,7 @@ namespace IDE
 						item.mOnMenuItemSelected.Add(new (menu) =>
 							{
 								let directory = scope String();
-								Path.GetDirectoryPath(sourceViewPanel.mFilePath, directory);
+								Path.GetDirectoryPath(contentPanel.mFilePath, directory);
 
 								ProcessStartInfo procInfo = scope ProcessStartInfo();
 								procInfo.UseShellExecute = true;
@@ -7003,7 +7004,7 @@ namespace IDE
 						item = menu.AddItem("Show in Workspace Panel");
 						item.mOnMenuItemSelected.Add(new (menu) =>
 							{
-								sourceViewPanel.SyncWithWorkspacePanel();
+								contentPanel.SyncWithWorkspacePanel();
 							});
 						item = menu.AddItem("Close");
 						item.mOnMenuItemSelected.Add(new (menu) =>
