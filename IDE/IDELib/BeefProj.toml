@@ -1,0 +1,16 @@
+FileVersion = 1
+
+[Project]
+Name = "IDELib"
+TargetType = "BeefLib"
+StartupObject = "IDELib.Program"
+
+[Dependencies]
+corlib = "*"
+Beefy2D = "*"
+curl = "*"
+
+[[ProjectFolder.Items]]
+Type = "Folder"
+Path = "../src"
+AutoInclude = true
