@@ -6027,13 +6027,15 @@ void BfModule::Visit(BfUsingStatement* usingStmt)
 			exprEvaluator.mFunctionBindResult = &functionBindResult;
 			SizedArray<BfResolvedArg, 0> resolvedArgs;
 			BfMethodMatcher methodMatcher(usingStmt->mVariableDeclaration, this, dispMethod.mMethodInstance, resolvedArgs, BfMethodGenericArguments());
-			methodMatcher.CheckType(iDisposableType, embeddedValue, false);
-			methodMatcher.TryDevirtualizeCall(embeddedValue);
-			auto retVal = exprEvaluator.CreateCall(&methodMatcher, embeddedValue);
-			if (functionBindResult.mMethodInstance != NULL)
+			if (methodMatcher.CheckType(iDisposableType, embeddedValue, false))
 			{
-				moduleMethodInstance = BfModuleMethodInstance(functionBindResult.mMethodInstance, functionBindResult.mFunc);
-				AddDeferredCall(moduleMethodInstance, functionBindResult.mIRArgs, mCurMethodState->mCurScope, NULL, false, mayBeNull);
+				methodMatcher.TryDevirtualizeCall(embeddedValue);
+				auto retVal = exprEvaluator.CreateCall(&methodMatcher, embeddedValue);
+				if (functionBindResult.mMethodInstance != NULL)
+				{
+					moduleMethodInstance = BfModuleMethodInstance(functionBindResult.mMethodInstance, functionBindResult.mFunc);
+					AddDeferredCall(moduleMethodInstance, functionBindResult.mIRArgs, mCurMethodState->mCurScope, NULL, false, mayBeNull);
+				}
 			}
 		}
 	}
