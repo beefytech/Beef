@@ -11376,17 +11376,17 @@ void BfExprEvaluator::LookupQualifiedName(BfQualifiedNameNode* nameNode, bool ig
 
 	if (!mResult)
 	{
-		auto type = mModule->ResolveTypeRef(nameLeft, NULL);
-
+		BfType* type = mModule->ResolveTypeRef(nameLeft, NULL, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_AllowGlobalContainer));
 		if (type != NULL)
 		{
+			SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
+			SetAndRestoreValue<bool> prevIgnoreError(mModule->mIgnoreErrors, true);
+
 			auto target = mModule->GetThis();
 			target.mType = type;
 
 			BfFieldDef* fieldDef = NULL;
-
 			mResult = LookupField(nameRight, target, fieldName, BfLookupFieldFlag_IsImplicitThis, &fieldDef);
-
 			if (fieldDef != NULL && fieldDef->IsNonConstStatic())
 			{
 				mModule->SetHighestElementType(nameRight, BfSourceElementType_Static);
@@ -11557,17 +11557,17 @@ void BfExprEvaluator::LookupQualifiedName(BfAstNode* nameNode, BfIdentifierNode*
 
 	if (!mResult)
 	{
-		auto type = mModule->ResolveTypeRef(nameLeft, NULL);
-
+		BfType* type = mModule->ResolveTypeRef(nameLeft, NULL, BfPopulateType_Identity, (BfResolveTypeRefFlags)(BfResolveTypeRefFlag_IgnoreLookupError | BfResolveTypeRefFlag_AllowGlobalContainer));
 		if (type != NULL)
 		{
+			SetAndRestoreValue<bool> prevIgnoreWrites(mModule->mBfIRBuilder->mIgnoreWrites, true);
+			SetAndRestoreValue<bool> prevIgnoreError(mModule->mIgnoreErrors, true);
+
 			auto target = mModule->GetThis();
 			target.mType = type;
 
 			BfFieldDef* fieldDef = NULL;
-
 			mResult = LookupField(nameRight, target, fieldName, BfLookupFieldFlag_IsImplicitThis, &fieldDef);
-
 			if (fieldDef != NULL && fieldDef->IsNonConstStatic())
 			{
 				mModule->SetHighestElementType(nameRight, BfSourceElementType_Static);
