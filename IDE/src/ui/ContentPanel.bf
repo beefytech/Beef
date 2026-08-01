@@ -36,6 +36,17 @@ namespace IDE.ui
 		{
 		}
 
+		public virtual void ContentGotFocus()
+		{
+
+		}
+
+		public override void GotFocus()
+		{
+			base.GotFocus();
+			ContentGotFocus();
+		}
+
 		// Default closes this panel/tab; override for panels that shouldn't be (eg a persistent
 		// singleton panel that should instead notify whatever owns the content).
 		public virtual void HandleFileDeleted()

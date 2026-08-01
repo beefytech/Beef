@@ -2916,6 +2916,8 @@ namespace IDE.ui
 
         public override void EditGotFocus()
         {
+			ContentGotFocus();
+
 			if ((mFilePath != null) && (mEmbedKind == .None))
 				gApp.AddToRecentDisplayedFilesList(mFilePath);
 			if (mLoadFailed)
