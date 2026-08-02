@@ -143,6 +143,24 @@ namespace System
 			}
 		}
 
+		public bool Contains(T compareDelegate) mut
+		{
+			Object data = Target;
+
+			if (var list = data as List<T>)
+			{
+				for (int32 i = 0; i < list.Count; i++)
+					if (Delegate.Equals(list[i], compareDelegate))
+						return true;
+				return false;
+			}
+			else
+			{
+				T dlgMember = (T)data;				
+				return Delegate.Equals(compareDelegate, dlgMember);
+			}
+		}
+
 		public Result<void> Remove(T compareDelegate, bool deleteDelegate = false) mut
 		{
 			Object data = Target;
