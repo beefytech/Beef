@@ -4528,7 +4528,7 @@ namespace Beefy.widgets
             }
         }
 
-        public void ContentChanged()
+        public virtual void ContentChanged()
         {
             if (mOnContentChanged.HasListeners)
             {

@@ -20,7 +20,18 @@ namespace Beefy.theme.dark
 		{
 			Debug.Assert(!mUpdating);
 		}
-		
+
+		public virtual float GetItemHeight(int32 virtualIdx, float fontLineSpacing, DarkVirtualListViewItem listViewItem)
+		{
+			return fontLineSpacing;
+		}
+
+		public virtual bool IsDeleteAllowed(DarkVirtualListViewItem listViewItem, float fontLineSpacing)
+		{
+			// Don't allow deleting if we have children
+			return listViewItem.mChildAreaHeight == 0;
+		}
+
         public override void Update()
         {
 			mUpdating = true;
@@ -35,7 +46,7 @@ namespace Beefy.theme.dark
 
             if (mParentItem.mChildAreaHeight != 0)
             {
-                float itemHeight = virtualListView.mFont.GetLineSpacing();
+                float fontLineSpacing = virtualListView.mFont.GetLineSpacing();
                 if (mVirtualHeadItem == this)
                 {
                     float ofsX;
@@ -51,6 +62,7 @@ namespace Beefy.theme.dark
 
                     float curY = mY;
                     float prevY = curY;
+                    float prevAdvance = 0;
                     float lastBottomPadding = 0;
                     for (int32 idx = 0; idx < showCount; idx++)
                     {
@@ -72,7 +84,15 @@ namespace Beefy.theme.dark
                                 nextVirtualListViewItem = null;
                         }
 
-                        bool wantsFillIn = (curY + ofsY + itemHeight >= 0) && (curY + ofsY < mListView.mHeight);
+						float itemHeight = GetItemHeight(idx, fontLineSpacing, ((curVirtualListViewItem != null) && (curVirtualListViewItem.mVirtualIdx == idx)) ? curVirtualListViewItem : null);
+
+						float childHeight = 0;
+						if (curVirtualListViewItem != null)
+						{
+							childHeight = curVirtualListViewItem.mChildAreaHeight;
+						}
+
+                        bool wantsFillIn = (curY + ofsY + itemHeight + childHeight >= 0) && (curY + ofsY < mListView.mHeight);
                         bool wantsDelete = !wantsFillIn;
 
                         if (mDisabled)
@@ -89,11 +109,17 @@ namespace Beefy.theme.dark
                             curVirtualListViewItem.mX = mX;
                             curVirtualListViewItem.mVirtualHeadItem = this;
                             curVirtualListViewItem.mVirtualIdx = idx;
-                            virtualListView.PopulateVirtualItem(curVirtualListViewItem);                            
+                            virtualListView.PopulateVirtualItem(curVirtualListViewItem);
                             curMemberIdx++;
                         }
 
-                        if ((wantsDelete) && (idx != 0) && (curVirtualListViewItem != null) && (curVirtualListViewItem.mChildAreaHeight == 0))
+						if ((wantsDelete) && (curVirtualListViewItem != null) && (curVirtualListViewItem.mIsSelected))
+						{
+							// Don't deselect items
+							wantsDelete = false;
+						}
+
+                        if ((wantsDelete) && (idx != 0) && (curVirtualListViewItem != null) && (IsDeleteAllowed(curVirtualListViewItem, fontLineSpacing)))
                         {
                             curMemberIdx--;
                             mParentItem.RemoveChildItem(curVirtualListViewItem);
@@ -105,7 +131,7 @@ namespace Beefy.theme.dark
                             if (mDisabled)
                                 prevVirtualListViewItem.mBottomPadding = 0;
                             else
-                                prevVirtualListViewItem.mBottomPadding = (curY - prevY) - prevVirtualListViewItem.mSelfHeight - prevVirtualListViewItem.mChildAreaHeight;
+                                prevVirtualListViewItem.mBottomPadding = (curY - prevY) - prevAdvance;
                         }
 
                         if (curVirtualListViewItem != null)
@@ -115,6 +141,11 @@ namespace Beefy.theme.dark
                         if (curVirtualListViewItem != null)
                         {
                             curY += curVirtualListViewItem.mChildAreaHeight;
+                            // What we actually advanced by, rather than mSelfHeight + mChildAreaHeight. An
+                            // item reified during this pass was measured by GetItemHeight as an unreified
+                            // subtree, and its mChildAreaHeight stays 0 until the list is sized afterwards --
+                            // deriving the padding from those fields charges the difference as a visible gap.
+                            prevAdvance = itemHeight + curVirtualListViewItem.mChildAreaHeight;
                             prevVirtualListViewItem = curVirtualListViewItem;
                         }
                     }
@@ -124,7 +155,7 @@ namespace Beefy.theme.dark
                         if (mDisabled)
                             prevVirtualListViewItem.mBottomPadding = 0;
                         else
-                            prevVirtualListViewItem.mBottomPadding = (curY - prevY) - prevVirtualListViewItem.mSelfHeight - prevVirtualListViewItem.mChildAreaHeight;
+                            prevVirtualListViewItem.mBottomPadding = (curY - prevY) - prevAdvance;
 
                         if (prevVirtualListViewItem.mBottomPadding != lastBottomPadding)
                             mListView.mListSizeDirty = true;
