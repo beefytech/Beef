@@ -2758,7 +2758,7 @@ namespace IDE.ui
             EditListViewItem(editItem);
         }
 
-        public void TryRenameItem()
+        public override void TryRenameItem()
         {
             ListViewItem selectedListViewItem = mListView.GetRoot().FindFocusedItem();           
             if (selectedListViewItem != null)

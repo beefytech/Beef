@@ -251,7 +251,7 @@ namespace IDE.ui
 		}
 
 		/// Tries to rename the currently selected bookmark
-		public void TryRenameItem()
+		public override void TryRenameItem()
 		{
 			ListViewItem selectedItem = mBookmarksListView.GetRoot().FindFirstSelectedItem();
 

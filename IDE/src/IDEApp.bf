@@ -4381,19 +4381,8 @@ namespace IDE
 		[IDECommand]
 		public void Cmd_RenameItem()
 		{
-			let activePanel = GetActivePanel();
-			if (var projectPanel = activePanel as ProjectPanel)
-			{
-				projectPanel.TryRenameItem();
-			}
-			else if (var watchPanel = activePanel as WatchPanel)
-			{
-				watchPanel.TryRenameItem();
-			}
-			else if (var bookmarksPanel = activePanel as BookmarksPanel)
-			{
-				bookmarksPanel.TryRenameItem();
-			}
+			if (var panel = GetActivePanel() as Panel)
+				panel.TryRenameItem();
 		}
 
 		[IDECommand]

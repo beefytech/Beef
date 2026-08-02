@@ -179,5 +179,10 @@ namespace IDE.ui
 		{
 		    return Widget.HandleTab(dir, mTabWidgets);
 		}
+
+		// Fallback for Cmd_RenameItem, which otherwise only knows the panel types declared in IDEApp.
+		public virtual void TryRenameItem()
+		{
+		}
     }
 }

@@ -4794,7 +4794,7 @@ namespace IDE.ui
 			}
 		}
 
-		public void TryRenameItem()
+		public override void TryRenameItem()
 		{
 			if (mEditWidget != null)
 			{
