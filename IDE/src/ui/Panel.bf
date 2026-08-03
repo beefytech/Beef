@@ -98,10 +98,9 @@ namespace IDE.ui
 					delete panel;
                     return null;
 				}
-            }
 
-            Debug.Assert(panel.mParent == null);
-            Debug.Assert(panel != null);
+				Debug.Assert(panel.mParent == null);
+            }
 
             return panel;
         }

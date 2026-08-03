@@ -698,13 +698,18 @@ namespace IDE
         {
             base.Deserialize(data);
 
+			if ((mParentFolder != null) && (mParentFolder.mPath == mPath))
+			{
+				// Fixes a "src" included in a "src"
+				mParentFolder.mAutoInclude = false;
+			}
+
             //mLastImportDir.Clear();
             //data.GetString("LastImportDir", mLastImportDir);
 
 			//var outer = data.Current;
 
 			bool doPopulate = false;
-
 			bool autoInclude = data.GetBool("AutoInclude", mIncludeKind == .Auto);
 			if ((autoInclude) && (!mAutoInclude))
 				doPopulate = true;
@@ -757,6 +762,9 @@ namespace IDE
 				projectItem.mPath = path;
 				AddChild(projectItem);
 			}
+
+			if (!mAutoInclude)
+				doPopulate = false;
 
 			if (doPopulate)
 				Populate(mPath);
