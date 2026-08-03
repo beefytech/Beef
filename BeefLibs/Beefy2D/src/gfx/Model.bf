@@ -285,12 +285,15 @@ namespace Beefy.gfx
             }
         }
 
-        public void Update()
+        // updatePct is this call's share of one fixed 60Hz tick (see Widget.UpdateF) -- scaling
+        // UpdateDelta (which is only ever recomputed once per real Update) by it is what keeps
+        // playback speed correct in real time when this is called more than once per tick.
+        public void UpdateF(float updatePct)
         {
             if (mAnim == null)
                 return;
 
-            mFrame += mModelDef.mFrameRate * BFApp.sApp.UpdateDelta * mAnimSpeed;
+            mFrame += (mModelDef.mFrameRate / BFApp.sApp.RefreshRate) * updatePct * mAnimSpeed;
 
             /*if ((mFrame >= 35.0f) || (mFrame < 1.0f))
                 mFrame = 34.0f;*/
@@ -321,7 +324,7 @@ namespace Beefy.gfx
         }
 
         public void Play(StringView name, bool loop = false)
-        {            
+        {
             Play(mModelDef.GetAnimation(name), loop);
         }
 
@@ -439,12 +442,15 @@ namespace Beefy.gfx
             mStudioModelInstance.Proxy.RehupAnimState(mAnim.mAnimIdx, mFrame);            
         }
 
-        public void Update()
+        // updatePct is this call's share of one fixed 60Hz tick (see Widget.UpdateF) -- scaling
+        // UpdateDelta (which is only ever recomputed once per real Update) by it is what keeps
+        // playback speed correct in real time when this is called more than once per tick.
+        public void UpdateF(float updatePct)
         {
             if (mAnim == null)
                 return;
 
-            mFrame += mModelDef.mFrameRate * BFApp.sApp.UpdateDelta * mAnimSpeed;
+            mFrame += mModelDef.mFrameRate * BFApp.sApp.UpdateDelta * updatePct * mAnimSpeed;
 
             /*if ((mFrame >= 35.0f) || (mFrame < 1.0f))
                 mFrame = 34.0f;*/
