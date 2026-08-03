@@ -937,55 +937,58 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 			mD3DDeviceContext->PSSetSamplers(0, 1, &samplerState);
 		}
 
-		if (shaderChanged)
+		if (dxShader != NULL)
 		{
-			mD3DDeviceContext->IASetInputLayout(dxShader->mD3DLayout);
-			mD3DDeviceContext->VSSetShader(dxShader->mD3DVertexShader, NULL, 0);
-		}
-		mD3DDeviceContext->PSSetShader(renderState->mDisablePixelShader ? NULL : dxShader->mD3DPixelShader, NULL, 0);
-
-		if ((shaderChanged) && (dxShader->mHas2DPosition))
-		{
-			HRESULT result = NULL;
-
-			if (mMatrix2DBuffer == NULL)
+			if (shaderChanged)
 			{
-				D3D11_BUFFER_DESC matrixBufferDesc;
-				matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-				matrixBufferDesc.ByteWidth = sizeof(float[4]);
-				matrixBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-				matrixBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-				matrixBufferDesc.MiscFlags = 0;
-				matrixBufferDesc.StructureByteStride = 0;
+				mD3DDeviceContext->IASetInputLayout(dxShader->mD3DLayout);
+				mD3DDeviceContext->VSSetShader(dxShader->mD3DVertexShader, NULL, 0);
+			}
+			mD3DDeviceContext->PSSetShader(renderState->mDisablePixelShader ? NULL : dxShader->mD3DPixelShader, NULL, 0);
 
-				// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
-				result = mD3DDevice->CreateBuffer(&matrixBufferDesc, NULL, &mMatrix2DBuffer);
+			if ((shaderChanged) && (dxShader->mHas2DPosition))
+			{
+				HRESULT result = NULL;
+
+				if (mMatrix2DBuffer == NULL)
+				{
+					D3D11_BUFFER_DESC matrixBufferDesc;
+					matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
+					matrixBufferDesc.ByteWidth = sizeof(float[4]);
+					matrixBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+					matrixBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+					matrixBufferDesc.MiscFlags = 0;
+					matrixBufferDesc.StructureByteStride = 0;
+
+					// Create the constant buffer pointer so we can access the vertex shader constant buffer from within this class.
+					result = mD3DDevice->CreateBuffer(&matrixBufferDesc, NULL, &mMatrix2DBuffer);
+					if (FAILED(result))
+					{
+						return;
+					}
+				}
+
+				// Lock the constant buffer so it can be written to.
+				D3D11_MAPPED_SUBRESOURCE mappedResource;
+				result = mD3DDeviceContext->Map(mMatrix2DBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
 				if (FAILED(result))
 				{
 					return;
 				}
+
+				// Get a pointer to the data in the constant buffer.
+				float* dataPtr = (float*)mappedResource.pData;
+				dataPtr[0] = (float)mCurRenderTarget->mWidth;
+				dataPtr[1] = (float)mCurRenderTarget->mHeight;
+				dataPtr[2] = 0;
+				dataPtr[3] = 0;
+
+				// Unlock the constant buffer.
+				mD3DDeviceContext->Unmap(mMatrix2DBuffer, 0);
+
+				//float params[4] = {mCurRenderTarget->mWidth, mCurRenderTarget->mHeight, 0, 0};
+				mD3DDeviceContext->VSSetConstantBuffers(0, 1, &mMatrix2DBuffer);
 			}
-
-			// Lock the constant buffer so it can be written to.
-			D3D11_MAPPED_SUBRESOURCE mappedResource;
-			result = mD3DDeviceContext->Map(mMatrix2DBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource);
-			if (FAILED(result))
-			{
-				return;
-			}
-
-			// Get a pointer to the data in the constant buffer.
-			float* dataPtr = (float*) mappedResource.pData;
-			dataPtr[0] = (float) mCurRenderTarget->mWidth;
-			dataPtr[1] = (float) mCurRenderTarget->mHeight;
-			dataPtr[2] = 0;
-			dataPtr[3] = 0;
-
-			// Unlock the constant buffer.
-			mD3DDeviceContext->Unmap(mMatrix2DBuffer, 0);
-
-			//float params[4] = {mCurRenderTarget->mWidth, mCurRenderTarget->mHeight, 0, 0};
-			mD3DDeviceContext->VSSetConstantBuffers(0, 1, &mMatrix2DBuffer);
 		}
 	}
 
