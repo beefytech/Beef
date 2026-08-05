@@ -721,7 +721,7 @@ namespace Beefy.geom
         
         public override void ToString(String outStr)
         {
-            ThrowUnimplemented();
+            outStr.AppendF($"({mX}, {mY}, {mZ}, {mW})");
         }
 
         public Matrix4 ToMatrix()
