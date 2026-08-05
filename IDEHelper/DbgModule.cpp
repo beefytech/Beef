@@ -247,6 +247,10 @@ void DbgLineDataBuilder::Commit()
 		{
 			if (usedSrcFiles.Add(ctx.mSrcFile))
 			{
+				// Mark as having line data so this file survives the empty-srcFile cleanup in ReadCOFF,
+				//  which would otherwise make it unfindable for breakpoint binding (ie: a source file
+				//  first introduced by a hot-loaded object file)
+				ctx.mSrcFile->mHadLineData = true;
 				ctx.mSrcFile->mLineDataRefs.Add(dbgSubprogram);
 			}
 		}
