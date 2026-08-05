@@ -55,6 +55,8 @@ public:
 	int						mMinWidth;
 	int						mMinHeight;
 	bool					mMouseVisible;
+	bool					mRelativeMouseMode;
+	POINT					mSavedCursorPos; // where the real cursor was when relative mode started
 	bool					mHasFocus;
 	bool					mSoftHasFocus; // Mostly tracks mHasFocus except for when we get an explicit 'LostFocus' callback
 	bool					mAwaitKeyReleases;
@@ -91,6 +93,9 @@ public:
 	virtual void			SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVisible) override;
 	virtual void			CaptureMouse() override;
 	virtual bool			IsMouseCaptured() override;
+	virtual void			StartRelativeMouseMode() override;
+	virtual void			EndRelativeMouseMode() override;
+	virtual bool			IsInRelativeMouseMode() override;
 	virtual int				GetDPI() override; // { return ::GetDpiForWindow(mHWnd); }
 
 	virtual BFMenu*			AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck) override;

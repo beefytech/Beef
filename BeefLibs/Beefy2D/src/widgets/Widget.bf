@@ -575,7 +575,14 @@ namespace Beefy.widgets
                 mOnMouseMove(e);
             }
         }
-        
+
+        // Fired instead of MouseMove while the window is in relative mouse mode (see
+        // BFWindow.StartRelativeMouseMode) -- dx/dy are raw movement, not a position. Always delivered
+        // to the window's mFocusWidget, since relative mode has no cursor position to hit-test with.
+        public virtual void MouseDelta(float dx, float dy)
+        {
+        }
+
         public virtual Widget FindWidgetByCoords(float x, float y)
         {
             if (!mVisible || !mMouseVisible)

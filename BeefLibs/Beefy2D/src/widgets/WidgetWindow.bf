@@ -191,7 +191,7 @@ namespace Beefy.widgets
 		{
 			if (mRootWidget == null)
 				return;
-			base.Update();
+			base.UpdateF(updatePct);
 			if (mWantsUpdateF || mTempWantsUpdateF)
 				mRootWidget.UpdateFAll(updatePct);
 		}
@@ -696,8 +696,44 @@ namespace Beefy.widgets
             outY = pt.y;
         }
 
+        // Relative mode has no meaningful screen/client position (the cursor is hidden and clipped in
+        // place, not actually at inX/inY) -- everything routes to mFocusWidget with 0,0 instead of the
+        // normal mCaptureWidget/mOverWidget hit-test routing, and MouseMove/RehupMouse are skipped
+        // entirely rather than being fed a position that would just be wrong.
+        public override void MouseDelta(int32 dx, int32 dy)
+        {
+            mFocusWidget?.MouseDelta(dx, dy);
+        }
+
         public override void MouseDown(int32 inX, int32 inY, int32 btn, int32 btnCount)
         {
+            if (IsInRelativeMouseMode())
+            {
+                if (mMouseFlags == 0)
+                    mMouseDownKeyFlags = GetKeyFlags(true);
+                mMouseFlags |= (MouseFlag)(1 << btn);
+                if ((!mHasFocus) && (mParent == null))
+                    GotFocus();
+
+                if ((mOnMouseDown.HasListeners) || (sOnMouseDown.HasListeners))
+                {
+                    MouseEvent anEvent = scope MouseEvent();
+                    anEvent.mSender = this;
+                    anEvent.mBtn = btn;
+                    anEvent.mBtnCount = btnCount;
+                    mOnMouseDown(anEvent);
+                    sOnMouseDown(anEvent);
+                    if (anEvent.mHandled)
+                        return;
+                }
+
+                if (btn >= 3) // X button - don't pass on to widgets
+                    return;
+
+                mFocusWidget?.MouseDown(0, 0, btn, btnCount);
+                return;
+            }
+
 			let oldFlags = mMouseFlags;
 
 			if (mMouseFlags == 0)
@@ -757,6 +793,28 @@ namespace Beefy.widgets
 
             if (((int32)mMouseFlags & (1 << btn)) == 0)
                 return;
+
+            if (IsInRelativeMouseMode())
+            {
+                mMouseFlags &= (MouseFlag)(~(1 << btn));
+
+                if (mOnMouseUp.HasListeners)
+                {
+                    MouseEvent anEvent = scope MouseEvent();
+                    anEvent.mSender = this;
+                    anEvent.mBtn = btn;
+                    mOnMouseUp(anEvent);
+                    if (anEvent.mHandled)
+                        return;
+                }
+
+                if (btn < 3) // X button - don't pass on to widgets
+                    mFocusWidget?.MouseUp(0, 0, btn);
+
+                if (mMouseFlags == 0)
+                    mMouseDownKeyFlags = 0;
+                return;
+            }
 
 			MouseMove(inX, inY);
             mMouseFlags &= (MouseFlag)(~(1 << btn));

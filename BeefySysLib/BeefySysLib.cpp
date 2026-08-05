@@ -313,7 +313,7 @@ BF_EXPORT void BF_CALLTYPE BFWindow_SetCallbacks(BFWindow* window, BFWindow_Move
 	BFWindow_KeyCharFunc keyCharFunc, BFWindow_KeyDownFunc keyDownFunc, BFWindow_KeyUpFunc keyUpFunc, BFWindow_HitTestFunc hitTestFunc,
 	BFWindow_MouseMove mouseMoveFunc, BFWindow_MouseProxyMove mouseProxyMoveFunc,
 	BFWindow_MouseDown mouseDownFunc, BFWindow_MouseUp mouseUpFunc, BFWindow_MouseWheel mouseWheelFunc, BFWindow_MouseLeave mouseLeaveFunc,
-	BFWindow_MenuItemSelectedFunc menuItemSelectedFunc, BFWindow_DragDropFileFunc dragDropFileFunc)
+	BFWindow_MenuItemSelectedFunc menuItemSelectedFunc, BFWindow_DragDropFileFunc dragDropFileFunc, BFWindow_MouseDelta mouseDeltaFunc)
 {
 	window->mMovedFunc = movedFunc;
 	window->mCloseQueryFunc = closeQueryFunc;
@@ -332,6 +332,7 @@ BF_EXPORT void BF_CALLTYPE BFWindow_SetCallbacks(BFWindow* window, BFWindow_Move
 	window->mMouseLeaveFunc = mouseLeaveFunc;
 	window->mMenuItemSelectedFunc = menuItemSelectedFunc;
 	window->mDragDropFileFunc = dragDropFileFunc;
+	window->mMouseDeltaFunc = mouseDeltaFunc;
 }
 
 BF_EXPORT void* BFWindow_GetNativeUnderlying(BFWindow* window)
@@ -407,6 +408,21 @@ BF_EXPORT bool BF_CALLTYPE BFWindow_IsMouseCaptured(BFWindow* window)
 BF_EXPORT void BF_CALLTYPE BFWindow_SetMouseVisible(BFWindow* window, bool mouseVisible)
 {
 	window->SetMouseVisible(mouseVisible);
+}
+
+BF_EXPORT void BF_CALLTYPE BFWindow_StartRelativeMouseMode(BFWindow* window)
+{
+	window->StartRelativeMouseMode();
+}
+
+BF_EXPORT void BF_CALLTYPE BFWindow_EndRelativeMouseMode(BFWindow* window)
+{
+	window->EndRelativeMouseMode();
+}
+
+BF_EXPORT bool BF_CALLTYPE BFWindow_IsInRelativeMouseMode(BFWindow* window)
+{
+	return window->IsInRelativeMouseMode();
 }
 
 BF_EXPORT void BF_CALLTYPE BFWindow_SetClientPosition(BFWindow* window, int x, int y)

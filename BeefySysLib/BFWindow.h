@@ -22,6 +22,9 @@ typedef void (*BFWindow_MouseDown)(BFWindow* window, int x, int y, int btn, int 
 typedef void (*BFWindow_MouseUp)(BFWindow* window, int x, int y, int btn);
 typedef void (*BFWindow_MouseWheel)(BFWindow* window, int x, int y, float deltaX, float deltaY);
 typedef void (*BFWindow_MouseLeave)(BFWindow* window);
+// Fired instead of BFWindow_MouseMove while relative mouse mode is active -- dx/dy are raw deltas,
+// not tied to any screen/client position. See BFWindow::StartRelativeMouseMode.
+typedef void (*BFWindow_MouseDelta)(BFWindow* window, int dx, int dy);
 typedef void (*BFWindow_MenuItemSelectedFunc)(BFWindow* window, BFMenu* menu);
 typedef void (*BFWindow_DragDropFileFunc)(BFWindow* window, const char* filePath);
 
@@ -138,6 +141,7 @@ public:
 	BFWindow_MouseUp		mMouseUpFunc;
 	BFWindow_MouseWheel		mMouseWheelFunc;
 	BFWindow_MouseLeave		mMouseLeaveFunc;
+	BFWindow_MouseDelta		mMouseDeltaFunc;
 	BFWindow_MenuItemSelectedFunc mMenuItemSelectedFunc;
 	BFWindow_DragDropFileFunc mDragDropFileFunc;
 
@@ -161,6 +165,13 @@ public:
 	virtual void			SetNonExclusiveMouseCapture() { mNonExclusiveMouseCapture = true; }
 	virtual void			CaptureMouse() {}
 	virtual bool			IsMouseCaptured() { return false; }
+	// Hides the cursor, restricts it to this window, and delivers raw movement as
+	// BFWindow_MouseDelta instead of BFWindow_MouseMove -- for a mouselook-style camera that
+	// shouldn't be limited by (or move) the actual screen cursor. EndRelativeMouseMode restores the
+	// cursor to wherever it was when Start was called. Also ended automatically on focus loss.
+	virtual void			StartRelativeMouseMode() {}
+	virtual void			EndRelativeMouseMode() {}
+	virtual bool			IsInRelativeMouseMode() { return false; }
 	virtual void			LostFocus(BFWindow* newFocus) = 0;
 	virtual int				GetDPI() { return 0; }
 

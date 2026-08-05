@@ -9,6 +9,7 @@
 #else
 
 #include "DXRenderDevice.h"
+#include <hidusage.h>
 #include <signal.h>
 #include "../../util/BeefPerf.h"
 #include "DSoundManager.h"
@@ -205,6 +206,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 
 	mFlags = windowFlags;
 	mMouseVisible = true;
+	mRelativeMouseMode = false;
 
 	mParent = parent;
 	HWND parentHWnd = NULL;
@@ -338,6 +340,9 @@ void* WinBFWindow::GetUnderlying()
 
 void WinBFWindow::Destroy()
 {
+	if (mRelativeMouseMode)
+		EndRelativeMouseMode();
+
 	if (mAlphaMaskDC != NULL)
 		DeleteDC(mAlphaMaskDC);
 	mAlphaMaskDC = NULL;
@@ -391,6 +396,13 @@ void WinBFWindow::Show(ShowKind showKind)
 void WinBFWindow::LostFocus(BFWindow* newFocus)
 {
 	///OutputDebugStrF("Lost focus\n");
+	// A hidden, clipped cursor left behind on an unfocused window would strand the user -- relative
+	// mode always ends on focus loss, regardless of why control is leaving (alt-tab, a modal dialog,
+	// clicking another app). Explicit re-entry (eg the IDE's Shift+F1 flow) goes through
+	// StartRelativeMouseMode again once focus is back.
+	if (mRelativeMouseMode)
+		EndRelativeMouseMode();
+
 	mFocusLostTick = ::GetTickCount();
 	WinBFWindow* bfNewFocus = (WinBFWindow*)newFocus;
 	mSoftHasFocus = false;
@@ -830,7 +842,11 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				case WM_MOUSEMOVE:
 					{
 						//OutputDebugStrF("WM_MOUSEMOVE %d\n", hWnd);
-						mMouseMoveFunc(this, x, y);
+						// While in relative mode, movement comes from WM_INPUT (see below) instead --
+						// there's no meaningful "mouse position" to report here (the cursor is clipped
+						// to this window and hidden, not actually where x/y implies it visually is).
+						if (!mRelativeMouseMode)
+							mMouseMoveFunc(this, x, y);
 
 						// If we are dragging a transparent window then check for mouse positions under cursor
 						HWND captureWindow = GetCapture();
@@ -904,6 +920,28 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 							aWindow->mIsMouseInside = false;
 						}
 						++itr;
+					}
+				}
+			}
+			break;
+
+		case WM_INPUT:
+			{
+				if (mRelativeMouseMode)
+				{
+					BYTE lpb[sizeof(RAWINPUT)];
+					UINT dwSize = sizeof(lpb);
+					UINT bytesRead = ::GetRawInputData((HRAWINPUT)lParam, RID_INPUT, lpb, &dwSize, sizeof(RAWINPUTHEADER));
+					if ((bytesRead != (UINT)-1) && (bytesRead >= sizeof(RAWINPUTHEADER)))
+					{
+						RAWINPUT* raw = (RAWINPUT*)lpb;
+						if ((raw->header.dwType == RIM_TYPEMOUSE) && ((raw->data.mouse.usFlags & MOUSE_MOVE_ABSOLUTE) == 0))
+						{
+							int dx = raw->data.mouse.lLastX;
+							int dy = raw->data.mouse.lLastY;
+							if ((dx != 0) || (dy != 0))
+								mMouseDeltaFunc(this, dx, dy);
+						}
 					}
 				}
 			}
@@ -1820,6 +1858,63 @@ void WinBFWindow::CaptureMouse()
 bool WinBFWindow::IsMouseCaptured()
 {
 	return (mHWnd != NULL) && (GetCapture() == mHWnd);
+}
+
+// Registers for raw mouse input (delivered as WM_INPUT, see WindowProc), which reports genuine
+// hardware deltas independent of cursor position -- unlike diffing WM_MOUSEMOVE coordinates, this
+// isn't affected by the cursor hitting the clip/screen edge. Falls through to a no-op if
+// RegisterRawInputDevices fails, leaving the window in its normal (non-relative) mouse mode.
+void WinBFWindow::StartRelativeMouseMode()
+{
+	if (mRelativeMouseMode)
+		return;
+
+	RAWINPUTDEVICE rid;
+	rid.usUsagePage = HID_USAGE_PAGE_GENERIC;
+	rid.usUsage = HID_USAGE_GENERIC_MOUSE;
+	rid.dwFlags = 0;
+	rid.hwndTarget = mHWnd;
+	if (!::RegisterRawInputDevices(&rid, 1, sizeof(rid)))
+		return;
+
+	mRelativeMouseMode = true;
+	::GetCursorPos(&mSavedCursorPos);
+
+	// Clipped (not just hidden) so the hidden cursor can't wander onto another monitor or window --
+	// nothing to see, but it'd still be able to click things there.
+	RECT clientRect;
+	::GetClientRect(mHWnd, &clientRect);
+	POINT topLeft = { clientRect.left, clientRect.top };
+	POINT bottomRight = { clientRect.right, clientRect.bottom };
+	::ClientToScreen(mHWnd, &topLeft);
+	::ClientToScreen(mHWnd, &bottomRight);
+	RECT clipRect = { topLeft.x, topLeft.y, bottomRight.x, bottomRight.y };
+	::ClipCursor(&clipRect);
+
+	::ShowCursor(FALSE);
+}
+
+void WinBFWindow::EndRelativeMouseMode()
+{
+	if (!mRelativeMouseMode)
+		return;
+	mRelativeMouseMode = false;
+
+	RAWINPUTDEVICE rid;
+	rid.usUsagePage = HID_USAGE_PAGE_GENERIC;
+	rid.usUsage = HID_USAGE_GENERIC_MOUSE;
+	rid.dwFlags = RIDEV_REMOVE;
+	rid.hwndTarget = NULL;
+	::RegisterRawInputDevices(&rid, 1, sizeof(rid));
+
+	::ClipCursor(NULL);
+	::ShowCursor(TRUE);
+	::SetCursorPos(mSavedCursorPos.x, mSavedCursorPos.y);
+}
+
+bool WinBFWindow::IsInRelativeMouseMode()
+{
+	return mRelativeMouseMode;
 }
 
 int WinBFWindow::GetDPI()
