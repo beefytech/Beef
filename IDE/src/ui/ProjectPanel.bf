@@ -923,14 +923,14 @@ namespace IDE.ui
 			projectItem.mProject.SetChanged();
 		}
 
-        public void NewFolder(ProjectFolder folder)
+        public ProjectFolder NewFolder(ProjectFolder folder, StringView name = "New folder", bool autoRename = true)
         {
             ProjectFolder projectFolder = new ProjectFolder();
 
 			int checkIdx = 0;
 			while (true)
 			{
-	            projectFolder.mName.Set("New folder");
+	            projectFolder.mName.Set(name);
 				if (checkIdx > 0)
 					projectFolder.mName.AppendF("{}", checkIdx + 1);
 				if (!folder.mChildMap.ContainsKey(projectFolder.mName))
@@ -955,7 +955,8 @@ namespace IDE.ui
 				mListView.UpdateAll();
 				mListView.GetRoot().SelectItemExclusively(projectItem);
 				mListView.EnsureItemVisible(projectItem, false);
-				RenameItem(projectFolder);
+				if (autoRename)
+					RenameItem(projectFolder);
 			}
 			if (projectFolder.mIncludeKind != .Auto)
 				projectFolder.mProject.SetChanged();
@@ -967,6 +968,7 @@ namespace IDE.ui
 				if (err != .AlreadyExists)
 					gApp.Fail(scope String()..AppendF("Failed to create directory '{]'", fullPath));
 			}
+			return projectFolder;
         }
 
         public void GenerateCode(ProjectFolder folder)
@@ -1000,7 +1002,7 @@ namespace IDE.ui
 			sourceViewPanel.mEditWidget.SetText(scope .(fileText));
 		}
 
-		public void Generate(ProjectFolder folder, StringView fileName, StringView fileText)
+		public bool Generate(ProjectFolder folder, StringView fileName, StringView fileText)
 		{
 			let project = folder.mProject;
 			if (project.mNeedsCreate)
@@ -1025,7 +1027,7 @@ namespace IDE.ui
 				var error = scope String();
 				error.AppendF("File '{0}' already exists", fullFilePath);
 				IDEApp.sApp.Fail(error);
-				return;
+				return false;
 			}
 
 			if (File.WriteAllText(fullFilePath, fileText) case .Err)
@@ -1033,7 +1035,7 @@ namespace IDE.ui
 				var error = scope String();
 				error.AppendF("Failed to create file '{0}'", fullFilePath);
 				gApp.Fail(error);
-				return;
+				return false;
 			}
 
 			ProjectSource projectSource = new ProjectSource();
@@ -1057,6 +1059,10 @@ namespace IDE.ui
 			gApp.RecordHistoryLocation(true);
 			gApp.ShowProjectItem(projectSource);
 			gApp.RecordHistoryLocation(true);
+
+			gApp.MarkFileChanged(fullFilePath);
+
+			return true;
 		}
 
         void DoNewClass(ProjectFolder folder, DialogEvent evt)
@@ -2155,7 +2161,7 @@ namespace IDE.ui
 
 			var projectItem = GetSelectedProjectItem();
 			var projectFolder = projectItem as ProjectFolder;
-			if (projectFolder == null)
+			if ((projectFolder == null) && (projectItem != null))
 				projectFolder = projectItem.mParentFolder;
 			if (projectFolder == null)
 				return;

@@ -477,6 +477,11 @@ namespace IDE
 			}
 		}
 
+		public ProjectItem FindProjectItem(StringView name)
+		{
+			return mChildMap.GetValueAlt(name).GetValueOrDefault();
+		}
+
 		public void GetFullDisplayName(String displayName)
 		{
 			if (mParentFolder == null)

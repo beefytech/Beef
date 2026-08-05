@@ -14037,6 +14037,11 @@ namespace IDE
 			}
 		}
 
+		public virtual void HotCompileDone(bool success)
+		{
+
+		}
+
 		void FinishPendingHotResolve()
 		{
 			List<uint8> typeData = scope .();
@@ -14099,6 +14104,7 @@ namespace IDE
 				if (compileInstance.mCompileResult == .PendingHotLoad)
 					compileInstance.mCompileResult = .Success;
 			}
+			HotCompileDone(true);
 		}
 
 		void QueueProjectItems(Project project)
@@ -15329,6 +15335,11 @@ namespace IDE
 						}
 					});
 			}
+		}
+
+		public void MarkFileChanged(StringView path)
+		{
+			mHaveSourcesChangedExternallySinceLastCompile = true;
 		}
 
 		void UpdateWorkspace()
