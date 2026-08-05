@@ -349,6 +349,7 @@ public:
 	virtual String FindCodeAddresses(const StringImpl& fileName, int line, int column, bool allowAutoResolve) = 0;
 	virtual String GetAddressSourceLocation(intptr address) = 0;
 	virtual String GetAddressSymbolName(intptr address, bool demangle) = 0;
+	virtual intptr GetSymbolAddress(const StringImpl& sym) { return 0; }
 	virtual String DisassembleAtRaw(intptr address) = 0;
 	virtual String DisassembleAt(intptr address) = 0;
 	virtual String FindLineCallAddresses(intptr address) = 0;

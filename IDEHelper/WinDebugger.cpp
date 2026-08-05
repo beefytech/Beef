@@ -12212,6 +12212,12 @@ String WinDebugger::GetAddressSymbolName(intptr address, bool demangle)
 	return StrFormat("0x%@", address);
 }
 
+
+intptr WinDebugger::GetSymbolAddress(const StringImpl& sym)
+{
+	return mDebugTarget->FindSymbolAddr(sym);
+}
+
 String WinDebugger::DisassembleAtRaw(intptr inAddress)
 {
 	addr_target address = (addr_target)inAddress;

@@ -1544,6 +1544,11 @@ BF_EXPORT const char* BF_CALLTYPE Debugger_GetAddressSourceLocation(intptr addre
 	return outString.c_str();
 }
 
+BF_EXPORT intptr BF_CALLTYPE Debugger_GetSymbolAddress(const char* sym)
+{
+	return gDebugger->GetSymbolAddress(sym);
+}
+
 BF_EXPORT const char* BF_CALLTYPE Debugger_GetAddressSymbolName(intptr address, bool demangle)
 {
 	String& outString = *gTLStrReturn.Get();

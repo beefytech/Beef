@@ -658,6 +658,7 @@ public:
 	virtual String FindCodeAddresses(const StringImpl& fileName, int line, int column, bool allowAutoResolve) override;
 	virtual String GetAddressSourceLocation(intptr address) override;
 	virtual String GetAddressSymbolName(intptr address, bool demangle) override;
+	virtual intptr GetSymbolAddress(const StringImpl& sym) override;
 	virtual String DisassembleAtRaw(intptr address) override;
 	virtual String DisassembleAt(intptr address) override;
 	virtual String FindLineCallAddresses(intptr address) override;

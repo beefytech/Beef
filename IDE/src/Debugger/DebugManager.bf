@@ -349,6 +349,9 @@ namespace IDE.Debugger
 		static extern char8* Debugger_GetAddressSourceLocation(int addr);
 
 		[CallingConvention(.Stdcall),CLink]
+		static extern int Debugger_GetSymbolAddress(char8* name);
+
+		[CallingConvention(.Stdcall),CLink]
 		static extern char8* Debugger_GetAddressSymbolName(int addr, bool demangle);
 
 		[CallingConvention(.Stdcall),CLink]
