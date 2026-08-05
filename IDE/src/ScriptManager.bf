@@ -1152,6 +1152,15 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void CopyFile(String origPath, String newPath)
+		{
+			if (File.Copy(origPath, newPath) case .Err)
+			{
+				mScriptManager.Fail("Failed to move file '{}' to '{}'", origPath, newPath);
+			}
+		}
+
+		[IDECommand]
 		public void DeleteFile(String path)
 		{
 			if (File.Delete(path) case .Err)
@@ -1161,8 +1170,77 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void TryDeleteFile(String path)
+		{
+			File.Delete(path).IgnoreError();
+		}
+
+		[IDECommand]
 		public void Echo(String str)
 		{
+			gApp.OutputLine(str);
+		}
+
+		[IDECommand]
+		public void Pwd()
+		{
+			gApp.OutputLine(Directory.GetCurrentDirectory(.. scope .()));
+		}
+
+		[IDECommand]
+		public void PrintBreakpoints()
+		{
+			for (var breakpoint in gApp.mDebugger.mBreakpointList)
+			{
+				var str = scope $"BREAKPOINT ";
+				if (breakpoint.mFileName != null)
+					str.AppendF($"{breakpoint.mFileName}:{breakpoint.mLineNum+1}");
+				else
+					breakpoint.ToString_Location(str);
+				if (breakpoint.IsBound())
+					str.Append(" BOUND");
+				else
+					str.Append(" UNBOUND");
+				gApp.OutputLine(str);
+			}
+		}
+
+		[IDECommand]
+		public void PrintDebugLoc()
+		{
+			String str = scope $"DEBUGLOC ";
+
+			String frameInfo = scope .();
+			String fileName = scope .();
+
+			if (gApp.mDebugger.IsRunning)
+			{
+				if (!gApp.mDebugger.IsPaused())
+				{
+					str.Append("NOT PAUSED");
+				}
+				else
+				{
+					gApp.mDebugger.GetStackFrameInfo(0, frameInfo, ?, fileName, var hotIdx, var defLineStart, var defLineEnd, var line, var column, ?, ?, var flags);
+					if (!fileName.IsEmpty)
+					{
+						int hashPos = fileName.IndexOf('#');
+						if (hashPos != -1)
+							fileName.RemoveToEnd(hashPos);
+						// Note: Line from GetStackFrameInfo is zero-based
+						str.AppendF($"{fileName}:{line+1}");
+					}
+					else
+					{
+						str.Append("FAILED");
+					}
+				}
+			}
+			else
+			{
+				str.Append("NOT RUNNING");
+			}
+
 			gApp.OutputLine(str);
 		}
 
@@ -1880,6 +1958,12 @@ namespace IDE
 		{
 			if (!AssertDebuggerPaused())
 				return;
+			gApp.[Friend]StepOver();
+		}
+
+		[IDECommand]
+		public void CompileAndStartStep()
+		{
 			gApp.[Friend]StepOver();
 		}
 
