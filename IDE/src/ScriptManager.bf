@@ -1245,6 +1245,18 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void PrintDbgAllocInfo()
+		{
+			String info = scope .();
+			gApp.mDebugger.GetDbgAllocInfo(info);
+			for (let line in info.Split('\n'))
+			{
+				if (!line.IsEmpty)
+					gApp.OutputLine(scope $"DBGALLOC {line}");
+			}
+		}
+
+		[IDECommand]
 		public void CopyFilesIfNewer(String srcPath, String destPath)
 		{
 			int copyCount = 0;

@@ -1202,8 +1202,41 @@ DbgTypedValue DbgExprEvaluator::GetBeefTypeById(int typeId)
 	{
 		DbgTypedValue typedVal;
 		typedVal.mType = mDebugTarget->mTargetBinary->mBfTypeType;
-		addr_target addr = mDebugTarget->mTargetBinary->mBfTypesInfoAddr + typeId * sizeof(addr_target);
-		typedVal.mSrcAddress = mDebugger->ReadMemory<addr_target>(addr);
+
+		mDebugTarget->GetCompilerSettings();
+		int objectSize = mDebugTarget->mBfObjectSize;
+
+		// Hot-loaded vdata modules contain new type tables which hold entries for the types emitted
+		//  during that hot compile (including types the original binary doesn't know about), so check
+		//  those newest-first before falling back to the original binary's table. Hot tables are sparse
+		//  and older tables may be too small for newer typeIds, so we validate each candidate entry
+		//  against the requested typeId.
+		SizedArray<addr_target, 8> typeTableAddrs;
+		for (int moduleIdx = (int)mDebugTarget->mDbgModules.size() - 1; moduleIdx >= 0; moduleIdx--)
+		{
+			auto dbgModule = mDebugTarget->mDbgModules[moduleIdx];
+			if ((dbgModule->IsHotSwapObjectFile()) && (dbgModule->mBfTypesInfoAddr > 0))
+				typeTableAddrs.Add((addr_target)dbgModule->mBfTypesInfoAddr);
+		}
+		typeTableAddrs.Add((addr_target)mDebugTarget->mTargetBinary->mBfTypesInfoAddr);
+
+		for (auto typesInfoAddr : typeTableAddrs)
+		{
+			addr_target typeAddr = mDebugger->ReadMemory<addr_target>(typesInfoAddr + typeId * sizeof(addr_target));
+			if (typeAddr == 0)
+				continue;
+			if (objectSize > 0)
+			{
+				int32 storedTypeId = -1;
+				if (!mDebugger->ReadMemory(typeAddr + objectSize + sizeof(int32), sizeof(int32), &storedTypeId))
+					continue;
+				if (storedTypeId != typeId)
+					continue;
+			}
+			typedVal.mSrcAddress = typeAddr;
+			break;
+		}
+
 		return typedVal;
 	}
 
