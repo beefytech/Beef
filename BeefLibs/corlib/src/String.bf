@@ -3960,8 +3960,10 @@ namespace System
 			char8* ptr2 = val2.mPtr;
 			if (ptr1 == ptr2)
 				return true;
-			if ((ptr1 == null) || (ptr2 == null))
-				return false;
+			if (ptr1 == null)
+				return val2.mLength == 0;
+			if (ptr2 == null)
+				return val1.mLength == 0;
 			return String.[Friend]EqualsHelper(ptr1, ptr2, val1.mLength);
 		}
 
@@ -3974,8 +3976,10 @@ namespace System
 			char8* ptr2 = val2.Ptr;
 			if (ptr1 == ptr2)
 				return true;
-			if ((ptr1 == null) || (ptr2 == null))
-				return false;
+			if (ptr1 == null)
+				return val2.Length == 0;
+			if (ptr2 == null)
+				return val1.mLength == 0;
 			return String.[Friend]EqualsHelper(ptr1, ptr2, val1.mLength);
 		}
 
