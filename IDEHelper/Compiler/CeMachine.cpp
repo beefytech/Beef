@@ -5346,6 +5346,11 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 		while (true)
 		{
 			paramIdx--;
+			if (paramIdx == -2)
+			{
+				// Silently fail
+				return BfTypedValue();
+			}
 			paramType = methodInstance->GetParamType(paramIdx);
 			if (paramType->IsTypedPrimitive())
 				paramType = paramType->GetUnderlyingType();
