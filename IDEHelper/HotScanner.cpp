@@ -257,24 +257,44 @@ void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memK
 			int* typeIdPtr = NULL;
 			if (mFoundClassVDataAddrs.TryAdd(classVDataAddr, NULL, &typeIdPtr))
 			{
-				if (mBfTypesInfoAddr > 0)
-				{
-					addr_target typeId = mDebugger->ReadMemory<int32>(classVDataAddr);
-					addr_target arrayAddr = mBfTypesInfoAddr + typeId * sizeof(addr_target);
-					addr_target typeAddr = mDebugger->ReadMemory<addr_target>(arrayAddr);
-					Fake_Type_Data typeData;
-					mDebugger->ReadMemory(typeAddr + objectSize, sizeof(typeData), &typeData);
+				*typeIdPtr = -1;
 
-					*typeIdPtr = typeData.mTypeId;
-					_MarkTypeUsed(typeData.mTypeId, elementSize);
-					if ((typeData.mTypeFlags & BfTypeFlags_Delegate) != 0)
+				int typeId = mDebugger->ReadMemory<int32>(classVDataAddr);
+				if (typeId >= 0)
+				{
+					Fake_Type_Data typeData;
+					bool foundType = false;
+					for (auto typesInfoAddr : mTypeInfoAddrs)
 					{
-						Fake_Delegate_Data* dlg = (Fake_Delegate_Data*)((uint8*)spanPtr + objectSize);
-						if (mFoundFuncPtrs.Add(dlg->mFuncPtr))
+						// Hot type tables only contain entries for the types emitted during that hot
+						//  compile, and older tables may be too small for newer typeIds, so on a null
+						//  or mismatched entry we keep looking in older tables
+						addr_target arrayAddr = typesInfoAddr + typeId * sizeof(addr_target);
+						addr_target typeAddr = mDebugger->ReadMemory<addr_target>(arrayAddr);
+						if (typeAddr == 0)
+							continue;
+						memset(&typeData, 0, sizeof(typeData));
+						if (!mDebugger->ReadMemory(typeAddr + objectSize, sizeof(typeData), &typeData))
+							continue;
+						if (typeData.mTypeId != typeId)
+							continue;
+						foundType = true;
+						break;
+					}
+
+					if (foundType)
+					{
+						*typeIdPtr = typeData.mTypeId;
+						_MarkTypeUsed(typeData.mTypeId, elementSize);
+						if ((typeData.mTypeFlags & BfTypeFlags_Delegate) != 0)
 						{
-							auto subProgram = mDebugger->mDebugTarget->FindSubProgram(dlg->mFuncPtr, DbgOnDemandKind_None);
-							if ((subProgram != NULL) && (subProgram->GetLanguage() == DbgLanguage_Beef))
-								AddSubProgram(subProgram, true, "D ");
+							Fake_Delegate_Data* dlg = (Fake_Delegate_Data*)((uint8*)spanPtr + objectSize);
+							if (mFoundFuncPtrs.Add(dlg->mFuncPtr))
+							{
+								auto subProgram = mDebugger->mDebugTarget->FindSubProgram(dlg->mFuncPtr, DbgOnDemandKind_None);
+								if ((subProgram != NULL) && (subProgram->GetLanguage() == DbgLanguage_Beef))
+									AddSubProgram(subProgram, true, "D ");
+							}
 						}
 					}
 				}
@@ -410,6 +430,19 @@ void DbgHotScanner::Scan(DbgHotResolveFlags flags)
 			}
 		}
 		mBfTypesInfoAddr = module->mBfTypesInfoAddr;
+
+		// Hot-loaded vdata modules contain new type tables which hold entries for the types emitted
+		//  during that hot compile (including types the original binary doesn't know about), so check
+		//  those newest-first before falling back to the original binary's table
+		mTypeInfoAddrs.Clear();
+		for (int moduleIdx = (int)mDebugger->mDebugTarget->mDbgModules.size() - 1; moduleIdx >= 0; moduleIdx--)
+		{
+			auto dbgModule = mDebugger->mDebugTarget->mDbgModules[moduleIdx];
+			if ((dbgModule->IsHotSwapObjectFile()) && (dbgModule->mBfTypesInfoAddr > 0))
+				mTypeInfoAddrs.Add((addr_target)dbgModule->mBfTypesInfoAddr);
+		}
+		if (mBfTypesInfoAddr > 0)
+			mTypeInfoAddrs.Add(mBfTypesInfoAddr);
 
 		if (gcDbgDataAddr == 0)
 			return;

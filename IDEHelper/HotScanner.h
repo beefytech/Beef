@@ -85,6 +85,7 @@ public:
 	WinDebugger* mDebugger;
 	DbgGCData mDbgGCData;
 	addr_target mBfTypesInfoAddr;
+	Beefy::Array<addr_target> mTypeInfoAddrs; // Type tables to check, newest hot vdata first, original binary last
 	Beefy::Dictionary<addr_target, int> mFoundClassVDataAddrs;
 	Beefy::Dictionary<addr_target, int> mFoundRawAllocDataAddrs;
 	Beefy::Dictionary<addr_target, int> mFoundTypeAddrs;

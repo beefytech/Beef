@@ -6419,6 +6419,22 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 							mTLSIndexAddr = (addr_target)(targetAddr + mImageBase);
 						}
 
+						if ((isHotSwap) &&
+							(strcmp(symbolName,
+#ifdef BF_DBG_64
+								"?sTypes@Type@System@bf@@2PEAPEAV123@A"
+#else
+								"?sTypes@Type@System@bf@@2PAPAV123@A"
+#endif
+							) == 0))
+						{
+							// A hot-loaded vdata contains a new (possibly larger) 'sTypes' type table with entries
+							//  for the types emitted during that hot compile, which can include types that the
+							//  original executable's table has no entries for. Record its location so typeId-indexed
+							//  lookups can check the hot tables and then fall back to the original table.
+							mBfTypesInfoAddr = targetAddr;
+						}
+
 						if ((isStaticSymbol) && (IsHotSwapPreserve(symbolName)))
 							isStaticSymbol = false;
 
