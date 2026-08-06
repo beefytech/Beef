@@ -119,6 +119,7 @@ if (${WIN32})
     )
 elseif (${APPLE})
     include_directories(
+        ../../BeefySysLib/platform/osx
         ../../BeefySysLib/platform/darwin
     )
     file(GLOB SRC_FILES_OS
