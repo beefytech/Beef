@@ -105,6 +105,8 @@ public:
     virtual void Shutdown() = 0;
     virtual BfpFileWatcher* WatchDirectory(const char* path, BfpDirectoryChangeFunc callback, BfpFileWatcherFlags flags, void* userData, BfpFileResult* outResult) = 0;
     virtual void Remove(BfpFileWatcher* watcher) = 0;
+	static FileWatchManager* Allocate();
+
     static FileWatchManager* Get();
 };
 
@@ -117,16 +119,26 @@ class NullFilewatchManager : public FileWatchManager
 };
 
 #ifndef BFP_HAS_FILEWATCHER
+FileWatchManager* FileWatchManager::Allocate()
+{
+	return new NullFilewatchManager();
+}
+#endif
+
 FileWatchManager* FileWatchManager::Get()
 {
     if (gFileWatchManager == NULL)
     {
-        gFileWatchManager = new NullFilewatchManager();
+        auto fileWatcher = FileWatchManager::Allocate();
+    	if (auto prevValue = __sync_val_compare_and_swap(&gFileWatchManager, NULL, fileWatcher))
+    	{
+    		delete fileWatcher;
+    		return prevValue;
+    	}
         gFileWatchManager->Init();
     }
     return gFileWatchManager;
 }
-#endif
 
 BfpTimeStamp BfpToTimeStamp(const timespec& ts)
 {
