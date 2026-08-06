@@ -539,6 +539,7 @@ namespace System.Reflection
 			void* retData = variantData;
 
 			// Struct return? Manually add it as an arg after 'this'.  Revisit this - this is architecture-dependent.
+			#unwarn // unused in aarch64
 			int unusedRetVal;
 			FFIType* ffiRetType = null;
 			if (retType.IsStruct)
@@ -954,6 +955,7 @@ namespace System.Reflection
 			void* retData = variantData;
 
 			// Struct return? Manually add it as an arg after 'this'.  Revisit this - this is architecture-dependent.
+			#unwarn // unused in aarch64
 			int unusedRetVal;
 			FFIType* ffiRetType = null;
 			if (retType.IsStruct)
