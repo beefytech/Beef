@@ -129,27 +129,24 @@ struct AdjustedMonRect
 
 static int bfMouseBtnOf[4] = {0, 0, 2, 1}; // Translate SDL mouse buttons to what Beef expects.
 
-static HMODULE gSDLModule;
-static HMODULE gSDLImageModule;
+static BfpDynLib* gSDLModule;
 
-static HMODULE GetSDLModule(const StringImpl& installDir)
+static BfpDynLib* GetSDLModule(const StringImpl& installDir)
 {
 	if (gSDLModule == NULL)
 	{
-#if defined (BF_PLATFORM_WINDOWS)
-		String loadPath = installDir + "SDL3.dll";
-		gSDLModule = ::LoadLibraryA(loadPath.c_str());
-#elif defined (BF_PLATFORM_LINUX)
-		String loadPath = "libSDL3.so";
-		gSDLModule = dlopen(loadPath.c_str(), RTLD_LAZY);
+		String path = "SDL3";
+#ifdef BF_PLATFORM_WINDOWS
+		path.Insert(0, installDir);
 #endif
+		gSDLModule = BfpDynLib_Load(path.c_str());
 		if (gSDLModule == NULL)
 		{
 #ifdef BF_PLATFORM_WINDOWS
 			::MessageBoxA(NULL, "Failed to load SDL3.dll", "FATAL ERROR", MB_OK | MB_ICONERROR);
 			::ExitProcess(1);
 #endif
-			BF_FATAL("Failed to load libSDL3.so");
+			BF_FATAL("Failed to load SDL3");
 		}
 	}
 	return gSDLModule;
@@ -158,11 +155,7 @@ static HMODULE GetSDLModule(const StringImpl& installDir)
 template <typename T>
 static void BFGetSDLProc(T& proc, const char* name, const StringImpl& installDir)
 {
-#if defined (BF_PLATFORM_WINDOWS)
-	proc = (T)::GetProcAddress(GetSDLModule(installDir), name);
-#elif defined (BF_PLATFORM_LINUX)
-	proc = (T)dlsym(GetSDLModule(installDir), name);
-#endif
+	proc = (T)BfpDynLib_GetProcAddress(GetSDLModule(installDir), name);
 }
 
 #define BF_GET_SDLPROC(name) BFGetSDLProc(bf_##name, #name, mInstallDir)
