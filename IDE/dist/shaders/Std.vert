@@ -1,11 +1,13 @@
+#version 150 core
+
 uniform mat4 screenMatrix;
 
-attribute vec4 position;
-attribute vec2 texCoord0;
-attribute vec4 color;
+in vec4 position;
+in vec2 texCoord0;
+in vec4 color;
 
-varying vec4 varying_color;
-varying vec2 varying_texCoord0;
+out vec4 varying_color;
+out vec2 varying_texCoord0;
 
 void main()
 {        
