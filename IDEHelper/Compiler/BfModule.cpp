@@ -7178,7 +7178,12 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 						auto funcPtr = mBfIRBuilder->CreateBitCast(moduleMethodInst.mFunc, voidPtrIRType);
 
 						int idx = checkIFace.mStartVirtualIdx + ifaceMethodInstance->mVirtualTableIdx;
-						vData[iFaceMethodStartIdx + idx] = funcPtr;
+						if (idx >= vData.mSize)
+						{
+							InternalError("vdata interface error");
+						}
+						else
+							vData[iFaceMethodStartIdx + idx] = funcPtr;
 					}
 				}
 			}
@@ -20418,7 +20423,7 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 
 			auto unspecializedMethodInstance = GetUnspecializedMethodInstance(methodInstance);
 			auto unspecParamType = unspecializedMethodInstance->GetParamType(paramIdx);
-			BF_ASSERT(unspecParamType->IsGenericParam());
+			BF_ASSERT((unspecParamType->IsGenericParam()) || (unspecParamType->IsConstExprValue()));
 			if (unspecParamType->IsGenericParam())
 			{
 				BfGenericParamType* genericParamType = (BfGenericParamType*)unspecParamType;
