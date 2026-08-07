@@ -6,7 +6,12 @@ namespace BeefBuild
 {
 	class Program
 	{
-		public static int32 Main(String[] args)		
+		public virtual BuildApp CreateApp()
+		{
+			return new BuildApp();
+		}
+
+		public int32 DoMain(String[] args)
 		{
 			for (let arg in args)
 			{
@@ -36,32 +41,38 @@ namespace BeefBuild
 			String commandLine = scope String();
 			commandLine.Join(" ", args);
 
-			BuildApp mApp = new BuildApp();	
-			mApp.ParseCommandLine(commandLine);
-			if (mApp.mVerb == .GetVersion)
+			BuildApp app = CreateApp();
+			app.ParseCommandLine(commandLine);
+			if (app.mVerb == .GetVersion)
 			{
 				Console.WriteLine("BeefBuild {}", IDE.IDEApp.cVersion);
 			}
 			else
 			{
-				if (mApp.mFailed)
+				if (app.mFailed)
 				{
 					Console.Error.WriteLine("  Run with \"-help\" for a list of command-line arguments");
 				}
 				else
 				{
-					mApp.Init();
-					mApp.Run();
+					app.Init();
+					app.Run();
 				}
 			}
-			mApp.Shutdown();
-			int32 result = mApp.mFailed ? 1 : 0;
-			if (mApp.mTargetExitCode != null)
-				result = (int32)mApp.mTargetExitCode.Value;
+			app.Shutdown();
+			int32 result = app.mFailed ? 1 : 0;
+			if (app.mTargetExitCode != null)
+				result = (int32)app.mTargetExitCode.Value;
 
-			delete mApp;
+			delete app;
 
 			return result;
+		}
+
+		public static int32 Main(String[] args)		
+		{
+			Program pg = scope .();
+			return pg.DoMain(args);
 		}
 	}
 }

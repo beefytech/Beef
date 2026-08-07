@@ -5388,7 +5388,7 @@ namespace IDE
 				sourceViewPanel.RecordHistoryLocation();
 		}
 
-		void ShowPanel(Panel panel, String label, bool setFocus = true, bool isDocument = false)
+		protected void ShowPanel(Panel panel, String label, bool setFocus = true, bool isDocument = false)
 		{
 			if (!mInitialized)
 				return;
@@ -12279,7 +12279,7 @@ namespace IDE
 			mExecutionQueue.Add(completedCompileCmd);
 		}
 
-		bool CompileAndRun(bool debug)
+		protected bool CompileAndRun(bool debug)
 		{
 			if (AreTestsRunning())
 				return false;

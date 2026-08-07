@@ -16,8 +16,12 @@ namespace IDE
 {
     public class Program
     {
-		//System.Collections.List<System.String> list;
-        static int32 Main(String[] args)
+		public virtual IDEApp CreateApp()
+		{
+			return new IDEApp();
+		}
+		
+        public virtual int32 DoMain(String[] args)
         {
 			/*Git.GitApi.git_libgit2_init();
 
@@ -47,7 +51,7 @@ namespace IDE
 #if SMALLTEST
 			Debug.WriteLine("Hey!\n");
 #else
-        	IDEApp mApp = new IDEApp();
+        	IDEApp mApp = CreateApp();
             mApp.ParseCommandLine(args);
             mApp.Init();
 
@@ -64,6 +68,12 @@ namespace IDE
 #endif
 			return retVal;
         }
+
+		static int32 Main(String[] args)
+		{
+			Program pg = scope .();
+			return pg.DoMain(args);
+		}
     }
 }
 
