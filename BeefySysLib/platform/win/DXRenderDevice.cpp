@@ -1671,6 +1671,8 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 				else
 				{
 					vtx = srcVtxData->mPosition;
+					normal = srcVtxData->mNormal;
+					tangent = srcVtxData->mTangent;
 				}
 
 				DXModelVertex* destVtx = dxVtxData + vtxIdx;
