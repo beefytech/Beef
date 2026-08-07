@@ -226,9 +226,14 @@ public:
 
 public:
 	String mLoadDir;
-	float mFrameRate;	
+	float mFrameRate;
 	Array<ModelMesh> mMeshes;
 	Array<ModelJoint> mJoints;
+	// World transform of whatever sits above the root joint(s) in the FBX node hierarchy (typically the
+	// armature object). Root ModelJoints only carry their transform relative to that node, not world
+	// space -- DXModelInstance::CommandQueued left-multiplies root joints by this so the skinned result
+	// lands in the same (world-space-aware) space ModelJoint::mPoseInvMatrix expects.
+	Matrix4 mArmatureToWorld;
 	Array<ModelAnimation> mAnims;
 	Array<ModelNode> mNodes;
 	Array<ModelMaterialInstance> mMaterials;

@@ -159,6 +159,7 @@ BF_EXPORT void BF_CALLTYPE ModelDefAnimation_Clip(ModelAnimation* modelAnimation
 ModelDef::ModelDef()
 {
 	mFlags = Flags_None;
+	mArmatureToWorld = Matrix4::sIdentity;
 }
 
 ModelDef::~ModelDef()

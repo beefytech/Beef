@@ -70,6 +70,18 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 
 	ufbx_load_opts opts = {};
 	opts.generate_missing_normals = true;
+	// Normalizing to world convention of Left/Up/Forward (+X left, +Y up, +Z forward)	
+	ufbx_coordinate_axes targetAxesLUF = {};
+	targetAxesLUF.right = UFBX_COORDINATE_AXIS_NEGATIVE_X;
+	targetAxesLUF.up = UFBX_COORDINATE_AXIS_POSITIVE_Y;
+	targetAxesLUF.front = UFBX_COORDINATE_AXIS_NEGATIVE_Z;
+	opts.target_axes = targetAxesLUF;
+	// FBX's native unit is usually centimeters; Blender's exporter bakes a 100x compensating scale onto
+	// node transforms to reconcile that with its own meters-based scene. Static meshes bake that
+	// straight into vertex data below and just come out oversized without this, but a skinned mesh's
+	// joint chain mixes the 100x-scaled node transforms with un-scaled vertex data, throwing skinned
+	// vertices ~100x off from where the mesh sits.
+	opts.target_unit_meters = 1.0f;
 
 	ufbx_error error;
 	ufbx_scene* scene = ufbx_load_file(fileName.c_str(), &opts, &error);
@@ -87,15 +99,16 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 		mFBXJoints.Clear();
 		mJointIndexMap.Clear();
 
-		// Mark which nodes are bones (referenced by any skin cluster)
 		Dictionary<uint32_t, bool> boneNodeSet;
 		for (size_t si = 0; si < scene->skin_clusters.count; si++)
 		{
 			ufbx_skin_cluster* cluster = scene->skin_clusters.data[si];
 			if (!cluster->bone_node) continue;
-			// Walk up from this bone to mark ancestors too
+			// Walk up from this bone through its bone ancestors only -- stop at the first non-bone node
+			// (eg the Armature object itself), which is a structural container, not a joint, and must not
+			// be added to mFBXJoints/mModelDef->mJoints.
 			ufbx_node* n = cluster->bone_node;
-			while (n && (n != scene->root_node))
+			while (n && (n != scene->root_node) && n->bone)
 			{
 				uint32_t id = n->element.typed_id;
 				if (boneNodeSet.Find(id) != boneNodeSet.end())
@@ -105,18 +118,14 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 			}
 		}
 
-		// Add joints in parent-first order via recursive helper
 		std::function<void(ufbx_node*)> addJoint = [&](ufbx_node* node)
 		{
 			if (!node || (node == scene->root_node)) return;
 			uint32_t id = node->element.typed_id;
-			//if (boneNodeSet.find(id) == boneNodeSet.end()) return;
 			if (!boneNodeSet.ContainsKey(id)) return;
 			String name = node->name.data;
-			//if (mJointIndexMap.find(name) != mJointIndexMap.end()) return;
 			if (mJointIndexMap.ContainsKey(name)) return;
 
-			// Add parent first
 			if (node->parent && (node->parent != scene->root_node))
 				addJoint(node->parent);
 
@@ -134,11 +143,15 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 					joint.parentIndex = it->mValue;
 			}
 
-			// Inverse global bind pose
+			// A root joint's own FBX parent (typically the armature object) isn't a bone, so its world
+			// transform is never otherwise captured -- ModelJoint only stores bone-relative-to-parent
+			// transforms (see DXModelInstance::CommandQueued's per-joint chain).
+			if ((joint.parentIndex < 0) && node->parent && (node->parent != scene->root_node))
+				mModelDef->mArmatureToWorld = UfbxToMatrix4(node->parent->node_to_world);
+
 			ufbx_matrix invGlobal = ufbx_matrix_invert(&node->node_to_world);
 			joint.mGlobalBindPoseInv = UfbxToMatrix4(invGlobal);
 
-			// Local bind pose TRS from node's rest transform
 			ufbx_transform lt = node->local_transform;
 			joint.posx = lt.translation.x;
 			joint.posy = lt.translation.y;
@@ -187,10 +200,20 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 			if (mesh->instances.count == 0) continue;
 			ufbx_node* meshNode = mesh->instances.data[0];
 
+			// mesh->vertex_position etc are in the mesh's own local (bind-pose) space -- the owning
+			// node's transform (translation/rotation/scale, plus any FBX "geometric transform") has to
+			// be applied on top to place it correctly (Blender's exporter routinely bakes a compensating
+			// rotation onto a node's own Lcl Rotation, eg to reconcile a Z-up-authored mesh with a
+			// Y-up-declared scene). Skinned meshes are left untouched: their positions need to stay in
+			// bind-pose-local space for the per-vertex bone blending below (DXRenderDevice.cpp) to work
+			// -- that path already accounts for the bind pose via each cluster's own geometry_to_bone.
+			bool meshIsSkinned = mesh->skin_deformers.count > 0;
+			ufbx_matrix geomToWorld = meshNode->geometry_to_world;
+			ufbx_matrix normalMatrix = ufbx_matrix_for_normals(&geomToWorld);
+
 			FBXMesh* fbxMesh = new FBXMesh();
 			fbxMesh->mName = meshNode->name.data;
 
-			// Texture from material
 			if (mesh->materials.count > 0)
 			{
 				ufbx_material* mat = mesh->materials.data[0];
@@ -210,7 +233,6 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 				}
 			}
 
-			// Build per-position bone weight vectors
 			size_t numPositions = mesh->vertex_position.values.count;
 			std::vector<BoneWeightVector> boneWeights(numPositions);
 
@@ -260,20 +282,21 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 						FBXVertexData vd = {};
 						vd.mColor = 0xFFFFFFFF;
 
-						// Position
 						uint32_t posIdx = mesh->vertex_position.indices.data[cornerIdx];
 						ufbx_vec3 pos = mesh->vertex_position.values.data[posIdx];
+						if (!meshIsSkinned)
+							pos = ufbx_transform_position(&geomToWorld, pos);
 						vd.mCoords = Vector3((float)pos.x, (float)pos.y, (float)pos.z);
 
-						// Normal
 						if (mesh->vertex_normal.exists)
 						{
 							uint32_t normIdx = mesh->vertex_normal.indices.data[cornerIdx];
 							ufbx_vec3 norm = mesh->vertex_normal.values.data[normIdx];
+							if (!meshIsSkinned)
+								norm = ufbx_transform_direction(&normalMatrix, norm);
 							vd.mNormal = Vector3((float)norm.x, (float)norm.y, (float)norm.z);
 						}
 
-						// UV
 						if (mesh->vertex_uv.exists)
 						{
 							uint32_t uvIdx = mesh->vertex_uv.indices.data[cornerIdx];
@@ -281,15 +304,15 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 							vd.mTexCoords.push_back(TexCoords((float)uv.x, (float)uv.y));
 						}
 
-						// Tangent
 						if (mesh->vertex_tangent.exists)
 						{
 							uint32_t tanIdx = mesh->vertex_tangent.indices.data[cornerIdx];
 							ufbx_vec3 tan = mesh->vertex_tangent.values.data[tanIdx];
+							if (!meshIsSkinned)
+								tan = ufbx_transform_direction(&geomToWorld, tan);
 							vd.mTangent = Vector3((float)tan.x, (float)tan.y, (float)tan.z);
 						}
 
-						// Bone weights (keyed by position index)
 						vd.mBoneWeights = boneWeights[posIdx];
 
 						unpackedVtx.push_back(vd);
@@ -341,7 +364,6 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 			ufbx_baked_anim* bake = ufbx_bake_anim(scene, stack->anim, &bakeOpts, &bakeErr);
 			if (!bake) continue;
 
-			// Map joint name -> baked node index
 			std::map<int, int> jointToBakeIdx;
 			for (size_t bni = 0; bni < bake->nodes.count; bni++)
 			{
@@ -353,7 +375,6 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 					jointToBakeIdx[it->mValue] = (int)bni;
 			}
 
-			// Determine frame count from any baked joint
 			int numFrames = 0;
 			for (auto& kv : jointToBakeIdx)
 			{
@@ -540,7 +561,6 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 		}
 	}
 
-	// Animations
 	mModelDef->mAnims.Resize(mAnimations.size());
 	for (int ai = 0; ai < (int)mAnimations.size(); ai++)
 	{
@@ -583,6 +603,8 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 	return true;
 }
 
+// .bfmodel caching is disabled -- both this and ReadBFFile below return false immediately, the rest is
+// dead code kept for reference in case caching gets revived.
 bool Beefy::FBXReader::WriteBFFile(const StringImpl& fileName, const StringImpl& checkFile, const StringImpl& checkFile2)
 {
 	return false;
