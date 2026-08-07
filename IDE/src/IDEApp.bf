@@ -414,6 +414,18 @@ namespace IDE
 		public class ExecutionCmd
 		{
 			public bool mOnlyIfNotFailed;
+
+			public virtual bool IsReady => true;
+			public virtual float? PercentageDone => null;
+
+			public virtual void Execute()
+			{
+			}
+
+			public virtual void GetStatus(String outStr)
+			{
+
+			}
 		}
 
 		public class WriteEmitCmd : ExecutionCmd
@@ -3873,7 +3885,7 @@ namespace IDE
 				return;
 			}
 
-			if (let binaryDataPanel = GetActivePanel() as ContentPanel)
+			if (let binaryDataPanel = GetActiveDocumentPanel() as ContentPanel)
 				SaveFile(binaryDataPanel);
 		}
 
@@ -6615,7 +6627,7 @@ namespace IDE
 			GetDefaultDocumentTabbedView();
 		}
 
-		public Widget GetActivePanel()
+		public virtual Widget GetActivePanel()
 		{
 			if (mRunningTestScript)
 				return mLastActivePanel;
@@ -6687,7 +6699,7 @@ namespace IDE
 			return mMainWindow;
 		}
 
-		public Widget GetActiveDocumentPanel()
+		public virtual Widget GetActiveDocumentPanel()
 		{
 			var activePanel = GetActivePanel();
 			if ((activePanel is SourceViewPanel) || (activePanel is DisassemblyPanel) || (activePanel is ContentPanel))
@@ -9957,6 +9969,10 @@ namespace IDE
 						}
 					}
 				}
+
+				if (!next.IsReady)
+					return;
+
 #endif
 				defer delete next;
 				mExecutionQueue.RemoveAt(0);
@@ -10172,7 +10188,7 @@ namespace IDE
 				}
 				else
 				{
-					Runtime.FatalError("Unknown command");
+					next.Execute();
 				}
 			}
 		}
@@ -15340,6 +15356,11 @@ namespace IDE
 		public void MarkFileChanged(StringView path)
 		{
 			mHaveSourcesChangedExternallySinceLastCompile = true;
+			var useFilePath = IDEUtils.FixFilePath(.. scope .(path));
+			if (var projectSource = FindProjectSourceItem(useFilePath))
+			{
+				projectSource.HasChangedSinceLastCompile = true;
+			}
 		}
 
 		void UpdateWorkspace()

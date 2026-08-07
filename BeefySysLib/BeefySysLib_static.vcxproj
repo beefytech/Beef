@@ -127,6 +127,7 @@
       <SupportJustMyCode>false</SupportJustMyCode>
       <BufferSecurityCheck>false</BufferSecurityCheck>
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
+      <LanguageStandard>stdcpp17</LanguageStandard>
     </ClCompile>
     <Link>
       <SubSystem>Windows</SubSystem>
@@ -166,7 +167,7 @@
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
       <IntrinsicFunctions>true</IntrinsicFunctions>
-      <PreprocessorDefinitions>FFI_STATIC_BUILD;WIN32;NDEBUG;_WINDOWS;_USRDLL;BFSYSLIB_DYNAMIC;BF_NO_FBX;FT2_BUILD_LIBRARY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <PreprocessorDefinitions>FFI_STATIC_BUILD;WIN32;NDEBUG;_WINDOWS;_USRDLL;BF_NO_FBX;FT2_BUILD_LIBRARY;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <RuntimeLibrary>MultiThreaded</RuntimeLibrary>
       <AdditionalIncludeDirectories>./;./platform/win/;./platform/sdl/;third_party/agg-2.4/include;third_party/agg-2.4/include/platform/win32;third_party/;third_party/libffi/x86_64-pc-cygwin;third_party/libffi/x86_64-pc-cygwin/include;third_party/libffi/include;third_party/SDL/include;../extern/fbxsdk/include;third_party/freetype/include</AdditionalIncludeDirectories>
       <BufferSecurityCheck>false</BufferSecurityCheck>

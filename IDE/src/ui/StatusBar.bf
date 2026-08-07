@@ -387,9 +387,16 @@ namespace IDE.ui
             
             float? completionPct = null;
 
+			if (!gApp.mExecutionQueue.IsEmpty)
+			{
+				var execCmd = gApp.mExecutionQueue.Front;
+				completionPct = execCmd.PercentageDone;
+			}
+
             if (bfBuildCompiler.HasQueuedCommands())
             {
-                completionPct = bfBuildCompiler.GetCompletionPercentage();
+				if (completionPct == null)
+                	completionPct = bfBuildCompiler.GetCompletionPercentage();
                 Debug.Assert(completionPct.GetValueOrDefault() >= 0);
             }
 #if IDE_C_SUPPORT
@@ -515,7 +522,23 @@ namespace IDE.ui
 				DrawStatusBox("Queued Showing Source");
 			}
 			else
-				mStatusBoxUpdateCnt = -1;
+			{
+				bool handled = false;
+
+				if (!gApp.mExecutionQueue.IsEmpty)
+				{
+					var execCmd = gApp.mExecutionQueue.Front;
+					var statusStr = execCmd.GetStatus(.. scope String());
+					if (!statusStr.IsEmpty)
+					{
+						DrawStatusBox(statusStr);
+						handled = true;
+					}
+				}
+
+				if (!handled)
+					mStatusBoxUpdateCnt = -1;
+			}
 
 			///
 			{

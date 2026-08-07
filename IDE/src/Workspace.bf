@@ -602,6 +602,16 @@ namespace IDE
 			ClearAndDeleteItems(mPlatforms);
 		}
 
+		public virtual void GetBeefExtensions(List<String> extList)
+		{
+
+		}
+
+		public virtual bool CheckExtension(StringView extName)
+		{
+			return false;
+		}
+
 		public void SetLock(StringView projectName, Lock lock)
 		{
 			if (mProjectLockMap.TryAddAlt(projectName, var keyPtr, var valuePtr))
@@ -728,6 +738,13 @@ namespace IDE
 
 			if (!IsSingleFileWorkspace)
 				data.Add("FileVersion", 1);
+
+			var extList = GetBeefExtensions(.. scope .());
+			defer extList.ClearAndDeleteItems();
+			if (!extList.IsEmpty)
+			{
+				WriteStrings("Extensions", extList);
+			}
 			
 			using (data.CreateObject("Workspace"))
 			{
@@ -1133,6 +1150,18 @@ namespace IDE
         {
 			DeleteDictionaryAndKeysAndValues!(mConfigs);
 			mConfigs = new Dictionary<String, Config>();
+
+			if (data.Contains("Extensions"))
+			{
+				for (data.Enumerate("Extensions"))
+				{
+					var extName = data.GetCurString(.. scope .());
+					if (!CheckExtension(extName))
+					{
+						gApp.Fail(scope $"This workspace requires extension '{extName}'");
+					}
+				}
+			}
 
 			using (data.Open("Workspace"))
 			{
