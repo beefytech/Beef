@@ -782,53 +782,120 @@ BF_EXPORT void BF_CALLTYPE Gfx_DrawQuads(TextureSegment* textureSegment, Default
 	}
 }
 
+// The largest vtxCount/idxCount a single AllocIndexed call can ever satisfy -- DrawLayer's pooled
+// vertex/index buffers are fixed-size (DRAWBUFFER_VTXBUFFER_SIZE/DRAWBUFFER_IDXBUFFER_SIZE), and
+// AllocateBatch asserts if a single request exceeds what a fresh buffer could hold.
+static int DrawIndexedVerticesMaxPerBatch(int vertexSize)
+{
+	return BF_MIN(DRAWBUFFER_VTXBUFFER_SIZE / vertexSize, DRAWBUFFER_IDXBUFFER_SIZE / (int)sizeof(uint16));
+}
+
 BF_EXPORT void BF_CALLTYPE Gfx_DrawIndexedVertices(int vertexSize, void* vtxData, int vtxCount, uint16* idxData, int idxCount)
 {
 	DrawLayer* drawLayer = gBFApp->mRenderDevice->mCurDrawLayer;
+	int maxPerBatch = DrawIndexedVerticesMaxPerBatch(vertexSize);
 
-	uint16 idxOfs;
-	void* drawBatchVtxPtr;
-	uint16* drawBatchIdxPtr;
-	gBFApp->mRenderDevice->mCurDrawLayer->AllocIndexed(vtxCount, idxCount, (void**)&drawBatchVtxPtr, &drawBatchIdxPtr, &idxOfs);
-	BF_ASSERT(gBFApp->mRenderDevice->mCurDrawLayer->mCurDrawBatch->mVtxSize == vertexSize);
+	if ((vtxCount <= maxPerBatch) && (idxCount <= maxPerBatch))
+	{
+		uint16 idxOfs;
+		void* drawBatchVtxPtr;
+		uint16* drawBatchIdxPtr;
+		drawLayer->AllocIndexed(vtxCount, idxCount, (void**)&drawBatchVtxPtr, &drawBatchIdxPtr, &idxOfs);
+		BF_ASSERT(drawLayer->mCurDrawBatch->mVtxSize == vertexSize);
 
-	uint16* idxPtr = idxData;
-	for (int idxIdx = 0; idxIdx < idxCount; idxIdx++)
-		*(drawBatchIdxPtr++) = *(idxPtr++) + idxOfs;
+		uint16* idxPtr = idxData;
+		for (int idxIdx = 0; idxIdx < idxCount; idxIdx++)
+			*(drawBatchIdxPtr++) = *(idxPtr++) + idxOfs;
 
-	memcpy(drawBatchVtxPtr, vtxData, vertexSize * vtxCount);
+		memcpy(drawBatchVtxPtr, vtxData, vertexSize * vtxCount);
+		return;
+	}
+
+	// Too big for one native draw batch -- split into idxCount-bounded chunks, each a fully
+	// self-contained AllocIndexed call. A vertex referenced across a chunk boundary gets duplicated
+	// once per chunk rather than reused, since indices can reference vertices in any order.
+	int idxStart = 0;
+	while (idxStart < idxCount)
+	{
+		int chunkIdxCount = BF_MIN(maxPerBatch, idxCount - idxStart);
+
+		uint16 idxOfs;
+		void* drawBatchVtxPtr;
+		uint16* drawBatchIdxPtr;
+		drawLayer->AllocIndexed(chunkIdxCount, chunkIdxCount, (void**)&drawBatchVtxPtr, &drawBatchIdxPtr, &idxOfs);
+		BF_ASSERT(drawLayer->mCurDrawBatch->mVtxSize == vertexSize);
+
+		for (int i = 0; i < chunkIdxCount; i++)
+		{
+			uint16 srcIdx = idxData[idxStart + i];
+			memcpy((uint8*)drawBatchVtxPtr + i * vertexSize, (uint8*)vtxData + srcIdx * vertexSize, vertexSize);
+			drawBatchIdxPtr[i] = (uint16)(idxOfs + i);
+		}
+
+		idxStart += chunkIdxCount;
+	}
 }
 
 BF_EXPORT void BF_CALLTYPE Gfx_DrawIndexedVertices2D(int vertexSize, void* vtxData, int vtxCount, uint16* idxData, int idxCount, float a, float b, float c, float d, float tx, float ty, float z)
 {
 	DrawLayer* drawLayer = gBFApp->mRenderDevice->mCurDrawLayer;
+	int maxPerBatch = DrawIndexedVerticesMaxPerBatch(vertexSize);
 
-	uint16 idxOfs;
-	void* drawBatchVtxPtr;
-	uint16* drawBatchIdxPtr;
-	gBFApp->mRenderDevice->mCurDrawLayer->AllocIndexed(vtxCount, idxCount, (void**)&drawBatchVtxPtr, &drawBatchIdxPtr, &idxOfs);
-	BF_ASSERT(gBFApp->mRenderDevice->mCurDrawLayer->mCurDrawBatch->mVtxSize == vertexSize);
-
-	uint16* idxPtr = idxData;
-	for (int idxIdx = 0; idxIdx < idxCount; idxIdx++)
-		*(drawBatchIdxPtr++) = *(idxPtr++) + idxOfs;
-
-	//memcpy(drawBatchIdxPtr, idxData, sizeof(uint16) * idxCount);
-	//memcpy(drawBatchVtxPtr, vtxData, vertexSize * vtxCount);
-
-	void* vtxPtr = vtxData;
-	for (int vtxIdx = 0; vtxIdx < vtxCount; vtxIdx++)
+	auto TransformVertex = [&](void* srcVtx, void* destVtx)
 	{
-		Vector3* srcPos = (Vector3*)vtxPtr;
-		Vector3* destPos = (Vector3*)drawBatchVtxPtr;
+		Vector3* srcPos = (Vector3*)srcVtx;
+		Vector3* destPos = (Vector3*)destVtx;
 
 		destPos->mX = srcPos->mX * a + srcPos->mY * c + tx;
 		destPos->mY = srcPos->mX * b + srcPos->mY * d + ty;
 		destPos->mZ = srcPos->mZ + z;
 
-		memcpy((uint8*)drawBatchVtxPtr + sizeof(Vector3), (uint8*)vtxPtr + sizeof(Vector3), vertexSize - sizeof(Vector3));
-		drawBatchVtxPtr = (uint8*)drawBatchVtxPtr + vertexSize;
-		vtxPtr = (uint8*)vtxPtr + vertexSize;
+		memcpy((uint8*)destVtx + sizeof(Vector3), (uint8*)srcVtx + sizeof(Vector3), vertexSize - sizeof(Vector3));
+	};
+
+	if ((vtxCount <= maxPerBatch) && (idxCount <= maxPerBatch))
+	{
+		uint16 idxOfs;
+		void* drawBatchVtxPtr;
+		uint16* drawBatchIdxPtr;
+		drawLayer->AllocIndexed(vtxCount, idxCount, (void**)&drawBatchVtxPtr, &drawBatchIdxPtr, &idxOfs);
+		BF_ASSERT(drawLayer->mCurDrawBatch->mVtxSize == vertexSize);
+
+		uint16* idxPtr = idxData;
+		for (int idxIdx = 0; idxIdx < idxCount; idxIdx++)
+			*(drawBatchIdxPtr++) = *(idxPtr++) + idxOfs;
+
+		void* vtxPtr = vtxData;
+		for (int vtxIdx = 0; vtxIdx < vtxCount; vtxIdx++)
+		{
+			TransformVertex(vtxPtr, drawBatchVtxPtr);
+			drawBatchVtxPtr = (uint8*)drawBatchVtxPtr + vertexSize;
+			vtxPtr = (uint8*)vtxPtr + vertexSize;
+		}
+		return;
+	}
+
+	// See Gfx_DrawIndexedVertices -- same idxCount-bounded chunking, applying the same per-vertex
+	// transform to whichever source vertex each chunk copies.
+	int idxStart = 0;
+	while (idxStart < idxCount)
+	{
+		int chunkIdxCount = BF_MIN(maxPerBatch, idxCount - idxStart);
+
+		uint16 idxOfs;
+		void* drawBatchVtxPtr;
+		uint16* drawBatchIdxPtr;
+		drawLayer->AllocIndexed(chunkIdxCount, chunkIdxCount, (void**)&drawBatchVtxPtr, &drawBatchIdxPtr, &idxOfs);
+		BF_ASSERT(drawLayer->mCurDrawBatch->mVtxSize == vertexSize);
+
+		for (int i = 0; i < chunkIdxCount; i++)
+		{
+			uint16 srcIdx = idxData[idxStart + i];
+			TransformVertex((uint8*)vtxData + srcIdx * vertexSize, (uint8*)drawBatchVtxPtr + i * vertexSize);
+			drawBatchIdxPtr[i] = (uint16)(idxOfs + i);
+		}
+
+		idxStart += chunkIdxCount;
 	}
 }
 
