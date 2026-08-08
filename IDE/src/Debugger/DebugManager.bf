@@ -750,6 +750,7 @@ namespace IDE.Debugger
 			var stepFilter = new StepFilter();
 			stepFilter.mFilter = new String(filter);
 			stepFilter.mKind = filterKind;
+			stepFilter.mIsGlobal = isGlobal;
 			mStepFilterList[stepFilter.mFilter] = stepFilter;
 			return stepFilter;
 		}
