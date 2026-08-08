@@ -691,7 +691,7 @@ void BootApp::DoLinkMS()
 		if (nextBr == -1)
 			nextBr = (int)fileNamesStr.length();
 		linkLine.Append(fileNamesStr.substr(curIdx + 1, nextBr - curIdx - 1));
-		linkLine.Append(" ");
+		linkLine.Append("\n");
 		curIdx = nextBr;
 	}
 
