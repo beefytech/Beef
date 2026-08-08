@@ -252,6 +252,9 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         extern static void ModelInstance_SetMeshVisibility(void* nativeModelInstance, int32 jointIdx, int32 visibility);
 
+		[CallingConvention(.Stdcall), CLink]
+		extern static int32 ModelDef_GetCollisionTriangles(void* nativeModel, void* nativeModelInstance, Vector3** outPositions);
+
         public ModelDef mModelDef;
         public ModelDef.Animation mAnim;
         public float mFrame;
@@ -342,6 +345,17 @@ namespace Beefy.gfx
         {
             ModelInstance_SetMeshVisibility(mNativeRenderable, meshIdx, visible ? 1 : 0);
         }
+
+		// Triangle-expanded collision positions in local space (see ModelDef_GetCollisionTriangles's
+		// native comment) -- skinned meshes are baked using this instance's CURRENT joint pose. Valid
+		// until the next call to this on any ModelInstance (shared native scratch buffer).
+		public int32 GetCollisionPositions(out Vector3* outPositions)
+		{
+			Vector3* positions = null;
+			int32 count = ModelDef_GetCollisionTriangles(mModelDef.mNativeModelDef, mNativeRenderable, &positions);
+			outPositions = positions;
+			return count;
+		}
     }
 #else
     extension ModelDef

@@ -25,6 +25,13 @@ public:
 	ModelInstance(ModelDef* modelDef);
 
 	virtual void SetJointPosition(int jointIdx, const ModelJointTranslation& jointTranslation);
+
+	// Walks the joint hierarchy for one pose snapshot: parent-chain multiply (folding in
+	// mModelDef->mArmatureToWorld for root joints), then each joint's own mPoseInvMatrix. Shared
+	// between DXModelInstance::CommandQueued's GPU skinning and ModelDef_GetCollisionTriangles's
+	// CPU-side bake so the hierarchy-walk logic can't drift between the two. outMatrices must have
+	// room for at least mJointTranslations.mSize entries.
+	void ComputeSkinningJointMatrices(Matrix4* outMatrices) const;
 };
 
 NS_BF_END;

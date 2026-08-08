@@ -23,6 +23,49 @@ public:
 
 ModelManager sModelManager;
 static TLSingleton<String> gModelDef_TLStrReturn;
+static TLSingleton<Array<Vector3>> gModelDef_TLPositionsReturn;
+
+static Vector3 SkinPosition(const ModelVertex& vtx, const Array<Matrix4>& jointMatrices)
+{
+	Vector3 pos(0, 0, 0);
+	for (int w = 0; w < vtx.mNumBoneWeights; w++)
+		pos = pos + Vector3::Transform(vtx.mPosition, jointMatrices[vtx.mBoneIndices[w]]) * vtx.mBoneWeights[w];
+	return pos;
+}
+
+// Triangle-expanded (non-indexed) positions for the whole model, local space, matching MeshData's
+// TrianglesRecord layout exactly -- no per-primitive material split needed for physics. If
+// modelInstance is non-null, skinned vertices are baked using its CURRENT mJointTranslations (a
+// one-time snapshot, not continuous tracking -- see PhysicsComponent.RefreshShape for re-baking a pose
+// that's moved on). Unskinned vertices always use their already-baked mPosition regardless (matches
+// FBXReader.cpp's own geomToWorld bake for non-skinned meshes). *outPositions points at modelDef's own
+// persistent scratch buffer, valid until the next call on this thread.
+BF_EXPORT int32 BF_CALLTYPE ModelDef_GetCollisionTriangles(ModelDef* modelDef, ModelInstance* modelInstance, Vector3** outPositions)
+{
+	Array<Vector3>& out = *gModelDef_TLPositionsReturn.Get();
+	out.Clear();
+
+	Array<Matrix4> jointMatrices;
+	bool canSkin = (modelInstance != NULL) && (!modelDef->mJoints.IsEmpty()) &&
+		(modelInstance->mJointTranslations.mSize == modelDef->mJoints.mSize);
+	if (canSkin)
+	{
+		jointMatrices.Resize(modelDef->mJoints.mSize);
+		modelInstance->ComputeSkinningJointMatrices(jointMatrices.mVals);
+	}
+
+	for (auto& mesh : modelDef->mMeshes)
+		for (auto& prims : mesh.mPrimitives)
+			for (int i = 0; i + 2 < (int)prims.mIndices.mSize; i += 3)
+				for (int k = 0; k < 3; k++)
+				{
+					ModelVertex& vtx = prims.mVertices[prims.mIndices[i + k]];
+					out.Add((canSkin && (vtx.mNumBoneWeights > 0)) ? SkinPosition(vtx, jointMatrices) : vtx.mPosition);
+				}
+
+	*outPositions = out.IsEmpty() ? NULL : out.mVals;
+	return (int32)out.mSize;
+}
 
 void Beefy::ModelAnimation::GetJointTranslation(int jointIdx, float frameNum, ModelJointTranslation* outJointTranslation)
 {
