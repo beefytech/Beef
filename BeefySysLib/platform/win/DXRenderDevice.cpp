@@ -760,6 +760,58 @@ void DXTexture::GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int des
 	texture->Release();
 }
 
+// Reads back a HighPrecision (R32_FLOAT) render target's raw float bits -- NOT the real D3D
+// depth-stencil buffer. A direct CopySubresourceRegion off an actual depth-stencil-bound resource
+// (D24_UNORM_S8_UINT, BindFlags=DEPTH_STENCIL) reads back as garbage/zero on this hardware, almost
+// certainly GPU Z-buffer compression that a plain staging copy doesn't decompress -- the same reason
+// this codebase's existing shadow-map system (ShadowDepth.fx) never reads the real depth buffer
+// either, instead rendering NDC depth *as color* into an ordinary (uncompressed) R32_FLOAT color
+// target. This mirrors that proven approach: same shape as GetBits, just R32_FLOAT instead of
+// R8G8B8A8_UNORM, reading mD3DTexture like GetBits does (not mD3DDepthBuffer).
+void DXTexture::GetDepthBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
+{
+	if ((srcWidth <= 0) || (srcHeight <= 0))
+		return;
+
+	D3D11_TEXTURE2D_DESC texDesc;
+	texDesc.ArraySize = 1;
+	texDesc.BindFlags = 0;
+	texDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	texDesc.Width = srcWidth;
+	texDesc.Height = srcHeight;
+	texDesc.MipLevels = 1;
+	texDesc.MiscFlags = 0;
+	texDesc.SampleDesc.Count = 1;
+	texDesc.SampleDesc.Quality = 0;
+	texDesc.Usage = D3D11_USAGE_STAGING;
+	texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+
+	D3D11_BOX srcBox = { 0 };
+	srcBox.left = srcX;
+	srcBox.top = srcY;
+	srcBox.right = srcX + srcWidth;
+	srcBox.bottom = srcY + srcHeight;
+	srcBox.back = 1;
+
+	ID3D11Texture2D *texture;
+	DXCHECK(mRenderDevice->mD3DDevice->CreateTexture2D(&texDesc, 0, &texture));
+	mRenderDevice->mD3DDeviceContext->CopySubresourceRegion(texture, 0, 0, 0, 0, mD3DTexture, 0, &srcBox);
+
+	D3D11_MAPPED_SUBRESOURCE mapTex;
+	DXCHECK(mRenderDevice->mD3DDeviceContext->Map(texture, 0, D3D11_MAP_READ, NULL, &mapTex));
+
+	uint8* srcPtr = (uint8*) mapTex.pData;
+	uint8* destPtr = (uint8*) bits;
+	for (int y = 0; y < srcHeight; y++)
+	{
+		memcpy(destPtr, srcPtr, srcWidth*sizeof(uint32));
+		srcPtr += mapTex.RowPitch;
+		destPtr += destPitch * 4;
+	}
+	mRenderDevice->mD3DDeviceContext->Unmap(texture, 0);
+	texture->Release();
+}
+
 void* DXTexture::GetSharedHandle()
 {
 	IDXGIResource* dxgiResource = NULL;
