@@ -47,6 +47,13 @@ void TextureSegment::GetBits(int srcX, int srcY, int srcWidth, int srcHeight, in
 	mTexture->GetBits(srcX + x1, srcY + y1, srcWidth, srcHeight, destPitch, bits);
 }
 
+void TextureSegment::GetDepthBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
+{
+	int x1 = (int)(mU1 * mTexture->mWidth + 0.5f);
+	int y1 = (int)(mV1 * mTexture->mHeight + 0.5f);
+	mTexture->GetDepthBits(srcX + x1, srcY + y1, srcWidth, srcHeight, destPitch, bits);
+}
+
 void TextureSegment::GetImageData(ImageData& imageData)
 {
 	int x1 = (int)(mU1 * mTexture->mWidth + 0.5f);
