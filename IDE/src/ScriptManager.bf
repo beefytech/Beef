@@ -1444,10 +1444,25 @@ namespace IDE
 								return true;
 							}
 
-							if (File.CopyIfNewer(srcPath, destPath) case .Err)
+							bool wantCopy = true;
+
+							DateTime srcDate;
+							if (!(File.GetLastWriteTime(srcPath) case .Ok(out srcDate)))
+								wantCopy = false;
+							if (File.GetLastWriteTime(destPath) case .Ok(let destDate))
+								wantCopy = srcDate > destDate;
+
+							if (wantCopy)
 							{
-								mScriptManager.Fail("Failed to copy file '{}' to '{}'", srcPath, destPath);
-								return false;
+								if (File.CopyIfNewer(srcPath, destPath) case .Err)
+								{
+									mScriptManager.Fail("Failed to copy file '{}' to '{}'", srcPath, destPath);
+									return false;
+								}
+								else
+								{
+									gApp.OutputLine("Copied from '{}' to '{}'", srcPath, destPath);
+								}
 							}
 							return true;
 						}
