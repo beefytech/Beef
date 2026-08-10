@@ -174,3 +174,8 @@ BFWindow::~BFWindow()
 	delete mRenderWindow;
 	delete mMenu;
 }
+
+float BFWindow::GetMonitorRefreshRate()
+{
+	return (mRenderWindow != NULL) ? mRenderWindow->GetRefreshRate() : 0.0f;
+}

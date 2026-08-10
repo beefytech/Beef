@@ -302,6 +302,9 @@ namespace Beefy
 		[CallingConvention(.Stdcall), CLink]
 		static extern int BFWindow_GetDPI(void* window);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern float BFWindow_GetMonitorRefreshRate(void* window);
+
         public static BFWindow GetBFWindow(void* window)
         {
             return sWindowDictionary[(int)window];
@@ -738,6 +741,8 @@ namespace Beefy
 		{
 			return BFWindow_GetDPI(mNativeWindow);
 		}
+
+		public float MonitorRefreshRate => BFWindow_GetMonitorRefreshRate(mNativeWindow);
 
         public virtual void KeyChar(char32 theChar)
         {

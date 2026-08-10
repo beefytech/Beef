@@ -197,6 +197,8 @@ namespace Beefy.widgets
 			if (mWidgetWindow != null)
 			    widget.InitChildren();
 			widget.AddedToParent();
+			if (mWidgetWindow != null)
+				widget.AddedToWindow();
 		}
 
         public virtual void AddWidgetAtIndex(int idx, Widget widget)
@@ -211,8 +213,9 @@ namespace Beefy.widgets
             mChildWidgets.Insert(idx, widget);
             if (mWidgetWindow != null)
                 widget.InitChildren();
-
             widget.AddedToParent();
+			if (mWidgetWindow != null)
+				widget.AddedToWindow();
         }
 
 		public bool HasParent(Widget wantParent)
@@ -245,6 +248,11 @@ namespace Beefy.widgets
             AddWidgetAtIndex(pos, widget);
         }        
 
+		public virtual void AddedToWindow()
+		{
+
+		}
+
         public virtual void InitChildren()
         {
             if (mChildWidgets != null)
@@ -258,6 +266,7 @@ namespace Beefy.widgets
                     }
                 }
             }
+			AddedToWindow();
         }
 
         protected virtual void RemovedFromWindow()

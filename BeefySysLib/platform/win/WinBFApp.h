@@ -56,6 +56,7 @@ public:
 	int						mMinHeight;
 	bool					mMouseVisible;
 	bool					mRelativeMouseMode;
+	bool					mRelativeMouseModeWanted; // survives a focus-loss/regain cycle even while mRelativeMouseMode is momentarily false
 	POINT					mSavedCursorPos; // where the real cursor was when relative mode started
 	bool					mHasFocus;
 	bool					mSoftHasFocus; // Mostly tracks mHasFocus except for when we get an explicit 'LostFocus' callback
@@ -72,6 +73,8 @@ public:
 	void					RehupMouseOver(bool isMouseOver);
 	bool					CheckKeyReleases(bool isKeyDown);
 	void					GotFocus();
+	void					SuspendRelativeMouseMode();
+	void					TryStartRelativeMouseModeIfWanted();
 
 public:
 	WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags);

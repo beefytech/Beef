@@ -86,6 +86,9 @@ namespace Beefy.gfx
 		static extern void Gfx_Texture_GetBits(void* textureSegment, int32 srcX, int32 srcY, int32 srcWidth, int32 srcHeight, int32 destPitch, uint32* bits);
 
 		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_Texture_GetDepthBits(void* textureSegment, int32 srcX, int32 srcY, int32 srcWidth, int32 srcHeight, int32 destPitch, uint32* bits);
+
+		[CallingConvention(.Stdcall), CLink]
 		static extern void Gfx_Texture_Clear(void* textureSegment);
 
         [CallingConvention(.Stdcall), CLink]
@@ -243,6 +246,13 @@ namespace Beefy.gfx
 		public void GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
 		{
 			Gfx_Texture_GetBits(mNativeTextureSegment, (.)srcX, (.)srcY, (.)srcWidth, (.)srcHeight, (.)destPitch, bits);
+		}
+
+		// Raw float bits from a HighPrecision (R32_FLOAT) render target -- eg one rendered via
+		// ShadowDepth.fx-style "NDC depth as color" output. Only meaningful for such a target.
+		public void GetDepthBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
+		{
+			Gfx_Texture_GetDepthBits(mNativeTextureSegment, (.)srcX, (.)srcY, (.)srcWidth, (.)srcHeight, (.)destPitch, bits);
 		}
 
         public void CreateImageCels(Image[,] celImages)

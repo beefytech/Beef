@@ -207,6 +207,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	mFlags = windowFlags;
 	mMouseVisible = true;
 	mRelativeMouseMode = false;
+	mRelativeMouseModeWanted = false;
 
 	mParent = parent;
 	HWND parentHWnd = NULL;
@@ -397,11 +398,11 @@ void WinBFWindow::LostFocus(BFWindow* newFocus)
 {
 	///OutputDebugStrF("Lost focus\n");
 	// A hidden, clipped cursor left behind on an unfocused window would strand the user -- relative
-	// mode always ends on focus loss, regardless of why control is leaving (alt-tab, a modal dialog,
-	// clicking another app). Explicit re-entry (eg the IDE's Shift+F1 flow) goes through
-	// StartRelativeMouseMode again once focus is back.
+	// mode always suspends on focus loss, regardless of why control is leaving (alt-tab, a modal
+	// dialog, clicking another app). Suspend (not End) so mRelativeMouseModeWanted survives the trip --
+	// GotFocus resumes it automatically once real focus is back, no explicit re-entry needed.
 	if (mRelativeMouseMode)
-		EndRelativeMouseMode();
+		SuspendRelativeMouseMode();
 
 	mFocusLostTick = ::GetTickCount();
 	WinBFWindow* bfNewFocus = (WinBFWindow*)newFocus;
@@ -436,6 +437,8 @@ void WinBFWindow::GotFocus()
 		mAwaitKeyReleasesCheckIdx = 0;
 		mAwaitKeyReleasesEventTick = ::GetTickCount();
 	}
+
+	TryStartRelativeMouseModeIfWanted();
 }
 
 void WinBFWindow::SetForeground()
@@ -1866,7 +1869,18 @@ bool WinBFWindow::IsMouseCaptured()
 // RegisterRawInputDevices fails, leaving the window in its normal (non-relative) mouse mode.
 void WinBFWindow::StartRelativeMouseMode()
 {
+	mRelativeMouseModeWanted = true;
+
 	if (mRelativeMouseMode)
+		return;
+
+	// WM_INPUT delivery (and keyboard input, eg for Escape to release capture) requires this window to
+	// genuinely be the OS foreground window. Calling this before that's true -- eg the very first
+	// game-loop tick, right after window creation, racing ahead of the OS handing over real focus --
+	// would leave ClipCursor/ShowCursor below "succeeding" (they aren't focus-gated) while nothing is
+	// actually captured: cursor hidden, but no relative motion and no key events. Defer in that case;
+	// GotFocus retries via TryStartRelativeMouseModeIfWanted once we're genuinely foreground.
+	if (::GetForegroundWindow() != mHWnd)
 		return;
 
 	RAWINPUTDEVICE rid;
@@ -1894,7 +1908,10 @@ void WinBFWindow::StartRelativeMouseMode()
 	::ShowCursor(FALSE);
 }
 
-void WinBFWindow::EndRelativeMouseMode()
+// Tears down raw-input capture/clip/hide without forgetting relative mode is still "wanted" -- used
+// when focus is merely (and possibly temporarily) lost, see LostFocus, so GotFocus can transparently
+// resume it later. EndRelativeMouseMode below is the real "stop wanting this" entry point.
+void WinBFWindow::SuspendRelativeMouseMode()
 {
 	if (!mRelativeMouseMode)
 		return;
@@ -1912,9 +1929,24 @@ void WinBFWindow::EndRelativeMouseMode()
 	::SetCursorPos(mSavedCursorPos.x, mSavedCursorPos.y);
 }
 
+void WinBFWindow::EndRelativeMouseMode()
+{
+	mRelativeMouseModeWanted = false;
+	SuspendRelativeMouseMode();
+}
+
 bool WinBFWindow::IsInRelativeMouseMode()
 {
 	return mRelativeMouseMode;
+}
+
+// Called on genuine focus-gain (WM_SETFOCUS or the WM_TIMER-based foreground poller, see WindowProc) --
+// retries StartRelativeMouseMode if something still wants relative mode but couldn't fully establish it
+// yet (see StartRelativeMouseMode's own foreground check).
+void WinBFWindow::TryStartRelativeMouseModeIfWanted()
+{
+	if ((mRelativeMouseModeWanted) && (!mRelativeMouseMode))
+		StartRelativeMouseMode();
 }
 
 int WinBFWindow::GetDPI()

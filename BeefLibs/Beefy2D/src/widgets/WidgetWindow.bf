@@ -123,6 +123,7 @@ namespace Beefy.widgets
 	            mRootWidget.mWidgetWindow = this;
 	            mRootWidget.InitChildren();
 	            mRootWidget.AddedToParent();
+				mRootWidget.AddedToWindow();
 				RehupSize();
 			}
         }

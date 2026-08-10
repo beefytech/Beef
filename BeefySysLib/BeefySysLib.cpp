@@ -459,6 +459,11 @@ BF_EXPORT int BF_CALLTYPE BFWindow_GetDPI(BFWindow* window)
 	return window->GetDPI();
 }
 
+BF_EXPORT float BF_CALLTYPE BFWindow_GetMonitorRefreshRate(BFWindow* window)
+{
+	return window->GetMonitorRefreshRate();
+}
+
 ///
 
 BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateRenderTarget(int width, int height, int flags)
@@ -526,6 +531,11 @@ BF_EXPORT void BF_CALLTYPE Gfx_Texture_SetBits(TextureSegment* textureSegment, i
 BF_EXPORT void BF_CALLTYPE Gfx_Texture_GetBits(TextureSegment* textureSegment, int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
 {
 	textureSegment->GetBits(srcX, srcY, srcWidth, srcHeight, destPitch, bits);
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_Texture_GetDepthBits(TextureSegment* textureSegment, int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
+{
+	textureSegment->GetDepthBits(srcX, srcY, srcWidth, srcHeight, destPitch, bits);
 }
 
 BF_EXPORT void BF_CALLTYPE Gfx_Texture_Clear(TextureSegment* textureSegment)
