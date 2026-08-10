@@ -16689,6 +16689,8 @@ void BfModule::CheckVariableDef(BfLocalVariable* variableDef)
 		{
 			auto _Fail = [&](int warningNum, String str, BfAstNode* refNode)
 			{
+				if (refNode == NULL)
+					return;
 				BfError* error = Warn(warningNum, str, refNode);
 				if ((checkLocal->mNameNode != NULL) && (error != NULL))
 					mCompiler->mPassInstance->MoreInfo("Previous declaration", checkLocal->mNameNode);
