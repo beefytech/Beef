@@ -167,6 +167,7 @@ namespace Beefy
         delegate void NativeMouseWheelDelegate(void* window, int32 x, int32 y, float deltaX, float deltaY);
         delegate void NativeMouseLeaveDelegate(void* window);
         delegate void NativeMouseDeltaDelegate(void* window, int32 dx, int32 dy);
+        delegate void NativeRelativeMouseModeAbortedDelegate(void* window);
         delegate void NativeMenuItemSelectedDelegate(void* window, void* menu);
 		delegate void NativeDragDropFileDelegate(void* window, char8* filePath);
 
@@ -220,6 +221,7 @@ namespace Beefy
         static NativeMouseWheelDelegate sNativeMouseWheelDelegate ~ delete _;
         static NativeMouseLeaveDelegate sNativeMouseLeaveDelegate ~ delete _;
         static NativeMouseDeltaDelegate sNativeMouseDeltaDelegate ~ delete _;
+        static NativeRelativeMouseModeAbortedDelegate sNativeRelativeMouseModeAbortedDelegate ~ delete _;
         static NativeMenuItemSelectedDelegate sNativeMenuItemSelectedDelegate ~ delete _;
         static NativeDragDropFileDelegate sNativeDragDropFileDelegate ~ delete _;
 
@@ -234,7 +236,7 @@ namespace Beefy
             void* gotFocusDelegate, void* lostFocusDelegate,
 			void* keyCharDelegate, void* keyDownDelegate, void* keyUpDelegate, void* hitTestDelegate,
             void* mouseMoveDelegate, void* mouseProxyMoveDelegate, void* mouseDownDelegate, void* mouseUpDelegate, void* mouseWheelDelegate, void* mouseLeaveDelegate,
-            void* menuItemSelectedDelegate, void* dragDropFileDelegate, void* mouseDeltaDelegate);
+            void* menuItemSelectedDelegate, void* dragDropFileDelegate, void* mouseDeltaDelegate, void* relativeMouseModeAbortedDelegate);
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BFWindow_SetTitle(void* window, char8* title);
@@ -358,6 +360,7 @@ namespace Beefy
 		static void Static_NativeMouseWheelDelegate(void* window, int32 mouseX, int32 mouseY, float deltaX, float deltaY) { GetBFWindow(window).MouseWheel(mouseX, mouseY, deltaX, deltaY); }
 		static void Static_NativeMouseLeaveDelegate(void* window) { GetBFWindow(window).MouseLeave(); }
 		static void Static_NativeMouseDeltaDelegate(void* window, int32 dx, int32 dy) { GetBFWindow(window).MouseDelta(dx, dy); }
+		static void Static_NativeRelativeMouseModeAbortedDelegate(void* window) { GetBFWindow(window).RelativeMouseModeAborted(); }
 		static void Static_NativeMenuItemSelectedDelegate(void* window, void* item) { GetBFWindow(window).NativeMenuItemSelected(item); }
 		static void Static_NativeDragDropFileDelegate(void* window, char8* filePath) { GetBFWindow(window).DragDropFile(StringView(filePath)); }
 		#endif
@@ -445,6 +448,7 @@ namespace Beefy
 				sNativeMouseWheelDelegate = new => Static_NativeMouseWheelDelegate;
 				sNativeMouseLeaveDelegate = new => Static_NativeMouseLeaveDelegate;
 				sNativeMouseDeltaDelegate = new => Static_NativeMouseDeltaDelegate;
+				sNativeRelativeMouseModeAbortedDelegate = new => Static_NativeRelativeMouseModeAbortedDelegate;
 				sNativeMenuItemSelectedDelegate = new => Static_NativeMenuItemSelectedDelegate;
 				sNativeDragDropFileDelegate = new => Static_NativeDragDropFileDelegate;
             }
@@ -452,7 +456,8 @@ namespace Beefy
             BFWindow_SetCallbacks(mNativeWindow, sNativeMovedDelegate.GetFuncPtr(), sNativeCloseQueryDelegate.GetFuncPtr(), sNativeClosedDelegate.GetFuncPtr(), sNativeGotFocusDelegate.GetFuncPtr(), sNativeLostFocusDelegate.GetFuncPtr(),
                 sNativeKeyCharDelegate.GetFuncPtr(), sNativeKeyDownDelegate.GetFuncPtr(), sNativeKeyUpDelegate.GetFuncPtr(), sNativeHitTestDelegate.GetFuncPtr(),
                 sNativeMouseMoveDelegate.GetFuncPtr(), sNativeMouseProxyMoveDelegate.GetFuncPtr(), sNativeMouseDownDelegate.GetFuncPtr(), sNativeMouseUpDelegate.GetFuncPtr(), sNativeMouseWheelDelegate.GetFuncPtr(), sNativeMouseLeaveDelegate.GetFuncPtr(),
-                sNativeMenuItemSelectedDelegate.GetFuncPtr(), sNativeDragDropFileDelegate.GetFuncPtr(), sNativeMouseDeltaDelegate.GetFuncPtr());
+                sNativeMenuItemSelectedDelegate.GetFuncPtr(), sNativeDragDropFileDelegate.GetFuncPtr(), sNativeMouseDeltaDelegate.GetFuncPtr(),
+				sNativeRelativeMouseModeAbortedDelegate.GetFuncPtr());
             BFApp.sApp.mWindows.Add(this);
 
             mDefaultDrawLayer = new DrawLayer(this);
@@ -665,8 +670,9 @@ namespace Beefy
 		}
 
 		// Hides the cursor, restricts it to this window, and delivers movement via MouseDelta instead
-		// of MouseMove -- MouseMove will not fire again until EndRelativeMouseMode. Also ends
-		// automatically if the window loses focus (see WinBFWindow::LostFocus).
+		// of MouseMove -- MouseMove will not fire again until EndRelativeMouseMode. A focus loss
+		// (alt-tab etc) ends the mode and fires RelativeMouseModeAborted; it does NOT resume on its
+		// own when focus returns.
 		public virtual void StartRelativeMouseMode()
 		{
 			BFWindow_StartRelativeMouseMode(mNativeWindow);
@@ -790,6 +796,14 @@ namespace Beefy
         // Fired instead of MouseMove while relative mouse mode is active -- see
         // StartRelativeMouseMode. dx/dy are raw movement, not a screen/client position.
         public virtual void MouseDelta(int32 dx, int32 dy)
+        {
+        }
+
+        // The OS took relative mouse mode away (alt-tab, a modal dialog, clicking another app) --
+        // the mode is already fully ended when this fires. Not fired by an explicit
+        // EndRelativeMouseMode call. Re-establishing is this app's decision: call
+        // StartRelativeMouseMode right here to resume on refocus, or wait for some user action.
+        public virtual void RelativeMouseModeAborted()
         {
         }
 

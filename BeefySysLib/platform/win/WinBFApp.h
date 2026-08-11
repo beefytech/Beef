@@ -56,7 +56,7 @@ public:
 	int						mMinHeight;
 	bool					mMouseVisible;
 	bool					mRelativeMouseMode;
-	bool					mRelativeMouseModeWanted; // survives a focus-loss/regain cycle even while mRelativeMouseMode is momentarily false
+	bool					mRelativeMouseModeWanted; // Start was called but establishing deferred until we're genuinely foreground (see StartRelativeMouseMode)
 	POINT					mSavedCursorPos; // where the real cursor was when relative mode started
 	bool					mHasFocus;
 	bool					mSoftHasFocus; // Mostly tracks mHasFocus except for when we get an explicit 'LostFocus' callback
@@ -73,7 +73,6 @@ public:
 	void					RehupMouseOver(bool isMouseOver);
 	bool					CheckKeyReleases(bool isKeyDown);
 	void					GotFocus();
-	void					SuspendRelativeMouseMode();
 	void					TryStartRelativeMouseModeIfWanted();
 
 public:

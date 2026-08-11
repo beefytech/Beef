@@ -318,7 +318,8 @@ BF_EXPORT void BF_CALLTYPE BFWindow_SetCallbacks(BFWindow* window, BFWindow_Move
 	BFWindow_KeyCharFunc keyCharFunc, BFWindow_KeyDownFunc keyDownFunc, BFWindow_KeyUpFunc keyUpFunc, BFWindow_HitTestFunc hitTestFunc,
 	BFWindow_MouseMove mouseMoveFunc, BFWindow_MouseProxyMove mouseProxyMoveFunc,
 	BFWindow_MouseDown mouseDownFunc, BFWindow_MouseUp mouseUpFunc, BFWindow_MouseWheel mouseWheelFunc, BFWindow_MouseLeave mouseLeaveFunc,
-	BFWindow_MenuItemSelectedFunc menuItemSelectedFunc, BFWindow_DragDropFileFunc dragDropFileFunc, BFWindow_MouseDelta mouseDeltaFunc)
+	BFWindow_MenuItemSelectedFunc menuItemSelectedFunc, BFWindow_DragDropFileFunc dragDropFileFunc, BFWindow_MouseDelta mouseDeltaFunc,
+	BFWindow_RelativeMouseModeAbortedFunc relativeMouseModeAbortedFunc)
 {
 	window->mMovedFunc = movedFunc;
 	window->mCloseQueryFunc = closeQueryFunc;
@@ -338,6 +339,7 @@ BF_EXPORT void BF_CALLTYPE BFWindow_SetCallbacks(BFWindow* window, BFWindow_Move
 	window->mMenuItemSelectedFunc = menuItemSelectedFunc;
 	window->mDragDropFileFunc = dragDropFileFunc;
 	window->mMouseDeltaFunc = mouseDeltaFunc;
+	window->mRelativeMouseModeAbortedFunc = relativeMouseModeAbortedFunc;
 }
 
 BF_EXPORT void* BFWindow_GetNativeUnderlying(BFWindow* window)

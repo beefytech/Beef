@@ -25,6 +25,7 @@ typedef void (*BFWindow_MouseLeave)(BFWindow* window);
 // Fired instead of BFWindow_MouseMove while relative mouse mode is active -- dx/dy are raw deltas,
 // not tied to any screen/client position. See BFWindow::StartRelativeMouseMode.
 typedef void (*BFWindow_MouseDelta)(BFWindow* window, int dx, int dy);
+typedef void (*BFWindow_RelativeMouseModeAbortedFunc)(BFWindow* window);
 typedef void (*BFWindow_MenuItemSelectedFunc)(BFWindow* window, BFMenu* menu);
 typedef void (*BFWindow_DragDropFileFunc)(BFWindow* window, const char* filePath);
 
@@ -142,6 +143,7 @@ public:
 	BFWindow_MouseWheel		mMouseWheelFunc;
 	BFWindow_MouseLeave		mMouseLeaveFunc;
 	BFWindow_MouseDelta		mMouseDeltaFunc;
+	BFWindow_RelativeMouseModeAbortedFunc mRelativeMouseModeAbortedFunc;
 	BFWindow_MenuItemSelectedFunc mMenuItemSelectedFunc;
 	BFWindow_DragDropFileFunc mDragDropFileFunc;
 

@@ -397,12 +397,16 @@ void WinBFWindow::Show(ShowKind showKind)
 void WinBFWindow::LostFocus(BFWindow* newFocus)
 {
 	///OutputDebugStrF("Lost focus\n");
-	// A hidden, clipped cursor left behind on an unfocused window would strand the user -- relative
-	// mode always suspends on focus loss, regardless of why control is leaving (alt-tab, a modal
-	// dialog, clicking another app). Suspend (not End) so mRelativeMouseModeWanted survives the trip --
-	// GotFocus resumes it automatically once real focus is back, no explicit re-entry needed.
+	// A hidden, clipped cursor left behind on an unfocused window would strand the user -- the OS
+	// taking control away (alt-tab, a modal dialog, clicking another app) always aborts relative
+	// mode. A full End, not a Suspend: whether to re-establish on refocus is the app's decision,
+	// made in response to this callback (re-calling StartRelativeMouseMode here is safe -- it
+	// defers via mRelativeMouseModeWanted until real focus is back).
 	if (mRelativeMouseMode)
-		SuspendRelativeMouseMode();
+	{
+		EndRelativeMouseMode();
+		mRelativeMouseModeAbortedFunc(this);
+	}
 
 	mFocusLostTick = ::GetTickCount();
 	WinBFWindow* bfNewFocus = (WinBFWindow*)newFocus;
@@ -1936,11 +1940,9 @@ void WinBFWindow::StartRelativeMouseMode()
 	::ShowCursor(FALSE);
 }
 
-// Tears down raw-input capture/clip/hide without forgetting relative mode is still "wanted" -- used
-// when focus is merely (and possibly temporarily) lost, see LostFocus, so GotFocus can transparently
-// resume it later. EndRelativeMouseMode below is the real "stop wanting this" entry point.
-void WinBFWindow::SuspendRelativeMouseMode()
+void WinBFWindow::EndRelativeMouseMode()
 {
+	mRelativeMouseModeWanted = false;
 	if (!mRelativeMouseMode)
 		return;
 	mRelativeMouseMode = false;
@@ -1955,12 +1957,6 @@ void WinBFWindow::SuspendRelativeMouseMode()
 	::ClipCursor(NULL);
 	::ShowCursor(TRUE);
 	::SetCursorPos(mSavedCursorPos.x, mSavedCursorPos.y);
-}
-
-void WinBFWindow::EndRelativeMouseMode()
-{
-	mRelativeMouseModeWanted = false;
-	SuspendRelativeMouseMode();
 }
 
 bool WinBFWindow::IsInRelativeMouseMode()
