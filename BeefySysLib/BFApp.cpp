@@ -45,6 +45,7 @@ BFApp::BFApp()
 	mRenderDevice = NULL;
 	mVSynched = false;
 	mVSyncActive = false;
+	mExternalPacingActive = false;
 	mForceNextDraw = false;
 
 	mUpdateCnt = 0;
@@ -139,9 +140,15 @@ void BFApp::Process()
 	const int vSyncTestingPeriod = 250;
 		
 	bool didVBlankWait = false;
-		
-	if (mVSyncActive)
-	{		
+	bool externalSignaled = false;
+
+	if (mExternalPacingActive)
+	{
+		// Timeout keeps us alive at correct game speed (wall-clock catchup) if the pacer stalls
+		externalSignaled = WaitForExternalPacing((int)(physTicksPerFrame * 4 + 1));
+	}
+	else if (mVSyncActive)
+	{
 		// Have a time limit in the cases we miss the vblank
 		if (mVSyncEvent.WaitFor((int)(physTicksPerFrame + 1)))
 			didVBlankWait = true;
@@ -246,13 +253,14 @@ void BFApp::Process()
 	if (didUpdateCnt > 0)
 		mNumPhysUpdates++;
 
-	if ((mRunning) && (didUpdateCnt == 0))
+	if ((mRunning) && (didUpdateCnt == 0) && (!externalSignaled))
 	{
-		BfpThread_Sleep(1);				
+		BfpThread_Sleep(1);
 	}
-	
-	if ((mRunning) && 
-		((didUpdateCnt != 0) || (mForceNextDraw)))
+
+	// A signaled wake always draws so the pacer gets exactly one frame per signal
+	if ((mRunning) &&
+		((didUpdateCnt != 0) || (mForceNextDraw) || (externalSignaled)))
 		Draw();
 
 #ifdef PERIODIC_PERF_TIMING

@@ -1362,6 +1362,7 @@ WinBFApp::WinBFApp()
 	mVSyncThreadId = 0;
 	mClosing = false;
 	mVSyncActive = false;
+	mExternalPacingEvent = NULL;
 	mVSyncThread = BfpThread_Create(VSyncThreadProcThunk, (void*)this, 128 * 1024, BfpThreadCreateFlag_StackSizeReserve, &mVSyncThreadId);
 	BfpThread_SetPriority(mVSyncThread, BfpThreadPriority_High, NULL);
 }
@@ -1443,9 +1444,36 @@ WinBFApp::~WinBFApp()
 	BfpThread_WaitFor(mVSyncThread, -1);
 	BfpThread_Release(mVSyncThread);
 
+	SetExternalPacing(NULL);
+
 	delete mRenderDevice;
 	delete mDSoundManager;
 	delete mDInputManager;
+}
+
+void WinBFApp::SetExternalPacing(const char* eventName)
+{
+	mExternalPacingActive = false;
+	if (mExternalPacingEvent != NULL)
+	{
+		::CloseHandle(mExternalPacingEvent);
+		mExternalPacingEvent = NULL;
+	}
+
+	if ((eventName == NULL) || (eventName[0] == 0))
+		return;
+
+	// Auto-reset; creation-order-independent (opens if the pacer already created it)
+	mExternalPacingEvent = ::CreateEventA(NULL, FALSE, FALSE, eventName);
+	if (mExternalPacingEvent != NULL)
+		mExternalPacingActive = true;
+}
+
+bool WinBFApp::WaitForExternalPacing(int timeoutMS)
+{
+	if (mExternalPacingEvent == NULL)
+		return false;
+	return ::WaitForSingleObject(mExternalPacingEvent, (DWORD)timeoutMS) == WAIT_OBJECT_0;
 }
 
 void WinBFApp::Init()

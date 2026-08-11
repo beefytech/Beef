@@ -1995,7 +1995,9 @@ void DXRenderWindow::Resized()
 
 void DXRenderWindow::Present()
 {
-	HRESULT hr = mDXSwapChain->Present((mWindow->mFlags & BFWINDOW_VSYNC) ? 1 : 0, 0);
+	// Under external pacing our own vblank must never block the paced loop
+	bool useVSync = (mWindow->mFlags & BFWINDOW_VSYNC) && (gBFApp != NULL) && (!gBFApp->mExternalPacingActive);
+	HRESULT hr = mDXSwapChain->Present(useVSync ? 1 : 0, 0);
 
 	if ((hr == DXGI_ERROR_DEVICE_REMOVED) || (hr == DXGI_ERROR_DEVICE_RESET))
 		((DXRenderDevice*)mRenderDevice)->mNeedsReinitNative = true;

@@ -116,6 +116,7 @@ public:
 	DInputManager*			mDInputManager;
 	BfpThreadId				mVSyncThreadId;
 	BfpThread*				mVSyncThread;
+	HANDLE					mExternalPacingEvent;
 	volatile bool			mClosing;
 
 protected:
@@ -148,6 +149,9 @@ public:
 
 	virtual String			EnumerateInputDevices() override;
 	virtual BFInputDevice*	CreateInputDevice(const StringImpl& guid) override;
+
+	virtual void			SetExternalPacing(const char* eventName) override;
+	virtual bool			WaitForExternalPacing(int timeoutMS) override;
 
 	virtual BFSysBitmap*	LoadSysBitmap(const WCHAR* fileName) override;
 

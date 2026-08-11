@@ -99,6 +99,9 @@ namespace Beefy
         static extern void BFApp_SetRefreshRate(int32 rate);
 
         [CallingConvention(.Stdcall), CLink]
+        static extern void BFApp_SetExternalPacing(char8* eventName);
+
+        [CallingConvention(.Stdcall), CLink]
         public static extern void BFApp_SetDrawEnabled(int32 enabled);
 
         [CallingConvention(.Stdcall), CLink]
@@ -309,7 +312,16 @@ namespace Beefy
                 mRefreshRate = value;
                 BFApp_SetRefreshRate(mRefreshRate);
             }
-        }        
+        }
+
+		// One frame per signal of the named event; null restores internal pacing
+		public void SetExternalPacing(StringView eventName)
+		{
+			if (eventName.IsEmpty)
+				BFApp_SetExternalPacing(null);
+			else
+				BFApp_SetExternalPacing(eventName.ToScopeCStr!());
+		}
 
         // Simulation seconds since last update
         public float UpdateDelta

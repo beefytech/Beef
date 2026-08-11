@@ -224,6 +224,11 @@ BF_EXPORT void BF_CALLTYPE BFApp_SetRefreshRate(int rate)
 	gBFApp->mRefreshRate = (float) rate;
 }
 
+BF_EXPORT void BF_CALLTYPE BFApp_SetExternalPacing(const char* eventName)
+{
+	gBFApp->SetExternalPacing(eventName);
+}
+
 BF_EXPORT const char* BF_CALLTYPE BFApp_GetInstallDir()
 {
 	return gBFApp->mInstallDir.c_str();

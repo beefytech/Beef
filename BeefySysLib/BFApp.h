@@ -72,6 +72,9 @@ public:
 	volatile bool			mVSyncActive;
 	bool                    mVSynched;
 	bool					mVSyncFailed;
+	// When set, frame pacing comes from an external process signaling a named event
+	// (one Draw per signal) instead of our own vsync; own-window Present stops blocking
+	volatile bool			mExternalPacingActive;
 	bool					mForceNextDraw;
 
 	int                     mUpdateSampleCount;
@@ -118,6 +121,9 @@ public:
 
 	virtual String			EnumerateInputDevices() { return ""; }
 	virtual BFInputDevice*	CreateInputDevice(const StringImpl& guid) { return NULL; }
+
+	virtual void			SetExternalPacing(const char* eventName) {}
+	virtual bool			WaitForExternalPacing(int timeoutMS) { return false; }
 
 	virtual BFSysBitmap*	LoadSysBitmap(const wchar_t* fileName) = 0;
 
