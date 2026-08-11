@@ -319,6 +319,18 @@ namespace Beefy.gfx
 			Gfx_RenderTarget_KeyedMutex_Release(mNativeTextureSegment, 1);
 		}
 
+		// Plain try-lock usage of the keyed mutex: everyone acquires and releases with key 0, so the
+		// keys carry no reader/writer state -- "which buffer to use" must come from elsewhere.
+		public bool MutexTryAcquire()
+		{
+			return Gfx_RenderTarget_KeyedMutex_Acquire(mNativeTextureSegment, 0, 0);
+		}
+
+		public void MutexRelease()
+		{
+			Gfx_RenderTarget_KeyedMutex_Release(mNativeTextureSegment, 0);
+		}
+
 		public void Clear()
 		{
 			Gfx_Texture_Clear(mNativeTextureSegment);
