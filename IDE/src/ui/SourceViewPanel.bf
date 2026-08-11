@@ -2898,7 +2898,7 @@ namespace IDE.ui
 					return true;
 				if ((mSplitBottomPanel != null) && (mSplitBottomPanel.mEditWidget.mHasFocus))
 					return true;
-				if ((mOldVersionPanel != null) && (mOldVersionPanel.mEditWidget.mHasFocus))
+				if ((mOldVersionPanel != null) && (mOldVersionPanel?.mEditWidget.mHasFocus == true))
 					return true;
 			}
 			if (mEditWidget.mHasFocus)
