@@ -124,6 +124,10 @@ namespace Beefy.theme.dark
                             curMemberIdx--;
                             mParentItem.RemoveChildItem(curVirtualListViewItem);
                             curVirtualListViewItem = null;
+							// Re-measure as unreified: the height measured above was self-only (the child
+							// area add below is skipped for null items), which would under-advance curY by
+							// the deleted item's open child height and shrink the encoded padding
+							itemHeight = GetItemHeight(idx, fontLineSpacing, null);
                         }
 
                         if (prevVirtualListViewItem != null)
