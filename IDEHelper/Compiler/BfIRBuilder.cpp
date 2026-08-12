@@ -3867,6 +3867,8 @@ void BfIRBuilder::CreateTypeDefinition_Data(BfModule* populateModule, BfTypeInst
 			bool useForUnion = false;
 
 			BF_ASSERT(!fieldInstance->mIsEnumPayloadCase);
+			if (resolvedFieldType->mDefineState < BfTypeDefineState_Defined)
+				mModule->PopulateType(resolvedFieldType, BfPopulateType_Data);
 
 			if ((!fieldDef->mIsStatic) && (!resolvedFieldType->IsValuelessType()))
 			{
