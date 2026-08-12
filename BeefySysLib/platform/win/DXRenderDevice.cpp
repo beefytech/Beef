@@ -48,6 +48,21 @@ USING_NS_BF;
 #define DXFAILED(check) ((hr = (check)) != 0)
 #define DXCHECK(check) if ((check) != 0) BF_FATAL(StrFormat("DirectX call failed with result 0x%X", check).c_str());
 
+// Halves `samples` until the hardware supports it for `format` -- always terminates at 1.
+static int ValidateSampleCount(ID3D11Device* device, DXGI_FORMAT format, int samples)
+{
+	int useSamples = samples;
+	while (useSamples > 1)
+	{
+		UINT qualityLevels = 0;
+		device->CheckMultisampleQualityLevels(format, useSamples, &qualityLevels);
+		if (qualityLevels > 0)
+			break;
+		useSamples /= 2;
+	}
+	return BF_MAX(useSamples, 1);
+}
+
 static int GetBytesPerPixel(DXGI_FORMAT fmt, int& blockSize)
 {
 	blockSize = 1;
@@ -549,6 +564,8 @@ DXTexture::DXTexture()
 	mD3DDepthStencilView = NULL;
 	mD3DKeyedMutex = NULL;
 	mContentBits = NULL;
+	mD3DFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+	mSampleCount = 1;
 }
 
 DXTexture::~DXTexture()
@@ -835,9 +852,18 @@ bool DXTexture::AcquireKeyedMutex(uint64 key, uint32 timeoutMs)
 }
 
 void DXTexture::ReleaseKeyedMutex(uint64 key)
-{	
+{
 	if (mD3DKeyedMutex != NULL)
 		mD3DKeyedMutex->ReleaseSync(key);
+}
+
+void DXTexture::ResolveTo(Texture* dest)
+{
+	DXTexture* dxDest = (DXTexture*)dest;
+	BF_ASSERT(mSampleCount > 1);
+	BF_ASSERT(dxDest->mSampleCount == 1);
+	BF_ASSERT((mWidth == dxDest->mWidth) && (mHeight == dxDest->mHeight) && (mD3DFormat == dxDest->mD3DFormat));
+	((DXRenderDevice*)mRenderDevice)->mD3DDeviceContext->ResolveSubresource(dxDest->mD3DTexture, 0, mD3DTexture, 0, mD3DFormat);
 }
 
 ///
@@ -1101,7 +1127,8 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 			rasterizerState.SlopeScaledDepthBias = 0;
 			rasterizerState.DepthClipEnable = renderState->mDepthFunc != DepthFunc_Always;
 			rasterizerState.ScissorEnable = renderState->mClipped;
-			rasterizerState.MultisampleEnable = false;
+			// Quadrilateral line rasterization on MSAA targets (ignored on single-sample ones).
+			rasterizerState.MultisampleEnable = true;
 			rasterizerState.AntialiasedLineEnable = false;
 
 			mD3DDevice->CreateRasterizerState(&rasterizerState, &dxRenderState->mD3DRasterizerState);
@@ -1835,6 +1862,12 @@ void DXRenderWindow::ReleaseNative()
 
 void DXRenderWindow::ReinitNative()
 {
+	// A multisampled backbuffer only works with the blt-model DISCARD swap effect (Present resolves
+	// it implicitly) -- a FLIP_DISCARD migration would need an explicit offscreen MSAA target +
+	// ResolveTo instead.
+	int msaaSamples = ValidateSampleCount(mDXRenderDevice->mD3DDevice, DXGI_FORMAT_R8G8B8A8_UNORM,
+		mDXRenderDevice->mWindowMsaaSampleCount);
+
 	DXGI_SWAP_CHAIN_DESC swapChainDesc;
 	ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
 	swapChainDesc.BufferCount = 1;
@@ -1843,7 +1876,7 @@ void DXRenderWindow::ReinitNative()
 	swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapChainDesc.OutputWindow = mHWnd;
-	swapChainDesc.SampleDesc.Count = 1;
+	swapChainDesc.SampleDesc.Count = msaaSamples;
 	swapChainDesc.SampleDesc.Quality = 0;
 	swapChainDesc.Windowed = mWindowed ? TRUE : FALSE;
 	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;// DXGI_SWAP_EFFECT_FLIP_DISCARD;
@@ -1875,7 +1908,7 @@ void DXRenderWindow::ReinitNative()
 	descDepth.MipLevels = 1;
 	descDepth.ArraySize = 1;
 	descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	descDepth.SampleDesc.Count = 1;
+	descDepth.SampleDesc.Count = msaaSamples;
 	descDepth.SampleDesc.Quality = 0;
 	descDepth.Usage = D3D11_USAGE_DEFAULT;
 	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
@@ -1968,6 +2001,10 @@ void DXRenderWindow::Resized()
 		CheckDXResult(mDXSwapChain->ResizeBuffers(0, mWidth, mHeight, DXGI_FORMAT_UNKNOWN,
 			DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH /*| DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT*/));
 
+		// ResizeBuffers keeps the swapchain's original SampleDesc; the depth buffer has to match it.
+		int msaaSamples = ValidateSampleCount(mDXRenderDevice->mD3DDevice, DXGI_FORMAT_R8G8B8A8_UNORM,
+			mDXRenderDevice->mWindowMsaaSampleCount);
+
 		D3D11_TEXTURE2D_DESC descDepth;
 		ZeroMemory(&descDepth, sizeof(descDepth));
 		descDepth.Width = mWidth;
@@ -1975,7 +2012,7 @@ void DXRenderWindow::Resized()
 		descDepth.MipLevels = 1;
 		descDepth.ArraySize = 1;
 		descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-		descDepth.SampleDesc.Count = 1;
+		descDepth.SampleDesc.Count = msaaSamples;
 		descDepth.SampleDesc.Quality = 0;
 		descDepth.Usage = D3D11_USAGE_DEFAULT;
 		descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
@@ -2200,7 +2237,7 @@ bool DXRenderDevice::Init(BFApp* app)
     rasterizerState.SlopeScaledDepthBias = 0;
     rasterizerState.DepthClipEnable = false;
     rasterizerState.ScissorEnable = false;
-	rasterizerState.MultisampleEnable = false;
+	rasterizerState.MultisampleEnable = true;
     rasterizerState.AntialiasedLineEnable = false;
 
 	mD3DDevice->CreateRasterizerState(&rasterizerState, &dxRenderState->mD3DRasterizerState);
@@ -2255,6 +2292,21 @@ bool DXRenderDevice::Init(BFApp* app)
 	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 	DXCHECK(mD3DDevice->CreateSamplerState(&sampDesc, &mD3DNearestSamplerState));
 
+	// Shadow-map comparison sampler (SampleCmp in HLSL): each fetch compares the reference depth
+	// against the 4 neighboring texels and bilinearly blends the pass/fail results -- hardware PCF.
+	// LESS_EQUAL passes ("lit") where ref <= stored depth. Permanently bound at sampler slot 1;
+	// slot 0 stays the per-RenderState sampler (see PhysSetRenderState).
+	ZeroMemory(&sampDesc, sizeof(sampDesc));
+	sampDesc.Filter = D3D11_FILTER_COMPARISON_MIN_MAG_LINEAR_MIP_POINT;
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.ComparisonFunc = D3D11_COMPARISON_LESS_EQUAL;
+	sampDesc.MinLOD = 0;
+	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	DXCHECK(mD3DDevice->CreateSamplerState(&sampDesc, &mD3DShadowSamplerState));
+	mD3DDeviceContext->PSSetSamplers(1, 1, &mD3DShadowSamplerState);
+
 	D3D11_BUFFER_DESC bd;
 	bd.Usage = D3D11_USAGE_DYNAMIC;
 	bd.ByteWidth = DX_VTXBUFFER_SIZE;
@@ -2297,6 +2349,8 @@ void DXRenderDevice::ReleaseNative()
 	mD3DWrapSamplerState = NULL;
 	mD3DNearestSamplerState->Release();
 	mD3DNearestSamplerState = NULL;
+	mD3DShadowSamplerState->Release();
+	mD3DShadowSamplerState = NULL;
 	mD3DDeviceContext->Release();
 	mD3DDeviceContext = NULL;
 
@@ -2710,20 +2764,20 @@ void DXRenderDevice::SetRenderState(RenderState* renderState)
 	mCurRenderState = renderState;
 }
 
-Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags)
+Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, int sampleCount)
 {
 	bool destAlpha = (flags & 1) != 0;
 	bool makeShared = (flags & 2) != 0;
 	bool highPrecision = (flags & 4) != 0;
 
+	// D3D11 shared resources can't be multisampled -- render into a private MSAA target and
+	// ResolveTo a shared one instead.
+	BF_ASSERT(!(makeShared && (sampleCount > 1)));
+
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
 
-	int aWidth = 0;
-	int aHeight = 0;
-
-	int sampleQuality = 0;
-
 	DXGI_FORMAT format = highPrecision ? DXGI_FORMAT_R32_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
+	int samples = ValidateSampleCount(mD3DDevice, format, sampleCount);
 
 	// Create the render target texture
 	D3D11_TEXTURE2D_DESC desc;
@@ -2733,14 +2787,8 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags)
 	desc.MipLevels = 1;
 	desc.ArraySize = 1;
 	desc.Format = format;
-	desc.SampleDesc.Count = 1;
-	UINT qualityLevels = 0;
-
-	int samples = 1;
-	//DXCHECK(mD3DDevice->CheckMultisampleQualityLevels(DXGI_FORMAT_R8G8B8A8_UNORM, samples, &qualityLevels));
-
 	desc.SampleDesc.Count = samples;
-	desc.SampleDesc.Quality = sampleQuality;
+	desc.SampleDesc.Quality = 0;
 
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.CPUAccessFlags = 0; //D3D11_CPU_ACCESS_WRITE;
@@ -2752,16 +2800,15 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags)
 	ID3D11Texture2D* d3DTexture = NULL;
 	DXCHECK(mD3DDevice->CreateTexture2D(&desc, NULL, &d3DTexture));
 
-	aWidth = width;
-	aHeight = height;
-
 	D3D11_SHADER_RESOURCE_VIEW_DESC srDesc;
 	srDesc.Format = desc.Format;
 	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	srDesc.Texture2D.MostDetailedMip = 0;
 	srDesc.Texture2D.MipLevels = 1;
 
-	if (qualityLevels != 0)
+	// An MSAA texture can't be sampled as a plain Texture2D -- callers never should (ResolveTo a
+	// single-sample target first), but the view still has to be creatable.
+	if (samples > 1)
 	{
 		srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2DMS;
 	}
@@ -2778,6 +2825,8 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags)
 	aRenderTarget->mD3DTexture = d3DTexture;
 	aRenderTarget->mD3DResourceView = d3DShaderResourceView;
 	aRenderTarget->mD3DRenderTargetView = d3DRenderTargetView;
+	aRenderTarget->mD3DFormat = format;
+	aRenderTarget->mSampleCount = samples;
 	if (makeShared)
 		d3DTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&aRenderTarget->mD3DKeyedMutex);
 	aRenderTarget->AddRef();
@@ -2788,9 +2837,8 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags)
 	descDepth.Height = height;
 	descDepth.MipLevels = 1;
 	descDepth.ArraySize = 1;
-	descDepth.SampleDesc.Quality = sampleQuality;
 	descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
-	descDepth.SampleDesc.Count = 1;
+	descDepth.SampleDesc.Count = samples;
 	descDepth.SampleDesc.Quality = 0;
 	descDepth.Usage = D3D11_USAGE_DEFAULT;
 	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;

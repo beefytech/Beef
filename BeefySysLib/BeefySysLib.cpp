@@ -473,14 +473,25 @@ BF_EXPORT float BF_CALLTYPE BFWindow_GetMonitorRefreshRate(BFWindow* window)
 
 ///
 
-BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateRenderTarget(int width, int height, int flags)
+BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateRenderTarget(int width, int height, int flags, int sampleCount)
 {
-	Texture* texture = gBFApp->mRenderDevice->CreateRenderTarget(width, height, flags);	
+	Texture* texture = gBFApp->mRenderDevice->CreateRenderTarget(width, height, flags, sampleCount);
 	texture->mResetClear = true;
 
 	TextureSegment* aTextureSegment = new TextureSegment();
-	aTextureSegment->InitFromTexture(texture);	
+	aTextureSegment->InitFromTexture(texture);
 	return aTextureSegment;
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_Texture_ResolveTo(TextureSegment* srcSegment, TextureSegment* destSegment)
+{
+	srcSegment->mTexture->ResolveTo(destSegment->mTexture);
+}
+
+// Sample count for window swapchains -- must be called before window creation.
+BF_EXPORT void BF_CALLTYPE Gfx_SetWindowMsaaSamples(int sampleCount)
+{
+	gBFApp->mRenderDevice->mWindowMsaaSampleCount = sampleCount;
 }
 
 BF_EXPORT void* BF_CALLTYPE Gfx_RenderTarget_GetSharedHandle(TextureSegment* textureSegment)

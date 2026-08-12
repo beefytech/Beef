@@ -31,6 +31,9 @@ public:
 	virtual void*			GetSharedHandle() { return NULL; }
 	virtual bool			AcquireKeyedMutex(uint64 key, uint32 timeoutMs) { return false; }
 	virtual void			ReleaseKeyedMutex(uint64 key) {}
+
+	// Resolves this MSAA render target into a matching-size single-sample target.
+	virtual void			ResolveTo(Texture* dest) {}
 };
 
 class TextureSegment

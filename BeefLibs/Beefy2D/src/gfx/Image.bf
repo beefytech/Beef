@@ -56,7 +56,13 @@ namespace Beefy.gfx
         static extern void* Gfx_CreateDynTexture(int32 width, int32 height);
 
         [CallingConvention(.Stdcall), CLink]
-        static extern void* Gfx_CreateRenderTarget(int32 width, int32 height, int32 destAlpha);
+        static extern void* Gfx_CreateRenderTarget(int32 width, int32 height, int32 flags, int32 sampleCount);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_Texture_ResolveTo(void* srcTextureSegment, void* destTextureSegment);
+
+		[CallingConvention(.Stdcall), CLink]
+		public static extern void Gfx_SetWindowMsaaSamples(int32 sampleCount);
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void* Gfx_RenderTarget_GetSharedHandle(void* textureSegment);
@@ -118,9 +124,12 @@ namespace Beefy.gfx
                 color, (int32)mPixelSnapping);            
         }
 
-		public static Image CreateRenderTarget(int32 width, int32 height, RenderTargetFlags flags)
+		// sampleCount > 1 makes an MSAA target: it can only be drawn into and ResolveTo'd -- never
+		// sampled/drawn as a texture or GetBits-read (resolve into a 1-sample target first). Falls
+		// back toward 1 if the hardware doesn't support the requested count.
+		public static Image CreateRenderTarget(int32 width, int32 height, RenderTargetFlags flags, int32 sampleCount = 1)
 		{
-		    void* aNativeTextureSegment = Gfx_CreateRenderTarget(width, height, (int32)flags);
+		    void* aNativeTextureSegment = Gfx_CreateRenderTarget(width, height, (int32)flags, sampleCount);
 		    if (aNativeTextureSegment == null)
 		        return null;
 
@@ -128,6 +137,12 @@ namespace Beefy.gfx
 		}
 
         public static Image CreateRenderTarget(int32 width, int32 height, bool destAlpha = false) => CreateRenderTarget(width, height, destAlpha ? .Alpha : .None);
+
+		// Resolves this MSAA render target into a matching-size single-sample render target.
+		public void ResolveTo(Image dest)
+		{
+			Gfx_Texture_ResolveTo(mNativeTextureSegment, dest.mNativeTextureSegment);
+		}
         
 		public static Image OpenSharedRenderTarget(void* handle, int32 width, int32 height)
 		{

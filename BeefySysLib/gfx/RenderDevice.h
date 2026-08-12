@@ -298,6 +298,9 @@ public:
 	BFApp*					mApp;
 	RenderWindow*			mPhysRenderWindow;
 	RenderState*			mPhysRenderState;
+	// Sample count for window swapchains/backbuffers (blt-model MSAA, resolved by Present) -- must
+	// be set before window creation; validated against hardware support there.
+	int						mWindowMsaaSampleCount;
 	int						mResizeCount;
 	Array<RenderWindow*>	mRenderWindowList;
 	RenderTarget*			mCurRenderTarget;
@@ -333,7 +336,7 @@ public:
 	virtual Texture*		LoadTexture(ImageData* imageData, int flags) = 0;
 	virtual Texture*		CreateDynTexture(int width, int height) = 0;
 	virtual Texture*		LoadTexture(const StringImpl& fileName, int flags);
-	virtual Texture*		CreateRenderTarget(int width, int height, int flags) = 0;
+	virtual Texture*		CreateRenderTarget(int width, int height, int flags, int sampleCount) = 0;
 	virtual Texture*		OpenSharedRenderTarget(void* handle, int width, int height) { return NULL; }
 	
 	virtual Shader*			LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) = 0;

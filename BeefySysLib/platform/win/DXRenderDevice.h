@@ -65,6 +65,8 @@ public:
 	ID3D11DepthStencilView*	mD3DDepthStencilView;
 	IDXGIKeyedMutex*		mD3DKeyedMutex;
 	uint32*					mContentBits;
+	DXGI_FORMAT				mD3DFormat;
+	int						mSampleCount;
 
 public:
 	DXTexture();
@@ -81,6 +83,7 @@ public:
 	virtual void*			GetSharedHandle() override;
 	virtual bool			AcquireKeyedMutex(uint64 key, uint32 timeoutMs) override;
 	virtual void			ReleaseKeyedMutex(uint64 key) override;
+	virtual void			ResolveTo(Texture* dest) override;
 };
 
 class DXShaderParam : public ShaderParam
@@ -306,6 +309,7 @@ public:
 	ID3D11SamplerState*		mD3DDefaultSamplerState;
 	ID3D11SamplerState*		mD3DWrapSamplerState;
 	ID3D11SamplerState*		mD3DNearestSamplerState;
+	ID3D11SamplerState*		mD3DShadowSamplerState;
 	bool					mNeedsReinitNative;
 
 	ID3D11Buffer*			mMatrix2DBuffer;
@@ -347,7 +351,7 @@ public:
 	Texture*				CreateDynTexture(int width, int height) override;
 	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) override;
 	void					ReleaseShader(Shader* shader) override;
-	Texture*				CreateRenderTarget(int width, int height, int flags) override;
+	Texture*				CreateRenderTarget(int width, int height, int flags, int sampleCount) override;
 	Texture*				OpenSharedRenderTarget(void* handle, int width, int height) override;
 
 	void					SetRenderState(RenderState* renderState) override;
