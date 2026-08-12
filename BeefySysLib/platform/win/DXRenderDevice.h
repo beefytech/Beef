@@ -352,6 +352,7 @@ public:
 	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) override;
 	void					ReleaseShader(Shader* shader) override;
 	Texture*				CreateRenderTarget(int width, int height, int flags, int sampleCount) override;
+	Texture*				CreateDepthTarget(int width, int height, bool is16Bit) override;
 	Texture*				OpenSharedRenderTarget(void* handle, int width, int height) override;
 
 	void					SetRenderState(RenderState* renderState) override;

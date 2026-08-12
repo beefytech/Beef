@@ -59,6 +59,9 @@ namespace Beefy.gfx
         static extern void* Gfx_CreateRenderTarget(int32 width, int32 height, int32 flags, int32 sampleCount);
 
 		[CallingConvention(.Stdcall), CLink]
+		static extern void* Gfx_CreateDepthTarget(int32 width, int32 height, int32 is16Bit);
+
+		[CallingConvention(.Stdcall), CLink]
 		static extern void Gfx_Texture_ResolveTo(void* srcTextureSegment, void* destTextureSegment);
 
 		[CallingConvention(.Stdcall), CLink]
@@ -137,6 +140,18 @@ namespace Beefy.gfx
 		}
 
         public static Image CreateRenderTarget(int32 width, int32 height, bool destAlpha = false) => CreateRenderTarget(width, height, destAlpha ? .Alpha : .None);
+
+		// Depth-only target (no color plane): draw into it with a DisableRenderTarget +
+		// DisablePixelShader render state; sampling it samples the depth itself (incl. comparison
+		// samplers). GetDepthBits works, GetBits/ResolveTo do not. 1-sample only.
+		public static Image CreateDepthTarget(int32 width, int32 height, bool is16Bit)
+		{
+			void* aNativeTextureSegment = Gfx_CreateDepthTarget(width, height, is16Bit ? 1 : 0);
+			if (aNativeTextureSegment == null)
+				return null;
+
+			return CreateFromNativeTextureSegment(aNativeTextureSegment);
+		}
 
 		// Resolves this MSAA render target into a matching-size single-sample render target.
 		public void ResolveTo(Image dest)
@@ -263,8 +278,7 @@ namespace Beefy.gfx
 			Gfx_Texture_GetBits(mNativeTextureSegment, (.)srcX, (.)srcY, (.)srcWidth, (.)srcHeight, (.)destPitch, bits);
 		}
 
-		// Raw float bits from a HighPrecision (R32_FLOAT) render target -- eg one rendered via
-		// ShadowDepth.fx-style "NDC depth as color" output. Only meaningful for such a target.
+		// Raw float bits (NDC 0-1 depth) from a render target's depth buffer. 1-sample targets only.
 		public void GetDepthBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
 		{
 			Gfx_Texture_GetDepthBits(mNativeTextureSegment, (.)srcX, (.)srcY, (.)srcWidth, (.)srcHeight, (.)destPitch, bits);

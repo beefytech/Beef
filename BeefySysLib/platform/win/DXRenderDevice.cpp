@@ -691,7 +691,8 @@ void DXTexture::PhysSetAsTarget()
 	if (mWantsClear)
 	{
 		float bgColor[4] = {1, (rand() % 256) / 256.0f, 0.5, 1};
-		mRenderDevice->mD3DDeviceContext->ClearRenderTargetView(mD3DRenderTargetView, bgColor);
+		if (mD3DRenderTargetView != NULL)
+			mRenderDevice->mD3DDeviceContext->ClearRenderTargetView(mD3DRenderTargetView, bgColor);
 		if (mD3DDepthStencilView != NULL)
 			mRenderDevice->mD3DDeviceContext->ClearDepthStencilView(mD3DDepthStencilView, D3D11_CLEAR_DEPTH/*|D3D11_CLEAR_STENCIL*/, 1.0f, 0);
 
@@ -777,47 +778,33 @@ void DXTexture::GetBits(int srcX, int srcY, int srcWidth, int srcHeight, int des
 	texture->Release();
 }
 
-// Reads back a HighPrecision (R32_FLOAT) render target's raw float bits -- NOT the real D3D
-// depth-stencil buffer. A direct CopySubresourceRegion off an actual depth-stencil-bound resource
-// (D24_UNORM_S8_UINT, BindFlags=DEPTH_STENCIL) reads back as garbage/zero on this hardware, almost
-// certainly GPU Z-buffer compression that a plain staging copy doesn't decompress -- the same reason
-// this codebase's existing shadow-map system (ShadowDepth.fx) never reads the real depth buffer
-// either, instead rendering NDC depth *as color* into an ordinary (uncompressed) R32_FLOAT color
-// target. This mirrors that proven approach: same shape as GetBits, just R32_FLOAT instead of
-// R8G8B8A8_UNORM, reading mD3DTexture like GetBits does (not mD3DDepthBuffer).
+// Reads back the render target's real depth buffer (R32_TYPELESS/D32_FLOAT -- see CreateRenderTarget)
+// as raw float bits. D3D11 rules: a depth resource can't be mapped and can't be partially copied, so
+// this CopyResource's the whole buffer into a same-desc staging texture and reads the rect from the
+// map. MSAA depth can't be staging-copied at all; readback callers are 1-sample by design.
 void DXTexture::GetDepthBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits)
 {
 	if ((srcWidth <= 0) || (srcHeight <= 0))
 		return;
+	if (mD3DDepthBuffer == NULL)
+		return;
 
 	D3D11_TEXTURE2D_DESC texDesc;
-	texDesc.ArraySize = 1;
+	mD3DDepthBuffer->GetDesc(&texDesc);
+	BF_ASSERT(texDesc.SampleDesc.Count == 1);
 	texDesc.BindFlags = 0;
-	texDesc.Format = DXGI_FORMAT_R32_FLOAT;
-	texDesc.Width = srcWidth;
-	texDesc.Height = srcHeight;
-	texDesc.MipLevels = 1;
 	texDesc.MiscFlags = 0;
-	texDesc.SampleDesc.Count = 1;
-	texDesc.SampleDesc.Quality = 0;
 	texDesc.Usage = D3D11_USAGE_STAGING;
 	texDesc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
 
-	D3D11_BOX srcBox = { 0 };
-	srcBox.left = srcX;
-	srcBox.top = srcY;
-	srcBox.right = srcX + srcWidth;
-	srcBox.bottom = srcY + srcHeight;
-	srcBox.back = 1;
-
 	ID3D11Texture2D *texture;
 	DXCHECK(mRenderDevice->mD3DDevice->CreateTexture2D(&texDesc, 0, &texture));
-	mRenderDevice->mD3DDeviceContext->CopySubresourceRegion(texture, 0, 0, 0, 0, mD3DTexture, 0, &srcBox);
+	mRenderDevice->mD3DDeviceContext->CopyResource(texture, mD3DDepthBuffer);
 
 	D3D11_MAPPED_SUBRESOURCE mapTex;
 	DXCHECK(mRenderDevice->mD3DDeviceContext->Map(texture, 0, D3D11_MAP_READ, NULL, &mapTex));
 
-	uint8* srcPtr = (uint8*) mapTex.pData;
+	uint8* srcPtr = (uint8*) mapTex.pData + srcY * mapTex.RowPitch + srcX * sizeof(uint32);
 	uint8* destPtr = (uint8*) bits;
 	for (int y = 0; y < srcHeight; y++)
 	{
@@ -2831,13 +2818,14 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 		d3DTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&aRenderTarget->mD3DKeyedMutex);
 	aRenderTarget->AddRef();
 
+	// Typeless so GetDepthBits can staging-copy it; stencil is unused engine-wide.
 	D3D11_TEXTURE2D_DESC descDepth;
 	ZeroMemory(&descDepth, sizeof(descDepth));
 	descDepth.Width = width;
 	descDepth.Height = height;
 	descDepth.MipLevels = 1;
 	descDepth.ArraySize = 1;
-	descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	descDepth.Format = DXGI_FORMAT_R32_TYPELESS;
 	descDepth.SampleDesc.Count = samples;
 	descDepth.SampleDesc.Quality = 0;
 	descDepth.Usage = D3D11_USAGE_DEFAULT;
@@ -2846,13 +2834,63 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	descDepth.MiscFlags = 0;
 	mD3DDevice->CreateTexture2D(&descDepth, NULL, &aRenderTarget->mD3DDepthBuffer);
 
-	DXCHECK(mD3DDevice->CreateDepthStencilView(aRenderTarget->mD3DDepthBuffer, NULL, &aRenderTarget->mD3DDepthStencilView));
+	// A typeless resource can't take a NULL-desc view.
+	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc;
+	ZeroMemory(&dsvDesc, sizeof(dsvDesc));
+	dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	dsvDesc.ViewDimension = (samples > 1) ? D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D;
+	DXCHECK(mD3DDevice->CreateDepthStencilView(aRenderTarget->mD3DDepthBuffer, &dsvDesc, &aRenderTarget->mD3DDepthStencilView));
+
+	return aRenderTarget;
+}
+
+// Depth-only target (shadow maps): the depth buffer is the only plane -- mD3DTexture and
+// mD3DRenderTargetView stay NULL, mD3DResourceView views the depth itself, so SetTexture binds it
+// for sampling (incl. comparison/PCF) unchanged. Draw into it with a DisableRenderTarget +
+// DisablePixelShader render state.
+Texture* DXRenderDevice::CreateDepthTarget(int width, int height, bool is16Bit)
+{
+	DXTexture* aRenderTarget = new DXTexture();
+	aRenderTarget->mWidth = width;
+	aRenderTarget->mHeight = height;
+	aRenderTarget->mRenderDevice = this;
+	aRenderTarget->mD3DFormat = is16Bit ? DXGI_FORMAT_R16_UNORM : DXGI_FORMAT_R32_FLOAT;
+	aRenderTarget->AddRef();
+
+	D3D11_TEXTURE2D_DESC descDepth;
+	ZeroMemory(&descDepth, sizeof(descDepth));
+	descDepth.Width = width;
+	descDepth.Height = height;
+	descDepth.MipLevels = 1;
+	descDepth.ArraySize = 1;
+	descDepth.Format = is16Bit ? DXGI_FORMAT_R16_TYPELESS : DXGI_FORMAT_R32_TYPELESS;
+	descDepth.SampleDesc.Count = 1;
+	descDepth.SampleDesc.Quality = 0;
+	descDepth.Usage = D3D11_USAGE_DEFAULT;
+	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL | D3D11_BIND_SHADER_RESOURCE;
+	descDepth.CPUAccessFlags = 0;
+	descDepth.MiscFlags = 0;
+	DXCHECK(mD3DDevice->CreateTexture2D(&descDepth, NULL, &aRenderTarget->mD3DDepthBuffer));
+
+	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc;
+	ZeroMemory(&dsvDesc, sizeof(dsvDesc));
+	dsvDesc.Format = is16Bit ? DXGI_FORMAT_D16_UNORM : DXGI_FORMAT_D32_FLOAT;
+	dsvDesc.ViewDimension = D3D11_DSV_DIMENSION_TEXTURE2D;
+	DXCHECK(mD3DDevice->CreateDepthStencilView(aRenderTarget->mD3DDepthBuffer, &dsvDesc, &aRenderTarget->mD3DDepthStencilView));
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srDesc;
+	ZeroMemory(&srDesc, sizeof(srDesc));
+	srDesc.Format = is16Bit ? DXGI_FORMAT_R16_UNORM : DXGI_FORMAT_R32_FLOAT;
+	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srDesc.Texture2D.MostDetailedMip = 0;
+	srDesc.Texture2D.MipLevels = 1;
+	DXCHECK(mD3DDevice->CreateShaderResourceView(aRenderTarget->mD3DDepthBuffer, &srDesc, &aRenderTarget->mD3DResourceView));
 
 	return aRenderTarget;
 }
 
 Texture* DXRenderDevice::OpenSharedRenderTarget(void* handle, int width, int height)
-{	
+{
 	ID3D11Texture2D* sharedTex = NULL;
 	HRESULT hr = mD3DDevice->OpenSharedResource((HANDLE)handle, __uuidof(ID3D11Texture2D), (void**)&sharedTex);
 	if (FAILED(hr))

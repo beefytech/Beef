@@ -337,6 +337,8 @@ public:
 	virtual Texture*		CreateDynTexture(int width, int height) = 0;
 	virtual Texture*		LoadTexture(const StringImpl& fileName, int flags);
 	virtual Texture*		CreateRenderTarget(int width, int height, int flags, int sampleCount) = 0;
+	// Depth-only target: no color plane; the depth buffer itself is the sampleable resource.
+	virtual Texture*		CreateDepthTarget(int width, int height, bool is16Bit) { return NULL; }
 	virtual Texture*		OpenSharedRenderTarget(void* handle, int width, int height) { return NULL; }
 	
 	virtual Shader*			LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) = 0;
