@@ -29,9 +29,11 @@ namespace Beefy.gfx
 			None,
 			Alpha = 1,
 			Shared = 2,
-			// Single-channel R32_FLOAT instead of RGBA8 -- for data render targets (eg shadow maps)
-			// that need real float precision rather than 8-bit-per-channel color storage.
-			HighPrecision = 4
+			// Single-channel R32_FLOAT instead of RGBA8 -- for data render targets that need real
+			// float precision rather than 8-bit-per-channel color storage.
+			HighPrecision = 4,
+			// Single-channel R8_UNORM -- for scalar masks (eg SSAO).
+			R8 = 8
 		}
 
         public Image mSrcTexture;
@@ -60,6 +62,9 @@ namespace Beefy.gfx
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void* Gfx_CreateDepthTarget(int32 width, int32 height, int32 is16Bit);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void* Gfx_CreateDepthImageRef(void* textureSegment);
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void Gfx_Texture_ResolveTo(void* srcTextureSegment, void* destTextureSegment);
@@ -140,6 +145,18 @@ namespace Beefy.gfx
 		}
 
         public static Image CreateRenderTarget(int32 width, int32 height, bool destAlpha = false) => CreateRenderTarget(width, height, destAlpha ? .Alpha : .None);
+
+		// Wraps this render target's depth buffer as its own sampleable Image (R32_FLOAT). The caller
+		// owns the returned Image; the underlying resource is shared, so deletion order doesn't
+		// matter. 1-sample targets only.
+		public Image CreateDepthImage()
+		{
+			void* aNativeTextureSegment = Gfx_CreateDepthImageRef(mNativeTextureSegment);
+			if (aNativeTextureSegment == null)
+				return null;
+
+			return CreateFromNativeTextureSegment(aNativeTextureSegment);
+		}
 
 		// Depth-only target (no color plane): draw into it with a DisableRenderTarget +
 		// DisablePixelShader render state; sampling it samples the depth itself (incl. comparison

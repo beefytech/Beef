@@ -483,6 +483,17 @@ BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateRenderTarget(int width, int heig
 	return aTextureSegment;
 }
 
+BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateDepthImageRef(TextureSegment* textureSegment)
+{
+	Texture* texture = textureSegment->mTexture->CreateDepthRef();
+	if (texture == NULL)
+		return NULL;
+
+	TextureSegment* aTextureSegment = new TextureSegment();
+	aTextureSegment->InitFromTexture(texture);
+	return aTextureSegment;
+}
+
 BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateDepthTarget(int width, int height, int is16Bit)
 {
 	Texture* texture = gBFApp->mRenderDevice->CreateDepthTarget(width, height, is16Bit != 0);

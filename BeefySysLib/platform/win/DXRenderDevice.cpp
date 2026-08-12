@@ -816,6 +816,39 @@ void DXTexture::GetDepthBits(int srcX, int srcY, int srcWidth, int srcHeight, in
 	texture->Release();
 }
 
+// A new DXTexture sharing this render target's depth buffer, sampleable as R32_FLOAT -- lets a
+// shader read the depth that filled while the color plane was being rendered (SSAO/SSR inputs).
+// 1-sample only; the wrapper AddRefs the resource, so either can be deleted first.
+Texture* DXTexture::CreateDepthRef()
+{
+	if (mD3DDepthBuffer == NULL)
+		return NULL;
+
+	D3D11_TEXTURE2D_DESC desc;
+	mD3DDepthBuffer->GetDesc(&desc);
+	if (desc.SampleDesc.Count > 1)
+		return NULL;
+
+	DXTexture* ref = new DXTexture();
+	ref->mWidth = mWidth;
+	ref->mHeight = mHeight;
+	ref->mRenderDevice = mRenderDevice;
+	ref->mD3DTexture = mD3DDepthBuffer;
+	mD3DDepthBuffer->AddRef();
+	ref->mD3DFormat = DXGI_FORMAT_R32_FLOAT;
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srDesc;
+	ZeroMemory(&srDesc, sizeof(srDesc));
+	srDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srDesc.Texture2D.MostDetailedMip = 0;
+	srDesc.Texture2D.MipLevels = 1;
+	DXCHECK(((DXRenderDevice*)mRenderDevice)->mD3DDevice->CreateShaderResourceView(mD3DDepthBuffer, &srDesc, &ref->mD3DResourceView));
+
+	ref->AddRef();
+	return ref;
+}
+
 void* DXTexture::GetSharedHandle()
 {
 	IDXGIResource* dxgiResource = NULL;
@@ -2756,6 +2789,7 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	bool destAlpha = (flags & 1) != 0;
 	bool makeShared = (flags & 2) != 0;
 	bool highPrecision = (flags & 4) != 0;
+	bool r8 = (flags & 8) != 0;
 
 	// D3D11 shared resources can't be multisampled -- render into a private MSAA target and
 	// ResolveTo a shared one instead.
@@ -2763,7 +2797,7 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
 
-	DXGI_FORMAT format = highPrecision ? DXGI_FORMAT_R32_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
+	DXGI_FORMAT format = highPrecision ? DXGI_FORMAT_R32_FLOAT : r8 ? DXGI_FORMAT_R8_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM;
 	int samples = ValidateSampleCount(mD3DDevice, format, sampleCount);
 
 	// Create the render target texture
@@ -2818,7 +2852,8 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 		d3DTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&aRenderTarget->mD3DKeyedMutex);
 	aRenderTarget->AddRef();
 
-	// Typeless so GetDepthBits can staging-copy it; stencil is unused engine-wide.
+	// Typeless so GetDepthBits can staging-copy it and CreateDepthRef can view it; stencil is
+	// unused engine-wide.
 	D3D11_TEXTURE2D_DESC descDepth;
 	ZeroMemory(&descDepth, sizeof(descDepth));
 	descDepth.Width = width;
@@ -2829,7 +2864,7 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	descDepth.SampleDesc.Count = samples;
 	descDepth.SampleDesc.Quality = 0;
 	descDepth.Usage = D3D11_USAGE_DEFAULT;
-	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
+	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL | ((samples == 1) ? D3D11_BIND_SHADER_RESOURCE : 0);
 	descDepth.CPUAccessFlags = 0;
 	descDepth.MiscFlags = 0;
 	mD3DDevice->CreateTexture2D(&descDepth, NULL, &aRenderTarget->mD3DDepthBuffer);
