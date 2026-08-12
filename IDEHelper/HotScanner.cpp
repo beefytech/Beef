@@ -445,20 +445,31 @@ void DbgHotScanner::Scan(DbgHotResolveFlags flags)
 			mTypeInfoAddrs.Add(mBfTypesInfoAddr);
 
 		if (gcDbgDataAddr == 0)
-			return;
-
-		bool success = mDebugger->ReadMemory(gcDbgDataAddr, sizeof(DbgGCData), &mDbgGCData);
-		if (!success)
 		{
-			BF_ASSERT("Failed to read DbgGCData");
-			success = mDebugger->ReadMemory(gcDbgDataAddr, sizeof(DbgGCData), &mDbgGCData);
+			// We couldn't locate the GC debug data (ie: the PDB for the Beef debug runtime failed to load,
+			//  possibly from a mismatched or missing PDB), so no allocation scanning can be performed.
+			//  We can't just return here - we must fall through so the paused threads and the run state
+			//  get restored below, otherwise every target thread would be left permanently suspended with
+			//  the debugger reporting a phantom pause at the active thread's current (kernel) location.
+			BfLogDbg("DbgHotScanner::Scan failed to locate gGCDbgData, allocation scan skipped\n");
+			mDebugger->OutputMessage("WARNING: The debugger could not locate 'gGCDbgData' in the Beef debug runtime so no scan for live allocations could be performed. "
+				"This may indicate a mismatched or missing PDB for the debug runtime DLL.\n");
 		}
-		BF_ASSERT(mDbgGCData.mObjRootPtr != NULL);
-		BF_ASSERT(mDbgGCData.mRawRootPtr != NULL);
-		if (mDbgGCData.mObjRootPtr != NULL)
-			ScanRoot(mDbgGCData.mObjRootPtr, 0);
-		if (mDbgGCData.mRawRootPtr != NULL)
-			ScanRoot(mDbgGCData.mRawRootPtr, 1);
+		else
+		{
+			bool success = mDebugger->ReadMemory(gcDbgDataAddr, sizeof(DbgGCData), &mDbgGCData);
+			if (!success)
+			{
+				BF_ASSERT("Failed to read DbgGCData");
+				success = mDebugger->ReadMemory(gcDbgDataAddr, sizeof(DbgGCData), &mDbgGCData);
+			}
+			BF_ASSERT(mDbgGCData.mObjRootPtr != NULL);
+			BF_ASSERT(mDbgGCData.mRawRootPtr != NULL);
+			if (mDbgGCData.mObjRootPtr != NULL)
+				ScanRoot(mDbgGCData.mObjRootPtr, 0);
+			if (mDbgGCData.mRawRootPtr != NULL)
+				ScanRoot(mDbgGCData.mRawRootPtr, 1);
+		}
 	}
 
 	if ((prevRunState == RunState_Running) && ((flags & DbgHotResolveFlag_KeepThreadState) == 0))

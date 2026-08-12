@@ -611,8 +611,8 @@ void WinDebugger::ThreadRestorePause(WdThreadInfo* onlyPauseThread, WdThreadInfo
 		{
 			BF_ASSERT(!threadInfo->mIsBreakRestorePaused);
 
-			BfLogDbg("SuspendThread %d\n", threadInfo->mThreadId);
-			::SuspendThread(threadInfo->mHThread);
+			DWORD prevSuspendCount = ::SuspendThread(threadInfo->mHThread);
+			BfLogDbg("SuspendThread %d PrevCount:%d\n", threadInfo->mThreadId, (int)prevSuspendCount);
 
 			threadInfo->mIsBreakRestorePaused = true;
 		}
@@ -626,8 +626,8 @@ void WinDebugger::ThreadRestoreUnpause()
 	{
 		if (threadInfo->mIsBreakRestorePaused)
 		{
-			BfLogDbg("ResumeThread %d\n", threadInfo->mThreadId);
-			::ResumeThread(threadInfo->mHThread);
+			DWORD prevSuspendCount = ::ResumeThread(threadInfo->mHThread);
+			BfLogDbg("ResumeThread %d PrevCount:%d\n", threadInfo->mThreadId, (int)prevSuspendCount);
 			threadInfo->mIsBreakRestorePaused = false;
 		}
 	}
@@ -1135,8 +1135,11 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 	{
 		WdThreadInfo* threadInfo = mThreadList[threadIdx];
 		SetAndRestoreValue<WdThreadInfo*> prevActiveThread(mActiveThread, threadInfo);
-		BfLogDbg("SuspendThread %d\n", threadInfo->mThreadId);
-		::SuspendThread(threadInfo->mHThread);
+		DWORD prevSuspendCount = ::SuspendThread(threadInfo->mHThread);
+		BfLogDbg("SuspendThread %d PrevCount:%d\n", threadInfo->mThreadId, (int)prevSuspendCount);
+		if ((prevSuspendCount != 0) || (threadInfo->mIsBreakRestorePaused))
+			BfLogDbg("WinDebugger::HotLoad thread %d was already suspended! PrevCount:%d BreakRestorePaused:%d\n",
+				threadInfo->mThreadId, (int)prevSuspendCount, threadInfo->mIsBreakRestorePaused ? 1 : 0);
 		mHotThreadStates[threadIdx].mThreadId = threadInfo->mThreadId;
 		PopulateRegisters(&mHotThreadStates[threadIdx].mRegisters);
 	}
@@ -1208,8 +1211,8 @@ void WinDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 		if (!mThreadMap.TryGetValue((uint32)hotThreadState.mThreadId, &threadInfo))
 			continue;
 
-		BfLogDbg("ResumeThread %d\n", threadInfo->mThreadId);
-		::ResumeThread(threadInfo->mHThread);
+		DWORD prevSuspendCount = ::ResumeThread(threadInfo->mHThread);
+		BfLogDbg("ResumeThread %d PrevCount:%d\n", threadInfo->mThreadId, (int)prevSuspendCount);
 	}
 
 	mHotThreadStates.Clear();
