@@ -3349,6 +3349,7 @@ namespace IDE.ui
 
 			ClearLoadFailed();
 
+			Debug.Assert(filePath != "Target View");
 			Debug.Assert(!mDisposed);
 
 			String useFilePath = null;
