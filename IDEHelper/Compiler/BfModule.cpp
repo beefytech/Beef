@@ -5334,7 +5334,12 @@ void BfModule::CreateDelegateEqualsMethod()
 			continue;
 
 		if (fieldType->IsRef())
-			fieldType = CreatePointerType(fieldType->GetUnderlyingType());
+		{
+			auto underlyingType = fieldType->GetUnderlyingType();
+			if (underlyingType->IsVar())
+				underlyingType = GetPrimitiveType(BfTypeCode_None);
+			fieldType = CreatePointerType(underlyingType);
+		}
 
 		BfTypedValue leftValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(leftTypedVal.mValue, 0, fieldInstance->mDataIdx), fieldType, true);
 		BfTypedValue rightValue = BfTypedValue(mBfIRBuilder->CreateInBoundsGEP(rightTypedVal.mValue, 0, fieldInstance->mDataIdx), fieldType, true);
