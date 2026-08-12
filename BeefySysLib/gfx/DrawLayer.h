@@ -17,7 +17,8 @@ class Vertex3D;
 class DrawLayer;
 class RenderState;
 
-#define MAX_TEXTURES 4
+// Slot 0 = diffuse, slots 1-4 = shadow cascade maps (see ModelStd.fx), with headroom.
+#define MAX_TEXTURES 8
 
 class DrawBatch : public RenderCmd
 {
