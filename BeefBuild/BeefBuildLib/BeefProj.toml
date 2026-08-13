@@ -1,0 +1,28 @@
+FileVersion = 1
+
+[Project]
+Name = "BeefBuildLib"
+TargetType = "BeefLib"
+StartupObject = "IDELib.Program"
+
+[Dependencies]
+corlib = "*"
+Beefy2D = "*"
+curl = "*"
+
+[Configs.Debug.Win64]
+PreprocessorMacros = ["DEBUG", "CLI"]
+
+[Configs.Release.Win64]
+PreprocessorMacros = ["RELEASE", "CLI"]
+
+[[ProjectFolder.Items]]
+Type = "Folder"
+Path = "../src"
+AutoInclude = true
+
+[[ProjectFolder.Items]]
+Type = "Folder"
+Path = "../../IDE/src"
+Name = "ide"
+AutoInclude = true

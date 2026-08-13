@@ -434,8 +434,7 @@ namespace IDE.ui
 
 		public bool mAsyncAutocomplete = true;
 
-        public SourceEditWidget mEditWidget;        
-        public ProjectSource mProjectSource;
+        public SourceEditWidget mEditWidget;
 		public FileEditData mEditData;
 		public FileRecovery.Entry mFileRecoveryEntry ~ delete _;
         public List<TrackedTextElementView> mTrackedTextElementViewList ~ DeleteContainerAndItems!(_);
@@ -909,7 +908,7 @@ namespace IDE.ui
             return true;
         }
 
-        public void QueueFullRefresh(bool configMayHaveChanged)
+        public override void QueueFullRefresh(bool configMayHaveChanged)
         {
 #if IDE_C_SUPPORT
             if ((mIsClang) && (configMayHaveChanged))
@@ -2657,7 +2656,7 @@ namespace IDE.ui
 
 		}
 
-		public void AttachToProjectSource(ProjectSource projectSource)
+		public override void AttachToProjectSource(ProjectSource projectSource)
 		{
 			mProjectSource = projectSource;
 			if (mEditData != null)
@@ -2675,7 +2674,7 @@ namespace IDE.ui
 			QueueFullRefresh(true);
 		}
 
-		public void DetachFromProjectItem(bool fileDeleted)
+		public override void DetachFromProjectItem(bool fileDeleted)
 		{
 			if (mProjectSource == null)
 				return;

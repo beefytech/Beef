@@ -14,6 +14,7 @@ using IDE.Util;
 using System.Threading;
 using System.Diagnostics;
 using IDE.util;
+using Beefy.theme.dark;
 
 namespace IDE
 {    
@@ -108,6 +109,11 @@ namespace IDE
 		{
 			mDetached = true;
 			ReleaseRef();
+		}
+
+		public virtual Image GetIcon()
+		{
+			return DarkTheme.sDarkTheme.GetImage(.Document);
 		}
     }
 
@@ -668,7 +674,7 @@ namespace IDE
 			}
         }
 
-		public virtual ProjectItem CreateProjectItem(StringView type)
+		public virtual ProjectItem CreateProjectItem(StringView type, StructuredData data)
 		{
 			ProjectItem projectItem = null;
 			if (type == "Source")
@@ -733,7 +739,7 @@ namespace IDE
 
 				if (projectItem == null)
 				{
-					projectItem = CreateProjectItem(type);
+					projectItem = CreateProjectItem(type, data);
 
                     if (projectItem == null)
 						continue;
@@ -888,6 +894,11 @@ namespace IDE
 						childFileItem.mPath.Set(newChildPath);
 					}
 				}
+		}
+
+		public override Image GetIcon()
+		{
+			return DarkTheme.sDarkTheme.GetImage(.ProjectFolder);
 		}
     }
 

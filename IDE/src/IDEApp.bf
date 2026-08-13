@@ -7427,16 +7427,14 @@ namespace IDE
 						MakeTabPermanent(contentPanelTab);
 					}
 
-					if (var sourceViewPanel = contentPanel as SourceViewPanel)
+					
+					if ((useProjectSource != null) &&
+						(contentPanel.mProjectSource != useProjectSource))
 					{
-						if ((useProjectSource != null) &&
-							(sourceViewPanel.mProjectSource != useProjectSource))
-						{
-							//TODO: Change project source in view
-							sourceViewPanel.AttachToProjectSource(useProjectSource);
-							//sourceViewPanel.mProjectSource = useProjectSource;
-							//sourceViewPanel.QueueFullRefresh(true);
-						}
+						//TODO: Change project source in view
+						contentPanel.AttachToProjectSource(useProjectSource);
+						//sourceViewPanel.mProjectSource = useProjectSource;
+						//sourceViewPanel.QueueFullRefresh(true);
 					}
 
 					ActivateWindow(contentPanelTab.mWidgetWindow);

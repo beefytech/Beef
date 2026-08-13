@@ -11,6 +11,7 @@ namespace IDE.ui
 		public bool mDisposed;
 		public int32 mLastFocusTick;
 		public String mFilePath ~ delete _;
+		public ProjectSource mProjectSource;
 
         public virtual bool EscapeHandler()
         {
@@ -122,6 +123,34 @@ namespace IDE.ui
 
 			if (foundItem != null)
 				gApp.mProjectPanel.SelectProjectItem(foundItem);
+		}
+
+		public virtual void QueueFullRefresh(bool configMayHaveChanged)
+		{
+
+		}
+
+		public virtual void AttachToProjectSource(ProjectSource projectSource)
+		{
+			mProjectSource = projectSource;
+		}
+
+		public virtual void DetachFromProjectItem(bool fileDeleted)
+		{
+			if (mProjectSource == null)
+				return;
+
+			if (fileDeleted)
+			{
+				// We manually add this change record because it may not get caught since the watch dep may be gone
+				// This will allow the "File Deleted" dialog to show.
+				var changeRecord = new FileWatcher.ChangeRecord();
+				changeRecord.mChangeType = .Deleted;
+				changeRecord.mPath = new String(mFilePath);
+				gApp.mFileWatcher.AddChangedFile(changeRecord);
+			}
+
+			mProjectSource = null;
 		}
     }
 }

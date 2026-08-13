@@ -700,10 +700,7 @@ namespace IDE.ui
             {
                 let listViewParent = mProjectToListViewMap[projectItem.mParentFolder];
                 listViewItem = (ProjectListViewItem)listViewParent.CreateChildItem();
-                if (projectItem is ProjectFolder)
-                    listViewItem.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.ProjectFolder);
-                else
-                    listViewItem.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Document);
+				listViewItem.mIconImage = projectItem.GetIcon();
                 listViewItem.Label = projectItem.mName;
                 if (projectItem is ProjectFolder)
                     listViewItem.MakeParent();
@@ -1273,13 +1270,13 @@ namespace IDE.ui
             projectSource.GetFullImportPath(fullPath);
             IDEApp.sApp.WithTabs(scope (tab) =>
                 {
-                    var sourceViewPanel = tab.mContent as SourceViewPanel;
-                    if ((sourceViewPanel != null) &&
-                        (sourceViewPanel.mProjectSource == null) &&
-                        (sourceViewPanel.mFilePath != null) &&
-                        (Path.Equals(sourceViewPanel.mFilePath, fullPath)))
+                    var contentPanel = tab.mContent as ContentPanel;
+                    if ((contentPanel != null) &&
+                        (contentPanel.mProjectSource == null) &&
+                        (contentPanel.mFilePath != null) &&
+                        (Path.Equals(contentPanel.mFilePath, fullPath)))
                     {
-                        sourceViewPanel.AttachToProjectSource(projectSource);
+                        contentPanel.AttachToProjectSource(projectSource);
                     }
                 });
         }
@@ -1648,13 +1645,13 @@ namespace IDE.ui
 
 			    gApp.WithTabs(scope (tab) =>
 			        {
-			            var sourceViewPanel = tab.mContent as SourceViewPanel;
-			            if ((sourceViewPanel != null) && (sourceViewPanel.mProjectSource == projectSource))
+			            var contentPanel = tab.mContent as ContentPanel;
+			            if ((contentPanel != null) && (contentPanel.mProjectSource == projectSource))
 			            {
 							if (isRemovingProjectSource)
-			                	sourceViewPanel.DetachFromProjectItem(true);
+			                	contentPanel.DetachFromProjectItem(true);
 							else
-								sourceViewPanel.QueueFullRefresh(true);
+								contentPanel.QueueFullRefresh(true);
 			            }
 			        });
 
@@ -1700,13 +1697,13 @@ namespace IDE.ui
 
 				gApp.WithTabs(scope (tab) =>
 					{
-					    var sourceViewPanel = tab.mContent as SourceViewPanel;
+					    var contentPanel = tab.mContent as ContentPanel;
 					    //if (sourceViewPanel?.mProjectSource?.mProject == project)
-						if	((sourceViewPanel != null) &&
-							 (sourceViewPanel.mProjectSource != null) &&
-							 (sourceViewPanel.mProjectSource.mProject == project))
+						if	((contentPanel != null) &&
+							 (contentPanel.mProjectSource != null) &&
+							 (contentPanel.mProjectSource.mProject == project))
 					    {
-					        sourceViewPanel.DetachFromProjectItem(true);
+					        contentPanel.DetachFromProjectItem(true);
 					    }
 					});
 
