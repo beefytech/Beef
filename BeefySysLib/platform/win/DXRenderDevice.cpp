@@ -1337,9 +1337,9 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 				if (!modelDef->mLoadDir.IsEmpty())
 					texPath = GetAbsPath(texPath, modelDef->mLoadDir);
 
-				DXTexture* texture = (DXTexture*)((RenderDevice*)this)->LoadTexture(texPath, TextureFlag_NoPremult | TextureFlag_Mipmaps);
+				DXTexture* texture = (DXTexture*)((RenderDevice*)this)->LoadTexture(texPath, TextureFlag_NoPremult | TextureFlag_Mipmaps | TextureFlag_Srgb);
 				if (texture == NULL)
-					texture = (DXTexture*)((RenderDevice*)this)->LoadTexture("!white", TextureFlag_NoPremult | TextureFlag_Mipmaps);
+					texture = (DXTexture*)((RenderDevice*)this)->LoadTexture("!white", TextureFlag_NoPremult | TextureFlag_Mipmaps | TextureFlag_Srgb);
 				dxPrimitives->mTextures.Add(texture);
 			}
 
@@ -2649,7 +2649,7 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	desc.Width = aWidth;
 	desc.Height = aHeight;
 	desc.ArraySize = 1;
-	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.Format = ((flags & TextureFlag_Srgb) != 0) ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
 	desc.SampleDesc.Count = 1;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.CPUAccessFlags = 0;
@@ -2790,6 +2790,7 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	bool makeShared = (flags & 2) != 0;
 	bool highPrecision = (flags & 4) != 0;
 	bool r8 = (flags & 8) != 0;
+	bool f16 = (flags & 16) != 0;
 
 	// D3D11 shared resources can't be multisampled -- render into a private MSAA target and
 	// ResolveTo a shared one instead.
@@ -2797,7 +2798,8 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
 
-	DXGI_FORMAT format = highPrecision ? DXGI_FORMAT_R32_FLOAT : r8 ? DXGI_FORMAT_R8_UNORM : DXGI_FORMAT_R8G8B8A8_UNORM;
+	DXGI_FORMAT format = highPrecision ? DXGI_FORMAT_R32_FLOAT : r8 ? DXGI_FORMAT_R8_UNORM :
+		f16 ? DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
 	int samples = ValidateSampleCount(mD3DDevice, format, sampleCount);
 
 	// Create the render target texture

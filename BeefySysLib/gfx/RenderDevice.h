@@ -170,8 +170,10 @@ enum TextureFlag : int8
 	TextureFlag_Additive = 1,
 	TextureFlag_NoPremult = 2,
 	TextureFlag_AllowRead = 4,
-	TextureFlag_HasTransFollowing = 8,	
-	TextureFlag_Mipmaps = 0x10
+	TextureFlag_HasTransFollowing = 8,
+	TextureFlag_Mipmaps = 0x10,
+	// Color data: store sRGB-encoded, sample hardware-decoded to linear.
+	TextureFlag_Srgb = 0x20
 };
 
 struct VertexDefData

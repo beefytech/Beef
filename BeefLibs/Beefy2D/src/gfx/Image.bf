@@ -21,7 +21,9 @@ namespace Beefy.gfx
 			NoPremult = 2,
 			AllowRead = 4,
 			FatalError = 8,
-			Mipmaps = 0x10
+			Mipmaps = 0x10,
+			// Color data: stored sRGB-encoded, hardware-decoded to linear on sample.
+			Srgb = 0x20
 		}
 
 		public enum RenderTargetFlags
@@ -33,7 +35,9 @@ namespace Beefy.gfx
 			// float precision rather than 8-bit-per-channel color storage.
 			HighPrecision = 4,
 			// Single-channel R8_UNORM -- for scalar masks (eg SSAO).
-			R8 = 8
+			R8 = 8,
+			// RGBA16F -- for linear HDR scene color.
+			F16 = 16
 		}
 
         public Image mSrcTexture;
