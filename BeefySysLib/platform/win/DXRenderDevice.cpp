@@ -737,6 +737,27 @@ void DXTexture::PhysSetAsTarget()
 	}
 }
 
+///
+
+DXStructuredBuffer::DXStructuredBuffer()
+{
+	mD3DBuffer = NULL;
+	mStride = 0;
+}
+
+DXStructuredBuffer::~DXStructuredBuffer()
+{
+	if (mD3DBuffer != NULL)
+		mD3DBuffer->Release();
+}
+
+void DXStructuredBuffer::PhysSetAsTarget()
+{
+	BF_FATAL("Structured buffers can't be render targets");
+}
+
+///
+
 void DXTexture::Blt(ImageData* imageData, int x, int y)
 {
 	D3D11_BOX box;
@@ -1270,6 +1291,48 @@ void DXRenderDevice::PhysSetRenderTarget(Texture* renderTarget)
 	renderTarget->PhysSetAsTarget();
 }
 
+void DXRenderDevice::PhysSetViewportRect(int x, int y, int width, int height, bool clear)
+{
+	D3D11_VIEWPORT viewPort;
+	viewPort.TopLeftX = (float)x;
+	viewPort.TopLeftY = (float)y;
+	viewPort.Width = (float)width;
+	viewPort.Height = (float)height;
+	viewPort.MinDepth = 0.0f;
+	viewPort.MaxDepth = 1.0f;
+	mD3DDeviceContext->RSSetViewports(1, &viewPort);
+
+	if (!clear)
+		return;
+	D3D11_RECT rect = { x, y, x + width, y + height };
+	if (mD3DDeviceContext1 != NULL)
+	{
+		if (mCurD3DRTV != NULL)
+		{
+			float bgColor[4] = { 1, 0, 0.5f, 1 };
+			mD3DDeviceContext1->ClearView(mCurD3DRTV, bgColor, &rect, 1);
+		}
+		if (mCurD3DDSV != NULL)
+		{
+			// ClearView on a depth view takes the depth from Color[0] (depth-only formats, which is
+			// all our depth targets use).
+			float depth[4] = { 1, 0, 0, 0 };
+			mD3DDeviceContext1->ClearView(mCurD3DDSV, depth, &rect, 1);
+		}
+	}
+	else
+	{
+		// 11.0 fallback: no rect clears, so the whole target goes.
+		if (mCurD3DRTV != NULL)
+		{
+			float bgColor[4] = { 1, 0, 0.5f, 1 };
+			mD3DDeviceContext->ClearRenderTargetView(mCurD3DRTV, bgColor);
+		}
+		if (mCurD3DDSV != NULL)
+			mD3DDeviceContext->ClearDepthStencilView(mCurD3DDSV, D3D11_CLEAR_DEPTH, 1.0f, 0);
+	}
+}
+
 RenderState* DXRenderDevice::CreateRenderState(RenderState* srcRenderState)
 {
 	DXRenderState* renderState = new DXRenderState();
@@ -1448,6 +1511,16 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 	}
 
 	return dxModelInstance;
+}
+
+void DXDrawLayer::SetBufferData(Texture* buffer, void* data, int size)
+{
+	DXSetBufferDataCmd* cmd = AllocRenderCmd<DXSetBufferDataCmd>();
+	cmd->mBuffer = (DXStructuredBuffer*)buffer;
+	cmd->mSize = size;
+	cmd->mData = new uint8[size];
+	memcpy(cmd->mData, data, size);
+	QueueRenderCmd(cmd);
 }
 
 void DXDrawLayer::SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size)
@@ -1817,6 +1890,28 @@ void DXSetTextureCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWin
 {
 	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
 	dxRenderDevice->mD3DDeviceContext->PSSetShaderResources(mTextureIdx, 1, &((DXTexture*)mTexture)->mD3DResourceView);
+}
+
+///
+
+void DXSetBufferDataCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
+{
+	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
+	int byteWidth = mBuffer->mStride * mBuffer->mWidth;
+	BF_ASSERT(mSize <= byteWidth);
+
+	D3D11_MAPPED_SUBRESOURCE mappedResource;
+	if (FAILED(dxRenderDevice->mD3DDeviceContext->Map(mBuffer->mD3DBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource)))
+		return;
+	memcpy(mappedResource.pData, mData, mSize);
+	dxRenderDevice->mD3DDeviceContext->Unmap(mBuffer->mD3DBuffer, 0);
+}
+
+void DXSetBufferDataCmd::Free()
+{
+	delete[] mData;
+	mData = NULL;
+	RenderCmd::Free();
 }
 
 ///
@@ -2223,6 +2318,7 @@ bool DXRenderWindow::WaitForVBlank()
 DXRenderDevice::DXRenderDevice()
 {
 	mD3DDevice = NULL;
+	mD3DDeviceContext1 = NULL;
 	mNeedsReinitNative = false;
 	mMatrix2DBuffer = NULL;
 	mCurD3DRTV = NULL;
@@ -2271,6 +2367,8 @@ bool DXRenderDevice::Init(BFApp* app)
 	//flags = D3D11_CREATE_DEVICE_DEBUG;
 	DXCHECK(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, featureLevelArr, 6, D3D11_SDK_VERSION, &mD3DDevice, &d3dFeatureLevel, &mD3DDeviceContext));
 	OutputDebugStrF("D3D Feature Level: %X\n", d3dFeatureLevel);
+	mD3DDeviceContext1 = NULL;
+	mD3DDeviceContext->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&mD3DDeviceContext1);
 
 	IDXGIDevice* pDXGIDevice = NULL;
 	DXCHECK(mD3DDevice->QueryInterface(__uuidof(IDXGIDevice), reinterpret_cast<void**>(&pDXGIDevice)));
@@ -2421,6 +2519,9 @@ void DXRenderDevice::ReleaseNative()
 	mD3DNearestSamplerState = NULL;
 	mD3DShadowSamplerState->Release();
 	mD3DShadowSamplerState = NULL;
+	if (mD3DDeviceContext1 != NULL)
+		mD3DDeviceContext1->Release();
+	mD3DDeviceContext1 = NULL;
 	mD3DDeviceContext->Release();
 	mD3DDeviceContext = NULL;
 
@@ -2978,6 +3079,38 @@ Texture* DXRenderDevice::CreateDepthTarget(int width, int height, bool is16Bit)
 	DXCHECK(mD3DDevice->CreateShaderResourceView(aRenderTarget->mD3DDepthBuffer, &srDesc, &aRenderTarget->mD3DResourceView));
 
 	return aRenderTarget;
+}
+
+Texture* DXRenderDevice::CreateStructuredBuffer(int stride, int count)
+{
+	BF_ASSERT((stride > 0) && (stride % 4 == 0) && (count > 0));
+
+	DXStructuredBuffer* buffer = new DXStructuredBuffer();
+	buffer->mWidth = count;
+	buffer->mHeight = 1;
+	buffer->mStride = stride;
+	buffer->mRenderDevice = this;
+	buffer->AddRef();
+
+	D3D11_BUFFER_DESC desc;
+	ZeroMemory(&desc, sizeof(desc));
+	desc.Usage = D3D11_USAGE_DYNAMIC;
+	desc.ByteWidth = stride * count;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+	desc.StructureByteStride = stride;
+	DXCHECK(mD3DDevice->CreateBuffer(&desc, NULL, &buffer->mD3DBuffer));
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srDesc;
+	ZeroMemory(&srDesc, sizeof(srDesc));
+	srDesc.Format = DXGI_FORMAT_UNKNOWN;
+	srDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER;
+	srDesc.Buffer.FirstElement = 0;
+	srDesc.Buffer.NumElements = count;
+	DXCHECK(mD3DDevice->CreateShaderResourceView(buffer->mD3DBuffer, &srDesc, &buffer->mD3DResourceView));
+
+	return buffer;
 }
 
 Texture* DXRenderDevice::OpenSharedRenderTarget(void* handle, int width, int height)

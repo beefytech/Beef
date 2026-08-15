@@ -30,6 +30,7 @@
 #pragma warning (push)
 #pragma warning (disable:4005)
 #include <d3d11.h>
+#include <d3d11_1.h>
 #pragma warning (pop)
 
 #ifdef BF_MINGW
@@ -89,6 +90,21 @@ public:
 	virtual void			CopyToMip(int mipLevel, Texture* src, int width, int height) override;
 };
 
+// Structured buffer posing as a texture: mD3DResourceView is the buffer SRV, so DXSetTextureCmd
+// binds it into a t-slot unchanged; every other DXTexture member stays NULL. mWidth = element count.
+class DXStructuredBuffer : public DXTexture
+{
+public:
+	ID3D11Buffer*			mD3DBuffer;
+	int						mStride;
+
+public:
+	DXStructuredBuffer();
+	~DXStructuredBuffer();
+
+	virtual void			PhysSetAsTarget() override;
+};
+
 class DXShaderParam : public ShaderParam
 {
 public:
@@ -145,6 +161,7 @@ class DXDrawLayer : public DrawLayer
 public:
 	virtual DrawBatch*		CreateDrawBatch();
 	virtual RenderCmd*		CreateSetTextureCmd(int textureIdx, Texture* texture) override;
+	virtual void			SetBufferData(Texture* buffer, void* data, int size) override;
 	virtual void			SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size) override;
 	virtual void			SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* constData, int size, int* typeData, int typeCount) override;
 
@@ -302,12 +319,26 @@ public:
 	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
 };
 
+// Heap-owned copy of the data: uploads can exceed the 64K command pool block.
+class DXSetBufferDataCmd : public RenderCmd
+{
+public:
+	DXStructuredBuffer* mBuffer;
+	uint8* mData;
+	int mSize;
+
+public:
+	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
+	virtual void Free() override;
+};
+
 class DXRenderDevice : public RenderDevice
 {
 public:
 	IDXGIFactory*			mDXGIFactory;
 	ID3D11Device*			mD3DDevice;
 	ID3D11DeviceContext*	mD3DDeviceContext;
+	ID3D11DeviceContext1*	mD3DDeviceContext1; // 11.1 interface for rect clears; NULL on 11.0 runtimes
 	ID3D11BlendState*		mD3DNormalBlendState;
 	ID3D11SamplerState*		mD3DDefaultSamplerState;
 	ID3D11SamplerState*		mD3DWrapSamplerState;
@@ -334,6 +365,7 @@ public:
 	virtual void			PhysSetRenderState(RenderState* renderState) override;
 	virtual void			PhysSetRenderWindow(RenderWindow* renderWindow);
 	virtual void			PhysSetRenderTarget(Texture* renderTarget) override;
+	virtual void			PhysSetViewportRect(int x, int y, int width, int height, bool clear) override;
 	virtual RenderState*	CreateRenderState(RenderState* srcRenderState) override;
 	virtual void			ReleaseRenderState(RenderState* renderState) override;
 	virtual ModelInstance*	CreateModelInstance(ModelDef* modelDef, ModelCreateFlags flags) override;
@@ -356,6 +388,7 @@ public:
 	void					ReleaseShader(Shader* shader) override;
 	Texture*				CreateRenderTarget(int width, int height, int flags, int sampleCount) override;
 	Texture*				CreateDepthTarget(int width, int height, bool is16Bit) override;
+	Texture*				CreateStructuredBuffer(int stride, int count) override;
 	Texture*				OpenSharedRenderTarget(void* handle, int width, int height) override;
 
 	void					SetRenderState(RenderState* renderState) override;

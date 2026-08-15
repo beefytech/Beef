@@ -399,3 +399,17 @@ BF_EXPORT void BF_CALLTYPE DrawLayer_DrawToRenderTarget(DrawLayer* drawLayer, Te
 	drawLayer->Clear();
 	renderDevice->mCurRenderTarget = prevTarget;
 }
+
+BF_EXPORT void BF_CALLTYPE DrawLayer_DrawToRenderTargetRect(DrawLayer* drawLayer, TextureSegment* textureSegment, int x, int y, int width, int height, bool clearRect)
+{
+	RenderDevice* renderDevice = gBFApp->mRenderDevice;
+
+	BP_ZONE("DrawLayer_DrawToRenderTargetRect DrawPart");
+	RenderTarget* prevTarget = renderDevice->mCurRenderTarget;
+	renderDevice->PhysSetRenderState(renderDevice->mDefaultRenderState);
+	renderDevice->PhysSetRenderTarget(textureSegment->mTexture);
+	renderDevice->PhysSetViewportRect(x, y, width, height, clearRect);
+	drawLayer->Draw();
+	drawLayer->Clear();
+	renderDevice->mCurRenderTarget = prevTarget;
+}

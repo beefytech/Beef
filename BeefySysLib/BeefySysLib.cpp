@@ -506,6 +506,23 @@ BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateDepthTarget(int width, int heigh
 	return aTextureSegment;
 }
 
+BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateStructuredBuffer(int stride, int count)
+{
+	Texture* texture = gBFApp->mRenderDevice->CreateStructuredBuffer(stride, count);
+	if (texture == NULL)
+		return NULL;
+
+	TextureSegment* aTextureSegment = new TextureSegment();
+	aTextureSegment->InitFromTexture(texture);
+	return aTextureSegment;
+}
+
+// Queued on the current draw layer, so it lands between the draws issued before and after it.
+BF_EXPORT void BF_CALLTYPE Gfx_Buffer_SetData(TextureSegment* textureSegment, void* data, int size)
+{
+	gBFApp->mRenderDevice->mCurDrawLayer->SetBufferData(textureSegment->mTexture, data, size);
+}
+
 BF_EXPORT void BF_CALLTYPE Gfx_Texture_ResolveTo(TextureSegment* srcSegment, TextureSegment* destSegment)
 {
 	srcSegment->mTexture->ResolveTo(destSegment->mTexture);

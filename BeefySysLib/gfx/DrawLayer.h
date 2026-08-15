@@ -17,9 +17,7 @@ class Vertex3D;
 class DrawLayer;
 class RenderState;
 
-// Slot 0 = diffuse, slots 1-4 = shadow cascade maps, 5-9 = screen-space + IBL buffers (see
-// ModelStd.fx), with headroom.
-#define MAX_TEXTURES 16
+#define MAX_TEXTURES 32
 
 class DrawBatch : public RenderCmd
 {
@@ -102,6 +100,8 @@ public:
 	void					QueueRenderCmd(RenderCmd* renderCmd);
 	void					QueueRenderable(Renderable* renderable);
 	virtual RenderCmd*		CreateSetTextureCmd(int textureIdx, Texture* texture) = 0;
+	// Deferred like constant data: the upload happens when the queued commands render.
+	virtual void			SetBufferData(Texture* buffer, void* data, int size) {}
 	virtual void			SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size) = 0;
 	virtual void			SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* constData, int size, int* typeData, int typeCount);
 

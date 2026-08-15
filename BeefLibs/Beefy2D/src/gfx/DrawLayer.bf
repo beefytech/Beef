@@ -30,6 +30,9 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         static extern void DrawLayer_DrawToRenderTarget(void* drawLayer, void* texture);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void DrawLayer_DrawToRenderTargetRect(void* drawLayer, void* texture, int32 x, int32 y, int32 width, int32 height, bool clearRect);
+
         public void* mNativeDrawLayer;
 
         public this(BFWindow window)
@@ -58,6 +61,13 @@ namespace Beefy.gfx
         {
             DrawLayer_DrawToRenderTarget(mNativeDrawLayer, texture.mNativeTextureSegment);
         }
+
+		// Rasterizes only into the pixel rect of the target (atlas slots). The target's pending
+		// whole-surface clear still applies; clearRect clears just the rect (color + depth).
+		public void DrawToRenderTargetRect(Image texture, int x, int y, int width, int height, bool clearRect)
+		{
+			DrawLayer_DrawToRenderTargetRect(mNativeDrawLayer, texture.mNativeTextureSegment, (.)x, (.)y, (.)width, (.)height, clearRect);
+		}
     }
 #else
     public class DrawLayer

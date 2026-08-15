@@ -320,6 +320,9 @@ public:
 public:	
 	virtual void			PhysSetRenderState(RenderState* renderState) = 0;
 	virtual void			PhysSetRenderTarget(Texture* renderTarget) = 0;
+	// Restricts rasterization of the current target to a pixel rect (reset by the next target set);
+	// `clear` clears just that rect first (color + depth).
+	virtual void			PhysSetViewportRect(int x, int y, int width, int height, bool clear) {}
 
 public:
 	RenderDevice();
@@ -343,6 +346,8 @@ public:
 	virtual Texture*		CreateRenderTarget(int width, int height, int flags, int sampleCount) = 0;
 	// Depth-only target: no color plane; the depth buffer itself is the sampleable resource.
 	virtual Texture*		CreateDepthTarget(int width, int height, bool is16Bit) { return NULL; }
+	// GPU structured buffer (StructuredBuffer<T> in HLSL) bound through the texture slots.
+	virtual Texture*		CreateStructuredBuffer(int stride, int count) { return NULL; }
 	virtual Texture*		OpenSharedRenderTarget(void* handle, int width, int height) { return NULL; }
 	
 	virtual Shader*			LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) = 0;
