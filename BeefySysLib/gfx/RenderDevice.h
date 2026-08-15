@@ -224,6 +224,7 @@ public:
 	Topology3D				mTopology;	
 	bool					mDisablePixelShader;
 	bool					mDisableRenderTarget;
+	bool					mDisableBlend;
 
 public:
 	RenderState();
@@ -241,6 +242,7 @@ public:
 	virtual void SetFrontFace(FrontFace frontFace) { mFrontFace = frontFace; }
 	virtual void SetDisablePixelShader(bool disable) { mDisablePixelShader = disable; }
 	virtual void SetDisableRenderTarget(bool disable) { mDisableRenderTarget = disable; }
+	virtual void SetDisableBlend(bool disable) { mDisableBlend = disable; }
 };
 
 class PoolData

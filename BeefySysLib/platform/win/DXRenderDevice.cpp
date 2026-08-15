@@ -1204,6 +1204,9 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 			mD3DDeviceContext->OMSetRenderTargets(1, &mCurD3DRTV, mCurD3DDSV);
 	}
 
+	if (renderState->mDisableBlend != mPhysRenderState->mDisableBlend)
+		mD3DDeviceContext->OMSetBlendState(renderState->mDisableBlend ? NULL : mD3DNormalBlendState, NULL, 0xffffffff);
+
 	mPhysRenderState = renderState;
 }
 

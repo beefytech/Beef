@@ -28,6 +28,7 @@ RenderState::RenderState()
 	mWireframe = false;
 	mDisablePixelShader = false;
 	mDisableRenderTarget = false;
+	mDisableBlend = false;
 }
 
 RenderTarget::RenderTarget()

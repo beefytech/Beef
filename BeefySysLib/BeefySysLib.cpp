@@ -1065,6 +1065,11 @@ BF_EXPORT void BF_CALLTYPE RenderState_SetDisableRenderTarget(RenderState* rende
 	renderState->SetDisableRenderTarget(disable);
 }
 
+BF_EXPORT void BF_CALLTYPE RenderState_SetDisableBlend(RenderState* renderState, bool disable)
+{
+	renderState->SetDisableBlend(disable);
+}
+
 BF_EXPORT Shader* BF_CALLTYPE Gfx_LoadShader(const char* fileName, VertexDefinition* vertexDefinition)
 {
 	return gBFApp->mRenderDevice->LoadShader(fileName, vertexDefinition);

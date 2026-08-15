@@ -95,6 +95,9 @@ namespace Beefy.gfx
 		[CallingConvention(.Stdcall), CLink]
 		static extern void RenderState_SetDisableRenderTarget(void* nativeRenderState, bool disable);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void RenderState_SetDisableBlend(void* nativeRenderState, bool disable);
+
         public void* mNativeRenderState;
         public bool mIsFromDefaultRenderState;
 
@@ -223,6 +226,16 @@ namespace Beefy.gfx
 			set
 			{
 				RenderState_SetDisableRenderTarget(mNativeRenderState, value);
+			}
+		}
+
+		// Overwrites the target instead of the default premultiplied-alpha blend -- for data render
+		// targets whose alpha channel carries payload rather than coverage.
+		public bool DisableBlend
+		{
+			set
+			{
+				RenderState_SetDisableBlend(mNativeRenderState, value);
 			}
 		}
     }
