@@ -511,6 +511,21 @@ BF_EXPORT void BF_CALLTYPE Gfx_Texture_ResolveTo(TextureSegment* srcSegment, Tex
 	srcSegment->mTexture->ResolveTo(destSegment->mTexture);
 }
 
+BF_EXPORT void BF_CALLTYPE Gfx_Texture_GenerateMips(TextureSegment* textureSegment)
+{
+	textureSegment->mTexture->GenerateMips();
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_Texture_SetSecondaryTarget(TextureSegment* textureSegment, TextureSegment* secondarySegment)
+{
+	textureSegment->mTexture->mSecondaryTarget = (secondarySegment != NULL) ? secondarySegment->mTexture : NULL;
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_Texture_CopyToMip(TextureSegment* destSegment, int mipLevel, TextureSegment* srcSegment, int width, int height)
+{
+	destSegment->mTexture->CopyToMip(mipLevel, srcSegment->mTexture, width, height);
+}
+
 // Sample count for window swapchains -- must be called before window creation.
 BF_EXPORT void BF_CALLTYPE Gfx_SetWindowMsaaSamples(int sampleCount)
 {

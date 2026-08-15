@@ -85,6 +85,8 @@ public:
 	virtual bool			AcquireKeyedMutex(uint64 key, uint32 timeoutMs) override;
 	virtual void			ReleaseKeyedMutex(uint64 key) override;
 	virtual void			ResolveTo(Texture* dest) override;
+	virtual void			GenerateMips() override;
+	virtual void			CopyToMip(int mipLevel, Texture* src, int width, int height) override;
 };
 
 class DXShaderParam : public ShaderParam

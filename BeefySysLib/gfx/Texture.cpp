@@ -8,6 +8,7 @@ USING_NS_BF;
 Texture::Texture()
 {
 	mRefCount = 0;
+	mSecondaryTarget = NULL;
 }
 
 void Texture::AddRef()

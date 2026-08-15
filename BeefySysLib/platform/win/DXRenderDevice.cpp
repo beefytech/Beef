@@ -711,9 +711,14 @@ void DXTexture::PhysSetAsTarget()
 
 		mRenderDevice->mCurD3DRTV = mD3DRenderTargetView;
 		mRenderDevice->mCurD3DDSV = mD3DDepthStencilView;
-		mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, mD3DDepthStencilView);
-		//mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, ((rand() % 2) != 0) ? NULL : mD3DDepthStencilView);
-		//mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, NULL);
+		ID3D11RenderTargetView* rtvs[2] = { mD3DRenderTargetView, NULL };
+		int rtvCount = 1;
+		if (mSecondaryTarget != NULL)
+		{
+			rtvs[1] = ((DXTexture*)mSecondaryTarget)->mD3DRenderTargetView;
+			rtvCount = 2;
+		}
+		mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(rtvCount, rtvs, mD3DDepthStencilView);
 		mRenderDevice->mD3DDeviceContext->RSSetViewports(1, &viewPort);
 	}
 
@@ -913,6 +918,19 @@ void DXTexture::ResolveTo(Texture* dest)
 	BF_ASSERT(dxDest->mSampleCount == 1);
 	BF_ASSERT((mWidth == dxDest->mWidth) && (mHeight == dxDest->mHeight) && (mD3DFormat == dxDest->mD3DFormat));
 	((DXRenderDevice*)mRenderDevice)->mD3DDeviceContext->ResolveSubresource(dxDest->mD3DTexture, 0, mD3DTexture, 0, mD3DFormat);
+}
+
+void DXTexture::GenerateMips()
+{
+	((DXRenderDevice*)mRenderDevice)->mD3DDeviceContext->GenerateMips(mD3DResourceView);
+}
+
+void DXTexture::CopyToMip(int mipLevel, Texture* src, int width, int height)
+{
+	DXTexture* dxSrc = (DXTexture*)src;
+	BF_ASSERT(dxSrc->mD3DFormat == mD3DFormat);
+	D3D11_BOX box = { 0, 0, 0, (UINT)width, (UINT)height, 1 };
+	((DXRenderDevice*)mRenderDevice)->mD3DDeviceContext->CopySubresourceRegion(mD3DTexture, mipLevel, 0, 0, 0, dxSrc->mD3DTexture, 0, &box);
 }
 
 ///
@@ -2823,10 +2841,12 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	bool highPrecision = (flags & 4) != 0;
 	bool r8 = (flags & 8) != 0;
 	bool f16 = (flags & 16) != 0;
+	bool mipmaps = (flags & 32) != 0;
 
 	// D3D11 shared resources can't be multisampled -- render into a private MSAA target and
 	// ResolveTo a shared one instead.
 	BF_ASSERT(!(makeShared && (sampleCount > 1)));
+	BF_ASSERT(!(mipmaps && ((sampleCount > 1) || makeShared)));
 
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
 
@@ -2839,7 +2859,7 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	ZeroMemory(&desc, sizeof(desc));
 	desc.Width = width;
 	desc.Height = height;
-	desc.MipLevels = 1;
+	desc.MipLevels = mipmaps ? 0 : 1; // 0 = full chain, filled on demand by GenerateMips
 	desc.ArraySize = 1;
 	desc.Format = format;
 	desc.SampleDesc.Count = samples;
@@ -2851,6 +2871,8 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 
 	if (makeShared)
 		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
+	if (mipmaps)
+		desc.MiscFlags |= D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
 	ID3D11Texture2D* d3DTexture = NULL;
 	DXCHECK(mD3DDevice->CreateTexture2D(&desc, NULL, &d3DTexture));
@@ -2859,7 +2881,7 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	srDesc.Format = desc.Format;
 	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	srDesc.Texture2D.MostDetailedMip = 0;
-	srDesc.Texture2D.MipLevels = 1;
+	srDesc.Texture2D.MipLevels = mipmaps ? -1 : 1;
 
 	// An MSAA texture can't be sampled as a plain Texture2D -- callers never should (ResolveTo a
 	// single-sample target first), but the view still has to be creatable.

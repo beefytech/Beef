@@ -12,6 +12,8 @@ class Texture : public RenderTarget
 {
 public:	
 	int						mRefCount;
+	// Bound as render target 1 (SV_Target1) whenever this texture is the target; same size, unowned.
+	Texture*				mSecondaryTarget;
 
 public:
 	Texture();
@@ -35,6 +37,11 @@ public:
 
 	// Resolves this MSAA render target into a matching-size single-sample target.
 	virtual void			ResolveTo(Texture* dest) {}
+	// Regenerates the mip chain from level 0 (render targets created with the mipmaps flag only).
+	virtual void			GenerateMips() {}
+	// Copies the top-left width x height of `src` (mip 0) into this texture's mip `mipLevel`;
+	// formats must match.
+	virtual void			CopyToMip(int mipLevel, Texture* src, int width, int height) {}
 };
 
 class TextureSegment

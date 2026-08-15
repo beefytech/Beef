@@ -37,7 +37,9 @@ namespace Beefy.gfx
 			// Single-channel R8_UNORM -- for scalar masks (eg SSAO).
 			R8 = 8,
 			// RGBA16F -- for linear HDR scene color.
-			F16 = 16
+			F16 = 16,
+			// Full mip chain, regenerated on demand with GenerateMips (1-sample, unshared only).
+			Mipmaps = 32
 		}
 
         public Image mSrcTexture;
@@ -72,6 +74,15 @@ namespace Beefy.gfx
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void Gfx_Texture_ResolveTo(void* srcTextureSegment, void* destTextureSegment);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_Texture_GenerateMips(void* textureSegment);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_Texture_CopyToMip(void* destTextureSegment, int32 mipLevel, void* srcTextureSegment, int32 width, int32 height);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_Texture_SetSecondaryTarget(void* textureSegment, void* secondarySegment);
 
 		[CallingConvention(.Stdcall), CLink]
 		public static extern void Gfx_SetWindowMsaaSamples(int32 sampleCount);
@@ -178,6 +189,26 @@ namespace Beefy.gfx
 		public void ResolveTo(Image dest)
 		{
 			Gfx_Texture_ResolveTo(mNativeTextureSegment, dest.mNativeTextureSegment);
+		}
+
+		// Rebuilds the mip chain from level 0 (render targets created with .Mipmaps only).
+		public void GenerateMips()
+		{
+			Gfx_Texture_GenerateMips(mNativeTextureSegment);
+		}
+
+		// Copies the top-left width x height of `src` into this texture's mip `mipLevel` (same format;
+		// the way to fill mips of a .Mipmaps target other than by GenerateMips).
+		public void CopyToMip(int32 mipLevel, Image src, int32 width, int32 height)
+		{
+			Gfx_Texture_CopyToMip(mNativeTextureSegment, mipLevel, src.mNativeTextureSegment, width, height);
+		}
+
+		// Extra render target bound as SV_Target1 whenever this image is drawn into (same size; null
+		// to clear). Sticky -- keep it set only around the pass that wants it.
+		public void SetSecondaryTarget(Image secondary)
+		{
+			Gfx_Texture_SetSecondaryTarget(mNativeTextureSegment, (secondary != null) ? secondary.mNativeTextureSegment : null);
 		}
         
 		public static Image OpenSharedRenderTarget(void* handle, int32 width, int32 height)
