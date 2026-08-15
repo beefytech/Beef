@@ -8,6 +8,7 @@
 #include "img/ImageData.h"
 #include "util/PerfTimer.h"
 #include "util/BeefPerf.h"
+#include "util/Hash.h"
 #include "Span.h"
 #include "FileStream.h"
 #include "DDS.h"
@@ -247,111 +248,139 @@ void DXShader::ReleaseNative()
 	mConstBuffer = NULL;
 }
 
-extern "C" typedef HRESULT(WINAPI* Func_D3DX10CompileFromFileW)(LPCWSTR pSrcFile, CONST D3D10_SHADER_MACRO* pDefines, LPD3D10INCLUDE pInclude,
-	LPCSTR pFunctionName, LPCSTR pProfile, UINT Flags1, UINT Flags2, ID3D10Blob** ppShader, ID3D10Blob** ppErrorMsgs);
-static Func_D3DX10CompileFromFileW gFunc_D3DX10CompileFromFileW;
-
 extern "C" typedef HRESULT(WINAPI* Func_D3DX10Compile)(void* srcData, size_t srcSize, char* sourceName, CONST D3D10_SHADER_MACRO* pDefines, LPD3D10INCLUDE pInclude,
 	LPCSTR pFunctionName, LPCSTR pProfile, UINT Flags1, UINT Flags2, ID3D10Blob** ppShader, ID3D10Blob** ppErrorMsgs);
 static Func_D3DX10Compile gFunc_D3DX10Compile;
 
-static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer)
+// Compiled shaders are cached next to the source as "<file>_<entry>_<profile>", keyed by a hash of
+// the exact bytes handed to the compiler (plus entry/profile/flags) -- not by file times, which lie
+// whenever a copy preserves mtimes or the clock/zone shifts. Layout: ShaderCacheHeader then the raw
+// DXBC blob. A missing/legacy/mismatched header just means recompile.
+struct ShaderCacheHeader
 {
-	HRESULT hr;
-	String outObj = filePath + "_" + entry + "_" + profile;
+	uint32 mMagic;
+	uint32 mVersion;
+	uint64 mHash;
+};
+static const uint32 cShaderCacheMagic = 0x43534642; // 'BFSC'
+static const uint32 cShaderCacheVersion = 1;
+static const UINT cShaderCompileFlags = D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS;
 
-	bool useCache = false;
-	auto srcDate = ::BfpFile_GetTime_LastWrite(filePath.c_str());
-	auto cacheDate = ::BfpFile_GetTime_LastWrite(outObj.c_str());
-	if ((cacheDate != 0) && (cacheDate >= srcDate))
-		useCache = true;
+static bool ReadShaderCache(const StringImpl& cachePath, uint64 wantHash, bool requireHashMatch, ID3D10Blob** outBuffer)
+{
+	FILE* fp = fopen(cachePath.c_str(), "rb");
+	if (fp == NULL)
+		return false;
 
-	if (!useCache)
+	fseek(fp, 0, SEEK_END);
+	int fileSize = ftell(fp);
+	fseek(fp, 0, SEEK_SET);
+
+	ShaderCacheHeader header = { 0 };
+	int blobOfs = 0;
+	if ((fileSize >= (int)sizeof(header)) && (fread(&header, sizeof(header), 1, fp) == 1) &&
+		(header.mMagic == cShaderCacheMagic) && (header.mVersion == cShaderCacheVersion))
 	{
-		if (gFunc_D3DX10CompileFromFileW == NULL)
+		if ((requireHashMatch) && (header.mHash != wantHash))
 		{
-			auto lib = LoadLibraryA("D3DCompiler_47.dll");
-			if (lib != NULL)
-				gFunc_D3DX10CompileFromFileW = (Func_D3DX10CompileFromFileW)::GetProcAddress(lib, "D3DCompileFromFile");
-		}
-
-		if (gFunc_D3DX10CompileFromFileW == NULL)
-			useCache = true;
-	}
-
-	if (!useCache)
-	{
-		bool useCompile = true;
-
-		HRESULT dxResult;
-		ID3D10Blob* errorMessage = NULL;
-		if (useCompile)
-		{
-			if (gFunc_D3DX10Compile == NULL)
-			{
-				auto lib = LoadLibraryA("D3DCompiler_47.dll");
-				if (lib != NULL)
-					gFunc_D3DX10Compile = (Func_D3DX10Compile)::GetProcAddress(lib, "D3DCompile");
-			}
-
-			int memSize = 0;
-			uint8* memPtr = LoadBinaryData(filePath, &memSize);
-
-			dxResult = gFunc_D3DX10Compile(memPtr, memSize, "Shader", NULL, NULL, entry.c_str(), profile.c_str(),
-				D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
-		}
-		else
-		{
-			if (gFunc_D3DX10CompileFromFileW == NULL)
-			{
-				auto lib = LoadLibraryA("D3DCompiler_47.dll");
-				if (lib != NULL)
-					gFunc_D3DX10CompileFromFileW = (Func_D3DX10CompileFromFileW)::GetProcAddress(lib, "D3DCompileFromFile");
-			}
-			
-			dxResult = gFunc_D3DX10CompileFromFileW(UTF8Decode(filePath).c_str(), NULL, NULL, entry.c_str(), profile.c_str(),
-				D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
-		}				
-
-		if (DXFAILED(dxResult))
-		{
-			if (errorMessage != NULL)
-			{
-				BF_FATAL(StrFormat("Vertex shader load failed: %s", (char*)errorMessage->GetBufferPointer()).c_str());
-				errorMessage->Release();
-			}
-			else
-				BF_FATAL("Shader load failed");
+			fclose(fp);
 			return false;
 		}
-
-		auto ptr = (*outBuffer)->GetBufferPointer();
-		int size = (int)(*outBuffer)->GetBufferSize();
-
-		FILE* fp = fopen(outObj.c_str(), "wb");
-		if (fp != NULL)
-		{
-			fwrite(ptr, 1, size, fp);
-			fclose(fp);
-		}
-		return true;
+		blobOfs = sizeof(header);
 	}
-
-	FILE* fp = fopen(outObj.c_str(), "rb");
-	if (fp == NULL)
+	else if (requireHashMatch)
 	{
-		BF_FATAL("Failed to load compiled shader");
+		// Legacy headerless cache (or corrupt) -- can't verify it.
+		fclose(fp);
 		return false;
 	}
 
-	fseek(fp, 0, SEEK_END);
-	int size = ftell(fp);
-	fseek(fp, 0, SEEK_SET);
-	D3D10CreateBlob(size, outBuffer);
-	auto ptr = (*outBuffer)->GetBufferPointer();
-	fread(ptr, 1, size, fp);
+	int blobSize = fileSize - blobOfs;
+	if (blobSize <= 0)
+	{
+		fclose(fp);
+		return false;
+	}
+	fseek(fp, blobOfs, SEEK_SET);
+	D3D10CreateBlob(blobSize, outBuffer);
+	int readSize = (int)fread((*outBuffer)->GetBufferPointer(), 1, blobSize, fp);
 	fclose(fp);
+	return readSize == blobSize;
+}
 
+static void WriteShaderCache(const StringImpl& cachePath, uint64 hash, ID3D10Blob* blob)
+{
+	FILE* fp = fopen(cachePath.c_str(), "wb");
+	if (fp == NULL)
+		return;
+	ShaderCacheHeader header = { cShaderCacheMagic, cShaderCacheVersion, hash };
+	fwrite(&header, sizeof(header), 1, fp);
+	fwrite(blob->GetBufferPointer(), 1, blob->GetBufferSize(), fp);
+	fclose(fp);
+}
+
+static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer)
+{
+	String cachePath = filePath + "_" + entry + "_" + profile;
+
+	int srcSize = 0;
+	uint8* srcData = LoadBinaryData(filePath, &srcSize);
+	if (srcData == NULL)
+	{
+		// No source at all (eg a shipped build) -- whatever cache exists is the best we have.
+		if (ReadShaderCache(cachePath, 0, false, outBuffer))
+			return true;
+		BF_FATAL(StrFormat("Shader source not found: %s", filePath.c_str()).c_str());
+		return false;
+	}
+
+	uint64 hash = Hash64(srcData, srcSize);
+	hash = Hash64(entry.c_str(), (int)entry.length(), hash);
+	hash = Hash64(profile.c_str(), (int)profile.length(), hash);
+	hash = Hash64(&cShaderCompileFlags, sizeof(cShaderCompileFlags), hash);
+
+	if (ReadShaderCache(cachePath, hash, true, outBuffer))
+	{
+		delete [] srcData;
+		return true;
+	}
+
+	if (gFunc_D3DX10Compile == NULL)
+	{
+		auto lib = LoadLibraryA("D3DCompiler_47.dll");
+		if (lib != NULL)
+			gFunc_D3DX10Compile = (Func_D3DX10Compile)::GetProcAddress(lib, "D3DCompile");
+	}
+	if (gFunc_D3DX10Compile == NULL)
+	{
+		// No compiler on this machine: a stale cache still beats nothing.
+		delete [] srcData;
+		if (ReadShaderCache(cachePath, hash, false, outBuffer))
+			return true;
+		BF_FATAL("Shader compiler unavailable and no cached shader");
+		return false;
+	}
+
+	// Compiled from the in-memory bytes (the same bytes the hash covers) -- note this means #include
+	// isn't supported.
+	ID3D10Blob* errorMessage = NULL;
+	HRESULT dxResult = gFunc_D3DX10Compile(srcData, srcSize, "Shader", NULL, NULL, entry.c_str(), profile.c_str(),
+		cShaderCompileFlags, 0, outBuffer, &errorMessage);
+	delete [] srcData;
+
+	if (FAILED(dxResult))
+	{
+		if (errorMessage != NULL)
+		{
+			BF_FATAL(StrFormat("Shader compile failed (%s): %s", filePath.c_str(), (char*)errorMessage->GetBufferPointer()).c_str());
+			errorMessage->Release();
+		}
+		else
+			BF_FATAL(StrFormat("Shader compile failed: %s", filePath.c_str()).c_str());
+		return false;
+	}
+
+	WriteShaderCache(cachePath, hash, *outBuffer);
 	return true;
 }
 
