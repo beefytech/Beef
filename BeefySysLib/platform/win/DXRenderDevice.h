@@ -344,6 +344,7 @@ public:
 	ID3D11SamplerState*		mD3DWrapSamplerState;
 	ID3D11SamplerState*		mD3DNearestSamplerState;
 	ID3D11SamplerState*		mD3DShadowSamplerState;
+	ID3D11SamplerState*		mD3DTrilinearSamplerState;
 	bool					mNeedsReinitNative;
 
 	ID3D11Buffer*			mMatrix2DBuffer;

@@ -2475,6 +2475,19 @@ bool DXRenderDevice::Init(BFApp* app)
 	DXCHECK(mD3DDevice->CreateSamplerState(&sampDesc, &mD3DShadowSamplerState));
 	mD3DDeviceContext->PSSetSamplers(1, 1, &mD3DShadowSamplerState);
 
+	// Trilinear (mip-interpolating) sampler, permanently at slot 2 -- for mipped atlases sampled with
+	// explicit gradients (decals).
+	ZeroMemory(&sampDesc, sizeof(sampDesc));
+	sampDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sampDesc.AddressU = D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.AddressV = D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.AddressW = D3D11_TEXTURE_ADDRESS_CLAMP;
+	sampDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	sampDesc.MinLOD = 0;
+	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	DXCHECK(mD3DDevice->CreateSamplerState(&sampDesc, &mD3DTrilinearSamplerState));
+	mD3DDeviceContext->PSSetSamplers(2, 1, &mD3DTrilinearSamplerState);
+
 	D3D11_BUFFER_DESC bd;
 	bd.Usage = D3D11_USAGE_DYNAMIC;
 	bd.ByteWidth = DX_VTXBUFFER_SIZE;
@@ -2519,6 +2532,8 @@ void DXRenderDevice::ReleaseNative()
 	mD3DNearestSamplerState = NULL;
 	mD3DShadowSamplerState->Release();
 	mD3DShadowSamplerState = NULL;
+	mD3DTrilinearSamplerState->Release();
+	mD3DTrilinearSamplerState = NULL;
 	if (mD3DDeviceContext1 != NULL)
 		mD3DDeviceContext1->Release();
 	mD3DDeviceContext1 = NULL;
