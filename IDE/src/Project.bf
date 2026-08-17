@@ -705,6 +705,11 @@ namespace IDE
 			return projectItem;
 		}
 
+		public virtual ProjectItem CreateProjectSource(StringView type, StructuredData data)
+		{
+			return new ProjectSource();
+		}
+
         public override void Deserialize(StructuredData data)
         {
             base.Deserialize(data);

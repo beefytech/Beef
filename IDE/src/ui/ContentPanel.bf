@@ -92,11 +92,6 @@ namespace IDE.ui
 
 		}
 
-		public virtual void Activate()
-		{
-			SetFocus();
-		}
-
 		// Finds whichever ProjectItem matches mFilePath and selects it in the project panel. There can
 		// be more than one ProjectItem with the same path across the workspace's projects (eg the same
 		// file linked into multiple projects) -- any match is accepted, but one belonging to the

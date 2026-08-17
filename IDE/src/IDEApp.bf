@@ -6454,7 +6454,7 @@ namespace IDE
 				IDECommand ideCommand = null;
 				if (childInfo.mCmdName != null)
 				{
-					ideCommand = mCommands.mCommandMap[childInfo.mCmdName];
+					ideCommand = mCommands.mCommandMap.GetValue(childInfo.mCmdName).GetValueOrDefault();
 					if (ideCommand != null)
 					{
 						keyStr.Clear();
@@ -6894,6 +6894,9 @@ namespace IDE
 						mTabbedView.mHasFillWidget = true;
 					}
 				}
+
+				if (var panel = mContent as Panel)
+					panel.Activate(setFocus ? .Active : .Passive);
 			}
 
 			public override void Draw(Graphics g)
@@ -7442,7 +7445,7 @@ namespace IDE
 					contentPanelTab.mTabbedView.FinishTabAnim();
 					if (setFocus)
 					{
-						contentPanel.Activate();
+						contentPanel.Activate(.Explicit);
 					}
 
 					if (var sourceViewPanel = contentPanel as SourceViewPanel)
@@ -7979,7 +7982,7 @@ namespace IDE
 				CloseDocument(sourceViewPanel);
 		}
 
-		public SourceViewPanel ShowProjectItem(ProjectItem projectItem, bool showTemp = true, bool setFocus = true)
+		public virtual SourceViewPanel ShowProjectItem(ProjectItem projectItem, bool showTemp = true, bool setFocus = true)
 		{
 			if (projectItem is ProjectSource)
 			{

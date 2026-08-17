@@ -54,11 +54,15 @@ namespace IDE.util
 			int32 i;
 			for (i = 0; i < itemCount; i++)
 			{
+				StringView itemName = items[i];
+				if (itemName.StartsWith('$'))
+					itemName.RemoveFromStart(1);
+
 			    String title = scope String();
 			    if (i + 1 == 10)
-			        title.AppendF("1&0 {1}", i + 1, items[i]);
+			        title.AppendF("1&0 {1}", i + 1, itemName);
 			    else
-			        title.AppendF("&{0} {1}", i + 1, items[i]);
+			        title.AppendF("&{0} {1}", i + 1, itemName);
 			    if (i < menuItems.Count - offset)
 			    {
 			        menuItems[i + offset].Modify(title);

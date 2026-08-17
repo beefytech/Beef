@@ -86,7 +86,9 @@ namespace Beefy.widgets
                     ResizeContent();
                 }
                 else if ((setFocus) && (mWidgetWindow != null))
+				{
                     mContent.SetFocus();
+				}
             }
 
             public virtual void ResizeContent()

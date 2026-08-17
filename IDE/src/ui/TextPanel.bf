@@ -161,7 +161,8 @@ namespace IDE.ui
         public override void SetFocus()
         {
             base.SetFocus();
-            EditWidget.SetFocus();
+			if (mWidgetWindow != null)
+            	EditWidget?.SetFocus();
         }
 
         public virtual void ShowQuickFind(bool isReplace)

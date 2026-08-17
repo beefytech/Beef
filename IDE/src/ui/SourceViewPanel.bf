@@ -2877,10 +2877,11 @@ namespace IDE.ui
 				EditGotFocus();
         }
 
-		public override void Activate()
+		public override void Activate(ActivateKind activateKind)
 		{
-			base.Activate();
-			FocusEdit();
+			base.Activate(activateKind);
+			if (activateKind >= .Active)
+				FocusEdit();
 		}
 
         public override void SetFocus()

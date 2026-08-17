@@ -17,6 +17,13 @@ namespace IDE.ui
 
     public class Panel : Widget
     {
+		public enum ActivateKind
+		{
+			Passive,
+			Active,
+			Explicit
+		}
+
         public int32 mLastFocusAppUpdateCnt;
 		public bool mAutoDelete = true;
 		public List<Widget> mTabWidgets = new List<Widget>() ~ delete _;
@@ -60,6 +67,12 @@ namespace IDE.ui
 		public override void RemovedFromParent(Widget previousParent, WidgetWindow window)
 		{
 			base.RemovedFromParent(previousParent, window);
+		}
+
+		public virtual void Activate(ActivateKind activateKind)
+		{
+			if (activateKind >= .Active)
+				SetFocus();
 		}
 
 		public virtual void FocusForKeyboard()
