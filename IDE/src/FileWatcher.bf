@@ -62,6 +62,7 @@ namespace IDE
 		List<QueuedFileChange> mQueuedFileChanges = new List<QueuedFileChange>() ~ DeleteContainerAndItems!(_);
 		public Monitor mFileChangeMonitor = new Monitor() ~ delete _;
 		public int mChangeId;
+		public Event<delegate void(String filePath, String newPath, WatcherChangeTypes changeType)> mOnFileChanged ~ _.Dispose();
 
         public ~this()
         {
@@ -114,7 +115,9 @@ namespace IDE
 					newPath.Append(@newPath, 0, @newPath.Length - 1);
 				}	
 			}
-			
+
+			mOnFileChanged(filePath, newPath, changeType);
+
 			if ((changeType == .Renamed) && (!isDirectory))
 			{
 				// ALWAYS interpret 'file rename' notifications as a delete of filePath and a create of newPath

@@ -704,7 +704,7 @@ namespace IDE
 			Path.GetAbsolutePath(inRelPath, mDir, outAbsPath);
 		}
 
-        public void Serialize(StructuredData data)
+        public virtual void Serialize(StructuredData data)
         {
 			void WriteStrings(String name, List<String> strs)
 			{
@@ -1146,7 +1146,7 @@ namespace IDE
 			//options.mIntermediateType = .ObjectAndIRCode;
 		}
 
-        public void Deserialize(StructuredData data)
+        public virtual void Deserialize(StructuredData data)
         {
 			DeleteDictionaryAndKeysAndValues!(mConfigs);
 			mConfigs = new Dictionary<String, Config>();

@@ -2150,7 +2150,7 @@ namespace IDE
 			}
 		}
 
-		bool SaveWorkspaceUserData(bool showErrors = true)
+		protected virtual bool SaveWorkspaceUserData(bool showErrors = true)
 		{
 			// Don't save if we didn't finish creating the workspace
 			if (mWorkspace.mNeedsCreate)
