@@ -18696,7 +18696,7 @@ void BfExprEvaluator::InjectMixin(BfAstNode* targetSrc, BfTypedValue target, boo
 				{
 					//TODO: Implement
 				}
-				else if (newLocalVar->mResolvedType->IsValuelessType())
+				else if ((newLocalVar->mResolvedType->IsValuelessType()) || (newLocalVar->mResolvedType->IsVar()))
 				{
 					// Do nothing
 				}
