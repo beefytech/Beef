@@ -37,9 +37,13 @@ namespace Beefy.gfx
 			// Single-channel R8_UNORM -- for scalar masks (eg SSAO).
 			R8 = 8,
 			// RGBA16F -- for linear HDR scene color.
-			F16 = 16,
+			F16 = 0x10,
 			// Full mip chain, regenerated on demand with GenerateMips (1-sample, unshared only).
-			Mipmaps = 32
+			Mipmaps = 0x20,
+			// Two-channel R8G8_UNORM -- for paired scalar data (eg AO + packed edges).
+			RG8 = 0x40,
+			// Single-channel R16_FLOAT -- for half-precision data (eg linear depth for screen effects).
+			R16F = 0x80
 		}
 
         public Image mSrcTexture;

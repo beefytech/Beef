@@ -2958,8 +2958,10 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	bool makeShared = (flags & 2) != 0;
 	bool highPrecision = (flags & 4) != 0;
 	bool r8 = (flags & 8) != 0;
-	bool f16 = (flags & 16) != 0;
-	bool mipmaps = (flags & 32) != 0;
+	bool f16 = (flags & 0x10) != 0;
+	bool mipmaps = (flags & 0x20) != 0;
+	bool rg8 = (flags & 0x40) != 0;
+	bool r16f = (flags & 0x80) != 0;
 
 	// D3D11 shared resources can't be multisampled -- render into a private MSAA target and
 	// ResolveTo a shared one instead.
@@ -2969,7 +2971,8 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
 
 	DXGI_FORMAT format = highPrecision ? DXGI_FORMAT_R32_FLOAT : r8 ? DXGI_FORMAT_R8_UNORM :
-		f16 ? DXGI_FORMAT_R16G16B16A16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
+		f16 ? DXGI_FORMAT_R16G16B16A16_FLOAT : rg8 ? DXGI_FORMAT_R8G8_UNORM :
+		r16f ? DXGI_FORMAT_R16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
 	int samples = ValidateSampleCount(mD3DDevice, format, sampleCount);
 
 	// Create the render target texture
