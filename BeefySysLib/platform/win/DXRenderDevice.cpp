@@ -595,6 +595,7 @@ DXTexture::DXTexture()
 	mContentBits = NULL;
 	mD3DFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	mSampleCount = 1;
+	mStandardDepthClear = false;
 }
 
 DXTexture::~DXTexture()
@@ -728,7 +729,7 @@ void DXTexture::PhysSetAsTarget()
 		if (mD3DRenderTargetView != NULL)
 			mRenderDevice->mD3DDeviceContext->ClearRenderTargetView(mD3DRenderTargetView, bgColor);
 		if (mD3DDepthStencilView != NULL)
-			mRenderDevice->mD3DDeviceContext->ClearDepthStencilView(mD3DDepthStencilView, D3D11_CLEAR_DEPTH/*|D3D11_CLEAR_STENCIL*/, 1.0f, 0);
+			mRenderDevice->mD3DDeviceContext->ClearDepthStencilView(mD3DDepthStencilView, D3D11_CLEAR_DEPTH/*|D3D11_CLEAR_STENCIL*/, mStandardDepthClear ? 1.0f : 0.0f, 0);
 
 		//mRenderDevice->mD3DDevice->ClearRenderTargetView(mD3DRenderTargetView, D3DXVECTOR4(1, 0.5, 0.5, 1));
 		mHasBeenDrawnTo = true;
@@ -2072,7 +2073,7 @@ void DXRenderWindow::ReinitNative()
 	descDepth.Height = mHeight;
 	descDepth.MipLevels = 1;
 	descDepth.ArraySize = 1;
-	descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	descDepth.Format = DXGI_FORMAT_D32_FLOAT;
 	descDepth.SampleDesc.Count = msaaSamples;
 	descDepth.SampleDesc.Quality = 0;
 	descDepth.Usage = D3D11_USAGE_DEFAULT;
@@ -2110,7 +2111,8 @@ void DXRenderWindow::PhysSetAsTarget()
 		//mRenderDevice->mD3DDevice->ClearRenderTargetView(mD3DRenderTargetView, D3DXVECTOR4(rand() / (float) RAND_MAX, 0, 1, 0));
 		float bgColor[4] = {0, 0, 0, 0};
 		mDXRenderDevice->mD3DDeviceContext->ClearRenderTargetView(mD3DRenderTargetView, bgColor);
-		mDXRenderDevice->mD3DDeviceContext->ClearDepthStencilView(mD3DDepthStencilView, D3D11_CLEAR_DEPTH/*|D3D11_CLEAR_STENCIL*/, 1.0f, 0);
+		// Reverse-Z: the window's scene depth clears to the far plane at 0.
+		mDXRenderDevice->mD3DDeviceContext->ClearDepthStencilView(mD3DDepthStencilView, D3D11_CLEAR_DEPTH/*|D3D11_CLEAR_STENCIL*/, 0.0f, 0);
 	}
 
 	mHasBeenDrawnTo = true;
@@ -2176,7 +2178,7 @@ void DXRenderWindow::Resized()
 		descDepth.Height = mHeight;
 		descDepth.MipLevels = 1;
 		descDepth.ArraySize = 1;
-		descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+		descDepth.Format = DXGI_FORMAT_D32_FLOAT;
 		descDepth.SampleDesc.Count = msaaSamples;
 		descDepth.SampleDesc.Quality = 0;
 		descDepth.Usage = D3D11_USAGE_DEFAULT;
@@ -3062,6 +3064,7 @@ Texture* DXRenderDevice::CreateDepthTarget(int width, int height, bool is16Bit)
 	aRenderTarget->mHeight = height;
 	aRenderTarget->mRenderDevice = this;
 	aRenderTarget->mD3DFormat = is16Bit ? DXGI_FORMAT_R16_UNORM : DXGI_FORMAT_R32_FLOAT;
+	aRenderTarget->mStandardDepthClear = true;
 	aRenderTarget->AddRef();
 
 	D3D11_TEXTURE2D_DESC descDepth;
@@ -3169,7 +3172,7 @@ Texture* DXRenderDevice::OpenSharedRenderTarget(void* handle, int width, int hei
 	descDepth.MipLevels = 1;
 	descDepth.ArraySize = 1;
 	descDepth.SampleDesc.Quality = sampleQuality;
-	descDepth.Format = DXGI_FORMAT_D24_UNORM_S8_UINT;
+	descDepth.Format = DXGI_FORMAT_D32_FLOAT;
 	descDepth.SampleDesc.Count = 1;
 	descDepth.SampleDesc.Quality = 0;
 	descDepth.Usage = D3D11_USAGE_DEFAULT;

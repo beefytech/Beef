@@ -68,6 +68,8 @@ public:
 	uint32*					mContentBits;
 	DXGI_FORMAT				mD3DFormat;
 	int						mSampleCount;
+	// Scene depth is reverse-Z (cleared to 0); shadow atlases stay standard-Z (cleared to 1).
+	bool					mStandardDepthClear;
 
 public:
 	DXTexture();
