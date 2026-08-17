@@ -172,6 +172,23 @@ namespace System
 		}
 
 		[NoShow(true)]
+		[Comptime(ConstEval=true)]
+		public static bool HasPayload<T>() where T : Enum
+		{
+			for (var fieldInfo in typeof(T).GetFields())
+			{
+				if (!fieldInfo.IsEnumCase)
+					continue;
+				if (var fieldTypeInst = fieldInfo.FieldType as TypeInstance)
+				{
+					if ((fieldTypeInst.IsTuple) && (fieldTypeInst.FieldCount > 0))
+						return true;
+				}
+			}
+			return false;
+		}
+
+		[NoShow(true)]
 		private struct EnumFieldsEnumerator
 		{
 			TypeInstance mTypeInstance;
