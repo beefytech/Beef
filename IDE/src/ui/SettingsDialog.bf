@@ -105,6 +105,7 @@ namespace IDE.ui
 			AddPropertiesItem(category, "Autocomplete on Enter", "mAutoCompleteOnEnter");
 			AddPropertiesItem(category, "Autocomplete Show Documentation", "mAutoCompleteShowDocumentation");
 			AddPropertiesItem(category, "Fuzzy Autocomplete", "mFuzzyAutoComplete");
+			AddPropertiesItem(category, "Autocomplete Ignores Namespaces", "mShouldAutoCompleteIgnoreNamespaces");
 			AddPropertiesItem(category, "Show Locator Animation", "mShowLocatorAnim");
 			AddPropertiesItem(category, "Hilite Symbol at Cursor", "mHiliteCursorReferences");
 			AddPropertiesItem(category, "Hilite Current Line", "mHiliteCurrentLine");
