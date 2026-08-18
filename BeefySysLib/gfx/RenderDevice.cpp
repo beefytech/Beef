@@ -205,4 +205,9 @@ void RenderDevice::ReleaseShader(Shader* shader)
 	delete shader;
 }
 
+void RenderDevice::ReleaseComputeShader(ComputeShader* shader)
+{
+	delete shader;
+}
+
 

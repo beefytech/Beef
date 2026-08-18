@@ -9,6 +9,7 @@ NS_BF_BEGIN;
 
 class Texture;
 class Shader;
+class ComputeShader;
 class ShaderPass;
 class BFApp;
 
@@ -346,12 +347,17 @@ public:
 	virtual Texture*		CreateRenderTarget(int width, int height, int flags, int sampleCount) = 0;
 	// Depth-only target: no color plane; the depth buffer itself is the sampleable resource.
 	virtual Texture*		CreateDepthTarget(int width, int height, bool is16Bit) { return NULL; }
-	// GPU structured buffer (StructuredBuffer<T> in HLSL) bound through the texture slots.
-	virtual Texture*		CreateStructuredBuffer(int stride, int count) { return NULL; }
+	// GPU structured buffer (StructuredBuffer<T> in HLSL) bound through the texture slots. Flags:
+	// 1 = GPU-writable (RWStructuredBuffer via a compute UAV; SetBufferData uploads instead of maps).
+	virtual Texture*		CreateStructuredBuffer(int stride, int count, int flags = 0) { return NULL; }
+	// Volume texture with a UAV per mip (RWTexture3D); flags share CreateRenderTarget's format bits.
+	virtual Texture*		CreateTexture3D(int width, int height, int depth, int flags) { return NULL; }
 	virtual Texture*		OpenSharedRenderTarget(void* handle, int width, int height) { return NULL; }
 	
 	virtual Shader*			LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) = 0;
 	virtual void			ReleaseShader(Shader* shader);
+	virtual ComputeShader*	LoadComputeShader(const StringImpl& fileName, const StringImpl& entry) { return NULL; }
+	virtual void			ReleaseComputeShader(ComputeShader* shader);
 		
 	virtual void			SetRenderState(RenderState* renderState) = 0;
 };

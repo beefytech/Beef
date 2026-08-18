@@ -596,6 +596,7 @@ DXTexture::DXTexture()
 	mD3DFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	mSampleCount = 1;
 	mStandardDepthClear = false;
+	mD3DUAV = NULL;
 }
 
 DXTexture::~DXTexture()
@@ -615,6 +616,8 @@ DXTexture::~DXTexture()
 		mD3DDepthBuffer->Release();
 	if (mD3DKeyedMutex != NULL)
 		mD3DKeyedMutex->Release();
+	if (mD3DUAV != NULL)
+		mD3DUAV->Release();
 	if (mD3DTexture != NULL)
 		mD3DTexture->Release();
 	if (mRenderDevice != NULL)
@@ -649,6 +652,11 @@ void DXTexture::ReleaseNative()
 	{
 		mD3DKeyedMutex->Release();
 		mD3DKeyedMutex = NULL;
+	}
+	if (mD3DUAV != NULL)
+	{
+		mD3DUAV->Release();
+		mD3DUAV = NULL;
 	}
 	if (mD3DTexture != NULL)
 	{
@@ -743,18 +751,162 @@ void DXTexture::PhysSetAsTarget()
 DXStructuredBuffer::DXStructuredBuffer()
 {
 	mD3DBuffer = NULL;
+	mD3DStaging = NULL;
 	mStride = 0;
+	mGpuWritable = false;
 }
 
 DXStructuredBuffer::~DXStructuredBuffer()
 {
 	if (mD3DBuffer != NULL)
 		mD3DBuffer->Release();
+	if (mD3DStaging != NULL)
+		mD3DStaging->Release();
 }
 
 void DXStructuredBuffer::PhysSetAsTarget()
 {
 	BF_FATAL("Structured buffers can't be render targets");
+}
+
+bool DXStructuredBuffer::GetBufferData(void* outData, int size)
+{
+	int byteWidth = mStride * mWidth;
+	if ((size <= 0) || (size > byteWidth))
+		return false;
+	auto ctx = mRenderDevice->mD3DDeviceContext;
+	if (mD3DStaging == NULL)
+	{
+		D3D11_BUFFER_DESC desc;
+		ZeroMemory(&desc, sizeof(desc));
+		desc.Usage = D3D11_USAGE_STAGING;
+		desc.ByteWidth = byteWidth;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+		desc.StructureByteStride = mStride;
+		if (FAILED(mRenderDevice->mD3DDevice->CreateBuffer(&desc, NULL, &mD3DStaging)))
+			return false;
+	}
+	ctx->CopyResource(mD3DStaging, mD3DBuffer);
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	if (FAILED(ctx->Map(mD3DStaging, 0, D3D11_MAP_READ, 0, &mapped)))
+		return false;
+	memcpy(outData, mapped.pData, size);
+	ctx->Unmap(mD3DStaging, 0);
+	return true;
+}
+
+///
+
+DXTexture3D::DXTexture3D()
+{
+	mD3DTexture3D = NULL;
+	mD3DStaging = NULL;
+	for (int i = 0; i < cMaxMips; i++)
+		mD3DUAVs[i] = NULL;
+	mDepth = 0;
+	mMipLevels = 1;
+	mBytesPerTexel = 4;
+}
+
+DXTexture3D::~DXTexture3D()
+{
+	for (int i = 0; i < cMaxMips; i++)
+		if (mD3DUAVs[i] != NULL)
+			mD3DUAVs[i]->Release();
+	if (mD3DStaging != NULL)
+		mD3DStaging->Release();
+	if (mD3DTexture3D != NULL)
+		mD3DTexture3D->Release();
+}
+
+void DXTexture3D::PhysSetAsTarget()
+{
+	BF_FATAL("3D textures can't be render targets");
+}
+
+void DXTexture3D::SetData3D(int mipLevel, void* data, int rowPitch, int slicePitch)
+{
+	if ((mipLevel < 0) || (mipLevel >= mMipLevels))
+		return;
+	mRenderDevice->mD3DDeviceContext->UpdateSubresource(mD3DTexture3D, mipLevel, NULL, data, rowPitch, slicePitch);
+}
+
+bool DXTexture3D::GetData3D(int mipLevel, void* outData, int outSize)
+{
+	if ((mipLevel < 0) || (mipLevel >= mMipLevels))
+		return false;
+	int w = BF_MAX(1, mWidth >> mipLevel);
+	int h = BF_MAX(1, mHeight >> mipLevel);
+	int d = BF_MAX(1, mDepth >> mipLevel);
+	int rowBytes = w * mBytesPerTexel;
+	if (outSize < rowBytes * h * d)
+		return false;
+
+	auto ctx = mRenderDevice->mD3DDeviceContext;
+	if (mD3DStaging == NULL)
+	{
+		D3D11_TEXTURE3D_DESC desc;
+		mD3DTexture3D->GetDesc(&desc);
+		desc.Usage = D3D11_USAGE_STAGING;
+		desc.BindFlags = 0;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		desc.MiscFlags = 0;
+		if (FAILED(mRenderDevice->mD3DDevice->CreateTexture3D(&desc, NULL, &mD3DStaging)))
+			return false;
+	}
+	ctx->CopyResource(mD3DStaging, mD3DTexture3D);
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	if (FAILED(ctx->Map(mD3DStaging, mipLevel, D3D11_MAP_READ, 0, &mapped)))
+		return false;
+	uint8* dest = (uint8*)outData;
+	for (int z = 0; z < d; z++)
+	{
+		for (int y = 0; y < h; y++)
+		{
+			memcpy(dest, (uint8*)mapped.pData + z * mapped.DepthPitch + y * mapped.RowPitch, rowBytes);
+			dest += rowBytes;
+		}
+	}
+	ctx->Unmap(mD3DStaging, mipLevel);
+	return true;
+}
+
+void DXTexture3D::GenerateMips()
+{
+	if (mMipLevels > 1)
+		mRenderDevice->mD3DDeviceContext->GenerateMips(mD3DResourceView);
+}
+
+///
+
+DXComputeShader::DXComputeShader()
+{
+	mRenderDevice = NULL;
+	mD3DComputeShader = NULL;
+}
+
+DXComputeShader::~DXComputeShader()
+{
+	if (mD3DComputeShader != NULL)
+		mD3DComputeShader->Release();
+	if (mRenderDevice != NULL)
+		mRenderDevice->mComputeShaders.Remove(this);
+}
+
+bool DXComputeShader::Load()
+{
+	if (mRenderDevice->mD3DDevice->GetFeatureLevel() < D3D_FEATURE_LEVEL_11_0)
+	{
+		BF_FATAL("Compute shaders need a Direct3D 11.0 feature level device");
+		return false;
+	}
+	ID3D10Blob* blob = NULL;
+	if (!LoadDXShader(mSrcPath + ".fx", mEntry, "cs_5_0", &blob))
+		return false;
+	HRESULT hr = mRenderDevice->mD3DDevice->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), NULL, &mD3DComputeShader);
+	blob->Release();
+	return SUCCEEDED(hr);
 }
 
 ///
@@ -1524,6 +1676,39 @@ void DXDrawLayer::SetBufferData(Texture* buffer, void* data, int size)
 	QueueRenderCmd(cmd);
 }
 
+void DXDrawLayer::SetComputeTexture(int slot, Texture* texture)
+{
+	BF_ASSERT((slot >= 0) && (slot < 32));
+	DXSetComputeTextureCmd* cmd = AllocRenderCmd<DXSetComputeTextureCmd>();
+	cmd->mSlot = slot;
+	cmd->mTexture = (DXTexture*)texture;
+	QueueRenderCmd(cmd);
+}
+
+void DXDrawLayer::SetComputeUAV(int slot, Texture* texture, int mipLevel)
+{
+	BF_ASSERT((slot >= 0) && (slot < D3D11_PS_CS_UAV_REGISTER_COUNT));
+	DXSetComputeUAVCmd* cmd = AllocRenderCmd<DXSetComputeUAVCmd>();
+	cmd->mSlot = slot;
+	cmd->mMipLevel = mipLevel;
+	cmd->mTexture = (DXTexture*)texture;
+	QueueRenderCmd(cmd);
+}
+
+void DXDrawLayer::Dispatch(ComputeShader* shader, int groupsX, int groupsY, int groupsZ)
+{
+	DXDispatchCmd* cmd = AllocRenderCmd<DXDispatchCmd>();
+	cmd->mShader = (DXComputeShader*)shader;
+	cmd->mGroupsX = groupsX;
+	cmd->mGroupsY = groupsY;
+	cmd->mGroupsZ = groupsZ;
+	QueueRenderCmd(cmd);
+	// A UAV bind evicts any pixel-shader view of the same resource, so the next SetTexture must
+	// re-bind even when this layer thinks the slot is current.
+	for (int texIdx = 0; texIdx < MAX_TEXTURES; texIdx++)
+		mCurTextures[texIdx] = (Texture*)(intptr)-1;
+}
+
 void DXDrawLayer::SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size)
 {
 	DXSetConstantData* dxSetConstantData = AllocRenderCmd<DXSetConstantData>(size);
@@ -1901,6 +2086,14 @@ void DXSetBufferDataCmd::Render(RenderDevice* renderDevice, RenderWindow* render
 	int byteWidth = mBuffer->mStride * mBuffer->mWidth;
 	BF_ASSERT(mSize <= byteWidth);
 
+	if (mBuffer->mGpuWritable)
+	{
+		// USAGE_DEFAULT can't be mapped; a partial upload keeps the tail.
+		D3D11_BOX box = { 0, 0, 0, (UINT)mSize, 1, 1 };
+		dxRenderDevice->mD3DDeviceContext->UpdateSubresource(mBuffer->mD3DBuffer, 0, &box, mData, 0, 0);
+		return;
+	}
+
 	D3D11_MAPPED_SUBRESOURCE mappedResource;
 	if (FAILED(dxRenderDevice->mD3DDeviceContext->Map(mBuffer->mD3DBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedResource)))
 		return;
@@ -1919,9 +2112,6 @@ void DXSetBufferDataCmd::Free()
 
 void DXSetConstantData::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 {
-	//SetRenderState();
-
-	DXShader* dxShader = (DXShader*)renderDevice->mCurRenderState->mShader;
 	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
 
 	HRESULT result = 0;
@@ -1963,14 +2153,65 @@ void DXSetConstantData::Render(RenderDevice* renderDevice, RenderWindow* renderW
 
 	dxRenderDevice->mD3DDeviceContext->Unmap(buffer, 0);
 	if (mUsageIdx == 0)
-	{
-		//OutputDebugStrF("VSSetConstantBuffers %d %p\n", mSlotIdx, buffer);
 		dxRenderDevice->mD3DDeviceContext->VSSetConstantBuffers(mSlotIdx, 1, &buffer);
-	}
+	else if (mUsageIdx == 2)
+		dxRenderDevice->mD3DDeviceContext->CSSetConstantBuffers(mSlotIdx, 1, &buffer);
 	else
-	{
-		//OutputDebugStrF("PSSetConstantBuffers %d %p\n", mSlotIdx, buffer);
 		dxRenderDevice->mD3DDeviceContext->PSSetConstantBuffers(mSlotIdx, 1, &buffer);
+}
+
+///
+
+void DXSetComputeTextureCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
+{
+	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
+	ID3D11ShaderResourceView* srv = (mTexture != NULL) ? mTexture->mD3DResourceView : NULL;
+	dxRenderDevice->mD3DDeviceContext->CSSetShaderResources(mSlot, 1, &srv);
+	if (srv != NULL)
+		dxRenderDevice->mCSBoundSRVs |= 1u << mSlot;
+}
+
+void DXSetComputeUAVCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
+{
+	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
+	ID3D11UnorderedAccessView* uav = (mTexture != NULL) ? mTexture->GetUAV(mMipLevel) : NULL;
+	UINT initialCount = (UINT)-1;
+	dxRenderDevice->mD3DDeviceContext->CSSetUnorderedAccessViews(mSlot, 1, &uav, &initialCount);
+	if (uav != NULL)
+		dxRenderDevice->mCSBoundUAVs |= 1u << mSlot;
+}
+
+void DXDispatchCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
+{
+	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
+	auto ctx = dxRenderDevice->mD3DDeviceContext;
+	ctx->CSSetShader(mShader->mD3DComputeShader, NULL, 0);
+	ctx->Dispatch(mGroupsX, mGroupsY, mGroupsZ);
+	ctx->CSSetShader(NULL, NULL, 0);
+
+	// Leave nothing bound: the same resources are typically sampled by the draws that follow.
+	if (dxRenderDevice->mCSBoundUAVs != 0)
+	{
+		ID3D11UnorderedAccessView* nullUAVs[D3D11_PS_CS_UAV_REGISTER_COUNT] = { NULL };
+		UINT counts[D3D11_PS_CS_UAV_REGISTER_COUNT];
+		for (int i = 0; i < D3D11_PS_CS_UAV_REGISTER_COUNT; i++)
+			counts[i] = (UINT)-1;
+		int maxSlot = 0;
+		for (int i = 0; i < D3D11_PS_CS_UAV_REGISTER_COUNT; i++)
+			if ((dxRenderDevice->mCSBoundUAVs & (1u << i)) != 0)
+				maxSlot = i;
+		ctx->CSSetUnorderedAccessViews(0, maxSlot + 1, nullUAVs, counts);
+		dxRenderDevice->mCSBoundUAVs = 0;
+	}
+	if (dxRenderDevice->mCSBoundSRVs != 0)
+	{
+		ID3D11ShaderResourceView* nullSRVs[32] = { NULL };
+		int maxSlot = 0;
+		for (int i = 0; i < 32; i++)
+			if ((dxRenderDevice->mCSBoundSRVs & (1u << i)) != 0)
+				maxSlot = i;
+		ctx->CSSetShaderResources(0, maxSlot + 1, nullSRVs);
+		dxRenderDevice->mCSBoundSRVs = 0;
 	}
 }
 
@@ -2325,6 +2566,8 @@ DXRenderDevice::DXRenderDevice()
 	mMatrix2DBuffer = NULL;
 	mCurD3DRTV = NULL;
 	mCurD3DDSV = NULL;
+	mCSBoundSRVs = 0;
+	mCSBoundUAVs = 0;
 }
 
 DXRenderDevice::~DXRenderDevice()
@@ -2947,6 +3190,27 @@ void DXRenderDevice::ReleaseShader(Shader* shader)
 	delete shader;
 }
 
+ComputeShader* DXRenderDevice::LoadComputeShader(const StringImpl& fileName, const StringImpl& entry)
+{
+	DXComputeShader* shader = new DXComputeShader();
+	shader->mRenderDevice = this;
+	shader->mSrcPath = fileName;
+	shader->mEntry = entry;
+	if (!shader->Load())
+	{
+		shader->mRenderDevice = NULL;
+		delete shader;
+		return NULL;
+	}
+	mComputeShaders.Add(shader);
+	return shader;
+}
+
+void DXRenderDevice::ReleaseComputeShader(ComputeShader* shader)
+{
+	delete shader;
+}
+
 void DXRenderDevice::SetRenderState(RenderState* renderState)
 {
 	mCurRenderState = renderState;
@@ -2962,17 +3226,20 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	bool mipmaps = (flags & 0x20) != 0;
 	bool rg8 = (flags & 0x40) != 0;
 	bool r16f = (flags & 0x80) != 0;
+	bool r32u = (flags & 0x100) != 0;
+	bool unorderedAccess = (flags & 0x200) != 0;
 
 	// D3D11 shared resources can't be multisampled -- render into a private MSAA target and
 	// ResolveTo a shared one instead.
 	BF_ASSERT(!(makeShared && (sampleCount > 1)));
 	BF_ASSERT(!(mipmaps && ((sampleCount > 1) || makeShared)));
+	BF_ASSERT(!(unorderedAccess && ((sampleCount > 1) || makeShared)));
 
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
 
 	DXGI_FORMAT format = highPrecision ? DXGI_FORMAT_R32_FLOAT : r8 ? DXGI_FORMAT_R8_UNORM :
 		f16 ? DXGI_FORMAT_R16G16B16A16_FLOAT : rg8 ? DXGI_FORMAT_R8G8_UNORM :
-		r16f ? DXGI_FORMAT_R16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
+		r16f ? DXGI_FORMAT_R16_FLOAT : r32u ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R8G8B8A8_UNORM;
 	int samples = ValidateSampleCount(mD3DDevice, format, sampleCount);
 
 	// Create the render target texture
@@ -2989,6 +3256,8 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.CPUAccessFlags = 0; //D3D11_CPU_ACCESS_WRITE;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
+	if (unorderedAccess)
+		desc.BindFlags |= D3D11_BIND_UNORDERED_ACCESS;
 
 	if (makeShared)
 		desc.MiscFlags = D3D11_RESOURCE_MISC_SHARED_KEYEDMUTEX;
@@ -3027,6 +3296,8 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	aRenderTarget->mSampleCount = samples;
 	if (makeShared)
 		d3DTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&aRenderTarget->mD3DKeyedMutex);
+	if (unorderedAccess)
+		DXCHECK(mD3DDevice->CreateUnorderedAccessView(d3DTexture, NULL, &aRenderTarget->mD3DUAV));
 	aRenderTarget->AddRef();
 
 	// Typeless so GetDepthBits can staging-copy it and CreateDepthRef can view it; stencil is
@@ -3102,23 +3373,25 @@ Texture* DXRenderDevice::CreateDepthTarget(int width, int height, bool is16Bit)
 	return aRenderTarget;
 }
 
-Texture* DXRenderDevice::CreateStructuredBuffer(int stride, int count)
+Texture* DXRenderDevice::CreateStructuredBuffer(int stride, int count, int flags)
 {
 	BF_ASSERT((stride > 0) && (stride % 4 == 0) && (count > 0));
+	bool gpuWritable = (flags & 1) != 0;
 
 	DXStructuredBuffer* buffer = new DXStructuredBuffer();
 	buffer->mWidth = count;
 	buffer->mHeight = 1;
 	buffer->mStride = stride;
+	buffer->mGpuWritable = gpuWritable;
 	buffer->mRenderDevice = this;
 	buffer->AddRef();
 
 	D3D11_BUFFER_DESC desc;
 	ZeroMemory(&desc, sizeof(desc));
-	desc.Usage = D3D11_USAGE_DYNAMIC;
+	desc.Usage = gpuWritable ? D3D11_USAGE_DEFAULT : D3D11_USAGE_DYNAMIC;
 	desc.ByteWidth = stride * count;
-	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-	desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | (gpuWritable ? D3D11_BIND_UNORDERED_ACCESS : 0);
+	desc.CPUAccessFlags = gpuWritable ? 0 : D3D11_CPU_ACCESS_WRITE;
 	desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
 	desc.StructureByteStride = stride;
 	DXCHECK(mD3DDevice->CreateBuffer(&desc, NULL, &buffer->mD3DBuffer));
@@ -3131,7 +3404,94 @@ Texture* DXRenderDevice::CreateStructuredBuffer(int stride, int count)
 	srDesc.Buffer.NumElements = count;
 	DXCHECK(mD3DDevice->CreateShaderResourceView(buffer->mD3DBuffer, &srDesc, &buffer->mD3DResourceView));
 
+	if (gpuWritable)
+	{
+		D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
+		ZeroMemory(&uavDesc, sizeof(uavDesc));
+		uavDesc.Format = DXGI_FORMAT_UNKNOWN;
+		uavDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
+		uavDesc.Buffer.FirstElement = 0;
+		uavDesc.Buffer.NumElements = count;
+		DXCHECK(mD3DDevice->CreateUnorderedAccessView(buffer->mD3DBuffer, &uavDesc, &buffer->mD3DUAV));
+	}
+
 	return buffer;
+}
+
+// Format flags as CreateRenderTarget (4 R32F, 8 R8, 0x10 RGBA16F, 0x40 RG8, 0x80 R16F, 0x100 R32_UINT,
+// else RGBA8); 0x20 = full mip chain (GenerateMips-able, so also render-target bindable).
+Texture* DXRenderDevice::CreateTexture3D(int width, int height, int depth, int flags)
+{
+	BF_ASSERT((width > 0) && (height > 0) && (depth > 0));
+	bool highPrecision = (flags & 4) != 0;
+	bool r8 = (flags & 8) != 0;
+	bool f16 = (flags & 0x10) != 0;
+	bool mipmaps = (flags & 0x20) != 0;
+	bool rg8 = (flags & 0x40) != 0;
+	bool r16f = (flags & 0x80) != 0;
+	bool r32u = (flags & 0x100) != 0;
+	BF_ASSERT(!(mipmaps && r32u)); // integer formats can't be mip-filtered
+
+	DXGI_FORMAT format = highPrecision ? DXGI_FORMAT_R32_FLOAT : r8 ? DXGI_FORMAT_R8_UNORM :
+		f16 ? DXGI_FORMAT_R16G16B16A16_FLOAT : rg8 ? DXGI_FORMAT_R8G8_UNORM :
+		r16f ? DXGI_FORMAT_R16_FLOAT : r32u ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R8G8B8A8_UNORM;
+	int bytesPerTexel = highPrecision ? 4 : r8 ? 1 : f16 ? 8 : rg8 ? 2 : r16f ? 2 : r32u ? 4 : 4;
+
+	int mipLevels = 1;
+	if (mipmaps)
+	{
+		int size = BF_MAX(BF_MAX(width, height), depth);
+		while (((size >> mipLevels) >= 1) && (mipLevels < DXTexture3D::cMaxMips))
+			mipLevels++;
+	}
+
+	D3D11_TEXTURE3D_DESC desc;
+	ZeroMemory(&desc, sizeof(desc));
+	desc.Width = width;
+	desc.Height = height;
+	desc.Depth = depth;
+	desc.MipLevels = mipLevels;
+	desc.Format = format;
+	desc.Usage = D3D11_USAGE_DEFAULT;
+	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_UNORDERED_ACCESS;
+	if (mipmaps)
+	{
+		desc.BindFlags |= D3D11_BIND_RENDER_TARGET;
+		desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
+	}
+
+	DXTexture3D* tex = new DXTexture3D();
+	tex->mWidth = width;
+	tex->mHeight = height;
+	tex->mDepth = depth;
+	tex->mMipLevels = mipLevels;
+	tex->mBytesPerTexel = bytesPerTexel;
+	tex->mD3DFormat = format;
+	tex->mRenderDevice = this;
+	tex->AddRef();
+	DXCHECK(mD3DDevice->CreateTexture3D(&desc, NULL, &tex->mD3DTexture3D));
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srDesc;
+	ZeroMemory(&srDesc, sizeof(srDesc));
+	srDesc.Format = format;
+	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
+	srDesc.Texture3D.MostDetailedMip = 0;
+	srDesc.Texture3D.MipLevels = mipLevels;
+	DXCHECK(mD3DDevice->CreateShaderResourceView(tex->mD3DTexture3D, &srDesc, &tex->mD3DResourceView));
+
+	for (int mip = 0; mip < mipLevels; mip++)
+	{
+		D3D11_UNORDERED_ACCESS_VIEW_DESC uavDesc;
+		ZeroMemory(&uavDesc, sizeof(uavDesc));
+		uavDesc.Format = format;
+		uavDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE3D;
+		uavDesc.Texture3D.MipSlice = mip;
+		uavDesc.Texture3D.FirstWSlice = 0;
+		uavDesc.Texture3D.WSize = -1;
+		DXCHECK(mD3DDevice->CreateUnorderedAccessView(tex->mD3DTexture3D, &uavDesc, &tex->mD3DUAVs[mip]));
+	}
+
+	return tex;
 }
 
 Texture* DXRenderDevice::OpenSharedRenderTarget(void* handle, int width, int height)

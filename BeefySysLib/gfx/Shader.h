@@ -18,6 +18,12 @@ public:
 	virtual void			SetFloat4(float x, float y, float z, float w) = 0;
 };
 
+class ComputeShader
+{
+public:
+	virtual ~ComputeShader() {}
+};
+
 class Shader
 {
 public:

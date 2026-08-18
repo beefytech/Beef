@@ -506,9 +506,9 @@ BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateDepthTarget(int width, int heigh
 	return aTextureSegment;
 }
 
-BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateStructuredBuffer(int stride, int count)
+BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateStructuredBuffer(int stride, int count, int flags)
 {
-	Texture* texture = gBFApp->mRenderDevice->CreateStructuredBuffer(stride, count);
+	Texture* texture = gBFApp->mRenderDevice->CreateStructuredBuffer(stride, count, flags);
 	if (texture == NULL)
 		return NULL;
 
@@ -521,6 +521,61 @@ BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateStructuredBuffer(int stride, int
 BF_EXPORT void BF_CALLTYPE Gfx_Buffer_SetData(TextureSegment* textureSegment, void* data, int size)
 {
 	gBFApp->mRenderDevice->mCurDrawLayer->SetBufferData(textureSegment->mTexture, data, size);
+}
+
+// Immediate: reads whatever the GPU has finished, so flush the draw layer that wrote it first.
+BF_EXPORT bool BF_CALLTYPE Gfx_Buffer_GetData(TextureSegment* textureSegment, void* outData, int size)
+{
+	return textureSegment->mTexture->GetBufferData(outData, size);
+}
+
+BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateTexture3D(int width, int height, int depth, int flags)
+{
+	Texture* texture = gBFApp->mRenderDevice->CreateTexture3D(width, height, depth, flags);
+	if (texture == NULL)
+		return NULL;
+
+	TextureSegment* aTextureSegment = new TextureSegment();
+	aTextureSegment->InitFromTexture(texture);
+	return aTextureSegment;
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_Texture3D_SetData(TextureSegment* textureSegment, int mipLevel, void* data, int rowPitch, int slicePitch)
+{
+	textureSegment->mTexture->SetData3D(mipLevel, data, rowPitch, slicePitch);
+}
+
+BF_EXPORT bool BF_CALLTYPE Gfx_Texture3D_GetData(TextureSegment* textureSegment, int mipLevel, void* outData, int outSize)
+{
+	return textureSegment->mTexture->GetData3D(mipLevel, outData, outSize);
+}
+
+BF_EXPORT ComputeShader* BF_CALLTYPE Gfx_LoadComputeShader(const char* fileName, const char* entry)
+{
+	return gBFApp->mRenderDevice->LoadComputeShader(fileName, entry);
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_ComputeShader_Delete(ComputeShader* shader)
+{
+	if ((gBFApp != NULL) && (gBFApp->mRenderDevice != NULL))
+		gBFApp->mRenderDevice->ReleaseComputeShader(shader);
+	else
+		delete shader;
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_SetComputeTexture(int slot, TextureSegment* textureSegment)
+{
+	gBFApp->mRenderDevice->mCurDrawLayer->SetComputeTexture(slot, (textureSegment != NULL) ? textureSegment->mTexture : NULL);
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_SetComputeUAV(int slot, TextureSegment* textureSegment, int mipLevel)
+{
+	gBFApp->mRenderDevice->mCurDrawLayer->SetComputeUAV(slot, (textureSegment != NULL) ? textureSegment->mTexture : NULL, mipLevel);
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_Dispatch(ComputeShader* shader, int groupsX, int groupsY, int groupsZ)
+{
+	gBFApp->mRenderDevice->mCurDrawLayer->Dispatch(shader, groupsX, groupsY, groupsZ);
 }
 
 BF_EXPORT void BF_CALLTYPE Gfx_Texture_ResolveTo(TextureSegment* srcSegment, TextureSegment* destSegment)

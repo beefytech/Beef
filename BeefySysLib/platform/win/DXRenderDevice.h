@@ -65,6 +65,8 @@ public:
 	ID3D11Texture2D*		mD3DDepthBuffer;
 	ID3D11DepthStencilView*	mD3DDepthStencilView;
 	IDXGIKeyedMutex*		mD3DKeyedMutex;
+	// Mip-0 unordered access view when created GPU-writable (see GetUAV); NULL otherwise.
+	ID3D11UnorderedAccessView* mD3DUAV;
 	uint32*					mContentBits;
 	DXGI_FORMAT				mD3DFormat;
 	int						mSampleCount;
@@ -77,6 +79,8 @@ public:
 
 	void					ReleaseNative();
 	void					ReinitNative();
+
+	virtual ID3D11UnorderedAccessView* GetUAV(int mipLevel) { return (mipLevel == 0) ? mD3DUAV : NULL; }
 
 	virtual void			PhysSetAsTarget() override;
 	virtual void			Blt(ImageData* imageData, int x, int y) override;
@@ -94,17 +98,62 @@ public:
 
 // Structured buffer posing as a texture: mD3DResourceView is the buffer SRV, so DXSetTextureCmd
 // binds it into a t-slot unchanged; every other DXTexture member stays NULL. mWidth = element count.
+// GPU-writable buffers are USAGE_DEFAULT with a UAV (mD3DUAV) and upload via UpdateSubresource
+// instead of Map; mD3DStaging is created on the first readback.
 class DXStructuredBuffer : public DXTexture
 {
 public:
 	ID3D11Buffer*			mD3DBuffer;
+	ID3D11Buffer*			mD3DStaging;
 	int						mStride;
+	bool					mGpuWritable;
 
 public:
 	DXStructuredBuffer();
 	~DXStructuredBuffer();
 
 	virtual void			PhysSetAsTarget() override;
+	virtual bool			GetBufferData(void* outData, int size) override;
+};
+
+// Volume texture: SRV over the whole mip chain, one UAV per mip for compute writes. Not a render
+// target. mWidth/mHeight/mDepth are mip 0.
+class DXTexture3D : public DXTexture
+{
+public:
+	static const int		cMaxMips = 16;
+
+	ID3D11Texture3D*		mD3DTexture3D;
+	ID3D11Texture3D*		mD3DStaging;
+	ID3D11UnorderedAccessView* mD3DUAVs[cMaxMips];
+	int						mDepth;
+	int						mMipLevels;
+	int						mBytesPerTexel;
+
+public:
+	DXTexture3D();
+	~DXTexture3D();
+
+	virtual ID3D11UnorderedAccessView* GetUAV(int mipLevel) override { return ((mipLevel >= 0) && (mipLevel < mMipLevels)) ? mD3DUAVs[mipLevel] : NULL; }
+	virtual void			PhysSetAsTarget() override;
+	virtual void			SetData3D(int mipLevel, void* data, int rowPitch, int slicePitch) override;
+	virtual bool			GetData3D(int mipLevel, void* outData, int outSize) override;
+	virtual void			GenerateMips() override;
+};
+
+class DXComputeShader : public ComputeShader
+{
+public:
+	DXRenderDevice*			mRenderDevice;
+	String					mSrcPath;
+	String					mEntry;
+	ID3D11ComputeShader*	mD3DComputeShader;
+
+public:
+	DXComputeShader();
+	~DXComputeShader();
+
+	bool					Load();
 };
 
 class DXShaderParam : public ShaderParam
@@ -164,6 +213,9 @@ public:
 	virtual DrawBatch*		CreateDrawBatch();
 	virtual RenderCmd*		CreateSetTextureCmd(int textureIdx, Texture* texture) override;
 	virtual void			SetBufferData(Texture* buffer, void* data, int size) override;
+	virtual void			SetComputeTexture(int slot, Texture* texture) override;
+	virtual void			SetComputeUAV(int slot, Texture* texture, int mipLevel) override;
+	virtual void			Dispatch(ComputeShader* shader, int groupsX, int groupsY, int groupsZ) override;
 	virtual void			SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size) override;
 	virtual void			SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* constData, int size, int* typeData, int typeCount) override;
 
@@ -334,6 +386,39 @@ public:
 	virtual void Free() override;
 };
 
+class DXSetComputeTextureCmd : public RenderCmd
+{
+public:
+	int mSlot;
+	DXTexture* mTexture;
+
+public:
+	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
+};
+
+class DXSetComputeUAVCmd : public RenderCmd
+{
+public:
+	int mSlot;
+	int mMipLevel;
+	DXTexture* mTexture;
+
+public:
+	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
+};
+
+class DXDispatchCmd : public RenderCmd
+{
+public:
+	DXComputeShader* mShader;
+	int mGroupsX;
+	int mGroupsY;
+	int mGroupsZ;
+
+public:
+	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
+};
+
 class DXRenderDevice : public RenderDevice
 {
 public:
@@ -361,8 +446,12 @@ public:
 	HashSet<DXRenderState*>	mRenderStates;
 	HashSet<DXTexture*>		mTextures;
 	HashSet<DXShader*>		mShaders;
+	HashSet<DXComputeShader*> mComputeShaders;
 	Dictionary<String, DXTexture*> mTextureMap;
 	Dictionary<int, ID3D11Buffer*> mBufferMap;
+	// Compute slots bound since the last dispatch (bit per slot); the dispatch unbinds them.
+	uint32					mCSBoundSRVs;
+	uint32					mCSBoundUAVs;
 
 public:
 	virtual void			PhysSetRenderState(RenderState* renderState) override;
@@ -391,8 +480,11 @@ public:
 	void					ReleaseShader(Shader* shader) override;
 	Texture*				CreateRenderTarget(int width, int height, int flags, int sampleCount) override;
 	Texture*				CreateDepthTarget(int width, int height, bool is16Bit) override;
-	Texture*				CreateStructuredBuffer(int stride, int count) override;
+	Texture*				CreateStructuredBuffer(int stride, int count, int flags) override;
+	Texture*				CreateTexture3D(int width, int height, int depth, int flags) override;
 	Texture*				OpenSharedRenderTarget(void* handle, int width, int height) override;
+	ComputeShader*			LoadComputeShader(const StringImpl& fileName, const StringImpl& entry) override;
+	void					ReleaseComputeShader(ComputeShader* shader) override;
 
 	void					SetRenderState(RenderState* renderState) override;
 };

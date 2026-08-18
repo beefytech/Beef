@@ -37,11 +37,11 @@ public:
 
 	// Resolves this MSAA render target into a matching-size single-sample target.
 	virtual void			ResolveTo(Texture* dest) {}
-	// Regenerates the mip chain from level 0 (render targets created with the mipmaps flag only).
 	virtual void			GenerateMips() {}
-	// Copies the top-left width x height of `src` (mip 0) into this texture's mip `mipLevel`;
-	// formats must match.
 	virtual void			CopyToMip(int mipLevel, Texture* src, int width, int height) {}
+	virtual void			SetData3D(int mipLevel, void* data, int rowPitch, int slicePitch) {}
+	virtual bool			GetData3D(int mipLevel, void* outData, int outSize) { return false; }
+	virtual bool			GetBufferData(void* outData, int size) { return false; }
 };
 
 class TextureSegment

@@ -493,6 +493,35 @@ namespace Beefy.gfx
             Gfx_SetTexture_TextureSegment(textureIdx, image.mNativeTextureSegment);
         }
 
+		[CallingConvention(.Stdcall), CLink]
+		extern static void Gfx_SetComputeTexture(int32 slot, void* textureSegment);
+		[CallingConvention(.Stdcall), CLink]
+		extern static void Gfx_SetComputeUAV(int32 slot, void* textureSegment, int32 mipLevel);
+		[CallingConvention(.Stdcall), CLink]
+		extern static void Gfx_Dispatch(void* computeShader, int32 groupsX, int32 groupsY, int32 groupsZ);
+
+		// Compute bindings queue in order with the draws and are consumed by the next Dispatch,
+		// which unbinds them again (see DrawLayer::Dispatch). null unbinds a slot.
+		public void SetComputeTexture(int32 slot, Image image)
+		{
+			Gfx_SetComputeTexture(slot, (image != null) ? image.mNativeTextureSegment : null);
+		}
+
+		public void SetComputeUAV(int32 slot, Image image, int32 mipLevel = 0)
+		{
+			Gfx_SetComputeUAV(slot, (image != null) ? image.mNativeTextureSegment : null, mipLevel);
+		}
+
+		public void SetComputeConstantData(int slotIdx, void* data, int size)
+		{
+			Gfx_SetShaderConstantData(2, (int32)slotIdx, data, (int32)size);
+		}
+
+		public void Dispatch(ComputeShader shader, int32 groupsX, int32 groupsY, int32 groupsZ = 1)
+		{
+			Gfx_Dispatch(shader.mNativeShader, groupsX, groupsY, groupsZ);
+		}
+
         /*public void StartDraw()
         {
             Debug.Assert(mRenderStateStackIdx == 0);

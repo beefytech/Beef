@@ -43,7 +43,11 @@ namespace Beefy.gfx
 			// Two-channel R8G8_UNORM -- for paired scalar data (eg AO + packed edges).
 			RG8 = 0x40,
 			// Single-channel R16_FLOAT -- for half-precision data (eg linear depth for screen effects).
-			R16F = 0x80
+			R16F = 0x80,
+			// Single-channel R32_UINT -- for compute atomics; not filterable, no mips.
+			R32Uint = 0x100,
+			// Also bindable as a compute UAV (RWTexture2D, mip 0); 1-sample, unshared only.
+			UnorderedAccess = 0x200
 		}
 
         public Image mSrcTexture;
