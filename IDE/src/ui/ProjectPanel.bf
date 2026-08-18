@@ -163,6 +163,8 @@ namespace IDE.ui
 		public bool mSortDirty;
 		public bool mWantsRehup;
 		public HashSet<String> mClipboardCutQueued ~ DeleteContainerAndItems!(_);
+		double mPendingScrollPos = -1;
+		List<String> mPendingOpenFolders = new .() ~ DeleteContainerAndItems!(_);
 
         public this()
         {
@@ -216,7 +218,7 @@ namespace IDE.ui
 			}
 		}
 
-        void FocusChangedHandler(ListViewItem listViewItem)
+        protected virtual void FocusChangedHandler(ListViewItem listViewItem)
         {
             if (listViewItem.Focused)
             {
@@ -234,11 +236,64 @@ namespace IDE.ui
             base.Serialize(data);
 
             data.Add("Type", "ProjectPanel");
+
+            data.Add("ScrollPos", (float)mListView.mVertScrollbar.mContentPos);
+
+            using (data.CreateArray("OpenFolders"))
+            {
+                mListView.GetRoot().WithItems(scope (listViewItem) =>
+                    {
+                        var darkListViewItem = (DarkListViewItem)listViewItem;
+                        if (!darkListViewItem.IsOpen)
+                            return;
+
+                        String path = scope String();
+                        if (mListViewToWorkspaceFolderMap.GetValue(listViewItem) case .Ok(let folder))
+                        {
+                            path.Append("WF:");
+                            folder.GetFullPath(path);
+                        }
+                        else if (mListViewToProjectMap.GetValue(listViewItem) case .Ok(let projectItem))
+                        {
+                            path.Append("PI:");
+                            GetProjectItemPath(projectItem, path);
+                        }
+                        else
+                            return;
+
+                        data.Add(path);
+                    });
+            }
         }
 
         public override bool Deserialize(StructuredData data)
         {
-            return base.Deserialize(data);
+            if (!base.Deserialize(data))
+                return false;
+
+            mPendingScrollPos = data.GetFloat("ScrollPos", -1);
+
+            ClearAndDeleteItems!(mPendingOpenFolders);
+            for (var itemKey in data.Enumerate("OpenFolders"))
+            {
+                String path = new String();
+                data.GetCurString(path);
+                mPendingOpenFolders.Add(path);
+            }
+
+            return true;
+        }
+
+        void GetProjectItemPath(ProjectItem item, String outPath)
+        {
+            if (item.mParentFolder != null)
+            {
+                GetProjectItemPath(item.mParentFolder, outPath);
+                outPath.Append("/");
+                outPath.Append(item.mName);
+            }
+            else
+                outPath.Append(item.mProject.mProjectName);
         }
 
         void HandleDragUpdate(DragEvent theEvent)
@@ -638,7 +693,52 @@ namespace IDE.ui
 			}	
 
 			RehupProjects();
+
+			ApplyPendingViewState();
         }
+
+		void ApplyPendingViewState()
+		{
+			if (mPendingOpenFolders.Count > 0)
+			{
+				HashSet<String> openSet = scope .();
+				for (var path in mPendingOpenFolders)
+					openSet.Add(path);
+
+				mListView.GetRoot().WithItems(scope (listViewItem) =>
+					{
+						var darkListViewItem = (DarkListViewItem)listViewItem;
+						if (darkListViewItem.mOpenButton == null)
+							return;
+
+						String path = scope String();
+						if (mListViewToWorkspaceFolderMap.GetValue(listViewItem) case .Ok(let folder))
+						{
+							path.Append("WF:");
+							folder.GetFullPath(path);
+						}
+						else if (mListViewToProjectMap.GetValue(listViewItem) case .Ok(let projectItem))
+						{
+							path.Append("PI:");
+							GetProjectItemPath(projectItem, path);
+						}
+						else
+							return;
+
+						if (openSet.Contains(path))
+							darkListViewItem.Open(true, true);
+					});
+
+				ClearAndDeleteItems!(mPendingOpenFolders);
+			}
+
+			if (mPendingScrollPos >= 0)
+			{
+				mListView.UpdateListSize();
+				mListView.VertScrollTo(mPendingScrollPos, true);
+				mPendingScrollPos = -1;
+			}
+		}
 
         ProjectListViewItem InitProjectItem(ProjectItem item)
         {
