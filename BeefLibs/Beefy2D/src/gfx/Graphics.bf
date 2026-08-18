@@ -462,7 +462,13 @@ namespace Beefy.gfx
         static extern void Gfx_DrawIndexedVertices(int32 vertexSize, void* vtxData, int32 vtxCount, uint16* idxData, int32 idxCount);
 
 		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_DrawIndexedVerticesInst(int32 vertexSize, void* vtxData, int32 vtxCount, uint16* idxData, int32 idxCount, float instValue, int32 instOfs);
+
+		[CallingConvention(.Stdcall), CLink]
 		static extern void Gfx_DrawIndexedVertices2D(int32 vertexSize, void* vtxData, int32 vtxCount, uint16* idxData, int32 idxCount, float a, float b, float c, float d, float tx, float ty, float z);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_DrawStaticMeshInstanced(void* mesh, int32 instBase, int32 instCount);
 
         [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_SetShaderConstantData(int32 usageIdx, int32 slotIdx, void* data, int32 size);
@@ -892,6 +898,20 @@ namespace Beefy.gfx
 				Gfx_DrawIndexedVertices(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices, (int32)idxCount);
 			}
         }
+
+		// 3D only: like DrawIndexedVertices, but every copied vertex gets `instValue` written into the
+		// float at byte offset `instOfs` (the source vertices are untouched).
+		public void DrawIndexedVerticesInst(VertexDefinition vertexDef, void* vertices, int vtxCount, uint16* indices, int idxCount, float instValue, int instOfs)
+		{
+			Gfx_DrawIndexedVerticesInst(vertexDef.mVertexSize, vertices, (int32)vtxCount, indices, (int32)idxCount, instValue, (int32)instOfs);
+		}
+
+		// Queued like any draw. Instance i's per-instance vertex element (see VertexMemberAttribute.
+		// mPerInstance) reads the float instBase + i + 1 -- the same encoding DrawIndexedVerticesInst stamps.
+		public void DrawStaticMeshInstanced(StaticMesh mesh, int instBase, int instCount)
+		{
+			Gfx_DrawStaticMeshInstanced(mesh.mNativeMesh, (int32)instBase, (int32)instCount);
+		}
 
         public void SetVertexShaderConstantData(int slotIdx, void* data, int size)
         {

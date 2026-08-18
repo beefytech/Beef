@@ -107,6 +107,7 @@ public:
 	ID3D11Buffer*			mD3DStaging;
 	int						mStride;
 	bool					mGpuWritable;
+	bool					mDefaultUsage; // GPU-writable or CPU-updatable: written with UpdateSubresource, never mapped
 
 public:
 	DXStructuredBuffer();
@@ -114,6 +115,7 @@ public:
 
 	virtual void			PhysSetAsTarget() override;
 	virtual bool			GetBufferData(void* outData, int size) override;
+	virtual void			UpdateBufferRange(int offset, void* data, int size) override;
 };
 
 // Volume texture: SRV over the whole mip chain, one UAV per mip for compute writes. Not a render
@@ -179,6 +181,7 @@ public:
 	VertexDefinition*		mVertexDef;
 
 	ID3D11InputLayout*		mD3DLayout;
+	ID3D11InputLayout*		mD3DInstLayout; // the instance element from slot 1 (per-instance); NULL if the vertex def has none
 	ID3D11VertexShader*		mD3DVertexShader;
 	ID3D11PixelShader*		mD3DPixelShader;
 	DXShaderParamMap		mParamsMap;
@@ -218,10 +221,34 @@ public:
 	virtual void			Dispatch(ComputeShader* shader, int groupsX, int groupsY, int groupsZ) override;
 	virtual void			SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size) override;
 	virtual void			SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* constData, int size, int* typeData, int typeCount) override;
+	virtual void			DrawStaticMeshInstanced(StaticMesh* mesh, int instBase, int instCount) override;
 
 public:
 	DXDrawLayer();
 	~DXDrawLayer();
+};
+
+class DXStaticMesh : public StaticMesh
+{
+public:
+	ID3D11Buffer*			mD3DVertexBuffer;
+	ID3D11Buffer*			mD3DIndexBuffer;
+
+public:
+	DXStaticMesh();
+	~DXStaticMesh();
+};
+
+class DXStaticMeshDrawCmd : public RenderCmd
+{
+public:
+	DXStaticMesh*			mMesh;
+	int						mInstBase;
+	int						mInstCount;
+
+public:
+	virtual void CommandQueued(DrawLayer* drawLayer) override;
+	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
 };
 
 class DXRenderWindow : public RenderWindow
@@ -264,6 +291,7 @@ public:
 typedef std::vector<DXDrawBatch*> DXDrawBatchVector;
 
 #define DX_VTXBUFFER_SIZE 1024*1024
+#define DX_VS_TEXTURE_SLOT 24
 #define DX_IDXBUFFER_SIZE 64*1024
 
 class DXDrawBufferPool
@@ -419,6 +447,29 @@ public:
 	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
 };
 
+// D3D11 timestamp queries for one frame: a disjoint query covering the frame plus a begin/end pair
+// per span. Frames are read back from a ring so the CPU never waits on the GPU.
+class DXGpuTimerFrame
+{
+public:
+	ID3D11Query*			mDisjoint;
+	Array<ID3D11Query*>		mBeginQueries;
+	Array<ID3D11Query*>		mEndQueries;
+	Array<int>				mTags;
+	int						mSpanCount;
+	int64					mFrameId;
+	bool					mOpen;
+	bool					mPending;
+
+public:
+	DXGpuTimerFrame();
+	~DXGpuTimerFrame();
+	void ReleaseNative();
+};
+
+#define DX_GPUTIMER_FRAMES 4
+#define DX_GPUTIMER_MAX_SPANS 256
+
 class DXRenderDevice : public RenderDevice
 {
 public:
@@ -439,9 +490,18 @@ public:
 	ID3D11Buffer*			mD3DIndexBuffer;
 	int						mVtxByteIdx;
 	int						mIdxByteIdx;
+	// Per-instance stream for DXStaticMeshDrawCmd: float k+1 at element k, so an instanced draw bound at
+	// offset instBase*4 feeds instance i the value instBase+i+1 (the same encoding as a stamped vertex).
+	ID3D11Buffer*			mInstIotaBuffer;
+	int						mInstIotaCount;
 	
 	ID3D11RenderTargetView*	mCurD3DRTV;
 	ID3D11DepthStencilView*	mCurD3DDSV;
+
+	DXGpuTimerFrame			mGpuTimerFrames[DX_GPUTIMER_FRAMES];
+	int						mGpuTimerWriteIdx;
+	int						mGpuTimerCurTag;
+	bool					mGpuTimerEnabled;
 
 	HashSet<DXRenderState*>	mRenderStates;
 	HashSet<DXTexture*>		mTextures;
@@ -461,6 +521,16 @@ public:
 	virtual RenderState*	CreateRenderState(RenderState* srcRenderState) override;
 	virtual void			ReleaseRenderState(RenderState* renderState) override;
 	virtual ModelInstance*	CreateModelInstance(ModelDef* modelDef, ModelCreateFlags flags) override;
+	virtual StaticMesh*		CreateStaticMesh(int vertexSize, void* vtxData, int vtxCount, void* idxData, int idxCount, bool idx32) override;
+	virtual void			GpuTimerSetEnabled(bool enabled) override;
+	virtual bool			GpuTimerBeginFrame(int64 frameId) override;
+	virtual void			GpuTimerSetTag(int tag) override;
+	virtual int				GpuTimerSpanBegin() override;
+	virtual void			GpuTimerSpanEnd(int spanId) override;
+	virtual void			GpuTimerEndFrame() override;
+	virtual int				GpuTimerFetch(int64* outFrameId, GpuTimerSpan* outSpans, int maxSpans) override;
+	ID3D11Query*			GetTimestampQuery(Array<ID3D11Query*>& queries, int idx);
+	void					EnsureInstIota(int count);
 
 public:
 	DXRenderDevice();

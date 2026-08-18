@@ -267,12 +267,17 @@ void DrawLayer::Draw()
 {
 	BP_ZONE("DrawLayer::Draw");
 
+	int gpuSpan = mRenderDevice->GpuTimerSpanBegin();
+
 	RenderCmd* curRenderCmd = mRenderCmdList.mHead;
 	while (curRenderCmd != NULL)
 	{
 		curRenderCmd->Render(mRenderDevice, mRenderWindow);
 		curRenderCmd = curRenderCmd->mNext;
 	}
+
+	if (gpuSpan >= 0)
+		mRenderDevice->GpuTimerSpanEnd(gpuSpan);
 }
 
 void DrawLayer::Flush()

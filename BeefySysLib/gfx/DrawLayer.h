@@ -111,6 +111,9 @@ public:
 	virtual void			Dispatch(ComputeShader* shader, int groupsX, int groupsY, int groupsZ) {}
 	virtual void			SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size) = 0;
 	virtual void			SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* constData, int size, int* typeData, int typeCount);
+	// Queued draw of instCount copies of a static mesh; instance i's per-instance vertex element (see
+	// VertexDefinition::mInstanceElementIdx) reads the float instBase + i + 1.
+	virtual void			DrawStaticMeshInstanced(StaticMesh* mesh, int instBase, int instCount) {}
 
 public:
 	DrawLayer();

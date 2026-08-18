@@ -529,6 +529,13 @@ BF_EXPORT bool BF_CALLTYPE Gfx_Buffer_GetData(TextureSegment* textureSegment, vo
 	return textureSegment->mTexture->GetBufferData(outData, size);
 }
 
+// Immediate (not queued): writes [offset, offset+size) of a CPU-updatable buffer now, ahead of every
+// draw still waiting in any draw layer -- how a pass publishes data those queued draws will read.
+BF_EXPORT void BF_CALLTYPE Gfx_Buffer_UpdateRange(TextureSegment* textureSegment, int offset, void* data, int size)
+{
+	textureSegment->mTexture->UpdateBufferRange(offset, data, size);
+}
+
 BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateTexture3D(int width, int height, int depth, int flags)
 {
 	Texture* texture = gBFApp->mRenderDevice->CreateTexture3D(width, height, depth, flags);
@@ -580,7 +587,37 @@ BF_EXPORT void BF_CALLTYPE Gfx_Dispatch(ComputeShader* shader, int groupsX, int 
 
 BF_EXPORT void BF_CALLTYPE Gfx_Texture_ResolveTo(TextureSegment* srcSegment, TextureSegment* destSegment)
 {
+	// Timed like a layer flush: it's real GPU work outside any draw layer.
+	int gpuSpan = gBFApp->mRenderDevice->GpuTimerSpanBegin();
 	srcSegment->mTexture->ResolveTo(destSegment->mTexture);
+	if (gpuSpan >= 0)
+		gBFApp->mRenderDevice->GpuTimerSpanEnd(gpuSpan);
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_GpuTimer_SetEnabled(int enabled)
+{
+	gBFApp->mRenderDevice->GpuTimerSetEnabled(enabled != 0);
+}
+
+BF_EXPORT int BF_CALLTYPE Gfx_GpuTimer_BeginFrame(int64 frameId)
+{
+	return gBFApp->mRenderDevice->GpuTimerBeginFrame(frameId) ? 1 : 0;
+}
+
+// Spans opened from here on are attributed to this tag (see Brisk's FramePerf sections).
+BF_EXPORT void BF_CALLTYPE Gfx_GpuTimer_SetTag(int tag)
+{
+	gBFApp->mRenderDevice->GpuTimerSetTag(tag);
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_GpuTimer_EndFrame()
+{
+	gBFApp->mRenderDevice->GpuTimerEndFrame();
+}
+
+BF_EXPORT int BF_CALLTYPE Gfx_GpuTimer_Fetch(int64* outFrameId, GpuTimerSpan* outSpans, int maxSpans)
+{
+	return gBFApp->mRenderDevice->GpuTimerFetch(outFrameId, outSpans, maxSpans);
 }
 
 BF_EXPORT void BF_CALLTYPE Gfx_Texture_GenerateMips(TextureSegment* textureSegment)
@@ -974,6 +1011,56 @@ BF_EXPORT void BF_CALLTYPE Gfx_DrawIndexedVertices(int vertexSize, void* vtxData
 	}
 }
 
+// Gfx_DrawIndexedVertices plus a per-vertex stamp: the float at byte offset instOfs of every copied
+// vertex is set to instValue (the source vertices are left alone, so a cached mesh can be shared).
+BF_EXPORT void BF_CALLTYPE Gfx_DrawIndexedVerticesInst(int vertexSize, void* vtxData, int vtxCount, uint16* idxData, int idxCount, float instValue, int instOfs)
+{
+	DrawLayer* drawLayer = gBFApp->mRenderDevice->mCurDrawLayer;
+	int maxPerBatch = DrawIndexedVerticesMaxPerBatch(vertexSize);
+
+	if ((vtxCount <= maxPerBatch) && (idxCount <= maxPerBatch))
+	{
+		uint16 idxOfs;
+		void* drawBatchVtxPtr;
+		uint16* drawBatchIdxPtr;
+		drawLayer->AllocIndexed(vtxCount, idxCount, (void**)&drawBatchVtxPtr, &drawBatchIdxPtr, &idxOfs);
+		BF_ASSERT(drawLayer->mCurDrawBatch->mVtxSize == vertexSize);
+
+		uint16* idxPtr = idxData;
+		for (int idxIdx = 0; idxIdx < idxCount; idxIdx++)
+			*(drawBatchIdxPtr++) = *(idxPtr++) + idxOfs;
+
+		memcpy(drawBatchVtxPtr, vtxData, vertexSize * vtxCount);
+		uint8* stampPtr = (uint8*)drawBatchVtxPtr + instOfs;
+		for (int vtxIdx = 0; vtxIdx < vtxCount; vtxIdx++, stampPtr += vertexSize)
+			*(float*)stampPtr = instValue;
+		return;
+	}
+
+	int idxStart = 0;
+	while (idxStart < idxCount)
+	{
+		int chunkIdxCount = BF_MIN(maxPerBatch, idxCount - idxStart);
+
+		uint16 idxOfs;
+		void* drawBatchVtxPtr;
+		uint16* drawBatchIdxPtr;
+		drawLayer->AllocIndexed(chunkIdxCount, chunkIdxCount, (void**)&drawBatchVtxPtr, &drawBatchIdxPtr, &idxOfs);
+		BF_ASSERT(drawLayer->mCurDrawBatch->mVtxSize == vertexSize);
+
+		for (int i = 0; i < chunkIdxCount; i++)
+		{
+			uint16 srcIdx = idxData[idxStart + i];
+			uint8* destVtx = (uint8*)drawBatchVtxPtr + i * vertexSize;
+			memcpy(destVtx, (uint8*)vtxData + srcIdx * vertexSize, vertexSize);
+			*(float*)(destVtx + instOfs) = instValue;
+			drawBatchIdxPtr[i] = (uint16)(idxOfs + i);
+		}
+
+		idxStart += chunkIdxCount;
+	}
+}
+
 BF_EXPORT void BF_CALLTYPE Gfx_DrawIndexedVertices2D(int vertexSize, void* vtxData, int vtxCount, uint16* idxData, int idxCount, float a, float b, float c, float d, float tx, float ty, float z)
 {
 	DrawLayer* drawLayer = gBFApp->mRenderDevice->mCurDrawLayer;
@@ -1065,6 +1152,28 @@ BF_EXPORT VertexDefinition* BF_CALLTYPE Gfx_CreateVertexDefinition(VertexDefData
 BF_EXPORT void BF_CALLTYPE Gfx_VertexDefinition_Delete(VertexDefinition* vertexDefinition)
 {
 	delete vertexDefinition;
+}
+
+// Must be set before shaders are created on this definition (the instanced input layout is built with them).
+BF_EXPORT void BF_CALLTYPE Gfx_VertexDefinition_SetInstanceElement(VertexDefinition* vertexDefinition, int elementIdx)
+{
+	vertexDefinition->mInstanceElementIdx = elementIdx;
+}
+
+BF_EXPORT StaticMesh* BF_CALLTYPE Gfx_CreateStaticMesh(int vertexSize, void* vtxData, int vtxCount, void* idxData, int idxCount, int idx32)
+{
+	return gBFApp->mRenderDevice->CreateStaticMesh(vertexSize, vtxData, vtxCount, idxData, idxCount, idx32 != 0);
+}
+
+// Immediate: the caller must know that no queued draw still references the mesh.
+BF_EXPORT void BF_CALLTYPE Gfx_StaticMesh_Delete(StaticMesh* mesh)
+{
+	delete mesh;
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_DrawStaticMeshInstanced(StaticMesh* mesh, int instBase, int instCount)
+{
+	gBFApp->mRenderDevice->mCurDrawLayer->DrawStaticMeshInstanced(mesh, instBase, instCount);
 }
 
 BF_EXPORT void BF_CALLTYPE Gfx_CreateRenderState(RenderState* srcRenderState)

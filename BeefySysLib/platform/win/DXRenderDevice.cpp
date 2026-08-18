@@ -219,6 +219,7 @@ DXShader::DXShader()
 	mD3DPixelShader = NULL;
 	mD3DVertexShader = NULL;
 	mD3DLayout = NULL;
+	mD3DInstLayout = NULL;
 	mConstBuffer = NULL;
 	mHas2DPosition = false;
 }
@@ -237,6 +238,9 @@ void DXShader::ReleaseNative()
 	if (mD3DLayout != NULL)
 		mD3DLayout->Release();
 	mD3DLayout = NULL;
+	if (mD3DInstLayout != NULL)
+		mD3DInstLayout->Release();
+	mD3DInstLayout = NULL;
 	if (mD3DVertexShader != NULL)
 		mD3DVertexShader->Release();
 	mD3DVertexShader = NULL;
@@ -461,6 +465,7 @@ bool DXShader::Load()
 	mHas2DPosition = false;
 	mVertexSize = 0;
 	mD3DLayout = NULL;
+	mD3DInstLayout = NULL;
 
 	static const char* semanticNames[] = {
 		"POSITION",
@@ -539,6 +544,30 @@ bool DXShader::Load()
 	DXCHECK(result);
 	if (FAILED(result))
 		return false;
+
+	int instElemIdx = mVertexDef->mInstanceElementIdx;
+	if ((instElemIdx >= 0) && (instElemIdx < mVertexDef->mNumElements))
+	{
+		// Same vertex layout, but the instance element comes from slot 1 (per-instance stream). Explicit
+		// slot-0 offsets keep the vertex stride identical to the non-instanced layout.
+		D3D11_INPUT_ELEMENT_DESC instLayout[64];
+		int ofs = 0;
+		for (int elementIdx = 0; elementIdx < mVertexDef->mNumElements; elementIdx++)
+		{
+			instLayout[elementIdx] = layout[elementIdx];
+			instLayout[elementIdx].AlignedByteOffset = ofs;
+			ofs += dxgiSize[mVertexDef->mElementData[elementIdx].mFormat];
+		}
+		instLayout[instElemIdx].InputSlot = 1;
+		instLayout[instElemIdx].AlignedByteOffset = 0;
+		instLayout[instElemIdx].InputSlotClass = D3D11_INPUT_PER_INSTANCE_DATA;
+		instLayout[instElemIdx].InstanceDataStepRate = 1;
+		result = mRenderDevice->mD3DDevice->CreateInputLayout(instLayout, mVertexDef->mNumElements, vertexShaderBuffer->GetBufferPointer(),
+			vertexShaderBuffer->GetBufferSize(), &mD3DInstLayout);
+		DXCHECK(result);
+		if (FAILED(result))
+			return false;
+	}
 
 	// Create the vertex shader from the buffer.
 	result = mRenderDevice->mD3DDevice->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &mD3DVertexShader);
@@ -754,6 +783,7 @@ DXStructuredBuffer::DXStructuredBuffer()
 	mD3DStaging = NULL;
 	mStride = 0;
 	mGpuWritable = false;
+	mDefaultUsage = false;
 }
 
 DXStructuredBuffer::~DXStructuredBuffer()
@@ -767,6 +797,14 @@ DXStructuredBuffer::~DXStructuredBuffer()
 void DXStructuredBuffer::PhysSetAsTarget()
 {
 	BF_FATAL("Structured buffers can't be render targets");
+}
+
+void DXStructuredBuffer::UpdateBufferRange(int offset, void* data, int size)
+{
+	BF_ASSERT(mDefaultUsage);
+	BF_ASSERT((offset >= 0) && (size > 0) && (offset + size <= mStride * mWidth));
+	D3D11_BOX box = { (UINT)offset, 0, 0, (UINT)(offset + size), 1, 1 };
+	mRenderDevice->mD3DDeviceContext->UpdateSubresource(mD3DBuffer, 0, &box, data, 0, 0);
 }
 
 bool DXStructuredBuffer::GetBufferData(void* outData, int size)
@@ -1205,6 +1243,116 @@ void DXDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 	aRenderDevice->mD3DDeviceContext->DrawIndexed(mIdxIdx, idxByteStart / sizeof(uint16), vtxStartIdx/*vtxByteStart / mVtxSize*/);
 }
 
+DXStaticMesh::DXStaticMesh()
+{
+	mD3DVertexBuffer = NULL;
+	mD3DIndexBuffer = NULL;
+}
+
+DXStaticMesh::~DXStaticMesh()
+{
+	if (mD3DVertexBuffer != NULL)
+		mD3DVertexBuffer->Release();
+	if (mD3DIndexBuffer != NULL)
+		mD3DIndexBuffer->Release();
+}
+
+StaticMesh* DXRenderDevice::CreateStaticMesh(int vertexSize, void* vtxData, int vtxCount, void* idxData, int idxCount, bool idx32)
+{
+	DXStaticMesh* mesh = new DXStaticMesh();
+	mesh->mVtxSize = vertexSize;
+	mesh->mVtxCount = vtxCount;
+	mesh->mIdxCount = idxCount;
+	mesh->mIdx32 = idx32;
+
+	D3D11_BUFFER_DESC bd = { 0 };
+	bd.Usage = D3D11_USAGE_IMMUTABLE;
+	bd.ByteWidth = vertexSize * vtxCount;
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	D3D11_SUBRESOURCE_DATA init = { 0 };
+	init.pSysMem = vtxData;
+	HRESULT result = mD3DDevice->CreateBuffer(&bd, &init, &mesh->mD3DVertexBuffer);
+	DXCHECK(result);
+
+	bd.ByteWidth = (idx32 ? sizeof(uint32) : sizeof(uint16)) * idxCount;
+	bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+	init.pSysMem = idxData;
+	result = mD3DDevice->CreateBuffer(&bd, &init, &mesh->mD3DIndexBuffer);
+	DXCHECK(result);
+
+	if ((mesh->mD3DVertexBuffer == NULL) || (mesh->mD3DIndexBuffer == NULL))
+	{
+		delete mesh;
+		return NULL;
+	}
+	return mesh;
+}
+
+void DXRenderDevice::EnsureInstIota(int count)
+{
+	if (count <= mInstIotaCount)
+		return;
+	int newCount = BF_MAX(count, BF_MAX(mInstIotaCount * 2, 65536));
+	float* data = new float[newCount];
+	for (int i = 0; i < newCount; i++)
+		data[i] = (float)(i + 1);
+	if (mInstIotaBuffer != NULL)
+		mInstIotaBuffer->Release();
+	mInstIotaBuffer = NULL;
+	D3D11_BUFFER_DESC bd = { 0 };
+	bd.Usage = D3D11_USAGE_IMMUTABLE;
+	bd.ByteWidth = sizeof(float) * newCount;
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	D3D11_SUBRESOURCE_DATA init = { 0 };
+	init.pSysMem = data;
+	DXCHECK(mD3DDevice->CreateBuffer(&bd, &init, &mInstIotaBuffer));
+	delete [] data;
+	mInstIotaCount = newCount;
+}
+
+void DXStaticMeshDrawCmd::CommandQueued(DrawLayer* drawLayer)
+{
+	mRenderState = drawLayer->mRenderDevice->mCurRenderState;
+}
+
+void DXStaticMeshDrawCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
+{
+	if ((mMesh == NULL) || (mInstCount <= 0))
+		return;
+	if ((mRenderState->mClipped) &&
+		((mRenderState->mClipRect.width == 0) || (mRenderState->mClipRect.height == 0)))
+		return;
+
+	DXRenderDevice* dev = (DXRenderDevice*)renderDevice;
+	if (mRenderState != dev->mPhysRenderState)
+		dev->PhysSetRenderState(mRenderState);
+	DXShader* shader = (DXShader*)mRenderState->mShader;
+	if ((shader == NULL) || (shader->mD3DInstLayout == NULL))
+		return; // the shader's vertex definition has no instance element
+	dev->EnsureInstIota(mInstBase + mInstCount);
+
+	ID3D11DeviceContext* ctx = dev->mD3DDeviceContext;
+	ctx->IASetInputLayout(shader->mD3DInstLayout);
+	ID3D11Buffer* bufs[2] = { mMesh->mD3DVertexBuffer, dev->mInstIotaBuffer };
+	UINT strides[2] = { (UINT)mMesh->mVtxSize, sizeof(float) };
+	UINT offsets[2] = { 0, (UINT)(mInstBase * sizeof(float)) };
+	ctx->IASetVertexBuffers(0, 2, bufs, strides, offsets);
+	ctx->IASetIndexBuffer(mMesh->mD3DIndexBuffer, mMesh->mIdx32 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, 0);
+	ctx->DrawIndexedInstanced(mMesh->mIdxCount, mInstCount, 0, 0, 0);
+	// PhysSetRenderState only sets the layout on a shader change, so put the batch layout back for the
+	// dynamic batches that follow under this same render state.
+	ctx->IASetInputLayout(shader->mD3DLayout);
+}
+
+void DXDrawLayer::DrawStaticMeshInstanced(StaticMesh* mesh, int instBase, int instCount)
+{
+	DXStaticMeshDrawCmd* cmd = AllocRenderCmd<DXStaticMeshDrawCmd>();
+	cmd->mMesh = (DXStaticMesh*)mesh;
+	cmd->mInstBase = instBase;
+	cmd->mInstCount = instCount;
+	QueueRenderCmd(cmd);
+}
+
 DXDrawLayer::DXDrawLayer()
 {
 }
@@ -1515,6 +1663,7 @@ struct DXModelVertex
 	Vector3 mNormal;
 	TexCoords mBumpTexCoords;
 	Vector3 mTangent;
+	float mInstanceIdx; // 0 = per-draw constants (see Gfx_DrawIndexedVerticesInst)
 };
 
 ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCreateFlags flags)
@@ -1530,7 +1679,8 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 		{VertexElementUsage_TextureCoordinate,	0, VertexElementFormat_Vector2},
 		{VertexElementUsage_Normal,				0, VertexElementFormat_Vector3},
 		{VertexElementUsage_TextureCoordinate,	1, VertexElementFormat_Vector2},
-		{VertexElementUsage_Tangent,			0, VertexElementFormat_Vector3}
+		{VertexElementUsage_Tangent,			0, VertexElementFormat_Vector3},
+		{VertexElementUsage_TextureCoordinate,	2, VertexElementFormat_Single}
 	};
 
 	auto vertexDefinition = CreateVertexDefinition(vertexDefData, sizeof(vertexDefData) / sizeof(vertexDefData[0]));
@@ -1655,6 +1805,7 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 				destVtx->mBumpTexCoords = srcVtxData->mBumpTexCoords;
 				destVtx->mColor = srcVtxData->mColor;
 				destVtx->mTangent = srcVtxData->mTangent;
+				destVtx->mInstanceIdx = 0;
 			}
 
 			mD3DDeviceContext->Unmap(dxPrimitives->mD3DVertexBuffer, 0);
@@ -2061,6 +2212,7 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 				destVtx->mTexCoords = srcVtxData->mTexCoords;
 				destVtx->mBumpTexCoords = srcVtxData->mBumpTexCoords;
 				destVtx->mColor = 0xFFFFFFFF; //TODO: Color
+				destVtx->mInstanceIdx = 0;
 			}
 
 			dxRenderDevice->mD3DDeviceContext->Unmap(dxPrims->mD3DVertexBuffer, 0);
@@ -2075,7 +2227,11 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 void DXSetTextureCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 {
 	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
-	dxRenderDevice->mD3DDeviceContext->PSSetShaderResources(mTextureIdx, 1, &((DXTexture*)mTexture)->mD3DResourceView);
+	ID3D11ShaderResourceView* srv = ((DXTexture*)mTexture)->mD3DResourceView;
+	dxRenderDevice->mD3DDeviceContext->PSSetShaderResources(mTextureIdx, 1, &srv);
+	// Slots from DX_VS_TEXTURE_SLOT up are readable by the vertex stage too (per-draw instance records).
+	if (mTextureIdx >= DX_VS_TEXTURE_SLOT)
+		dxRenderDevice->mD3DDeviceContext->VSSetShaderResources(mTextureIdx, 1, &srv);
 }
 
 ///
@@ -2086,7 +2242,7 @@ void DXSetBufferDataCmd::Render(RenderDevice* renderDevice, RenderWindow* render
 	int byteWidth = mBuffer->mStride * mBuffer->mWidth;
 	BF_ASSERT(mSize <= byteWidth);
 
-	if (mBuffer->mGpuWritable)
+	if (mBuffer->mDefaultUsage)
 	{
 		// USAGE_DEFAULT can't be mapped; a partial upload keeps the tail.
 		D3D11_BOX box = { 0, 0, 0, (UINT)mSize, 1, 1 };
@@ -2568,6 +2724,11 @@ DXRenderDevice::DXRenderDevice()
 	mCurD3DDSV = NULL;
 	mCSBoundSRVs = 0;
 	mCSBoundUAVs = 0;
+	mInstIotaBuffer = NULL;
+	mInstIotaCount = 0;
+	mGpuTimerWriteIdx = 0;
+	mGpuTimerCurTag = 0;
+	mGpuTimerEnabled = false;
 }
 
 DXRenderDevice::~DXRenderDevice()
@@ -2758,10 +2919,176 @@ bool DXRenderDevice::Init(BFApp* app)
 	return true;
 }
 
+DXGpuTimerFrame::DXGpuTimerFrame()
+{
+	mDisjoint = NULL;
+	mSpanCount = 0;
+	mFrameId = 0;
+	mOpen = false;
+	mPending = false;
+}
+
+DXGpuTimerFrame::~DXGpuTimerFrame()
+{
+	ReleaseNative();
+}
+
+void DXGpuTimerFrame::ReleaseNative()
+{
+	if (mDisjoint != NULL)
+		mDisjoint->Release();
+	mDisjoint = NULL;
+	for (auto query : mBeginQueries)
+		query->Release();
+	for (auto query : mEndQueries)
+		query->Release();
+	mBeginQueries.Clear();
+	mEndQueries.Clear();
+	mTags.Clear();
+	mSpanCount = 0;
+	mOpen = false;
+	mPending = false;
+}
+
+void DXRenderDevice::GpuTimerSetEnabled(bool enabled)
+{
+	if (mGpuTimerEnabled == enabled)
+		return;
+	mGpuTimerEnabled = enabled;
+	if (!enabled)
+	{
+		// In-flight frames would never be collected; drop them (and their queries) outright.
+		for (int i = 0; i < DX_GPUTIMER_FRAMES; i++)
+			mGpuTimerFrames[i].ReleaseNative();
+		mGpuTimerWriteIdx = 0;
+	}
+}
+
+ID3D11Query* DXRenderDevice::GetTimestampQuery(Array<ID3D11Query*>& queries, int idx)
+{
+	while ((int)queries.size() <= idx)
+	{
+		D3D11_QUERY_DESC desc = { D3D11_QUERY_TIMESTAMP, 0 };
+		ID3D11Query* query = NULL;
+		if (FAILED(mD3DDevice->CreateQuery(&desc, &query)))
+			return NULL;
+		queries.push_back(query);
+	}
+	return queries[idx];
+}
+
+bool DXRenderDevice::GpuTimerBeginFrame(int64 frameId)
+{
+	if (!mGpuTimerEnabled)
+		return false;
+	DXGpuTimerFrame& frame = mGpuTimerFrames[mGpuTimerWriteIdx];
+	if (frame.mPending)
+		return false; // the ring is full of frames the GPU hasn't finished -- skip timing this one
+	if (frame.mDisjoint == NULL)
+	{
+		D3D11_QUERY_DESC desc = { D3D11_QUERY_TIMESTAMP_DISJOINT, 0 };
+		if (FAILED(mD3DDevice->CreateQuery(&desc, &frame.mDisjoint)))
+			return false;
+	}
+	frame.mFrameId = frameId;
+	frame.mSpanCount = 0;
+	frame.mOpen = true;
+	mD3DDeviceContext->Begin(frame.mDisjoint);
+	return true;
+}
+
+void DXRenderDevice::GpuTimerSetTag(int tag)
+{
+	mGpuTimerCurTag = tag;
+}
+
+int DXRenderDevice::GpuTimerSpanBegin()
+{
+	if (!mGpuTimerEnabled)
+		return -1;
+	DXGpuTimerFrame& frame = mGpuTimerFrames[mGpuTimerWriteIdx];
+	if ((!frame.mOpen) || (frame.mSpanCount >= DX_GPUTIMER_MAX_SPANS))
+		return -1;
+	int idx = frame.mSpanCount;
+	ID3D11Query* beginQuery = GetTimestampQuery(frame.mBeginQueries, idx);
+	if ((beginQuery == NULL) || (GetTimestampQuery(frame.mEndQueries, idx) == NULL))
+		return -1;
+	while ((int)frame.mTags.size() <= idx)
+		frame.mTags.push_back(0);
+	frame.mTags[idx] = mGpuTimerCurTag;
+	frame.mSpanCount = idx + 1;
+	mD3DDeviceContext->End(beginQuery);
+	return idx;
+}
+
+void DXRenderDevice::GpuTimerSpanEnd(int spanId)
+{
+	DXGpuTimerFrame& frame = mGpuTimerFrames[mGpuTimerWriteIdx];
+	if ((!frame.mOpen) || (spanId < 0) || (spanId >= (int)frame.mEndQueries.size()))
+		return;
+	mD3DDeviceContext->End(frame.mEndQueries[spanId]);
+}
+
+void DXRenderDevice::GpuTimerEndFrame()
+{
+	DXGpuTimerFrame& frame = mGpuTimerFrames[mGpuTimerWriteIdx];
+	if (!frame.mOpen)
+		return;
+	mD3DDeviceContext->End(frame.mDisjoint);
+	frame.mOpen = false;
+	frame.mPending = true;
+	mGpuTimerWriteIdx = (mGpuTimerWriteIdx + 1) % DX_GPUTIMER_FRAMES;
+}
+
+int DXRenderDevice::GpuTimerFetch(int64* outFrameId, GpuTimerSpan* outSpans, int maxSpans)
+{
+	// Oldest first, so results come back in frame order.
+	for (int i = 1; i <= DX_GPUTIMER_FRAMES; i++)
+	{
+		DXGpuTimerFrame& frame = mGpuTimerFrames[(mGpuTimerWriteIdx + i) % DX_GPUTIMER_FRAMES];
+		if (!frame.mPending)
+			continue;
+
+		D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint;
+		HRESULT hr = mD3DDeviceContext->GetData(frame.mDisjoint, &disjoint, sizeof(disjoint), D3D11_ASYNC_GETDATA_DONOTFLUSH);
+		if (hr != S_OK)
+			return -1; // not ready; a later frame can't be ready before this one either
+
+		frame.mPending = false;
+		*outFrameId = frame.mFrameId;
+		if ((disjoint.Disjoint) || (disjoint.Frequency == 0))
+			return 0; // the clock jumped (power state change) -- this frame's timings are meaningless
+
+		int count = 0;
+		for (int spanIdx = 0; (spanIdx < frame.mSpanCount) && (count < maxSpans); spanIdx++)
+		{
+			uint64 beginTick = 0;
+			uint64 endTick = 0;
+			if (mD3DDeviceContext->GetData(frame.mBeginQueries[spanIdx], &beginTick, sizeof(beginTick), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK)
+				continue;
+			if (mD3DDeviceContext->GetData(frame.mEndQueries[spanIdx], &endTick, sizeof(endTick), D3D11_ASYNC_GETDATA_DONOTFLUSH) != S_OK)
+				continue;
+			if (endTick <= beginTick)
+				continue;
+			outSpans[count].mTag = frame.mTags[spanIdx];
+			outSpans[count].mNanos = (int64)((endTick - beginTick) * 1000000000ULL / disjoint.Frequency);
+			count++;
+		}
+		return count;
+	}
+	return -1;
+}
+
 void DXRenderDevice::ReleaseNative()
 {
+	for (int i = 0; i < DX_GPUTIMER_FRAMES; i++)
+		mGpuTimerFrames[i].ReleaseNative();
 	mD3DVertexBuffer->Release();
 	mD3DVertexBuffer = NULL;
+	if (mInstIotaBuffer != NULL)
+		mInstIotaBuffer->Release();
+	mInstIotaBuffer = NULL;
+	mInstIotaCount = 0;
 	if (mMatrix2DBuffer != NULL)
 		mMatrix2DBuffer->Release();
 	mMatrix2DBuffer = NULL;
@@ -3377,21 +3704,23 @@ Texture* DXRenderDevice::CreateStructuredBuffer(int stride, int count, int flags
 {
 	BF_ASSERT((stride > 0) && (stride % 4 == 0) && (count > 0));
 	bool gpuWritable = (flags & 1) != 0;
+	bool defaultUsage = gpuWritable || ((flags & 2) != 0);
 
 	DXStructuredBuffer* buffer = new DXStructuredBuffer();
 	buffer->mWidth = count;
 	buffer->mHeight = 1;
 	buffer->mStride = stride;
 	buffer->mGpuWritable = gpuWritable;
+	buffer->mDefaultUsage = defaultUsage;
 	buffer->mRenderDevice = this;
 	buffer->AddRef();
 
 	D3D11_BUFFER_DESC desc;
 	ZeroMemory(&desc, sizeof(desc));
-	desc.Usage = gpuWritable ? D3D11_USAGE_DEFAULT : D3D11_USAGE_DYNAMIC;
+	desc.Usage = defaultUsage ? D3D11_USAGE_DEFAULT : D3D11_USAGE_DYNAMIC;
 	desc.ByteWidth = stride * count;
 	desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | (gpuWritable ? D3D11_BIND_UNORDERED_ACCESS : 0);
-	desc.CPUAccessFlags = gpuWritable ? 0 : D3D11_CPU_ACCESS_WRITE;
+	desc.CPUAccessFlags = defaultUsage ? 0 : D3D11_CPU_ACCESS_WRITE;
 	desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
 	desc.StructureByteStride = stride;
 	DXCHECK(mD3DDevice->CreateBuffer(&desc, NULL, &buffer->mD3DBuffer));

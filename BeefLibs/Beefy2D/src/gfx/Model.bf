@@ -36,6 +36,12 @@ namespace Beefy.gfx
             public TexCoords mBumpTexCoords;
             [VertexMember(VertexElementUsage.Tangent)]
             public Vector3 mTangent;
+			// Per-draw record index + 1 stamped by Graphics.DrawIndexedVerticesInst (or fed per instance
+			// by DrawStaticMeshInstanced); 0 = the shader's per-draw constants. Byte offset = cInstanceIdxOffset.
+			[VertexMember(VertexElementUsage.TextureCoordinate, 2, true)]
+			public float mInstanceIdx;
+
+			public const int32 cInstanceIdxOffset = 56;
 
             public static VertexDefinition sVertexDefinition ~ delete _;
 

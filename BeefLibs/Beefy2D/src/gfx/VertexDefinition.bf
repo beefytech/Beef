@@ -40,6 +40,9 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_VertexDefinition_Delete(void* nativeVertexDefinition);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_VertexDefinition_SetInstanceElement(void* nativeVertexDefinition, int32 elementIdx);
+
         public void* mNativeVertexDefinition;
 #else
         public IPCProxy<IStudioVertexDefinition> mStudioVertexDefinition;
@@ -47,6 +50,9 @@ namespace Beefy.gfx
 
         public int32 mVertexSize;
         public int32 mPosition2DOffset = -1;
+		// The [VertexMember(perInstance: true)] element: its index and byte offset (-1 = none).
+		public int32 mInstanceElementIdx = -1;
+		public int32 mInstanceElementOffset = -1;
 
         public static void FindPrimitives(Type type, List<Type> primitives)
         {
@@ -124,6 +130,12 @@ namespace Beefy.gfx
 
                 if (memberAttribute.mElementUsage == VertexElementUsage.Position2D)
                     mPosition2DOffset = field.MemberOffset;
+				if (memberAttribute.mPerInstance)
+				{
+					Debug.Assert(mInstanceElementIdx == -1);
+					mInstanceElementIdx = fieldIdx;
+					mInstanceElementOffset = (int32)field.MemberOffset;
+				}
 
                 if (floats != 0)
                 {
@@ -153,6 +165,8 @@ namespace Beefy.gfx
 
 #if !STUDIO_CLIENT
             mNativeVertexDefinition = Gfx_CreateVertexDefinition(vertexDefDataArray.CArray(), fieldIdx);
+			if (mInstanceElementIdx >= 0)
+				Gfx_VertexDefinition_SetInstanceElement(mNativeVertexDefinition, mInstanceElementIdx);
 #else
             fixed (VertexDefData* vertexDefData = vertexDefDataArray)
             {

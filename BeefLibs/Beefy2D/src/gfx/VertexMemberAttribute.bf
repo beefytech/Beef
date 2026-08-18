@@ -10,11 +10,15 @@ namespace Beefy.gfx
     {        
         public VertexElementUsage mElementUsage;
         public int32 mUsageIndex;
+		// Instanced draws (Graphics.DrawStaticMeshInstanced) feed this element from a per-instance
+		// stream instead of the vertex; at most one per vertex type.
+		public bool mPerInstance;
 
-        public this(VertexElementUsage elementUsage, int32 usageIndex = 0)
+        public this(VertexElementUsage elementUsage, int32 usageIndex = 0, bool perInstance = false)
         {
             mElementUsage = elementUsage;
             mUsageIndex = usageIndex;
+			mPerInstance = perInstance;
         }
     }
 }
