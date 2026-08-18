@@ -7316,7 +7316,7 @@ namespace IDE
 			return (panel as SourceViewPanel, tabButton);
 		}
 
-		protected virtual Result<ContentPanel> CreateContentPanel(StringView useFilePath, SourceShowType showType)
+		protected virtual Result<ContentPanel> CreateContentPanel(StringView useFilePath, ProjectSource projectSource, SourceShowType showType)
 		{
 			if (!useFilePath.IsEmpty)
 			{
@@ -7462,7 +7462,7 @@ namespace IDE
 			ActivateWindow(tabbedView.mWidgetWindow);
 
 			///
-			switch (CreateContentPanel(useFilePath, showType))
+			switch (CreateContentPanel(useFilePath, projectSource, showType))
 			{
 			case .Ok(out contentPanel):
 				if (contentPanel == null)
@@ -7492,6 +7492,9 @@ namespace IDE
 				}
 				contentPanel = sourceViewPanel;
 			}
+
+			if ((contentPanel != null) && (projectSource != null) && (contentPanel.mProjectSource != projectSource))
+				contentPanel.AttachToProjectSource(projectSource);
 
 			var newTabButton = new ContentTabButton();
 			newTabButton.Label = "";
