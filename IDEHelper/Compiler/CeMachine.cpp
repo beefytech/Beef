@@ -6144,6 +6144,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					size = *(int64*)((uint8*)stackPtr + 8);
 				CE_CHECKALLOC(size);
 				uint8* ptr = CeMalloc(size);
+				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, ptr - memStart, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Free)
@@ -6439,8 +6440,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				else
 					typeName = mCeMachine->mCeModule->TypeToString(type);
 					
-				CeSetAddrVal(stackPtr + 0, GetString(typeName), ptrSize);
+				auto stringAddr = GetString(typeName);
 				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, stringAddr, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_TypeName_ToString)
 			{
@@ -6460,8 +6462,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, mCallerMethodInstance);
 				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
-				CeSetAddrVal(stackPtr + 0, GetString(str), ptrSize);
+				auto stringAddr = GetString(str);
 				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, stringAddr, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_TypeDocumentation_ToString)
 			{
@@ -6481,8 +6484,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, mCallerMethodInstance);
 				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
-				CeSetAddrVal(stackPtr + 0, GetString(str), ptrSize);
+				auto stringAddr = GetString(str);
 				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, stringAddr, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Namespace_ToString)
 			{
@@ -6502,9 +6506,10 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				SetAndRestoreValue<BfMethodInstance*> prevMethodInstance(mCeMachine->mCeModule->mCurMethodInstance, mCallerMethodInstance);
 				SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(mCeMachine->mCeModule->mCurTypeInstance, mCallerTypeInstance);
-				CeSetAddrVal(stackPtr + 0, GetString(str), ptrSize);
+				auto stringAddr = GetString(str);
 				_FixVariables();
-				}
+				CeSetAddrVal(stackPtr + 0, stringAddr, ptrSize);
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Type_GetCustomAttribute)
 			{
 				int32 typeId = *(int32*)((uint8*)stackPtr + 1);
@@ -6644,10 +6649,13 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				AddTypeSigRebuild(methodInstance->GetOwner());
 				auto attrType = GetCustomAttributeType(methodInstance->GetCustomAttributes(), attributeIdx);
 				if (attrType != NULL)
-					CeSetAddrVal(stackPtr + 0, GetReflectType(attrType->mTypeId), ptrSize);
+				{
+					auto reflectType = GetReflectType(attrType->mTypeId);
+					_FixVariables();
+					CeSetAddrVal(stackPtr + 0, reflectType, ptrSize);
+				}
 				else
 					CeSetAddrVal(stackPtr + 0, 0, ptrSize);
-				_FixVariables();
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetMethodCount)
 			{
@@ -6691,8 +6699,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}
 
-				CeSetAddrVal(stackPtr + 0, GetString(mCeMachine->mCeModule->MethodToString(methodInstance)), ptrSize);
+				auto stringAddr = GetString(mCeMachine->mCeModule->MethodToString(methodInstance));
 				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, stringAddr, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetName)
 			{
@@ -6705,8 +6714,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					return false;
 				}
 
-				CeSetAddrVal(stackPtr + 0, GetString(methodInstance->mMethodDef->GetReflectName()), ptrSize);
+				auto stringAddr = GetString(methodInstance->mMethodDef->GetReflectName());
 				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, stringAddr, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetDocumentation)
 			{
@@ -6724,8 +6734,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					if(decl->mDocumentation != NULL)	
 						decl->mDocumentation->GetDocString(docs);
 
-				CeSetAddrVal(stackPtr + 0, GetString(docs), ptrSize);
+				auto stringAddr = GetString(docs);
 				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, stringAddr, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetInfo)
 			{
@@ -6852,8 +6863,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					}
 				}
 
-				CeSetAddrVal(stackPtr + 0, GetString(docs), ptrSize);
+				auto stringAddr = GetString(docs);
 				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, stringAddr, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Field_GetStatic)
 			{
@@ -7059,8 +7071,9 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				if (valuePtr != NULL)
 					string = valuePtr->mString;
 
-				CeSetAddrVal(stackPtr + 0, GetString(string), ptrSize);
+				auto stringAddr = GetString(string);
 				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, stringAddr, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetIdByString)
 			{
