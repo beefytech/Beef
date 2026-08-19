@@ -6121,6 +6121,75 @@ void BfModule::CreateDevirtThunks(BfTypeInstance* typeInstance)
 		typeInstance->mVirtualMethodTable = origVTable;
 }
 
+// Two extensions can both override one virtual slot only if their projects can see each other -
+//  that fixes their order, and the later one says 'new override' to select its predecessor. A
+//  mutually invisible pair has no defined order, so which one ends up in the vtable comes down to
+//  compilation order, and the loser is silently dropped.
+// This runs after slotting rather than at method declaration: mid-population every override still
+//  has mVirtualTableIdx of -1, so a legal chain is indistinguishable from a real conflict there,
+//  and which one we happened to see first varied by build config and platform.
+void BfModule::CheckExtensionOverrideConflicts(BfTypeInstance* typeInstance)
+{
+	if (!typeInstance->mTypeDef->mIsCombinedPartial)
+		return;
+
+	// Group the overrides by the slot they occupy. Anything with a single claimant is fine, which is
+	//  the overwhelmingly common case, so this bails out before doing any pairwise work.
+	Dictionary<int, Array<BfMethodInstance*>> slotOverrides;
+	for (auto& methodGroup : typeInstance->mMethodInstanceGroups)
+	{
+		auto methodInstance = methodGroup.mDefault;
+		if ((methodInstance == NULL) || (!methodInstance->mMethodDef->mIsOverride))
+			continue;
+		if ((methodInstance->mMethodDef->mMethodDeclaration == NULL) || (methodInstance->mVirtualTableIdx < 0))
+			continue;
+		// Chained methods (ctors/dtors) are the supported way for several extensions to contribute to
+		//  one member - they all run, so they are not competing for the slot
+		if (methodInstance->mChainType != BfMethodChainType_None)
+			continue;
+
+		Array<BfMethodInstance*>* listPtr = NULL;
+		slotOverrides.TryAdd(methodInstance->mVirtualTableIdx, NULL, &listPtr);
+		listPtr->Add(methodInstance);
+	}
+
+	for (auto& kv : slotOverrides)
+	{
+		auto& overrides = kv.mValue;
+		if (overrides.mSize < 2)
+			continue;
+
+		// Report against the earliest claimant we cannot be ordered against, so the message is stable
+		//  regardless of the order the methods were processed in
+		for (int i = 1; i < overrides.mSize; i++)
+		{
+			auto methodInstance = overrides[i];
+			auto methodDef = methodInstance->mMethodDef;
+
+			for (int j = 0; j < i; j++)
+			{
+				auto prevMethodInstance = overrides[j];
+				auto prevMethodDef = prevMethodInstance->mMethodDef;
+				if (prevMethodDef->mDeclaringType->mProject->ReferencesOrReferencedBy(methodDef->mDeclaringType->mProject))
+					continue;
+
+				BfAstNode* refNode = methodDef->GetRefNode();
+				if (auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration())
+					refNode = propertyMethodDeclaration->mPropertyDeclaration->mVirtualSpecifier;
+				else if (auto methodDeclaration = methodDef->GetMethodDeclaration())
+					refNode = methodDeclaration->mVirtualSpecifier;
+
+				auto error = Fail(StrFormat("Conflicting extension override method '%s'. Project '%s' and project '%s' do not reference each other, so the override order is undefined.",
+					MethodToString(methodInstance).c_str(), methodDef->mDeclaringType->mProject->mName.c_str(),
+					prevMethodDef->mDeclaringType->mProject->mName.c_str()), refNode);
+				if (error != NULL)
+					mCompiler->mPassInstance->MoreInfo("See conflicting override", prevMethodDef->GetRefNode());
+				break;
+			}
+		}
+	}
+}
+
 BfIRValue BfModule::CreateTypeDataRef(BfType* type, bool forceConstant)
 {
 	if (mBfIRBuilder->mIgnoreWrites)
@@ -24853,16 +24922,10 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 							(checkMethodInstance->mMethodDef->mMethodDeclaration != NULL) &&
 							(checkMethodInstance->mVirtualTableIdx < 0))
 						{
-							BfAstNode* refNode = methodDef->GetRefNode();
-							if (auto propertyMethodDeclaration = methodDef->GetPropertyMethodDeclaration())
-								refNode = propertyMethodDeclaration->mPropertyDeclaration->mVirtualSpecifier;
-							else if (auto methodDeclaration = methodDef->GetMethodDeclaration())
-								refNode = methodDeclaration->mVirtualSpecifier;
-
-							auto error = Fail(StrFormat("Conflicting extension override method '%s'", MethodToString(methodInstance).c_str()), refNode);
-							if (error != NULL)
-								mCompiler->mPassInstance->MoreInfo("See previous override", checkMethod->GetRefNode());
-
+							// Don't take over another override's function. The conflict itself is reported
+							//  by CheckExtensionOverrideConflicts once slotting is done - at this point every
+							//  override still shares one mangled name, so a legal chain looks identical to a
+							//  real conflict and which one we see first varies by build config and platform.
 							takeover = false;
 							break;
 						}
@@ -27098,11 +27161,12 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 						setMethodInstance->mVirtualTableIdx = virtualMethodMatchIdx;
 
 						auto& implMethodRef = typeInstance->mVirtualMethodTable[virtualMethodMatchIdx].mImplementingMethod;
-						if ((!mCompiler->mIsResolveOnly) && (implMethodRef.mMethodNum >= 0) &&
+						if ((implMethodRef.mMethodNum >= 0) &&
 							(implMethodRef.mTypeInstance == typeInstance) && (methodInstance->GetOwner() == typeInstance))
 						{
 							auto prevImplMethodInstance = (BfMethodInstance*)implMethodRef;
-							if (prevImplMethodInstance->mMethodDef->mDeclaringType->mProject != methodInstance->mMethodDef->mDeclaringType->mProject)
+							if ((!mCompiler->mIsResolveOnly) &&
+								(prevImplMethodInstance->mMethodDef->mDeclaringType->mProject != methodInstance->mMethodDef->mDeclaringType->mProject))
 							{
 								// We may need to have to previous method reified when we must re-slot in another project during vdata creation
 								BfReifyMethodDependency dep;

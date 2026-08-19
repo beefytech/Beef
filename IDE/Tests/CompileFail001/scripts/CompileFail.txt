@@ -37,3 +37,13 @@ ShowFile("src/Protection.bf")
 WaitForResolve()
 SleepTicks(20)
 AssertFileErrors()
+
+ShowFile("src/ExtX.bf")
+WaitForResolve()
+SleepTicks(20)
+AssertFileErrors()
+
+ShowFile("src/ExtY.bf")
+WaitForResolve()
+SleepTicks(20)
+AssertFileErrors()

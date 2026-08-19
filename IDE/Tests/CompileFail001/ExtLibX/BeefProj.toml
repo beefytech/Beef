@@ -1,0 +1,9 @@
+FileVersion = 1
+
+[Project]
+Name = "ExtLibX"
+TargetType = "BeefLib"
+
+[Dependencies]
+corlib = "*"
+ExtLibBase = "*"

@@ -7610,6 +7610,9 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	CheckAddFailType();
 
 	typeInstance->mDefineState = BfTypeDefineState_DefinedAndMethodsSlotted;
+
+	CheckExtensionOverrideConflicts(typeInstance);
+
 	mCompiler->mStats.mTypesPopulated++;
 	mCompiler->UpdateCompletion();
 

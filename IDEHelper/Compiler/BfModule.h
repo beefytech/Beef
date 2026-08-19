@@ -2132,6 +2132,7 @@ public:
 	void GetDevirtThunkName(StringImpl& name, BfTypeInstance* typeInstance, BfMethodInstance* declaringMethodInstance);
 	BfIRValue TryGetDevirtThunk(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance);
 	void CreateDevirtThunks(BfTypeInstance* typeInstance);
+	void CheckExtensionOverrideConflicts(BfTypeInstance* typeInstance);
 	BfIRValue CreateTypeDataRef(BfType* type, bool forceConstant = false);
 	void EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType, BfIRValue arg, SizedArrayImpl<uint8>& data, Dictionary<int, int>& usedStringIdMap);
 	BfIRValue CreateFieldData(BfFieldInstance* fieldInstance, int customAttrIdx);

@@ -1,4 +1,4 @@
-Projects = {IDETest = {Path = "."}}
+Projects = {IDETest = {Path = "."}, ExtLibBase = {Path = "ExtLibBase"}, ExtLibX = {Path = "ExtLibX"}, ExtLibY = {Path = "ExtLibY"}}
 
 [Workspace]
 StartupProject = "IDETest"

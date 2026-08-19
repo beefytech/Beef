@@ -73,9 +73,28 @@ namespace LibA
 		}
 	}
 
-	// Derived from LibA0 within the project that declares it, so this method gets compiled just
-	//  once and linked into every executable. The 'base.GetA()' call is devirtualized, but it still
-	//  has to resolve to whichever LibA0 extension override the linking executable can actually see.
+	// Devirtualized 'base' call coverage: LibA cannot see the Tests extension of LibA5, so this
+	//  body is compiled once here but must resolve differently in each linking executable.
+	class LibA5
+	{
+		public virtual int GetVal()
+		{
+			return 1;
+		}
+	}
+
+	class LibA5_Derived : LibA5
+	{
+		public override int GetVal()
+		{
+			return base.GetVal() + 1000;
+		}
+	}
+
+	// Regression test for the extension-override mangling conflict: LibA0 carries two extension
+	//  overrides (LibA's and the Tests project's), and deriving from it used to make Release builds
+	//  falsely report 'Conflicting extension override method'. Detection now runs after slotting,
+	//  where a legal 'new override' chain has distinct mangled names.
 	class LibA0_Derived : LibA0
 	{
 		public override int GetA()
