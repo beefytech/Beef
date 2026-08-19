@@ -11,9 +11,11 @@ CALL bin\msbuild.bat BeefySysLib\BeefySysLib.vcxproj /p:Configuration=Release /p
 :SUCCESS
 @ECHO SUCCESS!
 @POPD
+pause
 @EXIT /b 0
 
 :HADERROR
 @ECHO =================FAILED=================
 @POPD
+pause
 @EXIT /b %ERRORLEVEL%

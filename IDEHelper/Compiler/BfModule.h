@@ -1507,6 +1507,20 @@ public:
 	}
 };
 
+// One per (type, virtual slot) whose implementation can vary by executable. Keyed by declaring
+//  method rather than vtable index, since indices get renumbered between compiles.
+class BfDevirtThunkEntry
+{
+public:
+	BfTypeInstance* mTypeInstance;
+	BfNonGenericMethodRef mDeclaringMethod;
+
+	bool operator==(const BfDevirtThunkEntry& rhs)
+	{
+		return ((mTypeInstance == rhs.mTypeInstance) && (mDeclaringMethod == rhs.mDeclaringMethod));
+	}
+};
+
 #define BFMODULE_FATAL(module, msg) (module)->FatalError((msg), __FILE__, __LINE__)
 
 struct BfCEParseContext
@@ -1575,6 +1589,7 @@ public:
 	Dictionary<BfTypeInstance*, BfIRValue> mInterfaceSlotRefs;
 	Dictionary<BfTypeInstance*, BfIRValue> mClassVDataRefs;
 	Dictionary<BfVDataExtEntry, BfIRValue> mClassVDataExtRefs;
+	Dictionary<BfDevirtThunkEntry, BfIRValue> mDevirtThunkRefs;
 	Dictionary<BfType*, BfIRValue> mTypeDataRefs;
 	Dictionary<BfType*, BfIRValue> mDbgRawAllocDataRefs;
 	Dictionary<BfMethodInstance*, BfDeferredMethodCallData*> mDeferredMethodCallData;
@@ -2112,6 +2127,11 @@ public:
 	BfIRValue CreateClassVDataGlobal(BfTypeInstance* typeInstance, int* outNumElements = NULL, String* outMangledName = NULL);
 	BfIRValue GetClassVDataPtr(BfTypeInstance* typeInstance);
 	BfIRValue CreateClassVDataExtGlobal(BfTypeInstance* declTypeInst, BfTypeInstance* implTypeInst, int startVirtIdx);
+	Array<BfVirtualMethodEntry> ReslotVTableForProject(BfTypeInstance* typeInstance);
+	bool VirtualSlotNeedsDevirtThunk(BfTypeInstance* typeInstance, int virtIdx);
+	void GetDevirtThunkName(StringImpl& name, BfTypeInstance* typeInstance, BfMethodInstance* declaringMethodInstance);
+	BfIRValue TryGetDevirtThunk(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance);
+	void CreateDevirtThunks(BfTypeInstance* typeInstance);
 	BfIRValue CreateTypeDataRef(BfType* type, bool forceConstant = false);
 	void EncodeAttributeData(BfTypeInstance* typeInstance, BfType* argType, BfIRValue arg, SizedArrayImpl<uint8>& data, Dictionary<int, int>& usedStringIdMap);
 	BfIRValue CreateFieldData(BfFieldInstance* fieldInstance, int customAttrIdx);
@@ -2199,6 +2219,15 @@ namespace std
 		size_t operator()(const Beefy::BfVDataExtEntry& val) const
 		{
 			return ((size_t)(val.mDeclTypeInst) * 17) ^ (size_t)(val.mDeclTypeInst);
+		}
+	};
+
+	template<>
+	struct hash<Beefy::BfDevirtThunkEntry>
+	{
+		size_t operator()(const Beefy::BfDevirtThunkEntry& val) const
+		{
+			return ((size_t)(val.mTypeInstance) * 17) ^ ((size_t)(val.mDeclaringMethod.mTypeInstance) ^ (val.mDeclaringMethod.mMethodNum << 10));
 		}
 	};
 

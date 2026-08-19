@@ -73,6 +73,17 @@ namespace LibA
 		}
 	}
 
+	// Derived from LibA0 within the project that declares it, so this method gets compiled just
+	//  once and linked into every executable. The 'base.GetA()' call is devirtualized, but it still
+	//  has to resolve to whichever LibA0 extension override the linking executable can actually see.
+	class LibA0_Derived : LibA0
+	{
+		public override int GetA()
+		{
+			return base.GetA() + 1000;
+		}
+	}
+
 	struct Handler
 	{
 		public static int Handle(Object obj)

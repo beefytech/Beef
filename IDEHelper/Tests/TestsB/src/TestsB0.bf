@@ -46,6 +46,11 @@ namespace TestsB
 			LibA.LibA0 la0 = scope .();
 			int la0a = la0.GetA();
 			Test.Assert(la0a == 2);
+
+			// Same LibA0_Derived.GetA body as the Tests project links, but this executable can only
+			//  see LibA's own extension override, so the 'base.GetA()' has to resolve differently
+			LibA.LibA0_Derived la0d = scope .();
+			Test.Assert(la0d.GetA() == 1002);
 		}
 	}
 

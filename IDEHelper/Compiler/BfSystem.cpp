@@ -1159,6 +1159,17 @@ bool BfProject::IsTestProject()
 	return mTargetType == BfTargetType_BeefTest;
 }
 
+bool BfProject::IsFinalProgramTarget()
+{
+	// Target types that generate their own vdata. Note these can still be depended upon by another
+	//  project, so this does not imply the project is only ever linked into its own program.
+	return ((mTargetType == BfTargetType_BeefConsoleApplication) || (mTargetType == BfTargetType_BeefWindowsApplication) ||
+		(mTargetType == BfTargetType_BeefLib_DynamicLib) || (mTargetType == BfTargetType_BeefLib_StaticLib) ||
+		(mTargetType == BfTargetType_C_ConsoleApplication) || (mTargetType == BfTargetType_C_WindowsApplication) ||
+		(mTargetType == BfTargetType_BeefTest) ||
+		(mTargetType == BfTargetType_BeefApplication_StaticLib) || (mTargetType == BfTargetType_BeefApplication_DynamicLib));
+}
+
 bool BfProject::HasDependency(BfProject* project)
 {	
 	if (mDependencySet.IsEmpty())

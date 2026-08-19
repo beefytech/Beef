@@ -1554,6 +1554,18 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		}
 	}
 
+	// Devirtualized calls (ie: 'base.Method()') route through a thunk when a type extension may
+	//  supply a different override - each executable's vdata resolves that thunk for itself.
+	for (auto type : vdataTypeList)
+	{
+		if ((!type->IsReified()) || (type->IsUnspecializedType()) || (type->IsTypeAlias()))
+			continue;
+		auto typeInst = type->ToTypeInstance();
+		if (typeInst == NULL)
+			continue;
+		bfModule->CreateDevirtThunks(typeInst);
+	}
+
 	for (int typeId = 0; typeId < (int)typeDataVector.size(); typeId++)
 	{
 		if (!typeDataVector[typeId])
@@ -6054,7 +6066,8 @@ void BfCompiler::PopulateReified()
 										{
 											if ((methodDef->mIsOverride) && (methodDef->mParams.mSize == declaringMethod->mMethodDef->mParams.mSize))
 											{
-												auto implMethod = typeInst->mModule->GetRawMethodInstance(typeInst, methodDef);
+												// 'methodDef' is from checkTypeInst's method set, so mIdx indexes that type's methods
+												auto implMethod = typeInst->mModule->GetRawMethodInstance(checkTypeInst, methodDef);
 												if ((implMethod != NULL) && (typeInst->mModule->CompareMethodSignatures(declaringMethod, implMethod)))
 												{
 													if ((implMethod != NULL) && ((!implMethod->mMethodInstanceGroup->IsImplemented()) || (!implMethod->mIsReified)))
@@ -7437,11 +7450,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 				mPassInstance->Fail(StrFormat("Project '%s' must reference core library '%s'", bfProject->mName.c_str(), mBfObjectTypeDef->mProject->mName.c_str()));
 			}
 
-			if ((bfProject->mTargetType != BfTargetType_BeefConsoleApplication) && (bfProject->mTargetType != BfTargetType_BeefWindowsApplication) &&
-				(bfProject->mTargetType != BfTargetType_BeefLib_DynamicLib) && (bfProject->mTargetType != BfTargetType_BeefLib_StaticLib) &&
-				(bfProject->mTargetType != BfTargetType_C_ConsoleApplication) && (bfProject->mTargetType != BfTargetType_C_WindowsApplication) &&
-				(bfProject->mTargetType != BfTargetType_BeefTest) &&
-				(bfProject->mTargetType != BfTargetType_BeefApplication_StaticLib) && (bfProject->mTargetType != BfTargetType_BeefApplication_DynamicLib))
+			if (!bfProject->IsFinalProgramTarget())
 				continue;
 
 			if (bfProject->mTargetType == BfTargetType_BeefTest)

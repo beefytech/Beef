@@ -1,0 +1,25 @@
+# Tests:
+#  Adding a type extension that overrides a base virtual method during a hot compile
+#  Devirtualized 'base' calls picking up an override introduced by that extension
+
+ShowFile("src/HotSwap_ExtensionOverride.bf")
+GotoText("//HotSwap_ExtensionOverride_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+
+# Before the extension exists
+StepOver()
+StepOver()
+AssertEvalEquals("a", "10")
+AssertEvalEquals("b", "11")
+
+# Hot compile, adding an extension that overrides ClassA.MethodA
+ToggleCommentAt("ExtClassA_MethodA")
+Compile()
+
+# The virtual call picks up the override, and so does the 'base' call inside ClassB.MethodA
+Continue()
+StepOver()
+StepOver()
+AssertEvalEquals("a", "100")
+AssertEvalEquals("b", "101")

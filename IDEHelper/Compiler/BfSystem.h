@@ -1468,6 +1468,7 @@ public:
 	bool ContainsReference(BfProject* refProject);
 	bool ReferencesOrReferencedBy(BfProject* refProject);
 	bool IsTestProject();
+	bool IsFinalProgramTarget();
 	bool HasDependency(BfProject* project);	
 	DependencyKind GetDependencyKind(BfProject* project);
 };

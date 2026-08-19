@@ -13,6 +13,7 @@ namespace IDETest
 			HotTester.Test();
 			HotSwap_BaseChange.Test();
 			HotSwap_Data.Test();
+			HotSwap_ExtensionOverride.Test();
 			HotSwap_GetUnusued.Test();
 			HotSwap_Interfaces2.Test();
 			HotSwap_Lambdas01.Test();

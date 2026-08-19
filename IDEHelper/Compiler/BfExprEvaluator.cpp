@@ -6660,6 +6660,28 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	auto methodDef = methodInstance->mMethodDef;
 	BfIRValue funcCallInst = func;
 
+	if ((bypassVirtual) && (funcCallInst) && (!isDelegateThunk) && (origTargetType != NULL) && (mFunctionBindResult == NULL))
+	{
+		// We resolved this against only the extensions our own project can see, but this module is
+		//  shared by every executable that links it - route through a per-executable thunk instead.
+		auto origTargetTypeInst = origTargetType->ToTypeInstance();
+		auto thunkFunc = mModule->TryGetDevirtThunk(origTargetTypeInst, methodInstance);
+		if (thunkFunc)
+		{
+			// Thunk is typed from the declaring method, which may be owned further up the chain
+			auto& declaringMethodRef = origTargetTypeInst->mVirtualMethodTable[methodInstance->mVirtualTableIdx].mDeclaringMethod;
+			BfMethodInstance* declaringMethodInstance = (BfMethodInstance*)declaringMethodRef;
+			if ((!methodDef->mIsStatic) && (!irArgs.IsEmpty()) && (declaringMethodInstance->GetOwner() != methodInstance->GetOwner()))
+			{
+				// GetStructRetIdx is the sret param index, so 'this' shifts only when sret comes first
+				int thisIdx = (methodInstance->GetStructRetIdx() == 0) ? 1 : 0;
+				if (thisIdx < (int)irArgs.size())
+					irArgs[thisIdx] = mModule->mBfIRBuilder->CreateBitCast(irArgs[thisIdx], mModule->mBfIRBuilder->MapTypeInstPtr(declaringMethodInstance->GetOwner()));
+			}
+			funcCallInst = thunkFunc;
+		}
+	}
+
 	auto importCallKind = methodInstance->GetImportCallKind();
 	if ((funcCallInst) && (importCallKind != BfImportCallKind_None))
 	{

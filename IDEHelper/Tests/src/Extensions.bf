@@ -421,6 +421,11 @@ namespace Tests
 			int la0a = la0.GetA();
 			Test.Assert(la0a == 3);
 
+			// The 'base.GetA()' inside LibA0_Derived must devirtualize to this project's extension
+			//  override, even though LibA itself can't see that extension
+			LibA.LibA0_Derived la0d = scope .();
+			Test.Assert(la0d.GetA() == 1003);
+
 			LibA.LibA3 la3 = scope .();
 			Test.Assert(la3.mA == 114);
 			Test.Assert(la3.mB == 7);
