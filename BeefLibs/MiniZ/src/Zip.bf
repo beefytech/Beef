@@ -228,7 +228,10 @@ namespace MiniZ
 		public Result<void> AddFile(StringView archiveName, StringView srcFilePath)
 		{
 			Debug.Assert(mIsWriting);
-			if (!MiniZ.ZipWriterAddFile(&mFile, scope String(archiveName, .NullTerminate), scope String(srcFilePath, .NullTerminate), null, 0, .None))
+			// Stored (uncompressed), not deflated: the ported tinfl_decompress has a bug
+			// that corrupts/fails large files needing multiple buffer refills to inflate.
+			// Storing sidesteps decompression on read entirely - see reader Entry.ExtractTo*.
+			if (!MiniZ.ZipWriterAddFile(&mFile, scope String(archiveName, .NullTerminate), scope String(srcFilePath, .NullTerminate), null, 0, (MiniZ.ZipFlags)MiniZ.CompressionLevel.NO_COMPRESSION))
 				return .Err;
 			return .Ok;
 		}
@@ -236,7 +239,7 @@ namespace MiniZ
 		public Result<void> AddFile(StringView archiveName, Span<uint8> data)
 		{
 			Debug.Assert(mIsWriting);
-			if (!MiniZ.ZipWriterAddMemEx(&mFile, scope String(archiveName, .NullTerminate), data.Ptr, data.Length, null, 0, .None, 0, 0))
+			if (!MiniZ.ZipWriterAddMemEx(&mFile, scope String(archiveName, .NullTerminate), data.Ptr, data.Length, null, 0, (MiniZ.ZipFlags)MiniZ.CompressionLevel.NO_COMPRESSION, 0, 0))
 				return .Err;
 			return .Ok;
 		}
@@ -491,7 +494,7 @@ namespace MiniZ
 
 		}
 
-		enum ZipFlags
+		public enum ZipFlags
 		{
 			None = 0,
 			CaseSensitive = 0x0100,
@@ -1126,8 +1129,18 @@ namespace MiniZ
 
 			num_bits = r.m_num_bits; bit_buf = r.m_bit_buf; dist = r.m_dist; counter = r.m_counter; num_extra = r.m_num_extra; dist_from_out_buf_start = r.m_dist_from_out_buf_start;
 
-			mixin GetByte(var c)
+			// Every one of these takes the resumable-state's own state_index as its first
+			// argument, matching the original TINFL_GET_BYTE/TINFL_GET_BITS/etc. C macros
+			// exactly (see miniz.c). This is NOT optional bookkeeping: if input runs out
+			// mid-call, DoResult! below bails out via r.m_state alone (no other record of
+			// where we were), so r.m_state must already reflect this exact call site - not
+			// just whichever case block we're textually inside - before that can happen.
+			// Getting this wrong doesn't break single-shot decompression (the common test
+			// case, where the whole input is provided in one call and no resume ever
+			// happens) - only multi-call decompression of inputs too large for one buffer.
+			mixin GetByte(int32 stateIndex, var c)
 			{
+				r.m_state = stateIndex;
 				if (pIn_buf_cur >= pIn_buf_end)
 				{
 					if (decomp_flags.HasFlag(.HasMoreInput))
@@ -1141,37 +1154,37 @@ namespace MiniZ
 					c = *pIn_buf_cur++;
 			}
 
-			mixin NeedBits(var n)
+			mixin NeedBits(int32 stateIndex, var n)
 			{
 				repeat
 				{
 					uint32 c = ?;
-					GetByte!(c);
+					GetByte!(stateIndex, c);
 					bit_buf |= (((tinfl_bit_buf_t)c) << num_bits); num_bits += 8;
 				}
 				while (num_bits < (int32)(n));
 			}
 
-			mixin GetBits<T>(T b, var n) where T : var
+			mixin GetBits<T>(int32 stateIndex, T b, var n) where T : var
 			{
 				if (num_bits < (int32)(n))
 				{
-					NeedBits!(n);
+					NeedBits!(stateIndex, n);
 				}
 				b = (T)(bit_buf & ((1 << (int32)(n)) - 1));
 				bit_buf >>= (n); num_bits -= (n);
 			}
 
-			mixin SkipBits(var n)
+			mixin SkipBits(int32 stateIndex, var n)
 			{
 				if (num_bits < (int32)(n))
 				{
-					NeedBits!(n);
+					NeedBits!(stateIndex, n);
 				}
 				bit_buf >>= (n); num_bits -= (n);
 			}
 
-			mixin HuffDecode(var sym, var pHuff)
+			mixin HuffDecode(int32 stateIndex, var sym, var pHuff)
 			{
 				int32 temp; int32 code_len, c = ?;
 				if (num_bits < 15)
@@ -1198,7 +1211,7 @@ namespace MiniZ
 								if (temp >= 0)
 									break;
 							}
-							GetByte!(c);
+							GetByte!(stateIndex, c);
 							bit_buf |= (((tinfl_bit_buf_t)c) << num_bits); num_bits += 8;
 						}
 						while (num_bits < 15);
@@ -1240,13 +1253,13 @@ namespace MiniZ
 					bit_buf = num_bits = dist = counter = num_extra = r.m_zhdr0 = r.m_zhdr1 = 0; r.m_z_adler32 = r.m_check_adler32 = 1;
 					if (decomp_flags.HasFlag(.ParseZlibHeader))
 					{
-						GetByte!(r.m_zhdr0);
+						GetByte!(1, r.m_zhdr0);
 						r.m_state = 1;
 					}
 					else
 						r.m_state = 3;
 				case 1:
-					GetByte!(r.m_zhdr1);
+					GetByte!(2, r.m_zhdr1);
 					r.m_state = 2;
 				case 2:
 					counter = (((r.m_zhdr0 * 256 + r.m_zhdr1) % 31 != 0) || ((r.m_zhdr1 & 32) != 0) || ((r.m_zhdr0 & 15) != 8)) ? 1 : 0;
@@ -1254,7 +1267,7 @@ namespace MiniZ
 					if (counter != 0) { DoResult!(TinflStatus.Failed); }
 					r.m_state = 3;
 				case 3: // do:
-					GetBits!(r.m_final, 3);
+					GetBits!(3, r.m_final, 3);
 					r.m_type = r.m_final >> 1;
 					if (r.m_type == 0)
 						r.m_state = 5;
@@ -1264,14 +1277,14 @@ namespace MiniZ
 						r.m_state = 10;
 
 				case 5: // if (r.m_type == 0)
-					SkipBits!(num_bits & 7);
+					SkipBits!(5, num_bits & 7);
 					counter = 0;
 					r.m_state = 6;
 				case 6: // header loop
 					if (num_bits > 0)
-						GetBits!(r.m_raw_header[counter], 8);
+						GetBits!(6, r.m_raw_header[counter], 8);
 					else
-						GetByte!(r.m_raw_header[counter]);
+						GetByte!(7, r.m_raw_header[counter]);
 					counter++;
 					if (counter < 4)
 						break;
@@ -1286,7 +1299,7 @@ namespace MiniZ
 					{
 						if (pOut_buf_cur >= pOut_buf_end)
 							DoResult!(TinflStatus.HasMoreOutput);
-						GetBits!(dist, 8);
+						GetBits!(51, dist, 8);
 						*pOut_buf_cur++ = (uint8)dist;
 						counter--;
 					}
@@ -1332,9 +1345,9 @@ namespace MiniZ
 					}
 				case 11:
 					if (counter == 2)
-						GetBits!(r.m_table_sizes[counter], 4);
+						GetBits!(11, r.m_table_sizes[counter], 4);
 					else
-						GetBits!(r.m_table_sizes[counter], 5);
+						GetBits!(11, r.m_table_sizes[counter], 5);
 					r.m_table_sizes[counter] += (int32)s_min_table_sizes[counter];
 					if (++counter < 3)
 						break;
@@ -1343,7 +1356,7 @@ namespace MiniZ
 					r.m_state = 12;
 				case 12:
 					uint32 s = ?;
-					GetBits!(s, 3);
+					GetBits!(14, s, 3);
 					r.m_tables[2].m_code_size[s_length_dezigzag[counter]] = (uint8)s;
 					if (++counter < r.m_table_sizes[2])
 						break;
@@ -1398,7 +1411,7 @@ namespace MiniZ
 				case 14:
 					if (dist < 16)
 					{
-						HuffDecode!(dist, &r.m_tables[2]);
+						HuffDecode!(16, dist, &r.m_tables[2]);
 						if (dist < 16)
 						{
 							r.m_len_codes[counter++] = (uint8)dist;
@@ -1415,13 +1428,13 @@ namespace MiniZ
 						switch (dist - 16)
 						{
 						case 0:
-							GetBits!(s, 2);
+							GetBits!(18, s, 2);
 							s += 3;
 						case 1:
-							GetBits!(s, 3);
+							GetBits!(18, s, 3);
 							s += 3;
 						case 2:
-							GetBits!(s, 7);
+							GetBits!(18, s, 7);
 							s += 11;
 						}
 
@@ -1446,7 +1459,7 @@ namespace MiniZ
 				case 22: // for ( ; ; ) (both inner and outer start)
 					if (((pIn_buf_end - pIn_buf_cur) < 4) || ((pOut_buf_end - pOut_buf_cur) < 2))
 					{
-						HuffDecode!(counter, &r.m_tables[0]);
+						HuffDecode!(23, counter, &r.m_tables[0]);
 						if (counter >= 256)
 						{
 							// jump to end of inner for(;;)
@@ -1529,11 +1542,11 @@ namespace MiniZ
 						r.m_state = 26;
 				case 25:
 					int32 extra_bits = ?;
-					GetBits!(extra_bits, num_extra);
+					GetBits!(25, extra_bits, num_extra);
 					counter += extra_bits;
 					r.m_state = 26;
 				case 26:
-					HuffDecode!(dist, &r.m_tables[1]);
+					HuffDecode!(26, dist, &r.m_tables[1]);
 					num_extra = (int32)s_dist_extra[dist]; dist = (int32)s_dist_base[dist];
 					if (num_extra != 0)
 						r.m_state = 27;
@@ -1541,7 +1554,7 @@ namespace MiniZ
 						r.m_state = 28;
 				case 27:
 					int32 extra_bits = ?;
-					GetBits!(extra_bits, num_extra);
+					GetBits!(27, extra_bits, num_extra);
 					dist += extra_bits;
 					r.m_state = 28;
 				case 28:
@@ -1626,7 +1639,7 @@ namespace MiniZ
 				case 31:
 					if (decomp_flags.HasFlag(.ParseZlibHeader))
 					{
-						SkipBits!(num_bits & 7);
+						SkipBits!(32, num_bits & 7);
 						r.m_state = 32;
 						counter = 0;
 						break;
@@ -1638,9 +1651,9 @@ namespace MiniZ
 				case 32:
 					uint32 s = ?;
 					if (num_bits != 0)
-						GetBits!(s, 8);
+						GetBits!(41, s, 8);
 					else
-						GetByte!(s);
+						GetByte!(42, s);
 					r.m_z_adler32 = (r.m_z_adler32 << 8) | s;
 					if (++counter < 4)
 						break;
