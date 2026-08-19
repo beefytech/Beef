@@ -2540,9 +2540,9 @@ void DXRenderWindow::Resized()
 
 	RECT rect;
 	GetClientRect(mHWnd, &rect);
-
-	if (rect.right <= rect.left)
-	{		
+	
+	if ((rect.right <= rect.left) || (rect.bottom <= rect.top))
+	{
 		if (mWidth <= 0)
 		{
 			// Defaults to avoid DX init failure
@@ -2582,7 +2582,7 @@ void DXRenderWindow::Resized()
 		descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 		descDepth.CPUAccessFlags = 0;
 		descDepth.MiscFlags = 0;
-		mDXRenderDevice->mD3DDevice->CreateTexture2D(&descDepth, NULL, &mD3DDepthBuffer);
+		CheckDXResult(mDXRenderDevice->mD3DDevice->CreateTexture2D(&descDepth, NULL, &mD3DDepthBuffer));
 
 		CheckDXResult(mDXSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&mD3DBackBuffer));
 		CheckDXResult(mDXRenderDevice->mD3DDevice->CreateRenderTargetView(mD3DBackBuffer, NULL, &mD3DRenderTargetView));

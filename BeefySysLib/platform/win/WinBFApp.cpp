@@ -658,8 +658,8 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 			((DXRenderWindow*)mRenderWindow)->mRefreshRate = 0;
 			break;
 		case WM_SIZE:
-			mRenderWindow->Resized();
-			if (mMovedFunc != NULL)
+			mRenderWindow->Resized();			
+			if ((mMovedFunc != NULL) && (wParam != SIZE_MINIMIZED))
 				mMovedFunc(this);
 			break;
 		case WM_PAINT:
