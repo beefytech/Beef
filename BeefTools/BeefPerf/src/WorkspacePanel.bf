@@ -204,8 +204,20 @@ namespace BeefPerf
 		public override void Update()
 		{
 			base.Update();
-			mWorkspaceWidget.mWidth = mWorkspaceWidget.mParent.mWidth;
+
+			float wantWidth = mWorkspaceWidget.mParent.mWidth;
+			bool widthChanged = mWorkspaceWidget.mWidth != wantWidth;
+
+			mWorkspaceWidget.mWidth = wantWidth;
 			mWorkspaceWidget.mHeight = mWorkspaceWidget.GetWantHeight();
+
+			// The filter boxes are laid out from mWidth, and assigning that field does not re-run the
+			// layout the way Resize would -- so without this they keep whatever width they were given
+			// the last time something called Resize on the widget. That is invisible in normal use but
+			// leaves them collapsed when the panel is first laid out at a degenerate size, which is
+			// what happens when the window starts minimized.
+			if (widthChanged)
+				mWorkspaceWidget.ResizeComponents();
 		}
 
 		public bool PassesFilter(BpClient client)

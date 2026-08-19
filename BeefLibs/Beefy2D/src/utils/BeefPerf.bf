@@ -34,6 +34,9 @@ namespace Beefy.utils
 		[CallingConvention(.Stdcall), CLink]
 		extern static char8* BpDynStr(char8* string);
 
+		/// serverName is a host, optionally with a port as "host:port" (eg "127.0.0.1:4209"). Without one
+		/// it connects on 4208. The BeefPerfServer environment variable overrides this argument entirely,
+		/// which is how an already-built program gets aimed at a BeefPerf running on another port.
 		public static void Init(StringView serverName, StringView sessionName)
 		{
 			BpInit(serverName.ToScopeCStr!(), sessionName.ToScopeCStr!());

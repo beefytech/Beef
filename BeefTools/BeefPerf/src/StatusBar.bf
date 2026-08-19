@@ -42,6 +42,23 @@ namespace BeefPerf
 				curY += 80;
 			}
 
+			// Only present when MCP was asked for, so the window says out loud whether the endpoint an
+			// agent is meant to be talking to actually came up
+			if (gApp.mMCPServer != null)
+			{
+				if (gApp.mMCPServer.IsListening)
+				{
+					g.DrawString(scope String()..AppendF("MCP: {0}", gApp.mMCPServer.mPort), curY, 0);
+					curY += 90;
+				}
+				else
+				{
+					using (g.PushColor(0xFFFF4040))
+						g.DrawString(scope String()..AppendF("MCP failed on port {0}", gApp.mMCPServer.mPort), curY, 0);
+					curY += 150;
+				}
+			}
+
 			if (gApp.mBoard.mPerfView != null)
 			{
 				var client = gApp.mBoard.mPerfView.mSession;

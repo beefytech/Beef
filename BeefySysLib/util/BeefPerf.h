@@ -16,6 +16,10 @@
 typedef int SOCKET;
 #endif
 
+// The port BeefPerf listens on unless told otherwise. A server name passed to BpInit may override it
+// per-connection by appending ":<port>", eg "127.0.0.1:4209".
+#define BP_DEFAULT_PORT 4208
+
 enum BpConnectState
 {
 	BpConnectState_NotConnected,

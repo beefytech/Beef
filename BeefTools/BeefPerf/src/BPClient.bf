@@ -553,6 +553,11 @@ namespace BeefPerf
 		public const int cBufTickScale = 100;
 		public const uint32 cFileMarker = 0xBEEF193A;
 
+		// A handle that stays valid for the life of the session. The MCP tools address sessions by this
+		// rather than by their index in gApp.mSessions, which shifts whenever one is removed.
+		static int32 sNextId = 1;
+		public int32 mId = sNextId++;
+
 		public BpCmdTarget mCurCmdTarget;
 		public DateTime mConnectTime;
 		public DateTime mDisconnectTime;

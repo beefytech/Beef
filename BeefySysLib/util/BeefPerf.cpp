@@ -707,13 +707,43 @@ bool BpManager::Connect()
 	struct sockaddr_in server;
 	struct hostent * hp;
 
+	// The server name may carry a port as "host:port", so a program can be pointed at a BeefPerf
+	// running somewhere other than the default -- for instance an automated capture that deliberately
+	// stays off 4208 to leave the one the developer already has open alone. Anything after the colon
+	// that is not a plain port number is left alone and treated as part of the host name.
+	String hostName = mServerName;
+	int port = BP_DEFAULT_PORT;
+	intptr colonIdx = hostName.LastIndexOf(':');
+	if (colonIdx > 0)
+	{
+		String portStr = hostName.Substring(colonIdx + 1);
+		int parsedPort = 0;
+		bool validPort = !portStr.IsEmpty();
+		for (intptr i = 0; i < portStr.length(); i++)
+		{
+			char c = portStr[i];
+			if ((c < '0') || (c > '9'))
+			{
+				validPort = false;
+				break;
+			}
+			parsedPort = (parsedPort * 10) + (c - '0');
+		}
+
+		if ((validPort) && (parsedPort > 0) && (parsedPort <= 65535))
+		{
+			port = parsedPort;
+			hostName = hostName.Substring(0, colonIdx);
+		}
+	}
+
 	server.sin_family = PF_INET;
-	hp = gethostbyname(mServerName.c_str());
+	hp = gethostbyname(hostName.c_str());
 	if (hp == NULL)
 		return false;
 
 	memcpy(&server.sin_addr, hp->h_addr_list[0], sizeof(server.sin_addr));
-	server.sin_port = htons(4208);
+	server.sin_port = htons((uint16)port);
 #ifdef BF_PLATFORM_WINDOWS	
 	bool isLocalhost = server.sin_addr.S_un.S_addr == 0x0100007f;
 #else
@@ -1441,6 +1471,28 @@ BpResult BpManager::Init(const char* serverName, const char* sessionName)
 
 	if (mSocket != INVALID_SOCKET)
 		return BpResult_AlreadyInitialized;
+
+	// Most callers hard-code their server name at the BpInit call site (IDEHelper's DllMain, for one),
+	// so without this there is no way to aim an already-built program at a BeefPerf on a different port
+	// short of rebuilding it. Accepts the same "host" or "host:port" a BpInit argument does.
+	//
+	// Deliberately not BFP_GETSTR_HELPER: that macro retries on BfpResult_InsufficientBuffer, but the
+	// Windows BfpSystem_GetEnvironmentVariable reports a short buffer as BfpSystemResult_PartialData,
+	// so the retry would never fire and this would silently always come back empty. A host:port is
+	// short enough that one fixed buffer settles it.
+	String serverNameOverride;
+	{
+		char envBuf[256] = { 0 };
+		int envBufSize = (int)sizeof(envBuf);
+		BfpSystemResult envResult = BfpSystemResult_Ok;
+		BfpSystem_GetEnvironmentVariable("BeefPerfServer", envBuf, &envBufSize, &envResult);
+		if ((envResult == BfpSystemResult_Ok) && (envBuf[0] != 0))
+		{
+			envBuf[sizeof(envBuf) - 1] = 0;
+			serverNameOverride = envBuf;
+			serverName = serverNameOverride.c_str();
+		}
+	}
 
 	BfpGUID guid;
 	BfpSystem_CreateGUID(&guid);

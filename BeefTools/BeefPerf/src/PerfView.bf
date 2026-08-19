@@ -2363,11 +2363,16 @@ namespace BeefPerf
 			return (mouseX, mouseY);
 		}
 
-		public void EnsureVisible(int32 trackIdx, int32 trackLine)
+		/// Returns false if the track has no node in the tree yet. The tree is built by the first
+		/// Update after a session is shown, so anything scrolling to a track in a view it just caused
+		/// to be created has to wait a frame and try again. This used to unwrap the lookup unguarded,
+		/// which turned that timing into a fatal "Unhandled error in result".
+		public bool EnsureVisible(int32 trackIdx, int32 trackLine)
 		{
 			EnsureOpen(trackIdx);
 
-			float wantY = GetYFromTrack(trackIdx, trackLine);
+			if (!(GetYFromTrack(trackIdx, trackLine) case .Ok(let wantY)))
+				return false;
 
 			float wantYBot = wantY + TrackNode.cHeaderHeight;
 			float dispHeight = mHeight - GetHeaderHeight() - 18;
@@ -2375,6 +2380,7 @@ namespace BeefPerf
 				mWantOfsY = -wantY + 20;
 			else if ((wantYBot > dispHeight - mOfsY))
 				mWantOfsY = dispHeight - wantYBot;
+			return true;
 		}
 
 		public void ZoomTo(int64 startTick, int64 endTick)

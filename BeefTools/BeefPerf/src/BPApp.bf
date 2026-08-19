@@ -44,6 +44,9 @@ namespace BeefPerf
 
 		public Socket mListenSocket ~ delete _;
 		public Thread mSocketThread ~ delete _;
+		public BPMCPServer mMCPServer ~ delete _;
+		public bool mWantsMCP;
+		public int32 mMCPPort = -1; // -1 = mListenPort + 1
 		public List<BpClient> mClients = new List<BpClient>() ~ delete _;
 		public List<BpSession> mSessions = new List<BpSession>() ~ DeleteContainerAndItems!(_);
 		public Monitor mClientMonitor = new Monitor() ~ delete _;
@@ -223,6 +226,15 @@ namespace BeefPerf
 			mSocketThread = new Thread(new => SocketThreadProc);
 			mSocketThread.Start(false);
 
+			if (mWantsMCP)
+			{
+				mMCPServer = new BPMCPServer((mMCPPort >= 0) ? mMCPPort : mListenPort + 1);
+				if (mMCPServer.Start() case .Err)
+					Fail(scope String()..AppendF("Failed to listen for MCP on port {0}", mMCPServer.mPort));
+				else
+					LogLine(scope String()..AppendF("MCP server listening on http://127.0.0.1:{0}/mcp", mMCPServer.mPort));
+			}
+
 			DarkTheme aTheme = new DarkTheme();
 			aTheme.Init();
 			ThemeFactory.mDefault = aTheme;
@@ -232,6 +244,13 @@ namespace BeefPerf
 
 			BFWindow.Flags windowFlags = .Border | .SysMenu | .Caption | .Minimize | .Maximize |
 				.QuitOnClose | .Resizable | .Menu;
+
+			// Honor however we were told to show ourselves -- "start /min", a shortcut set to run
+			// minimized, or a parent process that passed SW_SHOWMINNOACTIVE. That matters most when
+			// something else launches us just to have a profiler listening (an MCP client, a build
+			// script), where popping a window to the foreground would be pure interruption.
+			windowFlags |= BFWindow.GetStartupFlags();
+
 			if (mWantsFullscreen)
 				windowFlags |= BFWindowBase.Flags.Fullscreen;
 
@@ -263,6 +282,8 @@ namespace BeefPerf
 		{
 			base.Stop();
 			mListenSocket.Close();
+			if (mMCPServer != null)
+				mMCPServer.Stop();
 
 			Widget.RemoveAndDelete(mWorkspacePanel);
 			mWorkspacePanel = null;
@@ -532,6 +553,29 @@ namespace BeefPerf
 			case "-autoOpened":
 				mIsAutoOpened = true;
 				return true;
+			case "-port":
+				// Which port instrumented programs connect to. Running a second BeefPerf on its own
+				// port keeps an automated capture from fighting over 4208 with the one you have open.
+				if (value == null)
+					return false;
+				if (int32.Parse(value) case .Ok(let port))
+				{
+					mListenPort = port;
+					return true;
+				}
+				Fail(scope String()..AppendF("Invalid port '{0}'", value));
+				return true;
+			case "-mcp":
+				// -mcp on its own puts the MCP endpoint one past the profiler port; -mcp=<port> picks it
+				mWantsMCP = true;
+				if (value != null)
+				{
+					if (int32.Parse(value) case .Ok(let mcpPort))
+						mMCPPort = mcpPort;
+					else
+						Fail(scope String()..AppendF("Invalid MCP port '{0}'", value));
+				}
+				return true;
 			case "-cmd":
 				if (value == null)
 					return false;
@@ -561,7 +605,10 @@ namespace BeefPerf
 
 					ProcessStartInfo procInfo = scope ProcessStartInfo();
 					procInfo.SetFileName(exePath);
-					procInfo.SetArguments("-autoOpened");
+					// Hand our port down, otherwise the instance we launch listens on the default and
+					// the command we are about to send goes nowhere. Note this reads mListenPort as it
+					// stands right now, so -port has to precede -cmd on the command line.
+					procInfo.SetArguments(scope $"-autoOpened -port={mListenPort}");
 					SpawnedProcess spawnedProcess = scope SpawnedProcess();
 					spawnedProcess.Start(procInfo);
 				}
@@ -800,6 +847,11 @@ namespace BeefPerf
 				mStatBytesReceived = 0;
 				mStatReportTick = mUpdateCnt;
 			}
+
+			// Pumped after the clients so a query answers from data that includes everything received
+			// this frame, and on this thread so it never races the stream parsing in BpClient.Update
+			if (mMCPServer != null)
+				mMCPServer.Update();
 		}
 
 		void SysKeyDown(KeyDownEvent evt)
