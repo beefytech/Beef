@@ -15203,7 +15203,7 @@ namespace IDE
 			}
 		}
 
-		public void OnWatchedFileChanged(ProjectItem projectItem, WatcherChangeTypes changeType, String newPath)
+		public virtual void OnWatchedFileChanged(ProjectItem projectItem, WatcherChangeTypes changeType, String newPath)
 		{
 			CompilerLog("IDEApp.OnWatchedFileChanged {} {} {}", projectItem.mName, changeType, newPath);
 
@@ -15250,7 +15250,7 @@ namespace IDE
 			else if (changeType == .FileCreated)
 			{
 				let projectFolder = projectItem as ProjectFolder;
-				if (projectFolder.IsAutoInclude())
+				if ((projectFolder.IsAutoInclude()) && (projectFolder.CheckAddFile(newPath)))
 				{
 					if (!projectFolder.mChildMap.ContainsKey(newName))
 					{
