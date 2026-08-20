@@ -25898,7 +25898,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 			if (!isValid)
 			{
-				Fail("Parameters with 'params' specifiers can only be used for array, span, tuple, delegate, or function types", paramDef->mParamDeclaration->mModToken);
+				if (paramDef->mParamDeclaration != NULL)
+					Fail("Parameters with 'params' specifiers can only be used for array, span, tuple, delegate, or function types", paramDef->mParamDeclaration->mModToken);
 				// Failure case, make it an Object[]
 				resolvedParamType = CreateArrayType(mContext->mBfObjectType, 1);
 			}
@@ -25913,7 +25914,8 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 
 			if (paramDefIdx < (int)methodDef->mParams.size() - 1)
 			{
-				Fail("Only the last parameter can specify 'params'", paramDef->mParamDeclaration->mModToken);
+				if (paramDef->mParamDeclaration != NULL)
+					Fail("Only the last parameter can specify 'params'", paramDef->mParamDeclaration->mModToken);
 			}
 		}
 		else
