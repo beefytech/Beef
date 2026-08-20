@@ -34,7 +34,10 @@ public:
 	{
 		mNumBits = other.mNumBits;
 		mInner = other.mInner;
-		mBits = other.mBits;		
+		if (other.mBits == &other.mInner)
+			mBits = &mInner;
+		else
+			mBits = other.mBits;
 		other.mNumBits = 0;
 		other.mBits = NULL;
 	}
@@ -62,7 +65,7 @@ public:
 			return;		
 		this->mNumBits = numBits;
 		if (this->mBits != &mInner)
-			delete this->mBits;
+			delete [] this->mBits;
 		if (numInts > 1)
 			this->mBits = new uint32[numInts];
 		else
