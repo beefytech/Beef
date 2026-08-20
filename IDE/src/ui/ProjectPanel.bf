@@ -47,8 +47,8 @@ namespace IDE.ui
                 base.DrawSelect(g);
         }
 
-        public override void Draw(Graphics g)
-        {
+		public virtual void UpdateTextColor()
+		{
 			uint32 color = DarkTheme.COLOR_TEXT;
 			let projectPanel = ((ProjectListView)mListView).mProjectPanel;
 
@@ -80,6 +80,11 @@ namespace IDE.ui
 
 				mTextColor = color;
 			}
+		}
+
+        public override void Draw(Graphics g)
+        {
+			UpdateTextColor();
 
             base.Draw(g);
 
