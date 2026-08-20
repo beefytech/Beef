@@ -1,5 +1,15 @@
 #pragma once
 
+enum BpConnectState
+{
+	BpConnectState_NotConnected,
+	BpConnectState_Connecting,
+	BpConnectState_Connected,
+	BpConnectState_Failed
+};
+
+#ifndef BP_IMPORT
+
 #ifndef BP_NOINC
 #include "../Common.h"
 #include "CritSect.h"
@@ -19,14 +29,6 @@ typedef int SOCKET;
 // The port BeefPerf listens on unless told otherwise. A server name passed to BpInit may override it
 // per-connection by appending ":<port>", eg "127.0.0.1:4209".
 #define BP_DEFAULT_PORT 4208
-
-enum BpConnectState
-{
-	BpConnectState_NotConnected,
-	BpConnectState_Connecting,
-	BpConnectState_Connected,
-	BpConnectState_Failed
-};
 
 #ifndef BP_DISABLED
 
@@ -328,6 +330,13 @@ public:
 #define BP_CALLTYPE
 #endif
 
+#else // BP_IMPORT
+
+#define BP_EXPORT extern "C"
+#define BP_CALLTYPE
+
+#endif
+
 BP_EXPORT void BP_CALLTYPE BpInit(const char* serverName, const char* sessionName);
 BP_EXPORT void BP_CALLTYPE BpShutdown();
 BP_EXPORT BpConnectState BP_CALLTYPE BpGetConnectState();
@@ -342,3 +351,57 @@ BP_EXPORT void BP_CALLTYPE BpLeave();
 BP_EXPORT void BP_CALLTYPE BpFrameTick();
 BP_EXPORT void BP_CALLTYPE BpEvent(const char* name, const char* details);
 BP_EXPORT const char* BP_CALLTYPE BpDynStr(const char* str);
+
+#ifdef BP_IMPORT
+// The in-process path (above) defines these against BpManager directly. Over the DLL boundary the
+// same helpers go through the exported entry points, so a zone costs two calls instead of two
+// inlined buffer writes -- fine for instrumenting another codebase, worth knowing before putting
+// one inside a tight loop. Names match the in-process versions so call sites read identically.
+#include <stdarg.h>
+#include <stdio.h>
+
+class BpAutoZone
+{
+public:
+	BpAutoZone(const char* name)
+	{
+		BpEnter(name);
+	}
+
+	~BpAutoZone()
+	{
+		BpLeave();
+	}
+};
+
+// Unlike the in-process BpAutoZoneF, this formats up front: BpEnterF's varargs can't be forwarded
+// from a va_list across the export, so the viewer receives a finished string rather than a format
+// string plus arguments.
+class BpAutoZoneF
+{
+public:
+	BpAutoZoneF(const char* name, ...)
+	{
+		char buf[1024];
+		va_list args;
+		va_start(args, name);
+		vsnprintf(buf, sizeof(buf), name, args);
+		va_end(args);
+		BpEnter(BpDynStr(buf));
+	}
+
+	~BpAutoZoneF()
+	{
+		BpLeave();
+	}
+};
+
+#define BP_TOKENPASTE(x, y) x ## y
+#define BP_TOKENPASTE2(x, y) BP_TOKENPASTE(x, y)
+
+#define BP_ENTER(zoneName) BpEnter(zoneName)
+#define BP_DYN_STR(str) BpDynStr(str)
+#define BP_ZONE(zoneName, ...) BpAutoZone BP_TOKENPASTE2(bpZone_, __COUNTER__)(zoneName, ##__VA_ARGS__)
+#define BP_ZONE_F(zoneName, ...) BpAutoZoneF BP_TOKENPASTE2(bpZone_, __COUNTER__)(zoneName, ##__VA_ARGS__)
+#define BP_SHUTDOWN() BpShutdown()
+#endif // BP_IMPORT

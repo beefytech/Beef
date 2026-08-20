@@ -1377,6 +1377,7 @@ RenderCmd* Beefy::DXDrawLayer::CreateSetTextureCmd(int textureIdx, Texture* text
 
 void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 {
+	BP_ZONE("DXRenderDevice::PhysSetRenderState");
 	DXRenderState* dxRenderState = (DXRenderState*)renderState;
 	DXShader* dxShader = (DXShader*)renderState->mShader;
 
@@ -2596,6 +2597,7 @@ void DXRenderWindow::Resized()
 
 void DXRenderWindow::Present()
 {
+	BP_ZONE("DXRenderWindow::Present");
 	// Under external pacing our own vblank must never block the paced loop
 	bool useVSync = (mWindow->mFlags & BFWINDOW_VSYNC) && (gBFApp != NULL) && (!gBFApp->mExternalPacingActive);
 	HRESULT hr = mDXSwapChain->Present(useVSync ? 1 : 0, 0);
