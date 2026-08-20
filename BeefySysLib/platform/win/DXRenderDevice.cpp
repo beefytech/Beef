@@ -1095,6 +1095,38 @@ Texture* DXTexture::CreateDepthRef()
 	return ref;
 }
 
+// Second view over the same texels, minus the sRGB decode. Only TYPELESS resources (ie ones loaded
+// with TextureFlag_Srgb) can be re-viewed; anything else already samples raw, so there's nothing to
+// alias and this returns NULL. The resource is shared and refcounted, so the ref and the original
+// can be released in either order.
+Texture* DXTexture::CreateRawRef()
+{
+	if ((mD3DTexture == NULL) || (mD3DFormat != DXGI_FORMAT_R8G8B8A8_TYPELESS))
+		return NULL;
+
+	D3D11_TEXTURE2D_DESC desc;
+	mD3DTexture->GetDesc(&desc);
+
+	DXTexture* ref = new DXTexture();
+	ref->mWidth = mWidth;
+	ref->mHeight = mHeight;
+	ref->mRenderDevice = mRenderDevice;
+	ref->mD3DTexture = mD3DTexture;
+	mD3DTexture->AddRef();
+	ref->mD3DFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
+
+	D3D11_SHADER_RESOURCE_VIEW_DESC srDesc;
+	ZeroMemory(&srDesc, sizeof(srDesc));
+	srDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
+	srDesc.Texture2D.MostDetailedMip = 0;
+	srDesc.Texture2D.MipLevels = desc.MipLevels;
+	DXCHECK(((DXRenderDevice*)mRenderDevice)->mD3DDevice->CreateShaderResourceView(mD3DTexture, &srDesc, &ref->mD3DResourceView));
+
+	ref->AddRef();
+	return ref;
+}
+
 void* DXTexture::GetSharedHandle()
 {
 	IDXGIResource* dxgiResource = NULL;
@@ -3217,6 +3249,10 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 	String pathEx = fileName;
 	if ((flags & TextureFlag_Additive) != 0)
 		pathEx += ":add";
+	if ((flags & TextureFlag_Mipmaps) != 0)
+		pathEx += ":mip";
+	if ((flags & TextureFlag_Srgb) != 0)
+		pathEx += ":srgb";
 
 	DXTexture* aTexture = NULL;
 	if ((!fileName.StartsWith('@')) && (mTextureMap.TryGetValue(pathEx, &aTexture)))
@@ -3379,6 +3415,7 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 		imageData->PremultiplyAlpha();
 
 	bool wantMipmaps = (flags & TextureFlag_Mipmaps) != 0;
+	bool wantSrgb = (flags & TextureFlag_Srgb) != 0;
 
 	int aWidth = imageData->mWidth;
 	int aHeight = imageData->mHeight;
@@ -3389,7 +3426,10 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	desc.Width = aWidth;
 	desc.Height = aHeight;
 	desc.ArraySize = 1;
-	desc.Format = ((flags & TextureFlag_Srgb) != 0) ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : DXGI_FORMAT_R8G8B8A8_UNORM;
+	// sRGB content is stored TYPELESS so CreateRawRef can alias a second _UNORM view over the same
+	// resource later; a fully-typed resource only accepts views of its own format. Costs nothing --
+	// the memory and the sampling path are identical. Non-sRGB textures stay exactly as they were.
+	desc.Format = wantSrgb ? DXGI_FORMAT_R8G8B8A8_TYPELESS : DXGI_FORMAT_R8G8B8A8_UNORM;
 	desc.SampleDesc.Count = 1;
 	desc.Usage = D3D11_USAGE_DEFAULT;
 	desc.CPUAccessFlags = 0;
@@ -3423,7 +3463,9 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	}
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC srDesc;
-	srDesc.Format = desc.Format;
+	// A TYPELESS resource can't be viewed as-is; sRGB content gets the decoding view here, which is
+	// also what GenerateMips wants so the filtering below happens in linear space.
+	srDesc.Format = wantSrgb ? DXGI_FORMAT_R8G8B8A8_UNORM_SRGB : desc.Format;
 	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	srDesc.Texture2D.MostDetailedMip = 0;
 	srDesc.Texture2D.MipLevels = wantMipmaps ? -1 : 1;
@@ -3442,6 +3484,7 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	aTexture->mWidth = aWidth;
 	aTexture->mHeight = aHeight;
 	aTexture->mD3DTexture = d3DTexture;
+	aTexture->mD3DFormat = desc.Format;
 	aTexture->mD3DResourceView = d3DShaderResourceView;
 	aTexture->AddRef();
 

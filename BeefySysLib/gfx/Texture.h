@@ -30,6 +30,10 @@ public:
 	virtual void			GetDepthBits(int srcX, int srcY, int srcWidth, int srcHeight, int destPitch, uint32* bits) {}
 	// Wraps a render target's depth buffer as its own sampleable texture -- see DXTexture::CreateDepthRef.
 	virtual Texture*		CreateDepthRef() { return NULL; }
+	// Aliases an sRGB color texture so sampling returns the stored texels undecoded, for pipelines
+	// that work in sRGB space (the 2D one) -- see DXTexture::CreateRawRef. NULL if there's nothing to
+	// undo, ie the texture wasn't loaded as sRGB.
+	virtual Texture*		CreateRawRef() { return NULL; }
 
 	virtual void*			GetSharedHandle() { return NULL; }
 	virtual bool			AcquireKeyedMutex(uint64 key, uint32 timeoutMs) { return false; }

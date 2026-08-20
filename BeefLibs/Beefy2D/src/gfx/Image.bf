@@ -61,6 +61,8 @@ namespace Beefy.gfx
         public float mY;
         public void* mNativeTextureSegment;
         public PixelSnapping mPixelSnapping = PixelSnapping.Auto;
+		// Lazily built by RawView, owned by this Image. Null until something actually asks.
+		Image mRawView ~ delete _;
         
         [CallingConvention(.Stdcall), CLink]
         public static extern void Gfx_DrawTextureSegment(void* textureSegment, float a, float b, float c, float d, float tx, float ty, float z, uint32 color, int32 pixelSnapping);
@@ -79,6 +81,9 @@ namespace Beefy.gfx
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void* Gfx_CreateDepthImageRef(void* textureSegment);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void* Gfx_CreateRawImageRef(void* textureSegment);
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern void Gfx_Texture_ResolveTo(void* srcTextureSegment, void* destTextureSegment);
@@ -179,6 +184,26 @@ namespace Beefy.gfx
 				return null;
 
 			return CreateFromNativeTextureSegment(aNativeTextureSegment);
+		}
+
+		// The same texels sampled without the sRGB decode, for drawing an image that was loaded as
+		// color data (.Srgb) through the 2D pipeline, which works in sRGB space and would otherwise
+		// render it too dark. Shares this Image's texture -- no extra GPU memory, and nothing is
+		// created unless this is actually read. Null for images that weren't loaded .Srgb, since
+		// those already sample raw; draw those directly.
+		public Image RawView
+		{
+			get
+			{
+				if (mRawView == null)
+				{
+					void* aNativeTextureSegment = Gfx_CreateRawImageRef(mNativeTextureSegment);
+					if (aNativeTextureSegment == null)
+						return null;
+					mRawView = CreateFromNativeTextureSegment(aNativeTextureSegment);
+				}
+				return mRawView;
+			}
 		}
 
 		// Depth-only target (no color plane): draw into it with a DisableRenderTarget +
