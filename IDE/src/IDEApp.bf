@@ -3876,7 +3876,7 @@ namespace IDE
 		}
 
 		[IDECommand]
-		public void SaveFile()
+		public virtual void SaveFile()
 		{
 			var sourceViewPanel = GetActiveSourceViewPanel();
 			if (sourceViewPanel != null)
@@ -6718,7 +6718,7 @@ namespace IDE
 				if (activeTab != null)
 				{
 					var lastActivePanel = activeTab.mContent;
-					if ((lastActivePanel is SourceViewPanel) || (lastActivePanel is DisassemblyPanel) || (activePanel is ContentPanel))
+					if ((lastActivePanel is SourceViewPanel) || (lastActivePanel is DisassemblyPanel) || (lastActivePanel is ContentPanel))
 						return lastActivePanel;
 				}
 			}

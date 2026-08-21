@@ -82,41 +82,59 @@ namespace IDE.ui
 			}
 		}
 
+		public virtual bool HasChanged(ref float changeX)
+		{
+			if (mRefObject == null)
+				return false;
+
+			bool hasChanged = false;
+			var workspace = mRefObject as Workspace;
+			if (workspace != null)
+			    hasChanged = workspace.mHasChanged;
+			var project = mRefObject as Project;
+			if (project != null)
+			{
+				hasChanged = project.mHasChanged;
+				if (project.mDeferState != .None)
+				{
+					changeX += GS!(12);
+				}
+				else if (project.mLocked)
+				{
+					changeX += GS!(12);
+				}
+			}
+			return hasChanged;
+		}
+
         public override void Draw(Graphics g)
         {
 			UpdateTextColor();
 
             base.Draw(g);
 
+			float changeX = mLabelOffset + ((DarkListView)mListView).mLabelX + GS!(1);
             if (mRefObject != null)
             {
-				float changeX = mLabelOffset + ((DarkListView)mListView).mLabelX + GS!(1);
-
-                bool hasChanged = false;
-                var workspace = mRefObject as Workspace;
-                if (workspace != null)
-                    hasChanged = workspace.mHasChanged;
-                var project = mRefObject as Project;
-                if (project != null)
-                {
-					hasChanged = project.mHasChanged;
+				var project = mRefObject as Project;
+				if (project != null)
+				{
 					if (project.mDeferState != .None)
 					{
 						g.DrawString(scope String()..Append('.', 1 + (mUpdateCnt / 20) % 3), g.mFont.GetWidth(mLabel) + mLabelOffset + LabelX + GS!(3), 0);
-						changeX += GS!(12);
 					}
 					else if (project.mLocked)
 					{
 						g.Draw(DarkTheme.sDarkTheme.GetImage(.LockIcon), g.mFont.GetWidth(mLabel) + GS!(42), 0);
-						changeX += GS!(12);
 					}
 				}
-                if (hasChanged)
-				{
-					changeX += g.mFont.GetWidth(mLabel);
-                    g.DrawString("*", changeX, 0);
-				}
-            } 
+            }
+
+			if (HasChanged(ref changeX))
+			{
+				changeX += g.mFont.GetWidth(mLabel);
+			    g.DrawString("*", changeX, 0);
+			}
         }
 
 		public override void DrawAll(Graphics g)
