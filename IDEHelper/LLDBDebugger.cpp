@@ -1,5 +1,6 @@
 #include "LLDBDebugger.h"
 #include "DebugManager.h"
+#include "Compiler/BfUtil.h"
 
 #ifdef LLDB_ENABLED
 
@@ -1234,27 +1235,161 @@ void LLDBDebugger::GetStackAllocInfo(intptr addr, int* outThreadId, int* outStac
 
 String LLDBDebugger::FindCodeAddresses(const StringImpl& fileName, int line, int column, bool allowAutoResolve)
 {
-	return String();
+	lldb::SBLineEntry entry;
+	entry.SetLine(line);
+	entry.SetColumn(column);
+	lldb::SBFileSpec fileSpec;
+	int slash = BF_MAX(fileName.LastIndexOf('/'), fileName.LastIndexOf('\\'));
+	if (slash < 0)
+	{
+		fileSpec.SetDirectory(".");
+		fileSpec.SetFilename(fileName.c_str());
+	}
+	else
+	{
+		String dir(fileName, 0, slash - 1);
+		String filename(fileName, slash + 1, fileName.length() - slash - 1);
+		fileSpec.SetDirectory(dir.c_str());
+		fileSpec.SetFilename(filename.c_str());
+	}
+	entry.SetFileSpec(fileSpec);
+	auto addr = entry.GetStartAddress();
+	if (!addr.IsValid())
+		return String();
+	String result;
+	result += EncodeDataPtr(addr.GetLoadAddress(mLLDBTarget), false);
+	result += '\t';
+	auto func = addr.GetFunction();
+	if (func.IsValid())
+		result += func.GetName();
+	result += '\n';
+	return result;
 }
 
 String LLDBDebugger::GetAddressSourceLocation(intptr address)
 {
-	return String();
+	lldb::SBAddress addr;
+	addr.SetLoadAddress(address, mLLDBTarget);
+	if (!addr.IsValid())
+		return "!Invalid address";
+	auto entry = addr.GetLineEntry();
+	return StrFormat("%s/%s:%u:%u", 
+		entry.GetFileSpec().GetDirectory(), entry.GetFileSpec().GetFilename(), 
+		entry.GetLine(), entry.GetColumn());
 }
 
 String LLDBDebugger::GetAddressSymbolName(intptr address, bool demangle)
 {
-	return String();
+	lldb::SBAddress addr;
+	addr.SetLoadAddress(address, mLLDBTarget);
+	if (!addr.IsValid())
+		return "!Invalid address";
+	auto symbol = addr.GetSymbol();
+	if (!symbol.IsValid())
+		return "!Invalid symbol";
+	if (demangle)
+		return symbol.GetDisplayName();
+	else
+		return symbol.GetMangledName();
+}
+
+static void FormatDisassembleSBInstruction(lldb::SBInstruction inst, lldb::SBTarget target, String& outString)
+{
+	outString += StrFormat("D %@:  %@   %s %s",
+		inst.GetAddress().GetFileAddress(), inst.GetAddress().GetLoadAddress(target),
+		inst.GetMnemonic(target), inst.GetOperands(target)
+	);
+	auto comment = inst.GetComment(target);
+	if (comment != NULL && comment[0] != '\0')
+	{
+		outString += " ; ";
+		outString += comment;
+	}
+	outString += '\n';
 }
 
 String LLDBDebugger::DisassembleAtRaw(intptr address)
 {
-	return String();
+	uint8 buffer[2048];
+	auto instructions = mLLDBTarget.GetInstructions((lldb::addr_t)address, buffer, sizeof(buffer));
+	if (!instructions.IsValid())
+		return "!Disassembly failed";
+	
+	String result = "R\n";
+	lldb::SBSymbol prevSymbol;
+	for (int i = 0; true; i++)
+	{
+		auto inst = instructions.GetInstructionAtIndex(i);
+		if (!inst.IsValid()) break;
+		auto symbol = inst.GetAddress().GetSymbol();
+		if (symbol.IsValid() && symbol != prevSymbol)
+		{
+			result += "T ";
+			result += symbol.GetDisplayName();
+			result += ":\n";
+			prevSymbol = symbol;
+		}
+		FormatDisassembleSBInstruction(inst, mLLDBTarget, result);
+	}
+
+	return result;
 }
 
 String LLDBDebugger::DisassembleAt(intptr address)
 {
-	return String();
+	lldb::SBAddress addr;
+	addr.SetLoadAddress(address, mLLDBTarget);
+	if (!addr.IsValid())
+		return "!Invalid address";
+	auto function = addr.GetFunction();
+	if (!function.IsValid())
+		return DisassembleAtRaw(address);
+
+	String result;
+	if (function.GetIsOptimized())
+		result += "O\n";
+	int prevLine = -1;
+	StringView prevDir;
+	StringView prevFilename;
+	auto _UpdateLineData = [&](lldb::SBAddress addr)
+	{
+		auto lineEntry = addr.GetLineEntry();
+		if (lineEntry.IsValid())
+		{
+			auto fileSpec = lineEntry.GetFileSpec();
+			if (fileSpec.IsValid())
+			{
+				StringView dir = fileSpec.GetDirectory();
+				StringView filename = fileSpec.GetFilename();
+				if (dir != prevDir || filename != prevFilename)
+				{
+					result += "S " + dir + "/" + filename + "\n";
+					prevDir = dir;
+					prevFilename = filename;
+				}
+			}
+			auto line = lineEntry.GetLine();
+			if (line != prevLine)
+			{
+				result += StrFormat("L %u %u\n", line, lineEntry.GetColumn());
+				prevLine = line;
+			}
+		}
+	};
+	_UpdateLineData(addr);
+
+	auto instructions = function.GetInstructions(mLLDBTarget);
+	if (!instructions.IsValid())
+		return "!Disassembly failed";
+
+	for (int i = 0; true; i++)
+	{
+		auto inst = instructions.GetInstructionAtIndex(i);
+		if (!inst.IsValid()) break;
+		_UpdateLineData(inst.GetAddress());
+		FormatDisassembleSBInstruction(inst, mLLDBTarget, result);
+	}
+	return result;
 }
 
 String LLDBDebugger::FindLineCallAddresses(intptr address)
@@ -1893,57 +2028,63 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 			result += "\n:type\t";
 			result += typeCategory;
 		}
+	}
 
-		lldb::addr_t loadAddr = value.GetLoadAddress();
+	lldb::addr_t loadAddr = value.GetLoadAddress();
 
-		bool isComposite = ((typeClass == lldb::eTypeClassStruct) ||
-		                    (typeClass == lldb::eTypeClassClass) ||
-		                    (typeClass == lldb::eTypeClassUnion));
-		if (isComposite)
+	if (isPointer) 
+		typeClass = valueType.GetPointeeType().GetTypeClass();
+	else if (isReference)
+		typeClass = valueType.GetDereferencedType().GetTypeClass();
+	bool isComposite = ((typeClass == lldb::eTypeClassStruct) ||
+		(typeClass == lldb::eTypeClassClass) ||
+		(typeClass == lldb::eTypeClassUnion) ||
+		(typeClass == lldb::eTypeClassArray));
+	if (isComposite)
+	{
+		// Expose address so the IDE can navigate members, unless suppressed
+		if ((loadAddr != LLDB_INVALID_ADDRESS) && !fmt.mNoAddress && !fmt.mNoMembers && !isPointer && !isReference)
 		{
-			// Expose address so the IDE can navigate members, unless suppressed
-			if ((loadAddr != LLDB_INVALID_ADDRESS) && !fmt.mNoAddress && !fmt.mNoMembers)
-			{
-				result += StrFormat("\n:pointer\t0x%llX", (uint64)loadAddr);
-				result += StrFormat("\n:addrValueExpr\t(%s*)0x%llX", typeName.c_str(), (uint64)loadAddr);
-			}
+			result += StrFormat("\n:pointer\t0x%llX", (uint64)loadAddr);
+			result += StrFormat("\n:addrValueExpr\t(%s*)0x%llX", typeName.c_str(), (uint64)loadAddr);
+		}
 
-			// Append member list: alternating name/expression-template pairs.
-			// The expression template uses "{0}" as a placeholder for the parent's
-			// eval string — WatchPanel substitutes it via AppendF when expanding.
-			if (!fmt.mNoMembers)
+		// Append member list: alternating name/expression-template pairs.
+		// The expression template uses "{0}" as a placeholder for the parent's
+		// eval string — WatchPanel substitutes it via AppendF when expanding.
+		if (!fmt.mNoMembers)
+		{
+			result += '\n';
+			
+			const char* fmt = isPointer ? "({0})->%s" : "({0}).%s";
+			uint32 numChildren = value.GetNumChildren();
+			for (uint32 i = 0; i < numChildren; i++)
 			{
+				lldb::SBValue child = value.GetChildAtIndex(i);
+				if (!child.IsValid())
+					continue;
+				const char* childName = child.GetName();
+				if ((childName == NULL) || (childName[0] == '\0'))
+					continue;
+
 				result += '\n';
-
-				uint32 numChildren = value.GetNumChildren();
-				for (uint32 i = 0; i < numChildren; i++)
-				{
-					lldb::SBValue child = value.GetChildAtIndex(i);
-					if (!child.IsValid())
-						continue;
-					const char* childName = child.GetName();
-					if ((childName == NULL) || (childName[0] == '\0'))
-						continue;
-					// Skip array-index synthetic children (e.g. "[0]", "[1]")
-					if (childName[0] == '[')
-						continue;
-
-					result += '\n';
-					result += childName;
-					result += '\t';
-					result += StrFormat("({0}).%s", childName);
-				}
+				result += childName;
+				result += '\t';
+				if (childName[0] == '[')
+					result += StrFormat("({0})%s", childName);
+				else
+					result += StrFormat(fmt, childName);
 			}
 		}
-		else
+	}
+	else
+	{
+		// Primitive/enum — mark editable if it lives in addressable memory
+		if (loadAddr != LLDB_INVALID_ADDRESS)
 		{
-			// Primitive/enum — mark editable if it lives in addressable memory
-			if (loadAddr != LLDB_INVALID_ADDRESS)
-			{
-				result += "\n:canEdit";
-				result += "\n:editVal\t";
-				result += displayVal;
-			}
+			result += "\n:canEdit";
+			result += "\n:editVal\t";
+			result += displayVal;
 		}
 	}
 
@@ -2038,12 +2179,17 @@ void LLDBDebugger::EvaluateContinueKeep()
 
 String LLDBDebugger::EvaluateToAddress(const StringImpl& expr, int callStackIdx, int cursorPos)
 {
-	return String();
+	/*String evalExpr;
+	LLDBFormatInfo fmtInfo;
+	ParseExprAndFormat(expr, evalExpr, fmtInfo);
+	auto value = mCallStack[callStackIdx].EvaluateExpression(evalExpr.c_str());
+	return FormatSBValueToResult(value, fmtInfo);*/
+	return Evaluate(expr, callStackIdx, cursorPos, /*unused*/ -1, (DwEvalExpressionFlags)0);
 }
 
 String LLDBDebugger::EvaluateAtAddress(const StringImpl& expr, intptr atAddr, int cursorPos)
 {
-	return String();
+	return Evaluate(expr, mCallStack.Count() - 1, cursorPos, /*unused*/ -1, (DwEvalExpressionFlags)0);
 }
 
 String LLDBDebugger::GetCollectionContinuation(const StringImpl& continuationData, int callStackIdx, int count)
@@ -2053,12 +2199,40 @@ String LLDBDebugger::GetCollectionContinuation(const StringImpl& continuationDat
 
 String LLDBDebugger::GetAutoExpressions(int callStackIdx, uint64 memoryRangeStart, uint64 memoryRangeLen)
 {
-	return String();
+	auto locals = mCallStack[callStackIdx].GetVariables(true, true, false, false);
+
+	String result;
+	for (int i = 0; i < locals.GetSize(); i++)
+	{
+		auto local = locals.GetValueAtIndex(i);
+		result += StrFormat("&%s\t%llu\t%llu\n", local.GetName(), local.GetLoadAddress(), (uint64)local.GetByteSize());
+	}
+
+	return result;
 }
 
 String LLDBDebugger::GetAutoLocals(int callStackIdx, bool showRegs)
 {
-	return String();
+	auto locals = mCallStack[callStackIdx].GetVariables(true, true, false, false);
+
+	String result;
+	for (int i = 0; i < locals.GetSize(); i++)
+	{
+		result += locals.GetValueAtIndex(i).GetName();
+		result += '\n';
+	}
+
+	if (showRegs)
+	{
+		auto regs = mCallStack[callStackIdx].GetRegisters();
+		for (int i = 0; i < regs.GetSize(); i++)
+		{
+			result += regs.GetValueAtIndex(i).GetName();
+			result += '\n';
+		}
+	}
+
+	return result;
 }
 
 String LLDBDebugger::CompactChildExpression(const StringImpl& expr, const StringImpl& parentExpr, int callStackIdx)
@@ -2131,28 +2305,29 @@ String LLDBDebugger::GetDbgAllocInfo()
 
 void LLDBDebugger::StopDebugging()
 {
-	LLDBLog("StopDebugging\n");
-
 	WaitForLaunchThread();
 
-	// Release SBFrame refs before destroying so LLDB can fully drop module handles.
 	ClearCallStack();
 	mActiveBreakpoint = NULL;
 
 	if (mLLDBProcess.IsValid())
+	{
 		mLLDBProcess.Destroy();
-	mLLDBProcess = lldb::SBProcess();
+		mLLDBProcess = lldb::SBProcess();
+	}
 
 	if (mLLDBTarget.IsValid())
+	{
 		mLLDBDebugger.DeleteTarget(mLLDBTarget);
-	mLLDBTarget = lldb::SBTarget();
+		mLLDBTarget = lldb::SBTarget();
+	}
 
 	if (mLLDBDebugger.IsValid())
 	{
 		mLLDBDebugger.Clear();
 		lldb::SBDebugger::Destroy(mLLDBDebugger);
+		mLLDBDebugger = lldb::SBDebugger();
 	}
-	mLLDBDebugger = lldb::SBDebugger();
 
 	mProcessId = 0;
 	mRunState = RunState_Terminated;
@@ -2161,23 +2336,29 @@ void LLDBDebugger::StopDebugging()
 void LLDBDebugger::Terminate()
 {
 	LLDBLog("Terminate\n");
-
 	WaitForLaunchThread();
-
 	mRunState = RunState_Terminating;
 
 	ClearCallStack();
 	mActiveBreakpoint = NULL;
 
 	if (mLLDBProcess.IsValid())
+	{
 		mLLDBProcess.Destroy();
-	mLLDBProcess = lldb::SBProcess();
+		mLLDBProcess = lldb::SBProcess();
+	}
 
-	mLLDBTarget = lldb::SBTarget();
+	if (mLLDBDebugger.IsValid() && mLLDBTarget.IsValid())
+	{
+		mLLDBDebugger.DeleteTarget(mLLDBTarget);
+		mLLDBTarget = lldb::SBTarget();
+	}
 
 	if (mLLDBDebugger.IsValid())
+	{
 		lldb::SBDebugger::Destroy(mLLDBDebugger);
-	mLLDBDebugger = lldb::SBDebugger();
+		mLLDBDebugger = lldb::SBDebugger();
+	}
 
 	mProcessId = 0;
 	mRunState = RunState_Terminated;
@@ -2196,23 +2377,20 @@ void LLDBDebugger::Detach()
 	if (mLLDBProcess.IsValid())
 	{
 		if (mDidAttach)
-		{
-			// Detach from the inferior so it keeps running after we disconnect.
-			lldb::StateType state = mLLDBProcess.GetState();
-			if ((state == lldb::eStateRunning) || (state == lldb::eStateStopped) ||
-				(state == lldb::eStateSuspended))
-			{
-				mLLDBProcess.Detach();
-			}
-		}
+			mLLDBProcess.Detach();
 		else
 			mLLDBProcess.Kill();
+
+		mLLDBProcess.Destroy(); // Ensure it is fully destroyed
 		mLLDBProcess = lldb::SBProcess();
 	}
 
-	mLLDBTarget = lldb::SBTarget();
+	if (mLLDBDebugger.IsValid() && mLLDBTarget.IsValid())
+	{
+		mLLDBDebugger.DeleteTarget(mLLDBTarget);
+		mLLDBTarget = lldb::SBTarget();
+	}
 
-	// Tear down the LLDB session and release global state.
 	if (mLLDBDebugger.IsValid())
 	{
 		lldb::SBDebugger::Destroy(mLLDBDebugger);
