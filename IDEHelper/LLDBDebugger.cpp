@@ -1368,15 +1368,17 @@ String LLDBDebugger::DisassembleAt(intptr address)
 					prevFilename = filename;
 				}
 			}
-			auto line = lineEntry.GetLine();
+			int line = lineEntry.GetLine();
 			if (line != prevLine)
 			{
-				result += StrFormat("L %u %u\n", line, lineEntry.GetColumn());
+				if (prevLine == -1)
+					result += StrFormat("L %d 1\n", line);
+				else if (line > prevLine)
+					result += StrFormat("L %d %d\n", prevLine + 1, line - prevLine);
 				prevLine = line;
 			}
 		}
 	};
-	_UpdateLineData(addr);
 
 	auto instructions = function.GetInstructions(mLLDBTarget);
 	if (!instructions.IsValid())
