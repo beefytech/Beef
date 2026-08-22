@@ -1596,7 +1596,13 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 				{
 					D3D11_BUFFER_DESC matrixBufferDesc;
 					matrixBufferDesc.Usage = D3D11_USAGE_DYNAMIC;
-					matrixBufferDesc.ByteWidth = sizeof(float[4]);
+					// Only a float4 is used, but this buffer stays bound at VS b0 into draws whose
+					// shader declares a bigger b0 (the 3D World matrix). Those draws don't read it --
+					// instanced draws take their matrix from the instance record -- but D3D requires
+					// the bound buffer to be at least as large as the declaration, so size it to the
+					// largest b0 in use rather than moving the slot (2D shaders are framework-shared:
+					// BeefIDE and every Beefy2D app compile WindowSize into the implicit b0).
+					matrixBufferDesc.ByteWidth = sizeof(float[16]);
 					matrixBufferDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 					matrixBufferDesc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
 					matrixBufferDesc.MiscFlags = 0;
@@ -1620,17 +1626,14 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 
 				// Get a pointer to the data in the constant buffer.
 				float* dataPtr = (float*)mappedResource.pData;
+				memset(dataPtr, 0, sizeof(float[16]));
 				dataPtr[0] = (float)mCurRenderTarget->mWidth;
 				dataPtr[1] = (float)mCurRenderTarget->mHeight;
-				dataPtr[2] = 0;
-				dataPtr[3] = 0;
 
 				// Unlock the constant buffer.
 				mD3DDeviceContext->Unmap(mMatrix2DBuffer, 0);
 
-				// Slot 12: dedicated to the 2D WindowSize cbuffer so it never aliases the 3D
-				// pipeline's per-draw World matrix at b0 (see Std.fx).
-				mD3DDeviceContext->VSSetConstantBuffers(12, 1, &mMatrix2DBuffer);
+				mD3DDeviceContext->VSSetConstantBuffers(0, 1, &mMatrix2DBuffer);
 			}
 		}
 	}
