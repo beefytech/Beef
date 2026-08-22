@@ -108,7 +108,16 @@ public:
 	ID3D11Buffer*			mD3DStaging;
 	int						mStride;
 	bool					mGpuWritable;
-	bool					mDefaultUsage; // GPU-writable or CPU-updatable: written with UpdateSubresource, never mapped
+	bool					mDefaultUsage;
+	bool					mStreaming;
+	ID3D11Buffer*			mD3DUpdateStaging[3];
+	int						mUpdateStagingIdx;
+	// Batched upload: one DISCARD-mapped dynamic buffer per flush, scattered writes, then one
+	// CopySubresourceRegion per dirty range (see UpdateBufferRange / FlushUpdates).
+	ID3D11Buffer*			mD3DUploadBuffer;
+	void*					mUploadPtr;
+	std::vector<int>		mPendingRanges;
+	virtual void			FlushBufferUpdates() override; // GPU-writable or CPU-updatable: written with UpdateSubresource, never mapped
 
 public:
 	DXStructuredBuffer();
@@ -474,6 +483,9 @@ public:
 class DXRenderDevice : public RenderDevice
 {
 public:
+	ID3D11InfoQueue*		mD3DInfoQueue;
+	Texture*				mPSBoundTextures[32];
+	void					DrainDebugMessages();
 	IDXGIFactory*			mDXGIFactory;
 	ID3D11Device*			mD3DDevice;
 	ID3D11DeviceContext*	mD3DDeviceContext;

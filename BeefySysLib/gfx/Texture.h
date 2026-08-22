@@ -48,6 +48,8 @@ public:
 	virtual bool			GetBufferData(void* outData, int size) { return false; }
 	// Immediate partial write of a CPU-updatable structured buffer (see RenderDevice::CreateStructuredBuffer).
 	virtual void			UpdateBufferRange(int offset, void* data, int size) {}
+	// Lands the ranges accumulated by UpdateBufferRange. Call before anything reads the buffer.
+	virtual void			FlushBufferUpdates() {}
 };
 
 class TextureSegment

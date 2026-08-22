@@ -4,6 +4,7 @@
 
 #include "Common.h"
 #include "DXRenderDevice.h"
+#include <dxgi1_6.h>
 #include "BFWindow.h"
 #include "img/ImageData.h"
 #include "util/PerfTimer.h"
@@ -738,6 +739,28 @@ void DXTexture::ReinitNative()
 
 void DXTexture::PhysSetAsTarget()
 {
+	// Unbind any SRV slot still holding this texture (or a view sharing its resource) before it
+	// becomes a render/depth target. The runtime would force-null the slot anyway, but an explicit
+	// unbind takes the well-tested path; some drivers leave stale state behind the forced one.
+	for (int i = 0; i < 32; i++)
+	{
+		DXTexture* b = (DXTexture*)mRenderDevice->mPSBoundTextures[i];
+		if (b == NULL)
+			continue;
+		bool conflict = (b == this) || ((mSecondaryTarget != NULL) && (b == (DXTexture*)mSecondaryTarget));
+		if ((!conflict) && (b->mD3DDepthBuffer != NULL) && (b->mD3DDepthBuffer == mD3DDepthBuffer))
+			conflict = true;
+		if ((!conflict) && (b->mD3DTexture != NULL) && (b->mD3DTexture == mD3DTexture))
+			conflict = true;
+		if (conflict)
+		{
+			ID3D11ShaderResourceView* nullSrv = NULL;
+			mRenderDevice->mD3DDeviceContext->PSSetShaderResources(i, 1, &nullSrv);
+			if (i >= DX_VS_TEXTURE_SLOT)
+				mRenderDevice->mD3DDeviceContext->VSSetShaderResources(i, 1, &nullSrv);
+			mRenderDevice->mPSBoundTextures[i] = NULL;
+		}
+	}
 	{
 		D3D11_VIEWPORT viewPort;
 		viewPort.Width = (float)mWidth;
@@ -781,9 +804,15 @@ DXStructuredBuffer::DXStructuredBuffer()
 {
 	mD3DBuffer = NULL;
 	mD3DStaging = NULL;
+	for (int i = 0; i < 3; i++)
+		mD3DUpdateStaging[i] = NULL;
+	mUpdateStagingIdx = 0;
+	mD3DUploadBuffer = NULL;
+	mUploadPtr = NULL;
 	mStride = 0;
 	mGpuWritable = false;
 	mDefaultUsage = false;
+	mStreaming = false;
 }
 
 DXStructuredBuffer::~DXStructuredBuffer()
@@ -792,6 +821,11 @@ DXStructuredBuffer::~DXStructuredBuffer()
 		mD3DBuffer->Release();
 	if (mD3DStaging != NULL)
 		mD3DStaging->Release();
+	for (int i = 0; i < 3; i++)
+		if (mD3DUpdateStaging[i] != NULL)
+			mD3DUpdateStaging[i]->Release();
+	if (mD3DUploadBuffer != NULL)
+		mD3DUploadBuffer->Release();
 }
 
 void DXStructuredBuffer::PhysSetAsTarget()
@@ -801,10 +835,79 @@ void DXStructuredBuffer::PhysSetAsTarget()
 
 void DXStructuredBuffer::UpdateBufferRange(int offset, void* data, int size)
 {
-	BF_ASSERT(mDefaultUsage);
+	BF_ASSERT(mDefaultUsage || mStreaming);
 	BF_ASSERT((offset >= 0) && (size > 0) && (offset + size <= mStride * mWidth));
+	auto ctx = mRenderDevice->mD3DDeviceContext;
+	if (mStreaming)
+	{
+		// Append-only per-frame stream: DISCARD on the frame's first range (offset 0), NO_OVERWRITE
+		// for the appends after it.
+		D3D11_MAP mapKind = (offset == 0) ? D3D11_MAP_WRITE_DISCARD : D3D11_MAP_WRITE_NO_OVERWRITE;
+		D3D11_MAPPED_SUBRESOURCE mapped;
+		if (SUCCEEDED(ctx->Map(mD3DBuffer, 0, mapKind, 0, &mapped)))
+		{
+			memcpy((uint8*)mapped.pData + offset, data, size);
+			ctx->Unmap(mD3DBuffer, 0);
+		}
+		return;
+	}
+	// Batched staged copy rather than UpdateSubresource: a boxed UpdateSubresource on a buffer with
+	// in-flight reads garbles what those reads fetch on some drivers, and a Map per range stalls
+	// against the copies already queued. Writes accumulate in one DISCARD-mapped upload buffer and
+	// land as GPU-queue copies at FlushUpdates -- ordered like any draw, nothing to rename.
+	if (getenv("BRISK_UPDATE_LEGACY") != NULL)
+	{
+		D3D11_BOX legacyBox = { (UINT)offset, 0, 0, (UINT)(offset + size), 1, 1 };
+		ctx->UpdateSubresource(mD3DBuffer, 0, &legacyBox, data, 0, 0);
+		return;
+	}
+	if (getenv("BRISK_UPDATE_UNBATCHED") == NULL)
+	{
+		if (mD3DUploadBuffer == NULL)
+		{
+			D3D11_BUFFER_DESC desc;
+			ZeroMemory(&desc, sizeof(desc));
+			desc.Usage = D3D11_USAGE_DYNAMIC;
+			desc.ByteWidth = mStride * mWidth;
+			desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
+			desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+			desc.MiscFlags = D3D11_RESOURCE_MISC_BUFFER_STRUCTURED;
+			desc.StructureByteStride = mStride;
+			if (FAILED(mRenderDevice->mD3DDevice->CreateBuffer(&desc, NULL, &mD3DUploadBuffer)))
+				return;
+		}
+		if (mUploadPtr == NULL)
+		{
+			D3D11_MAPPED_SUBRESOURCE upMapped;
+			if (FAILED(ctx->Map(mD3DUploadBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &upMapped)))
+				return;
+			mUploadPtr = upMapped.pData;
+		}
+		memcpy((uint8*)mUploadPtr + offset, data, size);
+		mPendingRanges.push_back(offset);
+		mPendingRanges.push_back(size);
+		return;
+	}
+	if (mD3DUpdateStaging[0] == NULL)
+	{
+		D3D11_BUFFER_DESC desc;
+		ZeroMemory(&desc, sizeof(desc));
+		desc.Usage = D3D11_USAGE_STAGING;
+		desc.ByteWidth = mStride * mWidth;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+		for (int i = 0; i < 3; i++)
+			if (FAILED(mRenderDevice->mD3DDevice->CreateBuffer(&desc, NULL, &mD3DUpdateStaging[i])))
+				return;
+	}
+	mUpdateStagingIdx = (mUpdateStagingIdx + 1) % 3;
+	ID3D11Buffer* staging = mD3DUpdateStaging[mUpdateStagingIdx];
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	if (FAILED(ctx->Map(staging, 0, D3D11_MAP_WRITE, 0, &mapped)))
+		return;
+	memcpy((uint8*)mapped.pData + offset, data, size);
+	ctx->Unmap(staging, 0);
 	D3D11_BOX box = { (UINT)offset, 0, 0, (UINT)(offset + size), 1, 1 };
-	mRenderDevice->mD3DDeviceContext->UpdateSubresource(mD3DBuffer, 0, &box, data, 0, 0);
+	ctx->CopySubresourceRegion(mD3DBuffer, 0, (UINT)offset, 0, 0, staging, 0, &box);
 }
 
 bool DXStructuredBuffer::GetBufferData(void* outData, int size)
@@ -1320,6 +1423,45 @@ StaticMesh* DXRenderDevice::CreateStaticMesh(int vertexSize, void* vtxData, int 
 	return mesh;
 }
 
+void DXRenderDevice::DrainDebugMessages()
+{
+	if (mD3DInfoQueue == NULL)
+		return;
+	UINT64 count = mD3DInfoQueue->GetNumStoredMessages();
+	for (UINT64 i = 0; i < count; i++)
+	{
+		SIZE_T msgLen = 0;
+		if (FAILED(mD3DInfoQueue->GetMessage(i, NULL, &msgLen)))
+			continue;
+		D3D11_MESSAGE* msg = (D3D11_MESSAGE*)malloc(msgLen);
+		if (SUCCEEDED(mD3DInfoQueue->GetMessage(i, msg, &msgLen)))
+			fprintf(stdout, "D3DDBG sev=%d id=%d: %.*s\n", (int)msg->Severity, (int)msg->ID, (int)msg->DescriptionByteLength, msg->pDescription);
+		free(msg);
+	}
+	if (count > 0)
+	{
+		fflush(stdout);
+		mD3DInfoQueue->ClearStoredMessages();
+	}
+}
+
+void DXStructuredBuffer::FlushBufferUpdates()
+{
+	if (mUploadPtr == NULL)
+		return;
+	auto ctx = mRenderDevice->mD3DDeviceContext;
+	ctx->Unmap(mD3DUploadBuffer, 0);
+	mUploadPtr = NULL;
+	for (size_t i = 0; i + 1 < mPendingRanges.size(); i += 2)
+	{
+		int offset = mPendingRanges[i];
+		int size = mPendingRanges[i + 1];
+		D3D11_BOX box = { (UINT)offset, 0, 0, (UINT)(offset + size), 1, 1 };
+		ctx->CopySubresourceRegion(mD3DBuffer, 0, (UINT)offset, 0, 0, mD3DUploadBuffer, 0, &box);
+	}
+	mPendingRanges.clear();
+}
+
 void DXRenderDevice::EnsureInstIota(int count)
 {
 	if (count <= mInstIotaCount)
@@ -1486,8 +1628,9 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 				// Unlock the constant buffer.
 				mD3DDeviceContext->Unmap(mMatrix2DBuffer, 0);
 
-				//float params[4] = {mCurRenderTarget->mWidth, mCurRenderTarget->mHeight, 0, 0};
-				mD3DDeviceContext->VSSetConstantBuffers(0, 1, &mMatrix2DBuffer);
+				// Slot 12: dedicated to the 2D WindowSize cbuffer so it never aliases the 3D
+				// pipeline's per-draw World matrix at b0 (see Std.fx).
+				mD3DDeviceContext->VSSetConstantBuffers(12, 1, &mMatrix2DBuffer);
 			}
 		}
 	}
@@ -2262,6 +2405,8 @@ void DXSetTextureCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWin
 	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
 	ID3D11ShaderResourceView* srv = ((DXTexture*)mTexture)->mD3DResourceView;
 	dxRenderDevice->mD3DDeviceContext->PSSetShaderResources(mTextureIdx, 1, &srv);
+	if (mTextureIdx < 32)
+		dxRenderDevice->mPSBoundTextures[mTextureIdx] = mTexture;
 	// Slots from DX_VS_TEXTURE_SLOT up are readable by the vertex stage too (per-draw instance records).
 	if (mTextureIdx >= DX_VS_TEXTURE_SLOT)
 		dxRenderDevice->mD3DDeviceContext->VSSetShaderResources(mTextureIdx, 1, &srv);
@@ -2630,6 +2775,7 @@ void DXRenderWindow::Resized()
 void DXRenderWindow::Present()
 {
 	BP_ZONE("DXRenderWindow::Present");
+	((DXRenderDevice*)mRenderDevice)->DrainDebugMessages();
 	// Under external pacing our own vblank must never block the paced loop
 	bool useVSync = (mWindow->mFlags & BFWINDOW_VSYNC) && (gBFApp != NULL) && (!gBFApp->mExternalPacingActive);
 	HRESULT hr = mDXSwapChain->Present(useVSync ? 1 : 0, 0);
@@ -2803,9 +2949,49 @@ bool DXRenderDevice::Init(BFApp* app)
 
 	D3D_FEATURE_LEVEL d3dFeatureLevel = (D3D_FEATURE_LEVEL)0;
 	int flags = 0;
-	//TODO:
-	//flags = D3D11_CREATE_DEVICE_DEBUG;
-	DXCHECK(D3D11CreateDevice(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, flags, featureLevelArr, 6, D3D11_SDK_VERSION, &mD3DDevice, &d3dFeatureLevel, &mD3DDeviceContext));
+	bool wantD3DDebug = (getenv("BRISK_D3D_DEBUG") != NULL);
+	if (wantD3DDebug)
+		flags |= D3D11_CREATE_DEVICE_DEBUG;
+	// On hybrid-GPU machines the NULL (default) adapter is usually the integrated GPU; ask DXGI for
+	// the high-performance one. Falls back to the default adapter when the query isn't available.
+	IDXGIAdapter1* pPerfAdapter = NULL;
+	{
+		DXGI_GPU_PREFERENCE gpuPref = DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE;
+		if (getenv("BRISK_FORCE_IGPU") != NULL)
+			gpuPref = DXGI_GPU_PREFERENCE_MINIMUM_POWER;
+		IDXGIFactory6* pFactory6 = NULL;
+		if (SUCCEEDED(CreateDXGIFactory1(__uuidof(IDXGIFactory6), (void**)&pFactory6)))
+		{
+			if (FAILED(pFactory6->EnumAdapterByGpuPreference(0, gpuPref,
+					__uuidof(IDXGIAdapter1), (void**)&pPerfAdapter)))
+				pPerfAdapter = NULL;
+			if (pPerfAdapter != NULL)
+			{
+				DXGI_ADAPTER_DESC1 adapterDesc;
+				if (SUCCEEDED(pPerfAdapter->GetDesc1(&adapterDesc)))
+					OutputDebugStrF("D3D adapter: %S\n", adapterDesc.Description);
+			}
+			pFactory6->Release();
+		}
+	}
+	HRESULT devResult = D3D11CreateDevice(pPerfAdapter, (pPerfAdapter != NULL) ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE,
+		NULL, flags, featureLevelArr, 6, D3D11_SDK_VERSION, &mD3DDevice, &d3dFeatureLevel, &mD3DDeviceContext);
+	if ((FAILED(devResult)) && (wantD3DDebug))
+	{
+		// Debug layer needs the optional Graphics Tools feature; fall back without it.
+		fprintf(stdout, "D3DDBG debug layer unavailable, falling back\n"); fflush(stdout);
+		flags &= ~D3D11_CREATE_DEVICE_DEBUG;
+		wantD3DDebug = false;
+		devResult = D3D11CreateDevice(pPerfAdapter, (pPerfAdapter != NULL) ? D3D_DRIVER_TYPE_UNKNOWN : D3D_DRIVER_TYPE_HARDWARE,
+			NULL, flags, featureLevelArr, 6, D3D11_SDK_VERSION, &mD3DDevice, &d3dFeatureLevel, &mD3DDeviceContext);
+	}
+	DXCHECK(devResult);
+	if (pPerfAdapter != NULL)
+		pPerfAdapter->Release();
+	mD3DInfoQueue = NULL;
+	if (wantD3DDebug)
+		mD3DDevice->QueryInterface(__uuidof(ID3D11InfoQueue), (void**)&mD3DInfoQueue);
+	memset(mPSBoundTextures, 0, sizeof(mPSBoundTextures));
 	OutputDebugStrF("D3D Feature Level: %X\n", d3dFeatureLevel);
 	mD3DDeviceContext1 = NULL;
 	mD3DDeviceContext->QueryInterface(__uuidof(ID3D11DeviceContext1), (void**)&mD3DDeviceContext1);
@@ -2927,6 +3113,8 @@ bool DXRenderDevice::Init(BFApp* app)
 	sampDesc.MaxLOD = D3D11_FLOAT32_MAX;
 	DXCHECK(mD3DDevice->CreateSamplerState(&sampDesc, &mD3DTrilinearSamplerState));
 	mD3DDeviceContext->PSSetSamplers(2, 1, &mD3DTrilinearSamplerState);
+	// s0 starts explicitly on the default sampler; PhysSetRenderState only rebinds on change.
+	mD3DDeviceContext->PSSetSamplers(0, 1, &mD3DDefaultSamplerState);
 
 	D3D11_BUFFER_DESC bd;
 	bd.Usage = D3D11_USAGE_DYNAMIC;
@@ -3749,7 +3937,9 @@ Texture* DXRenderDevice::CreateStructuredBuffer(int stride, int count, int flags
 {
 	BF_ASSERT((stride > 0) && (stride % 4 == 0) && (count > 0));
 	bool gpuWritable = (flags & 1) != 0;
-	bool defaultUsage = gpuWritable || ((flags & 2) != 0);
+	bool streaming = (flags & 4) != 0;
+	bool defaultUsage = (gpuWritable || ((flags & 2) != 0)) && (!streaming);
+	BF_ASSERT(!(streaming && gpuWritable));
 
 	DXStructuredBuffer* buffer = new DXStructuredBuffer();
 	buffer->mWidth = count;
@@ -3757,6 +3947,7 @@ Texture* DXRenderDevice::CreateStructuredBuffer(int stride, int count, int flags
 	buffer->mStride = stride;
 	buffer->mGpuWritable = gpuWritable;
 	buffer->mDefaultUsage = defaultUsage;
+	buffer->mStreaming = streaming;
 	buffer->mRenderDevice = this;
 	buffer->AddRef();
 

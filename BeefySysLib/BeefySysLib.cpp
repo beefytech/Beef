@@ -542,6 +542,11 @@ BF_EXPORT bool BF_CALLTYPE Gfx_Buffer_GetData(TextureSegment* textureSegment, vo
 
 // Immediate (not queued): writes [offset, offset+size) of a CPU-updatable buffer now, ahead of every
 // draw still waiting in any draw layer -- how a pass publishes data those queued draws will read.
+BF_EXPORT void BF_CALLTYPE Gfx_Buffer_FlushUpdates(TextureSegment* textureSegment)
+{
+	textureSegment->mTexture->FlushBufferUpdates();
+}
+
 BF_EXPORT void BF_CALLTYPE Gfx_Buffer_UpdateRange(TextureSegment* textureSegment, int offset, void* data, int size)
 {
 	textureSegment->mTexture->UpdateBufferRange(offset, data, size);
