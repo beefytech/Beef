@@ -28,6 +28,7 @@ namespace Beefy.gfx
 		public int32 mCount;
 		public bool mGpuWritable;
 		public bool mCpuUpdatable;
+		public bool mStreaming;
 
 		public int ByteSize => mStride * mCount;
 
@@ -45,6 +46,7 @@ namespace Beefy.gfx
 			buffer.mCount = count;
 			buffer.mGpuWritable = gpuWritable;
 			buffer.mCpuUpdatable = cpuUpdatable;
+			buffer.mStreaming = streaming;
 			buffer.mSrcWidth = count;
 			buffer.mSrcHeight = 1;
 			buffer.mWidth = count;
@@ -69,7 +71,7 @@ namespace Beefy.gfx
 		// queued in any draw layer, so a pass can publish what its already-queued draws will read.
 		public void UpdateRange(int offset, void* data, int size)
 		{
-			Debug.Assert(mCpuUpdatable);
+			Debug.Assert(mCpuUpdatable || mStreaming);
 			Debug.Assert((offset >= 0) && (size > 0) && (offset + size <= ByteSize));
 			Gfx_Buffer_UpdateRange(mNativeTextureSegment, (.)offset, data, (.)size);
 		}
