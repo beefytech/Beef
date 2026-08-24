@@ -82,6 +82,12 @@ namespace Beefy.gfx
 		[CallingConvention(.Stdcall), CLink]
 		static extern void* Gfx_CreateDepthImageRef(void* textureSegment);
 
+		// Always compiled regardless of DXRenderDevice.cpp's ENABLE_RUNTIME_DEBUG_FLAGS -- reports
+		// whether that define is active, so a caller can tell "checked, found nothing" apart from
+		// "never checked" instead of both looking like silence. See d3d_validation.py.
+		[CallingConvention(.Stdcall), CLink]
+		public static extern bool Gfx_RuntimeDebugFlagsCompiledIn();
+
 		[CallingConvention(.Stdcall), CLink]
 		static extern void* Gfx_CreateRawImageRef(void* textureSegment);
 

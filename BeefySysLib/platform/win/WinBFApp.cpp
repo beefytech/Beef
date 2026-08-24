@@ -2339,4 +2339,70 @@ DrawLayer* WinBFApp::CreateDrawLayer(BFWindow* window)
 	return drawLayer;
 }
 
+// Captures what DWM has actually composited for this window's client area -- as distinct from a
+// CopyResource off our own backbuffer (see DXRenderWindow::CopyBitsTo), which reads the source of
+// the swapchain's Present copy, not the result. PW_RENDERFULLCONTENT asks the compositor for a
+// GPU-window's real content instead of the WM_PRINT fallback most apps register (irrelevant here --
+// we own this window -- but it also skirts any DWM-level caching of an unchanged frame).
+BF_EXPORT bool BF_CALLTYPE BFWindow_CaptureClientBits(BFWindow* window, uint32* outBits, int32 width, int32 height)
+{
+	HWND hwnd = (HWND)window->GetUnderlying();
+	if (hwnd == NULL)
+		return false;
+
+	RECT clientRect;
+	if (!::GetClientRect(hwnd, &clientRect))
+		return false;
+	int cw = clientRect.right - clientRect.left;
+	int ch = clientRect.bottom - clientRect.top;
+	if ((cw <= 0) || (ch <= 0) || (width != cw) || (height != ch))
+		return false;
+
+	// GetDC(hwnd) (client-area-relative, unlike GetWindowDC) reads DWM's own redirection surface for
+	// this window -- the same bits the compositor last received from us -- which BitBlt copies out
+	// directly. Tried PrintWindow(PW_RENDERFULLCONTENT) first; it returned a blank white capture for
+	// this D3D swapchain window (a known-flaky path for hardware-accelerated content). BitBlt from
+	// the window's own DC is the older, simpler, and for this case more reliable mechanism.
+	HDC hdcWindow = ::GetDC(hwnd);
+	if (hdcWindow == NULL)
+		return false;
+	HDC hdcMem = ::CreateCompatibleDC(hdcWindow);
+
+	BITMAPINFO bmi = {};
+	bmi.bmiHeader.biSize = sizeof(BITMAPINFOHEADER);
+	bmi.bmiHeader.biWidth = width;
+	bmi.bmiHeader.biHeight = -height; // top-down
+	bmi.bmiHeader.biPlanes = 1;
+	bmi.bmiHeader.biBitCount = 32;
+	bmi.bmiHeader.biCompression = BI_RGB;
+
+	void* bits = NULL;
+	HBITMAP hBitmap = ::CreateDIBSection(hdcMem, &bmi, DIB_RGB_COLORS, &bits, NULL, 0);
+	HGDIOBJ oldBitmap = ::SelectObject(hdcMem, hBitmap);
+
+	BOOL ok = ::BitBlt(hdcMem, 0, 0, width, height, hdcWindow, 0, 0, SRCCOPY);
+	if (ok)
+	{
+		// GDI DIB pixels are BGRA in memory; every other capture path in this codebase (D3D texture
+		// GetBits -> Res_WritePNG) is RGBA. Swap here so callers never need to know which capture
+		// mechanism produced a given buffer.
+		uint8* src = (uint8*)bits;
+		uint8* dst = (uint8*)outBits;
+		int64 pixelCount = (int64)width * height;
+		for (int64 i = 0; i < pixelCount; i++)
+		{
+			dst[i * 4 + 0] = src[i * 4 + 2];
+			dst[i * 4 + 1] = src[i * 4 + 1];
+			dst[i * 4 + 2] = src[i * 4 + 0];
+			dst[i * 4 + 3] = src[i * 4 + 3];
+		}
+	}
+
+	::SelectObject(hdcMem, oldBitmap);
+	::DeleteObject(hBitmap);
+	::DeleteDC(hdcMem);
+	::ReleaseDC(hwnd, hdcWindow);
+	return ok != 0;
+}
+
 #endif

@@ -42,6 +42,81 @@ USING_NS_BF;
 //#pragma comment(lib, "d3dx11.lib")
 #pragma comment(lib, "d2d1.lib")
 //#pragma comment(lib, "dxerr.lib")
+
+// ============================================================================
+// Runtime debug flags (env-var gated), added during the 2026-08 Intel Arc rendering-corruption
+// investigation -- see docs/d3d-compatibility.md for the full story. Uncomment the #define below to
+// compile these in; leave it commented out for a normal build. Compiled OUT (the default), each
+// flag below is a literal `false` and every getenv() call in this file disappears entirely -- a
+// shipping build pays nothing for this, not even the call. Compiled IN, each flag is still off
+// unless its specific environment variable is set, so normal local runs are unaffected either way;
+// the define just makes the checks exist at all, for whoever is actively driver-hunting.
+//
+// Do not enable this in anything that ships.
+//#define ENABLE_RUNTIME_DEBUG_FLAGS
+
+#if defined(ENABLE_RUNTIME_DEBUG_FLAGS)
+
+// BRISK_D3D_DEBUG: create the D3D11 device with D3D11_CREATE_DEVICE_DEBUG. Routes the runtime
+// validation layer's messages through DXRenderDevice::DrainDebugMessages(), printed once per
+// Present as "D3DDBG ...". Needs the Windows "Graphics Tools" optional feature installed; falls
+// back to a non-debug device if it's missing. Use this to check whether a change introduces any
+// D3D11-illegal usage -- see tests/regressions/d3d_validation.py, which runs the exe with this on
+// and fails the build on any message at all.
+#define BRISK_DBG_WANT_D3D_DEBUG() (getenv("BRISK_D3D_DEBUG") != NULL)
+
+// BRISK_FORCE_IGPU: pick the DXGI_GPU_PREFERENCE_MINIMUM_POWER adapter instead of
+// HIGH_PERFORMANCE at device creation -- i.e. deliberately render on a laptop's slower
+// integrated/lower-power GPU instead of its discrete one. This is how the Arc investigation ran
+// the engine on the Intel iGPU of a hybrid-GPU machine that would otherwise always pick the
+// NVIDIA discrete GPU.
+#define BRISK_DBG_FORCE_IGPU() (getenv("BRISK_FORCE_IGPU") != NULL)
+
+// BRISK_VSYNC: force Present() to wait for vblank even if the window wasn't created with
+// BFWINDOW_VSYNC. Used to test whether a rendering artifact is specifically a Present/scanout-
+// timing issue (classic tearing) as opposed to corruption that happens earlier, during scene
+// rendering -- forcing vsync did NOT fix the Arc corruption, which helped rule that out.
+#define BRISK_DBG_FORCE_VSYNC() (getenv("BRISK_VSYNC") != NULL)
+
+// BRISK_UPDATE_LEGACY: make DXStructuredBuffer::UpdateBufferRange use a raw, boxed
+// UpdateSubresource instead of the normal batched-copy path. THIS IS THE KNOWN-BAD PATTERN: a
+// boxed UpdateSubresource on a buffer with in-flight GPU reads corrupted what those reads fetched
+// on Intel Arc drivers predating 2026-08 (see docs/d3d-compatibility.md). Kept so a future "is
+// this GPU/driver still affected" check is a one-line env var instead of reverting code. Never
+// set this outside a deliberate driver-regression test.
+#define BRISK_DBG_UPDATE_LEGACY() (getenv("BRISK_UPDATE_LEGACY") != NULL)
+
+// BRISK_UPDATE_UNBATCHED: make DXStructuredBuffer::UpdateBufferRange copy each dirty range
+// through its own staging buffer immediately, instead of accumulating ranges into one
+// DISCARD-mapped upload buffer and copying them all at FlushBufferUpdates. Safe (unlike
+// BRISK_UPDATE_LEGACY), just slower under heavy dirty-range churn. Use to tell whether a symptom
+// is about SAFETY (compare against BRISK_UPDATE_LEGACY) or PERFORMANCE (compare against the
+// default batched path) of the buffer-update code.
+#define BRISK_DBG_UPDATE_UNBATCHED() (getenv("BRISK_UPDATE_UNBATCHED") != NULL)
+
+#else // !ENABLE_RUNTIME_DEBUG_FLAGS -- each flag is a compile-time false; no getenv() call exists.
+
+#define BRISK_DBG_WANT_D3D_DEBUG() (false)
+#define BRISK_DBG_FORCE_IGPU() (false)
+#define BRISK_DBG_FORCE_VSYNC() (false)
+#define BRISK_DBG_UPDATE_LEGACY() (false)
+#define BRISK_DBG_UPDATE_UNBATCHED() (false)
+
+#endif // ENABLE_RUNTIME_DEBUG_FLAGS
+
+// Always compiled, regardless of ENABLE_RUNTIME_DEBUG_FLAGS -- lets a caller (or a test harness)
+// tell "the flags are compiled out" apart from "compiled in, but nothing found anything to report"
+// instead of silently treating both the same way. See tests/regressions/d3d_validation.py, which
+// would otherwise report a false PASS if BRISK_D3D_DEBUG=1 silently did nothing.
+BF_EXPORT bool BF_CALLTYPE Gfx_RuntimeDebugFlagsCompiledIn()
+{
+#if defined(ENABLE_RUNTIME_DEBUG_FLAGS)
+	return true;
+#else
+	return false;
+#endif
+}
+// ============================================================================
 #pragma comment(lib, "dxgi.lib")
 //#pragma comment(lib, "D3DCompiler.lib")
 
@@ -855,13 +930,13 @@ void DXStructuredBuffer::UpdateBufferRange(int offset, void* data, int size)
 	// in-flight reads garbles what those reads fetch on some drivers, and a Map per range stalls
 	// against the copies already queued. Writes accumulate in one DISCARD-mapped upload buffer and
 	// land as GPU-queue copies at FlushUpdates -- ordered like any draw, nothing to rename.
-	if (getenv("BRISK_UPDATE_LEGACY") != NULL)
+	if (BRISK_DBG_UPDATE_LEGACY())
 	{
 		D3D11_BOX legacyBox = { (UINT)offset, 0, 0, (UINT)(offset + size), 1, 1 };
 		ctx->UpdateSubresource(mD3DBuffer, 0, &legacyBox, data, 0, 0);
 		return;
 	}
-	if (getenv("BRISK_UPDATE_UNBATCHED") == NULL)
+	if (!BRISK_DBG_UPDATE_UNBATCHED())
 	{
 		if (mD3DUploadBuffer == NULL)
 		{
@@ -2781,6 +2856,8 @@ void DXRenderWindow::Present()
 	((DXRenderDevice*)mRenderDevice)->DrainDebugMessages();
 	// Under external pacing our own vblank must never block the paced loop
 	bool useVSync = (mWindow->mFlags & BFWINDOW_VSYNC) && (gBFApp != NULL) && (!gBFApp->mExternalPacingActive);
+	if (BRISK_DBG_FORCE_VSYNC())
+		useVSync = true;
 	HRESULT hr = mDXSwapChain->Present(useVSync ? 1 : 0, 0);
 
 	if ((hr == DXGI_ERROR_DEVICE_REMOVED) || (hr == DXGI_ERROR_DEVICE_RESET))
@@ -2952,7 +3029,7 @@ bool DXRenderDevice::Init(BFApp* app)
 
 	D3D_FEATURE_LEVEL d3dFeatureLevel = (D3D_FEATURE_LEVEL)0;
 	int flags = 0;
-	bool wantD3DDebug = (getenv("BRISK_D3D_DEBUG") != NULL);
+	bool wantD3DDebug = BRISK_DBG_WANT_D3D_DEBUG();
 	if (wantD3DDebug)
 		flags |= D3D11_CREATE_DEVICE_DEBUG;
 	// On hybrid-GPU machines the NULL (default) adapter is usually the integrated GPU; ask DXGI for
@@ -2960,7 +3037,7 @@ bool DXRenderDevice::Init(BFApp* app)
 	IDXGIAdapter1* pPerfAdapter = NULL;
 	{
 		DXGI_GPU_PREFERENCE gpuPref = DXGI_GPU_PREFERENCE_HIGH_PERFORMANCE;
-		if (getenv("BRISK_FORCE_IGPU") != NULL)
+		if (BRISK_DBG_FORCE_IGPU())
 			gpuPref = DXGI_GPU_PREFERENCE_MINIMUM_POWER;
 		IDXGIFactory6* pFactory6 = NULL;
 		if (SUCCEEDED(CreateDXGIFactory1(__uuidof(IDXGIFactory6), (void**)&pFactory6)))

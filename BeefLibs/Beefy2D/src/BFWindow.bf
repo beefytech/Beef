@@ -256,6 +256,18 @@ namespace Beefy
         [CallingConvention(.Stdcall), CLink]
         static extern void BFWindow_Close(void* window, int32 force);
 
+        [CallingConvention(.Stdcall), CLink]
+        static extern bool BFWindow_CaptureClientBits(void* window, uint32* outBits, int32 width, int32 height);
+
+        // What DWM actually composited for this window's client area -- distinct from a same-frame
+        // GPU readback of our own render target, which cannot see anything that goes wrong during
+        // Present's copy to the front buffer or DWM's own compositing. false on mismatch/failure
+        // (e.g. outBits sized for a client rect that just changed).
+        public bool CaptureClientBits(uint32* outBits, int32 width, int32 height)
+        {
+            return BFWindow_CaptureClientBits(mNativeWindow, outBits, width, height);
+        }
+
 		[CallingConvention(.Stdcall), CLink]
 		static extern void BFWindow_Show(void* window, ShowKind showKind);
 
