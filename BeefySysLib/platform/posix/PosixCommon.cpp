@@ -3394,6 +3394,7 @@ BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFindFileData_GetTime_Access(BfpFindFileD
 
 BFP_EXPORT BfpFileAttributes BFP_CALLTYPE BfpFindFileData_GetFileAttributes(BfpFindFileData* findData)
 {
+	GetStat(findData);
     BfpFileAttributes flags = BfpFileAttribute_None;
     if (S_ISDIR(findData->mStat.st_mode))
         flags = (BfpFileAttributes)(flags | BfpFileAttribute_Directory);
