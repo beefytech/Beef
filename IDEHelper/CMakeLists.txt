@@ -34,6 +34,10 @@ add_definitions(
 )
 
 set (CMAKE_CXX_STANDARD 17)
+# Compiler/CeZmij.c needs C99+ with GNU extensions (zmij uses the 'asm' keyword
+# on GCC/Clang, which strict ISO mode disables)
+set (CMAKE_C_STANDARD 11)
+set (CMAKE_C_EXTENSIONS ON)
 #add_definitions(-D_GLIBCXX_USE_CXX11_ABI=1)
 
 INCLUDE(CheckIncludeFiles)
@@ -160,6 +164,7 @@ file(GLOB SRC_FILES
     Compiler/BfVarDeclChecker.cpp
     Compiler/BfTargetTriple.cpp
     Compiler/CeMachine.cpp
+    Compiler/CeZmij.c
     Compiler/CeDebugger.cpp
     Compiler/MemReporter.cpp
 

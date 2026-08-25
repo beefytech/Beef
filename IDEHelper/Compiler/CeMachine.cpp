@@ -18,6 +18,17 @@ extern "C"
 #include "BeefySysLib/third_party/utf8proc/utf8proc.h"
 }
 
+// zmij compiles into IDEHelper under renamed symbols (see CeZmij.c)
+extern "C"
+{
+#define zmij_detail_write_float ce_zmij_detail_write_float
+#define zmij_detail_write_double ce_zmij_detail_write_double
+#include "BeefRT/rt/zmij-c.h"
+#undef zmij_detail_write_float
+#undef zmij_detail_write_double
+}
+#include "BeefRT/rt/fast_float.h"
+
 #define CE_ENABLE_HEAP
 
 USING_NS_BF;
@@ -468,6 +479,77 @@ static int FloatToString(float d, char* outStr)
 static int DoubleToString(double d, char* outStr)
 {
 	return ::ToString(d, outStr, false);
+}
+
+// These must match Float/Double::ToString_RoundTripFast and Parse in
+// BeefRT/rt/Internal.cpp so comptime results equal runtime results
+
+static int FloatToString_RoundTripFast(float d, char* outStr)
+{
+	uint32 bits;
+	memcpy(&bits, &d, sizeof(bits));
+	if ((bits & 0x7F800000) == 0x7F800000)
+	{
+		if ((bits & 0x007FFFFF) != 0)
+		{
+			strcpy(outStr, "NaN");
+			return 3;
+		}
+		if ((bits & 0x80000000) != 0)
+		{
+			strcpy(outStr, "-Infinity");
+			return 9;
+		}
+		strcpy(outStr, "Infinity");
+		return 8;
+	}
+	char* endPtr = zmij_write_float(outStr, zmij_float_buffer_size, d);
+	*endPtr = 0;
+	return (int)(endPtr - outStr);
+}
+
+static int DoubleToString_RoundTripFast(double d, char* outStr)
+{
+	uint64 bits;
+	memcpy(&bits, &d, sizeof(bits));
+	if ((bits & 0x7FF0000000000000ULL) == 0x7FF0000000000000ULL)
+	{
+		if ((bits & 0x000FFFFFFFFFFFFFULL) != 0)
+		{
+			strcpy(outStr, "NaN");
+			return 3;
+		}
+		if ((bits & 0x8000000000000000ULL) != 0)
+		{
+			strcpy(outStr, "-Infinity");
+			return 9;
+		}
+		strcpy(outStr, "Infinity");
+		return 8;
+	}
+	char* endPtr = zmij_write_double(outStr, zmij_double_buffer_size, d);
+	*endPtr = 0;
+	return (int)(endPtr - outStr);
+}
+
+static bool FloatParse(char* str, int strLen, char decimalSeparator, float* outResult)
+{
+	fast_float::parse_options options(
+		fast_float::chars_format::general | fast_float::chars_format::no_infnan, decimalSeparator);
+	auto result = fast_float::from_chars_advanced(str, str + strLen, *outResult, options);
+	if ((result.ec != std::errc()) && (result.ec != std::errc::result_out_of_range))
+		return false;
+	return result.ptr == str + strLen;
+}
+
+static bool DoubleParse(char* str, int strLen, char decimalSeparator, double* outResult)
+{
+	fast_float::parse_options options(
+		fast_float::chars_format::general | fast_float::chars_format::no_infnan, decimalSeparator);
+	auto result = fast_float::from_chars_advanced(str, str + strLen, *outResult, options);
+	if ((result.ec != std::errc()) && (result.ec != std::errc::result_out_of_range))
+		return false;
+	return result.ptr == str + strLen;
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -7333,6 +7415,66 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				memcpy(memStart + strAddr, str, count + 1);
 				result = count;
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Double_ToString_RoundTripFast)
+			{
+				int32& result = *(int32*)((uint8*)stackPtr + 0);
+				double val = *(double*)((uint8*)stackPtr + 4);
+				addr_ce strAddr = *(addr_ce*)((uint8*)stackPtr + 4 + 8);
+
+				char str[256];
+				int count = DoubleToString_RoundTripFast(val, str);
+				CE_CHECKADDR(strAddr, count + 1);
+				memcpy(memStart + strAddr, str, count + 1);
+				result = count;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Float_ToString_RoundTripFast)
+			{
+				int32& result = *(int32*)((uint8*)stackPtr + 0);
+				float val = *(float*)((uint8*)stackPtr + 4);
+				addr_ce strAddr = *(addr_ce*)((uint8*)stackPtr + 4 + 4);
+
+				char str[256];
+				int count = FloatToString_RoundTripFast(val, str);
+				CE_CHECKADDR(strAddr, count + 1);
+				memcpy(memStart + strAddr, str, count + 1);
+				result = count;
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Double_Parse)
+			{
+				addr_ce strAddr = *(addr_ce*)((uint8*)stackPtr + 1);
+				int32 strLen = *(int32*)((uint8*)stackPtr + 1 + ptrSize);
+				char decimalSeparator = *(char*)((uint8*)stackPtr + 1 + ptrSize + 4);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + 1 + ptrSize + 4 + 1);
+
+				if (strLen < 0)
+				{
+					_Fail("Invalid length");
+					return false;
+				}
+				CE_CHECKADDR(strAddr, strLen);
+				CE_CHECKADDR(outResultAddr, 8);
+				bool& result = *(bool*)((uint8*)stackPtr + 0);
+				result = DoubleParse((char*)(memStart + strAddr), strLen, decimalSeparator,
+					(double*)(memStart + outResultAddr));
+			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Float_Parse)
+			{
+				addr_ce strAddr = *(addr_ce*)((uint8*)stackPtr + 1);
+				int32 strLen = *(int32*)((uint8*)stackPtr + 1 + ptrSize);
+				char decimalSeparator = *(char*)((uint8*)stackPtr + 1 + ptrSize + 4);
+				addr_ce outResultAddr = *(addr_ce*)((uint8*)stackPtr + 1 + ptrSize + 4 + 1);
+
+				if (strLen < 0)
+				{
+					_Fail("Invalid length");
+					return false;
+				}
+				CE_CHECKADDR(strAddr, strLen);
+				CE_CHECKADDR(outResultAddr, 4);
+				bool& result = *(bool*)((uint8*)stackPtr + 0);
+				result = FloatParse((char*)(memStart + strAddr), strLen, decimalSeparator,
+					(float*)(memStart + outResultAddr));
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_BfpDirectory_Create)
 			{
 				addr_ce nameAddr = *(addr_ce*)((uint8*)stackPtr + 0);
@@ -10615,6 +10757,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 					ceFunction->mFunctionKind = CeFunctionKind_Double_Ftoa;
 				if (methodDef->mName == "ToString")
 					ceFunction->mFunctionKind = CeFunctionKind_Double_ToString;
+				else if (methodDef->mName == "ToString_RoundTripFast")
+					ceFunction->mFunctionKind = CeFunctionKind_Double_ToString_RoundTripFast;
+				else if (methodDef->mName == "Parse")
+					ceFunction->mFunctionKind = CeFunctionKind_Double_Parse;
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mFloatTypeDef))
 			{
@@ -10622,6 +10768,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 					ceFunction->mFunctionKind = CeFunctionKind_Double_Ftoa;
 				if (methodDef->mName == "ToString")
 					ceFunction->mFunctionKind = CeFunctionKind_Float_ToString;
+				else if (methodDef->mName == "ToString_RoundTripFast")
+					ceFunction->mFunctionKind = CeFunctionKind_Float_ToString_RoundTripFast;
+				else if (methodDef->mName == "Parse")
+					ceFunction->mFunctionKind = CeFunctionKind_Float_Parse;
 			}
 			else if (owner->IsInstanceOf(mCeModule->mCompiler->mMathTypeDef))
 			{

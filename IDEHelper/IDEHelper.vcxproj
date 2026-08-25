@@ -343,6 +343,7 @@
     <ClCompile Include="Compiler\BfVarDeclChecker.cpp" />
     <ClCompile Include="Compiler\CeDebugger.cpp" />
     <ClCompile Include="Compiler\CeMachine.cpp" />
+    <ClCompile Include="Compiler\CeZmij.c" />
     <ClCompile Include="Compiler\MemReporter.cpp" />
     <ClCompile Include="DbgMiniDump.cpp" />
     <ClCompile Include="Debugger.cpp" />

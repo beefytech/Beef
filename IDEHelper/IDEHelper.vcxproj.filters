@@ -214,6 +214,9 @@
     <ClCompile Include="Compiler\CeMachine.cpp">
       <Filter>Compiler</Filter>
     </ClCompile>
+    <ClCompile Include="Compiler\CeZmij.c">
+      <Filter>Compiler</Filter>
+    </ClCompile>
     <ClCompile Include="Compiler\CeDebugger.cpp">
       <Filter>Compiler</Filter>
     </ClCompile>
