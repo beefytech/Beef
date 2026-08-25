@@ -2,8 +2,6 @@
 #define HEAPHOOK
 
 
-//#define USE_CHARCONV
-
 #include <stdio.h>
 
 //#include <crtdefs.h>
@@ -12,9 +10,11 @@
 #include <string.h>
 //#include <intrin.h>
 
-#ifdef USE_CHARCONV
-#include <charconv>
-#endif
+extern "C"
+{
+#include "zmij-c.h"
+}
+#include "fast_float.h"
 
 //#define OBJECT_GUARD_END_SIZE 8
 #define OBJECT_GUARD_END_SIZE 0
@@ -201,13 +201,17 @@ namespace bf
 		struct Float
 		{
 		private:
+			BFRT_EXPORT static int ToString_RoundTripFast(float f, char* outStr);
 			BFRT_EXPORT static int ToString(float f, char* outStr, bool roundTrip);
+			BFRT_EXPORT static bool Parse(char* str, int strLen, char decimalSeparator, float* outResult);
 		};
 
 		struct Double
 		{
 		private:
-			BFRT_EXPORT static int ToString(double f, char* outStr, bool roundTrip);
+			BFRT_EXPORT static int ToString_RoundTripFast(double d, char* outStr);
+			BFRT_EXPORT static int ToString(double d, char* outStr, bool roundTrip);
+			BFRT_EXPORT static bool Parse(char* str, int strLen, char decimalSeparator, double* outResult);
 		};
 	}
 }
@@ -1220,20 +1224,84 @@ static int ToString(double d, char* outStr, bool roundTrip)
 
 int Float::ToString(float f, char* outStr, bool roundTrip)
 {
-#ifdef USE_CHARCONV
-	auto result = std::to_chars(outStr, outStr + 256, f);
-	return (int)(result.ptr - outStr);
-#else
 	return ::ToString(f, outStr, roundTrip);
-#endif
+}
+
+int Float::ToString_RoundTripFast(float d, char* outStr)
+{
+	// Shortest string that round-trips, via zmij (rt/zmij.c)
+	uint32 bits;
+	memcpy(&bits, &d, sizeof(bits));
+	if ((bits & 0x7F800000) == 0x7F800000)
+	{
+		if ((bits & 0x007FFFFF) != 0)
+		{
+			strcpy(outStr, "NaN");
+			return 3;
+		}
+		if ((bits & 0x80000000) != 0)
+		{
+			strcpy(outStr, "-Infinity");
+			return 9;
+		}
+		strcpy(outStr, "Infinity");
+		return 8;
+	}
+	char* endPtr = zmij_write_float(outStr, zmij_float_buffer_size, d);
+	*endPtr = 0;
+	return (int)(endPtr - outStr);
 }
 
 int Double::ToString(double d, char* outStr, bool roundTrip)
 {
-#ifdef USE_CHARCONV
-	auto result = std::to_chars(outStr, outStr + 256, d);
-	return (int)(result.ptr - outStr);
-#else
 	return ::ToString(d, outStr, roundTrip);
-#endif
+}
+
+int Double::ToString_RoundTripFast(double d, char* outStr)
+{
+	// Shortest string that round-trips, via zmij (rt/zmij.c)
+	uint64 bits;
+	memcpy(&bits, &d, sizeof(bits));
+	if ((bits & 0x7FF0000000000000ULL) == 0x7FF0000000000000ULL)
+	{
+		if ((bits & 0x000FFFFFFFFFFFFFULL) != 0)
+		{
+			strcpy(outStr, "NaN");
+			return 3;
+		}
+		if ((bits & 0x8000000000000000ULL) != 0)
+		{
+			strcpy(outStr, "-Infinity");
+			return 9;
+		}
+		strcpy(outStr, "Infinity");
+		return 8;
+	}
+	char* endPtr = zmij_write_double(outStr, zmij_double_buffer_size, d);
+	*endPtr = 0;
+	return (int)(endPtr - outStr);
+}
+
+// Correctly rounded decimal parsing via fast_float (rt/fast_float.h). The
+// string must not have a sign or be an infinity/NaN symbol - the caller
+// handles those. Returns false unless the entire string parses; overflow to
+// infinity and underflow to zero count as success.
+bool Float::Parse(char* str, int strLen, char decimalSeparator, float* outResult)
+{
+	fast_float::parse_options options(
+		fast_float::chars_format::general | fast_float::chars_format::no_infnan, decimalSeparator);
+	auto result = fast_float::from_chars_advanced(str, str + strLen, *outResult, options);
+	if ((result.ec != std::errc()) && (result.ec != std::errc::result_out_of_range))
+		return false;
+	return result.ptr == str + strLen;
+}
+
+bool Double::Parse(char* str, int strLen, char decimalSeparator, double* outResult)
+{
+	fast_float::parse_options options(
+		fast_float::chars_format::general | fast_float::chars_format::no_infnan, decimalSeparator);
+	auto result = fast_float::from_chars_advanced(str, str + strLen, *outResult, options);
+	if ((result.ec != std::errc()) && (result.ec != std::errc::result_out_of_range))
+		return false;
+	return result.ptr == str + strLen;
 }

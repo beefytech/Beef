@@ -48,6 +48,9 @@
     <ClCompile Include="rt\ThreadLocalStorage.cpp">
       <Filter>rt</Filter>
     </ClCompile>
+    <ClCompile Include="rt\zmij.c">
+      <Filter>rt</Filter>
+    </ClCompile>
     <ClCompile Include="..\BeefySysLib\platform\win\Platform.cpp">
       <Filter>BeefySysLib\platform\win</Filter>
     </ClCompile>
@@ -120,6 +123,12 @@
       <Filter>rt</Filter>
     </ClInclude>
     <ClInclude Include="rt\Thread.h">
+      <Filter>rt</Filter>
+    </ClInclude>
+    <ClInclude Include="rt\zmij-c.h">
+      <Filter>rt</Filter>
+    </ClInclude>
+    <ClInclude Include="rt\fast_float.h">
       <Filter>rt</Filter>
     </ClInclude>
     <ClInclude Include="rt\ThreadLocalStorage.h">

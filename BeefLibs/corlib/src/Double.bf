@@ -188,12 +188,42 @@ namespace System
 
 		public static Result<double> Parse(StringView val)
 		{
+			return Parse(val, NumberFormatInfo.CurrentInfo);
+		}
+
+		public static Result<double> Parse(StringView val, NumberFormatInfo info)
+		{
+			if (val.IsEmpty)
+				return .Err;
+
+			bool isNeg = val[0] == '-';
+			bool isPos = val[0] == '+';
+
+			var val;
+			if (isNeg || isPos)
+				val.RemoveFromStart(1);
+
+			if (@val.Equals(info.NegativeInfinitySymbol, true))
+				return NegativeInfinity;
+			else if (val.Equals(info.PositiveInfinitySymbol, true))
+				return PositiveInfinity;
+			else if (val.Equals(info.NaNSymbol, true))
+				return NaN;
+
+#if !BF_RUNTIME_REDUCED
+			// Correctly rounded parse via fast_float (BeefRT rt/fast_float.h)
+			double result = 0;
+			if (!Parse(val.Ptr, (int32)val.Length, info.NumberDecimalSeparator[0], &result))
+				return .Err;
+			return isNeg ? -result : result;
+#else
 			var tempStr = val.ToScopeCStr!();
 			char8* endPtr = null;
 			var result = strtod(tempStr, &endPtr);
 			if (endPtr != tempStr + val.Length)
 				return .Err;
-			return .Ok(result);
+			return .Ok(isNeg ? -result : result);
+#endif
 		}
 
 		[CallingConvention(.Stdcall), CLink]
@@ -201,19 +231,34 @@ namespace System
 
 #if !BF_RUNTIME_DISABLE
 		static extern int32 ToString(double val, char8* str, bool roundTrip);
+		static extern int32 ToString_RoundTripFast(double val, char8* str);
+		static extern bool Parse(char8* val, int32 valLength, char8 decimalSeparator, double* outResult);
 #else
 		static int32 ToString(double val, char8* str, bool roundTrip) => Runtime.NotImplemented();
 #endif
 
 		public override void ToString(String strBuffer)
 		{
+#if !BF_RUNTIME_REDUCED
+			char8[128] outBuff = ?;
+			int len = ToString_RoundTripFast((double)this, &outBuff);
+			strBuffer.Append(&outBuff, len);
+#else
 			char8[128] outBuff = ?;
 			int len = ToString((double)this, &outBuff, false);
 			strBuffer.Append(&outBuff, len);
+#endif
 		}
 
 		public void ToString(String outString, String format, IFormatProvider formatProvider)
 		{
+			#if !BF_RUNTIME_REDUCED
+			if ((format.IsEmpty) || (format == "R"))
+			{
+				ToString(outString);
+				return;
+			}
+#else
 			if (format.IsEmpty)
 			{
 				ToString(outString);
@@ -226,6 +271,7 @@ namespace System
 				outString.Append(&outBuff, len);
 				return;
 			}
+#endif
 			NumberFormatter.NumberToString(format, (double)this, formatProvider, outString);
 		}
     }

@@ -279,6 +279,7 @@
     <ClCompile Include="rt\StompAlloc.cpp" />
     <ClCompile Include="rt\Thread.cpp" />
     <ClCompile Include="rt\ThreadLocalStorage.cpp" />
+    <ClCompile Include="rt\zmij.c" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BeefySysLib\Common.h" />
@@ -292,9 +293,11 @@
     <ClInclude Include="..\BeefySysLib\util\String.h" />
     <ClInclude Include="..\BeefySysLib\util\UTF8.h" />
     <ClInclude Include="rt\BfObjects.h" />
+    <ClInclude Include="rt\fast_float.h" />
     <ClInclude Include="rt\StompAlloc.h" />
     <ClInclude Include="rt\Thread.h" />
     <ClInclude Include="rt\ThreadLocalStorage.h" />
+    <ClInclude Include="rt\zmij-c.h" />
   </ItemGroup>
   <ItemGroup>
     <CustomBuild Include="..\BeefySysLib\third_party\libffi\x86_64-pc-cygwin\src\x86\win64_intel.asm">
