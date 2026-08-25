@@ -38,6 +38,11 @@ add_definitions(
 )
 
 set (CMAKE_CXX_STANDARD 11)
+# rt/zmij.c needs C99+; C11 also enables aligned lookup tables. GNU extensions
+# must stay enabled (gnu11, not c11) - zmij.c uses the 'asm' keyword on GCC/Clang,
+# which strict ISO mode disables.
+set (CMAKE_C_STANDARD 11)
+set (CMAKE_C_EXTENSIONS ON)
 
 INCLUDE(CheckIncludeFileCXX)
 CHECK_INCLUDE_FILE_CXX(backtrace.h HAVE_BACKTRACE_HEADERS)
@@ -218,6 +223,7 @@ endif(NOT MSVC)
 file(GLOB SRC_FILES
     rt/Internal.cpp
     rt/Chars.cpp
+    rt/zmij.c
     rt/Object.cpp
     rt/Math.cpp
     rt/StompAlloc.cpp
