@@ -363,6 +363,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mPassInstance = NULL;
 	mRevision = 0;
 	mUniqueId = 0;
+	mCompilerBuildDate = 0;
 	mLastRevisionAborted = false;
 	gBfCompiler = this;
 	mSystem = bfSystem;
@@ -10669,6 +10670,13 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_RequestFastFinish(BfCompiler* bfCompiler)
 BF_EXPORT void BF_CALLTYPE BfCompiler_ClearBuildCache(BfCompiler* bfCompiler)
 {
 	bfCompiler->ClearBuildCache();
+}
+
+BF_EXPORT void BF_CALLTYPE BfCompiler_SetCompilerInfo(BfCompiler* bfCompiler, const char* compilerPath, const char* compilerVersion, int64 compilerBuildDate)
+{
+	bfCompiler->mCompilerPath = compilerPath;
+	bfCompiler->mCompilerVersion = compilerVersion;
+	bfCompiler->mCompilerBuildDate = compilerBuildDate;
 }
 
 BF_EXPORT void BF_CALLTYPE BfCompiler_SetBuildValue(BfCompiler* bfCompiler, char* cacheDir, char* key, char* value)
