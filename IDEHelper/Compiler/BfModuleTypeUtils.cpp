@@ -7668,7 +7668,11 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 	BF_ASSERT(mCompiler->mCompileState != BfCompiler::CompileState_VData);
 	if ((methodInstance->mIsReified) && (!methodInstance->mIsUnspecialized))
 	{
-		BF_ASSERT(mCompiler->mCompileState != BfCompiler::CompileState_Unreified);
+		if (mCompiler->mCompileState == BfCompiler::CompileState_Unreified)
+		{
+			InternalError("AddMethodToWorkList on reified method while in CompileState_Unreified");
+			return;
+		}
 	}
 
 	if (methodInstance->IsOrInUnspecializedVariation())
@@ -7808,9 +7812,12 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 		}
 
 		BF_ASSERT(mIsModuleMutable || mReifyQueued);
-	}
+	}	
 
-	BF_ASSERT((mBfIRBuilder != NULL) || (!methodInstance->mIsReified));
+	if ((mBfIRBuilder == NULL) && (methodInstance->mIsReified))
+	{
+		InternalError("AddMethodToWorkList no mBfIRBuilder for reified method");
+	}
 
 	BfLogSysM("Adding to mMethodWorkList Module: %p IncompleteMethodCount: %d Type %p MethodInstance: %p Name:%s TypeRevision: %d ModuleRevision: %d ReqId:%d\n", this, mIncompleteMethodCount, typeInstance, methodInstance, methodInstance->mMethodDef->mName.c_str(), methodProcessRequest->mRevision, methodProcessRequest->mFromModuleRevision, methodProcessRequest->mReqId);
 

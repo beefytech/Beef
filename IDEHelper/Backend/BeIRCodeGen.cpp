@@ -1263,13 +1263,28 @@ void BeIRCodeGen::HandleNextCmd()
 				Fail("StructSetBody invalid type");
 				break;
 			}
-
+			
 			bool failed = false;
 			for (auto member : members)
 			{
 				if (member->mSize < 0)
 				{
 					Fail("StructSetBody invalid member type");
+					failed = true;
+				}
+			}			
+
+			if (type->mTypeCode != BeTypeCode_Struct)
+			{
+				Fail("StructSetBody invalid struct type");
+				failed = true;
+			}
+			else
+			{
+				auto structType = (BeStructType*)type;
+				if (!structType->mMembers.IsEmpty())
+				{
+					Fail("StructSetBody on non-empty struct type");
 					failed = true;
 				}
 			}
