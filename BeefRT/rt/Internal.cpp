@@ -758,6 +758,8 @@ void TestFailed(const Beefy::StringView& error, int stackOffset)
 
 void Internal::Test_Init(char* testData)
 {
+	// Die silently on a crash by default so an automated run never blocks on a dialog. The test
+	//  manager can opt into a crash report per-run via the 'CrashReport' option of :TestRun.
 	BfpSystem_SetCrashReportKind(BfpCrashReportKind_None);
 
 	Beefy::String args = GetCommandLineArgs();
@@ -843,6 +845,12 @@ int32 Internal::Test_Query()
 
 		gTestMethodIdx = atoi(param.c_str());
 		gTestBreakOnFailure = options.Contains("FailBreak");
+		if (options.Contains("CrashReport"))
+		{
+			// Print the crash report and callstack to stderr before terminating, so the test
+			//  manager can show why we died. Still no dialog and no minidump.
+			BfpSystem_SetCrashReportKind(BfpCrashReportKind_PrintOnly);
+		}
 		return gTestMethodIdx;
 	}
 	else if (result == ":TestFinish")

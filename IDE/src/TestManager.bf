@@ -36,6 +36,9 @@ namespace IDE
 		{
 			public SpawnedProcess mProcess ~ delete _;
 			public Thread mThread ~ delete _;
+			public Thread mErrorThread ~ delete _;
+			public Thread mOutputThread ~ delete _;
+			public String mErrorOutput = new .() ~ delete _;
 			public int mProjectIdx;
 			public List<TestEntry> mTestEntries = new .() ~ DeleteContainerAndItems!(_);
 			public String mPipeName ~ delete _;
@@ -141,14 +144,81 @@ namespace IDE
 			}
 		}
 
+		void ReadTestErrorProc(TestInstance testInstance, bool isError)
+		{
+			FileStream fileStream = scope FileStream();
+			if (isError)
+			{
+				if (testInstance.mProcess.AttachStandardError(fileStream) case .Err)
+					return;
+			}
+			else
+			{
+				if (testInstance.mProcess.AttachStandardOutput(fileStream) case .Err)
+					return;
+			}
+			StreamReader streamReader = scope StreamReader(fileStream, null, false, 4096);
+
+			String buffer = scope String();
+			while (true)
+			{
+				buffer.Clear();
+				if (streamReader.ReadLine(buffer) case .Err)
+					break;
+				using (mMonitor.Enter())
+				{
+					testInstance.mErrorOutput.Append(buffer);
+					testInstance.mErrorOutput.Append('\n');
+				}
+			}
+		}
+
+		/// Emits whatever the test process wrote to stderr before dying, which for a Beef crash is the
+		///  'FATAL APPLICATION ERROR' report and its callstack.
+		void ShowCrashDetails(TestInstance testInstance)
+		{
+			String errorOutput = scope String();
+			using (mMonitor.Enter())
+				errorOutput.Set(testInstance.mErrorOutput);
+			if (errorOutput.IsWhiteSpace)
+				return;
+
+			QueueOutputLine("Crash details:");
+
+			String outLine = scope String();
+			for (var line in errorOutput.Split('\n'))
+			{
+				outLine.Clear();
+				outLine.Append("  ");
+				outLine.Append(line);
+				outLine.TrimEnd();
+				if (outLine.IsWhiteSpace)
+					continue;
+				// Pass through unformatted - a callstack can contain braces
+				QueueOutputLine((StringView)outLine);
+			}
+		}
+
 		public void TestProc(TestInstance testInstance)
 		{
 			var curProjectInfo = GetCurProjectInfo();
+
+			// The test runtime can print its crash report (including the callstack) to stderr, but with no
+			//  console attached that would just be discarded - capture it so we can show why a test died.
+			//  When the user asked for a console they can see it there, so don't take stderr away from them.
+			bool captureCrashInfo = (gApp.mVerbosity > .Normal) && (!gApp.mTestEnableConsole) && (!mDebug);
 
 			if (!mDebug)
 			{
 				var startInfo = scope ProcessStartInfo();
 				startInfo.CreateNoWindow = !gApp.mTestEnableConsole;
+				// Redirect stdout too, even though we only care about stderr: with CREATE_NO_WINDOW the
+				//  child gets a fresh console, and passing our console handles for the streams we didn't
+				//  redirect makes Windows fall back to that console for all three - losing the redirect.
+				if (captureCrashInfo)
+					startInfo.UseShellExecute = false; // ShellExecute cannot redirect the std handles
+				startInfo.RedirectStandardError = captureCrashInfo;
+				startInfo.RedirectStandardOutput = captureCrashInfo;
 				startInfo.SetFileName(curProjectInfo.mTestExePath);
 				startInfo.SetArguments(testInstance.mArgs);
 				startInfo.SetWorkingDirectory(curProjectInfo.mWorkingDir);
@@ -158,6 +228,14 @@ namespace IDE
 					TestFailed();
 					QueueOutputLine("ERROR: Failed execute '{0}'", curProjectInfo.mTestExePath);
 					return;
+				}
+
+				if (captureCrashInfo)
+				{
+					testInstance.mErrorThread = new Thread(new () => { ReadTestErrorProc(testInstance, true); });
+					testInstance.mErrorThread.Start(false);
+					testInstance.mOutputThread = new Thread(new () => { ReadTestErrorProc(testInstance, false); });
+					testInstance.mOutputThread.Start(false);
 				}
 			}
 
@@ -313,6 +391,8 @@ namespace IDE
 									String clientCmd = scope $":TestRun\t{testInstance.mCurTestIdx}";
 									if ((gApp.mTestBreakOnFailure) && (mDebug) && (!testEntry.mShouldFail))
 										clientCmd.Append("\tFailBreak");
+									if (captureCrashInfo)
+										clientCmd.Append("\tCrashReport");
 									clientCmd.Append("\n");
 
 									if (testInstance.mPipeServer.Write(clientCmd) case .Err)
@@ -453,6 +533,13 @@ namespace IDE
 
 			FlushOutText(true);
 
+			// The process is gone by now, so the reader is just finishing its last read. Bounded wait
+			//  so a stuck child can't hang the whole test run.
+			if (testInstance.mErrorThread != null)
+				testInstance.mErrorThread.Join(2000);
+			if (testInstance.mOutputThread != null)
+				testInstance.mOutputThread.Join(2000);
+
 			/*if ((testFailCount > 0) && (!failed))
 			{
 				failed = true;
@@ -465,6 +552,7 @@ namespace IDE
 			}
 			else if (!testsFinished)
 			{
+				bool expectedFailure = false;
 				var str = scope String();
 				if (testInstance.mCurTestIdx == -1)
 				{
@@ -477,6 +565,7 @@ namespace IDE
 					{
 						// Success
 						testEntry.mFailed = true;
+						expectedFailure = true;
 						QueueOutputLine("Test expectedly failed: {0}", testEntry.mName);
 					}
 					else
@@ -511,11 +600,15 @@ namespace IDE
 					QueueOutputLine(errStr);
 					TestFailed();
 				}
+
+				if (!expectedFailure)
+					ShowCrashDetails(testInstance);
 			}
 			else if (exitCode != 0)
 			{
 				QueueOutputLine("ERROR: Test process exited with error code: {0}", exitCode);
 				TestFailed();
+				ShowCrashDetails(testInstance);
 			}
 			else if (testInstance.mTestEntries.IsEmpty)
 			{

@@ -1826,6 +1826,7 @@ public:
 	bool CreatePipe(HANDLE& parentHandle, HANDLE& childHandle, bool parentInputs)
 	{
 		SECURITY_ATTRIBUTES securityAttributesParent = { 0 };
+		securityAttributesParent.nLength = sizeof(SECURITY_ATTRIBUTES); // bInheritHandle is ignored without this
 		securityAttributesParent.bInheritHandle = 1;
 
 		HANDLE hTmp = INVALID_HANDLE_VALUE;
@@ -1899,6 +1900,7 @@ public:
 		}
 
 		STARTUPINFOW startupInfo = { 0 };
+		startupInfo.cb = sizeof(STARTUPINFOW); // CreateProcess ignores the struct without this
 		PROCESS_INFORMATION processInfo = { 0 };
 
 		bool retVal;
