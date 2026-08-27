@@ -491,6 +491,7 @@ public:
 	ID3D11DeviceContext*	mD3DDeviceContext;
 	ID3D11DeviceContext1*	mD3DDeviceContext1; // 11.1 interface for rect clears; NULL on 11.0 runtimes
 	ID3D11BlendState*		mD3DNormalBlendState;
+	ID3D11BlendState*		mD3DA2CBlendState;
 	ID3D11SamplerState*		mD3DDefaultSamplerState;
 	ID3D11SamplerState*		mD3DWrapSamplerState;
 	ID3D11SamplerState*		mD3DNearestSamplerState;

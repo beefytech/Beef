@@ -1282,6 +1282,11 @@ BF_EXPORT void BF_CALLTYPE RenderState_SetDisableBlend(RenderState* renderState,
 	renderState->SetDisableBlend(disable);
 }
 
+BF_EXPORT void BF_CALLTYPE RenderState_SetAlphaToCoverage(RenderState* renderState, bool enabled)
+{
+	renderState->SetAlphaToCoverage(enabled);
+}
+
 BF_EXPORT Shader* BF_CALLTYPE Gfx_LoadShader(const char* fileName, VertexDefinition* vertexDefinition)
 {
 	return gBFApp->mRenderDevice->LoadShader(fileName, vertexDefinition);

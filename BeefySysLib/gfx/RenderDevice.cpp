@@ -29,6 +29,7 @@ RenderState::RenderState()
 	mDisablePixelShader = false;
 	mDisableRenderTarget = false;
 	mDisableBlend = false;
+	mAlphaToCoverage = false;
 }
 
 RenderTarget::RenderTarget()

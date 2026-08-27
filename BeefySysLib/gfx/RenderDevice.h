@@ -174,7 +174,8 @@ enum TextureFlag : int8
 	TextureFlag_HasTransFollowing = 8,
 	TextureFlag_Mipmaps = 0x10,
 	// Color data: store sRGB-encoded, sample hardware-decoded to linear.
-	TextureFlag_Srgb = 0x20
+	TextureFlag_Srgb = 0x20,
+	TextureFlag_UseLoadCache = 0x40
 };
 
 struct VertexDefData
@@ -260,6 +261,7 @@ public:
 	bool					mDisablePixelShader;
 	bool					mDisableRenderTarget;
 	bool					mDisableBlend;
+	bool					mAlphaToCoverage;
 
 public:
 	RenderState();
@@ -278,6 +280,7 @@ public:
 	virtual void SetDisablePixelShader(bool disable) { mDisablePixelShader = disable; }
 	virtual void SetDisableRenderTarget(bool disable) { mDisableRenderTarget = disable; }
 	virtual void SetDisableBlend(bool disable) { mDisableBlend = disable; }
+	virtual void SetAlphaToCoverage(bool enabled) { mAlphaToCoverage = enabled; }
 };
 
 class PoolData

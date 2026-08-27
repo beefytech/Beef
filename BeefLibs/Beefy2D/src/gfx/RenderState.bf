@@ -98,6 +98,9 @@ namespace Beefy.gfx
 		[CallingConvention(.Stdcall), CLink]
 		static extern void RenderState_SetDisableBlend(void* nativeRenderState, bool disable);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void RenderState_SetAlphaToCoverage(void* nativeRenderState, bool enabled);
+
         public void* mNativeRenderState;
         public bool mIsFromDefaultRenderState;
 
@@ -236,6 +239,16 @@ namespace Beefy.gfx
 			set
 			{
 				RenderState_SetDisableBlend(mNativeRenderState, value);
+			}
+		}
+
+		// Output alpha becomes the MSAA coverage mask (no color blending) -- cutout edges resolve
+		// with fractional coverage instead of a hard per-pixel clip.
+		public bool AlphaToCoverage
+		{
+			set
+			{
+				RenderState_SetAlphaToCoverage(mNativeRenderState, value);
 			}
 		}
     }

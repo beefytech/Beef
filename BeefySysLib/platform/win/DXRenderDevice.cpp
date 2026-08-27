@@ -1827,8 +1827,11 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 			mD3DDeviceContext->OMSetRenderTargets(1, &mCurD3DRTV, mCurD3DDSV);
 	}
 
-	if (renderState->mDisableBlend != mPhysRenderState->mDisableBlend)
-		mD3DDeviceContext->OMSetBlendState(renderState->mDisableBlend ? NULL : mD3DNormalBlendState, NULL, 0xffffffff);
+	if ((renderState->mDisableBlend != mPhysRenderState->mDisableBlend) ||
+		(renderState->mAlphaToCoverage != mPhysRenderState->mAlphaToCoverage))
+		mD3DDeviceContext->OMSetBlendState(
+			renderState->mAlphaToCoverage ? mD3DA2CBlendState :
+			renderState->mDisableBlend ? NULL : mD3DNormalBlendState, NULL, 0xffffffff);
 
 	mPhysRenderState = renderState;
 }
@@ -2977,6 +2980,7 @@ bool DXRenderWindow::WaitForVBlank()
 DXRenderDevice::DXRenderDevice()
 {
 	mD3DDevice = NULL;
+	mD3DA2CBlendState = NULL;
 	mD3DDeviceContext1 = NULL;
 	mNeedsReinitNative = false;
 	mMatrix2DBuffer = NULL;
@@ -3132,6 +3136,14 @@ bool DXRenderDevice::Init(BFApp* app)
 	BlendState.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;
 	BlendState.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
 	mD3DDevice->CreateBlendState(&BlendState, &mD3DNormalBlendState);
+
+	// Alpha-to-coverage: no color blending, output alpha becomes the MSAA coverage mask.
+	D3D11_BLEND_DESC a2cState;
+	ZeroMemory(&a2cState, sizeof(D3D11_BLEND_DESC));
+	a2cState.AlphaToCoverageEnable = TRUE;
+	a2cState.RenderTarget[0].BlendEnable = FALSE;
+	a2cState.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	mD3DDevice->CreateBlendState(&a2cState, &mD3DA2CBlendState);
 
 	mD3DDeviceContext->OMSetBlendState(mD3DNormalBlendState, NULL, 0xffffffff);
 
@@ -3398,6 +3410,11 @@ void DXRenderDevice::ReleaseNative()
 	mD3DIndexBuffer = NULL;
 	mD3DNormalBlendState->Release();
 	mD3DNormalBlendState = NULL;
+	if (mD3DA2CBlendState != NULL)
+	{
+		mD3DA2CBlendState->Release();
+		mD3DA2CBlendState = NULL;
+	}
 	mD3DDefaultSamplerState->Release();
 	mD3DDefaultSamplerState = NULL;
 	mD3DWrapSamplerState->Release();
@@ -3514,16 +3531,21 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		return aTexture;
 	}
 
+	bool useLoadCache = ((flags & TextureFlag_UseLoadCache) != 0);
+
 	String pathEx = fileName;
-	if ((flags & TextureFlag_Additive) != 0)
-		pathEx += ":add";
-	if ((flags & TextureFlag_Mipmaps) != 0)
-		pathEx += ":mip";
-	if ((flags & TextureFlag_Srgb) != 0)
-		pathEx += ":srgb";
+	if (useLoadCache)
+	{
+		if ((flags & TextureFlag_Additive) != 0)
+			pathEx += ":add";
+		if ((flags & TextureFlag_Mipmaps) != 0)
+			pathEx += ":mip";
+		if ((flags & TextureFlag_Srgb) != 0)
+			pathEx += ":srgb";
+	}
 
 	DXTexture* aTexture = NULL;
-	if ((!fileName.StartsWith('@')) && (mTextureMap.TryGetValue(pathEx, &aTexture)))
+	if ((useLoadCache) && (!fileName.StartsWith('@')) && (mTextureMap.TryGetValue(pathEx, &aTexture)))
 	{
 		aTexture->AddRef();
 		return aTexture;
@@ -3665,7 +3687,7 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 	}
 
 	aTexture = (DXTexture*)RenderDevice::LoadTexture(fileName, flags);
-	if (aTexture != NULL)
+	if ((aTexture != NULL) && (useLoadCache))
 	{
 		aTexture->mPath = pathEx;
 		mTextureMap[aTexture->mPath] = aTexture;
