@@ -15141,7 +15141,7 @@ namespace IDE
 			Debug.Assert(numOverWidgets <= 1);
 		}*/
 
-		public void FileRenamed(ProjectFileItem projectFileItem, String oldPath, String newPath)
+		public virtual void FileRenamed(ProjectFileItem projectFileItem, String oldPath, String newPath)
 		{
 			String newFileName = scope String();
 			Path.GetFileName(newPath, newFileName);
@@ -15391,6 +15391,11 @@ namespace IDE
 			}
 		}
 
+		public virtual bool WantsFileChangeDialog(ContentPanel panel)
+		{
+			return true;
+		}
+
 		void UpdateWorkspace()
 		{
 			mFileWatcher.Update();
@@ -15543,7 +15548,7 @@ namespace IDE
 						}
 					});
 
-				if (matchedContentPanel != null)
+				if ((matchedContentPanel != null) && (WantsFileChangeDialog(matchedContentPanel)))
 				{
 					FileChangedDialog.DialogKind dialogKind = File.Exists(fileName) ? .Changed : .Deleted;
 
@@ -15612,7 +15617,7 @@ namespace IDE
 				}
 
 				var sourceViewPanel = FindSourceViewPanel(fileName);
-				if (sourceViewPanel != null)
+				if ((sourceViewPanel != null) && (WantsFileChangeDialog(sourceViewPanel)))
 				{
 					FileChangedDialog.DialogKind dialogKind = File.Exists(fileName) ? .Changed : .Deleted;
 

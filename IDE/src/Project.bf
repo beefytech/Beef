@@ -148,6 +148,11 @@ namespace IDE
 				StopWatching();
 		}
 
+		public virtual void PreDelete()
+		{
+
+		}
+
 		public void GetFullImportPath(String outFullPath)
 		{
 			if (mProject.IsSingleFile)
@@ -585,7 +590,7 @@ namespace IDE
             AddChildAtIndex(pos, item);
         }
 
-        public virtual void RemoveChild(ProjectItem item)
+        public virtual void RemoveChild(ProjectItem item, bool isExplicitDelete)
         {
             var projectFileItem = item as ProjectFileItem;
             if (projectFileItem != null)
@@ -909,6 +914,37 @@ namespace IDE
 		public override Image GetIcon()
 		{
 			return DarkTheme.sDarkTheme.GetImage(.ProjectFolder);
+		}
+
+		public void WithProjectItems(delegate void(ProjectItem) func)
+		{
+		    List<int32> idxStack = scope List<int32>();
+		    List<ProjectFolder> folderStack = scope List<ProjectFolder>();
+
+		    folderStack.Add(this);
+		    idxStack.Add(0);
+
+		    while (folderStack.Count > 0)
+		    {
+		        int32 curIdx = idxStack[idxStack.Count - 1]++;
+		        ProjectFolder curFolder = folderStack[folderStack.Count - 1];
+		        if (curIdx >= curFolder.mChildItems.Count)
+		        {
+		            folderStack.RemoveAt(folderStack.Count - 1);
+		            idxStack.RemoveAt(idxStack.Count - 1);
+		            continue;
+		        }
+
+		        var projectItem = curFolder.mChildItems[curIdx];
+		        if (projectItem is ProjectFolder)
+		        {
+		            folderStack.Add((ProjectFolder)projectItem);
+		            idxStack.Add(0);
+		            continue;
+		        }
+
+		        func(projectItem);
+		    }
 		}
     }
 
@@ -2520,33 +2556,7 @@ namespace IDE
 
         public void WithProjectItems(delegate void(ProjectItem) func)
         {
-            List<int32> idxStack = scope List<int32>();
-            List<ProjectFolder> folderStack = scope List<ProjectFolder>();
-
-            folderStack.Add(mRootFolder);
-            idxStack.Add(0);
-
-            while (folderStack.Count > 0)
-            {
-                int32 curIdx = idxStack[idxStack.Count - 1]++;
-                ProjectFolder curFolder = folderStack[folderStack.Count - 1];
-                if (curIdx >= curFolder.mChildItems.Count)
-                {
-                    folderStack.RemoveAt(folderStack.Count - 1);
-                    idxStack.RemoveAt(idxStack.Count - 1);
-                    continue;
-                }
-
-                var projectItem = curFolder.mChildItems[curIdx];
-                if (projectItem is ProjectFolder)
-                {
-                    folderStack.Add((ProjectFolder)projectItem);
-                    idxStack.Add(0);
-                    continue;
-                }
-
-                func(projectItem);
-            }
+			mRootFolder.WithProjectItems(func);
         }
 
         public VerSpec* GetDependency(String projectName, bool checkRecursively = true)

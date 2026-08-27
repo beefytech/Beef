@@ -537,7 +537,7 @@ namespace IDE.ui
 												if (targetProjectFolder != sourceProjectItem.mParentFolder)
 												{
 													source.mParentItem.RemoveChildItem(source, false);
-													sourceProjectItem.mParentFolder.RemoveChild(sourceProjectItem);
+													sourceProjectItem.mParentFolder.RemoveChild(sourceProjectItem, false);
 
 													targetListItem.AddChildAtIndex(0, source);
 													targetListItem.mOpenButton.Open(true, false);
@@ -1859,6 +1859,7 @@ namespace IDE.ui
 				{
 					if (let projectFileItem = projectItem as ProjectFileItem)
 					{
+						projectFileItem.PreDelete();
                         var path = scope String();
 						projectFileItem.GetFullImportPath(path);
 						doRemove = deletePathFunc(path);
@@ -1868,7 +1869,7 @@ namespace IDE.ui
 				if (doRemove)
 				{
 		            if (projectItem.mParentFolder != null)
-		                projectItem.mParentFolder.RemoveChild(projectItem);
+		                projectItem.mParentFolder.RemoveChild(projectItem, deleteKind == .Normal);
 					
 					mProjectToListViewMap.Remove(projectItem);
 					mListViewToProjectMap.Remove(listItem);
