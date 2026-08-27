@@ -339,6 +339,9 @@ public:
 	BfContext* mContext;
 	BfCodeGen mCodeGen;
 	String mOutputDirectory;
+	String mCompilerPath;
+	String mCompilerVersion;
+	int64 mCompilerBuildDate; // UTC, in DateTime ticks
 	int mLastMidCompileRefreshRevision;
 	bool mCanceling;
 	bool mHasRequiredTypes;

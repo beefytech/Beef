@@ -16059,6 +16059,18 @@ BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
 	{
 		return BfTypedValue(GetStringObjectValue(mCompiler->mOutputDirectory), ResolveTypeDef(mCompiler->mStringTypeDef));
 	}
+	if (str == "#CompilerPath")
+	{
+		return BfTypedValue(GetStringObjectValue(mCompiler->mCompilerPath), ResolveTypeDef(mCompiler->mStringTypeDef));
+	}
+	if (str == "#CompilerVersion")
+	{
+		return BfTypedValue(GetStringObjectValue(mCompiler->mCompilerVersion), ResolveTypeDef(mCompiler->mStringTypeDef));
+	}
+	if (str == "#CompilerBuildDate")
+	{
+		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int64, (uint64)mCompiler->mCompilerBuildDate), GetPrimitiveType(BfTypeCode_Int64));
+	}
 	if (str == "#AllocStackCount")
 	{
 		return BfTypedValue(mBfIRBuilder->CreateConst(BfTypeCode_Int32, mCompiler->mOptions.mAllocStackCount), GetPrimitiveType(BfTypeCode_Int32));

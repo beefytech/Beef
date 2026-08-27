@@ -310,6 +310,9 @@ namespace IDE.Compiler
             var bfCompiler = new BfCompiler(nativeBfCompiler);
             bfCompiler.mIsResolveOnly = isResolveOnly;
             bfCompiler.mBfSystem = this;
+            // Done here rather than at the call sites - compilers get recreated in several places
+            //  (workspace close, clean rebuild, ...) and each new one needs this
+            gApp.SetCompilerInfo(bfCompiler);
             return bfCompiler;
         }
 

@@ -391,6 +391,20 @@ namespace System
 		[LinkName("#BuildDir")]
 		public static extern String BuildDir;
 
+		/// Full path of the compiler executable (BeefBuild or BeefIDE)
+		[LinkName("#CompilerPath")]
+		public static extern String CompilerPath;
+
+		/// Version of the compiler executable
+		[LinkName("#CompilerVersion")]
+		public static extern String CompilerVersion;
+
+		[LinkName("#CompilerBuildDate")]
+		private static extern int64 sCompilerBuildDateTicks;
+
+		/// Build time of the compiler executable, in UTC
+		public static DateTime CompilerBuildDate => .(sCompilerBuildDateTicks, .Utc);
+
 		[Comptime(ConstEval=true)]
 		public static void Assert(bool cond)
 		{

@@ -166,6 +166,7 @@ namespace IDE
 		public String mDeferredRelaunchCmd ~ delete _;
 		public int? mTargetExitCode;
 		public FileVersionInfo mVersionInfo ~ delete _;
+		DateTime mExeDateUtc;
 		public uint64 mCompilerId = ((uint64)Process.CurrentId << 32) ^ (uint64)Platform.BfpSystem_GetTimeStamp();
 
 		//public ToolboxPanel mToolboxPanel;
@@ -1649,7 +1650,7 @@ namespace IDE
 			return Utils.LoadTextFile(fileName, outBuffer, autoRetry, onPreFilter);
 		}
 
-		public bool SaveFileAs(SourceViewPanel sourceViewPanel)
+		public bool SaveFileAs(ContentPanel sourceViewPanel)
 		{
 #if !CLI
 			String fullDir = scope .();
@@ -1782,6 +1783,14 @@ namespace IDE
 				}
 			}
 			return true;
+		}
+
+		public bool SaveFile(ContentPanel contentPanel, String forcePath = null)
+		{
+			if (var sourceViewPanel = contentPanel as SourceViewPanel)
+				return SaveFile(sourceViewPanel, forcePath);
+
+			return false;
 		}
 
 		/// Saves any content panel (source or binary)
@@ -3885,8 +3894,8 @@ namespace IDE
 				return;
 			}
 
-			if (let binaryDataPanel = GetActiveDocumentPanel() as ContentPanel)
-				SaveFile(binaryDataPanel);
+			if (let contentPanel = GetActiveDocumentPanel() as ContentPanel)
+				SaveFile(contentPanel);
 		}
 
 		[IDECommand]
@@ -3897,6 +3906,9 @@ namespace IDE
 			{
 				SaveFileAs(sourceViewPanel);
 			}
+
+			if (let contentPanel = GetActiveDocumentPanel() as ContentPanel)
+				SaveFileAs(contentPanel);
 		}
 
 		[IDECommand]
@@ -13292,6 +13304,16 @@ namespace IDE
 #endif
 		}
 
+		/// Feeds Compiler.CompilerPath / CompilerVersion / CompilerBuildDate, using the same version and
+		///  build time reported by the 'IDE Started' line
+		public void SetCompilerInfo(BfCompiler compiler)
+		{
+			GetVersionInfo(var exeDate);
+			String exeFilePath = scope .();
+			Environment.GetExecutableFilePath(exeFilePath);
+			compiler.SetCompilerInfo(exeFilePath, mVersionInfo.FileVersion ?? cVersion, mExeDateUtc.Ticks);
+		}
+
 		void UpdateTitle(StringView titleOverride = default)
 		{
 			String title = scope String();
@@ -13354,12 +13376,14 @@ namespace IDE
 				if (!String.IsNullOrEmpty(mVersionInfo.FileVersion))
 					Debug.Assert(mVersionInfo.FileVersion.StartsWith(cVersion));
 #if BF_PLATFORM_WINDOWS
-				exeTime = File.GetLastWriteTime(exeFilePath).GetValueOrDefault();
+				mExeDateUtc = File.GetLastWriteTimeUtc(exeFilePath).GetValueOrDefault();
 #else
 				const DateTime COMPILE_TIME = DateTime.UtcNow;
-				exeTime = COMPILE_TIME.ToLocalTime();
+				mExeDateUtc = COMPILE_TIME;
 #endif
 			}
+			// Cached - previously only the first caller got a date, and BuildApp.Init already consumed it
+			exeTime = mExeDateUtc.ToLocalTime();
 			return mVersionInfo;
 		}
 

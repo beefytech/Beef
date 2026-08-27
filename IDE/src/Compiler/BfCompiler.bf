@@ -106,6 +106,9 @@ namespace IDE.Compiler
 		static extern void BfCompiler_SetBuildValue(void* bfCompiler, char8* cacheDir, char8* key, char8* value);
 
 		[CallingConvention(.Stdcall), CLink]
+		static extern void BfCompiler_SetCompilerInfo(void* bfCompiler, char8* compilerPath, char8* compilerVersion, int64 compilerBuildDate);
+
+		[CallingConvention(.Stdcall), CLink]
 		static extern char8* BfCompiler_GetBuildValue(void* bfCompiler, char8* cacheDir, char8* key);
 
 		[CallingConvention(.Stdcall), CLink]
@@ -889,6 +892,12 @@ namespace IDE.Compiler
 		public void SetBuildValue(String cacheDir, String key, String value)
 		{
 			BfCompiler_SetBuildValue(mNativeBfCompiler, cacheDir, key, value);
+		}
+
+		/// Backs Compiler.CompilerPath / CompilerVersion / CompilerBuildDate
+		public void SetCompilerInfo(StringView compilerPath, StringView compilerVersion, int64 compilerBuildDate)
+		{
+			BfCompiler_SetCompilerInfo(mNativeBfCompiler, compilerPath.ToScopeCStr!(), compilerVersion.ToScopeCStr!(), compilerBuildDate);
 		}
 
 		public void GetBuildValue(String cacheDir, String key, String outValue)
