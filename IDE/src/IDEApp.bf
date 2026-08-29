@@ -7604,6 +7604,10 @@ namespace IDE
 
 		public void AddToRecentDisplayedFilesList(String path)
 		{
+			if ((path == null) || (path.IsEmpty))
+			{
+				return;
+			}
 			RecentFiles.Add(mRecentlyDisplayedFiles, path, 20);
 			UpdateRecentDisplayedFilesMenuItems();
 		}

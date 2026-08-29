@@ -41,6 +41,9 @@ namespace IDE
 			public String mFileName ~ delete _;
 			public String mNewFileName ~ delete _;
 			public WatcherChangeTypes mChangeType;
+			public int32 mTickCreated = gApp.mUpdateCnt;
+
+			public int32 AgeMS => (gApp.mUpdateCnt - mTickCreated) * 1000 / gApp.RefreshRate;
 		}
 
 		public class ChangeRecord
@@ -61,7 +64,7 @@ namespace IDE
 		public Monitor mMonitor = new Monitor() ~ delete _;
 		List<QueuedFileChange> mQueuedFileChanges = new List<QueuedFileChange>() ~ DeleteContainerAndItems!(_);
 		public Monitor mFileChangeMonitor = new Monitor() ~ delete _;
-		public int mChangeId;
+		public int32 mChangeId;
 		public Event<delegate void(String filePath, String newPath, WatcherChangeTypes changeType)> mOnFileChanged ~ _.Dispose();
 
         public ~this()
@@ -605,13 +608,90 @@ namespace IDE
 				{
 					if (mQueuedFileChanges.Count == 0)
 						break;
-					queuedFileChange = mQueuedFileChanges.PopFront();
+
+					Dictionary<String, QueuedFileChange> deletingFiles = scope .();
+					Dictionary<String, QueuedFileChange> changingFiles = scope .();
+					for (var change in mQueuedFileChanges)
+					{
+						if (change.mChangeType == .Deleted)
+						{
+							deletingFiles[change.mFileName] = change;
+						}
+
+						if (change.mChangeType == .FileCreated)
+						{
+							if (deletingFiles.GetValue(change.mNewFileName) case .Ok(let deleteChange))
+							{
+								// The file did just get recreated - ignore the delete and convert to a Change
+								change.mChangeType = default;
+								deleteChange.mChangeType = .Changed;
+							}
+						}
+
+						if (change.mChangeType == .Changed)
+						{
+							if (deletingFiles.GetValue(change.mFileName) case .Ok(let deleteChange))
+							{
+								if (deleteChange.mChangeType == .Changed)
+								{
+									// We already picked up this change
+									change.mChangeType = default;
+								}
+							}
+
+							if (!changingFiles.TryAdd(change.mFileName, ?, ?))
+							{
+								// Duplicate file change record
+								change.mChangeType = default;
+							}
+						}
+					}
+
+					queuedFileChange = mQueuedFileChanges.Front;
+					if (queuedFileChange.mChangeType == .Deleted)
+					{
+						// Wait for physical recreate
+						if (queuedFileChange.AgeMS < 200)
+							return;
+						// We see the file recreate, wait for it to be registered
+						if ((File.Exists(queuedFileChange.mFileName)) && (queuedFileChange.AgeMS < 500))
+							return;
+					}
+
+					if (queuedFileChange.mChangeType == .Changed)
+					{
+						FileStream fs = scope .();
+						switch (fs.Open(queuedFileChange.mFileName, .Read, .ReadWrite))
+						{
+						case .Ok:
+							int size = fs.Length;
+							if ((size == 0) && (queuedFileChange.AgeMS < 500))
+							{
+								// Just wait a little bit for a zero-sized file...
+								return;
+							}
+
+						case .Err(let err):
+							if (err == .SharingViolation)
+							{
+								// We are fairly certain we have a write-in-progress here....
+								if (queuedFileChange.AgeMS < 3000)
+									return;
+							}
+						}
+					}
+
+					mQueuedFileChanges.PopFront();
 				}
 
-				if (fileChangeHandler != null)
-					fileChangeHandler(queuedFileChange.mFileName, queuedFileChange.mNewFileName, queuedFileChange.mChangeType);
+				//Debug.WriteLine($"Handling Change: {queuedFileChange.mChangeType} {queuedFileChange.mFileName} Age:{queuedFileChange.AgeMS}ms");
 
-				FileChanged(queuedFileChange.mFileName, queuedFileChange.mNewFileName, queuedFileChange.mChangeType);
+				if (queuedFileChange.mChangeType != default)
+				{
+					if (fileChangeHandler != null)
+						fileChangeHandler(queuedFileChange.mFileName, queuedFileChange.mNewFileName, queuedFileChange.mChangeType);
+					FileChanged(queuedFileChange.mFileName, queuedFileChange.mNewFileName, queuedFileChange.mChangeType);
+				}
 				delete queuedFileChange;
 			}
 
