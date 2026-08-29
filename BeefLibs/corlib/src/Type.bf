@@ -179,18 +179,27 @@ namespace System
 			return false;
 		}
 
-		public bool HasDeclaredMethod(StringView fieldName)
+		public bool HasDeclaredMethod(StringView methodName)
 		{
 			if (Compiler.IsComptime)
-				return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 1, fieldName);
+				return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 1, methodName);
 			return false;
 		}
 
-		public bool HasDeclaredProperty(StringView fieldName)
+		public bool HasDeclaredProperty(StringView propName)
 		{
 			if (Compiler.IsComptime)
-				return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 2, fieldName);
+				return Type.[Friend]Comptime_Type_HasDeclaredMember((.)mTypeId, 2, propName);
 			return false;
+		}
+
+		/// Returns the declaration text of every method named 'methodName', each preceded by a
+		///  '#line <line> "<file>"' directive. Empty if there are no matches, null outside comptime.
+		public String GetMethodDeclarationText(StringView methodName)
+		{
+			if (Compiler.IsComptime)
+				return Type.[Friend]Comptime_Type_GetMethodDeclarationText((.)mTypeId, methodName);
+			return null;
 		}
 	}
 
@@ -779,6 +788,7 @@ namespace System
 		static extern TypeDeclaration Comptime_GetNextTypeDeclaration(int32 lastTypeId);
 		static extern int32 Comptime_Type_GetBaseType(int32 typeId);
 		static extern bool Comptime_Type_HasDeclaredMember(int32 typeId, int32 kind, StringView name);
+		static extern String Comptime_Type_GetMethodDeclarationText(int32 typeId, StringView methodName);
 		static extern Type Comptime_GetTypeById(int32 typeId);
 		static extern Type Comptime_GetWrappedType(int32 typeId);
 		static extern Type Comptime_GetTypeByName(StringView name);

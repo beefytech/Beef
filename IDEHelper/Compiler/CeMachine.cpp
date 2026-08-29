@@ -6440,6 +6440,70 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 
 				*(addr_ce*)(stackPtr + 0) = hasMember;
 			}
+			else if (checkFunction->mFunctionKind == CeFunctionKind_Type_GetMethodDeclarationText)
+			{
+				int32 typeId = *(int32*)((uint8*)stackPtr + ptrSize);
+				addr_ce strViewPtr = *(addr_ce*)((uint8*)stackPtr + ptrSize + 4);
+
+				String methodName;
+				if (!GetStringFromStringView(strViewPtr, methodName))
+				{
+					_Fail("Invalid StringView");
+					return false;
+				}
+
+				String declText;
+
+				BfType* type = GetBfType(typeId);
+				if ((type != NULL) && (type->IsTypeInstance()))
+				{
+					AddTypeSigRebuild(type);
+					auto typeInst = type->ToTypeInstance();
+					typeInst->mTypeDef->PopulateMemberSets();
+
+					BfMemberSetEntry* entry = NULL;
+					if (typeInst->mTypeDef->mMethodSet.TryGetWith((StringImpl&)methodName, &entry))
+					{
+						// The same-name chain runs newest-first, so gather it up and walk back to get
+						//  the methods out in declaration order
+						SizedArray<BfMethodDef*, 8> matchedMethods;
+						for (auto checkMethodDef = (BfMethodDef*)entry->mMemberDef; checkMethodDef != NULL; checkMethodDef = checkMethodDef->mNextWithSameName)
+							matchedMethods.push_back(checkMethodDef);
+
+						for (int matchIdx = (int)matchedMethods.size() - 1; matchIdx >= 0; matchIdx--)
+						{
+							auto methodDef = matchedMethods[matchIdx];
+							auto declNode = methodDef->mMethodDeclaration;
+							auto srcData = (declNode != NULL) ? declNode->GetSourceData() : NULL;
+							if ((srcData != NULL) && (declNode->GetSrcLength() > 0))
+							{
+								auto parserData = srcData->ToParserData();
+								if (parserData != NULL)
+								{
+									// The text is only valid while the file it came from is unchanged, and
+									//  editing a method body doesn't alter the type signature - so the
+									//  signature dependency alone would leave this stale
+									AddFileRebuild(parserData->mFileName);
+
+									int line = 0;
+									int lineChar = 0;
+									parserData->GetLineCharAtIdx(declNode->GetSrcStart(), line, lineChar);
+									// Beef tracks lines from zero, '#line' is conventionally one-based
+									declText += StrFormat("#line %d \"%s\"\n", line + 1, parserData->mFileName.c_str());
+								}
+
+								declText.Append(srcData->mSrc + declNode->GetSrcStart(), declNode->GetSrcLength());
+								declText += "\n";
+							}
+
+						}
+					}
+				}
+
+				auto stringAddr = GetString(declText);
+				_FixVariables();
+				CeSetAddrVal(stackPtr + 0, stringAddr, ptrSize);
+			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_GetReflectType)
 			{
 				addr_ce objAddr = *(addr_ce*)((uint8*)stackPtr + ceModule->mSystem->mPtrSize);
@@ -10464,6 +10528,10 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 				else if (methodDef->mName == "Comptime_Type_HasDeclaredMember")
 				{
 					ceFunction->mFunctionKind = CeFunctionKind_HasDeclaredMember;
+				}
+				else if (methodDef->mName == "Comptime_Type_GetMethodDeclarationText")
+				{
+					ceFunction->mFunctionKind = CeFunctionKind_Type_GetMethodDeclarationText;
 				}
 				else if (methodDef->mName == "Comptime_GetTypeById")
 				{

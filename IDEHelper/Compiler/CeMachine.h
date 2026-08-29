@@ -435,6 +435,7 @@ enum CeFunctionKind
 	CeFunctionKind_GetReflectNextTypeDecl,
 	CeFunctionKind_GetBaseType,
 	CeFunctionKind_HasDeclaredMember,
+	CeFunctionKind_Type_GetMethodDeclarationText,
 	CeFunctionKind_GetReflectType,
 	CeFunctionKind_GetReflectTypeById,
 	CeFunctionKind_GetWrappedType,
