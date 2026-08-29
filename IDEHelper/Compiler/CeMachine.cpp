@@ -6500,7 +6500,7 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 					}
 				}
 
-				auto stringAddr = GetString(declText);
+				auto stringAddr = !declText.IsEmpty() ? GetString(declText) : 0;
 				_FixVariables();
 				CeSetAddrVal(stackPtr + 0, stringAddr, ptrSize);
 			}
