@@ -165,7 +165,7 @@ public:
 	void					FrameEnd() override;
 
 	Texture*				LoadTexture(ImageData* imageData, int flags) override;
-	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) override;
+	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition, const StringImpl& entrySuffix) override;
 	Texture*				CreateRenderTarget(int width, int height, int flags, int sampleCount) override;
 
 	virtual Texture*		CreateDynTexture(int width, int height) override;

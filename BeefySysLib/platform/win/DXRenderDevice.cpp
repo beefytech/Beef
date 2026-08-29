@@ -13,6 +13,8 @@
 #include "Span.h"
 #include "FileStream.h"
 #include "DDS.h"
+#include <map>
+#include <set>
 
 using namespace DirectX;
 
@@ -332,10 +334,147 @@ extern "C" typedef HRESULT(WINAPI* Func_D3DX10Compile)(void* srcData, size_t src
 	LPCSTR pFunctionName, LPCSTR pProfile, UINT Flags1, UINT Flags2, ID3D10Blob** ppShader, ID3D10Blob** ppErrorMsgs);
 static Func_D3DX10Compile gFunc_D3DX10Compile;
 
+// Include resolution shared by the compile-time ID3DInclude handler and the cache's include hash
+// walk -- the hash must cover exactly the files the compiler would open, so there is one resolver:
+// the including file's own directory first, then the registered search dirs.
+static bool ResolveShaderInclude(const StringImpl& includerDir, const StringImpl& name, String& outPath)
+{
+	String path;
+	if (!includerDir.IsEmpty())
+		path = includerDir + "\\" + name;
+	else
+		path = name;
+	if (FileExists(path))
+	{
+		outPath = path;
+		return true;
+	}
+	for (auto& dir : GetShaderIncludeDirs())
+	{
+		path = dir + name;
+		if (FileExists(path))
+		{
+			outPath = path;
+			return true;
+		}
+	}
+	return false;
+}
+
+// Case- and separator-insensitive identity for the visited set (diamond includes, cycles).
+static String CanonicalIncludeKey(const StringImpl& path)
+{
+	String key;
+	for (int i = 0; i < (int)path.length(); i++)
+	{
+		char c = path[i];
+		if (c == '/')
+			c = '\\';
+		key.Append((char)tolower((uint8)c));
+	}
+	return key;
+}
+
+// Conservative textual walk of the #include closure, folding each reachable file's bytes into
+// `hash`. Over-approximates: an include mentioned inside a disabled #if or a block comment is
+// still hashed, which only costs a spurious recompile. Misses only macro-computed includes
+// (#include FOO) -- don't write those. An unresolvable name is skipped; if it's real, the
+// compile itself reports it.
+static uint64 HashShaderIncludes(const StringImpl& includerDir, const char* data, int size, uint64 hash, std::set<String>& visited)
+{
+	int i = 0;
+	while (i < size)
+	{
+		int j = i;
+		while ((j < size) && ((data[j] == ' ') || (data[j] == '\t')))
+			j++;
+		int lineEnd = j;
+		while ((lineEnd < size) && (data[lineEnd] != '\n'))
+			lineEnd++;
+		if ((j < size) && (data[j] == '#'))
+		{
+			j++;
+			while ((j < size) && ((data[j] == ' ') || (data[j] == '\t')))
+				j++;
+			if ((j + 7 <= size) && (strncmp(data + j, "include", 7) == 0))
+			{
+				j += 7;
+				while ((j < size) && ((data[j] == ' ') || (data[j] == '\t')))
+					j++;
+				if ((j < lineEnd) && ((data[j] == '"') || (data[j] == '<')))
+				{
+					char closeC = (data[j] == '"') ? '"' : '>';
+					j++;
+					int nameStart = j;
+					while ((j < lineEnd) && (data[j] != closeC))
+						j++;
+					if ((j < lineEnd) && (j > nameStart))
+					{
+						String name(data + nameStart, j - nameStart);
+						String path;
+						if (ResolveShaderInclude(includerDir, name, path))
+						{
+							if (visited.insert(CanonicalIncludeKey(path)).second)
+							{
+								int incSize = 0;
+								uint8* incData = LoadBinaryData(path, &incSize);
+								if (incData != NULL)
+								{
+									hash = Hash64(incData, incSize, hash);
+									hash = HashShaderIncludes(GetFileDir(path), (const char*)incData, incSize, hash, visited);
+									delete [] incData;
+								}
+							}
+						}
+					}
+				}
+			}
+		}
+		i = lineEnd + 1;
+	}
+	return hash;
+}
+
+// Feeds #include to the D3D compiler, tracking each opened file's directory so nested includes
+// resolve relative to their includer -- the same resolution HashShaderIncludes walks.
+class BFShaderIncludeHandler : public ID3DInclude
+{
+public:
+	String mBaseDir;
+	std::map<const void*, String> mOpenDirs;
+
+public:
+	HRESULT STDMETHODCALLTYPE Open(D3D_INCLUDE_TYPE includeType, LPCSTR pFileName, LPCVOID pParentData, LPCVOID* ppData, UINT* pBytes) override
+	{
+		String includerDir = mBaseDir;
+		auto itr = mOpenDirs.find(pParentData);
+		if (itr != mOpenDirs.end())
+			includerDir = itr->second;
+		String path;
+		if (!ResolveShaderInclude(includerDir, String(pFileName), path))
+			return E_FAIL;
+		int size = 0;
+		uint8* data = LoadBinaryData(path, &size);
+		if (data == NULL)
+			return E_FAIL;
+		mOpenDirs[data] = GetFileDir(path);
+		*ppData = data;
+		*pBytes = (UINT)size;
+		return S_OK;
+	}
+
+	HRESULT STDMETHODCALLTYPE Close(LPCVOID pData) override
+	{
+		mOpenDirs.erase(pData);
+		delete [] (uint8*)pData;
+		return S_OK;
+	}
+};
+
 // Compiled shaders are cached next to the source as "<file>_<entry>_<profile>", keyed by a hash of
-// the exact bytes handed to the compiler (plus entry/profile/flags) -- not by file times, which lie
-// whenever a copy preserves mtimes or the clock/zone shifts. Layout: ShaderCacheHeader then the raw
-// DXBC blob. A missing/legacy/mismatched header just means recompile.
+// the exact bytes handed to the compiler (plus the #include closure and entry/profile/flags) --
+// not by file times, which lie whenever a copy preserves mtimes or the clock/zone shifts. Layout:
+// ShaderCacheHeader then the raw DXBC blob. A missing/legacy/mismatched header just means recompile.
 struct ShaderCacheHeader
 {
 	uint32 mMagic;
@@ -399,7 +538,9 @@ static void WriteShaderCache(const StringImpl& cachePath, uint64 hash, ID3D10Blo
 	fclose(fp);
 }
 
-static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer)
+// Failure fills outError (if given) and returns false -- never fatal, so a bad user shader can be
+// reported instead of killing the app (see Gfx_GetShaderError).
+static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer, String* outError)
 {
 	String cachePath = filePath + "_" + entry + "_" + profile;
 
@@ -410,11 +551,18 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 		// No source at all (eg a shipped build) -- whatever cache exists is the best we have.
 		if (ReadShaderCache(cachePath, 0, false, outBuffer))
 			return true;
-		BF_FATAL(StrFormat("Shader source not found: %s", filePath.c_str()).c_str());
+		if (outError != NULL)
+			*outError = StrFormat("Shader source not found: %s", filePath.c_str());
 		return false;
 	}
 
 	uint64 hash = Hash64(srcData, srcSize);
+	{
+		// Fold in the include closure. A shader with no includes hashes exactly as before, so
+		// existing caches stay valid.
+		std::set<String> visited;
+		hash = HashShaderIncludes(GetFileDir(filePath), (const char*)srcData, srcSize, hash, visited);
+	}
 	hash = Hash64(entry.c_str(), (int)entry.length(), hash);
 	hash = Hash64(profile.c_str(), (int)profile.length(), hash);
 	hash = Hash64(&cShaderCompileFlags, sizeof(cShaderCompileFlags), hash);
@@ -437,26 +585,30 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 		delete [] srcData;
 		if (ReadShaderCache(cachePath, hash, false, outBuffer))
 			return true;
-		BF_FATAL("Shader compiler unavailable and no cached shader");
+		if (outError != NULL)
+			*outError = StrFormat("Shader compiler unavailable and no cached shader: %s", filePath.c_str());
 		return false;
 	}
 
-	// Compiled from the in-memory bytes (the same bytes the hash covers) -- note this means #include
-	// isn't supported.
+	// The real path as the source name puts actual file/line info in compile errors.
+	BFShaderIncludeHandler includeHandler;
+	includeHandler.mBaseDir = GetFileDir(filePath);
 	ID3D10Blob* errorMessage = NULL;
-	HRESULT dxResult = gFunc_D3DX10Compile(srcData, srcSize, "Shader", NULL, NULL, entry.c_str(), profile.c_str(),
+	HRESULT dxResult = gFunc_D3DX10Compile(srcData, srcSize, (char*)filePath.c_str(), NULL, &includeHandler, entry.c_str(), profile.c_str(),
 		cShaderCompileFlags, 0, outBuffer, &errorMessage);
 	delete [] srcData;
 
 	if (FAILED(dxResult))
 	{
-		if (errorMessage != NULL)
+		if (outError != NULL)
 		{
-			BF_FATAL(StrFormat("Shader compile failed (%s): %s", filePath.c_str(), (char*)errorMessage->GetBufferPointer()).c_str());
-			errorMessage->Release();
+			if (errorMessage != NULL)
+				*outError = StrFormat("Shader compile failed (%s):\n%s", filePath.c_str(), (char*)errorMessage->GetBufferPointer());
+			else
+				*outError = StrFormat("Shader compile failed: %s", filePath.c_str());
 		}
-		else
-			BF_FATAL(StrFormat("Shader compile failed: %s", filePath.c_str()).c_str());
+		if (errorMessage != NULL)
+			errorMessage->Release();
 		return false;
 	}
 
@@ -464,10 +616,8 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 	return true;
 }
 
-static bool LoadDXShader(Span<uint8> fileData, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer)
+static bool LoadDXShader(Span<uint8> fileData, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer, String* outError)
 {
-	HRESULT hr;
-	
 	if (gFunc_D3DX10Compile == NULL)
 	{
 		auto lib = LoadLibraryA("D3DCompiler_47.dll");
@@ -479,15 +629,17 @@ static bool LoadDXShader(Span<uint8> fileData, const StringImpl& entry, const St
 	auto dxResult = gFunc_D3DX10Compile(fileData.mVals, fileData.mSize, "ShaderSource", NULL, NULL, entry.c_str(), profile.c_str(),
 		D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
 
-	if (DXFAILED(dxResult))
+	if (FAILED(dxResult))
 	{
-		if (errorMessage != NULL)
+		if (outError != NULL)
 		{
-			BF_FATAL(StrFormat("Vertex shader load failed: %s", (char*)errorMessage->GetBufferPointer()).c_str());
-			errorMessage->Release();
+			if (errorMessage != NULL)
+				*outError = StrFormat("Shader compile failed (packed %s):\n%s", entry.c_str(), (char*)errorMessage->GetBufferPointer());
+			else
+				*outError = StrFormat("Shader compile failed (packed %s)", entry.c_str());
 		}
-		else
-			BF_FATAL("Shader load failed");
+		if (errorMessage != NULL)
+			errorMessage->Release();
 		return false;
 	}
 
@@ -496,16 +648,15 @@ static bool LoadDXShader(Span<uint8> fileData, const StringImpl& entry, const St
 
 bool DXShader::Load()
 {
-	//HRESULT hr;
+	mCompileError.Clear();
 
-	ID3D10Blob* errorMessage = NULL;
 	ID3D10Blob* vertexShaderBuffer = NULL;
 	ID3D10Blob* pixelShaderBuffer = NULL;
 
 	void* memPtr = NULL;
 	int memSize = 0;
 	if (ParseMemorySpan(mSrcPath, memPtr, memSize))
-	{		
+	{
 		int crPos = (int)mSrcPath.IndexOf('\n');
 		if (crPos != -1)
 		{
@@ -516,20 +667,33 @@ bool DXShader::Load()
 				D3D10CreateBlob(memSize, &vertexShaderBuffer);
 				memcpy(vertexShaderBuffer->GetBufferPointer(), memPtr, memSize);
 				D3D10CreateBlob(memSize2, &pixelShaderBuffer);
-				memcpy(pixelShaderBuffer->GetBufferPointer(), memPtr2, memSize2);	
+				memcpy(pixelShaderBuffer->GetBufferPointer(), memPtr2, memSize2);
 			}
 		}
 		else
 		{
 			Span<uint8> span((uint8*)memPtr, memSize);
-			LoadDXShader(span, "VS", "vs_4_0", &vertexShaderBuffer);
-			LoadDXShader(span, "PS", "ps_4_0", &pixelShaderBuffer);
+			if (LoadDXShader(span, "VS", "vs_4_0", &vertexShaderBuffer, &mCompileError))
+				LoadDXShader(span, "PS", "ps_4_0", &pixelShaderBuffer, &mCompileError);
 		}
 	}
 	else
 	{
-		LoadDXShader(mSrcPath + ".fx", "VS", "vs_4_0", &vertexShaderBuffer);
-		LoadDXShader(mSrcPath + ".fx", "PS", "ps_4_0", &pixelShaderBuffer);
+		String fxPath = mSrcPath + ".fx";
+		if (LoadDXShader(fxPath, String("VS") + mEntrySuffix, "vs_4_0", &vertexShaderBuffer, &mCompileError))
+			LoadDXShader(fxPath, String("PS") + mEntrySuffix, "ps_4_0", &pixelShaderBuffer, &mCompileError);
+	}
+
+	if ((vertexShaderBuffer == NULL) || (pixelShaderBuffer == NULL))
+	{
+		// The object stays alive so the caller can read mCompileError -- it must not be drawn with.
+		if (mCompileError.IsEmpty())
+			mCompileError = StrFormat("Shader load failed: %s", mSrcPath.c_str());
+		if (vertexShaderBuffer != NULL)
+			vertexShaderBuffer->Release();
+		if (pixelShaderBuffer != NULL)
+			pixelShaderBuffer->Release();
+		return false;
 	}
 
 	defer(
@@ -706,8 +870,39 @@ DXTexture::DXTexture()
 
 DXTexture::~DXTexture()
 {
+	// Identity-checked: a retired texture already left the map, and a same-path successor may
+	// occupy the entry by now.
 	if ((!mPath.IsEmpty()) && (mRenderDevice != NULL))
-		((DXRenderDevice*)mRenderDevice)->mTextureMap.Remove(mPath);
+	{
+		DXTexture* mapped = NULL;
+		if ((mRenderDevice->mTextureMap.TryGetValue(mPath, &mapped)) && (mapped == this))
+			mRenderDevice->mTextureMap.Remove(mPath);
+	}
+
+	if (mRenderDevice != NULL)
+	{
+		// Scrub the device's state records: PhysSetAsTarget walks the bound-slot array, and a
+		// stale current-target cache could alias a later allocation at the same address.
+		for (int i = 0; i < 32; i++)
+		{
+			if (mRenderDevice->mPSBoundTextures[i] != this)
+				continue;
+			if (mRenderDevice->mD3DDeviceContext != NULL)
+			{
+				ID3D11ShaderResourceView* nullSrv = NULL;
+				mRenderDevice->mD3DDeviceContext->PSSetShaderResources(i, 1, &nullSrv);
+				if (i >= DX_VS_TEXTURE_SLOT)
+					mRenderDevice->mD3DDeviceContext->VSSetShaderResources(i, 1, &nullSrv);
+			}
+			mRenderDevice->mPSBoundTextures[i] = NULL;
+		}
+		if (mRenderDevice->mCurRenderTarget == this)
+			mRenderDevice->mCurRenderTarget = NULL;
+		if ((mD3DRenderTargetView != NULL) && (mRenderDevice->mCurD3DRTV == mD3DRenderTargetView))
+			mRenderDevice->mCurD3DRTV = NULL;
+		if ((mD3DDepthStencilView != NULL) && (mRenderDevice->mCurD3DDSV == mD3DDepthStencilView))
+			mRenderDevice->mCurD3DDSV = NULL;
+	}
 
 	//OutputDebugStrF("DXTexture::~DXTexture %@\n", this);
 	delete mContentBits;
@@ -727,6 +922,30 @@ DXTexture::~DXTexture()
 		mD3DTexture->Release();
 	if (mRenderDevice != NULL)
 		mRenderDevice->mTextures.Remove(this);
+}
+
+void DXTexture::Release()
+{
+	mRefCount--;
+	if (mRefCount == 0)
+	{
+		// Deferred: queued draw commands may still reference this texture until the frame's
+		// layers flush (see ProcessRetiredTextures).
+		if (mRenderDevice != NULL)
+		{
+			// Leave the load cache now -- a same-path load before the flush must create a fresh
+			// texture, not resurrect this one.
+			if (!mPath.IsEmpty())
+			{
+				DXTexture* mapped = NULL;
+				if ((mRenderDevice->mTextureMap.TryGetValue(mPath, &mapped)) && (mapped == this))
+					mRenderDevice->mTextureMap.Remove(mPath);
+			}
+			mRenderDevice->RetireTexture(this);
+		}
+		else
+			delete this;
+	}
 }
 
 void DXTexture::ReleaseNative()
@@ -1118,8 +1337,14 @@ bool DXComputeShader::Load()
 		return false;
 	}
 	ID3D10Blob* blob = NULL;
-	if (!LoadDXShader(mSrcPath + ".fx", mEntry, "cs_5_0", &blob))
+	String error;
+	if (!LoadDXShader(mSrcPath + ".fx", mEntry, "cs_5_0", &blob, &error))
+	{
+		// Compute shaders are engine-authored; keep the old hard failure until they need the
+		// reportable path.
+		BF_FATAL(error.c_str());
 		return false;
+	}
 	HRESULT hr = mRenderDevice->mD3DDevice->CreateComputeShader(blob->GetBufferPointer(), blob->GetBufferSize(), NULL, &mD3DComputeShader);
 	blob->Release();
 	return SUCCEEDED(hr);
@@ -1652,6 +1877,8 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 			else if (renderState->mSamplerKind == SamplerKind_Nearest)
 				samplerState = mD3DNearestSamplerState;
 			mD3DDeviceContext->PSSetSamplers(0, 1, &samplerState);
+			// Vertex-stage sampling (eg a surface shader's heightmap SampleLevel) sees the same s0.
+			mD3DDeviceContext->VSSetSamplers(0, 1, &samplerState);
 		}
 
 		if (dxShader != NULL)
@@ -2997,6 +3224,8 @@ DXRenderDevice::DXRenderDevice()
 
 DXRenderDevice::~DXRenderDevice()
 {
+	ProcessRetiredTextures();
+
 	for (auto window : mRenderWindowList)
 		((DXRenderWindow*)window)->ReleaseNative();
 	for (auto shader : mShaders)
@@ -3207,6 +3436,7 @@ bool DXRenderDevice::Init(BFApp* app)
 	mD3DDeviceContext->PSSetSamplers(2, 1, &mD3DTrilinearSamplerState);
 	// s0 starts explicitly on the default sampler; PhysSetRenderState only rebinds on change.
 	mD3DDeviceContext->PSSetSamplers(0, 1, &mD3DDefaultSamplerState);
+	mD3DDeviceContext->VSSetSamplers(0, 1, &mD3DDefaultSamplerState);
 
 	D3D11_BUFFER_DESC bd;
 	bd.Usage = D3D11_USAGE_DYNAMIC;
@@ -3509,6 +3739,21 @@ void DXRenderDevice::FrameEnd()
 			}
 		}
 	}
+
+	ProcessRetiredTextures();
+}
+
+void DXRenderDevice::RetireTexture(DXTexture* texture)
+{
+	mRetiredTextures.Add(texture);
+}
+
+void DXRenderDevice::ProcessRetiredTextures()
+{
+	// Index loop: a dying texture can Release another (depth/raw refs) and append to the list.
+	for (int i = 0; i < mRetiredTextures.mSize; i++)
+		delete mRetiredTextures[i];
+	mRetiredTextures.Clear();
 }
 
 Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
@@ -3829,19 +4074,18 @@ Texture* DXRenderDevice::CreateDynTexture(int width, int height)
 	return aTexture;
 }
 
-Shader* DXRenderDevice::LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition)
+Shader* DXRenderDevice::LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition, const StringImpl& entrySuffix)
 {
 	BP_ZONE("DXRenderDevice::LoadShader");
 
 	DXShader* dxShader = new DXShader();
 	dxShader->mRenderDevice = this;
 	dxShader->mSrcPath = fileName;
+	dxShader->mEntrySuffix = entrySuffix;
 	dxShader->mVertexDef = new VertexDefinition(vertexDefinition);
-	if (!dxShader->Load())
-	{
-		delete dxShader;
-		return NULL;
-	}
+	// A failed Load still returns the object, with mCompileError set -- Gfx_GetShaderError
+	// surfaces it to the caller, who must not draw with it.
+	dxShader->Load();
 	mShaders.Add(dxShader);
 	return dxShader;
 }
@@ -3890,6 +4134,7 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	bool r16f = (flags & 0x80) != 0;
 	bool r32u = (flags & 0x100) != 0;
 	bool unorderedAccess = (flags & 0x200) != 0;
+	bool rg16f = (flags & 0x400) != 0;
 
 	// D3D11 shared resources can't be multisampled -- render into a private MSAA target and
 	// ResolveTo a shared one instead.
@@ -3901,7 +4146,8 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 
 	DXGI_FORMAT format = highPrecision ? DXGI_FORMAT_R32_FLOAT : r8 ? DXGI_FORMAT_R8_UNORM :
 		f16 ? DXGI_FORMAT_R16G16B16A16_FLOAT : rg8 ? DXGI_FORMAT_R8G8_UNORM :
-		r16f ? DXGI_FORMAT_R16_FLOAT : r32u ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R8G8B8A8_UNORM;
+		r16f ? DXGI_FORMAT_R16_FLOAT : r32u ? DXGI_FORMAT_R32_UINT :
+		rg16f ? DXGI_FORMAT_R16G16_FLOAT : DXGI_FORMAT_R8G8B8A8_UNORM;
 	int samples = ValidateSampleCount(mD3DDevice, format, sampleCount);
 
 	// Create the render target texture

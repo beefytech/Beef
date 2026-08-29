@@ -28,8 +28,11 @@ class Shader
 {
 public:
 	ShaderParam*			mTextureParam;
-	int						mLastResizeCount;	
+	int						mLastResizeCount;
 	int						mVertexSize;
+	// Non-empty = compilation failed and this shader must not be drawn with; LoadShader returns
+	// the object anyway so the caller can read the error (Gfx_GetShaderError).
+	String					mCompileError;
 
 public:
 	virtual void			Init();

@@ -715,8 +715,9 @@ Texture* GLRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	return glTexture;
 }
 
-Shader* GLRenderDevice::LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition)
+Shader* GLRenderDevice::LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition, const StringImpl& entrySuffix)
 {
+	// entrySuffix unused: the GL path has no per-pass surface variants.
 	GLShader* glShader = new GLShader();
 
 	glShader->mVertexSize = sizeof(DefaultVertex3D);

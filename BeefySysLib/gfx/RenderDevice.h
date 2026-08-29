@@ -332,10 +332,15 @@ enum ModelCreateFlags
 	ModelCreateFlags_NoSetRenderState = 1
 };
 
+// Search directories for shader #include resolution, tried after the including file's own
+// directory. The shader cache's include hash walk uses the same list.
+void AddShaderIncludeDir(const StringImpl& dir);
+const Array<String>& GetShaderIncludeDirs();
+
 class RenderDevice
 {
-public:	
-	Array<DrawBatch*>		mDrawBatchPool;	
+public:
+	Array<DrawBatch*>		mDrawBatchPool;
 	
 	BFApp*					mApp;
 	RenderWindow*			mPhysRenderWindow;
@@ -406,7 +411,9 @@ public:
 	virtual Texture*		CreateTexture3D(int width, int height, int depth, int flags) { return NULL; }
 	virtual Texture*		OpenSharedRenderTarget(void* handle, int width, int height) { return NULL; }
 	
-	virtual Shader*			LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition) = 0;
+	// entrySuffix compiles alternate entry points ("VS"+suffix / "PS"+suffix) from the same file --
+	// how one surface-shader source yields its per-pass variants.
+	virtual Shader*			LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition, const StringImpl& entrySuffix) = 0;
 	virtual void			ReleaseShader(Shader* shader);
 	virtual ComputeShader*	LoadComputeShader(const StringImpl& fileName, const StringImpl& entry) { return NULL; }
 	virtual void			ReleaseComputeShader(ComputeShader* shader);

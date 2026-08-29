@@ -47,7 +47,9 @@ namespace Beefy.gfx
 			// Single-channel R32_UINT -- for compute atomics; not filterable, no mips.
 			R32Uint = 0x100,
 			// Also bindable as a compute UAV (RWTexture2D, mip 0); 1-sample, unshared only.
-			UnorderedAccess = 0x200
+			UnorderedAccess = 0x200,
+			// Two-channel R16G16_FLOAT -- paired half data (eg a ping-pong sim's h(t) + h(t-1)).
+			RG16F = 0x400
 		}
 
         public Image mSrcTexture;

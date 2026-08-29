@@ -1287,9 +1287,22 @@ BF_EXPORT void BF_CALLTYPE RenderState_SetAlphaToCoverage(RenderState* renderSta
 	renderState->SetAlphaToCoverage(enabled);
 }
 
-BF_EXPORT Shader* BF_CALLTYPE Gfx_LoadShader(const char* fileName, VertexDefinition* vertexDefinition)
+BF_EXPORT Shader* BF_CALLTYPE Gfx_LoadShader(const char* fileName, VertexDefinition* vertexDefinition, const char* entrySuffix)
 {
-	return gBFApp->mRenderDevice->LoadShader(fileName, vertexDefinition);
+	return gBFApp->mRenderDevice->LoadShader(fileName, vertexDefinition, entrySuffix);
+}
+
+// NULL = compiled clean; otherwise the compile error text (valid while the shader lives).
+BF_EXPORT const char* BF_CALLTYPE Gfx_GetShaderError(Shader* shader)
+{
+	if (shader->mCompileError.IsEmpty())
+		return NULL;
+	return shader->mCompileError.c_str();
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_AddShaderIncludeDir(const char* dir)
+{
+	AddShaderIncludeDir(dir);
 }
 
 BF_EXPORT void BF_CALLTYPE Gfx_SetRenderState(RenderState* renderState)

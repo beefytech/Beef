@@ -15,6 +15,24 @@
 
 USING_NS_BF;
 
+static Array<String> gShaderIncludeDirs;
+
+void Beefy::AddShaderIncludeDir(const StringImpl& dir)
+{
+	if (dir.IsEmpty())
+		return;
+	String entry = dir;
+	char last = entry[entry.length() - 1];
+	if ((last != '\\') && (last != '/'))
+		entry += "\\";
+	gShaderIncludeDirs.Add(entry);
+}
+
+const Array<String>& Beefy::GetShaderIncludeDirs()
+{
+	return gShaderIncludeDirs;
+}
+
 RenderState::RenderState()
 {
 	mWriteDepthBuffer = false;
