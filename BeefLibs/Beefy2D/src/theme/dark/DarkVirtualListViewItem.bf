@@ -64,6 +64,10 @@ namespace Beefy.theme.dark
             if (mParentItem == null)
                 return;
 
+			// The windowing below reads laid-out positions; a freshly rebuilt tree is all zeros,
+			// which would reify the top of the tree instead of the viewport. No-op unless dirty.
+			mListView.UpdateListSize();
+
             var virtualListView = (DarkVirtualListView)mListView;
 
             if (mParentItem.mChildAreaHeight != 0)
@@ -216,6 +220,14 @@ namespace Beefy.theme.dark
 		public override void UpdateContentPosition()
 		{
 			base.UpdateContentPosition();
+			UpdateVirtualItems();
+		}
+
+		// A row reified mid-walk brings a fresh head whose own Update already passed this frame --
+		// without this sweep its range draws empty for a frame.
+		public override void UpdateAll()
+		{
+			base.UpdateAll();
 			UpdateVirtualItems();
 		}
 

@@ -809,18 +809,26 @@ namespace Beefy.theme.dark
                 SelfToRootTranslate(x, y, out aX, out aY);
                 Widget foundWidget = mWidgetWindow.mRootWidget.FindWidgetByCoords(aX, aY);
 
+				mDragKind = .None;
+				mDragTarget = null;
+				if (mCurDragEvent != null)
+					mCurDragEvent.mDragKind = .None;
+
                 if (foundWidget == null)
                 {                                        
                     return;
                 }
 
                 var root = mListView.GetRoot();
-                if ((foundWidget is ListView) || (foundWidget == root))
+				if ((foundWidget == listView) || (foundWidget == root))
                 {                    
+					if (root.mChildItems.IsEmpty)
+						return;
+
                     var lastItem = root.mChildItems[root.mChildItems.Count - 1];
                     float lastWindowX;
                     float lastWindowY;
-                    lastItem.SelfToRootTranslate(lastItem.mSelfHeight + lastItem.mChildAreaHeight + lastItem.mBottomPadding, 0, out lastWindowX, out lastWindowY);
+					lastItem.SelfToRootTranslate(0, lastItem.mSelfHeight + lastItem.mChildAreaHeight + lastItem.mBottomPadding, out lastWindowX, out lastWindowY);
                     if (aY > lastWindowY)
                     {
                         // After last item
