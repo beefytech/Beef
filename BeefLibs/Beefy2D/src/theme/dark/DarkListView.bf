@@ -45,8 +45,11 @@ namespace Beefy.theme.dark
             bool wasOpen = mIsOpen;
             base.MouseDown(x, y, btn, btnCount);
             if (wasOpen == mIsOpen)
-                Open(!mIsOpen, false);
-        }        
+            {
+                // Through the item's virtual, so Open overrides see arrow clicks too
+                mItem.Open(!mIsOpen, false);
+            }
+        }
 
         public void Open(bool open, bool immediate)
         {
@@ -361,7 +364,7 @@ namespace Beefy.theme.dark
             base.MouseDown(x, y, btn, btnCount);
 
             if ((btn == 0) && (btnCount > 1) && (mOpenOnDoubleClick) && (mOpenButton != null))
-                mOpenButton.Open(!mOpenButton.mIsOpen, false);
+                Open(!mOpenButton.mIsOpen, false); // via the virtual, so Open overrides see this too
         }
 
         public override void MakeParent()

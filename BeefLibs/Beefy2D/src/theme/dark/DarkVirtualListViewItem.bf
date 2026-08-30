@@ -26,6 +26,20 @@ namespace Beefy.theme.dark
 			return fontLineSpacing;
 		}
 
+		// A fresh head is its range's only row until the first reify pass, so the list would measure
+		// short by the unreified tail -- and the scrollbar clamp turns that into a scroll jump.
+		// The reify pass replaces this estimate with exact values.
+		public void SeedVirtualHeight()
+		{
+			var virtualListView = (DarkVirtualListView)mListView;
+			float fontLineSpacing = virtualListView.mFont.GetLineSpacing();
+			float tail = 0;
+			for (int32 idx = 1; idx < mVirtualCount; idx++)
+				tail += GetItemHeight(idx, fontLineSpacing, null);
+			mBottomPadding = tail;
+			mListView.mListSizeDirty = true;
+		}
+
 		public virtual bool IsDeleteAllowed(DarkVirtualListViewItem listViewItem, float fontLineSpacing)
 		{
 			// Don't allow deleting if we have children
@@ -34,10 +48,18 @@ namespace Beefy.theme.dark
 
         public override void Update()
         {
+            base.Update();
+			UpdateVirtualItems();
+        }
+
+		// The reify/reap pass over this head's range. Also runs out-of-band: scroll input lands
+		// between update and draw, and the draw must never see unreified rows.
+		public void UpdateVirtualItems()
+		{
+			if (mUpdating)
+				return;
 			mUpdating = true;
 			defer { mUpdating = false; }
-
-            base.Update();
 
             if (mParentItem == null)
                 return;
@@ -51,13 +73,14 @@ namespace Beefy.theme.dark
                 {
                     float ofsX;
                     float ofsY;
+					// Embeds the ANIMATED scroll position, not mVertPos.mDest: windowing on the
+					// destination would reify a smooth scroll's whole span at once.
                     mParent.SelfToOtherTranslate(mListView, 0, 0, out ofsX, out ofsY);
-                    ofsY -= (float)(mListView.mVertPos.mDest + mListView.mScrollContent.mY);
 
                     int32 curMemberIdx = 0;
                     DarkVirtualListViewItem prevVirtualListViewItem = null;
                     DarkVirtualListViewItem nextVirtualListViewItem = (DarkVirtualListViewItem)mParentItem.mChildItems[curMemberIdx];
-                    
+
                     int32 showCount = mVirtualCount;
 
                     float curY = mY;
@@ -124,9 +147,7 @@ namespace Beefy.theme.dark
                             curMemberIdx--;
                             mParentItem.RemoveChildItem(curVirtualListViewItem);
                             curVirtualListViewItem = null;
-							// Re-measure as unreified: the height measured above was self-only (the child
-							// area add below is skipped for null items), which would under-advance curY by
-							// the deleted item's open child height and shrink the encoded padding
+							// Re-measure as unreified so curY still advances by the deleted subtree's height
 							itemHeight = GetItemHeight(idx, fontLineSpacing, null);
                         }
 
@@ -145,15 +166,13 @@ namespace Beefy.theme.dark
                         if (curVirtualListViewItem != null)
                         {
                             curY += curVirtualListViewItem.mChildAreaHeight;
-                            // What we actually advanced by, rather than mSelfHeight + mChildAreaHeight. An
-                            // item reified during this pass was measured by GetItemHeight as an unreified
-                            // subtree, and its mChildAreaHeight stays 0 until the list is sized afterwards --
-                            // deriving the padding from those fields charges the difference as a visible gap.
+                            // The actual advance, not mSelfHeight + mChildAreaHeight: a just-reified
+                            // item's mChildAreaHeight is still 0, and padding derived from it gaps.
                             prevAdvance = itemHeight + curVirtualListViewItem.mChildAreaHeight;
                             prevVirtualListViewItem = curVirtualListViewItem;
                         }
                     }
-                   
+
                     if (prevVirtualListViewItem != null)
                     {
                         if (mDisabled)
@@ -183,14 +202,44 @@ namespace Beefy.theme.dark
     public class DarkVirtualListView : DarkListView
     {
         protected override ListViewItem CreateListViewItem()
-        {            
+        {
             var anItem = new DarkVirtualListViewItem();
             return anItem;
         }
 
         public virtual void PopulateVirtualItem(DarkVirtualListViewItem item)
         {
-            
+
         }
+
+		// Handle scroll position even if we don't get another update before the draw
+		public override void UpdateContentPosition()
+		{
+			base.UpdateContentPosition();
+			UpdateVirtualItems();
+		}
+
+		// Runs every virtual head's reify/reap pass. Index-based on purpose: a head's pass inserts
+		// and reaps siblings in the very lists being walked. A skipped slot is caught next frame.
+		public void UpdateVirtualItems()
+		{
+			void UpdateTree(ListViewItem item)
+			{
+				if (var virtualItem = item as DarkVirtualListViewItem)
+				{
+					if (virtualItem.mVirtualHeadItem == virtualItem)
+						virtualItem.UpdateVirtualItems();
+				}
+				if (item.mChildItems != null)
+				{
+					for (int32 i = 0; i < item.mChildItems.Count; i++)
+						UpdateTree(item.mChildItems[i]);
+				}
+			}
+
+			var root = GetRoot();
+			if (root != null)
+				UpdateTree(root);
+		}
     }
 }
