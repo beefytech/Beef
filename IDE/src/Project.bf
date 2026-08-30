@@ -282,6 +282,10 @@ namespace IDE
 				if (!added)
 					success = false;
 			}
+			else
+			{
+				mName.Set(newName);
+			}
 
 			if ((didNameMatch) && (changePath))
 			{
@@ -500,8 +504,11 @@ namespace IDE
 
 			if (mParentFolder.mParentFolder != null)
 			{
-				mParentFolder.mParentFolder.GetFullDisplayName(displayName);
-				displayName.Append("/");
+				if ((mParentFolder.mParentFolder.mName != null) && (!mParentFolder.mParentFolder.mName.IsEmpty))
+				{
+					mParentFolder.mParentFolder.GetFullDisplayName(displayName);
+					displayName.Append("/");
+				}
 			}
 			displayName.Append(mName);
 		}
@@ -1226,6 +1233,8 @@ namespace IDE
 			[Reflect]
 			public BuildCommandTrigger mBuildCommandsOnRun = .Always;
 			[Reflect]
+			public bool mPostBuildOnFailure = false;
+			[Reflect]
 			public List<String> mLibPaths = new List<String>() ~ DeleteContainerAndItems!(_);
 			[Reflect]
 			public List<String> mLinkDependencies = new List<String>() ~ DeleteContainerAndItems!(_);
@@ -1354,6 +1363,7 @@ namespace IDE
 				Set!(newOptions.mBuildOptions.mLinkDependencies, mBuildOptions.mLinkDependencies);
 				Set!(newOptions.mBuildOptions.mPreBuildCmds, mBuildOptions.mPreBuildCmds);
 				Set!(newOptions.mBuildOptions.mPostBuildCmds, mBuildOptions.mPostBuildCmds);
+				Set!(newOptions.mBuildOptions.mPostBuildOnFailure, mBuildOptions.mPostBuildOnFailure);
 				Set!(newOptions.mBuildOptions.mCleanCmds, mBuildOptions.mCleanCmds);
 
 				Set!(newOptions.mBeefOptions.mPreprocessorMacros, mBeefOptions.mPreprocessorMacros);
@@ -1847,6 +1857,7 @@ namespace IDE
 								data.ConditionalAdd("StackSize", options.mBuildOptions.mStackSize, 0);
 								data.ConditionalAdd("BuildCommandsOnCompile", options.mBuildOptions.mBuildCommandsOnCompile, .Always);
 								data.ConditionalAdd("BuildCommandsOnRun", options.mBuildOptions.mBuildCommandsOnRun, .Always);
+								data.ConditionalAdd("PostBuildOnFailure", options.mBuildOptions.mPostBuildOnFailure, false);
 								WriteStrings("LibPaths", options.mBuildOptions.mLibPaths);
 								WriteStrings("LinkDependencies", options.mBuildOptions.mLinkDependencies);
 								WriteStrings("PreBuildCmds", options.mBuildOptions.mPreBuildCmds);
@@ -2223,6 +2234,7 @@ namespace IDE
 					options.mBuildOptions.mStackSize = data.GetInt("StackSize");
 					options.mBuildOptions.mBuildCommandsOnCompile = data.GetEnum<BuildCommandTrigger>("BuildCommandsOnCompile", .Always);
 					options.mBuildOptions.mBuildCommandsOnRun = data.GetEnum<BuildCommandTrigger>("BuildCommandsOnRun", .Always);
+					options.mBuildOptions.mPostBuildOnFailure = data.GetBool("PostBuildOnFailure", false);
 					ReadStrings("LibPaths", options.mBuildOptions.mLibPaths);
 					ReadStrings("LinkDependencies", options.mBuildOptions.mLinkDependencies);
 					ReadStrings("PreBuildCmds", options.mBuildOptions.mPreBuildCmds);

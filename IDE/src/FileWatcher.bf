@@ -387,7 +387,10 @@ namespace IDE
 					});
             fileSystemWatcher.OnCreated.Add(new (fileName) =>
 				{
-					CheckFileCreated(fileName);
+					using (mFileChangeMonitor.Enter())
+					{
+						CheckFileCreated(fileName);
+					}
 				});
             fileSystemWatcher.OnDeleted.Add(new (fileName) =>
 				{

@@ -507,6 +507,7 @@ namespace IDE
 		{
 			public String mCmd ~ delete _;
 			public String mPath ~ delete _;
+			public bool mSkipIfBuildFailed;
 		}
 
 		public enum ArgsFileKind
@@ -533,6 +534,9 @@ namespace IDE
 
 		public class ExecutionInstance
 		{
+			public String mFileName ~ delete _;
+			public String mArgs ~ delete _;
+
 			public SpawnedProcess mProcess /*~ delete _*/;
 			public List<String> mDeferredOutput = new List<String>() ~ DeleteContainerAndItems!(_);
 			public Stopwatch mStopwatch = new Stopwatch() ~ delete _;
@@ -9550,6 +9554,9 @@ namespace IDE
 
 			var executionInstance = new ExecutionInstance();
 
+			executionInstance.mFileName = new .(inFileName);
+			executionInstance.mArgs = new .(args);
+
 #if BF_PLATFORM_WINDOWS
 			if (runFlags.HasFlag(.BatchCommand))
 			{
@@ -9809,9 +9816,9 @@ namespace IDE
 							}
 
 							if (executionInstance.mCanceled)
-								OutputLine("Execution Canceled");
+								OutputLine($"Execution of '{executionInstance.mFileName}' cancelled");
 							else if (failed)
-								OutputLine("Execution Failed");
+								OutputErrorLine($"Execution of '{executionInstance.mFileName}' with args '{executionInstance.mArgs}' exited with code '{executionInstance.mExitCode}'");
 						}
 
 						if (executionInstance.mTempFileName != null)
@@ -9911,7 +9918,12 @@ namespace IDE
 
 				if (let scriptCmd = next as ScriptCmd)
 				{
-					if (mBuildContext?.mScriptManager != null)
+					if ((buildFailed) && (scriptCmd.mSkipIfBuildFailed))
+					{
+						// Drop the command rather than running it against a missing or stale target
+						DeleteAndNullify!(scriptCmd.mCmd);
+					}
+					else if (mBuildContext?.mScriptManager != null)
 					{
 						if (scriptCmd.mCmd != null)
 						{

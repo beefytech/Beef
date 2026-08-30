@@ -65,23 +65,23 @@ namespace System.IO
 			using (sMonitor.Enter())
 			{
 				sWatcherDict.TryGetValue(id, out fileSysWatcher);
-			}
 			
-			if (fileSysWatcher == null)
-				return;
-
-			switch (changeKind)
-			{
-			case .BfpFileChangeKind_Added:
-				fileSysWatcher.OnCreated(scope String(fileName));
-			case .BfpFileChangeKind_Modified:
-				fileSysWatcher.OnChanged(scope String(fileName));
-			case .BfpFileChangeKind_Removed:
-				fileSysWatcher.OnDeleted(scope String(fileName));
-			case .BfpFileChangeKind_Renamed:
-				fileSysWatcher.OnRenamed(scope String(fileName), scope String(newName));
-			case .BfpFileChangeKind_Failed:
-				fileSysWatcher.OnError();
+				if (fileSysWatcher == null)
+					return;
+	
+				switch (changeKind)
+				{
+				case .BfpFileChangeKind_Added:
+					fileSysWatcher.OnCreated(scope String(fileName));
+				case .BfpFileChangeKind_Modified:
+					fileSysWatcher.OnChanged(scope String(fileName));
+				case .BfpFileChangeKind_Removed:
+					fileSysWatcher.OnDeleted(scope String(fileName));
+				case .BfpFileChangeKind_Renamed:
+					fileSysWatcher.OnRenamed(scope String(fileName), scope String(newName));
+				case .BfpFileChangeKind_Failed:
+					fileSysWatcher.OnError();
+				}
 			}
 		}
 

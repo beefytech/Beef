@@ -714,6 +714,8 @@ namespace IDE.ui
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Clean Commands", "mBuildOptions.mCleanCmds");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Build Commands on Compile", "mBuildOptions.mBuildCommandsOnCompile");
 			(listViewItem, propEntry) = AddPropertiesItem(root, "Build Commands on Run", "mBuildOptions.mBuildCommandsOnRun");
+			AddPropertiesItem(root, "Postbuild On Failure", "mBuildOptions.mPostBuildOnFailure",
+				scope String[] ( "No", "Yes" ));
 		}
 
         void PopulateDependencyOptions()

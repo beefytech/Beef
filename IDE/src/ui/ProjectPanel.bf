@@ -472,6 +472,9 @@ namespace IDE.ui
 							targetProjectFolder = targetProjectItem.mParentFolder;
 						var targetListItem = mProjectToListViewMap[targetProjectFolder];
 
+						bool hasLinkMove = false;
+						bool hasFileMove = false;
+
 						int moveCount = 0;
 						int selectCount = 0;
 						mListView.GetRoot().WithSelectedItems(scope [&] (selectedItem) =>
@@ -479,7 +482,14 @@ namespace IDE.ui
 								if (mListViewToProjectMap.GetValue(selectedItem) case .Ok(var sourceProjectItem))
 								{
 									if (sourceProjectItem.mParentFolder != targetProjectFolder)
+									{
+										if (sourceProjectItem.mIncludeKind == .Manual)
+											hasLinkMove = true;
+										else
+											hasFileMove = true;
+
 										moveCount++;
+									}
 								}
 								selectCount++;
 							});
@@ -494,13 +504,13 @@ namespace IDE.ui
 						Dialog dialog;
 						if (selectCount == 1)
 						{
-							dialog = ThemeFactory.mDefault.CreateDialog("Move file to a new location?",
-								scope $"Are you sure you want to move this file to '{targetDisplayName}'?");
+							dialog = ThemeFactory.mDefault.CreateDialog(scope $"Move {hasFileMove ? "file" : "link"} to a new location?",
+								scope $"Are you sure you want to move {hasFileMove ? "file" : "link"} file to '{targetDisplayName}'?");
 						}
 						else
 						{
-							dialog = ThemeFactory.mDefault.CreateDialog("Move files to a new location?",
-								scope $"Are you sure you want to move these files to '{targetDisplayName}'?");
+							dialog = ThemeFactory.mDefault.CreateDialog(scope $"Move {hasFileMove ? "files" : "links"} to a new location?",
+								scope $"Are you sure you want to move these {hasFileMove ? "files" : "links"} to '{targetDisplayName}'?");
 						}
 						dialog.AddButton("Yes", new (evt) =>
 							{
@@ -530,9 +540,12 @@ namespace IDE.ui
 										}
 										else
 										{
-											if (File.Move(sourcePath, destPath) case .Ok)
+											bool isLink = sourceProjectFileItem.mIncludeKind == .Manual;
+
+											if ((isLink) || (File.Move(sourcePath, destPath) case .Ok))
 											{
-												gApp.FileRenamed(sourceProjectFileItem, sourcePath, destPath);
+												if (!isLink)
+													gApp.FileRenamed(sourceProjectFileItem, sourcePath, destPath);
 
 												if (targetProjectFolder != sourceProjectItem.mParentFolder)
 												{
@@ -543,7 +556,10 @@ namespace IDE.ui
 													targetListItem.mOpenButton.Open(true, false);
 													targetProjectFolder.AddChildAtIndex(0, sourceProjectItem);
 
-													sourceProjectFileItem.RecalcPath();
+													targetProjectFolder.mProject.SetChanged();
+
+													if (!isLink)
+														sourceProjectFileItem.RecalcPath();
 												}
 											}
 											else
@@ -2790,6 +2806,7 @@ namespace IDE.ui
                                         new (evt) =>
                                         {
 											//FinishRenameFolder(newName, false);
+											QueueSortItem(parentLvItem);
 											projectFolder.Rename(newName, false);
 											Sort();
                                         }
@@ -2853,7 +2870,8 @@ namespace IDE.ui
 
 				if (!isWorkspaceFolder)
 					QueueSortItem(parentLvItem);
-				Sort();
+				if (didRename)
+					Sort();
             }
 
 			SetFocus();
@@ -3132,6 +3150,11 @@ namespace IDE.ui
 							}
 							else
 								projectFolder.GetFullImportPath(path);
+						}
+						else if (var projectFileItem = projectItem as ProjectSource)
+						{
+							var filePath = projectFileItem.GetFullImportPath(.. scope .());
+							Path.GetDirectoryPath(filePath, path);
 						}
 						else
 							projectItem.mParentFolder.GetFullImportPath(path);

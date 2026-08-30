@@ -79,7 +79,7 @@ namespace IDE
 			mPtrSize = Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName);
 		}
 
-		public CustomBuildCommandResult QueueProjectCustomBuildCommands(Project project, String targetPath, Project.BuildCommandTrigger trigger, List<String> cmdList)
+		public CustomBuildCommandResult QueueProjectCustomBuildCommands(Project project, String targetPath, Project.BuildCommandTrigger trigger, List<String> cmdList, bool isPostBuild = false)
 		{
 			if (cmdList.IsEmpty)
 				return .NoCommands;
@@ -182,6 +182,7 @@ namespace IDE
 				let scriptCmd = new IDEApp.ScriptCmd();
 				scriptCmd.mCmd = new String(customCmd);
 				scriptCmd.mPath = new $"project {project.mProjectName}";
+				scriptCmd.mSkipIfBuildFailed = (isPostBuild) && (!options.mBuildOptions.mPostBuildOnFailure);
 				gApp.mExecutionQueue.Add(scriptCmd);
 				continue;
 			}
@@ -1768,7 +1769,7 @@ namespace IDE
 
 			if (WantsProjectBuild(project, compileKind))
 			{
-				switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds))
+				switch (QueueProjectCustomBuildCommands(project, targetPath, compileKind.WantsRunAfter ? options.mBuildOptions.mBuildCommandsOnRun : options.mBuildOptions.mBuildCommandsOnCompile, options.mBuildOptions.mPostBuildCmds, true))
 				{
 				case .NoCommands:
 				case .HadCommands:
