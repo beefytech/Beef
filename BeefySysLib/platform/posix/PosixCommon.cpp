@@ -3044,7 +3044,68 @@ BFP_EXPORT bool BFP_CALLTYPE BfpFile_Exists(const char* path)
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_GetTempPath(char* outPath, int* inOutPathSize, BfpFileResult* outResult)
 {
-    NOT_IMPL;
+	String tempPath;
+
+	constexpr const char* ENV_VARS[] = {"TMPDIR", "TMP", "TEMP", "TEMPDIR"};
+	for (auto varName : ENV_VARS)
+	{
+		const char* env = getenv(varName);
+		if (!env)
+			continue;
+
+		if ((env[0] != '\0') && (strlen(env) <= (PATH_MAX - 1)))
+		{
+			tempPath.Append(env);
+			break;
+		}
+
+	}
+
+	if (tempPath.IsEmpty())
+	{
+#if defined(__APPLE__)
+		/* Per-user /var/folders/xx/.../T/ -- what NSTemporaryDirectory()
+		   returns. Can legitimately fail inside a sandbox. */
+		char raw[PATH_MAX];
+		size_t got = confstr(_CS_DARWIN_USER_TEMP_DIR, raw, sizeof(raw));
+		if (got > 0 && got <= sizeof(raw))
+			tempPath.Append(raw, got - 1);
+
+#elif defined(__ANDROID__)
+		// Only works for adb-pushed binaries, command-line tools, and root contexts
+		// but TMPDIR should be set for other apps
+		tempPath = "/data/local/tmp";
+#endif
+	}
+
+	if (tempPath.IsEmpty())
+		tempPath = "/tmp";
+
+	String resultPath;
+	if (!tempPath.StartsWith('/'))
+	{
+		char* cwdPtr = getcwd(NULL, 0);
+		if (cwdPtr)
+		{
+			String cwdPath = String::MakeRef(cwdPtr);
+			resultPath = GetAbsPath(tempPath, cwdPath);
+			free(cwdPtr);
+		}
+		else
+		{
+			resultPath = tempPath;
+		}
+	}
+	else
+	{
+		resultPath = GetAbsPath(tempPath, "/");
+	}
+
+	// Append / so it matches windows
+	if (!resultPath.EndsWith('/'))
+		resultPath.Append('/');
+
+	TryStringOut(resultPath, outPath, inOutPathSize, (BfpResult*)outResult);
 }
 
 static const char cHash64bToChar[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
@@ -3073,7 +3134,12 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_GetTempFileName(char* outName, int* inOutNa
 
     uint64 hash = ctx.Finish64();
 
-    String str = "/tmp/bftmp_";
+	char buffer[PATH_MAX];
+	int32 size = sizeof(buffer);
+	BfpFileResult result;
+	BfpFile_GetTempPath(buffer, &size, &result);
+    String str(buffer, size-1);
+	str.Append("bftmp_");
     HashEncode64(str, hash);
 
     TryStringOut(str, outName, inOutNameSize, (BfpResult*)outResult);
