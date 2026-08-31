@@ -5161,8 +5161,8 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			openedScope = false;
 			deferredLocalAssignDataVec[blockIdx].mHadReturn = hadReturn;
 			caseCount++;
-			if ((!hadReturn) &&
-				((!mCurMethodState->mDeferredLocalAssignData->mHadFallthrough) || (mCurMethodState->mDeferredLocalAssignData->mHadBreak)))
+			if (((!hadReturn) && ((!mCurMethodState->mDeferredLocalAssignData->mHadFallthrough) || (mCurMethodState->mDeferredLocalAssignData->mHadBreak))) ||
+				((mCurMethodState->mDeferredLocalAssignData->mHadBreak) && (!mCurMethodState->mDeferredLocalAssignData->mLeftBlockUncond)))
 				allHadReturns = false;
 
 			if (auto block = BfNodeDynCast<BfBlock>(switchCase->mCodeBlock))
@@ -5399,13 +5399,15 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			caseScopeData.mIsSharedTempBlock = true;
 			mCurMethodState->AddScope(&caseScopeData);
 			NewScopeState();
+			deferredLocalAssignDataVec[blockIdx].mScopeData = mCurMethodState->mCurScope;
 			caseScopeData.mLabel = newScope.mLabel;
 
 			bool hadReturn = false;
 			VisitCodeBlock(switchCase->mCodeBlock, BfIRBlock(), endBlock, BfIRBlock(), true, &hadReturn, switchStmt->mLabelNode);
 			deferredLocalAssignDataVec[blockIdx].mHadReturn = hadReturn;
 			caseCount++;
-			if (!hadReturn)
+			if ((!hadReturn) ||
+				((mCurMethodState->mDeferredLocalAssignData->mHadBreak) && (!mCurMethodState->mDeferredLocalAssignData->mLeftBlockUncond)))
 				allHadReturns = false;
 
 			RestoreScopeState();
