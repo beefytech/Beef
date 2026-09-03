@@ -131,6 +131,9 @@ namespace Beefy.gfx
 		[CallingConvention(.Stdcall), CLink]
 		extern static void ModelDef_GetBounds(void* nativeModel, out Vector3 min, out Vector3 max);
 
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelDef_GetPosedBounds(void* nativeModel, Matrix4* jointMatrices, int32 jointCount, out Vector3 min, out Vector3 max);
+
         [CallingConvention(.Stdcall), CLink]
         extern static float ModelDef_GetFrameRate(void* nativeModel);
 
@@ -229,6 +232,13 @@ namespace Beefy.gfx
 		public void GetBounds(out Vector3 min, out Vector3 max)
 		{
 			ModelDef_GetBounds(mNativeModelDef, out min, out max);
+		}
+
+		// Exact AABB of the verts skinned through the given palette (the SetJointMatrices
+		// matrices); the raw-vert GetBounds is meaningless for skinned models.
+		public void GetPosedBounds(Span<Matrix4> jointMatrices, out Vector3 min, out Vector3 max)
+		{
+			ModelDef_GetPosedBounds(mNativeModelDef, jointMatrices.Ptr, (.)jointMatrices.Length, out min, out max);
 		}
 
 		public int32 GetJointParent(int32 jointIdx)

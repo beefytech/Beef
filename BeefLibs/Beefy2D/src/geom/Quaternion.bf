@@ -147,47 +147,11 @@ namespace Beefy.geom
 
         public static Quaternion CreateFromRotationMatrix(Matrix4 matrix)
         {
-            float num8 = (matrix.m11 + matrix.m22) + matrix.m33;
-            Quaternion quaternion = Quaternion();
-            if (num8 > 0f)
-            {
-                float num = (float)Math.Sqrt((double)(num8 + 1f));
-                quaternion.mW = num * 0.5f;
-                num = 0.5f / num;
-                quaternion.mX = (matrix.m23 - matrix.m32) * num;
-                quaternion.mY = (matrix.m31 - matrix.m13) * num;
-                quaternion.mZ = (matrix.m12 - matrix.m21) * num;
-                return quaternion;
-            }
-            if ((matrix.m11 >= matrix.m22) && (matrix.m11 >= matrix.m33))
-            {
-                float num7 = (float)Math.Sqrt((double)(((1f + matrix.m11) - matrix.m22) - matrix.m33));
-                float num4 = 0.5f / num7;
-                quaternion.mX = 0.5f * num7;
-                quaternion.mY = (matrix.m12 + matrix.m21) * num4;
-                quaternion.mZ = (matrix.m13 + matrix.m31) * num4;
-                quaternion.mW = (matrix.m23 - matrix.m32) * num4;
-                return quaternion;
-            }
-            if (matrix.m22 > matrix.m33)
-            {
-                float num6 = (float)Math.Sqrt((double)(((1f + matrix.m22) - matrix.m11) - matrix.m33));
-                float num3 = 0.5f / num6;
-                quaternion.mX = (matrix.m21 + matrix.m12) * num3;
-                quaternion.mY = 0.5f * num6;
-                quaternion.mZ = (matrix.m32 + matrix.m23) * num3;
-                quaternion.mW = (matrix.m31 - matrix.m13) * num3;
-                return quaternion;
-            }
-            float num5 = (float)Math.Sqrt((double)(((1f + matrix.m33) - matrix.m11) - matrix.m22));
-            float num2 = 0.5f / num5;
-            quaternion.mX = (matrix.m31 + matrix.m13) * num2;
-            quaternion.mY = (matrix.m32 + matrix.m23) * num2;
-            quaternion.mZ = 0.5f * num5;
-            quaternion.mW = (matrix.m12 - matrix.m21) * num2;
-
-            return quaternion;
-
+			// Delegates to the 0-based overload below: the old inline body was XNA's 1-based
+			// M11..M44 code pasted onto 0-based fields, reading translation into the quaternion.
+			var m = matrix;
+			CreateFromRotationMatrix(ref m, var result);
+			return result;
         }
 
         public static void CreateFromRotationMatrix(ref Matrix4 matrix, out Quaternion result)

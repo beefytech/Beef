@@ -10,6 +10,7 @@
 #include "util/Sphere.h"
 #include "util/HashSet.h"
 #include "util/BeefPerf.h"
+#include <cfloat>
 
 #pragma warning(disable:4190)
 
@@ -104,6 +105,11 @@ BF_EXPORT void ModelDef_Compact(ModelDef* modelDef)
 BF_EXPORT void ModelDef_GetBounds(ModelDef* modelDef, Vector3& min, Vector3& max)
 {
 	modelDef->GetBounds(min, max);
+}
+
+BF_EXPORT void ModelDef_GetPosedBounds(ModelDef* modelDef, Matrix4* jointMatrices, int32 jointCount, Vector3& min, Vector3& max)
+{
+	modelDef->GetPosedBounds(jointMatrices, jointCount, min, max);
 }
 
 BF_EXPORT void ModelDef_SetBaseDir(ModelDef* modelDef, char* baseDir)
@@ -413,7 +419,58 @@ void ModelDef::GetBounds(Vector3& min, Vector3& max)
 		CalcBounds();
 
 	min = mBounds.mMin;
-	max = mBounds.mMax;	
+	max = mBounds.mMax;
+}
+
+void ModelDef::GetPosedBounds(const Matrix4* jointMatrices, int jointCount, Vector3& min, Vector3& max)
+{
+	int vtxCount = 0;
+	for (auto& mesh : mMeshes)
+	{
+		for (auto& prims : mesh.mPrimitives)
+		{
+			for (auto& vtx : prims.mVertices)
+			{
+				Vector3 pos;
+				if ((vtx.mNumBoneWeights > 0) && (jointCount > 0))
+				{
+					// Same accumulation the CPU skin path uses (DXModelInstance::CommandQueued).
+					pos = Vector3(0, 0, 0);
+					for (int weightIdx = 0; weightIdx < vtx.mNumBoneWeights; weightIdx++)
+					{
+						int jointIdx = vtx.mBoneIndices[weightIdx];
+						if (jointIdx >= jointCount)
+							continue;
+						pos = pos + Vector3::Transform(vtx.mPosition, jointMatrices[jointIdx]) * vtx.mBoneWeights[weightIdx];
+					}
+				}
+				else
+					pos = vtx.mPosition;
+
+				if (vtxCount == 0)
+				{
+					min = pos;
+					max = pos;
+				}
+				else
+				{
+					min.mX = BF_MIN(min.mX, pos.mX);
+					min.mY = BF_MIN(min.mY, pos.mY);
+					min.mZ = BF_MIN(min.mZ, pos.mZ);
+					max.mX = BF_MAX(max.mX, pos.mX);
+					max.mY = BF_MAX(max.mY, pos.mY);
+					max.mZ = BF_MAX(max.mZ, pos.mZ);
+				}
+				vtxCount++;
+			}
+		}
+	}
+
+	if (vtxCount == 0)
+	{
+		min = Vector3(0, 0, 0);
+		max = Vector3(0, 0, 0);
+	}
 }
 
 #define SWAP(x, y) { auto temp = x; x = y; y = temp; }

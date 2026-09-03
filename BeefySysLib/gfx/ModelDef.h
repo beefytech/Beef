@@ -262,6 +262,10 @@ public:
 
 	void Compact();
 	void GetBounds(Vector3& min, Vector3& max);
+	// Exact AABB of the verts skinned through the given palette (the SetJointMatrices matrices);
+	// unweighted verts pass through. Raw skinned vert data isn't model-space, so this is the only
+	// correct bounds for a skinned model.
+	void GetPosedBounds(const Matrix4* jointMatrices, int jointCount, Vector3& min, Vector3& max);
 
 	void GenerateCollisionData();
 	bool RayIntersect(const Matrix4& worldMtx, const Vector3& origin, const Vector3& vec, Vector3& outIntersect, float& outDistance);
