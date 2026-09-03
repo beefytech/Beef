@@ -148,7 +148,11 @@ public:
 	Array<ModelVertex> mVertices;
 	Array<uint16> mIndices;
 	ModelMaterialInstance* mMaterial;
-	Array<String> mTexPaths;	
+	Array<String> mTexPaths;
+	// Engine-injected textures (see ModelDef_SetTexture), used in place of path loading when the
+	// def's mExternalTextures is set. Borrowed pointers -- the injector keeps them alive; instances
+	// AddRef what they copy.
+	Array<Texture*> mExtTextures;
 	Flags mFlags;
 
 public:
@@ -239,6 +243,9 @@ public:
 	Array<ModelMaterialInstance> mMaterials;
 	
 	Flags mFlags;
+	// When set, render instances never load textures from mTexPaths -- they use the injected
+	// per-primitive mExtTextures instead.
+	bool mExternalTextures;
 	AABB mBounds;
 	Array<ModelBVNode> mBVNodes;
 	Array<uint16> mBVIndices;

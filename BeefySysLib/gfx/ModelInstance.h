@@ -14,9 +14,12 @@ class ModelInstance : public Renderable
 {
 public:
 	ModelDef* mModelDef;
-	Array<ModelJointTranslation> mJointTranslations;
+	// The final skinning palette, one matrix per joint: model-space joint pose times the joint's
+	// mPoseInvMatrix. Fed whole by the engine (ModelInstance_SetJointMatrices) -- all sampling,
+	// blending and hierarchy composition happen engine-side. Initialized to the bind pose.
+	Array<Matrix4> mJointMatrices;
 	Array<bool> mMeshesVisible;
-	// Set whenever joint translations or mesh visibility change; cleared once the skinned vertex
+	// Set whenever the palette or mesh visibility change; cleared once the skinned vertex
 	// buffers have been recomputed. Lets CommandQueued skip re-skinning when nothing has changed,
 	// including across the multiple times a single instance may be queued within the same frame.
 	bool mDirty;
@@ -24,14 +27,7 @@ public:
 public:
 	ModelInstance(ModelDef* modelDef);
 
-	virtual void SetJointPosition(int jointIdx, const ModelJointTranslation& jointTranslation);
-
-	// Walks the joint hierarchy for one pose snapshot: parent-chain multiply (folding in
-	// mModelDef->mArmatureToWorld for root joints), then each joint's own mPoseInvMatrix. Shared
-	// between DXModelInstance::CommandQueued's GPU skinning and ModelDef_GetCollisionTriangles's
-	// CPU-side bake so the hierarchy-walk logic can't drift between the two. outMatrices must have
-	// room for at least mJointTranslations.mSize entries.
-	void ComputeSkinningJointMatrices(Matrix4* outMatrices) const;
+	void SetBindPose();
 };
 
 NS_BF_END;

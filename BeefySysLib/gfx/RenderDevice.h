@@ -413,7 +413,7 @@ public:
 	
 	// entrySuffix compiles alternate entry points ("VS"+suffix / "PS"+suffix) from the same file --
 	// how one surface-shader source yields its per-pass variants.
-	virtual Shader*			LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition, const StringImpl& entrySuffix) = 0;
+	virtual Shader*			LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition, const StringImpl& entrySuffix, int shaderFlags) = 0;
 	virtual void			ReleaseShader(Shader* shader);
 	virtual ComputeShader*	LoadComputeShader(const StringImpl& fileName, const StringImpl& entry) { return NULL; }
 	virtual void			ReleaseComputeShader(ComputeShader* shader);

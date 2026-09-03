@@ -24,6 +24,12 @@ public:
 	virtual ~ComputeShader() {}
 };
 
+enum ShaderFlags
+{
+	ShaderFlags_None = 0,
+	ShaderFlags_NoOptimization = 1, // maps to the backend's skip-optimization compile flag
+};
+
 class Shader
 {
 public:

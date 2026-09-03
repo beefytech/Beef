@@ -141,6 +141,24 @@ namespace Beefy.gfx
         extern static int32 ModelDef_GetJointParent(void* nativeModel, int32 jointIdx);
 
         [CallingConvention(.Stdcall), CLink]
+        extern static char8* ModelDef_GetJointName(void* nativeModel, int32 jointIdx);
+
+        [CallingConvention(.Stdcall), CLink]
+        extern static int32 ModelDef_GetMeshCount(void* nativeModel);
+
+        [CallingConvention(.Stdcall), CLink]
+        extern static int32 ModelDef_GetPrimitivesCount(void* nativeModel, int32 meshIdx);
+
+        [CallingConvention(.Stdcall), CLink]
+        extern static char8* ModelDef_GetTexPaths(void* nativeModel, int32 meshIdx, int32 primitivesIdx);
+
+        [CallingConvention(.Stdcall), CLink]
+        extern static void ModelDef_SetExternalTextures(void* nativeModel, int32 externalTextures);
+
+        [CallingConvention(.Stdcall), CLink]
+        extern static void ModelDef_SetTexture(void* nativeModel, int32 meshIdx, int32 primitivesIdx, int32 texIdx, void* nativeTextureSegment);
+
+        [CallingConvention(.Stdcall), CLink]
         extern static int32 ModelDef_GetAnimCount(void* nativeModel);
 
         [CallingConvention(.Stdcall), CLink]
@@ -218,6 +236,74 @@ namespace Beefy.gfx
 			return ModelDef_GetJointParent(mNativeModelDef, jointIdx);
 		}
 
+		public void GetJointName(int32 jointIdx, String outName)
+		{
+			outName.Append(ModelDef_GetJointName(mNativeModelDef, jointIdx));
+		}
+
+		public int32 GetMeshCount()
+		{
+			return ModelDef_GetMeshCount(mNativeModelDef);
+		}
+
+		public int32 GetPrimitivesCount(int32 meshIdx)
+		{
+			return ModelDef_GetPrimitivesCount(mNativeModelDef, meshIdx);
+		}
+
+		// The effective texture list a render instance would use, '\n'-separated (may be empty).
+		public void GetTexPaths(int32 meshIdx, int32 primitivesIdx, String outPaths)
+		{
+			outPaths.Append(ModelDef_GetTexPaths(mNativeModelDef, meshIdx, primitivesIdx));
+		}
+
+		// With external textures on, instances use only textures injected via SetTexture -- the
+		// caller owns keeping those images alive while instances can still be created.
+		public void SetExternalTextures(bool externalTextures)
+		{
+			ModelDef_SetExternalTextures(mNativeModelDef, externalTextures ? 1 : 0);
+		}
+
+		public void SetTexture(int32 meshIdx, int32 primitivesIdx, int32 texIdx, Image image)
+		{
+			ModelDef_SetTexture(mNativeModelDef, meshIdx, primitivesIdx, texIdx, image.mNativeTextureSegment);
+		}
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelDef_GetJointBindPose(void* nativeModel, int32 jointIdx, out JointTranslation outJointTranslation);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelDef_GetJointPoseInv(void* nativeModel, int32 jointIdx, out Matrix4 outMatrix);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelDef_GetArmatureToWorld(void* nativeModel, out Matrix4 outMatrix);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static int32 ModelDef_GetSkinBounds(void* nativeModel, float* outRadii, out Vector3 outUnweightedMin, out Vector3 outUnweightedMax);
+
+		public void GetJointBindPose(int32 jointIdx, out JointTranslation jointTranslation)
+		{
+			ModelDef_GetJointBindPose(mNativeModelDef, jointIdx, out jointTranslation);
+		}
+
+		public void GetJointPoseInv(int32 jointIdx, out Matrix4 matrix)
+		{
+			ModelDef_GetJointPoseInv(mNativeModelDef, jointIdx, out matrix);
+		}
+
+		public void GetArmatureToWorld(out Matrix4 matrix)
+		{
+			ModelDef_GetArmatureToWorld(mNativeModelDef, out matrix);
+		}
+
+		// Per-joint max vertex distance in joint space (conservative culling radii) plus the
+		// model-space bounds of unweighted vertices; returns true when any unweighted exist.
+		// outRadii must hold mJointCount floats.
+		public bool GetSkinBounds(Span<float> outRadii, out Vector3 unweightedMin, out Vector3 unweightedMax)
+		{
+			return ModelDef_GetSkinBounds(mNativeModelDef, outRadii.Ptr, out unweightedMin, out unweightedMax) != 0;
+		}
+
 		public void Compact()
 		{
 			ModelDef_Compact(mNativeModelDef);
@@ -253,7 +339,7 @@ namespace Beefy.gfx
     public class ModelInstance : Renderable
     {
         [CallingConvention(.Stdcall), CLink]
-        extern static void ModelInstance_SetJointTranslation(void* nativeModelInstance, int32 jointIdx, ref ModelDef.JointTranslation jointTranslation);
+        extern static void ModelInstance_SetJointMatrices(void* nativeModelInstance, Matrix4* matrices, int32 count);
 
         [CallingConvention(.Stdcall), CLink]
         extern static void ModelInstance_SetMeshVisibility(void* nativeModelInstance, int32 jointIdx, int32 visibility);
@@ -262,10 +348,6 @@ namespace Beefy.gfx
 		extern static int32 ModelDef_GetCollisionTriangles(void* nativeModel, void* nativeModelInstance, Vector3** outPositions);
 
         public ModelDef mModelDef;
-        public ModelDef.Animation mAnim;
-        public float mFrame;
-        public float mAnimSpeed = 1.0f;
-        public bool mLoop;
         public Vector3 mScale = .One;
 
         public this(void* nativeModelInstance, ModelDef modelDef)
@@ -284,67 +366,12 @@ namespace Beefy.gfx
             g.Draw(this);
         }
 
-        public void RehupAnimState()
+        // The final skinning palette (model-space joint pose * inverse bind), one matrix per
+        // joint. All sampling/blending/composition happens in the caller -- this instance only
+        // renders whatever palette it was last handed (bind pose until then).
+        public void SetJointMatrices(Span<Matrix4> matrices)
         {
-            for (int32 jointIdx = 0; jointIdx < mModelDef.mJointCount; jointIdx++)
-            {
-                ModelDef.JointTranslation jointTranslation;
-                mAnim.GetJointTranslation(jointIdx, mFrame, out jointTranslation);
-                SetJointTranslation(jointIdx, ref jointTranslation);
-            }
-        }
-
-        // updatePct is this call's share of one fixed 60Hz tick (see Widget.UpdateF) -- scaling
-        // UpdateDelta (which is only ever recomputed once per real Update) by it is what keeps
-        // playback speed correct in real time when this is called more than once per tick.
-        public void UpdateF(float updatePct)
-        {
-            if (mAnim == null)
-                return;
-
-            mFrame += (mModelDef.mFrameRate / BFApp.sApp.RefreshRate) * updatePct * mAnimSpeed;
-
-            /*if ((mFrame >= 35.0f) || (mFrame < 1.0f))
-                mFrame = 34.0f;*/
-
-            if (mAnim.mFrameCount > 1)
-            {
-                float endFrameNum = mAnim.mFrameCount - 1.0f;
-                while (mFrame >= endFrameNum)
-                {
-                    if (mLoop)
-                        mFrame -= endFrameNum;
-                    else
-                        mFrame = endFrameNum - 0.00001f;
-                }
-                while (mFrame < 0)
-                    mFrame += endFrameNum;
-            }
-
-            RehupAnimState();
-        }
-
-        public void Play(ModelDef.Animation anim, bool loop = false)
-        {
-            mLoop = loop;
-            mAnim = anim;
-            mFrame = 0;
-            RehupAnimState();
-        }
-
-        public void Play(StringView name, bool loop = false)
-        {
-            Play(mModelDef.GetAnimation(name), loop);
-        }
-
-        public void Play(bool loop = false)
-        {
-            Play(mModelDef.mAnims[0], loop);
-        }
-
-        public void SetJointTranslation(int32 jointIdx, ref ModelDef.JointTranslation jointTranslation)
-        {
-            ModelInstance_SetJointTranslation(mNativeRenderable, jointIdx, ref jointTranslation);
+            ModelInstance_SetJointMatrices(mNativeRenderable, matrices.Ptr, (int32)matrices.Length);
         }
 
         public void SetMeshVisibility(int32 meshIdx, bool visible)

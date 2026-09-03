@@ -1125,6 +1125,25 @@ namespace Beefy.gfx
 		{
 			OutlineOval(x, y, radius, radius);
 		}
+
+		public void FillOval(float x, float y, float radiusX, float radiusY)
+		{
+			int numSections = 12 + (.)((radiusX + radiusY) * 0.15f);
+			PolyStart(mWhiteDot, numSections * 3);
+			for (int section < numSections)
+			{
+				float ang0 = (section * Math.PI_f * 2) / numSections;
+				float ang1 = ((section + 1) * Math.PI_f * 2) / numSections;
+				PolyVertex(section * 3 + 0, x, y, 0.5f, 0.5f, mColor);
+				PolyVertex(section * 3 + 1, x + Math.Cos(ang0) * radiusX, y + Math.Sin(ang0) * radiusY, 0.5f, 0.5f, mColor);
+				PolyVertex(section * 3 + 2, x + Math.Cos(ang1) * radiusX, y + Math.Sin(ang1) * radiusY, 0.5f, 0.5f, mColor);
+			}
+		}
+
+		public void FillCircle(float x, float y, float radius)
+		{
+			FillOval(x, y, radius, radius);
+		}
     }
 #else
     public class Graphics : GraphicsBase

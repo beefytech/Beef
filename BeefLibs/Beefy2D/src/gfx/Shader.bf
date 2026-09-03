@@ -20,8 +20,16 @@ namespace Beefy.gfx
         public void* mNativeShader;
         public Dictionary<String, ShaderParam> mShaderParamMap;
 
+        public enum CompileFlags : int32
+        {
+            None = 0,
+            // Skip backend optimization: much faster compiles, slower shader -- for iterating.
+            // Part of the shader cache key.
+            NoOptimization = 1,
+        }
+
         [CallingConvention(.Stdcall), CLink]
-        static extern void* Gfx_LoadShader(char8* fileName, void* vertexDefinition, char8* entrySuffix);
+        static extern void* Gfx_LoadShader(char8* fileName, void* vertexDefinition, char8* entrySuffix, int32 shaderFlags);
 
         [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_Shader_Delete(void* shader);
@@ -48,7 +56,7 @@ namespace Beefy.gfx
         // A compile failure fills `outError` and returns null; with no `outError` it's fatal,
         // carrying the compiler's message -- so callers that can recover (hot reload, user
         // shaders) opt in, and everything else keeps fail-fast behavior.
-        public static Shader CreateFromFile(StringView fileName, VertexDefinition vertexDefinition, StringView entrySuffix = "", String outError = null)
+        public static Shader CreateFromFile(StringView fileName, VertexDefinition vertexDefinition, StringView entrySuffix = "", String outError = null, CompileFlags flags = .None)
         {
 			var useFileName = scope String(fileName);
 			if (FilePackManager.TryMakeMemoryString(useFileName, scope $".fx_VS{entrySuffix}_vs_4_0"))
@@ -63,7 +71,7 @@ namespace Beefy.gfx
 
 			FilePackManager.TryMakeMemoryString(useFileName, ".fx");
 
-            void* aNativeShader = Gfx_LoadShader(useFileName, vertexDefinition.mNativeVertexDefinition, entrySuffix.ToScopeCStr!());
+            void* aNativeShader = Gfx_LoadShader(useFileName, vertexDefinition.mNativeVertexDefinition, entrySuffix.ToScopeCStr!(), (int32)flags);
             if (aNativeShader == null)
                 return null;
 

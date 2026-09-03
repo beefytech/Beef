@@ -300,6 +300,7 @@ DXShader::DXShader()
 	mD3DInstLayout = NULL;
 	mConstBuffer = NULL;
 	mHas2DPosition = false;
+	mShaderFlags = 0;
 }
 
 DXShader::~DXShader()
@@ -540,7 +541,7 @@ static void WriteShaderCache(const StringImpl& cachePath, uint64 hash, ID3D10Blo
 
 // Failure fills outError (if given) and returns false -- never fatal, so a bad user shader can be
 // reported instead of killing the app (see Gfx_GetShaderError).
-static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer, String* outError)
+static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer, String* outError, UINT compileFlags)
 {
 	String cachePath = filePath + "_" + entry + "_" + profile;
 
@@ -565,7 +566,7 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 	}
 	hash = Hash64(entry.c_str(), (int)entry.length(), hash);
 	hash = Hash64(profile.c_str(), (int)profile.length(), hash);
-	hash = Hash64(&cShaderCompileFlags, sizeof(cShaderCompileFlags), hash);
+	hash = Hash64(&compileFlags, sizeof(compileFlags), hash);
 
 	if (ReadShaderCache(cachePath, hash, true, outBuffer))
 	{
@@ -595,7 +596,7 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 	includeHandler.mBaseDir = GetFileDir(filePath);
 	ID3D10Blob* errorMessage = NULL;
 	HRESULT dxResult = gFunc_D3DX10Compile(srcData, srcSize, (char*)filePath.c_str(), NULL, &includeHandler, entry.c_str(), profile.c_str(),
-		cShaderCompileFlags, 0, outBuffer, &errorMessage);
+		compileFlags, 0, outBuffer, &errorMessage);
 	delete [] srcData;
 
 	if (FAILED(dxResult))
@@ -616,7 +617,7 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 	return true;
 }
 
-static bool LoadDXShader(Span<uint8> fileData, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer, String* outError)
+static bool LoadDXShader(Span<uint8> fileData, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer, String* outError, UINT compileFlags)
 {
 	if (gFunc_D3DX10Compile == NULL)
 	{
@@ -627,7 +628,7 @@ static bool LoadDXShader(Span<uint8> fileData, const StringImpl& entry, const St
 
 	ID3D10Blob* errorMessage = NULL;
 	auto dxResult = gFunc_D3DX10Compile(fileData.mVals, fileData.mSize, "ShaderSource", NULL, NULL, entry.c_str(), profile.c_str(),
-		D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS, 0, outBuffer, &errorMessage);
+		compileFlags, 0, outBuffer, &errorMessage);
 
 	if (FAILED(dxResult))
 	{
@@ -649,6 +650,10 @@ static bool LoadDXShader(Span<uint8> fileData, const StringImpl& entry, const St
 bool DXShader::Load()
 {
 	mCompileError.Clear();
+
+	UINT compileFlags = cShaderCompileFlags;
+	if ((mShaderFlags & ShaderFlags_NoOptimization) != 0)
+		compileFlags |= D3D10_SHADER_SKIP_OPTIMIZATION;
 
 	ID3D10Blob* vertexShaderBuffer = NULL;
 	ID3D10Blob* pixelShaderBuffer = NULL;
@@ -673,15 +678,15 @@ bool DXShader::Load()
 		else
 		{
 			Span<uint8> span((uint8*)memPtr, memSize);
-			if (LoadDXShader(span, "VS", "vs_4_0", &vertexShaderBuffer, &mCompileError))
-				LoadDXShader(span, "PS", "ps_4_0", &pixelShaderBuffer, &mCompileError);
+			if (LoadDXShader(span, "VS", "vs_4_0", &vertexShaderBuffer, &mCompileError, compileFlags))
+				LoadDXShader(span, "PS", "ps_4_0", &pixelShaderBuffer, &mCompileError, compileFlags);
 		}
 	}
 	else
 	{
 		String fxPath = mSrcPath + ".fx";
-		if (LoadDXShader(fxPath, String("VS") + mEntrySuffix, "vs_4_0", &vertexShaderBuffer, &mCompileError))
-			LoadDXShader(fxPath, String("PS") + mEntrySuffix, "ps_4_0", &pixelShaderBuffer, &mCompileError);
+		if (LoadDXShader(fxPath, String("VS") + mEntrySuffix, "vs_4_0", &vertexShaderBuffer, &mCompileError, compileFlags))
+			LoadDXShader(fxPath, String("PS") + mEntrySuffix, "ps_4_0", &pixelShaderBuffer, &mCompileError, compileFlags);
 	}
 
 	if ((vertexShaderBuffer == NULL) || (pixelShaderBuffer == NULL))
@@ -1338,7 +1343,7 @@ bool DXComputeShader::Load()
 	}
 	ID3D10Blob* blob = NULL;
 	String error;
-	if (!LoadDXShader(mSrcPath + ".fx", mEntry, "cs_5_0", &blob, &error))
+	if (!LoadDXShader(mSrcPath + ".fx", mEntry, "cs_5_0", &blob, &error, cShaderCompileFlags))
 	{
 		// Compute shaders are engine-authored; keep the old hard failure until they need the
 		// reportable path.
@@ -2209,38 +2214,42 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 // 				dxPrimitives->mTexture = (DXTexture*)((RenderDevice*)this)->LoadTexture(texPath, TextureFlag_NoPremult);
 // 			}
 
-			Array<String> texPaths = primitives->mTexPaths;
-
-
 			if (primitives->mMaterial != NULL)
-			{
 				dxPrimitives->mMaterialName = primitives->mMaterial->mName;
-				if (primitives->mMaterial->mDef != NULL)
+
+			if (modelDef->mExternalTextures)
+			{
+				// Engine-injected (see ModelDef_SetTexture) -- never load from paths here.
+				for (auto tex : primitives->mExtTextures)
+				{
+					if (tex == NULL)
+						continue;
+					tex->AddRef();
+					dxPrimitives->mTextures.Add((DXTexture*)tex);
+				}
+			}
+			else
+			{
+				Array<String> texPaths = primitives->mTexPaths;
+				if ((primitives->mMaterial != NULL) && (primitives->mMaterial->mDef != NULL))
 				{
 					for (auto& texParamVal : primitives->mMaterial->mDef->mTextureParameterValues)
 					{
 						if (texPaths.IsEmpty())
 							texPaths.Add(texParamVal->mTexturePath);
-
-// 						if (texPath.IsEmpty())
-// 							texPath = texParamVal->mTexturePath;
-// 						if ((texParamVal->mName == "Albedo_texture") || (texParamVal->mName.EndsWith("_Color")))
-// 							texPath = texParamVal->mTexturePath;
-// 						else if ((texParamVal->mName == "NM_texture") || (texParamVal->mName.EndsWith("_NM")))
-// 							bumpTexPath = texParamVal->mTexturePath;
 					}
 				}
-			}
 
-			for (auto& texPath : texPaths)
-			{
-				if (!modelDef->mLoadDir.IsEmpty())
-					texPath = GetAbsPath(texPath, modelDef->mLoadDir);
+				for (auto& texPath : texPaths)
+				{
+					if (!modelDef->mLoadDir.IsEmpty())
+						texPath = GetAbsPath(texPath, modelDef->mLoadDir);
 
-				DXTexture* texture = (DXTexture*)((RenderDevice*)this)->LoadTexture(texPath, TextureFlag_NoPremult | TextureFlag_Mipmaps | TextureFlag_Srgb);
-				if (texture == NULL)
-					texture = (DXTexture*)((RenderDevice*)this)->LoadTexture("!white", TextureFlag_NoPremult | TextureFlag_Mipmaps | TextureFlag_Srgb);
-				dxPrimitives->mTextures.Add(texture);
+					DXTexture* texture = (DXTexture*)((RenderDevice*)this)->LoadTexture(texPath, TextureFlag_NoPremult | TextureFlag_Mipmaps | TextureFlag_Srgb);
+					if (texture == NULL)
+						texture = (DXTexture*)((RenderDevice*)this)->LoadTexture("!white", TextureFlag_NoPremult | TextureFlag_Mipmaps | TextureFlag_Srgb);
+					dxPrimitives->mTextures.Add(texture);
+				}
 			}
 
 			dxPrimitives->mNumIndices = (int)primitives->mIndices.size();
@@ -2624,8 +2633,8 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 	mDirty = false;
 
 #ifndef BF_NO_FBX
-	Matrix4 jointsMatrices[BF_MAX_NUM_BONES];
-	ComputeSkinningJointMatrices(jointsMatrices);
+	// The engine-fed skinning palette (see ModelInstance_SetJointMatrices); bind pose until then.
+	const Matrix4* jointsMatrices = mJointMatrices.mVals;
 
 	for (int meshIdx = 0; meshIdx < (int) mModelDef->mMeshes.size(); meshIdx++)
 	{
@@ -2661,7 +2670,7 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 						int jointIdx = srcVtxData->mBoneIndices[weightIdx];
 						float boneWeight = srcVtxData->mBoneWeights[weightIdx];
 
-						Matrix4* mtx = &jointsMatrices[jointIdx];
+						const Matrix4* mtx = &jointsMatrices[jointIdx];
 
 						vtx = vtx + Vector3::Transform(srcVtxData->mPosition, *mtx) * boneWeight;
 
@@ -4074,7 +4083,7 @@ Texture* DXRenderDevice::CreateDynTexture(int width, int height)
 	return aTexture;
 }
 
-Shader* DXRenderDevice::LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition, const StringImpl& entrySuffix)
+Shader* DXRenderDevice::LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition, const StringImpl& entrySuffix, int shaderFlags)
 {
 	BP_ZONE("DXRenderDevice::LoadShader");
 
@@ -4082,6 +4091,7 @@ Shader* DXRenderDevice::LoadShader(const StringImpl& fileName, VertexDefinition*
 	dxShader->mRenderDevice = this;
 	dxShader->mSrcPath = fileName;
 	dxShader->mEntrySuffix = entrySuffix;
+	dxShader->mShaderFlags = shaderFlags;
 	dxShader->mVertexDef = new VertexDefinition(vertexDefinition);
 	// A failed Load still returns the object, with mCompileError set -- Gfx_GetShaderError
 	// surfaces it to the caller, who must not draw with it.

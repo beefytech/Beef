@@ -199,6 +199,7 @@ public:
 	DXShaderParamMap		mParamsMap;
 	ID3D11Buffer*			mConstBuffer;
 	bool					mHas2DPosition;
+	int						mShaderFlags; // ShaderFlags bits, part of the shader cache key
 
 public:
 	DXShader();
@@ -567,7 +568,7 @@ public:
 	Texture*				LoadTexture(const StringImpl& fileName, int flags) override;
 	Texture*				LoadTexture(ImageData* imageData, int flags) override;
 	Texture*				CreateDynTexture(int width, int height) override;
-	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition, const StringImpl& entrySuffix) override;
+	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition, const StringImpl& entrySuffix, int shaderFlags) override;
 	void					ReleaseShader(Shader* shader) override;
 	Texture*				CreateRenderTarget(int width, int height, int flags, int sampleCount) override;
 	Texture*				CreateDepthTarget(int width, int height, bool is16Bit) override;

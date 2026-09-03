@@ -1287,9 +1287,9 @@ BF_EXPORT void BF_CALLTYPE RenderState_SetAlphaToCoverage(RenderState* renderSta
 	renderState->SetAlphaToCoverage(enabled);
 }
 
-BF_EXPORT Shader* BF_CALLTYPE Gfx_LoadShader(const char* fileName, VertexDefinition* vertexDefinition, const char* entrySuffix)
+BF_EXPORT Shader* BF_CALLTYPE Gfx_LoadShader(const char* fileName, VertexDefinition* vertexDefinition, const char* entrySuffix, int32 shaderFlags)
 {
-	return gBFApp->mRenderDevice->LoadShader(fileName, vertexDefinition, entrySuffix);
+	return gBFApp->mRenderDevice->LoadShader(fileName, vertexDefinition, entrySuffix, shaderFlags);
 }
 
 // NULL = compiled clean; otherwise the compile error text (valid while the shader lives).

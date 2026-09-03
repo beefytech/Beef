@@ -35,7 +35,7 @@ static Vector3 SkinPosition(const ModelVertex& vtx, const Array<Matrix4>& jointM
 
 // Triangle-expanded (non-indexed) positions for the whole model, local space, matching MeshData's
 // TrianglesRecord layout exactly -- no per-primitive material split needed for physics. If
-// modelInstance is non-null, skinned vertices are baked using its CURRENT mJointTranslations (a
+// modelInstance is non-null, skinned vertices are baked using its CURRENT skinning palette (a
 // one-time snapshot, not continuous tracking -- see PhysicsComponent.RefreshShape for re-baking a pose
 // that's moved on). Unskinned vertices always use their already-baked mPosition regardless (matches
 // FBXReader.cpp's own geomToWorld bake for non-skinned meshes). *outPositions points at modelDef's own
@@ -45,14 +45,8 @@ BF_EXPORT int32 BF_CALLTYPE ModelDef_GetCollisionTriangles(ModelDef* modelDef, M
 	Array<Vector3>& out = *gModelDef_TLPositionsReturn.Get();
 	out.Clear();
 
-	Array<Matrix4> jointMatrices;
 	bool canSkin = (modelInstance != NULL) && (!modelDef->mJoints.IsEmpty()) &&
-		(modelInstance->mJointTranslations.mSize == modelDef->mJoints.mSize);
-	if (canSkin)
-	{
-		jointMatrices.Resize(modelDef->mJoints.mSize);
-		modelInstance->ComputeSkinningJointMatrices(jointMatrices.mVals);
-	}
+		(modelInstance->mJointMatrices.mSize == modelDef->mJoints.mSize);
 
 	for (auto& mesh : modelDef->mMeshes)
 		for (auto& prims : mesh.mPrimitives)
@@ -60,7 +54,7 @@ BF_EXPORT int32 BF_CALLTYPE ModelDef_GetCollisionTriangles(ModelDef* modelDef, M
 				for (int k = 0; k < 3; k++)
 				{
 					ModelVertex& vtx = prims.mVertices[prims.mIndices[i + k]];
-					out.Add((canSkin && (vtx.mNumBoneWeights > 0)) ? SkinPosition(vtx, jointMatrices) : vtx.mPosition);
+					out.Add((canSkin && (vtx.mNumBoneWeights > 0)) ? SkinPosition(vtx, modelInstance->mJointMatrices) : vtx.mPosition);
 				}
 
 	*outPositions = out.IsEmpty() ? NULL : out.mVals;
@@ -188,6 +182,137 @@ BF_EXPORT const char* BF_CALLTYPE ModelDefAnimation_GetName(ModelAnimation* mode
 	return modelAnimation->mName.c_str();
 }
 
+BF_EXPORT int BF_CALLTYPE ModelDef_GetMeshCount(ModelDef* modelDef)
+{
+	return (int)modelDef->mMeshes.mSize;
+}
+
+BF_EXPORT int BF_CALLTYPE ModelDef_GetPrimitivesCount(ModelDef* modelDef, int meshIdx)
+{
+	return (int)modelDef->mMeshes[meshIdx].mPrimitives.mSize;
+}
+
+// The effective texture list a render instance would resolve: explicit mTexPaths, else the first
+// material-def texture parameter (mirrors the load in DXRenderDevice::CreateModelInstance).
+// '\n'-separated.
+BF_EXPORT const char* BF_CALLTYPE ModelDef_GetTexPaths(ModelDef* modelDef, int meshIdx, int primitivesIdx)
+{
+	String& outString = *gModelDef_TLStrReturn.Get();
+	outString.Clear();
+
+	auto& prims = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx];
+	Array<String> texPaths = prims.mTexPaths;
+	if ((prims.mMaterial != NULL) && (prims.mMaterial->mDef != NULL))
+	{
+		for (auto& texParamVal : prims.mMaterial->mDef->mTextureParameterValues)
+		{
+			if (texPaths.IsEmpty())
+				texPaths.Add(texParamVal->mTexturePath);
+		}
+	}
+
+	for (auto& texPath : texPaths)
+	{
+		if (!outString.IsEmpty())
+			outString += "\n";
+		outString += texPath;
+	}
+	return outString.c_str();
+}
+
+BF_EXPORT void BF_CALLTYPE ModelDef_SetExternalTextures(ModelDef* modelDef, int externalTextures)
+{
+	modelDef->mExternalTextures = externalTextures != 0;
+}
+
+// textureSegment's underlying texture is borrowed, not addref'd -- the caller keeps it alive for as
+// long as instances can be created from this modelDef (instances AddRef their own copies).
+BF_EXPORT void BF_CALLTYPE ModelDef_SetTexture(ModelDef* modelDef, int meshIdx, int primitivesIdx, int texIdx, TextureSegment* textureSegment)
+{
+	auto& prims = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx];
+	while ((int)prims.mExtTextures.mSize <= texIdx)
+		prims.mExtTextures.Add(NULL);
+	prims.mExtTextures[texIdx] = textureSegment->mTexture;
+}
+
+BF_EXPORT void BF_CALLTYPE ModelDef_GetJointBindPose(ModelDef* modelDef, int jointIdx, ModelJointTranslation* outJointTranslation)
+{
+	*outJointTranslation = modelDef->mJoints[jointIdx].mBindPoseLocal;
+}
+
+BF_EXPORT void BF_CALLTYPE ModelDef_GetJointPoseInv(ModelDef* modelDef, int jointIdx, Matrix4* outMatrix)
+{
+	*outMatrix = modelDef->mJoints[jointIdx].mPoseInvMatrix;
+}
+
+BF_EXPORT void BF_CALLTYPE ModelDef_GetArmatureToWorld(ModelDef* modelDef, Matrix4* outMatrix)
+{
+	*outMatrix = modelDef->mArmatureToWorld;
+}
+
+// Conservative animated-culling data: per-joint max distance (in joint space, via mPoseInvMatrix)
+// of any vertex weighted to that joint, plus the model-space bounds of unweighted vertices (rigid
+// parts of a skinned model). outRadii must hold GetJointCount() floats. Returns 1 when unweighted
+// vertices exist.
+BF_EXPORT int BF_CALLTYPE ModelDef_GetSkinBounds(ModelDef* modelDef, float* outRadii, Vector3* outUnweightedMin, Vector3* outUnweightedMax)
+{
+	int jointCount = (int)modelDef->mJoints.size();
+	for (int i = 0; i < jointCount; i++)
+		outRadii[i] = 0;
+
+	bool hasUnweighted = false;
+	Vector3 uMin(FLT_MAX, FLT_MAX, FLT_MAX);
+	Vector3 uMax(-FLT_MAX, -FLT_MAX, -FLT_MAX);
+
+	for (auto& mesh : modelDef->mMeshes)
+	{
+		for (auto& prims : mesh.mPrimitives)
+		{
+			for (auto& vtx : prims.mVertices)
+			{
+				if (vtx.mNumBoneWeights == 0)
+				{
+					hasUnweighted = true;
+					uMin.mX = BF_MIN(uMin.mX, vtx.mPosition.mX);
+					uMin.mY = BF_MIN(uMin.mY, vtx.mPosition.mY);
+					uMin.mZ = BF_MIN(uMin.mZ, vtx.mPosition.mZ);
+					uMax.mX = BF_MAX(uMax.mX, vtx.mPosition.mX);
+					uMax.mY = BF_MAX(uMax.mY, vtx.mPosition.mY);
+					uMax.mZ = BF_MAX(uMax.mZ, vtx.mPosition.mZ);
+					continue;
+				}
+				for (int w = 0; w < vtx.mNumBoneWeights; w++)
+				{
+					if (vtx.mBoneWeights[w] < 0.01f)
+						continue;
+					int jointIdx = vtx.mBoneIndices[w];
+					Vector3 jointSpace = Vector3::Transform(vtx.mPosition, modelDef->mJoints[jointIdx].mPoseInvMatrix);
+					float distSq = jointSpace.mX * jointSpace.mX + jointSpace.mY * jointSpace.mY + jointSpace.mZ * jointSpace.mZ;
+					if (distSq > outRadii[jointIdx])
+						outRadii[jointIdx] = distSq;
+				}
+			}
+		}
+	}
+
+	for (int i = 0; i < jointCount; i++)
+		outRadii[i] = sqrtf(outRadii[i]);
+
+	if (!hasUnweighted)
+	{
+		uMin = Vector3(0, 0, 0);
+		uMax = Vector3(0, 0, 0);
+	}
+	*outUnweightedMin = uMin;
+	*outUnweightedMax = uMax;
+	return hasUnweighted ? 1 : 0;
+}
+
+BF_EXPORT const char* BF_CALLTYPE ModelDef_GetJointName(ModelDef* modelDef, int jointIdx)
+{
+	return modelDef->mJoints[jointIdx].mName.c_str();
+}
+
 BF_EXPORT int BF_CALLTYPE ModelDef_GetJointParent(ModelDef* modelDef, int jointIdx)
 {
 	return modelDef->mJoints[jointIdx].mParentIdx;
@@ -202,6 +327,7 @@ BF_EXPORT void BF_CALLTYPE ModelDefAnimation_Clip(ModelAnimation* modelAnimation
 ModelDef::ModelDef()
 {
 	mFlags = Flags_None;
+	mExternalTextures = false;
 	mArmatureToWorld = Matrix4::sIdentity;
 }
 

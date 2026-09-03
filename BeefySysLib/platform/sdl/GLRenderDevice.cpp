@@ -715,7 +715,7 @@ Texture* GLRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	return glTexture;
 }
 
-Shader* GLRenderDevice::LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition, const StringImpl& entrySuffix)
+Shader* GLRenderDevice::LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition, const StringImpl& entrySuffix, int shaderFlags)
 {
 	// entrySuffix unused: the GL path has no per-pass surface variants.
 	GLShader* glShader = new GLShader();
