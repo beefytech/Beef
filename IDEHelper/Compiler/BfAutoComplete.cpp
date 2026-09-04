@@ -184,7 +184,7 @@ void AutoCompleteBase::Clear()
 
 //////////////////////////////////////////////////////////////////////////
 
-BfAutoComplete::BfAutoComplete(BfResolveType resolveType, bool doFuzzyAutoComplete)
+BfAutoComplete::BfAutoComplete(BfResolveType resolveType, bool doFuzzyAutoComplete, bool shouldAutoCompleteIgnoreNamespaces)
 {
 	mResolveType = resolveType;
 	mModule = NULL;
@@ -202,6 +202,7 @@ BfAutoComplete::BfAutoComplete(BfResolveType resolveType, bool doFuzzyAutoComple
 	mIsAutoComplete = (resolveType == BfResolveType_Autocomplete);
 
 	mDoFuzzyAutoComplete = doFuzzyAutoComplete;
+	mShouldAutoCompleteIgnoreNamespaces = shouldAutoCompleteIgnoreNamespaces;
 
 	mGetDefinitionNode = NULL;
 	mShowAttributeProperties = NULL;
@@ -1475,7 +1476,8 @@ void BfAutoComplete::AddTopLevelNamespaces(BfAstNode* identifierNode)
 		for (auto namespacePair : project->mNamespaces)
 		{
 			const BfAtomComposite& namespaceComposite = namespacePair.mKey;
-			if (namespaceComposite.GetPartsCount() == 1)
+			if ((mShouldAutoCompleteIgnoreNamespaces) ||
+				(namespaceComposite.GetPartsCount() == 1))
 			{
 				AddEntry(AutoCompleteEntry("namespace", namespaceComposite.ToString()), filter);
 			}
@@ -1587,7 +1589,8 @@ void BfAutoComplete::AddTopLevelTypes(BfAstNode* identifierNode, bool onlyAttrib
 				bool matches = false;
 				if (typeDef->mOuterType == NULL)
 				{
-					if (((typeDef->mNamespace.IsEmpty()) ||
+					if ((mShouldAutoCompleteIgnoreNamespaces) ||
+						((typeDef->mNamespace.IsEmpty()) ||
 						(namespaceSearch.Contains(typeDef->mNamespace))))
 						matches = true;
 				}

@@ -4252,14 +4252,14 @@ BF_EXPORT const char* BF_CALLTYPE BfParser_GetDebugExpressionAt(BfParser* bfPars
 	return outString.c_str();
 }
 
-BF_EXPORT BfResolvePassData* BF_CALLTYPE BfParser_CreateResolvePassData(BfParser* bfParser, BfResolveType resolveType, bool doFuzzyAutoComplete)
+BF_EXPORT BfResolvePassData* BF_CALLTYPE BfParser_CreateResolvePassData(BfParser* bfParser, BfResolveType resolveType, bool doFuzzyAutoComplete, bool shouldAutoCompleteIgnoreNamespaces)
 {
 	auto bfResolvePassData = new BfResolvePassData();
 	bfResolvePassData->mResolveType = resolveType;
 	if (bfParser != NULL)
 		bfResolvePassData->mParsers.Add(bfParser);
 	if ((bfParser != NULL) && ((bfParser->mParserFlags & ParserFlag_Autocomplete) != 0))
-		bfResolvePassData->mAutoComplete = new BfAutoComplete(resolveType, doFuzzyAutoComplete);
+		bfResolvePassData->mAutoComplete = new BfAutoComplete(resolveType, doFuzzyAutoComplete, shouldAutoCompleteIgnoreNamespaces);
 	return bfResolvePassData;
 }
 
