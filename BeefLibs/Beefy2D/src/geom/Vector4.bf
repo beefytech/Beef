@@ -919,7 +919,8 @@ namespace Beefy.geom
 		/// <returns>Transformed <see cref="Vector4"/>.</returns>
 		public static Vector4 Transform(Vector4 vector, Matrix4 matrix)
 		{
-			return Transform(vector, matrix);
+			Transform(vector, matrix, var result);
+			return result;
 		}
 
 		/// <summary>

@@ -1,3 +1,5 @@
+#include <algorithm>
+#include <vector>
 #include "ModelDef.h"
 #include "BFApp.h"
 #include "gfx/RenderDevice.h"
@@ -312,6 +314,78 @@ BF_EXPORT int BF_CALLTYPE ModelDef_GetSkinBounds(ModelDef* modelDef, float* outR
 	*outUnweightedMin = uMin;
 	*outUnweightedMax = uMax;
 	return hasUnweighted ? 1 : 0;
+}
+
+// Skin extent around an axis through a joint, in the space jointMatrices (a palette) skin the
+// vertices into: the max perpendicular distance of vertices weighted to the joint (weight >=
+// minWeight) whose projection falls inside
+// [-0.25, 1.25] x length (every such vertex when length <= 0), its 90th percentile (props skinned
+// to a bone would otherwise set the radius), plus the projection range of all of them. Returns the
+// number of vertices considered.
+BF_EXPORT int BF_CALLTYPE ModelDef_GetJointAxisFit(ModelDef* modelDef, const Matrix4* jointMatrices, int32 jointCount, int32 jointIdx, float ox, float oy, float oz, float ax, float ay, float az,
+	float length, float minWeight, float* outMaxPerp, float* outPerpP90, float* outMinProj, float* outMaxProj)
+{
+	std::vector<float> perps;
+	float maxPerp = 0;
+	float minProj = FLT_MAX;
+	float maxProj = -FLT_MAX;
+	int count = 0;
+	for (auto& mesh : modelDef->mMeshes)
+	{
+		for (auto& prims : mesh.mPrimitives)
+		{
+			for (auto& vtx : prims.mVertices)
+			{
+				for (int w = 0; w < vtx.mNumBoneWeights; w++)
+				{
+					if ((vtx.mBoneIndices[w] != jointIdx) || (vtx.mBoneWeights[w] < minWeight))
+						continue;
+					Vector3 skinned(0, 0, 0);
+					for (int k = 0; k < vtx.mNumBoneWeights; k++)
+					{
+						int kj = vtx.mBoneIndices[k];
+						if (kj >= jointCount)
+							continue;
+						skinned = skinned + Vector3::Transform(vtx.mPosition, jointMatrices[kj]) * vtx.mBoneWeights[k];
+					}
+					float dx = skinned.mX - ox;
+					float dy = skinned.mY - oy;
+					float dz = skinned.mZ - oz;
+					float t = dx * ax + dy * ay + dz * az;
+					float px = dx - ax * t;
+					float py = dy - ay * t;
+					float pz = dz - az * t;
+					float perp = sqrtf(px * px + py * py + pz * pz);
+					count++;
+					minProj = BF_MIN(minProj, t);
+					maxProj = BF_MAX(maxProj, t);
+					if ((length <= 0) || ((t >= -0.25f * length) && (t <= 1.25f * length)))
+					{
+						maxPerp = BF_MAX(maxPerp, perp);
+						perps.push_back(perp);
+					}
+					break;
+				}
+			}
+		}
+	}
+	if (count == 0)
+	{
+		minProj = 0;
+		maxProj = 0;
+	}
+	float p90 = maxPerp;
+	if (!perps.empty())
+	{
+		size_t idx = (size_t)((perps.size() - 1) * 0.9f);
+		std::nth_element(perps.begin(), perps.begin() + idx, perps.end());
+		p90 = perps[idx];
+	}
+	*outMaxPerp = maxPerp;
+	*outPerpP90 = p90;
+	*outMinProj = minProj;
+	*outMaxProj = maxProj;
+	return count;
 }
 
 BF_EXPORT const char* BF_CALLTYPE ModelDef_GetJointName(ModelDef* modelDef, int jointIdx)

@@ -290,6 +290,8 @@ namespace Beefy.gfx
 
 		[CallingConvention(.Stdcall), CLink]
 		extern static int32 ModelDef_GetSkinBounds(void* nativeModel, float* outRadii, out Vector3 outUnweightedMin, out Vector3 outUnweightedMax);
+		[CallingConvention(.Stdcall), CLink]
+		extern static int32 ModelDef_GetJointAxisFit(void* nativeModel, Matrix4* jointMatrices, int32 jointCount, int32 jointIdx, float ox, float oy, float oz, float ax, float ay, float az, float length, float minWeight, out float outMaxPerp, out float outPerpP90, out float outMinProj, out float outMaxProj);
 
 		public void GetJointBindPose(int32 jointIdx, out JointTranslation jointTranslation)
 		{
@@ -312,6 +314,13 @@ namespace Beefy.gfx
 		public bool GetSkinBounds(Span<float> outRadii, out Vector3 unweightedMin, out Vector3 unweightedMax)
 		{
 			return ModelDef_GetSkinBounds(mNativeModelDef, outRadii.Ptr, out unweightedMin, out unweightedMax) != 0;
+		}
+
+		// Skin extent around an axis through a joint, measured in the space the palette skins into
+		// (see ModelDef_GetJointAxisFit).
+		public int32 GetJointAxisFit(Span<Matrix4> palette, int32 jointIdx, Vector3 origin, Vector3 axis, float length, float minWeight, out float maxPerp, out float perpP90, out float minProj, out float maxProj)
+		{
+			return ModelDef_GetJointAxisFit(mNativeModelDef, palette.Ptr, (.)palette.Length, jointIdx, origin.mX, origin.mY, origin.mZ, axis.mX, axis.mY, axis.mZ, length, minWeight, out maxPerp, out perpP90, out minProj, out maxProj);
 		}
 
 		public void Compact()
