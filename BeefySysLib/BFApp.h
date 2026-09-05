@@ -76,6 +76,9 @@ public:
 	// (one Draw per signal) instead of our own vsync; own-window Present stops blocking
 	volatile bool			mExternalPacingActive;
 	bool					mForceNextDraw;
+	// Automation: the app keeps its logical window focus even while another application is the
+	// OS foreground window, so popup menus stay open and injected input routes as if we were in front
+	bool					mVirtualFocus;
 
 	int                     mUpdateSampleCount;
 	int                     mUpdateSampleTimes;

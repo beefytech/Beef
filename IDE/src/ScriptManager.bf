@@ -82,6 +82,9 @@ namespace IDE
 		public bool mIsBuildScript;
 		public bool mSoftFail;
 		public Verbosity mVerbosity = .Quiet;
+		// Raised with the failure message before it is reported, so a host (the MCP server) can
+		// capture it
+		public Event<delegate void(StringView err)> mOnFail ~ _.Dispose();
 
 		public bool Failed
 		{
@@ -112,6 +115,17 @@ namespace IDE
 			AddTarget(mScriptHelper);
 
 			//Exec("OutputLine(\"Hey bro!\", 2)");
+		}
+
+		// Whether the IDE is idle by the same measure Update uses to gate the next command (no
+		// compile, resolve finished, debugger settled). IsPaused reads sActiveManager, which Update
+		// sets around its own loop, so this sets it for callers outside Update.
+		public bool IsIdle()
+		{
+			var prevManager = sActiveManager;
+			sActiveManager = this;
+			defer { sActiveManager = prevManager; }
+			return mScriptHelper.IsPaused();
 		}
 
 		public void MarkNotHandled()
@@ -183,6 +197,7 @@ namespace IDE
 					errStr.AppendF(" at line {} in {}\n\t{}", mCurCmd.mLineNum + 1, mCurCmd.mSrcFile, mCurCmd.mCmd);
 			}
 
+			mOnFail(errStr);
 			if (mSoftFail)
 				gApp.OutputErrorLine(errStr);
 			else

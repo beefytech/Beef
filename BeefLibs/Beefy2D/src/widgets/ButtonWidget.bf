@@ -9,6 +9,13 @@ namespace Beefy.widgets
     {
         public bool mDisabled;
 
+        public override void Describe(Beefy.utils.StructuredData data)
+        {
+            base.Describe(data);
+            if (mDisabled)
+                data.Add("disabled", true);
+        }
+
         public override void Draw(Graphics g)
         {            
             

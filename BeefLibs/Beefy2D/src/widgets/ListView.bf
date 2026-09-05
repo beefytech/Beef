@@ -104,6 +104,29 @@ namespace Beefy.widgets
             }
         }
 
+		public override void Describe(Beefy.utils.StructuredData data)
+		{
+			base.Describe(data);
+			if (mLabel != null)
+				data.Add("label", mLabel);
+			if (mColumnIdx != 0)
+			{
+				data.Add("column", mColumnIdx);
+				return;
+			}
+			if (mDepth > 0)
+				data.Add("depth", mDepth);
+			if (Selected)
+				data.Add("selected", true);
+			if (Focused)
+				data.Add("focused", true);
+			if (mChildItems != null)
+			{
+				data.Add("itemCount", mChildItems.Count);
+				data.Add("open", IsOpen);
+			}
+		}
+
 		public virtual bool IsOpen
 		{
 			get

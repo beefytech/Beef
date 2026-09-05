@@ -292,6 +292,18 @@ namespace Beefy.gfx
 		extern static int32 ModelDef_GetSkinBounds(void* nativeModel, float* outRadii, out Vector3 outUnweightedMin, out Vector3 outUnweightedMax);
 		[CallingConvention(.Stdcall), CLink]
 		extern static int32 ModelDef_GetJointAxisFit(void* nativeModel, Matrix4* jointMatrices, int32 jointCount, int32 jointIdx, float ox, float oy, float oz, float ax, float ay, float az, float length, float minWeight, out float outMaxPerp, out float outPerpP90, out float outMinProj, out float outMaxProj);
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelDef_AccumRadialProfiles(void* nativeModel, Matrix4* jointMatrices, int32 jointCount, float* axes, int32* jointOwner, float minWeight, int32 sliceCount, int32 sectorCount, float* sumSq, int32* counts, float* minT, float* maxT);
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelDef_SetVertexAlphaByJoint(void* nativeModel, uint8* jointFlags, int32 jointCount);
+		[CallingConvention(.Stdcall), CLink]
+		extern static int32 ModelDef_MeasureFit(void* nativeModel, Matrix4* jointMatrices, int32 jointCount, float sx, float sy, float sz, float* shapes, int32 shapeCount, float range, uint8* jointFlags, float* outFractions, out float outMeanAbs);
+		[CallingConvention(.Stdcall), CLink]
+		extern static int32 ModelDef_GetVertexCount(void* nativeModel);
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelDef_AccumFitExtremes(void* nativeModel, Matrix4* jointMatrices, int32 jointCount, float sx, float sy, float sz, float* shapes, int32 shapeCount, float* outMax, float* outMin);
+		[CallingConvention(.Stdcall), CLink]
+		extern static int32 ModelDef_SetVertexAlphaFromFit(void* nativeModel, float* distances, float range, uint8* jointFlags, int32 jointCount, int32* outCounts, out float outMeanAbs);
 
 		public void GetJointBindPose(int32 jointIdx, out JointTranslation jointTranslation)
 		{
@@ -321,6 +333,41 @@ namespace Beefy.gfx
 		public int32 GetJointAxisFit(Span<Matrix4> palette, int32 jointIdx, Vector3 origin, Vector3 axis, float length, float minWeight, out float maxPerp, out float perpP90, out float minProj, out float maxProj)
 		{
 			return ModelDef_GetJointAxisFit(mNativeModelDef, palette.Ptr, (.)palette.Length, jointIdx, origin.mX, origin.mY, origin.mZ, axis.mX, axis.mY, axis.mZ, length, minWeight, out maxPerp, out perpP90, out minProj, out maxProj);
+		}
+
+		// Adds this pose's skinned vertices to per-joint radial profiles (see
+		// ModelDef_AccumRadialProfiles for the layouts).
+		public void AccumRadialProfiles(Span<Matrix4> palette, Span<float> axes, Span<int32> jointOwner, float minWeight, int32 sliceCount, int32 sectorCount, Span<float> sumSq, Span<int32> counts, Span<float> minT, Span<float> maxT)
+		{
+			ModelDef_AccumRadialProfiles(mNativeModelDef, palette.Ptr, (.)palette.Length, axes.Ptr, jointOwner.Ptr, minWeight, sliceCount, sectorCount, sumSq.Ptr, counts.Ptr, minT.Ptr, maxT.Ptr);
+		}
+
+		// Vertex color alpha from each vertex's heaviest joint's flag (see ModelDef_SetVertexAlphaByJoint).
+		public void SetVertexAlphaByJoint(Span<uint8> jointFlags)
+		{
+			ModelDef_SetVertexAlphaByJoint(mNativeModelDef, jointFlags.Ptr, (.)jointFlags.Length);
+		}
+
+		// Signed-distance fit of the skinned surface against a shape list (see ModelDef_MeasureFit);
+		// outFractions holds three entries.
+		public int32 MeasureFit(Span<Matrix4> palette, Vector3 scale, Span<float> shapes, int32 shapeCount, float range, Span<uint8> jointFlags, Span<float> outFractions, out float meanAbs)
+		{
+			return ModelDef_MeasureFit(mNativeModelDef, palette.Ptr, (.)palette.Length, scale.mX, scale.mY, scale.mZ, shapes.Ptr, shapeCount, range, jointFlags.Ptr, outFractions.Ptr, out meanAbs);
+		}
+
+		public int32 GetVertexCount() => ModelDef_GetVertexCount(mNativeModelDef);
+
+		// Per-vertex signed-distance extremes across poses (see ModelDef_AccumFitExtremes).
+		public void AccumFitExtremes(Span<Matrix4> palette, Vector3 scale, Span<float> shapes, int32 shapeCount, Span<float> outMax, Span<float> outMin)
+		{
+			ModelDef_AccumFitExtremes(mNativeModelDef, palette.Ptr, (.)palette.Length, scale.mX, scale.mY, scale.mZ, shapes.Ptr, shapeCount, outMax.Ptr, outMin.Ptr);
+		}
+
+		// Bakes a per-vertex signed distance into the vertex alpha (see ModelDef_SetVertexAlphaFromFit);
+		// outCounts holds three entries.
+		public int32 SetVertexAlphaFromFit(Span<float> distances, float range, Span<uint8> jointFlags, Span<int32> outCounts, out float meanAbs)
+		{
+			return ModelDef_SetVertexAlphaFromFit(mNativeModelDef, distances.Ptr, range, jointFlags.Ptr, (.)jointFlags.Length, outCounts.Ptr, out meanAbs);
 		}
 
 		public void Compact()

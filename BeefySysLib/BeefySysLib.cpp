@@ -229,6 +229,11 @@ BF_EXPORT void BF_CALLTYPE BFApp_SetExternalPacing(const char* eventName)
 	gBFApp->SetExternalPacing(eventName);
 }
 
+BF_EXPORT void BF_CALLTYPE BFApp_SetVirtualFocus(bool virtualFocus)
+{
+	gBFApp->mVirtualFocus = virtualFocus;
+}
+
 BF_EXPORT const char* BF_CALLTYPE BFApp_GetInstallDir()
 {
 	return gBFApp->mInstallDir.c_str();

@@ -28,6 +28,19 @@ namespace Beefy.widgets
         public ButtonWidget mEscButton;
         public EditWidget mDialogEditWidget;
         public bool mClosed;
+
+        public override void Describe(Beefy.utils.StructuredData data)
+        {
+            base.Describe(data);
+            if (mTitle != null)
+                data.Add("title", mTitle);
+            if (mText != null)
+                data.Add("text", mText);
+            if (mDefaultButton != null)
+                data.Add("defaultButton", mDefaultButton.mWidgetId);
+            if (mEscButton != null)
+                data.Add("escButton", mEscButton.mWidgetId);
+        }
         public Event<Action> mOnClosed ~ _.Dispose();
 
         static String STRING_OK = "Ok";

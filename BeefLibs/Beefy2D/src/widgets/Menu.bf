@@ -18,6 +18,27 @@ namespace Beefy.widgets
         public bool mIsSelected;
         public MenuWidget mSubMenu;
 
+        public override void Describe(Beefy.utils.StructuredData data)
+        {
+            base.Describe(data);
+            if (mMenuItem == null)
+                return;
+            if (mMenuItem.mLabel != null)
+                data.Add("label", mMenuItem.mLabel);
+            else
+                data.Add("separator", true);
+            if (mMenuItem.mDisabled)
+                data.Add("disabled", true);
+            if (mMenuItem.IsParent)
+                data.Add("submenu", true);
+            if (mMenuItem.mBold)
+                data.Add("bold", true);
+            if (mMenuItem.mIconImage != null)
+                data.Add("icon", true);
+            if (mIsSelected)
+                data.Add("selected", true);
+        }
+
         public this(Menu menuItem)
         {
             mMenuItem = menuItem;

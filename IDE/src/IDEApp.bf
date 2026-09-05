@@ -18,6 +18,7 @@ using Beefy.geom;
 using Beefy.res;
 using System.Diagnostics;
 using Beefy.utils;
+using Beefy.mcp;
 using IDE.Debugger;
 using IDE.Compiler;
 using IDE.Util;
@@ -373,6 +374,11 @@ namespace IDE
 		public IPCHelper mIPCHelper ~ delete _;
 		public bool mIPCHadFocus;
 #endif
+		// MCP endpoint (see IDE/MCP.md). Enabled with -mcp or -mcp=<port>.
+		public MCPServer mMCPServer ~ delete _;
+		public int32 mMCPPort = -1; // -1 = off, 0 = default port
+		public const int32 cDefaultMCPPort = 4300;
+		bool mMCPClientActive; // Drives the "(MCP Waiting)" / "(MCP Control)" title suffix
 
 		int32 mProcessAttachId;
 #if BF_PLATFORM_WINDOWS
@@ -791,6 +797,9 @@ namespace IDE
 
 		public ~this()
 		{
+			// An open file-changed dialog dies with its window below; its destructor asserts we no
+			// longer point at it.
+			mFileChangedDialog = null;
 #if !CLI
 			if (!mStartedWithTestScript && !mForceFirstRun)
 			{
@@ -945,6 +954,9 @@ namespace IDE
 				mDebugger.mIsRunning = false;
 				mExecutionPaused = false;
 			}
+
+			if (mMCPServer != null)
+				mMCPServer.Stop();
 
 			base.Shutdown();
 		}
@@ -7478,7 +7490,8 @@ namespace IDE
 			ActivateWindow(tabbedView.mWidgetWindow);
 
 			///
-			switch (CreateContentPanel(useFilePath, projectSource, showType))
+			// The resolved item, not the caller's (often null) one: content panels key on it.
+			switch (CreateContentPanel(useFilePath, useProjectSource, showType))
 			{
 			case .Ok(out contentPanel):
 				if (contentPanel == null)
@@ -8425,6 +8438,11 @@ namespace IDE
 				{
 				case "-autoshutdown":
 					mDebugAutoShutdownCounter = 200;
+				case "-mcp":
+					mMCPPort = 0;
+					// From here on, not just once the server is up: a crash during startup must print,
+					// not sit in a dialog nobody will click.
+					Runtime.SetCrashReportKind(.PrintOnly);
 				case "-new":
 					mVerb = .Open;
 				case "-testNoExit":
@@ -8512,6 +8530,11 @@ namespace IDE
 					if (mSetPlatformName == null)
 						mSetPlatformName = new String();
 					mSetPlatformName.Set(value);
+				case "-mcp":
+					mMCPPort = int32.Parse(value).GetValueOrDefault();
+					Runtime.SetCrashReportKind(.PrintOnly);
+					if (mMCPPort <= 0)
+						Fail(scope $"Invalid MCP port '{value}'");
 				case "-test":
 					Runtime.SetCrashReportKind(.PrintOnly);
 
@@ -13365,6 +13388,9 @@ namespace IDE
 			if (!extraStr.IsEmpty)
 				title.AppendF(" [{}]", extraStr);
 
+			if (mMCPServer != null)
+				title.Append(mMCPClientActive ? " (MCP Control)" : " (MCP Waiting)");
+
 			mMainWindow.SetTitle(title);
 		}
 
@@ -13632,10 +13658,13 @@ namespace IDE
 			{
 				BFWindow.Flags flags = .Border | .ThickFrame | .Resizable | .SysMenu |
 					.Caption | .Minimize | .Maximize | .QuitOnClose | .Menu | .PopupPosition | .AcceptFiles;
-				if (mRunningTestScript)
+				// Automated runs come up behind whatever the user is working in: shown without
+				// activation, and not maximized, since a maximized placement activates regardless.
+				bool background = (mRunningTestScript) || (mMCPPort >= 0);
+				if (background)
 					flags |= .NoActivate;
 
-				if (mRequestedShowKind == .Maximized || mRequestedShowKind == .ShowMaximized)
+				if (((mRequestedShowKind == .Maximized) || (mRequestedShowKind == .ShowMaximized)) && (mMCPPort < 0))
 					flags |= .ShowMaximized;
 
 				scope AutoBeefPerf("IDEApp.Init:CreateMainWindow");
@@ -13789,8 +13818,50 @@ namespace IDE
 
 			if ((mSettings.mUISettings.mShowStartupPanel) && (!mIsFirstRun) && (!mWorkspace.IsInitialized))
 				ShowStartup();
+
+			StartMCPServer();
 		}
 #endif
+
+		// A derived IDE overrides this to add its own tool sets after the standard ones
+		protected virtual void RegisterMCPTools(MCPServer server)
+		{
+#if !CLI
+			server.AddToolSet(new IDECoreToolSet());
+			server.AddToolSet(new UIToolSet());
+			server.AddToolSet(new IDEEditorToolSet());
+			server.AddToolSet(new IDEWorkspaceToolSet());
+			server.AddToolSet(new IDEEditToolSet());
+			server.AddToolSet(new IDEBuildToolSet());
+			server.AddToolSet(new IDEDebugToolSet());
+#endif
+		}
+
+		void StartMCPServer()
+		{
+			if (mMCPPort < 0)
+				return;
+
+			int32 port = (mMCPPort == 0) ? cDefaultMCPPort : mMCPPort;
+			mMCPServer = new MCPServer(port);
+			mMCPServer.mServerName.Set("beefide");
+			RegisterMCPTools(mMCPServer);
+			if (mMCPServer.Start() case .Err)
+			{
+				OutputErrorLine(scope $"MCP: failed to listen on port {port}");
+				DeleteAndNullify!(mMCPServer);
+				return;
+			}
+			OutputLine(scope $"MCP: listening on http://127.0.0.1:{port}/mcp");
+			// The driving agent's own window is normally the OS foreground; without this, popups
+			// would close the moment they opened and keys would go nowhere
+			SetVirtualFocus(true);
+			// No modal crash dialog with nobody to click it: the MCP server records asserts and
+			// fatal errors (status.lastRuntimeError, mcp_last_error.txt beside the exe)
+			Runtime.SetCrashReportKind(.PrintOnly);
+			UpdateTitle();
+		}
+
 		void ShowWelcome()
 		{
 			WelcomePanel welcomePanel = new .();
@@ -16060,6 +16131,16 @@ namespace IDE
 			mDiagnosticsPanel?.UpdateStats();
 			if (mScriptManager != null)
 				mScriptManager.Update();
+			if (mMCPServer != null)
+			{
+				mMCPServer.Update();
+				bool mcpClientActive = mMCPServer.IsClientActive;
+				if (mcpClientActive != mMCPClientActive)
+				{
+					mMCPClientActive = mcpClientActive;
+					UpdateTitle();
+				}
+			}
 
 #if BF_PLATFORM_WINDOWS
 			if (mConsolePanel != null)

@@ -167,6 +167,29 @@ BF_EXPORT StringView BF_CALLTYPE Res_JPEGCompress(uint32* bits, int width, int h
 	return outString;
 }
 
+// Encodes bits (RGBA, width*height) as PNG into a thread-local buffer and returns it. The buffer
+// is only valid until the next Res_ call on this thread, so callers copy it out immediately.
+BF_EXPORT void* BF_CALLTYPE Res_EncodePNG(uint32* bits, int width, int height, int* outSize)
+{
+	String& outString = *gResLib_TLStrReturn.Get();
+	outString.Clear();
+
+	PNGData pngData;
+	pngData.mBits = bits;
+	pngData.mWidth = width;
+	pngData.mHeight = height;
+	bool result = pngData.WriteToMemory(outString);
+	pngData.mBits = NULL;
+
+	if (!result)
+	{
+		*outSize = 0;
+		return NULL;
+	}
+	*outSize = (int)outString.mLength;
+	return (void*)outString.c_str();
+}
+
 BF_EXPORT bool BF_CALLTYPE Res_WritePNG(uint32* bits, int width, int height, const char* filePath)
 {
 	String& outString = *gResLib_TLStrReturn.Get();

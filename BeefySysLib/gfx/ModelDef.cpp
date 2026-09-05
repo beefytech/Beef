@@ -388,6 +388,303 @@ BF_EXPORT int BF_CALLTYPE ModelDef_GetJointAxisFit(ModelDef* modelDef, const Mat
 	return count;
 }
 
+// Accumulates skinned-vertex radial profiles around body axes. A vertex weighted to joint j at or
+// above minWeight goes to owner = jointOwner[j] (a joint index, or -1 to skip): sliceCount slices
+// along that owner's [0, length] x sectorCount sectors around it (angle from refPerp, positive
+// toward axis x refPerp), summing squared perpendicular distance and counts, and the owner's min/max
+// axial coordinate over every such vertex, windowed or not. axes: per joint origin xyz, axis xyz,
+// refPerp xyz, length (length <= 0 skips). sumSq/counts hold jointCount * sliceCount * sectorCount,
+// minT/maxT jointCount; all accumulate across calls.
+BF_EXPORT void BF_CALLTYPE ModelDef_AccumRadialProfiles(ModelDef* modelDef, const Matrix4* jointMatrices, int32 jointCount, const float* axes, const int32* jointOwner, float minWeight, int32 sliceCount, int32 sectorCount, float* sumSq, int32* counts, float* minT, float* maxT)
+{
+	const float pi = 3.14159265f;
+	for (auto& mesh : modelDef->mMeshes)
+	{
+		for (auto& prims : mesh.mPrimitives)
+		{
+			for (auto& vtx : prims.mVertices)
+			{
+				Vector3 skinned(0, 0, 0);
+				bool any = false;
+				for (int k = 0; k < vtx.mNumBoneWeights; k++)
+				{
+					int kj = vtx.mBoneIndices[k];
+					if (kj >= jointCount)
+						continue;
+					skinned = skinned + Vector3::Transform(vtx.mPosition, jointMatrices[kj]) * vtx.mBoneWeights[k];
+					any = true;
+				}
+				if (!any)
+					continue;
+				for (int w = 0; w < vtx.mNumBoneWeights; w++)
+				{
+					int vj = vtx.mBoneIndices[w];
+					if ((vj >= jointCount) || (vtx.mBoneWeights[w] < minWeight))
+						continue;
+					int j = jointOwner[vj];
+					if (j < 0)
+						continue;
+					const float* ax = axes + j * 10;
+					float length = ax[9];
+					if (length <= 0)
+						continue;
+					float dx = skinned.mX - ax[0];
+					float dy = skinned.mY - ax[1];
+					float dz = skinned.mZ - ax[2];
+					float t = dx * ax[3] + dy * ax[4] + dz * ax[5];
+					if (t < minT[j])
+						minT[j] = t;
+					if (t > maxT[j])
+						maxT[j] = t;
+					if ((t < 0) || (t > length))
+						continue;
+					float px = dx - ax[3] * t;
+					float py = dy - ax[4] * t;
+					float pz = dz - ax[5] * t;
+					float vx = ax[4] * ax[8] - ax[5] * ax[7];
+					float vy = ax[5] * ax[6] - ax[3] * ax[8];
+					float vz = ax[3] * ax[7] - ax[4] * ax[6];
+					float cu = px * ax[6] + py * ax[7] + pz * ax[8];
+					float cv = px * vx + py * vy + pz * vz;
+					float ang = atan2f(cv, cu);
+					int sector = (int)floorf((ang + pi) / (2 * pi) * sectorCount);
+					if (sector < 0)
+						sector = 0;
+					if (sector >= sectorCount)
+						sector = sectorCount - 1;
+					int slice = (int)(t / length * sliceCount);
+					if (slice >= sliceCount)
+						slice = sliceCount - 1;
+					int bin = (j * sliceCount + slice) * sectorCount + sector;
+					sumSq[bin] += px * px + py * py + pz * pz;
+					counts[bin]++;
+				}
+			}
+		}
+	}
+}
+
+// Signed distance to one fit shape: 16 floats, center + kind (0 sphere, 1 capsule, 2 cylinder,
+// 3 box), then the X/Y/Z axis rows with an extent in [3] (radius, half height / half extents);
+// capsules and cylinders run along Y.
+static float FitSignedDistance(const Vector3& p, const float* s)
+{
+	float dx = p.mX - s[0];
+	float dy = p.mY - s[1];
+	float dz = p.mZ - s[2];
+	float lx = dx * s[4] + dy * s[5] + dz * s[6];
+	float ly = dx * s[8] + dy * s[9] + dz * s[10];
+	float lz = dx * s[12] + dy * s[13] + dz * s[14];
+	float kind = s[3];
+	if (kind < 0.5f)
+		return sqrtf(dx * dx + dy * dy + dz * dz) - s[7];
+	if (kind < 1.5f)
+	{
+		float t = ly;
+		if (t < -s[11])
+			t = -s[11];
+		if (t > s[11])
+			t = s[11];
+		float qy = ly - t;
+		return sqrtf(lx * lx + qy * qy + lz * lz) - s[7];
+	}
+	if (kind < 2.5f)
+	{
+		float radial = sqrtf(lx * lx + lz * lz) - s[7];
+		float axial = fabsf(ly) - s[11];
+		float ox = BF_MAX(radial, 0.0f);
+		float oy = BF_MAX(axial, 0.0f);
+		return BF_MIN(BF_MAX(radial, axial), 0.0f) + sqrtf(ox * ox + oy * oy);
+	}
+	float qx = fabsf(lx) - s[7];
+	float qy = fabsf(ly) - s[11];
+	float qz = fabsf(lz) - s[15];
+	float ox = BF_MAX(qx, 0.0f);
+	float oy = BF_MAX(qy, 0.0f);
+	float oz = BF_MAX(qz, 0.0f);
+	return BF_MIN(BF_MAX(qx, BF_MAX(qy, qz)), 0.0f) + sqrtf(ox * ox + oy * oy + oz * oz);
+}
+
+static int DominantJoint(const ModelVertex& vtx, int32 jointCount)
+{
+	int best = -1;
+	float bestWeight = 0;
+	for (int k = 0; k < vtx.mNumBoneWeights; k++)
+	{
+		if ((vtx.mBoneIndices[k] < jointCount) && (vtx.mBoneWeights[k] > bestWeight))
+		{
+			bestWeight = vtx.mBoneWeights[k];
+			best = vtx.mBoneIndices[k];
+		}
+	}
+	return best;
+}
+
+// Vertex color alpha 255 where the vertex's heaviest joint is flagged (or it has no joint), else 0.
+BF_EXPORT void BF_CALLTYPE ModelDef_SetVertexAlphaByJoint(ModelDef* modelDef, const uint8* jointFlags, int32 jointCount)
+{
+	for (auto& mesh : modelDef->mMeshes)
+	{
+		for (auto& prims : mesh.mPrimitives)
+		{
+			for (auto& vtx : prims.mVertices)
+			{
+				int joint = DominantJoint(vtx, jointCount);
+				bool on = (joint < 0) || (jointFlags[joint] != 0);
+				vtx.mColor = (vtx.mColor & 0x00FFFFFF) | (on ? 0xFF000000 : 0);
+			}
+		}
+	}
+}
+
+// Fit statistics: skins every vertex whose heaviest joint is flagged, scales it into the shapes'
+// space, takes the signed distance to the nearest shape (FitSignedDistance layout) and buckets it
+// against range: outFractions = {inside past range, within range, outside past range}; outMeanAbs
+// is the mean |distance| (capped at 10 ranges). Returns the vertex count measured.
+BF_EXPORT int BF_CALLTYPE ModelDef_MeasureFit(ModelDef* modelDef, const Matrix4* jointMatrices, int32 jointCount, float sx, float sy, float sz,
+	const float* shapes, int32 shapeCount, float range, const uint8* jointFlags, float* outFractions, float* outMeanAbs)
+{
+	int counts[3] = { 0, 0, 0 };
+	double sumAbs = 0;
+	int total = 0;
+	for (auto& mesh : modelDef->mMeshes)
+	{
+		for (auto& prims : mesh.mPrimitives)
+		{
+			for (auto& vtx : prims.mVertices)
+			{
+				int joint = DominantJoint(vtx, jointCount);
+				if ((joint >= 0) && (jointFlags != NULL) && (jointFlags[joint] == 0))
+					continue;
+				Vector3 skinned(0, 0, 0);
+				bool any = false;
+				for (int k = 0; k < vtx.mNumBoneWeights; k++)
+				{
+					int kj = vtx.mBoneIndices[k];
+					if (kj >= jointCount)
+						continue;
+					skinned = skinned + Vector3::Transform(vtx.mPosition, jointMatrices[kj]) * vtx.mBoneWeights[k];
+					any = true;
+				}
+				if (!any)
+					skinned = vtx.mPosition;
+				Vector3 p(skinned.mX * sx, skinned.mY * sy, skinned.mZ * sz);
+				float d = FLT_MAX;
+				for (int i = 0; i < shapeCount; i++)
+					d = BF_MIN(d, FitSignedDistance(p, shapes + i * 16));
+				if (d < -range)
+					counts[0]++;
+				else if (d <= range)
+					counts[1]++;
+				else
+					counts[2]++;
+				sumAbs += BF_MIN(fabsf(d), range * 10);
+				total++;
+			}
+		}
+	}
+	for (int i = 0; i < 3; i++)
+		outFractions[i] = (total > 0) ? (float)counts[i] / total : 0;
+	*outMeanAbs = (total > 0) ? (float)(sumAbs / total) : 0;
+	return total;
+}
+
+BF_EXPORT int BF_CALLTYPE ModelDef_GetVertexCount(ModelDef* modelDef)
+{
+	int count = 0;
+	for (auto& mesh : modelDef->mMeshes)
+		for (auto& prims : mesh.mPrimitives)
+			count += (int)prims.mVertices.size();
+	return count;
+}
+
+// Per-vertex extremes of the signed fit distance across calls (poses), one entry per vertex in
+// mesh/primitive/vertex order; the caller seeds outMax/outMin.
+BF_EXPORT void BF_CALLTYPE ModelDef_AccumFitExtremes(ModelDef* modelDef, const Matrix4* jointMatrices, int32 jointCount, float sx, float sy, float sz,
+	const float* shapes, int32 shapeCount, float* outMax, float* outMin)
+{
+	int idx = 0;
+	for (auto& mesh : modelDef->mMeshes)
+	{
+		for (auto& prims : mesh.mPrimitives)
+		{
+			for (auto& vtx : prims.mVertices)
+			{
+				Vector3 skinned(0, 0, 0);
+				bool any = false;
+				for (int k = 0; k < vtx.mNumBoneWeights; k++)
+				{
+					int kj = vtx.mBoneIndices[k];
+					if (kj >= jointCount)
+						continue;
+					skinned = skinned + Vector3::Transform(vtx.mPosition, jointMatrices[kj]) * vtx.mBoneWeights[k];
+					any = true;
+				}
+				if (!any)
+					skinned = vtx.mPosition;
+				Vector3 p(skinned.mX * sx, skinned.mY * sy, skinned.mZ * sz);
+				float d = FLT_MAX;
+				for (int i = 0; i < shapeCount; i++)
+					d = BF_MIN(d, FitSignedDistance(p, shapes + i * 16));
+				outMax[idx] = BF_MAX(outMax[idx], d);
+				outMin[idx] = BF_MIN(outMin[idx], d);
+				idx++;
+			}
+		}
+	}
+}
+
+// Vertex alpha from a per-vertex signed distance: 0 where the heaviest joint isn't flagged, else
+// 2..255 spanning -range..range with 128 at the surface -- the shader's baked fit input. Buckets
+// the flagged vertices like ModelDef_MeasureFit and returns their count.
+BF_EXPORT int BF_CALLTYPE ModelDef_SetVertexAlphaFromFit(ModelDef* modelDef, const float* distances, float range, const uint8* jointFlags, int32 jointCount, int32* outCounts, float* outMeanAbs)
+{
+	int idx = 0;
+	int counts[3] = { 0, 0, 0 };
+	double sumAbs = 0;
+	int total = 0;
+	for (auto& mesh : modelDef->mMeshes)
+	{
+		for (auto& prims : mesh.mPrimitives)
+		{
+			for (auto& vtx : prims.mVertices)
+			{
+				float d = distances[idx++];
+				int joint = DominantJoint(vtx, jointCount);
+				bool on = (joint < 0) || (jointFlags[joint] != 0);
+				uint32 alpha = 0;
+				if (on)
+				{
+					float t = d / range;
+					if (t < -1)
+						t = -1;
+					if (t > 1)
+						t = 1;
+					int a = 128 + (int)floorf(t * 126 + 0.5f);
+					if (a < 2)
+						a = 2;
+					if (a > 255)
+						a = 255;
+					alpha = (uint32)a;
+					if (d < -range)
+						counts[0]++;
+					else if (d <= range)
+						counts[1]++;
+					else
+						counts[2]++;
+					sumAbs += BF_MIN(fabsf(d), range * 10);
+					total++;
+				}
+				vtx.mColor = (vtx.mColor & 0x00FFFFFF) | (alpha << 24);
+			}
+		}
+	}
+	for (int i = 0; i < 3; i++)
+		outCounts[i] = counts[i];
+	*outMeanAbs = (total > 0) ? (float)(sumAbs / total) : 0;
+	return total;
+}
+
 BF_EXPORT const char* BF_CALLTYPE ModelDef_GetJointName(ModelDef* modelDef, int jointIdx)
 {
 	return modelDef->mJoints[jointIdx].mName.c_str();

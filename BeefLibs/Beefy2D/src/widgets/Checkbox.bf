@@ -31,6 +31,12 @@ namespace Beefy.widgets
 			}
 		public Event<Action> mOnValueChanged ~ _.Dispose();
 
+		public override void Describe(Beefy.utils.StructuredData data)
+		{
+			base.Describe(data);
+			data.Add("checked", Checked);
+		}
+
         public override void MouseDown(float x, float y, int32 btn, int32 btnCount)
         {
             base.MouseDown(x, y, btn, btnCount);

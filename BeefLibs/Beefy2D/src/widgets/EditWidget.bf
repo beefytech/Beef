@@ -4486,6 +4486,43 @@ namespace Beefy.widgets
         public Event<EditWidgetEventHandler> mOnCancel ~ _.Dispose();
         public Event<EditWidgetEventHandler> mOnContentChanged ~ _.Dispose();
         
+        public override void Describe(Beefy.utils.StructuredData data)
+        {
+            base.Describe(data);
+            var content = mEditWidgetContent;
+            if (content == null)
+                return;
+
+            int textLength = content.mData.mTextLength;
+            data.Add("textLength", textLength);
+            // Short contents (fields, small editors) inline; big buffers get a preview so a tree
+            // dump stays readable -- a dedicated tool reads a document in full
+            String text = scope String();
+            if (textLength <= 2048)
+            {
+                content.ExtractString(0, textLength, text);
+                data.Add("text", text);
+            }
+            else
+            {
+                content.ExtractString(0, 256, text);
+                data.Add("textStart", text);
+            }
+
+            var lineAndColumn = content.CursorLineAndColumn;
+            data.Add("cursorLine", lineAndColumn.mLine);
+            data.Add("cursorColumn", lineAndColumn.mColumn);
+            if (content.CurSelection != null)
+            {
+                data.Add("selStart", content.CurSelection.Value.mStartPos);
+                data.Add("selEnd", content.CurSelection.Value.mEndPos);
+            }
+            if (content.mIsReadOnly)
+                data.Add("readOnly", true);
+            if (content.mIsMultiline)
+                data.Add("multiline", true);
+        }
+
         public EditWidgetContent Content
         {
             get { return mEditWidgetContent; }

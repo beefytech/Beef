@@ -2704,7 +2704,8 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 				destVtx->mTangent = Vector3::Normalize(tangent);
 				destVtx->mTexCoords = srcVtxData->mTexCoords;
 				destVtx->mBumpTexCoords = srcVtxData->mBumpTexCoords;
-				destVtx->mColor = 0xFFFFFFFF; //TODO: Color
+				// White, keeping the definition's alpha (a per-vertex flag for the IDE's fit view).
+				destVtx->mColor = (srcVtxData->mColor & 0xFF000000) | 0x00FFFFFF;
 				destVtx->mInstanceIdx = 0;
 			}
 

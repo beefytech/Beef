@@ -14,6 +14,7 @@ public:
 
 	bool					ReadData();							
 	bool					WriteToFile(const StringImpl& path);
+	bool					WriteToMemory(StringImpl& outData);
 };
 
 NS_BF_END;

@@ -12,6 +12,13 @@ namespace Beefy.theme.dark
         public Image mCheckIcon;
 		public Image mIndeterminateIcon;
         public String mLabel ~ delete _;
+
+        public override void Describe(Beefy.utils.StructuredData data)
+        {
+            base.Describe(data);
+            if (mLabel != null)
+                data.Add("label", mLabel);
+        }
         public Font mFont;
 		public bool mDisabled;
 		public State mState;

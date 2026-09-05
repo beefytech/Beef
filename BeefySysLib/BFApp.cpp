@@ -46,6 +46,7 @@ BFApp::BFApp()
 	mVSynched = false;
 	mVSyncActive = false;
 	mExternalPacingActive = false;
+	mVirtualFocus = false;
 	mForceNextDraw = false;
 
 	mUpdateCnt = 0;

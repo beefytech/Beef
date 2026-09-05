@@ -10,6 +10,13 @@ namespace Beefy.theme.dark
     public class DarkButton : ButtonWidget, IHotKeyHandler
     {
         public String mLabel ~ delete _;
+
+        public override void Describe(Beefy.utils.StructuredData data)
+        {
+            base.Describe(data);
+            if (mLabel != null)
+                data.Add("label", mLabel);
+        }
 		public float mDrawDownPct;
 		public FontAlign mLabelAlign = .Centered;
 		public float mLabelXOfs;

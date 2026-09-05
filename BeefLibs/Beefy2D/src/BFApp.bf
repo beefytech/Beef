@@ -102,6 +102,9 @@ namespace Beefy
         static extern void BFApp_SetExternalPacing(char8* eventName);
 
         [CallingConvention(.Stdcall), CLink]
+        static extern void BFApp_SetVirtualFocus(bool virtualFocus);
+
+        [CallingConvention(.Stdcall), CLink]
         public static extern void BFApp_SetDrawEnabled(int32 enabled);
 
         [CallingConvention(.Stdcall), CLink]
@@ -313,6 +316,15 @@ namespace Beefy
                 BFApp_SetRefreshRate(mRefreshRate);
             }
         }
+
+		// Automation mode: the app keeps its logical focus even when another application is the OS
+		// foreground window, so popup menus stay open and injected input routes normally. The
+		// native side stops treating "not the foreground window" as focus loss; genuine focus
+		// gains are still processed.
+		public void SetVirtualFocus(bool virtualFocus)
+		{
+			BFApp_SetVirtualFocus(virtualFocus);
+		}
 
 		// One frame per signal of the named event; null restores internal pacing
 		public void SetExternalPacing(StringView eventName)

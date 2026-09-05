@@ -35,6 +35,23 @@ namespace Beefy.widgets
     {
         public Scrollbar mHorzScrollbar;
         public Scrollbar mVertScrollbar;
+
+        public override void Describe(Beefy.utils.StructuredData data)
+        {
+            base.Describe(data);
+            if (mVertScrollbar != null)
+            {
+                data.Add("scrollY", (int)mVertScrollbar.mContentPos);
+                data.Add("scrollHeight", (int)mVertScrollbar.mContentSize);
+                data.Add("pageHeight", (int)mVertScrollbar.mPageSize);
+            }
+            if (mHorzScrollbar != null)
+            {
+                data.Add("scrollX", (int)mHorzScrollbar.mContentPos);
+                data.Add("scrollWidth", (int)mHorzScrollbar.mContentSize);
+                data.Add("pageWidth", (int)mHorzScrollbar.mPageSize);
+            }
+        }
         public Insets mScrollbarInsets = new Insets() ~ delete _;
         public ScrollContentContainer mScrollContentContainer;
         public Widget mScrollContent;

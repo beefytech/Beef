@@ -1103,6 +1103,31 @@ namespace Beefy.utils
             outString.Append('"');
         }
 
+        static int HexDigitValue(char8 c)
+        {
+            if ((c >= '0') && (c <= '9'))
+                return c - '0';
+            if ((c >= 'a') && (c <= 'f'))
+                return c - 'a' + 10;
+            if ((c >= 'A') && (c <= 'F'))
+                return c - 'A' + 10;
+            return -1;
+        }
+
+        // Four hex digits at ptr, or -1 if they are not all hex
+        static int32 ReadHex4(char8* ptr)
+        {
+            int32 val = 0;
+            for (int i < 4)
+            {
+                int digit = HexDigitValue(ptr[i]);
+                if (digit < 0)
+                    return -1;
+                val = (val << 4) | (int32)digit;
+            }
+            return val;
+        }
+
         static void StringDecode(String inString)
         {
             bool lastWasSlash = false;
@@ -1135,6 +1160,33 @@ namespace Beefy.utils
                         case 't':
                             c = '\t';
                             break;
+                        case 'u':
+                            // JSON \uXXXX, with a surrogate pair for characters outside the BMP.
+                            // Encoders such as .NET's escape < > & this way. Decoding always
+                            // shrinks the text, so writing in place stays safe.
+                            if (strInEndPtr - strInPtr >= 4)
+                            {
+                                int32 code = ReadHex4(strInPtr);
+                                if (code >= 0)
+                                {
+                                    strInPtr += 4;
+                                    if ((code >= 0xD800) && (code <= 0xDBFF) && (strInEndPtr - strInPtr >= 6) && (strInPtr[0] == '\\') && (strInPtr[1] == 'u'))
+                                    {
+                                        int32 low = ReadHex4(strInPtr + 2);
+                                        if ((low >= 0xDC00) && (low <= 0xDFFF))
+                                        {
+                                            code = 0x10000 + ((code - 0xD800) << 10) + (low - 0xDC00);
+                                            strInPtr += 6;
+                                        }
+                                    }
+                                    String encoded = scope String(8);
+                                    encoded.Append((char32)code);
+                                    for (int i < encoded.Length)
+                                        *(strOutPtr++) = encoded[i];
+                                    lastWasSlash = false;
+                                    continue;
+                                }
+                            }
                     }
 
                     lastWasSlash = false;

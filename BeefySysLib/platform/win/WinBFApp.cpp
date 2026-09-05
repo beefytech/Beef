@@ -450,7 +450,9 @@ void WinBFWindow::SetForeground()
 	bool hadFocus = mHasFocus;
 	DWORD prevFocusLostTick = mFocusLostTick;
 
-	if (mFlags & BFWINDOW_FAKEFOCUS)
+	// Virtual focus (automation) already holds the logical focus; taking the OS foreground would
+	// only yank the window out from under whatever the user is doing.
+	if ((mFlags & BFWINDOW_FAKEFOCUS) || (gBFApp->mVirtualFocus))
 	{
 		mHasFocus = true;
 		mSoftHasFocus = true;
@@ -1008,6 +1010,8 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 			break;
 		case WM_KILLFOCUS:
 			//OutputDebugStrF("WM_KILLFOCUS %p\n", hWnd);
+			if (gBFApp->mVirtualFocus)
+				break; // Logical focus is kept while automating, see BFApp::mVirtualFocus
 			mHasFocus = false;
 			mSoftHasFocus = false;
 			LostFocus(NULL);
@@ -1179,7 +1183,7 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				}
 				bool isFocused = GetForegroundWindow() == checkNonFake->mHWnd;
 
-				if ((!isFocused) && (mHasFocus))
+				if ((!isFocused) && (mHasFocus) && (!gBFApp->mVirtualFocus))
 				{
 					mSoftHasFocus = false;
 					mHasFocus = false;

@@ -836,6 +836,13 @@ namespace IDE.ui
             return ((SourceEditWidgetContent)mEditWidget.Content).mAutoComplete;
         }
 
+        public override void Describe(StructuredData data)
+        {
+            base.Describe(data);
+            if (mFilePath != null)
+                data.Add("file", mFilePath);
+        }
+
         public override void Serialize(StructuredData data)
         {
             base.Serialize(data);

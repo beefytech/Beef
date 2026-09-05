@@ -40,6 +40,15 @@ namespace Beefy.theme.dark
 
         public const float cShadowSize = 8;
 
+        public override void Describe(Beefy.utils.StructuredData data)
+        {
+            base.Describe(data);
+            if (mText != null)
+                data.Add("text", mText);
+            if (mRelWidget != null)
+                data.Add("forWidget", mRelWidget.mWidgetId);
+        }
+
         public this(String text, Widget relWidget, float x, float y, float minWidth, float minHeight, bool allowResize, bool mouseVisible)
         {
             DarkTooltipContainer container = new DarkTooltipContainer();

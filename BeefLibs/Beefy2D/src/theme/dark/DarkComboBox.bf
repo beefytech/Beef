@@ -49,6 +49,13 @@ namespace Beefy.theme.dark
 		}
 
         String mLabel ~ delete _;
+
+        public override void Describe(Beefy.utils.StructuredData data)
+        {
+            base.Describe(data);
+            if (mLabel != null)
+                data.Add("label", mLabel);
+        }
         public float mLabelX = GS!(8);
         public FontAlign mLabelAlign = FontAlign.Centered;
         public FrameKind mFrameKind = .OnWindow;

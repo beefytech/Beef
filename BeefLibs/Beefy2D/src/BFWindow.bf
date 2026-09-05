@@ -175,7 +175,7 @@ namespace Beefy
 		public bool mNativeWindowClosed;
 
 		static int32 sId;
-		protected int32 mId = ++sId;
+		public int32 mId = ++sId;
 
 		public String mName ~ delete _;
         public String mTitle ~ delete _;

@@ -41,6 +41,10 @@ namespace Beefy.widgets
         public int32 mUpdateCnt;
 		public double mUpdateCntF;
         public String mIdStr ~ delete _;
+        // Unique for the life of the process, so external tools (Beefy.mcp) can name a widget
+        // across calls and detect when it has gone away
+        static int32 sWidgetIdCounter;
+        public int32 mWidgetId = ++sWidgetIdCounter;
         public List<Widget> mChildWidgets;
         public MouseFlag mMouseFlags;
         public int32 mMouseCaptureCount;
@@ -169,6 +173,14 @@ namespace Beefy.widgets
             GetType().GetName(mIdStr);
             mWidth = 32;
             mHeight = 32;
+        }
+
+        // Adds what this widget shows or holds -- a label, text, a checked state -- for tools that read
+        // the UI tree (see Beefy.mcp.UIToolSet). Type, id, position, size, visibility and focus are
+        // reported by the caller; overrides add only their own state, under keys that do not clash
+        // with those ("id", "type", "name", "x", "y", "w", "h", "hidden", "focus", "hover", "children").
+        public virtual void Describe(StructuredData data)
+        {
         }
 
         public virtual void Serialize(StructuredData data)

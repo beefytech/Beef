@@ -12,6 +12,15 @@ namespace Beefy.widgets
         public class TabButton : Widget, IDockable, IDragInterface
         {
             public bool mIsActive;
+
+            public override void Describe(Beefy.utils.StructuredData data)
+            {
+                base.Describe(data);
+                if (mLabel != null)
+                    data.Add("label", mLabel);
+                if (mIsActive)
+                    data.Add("active", true);
+            }
 			public bool mIsPinned;
             public String mLabel ~ delete _;
             public TabbedView mTabbedView;

@@ -186,6 +186,65 @@ bool PNGData::ReadData()
 	return true;
 }
 
+static void png_buffer_write_data(png_structp png_ptr, png_bytep data, png_size_t length)
+{
+	StringImpl* outData = (StringImpl*)png_get_io_ptr(png_ptr);
+	outData->Append((const char*)data, (intptr)length);
+}
+
+static void png_buffer_flush_data(png_structp png_ptr)
+{
+}
+
+// The same PNG WriteToFile produces, encoded into outData instead of a file -- for callers that
+// want to hand the bytes on (over a socket, say) without a round trip through the disk
+bool PNGData::WriteToMemory(StringImpl& outData)
+{
+	png_structp png_ptr = png_create_write_struct(PNG_LIBPNG_VER_STRING, NULL, NULL, NULL);
+	if (png_ptr == NULL)
+		return false;
+
+	png_infop info_ptr = png_create_info_struct(png_ptr);
+	if (info_ptr == NULL)
+	{
+		png_destroy_write_struct(&png_ptr, (png_infopp)NULL);
+		return false;
+	}
+
+	if (setjmp(png_jmpbuf(png_ptr)))
+	{
+		png_destroy_write_struct(&png_ptr, &info_ptr);
+		return false;
+	}
+
+	png_set_write_fn(png_ptr, &outData, png_buffer_write_data, png_buffer_flush_data);
+
+	png_color_8 sig_bit;
+	sig_bit.red = 8;
+	sig_bit.green = 8;
+	sig_bit.blue = 8;
+	sig_bit.alpha = 8;
+	png_set_sBIT(png_ptr, info_ptr, &sig_bit);
+	png_set_bgr(png_ptr);
+
+	png_set_IHDR(png_ptr, info_ptr, mWidth, mHeight, 8, PNG_COLOR_TYPE_RGB_ALPHA,
+		PNG_INTERLACE_NONE, PNG_COMPRESSION_TYPE_BASE, PNG_FILTER_TYPE_BASE);
+
+	png_write_info(png_ptr, info_ptr);
+
+	SwapRAndB();
+	for (int i = 0; i < mHeight; i++)
+	{
+		png_bytep aRowPtr = (png_bytep)(mBits + i * mWidth);
+		png_write_rows(png_ptr, &aRowPtr, 1);
+	}
+	SwapRAndB();
+
+	png_write_end(png_ptr, info_ptr);
+	png_destroy_write_struct(&png_ptr, &info_ptr);
+	return true;
+}
+
 bool PNGData::WriteToFile(const StringImpl& path)
 {
 	png_structp png_ptr;
