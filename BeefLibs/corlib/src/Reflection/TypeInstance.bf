@@ -76,7 +76,7 @@ namespace System
 		{
 			if (Compiler.IsComptime)
 			{
-				int64 nativeMethod = Comptime_GetMethod((.)TypeId, (.)methodIdx);
+				int64 nativeMethod = Type.[Friend]Comptime_GetMethod((.)TypeId, (.)methodIdx);
 				if (nativeMethod == 0)
 					return .Err(.NoResults);
 
@@ -121,6 +121,18 @@ namespace System.Reflection
 
 		public override Result<MethodInfo, MethodError> GetMethod(int methodIdx)
 		{
+			// This override replaces the one on the base declaration, so the comptime
+			// case has to be handled here too. At comptime there is no runtime method
+			// table: mMethodDataCount is 0, and without this every index answers
+			// NoResults for a type whose methods are all present.
+			if (Compiler.IsComptime)
+			{
+				int64 nativeMethod = Type.[Friend]Comptime_GetMethod((.)TypeId, (.)methodIdx);
+				if (nativeMethod == 0)
+					return .Err(.NoResults);
+				return MethodInfo(this, nativeMethod);
+			}
+
 			if ((methodIdx < 0) || (methodIdx >= mMethodDataCount))
 				return .Err(.NoResults);
 			return MethodInfo(this, &mMethodDataPtr[methodIdx]);
