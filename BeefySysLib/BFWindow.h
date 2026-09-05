@@ -176,6 +176,7 @@ public:
 	virtual bool			IsInRelativeMouseMode() { return false; }
 	virtual void			LostFocus(BFWindow* newFocus) = 0;
 	virtual int				GetDPI() { return 0; }
+	virtual bool			CaptureClientBits(uint32* outBits, int width, int height) { return false; }
 	float					GetMonitorRefreshRate();
 
 	virtual BFMenu*			AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck) = 0;

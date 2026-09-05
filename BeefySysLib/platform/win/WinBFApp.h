@@ -99,6 +99,7 @@ public:
 	virtual void			EndRelativeMouseMode() override;
 	virtual bool			IsInRelativeMouseMode() override;
 	virtual int				GetDPI() override; // { return ::GetDpiForWindow(mHWnd); }
+	virtual bool			CaptureClientBits(uint32* outBits, int width, int height) override;
 
 	virtual BFMenu*			AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck) override;
 	virtual void			ModifyMenuItem(BFMenu* item, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck) override;

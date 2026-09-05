@@ -476,6 +476,11 @@ BF_EXPORT float BF_CALLTYPE BFWindow_GetMonitorRefreshRate(BFWindow* window)
 	return window->GetMonitorRefreshRate();
 }
 
+BF_EXPORT bool BF_CALLTYPE BFWindow_CaptureClientBits(BFWindow* window, uint32* outBits, int width, int height)
+{
+	return window->CaptureClientBits(outBits, width, height);
+}
+
 ///
 
 BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateRenderTarget(int width, int height, int flags, int sampleCount)

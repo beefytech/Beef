@@ -2348,9 +2348,9 @@ DrawLayer* WinBFApp::CreateDrawLayer(BFWindow* window)
 // the swapchain's Present copy, not the result. PW_RENDERFULLCONTENT asks the compositor for a
 // GPU-window's real content instead of the WM_PRINT fallback most apps register (irrelevant here --
 // we own this window -- but it also skirts any DWM-level caching of an unchanged frame).
-BF_EXPORT bool BF_CALLTYPE BFWindow_CaptureClientBits(BFWindow* window, uint32* outBits, int32 width, int32 height)
+bool WinBFWindow::CaptureClientBits(uint32* outBits, int width, int height)
 {
-	HWND hwnd = (HWND)window->GetUnderlying();
+	HWND hwnd = mHWnd;
 	if (hwnd == NULL)
 		return false;
 
