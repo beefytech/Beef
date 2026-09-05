@@ -50,6 +50,7 @@ extern SDL_DisplayID (SDLCALL* bf_SDL_GetDisplayForWindow)(SDL_Window *window);
 extern const SDL_DisplayMode* (SDLCALL* bf_SDL_GetCurrentDisplayMode)(SDL_DisplayID displayID);
 
 static GLenum (APIENTRYP bf_glGetError)();
+static void (APIENTRYP bf_glReadPixels)(GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, GLvoid* pixels);
 static void (APIENTRYP bf_glActiveTexture)(GLenum texture);
 static void (APIENTRYP bf_glGenVertexArrays)(GLsizei n, GLuint* buffers);
 static void (APIENTRYP bf_glBindVertexArray)(GLenum target);
@@ -504,6 +505,7 @@ GLRenderWindow::GLRenderWindow(GLRenderDevice* renderDevice, SDL_Window* sdlWind
 		BF_GET_GLPROC(glGenTextures);
 		BF_GET_GLPROC(glBindTexture);
 		BF_GET_GLPROC(glPixelStorei);
+		BF_GET_GLPROC(glReadPixels);
 		BF_GET_GLPROC(glTexImage2D);
 		BF_GET_GLPROC(glTexParameteri);
 		BF_GET_GLPROC(glDisable);
@@ -1023,4 +1025,63 @@ void GLSetTextureCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWin
 	bf_glActiveTexture(GL_TEXTURE0 + mTextureIdx);
 	//glUniform1i(curShader->mAttribTex0, 0);
 	bf_glBindTexture(GL_TEXTURE_2D, glTexture->mGLTexture);
+}
+
+/// Capture the window's client area as top-down RGBA.
+///
+/// Defined here rather than in SdlBFApp.cpp with the rest of SdlBFWindow because the GL
+/// entry points are loaded at runtime into file-local pointers in this translation unit.
+/// The Windows override blits from the window DC; there is no equivalent on this path, so
+/// the framebuffer is read back directly.
+bool SdlBFWindow::CaptureClientBits(uint32* outBits, int width, int height)
+{
+	if (mSDLWindow == NULL)
+		return false;
+	if ((outBits == NULL) || (width <= 0) || (height <= 0))
+		return false;
+
+	int clientWidth = 0;
+	int clientHeight = 0;
+	if (!bf_SDL_GetWindowSizeInPixels(mSDLWindow, &clientWidth, &clientHeight))
+		return false;
+	if ((width != clientWidth) || (height != clientHeight))
+		return false;
+
+	SdlBFApp* app = (SdlBFApp*)gBFApp;
+	if ((app == NULL) || (app->mGLContext == NULL))
+		return false;
+	if (!bf_SDL_GL_MakeCurrent(mSDLWindow, app->mGLContext))
+		return false;
+	if (bf_glReadPixels == NULL)
+		return false;
+
+	int64 rowBytes = (int64)width * 4;
+	uint8* readBuffer = new uint8[rowBytes * height];
+
+	bf_glPixelStorei(GL_PACK_ALIGNMENT, 1);
+	bf_glReadPixels(0, 0, width, height, GL_RGBA, GL_UNSIGNED_BYTE, readBuffer);
+
+	if (bf_glGetError() != GL_NO_ERROR)
+	{
+		delete [] readBuffer;
+		return false;
+	}
+
+	// glReadPixels reports the framebuffer bottom-up where the Windows path produces
+	// top-down, so the rows are reversed on the way out. The channel order is already
+	// RGBA, which is what the other capture paths in this codebase produce.
+	uint8* dst = (uint8*)outBits;
+	for (int y = 0; y < height; y++)
+		memcpy(dst + (rowBytes * y), readBuffer + (rowBytes * (height - 1 - y)), rowBytes);
+
+	// A context created without an alpha channel reads back alpha as 0 rather than as
+	// opaque. UICapture ors in a full alpha itself, so this is not what keeps a capture
+	// from coming out transparent, but it leaves the buffer correct for a direct caller
+	// and costs one pass over pixels already in cache.
+	int64 pixelCount = (int64)width * height;
+	for (int64 i = 0; i < pixelCount; i++)
+		dst[i * 4 + 3] = 0xFF;
+
+	delete [] readBuffer;
+	return true;
 }

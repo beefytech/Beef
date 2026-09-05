@@ -40,6 +40,7 @@ public:
 	virtual void			GetPosition(int* x, int* y, int* width, int* height, int* clientX, int* clientY, int* clientWidth, int* clientHeight) override;
 	virtual void			SetClientPosition(int x, int y) override;
 	virtual void			SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVisible) override;
+	virtual bool			CaptureClientBits(uint32* outBits, int width, int height) override;
 	virtual BFMenu*			AddMenuItem(BFMenu* parent, int insertIdx, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck) override;
 	virtual void			ModifyMenuItem(BFMenu* item, const char* text, const char* hotKey, BFSysBitmap* bitmap, bool enabled, int checkState, bool radioCheck) override {}
 	virtual void			RemoveMenuItem(BFMenu* item) override;
