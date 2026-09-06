@@ -1647,7 +1647,9 @@ namespace IDE
 	                return false;
 
 				String managedText = scope .();
-				if (File.ReadAllText(scope $"{mProjectDir}/BeefManaged.toml", managedText) case .Ok)
+				String managedFilePath = scope .();
+				if ((gApp.mPackMan.TryGetManagedInfoPath(mProjectDir, managedFilePath)) &&
+					(File.ReadAllText(managedFilePath, managedText) case .Ok))
 				{
 					mManagedInfo = new .();
 					mManagedInfo.mInfo = new .(managedText);
@@ -1658,6 +1660,14 @@ namespace IDE
 						if (mManagedInfo.mVersion.mVersion == null)
 							mManagedInfo.mVersion.mVersion = new .();
 						msd.GetString("Version", mManagedInfo.mVersion.mVersion);
+
+						// Different tags can select projects from the same cached commit.
+						if ((gApp.mPackMan.IsPathManaged(mProjectDir)) &&
+							(gApp.mWorkspace.mProjectLockMap.TryGetValue(mProjectName, var projectLock)))
+						{
+							if (projectLock case .Git(let url, let tag, let hash))
+								mManagedInfo.mVersion.mVersion.Set(tag);
+						}
 					}
 				}
 			}
