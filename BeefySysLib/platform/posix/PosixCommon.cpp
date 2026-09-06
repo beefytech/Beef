@@ -3044,7 +3044,18 @@ BFP_EXPORT bool BFP_CALLTYPE BfpFile_Exists(const char* path)
 
 BFP_EXPORT void BFP_CALLTYPE BfpFile_GetTempPath(char* outPath, int* inOutPathSize, BfpFileResult* outResult)
 {
-    NOT_IMPL;
+    // TMPDIR is the POSIX spelling; /tmp is the fallback, and is already what
+    // BfpFile_GetTempFileName below assumes. The result ends with a separator, which is
+    // what the Windows implementation hands back from GetTempPathW.
+    const char* tempDir = getenv("TMPDIR");
+    if ((tempDir == NULL) || (tempDir[0] == 0))
+        tempDir = "/tmp";
+
+    String str = tempDir;
+    if ((str.GetLength() == 0) || (str[str.GetLength() - 1] != '/'))
+        str += "/";
+
+    TryStringOut(str, outPath, inOutPathSize, (BfpResult*)outResult);
 }
 
 static const char cHash64bToChar[] = { 'a', 'b', 'c', 'd', 'e', 'f', 'g', 'h', 'i', 'j', 'k', 'l', 'm', 'n', 'o', 'p',
