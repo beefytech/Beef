@@ -209,6 +209,10 @@ namespace IDE.ui
 			typeName.Clear(); typeName.Append(optionsName, "mBfOptimizationLevel");
 			AddPropertiesItem(category, "Optimization Level", typeName);
 
+			typeName.Clear(); typeName.Append(optionsName, "mBfFloatingPointMode");
+			AddPropertiesItem(category, "Floating Point Optimization", typeName,
+				scope String[] ( "Precise", "Allow FMA", "Fast" ));
+
 			typeName.Clear(); typeName.Append(optionsName, "mEmitDebugInfo");
 			AddPropertiesItem(category, "Debug Info", typeName);
 

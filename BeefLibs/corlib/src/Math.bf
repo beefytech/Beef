@@ -235,9 +235,37 @@ namespace System
 			return intPart;
 		}
 
+		[Intrinsic("sqrt")]
+		private static extern float SqrtIntrinsic(float f);
+		[Intrinsic("sqrt")]
+		private static extern double SqrtIntrinsic(double d);
+		[Intrinsic("pow")]
+		private static extern float PowIntrinsic(float x, float y);
+		[Intrinsic("pow")]
+		private static extern double PowIntrinsic(double x, double y);
+		[Intrinsic("fma")]
+		private static extern float FusedMultiplyAddIntrinsic(float x, float y, float z);
+		[Intrinsic("fma")]
+		private static extern double FusedMultiplyAddIntrinsic(double x, double y, double z);
+
+		// Keep callable wrappers: intrinsic declarations themselves have no address.
+		[Inline, LinkName("__bf_math_sqrt_f32")]
+		public static float Sqrt(float f) => SqrtIntrinsic(f);
+		[Inline, LinkName("__bf_math_sqrt_f64")]
+		public static double Sqrt(double d) => SqrtIntrinsic(d);
+		[Inline, LinkName("__bf_math_pow_f32")]
+		public static float Pow(float x, float y) => PowIntrinsic(x, y);
+		[Inline, LinkName("__bf_math_pow_f64")]
+		public static double Pow(double x, double y) => PowIntrinsic(x, y);
+
+		/// Computes (x * y) + z with a single rounding, even without hardware FMA.
+		[Inline, LinkName("__bf_math_fma_f32")]
+		public static float FusedMultiplyAdd(float x, float y, float z) => FusedMultiplyAddIntrinsic(x, y, z);
+		/// Computes (x * y) + z with a single rounding, even without hardware FMA.
+		[Inline, LinkName("__bf_math_fma_f64")]
+		public static double FusedMultiplyAdd(double x, double y, double z) => FusedMultiplyAddIntrinsic(x, y, z);
+
 #if !BF_RUNTIME_DISABLE
-		public static extern float Sqrt(float f);
-		public static extern double Sqrt(double d);
 		public static extern float Cbrt(float f);
 		public static extern double Cbrt(double d);
 		public static extern float Log(float f);
@@ -246,11 +274,7 @@ namespace System
 		public static extern double Log10(double d);
 		public static extern float Exp(float f);
 		public static extern double Exp(double d);
-		public static extern float Pow(float x, float y);
-		public static extern double Pow(double x, double y);
 #else
-		public static float Sqrt(float f) => Runtime.NotImplemented();
-		public static double Sqrt(double d) => Runtime.NotImplemented();
 		public static float Cbrt(float f) => Runtime.NotImplemented();
 		public static double Cbrt(double d) => Runtime.NotImplemented();
 		public static float Log(float f) => Runtime.NotImplemented();
@@ -259,8 +283,6 @@ namespace System
 		public static double Log10(double d) => Runtime.NotImplemented();
 		public static float Exp(float f) => Runtime.NotImplemented();
 		public static double Exp(double d) => Runtime.NotImplemented();
-		public static float Pow(float x, float y) => Runtime.NotImplemented();
-		public static double Pow(double x, double y) => Runtime.NotImplemented();
 #endif
 
 		public static float IEEERemainder(float x, float y)
@@ -676,6 +698,24 @@ namespace System
 #if TEST
 	class MathTests
 	{
+		[Test]
+		public static void FusedMultiplyAdd_SingleRounding()
+		{
+			Test.Assert(Math.FusedMultiplyAdd(2.0f, 3.0f, 4.0f) == 10.0f);
+			Test.Assert(Math.FusedMultiplyAdd(2.0, 3.0, 4.0) == 10.0);
+
+			// (1 + e) * (1 - e) - 1 is exactly -e^2 with one rounding.
+			// Rounding the product first would instead produce zero.
+			float ef = 1.0f / 8388608.0f;
+			double ed = 1.0 / 4503599627370496.0;
+			Test.Assert(Math.FusedMultiplyAdd(1.0f + ef, 1.0f - ef, -1.0f) == -(ef * ef));
+			Test.Assert(Math.FusedMultiplyAdd(1.0 + ed, 1.0 - ed, -1.0) == -(ed * ed));
+
+			// The intermediate product must not overflow before the addition.
+			Test.Assert(Math.FusedMultiplyAdd(float.MaxValue, 2.0f, -float.MaxValue) == float.MaxValue);
+			Test.Assert(Math.FusedMultiplyAdd(double.MaxValue, 2.0, -double.MaxValue) == double.MaxValue);
+		}
+
 		[Test]
 		public static void Round_Float_ValidDigits()
 		{

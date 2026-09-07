@@ -4154,7 +4154,7 @@ bool BfModule::CheckInternalProtection(BfTypeDef* usingTypeDef)
 
 void PrintUsers(llvm::MDNode* md);
 
-BfModuleOptions BfModule::GetModuleOptions()
+BfModuleOptions BfModule::GetModuleOptions(BfTypeInstance* typeInst)
 {
 	if (mIsScratchModule)
 		return BfModuleOptions();
@@ -4164,33 +4164,79 @@ BfModuleOptions BfModule::GetModuleOptions()
 	BfModuleOptions moduleOptions;
 	moduleOptions.mEmitDebugInfo = mCompiler->mOptions.mEmitDebugInfo ? 1 : mCompiler->mOptions.mEmitLineInfo ? 2 : 0;
 	moduleOptions.mSIMDSetting = mCompiler->mOptions.mSIMDSetting;
+	moduleOptions.mFloatingPointMode = mCompiler->mOptions.mFloatingPointMode;
+	moduleOptions.mFMASetting = mCompiler->mOptions.mFMASetting;
 	if (mProject != NULL)
 	{
 		if (mProject->mCodeGenOptions.mSIMDSetting != BfSIMDSetting_NotSet)
 			moduleOptions.mSIMDSetting = mProject->mCodeGenOptions.mSIMDSetting;
+		if (mProject->mCodeGenOptions.mFloatingPointMode != BfFloatingPointMode_NotSet)
+			moduleOptions.mFloatingPointMode = mProject->mCodeGenOptions.mFloatingPointMode;
+		if (mProject->mCodeGenOptions.mFMASetting != BfFMASetting_NotSet)
+			moduleOptions.mFMASetting = mProject->mCodeGenOptions.mFMASetting;
 		moduleOptions.mOptLevel = mProject->mCodeGenOptions.mOptLevel;
 	}
 
-	auto headModule = this;
-	while (headModule->mParentModule != NULL)
-		headModule = headModule->mParentModule;
-
-	BF_ASSERT((headModule->mOwnedTypeInstances.size() > 0) || (mModuleName == "vdata") || mIsSpecialModule);
-
-	if (headModule->mOwnedTypeInstances.size() > 0)
+	if (typeInst == NULL)
 	{
-		auto typeInst = headModule->mOwnedTypeInstances[0];
+		auto headModule = this;
+		while (headModule->mParentModule != NULL)
+			headModule = headModule->mParentModule;
+
+		BF_ASSERT((headModule->mOwnedTypeInstances.size() > 0) || (mModuleName == "vdata") || mIsSpecialModule);
+		if (headModule->mOwnedTypeInstances.size() > 0)
+			typeInst = headModule->mOwnedTypeInstances[0];
+	}
+
+	if (typeInst != NULL)
+	{
 		if (typeInst->mTypeOptionsIdx == -2)
 			PopulateType(typeInst);
 		if (typeInst->mTypeOptionsIdx != -1)
 		{
 			auto typeOptions = mSystem->GetTypeOptions(typeInst->mTypeOptionsIdx);
 			moduleOptions.mSIMDSetting = (BfSIMDSetting)BfTypeOptions::Apply((int)moduleOptions.mSIMDSetting, typeOptions->mSIMDSetting);
+			moduleOptions.mFloatingPointMode = (BfFloatingPointMode)BfTypeOptions::Apply((int)moduleOptions.mFloatingPointMode, typeOptions->mFloatingPointMode);
+			moduleOptions.mFMASetting = (BfFMASetting)BfTypeOptions::Apply((int)moduleOptions.mFMASetting, typeOptions->mFMASetting);
 			moduleOptions.mEmitDebugInfo = BfTypeOptions::Apply(moduleOptions.mEmitDebugInfo, typeOptions->mEmitDebugInfo);
 			moduleOptions.mOptLevel = (BfOptLevel)BfTypeOptions::Apply((int)moduleOptions.mOptLevel, (int)typeOptions->mOptimizationLevel);
 		}
 	}
 	return moduleOptions;
+}
+
+BfModuleOptions BfModule::GetMethodModuleOptions(BfMethodInstance* methodInstance)
+{
+	// Resolve from this method's type, not the first type in a SingleModule project.
+	auto options = GetModuleOptions(methodInstance->GetOwner());
+	ApplyMethodModuleOptions(methodInstance, options);
+	return options;
+}
+
+void BfModule::ApplyMethodModuleOptions(BfMethodInstance* methodInstance, BfModuleOptions& options)
+{
+	if ((methodInstance->GetCustomAttributes() != NULL) && (!mCompiler->mAttributeTypeOptionMap.IsEmpty()))
+	{
+		StringT<128> attrName;
+		for (auto& customAttr : methodInstance->GetCustomAttributes()->mAttributes)
+		{
+			attrName.Clear();
+			customAttr.mType->mTypeDef->mFullName.ToString(attrName);
+			Array<int>* indices;
+			if (mCompiler->mAttributeTypeOptionMap.TryGetValue(attrName, &indices))
+			{
+				for (auto idx : *indices)
+				{
+					auto& typeOptions = mSystem->mTypeOptions[idx];
+					options.mOptLevel = (BfOptLevel)BfTypeOptions::Apply((int)options.mOptLevel, typeOptions.mOptimizationLevel);
+					options.mSIMDSetting = (BfSIMDSetting)BfTypeOptions::Apply((int)options.mSIMDSetting, typeOptions.mSIMDSetting);
+					options.mFloatingPointMode = (BfFloatingPointMode)BfTypeOptions::Apply((int)options.mFloatingPointMode, typeOptions.mFloatingPointMode);
+					options.mFMASetting = (BfFMASetting)BfTypeOptions::Apply((int)options.mFMASetting, typeOptions.mFMASetting);
+					options.mEmitDebugInfo = BfTypeOptions::Apply(options.mEmitDebugInfo, typeOptions.mEmitDebugInfo);
+				}
+			}
+		}
+	}
 }
 
 BfCheckedKind BfModule::GetDefaultCheckedKind()
@@ -14837,9 +14883,11 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 		// We can't just add a dependency to mCurTypeInstance because we may have nested inlined functions, and
 		//   mCurTypeInstance will just reflect the owner of the method currently being inlined, not the top-level
 		//   type instance
-		// Be smarter about this if we ever insert a lot of type instances into a single module - track in a field
-		BF_ASSERT(mOwnedTypeInstances.size() <= 1);
-		for (auto ownedTypeInst : mOwnedTypeInstances)
+		// Alternate and specialized modules keep ownership at the branch root.
+		auto dependencyModule = this;
+		while (dependencyModule->mParentModule != NULL)
+			dependencyModule = dependencyModule->mParentModule;
+		for (auto ownedTypeInst : dependencyModule->mOwnedTypeInstances)
 			AddDependency(methodInstance->GetOwner(), ownedTypeInst, BfDependencyMap::DependencyFlag_InlinedCall);
 
 		if ((!mCompiler->mIsResolveOnly) && (mIsReified) && (!methodInstance->mIsUnspecialized))
@@ -14896,40 +14944,12 @@ BfModule* BfModule::GetOrCreateMethodModule(BfMethodInstance* methodInstance)
 		GetMethodCustomAttributes(methodInstance);
 	}
 	BF_ASSERT(mModuleOptions == NULL);
-	if (methodInstance->GetCustomAttributes() != NULL)
+	// Type overrides also apply to methods without attributes in SingleModule builds.
 	{
 		auto project = typeInst->mTypeDef->mProject;
 		BfModuleOptions moduleOptions = declareModule->GetModuleOptions();
 
-		BfModuleOptions wantOptions = moduleOptions;
-		auto typeOptions = mSystem->GetTypeOptions(typeInst->mTypeOptionsIdx);
-		if (typeOptions != NULL)
-		{
-			wantOptions.mOptLevel = (BfOptLevel)BfTypeOptions::Apply((int)wantOptions.mOptLevel, (int)typeOptions->mOptimizationLevel);
-			wantOptions.mSIMDSetting = (BfSIMDSetting)BfTypeOptions::Apply((int)wantOptions.mSIMDSetting, typeOptions->mSIMDSetting);
-			wantOptions.mEmitDebugInfo = (BfSIMDSetting)BfTypeOptions::Apply((int)wantOptions.mEmitDebugInfo, typeOptions->mEmitDebugInfo);
-		}
-
-		if (!mCompiler->mAttributeTypeOptionMap.IsEmpty())
-		{
-			StringT<128> attrName;
-			for (auto& customAttrs : methodInstance->GetCustomAttributes()->mAttributes)
-			{
-				attrName.Clear();
-				customAttrs.mType->mTypeDef->mFullName.ToString(attrName);
-				Array<int>* arrPtr;
-				if (mCompiler->mAttributeTypeOptionMap.TryGetValue(attrName, &arrPtr))
-				{
-					for (auto optionsIdx : *arrPtr)
-					{
-						auto& typeOptions = mCompiler->mSystem->mTypeOptions[optionsIdx];
-						wantOptions.mOptLevel = (BfOptLevel)BfTypeOptions::Apply((int)wantOptions.mOptLevel, (int)typeOptions.mOptimizationLevel);
-						wantOptions.mSIMDSetting = (BfSIMDSetting)BfTypeOptions::Apply((int)wantOptions.mSIMDSetting, typeOptions.mSIMDSetting);
-						wantOptions.mEmitDebugInfo = (BfSIMDSetting)BfTypeOptions::Apply((int)wantOptions.mEmitDebugInfo, typeOptions.mEmitDebugInfo);
-					}
-				}
-			}
-		}
+		BfModuleOptions wantOptions = declareModule->GetMethodModuleOptions(methodInstance);
 
 		if ((HasCompiledOutput()) && (wantOptions != moduleOptions) && (!mIsScratchModule))
 		{
@@ -14955,6 +14975,12 @@ BfModule* BfModule::GetOrCreateMethodModule(BfMethodInstance* methodInstance)
 					specModuleName += StrFormat("O%d", wantOptions.mOptLevel);
 				if (wantOptions.mSIMDSetting != moduleOptions.mSIMDSetting)
 					specModuleName += StrFormat("SIMD%d", wantOptions.mSIMDSetting);
+				if (wantOptions.mFloatingPointMode != moduleOptions.mFloatingPointMode)
+					specModuleName += StrFormat("FP%d", wantOptions.mFloatingPointMode);
+				if (wantOptions.mFMASetting != moduleOptions.mFMASetting)
+					specModuleName += StrFormat("FMA%d", wantOptions.mFMASetting);
+				if (wantOptions.mEmitDebugInfo != moduleOptions.mEmitDebugInfo)
+					specModuleName += StrFormat("DBG%d", wantOptions.mEmitDebugInfo);
 
 				declareModule = new BfModule(mContext, specModuleName);
 				declareModule->mProject = project;
@@ -19056,6 +19082,35 @@ BfIRCallingConv BfModule::GetIRCallingConvention(BfMethodInstance* methodInstanc
 	//return GetIRCallingConvention(owner, methodInstance->mMethodDef);
 }
 
+void BfModule::SetupIRMethodOptions(BfMethodInstance* methodInstance, BfIRFunction func)
+{
+	if ((!func) || (methodInstance == NULL))
+		return;
+
+	// Inline copies keep the source method's module, including its method-attribute
+	// overrides. Do not use the destination module's numerical or CPU permissions.
+	auto policyMethod = methodInstance;
+	if ((methodInstance->mMethodDef->mIsLocalMethod) && (mCurMethodState != NULL))
+	{
+		// Locals created while duplicating an inline body inherit its lexical policy,
+		// even though their declaration module is the destination of the duplication.
+		auto rootMethod = mCurMethodState->GetRootMethodState()->mMethodInstance;
+		if (rootMethod != NULL)
+			policyMethod = rootMethod;
+	}
+	auto sourceModule = policyMethod->mDeclModule;
+	if ((sourceModule == NULL) || (sourceModule->mProject == NULL))
+		sourceModule = policyMethod->GetOwner()->mModule;
+	if (sourceModule == NULL)
+		sourceModule = this;
+	auto options = sourceModule->GetMethodModuleOptions(policyMethod);
+	if (policyMethod != methodInstance)
+		ApplyMethodModuleOptions(methodInstance, options);
+	mBfIRBuilder->Func_AddAttribute(func, -1, BfIRAttribute_FloatingPointMode, (int)options.mFloatingPointMode);
+	mBfIRBuilder->Func_AddAttribute(func, -1, BfIRAttribute_SIMDSetting, (int)options.mSIMDSetting);
+	mBfIRBuilder->Func_AddAttribute(func, -1, BfIRAttribute_FMASetting, (int)options.mFMASetting);
+}
+
 void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func, bool isInlined)
 {
 	BfMethodDef* methodDef = NULL;
@@ -19073,6 +19128,8 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 
 	if (methodInstance == NULL)
 		return;
+
+	SetupIRMethodOptions(methodInstance, func);
 
 	if (methodInstance->mReturnType->IsVar())
 		mBfIRBuilder->Func_AddAttribute(func, -1, BfIRAttribute_VarRet);
@@ -21816,6 +21873,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		return;
 
 	auto prevActiveFunction = mBfIRBuilder->GetActiveFunction();
+	SetupIRMethodOptions(methodInstance, mCurMethodInstance->mIRFunction);
 	mBfIRBuilder->SetActiveFunction(mCurMethodInstance->mIRFunction);
 
 	if (methodDef->mBody != NULL)
@@ -27796,6 +27854,8 @@ bool BfModule::Finish()
 		auto moduleOptions = GetModuleOptions();
 		codeGenOptions.mOptLevel = moduleOptions.mOptLevel;
 		codeGenOptions.mSIMDSetting = moduleOptions.mSIMDSetting;
+		codeGenOptions.mFloatingPointMode = moduleOptions.mFloatingPointMode;
+		codeGenOptions.mFMASetting = moduleOptions.mFMASetting;
 		codeGenOptions.mWriteLLVMIR = mCompiler->mOptions.mWriteIR;
 		codeGenOptions.mWriteObj = mCompiler->mOptions.mGenerateObj;
 		codeGenOptions.mWriteBitcode = mCompiler->mOptions.mGenerateBitcode;

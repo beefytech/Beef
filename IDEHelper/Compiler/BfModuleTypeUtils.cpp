@@ -1966,6 +1966,8 @@ BfTypeOptions* BfModule::GetTypeOptions(BfTypeDef* typeDef)
 			auto& first = mContext->mSystem->mTypeOptions[matchedIndices[0]];
 			BfTypeOptions mergedTypeOptions;
 			mergedTypeOptions.mSIMDSetting = first.mSIMDSetting;
+			mergedTypeOptions.mFloatingPointMode = first.mFloatingPointMode;
+			mergedTypeOptions.mFMASetting = first.mFMASetting;
 			mergedTypeOptions.mOptimizationLevel = first.mOptimizationLevel;
 			mergedTypeOptions.mEmitDebugInfo = first.mEmitDebugInfo;
 			mergedTypeOptions.mAndFlags = first.mAndFlags;
@@ -1980,6 +1982,10 @@ BfTypeOptions* BfModule::GetTypeOptions(BfTypeDef* typeDef)
 				auto& typeOptions = mContext->mSystem->mTypeOptions[matchedIndices[idx]];
 				if (typeOptions.mSIMDSetting != -1)
 					mergedTypeOptions.mSIMDSetting = typeOptions.mSIMDSetting;
+				if (typeOptions.mFloatingPointMode != BfFloatingPointMode_NotSet)
+					mergedTypeOptions.mFloatingPointMode = typeOptions.mFloatingPointMode;
+				if (typeOptions.mFMASetting != BfFMASetting_NotSet)
+					mergedTypeOptions.mFMASetting = typeOptions.mFMASetting;
 				if (typeOptions.mOptimizationLevel != -1)
 					mergedTypeOptions.mOptimizationLevel = typeOptions.mOptimizationLevel;
 				if (typeOptions.mEmitDebugInfo != -1)
@@ -2199,6 +2205,8 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 			auto& first = mContext->mSystem->mTypeOptions[matchedIndices[0]];
 			BfTypeOptions mergedTypeOptions;
 			mergedTypeOptions.mSIMDSetting = first.mSIMDSetting;
+			mergedTypeOptions.mFloatingPointMode = first.mFloatingPointMode;
+			mergedTypeOptions.mFMASetting = first.mFMASetting;
 			mergedTypeOptions.mOptimizationLevel = first.mOptimizationLevel;
 			mergedTypeOptions.mEmitDebugInfo = first.mEmitDebugInfo;
 			mergedTypeOptions.mAndFlags = first.mAndFlags;
@@ -2213,6 +2221,10 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 				auto& typeOptions = mContext->mSystem->mTypeOptions[matchedIndices[idx]];
 				if (typeOptions.mSIMDSetting != -1)
 					mergedTypeOptions.mSIMDSetting = typeOptions.mSIMDSetting;
+				if (typeOptions.mFloatingPointMode != BfFloatingPointMode_NotSet)
+					mergedTypeOptions.mFloatingPointMode = typeOptions.mFloatingPointMode;
+				if (typeOptions.mFMASetting != BfFMASetting_NotSet)
+					mergedTypeOptions.mFMASetting = typeOptions.mFMASetting;
 				if (typeOptions.mOptimizationLevel != -1)
 					mergedTypeOptions.mOptimizationLevel = typeOptions.mOptimizationLevel;
 				if (typeOptions.mEmitDebugInfo != -1)

@@ -1011,8 +1011,11 @@ namespace IDE.ui
             category.mTextColor = Color.Mult(DarkTheme.COLOR_TEXT, cHeaderColor);
 			AddPropertiesItem(category, "Reloc Model", "mBeefOptions.mRelocType");
 			AddPropertiesItem(category, "PIC Level", "mBeefOptions.mPICLevel");
+			AddPropertiesItem(category, "SIMD Instructions", "mBeefOptions.mSIMDSetting");
             AddPropertiesItem(category, "Optimization Level", "mBeefOptions.mOptimizationLevel",
                 scope String[] ( "O0", "O1", "O2", "O3", "Og", "Og+" )); // -O0 .. -O3,  -Os, -Ofast, -Og
+			AddPropertiesItem(category, "Floating Point Optimization", "mBeefOptions.mFloatingPointMode",
+				scope String[] ( "Precise", "Allow FMA", "Fast" ));
 			AddPropertiesItem(category, "LTO", "mBeefOptions.mLTOType");
             AddPropertiesItem(category, "Vectorize Loops", "mBeefOptions.mVectorizeLoops");
             AddPropertiesItem(category, "Vectorize SLP", "mBeefOptions.mVectorizeSLP");

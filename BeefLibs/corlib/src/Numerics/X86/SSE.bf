@@ -14,9 +14,9 @@ namespace System.Numerics.X86
 		public static v128 div_ps(v128 a, v128 b) => (.) ((float4) a / (float4) b);
 
 		[Inline]
-		public static v128 min_ps(v128 a, v128 b) => (.) float4.min((.) a, (.) b);
+		public static v128 min_ps(v128 a, v128 b) => (.) float4.Min((.) a, (.) b);
 		[Inline]
-		public static v128 max_ps(v128 a, v128 b) => (.) float4.max((.) a, (.) b);
+		public static v128 max_ps(v128 a, v128 b) => (.) float4.Max((.) a, (.) b);
 
 		[Inline]
 		public static v128 add_ss(v128 a, v128 b)

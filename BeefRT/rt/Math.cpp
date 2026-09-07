@@ -1,4 +1,5 @@
 #include <math.h>
+#include <cmath>
 #include <stdio.h>
 #include "BfObjects.h" 
 
@@ -47,6 +48,8 @@ namespace bf
 			BFRT_EXPORT static double Exp(double d);
 			BFRT_EXPORT static float Pow(float x, float y);
 			BFRT_EXPORT static double Pow(double x, double y);
+			BFRT_EXPORT static float FusedMultiplyAdd(float x, float y, float z);
+			BFRT_EXPORT static double FusedMultiplyAdd(double x, double y, double z);
 			BFRT_EXPORT static float Abs(float value);
 			BFRT_EXPORT static double Abs(double value);
 		};
@@ -243,6 +246,16 @@ float Math::Pow(float x, float y)
 double Math::Pow(double x, double y)
 {
 	return pow(x, y);
+}
+
+float Math::FusedMultiplyAdd(float x, float y, float z)
+{
+	return std::fma(x, y, z);
+}
+
+double Math::FusedMultiplyAdd(double x, double y, double z)
+{
+	return std::fma(x, y, z);
 }
 
 float Math::Abs(float value)

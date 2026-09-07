@@ -10704,6 +10704,13 @@ namespace IDE
 				optimizationLevel, ltoType, relocType, options.mBeefOptions.mPICLevel,
 				options.mBeefOptions.mMergeFunctions, options.mBeefOptions.mCombineLoads,
 				options.mBeefOptions.mVectorizeLoops, options.mBeefOptions.mVectorizeSLP);
+			bfProject.SetCodeGenOptions(options.mBeefOptions.mSIMDSetting,
+				options.mBeefOptions.mFloatingPointMode, options.mBeefOptions.mFMASetting);
+			let effectiveSIMDSetting = options.mBeefOptions.mSIMDSetting ?? workspaceOptions.mBfSIMDSetting;
+			let effectiveFloatingPointMode = options.mBeefOptions.mFloatingPointMode ?? workspaceOptions.mBfFloatingPointMode;
+			let effectiveFMASetting = options.mBeefOptions.mFMASetting ?? workspaceOptions.mBfFMASetting;
+			CompilerLog("IDEApp.SetupBeefProjectSettings Project='{}' SIMD={} FloatingPointMode={} FMA={} TargetCPU='{}'",
+				project.mProjectName, effectiveSIMDSetting, effectiveFloatingPointMode, effectiveFMASetting, workspaceOptions.mTargetCPU);
 
 			List<Project> depProjectList = scope List<Project>();
 			if (!GetDependentProjectList(project, depProjectList))
@@ -11396,7 +11403,7 @@ namespace IDE
 									IDEUtils.FixFilePath(newString);
 								case "EmccPath":
 									newString = scope:ReplaceBlock String();
-									newString.AppendF($"{gApp.mSettings.mEmscriptenPath}/upstream/emscripten/emcc.bat");
+									newString.AppendF($"{gApp.mSettings.mEmscriptenPath}/upstream/emscripten/emcc.exe");
 								}
 							}
 

@@ -11209,6 +11209,9 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 	options->mHotCompileIdx = hotIdx;
 	options->mTargetTriple = targetTriple;
 	options->mTargetCPU = targetCPU;
+	// The legacy entry point establishes defaults; SetMathOptions overrides these.
+	options->mFloatingPointMode = BfFloatingPointMode_Precise;
+	options->mFMASetting = BfFMASetting_TargetDefault;
 
 	if (options->mTargetTriple.StartsWith("x86_64-", StringImpl::CompareKind_OrdinalIgnoreCase))
 		options->mMachineType = BfMachineType_x64;
@@ -11319,6 +11322,14 @@ BF_EXPORT void BF_CALLTYPE BfCompiler_SetOptions(BfCompiler* bfCompiler, BfProje
 		options->mEmitDynamicCastCheck = false;
 		options->mRuntimeChecks = (optionFlags & BfCompilerOptionFlag_RuntimeChecks) != 0;
 	}
+}
+
+BF_EXPORT void BF_CALLTYPE BfCompiler_SetMathOptions(BfCompiler* bfCompiler, int32 floatingPointMode, int32 fmaSetting)
+{
+	bfCompiler->mOptions.mFloatingPointMode = (floatingPointMode == BfFloatingPointMode_NotSet) ?
+		BfFloatingPointMode_Precise : (BfFloatingPointMode)floatingPointMode;
+	bfCompiler->mOptions.mFMASetting = (fmaSetting == BfFMASetting_NotSet) ?
+		BfFMASetting_TargetDefault : (BfFMASetting)fmaSetting;
 }
 
 BF_EXPORT void BF_CALLTYPE BfCompiler_ForceRebuild(BfCompiler* bfCompiler)

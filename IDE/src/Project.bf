@@ -1269,6 +1269,12 @@ namespace IDE
 			[Reflect]
             public BuildOptions.BfOptimizationLevel? mOptimizationLevel;
 			[Reflect]
+			public BuildOptions.FloatingPointMode? mFloatingPointMode;
+			[Reflect]
+			public BuildOptions.FMASetting? mFMASetting;
+			[Reflect]
+			public BuildOptions.SIMDSetting? mSIMDSetting;
+			[Reflect]
 			public BuildOptions.LTOType? mLTOType;
 			[Reflect]
             public bool mMergeFunctions;
@@ -1368,6 +1374,9 @@ namespace IDE
 
 				Set!(newOptions.mBeefOptions.mPreprocessorMacros, mBeefOptions.mPreprocessorMacros);
 				Set!(newOptions.mBeefOptions.mOptimizationLevel, mBeefOptions.mOptimizationLevel);
+				Set!(newOptions.mBeefOptions.mFloatingPointMode, mBeefOptions.mFloatingPointMode);
+				Set!(newOptions.mBeefOptions.mFMASetting, mBeefOptions.mFMASetting);
+				Set!(newOptions.mBeefOptions.mSIMDSetting, mBeefOptions.mSIMDSetting);
 				Set!(newOptions.mBeefOptions.mLTOType, mBeefOptions.mLTOType);
 				Set!(newOptions.mBeefOptions.mRelocType, mBeefOptions.mRelocType);
 				Set!(newOptions.mBeefOptions.mPICLevel, mBeefOptions.mPICLevel);
@@ -1921,6 +1930,9 @@ namespace IDE
 								data.ConditionalAdd("RelocType", options.mBeefOptions.mRelocType, defaultRelocType);
 								data.ConditionalAdd("PICLevel", options.mBeefOptions.mPICLevel, .NotSet);
 							    data.ConditionalAdd("OptimizationLevel", options.mBeefOptions.mOptimizationLevel);
+								data.ConditionalAdd("FloatingPointMode", options.mBeefOptions.mFloatingPointMode);
+								data.ConditionalAdd("FMASetting", options.mBeefOptions.mFMASetting);
+								data.ConditionalAdd("SIMDSetting", options.mBeefOptions.mSIMDSetting);
 								data.ConditionalAdd("LTOType", options.mBeefOptions.mLTOType);
 							    data.ConditionalAdd("MergeFunctions", options.mBeefOptions.mMergeFunctions);
 							    data.ConditionalAdd("CombineLoads", options.mBeefOptions.mCombineLoads);
@@ -2286,6 +2298,12 @@ namespace IDE
 			        	options.mBeefOptions.mOptimizationLevel = data.GetEnum<BuildOptions.BfOptimizationLevel>("OptimizationLevel");
 					if (data.Contains("LTOType"))
 						options.mBeefOptions.mLTOType = data.GetEnum<BuildOptions.LTOType>("LTOType");
+					if (data.Contains("FloatingPointMode"))
+						options.mBeefOptions.mFloatingPointMode = data.GetEnum<BuildOptions.FloatingPointMode>("FloatingPointMode");
+					if (data.Contains("FMASetting"))
+						options.mBeefOptions.mFMASetting = data.GetEnum<BuildOptions.FMASetting>("FMASetting");
+					if (data.Contains("SIMDSetting"))
+						options.mBeefOptions.mSIMDSetting = data.GetEnum<BuildOptions.SIMDSetting>("SIMDSetting");
 			        options.mBeefOptions.mMergeFunctions = data.GetBool("MergeFunctions");
 			        options.mBeefOptions.mCombineLoads = data.GetBool("CombineLoads");
 			        options.mBeefOptions.mVectorizeLoops = data.GetBool("VectorizeLoops");
