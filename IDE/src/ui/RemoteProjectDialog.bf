@@ -54,7 +54,17 @@ namespace IDE.ui
 			    return false;
 			}
 
-			var projName = Path.GetFileName(url, .. scope .());
+			String repoURL = scope .();
+			String projectSubPath = scope .();
+			if (!IDEUtils.ParseGitProjectURL(url, repoURL, projectSubPath))
+			{
+				mURLEdit.SetFocus();
+			    app.Fail("Invalid git project path");
+			    return false;
+			}
+
+			String projName = scope .();
+			IDEUtils.GetGitProjectName(repoURL, projectSubPath, projName);
 
 			var version = mVersionEdit.GetText(.. scope .())..Trim();
 			
@@ -95,8 +105,11 @@ namespace IDE.ui
 				if ((path.EndsWith('\\')) || (path.EndsWith('/')))
 					path.RemoveFromEnd(1);
 
+				String repoURL = scope .();
+				String projectSubPath = scope .();
 				String projName = scope .();
-				Path.GetFileName(path, projName);
+				if (IDEUtils.ParseGitProjectURL(path, repoURL, projectSubPath))
+					IDEUtils.GetGitProjectName(repoURL, projectSubPath, projName);
 				mVersionEdit.SetText(projName);
 			}
 		}

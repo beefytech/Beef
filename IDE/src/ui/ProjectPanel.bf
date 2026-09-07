@@ -2277,7 +2277,9 @@ namespace IDE.ui
 				StringView sv = .((.)data, size);
 				for (var line in sv.Split('\n'))
 				{
-					var uri = IDEUtils.URLDecode(line, .. scope .());
+					String uri = scope .();
+					if (IDEUtils.URLDecode(line, uri) case .Err)
+						continue;
 					if (uri.StartsWith("file:///"))
 					{
 						var srcPath = scope String()..Append(uri.Substring("file:///".Length));
@@ -2425,7 +2427,9 @@ namespace IDE.ui
 			StringView sv = .((.)data, size);
 			SrcLoop: for (var line in sv.Split('\n'))
 			{
-				var uri = IDEUtils.URLDecode(line, .. scope .());
+				String uri = scope .();
+				if (IDEUtils.URLDecode(line, uri) case .Err)
+					continue;
 				if (uri.StartsWith("file:///"))
 				{
 					var srcPath = scope String()..Append(uri.Substring("file:///".Length));

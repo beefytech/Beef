@@ -673,6 +673,12 @@ namespace IDE
 			}
 		}
 
+		public static bool IsHexDigit(char8 c)
+		{
+			char8 lower = (char8)((uint8)c | 0x20);
+			return ((c >= '0') && (c <= '9')) || ((lower >= 'a') && (lower <= 'f'));
+		}
+
 		static String sHexUpperChars = "0123456789ABCDEF";
 		public static void URLEncode(StringView inStr, String outStr)
 		{
@@ -691,17 +697,134 @@ namespace IDE
 			}
 		}
 
-		public static void URLDecode(StringView inStr, String outStr)
+		/// Appends decoded bytes. On error, callers must discard any partial output.
+		public static Result<void> URLDecode(StringView inStr, String outStr)
 		{
-			for (int i < inStr.Length)
+			for (int i = 0; i < inStr.Length; i++)
 			{
 				char8 c = inStr[i];
-				if ((c == '%') && (i < inStr.Length-2))
+				if (c == '%')
 				{
-					c = (.)int32.Parse(inStr.Substring(i+1, 2), .HexNumber).GetValueOrDefault();
+					if (i + 2 >= inStr.Length)
+						return .Err;
+					let hi = Try!(BitConverter.FromHex(inStr[i + 1]));
+					let lo = Try!(BitConverter.FromHex(inStr[i + 2]));
+					c = (.)((hi << 4) | lo);
 					i += 2;
 				}
 				outStr.Append(c);
+			}
+			return .Ok;
+		}
+
+		/// Normalizes a project subfolder in place: forward slashes, no empty or "." components, no leading
+		/// or trailing slash. Rejects anything that could escape the clone or fail on some platform.
+		public static bool NormalizeGitProjectSubPath(String path)
+		{
+			// Apply Windows filename restrictions on every platform for portable dependencies.
+			const String windowsReservedFileNameChars = ":*?\"<>|";
+
+			path.Replace("\\", "/");
+			String normalizedPath = scope .();
+			for (let part in path.Split('/'))
+			{
+				if ((part.IsEmpty) || (part == "."))
+					continue;
+				if ((part.EndsWith('.')) || (part.EndsWith(' ')))
+					return false;
+				for (let c in part.RawChars)
+				{
+					// Reject ASCII control bytes (including NUL) and DEL.
+					if ((c <= '\x1f') || (c == '\x7f'))
+						return false;
+					if (windowsReservedFileNameChars.Contains(c))
+						return false;
+				}
+
+				if (!normalizedPath.IsEmpty)
+					normalizedPath.Append('/');
+				normalizedPath.Append(part);
+			}
+
+			path.Set(normalizedPath);
+			return true;
+		}
+
+		/// Splits "https://host/repo.git?path=/libraryA" into the repository URL handed to Git and the
+		/// normalized project subfolder ("libraryA", empty for the root). Only the 'path' parameter is
+		/// consumed; other query parameters stay in the repository URL. Fragments and duplicate 'path'
+		/// parameters are rejected. On failure the outputs may hold partial text and must be discarded.
+		public static bool ParseGitProjectURL(StringView url, String outRepoURL, String outProjectPath)
+		{
+			outRepoURL.Clear();
+			outProjectPath.Clear();
+
+			if ((url.IsEmpty) || (url.Contains('#')))
+				return false;
+
+			int queryIdx = url.IndexOf('?');
+			if (queryIdx == -1)
+			{
+				outRepoURL.Append(url);
+				return true;
+			}
+
+			if (queryIdx == 0)
+				return false;
+			outRepoURL.Append(url.Substring(0, queryIdx));
+			StringView query = url.Substring(queryIdx + 1);
+			bool wroteParam = false;
+			bool foundPath = false;
+
+			for (let param in query.Split('&'))
+			{
+				if (param.IsEmpty)
+					continue;
+
+				StringView key = param;
+				StringView value = default;
+				int equalsIdx = param.IndexOf('=');
+				if (equalsIdx != -1)
+				{
+					key = param.Substring(0, equalsIdx);
+					value = param.Substring(equalsIdx + 1);
+				}
+
+				if (key == "path")
+				{
+					if ((foundPath) || (equalsIdx == -1))
+						return false;
+					foundPath = true;
+					if (URLDecode(value, outProjectPath) case .Err)
+						return false;
+				}
+				else
+				{
+					outRepoURL.Append(wroteParam ? '&' : '?');
+					outRepoURL.Append(param);
+					wroteParam = true;
+				}
+			}
+
+			return NormalizeGitProjectSubPath(outProjectPath);
+		}
+
+		/// Default project name for a dependency: the selected subfolder's name, or the repository name for the root.
+		public static void GetGitProjectName(StringView repoURL, StringView projectSubPath, String outName)
+		{
+			outName.Clear();
+
+			if (!projectSubPath.IsEmpty)
+				Path.GetFileName(projectSubPath, outName);
+			else
+			{
+				String repoName = scope .(repoURL);
+				int queryIdx = repoName.IndexOf('?');
+				if (queryIdx != -1)
+					repoName.RemoveToEnd(queryIdx);
+				while (repoName.EndsWith('/'))
+					repoName.RemoveFromEnd(1);
+				Path.GetFileName(repoName, outName);
 			}
 		}
 

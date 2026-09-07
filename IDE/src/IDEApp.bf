@@ -3423,15 +3423,25 @@ namespace IDE
 			case .Git(let url, let ver):
 
 				var checkPath = scope String();
-				if (mPackMan.CheckLock(projectName, checkPath, var projectFailed))
+				String checkError = scope .();
+				if (mPackMan.CheckLock(projectName, url, checkPath, checkError, var projectFailed))
 				{
 					projectFilePath = scope:: String(checkPath);
 				}
 				else
 				{
-					if (mPackMan.GetWithVersion(projectName, url, ver) case .Err)
+					if (projectFailed)
 					{
-						Fail(scope $"Failed to initialize managed library support for project '{projectName}'");
+						Fail(checkError);
+						return .Err(.LoadFailed);
+					}
+					String versionError = scope .();
+					if (mPackMan.GetWithVersion(projectName, url, ver, versionError) case .Err)
+					{
+						if (!versionError.IsEmpty)
+							Fail(versionError);
+						else
+							Fail(scope $"Failed to initialize managed library support for project '{projectName}'");
 						return .Err(.NotFound);
 					}
 					isDeferredLoad = true;
