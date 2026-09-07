@@ -57,6 +57,44 @@ namespace Tests
 		    public int Member;
 		}
 
+		// A type reached only through an alias must still be populated before its size is
+		// read. These are referenced nowhere else in the suite: anything that populated
+		// them incidentally would hide a regression here.
+		struct SizedByAlias
+		{
+			public float a;
+			public float b;
+		}
+		typealias AliasSized = SizedByAlias;
+
+		struct SizedByAliasChain
+		{
+			public float a;
+			public float b;
+		}
+		typealias AliasChain0 = SizedByAliasChain;
+		typealias AliasChain1 = AliasChain0;
+
+		struct EmittedByAlias
+		{
+			[OnCompile(.TypeInit), Comptime]
+			static void Generate() => Compiler.EmitTypeBody(typeof(Self), "public float a; public float b;");
+		}
+		typealias AliasEmitted = EmittedByAlias;
+
+		[Test]
+		public static void TestAliasedTypeAttrs()
+		{
+			Test.Assert(sizeof(AliasSized) == 8);
+			Test.Assert(alignof(AliasSized) == 4);
+			Test.Assert(strideof(AliasSized) == 8);
+
+			Test.Assert(sizeof(AliasChain1) == 8);
+
+			Test.Assert(sizeof(AliasEmitted) == 8);
+			Test.Assert(offsetof(AliasEmitted, b) == 4);
+		}
+
 		[Test]
 		public static void TestBasics()
 		{

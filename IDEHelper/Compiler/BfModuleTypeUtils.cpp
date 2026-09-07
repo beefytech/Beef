@@ -10320,6 +10320,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 	if ((populateType != BfPopulateType_TypeDef) && (populateType != BfPopulateType_IdentityNoRemapAlias))
 	{
 		int aliasDepth = 0;
+		bool derefedAlias = false;
 		HashSet<BfType*> seenAliases;
 
 		while ((resolvedTypeRef != NULL) && (resolvedTypeRef->IsTypeAlias()))
@@ -10346,7 +10347,16 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 				typeInstance = resolvedTypeRef->ToTypeInstance();
 			else
 				typeInstance = NULL;
+			derefedAlias = true;
 		}
+
+		// The loop populates each alias and then steps to what that alias refers to, so
+		// the type we end up returning has only been populated incidentally. Apply the
+		// level the caller asked for. Without this, sizeof/alignof/strideof through an
+		// alias read an unpopulated type and fold to 0/1/0 with no error, unless
+		// something else in the program happened to populate that type first.
+		if ((derefedAlias) && (resolvedTypeRef != NULL) && (populateType > BfPopulateType_Identity))
+			PopulateType(resolvedTypeRef, populateType);
 	}
 
 	if (typeInstance != NULL)
