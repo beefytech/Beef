@@ -3204,7 +3204,7 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* path, BfpFileCreateK
 	}
 	else
 	{
-		creationDisposition = OPEN_EXISTING;
+		creationDisposition = ((createFlags & BfpFileCreateFlag_Truncate) != 0) ? TRUNCATE_EXISTING : OPEN_EXISTING;
 	}
 
 	DWORD attributes = 0;

@@ -622,6 +622,7 @@ namespace System.IO
 		// POSIX and Path.GetTempPath cannot be used from a test that has to pass there.
 		const String cCreatePath = "bf_filestream_create_truncate.tmp";
 		const String cTruncatePath = "bf_filestream_truncate_missing.tmp";
+		const String cUnbufferedTruncatePath = "bf_unbuffered_filestream_truncate_missing.tmp";
 
 		static void Write8(StringView path)
 		{
@@ -680,12 +681,43 @@ namespace System.IO
 			Write8(cTruncatePath);
 			{
 				FileStream fs = scope .();
+				Test.Assert(fs.Open(cTruncatePath, .Open, .Write) case .Ok);
+				Test.Assert(fs.Length == 8);
+			}
+			{
+				FileStream fs = scope .();
 				Test.Assert(fs.Open(cTruncatePath, .Truncate, .Write) case .Ok);
 				Test.Assert(fs.Length == 0);
 				fs.Close().IgnoreError();
 			}
 
 			File.Delete(cTruncatePath).IgnoreError();
+		}
+
+		[Test]
+		public static void UnbufferedTruncateRequiresAnExistingFile()
+		{
+			File.Delete(cUnbufferedTruncatePath).IgnoreError();
+
+			{
+				UnbufferedFileStream fs = scope .();
+				Test.Assert(fs.Open(cUnbufferedTruncatePath, .Truncate, .Write) case .Err);
+			}
+			Test.Assert(!File.Exists(cUnbufferedTruncatePath));
+
+			Write8(cUnbufferedTruncatePath);
+			{
+				UnbufferedFileStream fs = scope .();
+				Test.Assert(fs.Open(cUnbufferedTruncatePath, .Open, .Write) case .Ok);
+				Test.Assert(fs.Length == 8);
+			}
+			{
+				UnbufferedFileStream fs = scope .();
+				Test.Assert(fs.Open(cUnbufferedTruncatePath, .Truncate, .Write) case .Ok);
+				Test.Assert(fs.Length == 0);
+			}
+
+			File.Delete(cUnbufferedTruncatePath).IgnoreError();
 		}
 	}
 #endif
