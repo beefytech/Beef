@@ -11092,6 +11092,7 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetSymbolReferences(BfCompiler* bfC
 	outString.clear();
 	SetAndRestoreValue<BfResolvePassData*> prevCompilerResolvePassData(bfCompiler->mResolvePassData, resolvePassData);
 	SetAndRestoreValue<BfPassInstance*> prevPassInstance(bfCompiler->mPassInstance, bfPassInstance);
+	int localMethodStartIdx = bfCompiler->mContext->mLocalMethodGraveyard.mSize;
 	bfCompiler->GetSymbolReferences();
 
 	std::map<String, String*> sortedParserMap;
@@ -11107,6 +11108,10 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetSymbolReferences(BfCompiler* bfC
 			outString += "\n";
 		outString += parserData.first + "\t" + *(parserData.second);
 	}
+	// Reference searches process method bodies without running a full compile's cleanup.
+	// Retire their temporary local methods now, or each search can pin an old source AST.
+	// Leave pre-existing entries alone: they may belong to another compiler operation.
+	bfCompiler->mContext->CleanupLocalMethods(localMethodStartIdx);
 	return outString.c_str();
 }
 

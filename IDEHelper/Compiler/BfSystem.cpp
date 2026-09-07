@@ -4086,11 +4086,11 @@ void BfSystem::RemoveOldParsers()
 	{
 		auto bfParser = mParsers[i];
 
-		bool wantsDelete = false;
-
 		if (bfParser->mRefCount == 0)
 		{
-			if ((bfParser->mNextRevision != NULL) || (bfParser->mAwaitingDelete))
+			// Emitted parsers have no editor owner or revision chain. Once their type
+			// definitions are deleted, reclaim them just like obsolete file revisions.
+			if ((bfParser->mNextRevision != NULL) || (bfParser->mAwaitingDelete) || (bfParser->mIsEmitted))
 			{
 				if (bfParser->mNextRevision != NULL)
 					bfParser->mNextRevision->mPrevRevision = bfParser->mPrevRevision;

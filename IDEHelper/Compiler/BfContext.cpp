@@ -3476,6 +3476,50 @@ void BfContext::Finish()
 {
 }
 
+void BfContext::CleanupLocalMethods(int startIdx)
+{
+	BF_ASSERT((startIdx >= 0) && (startIdx <= mLocalMethodGraveyard.mSize));
+	Array<BfLocalMethod*> survivingLocalMethods;
+	for (int i = 0; i < startIdx; i++)
+		survivingLocalMethods.Add(mLocalMethodGraveyard[i]);
+
+	for (int i = startIdx; i < mLocalMethodGraveyard.mSize; i++)
+	{
+		auto localMethod = mLocalMethodGraveyard[i];
+		bool inCEMachine = false;
+		if (localMethod->mMethodInstanceGroup != NULL)
+		{
+			if ((localMethod->mMethodInstanceGroup->mDefault != NULL) && (localMethod->mMethodInstanceGroup->mDefault->mInCEMachine))
+				inCEMachine = true;
+			if (localMethod->mMethodInstanceGroup->mMethodSpecializationMap != NULL)
+			{
+				for (auto& kv : *localMethod->mMethodInstanceGroup->mMethodSpecializationMap)
+					if (kv.mValue->mInCEMachine)
+						inCEMachine = true;
+			}
+		}
+
+		if (inCEMachine)
+		{
+			localMethod->mMethodInstanceGroup->mOwner->mOwnedLocalMethods.Add(localMethod);
+		}
+		else if ((localMethod->mMethodInstanceGroup != NULL) && (localMethod->mMethodInstanceGroup->mRefCount > 0))
+		{
+			BfLogSysM("BfContext::CleanupLocalMethods surviving local method with refs %p\n", localMethod);
+			localMethod->Dispose();
+			survivingLocalMethods.push_back(localMethod);
+		}
+		else
+		{
+			// Live BfMethodRefTypes retain the group through mRefCount, including those
+			// used by pending specializations. Unrelated queued work must not retain
+			// every old local method (and its entire source parser).
+			delete localMethod;
+		}
+	}
+	mLocalMethodGraveyard = survivingLocalMethods;
+}
+
 void BfContext::Cleanup()
 {
 	BfLogSysM("BfContext::Cleanup() MethodWorkList: %d LocalMethodGraveyard: %d\n", mMethodWorkList.size(), mLocalMethodGraveyard.size());
@@ -3492,47 +3536,7 @@ void BfContext::Cleanup()
 		UpdateAfterDeletingTypes();
 	}
 
-	///
-	{
-		Array<BfLocalMethod*> survivingLocalMethods;
-
-		for (auto localMethod : mLocalMethodGraveyard)
-		{
-			bool inCEMachine = false;
-			if (localMethod->mMethodInstanceGroup != NULL)
-			{
-				if ((localMethod->mMethodInstanceGroup->mDefault != NULL) && (localMethod->mMethodInstanceGroup->mDefault->mInCEMachine))
-					inCEMachine = true;
-				if (localMethod->mMethodInstanceGroup->mMethodSpecializationMap != NULL)
-				{
-					for (auto& kv : *localMethod->mMethodInstanceGroup->mMethodSpecializationMap)
-						if (kv.mValue->mInCEMachine)
-							inCEMachine = true;
-				}
-			}
-
-			if (inCEMachine)
-			{
-				localMethod->mMethodInstanceGroup->mOwner->mOwnedLocalMethods.Add(localMethod);
-			}
-			else if ((localMethod->mMethodInstanceGroup != NULL) && (localMethod->mMethodInstanceGroup->mRefCount > 0))
-			{
-				BfLogSysM("BfContext::Cleanup surviving local method with refs %p\n", localMethod);
-				localMethod->Dispose();
-				survivingLocalMethods.push_back(localMethod);
-			}
-			else if (!mMethodWorkList.empty())
-			{
-				// We can't remove the local methods if they still may be referenced by a BfMethodRefType used to specialize a method
-				BfLogSysM("BfContext::Cleanup surviving local method %p\n", localMethod);
-				localMethod->Dispose();
-				survivingLocalMethods.push_back(localMethod);
-			}
-			else
-				delete localMethod;
-		}
-		mLocalMethodGraveyard = survivingLocalMethods;
-	}
+	CleanupLocalMethods();
 
 	// Clean up deleted BfTypes
 	// These need to get deleted before the modules because we access mModule in the MethodInstance dtors

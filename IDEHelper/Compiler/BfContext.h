@@ -516,6 +516,7 @@ public:
 	void MarkUsedModules(BfProject* project, BfModule* module);
 	void RemapObject();
 	void Finish();
+	void CleanupLocalMethods(int startIdx = 0);
 	void Cleanup();
 };
 
