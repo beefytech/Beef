@@ -315,6 +315,42 @@ namespace Tests
 		const String cTest1 = new String('A', 12);
 		const uint8[?] cTest0Binary = Compiler.ReadBinary("Test0.txt");
 
+		class MethodSource
+		{
+			public static void Alpha() { }
+			public static void Beta() { }
+		}
+
+		// TypeInstance.GetMethod(int) is overridden by an extension that reads the
+		// runtime method table, which does not exist at comptime. Without a comptime
+		// branch in that override every index answers NoResults for a type whose
+		// methods are all present, and Comptime_GetMethodCount still reports them.
+		struct ComptimeMethodLookup
+		{
+			[OnCompile(.TypeInit), Comptime]
+			static void Generate()
+			{
+				let source = (TypeInstance)typeof(MethodSource);
+
+				int found = 0;
+				int named = 0;
+				for (int i < 64)
+				{
+					if (source.GetMethod(i) case .Ok(let method))
+					{
+						found++;
+						if ((method.Name == "Alpha") || (method.Name == "Beta"))
+							named++;
+					}
+				}
+
+				Compiler.EmitTypeBody(typeof(Self), scope $"""
+					public const int cFound = {found};
+					public const int cNamed = {named};
+					""");
+			}
+		}
+
 		class ClassB<T> where T : const int
 		{
 			public typealias TA = comptype(GetVal(10, T));
@@ -635,6 +671,9 @@ namespace Tests
 			Test.Assert(cTest1 == "AAAAAAAAAAAA");
 			Test.Assert((Object)cTest1 == (Object)"AAAAAAAAAAAA");
 			Test.Assert((cTest0Binary[0] == (.)'T') && ((cTest0Binary.Count == 6) || (cTest0Binary.Count == 7)));
+
+			Test.Assert(ComptimeMethodLookup.cFound > 0);
+			Test.Assert(ComptimeMethodLookup.cNamed == 2);
 
 			ClassB<const 3>.TA f = default;
 			Test.Assert(typeof(decltype(f)) == typeof(float));
