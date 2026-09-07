@@ -767,9 +767,10 @@ namespace IDE
 						}
 					}
 
-					compilerExePath.Append(@"/upstream/emscripten/emcc.bat");
+					compilerExePath.Append(@"upstream/emscripten/emcc.exe");
 					//linkLine.Append(" c:\\Beef\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ALIASING_FUNCTION_POINTERS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1 -s \"EXPORTED_FUNCTIONS=['_BeefMain','_BeefDone','_pthread_mutexattr_init','_pthread_mutex_init','_emscripten_futex_wake','_calloc','_sbrk']\"");
-					linkLine.Append("-s DISABLE_EXCEPTION_CATCHING=0");
+					// BeefRT uses C++ runtime support even though the inputs are object files.
+					linkLine.Append("-s DEFAULT_TO_CXX=1 -s DISABLE_EXCEPTION_CATCHING=0");
 
 					if (project.mWasmOptions.mEnableThreads)
 						linkLine.Append(" -pthread");
