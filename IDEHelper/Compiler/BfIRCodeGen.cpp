@@ -366,6 +366,7 @@ BfIRCodeGen::BfIRCodeGen()
 	mDIBuilder = NULL;
 	mDICompileUnit = NULL;
 	mActiveFunction = NULL;
+	mContractFMulAdd = false;
 	mActiveFunctionType = NULL;
 
 	mLLVMContext = new llvm::LLVMContext();
@@ -2553,7 +2554,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, rhs);
 			CMD_PARAM(int8, overflowCheckKind);
 			if (lhs->getType()->isFloatingPointTy())
-				SetResult(curId, mIRBuilder->CreateFAdd(lhs, rhs));
+				SetResult(curId, CreateFAddSub(lhs, rhs, false));
 			else if ((overflowCheckKind & (BfOverflowCheckKind_Signed | BfOverflowCheckKind_Unsigned)) != 0)
 				SetResult(curId, DoCheckedIntrinsic(((overflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? llvm::Intrinsic::sadd_with_overflow : llvm::Intrinsic::uadd_with_overflow,
 					lhs, rhs, (overflowCheckKind & BfOverflowCheckKind_Flag_UseAsm) != 0));
@@ -2567,7 +2568,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, rhs);
 			CMD_PARAM(int8, overflowCheckKind);
 			if (lhs->getType()->isFloatingPointTy())
-				SetResult(curId, mIRBuilder->CreateFSub(lhs, rhs));
+				SetResult(curId, CreateFAddSub(lhs, rhs, true));
 			else if ((overflowCheckKind & (BfOverflowCheckKind_Signed | BfOverflowCheckKind_Unsigned)) != 0)
 				SetResult(curId, DoCheckedIntrinsic(((overflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? llvm::Intrinsic::ssub_with_overflow : llvm::Intrinsic::usub_with_overflow,
 					lhs, rhs, (overflowCheckKind & BfOverflowCheckKind_Flag_UseAsm) != 0));
@@ -3702,7 +3703,7 @@ void BfIRCodeGen::HandleNextCmd()
 								switch (intrinsicData->mIntrinsic)
 								{
 								case BfIRIntrinsic_Add:
-									result = mIRBuilder->CreateFAdd(val0, val1);
+									result = CreateFAddSub(val0, val1, false);
 									break;
 								case BfIRIntrinsic_Div:
 									result = mIRBuilder->CreateFDiv(val0, val1);
@@ -3732,7 +3733,7 @@ void BfIRCodeGen::HandleNextCmd()
 									result = mIRBuilder->CreateFCmpUNE(val0, val1);
 									break;
 								case BfIRIntrinsic_Sub:
-									result = mIRBuilder->CreateFSub(val0, val1);
+									result = CreateFAddSub(val0, val1, true);
 									break;
 								default:
 									FatalError("Intrinsic argument error");
@@ -5942,11 +5943,40 @@ void BfIRCodeGen::UpdateActiveFunctionMathFlags()
 {
 	auto options = GetFunctionOptions(mActiveFunction);
 	llvm::FastMathFlags flags;
-	if (options.mFloatingPointMode == BfFloatingPointMode_AllowFMA)
-		flags.setAllowContract();
-	else if (options.mFloatingPointMode == BfFloatingPointMode_Fast)
+	if (options.mFloatingPointMode == BfFloatingPointMode_Fast)
 		flags.setFast();
 	mIRBuilder->setFastMathFlags(flags);
+	mContractFMulAdd = options.mFloatingPointMode == BfFloatingPointMode_AllowFMA;
+}
+
+// Locals are lowered through allocas, so an fmul that is still a direct operand here came from the
+// same expression; anything that crossed a statement arrives as a load. The dead fmul is left for
+// DCE rather than erased: its result id may still be referenced by a later command.
+llvm::Value* BfIRCodeGen::CreateFAddSub(llvm::Value* lhs, llvm::Value* rhs, bool isSub)
+{
+	if (mContractFMulAdd)
+	{
+		auto fusableMul = [&](llvm::Value* value) -> llvm::Instruction*
+		{
+			auto inst = llvm::dyn_cast<llvm::Instruction>(value);
+			if ((inst == NULL) || (inst->getOpcode() != llvm::Instruction::FMul))
+				return NULL;
+			if ((!inst->use_empty()) || (inst->getParent() != mIRBuilder->GetInsertBlock()))
+				return NULL;
+			return inst;
+		};
+		auto emitFMulAdd = [&](llvm::Value* a, llvm::Value* b, llvm::Value* c) -> llvm::Value*
+		{
+			auto call = mIRBuilder->CreateIntrinsic(llvm::Intrinsic::fmuladd, { a->getType() }, { a, b, c });
+			call->copyFastMathFlags(mIRBuilder->getFastMathFlags());
+			return call;
+		};
+		if (auto mul = fusableMul(lhs))
+			return emitFMulAdd(mul->getOperand(0), mul->getOperand(1), isSub ? mIRBuilder->CreateFNeg(rhs) : rhs);
+		if (auto mul = fusableMul(rhs))
+			return emitFMulAdd(isSub ? mIRBuilder->CreateFNeg(mul->getOperand(0)) : mul->getOperand(0), mul->getOperand(1), lhs);
+	}
+	return isSub ? mIRBuilder->CreateFSub(lhs, rhs) : mIRBuilder->CreateFAdd(lhs, rhs);
 }
 
 BfSIMDSetting BfIRCodeGen::GetSimdTypeFromFunction(llvm::Function* function)

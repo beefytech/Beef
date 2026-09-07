@@ -135,6 +135,8 @@ public:
 	llvm::LLVMContext* mLLVMContext;
 	llvm::Module* mLLVMModule;
 	llvm::Function* mActiveFunction;
+	// AllowFMA: a*b +- c is fused only when the fmul is a direct operand, i.e. within one expression
+	bool mContractFMulAdd;
 	BfIRTypeEx* mActiveFunctionType;
 	llvm::IRBuilder<>* mIRBuilder;
 	llvm::AttributeList* mAttrSet;
@@ -288,6 +290,7 @@ public:
 	FunctionOptions GetFunctionOptions(llvm::Function* function);
 	void UpdateFunctionOptions(llvm::Function* function);
 	void UpdateActiveFunctionMathFlags();
+	llvm::Value* CreateFAddSub(llvm::Value* lhs, llvm::Value* rhs, bool isSub);
 	BfSIMDSetting GetSimdTypeFromFunction(llvm::Function* function);
 
 	BfIRTypedValue GetTypedValue(int streamId);

@@ -47,7 +47,7 @@ namespace IDE
 		public enum FloatingPointMode
 		{
 			Precise,
-			AllowFMA,
+			AllowFMA, // a*b +- c fuses only within one expression, never across statements (the C default)
 			Fast,
 		}
 
