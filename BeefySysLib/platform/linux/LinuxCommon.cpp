@@ -56,78 +56,76 @@ private:
                 BFP_ERRPRINTF("Failed to read inotify event data!\n");
                 return;
             }
-            int i = 0;
-            while(i < length)
+            int pos = 0;
+            while(pos < length)
             {
-                inotify_event* event = (inotify_event*) &mEventBuffer[i];
-                if(event->len != 0)
+                inotify_event* event = (inotify_event*) &mEventBuffer[pos];
+            	defer ( pos += sizeof(inotify_event) + event->len );
+                if(event->len == 0)
+					continue;
+
+                BfpFileWatcher* w;
+                SubdirInfo* subdir;
                 {
-                    BfpFileWatcher* w;
-                    SubdirInfo* subdir;
-                    {
-                        AutoCrit autoCrit(mCritSect);
-                        if (!mWatchers.TryGetValue(event->wd, &w))
-                            continue;
-                        if (!mSubdirs.TryGetValue(event->wd, &subdir))
-                            subdir = NULL;
-                    }
-
-                    bool handleDir = (event->mask & IN_ISDIR) && (w->mFlags & BfpFileWatcherFlag_IncludeSubdirectories);
-
-                    if (GetRelativePath(pathBuffer, sizeof(pathBuffer), event->name, event->len, w, subdir) == 0)
-                    {
-                        // our buffer was too small, we can't handle this event
-                        i += sizeof(inotify_event) + event->len;
+                    AutoCrit autoCrit(mCritSect);
+                    if (!mWatchers.TryGetValue(event->wd, &w))
                         continue;
+                    if (!mSubdirs.TryGetValue(event->wd, &subdir))
+                        subdir = NULL;
+                }
+
+                bool handleDir = (event->mask & IN_ISDIR) && (w->mFlags & BfpFileWatcherFlag_IncludeSubdirectories);
+
+                if (GetRelativePath(pathBuffer, sizeof(pathBuffer), event->name, event->len, w, subdir) == 0)
+                {
+                    // our buffer was too small, we can't handle this event
+                    continue;
+                }
+
+                if (event->mask & IN_MOVED_FROM)
+                {
+                    unhandledEvents.Add(event);
+                }
+                if ((event->mask & IN_MOVED_TO))
+                {
+                    bool handled = false;
+                    for (int i = 0; i < unhandledEvents.size(); i++)
+                    {
+                        // Only handle as rename if src and dst directory is the same
+                        if ((event->cookie == unhandledEvents[i]->cookie) && (event->wd == unhandledEvents[i]->wd))
+                        {
+                            char renameBuffer[PATH_MAX];
+                            if (GetRelativePath(renameBuffer, sizeof(renameBuffer), unhandledEvents[i]->name, unhandledEvents[i]->len, w, subdir) == 0)
+                            {
+                               break;
+                            }
+                            w->mDirectoryChangeFunc(w, w->mUserData, BfpFileChangeKind_Renamed, w->mPath.c_str(), renameBuffer, pathBuffer);
+                            unhandledEvents.RemoveAtFast(i);
+                            handled = true;
+                            break;
+                        }
                     }
 
-                    if (event->mask & IN_MOVED_FROM)
+                    if (!handled)
                     {
                         unhandledEvents.Add(event);
                     }
-                    if ((event->mask & IN_MOVED_TO))
-                    {
-                        bool handled = false;
-                        for (int i = 0; i < unhandledEvents.size(); i++)
-                        {
-                            // Only handle as rename if src and dst directory is the same
-                            if ((event->cookie == unhandledEvents[i]->cookie) && (event->wd == unhandledEvents[i]->wd))
-                            {
-                                char renameBuffer[PATH_MAX];
-                                if (GetRelativePath(renameBuffer, sizeof(renameBuffer), unhandledEvents[i]->name, unhandledEvents[i]->len, w, subdir) == 0)
-                                {
-                                   break;
-                                }
-                                w->mDirectoryChangeFunc(w, w->mUserData, BfpFileChangeKind_Renamed, w->mPath.c_str(), renameBuffer, pathBuffer);
-                                unhandledEvents.RemoveAtFast(i);
-                                handled = true;
-                                break;
-                            }
-                        }
-
-                        if (!handled)
-                        {
-                            unhandledEvents.Add(event);
-                        }
-                    }
-
-                    if (event->mask & IN_CREATE)
-                    {
-                        w->mDirectoryChangeFunc(w, w->mUserData, BfpFileChangeKind_Added, w->mPath.c_str(), pathBuffer, NULL);
-                        HandleDirAdd(event, w, subdir, false);
-                    }
-                    if (event->mask & IN_DELETE)
-                    {
-                        w->mDirectoryChangeFunc(w, w->mUserData, BfpFileChangeKind_Removed, w->mPath.c_str(), pathBuffer, NULL);
-                        HandleDirRemove(event, w, subdir);
-                    }
-                    if ((event->mask & IN_CLOSE_WRITE) || (event->mask & IN_ATTRIB))
-                    {
-                        w->mDirectoryChangeFunc(w, w->mUserData, BfpFileChangeKind_Modified, w->mPath.c_str(), pathBuffer, NULL);
-                    }
-
                 }
-                i += sizeof(inotify_event) + event->len;
+
+                if (event->mask & IN_CREATE)
+                {
+                    w->mDirectoryChangeFunc(w, w->mUserData, BfpFileChangeKind_Added, w->mPath.c_str(), pathBuffer, NULL);
+                    HandleDirAdd(event, w, subdir, false);
+                }
+                if (event->mask & IN_DELETE)
+                {
+                    w->mDirectoryChangeFunc(w, w->mUserData, BfpFileChangeKind_Removed, w->mPath.c_str(), pathBuffer, NULL);
+                    HandleDirRemove(event, w, subdir);
+                }
+                if ((event->mask & IN_CLOSE_WRITE) || (event->mask & IN_ATTRIB))
+                {
+                    w->mDirectoryChangeFunc(w, w->mUserData, BfpFileChangeKind_Modified, w->mPath.c_str(), pathBuffer, NULL);
+                }
             }
             for (auto event : unhandledEvents)
             {
