@@ -405,12 +405,13 @@ namespace System.IO
 				createKind = .CreateIfNotExists;
 			case .Create:
 				createKind = .CreateAlways;
+				createFlags |= .Truncate;
 			case .Open:
 				createKind = .OpenExisting;
 			case .OpenOrCreate:
 				createKind = .OpenAlways;
 			case .Truncate:
-				createKind = .CreateAlways;
+				createKind = .OpenExisting;
 				createFlags |= .Truncate;
 			case .Append:
 				createKind = .CreateAlways;
@@ -613,4 +614,79 @@ namespace System.IO
 	{
 
 	}
+
+#if TEST
+	class FileStreamTests
+	{
+		// Working-directory relative names, because BfpFile_GetTempPath is NOT_IMPL on
+		// POSIX and Path.GetTempPath cannot be used from a test that has to pass there.
+		const String cCreatePath = "bf_filestream_create_truncate.tmp";
+		const String cTruncatePath = "bf_filestream_truncate_missing.tmp";
+
+		static void Write8(StringView path)
+		{
+			FileStream fs = scope .();
+			Test.Assert(fs.Open(path, .Create, .Write) case .Ok);
+			uint8[8] eight = default;
+			Test.Assert(fs.TryWrite(.(&eight[0], 8)) case .Ok);
+			fs.Close().IgnoreError();
+		}
+
+		// FileStream derives from BufferedFileStream, which carries its own copy of the
+		// FileMode mapping. When that copy drops the Truncate flag for FileMode.Create,
+		// reopening an existing file keeps the old contents, so a shorter write leaves the
+		// tail of the previous one behind.
+		[Test]
+		public static void CreateTruncatesAnExistingFile()
+		{
+			File.Delete(cCreatePath).IgnoreError();
+			Write8(cCreatePath);
+
+			// Reopening with Create must present an empty file.
+			{
+				FileStream fs = scope .();
+				Test.Assert(fs.Open(cCreatePath, .Create, .Write) case .Ok);
+				Test.Assert(fs.Length == 0);
+				uint8[2] two = .(1, 2);
+				Test.Assert(fs.TryWrite(.(&two[0], 2)) case .Ok);
+				fs.Close().IgnoreError();
+			}
+
+			// And nothing of the longer write survives the shorter one.
+			{
+				FileStream fs = scope .();
+				Test.Assert(fs.Open(cCreatePath, .Open, .Read) case .Ok);
+				Test.Assert(fs.Length == 2);
+				fs.Close().IgnoreError();
+			}
+
+			File.Delete(cCreatePath).IgnoreError();
+		}
+
+		// Truncate is documented to fail when the file does not exist, which is what
+		// separates it from Create. The buffered mapping had it as CreateAlways.
+		[Test]
+		public static void TruncateRequiresAnExistingFile()
+		{
+			File.Delete(cTruncatePath).IgnoreError();
+
+			{
+				FileStream fs = scope .();
+				Test.Assert(fs.Open(cTruncatePath, .Truncate, .Write) case .Err);
+			}
+			Test.Assert(!File.Exists(cTruncatePath));
+
+			// On a file that does exist it empties it.
+			Write8(cTruncatePath);
+			{
+				FileStream fs = scope .();
+				Test.Assert(fs.Open(cTruncatePath, .Truncate, .Write) case .Ok);
+				Test.Assert(fs.Length == 0);
+				fs.Close().IgnoreError();
+			}
+
+			File.Delete(cTruncatePath).IgnoreError();
+		}
+	}
+#endif
 }
