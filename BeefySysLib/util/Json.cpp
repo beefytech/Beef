@@ -62,7 +62,14 @@ Json::~Json()
 	if (!(mType&Type_IsReference) && mChild) delete mChild;
 	if (!(mType&Type_IsReference) && mValueString) Json::free(mValueString);
 	if (mName) Json::free(mName);	
-	delete mNext;
+	// Array length must not become destructor recursion depth.
+	while (mNext != NULL)
+	{
+		auto next = mNext;
+		mNext = next->mNext;
+		next->mNext = NULL;
+		delete next;
+	}
 }
 
 void Json::InitHooks(Json::Hooks* hooks)
