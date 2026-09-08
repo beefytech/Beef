@@ -228,6 +228,13 @@ BF_EXPORT const char* BF_CALLTYPE ModelDef_GetTexPaths(ModelDef* modelDef, int m
 	return outString.c_str();
 }
 
+BF_EXPORT const char* BF_CALLTYPE ModelDef_GetMaterialName(ModelDef* modelDef, int meshIdx, int primitivesIdx)
+{
+	String& outString = *gModelDef_TLStrReturn.Get();
+	outString = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx].mMaterialName;
+	return outString.c_str();
+}
+
 BF_EXPORT void BF_CALLTYPE ModelDef_SetExternalTextures(ModelDef* modelDef, int externalTextures)
 {
 	modelDef->mExternalTextures = externalTextures != 0;
@@ -587,6 +594,24 @@ BF_EXPORT int BF_CALLTYPE ModelDef_MeasureFit(ModelDef* modelDef, const Matrix4*
 		outFractions[i] = (total > 0) ? (float)counts[i] / total : 0;
 	*outMeanAbs = (total > 0) ? (float)(sumAbs / total) : 0;
 	return total;
+}
+
+// A primitive's vertices and indices as stored (bind-pose local for skinned meshes) -- the engine
+// uploads unskinned ones once as shared static meshes and instances them.
+BF_EXPORT int BF_CALLTYPE ModelDef_GetPrimitiveMesh(ModelDef* modelDef, int meshIdx, int primitivesIdx,
+	ModelVertex** outVertices, int* outVertexCount, uint16** outIndices, int* outIndexCount)
+{
+	if ((meshIdx < 0) || (meshIdx >= (int)modelDef->mMeshes.size()))
+		return 0;
+	auto& mesh = modelDef->mMeshes[meshIdx];
+	if ((primitivesIdx < 0) || (primitivesIdx >= (int)mesh.mPrimitives.size()))
+		return 0;
+	auto& prims = mesh.mPrimitives[primitivesIdx];
+	*outVertices = prims.mVertices.mVals;
+	*outVertexCount = (int)prims.mVertices.size();
+	*outIndices = prims.mIndices.mVals;
+	*outIndexCount = (int)prims.mIndices.size();
+	return 1;
 }
 
 BF_EXPORT int BF_CALLTYPE ModelDef_GetVertexCount(ModelDef* modelDef)

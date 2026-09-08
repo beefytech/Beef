@@ -149,6 +149,8 @@ public:
 	Array<uint16> mIndices;
 	ModelMaterialInstance* mMaterial;
 	Array<String> mTexPaths;
+	// The source file's material name for this primitive (empty when it had none).
+	String mMaterialName;
 	// Engine-injected textures (see ModelDef_SetTexture), used in place of path loading when the
 	// def's mExternalTextures is set. Borrowed pointers -- the injector keeps them alive; instances
 	// AddRef what they copy.

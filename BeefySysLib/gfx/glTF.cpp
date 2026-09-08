@@ -3,6 +3,7 @@
 #include "util/Json.h"
 #include "gfx/RenderDevice.h"
 #include "BFApp.h"
+#include "GLBReader.h"
 
 USING_NS_BF;
 
@@ -612,6 +613,8 @@ bool GLTFReader::LoadModelProps(const StringImpl& propsPath)
 
 bool GLTFReader::ReadFile(const StringImpl& filePath, const StringImpl& rootDir)
 {
+	if (filePath.EndsWith(".glb", StringImpl::CompareKind_OrdinalIgnoreCase))
+		return GLBReader(mModelDef).Read(filePath);
 	String basePathName;
 	int dotPos = (int)filePath.LastIndexOf('.');
 	if (dotPos > 0)
