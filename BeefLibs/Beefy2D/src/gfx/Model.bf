@@ -156,6 +156,9 @@ namespace Beefy.gfx
         extern static char8* ModelDef_GetTexPaths(void* nativeModel, int32 meshIdx, int32 primitivesIdx);
 
         [CallingConvention(.Stdcall), CLink]
+        extern static char8* ModelDef_GetMaterialName(void* nativeModel, int32 meshIdx, int32 primitivesIdx);
+
+        [CallingConvention(.Stdcall), CLink]
         extern static void ModelDef_SetExternalTextures(void* nativeModel, int32 externalTextures);
 
         [CallingConvention(.Stdcall), CLink]
@@ -197,7 +200,7 @@ namespace Beefy.gfx
         public static ModelDef LoadModel(String fileName, String baseDir)
         {
 			void* nativeModelDef = null;
-			if (fileName.EndsWith(".gltf", .OrdinalIgnoreCase))
+			if ((fileName.EndsWith(".gltf", .OrdinalIgnoreCase)) || (fileName.EndsWith(".glb", .OrdinalIgnoreCase)))
 				nativeModelDef = Res_OpenGLTF(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
 			else if (fileName.EndsWith(".fbx", .OrdinalIgnoreCase))
             	nativeModelDef = Res_OpenFBX(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
@@ -265,6 +268,12 @@ namespace Beefy.gfx
 		public void GetTexPaths(int32 meshIdx, int32 primitivesIdx, String outPaths)
 		{
 			outPaths.Append(ModelDef_GetTexPaths(mNativeModelDef, meshIdx, primitivesIdx));
+		}
+
+		// The source file's material name for the primitive (may be empty).
+		public void GetMaterialName(int32 meshIdx, int32 primitivesIdx, String outName)
+		{
+			outName.Append(ModelDef_GetMaterialName(mNativeModelDef, meshIdx, primitivesIdx));
 		}
 
 		// With external textures on, instances use only textures injected via SetTexture -- the

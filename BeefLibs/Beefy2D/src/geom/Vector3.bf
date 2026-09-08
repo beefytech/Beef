@@ -87,6 +87,7 @@ namespace Beefy.geom
 
         public float Length
         {
+            [Inline]
             get
             {
                 return (float)Math.Sqrt(mX * mX + mY * mY + mZ * mZ);
@@ -95,6 +96,7 @@ namespace Beefy.geom
 
         public float LengthSquared
         {
+            [Inline]
             get
             {
                 return mX * mX + mY * mY + mZ * mZ;
@@ -103,6 +105,7 @@ namespace Beefy.geom
 
 		public Vector2 XY => .(mX, mY);
 
+        [Inline]
         public this(float x, float y, float z)
         {
             mX = x;
@@ -132,6 +135,7 @@ namespace Beefy.geom
         }*/
         
 
+        [Inline]
         public static Vector3 Normalize(Vector3 vector)
         {
 			Vector3 newVec;
@@ -139,6 +143,7 @@ namespace Beefy.geom
             return newVec;
         }
 
+        [Inline]
         public static void Normalize(Vector3 value, out Vector3 result)
         {
             float factor= Distance(value, sZero);
@@ -148,11 +153,13 @@ namespace Beefy.geom
             result.mZ = value.mZ * factor;
         }
 
+        [Inline]
         public static float Dot(Vector3 vec1, Vector3 vec2)
         {
             return vec1.mX * vec2.mX + vec1.mY * vec2.mY + vec1.mZ * vec2.mZ;
         }
 
+        [Inline]
         public static Vector3 Cross(Vector3 vector1, Vector3 vector2)
         {
             return Vector3(vector1.mY * vector2.mZ - vector2.mY * vector1.mZ,
@@ -160,6 +167,7 @@ namespace Beefy.geom
                                  vector1.mX * vector2.mY - vector2.mX * vector1.mY);
         }
 
+        [Inline]
         public static float DistanceSquared(Vector3 value1, Vector3 value2)
         {
             return (value1.mX - value2.mX) * (value1.mX - value2.mX) +
@@ -167,6 +175,7 @@ namespace Beefy.geom
                      (value1.mZ - value2.mZ) * (value1.mZ - value2.mZ);
         }
 
+        [Inline]
         public static float Distance(Vector3 vector1, Vector3 vector2)
         {
             float result = DistanceSquared(vector1, vector2);
@@ -178,6 +187,7 @@ namespace Beefy.geom
             return new Vector2D((float)Math.Cos(angle) * length, (float)Math.Sin(angle) * length);
         }*/
 
+        [Inline]
         public static Vector3 TransformW(Vector3 vec, Matrix4 matrix)
         {
 			Vector3 result;
@@ -190,6 +200,7 @@ namespace Beefy.geom
 			return result;
         }
 
+		[Inline]
 		public static Vector3 Transform(Vector3 vec, Matrix4 matrix)
 		{
 			Vector3 result;
@@ -220,6 +231,7 @@ namespace Beefy.geom
 		/// </summary>
 		/// <param name="value">The vector to negate.</param>
 		/// <returns>The vector negation of <paramref name="value"/>.</returns>
+		[Inline]
 		public static Vector3 Negate(Vector3 value)
 		{
 		    return .(-value.mX, -value.mY, -value.mZ);
@@ -231,6 +243,7 @@ namespace Beefy.geom
 		/// </summary>
 		/// <param name="value">The vector to negate.</param>
 		/// <param name="result">The vector that the negation of <paramref name="value"/> will be stored in.</param>
+		[Inline]
 		public static void Negate(Vector3 value, out Vector3 result)
 		{
 		    result.mX = -value.mX;
@@ -244,16 +257,19 @@ namespace Beefy.geom
 		/// <param name="value1">Source <see cref="Vector3"/>.</param>
 		/// <param name="value2">Source <see cref="Vector3"/>.</param>
 		/// <returns>The result of the vector multiplication.</returns>
+		[Inline]
 		public static Vector3 Multiply(Vector3 value1, Vector3 value2)
 		{
 			return .(value1.mX * value2.mX, value1.mY * value2.mY, value1.mZ * value2.mZ);
 		}
 
+		[Inline]
 		public static Vector3 Multiply(Vector3 value1, float value2)
 		{
 			return .(value1.mX * value2, value1.mY * value2, value1.mZ * value2);
 		}
 
+		[Inline]
 		public void Normalize() mut
 		{
 		    Normalize(this, out this);
@@ -265,6 +281,7 @@ namespace Beefy.geom
             return Transform(vec, matrix);
         }
 
+        [Inline]
         public static Vector3 TransformNormal(Vector3 normal, Matrix4 matrix)
         {
             return Vector3((normal.mX * matrix.m00) + (normal.mY * matrix.m01) + (normal.mZ * matrix.m02),
@@ -272,6 +289,7 @@ namespace Beefy.geom
                                  (normal.mX * matrix.m20) + (normal.mY * matrix.m21) + (normal.mZ * matrix.m22));
         }
 
+        [Inline]
         public static bool operator ==(Vector3 value1, Vector3 value2)
         {
             return (value1.mX == value2.mX) &&
@@ -279,26 +297,31 @@ namespace Beefy.geom
                 (value1.mZ == value2.mZ);
         }
 
+        [Inline]
         public static bool operator !=(Vector3 value1, Vector3 value2)
         {
             return !(value1 == value2);
         }
 
+        [Inline]
         public static Vector3 operator +(Vector3 vec1, Vector3 vec2)
         {
             return Vector3(vec1.mX + vec2.mX, vec1.mY + vec2.mY, vec1.mZ + vec2.mZ);
         }        
 
+        [Inline]
         public static Vector3 operator -(Vector3 vec1, Vector3 vec2)
         {
             return Vector3(vec1.mX - vec2.mX, vec1.mY - vec2.mY, vec1.mZ - vec2.mZ);
         }
 
+		[Inline]
 		public static Vector3 operator -(Vector3 vec1)
 		{
 		    return Vector3(-vec1.mX, -vec1.mY, -vec1.mZ);
 		}
 
+        [Inline]
         public static Vector3 operator *(Vector3 vec, float scale)
         {
             return Vector3(vec.mX * scale, vec.mY * scale, vec.mZ * scale);

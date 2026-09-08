@@ -29,11 +29,13 @@ namespace Beefy.geom
 		public Vector3 Normal;
 		public float D;
 
+		[Inline]
 		public this(Vector4 value)
 			: this(Vector3(value.mX, value.mY, value.mZ), value.mW)
 		{
 		}
 
+		[Inline]
 		public this(Vector3 normal, float d)
 		{
 			Normal = normal;
@@ -50,12 +52,14 @@ namespace Beefy.geom
 			D = -(Vector3.Dot(Normal, a));
 		}
 
+		[Inline]
 		public this(float a, float b, float c, float d)
 			: this(Vector3(a, b, c), d)
 		{
 
 		}
 
+		[Inline]
 		public float Dot(Vector4 value)
 		{
 			return (
@@ -66,6 +70,7 @@ namespace Beefy.geom
 			);
 		}
 
+		[Inline]
 		public void Dot(ref Vector4 value, out float result)
 		{
 			result = (
@@ -76,6 +81,7 @@ namespace Beefy.geom
 			);
 		}
 
+		[Inline]
 		public float DotCoordinate(Vector3 value)
 		{
 			return (
@@ -86,6 +92,7 @@ namespace Beefy.geom
 			);
 		}
 
+		[Inline]
 		public void DotCoordinate(ref Vector3 value, out float result)
 		{
 			result = (
@@ -96,6 +103,7 @@ namespace Beefy.geom
 			);
 		}
 
+		[Inline]
 		public float DotNormal(Vector3 value)
 		{
 			return (
@@ -105,6 +113,7 @@ namespace Beefy.geom
 			);
 		}
 
+		[Inline]
 		public void DotNormal(Vector3 value, out float result)
 		{
 			result = (
@@ -114,6 +123,7 @@ namespace Beefy.geom
 			);
 		}
 
+		[Inline]
 		public void Normalize() mut
 		{
 			float length = Normal.Length;
@@ -170,6 +180,7 @@ namespace Beefy.geom
 
 		#region Public Static Methods
 
+		[Inline]
 		public static Plane Normalize(Plane value)
 		{
 			Plane ret;
@@ -177,6 +188,7 @@ namespace Beefy.geom
 			return ret;
 		}
 
+		[Inline]
 		public static void Normalize(Plane value, out Plane result)
 		{
 			float length = value.Normal.Length;

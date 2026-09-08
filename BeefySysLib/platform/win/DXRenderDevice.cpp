@@ -2252,6 +2252,10 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 				}
 			}
 
+			// Untextured materials still need the neutral albedo sampler.
+			if (dxPrimitives->mTextures.IsEmpty())
+				dxPrimitives->mTextures.Add((DXTexture*)((RenderDevice*)this)->LoadTexture("!white", TextureFlag_NoPremult | TextureFlag_Srgb));
+
 			dxPrimitives->mNumIndices = (int)primitives->mIndices.size();
 			dxPrimitives->mNumVertices = (int)primitives->mVertices.size();
 
@@ -2704,8 +2708,7 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 				destVtx->mTangent = Vector3::Normalize(tangent);
 				destVtx->mTexCoords = srcVtxData->mTexCoords;
 				destVtx->mBumpTexCoords = srcVtxData->mBumpTexCoords;
-				// White, keeping the definition's alpha (a per-vertex flag for the IDE's fit view).
-				destVtx->mColor = (srcVtxData->mColor & 0xFF000000) | 0x00FFFFFF;
+				destVtx->mColor = srcVtxData->mColor;
 				destVtx->mInstanceIdx = 0;
 			}
 
@@ -3716,6 +3719,8 @@ void DXRenderDevice::FrameStart()
 
 void DXRenderDevice::FrameEnd()
 {
+	if (gBFApp->mUnthrottledRendering)
+		mD3DDeviceContext->Flush();
 	for (int renderWindowIdx = 0; renderWindowIdx < (int)mRenderWindowList.size(); renderWindowIdx++)
 	{
 		RenderWindow* aRenderWindow = mRenderWindowList[renderWindowIdx];

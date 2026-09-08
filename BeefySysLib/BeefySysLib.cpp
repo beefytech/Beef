@@ -219,6 +219,11 @@ BF_EXPORT void BF_CALLTYPE BFApp_SetDrawEnabled(int enabled)
 	gBFApp->mDrawEnabled = enabled != 0;
 }
 
+BF_EXPORT void BF_CALLTYPE BFApp_SetUnthrottledRendering(int enabled)
+{
+	gBFApp->mUnthrottledRendering = enabled != 0;
+}
+
 BF_EXPORT void BF_CALLTYPE BFApp_SetRefreshRate(int rate)
 {
 	gBFApp->mRefreshRate = (float) rate;

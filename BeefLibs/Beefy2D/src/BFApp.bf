@@ -108,6 +108,9 @@ namespace Beefy
         public static extern void BFApp_SetDrawEnabled(int32 enabled);
 
         [CallingConvention(.Stdcall), CLink]
+        public static extern void BFApp_SetUnthrottledRendering(int32 enabled);
+
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_Init();
 
         [CallingConvention(.Stdcall), CLink]
