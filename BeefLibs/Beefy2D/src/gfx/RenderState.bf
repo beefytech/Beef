@@ -19,10 +19,13 @@ namespace Beefy.gfx
         Always
     }
 
+	// Ordinal order must match the native Topology3D enum (RenderDevice.h) exactly. PointList draws
+	// non-indexed, so a shared vertex rasterizes once rather than once per triangle.
 	public enum Topology
 	{
 		TriangleList,
-		LineList
+		LineList,
+		PointList
 	}
 
 	// Ordinal order must match the native CullMode enum (RenderDevice.h) exactly -- cast straight

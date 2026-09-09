@@ -232,6 +232,8 @@ public:
 	virtual void			SetComputeTexture(int slot, Texture* texture) override;
 	virtual void			SetComputeUAV(int slot, Texture* texture, int mipLevel) override;
 	virtual void			Dispatch(ComputeShader* shader, int groupsX, int groupsY, int groupsZ) override;
+	virtual void			SetPixelUAV(int slot, Texture* texture) override;
+	virtual void			ClearBufferUint(Texture* buffer, uint32 value) override;
 	virtual void			SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size) override;
 	virtual void			SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* constData, int size, int* typeData, int typeCount) override;
 	virtual void			DrawStaticMeshInstanced(StaticMesh* mesh, int instBase, int instCount) override;
@@ -448,6 +450,28 @@ public:
 	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
 };
 
+// Rebinds the current render targets with a pixel-stage UAV attached (see
+// DXRenderDevice::BindRenderTargets); a NULL texture drops it again.
+class DXSetPixelUAVCmd : public RenderCmd
+{
+public:
+	int mSlot;
+	DXTexture* mTexture;
+
+public:
+	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
+};
+
+class DXClearUAVCmd : public RenderCmd
+{
+public:
+	DXTexture* mTexture;
+	uint32 mValue;
+
+public:
+	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
+};
+
 class DXDispatchCmd : public RenderCmd
 {
 public:
@@ -532,8 +556,13 @@ public:
 	// Compute slots bound since the last dispatch (bit per slot); the dispatch unbinds them.
 	uint32					mCSBoundSRVs;
 	uint32					mCSBoundUAVs;
+	// Pixel-stage UAV, re-attached by every render-target bind until it is dropped again.
+	ID3D11UnorderedAccessView* mCurPSUAV;
+	int						mCurPSUAVSlot;
 
 public:
+	// The one place render targets reach the device: attaches mCurPSUAV when one is set.
+	void					BindRenderTargets(int rtvCount, ID3D11RenderTargetView* const* rtvs, ID3D11DepthStencilView* dsv);
 	virtual void			PhysSetRenderState(RenderState* renderState) override;
 	virtual void			PhysSetRenderWindow(RenderWindow* renderWindow);
 	virtual void			PhysSetRenderTarget(Texture* renderTarget) override;

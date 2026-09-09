@@ -655,6 +655,10 @@ bool DXShader::Load()
 	if ((mShaderFlags & ShaderFlags_NoOptimization) != 0)
 		compileFlags |= D3D10_SHADER_SKIP_OPTIMIZATION;
 
+	bool sm5 = (mShaderFlags & ShaderFlags_ShaderModel5) != 0;
+	String vsProfile = sm5 ? "vs_5_0" : "vs_4_0";
+	String psProfile = sm5 ? "ps_5_0" : "ps_4_0";
+
 	ID3D10Blob* vertexShaderBuffer = NULL;
 	ID3D10Blob* pixelShaderBuffer = NULL;
 
@@ -678,15 +682,15 @@ bool DXShader::Load()
 		else
 		{
 			Span<uint8> span((uint8*)memPtr, memSize);
-			if (LoadDXShader(span, "VS", "vs_4_0", &vertexShaderBuffer, &mCompileError, compileFlags))
-				LoadDXShader(span, "PS", "ps_4_0", &pixelShaderBuffer, &mCompileError, compileFlags);
+			if (LoadDXShader(span, "VS", vsProfile, &vertexShaderBuffer, &mCompileError, compileFlags))
+				LoadDXShader(span, "PS", psProfile, &pixelShaderBuffer, &mCompileError, compileFlags);
 		}
 	}
 	else
 	{
 		String fxPath = mSrcPath + ".fx";
-		if (LoadDXShader(fxPath, String("VS") + mEntrySuffix, "vs_4_0", &vertexShaderBuffer, &mCompileError, compileFlags))
-			LoadDXShader(fxPath, String("PS") + mEntrySuffix, "ps_4_0", &pixelShaderBuffer, &mCompileError, compileFlags);
+		if (LoadDXShader(fxPath, String("VS") + mEntrySuffix, vsProfile, &vertexShaderBuffer, &mCompileError, compileFlags))
+			LoadDXShader(fxPath, String("PS") + mEntrySuffix, psProfile, &pixelShaderBuffer, &mCompileError, compileFlags);
 	}
 
 	if ((vertexShaderBuffer == NULL) || (pixelShaderBuffer == NULL))
@@ -1078,7 +1082,7 @@ void DXTexture::PhysSetAsTarget()
 			rtvs[1] = ((DXTexture*)mSecondaryTarget)->mD3DRenderTargetView;
 			rtvCount = 2;
 		}
-		mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(rtvCount, rtvs, mD3DDepthStencilView);
+		mRenderDevice->BindRenderTargets(rtvCount, rtvs, mD3DDepthStencilView);
 		mRenderDevice->mD3DDeviceContext->RSSetViewports(1, &viewPort);
 	}
 
@@ -1680,7 +1684,12 @@ void DXDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 	UINT offset = vtxOffset;
 	aRenderDevice->mD3DDeviceContext->IASetVertexBuffers(0, 1, &aRenderDevice->mD3DVertexBuffer, &stride, &offset);
 	aRenderDevice->mD3DDeviceContext->IASetIndexBuffer(aRenderDevice->mD3DIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
-	aRenderDevice->mD3DDeviceContext->DrawIndexed(mIdxIdx, idxByteStart / sizeof(uint16), vtxStartIdx/*vtxByteStart / mVtxSize*/);
+	// Points go non-indexed: through the index buffer a shared vertex would rasterize once per
+	// triangle that uses it, which is not a vertex count.
+	if (mRenderState->mTopology == Topology3D_PointList)
+		aRenderDevice->mD3DDeviceContext->Draw(mVtxIdx, vtxStartIdx);
+	else
+		aRenderDevice->mD3DDeviceContext->DrawIndexed(mIdxIdx, idxByteStart / sizeof(uint16), vtxStartIdx/*vtxByteStart / mVtxSize*/);
 }
 
 DXStaticMesh::DXStaticMesh()
@@ -1817,7 +1826,11 @@ void DXStaticMeshDrawCmd::Render(RenderDevice* renderDevice, RenderWindow* rende
 	UINT offsets[2] = { 0, (UINT)(mInstBase * sizeof(float)) };
 	ctx->IASetVertexBuffers(0, 2, bufs, strides, offsets);
 	ctx->IASetIndexBuffer(mMesh->mD3DIndexBuffer, mMesh->mIdx32 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, 0);
-	ctx->DrawIndexedInstanced(mMesh->mIdxCount, mInstCount, 0, 0, 0);
+	// See DXDrawBatch::Render: points are drawn straight over the vertex range, not through indices.
+	if (mRenderState->mTopology == Topology3D_PointList)
+		ctx->DrawInstanced(mMesh->mVtxCount, mInstCount, 0, 0);
+	else
+		ctx->DrawIndexedInstanced(mMesh->mIdxCount, mInstCount, 0, 0, 0);
 	// PhysSetRenderState only sets the layout on a shader change, so put the batch layout back for the
 	// dynamic batches that follow under this same render state.
 	ctx->IASetInputLayout(shader->mD3DLayout);
@@ -1854,6 +1867,20 @@ RenderCmd* Beefy::DXDrawLayer::CreateSetTextureCmd(int textureIdx, Texture* text
 	return setTextureCmd;
 }
 
+void DXRenderDevice::BindRenderTargets(int rtvCount, ID3D11RenderTargetView* const* rtvs, ID3D11DepthStencilView* dsv)
+{
+	// UAV and render-target slots are the same range, so a UAV below the target count has nowhere to
+	// go -- the second color target wins and the pass simply counts nothing.
+	if ((mCurPSUAV == NULL) || (mCurPSUAVSlot < rtvCount))
+	{
+		mD3DDeviceContext->OMSetRenderTargets(rtvCount, rtvs, dsv);
+		return;
+	}
+	UINT initialCount = (UINT)-1;
+	mD3DDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(rtvCount, rtvs, dsv,
+		mCurPSUAVSlot, 1, &mCurPSUAV, &initialCount);
+}
+
 void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 {
 	BP_ZONE("DXRenderDevice::PhysSetRenderState");
@@ -1865,6 +1892,8 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 		D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		if (dxRenderState->mTopology == Topology3D_LineLine)
 			topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+		else if (dxRenderState->mTopology == Topology3D_PointList)
+			topology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
 		mD3DDeviceContext->IASetPrimitiveTopology(topology);
 	}
 
@@ -2054,9 +2083,9 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 	if (renderState->mDisableRenderTarget != mPhysRenderState->mDisableRenderTarget)
 	{
 		if (renderState->mDisableRenderTarget)
-			mD3DDeviceContext->OMSetRenderTargets(0, NULL, mCurD3DDSV);
+			BindRenderTargets(0, NULL, mCurD3DDSV);
 		else
-			mD3DDeviceContext->OMSetRenderTargets(1, &mCurD3DRTV, mCurD3DDSV);
+			BindRenderTargets(1, &mCurD3DRTV, mCurD3DDSV);
 	}
 
 	if ((renderState->mDisableBlend != mPhysRenderState->mDisableBlend) ||
@@ -2340,6 +2369,23 @@ void DXDrawLayer::SetComputeUAV(int slot, Texture* texture, int mipLevel)
 	cmd->mSlot = slot;
 	cmd->mMipLevel = mipLevel;
 	cmd->mTexture = (DXTexture*)texture;
+	QueueRenderCmd(cmd);
+}
+
+void DXDrawLayer::SetPixelUAV(int slot, Texture* texture)
+{
+	BF_ASSERT((slot >= 0) && (slot < D3D11_PS_CS_UAV_REGISTER_COUNT));
+	DXSetPixelUAVCmd* cmd = AllocRenderCmd<DXSetPixelUAVCmd>();
+	cmd->mSlot = slot;
+	cmd->mTexture = (DXTexture*)texture;
+	QueueRenderCmd(cmd);
+}
+
+void DXDrawLayer::ClearBufferUint(Texture* buffer, uint32 value)
+{
+	DXClearUAVCmd* cmd = AllocRenderCmd<DXClearUAVCmd>();
+	cmd->mTexture = (DXTexture*)buffer;
+	cmd->mValue = value;
 	QueueRenderCmd(cmd);
 }
 
@@ -2836,6 +2882,39 @@ void DXSetComputeUAVCmd::Render(RenderDevice* renderDevice, RenderWindow* render
 		dxRenderDevice->mCSBoundUAVs |= 1u << mSlot;
 }
 
+void DXSetPixelUAVCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
+{
+	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
+	dxRenderDevice->mCurPSUAV = (mTexture != NULL) ? mTexture->GetUAV(0) : NULL;
+	dxRenderDevice->mCurPSUAVSlot = mSlot;
+	// The same resource cannot be an SRV and a UAV at once; the runtime would force-null the slot,
+	// but the explicit unbind is the well-tested path (see DXTexture::PhysSetAsTarget).
+	if (mTexture != NULL)
+	{
+		for (int i = 0; i < 32; i++)
+		{
+			if (dxRenderDevice->mPSBoundTextures[i] != mTexture)
+				continue;
+			ID3D11ShaderResourceView* nullSrv = NULL;
+			dxRenderDevice->mD3DDeviceContext->PSSetShaderResources(i, 1, &nullSrv);
+			if (i >= DX_VS_TEXTURE_SLOT)
+				dxRenderDevice->mD3DDeviceContext->VSSetShaderResources(i, 1, &nullSrv);
+			dxRenderDevice->mPSBoundTextures[i] = NULL;
+		}
+	}
+	dxRenderDevice->BindRenderTargets(1, &dxRenderDevice->mCurD3DRTV, dxRenderDevice->mCurD3DDSV);
+}
+
+void DXClearUAVCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
+{
+	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
+	ID3D11UnorderedAccessView* uav = (mTexture != NULL) ? mTexture->GetUAV(0) : NULL;
+	if (uav == NULL)
+		return;
+	UINT values[4] = { mValue, mValue, mValue, mValue };
+	dxRenderDevice->mD3DDeviceContext->ClearUnorderedAccessViewUint(uav, values);
+}
+
 void DXDispatchCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 {
 	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
@@ -2998,7 +3077,7 @@ void DXRenderWindow::PhysSetAsTarget()
 
 		mDXRenderDevice->mCurD3DRTV = mD3DRenderTargetView;
 		mDXRenderDevice->mCurD3DDSV = mD3DDepthStencilView;
-		mDXRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, mD3DDepthStencilView);
+		mDXRenderDevice->BindRenderTargets(1, &mD3DRenderTargetView, mD3DDepthStencilView);
 		mDXRenderDevice->mD3DDeviceContext->RSSetViewports(1, &viewPort);
 	}
 
@@ -3228,6 +3307,8 @@ DXRenderDevice::DXRenderDevice()
 	mCurD3DDSV = NULL;
 	mCSBoundSRVs = 0;
 	mCSBoundUAVs = 0;
+	mCurPSUAV = NULL;
+	mCurPSUAVSlot = 0;
 	mInstIotaBuffer = NULL;
 	mInstIotaCount = 0;
 	mGpuTimerWriteIdx = 0;
@@ -3710,6 +3791,7 @@ void DXRenderDevice::FrameStart()
 {
 	mCurRenderTarget = NULL;
 	mPhysRenderWindow = NULL;
+	mCurPSUAV = NULL;
 	for (auto renderWindow : mRenderWindowList)
 	{
 		renderWindow->mHasBeenDrawnTo = false;

@@ -109,6 +109,11 @@ public:
 	virtual void			SetComputeTexture(int slot, Texture* texture) {}
 	virtual void			SetComputeUAV(int slot, Texture* texture, int mipLevel) {}
 	virtual void			Dispatch(ComputeShader* shader, int groupsX, int groupsY, int groupsZ) {}
+	// Pixel-stage unordered access, queued with the draws; NULL unbinds. D3D shares the UAV and
+	// render-target slots, so `slot` must be at or above the render-target count.
+	virtual void			SetPixelUAV(int slot, Texture* texture) {}
+	// Fills every 32-bit element of a GPU-writable buffer, queued with the draws.
+	virtual void			ClearBufferUint(Texture* buffer, uint32 value) {}
 	virtual void			SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size) = 0;
 	virtual void			SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* constData, int size, int* typeData, int typeCount);
 	// Queued draw of instCount copies of a static mesh; instance i's per-instance vertex element (see

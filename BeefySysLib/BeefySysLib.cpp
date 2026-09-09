@@ -611,6 +611,16 @@ BF_EXPORT void BF_CALLTYPE Gfx_SetComputeUAV(int slot, TextureSegment* textureSe
 	gBFApp->mRenderDevice->mCurDrawLayer->SetComputeUAV(slot, (textureSegment != NULL) ? textureSegment->mTexture : NULL, mipLevel);
 }
 
+BF_EXPORT void BF_CALLTYPE Gfx_SetPixelUAV(int slot, TextureSegment* textureSegment)
+{
+	gBFApp->mRenderDevice->mCurDrawLayer->SetPixelUAV(slot, (textureSegment != NULL) ? textureSegment->mTexture : NULL);
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_Buffer_Clear(TextureSegment* textureSegment, uint32 value)
+{
+	gBFApp->mRenderDevice->mCurDrawLayer->ClearBufferUint(textureSegment->mTexture, value);
+}
+
 BF_EXPORT void BF_CALLTYPE Gfx_Dispatch(ComputeShader* shader, int groupsX, int groupsY, int groupsZ)
 {
 	gBFApp->mRenderDevice->mCurDrawLayer->Dispatch(shader, groupsX, groupsY, groupsZ);
