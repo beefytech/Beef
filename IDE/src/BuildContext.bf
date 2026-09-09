@@ -707,7 +707,7 @@ namespace IDE
 					{
 						gApp.mSettings.mEmscriptenPendingInstall = true;
 					}
-					else if (!File.Exists(scope $"{wasmPath}/EmsdkDep1_Done.txt"))
+					else if (!File.Exists(scope $"{wasmPath}/{IDEApp.cEmSdkDep}"))
 					{
 						gApp.mSettings.mEmscriptenPendingInstall = true;
 					}

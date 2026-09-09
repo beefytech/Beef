@@ -121,6 +121,7 @@ namespace IDE
 	{
 		public static String sRTVersionStr = "042";
 		public const String cVersion = "0.43.6";
+		public const String cEmSdkDep = "EmsdkDep2_Done.txt";
 
 #if BF_PLATFORM_LINUX
 		public const uint8[?] cAppIcon = [IgnoreErrors]{ Compiler.ReadBinary("Resources/beeflang.png") };
