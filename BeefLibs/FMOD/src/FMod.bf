@@ -15,7 +15,7 @@ namespace FMOD
     */
     public class VERSION
     {
-        public const int32 number = 0x00020220;
+        public const int32 number = 0x00020314;
         public const String dll = "fmod.dll";
     }
 
@@ -199,10 +199,10 @@ namespace FMOD
     [CRepr]
     public struct _3D_ATTRIBUTES
     {
-        VECTOR position;
-        VECTOR velocity;
-        VECTOR forward;
-        VECTOR up;
+        public VECTOR position;
+        public VECTOR velocity;
+        public VECTOR forward;
+        public VECTOR up;
     }
 
     /*
@@ -2071,7 +2071,7 @@ namespace FMOD
 
             int dspraw;
             RESULT result = FMOD_System_CreateDSP(rawPtr, ref description, out dspraw);
-            dsp = new DSP(dspraw);
+            if ((result == .OK) && (dspraw != 0)) dsp = new DSP(dspraw);
 
             return result;
         }
