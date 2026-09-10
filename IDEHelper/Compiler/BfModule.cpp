@@ -10077,8 +10077,10 @@ BfIRValue BfModule::AllocBytes(BfAstNode* refNode, const BfAllocTarget& allocTar
 
 		if (allocTarget.mScopedInvocationTarget != NULL)
 		{
-			SizedArray<BfTypeReference*, 2> genericArgs;
-			exprEvaluator.DoInvocation(allocTarget.mScopedInvocationTarget, NULL, argExprs, BfMethodGenericArguments());
+			BfMethodGenericArguments genericArgs;
+			// Raw arrays of objects are pointers, not constructed objects.
+			genericArgs.mImplicitAllocatorType = ptrType;
+			exprEvaluator.DoInvocation(allocTarget.mScopedInvocationTarget, NULL, argExprs, genericArgs);
 			allocResult = LoadValue(exprEvaluator.mResult);
 		}
 		else if (allocTarget.mCustomAllocator)
@@ -10115,8 +10117,10 @@ BfIRValue BfModule::AllocBytes(BfAstNode* refNode, const BfAllocTarget& allocTar
 					argExprArr.mSize = (int)argExprs.size();
 					argExprArr.mVals = &argExprs[0];
 
-					exprEvaluator.InjectMixin(refNode, allocTarget.mCustomAllocator, false, allocMethodName, argExprs, {});
-					allocResult = exprEvaluator.GetResult();
+					BfMethodGenericArguments genericArgs;
+					genericArgs.mImplicitAllocatorType = ptrType;
+					exprEvaluator.InjectMixin(refNode, allocTarget.mCustomAllocator, false, allocMethodName, argExprs, genericArgs);
+					allocResult = LoadValue(exprEvaluator.GetResult());
 				}
 				else
 				{

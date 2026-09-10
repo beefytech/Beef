@@ -7479,7 +7479,14 @@ void BfModule::Visit(BfDeferStatement* deferStmt)
 			mCompiler->mResolvePassData->mAutoComplete->CheckLabel(targetIdentifier, deferStmt->mColonToken, scope);
 	}
 
-	if ((scope == mCurMethodState->mCurScope) && (scope->mCloseNode == NULL))
+	// While checking a mixin declaration there is no invocation scope yet.
+	// FindScope uses the current scope as a placeholder for 'mixin' in that case.
+	bool unresolvedMixinScope = false;
+	if (auto scopeToken = BfNodeDynCast<BfTokenNode>(scopeNameNode))
+		unresolvedMixinScope = (scopeToken->GetToken() == BfToken_Mixin) &&
+			(mCurMethodState->mMixinState == NULL) && (mCurMethodInstance != NULL) && (mCurMethodInstance->IsMixin());
+
+	if ((!unresolvedMixinScope) && (scope == mCurMethodState->mCurScope) && (scope->mCloseNode == NULL))
 	{
 		auto parser = deferStmt->GetParser();
 		if ((parser == NULL) || (!parser->mIsEmitted))

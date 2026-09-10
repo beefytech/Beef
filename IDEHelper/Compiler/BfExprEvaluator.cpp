@@ -201,6 +201,7 @@ void BfMethodMatcher::Init(const BfMethodGenericArguments& methodGenericArgument
 	mBestRawMethodInstance = NULL;
 	mBestMethodTypeInstance = NULL;
 	mExplicitInterfaceCheck = NULL;
+	mImplicitAllocatorType = methodGenericArguments.mImplicitAllocatorType;
 	mSelfType = NULL;
 	mMethodType = BfMethodType_Normal;
 	mCheckReturnType = NULL;
@@ -1843,6 +1844,16 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	}
 	else if (needInferGenericParams)
 		genericArgumentsSubstitute = &mCheckMethodGenericArguments;
+
+	// Allocator mixins receive the allocation type as their first own generic
+	// argument. Non-generic allocators keep the existing (size, align) contract.
+	if ((!mHadExplicitGenericArguments) && (mImplicitAllocatorType != NULL) &&
+		(checkMethod->mMethodType == BfMethodType_Mixin) &&
+		(uniqueGenericStartIdx < (int)mCheckMethodGenericArguments.size()))
+	{
+		mCheckMethodGenericArguments[uniqueGenericStartIdx] = mImplicitAllocatorType;
+		genericInferContext.mInferredCount++;
+	}
 
 	if (mHasArgNames)
 	{

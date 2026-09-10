@@ -270,17 +270,22 @@ static
 		Runtime.FatalError("Unimplemented");
 	}
 
-	public static mixin ScopedAlloc(int size, int align)
+	public static mixin ScopedAlloc<T>(int size, int align)
 	{
 		void* data;
 		if (size <= 128)
 		{
 			data = scope:mixin [Align(align)] uint8[size]* ( ? );
+			if (typeof(T).IsObject)
+				defer:mixin delete:null Internal.UnsafeCastToObject(data);
 		}
 		else
 		{
 			data = new [Align(align)] uint8[size]* ( ? );
 			defer:mixin delete data;
+			// Destroy the custom-allocated object before freeing its raw buffer.
+			if (typeof(T).IsObject)
+				defer:mixin delete:null Internal.UnsafeCastToObject(data);
 		}
 		data
 	}
