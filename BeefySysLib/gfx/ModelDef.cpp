@@ -228,6 +228,34 @@ BF_EXPORT const char* BF_CALLTYPE ModelDef_GetTexPaths(ModelDef* modelDef, int m
 	return outString.c_str();
 }
 
+// The material's own name for each texture ModelDef_GetTexPaths returns, in the same order and
+// '\n'-separated (empty where the source file named none). What the engine binds a texture BY: a
+// path list alone says nothing about which slot a texture belongs in.
+BF_EXPORT const char* BF_CALLTYPE ModelDef_GetTexRoles(ModelDef* modelDef, int meshIdx, int primitivesIdx)
+{
+	String& outString = *gModelDef_TLStrReturn.Get();
+	outString.Clear();
+
+	auto& prims = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx];
+	int count = (int)prims.mTexPaths.mSize;
+	if ((count == 0) && (prims.mMaterial != NULL) && (prims.mMaterial->mDef != NULL))
+	{
+		for (auto& texParamVal : prims.mMaterial->mDef->mTextureParameterValues)
+		{
+			if (!outString.IsEmpty())
+				outString += "\n";
+			outString += texParamVal->mName;
+		}
+		return outString.c_str();
+	}
+	for (int i = 0; i < count; i++)
+	{
+		if (i > 0)
+			outString += "\n";
+	}
+	return outString.c_str();
+}
+
 BF_EXPORT const char* BF_CALLTYPE ModelDef_GetMaterialName(ModelDef* modelDef, int meshIdx, int primitivesIdx)
 {
 	String& outString = *gModelDef_TLStrReturn.Get();

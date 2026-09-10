@@ -156,6 +156,9 @@ namespace Beefy.gfx
         extern static char8* ModelDef_GetTexPaths(void* nativeModel, int32 meshIdx, int32 primitivesIdx);
 
         [CallingConvention(.Stdcall), CLink]
+        extern static char8* ModelDef_GetTexRoles(void* nativeModel, int32 meshIdx, int32 primitivesIdx);
+
+        [CallingConvention(.Stdcall), CLink]
         extern static char8* ModelDef_GetMaterialName(void* nativeModel, int32 meshIdx, int32 primitivesIdx);
 
         [CallingConvention(.Stdcall), CLink]
@@ -268,6 +271,13 @@ namespace Beefy.gfx
 		public void GetTexPaths(int32 meshIdx, int32 primitivesIdx, String outPaths)
 		{
 			outPaths.Append(ModelDef_GetTexPaths(mNativeModelDef, meshIdx, primitivesIdx));
+		}
+
+		// The material's own name for each of GetTexPaths' textures, same order, '\n'-separated
+		// (an entry is empty when the source file named none).
+		public void GetTexRoles(int32 meshIdx, int32 primitivesIdx, String outRoles)
+		{
+			outRoles.Append(ModelDef_GetTexRoles(mNativeModelDef, meshIdx, primitivesIdx));
 		}
 
 		// The source file's material name for the primitive (may be empty).
@@ -419,6 +429,9 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         extern static void ModelInstance_SetMeshVisibility(void* nativeModelInstance, int32 jointIdx, int32 visibility);
 
+        [CallingConvention(.Stdcall), CLink]
+        extern static void ModelInstance_SetTexture(void* nativeModelInstance, int32 meshIdx, int32 primIdx, int32 texIdx, void* nativeTextureSegment);
+
 		[CallingConvention(.Stdcall), CLink]
 		extern static int32 ModelDef_GetCollisionTriangles(void* nativeModel, void* nativeModelInstance, Vector3** outPositions);
 
@@ -453,6 +466,13 @@ namespace Beefy.gfx
         {
             ModelInstance_SetMeshVisibility(mNativeRenderable, meshIdx, visible ? 1 : 0);
         }
+
+		// One primitive's texture slot for THIS instance, in place of whatever the shared def has
+		// injected there (null clears the override). The caller keeps the image alive.
+		public void SetTexture(int32 meshIdx, int32 primIdx, int32 texIdx, Image image)
+		{
+			ModelInstance_SetTexture(mNativeRenderable, meshIdx, primIdx, texIdx, image?.mNativeTextureSegment);
+		}
 
 		// Triangle-expanded collision positions in local space (see ModelDef_GetCollisionTriangles's
 		// native comment) -- skinned meshes are baked using this instance's CURRENT joint pose. Valid

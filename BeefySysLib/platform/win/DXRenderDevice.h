@@ -357,7 +357,10 @@ public:
 	String					mMaterialName;
 	int						mNumIndices;
 	int						mNumVertices;
+	// Slot-indexed, and sparse: a NULL entry is a slot the def left unbound (see ModelDef_SetTexture).
 	Array<DXTexture*>		mTextures;
+	// Per-instance overrides (see ModelInstance::SetTexture), consulted first at bind time.
+	Array<DXTexture*>		mOverrideTextures;
 
 	ID3D11Buffer*			mD3DIndexBuffer;
 	//TODO: Split the vertex buffer up into static and dynamic buffers
@@ -384,6 +387,7 @@ public:
 	DXModelInstance(ModelDef* modelDef);
 	~DXModelInstance();
 
+	virtual void SetTexture(int meshIdx, int primIdx, int texIdx, Texture* texture) override;
 	virtual void CommandQueued(RenderCmd* renderCmd, DrawLayer* drawLayer) override;
 	virtual void Render(RenderCmd* renderCmd, RenderDevice* renderDevice, RenderWindow* renderWindow) override;
 };

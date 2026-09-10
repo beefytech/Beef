@@ -60,6 +60,11 @@ BF_EXPORT void BF_CALLTYPE ModelInstance_SetJointMatrices(ModelInstance* modelIn
 	modelInstance->mDirty = true;
 }
 
+BF_EXPORT void BF_CALLTYPE ModelInstance_SetTexture(ModelInstance* modelInstance, int meshIdx, int primIdx, int texIdx, TextureSegment* textureSegment)
+{
+	modelInstance->SetTexture(meshIdx, primIdx, texIdx, (textureSegment != NULL) ? textureSegment->mTexture : NULL);
+}
+
 BF_EXPORT void BF_CALLTYPE ModelInstance_SetMeshVisibility(ModelInstance* modelInstance, int meshIdx, int visible)
 {
 	modelInstance->mMeshesVisible[meshIdx] = visible != 0;

@@ -2248,12 +2248,12 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 
 			if (modelDef->mExternalTextures)
 			{
-				// Engine-injected (see ModelDef_SetTexture) -- never load from paths here.
+				// Engine-injected (see ModelDef_SetTexture) -- never load from paths here. Slot
+				// positions are kept: entry i binds at pixel slot i.
 				for (auto tex : primitives->mExtTextures)
 				{
-					if (tex == NULL)
-						continue;
-					tex->AddRef();
+					if (tex != NULL)
+						tex->AddRef();
 					dxPrimitives->mTextures.Add((DXTexture*)tex);
 				}
 			}
@@ -2515,7 +2515,11 @@ DXModelPrimitives::~DXModelPrimitives()
 	if (mD3DVertexBuffer != NULL)
 		mD3DVertexBuffer->Release();
 	for (auto tex : mTextures)
-		tex->Release();
+		if (tex != NULL)
+			tex->Release();
+	for (auto tex : mOverrideTextures)
+		if (tex != NULL)
+			tex->Release();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2620,6 +2624,23 @@ DXModelInstance::~DXModelInstance()
 {
 }
 
+void DXModelInstance::SetTexture(int meshIdx, int primIdx, int texIdx, Texture* texture)
+{
+	if ((meshIdx < 0) || (meshIdx >= (int)mDXModelMeshs.mSize) || (texIdx < 0))
+		return;
+	auto& prims = mDXModelMeshs[meshIdx].mPrimitives;
+	if ((primIdx < 0) || (primIdx >= (int)prims.mSize))
+		return;
+	auto& overrides = prims[primIdx].mOverrideTextures;
+	while ((int)overrides.mSize <= texIdx)
+		overrides.Add(NULL);
+	if (overrides[texIdx] != NULL)
+		overrides[texIdx]->Release();
+	if (texture != NULL)
+		texture->AddRef();
+	overrides[texIdx] = (DXTexture*)texture;
+}
+
 void DXModelInstance::Render(RenderCmd* renderCmd, RenderDevice* renderDevice, RenderWindow* renderWindow)
 {
 	if (renderCmd->mRenderState != NULL)
@@ -2636,17 +2657,19 @@ void DXModelInstance::Render(RenderCmd* renderCmd, RenderDevice* renderDevice, R
 		{
 			auto dxPrimitives = &dxMesh->mPrimitives[primIdx];
 
-			if (dxPrimitives->mTextures.IsEmpty())
+			if ((dxPrimitives->mTextures.IsEmpty()) && (dxPrimitives->mOverrideTextures.IsEmpty()))
 				continue;
 
-			for (int i = 0; i < (int)dxPrimitives->mTextures.mSize; i++)
+			int slotCount = BF_MAX((int)dxPrimitives->mTextures.mSize, (int)dxPrimitives->mOverrideTextures.mSize);
+			for (int i = 0; i < slotCount; i++)
 			{
-				ID3D11ShaderResourceView* const* resView = NULL;
-				if ((i < dxPrimitives->mTextures.size()) && (dxPrimitives->mTextures[i] != NULL))
-				{
-					resView = &dxPrimitives->mTextures[i]->mD3DResourceView;
-					mD3DRenderDevice->mD3DDeviceContext->PSSetShaderResources(i, 1, resView);
-				}
+				DXTexture* texture = NULL;
+				if ((i < (int)dxPrimitives->mOverrideTextures.mSize) && (dxPrimitives->mOverrideTextures[i] != NULL))
+					texture = dxPrimitives->mOverrideTextures[i];
+				else if (i < (int)dxPrimitives->mTextures.mSize)
+					texture = dxPrimitives->mTextures[i];
+				if (texture != NULL)
+					mD3DRenderDevice->mD3DDeviceContext->PSSetShaderResources(i, 1, &texture->mD3DResourceView);
 			}
 
 			// Set vertex buffer

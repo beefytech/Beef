@@ -26,8 +26,12 @@ public:
 
 public:
 	ModelInstance(ModelDef* modelDef);
+	virtual ~ModelInstance() {}
 
 	void SetBindPose();
+	// One primitive's texture slot, for this instance only -- consulted before the def's own
+	// injected textures at bind time. NULL clears the override back to the def's.
+	virtual void SetTexture(int meshIdx, int primIdx, int texIdx, Texture* texture) {}
 };
 
 NS_BF_END;
