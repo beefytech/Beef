@@ -155,7 +155,9 @@ enum FrontFace : int8
 enum Topology3D : int8
 {
 	Topology3D_TriangleList,
-	Topology3D_LineLine
+	Topology3D_LineLine,
+	// Points, drawn non-indexed: every vertex of a batch rasterizes exactly once (see DXDrawBatch::Render).
+	Topology3D_PointList
 };
 
 // Nearest always clamps (there's no "nearest + wrap" combination in use).

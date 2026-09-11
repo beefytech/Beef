@@ -1340,12 +1340,16 @@ struct BfModuleOptions
 {
 public:
 	BfSIMDSetting mSIMDSetting;
+	BfFloatingPointMode mFloatingPointMode;
+	BfFMASetting mFMASetting;
 	int mEmitDebugInfo;
 	BfOptLevel mOptLevel;
 
 	bool operator==(const BfModuleOptions& other)
 	{
 		return (mSIMDSetting == other.mSIMDSetting) &&
+			(mFloatingPointMode == other.mFloatingPointMode) &&
+			(mFMASetting == other.mFMASetting) &&
 			(mEmitDebugInfo == other.mEmitDebugInfo) &&
 			(mOptLevel == other.mOptLevel);
 	}
@@ -1358,6 +1362,8 @@ public:
 	BfModuleOptions()
 	{
 		mSIMDSetting = BfSIMDSetting_None;
+		mFloatingPointMode = BfFloatingPointMode_Precise;
+		mFMASetting = BfFMASetting_TargetDefault;
 		mEmitDebugInfo = false;
 		mOptLevel = BfOptLevel_NotSet;
 	}
@@ -1891,7 +1897,10 @@ public:
 	bool ApplyTypeOptionMethodFilters(bool includeMethod, BfMethodDef* methodDef, BfTypeOptions* typeOptions);
 	int GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeInstance* typeInstance, bool checkTypeName);
 	void SetTypeOptions(BfTypeInstance* typeInstance);
-	BfModuleOptions GetModuleOptions();
+	BfModuleOptions GetModuleOptions(BfTypeInstance* typeInst = NULL);
+	BfModuleOptions GetMethodModuleOptions(BfMethodInstance* methodInstance);
+	void ApplyMethodModuleOptions(BfMethodInstance* methodInstance, BfModuleOptions& options);
+	void SetupIRMethodOptions(BfMethodInstance* methodInstance, BfIRFunction func);
 	BfCheckedKind GetDefaultCheckedKind();
 	void FinishCEParseContext(BfAstNode* refNode, BfTypeInstance* typeInstance, BfCEParseContext* ceParseContext);
 	BfCEParseContext CEEmitParse(BfTypeInstance* typeInstance, BfTypeDef* declaringType, const StringImpl& src, BfAstNode* refNode, BfCeTypeEmitSourceKind emitSourceKind);

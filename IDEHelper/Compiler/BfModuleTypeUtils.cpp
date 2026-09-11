@@ -1966,6 +1966,8 @@ BfTypeOptions* BfModule::GetTypeOptions(BfTypeDef* typeDef)
 			auto& first = mContext->mSystem->mTypeOptions[matchedIndices[0]];
 			BfTypeOptions mergedTypeOptions;
 			mergedTypeOptions.mSIMDSetting = first.mSIMDSetting;
+			mergedTypeOptions.mFloatingPointMode = first.mFloatingPointMode;
+			mergedTypeOptions.mFMASetting = first.mFMASetting;
 			mergedTypeOptions.mOptimizationLevel = first.mOptimizationLevel;
 			mergedTypeOptions.mEmitDebugInfo = first.mEmitDebugInfo;
 			mergedTypeOptions.mAndFlags = first.mAndFlags;
@@ -1980,6 +1982,10 @@ BfTypeOptions* BfModule::GetTypeOptions(BfTypeDef* typeDef)
 				auto& typeOptions = mContext->mSystem->mTypeOptions[matchedIndices[idx]];
 				if (typeOptions.mSIMDSetting != -1)
 					mergedTypeOptions.mSIMDSetting = typeOptions.mSIMDSetting;
+				if (typeOptions.mFloatingPointMode != BfFloatingPointMode_NotSet)
+					mergedTypeOptions.mFloatingPointMode = typeOptions.mFloatingPointMode;
+				if (typeOptions.mFMASetting != BfFMASetting_NotSet)
+					mergedTypeOptions.mFMASetting = typeOptions.mFMASetting;
 				if (typeOptions.mOptimizationLevel != -1)
 					mergedTypeOptions.mOptimizationLevel = typeOptions.mOptimizationLevel;
 				if (typeOptions.mEmitDebugInfo != -1)
@@ -2199,6 +2205,8 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 			auto& first = mContext->mSystem->mTypeOptions[matchedIndices[0]];
 			BfTypeOptions mergedTypeOptions;
 			mergedTypeOptions.mSIMDSetting = first.mSIMDSetting;
+			mergedTypeOptions.mFloatingPointMode = first.mFloatingPointMode;
+			mergedTypeOptions.mFMASetting = first.mFMASetting;
 			mergedTypeOptions.mOptimizationLevel = first.mOptimizationLevel;
 			mergedTypeOptions.mEmitDebugInfo = first.mEmitDebugInfo;
 			mergedTypeOptions.mAndFlags = first.mAndFlags;
@@ -2213,6 +2221,10 @@ int BfModule::GenerateTypeOptions(BfCustomAttributes* customAttributes, BfTypeIn
 				auto& typeOptions = mContext->mSystem->mTypeOptions[matchedIndices[idx]];
 				if (typeOptions.mSIMDSetting != -1)
 					mergedTypeOptions.mSIMDSetting = typeOptions.mSIMDSetting;
+				if (typeOptions.mFloatingPointMode != BfFloatingPointMode_NotSet)
+					mergedTypeOptions.mFloatingPointMode = typeOptions.mFloatingPointMode;
+				if (typeOptions.mFMASetting != BfFMASetting_NotSet)
+					mergedTypeOptions.mFMASetting = typeOptions.mFMASetting;
 				if (typeOptions.mOptimizationLevel != -1)
 					mergedTypeOptions.mOptimizationLevel = typeOptions.mOptimizationLevel;
 				if (typeOptions.mEmitDebugInfo != -1)
@@ -5492,7 +5504,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 					if (!typeInstance->mCeTypeInfo->mNext->mFastFinished)
 					{
-						if ((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) && (!typeInstance->mCeTypeInfo->mHash.IsZero()))
+						// A zero hash means either we have never emitted before (nothing can depend on us yet) or our
+						//  previous emission came up empty -- in the latter case dependents were already slotted against
+						//  the emissionless version and do need to be rebuilt
+						if ((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) &&
+							((!typeInstance->mCeTypeInfo->mHash.IsZero()) || (typeInstance->mHadPopulate)))
 							mContext->QueueMidCompileRebuildDependentTypes(typeInstance, "comptime hash changed");
 						typeInstance->mCeTypeInfo->mEmitSourceMap = typeInstance->mCeTypeInfo->mNext->mEmitSourceMap;
 						typeInstance->mCeTypeInfo->mOnCompileMap = typeInstance->mCeTypeInfo->mNext->mOnCompileMap;
@@ -5529,6 +5545,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				}
 				typeInstance->mCeTypeInfo->mFailed = false;
 			}
+
+			// Must be tracked on the type rather than on mCeTypeInfo, which does not exist yet when a populate emits nothing
+			typeInstance->mHadPopulate = true;
 
 			if (typeInstance->mCeTypeInfo != NULL)
 			{

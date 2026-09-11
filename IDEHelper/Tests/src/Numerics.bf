@@ -7,6 +7,20 @@ namespace Tests
 {
 	class Numerics
 	{
+		// No UseLLVM: exercise the native Og+ vector path as well.
+		[Test]
+		public static void TestNativeVectors()
+		{
+			float4 a = .(12, 24, 36, 48);
+			float4 b = .(3, 4, 6, 8);
+			Test.Assert((a / b) === .(4, 6, 6, 6));
+			Test.Assert((10.0f - b) === .(7, 6, 4, 2));
+			Test.Assert(bool4.MoveMask(a > b) == 15);
+			b.WZYX = .(1, 2, 3, 4);
+			Test.Assert(b === .(4, 3, 2, 1));
+			Test.Assert(float4.Sqrt(a).x > 3);
+		}
+
 		[Test, UseLLVM]
 		public static void TestBasics()
 		{
@@ -21,7 +35,7 @@ namespace Tests
 			Test.Assert(v2.z == 3000);
 			Test.Assert(v2.w == 40000);
 
-			float4 v3 = v0.wzyx;
+			float4 v3 = v0.WZYX;
 			Test.Assert(v3 === .(4, 3, 2, 1));
 
 			Result<uint16> r0 = 123;

@@ -25,6 +25,9 @@ namespace System.Numerics
 
 		public extern int32 this[int32 idx] { [Intrinsic("index")] get; [Intrinsic("index")] set; }
 
+		public extern int32_4 WZYX { [Intrinsic("shuffle3210")] get; [Intrinsic("shuffle3210")] set; }
+
+		[NoShow]
 		public extern int32_4 wzyx { [Intrinsic("shuffle3210")] get; [Intrinsic("shuffle3210")] set; }
 
 		[Intrinsic("not")]
@@ -39,8 +42,10 @@ namespace System.Numerics
 
 		[Intrinsic("sub")]
 		public static extern int32_4 operator-(int32_4 lhs, int32_4 rhs);
-		[Intrinsic("sub"), Commutable]
+		[Intrinsic("sub")]
 		public static extern int32_4 operator-(int32_4 lhs, int32 rhs);
+		[Intrinsic("sub")]
+		public static extern int32_4 operator-(int32 lhs, int32_4 rhs);
 		[Intrinsic("sub")]
 		public static extern int32_4 operator--(int32_4 lhs);
 

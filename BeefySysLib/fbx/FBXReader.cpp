@@ -69,6 +69,7 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 	}
 
 	ufbx_load_opts opts = {};
+	opts.use_blender_pbr_material = true;
 	opts.generate_missing_normals = true;
 	// Normalizing to world convention of Left/Up/Forward (+X left, +Y up, +Z forward)	
 	ufbx_coordinate_axes targetAxesLUF = {};
@@ -192,155 +193,192 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 	// --- Load meshes ---
 	if (loadDefData)
 	{
-		uint32_t triIndicesBuf[1024];
+		Array<uint32> triIndicesBuf;
 
 		for (size_t mi = 0; mi < scene->meshes.count; mi++)
 		{
 			ufbx_mesh* mesh = scene->meshes.data[mi];
 			if (mesh->instances.count == 0) continue;
-			ufbx_node* meshNode = mesh->instances.data[0];
-
-			// mesh->vertex_position etc are in the mesh's own local (bind-pose) space -- the owning
-			// node's transform (translation/rotation/scale, plus any FBX "geometric transform") has to
-			// be applied on top to place it correctly (Blender's exporter routinely bakes a compensating
-			// rotation onto a node's own Lcl Rotation, eg to reconcile a Z-up-authored mesh with a
-			// Y-up-declared scene). Skinned meshes are left untouched: their positions need to stay in
-			// bind-pose-local space for the per-vertex bone blending below (DXRenderDevice.cpp) to work
-			// -- that path already accounts for the bind pose via each cluster's own geometry_to_bone.
-			bool meshIsSkinned = mesh->skin_deformers.count > 0;
-			ufbx_matrix geomToWorld = meshNode->geometry_to_world;
-			ufbx_matrix normalMatrix = ufbx_matrix_for_normals(&geomToWorld);
-
-			FBXMesh* fbxMesh = new FBXMesh();
-			fbxMesh->mName = meshNode->name.data;
-
-			if (mesh->materials.count > 0)
+			for (size_t instanceIdx = 0; instanceIdx < mesh->instances.count; instanceIdx++)
+			for (size_t materialIdx = 0; materialIdx < BF_MAX(mesh->materials.count, (size_t)1); materialIdx++)
 			{
-				ufbx_material* mat = mesh->materials.data[0];
-				if (mat)
+				ufbx_node* meshNode = mesh->instances.data[instanceIdx];
+
+				// mesh->vertex_position etc are in the mesh's own local (bind-pose) space -- the owning
+				// node's transform (translation/rotation/scale, plus any FBX "geometric transform") has to
+				// be applied on top to place it correctly (Blender's exporter routinely bakes a compensating
+				// rotation onto a node's own Lcl Rotation, eg to reconcile a Z-up-authored mesh with a
+				// Y-up-declared scene). Skinned meshes are left untouched: their positions need to stay in
+				// bind-pose-local space for the per-vertex bone blending below (DXRenderDevice.cpp) to work
+				// -- that path already accounts for the bind pose via each cluster's own geometry_to_bone.
+				bool meshIsSkinned = mesh->skin_deformers.count > 0;
+				ufbx_matrix geomToWorld = meshNode->geometry_to_world;
+				ufbx_matrix normalMatrix = ufbx_matrix_for_normals(&geomToWorld);
+
+				FBXMesh* fbxMesh = new FBXMesh();
+				fbxMesh->mName = meshNode->name.data;
+				uint32 materialColor = 0xFFFFFFFF;
+
+				if (mesh->materials.count > 0)
 				{
-					ufbx_texture* diffTex = mat->fbx.diffuse_color.texture;
-					if (!diffTex && mat->textures.count > 0)
-						diffTex = mat->textures.data[0].texture;
-					if (diffTex)
+					ufbx_material* mat = meshNode->materials.count > materialIdx ? meshNode->materials.data[materialIdx] : mesh->materials.data[materialIdx];
+					if (mat)
 					{
-						String fn = diffTex->filename.data;
-						int slashPos = BF_MAX((int)fn.LastIndexOf('\\'), (int)fn.LastIndexOf('/'));
-						if (slashPos >= 0)
-							fn = fn.Substring(slashPos + 1);
-						fbxMesh->mMaterial.mTexFileName = fn;
-					}
-				}
-			}
-
-			size_t numPositions = mesh->vertex_position.values.count;
-			std::vector<BoneWeightVector> boneWeights(numPositions);
-
-			if (mesh->skin_deformers.count > 0)
-			{
-				ufbx_skin_deformer* skin = mesh->skin_deformers.data[0];
-				for (size_t ci = 0; ci < skin->clusters.count; ci++)
-				{
-					ufbx_skin_cluster* cluster = skin->clusters.data[ci];
-					if (!cluster->bone_node) continue;
-					String boneName = cluster->bone_node->name.data;
-					auto it = mJointIndexMap.Find(boneName);
-					if (it == mJointIndexMap.end()) continue;
-					int boneIdx = it->mValue;
-
-					for (size_t wi = 0; wi < cluster->vertices.count; wi++)
-					{
-						uint32_t posIdx = cluster->vertices.data[wi];
-						float weight = (float)cluster->weights.data[wi];
-						if ((posIdx < numPositions) && (weight > 0.0f))
+						fbxMesh->mMaterial.mName = mat->name.data;
+						if (mat->fbx.diffuse_color.has_value)
 						{
-							FBXBoneWeight bw;
-							bw.mBoneIdx = boneIdx;
-							bw.mBoneWeight = weight;
-							boneWeights[posIdx].Add(bw);
+							auto color = mat->fbx.diffuse_color.value_vec3;
+							auto channel = [](double v) {
+								v = BF_MAX(0.0, BF_MIN(1.0, v));
+								v = v <= 0.0031308 ? v * 12.92 : 1.055 * pow(v, 1.0 / 2.4) - 0.055;
+								return (uint32)(v * 255.0 + 0.5);
+							};
+							materialColor = 0xFF000000 | (channel(color.x) << 16) | (channel(color.y) << 8) | channel(color.z);
+						}
+						ufbx_texture* diffTex = mat->fbx.diffuse_color.texture;
+						auto& surface = fbxMesh->mMaterial;
+						surface.mHasSurfaceMaterial = mat->pbr.roughness.has_value || mat->pbr.metalness.has_value || mat->pbr.emission_factor.has_value;
+						if (mat->pbr.roughness.has_value) surface.mRoughness = (float)mat->pbr.roughness.value_real;
+						if (mat->pbr.metalness.has_value) surface.mMetallic = (float)mat->pbr.metalness.value_real;
+						if (mat->pbr.emission_color.has_value)
+						{
+							auto emission = mat->pbr.emission_color.value_vec3;
+							double strength = mat->pbr.emission_factor.has_value ? mat->pbr.emission_factor.value_real : 1.0;
+							surface.mEmissive = Vector3((float)(emission.x * strength), (float)(emission.y * strength), (float)(emission.z * strength));
+							surface.mHasSurfaceMaterial = true;
+						}
+						if (diffTex)
+						{
+							String fn = diffTex->relative_filename.length > 0 ? diffTex->relative_filename.data : diffTex->filename.data;
+							fbxMesh->mMaterial.mTexFileName = fn;
 						}
 					}
 				}
-			}
 
-			// Triangulate faces and collect vertex data
-			std::vector<FBXVertexData> unpackedVtx;
-			unpackedVtx.reserve(mesh->num_indices);
+				size_t numPositions = mesh->vertex_position.values.count;
+				std::vector<BoneWeightVector> boneWeights(numPositions);
 
-			for (size_t fi = 0; fi < mesh->faces.count; fi++)
-			{
-				ufbx_face face = mesh->faces.data[fi];
-				if (face.num_indices < 3) continue;
-
-				uint32_t numTris = ufbx_triangulate_face(triIndicesBuf, 1024, mesh, face);
-				for (uint32_t ti = 0; ti < numTris; ti++)
+				if (mesh->skin_deformers.count > 0)
 				{
-					for (int vi = 0; vi < 3; vi++)
+					ufbx_skin_deformer* skin = mesh->skin_deformers.data[0];
+					for (size_t ci = 0; ci < skin->clusters.count; ci++)
 					{
-						uint32_t cornerIdx = triIndicesBuf[ti * 3 + vi];
+						ufbx_skin_cluster* cluster = skin->clusters.data[ci];
+						if (!cluster->bone_node) continue;
+						String boneName = cluster->bone_node->name.data;
+						auto it = mJointIndexMap.Find(boneName);
+						if (it == mJointIndexMap.end()) continue;
+						int boneIdx = it->mValue;
 
-						FBXVertexData vd = {};
-						vd.mColor = 0xFFFFFFFF;
-
-						uint32_t posIdx = mesh->vertex_position.indices.data[cornerIdx];
-						ufbx_vec3 pos = mesh->vertex_position.values.data[posIdx];
-						if (!meshIsSkinned)
-							pos = ufbx_transform_position(&geomToWorld, pos);
-						vd.mCoords = Vector3((float)pos.x, (float)pos.y, (float)pos.z);
-
-						if (mesh->vertex_normal.exists)
+						for (size_t wi = 0; wi < cluster->vertices.count; wi++)
 						{
-							uint32_t normIdx = mesh->vertex_normal.indices.data[cornerIdx];
-							ufbx_vec3 norm = mesh->vertex_normal.values.data[normIdx];
+							uint32_t posIdx = cluster->vertices.data[wi];
+							float weight = (float)cluster->weights.data[wi];
+							if ((posIdx < numPositions) && (weight > 0.0f))
+							{
+								FBXBoneWeight bw;
+								bw.mBoneIdx = boneIdx;
+								bw.mBoneWeight = weight;
+								boneWeights[posIdx].Add(bw);
+							}
+						}
+					}
+				}
+
+				// Triangulate faces and collect vertex data
+				std::vector<FBXVertexData> unpackedVtx;
+				unpackedVtx.reserve(mesh->num_indices);
+
+				for (size_t fi = 0; fi < mesh->faces.count; fi++)
+				{
+					if (((mesh->face_material.count > fi) ? mesh->face_material.data[fi] : 0) != materialIdx)
+						continue;
+					ufbx_face face = mesh->faces.data[fi];
+					if (face.num_indices < 3) continue;
+
+					triIndicesBuf.Resize((face.num_indices - 2) * 3);
+					uint32 numTris = ufbx_triangulate_face(triIndicesBuf.mVals, triIndicesBuf.mSize, mesh, face);
+					for (uint32_t ti = 0; ti < numTris; ti++)
+					{
+						for (int vi = 0; vi < 3; vi++)
+						{
+							uint32_t cornerIdx = triIndicesBuf[ti * 3 + vi];
+
+							FBXVertexData vd = {};
+							vd.mColor = materialColor;
+
+							uint32_t posIdx = mesh->vertex_position.indices.data[cornerIdx];
+							ufbx_vec3 pos = mesh->vertex_position.values.data[posIdx];
 							if (!meshIsSkinned)
-								norm = ufbx_transform_direction(&normalMatrix, norm);
-							vd.mNormal = Vector3((float)norm.x, (float)norm.y, (float)norm.z);
+								pos = ufbx_transform_position(&geomToWorld, pos);
+							vd.mCoords = Vector3((float)pos.x, (float)pos.y, (float)pos.z);
+
+							if (mesh->vertex_normal.exists)
+							{
+								uint32_t normIdx = mesh->vertex_normal.indices.data[cornerIdx];
+								ufbx_vec3 norm = mesh->vertex_normal.values.data[normIdx];
+								if (!meshIsSkinned)
+									norm = ufbx_transform_direction(&normalMatrix, norm);
+								vd.mNormal = Vector3((float)norm.x, (float)norm.y, (float)norm.z);
+							}
+
+							if (mesh->vertex_uv.exists)
+							{
+								uint32_t uvIdx = mesh->vertex_uv.indices.data[cornerIdx];
+								ufbx_vec2 uv = mesh->vertex_uv.values.data[uvIdx];
+								vd.mTexCoords.push_back(TexCoords((float)uv.x, (float)uv.y));
+							}
+
+							if (mesh->vertex_tangent.exists)
+							{
+								uint32_t tanIdx = mesh->vertex_tangent.indices.data[cornerIdx];
+								ufbx_vec3 tan = mesh->vertex_tangent.values.data[tanIdx];
+								if (!meshIsSkinned)
+									tan = ufbx_transform_direction(&geomToWorld, tan);
+								vd.mTangent = Vector3((float)tan.x, (float)tan.y, (float)tan.z);
+							}
+
+							vd.mBoneWeights = boneWeights[posIdx];
+
+							unpackedVtx.push_back(vd);
 						}
-
-						if (mesh->vertex_uv.exists)
-						{
-							uint32_t uvIdx = mesh->vertex_uv.indices.data[cornerIdx];
-							ufbx_vec2 uv = mesh->vertex_uv.values.data[uvIdx];
-							vd.mTexCoords.push_back(TexCoords((float)uv.x, (float)uv.y));
-						}
-
-						if (mesh->vertex_tangent.exists)
-						{
-							uint32_t tanIdx = mesh->vertex_tangent.indices.data[cornerIdx];
-							ufbx_vec3 tan = mesh->vertex_tangent.values.data[tanIdx];
-							if (!meshIsSkinned)
-								tan = ufbx_transform_direction(&geomToWorld, tan);
-							vd.mTangent = Vector3((float)tan.x, (float)tan.y, (float)tan.z);
-						}
-
-						vd.mBoneWeights = boneWeights[posIdx];
-
-						unpackedVtx.push_back(vd);
 					}
 				}
-			}
 
-			// Deduplicate vertices
-			typedef Dictionary<FBXVertexData, int> VertexDataMap;
-			VertexDataMap usedVerts;
-			for (int vi = 0; vi < (int)unpackedVtx.size(); vi++)
-			{
-				FBXVertexData* vd = &unpackedVtx[vi];
-				auto itr = usedVerts.Find(*vd);
-				if (itr != usedVerts.end())
+				// Deduplicate vertices
+				typedef Dictionary<FBXVertexData, int> VertexDataMap;
+				VertexDataMap usedVerts;
+				for (int vi = 0; vi < (int)unpackedVtx.size(); vi++)
 				{
-					fbxMesh->mIndexData.push_back(itr->mValue);
+					if (((vi % 3) == 0) && (fbxMesh->mVertexData.size() > 65532))
+					{
+						mMeshes.push_back(fbxMesh);
+						auto next = new FBXMesh();
+						next->mName = fbxMesh->mName;
+						next->mMaterial = fbxMesh->mMaterial;
+						fbxMesh = next;
+						usedVerts.Clear();
+					}
+					FBXVertexData* vd = &unpackedVtx[vi];
+					auto itr = usedVerts.Find(*vd);
+					if (itr != usedVerts.end())
+					{
+						fbxMesh->mIndexData.push_back(itr->mValue);
+					}
+					else
+					{
+						int idx = (int)fbxMesh->mVertexData.size();
+						usedVerts[*vd] = idx;
+						fbxMesh->mVertexData.push_back(*vd);
+						fbxMesh->mIndexData.push_back(idx);
+					}
 				}
+
+				if (!fbxMesh->mIndexData.IsEmpty())
+					mMeshes.push_back(fbxMesh);
 				else
-				{
-					int idx = (int)fbxMesh->mVertexData.size();
-					usedVerts[*vd] = idx;
-					fbxMesh->mVertexData.push_back(*vd);
-					fbxMesh->mIndexData.push_back(idx);
-				}
+					delete fbxMesh;
 			}
-
-			mMeshes.push_back(fbxMesh);
 		}
 	}
 
@@ -505,6 +543,11 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 				ModelPrimitives::Flags_Vertex_Normal |
 				ModelPrimitives::Flags_Vertex_Tangent);
 
+			prims->mMaterialName = fbxMesh->mMaterial.mName;
+			prims->mHasSurfaceMaterial = fbxMesh->mMaterial.mHasSurfaceMaterial;
+			prims->mRoughness = fbxMesh->mMaterial.mRoughness;
+			prims->mMetallic = fbxMesh->mMaterial.mMetallic;
+			prims->mEmissive = fbxMesh->mMaterial.mEmissive;
 			prims->mTexPaths.Add(fbxMesh->mMaterial.mTexFileName);
 			if (!fbxMesh->mMaterial.mBumpFileName.IsEmpty())
 				prims->mTexPaths.Add(fbxMesh->mMaterial.mBumpFileName);

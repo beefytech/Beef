@@ -496,7 +496,7 @@ namespace System
 				Comptime_EmitMixin(text);
 		}
 
-		[Comptime]
+		[Comptime(ConstEval=true)]
 		public static Span<uint8> ReadBinary(StringView path)
 		{
 			List<uint8> data = scope .();
@@ -504,7 +504,7 @@ namespace System
 			return data;
 		}
 
-		[Comptime]
+		[Comptime(ConstEval=true)]
 		public static String ReadText(StringView path)
 		{
 			String data = scope .();

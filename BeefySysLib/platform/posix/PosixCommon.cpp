@@ -101,6 +101,7 @@ static FileWatchManager* gFileWatchManager = NULL;
 class FileWatchManager
 {
 public:
+    virtual ~FileWatchManager() {}
     virtual bool Init() = 0;
     virtual void Shutdown() = 0;
     virtual BfpFileWatcher* WatchDirectory(const char* path, BfpDirectoryChangeFunc callback, BfpFileWatcherFlags flags, void* userData, BfpFileResult* outResult) = 0;

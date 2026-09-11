@@ -28,6 +28,8 @@ enum ShaderFlags
 {
 	ShaderFlags_None = 0,
 	ShaderFlags_NoOptimization = 1, // maps to the backend's skip-optimization compile flag
+	// Shader model 5 profiles instead of 4_0: pixel-shader UAVs and SV_PrimitiveID.
+	ShaderFlags_ShaderModel5 = 2,
 };
 
 class Shader

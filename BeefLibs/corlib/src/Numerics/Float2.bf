@@ -21,6 +21,10 @@ namespace System.Numerics
 
 		public extern float this[int idx] { [Intrinsic("index")] get; [Intrinsic("index")] set; }
 
+		public extern float2 YX { [Intrinsic("shuffle10")] get; [Intrinsic("shuffle10")] set; }
+
+		// Legacy
+		[NoShow]
 		public extern float2 yx { [Intrinsic("shuffle10")] get; [Intrinsic("shuffle10")] set; }
 
 		[Intrinsic("add")]
@@ -32,8 +36,10 @@ namespace System.Numerics
 
 		[Intrinsic("sub")]
 		public static extern float2 operator-(float2 lhs, float2 rhs);
-		[Intrinsic("sub"), Commutable]
+		[Intrinsic("sub")]
 		public static extern float2 operator-(float2 lhs, float rhs);
+		[Intrinsic("sub")]
+		public static extern float2 operator-(float lhs, float2 rhs);
 		[Intrinsic("sub")]
 		public static extern float2 operator--(float2 lhs);
 

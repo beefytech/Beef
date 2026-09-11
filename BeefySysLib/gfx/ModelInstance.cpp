@@ -53,11 +53,34 @@ void Beefy::ModelInstance::SetBindPose()
 
 ///
 
+BF_EXPORT void BF_CALLTYPE ModelInstance_SetUseSurfaceMaterials(ModelInstance* modelInstance, int enabled)
+{
+	if (modelInstance->mUseSurfaceMaterials == (enabled != 0)) return;
+	modelInstance->mUseSurfaceMaterials = enabled != 0;
+	modelInstance->mDirty = true;
+}
+
+BF_EXPORT void BF_CALLTYPE ModelInstance_SetSurfaceOverride(ModelInstance* modelInstance, int meshIdx, int primIdx, float* values, uint32 color)
+{
+	modelInstance->mDirty = true;
+	if (meshIdx < 0) { modelInstance->mSurfaceOverrides.Clear(); return; }
+	ModelInstance::SurfaceOverride ov;
+	ov.mMeshIdx = meshIdx; ov.mPrimIdx = primIdx;
+	ov.mRoughness = values[0]; ov.mMetallic = values[1];
+	ov.mEmissive = Vector3(values[2], values[3], values[4]); ov.mColor = color;
+	modelInstance->mSurfaceOverrides.Add(ov);
+}
+
 BF_EXPORT void BF_CALLTYPE ModelInstance_SetJointMatrices(ModelInstance* modelInstance, Matrix4* matrices, int32 count)
 {
 	BF_ASSERT(count == modelInstance->mJointMatrices.mSize);
 	memcpy(modelInstance->mJointMatrices.mVals, matrices, count * sizeof(Matrix4));
 	modelInstance->mDirty = true;
+}
+
+BF_EXPORT void BF_CALLTYPE ModelInstance_SetTexture(ModelInstance* modelInstance, int meshIdx, int primIdx, int texIdx, TextureSegment* textureSegment)
+{
+	modelInstance->SetTexture(meshIdx, primIdx, texIdx, (textureSegment != NULL) ? textureSegment->mTexture : NULL);
 }
 
 BF_EXPORT void BF_CALLTYPE ModelInstance_SetMeshVisibility(ModelInstance* modelInstance, int meshIdx, int visible)

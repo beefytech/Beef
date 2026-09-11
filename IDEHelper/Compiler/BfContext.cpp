@@ -2509,6 +2509,8 @@ void BfContext::UpdateRevisedTypes()
 		workspaceConfigHashCtx.Mixin(options->mMachineType);
 		workspaceConfigHashCtx.Mixin(options->mToolsetType);
 		workspaceConfigHashCtx.Mixin(options->mSIMDSetting);
+		workspaceConfigHashCtx.Mixin(options->mFloatingPointMode);
+		workspaceConfigHashCtx.Mixin(options->mFMASetting);
 
 		workspaceConfigHashCtx.Mixin(options->mEmitDebugInfo);
 		workspaceConfigHashCtx.Mixin(options->mEmitLineInfo);
@@ -2550,6 +2552,8 @@ void BfContext::UpdateRevisedTypes()
 			for (auto& filter : typeOptions.mAttributeFilters)
 				workspaceConfigHashCtx.MixinStr(filter);
 			workspaceConfigHashCtx.Mixin(typeOptions.mSIMDSetting);
+			workspaceConfigHashCtx.Mixin(typeOptions.mFloatingPointMode);
+			workspaceConfigHashCtx.Mixin(typeOptions.mFMASetting);
 			workspaceConfigHashCtx.Mixin(typeOptions.mOptimizationLevel);
 			workspaceConfigHashCtx.Mixin(typeOptions.mEmitDebugInfo);
 			workspaceConfigHashCtx.Mixin(typeOptions.mAndFlags);
@@ -2604,6 +2608,9 @@ void BfContext::UpdateRevisedTypes()
 				buildConfigHashCtx.Mixin(isTestConfig);
 
 				buildConfigHashCtx.Mixin(codeGenOptions.mOptLevel);
+				buildConfigHashCtx.Mixin(codeGenOptions.mSIMDSetting);
+				buildConfigHashCtx.Mixin(codeGenOptions.mFloatingPointMode);
+				buildConfigHashCtx.Mixin(codeGenOptions.mFMASetting);
 				buildConfigHashCtx.Mixin(codeGenOptions.mSizeLevel);
 				buildConfigHashCtx.Mixin(codeGenOptions.mUseCFLAA);
 				buildConfigHashCtx.Mixin(codeGenOptions.mUseNewSROA);
@@ -2732,6 +2739,22 @@ void BfContext::UpdateRevisedTypes()
 	}
 
 	mCompiler->mInterfaceSlotCountChanged = false;
+	// A project-only option change does not change source signatures, but inline
+	// copies in other projects must be regenerated with the source method's policy.
+	Array<BfTypeInstance*> inlinePolicyChangedTypes;
+	for (auto module : moduleRebuildList)
+	{
+		if ((!module->mIsDeleting) && (module->mProject != NULL) && (module->mProject->mBuildConfigChanged))
+		{
+			for (auto typeInst : module->mOwnedTypeInstances)
+				inlinePolicyChangedTypes.Add(typeInst);
+		}
+	}
+	// Invalidating a dependent may start a module revision and change its owned
+	// types immediately, so never walk an ownership array while doing that work.
+	for (auto typeInst : inlinePolicyChangedTypes)
+		if (!typeInst->IsDeleting())
+			TypeInlineMethodInternalsChanged(typeInst);
 	for (auto module : moduleRebuildList)
 	{
 		if (!module->mIsDeleting)

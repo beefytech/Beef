@@ -105,6 +105,8 @@ public:
 		int mCLongSize;
 		BfToolsetType mToolsetType;
 		BfSIMDSetting mSIMDSetting;
+		BfFloatingPointMode mFloatingPointMode;
+		BfFMASetting mFMASetting;
 		String mMallocLinkName;
 		String mFreeLinkName;
 		bool mIncrementalBuild;
@@ -154,6 +156,8 @@ public:
 			mCLongSize = 4;
 			mToolsetType = BfToolsetType_Microsoft;
 			mSIMDSetting = BfSIMDSetting_None;
+			mFloatingPointMode = BfFloatingPointMode_Precise;
+			mFMASetting = BfFMASetting_TargetDefault;
 			mHotProject = NULL;
 			mDebugAlloc = false;
 			mOmitDebugHelpers = false;

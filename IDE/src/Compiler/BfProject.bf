@@ -36,6 +36,9 @@ namespace IDE.Compiler
         extern static void BfProject_SetOptions(void* nativeBfProject, int32 targetType, char8* startupObject, char8* preprocessorMacros,
             int32 optLevel, int32 ltoType, int32 relocType, int32 picLevel, Flags flags);
 
+		[CallingConvention(.Stdcall), CLink]
+		extern static void BfProject_SetCodeGenOptions(void* nativeBfProject, int32 simdSetting, int32 floatingPointMode, int32 fmaSetting);
+
         public void* mNativeBfProject;
         public bool mDisabled;
 
@@ -59,6 +62,14 @@ namespace IDE.Compiler
             mDisabled = disabled;
             BfProject_SetDisabled(mNativeBfProject, disabled);
         }
+
+		public void SetCodeGenOptions(BuildOptions.SIMDSetting? simdSetting, BuildOptions.FloatingPointMode? floatingPointMode, BuildOptions.FMASetting? fmaSetting)
+		{
+			int32 simdSettingInt = (simdSetting == null) ? -1 : (int32)simdSetting.Value;
+			int32 floatingPointModeInt = (floatingPointMode == null) ? -1 : (int32)floatingPointMode.Value;
+			int32 fmaSettingInt = (fmaSetting == null) ? -1 : (int32)fmaSetting.Value;
+			BfProject_SetCodeGenOptions(mNativeBfProject, simdSettingInt, floatingPointModeInt, fmaSettingInt);
+		}
 
         public void SetOptions(Project.TargetType targetType, String startupObject, List<String> preprocessorMacros,
             BuildOptions.BfOptimizationLevel optLevel, BuildOptions.LTOType ltoType, BuildOptions.RelocType relocType, BuildOptions.PICLevel picLevel,

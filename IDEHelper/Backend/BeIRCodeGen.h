@@ -94,7 +94,7 @@ public:
 
 public:
 	void FatalError(const StringImpl& str);
-	void NotImpl();
+	void NotImpl();	
 	BfTypeCode GetTypeCode(BeType* type, bool isSigned);
 	void SetResult(int id, BeValue* value);
 	void SetResult(int id, BeType* type);
@@ -106,6 +106,7 @@ public:
 
 	void FixValues(BeStructType* structType, CmdParamVec<BeValue*>& values);
 	void FixValues(BeStructType* structType, SizedArrayImpl<BeConstant*>& values);
+	BeValue* TryLowerVectorIntrinsic(BeIntrinsic* intrinsic, const SizedArrayImpl<BeValue*>& args);
 
 public:
 	BeIRCodeGen();

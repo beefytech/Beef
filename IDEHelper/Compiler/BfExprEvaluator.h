@@ -174,12 +174,14 @@ public:
 struct BfMethodGenericArguments
 {
 	BfSizedArray<BfAstNode*>* mArguments;
+	BfType* mImplicitAllocatorType;
 	bool mIsPartial;
 	bool mIsOpen; // Ends with ...
 
 	BfMethodGenericArguments()
 	{
 		mArguments = NULL;
+		mImplicitAllocatorType = NULL;
 		mIsPartial = false;
 		mIsOpen = false;
 	}
@@ -240,6 +242,7 @@ public:
 	BfEvalExprFlags mBfEvalExprFlags;
 	int mMethodCheckCount;
 	BfType* mExplicitInterfaceCheck;
+	BfType* mImplicitAllocatorType;
 	MatchFailKind mMatchFailKind;
 
 	BfTypeVector mCheckMethodGenericArguments;

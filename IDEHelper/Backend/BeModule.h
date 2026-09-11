@@ -572,6 +572,9 @@ public:
 	bool mIsDLLExport;
 	bool mIsDLLImport;
 	BfIRCallingConv mCallingConv;
+	BfFloatingPointMode mFloatingPointMode;
+	BfSIMDSetting mSIMDSetting;
+	BfFMASetting mFMASetting;
 	Array<BeBlock*> mBlocks;
 	Array<BeFunctionParam> mParams;
 	BeDbgFunction* mDbgFunction;
@@ -581,6 +584,9 @@ public:
 	BeFunction()
 	{
 		mCallingConv = BfIRCallingConv_CDecl;
+		mFloatingPointMode = BfFloatingPointMode_Precise;
+		mSIMDSetting = BfSIMDSetting_None;
+		mFMASetting = BfFMASetting_TargetDefault;
 		mLinkageType = BfIRLinkageType_External;
 		mModule = NULL;
 		mDbgFunction = NULL;

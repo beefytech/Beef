@@ -24,6 +24,9 @@ namespace Beefy.gfx
 		[CallingConvention(.Stdcall), CLink]
 		static extern void Gfx_Buffer_FlushUpdates(void* textureSegment);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_Buffer_Clear(void* textureSegment, uint32 value);
+
 		public int32 mStride;
 		public int32 mCount;
 		public bool mGpuWritable;
@@ -82,6 +85,13 @@ namespace Beefy.gfx
 		public void FlushUpdates()
 		{
 			Gfx_Buffer_FlushUpdates(mNativeTextureSegment);
+		}
+
+		// Fills every 32-bit element (GPU-writable buffers only), queued in order with the draws.
+		public void Clear(uint32 value = 0)
+		{
+			Debug.Assert(mGpuWritable);
+			Gfx_Buffer_Clear(mNativeTextureSegment, value);
 		}
 
 		// Immediate readback of what the GPU has finished -- draw the layer that wrote it first.

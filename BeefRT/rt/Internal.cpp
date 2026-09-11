@@ -49,7 +49,7 @@ extern "C"
 #include <io.h>
 #endif
 
-#ifdef BF_PLATFORM_LINUX
+#if defined(BF_PLATFORM_LINUX) && !defined(__EMSCRIPTEN__)
 #include <sys/ptrace.h>
 #endif
 
@@ -230,7 +230,7 @@ using namespace bf::System;
 bool IsDebuggerPresent()
 {
 
-#ifdef BF_PLATFORM_LINUX
+#if defined(BF_PLATFORM_LINUX) && !defined(__EMSCRIPTEN__)
 	bool debugged = ptrace(PTRACE_TRACEME, 0, 1, 0) < 0;
 	if (!debugged)
 		ptrace(PTRACE_DETACH, 0, 1, 0); // detach when ptrace is successful

@@ -135,7 +135,7 @@ namespace IDE.ui
 			if (mProjectSource == null)
 				return;
 
-			if (fileDeleted)
+			if ((fileDeleted) && (mFilePath != null)) // a panel that already forgot its path has nothing to report
 			{
 				// We manually add this change record because it may not get caught since the watch dep may be gone
 				// This will allow the "File Deleted" dialog to show.

@@ -2,6 +2,7 @@
 using System;
 using System.Collections;
 using System.Text;
+using System.IO;
 using Beefy.widgets;
 using Beefy.gfx;
 
@@ -9,6 +10,157 @@ namespace Beefy.theme.dark
 {    
     public class DarkTheme : ThemeFactory
     {
+        /// Owns a lazily loaded image. Access Image again after changing the theme scale;
+        /// previously returned images are invalidated when the source scale changes.
+        public class SizedImage
+        {
+            String mPath ~ delete _;
+            Beefy.gfx.Image mImage ~ delete _;
+            int mLoadedScale;
+            float mDrawScale = -1;
+
+            [CallingConvention(.Stdcall), CLink]
+            static extern uint32* Res_LoadImage(char8* path, out int32 width, out int32 height);
+
+            [CallingConvention(.Stdcall), CLink]
+            static extern void Res_FreeImageBits(uint32* bits);
+
+            [CallingConvention(.Stdcall), CLink]
+            static extern bool Res_WritePNG(uint32* bits, int32 width, int32 height, char8* path);
+
+            [CallingConvention(.Stdcall), CLink]
+            static extern bool Res_SetLastWriteTime(char8* path, uint64 timestamp);
+
+            public this(StringView path)
+            {
+                mPath = new String(path);
+            }
+
+            public Beefy.gfx.Image Image
+            {
+                get
+                {
+                    if (mLoadedScale != sSrcImgScale)
+                    {
+                        delete mImage;
+                        mImage = Load(sSrcImgScale);
+                        mLoadedScale = sSrcImgScale;
+                        mDrawScale = -1;
+                    }
+                    if ((mImage != null) && (mDrawScale != sScale))
+                    {
+                        mImage.SetDrawSize((int)(mImage.mSrcWidth * sScale / mLoadedScale),
+                            (int)(mImage.mSrcHeight * sScale / mLoadedScale));
+                        mDrawScale = sScale;
+                    }
+                    return mImage;
+                }
+            }
+
+            Beefy.gfx.Image Load(int scale)
+            {
+                if (scale == 4)
+                    return Beefy.gfx.Image.LoadFromFile(mPath, .FatalError);
+
+                var stem = scope String();
+                Path.ChangeExtension(mPath, null, stem);
+                if (stem.EndsWith("_4X", .OrdinalIgnoreCase))
+                    stem.RemoveFromEnd(3);
+                var overridePath = scope String()..AppendF("{0}_{1}X.png", stem, scale);
+                if (!File.Exists(overridePath))
+                    overridePath.Set(scope $"{stem}_{scale}x.png");
+                if (File.Exists(overridePath))
+                    return Beefy.gfx.Image.LoadFromFile(overridePath, .FatalError);
+
+                var cachePath = scope String()..AppendF("{0}_{1}X_GEN.png", stem, scale);
+                var sourceTime = File.GetLastWriteTimeUtc(mPath);
+                // Equality also detects a source restored with an older timestamp.
+                if ((sourceTime case .Ok(let date)) &&
+                    (File.GetLastWriteTimeUtc(cachePath) case .Ok(let cachedDate)) && (date == cachedDate))
+                {
+                    var cached = Beefy.gfx.Image.LoadFromFile(cachePath);
+                    if (cached != null)
+                        return cached;
+                }
+
+                int32 width = 0;
+                int32 height = 0;
+                var source = Res_LoadImage(mPath.CStr(), out width, out height);
+                if (source == null)
+                    Runtime.FatalError(scope $"Failed to load image '{mPath}'");
+                defer Res_FreeImageBits(source);
+
+                // A 4X asset represents an integral number of logical pixels.
+                if ((width <= 0) || (height <= 0) || (width % 4 != 0) || (height % 4 != 0))
+                    Runtime.FatalError(scope $"4X image dimensions must be positive multiples of four: '{mPath}'");
+                int sampleScale = 4 / scale;
+                int32 destWidth = (int32)(width / sampleScale);
+                int32 destHeight = (int32)(height / sampleScale);
+                var bits = scope uint32[destWidth * destHeight];
+                for (int y < destHeight)
+                {
+                    for (int x < destWidth)
+                    {
+                        uint32 r = 0, g = 0, b = 0, a = 0;
+                        for (int dy < sampleScale)
+                        {
+                            for (int dx < sampleScale)
+                            {
+                                let pixel = source[(y * sampleScale + dy) * width + x * sampleScale + dx];
+                                let alpha = pixel >> 24;
+                                r += (pixel & 0xFF) * alpha;
+                                g += ((pixel >> 8) & 0xFF) * alpha;
+                                b += ((pixel >> 16) & 0xFF) * alpha;
+                                a += alpha;
+                            }
+                        }
+                        // Mix premultiplied colors, then un-premultiply for the PNG.
+                        // Hidden RGB from fully transparent pixels never contributes.
+                        uint32 pixel = 0;
+                        if (a != 0)
+                        {
+                            uint32 samples = (uint32)(sampleScale * sampleScale);
+                            pixel = ((r + a / 2) / a) | (((g + a / 2) / a) << 8) |
+                                (((b + a / 2) / a) << 16) | (((a + samples / 2) / samples) << 24);
+                        }
+                        bits[y * destWidth + x] = pixel;
+                    }
+                }
+
+                // Disk caching is optional: read-only asset directories still work.
+                if (File.GetLastWriteTimeUtc(mPath) case .Ok(let currentDate))
+                {
+                    if ((sourceTime case .Ok(let originalDate)) && (currentDate == originalDate) &&
+                        (originalDate.ToFileTimeUtc() case .Ok(let timestamp)) &&
+                        (Res_WritePNG(bits.Ptr, destWidth, destHeight, cachePath.CStr())))
+                    {
+                        if (!Res_SetLastWriteTime(cachePath.CStr(), (uint64)timestamp))
+                            File.Delete(cachePath).IgnoreError();
+                    }
+                }
+
+                // Dynamic textures expect premultiplied RGBA, unlike PNG files.
+                for (var pixel in ref bits)
+                {
+                    let alpha = pixel >> 24;
+                    pixel = (((pixel & 0xFF) * alpha) / 255) |
+                        (((((pixel >> 8) & 0xFF) * alpha) / 255) << 8) |
+                        (((((pixel >> 16) & 0xFF) * alpha) / 255) << 16) | (alpha << 24);
+                }
+                var image = Beefy.gfx.Image.CreateDynamic(destWidth, destHeight);
+                if (image != null)
+                    image.SetBits(0, 0, destWidth, destHeight, destWidth, bits.Ptr);
+                return image;
+            }
+        }
+
+        /// path is the actual 4X source filename (eg Icon_4X.png or Icon.png).
+        /// The caller owns the SizedImage and must delete it, but must not delete its Image.
+        public static SizedImage CreateSizedImage4X(StringView path)
+        {
+            return new SizedImage(path);
+        }
+
         public enum ImageIdx
         {
             Bkg,

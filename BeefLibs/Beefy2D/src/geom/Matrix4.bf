@@ -200,6 +200,7 @@ namespace Beefy.geom
             result.m03 = result.m13 = result.m33 = 0;
         }
 
+        [Inline]
         public static Matrix4 Multiply(Matrix4 m1, Matrix4 m2)
 	    {
 		    Matrix4 r;
@@ -224,6 +225,7 @@ namespace Beefy.geom
 		    return r;
 	    }
 
+	    [Inline]
 	    public static Matrix4 Transpose(Matrix4 m)
 	    {
 		    return Matrix4(
@@ -233,6 +235,7 @@ namespace Beefy.geom
 			    m.m03, m.m13, m.m23, m.m33);
 	    }
 
+        [Inline]
         public static Matrix4 CreateTranslation(float x, float y, float z)
 	    {
 		    return Matrix4(
@@ -242,6 +245,7 @@ namespace Beefy.geom
 			    0, 0, 0, 1);
 	    }
 
+        [Inline]
         public static Matrix4 CreateTransform(Vector3 position, Vector3 scale, Quaternion orientation)
         {
             // Ordering:
@@ -302,6 +306,7 @@ namespace Beefy.geom
             return returnMatrix;
         }
 
+        [Inline]
         public static Matrix4 CreateScale(float scale)
         {
             Matrix4 result;
@@ -324,6 +329,7 @@ namespace Beefy.geom
             return result;
         }
 
+        [Inline]
         public static Matrix4 CreateScale(float xScale, float yScale, float zScale)
         {
             Matrix4 result;
@@ -346,6 +352,7 @@ namespace Beefy.geom
             return result;
         }
 
+        [Inline]
         public static Matrix4 CreateScale(Vector3 scales)
         {
             Matrix4 result;
@@ -368,6 +375,7 @@ namespace Beefy.geom
             return result;
         }
 
+        [Inline]
         public static Matrix4 CreateTranslation(Vector3 position)
         {
             Matrix4 result;
@@ -935,6 +943,7 @@ namespace Beefy.geom
 		/// </summary>
 		/// <param name="quaternion"><see cref="Quaternion"/> of rotation moment.
 		/// <returns>The rotation matrix.</returns>
+		[Inline]
 		public static Matrix4 CreateFromQuaternion(Quaternion quaternion)
 		{
 			Matrix4 result;
@@ -947,6 +956,7 @@ namespace Beefy.geom
 		/// </summary>
 		/// <param name="quaternion"><see cref="Quaternion"/> of rotation moment.
 		/// <param name="result">The rotation matrix as an output parameter.
+		[Inline]
 		public static void CreateFromQuaternion(Quaternion quaternion, out Matrix4 result)
 		{
 			float num9 = quaternion.mX * quaternion.mX;

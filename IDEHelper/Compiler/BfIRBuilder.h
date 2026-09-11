@@ -451,6 +451,7 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_Div,
 	BfIRIntrinsic_Eq,
 	BfIRIntrinsic_Floor,
+	BfIRIntrinsic_Fma,
 	BfIRIntrinsic_Free,
 	BfIRIntrinsic_Gt,
 	BfIRIntrinsic_GtE,
@@ -485,6 +486,7 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_VAArg,
 	BfIRIntrinsic_VAEnd,
 	BfIRIntrinsic_VAStart,
+	BfIRIntrinsic_Vector,
 	BfIRIntrinsic_Xgetbv,
 	BfIRIntrinsic_Xor,
 
@@ -675,6 +677,9 @@ enum BfIRAttribute
 	BFIRAttribute_NoRecurse,
 	BFIRAttribute_Constructor,
 	BFIRAttribute_Destructor,
+	BfIRAttribute_FloatingPointMode,
+	BfIRAttribute_SIMDSetting,
+	BfIRAttribute_FMASetting,
 };
 
 struct BfIRFunctionType

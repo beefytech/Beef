@@ -119,6 +119,13 @@ enum BfIRSizeAlignKind
 class BfIRCodeGen : public BfIRCodeGenBase
 {
 public:
+	struct FunctionOptions
+	{
+		BfFloatingPointMode mFloatingPointMode;
+		BfSIMDSetting mSIMDSetting;
+		BfFMASetting mFMASetting;
+	};
+
 	BfIRBuilder* mBfIRBuilder;
 
 	BumpAllocator mAlloc;
@@ -128,6 +135,8 @@ public:
 	llvm::LLVMContext* mLLVMContext;
 	llvm::Module* mLLVMModule;
 	llvm::Function* mActiveFunction;
+	// AllowFMA: a*b +- c is fused only when the fmul is a direct operand, i.e. within one expression
+	bool mContractFMulAdd;
 	BfIRTypeEx* mActiveFunctionType;
 	llvm::IRBuilder<>* mIRBuilder;
 	llvm::AttributeList* mAttrSet;
@@ -162,6 +171,7 @@ public:
 	Dictionary<llvm::BasicBlock*, llvm::BasicBlock*> mRemappedEndingBlocks;
 	OwnedArray<BfIRIntrinsicData> mIntrinsicData;
 	Dictionary<llvm::Function*, BfSIMDSetting> mFunctionsUsingSimd;
+	Dictionary<llvm::Function*, FunctionOptions> mFunctionOptions;
 	Array<BfIRTypeEx*> mIRTypeExs;
 	BfIRTypedValue mLastFuncCalled;
 
@@ -276,6 +286,11 @@ public:
 	void SetFunctionSimdType(llvm::Function* function, BfSIMDSetting type);
 	void SetActiveFunctionSimdType(BfSIMDSetting type);
 	String GetSimdTypeString(BfSIMDSetting type);
+	String GetTargetFeatures(BfSIMDSetting type, BfFMASetting fmaSetting);
+	FunctionOptions GetFunctionOptions(llvm::Function* function);
+	void UpdateFunctionOptions(llvm::Function* function);
+	void UpdateActiveFunctionMathFlags();
+	llvm::Value* CreateFAddSub(llvm::Value* lhs, llvm::Value* rhs, bool isSub);
 	BfSIMDSetting GetSimdTypeFromFunction(llvm::Function* function);
 
 	BfIRTypedValue GetTypedValue(int streamId);

@@ -62,6 +62,10 @@ namespace IDE.Compiler
 		static extern void BfSystem_AddTypeOptions(void* bfSystem, char8* filter, int32 simdSetting, int32 optimizationLevel, int32 emitDebugInfo, int32 andFlags, int32 orFlags,
 			int32 allocStackTraceDepth, char8* reflectMethodFilter);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BfSystem_AddTypeOptionsEx(void* bfSystem, char8* filter, int32 simdSetting, int32 optimizationLevel, int32 emitDebugInfo, int32 andFlags, int32 orFlags,
+			int32 allocStackTraceDepth, char8* reflectMethodFilter, int32 floatingPointMode, int32 fmaSetting);
+
         [CallingConvention(.Stdcall), CLink]
         static extern void* BfSystem_CreateParser(void* bfSystem, void* bfProject);
         
@@ -378,7 +382,8 @@ namespace IDE.Compiler
 			BfSystem_ClearTypeOptions(mNativeBfSystem);
 		}
 
-		public void AddTypeOptions(String filter, BuildOptions.SIMDSetting? simdSetting, BuildOptions.BfOptimizationLevel? optimizationLevel, BuildOptions.EmitDebugInfo? emitDebugInfo, BfOptionFlags andFlags, BfOptionFlags orFlags, int32? allocStackTraceDepth, String reflectMethodFilter)
+		public void AddTypeOptions(String filter, BuildOptions.SIMDSetting? simdSetting, BuildOptions.BfOptimizationLevel? optimizationLevel, BuildOptions.EmitDebugInfo? emitDebugInfo, BfOptionFlags andFlags, BfOptionFlags orFlags, int32? allocStackTraceDepth, String reflectMethodFilter,
+			BuildOptions.FloatingPointMode? floatingPointMode = null, BuildOptions.FMASetting? fmaSetting = null)
 		{
 			int32 simdSettingInt = (simdSetting == null) ? -1 : (int32)simdSetting.Value;
 			int32 optimizationLevelInt = (optimizationLevel == null) ? -1 : (int32)optimizationLevel.Value;
@@ -388,7 +393,9 @@ namespace IDE.Compiler
 			int32 emitDynamicCastCheckInt = (emitDynamicCastCheck == null) ? -1 : emitDynamicCastCheck.Value ? 1 : 0;
 			int32 emitObjectAccessCheckInt = (emitObjectAccessCheck == null) ? -1 : emitObjectAccessCheck.Value ? 1 : 0;*/
 			int32 allocStackTraceDepthInt = (allocStackTraceDepth == null) ? -1 : allocStackTraceDepth.Value;
-			BfSystem_AddTypeOptions(mNativeBfSystem, filter, simdSettingInt, optimizationLevelInt, emitDebugInfoInt, (.)andFlags, (.)orFlags, allocStackTraceDepthInt, reflectMethodFilter);
+			int32 floatingPointModeInt = (floatingPointMode == null) ? -1 : (int32)floatingPointMode.Value;
+			int32 fmaSettingInt = (fmaSetting == null) ? -1 : (int32)fmaSetting.Value;
+			BfSystem_AddTypeOptionsEx(mNativeBfSystem, filter, simdSettingInt, optimizationLevelInt, emitDebugInfoInt, (.)andFlags, (.)orFlags, allocStackTraceDepthInt, reflectMethodFilter, floatingPointModeInt, fmaSettingInt);
 		}
 
 		public void AddTypeOptions(DistinctBuildOptions typeOption)
@@ -428,7 +435,8 @@ namespace IDE.Compiler
 			SetFlag(typeOption.mEmitObjectAccessCheck, .EmitObjectAccessCheck);
 			SetFlag(typeOption.mArithmeticCheck, .ArithmeticCheck);
 
-			AddTypeOptions(typeOption.mFilter, typeOption.mBfSIMDSetting, typeOption.mBfOptimizationLevel, typeOption.mEmitDebugInfo, andFlags, orFlags, typeOption.mAllocStackTraceDepth, typeOption.mReflectMethodFilter);
+			AddTypeOptions(typeOption.mFilter, typeOption.mBfSIMDSetting, typeOption.mBfOptimizationLevel, typeOption.mEmitDebugInfo, andFlags, orFlags, typeOption.mAllocStackTraceDepth, typeOption.mReflectMethodFilter,
+				typeOption.mBfFloatingPointMode, typeOption.mBfFMASetting);
 		}
 
 		public void Log(String str)

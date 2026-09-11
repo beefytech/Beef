@@ -125,6 +125,7 @@ namespace Beefy.geom
 		/// <param name="y">The y coordinate in 4d-space.</param>
 		/// <param name="z">The z coordinate in 4d-space.</param>
 		/// <param name="w">The w coordinate in 4d-space.</param>
+		[Inline]
 		public this(float x, float y, float z, float w)
 		{
 			this.mX = x;
@@ -202,6 +203,7 @@ namespace Beefy.geom
 		/// Returns the length of this <see cref="Vector4"/>.
 		/// </summary>
 		/// <returns>The length of this <see cref="Vector4"/>.</returns>
+		[Inline]
 		public float Length()
 		{
 			return (float) Math.Sqrt((mX * mX) + (mY * mY) + (mZ * mZ) + (mW * mW));
@@ -211,6 +213,7 @@ namespace Beefy.geom
 		/// Returns the squared length of this <see cref="Vector4"/>.
 		/// </summary>
 		/// <returns>The squared length of this <see cref="Vector4"/>.</returns>
+		[Inline]
 		public float LengthSquared()
 		{
 			return (mX * mX) + (mY * mY) + (mZ * mZ) + (mW * mW);
@@ -244,6 +247,7 @@ namespace Beefy.geom
 		/// <param name="value1">The first vector to add.</param>
 		/// <param name="value2">The second vector to add.</param>
 		/// <returns>The result of the vector addition.</returns>
+		[Inline]
 		public static Vector4 Add(Vector4 value1, Vector4 value2)
 		{
 			return .(
@@ -527,6 +531,7 @@ namespace Beefy.geom
 		/// <param name="value1">The first vector.</param>
 		/// <param name="value2">The second vector.</param>
 		/// <returns>The dot product of two vectors.</returns>
+		[Inline]
 		public static float Dot(Vector4 vector1, Vector4 vector2)
 		{
 			return (
@@ -702,6 +707,7 @@ namespace Beefy.geom
 		/// <param name="value1">Source <see cref="Vector4"/>.</param>
 		/// <param name="value2">Source <see cref="Vector4"/>.</param>
 		/// <returns>The result of the vector multiplication.</returns>
+		[Inline]
 		public static Vector4 Multiply(Vector4 value1, Vector4 value2)
 		{
 			var value1;
@@ -718,6 +724,7 @@ namespace Beefy.geom
 		/// <param name="value1">Source <see cref="Vector4"/>.</param>
 		/// <param name="scaleFactor">Scalar value.</param>
 		/// <returns>The result of the vector multiplication with a scalar.</returns>
+		[Inline]
 		public static Vector4 Multiply(Vector4 value1, float scaleFactor)
 		{
 			var value1;
@@ -861,6 +868,7 @@ namespace Beefy.geom
 		/// <param name="value1">Source <see cref="Vector4"/>.</param>
 		/// <param name="value2">Source <see cref="Vector4"/>.</param>
 		/// <returns>The result of the vector subtraction.</returns>
+		[Inline]
 		public static Vector4 Subtract(Vector4 value1, Vector4 value2)
 		{
 			var value1;
@@ -904,6 +912,7 @@ namespace Beefy.geom
 		/// <param name="value">Source <see cref="Vector3"/>.</param>
 		/// <param name="matrix">The transformation <see cref="Matrix"/>.</param>
 		/// <returns>Transformed <see cref="Vector4"/>.</returns>
+		[Inline]
 		public static Vector4 Transform(Vector3 position, Matrix4 matrix)
 		{
 			Vector4 result;
@@ -917,6 +926,7 @@ namespace Beefy.geom
 		/// <param name="value">Source <see cref="Vector4"/>.</param>
 		/// <param name="matrix">The transformation <see cref="Matrix"/>.</param>
 		/// <returns>Transformed <see cref="Vector4"/>.</returns>
+		[Inline]
 		public static Vector4 Transform(Vector4 vector, Matrix4 matrix)
 		{
 			Transform(vector, matrix, var result);
@@ -945,6 +955,7 @@ namespace Beefy.geom
 		/// <param name="value">Source <see cref="Vector3"/>.</param>
 		/// <param name="matrix">The transformation <see cref="Matrix"/>.</param>
 		/// <param name="result">Transformed <see cref="Vector4"/> as an output parameter.</param>
+		[Inline]
 		public static void Transform(Vector3 position, Matrix4 matrix, out Vector4 result)
 		{
 			float x = (
@@ -983,6 +994,7 @@ namespace Beefy.geom
 		/// <param name="value">Source <see cref="Vector4"/>.</param>
 		/// <param name="matrix">The transformation <see cref="Matrix"/>.</param>
 		/// <param name="result">Transformed <see cref="Vector4"/> as an output parameter.</param>
+		[Inline]
 		public static void Transform(Vector4 vector, Matrix4 matrix, out Vector4 result)
 		{
 			float x = (
@@ -1342,6 +1354,7 @@ namespace Beefy.geom
 
 		#region Public Static Operators
 
+		[Inline]
 		public static Vector4 operator -(Vector4 value)
 		{
 			return Vector4(-value.mX, -value.mY, -value.mZ, -value.mW);
@@ -1360,6 +1373,7 @@ namespace Beefy.geom
 			return !(value1 == value2);
 		}
 
+		[Inline]
 		public static Vector4 operator +(Vector4 value1, Vector4 value2)
 		{
 			var value1;
@@ -1370,6 +1384,7 @@ namespace Beefy.geom
 			return value1;
 		}
 
+		[Inline]
 		public static Vector4 operator -(Vector4 value1, Vector4 value2)
 		{
 			var value1;
@@ -1380,6 +1395,7 @@ namespace Beefy.geom
 			return value1;
 		}
 
+		[Inline]
 		public static Vector4 operator *(Vector4 value1, Vector4 value2)
 		{
 			var value1;
@@ -1390,6 +1406,7 @@ namespace Beefy.geom
 			return value1;
 		}
 
+		[Inline]
 		public static Vector4 operator *(Vector4 value1, float scaleFactor)
 		{
 			var value1;
@@ -1400,6 +1417,7 @@ namespace Beefy.geom
 			return value1;
 		}
 
+		[Inline]
 		public static Vector4 operator *(float scaleFactor, Vector4 value1)
 		{
 			var value1;
@@ -1410,6 +1428,7 @@ namespace Beefy.geom
 			return value1;
 		}
 
+		[Inline]
 		public static Vector4 operator /(Vector4 value1, Vector4 value2)
 		{
 			var value1;
@@ -1420,6 +1439,7 @@ namespace Beefy.geom
 			return value1;
 		}
 
+		[Inline]
 		public static Vector4 operator /(Vector4 value1, float divider)
 		{
 			var value1;

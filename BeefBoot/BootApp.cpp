@@ -953,6 +953,19 @@ bool BootApp::Compile()
 		if (msg == NULL)
 			break;
 
+		// The compiler prepends an IDE output mark to the first message (or an
+		// undo mark when replaying diagnostics). Consume it before interpreting
+		// the message's severity/verbosity prefix.
+		if ((strncmp(msg, ":mark ", 6) == 0) || (strncmp(msg, ":mark_undo ", 11) == 0))
+		{
+			const char* newline = strchr(msg, '\n');
+			if (newline == NULL)
+				continue;
+			msg = newline + 1;
+			if (msg[0] == '\0')
+				continue;
+		}
+
 		if ((strncmp(msg, ":warn ", 6) == 0))
 		{
 			OutputLine(msg + 6, OutputPri_Warning);

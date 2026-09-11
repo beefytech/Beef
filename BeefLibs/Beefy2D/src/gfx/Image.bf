@@ -194,11 +194,8 @@ namespace Beefy.gfx
 			return CreateFromNativeTextureSegment(aNativeTextureSegment);
 		}
 
-		// The same texels sampled without the sRGB decode, for drawing an image that was loaded as
-		// color data (.Srgb) through the 2D pipeline, which works in sRGB space and would otherwise
-		// render it too dark. Shares this Image's texture -- no extra GPU memory, and nothing is
-		// created unless this is actually read. Null for images that weren't loaded .Srgb, since
-		// those already sample raw; draw those directly.
+		// sRGB-space 2D preview. Translucent premultiplied images allocate a separate texture lazily;
+		// other sRGB images share storage. Null for non-sRGB images, which already sample raw.
 		public Image RawView
 		{
 			get

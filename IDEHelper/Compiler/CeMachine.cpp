@@ -12,6 +12,7 @@
 #include "BeefySysLib/platform/PlatformHelper.h"
 #include "../DebugManager.h"
 #include "BeefySysLib/util/StackHelper.h"
+#include <cmath>
 
 extern "C"
 {
@@ -254,6 +255,8 @@ static CeOpInfo gOpInfo[] =
 	CEOPINFO_SIZED_FLOAT_2("Cosh", CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_FLOAT_2("Exp", CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_FLOAT_2("Floor", CEOI_FrameRef, CEOI_FrameRef),
+	{"Fma_F32", CEOI_FrameRefF32, CEOI_FrameRefF32, CEOI_FrameRefF32, CEOI_FrameRefF32},
+	{"Fma_F64", CEOI_FrameRefF64, CEOI_FrameRefF64, CEOI_FrameRefF64, CEOI_FrameRefF64},
 	CEOPINFO_SIZED_FLOAT_2("Log", CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_FLOAT_2("Log10", CEOI_FrameRef, CEOI_FrameRef),
 	CEOPINFO_SIZED_FLOAT_3("Pow", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef),
@@ -2146,6 +2149,19 @@ void CeBuilder::ProcessMethod(BfMethodInstance* methodInstance, BfMethodInstance
 	auto irState = irBuilder->GetState();
 	auto beState = irCodeGen->GetState();
 	mCeMachine->mCeModule->ProcessMethod(dupMethodInstance, true, forceIRWrites);
+	// CopyFrom intentionally drops custom attributes. Keep a LinkName method's
+	// generated CE symbol consistent with references to the original method.
+	auto customAttributes = methodInstance->GetCustomAttributes();
+	if ((dupMethodInstance->mIRFunction) && (customAttributes != NULL) &&
+		(customAttributes->Contains(mCeMachine->mCeModule->mCompiler->mLinkNameAttributeTypeDef)))
+	{
+		if (auto function = BeValueDynCast<BeFunction>(irCodeGen->TryGetBeValue(dupMethodInstance->mIRFunction.mId)))
+		{
+			String name;
+			BfMangler::Mangle(name, mCeMachine->mCeModule->mCompiler->GetMangleKind(), methodInstance);
+			function->mName = name;
+		}
+	}
 	irCodeGen->SetState(beState);
 	irBuilder->SetState(irState);
 
@@ -3220,6 +3236,29 @@ void CeBuilder::Build()
 						{
 						case BfIRIntrinsic_Abs:
 							EmitUnaryOp(CeOp_Abs_I8, CeOp_Abs_F32, GetOperand(castedInst->mArgs[0].mValue), result);
+							break;
+						case BfIRIntrinsic_Sqrt:
+						case BfIRIntrinsic_Pow:
+						case BfIRIntrinsic_Fma:
+							{
+								CeOp ceOp = CeOp_Sqrt_F32;
+								if (intrin->mKind == BfIRIntrinsic_Pow)
+									ceOp = CeOp_Pow_F32;
+								else if (intrin->mKind == BfIRIntrinsic_Fma)
+									ceOp = CeOp_Fma_F32;
+								if (intrin->mReturnType->mSize == 8)
+									ceOp = (CeOp)(ceOp + 1);
+
+								// Materialize all arguments before emitting the instruction.
+								SizedArray<CeOperand, 3> args;
+								for (auto& arg : castedInst->mArgs)
+									args.Add(GetOperand(arg.mValue));
+								result = FrameAlloc(intrin->mReturnType);
+								Emit(ceOp);
+								EmitFrameOffset(result);
+								for (auto& arg : args)
+									EmitFrameOffset(arg);
+								}
 							break;
 						case BfIRIntrinsic_Cast:
 							{
@@ -9698,6 +9737,24 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			break;
 		case CeOp_Pow_F64:
 			CEOP_BIN_FUNC(pow, double);
+			break;
+		case CeOp_Fma_F32:
+			{
+				auto& result = CE_GETFRAME(float);
+				auto x = CE_GETFRAME(float);
+				auto y = CE_GETFRAME(float);
+				auto z = CE_GETFRAME(float);
+				result = std::fma(x, y, z);
+			}
+			break;
+		case CeOp_Fma_F64:
+			{
+				auto& result = CE_GETFRAME(double);
+				auto x = CE_GETFRAME(double);
+				auto y = CE_GETFRAME(double);
+				auto z = CE_GETFRAME(double);
+				result = std::fma(x, y, z);
+			}
 			break;
 		case CeOp_Round_F32:
 			CEOP_UNARY_FUNC(roundf, float);

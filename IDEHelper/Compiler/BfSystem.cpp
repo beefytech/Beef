@@ -1114,6 +1114,9 @@ bool BfTypeDef::HasParsingFailed()
 
 BfProject::BfProject()
 {
+	mCodeGenOptions.mSIMDSetting = BfSIMDSetting_NotSet;
+	mCodeGenOptions.mFloatingPointMode = BfFloatingPointMode_NotSet;
+	mCodeGenOptions.mFMASetting = BfFMASetting_NotSet;
 	mDisabled = false;
 	mSingleModule = false;
 	mTargetType = BfTargetType_BeefConsoleApplication;
@@ -4757,6 +4760,20 @@ BF_EXPORT void BF_CALLTYPE BfSystem_AddTypeOptions(BfSystem* bfSystem, char* fil
 	bfSystem->mTypeOptions.push_back(typeOptions);
 }
 
+BF_EXPORT void BF_CALLTYPE BfSystem_AddTypeOptionsEx(BfSystem* bfSystem, char* filter, int32 simdSetting, int32 optimizationLevel, int32 emitDebugInfo, int32 andFlags, int32 orFlags, int32 allocStackTraceDepth, char* reflectMethodFilter, int32 floatingPointMode, int32 fmaSetting)
+{
+	AutoCrit autoCrit(bfSystem->mDataLock);
+	int beforeCount = (int)bfSystem->mTypeOptions.size();
+	BfSystem_AddTypeOptions(bfSystem, filter, simdSetting, optimizationLevel, emitDebugInfo, andFlags, orFlags, allocStackTraceDepth, reflectMethodFilter);
+	// An empty filter does not append a row; never modify the previous row.
+	if ((int)bfSystem->mTypeOptions.size() > beforeCount)
+	{
+		auto& typeOptions = bfSystem->mTypeOptions[beforeCount];
+		typeOptions.mFloatingPointMode = floatingPointMode;
+		typeOptions.mFMASetting = fmaSetting;
+	}
+}
+
 BF_EXPORT void BF_CALLTYPE BfProject_Delete(BfProject* bfProject)
 {
 	auto bfSystem = bfProject->mSystem;
@@ -4820,6 +4837,8 @@ BF_EXPORT void BF_CALLTYPE BfProject_SetOptions(BfProject* bfProject, int target
 	codeGenOptions.mLoopVectorize = (flags & BfProjectFlags_VectorizeLoops) != 0;
 	codeGenOptions.mSLPVectorize = (flags & BfProjectFlags_VectorizeSLP) != 0;	
 	codeGenOptions.mSIMDSetting = BfSIMDSetting_NotSet;
+	codeGenOptions.mFloatingPointMode = BfFloatingPointMode_NotSet;
+	codeGenOptions.mFMASetting = BfFMASetting_NotSet;
 
 	if ((flags & BfProjectFlags_AsmOutput) != 0)
 	{
@@ -4862,6 +4881,13 @@ BF_EXPORT void BF_CALLTYPE BfProject_SetOptions(BfProject* bfProject, int target
 }
 
 //////////////////////////////////////////////////////////////////////////
+
+BF_EXPORT void BF_CALLTYPE BfProject_SetCodeGenOptions(BfProject* bfProject, int32 simdSetting, int32 floatingPointMode, int32 fmaSetting)
+{
+	bfProject->mCodeGenOptions.mSIMDSetting = (BfSIMDSetting)simdSetting;
+	bfProject->mCodeGenOptions.mFloatingPointMode = (BfFloatingPointMode)floatingPointMode;
+	bfProject->mCodeGenOptions.mFMASetting = (BfFMASetting)fmaSetting;
+}
 
 class FixTypesHelper : BfElementVisitor
 {

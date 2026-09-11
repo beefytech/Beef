@@ -228,13 +228,58 @@ BF_EXPORT const char* BF_CALLTYPE ModelDef_GetTexPaths(ModelDef* modelDef, int m
 	return outString.c_str();
 }
 
+// The material's own name for each texture ModelDef_GetTexPaths returns, in the same order and
+// '\n'-separated (empty where the source file named none). What the engine binds a texture BY: a
+// path list alone says nothing about which slot a texture belongs in.
+BF_EXPORT const char* BF_CALLTYPE ModelDef_GetTexRoles(ModelDef* modelDef, int meshIdx, int primitivesIdx)
+{
+	String& outString = *gModelDef_TLStrReturn.Get();
+	outString.Clear();
+
+	auto& prims = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx];
+	int count = (int)prims.mTexPaths.mSize;
+	if ((count == 0) && (prims.mMaterial != NULL) && (prims.mMaterial->mDef != NULL))
+	{
+		for (auto& texParamVal : prims.mMaterial->mDef->mTextureParameterValues)
+		{
+			if (!outString.IsEmpty())
+				outString += "\n";
+			outString += texParamVal->mName;
+		}
+		return outString.c_str();
+	}
+	for (int i = 0; i < count; i++)
+	{
+		if (i > 0)
+			outString += "\n";
+	}
+	return outString.c_str();
+}
+
+BF_EXPORT const char* BF_CALLTYPE ModelDef_GetMaterialName(ModelDef* modelDef, int meshIdx, int primitivesIdx)
+{
+	String& outString = *gModelDef_TLStrReturn.Get();
+	outString = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx].mMaterialName;
+	return outString.c_str();
+}
+
 BF_EXPORT void BF_CALLTYPE ModelDef_SetExternalTextures(ModelDef* modelDef, int externalTextures)
 {
 	modelDef->mExternalTextures = externalTextures != 0;
 }
 
-// textureSegment's underlying texture is borrowed, not addref'd -- the caller keeps it alive for as
-// long as instances can be created from this modelDef (instances AddRef their own copies).
+BF_EXPORT int BF_CALLTYPE ModelDef_GetSurfaceMaterial(ModelDef* modelDef, int meshIdx, int primitivesIdx, float* values)
+{
+	auto& prims = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx];
+	values[0] = prims.mRoughness;
+	values[1] = prims.mMetallic;
+	values[2] = prims.mEmissive.mX;
+	values[3] = prims.mEmissive.mY;
+	values[4] = prims.mEmissive.mZ;
+	return prims.mHasSurfaceMaterial ? 1 : 0;
+}
+
+// The texture is borrowed; instances retain their own references.
 BF_EXPORT void BF_CALLTYPE ModelDef_SetTexture(ModelDef* modelDef, int meshIdx, int primitivesIdx, int texIdx, TextureSegment* textureSegment)
 {
 	auto& prims = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx];
@@ -587,6 +632,24 @@ BF_EXPORT int BF_CALLTYPE ModelDef_MeasureFit(ModelDef* modelDef, const Matrix4*
 		outFractions[i] = (total > 0) ? (float)counts[i] / total : 0;
 	*outMeanAbs = (total > 0) ? (float)(sumAbs / total) : 0;
 	return total;
+}
+
+// A primitive's vertices and indices as stored (bind-pose local for skinned meshes) -- the engine
+// uploads unskinned ones once as shared static meshes and instances them.
+BF_EXPORT int BF_CALLTYPE ModelDef_GetPrimitiveMesh(ModelDef* modelDef, int meshIdx, int primitivesIdx,
+	ModelVertex** outVertices, int* outVertexCount, uint16** outIndices, int* outIndexCount)
+{
+	if ((meshIdx < 0) || (meshIdx >= (int)modelDef->mMeshes.size()))
+		return 0;
+	auto& mesh = modelDef->mMeshes[meshIdx];
+	if ((primitivesIdx < 0) || (primitivesIdx >= (int)mesh.mPrimitives.size()))
+		return 0;
+	auto& prims = mesh.mPrimitives[primitivesIdx];
+	*outVertices = prims.mVertices.mVals;
+	*outVertexCount = (int)prims.mVertices.size();
+	*outIndices = prims.mIndices.mVals;
+	*outIndexCount = (int)prims.mIndices.size();
+	return 1;
 }
 
 BF_EXPORT int BF_CALLTYPE ModelDef_GetVertexCount(ModelDef* modelDef)

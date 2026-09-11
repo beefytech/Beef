@@ -3391,6 +3391,63 @@ BfResolvedTypeSet::~BfResolvedTypeSet()
 {
 }
 
+// Called only when an implausible number of entries in one bucket claim the exact same 32-bit hash yet all
+//  compare unequal to what we are inserting. That pattern means either Hash and Equals disagree (a real bug,
+//  and the way we end up inserting the same type over and over) or we got extraordinarily unlucky. We can tell
+//  the two apart exactly: the set's contract is that no two entries are Equals-equal, so if any pair of the
+//  colliding entries compares equal we have caught the bug outright. This is O(k^2) in the number of colliding
+//  entries, but k only gets here when something is already wrong, so it costs nothing in the normal case and is
+//  safe to leave enabled in release.
+void BfResolvedTypeSet::CheckHashPileup(int bucket, int hashVal, LookupContext* ctx)
+{
+	Array<BfType*> collidingTypes;
+	auto checkEntryIdx = mHashHeads[bucket];
+	while (checkEntryIdx != -1)
+	{
+		auto checkEntry = &mEntries[checkEntryIdx];
+		if ((checkEntry->mValue != NULL) && (checkEntry->mHashCode == hashVal))
+			collidingTypes.Add(checkEntry->mValue);
+		checkEntryIdx = checkEntry->mNext;
+	}
+
+	// Equals can set these, and our caller has already acted on their current values
+	bool prevFailed = ctx->mFailed;
+	bool prevHadVar = ctx->mHadVar;
+
+	BfType* dupType = NULL;
+	for (int i = 0; (i < collidingTypes.mSize) && (dupType == NULL); i++)
+	{
+		for (int j = i + 1; j < collidingTypes.mSize; j++)
+		{
+			if (Equals(collidingTypes[i], collidingTypes[j], ctx))
+			{
+				dupType = collidingTypes[i];
+				break;
+			}
+		}
+	}
+
+	ctx->mFailed = prevFailed;
+	ctx->mHadVar = prevHadVar;
+
+	if (ctx->mModule == NULL)
+		return;
+
+	if (dupType != NULL)
+	{
+		// Two entries in the set compare equal to each other, which breaks uniquing outright. There is no
+		//  interpretation of this that is not bad state, so we report it even in release
+		ctx->mModule->InternalError(StrFormat("Duplicate entries in the resolved type set for '%s'",
+			ctx->mModule->TypeToString(dupType).c_str()), ctx->mRootTypeRef);
+		return;
+	}
+
+	// We could not prove a duplicate, so these may be genuine hash collisions -- but at this count that is
+	//  unlikely enough to be worth a look, so say so where it costs a release build nothing
+	BfLogSys(ctx->mModule->mSystem, "Warning: %d resolved type set entries share hash %d with no confirmed duplicate\n", collidingTypes.mSize, hashVal);
+	BF_ASSERT(false);
+}
+
 #define HASH_MIX(origHashVal, newHashVal) ((((origHashVal) << 5) - (origHashVal)) ^ (newHashVal))
 
 #define HASH_VAL_PTR 1

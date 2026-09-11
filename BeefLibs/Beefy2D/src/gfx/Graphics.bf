@@ -505,6 +505,17 @@ namespace Beefy.gfx
 		extern static void Gfx_SetComputeUAV(int32 slot, void* textureSegment, int32 mipLevel);
 		[CallingConvention(.Stdcall), CLink]
 		extern static void Gfx_Dispatch(void* computeShader, int32 groupsX, int32 groupsY, int32 groupsZ);
+		[CallingConvention(.Stdcall), CLink]
+		extern static void Gfx_SetPixelUAV(int32 slot, void* textureSegment);
+
+		// Binds a GPU-writable buffer as pixel-stage unordered access (RWStructuredBuffer at
+		// register(u<slot>)); null unbinds. Queued in order with the draws. D3D shares the UAV and
+		// render-target slots, so slot must be at or above the pass's render-target count, and the
+		// buffer must not be bound as a texture at the same time.
+		public void SetPixelUnorderedAccess(int32 slot, GpuBuffer buffer)
+		{
+			Gfx_SetPixelUAV(slot, (buffer != null) ? buffer.mNativeTextureSegment : null);
+		}
 
 		// Compute bindings queue in order with the draws and are consumed by the next Dispatch,
 		// which unbinds them again (see DrawLayer::Dispatch). null unbinds a slot.

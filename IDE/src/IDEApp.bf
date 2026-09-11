@@ -121,6 +121,7 @@ namespace IDE
 	{
 		public static String sRTVersionStr = "042";
 		public const String cVersion = "0.43.6";
+		public const String cEmSdkDep = "EmsdkDep2_Done.txt";
 
 #if BF_PLATFORM_LINUX
 		public const uint8[?] cAppIcon = [IgnoreErrors]{ Compiler.ReadBinary("Resources/beeflang.png") };
@@ -1666,7 +1667,7 @@ namespace IDE
 			return Utils.LoadTextFile(fileName, outBuffer, autoRetry, onPreFilter);
 		}
 
-		public bool SaveFileAs(ContentPanel sourceViewPanel)
+		public virtual bool SaveFileAs(ContentPanel sourceViewPanel)
 		{
 #if !CLI
 			String fullDir = scope .();
@@ -3925,12 +3926,13 @@ namespace IDE
 		}
 
 		[IDECommand]
-		public void SaveAs()
+		public virtual void SaveAs()
 		{
 			var sourceViewPanel = GetActiveSourceViewPanel();
 			if (sourceViewPanel != null)
 			{
 				SaveFileAs(sourceViewPanel);
+				return;
 			}
 
 			if (let contentPanel = GetActiveDocumentPanel() as ContentPanel)
@@ -6116,6 +6118,11 @@ namespace IDE
 			menu.SetDisabled(GetActiveDocumentPanel() == null);
 		}
 
+		public virtual void UpdateMenuItem_SaveAs(IMenu menu)
+		{
+			UpdateMenuItem_HasActiveDocument(menu);
+		}
+
 		public void UpdateMenuItem_HasLastActiveDocument(IMenu menu)
 		{
 			menu.SetDisabled(GetLastActiveDocumentPanel() == null);
@@ -6190,7 +6197,7 @@ namespace IDE
 			recentMenu.AddMenuItem("Open Recent &Crash Dump").mOnCreate = new (menu) => { mSettings.mRecentFiles.mRecents[(int)RecentFiles.RecentKind.OpenedCrashDump].mMenu = menu; };
 
 			subMenu.AddMenuItem("&Save File", "Save File", new => UpdateMenuItem_HasActiveDocument);
-			subMenu.AddMenuItem("Save &As...", "Save As", new => UpdateMenuItem_HasActiveDocument);
+			subMenu.AddMenuItem("Save &As...", "Save As", new => UpdateMenuItem_SaveAs);
 			subMenu.AddMenuItem("Save A&ll", "Save All");
 			let prefMenu = subMenu.AddMenuItem("&Preferences");
 			prefMenu.AddMenuItem("&Settings", "Settings");
@@ -10713,6 +10720,13 @@ namespace IDE
 				optimizationLevel, ltoType, relocType, options.mBeefOptions.mPICLevel,
 				options.mBeefOptions.mMergeFunctions, options.mBeefOptions.mCombineLoads,
 				options.mBeefOptions.mVectorizeLoops, options.mBeefOptions.mVectorizeSLP);
+			bfProject.SetCodeGenOptions(options.mBeefOptions.mSIMDSetting,
+				options.mBeefOptions.mFloatingPointMode, options.mBeefOptions.mFMASetting);
+			let effectiveSIMDSetting = options.mBeefOptions.mSIMDSetting ?? workspaceOptions.mBfSIMDSetting;
+			let effectiveFloatingPointMode = options.mBeefOptions.mFloatingPointMode ?? workspaceOptions.mBfFloatingPointMode;
+			let effectiveFMASetting = options.mBeefOptions.mFMASetting ?? workspaceOptions.mBfFMASetting;
+			CompilerLog("IDEApp.SetupBeefProjectSettings Project='{}' SIMD={} FloatingPointMode={} FMA={} TargetCPU='{}'",
+				project.mProjectName, effectiveSIMDSetting, effectiveFloatingPointMode, effectiveFMASetting, workspaceOptions.mTargetCPU);
 
 			List<Project> depProjectList = scope List<Project>();
 			if (!GetDependentProjectList(project, depProjectList))
@@ -11405,7 +11419,7 @@ namespace IDE
 									IDEUtils.FixFilePath(newString);
 								case "EmccPath":
 									newString = scope:ReplaceBlock String();
-									newString.AppendF($"{gApp.mSettings.mEmscriptenPath}/upstream/emscripten/emcc.bat");
+									newString.AppendF($"{gApp.mSettings.mEmscriptenPath}/upstream/emscripten/emcc.exe");
 								}
 							}
 
@@ -13867,8 +13881,15 @@ namespace IDE
 			RegisterMCPTools(mMCPServer);
 			if (mMCPServer.Start() case .Err)
 			{
-				OutputErrorLine(scope $"MCP: failed to listen on port {port}");
+				// MCP was asked for on the command line and can't be served -- most often another IDE
+				// already holds the port. Quit with a failure code: a window nothing can drive is worse
+				// than none, and the caller's next connect would fail with no explanation.
+				String failMsg = scope $"MCP: failed to listen on port {port}";
+				OutputErrorLine(failMsg);
+				Console.Error.WriteLine(failMsg);
 				DeleteAndNullify!(mMCPServer);
+				mFailed = true;
+				Stop();
 				return;
 			}
 			OutputLine(scope $"MCP: listening on http://127.0.0.1:{port}/mcp");
@@ -15495,6 +15516,17 @@ namespace IDE
 			{
 				projectSource.HasChangedSinceLastCompile = true;
 			}
+
+			var pathStr = scope String(path);
+			if (var projectItem = FindProjectSourceItem(pathStr))
+			{
+				using (mFileWatcher.mMonitor.Enter())
+				{
+					// Queue this up right away instead of waiting for file system.
+					// We can call UpdateChangedFiles(true) now to force edit data reload.
+					mFileWatcher.AddChangedDependency(projectItem);
+				}
+			}
 		}
 
 		public virtual bool WantsFileChangeDialog(ContentPanel panel)
@@ -15502,7 +15534,12 @@ namespace IDE
 			return true;
 		}
 
-		void UpdateWorkspace()
+		protected void UpdateWorkspace()
+		{
+			UpdateChangedFiles(false);
+		}
+
+		protected void UpdateChangedFiles(bool forceFocus = false)
 		{
 			mFileWatcher.Update();
 #if !CLI
@@ -15550,7 +15587,7 @@ namespace IDE
 			}
 			mAppHasFocus = appHasFocus;
 
-			if (mRunningTestScript)
+			if ((mRunningTestScript) || (forceFocus))
 				appHasFocus = true;
 
 			// Is this enough to get the behavior we want?

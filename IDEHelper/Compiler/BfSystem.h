@@ -351,6 +351,22 @@ enum BfSIMDSetting
 	BfSIMDSetting_AVX512,
 };
 
+enum BfFloatingPointMode
+{
+	BfFloatingPointMode_NotSet = -1,
+	BfFloatingPointMode_Precise = 0,
+	BfFloatingPointMode_AllowFMA = 1,
+	BfFloatingPointMode_Fast = 2
+};
+
+enum BfFMASetting
+{
+	BfFMASetting_NotSet = -1,
+	BfFMASetting_TargetDefault = 0,
+	BfFMASetting_Enabled = 1,
+	BfFMASetting_Disabled = 2
+};
+
 enum BfAsmKind
 {
 	BfAsmKind_None,
@@ -420,6 +436,8 @@ struct BfCodeGenOptions
 	BfRelocType mRelocType;
 	BfPICLevel mPICLevel;
 	BfSIMDSetting mSIMDSetting;
+	BfFloatingPointMode mFloatingPointMode;
+	BfFMASetting mFMASetting;
 	BfOptLevel mOptLevel;
 	BfLTOType mLTOType;
 	int mSizeLevel;
@@ -474,6 +492,8 @@ struct BfCodeGenOptions
 		mRelocType = BfRelocType_NotSet;
 		mPICLevel = BfPICLevel_NotSet;
 		mSIMDSetting = BfSIMDSetting_None;
+		mFloatingPointMode = BfFloatingPointMode_Precise;
+		mFMASetting = BfFMASetting_TargetDefault;
 		mOptLevel = BfOptLevel_O0;
 		mLTOType = BfLTOType_None;
 		mSizeLevel = 0;
@@ -528,6 +548,8 @@ struct BfCodeGenOptions
 		hashCtx.Mixin(mRelocType);
 		hashCtx.Mixin(mPICLevel);
 		hashCtx.Mixin(mSIMDSetting);
+		hashCtx.Mixin(mFloatingPointMode);
+		hashCtx.Mixin(mFMASetting);
 		hashCtx.Mixin(mOptLevel);
 		hashCtx.Mixin(mLTOType);
 		hashCtx.Mixin(mSizeLevel);
@@ -1752,6 +1774,8 @@ public:
 	Array<String> mAttributeFilters;
 	Array<int> mMatchedIndices;
 	int mSIMDSetting;
+	int mFloatingPointMode = BfFloatingPointMode_NotSet;
+	int mFMASetting = BfFMASetting_NotSet;
 	int mOptimizationLevel;
 	int mEmitDebugInfo;
 	BfOptionFlags mAndFlags;

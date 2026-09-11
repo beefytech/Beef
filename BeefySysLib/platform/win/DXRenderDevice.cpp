@@ -655,6 +655,10 @@ bool DXShader::Load()
 	if ((mShaderFlags & ShaderFlags_NoOptimization) != 0)
 		compileFlags |= D3D10_SHADER_SKIP_OPTIMIZATION;
 
+	bool sm5 = (mShaderFlags & ShaderFlags_ShaderModel5) != 0;
+	String vsProfile = sm5 ? "vs_5_0" : "vs_4_0";
+	String psProfile = sm5 ? "ps_5_0" : "ps_4_0";
+
 	ID3D10Blob* vertexShaderBuffer = NULL;
 	ID3D10Blob* pixelShaderBuffer = NULL;
 
@@ -678,15 +682,15 @@ bool DXShader::Load()
 		else
 		{
 			Span<uint8> span((uint8*)memPtr, memSize);
-			if (LoadDXShader(span, "VS", "vs_4_0", &vertexShaderBuffer, &mCompileError, compileFlags))
-				LoadDXShader(span, "PS", "ps_4_0", &pixelShaderBuffer, &mCompileError, compileFlags);
+			if (LoadDXShader(span, "VS", vsProfile, &vertexShaderBuffer, &mCompileError, compileFlags))
+				LoadDXShader(span, "PS", psProfile, &pixelShaderBuffer, &mCompileError, compileFlags);
 		}
 	}
 	else
 	{
 		String fxPath = mSrcPath + ".fx";
-		if (LoadDXShader(fxPath, String("VS") + mEntrySuffix, "vs_4_0", &vertexShaderBuffer, &mCompileError, compileFlags))
-			LoadDXShader(fxPath, String("PS") + mEntrySuffix, "ps_4_0", &pixelShaderBuffer, &mCompileError, compileFlags);
+		if (LoadDXShader(fxPath, String("VS") + mEntrySuffix, vsProfile, &vertexShaderBuffer, &mCompileError, compileFlags))
+			LoadDXShader(fxPath, String("PS") + mEntrySuffix, psProfile, &pixelShaderBuffer, &mCompileError, compileFlags);
 	}
 
 	if ((vertexShaderBuffer == NULL) || (pixelShaderBuffer == NULL))
@@ -867,6 +871,7 @@ DXTexture::DXTexture()
 	mD3DDepthStencilView = NULL;
 	mD3DKeyedMutex = NULL;
 	mContentBits = NULL;
+	mGammaPremultBits = NULL;
 	mD3DFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	mSampleCount = 1;
 	mStandardDepthClear = false;
@@ -911,6 +916,7 @@ DXTexture::~DXTexture()
 
 	//OutputDebugStrF("DXTexture::~DXTexture %@\n", this);
 	delete mContentBits;
+	delete [] mGammaPremultBits;
 	if (mD3DResourceView != NULL)
 		mD3DResourceView->Release();
 	if (mD3DRenderTargetView != NULL)
@@ -1078,7 +1084,7 @@ void DXTexture::PhysSetAsTarget()
 			rtvs[1] = ((DXTexture*)mSecondaryTarget)->mD3DRenderTargetView;
 			rtvCount = 2;
 		}
-		mRenderDevice->mD3DDeviceContext->OMSetRenderTargets(rtvCount, rtvs, mD3DDepthStencilView);
+		mRenderDevice->BindRenderTargets(rtvCount, rtvs, mD3DDepthStencilView);
 		mRenderDevice->mD3DDeviceContext->RSSetViewports(1, &viewPort);
 	}
 
@@ -1503,10 +1509,7 @@ Texture* DXTexture::CreateDepthRef()
 	return ref;
 }
 
-// Second view over the same texels, minus the sRGB decode. Only TYPELESS resources (ie ones loaded
-// with TextureFlag_Srgb) can be re-viewed; anything else already samples raw, so there's nothing to
-// alias and this returns NULL. The resource is shared and refcounted, so the ref and the original
-// can be released in either order.
+// 2D blends in gamma space; translucent sRGB images need separately premultiplied texels.
 Texture* DXTexture::CreateRawRef()
 {
 	if ((mD3DTexture == NULL) || (mD3DFormat != DXGI_FORMAT_R8G8B8A8_TYPELESS))
@@ -1514,6 +1517,14 @@ Texture* DXTexture::CreateRawRef()
 
 	D3D11_TEXTURE2D_DESC desc;
 	mD3DTexture->GetDesc(&desc);
+	if (mGammaPremultBits != NULL)
+	{
+		ImageData data;
+		data.CreateNew(mWidth, mHeight, false);
+		memcpy(data.mBits, mGammaPremultBits, mWidth * mHeight * 4);
+		return mRenderDevice->LoadTexture(&data, TextureFlag_NoPremult |
+			((desc.MipLevels > 1) ? TextureFlag_Mipmaps : 0));
+	}
 
 	DXTexture* ref = new DXTexture();
 	ref->mWidth = mWidth;
@@ -1680,7 +1691,12 @@ void DXDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 	UINT offset = vtxOffset;
 	aRenderDevice->mD3DDeviceContext->IASetVertexBuffers(0, 1, &aRenderDevice->mD3DVertexBuffer, &stride, &offset);
 	aRenderDevice->mD3DDeviceContext->IASetIndexBuffer(aRenderDevice->mD3DIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
-	aRenderDevice->mD3DDeviceContext->DrawIndexed(mIdxIdx, idxByteStart / sizeof(uint16), vtxStartIdx/*vtxByteStart / mVtxSize*/);
+	// Points go non-indexed: through the index buffer a shared vertex would rasterize once per
+	// triangle that uses it, which is not a vertex count.
+	if (mRenderState->mTopology == Topology3D_PointList)
+		aRenderDevice->mD3DDeviceContext->Draw(mVtxIdx, vtxStartIdx);
+	else
+		aRenderDevice->mD3DDeviceContext->DrawIndexed(mIdxIdx, idxByteStart / sizeof(uint16), vtxStartIdx/*vtxByteStart / mVtxSize*/);
 }
 
 DXStaticMesh::DXStaticMesh()
@@ -1817,7 +1833,11 @@ void DXStaticMeshDrawCmd::Render(RenderDevice* renderDevice, RenderWindow* rende
 	UINT offsets[2] = { 0, (UINT)(mInstBase * sizeof(float)) };
 	ctx->IASetVertexBuffers(0, 2, bufs, strides, offsets);
 	ctx->IASetIndexBuffer(mMesh->mD3DIndexBuffer, mMesh->mIdx32 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, 0);
-	ctx->DrawIndexedInstanced(mMesh->mIdxCount, mInstCount, 0, 0, 0);
+	// See DXDrawBatch::Render: points are drawn straight over the vertex range, not through indices.
+	if (mRenderState->mTopology == Topology3D_PointList)
+		ctx->DrawInstanced(mMesh->mVtxCount, mInstCount, 0, 0);
+	else
+		ctx->DrawIndexedInstanced(mMesh->mIdxCount, mInstCount, 0, 0, 0);
 	// PhysSetRenderState only sets the layout on a shader change, so put the batch layout back for the
 	// dynamic batches that follow under this same render state.
 	ctx->IASetInputLayout(shader->mD3DLayout);
@@ -1854,6 +1874,20 @@ RenderCmd* Beefy::DXDrawLayer::CreateSetTextureCmd(int textureIdx, Texture* text
 	return setTextureCmd;
 }
 
+void DXRenderDevice::BindRenderTargets(int rtvCount, ID3D11RenderTargetView* const* rtvs, ID3D11DepthStencilView* dsv)
+{
+	// UAV and render-target slots are the same range, so a UAV below the target count has nowhere to
+	// go -- the second color target wins and the pass simply counts nothing.
+	if ((mCurPSUAV == NULL) || (mCurPSUAVSlot < rtvCount))
+	{
+		mD3DDeviceContext->OMSetRenderTargets(rtvCount, rtvs, dsv);
+		return;
+	}
+	UINT initialCount = (UINT)-1;
+	mD3DDeviceContext->OMSetRenderTargetsAndUnorderedAccessViews(rtvCount, rtvs, dsv,
+		mCurPSUAVSlot, 1, &mCurPSUAV, &initialCount);
+}
+
 void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 {
 	BP_ZONE("DXRenderDevice::PhysSetRenderState");
@@ -1865,6 +1899,8 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 		D3D_PRIMITIVE_TOPOLOGY topology = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST;
 		if (dxRenderState->mTopology == Topology3D_LineLine)
 			topology = D3D_PRIMITIVE_TOPOLOGY_LINELIST;
+		else if (dxRenderState->mTopology == Topology3D_PointList)
+			topology = D3D_PRIMITIVE_TOPOLOGY_POINTLIST;
 		mD3DDeviceContext->IASetPrimitiveTopology(topology);
 	}
 
@@ -2054,9 +2090,9 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 	if (renderState->mDisableRenderTarget != mPhysRenderState->mDisableRenderTarget)
 	{
 		if (renderState->mDisableRenderTarget)
-			mD3DDeviceContext->OMSetRenderTargets(0, NULL, mCurD3DDSV);
+			BindRenderTargets(0, NULL, mCurD3DDSV);
 		else
-			mD3DDeviceContext->OMSetRenderTargets(1, &mCurD3DRTV, mCurD3DDSV);
+			BindRenderTargets(1, &mCurD3DRTV, mCurD3DDSV);
 	}
 
 	if ((renderState->mDisableBlend != mPhysRenderState->mDisableBlend) ||
@@ -2219,12 +2255,12 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 
 			if (modelDef->mExternalTextures)
 			{
-				// Engine-injected (see ModelDef_SetTexture) -- never load from paths here.
+				// Engine-injected (see ModelDef_SetTexture) -- never load from paths here. Slot
+				// positions are kept: entry i binds at pixel slot i.
 				for (auto tex : primitives->mExtTextures)
 				{
-					if (tex == NULL)
-						continue;
-					tex->AddRef();
+					if (tex != NULL)
+						tex->AddRef();
 					dxPrimitives->mTextures.Add((DXTexture*)tex);
 				}
 			}
@@ -2251,6 +2287,10 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 					dxPrimitives->mTextures.Add(texture);
 				}
 			}
+
+			// Untextured materials still need the neutral albedo sampler.
+			if (dxPrimitives->mTextures.IsEmpty())
+				dxPrimitives->mTextures.Add((DXTexture*)((RenderDevice*)this)->LoadTexture("!white", TextureFlag_NoPremult | TextureFlag_Srgb));
 
 			dxPrimitives->mNumIndices = (int)primitives->mIndices.size();
 			dxPrimitives->mNumVertices = (int)primitives->mVertices.size();
@@ -2336,6 +2376,23 @@ void DXDrawLayer::SetComputeUAV(int slot, Texture* texture, int mipLevel)
 	cmd->mSlot = slot;
 	cmd->mMipLevel = mipLevel;
 	cmd->mTexture = (DXTexture*)texture;
+	QueueRenderCmd(cmd);
+}
+
+void DXDrawLayer::SetPixelUAV(int slot, Texture* texture)
+{
+	BF_ASSERT((slot >= 0) && (slot < D3D11_PS_CS_UAV_REGISTER_COUNT));
+	DXSetPixelUAVCmd* cmd = AllocRenderCmd<DXSetPixelUAVCmd>();
+	cmd->mSlot = slot;
+	cmd->mTexture = (DXTexture*)texture;
+	QueueRenderCmd(cmd);
+}
+
+void DXDrawLayer::ClearBufferUint(Texture* buffer, uint32 value)
+{
+	DXClearUAVCmd* cmd = AllocRenderCmd<DXClearUAVCmd>();
+	cmd->mTexture = (DXTexture*)buffer;
+	cmd->mValue = value;
 	QueueRenderCmd(cmd);
 }
 
@@ -2465,7 +2522,11 @@ DXModelPrimitives::~DXModelPrimitives()
 	if (mD3DVertexBuffer != NULL)
 		mD3DVertexBuffer->Release();
 	for (auto tex : mTextures)
-		tex->Release();
+		if (tex != NULL)
+			tex->Release();
+	for (auto tex : mOverrideTextures)
+		if (tex != NULL)
+			tex->Release();
 }
 
 //////////////////////////////////////////////////////////////////////////
@@ -2570,6 +2631,23 @@ DXModelInstance::~DXModelInstance()
 {
 }
 
+void DXModelInstance::SetTexture(int meshIdx, int primIdx, int texIdx, Texture* texture)
+{
+	if ((meshIdx < 0) || (meshIdx >= (int)mDXModelMeshs.mSize) || (texIdx < 0))
+		return;
+	auto& prims = mDXModelMeshs[meshIdx].mPrimitives;
+	if ((primIdx < 0) || (primIdx >= (int)prims.mSize))
+		return;
+	auto& overrides = prims[primIdx].mOverrideTextures;
+	while ((int)overrides.mSize <= texIdx)
+		overrides.Add(NULL);
+	if (overrides[texIdx] != NULL)
+		overrides[texIdx]->Release();
+	if (texture != NULL)
+		texture->AddRef();
+	overrides[texIdx] = (DXTexture*)texture;
+}
+
 void DXModelInstance::Render(RenderCmd* renderCmd, RenderDevice* renderDevice, RenderWindow* renderWindow)
 {
 	if (renderCmd->mRenderState != NULL)
@@ -2586,17 +2664,19 @@ void DXModelInstance::Render(RenderCmd* renderCmd, RenderDevice* renderDevice, R
 		{
 			auto dxPrimitives = &dxMesh->mPrimitives[primIdx];
 
-			if (dxPrimitives->mTextures.IsEmpty())
+			if ((dxPrimitives->mTextures.IsEmpty()) && (dxPrimitives->mOverrideTextures.IsEmpty()))
 				continue;
 
-			for (int i = 0; i < (int)dxPrimitives->mTextures.mSize; i++)
+			int slotCount = BF_MAX((int)dxPrimitives->mTextures.mSize, (int)dxPrimitives->mOverrideTextures.mSize);
+			for (int i = 0; i < slotCount; i++)
 			{
-				ID3D11ShaderResourceView* const* resView = NULL;
-				if ((i < dxPrimitives->mTextures.size()) && (dxPrimitives->mTextures[i] != NULL))
-				{
-					resView = &dxPrimitives->mTextures[i]->mD3DResourceView;
-					mD3DRenderDevice->mD3DDeviceContext->PSSetShaderResources(i, 1, resView);
-				}
+				DXTexture* texture = NULL;
+				if ((i < (int)dxPrimitives->mOverrideTextures.mSize) && (dxPrimitives->mOverrideTextures[i] != NULL))
+					texture = dxPrimitives->mOverrideTextures[i];
+				else if (i < (int)dxPrimitives->mTextures.mSize)
+					texture = dxPrimitives->mTextures[i];
+				if (texture != NULL)
+					mD3DRenderDevice->mD3DDeviceContext->PSSetShaderResources(i, 1, &texture->mD3DResourceView);
 			}
 
 			// Set vertex buffer
@@ -2648,6 +2728,9 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 		{
 			ModelPrimitives* modelPrims = &mesh->mPrimitives[primsIdx];
 			DXModelPrimitives* dxPrims = &dxMesh->mPrimitives[primsIdx];
+			const ModelInstance::SurfaceOverride* surfaceOverride = NULL;
+			for (auto& ov : mSurfaceOverrides)
+				if ((ov.mMeshIdx == meshIdx) && (ov.mPrimIdx == primsIdx)) surfaceOverride = &ov;
 
 			D3D11_MAPPED_SUBRESOURCE mappedSubResource;
 			DXRenderDevice* dxRenderDevice = (DXRenderDevice*)drawLayer->mRenderDevice;
@@ -2704,9 +2787,19 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 				destVtx->mTangent = Vector3::Normalize(tangent);
 				destVtx->mTexCoords = srcVtxData->mTexCoords;
 				destVtx->mBumpTexCoords = srcVtxData->mBumpTexCoords;
-				// White, keeping the definition's alpha (a per-vertex flag for the IDE's fit view).
-				destVtx->mColor = (srcVtxData->mColor & 0xFF000000) | 0x00FFFFFF;
+				destVtx->mColor = srcVtxData->mColor;
 				destVtx->mInstanceIdx = 0;
+				if (mUseSurfaceMaterials)
+				{
+					destVtx->mBumpTexCoords = TexCoords(modelPrims->mRoughness, modelPrims->mMetallic);
+					destVtx->mTangent = modelPrims->mEmissive;
+					if (surfaceOverride != NULL)
+					{
+						destVtx->mBumpTexCoords = TexCoords(surfaceOverride->mRoughness, surfaceOverride->mMetallic);
+						destVtx->mTangent = surfaceOverride->mEmissive;
+						destVtx->mColor = surfaceOverride->mColor;
+					}
+				}
 			}
 
 			dxRenderDevice->mD3DDeviceContext->Unmap(dxPrims->mD3DVertexBuffer, 0);
@@ -2831,6 +2924,39 @@ void DXSetComputeUAVCmd::Render(RenderDevice* renderDevice, RenderWindow* render
 	dxRenderDevice->mD3DDeviceContext->CSSetUnorderedAccessViews(mSlot, 1, &uav, &initialCount);
 	if (uav != NULL)
 		dxRenderDevice->mCSBoundUAVs |= 1u << mSlot;
+}
+
+void DXSetPixelUAVCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
+{
+	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
+	dxRenderDevice->mCurPSUAV = (mTexture != NULL) ? mTexture->GetUAV(0) : NULL;
+	dxRenderDevice->mCurPSUAVSlot = mSlot;
+	// The same resource cannot be an SRV and a UAV at once; the runtime would force-null the slot,
+	// but the explicit unbind is the well-tested path (see DXTexture::PhysSetAsTarget).
+	if (mTexture != NULL)
+	{
+		for (int i = 0; i < 32; i++)
+		{
+			if (dxRenderDevice->mPSBoundTextures[i] != mTexture)
+				continue;
+			ID3D11ShaderResourceView* nullSrv = NULL;
+			dxRenderDevice->mD3DDeviceContext->PSSetShaderResources(i, 1, &nullSrv);
+			if (i >= DX_VS_TEXTURE_SLOT)
+				dxRenderDevice->mD3DDeviceContext->VSSetShaderResources(i, 1, &nullSrv);
+			dxRenderDevice->mPSBoundTextures[i] = NULL;
+		}
+	}
+	dxRenderDevice->BindRenderTargets(1, &dxRenderDevice->mCurD3DRTV, dxRenderDevice->mCurD3DDSV);
+}
+
+void DXClearUAVCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
+{
+	DXRenderDevice* dxRenderDevice = (DXRenderDevice*)renderDevice;
+	ID3D11UnorderedAccessView* uav = (mTexture != NULL) ? mTexture->GetUAV(0) : NULL;
+	if (uav == NULL)
+		return;
+	UINT values[4] = { mValue, mValue, mValue, mValue };
+	dxRenderDevice->mD3DDeviceContext->ClearUnorderedAccessViewUint(uav, values);
 }
 
 void DXDispatchCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
@@ -2995,7 +3121,7 @@ void DXRenderWindow::PhysSetAsTarget()
 
 		mDXRenderDevice->mCurD3DRTV = mD3DRenderTargetView;
 		mDXRenderDevice->mCurD3DDSV = mD3DDepthStencilView;
-		mDXRenderDevice->mD3DDeviceContext->OMSetRenderTargets(1, &mD3DRenderTargetView, mD3DDepthStencilView);
+		mDXRenderDevice->BindRenderTargets(1, &mD3DRenderTargetView, mD3DDepthStencilView);
 		mDXRenderDevice->mD3DDeviceContext->RSSetViewports(1, &viewPort);
 	}
 
@@ -3225,6 +3351,8 @@ DXRenderDevice::DXRenderDevice()
 	mCurD3DDSV = NULL;
 	mCSBoundSRVs = 0;
 	mCSBoundUAVs = 0;
+	mCurPSUAV = NULL;
+	mCurPSUAVSlot = 0;
 	mInstIotaBuffer = NULL;
 	mInstIotaCount = 0;
 	mGpuTimerWriteIdx = 0;
@@ -3707,6 +3835,7 @@ void DXRenderDevice::FrameStart()
 {
 	mCurRenderTarget = NULL;
 	mPhysRenderWindow = NULL;
+	mCurPSUAV = NULL;
 	for (auto renderWindow : mRenderWindowList)
 	{
 		renderWindow->mHasBeenDrawnTo = false;
@@ -3716,6 +3845,8 @@ void DXRenderDevice::FrameStart()
 
 void DXRenderDevice::FrameEnd()
 {
+	if (gBFApp->mUnthrottledRendering)
+		mD3DDeviceContext->Flush();
 	for (int renderWindowIdx = 0; renderWindowIdx < (int)mRenderWindowList.size(); renderWindowIdx++)
 	{
 		RenderWindow* aRenderWindow = mRenderWindowList[renderWindowIdx];
@@ -3951,16 +4082,65 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 	return aTexture;
 }
 
+static uint8 PremultiplySrgb(uint8 color, uint8 alpha, bool alreadyPremultiplied)
+{
+	struct Table
+	{
+		uint8 mValues[256][256];
+		Table()
+		{
+			for (int c = 0; c < 256; c++)
+			{
+				float srgb = c / 255.0f;
+				float linear = (srgb <= 0.04045f) ? srgb / 12.92f : powf((srgb + 0.055f) / 1.055f, 2.4f);
+				for (int a = 0; a < 256; a++)
+				{
+					float value = linear * (a / 255.0f);
+					float encoded = (value <= 0.0031308f) ? value * 12.92f : 1.055f * powf(value, 1.0f / 2.4f) - 0.055f;
+					mValues[c][a] = (uint8)BF_MIN(255, (int)(encoded * 255.0f + 0.5f));
+				}
+			}
+		}
+	};
+	static const Table table;
+	if ((alreadyPremultiplied) && (alpha != 0))
+		color = (uint8)BF_MIN(255, (color * 255 + alpha / 2) / alpha);
+	return table.mValues[color][alpha];
+}
+
 Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 {
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
 
+	bool wantMipmaps = (flags & TextureFlag_Mipmaps) != 0;
+	bool wantSrgb = (flags & TextureFlag_Srgb) != 0;
+	ImageData linearPremult;
+	if ((wantSrgb) && ((flags & TextureFlag_NoPremult) == 0))
+	{
+		int count = imageData->mWidth * imageData->mHeight;
+		for (int i = 0; i < count; i++)
+		{
+			if ((imageData->mBits[i] >> 24) == 255) continue;
+			linearPremult.CreateNew(imageData->mWidth, imageData->mHeight, false);
+			break;
+		}
+		if (linearPremult.mBits != NULL)
+		{
+			for (int i = 0; i < count; i++)
+			{
+				uint32 pixel = imageData->mBits[i];
+				uint8 alpha = (uint8)(pixel >> 24);
+				uint32 rgb = 0;
+				for (int shift = 0; shift < 24; shift += 8)
+					rgb |= (uint32)PremultiplySrgb((uint8)(pixel >> shift), alpha, imageData->mAlphaPremultiplied) << shift;
+				linearPremult.mBits[i] = rgb | (((flags & TextureFlag_Additive) != 0) ? 0 : (pixel & 0xFF000000));
+			}
+		}
+	}
 	imageData->mIsAdditive = (flags & TextureFlag_Additive) != 0;
 	if ((flags & TextureFlag_NoPremult) == 0)
 		imageData->PremultiplyAlpha();
-
-	bool wantMipmaps = (flags & TextureFlag_Mipmaps) != 0;
-	bool wantSrgb = (flags & TextureFlag_Srgb) != 0;
+	uint32* uploadBits = (linearPremult.mBits != NULL) ? linearPremult.mBits : imageData->mBits;
 
 	int aWidth = imageData->mWidth;
 	int aHeight = imageData->mHeight;
@@ -3971,9 +4151,7 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	desc.Width = aWidth;
 	desc.Height = aHeight;
 	desc.ArraySize = 1;
-	// sRGB content is stored TYPELESS so CreateRawRef can alias a second _UNORM view over the same
-	// resource later; a fully-typed resource only accepts views of its own format. Costs nothing --
-	// the memory and the sampling path are identical. Non-sRGB textures stay exactly as they were.
+	// Opaque and straight-alpha sRGB textures can share storage with their raw 2D view.
 	desc.Format = wantSrgb ? DXGI_FORMAT_R8G8B8A8_TYPELESS : DXGI_FORMAT_R8G8B8A8_UNORM;
 	desc.SampleDesc.Count = 1;
 	desc.Usage = D3D11_USAGE_DEFAULT;
@@ -3992,12 +4170,12 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 		desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
 		DXCHECK(mD3DDevice->CreateTexture2D(&desc, NULL, &d3DTexture));
-		mD3DDeviceContext->UpdateSubresource(d3DTexture, 0, NULL, imageData->mBits, aWidth * 4, 0);
+		mD3DDeviceContext->UpdateSubresource(d3DTexture, 0, NULL, uploadBits, aWidth * 4, 0);
 	}
 	else
 	{
 		D3D11_SUBRESOURCE_DATA resData;
-		resData.pSysMem = imageData->mBits;
+		resData.pSysMem = uploadBits;
 		resData.SysMemPitch = aWidth * 4;
 		resData.SysMemSlicePitch = aWidth * aHeight * 4;
 
@@ -4023,7 +4201,12 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	DXTexture* aTexture = new DXTexture();
 
 	aTexture->mContentBits = new uint32[aWidth * aHeight];
-	memcpy(aTexture->mContentBits, imageData->mBits, aWidth * aHeight * 4);
+	memcpy(aTexture->mContentBits, uploadBits, aWidth * aHeight * 4);
+	if (linearPremult.mBits != NULL)
+	{
+		aTexture->mGammaPremultBits = new uint32[aWidth * aHeight];
+		memcpy(aTexture->mGammaPremultBits, imageData->mBits, aWidth * aHeight * 4);
+	}
 
 	aTexture->mRenderDevice = this;
 	aTexture->mWidth = aWidth;

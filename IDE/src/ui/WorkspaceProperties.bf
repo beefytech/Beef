@@ -1050,6 +1050,8 @@ namespace IDE.ui
             AddPropertiesItem(category, "SIMD Instructions", "mBfSIMDSetting");
             AddPropertiesItem(category, "Optimization Level", "mBfOptimizationLevel",
                 scope String[] ( "O0", "O1", "O2", "O3", "Og", "Og+"));
+			AddPropertiesItem(category, "Floating Point Optimization", "mBfFloatingPointMode",
+				scope String[] ( "Precise", "Allow FMA", "Fast" ));
 			AddPropertiesItem(category, "LTO Type", "mLTOType");
             AddPropertiesItem(category, "No Omit Frame Pointers", "mNoOmitFramePointers");
 			AddPropertiesItem(category, "Large Strings", "mLargeStrings");

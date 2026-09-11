@@ -156,6 +156,23 @@ namespace Beefy.gfx
         extern static char8* ModelDef_GetTexPaths(void* nativeModel, int32 meshIdx, int32 primitivesIdx);
 
         [CallingConvention(.Stdcall), CLink]
+        extern static char8* ModelDef_GetTexRoles(void* nativeModel, int32 meshIdx, int32 primitivesIdx);
+
+        [CallingConvention(.Stdcall), CLink]
+        extern static char8* ModelDef_GetMaterialName(void* nativeModel, int32 meshIdx, int32 primitivesIdx);
+
+		[CallingConvention(.Stdcall), CLink]
+		extern static int32 ModelDef_GetSurfaceMaterial(void* nativeModel, int32 meshIdx, int32 primitivesIdx, float* values);
+
+		public bool GetSurfaceMaterial(int32 meshIdx, int32 primitivesIdx, out Vector2 parameters, out Vector3 emissive)
+		{
+			float[5] values = default;
+			let found = ModelDef_GetSurfaceMaterial(mNativeModelDef, meshIdx, primitivesIdx, &values[0]);
+			parameters = .(values[0], values[1]); emissive = .(values[2], values[3], values[4]);
+			return found != 0;
+		}
+
+        [CallingConvention(.Stdcall), CLink]
         extern static void ModelDef_SetExternalTextures(void* nativeModel, int32 externalTextures);
 
         [CallingConvention(.Stdcall), CLink]
@@ -197,7 +214,7 @@ namespace Beefy.gfx
         public static ModelDef LoadModel(String fileName, String baseDir)
         {
 			void* nativeModelDef = null;
-			if (fileName.EndsWith(".gltf", .OrdinalIgnoreCase))
+			if ((fileName.EndsWith(".gltf", .OrdinalIgnoreCase)) || (fileName.EndsWith(".glb", .OrdinalIgnoreCase)))
 				nativeModelDef = Res_OpenGLTF(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
 			else if (fileName.EndsWith(".fbx", .OrdinalIgnoreCase))
             	nativeModelDef = Res_OpenFBX(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
@@ -265,6 +282,19 @@ namespace Beefy.gfx
 		public void GetTexPaths(int32 meshIdx, int32 primitivesIdx, String outPaths)
 		{
 			outPaths.Append(ModelDef_GetTexPaths(mNativeModelDef, meshIdx, primitivesIdx));
+		}
+
+		// The material's own name for each of GetTexPaths' textures, same order, '\n'-separated
+		// (an entry is empty when the source file named none).
+		public void GetTexRoles(int32 meshIdx, int32 primitivesIdx, String outRoles)
+		{
+			outRoles.Append(ModelDef_GetTexRoles(mNativeModelDef, meshIdx, primitivesIdx));
+		}
+
+		// The source file's material name for the primitive (may be empty).
+		public void GetMaterialName(int32 meshIdx, int32 primitivesIdx, String outName)
+		{
+			outName.Append(ModelDef_GetMaterialName(mNativeModelDef, meshIdx, primitivesIdx));
 		}
 
 		// With external textures on, instances use only textures injected via SetTexture -- the
@@ -404,11 +434,25 @@ namespace Beefy.gfx
 
     public class ModelInstance : Renderable
     {
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelInstance_SetUseSurfaceMaterials(void* nativeModelInstance, int32 enabled);
+		public void SetUseSurfaceMaterials(bool enabled) => ModelInstance_SetUseSurfaceMaterials(mNativeRenderable, enabled ? 1 : 0);
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelInstance_SetSurfaceOverride(void* nativeModelInstance, int32 meshIdx, int32 primIdx, float* values, uint32 color);
+		public void ClearSurfaceOverrides() => ModelInstance_SetSurfaceOverride(mNativeRenderable, -1, -1, null, 0);
+		public void SetSurfaceOverride(int32 meshIdx, int32 primIdx, float roughness, float metallic, Vector3 emissive, uint32 color)
+		{
+			float[5] values = .(roughness, metallic, emissive.mX, emissive.mY, emissive.mZ);
+			ModelInstance_SetSurfaceOverride(mNativeRenderable, meshIdx, primIdx, &values[0], color);
+		}
         [CallingConvention(.Stdcall), CLink]
         extern static void ModelInstance_SetJointMatrices(void* nativeModelInstance, Matrix4* matrices, int32 count);
 
         [CallingConvention(.Stdcall), CLink]
         extern static void ModelInstance_SetMeshVisibility(void* nativeModelInstance, int32 jointIdx, int32 visibility);
+
+        [CallingConvention(.Stdcall), CLink]
+        extern static void ModelInstance_SetTexture(void* nativeModelInstance, int32 meshIdx, int32 primIdx, int32 texIdx, void* nativeTextureSegment);
 
 		[CallingConvention(.Stdcall), CLink]
 		extern static int32 ModelDef_GetCollisionTriangles(void* nativeModel, void* nativeModelInstance, Vector3** outPositions);
@@ -444,6 +488,13 @@ namespace Beefy.gfx
         {
             ModelInstance_SetMeshVisibility(mNativeRenderable, meshIdx, visible ? 1 : 0);
         }
+
+		// One primitive's texture slot for THIS instance, in place of whatever the shared def has
+		// injected there (null clears the override). The caller keeps the image alive.
+		public void SetTexture(int32 meshIdx, int32 primIdx, int32 texIdx, Image image)
+		{
+			ModelInstance_SetTexture(mNativeRenderable, meshIdx, primIdx, texIdx, image?.mNativeTextureSegment);
+		}
 
 		// Triangle-expanded collision positions in local space (see ModelDef_GetCollisionTriangles's
 		// native comment) -- skinned meshes are baked using this instance's CURRENT joint pose. Valid

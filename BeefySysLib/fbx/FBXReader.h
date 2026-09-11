@@ -44,6 +44,8 @@ public:
 			return false;
 		if (mNormal != check.mNormal)
 			return false;
+		if (mColor != check.mColor)
+			return false;
 
 		if (mTexCoords.size() != check.mTexCoords.size())
 			return false;
@@ -60,6 +62,11 @@ public:
 class FBXMaterial
 {
 public:
+	bool mHasSurfaceMaterial = false;
+	float mRoughness = 0.6f;
+	float mMetallic = 0.0f;
+	Vector3 mEmissive = Vector3(0, 0, 0);
+	String mName;
 	String mTexFileName;
 	String mBumpFileName;
 };

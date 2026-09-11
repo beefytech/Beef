@@ -219,6 +219,11 @@ BF_EXPORT void BF_CALLTYPE BFApp_SetDrawEnabled(int enabled)
 	gBFApp->mDrawEnabled = enabled != 0;
 }
 
+BF_EXPORT void BF_CALLTYPE BFApp_SetUnthrottledRendering(int enabled)
+{
+	gBFApp->mUnthrottledRendering = enabled != 0;
+}
+
 BF_EXPORT void BF_CALLTYPE BFApp_SetRefreshRate(int rate)
 {
 	gBFApp->mRefreshRate = (float) rate;
@@ -604,6 +609,16 @@ BF_EXPORT void BF_CALLTYPE Gfx_SetComputeTexture(int slot, TextureSegment* textu
 BF_EXPORT void BF_CALLTYPE Gfx_SetComputeUAV(int slot, TextureSegment* textureSegment, int mipLevel)
 {
 	gBFApp->mRenderDevice->mCurDrawLayer->SetComputeUAV(slot, (textureSegment != NULL) ? textureSegment->mTexture : NULL, mipLevel);
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_SetPixelUAV(int slot, TextureSegment* textureSegment)
+{
+	gBFApp->mRenderDevice->mCurDrawLayer->SetPixelUAV(slot, (textureSegment != NULL) ? textureSegment->mTexture : NULL);
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_Buffer_Clear(TextureSegment* textureSegment, uint32 value)
+{
+	gBFApp->mRenderDevice->mCurDrawLayer->ClearBufferUint(textureSegment->mTexture, value);
 }
 
 BF_EXPORT void BF_CALLTYPE Gfx_Dispatch(ComputeShader* shader, int groupsX, int groupsY, int groupsZ)

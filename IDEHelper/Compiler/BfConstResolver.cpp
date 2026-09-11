@@ -13,6 +13,7 @@
 #include "BfResolvePass.h"
 #include "llvm/IR/GlobalVariable.h"
 #include "BfExprEvaluator.h"
+#include "BfParser.h"
 
 #pragma warning(pop)
 
@@ -379,7 +380,26 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 
 			auto foreignDefaultVal = methodInstance->mDefaultValues[argIdx];
 			auto foreignConst = methodInstance->GetOwner()->mConstHolder->GetConstant(foreignDefaultVal.mValue);
+
 			argValue = mModule->GetTypedValueFromConstant(foreignConst, methodInstance->GetOwner()->mConstHolder, foreignDefaultVal.mType);
+
+			if (foreignConst->mConstType == BfConstType_GlobalVar)
+			{
+				auto globalVar = (BfGlobalVar*)foreignConst;				
+				if (globalVar->mName[0] == '#')
+				{
+					if (strcmp(globalVar->mName, "#CallerFilePath") == 0)
+					{
+						String filePath = "";
+						if (auto parserData = targetSrc->GetParserData())
+							filePath = parserData->mFileName;						
+						argValue = BfTypedValue(mModule->GetStringObjectValue(filePath),
+							mModule->ResolveTypeDef(mModule->mCompiler->mStringTypeDef));
+					}
+					else
+						argValue = mModule->GetCompilerFieldValue(globalVar->mName);
+				}
+			}			
 		}
 
 		if ((!argValue) && (argIdx < arguments.size()))

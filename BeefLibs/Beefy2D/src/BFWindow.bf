@@ -319,62 +319,65 @@ namespace Beefy
 		[CallingConvention(.Stdcall), CLink]
 		static extern float BFWindow_GetMonitorRefreshRate(void* window);
 
+        // Null once this side has deleted the window. A queued native message for its handle can still
+        // arrive -- eg a Moved dispatched while another window is being resized -- and every callback
+        // below drops it rather than failing the lookup, which used to kill the process.
         public static BFWindow GetBFWindow(void* window)
         {
-            return sWindowDictionary[(int)window];
+            return sWindowDictionary.GetValueOrDefault((int)window);
         }
 
 		#if MONOTOUCH
 		[MonoPInvokeCallback(typeof(NativeMovedDelegate))]
-		static void Static_NativeMovedDelegate(void* window) { GetBFWindow(window).Moved(); }
+		static void Static_NativeMovedDelegate(void* window) { GetBFWindow(window)?.Moved(); }
 		[MonoPInvokeCallback(typeof(NativeClosedDelegate))]
-		static void Static_NativeClosedDelegate(void* window) { GetBFWindow(window).Closed(); }
+		static void Static_NativeClosedDelegate(void* window) { GetBFWindow(window)?.Closed(); }
 		[MonoPInvokeCallback(typeof(NativeCloseQueryDelegate))]
-		static int Static_NativeCloseQueryDelegate(void* window) { return GetBFWindow(window).CloseQuery(); }
+		static int Static_NativeCloseQueryDelegate(void* window) { let bfWindow = GetBFWindow(window); return (bfWindow != null) ? bfWindow.CloseQuery() : 1; }
 		[MonoPInvokeCallback(typeof(NativeGotFocusDelegate))]
-		static void Static_NativeGotFocusDelegate(void* window) { GetBFWindow(window).GotFocus(); }
+		static void Static_NativeGotFocusDelegate(void* window) { GetBFWindow(window)?.GotFocus(); }
 		[MonoPInvokeCallback(typeof(NativeLostFocusDelegate))]
-		static void Static_NativeLostFocusDelegate(void* window) { GetBFWindow(window).LostFocus(); }
+		static void Static_NativeLostFocusDelegate(void* window) { GetBFWindow(window)?.LostFocus(); }
 		[MonoPInvokeCallback(typeof(NativeKeyCharDelegate))]
-		static void Static_NativeKeyCharDelegate(void* window, char8 c) { GetBFWindow(window).KeyChar(c); }
+		static void Static_NativeKeyCharDelegate(void* window, char8 c) { GetBFWindow(window)?.KeyChar(c); }
 		[MonoPInvokeCallback(typeof(NativeKeyDownDelegate))]
-		static bool Static_NativeKeyDownDelegate(void* window, int key, int isRepeat) { return GetBFWindow(window).KeyDown(key, isRepeat); }
+		static bool Static_NativeKeyDownDelegate(void* window, int key, int isRepeat) { let bfWindow = GetBFWindow(window); return (bfWindow != null) ? bfWindow.KeyDown(key, isRepeat) : false; }
 		[MonoPInvokeCallback(typeof(NativeKeyUpDelegate))]
-		static void Static_NativeKeyUpDelegate(void* window, int key) { GetBFWindow(window).KeyUp(key); }
+		static void Static_NativeKeyUpDelegate(void* window, int key) { GetBFWindow(window)?.KeyUp(key); }
 		[MonoPInvokeCallback(typeof(NativeMouseMoveDelegate))]
-		static void Static_NativeMouseMoveDelegate(void* window, int mouseX, int mouseY) { GetBFWindow(window).MouseMove(mouseX, mouseY); }
+		static void Static_NativeMouseMoveDelegate(void* window, int mouseX, int mouseY) { GetBFWindow(window)?.MouseMove(mouseX, mouseY); }
 		[MonoPInvokeCallback(typeof(NativeMouseProxyMoveDelegate))]
-		static void Static_NativeMouseProxyMoveDelegate(void* window, int mouseX, int mouseY) { GetBFWindow(window).MouseProxyMove(mouseX, mouseY); }
+		static void Static_NativeMouseProxyMoveDelegate(void* window, int mouseX, int mouseY) { GetBFWindow(window)?.MouseProxyMove(mouseX, mouseY); }
 		[MonoPInvokeCallback(typeof(NativeMouseDownDelegate))]
-		static void Static_NativeMouseDownDelegate(void* window, int mouseX, int mouseY, int btnNum, int btnCount) { GetBFWindow(window).MouseDown(mouseX, mouseY, btnNum, btnCount); }
+		static void Static_NativeMouseDownDelegate(void* window, int mouseX, int mouseY, int btnNum, int btnCount) { GetBFWindow(window)?.MouseDown(mouseX, mouseY, btnNum, btnCount); }
 		[MonoPInvokeCallback(typeof(NativeMouseUpDelegate))]
-		static void Static_NativeMouseUpDelegate(void* window, int mouseX, int mouseY, int btnNum) { GetBFWindow(window).MouseUp(mouseX, mouseY, btnNum); }
+		static void Static_NativeMouseUpDelegate(void* window, int mouseX, int mouseY, int btnNum) { GetBFWindow(window)?.MouseUp(mouseX, mouseY, btnNum); }
 		[MonoPInvokeCallback(typeof(NativeMouseWheelDelegate))]
-		static void Static_NativeMouseWheelDelegate(void* window, int mouseX, int mouseY, int delta) { GetBFWindow(window).MouseWheel(mouseX, mouseY, delta); }
+		static void Static_NativeMouseWheelDelegate(void* window, int mouseX, int mouseY, int delta) { GetBFWindow(window)?.MouseWheel(mouseX, mouseY, delta); }
 		[MonoPInvokeCallback(typeof(NativeMouseLeaveDelegate))]
-		static void Static_NativeMouseLeaveDelegate(void* window) { GetBFWindow(window).MouseLeave(); }
+		static void Static_NativeMouseLeaveDelegate(void* window) { GetBFWindow(window)?.MouseLeave(); }
 		[MonoPInvokeCallback(typeof(NativeMenuItemSelectedDelegate))]
-		static void Static_NativeMenuItemSelectedDelegate(void* window, void* item) { GetBFWindow(window).NativeMenuItemSelected(item); }
+		static void Static_NativeMenuItemSelectedDelegate(void* window, void* item) { GetBFWindow(window)?.NativeMenuItemSelected(item); }
 		#else
-		static void Static_NativeMovedDelegate(void* window) { GetBFWindow(window).Moved(); }
-		static void Static_NativeClosedDelegate(void* window) { GetBFWindow(window).Closed(); }
-		static int32 Static_NativeCloseQueryDelegate(void* window) { return GetBFWindow(window).CloseQuery(); }
-		static void Static_NativeGotFocusDelegate(void* window) { GetBFWindow(window).GotFocus(); }
-		static void Static_NativeLostFocusDelegate(void* window) { GetBFWindow(window).LostFocus(null); }
-		static void Static_NativeKeyCharDelegate(void* window, char32 c) { GetBFWindow(window).KeyChar(c); }
-		static bool Static_NativeKeyDownDelegate(void* window, int32 key, int32 isRepeat) { return GetBFWindow(window).KeyDown(key, isRepeat); }
-		static void Static_NativeKeyUpDelegate(void* window, int32 key) { GetBFWindow(window).KeyUp(key); }
-        static int32 Static_NativeHitTestDelegate(void* window, int32 x, int32 y) { return (int32)GetBFWindow(window).HitTest(x, y); }
-        static void Static_NativeMouseMoveDelegate(void* window, int32 mouseX, int32 mouseY) { GetBFWindow(window).MouseMove(mouseX, mouseY); }
-		static void Static_NativeMouseProxyMoveDelegate(void* window, int32 mouseX, int32 mouseY) { GetBFWindow(window).MouseProxyMove(mouseX, mouseY); }
-		static void Static_NativeMouseDownDelegate(void* window, int32 mouseX, int32 mouseY, int32 btnNum, int32 btnCount) { GetBFWindow(window).MouseDown(mouseX, mouseY, btnNum, btnCount); }
-		static void Static_NativeMouseUpDelegate(void* window, int32 mouseX, int32 mouseY, int32 btnNum) { GetBFWindow(window).MouseUp(mouseX, mouseY, btnNum); }
-		static void Static_NativeMouseWheelDelegate(void* window, int32 mouseX, int32 mouseY, float deltaX, float deltaY) { GetBFWindow(window).MouseWheel(mouseX, mouseY, deltaX, deltaY); }
-		static void Static_NativeMouseLeaveDelegate(void* window) { GetBFWindow(window).MouseLeave(); }
-		static void Static_NativeMouseDeltaDelegate(void* window, int32 dx, int32 dy) { GetBFWindow(window).MouseDelta(dx, dy); }
-		static void Static_NativeRelativeMouseModeAbortedDelegate(void* window) { GetBFWindow(window).RelativeMouseModeAborted(); }
-		static void Static_NativeMenuItemSelectedDelegate(void* window, void* item) { GetBFWindow(window).NativeMenuItemSelected(item); }
-		static void Static_NativeDragDropFileDelegate(void* window, char8* filePath) { GetBFWindow(window).DragDropFile(StringView(filePath)); }
+		static void Static_NativeMovedDelegate(void* window) { GetBFWindow(window)?.Moved(); }
+		static void Static_NativeClosedDelegate(void* window) { GetBFWindow(window)?.Closed(); }
+		static int32 Static_NativeCloseQueryDelegate(void* window) { let bfWindow = GetBFWindow(window); return (bfWindow != null) ? bfWindow.CloseQuery() : 1; }
+		static void Static_NativeGotFocusDelegate(void* window) { GetBFWindow(window)?.GotFocus(); }
+		static void Static_NativeLostFocusDelegate(void* window) { GetBFWindow(window)?.LostFocus(null); }
+		static void Static_NativeKeyCharDelegate(void* window, char32 c) { GetBFWindow(window)?.KeyChar(c); }
+		static bool Static_NativeKeyDownDelegate(void* window, int32 key, int32 isRepeat) { let bfWindow = GetBFWindow(window); return (bfWindow != null) ? bfWindow.KeyDown(key, isRepeat) : false; }
+		static void Static_NativeKeyUpDelegate(void* window, int32 key) { GetBFWindow(window)?.KeyUp(key); }
+        static int32 Static_NativeHitTestDelegate(void* window, int32 x, int32 y) { let bfWindow = GetBFWindow(window); return (int32)((bfWindow != null) ? bfWindow.HitTest(x, y) : HitTestResult.NotHandled); }
+        static void Static_NativeMouseMoveDelegate(void* window, int32 mouseX, int32 mouseY) { GetBFWindow(window)?.MouseMove(mouseX, mouseY); }
+		static void Static_NativeMouseProxyMoveDelegate(void* window, int32 mouseX, int32 mouseY) { GetBFWindow(window)?.MouseProxyMove(mouseX, mouseY); }
+		static void Static_NativeMouseDownDelegate(void* window, int32 mouseX, int32 mouseY, int32 btnNum, int32 btnCount) { GetBFWindow(window)?.MouseDown(mouseX, mouseY, btnNum, btnCount); }
+		static void Static_NativeMouseUpDelegate(void* window, int32 mouseX, int32 mouseY, int32 btnNum) { GetBFWindow(window)?.MouseUp(mouseX, mouseY, btnNum); }
+		static void Static_NativeMouseWheelDelegate(void* window, int32 mouseX, int32 mouseY, float deltaX, float deltaY) { GetBFWindow(window)?.MouseWheel(mouseX, mouseY, deltaX, deltaY); }
+		static void Static_NativeMouseLeaveDelegate(void* window) { GetBFWindow(window)?.MouseLeave(); }
+		static void Static_NativeMouseDeltaDelegate(void* window, int32 dx, int32 dy) { GetBFWindow(window)?.MouseDelta(dx, dy); }
+		static void Static_NativeRelativeMouseModeAbortedDelegate(void* window) { GetBFWindow(window)?.RelativeMouseModeAborted(); }
+		static void Static_NativeMenuItemSelectedDelegate(void* window, void* item) { GetBFWindow(window)?.NativeMenuItemSelected(item); }
+		static void Static_NativeDragDropFileDelegate(void* window, char8* filePath) { GetBFWindow(window)?.DragDropFile(StringView(filePath)); }
 		#endif
 
 		public Rect<int32> ClientRect => .(mClientX, mClientY, mClientWidth, mClientHeight);

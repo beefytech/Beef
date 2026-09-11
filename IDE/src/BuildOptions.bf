@@ -43,6 +43,22 @@ namespace IDE
 			AVX512,
 		}
 
+		[Reflect(.All)]
+		public enum FloatingPointMode
+		{
+			Precise,
+			AllowFMA, // a*b +- c fuses only within one expression, never across statements (the C default)
+			Fast,
+		}
+
+		[Reflect(.All)]
+		public enum FMASetting
+		{
+			TargetDefault,
+			Enabled,
+			Disabled,
+		}
+
 		[Reflect]
 		public enum BfOptimizationLevel
 		{
@@ -109,6 +125,10 @@ namespace IDE
 		[Reflect]
 		public BuildOptions.BfOptimizationLevel? mBfOptimizationLevel;
 		[Reflect]
+		public BuildOptions.FloatingPointMode? mBfFloatingPointMode;
+		[Reflect]
+		public BuildOptions.FMASetting? mBfFMASetting;
+		[Reflect]
 		public BuildOptions.EmitDebugInfo? mEmitDebugInfo;
 		[Reflect]
 		public bool? mRuntimeChecks;
@@ -149,6 +169,8 @@ namespace IDE
 			newVal.mFilter.Set(mFilter);
 			newVal.mBfSIMDSetting = mBfSIMDSetting;
 			newVal.mBfOptimizationLevel = mBfOptimizationLevel;
+			newVal.mBfFloatingPointMode = mBfFloatingPointMode;
+			newVal.mBfFMASetting = mBfFMASetting;
 			newVal.mEmitDebugInfo = mEmitDebugInfo;
 			newVal.mRuntimeChecks = mRuntimeChecks;
 			newVal.mInitLocalVariables = mInitLocalVariables;
@@ -174,6 +196,10 @@ namespace IDE
 				mBfSIMDSetting = data.GetEnum<BuildOptions.SIMDSetting>("BfSIMDSetting");
 			if (data.Contains("BfOptimizationLevel"))
 				mBfOptimizationLevel = data.GetEnum<BuildOptions.BfOptimizationLevel>("BfOptimizationLevel");
+			if (data.Contains("BfFloatingPointMode"))
+				mBfFloatingPointMode = data.GetEnum<BuildOptions.FloatingPointMode>("BfFloatingPointMode");
+			if (data.Contains("BfFMASetting"))
+				mBfFMASetting = data.GetEnum<BuildOptions.FMASetting>("BfFMASetting");
 			if (data.Contains("EmitDebugInfo"))
 				mEmitDebugInfo = data.GetEnum<BuildOptions.EmitDebugInfo>("EmitDebugInfo");
 			if (data.Contains("RuntimeChecks"))
@@ -211,6 +237,8 @@ namespace IDE
 			data.Add("Filter", mFilter);
 			data.ConditionalAdd("BfSIMDSetting", mBfSIMDSetting);
 			data.ConditionalAdd("BfOptimizationLevel", mBfOptimizationLevel);
+			data.ConditionalAdd("BfFloatingPointMode", mBfFloatingPointMode);
+			data.ConditionalAdd("BfFMASetting", mBfFMASetting);
 			data.ConditionalAdd("EmitDebugInfo", mEmitDebugInfo);
 			data.ConditionalAdd("RuntimeChecks", mRuntimeChecks);
 			data.ConditionalAdd("InitLocalVariables", mInitLocalVariables);

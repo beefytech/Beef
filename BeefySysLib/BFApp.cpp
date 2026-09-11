@@ -143,12 +143,12 @@ void BFApp::Process()
 	bool didVBlankWait = false;
 	bool externalSignaled = false;
 
-	if (mExternalPacingActive)
+	if ((!mUnthrottledRendering) && (mExternalPacingActive))
 	{
 		// Timeout keeps us alive at correct game speed (wall-clock catchup) if the pacer stalls
 		externalSignaled = WaitForExternalPacing((int)(physTicksPerFrame * 4 + 1));
 	}
-	else if (mVSyncActive)
+	else if ((!mUnthrottledRendering) && (mVSyncActive))
 	{
 		// Have a time limit in the cases we miss the vblank
 		if (mVSyncEvent.WaitFor((int)(physTicksPerFrame + 1)))
@@ -254,14 +254,14 @@ void BFApp::Process()
 	if (didUpdateCnt > 0)
 		mNumPhysUpdates++;
 
-	if ((mRunning) && (didUpdateCnt == 0) && (!externalSignaled))
+	if ((mRunning) && (didUpdateCnt == 0) && (!externalSignaled) && (!mUnthrottledRendering))
 	{
 		BfpThread_Sleep(1);
 	}
 
 	// A signaled wake always draws so the pacer gets exactly one frame per signal
 	if ((mRunning) &&
-		((didUpdateCnt != 0) || (mForceNextDraw) || (externalSignaled)))
+		((didUpdateCnt != 0) || (mForceNextDraw) || (externalSignaled) || (mUnthrottledRendering)))
 		Draw();
 
 #ifdef PERIODIC_PERF_TIMING

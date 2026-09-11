@@ -26,6 +26,8 @@ namespace Beefy.gfx
             // Skip backend optimization: much faster compiles, slower shader -- for iterating.
             // Part of the shader cache key.
             NoOptimization = 1,
+            // Shader model 5 profiles: pixel-shader UAVs and SV_PrimitiveID.
+            ShaderModel5 = 2,
         }
 
         [CallingConvention(.Stdcall), CLink]
@@ -58,11 +60,12 @@ namespace Beefy.gfx
         // shaders) opt in, and everything else keeps fail-fast behavior.
         public static Shader CreateFromFile(StringView fileName, VertexDefinition vertexDefinition, StringView entrySuffix = "", String outError = null, CompileFlags flags = .None)
         {
+			StringView model = (((int32)flags & (int32)CompileFlags.ShaderModel5) != 0) ? "5_0" : "4_0";
 			var useFileName = scope String(fileName);
-			if (FilePackManager.TryMakeMemoryString(useFileName, scope $".fx_VS{entrySuffix}_vs_4_0"))
+			if (FilePackManager.TryMakeMemoryString(useFileName, scope $".fx_VS{entrySuffix}_vs_{model}"))
 			{
 				var useFileName2 = scope String(fileName);
-				if (FilePackManager.TryMakeMemoryString(useFileName2, scope $".fx_PS{entrySuffix}_ps_4_0"))
+				if (FilePackManager.TryMakeMemoryString(useFileName2, scope $".fx_PS{entrySuffix}_ps_{model}"))
 				{
 					useFileName.Append("\n");
 					useFileName.Append(useFileName2);

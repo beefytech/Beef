@@ -2078,6 +2078,7 @@ public:
 	bool mWantsGCMarking;
 	bool mHasDeclError;
 	bool mHasAppendWantMark;
+	bool mHadPopulate; // Set once we have completed a populate, so a repopulate can tell itself apart from a first-time populate
 
 public:
 	BfTypeInstance()
@@ -2131,6 +2132,7 @@ public:
 		mHasParameterizedBase = false;
 		mHasDeclError = false;
 		mHasAppendWantMark = false;
+		mHadPopulate = false;
 		mMergedFieldDataCount = 0;
 		mConstHolder = NULL;
 	}
@@ -2832,6 +2834,11 @@ public:
 	static int Hash(BfAstNode* typeRefNode, LookupContext* ctx, BfHashFlags flags = BfHashFlag_None, int hashSeed = 0);
 	static void ShowThisPointerWarning(LookupContext* ctx, BfTypeReference* typeRef);
 
+	// Distinct types sharing a full 32-bit hash is astronomically unlikely, so once enough of them pile up on
+	//  one hash we stop trusting luck and check the set's uniquing contract directly
+	static const int sMaxFullHashMisses = 6;
+	void CheckHashPileup(int bucket, int hashVal, LookupContext* ctx);
+
 	static bool Equals(BfType* lhs, BfType* rhs, LookupContext* ctx);
 	static bool Equals(BfType* lhs, BfTypeReference* rhs, LookupContext* ctx);
 	static bool Equals(BfType* lhs, BfAstNode* rhs, LookupContext* ctx);
@@ -2850,7 +2857,7 @@ public:
 	{
 		CheckRehash();
 
-		int tryCount = 0;
+		int fullHashMisses = 0;
 		ctx->mFailed = false;
 
 		BfHashFlags hashFlags = BfHashFlag_AllowRef;
@@ -2880,10 +2887,18 @@ public:
 
 				// checkEntry->mType can be NULL if we're in the process of filling it in (and this Insert is from an element type)
 				//  OR if the type resolution failed after node insertion
-				if ((checkEntry->mValue != NULL) && (hashVal == checkEntry->mHashCode) && (Equals(checkEntry->mValue, findType, ctx)))
+				if ((checkEntry->mValue != NULL) && (hashVal == checkEntry->mHashCode))
 				{
-					*entryPtr = EntryRef(this, checkEntryIdx);
-					return false;
+					if (Equals(checkEntry->mValue, findType, ctx))
+					{
+						*entryPtr = EntryRef(this, checkEntryIdx);
+						return false;
+					}
+
+					// A full 32-bit hash match that Equals rejects. Legitimately this is vanishingly rare, so
+					//  counting these (rather than the bucket chain length, which grows with load factor) gives
+					//  us a signal that does not depend on how many types the workspace happens to have
+					fullHashMisses++;
 				}
 
 				if ((mAllocSize != startAllocSize) || (startEntryIdx != mHashHeads[bucket]))
@@ -2895,14 +2910,13 @@ public:
 				}
 
 				checkEntryIdx = checkEntry->mNext;
+			}
 
-				tryCount++;
-				// If this fires off, this may indicate that our hashes are equivalent but Equals fails
-				if (tryCount >= 10)
-				{
-					NOP;
-				}
-				BF_ASSERT(tryCount < 10);
+			if ((!needsRerun) && (fullHashMisses >= sMaxFullHashMisses))
+			{
+				// Too many types claim this exact hash. Verify against the set's actual uniquing contract before
+				//  deciding whether this is a real bug -- see CheckHashPileup
+				CheckHashPileup(bucket, hashVal, ctx);
 			}
 			
 			if (!needsRerun)

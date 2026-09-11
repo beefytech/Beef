@@ -972,6 +972,12 @@ void BeMCColorizer::Prepare()
 		// 		
 		//node->mActualVRegIdx = vregIdx;
 		auto vregInfo = mContext->mVRegInfo[vregIdx];
+#ifdef BE_REGCOST_SIZE
+		// Select the register-cost bank before generating costs. In particular,
+		// incoming XMM argument constraints must survive until float allocation.
+		if ((vregInfo->mType->IsFloat()) || (vregInfo->mType->IsVector()))
+			node->SetRegCostFloat();
+#endif
 		if ((vregInfo->mIsRetVal) && (mContext->mCompositeRetVRegIdx != -1) && (vregIdx != mContext->mCompositeRetVRegIdx))
 			continue;
 		if (vregInfo->mRelTo)
@@ -1350,8 +1356,6 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 	int totalRegs32 = 0;
 	int totalRegs16 = 0;
 
-	bool clearCosts = false;
-
 	SizedArray<X64CPURegister, 32> validRegs;
 	if (regKind == BeMCColorizer::RegKind_Ints)
 	{
@@ -1362,9 +1366,6 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 	{
 		validRegs = mFloatRegs;
 		highestReg = validRegs.back();
-#ifdef BE_REGCOST_SIZE
-		clearCosts = true;
-#endif
 	}
 
 	/*for (int i = 0; i < X64Reg_COUNT; i++)
@@ -1412,10 +1413,6 @@ void BeMCColorizer::AssignRegs(RegKind regKind)
 
 				if (canBeReg)
 				{
-#ifdef BE_REGCOST_SIZE
-					if (clearCosts)
-						node->SetRegCostFloat();
-#endif
 					node->mInGraph = true;
 					node->mGraphEdgeCount = 0;
 					vregGraph.push_back(vregIdx);
@@ -1871,7 +1868,8 @@ bool BeMCColorizer::Validate()
 					BF_ASSERT(mContext->GetFullRegister(inst->mArg1.mReg) == paramsLeft[0]);
 					paramsLeft.erase(paramsLeft.begin());
 
-					auto vregInfo = mContext->mVRegInfo[inst->mArg0.mVRegIdx];
+					int vregIdx = mContext->GetUnderlyingVReg(inst->mArg0.mVRegIdx);
+					auto vregInfo = mContext->mVRegInfo[vregIdx];
 					if (vregInfo->mReg != X64Reg_None)
 					{
 						auto checkReg = mContext->GetFullRegister(vregInfo->mReg);
@@ -12222,7 +12220,16 @@ BeMCInstForm BeMCContext::GetInstForm(BeMCInst* inst)
 	if ((arg0Type != NULL) && (arg1Type != NULL) &&
 		((arg0Type->IsVector()) || (arg1Type->IsVector())))
 	{
-		if (((arg0Type->IsVector()) && (arg0Type->mSize == 8)) ||
+		// A bool4 is four bytes, not a 128-bit mask. In particular, never
+		// overread or overwrite its storage when moving it to/from an XMM register.
+		if (((arg0Type->IsVector()) && (arg0Type->mSize == 4)) ||
+			((arg1Type->IsVector()) && (arg1Type->mSize == 4)))
+		{
+			if ((!arg0.IsNativeReg()) && (arg1.IsImmediateInt()))
+				return BeMCInstForm_RM32_IMM32;
+			return arg0.IsNativeReg() ? BeMCInstForm_XMM32_FRM32 : BeMCInstForm_FRM32_XMM32;
+		}
+		else if (((arg0Type->IsVector()) && (arg0Type->mSize == 8)) ||
 			((arg1Type->IsVector()) && (arg1Type->mSize == 8)))
 		{
 			if (arg0.IsNativeReg())
@@ -12674,10 +12681,14 @@ bool BeMCContext::EmitStdXMMInst(BeMCInstForm instForm, BeMCInst* inst, uint8 op
 	case BeMCInstForm_XMM32_IMM:
 	case BeMCInstForm_XMM32_FRM32:
 	case BeMCInstForm_XMM64_FRM32:
-		Emit(0xF3); EmitREX(inst->mArg0, inst->mArg1, is64Bit);
+	{
+		auto arg0 = GetFixedOperand(inst->mArg0);
+		auto arg1 = GetFixedOperand(inst->mArg1);
+		Emit(0xF3); EmitREX(arg0, arg1, is64Bit);
 		Emit(0x0F); Emit(opcode);
-		EmitModRM(inst->mArg0, inst->mArg1);
+		EmitModRM(arg0, arg1);
 		return true;
+	}
 
 	case BeMCInstForm_R64_F64:
 	case BeMCInstForm_XMM64_RM64:
@@ -17984,6 +17995,9 @@ void BeMCContext::Generate(BeFunction* function)
 						case BfIRIntrinsic_And:
 							result = AllocBinaryOp(BeMCInstKind_And, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
 							break;
+						case BfIRIntrinsic_Div:
+							// IDiv also implements floating-point division (including DIVPS).
+							result = AllocBinaryOp(BeMCInstKind_IDiv, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
 						case BfIRIntrinsic_Mul:
 							result = AllocBinaryOp(BeMCInstKind_IMul, mcLHS, mcRHS, BeMCBinIdentityKind_None); break;
 							break;
@@ -18023,6 +18037,23 @@ void BeMCContext::Generate(BeFunction* function)
 					}
 					break;
 
+					case BfIRIntrinsic_Sqrt:
+					case BfIRIntrinsic_Pow:
+					case BfIRIntrinsic_Fma:
+					{
+						bool isDouble = intrin->mReturnType->mTypeCode == BeTypeCode_Double;
+						const char* name;
+						if (intrin->mKind == BfIRIntrinsic_Sqrt)
+							name = isDouble ? "sqrt" : "sqrtf";
+						else if (intrin->mKind == BfIRIntrinsic_Pow)
+							name = isDouble ? "pow" : "powf";
+						else
+							// The library fallback guarantees one rounding without hardware FMA.
+							name = isDouble ? "fma" : "fmaf";
+						mcFunc = BeMCOperand::FromSymbolAddr(mCOFFObject->GetSymbolRef(name)->mIdx);
+						returnType = intrin->mReturnType;
+					}
+					break;
 					case BfIRIntrinsic_Abs:
 					{
 						auto mcValue = GetOperand(castedInst->mArgs[0].mValue);

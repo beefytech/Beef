@@ -174,6 +174,7 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"div"},
 	{"eq"},
 	{"floor"},
+	{"fma"},
 	{"free"},
 	{"gt"},
 	{"gte"},
@@ -208,6 +209,7 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"va_arg"},
 	{"va_end"},
 	{"va_start"},
+	{"vector"},
 	{"xgetbv"},
 	{"xor"},
 };
@@ -364,6 +366,7 @@ BfIRCodeGen::BfIRCodeGen()
 	mDIBuilder = NULL;
 	mDICompileUnit = NULL;
 	mActiveFunction = NULL;
+	mContractFMulAdd = false;
 	mActiveFunctionType = NULL;
 
 	mLLVMContext = new llvm::LLVMContext();
@@ -2019,24 +2022,7 @@ void BfIRCodeGen::InitTarget()
 	if (theTriple.isWasm())
 		featuresStr = "+atomics,+bulk-memory,+mutable-globals,+sign-ext";
 	else if (theTriple.isX86())
-	{
-		if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE)
-			featuresStr = "+sse";
-		else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE2)
-			featuresStr = "+sse2";
-		else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE3)
-			featuresStr = "+sse3";
-		else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE4)
-			featuresStr = "+sse4";
-		else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE41)
-			featuresStr = "+sse4.1";
-		else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_SSE42)
-			featuresStr = "+sse4.2";
-		else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_AVX)
-			featuresStr = "+avx";
-		else if (mCodeGenOptions.mSIMDSetting == BfSIMDSetting_AVX2)
-			featuresStr = "+avx2";
-	}
+		featuresStr = GetTargetFeatures(mCodeGenOptions.mSIMDSetting, mCodeGenOptions.mFMASetting);
 
 	std::optional<llvm::Reloc::Model> relocModel;
 	llvm::CodeModel::Model cmModel = llvm::CodeModel::Small;
@@ -2109,6 +2095,8 @@ void BfIRCodeGen::HandleNextCmd()
 			mIsOptimized = isOptimized;
 			mLLVMModule = new llvm::Module(moduleName.c_str(), *mLLVMContext);
 			mIRBuilder = new llvm::IRBuilder<>(*mLLVMContext);
+
+			UpdateActiveFunctionMathFlags();
 
             //OutputDebugStrF("-------- Starting Module %s --------\n", moduleName.c_str());
 		}
@@ -2566,7 +2554,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, rhs);
 			CMD_PARAM(int8, overflowCheckKind);
 			if (lhs->getType()->isFloatingPointTy())
-				SetResult(curId, mIRBuilder->CreateFAdd(lhs, rhs));
+				SetResult(curId, CreateFAddSub(lhs, rhs, false));
 			else if ((overflowCheckKind & (BfOverflowCheckKind_Signed | BfOverflowCheckKind_Unsigned)) != 0)
 				SetResult(curId, DoCheckedIntrinsic(((overflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? llvm::Intrinsic::sadd_with_overflow : llvm::Intrinsic::uadd_with_overflow,
 					lhs, rhs, (overflowCheckKind & BfOverflowCheckKind_Flag_UseAsm) != 0));
@@ -2580,7 +2568,7 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(llvm::Value*, rhs);
 			CMD_PARAM(int8, overflowCheckKind);
 			if (lhs->getType()->isFloatingPointTy())
-				SetResult(curId, mIRBuilder->CreateFSub(lhs, rhs));
+				SetResult(curId, CreateFAddSub(lhs, rhs, true));
 			else if ((overflowCheckKind & (BfOverflowCheckKind_Signed | BfOverflowCheckKind_Unsigned)) != 0)
 				SetResult(curId, DoCheckedIntrinsic(((overflowCheckKind & BfOverflowCheckKind_Signed) != 0) ? llvm::Intrinsic::ssub_with_overflow : llvm::Intrinsic::usub_with_overflow,
 					lhs, rhs, (overflowCheckKind & BfOverflowCheckKind_Flag_UseAsm) != 0));
@@ -2822,6 +2810,21 @@ void BfIRCodeGen::HandleNextCmd()
 			CMD_PARAM(BfIRTypedValue, val);
 			CMD_PARAM(int, idx);
 
+			if (val.mValue->getType()->isVectorTy())
+			{
+				// Intrinsic vector results need not have aggregate member metadata.
+				auto lane = mIRBuilder->CreateExtractElement(val.mValue, (uint64)idx);
+				if (!val.mTypeEx->mMembers.IsEmpty())
+				{
+					auto elemType = GetTypeMember(val.mTypeEx, 0)->mLLVMType;
+					// bool vector storage uses i8 lanes, whereas a scalar bool is i1.
+					if ((elemType->isIntegerTy(1)) && (lane->getType()->isIntegerTy(8)))
+						lane = mIRBuilder->CreateTrunc(lane, elemType);
+				}
+				SetResult(curId, lane);
+				break;
+			}
+
 			auto compositeType = val.mTypeEx;
 			int elemIdx = BF_MIN(idx, (int)compositeType->mMembers.mSize - 1);
 			auto elemType = GetTypeMember(compositeType, elemIdx);
@@ -2840,7 +2843,16 @@ void BfIRCodeGen::HandleNextCmd()
 
 			BfIRTypedValue result;
 			result.mTypeEx = agg.mTypeEx;
-			result.mValue = mIRBuilder->CreateInsertValue(agg.mValue, val.mValue, llvm::ArrayRef((unsigned)idx));
+			if (agg.mValue->getType()->isVectorTy())
+			{
+				auto lane = val.mValue;
+				auto elemType = llvm::cast<llvm::VectorType>(agg.mValue->getType())->getElementType();
+				if ((lane->getType()->isIntegerTy(1)) && (elemType->isIntegerTy(8)))
+					lane = mIRBuilder->CreateZExt(lane, elemType);
+				result.mValue = mIRBuilder->CreateInsertElement(agg.mValue, lane, (uint64)idx);
+			}
+			else
+				result.mValue = mIRBuilder->CreateInsertValue(agg.mValue, val.mValue, llvm::ArrayRef((unsigned)idx));
 			SetResult(curId, result);
 		}
 		break;
@@ -3317,6 +3329,7 @@ void BfIRCodeGen::HandleNextCmd()
 				{ (llvm::Intrinsic::ID)-2, -1}, // div
 				{ (llvm::Intrinsic::ID)-2, -1}, // eq
 				{ llvm::Intrinsic::floor, 0, -1},
+				{ llvm::Intrinsic::fma, 0, -1},
 				{ (llvm::Intrinsic::ID)-2, -1}, // free
 				{ (llvm::Intrinsic::ID)-2, -1}, // gt
 				{ (llvm::Intrinsic::ID)-2, -1}, // gte
@@ -3351,6 +3364,7 @@ void BfIRCodeGen::HandleNextCmd()
 				{ (llvm::Intrinsic::ID)-2, 0, 1, 2}, // va_arg,
 				{ llvm::Intrinsic::vaend, 0, -1}, // va_end,
 				{ llvm::Intrinsic::vastart, 0, -1}, // va_start,
+				{ (llvm::Intrinsic::ID)-2, -1}, // vector
 				{ (llvm::Intrinsic::ID)-2, -1}, // xgetbv
 				{ (llvm::Intrinsic::ID)-2, -1}, // xor
 			};
@@ -3479,9 +3493,11 @@ void BfIRCodeGen::HandleNextCmd()
 			func->addFnAttr("no-trapping-math", "true");
 			func->addFnAttr("min-legal-vector-width", "0");
 			func->addFnAttr("tune-cpu", "generic");
-
-			if (mCodeGenOptions.mSIMDSetting > BfSIMDSetting_None)
-				SetFunctionSimdType(func, mCodeGenOptions.mSIMDSetting);
+			if (!mTargetCPU.IsEmpty())
+				func->addFnAttr("target-cpu", mTargetCPU.c_str());
+			auto functionOptions = GetFunctionOptions(func);
+			mFunctionOptions[func] = functionOptions;
+			UpdateFunctionOptions(func);
 		}
 		break;
 	case BfIRCmd_SetFunctionName:
@@ -3573,6 +3589,7 @@ void BfIRCodeGen::HandleNextCmd()
 				mActiveFunctionType = NULL;
 			else
 				mActiveFunctionType = GetTypeMember(func.mTypeEx, 0);
+			UpdateActiveFunctionMathFlags();
 		}
 		break;
 	case BfIRCmd_CreateCall:
@@ -3659,40 +3676,25 @@ void BfIRCodeGen::HandleNextCmd()
 				case BfIRIntrinsic_Xor:
 					{
 						auto val0 = TryToVector(args[0]);
-						if (val0 != NULL)
+						auto val1 = args.size() > 1 ? TryToVector(args[1]) : NULL;
+						auto vectorValue = val0 != NULL ? val0 : val1;
+						if (vectorValue != NULL)
 						{
-							auto vecType = llvm::dyn_cast<llvm::VectorType>(val0->getType());
+							auto vecType = llvm::cast<llvm::FixedVectorType>(vectorValue->getType());
 							auto elemType = vecType->getElementType();
 							bool isFP = elemType->isFloatingPointTy();
-
-							llvm::Value* val1;
-							if (args.size() < 2)
+							if (val0 == NULL)
+								val0 = mIRBuilder->CreateVectorSplat(vecType->getNumElements(), args[0].mValue);
+							if (val1 == NULL)
 							{
-								llvm::Value* val;
-								if (isFP)
-									val = llvm::ConstantFP::get(elemType, 1);
+								llvm::Value* scalar;
+								if (args.size() > 1)
+									scalar = args[1].mValue;
+								else if (isFP)
+									scalar = llvm::ConstantFP::get(elemType, 1);
 								else
-									val = llvm::ConstantInt::get(elemType, 1);
-								val1 = mIRBuilder->CreateInsertElement(llvm::UndefValue::get(vecType), val, (uint64)0);
-								val1 = mIRBuilder->CreateInsertElement(val1, val, (uint64)1);
-								val1 = mIRBuilder->CreateInsertElement(val1, val, (uint64)2);
-								val1 = mIRBuilder->CreateInsertElement(val1, val, (uint64)3);
-							}
-							else if (args[1].mValue->getType()->isPointerTy())
-							{
-								auto ptrVal1 = mIRBuilder->CreateBitCast(args[1].mValue, vecType->getPointerTo());
-								val1 = mIRBuilder->CreateAlignedLoad(vecType, ptrVal1, llvm::MaybeAlign(1));
-							}
-							else if (args[1].mValue->getType()->isVectorTy())
-							{
-								val1 = args[1].mValue;
-							}
-							else
-							{
-								val1 = mIRBuilder->CreateInsertElement(llvm::UndefValue::get(vecType), args[1].mValue, (uint64)0);
-								val1 = mIRBuilder->CreateInsertElement(val1, args[1].mValue, (uint64)1);
-								val1 = mIRBuilder->CreateInsertElement(val1, args[1].mValue, (uint64)2);
-								val1 = mIRBuilder->CreateInsertElement(val1, args[1].mValue, (uint64)3);
+									scalar = llvm::ConstantInt::get(elemType, 1);
+								val1 = mIRBuilder->CreateVectorSplat(vecType->getNumElements(), scalar);
 							}
 
 							if (isFP)
@@ -3701,7 +3703,7 @@ void BfIRCodeGen::HandleNextCmd()
 								switch (intrinsicData->mIntrinsic)
 								{
 								case BfIRIntrinsic_Add:
-									result = mIRBuilder->CreateFAdd(val0, val1);
+									result = CreateFAddSub(val0, val1, false);
 									break;
 								case BfIRIntrinsic_Div:
 									result = mIRBuilder->CreateFDiv(val0, val1);
@@ -3728,10 +3730,10 @@ void BfIRCodeGen::HandleNextCmd()
 									result = mIRBuilder->CreateFMul(val0, val1);
 									break;
 								case BfIRIntrinsic_Neq:
-									result = mIRBuilder->CreateFCmpONE(val0, val1);
+									result = mIRBuilder->CreateFCmpUNE(val0, val1);
 									break;
 								case BfIRIntrinsic_Sub:
-									result = mIRBuilder->CreateFSub(val0, val1);
+									result = CreateFAddSub(val0, val1, true);
 									break;
 								default:
 									FatalError("Intrinsic argument error");
@@ -3751,7 +3753,10 @@ void BfIRCodeGen::HandleNextCmd()
 										}
 									}
 
-									SetResult(curId, result);
+									BfIRTypedValue typedResult;
+									typedResult.mValue = result;
+									typedResult.mTypeEx = intrinsicData->mReturnType;
+									SetResult(curId, typedResult);
 								}
 							}
 							else
@@ -3819,38 +3824,10 @@ void BfIRCodeGen::HandleNextCmd()
 										}
 									}
 
-									SetResult(curId, result);
-								}
-							}
-						}
-						else if (auto ptrType = llvm::dyn_cast<llvm::PointerType>(args[1].mTypeEx->mLLVMType))
-						{
-							//auto ptrElemType = ptrType->getElementType();
-							auto ptrElemType = GetLLVMPointerElementType(args[1].mTypeEx);
-							if (auto arrType = llvm::dyn_cast<llvm::ArrayType>(ptrElemType))
-							{
-								auto vecType = llvm::FixedVectorType::get(arrType->getArrayElementType(), (uint)arrType->getArrayNumElements());
-								auto vecPtrType = vecType->getPointerTo();
-
-								llvm::Value* val0;
-								val0 = mIRBuilder->CreateInsertElement(llvm::UndefValue::get(vecType), args[0].mValue, (uint64)0);
-								val0 = mIRBuilder->CreateInsertElement(val0, args[0].mValue, (uint64)1);
-								val0 = mIRBuilder->CreateInsertElement(val0, args[0].mValue, (uint64)2);
-								val0 = mIRBuilder->CreateInsertElement(val0, args[0].mValue, (uint64)3);
-
-								auto ptrVal1 = mIRBuilder->CreateBitCast(args[1].mValue, vecPtrType);
-								auto val1 = mIRBuilder->CreateAlignedLoad(vecType, ptrVal1, llvm::MaybeAlign(1));
-
-								switch (intrinsicData->mIntrinsic)
-								{
-								case BfIRIntrinsic_Div:
-									SetResult(curId, mIRBuilder->CreateFDiv(val0, val1));
-									break;
-								case BfIRIntrinsic_Mod:
-									SetResult(curId, mIRBuilder->CreateFRem(val0, val1));
-									break;
-								default:
-									FatalError("Intrinsic argument error");
+									BfIRTypedValue typedResult;
+									typedResult.mValue = result;
+									typedResult.mTypeEx = intrinsicData->mReturnType;
+									SetResult(curId, typedResult);
 								}
 							}
 						}
@@ -4009,20 +3986,118 @@ void BfIRCodeGen::HandleNextCmd()
 					break;
 				case BfIRIntrinsic_Shuffle:
 					{
-						llvm::SmallVector<int, 8> intMask;
-						for (int i = 7; i < (int)intrinsicData->mName.length(); i++)
-							intMask.push_back((int)(intrinsicData->mName[i] - '0'));
-
 						auto val0 = TryToVector(args[0]);
-
-						if (val0 != NULL)
+						if (val0 == NULL)
 						{
-							SetResult(curId, mIRBuilder->CreateShuffleVector(val0, val0, intMask));
+							FatalError("Shuffle requires vector operands");
+							break;
+						}
+						int length = (int)llvm::cast<llvm::FixedVectorType>(val0->getType())->getNumElements();
+						llvm::SmallVector<int, 8> intMask;
+						bool general = intrinsicData->mName == "shuffle";
+						int sourceCount = general ? (int)args.size() - length : 1;
+						bool setter = (!general) && (args.size() == 2);
+						bool valid = true;
+						if (general)
+						{
+							valid = (sourceCount == 1) || (sourceCount == 2);
+							for (int i = sourceCount; (i >= 1) && (i < args.size()); i++)
+							{
+								auto index = llvm::dyn_cast<llvm::ConstantInt>(args[i].mValue);
+								if ((index == NULL) || (index->getSExtValue() < 0) || (index->getSExtValue() >= length * sourceCount))
+									valid = false;
+								else
+									intMask.push_back((int)index->getSExtValue());
+							}
 						}
 						else
 						{
-							FatalError("Intrinsic argument error");
+							for (int i = 7; i < (int)intrinsicData->mName.length(); i++)
+							{
+								int index = intrinsicData->mName[i] - '0';
+								valid &= (index >= 0) && (index < length);
+								intMask.push_back(index);
+							}
 						}
+						if ((!valid) || (intMask.size() != length))
+						{
+							FatalError("Shuffle indices must be constant and within the input vectors");
+							break;
+						}
+						if (setter)
+						{
+							llvm::SmallVector<int, 8> inverse(length, -1);
+							for (int i = 0; i < length; i++)
+							{
+								valid &= inverse[intMask[i]] == -1;
+								inverse[intMask[i]] = i;
+							}
+							if (!valid)
+							{
+								FatalError("Shuffle setter requires a permutation");
+								break;
+							}
+							auto value = TryToVector(args[1]);
+							auto shuffled = mIRBuilder->CreateShuffleVector(value, value, inverse);
+							auto ptr = mIRBuilder->CreateBitCast(args[0].mValue, shuffled->getType()->getPointerTo());
+							SetResult(curId, mIRBuilder->CreateAlignedStore(shuffled, ptr, llvm::MaybeAlign(1)));
+						}
+						else
+							SetResult(curId, mIRBuilder->CreateShuffleVector(val0, sourceCount == 2 ? TryToVector(args[1]) : val0, intMask));
+					}
+					break;
+				case BfIRIntrinsic_Vector:
+					{
+						auto value = TryToVector(args[0]);
+						if (value == NULL)
+						{
+							FatalError("Vector intrinsic requires a vector operand");
+							break;
+						}
+						auto type = value->getType();
+						if (intrinsicData->mName == "vector_select")
+						{
+							auto mask = mIRBuilder->CreateICmpNE(value, llvm::Constant::getNullValue(type));
+							SetResult(curId, mIRBuilder->CreateSelect(mask, TryToVector(args[1]), TryToVector(args[2])));
+							break;
+						}
+						if (intrinsicData->mName == "vector_rsqrt_estimate")
+						{
+							if (llvm::Triple(mLLVMModule->getTargetTriple()).isX86())
+							{
+								auto func = mLLVMModule->getOrInsertFunction("llvm.x86.sse.rsqrt.ps", type, type);
+								SetActiveFunctionSimdType(BfSIMDSetting_SSE);
+								SetResult(curId, mIRBuilder->CreateCall(func, { value }));
+							}
+							else
+							{
+								auto func = llvm::Intrinsic::getOrInsertDeclaration(mLLVMModule, llvm::Intrinsic::sqrt, { type });
+								auto root = mIRBuilder->CreateCall(func, { value });
+								SetResult(curId, mIRBuilder->CreateFDiv(llvm::ConstantFP::get(type, 1.0), root));
+							}
+							break;
+						}
+						llvm::Intrinsic::ID id;
+						if (intrinsicData->mName == "vector_abs")
+							id = llvm::Intrinsic::fabs;
+						else if (intrinsicData->mName == "vector_sqrt")
+							id = llvm::Intrinsic::sqrt;
+						else if (intrinsicData->mName == "vector_fma")
+							id = llvm::Intrinsic::fma;
+						else
+						{
+							FatalError("Unknown vector intrinsic");
+							break;
+						}
+						llvm::SmallVector<llvm::Value*, 4> values;
+						values.push_back(value);
+						for (int i = 1; i < args.size(); i++)
+							values.push_back(TryToVector(args[i]));
+						auto func = llvm::Intrinsic::getOrInsertDeclaration(mLLVMModule, id, { type });
+						auto call = mIRBuilder->CreateCall(func, values);
+						if (id == llvm::Intrinsic::fma)
+							call->copyFastMathFlags(llvm::FastMathFlags());
+						SetResult(curId, call);
 					}
 					break;
 				case BfIRIntrinsic_Index:
@@ -4449,6 +4524,58 @@ void BfIRCodeGen::HandleNextCmd()
 
 			if (auto funcPtr = llvm::dyn_cast<llvm::Function>(func.mValue))
 			{
+				// Direct Math calls use the caller's numerical policy before inlining.
+				// Keep the actual wrappers (and indirect calls) for address-taking.
+				auto funcName = funcPtr->getName();
+				llvm::Intrinsic::ID mathIntrinsic = llvm::Intrinsic::not_intrinsic;
+				int mathArgCount = 0;
+				if ((funcName == "__bf_math_sqrt_f32") || (funcName == "__bf_math_sqrt_f64"))
+				{
+					mathIntrinsic = llvm::Intrinsic::sqrt;
+					mathArgCount = 1;
+				}
+				else if ((funcName == "__bf_math_pow_f32") || (funcName == "__bf_math_pow_f64"))
+				{
+					mathIntrinsic = llvm::Intrinsic::pow;
+					mathArgCount = 2;
+				}
+				else if ((funcName == "__bf_math_fma_f32") || (funcName == "__bf_math_fma_f64"))
+				{
+					mathIntrinsic = llvm::Intrinsic::fma;
+					mathArgCount = 3;
+				}
+				if (mathIntrinsic != llvm::Intrinsic::not_intrinsic)
+				{
+					bool isFloat = (funcName == "__bf_math_sqrt_f32") ||
+						(funcName == "__bf_math_pow_f32") || (funcName == "__bf_math_fma_f32");
+					auto mathType = isFloat ? llvm::Type::getFloatTy(*mLLVMContext) : llvm::Type::getDoubleTy(*mLLVMContext);
+					auto funcType = funcPtr->getFunctionType();
+					bool matchesSignature = (!funcType->isVarArg()) && (funcType->getReturnType() == mathType) &&
+						(funcType->getNumParams() == mathArgCount) && (args.size() == mathArgCount);
+					CmdParamVec<llvm::Value*> mathArgs;
+					if (matchesSignature)
+					{
+						for (int argIdx = 0; argIdx < mathArgCount; argIdx++)
+						{
+							matchesSignature &= (funcType->getParamType(argIdx) == mathType) && (args[argIdx].mValue->getType() == mathType);
+							mathArgs.push_back(args[argIdx].mValue);
+						}
+					}
+					if (matchesSignature)
+					{
+						auto intrinsicFunc = llvm::Intrinsic::getOrInsertDeclaration(mLLVMModule, mathIntrinsic, {mathType});
+						auto call = mIRBuilder->CreateCall(intrinsicFunc, mathArgs);
+						call->copyFastMathFlags(mathIntrinsic == llvm::Intrinsic::fma ? llvm::FastMathFlags() : mIRBuilder->getFastMathFlags());
+						auto funcTypeEx = GetTypeMember(func.mTypeEx, 0);
+						BfIRTypedValue result;
+						result.mTypeEx = GetTypeMember(funcTypeEx, 0);
+						result.mValue = call;
+						SetResult(curId, result);
+						mLastFuncCalled.mValue = call;
+						mLastFuncCalled.mTypeEx = funcTypeEx;
+						break;
+					}
+				}
 // 				if (funcPtr->getName() == "__FAILCALL")
 // 				{
 // 					FatalError("__FAILCALL");
@@ -4457,6 +4584,21 @@ void BfIRCodeGen::HandleNextCmd()
 				int intrinId = -1;
 				if (mIntrinsicReverseMap.TryGetValue(funcPtr, &intrinId))
 				{
+					if (intrinId == BfIRIntrinsic_Fma)
+					{
+						BF_ASSERT(args.size() == 3);
+						auto funcTypeEx = GetTypeMember(func.mTypeEx, 0);
+						BfIRTypedValue result;
+						result.mTypeEx = GetTypeMember(funcTypeEx, 0);
+						auto call = mIRBuilder->CreateCall(funcPtr, {args[0].mValue, args[1].mValue, args[2].mValue});
+						// Explicit FMA must remain fused, including in Fast floating-point mode.
+						call->copyFastMathFlags(llvm::FastMathFlags());
+						result.mValue = call;
+						SetResult(curId, result);
+						mLastFuncCalled.mValue = call;
+						mLastFuncCalled.mTypeEx = funcTypeEx;
+						break;
+					}
 					if (intrinId == BfIRIntrinsic_MemSet)
 					{
 						int align = 1;
@@ -4750,7 +4892,21 @@ void BfIRCodeGen::HandleNextCmd()
 
 			BfIRAttribute attribute = (BfIRAttribute)mStream->Read();
 			CMD_PARAM(int, arg);
-			if (attribute == BfIRAttribute_Dereferencable)
+			if ((attribute == BfIRAttribute_FloatingPointMode) ||
+				(attribute == BfIRAttribute_SIMDSetting) || (attribute == BfIRAttribute_FMASetting))
+			{
+				BF_ASSERT(argIdx == -1);
+				auto options = GetFunctionOptions(func);
+				if (attribute == BfIRAttribute_FloatingPointMode)
+					options.mFloatingPointMode = (BfFloatingPointMode)arg;
+				else if (attribute == BfIRAttribute_SIMDSetting)
+					options.mSIMDSetting = (BfSIMDSetting)arg;
+				else
+					options.mFMASetting = (BfFMASetting)arg;
+				mFunctionOptions[func] = options;
+				UpdateFunctionOptions(func);
+			}
+			else if (attribute == BfIRAttribute_Dereferencable)
 			{
 				((llvm::Function*)func)->addDereferenceableParamAttr(argIdx - 1, arg);
 			}
@@ -5685,6 +5841,9 @@ void BfIRCodeGen::SetConfigConst(int idx, int value)
 
 void BfIRCodeGen::SetFunctionSimdType(llvm::Function* function, BfSIMDSetting type)
 {
+	// The legacy SSE4 spelling is an alias for SSE4.2, not an intermediate level.
+	if (type == BfSIMDSetting_SSE4)
+		type = BfSIMDSetting_SSE42;
 	BfSIMDSetting currentType = BfSIMDSetting_None;
 	bool contains = mFunctionsUsingSimd.TryGetValue(function, &currentType);
 
@@ -5711,28 +5870,113 @@ String BfIRCodeGen::GetSimdTypeString(BfSIMDSetting type)
 	{
 		switch (type)
 		{
+		case BfSIMDSetting_MMX:
+			return "+mmx";
 		case BfSIMDSetting_SSE:
-			return "+cmov,+cx8,+fxsr,+mmx,+sse,+x87";
+			return "+sse";
 		case BfSIMDSetting_SSE2:
-			return "+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87";
-		case BfSIMDSetting_SSE4:
-			return "+cmov,+crc32,+cx16,+cx8,+fxsr,+mmx,+popcnt,+sahf,+sse,+sse2,+sse3,+ssse3,+x87";
+			return "+sse,+sse2";
+		case BfSIMDSetting_SSE3:
+			return "+sse,+sse2,+sse3";
 		case BfSIMDSetting_SSE41:
-			return "+cmov,+crc32,+cx16,+cx8,+fxsr,+mmx,+popcnt,+sahf,+sse,+sse2,+sse3,+sse4.1,+ssse3,+x87";
+			return "+sse,+sse2,+sse3,+ssse3,+sse4.1";
+		case BfSIMDSetting_SSE4:
 		case BfSIMDSetting_SSE42:
-			return "+cmov,+crc32,+cx16,+cx8,+fxsr,+mmx,+popcnt,+sahf,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87";
+			return "+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2";
 		case BfSIMDSetting_AVX:
-			return "+avx,+bmi,+bmi2,+cmov,+crc32,+cx16,+cx8,+f16c,+fma,+fxsr,+lzcnt,+mmx,+movbe,+popcnt,+sahf,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave";
+			return "+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+avx";
 		case BfSIMDSetting_AVX2:
-			return "+avx,+avx2,+bmi,+bmi2,+cmov,+crc32,+cx16,+cx8,+f16c,+fma,+fxsr,+lzcnt,+mmx,+movbe,+popcnt,+sahf,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave";
+			return "+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+avx,+avx2";
 		case BfSIMDSetting_AVX512:
-			return "+avx,+avx2,+avx512bw,+avx512cd,+avx512dq,+avx512f,+avx512vl,+bmi,+bmi2,+cmov,+crc32,+cx16,+cx8,+evex512,+f16c,+fma,+fxsr,+lzcnt,+mmx,+movbe,+popcnt,+sahf,+sse,+sse2,+sse3,+sse4.1,+sse4.2,+ssse3,+x87,+xsave";
+			return "+sse,+sse2,+sse3,+ssse3,+sse4.1,+sse4.2,+avx,+avx2,+avx512f,+avx512bw,+avx512cd,+avx512dq,+avx512vl,+evex512";
 		default:
 			return "";
 		}
 	}
 
 	return "";
+}
+
+String BfIRCodeGen::GetTargetFeatures(BfSIMDSetting type, BfFMASetting fmaSetting)
+{
+	String features = GetSimdTypeString(type);
+	if ((mTargetTriple.GetMachineType() == BfMachineType_x86) || (mTargetTriple.GetMachineType() == BfMachineType_x64))
+	{
+		if (fmaSetting != BfFMASetting_TargetDefault)
+		{
+			if (!features.IsEmpty())
+				features += ",";
+			// FMA is orthogonal to the SIMD preset. Explicitly disabling it also
+			// overrides CPU presets, including CPUs which support AMD's FMA4.
+			if (fmaSetting == BfFMASetting_Enabled)
+				features += (type < BfSIMDSetting_AVX) ? "+avx,+fma" : "+fma";
+			else
+				features += "-fma,-fma4";
+		}
+	}
+	return features;
+}
+
+BfIRCodeGen::FunctionOptions BfIRCodeGen::GetFunctionOptions(llvm::Function* function)
+{
+	FunctionOptions options;
+	if (mFunctionOptions.TryGetValue(function, &options))
+		return options;
+	options.mFloatingPointMode = mCodeGenOptions.mFloatingPointMode;
+	options.mSIMDSetting = mCodeGenOptions.mSIMDSetting;
+	options.mFMASetting = mCodeGenOptions.mFMASetting;
+	return options;
+}
+
+void BfIRCodeGen::UpdateFunctionOptions(llvm::Function* function)
+{
+	auto options = GetFunctionOptions(function);
+	// Even an empty feature string must override the destination TargetMachine's
+	// defaults when an inline copy originates in a less capable source module.
+	if ((mTargetTriple.GetMachineType() == BfMachineType_x86) || (mTargetTriple.GetMachineType() == BfMachineType_x64))
+		function->addFnAttr("target-features", GetTargetFeatures(options.mSIMDSetting, options.mFMASetting).c_str());
+	if (function == mActiveFunction)
+		UpdateActiveFunctionMathFlags();
+}
+
+void BfIRCodeGen::UpdateActiveFunctionMathFlags()
+{
+	auto options = GetFunctionOptions(mActiveFunction);
+	llvm::FastMathFlags flags;
+	if (options.mFloatingPointMode == BfFloatingPointMode_Fast)
+		flags.setFast();
+	mIRBuilder->setFastMathFlags(flags);
+	mContractFMulAdd = options.mFloatingPointMode == BfFloatingPointMode_AllowFMA;
+}
+
+// Locals are lowered through allocas, so an fmul that is still a direct operand here came from the
+// same expression; anything that crossed a statement arrives as a load. The dead fmul is left for
+// DCE rather than erased: its result id may still be referenced by a later command.
+llvm::Value* BfIRCodeGen::CreateFAddSub(llvm::Value* lhs, llvm::Value* rhs, bool isSub)
+{
+	if (mContractFMulAdd)
+	{
+		auto fusableMul = [&](llvm::Value* value) -> llvm::Instruction*
+		{
+			auto inst = llvm::dyn_cast<llvm::Instruction>(value);
+			if ((inst == NULL) || (inst->getOpcode() != llvm::Instruction::FMul))
+				return NULL;
+			if ((!inst->use_empty()) || (inst->getParent() != mIRBuilder->GetInsertBlock()))
+				return NULL;
+			return inst;
+		};
+		auto emitFMulAdd = [&](llvm::Value* a, llvm::Value* b, llvm::Value* c) -> llvm::Value*
+		{
+			auto call = mIRBuilder->CreateIntrinsic(llvm::Intrinsic::fmuladd, { a->getType() }, { a, b, c });
+			call->copyFastMathFlags(mIRBuilder->getFastMathFlags());
+			return call;
+		};
+		if (auto mul = fusableMul(lhs))
+			return emitFMulAdd(mul->getOperand(0), mul->getOperand(1), isSub ? mIRBuilder->CreateFNeg(rhs) : rhs);
+		if (auto mul = fusableMul(rhs))
+			return emitFMulAdd(isSub ? mIRBuilder->CreateFNeg(mul->getOperand(0)) : mul->getOperand(0), mul->getOperand(1), lhs);
+	}
+	return isSub ? mIRBuilder->CreateFSub(lhs, rhs) : mIRBuilder->CreateFAdd(lhs, rhs);
 }
 
 BfSIMDSetting BfIRCodeGen::GetSimdTypeFromFunction(llvm::Function* function)
@@ -5747,14 +5991,18 @@ BfSIMDSetting BfIRCodeGen::GetSimdTypeFromFunction(llvm::Function* function)
 			return BfSIMDSetting_AVX2;
 		if (str.contains("+avx"))
 			return BfSIMDSetting_AVX;
-		if (str.contains("+sse4.1"))
-			return BfSIMDSetting_SSE41;
 		if (str.contains("+sse4.2"))
 			return BfSIMDSetting_SSE42;
+		if (str.contains("+sse4.1"))
+			return BfSIMDSetting_SSE41;
+		if (str.contains("+sse3"))
+			return BfSIMDSetting_SSE3;
 		if (str.contains("+sse2"))
 			return BfSIMDSetting_SSE2;
 		if (str.contains("+sse"))
 			return BfSIMDSetting_SSE;
+		if (str.contains("+mmx"))
+			return BfSIMDSetting_MMX;
 	}
 
 	return BfSIMDSetting_None;
@@ -6335,10 +6583,22 @@ bool BfIRCodeGen::WriteIR(const StringImpl& outFileName, StringImpl& error)
 
 void BfIRCodeGen::ApplySimdFeatures()
 {
+	if ((mTargetTriple.GetMachineType() != BfMachineType_x86) && (mTargetTriple.GetMachineType() != BfMachineType_x64))
+		return;
+
 	Array<std::tuple<llvm::Function*, BfSIMDSetting>> functionsToProcess;
 
-	for (auto pair : mFunctionsUsingSimd)
-		functionsToProcess.Add({ pair.mKey, pair.mValue });
+	for (auto& pair : mFunctionOptions)
+	{
+		auto simdType = pair.mValue.mSIMDSetting;
+		if (simdType == BfSIMDSetting_SSE4)
+			simdType = BfSIMDSetting_SSE42;
+		BfSIMDSetting intrinsicSIMD;
+		if (mFunctionsUsingSimd.TryGetValue(pair.mKey, &intrinsicSIMD))
+			simdType = simdType > intrinsicSIMD ? simdType : intrinsicSIMD;
+		functionsToProcess.Add({ pair.mKey, simdType });
+	}
+	Dictionary<llvm::Function*, BfSIMDSetting> propagated;
 
 	while (functionsToProcess.Count() > 0)
 	{
@@ -6348,10 +6608,22 @@ void BfIRCodeGen::ApplySimdFeatures()
 		auto function = std::get<0>(tuple);
 		auto simdType = std::get<1>(tuple);
 
-		auto currentSimdType = GetSimdTypeFromFunction(function);
+		// Do not infer a SIMD preset from target-features: FMA's +avx prerequisite
+		// does not select the AVX preset or grant its unrelated SSE3/SSE4 features.
+		auto currentSimdType = GetFunctionOptions(function).mSIMDSetting;
+		if (currentSimdType == BfSIMDSetting_SSE4)
+			currentSimdType = BfSIMDSetting_SSE42;
 		simdType = simdType > currentSimdType ? simdType : currentSimdType;
 
-		function->addFnAttr("target-features", GetSimdTypeString(simdType).c_str());
+		BfSIMDSetting previousSIMD;
+		if ((propagated.TryGetValue(function, &previousSIMD)) && (previousSIMD >= simdType))
+			continue;
+		propagated[function] = simdType;
+
+		// SIMD intrinsics retain their existing caller escalation. FMA overrides
+		// belong to each function and must never be replaced by the module default.
+		auto features = GetTargetFeatures(simdType, GetFunctionOptions(function).mFMASetting);
+		function->addFnAttr("target-features", features.c_str());
 
 		if (function->hasFnAttribute(llvm::Attribute::AlwaysInline))
 		{
@@ -6378,6 +6650,8 @@ int BfIRCodeGen::GetIntrinsicId(const StringImpl& name)
 
 	if (name.StartsWith("shuffle"))
 		return BfIRIntrinsic_Shuffle;
+	if (name.StartsWith("vector_"))
+		return BfIRIntrinsic_Vector;
 
 	if (name.Contains(':'))
 		return BfIRIntrinsic__PLATFORM;

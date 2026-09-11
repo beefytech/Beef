@@ -1307,6 +1307,16 @@ bool BfExpression::VerifyIsStatement(BfPassInstance* passInstance, bool ignoreEr
 		return attribExpr->mExpression->VerifyIsStatement(passInstance, ignoreError);
 	}
 
+	if (auto unaryOperatorExpr = BfNodeDynCast<BfUnaryOperatorExpression>(this))
+	{
+		// Increment/decrement mutate their operand, so they stand alone as statements
+		if ((unaryOperatorExpr->mOp == BfUnaryOp_Increment) ||
+			(unaryOperatorExpr->mOp == BfUnaryOp_PostIncrement) ||
+			(unaryOperatorExpr->mOp == BfUnaryOp_Decrement) ||
+			(unaryOperatorExpr->mOp == BfUnaryOp_PostDecrement))
+			return true;
+	}
+
 	if ((!BfNodeIsExact<BfAssignmentExpression>(this)) &&
 		(!BfNodeIsExact<BfInvocationExpression>(this)) &&
 		(!BfNodeIsExact<BfObjectCreateExpression>(this)))

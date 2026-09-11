@@ -68,6 +68,7 @@ public:
 	// Mip-0 unordered access view when created GPU-writable (see GetUAV); NULL otherwise.
 	ID3D11UnorderedAccessView* mD3DUAV;
 	uint32*					mContentBits;
+	uint32*					mGammaPremultBits;
 	DXGI_FORMAT				mD3DFormat;
 	int						mSampleCount;
 	// Scene depth is reverse-Z (cleared to 0); shadow atlases stay standard-Z (cleared to 1).
@@ -232,6 +233,8 @@ public:
 	virtual void			SetComputeTexture(int slot, Texture* texture) override;
 	virtual void			SetComputeUAV(int slot, Texture* texture, int mipLevel) override;
 	virtual void			Dispatch(ComputeShader* shader, int groupsX, int groupsY, int groupsZ) override;
+	virtual void			SetPixelUAV(int slot, Texture* texture) override;
+	virtual void			ClearBufferUint(Texture* buffer, uint32 value) override;
 	virtual void			SetShaderConstantData(int usageIdx, int slotIdx, void* constData, int size) override;
 	virtual void			SetShaderConstantDataTyped(int usageIdx, int slotIdx, void* constData, int size, int* typeData, int typeCount) override;
 	virtual void			DrawStaticMeshInstanced(StaticMesh* mesh, int instBase, int instCount) override;
@@ -355,7 +358,10 @@ public:
 	String					mMaterialName;
 	int						mNumIndices;
 	int						mNumVertices;
+	// Slot-indexed, and sparse: a NULL entry is a slot the def left unbound (see ModelDef_SetTexture).
 	Array<DXTexture*>		mTextures;
+	// Per-instance overrides (see ModelInstance::SetTexture), consulted first at bind time.
+	Array<DXTexture*>		mOverrideTextures;
 
 	ID3D11Buffer*			mD3DIndexBuffer;
 	//TODO: Split the vertex buffer up into static and dynamic buffers
@@ -382,6 +388,7 @@ public:
 	DXModelInstance(ModelDef* modelDef);
 	~DXModelInstance();
 
+	virtual void SetTexture(int meshIdx, int primIdx, int texIdx, Texture* texture) override;
 	virtual void CommandQueued(RenderCmd* renderCmd, DrawLayer* drawLayer) override;
 	virtual void Render(RenderCmd* renderCmd, RenderDevice* renderDevice, RenderWindow* renderWindow) override;
 };
@@ -443,6 +450,28 @@ public:
 	int mSlot;
 	int mMipLevel;
 	DXTexture* mTexture;
+
+public:
+	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
+};
+
+// Rebinds the current render targets with a pixel-stage UAV attached (see
+// DXRenderDevice::BindRenderTargets); a NULL texture drops it again.
+class DXSetPixelUAVCmd : public RenderCmd
+{
+public:
+	int mSlot;
+	DXTexture* mTexture;
+
+public:
+	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
+};
+
+class DXClearUAVCmd : public RenderCmd
+{
+public:
+	DXTexture* mTexture;
+	uint32 mValue;
 
 public:
 	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
@@ -532,8 +561,13 @@ public:
 	// Compute slots bound since the last dispatch (bit per slot); the dispatch unbinds them.
 	uint32					mCSBoundSRVs;
 	uint32					mCSBoundUAVs;
+	// Pixel-stage UAV, re-attached by every render-target bind until it is dropped again.
+	ID3D11UnorderedAccessView* mCurPSUAV;
+	int						mCurPSUAVSlot;
 
 public:
+	// The one place render targets reach the device: attaches mCurPSUAV when one is set.
+	void					BindRenderTargets(int rtvCount, ID3D11RenderTargetView* const* rtvs, ID3D11DepthStencilView* dsv);
 	virtual void			PhysSetRenderState(RenderState* renderState) override;
 	virtual void			PhysSetRenderWindow(RenderWindow* renderWindow);
 	virtual void			PhysSetRenderTarget(Texture* renderTarget) override;

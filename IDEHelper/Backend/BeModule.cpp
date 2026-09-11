@@ -591,6 +591,9 @@ void BeFunction::HashContent(BeHashContext& hashCtx)
 	hashCtx.Mixin(mIsDLLExport);
 	hashCtx.Mixin(mIsDLLImport);
 	hashCtx.Mixin(mCallingConv);
+	hashCtx.Mixin(mFloatingPointMode);
+	hashCtx.Mixin(mSIMDSetting);
+	hashCtx.Mixin(mFMASetting);
 
 	for (auto block : mBlocks)
 		block->HashReference(hashCtx);

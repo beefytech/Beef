@@ -150,6 +150,9 @@ namespace IDE.Compiler
             OptionFlags optionsFlags, char8* mallocName, char8* freeName);
 
 		[CallingConvention(.Stdcall), CLink]
+		static extern void BfCompiler_SetMathOptions(void* bfCompiler, int32 floatingPointMode, int32 fmaSetting);
+
+		[CallingConvention(.Stdcall), CLink]
 		static extern void BfCompiler_ForceRebuild(void* bfCompiler);
 
 		[CallingConvention(.Stdcall), CLink]
@@ -339,11 +342,13 @@ namespace IDE.Compiler
 
         public void SetOptions(BfProject hotProject, int32 hotIdx,
             String targetTriple, String targetCPU, int32 toolsetType, int32 simdSetting, int32 allocStackCount, int32 maxWorkerThreads,
-			OptionFlags optionFlags, String mallocFuncName, String freeFuncName)
+			OptionFlags optionFlags, String mallocFuncName, String freeFuncName,
+			BuildOptions.FloatingPointMode floatingPointMode = .Precise, BuildOptions.FMASetting fmaSetting = .TargetDefault)
         {
             BfCompiler_SetOptions(mNativeBfCompiler,
                 (hotProject != null) ? hotProject.mNativeBfProject : null, hotIdx,
                 targetTriple, targetCPU, toolsetType, simdSetting, allocStackCount, maxWorkerThreads, optionFlags, mallocFuncName, freeFuncName);
+			BfCompiler_SetMathOptions(mNativeBfCompiler, (int32)floatingPointMode, (int32)fmaSetting);
         }
 
 		public void ForceRebuild()
@@ -778,7 +783,8 @@ namespace IDE.Compiler
 
 			SetOptions(hotBfProject, hotIdx,
 			    targetTriple, options.mTargetCPU, (int32)options.mToolsetType, (int32)options.mBfSIMDSetting, (int32)options.mAllocStackTraceDepth,
-				(int32)gApp.mSettings.mCompilerSettings.mWorkerThreads, optionFlags, mallocLinkName, freeLinkName);
+				(int32)gApp.mSettings.mCompilerSettings.mWorkerThreads, optionFlags, mallocLinkName, freeLinkName,
+				options.mBfFloatingPointMode, options.mBfFMASetting);
 
 			if (!mIsResolveOnly)
 			{

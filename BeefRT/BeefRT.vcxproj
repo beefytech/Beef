@@ -635,6 +635,7 @@
       </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
+      <AdditionalOptions>/Gw %(AdditionalOptions)</AdditionalOptions>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FFI_STATIC_BUILD;BP_DISABLED;BF_SMALL;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
@@ -659,6 +660,7 @@
       </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
+      <AdditionalOptions>/Gw %(AdditionalOptions)</AdditionalOptions>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
@@ -680,6 +682,7 @@
       </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
+      <AdditionalOptions>/Gw %(AdditionalOptions)</AdditionalOptions>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
@@ -702,6 +705,7 @@
       </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
+      <AdditionalOptions>/Gw %(AdditionalOptions)</AdditionalOptions>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FFI_STATIC_BUILD;BP_DISABLED;BF_SMALL;BF_NO_BFAPP;BFSYSLIB_DYNAMIC;BFRT_DYNAMIC;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
@@ -730,6 +734,7 @@
       </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
+      <AdditionalOptions>/Gw %(AdditionalOptions)</AdditionalOptions>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>
@@ -756,6 +761,7 @@
       </PrecompiledHeader>
       <Optimization>MaxSpeed</Optimization>
       <FunctionLevelLinking>true</FunctionLevelLinking>
+      <AdditionalOptions>/Gw %(AdditionalOptions)</AdditionalOptions>
       <IntrinsicFunctions>true</IntrinsicFunctions>
       <PreprocessorDefinitions>FFI_STATIC_BUILD;BF_SMALL;BF_NO_BFAPP;WIN32;NDEBUG;_LIB;%(PreprocessorDefinitions)</PreprocessorDefinitions>
       <AdditionalIncludeDirectories>.;..;../BeefySysLib/third_party;../BeefySysLib;../BeefySysLib/platform/win;gperftools/src;gperftools/src/windows;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin;../BeefySysLib/third_party/libffi/x86_64-pc-cygwin/include;../BeefySysLib/third_party/libffi/include</AdditionalIncludeDirectories>

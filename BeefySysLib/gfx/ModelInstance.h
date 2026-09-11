@@ -23,11 +23,24 @@ public:
 	// buffers have been recomputed. Lets CommandQueued skip re-skinning when nothing has changed,
 	// including across the multiple times a single instance may be queued within the same frame.
 	bool mDirty;
+	bool mUseSurfaceMaterials = false;
+	struct SurfaceOverride
+	{
+		int mMeshIdx, mPrimIdx;
+		float mRoughness, mMetallic;
+		Vector3 mEmissive;
+		uint32 mColor;
+	};
+	Array<SurfaceOverride> mSurfaceOverrides;
 
 public:
 	ModelInstance(ModelDef* modelDef);
+	virtual ~ModelInstance() {}
 
 	void SetBindPose();
+	// One primitive's texture slot, for this instance only -- consulted before the def's own
+	// injected textures at bind time. NULL clears the override back to the def's.
+	virtual void SetTexture(int meshIdx, int primIdx, int texIdx, Texture* texture) {}
 };
 
 NS_BF_END;

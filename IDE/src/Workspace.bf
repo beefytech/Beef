@@ -325,6 +325,10 @@ namespace IDE
 			[Reflect]
 			public BuildOptions.BfOptimizationLevel mBfOptimizationLevel;
 			[Reflect]
+			public BuildOptions.FloatingPointMode mBfFloatingPointMode = .Precise;
+			[Reflect]
+			public BuildOptions.FMASetting mBfFMASetting = .TargetDefault;
+			[Reflect]
 			public BuildOptions.SIMDSetting mCSIMDSetting = .SSE2;
 			[Reflect]
 			public COptimizationLevel mCOptimizationLevel;
@@ -404,6 +408,8 @@ namespace IDE
 				mTargetCPU.Set(prev.mTargetCPU);
 				mBfSIMDSetting = prev.mBfSIMDSetting;
 				mBfOptimizationLevel = prev.mBfOptimizationLevel;
+				mBfFloatingPointMode = prev.mBfFloatingPointMode;
+				mBfFMASetting = prev.mBfFMASetting;
 				mCSIMDSetting = prev.mCSIMDSetting;
 				mCOptimizationLevel = prev.mCOptimizationLevel;
 				mLTOType = prev.mLTOType;
@@ -874,6 +880,8 @@ namespace IDE
 								data.ConditionalAdd("TargetTriple", options.mTargetTriple);
 								data.ConditionalAdd("TargetCPU", options.mTargetCPU);
                                 data.ConditionalAdd("BfSIMDSetting", options.mBfSIMDSetting, .SSE2);
+								data.ConditionalAdd("BfFloatingPointMode", options.mBfFloatingPointMode, .Precise);
+								data.ConditionalAdd("BfFMASetting", options.mBfFMASetting, .TargetDefault);
 								if (platformType == .Windows)
                                 	data.ConditionalAdd("BfOptimizationLevel", options.mBfOptimizationLevel, isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0);
 								else
@@ -1093,6 +1101,8 @@ namespace IDE
 
 			options.mBfOptimizationLevel = isRelease ? .O2 : .O0;
 			options.mBfSIMDSetting = .SSE2;
+			options.mBfFloatingPointMode = .Precise;
+			options.mBfFMASetting = .TargetDefault;
 			if (platformType == .Windows)
 				options.mBfOptimizationLevel = isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0;
 			
@@ -1213,6 +1223,8 @@ namespace IDE
 					data.GetString("TargetTriple", options.mTargetTriple);
 					data.GetString("TargetCPU", options.mTargetCPU);
 					options.mBfSIMDSetting = data.GetEnum<BuildOptions.SIMDSetting>("BfSIMDSetting", .SSE2);
+					options.mBfFloatingPointMode = data.GetEnum<BuildOptions.FloatingPointMode>("BfFloatingPointMode", .Precise);
+					options.mBfFMASetting = data.GetEnum<BuildOptions.FMASetting>("BfFMASetting", .TargetDefault);
 					if (platformType == .Windows)
                     	options.mBfOptimizationLevel = data.GetEnum<BuildOptions.BfOptimizationLevel>("BfOptimizationLevel", isRelease ? .O2 : (platformName == "Win64") ? .OgPlus : .O0);
 					else
