@@ -68,6 +68,7 @@ public:
 	// Mip-0 unordered access view when created GPU-writable (see GetUAV); NULL otherwise.
 	ID3D11UnorderedAccessView* mD3DUAV;
 	uint32*					mContentBits;
+	uint32*					mGammaPremultBits;
 	DXGI_FORMAT				mD3DFormat;
 	int						mSampleCount;
 	// Scene depth is reverse-Z (cleared to 0); shadow atlases stay standard-Z (cleared to 1).

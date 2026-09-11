@@ -187,7 +187,8 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 
 	if (!handled)
 	{
-		imageData->mWantsAlphaPremultiplied = (flags & TextureFlag_NoPremult) == 0;
+		// sRGB uploads premultiply after decoding, not inside the file decoder.
+		imageData->mWantsAlphaPremultiplied = (flags & (TextureFlag_NoPremult | TextureFlag_Srgb)) == 0;
 
 		void* memPtr = NULL;
 		int memLen = 0;

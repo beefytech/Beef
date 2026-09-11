@@ -268,8 +268,18 @@ BF_EXPORT void BF_CALLTYPE ModelDef_SetExternalTextures(ModelDef* modelDef, int 
 	modelDef->mExternalTextures = externalTextures != 0;
 }
 
-// textureSegment's underlying texture is borrowed, not addref'd -- the caller keeps it alive for as
-// long as instances can be created from this modelDef (instances AddRef their own copies).
+BF_EXPORT int BF_CALLTYPE ModelDef_GetSurfaceMaterial(ModelDef* modelDef, int meshIdx, int primitivesIdx, float* values)
+{
+	auto& prims = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx];
+	values[0] = prims.mRoughness;
+	values[1] = prims.mMetallic;
+	values[2] = prims.mEmissive.mX;
+	values[3] = prims.mEmissive.mY;
+	values[4] = prims.mEmissive.mZ;
+	return prims.mHasSurfaceMaterial ? 1 : 0;
+}
+
+// The texture is borrowed; instances retain their own references.
 BF_EXPORT void BF_CALLTYPE ModelDef_SetTexture(ModelDef* modelDef, int meshIdx, int primitivesIdx, int texIdx, TextureSegment* textureSegment)
 {
 	auto& prims = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx];

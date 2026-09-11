@@ -101,6 +101,8 @@ class GLBReader
 			int count = indices == NULL ? positions.mCount : indices->mCount;
 			if ((count % 3) != 0) return false;
 			double tint[4] = { 1, 1, 1, 1 };
+			float roughness = 1.0f, metallic = 1.0f;
+			Vector3 emissive(0, 0, 0);
 			String materialName;
 			int material = Int(primitive, "material", -1);
 			if (material >= 0)
@@ -110,6 +112,8 @@ class GLBReader
 					if (name->mValueString != NULL) materialName = name->mValueString;
 				if (auto pbr = mMaterials[material]->GetObjectItem("pbrMetallicRoughness"))
 				{
+					if (auto value = pbr->GetObjectItem("roughnessFactor")) roughness = (float)value->mValueDouble;
+					if (auto value = pbr->GetObjectItem("metallicFactor")) metallic = (float)value->mValueDouble;
 					if (pbr->GetObjectItem("baseColorTexture") != NULL) return false;
 					if (auto factor = pbr->GetObjectItem("baseColorFactor"))
 					{
@@ -117,6 +121,17 @@ class GLBReader
 						for (int i = 0; i < 4; i++) tint[i] = factor->GetArrayItem(i)->mValueDouble;
 					}
 				}
+			}
+			if (material >= 0)
+			{
+				if (auto value = mMaterials[material]->GetObjectItem("emissiveFactor"))
+				{
+					if (value->GetArraySize() != 3) return false;
+					emissive = Vector3((float)value->GetArrayItem(0)->mValueDouble, (float)value->GetArrayItem(1)->mValueDouble, (float)value->GetArrayItem(2)->mValueDouble);
+				}
+				if (auto extensions = mMaterials[material]->GetObjectItem("extensions"))
+					if (auto extension = extensions->GetObjectItem("KHR_materials_emissive_strength"))
+						if (auto strength = extension->GetObjectItem("emissiveStrength")) emissive = emissive * (float)strength->mValueDouble;
 			}
 			ModelPrimitives* prims = NULL;
 			Dictionary<int, uint16> remap;
@@ -128,6 +143,10 @@ class GLBReader
 					prims = &mesh.mPrimitives.back();
 					prims->mFlags = (ModelPrimitives::Flags)(1 | 2 | 4 | 0x10 | 0x20 | 0x40);
 					prims->mMaterialName = materialName;
+					prims->mHasSurfaceMaterial = true;
+					prims->mRoughness = roughness;
+					prims->mMetallic = metallic;
+					prims->mEmissive = emissive;
 					prims->mTexPaths.Add(String());
 					remap.Clear();
 				}

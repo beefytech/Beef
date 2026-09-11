@@ -871,6 +871,7 @@ DXTexture::DXTexture()
 	mD3DDepthStencilView = NULL;
 	mD3DKeyedMutex = NULL;
 	mContentBits = NULL;
+	mGammaPremultBits = NULL;
 	mD3DFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	mSampleCount = 1;
 	mStandardDepthClear = false;
@@ -915,6 +916,7 @@ DXTexture::~DXTexture()
 
 	//OutputDebugStrF("DXTexture::~DXTexture %@\n", this);
 	delete mContentBits;
+	delete [] mGammaPremultBits;
 	if (mD3DResourceView != NULL)
 		mD3DResourceView->Release();
 	if (mD3DRenderTargetView != NULL)
@@ -1507,10 +1509,7 @@ Texture* DXTexture::CreateDepthRef()
 	return ref;
 }
 
-// Second view over the same texels, minus the sRGB decode. Only TYPELESS resources (ie ones loaded
-// with TextureFlag_Srgb) can be re-viewed; anything else already samples raw, so there's nothing to
-// alias and this returns NULL. The resource is shared and refcounted, so the ref and the original
-// can be released in either order.
+// 2D blends in gamma space; translucent sRGB images need separately premultiplied texels.
 Texture* DXTexture::CreateRawRef()
 {
 	if ((mD3DTexture == NULL) || (mD3DFormat != DXGI_FORMAT_R8G8B8A8_TYPELESS))
@@ -1518,6 +1517,14 @@ Texture* DXTexture::CreateRawRef()
 
 	D3D11_TEXTURE2D_DESC desc;
 	mD3DTexture->GetDesc(&desc);
+	if (mGammaPremultBits != NULL)
+	{
+		ImageData data;
+		data.CreateNew(mWidth, mHeight, false);
+		memcpy(data.mBits, mGammaPremultBits, mWidth * mHeight * 4);
+		return mRenderDevice->LoadTexture(&data, TextureFlag_NoPremult |
+			((desc.MipLevels > 1) ? TextureFlag_Mipmaps : 0));
+	}
 
 	DXTexture* ref = new DXTexture();
 	ref->mWidth = mWidth;
@@ -2721,6 +2728,9 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 		{
 			ModelPrimitives* modelPrims = &mesh->mPrimitives[primsIdx];
 			DXModelPrimitives* dxPrims = &dxMesh->mPrimitives[primsIdx];
+			const ModelInstance::SurfaceOverride* surfaceOverride = NULL;
+			for (auto& ov : mSurfaceOverrides)
+				if ((ov.mMeshIdx == meshIdx) && (ov.mPrimIdx == primsIdx)) surfaceOverride = &ov;
 
 			D3D11_MAPPED_SUBRESOURCE mappedSubResource;
 			DXRenderDevice* dxRenderDevice = (DXRenderDevice*)drawLayer->mRenderDevice;
@@ -2779,6 +2789,17 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 				destVtx->mBumpTexCoords = srcVtxData->mBumpTexCoords;
 				destVtx->mColor = srcVtxData->mColor;
 				destVtx->mInstanceIdx = 0;
+				if (mUseSurfaceMaterials)
+				{
+					destVtx->mBumpTexCoords = TexCoords(modelPrims->mRoughness, modelPrims->mMetallic);
+					destVtx->mTangent = modelPrims->mEmissive;
+					if (surfaceOverride != NULL)
+					{
+						destVtx->mBumpTexCoords = TexCoords(surfaceOverride->mRoughness, surfaceOverride->mMetallic);
+						destVtx->mTangent = surfaceOverride->mEmissive;
+						destVtx->mColor = surfaceOverride->mColor;
+					}
+				}
 			}
 
 			dxRenderDevice->mD3DDeviceContext->Unmap(dxPrims->mD3DVertexBuffer, 0);
@@ -4061,16 +4082,65 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 	return aTexture;
 }
 
+static uint8 PremultiplySrgb(uint8 color, uint8 alpha, bool alreadyPremultiplied)
+{
+	struct Table
+	{
+		uint8 mValues[256][256];
+		Table()
+		{
+			for (int c = 0; c < 256; c++)
+			{
+				float srgb = c / 255.0f;
+				float linear = (srgb <= 0.04045f) ? srgb / 12.92f : powf((srgb + 0.055f) / 1.055f, 2.4f);
+				for (int a = 0; a < 256; a++)
+				{
+					float value = linear * (a / 255.0f);
+					float encoded = (value <= 0.0031308f) ? value * 12.92f : 1.055f * powf(value, 1.0f / 2.4f) - 0.055f;
+					mValues[c][a] = (uint8)BF_MIN(255, (int)(encoded * 255.0f + 0.5f));
+				}
+			}
+		}
+	};
+	static const Table table;
+	if ((alreadyPremultiplied) && (alpha != 0))
+		color = (uint8)BF_MIN(255, (color * 255 + alpha / 2) / alpha);
+	return table.mValues[color][alpha];
+}
+
 Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 {
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
 
+	bool wantMipmaps = (flags & TextureFlag_Mipmaps) != 0;
+	bool wantSrgb = (flags & TextureFlag_Srgb) != 0;
+	ImageData linearPremult;
+	if ((wantSrgb) && ((flags & TextureFlag_NoPremult) == 0))
+	{
+		int count = imageData->mWidth * imageData->mHeight;
+		for (int i = 0; i < count; i++)
+		{
+			if ((imageData->mBits[i] >> 24) == 255) continue;
+			linearPremult.CreateNew(imageData->mWidth, imageData->mHeight, false);
+			break;
+		}
+		if (linearPremult.mBits != NULL)
+		{
+			for (int i = 0; i < count; i++)
+			{
+				uint32 pixel = imageData->mBits[i];
+				uint8 alpha = (uint8)(pixel >> 24);
+				uint32 rgb = 0;
+				for (int shift = 0; shift < 24; shift += 8)
+					rgb |= (uint32)PremultiplySrgb((uint8)(pixel >> shift), alpha, imageData->mAlphaPremultiplied) << shift;
+				linearPremult.mBits[i] = rgb | (((flags & TextureFlag_Additive) != 0) ? 0 : (pixel & 0xFF000000));
+			}
+		}
+	}
 	imageData->mIsAdditive = (flags & TextureFlag_Additive) != 0;
 	if ((flags & TextureFlag_NoPremult) == 0)
 		imageData->PremultiplyAlpha();
-
-	bool wantMipmaps = (flags & TextureFlag_Mipmaps) != 0;
-	bool wantSrgb = (flags & TextureFlag_Srgb) != 0;
+	uint32* uploadBits = (linearPremult.mBits != NULL) ? linearPremult.mBits : imageData->mBits;
 
 	int aWidth = imageData->mWidth;
 	int aHeight = imageData->mHeight;
@@ -4081,9 +4151,7 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	desc.Width = aWidth;
 	desc.Height = aHeight;
 	desc.ArraySize = 1;
-	// sRGB content is stored TYPELESS so CreateRawRef can alias a second _UNORM view over the same
-	// resource later; a fully-typed resource only accepts views of its own format. Costs nothing --
-	// the memory and the sampling path are identical. Non-sRGB textures stay exactly as they were.
+	// Opaque and straight-alpha sRGB textures can share storage with their raw 2D view.
 	desc.Format = wantSrgb ? DXGI_FORMAT_R8G8B8A8_TYPELESS : DXGI_FORMAT_R8G8B8A8_UNORM;
 	desc.SampleDesc.Count = 1;
 	desc.Usage = D3D11_USAGE_DEFAULT;
@@ -4102,12 +4170,12 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 		desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
 		DXCHECK(mD3DDevice->CreateTexture2D(&desc, NULL, &d3DTexture));
-		mD3DDeviceContext->UpdateSubresource(d3DTexture, 0, NULL, imageData->mBits, aWidth * 4, 0);
+		mD3DDeviceContext->UpdateSubresource(d3DTexture, 0, NULL, uploadBits, aWidth * 4, 0);
 	}
 	else
 	{
 		D3D11_SUBRESOURCE_DATA resData;
-		resData.pSysMem = imageData->mBits;
+		resData.pSysMem = uploadBits;
 		resData.SysMemPitch = aWidth * 4;
 		resData.SysMemSlicePitch = aWidth * aHeight * 4;
 
@@ -4133,7 +4201,12 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	DXTexture* aTexture = new DXTexture();
 
 	aTexture->mContentBits = new uint32[aWidth * aHeight];
-	memcpy(aTexture->mContentBits, imageData->mBits, aWidth * aHeight * 4);
+	memcpy(aTexture->mContentBits, uploadBits, aWidth * aHeight * 4);
+	if (linearPremult.mBits != NULL)
+	{
+		aTexture->mGammaPremultBits = new uint32[aWidth * aHeight];
+		memcpy(aTexture->mGammaPremultBits, imageData->mBits, aWidth * aHeight * 4);
+	}
 
 	aTexture->mRenderDevice = this;
 	aTexture->mWidth = aWidth;

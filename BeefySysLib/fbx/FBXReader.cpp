@@ -69,6 +69,7 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 	}
 
 	ufbx_load_opts opts = {};
+	opts.use_blender_pbr_material = true;
 	opts.generate_missing_normals = true;
 	// Normalizing to world convention of Left/Up/Forward (+X left, +Y up, +Z forward)	
 	ufbx_coordinate_axes targetAxesLUF = {};
@@ -227,10 +228,25 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 						if (mat->fbx.diffuse_color.has_value)
 						{
 							auto color = mat->fbx.diffuse_color.value_vec3;
-							auto channel = [](double v) { return (uint32)(BF_MAX(0.0, BF_MIN(1.0, v)) * 255.0 + 0.5); };
+							auto channel = [](double v) {
+								v = BF_MAX(0.0, BF_MIN(1.0, v));
+								v = v <= 0.0031308 ? v * 12.92 : 1.055 * pow(v, 1.0 / 2.4) - 0.055;
+								return (uint32)(v * 255.0 + 0.5);
+							};
 							materialColor = 0xFF000000 | (channel(color.x) << 16) | (channel(color.y) << 8) | channel(color.z);
 						}
 						ufbx_texture* diffTex = mat->fbx.diffuse_color.texture;
+						auto& surface = fbxMesh->mMaterial;
+						surface.mHasSurfaceMaterial = mat->pbr.roughness.has_value || mat->pbr.metalness.has_value || mat->pbr.emission_factor.has_value;
+						if (mat->pbr.roughness.has_value) surface.mRoughness = (float)mat->pbr.roughness.value_real;
+						if (mat->pbr.metalness.has_value) surface.mMetallic = (float)mat->pbr.metalness.value_real;
+						if (mat->pbr.emission_color.has_value)
+						{
+							auto emission = mat->pbr.emission_color.value_vec3;
+							double strength = mat->pbr.emission_factor.has_value ? mat->pbr.emission_factor.value_real : 1.0;
+							surface.mEmissive = Vector3((float)(emission.x * strength), (float)(emission.y * strength), (float)(emission.z * strength));
+							surface.mHasSurfaceMaterial = true;
+						}
 						if (diffTex)
 						{
 							String fn = diffTex->relative_filename.length > 0 ? diffTex->relative_filename.data : diffTex->filename.data;
@@ -528,6 +544,10 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 				ModelPrimitives::Flags_Vertex_Tangent);
 
 			prims->mMaterialName = fbxMesh->mMaterial.mName;
+			prims->mHasSurfaceMaterial = fbxMesh->mMaterial.mHasSurfaceMaterial;
+			prims->mRoughness = fbxMesh->mMaterial.mRoughness;
+			prims->mMetallic = fbxMesh->mMaterial.mMetallic;
+			prims->mEmissive = fbxMesh->mMaterial.mEmissive;
 			prims->mTexPaths.Add(fbxMesh->mMaterial.mTexFileName);
 			if (!fbxMesh->mMaterial.mBumpFileName.IsEmpty())
 				prims->mTexPaths.Add(fbxMesh->mMaterial.mBumpFileName);

@@ -151,6 +151,10 @@ public:
 	Array<String> mTexPaths;
 	// The source file's material name for this primitive (empty when it had none).
 	String mMaterialName;
+	bool mHasSurfaceMaterial = false;
+	float mRoughness = 0.6f;
+	float mMetallic = 0.0f;
+	Vector3 mEmissive = Vector3(0, 0, 0);
 	// Engine-injected textures (see ModelDef_SetTexture), used in place of path loading when the
 	// def's mExternalTextures is set. Borrowed pointers -- the injector keeps them alive; instances
 	// AddRef what they copy.

@@ -161,6 +161,17 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         extern static char8* ModelDef_GetMaterialName(void* nativeModel, int32 meshIdx, int32 primitivesIdx);
 
+		[CallingConvention(.Stdcall), CLink]
+		extern static int32 ModelDef_GetSurfaceMaterial(void* nativeModel, int32 meshIdx, int32 primitivesIdx, float* values);
+
+		public bool GetSurfaceMaterial(int32 meshIdx, int32 primitivesIdx, out Vector2 parameters, out Vector3 emissive)
+		{
+			float[5] values = default;
+			let found = ModelDef_GetSurfaceMaterial(mNativeModelDef, meshIdx, primitivesIdx, &values[0]);
+			parameters = .(values[0], values[1]); emissive = .(values[2], values[3], values[4]);
+			return found != 0;
+		}
+
         [CallingConvention(.Stdcall), CLink]
         extern static void ModelDef_SetExternalTextures(void* nativeModel, int32 externalTextures);
 
@@ -423,6 +434,17 @@ namespace Beefy.gfx
 
     public class ModelInstance : Renderable
     {
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelInstance_SetUseSurfaceMaterials(void* nativeModelInstance, int32 enabled);
+		public void SetUseSurfaceMaterials(bool enabled) => ModelInstance_SetUseSurfaceMaterials(mNativeRenderable, enabled ? 1 : 0);
+		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelInstance_SetSurfaceOverride(void* nativeModelInstance, int32 meshIdx, int32 primIdx, float* values, uint32 color);
+		public void ClearSurfaceOverrides() => ModelInstance_SetSurfaceOverride(mNativeRenderable, -1, -1, null, 0);
+		public void SetSurfaceOverride(int32 meshIdx, int32 primIdx, float roughness, float metallic, Vector3 emissive, uint32 color)
+		{
+			float[5] values = .(roughness, metallic, emissive.mX, emissive.mY, emissive.mZ);
+			ModelInstance_SetSurfaceOverride(mNativeRenderable, meshIdx, primIdx, &values[0], color);
+		}
         [CallingConvention(.Stdcall), CLink]
         extern static void ModelInstance_SetJointMatrices(void* nativeModelInstance, Matrix4* matrices, int32 count);
 
