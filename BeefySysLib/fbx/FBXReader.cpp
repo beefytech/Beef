@@ -33,6 +33,14 @@ static Matrix4 UfbxToMatrix4(const ufbx_matrix& m)
 	return r;
 }
 
+static String UfbxTexturePath(const ufbx_material_map& map)
+{
+	ufbx_texture* texture = map.texture_enabled ? map.texture : NULL;
+	if (texture == NULL)
+		return String();
+	return texture->relative_filename.length > 0 ? texture->relative_filename.data : texture->filename.data;
+}
+
 FBXReader::FBXReader(ModelDef* modelDef)
 {
 	mModelDef = modelDef;
@@ -235,22 +243,26 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 							};
 							materialColor = 0xFF000000 | (channel(color.x) << 16) | (channel(color.y) << 8) | channel(color.z);
 						}
-						ufbx_texture* diffTex = mat->fbx.diffuse_color.texture;
 						auto& surface = fbxMesh->mMaterial;
+						surface.mTexFileName = UfbxTexturePath(mat->pbr.base_color);
+						if (surface.mTexFileName.IsEmpty()) surface.mTexFileName = UfbxTexturePath(mat->fbx.diffuse_color);
+						surface.mBumpFileName = UfbxTexturePath(mat->pbr.normal_map);
+						surface.mEmissionFileName = UfbxTexturePath(mat->pbr.emission_color);
+						surface.mRoughnessFileName = UfbxTexturePath(mat->pbr.roughness);
+						surface.mMetallicFileName = UfbxTexturePath(mat->pbr.metalness);
+						// Blender's connected image replaces the socket's fallback value.
+						if ((mat->shader_type == UFBX_SHADER_BLENDER_PHONG) && (!surface.mTexFileName.IsEmpty())) materialColor = 0xFFFFFFFF;
 						surface.mHasSurfaceMaterial = mat->pbr.roughness.has_value || mat->pbr.metalness.has_value || mat->pbr.emission_factor.has_value;
 						if (mat->pbr.roughness.has_value) surface.mRoughness = (float)mat->pbr.roughness.value_real;
 						if (mat->pbr.metalness.has_value) surface.mMetallic = (float)mat->pbr.metalness.value_real;
+						if (!surface.mRoughnessFileName.IsEmpty()) surface.mRoughness = 1.0f;
+						if (!surface.mMetallicFileName.IsEmpty()) surface.mMetallic = 1.0f;
 						if (mat->pbr.emission_color.has_value)
 						{
 							auto emission = mat->pbr.emission_color.value_vec3;
 							double strength = mat->pbr.emission_factor.has_value ? mat->pbr.emission_factor.value_real : 1.0;
 							surface.mEmissive = Vector3((float)(emission.x * strength), (float)(emission.y * strength), (float)(emission.z * strength));
 							surface.mHasSurfaceMaterial = true;
-						}
-						if (diffTex)
-						{
-							String fn = diffTex->relative_filename.length > 0 ? diffTex->relative_filename.data : diffTex->filename.data;
-							fbxMesh->mMaterial.mTexFileName = fn;
 						}
 					}
 				}
@@ -549,8 +561,16 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 			prims->mMetallic = fbxMesh->mMaterial.mMetallic;
 			prims->mEmissive = fbxMesh->mMaterial.mEmissive;
 			prims->mTexPaths.Add(fbxMesh->mMaterial.mTexFileName);
-			if (!fbxMesh->mMaterial.mBumpFileName.IsEmpty())
-				prims->mTexPaths.Add(fbxMesh->mMaterial.mBumpFileName);
+			prims->mTexRoles.Add("albedo");
+			auto addMap = [&](const StringImpl& path, const char* role) {
+				if (path.IsEmpty()) return;
+				prims->mTexPaths.Add(path);
+				prims->mTexRoles.Add(role);
+			};
+			addMap(fbxMesh->mMaterial.mBumpFileName, "normal");
+			addMap(fbxMesh->mMaterial.mEmissionFileName, "emission");
+			addMap(fbxMesh->mMaterial.mRoughnessFileName, "roughness");
+			addMap(fbxMesh->mMaterial.mMetallicFileName, "metallic");
 
 			prims->mIndices.Resize(fbxMesh->mIndexData.size());
 			for (int ii = 0; ii < (int)fbxMesh->mIndexData.size(); ii++)

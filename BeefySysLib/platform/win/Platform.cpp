@@ -1116,11 +1116,21 @@ static void Crash_Error(const char* msg)
 	PIMAGE_DOS_HEADER pDosHdr = (PIMAGE_DOS_HEADER)hMod;
 	PIMAGE_NT_HEADERS pNtHdr = (PIMAGE_NT_HEADERS)((uint8*)hMod + pDosHdr->e_lfanew);
 	bool isCLI = pNtHdr->OptionalHeader.Subsystem == IMAGE_SUBSYSTEM_WINDOWS_CUI;
+	// The report kind is process-wide (CrashCatcher::Get shares one instance across modules), so a
+	// quiet kind set by the runtime applies here too even though this module never installed the
+	// catcher. abort() under a debug CRT raises a modal box regardless of subsystem.
+	BfpCrashReportKind reportKind = CrashCatcher::Get()->mCrashReportKind;
+	bool quiet = (reportKind == BfpCrashReportKind_PrintOnly) || (reportKind == BfpCrashReportKind_None);
 
-	if (isCLI)
+	if (isCLI || quiet)
 		fprintf(stderr, "**** FATAL APPLICATION ERROR ****\n%s\n", msg);
 	else
 		::MessageBoxA(NULL, msg, "FATAL ERROR", MB_ICONSTOP);
+	if (quiet)
+	{
+		fflush(stderr);
+		::TerminateProcess(::GetCurrentProcess(), 1);
+	}
 	_set_purecall_handler(nullptr);
 	_set_invalid_parameter_handler(nullptr);
 	signal(SIGABRT, sOldSIGABRTHandler);

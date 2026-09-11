@@ -149,6 +149,7 @@ public:
 	Array<uint16> mIndices;
 	ModelMaterialInstance* mMaterial;
 	Array<String> mTexPaths;
+	Array<String> mTexRoles;
 	// The source file's material name for this primitive (empty when it had none).
 	String mMaterialName;
 	bool mHasSurfaceMaterial = false;

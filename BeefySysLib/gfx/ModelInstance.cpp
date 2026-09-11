@@ -1,6 +1,34 @@
 #include "ModelInstance.h"
+#include "BFApp.h"
+#include "DrawLayer.h"
+#include "RenderDevice.h"
 
 USING_NS_BF;
+
+class ModelPrimitiveCmd : public RenderableCmd
+{
+public:
+	int mMeshIdx, mPrimIdx;
+	void Render(RenderDevice* device, RenderWindow* window) override
+	{
+		auto model = (ModelInstance*)mRenderable;
+		model->mRenderMeshIdx = mMeshIdx;
+		model->mRenderPrimIdx = mPrimIdx;
+		model->Render(this, device, window);
+		model->mRenderMeshIdx = -1;
+		model->mRenderPrimIdx = -1;
+	}
+};
+
+BF_EXPORT void BF_CALLTYPE ModelInstance_QueuePrimitive(ModelInstance* model, int meshIdx, int primIdx)
+{
+	auto layer = gBFApp->mRenderDevice->mCurDrawLayer;
+	auto cmd = layer->AllocRenderCmd<ModelPrimitiveCmd>();
+	cmd->mRenderable = model;
+	cmd->mMeshIdx = meshIdx;
+	cmd->mPrimIdx = primIdx;
+	layer->QueueRenderCmd(cmd);
+}
 
 ModelInstance::ModelInstance(ModelDef* modelDef)
 {

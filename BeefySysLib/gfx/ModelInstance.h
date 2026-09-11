@@ -24,6 +24,8 @@ public:
 	// including across the multiple times a single instance may be queued within the same frame.
 	bool mDirty;
 	bool mUseSurfaceMaterials = false;
+	int mRenderMeshIdx = -1;
+	int mRenderPrimIdx = -1;
 	struct SurfaceOverride
 	{
 		int mMeshIdx, mPrimIdx;

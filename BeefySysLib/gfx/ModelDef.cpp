@@ -166,6 +166,7 @@ BF_EXPORT void BF_CALLTYPE ModelDef_SetTextures(ModelDef* modelDef, int32 meshId
 {
 	auto& prims = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx];
 	prims.mTexPaths.Clear();
+	prims.mTexRoles.Clear();
 	for (int i = 0; i < pathCount; i++)
 		prims.mTexPaths.Add(paths[i]);
 }
@@ -219,11 +220,11 @@ BF_EXPORT const char* BF_CALLTYPE ModelDef_GetTexPaths(ModelDef* modelDef, int m
 		}
 	}
 
-	for (auto& texPath : texPaths)
+	for (int i = 0; i < texPaths.mSize; i++)
 	{
-		if (!outString.IsEmpty())
+		if (i > 0)
 			outString += "\n";
-		outString += texPath;
+		outString += texPaths[i];
 	}
 	return outString.c_str();
 }
@@ -252,6 +253,8 @@ BF_EXPORT const char* BF_CALLTYPE ModelDef_GetTexRoles(ModelDef* modelDef, int m
 	{
 		if (i > 0)
 			outString += "\n";
+		if (i < prims.mTexRoles.mSize)
+			outString += prims.mTexRoles[i];
 	}
 	return outString.c_str();
 }
@@ -285,7 +288,7 @@ BF_EXPORT void BF_CALLTYPE ModelDef_SetTexture(ModelDef* modelDef, int meshIdx, 
 	auto& prims = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx];
 	while ((int)prims.mExtTextures.mSize <= texIdx)
 		prims.mExtTextures.Add(NULL);
-	prims.mExtTextures[texIdx] = textureSegment->mTexture;
+	prims.mExtTextures[texIdx] = textureSegment != NULL ? textureSegment->mTexture : NULL;
 }
 
 BF_EXPORT void BF_CALLTYPE ModelDef_GetJointBindPose(ModelDef* modelDef, int jointIdx, ModelJointTranslation* outJointTranslation)

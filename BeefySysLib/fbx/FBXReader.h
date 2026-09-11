@@ -69,6 +69,9 @@ public:
 	String mName;
 	String mTexFileName;
 	String mBumpFileName;
+	String mEmissionFileName;
+	String mRoughnessFileName;
+	String mMetallicFileName;
 };
 
 class FBXMesh
