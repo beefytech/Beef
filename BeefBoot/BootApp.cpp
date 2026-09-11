@@ -12,6 +12,8 @@
 
 #ifdef BF_PLATFORM_WINDOWS
 #include <direct.h>
+#else
+#include <dirent.h>
 #endif
 
 BF_IMPORT void BF_CALLTYPE Targets_Create();
@@ -742,15 +744,42 @@ void BootApp::DoLinkMS()
 
 	auto runCmd = QueueRun(linkerPath, linkLine, mWorkingDir, flags);
 }
-#endif
+
+#else
 
 void BootApp::DoLinkGNU()
 {
-    String linkerPath;
-    if (FileExists("/usr/bin/clang++"))
-    	linkerPath = "/usr/bin/clang++";
-    else
-    	linkerPath = "/usr/bin/c++";
+	StringView PATH(getenv("PATH"));
+	String linkerPath;
+	{
+		String pathNullTerm;
+		for (auto path : PATH.Split(':'))
+		{
+			pathNullTerm = path;
+			DIR* dir = opendir(pathNullTerm.c_str());
+			if (dir == NULL) continue;
+			while (dirent* entry = readdir(dir))
+			{
+				if (entry->d_type == DT_DIR) continue;
+				StringView name(entry->d_name);
+				if (name == "clang++")
+				{
+					linkerPath = path + "/" + name;
+					goto resolved;
+				}
+				if (name == "c++")
+				{
+					linkerPath = path + "/" + name;
+					//goto resolved;
+				}
+			}
+		}
+	}
+	if (linkerPath.IsEmpty())
+		linkerPath = "/usr/bin/c++";
+	if (!BfpFile_Exists(linkerPath.c_str()))
+		Fail("Failed to resolve executable: c++");
+	resolved:;
 
     String linkLine;
 
@@ -789,6 +818,7 @@ void BootApp::DoLinkGNU()
 
     auto runCmd = QueueRun(linkerPath, linkLine, mWorkingDir, BfpSpawnFlag_UseArgsFile);
 }
+#endif
 
 bool BootApp::Compile()
 {
