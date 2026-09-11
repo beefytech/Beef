@@ -1,8 +1,14 @@
 #include <inttypes.h>
 #include <stdio.h>
 
+#if defined(__GNUC__) || defined(__clang__)
+	#define ALWAYS_INCLUDE __attribute__((used))
+#else
+	#define ALWAYS_INCLUDE
+#endif
+
 namespace Tests
-{	
+{
 	struct Interop
 	{
 		struct StructA
@@ -10,24 +16,24 @@ namespace Tests
 			int mA;
 			static int sVal;
 
-			int MethodA0(int arg0)
+			ALWAYS_INCLUDE int MethodA0(int arg0)
 			{
 				return arg0 + mA * 100;
 			}
 
-			StructA MethodA1(StructA other, int arg0)
+			ALWAYS_INCLUDE StructA MethodA1(StructA other, int arg0)
 			{
 				StructA ret;
 				ret.mA = mA + other.mA + arg0;
 				return ret;
 			}
 
-			const float& MethodA2(const float& val)
+			ALWAYS_INCLUDE const float& MethodA2(const float& val)
 			{
 				return val;
 			}
 
-			const float& MethodA3(const float& val)
+			ALWAYS_INCLUDE const float& MethodA3(const float& val)
 			{
 				return val;
 			}
@@ -38,12 +44,12 @@ namespace Tests
 			int mA;
 			char mB;
 
-			int MethodB0(int arg0)
+			ALWAYS_INCLUDE int MethodB0(int arg0)
 			{
 				return arg0 + mA * 100 + mB * 10000;
 			}
 
-			StructB MethodB1(StructB other, int arg0)
+			ALWAYS_INCLUDE StructB MethodB1(StructB other, int arg0)
 			{
 				StructB ret;
 				ret.mA = mA + other.mA + arg0;
@@ -57,12 +63,12 @@ namespace Tests
 			char mA;
 			int mB;
 
-			int MethodC0(int arg0)
+			ALWAYS_INCLUDE int MethodC0(int arg0)
 			{
 				return arg0 + mA * 100 + mB * 10000;
 			}
 
-			StructC MethodC1(StructC other, int arg0)
+			ALWAYS_INCLUDE StructC MethodC1(StructC other, int arg0)
 			{
 				StructC ret;
 				ret.mA = mA + other.mA + arg0;
@@ -76,12 +82,12 @@ namespace Tests
 			int mA;
 			int mB;
 
-			int MethodD0(int arg0)
+			ALWAYS_INCLUDE int MethodD0(int arg0)
 			{
 				return arg0 + mA * 100 + mB * 10000;
 			}
 
-			StructD MethodD1(StructD other, int arg0)
+			ALWAYS_INCLUDE StructD MethodD1(StructD other, int arg0)
 			{
 				StructD ret;
 				ret.mA = mA + other.mA + arg0;
@@ -96,12 +102,12 @@ namespace Tests
 			int mB;
 			int mC;
 
-			int MethodE0(int arg0)
+			ALWAYS_INCLUDE int MethodE0(int arg0)
 			{
 				return arg0 + mA * 100 + mC * 10000;
 			}
 
-			StructE MethodE1(StructE other, int arg0)
+			ALWAYS_INCLUDE StructE MethodE1(StructE other, int arg0)
 			{
 				StructE ret;
 				ret.mA = mA + other.mA + arg0;
@@ -116,12 +122,12 @@ namespace Tests
 			char mB;
 			char mC;
 
-			int MethodF0(int arg0)
+			ALWAYS_INCLUDE int MethodF0(int arg0)
 			{
 				return arg0 + mA * 100 + mC * 10000;
 			}
 
-			StructF MethodF1(StructF other, int arg0)
+			ALWAYS_INCLUDE StructF MethodF1(StructF other, int arg0)
 			{
 				StructF ret;
 				ret.mA = mA + other.mA + arg0;
@@ -137,12 +143,12 @@ namespace Tests
 			char mC;
 			char mD;
 
-			int MethodG0(int arg0)
+			ALWAYS_INCLUDE int MethodG0(int arg0)
 			{
 				return arg0 + mA * 100 + mC * 10000;
 			}
 
-			StructG MethodG1(StructG other, int arg0)
+			ALWAYS_INCLUDE StructG MethodG1(StructG other, int arg0)
 			{
 				StructG ret;
 				ret.mA = mA + other.mA + arg0;
@@ -155,14 +161,14 @@ namespace Tests
 		{
 			int64_t mA;
 			int64_t mB;
-			int64_t mC;			
+			int64_t mC;
 
-			int MethodH0(int arg0)
+			ALWAYS_INCLUDE int MethodH0(int arg0)
 			{
 				return arg0 + (int)mA * 100 + (int)mC * 10000;
 			}
 
-			StructH MethodH1(StructH other, int arg0)
+			ALWAYS_INCLUDE StructH MethodH1(StructH other, int arg0)
 			{
 				StructH ret;
 				ret.mA = mA + other.mA + arg0;
@@ -179,12 +185,12 @@ namespace Tests
 			char mD;
 			char mE;
 
-			int MethodI0(int arg0)
+			ALWAYS_INCLUDE int MethodI0(int arg0)
 			{
 				return arg0 + (int)mA * 100 + (int)mC * 10000;
 			}
 
-			StructI MethodI1(StructI other, int arg0)
+			ALWAYS_INCLUDE StructI MethodI1(StructI other, int arg0)
 			{
 				StructI ret;
 				ret.mA = mA + other.mA + arg0;
@@ -198,12 +204,12 @@ namespace Tests
 			char* mPtr;
 			intptr_t mLength;
 
-			int MethodJ0(int arg0)
+			ALWAYS_INCLUDE int MethodJ0(int arg0)
 			{
 				return arg0 + (int)mLength * 100;
 			}
 
-			StructJ MethodJ1(StructJ other, int arg0)
+			ALWAYS_INCLUDE StructJ MethodJ1(StructJ other, int arg0)
 			{
 				StructJ ret;
 				ret.mPtr = other.mPtr;
@@ -312,7 +318,7 @@ namespace Tests
 using namespace Tests;
 
 extern "C" int Func0(int a, int b)
-{	
+{
 	return a + b * 100;
 }
 

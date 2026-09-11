@@ -9574,6 +9574,15 @@ namespace IDE
 				fileName.Set("wsl.exe");
 			}
 
+#if !BF_PLATFORM_WINDOWS
+			if (!inFileName.Contains('/'))
+			{
+				String buffer = scope .(256);
+				if (BuildContext.FindExecutableInPath(fileName, buffer) case .Ok)
+					fileName.Set(buffer);
+			}
+#endif
+
 			QuoteIfNeeded(fileName);
 
 			ProcessStartInfo startInfo = scope ProcessStartInfo();
