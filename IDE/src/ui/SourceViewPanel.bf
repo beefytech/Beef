@@ -5256,7 +5256,7 @@ namespace IDE.ui
             	mNavigationBar.ShowDropdown();            
         }
 
-		public void FixitAtCursor()
+		public virtual void FixitAtCursor()
 		{
 			if (!mIsBeefSource)
 				return;
