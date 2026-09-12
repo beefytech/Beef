@@ -639,6 +639,92 @@ BF_EXPORT int BF_CALLTYPE ModelDef_MeasureFit(ModelDef* modelDef, const Matrix4*
 
 // A primitive's vertices and indices as stored (bind-pose local for skinned meshes) -- the engine
 // uploads unskinned ones once as shared static meshes and instances them.
+float Beefy::ModelPackBoneData(const ModelVertex& vtx, uint32* outIdx, uint64* outWeights)
+{
+	*outIdx = 0;
+	*outWeights = 0;
+	int count = vtx.mNumBoneWeights;
+	if (count <= 0)
+		return 0;
+
+	// Selection sort over at most 8 entries: the top four by weight, heaviest first.
+	int order[MODEL_MAX_BONE_WEIGHTS];
+	for (int i = 0; i < count; i++)
+		order[i] = i;
+	int keep = (count < 4) ? count : 4;
+	for (int i = 0; i < keep; i++)
+	{
+		int best = i;
+		for (int j = i + 1; j < count; j++)
+			if (vtx.mBoneWeights[order[j]] > vtx.mBoneWeights[order[best]])
+				best = j;
+		int tmp = order[i]; order[i] = order[best]; order[best] = tmp;
+	}
+
+	float total = 0;
+	float kept = 0;
+	for (int i = 0; i < count; i++)
+		total += vtx.mBoneWeights[i];
+	for (int i = 0; i < keep; i++)
+		kept += vtx.mBoneWeights[order[i]];
+	if (kept <= 0)
+		return 0;
+
+	uint32 idx = 0;
+	uint64 weights = 0;
+	int sum = 0;
+	for (int i = 0; i < keep; i++)
+	{
+		int joint = vtx.mBoneIndices[order[i]];
+		if ((joint < 0) || (joint > 255))
+			joint = 0;
+		idx |= ((uint32)joint) << (i * 8);
+		int w = (int)(vtx.mBoneWeights[order[i]] / kept * 65535.0f + 0.5f);
+		weights |= ((uint64)(uint16)w) << (i * 16);
+		sum += w;
+	}
+	// The rounding drift goes on the heaviest influence, which is the one it perturbs least.
+	int drift = 65535 - sum;
+	if (drift != 0)
+	{
+		int w0 = (int)(weights & 0xFFFF) + drift;
+		if (w0 < 0) w0 = 0;
+		if (w0 > 65535) w0 = 65535;
+		weights = (weights & ~(uint64)0xFFFF) | (uint64)(uint16)w0;
+	}
+	*outIdx = idx;
+	*outWeights = weights;
+	return (total > 0) ? ((total - kept) / total) : 0;
+}
+
+// One primitive's packed bone data, one entry per vertex. Returns 0 when the model has more joints
+// than a uint8 index can address -- the caller then keeps the native per-draw path. outMaxDropped
+// takes the worst truncation loss seen, for the caller's warning.
+BF_EXPORT int BF_CALLTYPE ModelDef_PackBoneData(ModelDef* modelDef, int meshIdx, int primitivesIdx,
+	uint32* outIdx, uint64* outWeights, float* outMaxDropped)
+{
+	if (outMaxDropped != NULL)
+		*outMaxDropped = 0;
+	if ((int)modelDef->mJoints.size() > 255)
+		return 0;
+	if ((meshIdx < 0) || (meshIdx >= (int)modelDef->mMeshes.size()))
+		return 0;
+	auto& mesh = modelDef->mMeshes[meshIdx];
+	if ((primitivesIdx < 0) || (primitivesIdx >= (int)mesh.mPrimitives.size()))
+		return 0;
+	auto& prims = mesh.mPrimitives[primitivesIdx];
+	float worst = 0;
+	for (int i = 0; i < (int)prims.mVertices.size(); i++)
+	{
+		float dropped = ModelPackBoneData(prims.mVertices[i], &outIdx[i], &outWeights[i]);
+		if (dropped > worst)
+			worst = dropped;
+	}
+	if (outMaxDropped != NULL)
+		*outMaxDropped = worst;
+	return 1;
+}
+
 BF_EXPORT int BF_CALLTYPE ModelDef_GetPrimitiveMesh(ModelDef* modelDef, int meshIdx, int primitivesIdx,
 	ModelVertex** outVertices, int* outVertexCount, uint16** outIndices, int* outIndexCount)
 {

@@ -30,6 +30,10 @@ enum ShaderFlags
 	ShaderFlags_NoOptimization = 1, // maps to the backend's skip-optimization compile flag
 	// Shader model 5 profiles instead of 4_0: pixel-shader UAVs and SV_PrimitiveID.
 	ShaderFlags_ShaderModel5 = 2,
+	// This shader's vertex stage reads only position, the instance element and the bone slots, so it
+	// can be fed the compact depth stream (see DX_DEPTH_VERTEX_SIZE). Declared, not detected: probing
+	// by letting CreateInputLayout fail would put thousands of validation errors on the debug layer.
+	ShaderFlags_DepthStream = 4,
 };
 
 class Shader

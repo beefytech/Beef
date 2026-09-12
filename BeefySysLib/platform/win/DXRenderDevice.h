@@ -195,6 +195,10 @@ public:
 
 	ID3D11InputLayout*		mD3DLayout;
 	ID3D11InputLayout*		mD3DInstLayout; // the instance element from slot 1 (per-instance); NULL if the vertex def has none
+	// The compact depth stream's layout (position + bone slots only). Built only for shaders loaded
+	// with ShaderFlags_DepthStream, whose vertex stage declares nothing beyond that subset; NULL
+	// for every other shader, which keeps the full stream.
+	ID3D11InputLayout*		mD3DDepthLayout;
 	ID3D11VertexShader*		mD3DVertexShader;
 	ID3D11PixelShader*		mD3DPixelShader;
 	DXShaderParamMap		mParamsMap;
@@ -249,6 +253,9 @@ class DXStaticMesh : public StaticMesh
 public:
 	ID3D11Buffer*			mD3DVertexBuffer;
 	ID3D11Buffer*			mD3DIndexBuffer;
+	// Position + bone slots over the SAME index buffer, 24 bytes a vertex (see
+	// Gfx_StaticMesh_SetDepthStream). NULL when the mesh was not given one.
+	ID3D11Buffer*			mD3DDepthVertexBuffer;
 
 public:
 	DXStaticMesh();
@@ -307,7 +314,11 @@ public:
 typedef std::vector<DXDrawBatch*> DXDrawBatchVector;
 
 #define DX_VTXBUFFER_SIZE 1024*1024
-#define DX_VS_TEXTURE_SLOT 24
+// Slots at or above this are mirrored to the vertex stage on every bind and unbind. 13 is the
+// skinning palette; t14/t15 are free and t26+ are reserved for user surface shaders.
+#define DX_VS_TEXTURE_SLOT 13
+// The compact depth stream: Vector3 position, uint32 bone indices, uint64 bone weights.
+#define DX_DEPTH_VERTEX_SIZE 24
 #define DX_IDXBUFFER_SIZE 64*1024
 
 class DXDrawBufferPool
@@ -388,6 +399,9 @@ public:
 	DXModelInstance(ModelDef* modelDef);
 	~DXModelInstance();
 
+	// The per-instance vertex/index copy, created at the first native queue. A model that batches
+	// never queues natively and so never pays for one (a character is several MB).
+	void EnsureBuffers();
 	virtual void SetTexture(int meshIdx, int primIdx, int texIdx, Texture* texture) override;
 	virtual void CommandQueued(RenderCmd* renderCmd, DrawLayer* drawLayer) override;
 	virtual void Render(RenderCmd* renderCmd, RenderDevice* renderDevice, RenderWindow* renderWindow) override;
@@ -576,6 +590,7 @@ public:
 	virtual void			ReleaseRenderState(RenderState* renderState) override;
 	virtual ModelInstance*	CreateModelInstance(ModelDef* modelDef, ModelCreateFlags flags) override;
 	virtual StaticMesh*		CreateStaticMesh(int vertexSize, void* vtxData, int vtxCount, void* idxData, int idxCount, bool idx32) override;
+	virtual void			SetStaticMeshDepthStream(StaticMesh* mesh, void* data, int vtxCount) override;
 	virtual void			GpuTimerSetEnabled(bool enabled) override;
 	virtual bool			GpuTimerBeginFrame(int64 frameId) override;
 	virtual void			GpuTimerSetTag(int tag) override;

@@ -342,6 +342,10 @@ const Array<String>& GetShaderIncludeDirs();
 class RenderDevice
 {
 public:
+	int mStatsCategory = 0;
+	int64 mSubmissionStats[3][3] = {};
+	void RecordSubmission(int category, Topology3D topology, int indexCount, int instanceCount);
+
 	Array<DrawBatch*>		mDrawBatchPool;
 	
 	BFApp*					mApp;
@@ -395,6 +399,8 @@ public:
 	virtual int				GpuTimerFetch(int64* outFrameId, GpuTimerSpan* outSpans, int maxSpans) { return -1; }
 	// idxData is uint16 or uint32 per idx32. Delete the mesh only after every layer that queued draws of it has flushed.
 	virtual StaticMesh*		CreateStaticMesh(int vertexSize, void* vtxData, int vtxCount, void* idxData, int idxCount, bool idx32) { return NULL; }
+	// The compact position+bones stream for a mesh already created (see DX_DEPTH_VERTEX_SIZE).
+	virtual void			SetStaticMeshDepthStream(StaticMesh* mesh, void* data, int vtxCount) {}
 
 	virtual void			FrameStart() = 0;
 	virtual void			FrameEnd();

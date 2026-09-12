@@ -640,6 +640,29 @@ BF_EXPORT void BF_CALLTYPE Gfx_GpuTimer_SetEnabled(int enabled)
 	gBFApp->mRenderDevice->GpuTimerSetEnabled(enabled != 0);
 }
 
+BF_EXPORT int BF_CALLTYPE Gfx_SubmissionStats_SetCategory(int category)
+{
+	auto device = gBFApp->mRenderDevice;
+	int previous = device->mStatsCategory;
+	if (previous != category)
+	{
+		if (device->mCurDrawLayer != NULL)
+			device->mCurDrawLayer->CloseDrawBatch();
+		device->mStatsCategory = category;
+	}
+	return previous;
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_SubmissionStats_Get(int category, int64* triangles, int64* draws, int64* instances)
+{
+	if ((category < 1) || (category > 3))
+		return;
+	auto& counts = gBFApp->mRenderDevice->mSubmissionStats[category - 1];
+	*triangles = counts[0];
+	*draws = counts[1];
+	*instances = counts[2];
+}
+
 BF_EXPORT int BF_CALLTYPE Gfx_GpuTimer_BeginFrame(int64 frameId)
 {
 	return gBFApp->mRenderDevice->GpuTimerBeginFrame(frameId) ? 1 : 0;
@@ -1001,9 +1024,13 @@ BF_EXPORT void BF_CALLTYPE Gfx_DrawQuads(TextureSegment* textureSegment, Default
 // The largest vtxCount/idxCount a single AllocIndexed call can ever satisfy -- DrawLayer's pooled
 // vertex/index buffers are fixed-size (DRAWBUFFER_VTXBUFFER_SIZE/DRAWBUFFER_IDXBUFFER_SIZE), and
 // AllocateBatch asserts if a single request exceeds what a fresh buffer could hold.
+// Rounded down to a multiple of 6: the oversized path below chunks on exactly this many indices, so
+// a boundary that isn't a multiple of the primitive's index count (2 for lines, 3 for triangles,
+// 6 for quads) splits a primitive and every later chunk draws garbage.
 static int DrawIndexedVerticesMaxPerBatch(int vertexSize)
 {
-	return BF_MIN(DRAWBUFFER_VTXBUFFER_SIZE / vertexSize, DRAWBUFFER_IDXBUFFER_SIZE / (int)sizeof(uint16));
+	int maxPerBatch = BF_MIN(DRAWBUFFER_VTXBUFFER_SIZE / vertexSize, DRAWBUFFER_IDXBUFFER_SIZE / (int)sizeof(uint16));
+	return maxPerBatch - (maxPerBatch % 6);
 }
 
 BF_EXPORT void BF_CALLTYPE Gfx_DrawIndexedVertices(int vertexSize, void* vtxData, int vtxCount, uint16* idxData, int idxCount)
@@ -1207,6 +1234,12 @@ BF_EXPORT StaticMesh* BF_CALLTYPE Gfx_CreateStaticMesh(int vertexSize, void* vtx
 }
 
 // Immediate: the caller must know that no queued draw still references the mesh.
+// The compact position+bones stream for depth-only passes, over the mesh's existing index buffer.
+BF_EXPORT void BF_CALLTYPE Gfx_StaticMesh_SetDepthStream(StaticMesh* mesh, void* data, int vtxCount)
+{
+	gBFApp->mRenderDevice->SetStaticMeshDepthStream(mesh, data, vtxCount);
+}
+
 BF_EXPORT void BF_CALLTYPE Gfx_StaticMesh_Delete(StaticMesh* mesh)
 {
 	delete mesh;

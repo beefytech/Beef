@@ -9,9 +9,11 @@ namespace Beefy.gfx
 {
     public class VertexDefinition
     {
-        enum VertexElementFormat
+        public enum VertexElementFormat
         {
-            Float,
+			// Values past None are the native VertexElementFormat enum's, in order.
+			None = -1,
+            Float = 0,
             Vector2,
             Vector3,
             Vector4,
@@ -137,7 +139,13 @@ namespace Beefy.gfx
 					mInstanceElementOffset = (int32)field.MemberOffset;
 				}
 
-                if (floats != 0)
+				// An explicit format wins: inference below only knows float/uint16/uint32, so a packed
+				// member (bone weights as a uint64 of 4 unorm shorts) has no other way to be described.
+				if (memberAttribute.mFormat != .None)
+				{
+					vertexDefData.mFormat = memberAttribute.mFormat;
+				}
+                else if (floats != 0)
                 {
                     Debug.Assert(floats == primitives.Count);
                     Debug.Assert(floats <= 4);
@@ -158,7 +166,11 @@ namespace Beefy.gfx
                         vertexDefData.mFormat = VertexElementFormat.Color;
                     else
                         Runtime.FatalError("Invalid color count");
-                }                
+                }
+				else
+				{
+					Runtime.FatalError(scope $"No vertex format for {type.GetName(.. scope .())}.{field.Name} ({field.FieldType.GetName(.. scope .())}) -- pass one to VertexMember");
+				}
 
                 vertexDefDataArray[fieldIdx++] = vertexDefData;
             }

@@ -13,12 +13,16 @@ namespace Beefy.gfx
 		// Instanced draws (Graphics.DrawStaticMeshInstanced) feed this element from a per-instance
 		// stream instead of the vertex; at most one per vertex type.
 		public bool mPerInstance;
+		// None = let VertexDefinition infer the format from the field's primitives.
+		public VertexDefinition.VertexElementFormat mFormat;
 
-        public this(VertexElementUsage elementUsage, int32 usageIndex = 0, bool perInstance = false)
+        public this(VertexElementUsage elementUsage, int32 usageIndex = 0, bool perInstance = false,
+			VertexDefinition.VertexElementFormat format = .None)
         {
             mElementUsage = elementUsage;
             mUsageIndex = usageIndex;
 			mPerInstance = perInstance;
+			mFormat = format;
         }
     }
 }

@@ -298,6 +298,7 @@ DXShader::DXShader()
 	mD3DVertexShader = NULL;
 	mD3DLayout = NULL;
 	mD3DInstLayout = NULL;
+	mD3DDepthLayout = NULL;
 	mConstBuffer = NULL;
 	mHas2DPosition = false;
 	mShaderFlags = 0;
@@ -320,6 +321,9 @@ void DXShader::ReleaseNative()
 	if (mD3DInstLayout != NULL)
 		mD3DInstLayout->Release();
 	mD3DInstLayout = NULL;
+	if (mD3DDepthLayout != NULL)
+		mD3DDepthLayout->Release();
+	mD3DDepthLayout = NULL;
 	if (mD3DVertexShader != NULL)
 		mD3DVertexShader->Release();
 	mD3DVertexShader = NULL;
@@ -715,6 +719,7 @@ bool DXShader::Load()
 	mVertexSize = 0;
 	mD3DLayout = NULL;
 	mD3DInstLayout = NULL;
+	mD3DDepthLayout = NULL;
 
 	static const char* semanticNames[] = {
 		"POSITION",
@@ -816,6 +821,30 @@ bool DXShader::Load()
 		DXCHECK(result);
 		if (FAILED(result))
 			return false;
+
+		// And the compact depth stream, for shaders that declare they read only that subset
+		// (ShaderFlags_DepthStream): position and the bone slots on slot 0, the instance element on
+		// slot 1. Opt-in rather than probing -- letting CreateInputLayout fail for every other shader
+		// would work, but each failure is a debug-layer error, and thousands of them would bury the
+		// validation gate. A shader that claims this and reads more fails here, loudly, as it should.
+		if ((mShaderFlags & ShaderFlags_DepthStream) != 0)
+		{
+			D3D11_INPUT_ELEMENT_DESC depthLayout[4];
+			depthLayout[0] = { "POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0, D3D11_INPUT_PER_VERTEX_DATA, 0 };
+			depthLayout[1] = { "BLENDINDICES", 0, DXGI_FORMAT_R8G8B8A8_UINT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0 };
+			depthLayout[2] = { "BLENDWEIGHT", 0, DXGI_FORMAT_R16G16B16A16_UNORM, 0, 16, D3D11_INPUT_PER_VERTEX_DATA, 0 };
+			depthLayout[3] = instLayout[instElemIdx];
+			result = mRenderDevice->mD3DDevice->CreateInputLayout(depthLayout, 4, vertexShaderBuffer->GetBufferPointer(),
+				vertexShaderBuffer->GetBufferSize(), &mD3DDepthLayout);
+			DXCHECK(result);
+			if (FAILED(result))
+				mD3DDepthLayout = NULL;
+#ifdef _DEBUG
+			// Which shaders feed on the compact stream, so one silently losing it is visible.
+			printf("DEPTHLAYOUT %s%s: %s\n", mSrcPath.c_str(), mEntrySuffix.c_str(),
+				(mD3DDepthLayout != NULL) ? "compact stream" : "REFUSED");
+#endif
+		}
 	}
 
 	// Create the vertex shader from the buffer.
@@ -1697,12 +1726,14 @@ void DXDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 		aRenderDevice->mD3DDeviceContext->Draw(mVtxIdx, vtxStartIdx);
 	else
 		aRenderDevice->mD3DDeviceContext->DrawIndexed(mIdxIdx, idxByteStart / sizeof(uint16), vtxStartIdx/*vtxByteStart / mVtxSize*/);
+	aRenderDevice->RecordSubmission(mStatsCategory, mRenderState->mTopology, mIdxIdx, 1);
 }
 
 DXStaticMesh::DXStaticMesh()
 {
 	mD3DVertexBuffer = NULL;
 	mD3DIndexBuffer = NULL;
+	mD3DDepthVertexBuffer = NULL;
 }
 
 DXStaticMesh::~DXStaticMesh()
@@ -1711,6 +1742,31 @@ DXStaticMesh::~DXStaticMesh()
 		mD3DVertexBuffer->Release();
 	if (mD3DIndexBuffer != NULL)
 		mD3DIndexBuffer->Release();
+	if (mD3DDepthVertexBuffer != NULL)
+		mD3DDepthVertexBuffer->Release();
+}
+
+// A depth-only pass reads position and the bone slots and nothing else, but still pulls the whole
+// 72-byte vertex through the cache. This is the same vertices in the same order over the same index
+// buffer, 24 bytes apiece.
+void DXRenderDevice::SetStaticMeshDepthStream(StaticMesh* staticMesh, void* data, int vtxCount)
+{
+	DXStaticMesh* mesh = (DXStaticMesh*)staticMesh;
+	if ((mesh == NULL) || (vtxCount != mesh->mVtxCount))
+		return;
+	if (mesh->mD3DDepthVertexBuffer != NULL)
+	{
+		mesh->mD3DDepthVertexBuffer->Release();
+		mesh->mD3DDepthVertexBuffer = NULL;
+	}
+	D3D11_BUFFER_DESC bd = { 0 };
+	bd.Usage = D3D11_USAGE_IMMUTABLE;
+	bd.ByteWidth = DX_DEPTH_VERTEX_SIZE * vtxCount;
+	bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+	D3D11_SUBRESOURCE_DATA init = { 0 };
+	init.pSysMem = data;
+	HRESULT result = mD3DDevice->CreateBuffer(&bd, &init, &mesh->mD3DDepthVertexBuffer);
+	DXCHECK(result);
 }
 
 StaticMesh* DXRenderDevice::CreateStaticMesh(int vertexSize, void* vtxData, int vtxCount, void* idxData, int idxCount, bool idx32)
@@ -1827,9 +1883,12 @@ void DXStaticMeshDrawCmd::Render(RenderDevice* renderDevice, RenderWindow* rende
 	dev->EnsureInstIota(mInstBase + mInstCount);
 
 	ID3D11DeviceContext* ctx = dev->mD3DDeviceContext;
-	ctx->IASetInputLayout(shader->mD3DInstLayout);
-	ID3D11Buffer* bufs[2] = { mMesh->mD3DVertexBuffer, dev->mInstIotaBuffer };
-	UINT strides[2] = { (UINT)mMesh->mVtxSize, sizeof(float) };
+	// The compact stream only when both sides have one: the mesh was given it, and this shader's
+	// vertex stage reads nothing beyond position and the bone slots (see DXShader::Load).
+	bool useDepth = (mMesh->mD3DDepthVertexBuffer != NULL) && (shader->mD3DDepthLayout != NULL);
+	ctx->IASetInputLayout(useDepth ? shader->mD3DDepthLayout : shader->mD3DInstLayout);
+	ID3D11Buffer* bufs[2] = { useDepth ? mMesh->mD3DDepthVertexBuffer : mMesh->mD3DVertexBuffer, dev->mInstIotaBuffer };
+	UINT strides[2] = { useDepth ? (UINT)DX_DEPTH_VERTEX_SIZE : (UINT)mMesh->mVtxSize, sizeof(float) };
 	UINT offsets[2] = { 0, (UINT)(mInstBase * sizeof(float)) };
 	ctx->IASetVertexBuffers(0, 2, bufs, strides, offsets);
 	ctx->IASetIndexBuffer(mMesh->mD3DIndexBuffer, mMesh->mIdx32 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, 0);
@@ -1838,6 +1897,7 @@ void DXStaticMeshDrawCmd::Render(RenderDevice* renderDevice, RenderWindow* rende
 		ctx->DrawInstanced(mMesh->mVtxCount, mInstCount, 0, 0);
 	else
 		ctx->DrawIndexedInstanced(mMesh->mIdxCount, mInstCount, 0, 0, 0);
+	dev->RecordSubmission(mStatsCategory, mRenderState->mTopology, mMesh->mIdxCount, mInstCount);
 	// PhysSetRenderState only sets the layout on a shader change, so put the batch layout back for the
 	// dynamic batches that follow under this same render state.
 	ctx->IASetInputLayout(shader->mD3DLayout);
@@ -2189,40 +2249,15 @@ struct DXModelVertex
 	TexCoords mBumpTexCoords;
 	Vector3 mTangent;
 	float mInstanceIdx; // 0 = per-draw constants (see Gfx_DrawIndexedVerticesInst)
+	// Mirrors ModelDef.VertexDef: 4 x uint8 joint index, 4 x uint16 unorm weight. The uint32 has to
+	// come first or the uint64 pads to offset 72.
+	uint32 mBoneIndices;
+	uint64 mBoneWeights;
 };
 
 ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCreateFlags flags)
 {
 	DXModelInstance* dxModelInstance = new DXModelInstance(modelDef);
-
-	////
-
-	VertexDefData vertexDefData[] =
-	{
-		{VertexElementUsage_Position3D,			0, VertexElementFormat_Vector3},
-		{VertexElementUsage_Color,				0, VertexElementFormat_Color},
-		{VertexElementUsage_TextureCoordinate,	0, VertexElementFormat_Vector2},
-		{VertexElementUsage_Normal,				0, VertexElementFormat_Vector3},
-		{VertexElementUsage_TextureCoordinate,	1, VertexElementFormat_Vector2},
-		{VertexElementUsage_Tangent,			0, VertexElementFormat_Vector3},
-		{VertexElementUsage_TextureCoordinate,	2, VertexElementFormat_Single}
-	};
-
-	auto vertexDefinition = CreateVertexDefinition(vertexDefData, sizeof(vertexDefData) / sizeof(vertexDefData[0]));
-	/*RenderState* renderState = NULL;
-	if ((flags & ModelCreateFlags_NoSetRenderState) == 0)
-	{
-		renderState = CreateRenderState(mDefaultRenderState);
-		renderState->mShader = LoadShader(gBFApp->mInstallDir + "/shaders/ModelStd", vertexDefinition);
-		renderState->mTexWrap = true;
-		renderState->mDepthFunc = DepthFunc_LessEqual;
-		renderState->mWriteDepthBuffer = true;
-	}*/
-	delete vertexDefinition;
-
-	//dxModelInstance->mRenderState = renderState;
-
-	////
 
 	dxModelInstance->mD3DRenderDevice = this;
 	dxModelInstance->mDXModelMeshs.Resize(modelDef->mMeshes.size());
@@ -2295,53 +2330,6 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 			dxPrimitives->mNumIndices = (int)primitives->mIndices.size();
 			dxPrimitives->mNumVertices = (int)primitives->mVertices.size();
 
-			D3D11_BUFFER_DESC bd;
-			bd.Usage = D3D11_USAGE_DYNAMIC;
-			bd.ByteWidth = (int)primitives->mIndices.size() * sizeof(uint16);
-			bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-			bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-			bd.MiscFlags = 0;
-			bd.StructureByteStride = 0;
-
-			mD3DDevice->CreateBuffer(&bd, NULL, &dxPrimitives->mD3DIndexBuffer);
-
-			D3D11_MAPPED_SUBRESOURCE mappedSubResource;
-
-			DXCHECK(mD3DDeviceContext->Map(dxPrimitives->mD3DIndexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubResource));
-			uint16* dxIdxData = (uint16*)mappedSubResource.pData;
-			for (int idxIdx = 0; idxIdx < dxPrimitives->mNumIndices; idxIdx++)
-				dxIdxData[idxIdx] = (uint16)primitives->mIndices[idxIdx];
-			mD3DDeviceContext->Unmap(dxPrimitives->mD3DIndexBuffer, 0);
-
-			//
-
-			bd.Usage = D3D11_USAGE_DYNAMIC;
-			bd.ByteWidth = (int)primitives->mVertices.size() * sizeof(DXModelVertex);
-			bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-			bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-			bd.MiscFlags = 0;
-			bd.StructureByteStride = 0;
-
-			mD3DDevice->CreateBuffer(&bd, NULL, &dxPrimitives->mD3DVertexBuffer);
-
-			DXCHECK(mD3DDeviceContext->Map(dxPrimitives->mD3DVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubResource));
-			DXModelVertex* dxVtxData = (DXModelVertex*)mappedSubResource.pData;
-			for (int vtxIdx = 0; vtxIdx < (int)primitives->mVertices.size(); vtxIdx++)
-			{
-				ModelVertex* srcVtxData = &primitives->mVertices[vtxIdx];
-				DXModelVertex* destVtx = dxVtxData + vtxIdx;
-
-				destVtx->mPosition = srcVtxData->mPosition;
-				destVtx->mTexCoords = srcVtxData->mTexCoords;
-				//destVtx->mTexCoords.mV = 1.0f - destVtx->mTexCoords.mV;
-				destVtx->mTexCoords.mV = destVtx->mTexCoords.mV;
-				destVtx->mBumpTexCoords = srcVtxData->mBumpTexCoords;
-				destVtx->mColor = srcVtxData->mColor;
-				destVtx->mTangent = srcVtxData->mTangent;
-				destVtx->mInstanceIdx = 0;
-			}
-
-			mD3DDeviceContext->Unmap(dxPrimitives->mD3DVertexBuffer, 0);
 
 			dxMeshIdx++;
 		}
@@ -2655,6 +2643,7 @@ void DXModelInstance::Render(RenderCmd* renderCmd, RenderDevice* renderDevice, R
 
 	for (int meshIdx = 0; meshIdx < (int)mDXModelMeshs.size(); meshIdx++)
 	{
+		if ((mRenderMeshIdx >= 0) && (mRenderMeshIdx != meshIdx)) continue;
 		if (!mMeshesVisible[meshIdx])
 			continue;
 
@@ -2662,6 +2651,7 @@ void DXModelInstance::Render(RenderCmd* renderCmd, RenderDevice* renderDevice, R
 
 		for (auto primIdx = 0; primIdx < (int)dxMesh->mPrimitives.size(); primIdx++)
 		{
+			if ((mRenderPrimIdx >= 0) && (mRenderPrimIdx != primIdx)) continue;
 			auto dxPrimitives = &dxMesh->mPrimitives[primIdx];
 
 			if ((dxPrimitives->mTextures.IsEmpty()) && (dxPrimitives->mOverrideTextures.IsEmpty()))
@@ -2685,6 +2675,51 @@ void DXModelInstance::Render(RenderCmd* renderCmd, RenderDevice* renderDevice, R
 			mD3DRenderDevice->mD3DDeviceContext->IASetVertexBuffers(0, 1, &dxPrimitives->mD3DVertexBuffer, &stride, &offset);
 			mD3DRenderDevice->mD3DDeviceContext->IASetIndexBuffer(dxPrimitives->mD3DIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
 			mD3DRenderDevice->mD3DDeviceContext->DrawIndexed(dxPrimitives->mNumIndices, 0, 0);
+			renderDevice->RecordSubmission(renderCmd->mStatsCategory, Topology3D_TriangleList, dxPrimitives->mNumIndices, 1);
+		}
+	}
+}
+
+// The per-instance vertex/index copy. Deferred to the first native queue so a model that batches
+// (every skinned character once it has a palette) never allocates one.
+void Beefy::DXModelInstance::EnsureBuffers()
+{
+	for (int meshIdx = 0; meshIdx < (int)mModelDef->mMeshes.size(); meshIdx++)
+	{
+		ModelMesh* mesh = &mModelDef->mMeshes[meshIdx];
+		DXModelMesh* dxMesh = &mDXModelMeshs[meshIdx];
+		for (int primsIdx = 0; primsIdx < (int)dxMesh->mPrimitives.size(); primsIdx++)
+		{
+			ModelPrimitives* primitives = &mesh->mPrimitives[primsIdx];
+			DXModelPrimitives* dxPrimitives = &dxMesh->mPrimitives[primsIdx];
+			if (dxPrimitives->mD3DVertexBuffer != NULL)
+				continue;
+
+			auto d3dDevice = mD3DRenderDevice->mD3DDevice;
+			auto d3dContext = mD3DRenderDevice->mD3DDeviceContext;
+
+			D3D11_BUFFER_DESC bd;
+			bd.Usage = D3D11_USAGE_DYNAMIC;
+			bd.ByteWidth = (int)primitives->mIndices.size() * sizeof(uint16);
+			bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
+			bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+			bd.MiscFlags = 0;
+			bd.StructureByteStride = 0;
+			d3dDevice->CreateBuffer(&bd, NULL, &dxPrimitives->mD3DIndexBuffer);
+
+			D3D11_MAPPED_SUBRESOURCE mappedSubResource;
+			DXCHECK(d3dContext->Map(dxPrimitives->mD3DIndexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubResource));
+			uint16* dxIdxData = (uint16*)mappedSubResource.pData;
+			for (int idxIdx = 0; idxIdx < dxPrimitives->mNumIndices; idxIdx++)
+				dxIdxData[idxIdx] = (uint16)primitives->mIndices[idxIdx];
+			d3dContext->Unmap(dxPrimitives->mD3DIndexBuffer, 0);
+
+			bd.ByteWidth = (int)primitives->mVertices.size() * sizeof(DXModelVertex);
+			bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
+			d3dDevice->CreateBuffer(&bd, NULL, &dxPrimitives->mD3DVertexBuffer);
+			// Left uninitialized: mDirty is set at construction, so the queue that got us here
+			// fills it before anything draws.
+			mDirty = true;
 		}
 	}
 }
@@ -2707,14 +2742,13 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 	//}
 
 	drawLayer->mCurTextures[0] = NULL;
+	EnsureBuffers();
 
 	if (!mDirty)
 		return;
 	mDirty = false;
 
 #ifndef BF_NO_FBX
-	// The engine-fed skinning palette (see ModelInstance_SetJointMatrices); bind pose until then.
-	const Matrix4* jointsMatrices = mJointMatrices.mVals;
 
 	for (int meshIdx = 0; meshIdx < (int) mModelDef->mMeshes.size(); meshIdx++)
 	{
@@ -2739,56 +2773,16 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 			for (int vtxIdx = 0; vtxIdx < (int)modelPrims->mVertices.size(); vtxIdx++)
 			{
 				ModelVertex* srcVtxData = &modelPrims->mVertices[vtxIdx];
-
-				Vector3 vtx(0, 0, 0);
-				Vector3 normal(0, 0, 0);
-				Vector3 tangent(0, 0, 0);
-
-				float totalWeight = 0;
-
-				if (srcVtxData->mNumBoneWeights > 0)
-				{
-					for (int weightIdx = 0; weightIdx < srcVtxData->mNumBoneWeights; weightIdx++)
-					{
-						int jointIdx = srcVtxData->mBoneIndices[weightIdx];
-						float boneWeight = srcVtxData->mBoneWeights[weightIdx];
-
-						const Matrix4* mtx = &jointsMatrices[jointIdx];
-
-						vtx = vtx + Vector3::Transform(srcVtxData->mPosition, *mtx) * boneWeight;
-
-						Vector3 origNormal = srcVtxData->mNormal;
-						normal = normal + Vector3(
-							mtx->m00 * origNormal.mX + mtx->m01 * origNormal.mY + mtx->m02 * origNormal.mZ,
-							mtx->m10 * origNormal.mX + mtx->m11 * origNormal.mY + mtx->m12 * origNormal.mZ,
-							mtx->m20 * origNormal.mX + mtx->m21 * origNormal.mY + mtx->m22 * origNormal.mZ) * boneWeight;
-
-						Vector3 origTangent = srcVtxData->mTangent;
-						tangent = tangent + Vector3(
-							mtx->m00 * origTangent.mX + mtx->m01 * origTangent.mY + mtx->m02 * origTangent.mZ,
-							mtx->m10 * origTangent.mX + mtx->m11 * origTangent.mY + mtx->m12 * origTangent.mZ,
-							mtx->m20 * origTangent.mX + mtx->m21 * origTangent.mY + mtx->m22 * origTangent.mZ) * boneWeight;
-
-						totalWeight += boneWeight;
-					}
-					BF_ASSERT(fabs(totalWeight - 1.0) < 0.1f);
-				}
-				else
-				{
-					vtx = srcVtxData->mPosition;
-					normal = srcVtxData->mNormal;
-					tangent = srcVtxData->mTangent;
-				}
-
+				// Bind pose plus the packed influences: the vertex shader poses it.
 				DXModelVertex* destVtx = dxVtxData + vtxIdx;
-
-				destVtx->mPosition = vtx;
-				destVtx->mNormal = Vector3::Normalize(normal);
-				destVtx->mTangent = Vector3::Normalize(tangent);
+				destVtx->mPosition = srcVtxData->mPosition;
+				destVtx->mNormal = srcVtxData->mNormal;
+				destVtx->mTangent = srcVtxData->mTangent;
 				destVtx->mTexCoords = srcVtxData->mTexCoords;
 				destVtx->mBumpTexCoords = srcVtxData->mBumpTexCoords;
 				destVtx->mColor = srcVtxData->mColor;
 				destVtx->mInstanceIdx = 0;
+				ModelPackBoneData(*srcVtxData, &destVtx->mBoneIndices, &destVtx->mBoneWeights);
 				if (mUseSurfaceMaterials)
 				{
 					destVtx->mBumpTexCoords = TexCoords(modelPrims->mRoughness, modelPrims->mMetallic);

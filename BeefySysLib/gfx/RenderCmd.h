@@ -17,6 +17,7 @@ public:
 	RenderState* mRenderState;
 	bool mIsPoolHead;
 	int mCmdIdx;
+	int mStatsCategory;
 
 public:
 	RenderCmd()
@@ -25,6 +26,7 @@ public:
 		mRenderState = NULL;
 		mIsPoolHead = false;
 		mCmdIdx = -1;
+		mStatsCategory = 0;
 	}
 
 	void SetRenderState();

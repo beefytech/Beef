@@ -21,7 +21,10 @@ namespace Beefy.gfx
             public Vector3 mTrans;
         }
 
-        //[StructLayout(LayoutKind.Sequential)]
+        // CRepr, not for interop alone: without it Beef reorders mBoneWeights to offset 0 for its
+        // alignment, which moves every other field and silently breaks cInstanceIdxOffset and the
+        // GPU layout built from declaration order.
+        [CRepr]
         public struct VertexDef
         {
             [VertexMember(VertexElementUsage.Position3D)]
@@ -40,6 +43,13 @@ namespace Beefy.gfx
 			// by DrawStaticMeshInstanced); 0 = the shader's per-draw constants. Byte offset = cInstanceIdxOffset.
 			[VertexMember(VertexElementUsage.TextureCoordinate, 2, true)]
 			public float mInstanceIdx;
+			// Four bone influences, zero on unskinned geometry. Weights are 16-bit because 8 bits
+			// quantise a two-bone blend to 1/255 of the delta, which shows on a silhouette.
+			// Order matters: the uint32 fills the gap the uint64's alignment would otherwise pad.
+			[VertexMember(VertexElementUsage.BlendIndices, 0, false, .Byte4)]
+			public uint32 mBoneIndices;
+			[VertexMember(VertexElementUsage.BlendWeight, 0, false, .NormalizedShort4)]
+			public uint64 mBoneWeights;
 
 			public const int32 cInstanceIdxOffset = 56;
 
@@ -48,6 +58,7 @@ namespace Beefy.gfx
 			public static void Init()
 			{
 				sVertexDefinition = new VertexDefinition(typeof(VertexDef));
+				Runtime.Assert(sVertexDefinition.mInstanceElementOffset == cInstanceIdxOffset, "VertexDef layout moved");
 			}
         }
     }
@@ -306,7 +317,7 @@ namespace Beefy.gfx
 
 		public void SetTexture(int32 meshIdx, int32 primitivesIdx, int32 texIdx, Image image)
 		{
-			ModelDef_SetTexture(mNativeModelDef, meshIdx, primitivesIdx, texIdx, image.mNativeTextureSegment);
+			ModelDef_SetTexture(mNativeModelDef, meshIdx, primitivesIdx, texIdx, image?.mNativeTextureSegment);
 		}
 
 		[CallingConvention(.Stdcall), CLink]
@@ -435,6 +446,16 @@ namespace Beefy.gfx
     public class ModelInstance : Renderable
     {
 		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelInstance_QueuePrimitive(void* nativeModelInstance, int32 meshIdx, int32 primIdx);
+
+		public void DrawPrimitive(Graphics g, Matrix4 worldMatrix, int32 meshIdx, int32 primIdx)
+		{
+			let scale = Vector3.Multiply(mModelDef.mScale, mScale);
+			let matrix = Matrix4.Multiply(Matrix4.CreateScale(scale), worldMatrix);
+			g.SetVertexShaderConstantData(0, matrix);
+			ModelInstance_QueuePrimitive(mNativeRenderable, meshIdx, primIdx);
+		}
+		[CallingConvention(.Stdcall), CLink]
 		extern static void ModelInstance_SetUseSurfaceMaterials(void* nativeModelInstance, int32 enabled);
 		public void SetUseSurfaceMaterials(bool enabled) => ModelInstance_SetUseSurfaceMaterials(mNativeRenderable, enabled ? 1 : 0);
 		[CallingConvention(.Stdcall), CLink]
@@ -447,6 +468,12 @@ namespace Beefy.gfx
 		}
         [CallingConvention(.Stdcall), CLink]
         extern static void ModelInstance_SetJointMatrices(void* nativeModelInstance, Matrix4* matrices, int32 count);
+
+        [CallingConvention(.Stdcall), CLink]
+        extern static void ModelInstance_InvalidateVertices(void* nativeModelInstance);
+
+        // The def's vertex data changed underneath this instance; the GPU copy has to be rewritten.
+        public void InvalidateVertices() => ModelInstance_InvalidateVertices(mNativeRenderable);
 
         [CallingConvention(.Stdcall), CLink]
         extern static void ModelInstance_SetMeshVisibility(void* nativeModelInstance, int32 jointIdx, int32 visibility);
@@ -468,12 +495,35 @@ namespace Beefy.gfx
 
         // Combines this instance's scale with its ModelDef's scale into worldMatrix, since neither
         // is baked into the mesh data (see ModelDef.mScale).
-        public void Draw(Graphics g, Matrix4 worldMatrix)
+        // paletteBase = this draw's first row in the scene's skinning palette (-1 = unskinned); the
+        // vertex stage's b4 carries it for a draw that has no instance record.
+        public void Draw(Graphics g, Matrix4 worldMatrix, int32 paletteBase = -1, bool tangentIsEmissive = false)
         {
             Vector3 combinedScale = Vector3.Multiply(mModelDef.mScale, mScale);
             Matrix4 scaledMatrix = Matrix4.Multiply(Matrix4.CreateScale(combinedScale), worldMatrix);
             g.SetVertexShaderConstantData(0, scaledMatrix);
+            SetSkinInfo(g, paletteBase, tangentIsEmissive);
             g.Draw(this);
+        }
+
+        // A palette as the shader reads it: three float4 rows per joint, rows 0..2 of each matrix
+        // exactly as stored. Every writer of a palette buffer goes through this.
+        public static void PackPaletteRows(Span<Matrix4> palette, Vector4* outRows)
+        {
+            for (int j < palette.Length)
+            {
+                var m = palette[j];
+                outRows[j * 3 + 0] = .(m.m00, m.m01, m.m02, m.m03);
+                outRows[j * 3 + 1] = .(m.m10, m.m11, m.m12, m.m13);
+                outRows[j * 3 + 2] = .(m.m20, m.m21, m.m22, m.m23);
+            }
+        }
+
+        // The `Skin` cbuffer in include/Skinning.fxh.
+        public static void SetSkinInfo(Graphics g, int32 paletteBase, bool tangentIsEmissive)
+        {
+            Vector4 skinInfo = .(paletteBase, tangentIsEmissive ? 1 : 0, 0, 0);
+            g.SetVertexShaderConstantData(4, &skinInfo, sizeof(Vector4));
         }
 
         // The final skinning palette (model-space joint pose * inverse bind), one matrix per

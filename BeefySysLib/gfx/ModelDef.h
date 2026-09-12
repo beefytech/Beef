@@ -51,6 +51,13 @@ public:
 	float mBoneWeights[MODEL_MAX_BONE_WEIGHTS];
 };
 
+// One vertex's four heaviest influences in the GPU vertex's packed form: four uint8 joint indices
+// little-endian in outIdx, four uint16 unorm weights summing to exactly 65535 in outWeights, both
+// sorted heaviest first (the shader's guard reads the first weight). Returns the fraction of weight
+// truncation dropped. Shared by the batched mesh build and the native per-draw path so the two can
+// never disagree about packing.
+float ModelPackBoneData(const ModelVertex& vtx, uint32* outIdx, uint64* outWeights);
+
 class ModelJoint
 {
 public:

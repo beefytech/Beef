@@ -103,8 +103,17 @@ BF_EXPORT void BF_CALLTYPE ModelInstance_SetJointMatrices(ModelInstance* modelIn
 {
 	BF_ASSERT(count == modelInstance->mJointMatrices.mSize);
 	memcpy(modelInstance->mJointMatrices.mVals, matrices, count * sizeof(Matrix4));
+	// The palette is kept only for the model-space readers (posed bounds, the collision bake): the
+	// vertex shader poses from the scene's palette buffer, so a new pose is not a content change.
+}
+
+// The def's vertex data changed under this instance (ModelDef_SetVertexAlphaByJoint): the GPU copy
+// has to be rewritten, which a pose push no longer does on its own.
+BF_EXPORT void BF_CALLTYPE ModelInstance_InvalidateVertices(ModelInstance* modelInstance)
+{
 	modelInstance->mDirty = true;
 }
+
 
 BF_EXPORT void BF_CALLTYPE ModelInstance_SetTexture(ModelInstance* modelInstance, int meshIdx, int primIdx, int texIdx, TextureSegment* textureSegment)
 {

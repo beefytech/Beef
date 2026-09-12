@@ -182,6 +182,7 @@ void DrawLayer::CloseDrawBatch()
 void DrawLayer::QueueRenderCmd(RenderCmd* renderCmd)
 {
 	CloseDrawBatch();
+	renderCmd->mStatsCategory = mRenderDevice->mStatsCategory;
 	mRenderCmdList.PushBack(renderCmd);
 	renderCmd->CommandQueued(this);
 }
@@ -219,6 +220,7 @@ DrawBatch* DrawLayer::AllocateBatch(int minVtxCount, int minIdxCount)
 		pool.pop_back();
 	}
 	drawBatch->mDrawLayer = this;
+	drawBatch->mStatsCategory = mRenderDevice->mStatsCategory;
 
 	int needIdxBytes = minIdxCount * sizeof(uint16);
 	int needVtxBytes = minVtxCount * vtxSize;
@@ -381,6 +383,9 @@ BF_EXPORT void BF_CALLTYPE DrawLayer_Clear(DrawLayer* drawLayer)
 
 BF_EXPORT void BF_CALLTYPE DrawLayer_Activate(DrawLayer* drawLayer)
 {
+	if ((drawLayer->mCurDrawBatch != NULL) &&
+		(drawLayer->mCurDrawBatch->mStatsCategory != gBFApp->mRenderDevice->mStatsCategory))
+		drawLayer->CloseDrawBatch();
 	if (drawLayer->mRenderWindow != NULL)
 	{
 		drawLayer->mRenderWindow->SetAsTarget();

@@ -98,6 +98,17 @@ RenderDevice::~RenderDevice()
 		delete batch;
 }
 
+void RenderDevice::RecordSubmission(int category, Topology3D topology, int indexCount, int instanceCount)
+{
+	if ((category < 1) || (category > 3))
+		return;
+	auto& counts = mSubmissionStats[category - 1];
+	if (topology == Topology3D_TriangleList)
+		counts[0] += (int64)(indexCount / 3) * instanceCount;
+	counts[1]++;
+	counts[2] += instanceCount;
+}
+
 void RenderDevice::AddRenderWindow(RenderWindow* renderWindow)
 {
 	mRenderWindowList.push_back(renderWindow);

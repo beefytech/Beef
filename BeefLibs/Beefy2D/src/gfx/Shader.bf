@@ -28,6 +28,11 @@ namespace Beefy.gfx
             NoOptimization = 1,
             // Shader model 5 profiles: pixel-shader UAVs and SV_PrimitiveID.
             ShaderModel5 = 2,
+            // The vertex stage reads only position, the instance element and the bone slots, so a
+            // mesh with a compact depth stream can feed it 24 bytes a vertex (see
+            // StaticMesh.SetDepthStream). Asserted at load: a shader that claims this and reads more
+            // fails to build the layout.
+            DepthStream = 4,
         }
 
         [CallingConvention(.Stdcall), CLink]
