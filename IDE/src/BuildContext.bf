@@ -190,6 +190,32 @@ namespace IDE
 			return didCommands ? .HadCommands : .NoCommands;
 		}
 
+		public static Result<void> FindExecutableInPath(String filename, String outPath)
+		{
+			String PATH = scope .();
+			String filenameBuffer = scope .(64);
+			Try!(Environment.GetEnvironmentVariable("PATH", PATH));
+			for (let directory in PATH.Split(
+#if BF_PLATFORM_WINDOWS
+					';'
+#else
+					':'
+#endif
+				))
+			{
+				for (let file in Directory.EnumerateFiles(directory))
+				{
+					file.GetFileName(filenameBuffer..Clear());
+					if (filenameBuffer == filename)
+					{
+						file.GetFilePath(outPath);
+						return .Ok;
+					}	
+				}
+			}
+			return .Err;
+		}
+
 		bool QueueProjectGNUArchive(Project project, String targetPath, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
 		{
 #if BF_PLATFORM_WINDOWS
@@ -333,7 +359,9 @@ namespace IDE
 #elif BF_PLATFORM_MACOS
 				arPath.Append("llvm/bin/llvm-ar");
 #else
-				arPath.Append("/usr/bin/ar");
+				if (FindExecutableInPath("llvm-ar", arPath) case .Err)
+					if (FindExecutableInPath("ar", arPath) case .Err)
+						arPath.Append("/usr/bin/ar");
 #endif
 
 				String workingDir = scope String();
@@ -510,27 +538,30 @@ namespace IDE
 					linkLine.Append(" ");
 				}
 
-				String gccExePath;
-				String clangExePath;
+				String gccExePath = scope .();
+				String clangExePath = scope .();
 				if (isMinGW)
 				{
-				    gccExePath = "c:/mingw/bin/g++.exe";
-				    clangExePath = scope String(llvmDir, "bin/clang++.exe");
+				    gccExePath.Set("c:/mingw/bin/g++.exe");
+				    clangExePath.Append(llvmDir, "bin/clang++.exe");
 				}
 				else
 				{
-			        gccExePath = "/usr/bin/c++";
-			        clangExePath = scope String("/usr/bin/c++");
-
-			        if (File.Exists("/usr/bin/clang++"))
-			        {
-						gccExePath = "/usr/bin/clang++";
-			        	clangExePath = scope String("/usr/bin/clang++");
-			        }
+					String buffer = scope .(128);
+					if (FindExecutableInPath("clang++", buffer) case .Ok)
+					{
+						gccExePath.Set(buffer);
+						clangExePath.Set(buffer);
+					}
+			        else if (FindExecutableInPath("c++", buffer..Clear()) case .Ok)
+					{
+						gccExePath.Set(buffer);
+						clangExePath.Set(buffer);
+					}
 			        else
 			        {
-						gccExePath = "/usr/bin/c++";
-			        	clangExePath = scope String("/usr/bin/c++");
+						gccExePath.Set("/usr/bin/c++");
+			        	clangExePath.Set("/usr/bin/c++");
 			        }
 				}
 

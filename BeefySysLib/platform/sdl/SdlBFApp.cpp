@@ -127,7 +127,16 @@ struct AdjustedMonRect
 	int mHeight;
 };
 
-static int bfMouseBtnOf[4] = {0, 0, 2, 1}; // Translate SDL mouse buttons to what Beef expects.
+// Translate SDL mouse buttons to what Beef expects.
+static int bfMouseBtnOf[8] = {
+	0, // 0: Unused
+	0, // 1: Left
+	2, // 2: Middle
+	1, // 3: Right
+	3, // 4: X1
+	4, // 5: X2
+	0, 0 // Padding
+};
 
 static BfpDynLib* gSDLModule;
 
@@ -520,6 +529,7 @@ static int SDLConvertKeyCode(SDL_Keycode scanCode)
     case SDLK_BACKSPACE: return 0x08;
     case SDLK_TAB: return 0x09;
     case SDLK_CLEAR: return 0x0C;
+	case SDLK_KP_ENTER:
     case SDLK_RETURN: return 0x0D;
     case SDLK_LSHIFT: return KEY_SHIFT;
 	case SDLK_RSHIFT: return KEY_SHIFT;
@@ -886,6 +896,7 @@ void SdlBFApp::ProcessSDLEvents()
 					switch (sdlEvent.key.key) // These keys are not handled by SDL_TEXTINPUT
 					{
 						case SDLK_RETURN:
+						case SDLK_KP_ENTER:
 							sdlBFWindow->mKeyCharFunc(sdlBFWindow, '\n');
 							break;
 						case SDLK_BACKSPACE:
