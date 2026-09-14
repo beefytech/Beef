@@ -346,7 +346,12 @@ class WinNativeConsoleProvider : ConsoleProvider
 		get
 		{
 #if BF_PLATFORM_WINDOWS
-			var outHandle = Console.[Friend]GetStdHandle(Console.STD_OUTPUT_HANDLE);
+			var outHandle = OpenConsoleHandle(false);
+			defer
+			{
+				if (!outHandle.IsInvalid)
+					outHandle.Close();
+			}
 			CONSOLE_SCREEN_BUFFER_INFOEX info = default;
 			info.mSize = sizeof(CONSOLE_SCREEN_BUFFER_INFOEX);
 			if (GetConsoleScreenBufferInfoEx(outHandle, ref info))
@@ -423,9 +428,23 @@ class WinNativeConsoleProvider : ConsoleProvider
 		return .() { mChar = info.mChar, mAttributes = info.mAttributes };
 	}
 
+	// Standard handles may be redirected to files or pipes. Open the console devices
+	// directly without changing the process's redirection. Reopen for each operation
+	// so output follows the active screen buffer, including after a console reattach.
+	static Windows.Handle OpenConsoleHandle(bool input)
+	{
+		return Windows.CreateFileA(input ? "CONIN$" : "CONOUT$",
+			Windows.GENERIC_READ | Windows.GENERIC_WRITE, .ReadWrite, null, .Open, 0, default);
+	}
+
 	public bool GetScreenInfo(ScreenInfo screenInfo)
 	{
-		var outHandle = Console.[Friend]GetStdHandle(Console.STD_OUTPUT_HANDLE);
+		var outHandle = OpenConsoleHandle(false);
+		defer
+		{
+			if (!outHandle.IsInvalid)
+				outHandle.Close();
+		}
 
 		CONSOLE_SCREEN_BUFFER_INFOEX info = default;
 		info.mSize = sizeof(CONSOLE_SCREEN_BUFFER_INFOEX);
@@ -478,7 +497,12 @@ class WinNativeConsoleProvider : ConsoleProvider
 
 		DeleteAndNullify!(screenInfo.mCharInfo);
 
-		var outHandle = Console.[Friend]GetStdHandle(Console.STD_OUTPUT_HANDLE);
+		var outHandle = OpenConsoleHandle(false);
+		defer
+		{
+			if (!outHandle.IsInvalid)
+				outHandle.Close();
+		}
 		POINT bufferSize = .(screenInfo.mInfo.mWidth, screenInfo.mInfo.mHeight);
 		screenInfo.mFullCharInfo = new .[(int32)screenInfo.mInfo.mWidth * screenInfo.mInfo.mHeight]*;
 		RECT readRegion = .(0, 0, screenInfo.mInfo.mWidth, screenInfo.mInfo.mHeight);
@@ -534,7 +558,12 @@ class WinNativeConsoleProvider : ConsoleProvider
 		if (!mHasConsole)
 			return;
 
-		var outHandle = Console.[Friend]GetStdHandle(Console.STD_OUTPUT_HANDLE);
+		var outHandle = OpenConsoleHandle(false);
+		defer
+		{
+			if (!outHandle.IsInvalid)
+				outHandle.Close();
+		}
 		CONSOLE_SCREEN_BUFFER_INFOEX info = default;
 		info.mSize = sizeof(CONSOLE_SCREEN_BUFFER_INFOEX);
 #if BF_PLATFORM_WINDOWS
@@ -664,7 +693,12 @@ class WinNativeConsoleProvider : ConsoleProvider
 
 	public override void MouseDown(int col, int row, int btnState, int btnCount, KeyFlags keyFlags)
 	{
-		var inHandle = Console.[Friend]GetStdHandle(Console.STD_INPUT_HANDLE);
+		var inHandle = OpenConsoleHandle(true);
+		defer
+		{
+			if (!inHandle.IsInvalid)
+				inHandle.Close();
+		}
 		INPUT_RECORD input = default;
 		input.mEventType = 2 /*MOUSE_EVENT */;
 		input.mEventData.mMouseEvent.mButtonState = (.)btnState;
@@ -677,7 +711,12 @@ class WinNativeConsoleProvider : ConsoleProvider
 
 	public override void MouseMove(int col, int row, int btnState, KeyFlags keyFlags)
 	{
-		var inHandle = Console.[Friend]GetStdHandle(Console.STD_INPUT_HANDLE);
+		var inHandle = OpenConsoleHandle(true);
+		defer
+		{
+			if (!inHandle.IsInvalid)
+				inHandle.Close();
+		}
 		INPUT_RECORD input = default;
 		input.mEventType = 2 /*MOUSE_EVENT */;
 		input.mEventData.mMouseEvent.mEventFlags |= 1; /* MOUSE_MOVED */
@@ -689,7 +728,12 @@ class WinNativeConsoleProvider : ConsoleProvider
 
 	public override void MouseUp(int col, int row, int btnState, KeyFlags keyFlags)
 	{
-		var inHandle = Console.[Friend]GetStdHandle(Console.STD_INPUT_HANDLE);
+		var inHandle = OpenConsoleHandle(true);
+		defer
+		{
+			if (!inHandle.IsInvalid)
+				inHandle.Close();
+		}
 		INPUT_RECORD input = default;
 		input.mEventType = 2 /*MOUSE_EVENT */;
 		input.mEventData.mMouseEvent.mButtonState = (.)btnState;
@@ -713,7 +757,12 @@ class WinNativeConsoleProvider : ConsoleProvider
 
 	public override void KeyDown(KeyCode keyCode, KeyFlags keyFlags)
 	{
-		var inHandle = Console.[Friend]GetStdHandle(Console.STD_INPUT_HANDLE);
+		var inHandle = OpenConsoleHandle(true);
+		defer
+		{
+			if (!inHandle.IsInvalid)
+				inHandle.Close();
+		}
 		INPUT_RECORD input = default;
 
 		/*if (keyEvent.mKeyCode == .F1)
@@ -795,7 +844,12 @@ class WinNativeConsoleProvider : ConsoleProvider
 
 	public override void KeyUp(KeyCode keyCode)
 	{
-		var inHandle = Console.[Friend]GetStdHandle(Console.STD_INPUT_HANDLE);
+		var inHandle = OpenConsoleHandle(true);
+		defer
+		{
+			if (!inHandle.IsInvalid)
+				inHandle.Close();
+		}
 		INPUT_RECORD input = default;
 		input.mEventType = 1 /*KEY_EVENT */;
 		input.mEventData.mKeyEvent.mVirtualKeyCode = (.)keyCode;
@@ -804,7 +858,12 @@ class WinNativeConsoleProvider : ConsoleProvider
 
 	public override void SendInput(StringView str)
 	{
-		var inHandle = Console.[Friend]GetStdHandle(Console.STD_INPUT_HANDLE);
+		var inHandle = OpenConsoleHandle(true);
+		defer
+		{
+			if (!inHandle.IsInvalid)
+				inHandle.Close();
+		}
 		for (var c in str.DecodedChars)
 		{
 			INPUT_RECORD input = default;
@@ -856,7 +915,12 @@ class WinNativeConsoleProvider : ConsoleProvider
 
 	public static void ClearConsole()
 	{
-		var outHandle = Console.[Friend]GetStdHandle(Console.STD_OUTPUT_HANDLE);
+		var outHandle = OpenConsoleHandle(false);
+		defer
+		{
+			if (!outHandle.IsInvalid)
+				outHandle.Close();
+		}
 
 		POINT coordScreen = default;    // home for the cursor
 		int32 cCharsWritten;
