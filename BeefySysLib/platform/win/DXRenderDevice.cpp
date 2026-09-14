@@ -3340,6 +3340,14 @@ DXRenderDevice::DXRenderDevice()
 	mD3DA2CBlendState = NULL;
 	mD3DDeviceContext1 = NULL;
 	mNeedsReinitNative = false;
+	mOffscreenPresentationAllowed = false;
+	mOffscreenPresentationArmed = false;
+	mOffscreenSourceWindow = NULL;
+	mOffscreenPresentWindow = NULL;
+	mOffscreenSwapChain = NULL;
+	mOffscreenPresentView = NULL;
+	mOffscreenPresentTick = 0;
+	mOffscreenPresentCount = 0;
 	mMatrix2DBuffer = NULL;
 	mCurD3DRTV = NULL;
 	mCurD3DDSV = NULL;
@@ -3446,6 +3454,9 @@ bool DXRenderDevice::Init(BFApp* app)
 
 	IDXGIAdapter* pDXGIAdapter = NULL;
 	DXCHECK(pDXGIDevice->GetParent(__uuidof(IDXGIAdapter), reinterpret_cast<void**>(&pDXGIAdapter)));
+	DXGI_ADAPTER_DESC adapterDesc = {};
+	mOffscreenPresentationAllowed = (SUCCEEDED(pDXGIAdapter->GetDesc(&adapterDesc))) &&
+		(adapterDesc.VendorId == 0x10DE) && (getenv("BRISK_DISABLE_OFFSCREEN_PRESENT") == NULL);
 
 	IDXGIFactory* pDXGIFactory = NULL;
 	DXCHECK(pDXGIAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&mDXGIFactory)));
@@ -3757,6 +3768,7 @@ int DXRenderDevice::GpuTimerFetch(int64* outFrameId, GpuTimerSpan* outSpans, int
 
 void DXRenderDevice::ReleaseNative()
 {
+	ReleaseOffscreenPresentation();
 	for (int i = 0; i < DX_GPUTIMER_FRAMES; i++)
 		mGpuTimerFrames[i].ReleaseNative();
 	mD3DVertexBuffer->Release();
@@ -3808,6 +3820,7 @@ void DXRenderDevice::ReleaseNative()
 void DXRenderDevice::ReinitNative()
 {
 	AutoCrit autoCrit(mApp->mCritSect);
+	ReleaseOffscreenPresentation();
 
 	if (mMatrix2DBuffer != NULL)
 		mMatrix2DBuffer->Release();
@@ -3825,8 +3838,132 @@ void DXRenderDevice::ReinitNative()
 		tex->ReinitNative();
 }
 
+static bool PositionOffscreenPresenter(HWND window)
+{
+	int x = GetSystemMetrics(SM_XVIRTUALSCREEN) + GetSystemMetrics(SM_CXVIRTUALSCREEN) + 64;
+	int y = GetSystemMetrics(SM_YVIRTUALSCREEN);
+	RECT rect = {};
+	if (!GetWindowRect(window, &rect))
+		return false;
+	if ((rect.left != x) || (rect.top != y))
+		if (!SetWindowPos(window, NULL, x, y, 0, 0, SWP_NOACTIVATE | SWP_NOZORDER | SWP_NOSIZE))
+			return false;
+	return MonitorFromWindow(window, MONITOR_DEFAULTTONULL) == NULL;
+}
+
+static LRESULT CALLBACK OffscreenPresenterProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam)
+{
+	if (message == WM_DISPLAYCHANGE)
+	{
+		if (!PositionOffscreenPresenter(window))
+			ShowWindow(window, SW_HIDE);
+		return 0;
+	}
+	if (message == WM_MOUSEACTIVATE)
+		return MA_NOACTIVATE;
+	return DefWindowProcW(window, message, wParam, lParam);
+}
+
+void DXRenderDevice::NotifyOffscreenRender(RenderWindow* window, bool allowInstall)
+{
+	if ((!mOffscreenPresentationAllowed) || (window == NULL))
+		return;
+	HWND sourceWindow = ((DXRenderWindow*)window)->mHWnd;
+	if (!IsIconic(sourceWindow))
+		return;
+	if (allowInstall)
+		mOffscreenPresentationArmed = true;
+	if (mOffscreenPresentationArmed)
+		mOffscreenSourceWindow = sourceWindow;
+}
+
+void DXRenderDevice::ReleaseOffscreenPresentation()
+{
+	if (mOffscreenPresentView != NULL)
+		mOffscreenPresentView->Release();
+	if (mOffscreenSwapChain != NULL)
+		mOffscreenSwapChain->Release();
+	if (mOffscreenPresentWindow != NULL)
+		DestroyWindow(mOffscreenPresentWindow);
+	mOffscreenPresentView = NULL;
+	mOffscreenSwapChain = NULL;
+	mOffscreenPresentWindow = NULL;
+	mOffscreenSourceWindow = NULL;
+	mOffscreenPresentTick = 0;
+}
+
+void DXRenderDevice::PresentOffscreen()
+{
+	if ((!mOffscreenPresentationAllowed) || (mOffscreenSourceWindow == NULL) || (!IsIconic(mOffscreenSourceWindow)))
+		return;
+	uint64 tick = GetTickCount64();
+	if (tick - mOffscreenPresentTick < 16)
+		return;
+	mOffscreenPresentTick = tick;
+	HRESULT hr = S_OK;
+	if (mOffscreenSwapChain == NULL)
+	{
+		WNDCLASSW windowClass = {};
+		windowClass.lpfnWndProc = OffscreenPresenterProc;
+		windowClass.hInstance = GetModuleHandle(NULL);
+		windowClass.lpszClassName = L"BeefyOffscreenPresenter";
+		if ((RegisterClassW(&windowClass) == 0) && (GetLastError() != ERROR_CLASS_ALREADY_EXISTS))
+			hr = HRESULT_FROM_WIN32(GetLastError());
+		if (SUCCEEDED(hr))
+		{
+			int x = GetSystemMetrics(SM_XVIRTUALSCREEN) + GetSystemMetrics(SM_CXVIRTUALSCREEN) + 64;
+			int y = GetSystemMetrics(SM_YVIRTUALSCREEN);
+			mOffscreenPresentWindow = CreateWindowExW(WS_EX_TOOLWINDOW | WS_EX_NOACTIVATE | WS_EX_TOPMOST,
+				windowClass.lpszClassName, L"", WS_POPUP, x, y, 16, 16, NULL, NULL, windowClass.hInstance, NULL);
+			if (mOffscreenPresentWindow == NULL)
+				hr = HRESULT_FROM_WIN32(GetLastError());
+		}
+		if (SUCCEEDED(hr))
+		{
+			DXGI_SWAP_CHAIN_DESC desc = {};
+			desc.BufferDesc.Width = 16;
+			desc.BufferDesc.Height = 16;
+			desc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+			desc.SampleDesc.Count = 1;
+			desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+			desc.BufferCount = 1;
+			desc.OutputWindow = mOffscreenPresentWindow;
+			desc.Windowed = TRUE;
+			desc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+			hr = mDXGIFactory->CreateSwapChain(mD3DDevice, &desc, &mOffscreenSwapChain);
+		}
+		ID3D11Texture2D* buffer = NULL;
+		if (SUCCEEDED(hr))
+			hr = mOffscreenSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&buffer);
+		if (SUCCEEDED(hr))
+			hr = mD3DDevice->CreateRenderTargetView(buffer, NULL, &mOffscreenPresentView);
+		if (buffer != NULL)
+			buffer->Release();
+	}
+	if ((SUCCEEDED(hr)) && (!PositionOffscreenPresenter(mOffscreenPresentWindow)))
+		hr = E_FAIL;
+	if (SUCCEEDED(hr))
+	{
+		if (!IsWindowVisible(mOffscreenPresentWindow))
+			ShowWindow(mOffscreenPresentWindow, SW_SHOWNOACTIVATE);
+		// Off-screen presents avoid slow minimized-target rendering on NVIDIA.
+		float color[4] = { 0, 0, 0, 1 };
+		mD3DDeviceContext->ClearRenderTargetView(mOffscreenPresentView, color);
+		hr = mOffscreenSwapChain->Present(0, 0);
+		if (hr == S_OK)
+			mOffscreenPresentCount++;
+	}
+	if (FAILED(hr))
+	{
+		OutputDebugStrF("Offscreen presentation disabled: HRESULT %08X\n", (unsigned int)hr);
+		ReleaseOffscreenPresentation();
+		mOffscreenPresentationAllowed = false;
+	}
+}
+
 void DXRenderDevice::FrameStart()
 {
+	mOffscreenSourceWindow = NULL;
 	mCurRenderTarget = NULL;
 	mPhysRenderWindow = NULL;
 	mCurPSUAV = NULL;
@@ -3876,6 +4013,7 @@ void DXRenderDevice::FrameEnd()
 	}
 
 	ProcessRetiredTextures();
+	PresentOffscreen();
 }
 
 void DXRenderDevice::RetireTexture(DXTexture* texture)

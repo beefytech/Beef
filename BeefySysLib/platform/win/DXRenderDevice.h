@@ -544,6 +544,14 @@ public:
 	ID3D11SamplerState*		mD3DShadowSamplerState;
 	ID3D11SamplerState*		mD3DTrilinearSamplerState;
 	bool					mNeedsReinitNative;
+	bool					mOffscreenPresentationAllowed;
+	bool					mOffscreenPresentationArmed;
+	HWND					mOffscreenSourceWindow;
+	HWND					mOffscreenPresentWindow;
+	IDXGISwapChain*			mOffscreenSwapChain;
+	ID3D11RenderTargetView*	mOffscreenPresentView;
+	uint64					mOffscreenPresentTick;
+	uint64					mOffscreenPresentCount;
 
 	ID3D11Buffer*			mMatrix2DBuffer;
 	ID3D11Buffer*			mD3DVertexBuffer;
@@ -611,6 +619,9 @@ public:
 
 	void					FrameStart() override;
 	void					FrameEnd() override;
+	void					NotifyOffscreenRender(RenderWindow* window, bool allowInstall) override;
+	void					PresentOffscreen();
+	void					ReleaseOffscreenPresentation();
 	void					RetireTexture(DXTexture* texture);
 	void					ProcessRetiredTextures();
 

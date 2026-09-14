@@ -381,6 +381,7 @@ public:
 	virtual bool			Init(BFApp* app) = 0;
 	virtual void			AddRenderWindow(RenderWindow* renderWindow);
 	virtual void			RemoveRenderWindow(RenderWindow* renderWindow);
+	virtual void			NotifyOffscreenRender(RenderWindow* window, bool allowInstall) {}
 	
 	virtual RenderState*	CreateRenderState(RenderState* srcRenderState);
 	virtual void			ReleaseRenderState(RenderState* renderState);

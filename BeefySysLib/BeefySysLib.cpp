@@ -224,6 +224,12 @@ BF_EXPORT void BF_CALLTYPE BFApp_SetUnthrottledRendering(int enabled)
 	gBFApp->mUnthrottledRendering = enabled != 0;
 }
 
+BF_EXPORT void BF_CALLTYPE BFApp_NotifyOffscreenRender(BFWindow* window, int allowInstall)
+{
+	if ((window != NULL) && (gBFApp->mRenderDevice != NULL))
+		gBFApp->mRenderDevice->NotifyOffscreenRender(window->mRenderWindow, allowInstall != 0);
+}
+
 BF_EXPORT void BF_CALLTYPE BFApp_SetRefreshRate(int rate)
 {
 	gBFApp->mRefreshRate = (float) rate;

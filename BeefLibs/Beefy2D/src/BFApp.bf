@@ -111,6 +111,9 @@ namespace Beefy
         public static extern void BFApp_SetUnthrottledRendering(int32 enabled);
 
         [CallingConvention(.Stdcall), CLink]
+        static extern void BFApp_NotifyOffscreenRender(void* window, int32 allowInstall);
+
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_Init();
 
         [CallingConvention(.Stdcall), CLink]
@@ -327,6 +330,13 @@ namespace Beefy
 		public void SetVirtualFocus(bool virtualFocus)
 		{
 			BFApp_SetVirtualFocus(virtualFocus);
+		}
+
+		// Only shared rendering should arm the presenter; other off-screen draws may keep it active.
+		public void NotifyOffscreenRender(BFWindow window, bool allowInstall)
+		{
+			if ((window != null) && (!window.mNativeWindowClosed))
+				BFApp_NotifyOffscreenRender(window.mNativeWindow, allowInstall ? 1 : 0);
 		}
 
 		// One frame per signal of the named event; null restores internal pacing
