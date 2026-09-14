@@ -805,7 +805,7 @@ public:
 	BfIRBlock mPrevBB;
 	BfIRBlock mCheckBB;
 	BfIRBlock mDoneBB;
-	SizedArray<BfIRBlock, 4> mNotNullBBs;
+	SizedArray<BfIRBlock, 4> mNullBranchBBs; // Blocks that branch to mDoneBB, one per null check
 };
 
 class BfAttributeState

@@ -393,6 +393,7 @@ BfIRCodeGen::~BfIRCodeGen()
 {
 	mDebugLoc = llvm::DebugLoc();
 	mSavedDebugLocs.Clear();
+	mRemappedEndingBlocks.clear();
 
 	for (auto typeEx : mIRTypeExs)
 		delete typeEx;
@@ -949,6 +950,9 @@ void BfIRCodeGen::ProcessBfIRData(const BfSizedArray<uint8>& buffer)
 
 	ApplySimdFeatures();
 
+	// No more blocks can be referenced, so don't keep the handles alive through optimization
+	mRemappedEndingBlocks.clear();
+
 	BF_ASSERT((mFailed) || (mStream->GetReadPos() == buffer.mSize));
 }
 
@@ -1118,9 +1122,32 @@ void BfIRCodeGen::FixTypedValue(BfIRTypedValue& typedValue)
 
 void BfIRCodeGen::FixEndingBlock(llvm::BasicBlock*& basicBlock)
 {
-	llvm::BasicBlock* endBlock = basicBlock;
-	if (mRemappedEndingBlocks.TryGetValue(basicBlock, &endBlock))
-		basicBlock = endBlock;
+	// A block can be split multiple times (ie: several object access checks), so follow the chain to where it actually ends.
+	// Every split continues into a new block and deleted blocks drop out of the map, so a chain with more hops than
+	// the map has entries must loop
+	llvm::BasicBlock* startBlock = basicBlock;
+	int chainLength = 0;
+	while (true)
+	{
+		auto itr = mRemappedEndingBlocks.find(basicBlock);
+		if (itr == mRemappedEndingBlocks.end())
+			break;
+		auto nextBlock = llvm::dyn_cast_or_null<llvm::BasicBlock>((llvm::Value*)itr->second);
+		if (nextBlock == NULL) // Continuation was deleted
+			break;
+		basicBlock = nextBlock;
+		chainLength++;
+		if (chainLength > (int)mRemappedEndingBlocks.size())
+		{
+			Fail("Remapped block chain loops");
+			basicBlock = startBlock;
+			return;
+		}
+	}
+
+	// Point directly at the end for future lookups
+	if (chainLength > 1)
+		mRemappedEndingBlocks[startBlock] = basicBlock;
 }
 
 void BfIRCodeGen::Read(BfIRTypedValue& typedValue, BfIRCodeGenEntry** codeGenEntry, BfIRSizeAlignKind sizeAlignKind)
@@ -3167,7 +3194,7 @@ void BfIRCodeGen::HandleNextCmd()
 	case BfIRCmd_SetInsertPoint:
 		{
 			CMD_PARAM(llvm::BasicBlock*, block);
-			if (mRemappedEndingBlocks.ContainsKey(block))
+			if (mRemappedEndingBlocks.count(block) != 0)
 				Fail("Attempt to modify locked block");
 			mIRBuilder->SetInsertPoint(block);
 		}

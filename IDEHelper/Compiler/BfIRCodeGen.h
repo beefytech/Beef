@@ -3,6 +3,7 @@
 #include "BfIRBuilder.h"
 #include "BfSystem.h"
 #include "BfTargetTriple.h"
+#include "llvm/IR/ValueMap.h"
 
 namespace llvm
 {
@@ -168,7 +169,9 @@ public:
 	Dictionary<BfIRTypeEx*, BfIRTypedValue> mReflectDataMap;
 	Dictionary<BfIRTypeEx*, BfIRTypeEx*> mAlignedTypeToNormalType;
 	Dictionary<BfIRTypeEx*, int> mTypeToTypeIdMap;	
-	Dictionary<llvm::BasicBlock*, llvm::BasicBlock*> mRemappedEndingBlocks;
+	// Blocks split by inline checks -> the block continuing them. Uses value handles so entries for deleted blocks drop out
+	// rather than matching a new block that reuses the address
+	llvm::ValueMap<llvm::BasicBlock*, llvm::WeakVH> mRemappedEndingBlocks;
 	OwnedArray<BfIRIntrinsicData> mIntrinsicData;
 	Dictionary<llvm::Function*, BfSIMDSetting> mFunctionsUsingSimd;
 	Dictionary<llvm::Function*, FunctionOptions> mFunctionOptions;

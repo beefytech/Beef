@@ -21,6 +21,27 @@ namespace Tests
 		{
 			return 345;
 		}
+
+		public CondB SelfProp
+		{
+			get
+			{
+				return this;
+			}
+		}
+
+		public CondB GetSelf(int val)
+		{
+			return (val > 0) ? this : null;
+		}
+
+		public StringView StrView
+		{
+			get
+			{
+				return "CondB";
+			}
+		}
 	}
 
 	class CondA
@@ -39,6 +60,14 @@ namespace Tests
 		CondB GetCondB()
 		{
 			return mCondB;
+		}
+
+		public CondB CondBProp
+		{
+			get
+			{
+				return mCondB;
+			}
 		}
 	}
 
@@ -89,6 +118,42 @@ namespace Tests
 
 			let i2 = (ca?.mCondB2?.mInt).GetValueOrDefault();
 			Test.Assert(i2 == 0);
+		}
+
+		static int GetOne()
+		{
+			return 1;
+		}
+
+		[Test]
+		static void TestSplitBlocks()
+		{
+			CondA ca = scope CondA();
+			ca.mCondB = scope CondB();
+			bool b = ca.mCondB.mInt > 0;
+
+			// Evaluating a link can end in a different block than it started in, such as with a ternary argument
+			CondB cb = ca?.mCondB?.GetSelf(b ? GetOne() : 2)?.GetSelf(1);
+			Test.Assert(cb == ca.mCondB);
+			cb = ca?.mCondB?.GetSelf(b ? -GetOne() : 2)?.GetSelf(1);
+			Test.Assert(cb == null);
+			cb = ca?.mCondB2?.GetSelf(b ? GetOne() : 2)?.GetSelf(1);
+			Test.Assert(cb == null);
+
+			// Optimized object access checks split blocks too
+			cb = ca?.CondBProp?.SelfProp;
+			Test.Assert(cb == ca.mCondB);
+
+			// Only the lhs can be cast here, which gets emitted in a separate block after the rhs
+			StringView sv = cb.mStr ?? cb.StrView;
+			Test.Assert(sv == "CondB");
+			cb.mStr = scope String("Str");
+			sv = cb.mStr ?? cb.StrView;
+			Test.Assert(sv == "Str");
+
+			ca.mCondB = null;
+			cb = ca?.CondBProp?.SelfProp;
+			Test.Assert(cb == null);
 		}
 	}
 }

@@ -9721,15 +9721,11 @@ BfTypedValue BfModule::FlushNullConditional(BfTypedValue result, bool ignoreNull
 		AddBasicBlock(pendingNullCond->mDoneBB);
 		if (nullableType == NULL)
 		{
-			auto phi = mBfIRBuilder->CreatePhi(mBfIRBuilder->MapType(result.mType), 1 + (int)pendingNullCond->mNotNullBBs.size());
+			auto phi = mBfIRBuilder->CreatePhi(mBfIRBuilder->MapType(result.mType), 1 + (int)pendingNullCond->mNullBranchBBs.size());
 			mBfIRBuilder->AddPhiIncoming(phi, result.mValue, notNullBB);
 
-			mBfIRBuilder->AddPhiIncoming(phi, GetDefaultValue(result.mType), pendingNullCond->mCheckBB);
-			for (int notNullIdx = 0; notNullIdx < (int)pendingNullCond->mNotNullBBs.size() - 1; notNullIdx++)
-			{
-				auto prevNotNullBB = pendingNullCond->mNotNullBBs[notNullIdx];
-				mBfIRBuilder->AddPhiIncoming(phi, GetDefaultValue(result.mType), prevNotNullBB);
-			}
+			for (auto nullBranchBB : pendingNullCond->mNullBranchBBs)
+				mBfIRBuilder->AddPhiIncoming(phi, GetDefaultValue(result.mType), nullBranchBB);
 
 			result.mValue = phi;
 		}

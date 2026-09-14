@@ -22687,7 +22687,8 @@ BfTypedValue BfExprEvaluator::SetupNullConditional(BfTypedValue thisValue, BfTok
 	else
 		isNotNull = mModule->mBfIRBuilder->CreateIsNotNull(thisValue.mValue);
 	BfIRBlock notNullBB = mModule->mBfIRBuilder->CreateBlock("nullCond.notNull");
-	pendingNullCond->mNotNullBBs.Add(notNullBB);
+	// This isn't necessarily the previous notNullBB - evaluating the previous link can split blocks (ie: ternaries or object access checks)
+	pendingNullCond->mNullBranchBBs.Add(mModule->mBfIRBuilder->GetInsertBlock());
 	mModule->mBfIRBuilder->CreateCondBr(isNotNull, notNullBB, pendingNullCond->mDoneBB);
 
 	mModule->AddBasicBlock(notNullBB);
@@ -24627,6 +24628,8 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 			}
 			else
 			{
+				// Evaluating the rhs may have split rhsBB (ie: object access checks), so return to where it actually ended
+				auto curRhsBB = mModule->mBfIRBuilder->GetInsertBlock();
 				lhsBB = mModule->mBfIRBuilder->CreateBlock("nullc.lhs", true);
 				mModule->mBfIRBuilder->SetInsertPoint(lhsBB);
 
@@ -24645,7 +24648,7 @@ bool BfExprEvaluator::PerformBinaryOperation_NullCoalesce(BfTokenNode* opToken, 
 
 				mModule->mBfIRBuilder->CreateBr(endBB);
 				endLhsBB = mModule->mBfIRBuilder->GetInsertBlock();
-				mModule->mBfIRBuilder->SetInsertPoint(rhsBB);
+				mModule->mBfIRBuilder->SetInsertPoint(curRhsBB);
 			}
 		}
 
