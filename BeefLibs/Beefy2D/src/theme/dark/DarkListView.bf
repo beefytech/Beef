@@ -998,6 +998,19 @@ namespace Beefy.theme.dark
         public bool mShowGridLines;
 		public Color mGridLinesColor;
         public bool mShowHeader = true;
+        bool mDrawBox;
+
+        public bool DrawBox
+        {
+            get => mDrawBox;
+            set
+            {
+                if (mDrawBox == value)
+                    return;
+                mDrawBox = value;
+                MarkDirty();
+            }
+        }
 		public bool mEndInEllipsis;
 		public bool mWordWrap;
         public float mLabelX = DarkTheme.sUnitSize;
@@ -1135,6 +1148,16 @@ namespace Beefy.theme.dark
 
 			if (mWidth <= GS!(3))
 				return;
+
+            if (mDrawBox)
+            {
+                g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.EditBox), 0, 0, mWidth, mHeight);
+                if (mHasFocus)
+                {
+                    using (g.PushColor(DarkTheme.COLOR_SELECTED_OUTLINE))
+                        g.DrawBox(DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Outline), 0, 0, mWidth, mHeight);
+                }
+            }
 
             if (mShowHeader)
             {
