@@ -2237,7 +2237,7 @@ RenderState* DXRenderDevice::CreateRenderState(RenderState* srcRenderState)
 void DXRenderDevice::ReleaseRenderState(RenderState* renderState)
 {
 	mRenderStates.Remove((DXRenderState*)renderState);
-	delete renderState;
+	RenderDevice::ReleaseRenderState(renderState);
 }
 
 struct DXModelVertex

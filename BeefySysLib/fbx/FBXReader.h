@@ -81,6 +81,7 @@ public:
 	String mName;
 	Array<FBXVertexData> mVertexData;
 	Array<int> mIndexData;
+	bool mGenerateTangents = false;
 };
 
 struct FBXJoint

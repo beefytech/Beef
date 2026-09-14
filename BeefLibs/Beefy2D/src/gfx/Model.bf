@@ -169,6 +169,9 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         extern static char8* ModelDef_GetTexRoles(void* nativeModel, int32 meshIdx, int32 primitivesIdx);
 
+		[CallingConvention(.Stdcall), CLink]
+		extern static uint8* ModelDef_GetEmbeddedImage(void* nativeModel, int32 index, out int32 size);
+
         [CallingConvention(.Stdcall), CLink]
         extern static char8* ModelDef_GetMaterialName(void* nativeModel, int32 meshIdx, int32 primitivesIdx);
 
@@ -300,6 +303,14 @@ namespace Beefy.gfx
 		public void GetTexRoles(int32 meshIdx, int32 primitivesIdx, String outRoles)
 		{
 			outRoles.Append(ModelDef_GetTexRoles(mNativeModelDef, meshIdx, primitivesIdx));
+		}
+
+		// The still-encoded bytes a "*N" texture path names: an image stored inside the model file.
+		// Empty for an index the file doesn't have; valid while this def lives.
+		public Span<uint8> GetEmbeddedImage(int32 index)
+		{
+			let data = ModelDef_GetEmbeddedImage(mNativeModelDef, index, var size);
+			return .(data, size);
 		}
 
 		// The source file's material name for the primitive (may be empty).

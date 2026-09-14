@@ -361,6 +361,8 @@ public:
 
 	RenderState*			mDefaultRenderState;
 	RenderState*			mCurRenderState;	
+	// Settings of a released mPhysRenderState, which the device still has bound
+	RenderState				mReleasedPhysRenderState;
 
 	MemoryPool				mPooledIndexBuffers;
 	MemoryPool				mPooledVertexBuffers;

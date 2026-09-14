@@ -259,6 +259,20 @@ BF_EXPORT const char* BF_CALLTYPE ModelDef_GetTexRoles(ModelDef* modelDef, int m
 	return outString.c_str();
 }
 
+// An image the model file carries itself -- what a "*N" texture path names -- still encoded. The bytes
+// belong to the def and live as long as it does.
+BF_EXPORT const uint8* BF_CALLTYPE ModelDef_GetEmbeddedImage(ModelDef* modelDef, int index, int* outSize)
+{
+	if ((index < 0) || (index >= modelDef->mEmbeddedImages.mSize))
+	{
+		*outSize = 0;
+		return NULL;
+	}
+	auto& data = modelDef->mEmbeddedImages[index];
+	*outSize = (int)data.mSize;
+	return data.mVals;
+}
+
 BF_EXPORT const char* BF_CALLTYPE ModelDef_GetMaterialName(ModelDef* modelDef, int meshIdx, int primitivesIdx)
 {
 	String& outString = *gModelDef_TLStrReturn.Get();
@@ -635,6 +649,31 @@ BF_EXPORT int BF_CALLTYPE ModelDef_MeasureFit(ModelDef* modelDef, const Matrix4*
 		outFractions[i] = (total > 0) ? (float)counts[i] / total : 0;
 	*outMeanAbs = (total > 0) ? (float)(sumAbs / total) : 0;
 	return total;
+}
+
+void Beefy::ModelPrimitives::GenerateTangents()
+{
+	for (auto& v : mVertices) v.mTangent = Vector3(0, 0, 0);
+	for (int i = 0; i + 2 < mIndices.mSize; i += 3)
+	{
+		auto& a = mVertices[mIndices[i]];
+		auto& b = mVertices[mIndices[i + 1]];
+		auto& c = mVertices[mIndices[i + 2]];
+		float du1 = b.mTexCoords.mU - a.mTexCoords.mU, dv1 = b.mTexCoords.mV - a.mTexCoords.mV;
+		float du2 = c.mTexCoords.mU - a.mTexCoords.mU, dv2 = c.mTexCoords.mV - a.mTexCoords.mV;
+		float det = du1 * dv2 - du2 * dv1;
+		if (fabs(det) < 1e-12f) continue;
+		auto tangent = ((b.mPosition - a.mPosition) * dv2 - (c.mPosition - a.mPosition) * dv1) * (1.0f / det);
+		a.mTangent += tangent; b.mTangent += tangent; c.mTangent += tangent;
+	}
+	for (auto& v : mVertices)
+	{
+		float normalLen = v.mNormal.GetMagnitude();
+		auto normal = (normalLen > 1e-8f) ? v.mNormal * (1.0f / normalLen) : Vector3(0, 0, 0);
+		auto tangent = v.mTangent - normal * Vector3::Dot(normal, v.mTangent);
+		float len = tangent.GetMagnitude();
+		v.mTangent = (len > 1e-8f) ? tangent * (1.0f / len) : Vector3(0, 0, 0);
+	}
 }
 
 // A primitive's vertices and indices as stored (bind-pose local for skinned meshes) -- the engine

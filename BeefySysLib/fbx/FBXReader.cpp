@@ -266,6 +266,7 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 						}
 					}
 				}
+				fbxMesh->mGenerateTangents = (!mesh->vertex_tangent.exists) && (mesh->vertex_uv.exists) && (!fbxMesh->mMaterial.mBumpFileName.IsEmpty());
 
 				size_t numPositions = mesh->vertex_position.values.count;
 				std::vector<BoneWeightVector> boneWeights(numPositions);
@@ -368,6 +369,7 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 						auto next = new FBXMesh();
 						next->mName = fbxMesh->mName;
 						next->mMaterial = fbxMesh->mMaterial;
+						next->mGenerateTangents = fbxMesh->mGenerateTangents;
 						fbxMesh = next;
 						usedVerts.Clear();
 					}
@@ -598,6 +600,9 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 					mv->mBoneWeights[bi] = fv->mBoneWeights[bi].mBoneWeight;
 				}
 			}
+			// Derived from the stored positions, so it shares their space (geometry space when skinned).
+			if (fbxMesh->mGenerateTangents)
+				prims->GenerateTangents();
 		}
 
 		for (int ji = 0; ji < (int)mFBXJoints.size(); ji++)

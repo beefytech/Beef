@@ -327,6 +327,12 @@ namespace Beefy.geom
             return Vector3(vec.mX * scale, vec.mY * scale, vec.mZ * scale);
         }
 
+		[Inline]
+		public static Vector3 operator /(Vector3 vec, float scale)
+		{
+		    return Vector3(vec.mX / scale, vec.mY / scale, vec.mZ / scale);
+		}
+
         public override void ToString(String str)
         {
             str.AppendF("{0:0.0#}, {1:0.0#}, {2:0.0#}", mX, mY, mZ);

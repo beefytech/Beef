@@ -133,6 +133,14 @@ RenderState* RenderDevice::CreateRenderState(RenderState* srcRenderState)
 
 void RenderDevice::ReleaseRenderState(RenderState* renderState)
 {
+	// PhysSetRenderState diffs against mPhysRenderState, so it must not dangle -- and a later state allocated
+	// at the freed address would compare equal and skip being applied at all.
+	if (renderState == mPhysRenderState)
+	{
+		mReleasedPhysRenderState = *renderState;
+		mReleasedPhysRenderState.mShader = NULL; // The shader may be freed next; NULL forces a rebind
+		mPhysRenderState = &mReleasedPhysRenderState;
+	}
 	delete renderState;
 }
 

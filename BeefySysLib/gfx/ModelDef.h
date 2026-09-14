@@ -175,6 +175,10 @@ public:
 		mMaterial = NULL;
 		mFlags = Flags_None;
 	}
+
+	// Tangents from each triangle's UV gradient, for a normal map on a file that carries none. A vertex
+	// whose UVs are degenerate keeps a zero tangent.
+	void GenerateTangents();
 };
 
 class ModelMesh
@@ -255,6 +259,9 @@ public:
 	Array<ModelAnimation> mAnims;
 	Array<ModelNode> mNodes;
 	Array<ModelMaterialInstance> mMaterials;
+	// Image files stored inside the model file itself (a .glb's binary chunk), still encoded. A texture
+	// path "*N" names entry N.
+	Array<Array<uint8> > mEmbeddedImages;
 	
 	Flags mFlags;
 	// When set, render instances never load textures from mTexPaths -- they use the injected
