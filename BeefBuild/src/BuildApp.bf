@@ -445,10 +445,13 @@ namespace BeefBuild
 					}
 					else if (mVerb != .New)
 					{
+						bool compileStarted;
 						if (targetProject != null)
-							Compile(.NormalTargeted(new .(targetProject.mProjectName)), null);
+							compileStarted = Compile(.NormalTargeted(new .(targetProject.mProjectName)), null);
 						else
-							Compile(.Normal, null);
+							compileStarted = Compile(.Normal, null);
+						if (!compileStarted)
+							mFailed = true;
 					}
 				}
 

@@ -6004,13 +6004,27 @@ namespace IDE
 			return (mTestManager != null);
 		}
 
+		void TestConfigNotSupported()
+		{
+			// Under BeefBuild the config defaults to "Test", so a non-Test config was explicitly requested - don't silently substitute another one
+			OutputErrorLine("Workspace configuration '{}' does not have a Test build kind, so tests cannot be run with it. Omit '-config' to use the 'Test' configuration, or set 'BuildKind = \"Test\"' on this configuration.", mConfigName);
+			TestFailed();
+		}
+
 		protected void DoRunTests(bool includeIgnored, bool debug, Project project)
 		{
 			var workspaceOptions = GetCurWorkspaceOptions();
 			if (CurrentPlatform == .Wasm)
 			{
 				if (workspaceOptions.mBuildKind != .Test)
+				{
+					if (mMainFrame == null)
+					{
+						TestConfigNotSupported();
+						return;
+					}
 					mMainFrame.mStatusBar.SelectConfig("Test");
+				}
 				CompileAndRun(true);
 				return;
 			}
@@ -6037,14 +6051,21 @@ namespace IDE
 
 			if (workspaceOptions.mBuildKind != .Test)
 			{
+				if (mMainFrame == null)
+				{
+					TestConfigNotSupported();
+					return;
+				}
 				mMainFrame.mStatusBar.SelectConfig("Test");
 			}
 
 			workspaceOptions = GetCurWorkspaceOptions();
 			if (workspaceOptions.mBuildKind != .Test)
 			{
-				mMainFrame.mStatusBar.SelectConfig(prevConfigName);
+				if (mMainFrame != null)
+					mMainFrame.mStatusBar.SelectConfig(prevConfigName);
 				OutputErrorLine("No valid Test workspace configuration exists");
+				TestFailed();
 				return;
 			}
 
@@ -6064,6 +6085,7 @@ namespace IDE
 			if (!Compile(.Test, null))
 			{
 				mTestManager.BuildFailed();
+				TestFailed();
 			}
 			if (!mTestManager.HasProjects)
 			{
@@ -12595,7 +12617,11 @@ namespace IDE
 
 			if ((compileKind != .Test) && (mWorkspace.mStartupProject != null) && (mWorkspace.mStartupProject.mGeneralOptions.mTargetType == .BeefTest))
 			{
+#if CLI
+				OutputErrorLine("Test project '{}' has been selected as the Startup Project. Use '-test' to run tests.", mWorkspace.mStartupProject.mProjectName);
+#else
 				OutputErrorLine("Test project '{}' has been selected as the Startup Project. Use the 'Test' menu to run or debug tests.", mWorkspace.mStartupProject.mProjectName);
+#endif
 				return false;
 			}
 
