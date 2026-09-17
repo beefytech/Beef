@@ -2753,7 +2753,11 @@ void DXModelInstance::Render(RenderCmd* renderCmd, RenderDevice* renderDevice, R
 				else if (i < (int)dxPrimitives->mTextures.mSize)
 					texture = dxPrimitives->mTextures[i];
 				if (texture != NULL)
+				{
 					mD3DRenderDevice->mD3DDeviceContext->PSSetShaderResources(i, 1, &texture->mD3DResourceView);
+					if (i < 32)
+						mD3DRenderDevice->mPSBoundTextures[i] = texture;
+				}
 			}
 
 			// Set vertex buffer
@@ -2831,7 +2835,13 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 	//	mRenderState = layerState;
 	//}
 
-	drawLayer->mCurTextures[0] = NULL;
+	// Render binds each primitive's slots directly, so the layer can no longer vouch for what they hold.
+	int slotCount = 0;
+	for (auto& dxMesh : mDXModelMeshs)
+		for (auto& dxPrimitives : dxMesh.mPrimitives)
+			slotCount = BF_MAX(slotCount, BF_MAX((int)dxPrimitives.mTextures.mSize, (int)dxPrimitives.mOverrideTextures.mSize));
+	for (int i = 0; i < BF_MIN(slotCount, MAX_TEXTURES); i++)
+		drawLayer->mCurTextures[i] = (Texture*)(intptr)-1;
 	EnsureBuffers();
 
 	if (!mDirty)
