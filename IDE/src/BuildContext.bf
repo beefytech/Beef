@@ -843,6 +843,12 @@ namespace IDE
 				case .Og, .OgPlus: linkLine.Append(" -Og");
 				}
 
+				// The function table, which is how the runtime makes a dynamic call without
+				// libffi: wasmTable.get(ptr) is what MethodInfo.Invoke and every reflection
+				// constructed attribute go through. Without the export the table is not in
+				// scope for the runtime's JS and the call throws "wasmTable is not defined".
+				linkLine.Append(" -s EXPORTED_RUNTIME_METHODS=wasmTable");
+
 				if (project.mWasmOptions.mEnableThreads)
 					linkLine.Append(" -pthread");
 

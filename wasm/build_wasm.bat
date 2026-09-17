@@ -67,12 +67,12 @@ call :BUILDKIND "-O0 -g" "_d"
 
 REM Builds one kind: %1 = compile flags, %2 = archive name suffix
 :BUILDKIND
-call emcc src\rt\Chars.cpp src\rt\Math.cpp src\rt\Object.cpp src\rt\Thread.cpp src\rt\Internal.cpp src\rt\zmij.c src\BeefySysLib\platform\wasm\WasmCommon.cpp src\BeefySysLib\Common.cpp src\BeefySysLib\util\String.cpp src\BeefySysLib\util\Hash.cpp src\BeefySysLib\util\UTF8.cpp src\BeefySysLib\third_party\utf8proc\utf8proc.c src\BeefySysLib\third_party\putty\wildcard.c -Isrc\ -Isrc\BeefySysLib -Isrc\BeefySysLib\platform\wasm %~1 -DBF_DISABLE_FFI -c
+call emcc src\rt\Chars.cpp src\rt\Math.cpp src\rt\Object.cpp src\rt\Thread.cpp src\rt\Internal.cpp src\rt\zmij.c src\BeefySysLib\platform\wasm\WasmCommon.cpp src\BeefySysLib\platform\wasm\WasmFFI.cpp src\BeefySysLib\Common.cpp src\BeefySysLib\util\String.cpp src\BeefySysLib\util\Hash.cpp src\BeefySysLib\util\UTF8.cpp src\BeefySysLib\third_party\utf8proc\utf8proc.c src\BeefySysLib\third_party\putty\wildcard.c -Isrc\ -Isrc\BeefySysLib -Isrc\BeefySysLib\platform\wasm %~1 -DBF_DISABLE_FFI -c
 @IF %ERRORLEVEL% NEQ 0 EXIT /b %ERRORLEVEL%
-call emar r %LIBPATH%\Beef042RT32_wasm%~2.a Common.o Internal.o Chars.o Math.o Object.o String.o Thread.o Hash.o UTF8.o utf8proc.o wildcard.o WasmCommon.o zmij.o
+call emar r %LIBPATH%\Beef042RT32_wasm%~2.a Common.o Internal.o Chars.o Math.o Object.o String.o Thread.o Hash.o UTF8.o utf8proc.o wildcard.o WasmCommon.o WasmFFI.o zmij.o
 @IF %ERRORLEVEL% NEQ 0 EXIT /b %ERRORLEVEL%
-call emcc src\rt\Chars.cpp src\rt\Math.cpp src\rt\Object.cpp src\rt\Thread.cpp src\rt\Internal.cpp src\rt\zmij.c src\BeefySysLib\platform\wasm\WasmCommon.cpp src\BeefySysLib\Common.cpp src\BeefySysLib\util\String.cpp src\BeefySysLib\util\Hash.cpp src\BeefySysLib\util\UTF8.cpp src\BeefySysLib\third_party\utf8proc\utf8proc.c src\BeefySysLib\third_party\putty\wildcard.c -Isrc\ -Isrc\BeefySysLib -Isrc\BeefySysLib\platform\wasm %~1 -DBF_DISABLE_FFI -c -pthread
+call emcc src\rt\Chars.cpp src\rt\Math.cpp src\rt\Object.cpp src\rt\Thread.cpp src\rt\Internal.cpp src\rt\zmij.c src\BeefySysLib\platform\wasm\WasmCommon.cpp src\BeefySysLib\platform\wasm\WasmFFI.cpp src\BeefySysLib\Common.cpp src\BeefySysLib\util\String.cpp src\BeefySysLib\util\Hash.cpp src\BeefySysLib\util\UTF8.cpp src\BeefySysLib\third_party\utf8proc\utf8proc.c src\BeefySysLib\third_party\putty\wildcard.c -Isrc\ -Isrc\BeefySysLib -Isrc\BeefySysLib\platform\wasm %~1 -DBF_DISABLE_FFI -c -pthread
 @IF %ERRORLEVEL% NEQ 0 EXIT /b %ERRORLEVEL%
-call emar r %LIBPATH%\Beef042RT32_wasm_pthread%~2.a Common.o Internal.o Chars.o Math.o Object.o String.o Thread.o Hash.o UTF8.o utf8proc.o wildcard.o WasmCommon.o zmij.o
+call emar r %LIBPATH%\Beef042RT32_wasm_pthread%~2.a Common.o Internal.o Chars.o Math.o Object.o String.o Thread.o Hash.o UTF8.o utf8proc.o wildcard.o WasmCommon.o WasmFFI.o zmij.o
 @IF %ERRORLEVEL% NEQ 0 EXIT /b %ERRORLEVEL%
 @EXIT /b 0
