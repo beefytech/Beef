@@ -41,6 +41,9 @@ extern "C"
 #include "BeefySysLib/platform/PlatformHelper.h"
 #ifndef BF_DISABLE_FFI
 #include "ffi.h"
+#elif defined(__EMSCRIPTEN__)
+// EM_JS, for the dynamic call that stands in for libffi on wasm. See FFILIB::Call.
+#include <emscripten.h>
 #endif
 #include "Thread.h"
 
@@ -1015,11 +1018,160 @@ bool IO::Directory::Exists(char* fileName)
 
 //////////////////////////////////////////////////////////////////////////
 
+#if defined(BF_DISABLE_FFI) && defined(__EMSCRIPTEN__)
+
+// A dynamic call for wasm, which has no libffi.
+//
+// It does not need one. libffi is complicated because ABIs like SysV x86-64 scatter a
+// struct's fields across registers, so the call has to be assembled per signature. Wasm
+// does not: clang's wasm32 ABI passes EVERY struct indirectly, as one pointer, and returns
+// one through a hidden sret pointer prepended to the arguments. Measured on the actual
+// table entries - an 8 byte struct and a 24 byte struct both take arity 1, and returning
+// either takes arity params+1. So every case reduces to "push one number per argument",
+// which is exactly what a JS call through the function table already does.
+//
+// The exported table is the mechanism: wasmTable.get(fp) hands back the function, and
+// apply() calls it. That needs -sEXPORTED_RUNTIME_METHODS=wasmTable on the link, which
+// BuildContext passes for every wasm target.
+namespace
+{
+	// Mirrors System.FFI.FFIType in corlib. Beef allocates these, so the layout is theirs.
+	struct BfWasmFFIType
+	{
+		intptr mSize;
+		uint16 mAlignment;
+		uint16 mTypeKind;
+		BfWasmFFIType** mElements;
+	};
+
+	// Mirrors System.FFI.FFILIB.FFICIF, which mirrors libffi's ffi_cif field for field. Only
+	// the first four are read back; bytes and flags exist to keep the size right.
+	struct BfWasmFFICif
+	{
+		int32 mAbi;
+		uint32 mNArgs;
+		BfWasmFFIType** mArgTypes;
+		BfWasmFFIType* mRType;
+		uint32 mBytes;
+		uint32 mFlags;
+	};
+
+	// System.FFI.FFIType.TypeKind, in declaration order.
+	enum BfWasmFFITypeKind
+	{
+		BfWasmFFITypeKind_Void = 0,
+		BfWasmFFITypeKind_Int,
+		BfWasmFFITypeKind_Float,
+		BfWasmFFITypeKind_Double,
+		BfWasmFFITypeKind_LongDouble,
+		BfWasmFFITypeKind_UInt8,
+		BfWasmFFITypeKind_SInt8,
+		BfWasmFFITypeKind_UInt16,
+		BfWasmFFITypeKind_SInt16,
+		BfWasmFFITypeKind_UInt32,
+		BfWasmFFITypeKind_SInt32,
+		BfWasmFFITypeKind_UInt64,
+		BfWasmFFITypeKind_SInt64,
+		BfWasmFFITypeKind_Struct,
+		BfWasmFFITypeKind_Pointer
+	};
+
+	// What the JS side does with each slot. Everything the wasm ABI passes in an i32 collapses
+	// to one case, which is most of them.
+	enum BfWasmSlotKind
+	{
+		BfWasmSlot_Void = 0,
+		BfWasmSlot_I32,
+		BfWasmSlot_F32,
+		BfWasmSlot_F64,
+		BfWasmSlot_I64,
+		BfWasmSlot_Struct
+	};
+
+	static int32 BfWasmSlotKindOf(const BfWasmFFIType* type)
+	{
+		if (type == NULL)
+			return BfWasmSlot_Void;
+
+		switch (type->mTypeKind)
+		{
+		case BfWasmFFITypeKind_Void:
+			return BfWasmSlot_Void;
+		case BfWasmFFITypeKind_Float:
+			return BfWasmSlot_F32;
+		case BfWasmFFITypeKind_Double:
+		case BfWasmFFITypeKind_LongDouble: // wasm has no x87 type; long double IS double here
+			return BfWasmSlot_F64;
+		case BfWasmFFITypeKind_UInt64:
+		case BfWasmFFITypeKind_SInt64:
+			return BfWasmSlot_I64;
+		case BfWasmFFITypeKind_Struct:
+			return BfWasmSlot_Struct;
+		default:
+			// Int, the sized integers and Pointer: all one i32 on wasm32.
+			return BfWasmSlot_I32;
+		}
+	}
+}
+
+// args[i] points AT the value, which is why a struct costs nothing here: the pointer the
+// wasm ABI wants is the slot address itself. sret is the destination for a struct return,
+// prepended as argument zero, and is null when the return is not a struct.
+EM_JS(void, BfWasmFFICall, (void* funcPtr, int32_t nargs, const int32_t* kinds, void** args,
+	void* rvalue, int32_t retKind, void* sret), {
+	var fn = wasmTable.get(funcPtr);
+	var callArgs = [];
+	if (sret !== 0)
+		callArgs.push(sret);
+
+	for (var i = 0; i < nargs; i++)
+	{
+		var kind = HEAP32[(kinds >> 2) + i];
+		var slot = HEAPU32[(args >> 2) + i];
+		switch (kind)
+		{
+		case 2: callArgs.push(HEAPF32[slot >> 2]); break;
+		case 3: callArgs.push(HEAPF64[slot >> 3]); break;
+		case 4:
+			// WASM_BIGINT is on by default, so an i64 parameter is a BigInt.
+			callArgs.push((BigInt(HEAPU32[slot >> 2]) |
+				(BigInt(HEAP32[(slot >> 2) + 1]) << 32n)));
+			break;
+		case 5: callArgs.push(slot); break; // the struct's address IS the argument
+		default: callArgs.push(HEAP32[slot >> 2]); break;
+		}
+	}
+
+	var result = fn.apply(null, callArgs);
+	if (rvalue === 0)
+		return;
+
+	switch (retKind)
+	{
+	case 2: HEAPF32[rvalue >> 2] = result; break;
+	case 3: HEAPF64[rvalue >> 3] = result; break;
+	case 4:
+		HEAP32[rvalue >> 2] = Number(BigInt(result) & 0xFFFFFFFFn) | 0;
+		HEAP32[(rvalue >> 2) + 1] = Number(BigInt(result) >> 32n) | 0;
+		break;
+	case 0: case 5: break; // void, or already written through sret
+	default: HEAP32[rvalue >> 2] = result; break;
+	}
+});
+
+#endif
+
 void* bf::System::FFI::FFILIB::ClosureAlloc(intptr size, void** outFunc)
 {
 #ifndef BF_DISABLE_FFI
 	return ffi_closure_alloc(size, outFunc);
 #else
+	// Unimplemented here because the API it belongs to is a stub everywhere, not because
+	// wasm cannot do it. libffi's closure API is three calls and corlib binds only this
+	// one: there is no PrepClosure, so even against real libffi the caller gets a block
+	// it can never arm, and nothing in the tree calls it. Making closures real means
+	// adding PrepClosure and ClosureFree to FFILIB for every backend, which on wasm is
+	// a signature string off the cif handed to addFunction with -sALLOW_TABLE_GROWTH.
 	return NULL;
 #endif
 }
@@ -1028,6 +1180,19 @@ bf::System::FFI::FFIResult bf::System::FFI::FFILIB::PrepCif(bf::System::FFI::FFI
 {
 #ifndef BF_DISABLE_FFI
 	return (bf::System::FFI::FFIResult)ffi_prep_cif((ffi_cif*)cif, (ffi_abi)abi, nargs, (ffi_type*)rtype, (ffi_type**)argTypes);
+#elif defined(__EMSCRIPTEN__)
+	// Nothing to compile: without libffi the cif is just the record Call reads back.
+	if (cif == NULL)
+		return bf::System::FFI::FFIResult::FFIResult_BadTypeDef;
+
+	BfWasmFFICif* wasmCif = (BfWasmFFICif*)cif;
+	wasmCif->mAbi = (int32)abi;
+	wasmCif->mNArgs = (uint32)nargs;
+	wasmCif->mArgTypes = (BfWasmFFIType**)argTypes;
+	wasmCif->mRType = (BfWasmFFIType*)rtype;
+	wasmCif->mBytes = 0;
+	wasmCif->mFlags = 0;
+	return bf::System::FFI::FFIResult::FFIResult_OK;
 #else
 	return bf::System::FFI::FFIResult::FFIResult_NoFFI;
 #endif
@@ -1037,6 +1202,29 @@ void bf::System::FFI::FFILIB::Call(bf::System::FFI::FFILIB::FFICIF* cif, void* f
 {
 #ifndef BF_DISABLE_FFI
 	ffi_call((ffi_cif*)cif, (void(*)())funcPtr, rvalue, args);
+#elif defined(__EMSCRIPTEN__)
+	if ((cif == NULL) || (funcPtr == NULL))
+		return;
+
+	BfWasmFFICif* wasmCif = (BfWasmFFICif*)cif;
+	int32 nargs = (int32)wasmCif->mNArgs;
+
+	int32 stackKinds[16];
+	int32* kinds = stackKinds;
+	if (nargs > (int32)(sizeof(stackKinds) / sizeof(stackKinds[0])))
+		kinds = (int32*)malloc(sizeof(int32) * nargs);
+
+	for (int32 i = 0; i < nargs; i++)
+		kinds[i] = BfWasmSlotKindOf(wasmCif->mArgTypes[i]);
+
+	int32 retKind = BfWasmSlotKindOf(wasmCif->mRType);
+	// A struct comes back through a hidden pointer the caller supplies, which is rvalue.
+	void* sret = (retKind == BfWasmSlot_Struct) ? rvalue : NULL;
+
+	BfWasmFFICall(funcPtr, nargs, kinds, args, rvalue, retKind, sret);
+
+	if (kinds != stackKinds)
+		free(kinds);
 #endif
 }
 
