@@ -763,6 +763,23 @@ namespace IDE
 			return true;
 		}
 
+		/// The emcc an emsdk root provides. The emsdk ships emcc.exe on Windows and a plain
+		/// emcc everywhere else, so the suffix cannot be part of a literal: hardcoding it made
+		/// every POSIX wasm link fail with "Failed to execute ...emcc.exe" after a successful
+		/// compile. This is also what tells a configured EmscriptenPath apart from an unusable
+		/// one, so the check and the command line have to agree on it.
+		public static void GetEmccPath(StringView emsdkPath, String outPath)
+		{
+			outPath.Append(emsdkPath);
+			if ((!outPath.EndsWith('\\')) && (!outPath.EndsWith('/')))
+				outPath.Append("/");
+#if BF_PLATFORM_WINDOWS
+			outPath.Append(@"upstream/emscripten/emcc.exe");
+#else
+			outPath.Append(@"upstream/emscripten/emcc");
+#endif
+		}
+
 		bool QueueProjectWasmLink(Project project, String targetPath, Workspace.Options workspaceOptions, Project.Options options, String objectsArg)
 		{
 			//bool isDebug = gApp.mConfigName.IndexOf("Debug", true) != -1;
@@ -861,8 +878,17 @@ namespace IDE
 					{
 						gApp.mSettings.mEmscriptenPendingInstall = true;
 					}
-					else if (!File.Exists(scope $"{wasmPath}/{IDEApp.cEmSdkDep}"))
+					else if ((!File.Exists(scope $"{wasmPath}/{IDEApp.cEmSdkDep}")) &&
+						(!File.Exists(GetEmccPath(gApp.mSettings.mEmscriptenPath, .. scope .()))))
 					{
+						// Either answer will do. cEmSdkDep marks a Beef managed install, unpacked
+						//  from EmsdkDep2.zip by fetch_wasm.bat, and still satisfies this on its
+						//  own. An emsdk the user installed themselves never carries that marker,
+						//  and on POSIX cannot: the script that unpacks it is a batch file. So the
+						//  marker alone sent every self managed toolchain into pending install, and
+						//  under CLI straight into "Emscripten path not configured" against a path
+						//  that was configured. An emcc sitting where the setting points answers
+						//  the same question.
 						gApp.mSettings.mEmscriptenPendingInstall = true;
 					}
 
@@ -907,10 +933,6 @@ namespace IDE
 						}
 #endif
 					}
-					
-					compilerExePath.Append(emsdkPath);
-					if ((!compilerExePath.EndsWith('\\')) && (!compilerExePath.EndsWith('/')))
-						compilerExePath.Append("/");
 
 					if (!gApp.mSettings.mEmscriptenPendingInstall)
 					{
@@ -921,14 +943,7 @@ namespace IDE
 						}
 					}
 
-					// The emsdk ships emcc.exe on Windows and a plain emcc everywhere else, so the
-					//  suffix cannot be part of the literal: hardcoding it made every POSIX wasm
-					//  link fail with "Failed to execute ...emcc.exe" after a successful compile.
-#if BF_PLATFORM_WINDOWS
-					compilerExePath.Append(@"upstream/emscripten/emcc.exe");
-#else
-					compilerExePath.Append(@"upstream/emscripten/emcc");
-#endif
+					GetEmccPath(emsdkPath, compilerExePath);
 					var targetDir = Path.GetDirectoryPath(actualTargetPath, .. scope .());
 			        var runCmd = gApp.QueueRun(compilerExePath, linkLine, targetDir, .UTF8);
 					runCmd.mReference = new .(project.mProjectName);
