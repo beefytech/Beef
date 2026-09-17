@@ -1251,6 +1251,27 @@ BF_EXPORT void BF_CALLTYPE Gfx_StaticMesh_Delete(StaticMesh* mesh)
 	delete mesh;
 }
 
+BF_EXPORT int64 BF_CALLTYPE Gfx_StaticMesh_GetBytes(StaticMesh* mesh)
+{
+	return gBFApp->mRenderDevice->GetStaticMeshBytes(mesh);
+}
+
+// The device's memory report: one line per live texture (see RenderDevice::GetTextureStats).
+BF_EXPORT const char* BF_CALLTYPE Gfx_GetTextureStats()
+{
+	String& outString = *gBeefySys_TLStrReturn.Get();
+	outString.Clear();
+	gBFApp->mRenderDevice->GetTextureStats(outString);
+	return outString.c_str();
+}
+
+// Frees what was retired since the last frame end, as a frame end does. For a caller that ends its
+// own frames (tests) and knows no queued command still references them.
+BF_EXPORT void BF_CALLTYPE Gfx_ProcessRetired()
+{
+	gBFApp->mRenderDevice->ProcessRetired();
+}
+
 BF_EXPORT void BF_CALLTYPE Gfx_DrawStaticMeshInstanced(StaticMesh* mesh, int instBase, int instCount)
 {
 	gBFApp->mRenderDevice->mCurDrawLayer->DrawStaticMeshInstanced(mesh, instBase, instCount);
@@ -1309,6 +1330,11 @@ BF_EXPORT void BF_CALLTYPE Gfx_SetTexture_TextureSegment(int textureIdx, Texture
 BF_EXPORT void BF_CALLTYPE RenderState_SetDepthFunc(RenderState* renderState, int depthFunc)
 {
 	renderState->SetDepthFunc((DepthFunc)depthFunc);
+}
+
+BF_EXPORT void BF_CALLTYPE RenderState_SetStencilMode(RenderState* renderState, int mode)
+{
+	renderState->SetStencilMode((StencilMode)mode);
 }
 
 BF_EXPORT void BF_CALLTYPE RenderState_SetDepthWrite(RenderState* renderState, int depthWrite)

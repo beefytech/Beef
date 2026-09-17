@@ -276,6 +276,15 @@ namespace Beefy.theme.dark
             base.SetFocus();
         }
 
+		bool MenuHasFocus(MenuWidget menu)
+		{
+			if ((menu.mWidgetWindow != null) && (menu.mWidgetWindow.mHasFocus)) return true;
+			if (menu.mOpeningSubMenu) return true;
+			for (let item in menu.mItemWidgets)
+				if ((item.mSubMenu != null) && (MenuHasFocus(item.mSubMenu))) return true;
+			return false;
+		}
+
         public override void Update()
         {
             base.Update();
@@ -285,7 +294,7 @@ namespace Beefy.theme.dark
 			if ((mEditWidget != null) && (mEditWidget.mHasFocus))
 				hasFocus = true;
 			if ((!hasFocus) && (mCurMenuWidget != null))
-				if (mCurMenuWidget.mWidgetWindow.mHasFocus)
+				if (MenuHasFocus(mCurMenuWidget))
 					hasFocus = true;
 			if ((!hasFocus) && (mCurMenuWidget != null))
 			{

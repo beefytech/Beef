@@ -142,6 +142,46 @@ BF_EXPORT const char* BF_CALLTYPE ModelDef_GetInfo(ModelDef* modelDef)
 	return outString.c_str();
 }
 
+// What the def keeps resident after upload, tab-separated: vertex bytes, index bytes, animation
+// bytes, collision BVH bytes, embedded image bytes, then vertex, index and animation frame counts.
+BF_EXPORT const char* BF_CALLTYPE ModelDef_GetMemoryStats(ModelDef* modelDef)
+{
+	int64 vertexBytes = 0;
+	int64 indexBytes = 0;
+	int64 animBytes = 0;
+	int64 embeddedBytes = 0;
+	int64 verts = 0;
+	int64 indices = 0;
+	int64 frames = 0;
+	for (auto& mesh : modelDef->mMeshes)
+	{
+		for (auto& prims : mesh.mPrimitives)
+		{
+			verts += prims.mVertices.mSize;
+			indices += prims.mIndices.mSize;
+			vertexBytes += (int64)prims.mVertices.mSize * sizeof(ModelVertex);
+			indexBytes += (int64)prims.mIndices.mSize * sizeof(uint16);
+		}
+	}
+	for (auto& anim : modelDef->mAnims)
+	{
+		for (auto& frame : anim.mFrames)
+		{
+			frames++;
+			animBytes += (int64)frame.mJointTranslations.mSize * sizeof(ModelJointTranslation);
+		}
+	}
+	int64 bvhBytes = (int64)modelDef->mBVNodes.mSize * sizeof(ModelBVNode) + (int64)modelDef->mBVIndices.mSize * sizeof(uint16) +
+		(int64)modelDef->mBVVertices.mSize * sizeof(Vector3) + (int64)modelDef->mBVTris.mSize * sizeof(int32);
+	for (auto& image : modelDef->mEmbeddedImages)
+		embeddedBytes += image.mSize;
+
+	String& outString = *gModelDef_TLStrReturn.Get();
+	outString = StrFormat("%lld\t%lld\t%lld\t%lld\t%lld\t%lld\t%lld\t%lld", vertexBytes, indexBytes, animBytes, bvhBytes,
+		embeddedBytes, verts, indices, frames);
+	return outString.c_str();
+}
+
 BF_EXPORT float BF_CALLTYPE ModelDef_GetFrameRate(ModelDef* modelDef)
 {
 	return modelDef->mFrameRate;

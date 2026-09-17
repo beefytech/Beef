@@ -30,6 +30,16 @@ BF_EXPORT void BF_CALLTYPE ModelInstance_QueuePrimitive(ModelInstance* model, in
 	layer->QueueRenderCmd(cmd);
 }
 
+// Through the device so the free can wait for the frame's flush; with no device left nothing
+// can still be drawing it.
+BF_EXPORT void BF_CALLTYPE ModelInstance_Delete(ModelInstance* modelInstance)
+{
+	if ((gBFApp != NULL) && (gBFApp->mRenderDevice != NULL))
+		gBFApp->mRenderDevice->DeleteModelInstance(modelInstance);
+	else
+		delete modelInstance;
+}
+
 ModelInstance::ModelInstance(ModelDef* modelDef)
 {
 	mModelDef = modelDef;

@@ -922,7 +922,7 @@ namespace Beefy.mcp
 				call.mIsError = true;
 			}
 
-			var result = scope String(call.mText.Length + 256);
+			var result = new:ScopedAlloc! String(call.mText.Length + 256);
 			result.Append("{\"content\":[");
 
 			bool hasImages = (call.mImages != null) && (!call.mImages.IsEmpty);

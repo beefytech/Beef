@@ -54,6 +54,24 @@ class WinBFWindow;
 class BFApp;
 class DXRenderDevice;
 
+// What one texture holds, for Gfx_GetTextureStats. mKey is the underlying D3D resource, so views
+// over a shared one (CreateDepthRef, CreateRawRef) count once. A color target's own depth plane is
+// mDepthBytes; mCpuBytes is system-side copies (content bits, staging).
+struct TextureMemoryStats
+{
+	const char* mKind;
+	void* mKey;
+	int64 mGpuBytes;
+	int64 mDepthBytes;
+	int64 mCpuBytes;
+	int mWidth;
+	int mHeight;
+	int mDepth;
+	int mMips;
+	int mSamples;
+	int mFormat;
+};
+
 class DXTexture : public Texture
 {
 public:
@@ -67,12 +85,19 @@ public:
 	IDXGIKeyedMutex*		mD3DKeyedMutex;
 	// Mip-0 unordered access view when created GPU-writable (see GetUAV); NULL otherwise.
 	ID3D11UnorderedAccessView* mD3DUAV;
+	// The uploaded pixels, only for a TextureFlag_KeepPixels load; NULL otherwise.
 	uint32*					mContentBits;
-	uint32*					mGammaPremultBits;
+	// What LoadTexture was asked for, so a raw ref or a device re-create can load the file again.
+	int						mLoadFlags;
+	bool					mLoadedImage;
+	// An sRGB image with translucent texels stores linear-premultiplied color, which no raw view
+	// can undo.
+	bool					mTranslucentSrgb;
 	DXGI_FORMAT				mD3DFormat;
 	int						mSampleCount;
 	// Scene depth is reverse-Z (cleared to 0); shadow atlases stay standard-Z (cleared to 1).
 	bool					mStandardDepthClear;
+	bool					mHasStencil;
 
 public:
 	DXTexture();
@@ -97,6 +122,8 @@ public:
 	virtual void			ResolveTo(Texture* dest) override;
 	virtual void			GenerateMips() override;
 	virtual void			CopyToMip(int mipLevel, Texture* src, int width, int height) override;
+	virtual void			GetMemoryStats(TextureMemoryStats& stats);
+	void					EnsureDepthPlane();
 };
 
 // Structured buffer posing as a texture: mD3DResourceView is the buffer SRV, so DXSetTextureCmd
@@ -128,6 +155,7 @@ public:
 	virtual void			PhysSetAsTarget() override;
 	virtual bool			GetBufferData(void* outData, int size) override;
 	virtual void			UpdateBufferRange(int offset, void* data, int size) override;
+	virtual void			GetMemoryStats(TextureMemoryStats& stats) override;
 };
 
 // Volume texture: SRV over the whole mip chain, one UAV per mip for compute writes. Not a render
@@ -152,6 +180,7 @@ public:
 	virtual void			PhysSetAsTarget() override;
 	virtual void			SetData3D(int mipLevel, void* data, int rowPitch, int slicePitch) override;
 	virtual bool			GetData3D(int mipLevel, void* outData, int outSize) override;
+	virtual void			GetMemoryStats(TextureMemoryStats& stats) override;
 	virtual void			GenerateMips() override;
 };
 
@@ -359,6 +388,7 @@ public:
 	virtual void SetClipRect(const RectF& rect);
 	virtual void SetWriteDepthBuffer(bool writeDepthBuffer);
 	virtual void SetDepthFunc(DepthFunc depthFunc);
+	virtual void SetStencilMode(StencilMode mode);
 	virtual void SetCullMode(CullMode cullMode);
 	virtual void SetFrontFace(FrontFace frontFace);
 };
@@ -565,6 +595,8 @@ public:
 	
 	ID3D11RenderTargetView*	mCurD3DRTV;
 	ID3D11DepthStencilView*	mCurD3DDSV;
+	// The texture bound as the target, NULL while a window is (see EnsureTargetDepthFor).
+	DXTexture*				mCurTargetTexture;
 
 	DXGpuTimerFrame			mGpuTimerFrames[DX_GPUTIMER_FRAMES];
 	int						mGpuTimerWriteIdx;
@@ -573,6 +605,10 @@ public:
 
 	HashSet<DXRenderState*>	mRenderStates;
 	HashSet<DXTexture*>		mTextures;
+	// Everything alive, targets and buffers included, for Gfx_GetTextureStats; mTextures is only what
+	// ReinitNative can rebuild.
+	HashSet<DXTexture*>		mAllTextures;
+	HashSet<DXModelInstance*> mModelInstances;
 	HashSet<DXShader*>		mShaders;
 	HashSet<DXComputeShader*> mComputeShaders;
 	Dictionary<String, DXTexture*> mTextureMap;
@@ -580,6 +616,7 @@ public:
 	// Refcount-zero textures wait here until FrameEnd has flushed every layer: queued draw
 	// commands may still reference them (the texture analog of Scene's retired GpuBuffers).
 	Array<DXTexture*>		mRetiredTextures;
+	Array<ModelInstance*>	mRetiredModelInstances;
 	// Compute slots bound since the last dispatch (bit per slot); the dispatch unbinds them.
 	uint32					mCSBoundSRVs;
 	uint32					mCSBoundUAVs;
@@ -599,6 +636,9 @@ public:
 	virtual ModelInstance*	CreateModelInstance(ModelDef* modelDef, ModelCreateFlags flags) override;
 	virtual StaticMesh*		CreateStaticMesh(int vertexSize, void* vtxData, int vtxCount, void* idxData, int idxCount, bool idx32) override;
 	virtual void			SetStaticMeshDepthStream(StaticMesh* mesh, void* data, int vtxCount) override;
+	virtual int64			GetStaticMeshBytes(StaticMesh* mesh) override;
+	virtual void			GetTextureStats(String& outStats) override;
+	virtual void			ProcessRetired() override;
 	virtual void			GpuTimerSetEnabled(bool enabled) override;
 	virtual bool			GpuTimerBeginFrame(int64 frameId) override;
 	virtual void			GpuTimerSetTag(int tag) override;
@@ -624,6 +664,9 @@ public:
 	void					ReleaseOffscreenPresentation();
 	void					RetireTexture(DXTexture* texture);
 	void					ProcessRetiredTextures();
+	void					ProcessRetiredModelInstances();
+	void					EnsureTargetDepthFor(RenderState* renderState);
+	virtual void			DeleteModelInstance(ModelInstance* modelInstance) override;
 
 	Texture*				LoadTexture(const StringImpl& fileName, int flags) override;
 	Texture*				LoadTexture(ImageData* imageData, int flags) override;

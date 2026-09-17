@@ -1,4 +1,5 @@
 #include "RenderDevice.h"
+#include "ModelInstance.h"
 #include "BFApp.h"
 #include "Shader.h"
 #include "Texture.h"
@@ -39,6 +40,7 @@ RenderState::RenderState()
 	mCullMode = CullMode_None;
 	mFrontFace = FrontFace_Clockwise;
 	mDepthFunc = DepthFunc_Always;
+	mStencilMode = StencilMode_Disabled;
 	mTopology = Topology3D_TriangleList;
 	mShader = NULL;
 	mClipped = false;
@@ -90,6 +92,11 @@ RenderDevice::RenderDevice() :
 	mCurDrawLayer = NULL;
 	mPhysRenderWindow = NULL;
 	mApp = NULL;
+}
+
+void RenderDevice::DeleteModelInstance(ModelInstance* modelInstance)
+{
+	delete modelInstance;
 }
 
 RenderDevice::~RenderDevice()

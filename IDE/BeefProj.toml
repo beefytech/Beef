@@ -28,7 +28,16 @@ OtherLinkFlags = ""
 TargetDirectory = "$(ProjectDir)/dist"
 TargetName = "BeefIDE_d"
 OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64_d.lib"
-DebugCommandArguments = "-proddir=\"$(ProjectDir)\\..\\BeefBuild\""
+DebugCommandArguments = "-proddir=\"c:\\proj\\BeefTest\""
+DebugWorkingDirectory = "$(ProjectDir)\\.."
+EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
+PreprocessorMacros = ["DEBUG,HASGIT"]
+
+[Configs.DebugOpt.Win64]
+TargetDirectory = "$(ProjectDir)/dist"
+TargetName = "BeefIDE_do"
+OtherLinkFlags = "$(LinkFlags) Comdlg32.lib kernel32.lib user32.lib advapi32.lib shell32.lib IDEHelper64.lib"
+DebugCommandArguments = "-proddir=\"c:\\proj\\BeefTest\""
 DebugWorkingDirectory = "$(ProjectDir)\\.."
 EnvironmentVars = ["_NO_DEBUG_HEAP=1"]
 PreprocessorMacros = ["DEBUG,HASGIT"]

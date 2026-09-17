@@ -15,6 +15,13 @@ ConfigSelections = {IDEHelper = {Enabled = false}}
 [Configs.Debug.Win64]
 EnableSideStack = true
 
+[Configs.DebugOpt.Win64]
+BfOptimizationLevel = "OgPlus"
+EnableRealtimeLeakCheck = true
+AllowHotSwapping = true
+EnableSideStack = true
+ConfigSelections = {IDE = {Config = "DebugOpt"}, Beefy2D = {Config = "DebugOpt"}, corlib = {Config = "Debug"}, curl = {Config = "Debug"}, IDEHelper = {Config = "Release"}, Debugger64 = {Config = "Release"}, BeefySysLib = {Config = "Release"}}
+
 [Configs.Debug.Linux64]
 EnableSideStack = true
 

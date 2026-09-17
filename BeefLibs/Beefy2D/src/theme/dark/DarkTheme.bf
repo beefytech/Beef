@@ -18,6 +18,9 @@ namespace Beefy.theme.dark
             Beefy.gfx.Image mImage ~ delete _;
             int mLoadedScale;
             float mDrawScale = -1;
+            Beefy.gfx.Image mImage2X ~ delete _;
+            int mLoadedScale2X;
+            float mDrawScale2X = -1;
 
             [CallingConvention(.Stdcall), CLink]
             static extern uint32* Res_LoadImage(char8* path, out int32 width, out int32 height);
@@ -54,6 +57,28 @@ namespace Beefy.theme.dark
                         mDrawScale = sScale;
                     }
                     return mImage;
+                }
+            }
+
+            public Beefy.gfx.Image Image2X
+            {
+                get
+                {
+                    let sourceScale = Math.Min(4, sSrcImgScale * 2);
+                    if (mLoadedScale2X != sourceScale)
+                    {
+                        delete mImage2X;
+                        mImage2X = Load(sourceScale);
+                        mLoadedScale2X = sourceScale;
+                        mDrawScale2X = -1;
+                    }
+                    if ((mImage2X != null) && (mDrawScale2X != sScale))
+                    {
+                        mImage2X.SetDrawSize((int)(mImage2X.mSrcWidth * sScale * 2 / sourceScale),
+                            (int)(mImage2X.mSrcHeight * sScale * 2 / sourceScale));
+                        mDrawScale2X = sScale;
+                    }
+                    return mImage2X;
                 }
             }
 
@@ -366,6 +391,8 @@ namespace Beefy.theme.dark
 
         public static DarkTheme sDarkTheme ~ delete _;
         Image mThemeImage;
+        Image mThemeImage2X;
+        Image[] mImages2X = new Image[(int32)Enum.GetCount<ImageIdx>()] ~ delete _;
         public Image[] mImages = new Image[(int32)Enum.GetCount<ImageIdx>()] ~ delete _;
 		
         public Font mHeaderFont;
@@ -399,6 +426,7 @@ namespace Beefy.theme.dark
 			for (var image in mImages)
 				delete image;
 			delete mThemeImage;
+			ClearImages2X();
 		}
 
         public static DesignToolboxEntry[] GetDesignToolboxEntries()
@@ -491,6 +519,7 @@ namespace Beefy.theme.dark
 
 		public void Rehup()
 		{
+			ClearImages2X();
 			String tempStr = scope String();
 
 			if (mThemeImage != null)
@@ -588,6 +617,44 @@ namespace Beefy.theme.dark
         {
             return mImages[(int32)idx];
         }
+
+        void ClearImages2X()
+        {
+            for (var image in ref mImages2X)
+            {
+                delete image;
+                image = null;
+            }
+            delete mThemeImage2X;
+            mThemeImage2X = null;
+        }
+
+        // Reacquire after theme changes; these images have independent draw sizes.
+        public Image GetImage2X(ImageIdx idx)
+        {
+            let sourceScale = Math.Min(4, sSrcImgScale * 2);
+            if (mThemeImage2X == null)
+            {
+                let scaleIdx = sourceScale == 2 ? 1 : 2;
+                let path = scope String();
+                if (!mUIFileNames[scaleIdx].IsEmpty)
+                    path.Set(mUIFileNames[scaleIdx]);
+                else
+                    path.AppendF("{0}images/DarkUI_{1}.png", BFApp.sApp.mInstallDir, sourceScale);
+                mThemeImage2X = Image.LoadFromFile(path, .FatalError);
+            }
+            var image = ref mImages2X[(int)idx];
+            if (image == null)
+            {
+                let unit = 20 * sourceScale;
+                image = mThemeImage2X.CreateImageSegment(((int)idx % 20) * unit,
+                    ((int)idx / 20) * unit, unit, unit);
+                image.SetDrawSize((int)(40 * sScale), (int)(40 * sScale));
+            }
+            return image;
+        }
+
+        public Image GetImage2X(SizedImage image) => image.Image2X;
 
         public override ButtonWidget CreateButton(Widget parent, String label, float x, float y, float width, float height)
         {

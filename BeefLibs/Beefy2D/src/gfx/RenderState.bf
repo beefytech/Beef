@@ -7,6 +7,8 @@ using Beefy.geom;
 
 namespace Beefy.gfx
 {
+	public enum StencilMode { Disabled, ShadowVolume, NotEqualZero }
+
     public enum DepthFunc
     {
         Never,
@@ -80,6 +82,9 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         static extern void RenderState_SetDepthFunc(void* nativeRenderState, int32 depthFunc);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void RenderState_SetStencilMode(void* nativeRenderState, int32 mode);
+
         [CallingConvention(.Stdcall), CLink]
         static extern void RenderState_SetDepthWrite(void* nativeRenderState, int32 depthWrite);
 
@@ -143,6 +148,11 @@ namespace Beefy.gfx
                 RenderState_SetDepthFunc(mNativeRenderState, (int32)value);
             }
         }
+
+		public StencilMode StencilMode
+		{
+			set { RenderState_SetStencilMode(mNativeRenderState, (int32)value); }
+		}
 
         public bool DepthWrite
         {

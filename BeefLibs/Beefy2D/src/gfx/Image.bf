@@ -23,7 +23,10 @@ namespace Beefy.gfx
 			FatalError = 8,
 			Mipmaps = 0x10,
 			// Color data: stored sRGB-encoded, hardware-decoded to linear on sample.
-			Srgb = 0x20
+			Srgb = 0x20,
+			// Keep the uploaded pixels in system memory. GetBits needs no copy (it reads back from the
+			// GPU); this is for a caller that wants them resident.
+			KeepPixels = 0x80
 		}
 
 		public enum RenderTargetFlags
@@ -49,7 +52,13 @@ namespace Beefy.gfx
 			// Also bindable as a compute UAV (RWTexture2D, mip 0); 1-sample, unshared only.
 			UnorderedAccess = 0x200,
 			// Two-channel R16G16_FLOAT -- paired half data (eg a ping-pong sim's h(t) + h(t-1)).
-			RG16F = 0x400
+			RG16F = 0x400,
+			// A depth plane, for a target drawn depth-tested (the scene target, pick buffers, a prepass
+			// whose depth is sampled). A target without one that a depth-testing state draws into gets
+			// one on first use, at a frame's cost.
+			Depth = 0x800,
+			// Includes a depth plane.
+			Stencil = 0x1000
 		}
 
         public Image mSrcTexture;

@@ -41,8 +41,10 @@ CLibType = "Static"
 BeefLibType = "Static"
 
 [Configs.Paranoid.Win64]
+OtherLinkFlags = "$(LinkFlags) \"$(ProjectDir)/dist/BeefySysLib64_d.lib\""
 CLibType = "Static"
 BeefLibType = "Static"
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64_d.dll\")", "CopyToDependents(\"$(ProjectDir)/dist/BeefySysLib64_d.pdb\")"]
 
 [Configs.Test.Win32]
 CLibType = "Static"

@@ -13,6 +13,9 @@ curl = "*"
 [Configs.Debug.Win64]
 PreprocessorMacros = ["DEBUG", "CLI"]
 
+[Configs.DebugOpt.Win64]
+PreprocessorMacros = ["DEBUG", "CLI"]
+
 [Configs.Release.Win64]
 PreprocessorMacros = ["RELEASE", "CLI"]
 

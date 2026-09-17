@@ -166,7 +166,7 @@ static int GetBytesPerPixel(DXGI_FORMAT fmt, int& blockSize)
 	case DXGI_FORMAT_R32G32_FLOAT: return 4 + 4;
 	case DXGI_FORMAT_R32G32_UINT: return 4 + 4;
 	case DXGI_FORMAT_R32G32_SINT: return 4 + 4;
-	case DXGI_FORMAT_R32G8X24_TYPELESS: return 4 + 3;
+	case DXGI_FORMAT_R32G8X24_TYPELESS: return 4 + 1 + 3;
 	case DXGI_FORMAT_D32_FLOAT_S8X24_UINT: return 4 + 1 + 3;
 	case DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS: return 4 + 1 + 3;
 	case DXGI_FORMAT_X32_TYPELESS_G8X24_UINT: return 4 + 1 + 1 + 3;
@@ -265,6 +265,48 @@ static int GetBytesPerPixel(DXGI_FORMAT fmt, int& blockSize)
 // 	case DXGI_FORMAT_B4G4R4A4_UNORM: return 1;
 	default: return 1;
 	}
+}
+
+// Whole-chain footprint of a 2D resource: every mip, block-compressed where the format is, times
+// array slices and samples.
+static int64 Texture2DBytes(ID3D11Texture2D* tex, D3D11_TEXTURE2D_DESC* outDesc)
+{
+	D3D11_TEXTURE2D_DESC desc;
+	tex->GetDesc(&desc);
+	if (outDesc != NULL)
+		*outDesc = desc;
+	int blockSize = 1;
+	int64 bytes = GetBytesPerPixel(desc.Format, blockSize);
+	int64 total = 0;
+	for (UINT mip = 0; mip < desc.MipLevels; mip++)
+	{
+		int64 w = BF_MAX(1, (int)(desc.Width >> mip));
+		int64 h = BF_MAX(1, (int)(desc.Height >> mip));
+		if (blockSize > 1)
+			total += ((w + blockSize - 1) / blockSize) * ((h + blockSize - 1) / blockSize) * bytes;
+		else
+			total += w * h * bytes;
+	}
+	return total * desc.ArraySize * desc.SampleDesc.Count;
+}
+
+// Vertex and index buffers of the per-instance model path, which no texture owns.
+static int64 gGfxModelPrimBytes = 0;
+// Color targets that took a depth plane on first use rather than at creation.
+static int64 gGfxLazyDepthPlanes = 0;
+
+// The file behind a cached texture's key (LoadTexture appends the flag tags that split the cache).
+static String LoadPathOf(const StringImpl& pathEx)
+{
+	String path = pathEx;
+	const char* tags[] = { ":keep", ":srgb", ":mip", ":add" };
+	for (auto tag : tags)
+	{
+		String tagStr = tag;
+		if (path.EndsWith(tagStr))
+			path.RemoveFromEnd(tagStr.mLength);
+	}
+	return path;
 }
 
 DXShaderParam::DXShaderParam()
@@ -900,10 +942,13 @@ DXTexture::DXTexture()
 	mD3DDepthStencilView = NULL;
 	mD3DKeyedMutex = NULL;
 	mContentBits = NULL;
-	mGammaPremultBits = NULL;
+	mLoadFlags = 0;
+	mLoadedImage = false;
+	mTranslucentSrgb = false;
 	mD3DFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	mSampleCount = 1;
 	mStandardDepthClear = false;
+	mHasStencil = false;
 	mD3DUAV = NULL;
 }
 
@@ -937,6 +982,8 @@ DXTexture::~DXTexture()
 		}
 		if (mRenderDevice->mCurRenderTarget == this)
 			mRenderDevice->mCurRenderTarget = NULL;
+		if (mRenderDevice->mCurTargetTexture == this)
+			mRenderDevice->mCurTargetTexture = NULL;
 		if ((mD3DRenderTargetView != NULL) && (mRenderDevice->mCurD3DRTV == mD3DRenderTargetView))
 			mRenderDevice->mCurD3DRTV = NULL;
 		if ((mD3DDepthStencilView != NULL) && (mRenderDevice->mCurD3DDSV == mD3DDepthStencilView))
@@ -944,8 +991,7 @@ DXTexture::~DXTexture()
 	}
 
 	//OutputDebugStrF("DXTexture::~DXTexture %@\n", this);
-	delete mContentBits;
-	delete [] mGammaPremultBits;
+	delete [] mContentBits;
 	if (mD3DResourceView != NULL)
 		mD3DResourceView->Release();
 	if (mD3DRenderTargetView != NULL)
@@ -961,7 +1007,10 @@ DXTexture::~DXTexture()
 	if (mD3DTexture != NULL)
 		mD3DTexture->Release();
 	if (mRenderDevice != NULL)
+	{
 		mRenderDevice->mTextures.Remove(this);
+		mRenderDevice->mAllTextures.Remove(this);
+	}
 }
 
 void DXTexture::Release()
@@ -1029,9 +1078,25 @@ void DXTexture::ReleaseNative()
 	}
 }
 
+// Device re-creation. Kept pixels rebuild the texture in place; otherwise the file is loaded
+// again, and a texture built from memory comes back empty.
 void DXTexture::ReinitNative()
 {
 	ReleaseNative();
+	if ((mContentBits == NULL) && (!mPath.IsEmpty()))
+	{
+		DXTexture* fresh = (DXTexture*)mRenderDevice->LoadTexture(LoadPathOf(mPath), mLoadFlags & ~TextureFlag_UseLoadCache);
+		if (fresh != NULL)
+		{
+			mD3DTexture = fresh->mD3DTexture;
+			mD3DResourceView = fresh->mD3DResourceView;
+			mD3DFormat = fresh->mD3DFormat;
+			fresh->mD3DTexture = NULL;
+			fresh->mD3DResourceView = NULL;
+			fresh->Release();
+			return;
+		}
+	}
 
 	int aWidth = 0;
 	int aHeight = 0;
@@ -1106,6 +1171,7 @@ void DXTexture::PhysSetAsTarget()
 
 		mRenderDevice->mCurD3DRTV = mD3DRenderTargetView;
 		mRenderDevice->mCurD3DDSV = mD3DDepthStencilView;
+		mRenderDevice->mCurTargetTexture = this;
 		ID3D11RenderTargetView* rtvs[2] = { mD3DRenderTargetView, NULL };
 		int rtvCount = 1;
 		if (mSecondaryTarget != NULL)
@@ -1123,7 +1189,7 @@ void DXTexture::PhysSetAsTarget()
 		if (mD3DRenderTargetView != NULL)
 			mRenderDevice->mD3DDeviceContext->ClearRenderTargetView(mD3DRenderTargetView, bgColor);
 		if (mD3DDepthStencilView != NULL)
-			mRenderDevice->mD3DDeviceContext->ClearDepthStencilView(mD3DDepthStencilView, D3D11_CLEAR_DEPTH/*|D3D11_CLEAR_STENCIL*/, mStandardDepthClear ? 1.0f : 0.0f, 0);
+			mRenderDevice->mD3DDeviceContext->ClearDepthStencilView(mD3DDepthStencilView, D3D11_CLEAR_DEPTH | (mHasStencil ? D3D11_CLEAR_STENCIL : 0), mStandardDepthClear ? 1.0f : 0.0f, 0);
 
 		//mRenderDevice->mD3DDevice->ClearRenderTargetView(mD3DRenderTargetView, D3DXVECTOR4(1, 0.5, 0.5, 1));
 		mHasBeenDrawnTo = true;
@@ -1493,11 +1559,18 @@ void DXTexture::GetDepthBits(int srcX, int srcY, int srcWidth, int srcHeight, in
 	D3D11_MAPPED_SUBRESOURCE mapTex;
 	DXCHECK(mRenderDevice->mD3DDeviceContext->Map(texture, 0, D3D11_MAP_READ, NULL, &mapTex));
 
-	uint8* srcPtr = (uint8*) mapTex.pData + srcY * mapTex.RowPitch + srcX * sizeof(uint32);
+	int pixelStride = mHasStencil ? 8 : 4;
+	uint8* srcPtr = (uint8*) mapTex.pData + srcY * mapTex.RowPitch + srcX * pixelStride;
 	uint8* destPtr = (uint8*) bits;
 	for (int y = 0; y < srcHeight; y++)
 	{
-		memcpy(destPtr, srcPtr, srcWidth*sizeof(uint32));
+		if (mHasStencil)
+		{
+			for (int x = 0; x < srcWidth; x++)
+				memcpy(destPtr + x * 4, srcPtr + x * pixelStride, 4);
+		}
+		else
+			memcpy(destPtr, srcPtr, srcWidth*sizeof(uint32));
 		srcPtr += mapTex.RowPitch;
 		destPtr += destPitch * 4;
 	}
@@ -1528,12 +1601,13 @@ Texture* DXTexture::CreateDepthRef()
 
 	D3D11_SHADER_RESOURCE_VIEW_DESC srDesc;
 	ZeroMemory(&srDesc, sizeof(srDesc));
-	srDesc.Format = DXGI_FORMAT_R32_FLOAT;
+	srDesc.Format = mHasStencil ? DXGI_FORMAT_R32_FLOAT_X8X24_TYPELESS : DXGI_FORMAT_R32_FLOAT;
 	srDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE2D;
 	srDesc.Texture2D.MostDetailedMip = 0;
 	srDesc.Texture2D.MipLevels = 1;
 	DXCHECK(((DXRenderDevice*)mRenderDevice)->mD3DDevice->CreateShaderResourceView(mD3DDepthBuffer, &srDesc, &ref->mD3DResourceView));
 
+	((DXRenderDevice*)mRenderDevice)->mAllTextures.Add(ref);
 	ref->AddRef();
 	return ref;
 }
@@ -1546,14 +1620,11 @@ Texture* DXTexture::CreateRawRef()
 
 	D3D11_TEXTURE2D_DESC desc;
 	mD3DTexture->GetDesc(&desc);
-	if (mGammaPremultBits != NULL)
-	{
-		ImageData data;
-		data.CreateNew(mWidth, mHeight, false);
-		memcpy(data.mBits, mGammaPremultBits, mWidth * mHeight * 4);
-		return mRenderDevice->LoadTexture(&data, TextureFlag_NoPremult |
-			((desc.MipLevels > 1) ? TextureFlag_Mipmaps : 0));
-	}
+	// Linear-premultiplied texels can't be viewed raw: the file loaded again without the sRGB step
+	// premultiplies in gamma space, which is what 2D blending wants. Built from memory, the raw
+	// view below is the best on offer.
+	if ((mTranslucentSrgb) && (!mPath.IsEmpty()))
+		return mRenderDevice->LoadTexture(LoadPathOf(mPath), mLoadFlags & ~(TextureFlag_Srgb | TextureFlag_UseLoadCache));
 
 	DXTexture* ref = new DXTexture();
 	ref->mWidth = mWidth;
@@ -1571,6 +1642,7 @@ Texture* DXTexture::CreateRawRef()
 	srDesc.Texture2D.MipLevels = desc.MipLevels;
 	DXCHECK(((DXRenderDevice*)mRenderDevice)->mD3DDevice->CreateShaderResourceView(mD3DTexture, &srDesc, &ref->mD3DResourceView));
 
+	((DXRenderDevice*)mRenderDevice)->mAllTextures.Add(ref);
 	ref->AddRef();
 	return ref;
 }
@@ -1720,6 +1792,7 @@ void DXDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 	UINT offset = vtxOffset;
 	aRenderDevice->mD3DDeviceContext->IASetVertexBuffers(0, 1, &aRenderDevice->mD3DVertexBuffer, &stride, &offset);
 	aRenderDevice->mD3DDeviceContext->IASetIndexBuffer(aRenderDevice->mD3DIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+	aRenderDevice->EnsureTargetDepthFor(mRenderState);
 	// Points go non-indexed: through the index buffer a shared vertex would rasterize once per
 	// triangle that uses it, which is not a vertex count.
 	if (mRenderState->mTopology == Topology3D_PointList)
@@ -1878,20 +1951,22 @@ void DXStaticMeshDrawCmd::Render(RenderDevice* renderDevice, RenderWindow* rende
 	if (mRenderState != dev->mPhysRenderState)
 		dev->PhysSetRenderState(mRenderState);
 	DXShader* shader = (DXShader*)mRenderState->mShader;
-	if ((shader == NULL) || (shader->mD3DInstLayout == NULL))
-		return; // the shader's vertex definition has no instance element
+	if (shader == NULL)
+		return;
 	dev->EnsureInstIota(mInstBase + mInstCount);
 
 	ID3D11DeviceContext* ctx = dev->mD3DDeviceContext;
 	// The compact stream only when both sides have one: the mesh was given it, and this shader's
 	// vertex stage reads nothing beyond position and the bone slots (see DXShader::Load).
 	bool useDepth = (mMesh->mD3DDepthVertexBuffer != NULL) && (shader->mD3DDepthLayout != NULL);
-	ctx->IASetInputLayout(useDepth ? shader->mD3DDepthLayout : shader->mD3DInstLayout);
+	ctx->IASetInputLayout(useDepth ? shader->mD3DDepthLayout :
+		(shader->mD3DInstLayout != NULL ? shader->mD3DInstLayout : shader->mD3DLayout));
 	ID3D11Buffer* bufs[2] = { useDepth ? mMesh->mD3DDepthVertexBuffer : mMesh->mD3DVertexBuffer, dev->mInstIotaBuffer };
 	UINT strides[2] = { useDepth ? (UINT)DX_DEPTH_VERTEX_SIZE : (UINT)mMesh->mVtxSize, sizeof(float) };
 	UINT offsets[2] = { 0, (UINT)(mInstBase * sizeof(float)) };
 	ctx->IASetVertexBuffers(0, 2, bufs, strides, offsets);
 	ctx->IASetIndexBuffer(mMesh->mD3DIndexBuffer, mMesh->mIdx32 ? DXGI_FORMAT_R32_UINT : DXGI_FORMAT_R16_UINT, 0);
+	dev->EnsureTargetDepthFor(mRenderState);
 	// See DXDrawBatch::Render: points are drawn straight over the vertex range, not through indices.
 	if (mRenderState->mTopology == Topology3D_PointList)
 		ctx->DrawInstanced(mMesh->mVtxCount, mInstCount, 0, 0);
@@ -2059,7 +2134,8 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 		setRasterizerState = true;
 	}
 
-	if (renderState->mWriteDepthBuffer != mPhysRenderState->mWriteDepthBuffer)
+	if ((renderState->mWriteDepthBuffer != mPhysRenderState->mWriteDepthBuffer) ||
+		(renderState->mStencilMode != mPhysRenderState->mStencilMode))
 		setDepthFuncState = true;
 
 	if (renderState->mDepthFunc != mPhysRenderState->mDepthFunc)
@@ -2129,22 +2205,22 @@ void DXRenderDevice::PhysSetRenderState(RenderState* renderState)
 			depthStencilDesc.DepthEnable = (dxRenderState->mDepthFunc != DepthFunc_Always) || (dxRenderState->mWriteDepthBuffer);
 			depthStencilDesc.DepthWriteMask = dxRenderState->mWriteDepthBuffer ? D3D11_DEPTH_WRITE_MASK_ALL : D3D11_DEPTH_WRITE_MASK_ZERO;
 			depthStencilDesc.DepthFunc = comparisonArray[dxRenderState->mDepthFunc];
-			depthStencilDesc.StencilEnable = FALSE;
+			depthStencilDesc.StencilEnable = dxRenderState->mStencilMode != StencilMode_Disabled;
 			depthStencilDesc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;
 			depthStencilDesc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;
 			depthStencilDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-			depthStencilDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_INCR;
+			depthStencilDesc.FrontFace.StencilDepthFailOp = dxRenderState->mStencilMode == StencilMode_ShadowVolume ? D3D11_STENCIL_OP_INCR : D3D11_STENCIL_OP_KEEP;
 			depthStencilDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-			depthStencilDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+			depthStencilDesc.FrontFace.StencilFunc = dxRenderState->mStencilMode == StencilMode_NotEqualZero ? D3D11_COMPARISON_NOT_EQUAL : D3D11_COMPARISON_ALWAYS;
 			depthStencilDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
-			depthStencilDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_DECR;
+			depthStencilDesc.BackFace.StencilDepthFailOp = dxRenderState->mStencilMode == StencilMode_ShadowVolume ? D3D11_STENCIL_OP_DECR : D3D11_STENCIL_OP_KEEP;
 			depthStencilDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
-			depthStencilDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+			depthStencilDesc.BackFace.StencilFunc = depthStencilDesc.FrontFace.StencilFunc;
 
 			mD3DDevice->CreateDepthStencilState(&depthStencilDesc, &dxRenderState->mD3DDepthStencilState);
 		}
 
-		mD3DDeviceContext->OMSetDepthStencilState(dxRenderState->mD3DDepthStencilState, 1);
+		mD3DDeviceContext->OMSetDepthStencilState(dxRenderState->mD3DDepthStencilState, 0);
 	}
 	
 	if (renderState->mDisableRenderTarget != mPhysRenderState->mDisableRenderTarget)
@@ -2260,6 +2336,7 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 	DXModelInstance* dxModelInstance = new DXModelInstance(modelDef);
 
 	dxModelInstance->mD3DRenderDevice = this;
+	mModelInstances.Add(dxModelInstance);
 	dxModelInstance->mDXModelMeshs.Resize(modelDef->mMeshes.size());
 	int dxMeshIdx = 0;
 
@@ -2505,6 +2582,8 @@ DXModelPrimitives::DXModelPrimitives()
 
 DXModelPrimitives::~DXModelPrimitives()
 {
+	if (mD3DVertexBuffer != NULL)
+		gGfxModelPrimBytes -= (int64)mNumIndices * sizeof(uint16) + (int64)mNumVertices * sizeof(DXModelVertex);
 	if (mD3DIndexBuffer != NULL)
 		mD3DIndexBuffer->Release();
 	if (mD3DVertexBuffer != NULL)
@@ -2597,6 +2676,12 @@ void DXRenderState::SetDepthFunc(DepthFunc depthFunc)
 	IndalidateDepthStencilState();
 }
 
+void DXRenderState::SetStencilMode(StencilMode mode)
+{
+	mStencilMode = mode;
+	IndalidateDepthStencilState();
+}
+
 void DXRenderState::SetCullMode(CullMode cullMode)
 {
 	mCullMode = cullMode;
@@ -2617,6 +2702,8 @@ DXModelInstance::DXModelInstance(ModelDef* modelDef) : ModelInstance(modelDef)
 
 DXModelInstance::~DXModelInstance()
 {
+	if (mD3DRenderDevice != NULL)
+		mD3DRenderDevice->mModelInstances.Remove(this);
 }
 
 void DXModelInstance::SetTexture(int meshIdx, int primIdx, int texIdx, Texture* texture)
@@ -2674,6 +2761,7 @@ void DXModelInstance::Render(RenderCmd* renderCmd, RenderDevice* renderDevice, R
 			UINT offset = 0;
 			mD3DRenderDevice->mD3DDeviceContext->IASetVertexBuffers(0, 1, &dxPrimitives->mD3DVertexBuffer, &stride, &offset);
 			mD3DRenderDevice->mD3DDeviceContext->IASetIndexBuffer(dxPrimitives->mD3DIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
+			mD3DRenderDevice->EnsureTargetDepthFor(renderCmd->mRenderState);
 			mD3DRenderDevice->mD3DDeviceContext->DrawIndexed(dxPrimitives->mNumIndices, 0, 0);
 			renderDevice->RecordSubmission(renderCmd->mStatsCategory, Topology3D_TriangleList, dxPrimitives->mNumIndices, 1);
 		}
@@ -2706,6 +2794,7 @@ void Beefy::DXModelInstance::EnsureBuffers()
 			bd.MiscFlags = 0;
 			bd.StructureByteStride = 0;
 			d3dDevice->CreateBuffer(&bd, NULL, &dxPrimitives->mD3DIndexBuffer);
+			gGfxModelPrimBytes += bd.ByteWidth;
 
 			D3D11_MAPPED_SUBRESOURCE mappedSubResource;
 			DXCHECK(d3dContext->Map(dxPrimitives->mD3DIndexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubResource));
@@ -2717,6 +2806,7 @@ void Beefy::DXModelInstance::EnsureBuffers()
 			bd.ByteWidth = (int)primitives->mVertices.size() * sizeof(DXModelVertex);
 			bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 			d3dDevice->CreateBuffer(&bd, NULL, &dxPrimitives->mD3DVertexBuffer);
+			gGfxModelPrimBytes += bd.ByteWidth;
 			// Left uninitialized: mDirty is set at construction, so the queue that got us here
 			// fills it before anything draws.
 			mDirty = true;
@@ -3115,6 +3205,7 @@ void DXRenderWindow::PhysSetAsTarget()
 
 		mDXRenderDevice->mCurD3DRTV = mD3DRenderTargetView;
 		mDXRenderDevice->mCurD3DDSV = mD3DDepthStencilView;
+		mDXRenderDevice->mCurTargetTexture = NULL;
 		mDXRenderDevice->BindRenderTargets(1, &mD3DRenderTargetView, mD3DDepthStencilView);
 		mDXRenderDevice->mD3DDeviceContext->RSSetViewports(1, &viewPort);
 	}
@@ -3351,6 +3442,7 @@ DXRenderDevice::DXRenderDevice()
 	mMatrix2DBuffer = NULL;
 	mCurD3DRTV = NULL;
 	mCurD3DDSV = NULL;
+	mCurTargetTexture = NULL;
 	mCSBoundSRVs = 0;
 	mCSBoundUAVs = 0;
 	mCurPSUAV = NULL;
@@ -3364,6 +3456,7 @@ DXRenderDevice::DXRenderDevice()
 
 DXRenderDevice::~DXRenderDevice()
 {
+	ProcessRetiredModelInstances();
 	ProcessRetiredTextures();
 
 	for (auto window : mRenderWindowList)
@@ -3377,6 +3470,11 @@ DXRenderDevice::~DXRenderDevice()
 		texture->ReleaseNative();
 		texture->mRenderDevice = NULL;
 	}
+	// Targets, buffers and instances that outlive the device must not reach back into it.
+	for (auto texture : mAllTextures)
+		texture->mRenderDevice = NULL;
+	for (auto inst : mModelInstances)
+		inst->mD3DRenderDevice = NULL;
 
 	ReleaseNative();
 
@@ -4012,6 +4110,7 @@ void DXRenderDevice::FrameEnd()
 		}
 	}
 
+	ProcessRetiredModelInstances();
 	ProcessRetiredTextures();
 	PresentOffscreen();
 }
@@ -4019,6 +4118,21 @@ void DXRenderDevice::FrameEnd()
 void DXRenderDevice::RetireTexture(DXTexture* texture)
 {
 	mRetiredTextures.Add(texture);
+}
+
+// Deferred like a texture: a queued command may still reference the instance until the frame's
+// layers flush.
+void DXRenderDevice::DeleteModelInstance(ModelInstance* modelInstance)
+{
+	mRetiredModelInstances.Add(modelInstance);
+}
+
+// Before the textures: a dying instance releases its primitives' textures, which retire in turn.
+void DXRenderDevice::ProcessRetiredModelInstances()
+{
+	for (auto modelInstance : mRetiredModelInstances)
+		delete modelInstance;
+	mRetiredModelInstances.Clear();
 }
 
 void DXRenderDevice::ProcessRetiredTextures()
@@ -4060,6 +4174,8 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 			pathEx += ":mip";
 		if ((flags & TextureFlag_Srgb) != 0)
 			pathEx += ":srgb";
+		if ((flags & TextureFlag_KeepPixels) != 0)
+			pathEx += ":keep";
 	}
 
 	DXTexture* aTexture = NULL;
@@ -4192,6 +4308,8 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 
 		DXTexture* aTexture = new DXTexture();
 		aTexture->mPath = fileName;
+		aTexture->mLoadFlags = flags;
+		aTexture->mLoadedImage = true;
 		aTexture->mRenderDevice = this;
 		aTexture->mWidth = hdr.dwWidth;
 		aTexture->mHeight = hdr.dwHeight;
@@ -4201,14 +4319,17 @@ Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 
 		mTextureMap[aTexture->mPath] = aTexture;
 		mTextures.Add(aTexture);
+		mAllTextures.Add(aTexture);
 		return aTexture;
 	}
 
 	aTexture = (DXTexture*)RenderDevice::LoadTexture(fileName, flags);
-	if ((aTexture != NULL) && (useLoadCache))
+	if (aTexture != NULL)
 	{
-		aTexture->mPath = pathEx;
-		mTextureMap[aTexture->mPath] = aTexture;
+		// The file stays known either way: a raw ref or a device re-create loads it again.
+		aTexture->mPath = useLoadCache ? pathEx : fileName;
+		if (useLoadCache)
+			mTextureMap[aTexture->mPath] = aTexture;
 	}
 
 	return aTexture;
@@ -4332,13 +4453,14 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 
 	DXTexture* aTexture = new DXTexture();
 
-	aTexture->mContentBits = new uint32[aWidth * aHeight];
-	memcpy(aTexture->mContentBits, uploadBits, aWidth * aHeight * 4);
-	if (linearPremult.mBits != NULL)
+	if ((flags & TextureFlag_KeepPixels) != 0)
 	{
-		aTexture->mGammaPremultBits = new uint32[aWidth * aHeight];
-		memcpy(aTexture->mGammaPremultBits, imageData->mBits, aWidth * aHeight * 4);
+		aTexture->mContentBits = new uint32[aWidth * aHeight];
+		memcpy(aTexture->mContentBits, uploadBits, aWidth * aHeight * 4);
 	}
+	aTexture->mLoadFlags = flags;
+	aTexture->mLoadedImage = true;
+	aTexture->mTranslucentSrgb = linearPremult.mBits != NULL;
 
 	aTexture->mRenderDevice = this;
 	aTexture->mWidth = aWidth;
@@ -4349,6 +4471,7 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	aTexture->AddRef();
 
 	mTextures.Add(aTexture);
+	mAllTextures.Add(aTexture);
 
 	//OutputDebugStrF("gTextureIdx=%d %@\n", gTextureIdx, aTexture);
 
@@ -4393,6 +4516,7 @@ Texture* DXRenderDevice::CreateDynTexture(int width, int height)
 	aTexture->AddRef();
 
 	mTextures.Add(aTexture);
+	mAllTextures.Add(aTexture);
 
 	//OutputDebugStrF("gTextureIdx=%d %@\n", gTextureIdx, aTexture);
 
@@ -4461,6 +4585,8 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	bool r32u = (flags & 0x100) != 0;
 	bool unorderedAccess = (flags & 0x200) != 0;
 	bool rg16f = (flags & 0x400) != 0;
+	bool depth = (flags & 0x800) != 0;
+	bool stencil = (flags & 0x1000) != 0;
 
 	// D3D11 shared resources can't be multisampled -- render into a private MSAA target and
 	// ResolveTo a shared one instead.
@@ -4528,37 +4654,79 @@ Texture* DXRenderDevice::CreateRenderTarget(int width, int height, int flags, in
 	aRenderTarget->mD3DRenderTargetView = d3DRenderTargetView;
 	aRenderTarget->mD3DFormat = format;
 	aRenderTarget->mSampleCount = samples;
+	aRenderTarget->mHasStencil = stencil;
+	mAllTextures.Add(aRenderTarget);
 	if (makeShared)
 		d3DTexture->QueryInterface(__uuidof(IDXGIKeyedMutex), (void**)&aRenderTarget->mD3DKeyedMutex);
 	if (unorderedAccess)
 		DXCHECK(mD3DDevice->CreateUnorderedAccessView(d3DTexture, NULL, &aRenderTarget->mD3DUAV));
 	aRenderTarget->AddRef();
+	if ((depth) || (stencil))
+		aRenderTarget->EnsureDepthPlane();
 
-	// Typeless so GetDepthBits can staging-copy it and CreateDepthRef can view it; stencil is
-	// unused engine-wide.
+	return aRenderTarget;
+}
+
+// The depth plane a color target draws depth-tested into: asked for at creation
+// (RenderTargetFlags Depth) or taken on the first depth-tested draw (EnsureTargetDepthFor).
+// Typeless so readback and sampled depth views share the same resource.
+void DXTexture::EnsureDepthPlane()
+{
+	if ((mD3DDepthBuffer != NULL) || (mD3DTexture == NULL))
+		return;
+	int samples = BF_MAX(1, mSampleCount);
 	D3D11_TEXTURE2D_DESC descDepth;
 	ZeroMemory(&descDepth, sizeof(descDepth));
-	descDepth.Width = width;
-	descDepth.Height = height;
+	descDepth.Width = mWidth;
+	descDepth.Height = mHeight;
 	descDepth.MipLevels = 1;
 	descDepth.ArraySize = 1;
-	descDepth.Format = DXGI_FORMAT_R32_TYPELESS;
+	descDepth.Format = mHasStencil ? DXGI_FORMAT_R32G8X24_TYPELESS : DXGI_FORMAT_R32_TYPELESS;
 	descDepth.SampleDesc.Count = samples;
 	descDepth.SampleDesc.Quality = 0;
 	descDepth.Usage = D3D11_USAGE_DEFAULT;
 	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL | ((samples == 1) ? D3D11_BIND_SHADER_RESOURCE : 0);
 	descDepth.CPUAccessFlags = 0;
 	descDepth.MiscFlags = 0;
-	mD3DDevice->CreateTexture2D(&descDepth, NULL, &aRenderTarget->mD3DDepthBuffer);
+	DXCHECK(mRenderDevice->mD3DDevice->CreateTexture2D(&descDepth, NULL, &mD3DDepthBuffer));
 
 	// A typeless resource can't take a NULL-desc view.
 	D3D11_DEPTH_STENCIL_VIEW_DESC dsvDesc;
 	ZeroMemory(&dsvDesc, sizeof(dsvDesc));
-	dsvDesc.Format = DXGI_FORMAT_D32_FLOAT;
+	dsvDesc.Format = mHasStencil ? DXGI_FORMAT_D32_FLOAT_S8X24_UINT : DXGI_FORMAT_D32_FLOAT;
 	dsvDesc.ViewDimension = (samples > 1) ? D3D11_DSV_DIMENSION_TEXTURE2DMS : D3D11_DSV_DIMENSION_TEXTURE2D;
-	DXCHECK(mD3DDevice->CreateDepthStencilView(aRenderTarget->mD3DDepthBuffer, &dsvDesc, &aRenderTarget->mD3DDepthStencilView));
+	DXCHECK(mRenderDevice->mD3DDevice->CreateDepthStencilView(mD3DDepthBuffer, &dsvDesc, &mD3DDepthStencilView));
+	mRenderDevice->mD3DDeviceContext->ClearDepthStencilView(mD3DDepthStencilView, D3D11_CLEAR_DEPTH | (mHasStencil ? D3D11_CLEAR_STENCIL : 0), mStandardDepthClear ? 1.0f : 0.0f, 0);
 
-	return aRenderTarget;
+	// Already bound: the draw that asked for it comes next.
+	if (mRenderDevice->mCurTargetTexture == this)
+	{
+		mRenderDevice->mCurD3DDSV = mD3DDepthStencilView;
+		ID3D11RenderTargetView* rtvs[2] = { mD3DRenderTargetView, NULL };
+		int rtvCount = 1;
+		if (mSecondaryTarget != NULL)
+		{
+			rtvs[1] = ((DXTexture*)mSecondaryTarget)->mD3DRenderTargetView;
+			rtvCount = 2;
+		}
+		mRenderDevice->BindRenderTargets(rtvCount, rtvs, mD3DDepthStencilView);
+	}
+}
+
+// Before a draw: a depth-testing state on a color target created without a depth plane gives it
+// one now, at a frame's cost, rather than draw with depth silently off. Counted so mem_report
+// shows which targets still lack their Depth flag.
+void DXRenderDevice::EnsureTargetDepthFor(RenderState* renderState)
+{
+	if ((mCurTargetTexture == NULL) || (renderState == NULL))
+		return;
+	if ((mCurTargetTexture->mD3DDepthStencilView != NULL) || (mCurTargetTexture->mD3DRenderTargetView == NULL))
+		return;
+	if ((renderState->mDepthFunc == DepthFunc_Always) && (!renderState->mWriteDepthBuffer))
+		return;
+	OutputDebugStrF("Render target %dx%d took a depth plane on its first depth-tested draw\n", mCurTargetTexture->mWidth, mCurTargetTexture->mHeight);
+	gGfxLazyDepthPlanes++;
+	mCurTargetTexture->EnsureDepthPlane();
 }
 
 // Depth-only target (shadow maps): the depth buffer is the only plane -- mD3DTexture and
@@ -4573,6 +4741,7 @@ Texture* DXRenderDevice::CreateDepthTarget(int width, int height, bool is16Bit)
 	aRenderTarget->mRenderDevice = this;
 	aRenderTarget->mD3DFormat = is16Bit ? DXGI_FORMAT_R16_UNORM : DXGI_FORMAT_R32_FLOAT;
 	aRenderTarget->mStandardDepthClear = true;
+	mAllTextures.Add(aRenderTarget);
 	aRenderTarget->AddRef();
 
 	D3D11_TEXTURE2D_DESC descDepth;
@@ -4622,6 +4791,7 @@ Texture* DXRenderDevice::CreateStructuredBuffer(int stride, int count, int flags
 	buffer->mGpuWritable = gpuWritable;
 	buffer->mDefaultUsage = defaultUsage;
 	buffer->mStreaming = streaming;
+	mAllTextures.Add(buffer);
 	buffer->mRenderDevice = this;
 	buffer->AddRef();
 
@@ -4705,6 +4875,7 @@ Texture* DXRenderDevice::CreateTexture3D(int width, int height, int depth, int f
 	tex->mDepth = depth;
 	tex->mMipLevels = mipLevels;
 	tex->mBytesPerTexel = bytesPerTexel;
+	mAllTextures.Add(tex);
 	tex->mD3DFormat = format;
 	tex->mRenderDevice = this;
 	tex->AddRef();
@@ -4760,6 +4931,7 @@ Texture* DXRenderDevice::OpenSharedRenderTarget(void* handle, int width, int hei
 	texture->mHeight = height;
 	texture->mRenderDevice = this;
 	texture->mD3DTexture = sharedTex;
+	mAllTextures.Add(texture);
 	texture->mD3DResourceView = resourceView;
 	texture->mD3DRenderTargetView = rtView;
 	texture->mD3DKeyedMutex = keyedMutex;
@@ -4794,3 +4966,173 @@ Texture* DXRenderDevice::OpenSharedRenderTarget(void* handle, int width, int hei
 //#include "BFApp.h"
 
 #endif
+
+void DXTexture::GetMemoryStats(TextureMemoryStats& stats)
+{
+	stats = TextureMemoryStats();
+	stats.mWidth = mWidth;
+	stats.mHeight = mHeight;
+	stats.mDepth = 1;
+	stats.mMips = 1;
+	stats.mSamples = 1;
+	stats.mFormat = mD3DFormat;
+	stats.mKey = (mD3DTexture != NULL) ? (void*)mD3DTexture : (void*)mD3DDepthBuffer;
+	if (mD3DTexture != NULL)
+	{
+		D3D11_TEXTURE2D_DESC desc;
+		stats.mGpuBytes = Texture2DBytes(mD3DTexture, &desc);
+		stats.mWidth = desc.Width;
+		stats.mHeight = desc.Height;
+		stats.mMips = desc.MipLevels;
+		stats.mSamples = desc.SampleDesc.Count;
+		stats.mFormat = desc.Format;
+	}
+	if ((mD3DDepthBuffer != NULL) && (mD3DDepthBuffer != mD3DTexture))
+	{
+		D3D11_TEXTURE2D_DESC desc;
+		int64 depthBytes = Texture2DBytes(mD3DDepthBuffer, &desc);
+		if (mD3DTexture != NULL)
+			stats.mDepthBytes = depthBytes;
+		else
+		{
+			stats.mGpuBytes = depthBytes;
+			stats.mMips = desc.MipLevels;
+			stats.mSamples = desc.SampleDesc.Count;
+			stats.mFormat = desc.Format;
+		}
+	}
+	if (mContentBits != NULL)
+		stats.mCpuBytes += (int64)mWidth * mHeight * 4;
+	stats.mKind = (mD3DRenderTargetView != NULL) ? "rt" : (mD3DDepthStencilView != NULL) ? "depth" :
+		mLoadedImage ? "image" : "other";
+}
+
+void DXStructuredBuffer::GetMemoryStats(TextureMemoryStats& stats)
+{
+	stats = TextureMemoryStats();
+	stats.mKind = "buffer";
+	stats.mKey = mD3DBuffer;
+	stats.mWidth = mWidth;
+	stats.mHeight = mStride;
+	stats.mDepth = 1;
+	stats.mMips = 1;
+	stats.mSamples = 1;
+	D3D11_BUFFER_DESC desc;
+	if (mD3DBuffer != NULL)
+	{
+		mD3DBuffer->GetDesc(&desc);
+		stats.mGpuBytes = desc.ByteWidth;
+	}
+	ID3D11Buffer* side[] = { mD3DStaging, mD3DUpdateStaging[0], mD3DUpdateStaging[1], mD3DUpdateStaging[2], mD3DUploadBuffer };
+	for (auto buffer : side)
+	{
+		if (buffer == NULL)
+			continue;
+		buffer->GetDesc(&desc);
+		stats.mCpuBytes += desc.ByteWidth;
+	}
+}
+
+void DXTexture3D::GetMemoryStats(TextureMemoryStats& stats)
+{
+	stats = TextureMemoryStats();
+	stats.mKind = "tex3d";
+	stats.mKey = mD3DTexture3D;
+	stats.mWidth = mWidth;
+	stats.mHeight = mHeight;
+	stats.mDepth = mDepth;
+	stats.mMips = mMipLevels;
+	stats.mSamples = 1;
+	stats.mFormat = mD3DFormat;
+	int64 bytes = 0;
+	for (int mip = 0; mip < mMipLevels; mip++)
+		bytes += (int64)BF_MAX(1, mWidth >> mip) * BF_MAX(1, mHeight >> mip) * BF_MAX(1, mDepth >> mip) * mBytesPerTexel;
+	stats.mGpuBytes = bytes;
+	if (mD3DStaging != NULL)
+		stats.mCpuBytes = bytes;
+}
+
+// One line per live texture: kind, width, height, depth, mips, samples, format, gpuBytes,
+// depthBytes, cpuBytes, path. Lines starting with '#' come first: the process's video memory as
+// DXGI accounts it (local usage, local budget, non-local usage, non-local budget), the
+// per-instance model buffers, the depth planes taken on first use, and the live model instances.
+// Views over a resource already listed are skipped, so owners go first.
+void DXRenderDevice::GetTextureStats(String& out)
+{
+	IDXGIDevice* dxgiDevice = NULL;
+	if (SUCCEEDED(mD3DDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgiDevice)))
+	{
+		IDXGIAdapter* adapter = NULL;
+		if (SUCCEEDED(dxgiDevice->GetAdapter(&adapter)))
+		{
+			IDXGIAdapter3* adapter3 = NULL;
+			if (SUCCEEDED(adapter->QueryInterface(__uuidof(IDXGIAdapter3), (void**)&adapter3)))
+			{
+				DXGI_QUERY_VIDEO_MEMORY_INFO local = {};
+				DXGI_QUERY_VIDEO_MEMORY_INFO nonLocal = {};
+				adapter3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_LOCAL, &local);
+				adapter3->QueryVideoMemoryInfo(0, DXGI_MEMORY_SEGMENT_GROUP_NON_LOCAL, &nonLocal);
+				out += StrFormat("#video\t%lld\t%lld\t%lld\t%lld\n", (int64)local.CurrentUsage, (int64)local.Budget,
+					(int64)nonLocal.CurrentUsage, (int64)nonLocal.Budget);
+				adapter3->Release();
+			}
+			adapter->Release();
+		}
+		dxgiDevice->Release();
+	}
+	out += StrFormat("#modelPrims\t%lld\n", gGfxModelPrimBytes);
+	out += StrFormat("#lazyDepth\t%lld\n", gGfxLazyDepthPlanes);
+	for (auto inst : mModelInstances)
+	{
+		int64 bytes = 0;
+		for (auto& mesh : inst->mDXModelMeshs)
+			for (auto& prims : mesh.mPrimitives)
+				if (prims.mD3DVertexBuffer != NULL)
+					bytes += (int64)prims.mNumIndices * sizeof(uint16) + (int64)prims.mNumVertices * sizeof(DXModelVertex);
+		const char* name = (inst->mModelDef->mMeshes.mSize > 0) ? inst->mModelDef->mMeshes[0].mName.c_str() : "";
+		out += StrFormat("#modelInstance\t%s\t%s\t%lld\n", inst->mModelDef->mLoadDir.c_str(), name, bytes);
+	}
+
+	std::vector<DXTexture*> ordered;
+	for (auto tex : mAllTextures)
+		if ((tex->mD3DRenderTargetView != NULL) || (tex->mD3DDepthStencilView != NULL) || (tex->mLoadedImage))
+			ordered.push_back(tex);
+	for (auto tex : mAllTextures)
+		if ((tex->mD3DRenderTargetView == NULL) && (tex->mD3DDepthStencilView == NULL) && (!tex->mLoadedImage))
+			ordered.push_back(tex);
+	std::set<void*> seen;
+	for (auto tex : ordered)
+	{
+		TextureMemoryStats stats;
+		tex->GetMemoryStats(stats);
+		if ((stats.mKey != NULL) && (!seen.insert(stats.mKey).second))
+			continue;
+		if (tex->mD3DDepthBuffer != NULL)
+			seen.insert(tex->mD3DDepthBuffer);
+		out += StrFormat("%s\t%d\t%d\t%d\t%d\t%d\t%d\t%lld\t%lld\t%lld\t%s\n", stats.mKind, stats.mWidth, stats.mHeight,
+			stats.mDepth, stats.mMips, stats.mSamples, stats.mFormat, stats.mGpuBytes, stats.mDepthBytes, stats.mCpuBytes,
+			tex->mPath.c_str());
+	}
+}
+
+int64 DXRenderDevice::GetStaticMeshBytes(StaticMesh* mesh)
+{
+	auto dxMesh = (DXStaticMesh*)mesh;
+	int64 total = 0;
+	ID3D11Buffer* buffers[] = { dxMesh->mD3DVertexBuffer, dxMesh->mD3DIndexBuffer, dxMesh->mD3DDepthVertexBuffer };
+	for (auto buffer : buffers)
+	{
+		if (buffer == NULL)
+			continue;
+		D3D11_BUFFER_DESC desc;
+		buffer->GetDesc(&desc);
+		total += desc.ByteWidth;
+	}
+	return total;
+}
+
+void DXRenderDevice::ProcessRetired()
+{
+	ProcessRetiredModelInstances();
+	ProcessRetiredTextures();
+}

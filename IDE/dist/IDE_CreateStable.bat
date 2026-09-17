@@ -51,6 +51,9 @@ IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 @ECHO ---- Building IDE (Debug) ----
 BeefBuild_boot.exe -proddir=..\ -config=Debug -platform=Win64
 IF %ERRORLEVEL% NEQ 0 GOTO FAILED
+@ECHO ---- Building IDE (DebugOpt) ----
+BeefBuild_boot.exe -proddir=..\ -config=DebugOpt -platform=Win64
+IF %ERRORLEVEL% NEQ 0 GOTO FAILED
 @ECHO ---- Building IDE (Release) ----
 BeefBuild_boot.exe -proddir=..\ -config=Release -platform=Win64
 IF %ERRORLEVEL% NEQ 0 GOTO FAILED

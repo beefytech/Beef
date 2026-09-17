@@ -168,7 +168,7 @@ enum SamplerKind : int8
 	SamplerKind_Nearest
 };
 
-enum TextureFlag : int8
+enum TextureFlag : int32
 {
 	TextureFlag_Additive = 1,
 	TextureFlag_NoPremult = 2,
@@ -177,7 +177,9 @@ enum TextureFlag : int8
 	TextureFlag_Mipmaps = 0x10,
 	// Color data: store sRGB-encoded, sample hardware-decoded to linear.
 	TextureFlag_Srgb = 0x20,
-	TextureFlag_UseLoadCache = 0x40
+	TextureFlag_UseLoadCache = 0x40,
+	// Keep the uploaded pixels in system memory. Readback needs no copy (it stages from the GPU).
+	TextureFlag_KeepPixels = 0x80
 };
 
 struct VertexDefData
@@ -247,12 +249,20 @@ struct GpuTimerSpan
 	int64 mNanos;
 };
 
+enum StencilMode
+{
+	StencilMode_Disabled,
+	StencilMode_ShadowVolume,
+	StencilMode_NotEqualZero
+};
+
 class RenderState
 {
 public:
 	Shader*					mShader;
 	bool					mWriteDepthBuffer;
 	DepthFunc				mDepthFunc;
+	StencilMode				mStencilMode;
 	bool					mClipped;
 	SamplerKind				mSamplerKind;
 	bool					mWireframe;
@@ -276,6 +286,7 @@ public:
 	virtual void SetClipRect(const RectF& rect) { mClipRect = rect; }
 	virtual void SetWriteDepthBuffer(bool writeDepthBuffer) { mWriteDepthBuffer = writeDepthBuffer; }
 	virtual void SetDepthFunc(DepthFunc depthFunc) { mDepthFunc = depthFunc; }
+	virtual void SetStencilMode(StencilMode mode) { mStencilMode = mode; }
 	virtual void SetTopology(Topology3D topology) { mTopology = topology; }
 	virtual void SetCullMode(CullMode cullMode) { mCullMode = cullMode; }
 	virtual void SetFrontFace(FrontFace frontFace) { mFrontFace = frontFace; }
@@ -387,6 +398,7 @@ public:
 	virtual void			ReleaseRenderState(RenderState* renderState);
 
 	virtual ModelInstance*	CreateModelInstance(ModelDef* modelDef, ModelCreateFlags flags) { return NULL; }
+	virtual void			DeleteModelInstance(ModelInstance* modelInstance);
 	virtual VertexDefinition* CreateVertexDefinition(VertexDefData* elementData, int numElements);	
 
 	// GPU timing. Spans are bracketed around actual submissions (layer flushes, resolves) rather than
@@ -404,6 +416,12 @@ public:
 	virtual StaticMesh*		CreateStaticMesh(int vertexSize, void* vtxData, int vtxCount, void* idxData, int idxCount, bool idx32) { return NULL; }
 	// The compact position+bones stream for a mesh already created (see DX_DEPTH_VERTEX_SIZE).
 	virtual void			SetStaticMeshDepthStream(StaticMesh* mesh, void* data, int vtxCount) {}
+	virtual int64			GetStaticMeshBytes(StaticMesh* mesh) { return 0; }
+	// Diagnostics: one line per live texture and buffer (columns in the DX implementation), and the
+	// free of everything retired since the last frame end, what FrameEnd does, for a caller that
+	// ends its own frames.
+	virtual void			GetTextureStats(String& outStats) {}
+	virtual void			ProcessRetired() {}
 
 	virtual void			FrameStart() = 0;
 	virtual void			FrameEnd();

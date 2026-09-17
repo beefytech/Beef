@@ -493,6 +493,9 @@ namespace Beefy.gfx
         extern static void ModelInstance_SetTexture(void* nativeModelInstance, int32 meshIdx, int32 primIdx, int32 texIdx, void* nativeTextureSegment);
 
 		[CallingConvention(.Stdcall), CLink]
+		extern static void ModelInstance_Delete(void* nativeModelInstance);
+
+		[CallingConvention(.Stdcall), CLink]
 		extern static int32 ModelDef_GetCollisionTriangles(void* nativeModel, void* nativeModelInstance, Vector3** outPositions);
 
         public ModelDef mModelDef;
@@ -502,6 +505,13 @@ namespace Beefy.gfx
         {
             mNativeRenderable = nativeModelInstance;
             mModelDef = modelDef;
+        }
+
+        // The native side is freed at the frame's end, once no queued command can still reference it.
+        public ~this()
+        {
+            if (mNativeRenderable != null)
+                ModelInstance_Delete(mNativeRenderable);
         }
 
         // Combines this instance's scale with its ModelDef's scale into worldMatrix, since neither

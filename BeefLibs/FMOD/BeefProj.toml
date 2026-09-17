@@ -8,5 +8,11 @@ StartupObject = "Program"
 [Configs.Debug.Win64]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/*.dll\")"]
 
+[Configs.DebugOpt.Win64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/*.dll\")"]
+
+[Configs.Paranoid.Win64]
+PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/*.dll\")"]
+
 [Configs.Release.Win64]
 PostBuildCmds = ["CopyToDependents(\"$(ProjectDir)/dist/*.dll\")"]
