@@ -813,6 +813,19 @@ namespace IDE
 				// BeefRT uses C++ runtime support even though the inputs are object files.
 				linkLine.Append("-s DEFAULT_TO_CXX=1 -s DISABLE_EXCEPTION_CATCHING=0");
 
+				// emcc defaults to -O0, and nothing here ever said otherwise, so a Release
+				//  wasm build linked unoptimized: binaryen left the module alone and the JS
+				//  glue went out unminified. The objects being linked are the Beef backend's,
+				//  so its optimization level is the one that applies.
+				switch (workspaceOptions.mBfOptimizationLevel)
+				{
+				case .O0: linkLine.Append(" -O0");
+				case .O1: linkLine.Append(" -O1");
+				case .O2: linkLine.Append(" -O2");
+				case .O3: linkLine.Append(" -O3");
+				case .Og, .OgPlus: linkLine.Append(" -Og");
+				}
+
 				if (project.mWasmOptions.mEnableThreads)
 					linkLine.Append(" -pthread");
 
