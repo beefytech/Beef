@@ -804,12 +804,38 @@ namespace IDE
 					linkLine.Append(" ");
 				}
 				
+				// These used to be appended down in the rebuild branch, which put them after the
+				//  project's own flags and, worse, after UpdateCacheStr: the link line is the
+				//  cache key, so anything added past that point was invisible to the rebuild
+				//  decision and toggling EmitDebugInfo relinked nothing. Emitted here they are
+				//  hashed, and the project's flags land last, where a later -O or -g wins.
+				//linkLine.Append(" c:\\Beef\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ALIASING_FUNCTION_POINTERS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1 -s \"EXPORTED_FUNCTIONS=['_BeefMain','_BeefDone','_pthread_mutexattr_init','_pthread_mutex_init','_emscripten_futex_wake','_calloc','_sbrk']\"");
+				// BeefRT uses C++ runtime support even though the inputs are object files.
+				linkLine.Append("-s DEFAULT_TO_CXX=1 -s DISABLE_EXCEPTION_CATCHING=0");
+
+				if (project.mWasmOptions.mEnableThreads)
+					linkLine.Append(" -pthread");
+
+				if (workspaceOptions.mEmitDebugInfo != .No)
+					linkLine.Append(" -gseparate-dwarf -gsource-map");
+
+				if (!workspaceOptions.mRuntimeChecks)
+					linkLine.Append(" -s ASSERTIONS=0");
+
 				if (options.mBuildOptions.mOtherLinkFlags.Length != 0)
 				{
 					var linkFlags = scope String();
 					gApp.ResolveConfigString(gApp.mPlatformName, workspaceOptions, project, options, options.mBuildOptions.mOtherLinkFlags, "link flags", linkFlags);
+					// Separate explicitly. What used to precede this was the library loop, which
+					//  leaves a trailing space; the flags above do not, so without this the first
+					//  project flag fuses onto the last one. $(LinkFlags) starts with the Beef
+					//  runtime archive, so the fused result silently dropped it from the link and
+					//  the module came out short every symbol in BeefRT.
+					linkLine.Append(" ");
 					linkLine.Append(linkFlags, " ");
 				}
+
+				linkLine.Replace('\\', '/');
 
 				UpdateCacheStr(project, linkLine, workspaceOptions, options, depPaths, libPaths);
 
@@ -903,21 +929,6 @@ namespace IDE
 #else
 					compilerExePath.Append(@"upstream/emscripten/emcc");
 #endif
-					//linkLine.Append(" c:\\Beef\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ALIASING_FUNCTION_POINTERS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1 -s \"EXPORTED_FUNCTIONS=['_BeefMain','_BeefDone','_pthread_mutexattr_init','_pthread_mutex_init','_emscripten_futex_wake','_calloc','_sbrk']\"");
-					// BeefRT uses C++ runtime support even though the inputs are object files.
-					linkLine.Append("-s DEFAULT_TO_CXX=1 -s DISABLE_EXCEPTION_CATCHING=0");
-
-					if (project.mWasmOptions.mEnableThreads)
-						linkLine.Append(" -pthread");
-
-					if (workspaceOptions.mEmitDebugInfo != .No)
-						linkLine.Append(" -gseparate-dwarf -gsource-map");
-
-					if (!workspaceOptions.mRuntimeChecks)
-						linkLine.Append(" -s ASSERTIONS=0");
-
-					linkLine.Replace('\\', '/');
-
 					var targetDir = Path.GetDirectoryPath(actualTargetPath, .. scope .());
 			        var runCmd = gApp.QueueRun(compilerExePath, linkLine, targetDir, .UTF8);
 					runCmd.mReference = new .(project.mProjectName);
