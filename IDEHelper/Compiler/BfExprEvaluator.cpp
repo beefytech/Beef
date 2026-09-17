@@ -21444,6 +21444,22 @@ BfTypedValue BfExprEvaluator::PerformAssignment_CheckOp(BfAssignmentExpression* 
 			if (!moduleMethodInstance)
 				moduleMethodInstance = mModule->GetMethodInstance(checkTypeInst, operatorDef, BfTypeVector());
 
+			// An 'in' parameter takes its argument BY REFERENCE. Without this the value is
+			//  pushed as a splatted composite while the method expects a pointer, so the call
+			//  passes more arguments than the callee declares and the module fails
+			//  verification. CreateCall does the same conversion for an ordinary call.
+			if ((paramType->IsRef()) && (paramType->IsIn()) && (rightValue) &&
+				(!rightValue.mType->IsRef()))
+			{
+				BfAstNode* refNode = (assignExpr->mRight != NULL) ? (BfAstNode*)assignExpr->mRight : (BfAstNode*)assignExpr->mOpToken;
+				rightValue = mModule->Cast(refNode, rightValue, paramType->GetUnderlyingType());
+				if (!rightValue)
+					continue;
+				rightValue = mModule->ToRef(rightValue, (BfRefType*)paramType);
+				if (!rightValue)
+					continue;
+			}
+
 			BfExprEvaluator exprEvaluator(mModule);
 			SizedArray<BfIRValue, 1> args;
 			exprEvaluator.PushThis(assignExpr->mLeft, leftValue, moduleMethodInstance.mMethodInstance, args);

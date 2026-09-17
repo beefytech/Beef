@@ -895,7 +895,14 @@ namespace IDE
 						}
 					}
 
+					// The emsdk ships emcc.exe on Windows and a plain emcc everywhere else, so the
+					//  suffix cannot be part of the literal: hardcoding it made every POSIX wasm
+					//  link fail with "Failed to execute ...emcc.exe" after a successful compile.
+#if BF_PLATFORM_WINDOWS
 					compilerExePath.Append(@"upstream/emscripten/emcc.exe");
+#else
+					compilerExePath.Append(@"upstream/emscripten/emcc");
+#endif
 					//linkLine.Append(" c:\\Beef\\wasm\\BeefRT.a -s STRICT=1 -s USE_PTHREADS=1 -s ALIASING_FUNCTION_POINTERS=1 -s ASSERTIONS=0 -s DISABLE_EXCEPTION_CATCHING=0 -s DEMANGLE_SUPPORT=0 -s EVAL_CTORS=1 -s WASM=1 -s \"EXPORTED_FUNCTIONS=['_BeefMain','_BeefDone','_pthread_mutexattr_init','_pthread_mutex_init','_emscripten_futex_wake','_calloc','_sbrk']\"");
 					// BeefRT uses C++ runtime support even though the inputs are object files.
 					linkLine.Append("-s DEFAULT_TO_CXX=1 -s DISABLE_EXCEPTION_CATCHING=0");
