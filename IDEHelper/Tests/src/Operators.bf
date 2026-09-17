@@ -842,6 +842,76 @@ namespace Tests
 			int a = 123;
 			float f = Convert<int, float>(a);
 		}
+
+		// A splattable struct whose operators take their argument by 'in'. Compound assignment
+		//  used to push the right-hand side as a splatted composite while the method expected
+		//  a pointer, so the call carried more arguments than the callee declared and the
+		//  module failed verification ("Incorrect number of arguments passed to called
+		//  function"). Three floats makes it splattable; [CRepr] forces the splat.
+		[CRepr]
+		struct InOpVec
+		{
+			public float mX;
+			public float mY;
+			public float mZ;
+
+			public this(float x, float y, float z)
+			{
+				mX = x;
+				mY = y;
+				mZ = z;
+			}
+
+			public void operator+=(in InOpVec r) mut
+			{
+				mX += r.mX;
+				mY += r.mY;
+				mZ += r.mZ;
+			}
+
+			public void operator-=(in InOpVec r) mut
+			{
+				mX -= r.mX;
+				mY -= r.mY;
+				mZ -= r.mZ;
+			}
+
+			public static InOpVec operator+(in InOpVec a, in InOpVec b)
+			{
+				return .(a.mX + b.mX, a.mY + b.mY, a.mZ + b.mZ);
+			}
+
+			// Needed as well as operator-=: a compound assignment resolves through the
+			//  binary operator before it looks for the assignment form.
+			public static InOpVec operator-(in InOpVec a, in InOpVec b)
+			{
+				return .(a.mX - b.mX, a.mY - b.mY, a.mZ - b.mZ);
+			}
+
+			public static InOpVec operator*(in InOpVec v, float s)
+			{
+				return .(v.mX * s, v.mY * s, v.mZ * s);
+			}
+		}
+
+		[Test]
+		public static void TestInParamOperators()
+		{
+			InOpVec a = .(1, 2, 3);
+			let b = InOpVec(10, 20, 30);
+
+			// Compound assignment with an lvalue on the right.
+			a += b;
+			Test.Assert((a.mX == 11) && (a.mY == 22) && (a.mZ == 33));
+
+			// And with an rvalue, which has to be materialised before it can be passed by ref.
+			a -= b * 0.5f;
+			Test.Assert((a.mX == 6) && (a.mY == 12) && (a.mZ == 18));
+
+			// Chained binary operators feeding each other's results into 'in' parameters.
+			let c = (a + b) + (b * 2.0f);
+			Test.Assert((c.mX == 36) && (c.mY == 72) && (c.mZ == 108));
+		}
 	}
 }
 
