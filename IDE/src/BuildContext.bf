@@ -74,7 +74,7 @@ namespace IDE
 		public this()
 		{
 			Workspace.Options workspaceOptions = gApp.GetCurWorkspaceOptions();
-			mToolset = workspaceOptions.mToolsetType;
+			mToolset = gApp.GetBuildToolset(workspaceOptions);
 			mPlatformType = Workspace.PlatformType.GetFromName(gApp.mPlatformName, workspaceOptions.mTargetTriple);
 			mPtrSize = Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName);
 		}
@@ -213,6 +213,63 @@ namespace IDE
 					}	
 				}
 			}
+			return .Err;
+		}
+
+		public static Result<void> FindLinuxLLVMTool(String name, String outPath, bool requireLLVM22)
+		{
+			for (let candidate in scope String[](scope String(name, "-22"), name))
+			{
+				outPath.Clear();
+				if (FindExecutableInPath(candidate, outPath) case .Err)
+					continue;
+
+				let startInfo = scope ProcessStartInfo();
+				startInfo.SetFileName(outPath);
+				startInfo.SetArguments("--version");
+				startInfo.UseShellExecute = false;
+				startInfo.CreateNoWindow = true;
+				startInfo.RedirectStandardOutput = true;
+				startInfo.RedirectStandardError = true;
+				let process = scope SpawnedProcess();
+				if (process.Start(startInfo) case .Err)
+					continue;
+				let outputStream = scope FileStream();
+				let errorStream = scope FileStream();
+				process.AttachStandardOutput(outputStream).IgnoreError();
+				process.AttachStandardError(errorStream).IgnoreError();
+				// Version output is small; bound the wait for broken tool installations.
+				if (!process.WaitFor(2000))
+				{
+					process.Kill();
+					process.WaitFor();
+					continue;
+				}
+				if (process.ExitCode != 0)
+					continue;
+				if (requireLLVM22)
+				{
+					let reader = scope StreamReader(outputStream);
+					String output = scope .();
+					if (reader.ReadToEnd(output) case .Err)
+						continue;
+					int versionStart = output.IndexOf("version ");
+					if (versionStart >= 0)
+						versionStart += 8;
+					else
+					{
+						versionStart = output.IndexOf("LLD ");
+						if (versionStart < 0)
+							continue;
+						versionStart += 4;
+					}
+					int versionEnd = output.IndexOf('.', versionStart);
+					if ((versionEnd < 0) || (int.Parse(output.Substring(versionStart, versionEnd - versionStart)).GetValueOrDefault() < 22))
+						continue;
+				}
+				return .Ok;
+			}
+			outPath.Clear();
 			return .Err;
 		}
 
@@ -359,7 +416,16 @@ namespace IDE
 #elif BF_PLATFORM_MACOS
 				arPath.Append("llvm/bin/llvm-ar");
 #else
-				if (FindExecutableInPath("llvm-ar", arPath) case .Err)
+				if ((mPlatformType == .Linux) && (gApp.GetBuildToolset(workspaceOptions) == .LLVM))
+				{
+					arPath.Set(gApp.mLinuxArPath);
+				}
+				else if ((mPlatformType == .Linux) && (gApp.mLinuxLLVMFallback))
+				{
+					if (FindExecutableInPath("ar", arPath) case .Err)
+						arPath.Append("/usr/bin/ar");
+				}
+				else if (FindExecutableInPath("llvm-ar", arPath) case .Err)
 					if (FindExecutableInPath("ar", arPath) case .Err)
 						arPath.Append("/usr/bin/ar");
 #endif
@@ -472,7 +538,7 @@ namespace IDE
 			        linkLine.Append("-mwindows ");
 			    }
 
-				if (mPlatformType == .Linux)
+				if ((mPlatformType == .Linux) && (!isDynLib))
 					linkLine.Append("-no-pie ");
 
 				if (mPlatformType == .macOS)
@@ -545,6 +611,37 @@ namespace IDE
 				    gccExePath.Set("c:/mingw/bin/g++.exe");
 				    clangExePath.Append(llvmDir, "bin/clang++.exe");
 				}
+				else if ((mPlatformType == .Linux) && (gApp.GetBuildToolset(workspaceOptions) == .LLVM))
+				{
+					clangExePath.Set(gApp.mLinuxClangPath);
+					let lldPath = gApp.mLinuxLLDPath;
+					IDEUtils.AppendWithOptionalQuotes(linkLine, scope String("-fuse-ld=", lldPath));
+					linkLine.Append(" ");
+
+					var ltoType = gApp.GetBuildLTOType(workspaceOptions, options);
+					if (ltoType == .Thin)
+					{
+						linkLine.Append("-flto=thin ");
+						String cachePath = scope .();
+						Path.GetDirectoryPath(targetPath, cachePath);
+						cachePath.Append("/ltocache");
+						IDEUtils.AppendWithOptionalQuotes(linkLine, scope String("-Wl,--thinlto-cache-dir=", cachePath));
+						linkLine.Append(" ");
+					}
+				}
+				else if ((mPlatformType == .Linux) && (gApp.mLinuxLLVMFallback))
+				{
+					// Do not select a broken Clang again after the preflight rejected it.
+					if ((FindExecutableInPath("c++", gccExePath) case .Err) &&
+						(FindExecutableInPath("g++", gccExePath) case .Err))
+					{
+						if (!gApp.mLinuxClangPath.IsEmpty)
+							gccExePath.Set(gApp.mLinuxClangPath);
+						else
+							gccExePath.Set("/usr/bin/c++");
+					}
+					clangExePath.Set(gccExePath);
+				}
 				else
 				{
 					String buffer = scope .(128);
@@ -575,7 +672,7 @@ namespace IDE
 					    return false;
 					}
 
-					if (workspaceOptions.mToolsetType == .GNU)
+					if (gApp.GetBuildToolset(workspaceOptions) == .GNU)
 					{
 			            if (mPtrSize == 4)
 			            {
@@ -588,7 +685,7 @@ namespace IDE
 							linkLine.Append(" ");*/
 			            }
 					}
-					else // Microsoft
+					else if (mPlatformType == .Windows)
 					{
 						if (mPtrSize == 4)
 						{
@@ -618,7 +715,7 @@ namespace IDE
 						linkLine.Append(linkFlags, " ");
 					}
 
-			        String compilerExePath = (workspaceOptions.mToolsetType == .GNU) ? gccExePath : clangExePath;
+			        String compilerExePath = (gApp.GetBuildToolset(workspaceOptions) == .GNU) ? gccExePath : clangExePath;
 					String workingDir = scope String();
 					if (!llvmDir.IsEmpty)
 					{
@@ -678,7 +775,7 @@ namespace IDE
 			bool isExe = ((project.mGeneralOptions.mTargetType != Project.TargetType.BeefLib) && (project.mGeneralOptions.mTargetType != Project.TargetType.BeefTest)) || (isTest);
 			bool isDynLib = (project.mGeneralOptions.mTargetType == Project.TargetType.BeefLib) && (options.mBuildOptions.mBuildKind == .DynamicLib);
 
-			if (workspaceOptions.mToolsetType != .GNU)
+			if (gApp.GetBuildToolset(workspaceOptions) != .GNU)
 			{
 				gApp.OutputErrorLine("Workspace Build Toolset options must be set to GNU for WASM builds");
 				return false;
@@ -848,7 +945,7 @@ namespace IDE
 			if (lastDotPos == -1)
 				return;
 			outPdbPath.Append(targetPath, 0, lastDotPos);
-			if (workspaceOptions.mToolsetType == .LLVM)
+			if (gApp.GetBuildToolset(workspaceOptions) == .LLVM)
 				outPdbPath.Append("_lld");
 			outPdbPath.Append(".pdb");
 		}
@@ -1076,7 +1173,7 @@ namespace IDE
 			}
 
 			cacheStr.AppendF("Args\t{}\n", linkLine);
-			cacheStr.AppendF("Toolset\t{}\n", workspaceOptions.mToolsetType);
+			cacheStr.AppendF("Toolset\t{}\n", gApp.GetBuildToolset(workspaceOptions));
 			AddBuildFileDependency(project.mWindowsOptions.mIconFile);
 			AddBuildFileDependency(project.mWindowsOptions.mManifestFile);
 
@@ -1370,7 +1467,7 @@ namespace IDE
 					}
 
 					String linkerPath = scope String();
-					if (workspaceOptions.mToolsetType == .LLVM)
+					if (gApp.GetBuildToolset(workspaceOptions) == .LLVM)
 					{
 						linkerPath.Clear();
 						linkerPath.Append(gApp.mInstallDir);
@@ -1732,7 +1829,8 @@ namespace IDE
 		    }
 
 		    String objectsArg = scope String();
-			var argBuilder = scope IDEApp.ArgBuilder(objectsArg, workspaceOptions.mToolsetType != .GNU);
+			bool useLinuxLLVM = (mPlatformType == .Linux) && (gApp.GetBuildToolset(workspaceOptions) == .LLVM);
+			var argBuilder = scope IDEApp.ArgBuilder(objectsArg, (gApp.GetBuildToolset(workspaceOptions) != .GNU) && (!useLinuxLLVM));
 		    for (var bfFileName in bfFileNames)
 		    {
 				argBuilder.AddFileName(bfFileName);
@@ -1750,9 +1848,10 @@ namespace IDE
 				if (!QueueProjectWasmLink(project, targetPath, workspaceOptions, options, objectsArg))
 					return false;
 			}
-			else if (workspaceOptions.mToolsetType == .GNU)
+			else if ((gApp.GetBuildToolset(workspaceOptions) == .GNU) || (useLinuxLLVM))
 			{
-				if ((options.mBuildOptions.mBuildKind == .StaticLib) || (options.mBuildOptions.mBuildKind == .DynamicLib))
+				if ((options.mBuildOptions.mBuildKind == .StaticLib) ||
+					((options.mBuildOptions.mBuildKind == .DynamicLib) && (!useLinuxLLVM)))
 				{
 					if (!QueueProjectGNUArchive(project, targetPath, workspaceOptions, options, objectsArg))
 						return false;

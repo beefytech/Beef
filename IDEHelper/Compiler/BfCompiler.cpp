@@ -5810,7 +5810,8 @@ bool BfCompiler::DoWorkLoop(bool onlyReifiedTypes, bool onlyReifiedMethods)
 
 BfMangler::MangleKind BfCompiler::GetMangleKind()
 {
-	if (mOptions.mToolsetType == BfToolsetType_GNU)
+	if ((mOptions.mToolsetType == BfToolsetType_GNU) ||
+		((mOptions.mPlatformType == BfPlatformType_Linux) && (mOptions.mToolsetType == BfToolsetType_LLVM)))
 		return BfMangler::MangleKind_GNU;
 	return (mSystem->mPtrSize == 8) ? BfMangler::MangleKind_Microsoft_64 : BfMangler::MangleKind_Microsoft_32;
 }

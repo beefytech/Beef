@@ -700,11 +700,12 @@ namespace IDE.Compiler
 			//Debug.WriteLine("HandleOptions");
 
 			var options = IDEApp.sApp.GetCurWorkspaceOptions();
+			let toolset = gApp.GetBuildToolset(options);
 			String targetTriple = scope .();
 			if (TargetTriple.IsTargetTriple(gApp.mPlatformName))
 				targetTriple.Set(gApp.mPlatformName);
 			else
-				Workspace.PlatformType.GetTargetTripleByName(gApp.mPlatformName, options.mToolsetType, targetTriple);
+				Workspace.PlatformType.GetTargetTripleByName(gApp.mPlatformName, toolset, targetTriple);
 
 			bool enableObjectDebugFlags = options.mEnableObjectDebugFlags;
 			bool emitObjectAccessCheck = options.mEmitObjectAccessCheck && enableObjectDebugFlags;
@@ -782,7 +783,7 @@ namespace IDE.Compiler
 				targetTriple.Set(options.mTargetTriple);
 
 			SetOptions(hotBfProject, hotIdx,
-			    targetTriple, options.mTargetCPU, (int32)options.mToolsetType, (int32)options.mBfSIMDSetting, (int32)options.mAllocStackTraceDepth,
+			    targetTriple, options.mTargetCPU, (int32)toolset, (int32)options.mBfSIMDSetting, (int32)options.mAllocStackTraceDepth,
 				(int32)gApp.mSettings.mCompilerSettings.mWorkerThreads, optionFlags, mallocLinkName, freeLinkName,
 				options.mBfFloatingPointMode, options.mBfFMASetting);
 

@@ -7240,7 +7240,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	auto methodInstOwner = methodInstance->GetOwner();
 	auto expectCallingConvention = mModule->GetIRCallingConvention(methodInstance);
-	if ((methodInstOwner->IsFunction()) && (methodInstance->GetParamCount() > 0) && (methodInstance->GetParamName(0) == "this"))
+	if ((mModule->mCompiler->mOptions.mMachineType == BfMachineType_x86) &&
+		(mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows) &&
+		(methodInstOwner->IsFunction()) && (methodInstance->GetParamCount() > 0) && (methodInstance->GetParamName(0) == "this"))
 	{
 		auto paramType = methodInstance->GetParamType(0);
 		if (!paramType->IsValueType())

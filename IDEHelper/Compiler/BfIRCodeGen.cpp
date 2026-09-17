@@ -117,6 +117,8 @@
 
 #include "llvm/LTO/LTOBackend.h"
 #include "llvm/Bitcode/BitcodeWriter.h"
+#include "llvm/Analysis/ModuleSummaryAnalysis.h"
+#include "llvm/Analysis/ProfileSummaryInfo.h"
 #include "llvm/Bitcode/BitcodeReader.h"
 #include "llvm/Bitcode/BitcodeWriterPass.h"
 #include "llvm/Transforms/IPO/ThinLTOBitcodeWriter.h"
@@ -6536,9 +6538,7 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName)
 			return false;
 		}
 
-// 		if (enableLTO)
-// 			PM.add(createWriteThinLTOBitcodePass(*outStream, NULL));
-		//else
+		if ((!enableLTO) || (mCodeGenOptions.mLTOType != BfLTOType_Thin))
 			PM.add(createBitcodeWriterPass(*outStream, false));
 	}
 
@@ -6576,6 +6576,14 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName)
  		}
 
 		bool success = PM.run(*mLLVMModule);
+
+		if ((enableLTO) && (mCodeGenOptions.mLTOType == BfLTOType_Thin))
+		{
+			// ThinLTO needs a summary for cross-module importing and a hash for caching.
+			llvm::ProfileSummaryInfo profileSummary(*mLLVMModule);
+			auto summary = llvm::buildModuleSummaryIndex(*mLLVMModule, {}, &profileSummary);
+			llvm::WriteBitcodeToFile(*mLLVMModule, *outStream, false, &summary, true);
+		}
 
 		if ((mCodeGenOptions.mOptLevel > BfOptLevel_O0) && (mCodeGenOptions.mWriteLLVMIR))
 		{

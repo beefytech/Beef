@@ -277,6 +277,10 @@ namespace IDE
 		public BfCompiler mBfBuildCompiler;
 		public int mCompileSinceCleanCount;
 		public BuildContext mBuildContext ~ delete _;
+		public bool mLinuxLLVMFallback;
+		public String mLinuxClangPath = new .() ~ delete _;
+		public String mLinuxLLDPath = new .() ~ delete _;
+		public String mLinuxArPath = new .() ~ delete _;
 #if IDE_C_SUPPORT
 		public ClangCompiler mDepClang ~ delete _;
 #endif
@@ -10560,6 +10564,69 @@ namespace IDE
 		}
 #endif
 
+		public Workspace.ToolsetType GetBuildToolset(Workspace.Options options)
+		{
+			if ((mLinuxLLVMFallback) && (options.mToolsetType == .LLVM) &&
+				(Workspace.PlatformType.GetFromName(mPlatformName, options.mTargetTriple) == .Linux))
+				return .GNU;
+			return options.mToolsetType;
+		}
+
+		public BuildOptions.LTOType GetBuildLTOType(Workspace.Options workspaceOptions, Project.Options options)
+		{
+			if ((Workspace.PlatformType.GetFromName(mPlatformName, workspaceOptions.mTargetTriple) == .Linux) &&
+				(GetBuildToolset(workspaceOptions) == .GNU))
+				return .None;
+			return options.mBeefOptions.mLTOType.GetValueOrDefault(workspaceOptions.mLTOType);
+		}
+
+		void CheckLinuxBuildTools()
+		{
+			mLinuxLLVMFallback = false;
+			mLinuxClangPath.Clear();
+			mLinuxLLDPath.Clear();
+			mLinuxArPath.Clear();
+			let options = GetCurWorkspaceOptions();
+			if (Workspace.PlatformType.GetFromName(mPlatformName, options.mTargetTriple) != .Linux)
+				return;
+
+			if (options.mToolsetType == .GNU)
+			{
+				bool wantsLTO = false;
+				for (let project in mWorkspace.mProjects)
+				{
+					let projectOptions = GetCurProjectOptions(project);
+					if ((projectOptions != null) &&
+						(projectOptions.mBeefOptions.mLTOType.GetValueOrDefault(options.mLTOType) != .None))
+						wantsLTO = true;
+				}
+				if (wantsLTO)
+					OutputLineSmart("WARNING: Linux ThinLTO requires the LLVM toolset; building with the selected GNU toolset and LTO disabled.");
+				return;
+			}
+			if (options.mToolsetType != .LLVM)
+				return;
+
+			String missing = scope .();
+			void CheckTool(String name, String outPath, bool requireLLVM22)
+			{
+				if (BuildContext.FindLinuxLLVMTool(name, outPath, requireLLVM22) case .Err)
+				{
+					if (!missing.IsEmpty)
+						missing.Append(", ");
+					missing.Append(name);
+				}
+			}
+			CheckTool("clang++", mLinuxClangPath, false);
+			CheckTool("ld.lld", mLinuxLLDPath, true);
+			CheckTool("llvm-ar", mLinuxArPath, true);
+			if (!missing.IsEmpty)
+			{
+				mLinuxLLVMFallback = true;
+				OutputLineSmart("WARNING: Linux LLVM tools missing or incompatible: {}. Building with the GNU toolset and LTO disabled for all projects. Install clang-22, lld-22, and llvm-22 to enable ThinLTO.", missing);
+			}
+		}
+
 		public Workspace.Options GetCurWorkspaceOptions()
 		{
 			return mWorkspace.GetOptions(mConfigName, mPlatformName);
@@ -10678,9 +10745,7 @@ namespace IDE
 
 			if (!bfCompiler.mIsResolveOnly)
 			{
-				ltoType = workspaceOptions.mLTOType;
-				if (options.mBeefOptions.mLTOType != null)
-					ltoType = options.mBeefOptions.mLTOType.Value;
+				ltoType = GetBuildLTOType(workspaceOptions, options);
 			}
 
 			var targetType = project.mGeneralOptions.mTargetType;
@@ -11000,6 +11065,11 @@ namespace IDE
 			BfPassInstance passInstance = bfSystem.CreatePassInstance();
 			bfCompiler.QueueSetPassInstance(passInstance);
 
+			bool previousFallback = mLinuxLLVMFallback;
+			String previousTools = scope $"{mLinuxClangPath}\n{mLinuxLLDPath}\n{mLinuxArPath}";
+			CheckLinuxBuildTools();
+			bool linuxToolsChanged = (previousFallback != mLinuxLLVMFallback) ||
+				(previousTools != scope $"{mLinuxClangPath}\n{mLinuxLLDPath}\n{mLinuxArPath}");
 			bfCompiler.QueueSetWorkspaceOptions(hotProject, hotIdx);
 
 			Workspace.Options workspaceOptions = GetCurWorkspaceOptions();
@@ -11038,6 +11108,12 @@ namespace IDE
 					doCompile = true;
 					mWorkspace.mHadHotCompileSinceLastFullCompile = false;
 				}
+			}
+
+			if (linuxToolsChanged)
+			{
+				tryQueueFiles = true;
+				doCompile = true;
 			}
 
 			if (mWorkspace.mForceNextCompile)
@@ -11644,6 +11720,8 @@ namespace IDE
 		public void GetClangBuildString(Project project, Project.Options options, Workspace.Options workspaceOptions, bool isC, String clangOptions)
 		{
 			bool isClang = options.mCOptions.mCompilerType == Project.CCompilerType.Clang;
+			bool useMicrosoftToolset = (Workspace.PlatformType.GetFromName(mPlatformName, workspaceOptions.mTargetTriple) == .Windows) &&
+				(workspaceOptions.mToolsetType != .GNU);
 
 			if (options.mCOptions.mEmitDebugInfo)
 			{
@@ -11651,7 +11729,7 @@ namespace IDE
 				{
 					clangOptions.Append("-g -fstandalone-debug ");
 
-					if (workspaceOptions.mToolsetType != .GNU)
+					if (useMicrosoftToolset)
 						clangOptions.Append("-gcodeview ");
 				}
 				else
@@ -11740,11 +11818,7 @@ namespace IDE
 					Workspace.PlatformType.GetTargetTripleByName(gApp.mPlatformName, workspaceOptions.mToolsetType, clangOptions);
 				clangOptions.Append(" ");
 
-				if (workspaceOptions.mToolsetType == .GNU)
-				{
-					//
-				}
-				else
+				if (useMicrosoftToolset)
 				{
 					clangOptions.Append("-I\"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\include\" ");
 					clangOptions.Append("-I\"C:\\Program Files (x86)\\Microsoft Visual Studio 14.0\\VC\\atlmfc\\include\" ");

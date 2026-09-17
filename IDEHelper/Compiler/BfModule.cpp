@@ -16890,7 +16890,7 @@ void BfModule::DoLocalVariableDebugInfo(BfLocalVariable* localVarDef, bool doAli
 						{
 							localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertValueIntrinsic(diValue, diVariable);
 						}
-						else if (mCompiler->mOptions.mToolsetType != BfToolsetType_GNU) // DWARF chokes on this:
+						else if (mCompiler->mOptions.IsCodeView()) // DWARF chokes on this:
 							localVarDef->mDbgDeclareInst = mBfIRBuilder->DbgInsertValueIntrinsic(BfIRValue(), diVariable);
 					}
 				}
@@ -22815,7 +22815,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 					{
 						if ((!paramVar->mValue) || (paramVar->mValue.IsFake()))
 						{
-							if ((!paramVar->mIsThis) && (mCompiler->mOptions.mToolsetType != BfToolsetType_GNU)) // DWARF chokes on this:
+							if ((!paramVar->mIsThis) && (mCompiler->mOptions.IsCodeView())) // DWARF chokes on this:
 							{
 								// We don't need to set the location for this
 								mBfIRBuilder->DbgInsertValueIntrinsic(BfIRValue(), diVariable);
@@ -22890,7 +22890,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 
 		if (paramVar->mResolvedType->IsValuelessType())
 		{
-			if ((mBfIRBuilder->HasDebugLocation()) && (wantsDIVariables) && (mCompiler->mOptions.mToolsetType != BfToolsetType_GNU)) // DWARF chokes on this:
+			if ((mBfIRBuilder->HasDebugLocation()) && (wantsDIVariables) && (mCompiler->mOptions.IsCodeView())) // DWARF chokes on this:
 			{
 				// Only add this placeholder if we don't have any values
 				auto diType = mBfIRBuilder->DbgGetType(paramVar->mResolvedType);

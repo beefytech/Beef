@@ -13,7 +13,7 @@ namespace IDE
 
 			public static LTOType GetDefaultFor(Workspace.PlatformType platformType, bool isRelease)
 			{
-				if ((platformType == .Windows) && (isRelease))
+				if (((platformType == .Windows) || (platformType == .Linux)) && (isRelease))
 					return .Thin;
 				return .None;
 			}

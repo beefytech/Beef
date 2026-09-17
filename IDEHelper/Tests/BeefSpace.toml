@@ -26,6 +26,15 @@ IntermediateType = "ObjectAndIRCode"
 COptimizationLevel = "O2"
 ConfigSelections = {TestsB = {Config = "Test"}}
 
+[Configs.ThinLTO.Linux64]
+BuildKind = "Test"
+Toolset = "LLVM"
+LTOType = "Thin"
+BfOptimizationLevel = "O2"
+IntermediateType = "ObjectAndIRCode"
+COptimizationLevel = "O2"
+ConfigSelections = {Tests = {Config = "Test"}, TestsB = {Config = "Test"}}
+
 [Configs.Test.macOS]
 COptimizationLevel = "O2"
 ConfigSelections = {TestsB = {Config = "Test"}}
