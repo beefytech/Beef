@@ -463,6 +463,7 @@ enum BfIRIntrinsic : uint8
 	BfIRIntrinsic_LtE,
 	BfIRIntrinsic_Malloc,
 	BfIRIntrinsic_Max,
+	BfIRIntrinsic_MemCmp,
 	BfIRIntrinsic_MemCpy,
 	BfIRIntrinsic_MemMove,
 	BfIRIntrinsic_MemSet,

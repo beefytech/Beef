@@ -90,6 +90,7 @@ enum CeOp : int16
 	CeOp_MemSet,
 	CeOp_MemSet_Const,
 	CeOp_MemCpy,
+	CeOp_MemCmp,
 
 	CeOp_FrameAddr_32,
 	CeOp_FrameAddr_64,

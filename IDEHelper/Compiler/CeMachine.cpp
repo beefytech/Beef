@@ -146,6 +146,7 @@ static CeOpInfo gOpInfo[] =
 	{"MemSet", CEOI_None, CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef},
 	{"MemSet_Const", CEOI_None, CEOI_FrameRef, CEOI_IMM8, CEOI_IMM32},
 	{"MemCpy", CEOI_None, CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef},
+	{"MemCmp", CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef, CEOI_FrameRef},
 	{"FrameAddr_32", CEOI_FrameRef, CEOI_FrameRef},
 	{"FrameAddr_64", CEOI_FrameRef, CEOI_FrameRef},
 	{"FrameAddrOfs_32", CEOI_FrameRef, CEOI_FrameRef, CEOI_IMM32},
@@ -3264,6 +3265,19 @@ void CeBuilder::Build()
 							{
 								result = GetOperand(castedInst->mArgs[0].mValue);
 								result.mType = intrin->mReturnType;
+							}
+							break;
+						case BfIRIntrinsic_MemCmp:
+							{
+								auto lhs = GetOperand(castedInst->mArgs[0].mValue);
+								auto rhs = GetOperand(castedInst->mArgs[1].mValue);
+								auto size = GetOperand(castedInst->mArgs[2].mValue);
+								result = FrameAlloc(intrin->mReturnType);
+								Emit(CeOp_MemCmp);
+								EmitFrameOffset(result);
+								EmitFrameOffset(lhs);
+								EmitFrameOffset(rhs);
+								EmitFrameOffset(size);
 							}
 							break;
 						case BfIRIntrinsic_MemCpy:
@@ -8649,6 +8663,28 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			CE_CHECKSIZE(setSize);
 			CE_CHECKADDR(destAddr, setSize);
 			memset(memStart + destAddr, setValue, setSize);
+		}
+		break;
+		case CeOp_MemCmp:
+		{
+			auto resultPtr = &CE_GETFRAME(uint8);
+			auto lhsAddr = CE_GETFRAME(addr_ce);
+			auto rhsAddr = CE_GETFRAME(addr_ce);
+			int64 size = (ptrSize == 4) ? CE_GETFRAME(int32) : CE_GETFRAME(int64);
+			CE_CHECKSIZE(size);
+			int32 result = 0;
+			if (size != 0)
+			{
+				if (size > memSize)
+				{
+					_Fail("Access violation");
+					return false;
+				}
+				CE_CHECKADDR(lhsAddr, size);
+				CE_CHECKADDR(rhsAddr, size);
+				result = memcmp(memStart + lhsAddr, memStart + rhsAddr, (size_t)size);
+			}
+			CeSetAddrVal(resultPtr, result, ptrSize);
 		}
 		break;
 		case CeOp_MemCpy:

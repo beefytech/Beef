@@ -18435,6 +18435,18 @@ void BeMCContext::Generate(BeFunction* function)
 						result = CreateLoad(result);
 					}
 					break;
+					case BfIRIntrinsic_MemCmp:
+					{
+						SizedArray<BeMCOperand, 3> cmpArgs;
+						for (auto& arg : castedInst->mArgs)
+							cmpArgs.Add(GetOperand(arg.mValue));
+						auto cmpFunc = BeMCOperand::FromSymbolAddr(mCOFFObject->GetSymbolRef("memcmp")->mIdx);
+						auto cmpResult = CreateCall(cmpFunc, cmpArgs, mModule->mContext->GetPrimitiveType(BeTypeCode_Int32));
+						result = AllocVirtualReg(intrin->mReturnType);
+						CreateDefineVReg(result);
+						AllocInst(intrin->mReturnType->mSize > 4 ? BeMCInstKind_MovSX : BeMCInstKind_Mov, result, cmpResult);
+					}
+					break;
 					case BfIRIntrinsic_MemSet:
 					{
 						if (auto constVal = BeValueDynCast<BeConstant>(castedInst->mArgs[1].mValue))

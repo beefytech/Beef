@@ -186,6 +186,7 @@ static const BuiltinEntry gIntrinEntries[] =
 	{"lte"},
 	{"malloc"},
 	{"max"},
+	{"memcmp"},
 	{"memcpy"},
 	{"memmove"},
 	{"memset"},
@@ -3368,6 +3369,7 @@ void BfIRCodeGen::HandleNextCmd()
 				{ (llvm::Intrinsic::ID)-2, -1}, // lte
 				{ (llvm::Intrinsic::ID)-2}, // malloc
 				{ (llvm::Intrinsic::ID)-2, -1}, // max
+				{ (llvm::Intrinsic::ID)-2, -1}, // memcmp
 				{ llvm::Intrinsic::memcpy, 0, 1, 2},
 				{ llvm::Intrinsic::memmove, 0, 2},
 				{ llvm::Intrinsic::memset, 0, 2},
@@ -4502,6 +4504,20 @@ void BfIRCodeGen::HandleNextCmd()
 							default: break;
 							}
 						}
+						SetResult(curId, result);
+					}
+					break;
+				case BfIRIntrinsic_MemCmp:
+					{
+						BF_ASSERT(args.size() == 3);
+						auto memCmp = mLLVMModule->getOrInsertFunction("memcmp",
+							llvm::Type::getInt32Ty(*mLLVMContext), args[0].mValue->getType(),
+							args[1].mValue->getType(), args[2].mValue->getType());
+						auto call = mIRBuilder->CreateCall(memCmp, {args[0].mValue, args[1].mValue, args[2].mValue});
+						BfIRTypedValue result;
+						result.mTypeEx = intrinsicData->mReturnType;
+						// C returns int32; Beef's int is pointer-sized.
+						result.mValue = mIRBuilder->CreateSExtOrTrunc(call, result.mTypeEx->mLLVMType);
 						SetResult(curId, result);
 					}
 					break;

@@ -762,20 +762,8 @@ namespace System
 		[Error("Cannot be called directly"), SkipCall]
 		static extern void SetDeletedArray(void* dest, int size, int32 align, int arrayCount);
 
-		public static int MemCmp(void* memA, void* memB, int length)
-		{
-			uint8* p0 = (uint8*)memA;
-			uint8* p1 = (uint8*)memB;
-
-			uint8* end0 = p0 + length;
-			while (p0 < end0)
-			{
-				int diff = *(p0++) - *(p1++);
-				if (diff != 0)
-					return diff;
-			}
-			return 0;
-		}
+		[Intrinsic("memcmp")]
+		public static extern int MemCmp(void* memA, void* memB, int length);
 
 		[Inline]
 		public static int GetArraySize<T>(int length)
