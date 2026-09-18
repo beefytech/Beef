@@ -19,7 +19,16 @@ namespace System.Net
 	public enum AddressFamily : int
 	{
 		IPv4 = 2,
-		IPv6 = 23
+		// NOTE: AF_* constants are OS-level and differ per platform: Windows 23,
+		// Linux/Android 10, macOS/iOS (BSD) 30. Using the Windows value on macOS made
+		// socket(AF_INET6, ...) fail with EAFNOSUPPORT (errno 47).
+#if BF_PLATFORM_WINDOWS
+		IPv6 = 23,
+#elif BF_PLATFORM_MACOS || BF_PLATFORM_IOS
+		IPv6 = 30,
+#else
+		IPv6 = 10,
+#endif
 	}
 
 	public enum MessageFlags : int32
@@ -267,13 +276,35 @@ namespace System.Net
 		[CRepr]
 		public struct SockAddr
 		{
+			// BSD-derived platforms (macOS/iOS) prefix the family with a length byte:
+			//     struct sockaddr { __uint8_t sa_len; sa_family_t sa_family; };
+			// Writing the family as an int16 at offset 0 put the family value into sa_len and
+			// left sa_family as 0 (AF_UNSPEC), so bind() failed with EAFNOSUPPORT (errno 47).
+#if BF_PLATFORM_MACOS || BF_PLATFORM_IOS
+			public uint8 sa_len;
+			public uint8 sa_family;
+#else
 			public int16 sa_family;
+#endif
 		}
 
 		[CRepr]
 		public struct SockAddr_in : SockAddr
         {
-	        public int16 sin_family { get => sa_family; set mut => sa_family = value; }
+#if BF_PLATFORM_MACOS || BF_PLATFORM_IOS
+			// Setting the family also records the struct length, which BSD requires.
+			public int16 sin_family
+			{
+				get => sa_family;
+				set mut
+				{
+					sa_len = (uint8)sizeof(SockAddr_in);
+					sa_family = (uint8)value;
+				}
+			}
+#else
+			public int16 sin_family { get => sa_family; set mut => sa_family = value; }
+#endif
 	        public uint16 sin_port;
 	        public IPv4Address sin_addr;
 	        public char8[8] sin_zero;
@@ -282,7 +313,20 @@ namespace System.Net
 		[CRepr]
 		public struct SockAddr_in6 : SockAddr
 		{
+#if BF_PLATFORM_MACOS || BF_PLATFORM_IOS
+			// Setting the family also records the struct length, which BSD requires.
+			public int16 sin6_family
+			{
+				get => sa_family;
+				set mut
+				{
+					sa_len = (uint8)sizeof(SockAddr_in6);
+					sa_family = (uint8)value;
+				}
+			}
+#else
 			public int16 sin6_family { get => sa_family; set mut => sa_family = value; }
+#endif
 			public uint16 sin6_port;
 			public uint32 sin6_flowinfo;
 			public IPv6Address sin6_addr;
@@ -307,7 +351,10 @@ namespace System.Net
 			public int32 ai_socktype;
 			public int32 ai_protocol;
 			public c_size ai_addrlen;
-#if BF_PLATFORM_WINDOWS
+#if BF_PLATFORM_WINDOWS || BF_PLATFORM_MACOS || BF_PLATFORM_IOS
+			// BSD-derived platforms also order these as ai_canonname then ai_addr; Linux is the
+			// odd one out. Reading the Linux order on macOS made ai_addr read as null (it was
+			// actually ai_canonname), so ConnectEx(hostname, port) null-dereferenced and crashed.
 			public char8* ai_canonname;
 			public SockAddr* ai_addr;
 #else
@@ -432,7 +479,13 @@ namespace System.Net
 		public const HSocket INVALID_SOCKET = (HSocket)-1;
 		public const int32 SOCKET_ERROR = -1;
 		public const int AF_INET = 2;
+#if BF_PLATFORM_WINDOWS
 		public const int AF_INET6 = 23;
+#elif BF_PLATFORM_MACOS || BF_PLATFORM_IOS
+		public const int AF_INET6 = 30;
+#else
+		public const int AF_INET6 = 10;
+#endif
 		public const int SOCK_STREAM = 1;
 		public const int SOCK_DGRAM = 2;
 		public const int IPPROTO_TCP = 6;
@@ -447,7 +500,15 @@ namespace System.Net
 #if BF_PLATFORM_WINDOWS
 		public const int SOL_SOCKET = 0xffff;
 		public const int SO_REUSEADDR = 0x0004;
- 		public const int SO_BROADCAST = 0x0020;
+		public const int SO_BROADCAST = 0x0020;
+		public const int IPV6_V6ONLY = 27;
+#elif BF_PLATFORM_MACOS || BF_PLATFORM_IOS
+		// BSD-derived platforms (macOS/iOS) use the same values as Windows for these.
+		// The previous #else branch used Linux values, so setsockopt(IPPROTO_IPV6,
+		// IPV6_V6ONLY, ...) returned ENOPROTOOPT (errno 42) and IPv6 listen failed.
+		public const int SOL_SOCKET = 0xffff;
+		public const int SO_REUSEADDR = 0x0004;
+		public const int SO_BROADCAST = 0x0020;
 		public const int IPV6_V6ONLY = 27;
 #else
 		public const int SOL_SOCKET = 1;
