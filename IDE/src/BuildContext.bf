@@ -529,6 +529,15 @@ namespace IDE
 				if (isDynLib)
 				{
 					linkLine.Append("-shared ");
+
+					if (mPlatformType == .macOS)
+					{
+						// Without an explicit install name it defaults to the absolute build path,
+						// which would then be baked into anything that links against this library.
+						String dynLibFileName = scope String();
+						Path.GetFileName(targetPath, dynLibFileName);
+						linkLine.AppendF("-Wl,-install_name,@rpath/{0} ", dynLibFileName);
+					}
 				}
 
 				if ((mPlatformType == .Windows) &&
@@ -1861,6 +1870,9 @@ namespace IDE
 
 		    String objectsArg = scope String();
 			bool useLinuxLLVM = (mPlatformType == .Linux) && (gApp.GetBuildToolset(workspaceOptions) == .LLVM);
+			// macOS links dynamic libraries through the GNU path below (which passes -shared to
+			// clang), so a DynamicLib must not be routed to the static archiver there.
+			bool canLinkDynLib = useLinuxLLVM || (mPlatformType == .macOS);
 			var argBuilder = scope IDEApp.ArgBuilder(objectsArg, (gApp.GetBuildToolset(workspaceOptions) != .GNU) && (!useLinuxLLVM));
 		    for (var bfFileName in bfFileNames)
 		    {
@@ -1882,7 +1894,7 @@ namespace IDE
 			else if ((gApp.GetBuildToolset(workspaceOptions) == .GNU) || (useLinuxLLVM))
 			{
 				if ((options.mBuildOptions.mBuildKind == .StaticLib) ||
-					((options.mBuildOptions.mBuildKind == .DynamicLib) && (!useLinuxLLVM)))
+					((options.mBuildOptions.mBuildKind == .DynamicLib) && (!canLinkDynLib)))
 				{
 					if (!QueueProjectGNUArchive(project, targetPath, workspaceOptions, options, objectsArg))
 						return false;
