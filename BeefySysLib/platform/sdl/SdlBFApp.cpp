@@ -341,26 +341,7 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	bf_SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, contextFlags);
 #endif // BF_PLATFORM_OPENGL_ES2
 
-	if(sdlApp->mGLContext == NULL)
-	{
-		sdlApp->mGLContextWindow = mSDLWindow;
-		sdlApp->mGLContext = bf_SDL_GL_CreateContext(mSDLWindow);
-		if (sdlApp->mGLContext == NULL)
-		{
-			String str = StrFormat(
-	#ifdef BF_PLATFORM_OPENGL_ES2
-				"Unable to create SDL OpenGLES context: %s"
-	#else
-				"Unable to create SDL OpenGL context: %s"
-	#endif
-				, bf_SDL_GetError());
-
-
-			BF_FATAL(str.c_str());
-			bf_SDL_Quit();
-			exit(2);
-		}
-	}
+	SDL_GLContext glContext = sdlApp->GetGLContext(mSDLWindow, (windowFlags & BFWINDOW_DEST_ALPHA) != 0);
 
 	// Adjust position if actual scale differs from assumed scale
 
@@ -392,7 +373,7 @@ SdlBFWindow::SdlBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	mIsMouseInside = false;
 	mIsMouseVisible = true;
 	mHasPositionInit = false;
-	mRenderWindow = new GLRenderWindow((GLRenderDevice*)gBFApp->mRenderDevice, mSDLWindow);
+	mRenderWindow = new GLRenderWindow((GLRenderDevice*)gBFApp->mRenderDevice, mSDLWindow, glContext);
 	mRenderWindow->mWindow = this;
 	gBFApp->mRenderDevice->AddRenderWindow(mRenderWindow);
 
@@ -609,6 +590,8 @@ SdlBFApp::SdlBFApp()
 	mRenderDevice = NULL;
 	mGLContext = NULL;
 	mGLContextWindow = NULL;
+	mGLContextTransparent = false;
+	mGLAltContext = NULL;
 
 	Beefy::String exePath;
 	BfpGetStrHelper(exePath, [](char* outStr, int* inOutStrSize, BfpResult* result)
@@ -1405,6 +1388,51 @@ DrawLayer* SdlBFApp::CreateDrawLayer(BFWindow* window)
 	}
 	drawLayer->mRenderDevice = mRenderDevice;
 	return drawLayer;
+}
+
+SDL_GLContext SdlBFApp::GetGLContext(SDL_Window* window, bool transparent)
+{
+	if (mGLContext == NULL)
+	{
+		mGLContextWindow = window;
+		mGLContextTransparent = transparent;
+		mGLContext = bf_SDL_GL_CreateContext(window);
+		if (mGLContext == NULL)
+		{
+			String str = StrFormat(
+	#ifdef BF_PLATFORM_OPENGL_ES2
+				"Unable to create SDL OpenGLES context: %s"
+	#else
+				"Unable to create SDL OpenGL context: %s"
+	#endif
+				, bf_SDL_GetError());
+
+			BF_FATAL(str.c_str());
+			bf_SDL_Quit();
+			exit(2);
+		}
+		return mGLContext;
+	}
+
+	if (transparent == mGLContextTransparent)
+		return mGLContext;
+
+	if (mGLAltContext == NULL)
+	{
+		// The new context is created current, and shares objects with the context current at creation
+		bf_SDL_GL_MakeCurrent(mGLContextWindow, mGLContext);
+		bf_SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 1);
+		mGLAltContext = bf_SDL_GL_CreateContext(window);
+		bf_SDL_GL_SetAttribute(SDL_GL_SHARE_WITH_CURRENT_CONTEXT, 0);
+		if (mGLAltContext == NULL)
+		{
+			// Not fatal: the primary context works for these windows on drivers that allow mixing visuals
+			OutputDebugStrF("Unable to create shared SDL OpenGL context: %s\n", bf_SDL_GetError());
+			bf_SDL_GL_MakeCurrent(mGLContextWindow, mGLContext);
+			mGLAltContext = mGLContext;
+		}
+	}
+	return mGLAltContext;
 }
 
 

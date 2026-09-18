@@ -15,6 +15,8 @@
 #include "gfx/DrawLayer.h"
 
 struct SDL_Window;
+struct SDL_GLContextState;
+typedef struct SDL_GLContextState* SDL_GLContext;
 
 NS_BF_BEGIN;
 
@@ -115,6 +117,7 @@ class GLRenderWindow : public RenderWindow
 {
 public:
 	SDL_Window*				mSDLWindow;
+	SDL_GLContext			mGLContext;
 	GLRenderDevice*			mRenderDevice;
 	bool					mResizePending;
 	int						mPendingWidth;
@@ -125,7 +128,7 @@ public:
 	virtual void			PhysSetAsTarget();
 
 public:
-	GLRenderWindow(GLRenderDevice* renderDevice, SDL_Window* sdlWindow);
+	GLRenderWindow(GLRenderDevice* renderDevice, SDL_Window* sdlWindow, SDL_GLContext glContext);
 	virtual ~GLRenderWindow();
 
 	void					SetAsTarget() override;
@@ -139,7 +142,7 @@ public:
 class GLRenderDevice : public RenderDevice
 {
 public:
-	GLuint					mGLVAO;
+	Dictionary<SDL_GLContext, GLuint> mGLVAOMap; // VAOs aren't shared between contexts
 	GLuint					mGLVertexBuffer;
 	GLuint					mGLIndexBuffer;
 	GLuint					mBlankTexture;
@@ -155,6 +158,7 @@ public:
 	virtual void			PhysSetRenderWindow(RenderWindow* renderWindow);
 	virtual void			PhysSetRenderState(RenderState* renderState) override;
 	virtual void			PhysSetRenderTarget(Texture* renderTarget) override;
+	void					ResetContextState();
 
 public:
 	GLRenderDevice();

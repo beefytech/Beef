@@ -355,7 +355,8 @@ void GLDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 	GLRenderDevice* glRenderDevice = (GLRenderDevice*) gBFApp->mRenderDevice;
 	GLShader* curShader = (GLShader*)mRenderState->mShader;
 
-	if (glRenderDevice->mGLVAO == 0)
+	GLuint* vaoPtr = NULL;
+	if (glRenderDevice->mGLVAOMap.TryAdd(bf_SDL_GL_GetCurrentContext(), NULL, &vaoPtr))
 	{
 		if (glRenderDevice->mGLVertexBuffer == 0)
 		{
@@ -364,8 +365,8 @@ void GLDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 		}
 
 		bf_glBindBuffer(GL_ARRAY_BUFFER, glRenderDevice->mGLVertexBuffer);
-		bf_glGenVertexArrays(1, &glRenderDevice->mGLVAO);
-		bf_glBindVertexArray(glRenderDevice->mGLVAO);
+		bf_glGenVertexArrays(1, vaoPtr);
+		bf_glBindVertexArray(*vaoPtr);
 
 		bf_glEnableVertexAttribArray(curShader->mAttribPosition);
 		bf_glVertexAttribPointer(curShader->mAttribPosition, 3, GL_FLOAT, GL_FALSE, sizeof(DefaultVertex3D), (void*)offsetof(DefaultVertex3D, x));
@@ -374,7 +375,7 @@ void GLDrawBatch::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
 		bf_glEnableVertexAttribArray(curShader->mAttribColor);
 		bf_glVertexAttribPointer(curShader->mAttribColor, 4, GL_UNSIGNED_BYTE, GL_TRUE, sizeof(DefaultVertex3D), (void*)offsetof(DefaultVertex3D, color));
 	}
-    bf_glBindVertexArray(glRenderDevice->mGLVAO);
+    bf_glBindVertexArray(*vaoPtr);
 	auto glVertices = (DefaultVertex3D*)mVertices;
 
 	bf_glBindBuffer(GL_ARRAY_BUFFER, glRenderDevice->mGLVertexBuffer);
@@ -437,7 +438,7 @@ static void BFGetGLProc(T& proc, const char* name)
 
 #define BF_GET_GLPROC(name) BFGetGLProc(bf_##name, #name)
 
-GLRenderWindow::GLRenderWindow(GLRenderDevice* renderDevice, SDL_Window* sdlWindow)
+GLRenderWindow::GLRenderWindow(GLRenderDevice* renderDevice, SDL_Window* sdlWindow, SDL_GLContext glContext)
 {
 	if (bf_glGenBuffers == NULL)
 	{
@@ -549,6 +550,7 @@ GLRenderWindow::GLRenderWindow(GLRenderDevice* renderDevice, SDL_Window* sdlWind
 
 	mRefreshRate = 0;
 	mSDLWindow = sdlWindow;
+	mGLContext = glContext;
 	mRenderDevice = renderDevice;
 	Resized();
 
@@ -562,7 +564,10 @@ GLRenderWindow::~GLRenderWindow()
 
 void GLRenderWindow::PhysSetAsTarget()
 {
-    bf_SDL_GL_MakeCurrent(mSDLWindow, ((SdlBFApp*)gBFApp)->mGLContext);
+	bool contextChanged = bf_SDL_GL_GetCurrentContext() != mGLContext;
+	bf_SDL_GL_MakeCurrent(mSDLWindow, mGLContext);
+	if (contextChanged)
+		mRenderDevice->ResetContextState();
 
 	bf_glEnable(GL_BLEND);
 	bf_glBlendFunc(GL_ONE, GL_ONE_MINUS_SRC_ALPHA);
@@ -635,7 +640,6 @@ float GLRenderWindow::GetRefreshRate()
 GLRenderDevice::GLRenderDevice()
 {
 	mCurShader = NULL;
-    mGLVAO = 0;
 	mGLVertexBuffer = 0;
 	mGLIndexBuffer = 0;
 	mBlankTexture = 0;
@@ -678,6 +682,20 @@ void GLRenderDevice::FrameStart()
 	bf_glDisable(GL_SCISSOR_TEST);
 	bf_glDisable(GL_CULL_FACE);
 	bf_glDisable(GL_DEPTH_TEST);
+}
+
+// GL state is per-context, so after switching contexts put the new one into the state FrameStart
+// establishes, which is what mPhysRenderState is diffed against.
+void GLRenderDevice::ResetContextState()
+{
+	bf_glDisable(GL_SCISSOR_TEST);
+	bf_glDisable(GL_CULL_FACE);
+	bf_glDisable(GL_DEPTH_TEST);
+	bf_glDepthMask(GL_TRUE);
+#ifndef BF_PLATFORM_OPENGL_ES2
+	bf_glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+#endif
+	mPhysRenderState = mDefaultRenderState;
 }
 
 void GLRenderDevice::FrameEnd()
@@ -1048,9 +1066,10 @@ bool SdlBFWindow::CaptureClientBits(uint32* outBits, int width, int height)
 		return false;
 
 	SdlBFApp* app = (SdlBFApp*)gBFApp;
-	if ((app == NULL) || (app->mGLContext == NULL))
+	GLRenderWindow* glRenderWindow = (GLRenderWindow*)mRenderWindow;
+	if ((app == NULL) || (glRenderWindow == NULL) || (glRenderWindow->mGLContext == NULL))
 		return false;
-	if (!bf_SDL_GL_MakeCurrent(mSDLWindow, app->mGLContext))
+	if (!bf_SDL_GL_MakeCurrent(mSDLWindow, glRenderWindow->mGLContext))
 		return false;
 	if (bf_glReadPixels == NULL)
 		return false;

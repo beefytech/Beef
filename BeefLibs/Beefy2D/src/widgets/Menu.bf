@@ -235,7 +235,7 @@ namespace Beefy.widgets
 
 			float maxY = workspaceY + workspaceHeight;
 
-            if ((!allowScrollable) && (screenX + width > workspaceWidth))
+            if ((!allowScrollable) && (screenX + width > workspaceX + workspaceWidth))
                 screenX = screenX - width + mPopupInsets.mRight;
             else
                 screenX -= mPopupInsets.mLeft;
