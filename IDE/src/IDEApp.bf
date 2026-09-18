@@ -6020,15 +6020,18 @@ namespace IDE
 			var workspaceOptions = GetCurWorkspaceOptions();
 			if (CurrentPlatform == .Wasm)
 			{
-				if (workspaceOptions.mBuildKind != .Test)
+				// Wasm tests run by launching the module in a browser, which needs the IDE. The
+				// guard below only covers a non-Test config, so BeefBuild otherwise reached
+				// CompileAndRun and crashed on its unconditional mOutputPanel.Clear().
+				if (mMainFrame == null)
 				{
-					if (mMainFrame == null)
-					{
-						TestConfigNotSupported();
-						return;
-					}
-					mMainFrame.mStatusBar.SelectConfig("Test");
+					OutputErrorLine("Tests cannot be run for wasm32 from the command line: the module has to be launched in a browser, which requires the IDE.");
+					TestFailed();
+					return;
 				}
+
+				if (workspaceOptions.mBuildKind != .Test)
+					mMainFrame.mStatusBar.SelectConfig("Test");
 				CompileAndRun(true);
 				return;
 			}
@@ -12483,7 +12486,8 @@ namespace IDE
 			if (mInitialized)
 				DeleteAndNullify!(mLaunchData);
 
-			mOutputPanel.Clear();
+			if (mOutputPanel != null)
+				mOutputPanel.Clear();
 			OutputLine("Compiling...");
 			if (!Compile(debug ? .DebugAfter : .RunAfter, null))
 				return false;
