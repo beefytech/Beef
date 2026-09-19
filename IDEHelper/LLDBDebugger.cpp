@@ -747,6 +747,36 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 
 			auto threadStopReason = thread.IsValid() ? thread.GetStopReason() : lldb::eStopReasonNone;
 
+			// A step-in that reached the new version of a hot-replaced method through a step trap: finish
+			// the step there, past its prologue
+			if (!mHotStepTrapIds.IsEmpty())
+			{
+				bool hitTrap = false;
+				if ((thread.IsValid()) && (threadStopReason == lldb::eStopReasonBreakpoint))
+					hitTrap = mHotStepTrapIds.Contains((int)thread.GetStopReasonDataAtIndex(0));
+				HotClearStepTraps();
+				if (hitTrap)
+				{
+					lldb::SBFrame frame = thread.GetFrameAtIndex(0);
+					lldb::SBFunction function = frame.GetFunction();
+					uint32 prologueSize = function.IsValid() ? function.GetPrologueByteSize() : 0;
+					LLDBLog("Hit hot step trap at %llx\n", (unsigned long long)frame.GetPC());
+					if (prologueSize > 0)
+					{
+						lldb::SBError error;
+						thread.RunToAddress(frame.GetPC() + prologueSize, error);
+						if (error.Success())
+						{
+							mRunState = RunState_Running;
+							return;
+						}
+					}
+					mActiveBreakpoint = NULL;
+					mRunState = RunState_Paused;
+					return;
+				}
+			}
+
 			// A step into a hot-replaced method stops on our jump to the new version: at the entry, or at the
 			// end of the prologue when the jump was placed there (see HotGetPatchLayout). Take the jump, then
 			// run on to the end of the new version's prologue, as a normal step-in would.
@@ -928,7 +958,10 @@ void LLDBDebugger::StepInto(bool inAssembly)
 		if (inAssembly)
 			thread.StepInstruction(/*step_over=*/false);
 		else
+		{
+			HotSetStepTraps();
 			thread.StepInto();
+		}
 	}
 }
 
@@ -2543,6 +2576,7 @@ void LLDBDebugger::HotResetState()
 	mHotPendingSymbols.Clear();
 	mHotExternalAddrs.Clear();
 	mHotPatchedEntries.Clear();
+	mHotStepTrapIds.Clear();
 	HotRemoveDebugInfo();
 }
 
@@ -2563,6 +2597,32 @@ bool LLDBDebugger::HotIsInPatchedEntry(uint64 addr, uint64* outEntryAddr, HotPat
 		}
 	}
 	return false;
+}
+
+// Stepping into a hot-replaced method whose jump couldn't be placed at the end of its old prologue
+// (it's too small) would run away: LLDB's step-in runs to a breakpoint there that is never reached.
+// While a step-in is in progress, trap the new versions of those methods instead.
+void LLDBDebugger::HotSetStepTraps()
+{
+	HotClearStepTraps();
+	for (auto& kv : mHotPatchedEntries)
+	{
+		if (!kv.mValue.mNeedsStepTrap)
+			continue;
+		lldb::SBBreakpoint trap = mLLDBTarget.BreakpointCreateByAddress(kv.mValue.mNewAddr);
+		if (trap.IsValid())
+			mHotStepTrapIds.Add((int)trap.GetID());
+	}
+}
+
+void LLDBDebugger::HotClearStepTraps()
+{
+	if (mLLDBTarget.IsValid())
+	{
+		for (int trapId : mHotStepTrapIds)
+			mLLDBTarget.BreakpointDelete((lldb::break_id_t)trapId);
+	}
+	mHotStepTrapIds.Clear();
 }
 
 // A breakpoint on a line at the very start of a hot-replaced method also resolves to the old copy's
@@ -3404,7 +3464,7 @@ bool LLDBDebugger::HotApplyDataFixups(String& outError)
 // If that address fell inside our jump, the breakpoint would corrupt it. So when the prologue is shorter
 // than the jump, the jump goes at the end of the prologue (where LLDB's breakpoint then sits on its
 // first byte, which LLDB handles) and the entry gets a short jump to it.
-bool LLDBDebugger::HotGetPatchLayout(const HotPatch& patch, uint64& outJmpAddr, int& outJmpSize)
+bool LLDBDebugger::HotGetPatchLayout(const HotPatch& patch, uint64& outJmpAddr, int& outJmpSize, uint64* outPrologueSize)
 {
 	uint64 prologueSize = 0;
 	lldb::SBFunction function = mLLDBTarget.ResolveLoadAddress(patch.mOldAddr).GetFunction();
@@ -3422,6 +3482,8 @@ bool LLDBDebugger::HotGetPatchLayout(const HotPatch& patch, uint64& outJmpAddr, 
 		else
 			break;
 	}
+	if (outPrologueSize != NULL)
+		*outPrologueSize = prologueSize;
 	return outJmpAddr + outJmpSize <= patch.mOldAddr + patch.mOldSize;
 }
 
@@ -3441,7 +3503,7 @@ bool LLDBDebugger::HotStepThreadsPastPatches(const Array<HotPatch>& patches, Str
 			{
 				uint64 jmpAddr;
 				int jmpSize;
-				if ((HotGetPatchLayout(patch, jmpAddr, jmpSize)) && (pc > patch.mOldAddr) && (pc < jmpAddr + jmpSize))
+				if ((HotGetPatchLayout(patch, jmpAddr, jmpSize, NULL)) && (pc > patch.mOldAddr) && (pc < jmpAddr + jmpSize))
 					inPatch = true;
 			}
 			if (!inPatch)
@@ -3479,7 +3541,8 @@ bool LLDBDebugger::HotApplyPatches(const Array<HotPatch>& patches, int& outNumPa
 
 		uint64 jmpAddr;
 		int jmpSize;
-		if (!HotGetPatchLayout(patch, jmpAddr, jmpSize))
+		uint64 prologueSize = 0;
+		if (!HotGetPatchLayout(patch, jmpAddr, jmpSize, &prologueSize))
 		{
 			// Single-byte 'ret' stubs can't be patched, but there's nothing in them to replace
 			if (patch.mOldSize > 1)
@@ -3512,6 +3575,9 @@ bool LLDBDebugger::HotApplyPatches(const Array<HotPatch>& patches, int& outNumPa
 		patchedEntry.mNewAddr = patch.mNewAddr;
 		patchedEntry.mJmpAddr = jmpAddr;
 		patchedEntry.mEndAddr = jmpAddr + jmpSize;
+		// LLDB's step-in runs to the end of the old prologue. Unless that's where our jump is, it's never
+		// reached, so stepping in needs a trap on the new version (see HotSetStepTraps)
+		patchedEntry.mNeedsStepTrap = (prologueSize > 0) && (patch.mOldAddr + prologueSize != jmpAddr);
 		mHotPatchedEntries[patch.mOldAddr] = patchedEntry;
 		outNumPatched++;
 	}
