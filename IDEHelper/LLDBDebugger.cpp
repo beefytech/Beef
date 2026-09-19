@@ -25,6 +25,13 @@
 
 USING_NS_BF;
 
+// Hot swap layout
+static const uint64 HOT_HEAP_RESERVE_SIZE = 64 * 1024 * 1024;
+static const uint64 HOT_HEAP_EXE_GAP = 256 * 1024 * 1024; // Room for brk heap growth past the executable
+static const int HOT_JMP_REL32_SIZE = 5;
+static const int HOT_JMP_ABS64_SIZE = 14;
+static const int HOT_STUB_SIZE = 16;
+
 // Set BEEF_LLDB_LOG in the environment to enable
 void LLDBLog(const char* fmt ...)
 {
@@ -153,6 +160,7 @@ LLDBDebugger::~LLDBDebugger()
 {
 	WaitForLaunchThread();
 	CloseOutputPipes();
+	HotRemoveDebugInfo();
 	for (auto bp : mBreakpoints)
 		delete bp;
 }
@@ -328,6 +336,7 @@ void LLDBDebugger::DoLaunch()
 
 	lldb::SBDebugger debugger = lldb::SBDebugger::Create(/*source_init_files=*/false);
 	debugger.SetAsync(true);
+
 
 	if (mLaunchMode == LLDBLaunchMode_Remote)
 	{
@@ -738,7 +747,36 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 
 			auto threadStopReason = thread.IsValid() ? thread.GetStopReason() : lldb::eStopReasonNone;
 
-			LLDBLog("HandleProcessEvent Stopped. ThreadIsValid:%d StopReason:%d\n", thread.IsValid(), threadStopReason);
+			// A step into a hot-replaced method stops on our jump to the new version: at the entry, or at the
+			// end of the prologue when the jump was placed there (see HotGetPatchLayout). Take the jump, then
+			// run on to the end of the new version's prologue, as a normal step-in would.
+			if ((thread.IsValid()) && ((threadStopReason == lldb::eStopReasonPlanComplete) || (threadStopReason == lldb::eStopReasonTrace)))
+			{
+				lldb::SBFrame frame = thread.GetFrameAtIndex(0);
+				uint64 pc = frame.IsValid() ? (uint64)frame.GetPC() : 0;
+				uint64 entryAddr = 0;
+				HotPatchedEntry patchedEntry;
+				if ((pc != 0) && (HotIsInPatchedEntry(pc, &entryAddr, &patchedEntry)) && ((pc == entryAddr) || (pc == patchedEntry.mJmpAddr)))
+				{
+					LLDBLog("Following hot jump %llx -> %llx\n", (unsigned long long)pc, (unsigned long long)patchedEntry.mNewAddr);
+					frame.SetPC(patchedEntry.mNewAddr);
+					frame = thread.GetFrameAtIndex(0);
+					pc = patchedEntry.mNewAddr;
+				}
+
+				lldb::SBFunction function = frame.GetFunction();
+				if ((function.IsValid()) && (pc == (uint64)function.GetStartAddress().GetLoadAddress(mLLDBTarget)) &&
+					(function.GetPrologueByteSize() > 0))
+				{
+					lldb::SBError error;
+					thread.RunToAddress(pc + function.GetPrologueByteSize(), error);
+					if (error.Success())
+					{
+						mRunState = RunState_Running;
+						return;
+					}
+				}
+			}
 
 			// Execute the next queued auto-step when a planned step has completed.
 			// A breakpoint, signal, or any other non-plan-complete stop cancels the
@@ -1029,21 +1067,22 @@ void LLDBDebugger::CheckBreakpoint(Breakpoint* checkBreakpoint)
 			mBreakpointIdMap.ForceAdd((int)bp->mLLDBBreakpoint.GetID(), bp);
 	}
 
+	HotFilterBreakpointLocations(bp);
+
 	// Try to resolve the load address so FindBreakpointAt() works.
 	if ((bp->mLLDBBreakpoint.IsValid()) && (bp->mResolvedAddr == 0))
 	{
-		size_t numResolved = bp->mLLDBBreakpoint.GetNumResolvedLocations();
-		if (numResolved > 0)
+		for (uint32 locIdx = 0; locIdx < bp->mLLDBBreakpoint.GetNumLocations(); locIdx++)
 		{
-			lldb::SBBreakpointLocation loc = bp->mLLDBBreakpoint.GetLocationAtIndex(0);
-			if (loc.IsValid())
+			lldb::SBBreakpointLocation loc = bp->mLLDBBreakpoint.GetLocationAtIndex(locIdx);
+			if ((!loc.IsValid()) || (!loc.IsEnabled()))
+				continue;
+			lldb::addr_t loadAddr = loc.GetLoadAddress();
+			if (loadAddr != (lldb::addr_t)-1)
 			{
-				lldb::addr_t loadAddr = loc.GetLoadAddress();
-				if (loadAddr != (lldb::addr_t)-1)
-				{
-					bp->mResolvedAddr = (uintptr)loadAddr;
-					mBreakpointAddrMap.ForceAdd(bp->mResolvedAddr, bp);
-				}
+				bp->mResolvedAddr = (uintptr)loadAddr;
+				mBreakpointAddrMap.ForceAdd(bp->mResolvedAddr, bp);
+				break;
 			}
 		}
 	}
@@ -2474,11 +2513,6 @@ int LLDBDebugger::LoadDebugInfoForModule(const StringImpl& moduleName, const Str
 // storage, so static state survives the swap.
 //----------------------------------------------------------------------------
 
-static const uint64 HOT_HEAP_RESERVE_SIZE = 64 * 1024 * 1024;
-static const uint64 HOT_HEAP_EXE_GAP = 256 * 1024 * 1024; // Room for brk heap growth past the executable
-static const int HOT_JMP_REL32_SIZE = 5;
-static const int HOT_JMP_ABS64_SIZE = 14;
-static const int HOT_STUB_SIZE = 16;
 
 static bool HotFitsInt32(int64 val)
 {
@@ -2508,6 +2542,42 @@ void LLDBDebugger::HotResetState()
 	mHotSymbols.Clear();
 	mHotPendingSymbols.Clear();
 	mHotExternalAddrs.Clear();
+	mHotPatchedEntries.Clear();
+	HotRemoveDebugInfo();
+}
+
+// Whether addr is within the jump(s) we wrote at the start of a hot-replaced method
+bool LLDBDebugger::HotIsInPatchedEntry(uint64 addr, uint64* outEntryAddr, HotPatchedEntry* outEntry)
+{
+	// The jump can start up to 127 bytes in (after a 'jmp rel8'), but only does so for prologues shorter than it
+	for (int ofs = 0; ofs < HOT_JMP_ABS64_SIZE * 2; ofs++)
+	{
+		HotPatchedEntry* entry = NULL;
+		if ((mHotPatchedEntries.TryGetValue(addr - ofs, &entry)) && (addr < entry->mEndAddr))
+		{
+			if (outEntryAddr != NULL)
+				*outEntryAddr = addr - ofs;
+			if (outEntry != NULL)
+				*outEntry = *entry;
+			return true;
+		}
+	}
+	return false;
+}
+
+// A breakpoint on a line at the very start of a hot-replaced method also resolves to the old copy's
+// entry, which now holds our jump - it would trap every call on its way to the new code. Frames still
+// running the old code use its other locations, so only those on the jump are disabled.
+void LLDBDebugger::HotFilterBreakpointLocations(LLDBBreakpoint* bp)
+{
+	if ((!bp->mLLDBBreakpoint.IsValid()) || (mHotPatchedEntries.IsEmpty()))
+		return;
+	for (uint32 locIdx = 0; locIdx < bp->mLLDBBreakpoint.GetNumLocations(); locIdx++)
+	{
+		lldb::SBBreakpointLocation loc = bp->mLLDBBreakpoint.GetLocationAtIndex(locIdx);
+		if ((loc.IsValid()) && (loc.IsEnabled()) && (HotIsInPatchedEntry((uint64)loc.GetLoadAddress(), NULL, NULL)))
+			loc.SetEnabled(false);
+	}
 }
 
 // Consume process state events until the target reports a (non-restarted) stop.
@@ -3186,6 +3256,72 @@ bool LLDBDebugger::HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, S
 #endif
 }
 
+// Let LLDB see hot-loaded code: add the object as a module and load its executable sections where
+// we put them, so breakpoints, stepping, call stacks and locals work in it. LLDB lays out a relocatable
+// object's sections itself (ignoring sh_addr) and applies its debug info relocations. Data sections are
+// left unloaded, since the object's data binds to the original storage.
+void LLDBDebugger::HotRegisterDebugInfo(LLDBHotObject* obj, int hotIdx)
+{
+#ifdef __linux__
+	// The IDE overwrites the object on the next hot compile, so LLDB gets its own copy
+	String path = StrFormat("/tmp/BeefHot_%d_%d_%s", (int)getpid(), hotIdx, GetFileName(obj->mFileName).c_str());
+	FILE* fp = fopen(path.c_str(), "wb");
+	if (fp == NULL)
+		return;
+	bool written = fwrite(obj->mFileData.mVals, 1, (size_t)obj->mFileData.size(), fp) == (size_t)obj->mFileData.size();
+	fclose(fp);
+	mHotModulePaths.Add(path);
+	if (!written)
+		return;
+
+	// LLDB would otherwise index the new module's symbols on background threads, which races with
+	// evaluations the IDE makes right after the hot load and can crash liblldb
+	lldb::SBCommandReturnObject commandResult;
+	mLLDBDebugger.GetCommandInterpreter().HandleCommand("settings set target.preload-symbols false", commandResult);
+	lldb::SBModule module = mLLDBTarget.AddModule(path.c_str(), NULL, NULL);
+	mLLDBDebugger.GetCommandInterpreter().HandleCommand("settings set target.preload-symbols true", commandResult);
+	if (!module.IsValid())
+	{
+		LLDBLog("HotRegisterDebugInfo: LLDB rejected '%s'\n", path.c_str());
+		return;
+	}
+
+	Elf64_Ehdr* ehdr = (Elf64_Ehdr*)obj->mFileData.mVals;
+	if (ehdr->e_shstrndx >= obj->mNumSections)
+		return;
+	Elf64_Shdr& shStrTabShdr = obj->mShdrs[ehdr->e_shstrndx];
+	const char* shStrTab = (const char*)obj->mFileData.mVals + shStrTabShdr.sh_offset;
+
+	// LLDB lists the sections in ELF order, without the null section
+	int numLoaded = 0;
+	for (int sectionIdx = 1; sectionIdx < obj->mNumSections; sectionIdx++)
+	{
+		Elf64_Shdr& shdr = obj->mShdrs[sectionIdx];
+		if ((!obj->IsLoadedSection(sectionIdx)) || ((shdr.sh_flags & SHF_EXECINSTR) == 0) || (shdr.sh_name >= shStrTabShdr.sh_size))
+			continue;
+		lldb::SBSection section = module.GetSectionAtIndex(sectionIdx - 1);
+		const char* sectionName = section.GetName();
+		if ((sectionName == NULL) || (strcmp(sectionName, shStrTab + shdr.sh_name) != 0))
+		{
+			LLDBLog("HotRegisterDebugInfo: section %d of '%s' doesn't match\n", sectionIdx, path.c_str());
+			continue;
+		}
+		if (mLLDBTarget.SetSectionLoadAddress(section, obj->mImageAddr + obj->mSectionOffsets[sectionIdx]).Success())
+			numLoaded++;
+	}
+	LLDBLog("HotRegisterDebugInfo: %s, %d code sections\n", path.c_str(), numLoaded);
+#endif
+}
+
+void LLDBDebugger::HotRemoveDebugInfo()
+{
+#ifdef __linux__
+	for (auto& path : mHotModulePaths)
+		unlink(path.c_str());
+#endif
+	mHotModulePaths.Clear();
+}
+
 // Update the runtime's type tables in place, as WinDebugger does (DbgModule::ProcessHotSwapVariables).
 bool LLDBDebugger::HotApplyDataFixups(String& outError)
 {
@@ -3261,6 +3397,34 @@ bool LLDBDebugger::HotApplyDataFixups(String& outError)
 	return true;
 }
 
+// Where HotApplyPatches puts the jump to the new version of a method, and its size ('jmp rel32' when the
+// new code is in range, else an absolute jump). Returns false if the old method is too small to patch.
+//
+// LLDB's step-in runs to the end of the prologue of the method it steps into, using a breakpoint.
+// If that address fell inside our jump, the breakpoint would corrupt it. So when the prologue is shorter
+// than the jump, the jump goes at the end of the prologue (where LLDB's breakpoint then sits on its
+// first byte, which LLDB handles) and the entry gets a short jump to it.
+bool LLDBDebugger::HotGetPatchLayout(const HotPatch& patch, uint64& outJmpAddr, int& outJmpSize)
+{
+	uint64 prologueSize = 0;
+	lldb::SBFunction function = mLLDBTarget.ResolveLoadAddress(patch.mOldAddr).GetFunction();
+	if ((function.IsValid()) && ((uint64)function.GetStartAddress().GetLoadAddress(mLLDBTarget) == patch.mOldAddr))
+		prologueSize = function.GetPrologueByteSize();
+
+	outJmpAddr = patch.mOldAddr;
+	for (int pass = 0; pass < 2; pass++)
+	{
+		int64 rel = (int64)(patch.mNewAddr - (outJmpAddr + HOT_JMP_REL32_SIZE));
+		outJmpSize = HotFitsInt32(rel) ? HOT_JMP_REL32_SIZE : HOT_JMP_ABS64_SIZE;
+		// 'jmp rel8' needs 2 bytes, and its target must stay in range
+		if ((pass == 0) && (prologueSize >= 2) && (prologueSize < (uint64)outJmpSize) && (prologueSize <= 127))
+			outJmpAddr = patch.mOldAddr + prologueSize;
+		else
+			break;
+	}
+	return outJmpAddr + outJmpSize <= patch.mOldAddr + patch.mOldSize;
+}
+
 // A thread stopped part-way through the bytes we're about to overwrite would resume
 // into a torn instruction, so single-step any such thread until it's clear.
 // (A thread exactly at a function's entry is fine - it will execute the new jump.)
@@ -3275,7 +3439,9 @@ bool LLDBDebugger::HotStepThreadsPastPatches(const Array<HotPatch>& patches, Str
 			bool inPatch = false;
 			for (auto& patch : patches)
 			{
-				if ((pc > patch.mOldAddr) && (pc < patch.mOldAddr + HOT_JMP_ABS64_SIZE))
+				uint64 jmpAddr;
+				int jmpSize;
+				if ((HotGetPatchLayout(patch, jmpAddr, jmpSize)) && (pc > patch.mOldAddr) && (pc < jmpAddr + jmpSize))
 					inPatch = true;
 			}
 			if (!inPatch)
@@ -3311,23 +3477,9 @@ bool LLDBDebugger::HotApplyPatches(const Array<HotPatch>& patches, int& outNumPa
 		if (!patchedAddrs.Add(patch.mOldAddr))
 			continue;
 
-		uint8 jmp[HOT_JMP_ABS64_SIZE];
+		uint64 jmpAddr;
 		int jmpSize;
-		int64 rel = (int64)(patch.mNewAddr - (patch.mOldAddr + HOT_JMP_REL32_SIZE));
-		if (HotFitsInt32(rel))
-		{
-			int32 rel32 = (int32)rel;
-			jmp[0] = 0xE9;
-			memcpy(jmp + 1, &rel32, 4);
-			jmpSize = HOT_JMP_REL32_SIZE;
-		}
-		else
-		{
-			HotWriteAbsJump(jmp, patch.mNewAddr);
-			jmpSize = HOT_JMP_ABS64_SIZE;
-		}
-
-		if (patch.mOldSize < (uint64)jmpSize)
+		if (!HotGetPatchLayout(patch, jmpAddr, jmpSize))
 		{
 			// Single-byte 'ret' stubs can't be patched, but there's nothing in them to replace
 			if (patch.mOldSize > 1)
@@ -3335,11 +3487,32 @@ bool LLDBDebugger::HotApplyPatches(const Array<HotPatch>& patches, int& outNumPa
 			continue;
 		}
 
-		if (!WriteMemory((intptr)patch.mOldAddr, jmp, jmpSize))
+		uint8 jmp[HOT_JMP_ABS64_SIZE];
+		if (jmpSize == HOT_JMP_REL32_SIZE)
+		{
+			int32 rel32 = (int32)(int64)(patch.mNewAddr - (jmpAddr + HOT_JMP_REL32_SIZE));
+			jmp[0] = 0xE9;
+			memcpy(jmp + 1, &rel32, 4);
+		}
+		else
+			HotWriteAbsJump(jmp, patch.mNewAddr);
+
+		bool written = WriteMemory((intptr)jmpAddr, jmp, jmpSize);
+		if ((written) && (jmpAddr != patch.mOldAddr))
+		{
+			uint8 shortJmp[2] = { 0xEB, (uint8)(int8)(jmpAddr - (patch.mOldAddr + 2)) };
+			written = WriteMemory((intptr)patch.mOldAddr, shortJmp, 2);
+		}
+		if (!written)
 		{
 			outError = StrFormat("failed to patch '%s' at 0x%llx", patch.mName.c_str(), (unsigned long long)patch.mOldAddr);
 			return false;
 		}
+		HotPatchedEntry patchedEntry;
+		patchedEntry.mNewAddr = patch.mNewAddr;
+		patchedEntry.mJmpAddr = jmpAddr;
+		patchedEntry.mEndAddr = jmpAddr + jmpSize;
+		mHotPatchedEntries[patch.mOldAddr] = patchedEntry;
 		outNumPatched++;
 	}
 	return true;
@@ -3397,6 +3570,11 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 				break;
 			}
 		}
+	}
+	if (success)
+	{
+		for (auto obj : objects)
+			HotRegisterDebugInfo(obj, hotIdx);
 	}
 	for (auto obj : objects)
 		delete obj;
@@ -3549,6 +3727,7 @@ void LLDBDebugger::StopDebugging()
 	mProcessId = 0;
 	mRunState = RunState_Terminated;
 	CloseOutputPipes();
+	HotRemoveDebugInfo();
 }
 
 void LLDBDebugger::Terminate()
@@ -3581,6 +3760,7 @@ void LLDBDebugger::Terminate()
 	mProcessId = 0;
 	mRunState = RunState_Terminated;
 	CloseOutputPipes();
+	HotRemoveDebugInfo();
 }
 
 void LLDBDebugger::Detach()

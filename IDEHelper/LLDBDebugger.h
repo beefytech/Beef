@@ -123,6 +123,13 @@ public:
 		uint64 mNewSize;
 	};
 
+	struct HotPatchedEntry
+	{
+		uint64 mNewAddr;
+		uint64 mJmpAddr;   // Where the jump to mNewAddr is - the entry, or the end of the prologue
+		uint64 mEndAddr;   // End of the bytes we wrote
+	};
+
 	struct HotPatch
 	{
 		String mName;
@@ -138,6 +145,8 @@ public:
 	Dictionary<String, HotSymbol> mHotSymbols;       // global symbols first defined by a hot load → that definition
 	Dictionary<String, HotSymbol> mHotPendingSymbols; // definitions from the batch currently being loaded
 	Array<HotDataFixup> mHotPendingDataFixups;
+	Dictionary<uint64, HotPatchedEntry> mHotPatchedEntries; // entry of each hot-replaced method → its jump
+	Array<String> mHotModulePaths;                   // copies of hot-loaded objects registered with LLDB
 	Dictionary<String, uint64> mHotExternalAddrs;    // cache of symbols resolved through dlsym in the target
 
 protected:
@@ -158,6 +167,11 @@ protected:
 	bool HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError);
 	bool HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError);
 	bool HotApplyDataFixups(String& outError);
+	void HotRegisterDebugInfo(LLDBHotObject* obj, int hotIdx);
+	void HotRemoveDebugInfo();
+	bool HotIsInPatchedEntry(uint64 addr, uint64* outEntryAddr, HotPatchedEntry* outEntry);
+	bool HotGetPatchLayout(const HotPatch& patch, uint64& outJmpAddr, int& outJmpSize);
+	void HotFilterBreakpointLocations(LLDBBreakpoint* bp);
 	bool HotStepThreadsPastPatches(const Array<HotPatch>& patches, String& outError);
 	bool HotApplyPatches(const Array<HotPatch>& patches, int& outNumPatched, String& outError);
 
