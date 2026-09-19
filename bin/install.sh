@@ -22,6 +22,9 @@ install -Dm755 -t "${INSTALL_PATH}/bin/" "IDE/dist/BeefBuild"
 install -Dm755 -t "${INSTALL_PATH}/bin/" "IDE/dist/BeefBuild_d"
 install -Dm644 "IDE/dist/BeefConfig_install.toml" "${INSTALL_PATH}/bin/BeefConfig.toml"
 
+# wasm runtimes, when built (wasm/build_wasm.sh): BeefBuild links wasm32 programs against them
+find IDE/dist -maxdepth 1 -name 'Beef*RT32_wasm*.a' -type f -exec install -Dm644 -t "${INSTALL_PATH}/bin/" "{}" \;
+
 find BeefLibs -type f -exec install -Dm644 "{}" "${INSTALL_PATH}/{}" \;
 
 install -Dm644 -t "${INSTALL_PATH}/" "LICENSE.TXT"
