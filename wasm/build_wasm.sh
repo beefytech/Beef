@@ -1,17 +1,18 @@
 #!/bin/bash
 # Builds the Beef wasm runtime libraries, the Linux/macOS counterpart of build_wasm.bat.
 #
-# Emits Beef<ver>RT32_wasm.a and Beef<ver>RT32_wasm_pthread.a into IDE/dist, which is where
-# BuildContext looks before it will link a wasm32 target. Needs emcc on PATH: source the
-# emsdk's emsdk_env.sh first.
+# Emits into IDE/dist, which is where BuildContext looks before it will link a wasm32
+# target, the runtime each project links:
+#   Beef<ver>RT32_wasm.a            optimized (-O2)
+#   Beef<ver>RT32_wasm_pthread.a    optimized, threads enabled (Wasm options)
+#   Beef<ver>RT32_wasm_d.a          debug (-O0 -g), for Beef Lib Type "DynamicDebug", as
+#   Beef<ver>RT32_wasm_pthread_d.a  libBeefRT_d.a is on Linux and macOS
+# Needs emcc on PATH: source the emsdk's emsdk_env.sh first.
 #
-#   ./build_wasm.sh          build both libraries, optimized (-O2)
-#   ./build_wasm.sh debug    build both unoptimized with debug info (-O0 -g), for debugging
-#                            the runtime itself
+#   ./build_wasm.sh          build all four
+#   ./build_wasm.sh release  build the optimized two only
+#   ./build_wasm.sh debug    build the debug two only
 #   ./build_wasm.sh setup    stage the sources only
-#
-# Debug and Release wasm32 configs both link the same Beef<ver>RT32_wasm.a, so whichever
-# was built last is what every wasm32 program gets.
 set -e
 cd "$(dirname "$0")"
 
@@ -39,8 +40,8 @@ fi
 [ "$1" = "setup" ] && { echo "SUCCESS (setup only)"; exit 0; }
 
 case "$1" in
-    "" | release) FLAGS="-O2" ;;
-    debug) FLAGS="-O0 -g" ;;
+    "") KINDS="release debug" ;;
+    release | debug) KINDS="$1" ;;
     *) echo "usage: $0 [release | debug | setup]" >&2; exit 1 ;;
 esac
 
@@ -53,10 +54,14 @@ INCLUDES="-Isrc/ -Isrc/BeefySysLib -Isrc/BeefySysLib/platform/wasm"
 OBJECTS="Common.o Internal.o Chars.o Math.o Object.o String.o Thread.o Hash.o UTF8.o \
 utf8proc.o wildcard.o WasmCommon.o zmij.o"
 
-emcc $SOURCES $INCLUDES $FLAGS -DBF_DISABLE_FFI -c
-emar r "$LIBPATH/Beef${RTVER}RT32_wasm.a" $OBJECTS
+for KIND in $KINDS; do
+    if [ "$KIND" = "debug" ]; then FLAGS="-O0 -g"; SUFFIX="_d"; else FLAGS="-O2"; SUFFIX=""; fi
 
-emcc $SOURCES $INCLUDES $FLAGS -DBF_DISABLE_FFI -c -pthread
-emar r "$LIBPATH/Beef${RTVER}RT32_wasm_pthread.a" $OBJECTS
+    emcc $SOURCES $INCLUDES $FLAGS -DBF_DISABLE_FFI -c
+    emar r "$LIBPATH/Beef${RTVER}RT32_wasm${SUFFIX}.a" $OBJECTS
+
+    emcc $SOURCES $INCLUDES $FLAGS -DBF_DISABLE_FFI -c -pthread
+    emar r "$LIBPATH/Beef${RTVER}RT32_wasm_pthread${SUFFIX}.a" $OBJECTS
+done
 
 echo "SUCCESS!"

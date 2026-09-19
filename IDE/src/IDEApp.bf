@@ -11497,12 +11497,8 @@ namespace IDE
 										case .Wasm:
 											newString.Append("\"");
 											newString.Append(mInstallDir);
-											newString.Append("Beef", IDEApp.sRTVersionStr, "RT");
-											newString.Append((Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4) ? "32" : "64");
-											newString.Append("_wasm");
-											if (project.mWasmOptions.mEnableThreads)
-												newString.Append("_pthread");
-											newString.Append(".a\"");
+											BuildContext.GetWasmRtLibName(project, options, newString);
+											newString.Append("\"");
 										default:
 										}
 									}

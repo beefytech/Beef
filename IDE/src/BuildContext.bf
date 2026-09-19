@@ -959,9 +959,19 @@ namespace IDE
 
 					if (!gApp.mSettings.mEmscriptenPendingInstall)
 					{
-						if (!File.Exists(scope $"{gApp.mInstallDir}/Beef{IDEApp.sRTVersionStr}RT32_wasm.a"))
+						// The runtime this project links, not always the plain one: the threaded
+						//  and debug runtimes are separate archives that may not have been built.
+						String rtPath = scope .(gApp.mInstallDir);
+						if ((!rtPath.EndsWith('\\')) && (!rtPath.EndsWith('/')))
+							rtPath.Append("/");
+						GetWasmRtLibName(project, options, rtPath);
+						if (!File.Exists(rtPath))
 						{
-							gApp.OutputErrorLine("Wasm runtime libraries not found. Build with 'wasm/build_wasm.bat'.");
+#if BF_PLATFORM_WINDOWS
+							gApp.OutputErrorLine("Wasm runtime library '{}' not found. Build with 'wasm/build_wasm.bat'.", rtPath);
+#else
+							gApp.OutputErrorLine("Wasm runtime library '{}' not found. Build with 'wasm/build_wasm.sh'.", rtPath);
+#endif
 							return false;
 						}
 					}
@@ -1018,6 +1028,22 @@ namespace IDE
 			if (gApp.GetBuildToolset(workspaceOptions) == .LLVM)
 				outPdbPath.Append("_lld");
 			outPdbPath.Append(".pdb");
+		}
+
+		// The wasm runtime a project links: Beef<ver>RT32_wasm[_pthread][_d].a in the install
+		//  directory (wasm/build_wasm.sh / .bat build them all). As on Linux and macOS, where
+		//  DynamicDebug selects libBeefRT_d.a, the debug runtime is the Beef Lib Type setting's
+		//  choice, not the config's: other configs get the optimized runtime.
+		public static void GetWasmRtLibName(Project project, Project.Options options, String outName)
+		{
+			outName.Append("Beef", IDEApp.sRTVersionStr, "RT");
+			outName.Append((Workspace.PlatformType.GetPtrSizeByName(gApp.mPlatformName) == 4) ? "32" : "64");
+			outName.Append("_wasm");
+			if (project.mWasmOptions.mEnableThreads)
+				outName.Append("_pthread");
+			if (options.mBuildOptions.mBeefLibType == .DynamicDebug)
+				outName.Append("_d");
+			outName.Append(".a");
 		}
 
 		public static void GetRtLibNames(Workspace.PlatformType platformType, Workspace.Options workspaceOptions, Project.Options options, bool dynName, String outRt, String outDbg, String outAlloc)
