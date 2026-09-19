@@ -104,6 +104,25 @@ public:
 		bool mIsCode;
 	};
 
+	enum HotDataFixupKind
+	{
+		HotDataFixupKind_None,
+		HotDataFixupKind_MergeVData,          // sBfClassVData: merge new vtable entries into the original
+		HotDataFixupKind_MergeVExt,           // sBfClassVData .vext: merge, then use the new table
+		HotDataFixupKind_CopyTypeData,        // sBfTypeData: copy new reflection data over the original
+		HotDataFixupKind_LinkStringLiterals   // sStringLiterals: chain the new table onto the original
+	};
+
+	struct HotDataFixup
+	{
+		HotDataFixupKind mKind;
+		String mName;
+		uint64 mOldAddr;
+		uint64 mOldSize;
+		uint64 mNewAddr;
+		uint64 mNewSize;
+	};
+
 	struct HotPatch
 	{
 		String mName;
@@ -118,6 +137,7 @@ public:
 	uint64 mHotHeapNextHint;
 	Dictionary<String, HotSymbol> mHotSymbols;       // global symbols first defined by a hot load → that definition
 	Dictionary<String, HotSymbol> mHotPendingSymbols; // definitions from the batch currently being loaded
+	Array<HotDataFixup> mHotPendingDataFixups;
 	Dictionary<String, uint64> mHotExternalAddrs;    // cache of symbols resolved through dlsym in the target
 
 protected:
@@ -137,6 +157,7 @@ protected:
 	bool HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<HotPatch>& patches, uint64& outAddr, String& outError);
 	bool HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError);
 	bool HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError);
+	bool HotApplyDataFixups(String& outError);
 	bool HotStepThreadsPastPatches(const Array<HotPatch>& patches, String& outError);
 	bool HotApplyPatches(const Array<HotPatch>& patches, int& outNumPatched, String& outError);
 

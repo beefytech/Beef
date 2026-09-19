@@ -2667,7 +2667,7 @@ bool LLDBDebugger::HotFindExeSymbol(const StringImpl& name, HotSymbol& outSymbol
 bool LLDBDebugger::HotFindCanonicalSymbol(const StringImpl& name, HotSymbol& outSymbol)
 {
 	HotSymbol* hotSymbol = NULL;
-	if ((mHotSymbols.TryGetValue(name, &hotSymbol)) || (mHotPendingSymbols.TryGetValue(name, &hotSymbol)))
+	if ((mHotPendingSymbols.TryGetValue(name, &hotSymbol)) || (mHotSymbols.TryGetValue(name, &hotSymbol)))
 	{
 		outSymbol = *hotSymbol;
 		return true;
@@ -2795,8 +2795,13 @@ bool LLDBDebugger::HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<
 
 	if (sym.st_shndx == SHN_UNDEF)
 	{
+		// 'bf_hs_prev@X' refers to the definition of X from before this hot compile
+		String lookupName = name;
+		if (lookupName.StartsWith("bf_hs_prev@"))
+			lookupName.Remove(0, 11);
+
 		String error;
-		if (!HotResolveExternal(name, addr, error))
+		if (!HotResolveExternal(lookupName, addr, error))
 		{
 			if (!error.IsEmpty())
 				return obj->Fail(error, outError);
@@ -2819,30 +2824,86 @@ bool LLDBDebugger::HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<
 		if ((bind != STB_LOCAL) && (!name.IsEmpty()))
 		{
 			bool isCode = (symType == STT_FUNC) || ((obj->mShdrs[sym.st_shndx].sh_flags & SHF_EXECINSTR) != 0);
+			HotSymbol newSymbol;
+			newSymbol.mAddr = addr;
+			newSymbol.mSize = sym.st_size;
+			newSymbol.mIsCode = isCode;
+
+			// The compiler names data it wants replaced on every hot compile 'bf_hs_replace_*'
+			// (vtable extension tables and the like)
+			bool isReplace = name.Contains("bf_hs_replace_");
+			bool isPendingDuplicate = mHotPendingSymbols.ContainsKey(name);
+
 			HotSymbol canonical;
-			if (HotFindCanonicalSymbol(name, canonical))
+			if ((isReplace) && (!isPendingDuplicate))
+			{
+				mHotPendingSymbols[name] = newSymbol;
+			}
+			else if (HotFindCanonicalSymbol(name, canonical))
 			{
 				// Replacing a definition from the executable or an earlier hot load. A definition
 				// pending from this same batch is a duplicate (e.g. a generic specialization emitted
 				// in more than one object) and simply binds to the first copy.
-				if ((isCode) && (canonical.mAddr != addr) && (!mHotPendingSymbols.ContainsKey(name)))
+				if (isPendingDuplicate)
 				{
-					HotPatch patch;
-					patch.mName = name;
-					patch.mOldAddr = canonical.mAddr;
-					patch.mOldSize = canonical.mSize;
-					patch.mNewAddr = addr;
-					patches.Add(patch);
+					addr = canonical.mAddr;
 				}
-				addr = canonical.mAddr;
+				else if (isCode)
+				{
+					if (canonical.mAddr != addr)
+					{
+						HotPatch patch;
+						patch.mName = name;
+						patch.mOldAddr = canonical.mAddr;
+						patch.mOldSize = canonical.mSize;
+						patch.mNewAddr = addr;
+						patches.Add(patch);
+					}
+					addr = canonical.mAddr;
+				}
+				else
+				{
+					// Data keeps its original storage, so existing objects and static state carry
+					// over. Runtime type tables are updated in place afterwards (HotApplyDataFixups),
+					// which is how new virtual method overrides and reflection data take effect.
+					HotDataFixupKind fixupKind = HotDataFixupKind_None;
+					if (name.Contains("sBfClassVData"))
+						fixupKind = name.Contains(".vext") ? HotDataFixupKind_MergeVExt : HotDataFixupKind_MergeVData;
+					else if (name.Contains("sBfTypeData"))
+						fixupKind = HotDataFixupKind_CopyTypeData;
+					else if (name.Contains("sStringLiterals"))
+						fixupKind = HotDataFixupKind_LinkStringLiterals;
+
+					bool sizeChanged = (canonical.mSize != 0) && (sym.st_size != 0) && (canonical.mSize != sym.st_size);
+					if ((fixupKind == HotDataFixupKind_None) && (sizeChanged))
+					{
+						// The variable's type changed, so its old storage doesn't fit - use the new (zeroed) copy
+						mHotPendingSymbols[name] = newSymbol;
+					}
+					else
+					{
+						if (fixupKind != HotDataFixupKind_None)
+						{
+							HotDataFixup fixup;
+							fixup.mKind = fixupKind;
+							fixup.mName = name;
+							fixup.mOldAddr = canonical.mAddr;
+							fixup.mOldSize = canonical.mSize;
+							fixup.mNewAddr = addr;
+							fixup.mNewSize = sym.st_size;
+							mHotPendingDataFixups.Add(fixup);
+						}
+
+						if (fixupKind == HotDataFixupKind_MergeVExt)
+							mHotPendingSymbols[name] = newSymbol;
+						else
+							addr = canonical.mAddr;
+					}
+				}
 			}
 			else
 			{
-				HotSymbol hotSymbol;
-				hotSymbol.mAddr = addr;
-				hotSymbol.mSize = sym.st_size;
-				hotSymbol.mIsCode = isCode;
-				mHotPendingSymbols[name] = hotSymbol;
+				mHotPendingSymbols[name] = newSymbol;
 			}
 		}
 	}
@@ -3125,6 +3186,81 @@ bool LLDBDebugger::HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, S
 #endif
 }
 
+// Update the runtime's type tables in place, as WinDebugger does (DbgModule::ProcessHotSwapVariables).
+bool LLDBDebugger::HotApplyDataFixups(String& outError)
+{
+	for (auto& fixup : mHotPendingDataFixups)
+	{
+		uint64 oldSize = (fixup.mOldSize != 0) ? fixup.mOldSize : fixup.mNewSize;
+		switch (fixup.mKind)
+		{
+		case HotDataFixupKind_MergeVData:
+		case HotDataFixupKind_MergeVExt:
+			{
+				// The table can't grow in place (new virtuals go through extension tables), so merge
+				// what fits. Removed virtual methods leave 0s in the new table - keep the old entries there.
+				uint64 size = BF_MIN(oldSize, fixup.mNewSize) & ~(uint64)7;
+				Array<uint64> oldData;
+				Array<uint64> newData;
+				oldData.Resize((intptr)(size / 8));
+				newData.Resize((intptr)(size / 8));
+				if ((size > 0) && ((!ReadMemory((intptr)fixup.mOldAddr, size, oldData.mVals)) || (!ReadMemory((intptr)fixup.mNewAddr, size, newData.mVals))))
+				{
+					outError = StrFormat("failed reading vtable '%s'", fixup.mName.c_str());
+					return false;
+				}
+				for (intptr wordIdx = 0; wordIdx < oldData.size(); wordIdx++)
+				{
+					if (newData[wordIdx] != 0)
+						oldData[wordIdx] = newData[wordIdx];
+				}
+				if ((size > 0) && (!WriteMemory((intptr)fixup.mOldAddr, oldData.mVals, size)))
+				{
+					outError = StrFormat("failed updating vtable '%s'", fixup.mName.c_str());
+					return false;
+				}
+				// Extension tables are used at their new address from now on, so they get the merged data too
+				if ((fixup.mKind == HotDataFixupKind_MergeVExt) && (size > 0))
+					WriteMemory((intptr)fixup.mNewAddr, oldData.mVals, size);
+			}
+			break;
+		case HotDataFixupKind_CopyTypeData:
+			{
+				if (fixup.mNewSize != oldSize)
+				{
+					LLDBLog("HotApplyDataFixups: size of '%s' changed (%lld -> %lld), not updated\n", fixup.mName.c_str(), (long long)oldSize, (long long)fixup.mNewSize);
+					break;
+				}
+				Array<uint8> data;
+				data.Resize((intptr)fixup.mNewSize);
+				if ((fixup.mNewSize > 0) &&
+					((!ReadMemory((intptr)fixup.mNewAddr, fixup.mNewSize, data.mVals)) || (!WriteMemory((intptr)fixup.mOldAddr, data.mVals, fixup.mNewSize))))
+				{
+					outError = StrFormat("failed updating type data '%s'", fixup.mName.c_str());
+					return false;
+				}
+			}
+			break;
+		case HotDataFixupKind_LinkStringLiterals:
+			{
+				// The first word of each string literal table links to the next (newer) table
+				uint64 prevLink = 0;
+				if ((!ReadMemory((intptr)fixup.mOldAddr, 8, &prevLink)) ||
+					(!WriteMemory((intptr)fixup.mNewAddr, &prevLink, 8)) ||
+					(!WriteMemory((intptr)fixup.mOldAddr, &fixup.mNewAddr, 8)))
+				{
+					outError = StrFormat("failed linking string literal table '%s'", fixup.mName.c_str());
+					return false;
+				}
+			}
+			break;
+		default:
+			break;
+		}
+	}
+	return true;
+}
+
 // A thread stopped part-way through the bytes we're about to overwrite would resume
 // into a torn instruction, so single-step any such thread until it's clear.
 // (A thread exactly at a function's entry is fine - it will execute the new jump.)
@@ -3168,8 +3304,13 @@ bool LLDBDebugger::HotStepThreadsPastPatches(const Array<HotPatch>& patches, Str
 bool LLDBDebugger::HotApplyPatches(const Array<HotPatch>& patches, int& outNumPatched, String& outError)
 {
 	outNumPatched = 0;
-	for (auto& patch : patches)
+	HashSet<uint64> patchedAddrs;
+	for (intptr patchIdx = patches.size() - 1; patchIdx >= 0; patchIdx--)
 	{
+		auto& patch = patches[patchIdx];
+		if (!patchedAddrs.Add(patch.mOldAddr))
+			continue;
+
 		uint8 jmp[HOT_JMP_ABS64_SIZE];
 		int jmpSize;
 		int64 rel = (int64)(patch.mNewAddr - (patch.mOldAddr + HOT_JMP_REL32_SIZE));
@@ -3234,6 +3375,7 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 	Array<LLDBHotObject*> objects;
 	bool success = true;
 	mHotPendingSymbols.Clear();
+	mHotPendingDataFixups.Clear();
 	for (auto& fileName : objectFiles)
 	{
 		LLDBHotObject* obj = new LLDBHotObject();
@@ -3258,6 +3400,10 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 	}
 	for (auto obj : objects)
 		delete obj;
+
+	if (success)
+		success = HotApplyDataFixups(error);
+	mHotPendingDataFixups.Clear();
 
 	// Only publish new definitions once the whole batch is in the target
 	if (success)
