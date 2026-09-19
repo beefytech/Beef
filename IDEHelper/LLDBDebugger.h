@@ -81,6 +81,12 @@ public:
 	uint64 mStepStartFunctionAddr;
 	Dictionary<String, bool> mHasStatementLinesCache;
 
+	// The evaluation in progress (see Evaluate)
+	lldb::SBExpressionOptions mEvalOptions;
+	bool mEvalAllowCalls;
+	bool mEvalAllowProperties;
+	String mEvalError;               // why a path failed (a property getter or indexer)
+
 	// Exception info (populated when RunState_Exception is set)
 	uint64 mExceptionAddress;
 	uint32 mExceptionCode;
@@ -217,7 +223,13 @@ protected:
 	bool HotFindThreadLocalOffset(const char* qualifiedName, uint64& outOffset);
 	lldb::SBValue HotFindMemberInNewestTypes(lldb::SBValue value, const StringImpl& name, int depth);
 	String RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringImpl& expr);
-	lldb::SBValue EvaluateBeefCall(lldb::SBFrame& frame, const StringImpl& expr, bool allowCalls, lldb::SBExpressionOptions& options, String& outError);
+	String RewriteBeefMemberAccessInSpan(lldb::SBFrame& frame, const StringImpl& expr);
+	lldb::SBValue EvaluateBeefCall(lldb::SBFrame& frame, const StringImpl& expr, String& outError);
+	lldb::SBValue EvaluateBeefOperand(lldb::SBFrame& frame, const StringImpl& expr, String& outError);
+	void SplitBeefArgs(const StringImpl& argsText, Array<String>& outArgs);
+	bool FlattenBeefStruct(lldb::SBValue value, Array<String>& outTypes, Array<String>& outTexts);
+	lldb::SBValue CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue thisValue, lldb::SBType staticType, const StringImpl& methodName,
+		const Array<lldb::SBValue>& args, bool allowCall, String& outError);
 	lldb::SBType GetBeefDynamicType(lldb::SBValue objectRef);
 	void CreateOutputPipes();
 	void GiveTerminalToTarget(const StringImpl& ttyPath, int pid);

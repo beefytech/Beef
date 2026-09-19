@@ -155,6 +155,8 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mStepOutFinishedLine = false;
 	mStepContinueCount = 0;
 	mStepStartFunctionAddr = 0;
+	mEvalAllowCalls = false;
+	mEvalAllowProperties = false;
 	mExceptionAddress = 0;
 	mExceptionCode = 0;
 	mHotSwapEnabled = false;
@@ -2750,6 +2752,12 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 	if (!allowSideEffects)
 		options.SetSuppressPersistentResult(true);
 
+	// Calls (methods, property getters and indexers) may only run when the evaluation allows them
+	mEvalOptions = options;
+	mEvalAllowCalls = (expressionFlags & DwEvalExpressionFlag_AllowCalls) != 0;
+	mEvalAllowProperties = mEvalAllowCalls || ((expressionFlags & DwEvalExpressionFlag_AllowPropertyEval) != 0);
+	mEvalError.Clear();
+
 	// A plain member path ("a.b[2].c") is resolved from the frame's variables directly: that follows Beef's
 	// '.' through object references, and uses each variable's own type - after a hot swap, the C++
 	// expression parser can pick up an older version of a type with the same name
@@ -2767,11 +2775,20 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 	String callError;
 	if (!value.IsValid())
 	{
-		bool allowCalls = (expressionFlags & DwEvalExpressionFlag_AllowCalls) != 0;
-		value = EvaluateBeefCall(frame, evalExpr, allowCalls, options, callError);
+		value = EvaluateBeefCall(frame, evalExpr, callError);
 		// The IDE's error format: "!<start>\t<length>\t<message>"
 		if (!callError.IsEmpty())
+		{
+			mEvalError.Clear();
 			return StrFormat("!0\t%d\t%s", (int)evalExpr.length(), callError.c_str());
+		}
+	}
+	if ((!value.IsValid()) && (!mEvalError.IsEmpty()))
+	{
+		// A property or indexer in the path failed
+		String error = mEvalError;
+		mEvalError.Clear();
+		return StrFormat("!0\t%d\t%s", (int)evalExpr.length(), error.c_str());
 	}
 
 	// Otherwise use LLDB's (C++) expression parser, with Beef's '.' on object references turned into '->'
@@ -2917,24 +2934,74 @@ lldb::SBValue LLDBDebugger::EvaluateBeefPath(lldb::SBFrame& frame, const StringI
 			pos++;
 			if ((pos >= (int)path.length()) || (!_ReadIdent(ident)))
 				return lldb::SBValue();
-			value = _GetMember(value, ident);
+			lldb::SBValue member = _GetMember(value, ident);
+			if (!member.IsValid())
+			{
+				// A property: its getter is "get__<Name>"
+				String error;
+				member = CallBeefMethod(frame, value, lldb::SBType(), String("get__") + ident, Array<lldb::SBValue>(), mEvalAllowProperties, error);
+				if (!error.IsEmpty())
+				{
+					mEvalError = error;
+					return lldb::SBValue();
+				}
+			}
+			value = member;
 		}
 		else if (c == '[')
 		{
-			int end = (int)path.IndexOf(']', pos);
+			// The matching ']', allowing nested brackets in the index
+			int bracketDepth = 0;
+			int end = -1;
+			for (int i = pos; i < (int)path.length(); i++)
+			{
+				if (path[i] == '[')
+					bracketDepth++;
+				else if ((path[i] == ']') && (--bracketDepth == 0))
+				{
+					end = i;
+					break;
+				}
+			}
 			if (end == -1)
 				return lldb::SBValue();
 			String indexStr = path.Substring(pos + 1, end - pos - 1);
 			indexStr.Trim();
 			if (indexStr.IsEmpty())
 				return lldb::SBValue();
-			for (char digit : indexStr)
-			{
-				if ((digit < '0') || (digit > '9'))
-					return lldb::SBValue();
-			}
-			value = value.GetChildAtIndex((uint32)atoi(indexStr.c_str()), lldb::eNoDynamicValues, true);
 			pos = end + 1;
+
+			// A Beef object or struct is indexed through its indexer ("get__" with the index)
+			lldb::SBType valueType = value.GetType().GetCanonicalType();
+			if (valueType.IsReferenceType())
+				valueType = valueType.GetDereferencedType().GetCanonicalType();
+			lldb::TypeClass typeClass = (valueType.IsPointerType() ? valueType.GetPointeeType() : valueType).GetCanonicalType().GetTypeClass();
+			bool isAggregate = (typeClass == lldb::eTypeClassClass) || (typeClass == lldb::eTypeClassStruct);
+
+			String error;
+			lldb::SBValue indexValue = EvaluateBeefOperand(frame, indexStr, error);
+			if (!error.IsEmpty())
+			{
+				mEvalError = error;
+				return lldb::SBValue();
+			}
+			if (isAggregate)
+			{
+				Array<lldb::SBValue> indexArgs;
+				indexArgs.Add(indexValue);
+				lldb::SBValue element = CallBeefMethod(frame, value, lldb::SBType(), "get__", indexArgs, mEvalAllowProperties, error);
+				if (!error.IsEmpty())
+				{
+					mEvalError = error;
+					return lldb::SBValue();
+				}
+				if (element.IsValid())
+				{
+					value = element;
+					continue;
+				}
+			}
+			value = value.GetChildAtIndex((uint32)indexValue.GetValueAsUnsigned(0), lldb::eNoDynamicValues, true);
 		}
 		else
 			return lldb::SBValue();
@@ -3088,8 +3155,11 @@ bool LLDBDebugger::HotFindThreadLocalOffset(const char* qualifiedName, uint64& o
 
 // C++ needs '->' where Beef uses '.' on an object reference: rewrite "a.b" when the path before the '.'
 // resolves to a pointer
-String LLDBDebugger::RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringImpl& expr)
+String LLDBDebugger::RewriteBeefMemberAccessInSpan(lldb::SBFrame& frame, const StringImpl& expr)
 {
+	// This only probes paths, so it mustn't run property getters or indexers
+	SetAndRestoreValue<bool> prevAllowProperties(mEvalAllowProperties, false);
+	String prevError = mEvalError;
 	String result;
 	int pathStart = -1;
 	char quote = 0;
@@ -3143,6 +3213,7 @@ String LLDBDebugger::RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringI
 			pathStart = i;
 		result.Append(c);
 	}
+	mEvalError = prevError;
 	return result;
 }
 
@@ -3211,11 +3282,94 @@ static bool GetCallCType(lldb::SBType type, String& outName)
 	return true;
 }
 
-// Call a Beef method. The C++ expression parser can't: Beef's debug info gives methods an explicit 'this'
-// parameter. Instead, find the method's current address (the patched original entry of a replaced method
-// jumps to its newest version) and call it through a function pointer cast. Returns an invalid value
-// (and no error) if the expression isn't a call.
-lldb::SBValue LLDBDebugger::EvaluateBeefCall(lldb::SBFrame& frame, const StringImpl& expr, bool allowCalls, lldb::SBExpressionOptions& options, String& outError)
+// Evaluate a sub-expression (an argument or index) - a Beef path, a call, or anything the C++ parser takes
+lldb::SBValue LLDBDebugger::EvaluateBeefOperand(lldb::SBFrame& frame, const StringImpl& expr, String& outError)
+{
+	lldb::SBValue value = EvaluateBeefPath(frame, expr);
+	if ((!value.IsValid()) && (!mEvalError.IsEmpty()))
+	{
+		outError = mEvalError;
+		mEvalError.Clear();
+		return lldb::SBValue();
+	}
+	if (!value.IsValid())
+		value = EvaluateBeefCall(frame, expr, outError);
+	if ((!value.IsValid()) && (outError.IsEmpty()))
+		value = frame.EvaluateExpression(RewriteBeefMemberAccess(frame, expr).c_str(), mEvalOptions);
+	if ((outError.IsEmpty()) && ((!value.IsValid()) || (value.GetError().Fail())))
+	{
+		lldb::SBError error = value.GetError();
+		const char* errorStr = error.GetCString();
+		outError = (errorStr != NULL) ? errorStr : "Invalid expression";
+	}
+	return outError.IsEmpty() ? value : lldb::SBValue();
+}
+
+void LLDBDebugger::SplitBeefArgs(const StringImpl& argsText, Array<String>& outArgs)
+{
+	int argDepth = 0;
+	int argStart = 0;
+	char quote = 0;
+	for (int i = 0; i <= (int)argsText.length(); i++)
+	{
+		char c = (i < (int)argsText.length()) ? argsText[i] : ',';
+		if (quote != 0)
+		{
+			if (c == quote)
+				quote = 0;
+			continue;
+		}
+		if ((c == '"') || (c == '\''))
+			quote = c;
+		else if ((c == '(') || (c == '['))
+			argDepth++;
+		else if ((c == ')') || (c == ']'))
+			argDepth--;
+		else if ((c == ',') && (argDepth == 0))
+		{
+			String arg = argsText.Substring(argStart, i - argStart);
+			arg.Trim();
+			outArgs.Add(arg);
+			argStart = i + 1;
+		}
+	}
+	if ((outArgs.size() == 1) && (outArgs[0].IsEmpty()))
+		outArgs.Clear();
+}
+
+// A struct's scalar and pointer fields in order, as call arguments - how Beef passes a small struct by value
+bool LLDBDebugger::FlattenBeefStruct(lldb::SBValue value, Array<String>& outTypes, Array<String>& outTexts)
+{
+	for (uint32 childIdx = 0; childIdx < value.GetNumChildren(); childIdx++)
+	{
+		lldb::SBValue child = value.GetChildAtIndex(childIdx);
+		lldb::SBType childType = child.GetType().GetCanonicalType();
+		lldb::TypeClass typeClass = childType.GetTypeClass();
+		if ((typeClass == lldb::eTypeClassStruct) || (typeClass == lldb::eTypeClassClass))
+		{
+			if (!FlattenBeefStruct(child, outTypes, outTexts))
+				return false;
+			continue;
+		}
+		String cType;
+		if ((!GetCallCType(childType, cType)) || (cType == "void"))
+			return false;
+		outTypes.Add(cType);
+		if (childType.IsPointerType())
+			outTexts.Add(StrFormat("0x%llx", (unsigned long long)child.GetValueAsUnsigned(0)));
+		else
+		{
+			const char* text = child.GetValue();
+			outTexts.Add((text != NULL) ? text : "0");
+		}
+	}
+	return true;
+}
+
+// Parse and evaluate a Beef method call: "obj.Method(args)", "Method(args)" (on the implicit 'this', or a
+// static method of the current class) or "Type.Method(args)". Returns an invalid value (and no error) if
+// the expression isn't a call.
+lldb::SBValue LLDBDebugger::EvaluateBeefCall(lldb::SBFrame& frame, const StringImpl& expr, String& outError)
 {
 	String callExpr = expr;
 	callExpr.Trim();
@@ -3249,6 +3403,10 @@ lldb::SBValue LLDBDebugger::EvaluateBeefCall(lldb::SBFrame& frame, const StringI
 	if (nameStart == nameEnd)
 		return lldb::SBValue();
 	String methodName = callExpr.Substring(nameStart, nameEnd - nameStart);
+	// Operators that look like calls are left to the expression parser
+	if ((nameStart == 0) && ((methodName == "sizeof") || (methodName == "alignof") || (methodName == "typeof") ||
+		(methodName == "decltype") || (methodName == "strideof")))
+		return lldb::SBValue();
 	String targetExpr;
 	if (nameStart > 0)
 	{
@@ -3258,64 +3416,62 @@ lldb::SBValue LLDBDebugger::EvaluateBeefCall(lldb::SBFrame& frame, const StringI
 		targetExpr.Trim();
 	}
 
-	// Arguments, split at top-level commas
-	Array<String> argExprs;
-	{
-		String argsText = callExpr.Substring(openParen + 1, callExpr.length() - openParen - 2);
-		int argDepth = 0;
-		int argStart = 0;
-		char quote = 0;
-		for (int i = 0; i <= (int)argsText.length(); i++)
-		{
-			char c = (i < (int)argsText.length()) ? argsText[i] : ',';
-			if (quote != 0)
-			{
-				if (c == quote)
-					quote = 0;
-				continue;
-			}
-			if ((c == '"') || (c == '\''))
-				quote = c;
-			else if ((c == '(') || (c == '['))
-				argDepth++;
-			else if ((c == ')') || (c == ']'))
-				argDepth--;
-			else if ((c == ',') && (argDepth == 0))
-			{
-				String arg = argsText.Substring(argStart, i - argStart);
-				arg.Trim();
-				if ((!arg.IsEmpty()) || (i < (int)argsText.length()))
-					argExprs.Add(arg);
-				argStart = i + 1;
-			}
-		}
-		if ((argExprs.size() == 1) && (argExprs[0].IsEmpty()))
-			argExprs.Clear();
-	}
-
 	// What the method is called on: an object or struct, the implicit 'this', or a type (static method)
 	lldb::SBValue thisValue;
-	lldb::SBType searchType;
+	lldb::SBType staticType;
 	if (!targetExpr.IsEmpty())
 	{
 		thisValue = EvaluateBeefPath(frame, targetExpr);
+		if ((!thisValue.IsValid()) && (!mEvalError.IsEmpty()))
+		{
+			outError = mEvalError;
+			mEvalError.Clear();
+			return lldb::SBValue();
+		}
 		if (!thisValue.IsValid())
 		{
 			String typeName = targetExpr;
 			typeName.Replace(".", "::");
-			searchType = HotFindNewestType(typeName.c_str());
-			if (!searchType.IsValid())
-				searchType = mLLDBTarget.FindFirstType(typeName.c_str());
-			if (!searchType.IsValid())
+			staticType = HotFindNewestType(typeName.c_str());
+			if (!staticType.IsValid())
+				staticType = mLLDBTarget.FindFirstType(typeName.c_str());
+			if (!staticType.IsValid())
 				return lldb::SBValue();
 		}
 	}
 	else
 		thisValue = frame.FindVariable("this");
 
+	Array<String> argExprs;
+	SplitBeefArgs(callExpr.Substring(openParen + 1, callExpr.length() - openParen - 2), argExprs);
+	Array<lldb::SBValue> args;
+	for (auto& argExpr : argExprs)
+	{
+		lldb::SBValue arg = EvaluateBeefOperand(frame, argExpr, outError);
+		if (!outError.IsEmpty())
+			return lldb::SBValue();
+		args.Add(arg);
+	}
+	return CallBeefMethod(frame, thisValue, staticType, methodName, args, mEvalAllowCalls, outError);
+}
+
+// Call a Beef method on a value (an object reference or a struct), or a static method of 'staticType'.
+// The C++ expression parser can't: Beef's debug info gives methods an explicit 'this' parameter. Instead,
+// find the method's current address (the patched original entry of a replaced method jumps to its newest
+// version) and call it through a function pointer cast. Returns an invalid value (and no error) if there's
+// no such method.
+lldb::SBValue LLDBDebugger::CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue thisValue, lldb::SBType staticType, const StringImpl& methodName,
+	const Array<lldb::SBValue>& args, bool allowCall, String& outError)
+{
+	lldb::SBType searchType = staticType;
 	if (thisValue.IsValid())
 	{
 		lldb::SBType thisType = thisValue.GetType().GetCanonicalType();
+		if (thisType.IsReferenceType())
+		{
+			thisValue = thisValue.Dereference();
+			thisType = thisValue.GetType().GetCanonicalType();
+		}
 		if (thisType.IsPointerType())
 		{
 			searchType = GetBeefDynamicType(thisValue);
@@ -3328,9 +3484,11 @@ lldb::SBValue LLDBDebugger::EvaluateBeefCall(lldb::SBFrame& frame, const StringI
 	if (!searchType.IsValid())
 		return lldb::SBValue();
 
-	// Find the method in the type or its bases (the newest hot-loaded definitions first)
+	// Find the method in the type or its bases
 	lldb::SBTypeMemberFunction method;
+	lldb::SBType methodType;
 	bool hasExplicitThis = false;
+	bool thisByValue = false;
 	auto _FindMethod = [&](lldb::SBType type, auto& findMethodRef, int depth) -> bool
 	{
 		if (depth > 16)
@@ -3366,19 +3524,26 @@ lldb::SBValue LLDBDebugger::EvaluateBeefCall(lldb::SBFrame& frame, const StringI
 				const char* funcName = func.GetName();
 				if ((funcName == NULL) || (methodName != funcName) || (func.GetMangledName() == NULL))
 					continue;
-				// Beef's instance methods list 'this' as their first argument
+				// Beef's instance methods list 'this' as their first argument - a pointer, or for a
+				// non-mutating struct method, the struct by value
 				bool explicitThis = false;
+				bool explicitThisByValue = false;
 				if (func.GetNumberOfArguments() > 0)
 				{
 					lldb::SBType firstArg = func.GetArgumentTypeAtIndex(0).GetCanonicalType();
-					const char* pointeeName = firstArg.IsPointerType() ? firstArg.GetPointeeType().GetUnqualifiedType().GetCanonicalType().GetName() : NULL;
 					const char* checkName = checkType.GetUnqualifiedType().GetCanonicalType().GetName();
+					const char* pointeeName = firstArg.IsPointerType() ? firstArg.GetPointeeType().GetUnqualifiedType().GetCanonicalType().GetName() : NULL;
+					const char* argName = firstArg.GetUnqualifiedType().GetName();
 					explicitThis = (pointeeName != NULL) && (checkName != NULL) && (strcmp(pointeeName, checkName) == 0);
+					explicitThisByValue = (!explicitThis) && (argName != NULL) && (checkName != NULL) && (strcmp(argName, checkName) == 0);
 				}
-				if (func.GetNumberOfArguments() - (explicitThis ? 1 : 0) != (uint32)argExprs.size())
+				bool takesThis = (explicitThis) || (explicitThisByValue);
+				if (func.GetNumberOfArguments() - (takesThis ? 1 : 0) != (uint32)args.size())
 					continue;
 				method = func;
-				hasExplicitThis = explicitThis;
+				methodType = checkType;
+				hasExplicitThis = takesThis;
+				thisByValue = explicitThisByValue;
 				return true;
 			}
 		}
@@ -3391,15 +3556,7 @@ lldb::SBValue LLDBDebugger::EvaluateBeefCall(lldb::SBFrame& frame, const StringI
 	};
 	if (!_FindMethod(searchType, _FindMethod, 0))
 	{
-		if (LLDBLogEnabled())
-		{
-			LLDBLog("EvaluateBeefCall: no '%s' with %d args in %s\n", methodName.c_str(), (int)argExprs.size(), searchType.GetName());
-			for (uint32 funcIdx = 0; funcIdx < searchType.GetNumberOfMemberFunctions(); funcIdx++)
-			{
-				lldb::SBTypeMemberFunction func = searchType.GetMemberFunctionAtIndex(funcIdx);
-				LLDBLog("  %s (%s) args:%d kind:%d\n", func.GetName(), func.GetMangledName(), (int)func.GetNumberOfArguments(), (int)func.GetKind());
-			}
-		}
+		LLDBLog("CallBeefMethod: no '%s' with %d args in %s\n", methodName.c_str(), (int)args.size(), searchType.GetName());
 		return lldb::SBValue();
 	}
 
@@ -3409,10 +3566,54 @@ lldb::SBValue LLDBDebugger::EvaluateBeefCall(lldb::SBFrame& frame, const StringI
 		outError = "Unable to find address for method, possibly due to compiler optimizations.";
 		return lldb::SBValue();
 	}
-	if (!allowCalls)
+	if (!allowCall)
 	{
 		outError = "Method calls are only evaluated when calls are allowed";
 		return lldb::SBValue();
+	}
+
+	// A struct 'this' passed by value: Beef splats small structs into their fields, which the debug info
+	// shows as a second entry for the method with the lowered parameter list
+	Array<String> thisArgTypes;
+	Array<String> thisArgTexts;
+	lldb::SBTypeMemberFunction abiMethod = method;
+	if (thisByValue)
+	{
+		if (!FlattenBeefStruct(thisValue, thisArgTypes, thisArgTexts))
+		{
+			outError = "Calling this struct method isn't supported";
+			return lldb::SBValue();
+		}
+		bool foundLowered = false;
+		for (uint32 funcIdx = 0; funcIdx < methodType.GetNumberOfMemberFunctions(); funcIdx++)
+		{
+			lldb::SBTypeMemberFunction func = methodType.GetMemberFunctionAtIndex(funcIdx);
+			const char* funcMangled = func.GetMangledName();
+			if ((funcMangled == NULL) || (strcmp(funcMangled, method.GetMangledName()) != 0))
+				continue;
+			if (func.GetNumberOfArguments() == (uint32)(thisArgTypes.size() + args.size()))
+			{
+				abiMethod = func;
+				foundLowered = true;
+				break;
+			}
+			// Or passed by pointer
+			if ((func.GetNumberOfArguments() == (uint32)(1 + args.size())) && (func.GetArgumentTypeAtIndex(0).GetCanonicalType().IsPointerType()))
+			{
+				abiMethod = func;
+				thisArgTypes.Clear();
+				thisArgTexts.Clear();
+				thisArgTypes.Add("void*");
+				thisArgTexts.Add(StrFormat("0x%llx", (unsigned long long)thisValue.GetLoadAddress()));
+				foundLowered = true;
+				break;
+			}
+		}
+		if (!foundLowered)
+		{
+			outError = "Calling this struct method isn't supported";
+			return lldb::SBValue();
+		}
 	}
 
 	// Build "((ret (*)(params))addr)(args)"
@@ -3436,11 +3637,16 @@ lldb::SBValue LLDBDebugger::EvaluateBeefCall(lldb::SBFrame& frame, const StringI
 		argList += StrFormat("(%s)(%s)", cType.c_str(), argText.c_str());
 	};
 
-	if (hasExplicitThis)
+	if (thisByValue)
+	{
+		for (intptr argIdx = 0; argIdx < thisArgTypes.size(); argIdx++)
+			_AddArg(thisArgTypes[argIdx], thisArgTexts[argIdx]);
+	}
+	else if (hasExplicitThis)
 	{
 		uint64 thisAddr = 0;
 		if (thisValue.IsValid())
-			thisAddr = thisValue.GetType().IsPointerType() ? thisValue.GetValueAsUnsigned(0) : thisValue.GetLoadAddress();
+			thisAddr = thisValue.GetType().GetCanonicalType().IsPointerType() ? thisValue.GetValueAsUnsigned(0) : thisValue.GetLoadAddress();
 		if ((thisAddr == 0) || (thisAddr == LLDB_INVALID_ADDRESS))
 		{
 			outError = "No object to call the method on";
@@ -3448,23 +3654,16 @@ lldb::SBValue LLDBDebugger::EvaluateBeefCall(lldb::SBFrame& frame, const StringI
 		}
 		_AddArg("void*", StrFormat("0x%llx", (unsigned long long)thisAddr));
 	}
-	for (intptr argIdx = 0; argIdx < argExprs.size(); argIdx++)
+	for (intptr argIdx = 0; argIdx < args.size(); argIdx++)
 	{
 		String paramCType;
-		if (!GetCallCType(method.GetArgumentTypeAtIndex((uint32)argIdx + (hasExplicitThis ? 1 : 0)), paramCType))
+		uint32 paramIdx = (uint32)argIdx + (thisByValue ? (uint32)thisArgTypes.size() : (hasExplicitThis ? 1 : 0));
+		if (!GetCallCType((thisByValue ? abiMethod : method).GetArgumentTypeAtIndex(paramIdx), paramCType))
 		{
 			outError = "Passing structs to methods isn't supported";
 			return lldb::SBValue();
 		}
-		lldb::SBValue argValue = EvaluateBeefPath(frame, argExprs[argIdx]);
-		if (!argValue.IsValid())
-			argValue = frame.EvaluateExpression(RewriteBeefMemberAccess(frame, argExprs[argIdx]).c_str(), options);
-		if ((!argValue.IsValid()) || (argValue.GetError().Fail()))
-		{
-			const char* argError = argValue.GetError().GetCString();
-			outError = (argError != NULL) ? argError : "Invalid argument";
-			return lldb::SBValue();
-		}
+		lldb::SBValue argValue = args[argIdx];
 		String argText;
 		lldb::SBType argType = argValue.GetType().GetCanonicalType();
 		if ((argType.IsPointerType()) || (argType.IsReferenceType()))
@@ -3478,14 +3677,135 @@ lldb::SBValue LLDBDebugger::EvaluateBeefCall(lldb::SBFrame& frame, const StringI
 	}
 
 	String call = StrFormat("((%s (*)(%s))0x%llx)(%s)", retCType.c_str(), paramList.c_str(), (unsigned long long)symbol.mAddr, argList.c_str());
-	lldb::SBExpressionOptions callOptions = options;
+	lldb::SBExpressionOptions callOptions = mEvalOptions;
 	callOptions.SetAllowJIT(true);
 	callOptions.SetIgnoreBreakpoints(true);
 	callOptions.SetUnwindOnError(true);
 	lldb::SBValue result = frame.EvaluateExpression(call.c_str(), callOptions);
-	LLDBLog("EvaluateBeefCall: %s -> %s\n", call.c_str(), result.GetError().Fail() ? result.GetError().GetCString() : result.GetValue());
-	if ((result.IsValid()) && (!result.GetError().Fail()) && (retType.GetCanonicalType().IsPointerType()))
+	LLDBLog("CallBeefMethod: %s -> %s\n", call.c_str(), result.GetError().Fail() ? result.GetError().GetCString() : result.GetValue());
+	if ((!result.IsValid()) || (result.GetError().Fail()))
+		return result;
+
+	// Pointers get their declared type back; a 'ref' return is read through the reference
+	lldb::SBType canonicalRet = retType.GetCanonicalType();
+	if (canonicalRet.IsReferenceType())
+	{
+		uint64 addr = result.GetValueAsUnsigned(0);
+		result = mLLDBTarget.CreateValueFromAddress(methodName.c_str(), lldb::SBAddress(addr, mLLDBTarget), canonicalRet.GetDereferencedType());
+	}
+	else if (canonicalRet.IsPointerType())
 		result = result.Cast(retType);
+	return result;
+}
+
+// Prepare an expression for LLDB's C++ parser. Each Beef path in it ("a.b[i].c", optionally a call
+// "a.b.M(x)") is evaluated with Beef's rules - properties, indexers, statics, methods - and replaced by
+// its value as a typed literal, so it can be part of a larger expression ("list.Count - 1"). A path that
+// can't be substituted keeps its text, with '.' on object references rewritten to '->'.
+String LLDBDebugger::RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringImpl& expr)
+{
+	auto _IsIdentStart = [](char c)
+	{
+		return ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')) || (c == '_') || (c == '@');
+	};
+	auto _MatchClose = [&](int openPos, char openChar, char closeChar)
+	{
+		int depth = 0;
+		for (int i = openPos; i < (int)expr.length(); i++)
+		{
+			if (expr[i] == openChar)
+				depth++;
+			else if ((expr[i] == closeChar) && (--depth == 0))
+				return i;
+		}
+		return -1;
+	};
+
+	String result;
+	char quote = 0;
+	int i = 0;
+	while (i < (int)expr.length())
+	{
+		char c = expr[i];
+		if (quote != 0)
+		{
+			result.Append(c);
+			if ((c == '\\') && (i + 1 < (int)expr.length()))
+				result.Append(expr[++i]);
+			else if (c == quote)
+				quote = 0;
+			i++;
+			continue;
+		}
+		if ((c == '"') || (c == '\''))
+		{
+			quote = c;
+			result.Append(c);
+			i++;
+			continue;
+		}
+
+		// A path starts at an identifier that isn't itself a member ("x.a", "x->a", "N::a") or part of a number
+		char prev = (i > 0) ? expr[i - 1] : ' ';
+		bool isMemberAccess = (prev == '.') || ((prev == '>') && (i > 1) && (expr[i - 2] == '-')) || (prev == ':');
+		if ((!_IsIdentStart(c)) || (IsBeefIdentChar(prev)) || (isMemberAccess))
+		{
+			result.Append(c);
+			i++;
+			continue;
+		}
+
+		int end = i;
+		while ((end < (int)expr.length()) && (IsBeefIdentChar(expr[end])))
+			end++;
+		while (end < (int)expr.length())
+		{
+			if ((expr[end] == '.') && (end + 1 < (int)expr.length()) && (_IsIdentStart(expr[end + 1])))
+			{
+				end++;
+				while ((end < (int)expr.length()) && (IsBeefIdentChar(expr[end])))
+					end++;
+			}
+			else if (expr[end] == '[')
+			{
+				int close = _MatchClose(end, '[', ']');
+				if (close == -1)
+					break;
+				end = close + 1;
+			}
+			else
+				break;
+		}
+		bool isCall = false;
+		if ((end < (int)expr.length()) && (expr[end] == '('))
+		{
+			int close = _MatchClose(end, '(', ')');
+			if (close != -1)
+			{
+				end = close + 1;
+				isCall = true;
+			}
+		}
+
+		String span = expr.Substring(i, end - i);
+		String literal;
+		String error;
+		String prevError = mEvalError;
+		lldb::SBValue value = isCall ? EvaluateBeefCall(frame, span, error) : EvaluateBeefPath(frame, span);
+		mEvalError = prevError;
+		if ((value.IsValid()) && (!value.GetError().Fail()) && (error.IsEmpty()))
+		{
+			lldb::SBType type = value.GetType().GetCanonicalType();
+			String cType;
+			const char* typeName = value.GetType().GetName();
+			if ((type.IsPointerType()) && (typeName != NULL))
+				literal = StrFormat("((%s)0x%llx)", typeName, (unsigned long long)value.GetValueAsUnsigned(0));
+			else if ((GetCallCType(type, cType)) && (cType != "void") && (value.GetValue() != NULL))
+				literal = StrFormat("((%s)%s)", cType.c_str(), value.GetValue());
+		}
+		result += literal.IsEmpty() ? RewriteBeefMemberAccessInSpan(frame, span) : literal;
+		i = end;
+	}
 	return result;
 }
 
