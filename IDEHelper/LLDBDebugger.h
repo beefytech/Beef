@@ -111,6 +111,8 @@ public:
 	BfpFile* mStdErrPipeRead;
 	String mStdOutPending;       // Data the pipe wasn't ready to accept yet
 	String mStdErrPending;
+	int mTerminalFd;              // the IDE's terminal, while the target is its foreground process group
+	int mTerminalPrevForeground;
 
 	// Hot swap
 	struct HotSymbol
@@ -138,6 +140,21 @@ public:
 		uint64 mOldSize;
 		uint64 mNewAddr;
 		uint64 mNewSize;
+	};
+
+	struct HotImage
+	{
+		uint64 mAddr;
+		uint64 mSize;
+		int mHotIdx;
+		lldb::SBModule mModule;
+		String mModulePath;
+	};
+
+	struct HotRange
+	{
+		uint64 mAddr;
+		uint64 mSize;
 	};
 
 	struct HotVersion
@@ -181,6 +198,8 @@ public:
 	uint64 mHotTlsExtraUsed;
 	Dictionary<String, uint64> mHotTlsDemangled;        // demangled thread-local names → TLS offset (for evaluation)
 	bool mHotTlsDemangledValid;
+	Array<HotImage> mHotImages;                      // each hot-loaded object's memory, until freed
+	Array<HotRange> mHotFreeRanges;                  // freed hot memory, sorted by address
 	Array<HotVersion> mHotVersions;                  // modules added by each hot load, oldest first
 	Array<String> mHotModulePaths;                   // copies of hot-loaded objects registered with LLDB
 	Dictionary<String, uint64> mHotExternalAddrs;    // cache of symbols resolved through dlsym in the target
@@ -199,6 +218,8 @@ protected:
 	lldb::SBValue HotFindMemberInNewestTypes(lldb::SBValue value, const StringImpl& name, int depth);
 	String RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringImpl& expr);
 	void CreateOutputPipes();
+	void GiveTerminalToTarget(const StringImpl& ttyPath, int pid);
+	void RestoreTerminal();
 	void CloseOutputPipes();
 	void PumpTargetOutput();
 	void HotResetState();
@@ -206,6 +227,8 @@ protected:
 	bool HotEvaluate(const StringImpl& expr, uint64& outValue, String& outError);
 	bool HotReserveHeap(uint64 minSize, String& outError);
 	uint64 HotAlloc(uint64 size, uint64 align, String& outError);
+	void HotFree(uint64 addr, uint64 size);
+	void HotCleanupImages(int currentHotIdx);
 	bool HotFindExeSymbol(const StringImpl& name, HotSymbol& outSymbol);
 	bool HotFindCanonicalSymbol(const StringImpl& name, HotSymbol& outSymbol);
 	bool HotResolveExternal(const StringImpl& name, uint64& outAddr, String& outError);

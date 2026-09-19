@@ -12,6 +12,8 @@
 #include <limits.h>
 #include <unistd.h>
 #include <cxxabi.h>
+#include <signal.h>
+#include <termios.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <elf.h>
@@ -159,6 +161,8 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mStdErrPipeWrite = -1;
 	mStdOutPipeRead = NULL;
 	mStdErrPipeRead = NULL;
+	mTerminalFd = -1;
+	mTerminalPrevForeground = -1;
 	HotResetState();
 }
 
@@ -166,6 +170,7 @@ LLDBDebugger::~LLDBDebugger()
 {
 	WaitForLaunchThread();
 	CloseOutputPipes();
+	RestoreTerminal();
 	HotRemoveDebugInfo();
 	for (auto bp : mBreakpoints)
 		delete bp;
@@ -463,6 +468,19 @@ void LLDBDebugger::DoLaunch()
 		envp.push_back(NULL);
 	}
 
+	// Console input: when the IDE was started from a terminal, the program reads that terminal directly -
+	// the counterpart of its output being echoed there (see PumpTargetOutput). Otherwise LLDB gives it a
+	// pty that nothing writes to.
+	String stdinPath;
+#ifdef __linux__
+	if ((mOpenFileFlags & DbgOpenFileFlag_RedirectStdInput) == 0)
+	{
+		const char* ttyPath = isatty(STDIN_FILENO) ? ttyname(STDIN_FILENO) : NULL;
+		if (ttyPath != NULL)
+			stdinPath = ttyPath;
+	}
+#endif
+
 	// Launch the process stopped at entry so the IDE can set up before running.
 	lldb::SBError launchError;
 	lldb::SBListener listener = debugger.GetListener();
@@ -470,7 +488,7 @@ void LLDBDebugger::DoLaunch()
 		listener,
 		argv.size() > 1 ? &argv.front() : NULL,
 		envp.size() > 1 ? &envp.front() : NULL,
-		NULL, // stdin
+		stdinPath.IsEmpty() ? NULL : stdinPath.c_str(), // stdin
 		NULL, // stdout
 		NULL, // stderr
 		mWorkingDir.IsEmpty() ? NULL : mWorkingDir.c_str(),
@@ -496,6 +514,9 @@ void LLDBDebugger::DoLaunch()
 		mRunState = RunState_Terminated;
 		return;
 	}
+
+	if (!stdinPath.IsEmpty())
+		GiveTerminalToTarget(stdinPath, (int)process.GetProcessID());
 
 	// Publish to the shared state under the lock so Update() sees a consistent view.
 	AutoCrit autoCrit(mDebugManager->mCritSect);
@@ -538,6 +559,62 @@ void LLDBDebugger::GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFil
 //----------------------------------------------------------------------------
 // Target stdio
 //----------------------------------------------------------------------------
+
+// The program reads the IDE's terminal (see DoLaunch), but in its own process group - reading the
+// terminal from a background group would stop it with SIGTTIN. Like gdb, make it the terminal's foreground
+// group while it runs; the IDE doesn't read the terminal itself.
+void LLDBDebugger::GiveTerminalToTarget(const StringImpl& ttyPath, int pid)
+{
+#ifdef __linux__
+	pid_t targetGroup = getpgid(pid);
+	if (targetGroup <= 0)
+		return;
+	int fd = open(ttyPath.c_str(), O_RDWR | O_NOCTTY | O_CLOEXEC);
+	if (fd < 0)
+		return;
+	pid_t prevForeground = tcgetpgrp(fd);
+	if ((prevForeground <= 0) || (prevForeground == targetGroup))
+	{
+		close(fd);
+		return;
+	}
+
+	// Changing the foreground group from a background group raises SIGTTOU
+	sigset_t blockSet;
+	sigset_t prevSet;
+	sigemptyset(&blockSet);
+	sigaddset(&blockSet, SIGTTOU);
+	pthread_sigmask(SIG_BLOCK, &blockSet, &prevSet);
+	bool success = tcsetpgrp(fd, targetGroup) == 0;
+	pthread_sigmask(SIG_SETMASK, &prevSet, NULL);
+
+	if (!success)
+	{
+		close(fd);
+		return;
+	}
+	mTerminalFd = fd;
+	mTerminalPrevForeground = prevForeground;
+#endif
+}
+
+void LLDBDebugger::RestoreTerminal()
+{
+#ifdef __linux__
+	if (mTerminalFd < 0)
+		return;
+	sigset_t blockSet;
+	sigset_t prevSet;
+	sigemptyset(&blockSet);
+	sigaddset(&blockSet, SIGTTOU);
+	pthread_sigmask(SIG_BLOCK, &blockSet, &prevSet);
+	tcsetpgrp(mTerminalFd, mTerminalPrevForeground);
+	pthread_sigmask(SIG_SETMASK, &prevSet, NULL);
+	close(mTerminalFd);
+	mTerminalFd = -1;
+	mTerminalPrevForeground = -1;
+#endif
+}
 
 void LLDBDebugger::CreateOutputPipes()
 {
@@ -927,7 +1004,10 @@ void LLDBDebugger::Update()
 	// After handling events, so output written just before the target exits isn't lost
 	PumpTargetOutput();
 	if (mRunState == RunState_Terminated)
+	{
 		CloseOutputPipes();
+		RestoreTerminal();
+	}
 }
 
 //----------------------------------------------------------------------------
@@ -3200,6 +3280,8 @@ void LLDBDebugger::HotResetState()
 	mHotSymbols.Clear();
 	mHotPendingSymbols.Clear();
 	mHotExternalAddrs.Clear();
+	mHotImages.Clear();
+	mHotFreeRanges.Clear();
 	mHotExeTlsLoaded = false;
 	mHotExeTlsOffsets.Clear();
 	mHotTlsDemangled.Clear();
@@ -3575,6 +3657,21 @@ bool LLDBDebugger::HotReserveHeap(uint64 minSize, String& outError)
 
 uint64 LLDBDebugger::HotAlloc(uint64 size, uint64 align, String& outError)
 {
+	// Reuse memory from images that were freed (see HotCleanupImages)
+	for (intptr rangeIdx = 0; rangeIdx < mHotFreeRanges.size(); rangeIdx++)
+	{
+		HotRange range = mHotFreeRanges[rangeIdx];
+		uint64 alignedAddr = HotAlignUp(range.mAddr, align);
+		if (alignedAddr + size > range.mAddr + range.mSize)
+			continue;
+		mHotFreeRanges.RemoveAt(rangeIdx);
+		if (alignedAddr > range.mAddr)
+			HotFree(range.mAddr, alignedAddr - range.mAddr);
+		if (alignedAddr + size < range.mAddr + range.mSize)
+			HotFree(alignedAddr + size, range.mAddr + range.mSize - (alignedAddr + size));
+		return alignedAddr;
+	}
+
 	uint64 addr = HotAlignUp(mHotHeapStart + mHotHeapUsed, align);
 	if ((mHotHeapStart == 0) || (addr + size > mHotHeapStart + mHotHeapSize))
 	{
@@ -3584,6 +3681,155 @@ uint64 LLDBDebugger::HotAlloc(uint64 size, uint64 align, String& outError)
 	}
 	mHotHeapUsed = addr + size - mHotHeapStart;
 	return addr;
+}
+
+// Return memory to the free list, merging it with adjacent free ranges
+void LLDBDebugger::HotFree(uint64 addr, uint64 size)
+{
+	if (size == 0)
+		return;
+	intptr insertIdx = 0;
+	while ((insertIdx < mHotFreeRanges.size()) && (mHotFreeRanges[insertIdx].mAddr < addr))
+		insertIdx++;
+	HotRange range;
+	range.mAddr = addr;
+	range.mSize = size;
+	mHotFreeRanges.Insert(insertIdx, range);
+	if ((insertIdx + 1 < mHotFreeRanges.size()) && (addr + size == mHotFreeRanges[insertIdx + 1].mAddr))
+	{
+		mHotFreeRanges[insertIdx].mSize += mHotFreeRanges[insertIdx + 1].mSize;
+		mHotFreeRanges.RemoveAt(insertIdx + 1);
+	}
+	if ((insertIdx > 0) && (mHotFreeRanges[insertIdx - 1].mAddr + mHotFreeRanges[insertIdx - 1].mSize == addr))
+	{
+		mHotFreeRanges[insertIdx - 1].mSize += mHotFreeRanges[insertIdx].mSize;
+		mHotFreeRanges.RemoveAt(insertIdx);
+	}
+}
+
+// Free the images of earlier hot loads that nothing can reach any more. The loader binds code and data
+// references to canonical definitions, so an image is only live if it holds a current definition - a method
+// or data first added by a hot compile, or the current version of a replaced method - or code a thread may
+// still run or return to. Like WinDebugger's CleanupHotHeap, threads' registers and stacks are scanned
+// conservatively for addresses in an image.
+void LLDBDebugger::HotCleanupImages(int currentHotIdx)
+{
+	if (mHotImages.IsEmpty())
+		return;
+
+	uint64 lowAddr = UINT64_MAX;
+	uint64 highAddr = 0;
+	for (auto& image : mHotImages)
+	{
+		lowAddr = BF_MIN(lowAddr, image.mAddr);
+		highAddr = BF_MAX(highAddr, image.mAddr + image.mSize);
+	}
+
+	Array<uint8> referenced;
+	referenced.Resize(mHotImages.size());
+	for (intptr imageIdx = 0; imageIdx < mHotImages.size(); imageIdx++)
+		referenced[imageIdx] = (mHotImages[imageIdx].mHotIdx == currentHotIdx) ? 1 : 0;
+
+	auto _Mark = [&](uint64 addr)
+	{
+		if ((addr < lowAddr) || (addr >= highAddr))
+			return;
+		for (intptr imageIdx = 0; imageIdx < mHotImages.size(); imageIdx++)
+		{
+			auto& image = mHotImages[imageIdx];
+			if ((addr >= image.mAddr) && (addr < image.mAddr + image.mSize))
+			{
+				referenced[imageIdx] = 1;
+				return;
+			}
+		}
+	};
+
+	for (auto& kv : mHotSymbols)
+	{
+		if (!kv.mValue.mIsTLS)
+			_Mark(kv.mValue.mAddr);
+	}
+	for (auto& kv : mHotPatchedEntries)
+	{
+		_Mark(kv.mKey);
+		_Mark(kv.mValue.mNewAddr);
+	}
+
+	for (uint32 threadIdx = 0; threadIdx < mLLDBProcess.GetNumThreads(); threadIdx++)
+	{
+		lldb::SBThread thread = mLLDBProcess.GetThreadAtIndex(threadIdx);
+		lldb::SBFrame topFrame = thread.GetFrameAtIndex(0);
+		if (!topFrame.IsValid())
+			continue;
+
+		lldb::SBValueList registerSets = topFrame.GetRegisters();
+		for (uint32 setIdx = 0; setIdx < registerSets.GetSize(); setIdx++)
+		{
+			lldb::SBValue registerSet = registerSets.GetValueAtIndex(setIdx);
+			for (uint32 regIdx = 0; regIdx < registerSet.GetNumChildren(); regIdx++)
+				_Mark(registerSet.GetChildAtIndex(regIdx).GetValueAsUnsigned(0));
+		}
+
+		uint64 stackEnd = 0;
+		for (uint32 frameIdx = 0; frameIdx < thread.GetNumFrames(); frameIdx++)
+		{
+			lldb::SBFrame frame = thread.GetFrameAtIndex(frameIdx);
+			_Mark((uint64)frame.GetPC());
+			stackEnd = BF_MAX(stackEnd, (uint64)frame.GetCFA());
+		}
+
+		const uint64 maxScanSize = 16 * 1024 * 1024;
+		uint64 scanAddr = (uint64)topFrame.GetSP() & ~(uint64)7;
+		uint64 scanEnd = BF_MIN(stackEnd + 4096, scanAddr + maxScanSize);
+		Array<uint64> words;
+		while (scanAddr < scanEnd)
+		{
+			uint64 chunkSize = BF_MIN(scanEnd - scanAddr, (uint64)64 * 1024) & ~(uint64)7;
+			if (chunkSize == 0)
+				break;
+			words.Resize((intptr)(chunkSize / 8));
+			if (!ReadMemory((intptr)scanAddr, chunkSize, words.mVals))
+				break;
+			for (auto word : words)
+				_Mark(word);
+			scanAddr += chunkSize;
+		}
+	}
+
+	int numFreed = 0;
+	uint64 freedSize = 0;
+	for (intptr imageIdx = mHotImages.size() - 1; imageIdx >= 0; imageIdx--)
+	{
+		if (referenced[imageIdx])
+			continue;
+		auto& image = mHotImages[imageIdx];
+		if (image.mModule.IsValid())
+		{
+			mLLDBTarget.RemoveModule(image.mModule);
+			for (auto& version : mHotVersions)
+			{
+				for (intptr moduleIdx = version.mModules.size() - 1; moduleIdx >= 0; moduleIdx--)
+				{
+					if (version.mModules[moduleIdx] == image.mModule)
+						version.mModules.RemoveAt(moduleIdx);
+				}
+			}
+		}
+#ifdef __linux__
+		if (!image.mModulePath.IsEmpty())
+		{
+			unlink(image.mModulePath.c_str());
+			mHotModulePaths.Remove(image.mModulePath);
+		}
+#endif
+		HotFree(image.mAddr, image.mSize);
+		numFreed++;
+		freedSize += image.mSize;
+		mHotImages.RemoveAt(imageIdx);
+	}
+	if (numFreed > 0)
+		LLDBLog("HotCleanupImages: freed %d images (%lld bytes)\n", numFreed, (long long)freedSize);
 }
 
 // Find an external code or data symbol defined by the executable itself.
@@ -3686,6 +3932,9 @@ struct LLDBHotObject
 	uint64 mStrTabSize;
 	Array<int64> mSectionOffsets;   // -1 for sections we don't load
 	uint64 mImageAddr;
+	uint64 mImageSize;
+	lldb::SBModule mModule;          // set once registered with LLDB
+	String mModulePath;
 	uint64 mGotOffset;
 	uint64 mStubOffset;
 	Dictionary<int, int> mGotSlots;
@@ -3710,6 +3959,7 @@ struct LLDBHotObject
 		mStrTab = NULL;
 		mStrTabSize = 0;
 		mImageAddr = 0;
+		mImageSize = 0;
 		mGotOffset = 0;
 		mStubOffset = 0;
 		mTlsSlotsOffset = 0;
@@ -4147,7 +4397,8 @@ bool LLDBDebugger::HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches
 	for (int sectionIdx = 0; sectionIdx < numSections; sectionIdx++)
 		obj->mTlsSectionOffsets[sectionIdx] = -1;
 
-	obj->mImageAddr = HotAlloc(BF_MAX(imageSize, (uint64)1), imageAlign, outError);
+	obj->mImageSize = BF_MAX(imageSize, (uint64)1);
+	obj->mImageAddr = HotAlloc(obj->mImageSize, imageAlign, outError);
 	if (obj->mImageAddr == 0)
 		return false;
 
@@ -4376,6 +4627,7 @@ void LLDBDebugger::HotRegisterDebugInfo(LLDBHotObject* obj, int hotIdx)
 	bool written = fwrite(obj->mFileData.mVals, 1, (size_t)obj->mFileData.size(), fp) == (size_t)obj->mFileData.size();
 	fclose(fp);
 	mHotModulePaths.Add(path);
+	obj->mModulePath = path;
 	if (!written)
 		return;
 
@@ -4423,6 +4675,7 @@ void LLDBDebugger::HotRegisterDebugInfo(LLDBHotObject* obj, int hotIdx)
 		mHotVersions.Add(version);
 	}
 	mHotVersions.back().mModules.Add(module);
+	obj->mModule = module;
 #endif
 }
 
@@ -4713,6 +4966,23 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 			HotRegisterDebugInfo(obj, hotIdx);
 	}
 	for (auto obj : objects)
+	{
+		if (obj->mImageAddr == 0)
+			continue;
+		if (success)
+		{
+			HotImage image;
+			image.mAddr = obj->mImageAddr;
+			image.mSize = obj->mImageSize;
+			image.mHotIdx = hotIdx;
+			image.mModule = obj->mModule;
+			image.mModulePath = obj->mModulePath;
+			mHotImages.Add(image);
+		}
+		else
+			HotFree(obj->mImageAddr, obj->mImageSize);
+	}
+	for (auto obj : objects)
 		delete obj;
 
 	if (success)
@@ -4742,6 +5012,9 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 		mDebugManager->mOutMessages.push_back(StrFormat("error Hot swap failed: %s", error.c_str()));
 	LLDBLog("HotLoad %d: %d objects, %s, %d patched%s%s\n", hotIdx, (int)objectFiles.size(), success ? "succeeded" : "failed",
 		numPatched, success ? "" : ": ", success ? "" : error.c_str());
+
+	if (success)
+		HotCleanupImages(hotIdx);
 
 	// The IDE unbinds every breakpoint (RehupBreakpoints) before calling HotLoad and relies on
 	// us to rebind them afterwards
@@ -4944,6 +5217,7 @@ void LLDBDebugger::StopDebugging()
 	mProcessId = 0;
 	mRunState = RunState_Terminated;
 	CloseOutputPipes();
+	RestoreTerminal();
 	HotRemoveDebugInfo();
 }
 
@@ -4977,6 +5251,7 @@ void LLDBDebugger::Terminate()
 	mProcessId = 0;
 	mRunState = RunState_Terminated;
 	CloseOutputPipes();
+	RestoreTerminal();
 	HotRemoveDebugInfo();
 }
 
