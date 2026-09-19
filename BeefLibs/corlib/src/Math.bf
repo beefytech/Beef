@@ -418,6 +418,7 @@ namespace System
 		// it runs the else case, which returns +value instead of negating it. 
 		// return (value < 0) ? -value : value;
 
+		[Inline]
 		public static T Clamp<T>(T val, T min, T max) where int : operator T <=> T
 		{
 			if (val < min)
@@ -427,31 +428,37 @@ namespace System
 			return val;
 		}
 
+		[Inline]
 		public static float Distance(float dX, float dY)
 		{
 			return (float)Math.Sqrt(dX * dX + dY * dY);
 		}
 
+		[Inline]
 		public static float Lerp(float val1, float val2, float pct)
 		{
 			return val1 + (val2 - val1) * pct;
 		}
 
+		[Inline]
 		public static double Lerp(double val1, double val2, double pct)
 		{
 			return val1 + (val2 - val1) * pct;
 		}
 
+		[Inline]
 		public static T Lerp<T>(T val1, T val2, float pct) where T : operator T + T, operator T - T, operator T * float
 		{
 			return val1 + (val2 - val1) * pct;
 		}
 
+		[Inline]
 		public static T Lerp<T>(T val1, T val2, double pct) where T : operator T + T, operator T - T, operator T * double
 		{
 			return val1 + (val2 - val1) * pct;
 		}
 
+		[Inline]
 		public static T Min<T>(T val1, T val2) where bool : operator T < T where T : IIsNaN
 		{
 			if (val1 < val2)
@@ -463,6 +470,7 @@ namespace System
 			return val2;
 		}
 
+		[Inline]
 		public static T Min<T>(T val1, T val2) where bool : operator T < T
 		{
 			if (val1 < val2)
@@ -470,6 +478,7 @@ namespace System
 			return val2;
 		}
 
+		[Inline]
 		public static T Max<T>(T val1, T val2) where bool : operator T > T where T : IIsNaN
 		{
 			if (val1 > val2)
@@ -481,6 +490,7 @@ namespace System
 			return val2;
 		}
 
+		[Inline]
 		public static T Max<T>(T val1, T val2) where bool : operator T > T
 		{
 			if (val1 > val2)

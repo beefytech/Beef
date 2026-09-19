@@ -64,6 +64,7 @@ namespace System
 
 		public bool IsNegative
 		{
+			[Inline]
 			get
 			{
 				return this < 0;
@@ -72,6 +73,7 @@ namespace System
 
 		public bool IsFinite
 		{
+			[Inline]
 			get
 			{
 				float val = (float)this;
@@ -81,6 +83,7 @@ namespace System
 
 		public bool IsInfinity
         {
+			[Inline]
 			get
 			{
 				float val = (float)this;
@@ -90,6 +93,7 @@ namespace System
 
 		public bool IsPositiveInfinity
         {
+			[Inline]
 			get
 			{
 				float val = (float)this;
@@ -99,6 +103,7 @@ namespace System
 
 		public bool IsNegativeInfinity
         {
+			[Inline]
 			get
 			{
 				float val = (float)this;
@@ -108,6 +113,7 @@ namespace System
 
         public bool IsNaN
         {
+			[Inline]
 			get
 			{
 				float val = (float)this;
@@ -117,6 +123,7 @@ namespace System
 
 		public bool IsSubnormal
 		{
+			[Inline]
 			get
 			{
 				float val = (float)this;
