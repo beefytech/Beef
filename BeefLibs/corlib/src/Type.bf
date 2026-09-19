@@ -772,6 +772,7 @@ namespace System
 			public int32 mParamTypeId;
 			public TypeInstance.ParamFlags mParamFlags;
 			public String mName;
+			public String mDefaultText;
 		}
 
 		[CRepr, Packed]

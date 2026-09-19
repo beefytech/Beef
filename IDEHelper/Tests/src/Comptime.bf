@@ -564,6 +564,36 @@ namespace Tests
 		{
 		}
 
+		class WithDefaults
+		{
+			public enum Mode { Off, On }
+
+			public static void Method(int a, float b = 1.5f, Mode m = .On, String s = "x", int c = ClassB.mA) {}
+		}
+
+		class ParamDefaults
+		{
+			[Comptime]
+			static void GetDefault(int paramIdx, String outText)
+			{
+				let method = typeof(WithDefaults).GetMethod("Method").Value;
+				outText.Append(method.GetParamDefault(paramIdx));
+			}
+
+			[OnCompile(.TypeInit), Comptime]
+			static void Init()
+			{
+				let text = scope String();
+				for (int i = 0; i < 5; i++)
+				{
+					let d = GetDefault(i, .. scope .());
+					d.Replace("\"", "\\\"");
+					text.AppendF("public const String cDefault{} = \"{}\";\n", i, d);
+				}
+				Compiler.EmitTypeBody(typeof(Self), text);
+			}
+		}
+
 		struct Pos3f : Float3
 		{
 			[OnCompile(.TypeInit), Comptime]
@@ -722,6 +752,12 @@ namespace Tests
 
 			const int cVal = GetLocalVal2();
 			Test.Assert(cVal == 102);
+
+			Test.Assert(ParamDefaults.cDefault0 == "");
+			Test.Assert(ParamDefaults.cDefault1 == "1.5f");
+			Test.Assert(ParamDefaults.cDefault2 == ".On");
+			Test.Assert(ParamDefaults.cDefault3 == "\"x\"");
+			Test.Assert(ParamDefaults.cDefault4 == "ClassB.mA");
 		}
 	}
 }
