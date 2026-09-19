@@ -29,6 +29,7 @@ class LLDBBreakpoint : public Breakpoint
 {
 public:
 	lldb::SBBreakpoint mLLDBBreakpoint;
+	Array<lldb::SBBreakpoint> mVersionBreakpoints;   // bindings in older hot compiles (HotBindBreakpoint)
 	uintptr mResolvedAddr;
 
 	LLDBBreakpoint() : mResolvedAddr(0) {}
@@ -123,6 +124,12 @@ public:
 		uint64 mNewSize;
 	};
 
+	struct HotVersion
+	{
+		int mHotIdx;
+		Array<lldb::SBModule> mModules;
+	};
+
 	struct HotPatchedEntry
 	{
 		uint64 mNewAddr;
@@ -137,6 +144,7 @@ public:
 		uint64 mOldAddr;
 		uint64 mOldSize;
 		uint64 mNewAddr;
+		bool mIncompatibleLambda;   // captures changed - keep the old version, error if it's called
 	};
 
 	uint64 mHotHeapStart;
@@ -147,7 +155,9 @@ public:
 	Dictionary<String, HotSymbol> mHotPendingSymbols; // definitions from the batch currently being loaded
 	Array<HotDataFixup> mHotPendingDataFixups;
 	Dictionary<uint64, HotPatchedEntry> mHotPatchedEntries; // entry of each hot-replaced method → its jump
+	Array<int> mHotInvalidLambdaTrapIds;            // breakpoints on old lambdas with incompatible captures
 	Array<int> mHotStepTrapIds;                      // temporary breakpoints for a step-in in progress
+	Array<HotVersion> mHotVersions;                  // modules added by each hot load, oldest first
 	Array<String> mHotModulePaths;                   // copies of hot-loaded objects registered with LLDB
 	Dictionary<String, uint64> mHotExternalAddrs;    // cache of symbols resolved through dlsym in the target
 
@@ -174,6 +184,12 @@ protected:
 	bool HotIsInPatchedEntry(uint64 addr, uint64* outEntryAddr, HotPatchedEntry* outEntry);
 	bool HotGetPatchLayout(const HotPatch& patch, uint64& outJmpAddr, int& outJmpSize, uint64* outPrologueSize);
 	void HotSetStepTraps();
+	void HotCheckLambdaCaptures(Array<HotPatch>& patches);
+	lldb::SBBreakpoint CreateLineBreakpoint(LLDBBreakpoint* bp, int lineNum);
+	void HotDeleteVersionBreakpoints(LLDBBreakpoint* bp);
+	void HotGetVersionModules(int hotIdx, lldb::SBFileSpecList& outModules);
+	int HotFindVersionWithFile(const lldb::SBFileSpec& fileSpec, int belowHotIdx);
+	int HotGetModuleVersion(lldb::SBModule module);
 	void HotClearStepTraps();
 	void HotFilterBreakpointLocations(LLDBBreakpoint* bp);
 	bool HotStepThreadsPastPatches(const Array<HotPatch>& patches, String& outError);

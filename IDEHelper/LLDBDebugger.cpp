@@ -747,6 +747,20 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 
 			auto threadStopReason = thread.IsValid() ? thread.GetStopReason() : lldb::eStopReasonNone;
 
+			// The old version of a lambda whose captures changed incompatibly was called
+			if ((thread.IsValid()) && (threadStopReason == lldb::eStopReasonBreakpoint) &&
+				(mHotInvalidLambdaTrapIds.Contains((int)thread.GetStopReasonDataAtIndex(0))))
+			{
+				int trapId = (int)thread.GetStopReasonDataAtIndex(0);
+				mHotInvalidLambdaTrapIds.Remove(trapId);
+				mLLDBTarget.BreakpointDelete((lldb::break_id_t)trapId);
+				HotClearStepTraps();
+				mActiveBreakpoint = NULL;
+				mRunState = RunState_Paused;
+				mDebugManager->mOutMessages.push_back("error This lambda was replaced by a new version that has incompatible captures. A program restart is required.");
+				return;
+			}
+
 			// A step-in that reached the new version of a hot-replaced method through a step trap: finish
 			// the step there, past its prologue
 			if (!mHotStepTrapIds.IsEmpty())
@@ -1020,8 +1034,7 @@ Breakpoint* LLDBDebugger::CreateBreakpoint(const StringImpl& fileName, int lineN
 
 	if (mLLDBTarget.IsValid())
 	{
-		lldb::SBFileSpec fileSpec(fileName.c_str(), /*resolve=*/false);
-		bp->mLLDBBreakpoint = mLLDBTarget.BreakpointCreateByLocation(fileSpec, (uint32)(lineNum + 1));
+		bp->mLLDBBreakpoint = CreateLineBreakpoint(bp, lineNum);
 		if (bp->mLLDBBreakpoint.IsValid())
 			mBreakpointIdMap.ForceAdd((int)bp->mLLDBBreakpoint.GetID(), bp);
 	}
@@ -1088,8 +1101,7 @@ void LLDBDebugger::CheckBreakpoint(Breakpoint* checkBreakpoint)
 	{
 		if ((!bp->mFilePath.IsEmpty()) && (bp->mRequestedLineNum >= 0))
 		{
-			lldb::SBFileSpec fileSpec(bp->mFilePath.c_str(), false);
-			bp->mLLDBBreakpoint = mLLDBTarget.BreakpointCreateByLocation(fileSpec, (uint32)(bp->mRequestedLineNum + 1));
+			bp->mLLDBBreakpoint = CreateLineBreakpoint(bp, bp->mRequestedLineNum);
 		}
 		else if (!bp->mSymbolName.IsEmpty())
 		{
@@ -1121,8 +1133,38 @@ void LLDBDebugger::CheckBreakpoint(Breakpoint* checkBreakpoint)
 	}
 }
 
+// Bind a breakpoint in the code of an older compile, 'lineNum' being the line in that compile's version of
+// the file (as remapped by the IDE). Frames still running old code stop there too.
 void LLDBDebugger::HotBindBreakpoint(Breakpoint* wdBreakpoint, int lineNum, int hotIdx)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	LLDBBreakpoint* bp = (LLDBBreakpoint*)wdBreakpoint;
+	bp->mPendingHotBindIdx = -1;
+	if ((!mLLDBTarget.IsValid()) || (bp->mFilePath.IsEmpty()))
+		return;
+
+	lldb::SBFileSpec fileSpec(bp->mFilePath.c_str(), false);
+	if (lineNum >= 0)
+	{
+		lldb::SBFileSpecList modules;
+		HotGetVersionModules(hotIdx, modules);
+		if (modules.GetSize() > 0)
+		{
+			// The line is already in that compile's numbering, so moving to the nearest line with code (as
+			// the IDE's breakpoints on comment lines rely on) finds the same statement there
+			lldb::SBBreakpoint versionBreakpoint = mLLDBTarget.BreakpointCreateByLocation(fileSpec, (uint32)(lineNum + 1), 0, 0, modules);
+			if (versionBreakpoint.IsValid())
+			{
+				bp->mVersionBreakpoints.Add(versionBreakpoint);
+				mBreakpointIdMap.ForceAdd((int)versionBreakpoint.GetID(), bp);
+			}
+		}
+	}
+	bp->mPendingHotBindIdx = HotFindVersionWithFile(fileSpec, hotIdx);
+	LLDBLog("HotBindBreakpoint %s:%d in compile %d (%d locations), next older compile %d\n", GetFileName(bp->mFilePath).c_str(), lineNum + 1,
+		hotIdx, bp->mVersionBreakpoints.IsEmpty() ? -1 : (int)bp->mVersionBreakpoints.back().GetNumLocations(), bp->mPendingHotBindIdx);
+	HotFilterBreakpointLocations(bp);
 }
 
 void LLDBDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
@@ -1142,6 +1184,7 @@ void LLDBDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
 
 		mLLDBTarget.BreakpointDelete(bp->mLLDBBreakpoint.GetID());
 	}
+	HotDeleteVersionBreakpoints(bp);
 
 	if (bp->mResolvedAddr != 0)
 	{
@@ -1165,6 +1208,8 @@ void LLDBDebugger::DetachBreakpoint(Breakpoint* breakpoint)
 	// Disable the physical breakpoint but keep the object alive
 	if (bp->mLLDBBreakpoint.IsValid())
 		bp->mLLDBBreakpoint.SetEnabled(false);
+	for (auto& versionBreakpoint : bp->mVersionBreakpoints)
+		versionBreakpoint.SetEnabled(false);
 
 	if (bp->mResolvedAddr != 0)
 	{
@@ -1201,6 +1246,7 @@ void LLDBDebugger::MoveBreakpoint(Breakpoint* breakpoint, int lineNum, int wantC
 		mLLDBTarget.BreakpointDelete(bp->mLLDBBreakpoint.GetID());
 		bp->mLLDBBreakpoint = lldb::SBBreakpoint();
 	}
+	HotDeleteVersionBreakpoints(bp);
 
 	bp->mLineNum = lineNum;
 	bp->mRequestedLineNum = lineNum;
@@ -1208,8 +1254,7 @@ void LLDBDebugger::MoveBreakpoint(Breakpoint* breakpoint, int lineNum, int wantC
 
 	if ((rebindNow) && (mLLDBTarget.IsValid()) && (!bp->mFilePath.IsEmpty()))
 	{
-		lldb::SBFileSpec fileSpec(bp->mFilePath.c_str(), false);
-		bp->mLLDBBreakpoint = mLLDBTarget.BreakpointCreateByLocation(fileSpec, (uint32)(lineNum + 1));
+		bp->mLLDBBreakpoint = CreateLineBreakpoint(bp, lineNum);
 		if (bp->mLLDBBreakpoint.IsValid())
 			mBreakpointIdMap.ForceAdd((int)bp->mLLDBBreakpoint.GetID(), bp);
 	}
@@ -1226,6 +1271,8 @@ void LLDBDebugger::DisableBreakpoint(Breakpoint* breakpoint)
 	LLDBBreakpoint* bp = (LLDBBreakpoint*)breakpoint;
 	if (bp->mLLDBBreakpoint.IsValid())
 		bp->mLLDBBreakpoint.SetEnabled(false);
+	for (auto& versionBreakpoint : bp->mVersionBreakpoints)
+		versionBreakpoint.SetEnabled(false);
 }
 
 void LLDBDebugger::SetBreakpointCondition(Breakpoint* breakpoint, const StringImpl& condition)
@@ -1235,6 +1282,8 @@ void LLDBDebugger::SetBreakpointCondition(Breakpoint* breakpoint, const StringIm
 	LLDBBreakpoint* bp = (LLDBBreakpoint*)breakpoint;
 	if (bp->mLLDBBreakpoint.IsValid())
 		bp->mLLDBBreakpoint.SetCondition(condition.IsEmpty() ? NULL : condition.c_str());
+	for (auto& versionBreakpoint : bp->mVersionBreakpoints)
+		versionBreakpoint.SetCondition(condition.IsEmpty() ? NULL : condition.c_str());
 }
 
 void LLDBDebugger::SetBreakpointLogging(Breakpoint* wdBreakpoint, const StringImpl& logging, bool breakAfterLogging)
@@ -1357,6 +1406,7 @@ String LLDBDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* 
 		return String();
 
 	*addr = (intptr)frame.GetPC();
+	*outHotIdx = HotGetModuleVersion(frame.GetModule());
 
 	// Stack frame size = difference in SP between this frame and its caller
 	if (stackFrameIdx + 1 < (int)mCallStack.size())
@@ -2577,6 +2627,7 @@ void LLDBDebugger::HotResetState()
 	mHotExternalAddrs.Clear();
 	mHotPatchedEntries.Clear();
 	mHotStepTrapIds.Clear();
+	mHotInvalidLambdaTrapIds.Clear();
 	HotRemoveDebugInfo();
 }
 
@@ -2597,6 +2648,83 @@ bool LLDBDebugger::HotIsInPatchedEntry(uint64 addr, uint64* outEntryAddr, HotPat
 		}
 	}
 	return false;
+}
+
+// A lambda's captures are passed through its '__closure' parameter. Returns false if it has none.
+static bool HotGetLambdaClosureType(lldb::SBTarget& target, uint64 addr, String& outTypeName, lldb::SBType& outType)
+{
+	lldb::SBFunction function = target.ResolveLoadAddress(addr).GetFunction();
+	if ((!function.IsValid()) || ((uint64)function.GetStartAddress().GetLoadAddress(target) != addr))
+		return false;
+	lldb::SBValueList params = function.GetBlock().GetVariables(target, true, false, false);
+	for (uint32 paramIdx = 0; paramIdx < params.GetSize(); paramIdx++)
+	{
+		lldb::SBValue param = params.GetValueAtIndex(paramIdx);
+		const char* paramName = param.GetName();
+		if ((paramName == NULL) || (strcmp(paramName, "__closure") != 0))
+			continue;
+		lldb::SBType closureType = param.GetType().GetPointeeType();
+		const char* typeName = closureType.GetName();
+		outTypeName = (typeName != NULL) ? typeName : "";
+		// The closure's definition may be in another module than the lambda
+		lldb::SBType completeType = target.FindFirstType(outTypeName.c_str());
+		outType = completeType.IsValid() ? completeType : closureType;
+		return true;
+	}
+	return false;
+}
+
+// A hot compile can change what a lambda captures, but existing delegates keep the captures they were
+// created with. The new code can only run on them if its captures are the old ones, or a prefix of them
+// (captures removed from the end) - otherwise the old version is kept and calling it is an error. Closure
+// types are named by a hash of their layout, so equal names mean identical captures.
+void LLDBDebugger::HotCheckLambdaCaptures(Array<HotPatch>& patches)
+{
+	for (auto& patch : patches)
+	{
+		if (!patch.mName.Contains('$'))
+			continue;
+
+		String oldTypeName;
+		String newTypeName;
+		lldb::SBType oldType;
+		lldb::SBType newType;
+		bool oldHasClosure = HotGetLambdaClosureType(mLLDBTarget, patch.mOldAddr, oldTypeName, oldType);
+		bool newHasClosure = HotGetLambdaClosureType(mLLDBTarget, patch.mNewAddr, newTypeName, newType);
+		if ((!newHasClosure) || ((oldHasClosure) && (oldTypeName == newTypeName)))
+			continue;
+
+		bool compatible = oldHasClosure;
+		if (compatible)
+		{
+			for (uint32 fieldIdx = 0; fieldIdx < newType.GetNumberOfFields(); fieldIdx++)
+			{
+				if (fieldIdx >= oldType.GetNumberOfFields())
+				{
+					compatible = false;
+					break;
+				}
+				lldb::SBTypeMember oldField = oldType.GetFieldAtIndex(fieldIdx);
+				lldb::SBTypeMember newField = newType.GetFieldAtIndex(fieldIdx);
+				const char* oldFieldName = oldField.GetName();
+				const char* newFieldName = newField.GetName();
+				const char* oldFieldType = oldField.GetType().GetName();
+				const char* newFieldType = newField.GetType().GetName();
+				if ((oldFieldName == NULL) || (newFieldName == NULL) || (strcmp(oldFieldName, newFieldName) != 0) ||
+					(oldFieldType == NULL) || (newFieldType == NULL) || (strcmp(oldFieldType, newFieldType) != 0))
+				{
+					compatible = false;
+					break;
+				}
+			}
+		}
+
+		if (!compatible)
+		{
+			LLDBLog("HotCheckLambdaCaptures: '%s' captures changed (%s -> %s)\n", patch.mName.c_str(), oldTypeName.c_str(), newTypeName.c_str());
+			patch.mIncompatibleLambda = true;
+		}
+	}
 }
 
 // Stepping into a hot-replaced method whose jump couldn't be placed at the end of its old prologue
@@ -2630,14 +2758,123 @@ void LLDBDebugger::HotClearStepTraps()
 // running the old code use its other locations, so only those on the jump are disabled.
 void LLDBDebugger::HotFilterBreakpointLocations(LLDBBreakpoint* bp)
 {
-	if ((!bp->mLLDBBreakpoint.IsValid()) || (mHotPatchedEntries.IsEmpty()))
+	if (mHotPatchedEntries.IsEmpty())
 		return;
-	for (uint32 locIdx = 0; locIdx < bp->mLLDBBreakpoint.GetNumLocations(); locIdx++)
+	auto _Filter = [&](lldb::SBBreakpoint& lldbBreakpoint)
 	{
-		lldb::SBBreakpointLocation loc = bp->mLLDBBreakpoint.GetLocationAtIndex(locIdx);
-		if ((loc.IsValid()) && (loc.IsEnabled()) && (HotIsInPatchedEntry((uint64)loc.GetLoadAddress(), NULL, NULL)))
-			loc.SetEnabled(false);
+		if (!lldbBreakpoint.IsValid())
+			return;
+		for (uint32 locIdx = 0; locIdx < lldbBreakpoint.GetNumLocations(); locIdx++)
+		{
+			lldb::SBBreakpointLocation loc = lldbBreakpoint.GetLocationAtIndex(locIdx);
+			if ((loc.IsValid()) && (loc.IsEnabled()) && (HotIsInPatchedEntry((uint64)loc.GetLoadAddress(), NULL, NULL)))
+				loc.SetEnabled(false);
+		}
+	};
+	_Filter(bp->mLLDBBreakpoint);
+	for (auto& versionBreakpoint : bp->mVersionBreakpoints)
+		_Filter(versionBreakpoint);
+}
+
+// A file:line breakpoint is bound in the newest compile that has code from the file, since the IDE's
+// line numbers are for that version of the file. Older compiles number the file differently; the IDE
+// remaps the line for each one (see mPendingHotBindIdx and HotBindBreakpoint).
+lldb::SBBreakpoint LLDBDebugger::CreateLineBreakpoint(LLDBBreakpoint* bp, int lineNum)
+{
+	lldb::SBFileSpec fileSpec(bp->mFilePath.c_str(), false);
+	bp->mPendingHotBindIdx = -1;
+	HotDeleteVersionBreakpoints(bp);
+
+	int curVersion = HotFindVersionWithFile(fileSpec, INT_MAX);
+	if (curVersion <= 0)
+		return mLLDBTarget.BreakpointCreateByLocation(fileSpec, (uint32)(lineNum + 1));
+
+	lldb::SBFileSpecList modules;
+	HotGetVersionModules(curVersion, modules);
+	lldb::SBBreakpoint lldbBreakpoint = mLLDBTarget.BreakpointCreateByLocation(fileSpec, (uint32)(lineNum + 1), 0, 0, modules);
+	bp->mPendingHotBindIdx = HotFindVersionWithFile(fileSpec, curVersion);
+	LLDBLog("CreateLineBreakpoint %s:%d in compile %d (%d locations), next older compile %d\n", GetFileName(bp->mFilePath).c_str(), lineNum + 1,
+		curVersion, (int)lldbBreakpoint.GetNumLocations(), bp->mPendingHotBindIdx);
+	return lldbBreakpoint;
+}
+
+void LLDBDebugger::HotDeleteVersionBreakpoints(LLDBBreakpoint* bp)
+{
+	for (auto& versionBreakpoint : bp->mVersionBreakpoints)
+	{
+		if (!versionBreakpoint.IsValid())
+			continue;
+		auto idItr = mBreakpointIdMap.Find((int)versionBreakpoint.GetID());
+		if ((idItr != mBreakpointIdMap.end()) && (idItr->mValue == bp))
+			mBreakpointIdMap.Remove(idItr);
+		if (mLLDBTarget.IsValid())
+			mLLDBTarget.BreakpointDelete(versionBreakpoint.GetID());
 	}
+	bp->mVersionBreakpoints.Clear();
+}
+
+// The modules holding code from compile 'hotIdx' - the executable for 0, or that hot load's objects
+void LLDBDebugger::HotGetVersionModules(int hotIdx, lldb::SBFileSpecList& outModules)
+{
+	if (hotIdx == 0)
+	{
+		outModules.Append(mLLDBTarget.GetExecutable());
+		return;
+	}
+	for (auto& version : mHotVersions)
+	{
+		if (version.mHotIdx != hotIdx)
+			continue;
+		for (auto& module : version.mModules)
+			outModules.Append(module.GetFileSpec());
+	}
+}
+
+static bool HotModuleHasFile(lldb::SBModule& module, const lldb::SBFileSpec& fileSpec)
+{
+	for (uint32 cuIdx = 0; cuIdx < module.GetNumCompileUnits(); cuIdx++)
+	{
+		if (module.GetCompileUnitAtIndex(cuIdx).FindSupportFileIndex(0, fileSpec, true) != UINT32_MAX)
+			return true;
+	}
+	return false;
+}
+
+// The newest compile, older than 'belowHotIdx', that has code from the file (0 is the executable), or -1
+int LLDBDebugger::HotFindVersionWithFile(const lldb::SBFileSpec& fileSpec, int belowHotIdx)
+{
+	for (intptr versionIdx = mHotVersions.size() - 1; versionIdx >= 0; versionIdx--)
+	{
+		auto& version = mHotVersions[versionIdx];
+		if (version.mHotIdx >= belowHotIdx)
+			continue;
+		for (auto& module : version.mModules)
+		{
+			if (HotModuleHasFile(module, fileSpec))
+				return version.mHotIdx;
+		}
+	}
+	if (belowHotIdx > 0)
+	{
+		lldb::SBModule exeModule = mLLDBTarget.FindModule(mLLDBTarget.GetExecutable());
+		if ((exeModule.IsValid()) && (HotModuleHasFile(exeModule, fileSpec)))
+			return 0;
+	}
+	return -1;
+}
+
+// Which compile a module's code is from: 0 for the executable, or the hot load that added it
+int LLDBDebugger::HotGetModuleVersion(lldb::SBModule module)
+{
+	for (auto& version : mHotVersions)
+	{
+		for (auto& checkModule : version.mModules)
+		{
+			if (checkModule == module)
+				return version.mHotIdx;
+		}
+	}
+	return 0;
 }
 
 // Consume process state events until the target reports a (non-restarted) stop.
@@ -2987,6 +3224,7 @@ bool LLDBDebugger::HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<
 						patch.mOldAddr = canonical.mAddr;
 						patch.mOldSize = canonical.mSize;
 						patch.mNewAddr = addr;
+						patch.mIncompatibleLambda = false;
 						patches.Add(patch);
 					}
 					addr = canonical.mAddr;
@@ -3370,6 +3608,14 @@ void LLDBDebugger::HotRegisterDebugInfo(LLDBHotObject* obj, int hotIdx)
 			numLoaded++;
 	}
 	LLDBLog("HotRegisterDebugInfo: %s, %d code sections\n", path.c_str(), numLoaded);
+
+	if ((mHotVersions.IsEmpty()) || (mHotVersions.back().mHotIdx != hotIdx))
+	{
+		HotVersion version;
+		version.mHotIdx = hotIdx;
+		mHotVersions.Add(version);
+	}
+	mHotVersions.back().mModules.Add(module);
 #endif
 }
 
@@ -3380,6 +3626,7 @@ void LLDBDebugger::HotRemoveDebugInfo()
 		unlink(path.c_str());
 #endif
 	mHotModulePaths.Clear();
+	mHotVersions.Clear();
 }
 
 // Update the runtime's type tables in place, as WinDebugger does (DbgModule::ProcessHotSwapVariables).
@@ -3503,7 +3750,7 @@ bool LLDBDebugger::HotStepThreadsPastPatches(const Array<HotPatch>& patches, Str
 			{
 				uint64 jmpAddr;
 				int jmpSize;
-				if ((HotGetPatchLayout(patch, jmpAddr, jmpSize, NULL)) && (pc > patch.mOldAddr) && (pc < jmpAddr + jmpSize))
+				if ((!patch.mIncompatibleLambda) && (HotGetPatchLayout(patch, jmpAddr, jmpSize, NULL)) && (pc > patch.mOldAddr) && (pc < jmpAddr + jmpSize))
 					inPatch = true;
 			}
 			if (!inPatch)
@@ -3539,6 +3786,15 @@ bool LLDBDebugger::HotApplyPatches(const Array<HotPatch>& patches, int& outNumPa
 		if (!patchedAddrs.Add(patch.mOldAddr))
 			continue;
 
+		// Leave the old version in place, but stop with an error if it's ever called (as WinDebugger does)
+		if (patch.mIncompatibleLambda)
+		{
+			lldb::SBBreakpoint trap = mLLDBTarget.BreakpointCreateByAddress(patch.mOldAddr);
+			if (trap.IsValid())
+				mHotInvalidLambdaTrapIds.Add((int)trap.GetID());
+			continue;
+		}
+
 		uint64 jmpAddr;
 		int jmpSize;
 		uint64 prologueSize = 0;
@@ -3571,6 +3827,8 @@ bool LLDBDebugger::HotApplyPatches(const Array<HotPatch>& patches, int& outNumPa
 			outError = StrFormat("failed to patch '%s' at 0x%llx", patch.mName.c_str(), (unsigned long long)patch.mOldAddr);
 			return false;
 		}
+		LLDBLog("Patched %s: %llx -> %llx (jump at %llx, %d bytes)\n", patch.mName.c_str(), (unsigned long long)patch.mOldAddr,
+			(unsigned long long)patch.mNewAddr, (unsigned long long)jmpAddr, jmpSize);
 		HotPatchedEntry patchedEntry;
 		patchedEntry.mNewAddr = patch.mNewAddr;
 		patchedEntry.mJmpAddr = jmpAddr;
@@ -3658,6 +3916,8 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 	mHotPendingSymbols.Clear();
 
 	int numPatched = 0;
+	if (success)
+		HotCheckLambdaCaptures(patches);
 	if (success)
 		success = HotStepThreadsPastPatches(patches, error);
 	if (success)
