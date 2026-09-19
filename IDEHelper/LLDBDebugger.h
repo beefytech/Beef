@@ -274,6 +274,7 @@ protected:
 	int HotFindVersionWithFile(const lldb::SBFileSpec& fileSpec, int belowHotIdx);
 	int HotGetModuleVersion(lldb::SBModule module);
 	void HotClearStepTraps();
+	void FilterNonStatementLocations(lldb::SBBreakpoint& lldbBreakpoint);
 	void HotFilterBreakpointLocations(LLDBBreakpoint* bp);
 	bool HotStepThreadsPastPatches(const Array<HotPatch>& patches, String& outError);
 	bool HotApplyPatches(const Array<HotPatch>& patches, int& outNumPatched, String& outError);

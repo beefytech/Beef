@@ -1238,6 +1238,22 @@ bool LLDBDebugger::ContinueStep(lldb::SBThread& thread)
 
 	if (!function.IsValid())
 		return false;
+
+	// Like WinDebugger, don't stop on a line row the compiler marked as not a statement (column 0) - such
+	// as the implicit Dispose after a foreach - in a method that does have statement lines
+	lldb::SBLineEntry stopLine = frame.GetLineEntry();
+	if ((mStepKind != StepKind_Out) && (stopLine.IsValid()) && (stopLine.GetLine() > 0) && (stopLine.GetColumn() == 0) &&
+		(FunctionHasStatementLines(function)))
+	{
+		LLDBLog("ContinueStep: not stopping on non-statement line %d\n", (int)stopLine.GetLine());
+		mStepContinueCount++;
+		if (mStepKind == StepKind_Into)
+			thread.StepInto();
+		else
+			thread.StepOver();
+		return true;
+	}
+
 	if ((uint64)function.GetStartAddress().GetLoadAddress(mLLDBTarget) == mStepStartFunctionAddr)
 		return false;
 
@@ -1370,6 +1386,12 @@ void LLDBDebugger::CheckBreakpoint(Breakpoint* checkBreakpoint)
 			mBreakpointIdMap.ForceAdd((int)bp->mLLDBBreakpoint.GetID(), bp);
 	}
 
+	if (!bp->mFilePath.IsEmpty())
+	{
+		FilterNonStatementLocations(bp->mLLDBBreakpoint);
+		for (auto& versionBreakpoint : bp->mVersionBreakpoints)
+			FilterNonStatementLocations(versionBreakpoint);
+	}
 	HotFilterBreakpointLocations(bp);
 
 	// Try to resolve the load address so FindBreakpointAt() works.
@@ -4155,6 +4177,30 @@ void LLDBDebugger::HotClearStepTraps()
 // A breakpoint on a line at the very start of a hot-replaced method also resolves to the old copy's
 // entry, which now holds our jump - it would trap every call on its way to the new code. Frames still
 // running the old code use its other locations, so only those on the jump are disabled.
+// Like WinDebugger, a line breakpoint doesn't bind to rows the compiler marked as not a statement
+// (column 0), unless that's all the line has
+void LLDBDebugger::FilterNonStatementLocations(lldb::SBBreakpoint& lldbBreakpoint)
+{
+	if (!lldbBreakpoint.IsValid())
+		return;
+	bool hasStatement = false;
+	for (uint32 locIdx = 0; locIdx < lldbBreakpoint.GetNumLocations(); locIdx++)
+	{
+		lldb::SBLineEntry lineEntry = lldbBreakpoint.GetLocationAtIndex(locIdx).GetAddress().GetLineEntry();
+		if ((lineEntry.IsValid()) && (lineEntry.GetColumn() > 0))
+			hasStatement = true;
+	}
+	if (!hasStatement)
+		return;
+	for (uint32 locIdx = 0; locIdx < lldbBreakpoint.GetNumLocations(); locIdx++)
+	{
+		lldb::SBBreakpointLocation loc = lldbBreakpoint.GetLocationAtIndex(locIdx);
+		lldb::SBLineEntry lineEntry = loc.GetAddress().GetLineEntry();
+		if ((loc.IsEnabled()) && (lineEntry.IsValid()) && (lineEntry.GetColumn() == 0))
+			loc.SetEnabled(false);
+	}
+}
+
 void LLDBDebugger::HotFilterBreakpointLocations(LLDBBreakpoint* bp)
 {
 	if (mHotPatchedEntries.IsEmpty())
@@ -4186,11 +4232,16 @@ lldb::SBBreakpoint LLDBDebugger::CreateLineBreakpoint(LLDBBreakpoint* bp, int li
 
 	int curVersion = HotFindVersionWithFile(fileSpec, INT_MAX);
 	if (curVersion <= 0)
-		return mLLDBTarget.BreakpointCreateByLocation(fileSpec, (uint32)(lineNum + 1));
+	{
+		lldb::SBBreakpoint lldbBreakpoint = mLLDBTarget.BreakpointCreateByLocation(fileSpec, (uint32)(lineNum + 1));
+		FilterNonStatementLocations(lldbBreakpoint);
+		return lldbBreakpoint;
+	}
 
 	lldb::SBFileSpecList modules;
 	HotGetVersionModules(curVersion, modules);
 	lldb::SBBreakpoint lldbBreakpoint = mLLDBTarget.BreakpointCreateByLocation(fileSpec, (uint32)(lineNum + 1), 0, 0, modules);
+	FilterNonStatementLocations(lldbBreakpoint);
 	bp->mPendingHotBindIdx = HotFindVersionWithFile(fileSpec, curVersion);
 	LLDBLog("CreateLineBreakpoint %s:%d in compile %d (%d locations), next older compile %d\n", GetFileName(bp->mFilePath).c_str(), lineNum + 1,
 		curVersion, (int)lldbBreakpoint.GetNumLocations(), bp->mPendingHotBindIdx);
