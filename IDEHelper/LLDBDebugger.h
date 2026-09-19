@@ -183,6 +183,10 @@ protected:
 	bool FunctionHasStatementLines(lldb::SBFunction& function);
 	bool IsStepFiltered(lldb::SBFunction& function);
 	bool ContinueStep(lldb::SBThread& thread);
+	lldb::SBValue EvaluateBeefPath(lldb::SBFrame& frame, const StringImpl& expr);
+	lldb::SBType HotFindNewestType(const char* typeName);
+	lldb::SBValue HotFindMemberInNewestTypes(lldb::SBValue value, const StringImpl& name, int depth);
+	String RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringImpl& expr);
 	void CreateOutputPipes();
 	void CloseOutputPipes();
 	void PumpTargetOutput();

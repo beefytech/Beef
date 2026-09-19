@@ -2153,8 +2153,13 @@ struct LLDBFormatInfo
 
 // Try to interpret a single specifier token (everything after a comma).
 // Returns true and updates fmtInfo if the token is a recognised specifier.
-static bool TryParseSpecifier(const char* spec, LLDBFormatInfo& fmtInfo)
+static bool TryParseSpecifier(const char* rawSpec, LLDBFormatInfo& fmtInfo)
 {
+	// Specifiers are written ", x" as well as ",x"
+	String specStr = rawSpec;
+	specStr.Trim();
+	const char* spec = specStr.c_str();
+
 	if (strcmp(spec, "x") == 0)
 	{
 		fmtInfo.mIntDisplayType = DwIntDisplayType_HexadecimalLower;
@@ -2349,6 +2354,57 @@ static String FormatLLDBError(const char* errMsg)
 //   line 0 : display value
 //   line 1 : type name
 //   line 2+: ":key[\tval]" metadata lines
+// Read a Beef System.String through a reference to it. Its text is either at mPtrOrBuffer or inline where
+// mPtrOrBuffer is, depending on a flag in mAllocSizeAndFlags (whose size depends on BF_LARGE_STRINGS).
+static bool TryReadBeefString(lldb::SBValue stringRef, String& outText)
+{
+	lldb::SBType pointeeType = stringRef.GetType().GetPointeeType().GetCanonicalType();
+	const char* pointeeName = pointeeType.GetName();
+	if ((pointeeName == NULL) || ((strcmp(pointeeName, "System::String") != 0) && (strcmp(pointeeName, "bf::System::String") != 0)))
+		return false;
+
+	lldb::SBValue stringObj = stringRef.Dereference();
+	lldb::SBValue lengthValue = stringObj.GetChildMemberWithName("mLength");
+	lldb::SBValue flagsValue = stringObj.GetChildMemberWithName("mAllocSizeAndFlags");
+	lldb::SBValue ptrValue = stringObj.GetChildMemberWithName("mPtrOrBuffer");
+	if ((!lengthValue.IsValid()) || (!flagsValue.IsValid()) || (!ptrValue.IsValid()))
+		return false;
+
+	int64 length = lengthValue.GetValueAsSigned(-1);
+	if ((length < 0) || (length > 0x10000000))
+		return false;
+	uint64 ptrFlag = (flagsValue.GetByteSize() == 8) ? 0x4000000000000000ULL : 0x40000000ULL;
+	uint64 dataAddr = ((flagsValue.GetValueAsUnsigned(0) & ptrFlag) != 0) ? ptrValue.GetValueAsUnsigned(0) : ptrValue.GetLoadAddress();
+	if ((dataAddr == 0) || (dataAddr == LLDB_INVALID_ADDRESS))
+		return false;
+
+	const int64 maxDisplayLength = 4096;
+	Array<char> text;
+	text.Resize((intptr)BF_MIN(length, maxDisplayLength));
+	lldb::SBError error;
+	if ((text.size() > 0) && (stringRef.GetProcess().ReadMemory(dataAddr, text.mVals, text.size(), error) != (size_t)text.size()))
+		return false;
+
+	outText = "\"";
+	for (char c : text)
+	{
+		switch (c)
+		{
+		case '"': outText += "\\\""; break;
+		case '\\': outText += "\\\\"; break;
+		case '\n': outText += "\\n"; break;
+		case '\r': outText += "\\r"; break;
+		case '\t': outText += "\\t"; break;
+		case '\0': outText += "\\0"; break;
+		default: outText += c; break;
+		}
+	}
+	if (length > maxDisplayLength)
+		outText += "...";
+	outText += "\"";
+	return true;
+}
+
 static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& fmt)
 {
 	lldb::SBError error = value.GetError();
@@ -2382,7 +2438,10 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 			// For char*, prefer the string summary LLDB already builds
 			lldb::BasicType ptBasic = valueType.GetPointeeType().GetBasicType();
 			const char* summary = value.GetSummary();
-			if ((summary != NULL) &&
+			String beefString;
+			if ((isPointer) && (TryReadBeefString(value, beefString)))
+				displayVal = beefString;
+			else if ((summary != NULL) &&
 				((ptBasic == lldb::eBasicTypeChar) ||
 				 (ptBasic == lldb::eBasicTypeSignedChar) ||
 				 (ptBasic == lldb::eBasicTypeUnsignedChar)))
@@ -2600,16 +2659,22 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 	if (!allowSideEffects)
 		options.SetSuppressPersistentResult(true);
 
-	// Validate-only mode: just check that the expression compiles
+	// A plain member path ("a.b[2].c") is resolved from the frame's variables directly: that follows Beef's
+	// '.' through object references, and uses each variable's own type - after a hot swap, the C++
+	// expression parser can pick up an older version of a type with the same name
+	lldb::SBValue value = EvaluateBeefPath(frame, evalExpr);
 	if ((expressionFlags & DwEvalExpressionFlag_ValidateOnly) != 0)
 	{
-		lldb::SBValue val = frame.EvaluateExpression(evalExpr.c_str(), options);
+		if (value.IsValid())
+			return String();
+		lldb::SBValue val = frame.EvaluateExpression(RewriteBeefMemberAccess(frame, evalExpr).c_str(), options);
 		lldb::SBError err = val.GetError();
 		return err.Fail() ? FormatLLDBError(err.GetCString()) : String();
 	}
 
-	// Evaluate the expression directly
-	lldb::SBValue value = frame.EvaluateExpression(evalExpr.c_str(), options);
+	// Otherwise use LLDB's (C++) expression parser, with Beef's '.' on object references turned into '->'
+	if (!value.IsValid())
+		value = frame.EvaluateExpression(RewriteBeefMemberAccess(frame, evalExpr).c_str(), options);
 
 	// "this=" fallback: if direct evaluation failed and a this-context was specified,
 	// retry as "(thisExpr)->expr".  This mirrors WinDebugger behaviour where a bare
@@ -2636,6 +2701,218 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 	}
 
 	//LLDBLog(" Result: %s\n", result.c_str());
+	return result;
+}
+
+static bool IsBeefIdentChar(char c)
+{
+	return ((c >= 'a') && (c <= 'z')) || ((c >= 'A') && (c <= 'Z')) || ((c >= '0') && (c <= '9')) || (c == '_') || (c == '@') || (c == '$');
+}
+
+// Resolve "name(.member|[index])*" from the frame's variables (or the implicit 'this'). Returns an invalid
+// value if the expression isn't such a path or can't be resolved.
+lldb::SBValue LLDBDebugger::EvaluateBeefPath(lldb::SBFrame& frame, const StringImpl& expr)
+{
+	String path = expr;
+	path.Trim();
+	if ((path.IsEmpty()) || (((path[0] < 'a') || (path[0] > 'z')) && ((path[0] < 'A') || (path[0] > 'Z')) && (path[0] != '_') && (path[0] != '@')))
+		return lldb::SBValue();
+
+	auto _Deref = [](lldb::SBValue value)
+	{
+		// Beef object references (and pointers to structs) are pointers in the debug info
+		while ((value.IsValid()) && (value.GetType().IsPointerType()))
+		{
+			lldb::TypeClass pointeeClass = value.GetType().GetPointeeType().GetCanonicalType().GetTypeClass();
+			if ((pointeeClass != lldb::eTypeClassClass) && (pointeeClass != lldb::eTypeClassStruct) && (pointeeClass != lldb::eTypeClassUnion))
+				break;
+			value = value.Dereference();
+		}
+		return value;
+	};
+
+	int pos = 0;
+	auto _ReadIdent = [&](String& outIdent)
+	{
+		int start = pos;
+		if (path[pos] == '@')
+			pos++;
+		while ((pos < (int)path.length()) && (IsBeefIdentChar(path[pos])) && (path[pos] != '@'))
+			pos++;
+		outIdent = path.Substring(start, pos - start);
+		return pos > start;
+	};
+
+	// A member, looked up in the value's type or - when that type's definition is an older version than
+	// the code using it (LLDB completes a hot module's type declarations from the first definition it
+	// finds, usually the executable's) - in the newest hot-loaded version of the type that has the member
+	auto _GetMember = [&](lldb::SBValue value, const StringImpl& name)
+	{
+		value = _Deref(value);
+		lldb::SBValue member = value.GetChildMemberWithName(name.c_str());
+		if (member.IsValid())
+			return member;
+		return HotFindMemberInNewestTypes(value, name, 0);
+	};
+
+	String ident;
+	if (!_ReadIdent(ident))
+		return lldb::SBValue();
+
+	// Beef can have several variables with the same name in scope - e.g. a foreach loop's variable and its
+	// hidden enumerator. The one declared last is the user's.
+	lldb::SBValue value;
+	lldb::SBValueList variables = frame.GetVariables(true, true, true, true);
+	for (uint32 varIdx = 0; varIdx < variables.GetSize(); varIdx++)
+	{
+		lldb::SBValue variable = variables.GetValueAtIndex(varIdx);
+		const char* varName = variable.GetName();
+		if ((varName != NULL) && (ident == varName))
+			value = variable;
+	}
+	if (!value.IsValid())
+		value = frame.FindVariable(ident.c_str());
+	if (!value.IsValid())
+	{
+		lldb::SBValue thisValue = _Deref(frame.FindVariable("this"));
+		if (thisValue.IsValid())
+			value = thisValue.GetChildMemberWithName(ident.c_str());
+	}
+	if ((!value.IsValid()) || (value.GetError().Fail()))
+		return lldb::SBValue();
+
+	while (pos < (int)path.length())
+	{
+		char c = path[pos];
+		if (c == '.')
+		{
+			pos++;
+			if ((pos >= (int)path.length()) || (!_ReadIdent(ident)))
+				return lldb::SBValue();
+			value = _GetMember(value, ident);
+		}
+		else if (c == '[')
+		{
+			int end = (int)path.IndexOf(']', pos);
+			if (end == -1)
+				return lldb::SBValue();
+			String indexStr = path.Substring(pos + 1, end - pos - 1);
+			indexStr.Trim();
+			if (indexStr.IsEmpty())
+				return lldb::SBValue();
+			for (char digit : indexStr)
+			{
+				if ((digit < '0') || (digit > '9'))
+					return lldb::SBValue();
+			}
+			value = value.GetChildAtIndex((uint32)atoi(indexStr.c_str()), lldb::eNoDynamicValues, true);
+			pos = end + 1;
+		}
+		else
+			return lldb::SBValue();
+
+		if ((!value.IsValid()) || (value.GetError().Fail()))
+			return lldb::SBValue();
+	}
+	return value;
+}
+
+// The newest hot-loaded definition of a type, or an invalid type
+lldb::SBType LLDBDebugger::HotFindNewestType(const char* typeName)
+{
+	for (intptr versionIdx = mHotVersions.size() - 1; versionIdx >= 0; versionIdx--)
+	{
+		for (auto& module : mHotVersions[versionIdx].mModules)
+		{
+			lldb::SBType hotType = module.FindFirstType(typeName);
+			if ((hotType.IsValid()) && (hotType.GetByteSize() > 0))
+				return hotType;
+		}
+	}
+	return lldb::SBType();
+}
+
+// Find a member through the newest hot-loaded definitions of a value's type and its base classes. LLDB
+// completes a hot module's type declarations from the first definition it finds (usually the
+// executable's), so a member added by a hot compile - possibly in a base class - isn't visible otherwise.
+lldb::SBValue LLDBDebugger::HotFindMemberInNewestTypes(lldb::SBValue value, const StringImpl& name, int depth)
+{
+	if ((depth > 16) || (!value.IsValid()) || (mHotVersions.IsEmpty()))
+		return lldb::SBValue();
+
+	lldb::SBType type = value.GetType().GetUnqualifiedType().GetCanonicalType();
+	const char* typeName = type.GetName();
+	if (typeName != NULL)
+	{
+		lldb::SBType hotType = HotFindNewestType(typeName);
+		if (hotType.IsValid())
+		{
+			type = hotType;
+			value = value.Cast(hotType);
+			lldb::SBValue member = value.GetChildMemberWithName(name.c_str());
+			if (member.IsValid())
+				return member;
+		}
+	}
+
+	lldb::addr_t addr = value.GetLoadAddress();
+	if (addr == LLDB_INVALID_ADDRESS)
+		return lldb::SBValue();
+	for (uint32 baseIdx = 0; baseIdx < type.GetNumberOfDirectBaseClasses(); baseIdx++)
+	{
+		lldb::SBTypeMember baseClass = type.GetDirectBaseClassAtIndex(baseIdx);
+		lldb::SBValue baseValue = value.CreateValueFromAddress("base", addr + baseClass.GetOffsetInBytes(), baseClass.GetType());
+		lldb::SBValue member = HotFindMemberInNewestTypes(baseValue, name, depth + 1);
+		if (member.IsValid())
+			return member;
+	}
+	return lldb::SBValue();
+}
+
+// C++ needs '->' where Beef uses '.' on an object reference: rewrite "a.b" when the path before the '.'
+// resolves to a pointer
+String LLDBDebugger::RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringImpl& expr)
+{
+	String result;
+	int pathStart = -1;
+	char quote = 0;
+	for (int i = 0; i < (int)expr.length(); i++)
+	{
+		char c = expr[i];
+		if (quote != 0)
+		{
+			result.Append(c);
+			if ((c == '\\') && (i + 1 < (int)expr.length()))
+				result.Append(expr[++i]);
+			else if (c == quote)
+				quote = 0;
+			continue;
+		}
+		if ((c == '"') || (c == '\''))
+		{
+			quote = c;
+			pathStart = -1;
+			result.Append(c);
+			continue;
+		}
+
+		if ((c == '.') && (pathStart != -1) && (i + 1 < (int)expr.length()) && (IsBeefIdentChar(expr[i + 1])) && ((expr[i + 1] < '0') || (expr[i + 1] > '9')))
+		{
+			lldb::SBValue left = EvaluateBeefPath(frame, expr.Substring(pathStart, i - pathStart));
+			if ((left.IsValid()) && (left.GetType().IsPointerType()))
+			{
+				result.Append("->");
+				continue;
+			}
+		}
+
+		bool isPathChar = (IsBeefIdentChar(c)) || (c == '.') || (c == '[') || (c == ']');
+		if (!isPathChar)
+			pathStart = -1;
+		else if ((pathStart == -1) && (IsBeefIdentChar(c)) && ((c < '0') || (c > '9')))
+			pathStart = i;
+		result.Append(c);
+	}
 	return result;
 }
 
