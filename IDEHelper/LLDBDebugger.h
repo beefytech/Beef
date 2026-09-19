@@ -217,6 +217,8 @@ protected:
 	bool HotFindThreadLocalOffset(const char* qualifiedName, uint64& outOffset);
 	lldb::SBValue HotFindMemberInNewestTypes(lldb::SBValue value, const StringImpl& name, int depth);
 	String RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringImpl& expr);
+	lldb::SBValue EvaluateBeefCall(lldb::SBFrame& frame, const StringImpl& expr, bool allowCalls, lldb::SBExpressionOptions& options, String& outError);
+	lldb::SBType GetBeefDynamicType(lldb::SBValue objectRef);
 	void CreateOutputPipes();
 	void GiveTerminalToTarget(const StringImpl& ttyPath, int pid);
 	void RestoreTerminal();
