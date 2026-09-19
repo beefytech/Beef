@@ -4141,38 +4141,116 @@ void LLDBDebugger::InitiateHotResolve(DbgHotResolveFlags flags)
 		}
 	}
 
-	// Methods on any thread's stack. Frames in hot-loaded code have no LLDB symbol and are skipped.
+	// A method's mangled name, with the compile it's from when that's a hot compile (as WinDebugger reports
+	// them), so the compiler can tell which version of the method it is
+	auto _GetMethodEntry = [&](lldb::SBAddress addr, bool requireStart, String& outEntry)
+	{
+		lldb::SBSymbol symbol = addr.GetSymbol();
+		if (!symbol.IsValid())
+			return false;
+		if ((requireStart) && (symbol.GetStartAddress().GetLoadAddress(mLLDBTarget) != addr.GetLoadAddress(mLLDBTarget)))
+			return false;
+		const char* name = symbol.GetMangledName();
+		if (name == NULL)
+			name = symbol.GetName();
+		if ((name == NULL) || (name[0] == '\0'))
+			return false;
+		outEntry = name;
+		int hotIdx = HotGetModuleVersion(addr.GetModule());
+		if (hotIdx != 0)
+			outEntry += StrFormat("\t%d", hotIdx);
+		return true;
+	};
+
+	// Methods on any thread's stack
+	String entry;
 	for (uint32 threadIdx = 0; threadIdx < mLLDBProcess.GetNumThreads(); threadIdx++)
 	{
 		lldb::SBThread thread = mLLDBProcess.GetThreadAtIndex(threadIdx);
 		for (uint32 frameIdx = 0; frameIdx < thread.GetNumFrames(); frameIdx++)
 		{
-			lldb::SBSymbol symbol = thread.GetFrameAtIndex(frameIdx).GetSymbol();
-			if (!symbol.IsValid())
-				continue;
-			const char* name = symbol.GetMangledName();
-			if (name == NULL)
-				name = symbol.GetName();
-			if ((name != NULL) && (name[0] != '\0'))
-				mHotResolveData->mBeefCallStackEntries.Add(name);
+			if (_GetMethodEntry(thread.GetFrameAtIndex(frameIdx).GetPCAddress(), false, entry))
+				mHotResolveData->mBeefCallStackEntries.Add(entry);
 		}
 	}
 
-	// We can't scan the Beef heap yet, so when the compile has data changes, report every
-	// existing type as allocated. The compiler then refuses layout changes to types that
-	// are in use, rather than applying them to live objects that have the old layout.
+	// Methods that live delegates point to (gBfLiveDelegates in the runtime), which can still be called
 	if ((flags & DbgHotResolveFlag_Allocations) != 0)
 	{
-		HotSymbol typeCountSymbol;
-		int32 typeCount = 0;
-		if (HotFindExeSymbol("_ZN2bf6System4Type10sTypeCountE", typeCountSymbol))
-			ReadMemory((intptr)typeCountSymbol.mAddr, sizeof(typeCount), &typeCount);
-		for (int typeId = 0; typeId < typeCount; typeId++)
+		struct LiveDelegateTable
 		{
-			DbgHotResolveData::TypeData typeData;
-			typeData.mCount = 1;
-			mHotResolveData->mTypeData.Add(typeData);
+			uint64 mEntries;
+			int32 mCapacity;
+			int32 mCount;
+			int32 mUsed;
+		};
+		HotSymbol tableSymbol;
+		LiveDelegateTable table = {};
+		if ((HotFindExeSymbol("gBfLiveDelegates", tableSymbol)) && (ReadMemory((intptr)tableSymbol.mAddr, sizeof(table), &table)) &&
+			(table.mEntries != 0) && (table.mCapacity > 0) && (table.mCapacity <= 0x1000000))
+		{
+			Array<uint64> objects;
+			objects.Resize(table.mCapacity);
+			if (ReadMemory((intptr)table.mEntries, objects.size() * sizeof(uint64), objects.mVals))
+			{
+				// A delegate's function pointer follows the object header (vdata and debug info)
+				const int objectHeaderSize = sizeof(uint64) * 2;
+				for (auto object : objects)
+				{
+					uint64 funcPtr = 0;
+					if ((object <= 1) || (!ReadMemory((intptr)(object + objectHeaderSize), sizeof(funcPtr), &funcPtr)) || (funcPtr == 0))
+						continue;
+					if (_GetMethodEntry(mLLDBTarget.ResolveLoadAddress(funcPtr), true, entry))
+						mHotResolveData->mBeefCallStackEntries.Add("D " + entry);
+				}
+			}
 		}
+	}
+
+	// Which types have live heap allocations, so the compiler can tell whether a layout change is safe.
+	// On Windows the debugger scans the GC's heap; without one, the runtime keeps a count per type
+	// (gBfLiveTypeCounts). If that's unavailable, report every type as allocated, so the compiler refuses
+	// layout changes rather than applying them to live objects with the old layout.
+	if ((flags & DbgHotResolveFlag_Allocations) != 0)
+	{
+		bool haveCounts = false;
+		HotSymbol countsSymbol;
+		HotSymbol overflowSymbol;
+		if ((HotFindExeSymbol("gBfLiveTypeCounts", countsSymbol)) && (HotFindExeSymbol("gBfLiveTypeCountOverflow", overflowSymbol)) &&
+			(countsSymbol.mSize >= sizeof(int32)))
+		{
+			int32 overflow = 1;
+			Array<int32> counts;
+			counts.Resize((intptr)(countsSymbol.mSize / sizeof(int32)));
+			if ((ReadMemory((intptr)overflowSymbol.mAddr, sizeof(overflow), &overflow)) && (overflow == 0) &&
+				(ReadMemory((intptr)countsSymbol.mAddr, counts.size() * sizeof(int32), counts.mVals)))
+			{
+				haveCounts = true;
+				for (intptr typeId = 0; typeId < counts.size(); typeId++)
+				{
+					if (counts[typeId] <= 0)
+						continue;
+					while (mHotResolveData->mTypeData.size() <= typeId)
+						mHotResolveData->mTypeData.Add(DbgHotResolveData::TypeData());
+					mHotResolveData->mTypeData[typeId].mCount = counts[typeId];
+				}
+			}
+		}
+
+		if (!haveCounts)
+		{
+			HotSymbol typeCountSymbol;
+			int32 typeCount = 0;
+			if (HotFindExeSymbol("_ZN2bf6System4Type10sTypeCountE", typeCountSymbol))
+				ReadMemory((intptr)typeCountSymbol.mAddr, sizeof(typeCount), &typeCount);
+			for (int typeId = 0; typeId < typeCount; typeId++)
+			{
+				DbgHotResolveData::TypeData typeData;
+				typeData.mCount = 1;
+				mHotResolveData->mTypeData.Add(typeData);
+			}
+		}
+		LLDBLog("InitiateHotResolve: %s\n", haveCounts ? "using the runtime's live type counts" : "no live type counts, reporting all types in use");
 	}
 
 	LLDBLog("InitiateHotResolve flags:%d: %d active methods, %d types reported\n", (int)flags,
