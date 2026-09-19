@@ -37,6 +37,8 @@ public:
 	virtual bool IsMemoryBreakpointBound() override { return false; }
 };
 
+struct LLDBHotObject;
+
 class LLDBDebugger : public Debugger
 {
 public:
@@ -115,6 +117,7 @@ public:
 	uint64 mHotHeapUsed;
 	uint64 mHotHeapNextHint;
 	Dictionary<String, HotSymbol> mHotSymbols;       // global symbols first defined by a hot load → that definition
+	Dictionary<String, HotSymbol> mHotPendingSymbols; // definitions from the batch currently being loaded
 	Dictionary<String, uint64> mHotExternalAddrs;    // cache of symbols resolved through dlsym in the target
 
 protected:
@@ -131,7 +134,9 @@ protected:
 	bool HotFindExeSymbol(const StringImpl& name, HotSymbol& outSymbol);
 	bool HotFindCanonicalSymbol(const StringImpl& name, HotSymbol& outSymbol);
 	bool HotResolveExternal(const StringImpl& name, uint64& outAddr, String& outError);
-	bool HotLoadObject(const StringImpl& fileName, Array<HotPatch>& patches, String& outError);
+	bool HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<HotPatch>& patches, uint64& outAddr, String& outError);
+	bool HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError);
+	bool HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError);
 	bool HotStepThreadsPastPatches(const Array<HotPatch>& patches, String& outError);
 	bool HotApplyPatches(const Array<HotPatch>& patches, int& outNumPatched, String& outError);
 

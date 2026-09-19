@@ -25,9 +25,14 @@
 
 USING_NS_BF;
 
+// Set BEEF_LLDB_LOG in the environment to enable
 void LLDBLog(const char* fmt ...)
 {
-	return;
+	static int sEnabled = -1;
+	if (sEnabled == -1)
+		sEnabled = (getenv("BEEF_LLDB_LOG") != NULL) ? 1 : 0;
+	if (sEnabled == 0)
+		return;
 
 	va_list argList;
 	va_start(argList, fmt);
@@ -2501,6 +2506,7 @@ void LLDBDebugger::HotResetState()
 	mHotHeapUsed = 0;
 	mHotHeapNextHint = 0;
 	mHotSymbols.Clear();
+	mHotPendingSymbols.Clear();
 	mHotExternalAddrs.Clear();
 }
 
@@ -2661,7 +2667,7 @@ bool LLDBDebugger::HotFindExeSymbol(const StringImpl& name, HotSymbol& outSymbol
 bool LLDBDebugger::HotFindCanonicalSymbol(const StringImpl& name, HotSymbol& outSymbol)
 {
 	HotSymbol* hotSymbol = NULL;
-	if (mHotSymbols.TryGetValue(name, &hotSymbol))
+	if ((mHotSymbols.TryGetValue(name, &hotSymbol)) || (mHotPendingSymbols.TryGetValue(name, &hotSymbol)))
 	{
 		outSymbol = *hotSymbol;
 		return true;
@@ -2711,115 +2717,232 @@ bool LLDBDebugger::HotResolveExternal(const StringImpl& name, uint64& outAddr, S
 	return true;
 }
 
-bool LLDBDebugger::HotLoadObject(const StringImpl& fileName, Array<HotPatch>& patches, String& outError)
+#ifdef __linux__
+// A relocatable object being hot loaded. Objects in a batch are prepared (laid out, with their
+// definitions registered) before any are linked, since they can reference each other - vdata,
+// for instance, references methods that the batch's module objects define.
+NS_BF_BEGIN
+
+struct LLDBHotObject
+{
+	String mFileName;
+	Array<uint8> mFileData;
+	Elf64_Shdr* mShdrs;
+	int mNumSections;
+	Elf64_Sym* mSyms;
+	int mNumSyms;
+	const char* mStrTab;
+	uint64 mStrTabSize;
+	Array<int64> mSectionOffsets;   // -1 for sections we don't load
+	uint64 mImageAddr;
+	uint64 mGotOffset;
+	uint64 mStubOffset;
+	Dictionary<int, int> mGotSlots;
+	Dictionary<int, int> mStubSlots;
+	Array<uint8> mImage;
+	Array<uint64> mSymAddrs;
+	Array<uint8> mSymResolved;
+
+	LLDBHotObject()
+	{
+		mShdrs = NULL;
+		mNumSections = 0;
+		mSyms = NULL;
+		mNumSyms = 0;
+		mStrTab = NULL;
+		mStrTabSize = 0;
+		mImageAddr = 0;
+		mGotOffset = 0;
+		mStubOffset = 0;
+	}
+
+	const char* GetSymName(int symIdx)
+	{
+		if (mSyms[symIdx].st_name >= mStrTabSize)
+			return "";
+		return mStrTab + mSyms[symIdx].st_name;
+	}
+
+	bool IsLoadedSection(int sectionIdx)
+	{
+		return (sectionIdx > 0) && (sectionIdx < mNumSections) && (mSectionOffsets[sectionIdx] != -1);
+	}
+
+	bool Fail(const StringImpl& error, String& outError)
+	{
+		outError = StrFormat("%s: %s", GetFileName(mFileName).c_str(), error.c_str());
+		return false;
+	}
+};
+
+NS_BF_END
+#endif
+
+bool LLDBDebugger::HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<HotPatch>& patches, uint64& outAddr, String& outError)
 {
 #ifdef __linux__
-	Array<uint8> fileData;
+	if (obj->mSymResolved[symIdx])
+	{
+		outAddr = obj->mSymAddrs[symIdx];
+		return true;
+	}
+
+	Elf64_Sym& sym = obj->mSyms[symIdx];
+	String name = obj->GetSymName(symIdx);
+	int bind = ELF64_ST_BIND(sym.st_info);
+	int symType = ELF64_ST_TYPE(sym.st_info);
+	uint64 addr = 0;
+
+	if (sym.st_shndx == SHN_UNDEF)
+	{
+		String error;
+		if (!HotResolveExternal(name, addr, error))
+		{
+			if (!error.IsEmpty())
+				return obj->Fail(error, outError);
+			if (bind != STB_WEAK)
+				return obj->Fail(StrFormat("unresolved symbol '%s'", name.c_str()), outError);
+			addr = 0;
+		}
+	}
+	else if (sym.st_shndx == SHN_ABS)
+	{
+		addr = sym.st_value;
+	}
+	else if (!obj->IsLoadedSection(sym.st_shndx))
+	{
+		return obj->Fail(StrFormat("symbol '%s' is in a section that can't be hot loaded (such as thread-local data)", name.c_str()), outError);
+	}
+	else
+	{
+		addr = obj->mImageAddr + obj->mSectionOffsets[sym.st_shndx] + sym.st_value;
+		if ((bind != STB_LOCAL) && (!name.IsEmpty()))
+		{
+			bool isCode = (symType == STT_FUNC) || ((obj->mShdrs[sym.st_shndx].sh_flags & SHF_EXECINSTR) != 0);
+			HotSymbol canonical;
+			if (HotFindCanonicalSymbol(name, canonical))
+			{
+				// Replacing a definition from the executable or an earlier hot load. A definition
+				// pending from this same batch is a duplicate (e.g. a generic specialization emitted
+				// in more than one object) and simply binds to the first copy.
+				if ((isCode) && (canonical.mAddr != addr) && (!mHotPendingSymbols.ContainsKey(name)))
+				{
+					HotPatch patch;
+					patch.mName = name;
+					patch.mOldAddr = canonical.mAddr;
+					patch.mOldSize = canonical.mSize;
+					patch.mNewAddr = addr;
+					patches.Add(patch);
+				}
+				addr = canonical.mAddr;
+			}
+			else
+			{
+				HotSymbol hotSymbol;
+				hotSymbol.mAddr = addr;
+				hotSymbol.mSize = sym.st_size;
+				hotSymbol.mIsCode = isCode;
+				mHotPendingSymbols[name] = hotSymbol;
+			}
+		}
+	}
+
+	obj->mSymAddrs[symIdx] = addr;
+	obj->mSymResolved[symIdx] = 1;
+	outAddr = addr;
+	return true;
+#else
+	return false;
+#endif
+}
+
+// Parse the object, lay out and allocate its image, and register its global definitions.
+bool LLDBDebugger::HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError)
+{
+#ifdef __linux__
 	{
 		int fileSize = 0;
-		uint8* rawData = LoadBinaryData(fileName, &fileSize);
+		uint8* rawData = LoadBinaryData(obj->mFileName, &fileSize);
 		if ((rawData == NULL) || (fileSize <= 0))
 		{
 			delete[] rawData;
-			outError = StrFormat("unable to read '%s'", fileName.c_str());
+			outError = StrFormat("unable to read '%s'", obj->mFileName.c_str());
 			return false;
 		}
-		fileData.Resize(fileSize);
-		memcpy(fileData.mVals, rawData, fileSize);
+		obj->mFileData.Resize(fileSize);
+		memcpy(obj->mFileData.mVals, rawData, fileSize);
 		delete[] rawData;
 	}
 
-	auto _Fail = [&](const StringImpl& error)
-	{
-		outError = StrFormat("%s: %s", GetFileName(fileName).c_str(), error.c_str());
-		return false;
-	};
-
-	uint64 fileSize = (uint64)fileData.size();
-	uint8* data = fileData.mVals;
+	uint64 fileSize = (uint64)obj->mFileData.size();
+	uint8* data = obj->mFileData.mVals;
 	if (fileSize < sizeof(Elf64_Ehdr))
-		return _Fail("not an ELF object file");
+		return obj->Fail("not an ELF object file", outError);
 	Elf64_Ehdr* ehdr = (Elf64_Ehdr*)data;
 	if ((memcmp(ehdr->e_ident, ELFMAG, SELFMAG) != 0) || (ehdr->e_ident[EI_CLASS] != ELFCLASS64) ||
 		(ehdr->e_type != ET_REL) || (ehdr->e_machine != EM_X86_64))
-		return _Fail("not an x86-64 ELF relocatable object");
+		return obj->Fail("not an x86-64 ELF relocatable object", outError);
 	if ((ehdr->e_shoff == 0) || (ehdr->e_shentsize != sizeof(Elf64_Shdr)) || (ehdr->e_shnum == 0) ||
 		(ehdr->e_shoff + (uint64)ehdr->e_shnum * sizeof(Elf64_Shdr) > fileSize))
-		return _Fail("invalid section header table");
+		return obj->Fail("invalid section header table", outError);
 
-	Elf64_Shdr* shdrs = (Elf64_Shdr*)(data + ehdr->e_shoff);
-	int numSections = ehdr->e_shnum;
+	obj->mShdrs = (Elf64_Shdr*)(data + ehdr->e_shoff);
+	obj->mNumSections = ehdr->e_shnum;
+	int numSections = obj->mNumSections;
+	Elf64_Shdr* shdrs = obj->mShdrs;
 	for (int sectionIdx = 0; sectionIdx < numSections; sectionIdx++)
 	{
 		Elf64_Shdr& shdr = shdrs[sectionIdx];
 		if ((shdr.sh_type != SHT_NOBITS) && (shdr.sh_offset + shdr.sh_size > fileSize))
-			return _Fail("section extends past the end of the file");
+			return obj->Fail("section extends past the end of the file", outError);
 	}
 
 	// Symbol table
-	Elf64_Sym* syms = NULL;
-	int numSyms = 0;
-	const char* strTab = NULL;
-	uint64 strTabSize = 0;
 	for (int sectionIdx = 0; sectionIdx < numSections; sectionIdx++)
 	{
 		Elf64_Shdr& shdr = shdrs[sectionIdx];
 		if (shdr.sh_type != SHT_SYMTAB)
 			continue;
 		if (shdr.sh_link >= (uint32)numSections)
-			return _Fail("invalid symbol string table");
-		syms = (Elf64_Sym*)(data + shdr.sh_offset);
-		numSyms = (int)(shdr.sh_size / sizeof(Elf64_Sym));
-		strTab = (const char*)(data + shdrs[shdr.sh_link].sh_offset);
-		strTabSize = shdrs[shdr.sh_link].sh_size;
+			return obj->Fail("invalid symbol string table", outError);
+		obj->mSyms = (Elf64_Sym*)(data + shdr.sh_offset);
+		obj->mNumSyms = (int)(shdr.sh_size / sizeof(Elf64_Sym));
+		obj->mStrTab = (const char*)(data + shdrs[shdr.sh_link].sh_offset);
+		obj->mStrTabSize = shdrs[shdr.sh_link].sh_size;
 		break;
 	}
-	if (syms == NULL)
-		return _Fail("no symbol table");
-
-	auto _GetSymName = [&](Elf64_Sym& sym)
-	{
-		if (sym.st_name >= strTabSize)
-			return "";
-		return strTab + sym.st_name;
-	};
+	if (obj->mSyms == NULL)
+		return obj->Fail("no symbol table", outError);
+	int numSyms = obj->mNumSyms;
 
 	// Lay out the sections we load. Thread-local templates can't be hot loaded, and
 	// we don't register unwind info for hot code, so both are left out.
-	Array<int64> sectionOffsets;
-	sectionOffsets.Resize(numSections);
+	obj->mSectionOffsets.Resize(numSections);
 	uint64 imageSize = 0;
 	uint64 imageAlign = 16;
 	for (int sectionIdx = 0; sectionIdx < numSections; sectionIdx++)
 	{
 		Elf64_Shdr& shdr = shdrs[sectionIdx];
-		sectionOffsets[sectionIdx] = -1;
+		obj->mSectionOffsets[sectionIdx] = -1;
 		if (((shdr.sh_flags & SHF_ALLOC) == 0) || ((shdr.sh_flags & SHF_TLS) != 0) || (shdr.sh_type == SHT_X86_64_UNWIND))
 			continue;
 		uint64 align = BF_MAX((uint64)shdr.sh_addralign, (uint64)1);
 		if ((align & (align - 1)) != 0)
-			return _Fail("invalid section alignment");
+			return obj->Fail("invalid section alignment", outError);
 		imageAlign = BF_MAX(imageAlign, align);
 		imageSize = HotAlignUp(imageSize, align);
-		sectionOffsets[sectionIdx] = (int64)imageSize;
+		obj->mSectionOffsets[sectionIdx] = (int64)imageSize;
 		imageSize += shdr.sh_size;
 	}
 
-	auto _IsLoadedSection = [&](int sectionIdx)
-	{
-		return (sectionIdx > 0) && (sectionIdx < numSections) && (sectionOffsets[sectionIdx] != -1);
-	};
-
 	// Reserve GOT slots for GOT-relative relocations, and call stubs for calls to
 	// undefined symbols in case they resolve beyond rel32 range (e.g. into libc).
-	Dictionary<int, int> gotSlots;
-	Dictionary<int, int> stubSlots;
 	for (int sectionIdx = 0; sectionIdx < numSections; sectionIdx++)
 	{
 		Elf64_Shdr& shdr = shdrs[sectionIdx];
-		if ((shdr.sh_type == SHT_REL) && (_IsLoadedSection((int)shdr.sh_info)))
-			return _Fail("SHT_REL relocations are not supported");
-		if ((shdr.sh_type != SHT_RELA) || (!_IsLoadedSection((int)shdr.sh_info)))
+		if ((shdr.sh_type == SHT_REL) && (obj->IsLoadedSection((int)shdr.sh_info)))
+			return obj->Fail("SHT_REL relocations are not supported", outError);
+		if ((shdr.sh_type != SHT_RELA) || (!obj->IsLoadedSection((int)shdr.sh_info)))
 			continue;
 
 		Elf64_Rela* relas = (Elf64_Rela*)(data + shdr.sh_offset);
@@ -2829,135 +2952,68 @@ bool LLDBDebugger::HotLoadObject(const StringImpl& fileName, Array<HotPatch>& pa
 			uint32 relocType = ELF64_R_TYPE(relas[relaIdx].r_info);
 			int symIdx = (int)ELF64_R_SYM(relas[relaIdx].r_info);
 			if ((symIdx < 0) || (symIdx >= numSyms))
-				return _Fail("relocation references an invalid symbol");
+				return obj->Fail("relocation references an invalid symbol", outError);
 			if ((relocType == R_X86_64_GOTPCREL) || (relocType == R_X86_64_GOTPCRELX) || (relocType == R_X86_64_REX_GOTPCRELX))
-				gotSlots.TryAdd(symIdx, (int)gotSlots.GetCount());
-			else if ((relocType == R_X86_64_PLT32) && (syms[symIdx].st_shndx == SHN_UNDEF))
-				stubSlots.TryAdd(symIdx, (int)stubSlots.GetCount());
+				obj->mGotSlots.TryAdd(symIdx, (int)obj->mGotSlots.GetCount());
+			else if ((relocType == R_X86_64_PLT32) && (obj->mSyms[symIdx].st_shndx == SHN_UNDEF))
+				obj->mStubSlots.TryAdd(symIdx, (int)obj->mStubSlots.GetCount());
 		}
 	}
 
-	uint64 gotOffset = HotAlignUp(imageSize, 8);
-	imageSize = gotOffset + gotSlots.GetCount() * 8;
-	uint64 stubOffset = HotAlignUp(imageSize, HOT_STUB_SIZE);
-	imageSize = stubOffset + stubSlots.GetCount() * HOT_STUB_SIZE;
+	obj->mGotOffset = HotAlignUp(imageSize, 8);
+	imageSize = obj->mGotOffset + obj->mGotSlots.GetCount() * 8;
+	obj->mStubOffset = HotAlignUp(imageSize, HOT_STUB_SIZE);
+	imageSize = obj->mStubOffset + obj->mStubSlots.GetCount() * HOT_STUB_SIZE;
 
-	uint64 imageAddr = HotAlloc(BF_MAX(imageSize, (uint64)1), imageAlign, outError);
-	if (imageAddr == 0)
+	obj->mImageAddr = HotAlloc(BF_MAX(imageSize, (uint64)1), imageAlign, outError);
+	if (obj->mImageAddr == 0)
 		return false;
 
-	Array<uint8> image;
-	image.Resize((intptr)imageSize);
+	obj->mImage.Resize((intptr)imageSize);
 	if (imageSize > 0)
-		memset(image.mVals, 0, (size_t)imageSize);
+		memset(obj->mImage.mVals, 0, (size_t)imageSize);
 	for (int sectionIdx = 0; sectionIdx < numSections; sectionIdx++)
 	{
 		Elf64_Shdr& shdr = shdrs[sectionIdx];
-		if ((_IsLoadedSection(sectionIdx)) && (shdr.sh_type != SHT_NOBITS) && (shdr.sh_size > 0))
-			memcpy(image.mVals + sectionOffsets[sectionIdx], data + shdr.sh_offset, (size_t)shdr.sh_size);
+		if ((obj->IsLoadedSection(sectionIdx)) && (shdr.sh_type != SHT_NOBITS) && (shdr.sh_size > 0))
+			memcpy(obj->mImage.mVals + obj->mSectionOffsets[sectionIdx], data + shdr.sh_offset, (size_t)shdr.sh_size);
 	}
 
-	// Symbol resolution
-	Array<uint64> symAddrs;
-	symAddrs.Resize(numSyms);
-	Array<uint8> symResolved;
-	symResolved.Resize(numSyms);
+	obj->mSymAddrs.Resize(numSyms);
+	obj->mSymResolved.Resize(numSyms);
 	if (numSyms > 0)
-		memset(symResolved.mVals, 0, numSyms);
-	Array<std::pair<String, HotSymbol>> newSymbols;
-	Array<HotPatch> newPatches;
+		memset(obj->mSymResolved.mVals, 0, numSyms);
 
-	auto _ResolveSymbol = [&](int symIdx, uint64& outAddr)
-	{
-		if (symResolved[symIdx])
-		{
-			outAddr = symAddrs[symIdx];
-			return true;
-		}
-
-		Elf64_Sym& sym = syms[symIdx];
-		String name = _GetSymName(sym);
-		int bind = ELF64_ST_BIND(sym.st_info);
-		int symType = ELF64_ST_TYPE(sym.st_info);
-		uint64 addr = 0;
-
-		if (sym.st_shndx == SHN_UNDEF)
-		{
-			String error;
-			if (!HotResolveExternal(name, addr, error))
-			{
-				if (!error.IsEmpty())
-					return _Fail(error);
-				if (bind != STB_WEAK)
-					return _Fail(StrFormat("unresolved symbol '%s'", name.c_str()));
-				addr = 0;
-			}
-		}
-		else if (sym.st_shndx == SHN_ABS)
-		{
-			addr = sym.st_value;
-		}
-		else if (!_IsLoadedSection(sym.st_shndx))
-		{
-			return _Fail(StrFormat("symbol '%s' is in a section that can't be hot loaded (such as thread-local data)", name.c_str()));
-		}
-		else
-		{
-			addr = imageAddr + sectionOffsets[sym.st_shndx] + sym.st_value;
-			if ((bind != STB_LOCAL) && (!name.IsEmpty()))
-			{
-				bool isCode = (symType == STT_FUNC) || ((shdrs[sym.st_shndx].sh_flags & SHF_EXECINSTR) != 0);
-				HotSymbol canonical;
-				if (HotFindCanonicalSymbol(name, canonical))
-				{
-					if ((isCode) && (canonical.mAddr != addr))
-					{
-						HotPatch patch;
-						patch.mName = name;
-						patch.mOldAddr = canonical.mAddr;
-						patch.mOldSize = canonical.mSize;
-						patch.mNewAddr = addr;
-						newPatches.Add(patch);
-					}
-					addr = canonical.mAddr;
-				}
-				else
-				{
-					HotSymbol hotSymbol;
-					hotSymbol.mAddr = addr;
-					hotSymbol.mSize = sym.st_size;
-					hotSymbol.mIsCode = isCode;
-					newSymbols.Add(std::make_pair(name, hotSymbol));
-				}
-			}
-		}
-
-		symAddrs[symIdx] = addr;
-		symResolved[symIdx] = 1;
-		outAddr = addr;
-		return true;
-	};
-
-	// Resolve every global definition up front, so replaced functions get patched
-	// even when nothing in this object references them.
+	// Register every global definition, so other objects in the batch can resolve against
+	// them and replaced functions get patched even when nothing in this object references them.
 	for (int symIdx = 1; symIdx < numSyms; symIdx++)
 	{
-		Elf64_Sym& sym = syms[symIdx];
-		if ((ELF64_ST_BIND(sym.st_info) == STB_LOCAL) || (!_IsLoadedSection(sym.st_shndx)))
+		Elf64_Sym& sym = obj->mSyms[symIdx];
+		if ((ELF64_ST_BIND(sym.st_info) == STB_LOCAL) || (!obj->IsLoadedSection(sym.st_shndx)))
 			continue;
 		uint64 addr;
-		if (!_ResolveSymbol(symIdx, addr))
+		if (!HotResolveObjectSymbol(obj, symIdx, patches, addr, outError))
 			return false;
 	}
+	return true;
+#else
+	outError = "hot swapping is only supported on Linux";
+	return false;
+#endif
+}
 
-	// Relocations
-	for (int relaSectionIdx = 0; relaSectionIdx < numSections; relaSectionIdx++)
+// Apply the object's relocations and write its image into the target.
+bool LLDBDebugger::HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError)
+{
+#ifdef __linux__
+	uint8* data = obj->mFileData.mVals;
+	for (int relaSectionIdx = 0; relaSectionIdx < obj->mNumSections; relaSectionIdx++)
 	{
-		Elf64_Shdr& relaShdr = shdrs[relaSectionIdx];
+		Elf64_Shdr& relaShdr = obj->mShdrs[relaSectionIdx];
 		int targetIdx = (int)relaShdr.sh_info;
-		if ((relaShdr.sh_type != SHT_RELA) || (!_IsLoadedSection(targetIdx)))
+		if ((relaShdr.sh_type != SHT_RELA) || (!obj->IsLoadedSection(targetIdx)))
 			continue;
-		Elf64_Shdr& targetShdr = shdrs[targetIdx];
+		Elf64_Shdr& targetShdr = obj->mShdrs[targetIdx];
 
 		Elf64_Rela* relas = (Elf64_Rela*)(data + relaShdr.sh_offset);
 		int numRelas = (int)(relaShdr.sh_size / sizeof(Elf64_Rela));
@@ -2971,17 +3027,17 @@ bool LLDBDebugger::HotLoadObject(const StringImpl& fileName, Array<HotPatch>& pa
 
 			int relocSize = ((relocType == R_X86_64_64) || (relocType == R_X86_64_PC64)) ? 8 : 4;
 			if ((targetShdr.sh_type == SHT_NOBITS) || (rela.r_offset + relocSize > targetShdr.sh_size))
-				return _Fail("relocation is outside of its section");
+				return obj->Fail("relocation is outside of its section", outError);
 
 			uint64 symAddr;
-			if (!_ResolveSymbol(symIdx, symAddr))
+			if (!HotResolveObjectSymbol(obj, symIdx, patches, symAddr, outError))
 				return false;
 
-			uint8* loc = image.mVals + sectionOffsets[targetIdx] + rela.r_offset;
-			uint64 P = imageAddr + sectionOffsets[targetIdx] + rela.r_offset;
+			uint8* loc = obj->mImage.mVals + obj->mSectionOffsets[targetIdx] + rela.r_offset;
+			uint64 P = obj->mImageAddr + obj->mSectionOffsets[targetIdx] + rela.r_offset;
 			uint64 S = symAddr;
 			int64 A = rela.r_addend;
-			const char* symName = _GetSymName(syms[symIdx]);
+			const char* symName = obj->GetSymName(symIdx);
 
 			switch (relocType)
 			{
@@ -3001,7 +3057,7 @@ bool LLDBDebugger::HotLoadObject(const StringImpl& fileName, Array<HotPatch>& pa
 				{
 					uint64 val = S + A;
 					if (val > 0xFFFFFFFFULL)
-						return _Fail(StrFormat("R_X86_64_32 relocation against '%s' is out of range", symName));
+						return obj->Fail(StrFormat("R_X86_64_32 relocation against '%s' is out of range", symName), outError);
 					uint32 val32 = (uint32)val;
 					memcpy(loc, &val32, 4);
 				}
@@ -3010,7 +3066,7 @@ bool LLDBDebugger::HotLoadObject(const StringImpl& fileName, Array<HotPatch>& pa
 				{
 					int64 val = (int64)(S + A);
 					if (!HotFitsInt32(val))
-						return _Fail(StrFormat("R_X86_64_32S relocation against '%s' is out of range", symName));
+						return obj->Fail(StrFormat("R_X86_64_32S relocation against '%s' is out of range", symName), outError);
 					int32 val32 = (int32)val;
 					memcpy(loc, &val32, 4);
 				}
@@ -3020,14 +3076,14 @@ bool LLDBDebugger::HotLoadObject(const StringImpl& fileName, Array<HotPatch>& pa
 				{
 					int64 val = (int64)(S + A - P);
 					int* stubSlot = NULL;
-					if ((!HotFitsInt32(val)) && (relocType == R_X86_64_PLT32) && (stubSlots.TryGetValue(symIdx, &stubSlot)))
+					if ((!HotFitsInt32(val)) && (relocType == R_X86_64_PLT32) && (obj->mStubSlots.TryGetValue(symIdx, &stubSlot)))
 					{
-						uint64 stubImageOffset = stubOffset + (uint64)*stubSlot * HOT_STUB_SIZE;
-						HotWriteAbsJump(image.mVals + stubImageOffset, S);
-						val = (int64)(imageAddr + stubImageOffset + A - P);
+						uint64 stubImageOffset = obj->mStubOffset + (uint64)*stubSlot * HOT_STUB_SIZE;
+						HotWriteAbsJump(obj->mImage.mVals + stubImageOffset, S);
+						val = (int64)(obj->mImageAddr + stubImageOffset + A - P);
 					}
 					if (!HotFitsInt32(val))
-						return _Fail(StrFormat("PC-relative relocation against '%s' is out of range", symName));
+						return obj->Fail(StrFormat("PC-relative relocation against '%s' is out of range", symName), outError);
 					int32 val32 = (int32)val;
 					memcpy(loc, &val32, 4);
 				}
@@ -3036,11 +3092,11 @@ bool LLDBDebugger::HotLoadObject(const StringImpl& fileName, Array<HotPatch>& pa
 			case R_X86_64_GOTPCRELX:
 			case R_X86_64_REX_GOTPCRELX:
 				{
-					uint64 slotImageOffset = gotOffset + (uint64)gotSlots[symIdx] * 8;
-					memcpy(image.mVals + slotImageOffset, &S, 8);
-					int64 val = (int64)(imageAddr + slotImageOffset + A - P);
+					uint64 slotImageOffset = obj->mGotOffset + (uint64)obj->mGotSlots[symIdx] * 8;
+					memcpy(obj->mImage.mVals + slotImageOffset, &S, 8);
+					int64 val = (int64)(obj->mImageAddr + slotImageOffset + A - P);
 					if (!HotFitsInt32(val))
-						return _Fail(StrFormat("GOT relocation against '%s' is out of range", symName));
+						return obj->Fail(StrFormat("GOT relocation against '%s' is out of range", symName), outError);
 					int32 val32 = (int32)val;
 					memcpy(loc, &val32, 4);
 				}
@@ -3052,21 +3108,16 @@ bool LLDBDebugger::HotLoadObject(const StringImpl& fileName, Array<HotPatch>& pa
 			case R_X86_64_GOTTPOFF:
 			case R_X86_64_TPOFF32:
 			case R_X86_64_TPOFF64:
-				return _Fail(StrFormat("thread-local variable '%s' can't be hot loaded yet", symName));
+				return obj->Fail(StrFormat("thread-local variable '%s' can't be hot loaded yet", symName), outError);
 			default:
-				return _Fail(StrFormat("unsupported relocation type %d against '%s'", relocType, symName));
+				return obj->Fail(StrFormat("unsupported relocation type %d against '%s'", relocType, symName), outError);
 			}
 		}
 	}
 
-	if ((imageSize > 0) && (!WriteMemory((intptr)imageAddr, image.mVals, imageSize)))
-		return _Fail(StrFormat("failed writing %lld bytes to 0x%llx", (long long)imageSize, (unsigned long long)imageAddr));
-
-	// Only publish new definitions once their code is actually in the target
-	for (auto& newSymbol : newSymbols)
-		mHotSymbols[newSymbol.first] = newSymbol.second;
-	for (auto& patch : newPatches)
-		patches.Add(patch);
+	uint64 imageSize = (uint64)obj->mImage.size();
+	if ((imageSize > 0) && (!WriteMemory((intptr)obj->mImageAddr, obj->mImage.mVals, imageSize)))
+		return obj->Fail(StrFormat("failed writing %lld bytes to 0x%llx", (long long)imageSize, (unsigned long long)obj->mImageAddr), outError);
 	return true;
 #else
 	outError = "hot swapping is only supported on Linux";
@@ -3180,15 +3231,41 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 
 	// Load every object before patching anything, so a failure leaves the program untouched
 	Array<HotPatch> patches;
+	Array<LLDBHotObject*> objects;
 	bool success = true;
+	mHotPendingSymbols.Clear();
 	for (auto& fileName : objectFiles)
 	{
-		if (!HotLoadObject(fileName, patches, error))
+		LLDBHotObject* obj = new LLDBHotObject();
+		obj->mFileName = fileName;
+		objects.Add(obj);
+		if (!HotPrepareObject(obj, patches, error))
 		{
 			success = false;
 			break;
 		}
 	}
+	if (success)
+	{
+		for (auto obj : objects)
+		{
+			if (!HotLinkObject(obj, patches, error))
+			{
+				success = false;
+				break;
+			}
+		}
+	}
+	for (auto obj : objects)
+		delete obj;
+
+	// Only publish new definitions once the whole batch is in the target
+	if (success)
+	{
+		for (auto& kv : mHotPendingSymbols)
+			mHotSymbols[kv.mKey] = kv.mValue;
+	}
+	mHotPendingSymbols.Clear();
 
 	int numPatched = 0;
 	if (success)
@@ -3200,6 +3277,13 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 		OutputMessage(StrFormat("Hot swap: replaced %d method%s\n", numPatched, (numPatched == 1) ? "" : "s"));
 	else
 		mDebugManager->mOutMessages.push_back(StrFormat("error Hot swap failed: %s", error.c_str()));
+	LLDBLog("HotLoad %d: %d objects, %s, %d patched%s%s\n", hotIdx, (int)objectFiles.size(), success ? "succeeded" : "failed",
+		numPatched, success ? "" : ": ", success ? "" : error.c_str());
+
+	// The IDE unbinds every breakpoint (RehupBreakpoints) before calling HotLoad and relies on
+	// us to rebind them afterwards
+	for (auto bp : mBreakpoints)
+		CheckBreakpoint(bp);
 
 	if ((wasRunning) && (mLLDBProcess.IsValid()) && (mLLDBProcess.GetState() == lldb::eStateStopped))
 		mLLDBProcess.Continue();
@@ -3266,6 +3350,9 @@ void LLDBDebugger::InitiateHotResolve(DbgHotResolveFlags flags)
 			mHotResolveData->mTypeData.Add(typeData);
 		}
 	}
+
+	LLDBLog("InitiateHotResolve flags:%d: %d active methods, %d types reported\n", (int)flags,
+		(int)mHotResolveData->mBeefCallStackEntries.size(), (int)mHotResolveData->mTypeData.size());
 
 	if ((wasRunning) && (mLLDBProcess.IsValid()) && (mLLDBProcess.GetState() == lldb::eStateStopped))
 		mLLDBProcess.Continue();
