@@ -84,9 +84,56 @@ public:
 	// Background launch thread
 	BfpThread* mLaunchThread;
 
+	// Target stdout/stderr, which LLDB captures through a pty. With DbgOpenFileFlag_RedirectStd*
+	// it's forwarded to FIFOs whose read ends are handed to the IDE via GetStdHandles; otherwise
+	// it's echoed to our own stdout/stderr.
+	int mStdOutPipeWrite;
+	int mStdErrPipeWrite;
+	BfpFile* mStdOutPipeRead;    // Not yet claimed by GetStdHandles
+	BfpFile* mStdErrPipeRead;
+	String mStdOutPending;       // Data the pipe wasn't ready to accept yet
+	String mStdErrPending;
+
+	// Hot swap
+	struct HotSymbol
+	{
+		uint64 mAddr;
+		uint64 mSize;
+		bool mIsCode;
+	};
+
+	struct HotPatch
+	{
+		String mName;
+		uint64 mOldAddr;
+		uint64 mOldSize;
+		uint64 mNewAddr;
+	};
+
+	uint64 mHotHeapStart;
+	uint64 mHotHeapSize;
+	uint64 mHotHeapUsed;
+	uint64 mHotHeapNextHint;
+	Dictionary<String, HotSymbol> mHotSymbols;       // global symbols first defined by a hot load → that definition
+	Dictionary<String, uint64> mHotExternalAddrs;    // cache of symbols resolved through dlsym in the target
+
 protected:
 	void DumpSymbolAddrs(const StringImpl& sym);
 	void DoCreateBreakpointByName(LLDBBreakpoint* bp);
+	void CreateOutputPipes();
+	void CloseOutputPipes();
+	void PumpTargetOutput();
+	void HotResetState();
+	bool HotWaitForStop(String& outError);
+	bool HotEvaluate(const StringImpl& expr, uint64& outValue, String& outError);
+	bool HotReserveHeap(uint64 minSize, String& outError);
+	uint64 HotAlloc(uint64 size, uint64 align, String& outError);
+	bool HotFindExeSymbol(const StringImpl& name, HotSymbol& outSymbol);
+	bool HotFindCanonicalSymbol(const StringImpl& name, HotSymbol& outSymbol);
+	bool HotResolveExternal(const StringImpl& name, uint64& outAddr, String& outError);
+	bool HotLoadObject(const StringImpl& fileName, Array<HotPatch>& patches, String& outError);
+	bool HotStepThreadsPastPatches(const Array<HotPatch>& patches, String& outError);
+	bool HotApplyPatches(const Array<HotPatch>& patches, int& outNumPatched, String& outError);
 
 public:
 	LLDBDebugger(DebugManager* debugManager);

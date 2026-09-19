@@ -11,6 +11,9 @@
 #ifdef __linux__
 #include <limits.h>
 #include <unistd.h>
+#include <fcntl.h>
+#include <sys/stat.h>
+#include <elf.h>
 #endif
 #ifdef __APPLE__
 #include <mach/mach.h>
@@ -134,11 +137,17 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mLaunchMode = LLDBLaunchMode_Local;
 	mUseHardwareBreakpoints = false;
 	mLaunchThread = NULL;
+	mStdOutPipeWrite = -1;
+	mStdErrPipeWrite = -1;
+	mStdOutPipeRead = NULL;
+	mStdErrPipeRead = NULL;
+	HotResetState();
 }
 
 LLDBDebugger::~LLDBDebugger()
 {
 	WaitForLaunchThread();
+	CloseOutputPipes();
 	for (auto bp : mBreakpoints)
 		delete bp;
 }
@@ -285,12 +294,30 @@ void LLDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targ
 	mEnvBlock = envBlock;
 	mHotSwapEnabled = hotSwapEnabled;
 	mOpenFileFlags = openFileFlags;
+	HotResetState();
+	CreateOutputPipes();
 }
 
 void LLDBDebugger::DoLaunch()
 {
 	LLDBLog("DoLaunch\n");
 
+#ifdef __linux__
+	// Distribution LLDB packages can fail to find their own lldb-server (Ubuntu's looks for
+	// a fully versioned 'lldb-server-22.x.y'), which makes every local launch fail.
+	if (getenv("LLDB_DEBUGSERVER_PATH") == NULL)
+	{
+		const char* serverPaths[] = { "/usr/lib/llvm-22/bin/lldb-server", "/usr/bin/lldb-server-22", "/usr/bin/lldb-server" };
+		for (auto serverPath : serverPaths)
+		{
+			if (access(serverPath, X_OK) == 0)
+			{
+				setenv("LLDB_DEBUGSERVER_PATH", serverPath, 1);
+				break;
+			}
+		}
+	}
+#endif
 
 	lldb::SBDebugger::Initialize();
 
@@ -473,6 +500,142 @@ bool LLDBDebugger::Attach(int processId, BfDbgAttachFlags attachFlags)
 
 void LLDBDebugger::GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr)
 {
+	// Ownership of the read ends passes to the caller, so each is handed out only once
+	if (outStdIn != NULL)
+		*outStdIn = NULL;
+	if (outStdOut != NULL)
+	{
+		*outStdOut = mStdOutPipeRead;
+		mStdOutPipeRead = NULL;
+	}
+	if (outStdErr != NULL)
+	{
+		*outStdErr = mStdErrPipeRead;
+		mStdErrPipeRead = NULL;
+	}
+}
+
+//----------------------------------------------------------------------------
+// Target stdio
+//----------------------------------------------------------------------------
+
+void LLDBDebugger::CreateOutputPipes()
+{
+	CloseOutputPipes();
+
+#ifdef __linux__
+	auto _CreatePipe = [&](int& outWriteFd, BfpFile*& outReadFile)
+	{
+		static int sPipeIdx = 0;
+		String path = StrFormat("/tmp/BeefLLDB_%d_%d", (int)getpid(), sPipeIdx++);
+		unlink(path.c_str());
+		if (mkfifo(path.c_str(), 0600) != 0)
+			return;
+
+		// Opening a FIFO read/write doesn't block on Linux, and gives the read end a writer to open against
+		int writeFd = open(path.c_str(), O_RDWR | O_NONBLOCK | O_CLOEXEC);
+		BfpFile* readFile = NULL;
+		if (writeFd != -1)
+		{
+			BfpFileResult result;
+			readFile = BfpFile_Create(path.c_str(), BfpFileCreateKind_OpenExisting, BfpFileCreateFlag_Read, BfpFileAttribute_None, &result);
+		}
+		unlink(path.c_str());
+
+		if (readFile == NULL)
+		{
+			if (writeFd != -1)
+				close(writeFd);
+			return;
+		}
+		outWriteFd = writeFd;
+		outReadFile = readFile;
+	};
+
+	if ((mOpenFileFlags & DbgOpenFileFlag_RedirectStdOutput) != 0)
+		_CreatePipe(mStdOutPipeWrite, mStdOutPipeRead);
+	if ((mOpenFileFlags & DbgOpenFileFlag_RedirectStdError) != 0)
+		_CreatePipe(mStdErrPipeWrite, mStdErrPipeRead);
+#endif
+}
+
+void LLDBDebugger::CloseOutputPipes()
+{
+#ifdef __linux__
+	// Closing the write ends lets the IDE's reader threads see EOF
+	if (mStdOutPipeWrite != -1)
+	{
+		close(mStdOutPipeWrite);
+		mStdOutPipeWrite = -1;
+	}
+	if (mStdErrPipeWrite != -1)
+	{
+		close(mStdErrPipeWrite);
+		mStdErrPipeWrite = -1;
+	}
+#endif
+	if (mStdOutPipeRead != NULL)
+	{
+		BfpFile_Release(mStdOutPipeRead);
+		mStdOutPipeRead = NULL;
+	}
+	if (mStdErrPipeRead != NULL)
+	{
+		BfpFile_Release(mStdErrPipeRead);
+		mStdErrPipeRead = NULL;
+	}
+	mStdOutPending.Clear();
+	mStdErrPending.Clear();
+}
+
+// LLDB launches the target on a pty and buffers what it writes; forward that to
+// the IDE's pipes, or to our own console when output isn't being redirected.
+void LLDBDebugger::PumpTargetOutput()
+{
+#ifdef __linux__
+	const intptr maxPending = 8 * 1024 * 1024;
+
+	auto _Forward = [&](const char* data, size_t len, int pipeFd, String& pending, int localFd)
+	{
+		if (pipeFd == -1)
+		{
+			while (len > 0)
+			{
+				ssize_t written = write(localFd, data, len);
+				if (written <= 0)
+					break;
+				data += written;
+				len -= (size_t)written;
+			}
+			return;
+		}
+		// Drop output rather than grow without bound if nothing is reading the pipe
+		if (pending.length() + (intptr)len <= maxPending)
+			pending.Append(data, (intptr)len);
+	};
+
+	auto _Flush = [&](int pipeFd, String& pending)
+	{
+		if ((pipeFd == -1) || (pending.IsEmpty()))
+			return;
+		ssize_t written = write(pipeFd, pending.c_str(), (size_t)pending.length());
+		if (written > 0)
+			pending.Remove(0, (intptr)written);
+	};
+
+	if (mLLDBProcess.IsValid())
+	{
+		char buf[4096];
+		size_t len;
+		while ((len = mLLDBProcess.GetSTDOUT(buf, sizeof(buf))) > 0)
+			_Forward(buf, len, mStdOutPipeWrite, mStdOutPending, STDOUT_FILENO);
+		while ((len = mLLDBProcess.GetSTDERR(buf, sizeof(buf))) > 0)
+			_Forward(buf, len, mStdErrPipeWrite, mStdErrPending, STDERR_FILENO);
+	}
+
+	_Flush(mStdOutPipeWrite, mStdOutPending);
+	_Flush(mStdErrPipeWrite, mStdErrPending);
+#endif
 }
 
 void LLDBDebugger::WaitForLaunchThread()
@@ -541,6 +704,11 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 	// Process stopped (breakpoint, step complete, user interrupt, etc.)
 	if (state == lldb::eStateStopped)
 	{
+		// Stale event - the target has been resumed since it was queued. Interrupting
+		// the target (as HotLoad does) can deliver a duplicate stop event after we continue.
+		if (mLLDBProcess.GetState() != lldb::eStateStopped)
+			return;
+
 		if ((mRunState == RunState_Running) || (mRunState == RunState_Running_ToTempBreakpoint))
 		{
 			// On the first stop after launch (stop-at-entry), the process image is
@@ -649,6 +817,11 @@ void LLDBDebugger::Update()
 		LLDBLog("Update got event state:%d\n", state);
 		HandleProcessEvent(state);
 	}
+
+	// After handling events, so output written just before the target exits isn't lost
+	PumpTargetOutput();
+	if (mRunState == RunState_Terminated)
+		CloseOutputPipes();
 }
 
 //----------------------------------------------------------------------------
@@ -2280,15 +2453,824 @@ int LLDBDebugger::LoadDebugInfoForModule(const StringImpl& moduleName, const Str
 }
 
 //----------------------------------------------------------------------------
-// Hot-reload stubs
+// Hot swap
+//
+// A hot compile hands us the rebuilt ELF relocatable objects. We map a
+// region into the target near the executable (so rel32 and abs32
+// relocations still reach the original image), load each object's
+// allocatable sections into it, resolve and apply its relocations, and then
+// redirect every replaced function by writing a 'jmp rel32' over the entry of
+// its canonical definition.
+//
+// Global symbols bind to their canonical definition: the executable's copy,
+// or the first hot-loaded copy for symbols introduced by a hot compile. Code
+// references therefore always enter through the canonical entry (which jumps
+// to the newest version), and data references keep using the original
+// storage, so static state survives the swap.
 //----------------------------------------------------------------------------
+
+static const uint64 HOT_HEAP_RESERVE_SIZE = 64 * 1024 * 1024;
+static const uint64 HOT_HEAP_EXE_GAP = 256 * 1024 * 1024; // Room for brk heap growth past the executable
+static const int HOT_JMP_REL32_SIZE = 5;
+static const int HOT_JMP_ABS64_SIZE = 14;
+static const int HOT_STUB_SIZE = 16;
+
+static bool HotFitsInt32(int64 val)
+{
+	return (val >= INT32_MIN) && (val <= INT32_MAX);
+}
+
+static uint64 HotAlignUp(uint64 val, uint64 align)
+{
+	return (val + align - 1) & ~(align - 1);
+}
+
+// jmp [rip+0]; .quad target
+static void HotWriteAbsJump(uint8* dest, uint64 target)
+{
+	dest[0] = 0xFF;
+	dest[1] = 0x25;
+	memset(dest + 2, 0, 4);
+	memcpy(dest + 6, &target, 8);
+}
+
+void LLDBDebugger::HotResetState()
+{
+	mHotHeapStart = 0;
+	mHotHeapSize = 0;
+	mHotHeapUsed = 0;
+	mHotHeapNextHint = 0;
+	mHotSymbols.Clear();
+	mHotExternalAddrs.Clear();
+}
+
+// Consume process state events until the target reports a (non-restarted) stop.
+// Used when we stop or step the target ourselves, so the IDE never sees these stops.
+bool LLDBDebugger::HotWaitForStop(String& outError)
+{
+	lldb::SBListener listener = mLLDBDebugger.GetListener();
+	lldb::SBBroadcaster broadcaster = mLLDBProcess.GetBroadcaster();
+	for (int tryIdx = 0; tryIdx < 32; tryIdx++)
+	{
+		lldb::SBEvent event;
+		if (!listener.WaitForEventForBroadcasterWithType(10, broadcaster, lldb::SBProcess::eBroadcastBitStateChanged, event))
+		{
+			outError = "timed out waiting for the target to stop";
+			return false;
+		}
+
+		lldb::StateType state = lldb::SBProcess::GetStateFromEvent(event);
+		if (state == lldb::eStateStopped)
+		{
+			if (lldb::SBProcess::GetRestartedFromEvent(event))
+				continue;
+			return true;
+		}
+		if ((state == lldb::eStateExited) || (state == lldb::eStateDetached) || (state == lldb::eStateCrashed))
+		{
+			HandleProcessEvent(state);
+			outError = "the target stopped running";
+			return false;
+		}
+	}
+	outError = "the target did not stop";
+	return false;
+}
+
+bool LLDBDebugger::HotEvaluate(const StringImpl& expr, uint64& outValue, String& outError)
+{
+	lldb::SBExpressionOptions options;
+	options.SetLanguage(lldb::eLanguageTypeC_plus_plus);
+	options.SetUnwindOnError(true);
+	options.SetIgnoreBreakpoints(true);
+	options.SetTryAllThreads(true);
+	options.SetTimeoutInMicroSeconds(5 * 1000 * 1000);
+
+	lldb::SBValue value = mLLDBTarget.EvaluateExpression(expr.c_str(), options);
+	lldb::SBError error = value.GetError();
+	if ((!value.IsValid()) || (error.Fail()))
+	{
+		const char* errorStr = error.GetCString();
+		outError = StrFormat("expression '%s' failed: %s", expr.c_str(), (errorStr != NULL) ? errorStr : "unknown error");
+		return false;
+	}
+	outValue = value.GetValueAsUnsigned();
+	return true;
+}
+
+// Map a new RWX region in the target, as close past the executable as we can get it.
+bool LLDBDebugger::HotReserveHeap(uint64 minSize, String& outError)
+{
+	const uint64 mb = 1024 * 1024;
+	uint64 reserveSize = BF_MAX(HOT_HEAP_RESERVE_SIZE, HotAlignUp(minSize, mb));
+
+	if (mHotHeapNextHint == 0)
+	{
+		lldb::SBModule exeModule = mLLDBTarget.FindModule(mLLDBTarget.GetExecutable());
+		uint64 imageEnd = 0;
+		for (uint32 sectionIdx = 0; sectionIdx < exeModule.GetNumSections(); sectionIdx++)
+		{
+			lldb::SBSection section = exeModule.GetSectionAtIndex(sectionIdx);
+			lldb::addr_t loadAddr = section.GetLoadAddress(mLLDBTarget);
+			if (loadAddr != LLDB_INVALID_ADDRESS)
+				imageEnd = BF_MAX(imageEnd, (uint64)loadAddr + section.GetByteSize());
+		}
+		if (imageEnd == 0)
+		{
+			outError = "unable to determine where the executable is loaded";
+			return false;
+		}
+		mHotHeapNextHint = HotAlignUp(imageEnd + HOT_HEAP_EXE_GAP, mb);
+	}
+
+	for (int tryIdx = 0; tryIdx < 24; tryIdx++)
+	{
+		uint64 hint = mHotHeapNextHint;
+		mHotHeapNextHint += reserveSize;
+
+		// PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE
+		String expr = StrFormat("(unsigned long)((void*(*)(void*, unsigned long, int, int, int, long))mmap)((void*)0x%llx, 0x%llx, 7, 0x100022, -1, 0)",
+			(unsigned long long)hint, (unsigned long long)reserveSize);
+		uint64 result = 0;
+		if (!HotEvaluate(expr, result, outError))
+			return false;
+
+		if (result == hint)
+		{
+			mHotHeapStart = hint;
+			mHotHeapSize = reserveSize;
+			mHotHeapUsed = 0;
+			return true;
+		}
+
+		// Kernels without MAP_FIXED_NOREPLACE treat the address as a hint and may place the mapping elsewhere
+		if ((result != 0) && (result != (uint64)-1))
+		{
+			uint64 unmapResult = 0;
+			String unmapExpr = StrFormat("(int)((int(*)(void*, unsigned long))munmap)((void*)0x%llx, 0x%llx)",
+				(unsigned long long)result, (unsigned long long)reserveSize);
+			HotEvaluate(unmapExpr, unmapResult, outError);
+		}
+	}
+
+	outError = "unable to reserve memory near the executable";
+	return false;
+}
+
+uint64 LLDBDebugger::HotAlloc(uint64 size, uint64 align, String& outError)
+{
+	uint64 addr = HotAlignUp(mHotHeapStart + mHotHeapUsed, align);
+	if ((mHotHeapStart == 0) || (addr + size > mHotHeapStart + mHotHeapSize))
+	{
+		if (!HotReserveHeap(size + align, outError))
+			return 0;
+		addr = HotAlignUp(mHotHeapStart, align);
+	}
+	mHotHeapUsed = addr + size - mHotHeapStart;
+	return addr;
+}
+
+// Find an external code or data symbol defined by the executable itself.
+bool LLDBDebugger::HotFindExeSymbol(const StringImpl& name, HotSymbol& outSymbol)
+{
+	lldb::SBModule exeModule = mLLDBTarget.FindModule(mLLDBTarget.GetExecutable());
+	if (!exeModule.IsValid())
+		return false;
+
+	lldb::SBSymbolContextList contexts = exeModule.FindSymbols(name.c_str());
+	for (uint32 contextIdx = 0; contextIdx < contexts.GetSize(); contextIdx++)
+	{
+		lldb::SBSymbol symbol = contexts.GetContextAtIndex(contextIdx).GetSymbol();
+		if ((!symbol.IsValid()) || (!symbol.IsExternal()))
+			continue;
+		lldb::SymbolType symbolType = symbol.GetType();
+		if ((symbolType != lldb::eSymbolTypeCode) && (symbolType != lldb::eSymbolTypeData))
+			continue;
+		lldb::addr_t addr = symbol.GetStartAddress().GetLoadAddress(mLLDBTarget);
+		if (addr == LLDB_INVALID_ADDRESS)
+			continue;
+
+		outSymbol.mAddr = (uint64)addr;
+		outSymbol.mSize = symbol.GetSize();
+		outSymbol.mIsCode = symbolType == lldb::eSymbolTypeCode;
+		return true;
+	}
+	return false;
+}
+
+bool LLDBDebugger::HotFindCanonicalSymbol(const StringImpl& name, HotSymbol& outSymbol)
+{
+	HotSymbol* hotSymbol = NULL;
+	if (mHotSymbols.TryGetValue(name, &hotSymbol))
+	{
+		outSymbol = *hotSymbol;
+		return true;
+	}
+	return HotFindExeSymbol(name, outSymbol);
+}
+
+// Resolve a symbol the object file doesn't define. Symbols outside the executable
+// (libc etc.) are looked up with dlsym in the target, which gives us the same
+// answer the dynamic linker would - including IFUNC-selected implementations.
+// Returns false with an empty outError if the symbol simply doesn't exist.
+bool LLDBDebugger::HotResolveExternal(const StringImpl& name, uint64& outAddr, String& outError)
+{
+	HotSymbol symbol;
+	if (HotFindCanonicalSymbol(name, symbol))
+	{
+		outAddr = symbol.mAddr;
+		return true;
+	}
+
+	uint64* cachedAddr = NULL;
+	if (mHotExternalAddrs.TryGetValue(name, &cachedAddr))
+	{
+		outAddr = *cachedAddr;
+		return true;
+	}
+
+	for (char c : name)
+	{
+		if ((c == '"') || (c == '\\'))
+		{
+			outError = StrFormat("unable to look up symbol '%s'", name.c_str());
+			return false;
+		}
+	}
+
+	// RTLD_DEFAULT is 0
+	String expr = StrFormat("(unsigned long)((void*(*)(void*, const char*))dlsym)((void*)0, \"%s\")", name.c_str());
+	uint64 addr = 0;
+	if (!HotEvaluate(expr, addr, outError))
+		return false;
+	if (addr == 0)
+		return false;
+
+	mHotExternalAddrs[name] = addr;
+	outAddr = addr;
+	return true;
+}
+
+bool LLDBDebugger::HotLoadObject(const StringImpl& fileName, Array<HotPatch>& patches, String& outError)
+{
+#ifdef __linux__
+	Array<uint8> fileData;
+	{
+		int fileSize = 0;
+		uint8* rawData = LoadBinaryData(fileName, &fileSize);
+		if ((rawData == NULL) || (fileSize <= 0))
+		{
+			delete[] rawData;
+			outError = StrFormat("unable to read '%s'", fileName.c_str());
+			return false;
+		}
+		fileData.Resize(fileSize);
+		memcpy(fileData.mVals, rawData, fileSize);
+		delete[] rawData;
+	}
+
+	auto _Fail = [&](const StringImpl& error)
+	{
+		outError = StrFormat("%s: %s", GetFileName(fileName).c_str(), error.c_str());
+		return false;
+	};
+
+	uint64 fileSize = (uint64)fileData.size();
+	uint8* data = fileData.mVals;
+	if (fileSize < sizeof(Elf64_Ehdr))
+		return _Fail("not an ELF object file");
+	Elf64_Ehdr* ehdr = (Elf64_Ehdr*)data;
+	if ((memcmp(ehdr->e_ident, ELFMAG, SELFMAG) != 0) || (ehdr->e_ident[EI_CLASS] != ELFCLASS64) ||
+		(ehdr->e_type != ET_REL) || (ehdr->e_machine != EM_X86_64))
+		return _Fail("not an x86-64 ELF relocatable object");
+	if ((ehdr->e_shoff == 0) || (ehdr->e_shentsize != sizeof(Elf64_Shdr)) || (ehdr->e_shnum == 0) ||
+		(ehdr->e_shoff + (uint64)ehdr->e_shnum * sizeof(Elf64_Shdr) > fileSize))
+		return _Fail("invalid section header table");
+
+	Elf64_Shdr* shdrs = (Elf64_Shdr*)(data + ehdr->e_shoff);
+	int numSections = ehdr->e_shnum;
+	for (int sectionIdx = 0; sectionIdx < numSections; sectionIdx++)
+	{
+		Elf64_Shdr& shdr = shdrs[sectionIdx];
+		if ((shdr.sh_type != SHT_NOBITS) && (shdr.sh_offset + shdr.sh_size > fileSize))
+			return _Fail("section extends past the end of the file");
+	}
+
+	// Symbol table
+	Elf64_Sym* syms = NULL;
+	int numSyms = 0;
+	const char* strTab = NULL;
+	uint64 strTabSize = 0;
+	for (int sectionIdx = 0; sectionIdx < numSections; sectionIdx++)
+	{
+		Elf64_Shdr& shdr = shdrs[sectionIdx];
+		if (shdr.sh_type != SHT_SYMTAB)
+			continue;
+		if (shdr.sh_link >= (uint32)numSections)
+			return _Fail("invalid symbol string table");
+		syms = (Elf64_Sym*)(data + shdr.sh_offset);
+		numSyms = (int)(shdr.sh_size / sizeof(Elf64_Sym));
+		strTab = (const char*)(data + shdrs[shdr.sh_link].sh_offset);
+		strTabSize = shdrs[shdr.sh_link].sh_size;
+		break;
+	}
+	if (syms == NULL)
+		return _Fail("no symbol table");
+
+	auto _GetSymName = [&](Elf64_Sym& sym)
+	{
+		if (sym.st_name >= strTabSize)
+			return "";
+		return strTab + sym.st_name;
+	};
+
+	// Lay out the sections we load. Thread-local templates can't be hot loaded, and
+	// we don't register unwind info for hot code, so both are left out.
+	Array<int64> sectionOffsets;
+	sectionOffsets.Resize(numSections);
+	uint64 imageSize = 0;
+	uint64 imageAlign = 16;
+	for (int sectionIdx = 0; sectionIdx < numSections; sectionIdx++)
+	{
+		Elf64_Shdr& shdr = shdrs[sectionIdx];
+		sectionOffsets[sectionIdx] = -1;
+		if (((shdr.sh_flags & SHF_ALLOC) == 0) || ((shdr.sh_flags & SHF_TLS) != 0) || (shdr.sh_type == SHT_X86_64_UNWIND))
+			continue;
+		uint64 align = BF_MAX((uint64)shdr.sh_addralign, (uint64)1);
+		if ((align & (align - 1)) != 0)
+			return _Fail("invalid section alignment");
+		imageAlign = BF_MAX(imageAlign, align);
+		imageSize = HotAlignUp(imageSize, align);
+		sectionOffsets[sectionIdx] = (int64)imageSize;
+		imageSize += shdr.sh_size;
+	}
+
+	auto _IsLoadedSection = [&](int sectionIdx)
+	{
+		return (sectionIdx > 0) && (sectionIdx < numSections) && (sectionOffsets[sectionIdx] != -1);
+	};
+
+	// Reserve GOT slots for GOT-relative relocations, and call stubs for calls to
+	// undefined symbols in case they resolve beyond rel32 range (e.g. into libc).
+	Dictionary<int, int> gotSlots;
+	Dictionary<int, int> stubSlots;
+	for (int sectionIdx = 0; sectionIdx < numSections; sectionIdx++)
+	{
+		Elf64_Shdr& shdr = shdrs[sectionIdx];
+		if ((shdr.sh_type == SHT_REL) && (_IsLoadedSection((int)shdr.sh_info)))
+			return _Fail("SHT_REL relocations are not supported");
+		if ((shdr.sh_type != SHT_RELA) || (!_IsLoadedSection((int)shdr.sh_info)))
+			continue;
+
+		Elf64_Rela* relas = (Elf64_Rela*)(data + shdr.sh_offset);
+		int numRelas = (int)(shdr.sh_size / sizeof(Elf64_Rela));
+		for (int relaIdx = 0; relaIdx < numRelas; relaIdx++)
+		{
+			uint32 relocType = ELF64_R_TYPE(relas[relaIdx].r_info);
+			int symIdx = (int)ELF64_R_SYM(relas[relaIdx].r_info);
+			if ((symIdx < 0) || (symIdx >= numSyms))
+				return _Fail("relocation references an invalid symbol");
+			if ((relocType == R_X86_64_GOTPCREL) || (relocType == R_X86_64_GOTPCRELX) || (relocType == R_X86_64_REX_GOTPCRELX))
+				gotSlots.TryAdd(symIdx, (int)gotSlots.GetCount());
+			else if ((relocType == R_X86_64_PLT32) && (syms[symIdx].st_shndx == SHN_UNDEF))
+				stubSlots.TryAdd(symIdx, (int)stubSlots.GetCount());
+		}
+	}
+
+	uint64 gotOffset = HotAlignUp(imageSize, 8);
+	imageSize = gotOffset + gotSlots.GetCount() * 8;
+	uint64 stubOffset = HotAlignUp(imageSize, HOT_STUB_SIZE);
+	imageSize = stubOffset + stubSlots.GetCount() * HOT_STUB_SIZE;
+
+	uint64 imageAddr = HotAlloc(BF_MAX(imageSize, (uint64)1), imageAlign, outError);
+	if (imageAddr == 0)
+		return false;
+
+	Array<uint8> image;
+	image.Resize((intptr)imageSize);
+	if (imageSize > 0)
+		memset(image.mVals, 0, (size_t)imageSize);
+	for (int sectionIdx = 0; sectionIdx < numSections; sectionIdx++)
+	{
+		Elf64_Shdr& shdr = shdrs[sectionIdx];
+		if ((_IsLoadedSection(sectionIdx)) && (shdr.sh_type != SHT_NOBITS) && (shdr.sh_size > 0))
+			memcpy(image.mVals + sectionOffsets[sectionIdx], data + shdr.sh_offset, (size_t)shdr.sh_size);
+	}
+
+	// Symbol resolution
+	Array<uint64> symAddrs;
+	symAddrs.Resize(numSyms);
+	Array<uint8> symResolved;
+	symResolved.Resize(numSyms);
+	if (numSyms > 0)
+		memset(symResolved.mVals, 0, numSyms);
+	Array<std::pair<String, HotSymbol>> newSymbols;
+	Array<HotPatch> newPatches;
+
+	auto _ResolveSymbol = [&](int symIdx, uint64& outAddr)
+	{
+		if (symResolved[symIdx])
+		{
+			outAddr = symAddrs[symIdx];
+			return true;
+		}
+
+		Elf64_Sym& sym = syms[symIdx];
+		String name = _GetSymName(sym);
+		int bind = ELF64_ST_BIND(sym.st_info);
+		int symType = ELF64_ST_TYPE(sym.st_info);
+		uint64 addr = 0;
+
+		if (sym.st_shndx == SHN_UNDEF)
+		{
+			String error;
+			if (!HotResolveExternal(name, addr, error))
+			{
+				if (!error.IsEmpty())
+					return _Fail(error);
+				if (bind != STB_WEAK)
+					return _Fail(StrFormat("unresolved symbol '%s'", name.c_str()));
+				addr = 0;
+			}
+		}
+		else if (sym.st_shndx == SHN_ABS)
+		{
+			addr = sym.st_value;
+		}
+		else if (!_IsLoadedSection(sym.st_shndx))
+		{
+			return _Fail(StrFormat("symbol '%s' is in a section that can't be hot loaded (such as thread-local data)", name.c_str()));
+		}
+		else
+		{
+			addr = imageAddr + sectionOffsets[sym.st_shndx] + sym.st_value;
+			if ((bind != STB_LOCAL) && (!name.IsEmpty()))
+			{
+				bool isCode = (symType == STT_FUNC) || ((shdrs[sym.st_shndx].sh_flags & SHF_EXECINSTR) != 0);
+				HotSymbol canonical;
+				if (HotFindCanonicalSymbol(name, canonical))
+				{
+					if ((isCode) && (canonical.mAddr != addr))
+					{
+						HotPatch patch;
+						patch.mName = name;
+						patch.mOldAddr = canonical.mAddr;
+						patch.mOldSize = canonical.mSize;
+						patch.mNewAddr = addr;
+						newPatches.Add(patch);
+					}
+					addr = canonical.mAddr;
+				}
+				else
+				{
+					HotSymbol hotSymbol;
+					hotSymbol.mAddr = addr;
+					hotSymbol.mSize = sym.st_size;
+					hotSymbol.mIsCode = isCode;
+					newSymbols.Add(std::make_pair(name, hotSymbol));
+				}
+			}
+		}
+
+		symAddrs[symIdx] = addr;
+		symResolved[symIdx] = 1;
+		outAddr = addr;
+		return true;
+	};
+
+	// Resolve every global definition up front, so replaced functions get patched
+	// even when nothing in this object references them.
+	for (int symIdx = 1; symIdx < numSyms; symIdx++)
+	{
+		Elf64_Sym& sym = syms[symIdx];
+		if ((ELF64_ST_BIND(sym.st_info) == STB_LOCAL) || (!_IsLoadedSection(sym.st_shndx)))
+			continue;
+		uint64 addr;
+		if (!_ResolveSymbol(symIdx, addr))
+			return false;
+	}
+
+	// Relocations
+	for (int relaSectionIdx = 0; relaSectionIdx < numSections; relaSectionIdx++)
+	{
+		Elf64_Shdr& relaShdr = shdrs[relaSectionIdx];
+		int targetIdx = (int)relaShdr.sh_info;
+		if ((relaShdr.sh_type != SHT_RELA) || (!_IsLoadedSection(targetIdx)))
+			continue;
+		Elf64_Shdr& targetShdr = shdrs[targetIdx];
+
+		Elf64_Rela* relas = (Elf64_Rela*)(data + relaShdr.sh_offset);
+		int numRelas = (int)(relaShdr.sh_size / sizeof(Elf64_Rela));
+		for (int relaIdx = 0; relaIdx < numRelas; relaIdx++)
+		{
+			Elf64_Rela& rela = relas[relaIdx];
+			uint32 relocType = ELF64_R_TYPE(rela.r_info);
+			int symIdx = (int)ELF64_R_SYM(rela.r_info);
+			if (relocType == R_X86_64_NONE)
+				continue;
+
+			int relocSize = ((relocType == R_X86_64_64) || (relocType == R_X86_64_PC64)) ? 8 : 4;
+			if ((targetShdr.sh_type == SHT_NOBITS) || (rela.r_offset + relocSize > targetShdr.sh_size))
+				return _Fail("relocation is outside of its section");
+
+			uint64 symAddr;
+			if (!_ResolveSymbol(symIdx, symAddr))
+				return false;
+
+			uint8* loc = image.mVals + sectionOffsets[targetIdx] + rela.r_offset;
+			uint64 P = imageAddr + sectionOffsets[targetIdx] + rela.r_offset;
+			uint64 S = symAddr;
+			int64 A = rela.r_addend;
+			const char* symName = _GetSymName(syms[symIdx]);
+
+			switch (relocType)
+			{
+			case R_X86_64_64:
+				{
+					uint64 val = S + A;
+					memcpy(loc, &val, 8);
+				}
+				break;
+			case R_X86_64_PC64:
+				{
+					uint64 val = S + A - P;
+					memcpy(loc, &val, 8);
+				}
+				break;
+			case R_X86_64_32:
+				{
+					uint64 val = S + A;
+					if (val > 0xFFFFFFFFULL)
+						return _Fail(StrFormat("R_X86_64_32 relocation against '%s' is out of range", symName));
+					uint32 val32 = (uint32)val;
+					memcpy(loc, &val32, 4);
+				}
+				break;
+			case R_X86_64_32S:
+				{
+					int64 val = (int64)(S + A);
+					if (!HotFitsInt32(val))
+						return _Fail(StrFormat("R_X86_64_32S relocation against '%s' is out of range", symName));
+					int32 val32 = (int32)val;
+					memcpy(loc, &val32, 4);
+				}
+				break;
+			case R_X86_64_PC32:
+			case R_X86_64_PLT32:
+				{
+					int64 val = (int64)(S + A - P);
+					int* stubSlot = NULL;
+					if ((!HotFitsInt32(val)) && (relocType == R_X86_64_PLT32) && (stubSlots.TryGetValue(symIdx, &stubSlot)))
+					{
+						uint64 stubImageOffset = stubOffset + (uint64)*stubSlot * HOT_STUB_SIZE;
+						HotWriteAbsJump(image.mVals + stubImageOffset, S);
+						val = (int64)(imageAddr + stubImageOffset + A - P);
+					}
+					if (!HotFitsInt32(val))
+						return _Fail(StrFormat("PC-relative relocation against '%s' is out of range", symName));
+					int32 val32 = (int32)val;
+					memcpy(loc, &val32, 4);
+				}
+				break;
+			case R_X86_64_GOTPCREL:
+			case R_X86_64_GOTPCRELX:
+			case R_X86_64_REX_GOTPCRELX:
+				{
+					uint64 slotImageOffset = gotOffset + (uint64)gotSlots[symIdx] * 8;
+					memcpy(image.mVals + slotImageOffset, &S, 8);
+					int64 val = (int64)(imageAddr + slotImageOffset + A - P);
+					if (!HotFitsInt32(val))
+						return _Fail(StrFormat("GOT relocation against '%s' is out of range", symName));
+					int32 val32 = (int32)val;
+					memcpy(loc, &val32, 4);
+				}
+				break;
+			case R_X86_64_TLSGD:
+			case R_X86_64_TLSLD:
+			case R_X86_64_DTPOFF32:
+			case R_X86_64_DTPOFF64:
+			case R_X86_64_GOTTPOFF:
+			case R_X86_64_TPOFF32:
+			case R_X86_64_TPOFF64:
+				return _Fail(StrFormat("thread-local variable '%s' can't be hot loaded yet", symName));
+			default:
+				return _Fail(StrFormat("unsupported relocation type %d against '%s'", relocType, symName));
+			}
+		}
+	}
+
+	if ((imageSize > 0) && (!WriteMemory((intptr)imageAddr, image.mVals, imageSize)))
+		return _Fail(StrFormat("failed writing %lld bytes to 0x%llx", (long long)imageSize, (unsigned long long)imageAddr));
+
+	// Only publish new definitions once their code is actually in the target
+	for (auto& newSymbol : newSymbols)
+		mHotSymbols[newSymbol.first] = newSymbol.second;
+	for (auto& patch : newPatches)
+		patches.Add(patch);
+	return true;
+#else
+	outError = "hot swapping is only supported on Linux";
+	return false;
+#endif
+}
+
+// A thread stopped part-way through the bytes we're about to overwrite would resume
+// into a torn instruction, so single-step any such thread until it's clear.
+// (A thread exactly at a function's entry is fine - it will execute the new jump.)
+bool LLDBDebugger::HotStepThreadsPastPatches(const Array<HotPatch>& patches, String& outError)
+{
+	for (uint32 threadIdx = 0; threadIdx < mLLDBProcess.GetNumThreads(); threadIdx++)
+	{
+		lldb::SBThread thread = mLLDBProcess.GetThreadAtIndex(threadIdx);
+		for (int stepIdx = 0; true; stepIdx++)
+		{
+			uint64 pc = (uint64)thread.GetFrameAtIndex(0).GetPC();
+			bool inPatch = false;
+			for (auto& patch : patches)
+			{
+				if ((pc > patch.mOldAddr) && (pc < patch.mOldAddr + HOT_JMP_ABS64_SIZE))
+					inPatch = true;
+			}
+			if (!inPatch)
+				break;
+
+			if (stepIdx >= 16)
+			{
+				outError = StrFormat("unable to move thread %d past the start of a replaced method", (int)thread.GetThreadID());
+				return false;
+			}
+
+			lldb::SBError error;
+			thread.StepInstruction(false, error);
+			if (error.Fail())
+			{
+				outError = StrFormat("failed to step thread %d: %s", (int)thread.GetThreadID(), error.GetCString());
+				return false;
+			}
+			if (!HotWaitForStop(outError))
+				return false;
+		}
+	}
+	return true;
+}
+
+bool LLDBDebugger::HotApplyPatches(const Array<HotPatch>& patches, int& outNumPatched, String& outError)
+{
+	outNumPatched = 0;
+	for (auto& patch : patches)
+	{
+		uint8 jmp[HOT_JMP_ABS64_SIZE];
+		int jmpSize;
+		int64 rel = (int64)(patch.mNewAddr - (patch.mOldAddr + HOT_JMP_REL32_SIZE));
+		if (HotFitsInt32(rel))
+		{
+			int32 rel32 = (int32)rel;
+			jmp[0] = 0xE9;
+			memcpy(jmp + 1, &rel32, 4);
+			jmpSize = HOT_JMP_REL32_SIZE;
+		}
+		else
+		{
+			HotWriteAbsJump(jmp, patch.mNewAddr);
+			jmpSize = HOT_JMP_ABS64_SIZE;
+		}
+
+		if (patch.mOldSize < (uint64)jmpSize)
+		{
+			// Single-byte 'ret' stubs can't be patched, but there's nothing in them to replace
+			if (patch.mOldSize > 1)
+				OutputMessage(StrFormat("Hot swap: method '%s' is too small to replace\n", patch.mName.c_str()));
+			continue;
+		}
+
+		if (!WriteMemory((intptr)patch.mOldAddr, jmp, jmpSize))
+		{
+			outError = StrFormat("failed to patch '%s' at 0x%llx", patch.mName.c_str(), (unsigned long long)patch.mOldAddr);
+			return false;
+		}
+		outNumPatched++;
+	}
+	return true;
+}
 
 void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	if (!mLLDBProcess.IsValid())
+		return;
+
+	// Handle any stop that's already pending (a breakpoint hit, say) before deciding
+	// whether we need to interrupt the target ourselves.
+	Update();
+	if ((mRunState == RunState_NotStarted) || (mRunState == RunState_Terminating) || (mRunState == RunState_Terminated))
+		return;
+
+	String error;
+	bool wasRunning = (mRunState == RunState_Running) || (mRunState == RunState_Running_ToTempBreakpoint);
+	if (wasRunning)
+	{
+		mLLDBProcess.Stop();
+		if (!HotWaitForStop(error))
+		{
+			mDebugManager->mOutMessages.push_back(StrFormat("error Hot swap failed: %s", error.c_str()));
+			return;
+		}
+	}
+
+	// Load every object before patching anything, so a failure leaves the program untouched
+	Array<HotPatch> patches;
+	bool success = true;
+	for (auto& fileName : objectFiles)
+	{
+		if (!HotLoadObject(fileName, patches, error))
+		{
+			success = false;
+			break;
+		}
+	}
+
+	int numPatched = 0;
+	if (success)
+		success = HotStepThreadsPastPatches(patches, error);
+	if (success)
+		success = HotApplyPatches(patches, numPatched, error);
+
+	if (success)
+		OutputMessage(StrFormat("Hot swap: replaced %d method%s\n", numPatched, (numPatched == 1) ? "" : "s"));
+	else
+		mDebugManager->mOutMessages.push_back(StrFormat("error Hot swap failed: %s", error.c_str()));
+
+	if ((wasRunning) && (mLLDBProcess.IsValid()) && (mLLDBProcess.GetState() == lldb::eStateStopped))
+		mLLDBProcess.Continue();
+	else
+		ClearCallStack();
 }
 
+// After a hot compile the IDE waits for this data before it calls HotLoad.
 void LLDBDebugger::InitiateHotResolve(DbgHotResolveFlags flags)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	delete mHotResolveData;
+	mHotResolveData = new DbgHotResolveData();
+
+	if (!mLLDBProcess.IsValid())
+		return;
+	Update();
+	if ((mRunState == RunState_NotStarted) || (mRunState == RunState_Terminating) || (mRunState == RunState_Terminated))
+		return;
+
+	String error;
+	bool wasRunning = (mRunState == RunState_Running) || (mRunState == RunState_Running_ToTempBreakpoint);
+	if (wasRunning)
+	{
+		mLLDBProcess.Stop();
+		if (!HotWaitForStop(error))
+		{
+			mDebugManager->mOutMessages.push_back(StrFormat("error Hot resolve failed: %s", error.c_str()));
+			return;
+		}
+	}
+
+	// Methods on any thread's stack. Frames in hot-loaded code have no LLDB symbol and are skipped.
+	for (uint32 threadIdx = 0; threadIdx < mLLDBProcess.GetNumThreads(); threadIdx++)
+	{
+		lldb::SBThread thread = mLLDBProcess.GetThreadAtIndex(threadIdx);
+		for (uint32 frameIdx = 0; frameIdx < thread.GetNumFrames(); frameIdx++)
+		{
+			lldb::SBSymbol symbol = thread.GetFrameAtIndex(frameIdx).GetSymbol();
+			if (!symbol.IsValid())
+				continue;
+			const char* name = symbol.GetMangledName();
+			if (name == NULL)
+				name = symbol.GetName();
+			if ((name != NULL) && (name[0] != '\0'))
+				mHotResolveData->mBeefCallStackEntries.Add(name);
+		}
+	}
+
+	// We can't scan the Beef heap yet, so when the compile has data changes, report every
+	// existing type as allocated. The compiler then refuses layout changes to types that
+	// are in use, rather than applying them to live objects that have the old layout.
+	if ((flags & DbgHotResolveFlag_Allocations) != 0)
+	{
+		HotSymbol typeCountSymbol;
+		int32 typeCount = 0;
+		if (HotFindExeSymbol("_ZN2bf6System4Type10sTypeCountE", typeCountSymbol))
+			ReadMemory((intptr)typeCountSymbol.mAddr, sizeof(typeCount), &typeCount);
+		for (int typeId = 0; typeId < typeCount; typeId++)
+		{
+			DbgHotResolveData::TypeData typeData;
+			typeData.mCount = 1;
+			mHotResolveData->mTypeData.Add(typeData);
+		}
+	}
+
+	if ((wasRunning) && (mLLDBProcess.IsValid()) && (mLLDBProcess.GetState() == lldb::eStateStopped))
+		mLLDBProcess.Continue();
+	else
+		ClearCallStack();
 }
 
 intptr LLDBDebugger::GetDbgAllocHeapSize()
@@ -2333,6 +3315,7 @@ void LLDBDebugger::StopDebugging()
 
 	mProcessId = 0;
 	mRunState = RunState_Terminated;
+	CloseOutputPipes();
 }
 
 void LLDBDebugger::Terminate()
@@ -2364,6 +3347,7 @@ void LLDBDebugger::Terminate()
 
 	mProcessId = 0;
 	mRunState = RunState_Terminated;
+	CloseOutputPipes();
 }
 
 void LLDBDebugger::Detach()
