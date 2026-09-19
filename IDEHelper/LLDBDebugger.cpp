@@ -290,6 +290,7 @@ bool LLDBDebugger::CanOpen(const StringImpl& fileName, DebuggerResult* outResult
 void LLDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targetPath, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, bool hotSwapEnabled, DbgOpenFileFlags openFileFlags)
 {
 	LLDBLog("OpenFile\n");
+	mTargetPath = targetPath;
 
 	mLaunchMode = LLDBLaunchMode_Local;
 	mRemoteHost = "";
@@ -2453,6 +2454,24 @@ static bool TryReadBeefString(lldb::SBValue stringRef, String& outText, bool quo
 
 	lldb::SBValue stringObj = stringRef.Dereference();
 	lldb::SBValue lengthValue = stringObj.GetChildMemberWithName("mLength");
+	if (!lengthValue.IsValid())
+	{
+		// Code from a hot compile may only declare String - use a module's complete definition
+		lldb::SBTypeList types = stringRef.GetTarget().FindTypes(pointeeName);
+		for (uint32 typeIdx = 0; typeIdx < types.GetSize(); typeIdx++)
+		{
+			lldb::SBType type = types.GetTypeAtIndex(typeIdx);
+			if (type.GetNumberOfFields() == 0)
+				continue;
+			lldb::SBValue castObj = stringRef.Cast(type.GetPointerType()).Dereference();
+			if (castObj.GetChildMemberWithName("mLength").IsValid())
+			{
+				stringObj = castObj;
+				lengthValue = stringObj.GetChildMemberWithName("mLength");
+				break;
+			}
+		}
+	}
 	lldb::SBValue flagsValue = stringObj.GetChildMemberWithName("mAllocSizeAndFlags");
 	lldb::SBValue ptrValue = stringObj.GetChildMemberWithName("mPtrOrBuffer");
 	if ((!lengthValue.IsValid()) || (!flagsValue.IsValid()) || (!ptrValue.IsValid()))
@@ -3109,13 +3128,41 @@ lldb::SBValue LLDBDebugger::HotFindStaticVariable(lldb::SBFrame& frame, const St
 	uint64 tlsOffset = 0;
 	if (HotFindThreadLocalOffset(best.GetName(), tlsOffset))
 	{
-		uint64 threadPointer = frame.FindRegister("fs_base").GetValueAsUnsigned(0);
-		if (threadPointer == 0)
+		uint64 blockAddr = 0;
+		if (!HotGetTlsBlockAddr(frame, blockAddr))
 			return lldb::SBValue();
-		lldb::SBAddress addr(threadPointer - mHotTlsBlockSize + tlsOffset, mLLDBTarget);
+		lldb::SBAddress addr(blockAddr + tlsOffset, mLLDBTarget);
 		return mLLDBTarget.CreateValueFromAddress(best.GetName(), addr, best.GetType());
 	}
 	return best;
+}
+
+// The address of the base module's TLS block in the frame's thread. The executable's is in the static TLS
+// area, which ends at the thread pointer; a shared library's may be allocated dynamically, so it's asked for.
+bool LLDBDebugger::HotGetTlsBlockAddr(lldb::SBFrame& frame, uint64& outAddr)
+{
+	if (mHotTlsModuleId == 1)
+	{
+		uint64 threadPointer = frame.FindRegister("fs_base").GetValueAsUnsigned(0);
+		if (threadPointer == 0)
+			return false;
+		outAddr = threadPointer - mHotTlsBlockSize;
+		return true;
+	}
+
+	lldb::SBExpressionOptions options;
+	options.SetLanguage(lldb::eLanguageTypeC_plus_plus);
+	options.SetUnwindOnError(true);
+	options.SetIgnoreBreakpoints(true);
+	options.SetTryAllThreads(false);
+	options.SetTimeoutInMicroSeconds(2 * 1000 * 1000);
+	String expr = StrFormat("unsigned long tlsIndex[2] = { %lluUL, 0 }; (unsigned long)((void*(*)(void*))__tls_get_addr)(tlsIndex)",
+		(unsigned long long)mHotTlsModuleId);
+	lldb::SBValue value = frame.EvaluateExpression(expr.c_str(), options);
+	if ((!value.IsValid()) || (value.GetError().Fail()))
+		return false;
+	outAddr = value.GetValueAsUnsigned(0);
+	return outAddr != 0;
 }
 
 // The TLS offset of a thread-local variable, by its demangled qualified name
@@ -3508,7 +3555,7 @@ lldb::SBValue LLDBDebugger::CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue t
 						versions.Add(hotType);
 				}
 			}
-			lldb::SBModule exeModule = mLLDBTarget.FindModule(mLLDBTarget.GetExecutable());
+			lldb::SBModule exeModule = HotGetBaseModule();
 			lldb::SBType exeType = exeModule.FindFirstType(typeName);
 			if (exeType.IsValid())
 				versions.Add(exeType);
@@ -3961,6 +4008,8 @@ void LLDBDebugger::HotResetState()
 	mHotHeapSize = 0;
 	mHotHeapUsed = 0;
 	mHotHeapNextHint = 0;
+	mHotHeapGrowDown = false;
+	mHotBaseModule = lldb::SBModule();
 	mHotSymbols.Clear();
 	mHotPendingSymbols.Clear();
 	mHotExternalAddrs.Clear();
@@ -3971,6 +4020,7 @@ void LLDBDebugger::HotResetState()
 	mHotTlsDemangled.Clear();
 	mHotTlsDemangledValid = false;
 	mHotTlsBlockSize = 0;
+	mHotTlsModuleId = 1;
 	mHotTlsExtraOffset = 0;
 	mHotTlsExtraSize = 0;
 	mHotTlsExtraUsed = 0;
@@ -4167,7 +4217,7 @@ void LLDBDebugger::HotGetVersionModules(int hotIdx, lldb::SBFileSpecList& outMod
 {
 	if (hotIdx == 0)
 	{
-		outModules.Append(mLLDBTarget.GetExecutable());
+		outModules.Append(HotGetBaseModule().GetFileSpec());
 		return;
 	}
 	for (auto& version : mHotVersions)
@@ -4205,7 +4255,7 @@ int LLDBDebugger::HotFindVersionWithFile(const lldb::SBFileSpec& fileSpec, int b
 	}
 	if (belowHotIdx > 0)
 	{
-		lldb::SBModule exeModule = mLLDBTarget.FindModule(mLLDBTarget.GetExecutable());
+		lldb::SBModule exeModule = HotGetBaseModule();
 		if ((exeModule.IsValid()) && (HotModuleHasFile(exeModule, fileSpec)))
 			return 0;
 	}
@@ -4280,7 +4330,9 @@ bool LLDBDebugger::HotEvaluate(const StringImpl& expr, uint64& outValue, String&
 	return true;
 }
 
-// Map a new RWX region in the target, as close past the executable as we can get it.
+// Map a new RWX region in the target, within rel32 reach of the base module: past the executable (leaving
+// room for the brk heap), or below a shared library - the mmap area grows down, and libraries loaded before
+// it sit just above it.
 bool LLDBDebugger::HotReserveHeap(uint64 minSize, String& outError)
 {
 	const uint64 mb = 1024 * 1024;
@@ -4288,27 +4340,45 @@ bool LLDBDebugger::HotReserveHeap(uint64 minSize, String& outError)
 
 	if (mHotHeapNextHint == 0)
 	{
-		lldb::SBModule exeModule = mLLDBTarget.FindModule(mLLDBTarget.GetExecutable());
+		lldb::SBModule baseModule = HotGetBaseModule();
+		uint64 imageStart = (uint64)-1;
 		uint64 imageEnd = 0;
-		for (uint32 sectionIdx = 0; sectionIdx < exeModule.GetNumSections(); sectionIdx++)
+		for (uint32 sectionIdx = 0; sectionIdx < baseModule.GetNumSections(); sectionIdx++)
 		{
-			lldb::SBSection section = exeModule.GetSectionAtIndex(sectionIdx);
+			lldb::SBSection section = baseModule.GetSectionAtIndex(sectionIdx);
 			lldb::addr_t loadAddr = section.GetLoadAddress(mLLDBTarget);
-			if (loadAddr != LLDB_INVALID_ADDRESS)
-				imageEnd = BF_MAX(imageEnd, (uint64)loadAddr + section.GetByteSize());
+			if ((loadAddr == LLDB_INVALID_ADDRESS) || (section.GetByteSize() == 0))
+				continue;
+			imageStart = BF_MIN(imageStart, (uint64)loadAddr);
+			imageEnd = BF_MAX(imageEnd, (uint64)loadAddr + section.GetByteSize());
 		}
 		if (imageEnd == 0)
 		{
-			outError = "unable to determine where the executable is loaded";
+			outError = "unable to determine where the program is loaded";
 			return false;
 		}
-		mHotHeapNextHint = HotAlignUp(imageEnd + HOT_HEAP_EXE_GAP, mb);
+		mHotHeapGrowDown = !HotIsBaseModuleExecutable();
+		if (mHotHeapGrowDown)
+			mHotHeapNextHint = (imageStart & ~(mb - 1)) - 16 * mb;
+		else
+			mHotHeapNextHint = HotAlignUp(imageEnd + HOT_HEAP_EXE_GAP, mb);
 	}
 
 	for (int tryIdx = 0; tryIdx < 24; tryIdx++)
 	{
-		uint64 hint = mHotHeapNextHint;
-		mHotHeapNextHint += reserveSize;
+		uint64 hint;
+		if (mHotHeapGrowDown)
+		{
+			if (mHotHeapNextHint < reserveSize + 16 * mb)
+				break;
+			hint = mHotHeapNextHint - reserveSize;
+			mHotHeapNextHint = hint;
+		}
+		else
+		{
+			hint = mHotHeapNextHint;
+			mHotHeapNextHint += reserveSize;
+		}
 
 		// PROT_READ|PROT_WRITE|PROT_EXEC, MAP_PRIVATE|MAP_ANONYMOUS|MAP_FIXED_NOREPLACE
 		String expr = StrFormat("(unsigned long)((void*(*)(void*, unsigned long, int, int, int, long))mmap)((void*)0x%llx, 0x%llx, 7, 0x100022, -1, 0)",
@@ -4335,7 +4405,7 @@ bool LLDBDebugger::HotReserveHeap(uint64 minSize, String& outError)
 		}
 	}
 
-	outError = "unable to reserve memory near the executable";
+	outError = "unable to reserve memory near the program's code";
 	return false;
 }
 
@@ -4516,10 +4586,45 @@ void LLDBDebugger::HotCleanupImages(int currentHotIdx)
 		LLDBLog("HotCleanupImages: freed %d images (%lld bytes)\n", numFreed, (long long)freedSize);
 }
 
+// The module the hot compiled code belongs to: the executable, unless it's been found to be a shared
+// library (a plugin the executable loads)
+lldb::SBModule LLDBDebugger::HotGetBaseModule()
+{
+	if (mHotBaseModule.IsValid())
+		return mHotBaseModule;
+
+	// The module built from the IDE's target, once it's loaded
+	char targetPath[PATH_MAX];
+	if ((!mTargetPath.IsEmpty()) && (realpath(mTargetPath.c_str(), targetPath) != NULL))
+	{
+		for (uint32 moduleIdx = 0; moduleIdx < mLLDBTarget.GetNumModules(); moduleIdx++)
+		{
+			lldb::SBModule module = mLLDBTarget.GetModuleAtIndex(moduleIdx);
+			char modulePath[PATH_MAX] = { 0 };
+			char moduleRealPath[PATH_MAX];
+			module.GetFileSpec().GetPath(modulePath, sizeof(modulePath));
+			if ((realpath(modulePath, moduleRealPath) == NULL) || (strcmp(moduleRealPath, targetPath) != 0))
+				continue;
+			lldb::SBAddress header = module.GetObjectFileHeaderAddress();
+			if ((header.IsValid()) && (header.GetLoadAddress(mLLDBTarget) != LLDB_INVALID_ADDRESS))
+			{
+				mHotBaseModule = module;
+				return module;
+			}
+		}
+	}
+	return mLLDBTarget.FindModule(mLLDBTarget.GetExecutable());
+}
+
+bool LLDBDebugger::HotIsBaseModuleExecutable()
+{
+	return HotGetBaseModule() == mLLDBTarget.FindModule(mLLDBTarget.GetExecutable());
+}
+
 // Find an external code or data symbol defined by the executable itself.
 bool LLDBDebugger::HotFindExeSymbol(const StringImpl& name, HotSymbol& outSymbol)
 {
-	lldb::SBModule exeModule = mLLDBTarget.FindModule(mLLDBTarget.GetExecutable());
+	lldb::SBModule exeModule = HotGetBaseModule();
 	if (!exeModule.IsValid())
 		return false;
 
@@ -4527,7 +4632,10 @@ bool LLDBDebugger::HotFindExeSymbol(const StringImpl& name, HotSymbol& outSymbol
 	for (uint32 contextIdx = 0; contextIdx < contexts.GetSize(); contextIdx++)
 	{
 		lldb::SBSymbol symbol = contexts.GetContextAtIndex(contextIdx).GetSymbol();
-		if ((!symbol.IsValid()) || (!symbol.IsExternal()))
+		if (!symbol.IsValid())
+			continue;
+		// Hot swap symbols are kept local in shared libraries (their '@' would be read as a version)
+		if ((!symbol.IsExternal()) && (!name.StartsWith("bf_hs_")))
 			continue;
 		lldb::SymbolType symbolType = symbol.GetType();
 		if ((symbolType != lldb::eSymbolTypeCode) && (symbolType != lldb::eSymbolTypeData))
@@ -4677,11 +4785,25 @@ NS_BF_END
 bool LLDBDebugger::HotLoadExeTlsInfo(String& outError)
 {
 #ifdef __linux__
+	// The base module isn't known for sure until the first hot load (or until the IDE's target is loaded)
+	lldb::SBModule baseModule = HotGetBaseModule();
 	if (mHotExeTlsLoaded)
-		return true;
+	{
+		if (mHotTlsInfoModule == baseModule)
+			return true;
+		mHotExeTlsLoaded = false;
+		mHotExeTlsOffsets.Clear();
+		mHotTlsDemangled.Clear();
+		mHotTlsDemangledValid = false;
+		mHotTlsBlockSize = 0;
+		mHotTlsExtraOffset = 0;
+		mHotTlsExtraSize = 0;
+		mHotTlsExtraUsed = 0;
+	}
+	mHotTlsInfoModule = baseModule;
 
-	char exePath[PATH_MAX];
-	mLLDBTarget.GetExecutable().GetPath(exePath, sizeof(exePath));
+	char exePath[PATH_MAX] = { 0 };
+	HotGetBaseModule().GetFileSpec().GetPath(exePath, sizeof(exePath));
 	int fileSize = 0;
 	uint8* data = LoadBinaryData(exePath, &fileSize);
 	if (data == NULL)
@@ -4734,8 +4856,34 @@ bool LLDBDebugger::HotLoadExeTlsInfo(String& outError)
 
 	if ((!valid) || (mHotTlsBlockSize == 0))
 	{
-		outError = "the executable has no thread-local storage block";
+		outError = StrFormat("'%s' has no thread-local storage block", exePath);
 		return false;
+	}
+
+	// The executable's TLS is module 1. A shared library's is whatever the dynamic linker assigned it.
+	mHotTlsModuleId = 1;
+	if (!HotIsBaseModuleExecutable())
+	{
+		for (const char* c = exePath; *c != 0; c++)
+		{
+			if ((*c == '"') || (*c == '\\'))
+			{
+				outError = StrFormat("unable to look up the TLS module of '%s'", exePath);
+				return false;
+			}
+		}
+		// RTLD_NOLOAD|RTLD_LAZY; RTLD_DI_TLS_MODID
+		String expr = StrFormat("unsigned long modId = 0; void* handle = ((void*(*)(const char*, int))dlopen)(\"%s\", 5); "
+			"if (handle != 0) { ((int(*)(void*, int, void*))dlinfo)(handle, 9, &modId); ((int(*)(void*))dlclose)(handle); } modId", exePath);
+		uint64 modId = 0;
+		if ((!HotEvaluate(expr, modId, outError)) || (modId == 0))
+		{
+			if (outError.IsEmpty())
+				outError = StrFormat("unable to find the TLS module of '%s'", exePath);
+			return false;
+		}
+		mHotTlsModuleId = modId;
+		LLDBLog("HotLoadExeTlsInfo: %s is TLS module %lld\n", exePath, (long long)modId);
 	}
 	mHotExeTlsLoaded = true;
 	return true;
@@ -4961,7 +5109,76 @@ bool LLDBDebugger::HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<
 }
 
 // Parse the object, lay out and allocate its image, and register its global definitions.
-bool LLDBDebugger::HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError)
+// Decide, on the first hot load, which loaded module the program's code is in - the one that already
+// defines the most of the symbols the new objects define. That's the executable for a Beef program, or a
+// Beef shared library loaded by a host program.
+void LLDBDebugger::HotChooseBaseModule(const Array<LLDBHotObject*>& objects)
+{
+#ifdef __linux__
+	if (HotGetBaseModule() == mHotBaseModule)
+	{
+		LLDBLog("HotChooseBaseModule: the IDE's target\n");
+		return;
+	}
+
+	Array<String> names;
+	for (auto obj : objects)
+	{
+		for (int symIdx = 1; (symIdx < obj->mNumSyms) && (names.size() < 256); symIdx++)
+		{
+			Elf64_Sym& sym = obj->mSyms[symIdx];
+			int bind = ELF64_ST_BIND(sym.st_info);
+			int type = ELF64_ST_TYPE(sym.st_info);
+			if ((sym.st_shndx == SHN_UNDEF) || (sym.st_shndx >= SHN_LORESERVE) || ((bind != STB_GLOBAL) && (bind != STB_WEAK)) ||
+				((type != STT_FUNC) && (type != STT_OBJECT)) || (sym.st_name >= obj->mStrTabSize))
+				continue;
+			const char* name = obj->mStrTab + sym.st_name;
+			if (strncmp(name, "bf_hs_", 6) != 0)
+				names.Add(name);
+		}
+	}
+
+	lldb::SBModule exeModule = mLLDBTarget.FindModule(mLLDBTarget.GetExecutable());
+	lldb::SBModule bestModule = exeModule;
+	int bestCount = 0;
+	auto _Count = [&](lldb::SBModule module)
+	{
+		int count = 0;
+		for (auto& name : names)
+		{
+			if (module.FindSymbol(name.c_str()).IsValid())
+				count++;
+		}
+		return count;
+	};
+	if (exeModule.IsValid())
+		bestCount = _Count(exeModule);
+	for (uint32 moduleIdx = 0; moduleIdx < mLLDBTarget.GetNumModules(); moduleIdx++)
+	{
+		lldb::SBModule module = mLLDBTarget.GetModuleAtIndex(moduleIdx);
+		if ((module == exeModule) || (HotGetModuleVersion(module) != 0))
+			continue;
+		// Only loaded modules
+		lldb::SBAddress header = module.GetObjectFileHeaderAddress();
+		if ((!header.IsValid()) || (header.GetLoadAddress(mLLDBTarget) == LLDB_INVALID_ADDRESS))
+			continue;
+		int count = _Count(module);
+		if (count > bestCount)
+		{
+			bestCount = count;
+			bestModule = module;
+		}
+	}
+	mHotBaseModule = bestModule;
+
+	char path[PATH_MAX] = { 0 };
+	bestModule.GetFileSpec().GetPath(path, sizeof(path));
+	LLDBLog("HotChooseBaseModule: %s (%d of %d symbols)\n", path, bestCount, (int)names.size());
+#endif
+}
+
+// Read an object file and find its section headers and symbol table
+bool LLDBDebugger::HotParseObject(LLDBHotObject* obj, String& outError)
 {
 #ifdef __linux__
 	{
@@ -5017,6 +5234,19 @@ bool LLDBDebugger::HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches
 	}
 	if (obj->mSyms == NULL)
 		return obj->Fail("no symbol table", outError);
+	return true;
+#else
+	outError = "hot loading is only supported on Linux";
+	return false;
+#endif
+}
+
+bool LLDBDebugger::HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError)
+{
+#ifdef __linux__
+	uint8* data = obj->mFileData.mVals;
+	int numSections = obj->mNumSections;
+	Elf64_Shdr* shdrs = obj->mShdrs;
 	int numSyms = obj->mNumSyms;
 
 	// Lay out the sections we load. Thread-local templates can't be hot loaded, and
@@ -5222,14 +5452,14 @@ bool LLDBDebugger::HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, S
 					memcpy(loc, &val32, 4);
 				}
 				break;
-			// Thread-local access. S is the symbol's offset in the executable's TLS block, which is TLS
-			// module 1; __tls_get_addr takes a {module, offset} pair. On x86-64 the thread pointer is at the
+			// Thread-local access. S is the symbol's offset in the base module's TLS block (TLS module 1 for
+			// the executable); __tls_get_addr takes a {module, offset} pair. On x86-64 the thread pointer is at the
 			// end of the static TLS block, so a TP-relative offset is S minus the block's size.
 			case R_X86_64_TLSGD:
 			case R_X86_64_TLSLD:
 				{
 					uint64 slotImageOffset = obj->mTlsSlotsOffset + ((relocType == R_X86_64_TLSGD) ? (uint64)obj->mTlsGdSlots[symIdx] : (uint64)obj->mTlsGdSlots.GetCount()) * 16;
-					uint64 tlsIndex[2] = { 1, (relocType == R_X86_64_TLSGD) ? S : 0 };
+					uint64 tlsIndex[2] = { mHotTlsModuleId, (relocType == R_X86_64_TLSGD) ? S : 0 };
 					memcpy(obj->mImage.mVals + slotImageOffset, tlsIndex, 16);
 					int64 val = (int64)(obj->mImageAddr + slotImageOffset + A - P);
 					if (!HotFitsInt32(val))
@@ -5255,6 +5485,8 @@ bool LLDBDebugger::HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, S
 				break;
 			case R_X86_64_GOTTPOFF:
 				{
+					if (mHotTlsModuleId != 1)
+						return obj->Fail(StrFormat("initial-exec thread-local access to '%s' isn't supported in a shared library", symName), outError);
 					uint64 slotImageOffset = obj->mTlsSlotsOffset + (obj->mTlsGdSlots.GetCount() + (obj->mNeedsTlsLdSlot ? 1 : 0)) * 16 + (uint64)obj->mTpOffSlots[symIdx] * 8;
 					int64 tpOffset = (int64)S - (int64)mHotTlsBlockSize;
 					memcpy(obj->mImage.mVals + slotImageOffset, &tpOffset, 8);
@@ -5267,6 +5499,8 @@ bool LLDBDebugger::HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, S
 				break;
 			case R_X86_64_TPOFF32:
 				{
+					if (mHotTlsModuleId != 1)
+						return obj->Fail(StrFormat("initial-exec thread-local access to '%s' isn't supported in a shared library", symName), outError);
 					int64 val = (int64)S + A - (int64)mHotTlsBlockSize;
 					if (!HotFitsInt32(val))
 						return obj->Fail(StrFormat("R_X86_64_TPOFF32 relocation against '%s' is out of range", symName), outError);
@@ -5276,6 +5510,8 @@ bool LLDBDebugger::HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, S
 				break;
 			case R_X86_64_TPOFF64:
 				{
+					if (mHotTlsModuleId != 1)
+						return obj->Fail(StrFormat("initial-exec thread-local access to '%s' isn't supported in a shared library", symName), outError);
 					int64 val = (int64)S + A - (int64)mHotTlsBlockSize;
 					memcpy(loc, &val, 8);
 				}
@@ -5627,10 +5863,22 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 		LLDBHotObject* obj = new LLDBHotObject();
 		obj->mFileName = fileName;
 		objects.Add(obj);
-		if (!HotPrepareObject(obj, patches, error))
+		if (!HotParseObject(obj, error))
 		{
 			success = false;
 			break;
+		}
+	}
+	if (success)
+	{
+		HotChooseBaseModule(objects);
+		for (auto obj : objects)
+		{
+			if (!HotPrepareObject(obj, patches, error))
+			{
+				success = false;
+				break;
+			}
 		}
 	}
 	if (success)

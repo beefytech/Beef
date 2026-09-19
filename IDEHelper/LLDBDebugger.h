@@ -94,6 +94,7 @@ public:
 
 	// Stored launch parameters — set by OpenFile, consumed by the launch thread
 	String mLaunchPath;
+	String mTargetPath;                              // the program the IDE built - an executable, or a shared library a host loads
 	String mLaunchArgs;
 	String mWorkingDir;
 	Array<uint8> mEnvBlock;
@@ -190,6 +191,8 @@ public:
 	uint64 mHotHeapSize;
 	uint64 mHotHeapUsed;
 	uint64 mHotHeapNextHint;
+	bool mHotHeapGrowDown;                           // reserving below a shared library, rather than past the executable
+	lldb::SBModule mHotBaseModule;                   // the executable or shared library the hot compiled code belongs to
 	Dictionary<String, HotSymbol> mHotSymbols;       // global symbols first defined by a hot load → that definition
 	Dictionary<String, HotSymbol> mHotPendingSymbols; // definitions from the batch currently being loaded
 	Array<HotDataFixup> mHotPendingDataFixups;
@@ -197,8 +200,10 @@ public:
 	Array<int> mHotInvalidLambdaTrapIds;            // breakpoints on old lambdas with incompatible captures
 	Array<int> mHotStepTrapIds;                      // temporary breakpoints for a step-in in progress
 	bool mHotExeTlsLoaded;
+	lldb::SBModule mHotTlsInfoModule;               // the module the TLS info below was read from
 	Dictionary<String, uint64> mHotExeTlsOffsets;    // the executable's thread-local variables → offset in its TLS block
-	uint64 mHotTlsBlockSize;                         // the executable's TLS block, rounded to its alignment
+	uint64 mHotTlsBlockSize;                         // the base module's TLS block, rounded to its alignment
+	uint64 mHotTlsModuleId;                          // the base module's TLS module id (1 for the executable)
 	uint64 mHotTlsExtraOffset;                       // __BFTLS_EXTRA, reserved for new thread-local variables
 	uint64 mHotTlsExtraSize;
 	uint64 mHotTlsExtraUsed;
@@ -247,7 +252,12 @@ protected:
 	bool HotFindCanonicalSymbol(const StringImpl& name, HotSymbol& outSymbol);
 	bool HotResolveExternal(const StringImpl& name, uint64& outAddr, String& outError);
 	bool HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<HotPatch>& patches, uint64& outAddr, String& outError);
+	bool HotParseObject(LLDBHotObject* obj, String& outError);
 	bool HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError);
+	void HotChooseBaseModule(const Array<LLDBHotObject*>& objects);
+	lldb::SBModule HotGetBaseModule();
+	bool HotIsBaseModuleExecutable();
+	bool HotGetTlsBlockAddr(lldb::SBFrame& frame, uint64& outAddr);
 	bool HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError);
 	bool HotApplyDataFixups(String& outError);
 	void HotRegisterDebugInfo(LLDBHotObject* obj, int hotIdx);
