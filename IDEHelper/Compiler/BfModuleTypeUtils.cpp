@@ -5504,23 +5504,23 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 					if (!typeInstance->mCeTypeInfo->mNext->mFastFinished)
 					{
-						// A zero hash means either we have never emitted before (nothing can depend on us yet) or our
-						//  previous emission came up empty -- in the latter case dependents were already slotted against
-						//  the emissionless version and do need to be rebuilt
-						if ((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) &&
+						// Dependents may have been slotted against incomplete emissions during a canceled pass.
+						if (((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) ||
+							(typeInstance->mCeTypeInfo->mFastFinished)) &&
 							((!typeInstance->mCeTypeInfo->mHash.IsZero()) || (typeInstance->mHadPopulate)))
-							mContext->QueueMidCompileRebuildDependentTypes(typeInstance, "comptime hash changed");
+							mContext->QueueMidCompileRebuildDependentTypes(typeInstance,
+								typeInstance->mCeTypeInfo->mFastFinished ? "comptime retry completed" : "comptime hash changed");
 						typeInstance->mCeTypeInfo->mEmitSourceMap = typeInstance->mCeTypeInfo->mNext->mEmitSourceMap;
 						typeInstance->mCeTypeInfo->mOnCompileMap = typeInstance->mCeTypeInfo->mNext->mOnCompileMap;
 						typeInstance->mCeTypeInfo->mTypeIFaceMap = typeInstance->mCeTypeInfo->mNext->mTypeIFaceMap;
 						typeInstance->mCeTypeInfo->mHash = typeInstance->mCeTypeInfo->mNext->mHash;
 						typeInstance->mCeTypeInfo->mAlign = typeInstance->mCeTypeInfo->mNext->mAlign;
+						typeInstance->mCeTypeInfo->mFastFinished = false;
 					}
 					else
 					{
-						// This greatly increases dependent type rebuilds, which triggers other issues
-						/*if ((typeInstance->mCeTypeInfo->mHash != typeInstance->mCeTypeInfo->mNext->mHash) && (!typeInstance->mCeTypeInfo->mHash.IsZero()))
-							mContext->QueueMidCompileRebuildDependentTypes(typeInstance, "canceled comptime hash changed");*/
+						// Keep the cached emissions, but invalidate dependents when the retry completes.
+						typeInstance->mCeTypeInfo->mFastFinished = true;
 					}
 
 					delete typeInstance->mCeTypeInfo->mNext;
@@ -5529,12 +5529,13 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				else
 				{
 					// Removed emissions
-					if (!typeInstance->mCeTypeInfo->mHash.IsZero())
+					if ((!typeInstance->mCeTypeInfo->mHash.IsZero()) || (typeInstance->mCeTypeInfo->mFastFinished))
 						mContext->QueueMidCompileRebuildDependentTypes(typeInstance, "removed comptime hash changed");
 					typeInstance->mCeTypeInfo->mEmitSourceMap.Clear();
 					typeInstance->mCeTypeInfo->mOnCompileMap.Clear();
 					typeInstance->mCeTypeInfo->mTypeIFaceMap.Clear();
 					typeInstance->mCeTypeInfo->mHash = Val128();
+					typeInstance->mCeTypeInfo->mFastFinished = false;
 				}
 
 				if (((typeInstance->mCeTypeInfo->mFailed) || (typeInstance->mTypeDef->HasParsingFailed())) &&

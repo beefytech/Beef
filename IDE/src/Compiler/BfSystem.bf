@@ -432,6 +432,9 @@ namespace IDE.Compiler
 			SetFlag(typeOption.mReflectStaticMethods, .ReflectStaticMethods);
 			SetFlag(typeOption.mReflectNonStaticMethods, .ReflectNonStaticMethods);
 			SetFlag(typeOption.mReflectConstructors, .ReflectConstructors);
+			SetFlag(typeOption.mRuntimeChecks, .RuntimeChecks);
+			SetFlag(typeOption.mInitLocalVariables, .InitLocalVariables);
+			SetFlag(typeOption.mEmitDynamicCastCheck, .EmitDynamicCastCheck);
 			SetFlag(typeOption.mEmitObjectAccessCheck, .EmitObjectAccessCheck);
 			SetFlag(typeOption.mArithmeticCheck, .ArithmeticCheck);
 
