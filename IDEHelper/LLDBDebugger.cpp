@@ -142,6 +142,11 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mDidAttach = false;
 	mNeedBreakpointRebind = false;
 	mAutoStepRemaining = 0;
+	mStepKind = StepKind_None;
+	mStepOutThenInto = false;
+	mStepOutFinishedLine = false;
+	mStepContinueCount = 0;
+	mStepStartFunctionAddr = 0;
 	mExceptionAddress = 0;
 	mExceptionCode = 0;
 	mHotSwapEnabled = false;
@@ -753,8 +758,8 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 			{
 				int trapId = (int)thread.GetStopReasonDataAtIndex(0);
 				mHotInvalidLambdaTrapIds.Remove(trapId);
-				mLLDBTarget.BreakpointDelete((lldb::break_id_t)trapId);
 				HotClearStepTraps();
+				mStepKind = StepKind_None;
 				mActiveBreakpoint = NULL;
 				mRunState = RunState_Paused;
 				mDebugManager->mOutMessages.push_back("error This lambda was replaced by a new version that has incompatible captures. A program restart is required.");
@@ -808,8 +813,10 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 					pc = patchedEntry.mNewAddr;
 				}
 
+				// Only a step in lands at a method's start - other steps can report completing there too (e.g.
+				// a step out started at a breakpoint on the entry), and must not be moved
 				lldb::SBFunction function = frame.GetFunction();
-				if ((function.IsValid()) && (pc == (uint64)function.GetStartAddress().GetLoadAddress(mLLDBTarget)) &&
+				if ((mStepKind == StepKind_Into) && (function.IsValid()) && (pc == (uint64)function.GetStartAddress().GetLoadAddress(mLLDBTarget)) &&
 					(function.GetPrologueByteSize() > 0))
 				{
 					lldb::SBError error;
@@ -821,6 +828,17 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 					}
 				}
 			}
+
+			// Don't stop a step somewhere the user shouldn't be (as WinDebugger does): compiler-generated
+			// methods with no statement lines, like delegate Invoke methods, or methods excluded by the IDE's
+			// step filters.
+			if ((thread.IsValid()) && (threadStopReason == lldb::eStopReasonPlanComplete) && (mAutoStepRemaining == 0) && (ContinueStep(thread)))
+			{
+				mRunState = RunState_Running;
+				return;
+			}
+			if ((threadStopReason != lldb::eStopReasonPlanComplete) || (mAutoStepRemaining == 0))
+				mStepKind = StepKind_None;
 
 			// Execute the next queued auto-step when a planned step has completed.
 			// A breakpoint, signal, or any other non-plan-complete stop cancels the
@@ -925,6 +943,7 @@ void LLDBDebugger::ContinueDebugEvent()
 	LLDBLog("ContinueDebugEvent\n");
 
 	mAutoStepRemaining = 0;
+	mStepKind = StepKind_None;
 	ClearCallStack();
 	mActiveBreakpoint = NULL;
 	mRunState = RunState_Running;
@@ -967,6 +986,7 @@ void LLDBDebugger::StepInto(bool inAssembly)
 				mAutoStepRemaining = 2;  // on next stop: StepInto, then StepOver
 		}
 
+		BeginStep(thread, inAssembly ? StepKind_None : StepKind_Into);
 		ClearCallStack();
 		mRunState = RunState_Running;
 		if (inAssembly)
@@ -991,6 +1011,7 @@ void LLDBDebugger::StepOver(bool inAssembly)
 	if (thread.IsValid())
 	{
 		mAutoStepRemaining = 0;
+		BeginStep(thread, inAssembly ? StepKind_None : StepKind_Over);
 		ClearCallStack();
 		mRunState = RunState_Running;
 		if (inAssembly)
@@ -1008,6 +1029,7 @@ void LLDBDebugger::StepOut(bool inAssembly)
 	if (thread.IsValid())
 	{
 		mAutoStepRemaining = 0;
+		BeginStep(thread, inAssembly ? StepKind_None : StepKind_Out);
 		ClearCallStack();
 		mRunState = RunState_Running;
 		thread.StepOut();
@@ -1016,6 +1038,153 @@ void LLDBDebugger::StepOut(bool inAssembly)
 
 void LLDBDebugger::SetNextStatement(bool inAssembly, const StringImpl& fileName, int64 lineNumOrAsmAddr, int wantColumn)
 {
+}
+
+//----------------------------------------------------------------------------
+// Step filtering
+//----------------------------------------------------------------------------
+
+void LLDBDebugger::BeginStep(lldb::SBThread& thread, StepKind stepKind)
+{
+	mStepKind = stepKind;
+	mStepOutThenInto = false;
+	mStepOutFinishedLine = false;
+	mStepContinueCount = 0;
+	lldb::SBFunction function = thread.GetFrameAtIndex(0).GetFunction();
+	mStepStartFunctionAddr = function.IsValid() ? (uint64)function.GetStartAddress().GetLoadAddress(mLLDBTarget) : 0;
+}
+
+// Whether a method has any statement lines. Beef gives compiler-generated code (like delegate Invoke
+// methods) only lines without columns; user code's statements have columns.
+bool LLDBDebugger::FunctionHasStatementLines(lldb::SBFunction& function)
+{
+	uint64 start = (uint64)function.GetStartAddress().GetFileAddress();
+	uint64 end = (uint64)function.GetEndAddress().GetFileAddress();
+	String cacheKey = StrFormat("%s:%llx", function.GetStartAddress().GetModule().GetFileSpec().GetFilename(), (unsigned long long)start);
+	bool* cached = NULL;
+	if (mHasStatementLinesCache.TryGetValue(cacheKey, &cached))
+		return *cached;
+
+	bool hasLines = false;
+	lldb::SBCompileUnit compileUnit = function.GetStartAddress().GetCompileUnit();
+	for (uint32 lineIdx = 0; lineIdx < compileUnit.GetNumLineEntries(); lineIdx++)
+	{
+		lldb::SBLineEntry lineEntry = compileUnit.GetLineEntryAtIndex(lineIdx);
+		uint64 addr = (uint64)lineEntry.GetStartAddress().GetFileAddress();
+		if ((addr >= start) && (addr < end) && (lineEntry.GetLine() > 0) && (lineEntry.GetColumn() > 0))
+		{
+			hasLines = true;
+			break;
+		}
+	}
+	mHasStatementLinesCache[cacheKey] = hasLines;
+	return hasLines;
+}
+
+// The IDE's step filter name for a method: "Namespace.Type.Method", without params, and with generic
+// arguments dropped so all instances share a filter
+static String GetStepFilterName(const char* functionName)
+{
+	String displayName = FixBeefFunctionName(functionName);
+	String name;
+	int chevronDepth = 0;
+	for (char c : displayName)
+	{
+		if (c == '(')
+			break;
+		if (c == '>')
+		{
+			chevronDepth--;
+			continue;
+		}
+		if (c == '<')
+			chevronDepth++;
+		if (chevronDepth == 0)
+			name.Append(c);
+	}
+	return name;
+}
+
+bool LLDBDebugger::IsStepFiltered(lldb::SBFunction& function)
+{
+	const char* functionName = function.GetName();
+	if (functionName == NULL)
+		return false;
+	String filterName = GetStepFilterName(functionName);
+
+	StepFilter* stepFilter = NULL;
+	if (mDebugManager->mStepFilters.TryGetValue(filterName, &stepFilter))
+	{
+		if (stepFilter->mFilterKind == BfStepFilterKind_Filtered)
+			return true;
+		if (stepFilter->mFilterKind == BfStepFilterKind_NotFiltered)
+			return false;
+	}
+	// Unqualified names like "__chkstk" are system functions
+	return (functionName[0] == '_') && (functionName[1] == '_');
+}
+
+// Called when a step completes. Returns true if it kept stepping instead of stopping here.
+bool LLDBDebugger::ContinueStep(lldb::SBThread& thread)
+{
+	if ((mStepKind == StepKind_None) || (mStepContinueCount >= 16))
+		return false;
+
+	lldb::SBFrame frame = thread.GetFrameAtIndex(0);
+	lldb::SBFunction function = frame.GetFunction();
+
+	// A step out of a filtered method continues into the rest of the line it returned to
+	if (mStepOutThenInto)
+	{
+		mStepOutThenInto = false;
+		lldb::SBLineEntry lineEntry = frame.GetLineEntry();
+		if ((lineEntry.IsValid()) && ((uint64)lineEntry.GetStartAddress().GetLoadAddress(mLLDBTarget) != (uint64)frame.GetPC()))
+		{
+			mStepContinueCount++;
+			thread.StepInto();
+			return true;
+		}
+		return false;
+	}
+
+	if (!function.IsValid())
+		return false;
+	if ((uint64)function.GetStartAddress().GetLoadAddress(mLLDBTarget) == mStepStartFunctionAddr)
+		return false;
+
+	bool filtered = (mStepKind == StepKind_Into) && (IsStepFiltered(function));
+	bool hasStatementLines = FunctionHasStatementLines(function);
+	if ((!filtered) && (hasStatementLines))
+	{
+		// A step out returns into the middle of the caller's line. Like WinDebugger, finish that line
+		// (e.g. storing the returned value) and stop at the next one.
+		if ((mStepKind == StepKind_Out) && (!mStepOutFinishedLine))
+		{
+			lldb::SBLineEntry lineEntry = frame.GetLineEntry();
+			if ((lineEntry.IsValid()) && ((uint64)lineEntry.GetStartAddress().GetLoadAddress(mLLDBTarget) != (uint64)frame.GetPC()))
+			{
+				mStepOutFinishedLine = true;
+				mStepContinueCount++;
+				thread.StepOver();
+				return true;
+			}
+		}
+		return false;
+	}
+
+	LLDBLog("ContinueStep: not stopping in %s (%s)\n", function.GetName(), filtered ? "step filter" : "no statement lines");
+	mStepContinueCount++;
+	if ((mStepKind == StepKind_Into) && (!filtered))
+	{
+		// Keep stepping in - e.g. through a delegate's Invoke method to the lambda it calls
+		thread.StepInto();
+	}
+	else
+	{
+		mStepOutThenInto = (mStepKind == StepKind_Into);
+		thread.StepOut();
+	}
+	return true;
 }
 
 //----------------------------------------------------------------------------
@@ -3789,9 +3958,14 @@ bool LLDBDebugger::HotApplyPatches(const Array<HotPatch>& patches, int& outNumPa
 		// Leave the old version in place, but stop with an error if it's ever called (as WinDebugger does)
 		if (patch.mIncompatibleLambda)
 		{
+			// One-shot: LLDB removes it after the hit (deleting it ourselves while the thread sits on it
+			// confuses LLDB's stepping off the breakpoint site)
 			lldb::SBBreakpoint trap = mLLDBTarget.BreakpointCreateByAddress(patch.mOldAddr);
 			if (trap.IsValid())
+			{
+				trap.SetOneShot(true);
 				mHotInvalidLambdaTrapIds.Add((int)trap.GetID());
+			}
 			continue;
 		}
 

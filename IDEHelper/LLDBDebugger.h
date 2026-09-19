@@ -66,6 +66,21 @@ public:
 	bool mNeedBreakpointRebind;  // true after launch until first stop event
 	int mAutoStepRemaining;      // >0 while auto-stepping through BeefStartProgram (2=StepInto, 1=StepOver)
 
+	// The user step in progress, for step filtering (see ContinueStep)
+	enum StepKind
+	{
+		StepKind_None,
+		StepKind_Into,
+		StepKind_Over,
+		StepKind_Out
+	};
+	StepKind mStepKind;
+	bool mStepOutThenInto;
+	bool mStepOutFinishedLine;
+	int mStepContinueCount;
+	uint64 mStepStartFunctionAddr;
+	Dictionary<String, bool> mHasStatementLinesCache;
+
 	// Exception info (populated when RunState_Exception is set)
 	uint64 mExceptionAddress;
 	uint32 mExceptionCode;
@@ -164,6 +179,10 @@ public:
 protected:
 	void DumpSymbolAddrs(const StringImpl& sym);
 	void DoCreateBreakpointByName(LLDBBreakpoint* bp);
+	void BeginStep(lldb::SBThread& thread, StepKind stepKind);
+	bool FunctionHasStatementLines(lldb::SBFunction& function);
+	bool IsStepFiltered(lldb::SBFunction& function);
+	bool ContinueStep(lldb::SBThread& thread);
 	void CreateOutputPipes();
 	void CloseOutputPipes();
 	void PumpTargetOutput();
