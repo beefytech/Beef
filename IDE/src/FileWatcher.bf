@@ -657,8 +657,12 @@ namespace IDE
 						if (queuedFileChange.AgeMS < 200)
 							return;
 						// We see the file recreate, wait for it to be registered
-						if ((File.Exists(queuedFileChange.mFileName)) && (queuedFileChange.AgeMS < 500))
-							return;
+						if (File.Exists(queuedFileChange.mFileName))
+						{
+							if (queuedFileChange.AgeMS < 500)
+								return;
+							queuedFileChange.mChangeType = .Changed;
+						}
 					}
 
 					if (queuedFileChange.mChangeType == .Changed)

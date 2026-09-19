@@ -1162,13 +1162,13 @@ void ModelDef::GenerateCollisionData()
 
 	Array<int32> triWorkList;
 	
-	int triCount = 0;
 	for (auto& mesh : mMeshes)
 	{
 		for (auto& prims : mesh.mPrimitives)
 		{
 			int startIdx = mBVIndices.mSize;
-			triCount += prims.mIndices.mSize / 3;
+			int startVertex = mBVVertices.mSize;
+			int triCount = prims.mIndices.mSize / 3;
 			triWorkList.Reserve(triWorkList.mSize + triCount);
 			mBVIndices.Reserve(mBVIndices.mSize + prims.mIndices.mSize);
 			mBVVertices.Reserve(mBVVertices.mSize + prims.mVertices.mSize);
@@ -1178,7 +1178,7 @@ void ModelDef::GenerateCollisionData()
 
 			for (auto idx : prims.mIndices)
 			{
-				mBVIndices.Add(idx + startIdx);
+				mBVIndices.Add(idx + startVertex);
 			}
 
 			for (auto& vtx : prims.mVertices)
