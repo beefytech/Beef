@@ -95,6 +95,12 @@ public:
 			return mPtr;
 		}
 
+		// Required by modern libc++ std::sort (random-access iterator conformance)
+		char& operator[](intptr offset) const
+		{
+			return mPtr[offset];
+		}
+
 		bool operator<(const iterator& val2)
 		{
 			return mPtr < val2.mPtr;
@@ -162,6 +168,12 @@ public:
 		const char* operator->()
 		{
 			return mPtr;
+		}
+
+		// Required by modern libc++ std::sort (random-access iterator conformance)
+		const char& operator[](intptr offset) const
+		{
+			return mPtr[offset];
 		}
 
 		bool operator<(const const_iterator& val2)
