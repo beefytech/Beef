@@ -115,9 +115,10 @@ public:
 	// Hot swap
 	struct HotSymbol
 	{
-		uint64 mAddr;
+		uint64 mAddr;      // For a thread-local variable, its offset in the executable's TLS block
 		uint64 mSize;
 		bool mIsCode;
+		bool mIsTLS;
 	};
 
 	enum HotDataFixupKind
@@ -172,6 +173,14 @@ public:
 	Dictionary<uint64, HotPatchedEntry> mHotPatchedEntries; // entry of each hot-replaced method → its jump
 	Array<int> mHotInvalidLambdaTrapIds;            // breakpoints on old lambdas with incompatible captures
 	Array<int> mHotStepTrapIds;                      // temporary breakpoints for a step-in in progress
+	bool mHotExeTlsLoaded;
+	Dictionary<String, uint64> mHotExeTlsOffsets;    // the executable's thread-local variables → offset in its TLS block
+	uint64 mHotTlsBlockSize;                         // the executable's TLS block, rounded to its alignment
+	uint64 mHotTlsExtraOffset;                       // __BFTLS_EXTRA, reserved for new thread-local variables
+	uint64 mHotTlsExtraSize;
+	uint64 mHotTlsExtraUsed;
+	Dictionary<String, uint64> mHotTlsDemangled;        // demangled thread-local names → TLS offset (for evaluation)
+	bool mHotTlsDemangledValid;
 	Array<HotVersion> mHotVersions;                  // modules added by each hot load, oldest first
 	Array<String> mHotModulePaths;                   // copies of hot-loaded objects registered with LLDB
 	Dictionary<String, uint64> mHotExternalAddrs;    // cache of symbols resolved through dlsym in the target
@@ -185,6 +194,8 @@ protected:
 	bool ContinueStep(lldb::SBThread& thread);
 	lldb::SBValue EvaluateBeefPath(lldb::SBFrame& frame, const StringImpl& expr);
 	lldb::SBType HotFindNewestType(const char* typeName);
+	lldb::SBValue HotFindStaticVariable(lldb::SBFrame& frame, const StringImpl& qualifier, const StringImpl& name);
+	bool HotFindThreadLocalOffset(const char* qualifiedName, uint64& outOffset);
 	lldb::SBValue HotFindMemberInNewestTypes(lldb::SBValue value, const StringImpl& name, int depth);
 	String RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringImpl& expr);
 	void CreateOutputPipes();
@@ -207,6 +218,8 @@ protected:
 	bool HotIsInPatchedEntry(uint64 addr, uint64* outEntryAddr, HotPatchedEntry* outEntry);
 	bool HotGetPatchLayout(const HotPatch& patch, uint64& outJmpAddr, int& outJmpSize, uint64* outPrologueSize);
 	void HotSetStepTraps();
+	bool HotLoadExeTlsInfo(String& outError);
+	bool HotResolveTlsSymbol(LLDBHotObject* obj, int symIdx, uint64& outOffset, String& outError);
 	void HotCheckLambdaCaptures(Array<HotPatch>& patches);
 	lldb::SBBreakpoint CreateLineBreakpoint(LLDBBreakpoint* bp, int lineNum);
 	void HotDeleteVersionBreakpoints(LLDBBreakpoint* bp);

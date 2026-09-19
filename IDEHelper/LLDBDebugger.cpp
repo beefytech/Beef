@@ -11,6 +11,7 @@
 #ifdef __linux__
 #include <limits.h>
 #include <unistd.h>
+#include <cxxabi.h>
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <elf.h>
@@ -2778,6 +2779,32 @@ lldb::SBValue LLDBDebugger::EvaluateBeefPath(lldb::SBFrame& frame, const StringI
 		if (thisValue.IsValid())
 			value = thisValue.GetChildMemberWithName(ident.c_str());
 	}
+	if (!value.IsValid())
+	{
+		// A static field: "field" (from the current method's class), or "Type.field" / "Namespace.Type.field".
+		// Take the longest run of '.'-separated names that resolves to one.
+		String qualifier;
+		int qualifierEnd = pos;
+		for (int scanPos = pos; true; )
+		{
+			lldb::SBValue staticValue = HotFindStaticVariable(frame, qualifier, ident);
+			if (staticValue.IsValid())
+			{
+				value = staticValue;
+				qualifierEnd = scanPos;
+			}
+			if ((scanPos >= (int)path.length()) || (path[scanPos] != '.'))
+				break;
+			if (!qualifier.IsEmpty())
+				qualifier += "::";
+			qualifier += ident;
+			pos = scanPos + 1;
+			if ((pos >= (int)path.length()) || (!_ReadIdent(ident)))
+				break;
+			scanPos = pos;
+		}
+		pos = qualifierEnd;
+	}
 	if ((!value.IsValid()) || (value.GetError().Fail()))
 		return lldb::SBValue();
 
@@ -2869,6 +2896,95 @@ lldb::SBValue LLDBDebugger::HotFindMemberInNewestTypes(lldb::SBValue value, cons
 	return lldb::SBValue();
 }
 
+// Find a static field by name, optionally qualified ("Type" or "Namespace::Type"), preferring the one
+// nearest the frame's method. Thread-local statics are read from the frame's thread directly - including
+// ones added by a hot compile, whose debug info doesn't know they live in __BFTLS_EXTRA.
+lldb::SBValue LLDBDebugger::HotFindStaticVariable(lldb::SBFrame& frame, const StringImpl& qualifier, const StringImpl& name)
+{
+	String suffix = "::";
+	if (!qualifier.IsEmpty())
+	{
+		suffix += qualifier;
+		suffix += "::";
+	}
+	suffix += name;
+
+	const char* functionNamePtr = frame.GetFunctionName();
+	String functionName = (functionNamePtr != NULL) ? functionNamePtr : "";
+
+	lldb::SBValue best;
+	int bestScore = -1;
+	lldb::SBValueList candidates = mLLDBTarget.FindGlobalVariables(name.c_str(), 64);
+	for (uint32 candidateIdx = 0; candidateIdx < candidates.GetSize(); candidateIdx++)
+	{
+		lldb::SBValue candidate = candidates.GetValueAtIndex(candidateIdx);
+		const char* candidateNamePtr = candidate.GetName();
+		if (candidateNamePtr == NULL)
+			continue;
+		String candidateName = candidateNamePtr;
+		if (!candidateName.EndsWith(suffix))
+			continue;
+
+		// Prefer the variable whose scope shares the most with the method's
+		int score = 0;
+		while ((score < (int)candidateName.length()) && (score < (int)functionName.length()) && (candidateName[score] == functionName[score]))
+			score++;
+		if (score > bestScore)
+		{
+			bestScore = score;
+			best = candidate;
+		}
+	}
+	if (!best.IsValid())
+		return best;
+
+	uint64 tlsOffset = 0;
+	if (HotFindThreadLocalOffset(best.GetName(), tlsOffset))
+	{
+		uint64 threadPointer = frame.FindRegister("fs_base").GetValueAsUnsigned(0);
+		if (threadPointer == 0)
+			return lldb::SBValue();
+		lldb::SBAddress addr(threadPointer - mHotTlsBlockSize + tlsOffset, mLLDBTarget);
+		return mLLDBTarget.CreateValueFromAddress(best.GetName(), addr, best.GetType());
+	}
+	return best;
+}
+
+// The TLS offset of a thread-local variable, by its demangled qualified name
+bool LLDBDebugger::HotFindThreadLocalOffset(const char* qualifiedName, uint64& outOffset)
+{
+	String error;
+	if ((qualifiedName == NULL) || (!HotLoadExeTlsInfo(error)))
+		return false;
+
+	if (!mHotTlsDemangledValid)
+	{
+		mHotTlsDemangled.Clear();
+		auto _Add = [&](const StringImpl& mangledName, uint64 offset)
+		{
+			int status = 0;
+			char* demangled = abi::__cxa_demangle(mangledName.c_str(), NULL, NULL, &status);
+			if ((status == 0) && (demangled != NULL))
+				mHotTlsDemangled[demangled] = offset;
+			free(demangled);
+		};
+		for (auto& kv : mHotExeTlsOffsets)
+			_Add(kv.mKey, kv.mValue);
+		for (auto& kv : mHotSymbols)
+		{
+			if (kv.mValue.mIsTLS)
+				_Add(kv.mKey, kv.mValue.mAddr);
+		}
+		mHotTlsDemangledValid = true;
+	}
+
+	uint64* offset = NULL;
+	if (!mHotTlsDemangled.TryGetValue(qualifiedName, &offset))
+		return false;
+	outOffset = *offset;
+	return true;
+}
+
 // C++ needs '->' where Beef uses '.' on an object reference: rewrite "a.b" when the path before the '.'
 // resolves to a pointer
 String LLDBDebugger::RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringImpl& expr)
@@ -2898,10 +3014,23 @@ String LLDBDebugger::RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringI
 
 		if ((c == '.') && (pathStart != -1) && (i + 1 < (int)expr.length()) && (IsBeefIdentChar(expr[i + 1])) && ((expr[i + 1] < '0') || (expr[i + 1] > '9')))
 		{
-			lldb::SBValue left = EvaluateBeefPath(frame, expr.Substring(pathStart, i - pathStart));
+			StringView leftPath = expr.Substring(pathStart, i - pathStart);
+			lldb::SBValue left = EvaluateBeefPath(frame, leftPath);
 			if ((left.IsValid()) && (left.GetType().IsPointerType()))
 			{
 				result.Append("->");
+				continue;
+			}
+			// A path of plain names that isn't a value is a type or namespace
+			bool isPlainNames = true;
+			for (char c : leftPath)
+			{
+				if ((!IsBeefIdentChar(c)) && (c != '.'))
+					isPlainNames = false;
+			}
+			if ((!left.IsValid()) && (isPlainNames))
+			{
+				result.Append("::");
 				continue;
 			}
 		}
@@ -3071,6 +3200,14 @@ void LLDBDebugger::HotResetState()
 	mHotSymbols.Clear();
 	mHotPendingSymbols.Clear();
 	mHotExternalAddrs.Clear();
+	mHotExeTlsLoaded = false;
+	mHotExeTlsOffsets.Clear();
+	mHotTlsDemangled.Clear();
+	mHotTlsDemangledValid = false;
+	mHotTlsBlockSize = 0;
+	mHotTlsExtraOffset = 0;
+	mHotTlsExtraSize = 0;
+	mHotTlsExtraUsed = 0;
 	mHotPatchedEntries.Clear();
 	mHotStepTrapIds.Clear();
 	mHotInvalidLambdaTrapIds.Clear();
@@ -3472,6 +3609,7 @@ bool LLDBDebugger::HotFindExeSymbol(const StringImpl& name, HotSymbol& outSymbol
 		outSymbol.mAddr = (uint64)addr;
 		outSymbol.mSize = symbol.GetSize();
 		outSymbol.mIsCode = symbolType == lldb::eSymbolTypeCode;
+		outSymbol.mIsTLS = false;
 		return true;
 	}
 	return false;
@@ -3552,6 +3690,13 @@ struct LLDBHotObject
 	uint64 mStubOffset;
 	Dictionary<int, int> mGotSlots;
 	Dictionary<int, int> mStubSlots;
+	// Thread-local access: a tls_index {module, offset} per TLSGD symbol, one {module, 0} for TLSLD,
+	// and a TP-relative offset per GOTTPOFF symbol
+	uint64 mTlsSlotsOffset;
+	Dictionary<int, int> mTlsGdSlots;
+	bool mNeedsTlsLdSlot;
+	Dictionary<int, int> mTpOffSlots;
+	Array<int64> mTlsSectionOffsets; // where each new TLS section lives in the TLS block, or -1
 	Array<uint8> mImage;
 	Array<uint64> mSymAddrs;
 	Array<uint8> mSymResolved;
@@ -3567,6 +3712,8 @@ struct LLDBHotObject
 		mImageAddr = 0;
 		mGotOffset = 0;
 		mStubOffset = 0;
+		mTlsSlotsOffset = 0;
+		mNeedsTlsLdSlot = false;
 	}
 
 	const char* GetSymName(int symIdx)
@@ -3591,6 +3738,140 @@ struct LLDBHotObject
 NS_BF_END
 #endif
 
+// Read the executable's thread-local variables (their offsets in its TLS block) and the TLS block's size
+// from its ELF file - LLDB doesn't give TLS symbols meaningful addresses
+bool LLDBDebugger::HotLoadExeTlsInfo(String& outError)
+{
+#ifdef __linux__
+	if (mHotExeTlsLoaded)
+		return true;
+
+	char exePath[PATH_MAX];
+	mLLDBTarget.GetExecutable().GetPath(exePath, sizeof(exePath));
+	int fileSize = 0;
+	uint8* data = LoadBinaryData(exePath, &fileSize);
+	if (data == NULL)
+	{
+		outError = StrFormat("unable to read '%s' for its thread-local variables", exePath);
+		return false;
+	}
+
+	Elf64_Ehdr* ehdr = (Elf64_Ehdr*)data;
+	bool valid = (fileSize >= (int)sizeof(Elf64_Ehdr)) && (memcmp(ehdr->e_ident, ELFMAG, SELFMAG) == 0) && (ehdr->e_ident[EI_CLASS] == ELFCLASS64) &&
+		(ehdr->e_phoff + (uint64)ehdr->e_phnum * sizeof(Elf64_Phdr) <= (uint64)fileSize) &&
+		(ehdr->e_shoff + (uint64)ehdr->e_shnum * sizeof(Elf64_Shdr) <= (uint64)fileSize);
+	if (valid)
+	{
+		Elf64_Phdr* phdrs = (Elf64_Phdr*)(data + ehdr->e_phoff);
+		for (int phdrIdx = 0; phdrIdx < ehdr->e_phnum; phdrIdx++)
+		{
+			if (phdrs[phdrIdx].p_type == PT_TLS)
+				mHotTlsBlockSize = HotAlignUp(phdrs[phdrIdx].p_memsz, BF_MAX((uint64)phdrs[phdrIdx].p_align, (uint64)1));
+		}
+
+		Elf64_Shdr* shdrs = (Elf64_Shdr*)(data + ehdr->e_shoff);
+		for (int sectionIdx = 0; sectionIdx < ehdr->e_shnum; sectionIdx++)
+		{
+			Elf64_Shdr& shdr = shdrs[sectionIdx];
+			if ((shdr.sh_type != SHT_SYMTAB) || (shdr.sh_link >= ehdr->e_shnum) || (shdr.sh_offset + shdr.sh_size > (uint64)fileSize))
+				continue;
+			Elf64_Shdr& strShdr = shdrs[shdr.sh_link];
+			if (strShdr.sh_offset + strShdr.sh_size > (uint64)fileSize)
+				continue;
+			Elf64_Sym* syms = (Elf64_Sym*)(data + shdr.sh_offset);
+			const char* strTab = (const char*)(data + strShdr.sh_offset);
+			for (uint64 symIdx = 0; symIdx < shdr.sh_size / sizeof(Elf64_Sym); symIdx++)
+			{
+				Elf64_Sym& sym = syms[symIdx];
+				if ((ELF64_ST_TYPE(sym.st_info) != STT_TLS) || (ELF64_ST_BIND(sym.st_info) == STB_LOCAL) || (sym.st_name >= strShdr.sh_size))
+					continue;
+				const char* name = strTab + sym.st_name;
+				mHotExeTlsOffsets[name] = sym.st_value;
+				// The compiler reserves this for new thread-local variables added by hot compiles
+				if (strcmp(name, "__BFTLS_EXTRA") == 0)
+				{
+					mHotTlsExtraOffset = sym.st_value;
+					mHotTlsExtraSize = sym.st_size;
+				}
+			}
+		}
+	}
+	delete[] data;
+
+	if ((!valid) || (mHotTlsBlockSize == 0))
+	{
+		outError = "the executable has no thread-local storage block";
+		return false;
+	}
+	mHotExeTlsLoaded = true;
+	return true;
+#else
+	outError = "thread-local variables can only be hot loaded on Linux";
+	return false;
+#endif
+}
+
+// A thread-local symbol's offset in the executable's TLS block. Existing thread-local variables keep their
+// storage; new ones get space in __BFTLS_EXTRA (and start zeroed in every thread, as on Windows).
+bool LLDBDebugger::HotResolveTlsSymbol(LLDBHotObject* obj, int symIdx, uint64& outOffset, String& outError)
+{
+#ifdef __linux__
+	if (!HotLoadExeTlsInfo(outError))
+		return obj->Fail(outError, outError);
+
+	Elf64_Sym& sym = obj->mSyms[symIdx];
+	String name = obj->GetSymName(symIdx);
+	bool isNamed = (ELF64_ST_TYPE(sym.st_info) != STT_SECTION) && (ELF64_ST_BIND(sym.st_info) != STB_LOCAL) && (!name.IsEmpty());
+
+	if (isNamed)
+	{
+		HotSymbol* hotSymbol = NULL;
+		if (((mHotPendingSymbols.TryGetValue(name, &hotSymbol)) || (mHotSymbols.TryGetValue(name, &hotSymbol))) && (hotSymbol->mIsTLS))
+		{
+			outOffset = hotSymbol->mAddr;
+			return true;
+		}
+		uint64* exeOffset = NULL;
+		if (mHotExeTlsOffsets.TryGetValue(name, &exeOffset))
+		{
+			outOffset = *exeOffset;
+			return true;
+		}
+	}
+
+	int sectionIdx = sym.st_shndx;
+	if ((sectionIdx == SHN_UNDEF) || (sectionIdx >= obj->mNumSections))
+		return obj->Fail(StrFormat("unresolved thread-local variable '%s'", name.c_str()), outError);
+
+	if (obj->mTlsSectionOffsets[sectionIdx] == -1)
+	{
+		Elf64_Shdr& shdr = obj->mShdrs[sectionIdx];
+		if (mHotTlsExtraSize == 0)
+			return obj->Fail(StrFormat("no space for new thread-local variable '%s' (hot swapping must be enabled when the program is built)", name.c_str()), outError);
+		uint64 align = BF_MAX((uint64)shdr.sh_addralign, (uint64)1);
+		uint64 offset = HotAlignUp(mHotTlsExtraOffset + mHotTlsExtraUsed, align);
+		if (offset + shdr.sh_size > mHotTlsExtraOffset + mHotTlsExtraSize)
+			return obj->Fail(StrFormat("out of space for new thread-local variables (adding '%s'); restart the program", name.c_str()), outError);
+		mHotTlsExtraUsed = offset + shdr.sh_size - mHotTlsExtraOffset;
+		obj->mTlsSectionOffsets[sectionIdx] = (int64)offset;
+	}
+	outOffset = (uint64)obj->mTlsSectionOffsets[sectionIdx] + sym.st_value;
+
+	if (isNamed)
+	{
+		HotSymbol newSymbol;
+		newSymbol.mAddr = outOffset;
+		newSymbol.mSize = sym.st_size;
+		newSymbol.mIsCode = false;
+		newSymbol.mIsTLS = true;
+		mHotPendingSymbols[name] = newSymbol;
+	}
+	return true;
+#else
+	return false;
+#endif
+}
+
 bool LLDBDebugger::HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<HotPatch>& patches, uint64& outAddr, String& outError)
 {
 #ifdef __linux__
@@ -3605,6 +3886,19 @@ bool LLDBDebugger::HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<
 	int bind = ELF64_ST_BIND(sym.st_info);
 	int symType = ELF64_ST_TYPE(sym.st_info);
 	uint64 addr = 0;
+
+	// Thread-local symbols (and the section symbols of TLS sections) resolve to offsets in the
+	// executable's TLS block rather than to addresses
+	bool isTlsSection = (symType == STT_SECTION) && (sym.st_shndx < obj->mNumSections) && ((obj->mShdrs[sym.st_shndx].sh_flags & SHF_TLS) != 0);
+	if ((symType == STT_TLS) || (isTlsSection))
+	{
+		if (!HotResolveTlsSymbol(obj, symIdx, addr, outError))
+			return false;
+		obj->mSymAddrs[symIdx] = addr;
+		obj->mSymResolved[symIdx] = 1;
+		outAddr = addr;
+		return true;
+	}
 
 	if (sym.st_shndx == SHN_UNDEF)
 	{
@@ -3641,6 +3935,7 @@ bool LLDBDebugger::HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<
 			newSymbol.mAddr = addr;
 			newSymbol.mSize = sym.st_size;
 			newSymbol.mIsCode = isCode;
+			newSymbol.mIsTLS = false;
 
 			// The compiler names data it wants replaced on every hot compile 'bf_hs_replace_*'
 			// (vtable extension tables and the like)
@@ -3832,6 +4127,12 @@ bool LLDBDebugger::HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches
 				obj->mGotSlots.TryAdd(symIdx, (int)obj->mGotSlots.GetCount());
 			else if ((relocType == R_X86_64_PLT32) && (obj->mSyms[symIdx].st_shndx == SHN_UNDEF))
 				obj->mStubSlots.TryAdd(symIdx, (int)obj->mStubSlots.GetCount());
+			else if (relocType == R_X86_64_TLSGD)
+				obj->mTlsGdSlots.TryAdd(symIdx, (int)obj->mTlsGdSlots.GetCount());
+			else if (relocType == R_X86_64_TLSLD)
+				obj->mNeedsTlsLdSlot = true;
+			else if (relocType == R_X86_64_GOTTPOFF)
+				obj->mTpOffSlots.TryAdd(symIdx, (int)obj->mTpOffSlots.GetCount());
 		}
 	}
 
@@ -3839,6 +4140,12 @@ bool LLDBDebugger::HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches
 	imageSize = obj->mGotOffset + obj->mGotSlots.GetCount() * 8;
 	obj->mStubOffset = HotAlignUp(imageSize, HOT_STUB_SIZE);
 	imageSize = obj->mStubOffset + obj->mStubSlots.GetCount() * HOT_STUB_SIZE;
+	// tls_index pairs (TLSGD, then TLSLD), then TP offsets (GOTTPOFF)
+	obj->mTlsSlotsOffset = HotAlignUp(imageSize, 16);
+	imageSize = obj->mTlsSlotsOffset + (obj->mTlsGdSlots.GetCount() + (obj->mNeedsTlsLdSlot ? 1 : 0)) * 16 + obj->mTpOffSlots.GetCount() * 8;
+	obj->mTlsSectionOffsets.Resize(numSections);
+	for (int sectionIdx = 0; sectionIdx < numSections; sectionIdx++)
+		obj->mTlsSectionOffsets[sectionIdx] = -1;
 
 	obj->mImageAddr = HotAlloc(BF_MAX(imageSize, (uint64)1), imageAlign, outError);
 	if (obj->mImageAddr == 0)
@@ -3864,7 +4171,11 @@ bool LLDBDebugger::HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches
 	for (int symIdx = 1; symIdx < numSyms; symIdx++)
 	{
 		Elf64_Sym& sym = obj->mSyms[symIdx];
-		if ((ELF64_ST_BIND(sym.st_info) == STB_LOCAL) || (!obj->IsLoadedSection(sym.st_shndx)))
+		if (ELF64_ST_BIND(sym.st_info) == STB_LOCAL)
+			continue;
+		// Thread-local definitions aren't loaded into the image, but other objects can refer to them
+		bool isTlsDefinition = (ELF64_ST_TYPE(sym.st_info) == STT_TLS) && (sym.st_shndx != SHN_UNDEF) && (sym.st_shndx < numSections);
+		if ((!obj->IsLoadedSection(sym.st_shndx)) && (!isTlsDefinition))
 			continue;
 		uint64 addr;
 		if (!HotResolveObjectSymbol(obj, symIdx, patches, addr, outError))
@@ -3976,14 +4287,64 @@ bool LLDBDebugger::HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, S
 					memcpy(loc, &val32, 4);
 				}
 				break;
+			// Thread-local access. S is the symbol's offset in the executable's TLS block, which is TLS
+			// module 1; __tls_get_addr takes a {module, offset} pair. On x86-64 the thread pointer is at the
+			// end of the static TLS block, so a TP-relative offset is S minus the block's size.
 			case R_X86_64_TLSGD:
 			case R_X86_64_TLSLD:
+				{
+					uint64 slotImageOffset = obj->mTlsSlotsOffset + ((relocType == R_X86_64_TLSGD) ? (uint64)obj->mTlsGdSlots[symIdx] : (uint64)obj->mTlsGdSlots.GetCount()) * 16;
+					uint64 tlsIndex[2] = { 1, (relocType == R_X86_64_TLSGD) ? S : 0 };
+					memcpy(obj->mImage.mVals + slotImageOffset, tlsIndex, 16);
+					int64 val = (int64)(obj->mImageAddr + slotImageOffset + A - P);
+					if (!HotFitsInt32(val))
+						return obj->Fail(StrFormat("TLS relocation against '%s' is out of range", symName), outError);
+					int32 val32 = (int32)val;
+					memcpy(loc, &val32, 4);
+				}
+				break;
 			case R_X86_64_DTPOFF32:
+				{
+					int64 val = (int64)(S + A);
+					if (!HotFitsInt32(val))
+						return obj->Fail(StrFormat("R_X86_64_DTPOFF32 relocation against '%s' is out of range", symName), outError);
+					int32 val32 = (int32)val;
+					memcpy(loc, &val32, 4);
+				}
+				break;
 			case R_X86_64_DTPOFF64:
+				{
+					uint64 val = S + A;
+					memcpy(loc, &val, 8);
+				}
+				break;
 			case R_X86_64_GOTTPOFF:
+				{
+					uint64 slotImageOffset = obj->mTlsSlotsOffset + (obj->mTlsGdSlots.GetCount() + (obj->mNeedsTlsLdSlot ? 1 : 0)) * 16 + (uint64)obj->mTpOffSlots[symIdx] * 8;
+					int64 tpOffset = (int64)S - (int64)mHotTlsBlockSize;
+					memcpy(obj->mImage.mVals + slotImageOffset, &tpOffset, 8);
+					int64 val = (int64)(obj->mImageAddr + slotImageOffset + A - P);
+					if (!HotFitsInt32(val))
+						return obj->Fail(StrFormat("GOTTPOFF relocation against '%s' is out of range", symName), outError);
+					int32 val32 = (int32)val;
+					memcpy(loc, &val32, 4);
+				}
+				break;
 			case R_X86_64_TPOFF32:
+				{
+					int64 val = (int64)S + A - (int64)mHotTlsBlockSize;
+					if (!HotFitsInt32(val))
+						return obj->Fail(StrFormat("R_X86_64_TPOFF32 relocation against '%s' is out of range", symName), outError);
+					int32 val32 = (int32)val;
+					memcpy(loc, &val32, 4);
+				}
+				break;
 			case R_X86_64_TPOFF64:
-				return obj->Fail(StrFormat("thread-local variable '%s' can't be hot loaded yet", symName), outError);
+				{
+					int64 val = (int64)S + A - (int64)mHotTlsBlockSize;
+					memcpy(loc, &val, 8);
+				}
+				break;
 			default:
 				return obj->Fail(StrFormat("unsupported relocation type %d against '%s'", relocType, symName), outError);
 			}
@@ -4363,6 +4724,7 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 	{
 		for (auto& kv : mHotPendingSymbols)
 			mHotSymbols[kv.mKey] = kv.mValue;
+		mHotTlsDemangledValid = false;
 	}
 	mHotPendingSymbols.Clear();
 
