@@ -564,6 +564,27 @@ namespace Tests
 		{
 		}
 
+		class DeclWalks
+		{
+			[Comptime]
+			static int CountDecls()
+			{
+				int count = 0;
+				for (let decl in Type.TypeDeclarations)
+					count++;
+				return count;
+			}
+
+			[OnCompile(.TypeInit), Comptime]
+			static void Init()
+			{
+				// Two enumerations in one evaluation see the same declarations
+				int first = CountDecls();
+				int second = CountDecls();
+				Compiler.EmitTypeBody(typeof(Self), scope $"public const int cFirst = {first}; public const int cSecond = {second};");
+			}
+		}
+
 		struct Pos3f : Float3
 		{
 			[OnCompile(.TypeInit), Comptime]
@@ -722,6 +743,9 @@ namespace Tests
 
 			const int cVal = GetLocalVal2();
 			Test.Assert(cVal == 102);
+
+			Test.Assert(DeclWalks.cFirst > 0);
+			Test.Assert(DeclWalks.cSecond == DeclWalks.cFirst);
 		}
 	}
 }
