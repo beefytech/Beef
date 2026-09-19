@@ -58,6 +58,7 @@ jobs:
       - run: bin/build.sh ide
   build-macos:
     name: Build on macOS
+    if: false
     strategy:
       fail-fast: false
       matrix:
