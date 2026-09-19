@@ -137,6 +137,23 @@ namespace System.Reflection
 			}
 		}
 
+		/// The parameter's default value as written in its declaration, empty when it has none.
+		/// Comptime only: the runtime parameter data does not carry defaults.
+		public StringView GetParamDefault(int paramIdx)
+		{
+			if (Compiler.IsComptime)
+			{
+				let text = Type.[Friend]Comptime_Method_GetParamInfo(mData.mComptimeMethodInstance, (.)paramIdx).mDefaultText;
+				return (text != null) ? text : default;
+			}
+			else
+			{
+				return default;
+			}
+		}
+
+		public bool HasParamDefault(int paramIdx) => !GetParamDefault(paramIdx).IsEmpty;
+
 		public TypeInstance.ParamFlags GetParamFlags(int paramIdx)
 		{
 			if (Compiler.IsComptime)

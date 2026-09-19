@@ -6972,9 +6972,10 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				// int32 mParamType
 				// int16 mFlags
 				// str mName
+				// str mDefaultText
 
-				int64 methodHandle = *(int64*)((uint8*)stackPtr + 4+2+ptrSize);
-				int32 paramIdx = *(int32*)((uint8*)stackPtr + 4+2+ptrSize+8);
+				int64 methodHandle = *(int64*)((uint8*)stackPtr + 4+2+ptrSize+ptrSize);
+				int32 paramIdx = *(int32*)((uint8*)stackPtr + 4+2+ptrSize+ptrSize+8);
 
 				auto methodInstance = mCeMachine->GetMethodInstance(methodHandle);
 				if (methodInstance == NULL)
@@ -7006,11 +7007,26 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				if (methodInstance->GetParamKind(paramIdx) == BfParamKind_Params)
 					paramFlags = (ParamFlags)(paramFlags | ParamFlag_Params);
 
+				// The default as written in the source, so a generator can paste it into emitted code
+				addr_ce defaultAddr = 0;
+				int paramDefIdx = methodInstance->mParams[paramIdx].mParamDefIdx;
+				if ((paramDefIdx >= 0) && (paramDefIdx < methodInstance->mMethodDef->mParams.mSize))
+				{
+					auto paramDef = methodInstance->mMethodDef->mParams[paramDefIdx];
+					if ((paramDef->mParamDeclaration != NULL) && (paramDef->mParamDeclaration->mInitializer != NULL))
+					{
+						String defaultText;
+						paramDef->mParamDeclaration->mInitializer->ToString(defaultText);
+						defaultAddr = GetString(defaultText);
+					}
+				}
+
 				addr_ce stringAddr = GetString(methodInstance->GetParamName(paramIdx));
 				_FixVariables();
 				*(int32*)(stackPtr + 0) = methodInstance->GetParamType(paramIdx)->mTypeId;
 				*(int16*)(stackPtr + 4) = (int16)paramFlags;
 				CeSetAddrVal(stackPtr + 4+2, stringAddr, ptrSize);
+				CeSetAddrVal(stackPtr + 4+2+ptrSize, defaultAddr, ptrSize);
 			}
 			else if (checkFunction->mFunctionKind == CeFunctionKind_Method_GetGenericArg)
 			{
