@@ -6365,6 +6365,14 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 				if (mTypeDeclState == NULL)
 					mTypeDeclState = new CeTypeDeclState();
 
+				// The iterated set dedupes one enumeration. A fresh one (lastTypeId 0) starts it
+				// over, or a second walk in the same evaluation would find every type already seen
+				if (typeId == 0)
+				{
+					mTypeDeclState->mIteratedTypeDefs.Clear();
+					mTypeDeclState->mCheckedAllTypeDefs = false;
+				}
+
 				while (true)
 				{
 					typeId++;
