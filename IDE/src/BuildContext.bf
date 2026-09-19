@@ -534,6 +534,22 @@ namespace IDE
 				{
 					linkLine.Append("-shared ");
 
+					if (mPlatformType == .Linux)
+					{
+						// Hot swap symbols ("bf_hs_preserve@...") contain '@', which the linker would take as a
+						//  symbol version if they were exported. They're only for the debugger, so keep them local.
+						String projectBuildDir = scope String();
+						gApp.GetProjectBuildDir(project, projectBuildDir);
+						String versionScriptPath = scope $"{projectBuildDir}/BeefExports.map";
+						if (File.WriteAllText(versionScriptPath, "{ global: *; local: bf_hs_*; };\n") case .Err)
+						{
+							gApp.OutputErrorLine("Failed to write '{}'", versionScriptPath);
+							return false;
+						}
+						linkLine.Append("-Wl,--version-script=");
+						IDEUtils.AppendWithOptionalQuotes(linkLine, versionScriptPath);
+						linkLine.Append(" ");
+					}
 					if (mPlatformType == .macOS)
 					{
 						// Without an explicit install name it defaults to the absolute build path,
@@ -1905,8 +1921,22 @@ namespace IDE
 			}
 			else if ((gApp.GetBuildToolset(workspaceOptions) == .GNU) || (useLinuxLLVM))
 			{
+				// With the GNU toolset, projects that depend on a dynamic lib link its objects in directly,
+				//  so it's archived. One that nothing depends on - a plugin, loaded at runtime - is linked
+				//  as a real shared library.
+				bool isStandaloneDynLib = false;
+				if ((options.mBuildOptions.mBuildKind == .DynamicLib) && (!canLinkDynLib) && (mPlatformType == .Linux))
+				{
+					isStandaloneDynLib = true;
+					for (var checkProject in gApp.mWorkspace.mProjects)
+					{
+						if ((checkProject != project) && (checkProject.HasDependency(project.mProjectName)))
+							isStandaloneDynLib = false;
+					}
+				}
+
 				if ((options.mBuildOptions.mBuildKind == .StaticLib) ||
-					((options.mBuildOptions.mBuildKind == .DynamicLib) && (!canLinkDynLib)))
+					((options.mBuildOptions.mBuildKind == .DynamicLib) && (!canLinkDynLib) && (!isStandaloneDynLib)))
 				{
 					if (!QueueProjectGNUArchive(project, targetPath, workspaceOptions, options, objectsArg, compileKind))
 						return false;
