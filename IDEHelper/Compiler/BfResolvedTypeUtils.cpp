@@ -1312,6 +1312,17 @@ BfParamKind BfMethodInstance::GetParamKind(int paramIdx)
 	return paramDef->mParamKind;
 }
 
+bool BfMethodInstance::GetParamHasDefault(int paramIdx)
+{
+	if (paramIdx == -1)
+		return false;
+	BfMethodParam* methodParam = &mParams[paramIdx];
+	if ((methodParam->mParamDefIdx < 0) || (methodParam->mParamDefIdx >= mMethodDef->mParams.mSize))
+		return false;
+	BfParameterDef* paramDef = mMethodDef->mParams[methodParam->mParamDefIdx];
+	return (paramDef->mParamDeclaration != NULL) && (paramDef->mParamDeclaration->mInitializer != NULL);
+}
+
 bool BfMethodInstance::WasGenericParam(int paramIdx)
 {
 	if (paramIdx == -1)
