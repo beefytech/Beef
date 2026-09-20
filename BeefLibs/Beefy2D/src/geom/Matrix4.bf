@@ -31,6 +31,7 @@ namespace Beefy.geom
             0f, 0f, 1f, 0f,
             0f, 0f, 0f, 1f);
 
+		[Inline(OptimizedOnly=true)]
         public this(
 		    float m00, float m01, float m02, float m03,
 		    float m10, float m11, float m12, float m13,
@@ -55,6 +56,7 @@ namespace Beefy.geom
 		    this.m33 = m33;
 	    }
 
+		[Inline(OptimizedOnly=true)]
 		public static Matrix4 CreateFromColumnMajor(
 			float m00, float m10, float m20, float m30,
 			float m01, float m11, float m21, float m31,
@@ -68,6 +70,7 @@ namespace Beefy.geom
 				m30, m31, m32, m33);
 		}
 
+		[Inline(OptimizedOnly=true)]
         public static Matrix4 CreatePerspective(float width, float height, float nearPlaneDistance, float farPlaneDistance)
         {
             Matrix4 matrix;
@@ -126,6 +129,7 @@ namespace Beefy.geom
             return matrix;
         }
 
+		[Inline(OptimizedOnly=true)]
         public static Matrix4 CreatePerspectiveFieldOfView(float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance)
         {
             Matrix4 result;
@@ -133,7 +137,7 @@ namespace Beefy.geom
             return result;
         }
 
-
+		[Inline(OptimizedOnly=true)]
         public static void CreatePerspectiveFieldOfView(float fieldOfView, float aspectRatio, float nearPlaneDistance, float farPlaneDistance, out Matrix4 result)
         {
             if ((fieldOfView <= 0f) || (fieldOfView >= 3.141593f))
@@ -165,7 +169,7 @@ namespace Beefy.geom
             result.m23 = (nearPlaneDistance * farPlaneDistance) / (nearPlaneDistance - farPlaneDistance);
         }
 
-
+		[Inline(OptimizedOnly=true)]
         public static Matrix4 CreatePerspectiveOffCenter(float left, float right, float bottom, float top, float nearPlaneDistance, float farPlaneDistance)
         {
             Matrix4 result;
@@ -173,7 +177,7 @@ namespace Beefy.geom
             return result;
         }
 
-
+		[Inline(OptimizedOnly=true)]
         public static void CreatePerspectiveOffCenter(float left, float right, float bottom, float top, float nearPlaneDistance, float farPlaneDistance, out Matrix4 result)
         {
             if (nearPlaneDistance <= 0f)
@@ -200,7 +204,7 @@ namespace Beefy.geom
             result.m03 = result.m13 = result.m33 = 0;
         }
 
-        [Inline]
+        [Inline(OptimizedOnly=true)]
         public static Matrix4 Multiply(Matrix4 m1, Matrix4 m2)
 	    {
 		    Matrix4 r;
@@ -225,7 +229,7 @@ namespace Beefy.geom
 		    return r;
 	    }
 
-	    [Inline]
+	    [Inline(OptimizedOnly=true)]
 	    public static Matrix4 Transpose(Matrix4 m)
 	    {
 		    return Matrix4(
@@ -235,7 +239,7 @@ namespace Beefy.geom
 			    m.m03, m.m13, m.m23, m.m33);
 	    }
 
-        [Inline]
+        [Inline(OptimizedOnly=true)]
         public static Matrix4 CreateTranslation(float x, float y, float z)
 	    {
 		    return Matrix4(
@@ -245,7 +249,7 @@ namespace Beefy.geom
 			    0, 0, 0, 1);
 	    }
 
-        [Inline]
+        [Inline(OptimizedOnly=true)]
         public static Matrix4 CreateTransform(Vector3 position, Vector3 scale, Quaternion orientation)
         {
             // Ordering:
@@ -261,6 +265,7 @@ namespace Beefy.geom
 		        0, 0, 0, 1);
         }
 
+		[Inline(OptimizedOnly=true)]
         public static Matrix4 CreateRotationX(float radians)
         {
             Matrix4 result = Matrix4.Identity;
@@ -276,6 +281,7 @@ namespace Beefy.geom
             return result;
         }
 
+		[Inline(OptimizedOnly=true)]
         public static Matrix4 CreateRotationY(float radians)
         {
             Matrix4 returnMatrix = Matrix4.Identity;
@@ -291,6 +297,7 @@ namespace Beefy.geom
             return returnMatrix;
         }
 
+		[Inline(OptimizedOnly=true)]
         public static Matrix4 CreateRotationZ(float radians)
         {
             Matrix4 returnMatrix = Matrix4.Identity;
@@ -306,7 +313,7 @@ namespace Beefy.geom
             return returnMatrix;
         }
 
-        [Inline]
+        [Inline(OptimizedOnly=true)]
         public static Matrix4 CreateScale(float scale)
         {
             Matrix4 result;
@@ -352,7 +359,7 @@ namespace Beefy.geom
             return result;
         }
 
-        [Inline]
+        [Inline(OptimizedOnly=true)]
         public static Matrix4 CreateScale(Vector3 scales)
         {
             Matrix4 result;
@@ -375,7 +382,7 @@ namespace Beefy.geom
             return result;
         }
 
-        [Inline]
+        [Inline(OptimizedOnly=true)]
         public static Matrix4 CreateTranslation(Vector3 position)
         {
             Matrix4 result;
@@ -397,74 +404,13 @@ namespace Beefy.geom
             result.m33 = 1;
             return result;
         }
-
-        /*public static Matrix4 Inverse()
-        {
-            Real m00 = m[0][0], m01 = m[0][1], m02 = m[0][2], m03 = m[0][3];
-            Real m10 = m[1][0], m11 = m[1][1], m12 = m[1][2], m13 = m[1][3];
-            Real m20 = m[2][0], m21 = m[2][1], m22 = m[2][2], m23 = m[2][3];
-            Real m30 = m[3][0], m31 = m[3][1], m32 = m[3][2], m33 = m[3][3];
-
-            Real v0 = m20 * m31 - m21 * m30;
-            Real v1 = m20 * m32 - m22 * m30;
-            Real v2 = m20 * m33 - m23 * m30;
-            Real v3 = m21 * m32 - m22 * m31;
-            Real v4 = m21 * m33 - m23 * m31;
-            Real v5 = m22 * m33 - m23 * m32;
-
-            Real t00 = + (v5 * m11 - v4 * m12 + v3 * m13);
-            Real t10 = - (v5 * m10 - v2 * m12 + v1 * m13);
-            Real t20 = + (v4 * m10 - v2 * m11 + v0 * m13);
-            Real t30 = - (v3 * m10 - v1 * m11 + v0 * m12);
-
-            Real invDet = 1 / (t00 * m00 + t10 * m01 + t20 * m02 + t30 * m03);
-
-            Real d00 = t00 * invDet;
-            Real d10 = t10 * invDet;
-            Real d20 = t20 * invDet;
-            Real d30 = t30 * invDet;
-
-            Real d01 = - (v5 * m01 - v4 * m02 + v3 * m03) * invDet;
-            Real d11 = + (v5 * m00 - v2 * m02 + v1 * m03) * invDet;
-            Real d21 = - (v4 * m00 - v2 * m01 + v0 * m03) * invDet;
-            Real d31 = + (v3 * m00 - v1 * m01 + v0 * m02) * invDet;
-
-            v0 = m10 * m31 - m11 * m30;
-            v1 = m10 * m32 - m12 * m30;
-            v2 = m10 * m33 - m13 * m30;
-            v3 = m11 * m32 - m12 * m31;
-            v4 = m11 * m33 - m13 * m31;
-            v5 = m12 * m33 - m13 * m32;
-
-            Real d02 = + (v5 * m01 - v4 * m02 + v3 * m03) * invDet;
-            Real d12 = - (v5 * m00 - v2 * m02 + v1 * m03) * invDet;
-            Real d22 = + (v4 * m00 - v2 * m01 + v0 * m03) * invDet;
-            Real d32 = - (v3 * m00 - v1 * m01 + v0 * m02) * invDet;
-
-            v0 = m21 * m10 - m20 * m11;
-            v1 = m22 * m10 - m20 * m12;
-            v2 = m23 * m10 - m20 * m13;
-            v3 = m22 * m11 - m21 * m12;
-            v4 = m23 * m11 - m21 * m13;
-            v5 = m23 * m12 - m22 * m13;
-
-            Real d03 = - (v5 * m01 - v4 * m02 + v3 * m03) * invDet;
-            Real d13 = + (v5 * m00 - v2 * m02 + v1 * m03) * invDet;
-            Real d23 = - (v4 * m00 - v2 * m01 + v0 * m03) * invDet;
-            Real d33 = + (v3 * m00 - v1 * m01 + v0 * m02) * invDet;
-
-            return Matrix4(
-                d00, d01, d02, d03,
-                d10, d11, d12, d13,
-                d20, d21, d22, d23,
-                d30, d31, d32, d33);
-        }*/
-    
+		[Inline]
         bool IsAffine()
         {
             return m30 == 0 && m31 == 0 && m32 == 0 && m33 == 1;
         }
 
+		[Inline(OptimizedOnly=true)]
         public static Matrix4 InverseAffine(Matrix4 mtx)
         {
             Debug.Assert(mtx.IsAffine());
@@ -509,6 +455,7 @@ namespace Beefy.geom
                   0, 0, 0, 1);
         }
 
+		[Inline(OptimizedOnly=true)]
 		public static void Invert(Matrix4 matrix, out Matrix4 result)
 		{
 			float num1 = matrix.m00;
@@ -608,6 +555,7 @@ namespace Beefy.geom
 		    */
 		}
 
+		[Inline(OptimizedOnly=true)]
 		public static Matrix4 Invert(Matrix4 matrix)
 		{
 		    Invert(matrix, var outMatrix);
@@ -621,6 +569,7 @@ namespace Beefy.geom
 		/// <param name="rotation">Rotation quaternion as an output parameter.
 		/// <param name="translation">Translation vector as an output parameter.
 		/// <returns><c>true</c> if matrix can be decomposed; <c>false</c> otherwise.</returns>
+		[Inline(OptimizedOnly=true)]
 		public bool Decompose(
 			out Vector3 scale,
 			out Quaternion rotation,
@@ -663,6 +612,7 @@ namespace Beefy.geom
 		/// <returns>Determinant of this matrix</returns>
 		/// <remarks>See more about determinant here - http://en.wikipedia.org/wiki/Determinant.
 		/// </remarks>
+		[Inline(OptimizedOnly=true)]
 		public float Determinant()
 		{
 			float num18 = (m22 * m33) - (m32 * m23);
@@ -689,6 +639,7 @@ namespace Beefy.geom
 		/// <param name="cameraUpVector">The camera up vector.
 		/// <param name="cameraForwardVector">Optional camera forward vector.
 		/// <returns>The matrix for spherical billboarding.</returns>
+		[Inline(OptimizedOnly=true)]
 		public static Matrix4 CreateBillboard(
 			Vector3 objectPosition,
 			Vector3 cameraPosition,
@@ -717,6 +668,7 @@ namespace Beefy.geom
 		/// <param name="cameraUpVector">The camera up vector.
 		/// <param name="cameraForwardVector">Optional camera forward vector.
 		/// <param name="result">The matrix for spherical billboarding as an output parameter.
+		[Inline(OptimizedOnly=true)]
 		public static void CreateBillboard(
 			Vector3 objectPosition,
 			Vector3 cameraPosition,
@@ -904,6 +856,7 @@ namespace Beefy.geom
 		/// <param name="axis">The axis of rotation.
 		/// <param name="angle">The angle of rotation in radians.
 		/// <param name="result">The rotation matrix as an output parameter.
+		[Inline(OptimizedOnly=true)]
 		public static void CreateFromAxisAngle(
 			Vector3 axis,
 			float angle,
@@ -943,7 +896,7 @@ namespace Beefy.geom
 		/// </summary>
 		/// <param name="quaternion"><see cref="Quaternion"/> of rotation moment.
 		/// <returns>The rotation matrix.</returns>
-		[Inline]
+		[Inline(OptimizedOnly=true)]
 		public static Matrix4 CreateFromQuaternion(Quaternion quaternion)
 		{
 			Matrix4 result;
@@ -956,7 +909,7 @@ namespace Beefy.geom
 		/// </summary>
 		/// <param name="quaternion"><see cref="Quaternion"/> of rotation moment.
 		/// <param name="result">The rotation matrix as an output parameter.
-		[Inline]
+		[Inline(OptimizedOnly=true)]
 		public static void CreateFromQuaternion(Quaternion quaternion, out Matrix4 result)
 		{
 			float num9 = quaternion.mX * quaternion.mX;
@@ -992,6 +945,7 @@ namespace Beefy.geom
 		/// @param roll The roll rotation value in radians.
 		/// @returns The rotation matrix
 		/// @remarks For more information about yaw, pitch and roll visit http://en.wikipedia.org/wiki/Euler_angles.
+		[Inline(OptimizedOnly=true)]
 		public static Matrix4 CreateFromYawPitchRoll(float yaw, float pitch, float roll)
 		{
 			Matrix4 matrix;
@@ -1005,6 +959,7 @@ namespace Beefy.geom
 		/// @param roll The roll rotation value in radians.
 		/// @param result The rotation matrix as an output parameter.
 		/// @remarks>For more information about yaw, pitch and roll visit http://en.wikipedia.org/wiki/Euler_angles.
+		[Inline(OptimizedOnly=true)]
 		public static void CreateFromYawPitchRoll(
 			float yaw,
 			float pitch,
@@ -1021,6 +976,7 @@ namespace Beefy.geom
 		/// @param cameraTarget Lookup vector of the camera.
 		/// @param cameraUpVector The direction of the upper edge of the camera.
 		/// @returns The viewing matrix.
+		[Inline(OptimizedOnly=true)]
 		public static Matrix4 CreateLookAt(
 			Vector3 cameraPosition,
 			Vector3 cameraTarget,
@@ -1036,6 +992,7 @@ namespace Beefy.geom
 		/// @param cameraTarget Lookup vector of the camera.
 		/// @param cameraUpVector The direction of the upper edge of the camera.
 		/// @param result The viewing matrix as an output parameter.
+		[Inline(OptimizedOnly=true)]
 		public static void CreateLookAt(
 			Vector3 cameraPosition,
 			Vector3 cameraTarget,

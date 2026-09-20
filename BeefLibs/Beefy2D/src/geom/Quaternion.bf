@@ -27,7 +27,8 @@ namespace Beefy.geom
             mZ = z;
             mW = w;
         }
-        
+
+		[Inline]
         public this(Vector3 vectorPart, float scalarPart)
         {
             mX = vectorPart.mX;
@@ -36,6 +37,7 @@ namespace Beefy.geom
             mW = scalarPart;
         }
 
+		[Inline(OptimizedOnly=true)]
         public static Quaternion Add(Quaternion quaternion1, Quaternion quaternion2)
         {            
             Quaternion quaternion;
@@ -46,7 +48,7 @@ namespace Beefy.geom
             return quaternion;
         }
 
-
+		[Inline(OptimizedOnly=true)]
         public static void Add(ref Quaternion quaternion1, ref Quaternion quaternion2, out Quaternion result)
         {            
             result.mX = quaternion1.mX + quaternion2.mX;
@@ -55,7 +57,7 @@ namespace Beefy.geom
             result.mW = quaternion1.mW + quaternion2.mW;
         }
 
-        [Inline]
+        [Inline(OptimizedOnly=true)]
         public static Quaternion Concatenate(Quaternion value1, Quaternion value2)
         {
             Quaternion quaternion;
@@ -78,7 +80,7 @@ namespace Beefy.geom
             return quaternion;
         }
 
-        [Inline]
+        [Inline(OptimizedOnly=true)]
         public static void Concatenate(ref Quaternion value1, ref Quaternion value2, out Quaternion result)
         {
             float x = value2.mX;
@@ -153,6 +155,7 @@ namespace Beefy.geom
             result.mW = num3;
         }
 
+		[Inline(OptimizedOnly=true)]
         public static Quaternion CreateFromRotationMatrix(Matrix4 matrix)
         {
 			// Delegates to the 0-based overload below: the old inline body was XNA's 1-based
@@ -162,6 +165,7 @@ namespace Beefy.geom
 			return result;
         }
 
+		[Inline(OptimizedOnly=true)]
         public static void CreateFromRotationMatrix(ref Matrix4 matrix, out Quaternion result)
         {
             float sqrt;
@@ -210,6 +214,7 @@ namespace Beefy.geom
 			}
         }
 
+		[Inline(OptimizedOnly=true)]
         public static Quaternion CreateFromYawPitchRoll(float yaw, float pitch, float roll)
         {
             Quaternion quaternion;
@@ -229,6 +234,7 @@ namespace Beefy.geom
             return quaternion;
         }
 
+		[Inline(OptimizedOnly=true)]
         public static void CreateFromYawPitchRoll(float yaw, float pitch, float roll, out Quaternion result)
         {
             float num9 = roll * 0.5f;
@@ -246,6 +252,7 @@ namespace Beefy.geom
             result.mW = ((num * num3) * num5) + ((num2 * num4) * num6);
         }
 
+		[Inline(OptimizedOnly=true)]
         public static Quaternion Divide(Quaternion quaternion1, Quaternion quaternion2)
         {
             Quaternion quaternion;
@@ -270,6 +277,7 @@ namespace Beefy.geom
             return quaternion;
         }
 
+		[Inline(OptimizedOnly=true)]
         public static void Divide(ref Quaternion quaternion1, ref Quaternion quaternion2, out Quaternion result)
         {
             float x = quaternion1.mX;
@@ -352,6 +360,7 @@ namespace Beefy.geom
             return ((((mX * mX) + (mY * mY)) + (mZ * mZ)) + (mW * mW));
         }
 
+		[Inline(OptimizedOnly=true)]
         public static Quaternion Lerp(Quaternion quaternion1, Quaternion quaternion2, float amount)
         {
             float num = amount;
@@ -381,6 +390,7 @@ namespace Beefy.geom
             return quaternion;
         }
 
+		[Inline(OptimizedOnly=true)]
         public static void Lerp(ref Quaternion quaternion1, ref Quaternion quaternion2, float amount, out Quaternion result)
         {
             float num = amount;
@@ -408,6 +418,7 @@ namespace Beefy.geom
             result.mW *= num3;
         }
 
+		[Inline(OptimizedOnly=true)]
         public static Quaternion Slerp(Quaternion quaternion1, Quaternion quaternion2, float amount)
         {
             float num2;
@@ -439,7 +450,8 @@ namespace Beefy.geom
             quaternion.mW = (num3 * quaternion1.mW) + (num2 * quaternion2.mW);
             return quaternion;
         }
-        
+
+		[Inline(OptimizedOnly=true)]
         public static void Slerp(ref Quaternion quaternion1, ref Quaternion quaternion2, float amount, out Quaternion result)
         {
             float num2;
@@ -470,7 +482,7 @@ namespace Beefy.geom
             result.mW = (num3 * quaternion1.mW) + (num2 * quaternion2.mW);
         }
 
-
+		[Inline(OptimizedOnly=true)]
         public static Quaternion Subtract(Quaternion quaternion1, Quaternion quaternion2)
         {
             Quaternion quaternion;
@@ -480,7 +492,8 @@ namespace Beefy.geom
             quaternion.mW = quaternion1.mW - quaternion2.mW;
             return quaternion;
         }
-        
+
+		[Inline(OptimizedOnly=true)]
         public static void Subtract(ref Quaternion quaternion1, ref Quaternion quaternion2, out Quaternion result)
         {
             result.mX = quaternion1.mX - quaternion2.mX;
@@ -489,7 +502,7 @@ namespace Beefy.geom
             result.mW = quaternion1.mW - quaternion2.mW;
         }
         
-        [Inline]
+        [Inline(OptimizedOnly=true)]
         public static Quaternion Multiply(Quaternion quaternion1, Quaternion quaternion2)
         {
             Quaternion quaternion;
@@ -532,7 +545,7 @@ namespace Beefy.geom
             result.mW = quaternion1.mW * scaleFactor;
         }
         
-        [Inline]
+        [Inline(OptimizedOnly=true)]
         public static void Multiply(ref Quaternion quaternion1, ref Quaternion quaternion2, out Quaternion result)
         {
             float x = quaternion1.mX;
@@ -552,7 +565,8 @@ namespace Beefy.geom
             result.mZ = ((z * num) + (num2 * w)) + num10;
             result.mW = (w * num) - num9;
         }
-        
+
+		[Inline]
         public static Quaternion Negate(Quaternion quaternion)
         {
             Quaternion quaternion2;
@@ -562,7 +576,8 @@ namespace Beefy.geom
             quaternion2.mW = -quaternion.mW;
             return quaternion2;
         }
-        
+
+		[Inline]
         public static void Negate(ref Quaternion quaternion, out Quaternion result)
         {
             result.mX = -quaternion.mX;
@@ -617,7 +632,7 @@ namespace Beefy.geom
             return quaternion;
         }
         
-        [Inline]
+        [Inline(OptimizedOnly=true)]
         public static Quaternion operator /(Quaternion quaternion1, Quaternion quaternion2)
         {
             Quaternion quaternion;
@@ -654,7 +669,7 @@ namespace Beefy.geom
             return true;
         }
         
-        [Inline]
+        [Inline(OptimizedOnly=true)]
         public static Quaternion operator *(Quaternion quaternion1, Quaternion quaternion2)
         {
             Quaternion quaternion;
@@ -728,7 +743,7 @@ namespace Beefy.geom
             Quaternion.ToMatrix(this, out matrix);
         }*/
 
-        [Inline]
+        [Inline(OptimizedOnly=true)]
         public void ToMatrix(out Matrix4 matrix)
         {            
             float fTx = mX + mX;
@@ -767,11 +782,13 @@ namespace Beefy.geom
 
         public Vector3 XYZ
         {
+			[Inline]
             get
             {
                 return Vector3(mX, mY, mZ);
             }
 
+			[Inline]
             set mut
             {
                 mX = value.mX;
