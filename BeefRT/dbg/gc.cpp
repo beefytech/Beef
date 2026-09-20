@@ -36,6 +36,7 @@
 #ifdef BF_GC_SUPPORTED
 
 #include <fstream>
+#include <cmath>
 #include "BeefySysLib/Common.h"
 #include "BeefySysLib/BFApp.h"
 #include "BeefySysLib/util/CritSect.h"
@@ -65,6 +66,106 @@
 
 USING_NS_BF;
 
+struct BfGCReleaseState
+{
+	struct Entry
+	{
+		bf::System::Object* mObject;
+		uint64 mSize;
+	};
+	struct Segment
+	{
+		Segment* mNext;
+		int mRead;
+		int mWrite;
+		Entry mEntries[256];
+		Segment() : mNext(NULL), mRead(0), mWrite(0) {}
+	};
+
+	CritSect mQueueCritSect;
+	Segment* mHead;
+	Segment* mTail;
+	Segment* mSpare;
+	std::atomic<uint64> mHeapSize;
+	uint64 mAwaitingBytes;
+	uint64 mAwaitingCount;
+	uint64 mAllowedBytes;
+	double mAllowedPercentage;
+	double mMaxPressure;
+	uint64 mEmergencyThreshold;
+	BfGCReleaseStats mStats;
+	bool mUpdating;
+	std::atomic<bool> mPressurePending;
+
+	BfGCReleaseState() : mHead(NULL), mTail(NULL), mSpare(NULL), mHeapSize(0),
+		mAwaitingBytes(0), mAwaitingCount(0), mAllowedBytes(0), mAllowedPercentage(0),
+		mMaxPressure(1), mEmergencyThreshold(0), mUpdating(false), mPressurePending(false)
+	{
+		memset(&mStats, 0, sizeof(mStats));
+	}
+
+	~BfGCReleaseState()
+	{
+		while (mHead != NULL)
+		{
+			auto next = mHead->mNext;
+			delete mHead;
+			mHead = next;
+		}
+		delete mSpare;
+	}
+
+	double Threshold() const
+	{
+		return BF_MAX((double)mAllowedBytes, mAllowedPercentage * mHeapSize.load(std::memory_order_relaxed));
+	}
+
+	void UpdateEmergencyThreshold()
+	{
+		double value = (1.0 + mMaxPressure) * Threshold();
+		mEmergencyThreshold = value >= (double)UINT64_MAX ? UINT64_MAX : (uint64)ceil(value);
+	}
+
+	void Add(bf::System::Object* obj, uint64 size)
+	{
+		if ((mTail == NULL) || (mTail->mWrite == 256))
+		{
+			auto segment = mSpare;
+			mSpare = NULL;
+			if (segment == NULL)
+				segment = new Segment();
+			if (mTail != NULL)
+				mTail->mNext = segment;
+			else
+				mHead = segment;
+			mTail = segment;
+		}
+		mTail->mEntries[mTail->mWrite++] = { obj, size };
+		mAwaitingBytes += size;
+		mAwaitingCount++;
+	}
+
+	Entry Pop()
+	{
+		auto result = mHead->mEntries[mHead->mRead++];
+		if (mHead->mRead == mHead->mWrite)
+		{
+			auto oldHead = mHead;
+			mHead = mHead->mNext;
+			if (mHead == NULL)
+				mTail = NULL;
+			if (mSpare == NULL)
+			{
+				oldHead->mRead = oldHead->mWrite = 0;
+				oldHead->mNext = NULL;
+				mSpare = oldHead;
+			}
+			else
+				delete oldHead;
+		}
+		return result;
+	}
+};
 //System::Threading::Thread* gMainThread;
 
 #include "BeefySysLib/util/PerfTimer.h"
@@ -192,6 +293,11 @@ void BFGC::MarkMembers(bf::System::Object* obj)
 
 static void MarkObject(bf::System::Object* obj)
 {
+	if (gBFGC.mReleaseState.load(std::memory_order_acquire) != NULL)
+	{
+		gBFGC.MarkFromGCThread(obj);
+		return;
+	}
 	if ((obj != NULL) && ((obj->mObjectFlags & (BF_OBJECTFLAG_MARK_ID_MASK)) != BFGC::sCurMarkId))
 		gBFGC.MarkFromGCThread(obj);
 }
@@ -609,6 +715,9 @@ void* BfObjectAllocate(intptr size, bf::System::Type* objType)
 
 	//CheckTcIntegrity();
 
+	auto releaseState = gBFGC.mReleaseState.load(std::memory_order_acquire);
+	if (releaseState != NULL)
+		releaseState->mHeapSize.fetch_add(totalSize, std::memory_order_relaxed);
 	gBFGC.mBytesRequested += size;
 // #ifdef BF_GC_PRINTSTATS
 // 	::InterlockedIncrement((volatile uint32*)&gBFGC.mTotalAllocs);
@@ -676,6 +785,9 @@ int gBFCRTAllocSize = 0;
 
 BFGC::BFGC()
 {
+	mReleaseState.store(NULL, std::memory_order_relaxed);
+	mReleaseCheckPeriod.store(100, std::memory_order_relaxed);
+	mPerformingCollection = false;
 	mRunning = false;
 	mExiting = false;
 	mPaused = false;
@@ -757,6 +869,7 @@ BFGC::BFGC()
 
 BFGC::~BFGC()
 {
+	delete mReleaseState.load(std::memory_order_relaxed);
 	//::HeapDestroy(gGCHeap);
 	//gGCHeap = NULL;
 	Beefy::AutoCrit autoCrit(mCritSect);
@@ -983,6 +1096,24 @@ void BFGC::ObjectDeleteRequested(bf::System::Object* obj)
 		return;
 	}
 
+	auto releaseState = mReleaseState.load(std::memory_order_acquire);
+	if (releaseState != NULL)
+	{
+		bool pressureCheck;
+		{
+			AutoCrit queue(releaseState->mQueueCritSect);
+			releaseState->Add(obj, allocSize);
+			pressureCheck = releaseState->mAwaitingBytes >= releaseState->mEmergencyThreshold;
+		}
+		if (pressureCheck)
+		{
+			if (!releaseState->mPressurePending.exchange(true, std::memory_order_relaxed))
+				mCollectEvent.Set();
+			ReleaseCheckUpdate(false, true);
+		}
+		return;
+	}
+
 	if (mFreeTrigger >= 0)
 	{
 		int objSize = BFGetObjectSize(obj);
@@ -1147,7 +1278,8 @@ void BFGC::SweepSpan(tcmalloc_obj::Span* span, int expectedStartPage)
 					{
 						BFLOG1(GCLog::EVENT_FINALIZE_LIST, (intptr)obj);
 						//obj->mObjectFlags = (BfObjectFlags) (obj->mObjectFlags & ~BF_OBJECTFLAG_FINALIZE_MAP);
-						mFinalizeList.push_back(obj);
+						if (mReleaseState.load(std::memory_order_relaxed) == NULL)
+							mFinalizeList.push_back(obj);
 					}
 				}
 			}
@@ -1706,6 +1838,210 @@ static void GCObjFree(void* ptr)
     span->freeingObjects = ptr;
 }
 
+// Initial activation requires allocation/deletion quiescence. The caller holds mCritSect.
+static void InitReleaseSpan(BfGCReleaseState* state, Span* span, PageID expectedPage)
+{
+	if ((span->location != Span::IN_USE) || (span->start != expectedPage))
+		return;
+	intptr spanSize = (intptr)span->length << kPageShift;
+	intptr size = Static::sizemap()->ByteSizeForClass(span->sizeclass);
+	if (size == 0)
+		size = spanSize;
+	auto start = (uint8*)((uintptr)span->start << kPageShift);
+	for (intptr offset = 0; offset <= spanSize - size; offset += size)
+	{
+		auto obj = (bf::System::Object*)(start + offset);
+		if ((obj->mAllocCheckPtr == 0) || ((obj->mObjectFlags & BF_OBJECTFLAG_ALLOCATED) == 0))
+			continue;
+		state->mHeapSize.fetch_add(size, std::memory_order_relaxed);
+		if ((obj->mObjectFlags & BF_OBJECTFLAG_DELETED) != 0)
+			state->Add(obj, size);
+	}
+}
+
+void BFGC::SetReleaseThreshold(uint64 allowedWasteBytes, float allowedWastePercentage, float maxPressure)
+{
+	if ((!std::isfinite(allowedWastePercentage)) || (!std::isfinite(maxPressure)) ||
+		(allowedWastePercentage < 0) || (allowedWastePercentage >= 1) || (maxPressure <= 0) ||
+		((allowedWasteBytes == 0) && (allowedWastePercentage == 0)) ||
+		((allowedWastePercentage > 0) && ((double)maxPressure > 1.0 / allowedWastePercentage - 1.0)))
+	{
+		BF_FATAL("Invalid GC release threshold");
+		return;
+	}
+
+	AutoCrit owner(mCritSect);
+	auto state = mReleaseState.load(std::memory_order_acquire);
+	if (state == NULL)
+	{
+		state = new BfGCReleaseState();
+#ifdef BF32
+		for (int rootIdx = 0; rootIdx < PageHeap::PageMap::ROOT_LENGTH; rootIdx++)
+		{
+			auto leaf = Static::pageheap()->pagemap_.root_[rootIdx];
+			if (leaf == NULL)
+				continue;
+			for (int idx = 0; idx < PageHeap::PageMap::LEAF_LENGTH; idx++)
+			{
+				auto span = (Span*)leaf->values[idx];
+				if (span != NULL)
+					InitReleaseSpan(state, span, (PageID)rootIdx * PageHeap::PageMap::LEAF_LENGTH + idx);
+			}
+		}
+#else
+		for (int idx1 = 0; idx1 < PageHeap::PageMap::INTERIOR_LENGTH; idx1++)
+		{
+			auto node1 = Static::pageheap()->pagemap_.root_->ptrs[idx1];
+			if (node1 == NULL)
+				continue;
+			for (int idx2 = 0; idx2 < PageHeap::PageMap::INTERIOR_LENGTH; idx2++)
+			{
+				auto node2 = node1->ptrs[idx2];
+				if (node2 == NULL)
+					continue;
+				for (int idx3 = 0; idx3 < PageHeap::PageMap::LEAF_LENGTH; idx3++)
+				{
+					auto span = (Span*)node2->ptrs[idx3];
+					if (span != NULL)
+						InitReleaseSpan(state, span, ((PageID)idx1 * PageHeap::PageMap::INTERIOR_LENGTH + idx2) * PageHeap::PageMap::LEAF_LENGTH + idx3);
+				}
+			}
+		}
+#endif
+		state->mAllowedBytes = allowedWasteBytes;
+		state->mAllowedPercentage = allowedWastePercentage;
+		state->mMaxPressure = maxPressure;
+		state->UpdateEmergencyThreshold();
+		mReleaseState.store(state, std::memory_order_release);
+	}
+	else
+	{
+		AutoCrit queue(state->mQueueCritSect);
+		state->mAllowedBytes = allowedWasteBytes;
+		state->mAllowedPercentage = allowedWastePercentage;
+		state->mMaxPressure = maxPressure;
+		state->UpdateEmergencyThreshold();
+	}
+	mCollectEvent.Set();
+}
+
+void BFGC::SetReleaseCheckPeriod(int periodMS)
+{
+	if (periodMS <= 0)
+	{
+		BF_FATAL("GC release check period must be positive");
+		return;
+	}
+	mReleaseCheckPeriod.store(periodMS, std::memory_order_relaxed);
+	mCollectEvent.Set();
+}
+
+bool BFGC::GetReleaseStats(BfGCReleaseStats* stats)
+{
+	AutoCrit owner(mCritSect);
+	auto state = mReleaseState.load(std::memory_order_acquire);
+	memset(stats, 0, sizeof(*stats));
+	stats->mCollectionCount = mCollectIdx;
+	if (state == NULL)
+		return false;
+	AutoCrit queue(state->mQueueCritSect);
+	*stats = state->mStats;
+	stats->mHeapSize = state->mHeapSize.load(std::memory_order_relaxed);
+	stats->mAwaitingReleaseBytes = state->mAwaitingBytes;
+	stats->mAwaitingReleaseCount = state->mAwaitingCount;
+	stats->mCollectionCount = mCollectIdx;
+	return true;
+}
+
+void BFGC::ReleaseCheckUpdate(bool force, bool waitForOwner)
+{
+	auto state = mReleaseState.load(std::memory_order_acquire);
+	if (state == NULL)
+		return;
+	if ((force) || (waitForOwner))
+		mCritSect.Lock();
+	else if (!mCritSect.TryLock())
+		return;
+	// Collection callbacks can reenter deletion while this recursive lock is held.
+	if ((mPerformingCollection) || (state->mUpdating))
+	{
+		mCritSect.Unlock();
+		return;
+	}
+	state->mUpdating = true;
+	state->mPressurePending.store(false, std::memory_order_relaxed);
+	uint64 start = BFGetTickCountMicroFast();
+	uint64 count = 0;
+	bool emergency = false;
+	{
+		AutoCrit queue(state->mQueueCritSect);
+		state->UpdateEmergencyThreshold();
+		if (state->mAwaitingCount != 0)
+		{
+			double threshold = state->Threshold();
+			double pressure = threshold > 0 ? state->mAwaitingBytes / threshold - 1.0 : state->mMaxPressure;
+			emergency = pressure >= state->mMaxPressure;
+			if ((force) || (emergency))
+				count = state->mAwaitingCount;
+			else if (pressure >= 0)
+				count = 1 + (uint64)((state->mAwaitingCount - 1) * pressure / state->mMaxPressure);
+		}
+	}
+	uint64 releasedBytes = 0;
+	uint64 releasedCount = 0;
+	while (releasedCount < count)
+	{
+		BfGCReleaseState::Entry batch[64];
+		int batchLimit = (int)BF_MIN(count - releasedCount, 64);
+		int batchCount = 0;
+		uint64 queuedBytes = 0;
+		{
+			AutoCrit queue(state->mQueueCritSect);
+			while (batchCount < batchLimit)
+			{
+				auto entry = state->Pop();
+				batch[batchCount++] = entry;
+				queuedBytes += entry.mSize;
+				if ((!force) && (!emergency) && (releasedBytes + queuedBytes >= 1024 * 1024))
+					break;
+			}
+		}
+		uint64 batchBytes = 0;
+		for (int idx = 0; idx < batchCount; idx++)
+		{
+			auto& entry = batch[idx];
+			BF_ASSERT((entry.mObject->mObjectFlags & BF_OBJECTFLAG_DELETED) != 0);
+			// Object allocation relies on cleared memory; tc_free only links the free slot.
+			memset(entry.mObject, 0, (size_t)entry.mSize);
+			tc_free(entry.mObject);
+			batchBytes += entry.mSize;
+		}
+		{
+			AutoCrit queue(state->mQueueCritSect);
+			state->mAwaitingBytes -= batchBytes;
+			state->mAwaitingCount -= batchCount;
+			state->mHeapSize.fetch_sub(batchBytes, std::memory_order_relaxed);
+			state->UpdateEmergencyThreshold();
+		}
+		releasedBytes += batchBytes;
+		releasedCount += batchCount;
+		if ((!force) && (!emergency) &&
+			((releasedBytes >= 1024 * 1024) || (BFGetTickCountMicroFast() - start >= 250)))
+			break;
+	}
+	if (releasedCount != 0)
+	{
+		uint64 elapsed = BFGetTickCountMicroFast() - start;
+		state->mStats.mReleasedBytes += releasedBytes;
+		state->mStats.mReleasedCount += releasedCount;
+		state->mStats.mUpdateCount++;
+		state->mStats.mEmergencyCount += emergency ? 1 : 0;
+		state->mStats.mReleaseMicroseconds += elapsed;
+		state->mStats.mMaxReleaseMicroseconds = BF_MAX(state->mStats.mMaxReleaseMicroseconds, elapsed);
+	}
+	state->mUpdating = false;
+	mCritSect.Unlock();
+}
 void BFGC::DoCollect(bool doingFullGC)
 {
 	BP_ZONE("Collect");
@@ -1991,6 +2327,17 @@ void BFGC::Run()
 	{
 		UpdateStats();
 
+		auto releaseState = mReleaseState.load(std::memory_order_acquire);
+		if (releaseState != NULL)
+		{
+			mCollectEvent.WaitFor(mReleaseCheckPeriod.load(std::memory_order_relaxed));
+			if (mExiting)
+				break;
+			ReleaseCheckUpdate();
+			if (!mCollectRequested)
+				continue;
+		}
+
 		float fullGCPeriod = mFullGCPeriod;
 		if ((fullGCPeriod != -1) && (mMaxPausePercentage > 0) && (!mCollectReports.IsEmpty()))
 		{
@@ -2005,12 +2352,13 @@ void BFGC::Run()
 		int waitPeriod = BF_MIN(fullGCPeriod, 100);
 		if (waitPeriod == 0)
 			waitPeriod = -1;
-		mCollectEvent.WaitFor(waitPeriod);
+		if (releaseState == NULL)
+			mCollectEvent.WaitFor(waitPeriod);
 
 		uint32 tickNow = BFTickCount();
-		if ((fullGCPeriod >= 0) && (tickNow - lastGCTick >= fullGCPeriod))
+		if ((mReleaseState.load(std::memory_order_acquire) == NULL) && (fullGCPeriod >= 0) && (tickNow - lastGCTick >= fullGCPeriod))
 			mCollectRequested = true;
-		if ((mFreeTrigger >= 0) && (mFreeSinceLastGC >= mFreeTrigger))
+		if ((mReleaseState.load(std::memory_order_acquire) == NULL) && (mFreeTrigger >= 0) && (mFreeSinceLastGC >= mFreeTrigger))
 			mCollectRequested = true;
 
 		if (!mCollectRequested)
@@ -2032,6 +2380,7 @@ void BFGC::Run()
 
 		BF_FULL_MEMORY_FENCE();
 		mPerformingCollection = false;
+		ReleaseCheckUpdate(true);
 		BF_FULL_MEMORY_FENCE();
 		mCollectDoneEvent.Set(true);
 	}
@@ -2204,6 +2553,7 @@ void BFGC::Shutdown()
 	Sweep();
 	ProcessSweepInfo();
 
+	ReleaseCheckUpdate(true);
 	RawShutdown();
 	TCMalloc_FreeAllocs();
 
@@ -2413,6 +2763,41 @@ void BFGC::Report()
 	msg += Beefy::StrFormat("  Obj Unusued Memory                                             %dk\n", (int)(objFreeSize / 1024));
 	msg += Beefy::StrFormat("  Raw Unusued Memory                                             %dk\n", (int)(rawFreeSize / 1024));
 
+	msg += "Release Summary\n";
+	auto releaseState = mReleaseState.load(std::memory_order_acquire);
+	if (releaseState == NULL)
+	{
+		msg += StrFormat("  %-62s %s\n", "Auto Release", "Disabled (classic collection)");
+	}
+	else
+	{
+		BfGCReleaseStats stats;
+		GetReleaseStats(&stats);
+		double threshold = BF_MAX((double)releaseState->mAllowedBytes, releaseState->mAllowedPercentage * stats.mHeapSize);
+		double wastePercentage = stats.mHeapSize != 0 ? (double)stats.mAwaitingReleaseBytes / stats.mHeapSize : 0;
+		double pressure = threshold > 0 ? stats.mAwaitingReleaseBytes / threshold - 1.0 : -1.0;
+		double averageReleaseMS = stats.mUpdateCount != 0 ? stats.mReleaseMicroseconds / (1000.0 * stats.mUpdateCount) : 0;
+
+		msg += StrFormat("  %-62s %s\n", "Auto Release", "Enabled (on-demand full scans)");
+		msg += StrFormat("  %-62s %llu bytes\n", "Allowed Waste Bytes", releaseState->mAllowedBytes);
+		msg += StrFormat("  %-62s %.2f%%\n", "Allowed Waste Percentage", releaseState->mAllowedPercentage * 100.0);
+		msg += StrFormat("  %-62s %.3f\n", "Max Pressure", releaseState->mMaxPressure);
+		msg += StrFormat("  %-62s %dms\n", "Release Check Period", mReleaseCheckPeriod.load(std::memory_order_relaxed));
+		msg += StrFormat("  %-62s %.0f bytes\n", "Effective Waste Threshold", threshold);
+		msg += StrFormat("  %-62s %llu bytes\n", "Object Heap Size (including pending)", stats.mHeapSize);
+		msg += StrFormat("  %-62s %llu\n", "Awaiting Release Count", stats.mAwaitingReleaseCount);
+		msg += StrFormat("  %-62s %llu bytes\n", "Awaiting Release Bytes", stats.mAwaitingReleaseBytes);
+		msg += StrFormat("  %-62s %.2f%%\n", "Waste Percentage", wastePercentage * 100.0);
+		msg += StrFormat("  %-62s %.3f\n", "GC Pressure", pressure);
+		msg += StrFormat("  %-62s %llu\n", "Released Count", stats.mReleasedCount);
+		msg += StrFormat("  %-62s %llu bytes\n", "Released Bytes", stats.mReleasedBytes);
+		msg += StrFormat("  %-62s %llu\n", "Updates Releasing Objects", stats.mUpdateCount);
+		msg += StrFormat("  %-62s %llu\n", "Emergency Releases", stats.mEmergencyCount);
+		msg += StrFormat("  %-62s %.3fms\n", "Total Release Time", stats.mReleaseMicroseconds / 1000.0);
+		msg += StrFormat("  %-62s %.3fms\n", "Average Release Time", averageReleaseMS);
+		msg += StrFormat("  %-62s %.3fms\n", "Max Release Time", stats.mMaxReleaseMicroseconds / 1000.0);
+		msg += StrFormat("  %-62s %llu\n", "Full Collections", stats.mCollectionCount);
+	}
 
 	if (!mCollectReports.IsEmpty())
 	{
@@ -2550,6 +2935,10 @@ void BFGC::PerformCollection()
 
 	mOrderedPendingGCData.Reserve(BF_GC_MAX_PENDING_OBJECT_COUNT);
 
+	// Root callbacks may delete objects. Do not suspend a thread while it owns the queue.
+	auto releaseState = mReleaseState.load(std::memory_order_acquire);
+	if (releaseState != NULL)
+		releaseState->mQueueCritSect.Lock();
 	uint32 suspendStartTick = BFTickCount();
 	SuspendThreads();
 
@@ -2577,6 +2966,8 @@ void BFGC::PerformCollection()
 
 #ifndef BF_GC_DEBUGSWEEP
 	ResumeThreads();
+	if (releaseState != NULL)
+		releaseState->mQueueCritSect.Unlock();
 #endif
 
 	collectReport.mPausedMS = BFTickCount() - suspendStartTick;
@@ -2588,6 +2979,8 @@ void BFGC::PerformCollection()
 
 #ifdef BF_GC_DEBUGSWEEP
 	ResumeThreads();
+	if (releaseState != NULL)
+		releaseState->mQueueCritSect.Unlock();
 #endif
 
 	collectReport.mCollectCount = (int)mFinalizeList.size();
@@ -2757,6 +3150,15 @@ void BFGC::MarkFromGCThread(bf::System::Object* obj)
 
 	if ((addr < spanStart) || (addr > (uint8*)spanEnd - sizeof(bf::System::Object)))
 		return;
+
+	if (mReleaseState.load(std::memory_order_relaxed) != NULL)
+	{
+		intptr slotSize = Static::sizemap()->ByteSizeForClass(span->sizeclass);
+		if (slotSize == 0)
+			slotSize = spanSize;
+		if (((uint8*)addr - (uint8*)spanStart) % slotSize != 0)
+			return;
+	}
 
 	// Is it already marked? Ignore.
 	if ((obj->mObjectFlags & BF_OBJECTFLAG_MARK_ID_MASK) == mCurMarkId)
@@ -2940,6 +3342,21 @@ void GC::DebugDumpLeaks()
 	gBFGC.DebugDumpLeaks();
 }
 
+void GC::SetReleaseThreshold(uint64 allowedWasteBytes, float allowedWastePercentage, float maxPressure)
+{
+	gBFGC.SetReleaseThreshold(allowedWasteBytes, allowedWastePercentage, maxPressure);
+}
+
+void GC::SetReleaseCheckPeriod(intptr periodMS)
+{
+	gBFGC.SetReleaseCheckPeriod((int)periodMS);
+}
+
+extern "C" BFRT_EXPORT bool BfGC_GetReleaseStats(BfGCReleaseStats* stats)
+{
+	return gBFGC.GetReleaseStats(stats);
+}
+
 void GC::SetAutoCollectPeriod(intptr periodMS)
 {
 	gBFGC.SetAutoCollectPeriod((int)periodMS);
@@ -2996,6 +3413,20 @@ void GC::Shutdown()
 
 void GC::Collect(bool async)
 {
+}
+
+void GC::SetReleaseThreshold(uint64 allowedWasteBytes, float allowedWastePercentage, float maxPressure)
+{
+}
+
+void GC::SetReleaseCheckPeriod(intptr periodMS)
+{
+}
+
+extern "C" BFRT_EXPORT bool BfGC_GetReleaseStats(BfGCReleaseStats* stats)
+{
+	memset(stats, 0, sizeof(*stats));
+	return false;
 }
 
 void GC::Report()

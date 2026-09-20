@@ -7,6 +7,7 @@
 #include "BeefySysLib/util/BinaryHeap.h"
 #include <unordered_map>
 #include <map>
+#include <atomic>
 #include "../rt/BfObjects.h"
 
 //#include "boost/lockfree/stack.hpp"
@@ -14,6 +15,20 @@
 #ifdef BF_PLATFORM_WINDOWS
 #define BF_GC_SUPPORTED
 #endif
+
+struct BfGCReleaseStats
+{
+	uint64 mHeapSize;
+	uint64 mAwaitingReleaseBytes;
+	uint64 mAwaitingReleaseCount;
+	uint64 mReleasedBytes;
+	uint64 mReleasedCount;
+	uint64 mUpdateCount;
+	uint64 mEmergencyCount;
+	uint64 mReleaseMicroseconds;
+	uint64 mMaxReleaseMicroseconds;
+	uint64 mCollectionCount;
+};
 
 #ifdef BF_GC_SUPPORTED
 
@@ -39,6 +54,8 @@ void BfRawFree(void* ptr);
 void* BfObjectAllocate(intptr size, bf::System::Type* type);
 
 void BFDumpAllocStats();
+
+struct BfGCReleaseState;
 
 class BfInternalThread;
 
@@ -276,6 +293,8 @@ public:
 		DEBUGDUMPSTATE_WAITING_FOR_GC
 	};
 
+	std::atomic<BfGCReleaseState*> mReleaseState;
+	std::atomic<int> mReleaseCheckPeriod;
 	Beefy::CritSect mCritSect;	
 	Beefy::SyncEvent mCollectEvent;
 	Beefy::SyncEvent mCollectDoneEvent;
@@ -425,6 +444,10 @@ public:
 
 	void MarkFromGCThread(bf::System::Object* obj); // Can only called from within GC thread	
 
+	void SetReleaseThreshold(uint64 allowedWasteBytes, float allowedWastePercentage, float maxPressure);
+	void SetReleaseCheckPeriod(int periodMS);
+	bool GetReleaseStats(BfGCReleaseStats* stats);
+	void ReleaseCheckUpdate(bool force = false, bool waitForOwner = false);
 	void SetAutoCollectPeriod(int periodMS);
 	void SetCollectFreeThreshold(int freeBytes);
 	void SetMaxPausePercentage(int maxPausePercentage);
@@ -491,6 +514,8 @@ namespace bf
 			{
 				return BFRTCALLBACKS.GC_CallRootCallbacks();
 			}
+			BFRT_EXPORT static void SetReleaseThreshold(uint64 allowedWasteBytes, float allowedWastePercentage, float maxPressure);
+			BFRT_EXPORT static void SetReleaseCheckPeriod(intptr periodMS);
 			BFRT_EXPORT static void SetAutoCollectPeriod(intptr periodMS);
 			BFRT_EXPORT static void SetCollectFreeThreshold(intptr freeBytes);
 			BFRT_EXPORT static void SetMaxPausePercentage(intptr maxPausePercentage);

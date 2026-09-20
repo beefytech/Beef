@@ -13,6 +13,21 @@ namespace System
 #endif
 	public static class GC
 	{
+		[CRepr]
+		public struct ReleaseStats
+		{
+			public uint64 HeapSize;
+			public uint64 AwaitingReleaseBytes;
+			public uint64 AwaitingReleaseCount;
+			public uint64 ReleasedBytes;
+			public uint64 ReleasedCount;
+			public uint64 UpdateCount;
+			public uint64 EmergencyCount;
+			public uint64 ReleaseMicroseconds;
+			public uint64 MaxReleaseMicroseconds;
+			public uint64 CollectionCount;
+		}
+
 		enum RootResult
 		{
 			Ok
@@ -130,6 +145,15 @@ namespace System
         public extern static void Mark(Object obj);
 		[CallingConvention(.Cdecl)]
 		public extern static void Mark(void* ptr, int size);
+		/// Enables FIFO release without automatic leak scans. First call requires allocation/deletion quiescence.
+		/// Percentage is a fraction (0.1 = 10%). GC.Collect still performs a full scan.
+		[CallingConvention(.Cdecl)]
+		public extern static void SetReleaseThreshold(uint64 allowedWasteBytes, float allowedWastePercentage, float maxPressure);
+		/// Positive milliseconds; defaults to 100. Does not enable auto-release by itself.
+		[CallingConvention(.Cdecl)]
+		public extern static void SetReleaseCheckPeriod(int periodMS);
+		[CallingConvention(.Cdecl), LinkName("BfGC_GetReleaseStats")]
+		public extern static bool GetReleaseStats(out ReleaseStats stats);
 		[CallingConvention(.Cdecl)]
 		public extern static void SetAutoCollectPeriod(int periodMS); // <= -1 to disable, 0 to constantly run. Defaults to 2000.
 		[CallingConvention(.Cdecl)]
@@ -153,6 +177,12 @@ namespace System
 		public static void Mark(Object obj) {}
 		[LinkName("__GC_Mark2")]
 		public static void Mark(void* ptr, int size) {}
+		[LinkName("__GC_SetReleaseThreshold")]
+		public static void SetReleaseThreshold(uint64 allowedWasteBytes, float allowedWastePercentage, float maxPressure) {}
+		[LinkName("__GC_SetReleaseCheckPeriod")]
+		public static void SetReleaseCheckPeriod(int periodMS) {}
+		[LinkName("__GC_GetReleaseStats")]
+		public static bool GetReleaseStats(out ReleaseStats stats) { stats = default; return false; }
 		[LinkName("__GC_SetAutoCollectPeriod")]
 		public static void SetAutoCollectPeriod(int periodMS) {}
 		[LinkName("__GC_SetCollectFreeThreshold")]
