@@ -1197,8 +1197,14 @@ void LLDBDebugger::BeginStep(lldb::SBThread& thread, StepKind stepKind)
 	mStepOutThenInto = false;
 	mStepOutFinishedLine = false;
 	mStepContinueCount = 0;
-	lldb::SBFunction function = thread.GetFrameAtIndex(0).GetFunction();
+	lldb::SBFrame startFrame = thread.GetFrameAtIndex(0);
+	lldb::SBFunction function = startFrame.GetFunction();
 	mStepStartFunctionAddr = function.IsValid() ? (uint64)function.GetStartAddress().GetLoadAddress(mLLDBTarget) : 0;
+	lldb::SBLineEntry startLine = startFrame.GetLineEntry();
+	mStepStartLine = startLine.IsValid() ? (int)startLine.GetLine() : 0;
+	mStepStartFile.Clear();
+	if ((startLine.IsValid()) && (startLine.GetFileSpec().GetFilename() != NULL))
+		mStepStartFile = startLine.GetFileSpec().GetFilename();
 }
 
 // Whether a method has any statement lines. Beef gives compiler-generated code (like delegate Invoke
@@ -1319,12 +1325,16 @@ bool LLDBDebugger::ContinueStep(lldb::SBThread& thread)
 	bool hasStatementLines = FunctionHasStatementLines(function);
 	if ((!filtered) && (hasStatementLines))
 	{
-		// A step out returns into the middle of the caller's line. Like WinDebugger, finish that line
-		// (e.g. storing the returned value) and stop at the next one.
+		// A step out returns into the middle of the caller's line. Finish that line (e.g. storing the
+		// returned value) and stop at the next one - except when it returns into a scope's cleanup code
+		// (a destructor at a closing brace), where WinDebugger stops right there.
 		if ((mStepKind == StepKind_Out) && (!mStepOutFinishedLine))
 		{
 			lldb::SBLineEntry lineEntry = frame.GetLineEntry();
-			if ((lineEntry.IsValid()) && ((uint64)lineEntry.GetStartAddress().GetLoadAddress(mLLDBTarget) != (uint64)frame.GetPC()))
+			bool atLineStart = (lineEntry.IsValid()) &&
+				((uint64)lineEntry.GetStartAddress().GetLoadAddress(mLLDBTarget) == (uint64)frame.GetPC());
+			bool isScopeCleanup = (lineEntry.IsValid()) && (IsClosingBraceLine(lineEntry));
+			if ((!atLineStart) && (!isScopeCleanup))
 			{
 				mStepOutFinishedLine = true;
 				mStepContinueCount++;
@@ -3097,6 +3107,39 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 //----------------------------------------------------------------------------
 
 static bool IsBeefIdentChar(char c);
+
+// Whether a line's text is just a closing brace - where a scope's cleanup code (an object's destructor,
+// a deferred call) runs, and where WinDebugger stops when a step out returns into it
+bool LLDBDebugger::IsClosingBraceLine(lldb::SBLineEntry& lineEntry)
+{
+	char path[PATH_MAX] = { 0 };
+	lineEntry.GetFileSpec().GetPath(path, sizeof(path));
+	uint32 wantLine = lineEntry.GetLine();
+	if ((path[0] == 0) || (wantLine == 0))
+		return false;
+
+	FILE* file = fopen(path, "r");
+	if (file == NULL)
+		return false;
+	char lineText[1024] = { 0 };
+	for (uint32 lineIdx = 1; lineIdx <= wantLine; lineIdx++)
+	{
+		if (fgets(lineText, sizeof(lineText), file) == NULL)
+		{
+			lineText[0] = 0;
+			break;
+		}
+	}
+	fclose(file);
+
+	for (const char* c = lineText; *c != 0; c++)
+	{
+		if ((*c == ' ') || (*c == '\t') || (*c == '\r') || (*c == '\n'))
+			continue;
+		return (*c == '}') && ((c[1] == 0) || (c[1] == '\r') || (c[1] == '\n') || (c[1] == ';'));
+	}
+	return false;
+}
 
 // A Beef type by the name the user wrote ("ClassA", "Namespace.ClassA"), resolved like Beef resolves it:
 // in the current method's scope first, then anywhere
@@ -7080,6 +7123,7 @@ String LLDBDebugger::GetDbgAllocInfo()
 
 void LLDBDebugger::StopDebugging()
 {
+	LLDBLog("StopDebugging\n");
 	WaitForLaunchThread();
 
 	ClearCallStack();

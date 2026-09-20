@@ -81,6 +81,8 @@ public:
 	StepKind mStepKind;
 	bool mStepOutThenInto;
 	bool mStepOutFinishedLine;
+	int mStepStartLine;                              // where the current step began
+	String mStepStartFile;
 	int mStepContinueCount;
 	uint64 mStepStartFunctionAddr;
 	Dictionary<String, bool> mHasStatementLinesCache;
@@ -233,6 +235,7 @@ protected:
 	lldb::SBValue HotFindMemberInNewestTypes(lldb::SBValue value, const StringImpl& name, int depth);
 	String RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringImpl& expr);
 	String RewriteBeefMemberAccessInSpan(lldb::SBFrame& frame, const StringImpl& expr);
+	bool IsClosingBraceLine(lldb::SBLineEntry& lineEntry);
 	lldb::SBType FindBeefType(lldb::SBFrame& frame, const StringImpl& name);
 	lldb::SBType FindBeefTypeAnywhere(const StringImpl& typeName);
 	lldb::SBValue EvaluateBeefTupleAssign(lldb::SBFrame& frame, const StringImpl& expr, String& outError);
