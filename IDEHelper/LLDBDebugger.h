@@ -29,6 +29,8 @@ class LLDBBreakpoint : public Breakpoint
 {
 public:
 	String mBeefCondition;                          // evaluated with Beef's rules when hit
+	String mBeefLogging;                             // a logging breakpoint's text
+	bool mBreakAfterLogging = false;
 	lldb::SBBreakpoint mLLDBBreakpoint;
 	Array<lldb::SBBreakpoint> mVersionBreakpoints;   // bindings in older hot compiles (HotBindBreakpoint)
 	uintptr mResolvedAddr;
@@ -236,6 +238,7 @@ protected:
 	String RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringImpl& expr);
 	String RewriteBeefMemberAccessInSpan(lldb::SBFrame& frame, const StringImpl& expr);
 	bool IsClosingBraceLine(lldb::SBLineEntry& lineEntry);
+	String BuildBreakpointLogText(const StringImpl& logging);
 	lldb::SBType FindBeefType(lldb::SBFrame& frame, const StringImpl& name);
 	lldb::SBType FindBeefTypeAnywhere(const StringImpl& typeName);
 	lldb::SBValue EvaluateBeefTupleAssign(lldb::SBFrame& frame, const StringImpl& expr, String& outError);

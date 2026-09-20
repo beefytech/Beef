@@ -980,20 +980,36 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 						ClearCallStack();
 					}
 					head->mHitCount++;
+
+					// A logging breakpoint writes to the output window, and usually keeps going
+					LLDBBreakpoint* loggingBp = (LLDBBreakpoint*)head;
 					bool wantsStop = true;
-					switch (head->mHitCountBreakKind)
+					if (!loggingBp->mBeefLogging.IsEmpty())
 					{
-					case DbgHitCountBreakKind_Equals:
-						wantsStop = head->mHitCount == head->mTargetHitCount;
-						break;
-					case DbgHitCountBreakKind_GreaterEquals:
-						wantsStop = head->mHitCount >= head->mTargetHitCount;
-						break;
-					case DbgHitCountBreakKind_Multiple:
-						wantsStop = (head->mTargetHitCount != 0) && ((head->mHitCount % head->mTargetHitCount) == 0);
-						break;
-					default:
-						break;
+						ClearCallStack();
+						mRunState = RunState_Breakpoint;
+						UpdateCallStack();
+						mDebugManager->mOutMessages.push_back("log " + BuildBreakpointLogText(loggingBp->mBeefLogging) + "\n");
+						ClearCallStack();
+						if (!loggingBp->mBreakAfterLogging)
+							wantsStop = false;
+					}
+					if (wantsStop)
+					{
+						switch (head->mHitCountBreakKind)
+						{
+						case DbgHitCountBreakKind_Equals:
+							wantsStop = head->mHitCount == head->mTargetHitCount;
+							break;
+						case DbgHitCountBreakKind_GreaterEquals:
+							wantsStop = head->mHitCount >= head->mTargetHitCount;
+							break;
+						case DbgHitCountBreakKind_Multiple:
+							wantsStop = (head->mTargetHitCount != 0) && ((head->mHitCount % head->mTargetHitCount) == 0);
+							break;
+						default:
+							break;
+						}
 					}
 					if (!wantsStop)
 					{
@@ -1183,8 +1199,68 @@ void LLDBDebugger::StepOut(bool inAssembly)
 	}
 }
 
+// Move the execution point: to an address in the disassembly view, or to the first code of a line in
+// the frame's own function (which is as far as it can safely go - jumping into another function would
+// leave the stack set up for this one)
 void LLDBDebugger::SetNextStatement(bool inAssembly, const StringImpl& fileName, int64 lineNumOrAsmAddr, int wantColumn)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	if ((mRunState != RunState_Paused) && (mRunState != RunState_Breakpoint) && (mRunState != RunState_Exception))
+		return;
+
+	lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
+	lldb::SBFrame frame = thread.GetFrameAtIndex(0);
+	if (!frame.IsValid())
+		return;
+
+	uint64 wantAddr = 0;
+	if (inAssembly)
+	{
+		wantAddr = (uint64)lineNumOrAsmAddr;
+	}
+	else
+	{
+		lldb::SBFunction function = frame.GetFunction();
+		lldb::SBCompileUnit compileUnit = frame.GetCompileUnit();
+		if ((!function.IsValid()) || (!compileUnit.IsValid()))
+			return;
+		uint64 functionStart = (uint64)function.GetStartAddress().GetLoadAddress(mLLDBTarget);
+		uint64 functionEnd = (uint64)function.GetEndAddress().GetLoadAddress(mLLDBTarget);
+		String wantFile = GetFileName(fileName);
+
+		// The line's first address within this function
+		for (uint32 lineIdx = 0; lineIdx < compileUnit.GetNumLineEntries(); lineIdx++)
+		{
+			lldb::SBLineEntry lineEntry = compileUnit.GetLineEntryAtIndex(lineIdx);
+			if (((int64)lineEntry.GetLine() != lineNumOrAsmAddr + 1) || (lineEntry.GetColumn() == 0))
+				continue;
+			const char* entryFile = lineEntry.GetFileSpec().GetFilename();
+			if ((entryFile == NULL) || (wantFile != entryFile))
+				continue;
+			uint64 addr = (uint64)lineEntry.GetStartAddress().GetLoadAddress(mLLDBTarget);
+			if ((addr < functionStart) || (addr >= functionEnd))
+				continue;
+			if ((wantAddr == 0) || (addr < wantAddr))
+				wantAddr = addr;
+		}
+		if (wantAddr == 0)
+		{
+			mDebugManager->mOutMessages.push_back("error Unable to set the next statement to that line - it isn't in this method.");
+			return;
+		}
+	}
+
+	if (wantAddr == 0)
+		return;
+	if (!frame.SetPC((lldb::addr_t)wantAddr))
+	{
+		mDebugManager->mOutMessages.push_back("error Unable to set the next statement.");
+		return;
+	}
+	LLDBLog("SetNextStatement to 0x%llx\n", (unsigned long long)wantAddr);
+	ClearCallStack();
+	UpdateCallStack();
 }
 
 //----------------------------------------------------------------------------
@@ -1705,6 +1781,60 @@ void LLDBDebugger::SetBreakpointCondition(Breakpoint* breakpoint, const StringIm
 
 void LLDBDebugger::SetBreakpointLogging(Breakpoint* wdBreakpoint, const StringImpl& logging, bool breakAfterLogging)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	LLDBBreakpoint* bp = (LLDBBreakpoint*)wdBreakpoint;
+	bp->mBeefLogging = logging;
+	bp->mBreakAfterLogging = breakAfterLogging;
+}
+
+// A logging breakpoint's text, with each "{expr}" replaced by what it evaluates to ("{{" is a literal
+// brace), as WinDebugger builds it
+String LLDBDebugger::BuildBreakpointLogText(const StringImpl& logging)
+{
+	String result;
+	for (int i = 0; i < (int)logging.length(); i++)
+	{
+		char c = logging[i];
+		if ((c == '{') && (i + 1 < (int)logging.length()) && (logging[i + 1] == '{'))
+		{
+			result += '{';
+			i++;
+			continue;
+		}
+		if (c != '{')
+		{
+			result += c;
+			continue;
+		}
+
+		int depth = 1;
+		int end = i + 1;
+		while ((end < (int)logging.length()) && (depth > 0))
+		{
+			if (logging[end] == '{')
+				depth++;
+			else if (logging[end] == '}')
+				depth--;
+			if (depth > 0)
+				end++;
+		}
+		String expr = logging.Substring(i + 1, end - i - 1);
+		String value = Evaluate(expr, 0, -1, -1, (DwEvalExpressionFlags)(DwEvalExpressionFlag_AllowSideEffects | DwEvalExpressionFlag_AllowCalls));
+		if (value.StartsWith("!"))
+		{
+			// "!<start>\t<length>\t<message>" - show just the message
+			int lastTab = (int)value.LastIndexOf('\t');
+			result += (lastTab != -1) ? value.Substring(lastTab + 1) : value.Substring(1);
+		}
+		else
+		{
+			int newlineIdx = (int)value.IndexOf('\n');
+			result += (newlineIdx != -1) ? value.Substring(0, newlineIdx) : value;
+		}
+		i = end;
+	}
+	return result;
 }
 
 Breakpoint* LLDBDebugger::FindBreakpointAt(intptr address)
@@ -4904,9 +5034,71 @@ String LLDBDebugger::CompactChildExpression(const StringImpl& expr, const String
 // Module / debug info loading (stubs)
 //----------------------------------------------------------------------------
 
+// Name, path, debug info file, version, address range, size and timestamp per loaded module - the
+// columns of the IDE's Modules panel. Hot-loaded objects are left out, as WinDebugger does.
 String LLDBDebugger::GetModulesInfo()
 {
-	return String();
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	String result;
+	if (!mLLDBTarget.IsValid())
+		return result;
+
+	for (uint32 moduleIdx = 0; moduleIdx < mLLDBTarget.GetNumModules(); moduleIdx++)
+	{
+		lldb::SBModule module = mLLDBTarget.GetModuleAtIndex(moduleIdx);
+		if ((!module.IsValid()) || (HotGetModuleVersion(module) != 0))
+			continue;
+
+		char path[PATH_MAX] = { 0 };
+		module.GetFileSpec().GetPath(path, sizeof(path));
+		const char* fileName = module.GetFileSpec().GetFilename();
+
+		uint64 loadStart = (uint64)-1;
+		uint64 loadEnd = 0;
+		bool hasDebugInfo = module.GetNumCompileUnits() > 0;
+		for (uint32 sectionIdx = 0; sectionIdx < module.GetNumSections(); sectionIdx++)
+		{
+			lldb::SBSection section = module.GetSectionAtIndex(sectionIdx);
+			lldb::addr_t loadAddr = section.GetLoadAddress(mLLDBTarget);
+			if ((loadAddr == LLDB_INVALID_ADDRESS) || (section.GetByteSize() == 0))
+				continue;
+			loadStart = BF_MIN(loadStart, (uint64)loadAddr);
+			loadEnd = BF_MAX(loadEnd, (uint64)loadAddr + section.GetByteSize());
+		}
+
+		result += (fileName != NULL) ? fileName : "?";
+		result += "\t";
+		// The IDE shows a leading '!' in red, for a module we have no symbols for
+		if ((!hasDebugInfo) && (path[0] != 0))
+			result += "!";
+		result += path;
+		result += "\t";
+		// A separate debug info file, when the symbols didn't come from the module itself
+		char symbolPath[PATH_MAX] = { 0 };
+		module.GetSymbolFileSpec().GetPath(symbolPath, sizeof(symbolPath));
+		if ((hasDebugInfo) && (symbolPath[0] != 0) && (strcmp(symbolPath, path) != 0))
+			result += symbolPath;
+		// ELF modules carry no version, so that column stays empty
+		result += "\t\t";
+		if (loadEnd != 0)
+			result += StrFormat("%016llX-%016llX\t%lldk\t", (unsigned long long)loadStart, (unsigned long long)loadEnd,
+				(long long)((loadEnd - loadStart) / 1024));
+		else
+			result += "\t\t";
+
+		struct stat fileStat;
+		if ((path[0] != 0) && (stat(path, &fileStat) == 0))
+		{
+			char timeString[256] = { 0 };
+			struct tm* timeInfo = localtime(&fileStat.st_mtime);
+			if (timeInfo != NULL)
+				strftime(timeString, sizeof(timeString), "%D %T", timeInfo);
+			result += timeString;
+		}
+		result += "\n";
+	}
+	return result;
 }
 
 void LLDBDebugger::SetAliasPath(const StringImpl& origPath, const StringImpl& localPath)
