@@ -4174,6 +4174,16 @@ addr_ce CeContext::GetReflectType(int typeId)
 	if (bfType->mDefineState != BfTypeDefineState_CETypeInit)
 		ceModule->PopulateType(bfType, BfPopulateType_DataAndMethods);
 
+	// Populating an alias leaves its target alone, but the type data reads through to the
+	// target (WantsGCMarking, the underlying type's data), which in a resolve-only pass may
+	// not have been defined yet
+	if (bfType->IsTypeAlias())
+	{
+		auto underlyingType = bfType->GetUnderlyingType();
+		if ((underlyingType != NULL) && (underlyingType->mDefineState != BfTypeDefineState_CETypeInit))
+			ceModule->PopulateType(underlyingType, BfPopulateType_DataAndMethods);
+	}
+
 	BfCreateTypeDataContext createTypeDataCtx;
 	auto irData = ceModule->CreateTypeData(bfType, createTypeDataCtx, true, true, true, false);
 
