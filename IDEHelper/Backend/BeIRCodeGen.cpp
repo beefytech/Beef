@@ -2902,6 +2902,8 @@ void BeIRCodeGen::HandleNextCmd()
 			{
 				if (attribute == BfIRAttribute_NoReturn)
 					callInst->mNoReturn = true;
+				else if (attribute == BfIRAttribute_NoInline)
+					callInst->mNoInline = true;
 				else
 					BF_FATAL("Unhandled");
 			}
@@ -2968,7 +2970,9 @@ void BeIRCodeGen::HandleNextCmd()
 				if (attribute == BfIRAttribute_VarRet)
 					func->mIsVarReturn = true;
 				else if (attribute == BFIRAttribute_AlwaysInline)
-					func->mAlwaysInline = true;
+					func->mInlineKind = BfInlineKind_Always;
+				else if (attribute == BfIRAttribute_NoInline)
+					func->mInlineKind = BfInlineKind_Never;
 				else if (attribute == BFIRAttribute_NoUnwind)
 					func->mNoUnwind = true;
 				else if (attribute == BFIRAttribute_UWTable)

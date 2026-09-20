@@ -5154,7 +5154,22 @@ BfTypedValue BfExprEvaluator::TryArrowLookup(BfTypedValue typedValue, BfTokenNod
 	return typedValue;
 }
 
-BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfPropertyDef* prop, BfLookupFieldFlags flags, BfCheckedKind checkedKind, bool isInlined)
+BfGetMethodInstanceFlags BfExprEvaluator::GetInlineFlags()
+{
+	auto state = mModule->mAttributeState;
+	if ((state == NULL) || (state->mCustomAttributes == NULL))
+		return BfGetMethodInstanceFlag_None;
+	auto kind = mModule->GetInlineKind(state->mCustomAttributes, mModule->mCurTypeInstance);
+	if (kind != BfInlineKind_NotSet)
+		state->mUsed = true;
+	if (kind == BfInlineKind_Never)
+		return BfGetMethodInstanceFlag_NeverInline;
+	if ((kind == BfInlineKind_Always) || ((kind == BfInlineKind_OptimizedOnly) && (mModule->IsOptimized())))
+		return BfGetMethodInstanceFlag_ForceInline;
+	return BfGetMethodInstanceFlag_None;
+}
+
+BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfPropertyDef* prop, BfLookupFieldFlags flags, BfCheckedKind checkedKind, BfGetMethodInstanceFlags inlineFlags)
 {
 	BfTypedValue origTarget = target;
 	if ((target.mType != NULL) && (target.mType->IsStructPtr()))
@@ -5172,8 +5187,7 @@ BfTypedValue BfExprEvaluator::LoadProperty(BfAstNode* targetSrc, BfTypedValue ta
 	mPropSrc = targetSrc;
 	mPropDef = prop;
 	mPropCheckedKind = checkedKind;
-	if (isInlined)
-		mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_ForceInline);
+	mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | inlineFlags);
 
 	if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL))
 	{
@@ -5342,7 +5356,7 @@ BfTypedValue BfExprEvaluator::LoadField(BfAstNode* targetSrc, BfTypedValue targe
 	if (fieldDef->mIsProperty)
 	{
 		BfPropertyDef* propDef = (BfPropertyDef*)fieldDef;
-		return LoadProperty(targetSrc, target, typeInstance, propDef, flags, BfCheckedKind_NotSet, false);
+		return LoadProperty(targetSrc, target, typeInstance, propDef, flags, BfCheckedKind_NotSet, BfGetMethodInstanceFlag_None);
 	}
 
 	bool isFailurePass = (flags & BfLookupFieldFlag_IsFailurePass) != 0;
@@ -6094,14 +6108,9 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 			{
 				BfCheckedKind checkedKind = BfCheckedKind_NotSet;
 
-				bool isInlined = false;
+				auto inlineFlags = GetInlineFlags();
 				if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL))
 				{
-					if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mInlineAttributeTypeDef))
-					{
-						isInlined = true;
-						mModule->mAttributeState->mUsed = true;
-					}
 					if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mCheckedAttributeTypeDef))
 					{
 						checkedKind = BfCheckedKind_Checked;
@@ -6177,7 +6186,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						*fieldDef = matchedProp;
 					}
 
-					return LoadProperty(targetSrc, target, curCheckType, matchedProp, flags, checkedKind, isInlined);
+					return LoadProperty(targetSrc, target, curCheckType, matchedProp, flags, checkedKind, inlineFlags);
 				}
 			}
 
@@ -6293,7 +6302,7 @@ BfTypedValue BfExprEvaluator::LookupField(BfAstNode* targetSrc, BfTypedValue tar
 						}
 						else if (entry.mKind == BfUsingFieldData::MemberRef::Kind_Property)
 						{
-							curResult = LoadProperty(targetSrc, curResult, entry.mTypeInstance, entry.mTypeInstance->mTypeDef->mProperties[entry.mIdx], useFlags, BfCheckedKind_NotSet, false);
+							curResult = LoadProperty(targetSrc, curResult, entry.mTypeInstance, entry.mTypeInstance->mTypeDef->mProperties[entry.mIdx], useFlags, BfCheckedKind_NotSet, BfGetMethodInstanceFlag_None);
 						}
 						else if (entry.mKind == BfUsingFieldData::MemberRef::Kind_Local)
 						{
@@ -7216,9 +7225,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	if (mDeferCallData != NULL)
 	{
 		if ((func) && (mDeferCallData->mFuncAlloca_Orig == func))
-			mModule->AddDeferredCall(BfModuleMethodInstance(methodInstance, mDeferCallData->mFuncAlloca), irArgs, mDeferCallData->mScopeAlloc, mDeferCallData->mRefNode, bypassVirtual, false, true);			
+			mModule->AddDeferredCall(BfModuleMethodInstance(methodInstance, mDeferCallData->mFuncAlloca, (callFlags & BfCreateCallFlags_NoInline) != 0), irArgs, mDeferCallData->mScopeAlloc, mDeferCallData->mRefNode, bypassVirtual, false, true);			
 		else
-			mModule->AddDeferredCall(BfModuleMethodInstance(methodInstance, func), irArgs, mDeferCallData->mScopeAlloc, mDeferCallData->mRefNode, bypassVirtual);
+			mModule->AddDeferredCall(BfModuleMethodInstance(methodInstance, func, (callFlags & BfCreateCallFlags_NoInline) != 0), irArgs, mDeferCallData->mScopeAlloc, mDeferCallData->mRefNode, bypassVirtual);
 		return mModule->GetFakeTypedValue(returnType);
 	}
 
@@ -7252,7 +7261,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 	if (((callFlags & BfCreateCallFlags_DelegateThunkStatic) != 0) && (expectCallingConvention == BfIRCallingConv_ThisCall))
 		expectCallingConvention = BfIRCallingConv_CDecl;
 
-	if ((methodInstance->mAlwaysInline) && (mModule->mCompiler->mOptions.mEmitLineInfo))
+	if (((methodInstance->mInlineKind == BfInlineKind_Always) ||
+		((methodInstance->mInlineKind == BfInlineKind_OptimizedOnly) && (mModule->IsOptimized()))) &&
+		((callFlags & BfCreateCallFlags_NoInline) == 0) && (mModule->mCompiler->mOptions.mEmitLineInfo))
 	{
 		// Emit a NOP so we always have a "step over" point
 		mModule->EmitEnsureInstructionAt();
@@ -7294,6 +7305,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	if ((methodDef->mIsNoReturn) && (!methodInstance->mIsIntrinsic))
 		mModule->mBfIRBuilder->Call_AddAttribute(callInst, -1, BfIRAttribute_NoReturn);
+
+	if (((callFlags & BfCreateCallFlags_NoInline) != 0) && (!methodInstance->mIsIntrinsic))
+		mModule->mBfIRBuilder->Call_AddAttribute(callInst, -1, BfIRAttribute_NoInline);
 
 	bool hadAttrs = false;
 	int paramIdx = 0;
@@ -9155,7 +9169,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, const BfTypedValu
 		return BfTypedValue();
 	}
 
-	BfCreateCallFlags physCallFlags = BfCreateCallFlags_None;
+	BfCreateCallFlags physCallFlags = moduleMethodInstance.mNoInline ? BfCreateCallFlags_NoInline : BfCreateCallFlags_None;
 	if ((origTarget.mType != NULL) && (origTarget.mType->IsGenericParam()))
 		physCallFlags = (BfCreateCallFlags)(physCallFlags | BfCreateCallFlags_GenericParamThis);
 
@@ -10369,7 +10383,7 @@ BfTypedValue BfExprEvaluator::MatchMethod(BfAstNode* targetSrc, BfMethodBoundExp
 			}
 			else if (entry.mKind == BfUsingFieldData::MemberRef::Kind_Property)
 			{
-			 	curResult = LoadProperty(targetSrc, curResult, entry.mTypeInstance, entry.mTypeInstance->mTypeDef->mProperties[entry.mIdx], useFlags, BfCheckedKind_NotSet, false);
+			 	curResult = LoadProperty(targetSrc, curResult, entry.mTypeInstance, entry.mTypeInstance->mTypeDef->mProperties[entry.mIdx], useFlags, BfCheckedKind_NotSet, BfGetMethodInstanceFlag_None);
 			}
 			else if (entry.mKind == BfUsingFieldData::MemberRef::Kind_Local)
 			{
@@ -15777,7 +15791,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	SetAndRestoreValue<BfClosureState*> prevClosureState(mModule->mCurMethodState->mClosureState, &closureState);
 
 	if (mModule->HasExecutedOutput())
-		mModule->SetupIRMethod(methodInstance, methodInstance->mIRFunction, methodInstance->mAlwaysInline);
+		mModule->SetupIRMethod(methodInstance, methodInstance->mIRFunction, (methodInstance->mInlineKind == BfInlineKind_Always));
 
 	// This keeps us from giving errors twice.  ProcessMethod can give errors when we capture by value but needed to
 	//  capture by reference, so we still need to do it for resolve-only
@@ -17730,11 +17744,7 @@ BfModuleMethodInstance BfExprEvaluator::GetSelectedMethod(BfAstNode* targetSrc, 
 	BfTypeInstance* foreignType = NULL;
 	BfGetMethodInstanceFlags flags = BfGetMethodInstanceFlag_None;
 
-	if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL) && (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mInlineAttributeTypeDef)))
-	{
-		flags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_ForceInline);
-		mModule->mAttributeState->mUsed = true;
-	}
+	flags = (BfGetMethodInstanceFlags)(flags | GetInlineFlags());
 
 	if ((!mModule->mCurTypeInstance->IsInterface()) && (methodDef->mBody != NULL))
 	{
@@ -23094,14 +23104,9 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 
 	BfCheckedKind checkedKind = BfCheckedKind_NotSet;
 
-	bool isInlined = false;
+	auto inlineFlags = GetInlineFlags();
 	if ((mModule->mAttributeState != NULL) && (mModule->mAttributeState->mCustomAttributes != NULL))
 	{
-		if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mInlineAttributeTypeDef))
-		{
-			isInlined = true;
-			mModule->mAttributeState->mUsed = true;
-		}
 		if (mModule->mAttributeState->mCustomAttributes->Contains(mModule->mCompiler->mCheckedAttributeTypeDef))
 		{
 			checkedKind = BfCheckedKind_Checked;
@@ -23251,8 +23256,7 @@ void BfExprEvaluator::HandleIndexerExpression(BfIndexerExpression* indexerExpr, 
 						mPropTarget = target;
 				}
 				mOrigPropTarget = mPropTarget;
-				if (isInlined)
-					mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | BfGetMethodInstanceFlag_ForceInline);
+				mPropGetMethodFlags = (BfGetMethodInstanceFlags)(mPropGetMethodFlags | inlineFlags);
 				mPropCheckedKind = checkedKind;
 
 				if ((target.IsBase()) && (mPropDef->IsVirtual()))

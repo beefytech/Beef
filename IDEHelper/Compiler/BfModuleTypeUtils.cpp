@@ -7734,7 +7734,7 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 		auto module = GetOrCreateMethodModule(methodInstance);
 		methodInstance->mDeclModule = module;
 
-		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);
+		BfIRValue func = CreateFunctionFrom(methodInstance, false, (methodInstance->mInlineKind == BfInlineKind_Always));
 		methodInstance->mIRFunction = func;
 
 		module->mFuncReferences[methodInstance] = func;
@@ -7751,7 +7751,7 @@ void BfModule::AddMethodToWorkList(BfMethodInstance* methodInstance)
 
 		SetAndRestoreValue<bool> prevIgnoreWrites(mBfIRBuilder->mIgnoreWrites, mWantsIRIgnoreWrites);
 
-		BfIRValue func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);
+		BfIRValue func = CreateFunctionFrom(methodInstance, false, (methodInstance->mInlineKind == BfInlineKind_Always));
 		if (func)
 		{
 			methodInstance->mIRFunction = func;

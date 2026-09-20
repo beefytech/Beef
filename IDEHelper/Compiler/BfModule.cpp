@@ -7087,7 +7087,7 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 					BF_ASSERT(!methodInstance->GetOwner()->IsUnspecializedType());
 
 					// We need to create an empty thunk for this chained method
-					BfIRFunction func = CreateFunctionFrom(methodInstance, false, methodInstance->mAlwaysInline);
+					BfIRFunction func = CreateFunctionFrom(methodInstance, false, (methodInstance->mInlineKind == BfInlineKind_Always));
 					mBfIRBuilder->SetActiveFunction(func);
 					auto block = mBfIRBuilder->CreateBlock("entry", true);
 					mBfIRBuilder->SetInsertPoint(block);
@@ -11935,7 +11935,7 @@ BfIRValue BfModule::CreateFunctionFrom(BfMethodInstance* methodInstance, bool tr
 	auto methodDef = methodInstance->mMethodDef;
 	StringT<4096> methodName;
 	BfMangler::Mangle(methodName, mCompiler->GetMangleKind(), methodInstance);
-	if (isInlined != methodInstance->mAlwaysInline)
+	if (isInlined != (methodInstance->mInlineKind == BfInlineKind_Always))
 	{
 		if (isInlined)
 			methodName += "__INLINE";
@@ -14849,7 +14849,8 @@ BfModuleMethodInstance BfModule::ReferenceExternalMethodInstance(BfMethodInstanc
 		return BfModuleMethodInstance(methodInstance, BfIRFunction());
 	}
 
-	bool isInlined = (methodInstance->mAlwaysInline) || ((flags & BfGetMethodInstanceFlag_ForceInline) != 0);
+	bool isInlined = (methodInstance->mInlineKind != BfInlineKind_Never) &&
+		((methodInstance->mInlineKind == BfInlineKind_Always) || ((flags & BfGetMethodInstanceFlag_ForceInline) != 0));
 	if ((methodInstance->mIsIntrinsic) || (methodInstance->mMethodDef->mIsExtern))
 		isInlined = false;
 
@@ -14997,7 +14998,55 @@ BfModule* BfModule::GetOrCreateMethodModule(BfMethodInstance* methodInstance)
 	return declareModule;
 }
 
+BfInlineKind BfModule::GetInlineKind(BfCustomAttributes* attributes, BfTypeInstance* owner)
+{
+	if (attributes == NULL)
+		return BfInlineKind_NotSet;
+	auto inlineAttr = attributes->Get(mCompiler->mInlineAttributeTypeDef);
+	auto noInlineAttr = attributes->Get(mCompiler->mNoInlineAttributeTypeDef);
+	if (noInlineAttr != NULL)
+	{
+		if (inlineAttr != NULL)
+			Fail("[Inline] and [NoInline] cannot be combined", noInlineAttr->GetRefNode());
+		return BfInlineKind_Never;
+	}
+	if (inlineAttr == NULL)
+		return BfInlineKind_NotSet;
+	for (auto& prop : inlineAttr->mSetProperties)
+	{
+		BfPropertyDef* propertyDef = prop.mPropertyRef;
+		if (propertyDef->mName == "OptimizedOnly")
+		{
+			auto constant = owner->mConstHolder->GetConstant(prop.mParam.mValue);
+			if ((constant != NULL) && (constant->mBool))
+				return BfInlineKind_OptimizedOnly;
+		}
+	}
+	return BfInlineKind_Always;
+}
+
 BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfMethodDef* methodDef, const BfTypeVector& methodGenericArguments, BfGetMethodInstanceFlags flags, BfTypeInstance* foreignType, BfModule* referencingModule)
+{
+	auto result = GetMethodInstanceRaw(typeInst, methodDef, methodGenericArguments, flags, foreignType, referencingModule);
+	if (!result)
+		return result;
+
+	bool noInline = (flags & BfGetMethodInstanceFlag_NeverInline) != 0;
+	auto methodInstance = result.mMethodInstance;
+	if ((methodInstance->mInlineKind == BfInlineKind_Never) && ((flags & BfGetMethodInstanceFlag_ForceInline) != 0))
+		Fail("[Inline] cannot override [NoInline]", (mAttributeState != NULL) ? mAttributeState->mSrc : methodDef->GetRefNode());
+
+	// Keep the canonical definition callable; only eligible callers request an inline copy.
+	if ((methodInstance->mInlineKind == BfInlineKind_OptimizedOnly) && (IsOptimized()) &&
+		(!noInline) && (!mCompiler->mIsResolveOnly) && (!mIsComptimeModule) &&
+		(!methodInstance->mIsIntrinsic) && (!methodDef->mIsExtern) &&
+		((flags & (BfGetMethodInstanceFlag_NoInline | BfGetMethodInstanceFlag_NoReference | BfGetMethodInstanceFlag_MethodInstanceOnly)) == 0))
+		result = ReferenceExternalMethodInstance(methodInstance, (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_ForceInline));
+	result.mNoInline = noInline;
+	return result;
+}
+
+BfModuleMethodInstance BfModule::GetMethodInstanceRaw(BfTypeInstance* typeInst, BfMethodDef* methodDef, const BfTypeVector& methodGenericArguments, BfGetMethodInstanceFlags flags, BfTypeInstance* foreignType, BfModule* referencingModule)
 {
 	if (methodDef->mMethodType == BfMethodType_Init)
 		return BfModuleMethodInstance();
@@ -15155,7 +15204,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 
 			auto defFlags = (BfGetMethodInstanceFlags)(flags & ~BfGetMethodInstanceFlag_ForceInline);
 
-			defFlags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_NoReference);
+			defFlags = (BfGetMethodInstanceFlags)(defFlags | BfGetMethodInstanceFlag_NoReference);
 
 			if (mIsComptimeModule)
 			{
@@ -15184,7 +15233,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 		return ReferenceExternalMethodInstance(moduleMethodInst.mMethodInstance, flags);
 	}
 
-	if (((flags & BfGetMethodInstanceFlag_ForceInline) != 0) && (!methodDef->mAlwaysInline))
+	if (((flags & BfGetMethodInstanceFlag_ForceInline) != 0) && (methodDef->mInlineKind != BfInlineKind_Always))
 	{
 		auto moduleMethodInstance = GetMethodInstance(typeInst, methodDef, methodGenericArguments, (BfGetMethodInstanceFlags)(flags & ~BfGetMethodInstanceFlag_ForceInline), foreignType);
 		if (moduleMethodInstance)
@@ -15647,7 +15696,8 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 					FinishInit();
 
 				// We need to refer to a function that was defined in a prior module
-				bool isInlined = (methodInstance->mAlwaysInline) || ((flags & BfGetMethodInstanceFlag_ForceInline) != 0);
+				bool isInlined = (methodInstance->mInlineKind != BfInlineKind_Never) &&
+					((methodInstance->mInlineKind == BfInlineKind_Always) || ((flags & BfGetMethodInstanceFlag_ForceInline) != 0));
 				if (methodInstance->mIsIntrinsic)
 					isInlined = false;
 				methodInstance->mIRFunction = CreateFunctionFrom(methodInstance, false, isInlined);
@@ -15655,7 +15705,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 				methodInstance->mDeclModule = this;
 
 				// Add this inlined def to ourselves
-				if ((methodInstance->mAlwaysInline) && (HasCompiledOutput()) && (!methodInstance->mIsUnspecialized) && ((flags & BfGetMethodInstanceFlag_NoInline) == 0))
+				if ((methodInstance->mInlineKind == BfInlineKind_Always) && (HasCompiledOutput()) && (!methodInstance->mIsUnspecialized) && ((flags & BfGetMethodInstanceFlag_NoInline) == 0))
 				{
 					mIncompleteMethodCount++;
 					BfInlineMethodRequest* inlineMethodRequest = mContext->mInlineMethodWorkList.Alloc();
@@ -15761,7 +15811,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 	}
 
 	methodInstance->mMethodDef = methodDef;
-	methodInstance->mAlwaysInline = methodDef->mAlwaysInline;
+	methodInstance->mInlineKind = methodDef->mInlineKind;
 	methodInstance->mMethodInstanceGroup = methodInstGroup;
 	methodInstance->mIsReified = isReified;
 
@@ -15783,7 +15833,7 @@ BfModuleMethodInstance BfModule::GetMethodInstance(BfTypeInstance* typeInst, BfM
 			auto compareType = lookupMethodGenericArguments[0];
 			PopulateType(compareType, BfPopulateType_Data);
 			if (compareType->IsSplattable())
-				methodInstance->mAlwaysInline = true;
+				methodInstance->mInlineKind = BfInlineKind_Always;
 		}
 	}
 
@@ -19144,10 +19194,10 @@ void BfModule::SetupIRMethod(BfMethodInstance* methodInstance, BfIRFunction func
 	if (callingConv != BfIRCallingConv_CDecl)
 		mBfIRBuilder->SetFuncCallingConv(func, callingConv);
 
-	if (isInlined)
-	{
+	if (methodInstance->mInlineKind == BfInlineKind_Never)
+		mBfIRBuilder->Func_AddAttribute(func, -1, BfIRAttribute_NoInline);
+	else if (isInlined)
 		mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_AlwaysInline);
-	}
 
 	int argIdx = 0;
 	int paramIdx = 0;
@@ -24893,6 +24943,10 @@ void BfModule::GetMethodCustomAttributes(BfMethodInstance* methodInstance)
 
 	if (customAttributes != NULL)
 	{
+		auto inlineKind = GetInlineKind(customAttributes, typeInstance);
+		if (inlineKind != BfInlineKind_NotSet)
+			methodInstance->mInlineKind = inlineKind;
+
 		if (customAttributes->Contains(mCompiler->mIntrinsicAttributeTypeDef))
 			methodInstance->mIsIntrinsic = true;
 
@@ -25078,7 +25132,7 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 			{
 				func = mBfIRBuilder->CreateFunction(funcType, BfIRLinkageType_External, mangledName);
 				BfLogSysM("Creating FuncId:%d %s in module %p\n", func.mId, mangledName.c_str(), this);
-				if (methodInstance->mAlwaysInline)
+				if (methodInstance->mInlineKind == BfInlineKind_Always)
 					mBfIRBuilder->Func_AddAttribute(func, -1, BFIRAttribute_AlwaysInline);
 			}
 
@@ -25090,7 +25144,7 @@ void BfModule::SetupIRFunction(BfMethodInstance* methodInstance, StringImpl& man
 		*outIsIntrinsic = isIntrinsic;
 
 	if (!isIntrinsic)
-		SetupIRMethod(methodInstance, methodInstance->mIRFunction, methodInstance->mAlwaysInline);
+		SetupIRMethod(methodInstance, methodInstance->mIRFunction, (methodInstance->mInlineKind == BfInlineKind_Always));
 }
 
 void BfModule::CheckHotMethod(BfMethodInstance* methodInstance, const StringImpl& inMangledName)
@@ -27732,7 +27786,7 @@ void BfModule::DbgFinish()
 				for (auto& methodInstGroup : ownedType->mMethodInstanceGroups)
 				{
 					if ((methodInstGroup.IsImplemented()) && (methodInstGroup.mDefault != NULL) &&
-						(!methodInstGroup.mDefault->mMethodDef->mIsStatic) && (methodInstGroup.mDefault->mIsReified) && (!methodInstGroup.mDefault->mAlwaysInline) &&
+						(!methodInstGroup.mDefault->mMethodDef->mIsStatic) && (methodInstGroup.mDefault->mIsReified) && (methodInstGroup.mDefault->mInlineKind != BfInlineKind_Always) &&
 						((methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_AlwaysInclude) || (methodInstGroup.mOnDemandKind == BfMethodOnDemandKind_Referenced)) &&
 						(methodInstGroup.mHasEmittedReference))
 					{

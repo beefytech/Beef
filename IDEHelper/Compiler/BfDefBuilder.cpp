@@ -824,9 +824,17 @@ void BfDefBuilder::ParseAttributes(BfAttributeDirective* attributes, BfMethodDef
 			{
 				if (methodDef->mIsExtern)
 					Fail("Extern methods cannot be inline", attributes->mAttributeTypeRef);
-				else
-					methodDef->mAlwaysInline = true;
+				else if (methodDef->mInlineKind != BfInlineKind_Never)
+				{
+					methodDef->mInlineKind = BfInlineKind_Always;
+					for (auto arg : attributes->mArguments)
+						if (auto assignExpr = BfNodeDynCast<BfAssignmentExpression>(arg))
+							if ((assignExpr->mLeft != NULL) && (assignExpr->mLeft->Equals("OptimizedOnly")))
+								methodDef->mInlineKind = BfInlineKind_OptimizedOnly;
+				}
 			}
+			else if (typeRefName == "NoInline")
+				methodDef->mInlineKind = BfInlineKind_Never;
 			else if (typeRefName == "AllowAppend")
 			{
 				methodDef->mAppendKind = BfAllowAppendKind_Yes;
@@ -2571,7 +2579,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 		if (mSignatureHashCtx != NULL)
 			mSignatureHashCtx->MixinStr(methodDef->mName);
 
-		if ((methodDef->mAlwaysInline) ||
+		if ((methodDef->mInlineKind == BfInlineKind_Always) || (methodDef->mInlineKind == BfInlineKind_OptimizedOnly) ||
 			(methodDef->mAppendKind != BfAllowAppendKind_No) ||
 			(methodDef->mMethodType == BfMethodType_Mixin))
 			inlineHashCtx.Mixin(methodDef->mFullHash);

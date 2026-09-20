@@ -957,7 +957,7 @@ public:
 	bool mWantsBody;
 	bool mCLink;
 	BfAllowAppendKind mAppendKind;
-	bool mAlwaysInline;
+	BfInlineKind mInlineKind;
 	bool mIsNoReturn;
 	bool mIsMutating;
 	bool mIsNoSplat;
@@ -1011,7 +1011,7 @@ public:
 		mMethodType = BfMethodType_Normal;
 		mCallingConvention = BfCallingConvention_Unspecified;
 		mAppendKind = BfAllowAppendKind_No;
-		mAlwaysInline = false;
+		mInlineKind = BfInlineKind_NotSet;
 		mParamNameMap = NULL;
 		mNextWithSameName = NULL;
 	}

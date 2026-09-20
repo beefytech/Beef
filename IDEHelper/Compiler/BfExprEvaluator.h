@@ -55,6 +55,7 @@ enum BfCreateCallFlags
 	BfCreateCallFlags_GenericParamThis = 0x10,
 	BfCreateCallFlags_DelegateThunkNonStatic = 0x20,
 	BfCreateCallFlags_DelegateThunkStatic = 0x40,
+	BfCreateCallFlags_NoInline = 0x80,
 };
 
 class BfResolvedArg
@@ -483,7 +484,8 @@ public:
 	bool CheckIsBase(BfAstNode* checkNode);
 	bool CheckModifyResult(BfTypedValue& typeValue, BfAstNode* refNode, const char* modifyType, bool onlyNeedsMut = false, bool emitWarning = false, bool skipCopyOnMutate = false);
 	bool CheckGenericCtor(BfGenericParamType* genericParamType, BfResolvedArgs& argValues, BfAstNode* targetSrc);
-	BfTypedValue LoadProperty(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfPropertyDef* prop, BfLookupFieldFlags flags, BfCheckedKind checkedKind, bool isInline);
+	BfGetMethodInstanceFlags GetInlineFlags();
+	BfTypedValue LoadProperty(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfPropertyDef* prop, BfLookupFieldFlags flags, BfCheckedKind checkedKind, BfGetMethodInstanceFlags inlineFlags);
 	BfTypedValue LoadField(BfAstNode* targetSrc, BfTypedValue target, BfTypeInstance* typeInstance, BfFieldDef* fieldDef, BfLookupFieldFlags flags);
 	BfTypedValue LookupField(BfAstNode* targetSrc, BfTypedValue target, const StringImpl& fieldName, BfLookupFieldFlags flags = BfLookupFieldFlag_None, BfFieldDef** fieldDef = NULL);
 	void CheckObjectCreateTypeRef(BfType* expectingType, BfAstNode* afterNode);

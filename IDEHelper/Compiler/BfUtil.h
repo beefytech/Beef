@@ -4,6 +4,14 @@
 
 NS_BF_BEGIN
 
+enum BfInlineKind : uint8
+{
+	BfInlineKind_NotSet,
+	BfInlineKind_Never,
+	BfInlineKind_Always,
+	BfInlineKind_OptimizedOnly
+};
+
 template <typename T>
 class AutoPopBack
 {

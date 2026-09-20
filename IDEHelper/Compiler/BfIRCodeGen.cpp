@@ -269,6 +269,7 @@ static llvm::Attribute::AttrKind LLVMMapAttribute(BfIRAttribute attr)
 	case BfIRAttribute_ZExt: return llvm::Attribute::ZExt;
 	case BFIRAttribute_NoUnwind: return llvm::Attribute::NoUnwind;
 	case BFIRAttribute_UWTable: return llvm::Attribute::UWTable;
+	case BfIRAttribute_NoInline: return llvm::Attribute::NoInline;
 	case BFIRAttribute_AlwaysInline: return llvm::Attribute::AlwaysInline;
 	case BFIRAttribute_NoRecurse: return llvm::Attribute::NoRecurse;
 	default: break;
@@ -6486,6 +6487,10 @@ void BfIRCodeGen::RunOptimizationPipeline(const llvm::Triple& targetTriple)
 // 	if (LangOpts.HIPStdPar && !LangOpts.CUDAIsDevice &&
 // 		LangOpts.HIPStdParInterposeAlloc)
 // 		MPM.addPass(HipStdParAllocationInterpositionPass());
+
+	// LTO resolves unused declarations too; O0 does not normally strip them.
+	if (mCodeGenOptions.mLTOType != BfLTOType_None)
+		llvm::cantFail(PB.parsePassPipeline(MPM, "strip-dead-prototypes"));
 
 	// Now that we have all of the passes ready, run them.
 	{

@@ -31,6 +31,16 @@ namespace Tests
 			int mA;
 		}
 
+		// Enumerates different values than its span holds, so a result shows which AddRange overload ran
+		class SpanProbe : IEnumerable<int32>
+		{
+			public List<int32> mEnumVals = new .() { 100, 200 } ~ delete _;
+			public List<int32> mSpanVals = new .() { 1, 2, 3 } ~ delete _;
+
+			public List<int32>.Enumerator GetEnumerator() => mEnumVals.GetEnumerator();
+			public static implicit operator Span<int32>(SpanProbe probe) => probe.mSpanVals;
+		}
+
 		public static int MethodA(int8 a)
 		{
 			return 1;
@@ -143,6 +153,33 @@ namespace Tests
 			Test.Assert(MethodE(sa, 100) == 2);
 			Test.Assert(MethodE(sal, a) == 3);
 			Test.Assert(MethodE(sal, 200) == 4);
+		}
+
+		[Test]
+		public static void TestAddRangeSpan()
+		{
+			var list = scope List<int32>();
+			list.AddRange(scope SpanProbe());
+			Test.Assert((list.Count == 3) && (list[0] == 1) && (list[2] == 3));
+
+			// Grows mid-append, which only the block copy survives
+			list.AddRange(list);
+			Test.Assert((list.Count == 6) && (list[3] == 1) && (list[5] == 3));
+
+			int32[] arr = scope int32[](8, 9);
+			list.Clear();
+			list.AddRange(arr);
+			Test.Assert((list.Count == 2) && (list[0] == 8) && (list[1] == 9));
+
+			var other = scope List<int32>() { 5, 6, 7 };
+			list.Clear();
+			list.AddRange(.(other.Ptr, 2));
+			Test.Assert((list.Count == 2) && (list[1] == 6));
+
+			var hashSet = scope HashSet<int32>() { 42 };
+			list.Clear();
+			list.AddRange(hashSet);
+			Test.Assert((list.Count == 1) && (list[0] == 42));
 		}
 	}
 }

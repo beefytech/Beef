@@ -463,7 +463,7 @@ BfMethodRef& BfMethodRef::operator=(BfMethodInstance* methodInstance)
 				mMethodGenericArguments.Add(type);
 		}
 		mSignatureHash = (int)mTypeInstance->mTypeDef->mSignatureHash;
-		if (methodInstance->mAlwaysInline)
+		if (methodInstance->mInlineKind == BfInlineKind_Always)
 			mMethodRefFlags = BfMethodRefFlag_AlwaysInclude;
 		else
 			mMethodRefFlags = BfMethodRefFlag_None;
@@ -1071,7 +1071,7 @@ bool BfMethodInstance::IsVarArgs()
 
 bool BfMethodInstance::AlwaysInline()
 {
-	return mAlwaysInline;
+	return mInlineKind == BfInlineKind_Always;
 }
 
 BfImportCallKind BfMethodInstance::GetImportCallKind()

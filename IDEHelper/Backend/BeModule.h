@@ -563,7 +563,7 @@ public:
 #endif
 	BfIRLinkageType mLinkageType;
 	bool mIsVarReturn;
-	bool mAlwaysInline;
+	BfInlineKind mInlineKind;
 	bool mNoUnwind;
 	bool mUWTable;
 	bool mNoReturn;
@@ -591,7 +591,7 @@ public:
 		mModule = NULL;
 		mDbgFunction = NULL;
 		mIsVarReturn = false;
-		mAlwaysInline = false;
+		mInlineKind = BfInlineKind_NotSet;
 		mDidInlinePass = false;
 		mNoUnwind = false;
 		mUWTable = false;
@@ -1384,6 +1384,7 @@ public:
 	SizedArray<Arg, 4> mArgs;
 	BfIRCallingConv mCallingConv;
 	bool mNoReturn;
+	bool mNoInline;
 	bool mTailCall;
 
 	virtual BeType* GetType() override;
@@ -1394,6 +1395,7 @@ public:
 		mFunc = NULL;
 		mCallingConv = BfIRCallingConv_CDecl;
 		mNoReturn = false;
+		mNoInline = false;
 		mTailCall = false;
 	}
 
@@ -1413,6 +1415,7 @@ public:
 		}
 		hashCtx.Mixin(mCallingConv);
 		hashCtx.Mixin(mNoReturn);
+		hashCtx.Mixin(mNoInline);
 		hashCtx.Mixin(mTailCall);
 	}
 

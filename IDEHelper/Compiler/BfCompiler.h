@@ -456,6 +456,7 @@ public:
 	BfTypeDef* mCallingConventionAttributeTypeDef;
 	BfTypeDef* mOrderedAttributeTypeDef;
 	BfTypeDef* mInlineAttributeTypeDef;
+	BfTypeDef* mNoInlineAttributeTypeDef;
 	BfTypeDef* mCLinkAttributeTypeDef;
 	BfTypeDef* mImportAttributeTypeDef;
 	BfTypeDef* mExportAttributeTypeDef;

@@ -7,6 +7,7 @@
 #include "BeefySysLib/util/ChunkedDataBuffer.h"
 #include "BeefySysLib/util/Dictionary.h"
 #include "BfAstAllocator.h"
+#include "BfUtil.h"
 #include <unordered_map>
 
 //#include "BfSystem.h"
@@ -681,6 +682,7 @@ enum BfIRAttribute
 	BfIRAttribute_FloatingPointMode,
 	BfIRAttribute_SIMDSetting,
 	BfIRAttribute_FMASetting,
+	BfIRAttribute_NoInline,
 };
 
 struct BfIRFunctionType

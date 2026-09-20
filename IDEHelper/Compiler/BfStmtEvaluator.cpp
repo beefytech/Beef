@@ -789,7 +789,7 @@ void BfModule::EmitDeferredCall(BfModuleMethodInstance moduleMethodInstance, Siz
 	if ((flags & BfDeferredBlockFlag_IsAllocaFunc) != 0)
 		func = mBfIRBuilder->CreateLoad(func);
 
-	expressionEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, func, ((flags & BfDeferredBlockFlag_BypassVirtual) != 0), llvmArgs);
+	expressionEvaluator.CreateCall(NULL, moduleMethodInstance.mMethodInstance, func, ((flags & BfDeferredBlockFlag_BypassVirtual) != 0), llvmArgs, NULL, moduleMethodInstance.mNoInline ? BfCreateCallFlags_NoInline : BfCreateCallFlags_None);
 
 	if ((flags & BfDeferredBlockFlag_DoNullChecks) != 0)
 	{
@@ -966,6 +966,7 @@ void BfModule::EmitDeferredCallProcessor(BfScopeData* scopeData, SLIList<BfDefer
 			{
 				// Only bypass virtual if ALL these calls are devirtualized
 				callInfo->mBypassVirtual &= deferredCallEntry->mBypassVirtual;
+				callInfo->mModuleMethodInstance.mNoInline |= moduleMethodInstance.mNoInline;
 			}
 		}
 		else
@@ -1117,6 +1118,7 @@ void BfModule::EmitDeferredCallProcessor(BfScopeData* scopeData, SLIList<BfDefer
 					callInfo->mModuleMethodInstance = moduleMethodInstance;
 					callInfo->mBypassVirtual = deferredCallEntry->mBypassVirtual;
 				}
+				callInfo->mModuleMethodInstance.mNoInline |= moduleMethodInstance.mNoInline;
 			}
 			deferredCallEntry = deferredCallEntry->mNext;
 		}

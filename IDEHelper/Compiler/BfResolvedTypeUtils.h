@@ -92,7 +92,8 @@ enum BfGetMethodInstanceFlags : uint16
 	BfGetMethodInstanceFlag_NoInline = 0x400,
 	BfGetMethodInstanceFlag_DepthExceeded = 0x800,
 	BfGetMethodInstanceFlag_NoReference = 0x1000,
-	BfGetMethodInstanceFlag_MethodInstanceOnly = 0x2000
+	BfGetMethodInstanceFlag_MethodInstanceOnly = 0x2000,
+	BfGetMethodInstanceFlag_NeverInline = 0x4000,
 };
 
 class BfDependencyMap
@@ -906,7 +907,7 @@ public:
 	bool mIsClosure:1;
 	bool mMayBeConst:1; // Only used for calcAppend currently
 	bool mIsForeignMethodDef:1;
-	bool mAlwaysInline:1;
+	BfInlineKind mInlineKind : 2;
 	bool mIsIntrinsic:1;
 	bool mHasMethodRefType:1;
 	bool mDisallowCalling:1;
@@ -950,7 +951,7 @@ public:
 		mIsClosure = false;
 		mMayBeConst = true;
 		mIsForeignMethodDef = false;
-		mAlwaysInline = false;
+		mInlineKind = BfInlineKind_NotSet;
 		mIsIntrinsic = false;
 		mHasMethodRefType = false;
 		mDisallowCalling = false;
@@ -1100,6 +1101,7 @@ class BfModuleMethodInstance
 public:
 	BfMethodInstance* mMethodInstance;
 	BfIRValue mFunc;
+	bool mNoInline = false;
 
 public:
 	BfModuleMethodInstance()
@@ -1109,7 +1111,7 @@ public:
 
 	BfModuleMethodInstance(BfMethodInstance* methodInstance);
 
-	BfModuleMethodInstance(BfMethodInstance* methodInstance, BfIRValue func) : mFunc(func)
+	BfModuleMethodInstance(BfMethodInstance* methodInstance, BfIRValue func, bool noInline = false) : mFunc(func), mNoInline(noInline)
 	{
 		mMethodInstance = methodInstance;
 	}

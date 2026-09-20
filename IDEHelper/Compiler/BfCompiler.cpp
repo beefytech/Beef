@@ -432,6 +432,7 @@ BfCompiler::BfCompiler(BfSystem* bfSystem, bool isResolveOnly)
 	mGenericIEnumeratorTypeDef = NULL;
 	mGenericIRefEnumeratorTypeDef = NULL;
 	mInlineAttributeTypeDef = NULL;
+	mNoInlineAttributeTypeDef = NULL;
 	mThreadTypeDef = NULL;
 	mInternalTypeDef = NULL;
 	mPlatformTypeDef = NULL;
@@ -7353,6 +7354,7 @@ bool BfCompiler::DoCompile(const StringImpl& outputDirectory)
 	mGenericIEnumeratorTypeDef = _GetRequiredType("System.Collections.IEnumerator", 1);
 	mGenericIRefEnumeratorTypeDef = _GetRequiredType("System.Collections.IRefEnumerator", 1);
 	mInlineAttributeTypeDef = _GetRequiredType("System.InlineAttribute");
+	mNoInlineAttributeTypeDef = _GetRequiredType("System.NoInlineAttribute");
 	mThreadTypeDef = _GetRequiredType("System.Threading.Thread");
 	mInternalTypeDef = _GetRequiredType("System.Internal");
 	mPlatformTypeDef = _GetRequiredType("System.Platform");

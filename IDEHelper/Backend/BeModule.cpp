@@ -433,6 +433,7 @@ void BeInliner::Visit(BeCallInst* callInst)
 		destCallInst->mArgs.push_back(copiedArg);
 	}
 	destCallInst->mNoReturn = callInst->mNoReturn;
+	destCallInst->mNoInline = callInst->mNoInline;
 	destCallInst->mTailCall = callInst->mTailCall;
 }
 
@@ -583,7 +584,7 @@ void BeFunction::HashContent(BeHashContext& hashCtx)
 	hashCtx.Mixin(TypeId);
 	hashCtx.MixinStr(mName);
 	hashCtx.Mixin(mLinkageType);
-	hashCtx.Mixin(mAlwaysInline);
+	hashCtx.Mixin(mInlineKind);
 	hashCtx.Mixin(mNoUnwind);
 	hashCtx.Mixin(mUWTable);
 	hashCtx.Mixin(mNoReturn);
@@ -2189,8 +2190,10 @@ String BeModule::ToString(BeFunction* wantFunc)
 
 		str += ")";
 
-		if (func->mAlwaysInline)
+		if (func->mInlineKind == BfInlineKind_Always)
 			str += " AlwaysInline";
+		else if (func->mInlineKind == BfInlineKind_Never)
+			str += " noinline";
 		if (func->mNoUnwind)
 			str += " nounwind";
 		if (func->mUWTable)
@@ -2491,6 +2494,8 @@ String BeModule::ToString(BeFunction* wantFunc)
 						str += ")";
 						if (castedInst->mNoReturn)
 							str += " noreturn";
+						if (castedInst->mNoInline)
+							str += " noinline";
 					}
 					break;
 				case BePhiInst::TypeId:
@@ -2698,7 +2703,7 @@ void BeModule::DoInlining(BeFunction* func)
 			if (callInst == NULL)
 				continue;
 			auto inlineFunc = BeValueDynCast<BeFunction>(callInst->mFunc);
-			if ((inlineFunc == NULL) || (inlineFunc == func) || !inlineFunc->mAlwaysInline || inlineFunc->mBlocks.empty())
+			if ((callInst->mNoInline) || (inlineFunc == NULL) || (inlineFunc == func) || (inlineFunc->mInlineKind != BfInlineKind_Always) || inlineFunc->mBlocks.empty())
 				continue;
 			DoInlining(inlineFunc);
 			InlineSite site;
@@ -2838,7 +2843,7 @@ void BeModule::DoInlining(BeFunction* func)
 					continue;
 				if (inlineFunc == func)
 					continue;
-				if (!inlineFunc->mAlwaysInline)
+				if ((callInst->mNoInline) || (inlineFunc->mInlineKind != BfInlineKind_Always))
 					continue;
 
 				if (inlineFunc->mBlocks.empty())
