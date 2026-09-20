@@ -28,14 +28,17 @@ enum LLDBLaunchMode
 class LLDBBreakpoint : public Breakpoint
 {
 public:
+	String mBeefCondition;                          // evaluated with Beef's rules when hit
 	lldb::SBBreakpoint mLLDBBreakpoint;
 	Array<lldb::SBBreakpoint> mVersionBreakpoints;   // bindings in older hot compiles (HotBindBreakpoint)
 	uintptr mResolvedAddr;
+	Array<int> mWatchpointIds;                       // for a memory breakpoint: its LLDB watchpoints
+	int mMemoryBreakpointSize;
 
-	LLDBBreakpoint() : mResolvedAddr(0) {}
+	LLDBBreakpoint() : mResolvedAddr(0), mMemoryBreakpointSize(0) {}
 
 	virtual uintptr GetAddr() override { return mResolvedAddr; }
-	virtual bool IsMemoryBreakpointBound() override { return false; }
+	virtual bool IsMemoryBreakpointBound() override { return !mWatchpointIds.IsEmpty(); }
 };
 
 struct LLDBHotObject;
@@ -53,7 +56,8 @@ public:
 
 	// Breakpoints
 	Array<LLDBBreakpoint*> mBreakpoints;
-	Dictionary<int, LLDBBreakpoint*> mBreakpointIdMap;    // LLDB break_id → our bp
+	Dictionary<int, LLDBBreakpoint*> mBreakpointIdMap;     // LLDB break_id → our bp
+	Dictionary<int, LLDBBreakpoint*> mWatchpointIdMap;     // LLDB watch_id → our memory bp
 	Dictionary<uintptr, LLDBBreakpoint*> mBreakpointAddrMap; // load addr → our bp
 	Breakpoint* mActiveBreakpoint;                         // bp we stopped at
 
@@ -229,6 +233,12 @@ protected:
 	lldb::SBValue HotFindMemberInNewestTypes(lldb::SBValue value, const StringImpl& name, int depth);
 	String RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringImpl& expr);
 	String RewriteBeefMemberAccessInSpan(lldb::SBFrame& frame, const StringImpl& expr);
+	lldb::SBType FindBeefType(lldb::SBFrame& frame, const StringImpl& name);
+	lldb::SBType FindBeefTypeAnywhere(const StringImpl& typeName);
+	lldb::SBValue EvaluateBeefTupleAssign(lldb::SBFrame& frame, const StringImpl& expr, String& outError);
+	String BuildAutocomplete(lldb::SBFrame& frame, const StringImpl& expr, int cursorPos);
+	String EvaluateMemoryWatch(lldb::SBFrame& frame, const StringImpl& expr, int arrayLength);
+	lldb::SBValue EvaluateBeefTypeOp(const StringImpl& expr);
 	lldb::SBValue EvaluateBeefCall(lldb::SBFrame& frame, const StringImpl& expr, String& outError);
 	lldb::SBValue EvaluateBeefOperand(lldb::SBFrame& frame, const StringImpl& expr, String& outError);
 	void SplitBeefArgs(const StringImpl& argsText, Array<String>& outArgs);
@@ -236,6 +246,8 @@ protected:
 	lldb::SBValue CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue thisValue, lldb::SBType staticType, const StringImpl& methodName,
 		const Array<lldb::SBValue>& args, bool allowCall, String& outError);
 	lldb::SBType GetBeefDynamicType(lldb::SBValue objectRef);
+	lldb::SBType GetBeefDynamicTypeAt(uint64 objAddr);
+	bool IsBeefObjectType(lldb::SBType type, int depth = 0);
 	void CreateOutputPipes();
 	void GiveTerminalToTarget(const StringImpl& ttyPath, int pid);
 	void RestoreTerminal();
@@ -276,6 +288,7 @@ protected:
 	void HotClearStepTraps();
 	void FilterNonStatementLocations(lldb::SBBreakpoint& lldbBreakpoint);
 	void HotFilterBreakpointLocations(LLDBBreakpoint* bp);
+	void SetMemoryWatchpoint(LLDBBreakpoint* bp);
 	bool HotStepThreadsPastPatches(const Array<HotPatch>& patches, String& outError);
 	bool HotApplyPatches(const Array<HotPatch>& patches, int& outNumPatched, String& outError);
 
