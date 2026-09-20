@@ -4781,6 +4781,10 @@ BfIRValue BfIRBuilder::CreateNot(BfIRValue val)
 	if (val.IsConst())
 	{
 		auto constVal = GetConstantById(val.mId);
+		// An undef stays undef, as the other folds have it: its mTypeCode is the union tag
+		//  and its payload is the type, so folding it makes a constant that is neither
+		if (constVal->mConstType == BfConstType_Undef)
+			return val;
 		uint64 newVal = 0;
 		if (constVal->mTypeCode == BfTypeCode_Boolean)
 			newVal = constVal->mBool ? 0 : 1;
