@@ -160,6 +160,7 @@ public:
 	// The source file's material name for this primitive (empty when it had none).
 	String mMaterialName;
 	bool mHasSurfaceMaterial = false;
+	bool mTwoSided = false;
 	float mRoughness = 0.6f;
 	float mMetallic = 0.0f;
 	Vector3 mEmissive = Vector3(0, 0, 0);

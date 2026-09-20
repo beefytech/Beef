@@ -325,6 +325,11 @@ BF_EXPORT void BF_CALLTYPE ModelDef_SetExternalTextures(ModelDef* modelDef, int 
 	modelDef->mExternalTextures = externalTextures != 0;
 }
 
+BF_EXPORT int BF_CALLTYPE ModelDef_IsMaterialTwoSided(ModelDef* modelDef, int meshIdx, int primitivesIdx)
+{
+	return modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx].mTwoSided ? 1 : 0;
+}
+
 BF_EXPORT int BF_CALLTYPE ModelDef_GetSurfaceMaterial(ModelDef* modelDef, int meshIdx, int primitivesIdx, float* values)
 {
 	auto& prims = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx];

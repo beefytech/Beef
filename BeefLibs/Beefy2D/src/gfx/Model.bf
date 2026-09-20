@@ -178,6 +178,14 @@ namespace Beefy.gfx
 		[CallingConvention(.Stdcall), CLink]
 		extern static int32 ModelDef_GetSurfaceMaterial(void* nativeModel, int32 meshIdx, int32 primitivesIdx, float* values);
 
+		[CallingConvention(.Stdcall), CLink]
+		extern static int32 ModelDef_IsMaterialTwoSided(void* nativeModel, int32 meshIdx, int32 primitivesIdx);
+
+		public bool IsMaterialTwoSided(int32 meshIdx, int32 primitivesIdx)
+		{
+			return ModelDef_IsMaterialTwoSided(mNativeModelDef, meshIdx, primitivesIdx) != 0;
+		}
+
 		public bool GetSurfaceMaterial(int32 meshIdx, int32 primitivesIdx, out Vector2 parameters, out Vector3 emissive)
 		{
 			float[5] values = default;
@@ -459,10 +467,10 @@ namespace Beefy.gfx
 		[CallingConvention(.Stdcall), CLink]
 		extern static void ModelInstance_QueuePrimitive(void* nativeModelInstance, int32 meshIdx, int32 primIdx);
 
-		public void DrawPrimitive(Graphics g, Matrix4 worldMatrix, int32 meshIdx, int32 primIdx)
+		public void DrawPrimitive(Graphics g, Matrix4 worldMatrix, int32 meshIdx, int32 primIdx, bool applyScale = true)
 		{
 			let scale = Vector3.Multiply(mModelDef.mScale, mScale);
-			let matrix = Matrix4.Multiply(Matrix4.CreateScale(scale), worldMatrix);
+			let matrix = applyScale ? Matrix4.Multiply(Matrix4.CreateScale(scale), worldMatrix) : worldMatrix;
 			g.SetVertexShaderConstantData(0, matrix);
 			ModelInstance_QueuePrimitive(mNativeRenderable, meshIdx, primIdx);
 		}

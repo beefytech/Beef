@@ -437,6 +437,8 @@ class GLBReader
 					prims->mFlags = (ModelPrimitives::Flags)(1 | 2 | 4 | 0x10 | 0x20 | 0x40);
 					prims->mMaterialName = materialName;
 					prims->mHasSurfaceMaterial = true;
+					auto sidedness = material >= 0 ? mMaterials[material]->GetObjectItem("doubleSided") : NULL;
+					prims->mTwoSided = (sidedness != NULL) && (sidedness->mType == Json::Type_True);
 					prims->mRoughness = roughness;
 					prims->mMetallic = metallic;
 					prims->mEmissive = emissive;
