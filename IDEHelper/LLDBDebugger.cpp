@@ -3513,8 +3513,8 @@ String LLDBDebugger::BuildAutocomplete(lldb::SBFrame& frame, const StringImpl& e
 		partialStart--;
 	String partial = expr.Substring(partialStart, cursorPos - partialStart);
 
-	// display name → entry type ("value", "field" or "method"), sorted and without duplicates
-	std::map<String, String> entries;
+	// display name → entry type ("value", "field" or "method"), without duplicates
+	Dictionary<String, String> entries;
 	auto _Add = [&](const char* name, const char* entryType)
 	{
 		if (name == NULL)
@@ -3630,12 +3630,20 @@ String LLDBDebugger::BuildAutocomplete(lldb::SBFrame& frame, const StringImpl& e
 		}
 	}
 
-	if (entries.empty())
+	if (entries.IsEmpty())
 		return String();
 
-	String result = StrFormat("\n:autocomplete\ninsertRange\t%d %d\n", partialStart, cursorPos);
+	Array<String> names;
 	for (auto& entry : entries)
-		result += StrFormat("%s\t%s\n", entry.second.c_str(), entry.first.c_str());
+		names.Add(entry.mKey);
+	std::sort(names.begin(), names.end(), [](const String& lhs, const String& rhs)
+	{
+		return stricmp(lhs.c_str(), rhs.c_str()) < 0;
+	});
+
+	String result = StrFormat("\n:autocomplete\ninsertRange\t%d %d\n", partialStart, cursorPos);
+	for (auto& name : names)
+		result += StrFormat("%s\t%s\n", entries[name].c_str(), name.c_str());
 	return result;
 }
 
