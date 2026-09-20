@@ -1153,7 +1153,9 @@ namespace System.Reflection
 			Splat = 1,
 			Implicit = 2,
 			AppendIdx = 4,
-			Params = 8
+			Params = 8,
+			/// Declared with a default value, so a call may leave it out
+			HasDefault = 16
 		}
 
 		[CRepr, AlwaysInclude]
