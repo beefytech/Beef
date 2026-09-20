@@ -1022,6 +1022,7 @@ public:
 	BfType* GetParamType(int paramIdx, bool returnUnderlyingParamsType = false);
 	bool GetParamIsSplat(int paramIdx);
 	BfParamKind GetParamKind(int paramIdx);
+	bool GetParamHasDefault(int paramIdx);
 	bool WasGenericParam(int paramIdx);
 	bool IsParamSkipped(int paramIdx); // void/zero-sized
 	bool IsImplicitCapture(int paramIdx);

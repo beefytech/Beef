@@ -585,6 +585,33 @@ namespace Tests
 			}
 		}
 
+		[Reflect, AlwaysInclude(IncludeAllMethods=true)]
+		class WithDefaults
+		{
+			public enum Mode { Off, On }
+
+			public static void Method(int a, float b = 1.5f, Mode m = .On, String s = "x", int c = ClassB.mA) {}
+		}
+
+		class ParamDefaults
+		{
+			[Comptime]
+			static bool HasDefault(int paramIdx)
+			{
+				let method = typeof(WithDefaults).GetMethod("Method").Value;
+				return method.GetParamFlags(paramIdx).HasFlag(.HasDefault);
+			}
+
+			[OnCompile(.TypeInit), Comptime]
+			static void Init()
+			{
+				let text = scope String();
+				for (int i = 0; i < 5; i++)
+					text.AppendF("public const bool cHasDefault{} = {};\n", i, HasDefault(i) ? "true" : "false");
+				Compiler.EmitTypeBody(typeof(Self), text);
+			}
+		}
+
 		struct Pos3f : Float3
 		{
 			[OnCompile(.TypeInit), Comptime]
@@ -746,6 +773,17 @@ namespace Tests
 
 			Test.Assert(DeclWalks.cFirst > 0);
 			Test.Assert(DeclWalks.cSecond == DeclWalks.cFirst);
+			// The declaration's defaults, as a flag: at comptime through the emitted constants, and
+			// at runtime through the same accessor
+			Test.Assert(!ParamDefaults.cHasDefault0);
+			Test.Assert(ParamDefaults.cHasDefault1);
+			Test.Assert(ParamDefaults.cHasDefault2);
+			Test.Assert(ParamDefaults.cHasDefault3);
+			Test.Assert(ParamDefaults.cHasDefault4);
+			let method = typeof(WithDefaults).GetMethod("Method").Value;
+			Test.Assert(!method.GetParamFlags(0).HasFlag(.HasDefault));
+			Test.Assert(method.GetParamFlags(1).HasFlag(.HasDefault));
+			Test.Assert(method.GetParamFlags(4).HasFlag(.HasDefault));
 		}
 	}
 }
