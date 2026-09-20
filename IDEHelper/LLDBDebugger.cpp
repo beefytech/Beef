@@ -326,6 +326,19 @@ void LLDBDebugger::OpenFile(const StringImpl& launchPath, const StringImpl& targ
 	mEnvBlock = envBlock;
 	mHotSwapEnabled = hotSwapEnabled;
 	mOpenFileFlags = openFileFlags;
+
+	// A stop that hasn't finished tearing down yet has to be completed here, so this session doesn't
+	// start against the old one's target (and get torn down with it)
+	if (mRunState == RunState_Terminating)
+	{
+		if (mLLDBProcess.IsValid())
+		{
+			mLLDBProcess.Destroy();
+			mLLDBProcess = lldb::SBProcess();
+		}
+		FinishStopDebugging();
+	}
+
 	HotResetState();
 	CreateOutputPipes();
 }
@@ -1065,6 +1078,15 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 
 void LLDBDebugger::Update()
 {
+	// Finish the teardown StopDebugging started
+	if ((mRunState == RunState_Terminating) && (mLLDBProcess.IsValid()))
+	{
+		mLLDBProcess.Destroy();
+		mLLDBProcess = lldb::SBProcess();
+		FinishStopDebugging();
+		return;
+	}
+
 	if (!mLLDBProcess.IsValid())
 		return;
 	if ((mRunState == RunState_NotStarted) || (mRunState == RunState_Terminating) || (mRunState == RunState_Terminated))
@@ -2215,13 +2237,14 @@ String LLDBDebugger::DisassembleAt(intptr address)
 					prevFilename = filename;
 				}
 			}
+			// The IDE counts source lines from 0, LLDB from 1
 			int line = lineEntry.GetLine();
 			if (line != prevLine)
 			{
 				if (prevLine == -1)
-					result += StrFormat("L %d 1\n", line);
+					result += StrFormat("L %d 1\n", line - 1);
 				else if (line > prevLine)
-					result += StrFormat("L %d %d\n", prevLine + 1, line - prevLine);
+					result += StrFormat("L %d %d\n", prevLine, line - prevLine);
 				prevLine = line;
 			}
 		}
@@ -5319,6 +5342,36 @@ void LLDBDebugger::HotClearStepTraps()
 // A breakpoint on a line at the very start of a hot-replaced method also resolves to the old copy's
 // entry, which now holds our jump - it would trap every call on its way to the new code. Frames still
 // running the old code use its other locations, so only those on the jump are disabled.
+// A breakpoint set on an instruction in the disassembly view comes as a line plus how many instructions
+// into it to go, so it's moved that far past the line's first instruction - as WinDebugger does
+void LLDBDebugger::ApplyBreakpointInstrOffset(LLDBBreakpoint* bp, lldb::SBBreakpoint& lldbBreakpoint)
+{
+	if ((bp->mInstrOffset <= 0) || (!lldbBreakpoint.IsValid()) || (lldbBreakpoint.GetNumLocations() == 0))
+		return;
+
+	uint64 lineAddr = 0;
+	for (uint32 locIdx = 0; (locIdx < lldbBreakpoint.GetNumLocations()) && (lineAddr == 0); locIdx++)
+	{
+		lldb::SBBreakpointLocation loc = lldbBreakpoint.GetLocationAtIndex(locIdx);
+		if ((loc.IsValid()) && (loc.IsEnabled()) && (loc.GetLoadAddress() != LLDB_INVALID_ADDRESS))
+			lineAddr = (uint64)loc.GetLoadAddress();
+	}
+	if (lineAddr == 0)
+		return;
+
+	lldb::SBInstructionList instructions = mLLDBTarget.ReadInstructions(lldb::SBAddress(lineAddr, mLLDBTarget), bp->mInstrOffset + 1);
+	if ((uint32)instructions.GetSize() <= (uint32)bp->mInstrOffset)
+		return;
+	uint64 wantAddr = (uint64)instructions.GetInstructionAtIndex((uint32)bp->mInstrOffset).GetAddress().GetLoadAddress(mLLDBTarget);
+	if ((wantAddr == 0) || (wantAddr == LLDB_INVALID_ADDRESS) || (wantAddr == lineAddr))
+		return;
+
+	mLLDBTarget.BreakpointDelete(lldbBreakpoint.GetID());
+	lldbBreakpoint = mLLDBTarget.BreakpointCreateByAddress((lldb::addr_t)wantAddr);
+	LLDBLog("CreateLineBreakpoint: %d instructions past 0x%llx -> 0x%llx\n", bp->mInstrOffset,
+		(unsigned long long)lineAddr, (unsigned long long)wantAddr);
+}
+
 // Like WinDebugger, a line breakpoint doesn't bind to rows the compiler marked as not a statement
 // (column 0), unless that's all the line has
 void LLDBDebugger::FilterNonStatementLocations(lldb::SBBreakpoint& lldbBreakpoint)
@@ -5377,6 +5430,7 @@ lldb::SBBreakpoint LLDBDebugger::CreateLineBreakpoint(LLDBBreakpoint* bp, int li
 	{
 		lldb::SBBreakpoint lldbBreakpoint = mLLDBTarget.BreakpointCreateByLocation(fileSpec, (uint32)(lineNum + 1));
 		FilterNonStatementLocations(lldbBreakpoint);
+		ApplyBreakpointInstrOffset(bp, lldbBreakpoint);
 		return lldbBreakpoint;
 	}
 
@@ -5384,6 +5438,7 @@ lldb::SBBreakpoint LLDBDebugger::CreateLineBreakpoint(LLDBBreakpoint* bp, int li
 	HotGetVersionModules(curVersion, modules);
 	lldb::SBBreakpoint lldbBreakpoint = mLLDBTarget.BreakpointCreateByLocation(fileSpec, (uint32)(lineNum + 1), 0, 0, modules);
 	FilterNonStatementLocations(lldbBreakpoint);
+	ApplyBreakpointInstrOffset(bp, lldbBreakpoint);
 	bp->mPendingHotBindIdx = HotFindVersionWithFile(fileSpec, curVersion);
 	LLDBLog("CreateLineBreakpoint %s:%d in compile %d (%d locations), next older compile %d\n", GetFileName(bp->mFilePath).c_str(), lineNum + 1,
 		curVersion, (int)lldbBreakpoint.GetNumLocations(), bp->mPendingHotBindIdx);
@@ -7323,10 +7378,18 @@ void LLDBDebugger::StopDebugging()
 
 	if (mLLDBProcess.IsValid())
 	{
-		mLLDBProcess.Destroy();
-		mLLDBProcess = lldb::SBProcess();
+		// Kill the program now, but leave the session for the next Update to tear down, so the IDE sees
+		// the run state go through 'terminating' (as it does with WinDebugger) before it starts another
+		mLLDBProcess.Kill();
+		mRunState = RunState_Terminating;
+		return;
 	}
 
+	FinishStopDebugging();
+}
+
+void LLDBDebugger::FinishStopDebugging()
+{
 	if (mLLDBTarget.IsValid())
 	{
 		mLLDBDebugger.DeleteTarget(mLLDBTarget);
@@ -7340,11 +7403,20 @@ void LLDBDebugger::StopDebugging()
 		mLLDBDebugger = lldb::SBDebugger();
 	}
 
+	for (auto bp : mBreakpoints)
+	{
+		bp->mLLDBBreakpoint = lldb::SBBreakpoint();
+		bp->mWatchpointIds.Clear();
+	}
+	mBreakpointIdMap.Clear();
+	mWatchpointIdMap.Clear();
+
 	mProcessId = 0;
 	mRunState = RunState_Terminated;
 	CloseOutputPipes();
 	RestoreTerminal();
 	HotRemoveDebugInfo();
+	LLDBLog("StopDebugging finished\n");
 }
 
 void LLDBDebugger::Terminate()

@@ -292,6 +292,8 @@ protected:
 	int HotFindVersionWithFile(const lldb::SBFileSpec& fileSpec, int belowHotIdx);
 	int HotGetModuleVersion(lldb::SBModule module);
 	void HotClearStepTraps();
+	void FinishStopDebugging();
+	void ApplyBreakpointInstrOffset(LLDBBreakpoint* bp, lldb::SBBreakpoint& lldbBreakpoint);
 	void FilterNonStatementLocations(lldb::SBBreakpoint& lldbBreakpoint);
 	void HotFilterBreakpointLocations(LLDBBreakpoint* bp);
 	void SetMemoryWatchpoint(LLDBBreakpoint* bp);
