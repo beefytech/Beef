@@ -3532,6 +3532,21 @@ String LLDBDebugger::BuildAutocomplete(lldb::SBFrame& frame, const StringImpl& e
 		if ((depth > 8) || (!type.IsValid()))
 			return;
 		type = type.GetCanonicalType();
+
+		// A hot compile can add methods, which only its own module knows about
+		const char* hotTypeName = type.GetUnqualifiedType().GetName();
+		if ((hotTypeName != NULL) && (depth < 8))
+		{
+			for (intptr versionIdx = mHotVersions.size() - 1; versionIdx >= 0; versionIdx--)
+			{
+				for (auto& module : mHotVersions[versionIdx].mModules)
+				{
+					lldb::SBType hotType = module.FindFirstType(hotTypeName);
+					if ((hotType.IsValid()) && (hotType.GetCanonicalType() != type))
+						_AddTypeMembers(hotType, wantsStatic, depth + 8);
+				}
+			}
+		}
 		if (!wantsStatic)
 		{
 			for (uint32 fieldIdx = 0; fieldIdx < type.GetNumberOfFields(); fieldIdx++)
@@ -4306,7 +4321,13 @@ static bool GetCallCType(lldb::SBType type, String& outName)
 		return true;
 	}
 	if ((basicType == lldb::eBasicTypeInvalid) || (basicType == lldb::eBasicTypeObjCID) || (basicType == lldb::eBasicTypeNullPtr))
+	{
+		// A Beef enum or other typed primitive is passed as the value it wraps
+		if ((canonical.GetNumberOfFields() == 1) && (canonical.GetFieldAtIndex(0).GetName() != NULL) &&
+			(strcmp(canonical.GetFieldAtIndex(0).GetName(), "$prim") == 0))
+			return GetCallCType(canonical.GetFieldAtIndex(0).GetType(), outName);
 		return false;
+	}
 	const char* name = canonical.GetName();
 	if (name == NULL)
 		return false;
@@ -4575,6 +4596,150 @@ lldb::SBValue LLDBDebugger::EvaluateBeefCall(lldb::SBFrame& frame, const StringI
 // find the method's current address (the patched original entry of a replaced method jumps to its newest
 // version) and call it through a function pointer cast. Returns an invalid value (and no error) if there's
 // no such method.
+// The default values a method declares ("int c = 1000"), read from its source - Beef's DWARF has no
+// place for them, while its Windows debug info records such a parameter as a constant. Returns one entry
+// per parameter, empty where the parameter has no default.
+bool LLDBDebugger::GetBeefMethodDefaults(const char* mangledName, Array<String>& outDefaults)
+{
+	outDefaults.Clear();
+	if (mangledName == NULL)
+		return false;
+
+	// Where the method is written
+	lldb::SBSymbolContextList functions = mLLDBTarget.FindFunctions(mangledName, lldb::eFunctionNameTypeAuto);
+	lldb::SBLineEntry declLine;
+	for (uint32 contextIdx = 0; (contextIdx < functions.GetSize()) && (!declLine.IsValid()); contextIdx++)
+	{
+		lldb::SBFunction function = functions.GetContextAtIndex(contextIdx).GetFunction();
+		if (function.IsValid())
+			declLine = function.GetStartAddress().GetLineEntry();
+	}
+	if (!declLine.IsValid())
+		return false;
+
+	char path[PATH_MAX] = { 0 };
+	declLine.GetFileSpec().GetPath(path, sizeof(path));
+	int bodyLine = (int)declLine.GetLine();
+	if ((path[0] == 0) || (bodyLine <= 0))
+		return false;
+
+	Array<String> lines;
+	{
+		FILE* file = fopen(path, "r");
+		if (file == NULL)
+			return false;
+		char lineText[4096];
+		while (fgets(lineText, sizeof(lineText), file) != NULL)
+			lines.Add(lineText);
+		fclose(file);
+	}
+	if (bodyLine > (int)lines.size())
+		return false;
+
+	// The parameter list is on the declaration, at or just above the body's first line
+	int parenLine = -1;
+	int parenIdx = -1;
+	for (int lineIdx = bodyLine - 1; (lineIdx >= 0) && (lineIdx >= bodyLine - 16); lineIdx--)
+	{
+		int closeCount = 0;
+		for (int charIdx = (int)lines[lineIdx].length() - 1; charIdx >= 0; charIdx--)
+		{
+			char c = lines[lineIdx][charIdx];
+			if (c == ')')
+				closeCount++;
+			else if ((c == '(') && (closeCount > 0) && (--closeCount == 0))
+			{
+				parenLine = lineIdx;
+				parenIdx = charIdx;
+				break;
+			}
+		}
+		if (parenLine != -1)
+			break;
+	}
+	if (parenLine == -1)
+		return false;
+
+	// The text between the parentheses, which may span lines
+	String paramText;
+	int depth = 0;
+	bool done = false;
+	for (int lineIdx = parenLine; (lineIdx < (int)lines.size()) && (!done); lineIdx++)
+	{
+		int startIdx = (lineIdx == parenLine) ? parenIdx : 0;
+		for (int charIdx = startIdx; charIdx < (int)lines[lineIdx].length(); charIdx++)
+		{
+			char c = lines[lineIdx][charIdx];
+			if (c == '(')
+			{
+				depth++;
+				if (depth == 1)
+					continue;
+			}
+			else if (c == ')')
+			{
+				if (--depth == 0)
+				{
+					done = true;
+					break;
+				}
+			}
+			if (depth >= 1)
+				paramText += (c == '\n') ? ' ' : c;
+		}
+	}
+	if (!done)
+		return false;
+
+	// One entry per parameter, holding the text after '=' when it has a default
+	String current;
+	int paramDepth = 0;
+	auto _AddParam = [&]()
+	{
+		int assignIdx = -1;
+		int checkDepth = 0;
+		for (int charIdx = 0; charIdx < (int)current.length(); charIdx++)
+		{
+			char c = current[charIdx];
+			if ((c == '(') || (c == '[') || (c == '<'))
+				checkDepth++;
+			else if ((c == ')') || (c == ']') || (c == '>'))
+				checkDepth--;
+			else if ((c == '=') && (checkDepth == 0) && (charIdx + 1 < (int)current.length()) && (current[charIdx + 1] != '='))
+			{
+				assignIdx = charIdx;
+				break;
+			}
+		}
+		String defaultText;
+		if (assignIdx != -1)
+		{
+			defaultText = current.Substring(assignIdx + 1);
+			defaultText.Trim();
+		}
+		outDefaults.Add(defaultText);
+		current.Clear();
+	};
+	for (int charIdx = 0; charIdx < (int)paramText.length(); charIdx++)
+	{
+		char c = paramText[charIdx];
+		if ((c == '(') || (c == '[') || (c == '<'))
+			paramDepth++;
+		else if ((c == ')') || (c == ']') || (c == '>'))
+			paramDepth--;
+		if ((c == ',') && (paramDepth == 0))
+		{
+			_AddParam();
+			continue;
+		}
+		current += c;
+	}
+	current.Trim();
+	if (!current.IsEmpty())
+		_AddParam();
+	return true;
+}
+
 lldb::SBValue LLDBDebugger::CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue thisValue, lldb::SBType staticType, const StringImpl& methodName,
 	const Array<lldb::SBValue>& args, bool allowCall, String& outError)
 {
@@ -4615,6 +4780,13 @@ lldb::SBValue LLDBDebugger::CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue t
 	bool hasExplicitThis = false;
 	bool thisListedInArgs = false;                   // whether LLDB shows 'this' among the arguments
 	bool thisByValue = false;
+	// A method that declares more parameters than were passed - usable if the rest have defaults
+	lldb::SBTypeMemberFunction defaultsMethod;
+	lldb::SBType defaultsMethodType;
+	int defaultsNumArgs = INT_MAX;
+	bool defaultsHasExplicitThis = false;
+	bool defaultsListsThis = false;
+	bool defaultsThisByValue = false;
 	auto _FindMethod = [&](lldb::SBType type, auto& findMethodRef, int depth) -> bool
 	{
 		if (depth > 16)
@@ -4664,8 +4836,21 @@ lldb::SBValue LLDBDebugger::CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue t
 					explicitThisByValue = (!explicitThis) && (argName != NULL) && (checkName != NULL) && (strcmp(argName, checkName) == 0);
 				}
 				bool listsThis = (explicitThis) || (explicitThisByValue);
-				if (func.GetNumberOfArguments() - (listsThis ? 1 : 0) != (uint32)args.size())
+				int declaredArgs = (int)func.GetNumberOfArguments() - (listsThis ? 1 : 0);
+				if (declaredArgs != (int)args.size())
+				{
+					// Keep the closest match in case the extra parameters have default values
+					if ((declaredArgs > (int)args.size()) && (declaredArgs < defaultsNumArgs))
+					{
+						defaultsMethod = func;
+						defaultsMethodType = checkType;
+						defaultsNumArgs = declaredArgs;
+						defaultsHasExplicitThis = (listsThis) || (func.GetKind() == lldb::eMemberFunctionKindInstanceMethod);
+						defaultsListsThis = listsThis;
+						defaultsThisByValue = explicitThisByValue;
+					}
 					continue;
+				}
 				method = func;
 				methodType = checkType;
 				// Beef always passes 'this' first, even where LLDB recognized the method as an instance
@@ -4683,10 +4868,51 @@ lldb::SBValue LLDBDebugger::CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue t
 		}
 		return false;
 	};
+	Array<lldb::SBValue> callArgs = args;
 	if (!_FindMethod(searchType, _FindMethod, 0))
 	{
-		LLDBLog("CallBeefMethod: no '%s' with %d args in %s\n", methodName.c_str(), (int)args.size(), searchType.GetName());
-		return lldb::SBValue();
+		// No exact match: a method with more parameters works if the ones left out have defaults
+		Array<String> defaults;
+		if ((defaultsMethod.IsValid()) && (GetBeefMethodDefaults(defaultsMethod.GetMangledName(), defaults)))
+		{
+			bool filledAll = true;
+			int paramOfs = defaultsListsThis ? 1 : 0;
+			for (int paramIdx = (int)args.size(); paramIdx < defaultsNumArgs; paramIdx++)
+			{
+				int declIdx = paramIdx + ((defaults.size() > (intptr)defaultsNumArgs) ? paramOfs : 0);
+				String defaultText = (declIdx < (int)defaults.size()) ? defaults[declIdx] : String();
+				if (defaultText.IsEmpty())
+				{
+					filledAll = false;
+					break;
+				}
+				String defaultError;
+				lldb::SBValue defaultValue = EvaluateBeefOperand(frame, defaultText, defaultError);
+				if ((!defaultValue.IsValid()) || (!defaultError.IsEmpty()))
+				{
+					filledAll = false;
+					break;
+				}
+				callArgs.Add(defaultValue);
+			}
+			if (filledAll)
+			{
+				method = defaultsMethod;
+				methodType = defaultsMethodType;
+				hasExplicitThis = defaultsHasExplicitThis;
+				thisListedInArgs = defaultsListsThis;
+				thisByValue = defaultsThisByValue;
+				LLDBLog("CallBeefMethod: '%s' with %d of %d args, the rest from its declared defaults\n",
+					methodName.c_str(), (int)args.size(), defaultsNumArgs);
+			}
+			else
+				callArgs = args;
+		}
+		if (!method.IsValid())
+		{
+			LLDBLog("CallBeefMethod: no '%s' with %d args in %s\n", methodName.c_str(), (int)args.size(), searchType.GetName());
+			return lldb::SBValue();
+		}
 	}
 
 	HotSymbol symbol;
@@ -4720,14 +4946,14 @@ lldb::SBValue LLDBDebugger::CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue t
 			const char* funcMangled = func.GetMangledName();
 			if ((funcMangled == NULL) || (strcmp(funcMangled, method.GetMangledName()) != 0))
 				continue;
-			if (func.GetNumberOfArguments() == (uint32)(thisArgTypes.size() + args.size()))
+			if (func.GetNumberOfArguments() == (uint32)(thisArgTypes.size() + callArgs.size()))
 			{
 				abiMethod = func;
 				foundLowered = true;
 				break;
 			}
 			// Or passed by pointer
-			if ((func.GetNumberOfArguments() == (uint32)(1 + args.size())) && (func.GetArgumentTypeAtIndex(0).GetCanonicalType().IsPointerType()))
+			if ((func.GetNumberOfArguments() == (uint32)(1 + callArgs.size())) && (func.GetArgumentTypeAtIndex(0).GetCanonicalType().IsPointerType()))
 			{
 				abiMethod = func;
 				thisArgTypes.Clear();
@@ -4783,7 +5009,7 @@ lldb::SBValue LLDBDebugger::CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue t
 		}
 		_AddArg("void*", StrFormat("0x%llx", (unsigned long long)thisAddr));
 	}
-	for (intptr argIdx = 0; argIdx < args.size(); argIdx++)
+	for (intptr argIdx = 0; argIdx < callArgs.size(); argIdx++)
 	{
 		String paramCType;
 		uint32 paramIdx = (uint32)argIdx + (thisByValue ? (uint32)thisArgTypes.size() : (thisListedInArgs ? 1 : 0));
@@ -4792,7 +5018,10 @@ lldb::SBValue LLDBDebugger::CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue t
 			outError = "Passing structs to methods isn't supported";
 			return lldb::SBValue();
 		}
-		lldb::SBValue argValue = args[argIdx];
+		lldb::SBValue argValue = callArgs[argIdx];
+		lldb::SBValue argPrimValue = GetBeefTypedPrimitiveValue(argValue);
+		if (argPrimValue.IsValid())
+			argValue = argPrimValue;
 		String argText;
 		lldb::SBType argType = argValue.GetType().GetCanonicalType();
 		if ((argType.IsPointerType()) || (argType.IsReferenceType()))

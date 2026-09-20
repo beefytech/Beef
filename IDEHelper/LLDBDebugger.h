@@ -249,6 +249,7 @@ protected:
 	lldb::SBValue EvaluateBeefOperand(lldb::SBFrame& frame, const StringImpl& expr, String& outError);
 	void SplitBeefArgs(const StringImpl& argsText, Array<String>& outArgs);
 	bool FlattenBeefStruct(lldb::SBValue value, Array<String>& outTypes, Array<String>& outTexts);
+	bool GetBeefMethodDefaults(const char* mangledName, Array<String>& outDefaults);
 	lldb::SBValue CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue thisValue, lldb::SBType staticType, const StringImpl& methodName,
 		const Array<lldb::SBValue>& args, bool allowCall, String& outError);
 	lldb::SBType GetBeefDynamicType(lldb::SBValue objectRef);
