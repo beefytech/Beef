@@ -467,6 +467,14 @@ namespace IDE
 										if (project != null)
 											projectOptions = gApp.GetCurProjectOptions(project);
 									}
+									// A test script has no project of its own, so project macros such as
+									//  $(TargetPath) resolve against the workspace's startup project
+									if (project == null)
+									{
+										project = gApp.mWorkspace.mStartupProject;
+										if (project != null)
+											projectOptions = gApp.GetCurProjectOptions(project);
+									}
 								}
 
 								String newStr = scope:: .();
@@ -1578,6 +1586,8 @@ namespace IDE
 			String dir = scope .();
 			dir.Set(gApp.mInstallDir);
 			var project = GetProject(true);
+			if (project == null)
+				project = gApp.mWorkspace.mStartupProject; // a test script runs in its startup project's directory
 			if (project?.mProjectDir.IsEmpty == false)
 				dir.Set(project.mProjectDir);
 			gApp.DoRun(exePath, exeArgs, dir, .None, null, null, runFlags);
