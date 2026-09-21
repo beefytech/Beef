@@ -2754,7 +2754,15 @@ BFP_EXPORT BfpTimeStamp BFP_CALLTYPE BfpFile_GetTime_LastWrite(const char* path)
     int result = stat(path, &statbuf);
     if (result != 0)
         return 0;
-    return statbuf.st_mtime;
+    // A BfpTimeStamp is a Windows file time (100ns ticks since 1601), which is what the
+    // Windows implementation and BfpFindFileData_GetTime_LastWrite return and what
+    // corlib's File.GetLastWriteTime decodes. Raw st_mtime seconds decoded that way read
+    // as a moment in 1601.
+#ifdef BF_PLATFORM_DARWIN
+    return BfpToTimeStamp(statbuf.st_mtimespec);
+#else
+    return BfpToTimeStamp(statbuf.st_mtim);
+#endif
 }
 
 BFP_EXPORT BfpFileAttributes BFP_CALLTYPE BfpFile_GetAttributes(const char* path, BfpFileResult* outResult)
