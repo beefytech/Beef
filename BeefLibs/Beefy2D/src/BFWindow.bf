@@ -54,6 +54,8 @@ namespace Beefy
 			NoMouse = 0x4000'0000,
             Tooltip = 0x8000'0000,
             LogicalCoords = 0x1'0000'0000,
+			// Skips the layered window style. Not for windows that use SetAlpha, SetMouseVisible or Menu
+			NoLayered = 0x2'0000'0000,
         };
 
 		[AllowDuplicates]
@@ -303,6 +305,12 @@ namespace Beefy
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern bool BFWindow_IsInRelativeMouseMode(void* window);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BFWindow_SetBorderlessFullscreen(void* window, bool fullscreen);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern bool BFWindow_IsBorderlessFullscreen(void* window);
 
         [CallingConvention(.Stdcall), CLink]
         static extern void* BFWindow_AddMenuItem(void* window, void* parent, int32 insertIdx, char8* text, char8* hotKey, void* bitmap, int32 enabled, int32 checkState, int32 radioCheck);
@@ -701,6 +709,14 @@ namespace Beefy
 		public bool IsInRelativeMouseMode()
 		{
 			return BFWindow_IsInRelativeMouseMode(mNativeWindow);
+		}
+
+		// Covers the window's current monitor with no frame or caption, at the desktop's own display
+		// mode. Leaving restores the previous placement.
+		public bool BorderlessFullscreen
+		{
+			get => BFWindow_IsBorderlessFullscreen(mNativeWindow);
+			set => BFWindow_SetBorderlessFullscreen(mNativeWindow, value);
 		}
 
         public virtual void* AddMenuItem(void* parent, int insertIdx, String text, String hotKey, void* bitmap, bool enabled, int checkState, bool radioCheck)

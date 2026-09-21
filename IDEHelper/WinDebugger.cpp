@@ -3102,10 +3102,12 @@ static BOOL CALLBACK WdEnumWindowsProc(HWND hwnd, LPARAM lParam)
 			hwnd = parentHWnd;
 			continue;
 		}
-		SetForegroundWindow(hwnd);
+		// A minimized window stays minimized, so this would only take the keyboard away from the IDE
+		if (!IsIconic(hwnd))
+			SetForegroundWindow(hwnd);
 		break;
 	}
-	
+
 	return TRUE;
 }
 

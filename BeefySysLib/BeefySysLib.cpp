@@ -448,6 +448,16 @@ BF_EXPORT bool BF_CALLTYPE BFWindow_IsInRelativeMouseMode(BFWindow* window)
 	return window->IsInRelativeMouseMode();
 }
 
+BF_EXPORT void BF_CALLTYPE BFWindow_SetBorderlessFullscreen(BFWindow* window, bool fullscreen)
+{
+	window->SetBorderlessFullscreen(fullscreen);
+}
+
+BF_EXPORT bool BF_CALLTYPE BFWindow_IsBorderlessFullscreen(BFWindow* window)
+{
+	return window->IsBorderlessFullscreen();
+}
+
 BF_EXPORT void BF_CALLTYPE BFWindow_SetClientPosition(BFWindow* window, int x, int y)
 {
 	window->SetClientPosition(x, y);

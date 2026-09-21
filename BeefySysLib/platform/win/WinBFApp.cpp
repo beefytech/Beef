@@ -153,7 +153,8 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		mMenu = aMenu;
 	}
 		
-	int windowFlagsEx = WS_EX_LAYERED;
+	// Window alpha and click-through need WS_EX_LAYERED, and a native menu bar stops drawing without it
+	int windowFlagsEx = (windowFlags & BFWINDOW_NO_LAYERED) ? 0 : WS_EX_LAYERED;
 
 	if (windowFlags & BFWINDOW_TOOLWINDOW)
 		windowFlagsEx |= WS_EX_TOOLWINDOW;
@@ -230,7 +231,7 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		hInstance,
 		0);
 
-	if ((windowFlags & BFWINDOW_ALPHA_MASK) == 0)
+	if (((windowFlagsEx & WS_EX_LAYERED) != 0) && ((windowFlags & BFWINDOW_ALPHA_MASK) == 0))
 		SetLayeredWindowAttributes(mHWnd, 0, 255, 0);
 
 	HWND relativeWindow = NULL;
@@ -265,8 +266,9 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 		WINDOWPLACEMENT wndPlacement = { sizeof(WINDOWPLACEMENT), 0 };
 		::GetWindowPlacement(mHWnd, &wndPlacement);
 
+		// SW_SHOWMINIMIZED activates, which would make a minimized window the foreground one
 		if (windowFlags & BFWINDOW_SHOWMINIMIZED)
-			wndPlacement.showCmd = SW_SHOWMINIMIZED;
+			wndPlacement.showCmd = (windowFlags & BFWINDOW_NO_ACTIVATE) ? SW_SHOWMINNOACTIVE : SW_SHOWMINIMIZED;
 		else if (windowFlags & BFWINDOW_SHOWMAXIMIZED)
 			wndPlacement.showCmd = SW_SHOWMAXIMIZED;
 		else
@@ -303,6 +305,9 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 	mAwaitKeyReleasesEventTick = 0;
 	mAwaitKeyReleasesCheckIdx = 0;
 	mFocusLostTick = ::GetTickCount();
+	mBorderlessFullscreen = false;
+	mWindowedStyle = 0;
+	mWindowedPlacement = { sizeof(WINDOWPLACEMENT), 0 };
 
 	if (windowFlags & BFWINDOW_DEST_ALPHA)
 	{
@@ -1174,6 +1179,8 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 			}
 			break;
 		case WM_TIMER:
+			if (mRelativeMouseMode)
+				PinCursorToCenter();
 			if (gBFApp->mSysDialogCnt == 0)
 			{
 				auto checkNonFake = this;
@@ -1711,7 +1718,11 @@ void WinBFWindow::GetPosition(int* x, int* y, int* width, int* height, int* clie
 void WinBFWindow::GetPlacement(int* normX, int* normY, int* normWidth, int* normHeight, int* showKind)
 {
 	WINDOWPLACEMENT wndPlacement = { sizeof(WINDOWPLACEMENT), 0 };
-	::GetWindowPlacement(mHWnd, &wndPlacement);
+	// The live "normal" rect is the monitor's while borderless fullscreen
+	if (mBorderlessFullscreen)
+		wndPlacement = mWindowedPlacement;
+	else
+		::GetWindowPlacement(mHWnd, &wndPlacement);
 	*normX = wndPlacement.rcNormalPosition.left;
 	*normY = wndPlacement.rcNormalPosition.top;
 	*normWidth = wndPlacement.rcNormalPosition.right - wndPlacement.rcNormalPosition.left;
@@ -1798,6 +1809,7 @@ void WinBFWindow::SetMouseVisible(bool isMouseVisible)
 {
 	mMouseVisible = isMouseVisible;
 	LONG aStyle = ::GetWindowLong(mHWnd, GWL_EXSTYLE);
+	BF_ASSERT((isMouseVisible) || ((aStyle & WS_EX_LAYERED) != 0));
 	if (!isMouseVisible)
 		aStyle |= WS_EX_TRANSPARENT;
 	else
@@ -1807,6 +1819,7 @@ void WinBFWindow::SetMouseVisible(bool isMouseVisible)
 
 void WinBFWindow::SetAlpha(float alpha, uint32 destAlphaSrcMask, bool isMouseVisible)
 {
+	BF_ASSERT((::GetWindowLong(mHWnd, GWL_EXSTYLE) & WS_EX_LAYERED) != 0);
 	if (destAlphaSrcMask != 0)
 	{
 		if (mAlphaMaskBitmap == NULL)
@@ -1930,18 +1943,25 @@ void WinBFWindow::StartRelativeMouseMode()
 	mRelativeMouseMode = true;
 	::GetCursorPos(&mSavedCursorPos);
 
-	// Clipped (not just hidden) so the hidden cursor can't wander onto another monitor or window --
-	// nothing to see, but it'd still be able to click things there.
-	RECT clientRect;
-	::GetClientRect(mHWnd, &clientRect);
-	POINT topLeft = { clientRect.left, clientRect.top };
-	POINT bottomRight = { clientRect.right, clientRect.bottom };
-	::ClientToScreen(mHWnd, &topLeft);
-	::ClientToScreen(mHWnd, &bottomRight);
-	RECT clipRect = { topLeft.x, topLeft.y, bottomRight.x, bottomRight.y };
-	::ClipCursor(&clipRect);
+	PinCursorToCenter();
 
 	::ShowCursor(FALSE);
+}
+
+// Movement comes from raw input, so where the hidden cursor sits only matters for what it can reach. Held at
+// the centre it never touches a screen edge (where an input-sharing tool hands it to another machine) and a
+// click can't land on another window. The clip is shared, system-wide state that anything can clear, hence
+// the re-check from WM_TIMER.
+void WinBFWindow::PinCursorToCenter()
+{
+	RECT clientRect;
+	::GetClientRect(mHWnd, &clientRect);
+	POINT center = { (clientRect.left + clientRect.right) / 2, (clientRect.top + clientRect.bottom) / 2 };
+	::ClientToScreen(mHWnd, &center);
+	RECT wantRect = { center.x - 1, center.y - 1, center.x + 1, center.y + 1 };
+	RECT curRect;
+	if ((!::GetClipCursor(&curRect)) || (!::EqualRect(&curRect, &wantRect)))
+		::ClipCursor(&wantRect);
 }
 
 void WinBFWindow::EndRelativeMouseMode()
@@ -1966,6 +1986,43 @@ void WinBFWindow::EndRelativeMouseMode()
 bool WinBFWindow::IsInRelativeMouseMode()
 {
 	return mRelativeMouseMode;
+}
+
+void WinBFWindow::SetBorderlessFullscreen(bool fullscreen)
+{
+	if (fullscreen == mBorderlessFullscreen)
+		return;
+
+	if (fullscreen)
+	{
+		MONITORINFO monitorInfo = { sizeof(MONITORINFO) };
+		if ((!::GetWindowPlacement(mHWnd, &mWindowedPlacement)) ||
+			(!::GetMonitorInfo(::MonitorFromWindow(mHWnd, MONITOR_DEFAULTTONEAREST), &monitorInfo)))
+			return;
+		mWindowedStyle = ::GetWindowLong(mHWnd, GWL_STYLE);
+		mBorderlessFullscreen = true;
+
+		::SetWindowLong(mHWnd, GWL_STYLE, (mWindowedStyle & ~WS_OVERLAPPEDWINDOW) | WS_POPUP);
+		RECT& rect = monitorInfo.rcMonitor;
+		::SetWindowPos(mHWnd, HWND_TOP, rect.left, rect.top, rect.right - rect.left, rect.bottom - rect.top,
+			SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+	}
+	else
+	{
+		mBorderlessFullscreen = false;
+		::SetWindowLong(mHWnd, GWL_STYLE, mWindowedStyle);
+		::SetWindowPlacement(mHWnd, &mWindowedPlacement);
+		::SetWindowPos(mHWnd, NULL, 0, 0, 0, 0,
+			SWP_NOMOVE | SWP_NOSIZE | SWP_NOZORDER | SWP_NOOWNERZORDER | SWP_FRAMECHANGED);
+	}
+
+	// WindowProc drops the WM_SIZE from above when this is reached from inside a message handler
+	mRenderWindow->Resized();
+	if (mMovedFunc != NULL)
+		mMovedFunc(this);
+
+	if (mRelativeMouseMode)
+		PinCursorToCenter();
 }
 
 // Called on genuine focus-gain (WM_SETFOCUS or the WM_TIMER-based foreground poller, see WindowProc) --

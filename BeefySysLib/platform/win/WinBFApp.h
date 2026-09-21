@@ -66,6 +66,9 @@ public:
 	DWORD					mFocusLostTick;
 	bool					mNeedsStateReset;
 	bool					mKeyLayoutHasAltGr;
+	bool					mBorderlessFullscreen;
+	LONG					mWindowedStyle; // GWL_STYLE to restore when leaving borderless fullscreen
+	WINDOWPLACEMENT			mWindowedPlacement;
 
 public:
 	virtual LRESULT WindowProc(HWND hWnd, UINT Msg, WPARAM wParam, LPARAM lParam);
@@ -74,6 +77,7 @@ public:
 	bool					CheckKeyReleases(bool isKeyDown);
 	void					GotFocus();
 	void					TryStartRelativeMouseModeIfWanted();
+	void					PinCursorToCenter();
 
 public:
 	WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags);
@@ -98,6 +102,8 @@ public:
 	virtual void			StartRelativeMouseMode() override;
 	virtual void			EndRelativeMouseMode() override;
 	virtual bool			IsInRelativeMouseMode() override;
+	virtual void			SetBorderlessFullscreen(bool fullscreen) override;
+	virtual bool			IsBorderlessFullscreen() override { return mBorderlessFullscreen; }
 	virtual int				GetDPI() override; // { return ::GetDpiForWindow(mHWnd); }
 	virtual bool			CaptureClientBits(uint32* outBits, int width, int height) override;
 
