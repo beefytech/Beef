@@ -153,6 +153,20 @@ namespace IDE.ui
             }
         }
 
+		public class CustomPage : Widget
+		{
+			public virtual bool HasChanges => false;
+
+			public virtual void GetTabWidgets(List<Widget> widgets)
+			{
+				widgets.Add(this);
+			}
+
+			public virtual bool Validate() => true;
+
+			public virtual bool ApplyChanges() => false;
+		}
+
         protected class PropPage
         {
 			public enum Flags
@@ -165,6 +179,9 @@ namespace IDE.ui
             public int32 mCategoryType;
             public DarkListView mPropertiesListView ~ delete _;
             public Dictionary<ListViewItem, PropEntry[]> mPropEntries = new .() ~ delete _;
+			public CustomPage mCustomContent ~ delete _;
+			public Widget Content => mCustomContent ?? (Widget)mPropertiesListView;
+
             public bool mHasChanges;
 			public Flags mFlags;
 
@@ -183,8 +200,8 @@ namespace IDE.ui
 						delete propEntry;
 					delete propEntryArr;
 				}
-				if (mPropertiesListView.mParent != null)
-					mPropertiesListView.RemoveSelf();
+				if (Content.mParent != null)
+					Content.RemoveSelf();
 			}
         }
 
@@ -568,6 +585,19 @@ namespace IDE.ui
 
 		public override bool HandleTab(int dir)
 		{
+			if (mPropPage?.mCustomContent != null)
+			{
+				let tabWidgets = scope List<Widget>();
+				for (let widget in mTabWidgets)
+				{
+					if (widget == mPropPage.mCustomContent)
+						mPropPage.mCustomContent.GetTabWidgets(tabWidgets);
+					else
+						tabWidgets.Add(widget);
+				}
+				return Widget.HandleTab(dir, tabWidgets);
+			}
+
 			if ((dir == 1) && (var propListView = mWidgetWindow.mFocusWidget as PropListView))
 			{
 				var selectedItem = propListView.GetRoot().FindFocusedItem();
@@ -605,8 +635,8 @@ namespace IDE.ui
 		{
 			if (mPropPage != null)
 			{
-				mTabWidgets.Remove(mPropPage.mPropertiesListView);
-				mPropPage.mPropertiesListView.RemoveSelf();
+				mTabWidgets.Remove(mPropPage.Content);
+				mPropPage.Content.RemoveSelf();
 				mPropPage = null;
 			}
 		}
@@ -619,6 +649,9 @@ namespace IDE.ui
 
 		protected void UpdateSearch()
 		{
+			if (mPropPage.mCustomContent != null)
+				return;
+
 			String searchStr = scope String();
 			if (mSearchEdit != null)
 			{
@@ -678,8 +711,8 @@ namespace IDE.ui
 		public void AddPropPageWidget()
 		{
 			int defaultButtonIdx = mTabWidgets.IndexOf(mDefaultButton);
-			mTabWidgets.Insert(defaultButtonIdx, mPropPage.mPropertiesListView);
-			AddWidget(mPropPage.mPropertiesListView);
+			mTabWidgets.Insert(defaultButtonIdx, mPropPage.Content);
+			AddWidget(mPropPage.Content);
 			UpdateSearch();
 		}
 
@@ -833,7 +866,7 @@ namespace IDE.ui
 				mCategorySelector.SetVisible(false);
 			}
 
-            mPropPage.mPropertiesListView.Resize(catRight + GS!(6), propTopY, Math.Max(mWidth - catRight - GS!(12), 0), Math.Max(mHeight - propTopY - GS!(32), 0));
+            mPropPage.Content.Resize(catRight + GS!(6), propTopY, Math.Max(mWidth - catRight - GS!(12), 0), Math.Max(mHeight - propTopY - GS!(32), 0));
 
             if (mPropEditWidget != null)
             {
@@ -867,14 +900,19 @@ namespace IDE.ui
             mCategorySelector.SetFocus();
         }
 
-        protected DarkListViewItem AddCategoryItem(DarkListViewItem parent, String name)
+        protected DarkListViewItem AddCategoryItem(DarkListViewItem parent, String name, int32 categoryType = -1)
         {
             var item = (CategoryListViewItem)parent.CreateChildItem();
             item.Label = name;
             item.mFocusColor = Color.Mult(DarkTheme.COLOR_TEXT, 0xFFA0A0A0);
             item.mOnMouseDown.Add(new => CategoryValueClicked);
-			item.mCategoryIdx = (int32)mCategoryListViewItems.Count;
-			mCategoryListViewItems.Add(item);
+			var categoryType;
+			if (categoryType < 0)
+				categoryType = (int32)mCategoryListViewItems.Count;
+			item.mCategoryIdx = categoryType;
+			while (mCategoryListViewItems.Count <= categoryType)
+				mCategoryListViewItems.Add(null);
+			mCategoryListViewItems[categoryType] = item;
             return item;
         }
 
@@ -1101,7 +1139,7 @@ namespace IDE.ui
 
         protected void CheckForChanges()
         {
-            bool hasChanges = HasChanges();
+            bool hasChanges = HasChanges() || (mPropPage.mCustomContent?.HasChanges ?? false);
             for (var propEntries in mPropPage.mPropEntries.Values)
             {
 				for (var propEntry in propEntries)
@@ -2111,7 +2149,7 @@ namespace IDE.ui
 			if (mCategorySelector.mVisible)
             	IDEUtils.DrawOutline(g, mCategorySelector);
 
-            IDEUtils.DrawOutline(g, mPropPage.mPropertiesListView, 0, 1);
+            IDEUtils.DrawOutline(g, mPropPage.Content, 0, 1);
 
 			if (mSearchEdit != null)
 			{

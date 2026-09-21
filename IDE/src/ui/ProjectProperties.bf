@@ -90,20 +90,22 @@ namespace IDE.ui
             
             var root = (DarkListViewItem)mCategorySelector.GetRoot();
 
-			var globalItem = AddCategoryItem(root, "General");
-            var item = AddCategoryItem(globalItem, "Project");
+			var globalItem = AddCategoryItem(root, "General", (int32)CategoryType.General);
+            var item = AddCategoryItem(globalItem, "Project", (int32)CategoryType.Project);
 			if (!project.IsDebugSession)
             	item.Focused = true;
-			AddCategoryItem(globalItem, "Dependencies");
-			AddCategoryItem(globalItem, "Beef");
-			AddCategoryItem(globalItem, "Platform");
-			AddCategoryItem(globalItem, "Managed");
+			AddCategoryItem(globalItem, "Dependencies", (int32)CategoryType.Dependencies);
+			AddCategoryItem(globalItem, "Beef", (int32)CategoryType.Beef_Global);
+			AddCategoryItem(globalItem, "Platform", (int32)CategoryType.Platform);
+			AddCategoryItem(globalItem, "Managed", (int32)CategoryType.Managed);
 			globalItem.Open(true, true);
 
-			var targetedItem = AddCategoryItem(root, "Targeted");
-			AddCategoryItem(targetedItem, "Beef");
-			AddCategoryItem(targetedItem, "Build");
-            item = AddCategoryItem(targetedItem, "Debugging");
+			AddProjectCategories(root);
+
+			var targetedItem = AddCategoryItem(root, "Targeted", (int32)CategoryType.Targeted);
+			AddCategoryItem(targetedItem, "Beef", (int32)CategoryType.Beef_Targeted);
+			AddCategoryItem(targetedItem, "Build", (int32)CategoryType.Build);
+            item = AddCategoryItem(targetedItem, "Debugging", (int32)CategoryType.Debugging);
 			if (project.IsDebugSession)
 				item.Focused = true;
 			targetedItem.Open(true, true);
@@ -112,6 +114,14 @@ namespace IDE.ui
 			if (project.IsDebugSession)
 				mHideSelector = true;
         }
+
+		protected virtual void AddProjectCategories(DarkListViewItem root)
+		{
+		}
+
+		protected virtual int32 PropertyCategoryCount => (int32)CategoryType.COUNT;
+
+		protected virtual CustomPage CreateCustomPage(int32 categoryType) => null;
 
 		public ~this()
 		{
@@ -552,7 +562,7 @@ namespace IDE.ui
                 {
 					key.mConfig = new String(key.mConfig);
 					key.mPlatform = new String(key.mPlatform);
-                    targetedConfigData = new ConfigDataGroup((int32)CategoryType.COUNT);
+                    targetedConfigData = new ConfigDataGroup(PropertyCategoryCount);
                     targetedConfigData.mTarget = key;
                     mTargetedConfigDatas[key] = targetedConfigData;
                 }
@@ -561,7 +571,7 @@ namespace IDE.ui
             {
                 if (mMultiTargetConfigData == null)
                 {
-                    mMultiTargetConfigData = new ConfigDataGroup((int32)CategoryType.COUNT);
+                    mMultiTargetConfigData = new ConfigDataGroup(PropertyCategoryCount);
 					mMultiTargetConfigData.mIsMultiTargeted = true;
                 }
                 targetedConfigData = mMultiTargetConfigData;
@@ -588,7 +598,10 @@ namespace IDE.ui
                 mPropPage.mPropertiesListView.mShowColumnGrid = true;
                 mPropPage.mPropertiesListView.mShowGridLines = true;
 
-                if (categoryType == CategoryType.Project)
+				mPropPage.mCustomContent = CreateCustomPage(categoryTypeInt);
+				if (mPropPage.mCustomContent != null)
+					mPropPage.mFlags = .None;
+                else if (categoryType == CategoryType.Project)
                     PopulateGeneralOptions();
                 else if (categoryType == CategoryType.Dependencies)
                     PopulateDependencyOptions();
@@ -1161,6 +1174,18 @@ namespace IDE.ui
 				return false;
 			}
 
+			for (let configData in mConfigDatas)
+			{
+				for (let page in configData.mPropPages)
+				{
+					if ((page?.mCustomContent != null) && (!page.mCustomContent.Validate()))
+					{
+						mCategoryListViewItems[page.mCategoryType].Focused = true;
+						return false;
+					}
+				}
+			}
+
             bool hadChange = false;
 
             /*if (!AssertNotCompilingOrRunning())
@@ -1177,7 +1202,7 @@ namespace IDE.ui
                         if (propPage == null)
                             continue;
 
-						bool configDataHadChange = false;
+						bool configDataHadChange = propPage.mCustomContent?.ApplyChanges() ?? false;
                         for (var propEntries in propPage.mPropEntries.Values)
                         {
 							for (var propEntry in propEntries)
