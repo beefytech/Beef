@@ -62,25 +62,45 @@ struct AdjustedMonRect
 	int mHeight;
 };
 
-static BOOL ClipToMonitor(HMONITOR mon, HDC hdc, LPRECT monRect, LPARAM userArg)
+struct ClipMonRect
 {
-	AdjustedMonRect* outRect = (AdjustedMonRect*)userArg;
+	int mMonCount;
+	int mX;
+	int mY;
+	int mWidth;
+	int mHeight;
+	int64 mBestArea;
+	RECT mBestWork;
+};
+
+// Picks the monitor a rect most belongs to, by the area it covers of each monitor's work
+//  area. A rect that straddles a seam is passed to this for every monitor it touches, so
+//  clamping against each in turn would let whichever is enumerated last decide - which can
+//  shove a popup onto a monitor it barely overlapped. We choose first and clamp once.
+static BOOL SelectClipMonitor(HMONITOR mon, HDC hdc, LPRECT monRect, LPARAM userArg)
+{
+	ClipMonRect* clipRect = (ClipMonRect*)userArg;
 
 	MONITORINFO monitorInfo = { sizeof(MONITORINFO) };
 	if (::GetMonitorInfo(mon, &monitorInfo) == 0)
 		return TRUE;
 
-	outRect->mMonCount++;
+	clipRect->mMonCount++;
 
-	if (outRect->mX < monitorInfo.rcWork.left)
-		outRect->mX = monitorInfo.rcWork.left;
- 	else if (outRect->mX + outRect->mWidth >= monitorInfo.rcWork.right)
-		outRect->mX = BF_MAX((int)monitorInfo.rcWork.left, monitorInfo.rcWork.right - outRect->mWidth);
+	int left = BF_MAX(clipRect->mX, (int)monitorInfo.rcWork.left);
+	int top = BF_MAX(clipRect->mY, (int)monitorInfo.rcWork.top);
+	int right = BF_MIN(clipRect->mX + clipRect->mWidth, (int)monitorInfo.rcWork.right);
+	int bottom = BF_MIN(clipRect->mY + clipRect->mHeight, (int)monitorInfo.rcWork.bottom);
 
- 	if (outRect->mY < monitorInfo.rcWork.top)
-		outRect->mY = monitorInfo.rcWork.top;
- 	else if (outRect->mY + outRect->mHeight >= monitorInfo.rcWork.bottom)
-		outRect->mY = BF_MAX((int)monitorInfo.rcWork.top, monitorInfo.rcWork.bottom - outRect->mHeight);
+	int64 area = 0;
+	if ((right > left) && (bottom > top))
+		area = (int64)(right - left) * (bottom - top);
+
+	if ((clipRect->mMonCount == 1) || (area > clipRect->mBestArea))
+	{
+		clipRect->mBestArea = area;
+		clipRect->mBestWork = monitorInfo.rcWork;
+	}
 
 	return TRUE;
 }
@@ -192,16 +212,25 @@ WinBFWindow::WinBFWindow(BFWindow* parent, const StringImpl& title, int x, int y
 
 	if (windowFlags & BFWINDOW_POPUP_POSITION)
 	{
-		AdjustedMonRect adjustRect = { 0, x, y, width, height };
+		ClipMonRect clipRect = { 0, x, y, width, height };
 		RECT wantRect = { x, y, x + width, y + height };
 
-		EnumDisplayMonitors(NULL, &wantRect, ClipToMonitor, (LPARAM)&adjustRect);
-		if (adjustRect.mMonCount == 0)
-			EnumDisplayMonitors(NULL, NULL, ClipToMonitor, (LPARAM)&adjustRect);
-		x = adjustRect.mX;
-		y = adjustRect.mY;
-		width = adjustRect.mWidth;
-		height = adjustRect.mHeight;
+		EnumDisplayMonitors(NULL, &wantRect, SelectClipMonitor, (LPARAM)&clipRect);
+		if (clipRect.mMonCount == 0)
+			EnumDisplayMonitors(NULL, NULL, SelectClipMonitor, (LPARAM)&clipRect);
+
+		if (clipRect.mMonCount != 0)
+		{
+			if (x < clipRect.mBestWork.left)
+				x = clipRect.mBestWork.left;
+			else if (x + width >= clipRect.mBestWork.right)
+				x = BF_MAX((int)clipRect.mBestWork.left, (int)clipRect.mBestWork.right - width);
+
+			if (y < clipRect.mBestWork.top)
+				y = clipRect.mBestWork.top;
+			else if (y + height >= clipRect.mBestWork.bottom)
+				y = BF_MAX((int)clipRect.mBestWork.top, (int)clipRect.mBestWork.bottom - height);
+		}
 	}
 
 	mFlags = windowFlags;
