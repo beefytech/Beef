@@ -1,13 +1,13 @@
 @ECHO OFF
 
 @ECHO Downloading Emscripten...
-..\bin\curl.exe -O https://www.beeflang.org/EmsdkDep2.zip
+..\bin\curl.exe -O https://www.beeflang.org/EmsdkDep3.zip
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 @ECHO Extracting Emscripten...
 cd ..
-bin\tar.exe -xf wasm\EmsdkDep2.zip
+bin\tar.exe -xf wasm\EmsdkDep3.zip
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
-del wasm\EmsdkDep2.zip
+del wasm\EmsdkDep3.zip
 @IF %ERRORLEVEL% NEQ 0 GOTO HADERROR
 
 :SUCCESS
