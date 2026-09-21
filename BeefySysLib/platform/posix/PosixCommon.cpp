@@ -1600,6 +1600,15 @@ BFP_EXPORT int BFP_CALLTYPE BfpSpawn_GetProcessId(BfpSpawn* spawn)
     return spawn->mPid;
 }
 
+// A child that a signal killed has no exit status, and WEXITSTATUS reads as 0 for it, so
+//  a crashed child looked like a successful one. Report it the way a shell does instead
+static int GetSpawnExitCode(int status)
+{
+	if (WIFSIGNALED(status))
+		return 128 + WTERMSIG(status);
+	return WEXITSTATUS(status);
+}
+
 bool BfpSpawn_WaitFor(BfpSpawn* spawn, int waitMS, int* outExitCode, BfpSpawnResult* outResult)
 {
     if (spawn->mExited)
@@ -1627,7 +1636,7 @@ bool BfpSpawn_WaitFor(BfpSpawn* spawn, int waitMS, int* outExitCode, BfpSpawnRes
 			return false;
 
 		if (outExitCode != NULL)
-			*outExitCode = WEXITSTATUS(spawn->mStatus);
+			*outExitCode = GetSpawnExitCode(spawn->mStatus);
 		return true;
 	}
 
@@ -1671,7 +1680,7 @@ bool BfpSpawn_WaitFor(BfpSpawn* spawn, int waitMS, int* outExitCode, BfpSpawnRes
 		return false;
 
 	if (outExitCode != NULL)
-		*outExitCode = WEXITSTATUS(spawn->mStatus);
+		*outExitCode = GetSpawnExitCode(spawn->mStatus);
 
 	return true;
 #else
