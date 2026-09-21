@@ -86,6 +86,7 @@ public:
 
 	uint32 mLastProcessTick;
 	float mPhysFrameTimeAcc;
+	float mPhysFrameTimeErr; // Elapsed time not yet handed to mPhysFrameTimeAcc
 
 	BFApp_UpdateFunc		mUpdateFunc;
 	BFApp_UpdateFFunc		mUpdateFFunc;

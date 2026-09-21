@@ -2883,6 +2883,10 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 				destVtx->mColor = srcVtxData->mColor;
 				destVtx->mInstanceIdx = 0;
 				ModelPackBoneData(*srcVtxData, &destVtx->mBoneIndices, &destVtx->mBoneWeights);
+				// An override's albedo replaces the model's own even when the rest of its material can't
+				// ride the vertices (a normal map needs the tangent).
+				if (surfaceOverride != NULL)
+					destVtx->mColor = surfaceOverride->mColor;
 				if (mUseSurfaceMaterials)
 				{
 					destVtx->mBumpTexCoords = TexCoords(modelPrims->mRoughness, modelPrims->mMetallic);
@@ -2891,7 +2895,6 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 					{
 						destVtx->mBumpTexCoords = TexCoords(surfaceOverride->mRoughness, surfaceOverride->mMetallic);
 						destVtx->mTangent = surfaceOverride->mEmissive;
-						destVtx->mColor = surfaceOverride->mColor;
 					}
 				}
 			}

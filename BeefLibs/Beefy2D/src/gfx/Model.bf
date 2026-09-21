@@ -233,19 +233,23 @@ namespace Beefy.gfx
             }
         }
 
-        public static ModelDef LoadModel(String fileName, String baseDir)
-        {
+		public static ModelDef LoadModel(String fileName, String baseDir)
+		{
+			// Geometry import is CPU-only, including command-line asset inspection.
+			void* nativeVertexDef = null;
+			if (VertexDef.sVertexDefinition != null)
+				nativeVertexDef = VertexDef.sVertexDefinition.mNativeVertexDefinition;
 			void* nativeModelDef = null;
 			if ((fileName.EndsWith(".gltf", .OrdinalIgnoreCase)) || (fileName.EndsWith(".glb", .OrdinalIgnoreCase)))
-				nativeModelDef = Res_OpenGLTF(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
+				nativeModelDef = Res_OpenGLTF(fileName, baseDir, nativeVertexDef);
 			else if (fileName.EndsWith(".fbx", .OrdinalIgnoreCase))
-            	nativeModelDef = Res_OpenFBX(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
+				nativeModelDef = Res_OpenFBX(fileName, baseDir, nativeVertexDef);
 			else
-				nativeModelDef = Res_OpenModel(fileName, baseDir, VertexDef.sVertexDefinition.mNativeVertexDefinition);
-            if (nativeModelDef == null)
-                return null;
-            return new ModelDef(nativeModelDef);            
-        }
+				nativeModelDef = Res_OpenModel(fileName, baseDir, nativeVertexDef);
+			if (nativeModelDef == null)
+				return null;
+			return new ModelDef(nativeModelDef);
+		}
 
         public ModelInstance CreateInstance(ModelCreateFlags flags = .None)
         {

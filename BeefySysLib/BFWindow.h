@@ -63,7 +63,8 @@ enum : int64
 	BFWINDOW_NOSHOW			= 0x20000000,
 	BFWINDOW_NO_MOUSE       = 0x40000000,
 	BFWINDOW_TOOLTIP        = 0x80000000,
-	BFWINDOW_LOGICAL_COORDS	= 0x100000000
+	BFWINDOW_LOGICAL_COORDS	= 0x100000000,
+	BFWINDOW_NO_LAYERED		= 0x200000000
 };
 
 class RenderWindow;
@@ -174,6 +175,10 @@ public:
 	virtual void			StartRelativeMouseMode() {}
 	virtual void			EndRelativeMouseMode() {}
 	virtual bool			IsInRelativeMouseMode() { return false; }
+	// Covers the window's current monitor with no frame or caption, at the desktop's own display
+	// mode. Leaving restores the previous placement.
+	virtual void			SetBorderlessFullscreen(bool fullscreen) {}
+	virtual bool			IsBorderlessFullscreen() { return false; }
 	virtual void			LostFocus(BFWindow* newFocus) = 0;
 	virtual int				GetDPI() { return 0; }
 	virtual bool			CaptureClientBits(uint32* outBits, int width, int height) { return false; }

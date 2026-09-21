@@ -20,6 +20,7 @@ BFApp::BFApp()
 	mRefreshRate = 60;	
 	mLastProcessTick = BFTickCount();
 	mPhysFrameTimeAcc = 0;
+	mPhysFrameTimeErr = 0;
 	mDrawEnabled = true;
 	
 	mUpdateFunc = NULL;
@@ -183,17 +184,18 @@ void BFApp::Process()
 		mUpdateSampleTimes = 0;
 	}
         		
-	mPhysFrameTimeAcc += tickNow - mLastProcessTick;
-        	
+	// Waiting on the vblank makes a pass a whole number of refreshes long, which keeps motion even, but that
+	// number isn't always one. What rounding leaves behind is carried into the next pass: dropping it
+	// slows the update rate whenever a frame takes longer than a refresh.
+	mPhysFrameTimeErr += tickNow - mLastProcessTick;
+	float timeAdvance = mPhysFrameTimeErr;
 	if (didVBlankWait)
-	{
-		// Try to keep time synced with vblank
-		if (mPhysFrameTimeAcc < physTicksPerFrame * 2)
-		{
-			float timeAdjust = physTicksPerFrame - mPhysFrameTimeAcc + 0.001f;
-			mPhysFrameTimeAcc += timeAdjust;				
-		}
-	}
+		timeAdvance = floorf(mPhysFrameTimeErr / physTicksPerFrame + 0.5f) * physTicksPerFrame;
+	mPhysFrameTimeErr -= timeAdvance;
+	// In step with the display, its clock is the one to follow: let tick rounding and clock skew fade out
+	if ((didVBlankWait) && (timeAdvance == physTicksPerFrame))
+		mPhysFrameTimeErr *= 0.98f;
+	mPhysFrameTimeAcc = BF_MAX(mPhysFrameTimeAcc, 0.001f) + timeAdvance;
 
     /*if (updates > 2)
         OutputDebugStrF("Updates: %d  TickDelta: %d\n", updates, tickNow - mLastProcessTick);*/	

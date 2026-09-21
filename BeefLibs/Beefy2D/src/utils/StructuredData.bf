@@ -1897,7 +1897,9 @@ namespace Beefy.utils
 							case 'L':
 								ThrowUnimplemented();
 							default:
-								if (strView.Contains('.'))
+								if ((strView.Contains('.')) ||
+									(((strView.Contains('e')) || (strView.Contains('E'))) &&
+									(!strView.StartsWith("0x", .OrdinalIgnoreCase)) && (!strView.StartsWith("-0x", .OrdinalIgnoreCase))))
 								{
 								    aValue = new:mBumpAllocator box (float)float.Parse(strView);
 								}
