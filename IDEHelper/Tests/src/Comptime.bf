@@ -653,6 +653,23 @@ namespace Tests
 			public BigComptimeJob mJob;
 		}
 
+		/// The alias is what the generator reflects; the function type it names is used
+		/// nowhere else, so the reflection is what has to populate it.
+		public typealias UnusedFactory = function int32(int32 a);
+
+		class AliasReflection
+		{
+			[OnCompile(.TypeInit), Comptime]
+			static void Init()
+			{
+				let alias = typeof(UnusedFactory);
+				let text = scope String();
+				text.AppendF("public const int32 cAliasId = {};\n", (int32)alias.TypeId);
+				text.AppendF("public const int32 cUnderlyingId = {};\n", (int32)alias.UnderlyingType.TypeId);
+				Compiler.EmitTypeBody(typeof(Self), text);
+			}
+		}
+
 		struct Pos3f : Float3
 		{
 			[OnCompile(.TypeInit), Comptime]
@@ -828,6 +845,10 @@ namespace Tests
 			// An attribute constructed right after a job that made the context grow
 			Test.Assert(BigComptimeJob.cLast == 1);
 			Test.Assert(StampedAfterBigJob.cStamp == 77);
+			// Reflecting an alias at comptime populates the type it names
+			Test.Assert(AliasReflection.cAliasId != 0);
+			Test.Assert(AliasReflection.cUnderlyingId != 0);
+			Test.Assert(AliasReflection.cUnderlyingId != AliasReflection.cAliasId);
 		}
 	}
 }
