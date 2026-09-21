@@ -1,0 +1,4 @@
+Projects = {SlotRebuild = {Path = "."}}
+
+[Workspace]
+StartupProject = "SlotRebuild"

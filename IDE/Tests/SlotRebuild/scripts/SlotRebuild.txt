@@ -1,0 +1,20 @@
+# Checks that modules keep their interface slot dependency across compiles, without the
+# debugger: the program writes a file when it reaches Main, and ReadFile fails the script if
+# the file is missing. The second compile grows the interface slot count; with stale vdata
+# offsets the rebuilt program crashes before Main and never writes the file.
+
+ShowFile("src/Virtuals.bf")
+
+TryDeleteFile("$(WorkspaceDir)/slot_sentinel.txt")
+Compile()
+Execute("$(TargetPath)")
+ReadFile("$(WorkspaceDir)/slot_sentinel.txt", "firstRun")
+
+TryDeleteFile("$(WorkspaceDir)/slot_sentinel.txt")
+ToggleCommentAt("ClassA_IFaces")
+ToggleCommentAt("Test_IFaces")
+Compile()
+Execute("$(TargetPath)")
+ReadFile("$(WorkspaceDir)/slot_sentinel.txt", "secondRun")
+
+TryDeleteFile("$(WorkspaceDir)/slot_sentinel.txt")
