@@ -1516,10 +1516,15 @@ void BfModule::StartExtension()
 
 	bool wasAwaitingInitFinish = mAwaitingInitFinish;
 	int prevOnDemandMethodCount = mOnDemandMethodCount;
+	// An extension keeps the code already generated for this module, so it keeps that code's
+	//  interface slot dependency too. Init resets mUsedSlotCount, and losing it here left the
+	//  retained code's vdata offsets unaccounted for when the slot count next changed
+	int16 prevUsedSlotCount = mUsedSlotCount;
 	Init(false);
 	if (!wasAwaitingInitFinish)
 		FinishInit();
 	mOnDemandMethodCount = prevOnDemandMethodCount;
+	mUsedSlotCount = prevUsedSlotCount;
 }
 
 void BfModule::GetConstClassValueParam(BfIRValue classVData, SizedArrayImpl<BfIRValue>& typeValueParams)
