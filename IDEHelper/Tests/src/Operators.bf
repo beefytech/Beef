@@ -894,6 +894,35 @@ namespace Tests
 			}
 		}
 
+		/// Inlined assignment operators over the same parameter type. They mangled to the
+		/// same empty name, told apart only by the method index the function got, which the
+		/// debug info did not - so LLVM's verifier rejected the module in a debug compiler.
+		struct InlineOpVec
+		{
+			public float mX;
+
+			public this(float x)
+			{
+				mX = x;
+			}
+
+			[Inline] public void operator+=(InlineOpVec r) mut { mX += r.mX; }
+			[Inline] public void operator-=(InlineOpVec r) mut { mX -= r.mX; }
+			[Inline] public void operator*=(InlineOpVec r) mut { mX *= r.mX; }
+		}
+
+		[Test]
+		public static void TestInlineAssignmentOperators()
+		{
+			InlineOpVec a = .(2);
+			a += .(3);
+			Test.Assert(a.mX == 5);
+			a -= .(1);
+			Test.Assert(a.mX == 4);
+			a *= .(3);
+			Test.Assert(a.mX == 12);
+		}
+
 		[Test]
 		public static void TestInParamOperators()
 		{

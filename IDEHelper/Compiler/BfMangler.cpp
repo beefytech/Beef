@@ -839,6 +839,59 @@ String BfGNUMangler::Mangle(BfMethodInstance* methodInst)
 			case BfBinaryOp_As:
 				methodName = "2as";
 				break;
+			case BfBinaryOp_Compare:
+				methodName = "ss";
+				break;
+			default: break;
+			}
+
+			// The assignment operators, which otherwise mangle to an empty name and rely on the
+			// method index to tell 'operator+=' from 'operator-=' - which the debug info does not,
+			// so LLVM's verifier rejects the module
+			switch (operatorDef->mOperatorDeclaration->mAssignOp)
+			{
+			case BfAssignmentOp_Assign:
+				methodName = "aS";
+				break;
+			case BfAssignmentOp_Add:
+				methodName = "pL";
+				break;
+			case BfAssignmentOp_Subtract:
+				methodName = "mI";
+				break;
+			case BfAssignmentOp_Multiply:
+				methodName = "mL";
+				break;
+			case BfAssignmentOp_OverflowAdd:
+				methodName = "opL";
+				break;
+			case BfAssignmentOp_OverflowSubtract:
+				methodName = "omI";
+				break;
+			case BfAssignmentOp_OverflowMultiply:
+				methodName = "omL";
+				break;
+			case BfAssignmentOp_Divide:
+				methodName = "dV";
+				break;
+			case BfAssignmentOp_Modulus:
+				methodName = "rM";
+				break;
+			case BfAssignmentOp_ShiftLeft:
+				methodName = "lS";
+				break;
+			case BfAssignmentOp_ShiftRight:
+				methodName = "rS";
+				break;
+			case BfAssignmentOp_BitwiseAnd:
+				methodName = "aN";
+				break;
+			case BfAssignmentOp_BitwiseOr:
+				methodName = "oR";
+				break;
+			case BfAssignmentOp_ExclusiveOr:
+				methodName = "eO";
+				break;
 			default: break;
 			}
 
