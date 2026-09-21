@@ -4616,7 +4616,8 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		else if ((type->IsInstanceOf(module->mCompiler->mSpanTypeDef)) && (isParams))
 		{
 			auto elemType = type->GetUnderlyingType();
-			addr_ce elemsAddr = CeMalloc(elemType->GetStride() * aggConstant->mValues.size()) - mMemory.mVals;
+			uint8* elemsPtr = CeMalloc(elemType->GetStride() * aggConstant->mValues.size());
+			addr_ce elemsAddr = (addr_ce)(elemsPtr - mMemory.mVals);
 
 			for (int i = 0; i < (int)aggConstant->mValues.size(); i++)
 			{
@@ -5290,8 +5291,13 @@ BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfI
 	SetAndRestoreValue<bool> prevIgnoreWrites(module->mBfIRBuilder->mIgnoreWrites, true);
 
 	module->mContext->mUnreifiedModule->PopulateType(customAttribute->mType);
-	if (ceAttrAddr == 0)	
-		ceAttrAddr = CeMallocZero(customAttribute->mType->mSize) - mMemory.mVals;			
+	if (ceAttrAddr == 0)
+	{
+		// Two statements: the allocation can grow mMemory and move mVals, and the operands of
+		// '-' are unsequenced, so MSVC read the old base before the call
+		uint8* attrPtr = CeMallocZero(customAttribute->mType->mSize);
+		ceAttrAddr = (addr_ce)(attrPtr - mMemory.mVals);
+	}
 	BfIRValue ceAttrVal = module->mBfIRBuilder->CreateConstAggCE(module->mBfIRBuilder->MapType(customAttribute->mType, BfIRPopulateType_Identity), ceAttrAddr);
 	BfTypedValue ceAttrTypedValue(ceAttrVal, customAttribute->mType);
 

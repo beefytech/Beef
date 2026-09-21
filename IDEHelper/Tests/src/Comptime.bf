@@ -612,6 +612,47 @@ namespace Tests
 			}
 		}
 
+		/// A comptime job whose memory outgrows what a context carries over, so the context
+		/// that runs the next attribute starts from a bare stack and the attribute's own
+		/// allocation is the one that has to grow the buffer
+		class BigComptimeJob
+		{
+			[OnCompile(.TypeInit), Comptime]
+			static void Init()
+			{
+				let bytes = new uint8[9 * 1024 * 1024];
+				bytes[bytes.Count - 1] = 1;
+				Compiler.EmitTypeBody(typeof(Self), scope $"public const int cLast = {bytes[bytes.Count - 1]};\n");
+				delete bytes;
+			}
+		}
+
+		[AttributeUsage(.Class)]
+		struct StampAttribute : Attribute, IComptimeTypeApply
+		{
+			int32 mValue;
+
+			public this(int32 value)
+			{
+				mValue = value;
+			}
+
+			[Comptime]
+			public void ApplyToType(Type type)
+			{
+				Compiler.EmitTypeBody(type, scope $"public const int32 cStamp = {mValue};\n");
+			}
+		}
+
+		/// The field forces BigComptimeJob first; the attribute is then constructed in a
+		/// context whose buffer was reallocated by that very allocation, which is where an
+		/// unsequenced 'alloc - base' read the base from before the move
+		[Stamp(77)]
+		class StampedAfterBigJob
+		{
+			public BigComptimeJob mJob;
+		}
+
 		struct Pos3f : Float3
 		{
 			[OnCompile(.TypeInit), Comptime]
@@ -784,6 +825,9 @@ namespace Tests
 			Test.Assert(!method.GetParamFlags(0).HasFlag(.HasDefault));
 			Test.Assert(method.GetParamFlags(1).HasFlag(.HasDefault));
 			Test.Assert(method.GetParamFlags(4).HasFlag(.HasDefault));
+			// An attribute constructed right after a job that made the context grow
+			Test.Assert(BigComptimeJob.cLast == 1);
+			Test.Assert(StampedAfterBigJob.cStamp == 77);
 		}
 	}
 }
