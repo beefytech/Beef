@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 
 namespace SlotRebuild
 {
@@ -7,12 +6,9 @@ namespace SlotRebuild
 	{
 		public static void Main()
 		{
-			int result = Virtuals.Test();
-
-			// The test script asserts on this file rather than on anything read through the
-			//  debugger. With stale interface slot offsets the process dies before reaching
-			//  Main, so the file is never written
-			File.WriteAllText("slot_sentinel.txt", scope $"ok {result}").IgnoreError();
+			// A failed assert exits non-zero, and so does a crash before reaching Main, which is
+			//  what a stale interface slot table causes. Either fails the test script's Execute
+			Runtime.Assert(Virtuals.Test() == 2099 + 234);
 		}
 	}
 }
