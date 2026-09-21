@@ -70,6 +70,11 @@ public:
 	SdlClipboardData        mSdlClipboardData;
 	SDL_GLContext           mGLContext;
 	SDL_Window*				mGLContextWindow;
+	bool					mGLContextTransparent;
+	// Context for windows whose transparency differs from mGLContext's window. A transparent (DestAlpha)
+	// window gets an ARGB visual, and some drivers (NVIDIA GLX: BadMatch) won't make a context created for
+	// an opaque visual current on it. This context shares mGLContext's objects.
+	SDL_GLContext           mGLAltContext;
 	bool					mInMsgProc;
 	bool					mSDLInitialized;
 
@@ -96,6 +101,7 @@ public:
 
 	virtual BFWindow*		CreateNewWindow(BFWindow* parent, const StringImpl& title, int x, int y, int width, int height, int64 windowFlags) override;
 	virtual DrawLayer*		CreateDrawLayer(BFWindow* window) override;
+	SDL_GLContext			GetGLContext(SDL_Window* window, bool transparent);
 
 	virtual void*			GetClipboardData(const StringImpl& format, int* size) override;
 	virtual void			ReleaseClipboardData(void* ptr) override;
