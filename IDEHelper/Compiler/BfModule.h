@@ -1611,7 +1611,8 @@ public:
 	int mOnDemandMethodCount;
 	int mLastModuleWrittenRevision;
 	int mCurLocalMethodId;
-	int16 mUsedSlotCount; // -1 = not used, 0 = awaiting
+	int16 mUsedSlotCount; // Interface slot count we were built with. -1 = not finished, 0 = awaiting
+	bool mHadSlotCountDependency; // Our generated code depends on the interface slot count. Survives Init
 	bool mAddedToCount;
 	bool mHasForceLinkMarker;
 	bool mIsReified;

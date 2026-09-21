@@ -2721,7 +2721,7 @@ void BfContext::UpdateRevisedTypes()
 
 		if (mCompiler->mInterfaceSlotCountChanged)
 		{
-			if ((module->mUsedSlotCount >= 0) && (module->mUsedSlotCount != mCompiler->mMaxInterfaceSlots))
+			if ((module->mHadSlotCountDependency) && (module->mUsedSlotCount != mCompiler->mMaxInterfaceSlots))
 				needsModuleRebuild = true;
 		}
 

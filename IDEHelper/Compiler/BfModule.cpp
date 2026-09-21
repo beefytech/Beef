@@ -952,6 +952,7 @@ BfModule::BfModule(BfContext* context, const StringImpl& moduleName)
 	mModuleOptions = NULL;
 	mLastUsedRevision = -1;
 	mUsedSlotCount = -1;
+	mHadSlotCountDependency = false;
 
 	mIsReified = true;
 	mGeneratesCode = true;
@@ -1105,6 +1106,9 @@ void BfModule::Init(bool isFullRebuild)
 	mAwaitingFinish = false;
 	mHasForceLinkMarker = false;
 	mUsedSlotCount = -1;
+	// mHadSlotCountDependency is deliberately not reset here. We can be initialized again while our
+	//  generated code is retained, and that code still has the dependency. Leaving it set can only
+	//  cause an unneeded rebuild, whereas clearing it leaves stale vdata offsets behind
 }
 
 bool BfModule::WantsFinishModule()
@@ -11355,6 +11359,17 @@ void BfModule::EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* tar
 
 	auto typeTypeInstance = ResolveTypeDef(mCompiler->mReflectTypeInstanceTypeDef)->ToTypeInstance();
 
+	bool useSlowCheck = mCompiler->mOptions.mAllowHotSwapping;
+	if ((!useSlowCheck) && (targetType->IsInterface()))
+	{
+		// The fast check reads the interface's slot in the vdata, but an interface without any methods
+		//  is never given a slot (and so has no sBfSlotOfs to link against)
+		auto ifaceTypeInst = targetType->ToTypeInstance();
+		PopulateType(ifaceTypeInst, BfPopulateType_DataAndMethods);
+		if (ifaceTypeInst->mVirtualMethodTableSize == 0)
+			useSlowCheck = true;
+	}
+
 	if (targetType->IsDelegate())
 	{
 		// Delegate signature check
@@ -11371,7 +11386,7 @@ void BfModule::EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* tar
 		auto cmpResult = mBfIRBuilder->CreateCmpNE(callResult.mValue, GetDefaultValue(callResult.mType));
 		irb->CreateCondBr(cmpResult, trueBlock, falseBlock);
 	}
-	else if (mCompiler->mOptions.mAllowHotSwapping)
+	else if (useSlowCheck)
 	{
 		// "Slow" check
 		BfExprEvaluator exprEvaluator(this);
@@ -11398,11 +11413,18 @@ void BfModule::EmitDynamicCastCheck(const BfTypedValue& targetValue, BfType* tar
 		{
 			auto targetTypeInst = targetType->ToTypeInstance();
 			AddDependency(targetType, mCurTypeInstance, BfDependencyMap::DependencyFlag_ExprTypeReference);
+			// This check reads the interface's vdata slot, and an interface only has a slot while it has methods.
+			//  We need to be rebuilt if its methods change so we can fall back to the slow check when it loses
+			//  its last one, rather than keep referencing a sBfSlotOfs that is no longer defined
+			AddDependency(targetType, mCurTypeInstance, BfDependencyMap::DependencyFlag_VirtualCall);
 
 			// Skip past mType, but since a 'GetDynCastVDataCount()' data is included in the sSlotOfs, we need to remove that
 			//int inheritanceIdOfs = mSystem->mPtrSize - (mCompiler->GetDynCastVDataCount())*4;
 			//vDataPtr = irb->CreateAdd(vDataPtr, irb->CreateConst(BfTypeCode_IntPtr, inheritanceIdOfs));
 
+			// BfIRConfigConst_DynSlotOfs is derived from the interface slot count, so without this we can be
+			//  finished before that count is known, and we would not be rebuilt when it changes
+			HadSlotCountDependency();
 			vDataPtr = irb->CreateAdd(vDataPtr, irb->GetConfigConst(BfIRConfigConst_DynSlotOfs, BfTypeCode_IntPtr));
 			BfIRValue slotOfs = GetInterfaceSlotNum(targetType->ToTypeInstance());
 			BfIRValue slotByteOfs = irb->CreateMul(slotOfs, irb->CreateConst(BfTypeCode_Int32, 4));
@@ -16092,6 +16114,7 @@ void BfModule::HadSlotCountDependency()
 	BF_ASSERT(!mBfIRBuilder->mIgnoreWrites);
 	BF_ASSERT((mUsedSlotCount == BF_MAX(mCompiler->mMaxInterfaceSlots, 0)) || (mUsedSlotCount == -1));
 	mUsedSlotCount = BF_MAX(mCompiler->mMaxInterfaceSlots, 0);
+	mHadSlotCountDependency = true;
 }
 
 BfTypedValue BfModule::GetCompilerFieldValue(const StringImpl& str)
@@ -27860,10 +27883,12 @@ bool BfModule::Finish()
 	}
 
 	if (mUsedSlotCount != -1)
-	{
 		BF_ASSERT(mCompiler->mMaxInterfaceSlots != -1);
+
+	// Record the slot count we were actually built with. Init may have reset this since our slot
+	//  dependency was noted, and a rebuild check against -1 cannot tell what our code was built with
+	if (mCompiler->mMaxInterfaceSlots != -1)
 		mUsedSlotCount = mCompiler->mMaxInterfaceSlots;
-	}
 
 	if ((!mGeneratesCode) && (!mAddedToCount))
 		return true;
