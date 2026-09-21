@@ -7431,6 +7431,12 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 	mCurMethodState->mLeftBlockCond = false;
 
 	RestoreScopeState();
+
+	// Leaving the outer scope runs the enumerator's implicit Dispose (and frees any 'scope' allocations from the
+	//  collection expression). That's not user code, so don't give the debugger a statement to stop at there -
+	//  it would stop on the loop body's closing brace a second time as the loop exits
+	SetAndRestoreValue<bool> prevSetIllegalSrcPos(mSetIllegalSrcPosition, true);
+	SetIllegalSrcPos();
 	RestoreScopeState();
 }
 
