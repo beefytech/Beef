@@ -47,12 +47,13 @@ esac
 
 SOURCES="src/rt/Chars.cpp src/rt/Math.cpp src/rt/Object.cpp src/rt/Thread.cpp \
 src/rt/Internal.cpp src/rt/zmij.c src/BeefySysLib/platform/wasm/WasmCommon.cpp \
+src/BeefySysLib/platform/wasm/WasmFFI.cpp \
 src/BeefySysLib/Common.cpp src/BeefySysLib/util/String.cpp src/BeefySysLib/util/Hash.cpp \
 src/BeefySysLib/util/UTF8.cpp src/BeefySysLib/third_party/utf8proc/utf8proc.c \
 src/BeefySysLib/third_party/putty/wildcard.c"
 INCLUDES="-Isrc/ -Isrc/BeefySysLib -Isrc/BeefySysLib/platform/wasm"
 OBJECTS="Common.o Internal.o Chars.o Math.o Object.o String.o Thread.o Hash.o UTF8.o \
-utf8proc.o wildcard.o WasmCommon.o zmij.o"
+utf8proc.o wildcard.o WasmCommon.o WasmFFI.o zmij.o"
 
 for KIND in $KINDS; do
     if [ "$KIND" = "debug" ]; then FLAGS="-O0 -g"; SUFFIX="_d"; else FLAGS="-O2"; SUFFIX=""; fi

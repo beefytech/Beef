@@ -41,6 +41,9 @@ extern "C"
 #include "BeefySysLib/platform/PlatformHelper.h"
 #ifndef BF_DISABLE_FFI
 #include "ffi.h"
+#elif defined(__EMSCRIPTEN__)
+// The dynamic call that stands in for libffi on wasm.
+#include "BeefySysLib/platform/wasm/WasmFFI.h"
 #endif
 #include "Thread.h"
 
@@ -1028,6 +1031,8 @@ bf::System::FFI::FFIResult bf::System::FFI::FFILIB::PrepCif(bf::System::FFI::FFI
 {
 #ifndef BF_DISABLE_FFI
 	return (bf::System::FFI::FFIResult)ffi_prep_cif((ffi_cif*)cif, (ffi_abi)abi, nargs, (ffi_type*)rtype, (ffi_type**)argTypes);
+#elif defined(__EMSCRIPTEN__)
+	return (bf::System::FFI::FFIResult)BfWasmFFI_PrepCif(cif, (int32)abi, nargs, rtype, (void**)argTypes);
 #else
 	return bf::System::FFI::FFIResult::FFIResult_NoFFI;
 #endif
@@ -1037,6 +1042,8 @@ void bf::System::FFI::FFILIB::Call(bf::System::FFI::FFILIB::FFICIF* cif, void* f
 {
 #ifndef BF_DISABLE_FFI
 	ffi_call((ffi_cif*)cif, (void(*)())funcPtr, rvalue, args);
+#elif defined(__EMSCRIPTEN__)
+	BfWasmFFI_Call(cif, funcPtr, rvalue, args);
 #endif
 }
 
