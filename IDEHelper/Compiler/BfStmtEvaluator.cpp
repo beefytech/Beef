@@ -147,7 +147,8 @@ bool BfModule::AddDeferredCallEntry(BfDeferredCallEntry* deferredCallEntry, BfSc
 
 			auto prevInsertBlock = mBfIRBuilder->GetInsertBlock();
 			mBfIRBuilder->SaveDebugLocation();
-			mBfIRBuilder->SetInsertPointAtStart(mCurMethodState->mIRInitBlock);
+			// Restart the tail lifetime whenever its owning scope is entered.
+			mBfIRBuilder->SetInsertPointAtStart(scopeData->mBlock ? scopeData->mBlock : mCurMethodState->mIRInitBlock);
 
 			auto scopeHead = &mCurMethodState->mHeadScope;
 			if (scopeHead->mDIScope)
@@ -6418,9 +6419,7 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 {
 	UpdateSrcPos(forEachStmt);
 
-	auto startBB = mBfIRBuilder->GetInsertBlock();
 	auto condBB = mBfIRBuilder->CreateBlock("forless.cond", true);
-	mBfIRBuilder->SetInsertPoint(condBB);
 
 	BfScopeData scopeData;
 	// We set mIsLoop later
@@ -6428,6 +6427,10 @@ void BfModule::DoForLess(BfForEachStatement* forEachStmt)
 		scopeData.mLabelNode = forEachStmt->mLabelNode->mLabel;
 	mCurMethodState->AddScope(&scopeData);
 	NewScopeState();
+
+	// Loop-scoped defers accumulate until the loop exits.
+	auto startBB = mBfIRBuilder->GetInsertBlock();
+	mBfIRBuilder->SetInsertPoint(condBB);
 
 	auto autoComplete = mCompiler->GetAutoComplete();
 
