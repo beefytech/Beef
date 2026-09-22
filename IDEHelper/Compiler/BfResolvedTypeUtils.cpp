@@ -2195,10 +2195,12 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 				{
 					if (typeInst->IsValueType())
 					{
+						// Layout queries must not reify already populated types.
+						if (typeInst->IsDataIncomplete())
+							mModule->PopulateType(typeInst, BfPopulateType_Data);
+
 						if (typeInst->mBaseType != NULL)
 							_CheckType(typeInst->mBaseType, offset);
-
-						mModule->PopulateType(typeInst, BfPopulateType_Data);
 
 						for (auto& fieldInstance : typeInst->mFieldInstances)
 						{
