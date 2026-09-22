@@ -107,11 +107,16 @@ namespace System
 		}
 	}
 
-    [AttributeUsage(.Method | .Constructor |  .Invocation)]
-    public struct InlineAttribute : Attribute
-    {
+	[AttributeUsage(.Method | .Constructor | .Invocation)]
+	public struct InlineAttribute : Attribute
+	{
+		public bool OptimizedOnly { set { } }
+	}
 
-    }
+	[AttributeUsage(.Method | .Constructor | .Invocation)]
+	public struct NoInlineAttribute : Attribute
+	{
+	}
 
 	[AttributeUsage(.Invocation)]
 	public struct UnboundAttribute : Attribute
