@@ -427,19 +427,13 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 					jointToBakeIdx[it->mValue] = (int)bni;
 			}
 
-			int numFrames = 0;
-			for (auto& kv : jointToBakeIdx)
-			{
-				ufbx_baked_node& bn = bake->nodes.data[kv.second];
-				int tc = (int)bn.translation_keys.count;
-				if (tc > numFrames) numFrames = tc;
-			}
-
-			if (numFrames == 0)
+			if (jointToBakeIdx.empty())
 			{
 				ufbx_free_baked_anim(bake);
 				continue;
 			}
+
+			int numFrames = BF_MAX(1, (int)floor((endTime - startTime) * mFPS + 0.5) + 1);
 
 			FBXAnimation anim;
 			anim.mName = stack->name.data;
@@ -454,43 +448,33 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 				if (it != jointToBakeIdx.end())
 				{
 					ufbx_baked_node& bn = bake->nodes.data[it->second];
-					int frameCount = (int)bn.translation_keys.count;
+					FBXJoint& fj = mFBXJoints[ji];
 
-					for (int fi = 0; fi < frameCount; fi++)
+					// Baked tracks retain subframe keys and independent channel timestamps.
+					for (int fi = 0; fi < numFrames; fi++)
 					{
+						double time = BF_MIN(startTime + fi / (double)mFPS, endTime);
 						FBXSkeletonKeyframe key = {};
-						key.time = (float)(bn.translation_keys.data[fi].time - startTime);
-
-						ufbx_vec3 t = bn.translation_keys.data[fi].value;
-						key.tx = t.x; key.ty = t.y; key.tz = t.z;
-
-						if (fi < (int)bn.rotation_keys.count)
-						{
-							ufbx_quat q = bn.rotation_keys.data[fi].value;
-							key.quat_x = q.x; key.quat_y = q.y;
-							key.quat_z = q.z; key.quat_w = q.w;
-						}
-						else if (bn.rotation_keys.count > 0)
-						{
-							ufbx_quat q = bn.rotation_keys.data[bn.rotation_keys.count - 1].value;
-							key.quat_x = q.x; key.quat_y = q.y;
-							key.quat_z = q.z; key.quat_w = q.w;
-						}
-						else
-						{
-							key.quat_x = 0; key.quat_y = 0; key.quat_z = 0; key.quat_w = 1;
-						}
-
-						if (fi < (int)bn.scale_keys.count)
-						{
-							ufbx_vec3 s = bn.scale_keys.data[fi].value;
-							key.sx = (float)s.x; key.sy = (float)s.y; key.sz = (float)s.z;
-						}
-						else
-						{
-							key.sx = 1.0f; key.sy = 1.0f; key.sz = 1.0f;
-						}
-
+						key.time = fi / mFPS;
+						ufbx_vec3 t = { fj.posx, fj.posy, fj.posz };
+						ufbx_quat q = { fj.quatx, fj.quaty, fj.quatz, fj.quatw };
+						ufbx_vec3 s = { fj.scalex, fj.scaley, fj.scalez };
+						if (bn.translation_keys.count > 0)
+							t = ufbx_evaluate_baked_vec3(bn.translation_keys, time);
+						if (bn.rotation_keys.count > 0)
+							q = ufbx_evaluate_baked_quat(bn.rotation_keys, time);
+						if (bn.scale_keys.count > 0)
+							s = ufbx_evaluate_baked_vec3(bn.scale_keys, time);
+						key.tx = t.x;
+						key.ty = t.y;
+						key.tz = t.z;
+						key.quat_x = q.x;
+						key.quat_y = q.y;
+						key.quat_z = q.z;
+						key.quat_w = q.w;
+						key.sx = (float)s.x;
+						key.sy = (float)s.y;
+						key.sz = (float)s.z;
 						track.mSkeletonKeyframes.push_back(key);
 					}
 				}

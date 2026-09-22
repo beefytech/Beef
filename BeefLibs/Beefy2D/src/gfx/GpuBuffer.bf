@@ -9,6 +9,19 @@ namespace Beefy.gfx
 	// GPU-writable buffer can also be bound as a compute UAV (RWStructuredBuffer<T>) and read back.
 	public class GpuBuffer : Image
 	{
+		public enum ReadbackStatus
+		{
+			Failed = -1,
+			Pending,
+			Ready
+		}
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern bool Gfx_Buffer_BeginReadback(void* textureSegment);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern ReadbackStatus Gfx_Buffer_PollReadback(void* textureSegment, void* outData, int32 size);
+
 		[CallingConvention(.Stdcall), CLink]
 		static extern void* Gfx_CreateStructuredBuffer(int32 stride, int32 count, int32 flags);
 
@@ -104,6 +117,18 @@ namespace Beefy.gfx
 		public bool GetData<T>(Span<T> outData) where T : struct
 		{
 			return GetData(outData.Ptr, outData.Length * sizeof(T));
+		}
+
+		// Immediate snapshot: submit the producing draw layer first. Only one readback may be pending.
+		public bool BeginReadback()
+		{
+			return Gfx_Buffer_BeginReadback(mNativeTextureSegment);
+		}
+
+		public ReadbackStatus PollReadback(void* outData, int size)
+		{
+			Debug.Assert((size > 0) && (size <= ByteSize));
+			return Gfx_Buffer_PollReadback(mNativeTextureSegment, outData, (.)size);
 		}
 	}
 #endif

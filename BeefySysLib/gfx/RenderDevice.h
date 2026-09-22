@@ -402,12 +402,15 @@ public:
 	virtual VertexDefinition* CreateVertexDefinition(VertexDefData* elementData, int numElements);	
 
 	// GPU timing. Spans are bracketed around actual submissions (layer flushes, resolves) rather than
-	// around caller code, since queued draws don't execute where they were recorded. Results are read
-	// back a few frames later (GpuTimerFetch), never waited on.
+	// around caller code, since queued draws don't execute where they were recorded. A tag set while a
+	// layer is being recorded also goes into that layer as a GpuTagCmd, so the draws recorded after it
+	// count toward it when the layer executes. Results are read back a few frames later
+	// (GpuTimerFetch), never waited on.
 	virtual void			GpuTimerSetEnabled(bool enabled) {}
 	virtual bool			GpuTimerBeginFrame(int64 frameId) { return false; }
 	virtual void			GpuTimerSetTag(int tag) {}
 	virtual int				GpuTimerSpanBegin() { return -1; }
+	virtual void			GpuTimerSpanRetag(int tag) {}
 	virtual void			GpuTimerSpanEnd(int spanId) {}
 	virtual void			GpuTimerEndFrame() {}
 	// -1 = the oldest frame's results aren't ready yet; otherwise the span count for *outFrameId.

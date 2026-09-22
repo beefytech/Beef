@@ -35,6 +35,16 @@ public:
 	virtual void Free();
 };
 
+// From here on, the executing layer's GPU time counts toward this tag (see RenderDevice::GpuTimerSetTag).
+class GpuTagCmd : public RenderCmd
+{
+public:
+	int mTag;
+
+public:
+	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
+};
+
 class RenderableCmd : public RenderCmd
 {
 public:

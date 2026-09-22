@@ -135,6 +135,8 @@ class DXStructuredBuffer : public DXTexture
 public:
 	ID3D11Buffer*			mD3DBuffer;
 	ID3D11Buffer*			mD3DStaging;
+	ID3D11Buffer*			mD3DAsyncStaging;
+	bool					mReadbackPending;
 	int						mStride;
 	bool					mGpuWritable;
 	bool					mDefaultUsage;
@@ -154,6 +156,8 @@ public:
 
 	virtual void			PhysSetAsTarget() override;
 	virtual bool			GetBufferData(void* outData, int size) override;
+	virtual bool			BeginBufferReadback() override;
+	virtual int				PollBufferReadback(void* outData, int size) override;
 	virtual void			UpdateBufferRange(int offset, void* data, int size) override;
 	virtual void			GetMemoryStats(TextureMemoryStats& stats) override;
 };
@@ -554,7 +558,7 @@ public:
 };
 
 #define DX_GPUTIMER_FRAMES 4
-#define DX_GPUTIMER_MAX_SPANS 256
+#define DX_GPUTIMER_MAX_SPANS 1024
 
 class DXRenderDevice : public RenderDevice
 {
@@ -601,6 +605,7 @@ public:
 	DXGpuTimerFrame			mGpuTimerFrames[DX_GPUTIMER_FRAMES];
 	int						mGpuTimerWriteIdx;
 	int						mGpuTimerCurTag;
+	int						mGpuTimerOpenSpan;
 	bool					mGpuTimerEnabled;
 
 	HashSet<DXRenderState*>	mRenderStates;
@@ -643,6 +648,7 @@ public:
 	virtual bool			GpuTimerBeginFrame(int64 frameId) override;
 	virtual void			GpuTimerSetTag(int tag) override;
 	virtual int				GpuTimerSpanBegin() override;
+	virtual void			GpuTimerSpanRetag(int tag) override;
 	virtual void			GpuTimerSpanEnd(int spanId) override;
 	virtual void			GpuTimerEndFrame() override;
 	virtual int				GpuTimerFetch(int64* outFrameId, GpuTimerSpan* outSpans, int maxSpans) override;

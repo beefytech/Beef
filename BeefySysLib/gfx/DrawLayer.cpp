@@ -265,6 +265,11 @@ DrawBatch* DrawLayer::AllocateBatch(int minVtxCount, int minIdxCount)
 	return drawBatch;
 }
 
+void GpuTagCmd::Render(RenderDevice* renderDevice, RenderWindow* renderWindow)
+{
+	renderDevice->GpuTimerSpanRetag(mTag);
+}
+
 void DrawLayer::Draw()
 {
 	BP_ZONE("DrawLayer::Draw");
@@ -372,6 +377,8 @@ BF_EXPORT void BF_CALLTYPE DrawLayer_Delete(DrawLayer* drawLayer)
 	{
 		drawLayer->mRenderWindow->mDrawLayerList.Remove(drawLayer);
 	}
+	if (gBFApp->mRenderDevice->mCurDrawLayer == drawLayer)
+		gBFApp->mRenderDevice->mCurDrawLayer = NULL;
 
 	delete drawLayer;
 }

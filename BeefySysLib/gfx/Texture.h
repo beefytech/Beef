@@ -46,6 +46,8 @@ public:
 	virtual void			SetData3D(int mipLevel, void* data, int rowPitch, int slicePitch) {}
 	virtual bool			GetData3D(int mipLevel, void* outData, int outSize) { return false; }
 	virtual bool			GetBufferData(void* outData, int size) { return false; }
+	virtual bool			BeginBufferReadback() { return false; }
+	virtual int				PollBufferReadback(void* outData, int size) { return -1; }
 	// Immediate partial write of a CPU-updatable structured buffer (see RenderDevice::CreateStructuredBuffer).
 	virtual void			UpdateBufferRange(int offset, void* data, int size) {}
 	// Lands the ranges accumulated by UpdateBufferRange. Call before anything reads the buffer.

@@ -1204,6 +1204,8 @@ DXStructuredBuffer::DXStructuredBuffer()
 {
 	mD3DBuffer = NULL;
 	mD3DStaging = NULL;
+	mD3DAsyncStaging = NULL;
+	mReadbackPending = false;
 	for (int i = 0; i < 3; i++)
 		mD3DUpdateStaging[i] = NULL;
 	mUpdateStagingIdx = 0;
@@ -1217,6 +1219,8 @@ DXStructuredBuffer::DXStructuredBuffer()
 
 DXStructuredBuffer::~DXStructuredBuffer()
 {
+	if (mD3DAsyncStaging != NULL)
+		mD3DAsyncStaging->Release();
 	if (mD3DBuffer != NULL)
 		mD3DBuffer->Release();
 	if (mD3DStaging != NULL)
@@ -1308,6 +1312,41 @@ void DXStructuredBuffer::UpdateBufferRange(int offset, void* data, int size)
 	ctx->Unmap(staging, 0);
 	D3D11_BOX box = { (UINT)offset, 0, 0, (UINT)(offset + size), 1, 1 };
 	ctx->CopySubresourceRegion(mD3DBuffer, 0, (UINT)offset, 0, 0, staging, 0, &box);
+}
+
+bool DXStructuredBuffer::BeginBufferReadback()
+{
+	if (mReadbackPending)
+		return false;
+	if (mD3DAsyncStaging == NULL)
+	{
+		D3D11_BUFFER_DESC desc = {};
+		desc.Usage = D3D11_USAGE_STAGING;
+		desc.ByteWidth = mStride * mWidth;
+		desc.CPUAccessFlags = D3D11_CPU_ACCESS_READ;
+		if (FAILED(mRenderDevice->mD3DDevice->CreateBuffer(&desc, NULL, &mD3DAsyncStaging)))
+			return false;
+	}
+	mRenderDevice->mD3DDeviceContext->CopyResource(mD3DAsyncStaging, mD3DBuffer);
+	mReadbackPending = true;
+	return true;
+}
+
+int DXStructuredBuffer::PollBufferReadback(void* outData, int size)
+{
+	if ((!mReadbackPending) || (outData == NULL) || (size <= 0) || (size > mStride * mWidth))
+		return -1;
+	auto ctx = mRenderDevice->mD3DDeviceContext;
+	D3D11_MAPPED_SUBRESOURCE mapped;
+	HRESULT hr = ctx->Map(mD3DAsyncStaging, 0, D3D11_MAP_READ, D3D11_MAP_FLAG_DO_NOT_WAIT, &mapped);
+	if (hr == DXGI_ERROR_WAS_STILL_DRAWING)
+		return 0;
+	mReadbackPending = false;
+	if (FAILED(hr))
+		return -1;
+	memcpy(outData, mapped.pData, size);
+	ctx->Unmap(mD3DAsyncStaging, 0);
+	return 1;
 }
 
 bool DXStructuredBuffer::GetBufferData(void* outData, int size)
@@ -3464,6 +3503,7 @@ DXRenderDevice::DXRenderDevice()
 	mInstIotaCount = 0;
 	mGpuTimerWriteIdx = 0;
 	mGpuTimerCurTag = 0;
+	mGpuTimerOpenSpan = -1;
 	mGpuTimerEnabled = false;
 }
 
@@ -3798,6 +3838,11 @@ bool DXRenderDevice::GpuTimerBeginFrame(int64 frameId)
 void DXRenderDevice::GpuTimerSetTag(int tag)
 {
 	mGpuTimerCurTag = tag;
+	if ((!mGpuTimerEnabled) || (!mGpuTimerFrames[mGpuTimerWriteIdx].mOpen) || (mCurDrawLayer == NULL))
+		return;
+	GpuTagCmd* cmd = mCurDrawLayer->AllocRenderCmd<GpuTagCmd>();
+	cmd->mTag = tag;
+	mCurDrawLayer->QueueRenderCmd(cmd);
 }
 
 int DXRenderDevice::GpuTimerSpanBegin()
@@ -3816,15 +3861,30 @@ int DXRenderDevice::GpuTimerSpanBegin()
 	frame.mTags[idx] = mGpuTimerCurTag;
 	frame.mSpanCount = idx + 1;
 	mD3DDeviceContext->End(beginQuery);
+	mGpuTimerOpenSpan = idx;
 	return idx;
 }
 
+// Ends the span open in the executing layer, whichever retag opened it last.
 void DXRenderDevice::GpuTimerSpanEnd(int spanId)
 {
 	DXGpuTimerFrame& frame = mGpuTimerFrames[mGpuTimerWriteIdx];
-	if ((!frame.mOpen) || (spanId < 0) || (spanId >= (int)frame.mEndQueries.size()))
+	int open = mGpuTimerOpenSpan;
+	mGpuTimerOpenSpan = -1;
+	if ((!frame.mOpen) || (spanId < 0) || (open < 0) || (open >= (int)frame.mEndQueries.size()))
 		return;
-	mD3DDeviceContext->End(frame.mEndQueries[spanId]);
+	mD3DDeviceContext->End(frame.mEndQueries[open]);
+}
+
+void DXRenderDevice::GpuTimerSpanRetag(int tag)
+{
+	if (mGpuTimerOpenSpan < 0)
+		return;
+	GpuTimerSpanEnd(mGpuTimerOpenSpan);
+	int ambient = mGpuTimerCurTag;
+	mGpuTimerCurTag = tag;
+	GpuTimerSpanBegin();
+	mGpuTimerCurTag = ambient;
 }
 
 void DXRenderDevice::GpuTimerEndFrame()
@@ -5036,7 +5096,7 @@ void DXStructuredBuffer::GetMemoryStats(TextureMemoryStats& stats)
 		mD3DBuffer->GetDesc(&desc);
 		stats.mGpuBytes = desc.ByteWidth;
 	}
-	ID3D11Buffer* side[] = { mD3DStaging, mD3DUpdateStaging[0], mD3DUpdateStaging[1], mD3DUpdateStaging[2], mD3DUploadBuffer };
+	ID3D11Buffer* side[] = { mD3DStaging, mD3DAsyncStaging, mD3DUpdateStaging[0], mD3DUpdateStaging[1], mD3DUpdateStaging[2], mD3DUploadBuffer };
 	for (auto buffer : side)
 	{
 		if (buffer == NULL)
