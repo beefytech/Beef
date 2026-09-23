@@ -269,8 +269,8 @@ namespace Beefy.theme.dark
 				return;
 			}
 
-            if (mWidgetWindow == null)
-                return;
+			if ((mHasClosed) || (mWidgetWindow == null) || (mRelWidget == null))
+				return;
 
 			if (mAllowMouseOutside)
 				return;
