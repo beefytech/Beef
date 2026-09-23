@@ -402,8 +402,9 @@ namespace Beefy
 
 		public ~this()
 		{
-			bool worked = sWindowDictionary.Remove((int)mNativeWindow);
-			Debug.Assert(worked);
+			// Native addresses may be reused before deferred Beef deletion.
+			if (sWindowDictionary.GetValueOrDefault((int)mNativeWindow) == this)
+				sWindowDictionary.Remove((int)mNativeWindow);
 		}
 
 		public static BFWindow.Flags GetStartupFlags()
