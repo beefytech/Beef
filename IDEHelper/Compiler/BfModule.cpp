@@ -26123,7 +26123,11 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	}
 
 	int argIdx = 0;
-	resolveModule->PopulateType(methodInstance->mReturnType, BfPopulateType_Data);
+	// A reference return is just a pointer, so like reference params it only needs its declaration. Populating
+	//  its data would pull in its field types, which from inside a type-init hook can manufacture a data cycle
+	//  that does not really exist
+	BfPopulateType returnPopulateType = methodInstance->mReturnType->IsObjectOrInterface() ? BfPopulateType_Declaration : BfPopulateType_Data;
+	resolveModule->PopulateType(methodInstance->mReturnType, returnPopulateType);
 	if ((!methodDef->mIsStatic) && (!methodDef->mHasExplicitThis))
     {
 		int thisIdx = methodDef->mHasExplicitThis ? 0 : -1;
@@ -26331,7 +26335,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 	if (methodInstance->mIsUnspecializedVariation)
 		return;
 
-	resolveModule->PopulateType(resolvedReturnType, BfPopulateType_Data);
+	resolveModule->PopulateType(resolvedReturnType, returnPopulateType);
 	auto retLLVMType = mBfIRBuilder->MapType(resolvedReturnType);
 	if (resolvedReturnType->IsValuelessType())
 		retLLVMType = mBfIRBuilder->GetPrimitiveType(BfTypeCode_None);

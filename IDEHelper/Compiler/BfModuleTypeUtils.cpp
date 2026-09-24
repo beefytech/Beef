@@ -427,6 +427,13 @@ bool BfModule::ValidateGenericConstraints(BfAstNode* typeRef, BfTypeInstance* ge
 	if (genericTypeInst->IsOnDemand())
 		return true;
 
+	// Validating an instance can populate it, which can validate the instances it references, which can lead back
+	//  here. In an inheritance loop between generic types that cycle never ends, so if this instance's validation
+	//  is already in progress further up the stack, leave it to that call - it reports any errors
+	if (genericTypeInst->mGenericTypeInfo->mValidatingGenericConstraints)
+		return true;
+	SetAndRestoreValue<bool> prevValidating(genericTypeInst->mGenericTypeInfo->mValidatingGenericConstraints, true);
+
 	SetAndRestoreValue<bool> prevIgnoreErrors(mIgnoreErrors, mIgnoreErrors || ignoreErrors);
 	genericTypeInst->mGenericTypeInfo->mValidatedGenericConstraints = true;
 	if (!genericTypeInst->mGenericTypeInfo->mFinishedGenericParams)
@@ -4432,8 +4439,19 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 				if ((checkTypeInst != NULL) && (checkTypeInst->mTypeFailed))
 				{
-					// To keep circular references from breaking type invariants (ie: base type loops)
-					continue;
+					// To keep circular references from breaking type invariants (ie: base type loops) we skip a failed base
+					//  when taking it could close a loop - either its own base is still unresolved, or its base chain already
+					//  leads back to us. A base that failed for any other reason (a type-init hook failing, say) is still our
+					//  base, and dropping it would silently re-parent us onto Object
+					bool closesLoop = checkTypeInst->mDefineState <= BfTypeDefineState_ResolvingBaseType;
+					int checkDepth = 0;
+					for (auto checkBase = checkTypeInst; (checkBase != NULL) && (!closesLoop); checkBase = checkBase->mBaseType)
+					{
+						if ((checkBase == typeInstance) || (++checkDepth > 1024))
+							closesLoop = true;
+					}
+					if (closesLoop)
+						continue;
 				}
 
 				if (!canDeriveFrom)
@@ -4622,8 +4640,48 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 			}
 		}
 
+		// Our ResolvingBaseType state has been restored by now and mBaseType is not assigned until after the
+		//  populate below, so an inheritance loop (A : B, B : A) would otherwise recurse through here until the
+		//  stack runs out and leave mBaseType circular. Walk our base's chain - using the base each type is
+		//  populating further up the stack where mBaseType is not set yet - and fail if it leads back to us
+		{
+			bool isLoop = false;
+			int checkDepth = 0;
+			for (auto checkType = baseTypeInst; checkType != NULL; )
+			{
+				if ((checkType == typeInstance) || (++checkDepth > 1024))
+				{
+					isLoop = true;
+					break;
+				}
+				BfTypeInstance* nextType = checkType->mBaseType;
+				if (nextType == NULL)
+				{
+					for (auto checkState = mContext->mCurTypeState; checkState != NULL; checkState = checkState->mPrevState)
+					{
+						if ((checkState->mType == checkType) && (checkState->mCurBaseType != NULL))
+						{
+							nextType = checkState->mCurBaseType;
+							break;
+						}
+					}
+				}
+				checkType = nextType;
+			}
+
+			if (isLoop)
+			{
+				Fail(StrFormat("Base type '%s' causes a circular inheritance chain", TypeToString(baseTypeInst).c_str()), baseTypeRef, true);
+				TypeFailed(typeInstance);
+				baseTypeInst = defaultBaseTypeInst;
+			}
+		}
+
 		if (populateType > BfPopulateType_CustomAttributes)
+		{
+			SetAndRestoreValue<BfTypeInstance*> prevBaseType(typeState.mCurBaseType, baseTypeInst);
 			PopulateType(baseTypeInst, BfPopulateType_Data);
+		}
 
 		typeInstance->mBaseTypeMayBeIncomplete = false;
 
@@ -4837,6 +4895,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		}
 	}
 
+	// Resolving our base type can populate us all the way through in a nested call, such as when a type-init
+	//  hook's data cycle is broken by populating a type without its hook. The check in the interfaces block
+	//  above only covers types that have interfaces
+	if (_CheckTypeDone())
+		return;
 	BF_ASSERT(!typeInstance->mNeedsMethodProcessing);
 	if (typeInstance->mDefineState < BfTypeDefineState_HasInterfaces_Direct)
 		typeInstance->mDefineState = BfTypeDefineState_HasInterfaces_Direct;
@@ -6460,6 +6523,19 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	{
 		BfLogSysM("DoTypeInstanceMethodProcessing %p re-entrancy exit\n", typeInstance);
 		return;
+	}
+
+	// If anything in our base chain is partway through slotting its own virtual methods further up the stack,
+	//  our virtual table would be built from a short copy of it. That happens while a data cycle is being broken,
+	//  for instance by a type-init hook that reflects over a base type's methods. Stay pending instead - the
+	//  frames that own our base chain process us once it is complete
+	for (auto checkBaseType = typeInstance->GetImplBaseType(); checkBaseType != NULL; checkBaseType = checkBaseType->GetImplBaseType())
+	{
+		if (checkBaseType->mDefineState == BfTypeDefineState_DefinedAndMethodsSlotting)
+		{
+			BfLogSysM("DoTypeInstanceMethodProcessing %p deferred, base %p is still slotting\n", typeInstance, checkBaseType);
+			return;
+		}
 	}
 
 	//

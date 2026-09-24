@@ -123,6 +123,54 @@ namespace Tests
 			}
 		}
 
+		// A type can satisfy a constraint that names itself through a base several levels up. These used to be
+		//  rejected (and exhaust the stack) because validating CRTPEnd against CRTPNode<CRTPEnd> re-entered itself
+		//  before CRTPEnd's base chain was in place
+		class CRTPNode<T> where T : CRTPNode<T>
+		{
+			public virtual int Get() => 1;
+		}
+
+		class CRTPMid<T> : CRTPNode<T> where T : CRTPMid<T>
+		{
+			public override int Get() => 2;
+		}
+
+		class CRTPEnd : CRTPMid<CRTPEnd>
+		{
+			public override int Get() => 3;
+		}
+
+		class CRTPOther : CRTPMid<CRTPEnd>
+		{
+		}
+
+		class MutualA<T> : MutualB<T> where T : IDisposable
+		{
+		}
+
+		class MutualB<T> where T : IDisposable
+		{
+		}
+
+		struct Disposable : IDisposable
+		{
+			public void Dispose()
+			{
+			}
+		}
+
+		[Test]
+		public static void TestCRTPChain()
+		{
+			CRTPNode<CRTPEnd> node = scope CRTPEnd();
+			Test.Assert(node.Get() == 3);
+			CRTPMid<CRTPEnd> mid = scope CRTPOther();
+			Test.Assert(mid.Get() == 2);
+			MutualA<Disposable> mutual = scope .();
+			Test.Assert(mutual != null);
+		}
+
 		[Test]
 		public static void TestBasics()
 		{

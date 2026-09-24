@@ -1980,6 +1980,7 @@ public:
 	bool mIsUnspecialized;
 	bool mIsUnspecializedVariation;
 	bool mValidatedGenericConstraints;
+	bool mValidatingGenericConstraints; // Validation of this instance is in progress further up the stack
 	bool mHadValidateErrors;
 	bool mInitializedGenericParams;
 	bool mFinishedGenericParams;
@@ -1994,6 +1995,7 @@ public:
 		mIsUnspecialized = false;
 		mIsUnspecializedVariation = false;
 		mValidatedGenericConstraints = false;
+		mValidatingGenericConstraints = false;
 		mInitializedGenericParams = false;
 		mFinishedGenericParams = false;
 		mMaxGenericDepth = -1;
