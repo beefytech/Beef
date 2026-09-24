@@ -9635,51 +9635,10 @@ namespace IDE
 			executionInstance.mFileName = new .(inFileName);
 			executionInstance.mArgs = new .(args);
 
-#if BF_PLATFORM_WINDOWS
-			if (runFlags.HasFlag(.BatchCommand))
-			{
-				String tempFileName = scope String();
-				Path.GetTempFileName(tempFileName);
-				tempFileName.Append(".bat");
-
-				String shellArgs = scope .();
-				IDEUtils.AppendWithOptionalQuotes(shellArgs, fileName);
-				shellArgs.Append(" ");
-				shellArgs.Append(args);
-
-				var result = File.WriteAllText(tempFileName, shellArgs, Encoding.UTF8);
-				if (result case .Err)
-					OutputLine("Failed to create temporary batch file");
-
-				startInfo.SetFileName(tempFileName);
-				startInfo.SetArguments("");
-
-				executionInstance.mTempFileName = new String(tempFileName);
-			}
-			else if (runFlags.HasFlag(.ShellCommand))
-			{
-				String shellArgs = scope .();
-				shellArgs.Append("/s ");
-				shellArgs.Append("/c ");
-				shellArgs.Append("\"");
-				IDEUtils.AppendWithOptionalQuotes(shellArgs, fileName);
-				if (!args.IsEmpty)
-				{
-					shellArgs.Append(" ");
-					shellArgs.Append(args);
-				}
-				shellArgs.Append("\"");
-				startInfo.SetFileName("cmd.exe");
-				startInfo.SetArguments(shellArgs);
-			}
-#endif
-
-			if (envVars != null)
-			{
-				for (var envKV in envVars)
-					startInfo.AddEnvironmentVariable(envKV.key, envKV.value);
-			}
-
+			// Whatever the process actually receives. An args file has to be substituted before
+			//  any shell wrapping below, or the wrapping is overwritten and cmd.exe ends up
+			//  launched with no '/c' at all, sitting on an interactive prompt forever
+			String effArgs = scope .(args);
 			if (useArgsFile != .None)
 			{
 				String tempFileName = scope String();
@@ -9698,32 +9657,73 @@ namespace IDE
 				var result = File.WriteAllText(tempFileName, args, encoding);
 				if (result case .Err)
 					OutputLine("Failed to create temporary param file");
-				String arguments = scope String();
 
+				effArgs.Clear();
 				if (isWSL)
 				{
-					arguments.Append(tempFileName);
-					IDEUtils.WSLPathFix(arguments);
-					startInfo.SetArguments(arguments);
+					effArgs.Append(tempFileName);
+					IDEUtils.WSLPathFix(effArgs);
 				}
 				else
 				{
-					arguments.Concat("@", tempFileName);
-					startInfo.SetArguments(arguments);
+					effArgs.Concat("@", tempFileName);
 				}
 
 				delete executionInstance.mTempFileName;
 				executionInstance.mTempFileName = new String(tempFileName);
 			}
-			else
+			else if (isWSL)
 			{
-				if (isWSL)
+				effArgs.Clear();
+				effArgs.Append("-- ");
+				effArgs.Append(args);
+			}
+			startInfo.SetArguments(effArgs);
+
+#if BF_PLATFORM_WINDOWS
+			if (runFlags.HasFlag(.BatchCommand))
+			{
+				String tempFileName = scope String();
+				Path.GetTempFileName(tempFileName);
+				tempFileName.Append(".bat");
+
+				String shellArgs = scope .();
+				IDEUtils.AppendWithOptionalQuotes(shellArgs, fileName);
+				shellArgs.Append(" ");
+				shellArgs.Append(effArgs);
+
+				var result = File.WriteAllText(tempFileName, shellArgs, Encoding.UTF8);
+				if (result case .Err)
+					OutputLine("Failed to create temporary batch file");
+
+				startInfo.SetFileName(tempFileName);
+				startInfo.SetArguments("");
+
+				delete executionInstance.mTempFileName;
+				executionInstance.mTempFileName = new String(tempFileName);
+			}
+			else if (runFlags.HasFlag(.ShellCommand))
+			{
+				String shellArgs = scope .();
+				shellArgs.Append("/s ");
+				shellArgs.Append("/c ");
+				shellArgs.Append("\"");
+				IDEUtils.AppendWithOptionalQuotes(shellArgs, fileName);
+				if (!effArgs.IsEmpty)
 				{
-					String arguments = scope .();
-					arguments.Append("-- ");
-					arguments.Append(args);
-					startInfo.SetArguments(arguments);
+					shellArgs.Append(" ");
+					shellArgs.Append(effArgs);
 				}
+				shellArgs.Append("\"");
+				startInfo.SetFileName("cmd.exe");
+				startInfo.SetArguments(shellArgs);
+			}
+#endif
+
+			if (envVars != null)
+			{
+				for (var envKV in envVars)
+					startInfo.AddEnvironmentVariable(envKV.key, envKV.value);
 			}
 
 			if (mVerbosity >= .Detailed)
