@@ -1137,17 +1137,73 @@ namespace Beefy.gfx
 			OutlineOval(x, y, radius, radius);
 		}
 
+		// Antialiased: the edge fades out across one pixel, centered on the true outline. Built in
+		// pixels so the fade stays one pixel wide under a scaled or rotated mMatrix.
 		public void FillOval(float x, float y, float radiusX, float radiusY)
 		{
-			int numSections = 12 + (.)((radiusX + radiusY) * 0.15f);
-			PolyStart(mWhiteDot, numSections * 3);
-			for (int section < numSections)
+			Matrix m = mMatrix;
+			float cx = m.tx + m.a * x + m.c * y;
+			float cy = m.ty + m.b * x + m.d * y;
+			float axX = m.a * radiusX;
+			float axY = m.b * radiusX;
+			float ayX = m.c * radiusY;
+			float ayY = m.d * radiusY;
+			float winding = Math.Sign(axX * ayY - axY * ayX);
+			if (winding == 0)
+				return;
+
+			Color edgeColor = mColor;
+			edgeColor.A = 0;
+
+			float pixelRadius = Math.Sqrt(axX * axX + axY * axY) + Math.Sqrt(ayX * ayX + ayY * ayY);
+			int numSections = 12 + (.)(pixelRadius * 0.15f);
+			// Per section: a solid triangle out to the inner edge, then a quad fading across the edge.
+			Gfx_AllocTris(mWhiteDot.mNativeTextureSegment, (.)(numSections * 9));
+
+			float prevInnerX = 0;
+			float prevInnerY = 0;
+			float prevOuterX = 0;
+			float prevOuterY = 0;
+			for (int section <= numSections)
 			{
-				float ang0 = (section * Math.PI_f * 2) / numSections;
-				float ang1 = ((section + 1) * Math.PI_f * 2) / numSections;
-				PolyVertex(section * 3 + 0, x, y, 0.5f, 0.5f, mColor);
-				PolyVertex(section * 3 + 1, x + Math.Cos(ang0) * radiusX, y + Math.Sin(ang0) * radiusY, 0.5f, 0.5f, mColor);
-				PolyVertex(section * 3 + 2, x + Math.Cos(ang1) * radiusX, y + Math.Sin(ang1) * radiusY, 0.5f, 0.5f, mColor);
+				// The last section reuses angle 0 exactly, so the ring closes without a seam.
+				float ang = ((section % numSections) * Math.PI_f * 2) / numSections;
+				float cos = Math.Cos(ang);
+				float sin = Math.Sin(ang);
+				float rimX = axX * cos + ayX * sin;
+				float rimY = axY * cos + ayY * sin;
+				float tanX = ayX * cos - axX * sin;
+				float tanY = ayY * cos - axY * sin;
+				float tanLen = Math.Sqrt(tanX * tanX + tanY * tanY);
+				float normX = winding * tanY / tanLen;
+				float normY = -winding * tanX / tanLen;
+				// Sub-pixel ovals can't inset a full half pixel without crossing the center.
+				float inset = Math.Min(0.5f, Math.Sqrt(rimX * rimX + rimY * rimY));
+				float innerX = cx + rimX - normX * inset;
+				float innerY = cy + rimY - normY * inset;
+				float outerX = cx + rimX + normX * 0.5f;
+				float outerY = cy + rimY + normY * 0.5f;
+
+				if (section > 0)
+				{
+					int32 v = (.)((section - 1) * 9);
+					Gfx_SetDrawVertex(v + 0, cx, cy, 0, 0.5f, 0.5f, mColor);
+					Gfx_SetDrawVertex(v + 1, prevInnerX, prevInnerY, 0, 0.5f, 0.5f, mColor);
+					Gfx_SetDrawVertex(v + 2, innerX, innerY, 0, 0.5f, 0.5f, mColor);
+
+					Gfx_CopyDrawVertex(v + 3, v + 1);
+					Gfx_SetDrawVertex(v + 4, prevOuterX, prevOuterY, 0, 0.5f, 0.5f, edgeColor);
+					Gfx_CopyDrawVertex(v + 5, v + 2);
+
+					Gfx_CopyDrawVertex(v + 6, v + 2);
+					Gfx_CopyDrawVertex(v + 7, v + 4);
+					Gfx_SetDrawVertex(v + 8, outerX, outerY, 0, 0.5f, 0.5f, edgeColor);
+				}
+
+				prevInnerX = innerX;
+				prevInnerY = innerY;
+				prevOuterX = outerX;
+				prevOuterY = outerY;
 			}
 		}
 
