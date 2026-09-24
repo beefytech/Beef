@@ -6,7 +6,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [windows-latest, windows-11-arm]
+        os: [windows-latest]
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     steps:
