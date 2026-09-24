@@ -729,6 +729,7 @@ namespace IDE
 			public bool mAutoCompleteOnEnter = true;
 			public bool mAutoCompleteShowDocumentation = true;
 			public bool mFuzzyAutoComplete = false;
+			public bool mShouldAutoCompleteIgnoreNamespaces = false;
 			public bool mShowLocatorAnim = true;
 			public bool mHiliteCursorReferences = true;
 			public bool mDebugMultiCursor = false;
@@ -764,6 +765,7 @@ namespace IDE
 				sd.Add("AutoCompleteOnEnter", mAutoCompleteOnEnter);
 				sd.Add("AutoCompleteShowDocumentation", mAutoCompleteShowDocumentation);
 				sd.Add("FuzzyAutoComplete", mFuzzyAutoComplete);
+				sd.Add("ShouldAutoCompleteIgnoreNamespaces", mShouldAutoCompleteIgnoreNamespaces);
 				sd.Add("ShowLocatorAnim", mShowLocatorAnim);
 				sd.Add("HiliteCursorReferences", mHiliteCursorReferences);
 				sd.Add("HiliteCurrentLine", mHiliteCurrentLine);
@@ -801,6 +803,7 @@ namespace IDE
 				sd.Get("AutoCompleteOnEnter", ref mAutoCompleteOnEnter);
 				sd.Get("AutoCompleteShowDocumentation", ref mAutoCompleteShowDocumentation);
 				sd.Get("FuzzyAutoComplete", ref mFuzzyAutoComplete);
+				sd.Get("ShouldAutoCompleteIgnoreNamespaces", ref mShouldAutoCompleteIgnoreNamespaces);
 				sd.Get("ShowLocatorAnim", ref mShowLocatorAnim);
 				sd.Get("HiliteCursorReferences", ref mHiliteCursorReferences);
 				sd.Get("HiliteCurrentLine", ref mHiliteCurrentLine);

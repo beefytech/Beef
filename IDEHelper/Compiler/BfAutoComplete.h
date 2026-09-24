@@ -112,6 +112,7 @@ public:
 	bool mIsGetDefinition;
 	bool mIsAutoComplete;
 	bool mDoFuzzyAutoComplete;
+	bool mShouldAutoCompleteIgnoreNamespaces;
 	int mInsertStartIdx;
 	int mInsertEndIdx;
 
@@ -248,7 +249,7 @@ public:
 	String ConstantToString(BfIRConstHolder* constHolder, BfTypedValue typedValue);
 
 public:
-	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete, bool doFuzzyAutoComplete = false);
+	BfAutoComplete(BfResolveType resolveType = BfResolveType_Autocomplete, bool doFuzzyAutoComplete = false, bool shouldAutoCompleteIgnoreNamespaces = false);
 	~BfAutoComplete();
 
 	void SetModule(BfModule* module);
