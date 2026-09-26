@@ -2377,12 +2377,11 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 	dxModelInstance->mD3DRenderDevice = this;
 	mModelInstances.Add(dxModelInstance);
 	dxModelInstance->mDXModelMeshs.Resize(modelDef->mMeshes.size());
-	int dxMeshIdx = 0;
 
 	for (int meshIdx = 0; meshIdx < (int)modelDef->mMeshes.size(); meshIdx++)
 	{
 		ModelMesh* mesh = &modelDef->mMeshes[meshIdx];
-		DXModelMesh* dxMesh = &dxModelInstance->mDXModelMeshs[dxMeshIdx];
+		DXModelMesh* dxMesh = &dxModelInstance->mDXModelMeshs[meshIdx];
 
 		dxMesh->mPrimitives.Resize(mesh->mPrimitives.size());
 
@@ -2446,8 +2445,6 @@ ModelInstance* DXRenderDevice::CreateModelInstance(ModelDef* modelDef, ModelCrea
 			dxPrimitives->mNumIndices = (int)primitives->mIndices.size();
 			dxPrimitives->mNumVertices = (int)primitives->mVertices.size();
 
-
-			dxMeshIdx++;
 		}
 	}
 
@@ -2817,6 +2814,9 @@ void Beefy::DXModelInstance::EnsureBuffers()
 {
 	for (int meshIdx = 0; meshIdx < (int)mModelDef->mMeshes.size(); meshIdx++)
 	{
+		if (!mMeshesVisible[meshIdx])
+			continue;
+
 		ModelMesh* mesh = &mModelDef->mMeshes[meshIdx];
 		DXModelMesh* dxMesh = &mDXModelMeshs[meshIdx];
 		for (int primsIdx = 0; primsIdx < (int)dxMesh->mPrimitives.size(); primsIdx++)

@@ -51,14 +51,19 @@ BF_EXPORT int32 BF_CALLTYPE ModelDef_GetCollisionTriangles(ModelDef* modelDef, M
 	bool canSkin = (modelInstance != NULL) && (!modelDef->mJoints.IsEmpty()) &&
 		(modelInstance->mJointMatrices.mSize == modelDef->mJoints.mSize);
 
-	for (auto& mesh : modelDef->mMeshes)
-		for (auto& prims : mesh.mPrimitives)
+	for (int32 meshIdx = 0; meshIdx < modelDef->mMeshes.mSize; meshIdx++)
+	{
+		if ((modelInstance != NULL) && (!modelInstance->mMeshesVisible[meshIdx]))
+			continue;
+		for (auto& prims : modelDef->mMeshes[meshIdx].mPrimitives)
 			for (int i = 0; i + 2 < (int)prims.mIndices.mSize; i += 3)
 				for (int k = 0; k < 3; k++)
 				{
 					ModelVertex& vtx = prims.mVertices[prims.mIndices[i + k]];
 					out.Add((canSkin && (vtx.mNumBoneWeights > 0)) ? SkinPosition(vtx, modelInstance->mJointMatrices) : vtx.mPosition);
 				}
+
+	}
 
 	*outPositions = out.IsEmpty() ? NULL : out.mVals;
 	return (int32)out.mSize;
@@ -229,6 +234,13 @@ BF_EXPORT int BF_CALLTYPE ModelDefAnimation_GetFrameCount(ModelAnimation* modelA
 BF_EXPORT const char* BF_CALLTYPE ModelDefAnimation_GetName(ModelAnimation* modelAnimation)
 {
 	return modelAnimation->mName.c_str();
+}
+
+BF_EXPORT const char* BF_CALLTYPE ModelDef_GetMeshName(ModelDef* modelDef, int32 meshIdx)
+{
+	if ((meshIdx < 0) || (meshIdx >= modelDef->mMeshes.mSize))
+		return "";
+	return modelDef->mMeshes[meshIdx].mName.c_str();
 }
 
 BF_EXPORT int BF_CALLTYPE ModelDef_GetMeshCount(ModelDef* modelDef)

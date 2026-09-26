@@ -160,6 +160,9 @@ namespace Beefy.gfx
         [CallingConvention(.Stdcall), CLink]
         extern static int32 ModelDef_GetMeshCount(void* nativeModel);
 
+		[CallingConvention(.Stdcall), CLink]
+		extern static char8* ModelDef_GetMeshName(void* nativeModel, int32 meshIdx);
+
         [CallingConvention(.Stdcall), CLink]
         extern static int32 ModelDef_GetPrimitivesCount(void* nativeModel, int32 meshIdx);
 
@@ -297,6 +300,29 @@ namespace Beefy.gfx
 		public int32 GetMeshCount()
 		{
 			return ModelDef_GetMeshCount(mNativeModelDef);
+		}
+
+		public void GetMeshName(int32 meshIdx, String outName)
+		{
+			outName.Append(ModelDef_GetMeshName(mNativeModelDef, meshIdx));
+		}
+
+		// Duplicate names are ambiguous, just like missing names.
+		public int32 FindMeshIndex(StringView name)
+		{
+			int32 found = -1;
+			String candidate = scope .();
+			for (int32 i < GetMeshCount())
+			{
+				candidate.Clear();
+				GetMeshName(i, candidate);
+				if (candidate != name)
+					continue;
+				if (found >= 0)
+					return -1;
+				found = i;
+			}
+			return found;
 		}
 
 		public int32 GetPrimitivesCount(int32 meshIdx)
