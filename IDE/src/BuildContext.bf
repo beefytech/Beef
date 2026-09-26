@@ -1623,7 +1623,8 @@ namespace IDE
 					// LLDB can hold onto file references. Deleting those files clears that up.
 					void CheckFileWrite(StringView path)
 					{
-						switch (scope UnbufferedFileStream().Open(path, .ReadWrite))
+						// With no sharing, read access still fails on any other handle; a write handle makes this slow on large files
+						switch (scope UnbufferedFileStream().Open(path, .Read))
 						{
 						case .Ok:
 							return;

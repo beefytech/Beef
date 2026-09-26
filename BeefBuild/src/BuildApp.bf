@@ -411,6 +411,11 @@ namespace BeefBuild
 				mFailed = true;
 		}
 
+		protected virtual bool HandleWorkspaceCommand(Project targetProject)
+		{
+			return false;
+		}
+
 		public override void Update(bool batchStart)
 		{
 			base.Update(batchStart);
@@ -435,6 +440,11 @@ namespace BeefBuild
 					}
 
 					mHandledVerb = true;
+					if (HandleWorkspaceCommand(targetProject))
+					{
+						Stop();
+						return;
+					}
 					if (mIsTest)
 					{
 						DoRunTests(mTestIncludeIgnored, false, targetProject);

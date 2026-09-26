@@ -9,6 +9,8 @@ NS_BF_BEGIN;
 typedef void (*BFApp_UpdateFunc)(bool batchStart);
 typedef void (*BFApp_UpdateFFunc)(float updatePct);
 typedef void (*BFApp_DrawFunc)(bool forceDraw);
+// Returns true while the app wants to keep being called between updates
+typedef bool (*BFApp_IdleUpdateFunc)();
 
 class BFApp;
 class BFSoundManager;
@@ -91,6 +93,7 @@ public:
 	BFApp_UpdateFunc		mUpdateFunc;
 	BFApp_UpdateFFunc		mUpdateFFunc;
 	BFApp_DrawFunc			mDrawFunc;
+	BFApp_IdleUpdateFunc	mIdleUpdateFunc;
 	int						mCursor;
 
 	BFWindowList			mWindowList;
@@ -101,6 +104,7 @@ public:
 	virtual void			UpdateF(float updatePct);
 	virtual void			Draw();
 	virtual void			Process();
+	bool					IdleUpdate();
 	virtual void			PhysSetCursor() = 0;
 
 public:

@@ -48,6 +48,7 @@ namespace Beefy
         public delegate void UpdateDelegate(bool batchStart);
 		public delegate void UpdateFDelegate(float updatePct);
         public delegate void DrawDelegate(bool forceDraw);
+		public delegate bool IdleUpdateDelegate();
 
         public static BFApp sApp;
         public int32 mUpdateCnt;
@@ -125,6 +126,9 @@ namespace Beefy
         [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_SetCallbacks(void* updateDelegate, void* updateFDelegate, void* drawDelegate);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void BFApp_SetIdleUpdateFunc(void* idleUpdateDelegate);
+
         [CallingConvention(.Stdcall), CLink]
         static extern char8* BFApp_GetInstallDir();
 
@@ -155,6 +159,7 @@ namespace Beefy
         UpdateDelegate mUpdateDelegate ~ delete _;
 		UpdateFDelegate mUpdateFDelegate ~ delete _;
         DrawDelegate mDrawDelegate ~ delete _;
+		IdleUpdateDelegate mIdleUpdateDelegate ~ delete _;
 		
 #if STUDIO_CLIENT
         public bool mTrackingDraw = false;
@@ -205,6 +210,11 @@ namespace Beefy
 		    sApp.UpdateF(updatePct);
 		}
 
+		static bool Static_IdleUpdate()
+		{
+			return sApp.IdleUpdate();
+		}
+
         float mLastUpdateDelta; // In seconds
 
         public this()
@@ -232,6 +242,10 @@ namespace Beefy
 			mDrawDelegate = new => Static_Draw;
 #endif
             BFApp_SetCallbacks(mUpdateDelegate.GetFuncPtr(), mUpdateFDelegate.GetFuncPtr(),  mDrawDelegate.GetFuncPtr());
+#if !STUDIO_CLIENT
+			mIdleUpdateDelegate = new => Static_IdleUpdate;
+			BFApp_SetIdleUpdateFunc(mIdleUpdateDelegate.GetFuncPtr());
+#endif
         }
 
 #if STUDIO_CLIENT
@@ -768,6 +782,13 @@ namespace Beefy
 
             //Utils.BFRT_CPP("gBFGC.MutatorSectionExit()");
         }        
+
+		// Called between updates while the app waits for its next frame. Return true to keep being
+		// called about once a millisecond, for work that shouldn't wait a whole frame.
+		public virtual bool IdleUpdate()
+		{
+			return false;
+		}
 
 		public virtual void UpdateF(float updatePct)
 		{

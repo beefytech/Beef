@@ -26,6 +26,7 @@ BFApp::BFApp()
 	mUpdateFunc = NULL;
 	mUpdateFFunc = NULL;
 	mDrawFunc = NULL;
+	mIdleUpdateFunc = NULL;
 	
 	gBFApp = this;
 	mSysDialogCnt = 0;
@@ -115,6 +116,27 @@ void BFApp::Draw()
 
 //#define PERIODIC_PERF_TIMING
 
+bool BFApp::IdleUpdate()
+{
+	return (mRunning) && (mIdleUpdateFunc != NULL) && (mIdleUpdateFunc());
+}
+
+// Waits up to timeoutMS for waitFunc, calling IdleUpdate between 1ms slices for as long as it asks to be
+template <typename T>
+static bool WaitWithIdle(BFApp* app, int timeoutMS, T waitFunc)
+{
+	uint32 startTick = BFTickCount();
+	while (app->IdleUpdate())
+	{
+		int remaining = timeoutMS - (int)(BFTickCount() - startTick);
+		if (remaining <= 0)
+			return false;
+		if (waitFunc(BF_MIN(remaining, 1)))
+			return true;
+	}
+	return waitFunc(BF_MAX(timeoutMS - (int)(BFTickCount() - startTick), 0));
+}
+
 void BFApp::Process()
 {
     //Beefy::DebugTimeGuard suspendTimeGuard(30, "BFApp::Process");
@@ -147,12 +169,12 @@ void BFApp::Process()
 	if ((!mUnthrottledRendering) && (mExternalPacingActive))
 	{
 		// Timeout keeps us alive at correct game speed (wall-clock catchup) if the pacer stalls
-		externalSignaled = WaitForExternalPacing((int)(physTicksPerFrame * 4 + 1));
+		externalSignaled = WaitWithIdle(this, (int)(physTicksPerFrame * 4 + 1), [&](int timeoutMS) { return WaitForExternalPacing(timeoutMS); });
 	}
 	else if ((!mUnthrottledRendering) && (mVSyncActive))
 	{
 		// Have a time limit in the cases we miss the vblank
-		if (mVSyncEvent.WaitFor((int)(physTicksPerFrame + 1)))
+		if (WaitWithIdle(this, (int)(physTicksPerFrame + 1), [&](int timeoutMS) { return mVSyncEvent.WaitFor(timeoutMS); }))
 			didVBlankWait = true;
 	}
 
@@ -258,6 +280,7 @@ void BFApp::Process()
 
 	if ((mRunning) && (didUpdateCnt == 0) && (!externalSignaled) && (!mUnthrottledRendering))
 	{
+		IdleUpdate();
 		BfpThread_Sleep(1);
 	}
 

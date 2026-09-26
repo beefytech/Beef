@@ -16163,6 +16163,53 @@ namespace IDE
 				});
 		}
 
+		// Advances the build pipeline between frames so each queued step doesn't wait out a whole update tick
+		public override bool IdleUpdate()
+		{
+			if (mExecutionQueue.IsEmpty)
+			{
+				// A running target (Run without debugging) can sit here for its whole lifetime
+				if ((mExecutionInstances.IsEmpty) || (mExecutionInstances[0].mIsTargetRun))
+					return false;
+			}
+			// Debug starts depend on debugger state that Update refreshes first
+			if ((!mExecutionQueue.IsEmpty) && (mExecutionQueue[0] is StartDebugCmd))
+				return false;
+
+			scope AutoBeefPerf("IDEApp.IdleUpdate");
+			let stopwatch = scope Stopwatch(true);
+			let msg = scope String();
+			while (true)
+			{
+				int prevQueueCount = mExecutionQueue.Count;
+				int prevInstanceCount = mExecutionInstances.Count;
+
+				if (mBfBuildCompiler != null)
+				{
+					mBfBuildCompiler.Update();
+					while (true)
+					{
+#if CLI
+						if (mCompilingBeef)
+							break;
+#endif
+						msg.Clear();
+						if (!mBfBuildCompiler.PopMessage(msg))
+							break;
+						OutputLineSmart(msg);
+					}
+				}
+				mBuildContext?.mScriptManager?.Update();
+				UpdateExecution();
+
+				if ((mExecutionQueue.Count == prevQueueCount) && (mExecutionInstances.Count == prevInstanceCount))
+					break;
+				if ((stopwatch.ElapsedMilliseconds >= 2) || (mExecutionQueue.IsEmpty))
+					break;
+			}
+			return true;
+		}
+
 		public override void Update(bool batchStart)
 		{
 			scope AutoBeefPerf("IDEApp.Update");
