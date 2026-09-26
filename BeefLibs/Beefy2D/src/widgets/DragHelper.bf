@@ -104,6 +104,8 @@ namespace Beefy.widgets
         {
             mDownUpdateCnt = mWidget.mUpdateCnt;
             mMouseFlags |= (MouseFlag)(1 << btn);            
+            mMouseX = x;
+            mMouseY = y;
             mMouseDownX = x;
             mMouseDownY = y;
         }
