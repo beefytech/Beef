@@ -32,6 +32,139 @@ bf::System::Runtime::BfRtCallbacks gBfRtDbgCallbacks;
 BfRtFlags gBfRtDbgFlags = (BfRtFlags)0;
 #endif
 
+#ifndef BF_GC_SUPPORTED
+// Live heap allocations by type ID. Without the GC's heap (which the debugger scans on Windows), this is
+// how a debugger tells whether a type is in use, and so whether a hot compile may change its layout.
+// Objects are counted from allocation to delete. Raw allocations can't be identified when freed, so
+// they're only ever counted up, which keeps their types conservatively "in use".
+#define BF_LIVE_TYPE_COUNT_MAX 0x10000
+extern "C" BFRT_EXPORT int32 gBfLiveTypeCounts[BF_LIVE_TYPE_COUNT_MAX];
+extern "C" BFRT_EXPORT int32 gBfLiveTypeCountOverflow; // Set if a type ID didn't fit - the debugger then assumes all types are in use
+int32 gBfLiveTypeCounts[BF_LIVE_TYPE_COUNT_MAX] = { 0 };
+int32 gBfLiveTypeCountOverflow = 0;
+
+static void BfCountLiveType(int32 typeId, int32 delta)
+{
+	if ((typeId >= 0) && (typeId < BF_LIVE_TYPE_COUNT_MAX))
+		__atomic_fetch_add(&gBfLiveTypeCounts[typeId], delta, __ATOMIC_RELAXED);
+	else
+		gBfLiveTypeCountOverflow = 1;
+}
+
+// A ClassVData starts with its type ID
+static int32 BfGetClassVDataTypeId(bf::System::ClassVData* classVData)
+{
+	return *(int32*)classVData;
+}
+
+// Live delegate objects, so a debugger can find the methods they point to - a hot compile must treat
+// those as in use too. An open-addressing table of object pointers (NULL is empty, 1 is a removed
+// entry); the debugger reads mEntries[0..mCapacity) while the process is stopped.
+struct BfLiveDelegateTable
+{
+	void** mEntries;
+	int32 mCapacity;
+	int32 mCount;
+	int32 mUsed; // mCount plus removed entries
+};
+extern "C" BFRT_EXPORT BfLiveDelegateTable gBfLiveDelegates;
+BfLiveDelegateTable gBfLiveDelegates = { NULL, 0, 0, 0 };
+static int32 sLiveDelegatesLock = 0;
+#define BF_LIVE_DELEGATE_REMOVED ((void*)1)
+#define BF_TYPEFLAG_DELEGATE 0x20000
+
+static bool BfIsDelegateClass(bf::System::ClassVData* classVData)
+{
+	bf::System::Type_NOFLAGS* typeData = BFRTCALLBACKS.ClassVData_GetTypeDataPtr(classVData);
+	return (typeData != NULL) && ((typeData->mTypeFlags & BF_TYPEFLAG_DELEGATE) != 0);
+}
+
+static uintptr BfLiveDelegateHash(void* object)
+{
+	uintptr hash = (uintptr)object >> 4;
+	return hash ^ (hash >> 16) ^ (hash * 31);
+}
+
+static void BfLiveDelegateInsert(void** entries, int32 capacity, void* object)
+{
+	uintptr hash = BfLiveDelegateHash(object);
+	for (int32 probe = 0; probe < capacity; probe++)
+	{
+		int32 idx = (int32)((hash + probe) & (capacity - 1));
+		if ((entries[idx] == NULL) || (entries[idx] == BF_LIVE_DELEGATE_REMOVED))
+		{
+			entries[idx] = object;
+			return;
+		}
+	}
+}
+
+static void BfTrackLiveDelegate(void* object, bool add)
+{
+	while (__atomic_exchange_n(&sLiveDelegatesLock, 1, __ATOMIC_ACQUIRE) != 0)
+	{
+	}
+
+	auto& table = gBfLiveDelegates;
+	if (add)
+	{
+		if ((table.mUsed + 1) * 2 > table.mCapacity)
+		{
+			int32 newCapacity = BF_MAX(64, table.mCapacity);
+			while ((table.mCount + 1) * 2 > newCapacity / 2)
+				newCapacity *= 2;
+			void** newEntries = (void**)calloc(newCapacity, sizeof(void*));
+			for (int32 idx = 0; idx < table.mCapacity; idx++)
+			{
+				void* entry = table.mEntries[idx];
+				if ((entry != NULL) && (entry != BF_LIVE_DELEGATE_REMOVED))
+					BfLiveDelegateInsert(newEntries, newCapacity, entry);
+			}
+			free(table.mEntries);
+			table.mEntries = newEntries;
+			table.mCapacity = newCapacity;
+			table.mUsed = table.mCount;
+		}
+		BfLiveDelegateInsert(table.mEntries, table.mCapacity, object);
+		table.mCount++;
+		table.mUsed++;
+	}
+	else if (table.mCapacity > 0)
+	{
+		uintptr hash = BfLiveDelegateHash(object);
+		for (int32 probe = 0; probe < table.mCapacity; probe++)
+		{
+			int32 idx = (int32)((hash + probe) & (table.mCapacity - 1));
+			if (table.mEntries[idx] == NULL)
+				break;
+			if (table.mEntries[idx] == object)
+			{
+				table.mEntries[idx] = BF_LIVE_DELEGATE_REMOVED;
+				table.mCount--;
+				break;
+			}
+		}
+	}
+
+	__atomic_store_n(&sLiveDelegatesLock, 0, __ATOMIC_RELEASE);
+}
+
+static void BfTrackAllocatedObject(bf::System::Object* object, bf::System::ClassVData* classVData)
+{
+	BfCountLiveType(BfGetClassVDataTypeId(classVData), 1);
+	if (BfIsDelegateClass(classVData))
+		BfTrackLiveDelegate(object, true);
+}
+
+static void BfTrackDeletedObject(bf::System::Object* object)
+{
+	auto classVData = (bf::System::ClassVData*)(object->mClassVData & ~(intptr)0xFF);
+	BfCountLiveType(BfGetClassVDataTypeId(classVData), -1);
+	if (BfIsDelegateClass(classVData))
+		BfTrackLiveDelegate(object, false);
+}
+#endif
+
 namespace bf
 {
 	namespace System
@@ -422,6 +555,10 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 #endif
 		result->mClassVData = (intptr)classVData;
 
+#ifndef BF_GC_SUPPORTED
+	BfTrackAllocatedObject(result, classVData);
+#endif
+
 	//OutputDebugStrF("Object %@ ClassVData %@\n", result, classVData);
 
 #ifdef DBG_OBJECTEND
@@ -506,6 +643,9 @@ void Internal::Dbg_ObjectAllocated(bf::System::Object* result, intptr size, bf::
 {
 	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 	result->mClassVData = (intptr)classVData;
+#ifndef BF_GC_SUPPORTED
+	BfTrackAllocatedObject(result, classVData);
+#endif
 #ifndef BFRT_NODBGFLAGS	
 	result->mDbgAllocInfo = (intptr)BF_RETURN_ADDRESS;	
 #endif
@@ -515,6 +655,9 @@ void Internal::Dbg_ObjectAllocatedEx(bf::System::Object* result, intptr origSize
 {
 	BF_ASSERT((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0);
 	result->mClassVData = (intptr)classVData;
+#ifndef BF_GC_SUPPORTED
+	BfTrackAllocatedObject(result, classVData);
+#endif
 	SetupDbgAllocInfo(result, origSize, allocFlags);
 }
 
@@ -561,6 +704,10 @@ void Internal::Dbg_ObjectPreDelete(bf::System::Object* object)
 		return;
 	}
 #endif
+
+#ifndef BF_GC_SUPPORTED
+	BfTrackDeletedObject(object);
+#endif
 }
 
 void Internal::Dbg_ObjectPreCustomDelete(bf::System::Object* object)
@@ -587,8 +734,13 @@ void Internal::Dbg_ObjectPreCustomDelete(bf::System::Object* object)
 		errorStr += StrFormat("   (%s)0x%@\n", typeName.c_str(), object);
 		SETUP_ERROR(errorStr.c_str(), 2);
 		BF_DEBUG_BREAK();
-		BFRTCALLBACKS.DebugMessageData_Fatal();		
+		BFRTCALLBACKS.DebugMessageData_Fatal();
+		return;
 	}
+
+#ifndef BF_GC_SUPPORTED
+	BfTrackDeletedObject(object);
+#endif
 }
 
 void* Internal::Dbg_RawAlloc(intptr size, DbgRawAllocData* rawAllocData)
@@ -605,6 +757,14 @@ void* Internal::Dbg_RawAlloc(intptr size, DbgRawAllocData* rawAllocData)
 	{
 		capturedTraceCount = BF_CAPTURE_STACK(1, (intptr*)stackTrace, min(rawAllocData->mMaxStackTrace, 1024));
 	}	
+#endif
+#ifndef BF_GC_SUPPORTED
+	if (rawAllocData->mType != NULL)
+	{
+		// A Type is an object: its mSize and mTypeId follow the object header
+		intptr objectSize = ((BFRTFLAGS & BfRtFlags_ObjectHasDebugFlags) != 0) ? sizeof(intptr) * 2 : sizeof(intptr);
+		BfCountLiveType(*(int32*)((uint8*)rawAllocData->mType + objectSize + sizeof(int32)), 1);
+	}
 #endif
 	return BfRawAllocate(size, rawAllocData, stackTrace, capturedTraceCount);
 }

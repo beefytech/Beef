@@ -10,3 +10,6 @@ IntermediateType = "ObjectAndIRCode"
 
 [Configs.Debug.Win32]
 IntermediateType = "ObjectAndIRCode"
+
+[Configs.Debug.Linux64]
+AllowHotSwapping = true
