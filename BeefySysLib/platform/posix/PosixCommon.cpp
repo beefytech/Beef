@@ -1495,7 +1495,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
         {
             close(stdErrFD[0]);
             while ((dup2(stdErrFD[1], STDERR_FILENO) == -1) && (errno == EINTR)) {}
-            close(stdErrFD[0]);
+            close(stdErrFD[1]);
         }
 
         if ((hasWorkingDir) && (chdir(workingDir) != 0))
