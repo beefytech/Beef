@@ -1235,6 +1235,33 @@ struct BfpSpawn
     int mStdErrFD;
 };
 
+/// Creates a pipe whose ends are not inherited by other concurrently spawned processes
+static bool BfpSpawn_CreatePipe(int fds[2])
+{
+#if defined(BF_PLATFORM_LINUX) || defined(BF_PLATFORM_ANDROID)
+	return pipe2(fds, O_CLOEXEC) == 0;
+#else
+	if (pipe(fds) != 0)
+		return false;
+	fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+	fcntl(fds[1], F_SETFD, FD_CLOEXEC);
+	return true;
+#endif
+}
+
+/// Makes a pipe end the child's std handle. Must only be called in the forked child
+static void BfpSpawn_RedirectChildFD(int fromFD, int toFD)
+{
+	if (fromFD == toFD)
+	{
+		// dup2 is a no-op here, so clear close-on-exec directly
+		fcntl(toFD, F_SETFD, 0);
+		return;
+	}
+	while ((dup2(fromFD, toFD) == -1) && (errno == EINTR)) {}
+	close(fromFD);
+}
+
 BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, const char* args, const char* workingDir, const char* env, BfpSpawnFlags flags, BfpSpawnResult* outResult)
 {
     Beefy::Array<Beefy::StringView> stringViews;
@@ -1454,13 +1481,13 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 
 	bool failed = false;
 	if ((flags & BfpSpawnFlag_RedirectStdInput) != 0)
-		if (pipe(stdInFD) != 0)
+		if (!BfpSpawn_CreatePipe(stdInFD))
 			failed = true;
 	if ((flags & BfpSpawnFlag_RedirectStdOutput) != 0)
-		if (pipe(stdOutFD) != 0)
+		if (!BfpSpawn_CreatePipe(stdOutFD))
 			failed = true;
 	if ((flags & BfpSpawnFlag_RedirectStdError) != 0)
-		if (pipe(stdErrFD) != 0)
+		if (!BfpSpawn_CreatePipe(stdErrFD))
 			failed = true;
 	if (failed)
 	{
@@ -1481,21 +1508,18 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
         if ((flags & BfpSpawnFlag_RedirectStdInput) != 0)
         {
             close(stdInFD[1]);
-            while ((dup2(stdInFD[0], STDIN_FILENO) == -1) && (errno == EINTR)) {}
-            close(stdInFD[0]);
+            BfpSpawn_RedirectChildFD(stdInFD[0], STDIN_FILENO);
         }
 
         if ((flags & BfpSpawnFlag_RedirectStdOutput) != 0)
         {
             close(stdOutFD[0]);
-            while ((dup2(stdOutFD[1], STDOUT_FILENO) == -1) && (errno == EINTR)) {}
-            close(stdOutFD[1]);
+            BfpSpawn_RedirectChildFD(stdOutFD[1], STDOUT_FILENO);
         }
         if ((flags & BfpSpawnFlag_RedirectStdError) != 0)
         {
             close(stdErrFD[0]);
-            while ((dup2(stdErrFD[1], STDERR_FILENO) == -1) && (errno == EINTR)) {}
-            close(stdErrFD[1]);
+            BfpSpawn_RedirectChildFD(stdErrFD[1], STDERR_FILENO);
         }
 
         if ((hasWorkingDir) && (chdir(workingDir) != 0))
