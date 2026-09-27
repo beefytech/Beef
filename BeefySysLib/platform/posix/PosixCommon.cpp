@@ -1342,16 +1342,12 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
     bool inQuote = false;
 
 	String targetPath = inTargetPath;
-	String verb;
 	if ((flags & BfpSpawnFlag_UseShellExecute) != 0)
 	{
-		String target = targetPath;
-		int barPos = (int)target.IndexOf('|');
+		// Strip the "|verb" suffix; verbs have no POSIX equivalent and are ignored
+		int barPos = (int)targetPath.IndexOf('|');
 		if (barPos != -1)
-		{
-			verb = targetPath.Substring(barPos + 1);
 			targetPath.RemoveToEnd(barPos);
-		}
 	}
 
     // When executing in a shell the arguments are not split
@@ -1462,11 +1458,6 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
     }
 
     argvArr.Add(NULL);
-
-    char** argv = NULL;
-
-    //pid_t pid = 0;
-    //int status = posix_spawn(&pid, targetPath, NULL, NULL, &argvArr[0], environ);
 
     Beefy::Array<char*> envArr;
     if (env != NULL)
@@ -1590,7 +1581,6 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
     for (auto val : argvArr)
         free(val);
 
-    //printf("Spawn pid:%d status:%d\n", pid, status);
     spawn->mPid = pid;
     spawn->mExited = false;
     spawn->mStatus = 0;
