@@ -1249,6 +1249,14 @@ static bool BfpSpawn_CreatePipe(int fds[2])
 #endif
 }
 
+/// Writes "<message><arg>\n" to stderr using only async-signal-safe calls, for use in the forked child
+static void BfpSpawn_ChildSafeErrPrint(const char* message, const char* arg)
+{
+	write(STDERR_FILENO, message, strlen(message));
+	write(STDERR_FILENO, arg, strlen(arg));
+	write(STDERR_FILENO, "\n", 1);
+}
+
 /// Makes a pipe end the child's std handle. Must only be called in the forked child
 static void BfpSpawn_RedirectChildFD(int fromFD, int toFD)
 {
@@ -1524,23 +1532,17 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 
         if ((hasWorkingDir) && (chdir(workingDir) != 0))
         {
-            BFP_ERRPRINTF("Couldn't change directory to %s\n", workingDir);
+            BfpSpawn_ChildSafeErrPrint("Couldn't change directory to ", workingDir);
             _exit(-1);
         }
 
         // If successful then this shouldn't return at all:
-        int result;
-
         if (env != NULL)
-            result = execve(targetPath.c_str(), (char* const*)&argvArr[0], (char* const*)&envArr[0]);
+            execve(targetPath.c_str(), (char* const*)&argvArr[0], (char* const*)&envArr[0]);
         else
-            result = execv(targetPath.c_str(), (char* const*)&argvArr[0]);
+            execv(targetPath.c_str(), (char* const*)&argvArr[0]);
 
-        close(STDOUT_FILENO);
-        close(STDERR_FILENO);
-        close(STDIN_FILENO);
-
-        BFP_ERRPRINTF("Couldn't execute %s\n", targetPath.c_str());
+        BfpSpawn_ChildSafeErrPrint("Couldn't execute ", targetPath.c_str());
 
         _exit(-1);
     }
