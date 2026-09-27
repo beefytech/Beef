@@ -1588,6 +1588,13 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 
 void BfpSpawn_Release(BfpSpawn* spawn)
 {
+	// Close pipe ends never taken through BfpSpawn_GetStdHandles, so the child sees EOF on stdin
+	for (int fd : { spawn->mStdInFD, spawn->mStdOutFD, spawn->mStdErrFD })
+	{
+		if (fd != -1)
+			close(fd);
+	}
+
 	if (!BfpSpawn_WaitFor(spawn, 0, NULL, NULL))
     {
 		BfpGlobalSpawnData::Get()->AddDetachedProcess(spawn->mPid);
