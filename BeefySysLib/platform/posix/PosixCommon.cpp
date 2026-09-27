@@ -1241,28 +1241,18 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 
     //printf("BfpSpawn_Create: %s %s %x\n", inTargetPath, args, flags);
 
-    char* prevWorkingDir = NULL;
-
-	if ((workingDir != NULL) && (workingDir[0] != 0))
+	// Validate working directory
+	bool hasWorkingDir = (workingDir != NULL) && (workingDir[0] != 0);
+	if (hasWorkingDir)
 	{
-		if (chdir(workingDir) != 0)
+		// The chdir itself happens in the child so the parent's cwd is never modified
+		struct stat workingDirStat;
+		if ((stat(workingDir, &workingDirStat) != 0) || (!S_ISDIR(workingDirStat.st_mode)))
 		{
-			//printf("CHDIR failed %s\n", workingDir);
 			OUTRESULT(BfpSpawnResult_UnknownError);
 			return NULL;
 		}
-
-        prevWorkingDir = getcwd(NULL, 0);
 	}
-
-    defer(
-        {
-            if (prevWorkingDir != NULL)
-            {
-                chdir(prevWorkingDir);
-                free(prevWorkingDir);
-            }
-        });
 
 	String newArgs;
 	String tempFileName;
@@ -1506,6 +1496,12 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
             close(stdErrFD[0]);
             while ((dup2(stdErrFD[1], STDERR_FILENO) == -1) && (errno == EINTR)) {}
             close(stdErrFD[0]);
+        }
+
+        if ((hasWorkingDir) && (chdir(workingDir) != 0))
+        {
+            BFP_ERRPRINTF("Couldn't change directory to %s\n", workingDir);
+            exit(-1);
         }
 
         // If successful then this shouldn't return at all:
