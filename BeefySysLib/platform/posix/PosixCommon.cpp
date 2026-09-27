@@ -1501,7 +1501,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
         if ((hasWorkingDir) && (chdir(workingDir) != 0))
         {
             BFP_ERRPRINTF("Couldn't change directory to %s\n", workingDir);
-            exit(-1);
+            _exit(-1);
         }
 
         // If successful then this shouldn't return at all:
@@ -1518,7 +1518,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 
         BFP_ERRPRINTF("Couldn't execute %s\n", targetPath.c_str());
 
-        exit(-1);
+        _exit(-1);
     }
     else // Parent
     {
