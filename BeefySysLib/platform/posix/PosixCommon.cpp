@@ -1483,9 +1483,21 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
     }
     envArr.Add(NULL);
 
-    int stdInFD[2];
-    int stdOutFD[2];
-    int stdErrFD[2];
+    int stdInFD[2] = { -1, -1 };
+    int stdOutFD[2] = { -1, -1 };
+    int stdErrFD[2] = { -1, -1 };
+
+	auto _CleanupFailedSpawn = [&]()
+	{
+		for (int fd : { stdInFD[0], stdInFD[1], stdOutFD[0], stdOutFD[1], stdErrFD[0], stdErrFD[1] })
+		{
+			if (fd != -1)
+				close(fd);
+		}
+		for (auto val : argvArr)
+			free(val);
+		OUTRESULT(BfpSpawnResult_UnknownError);
+	};
 
 	bool failed = false;
 	if ((flags & BfpSpawnFlag_RedirectStdInput) != 0)
@@ -1500,7 +1512,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 	if (failed)
 	{
 		//printf("Pipe failed\n");
-		OUTRESULT(BfpSpawnResult_UnknownError);
+		_CleanupFailedSpawn();
 		return NULL;
 	}
 
@@ -1508,7 +1520,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
     pid_t pid = fork();
     if (pid == -1) // Error
     {
-        OUTRESULT(BfpSpawnResult_UnknownError);
+        _CleanupFailedSpawn();
         return NULL;
     }
     else if (pid == 0) // Child
