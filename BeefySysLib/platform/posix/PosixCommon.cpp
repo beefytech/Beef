@@ -1556,7 +1556,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
             close(stdInFD[0]);
         }
         else
-            spawn->mStdInFD = 0;
+            spawn->mStdInFD = -1;
 
         if ((flags & BfpSpawnFlag_RedirectStdOutput) != 0)
         {
@@ -1564,7 +1564,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
             close(stdOutFD[1]);
         }
         else
-            spawn->mStdOutFD = 0;
+            spawn->mStdOutFD = -1;
 
         if ((flags & BfpSpawnFlag_RedirectStdError) != 0)
         {
@@ -1572,7 +1572,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
             close(stdErrFD[1]);
         }
         else
-            spawn->mStdErrFD = 0;
+            spawn->mStdErrFD = -1;
     }
 
     for (auto val : argvArr)
@@ -1600,20 +1600,21 @@ BFP_EXPORT void BFP_CALLTYPE BfpSpawn_GetStdHandles(BfpSpawn* spawn, BfpFile** o
 {
     if (outStdIn != NULL)
     {
-        *outStdIn = new BfpFile(spawn->mStdInFD);
-        spawn->mStdInFD = 0;
+        // -1 means not redirected or already taken; 0 would be the parent's own stdin
+        *outStdIn = (spawn->mStdInFD != -1) ? new BfpFile(spawn->mStdInFD) : NULL;
+        spawn->mStdInFD = -1;
     }
 
     if (outStdOut != NULL)
     {
-        *outStdOut = new BfpFile(spawn->mStdOutFD);
-        spawn->mStdOutFD = 0;
+        *outStdOut = (spawn->mStdOutFD != -1) ? new BfpFile(spawn->mStdOutFD) : NULL;
+        spawn->mStdOutFD = -1;
     }
 
     if (outStdErr != NULL)
     {
-        *outStdErr = new BfpFile(spawn->mStdErrFD);
-        spawn->mStdErrFD = 0;
+        *outStdErr = (spawn->mStdErrFD != -1) ? new BfpFile(spawn->mStdErrFD) : NULL;
+        spawn->mStdErrFD = -1;
     }
 }
 
