@@ -4729,6 +4729,20 @@ from_chars(UC const *first, UC const *last, T &value,
                                     parse_options_t<UC>(fmt));
 }
 
+// BEEF: On 32-bit x86, MSVC converts a uint64_t to float through the __ultof3 CRT helper, which older toolsets
+// (VS2019 / 14.29) do not provide, so the static runtime failed to link there. The fast path only admits
+// mantissas up to 2^24 for float, so converting through int32_t is exact and compiles to a single cvtsi2ss.
+// This is a specialization rather than a branch so unoptimized builds do not keep the uint64_t conversion.
+template <typename T>
+fastfloat_really_inline FASTFLOAT_CONSTEXPR14 T fast_path_mantissa_to_float(uint64_t mantissa) noexcept {
+  return T(mantissa);
+}
+
+template <>
+fastfloat_really_inline FASTFLOAT_CONSTEXPR14 float fast_path_mantissa_to_float<float>(uint64_t mantissa) noexcept {
+  return float(int32_t(mantissa));
+}
+
 template <typename T>
 fastfloat_really_inline FASTFLOAT_CONSTEXPR20 bool
 clinger_fast_path_impl(uint64_t mantissa, int64_t exponent, bool is_negative,
@@ -4751,7 +4765,8 @@ clinger_fast_path_impl(uint64_t mantissa, int64_t exponent, bool is_negative,
       // We have that fegetround() == FE_TONEAREST.
       // Next is Clinger's fast path.
       if (mantissa <= binary_format<T>::max_mantissa_fast_path()) {
-        value = T(mantissa);
+        // BEEF: fast_path_mantissa_to_float avoids the __ultof3 helper - see its definition
+        value = fast_path_mantissa_to_float<T>(mantissa);
         if (exponent < 0) {
           value = value / binary_format<T>::exact_power_of_ten(-exponent);
         } else {
@@ -4775,7 +4790,7 @@ clinger_fast_path_impl(uint64_t mantissa, int64_t exponent, bool is_negative,
           return true;
         }
 #endif
-        value = T(mantissa) * binary_format<T>::exact_power_of_ten(exponent);
+        value = fast_path_mantissa_to_float<T>(mantissa) * binary_format<T>::exact_power_of_ten(exponent);
         if (is_negative) {
           value = -value;
         }
