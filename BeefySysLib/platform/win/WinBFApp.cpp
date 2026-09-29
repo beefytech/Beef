@@ -1399,6 +1399,14 @@ void WinBFApp::VSyncThreadProc()
 
 		IDXGIOutput* output = NULL;
 
+		// A frame pacer replaces the vblank wait.
+		if (mFramePacer != NULL)
+		{
+			mVSyncActive = false;
+			BfpThread_Sleep(20);
+			continue;
+		}
+
 		//
 		{
 			AutoCrit autoCrit(mCritSect);

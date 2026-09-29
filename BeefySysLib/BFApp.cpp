@@ -48,6 +48,11 @@ BFApp::BFApp()
 	mVSynched = false;
 	mVSyncActive = false;
 	mExternalPacingActive = false;
+	mFramePacer = NULL;
+	mFramePacerRefreshRate = 0;
+	mFramePacerWaits = 0;
+	mFramePacerSignaled = 0;
+	mFramePacerWaitMicros = 0;
 	mVirtualFocus = false;
 	mForceNextDraw = false;
 
@@ -150,6 +155,8 @@ void BFApp::Process()
 		physRefreshRate = headRenderWindow->GetRefreshRate();
 	}
 
+	if ((mFramePacer != NULL) && (mFramePacerRefreshRate > 0))
+		physRefreshRate = mFramePacerRefreshRate;
 	if (physRefreshRate <= 0)
 		physRefreshRate = 60.0f;
 
@@ -166,7 +173,16 @@ void BFApp::Process()
 	bool didVBlankWait = false;
 	bool externalSignaled = false;
 
-	if ((!mUnthrottledRendering) && (mExternalPacingActive))
+	if ((!mUnthrottledRendering) && (mFramePacer != NULL))
+	{
+		uint64 waitStart = BFGetTickCountMicroFast();
+		externalSignaled = WaitWithIdle(this, (int)(physTicksPerFrame * 4 + 1), [&](int timeoutMS) { return (mFramePacer != NULL) && (mFramePacer->WaitForFrame(timeoutMS)); });
+		mFramePacerWaits++;
+		if (externalSignaled)
+			mFramePacerSignaled++;
+		mFramePacerWaitMicros += (int64)(BFGetTickCountMicroFast() - waitStart);
+	}
+	else if ((!mUnthrottledRendering) && (mExternalPacingActive))
 	{
 		// Timeout keeps us alive at correct game speed (wall-clock catchup) if the pacer stalls
 		externalSignaled = WaitWithIdle(this, (int)(physTicksPerFrame * 4 + 1), [&](int timeoutMS) { return WaitForExternalPacing(timeoutMS); });

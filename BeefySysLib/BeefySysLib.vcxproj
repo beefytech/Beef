@@ -506,6 +506,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClCompile Include="platform\win\DXRenderDevice.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
     </ClCompile>
+    <ClCompile Include="platform\win\DXComposition.cpp" />
     <ClCompile Include="platform\win\Platform.cpp" />
     <ClCompile Include="ResLib.cpp" />
     <ClCompile Include="sound\Common\AkDefaultLowLevelIODispatcher.cpp">
@@ -2039,6 +2040,7 @@ copy /y "$(OutDir)$(TargetName).lib" "$(SolutionDir)\BeefLibs\Beefy2D\dist\"</Co
     <ClInclude Include="platform\win\DXRenderDevice.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">false</ExcludedFromBuild>
     </ClInclude>
+    <ClInclude Include="platform\win\DXComposition.h" />
     <ClInclude Include="platform\win\BFPlatform.h" />
     <ClInclude Include="sound\Common\AkDefaultLowLevelIODispatcher.h">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>

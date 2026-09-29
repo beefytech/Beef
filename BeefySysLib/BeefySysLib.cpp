@@ -240,6 +240,25 @@ BF_EXPORT void BF_CALLTYPE BFApp_SetExternalPacing(const char* eventName)
 	gBFApp->SetExternalPacing(eventName);
 }
 
+// NULL clears. The pacer's owner clears it before deleting it.
+BF_EXPORT void BF_CALLTYPE BFApp_SetFramePacer(FramePacer* pacer, float refreshRate)
+{
+	gBFApp->mFramePacer = pacer;
+	gBFApp->mFramePacerRefreshRate = refreshRate;
+}
+
+// Pacer waits since the previous call (then resets): how many, how many were signaled rather than
+// timing out, and the time spent waiting.
+BF_EXPORT void BF_CALLTYPE BFApp_TakeFramePacerStats(int* waits, int* signaled, int64* waitMicros)
+{
+	*waits = gBFApp->mFramePacerWaits;
+	*signaled = gBFApp->mFramePacerSignaled;
+	*waitMicros = gBFApp->mFramePacerWaitMicros;
+	gBFApp->mFramePacerWaits = 0;
+	gBFApp->mFramePacerSignaled = 0;
+	gBFApp->mFramePacerWaitMicros = 0;
+}
+
 BF_EXPORT void BF_CALLTYPE BFApp_SetVirtualFocus(bool virtualFocus)
 {
 	gBFApp->mVirtualFocus = virtualFocus;

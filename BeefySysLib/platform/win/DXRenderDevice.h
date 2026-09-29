@@ -53,6 +53,8 @@ NS_BF_BEGIN;
 class WinBFWindow;
 class BFApp;
 class DXRenderDevice;
+class DXCompositionHost;
+class DXCompositionTarget;
 
 // What one texture holds, for Gfx_GetTextureStats. mKey is the underlying D3D resource, so views
 // over a shared one (CreateDepthRef, CreateRawRef) count once. A color target's own depth plane is
@@ -622,6 +624,9 @@ public:
 	// commands may still reference them (the texture analog of Scene's retired GpuBuffers).
 	Array<DXTexture*>		mRetiredTextures;
 	Array<ModelInstance*>	mRetiredModelInstances;
+	// Rebuilt by ReinitNative (see DXComposition.h).
+	HashSet<DXCompositionHost*> mCompositionHosts;
+	HashSet<DXCompositionTarget*> mCompositionTargets;
 	// Compute slots bound since the last dispatch (bit per slot); the dispatch unbinds them.
 	uint32					mCSBoundSRVs;
 	uint32					mCSBoundUAVs;

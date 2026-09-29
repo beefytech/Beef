@@ -21,6 +21,14 @@ class DrawLayer;
 
 typedef std::list<BFWindow*> BFWindowList;
 
+class FramePacer
+{
+public:
+	virtual ~FramePacer() {}
+	// True once the next frame is due, false if timeoutMS passed first.
+	virtual bool WaitForFrame(int timeoutMS) = 0;
+};
+
 enum
 {
 	CURSOR_POINTER,
@@ -77,6 +85,15 @@ public:
 	// When set, frame pacing comes from an external process signaling a named event
 	// (one Draw per signal) instead of our own vsync; own-window Present stops blocking
 	volatile bool			mExternalPacingActive;
+	// When set, paces us instead: one Draw per completed wait, taking precedence over external pacing
+	// and vsync. mFramePacerRefreshRate, when positive, replaces the head window's refresh rate for
+	// update timing.
+	FramePacer*				mFramePacer;
+	float					mFramePacerRefreshRate;
+	// Frame pacer waits since the last BFApp_TakeFramePacerStats.
+	int						mFramePacerWaits;
+	int						mFramePacerSignaled;
+	int64					mFramePacerWaitMicros;
 	bool					mForceNextDraw;
 	bool					mUnthrottledRendering = false;
 	// Automation: the app keeps its logical window focus even while another application is the

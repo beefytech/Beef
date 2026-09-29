@@ -103,6 +103,12 @@ namespace Beefy
         static extern void BFApp_SetExternalPacing(char8* eventName);
 
         [CallingConvention(.Stdcall), CLink]
+        static extern void BFApp_SetFramePacer(void* pacer, float refreshRate);
+
+        [CallingConvention(.Stdcall), CLink]
+        static extern void BFApp_TakeFramePacerStats(int32* waits, int32* signaled, int64* waitMicros);
+
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_SetVirtualFocus(bool virtualFocus);
 
         [CallingConvention(.Stdcall), CLink]
@@ -360,6 +366,22 @@ namespace Beefy
 				BFApp_SetExternalPacing(null);
 			else
 				BFApp_SetExternalPacing(eventName.ToScopeCStr!());
+		}
+
+		// One frame per wait on a native pacer (CompositionTarget.FramePacer); null restores internal
+		// pacing. refreshRate > 0 replaces the head window's for update timing.
+		public void SetFramePacer(void* pacer, float refreshRate = 0)
+		{
+			BFApp_SetFramePacer(pacer, refreshRate);
+		}
+
+		// Pacer waits since the previous call: count, how many were signaled (not timed out), time waited.
+		public void TakeFramePacerStats(out int32 waits, out int32 signaled, out int64 waitMicros)
+		{
+			waits = 0;
+			signaled = 0;
+			waitMicros = 0;
+			BFApp_TakeFramePacerStats(&waits, &signaled, &waitMicros);
 		}
 
         // Simulation seconds since last update

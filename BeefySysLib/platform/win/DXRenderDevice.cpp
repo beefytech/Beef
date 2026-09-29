@@ -4,6 +4,7 @@
 
 #include "Common.h"
 #include "DXRenderDevice.h"
+#include "DXComposition.h"
 #include <dxgi1_6.h>
 #include "BFWindow.h"
 #include "img/ImageData.h"
@@ -3357,8 +3358,9 @@ void DXRenderWindow::Present()
 {
 	BP_ZONE("DXRenderWindow::Present");
 	((DXRenderDevice*)mRenderDevice)->DrainDebugMessages();
-	// Under external pacing our own vblank must never block the paced loop
-	bool useVSync = (mWindow->mFlags & BFWINDOW_VSYNC) && (gBFApp != NULL) && (!gBFApp->mExternalPacingActive);
+	// Under external pacing or a frame pacer our own vblank must never block the paced loop
+	bool useVSync = (mWindow->mFlags & BFWINDOW_VSYNC) && (gBFApp != NULL) && (!gBFApp->mExternalPacingActive) &&
+		(gBFApp->mFramePacer == NULL);
 	if (BRISK_DBG_FORCE_VSYNC())
 		useVSync = true;
 	HRESULT hr = mDXSwapChain->Present(useVSync ? 1 : 0, 0);
@@ -3480,6 +3482,7 @@ bool DXRenderWindow::WaitForVBlank()
 DXRenderDevice::DXRenderDevice()
 {
 	mD3DDevice = NULL;
+	mDXGIFactory = NULL;
 	mD3DA2CBlendState = NULL;
 	mD3DDeviceContext1 = NULL;
 	mNeedsReinitNative = false;
@@ -3514,6 +3517,19 @@ DXRenderDevice::~DXRenderDevice()
 
 	for (auto window : mRenderWindowList)
 		((DXRenderWindow*)window)->ReleaseNative();
+	// Composition objects that outlive the device must not reach back into it.
+	for (auto target : mCompositionTargets)
+	{
+		target->ReleaseSwapChain();
+		target->mRenderDevice = NULL;
+	}
+	for (auto host : mCompositionHosts)
+	{
+		for (auto visual : host->mVisuals)
+			visual->ReleaseNative();
+		host->ReleaseNative();
+		host->mRenderDevice = NULL;
+	}
 	for (auto shader : mShaders)
 		shader->ReleaseNative();
 	for (auto renderState : mRenderStates)
@@ -3609,8 +3625,12 @@ bool DXRenderDevice::Init(BFApp* app)
 	mOffscreenPresentationAllowed = (SUCCEEDED(pDXGIAdapter->GetDesc(&adapterDesc))) &&
 		(adapterDesc.VendorId == 0x10DE) && (getenv("BRISK_DISABLE_OFFSCREEN_PRESENT") == NULL);
 
-	IDXGIFactory* pDXGIFactory = NULL;
+	if (mDXGIFactory != NULL)
+		mDXGIFactory->Release();
+	mDXGIFactory = NULL;
 	DXCHECK(pDXGIAdapter->GetParent(__uuidof(IDXGIFactory), reinterpret_cast<void**>(&mDXGIFactory)));
+	pDXGIAdapter->Release();
+	pDXGIDevice->Release();
 
 	DXRenderState* dxRenderState;
 	if (mDefaultRenderState == NULL)
@@ -4001,6 +4021,10 @@ void DXRenderDevice::ReinitNative()
 
 	for (auto window : mRenderWindowList)
 		((DXRenderWindow*)window)->ReinitNative();
+	for (auto target : mCompositionTargets)
+		target->ReinitNative();
+	for (auto host : mCompositionHosts)
+		host->ReinitNative();
 	for (auto shader : mShaders)
 		shader->ReinitNative();
 	for (auto renderState : mRenderStates)
@@ -4218,24 +4242,6 @@ void DXRenderDevice::ProcessRetiredTextures()
 
 Texture* DXRenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 {
-	if (fileName.StartsWith("!backbuffer:"))
-	{
-		int colon = (int)fileName.IndexOf(':');
-		String addrStr = fileName.Substring(colon + 1);
-		void* addr = (void*)(intptr)strtoll(addrStr.c_str(), NULL, 16);
-		BFWindow* window = (BFWindow*)addr;
-		DXRenderWindow* renderWindow = (DXRenderWindow*)window->mRenderWindow;
-
-		DXTexture* aTexture = NULL;
-		aTexture->mD3DRenderTargetView = renderWindow->mD3DRenderTargetView;
-		aTexture->mD3DTexture = renderWindow->mD3DBackBuffer;
-
-		aTexture->mD3DRenderTargetView->AddRef();
-		aTexture->mD3DTexture->AddRef();
-		aTexture->AddRef();
-		return aTexture;
-	}
-
 	bool useLoadCache = ((flags & TextureFlag_UseLoadCache) != 0);
 
 	String pathEx = fileName;

@@ -294,8 +294,10 @@ uint64 Beefy::BFGetTickCountMicroFast()
 		int processorCount = (int) ::GetActiveProcessorCount(ALL_PROCESSOR_GROUPS);
 #endif
 
+		// Pinned to one core only while sampling: a thread left pinned can't escape a busy core.
+		int prevPriority = ::GetThreadPriority(::GetCurrentThread());
 		::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_TIME_CRITICAL);
-		::SetThreadAffinityMask(::GetCurrentThread(), (int64)1 << (windowsSharedInfo->mThreadAcc % processorCount));
+		DWORD_PTR prevAffinity = ::SetThreadAffinityMask(::GetCurrentThread(), (int64)1 << (windowsSharedInfo->mThreadAcc % processorCount));
 
 		uint64 deltaMicro = 0;
 
@@ -334,7 +336,9 @@ uint64 Beefy::BFGetTickCountMicroFast()
 		//gTimerDivisor = *gTimingSet.rbegin();
 		OutputDebugStrF("BFGetTickCountMicro divisor: %d\n", gTimerDivisor);
 
-		::SetThreadPriority(::GetCurrentThread(), THREAD_PRIORITY_NORMAL);
+		if (prevAffinity != 0)
+			::SetThreadAffinityMask(::GetCurrentThread(), prevAffinity);
+		::SetThreadPriority(::GetCurrentThread(), prevPriority);
 
 		uint32 outEndMS = timeGetTime();
 		uint64 endMicroA = __rdtsc();
