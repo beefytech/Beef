@@ -1120,6 +1120,47 @@ namespace IDE.ui
 			dialog.PopupWindow(gApp.GetActiveWindow());
         }
 
+		public virtual bool CanRevert(ProjectSource projectSource)
+		{
+			let editData = projectSource.mEditData;
+			return (editData != null) && (editData.HasTextChanged()) && (File.Exists(editData.mFilePath));
+		}
+
+		// Loads the file over its unsaved edits as one undoable change.
+		public virtual void Revert(ProjectSource projectSource)
+		{
+			let editData = projectSource.mEditData;
+			if ((editData == null) || (!editData.HasTextChanged()) || (!File.Exists(editData.mFilePath)))
+				return;
+			if (let sourceViewPanel = gApp.FindSourceViewPanel(editData.mFilePath))
+			{
+				sourceViewPanel.Reload();
+			}
+			else
+			{
+				editData.Reload();
+				gApp.FileChanged(editData);
+			}
+		}
+
+		void WithSelectedSources(delegate void(ProjectSource) func)
+		{
+			mListView.GetRoot().WithSelectedItems(scope (selectedItem) =>
+				{
+					if ((mListViewToProjectMap.GetValue(selectedItem) case .Ok(let projectItem)) && (let projectSource = projectItem as ProjectSource))
+						func(projectSource);
+				});
+		}
+
+		public void RevertSelected()
+		{
+			WithSelectedSources(scope (projectSource) =>
+				{
+					if (CanRevert(projectSource))
+						Revert(projectSource);
+				});
+		}
+
 		public void Regenerate(bool allowHashMismatch)
 		{
 			mListView.GetRoot().WithSelectedItems(scope (selectedItem) =>
@@ -3626,13 +3667,26 @@ namespace IDE.ui
 			                });
 					}
 
-					if (projectItem is ProjectSource)
+					if (var projectSource = projectItem as ProjectSource)
 					{
-						item = menu.AddItem("Regenerate");
+						bool canRevert = false;
+						WithSelectedSources(scope [&] (projectSource) => { canRevert |= CanRevert(projectSource); });
+						item = menu.AddItem("Revert");
+						item.SetDisabled(!canRevert);
 						item.mOnMenuItemSelected.Add(new (item) =>
 						    {
-								Regenerate(false);
+								RevertSelected();
 						    });
+
+						
+						if (projectSource.IsBeefFile)
+						{
+							item = menu.AddItem("Regenerate");
+							item.mOnMenuItemSelected.Add(new (item) =>
+							    {
+									Regenerate(false);
+							    });
+						}
 					}
 					else if (let projectFolder = projectItem as ProjectFolder)
 					{
