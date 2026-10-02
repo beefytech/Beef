@@ -429,6 +429,7 @@ enum BfIRConfigConst : uint8
 enum BfIRIntrinsic : uint8
 {
 	BfIRIntrinsic__PLATFORM,
+	BfIRIntrinsic__LLVM,
 	BfIRIntrinsic_Abs,
 	BfIRIntrinsic_Add,
 	BfIRIntrinsic_And,

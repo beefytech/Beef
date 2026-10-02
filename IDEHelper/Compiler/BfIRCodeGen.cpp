@@ -146,6 +146,7 @@ struct BuiltinEntry
 static const BuiltinEntry gIntrinEntries[] =
 {
 	{":PLATFORM"},
+	{"LLVM"},
 	{"abs"},
 	{"add"},
 	{"and"},
@@ -3340,6 +3341,7 @@ void BfIRCodeGen::HandleNextCmd()
 			static _Intrinsics intrinsics[] =
 			{
 				{ (llvm::Intrinsic::ID)-1, -1}, // PLATFORM,
+				{ (llvm::Intrinsic::ID)-1, -1}, // LLVM,
 				{ llvm::Intrinsic::fabs, 0, -1},
 				{ (llvm::Intrinsic::ID)-2, -1}, // add,
 				{ (llvm::Intrinsic::ID)-2, -1}, // and,
@@ -3463,7 +3465,20 @@ void BfIRCodeGen::HandleNextCmd()
 				if ((int)intrin <= 0)
 					FatalError(StrFormat("Unable to find intrinsic '%s'", intrinName.c_str()));
 				else
-					func = llvm::Intrinsic::getOrInsertDeclaration(mLLVMModule, intrinsics[intrinId].mID, useParams);
+					func = llvm::Intrinsic::getOrInsertDeclaration(mLLVMModule, intrin, useParams);
+			}
+			else if (intrinId == BfIRIntrinsic__LLVM)
+			{
+				for (auto paramType : paramTypes)
+				{
+					useParams.push_back(paramType->mLLVMType);
+				}
+
+				llvm::Intrinsic::ID intrin = llvm::Intrinsic::lookupIntrinsicID(intrinName.c_str());
+				if ((int)intrin <= 0)
+					FatalError(StrFormat("Unable to find intrinsic '%s'", intrinName.c_str()));
+				else
+					func = llvm::Intrinsic::getOrInsertDeclaration(mLLVMModule, intrin, returnType->mLLVMType, useParams);
 			}
 			else
 			{
@@ -6727,6 +6742,8 @@ int BfIRCodeGen::GetIntrinsicId(const StringImpl& name)
 
 	if (name.Contains(':'))
 		return BfIRIntrinsic__PLATFORM;
+	if (name.StartsWith("llvm"))
+		return BfIRIntrinsic__LLVM;
 
 	return -1;
 }
