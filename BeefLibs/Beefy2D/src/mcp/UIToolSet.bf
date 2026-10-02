@@ -907,11 +907,8 @@ namespace Beefy.mcp
 
 			call.Defer(30000, new (pollCall) =>
 				{
-					bool done = drag.Poll(pollCall);
-					if (done)
-						delete drag;
-					return done;
-				});
+					return drag.Poll(pollCall);
+				} ~ delete drag);
 		}
 
 		// One drag in progress: press, a move per frame, release. Held by the deferred call's poll.
@@ -1311,6 +1308,17 @@ namespace Beefy.mcp
 						sd.Add("menuWidget", menuWidget.mWidgetId);
 						sd.Add("screenX", widgetWindow.mClientX);
 						sd.Add("screenY", widgetWindow.mClientY);
+						sd.Add("width", widgetWindow.mClientWidth);
+						sd.Add("height", widgetWindow.mClientHeight);
+						BFApp.sApp.GetWorkspaceRectFrom(widgetWindow.mClientX, widgetWindow.mClientY, widgetWindow.mClientWidth, widgetWindow.mClientHeight,
+							var wsX, var wsY, var wsWidth, var wsHeight);
+						using (sd.CreateObject("workspace"))
+						{
+							sd.Add("x", wsX);
+							sd.Add("y", wsY);
+							sd.Add("width", wsWidth);
+							sd.Add("height", wsHeight);
+						}
 						using (sd.CreateArray("items"))
 						{
 							for (var itemWidget in menuWidget.mItemWidgets)

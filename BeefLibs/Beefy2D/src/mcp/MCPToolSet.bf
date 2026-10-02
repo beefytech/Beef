@@ -100,6 +100,8 @@ namespace Beefy.mcp
 
 		// The poll runs once per frame and returns true when the call has finished. The delegate is
 		// owned by the call; capture by value, never by reference to locals of the tool method.
+		// Heap state the poll uses is freed by the delegate's own destructor (`} ~ delete state)`),
+		// not by the poll: a call dropped with its client never polls to completion.
 		public void Defer(int timeoutMS, delegate bool(MCPCall call) poll)
 		{
 			mIsDeferred = true;

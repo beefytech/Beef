@@ -101,11 +101,8 @@ namespace IDE
 
 			call.Defer((timeoutMS > 0) ? timeoutMS : 600000, new (pollCall) =>
 				{
-					bool done = wait.Poll(pollCall);
-					if (done)
-						delete wait;
-					return done;
-				});
+					return wait.Poll(pollCall);
+				} ~ delete wait);
 		}
 
 		[MCPTool("cancel_build", "Cancel the build in progress, if any.")]

@@ -188,11 +188,8 @@ namespace IDE
 			IDEWorkspaceToolSet.RunCommand(command);
 			call.Defer((timeoutMS > 0) ? timeoutMS : 600000, new (pollCall) =>
 				{
-					bool done = wait.Poll(pollCall);
-					if (done)
-						delete wait;
-					return done;
-				});
+					return wait.Poll(pollCall);
+				} ~ delete wait);
 		}
 
 		[MCPTool("debug_stop", "Stop the running target (Stop Debugging) and wait until it has exited.")]
@@ -341,11 +338,8 @@ namespace IDE
 
 			call.Defer((timeoutMS > 0) ? timeoutMS : 60000, new (pollCall) =>
 				{
-					bool done = state.Poll(pollCall);
-					if (done)
-						delete state;
-					return done;
-				});
+					return state.Poll(pollCall);
+				} ~ delete state);
 		}
 
 		[MCPTool("run_to_cursor", "Run the paused target until it reaches a 0-based line in a file (Run To Cursor), waiting for it to stop there or elsewhere.")]
@@ -639,10 +633,8 @@ namespace IDE
 						pollCall.Error("Evaluation did not finish in time");
 					else
 						FinishEval(pollCall, expressionCopy, outVal);
-					delete outVal;
-					delete expressionCopy;
 					return true;
-				});
+				} ~ { delete outVal; delete expressionCopy; });
 		}
 
 		// ---------------------------------------------------------------------------------------
