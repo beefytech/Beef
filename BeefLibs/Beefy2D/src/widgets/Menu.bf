@@ -247,7 +247,21 @@ namespace Beefy.widgets
 			}
 
             if ((!allowScrollable) && (screenY + height > maxY))
+			{
                 screenY = screenY - height + mPopupInsets.mBottom;
+				// Too tall for either side of its anchor: overlap the anchor rather than leave the screen.
+				if (screenY < workspaceY)
+				{
+					screenY = workspaceY;
+					if (height > workspaceHeight)
+					{
+						menuContainer.InitScrollbars(false, true);
+						height = workspaceHeight;
+						menuRect = menuContainer.CalcRectFromContent();
+						width = Math.Min(mMaxContainerWidth, Math.Max(mMinContainerWidth, menuRect.mWidth));
+					}
+				}
+			}
             else
             {
                 screenY -= mPopupInsets.mTop;

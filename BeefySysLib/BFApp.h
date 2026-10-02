@@ -73,6 +73,8 @@ public:
 	double					mClientUpdateCntF;
 
 	bool					mInProcess;
+	// Bumped by every Process that starts, so one can tell another ran while it pumped messages.
+	int						mProcessCount;
 	bool					mRunning;
 	RenderDevice*			mRenderDevice;
 	int						mSysDialogCnt;
@@ -90,6 +92,8 @@ public:
 	// update timing.
 	FramePacer*				mFramePacer;
 	float					mFramePacerRefreshRate;
+	// A flip-model window's own pacer: used when neither mFramePacer nor external pacing is, in place of vsync.
+	FramePacer*				mWindowFramePacer;
 	// Frame pacer waits since the last BFApp_TakeFramePacerStats.
 	int						mFramePacerWaits;
 	int						mFramePacerSignaled;
@@ -104,6 +108,7 @@ public:
 	int                     mUpdateSampleTimes;
 
 	uint32 mLastProcessTick;
+	uint64 mLastWakeMicros;
 	float mPhysFrameTimeAcc;
 	float mPhysFrameTimeErr; // Elapsed time not yet handed to mPhysFrameTimeAcc
 
@@ -121,6 +126,7 @@ public:
 	virtual void			UpdateF(float updatePct);
 	virtual void			Draw();
 	virtual void			Process();
+	virtual void			PumpMessages() {}
 	bool					IdleUpdate();
 	virtual void			PhysSetCursor() = 0;
 

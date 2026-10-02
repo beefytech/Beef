@@ -600,6 +600,22 @@ namespace Beefy
             return false;
         }
 
+        public void ClosePopupMenus()
+        {
+            List<MenuWidget> menuWidgets = scope .();
+            for (var window in mWindows)
+            {
+                if (var menuContainer = (window as WidgetWindow)?.mRootWidget as MenuContainer)
+                {
+                    if (var menuWidget = menuContainer.mScrollContent as MenuWidget)
+                        menuWidgets.Add(menuWidget);
+                }
+            }
+            // Submenus open after their parents; close them first.
+            for (var menuWidget in menuWidgets.Reversed)
+                menuWidget.Close();
+        }
+
         public virtual void Init()
         {
 			scope AutoBeefPerf("BFApp.Init");

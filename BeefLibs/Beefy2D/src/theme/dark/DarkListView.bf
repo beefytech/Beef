@@ -300,6 +300,9 @@ namespace Beefy.theme.dark
                 }
                 calcWidth += mListView.mColumns[i].mWidth;
             }
+			// The last cell stretches to the end of the row (see ListViewItem.ResizeComponents).
+			if ((nextContentColumn == -1) && (mColumnIdx > 0))
+				calcWidth = Math.Max(calcWidth, mWidth);
 
             if (Selected)
             {
