@@ -1123,7 +1123,8 @@ static void Crash_Error(const char* msg)
 	// The report kind is process-wide (CrashCatcher::Get shares one instance across modules), so a
 	// quiet kind set by the runtime applies here too even though this module never installed the
 	// catcher. abort() under a debug CRT raises a modal box regardless of subsystem.
-	BfpCrashReportKind reportKind = CrashCatcher::Get()->mCrashReportKind;
+	// GetCrashReportKind reads it without constructing a catcher, which would link the whole crash handler.
+	BfpCrashReportKind reportKind = CrashCatcher::GetCrashReportKind();
 	bool quiet = (reportKind == BfpCrashReportKind_PrintOnly) || (reportKind == BfpCrashReportKind_None);
 
 	if (isCLI || quiet)

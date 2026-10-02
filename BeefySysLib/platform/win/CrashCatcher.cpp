@@ -1247,6 +1247,34 @@ CrashCatcher* CrashCatcher::Get()
 	return sCrashCatcher;
 }
 
+// Reads the process-wide report kind without creating a catcher. Get() can construct one, and the constructor's
+//  vtable keeps the whole crash handler alive (dialogs, stack walking, minidumps), so a module that only wants
+//  this value would otherwise link all of that in just by asking
+BfpCrashReportKind CrashCatcher::GetCrashReportKind()
+{
+	if (sCrashCatcher != NULL)
+		return sCrashCatcher->mCrashReportKind;
+
+	BfpCrashReportKind reportKind = BfpCrashReportKind_Default;
+
+	char memName[128];
+	sprintf(memName, "BfCrashCatch_mem_%d", GetCurrentProcessId());
+	HANDLE fileMapping = ::OpenFileMappingA(FILE_MAP_READ, FALSE, memName);
+	if (fileMapping != NULL)
+	{
+		CrashCatchMemory* sharedMem = (CrashCatchMemory*)::MapViewOfFile(fileMapping, FILE_MAP_READ, 0, 0, sizeof(CrashCatchMemory));
+		if (sharedMem != NULL)
+		{
+			// Unlike Get() this only looks at another module's catcher, so it doesn't take a reference on it
+			if ((sharedMem->mABIVersion == CRASHCATCH_ABI_VERSION) && (sharedMem->mBpManager != NULL))
+				reportKind = sharedMem->mBpManager->mCrashReportKind;
+			::UnmapViewOfFile(sharedMem);
+		}
+		::CloseHandle(fileMapping);
+	}
+	return reportKind;
+}
+
 int CrashCatcher::Shutdown()
 {
 	if (sCrashCatcher == NULL)
