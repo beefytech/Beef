@@ -645,6 +645,7 @@ public:
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef) { return true; }
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProject* curProject) { return true; }
 	virtual bool IsTypeMemberAccessible(BfTypeDef* declaringTypeDef, BfProjectSet* visibleProjectSet) { return true; }
+	virtual bool HasUnderlyingArray() { return false; }
 
 	virtual void ReportMemory(MemReporter* memReporter);
 };
@@ -2209,6 +2210,7 @@ public:
  	virtual bool HasVarConstraints();
  	virtual bool IsTypeMemberIncluded(BfTypeDef* declaringTypeDef, BfTypeDef* activeTypeDef = NULL, BfModule* module = NULL) override;
 	virtual bool IsZeroGap() override;
+	virtual bool HasUnderlyingArray() override { return mHasUnderlyingArray; }
 
 	virtual BfTypeInstance* GetImplBaseType() { return mBaseType; }
 

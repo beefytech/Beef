@@ -11684,7 +11684,7 @@ BfTypedValue BfModule::BoxValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 					AggregateSplatIntoAddr(typedVal, valPtr);
 				}
 				else
-					mBfIRBuilder->CreateStore(typedVal.mValue, valPtr, typedVal.mType->mAlign);
+					mBfIRBuilder->CreateAlignedStore(typedVal.mValue, valPtr, typedVal.mType->mAlign);
 			}
 		}
 
@@ -17733,12 +17733,12 @@ void BfModule::CreateReturn(BfIRValue val)
 		if (loweredReturnType != BfTypeCode_None)
 		{
 			auto retVal = CreateAlloca(mCurMethodInstance->mReturnType);
-			mBfIRBuilder->CreateStore(val, retVal);
+			mBfIRBuilder->CreateAlignedStore(val, retVal, mCurMethodInstance->mReturnType->mAlign);
 
 			auto irRetType = GetIRLoweredType(loweredReturnType, loweredReturnType2);
 			irRetType = mBfIRBuilder->GetPointerTo(irRetType);
 			auto ptrReturnValue = mBfIRBuilder->CreateBitCast(retVal, irRetType);
-			auto loadedReturnValue = mBfIRBuilder->CreateLoad(ptrReturnValue);
+			auto loadedReturnValue = mBfIRBuilder->CreateAlignedLoad(ptrReturnValue, mCurMethodInstance->mReturnType->mAlign);
 			mBfIRBuilder->CreateRet(loadedReturnValue);
 			return;
 		}
@@ -22732,7 +22732,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 							auto primType = mBfIRBuilder->GetPrimitiveType(loweredTypeCode);
 							auto primPtrType = mBfIRBuilder->GetPointerTo(primType);
 							auto primPtrVal = mBfIRBuilder->CreateBitCast(targetAddr, primPtrType);
-							mBfIRBuilder->CreateAlignedStore(paramVar->mValue, primPtrVal, mCurTypeInstance->mAlign);
+							mBfIRBuilder->CreateAlignedStore(paramVar->mValue, primPtrVal, paramVar->mResolvedType->mAlign);
 
 							if (loweredTypeCode2 != BfTypeCode_None)
 							{
