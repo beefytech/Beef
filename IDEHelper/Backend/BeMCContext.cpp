@@ -9658,6 +9658,25 @@ bool BeMCContext::DoLegalization()
 						OutputDebugStrF(" Float reg dest\n");
 					continue;
 				}
+				// Legacy SSE packed instructions (anything besides MOVUPS) fault on a memory operand that is not 16-byte
+				//  aligned, and a vector's storage is not guaranteed to be - a spill slot, a field embedded in a struct, or
+				//  memory reached through a pointer can all be 4-byte aligned. Load such an operand into a register first,
+				//  which goes through an unaligned-safe MOVUPS
+				if ((!inst->IsMov()) && (!inst->IsPsuedo()) && (arg1Type != NULL) && (arg1Type->IsVector()) && (arg1Type->mSize == 16) &&
+					(inst->mArg1) && (!arg1.IsNativeReg()) && (!arg1.IsImmediate()))
+				{
+					bool alreadyReg = false;
+					if (inst->mArg1.IsVReg())
+						alreadyReg = GetVRegInfo(inst->mArg1)->mForceReg;
+					if (!alreadyReg)
+					{
+						ReplaceWithNewVReg(inst->mArg1, instIdx, true);
+						_Rerun("Vector arg1 to reg");
+						if (debugging)
+							OutputDebugStrF(" Vector arg1 to reg\n");
+						continue;
+					}
+				}
 			}
 
 			if (inst->mKind == BeMCInstKind_Call)
@@ -15461,6 +15480,23 @@ void BeMCContext::DoCodeEmission()
 			{
 				if (instForm == Beefy::BeMCInstForm_XMM128_RM128)
 				{
+					// Packed shifts have separate encodings per lane width (word, dword, qword), and there is no packed
+					//  byte shift or SSE qword arithmetic shift right
+					int elemSize = 0;
+					if (arg0Type->IsExplicitVectorType())
+						elemSize = ((BeVectorType*)arg0Type)->mElementType->mSize;
+					if ((elemSize != 2) && (elemSize != 4) && (elemSize != 8))
+					{
+						SoftFail("Unsupported packed shift lane width");
+						break;
+					}
+					if ((inst->mKind == BeMCInstKind_Sar) && (elemSize == 8))
+					{
+						SoftFail("Packed 64-bit arithmetic shift right is not available without AVX-512");
+						break;
+					}
+					int widthOfs = (elemSize == 2) ? 0 : (elemSize == 4) ? 1 : 2;
+
 					if (arg1.IsImmediate())
 					{
 						Emit(0x66);
@@ -15479,29 +15515,45 @@ void BeMCContext::DoCodeEmission()
 							rx = 4;
 							break;
 						}
-						Emit(0x71); // PSLLW / PSRAW / PSRLW
+						Emit(0x71 + widthOfs); // PSLLW/D/Q, PSRLW/D/Q, PSRAW/D
 						EmitModRM(rx, arg0);
-						Emit((uint8)arg1.mImmediate);
+						// Counts past the lane width saturate, so clamp rather than let a large or negative count wrap in imm8
+						Emit((uint8)BF_MIN((uint64)arg1.mImmediate, (uint64)255));
 					}
 					else
 					{
+						auto countArg = arg1;
+						if ((arg1Type != NULL) && (!arg1Type->IsVector()))
+						{
+							// The register form reads its count from the low 64 bits of an xmm register, so move a scalar
+							//  count into the scratch xmm15 first - MOVD/MOVQ zero-extend it, and it must not be broadcast
+							BeMCOperand xmm15;
+							xmm15.mKind = BeMCOperandKind_NativeReg;
+							xmm15.mReg = X64Reg_M128_XMM15;
+							Emit(0x66);
+							EmitREX(xmm15, arg1, arg1Type->mSize == 8);
+							Emit(0x0F); Emit(0x6E); // MOVD / MOVQ
+							EmitModRM(xmm15, arg1);
+							countArg = xmm15;
+						}
+
 						Emit(0x66);
-						EmitREX(arg0, arg1, false);
+						EmitREX(arg0, countArg, false);
 						Emit(0x0F);
 						switch (inst->mKind)
 						{
 						case BeMCInstKind_Shl:
-							Emit(0xF1); // PSLLW
+							Emit(0xF1 + widthOfs); // PSLLW/D/Q
 							break;
 						case BeMCInstKind_Shr:
-							Emit(0xD1); // PSRLW
+							Emit(0xD1 + widthOfs); // PSRLW/D/Q
 							break;
 						case BeMCInstKind_Sar:
-							Emit(0xE1); // PSRAW
+							Emit(0xE1 + widthOfs); // PSRAW/D
 							break;
 						}
 
-						EmitModRM(arg0, arg1);
+						EmitModRM(arg0, countArg);
 					}
 					break;
 				}
@@ -18403,8 +18455,11 @@ void BeMCContext::Generate(BeFunction* function)
 					break;
 					case BfIRIntrinsic_Index:
 					{
+						// A setter's value parameter is inserted ahead of the indexer parameters (see BfDefBuilder), so a
+						//  setter is (this, value, idx) while a getter is (this, idx)
+						bool isSetter = castedInst->mArgs.size() >= 3;
 						auto valPtr = GetOperand(castedInst->mArgs[0].mValue);
-						auto idx = GetOperand(castedInst->mArgs[1].mValue);
+						auto idx = GetOperand(castedInst->mArgs[isSetter ? 2 : 1].mValue);
 
 						auto valType = GetType(valPtr);
 						if (!valType->IsPointer())
@@ -18428,11 +18483,26 @@ void BeMCContext::Generate(BeFunction* function)
 						CreateDefineVReg(result);
 						auto vregInfo = GetVRegInfo(result);
 						vregInfo->mRelTo = valPtr;
-						vregInfo->mRelOffset = idx;
-						vregInfo->mRelOffsetScale = vectorType->mElementType->mSize;
+						if (idx.IsImmediateInt())
+						{
+							// Scale a constant index here. When an expression's offset is an immediate its scale applies to
+							//  mRelTo rather than the offset, so leaving the scale on would address [valPtr*size + idx]
+							vregInfo->mRelOffset = BeMCOperand::FromImmediate(idx.mImmediate * vectorType->mElementType->mSize);
+						}
+						else
+						{
+							vregInfo->mRelOffset = idx;
+							vregInfo->mRelOffsetScale = vectorType->mElementType->mSize;
+						}
 						vregInfo->mIsExpr = true;
 
-						result = CreateLoad(result);
+						if (isSetter)
+						{
+							CreateStore(BeMCInstKind_Mov, GetOperand(castedInst->mArgs[1].mValue), result);
+							result = BeMCOperand();
+						}
+						else
+							result = CreateLoad(result);
 					}
 					break;
 					case BfIRIntrinsic_MemCmp:

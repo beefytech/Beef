@@ -1386,7 +1386,8 @@ bool BfMSMangler::FindOrCreateNameSub(MangleContext& mangleContext, StringImpl& 
 			if (newNameSub.mTypeInst->IsClosure())
 			{
 				auto closureType = (BfClosureType*)newNameSub.mTypeInst;
-				name += closureType->mSrcDelegate->mTypeDef->mName->mString;
+				if (closureType->mSrcDelegate->mTypeDef != NULL)
+					name += closureType->mSrcDelegate->mTypeDef->mName->mString;
 				name += closureType->mNameAdd;
 			}
 			else

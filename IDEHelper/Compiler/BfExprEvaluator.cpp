@@ -15595,6 +15595,13 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 			hashCtx.Mixin(hasDtorThunk);
 		}
 
+		if (delegateTypeInstance->IsDeleting())
+		{
+			mModule->mCompiler->RequestExtraCompile();
+			mModule->InternalError("GetLambdaInstance using deleted type");
+			return NULL;
+		}
+
 		Val128 hash128 = hashCtx.Finish128();
 		BfClosureType* checkClosureType = new BfClosureType(delegateTypeInstance, hash128);
 		checkClosureType->mContext = mModule->mContext;

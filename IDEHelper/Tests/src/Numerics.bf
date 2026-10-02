@@ -21,6 +21,213 @@ namespace Tests
 			Test.Assert(float4.Sqrt(a).x > 3);
 		}
 
+		// Read at runtime so the optimizer cannot fold the vector operations below
+		static int32 sVecZero = 0;
+
+		struct VecHolder
+		{
+			public int32 mPad;
+			public float4 mV;
+		}
+
+		struct IntVecHolder
+		{
+			public int32 mPad;
+			public int32_4 mV;
+		}
+
+		// An indexed setter's value parameter comes ahead of its index (this, value, idx), which code generation
+		//  used to swap - the LLVM path generated invalid IR and the native path never stored at all
+		static mixin CheckVectorLanes()
+		{
+			int32 rt = sVecZero;
+
+			float4 f = default;
+			for (int lane < 4)
+				f[lane] = (float)(100 + lane * 10 + rt);
+			for (int lane < 4)
+				Test.Assert(f[lane] == (float)(100 + lane * 10));
+			Test.Assert(f === .(100, 110, 120, 130));
+			f[2] = -1.0f + rt;
+			Test.Assert(f === .(100, 110, -1, 130));
+
+			float4 g = default;
+			g[0] = 5.5f + rt;
+			g[1] = 6.5f + rt;
+			g[2] = 7.5f + rt;
+			g[3] = 8.5f + rt;
+			Test.Assert(g === .(5.5f, 6.5f, 7.5f, 8.5f));
+			Test.Assert((g[0] == 5.5f) && (g[3] == 8.5f));
+
+			// Index and value numbers differ, so swapped setter arguments cannot look right
+			int32_4 n = default;
+			for (int32 lane < 4)
+				n[lane] = 1000 + lane * 7 + rt;
+			for (int32 lane < 4)
+				Test.Assert(n[lane] == 1000 + lane * 7);
+
+			int32_4 m = default;
+			m[3] = 41 + rt;
+			m[2] = 42 + rt;
+			m[1] = 43 + rt;
+			m[0] = 44 + rt;
+			Test.Assert(m === .(44, 43, 42, 41));
+			Test.Assert((m[0] == 44) && (m[3] == 41));
+		}
+
+		// Legacy SSE packed arithmetic faults on a memory operand that is not 16-byte aligned, and vectors in
+		//  memory - through a pointer, embedded in a struct, or in a stack slot - can be 4-byte aligned
+		static mixin CheckUnalignedVectorOperands()
+		{
+			float rt = sVecZero;
+
+			uint8[96] buffer = default;
+			float4* p = (float4*)(void*)((((int)(void*)&buffer + 15) & ~15) + 4);
+			*p = .(1 + rt, 2, 3, 4);
+			float4 k = .(2 + rt, 2, 2, 2);
+			Test.Assert((*p + k + *p) === .(4, 6, 8, 10));
+			Test.Assert((k * *p - *p) === .(1, 2, 3, 4));
+			Test.Assert((k * *p) === .(2, 4, 6, 8));
+			Test.Assert(((k * *p) / *p) === .(2, 2, 2, 2));
+
+			VecHolder[3] holders = default;
+			holders[1].mV = .(1 + rt, 2, 3, 4);
+			float4 k3 = .(3 + rt, 3, 3, 3);
+			Test.Assert((k3 + holders[1].mV) === .(4, 5, 6, 7));
+			Test.Assert((holders[1].mV * k3 - holders[1].mV) === .(2, 4, 6, 8));
+			Test.Assert((k3 / holders[1].mV) === .(3, 1.5f, 1, 0.75f));
+			VecHolder* holderPtr = &holders[2];
+			holderPtr.mV = .(5 + rt, 6, 7, 8);
+			Test.Assert((holderPtr.mV * k3 - holderPtr.mV) === .(10, 12, 14, 16));
+
+			IntVecHolder[3] ints = default;
+			ints[1].mV = .(1 + (int32)rt, 2, 3, 4);
+			int32_4 ik = .(10 + (int32)rt, 20, 30, 40);
+			Test.Assert((ik + ints[1].mV) === .(11, 22, 33, 44));
+			Test.Assert((ik - ints[1].mV) === .(9, 18, 27, 36));
+			Test.Assert((ik * ints[1].mV) === .(10, 40, 90, 160));
+		}
+
+		// Its own method so the frame layout puts the address-taken vector in a slot that is not 16-byte aligned
+		static mixin CheckStackLocalVector(float4* outPtr)
+		{
+			int8 pad = 1;
+			float rt = sVecZero;
+			float4 dx = .(1 + rt, 2, 3, 4);
+			float4 scale = .(3 + rt, 3, 3, 3);
+			float4* addr = &dx; // forces dx into a stack slot
+			*outPtr = *addr;
+			Test.Assert((dx * scale - dx) === .(2, 4, 6, 8));
+			Test.Assert((dx + scale + dx) === .(5, 7, 9, 11));
+			Test.Assert(((dx * scale) / dx) === .(3, 3, 3, 3));
+			Test.Assert(pad == 1);
+		}
+
+		static void StackLocalVector(float4* outPtr)
+		{
+			CheckStackLocalVector!(outPtr);
+		}
+
+		[UseLLVM]
+		static void StackLocalVectorLLVM(float4* outPtr)
+		{
+			CheckStackLocalVector!(outPtr);
+		}
+
+		// Read at runtime so shift counts are not constant-folded
+		static int sShiftCount3 = 3;
+		static int sShiftCount16 = 16;
+		static int sShiftCount32 = 32;
+		static int sShiftCountNeg = -1;
+
+		static int32_4 ScalarSar(int32_4 v, int count)
+		{
+			int32_4 r = default;
+			for (int32 lane < 4)
+				r[lane] = v[lane] >> count;
+			return r;
+		}
+
+		static int32_4 ScalarShl(int32_4 v, int count)
+		{
+			int32_4 r = default;
+			for (int32 lane < 4)
+				r[lane] = (int32)((uint32)v[lane] << count);
+			return r;
+		}
+
+		// int32_4 shifts used to be encoded with 16-bit lanes natively (PSRAW rather than PSRAD), a runtime count
+		//  was read from the wrong register, and the LLVM path did not lower the shift intrinsics at all. Counts at
+		//  or past the lane width saturate the same way on both backends: >> fills with the sign bit, << gives zero
+		static mixin CheckVectorShifts()
+		{
+			int32_4 v = .(0x12345678, -1, -123456789, (int32)0x80000001);
+			Test.Assert((v >> 0) === ScalarSar(v, 0));
+			Test.Assert((v >> 1) === ScalarSar(v, 1));
+			Test.Assert((v >> 16) === ScalarSar(v, 16));
+			Test.Assert((v >> 31) === ScalarSar(v, 31));
+			Test.Assert((v << 1) === ScalarShl(v, 1));
+			Test.Assert((v << 16) === ScalarShl(v, 16));
+			Test.Assert((v << 31) === ScalarShl(v, 31));
+			Test.Assert((v >> sShiftCount3) === ScalarSar(v, 3));
+			Test.Assert((v >> sShiftCount16) === ScalarSar(v, 16));
+			Test.Assert((v << sShiftCount3) === ScalarShl(v, 3));
+			Test.Assert((v << sShiftCount16) === ScalarShl(v, 16));
+
+			int32_4 signFill = .(0, -1, -1, -1);
+			Test.Assert((v >> sShiftCount32) === signFill);
+			Test.Assert((v >> sShiftCountNeg) === signFill);
+			Test.Assert((v << sShiftCount32) === default(int32_4));
+			Test.Assert((v << sShiftCountNeg) === default(int32_4));
+
+			// The integer hash that exposed this, against its scalar form
+			int32_4 hash = .(0, 1, -1, -123456789);
+			hash = (hash ^ ((hash >> 16) & 0xFFFF)) * 0x7FEB352D;
+			uint32 scalar = (uint32)-123456789;
+			scalar = (scalar ^ (scalar >> 16)) &* 0x7FEB352D;
+			Test.Assert(hash[3] == (int32)scalar);
+		}
+
+		[Test]
+		public static void TestVectorShifts()
+		{
+			CheckVectorShifts!();
+		}
+
+		[Test, UseLLVM]
+		public static void TestVectorShiftsLLVM()
+		{
+			CheckVectorShifts!();
+		}
+
+		[Test]
+		public static void TestVectorLanes()
+		{
+			CheckVectorLanes!();
+		}
+
+		[Test, UseLLVM]
+		public static void TestVectorLanesLLVM()
+		{
+			CheckVectorLanes!();
+		}
+
+		[Test]
+		public static void TestUnalignedVectorOperands()
+		{
+			CheckUnalignedVectorOperands!();
+			float4 sink = default;
+			StackLocalVector(&sink);
+		}
+
+		[Test, UseLLVM]
+		public static void TestUnalignedVectorOperandsLLVM()
+		{
+			CheckUnalignedVectorOperands!();
+			float4 sink = default;
+			StackLocalVectorLLVM(&sink);
+		}
+
 		[Test, UseLLVM]
 		public static void TestBasics()
 		{

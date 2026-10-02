@@ -3540,44 +3540,55 @@ void BfIRCodeGen::HandleNextCmd()
 		break;
 	case BfIRCmd_EnsureFunctionPatchable:
 		{
+			// Hot swapping patches a 5-byte jump over the start of a function. Rather than padding the IR with inline-asm
+			//  nops, which some optimizations won't look through, ask LLVM for a 5-byte nop at the function entry. It is
+			//  emitted after optimization and instruction selection, so the space is guaranteed. Optimized code size can't
+			//  be predicted from the IR, so it always gets one; unoptimized code keeps the size estimate to avoid needless nops
+			if ((mTargetTriple.GetMachineType() != BfMachineType_x86) && (mTargetTriple.GetMachineType() != BfMachineType_x64))
+				break;
+
 			int minPatchSize = 5;
-
-			int guessInstBytes = 1; // ret
-			guessInstBytes += mActiveFunction->getFunctionType()->getNumParams() * 4;
-
-			if (guessInstBytes < 5)
+			bool needsPatchSpace = mIsOptimized;
+			if (!needsPatchSpace)
 			{
-				for (auto& block : *mActiveFunction)
-				{
-					for (auto& inst : block)
-					{
-						if (auto loadInst = llvm::dyn_cast<llvm::LoadInst>(&inst))
-							guessInstBytes += 2;
-						else if (auto storeInst = llvm::dyn_cast<llvm::StoreInst>(&inst))
-							guessInstBytes += 2;
-						else if (auto callInst = llvm::dyn_cast<llvm::CallInst>(&inst))
-						{
-							auto calledValue = callInst->getCalledOperand();
+				int guessInstBytes = 1; // ret
+				guessInstBytes += mActiveFunction->getFunctionType()->getNumParams() * 4;
 
-							if (calledValue == mNopInlineAsm)
-								guessInstBytes += 1;
-							else if (auto func = llvm::dyn_cast<llvm::Function>(calledValue))
+				if (guessInstBytes < minPatchSize)
+				{
+					for (auto& block : *mActiveFunction)
+					{
+						for (auto& inst : block)
+						{
+							if (auto loadInst = llvm::dyn_cast<llvm::LoadInst>(&inst))
+								guessInstBytes += 2;
+							else if (auto storeInst = llvm::dyn_cast<llvm::StoreInst>(&inst))
+								guessInstBytes += 2;
+							else if (auto callInst = llvm::dyn_cast<llvm::CallInst>(&inst))
 							{
-								if (!func->isIntrinsic())
+								auto calledValue = callInst->getCalledOperand();
+
+								if (calledValue == mNopInlineAsm)
+									guessInstBytes += 1;
+								else if (auto func = llvm::dyn_cast<llvm::Function>(calledValue))
+								{
+									if (!func->isIntrinsic())
+										guessInstBytes += 4;
+								}
+								else
 									guessInstBytes += 4;
 							}
-							else
-								guessInstBytes += 4;
-						}
 
-						if (guessInstBytes >= minPatchSize)
-							break;
+							if (guessInstBytes >= minPatchSize)
+								break;
+						}
 					}
 				}
+				needsPatchSpace = guessInstBytes < minPatchSize;
 			}
 
-			for (int i = guessInstBytes; i < minPatchSize; i++)
-				AddNop();
+			if (needsPatchSpace)
+				mActiveFunction->addFnAttr("patchable-function-entry", "5");
 		}
 		break;
 	case BfIRCmd_RemapBindFunction:
@@ -3690,6 +3701,63 @@ void BfIRCodeGen::HandleNextCmd()
 					FatalError(StrFormat("Unable to find intrinsic '%s'", intrinsicData->mName.c_str()));
 					break;
 				}
+				case BfIRIntrinsic_SAR:
+				case BfIRIntrinsic_SHL:
+				case BfIRIntrinsic_SHR:
+					{
+						// A vector shifted by one count applied to every lane (e.g. int32_4 >> int). LLVM makes a count at or
+						//  past the lane width poison, so clamp to the SSE behavior the native backend has - an arithmetic
+						//  shift fills with the sign bit and the others produce zero. Constant counts fold the clamp away
+						auto val0 = TryToVector(args[0]);
+						if ((val0 == NULL) || (!llvm::cast<llvm::FixedVectorType>(val0->getType())->getElementType()->isIntegerTy()))
+						{
+							FatalError("Intrinsic argument error");
+							break;
+						}
+						auto vecType = llvm::cast<llvm::FixedVectorType>(val0->getType());
+						auto elemType = llvm::cast<llvm::IntegerType>(vecType->getElementType());
+						int numElements = vecType->getNumElements();
+						uint64 bitWidth = elemType->getBitWidth();
+
+						llvm::Value* result = NULL;
+						if (auto countVec = TryToVector(args[1]))
+						{
+							// Per-lane counts
+							auto inRange = mIRBuilder->CreateICmpULT(countVec, llvm::ConstantInt::get(countVec->getType(), bitWidth));
+							if (intrinsicData->mIntrinsic == BfIRIntrinsic_SAR)
+							{
+								auto clamped = mIRBuilder->CreateSelect(inRange, countVec, llvm::ConstantInt::get(countVec->getType(), bitWidth - 1));
+								result = mIRBuilder->CreateAShr(val0, clamped);
+							}
+							else
+							{
+								auto shifted = (intrinsicData->mIntrinsic == BfIRIntrinsic_SHL) ? mIRBuilder->CreateShl(val0, countVec) : mIRBuilder->CreateLShr(val0, countVec);
+								result = mIRBuilder->CreateSelect(inRange, shifted, llvm::Constant::getNullValue(vecType));
+							}
+						}
+						else
+						{
+							llvm::Value* count = args[1].mValue;
+							auto countType = llvm::cast<llvm::IntegerType>(count->getType());
+							auto inRange = mIRBuilder->CreateICmpULT(count, llvm::ConstantInt::get(countType, bitWidth));
+							if (intrinsicData->mIntrinsic == BfIRIntrinsic_SAR)
+								count = mIRBuilder->CreateSelect(inRange, count, llvm::ConstantInt::get(countType, bitWidth - 1));
+							auto laneCount = mIRBuilder->CreateVectorSplat(numElements, mIRBuilder->CreateIntCast(count, elemType, false));
+							if (intrinsicData->mIntrinsic == BfIRIntrinsic_SAR)
+								result = mIRBuilder->CreateAShr(val0, laneCount);
+							else
+							{
+								auto shifted = (intrinsicData->mIntrinsic == BfIRIntrinsic_SHL) ? mIRBuilder->CreateShl(val0, laneCount) : mIRBuilder->CreateLShr(val0, laneCount);
+								result = mIRBuilder->CreateSelect(inRange, shifted, llvm::Constant::getNullValue(vecType));
+							}
+						}
+
+						BfIRTypedValue typedResult;
+						typedResult.mValue = result;
+						typedResult.mTypeEx = intrinsicData->mReturnType;
+						SetResult(curId, typedResult);
+					}
+					break;
 				case BfIRIntrinsic_Add:
 				case BfIRIntrinsic_And:
 				case BfIRIntrinsic_Div:
@@ -4132,12 +4200,15 @@ void BfIRCodeGen::HandleNextCmd()
 					break;
 				case BfIRIntrinsic_Index:
 					{
+						// A setter's value parameter is inserted ahead of the indexer parameters (see BfDefBuilder), so a
+						//  setter is (this, value, idx) while a getter is (this, idx)
+						bool isSetter = args.size() >= 3;
 						llvm::Value* gepArgs[] = {
 							llvm::ConstantInt::get(llvm::Type::getInt32Ty(*mLLVMContext), 0),
-							args[1].mValue };
+							args[isSetter ? 2 : 1].mValue };
 						auto gep = mIRBuilder->CreateInBoundsGEP(GetLLVMPointerElementType(args[0].mTypeEx), args[0].mValue, llvm::ArrayRef(gepArgs));
-						if (args.size() >= 3)
-							mIRBuilder->CreateStore(args[2].mValue, gep);
+						if (isSetter)
+							mIRBuilder->CreateStore(args[1].mValue, gep);
 						else
 						{
 							auto ptrType = GetTypeMember(args[0].mTypeEx, 0);

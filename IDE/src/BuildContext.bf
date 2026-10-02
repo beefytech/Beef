@@ -1450,8 +1450,15 @@ namespace IDE
 					linkLine.Append("-debug ");
 
 				if (workspaceOptions.mBfOptimizationLevel.IsOptimized())
+				{
 					//linkLine.Append("-opt:ref -verbose ");
 					linkLine.Append("-opt:ref ");
+#if !CLI
+					// -opt:ref implies -opt:icf, and folded functions can't be individually hot-patched
+					if (workspaceOptions.mAllowHotSwapping)
+						linkLine.Append("-opt:noicf ");
+#endif
+				}
 				else
 					linkLine.Append("-opt:noref ");
 

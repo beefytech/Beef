@@ -23738,6 +23738,17 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 		LocalVariableDone(localVar, true);
 	}
 
+	bool deferredNeedEnsureFunctionPatchable = false;
+	if ((!mIsComptimeModule) && (!IsTargetingBeefBackend()) && (mCompiler->mOptions.mAllowHotSwapping))
+	{
+		if (IsOptimized())
+		{
+			mBfIRBuilder->EnsureFunctionPatchable();
+		}
+		else if (irParamCount == 0)
+			deferredNeedEnsureFunctionPatchable = true;
+	}
+
 	if (mCurMethodState->mIRExitBlock)
 	{
 		if ((mCurMethodState->mRetVal) &&
@@ -23761,7 +23772,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 					UpdateSrcPos(bodyBlock->mCloseBrace);
 				EmitEnsureInstructionAt();
 
-				if ((irParamCount == 0) && (!IsTargetingBeefBackend()) && (mCompiler->mOptions.mAllowHotSwapping))
+				if (deferredNeedEnsureFunctionPatchable)
 				{
 					// This may be a case where we only emit 4 bytes, whereas we need 5 for a hot replace jump
 					mBfIRBuilder->EnsureFunctionPatchable();
@@ -23779,7 +23790,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 	{
 		if ((!mCurMethodState->mHadReturn) && (!mCurMethodState->mIRExitBlock))
 		{
-			if ((!mIsComptimeModule) && (irParamCount == 0) && (!IsTargetingBeefBackend()) && (mCompiler->mOptions.mAllowHotSwapping))
+			if (deferredNeedEnsureFunctionPatchable)
 			{
 				// This may be a case where we only emit 4 bytes, whereas we need 5 for a hot replace jump
 				mBfIRBuilder->EnsureFunctionPatchable();
