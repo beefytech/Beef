@@ -31,6 +31,7 @@
 #pragma warning (disable:4005)
 #include <d3d11.h>
 #include <d3d11_1.h>
+#include <dxgi1_3.h>
 #pragma warning (pop)
 
 #ifdef BF_MINGW
@@ -39,6 +40,7 @@
 #endif
 
 #include "Common.h"
+#include "BFApp.h"
 #include "gfx/Shader.h"
 #include "gfx/Texture.h"
 #include "gfx/RenderDevice.h"
@@ -309,6 +311,32 @@ public:
 	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
 };
 
+// Paces frames on a swapchain's frame-latency waitable: a semaphore released once per present (capped at 40).
+// A frame is due once a count has been taken for every present so far. Uncapped presents start the count over.
+class DXFrameLatencyPacer : public FramePacer
+{
+public:
+	HANDLE					mWaitable;
+	HWND					mHWnd;
+	int64					mPresentCount;
+	int64					mAcquiredCount;
+	// mPresentCount when WaitForFrame last said a frame was due; still equal means that frame was never presented.
+	int64					mDuePresentCount;
+	// Clock pacing for when no release is coming (about one refresh).
+	int						mIdleWaitMS;
+	// A wait timed out: releases stopped (an occluded window). Pace on the clock until they come back.
+	bool					mStalled;
+
+public:
+	DXFrameLatencyPacer();
+	~DXFrameLatencyPacer();
+
+	void					Reset(HANDLE waitable);
+	void					TakeReleases();
+	void					WriteOff();
+	virtual bool			WaitForFrame(int timeoutMS) override;
+};
+
 class DXRenderWindow : public RenderWindow
 {
 public:
@@ -316,10 +344,16 @@ public:
 	DXRenderDevice*			mDXRenderDevice;
 	IDXGISwapChain*			mDXSwapChain;
 	ID3D11Texture2D*		mD3DBackBuffer;
+	// Flip-model swapchains can't be multisampled, so an MSAA window renders here and resolves on Present.
+	ID3D11Texture2D*		mD3DMsaaTarget;
 	ID3D11RenderTargetView*	mD3DRenderTargetView;
 	ID3D11Texture2D*		mD3DDepthBuffer;
 	ID3D11DepthStencilView*	mD3DDepthStencilView;
-	HANDLE					mFrameWaitObject;
+	bool					mFlipModel;
+	// Uncapped presents happened: the waitable's count can't be trusted until the swapchain is replaced.
+	bool					mPacerCountLost;
+	UINT					mSwapChainFlags;
+	DXFrameLatencyPacer		mPacer;
 	float					mRefreshRate;
 	bool					mResizePending;
 	bool					mWindowed;
@@ -336,6 +370,9 @@ public:
 
 	void ReleaseNative();
 	void ReinitNative();
+	bool					CreateFlipSwapChain(int frameLatency);
+	void					CreateTargets(int msaaSamples);
+	void					ResetSwapChain();
 
 	void					SetAsTarget() override;
 	void					Resized() override;
@@ -550,6 +587,7 @@ public:
 	Array<int>				mTags;
 	int						mSpanCount;
 	int64					mFrameId;
+	int						mNotReadyFetches;
 	bool					mOpen;
 	bool					mPending;
 

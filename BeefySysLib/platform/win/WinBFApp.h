@@ -117,6 +117,10 @@ class WinBFApp : public BFApp
 {
 public:
 	bool					mInMsgProc;
+	// When the main loop last finished a Process (the WM_TIMER fallback only runs frames once it's stalled).
+	uint32					mLastLoopProcessTick;
+	// A WM_TIMER frame is running inside a modal loop, which owns the message queue: no pumping of our own.
+	bool					mInTimerProcess;
 	StringToUIntMap			mClipboardFormatMap;
 	DSoundManager*			mDSoundManager;
 	DInputManager*			mDInputManager;
@@ -141,6 +145,7 @@ public:
 	virtual void			Init() override;
 	virtual void			Run() override;
 	virtual void			Process() override;
+	virtual void			PumpMessages() override;
 
 	virtual void			GetDesktopResolution(int& width, int& height) override;
 	virtual void			GetWorkspaceRect(int& x, int& y, int& width, int& height) override;

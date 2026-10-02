@@ -88,6 +88,10 @@ public:
 	// Since the swapchain was created: presents made, and frame-latency semaphore counts taken.
 	int64					mPresentCount;
 	int64					mAcquiredCount;
+	// When the frame being drawn became due (QPC, 0: none), and how long recent frames took from due to Present.
+	int64					mDueQPC;
+	int64					mWorkQPC[4];
+	int						mWorkIdx;
 	// Wraps back buffer 0 (flip model keeps the current back buffer at index 0).
 	DXTexture*				mTexture;
 	int						mWidth;

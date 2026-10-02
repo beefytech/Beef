@@ -2828,25 +2828,24 @@ void Beefy::DXModelInstance::EnsureBuffers()
 				continue;
 
 			auto d3dDevice = mD3DRenderDevice->mD3DDevice;
-			auto d3dContext = mD3DRenderDevice->mD3DDeviceContext;
 
+			// Never DYNAMIC: every pass re-reads these each frame, and NVIDIA keeps DYNAMIC buffers in
+			// system memory for the first seconds -- shadow cube faces then crawl over PCIe.
+			std::vector<uint16> indices(primitives->mIndices.size());
+			for (int idxIdx = 0; idxIdx < dxPrimitives->mNumIndices; idxIdx++)
+				indices[idxIdx] = (uint16)primitives->mIndices[idxIdx];
 			D3D11_BUFFER_DESC bd;
-			bd.Usage = D3D11_USAGE_DYNAMIC;
+			bd.Usage = D3D11_USAGE_IMMUTABLE;
 			bd.ByteWidth = (int)primitives->mIndices.size() * sizeof(uint16);
 			bd.BindFlags = D3D11_BIND_INDEX_BUFFER;
-			bd.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
+			bd.CPUAccessFlags = 0;
 			bd.MiscFlags = 0;
 			bd.StructureByteStride = 0;
-			d3dDevice->CreateBuffer(&bd, NULL, &dxPrimitives->mD3DIndexBuffer);
+			D3D11_SUBRESOURCE_DATA initData = { indices.data(), 0, 0 };
+			d3dDevice->CreateBuffer(&bd, &initData, &dxPrimitives->mD3DIndexBuffer);
 			gGfxModelPrimBytes += bd.ByteWidth;
 
-			D3D11_MAPPED_SUBRESOURCE mappedSubResource;
-			DXCHECK(d3dContext->Map(dxPrimitives->mD3DIndexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubResource));
-			uint16* dxIdxData = (uint16*)mappedSubResource.pData;
-			for (int idxIdx = 0; idxIdx < dxPrimitives->mNumIndices; idxIdx++)
-				dxIdxData[idxIdx] = (uint16)primitives->mIndices[idxIdx];
-			d3dContext->Unmap(dxPrimitives->mD3DIndexBuffer, 0);
-
+			bd.Usage = D3D11_USAGE_DEFAULT;
 			bd.ByteWidth = (int)primitives->mVertices.size() * sizeof(DXModelVertex);
 			bd.BindFlags = D3D11_BIND_VERTEX_BUFFER;
 			d3dDevice->CreateBuffer(&bd, NULL, &dxPrimitives->mD3DVertexBuffer);
@@ -2906,10 +2905,9 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 			for (auto& ov : mSurfaceOverrides)
 				if ((ov.mMeshIdx == meshIdx) && (ov.mPrimIdx == primsIdx)) surfaceOverride = &ov;
 
-			D3D11_MAPPED_SUBRESOURCE mappedSubResource;
 			DXRenderDevice* dxRenderDevice = (DXRenderDevice*)drawLayer->mRenderDevice;
-			DXCHECK(dxRenderDevice->mD3DDeviceContext->Map(dxPrims->mD3DVertexBuffer, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSubResource));
-			DXModelVertex* dxVtxData = (DXModelVertex*)mappedSubResource.pData;
+			std::vector<DXModelVertex> vertices(modelPrims->mVertices.size());
+			DXModelVertex* dxVtxData = vertices.data();
 			for (int vtxIdx = 0; vtxIdx < (int)modelPrims->mVertices.size(); vtxIdx++)
 			{
 				ModelVertex* srcVtxData = &modelPrims->mVertices[vtxIdx];
@@ -2939,7 +2937,7 @@ void Beefy::DXModelInstance::CommandQueued(RenderCmd* renderCmd, DrawLayer* draw
 				}
 			}
 
-			dxRenderDevice->mD3DDeviceContext->Unmap(dxPrims->mD3DVertexBuffer, 0);
+			dxRenderDevice->mD3DDeviceContext->UpdateSubresource(dxPrims->mD3DVertexBuffer, 0, NULL, vertices.data(), 0, 0);
 		}
 	}
 #endif
@@ -3142,8 +3140,11 @@ DXRenderWindow::DXRenderWindow(DXRenderDevice* renderDevice, WinBFWindow* window
 	mD3DRenderTargetView = NULL;
 	mD3DDepthBuffer = NULL;
 	mD3DDepthStencilView = NULL;
+	mD3DMsaaTarget = NULL;
+	mFlipModel = false;
+	mPacerCountLost = false;
+	mSwapChainFlags = 0;
 	mRefreshRate = 0;
-	mFrameWaitObject = NULL;
 
 	mRenderDevice = renderDevice;
 	mDXRenderDevice = renderDevice;
@@ -3160,69 +3161,177 @@ DXRenderWindow::~DXRenderWindow()
 	ReleaseNative();
 }
 
+DXFrameLatencyPacer::DXFrameLatencyPacer()
+{
+	mWaitable = NULL;
+	mHWnd = NULL;
+	mPresentCount = 0;
+	mAcquiredCount = 0;
+	mDuePresentCount = -1;
+	mIdleWaitMS = 16;
+	mStalled = false;
+}
+
+DXFrameLatencyPacer::~DXFrameLatencyPacer()
+{
+	Reset(NULL);
+}
+
+void DXFrameLatencyPacer::Reset(HANDLE waitable)
+{
+	if (mWaitable != NULL)
+		::CloseHandle(mWaitable);
+	mWaitable = waitable;
+	mPresentCount = 0;
+	mAcquiredCount = 0;
+	mDuePresentCount = -1;
+	mStalled = false;
+}
+
+void DXFrameLatencyPacer::TakeReleases()
+{
+	if (mWaitable == NULL)
+		return;
+	while (::WaitForSingleObjectEx(mWaitable, 0, TRUE) == WAIT_OBJECT_0)
+		mAcquiredCount++;
+}
+
+// After an uncapped present: releases may be lost or early, so count from here.
+void DXFrameLatencyPacer::WriteOff()
+{
+	TakeReleases();
+	mPresentCount = mAcquiredCount;
+	mDuePresentCount = -1;
+}
+
+bool DXFrameLatencyPacer::WaitForFrame(int timeoutMS)
+{
+	if (mWaitable == NULL)
+		return false;
+	TakeReleases();
+	bool neverPresented = mDuePresentCount == mPresentCount;
+	// Releases come back once the display takes our frames again.
+	if ((mStalled) && (!neverPresented) && (mAcquiredCount > mPresentCount))
+		mStalled = false;
+	// Minimized, stalled, or the last due frame drew nothing: no release is coming, so pace on the clock
+	// instead of spinning or sitting out the whole timeout.
+	if (((mHWnd != NULL) && (::IsIconic(mHWnd))) || (neverPresented) || (mStalled))
+	{
+		::Sleep((DWORD)BF_MAX(0, BF_MIN(timeoutMS, mIdleWaitMS)));
+		return false;
+	}
+	uint32 startTick = BFTickCount();
+	while (true)
+	{
+		TakeReleases();
+		if (mAcquiredCount > mPresentCount)
+		{
+			mDuePresentCount = mPresentCount;
+			return true;
+		}
+		int remaining = timeoutMS - (int)(BFTickCount() - startTick);
+		if ((remaining <= 0) || (::WaitForSingleObjectEx(mWaitable, (DWORD)remaining, TRUE) != WAIT_OBJECT_0))
+		{
+			// Short slices (a caller interleaving idle work) time out routinely; only a long wait means a stall.
+			if (timeoutMS >= 50)
+				mStalled = true;
+			return false;
+		}
+		mAcquiredCount++;
+	}
+}
+
 void DXRenderWindow::ReleaseNative()
 {
-	if (mFrameWaitObject != NULL)
-		::CloseHandle(mFrameWaitObject);
-	mFrameWaitObject = NULL;
+	if ((gBFApp != NULL) && (gBFApp->mWindowFramePacer == &mPacer))
+		gBFApp->mWindowFramePacer = NULL;
+	mPacer.Reset(NULL);
 	if (mD3DRenderTargetView != NULL)
 		mD3DRenderTargetView->Release();
 	mD3DRenderTargetView = NULL;
+	if (mD3DMsaaTarget != NULL)
+		mD3DMsaaTarget->Release();
+	mD3DMsaaTarget = NULL;
 	if (mD3DBackBuffer != NULL)
 		mD3DBackBuffer->Release();
 	mD3DBackBuffer = NULL;
 	if (mDXSwapChain != NULL)
 		mDXSwapChain->Release();
 	mDXSwapChain = NULL;
-	if (mD3DRenderTargetView != NULL)
-		mD3DRenderTargetView->Release();
-	mD3DRenderTargetView = NULL;
 	if (mD3DDepthStencilView != NULL)
 		mD3DDepthStencilView->Release();
 	mD3DDepthStencilView = NULL;
+	if (mD3DDepthBuffer != NULL)
+		mD3DDepthBuffer->Release();
+	mD3DDepthBuffer = NULL;
 }
 
-void DXRenderWindow::ReinitNative()
+// Frames in flight on a flip-model window. One serializes CPU and GPU (a 5.7 ms GPU frame then runs at half a
+// 160 Hz refresh); each one beyond two is another frame of latency.
+static const int WINDOW_FRAME_LATENCY = 2;
+
+bool DXRenderWindow::CreateFlipSwapChain(int frameLatency)
 {
-	// A multisampled backbuffer only works with the blt-model DISCARD swap effect (Present resolves
-	// it implicitly) -- a FLIP_DISCARD migration would need an explicit offscreen MSAA target +
-	// ResolveTo instead.
-	int msaaSamples = ValidateSampleCount(mDXRenderDevice->mD3DDevice, DXGI_FORMAT_R8G8B8A8_UNORM,
-		mDXRenderDevice->mWindowMsaaSampleCount);
+	IDXGIFactory2* factory2 = NULL;
+	if (FAILED(mDXRenderDevice->mDXGIFactory->QueryInterface(__uuidof(IDXGIFactory2), (void**)&factory2)))
+		return false;
 
-	DXGI_SWAP_CHAIN_DESC swapChainDesc;
-	ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
-	swapChainDesc.BufferCount = 1;
-	swapChainDesc.BufferDesc.Width = mWidth;
-	swapChainDesc.BufferDesc.Height = mHeight;
-	swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
-	swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
-	swapChainDesc.OutputWindow = mHWnd;
-	swapChainDesc.SampleDesc.Count = msaaSamples;
-	swapChainDesc.SampleDesc.Quality = 0;
-	swapChainDesc.Windowed = mWindowed ? TRUE : FALSE;
-	swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;// DXGI_SWAP_EFFECT_FLIP_DISCARD;
-	swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH /*| DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT*/;
+	DXGI_SWAP_CHAIN_DESC1 desc = {};
+	desc.Width = mWidth;
+	desc.Height = mHeight;
+	desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+	desc.SampleDesc.Count = 1;
+	desc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+	// One buffer on screen plus one per frame in flight.
+	desc.BufferCount = frameLatency + 1;
+	desc.Scaling = DXGI_SCALING_STRETCH;
+	desc.SwapEffect = DXGI_SWAP_EFFECT_FLIP_DISCARD;
+	desc.AlphaMode = DXGI_ALPHA_MODE_IGNORE;
+	desc.Flags = DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT;
 
-	IDXGIDevice* pDXGIDevice = NULL;
-	mDXRenderDevice->mD3DDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&pDXGIDevice);
+	IDXGISwapChain1* swapChain1 = NULL;
+	HRESULT hr = factory2->CreateSwapChainForHwnd(mDXRenderDevice->mD3DDevice, mHWnd, &desc, NULL, NULL, &swapChain1);
+	factory2->Release();
+	if (FAILED(hr))
+		return false;
 
-	DXCHECK(mDXRenderDevice->mDXGIFactory->CreateSwapChain(pDXGIDevice, &swapChainDesc, &mDXSwapChain));
-	pDXGIDevice->Release();
-	pDXGIDevice = NULL;
+	IDXGISwapChain2* swapChain2 = NULL;
+	if (FAILED(swapChain1->QueryInterface(__uuidof(IDXGISwapChain2), (void**)&swapChain2)))
+	{
+		swapChain1->Release();
+		return false;
+	}
+	swapChain2->SetMaximumFrameLatency(frameLatency);
+	mPacer.Reset(swapChain2->GetFrameLatencyWaitableObject());
+	swapChain2->Release();
 
-// 	IDXGISwapChain2* swapChain2 = NULL;
-// 	mDXSwapChain->QueryInterface(__uuidof(IDXGISwapChain2), (void**)&swapChain2);
-// 	if (swapChain2 != NULL)
-// 	{
-// 		mFrameWaitObject = swapChain2->GetFrameLatencyWaitableObject();
-// 		swapChain2->Release();
-// 	}
+	mDXSwapChain = swapChain1;
+	mSwapChainFlags = desc.Flags;
+	return true;
+}
 
-	DXCHECK(mDXSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&mD3DBackBuffer));
-	DXCHECK(mDXRenderDevice->mD3DDevice->CreateRenderTargetView(mD3DBackBuffer, NULL, &mD3DRenderTargetView));
+void DXRenderWindow::CreateTargets(int msaaSamples)
+{
+	auto device = mDXRenderDevice->mD3DDevice;
+	CheckDXResult(mDXSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&mD3DBackBuffer));
 
-	// Create depth stencil texture
+	ID3D11Resource* colorTarget = mD3DBackBuffer;
+	if ((mFlipModel) && (msaaSamples > 1))
+	{
+		D3D11_TEXTURE2D_DESC desc = {};
+		desc.Width = mWidth;
+		desc.Height = mHeight;
+		desc.MipLevels = 1;
+		desc.ArraySize = 1;
+		desc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		desc.SampleDesc.Count = msaaSamples;
+		desc.Usage = D3D11_USAGE_DEFAULT;
+		desc.BindFlags = D3D11_BIND_RENDER_TARGET;
+		CheckDXResult(device->CreateTexture2D(&desc, NULL, &mD3DMsaaTarget));
+		colorTarget = mD3DMsaaTarget;
+	}
+	CheckDXResult(device->CreateRenderTargetView(colorTarget, NULL, &mD3DRenderTargetView));
+
 	D3D11_TEXTURE2D_DESC descDepth;
 	ZeroMemory(&descDepth, sizeof(descDepth));
 	descDepth.Width = mWidth;
@@ -3236,12 +3345,74 @@ void DXRenderWindow::ReinitNative()
 	descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
 	descDepth.CPUAccessFlags = 0;
 	descDepth.MiscFlags = 0;
-	mDXRenderDevice->mD3DDevice->CreateTexture2D(&descDepth, NULL, &mD3DDepthBuffer);
+	CheckDXResult(device->CreateTexture2D(&descDepth, NULL, &mD3DDepthBuffer));
+	CheckDXResult(device->CreateDepthStencilView(mD3DDepthBuffer, NULL, &mD3DDepthStencilView));
+}
+
+// A new swapchain starts the frame-latency waitable over with an exact count.
+void DXRenderWindow::ResetSwapChain()
+{
+	// The vblank thread reads the swapchain under this lock
+	AutoCrit autoCrit(gBFApp->mCritSect);
+	auto ctx = mDXRenderDevice->mD3DDeviceContext;
+	ctx->OMSetRenderTargets(0, NULL, NULL);
+	mDXRenderDevice->mCurD3DRTV = NULL;
+	mDXRenderDevice->mCurD3DDSV = NULL;
+	ReleaseNative();
+	// D3D11 destroys the old swapchain lazily, and the window can't take a new one while it lives.
+	ctx->Flush();
+	ReinitNative();
+	mPacerCountLost = false;
+}
+
+void DXRenderWindow::ReinitNative()
+{
+	int msaaSamples = ValidateSampleCount(mDXRenderDevice->mD3DDevice, DXGI_FORMAT_R8G8B8A8_UNORM,
+		mDXRenderDevice->mWindowMsaaSampleCount);
+
+	// Flip model can't present a layered window. Covering the monitor, it flips straight to the display.
+	mFlipModel = (mWindowed) && ((::GetWindowLongW(mHWnd, GWL_EXSTYLE) & WS_EX_LAYERED) == 0) &&
+		(CreateFlipSwapChain(WINDOW_FRAME_LATENCY));
+
+	if (!mFlipModel)
+	{
+		// The blt model resolves a multisampled backbuffer on Present.
+		DXGI_SWAP_CHAIN_DESC swapChainDesc;
+		ZeroMemory(&swapChainDesc, sizeof(swapChainDesc));
+		swapChainDesc.BufferCount = 1;
+		swapChainDesc.BufferDesc.Width = mWidth;
+		swapChainDesc.BufferDesc.Height = mHeight;
+		swapChainDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
+		swapChainDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
+		swapChainDesc.OutputWindow = mHWnd;
+		swapChainDesc.SampleDesc.Count = msaaSamples;
+		swapChainDesc.SampleDesc.Quality = 0;
+		swapChainDesc.Windowed = mWindowed ? TRUE : FALSE;
+		swapChainDesc.SwapEffect = DXGI_SWAP_EFFECT_DISCARD;
+		swapChainDesc.Flags = DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH;
+		mSwapChainFlags = swapChainDesc.Flags;
+
+		IDXGIDevice* pDXGIDevice = NULL;
+		mDXRenderDevice->mD3DDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&pDXGIDevice);
+		DXCHECK(mDXRenderDevice->mDXGIFactory->CreateSwapChain(pDXGIDevice, &swapChainDesc, &mDXSwapChain));
+		pDXGIDevice->Release();
+		pDXGIDevice = NULL;
+	}
+
+	CreateTargets(msaaSamples);
 
 	if ((mWindow->mFlags & BFWINDOW_ALLOW_FULLSCREEN) == 0)
 		mDXRenderDevice->mDXGIFactory->MakeWindowAssociation(mHWnd, DXGI_MWA_NO_ALT_ENTER);
 
-	DXCHECK(mDXRenderDevice->mD3DDevice->CreateDepthStencilView(mD3DDepthBuffer, NULL, &mD3DDepthStencilView));
+	if (mFlipModel)
+	{
+		mPacer.mHWnd = mHWnd;
+		float refreshRate = GetRefreshRate();
+		mPacer.mIdleWaitMS = (refreshRate > 0) ? BF_MAX(1, (int)(1000.0f / refreshRate)) : 16;
+		// Flip presents are always vsynced; unthrottled rendering is how to run without it.
+		if (gBFApp->mWindowFramePacer == NULL)
+			gBFApp->mWindowFramePacer = &mPacer;
+	}
 }
 
 void DXRenderWindow::PhysSetAsTarget()
@@ -3317,40 +3488,28 @@ void DXRenderWindow::Resized()
 
 	if (mDXSwapChain != NULL)
 	{
+		// ResizeBuffers fails while a view of a back buffer is still bound.
+		if ((mDXRenderDevice->mCurD3DRTV == mD3DRenderTargetView) || (mDXRenderDevice->mCurD3DDSV == mD3DDepthStencilView))
+		{
+			mDXRenderDevice->mD3DDeviceContext->OMSetRenderTargets(0, NULL, NULL);
+			mDXRenderDevice->mCurD3DRTV = NULL;
+			mDXRenderDevice->mCurD3DDSV = NULL;
+		}
+
 		mD3DBackBuffer->Release();
+		if (mD3DMsaaTarget != NULL)
+			mD3DMsaaTarget->Release();
+		mD3DMsaaTarget = NULL;
 		mD3DDepthBuffer->Release();
 		mD3DRenderTargetView->Release();
 		mD3DDepthStencilView->Release();
 
-		CheckDXResult(mDXSwapChain->ResizeBuffers(0, mWidth, mHeight, DXGI_FORMAT_UNKNOWN,
-			DXGI_SWAP_CHAIN_FLAG_ALLOW_MODE_SWITCH /*| DXGI_SWAP_CHAIN_FLAG_FRAME_LATENCY_WAITABLE_OBJECT*/));
+		CheckDXResult(mDXSwapChain->ResizeBuffers(0, mWidth, mHeight, DXGI_FORMAT_UNKNOWN, mSwapChainFlags));
 
 		// ResizeBuffers keeps the swapchain's original SampleDesc; the depth buffer has to match it.
 		int msaaSamples = ValidateSampleCount(mDXRenderDevice->mD3DDevice, DXGI_FORMAT_R8G8B8A8_UNORM,
 			mDXRenderDevice->mWindowMsaaSampleCount);
-
-		D3D11_TEXTURE2D_DESC descDepth;
-		ZeroMemory(&descDepth, sizeof(descDepth));
-		descDepth.Width = mWidth;
-		descDepth.Height = mHeight;
-		descDepth.MipLevels = 1;
-		descDepth.ArraySize = 1;
-		descDepth.Format = DXGI_FORMAT_D32_FLOAT;
-		descDepth.SampleDesc.Count = msaaSamples;
-		descDepth.SampleDesc.Quality = 0;
-		descDepth.Usage = D3D11_USAGE_DEFAULT;
-		descDepth.BindFlags = D3D11_BIND_DEPTH_STENCIL;
-		descDepth.CPUAccessFlags = 0;
-		descDepth.MiscFlags = 0;
-		CheckDXResult(mDXRenderDevice->mD3DDevice->CreateTexture2D(&descDepth, NULL, &mD3DDepthBuffer));
-
-		CheckDXResult(mDXSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (LPVOID*)&mD3DBackBuffer));
-		CheckDXResult(mDXRenderDevice->mD3DDevice->CreateRenderTargetView(mD3DBackBuffer, NULL, &mD3DRenderTargetView));
-		CheckDXResult(mDXRenderDevice->mD3DDevice->CreateDepthStencilView(mD3DDepthBuffer, NULL, &mD3DDepthStencilView));
-
-		/*if (mRenderDevice->mCurRenderTarget == this)
-			mRenderDevice->mCurRenderTarget = NULL;
-		PhysSetAsTarget();*/
+		CreateTargets(msaaSamples);
 	}
 }
 
@@ -3358,12 +3517,43 @@ void DXRenderWindow::Present()
 {
 	BP_ZONE("DXRenderWindow::Present");
 	((DXRenderDevice*)mRenderDevice)->DrainDebugMessages();
-	// Under external pacing or a frame pacer our own vblank must never block the paced loop
-	bool useVSync = (mWindow->mFlags & BFWINDOW_VSYNC) && (gBFApp != NULL) && (!gBFApp->mExternalPacingActive) &&
-		(gBFApp->mFramePacer == NULL);
-	if (BRISK_DBG_FORCE_VSYNC())
-		useVSync = true;
-	HRESULT hr = mDXSwapChain->Present(useVSync ? 1 : 0, 0);
+	HRESULT hr;
+	if (mFlipModel)
+	{
+		if (mD3DMsaaTarget != NULL)
+			mDXRenderDevice->mD3DDeviceContext->ResolveSubresource(mD3DBackBuffer, 0, mD3DMsaaTarget, 0, DXGI_FORMAT_R8G8B8A8_UNORM);
+		mPacer.TakeReleases();
+		if (gBFApp->mUnthrottledRendering)
+		{
+			// Every frame goes out, and releases can't be matched to these presents: frames still queued when
+			// pacing resumes would release spare slots, so the swapchain is replaced once it does.
+			hr = mDXSwapChain->Present(0, 0);
+			mPacer.WriteOff();
+			mPacerCountLost = true;
+		}
+		else
+		{
+			// A paced frame waited for its slot. Any other (minimized, stalled, or while the IDE or another pacer runs
+			// the loop) goes out only when a slot is free: it never blocks, and the count stays exact. Writing the count
+			// off here would leave the frames still in flight releasing spare slots, and the queue would grow.
+			bool paced = (gBFApp->mWindowFramePacer == &mPacer) && (gBFApp->mFramePacer == NULL) && (!gBFApp->mExternalPacingActive) &&
+				(!mPacer.mStalled) && (!::IsIconic(mHWnd));
+			if ((!paced) && (mPacer.mAcquiredCount <= mPacer.mPresentCount))
+				return;
+			hr = mDXSwapChain->Present(1, 0);
+			if (SUCCEEDED(hr))
+				mPacer.mPresentCount++;
+		}
+	}
+	else
+	{
+		// Under external pacing or a frame pacer our own vblank must never block the paced loop
+		bool useVSync = (mWindow->mFlags & BFWINDOW_VSYNC) && (gBFApp != NULL) && (!gBFApp->mExternalPacingActive) &&
+			(gBFApp->mFramePacer == NULL) && (gBFApp->mWindowFramePacer == NULL);
+		if (BRISK_DBG_FORCE_VSYNC())
+			useVSync = true;
+		hr = mDXSwapChain->Present(useVSync ? 1 : 0, 0);
+	}
 
 	if ((hr == DXGI_ERROR_DEVICE_REMOVED) || (hr == DXGI_ERROR_DEVICE_RESET))
 		((DXRenderDevice*)mRenderDevice)->mNeedsReinitNative = true;
@@ -3782,6 +3972,7 @@ DXGpuTimerFrame::DXGpuTimerFrame()
 	mDisjoint = NULL;
 	mSpanCount = 0;
 	mFrameId = 0;
+	mNotReadyFetches = 0;
 	mOpen = false;
 	mPending = false;
 }
@@ -3912,10 +4103,33 @@ void DXRenderDevice::GpuTimerEndFrame()
 	DXGpuTimerFrame& frame = mGpuTimerFrames[mGpuTimerWriteIdx];
 	if (!frame.mOpen)
 		return;
+	// An unissued end timestamp would never complete, and neither would the frame
+	if (mGpuTimerOpenSpan >= 0)
+		GpuTimerSpanEnd(mGpuTimerOpenSpan);
 	mD3DDeviceContext->End(frame.mDisjoint);
 	frame.mOpen = false;
 	frame.mPending = true;
+	frame.mNotReadyFetches = 0;
 	mGpuTimerWriteIdx = (mGpuTimerWriteIdx + 1) % DX_GPUTIMER_FRAMES;
+}
+
+// Queries always complete unless something went wrong; past this one frame mustn't hold up the ring for good.
+#define DX_GPUTIMER_MAX_NOT_READY 240
+
+static bool GpuTimerSpansReady(ID3D11DeviceContext* context, DXGpuTimerFrame& frame)
+{
+	auto isPending = [&](ID3D11Query* query) { return context->GetData(query, NULL, 0, D3D11_ASYNC_GETDATA_DONOTFLUSH) == S_FALSE; };
+	if (frame.mSpanCount == 0)
+		return true;
+	// The last timestamp is the cheap test
+	if (isPending(frame.mEndQueries[frame.mSpanCount - 1]))
+		return false;
+	for (int spanIdx = 0; spanIdx < frame.mSpanCount; spanIdx++)
+	{
+		if ((isPending(frame.mBeginQueries[spanIdx])) || (isPending(frame.mEndQueries[spanIdx])))
+			return false;
+	}
+	return true;
 }
 
 int DXRenderDevice::GpuTimerFetch(int64* outFrameId, GpuTimerSpan* outSpans, int maxSpans)
@@ -3929,8 +4143,17 @@ int DXRenderDevice::GpuTimerFetch(int64* outFrameId, GpuTimerSpan* outSpans, int
 
 		D3D11_QUERY_DATA_TIMESTAMP_DISJOINT disjoint;
 		HRESULT hr = mD3DDeviceContext->GetData(frame.mDisjoint, &disjoint, sizeof(disjoint), D3D11_ASYNC_GETDATA_DONOTFLUSH);
+		// Some drivers (AMD) complete the disjoint query before the timestamps inside it
+		if ((hr == S_OK) && (!GpuTimerSpansReady(mD3DDeviceContext, frame)))
+			hr = S_FALSE;
 		if (hr != S_OK)
-			return -1; // not ready; a later frame can't be ready before this one either
+		{
+			if (++frame.mNotReadyFetches < DX_GPUTIMER_MAX_NOT_READY)
+				return -1; // not ready; a later frame can't be ready before this one either
+			frame.mPending = false;
+			*outFrameId = frame.mFrameId;
+			return 0;
+		}
 
 		frame.mPending = false;
 		*outFrameId = frame.mFrameId;
@@ -4164,6 +4387,9 @@ void DXRenderDevice::FrameStart()
 	mCurPSUAV = NULL;
 	for (auto renderWindow : mRenderWindowList)
 	{
+		auto dxRenderWindow = (DXRenderWindow*)renderWindow;
+		if ((dxRenderWindow->mPacerCountLost) && (!gBFApp->mUnthrottledRendering))
+			dxRenderWindow->ResetSwapChain();
 		renderWindow->mHasBeenDrawnTo = false;
 		renderWindow->mHasBeenTargeted = false;
 	}

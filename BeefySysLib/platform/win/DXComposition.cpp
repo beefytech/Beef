@@ -1,16 +1,42 @@
 #include "DXComposition.h"
 #include "WinBFApp.h"
 #include "BFApp.h"
+#include <dwmapi.h>
 
 #pragma comment(lib, "dcomp.lib")
 
 USING_NS_BF;
 
 static HRESULT gCompositionLastResult = S_OK;
-// Frames in flight, counting the one being drawn, each with its own buffer. With one, any frame whose CPU plus GPU
-// time runs past a refresh waits a whole extra refresh. Three keep a GPU-bound view's GPU a little busier, at the
-// cost of another refresh of latency whenever we're ahead of the display.
-static const int COMPOSITION_FRAME_LATENCY = 2;
+// Frames in flight, counting the one being drawn, each with its own buffer. A composed frame's slot only comes back
+// once the next frame replaces it on screen, so with every slot but one in use a frame can't start until its
+// predecessor is showing. The last slot only buys a frame that needs it a head start (see WaitForFrame).
+static const int COMPOSITION_FRAME_LATENCY = 3;
+
+typedef HRESULT (WINAPI* DwmGetCompositionTimingInfoFunc)(HWND hwnd, DWM_TIMING_INFO* timingInfo);
+
+// The first composition vblank after nowQPC and the refresh period, from DWM; false when it can't say.
+static bool NextVBlank(int64 nowQPC, int64& nextQPC, int64& periodQPC)
+{
+	static DwmGetCompositionTimingInfoFunc sGetTimingInfo = (DwmGetCompositionTimingInfoFunc)-1;
+	if (sGetTimingInfo == (DwmGetCompositionTimingInfoFunc)-1)
+	{
+		HMODULE module = ::LoadLibraryA("dwmapi.dll");
+		sGetTimingInfo = (module != NULL) ? (DwmGetCompositionTimingInfoFunc)::GetProcAddress(module, "DwmGetCompositionTimingInfo") : NULL;
+	}
+	if (sGetTimingInfo == NULL)
+		return false;
+	DWM_TIMING_INFO info = {};
+	info.cbSize = sizeof(DWM_TIMING_INFO);
+	if ((FAILED(sGetTimingInfo(NULL, &info))) || (info.qpcRefreshPeriod == 0))
+		return false;
+	periodQPC = (int64)info.qpcRefreshPeriod;
+	int64 next = (int64)info.qpcVBlank;
+	if (next <= nowQPC)
+		next += ((nowQPC - next) / periodQPC + 1) * periodQPC;
+	nextQPC = next;
+	return true;
+}
 
 ///
 
@@ -300,6 +326,9 @@ DXCompositionTarget::DXCompositionTarget(DXRenderDevice* renderDevice)
 	mWaitable = NULL;
 	mPresentCount = 0;
 	mAcquiredCount = 0;
+	mDueQPC = 0;
+	memset(mWorkQPC, 0, sizeof(mWorkQPC));
+	mWorkIdx = 0;
 	mTexture = NULL;
 	mWidth = 0;
 	mHeight = 0;
@@ -363,6 +392,8 @@ HRESULT DXCompositionTarget::CreateSwapChain()
 		mWaitable = swapChain2->GetFrameLatencyWaitableObject();
 		mPresentCount = 0;
 		mAcquiredCount = 0;
+		mDueQPC = 0;
+		memset(mWorkQPC, 0, sizeof(mWorkQPC));
 		swapChain2->Release();
 	}
 	if (FAILED(hr))
@@ -485,6 +516,14 @@ HRESULT DXCompositionTarget::Present(int syncInterval)
 	mLastResult = mSwapChain->Present(1, 0);
 	if (SUCCEEDED(mLastResult))
 		mPresentCount++;
+	if (mDueQPC != 0)
+	{
+		LARGE_INTEGER now;
+		::QueryPerformanceCounter(&now);
+		mWorkQPC[mWorkIdx] = now.QuadPart - mDueQPC;
+		mWorkIdx = (mWorkIdx + 1) % BF_ARRAY_COUNT(mWorkQPC);
+		mDueQPC = 0;
+	}
 	if ((mLastResult == DXGI_ERROR_DEVICE_REMOVED) || (mLastResult == DXGI_ERROR_DEVICE_RESET))
 		mRenderDevice->mNeedsReinitNative = true;
 	return mLastResult;
@@ -527,12 +566,47 @@ bool DXCompositionTarget::WaitForFrame(int timeoutMS)
 	while (true)
 	{
 		TakeReleases();
-		if (mAcquiredCount > mPresentCount)
+		LARGE_INTEGER now;
+		::QueryPerformanceCounter(&now);
+		// The predecessor is on screen: due, as with one slot fewer.
+		if (mAcquiredCount > mPresentCount + 1)
+		{
+			mDueQPC = now.QuadPart;
 			return true;
+		}
 		int remaining = timeoutMS - (int)(BFTickCount() - startTick);
-		if ((remaining <= 0) || (::WaitForSingleObjectEx(mWaitable, (DWORD)remaining, TRUE) != WAIT_OBJECT_0))
+		if (remaining <= 0)
 			return false;
-		mAcquiredCount++;
+		int waitMS = remaining;
+		// The last slot is free but the predecessor isn't showing yet. Starting now would queue this frame a refresh
+		// deeper, so start early only by what the slowest recent frame needs to make the vblank after next.
+		int64 nextVBlank;
+		int64 period;
+		if ((mAcquiredCount > mPresentCount) && (NextVBlank(now.QuadPart, nextVBlank, period)))
+		{
+			int64 slowest = 0;
+			for (auto work : mWorkQPC)
+				slowest = BF_MAX(slowest, work);
+			int64 lead = slowest + period / 8 - period;
+			if (lead > 0)
+			{
+				if (now.QuadPart >= nextVBlank - lead)
+				{
+					mDueQPC = now.QuadPart;
+					return true;
+				}
+				// Millisecond waits overshoot by more than the margin, so the last stretch is polled.
+				LARGE_INTEGER freq;
+				::QueryPerformanceFrequency(&freq);
+				int untilMS = (int)((nextVBlank - lead - now.QuadPart) * 1000 / freq.QuadPart);
+				waitMS = (untilMS < 2) ? 0 : BF_MIN(waitMS, untilMS - 1);
+			}
+		}
+		DWORD waitResult = ::WaitForSingleObjectEx(mWaitable, (DWORD)waitMS, TRUE);
+		if (waitResult == WAIT_OBJECT_0)
+			mAcquiredCount++;
+		else if (waitMS == remaining)
+			return false;
 	}
 }
 

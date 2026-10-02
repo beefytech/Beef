@@ -1208,7 +1208,14 @@ LRESULT WinBFWindow::WindowProc(HWND hWnd, UINT uMsg, WPARAM wParam, LPARAM lPar
 				}
 
 				mSoftHasFocus = mHasFocus;
-				gBFApp->Process();
+				// Frames normally come from the main loop, which reads input after its wait; this only keeps them
+				// coming while a modal loop (move/size, menus) holds the main loop up.
+				if ((int)(BFTickCount() - app->mLastLoopProcessTick) >= 30)
+				{
+					app->mInTimerProcess = true;
+					gBFApp->Process();
+					app->mInTimerProcess = false;
+				}
 				// Don't do anything with 'this' after Process, we may be deleted now
 				doResult = true;
 				result = 0;
@@ -1371,6 +1378,8 @@ WinBFApp::WinBFApp()
 
 	mDataDir = mInstallDir;
 	mInMsgProc = false;
+	mLastLoopProcessTick = 0;
+	mInTimerProcess = false;
 	mDSoundManager = NULL;
 	mDInputManager = NULL;
 
@@ -1400,7 +1409,7 @@ void WinBFApp::VSyncThreadProc()
 		IDXGIOutput* output = NULL;
 
 		// A frame pacer replaces the vblank wait.
-		if (mFramePacer != NULL)
+		if ((mFramePacer != NULL) || (mWindowFramePacer != NULL))
 		{
 			mVSyncActive = false;
 			BfpThread_Sleep(20);
@@ -1413,15 +1422,16 @@ void WinBFApp::VSyncThreadProc()
 			if ((mRenderDevice != NULL) && (!mRenderDevice->mRenderWindowList.IsEmpty()))
 			{
 				auto renderWindow = (DXRenderWindow*)mRenderDevice->mRenderWindowList[0];
-				renderWindow->mDXSwapChain->GetContainingOutput(&output);
+				if (renderWindow->mDXSwapChain != NULL)
+					renderWindow->mDXSwapChain->GetContainingOutput(&output);
 			}
 		}
 
 		if (output != NULL)
 		{
-			DWORD startTick = GetTickCount();
+			DWORD startTick = timeGetTime();
 			bool success = output->WaitForVBlank() == 0;
-			DWORD endTick = GetTickCount();
+			DWORD endTick = timeGetTime();
 
 			if (success)
 			{
@@ -1514,17 +1524,26 @@ void WinBFApp::Init()
 
 void WinBFApp::Run()
 {
-	MSG msg;
 	while (mRunning)
 	{
-		while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
-		{
-			TranslateMessage(&msg);
-			DispatchMessage(&msg);
-		}
-
+		PumpMessages();
 		if (mRunning)
 			Process();
+		mLastLoopProcessTick = BFTickCount();
+	}
+}
+
+void WinBFApp::PumpMessages()
+{
+	// Inside a window procedure nested messages would be dropped as re-entrant
+	if ((mInMsgProc) || (mInTimerProcess))
+		return;
+
+	MSG msg;
+	while (PeekMessage(&msg, NULL, 0, 0, PM_REMOVE))
+	{
+		TranslateMessage(&msg);
+		DispatchMessage(&msg);
 	}
 }
 
