@@ -104,6 +104,11 @@ enum BfTypeCode : uint8
 	BfTypeCode_Float,
 	BfTypeCode_Double,
 	BfTypeCode_Float2,
+	BfTypeCode_Float4,
+	BfTypeCode_Int32_4,
+	BfTypeCode_Bool2,
+	BfTypeCode_Bool4,
+	BfTypeCode_V128,
 	BfTypeCode_Object,
 	BfTypeCode_Interface,
 	BfTypeCode_Struct,
@@ -424,6 +429,7 @@ enum BfIRConfigConst : uint8
 enum BfIRIntrinsic : uint8
 {
 	BfIRIntrinsic__PLATFORM,
+	BfIRIntrinsic__LLVM,
 	BfIRIntrinsic_Abs,
 	BfIRIntrinsic_Add,
 	BfIRIntrinsic_And,

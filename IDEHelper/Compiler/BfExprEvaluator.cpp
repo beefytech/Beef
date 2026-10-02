@@ -7514,7 +7514,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 			BfIRType loweredIRType = mModule->GetIRLoweredType(loweredRetType, loweredRetType2);
 			loweredIRType = mModule->mBfIRBuilder->GetPointerTo(loweredIRType);
 			auto castedRetVal = mModule->mBfIRBuilder->CreateBitCast(retVal, loweredIRType);
-			mModule->mBfIRBuilder->CreateStore(callInst, castedRetVal);
+			mModule->mBfIRBuilder->CreateAlignedStore(callInst, castedRetVal, methodInstance->mReturnType->mAlign);
 			result = BfTypedValue(retVal, methodInstance->mReturnType, BfTypedValueKind_RestrictedTempAddr);
 		}
 		else
@@ -7713,7 +7713,7 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 			else
 				argVal = mModule->MakeAddressable(argVal);
 
-			if ((!IsComptime()) && (!disableLowering) && (!isIntrinsic))
+			if ((!IsComptime()) && (!disableLowering) && (!isIntrinsic || (argVal.mType->HasUnderlyingArray())))
 			{
 				BfTypeCode loweredTypeCode = BfTypeCode_None;
 				BfTypeCode loweredTypeCode2 = BfTypeCode_None;
@@ -7737,9 +7737,8 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 					auto primType = mModule->mBfIRBuilder->GetPrimitiveType(loweredTypeCode);
 					auto ptrType = mModule->mBfIRBuilder->GetPointerTo(primType);
 					BfIRValue primPtrVal = mModule->mBfIRBuilder->CreateBitCast(argPtrVal, ptrType);
-					auto primVal = mModule->mBfIRBuilder->CreateLoad(primPtrVal);
+					auto primVal = mModule->mBfIRBuilder->CreateAlignedLoad(primPtrVal, argVal.mType->mAlign);
 					irArgs.push_back(primVal);
-
 					if (loweredTypeCode2 != BfTypeCode_None)
 					{
 						auto primType2 = mModule->mBfIRBuilder->GetPrimitiveType(loweredTypeCode2);
@@ -7836,7 +7835,7 @@ void BfExprEvaluator::PushThis(BfAstNode* targetSrc, BfTypedValue argVal, BfMeth
 	else
 		allowThisSplatting = methodInstance->AllowsSplatting(-1);
 
-	if ((!allowThisSplatting) || (methodDef->mIsMutating) || (methodInstance->ForcingThisPtr()))
+	if ((!allowThisSplatting) || (methodDef->mIsMutating) || (methodInstance->ForcingThisPtr()) || (methodInstance->mIsIntrinsic))
 	{
 		argVal = mModule->MakeAddressable(argVal);
 		irArgs.push_back(argVal.mValue);

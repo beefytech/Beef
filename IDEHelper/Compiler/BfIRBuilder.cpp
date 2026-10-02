@@ -539,7 +539,12 @@ int BfIRConstHolder::GetSize(BfTypeCode typeCode, int ptrSize)
 	case BfTypeCode_Char32: return 4;
 	case BfTypeCode_Float: return 4;
 	case BfTypeCode_Double: return 8;
-	case BfTypeCode_Float2: return 8;
+	case BfTypeCode_Float2: return 4 * 2;
+	case BfTypeCode_Float4: return 4 * 4;
+	case BfTypeCode_Int32_4: return 4 * 4;
+	case BfTypeCode_Bool2: return 2;
+	case BfTypeCode_Bool4: return 4;
+	case BfTypeCode_V128: return 16;
 	case BfTypeCode_Object: return ptrSize;
 	case BfTypeCode_Interface: return ptrSize;
 	case BfTypeCode_Struct: return 0;

@@ -2129,7 +2129,63 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 	if ((mTypeDef->mTypeCode != BfTypeCode_Struct) || (IsBoxed()) || (mIsSplattable))
 		return false;
 	if (mHasUnderlyingArray)
+	{
+		BfType* underlyingArrayType = NULL;
+		int underlyingArraySize = -1;
+		bool underlyingIsVector = false;
+		GetUnderlyingArray(underlyingArrayType, underlyingArraySize, underlyingIsVector);
+
+		if(!underlyingArrayType->IsPrimitiveType())
+			return false;
+		auto primType = (BfPrimitiveType*)underlyingArrayType;
+		auto underlyingArrayTypeCode = primType->mTypeDef->mTypeCode;
+
+		if ((underlyingArrayTypeCode == BfTypeCode_Float) && (underlyingArraySize == 2))
+		{
+			if (outTypeCode != NULL)
+				*outTypeCode = underlyingIsVector ? BfTypeCode_Float2 : BfTypeCode_FloatX2;
+			return true;
+		}
+		if ((underlyingArrayTypeCode == BfTypeCode_Float) && (underlyingArraySize == 4))
+		{
+			if (outTypeCode != NULL)
+				*outTypeCode = underlyingIsVector ? BfTypeCode_Float4 : BfTypeCode_FloatX4;
+			return true;
+		}
+		if ((underlyingArrayTypeCode == BfTypeCode_Int32) && (underlyingArraySize == 4))
+		{
+			if (!underlyingIsVector)
+				return false;
+			if (outTypeCode != NULL)
+				*outTypeCode = BfTypeCode_Int32_4;
+			return true;
+		}
+		if ((underlyingArrayTypeCode == BfTypeCode_Boolean) && (underlyingArraySize == 2))
+		{
+			if (!underlyingIsVector)
+				return false;
+			if (outTypeCode != NULL)
+				*outTypeCode = BfTypeCode_Bool2;
+			return true;
+		}
+		if ((underlyingArrayTypeCode == BfTypeCode_Boolean) && (underlyingArraySize == 4))
+		{
+			if (!underlyingIsVector)
+				return false;
+			if (outTypeCode != NULL)
+				*outTypeCode = BfTypeCode_Bool4;
+			return true;
+		}
+		if ((underlyingArrayTypeCode == BfTypeCode_UInt8) && (underlyingArraySize == 16))
+		{
+			if (!underlyingIsVector)
+				return false;
+			if (outTypeCode != NULL)
+				*outTypeCode = BfTypeCode_V128;
+			return true;
+		}
 		return false;
+	}
 
 	bool deepCheck = false;
 
@@ -2356,73 +2412,92 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 			}
 			else
 			{
-				if (mInstSize >= 8)
+				if (!mIsCRepr)
 				{
-					if (outTypeCode != NULL)
-						*outTypeCode = BfTypeCode_Int64;
+					if ((types[0] == BfTypeCode_Float) && (types[1] == BfTypeCode_Float) && (types[2] == BfTypeCode_Float) && (types[3] == BfTypeCode_Float))
+					{
+						handled = true;
+						if (outTypeCode != NULL)
+							*outTypeCode = BfTypeCode_Float4;
+					}
+					if ((types[0] == BfTypeCode_Int32) && (types[1] == BfTypeCode_Int32) && (types[2] == BfTypeCode_Int32) && (types[3] == BfTypeCode_Int32))
+					{
+						handled = true;
+						if (outTypeCode != NULL)
+							*outTypeCode = BfTypeCode_Int32_4;
+					}
 				}
 
-				if (mInstSize == 8)
+				if (!handled)
 				{
-					handled = true;
-				}
+					if (mInstSize >= 8)
+					{
+						if (outTypeCode != NULL)
+							*outTypeCode = BfTypeCode_Int64;
+					}
 
-				if (mInstSize == 9)
-				{
-					handled = true;
-					if (outTypeCode2 != NULL)
-						*outTypeCode2 = BfTypeCode_Int8;
-				}
-				if (mInstSize == 10)
-				{
-					handled = true;
-					if (outTypeCode2 != NULL)
-						*outTypeCode2 = BfTypeCode_Int16;
-				}
-				if (mInstSize == 12)
-				{
-					handled = true;
-					if (outTypeCode2 != NULL)
-						*outTypeCode2 = BfTypeCode_Int32;
-				}
-				if (mInstSize == 16)
-				{
-					handled = true;
-					if (outTypeCode2 != NULL)
-						*outTypeCode2 = BfTypeCode_Int64;
-				}
+					if (mInstSize == 8)
+					{
+						handled = true;
+					}
 
-				if ((types[0] == BfTypeCode_Float) && (types[1] == BfTypeCode_None))
-				{
-					handled = true;
-					if (outTypeCode != NULL)
-						*outTypeCode = BfTypeCode_Float;
-				}
-				if ((types[0] == BfTypeCode_Float) && (types[1] == BfTypeCode_Float))
-				{
-					if (outTypeCode != NULL)
-						*outTypeCode = BfTypeCode_Float2;
-				}
-				if (types[0] == BfTypeCode_Double)
-				{
-					if (outTypeCode != NULL)
-						*outTypeCode = BfTypeCode_Double;
-				}
+					if (mInstSize == 9)
+					{
+						handled = true;
+						if (outTypeCode2 != NULL)
+							*outTypeCode2 = BfTypeCode_Int8;
+					}
+					if (mInstSize == 10)
+					{
+						handled = true;
+						if (outTypeCode2 != NULL)
+							*outTypeCode2 = BfTypeCode_Int16;
+					}
+					if (mInstSize == 12)
+					{
+						handled = true;
+						if (outTypeCode2 != NULL)
+							*outTypeCode2 = BfTypeCode_Int32;
+					}
+					if (mInstSize == 16)
+					{
+						handled = true;
+						if (outTypeCode2 != NULL)
+							*outTypeCode2 = BfTypeCode_Int64;
+					}
 
-				if ((types[2] == BfTypeCode_Float) && (mInstSize == 12))
-				{
-					if (outTypeCode2 != NULL)
-						*outTypeCode2 = BfTypeCode_Float;
-				}
-				if ((types[2] == BfTypeCode_Float) && (types[3] == BfTypeCode_Float))
-				{
-					if (outTypeCode2 != NULL)
-						*outTypeCode2 = BfTypeCode_Float2;
-				}
-				if (types[2] == BfTypeCode_Double)
-				{
-					if (outTypeCode2 != NULL)
-						*outTypeCode2 = BfTypeCode_Double;
+					if ((types[0] == BfTypeCode_Float) && (types[1] == BfTypeCode_None))
+					{
+						handled = true;
+						if (outTypeCode != NULL)
+							*outTypeCode = BfTypeCode_Float;
+					}
+					if ((types[0] == BfTypeCode_Float) && (types[1] == BfTypeCode_Float))
+					{
+						if (outTypeCode != NULL)
+							*outTypeCode = BfTypeCode_Float2;
+					}
+					if (types[0] == BfTypeCode_Double)
+					{
+						if (outTypeCode != NULL)
+							*outTypeCode = BfTypeCode_Double;
+					}
+
+					if ((types[2] == BfTypeCode_Float) && (mInstSize == 12))
+					{
+						if (outTypeCode2 != NULL)
+							*outTypeCode2 = BfTypeCode_Float;
+					}
+					if ((types[2] == BfTypeCode_Float) && (types[3] == BfTypeCode_Float))
+					{
+						if (outTypeCode2 != NULL)
+							*outTypeCode2 = BfTypeCode_Float2;
+					}
+					if (types[2] == BfTypeCode_Double)
+					{
+						if (outTypeCode2 != NULL)
+							*outTypeCode2 = BfTypeCode_Double;
+					}
 				}
 
 				if (handled)
