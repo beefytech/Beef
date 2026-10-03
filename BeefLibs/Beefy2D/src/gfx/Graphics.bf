@@ -1211,6 +1211,81 @@ namespace Beefy.gfx
 		{
 			FillOval(x, y, radius, radius);
 		}
+
+		// FillRect with FillOval's one-pixel edge fade -- for rects that a rotated or sheared mMatrix
+		// leaves with stepped edges. Pixel-aligned rects want plain FillRect, which stays crisp.
+		public void FillRectAntialiased(float x, float y, float width, float height)
+		{
+			Matrix m = mMatrix;
+			float[4] cornerX = .(x, x + width, x + width, x);
+			float[4] cornerY = .(y, y, y + height, y + height);
+			float[4] px = ?;
+			float[4] py = ?;
+			for (int i < 4)
+			{
+				px[i] = m.tx + m.a * cornerX[i] + m.c * cornerY[i];
+				py[i] = m.ty + m.b * cornerX[i] + m.d * cornerY[i];
+			}
+			float area = (px[1] - px[0]) * (py[3] - py[0]) - (py[1] - py[0]) * (px[3] - px[0]);
+			if (area == 0)
+				return;
+			float winding = Math.Sign(area);
+
+			// Outward pixel-space normal of edge i (corner i to i + 1).
+			float[4] nx = ?;
+			float[4] ny = ?;
+			float[4] edgeLength = ?;
+			for (int i < 4)
+			{
+				float ex = px[(i + 1) % 4] - px[i];
+				float ey = py[(i + 1) % 4] - py[i];
+				edgeLength[i] = Math.Sqrt(ex * ex + ey * ey);
+				nx[i] = winding * ey / edgeLength[i];
+				ny[i] = -winding * ex / edgeLength[i];
+			}
+			// A rect under a pixel thick can't inset a full half pixel without its sides crossing.
+			float thickness = Math.Abs(area) / Math.Max(edgeLength[0], edgeLength[1]);
+			float inset = Math.Min(0.5f, thickness * 0.5f);
+
+			// Corner i joins edges i - 1 and i; its miter offset puts both sides `amount` away.
+			float[4] innerX = ?;
+			float[4] innerY = ?;
+			float[4] outerX = ?;
+			float[4] outerY = ?;
+			for (int i < 4)
+			{
+				int prev = (i + 3) % 4;
+				float sumX = nx[prev] + nx[i];
+				float sumY = ny[prev] + ny[i];
+				float miter = 1.0f / (1.0f + nx[prev] * nx[i] + ny[prev] * ny[i]);
+				innerX[i] = px[i] - sumX * miter * inset;
+				innerY[i] = py[i] - sumY * miter * inset;
+				outerX[i] = px[i] + sumX * miter * 0.5f;
+				outerY[i] = py[i] + sumY * miter * 0.5f;
+			}
+
+			Color edgeColor = mColor;
+			edgeColor.A = 0;
+			// The solid inner quad, then a quad per side fading across its edge.
+			Gfx_AllocTris(mWhiteDot.mNativeTextureSegment, 6 + 4 * 6);
+			Gfx_SetDrawVertex(0, innerX[0], innerY[0], 0, 0.5f, 0.5f, mColor);
+			Gfx_SetDrawVertex(1, innerX[1], innerY[1], 0, 0.5f, 0.5f, mColor);
+			Gfx_SetDrawVertex(2, innerX[2], innerY[2], 0, 0.5f, 0.5f, mColor);
+			Gfx_CopyDrawVertex(3, 0);
+			Gfx_CopyDrawVertex(4, 2);
+			Gfx_SetDrawVertex(5, innerX[3], innerY[3], 0, 0.5f, 0.5f, mColor);
+			for (int i < 4)
+			{
+				int next = (i + 1) % 4;
+				int32 v = (.)(6 + i * 6);
+				Gfx_SetDrawVertex(v + 0, innerX[i], innerY[i], 0, 0.5f, 0.5f, mColor);
+				Gfx_SetDrawVertex(v + 1, outerX[i], outerY[i], 0, 0.5f, 0.5f, edgeColor);
+				Gfx_SetDrawVertex(v + 2, innerX[next], innerY[next], 0, 0.5f, 0.5f, mColor);
+				Gfx_CopyDrawVertex(v + 3, v + 2);
+				Gfx_CopyDrawVertex(v + 4, v + 1);
+				Gfx_SetDrawVertex(v + 5, outerX[next], outerY[next], 0, 0.5f, 0.5f, edgeColor);
+			}
+		}
     }
 #else
     public class Graphics : GraphicsBase
