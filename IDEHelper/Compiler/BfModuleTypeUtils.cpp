@@ -6645,6 +6645,16 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		if (implBaseType->IsIncomplete())
 			PopulateType(implBaseType, BfPopulateType_Full_Force);
 
+		// A base further up can be incomplete while the direct base is not: reifying a type rebuilds it, and the
+		//  types between it and us can still be the complete ones from before. Our interfaces are slotted after the
+		//  end of every base's, so a walk up the bases that stops at the incomplete one slots ours over Object's
+		//  IHashable. Complete the whole chain first
+		for (auto checkBaseType = implBaseType->GetImplBaseType(); checkBaseType != NULL; checkBaseType = checkBaseType->GetImplBaseType())
+		{
+			if (checkBaseType->IsIncomplete())
+				PopulateType(checkBaseType, BfPopulateType_Full_Force);
+		}
+
 		typeInstance->mInterfaceMethodTable = baseTypeInst->mInterfaceMethodTable;
 		typeInstance->mVirtualMethodTable = implBaseType->mVirtualMethodTable;
 		typeInstance->mVirtualMethodTableSize = implBaseType->mVirtualMethodTableSize;
