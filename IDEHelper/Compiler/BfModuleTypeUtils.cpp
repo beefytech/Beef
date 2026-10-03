@@ -6864,6 +6864,13 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 	// Generate all methods. Pass 1
 	for (auto methodDef : typeDef->mMethods)
 	{
+		if (methodDef->mIdx >= typeInstance->mMethodInstanceGroups.size())
+		{
+			mCompiler->RequestExtraCompile();
+			InternalError("DoTypeInstanceMethodProcessing methodDef->mIdx oob");
+			return;
+		}
+
 		auto methodInstanceGroup = &typeInstance->mMethodInstanceGroups[methodDef->mIdx];
 
 		if (typeOptions != NULL)
