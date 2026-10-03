@@ -793,6 +793,11 @@ BF_EXPORT bool BF_CALLTYPE Debugger_OpenFile(const char* launchPath, const char*
 			else
 				gDebugger = gDebugManager->mDebugger32;
 		}
+		else if (gDebugManager->mDebuggerLLDB != NULL)
+		{
+			// Without WinDebugger, prefer LLDB - it supports hot compiling - when this build has it
+			gDebugger = gDebugManager->mDebuggerLLDB;
+		}
 		else
 			gDebugger = gDebugManager->mDebuggerGDB;
 	}
