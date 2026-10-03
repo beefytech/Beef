@@ -23,13 +23,17 @@ class ImageAtlas
 
 	}
 
-	public Image Alloc(int32 width, int32 height)
+	// guard: transparent texels kept around the segment, so a filtered (scaled, rotated) draw of it never samples a
+	// neighbour or the page's unwritten fill.
+	public Image Alloc(int32 width, int32 height, int32 guard = 0)
 	{
+		int32 cellWidth = width + guard * 2;
+		int32 cellHeight = height + guard * 2;
 		Page page = null;
 		if (!mPages.IsEmpty)
 		{
 			page = mPages.Back;
-			if (page.mCurX + (int)width > page.mImage.mSrcWidth)
+			if (page.mCurX + (int)cellWidth > page.mImage.mSrcWidth)
 			{
 				// Move down to next row
 				page.mCurX = 0;
@@ -37,7 +41,7 @@ class ImageAtlas
 				page.mMaxRowHeight = 0;
 			}
 
-			if (page.mCurY + height > page.mImage.mSrcHeight)
+			if (page.mCurY + cellHeight > page.mImage.mSrcHeight)
 			{
 				// Doesn't fit
 				page = null;
@@ -58,9 +62,18 @@ class ImageAtlas
 			mPages.Add(page);
 		}
 
-		Image image = page.mImage.CreateImageSegment(page.mCurX, page.mCurY, width, height);
-		page.mCurX += width;
-		page.mMaxRowHeight = Math.Max(page.mMaxRowHeight, height);
+		if (guard > 0)
+		{
+			// The page starts filled with debug colours.
+			uint32* clear = new uint32[cellWidth * cellHeight]*;
+			defer delete clear;
+			Internal.MemSet(clear, 0, cellWidth * cellHeight * sizeof(uint32));
+			page.mImage.SetBits(page.mCurX, page.mCurY, cellWidth, cellHeight, cellWidth, clear);
+		}
+
+		Image image = page.mImage.CreateImageSegment(page.mCurX + guard, page.mCurY + guard, width, height);
+		page.mCurX += cellWidth;
+		page.mMaxRowHeight = Math.Max(page.mMaxRowHeight, cellHeight);
 		return image;
 	}
 }

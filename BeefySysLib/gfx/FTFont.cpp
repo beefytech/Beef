@@ -212,7 +212,9 @@ bool FTFont::Load(const StringImpl& fileName, float pointSize)
 
 TextureSegment* BF_CALLTYPE Gfx_CreateTextureSegment(TextureSegment* textureSegment, int srcX, int srcY, int srcWidth, int srcHeight);
 
-FTFontManager::Glyph* FTFont::AllocGlyph(int charCode, bool allowDefault)
+// guard: texels of empty glyph kept around the glyph in its page, so a filtered (scaled, rotated) draw of it
+// never samples a neighbour or the page's unwritten fill.
+FTFontManager::Glyph* FTFont::AllocGlyph(int charCode, bool allowDefault, int guard)
 {
 	FT_Activate_Size(mFaceSize->mFTSize);
 
@@ -230,7 +232,13 @@ FTFontManager::Glyph* FTFont::AllocGlyph(int charCode, bool allowDefault)
 
 	auto& bitmap = mFace->mFTFace->glyph->bitmap;
 
-	if ((bitmap.rows > FT_PAGE_HEIGHT) || (bitmap.width > FT_PAGE_WIDTH))
+	// An empty glyph is never sampled.
+	if ((bitmap.width == 0) || (bitmap.rows == 0))
+		guard = 0;
+	int cellWidth = (int)bitmap.width + guard * 2;
+	int cellHeight = (int)bitmap.rows + guard * 2;
+
+	if ((cellHeight > FT_PAGE_HEIGHT) || (cellWidth > FT_PAGE_WIDTH))
 	{
 		return NULL;
 	}
@@ -240,7 +248,7 @@ FTFontManager::Glyph* FTFont::AllocGlyph(int charCode, bool allowDefault)
 	if (!gFTFontManager.mPages.empty())
 	{
 		page = gFTFontManager.mPages.back();
-		if (page->mCurX + (int)bitmap.width > page->mTexture->mWidth)
+		if (page->mCurX + cellWidth > page->mTexture->mWidth)
 		{
 			// Move down to next row
 			page->mCurX = 0;
@@ -248,7 +256,7 @@ FTFontManager::Glyph* FTFont::AllocGlyph(int charCode, bool allowDefault)
 			page->mMaxRowHeight = 0;
 		}
 
-		if (page->mCurY + (int)bitmap.rows > page->mTexture->mHeight)
+		if (page->mCurY + cellHeight > page->mTexture->mHeight)
 		{
 			// Doesn't fit
 			page = NULL;
@@ -272,8 +280,8 @@ FTFontManager::Glyph* FTFont::AllocGlyph(int charCode, bool allowDefault)
 	glyph->mXOffset = ftFace->glyph->bitmap_left;
 	glyph->mYOffset = ftFace->size->metrics.ascender / 64 - ftFace->glyph->bitmap_top;
 	glyph->mPage = page;
-	glyph->mX = page->mCurX;
-	glyph->mY = page->mCurY;
+	glyph->mX = page->mCurX + guard;
+	glyph->mY = page->mCurY + guard;
 	glyph->mWidth = bitmap.width;
 	glyph->mHeight = bitmap.rows;
 
@@ -297,29 +305,31 @@ FTFontManager::Glyph* FTFont::AllocGlyph(int charCode, bool allowDefault)
 
 	if (bitmap.width > 0)
 	{
+		auto GlyphTexel = [](uint8 val)
+		{
+			uint8 whiteVal = gFTFontManager.mWhiteTab[val];
+			uint8 blackVal = gFTFontManager.mBlackTab[val];
+			return (uint32)(((int32)whiteVal << 24) | ((int32)blackVal) | ((int32)0xFF << 8) | ((int32)0xFF << 16));
+		};
+
 		ImageData* img = new ImageData();
-		img->CreateNew(bitmap.width, bitmap.rows);
+		img->CreateNew(cellWidth, cellHeight);
 		auto* bits = img->mBits;
 		int width = img->mWidth;
+		uint32 empty = GlyphTexel(0);
+		for (int i = 0; i < cellWidth * cellHeight; i++)
+			bits[i] = empty;
 		for (int y = 0; y < (int)bitmap.rows; y++)
 		{
 			for (int x = 0; x < (int)bitmap.width; x++)
-			{
-				uint8 val = bitmap.buffer[y * bitmap.pitch + x];
-
-				uint8 whiteVal = gFTFontManager.mWhiteTab[val];
-				uint8 blackVal = gFTFontManager.mBlackTab[val];
-
-				bits[y * width + x] = ((int32)whiteVal << 24) |
-					((int32)blackVal) | ((int32)0xFF << 8) | ((int32)0xFF << 16);
-			}
+				bits[(y + guard) * width + x + guard] = GlyphTexel(bitmap.buffer[y * bitmap.pitch + x]);
 		}
 		page->mTexture->Blt(img, page->mCurX, page->mCurY);
 		img->Deref();
 	}
 
-	page->mCurX += bitmap.width;
-	page->mMaxRowHeight = std::max(page->mMaxRowHeight, (int)bitmap.rows);
+	page->mCurX += cellWidth;
+	page->mMaxRowHeight = std::max(page->mMaxRowHeight, cellHeight);
 
 	auto texture = page->mTexture;
 	texture->AddRef();
@@ -381,6 +391,11 @@ BF_EXPORT void BF_CALLTYPE FTFont_Delete(FTFont* ftFont, bool cacheRetain)
 BF_EXPORT FTFontManager::Glyph* BF_CALLTYPE FTFont_AllocGlyph(FTFont* ftFont, int charCode, bool allowDefault)
 {
 	return ftFont->AllocGlyph(charCode, allowDefault);
+}
+
+BF_EXPORT FTFontManager::Glyph* BF_CALLTYPE FTFont_AllocGlyphGuarded(FTFont* ftFont, int charCode, bool allowDefault, int guard)
+{
+	return ftFont->AllocGlyph(charCode, allowDefault, guard);
 }
 
 BF_EXPORT int BF_CALLTYPE FTFont_GetKerning(FTFont* ftFont, int charCodeA, int charCodeB)

@@ -120,7 +120,8 @@ namespace Beefy.gfx
 
 			effectCharData.mEffectCharData.mXOffset -= ofsX;
 			effectCharData.mEffectCharData.mYOffset -= ofsY;
-			var effectImage = fontEntry.mAtlas.Alloc(charData.mImageSegment.mSrcWidth + ofsX * 2, charData.mImageSegment.mSrcHeight + ofsY * 2);
+			// Drawn wherever the glyph is, so it needs the glyph's guard (copied into mEffectCharData above).
+			var effectImage = fontEntry.mAtlas.Alloc(charData.mImageSegment.mSrcWidth + ofsX * 2, charData.mImageSegment.mSrcHeight + ofsY * 2, charData.mGuard);
 			effectCharData.mEffectCharData.mImageSegment = effectImage;
 			effectCharData.mSrcCharData.mImageSegment.ApplyEffect(effectImage, mEffectOptions);
 
@@ -149,6 +150,9 @@ namespace Beefy.gfx
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern FTGlyph* FTFont_AllocGlyph(FTFont* ftFont, int32 char8Code, bool allowDefault);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern FTGlyph* FTFont_AllocGlyphGuarded(FTFont* ftFont, int32 char8Code, bool allowDefault, int32 guard);
 
 		[CallingConvention(.Stdcall), CLink]
 		static extern int32 FTFont_GetKerning(FTFont* font, int32 char8CodeA, int32 char8CodeB);
@@ -189,6 +193,9 @@ namespace Beefy.gfx
             public int32 mYOffset;
             public int32 mXAdvance;
 			public bool mIsCombiningMark;
+			// The guard requested for mImageSegment and anything made from it (Font.mGlyphGuard). Kept even for an
+			// empty glyph: its effect image still has texels to guard.
+			public int32 mGuard;
 
 			public this()
 			{
@@ -206,6 +213,7 @@ namespace Beefy.gfx
 				mYOffset = copyFrom.mYOffset;
 				mXAdvance = copyFrom.mXAdvance;
 				mIsCombiningMark = copyFrom.mIsCombiningMark;
+				mGuard = copyFrom.mGuard;
 			}
         }
 
@@ -256,6 +264,10 @@ namespace Beefy.gfx
 		float[] mLoKerningTable;
 		//BitmapFont mBMFont ~ delete _; 
 		public StringView mEllipsis = "...";
+		// Empty texels kept around each glyph in its page, so a filtered (scaled or rotated) draw never samples a
+		// neighbour. 1 covers bilinear filtering, except minified draws into a multisampled target, whose edge
+		// pixels sample up to half a pixel outside the quad. Set by Load, before any glyph exists.
+		int32 mGlyphGuard;
 
 		List<FontEffect> mFontEffectStack ~ delete _;
 		DisposeProxy mFontEffectDisposeProxy = new .(new () => { PopFontEffect(); }) ~ delete _;
@@ -608,7 +620,7 @@ namespace Beefy.gfx
 
 		public Result<void> AddAlternate(String path, float pointSize = -1)
 		{
-			Font altFont = Try!(LoadFromFile(path, pointSize));
+			Font altFont = Try!(LoadFromFile(path, pointSize, mGlyphGuard));
 			AltFont altFontEntry;
 			altFontEntry.mFont = altFont;
 			altFontEntry.mOwned = true;
@@ -726,9 +738,10 @@ namespace Beefy.gfx
 			}
 		}
 
-        public bool Load(StringView fontName, float pointSize = -1)
+        public bool Load(StringView fontName, float pointSize = -1, int32 glyphGuard = 0)
         {
 			Dispose();
+			mGlyphGuard = glyphGuard;
 
 			mCharData = new Dictionary<char32, CharData>();
 			mLowCharData = new CharData[LOW_CHAR_COUNT];
@@ -843,12 +856,12 @@ namespace Beefy.gfx
             return true;
         }
 
-        public static Result<Font> LoadFromFile(String path, float pointSize = -1)
+        public static Result<Font> LoadFromFile(String path, float pointSize = -1, int32 glyphGuard = 0)
         {
 			scope AutoBeefPerf("Font.LoadFromFile");
 
             Font font = new Font();
-            if (!font.Load(path, pointSize))
+            if (!font.Load(path, pointSize, glyphGuard))
 			{
 				delete font;
                 return .Err; //TODO: Make proper error
@@ -946,11 +959,12 @@ namespace Beefy.gfx
 					if (ftFont == null)
 						continue;
 
-					var ftGlyph = FTFont_AllocGlyph(ftFont, (int32)checkChar, fontIdx == mAlternates.Count - 1);
+					var ftGlyph = FTFont_AllocGlyphGuarded(ftFont, (int32)checkChar, fontIdx == mAlternates.Count - 1, mGlyphGuard);
 					if (ftGlyph == null)
 						continue;
 
 					charData = new CharData();
+					charData.mGuard = mGlyphGuard;
 					charData.mX = ftGlyph.mX;
 					charData.mY = ftGlyph.mY;
 					charData.mWidth = ftGlyph.mWidth;
