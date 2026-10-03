@@ -34,6 +34,30 @@ namespace Tests
 			Test.Assert(Math.Max((int64)-1, (int64)0) == 0);
 		}
 
+		// Read at runtime so these products are not folded
+		static uint64 sRuntimeOne = 1;
+
+		// A wrapping multiply of constants whose high halves are both set folds to the wrapped product, as it
+		//  computes at runtime: it used to fold to the product of their low halves
+		[Test]
+		public static void TestFoldedWrappingMultiply()
+		{
+			const uint64 cBasis = 0xCBF29CE4'84222325;
+			const uint64 cPrime = 0x00000100'000001B3;
+			const uint64 cProduct = cBasis &* cPrime;
+			Test.Assert(cProduct == 0xAF63BD4C'8601B7DF);
+			Test.Assert(cProduct == (cBasis * sRuntimeOne) &* cPrime);
+
+			const uint64 cShifted = 0x00000001'23456789 &* 0x00000001'00000000;
+			Test.Assert(cShifted == 0x23456789'00000000);
+
+			const int64 cSigned = 0x7FFFFFFF'FFFFFFFF &* 0x00000001'00000003;
+			Test.Assert(cSigned == 0x7FFFFFFE'FFFFFFFD);
+			const int64 cNegative = -0x00000001'23456789 &* 0x00000001'00000001;
+			Test.Assert(cNegative == -2541551407715411849);
+			Test.Assert(cNegative == (-0x00000001'23456789 * (int64)sRuntimeOne) &* 0x00000001'00000001);
+		}
+
 		[Test]
 		public static void TestLiterals()
 		{
