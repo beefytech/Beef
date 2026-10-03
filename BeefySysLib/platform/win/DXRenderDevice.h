@@ -508,12 +508,13 @@ public:
 	virtual void Render(RenderDevice* renderDevice, RenderWindow* renderWindow) override;
 };
 
-// Heap-owned copy of the data: uploads can exceed the 64K command pool block.
+// Upload snapshots live until their queued commands are cleared.
 class DXSetBufferDataCmd : public RenderCmd
 {
 public:
 	DXStructuredBuffer* mBuffer;
 	uint8* mData;
+	MemoryPool* mUploadPool;
 	int mSize;
 
 public:
@@ -603,6 +604,9 @@ public:
 class DXRenderDevice : public RenderDevice
 {
 public:
+	static const int cUploadBlockSize = 128 * 1024;
+	MemoryPool mBufferUploadPool;
+
 	ID3D11InfoQueue*		mD3DInfoQueue;
 	Texture*				mPSBoundTextures[32];
 	void					DrainDebugMessages();

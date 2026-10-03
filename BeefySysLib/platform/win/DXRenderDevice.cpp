@@ -2457,7 +2457,9 @@ void DXDrawLayer::SetBufferData(Texture* buffer, void* data, int size)
 	DXSetBufferDataCmd* cmd = AllocRenderCmd<DXSetBufferDataCmd>();
 	cmd->mBuffer = (DXStructuredBuffer*)buffer;
 	cmd->mSize = size;
-	cmd->mData = new uint8[size];
+	cmd->mUploadPool = (size <= DXRenderDevice::cUploadBlockSize) ?
+		&((DXRenderDevice*)mRenderDevice)->mBufferUploadPool : NULL;
+	cmd->mData = (cmd->mUploadPool != NULL) ? (uint8*)cmd->mUploadPool->AllocMemoryBlock() : new uint8[size];
 	memcpy(cmd->mData, data, size);
 	QueueRenderCmd(cmd);
 }
@@ -2983,7 +2985,10 @@ void DXSetBufferDataCmd::Render(RenderDevice* renderDevice, RenderWindow* render
 
 void DXSetBufferDataCmd::Free()
 {
-	delete[] mData;
+	if (mUploadPool != NULL)
+		mUploadPool->FreeMemoryBlock(mData);
+	else
+		delete[] mData;
 	mData = NULL;
 	RenderCmd::Free();
 }
@@ -3669,7 +3674,7 @@ bool DXRenderWindow::WaitForVBlank()
 
 ///
 
-DXRenderDevice::DXRenderDevice()
+DXRenderDevice::DXRenderDevice() : mBufferUploadPool(cUploadBlockSize)
 {
 	mD3DDevice = NULL;
 	mDXGIFactory = NULL;
