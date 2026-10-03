@@ -291,6 +291,7 @@ public:
 	BeType* mPrimitiveTypes[BeTypeCode_COUNT];
 	OwnedVector<BeType> mTypes;
 	Dictionary<Array<BeType*>, BeStructType*> mAnonymousStructMap;
+	Array<BeVectorType*> mVectorTypes;
 
 public:
 	void NotImpl();

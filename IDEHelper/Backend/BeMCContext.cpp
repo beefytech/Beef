@@ -3180,39 +3180,43 @@ BeMCOperand BeMCContext::CreateCall(const BeMCOperand& func, const SizedArrayImp
 
 	SizedArray<_ShadowReg, 8> shadowRegs;
 
+	// The Win64 ABI passes vectors indirectly, as a pointer to a caller-owned copy. LLVM widens smaller vectors to
+	//  16 bytes and may read the copy with an aligned 16-byte load, so the copy must be 16-byte aligned.
+	//  We make these copies before loading any param registers, since the copies may require scratch registers.
+	SizedArray<BeMCOperand, 8> callArgs;
+	for (auto& arg : args)
+	{
+		auto argType = GetType(arg);
+		if (argType->IsVector())
+		{
+			auto copyVReg = AllocVirtualReg(argType);
+			auto copyVRegInfo = GetVRegInfo(copyVReg);
+			copyVRegInfo->mAlign = 16;
+			copyVRegInfo->mForceMem = true;
+			copyVRegInfo->mMustExist = true;
+			CreateDefineVReg(copyVReg);
+			AllocInst(BeMCInstKind_Mov, copyVReg, arg);
+			callArgs.Add(BeMCOperand::FromVRegAddr(copyVReg.mVRegIdx));
+		}
+		else
+			callArgs.Add(arg);
+	}
+
 	mMaxCallParamCount = BF_MAX(mMaxCallParamCount, argCount);
-	for (int argIdx = args.size() - 1; argIdx >= 0; argIdx--)
+	for (int argIdx = callArgs.size() - 1; argIdx >= 0; argIdx--)
 	{
 		if ((argIdx == 0) && (compositeRetReg == X64Reg_RDX))
 			argOfs = 0;
 
 		bool isVarArg = (varArgStart != -1) && (argIdx >= varArgStart);
 
-		auto mcValue = args[argIdx];
+		auto mcValue = callArgs[argIdx];
 		auto argType = GetType(mcValue);
 
 		X64CPURegister useReg = X64Reg_None;
 		int useArgIdx = argIdx + argOfs;
 
-		if (argType->IsVector())
-		{
-			switch (useArgIdx)
-			{
-			case 0:
-				useReg = X64Reg_M128_XMM0;
-				break;
-			case 1:
-				useReg = X64Reg_M128_XMM1;
-				break;
-			case 2:
-				useReg = X64Reg_M128_XMM2;
-				break;
-			case 3:
-				useReg = X64Reg_M128_XMM3;
-				break;
-			}
-		}
-		else if (argType->IsFloat())
+		if (argType->IsFloat())
 		{
 			switch (useArgIdx)
 			{
@@ -10788,6 +10792,30 @@ bool BeMCContext::DoLegalization()
 					continue;
 				}
 
+				if ((arg0Type->IsVector()) && (arg0Type->mSize == 2))
+				{
+					// 2-byte vectors (ie: bool2) can't be stored from an XMM register without writing 16 bytes, so
+					//  anything other than an XMM-to-XMM move or an immediate store goes through a GPR
+					bool arg0IsXMM = (arg0.IsNativeReg()) && (IsXMMReg(arg0.mReg));
+					bool arg1IsXMM = (arg1.IsNativeReg()) && (IsXMMReg(arg1.mReg));
+					bool needsGPR = false;
+					if (arg1.IsImmediate())
+						needsGPR = arg0.IsNativeReg();
+					else if (arg1Type->IsVector())
+						needsGPR = (!arg0IsXMM) || (!arg1IsXMM);
+					if (needsGPR)
+					{
+						auto scratchReg = AllocVirtualReg(mModule->mContext->GetPrimitiveType(BeTypeCode_Int16), 2, true);
+						CreateDefineVReg(scratchReg, instIdx++);
+						AllocInst(BeMCInstKind_Mov, scratchReg, inst->mArg1, instIdx++);
+						inst->mArg1 = scratchReg;
+						_Rerun("Mov vector16");
+						if (debugging)
+							OutputDebugStrF(" Mov vector16\n");
+						break;
+					}
+				}
+
 				if (arg0Type->IsNonVectorComposite())
 				{
 					if (arg1.mKind == BeMCOperandKind_Immediate_i64)
@@ -14016,6 +14044,74 @@ void BeMCContext::DoCodeEmission()
 				auto arg0Type = GetType(inst->mArg0);
 				auto arg1Type = GetType(inst->mArg1);
 
+				if (((arg0Type->IsVector()) && (arg0Type->mSize == 2)) || ((arg1Type->IsVector()) && (arg1Type->mSize == 2)))
+				{
+					// 2-byte vectors (ie: bool2) must never be written as 16 bytes. Legalization ensures memory is only
+					//  accessed through GPRs, so XMM registers only need PINSRW/PEXTRW (SSE2) for the low word.
+					bool arg0IsXMM = (arg0.IsNativeReg()) && (IsXMMReg(arg0.mReg));
+					bool arg1IsXMM = (arg1.IsNativeReg()) && (IsXMMReg(arg1.mReg));
+					if ((arg0IsXMM) && (arg1IsXMM))
+					{
+						// MOVAPS
+						EmitREX(arg0, arg1, false);
+						Emit(0x0F); Emit(0x28);
+						EmitModRM(arg0, arg1);
+					}
+					else if ((arg0IsXMM) && (arg1.IsNativeReg()))
+					{
+						// PINSRW xmm, r32, 0
+						Emit(0x66); EmitREX(arg0, arg1, false);
+						Emit(0x0F); Emit(0xC4);
+						EmitModRM(arg0, arg1);
+						Emit(0);
+					}
+					else if ((arg0IsXMM) && (!inst->mArg1.IsImmediate()))
+					{
+						// PINSRW xmm, m16, 0
+						Emit(0x66); EmitREX(arg0, inst->mArg1, false);
+						Emit(0x0F); Emit(0xC4);
+						EmitModRM(arg0, inst->mArg1, -1);
+						Emit(0);
+					}
+					else if ((arg0.IsNativeReg()) && (arg1IsXMM))
+					{
+						// PEXTRW r32, xmm, 0
+						Emit(0x66); EmitREX(arg0, arg1, false);
+						Emit(0x0F); Emit(0xC5);
+						EmitModRM(arg0, arg1);
+						Emit(0);
+					}
+					else if ((!arg0IsXMM) && (!arg1IsXMM) && (inst->mArg1.IsImmediateInt()))
+					{
+						// MOV r/m16, imm16
+						Emit(0x66); EmitREX(BeMCOperand(), inst->mArg0, false);
+						Emit(0xC7);
+						EmitModRM(0, inst->mArg0, -2);
+						mOut.Write((int16)inst->mArg1.GetImmediateInt());
+					}
+					else if ((arg0.IsNativeReg()) && (!arg0IsXMM) && (!arg1IsXMM))
+					{
+						// MOV r16, r/m16
+						Emit(0x66); EmitREX(arg0, inst->mArg1, false);
+						Emit(0x8B);
+						EmitModRM(arg0, inst->mArg1);
+					}
+					else if ((arg1.IsNativeReg()) && (!arg0IsXMM) && (!arg1IsXMM))
+					{
+						// MOV r/m16, r16
+						Emit(0x66); EmitREX(arg1, inst->mArg0, false);
+						Emit(0x89);
+						EmitModRM(arg1, inst->mArg0);
+					}
+					else
+					{
+						String instStr;
+						ToString(inst, instStr, true, true);
+						SoftFail(StrFormat("Invalid 2-byte vector mov: %s", instStr.c_str()));
+					}
+					break;
+				}
+
 				// 					auto arg1 = inst->mArg1;
 				// 					while (arg1.IsVReg())
 				// 					{
@@ -16199,7 +16295,11 @@ void BeMCContext::HandleParams()
 
 		int regIdx = paramIdx + regIdxOfs;
 
-		if (typeParam.mType->IsFloat())
+		// Vectors are passed indirectly, as a pointer to a caller-owned copy (Win64 ABI)
+		bool isIndirect = typeParam.mType->IsVector();
+		BeType* incomingType = isIndirect ? mModule->mContext->GetPointerTo(typeParam.mType) : typeParam.mType;
+
+		if (incomingType->IsFloat())
 		{
 			switch (regIdx)
 			{
@@ -16239,7 +16339,7 @@ void BeMCContext::HandleParams()
 		if (mcOperand.mReg != X64Reg_None)
 		{
 			mParamsUsedRegs.push_back(mcOperand.mReg);
-			mcOperand.mReg = ResizeRegister(mcOperand.mReg, typeParam.mType);
+			mcOperand.mReg = ResizeRegister(mcOperand.mReg, incomingType);
 		}
 
 		BeMCOperand paramVReg;
@@ -16252,7 +16352,7 @@ void BeMCContext::HandleParams()
 			//paramVReg.mR
 		}
 		else*/
-		paramVReg = AllocVirtualReg(typeParam.mType);
+		paramVReg = AllocVirtualReg(incomingType);
 		auto paramVRegInfo = GetVRegInfo(paramVReg);
 
 		if ((mBeFunction->HasStructRet()) && (paramIdx == 0))
@@ -16278,6 +16378,14 @@ void BeMCContext::HandleParams()
 			CreateDefineVReg(paramVReg);
 		}
 		//paramVRegInfo->mDbgVariable = mDbgFunction->mParams[paramIdx];
+
+		if (isIndirect)
+		{
+			auto loadedVReg = AllocVirtualReg(typeParam.mType);
+			CreateDefineVReg(loadedVReg);
+			AllocInst(BeMCInstKind_Mov, loadedVReg, BeMCOperand::ToLoad(paramVReg));
+			paramVReg = loadedVReg;
+		}
 
 		mValueToOperand[beArg] = paramVReg;
 	}

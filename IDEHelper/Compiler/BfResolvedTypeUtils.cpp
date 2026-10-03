@@ -2135,7 +2135,8 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 		bool underlyingIsVector = false;
 		GetUnderlyingArray(underlyingArrayType, underlyingArraySize, underlyingIsVector);
 
-		if(!underlyingArrayType->IsPrimitiveType())
+		// Only vector types get lowered - sized arrays were never lowered here, and FloatX types don't follow the Win64 ABI
+		if ((underlyingArrayType == NULL) || (!underlyingIsVector) || (!underlyingArrayType->IsPrimitiveType()))
 			return false;
 		auto primType = (BfPrimitiveType*)underlyingArrayType;
 		auto underlyingArrayTypeCode = primType->mTypeDef->mTypeCode;
@@ -2143,13 +2144,13 @@ bool BfTypeInstance::GetLoweredType(BfTypeUsage typeUsage, BfTypeCode* outTypeCo
 		if ((underlyingArrayTypeCode == BfTypeCode_Float) && (underlyingArraySize == 2))
 		{
 			if (outTypeCode != NULL)
-				*outTypeCode = underlyingIsVector ? BfTypeCode_Float2 : BfTypeCode_FloatX2;
+				*outTypeCode = BfTypeCode_Float2;
 			return true;
 		}
 		if ((underlyingArrayTypeCode == BfTypeCode_Float) && (underlyingArraySize == 4))
 		{
 			if (outTypeCode != NULL)
-				*outTypeCode = underlyingIsVector ? BfTypeCode_Float4 : BfTypeCode_FloatX4;
+				*outTypeCode = BfTypeCode_Float4;
 			return true;
 		}
 		if ((underlyingArrayTypeCode == BfTypeCode_Int32) && (underlyingArraySize == 4))

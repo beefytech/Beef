@@ -1,6 +1,7 @@
 #pragma warning disable 168
 
 using System;
+using System.Numerics;
 
 namespace Tests
 {
@@ -325,6 +326,46 @@ namespace Tests
 
 		[LinkName(.C)]
 		public static extern  double Func5(float[2] v0, float[3] v1);
+
+#if BF_MACHINE_X64
+		[LinkName(.C)]
+		public static extern float4 FuncV4F(float4 a, float4 b, int32 c);
+		[LinkName(.C)]
+		public static extern int32_4 FuncV4I(int32_4 a, int32_4 b);
+		[LinkName(.C)]
+		public static extern float FuncV4FMixed(int32 a, float4 b, float c, float4 d, float4 e);
+		[LinkName(.C)]
+		public static extern float4 FuncV4FCall(function [CallingConvention(.Cdecl)] float4(float4 a, float4 b, int32 c) func, float4 a, float4 b);
+		[LinkName(.C)]
+		public static extern float FuncV4FMixedCall(function [CallingConvention(.Cdecl)] float(int32 a, float4 b, float c, float4 d, float4 e) func, float4 b, float4 d, float4 e);
+
+		[CallingConvention(.Cdecl)]
+		static float4 LocalFuncV4F(float4 a, float4 b, int32 c) => a * b + (float)c;
+		[CallingConvention(.Cdecl)]
+		static float LocalFuncV4FMixed(int32 a, float4 b, float c, float4 d, float4 e) => (float)a + b.x*10 + b.w*100 + c*1000 + d.y*10000 + e.z*100000;
+
+		[Test]
+		public static void TestSIMD()
+		{
+			float4 a = .(1, 2, 3, 4);
+			float4 b = .(5, 6, 7, 8);
+			float4 e = .(9, 10, 11, 12);
+
+			float4 r = FuncV4F(a, b, 9);
+			Test.Assert((r.x == 14) && (r.y == 21) && (r.z == 30) && (r.w == 41));
+
+			int32_4 ir = FuncV4I(.(1, 2, 3, 4), .(0x10, 0x20, 0x30, 0x40));
+			Test.Assert((ir.x == 1017) && (ir.y == 2034) && (ir.z == 3051) && (ir.w == 4068));
+
+			Test.Assert(FuncV4FMixed(7, a, 8, b, e) == 1168417);
+			Test.Assert(LocalFuncV4FMixed(7, a, 8, b, e) == 1168417);
+
+			r = FuncV4FCall(=> LocalFuncV4F, a, b);
+			Test.Assert((r.x == 16) && (r.y == 30) && (r.z == 48) && (r.w == 70));
+
+			Test.Assert(FuncV4FMixedCall(=> LocalFuncV4FMixed, a, b, e) == 1168417);
+		}
+#endif
 
 		static int32 LocalFunc0K(int32 a, StructK b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;
 		static int32 LocalFunc0L(int32 a, StructL b) => a + (int32)b.mX * 100 + (int32)b.mY * 10000;

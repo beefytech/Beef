@@ -7719,6 +7719,10 @@ void BfExprEvaluator::PushArg(BfTypedValue argVal, SizedArrayImpl<BfIRValue>& ir
 				BfTypeCode loweredTypeCode2 = BfTypeCode_None;
 				if (argVal.mType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2))
 				{
+					// Intrinsic args aren't made addressable above, but lowering reads through a pointer
+					if (!argVal.IsAddr())
+						argVal = mModule->MakeAddressable(argVal);
+
 					BfIRValue argPtrVal = argVal.mValue;
 
 					int loweredSize = mModule->mBfIRBuilder->GetSize(loweredTypeCode) + mModule->mBfIRBuilder->GetSize(loweredTypeCode2);

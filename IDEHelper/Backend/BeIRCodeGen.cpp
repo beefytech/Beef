@@ -390,6 +390,22 @@ BeType* BeIRCodeGen::GetBeType(BfTypeCode typeCode, bool& isSigned)
 		isSigned = true;
 		beTypeCode = BeTypeCode_Double;
 		break;
+	// Lowered vector types - element types must match how the vector struct types themselves get mapped
+	case BfTypeCode_Float2:
+		isSigned = true;
+		return mBeContext->CreateVectorType(mBeContext->GetPrimitiveType(BeTypeCode_Float), 2);
+	case BfTypeCode_Float4:
+		isSigned = true;
+		return mBeContext->CreateVectorType(mBeContext->GetPrimitiveType(BeTypeCode_Float), 4);
+	case BfTypeCode_Int32_4:
+		isSigned = true;
+		return mBeContext->CreateVectorType(mBeContext->GetPrimitiveType(BeTypeCode_Int32), 4);
+	case BfTypeCode_Bool2:
+		return mBeContext->CreateVectorType(mBeContext->GetPrimitiveType(BeTypeCode_Boolean), 2);
+	case BfTypeCode_Bool4:
+		return mBeContext->CreateVectorType(mBeContext->GetPrimitiveType(BeTypeCode_Boolean), 4);
+	case BfTypeCode_V128:
+		return mBeContext->CreateVectorType(mBeContext->GetPrimitiveType(BeTypeCode_Int8), 16);
 	}
 
 	return mBeContext->GetPrimitiveType(beTypeCode);

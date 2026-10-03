@@ -566,6 +566,45 @@ extern "C" double Func5(float v0[2], float v1[3])
 	return v0[0] + v0[1]*10 + v1[0]*100 + v1[1]*1000 + v1[2]*10000;
 }
 
+//////////////////////////////////////////////////////////////////////////
+
+#if defined(_M_X64) || defined(__x86_64__)
+#include <emmintrin.h>
+
+extern "C" __m128 FuncV4F(__m128 a, __m128 b, int c)
+{
+	return _mm_add_ps(_mm_mul_ps(a, b), _mm_set1_ps((float)c));
+}
+
+extern "C" __m128i FuncV4I(__m128i a, __m128i b)
+{
+	return _mm_add_epi32(_mm_xor_si128(a, b), _mm_set_epi32(4000, 3000, 2000, 1000));
+}
+
+// Vectors in both register and stack param slots, interleaved with scalars
+extern "C" float FuncV4FMixed(int a, __m128 b, float c, __m128 d, __m128 e)
+{
+	float bv[4];
+	float dv[4];
+	float ev[4];
+	_mm_storeu_ps(bv, b);
+	_mm_storeu_ps(dv, d);
+	_mm_storeu_ps(ev, e);
+	return a + bv[0]*10 + bv[3]*100 + c*1000 + dv[1]*10000 + ev[2]*100000;
+}
+
+// These call back into Beef, testing the callee side of the ABI
+extern "C" __m128 FuncV4FCall(__m128 (*func)(__m128 a, __m128 b, int c), __m128 a, __m128 b)
+{
+	return _mm_mul_ps(func(a, b, 3), _mm_set1_ps(2.0f));
+}
+
+extern "C" float FuncV4FMixedCall(float (*func)(int a, __m128 b, float c, __m128 d, __m128 e), __m128 b, __m128 d, __m128 e)
+{
+	return func(7, b, 8.0f, d, e);
+}
+#endif
+
 void UseIt()
 {
 	Interop::StructA sa;

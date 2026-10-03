@@ -175,7 +175,15 @@ BeSizedArrayType* BeContext::CreateSizedArrayType(BeType* type, int length)
 
 BeVectorType* BeContext::CreateVectorType(BeType* type, int length)
 {
+	// Vector types are compared by identity (ie: call arg checks), and lowered vector params need to match the vector types
+	for (auto vectorType : mVectorTypes)
+	{
+		if ((vectorType->mElementType == type) && (vectorType->mLength == length))
+			return vectorType;
+	}
+
 	auto arrayType = mTypes.Alloc<BeVectorType>();
+	mVectorTypes.Add(arrayType);
 	arrayType->mContext = this;
 	arrayType->mTypeCode = BeTypeCode_Vector;
 	arrayType->mElementType = type;
