@@ -1,5 +1,6 @@
 #pragma warning disable 168
 using System;
+using System.Collections;
 using System.Diagnostics;
 using System.Reflection;
 
@@ -497,6 +498,71 @@ namespace Tests
 
 			ClassH ch = scope .();
 			Test.Assert(GetIntVals(StructC()) == 246);
+		}
+
+		interface ISlotted
+		{
+			int Get();
+		}
+
+		abstract class SlotBase
+		{
+			public virtual ISlotted AsSlotted => null;
+		}
+
+		class SlotPool<T> : SlotBase where T : struct
+		{
+			List<T> mItems = new .() ~ delete _;
+
+			public T* Add()
+			{
+				mItems.Add(default);
+				return &mItems[mItems.Count - 1];
+			}
+		}
+
+		class SlotMiddle<T> : SlotPool<T> where T : struct
+		{
+		}
+
+		struct SlotItem
+		{
+			public int mA;
+		}
+
+		class SlotDerived : SlotMiddle<SlotItem>, ISlotted
+		{
+			public override ISlotted AsSlotted => this;
+			public int Get() => 42;
+		}
+
+		/// Reflected at comptime before anything reifies it, so SlotDerived and its generic bases are
+		///  fully defined unreified. Reifying them then rebuilds each in turn, and SlotDerived was
+		///  slotted again while SlotPool<SlotItem> had been reset but SlotMiddle<SlotItem> had not yet,
+		///  so the walk up the bases stopped short of Object and ISlotted was laid over IHashable
+		class SlotReflection
+		{
+			[OnCompile(.TypeInit), Comptime]
+			static void Init()
+			{
+				int count = 0;
+				for (let method in typeof(SlotDerived).GetMethods())
+					count++;
+				Compiler.EmitTypeBody(typeof(Self), scope $"public static int sMethodCount = {count};");
+			}
+		}
+
+		[Test]
+		public static void TestSlotsPastIncompleteBase()
+		{
+			Test.Assert(SlotReflection.sMethodCount > 0);
+			SlotBase slotBase = new SlotDerived();
+			defer delete slotBase;
+			((SlotPool<SlotItem>)slotBase).Add().mA = 5;
+			ISlotted slotted = slotBase.AsSlotted;
+			Test.Assert(slotted.Get() == 42);
+			IHashable hashable = slotBase;
+			Test.Assert(hashable.GetHashCode() == (int)Internal.UnsafeCastToPtr(slotBase));
 		}
 	}
 }
