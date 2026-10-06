@@ -28,14 +28,22 @@ enum LLDBLaunchMode
 class LLDBBreakpoint : public Breakpoint
 {
 public:
+	String mBeefCondition;                          // evaluated with Beef's rules when hit
+	String mBeefLogging;                             // a logging breakpoint's text
+	bool mBreakAfterLogging = false;
 	lldb::SBBreakpoint mLLDBBreakpoint;
+	Array<lldb::SBBreakpoint> mVersionBreakpoints;   // bindings in older hot compiles (HotBindBreakpoint)
 	uintptr mResolvedAddr;
+	Array<int> mWatchpointIds;                       // for a memory breakpoint: its LLDB watchpoints
+	int mMemoryBreakpointSize;
 
-	LLDBBreakpoint() : mResolvedAddr(0) {}
+	LLDBBreakpoint() : mResolvedAddr(0), mMemoryBreakpointSize(0) {}
 
 	virtual uintptr GetAddr() override { return mResolvedAddr; }
-	virtual bool IsMemoryBreakpointBound() override { return false; }
+	virtual bool IsMemoryBreakpointBound() override { return !mWatchpointIds.IsEmpty(); }
 };
+
+struct LLDBHotObject;
 
 class LLDBDebugger : public Debugger
 {
@@ -50,7 +58,8 @@ public:
 
 	// Breakpoints
 	Array<LLDBBreakpoint*> mBreakpoints;
-	Dictionary<int, LLDBBreakpoint*> mBreakpointIdMap;    // LLDB break_id → our bp
+	Dictionary<int, LLDBBreakpoint*> mBreakpointIdMap;     // LLDB break_id → our bp
+	Dictionary<int, LLDBBreakpoint*> mWatchpointIdMap;     // LLDB watch_id → our memory bp
 	Dictionary<uintptr, LLDBBreakpoint*> mBreakpointAddrMap; // load addr → our bp
 	Breakpoint* mActiveBreakpoint;                         // bp we stopped at
 
@@ -63,6 +72,29 @@ public:
 	bool mNeedBreakpointRebind;  // true after launch until first stop event
 	int mAutoStepRemaining;      // >0 while auto-stepping through BeefStartProgram (2=StepInto, 1=StepOver)
 
+	// The user step in progress, for step filtering (see ContinueStep)
+	enum StepKind
+	{
+		StepKind_None,
+		StepKind_Into,
+		StepKind_Over,
+		StepKind_Out
+	};
+	StepKind mStepKind;
+	bool mStepOutThenInto;
+	bool mStepOutFinishedLine;
+	int mStepStartLine;                              // where the current step began
+	String mStepStartFile;
+	int mStepContinueCount;
+	uint64 mStepStartFunctionAddr;
+	Dictionary<String, bool> mHasStatementLinesCache;
+
+	// The evaluation in progress (see Evaluate)
+	lldb::SBExpressionOptions mEvalOptions;
+	bool mEvalAllowCalls;
+	bool mEvalAllowProperties;
+	String mEvalError;               // why a path failed (a property getter or indexer)
+
 	// Exception info (populated when RunState_Exception is set)
 	uint64 mExceptionAddress;
 	uint32 mExceptionCode;
@@ -70,6 +102,7 @@ public:
 
 	// Stored launch parameters — set by OpenFile, consumed by the launch thread
 	String mLaunchPath;
+	String mTargetPath;                              // the program the IDE built - an executable, or a shared library a host loads
 	String mLaunchArgs;
 	String mWorkingDir;
 	Array<uint8> mEnvBlock;
@@ -84,9 +117,189 @@ public:
 	// Background launch thread
 	BfpThread* mLaunchThread;
 
+	// Target stdout/stderr, which LLDB captures through a pty. With DbgOpenFileFlag_RedirectStd*
+	// it's forwarded to FIFOs whose read ends are handed to the IDE via GetStdHandles; otherwise
+	// it's echoed to our own stdout/stderr.
+	int mStdOutPipeWrite;
+	int mStdErrPipeWrite;
+	BfpFile* mStdOutPipeRead;    // Not yet claimed by GetStdHandles
+	BfpFile* mStdErrPipeRead;
+	String mStdOutPending;       // Data the pipe wasn't ready to accept yet
+	String mStdErrPending;
+	int mTerminalFd;              // the IDE's terminal, while the target is its foreground process group
+	int mTerminalPrevForeground;
+
+	// Hot swap
+	struct HotSymbol
+	{
+		uint64 mAddr;      // For a thread-local variable, its offset in the executable's TLS block
+		uint64 mSize;
+		bool mIsCode;
+		bool mIsTLS;
+	};
+
+	enum HotDataFixupKind
+	{
+		HotDataFixupKind_None,
+		HotDataFixupKind_MergeVData,          // sBfClassVData: merge new vtable entries into the original
+		HotDataFixupKind_MergeVExt,           // sBfClassVData .vext: merge, then use the new table
+		HotDataFixupKind_CopyTypeData,        // sBfTypeData: copy new reflection data over the original
+		HotDataFixupKind_LinkStringLiterals   // sStringLiterals: chain the new table onto the original
+	};
+
+	struct HotDataFixup
+	{
+		HotDataFixupKind mKind;
+		String mName;
+		uint64 mOldAddr;
+		uint64 mOldSize;
+		uint64 mNewAddr;
+		uint64 mNewSize;
+	};
+
+	struct HotImage
+	{
+		uint64 mAddr;
+		uint64 mSize;
+		int mHotIdx;
+		lldb::SBModule mModule;
+		String mModulePath;
+	};
+
+	struct HotRange
+	{
+		uint64 mAddr;
+		uint64 mSize;
+	};
+
+	struct HotVersion
+	{
+		int mHotIdx;
+		Array<lldb::SBModule> mModules;
+	};
+
+	struct HotPatchedEntry
+	{
+		uint64 mNewAddr;
+		uint64 mJmpAddr;   // Where the jump to mNewAddr is - the entry, or the end of the prologue
+		uint64 mEndAddr;   // End of the bytes we wrote
+		bool mNeedsStepTrap;
+	};
+
+	struct HotPatch
+	{
+		String mName;
+		uint64 mOldAddr;
+		uint64 mOldSize;
+		uint64 mNewAddr;
+		bool mIncompatibleLambda;   // captures changed - keep the old version, error if it's called
+	};
+
+	uint64 mHotHeapStart;
+	uint64 mHotHeapSize;
+	uint64 mHotHeapUsed;
+	uint64 mHotHeapNextHint;
+	bool mHotHeapGrowDown;                           // reserving below a shared library, rather than past the executable
+	lldb::SBModule mHotBaseModule;                   // the executable or shared library the hot compiled code belongs to
+	Dictionary<String, HotSymbol> mHotSymbols;       // global symbols first defined by a hot load → that definition
+	Dictionary<String, HotSymbol> mHotPendingSymbols; // definitions from the batch currently being loaded
+	Array<HotDataFixup> mHotPendingDataFixups;
+	Dictionary<uint64, HotPatchedEntry> mHotPatchedEntries; // entry of each hot-replaced method → its jump
+	Array<int> mHotInvalidLambdaTrapIds;            // breakpoints on old lambdas with incompatible captures
+	Array<int> mHotStepTrapIds;                      // temporary breakpoints for a step-in in progress
+	bool mHotExeTlsLoaded;
+	lldb::SBModule mHotTlsInfoModule;               // the module the TLS info below was read from
+	Dictionary<String, uint64> mHotExeTlsOffsets;    // the executable's thread-local variables → offset in its TLS block
+	uint64 mHotTlsBlockSize;                         // the base module's TLS block, rounded to its alignment
+	uint64 mHotTlsModuleId;                          // the base module's TLS module id (1 for the executable)
+	uint64 mHotTlsExtraOffset;                       // __BFTLS_EXTRA, reserved for new thread-local variables
+	uint64 mHotTlsExtraSize;
+	uint64 mHotTlsExtraUsed;
+	Dictionary<String, uint64> mHotTlsDemangled;        // demangled thread-local names → TLS offset (for evaluation)
+	bool mHotTlsDemangledValid;
+	Array<HotImage> mHotImages;                      // each hot-loaded object's memory, until freed
+	Array<HotRange> mHotFreeRanges;                  // freed hot memory, sorted by address
+	Array<HotVersion> mHotVersions;                  // modules added by each hot load, oldest first
+	Array<String> mHotModulePaths;                   // copies of hot-loaded objects registered with LLDB
+	Dictionary<String, uint64> mHotExternalAddrs;    // cache of symbols resolved through dlsym in the target
+
 protected:
 	void DumpSymbolAddrs(const StringImpl& sym);
 	void DoCreateBreakpointByName(LLDBBreakpoint* bp);
+	void BeginStep(lldb::SBThread& thread, StepKind stepKind);
+	bool FunctionHasStatementLines(lldb::SBFunction& function);
+	bool IsStepFiltered(lldb::SBFunction& function);
+	bool ContinueStep(lldb::SBThread& thread);
+	lldb::SBValue EvaluateBeefPath(lldb::SBFrame& frame, const StringImpl& expr);
+	lldb::SBType HotFindNewestType(const char* typeName);
+	lldb::SBValue HotFindStaticVariable(lldb::SBFrame& frame, const StringImpl& qualifier, const StringImpl& name);
+	bool HotFindThreadLocalOffset(const char* qualifiedName, uint64& outOffset);
+	lldb::SBValue HotFindMemberInNewestTypes(lldb::SBValue value, const StringImpl& name, int depth);
+	String RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringImpl& expr);
+	String RewriteBeefMemberAccessInSpan(lldb::SBFrame& frame, const StringImpl& expr);
+	bool IsClosingBraceLine(lldb::SBLineEntry& lineEntry);
+	String BuildBreakpointLogText(const StringImpl& logging);
+	lldb::SBType FindBeefType(lldb::SBFrame& frame, const StringImpl& name);
+	lldb::SBType FindBeefTypeAnywhere(const StringImpl& typeName);
+	lldb::SBValue EvaluateBeefTupleAssign(lldb::SBFrame& frame, const StringImpl& expr, String& outError);
+	String BuildAutocomplete(lldb::SBFrame& frame, const StringImpl& expr, int cursorPos);
+	String EvaluateMemoryWatch(lldb::SBFrame& frame, const StringImpl& expr, int arrayLength);
+	lldb::SBValue EvaluateBeefTypeOp(const StringImpl& expr);
+	lldb::SBValue EvaluateBeefCall(lldb::SBFrame& frame, const StringImpl& expr, String& outError);
+	lldb::SBValue EvaluateBeefOperand(lldb::SBFrame& frame, const StringImpl& expr, String& outError);
+	void SplitBeefArgs(const StringImpl& argsText, Array<String>& outArgs);
+	bool FlattenBeefStruct(lldb::SBValue value, Array<String>& outTypes, Array<String>& outTexts);
+	bool GetBeefMethodDefaults(const char* mangledName, Array<String>& outDefaults);
+	lldb::SBValue CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue thisValue, lldb::SBType staticType, const StringImpl& methodName,
+		const Array<lldb::SBValue>& args, bool allowCall, String& outError);
+	lldb::SBType GetBeefDynamicType(lldb::SBValue objectRef);
+	lldb::SBType GetBeefDynamicTypeAt(uint64 objAddr);
+	bool IsBeefObjectType(lldb::SBType type, int depth = 0);
+	void CreateOutputPipes();
+	void GiveTerminalToTarget(const StringImpl& ttyPath, int pid);
+	void RestoreTerminal();
+	void CloseOutputPipes();
+	void PumpTargetOutput();
+	void HotResetState();
+	bool HotWaitForStop(String& outError);
+	bool HotEvaluate(const StringImpl& expr, uint64& outValue, String& outError);
+	bool HotReserveHeap(uint64 minSize, String& outError);
+	uint64 HotAlloc(uint64 size, uint64 align, String& outError);
+	void HotFree(uint64 addr, uint64 size);
+	void HotCleanupImages(int currentHotIdx);
+	bool HotFindExeSymbol(const StringImpl& name, HotSymbol& outSymbol);
+	bool HotFindCanonicalSymbol(const StringImpl& name, HotSymbol& outSymbol);
+	bool HotResolveExternal(const StringImpl& name, uint64& outAddr, String& outError);
+	bool HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<HotPatch>& patches, uint64& outAddr, String& outError);
+	bool HotParseObject(LLDBHotObject* obj, String& outError);
+	bool HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError);
+	void HotChooseBaseModule(const Array<LLDBHotObject*>& objects);
+	lldb::SBModule HotGetBaseModule();
+	bool HotIsBaseModuleExecutable();
+	bool HotGetTlsBlockAddr(lldb::SBFrame& frame, uint64& outAddr);
+	bool HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError);
+	bool HotApplyDataFixups(String& outError);
+	void HotRegisterDebugInfo(LLDBHotObject* obj, int hotIdx);
+	void HotRemoveDebugInfo();
+	bool HotIsInPatchedEntry(uint64 addr, uint64* outEntryAddr, HotPatchedEntry* outEntry);
+	bool HotGetPatchLayout(const HotPatch& patch, uint64& outJmpAddr, int& outJmpSize, uint64* outPrologueSize);
+	void HotSetStepTraps();
+	bool HotLoadExeTlsInfo(String& outError);
+	bool HotResolveTlsSymbol(LLDBHotObject* obj, int symIdx, uint64& outOffset, String& outError);
+	void HotCheckLambdaCaptures(Array<HotPatch>& patches);
+	lldb::SBBreakpoint CreateLineBreakpoint(LLDBBreakpoint* bp, int lineNum);
+	void HotDeleteVersionBreakpoints(LLDBBreakpoint* bp);
+	void HotGetVersionModules(int hotIdx, lldb::SBFileSpecList& outModules);
+	int HotFindVersionWithFile(const lldb::SBFileSpec& fileSpec, int belowHotIdx);
+	int HotGetModuleVersion(lldb::SBModule module);
+	void HotClearStepTraps();
+	void FinishStopDebugging();
+	void ApplyBreakpointInstrOffset(LLDBBreakpoint* bp, lldb::SBBreakpoint& lldbBreakpoint);
+	void FilterNonStatementLocations(lldb::SBBreakpoint& lldbBreakpoint);
+	void HotFilterBreakpointLocations(LLDBBreakpoint* bp);
+	void SetMemoryWatchpoint(LLDBBreakpoint* bp);
+	bool HotStepThreadsPastPatches(const Array<HotPatch>& patches, String& outError);
+	bool HotApplyPatches(const Array<HotPatch>& patches, int& outNumPatched, String& outError);
 
 public:
 	LLDBDebugger(DebugManager* debugManager);
