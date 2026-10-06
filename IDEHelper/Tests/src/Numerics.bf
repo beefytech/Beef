@@ -134,6 +134,30 @@ namespace Tests
 			CheckStackLocalVector!(outPtr);
 		}
 
+		// A struct whose only field is a vector is lowered to that vector, its this included. The copy a method
+		//  keeps of a lowered this is written with an aligned vector store, so it needs the struct's alignment
+		[Align(16)]
+		struct LoweredVec
+		{
+			public float4 mV;
+
+			public this(float4 v) { mV = v; }
+
+			[Inline]
+			public float SumInline() => mV.x + mV.y + mV.z + mV.w;
+
+			public float Sum() => mV.x + mV.y + mV.z + mV.w;
+
+			[Inline]
+			public LoweredVec ScaledInline(float s) => .(mV * s);
+		}
+
+		static float SumLoweredThis(LoweredVec v)
+		{
+			int8 pad = 1;
+			return v.SumInline() + v.Sum() + v.ScaledInline(2.0f).SumInline() + pad - 1;
+		}
+
 		// Read at runtime so shift counts are not constant-folded
 		static int sShiftCount3 = 3;
 		static int sShiftCount16 = 16;
@@ -226,6 +250,13 @@ namespace Tests
 			CheckUnalignedVectorOperands!();
 			float4 sink = default;
 			StackLocalVectorLLVM(&sink);
+		}
+
+		[Test]
+		public static void TestLoweredThisAlignment()
+		{
+			float rt = sVecZero;
+			Test.Assert(SumLoweredThis(.(.(1 + rt, 2, 3, 4))) == 40);
 		}
 
 		[Test, UseLLVM]

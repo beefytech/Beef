@@ -22500,7 +22500,8 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 
 						auto allocaInst = mBfIRBuilder->CreateAlloca(thisAddrType);
 						mBfIRBuilder->SetName(allocaInst, paramVar->mName + ".addr");
-						mBfIRBuilder->SetAllocaAlignment(allocaInst, mSystem->mPtrSize);
+						// Without a pointer this holds the value itself (a lowered this), stored at the type's alignment
+						mBfIRBuilder->SetAllocaAlignment(allocaInst, wantPtr ? mSystem->mPtrSize : BF_MAX(mSystem->mPtrSize, thisType->mAlign));
 						paramVar->mAddr = allocaInst;
 						if (WantsLifetimes())
 							mCurMethodState->mCurScope->mDeferredLifetimeEnds.push_back(allocaInst);
