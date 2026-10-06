@@ -1660,52 +1660,11 @@ uint32 BfIRBuilder::CheckedMul(uint32 a, uint32 b)
 
 uint64 BfIRBuilder::CheckedMul(uint64 a, uint64 b)
 {
-	uint32 aHigh;
-	uint32 aLow;
-	uint32 bHigh;
-	uint32 bLow;
-
-	// a*b can be decomposed to
-	//	(aHigh * bHigh * 2^64) + (aLow * bHigh * 2^32) + (aHigh * bLow * 2^32) + (aLow * bLow)
-
-	aHigh = (uint32)(a >> 32);
-	aLow  = (uint32)(a);
-	bHigh = (uint32)(b >> 32);
-	bLow  = (uint32)(b);
-
-	uint64 ret = 0;
-
-	if (aHigh == 0)
-	{
-		if (bHigh != 0)
-			ret = (uint64)aLow * (uint64)bHigh;
-	}
-	else if (bHigh == 0)
-	{
-		if (aHigh != 0)
-			ret = (uint64)aHigh * (uint64)bLow;
-	}
-	else
+	// The wrapped product, as the other checked ops return: a wrapping multiply (&*) folds to it
+	uint64 result = a * b;
+	if ((a != 0) && (result / a != b))
 		OpFailed();
-
-	if (ret != 0)
-	{
-		uint64 tmp;
-
-		if((uint32)(ret >> 32) != 0)
-			OpFailed();
-
-		ret <<= 32;
-		tmp = (uint64)aLow * (uint64)bLow;
-		ret += tmp;
-
-		if (ret < tmp)
-			OpFailed();
-
-		return ret;
-	}
-
-	return (uint64)aLow * (uint64)bLow;
+	return result;
 }
 
 int8 BfIRBuilder::CheckedMul(int8 a, int8 b)
