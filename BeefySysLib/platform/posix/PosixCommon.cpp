@@ -1235,34 +1235,59 @@ struct BfpSpawn
     int mStdErrFD;
 };
 
+/// Creates a pipe whose ends are not inherited by other concurrently spawned processes
+static bool BfpSpawn_CreatePipe(int fds[2])
+{
+#if defined(BF_PLATFORM_LINUX) || defined(BF_PLATFORM_ANDROID)
+	return pipe2(fds, O_CLOEXEC) == 0;
+#else
+	if (pipe(fds) != 0)
+		return false;
+	fcntl(fds[0], F_SETFD, FD_CLOEXEC);
+	fcntl(fds[1], F_SETFD, FD_CLOEXEC);
+	return true;
+#endif
+}
+
+/// Writes "<message><arg>\n" to stderr using only async-signal-safe calls, for use in the forked child
+static void BfpSpawn_ChildSafeErrPrint(const char* message, const char* arg)
+{
+	write(STDERR_FILENO, message, strlen(message));
+	write(STDERR_FILENO, arg, strlen(arg));
+	write(STDERR_FILENO, "\n", 1);
+}
+
+/// Makes a pipe end the child's std handle. Must only be called in the forked child
+static void BfpSpawn_RedirectChildFD(int fromFD, int toFD)
+{
+	if (fromFD == toFD)
+	{
+		// dup2 is a no-op here, so clear close-on-exec directly
+		fcntl(toFD, F_SETFD, 0);
+		return;
+	}
+	while ((dup2(fromFD, toFD) == -1) && (errno == EINTR)) {}
+	close(fromFD);
+}
+
 BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, const char* args, const char* workingDir, const char* env, BfpSpawnFlags flags, BfpSpawnResult* outResult)
 {
     Beefy::Array<Beefy::StringView> stringViews;
 
     //printf("BfpSpawn_Create: %s %s %x\n", inTargetPath, args, flags);
 
-    char* prevWorkingDir = NULL;
-
-	if ((workingDir != NULL) && (workingDir[0] != 0))
+	// Validate working directory
+	bool hasWorkingDir = (workingDir != NULL) && (workingDir[0] != 0);
+	if (hasWorkingDir)
 	{
-		if (chdir(workingDir) != 0)
+		// The chdir itself happens in the child so the parent's cwd is never modified
+		struct stat workingDirStat;
+		if ((stat(workingDir, &workingDirStat) != 0) || (!S_ISDIR(workingDirStat.st_mode)))
 		{
-			//printf("CHDIR failed %s\n", workingDir);
 			OUTRESULT(BfpSpawnResult_UnknownError);
 			return NULL;
 		}
-
-        prevWorkingDir = getcwd(NULL, 0);
 	}
-
-    defer(
-        {
-            if (prevWorkingDir != NULL)
-            {
-                chdir(prevWorkingDir);
-                free(prevWorkingDir);
-            }
-        });
 
 	String newArgs;
 	String tempFileName;
@@ -1317,16 +1342,12 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
     bool inQuote = false;
 
 	String targetPath = inTargetPath;
-	String verb;
 	if ((flags & BfpSpawnFlag_UseShellExecute) != 0)
 	{
-		String target = targetPath;
-		int barPos = (int)target.IndexOf('|');
+		// Strip the "|verb" suffix; verbs have no POSIX equivalent and are ignored
+		int barPos = (int)targetPath.IndexOf('|');
 		if (barPos != -1)
-		{
-			verb = targetPath.Substring(barPos + 1);
 			targetPath.RemoveToEnd(barPos);
-		}
 	}
 
     // When executing in a shell the arguments are not split
@@ -1438,11 +1459,6 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 
     argvArr.Add(NULL);
 
-    char** argv = NULL;
-
-    //pid_t pid = 0;
-    //int status = posix_spawn(&pid, targetPath, NULL, NULL, &argvArr[0], environ);
-
     Beefy::Array<char*> envArr;
     if (env != NULL)
     {
@@ -1458,24 +1474,36 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
     }
     envArr.Add(NULL);
 
-    int stdInFD[2];
-    int stdOutFD[2];
-    int stdErrFD[2];
+    int stdInFD[2] = { -1, -1 };
+    int stdOutFD[2] = { -1, -1 };
+    int stdErrFD[2] = { -1, -1 };
+
+	auto _CleanupFailedSpawn = [&]()
+	{
+		for (int fd : { stdInFD[0], stdInFD[1], stdOutFD[0], stdOutFD[1], stdErrFD[0], stdErrFD[1] })
+		{
+			if (fd != -1)
+				close(fd);
+		}
+		for (auto val : argvArr)
+			free(val);
+		OUTRESULT(BfpSpawnResult_UnknownError);
+	};
 
 	bool failed = false;
 	if ((flags & BfpSpawnFlag_RedirectStdInput) != 0)
-		if (pipe(stdInFD) != 0)
+		if (!BfpSpawn_CreatePipe(stdInFD))
 			failed = true;
 	if ((flags & BfpSpawnFlag_RedirectStdOutput) != 0)
-		if (pipe(stdOutFD) != 0)
+		if (!BfpSpawn_CreatePipe(stdOutFD))
 			failed = true;
 	if ((flags & BfpSpawnFlag_RedirectStdError) != 0)
-		if (pipe(stdErrFD) != 0)
+		if (!BfpSpawn_CreatePipe(stdErrFD))
 			failed = true;
 	if (failed)
 	{
 		//printf("Pipe failed\n");
-		OUTRESULT(BfpSpawnResult_UnknownError);
+		_CleanupFailedSpawn();
 		return NULL;
 	}
 
@@ -1483,7 +1511,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
     pid_t pid = fork();
     if (pid == -1) // Error
     {
-        OUTRESULT(BfpSpawnResult_UnknownError);
+        _CleanupFailedSpawn();
         return NULL;
     }
     else if (pid == 0) // Child
@@ -1491,38 +1519,35 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
         if ((flags & BfpSpawnFlag_RedirectStdInput) != 0)
         {
             close(stdInFD[1]);
-            while ((dup2(stdInFD[0], STDIN_FILENO) == -1) && (errno == EINTR)) {}
-            close(stdInFD[0]);
+            BfpSpawn_RedirectChildFD(stdInFD[0], STDIN_FILENO);
         }
 
         if ((flags & BfpSpawnFlag_RedirectStdOutput) != 0)
         {
             close(stdOutFD[0]);
-            while ((dup2(stdOutFD[1], STDOUT_FILENO) == -1) && (errno == EINTR)) {}
-            close(stdOutFD[1]);
+            BfpSpawn_RedirectChildFD(stdOutFD[1], STDOUT_FILENO);
         }
         if ((flags & BfpSpawnFlag_RedirectStdError) != 0)
         {
             close(stdErrFD[0]);
-            while ((dup2(stdErrFD[1], STDERR_FILENO) == -1) && (errno == EINTR)) {}
-            close(stdErrFD[0]);
+            BfpSpawn_RedirectChildFD(stdErrFD[1], STDERR_FILENO);
+        }
+
+        if ((hasWorkingDir) && (chdir(workingDir) != 0))
+        {
+            BfpSpawn_ChildSafeErrPrint("Couldn't change directory to ", workingDir);
+            _exit(-1);
         }
 
         // If successful then this shouldn't return at all:
-        int result;
-
         if (env != NULL)
-            result = execve(targetPath.c_str(), (char* const*)&argvArr[0], (char* const*)&envArr[0]);
+            execve(targetPath.c_str(), (char* const*)&argvArr[0], (char* const*)&envArr[0]);
         else
-            result = execv(targetPath.c_str(), (char* const*)&argvArr[0]);
+            execv(targetPath.c_str(), (char* const*)&argvArr[0]);
 
-        close(STDOUT_FILENO);
-        close(STDERR_FILENO);
-        close(STDIN_FILENO);
+        BfpSpawn_ChildSafeErrPrint("Couldn't execute ", targetPath.c_str());
 
-        BFP_ERRPRINTF("Couldn't execute %s\n", targetPath.c_str());
-
-        exit(-1);
+        _exit(-1);
     }
     else // Parent
     {
@@ -1534,7 +1559,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
             close(stdInFD[0]);
         }
         else
-            spawn->mStdInFD = 0;
+            spawn->mStdInFD = -1;
 
         if ((flags & BfpSpawnFlag_RedirectStdOutput) != 0)
         {
@@ -1542,7 +1567,7 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
             close(stdOutFD[1]);
         }
         else
-            spawn->mStdOutFD = 0;
+            spawn->mStdOutFD = -1;
 
         if ((flags & BfpSpawnFlag_RedirectStdError) != 0)
         {
@@ -1550,13 +1575,12 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
             close(stdErrFD[1]);
         }
         else
-            spawn->mStdErrFD = 0;
+            spawn->mStdErrFD = -1;
     }
 
     for (auto val : argvArr)
         free(val);
 
-    //printf("Spawn pid:%d status:%d\n", pid, status);
     spawn->mPid = pid;
     spawn->mExited = false;
     spawn->mStatus = 0;
@@ -1566,6 +1590,13 @@ BFP_EXPORT BfpSpawn* BFP_CALLTYPE BfpSpawn_Create(const char* inTargetPath, cons
 
 void BfpSpawn_Release(BfpSpawn* spawn)
 {
+	// Close pipe ends never taken through BfpSpawn_GetStdHandles, so the child sees EOF on stdin
+	for (int fd : { spawn->mStdInFD, spawn->mStdOutFD, spawn->mStdErrFD })
+	{
+		if (fd != -1)
+			close(fd);
+	}
+
 	if (!BfpSpawn_WaitFor(spawn, 0, NULL, NULL))
     {
 		BfpGlobalSpawnData::Get()->AddDetachedProcess(spawn->mPid);
@@ -1578,20 +1609,21 @@ BFP_EXPORT void BFP_CALLTYPE BfpSpawn_GetStdHandles(BfpSpawn* spawn, BfpFile** o
 {
     if (outStdIn != NULL)
     {
-        *outStdIn = new BfpFile(spawn->mStdInFD);
-        spawn->mStdInFD = 0;
+        // -1 means not redirected or already taken; 0 would be the parent's own stdin
+        *outStdIn = (spawn->mStdInFD != -1) ? new BfpFile(spawn->mStdInFD) : NULL;
+        spawn->mStdInFD = -1;
     }
 
     if (outStdOut != NULL)
     {
-        *outStdOut = new BfpFile(spawn->mStdOutFD);
-        spawn->mStdOutFD = 0;
+        *outStdOut = (spawn->mStdOutFD != -1) ? new BfpFile(spawn->mStdOutFD) : NULL;
+        spawn->mStdOutFD = -1;
     }
 
     if (outStdErr != NULL)
     {
-        *outStdErr = new BfpFile(spawn->mStdErrFD);
-        spawn->mStdErrFD = 0;
+        *outStdErr = (spawn->mStdErrFD != -1) ? new BfpFile(spawn->mStdErrFD) : NULL;
+        spawn->mStdErrFD = -1;
     }
 }
 
