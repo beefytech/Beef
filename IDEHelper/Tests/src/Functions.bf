@@ -20,6 +20,12 @@ namespace Tests
 				return mA + (int)f + 1000;
 			}
 
+			public Result<void> CheckThis(ClassA expected)
+			{
+				Test.Assert(this === expected);
+				return .Ok;
+			}
+
 			public int GetT<T>(T val) where T : var
 			{
 				return mA + (int)val;
@@ -208,6 +214,14 @@ namespace Tests
 		public static int UseFunc1<T>(function int (mut T this, float f) func, mut T a, float b)
 		{
 			return func(a, b);
+		}
+
+		[Test]
+		public static void TestInstanceResultReturn()
+		{
+			ClassA ca = scope ClassA();
+			function Result<void> (ClassA this, ClassA expected) func = => ClassA.CheckThis;
+			Test.Assert(func(ca, ca) case .Ok);
 		}
 
 		[Test]

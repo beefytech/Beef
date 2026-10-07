@@ -7249,7 +7249,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	auto methodInstOwner = methodInstance->GetOwner();
 	auto expectCallingConvention = mModule->GetIRCallingConvention(methodInstance);
-	if ((mModule->mCompiler->mOptions.mMachineType == BfMachineType_x86) &&
+	// Win64 class 'this' parameters also need ThisCall to preserve the hidden struct-return argument layout.
+	if (((mModule->mCompiler->mOptions.mMachineType == BfMachineType_x86) ||
+		(mModule->mCompiler->mOptions.mMachineType == BfMachineType_x64)) &&
 		(mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows) &&
 		(methodInstOwner->IsFunction()) && (methodInstance->GetParamCount() > 0) && (methodInstance->GetParamName(0) == "this"))
 	{
