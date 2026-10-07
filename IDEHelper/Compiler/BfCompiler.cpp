@@ -3105,6 +3105,12 @@ void BfCompiler::GenerateDynCastData()
 	firstDerivedIds.Resize(mCurTypeId);
 	nextSiblingIds.Resize(mCurTypeId);
 
+	// The sibling order decides every inheritance id, so link siblings in a stable order rather
+	//  than mResolvedTypes' hash order, which varies between runs and would change the type data
+	//  on every build. Linking prepends, so sorting by descending type id visits siblings in
+	//  ascending order: a newly added type usually has a high id and lands after its siblings,
+	//  moving fewer existing ids.
+	Array<BfTypeInstance*> derivedTypes;
 	for (auto type : mContext->mResolvedTypes)
 	{
 		if (type->IsBoxed())
@@ -3117,6 +3123,15 @@ void BfCompiler::GenerateDynCastData()
 		if (typeInst->mBaseType == NULL)
 			continue;
 
+		derivedTypes.Add(typeInst);
+	}
+	std::sort(derivedTypes.begin(), derivedTypes.end(), [](BfTypeInstance* lhs, BfTypeInstance* rhs)
+		{
+			return lhs->mTypeId > rhs->mTypeId;
+		});
+
+	for (auto typeInst : derivedTypes)
+	{
 		int baseId = typeInst->mBaseType->mTypeId;
 		int firstDerivedId = firstDerivedIds[baseId];
 
