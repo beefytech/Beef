@@ -1,5 +1,6 @@
 #pragma warning disable 168
 using System;
+using System.Reflection;
 namespace Tests
 {
 	class ConstExprs
@@ -118,6 +119,43 @@ namespace Tests
 
 			TestStr(.CONST);
 			TestStr("ABC");
+		}
+
+		[Reflect(.Type), AlwaysInclude]
+		struct ConstValueHolder<TValue> where TValue : const var
+		{
+			public int mDummy;
+		}
+
+		struct SmallPair
+		{
+			public int16 mA;
+			public int16 mB;
+
+			public this(int16 a, int16 b)
+			{
+				mA = a;
+				mB = b;
+			}
+		}
+
+		const SmallPair cSmallPair = .(1, 2);
+
+		static ConstExprType GetConstArg(Type type) => (type as SpecializedGenericType)?.GetGenericArg(0) as ConstExprType;
+
+		// A struct const value's type data (and mangled name) used the heap address of its bytes, which changed every
+		//  build. A struct that fits is now stored by value, and a larger one as 0
+		[Test]
+		public static void TestStructConstArgData()
+		{
+			Test.Assert(GetConstArg(typeof(ConstValueHolder<5>)).ValueData == 5);
+			Test.Assert(GetConstArg(typeof(ConstValueHolder<const cSmallPair>)).ValueData == 0x0002'0001);
+			// ClosedRange holds two ints, so it only fits on 32-bit
+			ClosedRange range = -3...3;
+			int64 rangeData = 0;
+			if (sizeof(ClosedRange) <= sizeof(int64))
+				Internal.MemCpy(&rangeData, &range, sizeof(ClosedRange));
+			Test.Assert(GetConstArg(typeof(ConstValueHolder<-3...3>)).ValueData == rangeData);
 		}
 	}
 }

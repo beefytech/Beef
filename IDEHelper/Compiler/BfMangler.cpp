@@ -5,6 +5,19 @@
 
 USING_NS_BF;
 
+// A struct const value is identified by its bytes (which is how BfVariant compares them) - its mInt64 is the heap
+//  address of those bytes, which differs every build. Two letters per byte, so the length is fixed for a given type
+static void MangleConstStructData(StringImpl& name, const BfVariant& value)
+{
+	auto structData = (BfVariant::StructData*)value.mPtr;
+	for (int i = 0; i < structData->mSize; i++)
+	{
+		uint8 byte = structData->mData[i];
+		name += (char)('A' + (byte >> 4));
+		name += (char)('A' + (byte & 0xF));
+	}
+}
+
 int BfGNUMangler::ParseSubIdx(StringImpl& name, int strIdx)
 {
 	const char* charPtr = name.c_str() + strIdx + 1;
@@ -663,29 +676,37 @@ void BfGNUMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType
 
 		name += "$0";
 
-		if (val < 0)
+		if (constExprValueType->mValue.mTypeCode == BfTypeCode_Struct)
 		{
-			name += "?";
-			val = -val;
-		}
-		if ((val >= 1) && (val < 10))
-		{
-			name += (char)('0' + val - 1);
+			MangleConstStructData(name, constExprValueType->mValue);
+			name += '`';
 		}
 		else
 		{
-			char str[64];
-			char* strP = str + 63;
-			*strP = 0;
-
-			while (val > 0)
+			if (val < 0)
 			{
-				*(--strP) = (char)((val % 0x10) + 'A');
-				val /= 0x10;
+				name += "?";
+				val = -val;
 			}
+			if ((val >= 1) && (val < 10))
+			{
+				name += (char)('0' + val - 1);
+			}
+			else
+			{
+				char str[64];
+				char* strP = str + 63;
+				*strP = 0;
 
-			name += strP;
-			name += '`';
+				while (val > 0)
+				{
+					*(--strP) = (char)((val % 0x10) + 'A');
+					val /= 0x10;
+				}
+
+				name += strP;
+				name += '`';
+			}
 		}
 
 		if (constExprValueType->mValue.mTypeCode == BfTypeCode_Let)
@@ -1886,7 +1907,14 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 			Mangle(mangleContext, name, constExprValueType->mType);
 			name += "$";
 		}
-		MangleConst(mangleContext, name, val);
+		if (constExprValueType->mValue.mTypeCode == BfTypeCode_Struct)
+		{
+			name += "$0";
+			MangleConstStructData(name, constExprValueType->mValue);
+			name += '@';
+		}
+		else
+			MangleConst(mangleContext, name, val);
 		if (constExprValueType->mValue.mTypeCode == BfTypeCode_Let)
 			name += "Undef";
 	}

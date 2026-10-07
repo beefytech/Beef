@@ -7019,11 +7019,21 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 			else if (type->IsConstExprValue())
 			{
 				auto constExprType = (BfConstExprValueType*)type;
+				int64 constExprValue = constExprType->mValue.mInt64;
+				if (constExprType->mValue.mTypeCode == BfTypeCode_Struct)
+				{
+					// mInt64 is the heap address of the struct's bytes, which differs every build. A struct that fits is
+					//  stored by value, so ValueData holds its bytes; a larger one has no room and gets 0
+					constExprValue = 0;
+					auto structData = (BfVariant::StructData*)constExprType->mValue.mPtr;
+					if (structData->mSize <= (int)sizeof(int64))
+						memcpy(&constExprValue, structData->mData, structData->mSize);
+				}
 				SizedArray<BfIRValue, 3> constExprTypeDataParms =
 				{
 					typeData,
 					GetConstValue(constExprType->mType->mTypeId, typeIdType),
-					GetConstValue(constExprType->mValue.mInt64, longType)
+					GetConstValue(constExprValue, longType)
 				};
 
 				auto reflectConstExprType = ResolveTypeDef(mCompiler->mReflectConstExprType)->ToTypeInstance();
