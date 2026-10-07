@@ -151,6 +151,7 @@ namespace System.Collections
 			set
 			{
 				Debug.Assert((uint)value <= (uint)SizeFlags);
+				Runtime.Assert(value >= mSize);
 				if (value != AllocSize)
 				{
 					T* oldAlloc = Realloc(value, true);
