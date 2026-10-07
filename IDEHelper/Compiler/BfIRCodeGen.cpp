@@ -134,6 +134,14 @@ USING_NS_BF;
 #pragma warning(disable:4146)
 #pragma warning(disable:4996)
 
+// Beef gives a vector's memory its element's alignment (a <4 x float> is 4-aligned), less than LLVM's natural
+//  vector alignment, so loads and stores that don't state an alignment must not assume the natural one
+static int GetVectorMemoryAlign(llvm::FixedVectorType* vecType)
+{
+	int elemBytes = (int)(vecType->getElementType()->getPrimitiveSizeInBits() / 8);
+	return (elemBytes > 0) ? elemBytes : 1;
+}
+
 struct BuiltinEntry
 {
 	const char* mName;
@@ -2979,7 +2987,10 @@ void BfIRCodeGen::HandleNextCmd()
 
 			BfIRTypedValue result;
 			result.mTypeEx = GetTypeMember(typedValue.mTypeEx, 0);
-			result.mValue = mIRBuilder->CreateLoad(result.mTypeEx->mLLVMType, typedValue.mValue, isVolatile);
+			if (auto vecType = llvm::dyn_cast<llvm::FixedVectorType>(result.mTypeEx->mLLVMType))
+				result.mValue = mIRBuilder->CreateAlignedLoad(vecType, typedValue.mValue, llvm::MaybeAlign(GetVectorMemoryAlign(vecType)), isVolatile);
+			else
+				result.mValue = mIRBuilder->CreateLoad(result.mTypeEx->mLLVMType, typedValue.mValue, isVolatile);
 			SetResult(curId, result);
 		}
 		break;
@@ -3004,7 +3015,12 @@ void BfIRCodeGen::HandleNextCmd()
 
 			if ((!TryMemCpy(ptr, val.mValue)) &&
 				(!TryVectorCpy(ptr, val.mValue)))
-				SetResult(curId, mIRBuilder->CreateStore(val.mValue, ptr.mValue, isVolatile));
+			{
+				if (auto vecType = llvm::dyn_cast<llvm::FixedVectorType>(val.mValue->getType()))
+					SetResult(curId, mIRBuilder->CreateAlignedStore(val.mValue, ptr.mValue, llvm::MaybeAlign(GetVectorMemoryAlign(vecType)), isVolatile));
+				else
+					SetResult(curId, mIRBuilder->CreateStore(val.mValue, ptr.mValue, isVolatile));
+			}
 		}
 		break;
 	case BfIRCmd_AlignedStore:
