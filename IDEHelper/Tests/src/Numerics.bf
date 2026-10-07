@@ -158,6 +158,46 @@ namespace Tests
 			return v.SumInline() + v.Sum() + v.ScaledInline(2.0f).SumInline() + pad - 1;
 		}
 
+		// LoweredVec is only lowered on SysV - on Windows only vector types are, so this covers the same aligned
+		//  store of a lowered this there. The pad local varies the frame so a misaligned copy can't land on a
+		//  16-byte boundary by chance in both methods
+		[UnderlyingArray(typeof(float), 4, true), Align(16)]
+		struct AlignedVec4
+		{
+			public float x;
+			public float y;
+			public float z;
+			public float w;
+
+			public this(float x, float y, float z, float w)
+			{
+				this.x = x;
+				this.y = y;
+				this.z = z;
+				this.w = w;
+			}
+
+			[NoInline]
+			public float Sum() => x + y + z + w;
+
+			[NoInline]
+			public float SumPad()
+			{
+				int8 pad = 1;
+				return x + y + z + w + pad - 1;
+			}
+
+			[NoInline, UseLLVM]
+			public float SumLLVM() => x + y + z + w;
+
+			[NoInline, UseLLVM]
+			public float SumPadLLVM()
+			{
+				int8 pad = 1;
+				return x + y + z + w + pad - 1;
+			}
+		}
+
 		// Read at runtime so shift counts are not constant-folded
 		static int sShiftCount3 = 3;
 		static int sShiftCount16 = 16;
@@ -257,6 +297,17 @@ namespace Tests
 		{
 			float rt = sVecZero;
 			Test.Assert(SumLoweredThis(.(.(1 + rt, 2, 3, 4))) == 40);
+		}
+
+		[Test]
+		public static void TestLoweredThisAlignmentVector()
+		{
+			float rt = sVecZero;
+			AlignedVec4 v = .(1 + rt, 2, 3, 4);
+			Test.Assert(v.Sum() == 10);
+			Test.Assert(v.SumPad() == 10);
+			Test.Assert(v.SumLLVM() == 10);
+			Test.Assert(v.SumPadLLVM() == 10);
 		}
 
 		[Test, UseLLVM]
