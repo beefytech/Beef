@@ -1268,6 +1268,7 @@ public:
 	int mRevision;
 	int mMethodBindRevision;
 	int mRevisionExecuteTime;
+	int mExecuteTimerDepth;
 	int mCurFunctionId;
 	int mExecuteId;
 	int mCurRecursiveDepth;
