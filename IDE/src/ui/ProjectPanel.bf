@@ -973,6 +973,9 @@ namespace IDE.ui
 				    continue;
 				}
 
+				if (!projectFolder.mAutoInclude)
+					continue;
+
 				let newRelDir = scope String(projectFolder.mPath);
 				if (!newRelDir.IsEmpty)
 					newRelDir.Append("/");
@@ -1018,13 +1021,32 @@ namespace IDE.ui
 						DoDeleteItem(listItem, null, .ForceRemove);
 						continue;
 					}
-
-					if ((rehupFlags.HasFlag(.FullTraversal)) && (child.mIncludeKind == .Manual) && (var childProjectFolder = child as ProjectFolder))
-					{
-						RehupFolder(childProjectFolder, rehupFlags);
-					}
 				}
 			}
+
+			// The scan above only descends into auto-included folders; listed ones are refreshed here.
+			if (rehupFlags.HasFlag(.FullTraversal))
+			{
+				for (let child in projectFolder.mChildItems)
+				{
+					if ((child.mIncludeKind == .Manual) && (let childProjectFolder = child as ProjectFolder))
+						RehupFolder(childProjectFolder, rehupFlags);
+				}
+			}
+		}
+
+		public void RefreshProject(Project project)
+		{
+			if (project.mNeedsCreate)
+			{
+				project.FinishCreate(false);
+				RebuildUI();
+				return;
+			}
+			if (project.mRootFolder.mIsWatching)
+				project.mRootFolder.StopWatching();
+			project.mRootFolder.StartWatching();
+			RehupFolder(project.mRootFolder, .FullTraversal);
 		}
 
 		public void QueueRehupFolder(ProjectFolder projectFolder)
@@ -3532,21 +3554,7 @@ namespace IDE.ui
 						    {
 								var projectItem = GetSelectedProjectItem();
 								if (projectItem != null)
-								{
-									let project = projectItem.mProject;
-									if (project.mNeedsCreate)
-									{
-										project.FinishCreate(false);
-										RebuildUI();
-									}
-									else
-									{
-										if (project.mRootFolder.mIsWatching)
-											project.mRootFolder.StopWatching();
-										project.mRootFolder.StartWatching();
-										RehupFolder(project.mRootFolder, .FullTraversal);
-									}
-								}
+									RefreshProject(projectItem.mProject);
 						    });
 					}
 
