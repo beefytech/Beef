@@ -462,5 +462,77 @@ namespace Tests
 			a.LerpTo(b, 0.5f);
 			Test.Assert((a.mX == 0.5f) && (a.mW == 0.5f));
 		}
+
+		// A NoSplat method's 'this' has reference semantics, so calls pass it by pointer. The definition used to lower
+		//  it anyway when the type lowers to a register, so calls failed to compile (or crashed the compiler with no params)
+		interface INoSplatSum
+		{
+			int Sum();
+		}
+
+		// Too many fields to splat, but 8 bytes, so it lowers to a register
+		struct NoSplatQuad : INoSplatSum
+		{
+			public int16 mA, mB, mC, mD;
+
+			[NoInline, NoSplat]
+			public int Sum() => mA + mB * 10 + mC * 100 + mD * 1000;
+
+			[NoInline, NoSplat]
+			public int SumScaled(int scale, NoSplatQuad other) => Sum() * scale + other.mA;
+
+			[NoInline, NoSplat, UseLLVM]
+			public int SumLLVM() => mA + mB * 10 + mC * 100 + mD * 1000;
+
+			[NoInline, NoSplat, UseLLVM]
+			public int SumScaledLLVM(int scale, NoSplatQuad other) => SumLLVM() * scale + other.mA;
+		}
+
+		// Two int64s lower to two registers on SysV
+		struct NoSplatPair
+		{
+			public int64 mA, mB;
+
+			[NoInline, NoSplat]
+			public int64 Sum(int64 x) => mA + mB * 10 + x;
+
+			[NoInline, NoSplat, UseLLVM]
+			public int64 SumLLVM(int64 x) => mA + mB * 10 + x;
+		}
+
+		struct NoSplatMeters : int32
+		{
+			[NoInline, NoSplat]
+			public int32 Doubled() => (int32)this * 2;
+
+			[NoInline, NoSplat, UseLLVM]
+			public int32 DoubledLLVM() => (int32)this * 2;
+		}
+
+		static int16 sNoSplatZero = 0;
+
+		[Test]
+		static void TestNoSplatThis()
+		{
+			NoSplatQuad q = .() { mA = 1, mB = 2, mC = 3, mD = 4 + sNoSplatZero };
+			Test.Assert(q.Sum() == 4321);
+			Test.Assert(q.SumScaled(2, q) == 8643);
+			Test.Assert(q.SumLLVM() == 4321);
+			Test.Assert(q.SumScaledLLVM(2, q) == 8643);
+
+			INoSplatSum boxed = scope box q;
+			Test.Assert(boxed.Sum() == 4321);
+
+			delegate int() dlg = scope => q.Sum;
+			Test.Assert(dlg() == 4321);
+
+			NoSplatPair p = .() { mA = 1, mB = 2 + sNoSplatZero };
+			Test.Assert(p.Sum(100) == 121);
+			Test.Assert(p.SumLLVM(100) == 121);
+
+			NoSplatMeters m = (NoSplatMeters)(21 + sNoSplatZero);
+			Test.Assert(m.Doubled() == 42);
+			Test.Assert(m.DoubledLLVM() == 42);
+		}
 	}
 }

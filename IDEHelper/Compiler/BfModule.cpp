@@ -16593,7 +16593,7 @@ BfTypedValue BfModule::GetThis(bool markUsing)
 	auto curMethodOwner = mCurMethodInstance->mMethodInstanceGroup->mOwner;
 	if ((curMethodOwner->IsStruct()) || (curMethodOwner->IsTypedPrimitive()))
 	{
-		if ((localDef->mResolvedType->IsTypedPrimitive()) && (!mCurMethodInstance->mMethodDef->mIsMutating) && (!mCurMethodInstance->ForcingThisPtr()))
+		if ((localDef->mResolvedType->IsTypedPrimitive()) && (!mCurMethodInstance->mMethodDef->HasNoThisSplat()) && (!mCurMethodInstance->ForcingThisPtr()))
 		{
 			return BfTypedValue(thisValue, useMethodState->mLocals[0]->mResolvedType, BfTypedValueKind_ReadOnlyThisValue);
 		}
@@ -20705,7 +20705,8 @@ void BfModule::ProcessMethod_SetupParams(BfMethodInstance* methodInstance, BfTyp
 			if (!thisType->IsTypedPrimitive())
 				paramVar->mIsSplat = true;
 		}
-		else if ((!mIsComptimeModule) && (!methodDef->mIsMutating) && (!methodInstance->ForcingThisPtr()))
+		// Must match GetIRFunctionInfo and PushThis: a NoSplat 'this' is passed by pointer, not lowered
+		else if ((!mIsComptimeModule) && (methodInstance->AllowsSplatting(-1)))
 			paramVar->mIsLowered = thisType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2) != BfTypeCode_None;
 
 		auto thisTypeInst = thisType->ToTypeInstance();
@@ -26150,7 +26151,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 		{
 			BfTypeCode loweredTypeCode = BfTypeCode_None;
 			BfTypeCode loweredTypeCode2 = BfTypeCode_None;
-			if ((!mIsComptimeModule) && (!methodDef->mIsMutating) && (!methodInstance->ForcingThisPtr()))
+			if ((!mIsComptimeModule) && (methodInstance->AllowsSplatting(-1)))
 				thisType->GetLoweredType(BfTypeUsage_Parameter, &loweredTypeCode, &loweredTypeCode2);
 			argIdx++;
 			if (loweredTypeCode2 != BfTypeCode_None)

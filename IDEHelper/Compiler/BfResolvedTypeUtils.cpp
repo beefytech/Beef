@@ -1511,11 +1511,12 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 		bool doSplat = false;
 		if (paramIdx == -1)
 		{
+			// A NoSplat 'this' is passed by pointer, as PushThis does - it has reference semantics there
 			if (ForcingThisPtr())
 			{
 				// Pass by pointer even for typed primitives
 			}
-			else if ((!mMethodDef->mIsMutating) && (checkType->IsTypedPrimitive()))
+			else if ((!mMethodDef->HasNoThisSplat()) && (checkType->IsTypedPrimitive()))
 			{
 				checkType = checkType->GetUnderlyingType();
 			}
@@ -1523,7 +1524,7 @@ void BfMethodInstance::GetIRFunctionInfo(BfModule* module, BfIRType& returnType,
 			{
 				doSplat = true;
 			}
-			else if ((!module->mIsComptimeModule) && (!mMethodDef->mIsMutating) && (mCallingConvention == BfCallingConvention_Unspecified))
+			else if ((!module->mIsComptimeModule) && (AllowsSplatting(-1)))
 				checkLowered = true;
 		}
 		else
