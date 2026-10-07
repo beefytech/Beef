@@ -1604,7 +1604,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 			auto globalVar = (BeGlobalVariable*)value;
 			if (globalVar->mName.StartsWith("__bfStrObj"))
 			{
-				int stringId = atoi(globalVar->mName.c_str() + 10);
+				int stringId = mCeMachine->mCeModule->mContext->GetStringIdByStableId(atoi(globalVar->mName.c_str() + 10));
 
 				int* stringTableIdxPtr = NULL;
 				if (mStringMap.TryAdd(stringId, NULL, &stringTableIdxPtr))
@@ -1624,7 +1624,7 @@ CeOperand CeBuilder::GetOperand(BeValue* value, bool allowAlloca, bool allowImme
 			}
 			else if (globalVar->mName.StartsWith("__bfStrData"))
 			{
-				int stringId = atoi(globalVar->mName.c_str() + 11);
+				int stringId = mCeMachine->mCeModule->mContext->GetStringIdByStableId(atoi(globalVar->mName.c_str() + 11));
 
 				int* stringTableIdxPtr = NULL;
 				if (mStringMap.TryAdd(stringId, NULL, &stringTableIdxPtr))
@@ -4846,7 +4846,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 			{
 				BfTypeInstance* stringTypeInst = (BfTypeInstance*)mCeMachine->mCeModule->ResolveTypeDef(mCeMachine->mCompiler->mStringTypeDef, BfPopulateType_Data);
 
-				int stringId = atoi(globalVar->mName + 11);
+				int stringId = mCeMachine->mCeModule->mContext->GetStringIdByStableId(atoi(globalVar->mName + 11));
 				addr_ce strAddr = GetString(stringId) + stringTypeInst->mInstSize;
 				if (ptrSize == 4)
 					CE_GETC(int32) = strAddr;
@@ -4862,7 +4862,7 @@ bool CeContext::WriteConstant(BfModule* module, addr_ce addr, BfConstant* consta
 		auto globalVar = (BfGlobalVar*)constant;
 		if (strncmp(globalVar->mName, "__bfStrObj", 10) == 0)
 		{
-			int stringId = atoi(globalVar->mName  + 10);
+			int stringId = mCeMachine->mCeModule->mContext->GetStringIdByStableId(atoi(globalVar->mName + 10));
 			addr_ce strAddr = GetString(stringId);
 			if (ptrSize == 4)
 				CE_GETC(int32) = strAddr;
@@ -10397,7 +10397,7 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 	{
 		if (globalVar->mName.StartsWith("__bfStrObj"))
 		{
-			int stringId = atoi(globalVar->mName.c_str() + 10);
+			int stringId = ceModule->mContext->GetStringIdByStableId(atoi(globalVar->mName.c_str() + 10));
 
 			addr_ce stringAddr;
 			if (data.mQueueFixups)
@@ -10557,7 +10557,7 @@ CeErrorKind CeMachine::WriteConstant(CeConstStructData& data, BeConstant* constV
 
 			if (globalVar->mName.StartsWith("__bfStrData"))
 			{
-				int stringId = atoi(globalVar->mName.c_str() + 11);
+				int stringId = ceModule->mContext->GetStringIdByStableId(atoi(globalVar->mName.c_str() + 11));
 
 				if (data.mQueueFixups)
 				{

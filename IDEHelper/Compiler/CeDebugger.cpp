@@ -2415,14 +2415,14 @@ CeTypedValue CeDebugger::GetAddr(BfConstant* constant, BfType* type)
 
 		if (varName.StartsWith("__bfStrObj"))
 		{
-			int stringId = atoi(varName.c_str() + 10);
+			int stringId = module->mContext->GetStringIdByStableId(atoi(varName.c_str() + 10));
 			auto addr = ceContext->GetString(stringId);
 			return CeTypedValue(addr, globalVar->mType);
 		}
 		else if (varName.StartsWith("__bfStrData"))
 		{
 			auto stringType = module->ResolveTypeDef(module->mCompiler->mStringTypeDef)->ToTypeInstance();
-			int stringId = atoi(varName.c_str() + 11);
+			int stringId = module->mContext->GetStringIdByStableId(atoi(varName.c_str() + 11));
 			auto addr = ceContext->GetString(stringId) + stringType->mInstSize;
 			return CeTypedValue(addr, globalVar->mType);
 		}
