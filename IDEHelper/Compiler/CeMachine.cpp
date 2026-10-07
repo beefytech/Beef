@@ -5383,6 +5383,30 @@ BfIRValue CeContext::CreateAttribute(BfAstNode* targetSrc, BfModule* module, BfI
 	return ceAttrVal;
 }
 
+// Comptime calls nest (an intrinsic can populate a type whose OnTypeInit runs more comptime,
+// and PrepareFunction runs inside Call), so only the outermost scope adds its time
+class CeExecuteTimer
+{
+public:
+	CeMachine* mCeMachine;
+	uint32 mStartTick;
+
+public:
+	CeExecuteTimer(CeMachine* ceMachine)
+	{
+		mCeMachine = ceMachine;
+		mStartTick = 0;
+		if (mCeMachine->mExecuteTimerDepth++ == 0)
+			mStartTick = BFTickCount();
+	}
+
+	~CeExecuteTimer()
+	{
+		if (--mCeMachine->mExecuteTimerDepth == 0)
+			mCeMachine->mRevisionExecuteTime += BFTickCount() - mStartTick;
+	}
+};
+
 BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethodInstance* methodInstance, const BfSizedArray<BfIRValue>& args, CeEvalFlags flags, BfType* expectingType)
 {	
 	// DISABLED
@@ -5408,7 +5432,7 @@ BfTypedValue CeContext::Call(CeCallSource callSource, BfModule* module, BfMethod
 	//auto ceModule = mCeMachine->mCeModule;
 
 
-	AutoTimer autoTimer(mCeMachine->mRevisionExecuteTime);
+	CeExecuteTimer executeTimer(mCeMachine);
 
 	SetAndRestoreValue<CeContext*> curPrevContext(mPrevContext, mCeMachine->mCurContext);
  	SetAndRestoreValue<CeContext*> prevContext(mCeMachine->mCurContext, this);
@@ -10071,6 +10095,7 @@ CeMachine::CeMachine(BfCompiler* compiler)
 
 	mCurFunctionId = 0;
 	mRevisionExecuteTime = 0;
+	mExecuteTimerDepth = 0;
 	mCurBuilder = NULL;
 	mPreparingFunction = NULL;
 
@@ -11013,7 +11038,7 @@ void CeMachine::CheckFunctionKind(CeFunction* ceFunction)
 
 void CeMachine::PrepareFunction(CeFunction* ceFunction, CeBuilder* parentBuilder)
 {
-	AutoTimer autoTimer(mRevisionExecuteTime);
+	CeExecuteTimer executeTimer(this);
 	SetAndRestoreValue<CeFunction*> prevCEFunction(mPreparingFunction, ceFunction);
 
 	BF_ASSERT(ceFunction->mInitializeState <= CeFunction::InitializeState_Initialized);
