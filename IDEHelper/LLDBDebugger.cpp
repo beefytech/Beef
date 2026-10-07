@@ -5250,7 +5250,19 @@ String LLDBDebugger::GetCollectionContinuation(const StringImpl& continuationDat
 
 String LLDBDebugger::GetAutoExpressions(int callStackIdx, uint64 memoryRangeStart, uint64 memoryRangeLen)
 {
-	auto locals = mCallStack[callStackIdx].GetVariables(true, true, false, false);
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	// HotLoad clears the call stack while paused and the watch panels can ask for locals before a draw rebuilds it
+	if (mCallStack.IsEmpty())
+		UpdateCallStack();
+	if ((callStackIdx < 0) || (callStackIdx >= (int)mCallStack.size()))
+		return String();
+
+	lldb::SBFrame& frame = mCallStack[callStackIdx];
+	if (!frame.IsValid())
+		return String();
+
+	auto locals = frame.GetVariables(true, true, false, false);
 
 	String result;
 	for (int i = 0; i < locals.GetSize(); i++)
@@ -5264,7 +5276,18 @@ String LLDBDebugger::GetAutoExpressions(int callStackIdx, uint64 memoryRangeStar
 
 String LLDBDebugger::GetAutoLocals(int callStackIdx, bool showRegs)
 {
-	auto locals = mCallStack[callStackIdx].GetVariables(true, true, false, false);
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+
+	if (mCallStack.IsEmpty())
+		UpdateCallStack();
+	if ((callStackIdx < 0) || (callStackIdx >= (int)mCallStack.size()))
+		return String();
+
+	lldb::SBFrame& frame = mCallStack[callStackIdx];
+	if (!frame.IsValid())
+		return String();
+
+	auto locals = frame.GetVariables(true, true, false, false);
 
 	String result;
 	for (int i = 0; i < locals.GetSize(); i++)
@@ -5275,7 +5298,7 @@ String LLDBDebugger::GetAutoLocals(int callStackIdx, bool showRegs)
 
 	if (showRegs)
 	{
-		auto regs = mCallStack[callStackIdx].GetRegisters();
+		auto regs = frame.GetRegisters();
 		for (int i = 0; i < regs.GetSize(); i++)
 		{
 			result += regs.GetValueAtIndex(i).GetName();
