@@ -310,6 +310,81 @@ namespace Tests
 			Test.Assert(v.SumPadLLVM() == 10);
 		}
 
+		// A foreach copy of a vector element used LLVM's natural vector alignment (16), but Beef gives vector memory
+		//  its element's alignment (4), so unoptimized code stored it with an aligned move that faulted whenever the
+		//  slot was not 16-aligned. The methods differ in frame layout so some slot lands off 16
+		[NoInline, UseLLVM]
+		static float ForeachVectors1()
+		{
+			float4[1] a = .(.(1, 2, 3, 4));
+			float sum = 0;
+			for (let p in a)
+				sum += p.z;
+			return sum;
+		}
+
+		[NoInline, UseLLVM]
+		static float ForeachVectors2()
+		{
+			float4[2] a = .(.(1, 2, 3, 4), .(5, 6, 7, 8));
+			float sum = 0;
+			for (let p in a)
+				sum += p.z;
+			return sum;
+		}
+
+		[NoInline, UseLLVM]
+		static float ForeachVectors3()
+		{
+			float4[3] a = .(.(1, 2, 3, 4), .(5, 6, 7, 8), .(9, 10, 11, 12));
+			float sum = 0;
+			for (let p in a)
+				sum += p.z;
+			return sum;
+		}
+
+		[NoInline, UseLLVM]
+		static float ForeachVectors3Pad()
+		{
+			int8 pad = 1;
+			float4[3] a = .(.(1, 2, 3, 4), .(5, 6, 7, 8), .(9, 10, 11, 12));
+			float sum = 0;
+			for (let p in a)
+				sum += p.z;
+			return sum + pad - 1;
+		}
+
+		[NoInline, UseLLVM]
+		static int32 ForeachIntVectors3()
+		{
+			int32_4[3] a = .(.(1, 2, 3, 4), .(5, 6, 7, 8), .(9, 10, 11, 12));
+			int32 sum = 0;
+			for (let p in a)
+				sum += p.z;
+			return sum;
+		}
+
+		[NoInline, UseLLVM]
+		static float AddressedVector()
+		{
+			int8 pad = 1;
+			float4 v = .(1, 2, 3, 4);
+			float4* ptr = &v;
+			float4 w = *ptr;
+			return w.z + pad - 1;
+		}
+
+		[Test, UseLLVM]
+		public static void TestVectorForeachAlignment()
+		{
+			Test.Assert(ForeachVectors1() == 3);
+			Test.Assert(ForeachVectors2() == 10);
+			Test.Assert(ForeachVectors3() == 21);
+			Test.Assert(ForeachVectors3Pad() == 21);
+			Test.Assert(ForeachIntVectors3() == 21);
+			Test.Assert(AddressedVector() == 3);
+		}
+
 		[Test, UseLLVM]
 		public static void TestBasics()
 		{
