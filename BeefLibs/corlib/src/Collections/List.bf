@@ -393,6 +393,8 @@ namespace System.Collections
 		/// Adds an item to the back of the list.
 		public void AddRange(Span<T> addSpan)
 		{
+			if (addSpan.IsEmpty)
+				return;
 			if (mSize + addSpan.Length > AllocSize)
 			{
 				let oldPtr = EnsureCapacity(mSize + addSpan.Length, false);
