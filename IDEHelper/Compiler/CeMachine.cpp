@@ -8702,8 +8702,12 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			uint8 setValue = CE_GETFRAME(uint8);
 			int32 setSize = CE_GETFRAME(int32);
 			CE_CHECKSIZE(setSize);
-			CE_CHECKADDR(destAddr, setSize);
-			memset(memStart + destAddr, setValue, setSize);
+			// A zero-length set is a no-op, whatever the address (ie: null), as MemCmp treats it and LLVM does
+			if (setSize != 0)
+			{
+				CE_CHECKADDR(destAddr, setSize);
+				memset(memStart + destAddr, setValue, setSize);
+			}
 		}
 		break;
 		case CeOp_MemSet_Const:
@@ -8712,8 +8716,11 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			uint8 setValue = CE_GETINST(uint8);
 			int32 setSize = CE_GETINST(int32);
 			CE_CHECKSIZE(setSize);
-			CE_CHECKADDR(destAddr, setSize);
-			memset(memStart + destAddr, setValue, setSize);
+			if (setSize != 0)
+			{
+				CE_CHECKADDR(destAddr, setSize);
+				memset(memStart + destAddr, setValue, setSize);
+			}
 		}
 		break;
 		case CeOp_MemCmp:
@@ -8744,9 +8751,13 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 			auto srcAddr = CE_GETFRAME(addr_ce);
 			int32 size = CE_GETFRAME(int32);
 			CE_CHECKSIZE(size);
-			CE_CHECKADDR(srcAddr, size);
-			CE_CHECKADDR(destAddr, size);
-			memmove(memStart + destAddr, memStart + srcAddr, size);
+			// A zero-length copy is a no-op, whatever the addresses (ie: an empty span's null pointer), as MemCmp treats it
+			if (size != 0)
+			{
+				CE_CHECKADDR(srcAddr, size);
+				CE_CHECKADDR(destAddr, size);
+				memmove(memStart + destAddr, memStart + srcAddr, size);
+			}
 		}
 		break;
 		case CeOp_FrameAddr_32:

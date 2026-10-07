@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 
 namespace Tests
 {
@@ -87,6 +88,40 @@ namespace Tests
 			Test.Assert(arr2 == arr3);
 			arr2[1].mA = 1;
 			Test.Assert(arr2 != arr3);
+		}
+
+		static int SumAll<T>(T items) where T : IEnumerable<int>
+		{
+			int sum = 0;
+			for (let item in items.GetEnumerator())
+				sum += item;
+			return sum;
+		}
+
+		// Calling a method on a zero-length array copies it into its SizedArray wrapper, but a zero-length value has no
+		//  IR value to copy: the store referenced an unrelated symbol (a link error) or crashed the compiler
+		static mixin CheckZeroLengthArrayCalls()
+		{
+			int[0] empty = .();
+			Test.Assert(SumAll(empty) == 0);
+			List<int> list = scope .();
+			list.AddRange(empty);
+			Test.Assert(list.Count == 0);
+
+			int[2] two = .(3, 4);
+			Test.Assert(SumAll(two) == 7);
+		}
+
+		[Test]
+		public static void TestZeroLengthArrayCalls()
+		{
+			CheckZeroLengthArrayCalls!();
+		}
+
+		[Test, Optimize]
+		public static void TestZeroLengthArrayCallsOptimized()
+		{
+			CheckZeroLengthArrayCalls!();
 		}
 	}
 }

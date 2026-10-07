@@ -17562,6 +17562,11 @@ BfTypedValue BfExprEvaluator::MakeCallableTarget(BfAstNode* targetSrc, BfTypedVa
 				target.mType = primStructType;
 				target.mKind = BfTypedValueKind_SplatHead;
 			}
+			else if (primStructType->IsValuelessType())
+			{
+				// A zero-length value (ie: an int[0]) has no IR value to store, so there's nothing to copy
+				target = mModule->GetDefaultTypedValue(primStructType, false, BfDefaultValueKind_Addr);
+			}
 			else
 			{
 				auto allocPtr = mModule->CreateAlloca(primStructType);

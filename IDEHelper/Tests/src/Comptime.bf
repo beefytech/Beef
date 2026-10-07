@@ -850,5 +850,30 @@ namespace Tests
 			Test.Assert(AliasReflection.cUnderlyingId != 0);
 			Test.Assert(AliasReflection.cUnderlyingId != AliasReflection.cAliasId);
 		}
+
+		// A zero-length copy or set is a no-op whatever the addresses, but comptime treated a null one (as an empty span
+		//  has) as an access violation
+		[Comptime]
+		static int ZeroLengthMemOps()
+		{
+			Span<int> empty = default;
+			empty.CopyTo(Span<int>());
+			Internal.MemCpy(null, null, 0);
+			Internal.MemSet(null, 0, 0);
+			int size = empty.Length;
+			Internal.MemCpy(null, empty.Ptr, size);
+			Internal.MemSet(empty.Ptr, 0, size);
+			List<int> list = scope .();
+			list.AddRange(empty);
+			return list.Count + 1;
+		}
+
+		const int cZeroLengthMemOps = ZeroLengthMemOps();
+
+		[Test]
+		public static void TestZeroLengthMemOps()
+		{
+			Test.Assert(cZeroLengthMemOps == 1);
+		}
 	}
 }
