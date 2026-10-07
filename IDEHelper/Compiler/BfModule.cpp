@@ -7029,6 +7029,17 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 					if (structData->mSize <= (int)sizeof(int64))
 						memcpy(&constExprValue, structData->mData, structData->mSize);
 				}
+				else if ((constExprType->mValue.mTypeCode == BfTypeCode_StringId) && (!mIsComptimeModule))
+				{
+					// At runtime String.GetById indexes sIdStringLiterals, which only holds the strings vdata lists there, so
+					//  store the string's index in that table rather than its literal id (comptime looks literal ids up directly)
+					int stringId = constExprType->mValue.mInt32;
+					int* orderedIdPtr;
+					if (ctx.mUsedStringIdMap.TryAdd(stringId, NULL, &orderedIdPtr))
+						*orderedIdPtr = (int)ctx.mUsedStringIdMap.size() - 1;
+					GetStringObjectValue(stringId, true, true);
+					constExprValue = *orderedIdPtr;
+				}
 				SizedArray<BfIRValue, 3> constExprTypeDataParms =
 				{
 					typeData,
