@@ -6610,8 +6610,12 @@ bool BfIRCodeGen::WriteObjectFile(const StringImpl& outFileName)
 
 	if (enableLTO)
 	{
-		// We have some constructs which trip up ThinLTO, and it's not useful to LTO here anyway
-		if (GetFileName(outFileName) == "vdata.obj")
+		// We have some constructs which trip up ThinLTO, and it's not useful to LTO here anyway.
+		//  It also keeps vdata out of every module's ThinLTO cache key: a bitcode vdata is
+		//  imported from nearly everywhere, so any change to it (a string literal, a field)
+		//  missed the cache for thousands of modules. ".o" is the object extension off Windows.
+		String vdataFileName = GetFileName(outFileName);
+		if ((vdataFileName == "vdata.obj") || (vdataFileName == "vdata.o"))
 		{
 			enableLTO = false;
 		}
