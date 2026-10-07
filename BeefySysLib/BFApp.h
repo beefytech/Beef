@@ -79,7 +79,7 @@ public:
 	RenderDevice*			mRenderDevice;
 	int						mSysDialogCnt;
 	int						mUpdateCnt;
-	int						mNumPhysUpdates;
+	int						mSlowStartItr;
 	SyncEvent				mVSyncEvent;
 	volatile bool			mVSyncActive;
 	bool                    mVSynched;

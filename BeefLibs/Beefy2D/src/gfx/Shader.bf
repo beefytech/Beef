@@ -33,10 +33,15 @@ namespace Beefy.gfx
             // StaticMesh.SetDepthStream). Asserted at load: a shader that claims this and reads more
             // fails to build the layout.
             DepthStream = 4,
+            // Made without loading anything: Load does that later, on any thread.
+            DeferLoad = 8,
         }
 
         [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_LoadShader(char8* fileName, void* vertexDefinition, char8* entrySuffix, int32 shaderFlags);
+
+        [CallingConvention(.Stdcall), CLink]
+        static extern int32 Gfx_Shader_Load(void* shader);
 
         [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_Shader_Delete(void* shader);
@@ -49,6 +54,32 @@ namespace Beefy.gfx
 
         [CallingConvention(.Stdcall), CLink]
         static extern void Gfx_AddShaderIncludeDir(char8* dir);
+
+        [CallingConvention(.Stdcall), CLink]
+        static extern int32 Gfx_RefreshShaderCache(char8* fxPath, char8* entry, char8* profile);
+
+        [CallingConvention(.Stdcall), CLink]
+        static extern int32 Gfx_CheckShaderCache(char8* fxPath, char8* entry, char8* profile, int32 shaderFlags, out int32 compileMs);
+
+        public enum CacheRefresh
+        {
+            Failed = -1,
+            Current,
+            Compiled
+        }
+
+        // Safe off the main thread: compiles one program into the shader cache if its entry there is stale.
+        public static CacheRefresh RefreshCache(StringView fxPath, StringView entry, StringView profile)
+        {
+            return (.)Gfx_RefreshShaderCache(fxPath.ToScopeCStr!(), entry.ToScopeCStr!(), profile.ToScopeCStr!());
+        }
+
+        // Whether loading one program would compile it, without compiling. compileMs gets how long its last compile took,
+        // -1 when unknown. Safe off the main thread.
+        public static bool NeedsCompile(StringView fxPath, StringView entry, StringView profile, CompileFlags flags, out int32 compileMs)
+        {
+            return Gfx_CheckShaderCache(fxPath.ToScopeCStr!(), entry.ToScopeCStr!(), profile.ToScopeCStr!(), (.)flags, out compileMs) != 0;
+        }
 
         // Registers a search directory for #include resolution (after the including file's own
         // directory). Register before loading any shader that depends on it.
@@ -101,7 +132,18 @@ namespace Beefy.gfx
 
         public this(void* nativeShader)
         {
-            mNativeShader = nativeShader;        
+            mNativeShader = nativeShader;
+        }
+
+        // A DeferLoad shader's load: safe off the main thread while nothing draws with it. Returns how many programs had
+        // to compile.
+        public Result<int> Load(String outError)
+        {
+            int32 compiled = Gfx_Shader_Load(mNativeShader);
+            if (compiled >= 0)
+                return compiled;
+            outError.Append(StringView(Gfx_GetShaderError(mNativeShader)));
+            return .Err;
         }
 
         public ~this()

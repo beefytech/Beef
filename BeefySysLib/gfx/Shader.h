@@ -34,6 +34,8 @@ enum ShaderFlags
 	// can be fed the compact depth stream (see DX_DEPTH_VERTEX_SIZE). Declared, not detected: probing
 	// by letting CreateInputLayout fail would put thousands of validation errors on the debug layer.
 	ShaderFlags_DepthStream = 4,
+	// Made without loading anything: a later Load does that, on any thread.
+	ShaderFlags_DeferLoad = 8,
 };
 
 class Shader
@@ -52,7 +54,9 @@ public:
 public:
 	Shader();
 	virtual ~Shader();
-	
+
+	// Safe off the main thread while nothing draws with it. Returns how many programs had to compile, -1 on failure.
+	virtual int				Load() { return mCompileError.IsEmpty() ? 0 : -1; }
 	virtual ShaderParam*	GetShaderParam(const StringImpl& name) = 0;
 };
 

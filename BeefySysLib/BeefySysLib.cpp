@@ -224,6 +224,12 @@ BF_EXPORT void BF_CALLTYPE BFApp_SetUnthrottledRendering(int enabled)
 	gBFApp->mUnthrottledRendering = enabled != 0;
 }
 
+// Catch-up updates ramp up again as they do at startup, so the long frames after a load don't burst into a run of them.
+BF_EXPORT void BF_CALLTYPE BFApp_ResetSlowStart()
+{
+	gBFApp->mSlowStartItr = 0;
+}
+
 BF_EXPORT void BF_CALLTYPE BFApp_NotifyOffscreenRender(BFWindow* window, int allowInstall)
 {
 	if ((window != NULL) && (gBFApp->mRenderDevice != NULL))
@@ -800,6 +806,61 @@ BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_LoadTexture(const char* fileName, int 
 	TextureSegment* aTextureSegment = new TextureSegment();
 	aTextureSegment->InitFromTexture(texture);
 	return aTextureSegment;
+}
+
+// Safe off the main thread; the texture isn't drawable until Gfx_RegisterTexture. NULL when the file can't load this
+// way (or at all).
+BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_LoadTextureDetached(const char* fileName, int flags)
+{
+	Texture* texture = gBFApp->mRenderDevice->LoadTextureDetached(fileName, flags);
+	if (texture == NULL)
+		return NULL;
+
+	TextureSegment* aTextureSegment = new TextureSegment();
+	aTextureSegment->InitFromTexture(texture);
+	return aTextureSegment;
+}
+
+// Safe off the main thread, like Gfx_LoadTextureDetached. bits is width * height RGBA, copied.
+BF_EXPORT TextureSegment* BF_CALLTYPE Gfx_CreateTextureDetached(int width, int height, uint32* bits, int flags)
+{
+	ImageData* imageData = new ImageData();
+	imageData->CreateNew(width, height, false);
+	memcpy(imageData->mBits, bits, width * height * sizeof(uint32));
+	Texture* texture = gBFApp->mRenderDevice->CreateTextureDetached(imageData, flags);
+	imageData->Deref();
+	if (texture == NULL)
+		return NULL;
+
+	TextureSegment* aTextureSegment = new TextureSegment();
+	aTextureSegment->InitFromTexture(texture);
+	return aTextureSegment;
+}
+
+// Safe off the main thread: the file's pixels as width * height RGBA, with no texture made. Free with
+// Gfx_FreeImageBits. NULL when it can't be decoded.
+BF_EXPORT uint32* BF_CALLTYPE Gfx_DecodeImageBits(const char* fileName, int flags, int* outWidth, int* outHeight)
+{
+	ImageData* imageData = gBFApp->mRenderDevice->DecodeImage(fileName, flags);
+	if (imageData == NULL)
+		return NULL;
+	int count = imageData->mWidth * imageData->mHeight;
+	uint32* bits = new uint32[count];
+	memcpy(bits, imageData->mBits, count * sizeof(uint32));
+	*outWidth = imageData->mWidth;
+	*outHeight = imageData->mHeight;
+	imageData->Deref();
+	return bits;
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_FreeImageBits(uint32* bits)
+{
+	delete [] bits;
+}
+
+BF_EXPORT void BF_CALLTYPE Gfx_RegisterTexture(TextureSegment* textureSegment)
+{
+	gBFApp->mRenderDevice->RegisterTexture(textureSegment->mTexture);
 }
 
 BF_EXPORT void BF_CALLTYPE Gfx_Texture_SetBits(TextureSegment* textureSegment, int destX, int destY, int destWidth, int destHeight, int srcPitch, uint32* bits)
@@ -1424,6 +1485,16 @@ BF_EXPORT void BF_CALLTYPE RenderState_SetAlphaToCoverage(RenderState* renderSta
 BF_EXPORT Shader* BF_CALLTYPE Gfx_LoadShader(const char* fileName, VertexDefinition* vertexDefinition, const char* entrySuffix, int32 shaderFlags)
 {
 	return gBFApp->mRenderDevice->LoadShader(fileName, vertexDefinition, entrySuffix, shaderFlags);
+}
+
+// Loads a shader made with ShaderFlags_DeferLoad. Returns how many programs had to compile, -1 on failure (see
+// Gfx_GetShaderError).
+BF_EXPORT int BF_CALLTYPE Gfx_Shader_Load(Shader* shader)
+{
+	int compiled = shader->Load();
+	if ((compiled < 0) && (shader->mCompileError.IsEmpty()))
+		shader->mCompileError = "Shader load failed";
+	return compiled;
 }
 
 // NULL = compiled clean; otherwise the compile error text (valid while the shader lives).

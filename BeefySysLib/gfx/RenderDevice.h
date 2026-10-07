@@ -432,6 +432,14 @@ public:
 	virtual Texture*		LoadTexture(ImageData* imageData, int flags) = 0;
 	virtual Texture*		CreateDynTexture(int width, int height) = 0;
 	virtual Texture*		LoadTexture(const StringImpl& fileName, int flags);
+	// NULL when the file can't be read or decoded.
+	ImageData*				DecodeImage(const StringImpl& fileName, int flags);
+	// Safe off the main thread: decodes and creates through the device only, registering nothing. NULL when this
+	// file can't be loaded that way. RegisterTexture, on the main thread, makes the result live.
+	virtual Texture*		LoadTextureDetached(const StringImpl& fileName, int flags) { return NULL; }
+	// The same from decoded pixels, which it may premultiply in place.
+	virtual Texture*		CreateTextureDetached(ImageData* imageData, int flags) { return NULL; }
+	virtual void			RegisterTexture(Texture* texture) {}
 	virtual Texture*		CreateRenderTarget(int width, int height, int flags, int sampleCount) = 0;
 	// Depth-only target: no color plane; the depth buffer itself is the sampleable resource.
 	virtual Texture*		CreateDepthTarget(int width, int height, bool is16Bit) { return NULL; }

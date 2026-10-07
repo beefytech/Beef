@@ -81,6 +81,21 @@ namespace Beefy.gfx
 		[CallingConvention(.Stdcall), CLink]
 		static extern void* Gfx_LoadTexture(char8* fileName, int32 flags);
 
+		[CallingConvention(.Stdcall), CLink]
+		static extern void* Gfx_LoadTextureDetached(char8* fileName, int32 flags);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void* Gfx_CreateTextureDetached(int32 width, int32 height, uint32* bits, int32 flags);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern uint32* Gfx_DecodeImageBits(char8* fileName, int32 flags, out int32 width, out int32 height);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_FreeImageBits(uint32* bits);
+
+		[CallingConvention(.Stdcall), CLink]
+		static extern void Gfx_RegisterTexture(void* textureSegment);
+
         [CallingConvention(.Stdcall), CLink]
         static extern void* Gfx_CreateDynTexture(int32 width, int32 height);
 
@@ -284,6 +299,50 @@ namespace Beefy.gfx
 
             return CreateFromNativeTextureSegment(aNativeTextureSegment);
         }
+
+		// Safe off the main thread: an image that can't be drawn until Register. Null when the file can't be loaded
+		// this way, which LoadFromFile may still manage.
+		public static Image LoadDetached(StringView fileName, LoadFlags flags)
+		{
+			var useFileName = scope String()..Append(fileName);
+			useFileName.Replace('\\', '/');
+			FilePackManager.TryMakeMemoryString(useFileName);
+			void* nativeTextureSegment = Gfx_LoadTextureDetached(useFileName, (int32)flags);
+			if (nativeTextureSegment == null)
+				return null;
+			return CreateFromNativeTextureSegment(nativeTextureSegment);
+		}
+
+		// Safe off the main thread, like LoadDetached: an image of width * height RGBA bits, which it copies.
+		public static Image CreateDetached(int32 width, int32 height, uint32* bits, LoadFlags flags)
+		{
+			void* nativeTextureSegment = Gfx_CreateTextureDetached(width, height, bits, (int32)flags);
+			if (nativeTextureSegment == null)
+				return null;
+			return CreateFromNativeTextureSegment(nativeTextureSegment);
+		}
+
+		// Safe off the main thread: a file's pixels as width * height RGBA, with no texture made. Null when it can't
+		// be decoded.
+		public static uint32[] DecodeBits(StringView fileName, LoadFlags flags, out int32 width, out int32 height)
+		{
+			var useFileName = scope String()..Append(fileName);
+			useFileName.Replace('\\', '/');
+			FilePackManager.TryMakeMemoryString(useFileName);
+			let nativeBits = Gfx_DecodeImageBits(useFileName, (int32)flags, out width, out height);
+			if (nativeBits == null)
+				return null;
+			let bits = new uint32[width * height];
+			Internal.MemCpy(bits.Ptr, nativeBits, bits.Count * sizeof(uint32));
+			Gfx_FreeImageBits(nativeBits);
+			return bits;
+		}
+
+		// Main thread: makes a detached image drawable.
+		public void Register()
+		{
+			Gfx_RegisterTexture(mNativeTextureSegment);
+		}
 
 		public static Image CreateDynamic(int width, int height)
 		{

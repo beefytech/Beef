@@ -26,7 +26,8 @@ void Beefy::AddShaderIncludeDir(const StringImpl& dir)
 	char last = entry[entry.length() - 1];
 	if ((last != '\\') && (last != '/'))
 		entry += "\\";
-	gShaderIncludeDirs.Add(entry);
+	if (!gShaderIncludeDirs.Contains(entry))
+		gShaderIncludeDirs.Add(entry);
 }
 
 const Array<String>& Beefy::GetShaderIncludeDirs()
@@ -160,7 +161,7 @@ VertexDefinition* Beefy::RenderDevice::CreateVertexDefinition(VertexDefData* ele
 	return vertexDefinition;
 }
 
-Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
+ImageData* RenderDevice::DecodeImage(const StringImpl& fileName, int flags)
 {
 	int dotPos = (int)fileName.LastIndexOf('.');
 	String ext;
@@ -169,7 +170,6 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 
 	ImageData* imageData = NULL;
 	bool handled = false;
-	bool failed = false;
 
 	if (fileName == "!white")
 	{
@@ -219,10 +219,9 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		void* memPtr = NULL;
 		int memLen = 0;
 		if (ParseMemorySpan(fileName, memPtr, memLen))
-		{			
+		{
 			if (!imageData->LoadFromMemory(memPtr, memLen))
 			{
-				failed = true;
 				delete imageData;
 				return NULL;
 			}
@@ -231,17 +230,20 @@ Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
 		{
 			if (!imageData->LoadFromFile(fileName))
 			{
-				failed = true;
 				delete imageData;
 				return NULL;
 			}
 		}
 	}
+	return imageData;
+}
 
-	Texture* aTexture = NULL;
-	if (!failed)
-		aTexture = LoadTexture(imageData, flags);
-
+Texture* RenderDevice::LoadTexture(const StringImpl& fileName, int flags)
+{
+	ImageData* imageData = DecodeImage(fileName, flags);
+	if (imageData == NULL)
+		return NULL;
+	Texture* aTexture = LoadTexture(imageData, flags);
 	imageData->Deref();
 	return aTexture;
 }

@@ -35,7 +35,7 @@ BFApp::BFApp()
 	mInProcess = false;
 	mProcessCount = 0;
 	mUpdateCnt = 0;
-	mNumPhysUpdates = 0;
+	mSlowStartItr = 0;
     mVSynched = true;
 	mMaxUpdatesPerDraw = 60; // 8?
     
@@ -271,8 +271,9 @@ void BFApp::Process()
     /*if (updates > 2)
         OutputDebugStrF("Updates: %d  TickDelta: %d\n", updates, tickNow - mLastProcessTick);*/	
     
-	// Compensate for "slow start" by limiting the number of catchup-updates we can do when starting the app
-	int maxUpdates = BF_MIN(mNumPhysUpdates + 1, mMaxUpdatesPerDraw);
+	// Compensate for "slow start" by limiting the number of catchup-updates we can do when starting the app, or
+	// again after BFApp_ResetSlowStart
+	int maxUpdates = BF_MIN(mSlowStartItr + 1, mMaxUpdatesPerDraw);
 
 	if ((presentPaced) || (mUnthrottledRendering))
 		mUpdateCntF += timeAdvance / ticksPerFrame;
@@ -336,7 +337,7 @@ void BFApp::Process()
 	}
 
 	if (didUpdateCnt > 0)
-		mNumPhysUpdates++;
+		mSlowStartItr++;
 
 	if ((mRunning) && (didUpdateCnt == 0) && (!externalSignaled) && (!mUnthrottledRendering))
 	{

@@ -380,7 +380,17 @@ void DXShader::ReleaseNative()
 
 extern "C" typedef HRESULT(WINAPI* Func_D3DX10Compile)(void* srcData, size_t srcSize, char* sourceName, CONST D3D10_SHADER_MACRO* pDefines, LPD3D10INCLUDE pInclude,
 	LPCSTR pFunctionName, LPCSTR pProfile, UINT Flags1, UINT Flags2, ID3D10Blob** ppShader, ID3D10Blob** ppErrorMsgs);
-static Func_D3DX10Compile gFunc_D3DX10Compile;
+
+// A function-local static, so loader threads can race to it.
+static Func_D3DX10Compile GetShaderCompiler()
+{
+	static Func_D3DX10Compile func = []() -> Func_D3DX10Compile
+		{
+			auto lib = LoadLibraryA("D3DCompiler_47.dll");
+			return (lib != NULL) ? (Func_D3DX10Compile)::GetProcAddress(lib, "D3DCompile") : NULL;
+		}();
+	return func;
+}
 
 // Include resolution shared by the compile-time ID3DInclude handler and the cache's include hash
 // walk -- the hash must cover exactly the files the compiler would open, so there is one resolver:
@@ -528,10 +538,42 @@ struct ShaderCacheHeader
 	uint32 mMagic;
 	uint32 mVersion;
 	uint64 mHash;
+	// Version 2 on: how long this program took to compile, the guess for its next compile
+	uint32 mCompileMs;
+	uint32 mReserved;
 };
 static const uint32 cShaderCacheMagic = 0x43534642; // 'BFSC'
-static const uint32 cShaderCacheVersion = 1;
+static const uint32 cShaderCacheVersion = 2;
+// Version 1 ends before mCompileMs; its caches stay valid.
+static const int cShaderCacheV1HeaderSize = 16;
 static const UINT cShaderCompileFlags = D3D10_SHADER_DEBUG | D3D10_SHADER_ENABLE_STRICTNESS;
+
+static UINT GetShaderCompileFlags(int shaderFlags)
+{
+	UINT compileFlags = cShaderCompileFlags;
+	if ((shaderFlags & ShaderFlags_NoOptimization) != 0)
+		compileFlags |= D3D10_SHADER_SKIP_OPTIMIZATION;
+	return compileFlags;
+}
+
+// Returns the header's size, or 0 for a legacy headerless (or corrupt) file. mCompileMs is -1 when not kept.
+static int ReadShaderCacheHeader(FILE* fp, int fileSize, ShaderCacheHeader& outHeader)
+{
+	outHeader = { 0 };
+	if ((fileSize < cShaderCacheV1HeaderSize) || (fread(&outHeader, cShaderCacheV1HeaderSize, 1, fp) != 1) ||
+		(outHeader.mMagic != cShaderCacheMagic))
+		return 0;
+	if (outHeader.mVersion == 1)
+	{
+		outHeader.mCompileMs = (uint32)-1;
+		return cShaderCacheV1HeaderSize;
+	}
+	int restSize = (int)sizeof(ShaderCacheHeader) - cShaderCacheV1HeaderSize;
+	if ((outHeader.mVersion != cShaderCacheVersion) || (fileSize < (int)sizeof(ShaderCacheHeader)) ||
+		(fread((uint8*)&outHeader + cShaderCacheV1HeaderSize, restSize, 1, fp) != 1))
+		return 0;
+	return (int)sizeof(ShaderCacheHeader);
+}
 
 static bool ReadShaderCache(const StringImpl& cachePath, uint64 wantHash, bool requireHashMatch, ID3D10Blob** outBuffer)
 {
@@ -543,17 +585,15 @@ static bool ReadShaderCache(const StringImpl& cachePath, uint64 wantHash, bool r
 	int fileSize = ftell(fp);
 	fseek(fp, 0, SEEK_SET);
 
-	ShaderCacheHeader header = { 0 };
-	int blobOfs = 0;
-	if ((fileSize >= (int)sizeof(header)) && (fread(&header, sizeof(header), 1, fp) == 1) &&
-		(header.mMagic == cShaderCacheMagic) && (header.mVersion == cShaderCacheVersion))
+	ShaderCacheHeader header;
+	int blobOfs = ReadShaderCacheHeader(fp, fileSize, header);
+	if (blobOfs != 0)
 	{
 		if ((requireHashMatch) && (header.mHash != wantHash))
 		{
 			fclose(fp);
 			return false;
 		}
-		blobOfs = sizeof(header);
 	}
 	else if (requireHashMatch)
 	{
@@ -575,20 +615,78 @@ static bool ReadShaderCache(const StringImpl& cachePath, uint64 wantHash, bool r
 	return readSize == blobSize;
 }
 
-static void WriteShaderCache(const StringImpl& cachePath, uint64 hash, ID3D10Blob* blob)
+// Written aside and renamed into place, so a loader thread compiling the same program never leaves a reader half a
+// file. A rename that loses to an open reader just skips this write.
+static void WriteShaderCache(const StringImpl& cachePath, uint64 hash, int compileMs, ID3D10Blob* blob)
 {
-	FILE* fp = fopen(cachePath.c_str(), "wb");
+	String tempPath = StrFormat("%s.%d.tmp", cachePath.c_str(), (int)GetCurrentThreadId());
+	FILE* fp = fopen(tempPath.c_str(), "wb");
 	if (fp == NULL)
 		return;
-	ShaderCacheHeader header = { cShaderCacheMagic, cShaderCacheVersion, hash };
+	ShaderCacheHeader header = { cShaderCacheMagic, cShaderCacheVersion, hash, (uint32)compileMs, 0 };
 	fwrite(&header, sizeof(header), 1, fp);
 	fwrite(blob->GetBufferPointer(), 1, blob->GetBufferSize(), fp);
 	fclose(fp);
+	for (int tryIdx = 0; tryIdx < 3; tryIdx++)
+	{
+		if (::MoveFileExA(tempPath.c_str(), cachePath.c_str(), MOVEFILE_REPLACE_EXISTING))
+			return;
+		::Sleep(1);
+	}
+	::DeleteFileA(tempPath.c_str());
+}
+
+static CritSect gShaderCompilesCritSect;
+static HashSet<String> gShaderCompiles;
+
+// One compile per cache file at a time: a thread that finds the program already being compiled waits for that, so a
+// loader thread refreshing the cache and a load that needs the program never both compile it.
+struct ShaderCompileClaim
+{
+	String mCachePath;
+	bool mWaited;
+
+	ShaderCompileClaim(const StringImpl& cachePath)
+	{
+		mCachePath = cachePath;
+		mWaited = false;
+		while (true)
+		{
+			{
+				AutoCrit autoCrit(gShaderCompilesCritSect);
+				if (gShaderCompiles.Add(mCachePath))
+					return;
+			}
+			mWaited = true;
+			::Sleep(1);
+		}
+	}
+
+	~ShaderCompileClaim()
+	{
+		AutoCrit autoCrit(gShaderCompilesCritSect);
+		gShaderCompiles.Remove(mCachePath);
+	}
+};
+
+static uint64 ShaderCacheHash(const StringImpl& filePath, const uint8* srcData, int srcSize, const StringImpl& entry, const StringImpl& profile, UINT compileFlags)
+{
+	uint64 hash = Hash64(srcData, srcSize);
+	{
+		// Fold in the include closure. A shader with no includes hashes exactly as before, so
+		// existing caches stay valid.
+		std::set<String> visited;
+		hash = HashShaderIncludes(GetFileDir(filePath), (const char*)srcData, srcSize, hash, visited);
+	}
+	hash = Hash64(entry.c_str(), (int)entry.length(), hash);
+	hash = Hash64(profile.c_str(), (int)profile.length(), hash);
+	hash = Hash64(&compileFlags, sizeof(compileFlags), hash);
+	return hash;
 }
 
 // Failure fills outError (if given) and returns false -- never fatal, so a bad user shader can be
 // reported instead of killing the app (see Gfx_GetShaderError).
-static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer, String* outError, UINT compileFlags)
+static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer, String* outError, UINT compileFlags, bool* outCompiled = NULL)
 {
 	String cachePath = filePath + "_" + entry + "_" + profile;
 
@@ -604,30 +702,22 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 		return false;
 	}
 
-	uint64 hash = Hash64(srcData, srcSize);
-	{
-		// Fold in the include closure. A shader with no includes hashes exactly as before, so
-		// existing caches stay valid.
-		std::set<String> visited;
-		hash = HashShaderIncludes(GetFileDir(filePath), (const char*)srcData, srcSize, hash, visited);
-	}
-	hash = Hash64(entry.c_str(), (int)entry.length(), hash);
-	hash = Hash64(profile.c_str(), (int)profile.length(), hash);
-	hash = Hash64(&compileFlags, sizeof(compileFlags), hash);
-
+	uint64 hash = ShaderCacheHash(filePath, srcData, srcSize, entry, profile, compileFlags);
 	if (ReadShaderCache(cachePath, hash, true, outBuffer))
 	{
 		delete [] srcData;
 		return true;
 	}
 
-	if (gFunc_D3DX10Compile == NULL)
+	ShaderCompileClaim claim(cachePath);
+	if ((claim.mWaited) && (ReadShaderCache(cachePath, hash, true, outBuffer)))
 	{
-		auto lib = LoadLibraryA("D3DCompiler_47.dll");
-		if (lib != NULL)
-			gFunc_D3DX10Compile = (Func_D3DX10Compile)::GetProcAddress(lib, "D3DCompile");
+		delete [] srcData;
+		return true;
 	}
-	if (gFunc_D3DX10Compile == NULL)
+
+	auto compile = GetShaderCompiler();
+	if (compile == NULL)
 	{
 		// No compiler on this machine: a stale cache still beats nothing.
 		delete [] srcData;
@@ -642,8 +732,10 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 	BFShaderIncludeHandler includeHandler;
 	includeHandler.mBaseDir = GetFileDir(filePath);
 	ID3D10Blob* errorMessage = NULL;
-	HRESULT dxResult = gFunc_D3DX10Compile(srcData, srcSize, (char*)filePath.c_str(), NULL, &includeHandler, entry.c_str(), profile.c_str(),
+	uint64 compileStart = BFGetTickCountMicro();
+	HRESULT dxResult = compile(srcData, srcSize, (char*)filePath.c_str(), NULL, &includeHandler, entry.c_str(), profile.c_str(),
 		compileFlags, 0, outBuffer, &errorMessage);
+	int compileMs = (int)((BFGetTickCountMicro() - compileStart) / 1000);
 	delete [] srcData;
 
 	if (FAILED(dxResult))
@@ -660,21 +752,70 @@ static bool LoadDXShader(const StringImpl& filePath, const StringImpl& entry, co
 		return false;
 	}
 
-	WriteShaderCache(cachePath, hash, *outBuffer);
+	WriteShaderCache(cachePath, hash, compileMs, *outBuffer);
+	if (outCompiled != NULL)
+		*outCompiled = true;
 	return true;
+}
+
+// Whether loading a program would compile it, without compiling: 1 when it would, 0 when its cache is current (or
+// there's no source or compiler, so the cache is used as is). outCompileMs gets its cache's last compile time, -1 when
+// unknown (no cache, or one from before the time was kept). Safe off the main thread.
+BF_EXPORT int BF_CALLTYPE Gfx_CheckShaderCache(const char* fxPath, const char* entry, const char* profile, int shaderFlags, int* outCompileMs)
+{
+	*outCompileMs = -1;
+	String filePath = fxPath;
+	String cachePath = filePath + "_" + entry + "_" + profile;
+	ShaderCacheHeader header;
+	int headerSize = 0;
+	FILE* fp = fopen(cachePath.c_str(), "rb");
+	if (fp != NULL)
+	{
+		fseek(fp, 0, SEEK_END);
+		int fileSize = ftell(fp);
+		fseek(fp, 0, SEEK_SET);
+		headerSize = ReadShaderCacheHeader(fp, fileSize, header);
+		fclose(fp);
+		if (headerSize != 0)
+			*outCompileMs = (int)header.mCompileMs;
+	}
+
+	int srcSize = 0;
+	uint8* srcData = LoadBinaryData(filePath, &srcSize);
+	if ((srcData == NULL) || (GetShaderCompiler() == NULL))
+	{
+		delete [] srcData;
+		return 0;
+	}
+	uint64 hash = ShaderCacheHash(filePath, srcData, srcSize, entry, profile, GetShaderCompileFlags(shaderFlags));
+	delete [] srcData;
+	return ((headerSize != 0) && (header.mHash == hash)) ? 0 : 1;
+}
+
+// Safe off the main thread: brings one program's cache up to date, compiling only when it's stale, so the device
+// load that follows reads it instead. -1 when the program doesn't compile, 1 when it had to, 0 when it was current.
+BF_EXPORT int BF_CALLTYPE Gfx_RefreshShaderCache(const char* fxPath, const char* entry, const char* profile)
+{
+	ID3D10Blob* blob = NULL;
+	bool compiled = false;
+	bool ok = LoadDXShader(fxPath, entry, profile, &blob, NULL, cShaderCompileFlags, &compiled);
+	if (blob != NULL)
+		blob->Release();
+	return !ok ? -1 : compiled ? 1 : 0;
 }
 
 static bool LoadDXShader(Span<uint8> fileData, const StringImpl& entry, const StringImpl& profile, ID3D10Blob** outBuffer, String* outError, UINT compileFlags)
 {
-	if (gFunc_D3DX10Compile == NULL)
+	auto compile = GetShaderCompiler();
+	if (compile == NULL)
 	{
-		auto lib = LoadLibraryA("D3DCompiler_47.dll");
-		if (lib != NULL)
-			gFunc_D3DX10Compile = (Func_D3DX10Compile)::GetProcAddress(lib, "D3DCompile");
+		if (outError != NULL)
+			*outError = "Shader compiler unavailable";
+		return false;
 	}
 
 	ID3D10Blob* errorMessage = NULL;
-	auto dxResult = gFunc_D3DX10Compile(fileData.mVals, fileData.mSize, "ShaderSource", NULL, NULL, entry.c_str(), profile.c_str(),
+	auto dxResult = compile(fileData.mVals, fileData.mSize, "ShaderSource", NULL, NULL, entry.c_str(), profile.c_str(),
 		compileFlags, 0, outBuffer, &errorMessage);
 
 	if (FAILED(dxResult))
@@ -694,13 +835,11 @@ static bool LoadDXShader(Span<uint8> fileData, const StringImpl& entry, const St
 	return true;
 }
 
-bool DXShader::Load()
+int DXShader::Load()
 {
 	mCompileError.Clear();
 
-	UINT compileFlags = cShaderCompileFlags;
-	if ((mShaderFlags & ShaderFlags_NoOptimization) != 0)
-		compileFlags |= D3D10_SHADER_SKIP_OPTIMIZATION;
+	UINT compileFlags = GetShaderCompileFlags(mShaderFlags);
 
 	bool sm5 = (mShaderFlags & ShaderFlags_ShaderModel5) != 0;
 	String vsProfile = sm5 ? "vs_5_0" : "vs_4_0";
@@ -708,6 +847,8 @@ bool DXShader::Load()
 
 	ID3D10Blob* vertexShaderBuffer = NULL;
 	ID3D10Blob* pixelShaderBuffer = NULL;
+	bool vsCompiled = false;
+	bool psCompiled = false;
 
 	void* memPtr = NULL;
 	int memSize = 0;
@@ -736,8 +877,8 @@ bool DXShader::Load()
 	else
 	{
 		String fxPath = mSrcPath + ".fx";
-		if (LoadDXShader(fxPath, String("VS") + mEntrySuffix, vsProfile, &vertexShaderBuffer, &mCompileError, compileFlags))
-			LoadDXShader(fxPath, String("PS") + mEntrySuffix, psProfile, &pixelShaderBuffer, &mCompileError, compileFlags);
+		if (LoadDXShader(fxPath, String("VS") + mEntrySuffix, vsProfile, &vertexShaderBuffer, &mCompileError, compileFlags, &vsCompiled))
+			LoadDXShader(fxPath, String("PS") + mEntrySuffix, psProfile, &pixelShaderBuffer, &mCompileError, compileFlags, &psCompiled);
 	}
 
 	if ((vertexShaderBuffer == NULL) || (pixelShaderBuffer == NULL))
@@ -749,7 +890,7 @@ bool DXShader::Load()
 			vertexShaderBuffer->Release();
 		if (pixelShaderBuffer != NULL)
 			pixelShaderBuffer->Release();
-		return false;
+		return -1;
 	}
 
 	defer(
@@ -840,7 +981,7 @@ bool DXShader::Load()
 		vertexShaderBuffer->GetBufferSize(), &mD3DLayout);
 	DXCHECK(result);
 	if (FAILED(result))
-		return false;
+		return -1;
 
 	int instElemIdx = mVertexDef->mInstanceElementIdx;
 	if ((instElemIdx >= 0) && (instElemIdx < mVertexDef->mNumElements))
@@ -863,7 +1004,7 @@ bool DXShader::Load()
 			vertexShaderBuffer->GetBufferSize(), &mD3DInstLayout);
 		DXCHECK(result);
 		if (FAILED(result))
-			return false;
+			return -1;
 
 		// And the compact depth stream, for shaders that declare they read only that subset
 		// (ShaderFlags_DepthStream): position and the bone slots on slot 0, the instance element on
@@ -894,16 +1035,16 @@ bool DXShader::Load()
 	result = mRenderDevice->mD3DDevice->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), NULL, &mD3DVertexShader);
 	DXCHECK(result);
 	if (FAILED(result))
-		return false;
+		return -1;
 
 	// Create the pixel shader from the buffer.
 	result = mRenderDevice->mD3DDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(), pixelShaderBuffer->GetBufferSize(), NULL, &mD3DPixelShader);
 	DXCHECK(result);
 	if (FAILED(result))
-		return false;
+		return -1;
 
 	Init();
-	return true;
+	return (vsCompiled ? 1 : 0) + (psCompiled ? 1 : 0);
 }
 
 void DXShader::ReinitNative()
@@ -946,6 +1087,7 @@ DXTexture::DXTexture()
 	mLoadFlags = 0;
 	mLoadedImage = false;
 	mTranslucentSrgb = false;
+	mPendingMips = false;
 	mD3DFormat = DXGI_FORMAT_R8G8B8A8_UNORM;
 	mSampleCount = 1;
 	mStandardDepthClear = false;
@@ -4671,7 +4813,9 @@ static uint8 PremultiplySrgb(uint8 color, uint8 alpha, bool alreadyPremultiplied
 	return table.mValues[color][alpha];
 }
 
-Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
+// Through the device alone, so safe off the main thread. A mipmapped texture gets mip 0 here and the rest from
+// RegisterTexture's GenerateMips, which needs the context.
+DXTexture* DXRenderDevice::CreateDetachedTexture(ImageData* imageData, int flags)
 {
 	ID3D11ShaderResourceView* d3DShaderResourceView = NULL;
 
@@ -4726,14 +4870,25 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 
 	if (wantMipmaps)
 	{
-		// GenerateMips requires the texture be created empty (MipLevels=0 for a full chain, bound
-		// as both SRV and RT) and populated afterward -- can't supply initial subresource data here.
-		desc.MipLevels = 0;
+		// Initial data must cover every level, so the levels GenerateMips will overwrite start as zeros.
+		int mipCount = 1;
+		for (int size = BF_MAX(aWidth, aHeight); size > 1; size >>= 1)
+			mipCount++;
+		desc.MipLevels = mipCount;
 		desc.BindFlags = D3D11_BIND_SHADER_RESOURCE | D3D11_BIND_RENDER_TARGET;
 		desc.MiscFlags = D3D11_RESOURCE_MISC_GENERATE_MIPS;
 
-		DXCHECK(mD3DDevice->CreateTexture2D(&desc, NULL, &d3DTexture));
-		mD3DDeviceContext->UpdateSubresource(d3DTexture, 0, NULL, uploadBits, aWidth * 4, 0);
+		void* zeros = calloc(BF_MAX(aWidth / 2, 1) * BF_MAX(aHeight / 2, 1), 4);
+		Array<D3D11_SUBRESOURCE_DATA> levels;
+		levels.Resize(mipCount);
+		for (int level = 0; level < mipCount; level++)
+		{
+			levels[level].pSysMem = (level == 0) ? (void*)uploadBits : zeros;
+			levels[level].SysMemPitch = BF_MAX(aWidth >> level, 1) * 4;
+			levels[level].SysMemSlicePitch = 0;
+		}
+		DXCHECK(mD3DDevice->CreateTexture2D(&desc, levels.mVals, &d3DTexture));
+		free(zeros);
 	}
 	else
 	{
@@ -4758,9 +4913,6 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 
 	DXCHECK(mD3DDevice->CreateShaderResourceView(d3DTexture, &srDesc, &d3DShaderResourceView));
 
-	if (wantMipmaps)
-		mD3DDeviceContext->GenerateMips(d3DShaderResourceView);
-
 	DXTexture* aTexture = new DXTexture();
 
 	if ((flags & TextureFlag_KeepPixels) != 0)
@@ -4778,14 +4930,47 @@ Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
 	aTexture->mD3DTexture = d3DTexture;
 	aTexture->mD3DFormat = desc.Format;
 	aTexture->mD3DResourceView = d3DShaderResourceView;
+	aTexture->mPendingMips = wantMipmaps;
 	aTexture->AddRef();
-
-	mTextures.Add(aTexture);
-	mAllTextures.Add(aTexture);
-
-	//OutputDebugStrF("gTextureIdx=%d %@\n", gTextureIdx, aTexture);
-
 	return aTexture;
+}
+
+void DXRenderDevice::RegisterTexture(Texture* texture)
+{
+	DXTexture* dxTexture = (DXTexture*)texture;
+	if (dxTexture->mPendingMips)
+	{
+		mD3DDeviceContext->GenerateMips(dxTexture->mD3DResourceView);
+		dxTexture->mPendingMips = false;
+	}
+	mTextures.Add(dxTexture);
+	mAllTextures.Add(dxTexture);
+}
+
+Texture* DXRenderDevice::LoadTexture(ImageData* imageData, int flags)
+{
+	DXTexture* aTexture = CreateDetachedTexture(imageData, flags);
+	RegisterTexture(aTexture);
+	return aTexture;
+}
+
+Texture* DXRenderDevice::LoadTextureDetached(const StringImpl& fileName, int flags)
+{
+	// The load cache and DDS files go through the shared tables.
+	if (((flags & TextureFlag_UseLoadCache) != 0) || (fileName.EndsWith(".dds", StringImpl::CompareKind_OrdinalIgnoreCase)))
+		return NULL;
+	ImageData* imageData = DecodeImage(fileName, flags);
+	if (imageData == NULL)
+		return NULL;
+	DXTexture* aTexture = CreateDetachedTexture(imageData, flags);
+	imageData->Deref();
+	aTexture->mPath = fileName;
+	return aTexture;
+}
+
+Texture* DXRenderDevice::CreateTextureDetached(ImageData* imageData, int flags)
+{
+	return CreateDetachedTexture(imageData, flags);
 }
 
 Texture* DXRenderDevice::CreateDynTexture(int width, int height)
@@ -4841,11 +5026,12 @@ Shader* DXRenderDevice::LoadShader(const StringImpl& fileName, VertexDefinition*
 	dxShader->mRenderDevice = this;
 	dxShader->mSrcPath = fileName;
 	dxShader->mEntrySuffix = entrySuffix;
-	dxShader->mShaderFlags = shaderFlags;
+	dxShader->mShaderFlags = shaderFlags & ~ShaderFlags_DeferLoad;
 	dxShader->mVertexDef = new VertexDefinition(vertexDefinition);
 	// A failed Load still returns the object, with mCompileError set -- Gfx_GetShaderError
 	// surfaces it to the caller, who must not draw with it.
-	dxShader->Load();
+	if ((shaderFlags & ShaderFlags_DeferLoad) == 0)
+		dxShader->Load();
 	mShaders.Add(dxShader);
 	return dxShader;
 }

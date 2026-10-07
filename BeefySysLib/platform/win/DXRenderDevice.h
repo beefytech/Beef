@@ -97,6 +97,8 @@ public:
 	// An sRGB image with translucent texels stores linear-premultiplied color, which no raw view
 	// can undo.
 	bool					mTranslucentSrgb;
+	// Created with only mip 0 filled; RegisterTexture generates the rest.
+	bool					mPendingMips;
 	DXGI_FORMAT				mD3DFormat;
 	int						mSampleCount;
 	// Scene depth is reverse-Z (cleared to 0); shadow atlases stay standard-Z (cleared to 1).
@@ -250,7 +252,7 @@ public:
 	void					ReleaseNative();
 	void					ReinitNative();
 
-	bool					Load();
+	virtual int				Load() override;
 	virtual ShaderParam*	GetShaderParam(const StringImpl& name) override;
 };
 
@@ -723,6 +725,10 @@ public:
 
 	Texture*				LoadTexture(const StringImpl& fileName, int flags) override;
 	Texture*				LoadTexture(ImageData* imageData, int flags) override;
+	DXTexture*				CreateDetachedTexture(ImageData* imageData, int flags);
+	Texture*				LoadTextureDetached(const StringImpl& fileName, int flags) override;
+	Texture*				CreateTextureDetached(ImageData* imageData, int flags) override;
+	void					RegisterTexture(Texture* texture) override;
 	Texture*				CreateDynTexture(int width, int height) override;
 	Shader*					LoadShader(const StringImpl& fileName, VertexDefinition* vertexDefinition, const StringImpl& entrySuffix, int shaderFlags) override;
 	void					ReleaseShader(Shader* shader) override;

@@ -69,6 +69,27 @@ BF_EXPORT int32 BF_CALLTYPE ModelDef_GetCollisionTriangles(ModelDef* modelDef, M
 	return (int32)out.mSize;
 }
 
+// The same for one mesh (meshIdx < 0: all of them), unposed and without an instance, so any thread may read a def that
+// isn't being modified.
+BF_EXPORT int32 BF_CALLTYPE ModelDef_GetMeshCollisionTriangles(ModelDef* modelDef, int32 meshIdx, Vector3** outPositions)
+{
+	Array<Vector3>& out = *gModelDef_TLPositionsReturn.Get();
+	out.Clear();
+
+	for (int32 idx = 0; idx < modelDef->mMeshes.mSize; idx++)
+	{
+		if ((meshIdx >= 0) && (idx != meshIdx))
+			continue;
+		for (auto& prims : modelDef->mMeshes[idx].mPrimitives)
+			for (int i = 0; i + 2 < (int)prims.mIndices.mSize; i += 3)
+				for (int k = 0; k < 3; k++)
+					out.Add(prims.mVertices[prims.mIndices[i + k]].mPosition);
+	}
+
+	*outPositions = out.IsEmpty() ? NULL : out.mVals;
+	return (int32)out.mSize;
+}
+
 void Beefy::ModelAnimation::GetJointTranslation(int jointIdx, float frameNum, ModelJointTranslation* outJointTranslation)
 {
 	// Frame 35

@@ -118,6 +118,9 @@ namespace Beefy
         public static extern void BFApp_SetUnthrottledRendering(int32 enabled);
 
         [CallingConvention(.Stdcall), CLink]
+        public static extern void BFApp_ResetSlowStart();
+
+        [CallingConvention(.Stdcall), CLink]
         static extern void BFApp_NotifyOffscreenRender(void* window, int32 allowInstall);
 
         [CallingConvention(.Stdcall), CLink]

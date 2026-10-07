@@ -481,8 +481,12 @@ bool GLTFReader::ParseMaterialDef(ModelMaterialDef* materialDef, const StringImp
 	return true;
 }
 
+// Material defs are shared between models, which may load on several threads; a def is only seen once it is whole.
+static CritSect gMaterialDefCritSect;
+
 ModelMaterialDef* GLTFReader::LoadMaterial(const StringImpl& relPath)
 {
+	AutoCrit autoCrit(gMaterialDefCritSect);
 	String propsPath;
 	if (relPath.StartsWith('/'))
 	{
