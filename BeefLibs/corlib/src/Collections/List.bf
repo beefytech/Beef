@@ -420,8 +420,14 @@ namespace System.Collections
 				Add(item);
 		}
 
+		public void AddRange<TEnumable, TItem>(TEnumable items) where T : operator implicit TItem where TEnumable : IEnumerable<TItem>
+		{
+			for (let item in items.GetEnumerator())
+				Add(item);
+		}
+
 		// The extra constraint makes this the better match, so span-convertible collections block copy
-		public void AddRange<TEnumable>(TEnumable items) where TEnumable : IEnumerable<T> where Span<T> : operator implicit TEnumable
+		public void AddRange<TEnumable, TItem>(TEnumable items) where T : operator implicit TItem where TEnumable : IEnumerable<TItem> where Span<T> : operator implicit TEnumable
 		{
 			AddRange((Span<T>)items);
 		}
