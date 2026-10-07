@@ -3,6 +3,7 @@ using System.Threading;
 
 namespace System.Globalization
 {
+	[StaticInitPriority(200)]
 	class CultureInfo : IFormatProvider
 	{
 		//public static readonly CultureInfo CurrentCulture = null;
