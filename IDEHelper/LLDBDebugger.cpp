@@ -11,7 +11,9 @@
 #ifdef __linux__
 #include <limits.h>
 #include <unistd.h>
-#include <cxxabi.h>
+// LLVM's demangler rather than <cxxabi.h>: LLVM's include directory comes first, and when it holds libc++abi's
+//  cxxabi.h, that one conflicts with libstdc++ and needs __has_feature, which older GCCs lack
+#include "llvm/Demangle/Demangle.h"
 #include <signal.h>
 #include <termios.h>
 #include <fcntl.h>
@@ -4130,9 +4132,8 @@ bool LLDBDebugger::HotFindThreadLocalOffset(const char* qualifiedName, uint64& o
 		mHotTlsDemangled.Clear();
 		auto _Add = [&](const StringImpl& mangledName, uint64 offset)
 		{
-			int status = 0;
-			char* demangled = abi::__cxa_demangle(mangledName.c_str(), NULL, NULL, &status);
-			if ((status == 0) && (demangled != NULL))
+			char* demangled = llvm::itaniumDemangle(std::string_view(mangledName.c_str(), mangledName.length()));
+			if (demangled != NULL)
 				mHotTlsDemangled[demangled] = offset;
 			free(demangled);
 		};
