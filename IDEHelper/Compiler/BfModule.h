@@ -1960,7 +1960,7 @@ public:
 	BfType* ResolveType(BfType* lookupType, BfPopulateType populateType = BfPopulateType_Data, BfResolveTypeRefFlags resolveFlags = BfResolveTypeRefFlag_None);
 	void ResolveGenericParamConstraints(BfGenericParamInstance* genericParamInstance, bool isUnspecialized, Array<BfTypeReference*>* deferredResolveTypes = NULL);
 	String GenericParamSourceToString(const BfGenericParamSource& genericParamSource);
-	bool CheckGenericConstraints(const BfGenericParamSource& genericParamSource, BfType* checkArgType, BfAstNode* checkArgTypeRef, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs = NULL, BfError** errorOut = NULL);
+	bool CheckGenericConstraints(const BfGenericParamSource& genericParamSource, BfType* checkArgType, BfAstNode* checkArgTypeRef, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs = NULL, BfError** errorOut = NULL, BfTypeVector* typeGenericArgs = NULL);
 	BfIRValue AllocLocalVariable(BfType* type, const StringImpl& name, bool doLifetimeEnd = true);
 	BfTypedValue CreateOutVariable(BfAstNode* refNode, BfVariableDeclaration* variableDeclaration, BfAstNode* paramNameNode, BfType* variableType, BfTypedValue initValue);
 	void MoveLocalToParentScope(BfLocalVariable* localVar);

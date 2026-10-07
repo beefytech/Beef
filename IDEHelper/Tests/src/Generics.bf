@@ -572,6 +572,35 @@ namespace Tests
 		{
 			CheckUninferableArgument(scope List<int>());
 		}
+
+		class OverloadedRange<T>
+		{
+			public int AddRange<TEnumerable>(TEnumerable items) where TEnumerable : IEnumerable<T> => 1;
+			public int AddRange<TEnumerable, TItem>(TEnumerable items) where T : operator implicit TItem where TEnumerable : IEnumerable<TItem> => 2;
+		}
+
+		// Called from a generic method, the owner is specialized with the caller's generic params. Overload matching substituted
+		//  the callee's method generic args into constraints that referred to the caller's params (both are method generic
+		//  params, by index), so both overloads were rejected and the call failed to compile
+		static int AddConverted<T, T2>(OverloadedRange<T> dst, List<T2> src) where T : operator implicit T2
+		{
+			return dst.AddRange(src);
+		}
+
+		static void CopyConverted<T, T2>(List<T> dst, List<T2> src) where T : operator implicit T2
+		{
+			dst.AddRange(src);
+		}
+
+		[Test]
+		public static void TestGenericCallerConstraints()
+		{
+			Test.Assert(AddConverted(scope OverloadedRange<int64>(), scope List<int32>()) == 2);
+
+			List<int64> dst = scope .();
+			CopyConverted(dst, scope List<int32>() { 1, 2, 3 });
+			Test.Assert((dst.Count == 3) && (dst[2] == 3));
+		}
 	}
 
 	class ConstGenerics

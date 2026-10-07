@@ -9083,7 +9083,7 @@ String BfModule::GenericParamSourceToString(const BfGenericParamSource & generic
 	}
 }
 
-bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamSource, BfType* checkArgType, BfAstNode* checkArgTypeRef, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs, BfError** errorOut)
+bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamSource, BfType* checkArgType, BfAstNode* checkArgTypeRef, BfGenericParamInstance* genericParamInst, BfTypeVector* methodGenericArgs, BfError** errorOut, BfTypeVector* typeGenericArgs)
 {
 	Array<String> methodParamNameOverrides;
 	auto _TypeToString = [&](BfType* type)
@@ -9399,7 +9399,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 		{
 			BfType* convCheckConstraint = genericParamInst->mTypeConstraint;
 			if ((convCheckConstraint->IsUnspecializedType()) && (methodGenericArgs != NULL))
-				convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs, mCurTypeInstance);
+				convCheckConstraint = ResolveGenericType(convCheckConstraint, typeGenericArgs, methodGenericArgs, mCurTypeInstance);
 			if (convCheckConstraint == NULL)
 				return false;
 
@@ -9483,7 +9483,7 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		BfType* convCheckConstraint = checkConstraint;
 		if (convCheckConstraint->IsUnspecializedType())
-			convCheckConstraint = ResolveGenericType(convCheckConstraint, NULL, methodGenericArgs, mCurTypeInstance);
+			convCheckConstraint = ResolveGenericType(convCheckConstraint, typeGenericArgs, methodGenericArgs, mCurTypeInstance);
 		if (convCheckConstraint == NULL)
 			return false;
 
@@ -9546,13 +9546,13 @@ bool BfModule::CheckGenericConstraints(const BfGenericParamSource& genericParamS
 	{
 		auto leftType = checkOpConstraint.mLeftType;
 		if ((leftType != NULL) && (leftType->IsUnspecializedType()))
-			leftType = ResolveGenericType(leftType, NULL, methodGenericArgs, mCurTypeInstance);
+			leftType = ResolveGenericType(leftType, typeGenericArgs, methodGenericArgs, mCurTypeInstance);
 		if (leftType != NULL)
 			leftType = FixIntUnknown(leftType);
 
 		auto rightType = checkOpConstraint.mRightType;
 		if ((rightType != NULL) && (rightType->IsUnspecializedType()))
-			rightType = ResolveGenericType(rightType, NULL, methodGenericArgs, mCurTypeInstance);
+			rightType = ResolveGenericType(rightType, typeGenericArgs, methodGenericArgs, mCurTypeInstance);
 		if (rightType != NULL)
 			rightType = FixIntUnknown(rightType);
 

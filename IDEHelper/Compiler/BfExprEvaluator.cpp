@@ -1720,6 +1720,14 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 	if (typeInstance->mGenericTypeInfo != NULL)
 		typeGenericArguments = &typeInstance->mGenericTypeInfo->mTypeGenericArguments;
 
+	// When the owner is specialized with the caller's own generic params (ie: calling List<T>.AddRange from a generic method),
+	//  the owner's specialized constraints refer to those params. They are method generic params by index, just as this method's
+	//  own are, so substituting this method's generic args into them confuses the two. Constraints are checked against the
+	//  unspecialized owner's instead, resolving the owner's type args and this method's args together
+	bool checkUnspecConstraints = (typeInstance->IsUnspecializedTypeVariation()) && (typeGenericArguments != NULL) &&
+		(typeUnspecMethodInstance != methodInstance) && (typeUnspecMethodInstance->mMethodInfoEx != NULL) && (methodInstance->mMethodInfoEx != NULL) &&
+		(typeUnspecMethodInstance->mMethodInfoEx->mGenericParams.size() == methodInstance->mMethodInfoEx->mGenericParams.size());
+
 	if ((mInterfaceMethodInstance != NULL) && (methodInstance->GetExplicitInterface() != NULL))
 	{
 		BfTypeInstance* wantInterface = mInterfaceMethodInstance->mMethodInstanceGroup->mOwner;
@@ -2460,7 +2468,13 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			if (genericArg == NULL)
 				goto NoMatch;
 
-			if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), genericArg, NULL, genericParams[checkGenericIdx], genericArgumentsSubstitute, NULL))
+			if (checkUnspecConstraints)
+			{
+				if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), genericArg, NULL, typeUnspecMethodInstance->mMethodInfoEx->mGenericParams[checkGenericIdx],
+					genericArgumentsSubstitute, NULL, typeGenericArguments))
+					goto NoMatch;
+			}
+			else if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), genericArg, NULL, genericParams[checkGenericIdx], genericArgumentsSubstitute, NULL))
 				goto NoMatch;
 		}
 	}
@@ -2471,8 +2485,26 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 		BF_ASSERT(genericParam->mExternType != NULL);
 		auto externType = genericParam->mExternType;
 		BfTypeVector* externGenericArgumentsSubstitute = genericArgumentsSubstitute;
+		BfTypeVector* externTypeGenericArguments = NULL;
+		bool externTypeResolved = false;
 
-		if (externType->IsVar())
+		if (checkUnspecConstraints)
+		{
+			// See checkUnspecConstraints: the extern type is the caller's generic param here, which must not be substituted again
+			auto unspecGenericParam = typeUnspecMethodInstance->mMethodInfoEx->mGenericParams[checkMethod->mGenericParams.size() + externConstraintIdx];
+			if ((unspecGenericParam->mExternType != NULL) && (!unspecGenericParam->mExternType->IsVar()))
+			{
+				auto resolvedExternType = mModule->ResolveGenericType(unspecGenericParam->mExternType, typeGenericArguments, genericArgumentsSubstitute, mModule->mCurTypeInstance, false);
+				if (resolvedExternType == NULL)
+					goto NoMatch;
+				genericParam = unspecGenericParam;
+				externType = resolvedExternType;
+				externTypeGenericArguments = typeGenericArguments;
+				externTypeResolved = true;
+			}
+		}
+
+		if ((!externTypeResolved) && (externType->IsVar()))
 		{
 			auto& externConstraint = checkMethod->mExternalConstraints[externConstraintIdx];
 			if (externConstraint.mTypeRef != NULL)
@@ -2483,7 +2515,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			}
 		}
 
-		if (externType->IsGenericParam())
+		if ((!externTypeResolved) && (externType->IsGenericParam()))
 		{
 			auto genericParamType = (BfGenericParamType*)externType;
 			if (genericParamType->mGenericParamKind == BfGenericParamKind_Method)
@@ -2502,7 +2534,7 @@ bool BfMethodMatcher::CheckMethod(BfTypeInstance* targetTypeInstance, BfTypeInst
 			}
 		}
 
- 		if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), externType, NULL, genericParam, externGenericArgumentsSubstitute, NULL))
+ 		if (!mModule->CheckGenericConstraints(BfGenericParamSource(methodInstance), externType, NULL, genericParam, externGenericArgumentsSubstitute, NULL, externTypeGenericArguments))
  			goto NoMatch;
 	}
 
