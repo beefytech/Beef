@@ -7249,9 +7249,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	auto methodInstOwner = methodInstance->GetOwner();
 	auto expectCallingConvention = mModule->GetIRCallingConvention(methodInstance);
-	// Win64 class 'this' parameters also need ThisCall to preserve the hidden struct-return argument layout.
-	if (((mModule->mCompiler->mOptions.mMachineType == BfMachineType_x86) ||
-		(mModule->mCompiler->mOptions.mMachineType == BfMachineType_x64)) &&
+	// Only x86 has a distinct 'thiscall' - on x64 instance methods are CDecl, and calling through a function pointer
+	//  matches them by placing sret after the explicit 'this' (see BfMethodInstance::GetStructRetIdx)
+	if ((mModule->mCompiler->mOptions.mMachineType == BfMachineType_x86) &&
 		(mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows) &&
 		(methodInstOwner->IsFunction()) && (methodInstance->GetParamCount() > 0) && (methodInstance->GetParamName(0) == "this"))
 	{

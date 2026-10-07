@@ -986,11 +986,18 @@ int BfMethodInstance::GetStructRetIdx(bool forceStatic)
 		if ((returnTypeInst != NULL) && (returnTypeInst->mHasUnderlyingArray))
 			return -1;
 
-		auto thisType = mMethodInstanceGroup->mOwner;
-		if (thisType->mModule->mCompiler->mOptions.mPlatformType != BfPlatformType_Windows)
+		auto owner = mMethodInstanceGroup->mOwner;
+		if (owner->mModule->mCompiler->mOptions.mPlatformType != BfPlatformType_Windows)
 			return 0;
+		BfType* thisType = owner;
 		if ((mMethodInfoEx != NULL) && (mMethodInfoEx->mClosureInstanceInfo != NULL) && (mMethodInfoEx->mClosureInstanceInfo->mThisOverride != NULL))
 			thisType = mMethodInfoEx->mClosureInstanceInfo->mThisOverride;
+		else if ((mMethodDef->mHasExplicitThis) && (!mParams.IsEmpty()))
+		{
+			// A function type with an explicit 'this' calls an instance method of that type, so the sret position
+			//  must follow that type (not the function type itself), or the sret and 'this' args are swapped
+			thisType = mParams[0].mResolvedType;
+		}
 
 		if ((!HasThis()) || (forceStatic))
 			return 0;

@@ -224,6 +224,70 @@ namespace Tests
 			Test.Assert(func(ca, ca) case .Ok);
 		}
 
+		struct RetBig
+		{
+			public int64 mA;
+			public int64 mB;
+		}
+
+		struct RetSmall
+		{
+			public int32 mA;
+			public int32 mB;
+		}
+
+		class RetHolder
+		{
+			public int mVal = 7;
+
+			public RetBig GetBig(int64 x) => .() { mA = mVal, mB = x };
+			public RetSmall GetSmall(int32 x) => .() { mA = (int32)mVal, mB = x };
+		}
+
+		// Four fields, so not splattable
+		struct RetWide
+		{
+			public int32 mA, mB, mC, mD;
+
+			public RetBig GetBig(int64 x) => .() { mA = mA + mD, mB = x };
+		}
+
+		// A function with an explicit 'this' must pass the struct-return pointer after 'this', as the instance method
+		//  takes it. Optimized code calls the known target directly, so the call must match the method's signature
+		static mixin CheckInstanceStructReturns()
+		{
+			RetHolder holder = scope .();
+			function RetBig (RetHolder this, int64 x) getBig = => RetHolder.GetBig;
+			RetBig big = getBig(holder, 42);
+			Test.Assert((big.mA == 7) && (big.mB == 42));
+			function RetSmall (RetHolder this, int32 x) getSmall = => RetHolder.GetSmall;
+			RetSmall small = getSmall(holder, 42);
+			Test.Assert((small.mA == 7) && (small.mB == 42));
+
+			RetWide wide = .() { mA = 1, mB = 2, mC = 3, mD = 4 };
+			function RetBig (RetWide this, int64 x) getWideBig = => RetWide.GetBig;
+			RetBig wideBig = getWideBig(wide, 42);
+			Test.Assert((wideBig.mA == 5) && (wideBig.mB == 42));
+		}
+
+		[Test]
+		public static void TestInstanceStructReturns()
+		{
+			CheckInstanceStructReturns!();
+		}
+
+		[Test, UseLLVM]
+		public static void TestInstanceStructReturnsLLVM()
+		{
+			CheckInstanceStructReturns!();
+		}
+
+		[Test, Optimize]
+		public static void TestInstanceStructReturnsOptimized()
+		{
+			CheckInstanceStructReturns!();
+		}
+
 		[Test]
 		public static void TestBasics()
 		{
