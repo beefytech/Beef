@@ -405,5 +405,62 @@ namespace Tests
 				Test.Assert(entry.mA == @entry.Index * 2 + 1);
 			}
 		}
+
+		// Four floats lower to two registers, but a CRepr 'this' is always passed by pointer. Calls used to
+		//  count 'this' as two arguments when placing attributes, shifting every later one by one argument
+		[CRepr]
+		struct CReprQuad
+		{
+			public float mX, mY, mZ, mW;
+
+			public this(float x, float y, float z, float w)
+			{
+				mX = x;
+				mY = y;
+				mZ = z;
+				mW = w;
+			}
+
+			[NoInline]
+			public CReprQuad Lerp(in CReprQuad target, float t)
+			{
+				return .(mX + (target.mX - mX) * t, mY + (target.mY - mY) * t, mZ + (target.mZ - mZ) * t, mW + (target.mW - mW) * t);
+			}
+
+			[NoInline]
+			public float Dot3(in CReprQuad a, in CReprQuad b)
+			{
+				return mX * a.mX * b.mX + mY * a.mY * b.mY + mZ * a.mZ * b.mZ + mW * a.mW * b.mW;
+			}
+
+			[NoInline]
+			public float Scale(float t, bool negate)
+			{
+				return negate ? -mX * t : mX * t;
+			}
+
+			[NoInline]
+			public void LerpTo(in CReprQuad target, float t) mut
+			{
+				this = Lerp(target, t);
+			}
+		}
+
+		[Test]
+		static void TestCReprThisCalls()
+		{
+			CReprQuad a = .(0, 0, 0, 1);
+			CReprQuad b = .(1, 0, 0, 0);
+			CReprQuad c = a.Lerp(b, 0.25f);
+			Test.Assert((c.mX == 0.25f) && (c.mW == 0.75f));
+
+			CReprQuad d = .(2, 3, 5, 7);
+			Test.Assert(d.Dot3(.(1, 2, 3, 4), .(4, 3, 2, 1)) == 2*1*4 + 3*2*3 + 5*3*2 + 7*4*1);
+			Test.Assert(d.Scale(1.5f, false) == 3);
+			Test.Assert(d.Scale(1.5f, true) == -3);
+
+			a.LerpTo(b, 0.5f);
+			Test.Assert((a.mX == 0.5f) && (a.mW == 0.5f));
+		}
 	}
 }

@@ -7339,7 +7339,9 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 		{
 			if (paramType->IsStruct())
 			{
-				if ((!doingThis) || (!methodDef->mIsMutating && methodInstance->AllowsSplatting(paramIdx)))
+				// For 'this', ask about 'this' (-1) as PushThis does: paramIdx is still the first parameter, and a
+				//  CRepr 'this' is passed by pointer even when its type would lower
+				if ((!doingThis) || (!methodDef->mIsMutating && methodInstance->AllowsSplatting(-1)))
 				{
 					BfTypeCode loweredTypeCode = BfTypeCode_None;
 					BfTypeCode loweredTypeCode2 = BfTypeCode_None;
