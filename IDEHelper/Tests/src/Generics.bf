@@ -547,6 +547,31 @@ namespace Tests
 			a += b;
 			Test.Assert(a.mA == 12);
 		}
+
+		class InferenceCollection<T>
+		{
+			public static void AddRange<TEnumerable, TItem>(TEnumerable items)
+				where T : operator implicit TItem
+				where TEnumerable : IEnumerable<T>
+				where Span<T> : operator implicit TEnumerable
+			{
+			}
+		}
+
+		static void CheckUninferableArgument<T>(List<T> items)
+		{
+			Test.Assert(![IgnoreErrors(true)]
+				{
+					InferenceCollection<T>.AddRange(items);
+					true
+				});
+		}
+
+		[Test]
+		public static void TestUninferableArgument()
+		{
+			CheckUninferableArgument(scope List<int>());
+		}
 	}
 
 	class ConstGenerics

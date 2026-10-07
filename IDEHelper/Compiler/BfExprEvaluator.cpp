@@ -660,6 +660,9 @@ bool BfGenericInferContext::InferGenericArguments(BfMethodInstance* methodInstan
 		if ((ifaceConstraint->IsUnspecializedTypeVariation()) && (ifaceConstraint->IsGenericTypeInstance()))
 		{
 			InferGenericArgument(methodInstance, srcGenericArg, ifaceConstraint, BfIRValue());
+			// Recursive inference can clear this argument when inferred types conflict.
+			if (srcGenericArg == NULL)
+				return false;
 			auto typeInstance = srcGenericArg->ToTypeInstance();
 			if ((typeInstance == NULL) && (srcGenericArg->IsWrappableType()))
 				typeInstance = mModule->GetWrappedStructType(srcGenericArg);
@@ -669,6 +672,9 @@ bool BfGenericInferContext::InferGenericArguments(BfMethodInstance* methodInstan
 				for (auto ifaceEntry : typeInstance->mInterfaces)
 					InferGenericArgument(methodInstance, ifaceEntry.mInterfaceType, ifaceConstraint, BfIRValue());
 			}
+
+			if (srcGenericArg == NULL)
+				return false;
 
 			if (srcGenericArg->IsGenericParam())
 			{
