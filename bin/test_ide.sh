@@ -107,4 +107,13 @@ do
 	test_workspace IDE/Tests/$testpath
 done
 
+for script in NewProject01 NewProject02
+do
+	for ide in "${BINARIES[@]}"
+	do
+		echo "Testing IDE/Tests/EmptyTest/scripts/$script.txt in $ide"
+		"${LAUNCHER[@]}" "./$ide" -test="$ROOTPATH/IDE/Tests/EmptyTest/scripts/$script.txt" || fail $?
+	done
+done
+
 echo "SUCCESS!"
