@@ -636,11 +636,11 @@ static _Unwind_Reason_Code UnwindHandler(struct _Unwind_Context* context, void* 
     if (dladdr(addr, &info))
     {
         if (info.dli_sname)
-            BFP_ERRPRINTF("0x%p %s\n", addr, info.dli_sname);
+            BFP_ERRPRINTF("%p %s\n", addr, info.dli_sname);
         else if (info.dli_fname)
-            BFP_ERRPRINTF("0x%p %s\n", addr, info.dli_fname);
+            BFP_ERRPRINTF("%p %s\n", addr, info.dli_fname);
         else
-            BFP_ERRPRINTF("0x%p\n", addr);
+            BFP_ERRPRINTF("%p\n", addr);
     }
 #endif
     return _URC_NO_REASON;
@@ -657,7 +657,7 @@ static bool FancyBacktrace()
 #endif
 }
 
-static void Crashed()
+static void CrashReport()
 {
     //
     {
@@ -679,6 +679,12 @@ static void Crashed()
         BFP_ERRPRINTF("%s", debugDump.c_str());
     }
 
+#if !BFP_HAS_ATOS
+    // A Beef executable exports few symbols, so most frames come out as an address in it; its
+    // debug info names them.
+    BFP_ERRPRINTF("Backtrace (resolve with addr2line -f -C -e <binary> <address>):\n");
+#endif
+
     if (!FancyBacktrace())
     {
 #ifdef BFP_HAS_EXECINFO
@@ -696,14 +702,21 @@ static void Crashed()
         free(strings);
 #endif
     }
+}
 
+static void Crashed()
+{
+    CrashReport();
     exit(1);
 }
 
+// The signals the crash catcher reports. Each is installed only where nothing else handles it
+// already, so a sanitizer's or a debugger's own handler keeps the signal.
+static const int gCrashSignals[] = { SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT };
+static bool gCrashSignalInstalled[sizeof(gCrashSignals) / sizeof(gCrashSignals[0])];
+
 static void SigHandler(int sig)
 {
-	//printf("SigHandler paused...\n");
-
     const char* sigName = NULL;
     switch (sig)
     {
@@ -712,6 +725,9 @@ static void SigHandler(int sig)
         break;
     case SIGSEGV:
         sigName = "SIGSEGV";
+        break;
+    case SIGBUS:
+        sigName = "SIGBUS";
         break;
     case SIGABRT:
         sigName = "SIGABRT";
@@ -725,7 +741,11 @@ static void SigHandler(int sig)
 		BfpGetGlobalData()->mCrashInfo += StrFormat("Signal: %s\n", sigName);
     else
 		BfpGetGlobalData()->mCrashInfo += StrFormat("Signal: %d\n", sig);
-    Crashed();
+    CrashReport();
+    fflush(stderr);
+    // SA_RESETHAND put the default action back, so raising the signal again ends the process
+    // the way it would have ended without us: the same exit status, and a core dump if enabled.
+    raise(sig);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flags)
@@ -740,28 +760,54 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
     struct sigaction ignoreAction = { SIG_IGN };
     sigaction(SIGPIPE, &ignoreAction, NULL);
 
-    //if (ptrace(PTRACE_TRACEME, 0, 1, 0) != -1)
-    {
-        //ptrace(PTRACE_DETACH, 0, 1, 0);
-        //signal(SIGSEGV, SigHandler);
-        //signal(SIGFPE, SigHandler);
-        //signal(SIGABRT, SigHandler);
-
-        /*struct sigaction action;
-        memset(&action, 0, sizeof(action));
-        action.sa_sigaction = signal_segv;
-        action.sa_flags = SA_SIGINFO;
-        if(sigaction(SIGSEGV, &action, NULL) < 0)
-            perror("sigaction");*/
-    }
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_InitCrashCatcher(BfpSystemInitFlags flags)
 {
+    // A silent crash reports nothing: the default actions stand.
+    if ((flags & BfpSystemInitFlag_SilentCrash) != 0)
+        return;
+
+#ifdef BFP_HAS_EXECINFO
+    // The first backtrace() loads the unwinder, which can allocate. Done now, so a crash inside
+    // the allocator (heap corruption raising SIGABRT) does not have to.
+    void* warm[2];
+    backtrace(warm, 2);
+#endif
+
+    // Its own stack, so a stack overflow can still be reported: the overflowing thread's stack
+    // has no room left for the handler.
+    static char altStack[64 * 1024];
+    stack_t stack = {};
+    stack.ss_sp = altStack;
+    stack.ss_size = sizeof(altStack);
+    bool haveAltStack = sigaltstack(&stack, NULL) == 0;
+
+    struct sigaction action;
+    memset(&action, 0, sizeof(action));
+    action.sa_handler = SigHandler;
+    sigemptyset(&action.sa_mask);
+    // SA_RESETHAND: a crash inside the handler itself takes the default action.
+    action.sa_flags = SA_RESETHAND | (haveAltStack ? SA_ONSTACK : 0);
+
+    for (int i = 0; i < (int)(sizeof(gCrashSignals) / sizeof(gCrashSignals[0])); i++)
+    {
+        struct sigaction current;
+        if ((sigaction(gCrashSignals[i], NULL, &current) != 0) || (current.sa_handler != SIG_DFL))
+            continue;
+        gCrashSignalInstalled[i] = sigaction(gCrashSignals[i], &action, NULL) == 0;
+    }
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_ShutdownCrashCatcher()
 {
+    for (int i = 0; i < (int)(sizeof(gCrashSignals) / sizeof(gCrashSignals[0])); i++)
+    {
+        if (!gCrashSignalInstalled[i])
+            continue;
+        signal(gCrashSignals[i], SIG_DFL);
+        gCrashSignalInstalled[i] = false;
+    }
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
