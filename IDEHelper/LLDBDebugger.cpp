@@ -151,7 +151,7 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mCallStackDirty = false;
 	mDidAttach = false;
 	mNeedBreakpointRebind = false;
-	mAutoStepRemaining = 0;
+	mStepNoInfoTries = 0;
 	mStepKind = StepKind_None;
 	mStepOutThenInto = false;
 	mStepOutFinishedLine = false;
@@ -933,31 +933,12 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 			// Don't stop a step somewhere the user shouldn't be (as WinDebugger does): compiler-generated
 			// methods with no statement lines, like delegate Invoke methods, or methods excluded by the IDE's
 			// step filters.
-			if ((thread.IsValid()) && (threadStopReason == lldb::eStopReasonPlanComplete) && (mAutoStepRemaining == 0) && (ContinueStep(thread)))
+			if ((thread.IsValid()) && (threadStopReason == lldb::eStopReasonPlanComplete) && (ContinueStep(thread)))
 			{
 				mRunState = RunState_Running;
 				return;
 			}
-			if ((threadStopReason != lldb::eStopReasonPlanComplete) || (mAutoStepRemaining == 0))
-				mStepKind = StepKind_None;
-
-			// Execute the next queued auto-step when a planned step has completed.
-			// A breakpoint, signal, or any other non-plan-complete stop cancels the
-			// sequence so the user sees the real event rather than stepping past it.
-			if (mAutoStepRemaining > 0)
-			{
-				if ((thread.IsValid()) && (threadStopReason == lldb::eStopReasonPlanComplete))
-				{
-					if (mAutoStepRemaining == 2)
-						thread.StepInto();
-					else  // mAutoStepRemaining == 1
-						thread.StepOver();
-					mAutoStepRemaining--;
-					mRunState = RunState_Running;
-					return;
-				}
-				mAutoStepRemaining = 0;  // Unexpected stop — cancel the sequence
-			}
+			mStepKind = StepKind_None;
 
 			if ((thread.IsValid()) && (threadStopReason == lldb::eStopReasonBreakpoint))
 			{
@@ -1129,7 +1110,6 @@ void LLDBDebugger::ContinueDebugEvent()
 
 	LLDBLog("ContinueDebugEvent\n");
 
-	mAutoStepRemaining = 0;
 	mStepKind = StepKind_None;
 	ClearCallStack();
 	mActiveBreakpoint = NULL;
@@ -1159,20 +1139,6 @@ void LLDBDebugger::StepInto(bool inAssembly)
 	lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
 	if (thread.IsValid())
 	{
-		// Any explicit user step resets the auto-step sequence.
-		mAutoStepRemaining = 0;
-
-		// When stepping into source code while at the stop-at-entry landing pad
-		// inside BeefStartProgram, queue two additional automatic steps so the
-		// user lands at the first line of their Program.Main rather than deep
-		// inside the Beef runtime bootstrap.
-		if (!inAssembly && !mCallStack.IsEmpty())
-		{
-			const char* funcName = mCallStack[0].GetFunctionName();
-			if ((funcName != NULL) && (strstr(funcName, "BeefStartProgram") != NULL))
-				mAutoStepRemaining = 2;  // on next stop: StepInto, then StepOver
-		}
-
 		BeginStep(thread, inAssembly ? StepKind_None : StepKind_Into);
 		ClearCallStack();
 		mRunState = RunState_Running;
@@ -1197,7 +1163,6 @@ void LLDBDebugger::StepOver(bool inAssembly)
 	lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
 	if (thread.IsValid())
 	{
-		mAutoStepRemaining = 0;
 		BeginStep(thread, inAssembly ? StepKind_None : StepKind_Over);
 		ClearCallStack();
 		mRunState = RunState_Running;
@@ -1215,7 +1180,6 @@ void LLDBDebugger::StepOut(bool inAssembly)
 	lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
 	if (thread.IsValid())
 	{
-		mAutoStepRemaining = 0;
 		BeginStep(thread, inAssembly ? StepKind_None : StepKind_Out);
 		ClearCallStack();
 		mRunState = RunState_Running;
@@ -1297,6 +1261,7 @@ void LLDBDebugger::BeginStep(lldb::SBThread& thread, StepKind stepKind)
 	mStepOutThenInto = false;
 	mStepOutFinishedLine = false;
 	mStepContinueCount = 0;
+	mStepNoInfoTries = 0;
 	lldb::SBFrame startFrame = thread.GetFrameAtIndex(0);
 	lldb::SBFunction function = startFrame.GetFunction();
 	mStepStartFunctionAddr = function.IsValid() ? (uint64)function.GetStartAddress().GetLoadAddress(mLLDBTarget) : 0;
@@ -1401,7 +1366,31 @@ bool LLDBDebugger::ContinueStep(lldb::SBThread& thread)
 	}
 
 	if (!function.IsValid())
-		return false;
+	{
+		if (mStepNoInfoTries >= 32)
+			return false;
+		mStepNoInfoTries++;
+		bool stepOut = (mStepKind == StepKind_Out) || (mStepNoInfoTries > 16);
+		if (!stepOut)
+		{
+			LLDBLog("ContinueStep: no line info at %llx, stepping (%d)\n", (unsigned long long)frame.GetPC(), mStepNoInfoTries);
+			if (mStepKind == StepKind_Into)
+				thread.StepInto();
+			else
+				thread.StepOver();
+		}
+		else if (thread.GetNumFrames() <= 1)
+		{
+			LLDBLog("ContinueStep: no line info at %llx and no caller, continuing\n", (unsigned long long)frame.GetPC());
+			mLLDBProcess.Continue();
+		}
+		else
+		{
+			LLDBLog("ContinueStep: no line info at %llx, stepping out\n", (unsigned long long)frame.GetPC());
+			thread.StepOut();
+		}
+		return true;
+	}
 
 	// Like WinDebugger, don't stop on a line row the compiler marked as not a statement (column 0) - such
 	// as the implicit Dispose after a foreach - in a method that does have statement lines
@@ -7776,7 +7765,6 @@ void LLDBDebugger::Detach()
 	mRunState = RunState_NotStarted;
 	mDidAttach = false;
 	mNeedBreakpointRebind = false;
-	mAutoStepRemaining = 0;
 }
 
 //----------------------------------------------------------------------------

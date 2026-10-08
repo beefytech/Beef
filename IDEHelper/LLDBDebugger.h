@@ -70,7 +70,6 @@ public:
 	int mProcessId;
 	bool mDidAttach;
 	bool mNeedBreakpointRebind;  // true after launch until first stop event
-	int mAutoStepRemaining;      // >0 while auto-stepping through BeefStartProgram (2=StepInto, 1=StepOver)
 
 	// The user step in progress, for step filtering (see ContinueStep)
 	enum StepKind
@@ -86,6 +85,7 @@ public:
 	int mStepStartLine;                              // where the current step began
 	String mStepStartFile;
 	int mStepContinueCount;
+	int mStepNoInfoTries;                            // instruction steps taken through code without line info
 	uint64 mStepStartFunctionAddr;
 	Dictionary<String, bool> mHasStatementLinesCache;
 
