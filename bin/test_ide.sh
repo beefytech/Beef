@@ -102,7 +102,7 @@ test_workspace() {
 }
 
 # Workspaces from test_ide.bat that do not pass on Linux yet are left out.
-for testpath in CompileFail001 Test1 SlotTest BugW003 BugW004 BugW006 BugW007 BugW008 BugW009 IndentTest
+for testpath in CompileFail001 Test1 SlotTest MemoryBreakTest BugW003 BugW004 BugW006 BugW007 BugW008 BugW009 IndentTest
 do
 	test_workspace IDE/Tests/$testpath
 done

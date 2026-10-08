@@ -1690,20 +1690,14 @@ void LLDBDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
 
 	if ((bp->mLLDBBreakpoint.IsValid()) && mLLDBTarget.IsValid())
 	{
-		auto idItr = mBreakpointIdMap.Find((int)bp->mLLDBBreakpoint.GetID());
-		if (idItr->mValue == bp)
-			mBreakpointIdMap.Remove(idItr);
+		mBreakpointIdMap.Remove((int)bp->mLLDBBreakpoint.GetID(), bp);
 
 		mLLDBTarget.BreakpointDelete(bp->mLLDBBreakpoint.GetID());
 	}
 	HotDeleteVersionBreakpoints(bp);
 
 	if (bp->mResolvedAddr != 0)
-	{
-		auto addrItr = mBreakpointAddrMap.Find(bp->mResolvedAddr);
-		if (addrItr->mValue == bp)
-			mBreakpointAddrMap.Remove(addrItr);
-	}
+		mBreakpointAddrMap.Remove(bp->mResolvedAddr, bp);
 
 	if (!bp->mIsLinkedSibling)
 		mBreakpoints.Remove(bp);
@@ -1725,9 +1719,7 @@ void LLDBDebugger::DetachBreakpoint(Breakpoint* breakpoint)
 
 	if (bp->mResolvedAddr != 0)
 	{
-		auto addrItr = mBreakpointAddrMap.Find(bp->mResolvedAddr);
-		if (addrItr->mValue == bp)
-			mBreakpointAddrMap.Remove(addrItr);
+		mBreakpointAddrMap.Remove(bp->mResolvedAddr, bp);
 		bp->mResolvedAddr = 0;
 	}
 
@@ -1743,15 +1735,11 @@ void LLDBDebugger::MoveBreakpoint(Breakpoint* breakpoint, int lineNum, int wantC
 	// Remove the old binding
 	if ((bp->mLLDBBreakpoint.IsValid()) && mLLDBTarget.IsValid())
 	{
-		auto idItr = mBreakpointIdMap.Find((int)bp->mLLDBBreakpoint.GetID());
-		if (idItr->mValue == bp)
-			mBreakpointIdMap.Remove(idItr);
+		mBreakpointIdMap.Remove((int)bp->mLLDBBreakpoint.GetID(), bp);
 
 		if (bp->mResolvedAddr != 0)
 		{
-			auto addrItr = mBreakpointAddrMap.Find(bp->mResolvedAddr);
-			if (addrItr->mValue == bp)
-				mBreakpointAddrMap.Remove(addrItr);
+			mBreakpointAddrMap.Remove(bp->mResolvedAddr, bp);
 			bp->mResolvedAddr = 0;
 		}
 
@@ -5712,9 +5700,7 @@ void LLDBDebugger::HotDeleteVersionBreakpoints(LLDBBreakpoint* bp)
 	{
 		if (!versionBreakpoint.IsValid())
 			continue;
-		auto idItr = mBreakpointIdMap.Find((int)versionBreakpoint.GetID());
-		if ((idItr != mBreakpointIdMap.end()) && (idItr->mValue == bp))
-			mBreakpointIdMap.Remove(idItr);
+		mBreakpointIdMap.Remove((int)versionBreakpoint.GetID(), bp);
 		if (mLLDBTarget.IsValid())
 			mLLDBTarget.BreakpointDelete(versionBreakpoint.GetID());
 	}

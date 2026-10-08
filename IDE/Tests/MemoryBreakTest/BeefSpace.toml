@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {MemoryBreakTest = {Path = "."}}
+
+[Workspace]
+StartupProject = "MemoryBreakTest"

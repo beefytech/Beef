@@ -1,0 +1,9 @@
+ShowFile("src/Program.bf")
+RunWithCompiling()
+
+CreateMemoryBreakpoint("t")
+
+Continue()
+AssertEvalEquals("a", "0")
+Continue()
+AssertEvalEquals("a", "1")
