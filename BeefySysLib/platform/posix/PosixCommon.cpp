@@ -2,6 +2,7 @@
 #include "BFPlatform.h"
 #include <stdlib.h>
 #include <sys/stat.h>
+#include <sys/mman.h>
 #ifdef BF_PLATFORM_LINUX
 #include <sys/syscall.h>
 #endif
@@ -618,41 +619,121 @@ typedef _Unwind_Reason_Code (*_Unwind_Trace_Fn)(struct _Unwind_Context *, void *
 extern "C" _Unwind_Reason_Code _Unwind_Backtrace(_Unwind_Trace_Fn, void *);
 extern "C" uintptr_t _Unwind_GetIP(struct _Unwind_Context *context);
 
+// Output for the crash report. A signal can arrive while the crashed thread holds the allocator's or
+//  stdio's lock, so the signal path formats into stack buffers and uses write() instead of malloc and printf
+static void SafeWrite(const char* str, intptr len)
+{
+    while (len > 0)
+    {
+        ssize_t written = write(STDERR_FILENO, str, len);
+        if (written < 0)
+        {
+            if (errno == EINTR)
+                continue;
+            return;
+        }
+        str += written;
+        len -= written;
+    }
+}
+
+static void SafeWrite(const char* str)
+{
+    SafeWrite(str, strlen(str));
+}
+
+static void SafeWriteHex(uintptr val)
+{
+    char buf[2 + sizeof(uintptr) * 2];
+    int pos = (int)sizeof(buf);
+    do
+    {
+        buf[--pos] = "0123456789abcdef"[val & 0xF];
+        val >>= 4;
+    }
+    while (val != 0);
+    buf[--pos] = 'x';
+    buf[--pos] = '0';
+    SafeWrite(buf + pos, sizeof(buf) - pos);
+}
+
+static void SafeWriteInt(int val)
+{
+    char buf[16];
+    int pos = (int)sizeof(buf);
+    bool isNeg = val < 0;
+    uint32 uval = isNeg ? (uint32)-(int64)val : (uint32)val;
+    do
+    {
+        buf[--pos] = '0' + (uval % 10);
+        uval /= 10;
+    }
+    while (uval != 0);
+    if (isNeg)
+        buf[--pos] = '-';
+    SafeWrite(buf + pos, sizeof(buf) - pos);
+}
+
+struct UnwindState
+{
+    int mSkipCount;
+    int mIdx;
+    bool mCollectForAtos;
+};
+
 static String gUnwindExecStr;
-static int gUnwindIdx = 0;
 
 static _Unwind_Reason_Code UnwindHandler(struct _Unwind_Context* context, void* ref)
 {
-    gUnwindIdx++;
-    if (gUnwindIdx < 2)
+    UnwindState* state = (UnwindState*)ref;
+    state->mIdx++;
+    if (state->mIdx <= state->mSkipCount)
         return _URC_NO_REASON;
 
     void* addr = (void*)_Unwind_GetIP(context);
 
-#if BFP_HAS_ATOS
-    gUnwindExecStr += StrFormat(" %p", addr);
-#else
+    if (state->mCollectForAtos)
+    {
+        gUnwindExecStr += StrFormat(" %p", addr);
+        return _URC_NO_REASON;
+    }
+
+    SafeWriteHex((uintptr)addr);
     Dl_info info;
     if (dladdr(addr, &info))
     {
         if (info.dli_sname)
-            BFP_ERRPRINTF("%p %s\n", addr, info.dli_sname);
+        {
+            SafeWrite(" ");
+            SafeWrite(info.dli_sname);
+        }
         else if (info.dli_fname)
-            BFP_ERRPRINTF("%p %s\n", addr, info.dli_fname);
-        else
-            BFP_ERRPRINTF("%p\n", addr);
+        {
+            SafeWrite(" ");
+            SafeWrite(info.dli_fname);
+        }
     }
-#endif
+    SafeWrite("\n");
     return _URC_NO_REASON;
 }
 
-static bool FancyBacktrace()
+// Prints each frame's address and nearest exported symbol. Safe to call from a signal handler
+// noinline keeps skipCount's frame count stable
+static __attribute__((noinline)) void SafeBacktrace(int skipCount)
 {
-    gUnwindExecStr += StrFormat("atos -p %d", getpid());
-    _Unwind_Backtrace(&UnwindHandler, NULL);
+    UnwindState state = { skipCount, 0, false };
+    _Unwind_Backtrace(&UnwindHandler, &state);
+}
+
+static __attribute__((noinline)) bool FancyBacktrace(int skipCount)
+{
 #if BFP_HAS_ATOS
+    gUnwindExecStr += StrFormat("atos -p %d", getpid());
+    UnwindState state = { skipCount, 0, true };
+    _Unwind_Backtrace(&UnwindHandler, &state);
     return system(gUnwindExecStr.c_str()) == 0;
 #else
+    SafeBacktrace(skipCount + 1);
     return true;
 #endif
 }
@@ -685,7 +766,7 @@ static void CrashReport()
     BFP_ERRPRINTF("Backtrace (resolve with addr2line -f -C -e <binary> <address>):\n");
 #endif
 
-    if (!FancyBacktrace())
+    if (!FancyBacktrace(1))
     {
 #ifdef BFP_HAS_EXECINFO
         void* array[64];
@@ -712,41 +793,154 @@ static void Crashed()
 
 // The signals the crash catcher reports. Each is installed only where nothing else handles it
 // already, so a sanitizer's or a debugger's own handler keeps the signal.
-static const int gCrashSignals[] = { SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT };
+// SIGTRAP is a Debug.Break() with no debugger attached (the runtime's own error breaks only happen
+// under a debugger). gdb and LLDB don't pass SIGTRAP on to the program by default, so breaks while
+// debugging still stop in the debugger.
+static const int gCrashSignals[] = { SIGSEGV, SIGBUS, SIGILL, SIGFPE, SIGABRT, SIGTRAP };
 static bool gCrashSignalInstalled[sizeof(gCrashSignals) / sizeof(gCrashSignals[0])];
 
-static void SigHandler(int sig)
+// Set while a crash handler is installed, so threads we create give themselves a signal stack
+static bool gWantAltSignalStacks;
+
+static const char* GetSignalName(int sig)
 {
-    const char* sigName = NULL;
     switch (sig)
     {
     case SIGFPE:
-        sigName = "SIGFPE";
-        break;
+        return "SIGFPE";
     case SIGSEGV:
-        sigName = "SIGSEGV";
-        break;
+        return "SIGSEGV";
     case SIGBUS:
-        sigName = "SIGBUS";
-        break;
+        return "SIGBUS";
     case SIGABRT:
-        sigName = "SIGABRT";
-        break;
+        return "SIGABRT";
     case SIGILL:
-        sigName = "SIGILL";
-        break;
+        return "SIGILL";
+    case SIGTRAP:
+        return "SIGTRAP";
     }
+    return NULL;
+}
 
+// Everything here must be async-signal-safe: no malloc, no stdio, no locks the crashed thread may hold
+static void SigHandler(int sig)
+{
+    // dladdr and the unwinder take the loader's lock, which the crashed thread may hold. If that hangs us,
+    //  the alarm still ends the process (with SIGALRM rather than the original signal)
+    struct sigaction alarmAction;
+    memset(&alarmAction, 0, sizeof(alarmAction));
+    alarmAction.sa_handler = SIG_DFL;
+    sigaction(SIGALRM, &alarmAction, NULL);
+    alarm(10);
+
+    SafeWrite("**** FATAL APPLICATION ERROR ****\n");
+
+    // Crash info added before the crash is already formatted. The crash info callbacks are not run here
+    //  since they allocate
+    auto globalData = gBfpGlobal;
+    if ((globalData != NULL) && (!globalData->mCrashInfo.IsEmpty()))
+        SafeWrite(globalData->mCrashInfo.GetPtr(), globalData->mCrashInfo.length());
+
+    SafeWrite("Signal: ");
+    const char* sigName = GetSignalName(sig);
     if (sigName != NULL)
-		BfpGetGlobalData()->mCrashInfo += StrFormat("Signal: %s\n", sigName);
+        SafeWrite(sigName);
     else
-		BfpGetGlobalData()->mCrashInfo += StrFormat("Signal: %d\n", sig);
-    CrashReport();
-    fflush(stderr);
+        SafeWriteInt(sig);
+    SafeWrite("\n\n");
+
+#if !BFP_HAS_ATOS
+    // A Beef executable exports few symbols, so most frames come out as an address in it; its
+    // debug info names them.
+    SafeWrite("Backtrace (resolve with addr2line -f -C -e <binary> <address>):\n");
+#endif
+    // Skip SafeBacktrace and this handler
+    SafeBacktrace(2);
+
     // SA_RESETHAND put the default action back, so raising the signal again ends the process
     // the way it would have ended without us: the same exit status, and a core dump if enabled.
     raise(sig);
 }
+
+static void* gMainAltSignalStack;
+
+// mmaps a signal stack with a guard page below it, so an overflow inside the handler itself faults
+//  instead of running into other memory
+static void* CreateAltSignalStack(size_t& outSize)
+{
+    size_t pageSize = (size_t)sysconf(_SC_PAGESIZE);
+    size_t size = 64 * 1024;
+#ifdef _SC_SIGSTKSZ
+    // Since glibc 2.34 SIGSTKSZ is no longer a constant; large-register CPUs (AVX-512, AMX) need more
+    long minSize = sysconf(_SC_SIGSTKSZ);
+    if ((minSize > 0) && ((size_t)minSize > size))
+        size = (size_t)minSize;
+#endif
+    size = (size + pageSize - 1) & ~(pageSize - 1);
+
+    void* mem = mmap(NULL, size + pageSize, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    if (mem == MAP_FAILED)
+        return NULL;
+    mprotect(mem, pageSize, PROT_NONE);
+    outSize = size;
+    return mem;
+}
+
+static void DeleteAltSignalStack(void* mem, size_t size)
+{
+    munmap(mem, size + (size_t)sysconf(_SC_PAGESIZE));
+}
+
+// Gives the current thread a signal stack unless it already has one (Android's libc gives every thread one,
+//  and a host process may have set its own). Returns the mapping when we created one
+static void* InstallAltSignalStack(size_t& outSize)
+{
+    stack_t current;
+    if ((sigaltstack(NULL, &current) == 0) && ((current.ss_flags & SS_DISABLE) == 0))
+        return NULL;
+
+    size_t size = 0;
+    void* mem = CreateAltSignalStack(size);
+    if (mem == NULL)
+        return NULL;
+
+    stack_t stack = {};
+    stack.ss_sp = (uint8*)mem + sysconf(_SC_PAGESIZE);
+    stack.ss_size = size;
+    if (sigaltstack(&stack, NULL) != 0)
+    {
+        DeleteAltSignalStack(mem, size);
+        return NULL;
+    }
+    outSize = size;
+    return mem;
+}
+
+// A signal stack for the lifetime of a thread we create. sigaltstack is per-thread and pthread_create
+//  clears it, so each thread has to install its own
+struct ThreadAltSignalStack
+{
+    void* mMem;
+    size_t mSize;
+
+    ThreadAltSignalStack()
+    {
+        mMem = NULL;
+        mSize = 0;
+        if (gWantAltSignalStacks)
+            mMem = InstallAltSignalStack(mSize);
+    }
+
+    ~ThreadAltSignalStack()
+    {
+        if (mMem == NULL)
+            return;
+        stack_t stack = {};
+        stack.ss_flags = SS_DISABLE;
+        sigaltstack(&stack, NULL);
+        DeleteAltSignalStack(mMem, mSize);
+    }
+};
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flags)
 {
@@ -768,27 +962,22 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_InitCrashCatcher(BfpSystemInitFlags flags
     if ((flags & BfpSystemInitFlag_SilentCrash) != 0)
         return;
 
-#ifdef BFP_HAS_EXECINFO
-    // The first backtrace() loads the unwinder, which can allocate. Done now, so a crash inside
-    // the allocator (heap corruption raising SIGABRT) does not have to.
-    void* warm[2];
-    backtrace(warm, 2);
-#endif
-
     // Its own stack, so a stack overflow can still be reported: the overflowing thread's stack
-    // has no room left for the handler.
-    static char altStack[64 * 1024];
-    stack_t stack = {};
-    stack.ss_sp = altStack;
-    stack.ss_size = sizeof(altStack);
-    bool haveAltStack = sigaltstack(&stack, NULL) == 0;
+    // has no room left for the handler. This covers the initializing thread; threads created
+    // through BfpThread_Create install their own (ThreadAltSignalStack).
+    if (gMainAltSignalStack == NULL)
+    {
+        size_t size = 0;
+        gMainAltSignalStack = InstallAltSignalStack(size);
+    }
 
     struct sigaction action;
     memset(&action, 0, sizeof(action));
     action.sa_handler = SigHandler;
     sigemptyset(&action.sa_mask);
     // SA_RESETHAND: a crash inside the handler itself takes the default action.
-    action.sa_flags = SA_RESETHAND | (haveAltStack ? SA_ONSTACK : 0);
+    // SA_ONSTACK: the kernel ignores it on a thread with no signal stack, which then uses its own stack.
+    action.sa_flags = SA_RESETHAND | SA_ONSTACK;
 
     for (int i = 0; i < (int)(sizeof(gCrashSignals) / sizeof(gCrashSignals[0])); i++)
     {
@@ -796,6 +985,8 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_InitCrashCatcher(BfpSystemInitFlags flags
         if ((sigaction(gCrashSignals[i], NULL, &current) != 0) || (current.sa_handler != SIG_DFL))
             continue;
         gCrashSignalInstalled[i] = sigaction(gCrashSignals[i], &action, NULL) == 0;
+        if (gCrashSignalInstalled[i])
+            gWantAltSignalStacks = true;
     }
 }
 
@@ -805,9 +996,15 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_ShutdownCrashCatcher()
     {
         if (!gCrashSignalInstalled[i])
             continue;
-        signal(gCrashSignals[i], SIG_DFL);
         gCrashSignalInstalled[i] = false;
+
+        // Only put back the default where our handler is still the one installed; code that set
+        // its own handler after us keeps it
+        struct sigaction current;
+        if ((sigaction(gCrashSignals[i], NULL, &current) == 0) && (current.sa_handler == SigHandler))
+            signal(gCrashSignals[i], SIG_DFL);
     }
+    gWantAltSignalStacks = false;
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCommandLine(int argc, char** argv)
@@ -870,7 +1067,11 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_AddCrashInfoFunc(BfpCrashInfoFunc crashIn
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_AddCrashInfo(const char* str) // Can do at any time, or during CrashInfoFunc callbacks
 {
     AutoCrit autoCrit(BfpGetGlobalData()->mSysCritSect);
-	BfpGetGlobalData()->mCrashInfo.Append(str);
+	auto& crashInfo = BfpGetGlobalData()->mCrashInfo;
+	crashInfo.Append(str);
+	// One entry per line, as on Windows
+	if ((!crashInfo.IsEmpty()) && (!crashInfo.EndsWith('\n')))
+		crashInfo.Append('\n');
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetCrashRelaunchCmd(const char* str)
@@ -1826,6 +2027,7 @@ static __thread BfpThreadInfo gCurrentThreadInfo;
 void* ThreadFunc(void* threadParam)
 {
     BfpThread* thread = (BfpThread*)threadParam;
+    ThreadAltSignalStack altSignalStack;
 
     gCurrentThread = thread;
     thread->mStartProc(thread->mThreadParam);
