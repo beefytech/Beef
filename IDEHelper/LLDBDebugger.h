@@ -195,6 +195,19 @@ public:
 		bool mIncompatibleLambda;   // captures changed - keep the old version, error if it's called
 	};
 
+	struct HotWrite
+	{
+		uint64 mAddr;
+		Array<uint8> mOldData;
+	};
+
+	struct HotPriorEntry
+	{
+		uint64 mAddr;
+		bool mHadEntry;
+		HotPatchedEntry mEntry;
+	};
+
 	uint64 mHotHeapStart;
 	uint64 mHotHeapSize;
 	uint64 mHotHeapUsed;
@@ -204,6 +217,7 @@ public:
 	Dictionary<String, HotSymbol> mHotSymbols;       // global symbols first defined by a hot load → that definition
 	Dictionary<String, HotSymbol> mHotPendingSymbols; // definitions from the batch currently being loaded
 	Array<HotDataFixup> mHotPendingDataFixups;
+	int mHotLoadCount;
 	Dictionary<uint64, HotPatchedEntry> mHotPatchedEntries; // entry of each hot-replaced method → its jump
 	Array<int> mHotInvalidLambdaTrapIds;            // breakpoints on old lambdas with incompatible captures
 	Array<int> mHotStepTrapIds;                      // temporary breakpoints for a step-in in progress
@@ -278,8 +292,11 @@ protected:
 	bool HotIsBaseModuleExecutable();
 	bool HotGetTlsBlockAddr(lldb::SBFrame& frame, uint64& outAddr);
 	bool HotLinkObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError);
-	bool HotApplyDataFixups(String& outError);
+	bool HotWriteJournaled(uint64 addr, const void* data, uint64 size, Array<HotWrite>& writes);
+	bool HotUndoWrites(const Array<HotWrite>& writes);
+	bool HotApplyDataFixups(Array<HotWrite>& writes, String& outError);
 	void HotRegisterDebugInfo(LLDBHotObject* obj, int hotIdx);
+	void HotUnregisterDebugInfo(LLDBHotObject* obj);
 	void HotRemoveDebugInfo();
 	bool HotIsInPatchedEntry(uint64 addr, uint64* outEntryAddr, HotPatchedEntry* outEntry);
 	bool HotGetPatchLayout(const HotPatch& patch, uint64& outJmpAddr, int& outJmpSize, uint64* outPrologueSize);
@@ -299,7 +316,8 @@ protected:
 	void HotFilterBreakpointLocations(LLDBBreakpoint* bp);
 	void SetMemoryWatchpoint(LLDBBreakpoint* bp);
 	bool HotStepThreadsPastPatches(const Array<HotPatch>& patches, String& outError);
-	bool HotApplyPatches(const Array<HotPatch>& patches, int& outNumPatched, String& outError);
+	bool HotApplyPatches(const Array<HotPatch>& patches, Array<HotWrite>& writes, Array<HotPriorEntry>& outPriorEntries, int& outNumPatched, String& outError);
+	bool HotLoadBatch(const Array<String>& objectFiles, int hotIdx, int& outNumPatched, bool& outRestored, String& outError);
 
 public:
 	LLDBDebugger(DebugManager* debugManager);

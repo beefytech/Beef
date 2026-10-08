@@ -5449,6 +5449,7 @@ void LLDBDebugger::HotResetState()
 	mHotTlsExtraOffset = 0;
 	mHotTlsExtraSize = 0;
 	mHotTlsExtraUsed = 0;
+	mHotLoadCount = 0;
 	mHotPatchedEntries.Clear();
 	mHotStepTrapIds.Clear();
 	mHotInvalidLambdaTrapIds.Clear();
@@ -7093,8 +7094,84 @@ void LLDBDebugger::HotRemoveDebugInfo()
 	mHotVersions.Clear();
 }
 
+static int HotFailEnv(const char* name)
+{
+	const char* value = getenv(name);
+	return (value != NULL) ? atoi(value) : -1;
+}
+
+bool LLDBDebugger::HotWriteJournaled(uint64 addr, const void* data, uint64 size, Array<HotWrite>& writes)
+{
+	static int sFailWriteIdx = -2;
+	static int sFailLoadIdx = 1;
+	if (sFailWriteIdx == -2)
+	{
+		sFailWriteIdx = HotFailEnv("BEEF_LLDB_HOT_FAIL_WRITE");
+		int failLoadIdx = HotFailEnv("BEEF_LLDB_HOT_FAIL_LOAD");
+		if (failLoadIdx > 0)
+			sFailLoadIdx = failLoadIdx;
+	}
+
+	HotWrite write;
+	write.mAddr = addr;
+	write.mOldData.Resize((intptr)size);
+	if (!ReadMemory((intptr)addr, size, write.mOldData.mVals))
+		return false;
+	writes.Add(write);
+
+	if (((int)writes.size() - 1 == sFailWriteIdx) && (mHotLoadCount == sFailLoadIdx))
+	{
+		sFailWriteIdx = -1;
+		WriteMemory((intptr)addr, (void*)data, 1);
+		return false;
+	}
+	return WriteMemory((intptr)addr, (void*)data, size);
+}
+
+bool LLDBDebugger::HotUndoWrites(const Array<HotWrite>& writes)
+{
+	static int sFailUndo = -2;
+	if (sFailUndo == -2)
+		sFailUndo = HotFailEnv("BEEF_LLDB_HOT_FAIL_UNDO");
+
+	bool restored = true;
+	for (intptr writeIdx = writes.size() - 1; writeIdx >= 0; writeIdx--)
+	{
+		if (sFailUndo == 1)
+		{
+			sFailUndo = -1;
+			restored = false;
+			continue;
+		}
+		if (!WriteMemory((intptr)writes[writeIdx].mAddr, writes[writeIdx].mOldData.mVals, writes[writeIdx].mOldData.size()))
+			restored = false;
+	}
+	return restored;
+}
+
+void LLDBDebugger::HotUnregisterDebugInfo(LLDBHotObject* obj)
+{
+#ifdef __linux__
+	if (obj->mModule.IsValid())
+	{
+		mLLDBTarget.RemoveModule(obj->mModule);
+		for (auto& version : mHotVersions)
+			version.mModules.Remove(obj->mModule);
+		while ((!mHotVersions.IsEmpty()) && (mHotVersions.back().mModules.IsEmpty()))
+			mHotVersions.pop_back();
+		obj->mModule = lldb::SBModule();
+	}
+	if (!obj->mModulePath.IsEmpty())
+	{
+		unlink(obj->mModulePath.c_str());
+		mHotModulePaths.Remove(obj->mModulePath);
+		obj->mModulePath.Clear();
+	}
+#endif
+}
+
 // Update the runtime's type tables in place, as WinDebugger does (DbgModule::ProcessHotSwapVariables).
-bool LLDBDebugger::HotApplyDataFixups(String& outError)
+bool LLDBDebugger::HotApplyDataFixups(Array<HotWrite>& writes, String& outError)
 {
 	for (auto& fixup : mHotPendingDataFixups)
 	{
@@ -7121,14 +7198,14 @@ bool LLDBDebugger::HotApplyDataFixups(String& outError)
 					if (newData[wordIdx] != 0)
 						oldData[wordIdx] = newData[wordIdx];
 				}
-				if ((size > 0) && (!WriteMemory((intptr)fixup.mOldAddr, oldData.mVals, size)))
+				if ((size > 0) && (!HotWriteJournaled(fixup.mOldAddr, oldData.mVals, size, writes)))
 				{
 					outError = StrFormat("failed updating vtable '%s'", fixup.mName.c_str());
 					return false;
 				}
 				// Extension tables are used at their new address from now on, so they get the merged data too
 				if ((fixup.mKind == HotDataFixupKind_MergeVExt) && (size > 0))
-					WriteMemory((intptr)fixup.mNewAddr, oldData.mVals, size);
+					HotWriteJournaled(fixup.mNewAddr, oldData.mVals, size, writes);
 			}
 			break;
 		case HotDataFixupKind_CopyTypeData:
@@ -7141,7 +7218,7 @@ bool LLDBDebugger::HotApplyDataFixups(String& outError)
 				Array<uint8> data;
 				data.Resize((intptr)fixup.mNewSize);
 				if ((fixup.mNewSize > 0) &&
-					((!ReadMemory((intptr)fixup.mNewAddr, fixup.mNewSize, data.mVals)) || (!WriteMemory((intptr)fixup.mOldAddr, data.mVals, fixup.mNewSize))))
+					((!ReadMemory((intptr)fixup.mNewAddr, fixup.mNewSize, data.mVals)) || (!HotWriteJournaled(fixup.mOldAddr, data.mVals, fixup.mNewSize, writes))))
 				{
 					outError = StrFormat("failed updating type data '%s'", fixup.mName.c_str());
 					return false;
@@ -7153,8 +7230,8 @@ bool LLDBDebugger::HotApplyDataFixups(String& outError)
 				// The first word of each string literal table links to the next (newer) table
 				uint64 prevLink = 0;
 				if ((!ReadMemory((intptr)fixup.mOldAddr, 8, &prevLink)) ||
-					(!WriteMemory((intptr)fixup.mNewAddr, &prevLink, 8)) ||
-					(!WriteMemory((intptr)fixup.mOldAddr, &fixup.mNewAddr, 8)))
+					(!HotWriteJournaled(fixup.mNewAddr, &prevLink, 8, writes)) ||
+					(!HotWriteJournaled(fixup.mOldAddr, &fixup.mNewAddr, 8, writes)))
 				{
 					outError = StrFormat("failed linking string literal table '%s'", fixup.mName.c_str());
 					return false;
@@ -7240,7 +7317,7 @@ bool LLDBDebugger::HotStepThreadsPastPatches(const Array<HotPatch>& patches, Str
 	return true;
 }
 
-bool LLDBDebugger::HotApplyPatches(const Array<HotPatch>& patches, int& outNumPatched, String& outError)
+bool LLDBDebugger::HotApplyPatches(const Array<HotPatch>& patches, Array<HotWrite>& writes, Array<HotPriorEntry>& outPriorEntries, int& outNumPatched, String& outError)
 {
 	outNumPatched = 0;
 	HashSet<uint64> patchedAddrs;
@@ -7285,11 +7362,11 @@ bool LLDBDebugger::HotApplyPatches(const Array<HotPatch>& patches, int& outNumPa
 		else
 			HotWriteAbsJump(jmp, patch.mNewAddr);
 
-		bool written = WriteMemory((intptr)jmpAddr, jmp, jmpSize);
+		bool written = HotWriteJournaled(jmpAddr, jmp, jmpSize, writes);
 		if ((written) && (jmpAddr != patch.mOldAddr))
 		{
 			uint8 shortJmp[2] = { 0xEB, (uint8)(int8)(jmpAddr - (patch.mOldAddr + 2)) };
-			written = WriteMemory((intptr)patch.mOldAddr, shortJmp, 2);
+			written = HotWriteJournaled(patch.mOldAddr, shortJmp, 2, writes);
 		}
 		if (!written)
 		{
@@ -7305,10 +7382,131 @@ bool LLDBDebugger::HotApplyPatches(const Array<HotPatch>& patches, int& outNumPa
 		// LLDB's step-in runs to the end of the old prologue. Unless that's where our jump is, it's never
 		// reached, so stepping in needs a trap on the new version (see HotSetStepTraps)
 		patchedEntry.mNeedsStepTrap = (prologueSize > 0) && (patch.mOldAddr + prologueSize != jmpAddr);
+		HotPriorEntry priorEntry;
+		priorEntry.mAddr = patch.mOldAddr;
+		priorEntry.mHadEntry = mHotPatchedEntries.TryGetValue(patch.mOldAddr, &priorEntry.mEntry);
+		outPriorEntries.Add(priorEntry);
 		mHotPatchedEntries[patch.mOldAddr] = patchedEntry;
 		outNumPatched++;
 	}
 	return true;
+}
+
+bool LLDBDebugger::HotLoadBatch(const Array<String>& objectFiles, int hotIdx, int& outNumPatched, bool& outRestored, String& outError)
+{
+	mHotLoadCount++;
+	outNumPatched = 0;
+	outRestored = true;
+	Array<HotPatch> patches;
+	Array<LLDBHotObject*> objects;
+	bool success = true;
+	mHotPendingSymbols.Clear();
+	mHotPendingDataFixups.Clear();
+	for (auto& fileName : objectFiles)
+	{
+		LLDBHotObject* obj = new LLDBHotObject();
+		obj->mFileName = fileName;
+		objects.Add(obj);
+		if (!HotParseObject(obj, outError))
+		{
+			success = false;
+			break;
+		}
+	}
+	if (success)
+	{
+		HotChooseBaseModule(objects);
+		for (auto obj : objects)
+		{
+			if (!HotPrepareObject(obj, patches, outError))
+			{
+				success = false;
+				break;
+			}
+		}
+	}
+	if (success)
+	{
+		for (auto obj : objects)
+		{
+			if (!HotLinkObject(obj, patches, outError))
+			{
+				success = false;
+				break;
+			}
+		}
+	}
+	if (success)
+	{
+		for (auto obj : objects)
+			HotRegisterDebugInfo(obj, hotIdx);
+		HotCheckLambdaCaptures(patches);
+		success = HotStepThreadsPastPatches(patches, outError);
+	}
+
+	Array<HotWrite> writes;
+	Array<HotPriorEntry> priorEntries;
+	intptr firstTrapIdx = mHotInvalidLambdaTrapIds.size();
+	if (success)
+		success = HotApplyDataFixups(writes, outError);
+	if (success)
+		success = HotApplyPatches(patches, writes, priorEntries, outNumPatched, outError);
+
+	if (!success)
+	{
+		outRestored = HotUndoWrites(writes);
+		LLDBLog("HotLoad %d: %s %d write%s\n", hotIdx, outRestored ? "undid" : "could not undo", (int)writes.size(), (writes.size() == 1) ? "" : "s");
+		if (!outRestored)
+			outError += "; the program could not be restored and must be restarted";
+	}
+	if ((success) || (!outRestored))
+	{
+		for (auto obj : objects)
+		{
+			if (obj->mImageAddr == 0)
+				continue;
+			HotImage image;
+			image.mAddr = obj->mImageAddr;
+			image.mSize = obj->mImageSize;
+			image.mHotIdx = hotIdx;
+			image.mModule = obj->mModule;
+			image.mModulePath = obj->mModulePath;
+			mHotImages.Add(image);
+		}
+	}
+	if (success)
+	{
+		for (auto& kv : mHotPendingSymbols)
+			mHotSymbols[kv.mKey] = kv.mValue;
+		mHotTlsDemangledValid = false;
+	}
+	else if (outRestored)
+	{
+		for (auto& priorEntry : priorEntries)
+		{
+			if (priorEntry.mHadEntry)
+				mHotPatchedEntries[priorEntry.mAddr] = priorEntry.mEntry;
+			else
+				mHotPatchedEntries.Remove(priorEntry.mAddr);
+		}
+		while (mHotInvalidLambdaTrapIds.size() > firstTrapIdx)
+		{
+			mLLDBTarget.BreakpointDelete(mHotInvalidLambdaTrapIds.back());
+			mHotInvalidLambdaTrapIds.pop_back();
+		}
+		for (auto obj : objects)
+		{
+			HotUnregisterDebugInfo(obj);
+			if (obj->mImageAddr != 0)
+				HotFree(obj->mImageAddr, obj->mImageSize);
+		}
+		outNumPatched = 0;
+	}
+	for (auto obj : objects)
+		delete obj;
+	mHotPendingDataFixups.Clear();
+	mHotPendingSymbols.Clear();
+	return success;
 }
 
 void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
@@ -7326,101 +7524,17 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 
 	String error;
 	bool wasRunning = (mRunState == RunState_Running) || (mRunState == RunState_Running_ToTempBreakpoint);
+	bool success = true;
 	if (wasRunning)
 	{
 		mLLDBProcess.Stop();
-		if (!HotWaitForStop(error))
-		{
-			mDebugManager->mOutMessages.push_back(StrFormat("error Hot swap failed: %s", error.c_str()));
-			return;
-		}
+		success = HotWaitForStop(error);
 	}
-
-	// Load every object before patching anything, so a failure leaves the program untouched
-	Array<HotPatch> patches;
-	Array<LLDBHotObject*> objects;
-	bool success = true;
-	mHotPendingSymbols.Clear();
-	mHotPendingDataFixups.Clear();
-	for (auto& fileName : objectFiles)
-	{
-		LLDBHotObject* obj = new LLDBHotObject();
-		obj->mFileName = fileName;
-		objects.Add(obj);
-		if (!HotParseObject(obj, error))
-		{
-			success = false;
-			break;
-		}
-	}
-	if (success)
-	{
-		HotChooseBaseModule(objects);
-		for (auto obj : objects)
-		{
-			if (!HotPrepareObject(obj, patches, error))
-			{
-				success = false;
-				break;
-			}
-		}
-	}
-	if (success)
-	{
-		for (auto obj : objects)
-		{
-			if (!HotLinkObject(obj, patches, error))
-			{
-				success = false;
-				break;
-			}
-		}
-	}
-	if (success)
-	{
-		for (auto obj : objects)
-			HotRegisterDebugInfo(obj, hotIdx);
-	}
-	for (auto obj : objects)
-	{
-		if (obj->mImageAddr == 0)
-			continue;
-		if (success)
-		{
-			HotImage image;
-			image.mAddr = obj->mImageAddr;
-			image.mSize = obj->mImageSize;
-			image.mHotIdx = hotIdx;
-			image.mModule = obj->mModule;
-			image.mModulePath = obj->mModulePath;
-			mHotImages.Add(image);
-		}
-		else
-			HotFree(obj->mImageAddr, obj->mImageSize);
-	}
-	for (auto obj : objects)
-		delete obj;
-
-	if (success)
-		success = HotApplyDataFixups(error);
-	mHotPendingDataFixups.Clear();
-
-	// Only publish new definitions once the whole batch is in the target
-	if (success)
-	{
-		for (auto& kv : mHotPendingSymbols)
-			mHotSymbols[kv.mKey] = kv.mValue;
-		mHotTlsDemangledValid = false;
-	}
-	mHotPendingSymbols.Clear();
 
 	int numPatched = 0;
+	bool restored = true;
 	if (success)
-		HotCheckLambdaCaptures(patches);
-	if (success)
-		success = HotStepThreadsPastPatches(patches, error);
-	if (success)
-		success = HotApplyPatches(patches, numPatched, error);
+		success = HotLoadBatch(objectFiles, hotIdx, numPatched, restored, error);
 
 	if (success)
 		OutputMessage(StrFormat("Hot swap: replaced %d method%s\n", numPatched, (numPatched == 1) ? "" : "s"));
@@ -7437,10 +7551,14 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 	for (auto bp : mBreakpoints)
 		CheckBreakpoint(bp);
 
-	if ((wasRunning) && (mLLDBProcess.IsValid()) && (mLLDBProcess.GetState() == lldb::eStateStopped))
+	if ((wasRunning) && (restored) && (mLLDBProcess.IsValid()) && (mLLDBProcess.GetState() == lldb::eStateStopped))
 		mLLDBProcess.Continue();
 	else
+	{
+		if ((wasRunning) && (!restored))
+			mRunState = RunState_Paused;
 		ClearCallStack();
+	}
 }
 
 // After a hot compile the IDE waits for this data before it calls HotLoad.
