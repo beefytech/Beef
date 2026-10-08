@@ -1,0 +1,8 @@
+ShowFile("src/Program.bf")
+GotoText("Assembly.Test();")
+ToggleBreakpoint()
+RunWithCompiling()
+
+AssertEvalContains("a", "ERROR:")
+AssertEvalContains("div100_sig", "ERROR:")
+AssertEvalContains("gBfLiveTypeCounts", "ERROR:")

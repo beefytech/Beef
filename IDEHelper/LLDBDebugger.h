@@ -231,6 +231,8 @@ protected:
 	bool IsStepFiltered(lldb::SBFunction& function);
 	bool ContinueStep(lldb::SBThread& thread);
 	lldb::SBValue EvaluateBeefPath(lldb::SBFrame& frame, const StringImpl& expr);
+	lldb::SBValue FindFrameModuleGlobal(lldb::SBFrame& frame, const StringImpl& name);
+	bool HasGlobalNamed(const StringImpl& name);
 	lldb::SBType HotFindNewestType(const char* typeName);
 	lldb::SBValue HotFindStaticVariable(lldb::SBFrame& frame, const StringImpl& qualifier, const StringImpl& name);
 	bool HotFindThreadLocalOffset(const char* qualifiedName, uint64& outOffset);
