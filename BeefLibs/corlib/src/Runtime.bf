@@ -424,7 +424,7 @@ namespace System
 			flags |= .DebugAlloc;
 #endif
 			Init(cVersion, (int32)flags, &BfRtCallbacks.sCallbacks);
-#if !BF_RUNTIME_REDUCED && BF_PLATFORM_WINDOWS
+#if !BF_RUNTIME_REDUCED && !BF_PLATFORM_WASM
 			InitCrashCatcher((int32)flags);
 #endif
 #if BF_DBG_RUNTIME
@@ -668,7 +668,7 @@ namespace System
 
 		public static void Shutdown()
 		{
-#if !BF_RUNTIME_REDUCED && BF_PLATFORM_WINDOWS
+#if !BF_RUNTIME_REDUCED && !BF_PLATFORM_WASM
 			ShutdownCrashCatcher();
 #endif
 		}
