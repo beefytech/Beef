@@ -122,6 +122,7 @@ public:
 struct BfStringPoolEntry
 {
 	String mString;
+	int mStableId;
 	int mLastUsedRevision;
 	int mFirstUsedRevision;
 };
@@ -430,6 +431,7 @@ public:
 
 	Dictionary<String, int> mStringObjectPool;
 	Dictionary<int, BfStringPoolEntry> mStringObjectIdMap;
+	Dictionary<int, int> mStringStableIdMap;
 	int mCurStringObjectPoolId;
 
 	HashSet<BfTypeInstance*> mQueuedSpecializedMethodRebuildTypes;
@@ -479,6 +481,8 @@ public:
 	void ReportMemory(MemReporter* memReporter);
 	void ProcessMethod(BfMethodInstance* methodInstance);
 	int GetStringLiteralId(const StringImpl& str);
+	int GetStringStableId(int stringId);
+	int GetStringIdByStableId(int stableId);
 	void CheckLockYield();
 	bool IsCancellingAndYield();
 	void QueueFinishModule(BfModule * module);

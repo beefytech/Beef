@@ -142,12 +142,42 @@ int BfContext::GetStringLiteralId(const StringImpl& str)
 	mCurStringObjectPoolId++;
 	mStringObjectPool[str] = mCurStringObjectPoolId;
 
+	// The string's globals (__bfStrObj, __bfStrData) are named by a stable id from its content rather than by its id,
+	//  which depends on the order strings are first seen: with id-based names, a fresh compiler that met one new
+	//  literal renumbered every later one and changed hundreds of unrelated modules. The id itself stays sequential,
+	//  since String.GetInternId hands it out and expects compact ids. A collision takes the next free stable id.
+	int stableId = (int)(Hash64(str.c_str(), (int)str.length()) & 0x7FFFFFFF);
+	while (mStringStableIdMap.ContainsKey(stableId))
+		stableId = (stableId + 1) & 0x7FFFFFFF;
+	mStringStableIdMap[stableId] = mCurStringObjectPoolId;
+
 	BfStringPoolEntry stringPoolEntry;
 	stringPoolEntry.mString = str;
+	stringPoolEntry.mStableId = stableId;
 	stringPoolEntry.mFirstUsedRevision = mCompiler->mRevision;
 	stringPoolEntry.mLastUsedRevision = mCompiler->mRevision;
 	mStringObjectIdMap[mCurStringObjectPoolId] = stringPoolEntry;
 	return mCurStringObjectPoolId;
+}
+
+int BfContext::GetStringStableId(int stringId)
+{
+	BfStringPoolEntry* entry = NULL;
+	if (!mStringObjectIdMap.TryGetValue(stringId, &entry))
+	{
+		BF_FATAL("Unknown string id");
+		return -1;
+	}
+	return entry->mStableId;
+}
+
+// Maps the number in a string global's name back to the string id
+int BfContext::GetStringIdByStableId(int stableId)
+{
+	int* stringIdPtr = NULL;
+	if (!mStringStableIdMap.TryGetValue(stableId, &stringIdPtr))
+		return -1;
+	return *stringIdPtr;
 }
 
 void BfContext::AssignModule(BfType* type)

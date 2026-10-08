@@ -1327,14 +1327,14 @@ bool BfIRConstHolder::WriteConstant(BfIRValue val, void* ptr, BfType* type)
 		const char* strDataPrefix = "__bfStrData";
 		if (strncmp(constGV->mName, strDataPrefix, strlen(strDataPrefix)) == 0)
 		{
-			*(int32*)ptr = atoi(constGV->mName + strlen(strDataPrefix));
+			*(int32*)ptr = mModule->mContext->GetStringIdByStableId(atoi(constGV->mName + strlen(strDataPrefix)));
 			return true;
 		}
 
 		const char* strObjPrefix = "__bfStrObj";
 		if (strncmp(constGV->mName, strObjPrefix, strlen(strObjPrefix)) == 0)
 		{
-			*(int32*)ptr = atoi(constGV->mName + strlen(strObjPrefix));
+			*(int32*)ptr = mModule->mContext->GetStringIdByStableId(atoi(constGV->mName + strlen(strObjPrefix)));
 			return true;
 		}
 	}

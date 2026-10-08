@@ -5739,6 +5739,7 @@ void BfCompiler::ClearUnusedStringPoolEntries()
 		{
 			CompileLog("Clearing unused string: %d %s\n", itr->mKey, stringPoolEntry.mString.c_str());
 			mContext->mStringObjectPool.Remove(stringPoolEntry.mString);
+			mContext->mStringStableIdMap.Remove(stringPoolEntry.mStableId);
 			itr = mContext->mStringObjectIdMap.Remove(itr);
 		}
 		else

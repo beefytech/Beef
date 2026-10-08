@@ -157,5 +157,15 @@ namespace Tests
 				Internal.MemCpy(&rangeData, &range, sizeof(ClosedRange));
 			Test.Assert(GetConstArg(typeof(ConstValueHolder<-3...3>)).ValueData == rangeData);
 		}
+
+		// A String const value's type data held the literal's compiler id, which String.GetById then used as an index into
+		//  the runtime literal table, so naming the type read the wrong entry or past the end of the table
+		[Test]
+		public static void TestStringConstArgData()
+		{
+			let constArg = GetConstArg(typeof(ConstValueHolder<"const arg string">));
+			Test.Assert(String.GetById((.)constArg.ValueData) == "const arg string");
+			Test.Assert(constArg.GetFullName(.. scope .()) == "const \"const arg string\"");
+		}
 	}
 }

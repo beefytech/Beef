@@ -1678,7 +1678,7 @@ BfTypedValue BfModule::GetDefaultTypedValue(BfType* type, bool allowRef, BfDefau
 
 BfIRValue BfModule::CreateStringCharPtr(const StringImpl& str, int stringId, bool define)
 {
-	String stringDataName = StrFormat("__bfStrData%d", stringId);
+	String stringDataName = StrFormat("__bfStrData%d", mContext->GetStringStableId(stringId));
 
 	auto charType = GetPrimitiveType(BfTypeCode_Char8);
  	BfIRType irStrCharType = mBfIRBuilder->GetSizedArrayType(mBfIRBuilder->MapType(charType), (int)str.length() + 1);
@@ -1745,7 +1745,7 @@ BfIRValue BfModule::CreateStringObjectValue(const StringImpl& str, int stringId,
 
 	auto classVDataGlobal = CreateClassVDataGlobal(stringTypeInst);
 
-	String stringObjName = StrFormat("__bfStrObj%d", stringId);
+	String stringObjName = StrFormat("__bfStrObj%d", mContext->GetStringStableId(stringId));
 
 	BfIRValue stringValData;
 
@@ -1845,11 +1845,11 @@ int BfModule::GetStringPoolIdx(BfIRValue constantStr, BfIRConstHolder* constHold
 		auto constGV = (BfGlobalVar*)constant;
 		const char* strDataPrefix = "__bfStrData";
 		if (strncmp(constGV->mName, strDataPrefix, strlen(strDataPrefix)) == 0)
-			return atoi(constGV->mName + strlen(strDataPrefix));
+			return mContext->GetStringIdByStableId(atoi(constGV->mName + strlen(strDataPrefix)));
 
 		const char* strObjPrefix = "__bfStrObj";
 		if (strncmp(constGV->mName, strObjPrefix, strlen(strObjPrefix)) == 0)
-			return atoi(constGV->mName + strlen(strObjPrefix));
+			return mContext->GetStringIdByStableId(atoi(constGV->mName + strlen(strObjPrefix)));
 	}
 
 	return -1;
@@ -7028,6 +7028,17 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 					auto structData = (BfVariant::StructData*)constExprType->mValue.mPtr;
 					if (structData->mSize <= (int)sizeof(int64))
 						memcpy(&constExprValue, structData->mData, structData->mSize);
+				}
+				else if ((constExprType->mValue.mTypeCode == BfTypeCode_StringId) && (!mIsComptimeModule))
+				{
+					// At runtime String.GetById indexes sIdStringLiterals, which only holds the strings vdata lists there, so
+					//  store the string's index in that table rather than its literal id (comptime looks literal ids up directly)
+					int stringId = constExprType->mValue.mInt32;
+					int* orderedIdPtr;
+					if (ctx.mUsedStringIdMap.TryAdd(stringId, NULL, &orderedIdPtr))
+						*orderedIdPtr = (int)ctx.mUsedStringIdMap.size() - 1;
+					GetStringObjectValue(stringId, true, true);
+					constExprValue = *orderedIdPtr;
 				}
 				SizedArray<BfIRValue, 3> constExprTypeDataParms =
 				{
@@ -17943,7 +17954,9 @@ int BfModule::GetSignatureId(const StringImpl& str)
 {
 	int strId = mContext->GetStringLiteralId(str);
 	mSignatureIdRefs.Add(strId);
-	return strId;
+	// Signature ids are only compared for equality, as constants in generated code, so they use the string's stable id
+	//  like its globals' names do
+	return mContext->GetStringStableId(strId);
 }
 
 int BfModule::GetDelegateSignatureId(BfTypeInstance* typeInstance)
