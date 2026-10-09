@@ -3686,10 +3686,16 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 	}
 	if (!value.IsValid())
 		value = EvaluateBeefPath(frame, evalExpr);
+	bool isIdentifier = (!evalExpr.IsEmpty()) && (!isdigit((uint8)evalExpr[0]));
+	for (char c : evalExpr)
+		isIdentifier &= IsBeefIdentChar(c);
+	bool rejectedGlobal = (!value.IsValid()) && (isIdentifier) && (HasGlobalNamed(evalExpr));
 	if ((expressionFlags & DwEvalExpressionFlag_ValidateOnly) != 0)
 	{
 		if (value.IsValid())
 			return String();
+		if (rejectedGlobal)
+			return StrFormat("!0\t%d\tIdentifier not found", (int)evalExpr.length());
 		lldb::SBValue val = frame.EvaluateExpression(RewriteBeefMemberAccess(frame, evalExpr).c_str(), options);
 		lldb::SBError err = val.GetError();
 		return err.Fail() ? FormatLLDBError(err.GetCString()) : String();
@@ -3716,7 +3722,7 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 	}
 
 	// Otherwise use LLDB's (C++) expression parser, with Beef's '.' on object references turned into '->'
-	if (!value.IsValid())
+	if ((!value.IsValid()) && (!rejectedGlobal))
 		value = frame.EvaluateExpression(RewriteBeefMemberAccess(frame, evalExpr).c_str(), options);
 
 	// "this=" fallback: if direct evaluation failed and a this-context was specified,
@@ -3732,6 +3738,8 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 		if (!memberValue.GetError().Fail() && memberValue.IsValid())
 			value = memberValue;
 	}
+	if ((!value.IsValid()) && (rejectedGlobal))
+		return StrFormat("!0\t%d\tIdentifier not found", (int)evalExpr.length());
 
 	String result = FormatSBValueToResult(value, fmtInfo);
 
@@ -3837,6 +3845,8 @@ lldb::SBValue LLDBDebugger::EvaluateBeefPath(lldb::SBFrame& frame, const StringI
 				value = closureThis.GetChildMemberWithName(ident.c_str());
 		}
 	}
+	if (!value.IsValid())
+		value = FindFrameModuleGlobal(frame, ident);
 	if (!value.IsValid())
 	{
 		// A static field: "field" (from the current method's class), or "Type.field" / "Namespace.Type.field".
@@ -4015,6 +4025,55 @@ lldb::SBValue LLDBDebugger::HotFindMemberInNewestTypes(lldb::SBValue value, cons
 	return lldb::SBValue();
 }
 
+static bool GlobalNameEquals(const char* globalName, const StringImpl& name)
+{
+	if (globalName == NULL)
+		return false;
+	if ((globalName[0] == ':') && (globalName[1] == ':'))
+		globalName += 2;
+	return name == globalName;
+}
+
+lldb::SBValue LLDBDebugger::FindFrameModuleGlobal(lldb::SBFrame& frame, const StringImpl& name)
+{
+	lldb::SBCompileUnit frameUnit = frame.GetCompileUnit();
+	lldb::SBModule module = frame.GetModule();
+	if ((!frameUnit.IsValid()) || (!module.IsValid()))
+		return lldb::SBValue();
+	lldb::LanguageType language = frameUnit.GetLanguage();
+
+	lldb::SBValueList candidates = module.FindGlobalVariables(mLLDBTarget, name.c_str(), 64);
+	for (uint32 candidateIdx = 0; candidateIdx < candidates.GetSize(); candidateIdx++)
+	{
+		lldb::SBValue candidate = candidates.GetValueAtIndex(candidateIdx);
+		if (!GlobalNameEquals(candidate.GetName(), name))
+			continue;
+
+		lldb::SBSymbolContextList units = module.FindCompileUnits(candidate.GetDeclaration().GetFileSpec());
+		bool languageMatches = (units.GetSize() == 0);
+		for (uint32 unitIdx = 0; unitIdx < units.GetSize(); unitIdx++)
+		{
+			lldb::LanguageType unitLanguage = units.GetContextAtIndex(unitIdx).GetCompileUnit().GetLanguage();
+			if ((unitLanguage == lldb::eLanguageTypeUnknown) || (unitLanguage == language))
+				languageMatches = true;
+		}
+		if (languageMatches)
+			return candidate;
+	}
+	return lldb::SBValue();
+}
+
+bool LLDBDebugger::HasGlobalNamed(const StringImpl& name)
+{
+	lldb::SBValueList candidates = mLLDBTarget.FindGlobalVariables(name.c_str(), 64);
+	for (uint32 candidateIdx = 0; candidateIdx < candidates.GetSize(); candidateIdx++)
+	{
+		if (GlobalNameEquals(candidates.GetValueAtIndex(candidateIdx).GetName(), name))
+			return true;
+	}
+	return false;
+}
+
 // Find a static field by name, optionally qualified ("Type" or "Namespace::Type"), preferring the one
 // nearest the frame's method. Thread-local statics are read from the frame's thread directly - including
 // ones added by a hot compile, whose debug info doesn't know they live in __BFTLS_EXTRA.
@@ -4041,7 +4100,7 @@ lldb::SBValue LLDBDebugger::HotFindStaticVariable(lldb::SBFrame& frame, const St
 		if (candidateNamePtr == NULL)
 			continue;
 		String candidateName = candidateNamePtr;
-		if (!candidateName.EndsWith(suffix))
+		if ((candidateName.length() <= suffix.length()) || (!candidateName.EndsWith(suffix)))
 			continue;
 
 		// Prefer the variable whose scope shares the most with the method's
