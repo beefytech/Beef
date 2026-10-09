@@ -289,6 +289,7 @@ public:
 		bool mHasNewTypes;
 		bool mHasNewInterfaceTypes;
 		Array<BfCodeGenFileEntry> mQueuedOutFiles; // Queues up when we have failed hot compiles
+		Array<BfCodeGenFileEntry> mUncommittedOutFiles; // Handed to the IDE but not yet hot loaded
 		HashSet<int> mSlotDefineTypeIds;
 		HashSet<int> mNewlySlottedTypeIds;
 		HashSet<int> mPendingDataChanges;

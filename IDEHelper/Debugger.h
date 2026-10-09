@@ -281,6 +281,7 @@ public:
 	virtual void Run() = 0;
 	virtual bool HasLoadedTargetBinary() { return true; }
 	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) = 0;
+	virtual bool WasHotLoadApplied() { return true; }
 	virtual void InitiateHotResolve(DbgHotResolveFlags flags) = 0;
 	virtual intptr GetDbgAllocHeapSize() = 0;
 	virtual String GetDbgAllocInfo() = 0;

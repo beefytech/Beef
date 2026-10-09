@@ -12421,8 +12421,8 @@ namespace IDE
 
 				//
 
-				mBfBuildCompiler.HotCommit();
-				mDebugger.HotLoad(entries, mWorkspace.HotCompileIdx);
+				if (mDebugger.HotLoad(entries, mWorkspace.HotCompileIdx))
+					mBfBuildCompiler.HotCommit();
 				/*if (mDebugger.IsPaused())
 					PCChanged();*/
 

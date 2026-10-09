@@ -547,16 +547,17 @@ namespace IDE.Debugger
 			Debugger_Run();
 		}
 
-		public void HotLoad(String[] objectFileNames, int hotIdx)
+		public bool HotLoad(String[] objectFileNames, int hotIdx)
 		{
 			String filenamesStr = scope String();
 			filenamesStr.Join("\n", objectFileNames);
-			Debugger_HotLoad(filenamesStr, (int32)hotIdx);
+			bool success = Debugger_HotLoad(filenamesStr, (int32)hotIdx);
 
 			// The hot load will bind breakpoints to any new methods, but the old versions
 			//  need remapped text positions
 			for (var breakpoint in mBreakpointList)
 				breakpoint.CheckBreakpointHotBinding();
+			return success;
 		}
 
 		public void StopDebugging()

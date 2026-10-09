@@ -6287,6 +6287,7 @@ void BfCompiler::HotCommit()
 		return;
 
 	mHotState->mCommittedHotCompileIdx = mOptions.mHotCompileIdx;
+	mHotState->mUncommittedOutFiles.Clear();
 
 	for (auto type : mContext->mResolvedTypes)
 	{
@@ -11039,6 +11040,15 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* 
 	if (bfCompiler->mHotState != NULL)
 	{
 		Array<String> outPaths;
+		HashSet<String> outPathSet;
+
+		for (auto& fileEntry : bfCompiler->mHotState->mUncommittedOutFiles)
+		{
+			if (fileEntry.mProject != bfProject)
+				continue;
+			if (outPathSet.Add(fileEntry.mFileName))
+				outPaths.Add(fileEntry.mFileName);
+		}
 
 		for (int i = 0; i < (int)bfCompiler->mHotState->mQueuedOutFiles.size(); i++)
 		{
@@ -11047,10 +11057,12 @@ BF_EXPORT const char* BF_CALLTYPE BfCompiler_GetUsedOutputFileNames(BfCompiler* 
 				continue;
 			if (!bfCompiler->mHotState->mHotProject->mUsedModules.Contains(fileEntry.mModule))
 				continue;
-			outPaths.Add(fileEntry.mFileName);
+			if (outPathSet.Add(fileEntry.mFileName))
+				outPaths.Add(fileEntry.mFileName);
 
 			if ((flags & BfUsedOutputFlags_FlushQueuedHotFiles) != 0)
 			{
+				bfCompiler->mHotState->mUncommittedOutFiles.Add(fileEntry);
 				bfCompiler->mHotState->mQueuedOutFiles.RemoveAtFast(i);
 				i--;
 			}
