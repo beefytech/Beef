@@ -1,0 +1,22 @@
+# Run with BEEF_LLDB_HOT_FAIL_WRITE=1 BEEF_LLDB_HOT_FAIL_UNDO=1
+ShowFile("src/HotSwap.bf")
+GotoText("//HotStart_Funcs")
+ToggleBreakpoint()
+RunWithCompiling()
+
+GotoText("//HotTester_TestFuncs_Func_Return")
+AdjustCursor(0, 1)
+CursorToLineEnd()
+AdjustCursor(-1, 0)
+InsertText("4")
+
+GotoText("//HotB_MethodA_Return")
+AdjustCursor(0, 1)
+CursorToLineEnd()
+AdjustCursor(-1, 0)
+InsertText("9")
+
+SetExpectError("could not be restored and must be restarted")
+Compile()
+ExpectError()
+AssertCurrentMethod("IDETest!IDETest.HotTester.TestFuncs()")

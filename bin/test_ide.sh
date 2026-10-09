@@ -116,4 +116,14 @@ do
 	done
 done
 
+for ide in "${BINARIES[@]}"
+do
+	echo "Testing IDE/Tests/Test1/faults/HotSwap_WriteFailure.txt in $ide"
+	BEEF_LLDB_HOT_FAIL_WRITE=1 "${LAUNCHER[@]}" "./$ide" -proddir="$ROOTPATH/IDE/Tests/Test1" -test="$ROOTPATH/IDE/Tests/Test1/faults/HotSwap_WriteFailure.txt" || fail $?
+	echo "Testing IDE/Tests/Test1/faults/HotSwap_RepatchFailure.txt in $ide"
+	BEEF_LLDB_HOT_FAIL_WRITE=13 BEEF_LLDB_HOT_FAIL_LOAD=2 "${LAUNCHER[@]}" "./$ide" -proddir="$ROOTPATH/IDE/Tests/Test1" -test="$ROOTPATH/IDE/Tests/Test1/faults/HotSwap_RepatchFailure.txt" || fail $?
+	echo "Testing IDE/Tests/Test1/faults/HotSwap_UndoFailure.txt in $ide"
+	BEEF_LLDB_HOT_FAIL_WRITE=1 BEEF_LLDB_HOT_FAIL_UNDO=1 "${LAUNCHER[@]}" "./$ide" -proddir="$ROOTPATH/IDE/Tests/Test1" -test="$ROOTPATH/IDE/Tests/Test1/faults/HotSwap_UndoFailure.txt" || fail $?
+done
+
 echo "SUCCESS!"
