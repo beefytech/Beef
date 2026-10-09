@@ -2939,7 +2939,10 @@ bool WinDebugger::DoUpdate()
 						if (!handled)
 						{
 							if (mRunState != RunState_DebugEval)
-								OutputMessage(StrFormat("Skipping first chance exception %08X at address %@ in thread %d\n", exceptionRecord->ExceptionCode, exceptionRecord->ExceptionAddress, threadInfo->mThreadId));
+							{
+								if (!(gDebugManager->GetOutputFilterFlags() & BfOutputFilterFlags_FirstChanceExceptions))
+									OutputMessage(StrFormat("Skipping first chance exception %08X at address %@ in thread %d\n", exceptionRecord->ExceptionCode, exceptionRecord->ExceptionAddress, threadInfo->mThreadId));
+							}
 							::ContinueDebugEvent(mDebuggerWaitingThread->mProcessId, mDebuggerWaitingThread->mThreadId, DBG_EXCEPTION_NOT_HANDLED);
 							mIsDebuggerWaiting = false;
 						}

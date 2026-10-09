@@ -36,7 +36,7 @@ enum BfStepFilterKind
 };
 
 enum BfOutputFilterFlags : uint16
-	{
+{
 	BfOutputFilterFlags_None = 0x0,
 	BfOutputFilterFlags_ModuleLoadMessages = 0x1,
 	BfOutputFilterFlags_ModuleUnloadMessages = 0x2,
@@ -44,7 +44,8 @@ enum BfOutputFilterFlags : uint16
 	BfOutputFilterFlags_ThreadCreateMessages = 0x8,
 	BfOutputFilterFlags_ThreadExitMessages = 0x10,
 	BfOutputFilterFlags_SymbolLoadMessages = 0x20,
-	BfOutputFilterFlags_ProgramOutput = 0x40 // Can't trap these easily, they're in BeefSysLib
+	BfOutputFilterFlags_ProgramOutput = 0x40, // Can't trap these easily, they're in BeefSysLib
+	BfOutputFilterFlags_FirstChanceExceptions = 0x80,
 };
 
 class StepFilter
