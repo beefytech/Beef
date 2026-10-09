@@ -1,0 +1,16 @@
+ShowFile("src/HotSwap_LiveTypes.bf")
+GotoText("//Test_A_live")
+ToggleBreakpoint()
+GotoText("//Test_A_freed")
+ToggleBreakpoint()
+RunWithCompiling()
+
+# sA was created by the allocator's AllocObject
+ToggleCommentAt("ClassA_mA2")
+SetExpectError("data changes")
+Compile()
+ExpectError()
+
+Continue()
+Compile()
+AssertEvalEquals("step", "1")

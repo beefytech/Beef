@@ -645,6 +645,9 @@ void Internal::Dbg_ObjectCreated(bf::System::Object* result, intptr size, bf::Sy
 	BF_ASSERT_REL((result->mClassVData & ~(BfObjectFlag_Allocated | BfObjectFlag_Mark3)) == (intptr)classVData);
 	result->mDbgAllocInfo = (intptr)BF_RETURN_ADDRESS;
 #endif
+#ifndef BF_GC_SUPPORTED
+	BfTrackAllocatedObject(result, classVData);
+#endif
 }
 
 void Internal::Dbg_ObjectCreatedEx(bf::System::Object* result, intptr origSize, bf::System::ClassVData* classVData, uint8 allocFlags)
@@ -653,6 +656,9 @@ void Internal::Dbg_ObjectCreatedEx(bf::System::Object* result, intptr origSize, 
 #ifndef BFRT_NODBGFLAGS	
 	BF_ASSERT_REL((result->mClassVData & ~(BfObjectFlag_Allocated | BfObjectFlag_Mark3)) == (intptr)classVData);
 	SetupDbgAllocInfo(result, origSize, allocFlags);
+#endif
+#ifndef BF_GC_SUPPORTED
+	BfTrackAllocatedObject(result, classVData);
 #endif
 }
 
