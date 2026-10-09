@@ -17,6 +17,7 @@ namespace IDETest
 			HotSwap_GetUnusued.Test();
 			HotSwap_Interfaces2.Test();
 			HotSwap_Lambdas01.Test();
+			HotSwap_LiveTypes.Test();
 			HotSwap_LocateSym01.Test();
 			HotSwap_Reflection.Test();
 			HotSwap_TLS.Test();
