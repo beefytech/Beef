@@ -1702,7 +1702,7 @@ namespace SDL2
 			int32 count
 		);
 
-		[LinkName("SDL_RenderDrawRect")]
+		[LinkName("SDL_RenderDrawRectF")]
 		public static extern int32 RenderDrawRectF(
 			Renderer* renderer,
 			FRect* rect
