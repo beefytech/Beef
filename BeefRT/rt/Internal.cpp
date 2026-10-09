@@ -53,7 +53,9 @@ extern "C"
 #endif
 
 #if defined(BF_PLATFORM_LINUX) && !defined(__EMSCRIPTEN__)
-#include <sys/ptrace.h>
+#include <errno.h>
+#include <fcntl.h>
+#include <unistd.h>
 #endif
 
 USING_NS_BF;
@@ -234,11 +236,33 @@ bool IsDebuggerPresent()
 {
 
 #if defined(BF_PLATFORM_LINUX) && !defined(__EMSCRIPTEN__)
-	bool debugged = ptrace(PTRACE_TRACEME, 0, 1, 0) < 0;
-	if (!debugged)
-		ptrace(PTRACE_DETACH, 0, 1, 0); // detach when ptrace is successful
+	// A debugger shows up as a nonzero TracerPid. (PTRACE_TRACEME can't be used to ask: when nothing traces us it
+	//  succeeds and makes our parent our tracer for good, after which every signal stops us instead of being handled)
+	int fd = open("/proc/self/status", O_RDONLY | O_CLOEXEC);
+	if (fd < 0)
+		return false;
 
-	return debugged;
+	char buf[4096];
+	intptr len = 0;
+	while (len < (intptr)sizeof(buf) - 1)
+	{
+		ssize_t readLen = read(fd, buf + len, sizeof(buf) - 1 - len);
+		if ((readLen < 0) && (errno == EINTR))
+			continue;
+		if (readLen <= 0)
+			break;
+		len += readLen;
+	}
+	close(fd);
+	buf[len] = 0;
+
+	const char* tracerPid = strstr(buf, "TracerPid:");
+	if (tracerPid == NULL)
+		return false;
+	tracerPid += strlen("TracerPid:");
+	while ((*tracerPid == ' ') || (*tracerPid == '\t'))
+		tracerPid++;
+	return (*tracerPid >= '1') && (*tracerPid <= '9');
 
 #endif // BF_PLATFORM_LINUX
 
