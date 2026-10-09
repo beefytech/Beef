@@ -105,7 +105,7 @@ namespace IDE.Debugger
 		}
 
 		//[Flags]
-		public enum OutputFilterFlags
+		public enum OutputFilterFlags : uint16
 		{
 			None = 0x0,
 			ModuleLoadMessages = 0x1,
@@ -114,7 +114,8 @@ namespace IDE.Debugger
 			ThreadCreateMessages = 0x8,
 			ThreadExitMessages = 0x10,
 			SymbolLoadMessages = 0x20,
-			ProgramOutput = 0x30
+			ProgramOutput = 0x40,
+			FirstChanceExceptions = 0x80,
 		}
 
 		[Reflect]

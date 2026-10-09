@@ -328,6 +328,17 @@ namespace IDE.ui
 					{
 						gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .SymbolLoadMessages);
 					});
+
+					var menuItemFirstChanceExceptionSkips = menu.AddItem("First Chance Exception Skipped Messages");
+					if (!outputFilterFlags.HasFlag(.FirstChanceExceptions))
+					{
+						menuItemFirstChanceExceptionSkips.mIconImage = DarkTheme.sDarkTheme.GetImage(DarkTheme.ImageIdx.Check);
+					}
+
+					menuItemFirstChanceExceptionSkips.mOnMenuItemSelected.Add(new (evt) =>
+					{
+						gApp.mDebugger.SetOutputFilterFlags(outputFilterFlags ^ .FirstChanceExceptions);
+					});
 				}
 
 				/* Not sure how to filter Program Output, it's handled in BeefSysLib not the IDE/Debugger. Perhaps we would
