@@ -193,16 +193,21 @@ namespace System.Reflection
 			if (mAllocStackCountOverride != 0)
 				stackCount = mAllocStackCountOverride;
 
+			// An append constructor may append objects that need marking, which the debug runtime
+			//  tracks in a record after the stack trace (the compiler only sets this when it's needed)
+			uint8 allocFlags = hasAppendAlloc ? 1 : 0;
 			if (allocator != null)
 			{
 				int stackTraceSize = Internal.Dbg_PrepareStackTrace(allocSize, stackCount);
 				int totalAllocSize = allocSize + stackTraceSize;
+				if (allocFlags != 0)
+					totalAllocSize += sizeof(int) * 4;
 				obj = Internal.UnsafeCastToObject(allocator.Alloc(totalAllocSize, mInstAlign));
-				Internal.Dbg_ObjectAllocatedEx(obj, allocSize, (.)(void*)mTypeClassVData, 0);
+				Internal.Dbg_ObjectAllocatedEx(obj, allocSize, (.)(void*)mTypeClassVData, allocFlags);
 			}
 			else
 			{
-				obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, allocSize, mInstAlign, stackCount, 0);
+				obj = Internal.Dbg_ObjectAlloc(mTypeClassVData, allocSize, mInstAlign, stackCount, allocFlags);
 			}
 #else
 			void* mem;

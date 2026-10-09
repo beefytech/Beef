@@ -404,6 +404,8 @@ void* Internal::Dbg_GetMetadata(bf::System::Object* obj)
 intptr Internal::Dbg_PrepareStackTrace(intptr baseAllocSize, intptr maxStackTraceDepth)
 {
 	intptr allocSize = 0;
+	// Dbg_ObjectAllocatedEx/Dbg_ObjectCreatedEx follow this, so don't leave them a count from a previous allocation
+	gPendingAllocState.mStackTraceCount = 0;
 	if (maxStackTraceDepth > 1)
 	{
 		int capturedTraceCount = BF_CAPTURE_STACK(1, (intptr*)gPendingAllocState.mStackTrace, min((int)maxStackTraceDepth, 1024));
@@ -529,19 +531,26 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 			dbgAllocInfo = (intptr)BF_RETURN_ADDRESS;
 		else
 		{
+			uint8* traceEnd;
 			if (largeAllocInfo)
 			{
 				classVDataVal |= (intptr)BfObjectFlag_AllocInfo;
 				dbgAllocInfo = size;
 				*(intptr*)((uint8*)result + size) = (capturedTraceCount << 8) | allocFlags;
 				memcpy((uint8*)result + size + sizeof(intptr), stackTrace, capturedTraceCount * sizeof(intptr));
+				traceEnd = (uint8*)result + size + sizeof(intptr) + capturedTraceCount * sizeof(intptr);
 			}
 			else
 			{
 				classVDataVal |= (intptr)BfObjectFlag_AllocInfo_Short;
 				dbgAllocInfo = (size << 16) | (((intptr)allocFlags) << 8) | capturedTraceCount;
 				memcpy((uint8*)result + size, stackTrace, capturedTraceCount * sizeof(intptr));
+				traceEnd = (uint8*)result + size + capturedTraceCount * sizeof(intptr);
 			}
+
+			// Append marking starts from an empty head AppendAllocEntry
+			if ((allocFlags & 1) != 0)
+				memset(traceEnd, 0, sizeof(intptr) * 4);
 		}		
 		result->mClassVData = classVDataVal;
 		BF_FULL_MEMORY_FENCE(); // Since we depend on mDbAllocInfo to determine if we are allocated, we need to set this last after we're set up
@@ -605,19 +614,27 @@ static void SetupDbgAllocInfo(bf::System::Object* result, intptr origSize, uint8
 		result->mDbgAllocInfo = (intptr)gPendingAllocState.mStackTrace[0];
 		return;
 	}
+	uint8* traceEnd;
 	if (gPendingAllocState.mIsLargeAlloc)
 	{
 		result->mClassVData |= (intptr)BfObjectFlag_AllocInfo;
 		result->mDbgAllocInfo = origSize;
 		*(intptr*)((uint8*)result + origSize) = (gPendingAllocState.mStackTraceCount << 8) | allocFlags;
 		memcpy((uint8*)result + origSize + sizeof(intptr), gPendingAllocState.mStackTrace, gPendingAllocState.mStackTraceCount * sizeof(intptr));
+		traceEnd = (uint8*)result + origSize + sizeof(intptr) + gPendingAllocState.mStackTraceCount * sizeof(intptr);
 	}
 	else
 	{
 		result->mClassVData |= (intptr)BfObjectFlag_AllocInfo_Short;
 		result->mDbgAllocInfo = (origSize << 16) | (((intptr)allocFlags) << 8) | gPendingAllocState.mStackTraceCount;
 		memcpy((uint8*)result + origSize, gPendingAllocState.mStackTrace, gPendingAllocState.mStackTraceCount * sizeof(intptr));
+		traceEnd = (uint8*)result + origSize + gPendingAllocState.mStackTraceCount * sizeof(intptr);
 	}
+
+	// Append marking starts from an empty head AppendAllocEntry, and a custom allocator's memory
+	//  (AllocObject in particular) isn't necessarily zeroed
+	if ((allocFlags & 1) != 0)
+		memset(traceEnd, 0, sizeof(intptr) * 4);
 #endif
 }
 

@@ -10796,6 +10796,11 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 				auto addlBytes = mBfIRBuilder->CreateCall(prepareStackTraceMethod.mFunc, irArgs);
 				sizeValue = mBfIRBuilder->CreateAdd(sizeValue, addlBytes);
 			}
+
+			// Like Dbg_ObjectAlloc, Dbg_ObjectAllocatedEx/Dbg_ObjectCreatedEx keep the append-tracking
+			//  record (one AppendAllocEntry) after the captured stack trace
+			if ((allocFlags & BfAllocFlags_HasAppendWantMark) != 0)
+				sizeValue = mBfIRBuilder->CreateAdd(sizeValue, GetConstValue(4 * mSystem->mPtrSize));
 		}
 
 		if (allocTarget.mCustomAllocator)
@@ -10804,13 +10809,10 @@ BfIRValue BfModule::AllocFromType(BfType* type, const BfAllocTarget& allocTarget
 			// Use AllocObject if we have it, otherwise we just use AllocBytes further down
 			if ((customAlloc != NULL) && (GetRawMethodByName(customAlloc, "AllocObject", -1, true, true) != NULL))
 			{
-				auto classVDataType = ResolveTypeDef(mCompiler->mClassVDataTypeDef);
-				mBfIRBuilder->PopulateType(classVDataType);
 				auto typeInstType = ResolveTypeDef(mCompiler->mReflectTypeInstanceTypeDef)->ToTypeInstance();
 				mBfIRBuilder->PopulateType(typeInstType);
-				auto typePtrPtr = mBfIRBuilder->CreateInBoundsGEP(vDataRef, 0, 1); // mType
-				auto typePtr = mBfIRBuilder->CreateLoad(typePtrPtr);
-				auto typeInstPtr = mBfIRBuilder->CreateBitCast(typePtr, mBfIRBuilder->MapTypeInstPtr(typeInstType));
+				// ClassVData's mType holds type ids rather than a Type pointer, so reference the type data directly
+				auto typeInstPtr = mBfIRBuilder->CreateBitCast(CreateTypeDataRef(typeInstance), mBfIRBuilder->MapTypeInstPtr(typeInstType));
 
 				BfTypedValueExpression typedValueExpr;
 				typedValueExpr.Init(BfTypedValue(typeInstPtr, typeInstType));
