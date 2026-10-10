@@ -1007,7 +1007,8 @@ namespace IDE
 					}
 				}
 
-				if ((gApp.mBfResolveCompiler != null) && (gApp.mBfResolveCompiler.IsPerformingBackgroundOperation()))
+				// A classify queues the resolve-all pass a couple of updates later; a script has to wait for that too
+				if ((gApp.mBfResolveCompiler != null) && ((gApp.mBfResolveCompiler.IsPerformingBackgroundOperation()) || (!gApp.mBfResolveCompiler.HasResolvedAll())))
 					return false;
 				if (gApp.[Friend]mDeferredOpen != .None)
 					return false;
@@ -1109,7 +1110,7 @@ namespace IDE
 		public void WaitForResolve()
 		{
 			var curCmd = ScriptManager.sActiveManager.mCurCmd;
-			curCmd.mHandled = IsPaused() && (!gApp.mBfResolveCompiler.IsPerformingBackgroundOperation());
+			curCmd.mHandled = IsPaused() && (!gApp.mBfResolveCompiler.IsPerformingBackgroundOperation()) && (gApp.mBfResolveCompiler.HasResolvedAll());
 		}
 
 		[IDECommand]
