@@ -1007,7 +1007,8 @@ namespace IDE
 					}
 				}
 
-				if ((gApp.mBfResolveCompiler != null) && (gApp.mBfResolveCompiler.IsPerformingBackgroundOperation()))
+				// A classify queues the resolve-all pass a couple of updates later; a script has to wait for that too
+				if ((gApp.mBfResolveCompiler != null) && ((gApp.mBfResolveCompiler.IsPerformingBackgroundOperation()) || (!gApp.mBfResolveCompiler.HasResolvedAll())))
 					return false;
 				if (gApp.[Friend]mDeferredOpen != .None)
 					return false;
@@ -1109,7 +1110,7 @@ namespace IDE
 		public void WaitForResolve()
 		{
 			var curCmd = ScriptManager.sActiveManager.mCurCmd;
-			curCmd.mHandled = IsPaused() && (!gApp.mBfResolveCompiler.IsPerformingBackgroundOperation());
+			curCmd.mHandled = IsPaused() && (!gApp.mBfResolveCompiler.IsPerformingBackgroundOperation()) && (gApp.mBfResolveCompiler.HasResolvedAll());
 		}
 
 		[IDECommand]
@@ -1739,7 +1740,7 @@ namespace IDE
 			String outVal = scope String();
 			if (!Evaluate(evalStr, outVal))
 				return;
-			gApp.OutputLineSmart(outVal);
+			gApp.OutputLine(outVal);
 		}
 
 		[IDECommand]
@@ -1824,6 +1825,29 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void AssertSelectedWatchContains(String val)
+		{
+			UpdateWatches();
+
+			int foundIdx = 0;
+			gApp.mWatchPanel.mListView.GetRoot().WithItems(scope [?] (item) =>
+				{
+					let watchItem = (WatchListViewItem)item;
+					if (watchItem.Selected)
+					{
+						foundIdx++;
+						ForceWatchItem(watchItem);
+
+						let valueWatchItem = (WatchListViewItem)watchItem.GetSubItem(1);
+						if (!valueWatchItem.Label.Contains(val))
+							mScriptManager.Fail("Assert failed: {} contains {}", valueWatchItem.Label, val);
+					}
+				});
+			if (foundIdx == 0)
+				mScriptManager.Fail("No watches selected");
+		}
+
+		[IDECommand]
 		public void UpdateWatches()
 		{
 			gApp.mWatchPanel.CheckClearDirtyWatches();
@@ -1870,6 +1894,12 @@ namespace IDE
 							});
 					}
 				});
+		}
+
+		[IDECommand]
+		public void DeleteSelectedWatches()
+		{
+			gApp.mWatchPanel.[Friend]DeleteSelectedItems();
 		}
 
 		[IDECommand]

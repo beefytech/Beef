@@ -248,6 +248,7 @@ protected:
 	bool IsStepFiltered(lldb::SBFunction& function);
 	bool ContinueStep(lldb::SBThread& thread);
 	lldb::SBValue EvaluateBeefPath(lldb::SBFrame& frame, const StringImpl& expr);
+	lldb::SBValue EvaluateInThisContext(lldb::SBFrame& frame, const StringImpl& expr, const StringImpl& thisExpr, String& outText, String& outError);
 	lldb::SBValue FindFrameModuleGlobal(lldb::SBFrame& frame, const StringImpl& name);
 	bool HasGlobalNamed(const StringImpl& name);
 	lldb::SBType HotFindNewestType(const char* typeName);
@@ -271,9 +272,6 @@ protected:
 	bool GetBeefMethodDefaults(const char* mangledName, Array<String>& outDefaults);
 	lldb::SBValue CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue thisValue, lldb::SBType staticType, const StringImpl& methodName,
 		const Array<lldb::SBValue>& args, bool allowCall, String& outError);
-	lldb::SBType GetBeefDynamicType(lldb::SBValue objectRef);
-	lldb::SBType GetBeefDynamicTypeAt(uint64 objAddr);
-	bool IsBeefObjectType(lldb::SBType type, int depth = 0);
 	void CreateOutputPipes();
 	void GiveTerminalToTarget(const StringImpl& ttyPath, int pid);
 	void RestoreTerminal();
@@ -327,6 +325,11 @@ protected:
 public:
 	LLDBDebugger(DebugManager* debugManager);
 	~LLDBDebugger();
+
+	lldb::SBType GetBeefDynamicType(lldb::SBValue objectRef);
+	lldb::SBType GetBeefDynamicTypeAt(uint64 objAddr);
+	bool IsBeefObjectType(lldb::SBType type, int depth = 0);
+	lldb::SBValue EvaluateBeefAddrCast(const StringImpl& expr);
 
 	virtual void OutputMessage(const StringImpl& msg) override;
 	virtual void OutputRawMessage(const StringImpl& msg) override;

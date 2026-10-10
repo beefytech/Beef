@@ -38,6 +38,7 @@ namespace IDETest
 			UsingFields.Test();
 			Virtuals.Test();
 			Virtuals02.Test();
+			Visualizers.Test();
 
 			Bug001.Test();
 			Bug002.Test();
