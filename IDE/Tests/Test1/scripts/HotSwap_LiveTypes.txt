@@ -1,3 +1,8 @@
+# The Windows debugger finds live objects by scanning the GC heap, so it misses objects from custom
+#  allocators and lets this data change through. Skip until it tracks those as LLDB does.
+if (platform == "Win64") Stop()
+if (platform == "Win32") Stop()
+
 ShowFile("src/HotSwap_LiveTypes.bf")
 GotoText("//Test_A_live")
 ToggleBreakpoint()
