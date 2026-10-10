@@ -218,6 +218,7 @@ public:
 	Dictionary<String, HotSymbol> mHotPendingSymbols; // definitions from the batch currently being loaded
 	Array<HotDataFixup> mHotPendingDataFixups;
 	int mHotLoadCount;
+	bool mHotLoadApplied;
 	Dictionary<uint64, HotPatchedEntry> mHotPatchedEntries; // entry of each hot-replaced method → its jump
 	Array<int> mHotInvalidLambdaTrapIds;            // breakpoints on old lambdas with incompatible captures
 	Array<int> mHotStepTrapIds;                      // temporary breakpoints for a step-in in progress
@@ -334,6 +335,7 @@ public:
 	virtual void GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr) override;
 	virtual void Run() override;
 	virtual void HotLoad(const Array<String>& objectFiles, int hotIdx) override;
+	virtual bool WasHotLoadApplied() override { return mHotLoadApplied; }
 	virtual void InitiateHotResolve(DbgHotResolveFlags flags) override;
 	virtual intptr GetDbgAllocHeapSize() override;
 	virtual String GetDbgAllocInfo() override;

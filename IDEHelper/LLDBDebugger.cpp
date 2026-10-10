@@ -5509,6 +5509,7 @@ void LLDBDebugger::HotResetState()
 	mHotTlsExtraSize = 0;
 	mHotTlsExtraUsed = 0;
 	mHotLoadCount = 0;
+	mHotLoadApplied = false;
 	mHotPatchedEntries.Clear();
 	mHotStepTrapIds.Clear();
 	mHotInvalidLambdaTrapIds.Clear();
@@ -7572,6 +7573,7 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
+	mHotLoadApplied = false;
 	if (!mLLDBProcess.IsValid())
 		return;
 
@@ -7594,6 +7596,7 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 	bool restored = true;
 	if (success)
 		success = HotLoadBatch(objectFiles, hotIdx, numPatched, restored, error);
+	mHotLoadApplied = success;
 
 	if (success)
 		OutputMessage(StrFormat("Hot swap: replaced %d method%s\n", numPatched, (numPatched == 1) ? "" : "s"));

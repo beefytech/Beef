@@ -985,7 +985,7 @@ BF_EXPORT bool BF_CALLTYPE Debugger_HotLoad(const char* fileNamesStr, int hotIdx
 
 	gDebugger->HotLoad(fileNames, hotIdx);
 
-	return true;
+	return gDebugger->WasHotLoadApplied();
 }
 
 BF_EXPORT bool BF_CALLTYPE Debugger_LoadDebugVisualizers(const char* fileName)
