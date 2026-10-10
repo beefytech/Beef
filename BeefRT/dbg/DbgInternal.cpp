@@ -32,6 +32,80 @@ bf::System::Runtime::BfRtCallbacks gBfRtDbgCallbacks;
 BfRtFlags gBfRtDbgFlags = (BfRtFlags)0;
 #endif
 
+// An open-addressing table of object pointers (NULL is empty, 1 is a removed entry). A debugger reads
+// mEntries[0..mCapacity) while the process is stopped; callers serialize updates.
+struct BfLiveObjectTable
+{
+	void** mEntries;
+	int32 mCapacity;
+	int32 mCount;
+	int32 mUsed; // mCount plus removed entries
+};
+#define BF_LIVE_OBJECT_REMOVED ((void*)1)
+
+static uintptr BfLiveObjectHash(void* object)
+{
+	uintptr hash = (uintptr)object >> 4;
+	return hash ^ (hash >> 16) ^ (hash * 31);
+}
+
+static void BfLiveObjectInsert(void** entries, int32 capacity, void* object)
+{
+	uintptr hash = BfLiveObjectHash(object);
+	for (int32 probe = 0; probe < capacity; probe++)
+	{
+		int32 idx = (int32)((hash + probe) & (capacity - 1));
+		if ((entries[idx] == NULL) || (entries[idx] == BF_LIVE_OBJECT_REMOVED))
+		{
+			entries[idx] = object;
+			return;
+		}
+	}
+}
+
+static void BfLiveObjectTableUpdate(BfLiveObjectTable& table, void* object, bool add)
+{
+	if (add)
+	{
+		if ((table.mUsed + 1) * 2 > table.mCapacity)
+		{
+			int32 newCapacity = BF_MAX(64, table.mCapacity);
+			while ((table.mCount + 1) * 2 > newCapacity / 2)
+				newCapacity *= 2;
+			void** newEntries = (void**)calloc(newCapacity, sizeof(void*));
+			for (int32 idx = 0; idx < table.mCapacity; idx++)
+			{
+				void* entry = table.mEntries[idx];
+				if ((entry != NULL) && (entry != BF_LIVE_OBJECT_REMOVED))
+					BfLiveObjectInsert(newEntries, newCapacity, entry);
+			}
+			free(table.mEntries);
+			table.mEntries = newEntries;
+			table.mCapacity = newCapacity;
+			table.mUsed = table.mCount;
+		}
+		BfLiveObjectInsert(table.mEntries, table.mCapacity, object);
+		table.mCount++;
+		table.mUsed++;
+	}
+	else if (table.mCapacity > 0)
+	{
+		uintptr hash = BfLiveObjectHash(object);
+		for (int32 probe = 0; probe < table.mCapacity; probe++)
+		{
+			int32 idx = (int32)((hash + probe) & (table.mCapacity - 1));
+			if (table.mEntries[idx] == NULL)
+				break;
+			if (table.mEntries[idx] == object)
+			{
+				table.mEntries[idx] = BF_LIVE_OBJECT_REMOVED;
+				table.mCount--;
+				break;
+			}
+		}
+	}
+}
+
 #ifndef BF_GC_SUPPORTED
 // Live heap allocations by type ID. Without the GC's heap (which the debugger scans on Windows), this is
 // how a debugger tells whether a type is in use, and so whether a hot compile may change its layout.
@@ -58,19 +132,10 @@ static int32 BfGetClassVDataTypeId(bf::System::ClassVData* classVData)
 }
 
 // Live delegate objects, so a debugger can find the methods they point to - a hot compile must treat
-// those as in use too. An open-addressing table of object pointers (NULL is empty, 1 is a removed
-// entry); the debugger reads mEntries[0..mCapacity) while the process is stopped.
-struct BfLiveDelegateTable
-{
-	void** mEntries;
-	int32 mCapacity;
-	int32 mCount;
-	int32 mUsed; // mCount plus removed entries
-};
-extern "C" BFRT_EXPORT BfLiveDelegateTable gBfLiveDelegates;
-BfLiveDelegateTable gBfLiveDelegates = { NULL, 0, 0, 0 };
+// those as in use too.
+extern "C" BFRT_EXPORT BfLiveObjectTable gBfLiveDelegates;
+BfLiveObjectTable gBfLiveDelegates = { NULL, 0, 0, 0 };
 static int32 sLiveDelegatesLock = 0;
-#define BF_LIVE_DELEGATE_REMOVED ((void*)1)
 #define BF_TYPEFLAG_DELEGATE 0x20000
 
 static bool BfIsDelegateClass(bf::System::ClassVData* classVData)
@@ -79,72 +144,13 @@ static bool BfIsDelegateClass(bf::System::ClassVData* classVData)
 	return (typeData != NULL) && ((typeData->mTypeFlags & BF_TYPEFLAG_DELEGATE) != 0);
 }
 
-static uintptr BfLiveDelegateHash(void* object)
-{
-	uintptr hash = (uintptr)object >> 4;
-	return hash ^ (hash >> 16) ^ (hash * 31);
-}
-
-static void BfLiveDelegateInsert(void** entries, int32 capacity, void* object)
-{
-	uintptr hash = BfLiveDelegateHash(object);
-	for (int32 probe = 0; probe < capacity; probe++)
-	{
-		int32 idx = (int32)((hash + probe) & (capacity - 1));
-		if ((entries[idx] == NULL) || (entries[idx] == BF_LIVE_DELEGATE_REMOVED))
-		{
-			entries[idx] = object;
-			return;
-		}
-	}
-}
-
 static void BfTrackLiveDelegate(void* object, bool add)
 {
 	while (__atomic_exchange_n(&sLiveDelegatesLock, 1, __ATOMIC_ACQUIRE) != 0)
 	{
 	}
 
-	auto& table = gBfLiveDelegates;
-	if (add)
-	{
-		if ((table.mUsed + 1) * 2 > table.mCapacity)
-		{
-			int32 newCapacity = BF_MAX(64, table.mCapacity);
-			while ((table.mCount + 1) * 2 > newCapacity / 2)
-				newCapacity *= 2;
-			void** newEntries = (void**)calloc(newCapacity, sizeof(void*));
-			for (int32 idx = 0; idx < table.mCapacity; idx++)
-			{
-				void* entry = table.mEntries[idx];
-				if ((entry != NULL) && (entry != BF_LIVE_DELEGATE_REMOVED))
-					BfLiveDelegateInsert(newEntries, newCapacity, entry);
-			}
-			free(table.mEntries);
-			table.mEntries = newEntries;
-			table.mCapacity = newCapacity;
-			table.mUsed = table.mCount;
-		}
-		BfLiveDelegateInsert(table.mEntries, table.mCapacity, object);
-		table.mCount++;
-		table.mUsed++;
-	}
-	else if (table.mCapacity > 0)
-	{
-		uintptr hash = BfLiveDelegateHash(object);
-		for (int32 probe = 0; probe < table.mCapacity; probe++)
-		{
-			int32 idx = (int32)((hash + probe) & (table.mCapacity - 1));
-			if (table.mEntries[idx] == NULL)
-				break;
-			if (table.mEntries[idx] == object)
-			{
-				table.mEntries[idx] = BF_LIVE_DELEGATE_REMOVED;
-				table.mCount--;
-				break;
-			}
-		}
-	}
+	BfLiveObjectTableUpdate(gBfLiveDelegates, object, add);
 
 	__atomic_store_n(&sLiveDelegatesLock, 0, __ATOMIC_RELEASE);
 }
@@ -162,6 +168,27 @@ static void BfTrackDeletedObject(bf::System::Object* object)
 	BfCountLiveType(BfGetClassVDataTypeId(classVData), -1);
 	if (BfIsDelegateClass(classVData))
 		BfTrackLiveDelegate(object, false);
+}
+#else
+// Live objects outside the GC's heaps: those from custom allocators, and from malloc when the debug
+// allocator is off. On Windows the debugger finds live objects by scanning the GC's heaps, and reads
+// these from here, so a hot compile won't change the layout of a type they still use.
+extern "C" BFRT_EXPORT BfLiveObjectTable gBfLiveNonHeapObjects;
+BfLiveObjectTable gBfLiveNonHeapObjects = { NULL, 0, 0, 0 };
+
+static Beefy::CritSect& BfGetLiveNonHeapObjectsCritSect()
+{
+	static Beefy::CritSect critSect;
+	return critSect;
+}
+
+static void BfTrackNonHeapObject(bf::System::Object* object, bool add)
+{
+	// Most programs never allocate outside the heaps, so a delete needn't take the lock then
+	if ((!add) && (gBfLiveNonHeapObjects.mCount == 0))
+		return;
+	Beefy::AutoCrit autoCrit(BfGetLiveNonHeapObjectsCritSect());
+	BfLiveObjectTableUpdate(gBfLiveNonHeapObjects, object, add);
 }
 #endif
 
@@ -485,6 +512,7 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 #endif
 
 	bf::System::Object* result;
+	bool isHeapObject = true; // In one of the GC's heaps, where the debugger finds it
 	if ((BFRTFLAGS & BfRtFlags_LeakCheck) != 0)
 	{
 		uint8* allocBytes = (uint8*)BfObjectAllocate(allocSize, classVData->mType);
@@ -494,12 +522,14 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 	{
 #if BF_USE_STOMP_ALLOC
 		result = (bf::System::Object*)StompAlloc(allocSize);
+		isHeapObject = false;
 #elif BF_TRACK_SIZES
 		sHighestId = BF_MAX(sHighestId, classVData->mType->mTypeId);
 		uint8* allocPtr = (uint8*)malloc(size + 16);
 		*((int*)allocPtr) = size;
 		sAllocSizes[classVData->mType->mTypeId] += size;
 		result = (bf::System::Object*)(allocPtr + 16);
+		isHeapObject = false;
 #else
 		if ((BFRTFLAGS & BfRtFlags_DebugAlloc) != 0)
 		{			
@@ -510,6 +540,7 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 		{
 			uint8* allocBytes = (uint8*)BFRTCALLBACKS.Alloc(allocSize);
 			result = (bf::System::Object*)allocBytes;
+			isHeapObject = false;
 		}		
 #endif
 	}
@@ -565,7 +596,11 @@ bf::System::Object* Internal::Dbg_ObjectAlloc(bf::System::ClassVData* classVData
 		result->mClassVData = (intptr)classVData;
 
 #ifndef BF_GC_SUPPORTED
+	(void)isHeapObject;
 	BfTrackAllocatedObject(result, classVData);
+#else
+	if (!isHeapObject)
+		BfTrackNonHeapObject(result, true);
 #endif
 
 	//OutputDebugStrF("Object %@ ClassVData %@\n", result, classVData);
@@ -647,6 +682,8 @@ void Internal::Dbg_ObjectCreated(bf::System::Object* result, intptr size, bf::Sy
 #endif
 #ifndef BF_GC_SUPPORTED
 	BfTrackAllocatedObject(result, classVData);
+#else
+	BfTrackNonHeapObject(result, true);
 #endif
 }
 
@@ -659,6 +696,8 @@ void Internal::Dbg_ObjectCreatedEx(bf::System::Object* result, intptr origSize, 
 #endif
 #ifndef BF_GC_SUPPORTED
 	BfTrackAllocatedObject(result, classVData);
+#else
+	BfTrackNonHeapObject(result, true);
 #endif
 }
 
@@ -668,6 +707,8 @@ void Internal::Dbg_ObjectAllocated(bf::System::Object* result, intptr size, bf::
 	result->mClassVData = (intptr)classVData;
 #ifndef BF_GC_SUPPORTED
 	BfTrackAllocatedObject(result, classVData);
+#else
+	BfTrackNonHeapObject(result, true);
 #endif
 #ifndef BFRT_NODBGFLAGS	
 	result->mDbgAllocInfo = (intptr)BF_RETURN_ADDRESS;	
@@ -680,6 +721,8 @@ void Internal::Dbg_ObjectAllocatedEx(bf::System::Object* result, intptr origSize
 	result->mClassVData = (intptr)classVData;
 #ifndef BF_GC_SUPPORTED
 	BfTrackAllocatedObject(result, classVData);
+#else
+	BfTrackNonHeapObject(result, true);
 #endif
 	SetupDbgAllocInfo(result, origSize, allocFlags);
 }
@@ -730,6 +773,8 @@ void Internal::Dbg_ObjectPreDelete(bf::System::Object* object)
 
 #ifndef BF_GC_SUPPORTED
 	BfTrackDeletedObject(object);
+#else
+	BfTrackNonHeapObject(object, false);
 #endif
 }
 
@@ -763,6 +808,8 @@ void Internal::Dbg_ObjectPreCustomDelete(bf::System::Object* object)
 
 #ifndef BF_GC_SUPPORTED
 	BfTrackDeletedObject(object);
+#else
+	BfTrackNonHeapObject(object, false);
 #endif
 }
 

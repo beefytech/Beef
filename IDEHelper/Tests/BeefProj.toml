@@ -5,6 +5,10 @@ Dependencies = {corlib = "*", LibA = "*", LibB = "*", LibC = "*"}
 Name = "Tests"
 StartupObject = "Tests.Program"
 
+[[Project.DistinctOptions]]
+Filter = "Tests.AppendDebugInfo.*"
+AllocStackTraceDepth = 4
+
 [Configs.Test.Win64]
 BeefLibType = "DynamicDebug"
 LibPaths = ["$(ProjectDir)/CLib/x64/Debug/CLib.lib"]

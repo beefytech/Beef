@@ -1,14 +1,22 @@
-# The Windows debugger finds live objects by scanning the GC heap, so it misses objects from custom
-#  allocators and lets this data change through. Skip until it tracks those as LLDB does.
-if (platform == "Win64") Stop()
-if (platform == "Win32") Stop()
-
 ShowFile("src/HotSwap_LiveTypes.bf")
 GotoText("//Test_A_live")
+ToggleBreakpoint()
+GotoText("//Test_B_freed")
 ToggleBreakpoint()
 GotoText("//Test_A_freed")
 ToggleBreakpoint()
 RunWithCompiling()
+
+# sB was created by the allocator's Alloc
+ToggleCommentAt("ClassB_mB2")
+SetExpectError("data changes")
+Compile()
+ExpectError()
+
+# Once sB is deleted, ClassB can change
+Continue()
+Compile()
+AssertEvalEquals("step", "1")
 
 # sA was created by the allocator's AllocObject
 ToggleCommentAt("ClassA_mA2")
@@ -18,4 +26,4 @@ ExpectError()
 
 Continue()
 Compile()
-AssertEvalEquals("step", "1")
+AssertEvalEquals("step", "2")

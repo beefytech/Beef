@@ -10,6 +10,7 @@ DbgHotScanner::DbgHotScanner(WinDebugger* debugger)
 	mDebugger = debugger;
 	mBfTypesInfoAddr = 0;
 	mDbgGCData = { 0 };
+	mObjectHeaderSize = 0;
 }
 
 NS_BF_DBG_BEGIN
@@ -74,6 +75,15 @@ struct Fake_Delegate_Data
 {
 	addr_target mFuncPtr;
 	addr_target Target;
+};
+
+// BfLiveObjectTable in BeefRT/dbg/DbgInternal.cpp
+struct Fake_LiveObjectTable
+{
+	addr_target mEntries; // NULL is empty, 1 is a removed entry
+	int32 mCapacity;
+	int32 mCount;
+	int32 mUsed;
 };
 
 struct Fake_DbgRawAllocData
@@ -143,6 +153,97 @@ void DbgHotScanner::PopulateHotCallstacks()
 	mDebugger->ClearCallStack();
 }
 
+// Only valid once mDbgGCData has been read
+int DbgHotScanner::GetObjectHeaderSize()
+{
+	if (mObjectHeaderSize != 0)
+		return mObjectHeaderSize;
+
+	int objectSize = ((mDbgGCData.mDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0) ? sizeof(addr_target)*2 : sizeof(addr_target);
+
+	mDebugger->mDebugTarget->GetCompilerSettings();
+	if (mDebugger->mDebugTarget->mBfObjectSize != 0)
+		objectSize = mDebugger->mDebugTarget->mBfObjectSize;
+	mObjectHeaderSize = objectSize;
+	return objectSize;
+}
+
+void DbgHotScanner::MarkTypeUsed(int typeId, intptr size)
+{
+	if (typeId < 0)
+		return;
+	while (mDebugger->mHotResolveData->mTypeData.size() <= typeId)
+		mDebugger->mHotResolveData->mTypeData.Add(DbgHotResolveData::TypeData());
+	auto& typeData = mDebugger->mHotResolveData->mTypeData[typeId];
+	typeData.mSize += size;
+	typeData.mCount++;
+}
+
+// localObjData, when not NULL, is a copy of the object's memory. A negative size means the type's instance size
+void DbgHotScanner::ScanObject(addr_target objAddr, void* localObjData, addr_target classVDataAddr, intptr size)
+{
+	ClassVDataInfo* info = NULL;
+	if (mFoundClassVDataAddrs.TryAdd(classVDataAddr, NULL, &info))
+	{
+		info->mTypeId = -1;
+		info->mInstSize = 0;
+		info->mIsDelegate = false;
+
+		int typeId = mDebugger->ReadMemory<int32>(classVDataAddr);
+		if (typeId >= 0)
+		{
+			int objectSize = GetObjectHeaderSize();
+			Fake_Type_Data typeData;
+			bool foundType = false;
+			for (auto typesInfoAddr : mTypeInfoAddrs)
+			{
+				// Hot type tables only contain entries for the types emitted during that hot
+				//  compile, and older tables may be too small for newer typeIds, so on a null
+				//  or mismatched entry we keep looking in older tables
+				addr_target arrayAddr = typesInfoAddr + typeId * sizeof(addr_target);
+				addr_target typeAddr = mDebugger->ReadMemory<addr_target>(arrayAddr);
+				if (typeAddr == 0)
+					continue;
+				memset(&typeData, 0, sizeof(typeData));
+				if (!mDebugger->ReadMemory(typeAddr + objectSize, sizeof(typeData), &typeData))
+					continue;
+				if (typeData.mTypeId != typeId)
+					continue;
+				foundType = true;
+				break;
+			}
+
+			if (foundType)
+			{
+				info->mTypeId = typeData.mTypeId;
+				info->mInstSize = typeData.mSize;
+				info->mIsDelegate = (typeData.mTypeFlags & BfTypeFlags_Delegate) != 0;
+			}
+		}
+	}
+
+	if (info->mTypeId < 0)
+		return;
+	MarkTypeUsed(info->mTypeId, (size >= 0) ? size : info->mInstSize);
+
+	// Every delegate instance can point to a different method
+	if (info->mIsDelegate)
+	{
+		int objectSize = GetObjectHeaderSize();
+		Fake_Delegate_Data dlg;
+		if (localObjData != NULL)
+			dlg = *(Fake_Delegate_Data*)((uint8*)localObjData + objectSize);
+		else if (!mDebugger->ReadMemory(objAddr + objectSize, sizeof(dlg), &dlg))
+			return;
+		if (mFoundFuncPtrs.Add(dlg.mFuncPtr))
+		{
+			auto subProgram = mDebugger->mDebugTarget->FindSubProgram(dlg.mFuncPtr, DbgOnDemandKind_None);
+			if ((subProgram != NULL) && (subProgram->GetLanguage() == DbgLanguage_Beef))
+				AddSubProgram(subProgram, true, "D ");
+		}
+	}
+}
+
 void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memKind)
 {
 	if (span->location != TCFake::Span::IN_USE)
@@ -172,22 +273,7 @@ void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memK
 		elementSize = spanSize;
 	//BF_LOGASSERT(elementSize >= sizeof(bf::System::Object));
 
-	auto _MarkTypeUsed = [&](int typeId, intptr size)
-	{
-		if (typeId < 0)
-			return;
-		while (mDebugger->mHotResolveData->mTypeData.size() <= typeId)
-			mDebugger->mHotResolveData->mTypeData.Add(DbgHotResolveData::TypeData());
-		auto& typeData = mDebugger->mHotResolveData->mTypeData[typeId];
-		typeData.mSize += size;
-		typeData.mCount++;
-	};
-
-	int objectSize = ((mDbgGCData.mDbgFlags & BfRtFlags_ObjectHasDebugFlags) != 0) ? sizeof(addr_target)*2 : sizeof(addr_target);
-
-	mDebugger->mDebugTarget->GetCompilerSettings();
-	if (mDebugger->mDebugTarget->mBfObjectSize != 0)
-		objectSize = mDebugger->mDebugTarget->mBfObjectSize;
+	int objectSize = GetObjectHeaderSize();
 
 	while (spanPtr <= (uint8*)spanEnd - elementSize)
 	{
@@ -235,75 +321,25 @@ void DbgHotScanner::ScanSpan(TCFake::Span* span, int expectedStartPage, int memK
 								{
 									*typeAddrIdPtr = typeData.mTypeId;
 									*rawTypeIdPtr = typeData.mTypeId;
-									_MarkTypeUsed(typeData.mTypeId, elementSize);
+									MarkTypeUsed(typeData.mTypeId, elementSize);
 								}
 							}
 							else
 							{
-								_MarkTypeUsed(*typeAddrIdPtr, elementSize);
+								MarkTypeUsed(*typeAddrIdPtr, elementSize);
 							}
 						}
 					}
 					else
 					{
-						_MarkTypeUsed(*rawTypeIdPtr, elementSize);
+						MarkTypeUsed(*rawTypeIdPtr, elementSize);
 					}
 				}
 			}
 		}
 
 		if (classVDataAddr != 0)
-		{
-			int* typeIdPtr = NULL;
-			if (mFoundClassVDataAddrs.TryAdd(classVDataAddr, NULL, &typeIdPtr))
-			{
-				*typeIdPtr = -1;
-
-				int typeId = mDebugger->ReadMemory<int32>(classVDataAddr);
-				if (typeId >= 0)
-				{
-					Fake_Type_Data typeData;
-					bool foundType = false;
-					for (auto typesInfoAddr : mTypeInfoAddrs)
-					{
-						// Hot type tables only contain entries for the types emitted during that hot
-						//  compile, and older tables may be too small for newer typeIds, so on a null
-						//  or mismatched entry we keep looking in older tables
-						addr_target arrayAddr = typesInfoAddr + typeId * sizeof(addr_target);
-						addr_target typeAddr = mDebugger->ReadMemory<addr_target>(arrayAddr);
-						if (typeAddr == 0)
-							continue;
-						memset(&typeData, 0, sizeof(typeData));
-						if (!mDebugger->ReadMemory(typeAddr + objectSize, sizeof(typeData), &typeData))
-							continue;
-						if (typeData.mTypeId != typeId)
-							continue;
-						foundType = true;
-						break;
-					}
-
-					if (foundType)
-					{
-						*typeIdPtr = typeData.mTypeId;
-						_MarkTypeUsed(typeData.mTypeId, elementSize);
-						if ((typeData.mTypeFlags & BfTypeFlags_Delegate) != 0)
-						{
-							Fake_Delegate_Data* dlg = (Fake_Delegate_Data*)((uint8*)spanPtr + objectSize);
-							if (mFoundFuncPtrs.Add(dlg->mFuncPtr))
-							{
-								auto subProgram = mDebugger->mDebugTarget->FindSubProgram(dlg->mFuncPtr, DbgOnDemandKind_None);
-								if ((subProgram != NULL) && (subProgram->GetLanguage() == DbgLanguage_Beef))
-									AddSubProgram(subProgram, true, "D ");
-							}
-						}
-					}
-				}
-			}
-			else
-			{
-				_MarkTypeUsed(*typeIdPtr, elementSize);
-			}
-		}
+			ScanObject(spanStart + ((uint8*)spanPtr - &mScanData[0]), spanPtr, classVDataAddr, elementSize);
 
 		spanPtr = (void*)((intptr)spanPtr + elementSize);
 	}
@@ -365,6 +401,36 @@ void DbgHotScanner::ScanRoot(addr_target rootPtr, int memKind)
 #endif
 }
 
+// Objects outside the GC's heaps (from custom allocators, or malloc without the debug allocator), which the runtime
+//  lists for us in gBfLiveNonHeapObjects
+void DbgHotScanner::ScanNonHeapObjects(addr_target tableAddr)
+{
+	Fake_LiveObjectTable table;
+	if (!mDebugger->ReadMemory(tableAddr, sizeof(table), &table))
+		return;
+	if ((table.mEntries == 0) || (table.mCount <= 0) || (table.mCapacity <= 0))
+		return;
+
+	Beefy::Array<addr_target> entries;
+	entries.Resize(table.mCapacity);
+	if (!mDebugger->ReadMemory(table.mEntries, table.mCapacity * sizeof(addr_target), &entries[0]))
+		return;
+
+	for (auto objAddr : entries)
+	{
+		if ((objAddr == 0) || (objAddr == 1))
+			continue;
+		Fake_BfObject_WithFlags obj;
+		if (!mDebugger->ReadMemory(objAddr, sizeof(addr_target), &obj.mClassVData))
+			continue;
+		if ((obj.mObjectFlags & BF_OBJECTFLAG_DELETED) != 0)
+			continue;
+		addr_target classVDataAddr = obj.mClassVData & ~0xFF;
+		if (classVDataAddr != 0)
+			ScanObject(objAddr, NULL, classVDataAddr, -1);
+	}
+}
+
 void DbgHotScanner::Scan(DbgHotResolveFlags flags)
 {
 	auto prevRunState = mDebugger->mRunState;
@@ -380,6 +446,7 @@ void DbgHotScanner::Scan(DbgHotResolveFlags flags)
 	if ((flags & DbgHotResolveFlag_Allocations) != 0)
 	{
 		addr_target gcDbgDataAddr = 0;
+		addr_target liveNonHeapObjectsAddr = 0;
 
 		for (auto module : mDebugger->mDebugTarget->mDbgModules)
 		{
@@ -390,6 +457,9 @@ void DbgHotScanner::Scan(DbgHotResolveFlags flags)
 				auto entry = module->mSymbolNameMap.Find("gGCDbgData");
 				if ((entry != NULL) && (entry->mValue != NULL))
 					gcDbgDataAddr = entry->mValue->mAddress;
+				entry = module->mSymbolNameMap.Find("gBfLiveNonHeapObjects");
+				if ((entry != NULL) && (entry->mValue != NULL))
+					liveNonHeapObjectsAddr = entry->mValue->mAddress;
 			}
 		}
 
@@ -469,6 +539,8 @@ void DbgHotScanner::Scan(DbgHotResolveFlags flags)
 				ScanRoot(mDbgGCData.mObjRootPtr, 0);
 			if (mDbgGCData.mRawRootPtr != NULL)
 				ScanRoot(mDbgGCData.mRawRootPtr, 1);
+			if (liveNonHeapObjectsAddr != 0)
+				ScanNonHeapObjects(liveNonHeapObjectsAddr);
 		}
 	}
 

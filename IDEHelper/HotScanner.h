@@ -82,11 +82,20 @@ public:
 class DbgHotScanner
 {
 public:
+	struct ClassVDataInfo
+	{
+		int mTypeId; // -1 if the type couldn't be found
+		int mInstSize;
+		bool mIsDelegate;
+	};
+
+public:
 	WinDebugger* mDebugger;
 	DbgGCData mDbgGCData;
+	int mObjectHeaderSize;
 	addr_target mBfTypesInfoAddr;
 	Beefy::Array<addr_target> mTypeInfoAddrs; // Type tables to check, newest hot vdata first, original binary last
-	Beefy::Dictionary<addr_target, int> mFoundClassVDataAddrs;
+	Beefy::Dictionary<addr_target, ClassVDataInfo> mFoundClassVDataAddrs;
 	Beefy::Dictionary<addr_target, int> mFoundRawAllocDataAddrs;
 	Beefy::Dictionary<addr_target, int> mFoundTypeAddrs;
 	Beefy::HashSet<addr_target> mFoundFuncPtrs;
@@ -104,8 +113,12 @@ public:
 public:
 	void AddSubProgram(DbgSubprogram* subProgram, bool followInlineParent, const Beefy::StringImpl& prefix);
 	void PopulateHotCallstacks();
+	int GetObjectHeaderSize();
+	void MarkTypeUsed(int typeId, intptr size);
+	void ScanObject(addr_target objAddr, void* localObjData, addr_target classVDataAddr, intptr size);
 	void ScanSpan(TCFake::Span* span, int expectedStartPage, int memKind);
 	void ScanRoot(addr_target rootPtr, int memKind);
+	void ScanNonHeapObjects(addr_target tableAddr);
 
 public:
 	DbgHotScanner(WinDebugger* debugger);
