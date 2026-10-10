@@ -1,0 +1,13 @@
+# The IDE is started with -attachId=<pid of a running AttachTest>
+nowait SetWaitForExecutionPaused(false)
+ShowFile("src/Program.bf")
+GotoText("//AttachTest_Loop")
+ToggleBreakpoint()
+WaitForPaused()
+SetWaitForExecutionPaused(true)
+AssertEvalEquals("sCounter > 0", "true")
+StepOver()
+StepOver()
+AssertCurrentMethod("AttachTest!AttachTest.Program.Main()")
+ToggleBreakpoint()
+Stop()

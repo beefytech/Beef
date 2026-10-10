@@ -2043,6 +2043,46 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void FreezeThread(String threadName)
+		{
+			SetThreadFrozen(threadName, true);
+		}
+
+		[IDECommand]
+		public void ThawThread(String threadName)
+		{
+			SetThreadFrozen(threadName, false);
+		}
+
+		void SetThreadFrozen(String threadName, bool frozen)
+		{
+			String threadInfo = scope .();
+			gApp.mDebugger.GetThreadInfo(threadInfo);
+
+			for (var infoLine in threadInfo.Split('\n'))
+			{
+				if (@infoLine.Pos == 0)
+					continue;
+
+				var infoSections = infoLine.Split('\t');
+				StringView id = infoSections.GetNext().GetValueOrDefault();
+				StringView name = infoSections.GetNext().GetValueOrDefault();
+
+				if ((threadName == name) || (threadName == id))
+				{
+					int32 threadId = int32.Parse(id).GetValueOrDefault();
+					if (frozen)
+						gApp.mDebugger.FreezeThread(threadId);
+					else
+						gApp.mDebugger.ThawThread(threadId);
+					return;
+				}
+			}
+
+			mScriptManager.Fail("Thread '{0}' not found", threadName);
+		}
+
+		[IDECommand]
 		public void AssertCurrentMethod(String methodName)
 		{
 			int addr;

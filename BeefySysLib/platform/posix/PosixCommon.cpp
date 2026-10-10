@@ -2093,12 +2093,34 @@ BFP_EXPORT void BFP_CALLTYPE BfpThread_Release(BfpThread* thread)
 
 BFP_EXPORT void BFP_CALLTYPE BfpThread_SetName(BfpThread* thread, const char* name, BfpThreadResult* outResult)
 {
+#ifdef __linux__
+	// The kernel limits a thread name to 15 bytes
+	char shortName[16];
+	strncpy(shortName, name, sizeof(shortName) - 1);
+	shortName[sizeof(shortName) - 1] = '\0';
+	pthread_t pt = pthread_self();
+	if (thread != NULL)
+		pt = (((intptr)thread & 1) != 0) ? (pthread_t)((intptr)thread & ~3) : thread->mPThread;
+	if (pthread_setname_np(pt, shortName) != 0)
+	{
+		OUTRESULT(BfpThreadResult_UnknownError);
+		return;
+	}
+#endif
 	OUTRESULT(BfpThreadResult_Ok);
 }
 
 BFP_EXPORT void BFP_CALLTYPE BfpThread_GetName(BfpThread* thread, char* outName, int* inOutNameSize, BfpThreadResult* outResult)
 {
 	String str = "";
+#ifdef __linux__
+	char name[16] = { 0 };
+	pthread_t pt = pthread_self();
+	if (thread != NULL)
+		pt = (((intptr)thread & 1) != 0) ? (pthread_t)((intptr)thread & ~3) : thread->mPThread;
+	if (pthread_getname_np(pt, name, sizeof(name)) == 0)
+		str = name;
+#endif
 	TryStringOut(str, outName, inOutNameSize, (BfpResult*)outResult);
 }
 

@@ -31,6 +31,7 @@ namespace IDETest
 			Properties.Test();
 			SplatTester.Test();
 			Stepping_Scope.Test();
+			ThreadFreeze.Test();
 			TypedPrimitives.Test();
 			Unions.Test();
 			UsingFields.Test();
