@@ -2726,17 +2726,25 @@ void BeIRCodeGen::HandleNextCmd()
 			{
 				if (beFunc->mRemapBindVar == NULL)
 				{
-					auto globalVariable = mBeModule->mGlobalVariables.Alloc();
-					globalVariable->mModule = mBeModule;
-					globalVariable->mType = beFunc->mType;
-					globalVariable->mIsConstant = true;
-					globalVariable->mLinkageType = BfIRLinkageType_External;
-					globalVariable->mInitializer = beFunc;
-					globalVariable->mName = StrFormat("bf_hs_preserve@%s_%s", beFunc->mName.c_str(), mBeModule->mModuleName.c_str());
-					globalVariable->mIsTLS = false;
-					globalVariable->mAlign = 8;
-					globalVariable->mUnnamedAddr = false;
-					beFunc->mRemapBindVar = globalVariable;
+					// Extern declarations can share a link name (and so a symbol) with different signatures,
+					//  so they share the variable too, as with LLVM
+					String varName = StrFormat("bf_hs_preserve@%s_%s", beFunc->mName.c_str(), mBeModule->mModuleName.c_str());
+					BeGlobalVariable** globalVariablePtr = NULL;
+					if (mBeModule->mRemapBindVarMap.TryAdd(varName, NULL, &globalVariablePtr))
+					{
+						auto globalVariable = mBeModule->mGlobalVariables.Alloc();
+						globalVariable->mModule = mBeModule;
+						globalVariable->mType = beFunc->mType;
+						globalVariable->mIsConstant = true;
+						globalVariable->mLinkageType = BfIRLinkageType_External;
+						globalVariable->mInitializer = beFunc;
+						globalVariable->mName = varName;
+						globalVariable->mIsTLS = false;
+						globalVariable->mAlign = 8;
+						globalVariable->mUnnamedAddr = false;
+						*globalVariablePtr = globalVariable;
+					}
+					beFunc->mRemapBindVar = *globalVariablePtr;
 
 					/*if (mBeModule->mDbgModule != NULL)
 					{
@@ -2753,7 +2761,11 @@ void BeIRCodeGen::HandleNextCmd()
 					}*/
 				}
 
-				SetResult(curId, mBeModule->CreateLoad(beFunc->mRemapBindVar, false));
+				BeValue* result = mBeModule->CreateLoad(beFunc->mRemapBindVar, false);
+				// A shared variable has the type of the declaration that created it
+				if (beFunc->mRemapBindVar->mType != beFunc->mType)
+					result = mBeModule->CreateBitCast(result, beFunc->mType);
+				SetResult(curId, result);
 			}
 			else
 				SetResult(curId, func);

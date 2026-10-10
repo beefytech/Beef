@@ -2360,6 +2360,7 @@ public:
 	Array<BeArgument*> mArgs;
 	Array<BeFunction*> mFunctions;
 	Dictionary<String, BeFunction*> mFunctionMap;
+	Dictionary<String, BeGlobalVariable*> mRemapBindVarMap; // Hot swap 'bf_hs_preserve@' variables by name
 	int mCurDbgLocIdx;
 	int mCurLexBlockId;
 
