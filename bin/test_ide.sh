@@ -126,4 +126,23 @@ do
 	BEEF_LLDB_HOT_FAIL_WRITE=1 BEEF_LLDB_HOT_FAIL_UNDO=1 "${LAUNCHER[@]}" "./$ide" -proddir="$ROOTPATH/IDE/Tests/Test1" -test="$ROOTPATH/IDE/Tests/Test1/faults/HotSwap_UndoFailure.txt" || fail $?
 done
 
+# Attach: the program is started here and the IDE attaches to it by pid; it must survive the detach.
+./BeefBuild_d -proddir="$ROOTPATH/IDE/Tests/AttachTest" -config=Debug >/dev/null || fail $?
+for ide in "${BINARIES[@]}"
+do
+	echo "Testing IDE/Tests/AttachTest/scripts/Attach.txt in $ide"
+	"$ROOTPATH/IDE/Tests/AttachTest/build/Debug_Linux64/AttachTest/AttachTest" >/dev/null &
+	ATTACH_PID=$!
+	"${LAUNCHER[@]}" "./$ide" -proddir="$ROOTPATH/IDE/Tests/AttachTest" -attachId=$ATTACH_PID -test="$ROOTPATH/IDE/Tests/AttachTest/scripts/Attach.txt"
+	IDE_EXIT=$?
+	if kill -0 $ATTACH_PID 2>/dev/null; then
+		kill $ATTACH_PID
+	else
+		echo "ERROR: AttachTest did not survive the detach"
+		IDE_EXIT=1
+	fi
+	wait $ATTACH_PID 2>/dev/null || true
+	[ $IDE_EXIT -eq 0 ] || fail $IDE_EXIT
+done
+
 echo "SUCCESS!"

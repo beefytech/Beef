@@ -22,7 +22,8 @@ NS_BF_BEGIN
 enum LLDBLaunchMode
 {
 	LLDBLaunchMode_Local,
-	LLDBLaunchMode_Remote   // GDB RSP over TCP (compatible with OpenOCD, lldb-server --gdbserver)
+	LLDBLaunchMode_Remote,  // GDB RSP over TCP (compatible with OpenOCD, lldb-server --gdbserver)
+	LLDBLaunchMode_Attach
 };
 
 class LLDBBreakpoint : public Breakpoint
@@ -69,6 +70,7 @@ public:
 
 	int mProcessId;
 	bool mDidAttach;
+	BfDbgAttachFlags mAttachFlags;
 	bool mNeedBreakpointRebind;  // true after launch until first stop event
 
 	// The user step in progress, for step filtering (see ContinueStep)

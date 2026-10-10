@@ -1,0 +1,30 @@
+ShowFile("src/ThreadFreeze.bf")
+GotoText("//ThreadFreeze_Test")
+ToggleBreakpoint()
+RunWithCompiling()
+StepOver()
+AssertEvalEquals("doTest = true", "true")
+ToggleBreakpoint()
+
+GotoText("//ThreadFreeze_Loop")
+ToggleBreakpoint()
+Continue()
+Continue()
+AssertEvalEquals("deltaA > 0 && deltaB > 0", "true")
+
+# Thaw of an unfrozen thread is a no-op, but the command fails if the name is unknown
+ThawThread("MainThread")
+FreezeThread("WorkerA")
+Continue()
+Continue()
+AssertEvalEquals("deltaA", "0")
+AssertEvalEquals("deltaB > 0", "true")
+
+ThawThread("WorkerA")
+Continue()
+Continue()
+AssertEvalEquals("deltaA > 0 && deltaB > 0", "true")
+
+AssertEvalEquals("stop = true", "true")
+ToggleBreakpoint()
+Continue()

@@ -1,0 +1,5 @@
+FileVersion = 1
+Projects = {AttachTest = {Path = "."}}
+
+[Workspace]
+StartupProject = "AttachTest"
