@@ -930,6 +930,17 @@ BF_EXPORT bool BF_CALLTYPE Debugger_Attach(int processId, BfDbgAttachFlags attac
 {
 	BF_ASSERT(gDebugger == NULL);
 
+	if (gDebugManager->mDebugger64 == NULL)
+	{
+		Debugger* debugger = (gDebugManager->mDebuggerLLDB != NULL) ? gDebugManager->mDebuggerLLDB : gDebugManager->mDebuggerGDB;
+		if ((debugger != NULL) && (debugger->Attach(processId, attachFlags)))
+		{
+			gDebugger = debugger;
+			return true;
+		}
+		return false;
+	}
+
 	if (gDebugManager->mDebugger64->Attach(processId, attachFlags))
 	{
 		gDebugger = gDebugManager->mDebugger64;

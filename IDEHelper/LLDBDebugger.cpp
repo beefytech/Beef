@@ -150,6 +150,7 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mBreakStackFrameIdx = 0;
 	mCallStackDirty = false;
 	mDidAttach = false;
+	mAttachFlags = BfDbgAttachFlag_None;
 	mNeedBreakpointRebind = false;
 	mStepNoInfoTries = 0;
 	mStepKind = StepKind_None;
@@ -424,6 +425,45 @@ void LLDBDebugger::DoLaunch()
 		return;
 	}
 
+	if (mLaunchMode == LLDBLaunchMode_Attach)
+	{
+		lldb::SBError targetError;
+		lldb::SBTarget target = debugger.CreateTarget(mLaunchPath.c_str(), NULL, NULL, /*add_dependent_modules=*/true, targetError);
+		lldb::SBError attachError;
+		lldb::SBProcess process;
+		lldb::SBListener listener = debugger.GetListener();
+		if (target.IsValid())
+			process = target.AttachToProcessWithID(listener, (lldb::pid_t)mProcessId, attachError);
+
+		if ((!process.IsValid()) || attachError.Fail())
+		{
+			String msg = StrFormat("LLDB: Failed to attach to process %d", mProcessId);
+			if (attachError.IsValid())
+			{
+				msg += ": ";
+				msg += attachError.GetCString();
+			}
+			msg += "\n";
+			OutputMessage(msg);
+			lldb::SBDebugger::Destroy(debugger);
+			lldb::SBDebugger::Terminate();
+			AutoCrit autoCrit(mDebugManager->mCritSect);
+			mRunState = RunState_Terminated;
+			return;
+		}
+
+		AutoCrit autoCrit(mDebugManager->mCritSect);
+		mLLDBDebugger = debugger;
+		mLLDBTarget = target;
+		mLLDBProcess = process;
+		mNeedBreakpointRebind = true;
+		mRunState = RunState_Running;
+		// The attach is synchronous and its stop event went to LLDB's own listener, not ours
+		if (process.GetState() == lldb::eStateStopped)
+			HandleProcessEvent(lldb::eStateStopped);
+		return;
+	}
+
 	// Create a target from the executable path.
 	lldb::SBError targetError;
 	lldb::SBTarget target = debugger.CreateTarget(mLaunchPath.c_str(), NULL, NULL,
@@ -558,8 +598,36 @@ void BFP_CALLTYPE LLDBDebugger::LaunchThreadProc(void* param)
 
 bool LLDBDebugger::Attach(int processId, BfDbgAttachFlags attachFlags)
 {
+	if ((mRunState != RunState_NotStarted) && (mRunState != RunState_Terminated))
+		return false;
+
+	String exePath;
+#ifdef __linux__
+	char linkPath[PATH_MAX];
+	ssize_t len = readlink(StrFormat("/proc/%d/exe", processId).c_str(), linkPath, sizeof(linkPath) - 1);
+	if (len <= 0)
+		return false;
+	exePath = String(linkPath, (int)len);
+#endif
+	if (exePath.IsEmpty())
+		return false;
+
+	mLaunchMode = LLDBLaunchMode_Attach;
+	mRemoteHost = "";
+	mUseHardwareBreakpoints = false;
+	mLaunchPath = exePath;
+	mTargetPath = exePath;
+	mLaunchArgs.Clear();
+	mWorkingDir.Clear();
+	mEnvBlock.Clear();
+	mHotSwapEnabled = false;
+	mOpenFileFlags = DbgOpenFileFlag_None;
+	mProcessId = processId;
 	mDidAttach = true;
-	return false;
+	mAttachFlags = attachFlags;
+
+	HotResetState();
+	return true;
 }
 
 void LLDBDebugger::GetStdHandles(BfpFile** outStdIn, BfpFile** outStdOut, BfpFile** outStdErr)
@@ -2474,10 +2542,22 @@ int LLDBDebugger::GetActiveThread()
 
 void LLDBDebugger::FreezeThread(int threadId)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	if (!mLLDBProcess.IsValid())
+		return;
+	lldb::SBThread thread = mLLDBProcess.GetThreadByID((lldb::tid_t)threadId);
+	if (thread.IsValid())
+		thread.Suspend();
 }
 
 void LLDBDebugger::ThawThread(int threadId)
 {
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	if (!mLLDBProcess.IsValid())
+		return;
+	lldb::SBThread thread = mLLDBProcess.GetThreadByID((lldb::tid_t)threadId);
+	if (thread.IsValid())
+		thread.Resume();
 }
 
 bool LLDBDebugger::IsActiveThreadWaiting()
@@ -7796,7 +7876,10 @@ void LLDBDebugger::StopDebugging()
 	{
 		// Kill the program now, but leave the session for the next Update to tear down, so the IDE sees
 		// the run state go through 'terminating' (as it does with WinDebugger) before it starts another
-		mLLDBProcess.Kill();
+		if ((mDidAttach) && ((mAttachFlags & BfDbgAttachFlag_ShutdownOnExit) == 0))
+			mLLDBProcess.Detach();
+		else
+			mLLDBProcess.Kill();
 		mRunState = RunState_Terminating;
 		return;
 	}
@@ -7828,6 +7911,7 @@ void LLDBDebugger::FinishStopDebugging()
 	mWatchpointIdMap.Clear();
 
 	mProcessId = 0;
+	mDidAttach = false;
 	mRunState = RunState_Terminated;
 	CloseOutputPipes();
 	RestoreTerminal();
