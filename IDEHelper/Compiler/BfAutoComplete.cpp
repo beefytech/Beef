@@ -25,6 +25,7 @@ AutoCompleteBase::AutoCompleteBase()
 	mDoFuzzyAutoComplete = false;
 	mInsertStartIdx = -1;
 	mInsertEndIdx = -1;
+	mShouldAutoCompleteIgnoreNamespaces = false;
 }
 
 AutoCompleteBase::~AutoCompleteBase()
