@@ -1866,7 +1866,7 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		(mOptions.mPlatformType != BfPlatformType_Windows);
 
 	bool mainHasArgs = (targetType != BfTargetType_BeefLib_DynamicLib) && (targetType != BfTargetType_BeefLib_StaticLib) &&
-		(mOptions.mPlatformType != BfPlatformType_Wasm);
+		((isConsoleApplication) || (mOptions.mPlatformType != BfPlatformType_Wasm));
 	bool mainHasRet = ((targetType != BfTargetType_BeefLib_DynamicLib) && (targetType != BfTargetType_BeefLib_StaticLib)) || (isDllMain);
 
 	// Generate "main"
