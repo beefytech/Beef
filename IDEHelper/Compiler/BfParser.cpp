@@ -3869,7 +3869,9 @@ void BfParser::Parse(BfPassInstance* passInstance)
 
 	if (mJumpTable != NULL)
 	{
-		for (int i = (startIdx / PARSER_JUMPTABLE_DIVIDE) + 1; i < mJumpTableSize; i++)
+		// Leave spare-capacity entries unset so later emissions can fill them.
+		int endIdx = mSrcLength / PARSER_JUMPTABLE_DIVIDE;
+		for (int i = (startIdx / PARSER_JUMPTABLE_DIVIDE) + 1; i <= endIdx; i++)
 			if (mJumpTable[i].mCharIdx == 0)
 				mJumpTable[i] = mJumpTable[i - 1];
 	}
