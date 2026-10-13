@@ -1740,7 +1740,7 @@ namespace IDE
 			String outVal = scope String();
 			if (!Evaluate(evalStr, outVal))
 				return;
-			gApp.OutputLineSmart(outVal);
+			gApp.OutputLine(outVal);
 		}
 
 		[IDECommand]
@@ -1825,6 +1825,29 @@ namespace IDE
 		}
 
 		[IDECommand]
+		public void AssertSelectedWatchContains(String val)
+		{
+			UpdateWatches();
+
+			int foundIdx = 0;
+			gApp.mWatchPanel.mListView.GetRoot().WithItems(scope [?] (item) =>
+				{
+					let watchItem = (WatchListViewItem)item;
+					if (watchItem.Selected)
+					{
+						foundIdx++;
+						ForceWatchItem(watchItem);
+
+						let valueWatchItem = (WatchListViewItem)watchItem.GetSubItem(1);
+						if (!valueWatchItem.Label.Contains(val))
+							mScriptManager.Fail("Assert failed: {} contains {}", valueWatchItem.Label, val);
+					}
+				});
+			if (foundIdx == 0)
+				mScriptManager.Fail("No watches selected");
+		}
+
+		[IDECommand]
 		public void UpdateWatches()
 		{
 			gApp.mWatchPanel.CheckClearDirtyWatches();
@@ -1871,6 +1894,12 @@ namespace IDE
 							});
 					}
 				});
+		}
+
+		[IDECommand]
+		public void DeleteSelectedWatches()
+		{
+			gApp.mWatchPanel.[Friend]DeleteSelectedItems();
 		}
 
 		[IDECommand]

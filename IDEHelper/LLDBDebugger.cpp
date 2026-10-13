@@ -1,5 +1,6 @@
 #include "LLDBDebugger.h"
 #include "DebugManager.h"
+#include "DebugVisualizers.h"
 #include "Compiler/BfUtil.h"
 
 #ifdef LLDB_ENABLED
@@ -2599,6 +2600,7 @@ struct LLDBFormatInfo
 	bool mNoMembers;     // nm         — suppress member expansion
 	bool mNoAddress;     // na         — suppress address metadata
 	bool mRawString;     // rawStr     — don't escape string content
+	bool mNoVisualizers; // nv         — show a value's fields instead of its visualizer
 	int mMaxCount;       // count=N / maxcount=N / arraysize=N
 
 	LLDBFormatInfo()
@@ -2607,6 +2609,7 @@ struct LLDBFormatInfo
 		mNoMembers      = false;
 		mNoAddress      = false;
 		mRawString      = false;
+		mNoVisualizers  = false;
 		mMaxCount       = -1;
 	}
 };
@@ -2647,6 +2650,7 @@ static bool TryParseSpecifier(const char* rawSpec, LLDBFormatInfo& fmtInfo)
 	// Suppression flags
 	if (strcmp(spec, "nm") == 0) { fmtInfo.mNoMembers = true; return true; }
 	if (strcmp(spec, "na") == 0) { fmtInfo.mNoAddress = true; return true; }
+	if (strcmp(spec, "nv") == 0) { fmtInfo.mNoVisualizers = true; return true; }
 	// Silently consume other two-char "n*" flags (nd, ne, nv) for compatibility
 	if ((spec[0] == 'n') && (spec[1] != '\0') && (spec[2] == '\0'))
 		return true;
@@ -2708,10 +2712,16 @@ static void ParseExprAndFormat(const StringImpl& expr, String& outExpr, LLDBForm
 		const char* p   = outExpr.c_str();
 		int         len = (int)strlen(p);
 
+		// A comma inside brackets belongs to the expression ("this=(Dictionary<String, int>*)0x...")
 		int commaPos = -1;
+		int depth = 0;
 		for (int i = len - 1; i >= 0; --i)
 		{
-			if (p[i] == ',')
+			if ((p[i] == ')') || (p[i] == '>') || (p[i] == ']'))
+				depth++;
+			else if ((p[i] == '(') || (p[i] == '<') || (p[i] == '['))
+				depth--;
+			else if ((p[i] == ',') && (depth <= 0))
 			{
 				commaPos = i;
 				break;
@@ -2920,12 +2930,9 @@ static bool IsBeefTupleTypeName(const char* typeName)
 static lldb::SBValue GetBeefTypedPrimitiveValue(lldb::SBValue value)
 {
 	lldb::SBType type = value.GetType().GetCanonicalType();
-	if (type.GetNumberOfFields() != 1)
+	if ((type.GetTypeClass() != lldb::eTypeClassStruct) && (type.GetTypeClass() != lldb::eTypeClassClass))
 		return lldb::SBValue();
-	const char* fieldName = type.GetFieldAtIndex(0).GetName();
-	if ((fieldName == NULL) || (strcmp(fieldName, "$prim") != 0))
-		return lldb::SBValue();
-	return value.GetChildAtIndex(0);
+	return value.GetChildMemberWithName("$prim");
 }
 
 static bool IsBeefAggregateType(lldb::SBType type)
@@ -2935,6 +2942,1137 @@ static bool IsBeefAggregateType(lldb::SBType type)
 }
 
 static String FormatBeefValue(lldb::SBValue value, int depth);
+
+//----------------------------------------------------------------------------
+// Debug visualizers (BeefDbgVis.toml), evaluated against LLDB values
+//----------------------------------------------------------------------------
+
+static String QuoteBeefText(const StringImpl& text)
+{
+	String result = "\"";
+	for (char c : text)
+	{
+		switch (c)
+		{
+		case '"': result += "\\\""; break;
+		case '\\': result += "\\\\"; break;
+		case '\n': result += "\\n"; break;
+		case '\r': result += "\\r"; break;
+		case '\t': result += "\\t"; break;
+		case '\0': result += "\\0"; break;
+		default: result += c; break;
+		}
+	}
+	result += "\"";
+	return result;
+}
+
+static String BeefTypeNameOf(lldb::SBType type)
+{
+	const char* name = type.GetName();
+	if (name == NULL)
+		return String();
+	return FixBeefFunctionName(name);
+}
+
+static lldb::SBType FindBeefTypeInTarget(lldb::SBTarget target, const StringImpl& beefName)
+{
+	String name = beefName;
+	name.Trim();
+	name.Replace(".", "::");
+	lldb::SBType type = target.FindFirstType(name.c_str());
+	if (type.IsValid())
+		return type;
+	int lastSep = (int)name.LastIndexOf(':');
+	if (lastSep <= 0)
+		return lldb::SBType();
+	String simpleName = name.Substring(lastSep + 1);
+	String suffix = "::" + simpleName;
+	lldb::SBTypeList types = target.FindTypes(simpleName.c_str());
+	for (uint32 typeIdx = 0; typeIdx < types.GetSize(); typeIdx++)
+	{
+		lldb::SBType checkType = types.GetTypeAtIndex(typeIdx);
+		const char* checkName = checkType.GetName();
+		if ((checkName != NULL) && ((name == checkName) || (StringView(checkName).EndsWith(suffix))))
+			return checkType;
+	}
+	return lldb::SBType();
+}
+
+struct LLDBVisValue
+{
+	enum Kind
+	{
+		Kind_None,
+		Kind_Int,
+		Kind_String,
+		Kind_Value
+	};
+
+	Kind mKind;
+	int64 mInt;
+	String mString;
+	lldb::SBValue mValue;
+	lldb::SBType mPtrType;
+
+	LLDBVisValue()
+	{
+		mKind = Kind_None;
+		mInt = 0;
+	}
+
+	static LLDBVisValue Int(int64 val)
+	{
+		LLDBVisValue result;
+		result.mKind = Kind_Int;
+		result.mInt = val;
+		return result;
+	}
+
+	static LLDBVisValue Pointer(uint64 addr, lldb::SBType pointeeType)
+	{
+		LLDBVisValue result;
+		result.mKind = Kind_Int;
+		result.mInt = (int64)addr;
+		result.mPtrType = pointeeType;
+		return result;
+	}
+
+	static LLDBVisValue Value(lldb::SBValue val)
+	{
+		LLDBVisValue result;
+		if (val.IsValid())
+		{
+			result.mKind = Kind_Value;
+			result.mValue = val;
+		}
+		return result;
+	}
+
+	bool IsValid() const { return mKind != Kind_None; }
+	bool IsPointer() const
+	{
+		lldb::SBValue val = mValue;
+		if (mKind == Kind_Value)
+			return val.GetType().IsPointerType();
+		return (mKind == Kind_Int) && (mPtrType.IsValid());
+	}
+	lldb::SBType PointeeType() const
+	{
+		lldb::SBValue val = mValue;
+		if (mKind == Kind_Value)
+			return val.GetType().GetPointeeType();
+		return mPtrType;
+	}
+	uint64 Address() const
+	{
+		lldb::SBValue val = mValue;
+		if (mKind == Kind_Value)
+		{
+			lldb::SBValue prim = GetBeefTypedPrimitiveValue(val);
+			if (prim.IsValid())
+				val = prim;
+			return val.GetValueAsUnsigned(0);
+		}
+		return (uint64)mInt;
+	}
+	int64 AsInt() const
+	{
+		lldb::SBValue val = mValue;
+		if (mKind == Kind_Value)
+		{
+			lldb::SBValue prim = GetBeefTypedPrimitiveValue(val);
+			if (prim.IsValid())
+				val = prim;
+			lldb::SBType canonical = val.GetType().GetCanonicalType();
+			if (canonical.GetBasicType() == lldb::eBasicTypeBool)
+				return val.GetValueAsUnsigned(0) != 0;
+			if ((canonical.IsPointerType()) || (canonical.GetBasicType() == lldb::eBasicTypeUnsignedChar))
+				return (int64)val.GetValueAsUnsigned(0);
+			return val.GetValueAsSigned(0);
+		}
+		return mInt;
+	}
+	int BitCount() const
+	{
+		lldb::SBValue val = mValue;
+		if (mKind == Kind_Value)
+			return (int)val.GetByteSize() * 8;
+		return 64;
+	}
+};
+
+// Evaluates a visualizer expression ("mCount - mFreeCount", "(char8*)&mPtrOrBuffer", "__funcName(mFuncPtr)")
+// against a value, with the Beef operator precedence that WinDebugger's evaluator applies to the same file
+class LLDBVisEvaluator
+{
+public:
+	lldb::SBValue mThis;
+	lldb::SBTarget mTarget;
+	String mExpr;
+	int mPos;
+	String mError;
+
+	LLDBVisEvaluator(lldb::SBValue thisValue)
+	{
+		mThis = thisValue;
+		while ((mThis.IsValid()) && (mThis.GetType().IsPointerType()))
+			mThis = mThis.Dereference();
+		mTarget = thisValue.GetTarget();
+		mPos = 0;
+	}
+
+	void Fail(const StringImpl& error)
+	{
+		if (mError.IsEmpty())
+			mError = error;
+	}
+
+	void SkipSpace()
+	{
+		while ((mPos < (int)mExpr.length()) && (isspace((uint8)mExpr[mPos])))
+			mPos++;
+	}
+
+	char Peek(int offset = 0)
+	{
+		int idx = mPos + offset;
+		return (idx < (int)mExpr.length()) ? mExpr[idx] : '\0';
+	}
+
+	bool Accept(const char* text)
+	{
+		SkipSpace();
+		int len = (int)strlen(text);
+		if (strncmp(mExpr.c_str() + mPos, text, len) != 0)
+			return false;
+		mPos += len;
+		return true;
+	}
+
+	bool ReadIdent(String& outIdent)
+	{
+		SkipSpace();
+		int start = mPos;
+		while ((mPos < (int)mExpr.length()) && ((isalnum((uint8)mExpr[mPos])) || (mExpr[mPos] == '_') || (mExpr[mPos] == '$')))
+			mPos++;
+		outIdent = mExpr.Substring(start, mPos - start);
+		return mPos > start;
+	}
+
+	LLDBVisValue Evaluate(const StringImpl& expr)
+	{
+		mExpr = expr;
+		mPos = 0;
+		mError.Clear();
+		LLDBVisValue result = ParseBinary(0);
+		SkipSpace();
+		if ((mError.IsEmpty()) && (mPos < (int)mExpr.length()))
+			Fail(StrFormat("Unexpected '%s'", mExpr.c_str() + mPos));
+		if (!mError.IsEmpty())
+			return LLDBVisValue();
+		return result;
+	}
+
+	static int Precedence(const char* op)
+	{
+		if ((strcmp(op, "*") == 0) || (strcmp(op, "/") == 0) || (strcmp(op, "%") == 0)) return 14;
+		if ((strcmp(op, "+") == 0) || (strcmp(op, "-") == 0)) return 13;
+		if ((strcmp(op, "<<") == 0) || (strcmp(op, ">>") == 0)) return 12;
+		if (strcmp(op, "&") == 0) return 11;
+		if (strcmp(op, "^") == 0) return 10;
+		if (strcmp(op, "|") == 0) return 9;
+		if ((strcmp(op, "<") == 0) || (strcmp(op, ">") == 0) || (strcmp(op, "<=") == 0) || (strcmp(op, ">=") == 0)) return 5;
+		if ((strcmp(op, "==") == 0) || (strcmp(op, "!=") == 0)) return 4;
+		if (strcmp(op, "&&") == 0) return 3;
+		if (strcmp(op, "||") == 0) return 2;
+		return -1;
+	}
+
+	bool PeekBinaryOp(String& outOp)
+	{
+		SkipSpace();
+		static const char* ops[] = { "<<", ">>", "<=", ">=", "==", "!=", "&&", "||", "*", "/", "%", "+", "-", "&", "^", "|", "<", ">" };
+		for (const char* op : ops)
+		{
+			if (strncmp(mExpr.c_str() + mPos, op, strlen(op)) == 0)
+			{
+				outOp = op;
+				return true;
+			}
+		}
+		return false;
+	}
+
+	LLDBVisValue ParseBinary(int minPrec)
+	{
+		LLDBVisValue left = ParseUnary();
+		while (mError.IsEmpty())
+		{
+			String op;
+			if (!PeekBinaryOp(op))
+				break;
+			int prec = Precedence(op.c_str());
+			if (prec < minPrec)
+				break;
+			mPos += (int)op.length();
+			LLDBVisValue right = ParseBinary(prec + 1);
+			if (!mError.IsEmpty())
+				break;
+			left = ApplyBinary(op, left, right);
+		}
+		return left;
+	}
+
+	LLDBVisValue ApplyBinary(const StringImpl& op, const LLDBVisValue& left, const LLDBVisValue& right)
+	{
+		if ((!left.IsValid()) || (!right.IsValid()))
+		{
+			Fail("Invalid operand");
+			return LLDBVisValue();
+		}
+		if (((op == "+") || (op == "-")) && (left.IsPointer()) && (!right.IsPointer()))
+		{
+			lldb::SBType pointee = left.PointeeType();
+			uint64 stride = pointee.GetByteSize();
+			if (stride == 0)
+				stride = 1;
+			uint64 offset = (uint64)right.AsInt() * stride;
+			return LLDBVisValue::Pointer((op == "+") ? left.Address() + offset : left.Address() - offset, pointee);
+		}
+		// The operands come from the debuggee, so the arithmetic wraps rather than overflowing, which is
+		// undefined for int64, and the two cases that fault are rejected
+		int64 a = left.AsInt();
+		int64 b = right.AsInt();
+		uint64 ua = (uint64)a;
+		uint64 ub = (uint64)b;
+		if ((op == "/") || (op == "%"))
+		{
+			if (b == 0)
+			{
+				Fail("Division by zero");
+				return LLDBVisValue();
+			}
+			if ((a == INT64_MIN) && (b == -1))
+			{
+				Fail("Integer overflow");
+				return LLDBVisValue();
+			}
+			return LLDBVisValue::Int((op == "/") ? a / b : a % b);
+		}
+		if ((op == "<<") || (op == ">>"))
+		{
+			if ((b < 0) || (b >= 64))
+			{
+				Fail(StrFormat("Shift count %lld is out of range", (long long)b));
+				return LLDBVisValue();
+			}
+			return LLDBVisValue::Int((op == "<<") ? (int64)(ua << b) : (int64)(ua >> b));
+		}
+		if (op == "*") return LLDBVisValue::Int((int64)(ua * ub));
+		if (op == "+") return LLDBVisValue::Int((int64)(ua + ub));
+		if (op == "-") return LLDBVisValue::Int((int64)(ua - ub));
+		if (op == "&") return LLDBVisValue::Int(a & b);
+		if (op == "^") return LLDBVisValue::Int(a ^ b);
+		if (op == "|") return LLDBVisValue::Int(a | b);
+		if (op == "<") return LLDBVisValue::Int(a < b);
+		if (op == ">") return LLDBVisValue::Int(a > b);
+		if (op == "<=") return LLDBVisValue::Int(a <= b);
+		if (op == ">=") return LLDBVisValue::Int(a >= b);
+		if (op == "==") return LLDBVisValue::Int(a == b);
+		if (op == "!=") return LLDBVisValue::Int(a != b);
+		if (op == "&&") return LLDBVisValue::Int((a != 0) && (b != 0));
+		if (op == "||") return LLDBVisValue::Int((a != 0) || (b != 0));
+		Fail(StrFormat("Unsupported operator '%s'", op.c_str()));
+		return LLDBVisValue();
+	}
+
+	bool LooksLikeCast(String& outTypeName)
+	{
+		int depth = 0;
+		int end = -1;
+		for (int i = mPos; i < (int)mExpr.length(); i++)
+		{
+			char c = mExpr[i];
+			if (c == '(')
+				depth++;
+			else if (c == ')')
+			{
+				if (depth == 0)
+				{
+					end = i;
+					break;
+				}
+				depth--;
+			}
+		}
+		if (end < 0)
+			return false;
+		String text = mExpr.Substring(mPos, end - mPos);
+		text.Trim();
+		if ((text.IsEmpty()) || (!((isalpha((uint8)text[0])) || (text[0] == '_'))))
+			return false;
+		for (char c : text)
+		{
+			if (!((isalnum((uint8)c)) || (c == '_') || (c == '.') || (c == ':') || (c == '<') || (c == '>') || (c == ',') || (c == ' ') || (c == '*') || (c == '[') || (c == ']') || (c == '$')))
+				return false;
+		}
+		int identEnd = 0;
+		while ((identEnd < (int)text.length()) && ((isalnum((uint8)text[identEnd])) || (text[identEnd] == '_')))
+			identEnd++;
+		String firstIdent = text.Substring(0, identEnd);
+		if ((firstIdent == "this") || (firstIdent == "null") || (firstIdent == "true") || (firstIdent == "false"))
+			return false;
+		if ((firstIdent == text) && (mThis.GetChildMemberWithName(firstIdent.c_str()).IsValid()))
+			return false;
+		outTypeName = text;
+		mPos = end + 1;
+		return true;
+	}
+
+	LLDBVisValue ParseUnary()
+	{
+		SkipSpace();
+		if (Accept("-"))
+		{
+			LLDBVisValue val = ParseUnary();
+			return val.IsValid() ? LLDBVisValue::Int((int64)(0 - (uint64)val.AsInt())) : val;
+		}
+		if (Accept("~"))
+		{
+			LLDBVisValue val = ParseUnary();
+			return val.IsValid() ? LLDBVisValue::Int(~val.AsInt()) : val;
+		}
+		if (Accept("!"))
+		{
+			LLDBVisValue val = ParseUnary();
+			return val.IsValid() ? LLDBVisValue::Int(val.AsInt() == 0) : val;
+		}
+		if (Accept("*"))
+		{
+			LLDBVisValue val = ParseUnary();
+			return Deref(val);
+		}
+		if (Accept("&"))
+		{
+			LLDBVisValue val = ParseUnary();
+			if (val.mKind != LLDBVisValue::Kind_Value)
+			{
+				Fail("Cannot take the address of a temporary");
+				return LLDBVisValue();
+			}
+			lldb::addr_t addr = val.mValue.GetLoadAddress();
+			if (addr == LLDB_INVALID_ADDRESS)
+			{
+				Fail("Value is not in memory");
+				return LLDBVisValue();
+			}
+			return LLDBVisValue::Pointer(addr, val.mValue.GetType());
+		}
+		if (Peek() == '(')
+		{
+			int save = mPos;
+			mPos++;
+			String typeName;
+			if (LooksLikeCast(typeName))
+			{
+				LLDBVisValue val = ParseUnary();
+				return Cast(typeName, val);
+			}
+			mPos = save;
+		}
+		return ParsePostfix(ParsePrimary());
+	}
+
+	LLDBVisValue Cast(const StringImpl& typeName, LLDBVisValue val)
+	{
+		if (!val.IsValid())
+			return val;
+		String name = typeName;
+		name.Trim();
+		if (name.EndsWith("*"))
+		{
+			name.RemoveToEnd(name.length() - 1);
+			name.Trim();
+			lldb::SBType pointee = (name == "void") ? lldb::SBType() : FindBeefTypeInTarget(mTarget, name);
+			return LLDBVisValue::Pointer(val.Address(), pointee);
+		}
+		if ((name == "int") || (name == "int64") || (name == "intptr") || (name == "uint64") || (name == "uint") || (name == "int32") || (name == "uint32"))
+			return LLDBVisValue::Int(val.AsInt());
+		if (name == "uint8") return LLDBVisValue::Int((uint8)val.AsInt());
+		if (name == "int8") return LLDBVisValue::Int((int8)val.AsInt());
+		if (name == "uint16") return LLDBVisValue::Int((uint16)val.AsInt());
+		if (name == "int16") return LLDBVisValue::Int((int16)val.AsInt());
+		Fail(StrFormat("Unsupported cast to '%s'", name.c_str()));
+		return LLDBVisValue();
+	}
+
+	LLDBVisValue Deref(LLDBVisValue val)
+	{
+		if (!val.IsValid())
+			return val;
+		if (val.mKind == LLDBVisValue::Kind_Value)
+		{
+			if (!val.mValue.GetType().IsPointerType())
+			{
+				Fail("Cannot dereference a non-pointer");
+				return LLDBVisValue();
+			}
+			return LLDBVisValue::Value(val.mValue.Dereference());
+		}
+		if (!val.mPtrType.IsValid())
+		{
+			Fail("Cannot dereference an untyped pointer");
+			return LLDBVisValue();
+		}
+		lldb::SBValue created = mTarget.CreateValueFromAddress("value", lldb::SBAddress((lldb::addr_t)val.mInt, mTarget), val.mPtrType);
+		if ((!created.IsValid()) || (created.GetError().Fail()))
+		{
+			Fail(StrFormat("Cannot read a '%s' at 0x%llX", val.mPtrType.GetName(), (unsigned long long)val.mInt));
+			return LLDBVisValue();
+		}
+		return LLDBVisValue::Value(created);
+	}
+
+	LLDBVisValue ParsePostfix(LLDBVisValue val)
+	{
+		while ((mError.IsEmpty()) && (val.IsValid()))
+		{
+			SkipSpace();
+			if (Peek() == '.')
+			{
+				mPos++;
+				String member;
+				if (!ReadIdent(member))
+				{
+					Fail("Expected member name");
+					return LLDBVisValue();
+				}
+				val = Member(val, member);
+			}
+			else if (Peek() == '[')
+			{
+				mPos++;
+				LLDBVisValue index = ParseBinary(0);
+				if (!Accept("]"))
+				{
+					Fail("Expected ']'");
+					return LLDBVisValue();
+				}
+				if (!index.IsValid())
+					return LLDBVisValue();
+				val = Index(val, index.AsInt());
+			}
+			else
+				break;
+		}
+		return val;
+	}
+
+	LLDBVisValue Member(LLDBVisValue val, const StringImpl& name)
+	{
+		if (val.mKind != LLDBVisValue::Kind_Value)
+		{
+			LLDBVisValue obj = Deref(val);
+			if (!obj.IsValid())
+				return obj;
+			return Member(obj, name);
+		}
+		lldb::SBValue value = val.mValue;
+		while ((value.IsValid()) && (value.GetType().IsPointerType()))
+			value = value.Dereference();
+		lldb::SBValue member = value.GetChildMemberWithName(name.c_str());
+		if (!member.IsValid())
+		{
+			Fail(StrFormat("Member '%s' not found", name.c_str()));
+			return LLDBVisValue();
+		}
+		return LLDBVisValue::Value(member);
+	}
+
+	LLDBVisValue Index(LLDBVisValue val, int64 index)
+	{
+		if (val.mKind == LLDBVisValue::Kind_Value)
+		{
+			lldb::SBType type = val.mValue.GetType().GetCanonicalType();
+			if ((type.IsArrayType()) || (type.IsPointerType()))
+				return LLDBVisValue::Value(val.mValue.GetChildAtIndex((uint32)index, lldb::eNoDynamicValues, true));
+		}
+		LLDBVisValue plus = ApplyBinary("+", val, LLDBVisValue::Int(index));
+		return Deref(plus);
+	}
+
+	LLDBVisValue ParsePrimary()
+	{
+		SkipSpace();
+		char c = Peek();
+		if (c == '(')
+		{
+			mPos++;
+			LLDBVisValue val = ParseBinary(0);
+			if (!Accept(")"))
+				Fail("Expected ')'");
+			return val;
+		}
+		if (c == '"')
+		{
+			mPos++;
+			LLDBVisValue result;
+			result.mKind = LLDBVisValue::Kind_String;
+			while ((mPos < (int)mExpr.length()) && (mExpr[mPos] != '"'))
+			{
+				if ((mExpr[mPos] == '\\') && (mPos + 1 < (int)mExpr.length()))
+					mPos++;
+				result.mString += mExpr[mPos++];
+			}
+			if (!Accept("\""))
+				Fail("Unterminated string");
+			return result;
+		}
+		if (isdigit((uint8)c))
+		{
+			char* endPtr = NULL;
+			int64 val = (int64)strtoull(mExpr.c_str() + mPos, &endPtr, 0);
+			mPos = (int)(endPtr - mExpr.c_str());
+			return LLDBVisValue::Int(val);
+		}
+		String ident;
+		if (!ReadIdent(ident))
+		{
+			Fail(StrFormat("Unexpected '%c'", c));
+			return LLDBVisValue();
+		}
+		if (ident == "this")
+			return LLDBVisValue::Value(mThis);
+		if (ident == "null")
+			return LLDBVisValue::Int(0);
+		if (ident == "true")
+			return LLDBVisValue::Int(1);
+		if (ident == "false")
+			return LLDBVisValue::Int(0);
+		SkipSpace();
+		if (Peek() == '(')
+		{
+			mPos++;
+			Array<LLDBVisValue> args;
+			SkipSpace();
+			if (Peek() != ')')
+			{
+				while (true)
+				{
+					LLDBVisValue arg = ParseBinary(0);
+					if (!mError.IsEmpty())
+						return LLDBVisValue();
+					args.Add(arg);
+					if (Accept(","))
+						continue;
+					break;
+				}
+			}
+			if (!Accept(")"))
+			{
+				Fail("Expected ')'");
+				return LLDBVisValue();
+			}
+			return Call(ident, args);
+		}
+		lldb::SBValue member = mThis.GetChildMemberWithName(ident.c_str());
+		if (!member.IsValid())
+		{
+			Fail(StrFormat("Identifier '%s' not found", ident.c_str()));
+			return LLDBVisValue();
+		}
+		return LLDBVisValue::Value(member);
+	}
+
+	LLDBVisValue Call(const StringImpl& name, Array<LLDBVisValue> args)
+	{
+		if (((name == "__getHighBits") || (name == "__clearHighBits")) && (args.size() == 2))
+		{
+			int width = args[0].BitCount();
+			int64 bits = args[1].AsInt();
+			if ((width <= 0) || (width > 64) || (bits <= 0) || (bits > width))
+			{
+				Fail(StrFormat("%s: %lld bits of a %d-bit value", name.c_str(), (long long)bits, width));
+				return LLDBVisValue();
+			}
+			uint64 widthMask = (width == 64) ? ~(uint64)0 : (((uint64)1 << width) - 1);
+			uint64 val = (uint64)args[0].AsInt() & widthMask;
+			int lowBits = width - (int)bits;
+			uint64 lowMask = (lowBits == 0) ? 0 : (((uint64)1 << lowBits) - 1);
+			if (name == "__getHighBits")
+				return LLDBVisValue::Int((int64)(val >> lowBits));
+			return LLDBVisValue::Int((int64)(val & lowMask));
+		}
+		if ((name == "__funcName") && (args.size() == 1))
+		{
+			LLDBVisValue result;
+			result.mKind = LLDBVisValue::Kind_String;
+			result.mString = FuncNameAt(args[0].Address());
+			return result;
+		}
+		if ((name == "__stringView") && (args.size() == 2))
+		{
+			LLDBVisValue result;
+			result.mKind = LLDBVisValue::Kind_String;
+			if (!ReadText(args[0].Address(), args[1].AsInt(), result.mString))
+			{
+				Fail("Cannot read string");
+				return LLDBVisValue();
+			}
+			return result;
+		}
+		if ((name == "__bitcast") && (args.size() == 2))
+		{
+			lldb::SBType type = (args[0].mKind == LLDBVisValue::Kind_String) ? FindBeefTypeInTarget(mTarget, args[0].mString) : TypeFromTypeObject(args[0].Address());
+			if (!type.IsValid())
+			{
+				Fail("Unknown type");
+				return LLDBVisValue();
+			}
+			if (args[1].mKind == LLDBVisValue::Kind_Value)
+			{
+				lldb::addr_t addr = args[1].mValue.GetLoadAddress();
+				if ((addr != LLDB_INVALID_ADDRESS) && (type.GetByteSize() <= args[1].mValue.GetByteSize()))
+				{
+					lldb::SBValue created = mTarget.CreateValueFromAddress("value", lldb::SBAddress(addr, mTarget), type);
+					if ((!created.IsValid()) || (created.GetError().Fail()))
+					{
+						Fail(StrFormat("Cannot read a '%s' at 0x%llX: %s", type.GetName(), (unsigned long long)addr, created.GetError().GetCString()));
+						return LLDBVisValue();
+					}
+					return LLDBVisValue::Value(created);
+				}
+			}
+			int64 raw = args[1].AsInt();
+			lldb::SBData data;
+			lldb::SBError dataError;
+			data.SetData(dataError, &raw, sizeof(raw), mTarget.GetByteOrder(), (uint8)mTarget.GetAddressByteSize());
+			lldb::SBValue created = mTarget.CreateValueFromData("value", data, type);
+			if ((!created.IsValid()) || (created.GetError().Fail()))
+			{
+				Fail(StrFormat("Cannot create a '%s' from data: %s", type.GetName(), created.GetError().GetCString()));
+				return LLDBVisValue();
+			}
+			return LLDBVisValue::Value(created);
+		}
+		if ((name == "__cast") && (args.size() >= 2))
+		{
+			if ((args.size() == 2) && (args[0].mKind == LLDBVisValue::Kind_String))
+			{
+				lldb::SBType type = FindBeefTypeInTarget(mTarget, args[0].mString);
+				if (!type.IsValid())
+				{
+					Fail("Unknown type");
+					return LLDBVisValue();
+				}
+				return LLDBVisValue::Pointer(args[1].Address(), type);
+			}
+			if ((args.size() == 3) && (args[1].mKind == LLDBVisValue::Kind_String) && (args[1].mString == "*"))
+			{
+				lldb::SBType type = (args[0].mKind == LLDBVisValue::Kind_String) ? FindBeefTypeInTarget(mTarget, args[0].mString) : TypeFromTypeObject(args[0].Address());
+				if (!type.IsValid())
+				{
+					Fail("Unknown type");
+					return LLDBVisValue();
+				}
+				return LLDBVisValue::Pointer(args[2].Address(), type);
+			}
+		}
+		Fail(StrFormat("Unsupported function '%s'", name.c_str()));
+		return LLDBVisValue();
+	}
+
+	bool ReadText(uint64 addr, int64 length, String& outText)
+	{
+		if ((addr == 0) || (length < 0) || (length > 0x10000000))
+			return false;
+		const int64 maxDisplayLength = 4096;
+		Array<char> text;
+		text.Resize((intptr)BF_MIN(length, maxDisplayLength));
+		lldb::SBError error;
+		if ((text.size() > 0) && (mTarget.GetProcess().ReadMemory(addr, text.mVals, text.size(), error) != (size_t)text.size()))
+			return false;
+		outText = String(text.mVals, text.size());
+		if (length > maxDisplayLength)
+			outText += "...";
+		return true;
+	}
+
+	String FuncNameAt(uint64 addr)
+	{
+		lldb::SBAddress address(addr, mTarget);
+		lldb::SBSymbolContext context = mTarget.ResolveSymbolContextForAddress(address, lldb::eSymbolContextFunction | lldb::eSymbolContextSymbol);
+		const char* name = NULL;
+		if (context.GetFunction().IsValid())
+			name = context.GetFunction().GetName();
+		else if (context.GetSymbol().IsValid())
+			name = context.GetSymbol().GetName();
+		if (name == NULL)
+			return StrFormat("0x%llX", (unsigned long long)addr);
+		return FixBeefFunctionName(name);
+	}
+
+	// A System.Type object (as Variant stores it): primitives are identified by their type code, type
+	// instances by their name, since the type table is only filled in when reflection is used
+	lldb::SBType TypeFromTypeObject(uint64 typeAddr)
+	{
+		if (typeAddr == 0)
+			return lldb::SBType();
+		// A type's data is a symbol named by the type's mangled name ("sBfTypeData._ZTSu3int"), which
+		// identifies it even when reflection has left the object itself unfilled
+		lldb::SBSymbolContext symContext = mTarget.ResolveSymbolContextForAddress(lldb::SBAddress(typeAddr, mTarget), lldb::eSymbolContextSymbol);
+		const char* symName = symContext.GetSymbol().IsValid() ? symContext.GetSymbol().GetName() : NULL;
+		if ((symName != NULL) && (strncmp(symName, "sBfTypeData._ZTS", 16) == 0) && (symContext.GetSymbol().GetStartAddress().GetLoadAddress(mTarget) == typeAddr))
+		{
+			String demangled = llvm::demangle(symName + 12);
+			const char* prefix = "typeinfo name for ";
+			if (demangled.StartsWith(prefix))
+				demangled.Remove(0, (int)strlen(prefix));
+			if (demangled.StartsWith("bf::"))
+				demangled.Remove(0, 4);
+			lldb::SBType symType = FindBeefTypeInTarget(mTarget, demangled);
+			if (symType.IsValid())
+				return symType;
+		}
+		lldb::SBType typeType = mTarget.FindFirstType("System::Type");
+		if (!typeType.IsValid())
+			return lldb::SBType();
+		lldb::SBValue typeObj = mTarget.CreateValueFromAddress("type", lldb::SBAddress(typeAddr, mTarget), typeType);
+		lldb::SBValue typeCode = typeObj.GetChildMemberWithName("mTypeCode");
+		if (!typeCode.IsValid())
+			return lldb::SBType();
+		const char* primName = NULL;
+		switch ((int)typeCode.GetValueAsSigned(-1))
+		{
+		case 9: primName = "bool"; break;
+		case 10: primName = "int8"; break;
+		case 11: primName = "uint8"; break;
+		case 12: primName = "int16"; break;
+		case 13: primName = "uint16"; break;
+		case 16: primName = "int32"; break;
+		case 17: primName = "uint32"; break;
+		case 24: primName = "int64"; break;
+		case 25: primName = "uint64"; break;
+		case 28: primName = "int"; break;
+		case 29: primName = "uint"; break;
+		case 32: primName = "char8"; break;
+		case 33: primName = "char16"; break;
+		case 34: primName = "char32"; break;
+		case 35: primName = "float"; break;
+		case 36: primName = "double"; break;
+		}
+		if (primName != NULL)
+			return mTarget.FindFirstType(primName);
+		lldb::SBType typeInstanceType = mTarget.FindFirstType("System::Reflection::TypeInstance");
+		if (!typeInstanceType.IsValid())
+			return lldb::SBType();
+		lldb::SBValue typeInstance = mTarget.CreateValueFromAddress("type", lldb::SBAddress(typeAddr, mTarget), typeInstanceType);
+		String name;
+		String nameSpace;
+		if (!TryReadBeefString(typeInstance.GetChildMemberWithName("mName"), name, false))
+			return lldb::SBType();
+		TryReadBeefString(typeInstance.GetChildMemberWithName("mNamespace"), nameSpace, false);
+		String qualifiedName = nameSpace;
+		if (!qualifiedName.IsEmpty())
+			qualifiedName += ".";
+		qualifiedName += name;
+		return FindBeefTypeInTarget(mTarget, qualifiedName);
+	}
+};
+
+static DebugVisualizerEntry* FindBeefVisualizer(lldb::SBType type, Array<String>& outCaptures)
+{
+	if (gDebugManager == NULL)
+		return NULL;
+	lldb::SBType useType = type;
+	while (useType.IsPointerType())
+		useType = useType.GetPointeeType();
+	String typeName = BeefTypeNameOf(useType);
+	if (typeName.IsEmpty())
+		return NULL;
+	outCaptures.Clear();
+	DebugVisualizerEntry* entry = gDebugManager->mDebugVisualizers->FindEntryForType(typeName, DbgFlavor_GNU, &outCaptures);
+	if (entry != NULL)
+		return entry;
+	lldb::SBType canonical = useType.GetCanonicalType();
+	if (canonical.GetTypeClass() == lldb::eTypeClassStruct)
+	{
+		lldb::SBValue dummy;
+		for (uint32 baseIdx = 0; baseIdx < canonical.GetNumberOfDirectBaseClasses(); baseIdx++)
+		{
+			lldb::SBType baseType = canonical.GetDirectBaseClassAtIndex(baseIdx).GetType();
+			String baseName = BeefTypeNameOf(baseType);
+			if ((baseName == "System.Object") || (baseName == "System.ValueType") || (baseName == "System.Enum"))
+				continue;
+			entry = FindBeefVisualizer(baseType, outCaptures);
+			if (entry != NULL)
+				return entry;
+		}
+	}
+	return NULL;
+}
+
+static bool EvalVisCondition(lldb::SBValue value, DebugVisualizerEntry* entry, const Array<String>& captures, const StringImpl& condition)
+{
+	if (condition.IsEmpty())
+		return true;
+	LLDBVisEvaluator evaluator(value);
+	LLDBVisValue result = evaluator.Evaluate(gDebugManager->mDebugVisualizers->DoStringReplace(condition, captures));
+	return (result.IsValid()) && (result.AsInt() != 0);
+}
+
+// "{mKey}" "{{ count={mSize} }}" "{(char8*)&mPtrOrBuffer,s8,count=mLength}" "{__funcName(mFuncPtr), ne}"
+static bool ProcessVisTemplate(lldb::SBValue value, const Array<String>& captures, const StringImpl& templateStr, int depth, String& outStr)
+{
+	String text = gDebugManager->mDebugVisualizers->DoStringReplace(templateStr, captures);
+	outStr.Clear();
+	int pos = 0;
+	while (pos < (int)text.length())
+	{
+		char c = text[pos];
+		if ((c == '{') && (pos + 1 < (int)text.length()) && (text[pos + 1] == '{'))
+		{
+			outStr += '{';
+			pos += 2;
+			continue;
+		}
+		if ((c == '}') && (pos + 1 < (int)text.length()) && (text[pos + 1] == '}'))
+		{
+			outStr += '}';
+			pos += 2;
+			continue;
+		}
+		if (c != '{')
+		{
+			outStr += c;
+			pos++;
+			continue;
+		}
+		int depthCount = 0;
+		int end = -1;
+		for (int i = pos + 1; i < (int)text.length(); i++)
+		{
+			if ((text[i] == '(') || (text[i] == '[') || (text[i] == '{'))
+				depthCount++;
+			else if ((text[i] == ')') || (text[i] == ']'))
+				depthCount--;
+			else if (text[i] == '}')
+			{
+				if (depthCount == 0)
+				{
+					end = i;
+					break;
+				}
+				depthCount--;
+			}
+		}
+		if (end < 0)
+			return false;
+		String inner = text.Substring(pos + 1, end - pos - 1);
+		pos = end + 1;
+
+		Array<String> parts;
+		int partDepth = 0;
+		int partStart = 0;
+		for (int i = 0; i <= (int)inner.length(); i++)
+		{
+			char pc = (i < (int)inner.length()) ? inner[i] : ',';
+			if ((pc == '(') || (pc == '[') || (pc == '<'))
+				partDepth++;
+			else if ((pc == ')') || (pc == ']') || (pc == '>'))
+				partDepth--;
+			if ((pc == ',') && (partDepth == 0))
+			{
+				String part = inner.Substring(partStart, i - partStart);
+				part.Trim();
+				parts.Add(part);
+				partStart = i + 1;
+			}
+		}
+		if (parts.IsEmpty())
+			return false;
+		bool wantString = false;
+		bool wantHex = false;
+		String countExpr;
+		for (int partIdx = 1; partIdx < (int)parts.size(); partIdx++)
+		{
+			const String& spec = parts[partIdx];
+			if ((spec == "s") || (spec == "s8"))
+				wantString = true;
+			else if (spec == "x")
+				wantHex = true;
+			else if (spec.StartsWith("count="))
+				countExpr = spec.Substring(6);
+		}
+
+		LLDBVisEvaluator evaluator(value);
+		LLDBVisValue result = evaluator.Evaluate(parts[0]);
+		if (!result.IsValid())
+		{
+			LLDBLog("Visualizer '%s' failed: %s\n", parts[0].c_str(), evaluator.mError.c_str());
+			return false;
+		}
+		if (result.mKind == LLDBVisValue::Kind_String)
+		{
+			outStr += wantString ? QuoteBeefText(result.mString) : result.mString;
+			continue;
+		}
+		if (wantString)
+		{
+			if (result.mKind == LLDBVisValue::Kind_Value)
+			{
+				String beefString;
+				if (TryReadBeefString(result.mValue, beefString))
+				{
+					outStr += beefString;
+					continue;
+				}
+			}
+			int64 count = -1;
+			if (!countExpr.IsEmpty())
+			{
+				LLDBVisValue countVal = evaluator.Evaluate(countExpr);
+				if (!countVal.IsValid())
+					return false;
+				count = countVal.AsInt();
+			}
+			uint64 addr = result.Address();
+			if (count < 0)
+			{
+				lldb::SBError error;
+				char buffer[4097];
+				size_t readLen = evaluator.mTarget.GetProcess().ReadCStringFromMemory(addr, buffer, sizeof(buffer), error);
+				if (error.Fail())
+					return false;
+				outStr += QuoteBeefText(String(buffer, (intptr)BF_MIN(readLen, sizeof(buffer) - 1)));
+				continue;
+			}
+			String text;
+			if (!evaluator.ReadText(addr, count, text))
+				return false;
+			outStr += QuoteBeefText(text);
+			continue;
+		}
+		if (result.mKind == LLDBVisValue::Kind_Int)
+		{
+			outStr += wantHex ? StrFormat("0x%llX", (unsigned long long)result.mInt) : StrFormat("%lld", (long long)result.mInt);
+			continue;
+		}
+		if (wantHex)
+		{
+			outStr += StrFormat("0x%llX", (unsigned long long)result.mValue.GetValueAsUnsigned(0));
+			continue;
+		}
+		outStr += FormatBeefValue(result.mValue, depth + 1);
+	}
+	return true;
+}
+
+// The display string a visualizer gives a value, or false when it has none or it uses something the
+// evaluator here can't do, in which case the caller shows the value's members instead
+static bool TryVisDisplayString(lldb::SBValue value, int depth, String& outStr)
+{
+	if (depth >= 4)
+		return false;
+	Array<String> captures;
+	DebugVisualizerEntry* entry = FindBeefVisualizer(value.GetType(), captures);
+	if ((entry == NULL) || (entry->mDisplayStrings.IsEmpty()))
+		return false;
+	lldb::SBValue useValue = value;
+	while ((useValue.IsValid()) && (useValue.GetType().IsPointerType()))
+	{
+		if (useValue.GetValueAsUnsigned(0) == 0)
+			return false;
+		useValue = useValue.Dereference();
+	}
+	for (auto displayEntry : entry->mDisplayStrings)
+	{
+		if (!EvalVisCondition(useValue, entry, captures, displayEntry->mCondition))
+			continue;
+		return ProcessVisTemplate(useValue, captures, displayEntry->mString, depth, outStr);
+	}
+	return false;
+}
+
+static LLDBDebugger* CurrentLLDBDebugger()
+{
+	if ((gDebugManager == NULL) || (gDebugger == NULL) || (gDebugger != gDebugManager->mDebuggerLLDB))
+		return NULL;
+	return (LLDBDebugger*)gDebugger;
+}
+
+static bool IsBeefCharType(lldb::BasicType basicType)
+{
+	return (basicType == lldb::eBasicTypeChar8) || (basicType == lldb::eBasicTypeChar16) || (basicType == lldb::eBasicTypeChar32) ||
+		(basicType == lldb::eBasicTypeChar) || (basicType == lldb::eBasicTypeSignedChar);
+}
+
+static String FormatBeefChar(uint64 c)
+{
+	switch (c)
+	{
+	case '\n': return "'\\n'";
+	case '\r': return "'\\r'";
+	case '\t': return "'\\t'";
+	case '\0': return "'\\0'";
+	case '\\': return "'\\\\'";
+	case '\'': return "'\\''";
+	}
+	if ((c >= 0x20) && (c < 0x7F))
+		return StrFormat("'%c'", (char)c);
+	if (c < 0x100)
+		return StrFormat("'\\x%02X'", (unsigned)c);
+	return StrFormat("'\\u{%X}'", (unsigned)c);
+}
+
+// ".Green", or ".A | .B" for a combination of cases, as the Beef IDE shows an enum
+static String FormatBeefEnumPrim(lldb::SBValue primValue)
+{
+	lldb::SBTypeEnumMemberList members = primValue.GetType().GetCanonicalType().GetEnumMembers();
+	int64 val = primValue.GetValueAsSigned(0);
+	uint64 uval = primValue.GetValueAsUnsigned(0);
+	for (uint32 i = 0; i < members.GetSize(); i++)
+	{
+		lldb::SBTypeEnumMember member = members.GetTypeEnumMemberAtIndex(i);
+		if (member.GetValueAsSigned() == val)
+			return String(".") + member.GetName();
+	}
+	String result;
+	uint64 remaining = uval;
+	for (uint32 i = 0; (i < members.GetSize()) && (remaining != 0); i++)
+	{
+		lldb::SBTypeEnumMember member = members.GetTypeEnumMemberAtIndex(i);
+		uint64 memberVal = member.GetValueAsUnsigned();
+		if ((memberVal == 0) || ((memberVal & uval) != memberVal) || ((memberVal & remaining) == 0))
+			continue;
+		if (!result.IsEmpty())
+			result += " | ";
+		result += ".";
+		result += member.GetName();
+		remaining &= ~memberVal;
+	}
+	if ((remaining != 0) || (result.IsEmpty()))
+		return StrFormat("%lld", (long long)val);
+	return result;
+}
+
+static String FormatBeefArray(lldb::SBValue value, int depth)
+{
+	const uint32 maxShown = 64;
+	uint32 count = value.GetNumChildren();
+	String result = "{";
+	for (uint32 i = 0; (i < count) && (i < maxShown); i++)
+	{
+		if (i > 0)
+			result += ", ";
+		result += FormatBeefValue(value.GetChildAtIndex(i), depth + 1);
+	}
+	if (count > maxShown)
+		result += ", ...";
+	result += "}";
+	return result;
+}
 
 // A struct's fields, a tuple's elements, or a payload enum's case, the way the Beef IDE shows them:
 // "{ mA=1 mB=2 }", "(aa:123, 456)" and ".Case(a:1)". Base class fields are listed inline, after the
@@ -2965,6 +4103,10 @@ static String FormatBeefAggregate(lldb::SBValue value, int depth)
 		}
 		return StrFormat(".%lld", (long long)tag);
 	}
+
+	lldb::SBValue primValue = value.GetChildMemberWithName("$prim");
+	if ((primValue.IsValid()) && (primValue.GetType().GetCanonicalType().GetTypeClass() == lldb::eTypeClassEnumeration))
+		return FormatBeefEnumPrim(primValue);
 
 	bool isTuple = IsBeefTupleTypeName(typeName);
 	String result = isTuple ? "(" : "{ ";
@@ -3050,23 +4192,156 @@ static String FormatBeefValue(lldb::SBValue value, int depth)
 			return "null";
 		// A member that points at another object shows its address, as WinDebugger does - only the value
 		// being displayed is expanded
+		String visString;
+		if ((type.IsPointerType()) && (TryVisDisplayString(value, depth, visString)))
+			return StrFormat("0x%llX %s", (unsigned long long)addr, visString.c_str());
 		return StrFormat("0x%llX", (unsigned long long)addr);
 	}
 
 	lldb::BasicType basicType = canonicalType.GetBasicType();
 	if ((basicType == lldb::eBasicTypeFloat) || (basicType == lldb::eBasicTypeDouble))
 		return FormatBeefFloat(value, basicType == lldb::eBasicTypeDouble);
+	if (IsBeefCharType(basicType))
+		return FormatBeefChar(value.GetValueAsUnsigned(0));
+	if (basicType == lldb::eBasicTypeUnsignedChar)
+		return StrFormat("%llu", (unsigned long long)value.GetValueAsUnsigned(0));
 
 	if ((canonicalType.GetTypeClass() == lldb::eTypeClassStruct) || (canonicalType.GetTypeClass() == lldb::eTypeClassClass) ||
 		(canonicalType.GetTypeClass() == lldb::eTypeClassUnion))
 	{
 		if (depth >= 4)
 			return "{...}";
+		String visString;
+		if (TryVisDisplayString(value, depth, visString))
+			return visString;
 		return FormatBeefAggregate(value, depth);
 	}
+	if (canonicalType.GetTypeClass() == lldb::eTypeClassArray)
+		return (depth >= 4) ? String("{...}") : FormatBeefArray(value, depth);
 
 	const char* valStr = value.GetValue();
 	return (valStr != NULL) ? String(valStr) : String("{...}");
+}
+
+
+// The children a visualizer gives a value: its expand items, its elements, and a raw view of its fields.
+// Each child is an expression evaluated against the value ("mSize, this=(System.Collections.List<int>*)0x...")
+static bool AppendVisMembers(lldb::SBValue value, String& result)
+{
+	Array<String> captures;
+	DebugVisualizerEntry* entry = FindBeefVisualizer(value.GetType(), captures);
+	if ((entry == NULL) || ((entry->mExpandItems.IsEmpty()) && (entry->mCollectionType == DebugVisualizerEntry::CollectionType_None)))
+		return false;
+	lldb::SBValue obj = value;
+	while ((obj.IsValid()) && (obj.GetType().IsPointerType()))
+	{
+		if (obj.GetValueAsUnsigned(0) == 0)
+			return false;
+		obj = obj.Dereference();
+	}
+	lldb::addr_t objAddr = obj.GetLoadAddress();
+	if ((!obj.IsValid()) || (objAddr == LLDB_INVALID_ADDRESS))
+		return false;
+	String thisExpr = StrFormat("(%s*)0x%llX", BeefTypeNameOf(obj.GetType()).c_str(), (unsigned long long)objAddr);
+	DebugVisualizers* visualizers = gDebugManager->mDebugVisualizers;
+
+	for (auto item : entry->mExpandItems)
+	{
+		if (!EvalVisCondition(obj, entry, captures, item->mCondition))
+			continue;
+		result += "\n" + item->mName + "\t" + visualizers->DoStringReplace(item->mValue, captures) + ", this=" + thisExpr;
+	}
+
+	const int maxListed = 1000;
+	LLDBVisEvaluator evaluator(obj);
+	if ((entry->mCollectionType == DebugVisualizerEntry::CollectionType_Array) || (entry->mCollectionType == DebugVisualizerEntry::CollectionType_IndexItems))
+	{
+		LLDBVisValue sizeValue = evaluator.Evaluate(visualizers->DoStringReplace(entry->mSize, captures));
+		int64 size = sizeValue.IsValid() ? sizeValue.AsInt() : 0;
+		String valueExpr = visualizers->DoStringReplace(entry->mValuePointer, captures);
+		if (size > 0)
+		{
+			if (entry->mCollectionType == DebugVisualizerEntry::CollectionType_IndexItems)
+			{
+				valueExpr.Replace("$i", "{0}");
+				result += StrFormat("\n:repeat\t0\t%lld\t10000\t[{0}]\t%s, this=%s", (long long)size, valueExpr.c_str(), thisExpr.c_str());
+			}
+			else if (entry->mCondition.IsEmpty())
+				result += StrFormat("\n:repeat\t0\t%lld\t10000\t[{0}]\t*(%s + {0}), this=%s", (long long)size, valueExpr.c_str(), thisExpr.c_str());
+			else
+			{
+				LLDBVisValue basePtr = evaluator.Evaluate(valueExpr);
+				int shown = 0;
+				for (int64 i = 0; (i < size) && (shown < maxListed) && (basePtr.IsValid()); i++)
+				{
+					LLDBVisValue element = evaluator.Deref(evaluator.ApplyBinary("+", basePtr, LLDBVisValue::Int(i)));
+					if ((!element.IsValid()) || (!EvalVisCondition(element.mValue, entry, captures, entry->mCondition)))
+						continue;
+					result += StrFormat("\n[%d]\t*(%s + %lld), this=%s", shown, valueExpr.c_str(), (long long)i, thisExpr.c_str());
+					shown++;
+				}
+			}
+		}
+	}
+	else if (entry->mCollectionType == DebugVisualizerEntry::CollectionType_Dictionary)
+	{
+		LLDBVisValue sizeValue = evaluator.Evaluate(visualizers->DoStringReplace(entry->mSize, captures));
+		int64 size = sizeValue.IsValid() ? sizeValue.AsInt() : 0;
+		String entriesExpr = visualizers->DoStringReplace(entry->mEntries, captures);
+		LLDBVisValue entries = evaluator.Evaluate(entriesExpr);
+		int shown = 0;
+		// Entries up to mCount are live unless on the free list, which is marked by a negative hash code
+		for (int64 i = 0; (shown < size) && (shown < maxListed) && (i < size + 100000) && (entries.IsValid()); i++)
+		{
+			LLDBVisValue element = evaluator.Deref(evaluator.ApplyBinary("+", entries, LLDBVisValue::Int(i)));
+			if (!element.IsValid())
+				break;
+			LLDBVisValue hashCode = evaluator.Member(element, "mHashCode");
+			if (!hashCode.IsValid())
+				break;
+			if (hashCode.AsInt() < 0)
+				continue;
+			result += StrFormat("\n[%d]\t*(%s + %lld), this=%s", shown, entriesExpr.c_str(), (long long)i, thisExpr.c_str());
+			shown++;
+		}
+	}
+
+	result += "\n[Raw View]\t" + thisExpr + ", nv";
+	return true;
+}
+
+// The element a visualizer's collection gives for an index, as its Watch children would show it
+static lldb::SBValue VisElementAt(lldb::SBValue value, lldb::SBValue indexValue)
+{
+	Array<String> captures;
+	DebugVisualizerEntry* entry = FindBeefVisualizer(value.GetType(), captures);
+	if ((entry == NULL) || ((entry->mCollectionType != DebugVisualizerEntry::CollectionType_Array) && (entry->mCollectionType != DebugVisualizerEntry::CollectionType_IndexItems)))
+		return lldb::SBValue();
+	if ((indexValue.GetType().GetCanonicalType().GetBasicType() == lldb::eBasicTypeInvalid) || (indexValue.GetType().IsPointerType()))
+		return lldb::SBValue();
+	lldb::SBValue obj = value;
+	while ((obj.IsValid()) && (obj.GetType().IsPointerType()))
+	{
+		if (obj.GetValueAsUnsigned(0) == 0)
+			return lldb::SBValue();
+		obj = obj.Dereference();
+	}
+	DebugVisualizers* visualizers = gDebugManager->mDebugVisualizers;
+	LLDBVisEvaluator evaluator(obj);
+	LLDBVisValue sizeValue = evaluator.Evaluate(visualizers->DoStringReplace(entry->mSize, captures));
+	int64 index = indexValue.GetValueAsSigned(-1);
+	if ((!sizeValue.IsValid()) || (index < 0) || (index >= sizeValue.AsInt()))
+		return lldb::SBValue();
+	String valueExpr = visualizers->DoStringReplace(entry->mValuePointer, captures);
+	String indexText = StrFormat("%lld", (long long)index);
+	if (entry->mCollectionType == DebugVisualizerEntry::CollectionType_IndexItems)
+		valueExpr.Replace("$i", indexText);
+	else
+		valueExpr = "*(" + valueExpr + " + " + indexText + ")";
+	LLDBVisValue element = evaluator.Evaluate(valueExpr);
+	if ((!element.IsValid()) || (element.mKind != LLDBVisValue::Kind_Value))
+		return lldb::SBValue();
+	return element.mValue;
 }
 
 static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& fmt)
@@ -3076,6 +4351,21 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 		return FormatLLDBError(error.GetCString());
 	if (!value.IsValid())
 		return FormatLLDBError("error: invalid expression result");
+
+	// An object reference shows the object's own type, as WinDebugger does
+	LLDBDebugger* lldbDebugger = CurrentLLDBDebugger();
+	if ((lldbDebugger != NULL) && (value.GetType().IsPointerType()) && (value.GetValueAsUnsigned(0) != 0) &&
+		(lldbDebugger->IsBeefObjectType(value.GetType().GetPointeeType())))
+	{
+		lldb::SBType dynamicType = lldbDebugger->GetBeefDynamicType(value);
+		if ((dynamicType.IsValid()) && (dynamicType.GetName() != NULL) && (value.GetType().GetPointeeType().GetName() != NULL) &&
+			(strcmp(dynamicType.GetName(), value.GetType().GetPointeeType().GetName()) != 0))
+		{
+			lldb::SBValue castValue = value.Cast(dynamicType.GetPointerType());
+			if (castValue.IsValid())
+				value = castValue;
+		}
+	}
 
 	lldb::SBType valueType = value.GetType();
 	String typeName = FixBeefFunctionName(valueType.GetName());
@@ -3120,16 +4410,27 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 			else if ((pointee.IsValid()) && (IsBeefAggregateType(pointee.GetType())))
 			{
 				// An object or struct shows its fields, after the address - as WinDebugger does
-				String fields = FormatBeefAggregate(pointee, 0);
+				String fields;
+				if ((fmt.mNoVisualizers) || (!TryVisDisplayString(value, 0, fields)))
+					fields = FormatBeefAggregate(pointee, 0);
 				if ((isReference) || (fmt.mNoAddress))
 					displayVal = fields;
 				else
 					displayVal = StrFormat("0x%llX %s", addr, fields.c_str());
 			}
+			else if ((isPointer) && (IsBeefCharType(ptBasic)) && (ptBasic != lldb::eBasicTypeChar16) && (ptBasic != lldb::eBasicTypeChar32))
+			{
+				lldb::SBError error;
+				char buffer[4097];
+				size_t readLen = value.GetProcess().ReadCStringFromMemory(addr, buffer, sizeof(buffer), error);
+				if (error.Fail())
+					displayVal = StrFormat("0x%llX", addr);
+				else
+					displayVal = StrFormat("0x%llX %s", addr, QuoteBeefText(String(buffer, (intptr)BF_MIN(readLen, sizeof(buffer) - 1))).c_str());
+			}
 			else if ((summary != NULL) &&
 				((ptBasic == lldb::eBasicTypeChar) ||
-				 (ptBasic == lldb::eBasicTypeSignedChar) ||
-				 (ptBasic == lldb::eBasicTypeUnsignedChar)))
+				 (ptBasic == lldb::eBasicTypeSignedChar)))
 				displayVal = summary;
 			else
 				displayVal = StrFormat("0x%llX", addr);
@@ -3163,15 +4464,29 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 		{
 			displayVal = FormatBeefFloat(value, basicType == lldb::eBasicTypeDouble);
 		}
+		else if (IsBeefCharType(basicType))
+		{
+			displayVal = FormatBeefChar(value.GetValueAsUnsigned(0));
+		}
+		else if (basicType == lldb::eBasicTypeUnsignedChar)
+		{
+			displayVal = StrFormat("%llu", (unsigned long long)value.GetValueAsUnsigned(0));
+		}
 		else if ((valStr == NULL) || (valStr[0] == '\0'))
 		{
 			// A struct, tuple or payload enum, shown the way the Beef IDE shows it
 			lldb::TypeClass canonicalClass = valueType.GetCanonicalType().GetTypeClass();
 			const char* summary = value.GetSummary();
 			lldb::addr_t loadAddr = value.GetLoadAddress();
-			if ((canonicalClass == lldb::eTypeClassStruct) || (canonicalClass == lldb::eTypeClassClass) ||
+			String visString;
+			if (((canonicalClass == lldb::eTypeClassStruct) || (canonicalClass == lldb::eTypeClassClass) || (canonicalClass == lldb::eTypeClassUnion)) &&
+				(!fmt.mNoVisualizers) && (TryVisDisplayString(value, 0, visString)))
+				displayVal = visString;
+			else if ((canonicalClass == lldb::eTypeClassStruct) || (canonicalClass == lldb::eTypeClassClass) ||
 				(canonicalClass == lldb::eTypeClassUnion))
 				displayVal = FormatBeefAggregate(value, 0);
+			else if (canonicalClass == lldb::eTypeClassArray)
+				displayVal = FormatBeefArray(value, 0);
 			else if (summary != NULL)
 				displayVal = summary;
 			else if (loadAddr != LLDB_INVALID_ADDRESS)
@@ -3278,9 +4593,11 @@ static String FormatSBValueToResult(lldb::SBValue value, const LLDBFormatInfo& f
 		if (!fmt.mNoMembers)
 		{
 			result += '\n';
-			
-			const char* fmt = isPointer ? "({0})->%s" : "({0}).%s";
+
 			uint32 numChildren = value.GetNumChildren();
+			if ((!fmt.mNoVisualizers) && (AppendVisMembers(value, result)))
+				numChildren = 0;
+			const char* fmt = isPointer ? "({0})->%s" : "({0}).%s";
 			for (uint32 i = 0; i < numChildren; i++)
 			{
 				lldb::SBValue child = value.GetChildAtIndex(i);
@@ -3706,6 +5023,104 @@ String LLDBDebugger::BuildAutocomplete(lldb::SBFrame& frame, const StringImpl& e
 	return result;
 }
 
+// "(System.Collections.List<int>*)0x7FFC1234" - the IDE's own way of naming a value by type and address
+lldb::SBValue LLDBDebugger::EvaluateBeefAddrCast(const StringImpl& expr)
+{
+	String text = expr;
+	text.Trim();
+	if ((text.IsEmpty()) || (text[0] != '('))
+		return lldb::SBValue();
+	int depth = 0;
+	int closeIdx = -1;
+	for (int i = 0; i < (int)text.length(); i++)
+	{
+		if (text[i] == '(')
+			depth++;
+		else if (text[i] == ')')
+		{
+			depth--;
+			if (depth == 0)
+			{
+				closeIdx = i;
+				break;
+			}
+		}
+	}
+	if (closeIdx <= 1)
+		return lldb::SBValue();
+	String typeName = text.Substring(1, closeIdx - 1);
+	typeName.Trim();
+	String addrText = text.Substring(closeIdx + 1);
+	addrText.Trim();
+	if ((!addrText.StartsWith("0x")) && (!addrText.StartsWith("0X")))
+		return lldb::SBValue();
+	char* endPtr = NULL;
+	uint64 addr = strtoull(addrText.c_str(), &endPtr, 16);
+	if ((endPtr == NULL) || (*endPtr != '\0'))
+		return lldb::SBValue();
+	bool isPointer = typeName.EndsWith("*");
+	if (isPointer)
+	{
+		typeName.RemoveToEnd(typeName.length() - 1);
+		typeName.Trim();
+	}
+	String lookupName = typeName;
+	lookupName.Replace(".", "::");
+	lldb::SBType type = FindBeefTypeAnywhere(lookupName);
+	if (!type.IsValid())
+		return lldb::SBValue();
+	if (!isPointer)
+		return mLLDBTarget.CreateValueFromAddress("value", lldb::SBAddress(addr, mLLDBTarget), type);
+	lldb::SBData data;
+	lldb::SBError error;
+	data.SetData(error, &addr, sizeof(addr), mLLDBTarget.GetByteOrder(), (uint8)mLLDBTarget.GetAddressByteSize());
+	return mLLDBTarget.CreateValueFromData("value", data, type.GetPointerType());
+}
+
+// A visualizer's child expression, evaluated against the value its "this=" names
+lldb::SBValue LLDBDebugger::EvaluateInThisContext(lldb::SBFrame& frame, const StringImpl& expr, const StringImpl& thisExpr, String& outText, String& outError)
+{
+	lldb::SBValue thisValue = EvaluateBeefAddrCast(thisExpr);
+	if (!thisValue.IsValid())
+		thisValue = EvaluateBeefPath(frame, thisExpr);
+	if (!thisValue.IsValid())
+	{
+		LLDBLog("EvaluateInThisContext: no value for this '%s'\n", thisExpr.c_str());
+		return lldb::SBValue();
+	}
+	LLDBVisEvaluator evaluator(thisValue);
+	LLDBVisValue result = evaluator.Evaluate(expr);
+	if (!result.IsValid())
+	{
+		LLDBLog("EvaluateInThisContext: '%s' failed: %s\n", expr.c_str(), evaluator.mError.c_str());
+		outError = evaluator.mError;
+		return lldb::SBValue();
+	}
+	if (result.mKind == LLDBVisValue::Kind_Value)
+		return result.mValue;
+	if (result.mKind == LLDBVisValue::Kind_String)
+	{
+		outText = result.mString;
+		return lldb::SBValue();
+	}
+	if (result.mPtrType.IsValid())
+	{
+		uint64 addr = (uint64)result.mInt;
+		lldb::SBData data;
+		lldb::SBError error;
+		data.SetData(error, &addr, sizeof(addr), mLLDBTarget.GetByteOrder(), (uint8)mLLDBTarget.GetAddressByteSize());
+		return mLLDBTarget.CreateValueFromData("value", data, result.mPtrType.GetPointerType());
+	}
+	int64 intVal = result.mInt;
+	lldb::SBData data;
+	lldb::SBError error;
+	data.SetData(error, &intVal, sizeof(intVal), mLLDBTarget.GetByteOrder(), (uint8)mLLDBTarget.GetAddressByteSize());
+	lldb::SBType intType = FindBeefTypeAnywhere("int");
+	if (!intType.IsValid())
+		intType = mLLDBTarget.GetBasicType(lldb::eBasicTypeLongLong);
+	return mLLDBTarget.CreateValueFromData("value", data, intType);
+}
+
 String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int cursorPos, int language, DwEvalExpressionFlags expressionFlags)
 {
 	LLDBLog("Evaluate '%s'\n", expr.c_str());
@@ -3766,6 +5181,18 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 	}
 	if (!value.IsValid())
 		value = EvaluateBeefPath(frame, evalExpr);
+	if (!value.IsValid())
+		value = EvaluateBeefAddrCast(evalExpr);
+	if ((!value.IsValid()) && (!fmtInfo.mThisExpr.IsEmpty()))
+	{
+		String text;
+		String visError;
+		value = EvaluateInThisContext(frame, evalExpr, fmtInfo.mThisExpr, text, visError);
+		if ((!value.IsValid()) && (!text.IsEmpty()))
+			return text + "\n" + "System.String";
+		if ((!value.IsValid()) && (!visError.IsEmpty()))
+			return StrFormat("!0\t%d\t%s", (int)evalExpr.length(), visError.c_str());
+	}
 	bool isIdentifier = (!evalExpr.IsEmpty()) && (!isdigit((uint8)evalExpr[0]));
 	for (char c : evalExpr)
 		isIdentifier &= IsBeefIdentChar(c);
@@ -4028,6 +5455,14 @@ lldb::SBValue LLDBDebugger::EvaluateBeefPath(lldb::SBFrame& frame, const StringI
 			}
 			if (isAggregate)
 			{
+				// A collection with a visualizer is indexed the way its Watch children are, which doesn't need
+				// its indexer compiled in
+				lldb::SBValue visElement = VisElementAt(value, indexValue);
+				if (visElement.IsValid())
+				{
+					value = visElement;
+					continue;
+				}
 				Array<lldb::SBValue> indexArgs;
 				indexArgs.Add(indexValue);
 				lldb::SBValue element = CallBeefMethod(frame, value, lldb::SBType(), "get__", indexArgs, mEvalAllowProperties, error);
@@ -4445,6 +5880,8 @@ static bool GetCallCType(lldb::SBType type, String& outName)
 		outName = "void";
 		return true;
 	}
+	if (canonical.GetTypeClass() == lldb::eTypeClassEnumeration)
+		return GetCallCType(canonical.GetEnumerationIntegerType(), outName);
 	if ((basicType == lldb::eBasicTypeInvalid) || (basicType == lldb::eBasicTypeObjCID) || (basicType == lldb::eBasicTypeNullPtr))
 	{
 		// A Beef enum or other typed primitive is passed as the value it wraps
@@ -5151,6 +6588,8 @@ lldb::SBValue LLDBDebugger::CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue t
 		lldb::SBType argType = argValue.GetType().GetCanonicalType();
 		if ((argType.IsPointerType()) || (argType.IsReferenceType()))
 			argText = StrFormat("0x%llx", (unsigned long long)argValue.GetValueAsUnsigned(0));
+		else if (argType.GetTypeClass() == lldb::eTypeClassEnumeration)
+			argText = StrFormat("%lld", (long long)argValue.GetValueAsSigned(0));
 		else
 		{
 			const char* argValueText = argValue.GetValue();
@@ -5326,6 +6765,8 @@ String LLDBDebugger::RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringI
 			const char* typeName = value.GetType().GetName();
 			if ((type.IsPointerType()) && (typeName != NULL))
 				literal = StrFormat("((%s)0x%llx)", typeName, (unsigned long long)value.GetValueAsUnsigned(0));
+			else if ((type.GetTypeClass() == lldb::eTypeClassEnumeration) && (GetCallCType(type, cType)))
+				literal = StrFormat("((%s)%lld)", cType.c_str(), (long long)value.GetValueAsSigned(0));
 			else if ((GetCallCType(type, cType)) && (cType != "void") && (value.GetValue() != NULL))
 				literal = StrFormat("((%s)%s)", cType.c_str(), value.GetValue());
 		}
