@@ -6,3 +6,7 @@ StartupProject = "BugW001"
 
 [Configs.Debug.Win64]
 BfOptimizationLevel = "O0"
+
+[Configs.Debug.Linux64]
+BfOptimizationLevel = "O0"
+AllowHotSwapping = true
