@@ -123,5 +123,35 @@ namespace Tests
 		{
 			CheckZeroLengthArrayCalls!();
 		}
+
+		struct EmptyElement
+		{
+			public int GetOne() => 1;
+		}
+
+		// An empty struct element has no storage, but foreach over a sized array of them stored each element into the
+		//  missing loop variable, a null address that crashed the compiler
+		static mixin CheckEmptyElementForeach()
+		{
+			EmptyElement[3] elements = default;
+			int count = 0;
+			for (let element in elements)
+				count += element.GetOne();
+			for (var element in elements)
+				count += element.GetOne();
+			Test.Assert(count == 6);
+		}
+
+		[Test]
+		public static void TestEmptyElementForeach()
+		{
+			CheckEmptyElementForeach!();
+		}
+
+		[Test, Optimize]
+		public static void TestEmptyElementForeachOptimized()
+		{
+			CheckEmptyElementForeach!();
+		}
 	}
 }

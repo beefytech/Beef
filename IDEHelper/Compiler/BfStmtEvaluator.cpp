@@ -7312,7 +7312,8 @@ void BfModule::Visit(BfForEachStatement* forEachStmt)
 				arrayItem = BfTypedValue(arrayItem.mValue, CreateRefType(arrayItem.mType));
 		}
 		arrayItem = Cast(forEachStmt->mCollectionExpression, arrayItem, varType, BfCastFlags_Explicit);
-		if ((arrayItem) && (!arrayItem.mValue.IsFake()))
+		// A valueless element has no storage to store into (varInst is a fake value)
+		if ((arrayItem) && (!arrayItem.mValue.IsFake()) && (!arrayItem.mType->IsValuelessType()))
 		{
 			arrayItem = LoadValue(arrayItem);
 			if (arrayItem)
