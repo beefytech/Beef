@@ -955,6 +955,7 @@ BfModule::BfModule(BfContext* context, const StringImpl& moduleName)
 	mHadSlotCountDependency = false;
 
 	mIsReified = true;
+	mNoReify = false;
 	mGeneratesCode = true;
 	mReifyQueued = false;
 	mIsSpecialModule = false;
@@ -3874,7 +3875,7 @@ void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap
 		}
 	}
 
-	if ((!mCompiler->mIsResolveOnly) && (mIsReified))
+	if ((!mCompiler->mIsResolveOnly) && (mIsReified) && (!mNoReify))
 	{
 		auto usingModule = userType->GetModule();
 		BfModule* usedModule;
@@ -15099,6 +15100,11 @@ BfModuleMethodInstance BfModule::GetMethodInstanceRaw(BfTypeInstance* typeInst, 
 	if (methodDef->mMethodType == BfMethodType_Init)
 		return BfModuleMethodInstance();
 
+	// Compile-time references must not reify a helper's owning type.
+	// Keep normal method generation for types that already have runtime uses.
+	SetAndRestoreValue<bool> prevIsReified(mIsReified,
+		mIsReified && ((!mNoReify) || (typeInst->IsReified())));
+
 	if (((flags & BfGetMethodInstanceFlag_ForceInline) != 0) && (mCompiler->mIsResolveOnly))
 	{
 		// Don't bother inlining for resolve-only
@@ -25495,7 +25501,7 @@ void BfModule::DoMethodDeclaration(BfMethodDeclaration* methodDeclaration, bool 
 			else
 			{
 				auto externConstraintDef = genericParam->GetExternConstraintDef();
-				genericParam->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
+				genericParam->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef, BfPopulateType_Data, BfResolveTypeRefFlag_NoReify);
 
 				auto autoComplete = mCompiler->GetAutoComplete();
 				if (autoComplete != NULL)

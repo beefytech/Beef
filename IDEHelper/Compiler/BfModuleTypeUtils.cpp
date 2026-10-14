@@ -83,7 +83,7 @@ BfGenericExtensionEntry* BfModule::BuildGenericExtensionInfo(BfTypeInstance* gen
 		auto& genericConstraint = partialTypeDef->mExternalConstraints[externConstraintIdx];
 
 		auto genericParamInstance = new BfGenericTypeParamInstance(partialTypeDef, externConstraintIdx + (int)partialTypeDef->mGenericParamDefs.size());
-		genericParamInstance->mExternType = ResolveTypeRef(genericConstraint.mTypeRef, BfPopulateType_Identity);
+		genericParamInstance->mExternType = ResolveTypeRef(genericConstraint.mTypeRef, BfPopulateType_Identity, BfResolveTypeRefFlag_NoReify);
 
 		auto autoComplete = mCompiler->GetAutoComplete();
 		if (autoComplete != NULL)
@@ -221,7 +221,7 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 					else
 					{
 						auto externConstraintDef = genericParamInstance->GetExternConstraintDef();
-						genericParamInstance->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
+						genericParamInstance->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef, BfPopulateType_Data, BfResolveTypeRefFlag_NoReify);
 						if (genericParamInstance->mExternType == NULL)
 							genericParamInstance->mExternType = GetPrimitiveType(BfTypeCode_Var);
 					}
@@ -303,7 +303,7 @@ bool BfModule::FinishGenericParams(BfType* resolvedTypeRef)
 			else
 			{
 				auto externConstraintDef = genericParamInstance->GetExternConstraintDef();
-				genericParamInstance->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef);
+				genericParamInstance->mExternType = ResolveTypeRef(externConstraintDef->mTypeRef, BfPopulateType_Data, BfResolveTypeRefFlag_NoReify);
 
 				auto autoComplete = mCompiler->GetAutoComplete();
 				if (autoComplete != NULL)
@@ -742,7 +742,7 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 			typeInst->mTypeDef->mDefState = BfTypeDef::DefState_Defined;
 		}
 
-		typeInst->mIsReified = mIsReified;
+		typeInst->mIsReified = (mIsReified) && (!mNoReify);
 
 		//BF_ASSERT(typeInst->mTypeDef->mTypeCode != BfTypeCode_Extension);
 
@@ -776,7 +776,7 @@ void BfModule::InitType(BfType* resolvedTypeRef, BfPopulateType populateType)
 				return;
 			}
 
-			if (mIsReified)
+			if ((mIsReified) && (!mNoReify))
 			{
 				// Try to reify any generic args
 				for (auto genericArg : typeInst->mGenericTypeInfo->mTypeGenericArguments)
@@ -1240,7 +1240,7 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
 	}
 
 	// Are we "demanding" to reify a type that is currently resolve-only?
-	if ((mIsReified) && (populateType >= BfPopulateType_Declaration))
+	if ((mIsReified) && (!mNoReify) && (populateType >= BfPopulateType_Declaration))
 	{
 		if (resolvedTypeRef->IsTypeInstance())
 		{
@@ -10452,7 +10452,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 			if (mCurTypeInstance != NULL)
 				AddDependency(resolvedTypeRef, mCurTypeInstance, BfDependencyMap::DependencyFlag_NameReference);
 			if (resolvedTypeRef->mDefineState == BfTypeDefineState_Undefined)
-				PopulateType(resolvedTypeRef);
+				populateModule->PopulateType(resolvedTypeRef);
 			if ((typeInstance->mCustomAttributes != NULL) && (!typeRef->IsTemporary()))
 				CheckErrorAttributes(typeInstance, NULL, NULL, typeInstance->mCustomAttributes, typeRef);
 			resolvedTypeRef = resolvedTypeRef->GetUnderlyingType();
@@ -10469,7 +10469,7 @@ BfType* BfModule::ResolveTypeResult(BfTypeReference* typeRef, BfType* resolvedTy
 		// alias read an unpopulated type and fold to 0/1/0 with no error, unless
 		// something else in the program happened to populate that type first.
 		if ((derefedAlias) && (resolvedTypeRef != NULL) && (populateType > BfPopulateType_Identity))
-			PopulateType(resolvedTypeRef, populateType);
+			populateModule->PopulateType(resolvedTypeRef, populateType);
 	}
 
 	if (typeInstance != NULL)
@@ -11379,6 +11379,12 @@ BfType* BfModule::ResolveTypeRef(BfTypeReference* typeRef, BfPopulateType popula
 BfType* BfModule::ResolveTypeRef_Ref(BfTypeReference* typeRef, BfPopulateType populateType, BfResolveTypeRefFlags& resolveFlags, int numGenericArgs)
 {
 	//BP_ZONE("BfModule::ResolveTypeRef");
+
+	// Nested references and aliases may populate types without forwarding resolveFlags.
+	// Keep their resolution unreified too, without changing types already reified.
+	SetAndRestoreValue<bool> prevNoReify(mNoReify,
+		mNoReify || (((resolveFlags & BfResolveTypeRefFlag_NoReify) != 0) &&
+			(mCompiler->mOptions.mCompileOnDemandKind != BfCompileOnDemandKind_AlwaysInclude)));
 
 	if (typeRef == NULL)
 	{
