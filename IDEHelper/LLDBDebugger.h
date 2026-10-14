@@ -247,6 +247,7 @@ protected:
 	bool FunctionHasStatementLines(lldb::SBFunction& function);
 	bool IsStepFiltered(lldb::SBFunction& function);
 	bool ContinueStep(lldb::SBThread& thread);
+	lldb::SBThread SelectStoppedThread();
 	lldb::SBValue EvaluateBeefPath(lldb::SBFrame& frame, const StringImpl& expr);
 	lldb::SBValue EvaluateInThisContext(lldb::SBFrame& frame, const StringImpl& expr, const StringImpl& thisExpr, String& outText, String& outError);
 	lldb::SBValue FindFrameModuleGlobal(lldb::SBFrame& frame, const StringImpl& name);

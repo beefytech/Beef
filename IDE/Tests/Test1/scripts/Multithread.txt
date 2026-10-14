@@ -1,5 +1,5 @@
 # Temporarily broken in LLVM
-if (platform != "Win64") Stop()
+if (platform == "Win32") Stop()
 
 # This tests multithreaded stepping
 #  - Steps should stay in the same thread
