@@ -3013,7 +3013,8 @@ void BfIRBuilder::CreateTypeDeclaration(BfType* type, bool forceDbgDefine)
 				case BfTypeCode_Char8:
 				case BfTypeCode_Char16:
 				case BfTypeCode_Char32:
-					dwarfType = llvm::dwarf::DW_ATE_unsigned_char;
+					// LLDB reads DW_ATE_unsigned_char as a 1-byte number and only knows wider characters as DW_ATE_UTF
+					dwarfType = (mModule->mCompiler->mOptions.mPlatformType == BfPlatformType_Windows) ? llvm::dwarf::DW_ATE_unsigned_char : llvm::dwarf::DW_ATE_UTF;
 					break;
 				case BfTypeCode_Float:
 				case BfTypeCode_Double:
@@ -3664,11 +3665,32 @@ void BfIRBuilder::CreateDbgTypeDefinition(BfType* type)
 // 			auto inheritanceType = DbgCreateInheritance(diForwardDecl, DbgGetType(underlyingType), 0, llvm::DINode::FlagPublic);
 // 			diFieldTypes.push_back(inheritanceType);
 
+			BfIRMDNode primDIType = DbgGetType(underlyingType);
+			// DWARF debuggers name an enum's value from an enumeration type; the Windows debugger reads the cases
+			// from the struct's constants instead
+			if ((typeInstance->IsEnum()) && (mModule->mCompiler->mOptions.mPlatformType != BfPlatformType_Windows))
+			{
+				SizedArray<BfIRMDNode, 32> diEnumValues;
+				for (auto& fieldInst : typeInstance->mFieldInstances)
+				{
+					if (!fieldInst.mFieldIncluded)
+						continue;
+					auto fieldDef = fieldInst.GetFieldDef();
+					if ((fieldInst.mConstIdx != -1) && (fieldDef->IsEnumCaseEntry()))
+					{
+						auto constant = typeInstance->mConstHolder->GetConstantById(fieldInst.mConstIdx);
+						diEnumValues.push_back(DbgCreateEnumerator(fieldDef->mName, constant->mInt64));
+					}
+				}
+				if (!diEnumValues.IsEmpty())
+					primDIType = DbgCreateEnumerationType(diForwardDecl, "$enum", fileDIScope, 0, underlyingType->mSize * 8, underlyingType->mAlign * 8, diEnumValues, DbgGetType(underlyingType));
+			}
+
 			int lineNum = 0;
 			int flags = llvm::DINode::FlagPublic;
 			auto memberType = DbgCreateMemberType(fileDIScope, "$prim", fileDIScope, lineNum,
 				underlyingType->mSize * 8, underlyingType->mAlign * 8, 0,
-				flags, DbgGetType(underlyingType));
+				flags, primDIType);
 			diFieldTypes.push_back(memberType);
 		}
 	}
