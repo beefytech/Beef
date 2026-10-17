@@ -3405,6 +3405,17 @@ BfType* BfMethodRefType::GetCaptureType(int captureDataIdx)
 	return mMethodRef->GetParamType(mDataToParamIdx[captureDataIdx]);
 }
 
+bool BfMethodRefType::WantsGCMarking()
+{
+	// A method reference's data is its captures, which can hold references the GC must follow
+	for (int dataIdx = 0; dataIdx < GetCaptureDataCount(); dataIdx++)
+	{
+		if (GetCaptureType(dataIdx)->WantsGCMarking())
+			return true;
+	}
+	return false;
+}
+
 int BfMethodRefType::GetDataIdxFromParamIdx(int paramIdx)
 {
 	if (paramIdx == -1)

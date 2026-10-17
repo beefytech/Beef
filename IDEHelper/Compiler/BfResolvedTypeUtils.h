@@ -2523,6 +2523,7 @@ public:
 	virtual bool IsMethodRef() override { return true; }
 	virtual bool IsSplattable() override { return true; }
 	virtual int GetSplatCount(bool force) override { return (int)mDataToParamIdx.mSize; }
+	virtual bool WantsGCMarking() override;
 
 	virtual bool IsOnDemand() override { return true; }
 	virtual bool IsTemporary() override { return true; }

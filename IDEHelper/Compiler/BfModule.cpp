@@ -20565,6 +20565,20 @@ void BfModule::EmitGCMarkValue(BfTypedValue markVal, BfModuleMethodInstance mark
 			mBfIRBuilder->SetInsertPoint(doneBB);
 		}
 	}
+	else if (fieldType->IsMethodRef())
+	{
+		// A method reference has no marking method, so mark its captures directly
+		auto methodRefType = (BfMethodRefType*)fieldType;
+		markVal = MakeAddressable(markVal);
+		for (int dataIdx = 0; dataIdx < methodRefType->GetCaptureDataCount(); dataIdx++)
+		{
+			auto captureType = methodRefType->GetCaptureType(dataIdx);
+			if (!captureType->WantsGCMarking())
+				continue;
+			auto captureAddr = mBfIRBuilder->CreateInBoundsGEP(markVal.mValue, 0, dataIdx);
+			EmitGCMarkValue(BfTypedValue(captureAddr, captureType, BfTypedValueKind_Addr), markFromGCThreadMethodInstance);
+		}
+	}
 	else if ((fieldType->IsComposite()) && (!fieldType->IsTypedPrimitive()) && (fieldTypeInst != NULL))
 	{
 		auto markMemberMethodInstance = GetMethodByName(fieldTypeInst, BF_METHODNAME_MARKMEMBERS, 0, true);
@@ -21373,6 +21387,21 @@ void BfModule::EmitGCMarkValue(BfTypedValue& thisValue, BfType* checkType, int m
 		return;
 	}
 
+	if (checkType->IsMethodRef())
+	{
+		// The captures are laid out in order, each at its own alignment (as in CreateMethodRefType)
+		auto methodRefType = (BfMethodRefType*)checkType;
+		int dataOffset = 0;
+		for (int dataIdx = 0; dataIdx < methodRefType->GetCaptureDataCount(); dataIdx++)
+		{
+			auto captureType = methodRefType->GetCaptureType(dataIdx);
+			dataOffset = BF_ALIGN(dataOffset, captureType->mAlign);
+			EmitGCMarkValue(thisValue, captureType, memberDepth + 1, curOffset + dataOffset, objectOffsets, markFromGCThreadMethodInstance);
+			dataOffset += captureType->mSize;
+		}
+		return;
+	}
+
 	if (typeInstance == NULL)
 		return;
 
@@ -21420,36 +21449,18 @@ void BfModule::EmitGCMarkMembers()
 			auto thisValue = GetThis();
 			if (thisValue.IsSplat())
 			{
-				BfIRFunction func = mCurMethodInstance->mIRFunction;
+				// Each splatted component is an argument, in SplatIterate order. A method reference's captures are
+				//  components too, and a composite capture is passed by address (see BfExprEvaluator::SplatArgs)
 				int argIdx = 0;
-
-				std::function<void(BfType*)> checkTypeLambda = [&](BfType* checkType)
-				{
-					if (checkType->IsStruct())
+				BfTypeUtils::SplatIterate([&](BfType* checkType)
 					{
-						auto checkTypeInstance = checkType->ToTypeInstance();
-						if (checkTypeInstance->mBaseType != NULL)
-							checkTypeLambda(checkTypeInstance->mBaseType);
-						for (int fieldIdx = 0; fieldIdx < (int)checkTypeInstance->mFieldInstances.size(); fieldIdx++)
+						if (checkType->WantsGCMarking())
 						{
-							auto fieldInstance = (BfFieldInstance*)&checkTypeInstance->mFieldInstances[fieldIdx];
-							if (fieldInstance->mDataIdx >= 0)
-								checkTypeLambda(fieldInstance->GetResolvedType());
+							BfTypedValue markValue(mBfIRBuilder->GetArgument(argIdx), checkType, checkType->IsComposite() ? BfTypedValueKind_Addr : BfTypedValueKind_Value);
+							EmitGCMarkValue(markValue, markFromGCThreadMethodInstance);
 						}
-					}
-					else if (checkType->IsMethodRef())
-					{
-						BFMODULE_FATAL(this, "Not handled");
-					}
-					else if (checkType->WantsGCMarking())
-					{
-						BfTypedValue markValue(mBfIRBuilder->GetArgument(argIdx), checkType);
-						EmitGCMarkValue(markValue, markFromGCThreadMethodInstance);
 						argIdx++;
-					}
-				};
-
-				checkTypeLambda(thisValue.mType);
+					}, thisValue.mType);
 			}
 			else if (!methodDef->mIsStatic)
 			{
