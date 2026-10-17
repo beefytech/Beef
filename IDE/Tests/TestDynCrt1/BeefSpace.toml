@@ -3,3 +3,6 @@ Projects = {TestStaticCrt1 = {Path = "."}}
 
 [Workspace]
 StartupProject = "TestStaticCrt1"
+
+[Configs.Debug.Linux64]
+AllowHotSwapping = true

@@ -1,5 +1,5 @@
 # This test fails on Win32 currently
-if (platform != "Win64") Stop()
+if (platform == "Win32") Stop()
 
 ShowFile("src/HotSwap_TLS.bf")
 GotoText("//Test_Start")
