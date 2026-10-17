@@ -1428,6 +1428,17 @@ namespace Beefy.utils
             ToJSONHelper(mCurrent.mValues, str, humanReadable, "");
         }
 
+		// Just the value under the cursor -- an Open'd object or the current array element -- where
+		// ToJSON writes the whole container it sits in.
+		public void CurrentToJSON(String str)
+		{
+			let val = GetCurrent();
+			if (let values = val as Values)
+				ToJSONHelper(values, str, false, "");
+			else if (val != null)
+				ObjectToString(str, val).IgnoreError();
+		}
+
 		public void ToTOML(String outStr)
 		{
 			List<StringView> nameStack = scope List<StringView>();

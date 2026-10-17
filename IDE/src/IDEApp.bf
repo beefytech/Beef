@@ -12505,6 +12505,14 @@ namespace IDE
 			}
 		}
 
+		// A host with unsaved state in the running process can ask before Stop Debugging. False: it took
+		// `proceed` and calls it once the user agrees.
+		protected virtual bool ConfirmStopRunning(delegate void() proceed)
+		{
+			delete proceed;
+			return true;
+		}
+
 		[IDECommand]
 		void StopRunning()
 		{
@@ -12513,6 +12521,8 @@ namespace IDE
 				mTestManager.Stop();
 				return;
 			}
+			if (!ConfirmStopRunning(new => StopRunning))
+				return;
 
 			bool hasTempFiles = false;
 			WithTabs(scope [&] (tabButton) =>

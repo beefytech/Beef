@@ -203,26 +203,7 @@ namespace Beefy.utils
 				}
 			}
 
-            if (mUndoIdx < mUndoList.Count)
-            {
-				int32 batchDepth = 0;
-				for (int checkIdx = mUndoIdx; checkIdx < mUndoList.Count; checkIdx++)
-				{
-					var checkAction = mUndoList[checkIdx];
-					if (batchDepth == 0)
-						mCurCost -= checkAction.GetCost();
-
-					if (checkAction is IUndoBatchStart)
-						batchDepth++;
-					else if (checkAction is IUndoBatchEnd)
-						batchDepth--;
-
-					delete checkAction;
-				}
-				Debug.Assert(batchDepth == 0);
-
-				mUndoList.RemoveRange(mUndoIdx, mUndoList.Count - mUndoIdx);
-            }
+            ClearRedo();
 
             if ((allowMerge) && (!mSkipNextMerge))
             {
@@ -278,6 +259,30 @@ namespace Beefy.utils
 				mUndoIdx -= checkIdx;
 			}
         }
+
+		// Discards what Redo would replay.
+		public void ClearRedo()
+		{
+			if (mUndoIdx >= mUndoList.Count)
+				return;
+			int32 batchDepth = 0;
+			for (int checkIdx = mUndoIdx; checkIdx < mUndoList.Count; checkIdx++)
+			{
+				var checkAction = mUndoList[checkIdx];
+				if (batchDepth == 0)
+					mCurCost -= checkAction.GetCost();
+
+				if (checkAction is IUndoBatchStart)
+					batchDepth++;
+				else if (checkAction is IUndoBatchEnd)
+					batchDepth--;
+
+				delete checkAction;
+			}
+			Debug.Assert(batchDepth == 0);
+
+			mUndoList.RemoveRange(mUndoIdx, mUndoList.Count - mUndoIdx);
+		}
 
         public UndoAction GetLastUndoAction()
         {

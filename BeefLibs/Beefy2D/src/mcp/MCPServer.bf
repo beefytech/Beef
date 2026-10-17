@@ -395,9 +395,50 @@ namespace Beefy.mcp
 			return mToolsJson;
 		}
 
+		// A misspelled argument would otherwise just take its parameter's default.
+		static bool CheckArgNames(Tool tool, MCPCall call)
+		{
+			if ((call.mArgs == null) || (!(call.mArgs.GetCurrent() is StructuredData.NamedValues)))
+				return true;
+			String unknown = scope .();
+			for (var key in call.mArgs.Enumerate())
+			{
+				bool known = false;
+				for (var param in tool.mParams)
+					known |= param.mName == key;
+				if (!known)
+				{
+					unknown.Set(key);
+					break;
+				}
+			}
+			if (unknown.IsEmpty)
+				return true;
+
+			String msg = scope $"Unknown argument '{unknown}' for '{tool.mName}'.";
+			for (var param in tool.mParams)
+			{
+				if ((param.mName.Contains(unknown, true)) || (unknown.Contains(param.mName, true)))
+				{
+					msg.AppendF($" Did you mean '{param.mName}'?");
+					break;
+				}
+			}
+			msg.Append(" Accepted: ");
+			for (var param in tool.mParams)
+				msg.AppendF($"{(@param.Index > 0) ? ", " : ""}{param.mName}");
+			if (tool.mParams.IsEmpty)
+				msg.Append("none");
+			call.Error(msg);
+			return false;
+		}
+
 		// Marshals the call's arguments onto the tool method's parameters and invokes it
 		void InvokeTool(Tool tool, MCPCall call)
 		{
+			if ((tool.mSchema == null) && (!CheckArgNames(tool, call)))
+				return;
+
 			Object[] args = scope Object[tool.mMethodInfo.ParamCount];
 			int argIdx = 0;
 			if (tool.mHasCallParam)
@@ -418,9 +459,25 @@ namespace Beefy.mcp
 				case .String:
 					var str = scope:: String();
 					if (hasArg)
+					{
 						call.mArgs.GetString(param.mName, str);
+						// A JSON number or bool for a string parameter (an id passed as 12, not "12").
+						if ((str.IsEmpty) && (let val = call.mArgs.Get(param.mName)) && (!(val is String)) && (!(val is StringView)) && (!(val is StructuredData.Values)))
+							val.ToString(str);
+					}
 					arg = str;
 				case .Int:
+					if ((hasArg) && (let raw = call.mArgs.Get(param.mName)) && ((raw is String) || (raw is StringView)))
+					{
+						// Parsed JSON strings box as StringView.
+						String text = scope .();
+						call.mArgs.GetString(param.mName, text);
+						if (int64.Parse(text, .AllowHexSpecifier) case .Err)
+						{
+							call.Error(scope $"Argument '{param.mName}' must be an integer, not \"{text}\"");
+							return;
+						}
+					}
 					int64 val = hasArg ? call.mArgs.GetLong(scope String(param.mName)) : 0;
 					if (param.mType == typeof(int32))
 						arg = scope:: box (int32)val;
