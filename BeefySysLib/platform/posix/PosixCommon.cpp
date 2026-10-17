@@ -2156,8 +2156,16 @@ BFP_EXPORT bool BFP_CALLTYPE BfpThread_WaitFor(BfpThread* thread, int waitMS)
 
 #ifdef BFP_HAS_PTHREAD_TIMEDJOIN_NP
     struct timespec waitTime;
-    waitTime.tv_sec = waitMS / 1000;
-    waitTime.tv_nsec = (waitMS % 1000) * 1000000;
+    // pthread_timedjoin_np expects an absolute CLOCK_REALTIME deadline.
+    if (clock_gettime(CLOCK_REALTIME, &waitTime) != 0)
+        return false;
+    waitTime.tv_sec += waitMS / 1000;
+    waitTime.tv_nsec += (waitMS % 1000) * 1000000;
+    if (waitTime.tv_nsec >= 1000000000)
+    {
+        waitTime.tv_sec++;
+        waitTime.tv_nsec -= 1000000000;
+    }
     int result = pthread_timedjoin_np(pt, NULL, &waitTime);
     if (result == 0)
     {
