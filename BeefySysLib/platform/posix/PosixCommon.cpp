@@ -2542,25 +2542,35 @@ BFP_EXPORT bool BFP_CALLTYPE BfpEvent_WaitFor(BfpEvent* event, int waitMS)
 {
     int result = pthread_mutex_lock(&event->mMutex);
     BF_ASSERT(result == 0);
+
+    // A negative wait is infinite, as on Windows where it converts to a huge DWORD
+    bool infinite = waitMS < 0;
+
+    // pthread_cond_timedwait takes an absolute deadline. It's computed once, so a spurious wakeup doesn't restart the
+    //  wait, and tv_nsec must stay below a second - otherwise the wait fails at once with EINVAL
+    timespec deadline = {};
+    if (!infinite)
+    {
+        clock_gettime(CLOCK_REALTIME, &deadline);
+        deadline.tv_sec += waitMS / 1000;
+        deadline.tv_nsec += (waitMS % 1000) * 1000000;
+        if (deadline.tv_nsec >= 1000000000)
+        {
+            deadline.tv_sec++;
+            deadline.tv_nsec -= 1000000000;
+        }
+    }
+
     while (!event->mSet)
     {
-        if (waitMS == -1)
+        if (infinite)
         {
             pthread_cond_wait(&event->mCondVariable, &event->mMutex);
         }
         else
         {
-            timespec ts;
-            clock_gettime(CLOCK_REALTIME, &ts);
-            ts.tv_sec += waitMS / 1000;
-            ts.tv_nsec += (waitMS % 1000) * 1000000;
-
-            result = pthread_cond_timedwait(&event->mCondVariable, &event->mMutex, &ts);
-
-            if (waitMS == (uint32)-1)
-                BF_ASSERT(result == 0);
-
-            if (result != 0)
+            result = pthread_cond_timedwait(&event->mCondVariable, &event->mMutex, &deadline);
+            if ((result != 0) && (!event->mSet))
             {
                 // Timeout
                 pthread_mutex_unlock(&event->mMutex);
