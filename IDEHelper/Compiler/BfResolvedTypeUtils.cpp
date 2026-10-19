@@ -1191,7 +1191,10 @@ void BfMethodInstance::GetParamName(int paramIdx, StringImpl& name, int& namePre
 	{
 		if (paramIdx < (int)mMethodInfoEx->mClosureInstanceInfo->mCaptureEntries.size())
 		{
-			name = mMethodInfoEx->mClosureInstanceInfo->mCaptureEntries[paramIdx].mName;
+			auto& captureEntry = mMethodInfoEx->mClosureInstanceInfo->mCaptureEntries[paramIdx];
+			name = captureEntry.mName;
+			// So '@x' inside the local method finds a local declared as '@x', as it does outside
+			namePrefixCount = captureEntry.mNamePrefixCount;
 			return;
 		}
 	}

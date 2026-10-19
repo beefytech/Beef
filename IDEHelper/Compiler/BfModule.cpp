@@ -24683,6 +24683,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 					capturedEntry.mNameNode = localVar->mNameNode;
 					capturedEntry.mType = capturedType;
 					capturedEntry.mName = localVar->mName;
+					capturedEntry.mNamePrefixCount = localVar->mNamePrefixCount;
 					//capturedEntry.mLocalVarDef = localVar;
 					capturedEntries.insert(capturedEntry);
 				}

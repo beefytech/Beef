@@ -13826,7 +13826,11 @@ bool BfExprEvaluator::CanBindDelegate(BfDelegateBindExpression* delegateBindExpr
 
 BfTypedValue BfExprEvaluator::DoImplicitArgCapture(BfAstNode* refNode, BfIdentifierNode* identifierNode, int shadowIdx)
 {
+	// This is the declaration's name node, so '@int' declares 'int': locals are named without the '@' prefix (see
+	//  DoAddLocalVariable), and the name node match below finds the exact variable
 	String findName = identifierNode->ToString();
+	while (findName.StartsWith('@'))
+		findName.Remove(0);
 
 	if (mModule->mCurMethodState != NULL)
 	{
@@ -15525,7 +15529,10 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 										shadowCheckVar = shadowCheckVar->mShadowedLocal;
 									}
 
-									for (int i = 0; i < shadowIdx; i++)
+									// The '@' count makes a lookup inside the closure resolve as it does here: LookupIdentifier
+									//  subtracts the newest local's declared '@' count (as in 'let @x') and then walks back
+									//  through shadowed locals
+									for (int i = 0; i < shadowIdx + startCheckVar->mNamePrefixCount; i++)
 										capturedEntry.mName.Insert(0, '@');
 
 									break;

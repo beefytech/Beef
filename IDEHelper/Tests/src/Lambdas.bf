@@ -115,5 +115,50 @@ namespace Tests
 			Test.Assert(ret2.mA0 == 5);
 #endif
 		}
+
+		static int CallWith<T>(T callback) where T : delegate int()
+		{
+			return callback();
+		}
+
+		static int GetValue(int val) => val;
+
+		enum AtColor
+		{
+			Red,
+			Green
+		}
+
+		// A local declared as '@enum' is named 'enum', so implicitly capturing it has to look it up without the '@'
+		[Test]
+		public static void TestAtNamedCapture()
+		{
+			let @value = GetValue(123);
+			Test.Assert(CallWith(() => @value) == 123);
+
+			int? maybe = GetValue(5);
+			if (let @int = maybe)
+				Test.Assert(CallWith(() => @int) == 5);
+
+			AtColor? color = .Green;
+			if (let @enum = color)
+				Test.Assert(CallWith(() => (int)@enum) == 1);
+
+			// Delegate lambdas capture into closure fields, which must keep the '@' as well
+			delegate int() scoped = scope () => @value;
+			Test.Assert(scoped() == 123);
+			delegate int() heap = new () => @value;
+			Test.Assert(heap() == 123);
+			delete heap;
+
+			// '@y' shadows 'y', and '@@y' reaches the shadowed one - the same inside a lambda as outside
+			int y = GetValue(10);
+			int @y = GetValue(20);
+			Test.Assert((@y == 20) && (@@y == 10));
+			delegate int() getNewer = scope () => @y;
+			delegate int() getOlder = scope () => @@y;
+			Test.Assert((getNewer() == 20) && (getOlder() == 10));
+			Test.Assert(CallWith(() => @y) == 20);
+		}
 	}
 }

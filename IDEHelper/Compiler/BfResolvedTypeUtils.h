@@ -815,6 +815,7 @@ struct BfClosureCapturedEntry
 	BfIdentifierNode* mNameNode;
 	bool mExplicitlyByReference;
 	int mShadowIdx; // Only relative to matching nameNodes
+	int mNamePrefixCount; // The captured local's declared '@' prefixes, which mName omits
 
 	BfClosureCapturedEntry()
 	{
@@ -822,6 +823,7 @@ struct BfClosureCapturedEntry
 		mType = NULL;
 		mExplicitlyByReference = false;
 		mShadowIdx = 0;
+		mNamePrefixCount = 0;
 	}
 
 	bool operator<(const BfClosureCapturedEntry& other) const
