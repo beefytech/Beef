@@ -18,7 +18,7 @@ AssertEvalEquals("a", "2")
 Continue()
 AssertEvalEquals("a", "5")
 
-# The next section uses assembly and it only works in Og+
+# The next section steps one instruction; only the Beef backend emits a++ as one instruction (Win64 Og+)
 if (platform != "Win64") Stop()
 
 ShowDisassemblyAtStack()

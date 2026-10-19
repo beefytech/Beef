@@ -4,3 +4,6 @@ Projects = {Bug = {Path = "."}}
 [Workspace]
 StartupProject = "Bug"
 
+
+[Configs.Debug.Linux64]
+AllowHotSwapping = true

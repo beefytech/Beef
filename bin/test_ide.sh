@@ -101,8 +101,8 @@ test_workspace() {
 	done
 }
 
-# Workspaces from test_ide.bat that do not pass on Linux yet are left out.
-for testpath in CompileFail001 Test1 SlotTest MemoryBreakTest BugW003 BugW004 BugW006 BugW007 BugW008 BugW009 IndentTest
+# Left out: BugW002 (Windows registry API), DebuggerTests (not in the repo), BugW005 (StepOver across a call between hot-loaded methods loses the frame on Linux).
+for testpath in CompileFail001 Test1 SlotTest MemoryBreakTest BugW001 BugW003 BugW004 BugW006 BugW007 BugW008 BugW009 IndentTest TestDynCrt1
 do
 	test_workspace IDE/Tests/$testpath
 done
