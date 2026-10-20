@@ -3903,6 +3903,9 @@ void BfModule::DoPopulateType_CeCheckEnum(BfTypeInstance* typeInstance, bool und
 
 void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateType)
 {
+	// Populate this type's dependencies under its owning module's normal reification policy.
+	SetAndRestoreValue<bool> prevNoReify(mNoReify, false);
+
 	if (populateType == BfPopulateType_Identity)
 		return;
 
