@@ -199,7 +199,11 @@ namespace Beefy
         public float mAlpha = 1.0f;
         public Flags mWindowFlags;
         private bool mMouseVisible;
-        public bool mHasFocus = false;
+        // The focus GotFocus/LostFocus report, ie. the OS's.
+        public bool mPhysHasFocus;
+        bool mForceHasFocus;
+        // Focus as widgets see it: physical or forced (see ForceHasFocus).
+        public bool mHasFocus;
         public bool mHasClosed;
 		public bool mIsDirty = true;
         public BFWindow mParent;
@@ -755,25 +759,59 @@ namespace Beefy
             return null;
         }
 
+		// Keeps the window focused for widgets whatever the OS says, for a window whose input another process
+		// relays to it (eg. a game shown in an editor's view).
+		public bool ForceHasFocus
+		{
+			get => mForceHasFocus;
+			set
+			{
+				if (mForceHasFocus == value)
+					return;
+				mForceHasFocus = value;
+				UpdateHasFocus(null);
+			}
+		}
+
         public virtual void GotFocus()
         {
-            if (mHasFocus)
+            if (mPhysHasFocus)
                 return;
-            mHasFocus = true;
-            //Console.WriteLine("GotFocus {0}", mTitle);
+            mPhysHasFocus = true;
+			UpdateHasFocus(null);
         }
 
         public virtual void LostFocus(BFWindow newFocus)
         {
-            if (!mHasFocus)
+            if (!mPhysHasFocus)
                 return;
-			mHasFocus = false;
+			mPhysHasFocus = false;
             if (mNativeWindow != null)
                 BFWindow_LostFocus(mNativeWindow, (newFocus != null) ? newFocus.mNativeWindow : null);
-
-			//TODO: REMOVE
-            //Debug.WriteLine("LostFocus {0}", mTitle);
+			UpdateHasFocus(newFocus);
         }
+
+		void UpdateHasFocus(BFWindow newFocus)
+		{
+			bool hasFocus = mPhysHasFocus || mForceHasFocus;
+			if (hasFocus == mHasFocus)
+				return;
+			mHasFocus = hasFocus;
+			if (hasFocus)
+				FocusGained();
+			else
+				FocusLost(newFocus);
+		}
+
+		// mHasFocus has just turned on.
+		protected virtual void FocusGained()
+		{
+		}
+
+		// mHasFocus has just turned off.
+		protected virtual void FocusLost(BFWindow newFocus)
+		{
+		}
 
 		public virtual int GetDPI()
 		{

@@ -344,9 +344,8 @@ namespace Beefy.widgets
         
         public override void GotFocus()
         {
-			if (mHasFocus)
+			if (mPhysHasFocus)
 				return;
-			mIsDirty = true;
 
 			//Debug.WriteLine("GotFocus {0}", mIsMainWindow);
 
@@ -354,7 +353,7 @@ namespace Beefy.widgets
 			{
 			    // Don't let more than one window think it has the focus
 			    var widgetWindow = window as WidgetWindow;
-			    if ((widgetWindow != null) && (widgetWindow != this) && (widgetWindow.mHasFocus))
+			    if ((widgetWindow != null) && (widgetWindow != this) && (widgetWindow.mPhysHasFocus))
 				{
 			        widgetWindow.LostFocus(this);
 					break;
@@ -362,8 +361,13 @@ namespace Beefy.widgets
 			}
 
             //Debug.WriteLine("GotFocus {0} {1}", mTitle, mIsMainWindow);
-            base.GotFocus();                        
-            
+            base.GotFocus();
+        }
+
+		protected override void FocusGained()
+		{
+			mIsDirty = true;
+
             if (mFocusWidget != null)
 			{
 				//Debug.Assert(!mFocusWidget.mHasFocus);
@@ -374,14 +378,8 @@ namespace Beefy.widgets
 			mOnWindowGotFocus(this);
         }
 
-        public override void LostFocus(BFWindow newFocus)
-        {
-			//Debug.WriteLine("LostFocus {0}", mIsMainWindow);
-
-			if (!mHasFocus)
-				return;
-
-
+		protected override void FocusLost(BFWindow newFocus)
+		{
 			mIsDirty = true;
             for (int32 i = 0; i < (int32)mIsKeyDown.Count; i++)
                 if (mIsKeyDown[i])
@@ -396,8 +394,6 @@ namespace Beefy.widgets
                     MouseUp(mClientMouseX, mClientMouseY, btnIdx);
                 }
             }*/
-
-            base.LostFocus(newFocus);            
 
             if (mCaptureWidget != null)
                 mCaptureWidget = null;
