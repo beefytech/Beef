@@ -250,6 +250,7 @@ enum BfMethodFlags
 	BfMethodFlags_Virtual = 0x40,
 	BfMethodFlags_ReadOnly = 0x100,
 	BfMethodFlags_Mixin = 0x200,
+	BfMethodFlags_Abstract = 0x400,
 	BfMethodFlags_StdCall = 0x1000,
 	BfMethodFlags_FastCall = 0x2000,
 	BfMethodFlags_ThisCall = 0x3000,

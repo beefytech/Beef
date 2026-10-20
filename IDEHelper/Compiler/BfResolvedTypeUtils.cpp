@@ -833,6 +833,8 @@ BfMethodFlags BfMethodInstance::GetMethodFlags()
 		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_Static);
 	if ((mMethodDef->mIsVirtual) || (mVirtualTableIdx != -1))
 		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_Virtual);
+	if (mMethodDef->mIsAbstract)
+		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_Abstract);
 	if (mMethodDef->mCallingConvention == BfCallingConvention_Fastcall)
 		methodFlags = (BfMethodFlags)(methodFlags | BfMethodFlags_FastCall);
 	if (mMethodDef->mIsMutating)

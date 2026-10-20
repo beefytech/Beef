@@ -53,6 +53,9 @@ namespace System.Reflection
 		public bool IsStatic => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags.HasFlag(.Static) :
 			mData.mMethodData.[Friend]mFlags.HasFlag(.Static);
+		public bool IsAbstract => Compiler.IsComptime ?
+			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mMethodFlags.HasFlag(.Abstract) :
+			mData.mMethodData.[Friend]mFlags.HasFlag(.Abstract);
 		public bool CanReflect => Compiler.IsComptime ?
 			Type.[Friend]Comptime_Method_GetInfo(mData.mComptimeMethodInstance).mComptimeMethodFlags.HasFlag(.NoReflect) :
 			mData.mMethodData.[Friend]mFlags.HasFlag(.SpecialName);
