@@ -703,6 +703,15 @@ namespace Beefy.widgets
             mFocusWidget?.MouseDelta(dx, dy);
         }
 
+		// The pinned cursor is over nothing, so what it rested on drops its hover and tooltip. The next MouseMove
+		// after relative mode ends puts the mouse back inside.
+		public override void StartRelativeMouseMode()
+		{
+			base.StartRelativeMouseMode();
+			if ((mHasMouseInside) && (IsInRelativeMouseMode()))
+				MouseLeave();
+		}
+
         public override void RelativeMouseModeAborted()
         {
             mOnRelativeMouseModeAborted(this);
