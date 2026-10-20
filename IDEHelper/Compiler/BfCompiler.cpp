@@ -540,13 +540,27 @@ bool BfCompiler::IsTypeAccessible(BfType* checkType, BfProject* curProject)
 					return false;
 		}
 
+		auto delegateInfo = checkType->GetDelegateInfo();
+		if (delegateInfo != NULL)
+		{
+			if (!IsTypeAccessible(delegateInfo->mReturnType, curProject))
+				return false;
+			for (auto param : delegateInfo->mParams)
+				if (!IsTypeAccessible(param, curProject))
+					return false;
+		}
+
 		return curProject->ContainsReference(typeInst->mTypeDef->mProject);
 	}
 
 	if (checkType->IsPointer())
 		return IsTypeAccessible(((BfPointerType*)checkType)->mElementType, curProject);
 	if (checkType->IsRef())
-		return IsTypeAccessible(((BfPointerType*)checkType)->mElementType, curProject);
+		return IsTypeAccessible(((BfRefType*)checkType)->mElementType, curProject);
+	if (checkType->IsSizedArray())
+		return IsTypeAccessible(((BfSizedArrayType*)checkType)->mElementType, curProject);
+	if (checkType->IsMethodRef())
+		return IsTypeAccessible(((BfMethodRefType*)checkType)->mOwner, curProject);
 
 	return true;
 }
@@ -590,6 +604,16 @@ bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject, bool conse
 					return false;
 		}
 
+		auto delegateInfo = checkType->GetDelegateInfo();
+		if (delegateInfo != NULL)
+		{
+			if (!IsTypeUsed(delegateInfo->mReturnType, curProject, true))
+				return false;
+			for (auto param : delegateInfo->mParams)
+				if (!IsTypeUsed(param, curProject, true))
+					return false;
+		}
+
 		if (checkType->IsFunction())
 		{
 			// These don't get their own modules so just assume "always used" at this point
@@ -607,6 +631,10 @@ bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject, bool conse
 		return IsTypeUsed(((BfPointerType*)checkType)->mElementType, curProject);
 	if (checkType->IsRef())
 		return IsTypeUsed(((BfRefType*)checkType)->mElementType, curProject);
+	if (checkType->IsSizedArray())
+		return IsTypeUsed(((BfSizedArrayType*)checkType)->mElementType, curProject);
+	if (checkType->IsMethodRef())
+		return IsTypeUsed(((BfMethodRefType*)checkType)->mOwner, curProject);
 
 	return true;
 }
