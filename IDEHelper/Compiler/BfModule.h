@@ -1616,6 +1616,7 @@ public:
 	bool mAddedToCount;
 	bool mHasForceLinkMarker;
 	bool mIsReified;
+	bool mNoReify; // Resolve compile-time dependencies without requesting runtime type reification
 	bool mGeneratesCode;
 	bool mReifyQueued;
 	bool mWantsIRIgnoreWrites;
