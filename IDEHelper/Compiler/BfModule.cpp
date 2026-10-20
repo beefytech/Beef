@@ -4270,6 +4270,9 @@ void BfModule::DeferRebuildType(BfTypeInstance* typeInstance)
 	mCompiler->mHasQueuedTypeRebuilds = true;
 	typeInstance->mRebuildFlags = (BfTypeRebuildFlags)(typeInstance->mRebuildFlags | BfTypeRebuildFlag_RebuildQueued);
 	AddFailType(typeInstance);
+	// Other types may have already consumed values we produced in this incomplete state, such as a const left at zero by a
+	//  cancelled comptime call being used as another type's sized array size, so those need to be rebuilt as well
+	mContext->mFailTypes[typeInstance] = BfFailKind_Deep;
 }
 
 void BfModule::CheckAddFailType()
