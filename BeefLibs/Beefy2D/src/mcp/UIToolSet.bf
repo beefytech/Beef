@@ -983,7 +983,7 @@ namespace Beefy.mcp
 		}
 
 		[MCPTool("key", "Press a key or key chord in a window, e.g. F5, Enter, Escape, Down, Ctrl+S, Ctrl+Shift+B, Alt+F4, a. Goes through the same path as a real key press, so keyboard shortcuts and menu accelerators fire and edit fields receive the typed character. For entering text, use type_text.",
-			"{'type':'object','properties':{'keys':{'type':'string','description':'The chord: optional modifiers Ctrl, Shift, Alt, Win joined with + and one key name or single character.'},'window':{'type':'integer','description':'Window id to send to. Default: the focused window, else the main window.'},'repeat':{'type':'integer','description':'Press this many times. Default 1.'}},'required':['keys']}")]
+			"{'type':'object','properties':{'keys':{'type':'string','description':'The chord: optional modifiers Ctrl, Shift, Alt, Win joined with + and one key name or single character.'},'window':{'type':'integer','description':'Window id to send to. Default: the focused window, else the main window.'},'repeat':{'type':'integer','description':'Press this many times. Default 1.'},'hold':{'type':'number','description':'Seconds to hold the key down before releasing it, the frames running meanwhile. Default 0.'}},'required':['keys']}")]
 		void Key(MCPCall call)
 		{
 			String keys = scope .();
@@ -1003,10 +1003,34 @@ namespace Beefy.mcp
 				return;
 			}
 
+			float holdSeconds = (float)call.GetFloat("hold", 0);
+			if (holdSeconds > 0)
+			{
+				var hold = new HoldState();
+				hold.mModifiers.AddRange(modifiers);
+				hold.mWindowId = window.mId;
+				hold.mKey = key;
+				hold.mReleaseTick = Utils.GetTickCount() + (uint32)(holdSeconds * 1000);
+				EnsureFocus(window);
+				SetModifiers(window, modifiers, true);
+				window.KeyDown((int32)key, 0);
+				if (keyChar != (char32)0)
+					window.KeyChar(keyChar);
+				call.Defer((int32)(holdSeconds * 1000) + 30000, new (pollCall) =>
+					{
+						return hold.Poll(pollCall);
+					} ~ delete hold);
+				return;
+			}
+
 			int repeatCount = (int)Math.Max(call.GetInt("repeat", 1), 1);
 			for (int idx < repeatCount)
 				SendKey(window, modifiers, key, keyChar);
+			FinishKey(call, window);
+		}
 
+		static void FinishKey(MCPCall call, WidgetWindow window)
+		{
 			var sd = scope StructuredData();
 			sd.CreateNew();
 			sd.Add("window", window.mId);
@@ -1018,6 +1042,31 @@ namespace Beefy.mcp
 				sd.Add("focusType", typeName);
 			}
 			Finish(call, sd);
+		}
+
+		// One held key: released once mReleaseTick passes. Held by the deferred call's poll.
+		class HoldState
+		{
+			public List<KeyCode> mModifiers = new List<KeyCode>() ~ delete _;
+			public int32 mWindowId;
+			public KeyCode mKey;
+			public uint32 mReleaseTick;
+
+			public bool Poll(MCPCall call)
+			{
+				var window = FindWindow(mWindowId);
+				if ((window == null) || (call.mTimedOut))
+				{
+					call.Error("The window went away while the key was held");
+					return true;
+				}
+				if ((int32)(Utils.GetTickCount() - mReleaseTick) < 0)
+					return false;
+				window.KeyUp((int32)mKey);
+				SetModifiers(window, mModifiers, false);
+				FinishKey(call, window);
+				return true;
+			}
 		}
 
 		WidgetWindow FindKeyWindow(MCPCall call)
