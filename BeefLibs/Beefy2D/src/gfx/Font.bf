@@ -46,23 +46,17 @@ namespace Beefy.gfx
 			case Outline(float thickness, uint32 color);
 		}
 
-		public class EffectCharData
-		{
-			public Font.CharData mSrcCharData;
-			public Font.CharData mEffectCharData ~ delete _;
-		}
-
+		// One font's effect glyphs, keyed by the source glyph. Dropped when the font frees its glyphs (Forget): a glyph
+		// allocated later at a freed glyph's address would otherwise find another character's effect image.
 		public class FontEntry
 		{
-			public Font mFont;
 			public ImageAtlas mAtlas = new ImageAtlas() ~ delete _;
-			public List<EffectCharData> mCharData = new .() ~ delete _;
+			public Dictionary<Font.CharData, Font.CharData> mCharData = new .() ~ DeleteDictionaryAndValues!(_);
 		}
 
 		public Kind mKind;
 		public String mEffectOptions = new .() ~ delete _;
 		public Dictionary<Font, FontEntry> mFontEntries = new .() ~ DeleteDictionaryAndValues!(_);
-		public Dictionary<Font.CharData, EffectCharData> mCharData = new .() ~ DeleteDictionaryAndValues!(_);
 
 		public this(Kind kind)
 		{
@@ -82,33 +76,28 @@ namespace Beefy.gfx
 
 		public ~this()
 		{
-
+			for (var font in mFontEntries.Keys)
+				font.[Friend]mEffectUsers.Remove(this);
 		}
 
 		public Font.CharData Apply(Font font, Font.CharData charData)
 		{
-			EffectCharData effectCharData = null;
-			if (mCharData.TryAdd(charData, ?, var effectCharDataPtr))
-			{
-				effectCharData = new EffectCharData();
-				*effectCharDataPtr = effectCharData;
-
-				effectCharData.mSrcCharData = charData;
-				effectCharData.mEffectCharData = new .(charData);
-			}
-			else
-			{
-				return (*effectCharDataPtr).mEffectCharData;
-			}
-
 			FontEntry fontEntry = null;
 			if (mFontEntries.TryAdd(font, ?, var fontEntryPtr))
 			{
 				fontEntry = new .();
 				*fontEntryPtr = fontEntry;
+				if (font.[Friend]mEffectUsers == null)
+					font.[Friend]mEffectUsers = new .();
+				font.[Friend]mEffectUsers.Add(this);
 			}
 			else
 				fontEntry = *fontEntryPtr;
+
+			if (!fontEntry.mCharData.TryAdd(charData, ?, var effectCharDataPtr))
+				return *effectCharDataPtr;
+			let effectCharData = new Font.CharData(charData);
+			*effectCharDataPtr = effectCharData;
 
 			int32 ofsX = 0;
 			int32 ofsY = 0;
@@ -118,17 +107,20 @@ namespace Beefy.gfx
 				ofsY += (.)Math.Ceiling(thickness) + 2;
 			}
 
-			effectCharData.mEffectCharData.mXOffset -= ofsX;
-			effectCharData.mEffectCharData.mYOffset -= ofsY;
-			// Drawn wherever the glyph is, so it needs the glyph's guard (copied into mEffectCharData above).
+			effectCharData.mXOffset -= ofsX;
+			effectCharData.mYOffset -= ofsY;
+			// Drawn wherever the glyph is, so it needs the glyph's guard (copied into effectCharData above).
 			var effectImage = fontEntry.mAtlas.Alloc(charData.mImageSegment.mSrcWidth + ofsX * 2, charData.mImageSegment.mSrcHeight + ofsY * 2, charData.mGuard);
-			effectCharData.mEffectCharData.mImageSegment = effectImage;
-			effectCharData.mSrcCharData.mImageSegment.ApplyEffect(effectImage, mEffectOptions);
+			effectCharData.mImageSegment = effectImage;
+			charData.mImageSegment.ApplyEffect(effectImage, mEffectOptions);
+			return effectCharData;
+		}
 
-			/*uint32 color = 0xFFFFFFFF;
-			effectImage.SetBits(0, 0, 1, 1, 1, &color);*/
-
-			return effectCharData.mEffectCharData;
+		// The font is freeing its glyphs (see Font.Dispose).
+		public void Forget(Font font)
+		{
+			if (mFontEntries.GetAndRemove(font) case .Ok(let entry))
+				delete entry.value;
 		}
 
 		public void Prepare(Font font, StringView str)
@@ -271,6 +263,8 @@ namespace Beefy.gfx
 
 		List<FontEffect> mFontEffectStack ~ delete _;
 		DisposeProxy mFontEffectDisposeProxy = new .(new () => { PopFontEffect(); }) ~ delete _;
+		// Effects holding glyphs made from this font's, told when the glyphs go (see FontEffect.Forget).
+		List<FontEffect> mEffectUsers ~ delete _;
 
 #if BF_PLATFORM_LINUX
 
@@ -568,6 +562,13 @@ namespace Beefy.gfx
 
 		public void Dispose(bool cacheRetain)
 		{
+			if (mEffectUsers != null)
+			{
+				for (var effect in mEffectUsers)
+					effect.Forget(this);
+				mEffectUsers.Clear();
+			}
+
 			if (mFTFont != null)
 			{
 				FTFont_Delete(mFTFont, cacheRetain);
