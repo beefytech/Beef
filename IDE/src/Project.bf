@@ -472,6 +472,9 @@ namespace IDE
         //public String mLastImportDir = new String() ~ delete _;
 		public bool mAutoInclude; // Indicates that we should auto-include items found inside us
 		public bool mSortDirty;
+		// Off for a container folder whose children are its only interest: its own directory watch would be
+		// recursive and cover everything beside them.
+		public bool mWatchSelf = true;
 
 		public this()
 		{
@@ -866,11 +869,13 @@ namespace IDE
 			Debug.Assert(!mIsWatching);
 			mIsWatching = true;
 
-			// Add self as a watch
-			var fullPath = scope String();
-			GetFullImportPath(fullPath);
-			fullPath.Append(Path.DirectorySeparatorChar);
-			IDEApp.sApp.mFileWatcher.WatchFile(fullPath, this);
+			if (mWatchSelf)
+			{
+				var fullPath = scope String();
+				GetFullImportPath(fullPath);
+				fullPath.Append(Path.DirectorySeparatorChar);
+				IDEApp.sApp.mFileWatcher.WatchFile(fullPath, this);
+			}
 
 			for (var child in mChildItems)
 				if (let childFileItem = child as ProjectFileItem)
@@ -882,10 +887,13 @@ namespace IDE
 		{
 			base.StopWatching();
 
-			var fullPath = scope String();
-			GetFullImportPath(fullPath);
-			fullPath.Append(Path.DirectorySeparatorChar);
-			IDEApp.sApp.mFileWatcher.RemoveWatch(fullPath, this);
+			if (mWatchSelf)
+			{
+				var fullPath = scope String();
+				GetFullImportPath(fullPath);
+				fullPath.Append(Path.DirectorySeparatorChar);
+				IDEApp.sApp.mFileWatcher.RemoveWatch(fullPath, this);
+			}
 
 			for (var child in mChildItems)
 				if (let childFileItem = child as ProjectFileItem)

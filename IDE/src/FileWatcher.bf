@@ -278,6 +278,16 @@ namespace IDE
 			}
 		}
 
+		static bool IsInGitDir(String path)
+		{
+			for (var part in path.Split('\\', '/'))
+			{
+				if (part.Equals(".git", true))
+					return true;
+			}
+			return false;
+		}
+
 		void QueueFileChanged(FileSystemWatcher fileSystemWatcher, String fileName, String newName, WatcherChangeTypes changeType)
 		{
 			//Debug.WriteLine("QueueFileChanged {0} {1} {2} {3}", fileSystemWatcher.Directory, fileName, newName, changeType);
@@ -291,6 +301,10 @@ namespace IDE
 				{
 					fullPath.Append(fileName);
 				}
+
+				// Repo internals churn on every git operation and are never IDE dependencies.
+				if (IsInGitDir(fullPath))
+					return;
 
 				var queuedFileChange = new QueuedFileChange();
 				if ((changeType == .FileCreated) || (changeType == .DirectoryCreated))
@@ -668,7 +682,8 @@ namespace IDE
 					if (queuedFileChange.mChangeType == .Changed)
 					{
 						FileStream fs = scope .();
-						switch (fs.Open(queuedFileChange.mFileName, .Read, .ReadWrite))
+						// Sharing delete so this probe can't fail someone else's rename or delete (eg. git's object writes).
+						switch (fs.Open(queuedFileChange.mFileName, .Read, .ReadWrite | .Delete))
 						{
 						case .Ok:
 							int size = fs.Length;
