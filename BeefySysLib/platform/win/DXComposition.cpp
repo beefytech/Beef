@@ -3,8 +3,6 @@
 #include "BFApp.h"
 #include <dwmapi.h>
 
-#pragma comment(lib, "dcomp.lib")
-
 USING_NS_BF;
 
 static HRESULT gCompositionLastResult = S_OK;
@@ -14,6 +12,45 @@ static HRESULT gCompositionLastResult = S_OK;
 static const int COMPOSITION_FRAME_LATENCY = 3;
 
 typedef HRESULT (WINAPI* DwmGetCompositionTimingInfoFunc)(HWND hwnd, DWM_TIMING_INFO* timingInfo);
+typedef HRESULT (WINAPI* DCompositionCreateDeviceFunc)(IDXGIDevice* dxgiDevice, REFIID iid, void** dcompositionDevice);
+typedef HRESULT (WINAPI* DCompositionCreateSurfaceHandleFunc)(DWORD desiredAccess, SECURITY_ATTRIBUTES* securityAttributes, HANDLE* surfaceHandle);
+
+// dcomp.dll is looked up rather than linked: DCompositionCreateDevice needs Windows 8 and DCompositionCreateSurfaceHandle
+// Windows 8.1, and importing them would keep this DLL (or any binary linking BeefySysLib statically) from loading at all
+// on systems without them, rather than just leaving composition unavailable.
+static HMODULE GetDCompModule()
+{
+	static HMODULE sModule = (HMODULE)-1;
+	if (sModule == (HMODULE)-1)
+		sModule = ::LoadLibraryA("dcomp.dll");
+	return sModule;
+}
+
+static HRESULT CreateDCompDevice(IDXGIDevice* dxgiDevice, REFIID iid, void** dcompositionDevice)
+{
+	static DCompositionCreateDeviceFunc sCreateDevice = (DCompositionCreateDeviceFunc)-1;
+	if (sCreateDevice == (DCompositionCreateDeviceFunc)-1)
+	{
+		HMODULE module = GetDCompModule();
+		sCreateDevice = (module != NULL) ? (DCompositionCreateDeviceFunc)::GetProcAddress(module, "DCompositionCreateDevice") : NULL;
+	}
+	if (sCreateDevice == NULL)
+		return HRESULT_FROM_WIN32(ERROR_PROC_NOT_FOUND);
+	return sCreateDevice(dxgiDevice, iid, dcompositionDevice);
+}
+
+static HRESULT CreateDCompSurfaceHandle(DWORD desiredAccess, SECURITY_ATTRIBUTES* securityAttributes, HANDLE* surfaceHandle)
+{
+	static DCompositionCreateSurfaceHandleFunc sCreateSurfaceHandle = (DCompositionCreateSurfaceHandleFunc)-1;
+	if (sCreateSurfaceHandle == (DCompositionCreateSurfaceHandleFunc)-1)
+	{
+		HMODULE module = GetDCompModule();
+		sCreateSurfaceHandle = (module != NULL) ? (DCompositionCreateSurfaceHandleFunc)::GetProcAddress(module, "DCompositionCreateSurfaceHandle") : NULL;
+	}
+	if (sCreateSurfaceHandle == NULL)
+		return HRESULT_FROM_WIN32(ERROR_PROC_NOT_FOUND);
+	return sCreateSurfaceHandle(desiredAccess, securityAttributes, surfaceHandle);
+}
 
 // The first composition vblank after nowQPC and the refresh period, from DWM; false when it can't say.
 static bool NextVBlank(int64 nowQPC, int64& nextQPC, int64& periodQPC)
@@ -69,7 +106,7 @@ bool DXCompositionHost::InitNative()
 	mLastResult = mRenderDevice->mD3DDevice->QueryInterface(__uuidof(IDXGIDevice), (void**)&dxgiDevice);
 	if (SUCCEEDED(mLastResult))
 	{
-		mLastResult = DCompositionCreateDevice(dxgiDevice, __uuidof(IDCompositionDevice), (void**)&mDCompDevice);
+		mLastResult = CreateDCompDevice(dxgiDevice, __uuidof(IDCompositionDevice), (void**)&mDCompDevice);
 		dxgiDevice->Release();
 	}
 	if (SUCCEEDED(mLastResult))
@@ -353,7 +390,7 @@ bool DXCompositionTarget::Create(int width, int height)
 {
 	mWidth = width;
 	mHeight = height;
-	mLastResult = DCompositionCreateSurfaceHandle(COMPOSITIONOBJECT_ALL_ACCESS, NULL, &mSurfaceHandle);
+	mLastResult = CreateDCompSurfaceHandle(COMPOSITIONOBJECT_ALL_ACCESS, NULL, &mSurfaceHandle);
 	if (FAILED(mLastResult))
 		return false;
 	mGeneration++;
