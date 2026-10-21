@@ -1,5 +1,5 @@
 # This test fails on Win32 currently
-if (platform != "Win64") Stop()
+if (platform == "Win32") Stop()
 
 # This test ensure that other threads continue to execute while we execute a method in the debugger
 # and it tests that we can execute methods on threads other than those which we had originally stopped on

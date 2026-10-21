@@ -161,6 +161,10 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mStepStartFunctionAddr = 0;
 	mEvalAllowCalls = false;
 	mEvalAllowProperties = false;
+	mEvalProbeCalls = false;
+	mEvalWantsCall = false;
+	mEvalInPendingThread = false;
+	mPendingEval = NULL;
 	mExceptionAddress = 0;
 	mExceptionCode = 0;
 	mHotSwapEnabled = false;
@@ -915,9 +919,7 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 			mRequestedStackFrameIdx = 0;
 			mBreakStackFrameIdx = 0;
 
-			// Thread info is fully populated once we have consumed the stop event. LLDB only moves its
-			// selected thread onto the thread that caused the stop inside its own event handler, which
-			// we bypass, so do that here (as WinDebugger makes the stopping thread the active one).
+			// LLDB only selects the stopping thread in its own event handler, which this loop bypasses
 			lldb::SBThread thread = SelectStoppedThread();
 
 			auto threadStopReason = thread.IsValid() ? thread.GetStopReason() : lldb::eStopReasonNone;
@@ -1022,8 +1024,8 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 					Breakpoint* head = (bp->mHead != NULL) ? bp->mHead : bp;
 					LLDBBreakpoint* conditionBp = (LLDBBreakpoint*)head;
 
-					// A breakpoint bound to a thread (as run-to-cursor's is) only stops that thread, as in
-					// WinDebugger. 0 is a binding whose thread is gone, which never stops.
+					// A breakpoint bound to a thread (as run-to-cursor's is) only stops that thread. 0 is a
+					// binding whose thread is gone, which never stops.
 					if ((head->mThreadId != -1) && (head->mThreadId != (intptr)thread.GetThreadID()))
 					{
 						LLDBLog("Breakpoint %d hit on thread %llu, bound to thread %lld, continuing\n", (int)bpId, (unsigned long long)thread.GetThreadID(), (long long)head->mThreadId);
@@ -1155,6 +1157,32 @@ void LLDBDebugger::Update()
 	if ((mRunState == RunState_NotStarted) || (mRunState == RunState_Terminating) || (mRunState == RunState_Terminated))
 		return;
 
+	// The pending evaluation's thread holds the target lock until its call returns
+	if (mRunState == RunState_DebugEval)
+	{
+		if (!mPendingEval->mDone)
+		{
+			PumpTargetOutput();
+			return;
+		}
+		// Paused again, with the result held for EvaluateContinue. RunState_DebugEval_Done is not exposed: the
+		// IDE's script runner asserts against seeing it.
+		LLDBLog("Pending evaluation done on thread %llu%s\n", (unsigned long long)mPendingEval->mThreadId, mPendingEval->mCanceled ? " (canceled)" : "");
+		mPendingEval->mIdleTicks = 0;
+		mRunState = RunState_Paused;
+		if (mPendingEval->mCanceled)
+			CleanupPendingEval();
+	}
+	else if (mPendingEval != NULL)
+	{
+		// Nobody collected the result
+		if (++mPendingEval->mIdleTicks >= 2)
+		{
+			LLDBLog("Finishing pending expr in thread %llu\n", (unsigned long long)mPendingEval->mThreadId);
+			CleanupPendingEval();
+		}
+	}
+
 	// Drain all pending process events (non-blocking).  Thread info is only
 	// reliably populated once the event has been consumed from the queue.
 	lldb::SBListener listener = mLLDBDebugger.GetListener();
@@ -1185,7 +1213,7 @@ void LLDBDebugger::ContinueDebugEvent()
 {
 	if (!mLLDBProcess.IsValid())
 		return;
-	if ((mRunState != RunState_Paused) && (mRunState != RunState_Breakpoint) && (mRunState != RunState_Exception))
+	if (!TryRunContinue())
 		return;
 
 	LLDBLog("ContinueDebugEvent\n");
@@ -1199,12 +1227,26 @@ void LLDBDebugger::ContinueDebugEvent()
 
 bool LLDBDebugger::TryRunContinue()
 {
-	return ((mRunState == RunState_Paused) || (mRunState == RunState_Breakpoint));
+	if (mRunState == RunState_DebugEval)
+		return false;
+	// An uncollected result is dropped
+	CleanupPendingEval();
+	return ((mRunState == RunState_Paused) || (mRunState == RunState_Breakpoint) || (mRunState == RunState_Exception));
 }
 
 void LLDBDebugger::BreakAll()
 {
-	if ((mLLDBProcess.IsValid()) && (mRunState == RunState_Running))
+	if (!mLLDBProcess.IsValid())
+		return;
+	if (mRunState == RunState_DebugEval)
+	{
+		// LLDB unwinds the interrupted call and restores the thread's state
+		LLDBLog("BreakAll: interrupting pending evaluation\n");
+		mPendingEval->mCanceled = true;
+		mLLDBProcess.SendAsyncInterrupt();
+		return;
+	}
+	if (mRunState == RunState_Running)
 		mLLDBProcess.Stop();
 }
 
@@ -1215,6 +1257,8 @@ void LLDBDebugger::ForegroundTarget(int altProcessId)
 void LLDBDebugger::StepInto(bool inAssembly)
 {
 	if (!mLLDBProcess.IsValid())
+		return;
+	if (!TryRunContinue())
 		return;
 	lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
 	if (thread.IsValid())
@@ -1240,6 +1284,8 @@ void LLDBDebugger::StepOver(bool inAssembly)
 {
 	if (!mLLDBProcess.IsValid())
 		return;
+	if (!TryRunContinue())
+		return;
 	lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
 	if (thread.IsValid())
 	{
@@ -1256,6 +1302,8 @@ void LLDBDebugger::StepOver(bool inAssembly)
 void LLDBDebugger::StepOut(bool inAssembly)
 {
 	if (!mLLDBProcess.IsValid())
+		return;
+	if (!TryRunContinue())
 		return;
 	lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
 	if (thread.IsValid())
@@ -1535,6 +1583,7 @@ bool LLDBDebugger::ContinueStep(lldb::SBThread& thread)
 
 Breakpoint* LLDBDebugger::CreateBreakpoint(const StringImpl& fileName, int lineNum, int wantColumn, int instrOffset)
 {
+	InterruptPendingEval("CreateBreakpoint");
 	LLDBBreakpoint* bp = new LLDBBreakpoint();
 	bp->mFilePath = fileName;
 	bp->mRequestedLineNum = lineNum;
@@ -1557,6 +1606,7 @@ Breakpoint* LLDBDebugger::CreateBreakpoint(const StringImpl& fileName, int lineN
 Breakpoint* LLDBDebugger::CreateMemoryBreakpoint(intptr addr, int byteCount)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	InterruptPendingEval("CreateMemoryBreakpoint");
 
 	LLDBLog("CreateMemoryBreakpoint 0x%llx (%d bytes)\n", (unsigned long long)addr, byteCount);
 
@@ -1617,6 +1667,7 @@ void LLDBDebugger::SetMemoryWatchpoint(LLDBBreakpoint* bp)
 Breakpoint* LLDBDebugger::CreateSymbolBreakpoint(const StringImpl& symbolName)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	InterruptPendingEval("CreateSymbolBreakpoint");
 
 	LLDBLog("CreateSymbolBreakpoint '%s'\n", symbolName.c_str());
 
@@ -1638,6 +1689,7 @@ Breakpoint* LLDBDebugger::CreateSymbolBreakpoint(const StringImpl& symbolName)
 Breakpoint* LLDBDebugger::CreateAddressBreakpoint(intptr address)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	InterruptPendingEval("CreateAddressBreakpoint");
 
 	LLDBBreakpoint* bp = new LLDBBreakpoint();
 	bp->mResolvedAddr = (uintptr)address;
@@ -1659,6 +1711,7 @@ Breakpoint* LLDBDebugger::CreateAddressBreakpoint(intptr address)
 void LLDBDebugger::CheckBreakpoint(Breakpoint* checkBreakpoint)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	InterruptPendingEval("CheckBreakpoint");
 
 	LLDBBreakpoint* bp = (LLDBBreakpoint*)checkBreakpoint;
 
@@ -1743,6 +1796,7 @@ void LLDBDebugger::HotBindBreakpoint(Breakpoint* wdBreakpoint, int lineNum, int 
 void LLDBDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	InterruptPendingEval("DeleteBreakpoint");
 
 	LLDBBreakpoint* bp = (LLDBBreakpoint*)breakpoint;
 
@@ -1777,6 +1831,7 @@ void LLDBDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
 void LLDBDebugger::DetachBreakpoint(Breakpoint* breakpoint)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	InterruptPendingEval("DetachBreakpoint");
 
 	LLDBBreakpoint* bp = (LLDBBreakpoint*)breakpoint;
 
@@ -1798,6 +1853,7 @@ void LLDBDebugger::DetachBreakpoint(Breakpoint* breakpoint)
 void LLDBDebugger::MoveBreakpoint(Breakpoint* breakpoint, int lineNum, int wantColumn, bool rebindNow)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	InterruptPendingEval("MoveBreakpoint");
 
 	LLDBBreakpoint* bp = (LLDBBreakpoint*)breakpoint;
 
@@ -1853,6 +1909,7 @@ void LLDBDebugger::DisableBreakpoint(Breakpoint* breakpoint)
 void LLDBDebugger::SetBreakpointCondition(Breakpoint* breakpoint, const StringImpl& condition)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	InterruptPendingEval("SetBreakpointCondition");
 
 	// Kept for us to evaluate with Beef's rules when the breakpoint is hit - LLDB's own C++ parser can't
 	// read Beef expressions, and a condition may have side effects ("++hitCount < 10")
@@ -1949,6 +2006,8 @@ void LLDBDebugger::ClearCallStack()
 void LLDBDebugger::UpdateCallStack(bool slowEarlyOut)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	if (IsTargetBusy())
+		return;
 
 	if (!mCallStackDirty)
 		return;
@@ -2238,6 +2297,8 @@ static void FormatDisassembleSBInstruction(lldb::SBInstruction inst, lldb::SBTar
 
 String LLDBDebugger::DisassembleAtRaw(intptr address)
 {
+	if (IsTargetBusy())
+		return String();
 	uint8 buffer[2048];
 	auto instructions = mLLDBTarget.GetInstructions((lldb::addr_t)address, buffer, sizeof(buffer));
 	if (!instructions.IsValid())
@@ -2334,6 +2395,8 @@ String LLDBDebugger::FindLineCallAddresses(intptr address)
 
 bool LLDBDebugger::ReadMemory(intptr address, uint64 length, void* dest, bool local)
 {
+	if (IsTargetBusy())
+		return false;
 	if (!mLLDBProcess.IsValid())
 		return false;
 	lldb::SBError error;
@@ -2343,6 +2406,7 @@ bool LLDBDebugger::ReadMemory(intptr address, uint64 length, void* dest, bool lo
 
 bool LLDBDebugger::WriteMemory(intptr address, void* src, uint64 length)
 {
+	InterruptPendingEval("WriteMemory");
 	if (!mLLDBProcess.IsValid())
 		return false;
 	lldb::SBError error;
@@ -2361,6 +2425,8 @@ DbgMemoryFlags LLDBDebugger::GetMemoryFlags(intptr address)
 
 String LLDBDebugger::GetProcessInfo()
 {
+	if (IsTargetBusy())
+		return String();
 	if (!mLLDBProcess.IsValid())
 		return String();
 
@@ -2452,6 +2518,8 @@ int LLDBDebugger::GetProcessId()
 
 String LLDBDebugger::GetThreadInfo()
 {
+	if (IsTargetBusy())
+		return String();
 	if (!mLLDBProcess.IsValid())
 		return String();
 
@@ -2525,13 +2593,10 @@ String LLDBDebugger::GetThreadInfo()
 	return result;
 }
 
-// Make the thread that caused the stop the selected one, as LLDB's own event handler does
-// (Process::HandleProcessStateChangedEvent). The selected thread is kept when it stopped for a
-// reason of its own. Otherwise a thread that completed its step plan wins over one that hit a
-// breakpoint or signal, so a step stays on its thread when another thread hits a breakpoint
-// at the same time. Several threads can hit breakpoints in one stop; a hit on a breakpoint bound
-// to another thread is only chosen when there is nothing else, since the chosen thread's hit is
-// the one acted on and the others are lost when the target resumes. Returns the selected thread.
+// Selects the thread that caused the stop, as Process::HandleProcessStateChangedEvent does: the
+// selected thread is kept when it stopped for a reason of its own, else a completed step plan wins
+// over a breakpoint or signal. Only the selected thread's breakpoint hit survives the resume, so a
+// hit on a breakpoint bound to another thread is chosen last.
 lldb::SBThread LLDBDebugger::SelectStoppedThread()
 {
 	lldb::SBThread current = mLLDBProcess.GetSelectedThread();
@@ -2601,6 +2666,7 @@ lldb::SBThread LLDBDebugger::SelectStoppedThread()
 
 void LLDBDebugger::SetActiveThread(int threadId)
 {
+	InterruptPendingEval("SetActiveThread");
 	if (!mLLDBProcess.IsValid())
 		return;
 
@@ -2620,6 +2686,8 @@ void LLDBDebugger::SetActiveThread(int threadId)
 
 int LLDBDebugger::GetActiveThread()
 {
+	if (IsTargetBusy())
+		return 0;
 	if (!mLLDBProcess.IsValid())
 		return 0;
 	lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
@@ -2629,6 +2697,7 @@ int LLDBDebugger::GetActiveThread()
 void LLDBDebugger::FreezeThread(int threadId)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	InterruptPendingEval("FreezeThread");
 	if (!mLLDBProcess.IsValid())
 		return;
 	lldb::SBThread thread = mLLDBProcess.GetThreadByID((lldb::tid_t)threadId);
@@ -2639,6 +2708,7 @@ void LLDBDebugger::FreezeThread(int threadId)
 void LLDBDebugger::ThawThread(int threadId)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	InterruptPendingEval("ThawThread");
 	if (!mLLDBProcess.IsValid())
 		return;
 	lldb::SBThread thread = mLLDBProcess.GetThreadByID((lldb::tid_t)threadId);
@@ -2677,6 +2747,7 @@ String LLDBDebugger::GetCurrentException()
 // Expression evaluation helpers
 //----------------------------------------------------------------------------
 
+NS_BF_BEGIN
 struct LLDBFormatInfo
 {
 	DwIntDisplayType mIntDisplayType;
@@ -2698,6 +2769,7 @@ struct LLDBFormatInfo
 		mMaxCount       = -1;
 	}
 };
+NS_BF_END
 
 // Try to interpret a single specifier token (everything after a comma).
 // Returns true and updates fmtInfo if the token is a recognised specifier.
@@ -5212,8 +5284,7 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 
 	if (!mLLDBProcess.IsValid())
 		return "!Not running";
-	if ((mRunState != RunState_Paused) && (mRunState != RunState_Breakpoint) &&
-		(mRunState != RunState_Exception))
+	if (!IsPausedState())
 		return "!Not paused";
 
 	if (mCallStack.IsEmpty())
@@ -5237,10 +5308,102 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 	if ((expressionFlags & DwEvalExpressionFlag_MemoryWatch) != 0)
 		return EvaluateMemoryWatch(frame, evalExpr, fmtInfo.mMaxCount);
 
+	// No calls while a result is still uncollected
+	if (mPendingEval != NULL)
+		expressionFlags = (DwEvalExpressionFlags)(expressionFlags & ~DwEvalExpressionFlag_AllowCalls);
+
+	// A call into the program runs on its own thread with the other threads live (RunState_DebugEval) and can
+	// be interrupted (BreakAll). The expression is first evaluated with calls only noted, since most make none.
+	mEvalProbeCalls = (expressionFlags & DwEvalExpressionFlag_AllowCalls) != 0;
+	mEvalWantsCall = false;
+	String result = DoEvaluate(frame, evalExpr, fmtInfo, expressionFlags);
+	mEvalProbeCalls = false;
+	if (!mEvalWantsCall)
+		return result;
+	mEvalWantsCall = false;
+
+	lldb::SBThread thread = frame.GetThread();
+	LLDBLog("Starting RunState_DebugEval on thread %llu\n", (unsigned long long)thread.GetThreadID());
+	mPendingEval = new LLDBPendingEval();
+	mPendingEval->mExpr = expr;
+	mPendingEval->mFlags = expressionFlags;
+	mPendingEval->mFrame = frame;
+	mPendingEval->mThreadId = thread.GetThreadID();
+	ClearCallStack();
+	mRunState = RunState_DebugEval;
+	mPendingEval->mThread = BfpThread_Create(PendingEvalThreadProc, (void*)this, 1024 * 1024, BfpThreadCreateFlag_StackSizeReserve);
+	return "!pending";
+}
+
+void BFP_CALLTYPE LLDBDebugger::PendingEvalThreadProc(void* param)
+{
+	LLDBDebugger* debugger = (LLDBDebugger*)param;
+	LLDBPendingEval* pendingEval = debugger->mPendingEval;
+	// BfpThread_Create reports the id only after the thread has started
+	pendingEval->mWorkerThreadId = BfpThread_GetCurrentId();
+
+	String evalExpr;
+	LLDBFormatInfo fmtInfo;
+	ParseExprAndFormat(pendingEval->mExpr, evalExpr, fmtInfo);
+	debugger->mEvalInPendingThread = true;
+	pendingEval->mResult = debugger->DoEvaluate(pendingEval->mFrame, evalExpr, fmtInfo, pendingEval->mFlags);
+	debugger->mEvalInPendingThread = false;
+	pendingEval->mDone = true;
+}
+
+void LLDBDebugger::CleanupPendingEval()
+{
+	if (mPendingEval == NULL)
+		return;
+	LLDBLog("CleanupPendingEval thread %llu\n", (unsigned long long)mPendingEval->mThreadId);
+	if (mPendingEval->mThread != NULL)
+	{
+		BfpThread_WaitFor(mPendingEval->mThread, -1);
+		BfpThread_Release(mPendingEval->mThread);
+	}
+	delete mPendingEval;
+	mPendingEval = NULL;
+}
+
+// While a pending evaluation holds the target lock, queries from the IDE thread return nothing and
+// changes interrupt the evaluation, rather than block until a call that may never return does
+bool LLDBDebugger::IsTargetBusy()
+{
+	return (mRunState == RunState_DebugEval) && (BfpThread_GetCurrentId() != mPendingEval->mWorkerThreadId);
+}
+
+void LLDBDebugger::InterruptPendingEval(const char* caller)
+{
+	if (!IsTargetBusy())
+		return;
+	LLDBLog("Interrupting pending evaluation on thread %llu (%s)\n", (unsigned long long)mPendingEval->mThreadId, caller);
+	mPendingEval->mCanceled = true;
+	mLLDBProcess.SendAsyncInterrupt();
+	BfpThread_WaitFor(mPendingEval->mThread, -1);
+	mRunState = RunState_Paused;
+	CleanupPendingEval();
+}
+
+bool LLDBDebugger::IsPausedState()
+{
+	return (mRunState == RunState_Paused) || (mRunState == RunState_Breakpoint) || (mRunState == RunState_Exception);
+}
+
+String LLDBDebugger::DoEvaluate(lldb::SBFrame& frame, const StringImpl& evalExpr, LLDBFormatInfo& fmtInfo, DwEvalExpressionFlags expressionFlags)
+{
 	// Configure evaluation options
 	lldb::SBExpressionOptions options;
 	options.SetUnwindOnError(true);
-	options.SetTryAllThreads(false);
+	if (mEvalInPendingThread)
+	{
+		// The evaluating thread alone first, then all threads (the call may wait on another); no overall
+		// timeout, BreakAll interrupts
+		options.SetTryAllThreads(true);
+		options.SetOneThreadTimeoutInMicroSeconds(500 * 1000);
+		options.SetTimeoutInMicroSeconds(0);
+	}
+	else
+		options.SetTryAllThreads(false);
 	bool allowSideEffects = ((expressionFlags & DwEvalExpressionFlag_AllowSideEffects) != 0) ||
 	                        ((expressionFlags & DwEvalExpressionFlag_AllowCalls) != 0);
 	options.SetAllowJIT(allowSideEffects);
@@ -5261,9 +5424,13 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 	{
 		String assignError;
 		value = EvaluateBeefTupleAssign(frame, evalExpr, assignError);
+		if (mEvalWantsCall)
+			return "!pending";
 		if (!assignError.IsEmpty())
 			return StrFormat("!0\t%d\t%s", (int)evalExpr.length(), assignError.c_str());
 	}
+	if (mEvalWantsCall)
+		return "!pending";
 	if (!value.IsValid())
 		value = EvaluateBeefPath(frame, evalExpr);
 	if (!value.IsValid())
@@ -5273,11 +5440,15 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 		String text;
 		String visError;
 		value = EvaluateInThisContext(frame, evalExpr, fmtInfo.mThisExpr, text, visError);
+		if (mEvalWantsCall)
+			return "!pending";
 		if ((!value.IsValid()) && (!text.IsEmpty()))
 			return text + "\n" + "System.String";
 		if ((!value.IsValid()) && (!visError.IsEmpty()))
 			return StrFormat("!0\t%d\t%s", (int)evalExpr.length(), visError.c_str());
 	}
+	if (mEvalWantsCall)
+		return "!pending";
 	bool isIdentifier = (!evalExpr.IsEmpty()) && (!isdigit((uint8)evalExpr[0]));
 	for (char c : evalExpr)
 		isIdentifier &= IsBeefIdentChar(c);
@@ -5288,7 +5459,10 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 			return String();
 		if (rejectedGlobal)
 			return StrFormat("!0\t%d\tIdentifier not found", (int)evalExpr.length());
-		lldb::SBValue val = frame.EvaluateExpression(RewriteBeefMemberAccess(frame, evalExpr).c_str(), options);
+		String rewritten = RewriteBeefMemberAccess(frame, evalExpr);
+		if (mEvalWantsCall)
+			return "!pending";
+		lldb::SBValue val = frame.EvaluateExpression(rewritten.c_str(), options);
 		lldb::SBError err = val.GetError();
 		return err.Fail() ? FormatLLDBError(err.GetCString()) : String();
 	}
@@ -5298,6 +5472,8 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 	if (!value.IsValid())
 	{
 		value = EvaluateBeefCall(frame, evalExpr, callError);
+		if (mEvalWantsCall)
+			return "!pending";
 		// The IDE's error format: "!<start>\t<length>\t<message>"
 		if (!callError.IsEmpty())
 		{
@@ -5305,6 +5481,8 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 			return StrFormat("!0\t%d\t%s", (int)evalExpr.length(), callError.c_str());
 		}
 	}
+	if (mEvalWantsCall)
+		return "!pending";
 	if ((!value.IsValid()) && (!mEvalError.IsEmpty()))
 	{
 		// A property or indexer in the path failed
@@ -5315,7 +5493,12 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 
 	// Otherwise use LLDB's (C++) expression parser, with Beef's '.' on object references turned into '->'
 	if ((!value.IsValid()) && (!rejectedGlobal))
-		value = frame.EvaluateExpression(RewriteBeefMemberAccess(frame, evalExpr).c_str(), options);
+	{
+		String rewritten = RewriteBeefMemberAccess(frame, evalExpr);
+		if (mEvalWantsCall)
+			return "!pending";
+		value = frame.EvaluateExpression(rewritten.c_str(), options);
+	}
 
 	// "this=" fallback: if direct evaluation failed and a this-context was specified,
 	// retry as "(thisExpr)->expr".  This mirrors WinDebugger behaviour where a bare
@@ -6573,6 +6756,12 @@ lldb::SBValue LLDBDebugger::CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue t
 		outError = "Method calls are only evaluated when calls are allowed";
 		return lldb::SBValue();
 	}
+	if (mEvalProbeCalls)
+	{
+		// The call is made by a pending evaluation (see Evaluate)
+		mEvalWantsCall = true;
+		return lldb::SBValue();
+	}
 
 	// A struct 'this' passed by value: Beef splats small structs into their fields, which the debug info
 	// shows as a second entry for the method with the lowered parameter list
@@ -6863,11 +7052,20 @@ String LLDBDebugger::RewriteBeefMemberAccess(lldb::SBFrame& frame, const StringI
 
 String LLDBDebugger::EvaluateContinue()
 {
-	return String();
+	if (mPendingEval == NULL)
+		return "!Evaluation canceled";
+	if (!IsPausedState())
+		return "!Not paused";
+	LLDBLog("EvaluateContinue finishing pending expr in thread %llu\n", (unsigned long long)mPendingEval->mThreadId);
+	String result = mPendingEval->mResult;
+	CleanupPendingEval();
+	return result;
 }
 
 void LLDBDebugger::EvaluateContinueKeep()
 {
+	if (mPendingEval != NULL)
+		mPendingEval->mIdleTicks = 0;
 }
 
 String LLDBDebugger::EvaluateToAddress(const StringImpl& expr, int callStackIdx, int cursorPos)
@@ -6965,6 +7163,8 @@ String LLDBDebugger::CompactChildExpression(const StringImpl& expr, const String
 String LLDBDebugger::GetModulesInfo()
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	if (IsTargetBusy())
+		return String();
 
 	String result;
 	if (!mLLDBTarget.IsValid())
@@ -9178,6 +9378,7 @@ bool LLDBDebugger::HotLoadBatch(const Array<String>& objectFiles, int hotIdx, in
 void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	InterruptPendingEval("HotLoad");
 
 	mHotLoadApplied = false;
 	if (!mLLDBProcess.IsValid())
@@ -9233,6 +9434,7 @@ void LLDBDebugger::HotLoad(const Array<String>& objectFiles, int hotIdx)
 void LLDBDebugger::InitiateHotResolve(DbgHotResolveFlags flags)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
+	InterruptPendingEval("InitiateHotResolve");
 
 	delete mHotResolveData;
 	mHotResolveData = new DbgHotResolveData();
@@ -9394,6 +9596,8 @@ void LLDBDebugger::StopDebugging()
 {
 	LLDBLog("StopDebugging\n");
 	WaitForLaunchThread();
+	InterruptPendingEval("StopDebugging");
+	CleanupPendingEval();
 
 	ClearCallStack();
 	mActiveBreakpoint = NULL;
@@ -9447,6 +9651,7 @@ void LLDBDebugger::FinishStopDebugging()
 
 void LLDBDebugger::Terminate()
 {
+	InterruptPendingEval("Terminate");
 	LLDBLog("Terminate\n");
 	WaitForLaunchThread();
 	mRunState = RunState_Terminating;
@@ -9481,6 +9686,7 @@ void LLDBDebugger::Terminate()
 
 void LLDBDebugger::Detach()
 {
+	InterruptPendingEval("Detach");
 	LLDBLog("Detach\n");
 
 	WaitForLaunchThread();

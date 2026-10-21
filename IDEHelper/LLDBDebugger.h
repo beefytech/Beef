@@ -16,6 +16,7 @@
 #ifdef LLDB_ENABLED
 #pragma warning(disable:4251)
 #include "lldb/API/LLDB.h"
+#include <atomic>
 
 NS_BF_BEGIN
 
@@ -44,7 +45,35 @@ public:
 	virtual bool IsMemoryBreakpointBound() override { return !mWatchpointIds.IsEmpty(); }
 };
 
+// An evaluation that calls into the program, run on its own thread (see LLDBDebugger::Evaluate)
+class LLDBPendingEval
+{
+public:
+	String mExpr;
+	DwEvalExpressionFlags mFlags;
+	lldb::SBFrame mFrame;
+	lldb::tid_t mThreadId;
+	String mResult;
+	std::atomic<bool> mDone;
+	bool mCanceled;
+	int mIdleTicks;
+	BfpThread* mThread;
+	std::atomic<BfpThreadId> mWorkerThreadId; // set by the worker itself, before it touches the target
+
+	LLDBPendingEval()
+	{
+		mFlags = DwEvalExpressionFlag_None;
+		mThreadId = 0;
+		mDone = false;
+		mCanceled = false;
+		mIdleTicks = 0;
+		mThread = NULL;
+		mWorkerThreadId = 0;
+	}
+};
+
 struct LLDBHotObject;
+struct LLDBFormatInfo;
 
 class LLDBDebugger : public Debugger
 {
@@ -95,7 +124,11 @@ public:
 	lldb::SBExpressionOptions mEvalOptions;
 	bool mEvalAllowCalls;
 	bool mEvalAllowProperties;
+	bool mEvalProbeCalls;            // a call isn't made but noted in mEvalWantsCall, so the evaluation can move to a pending one
+	bool mEvalWantsCall;
+	bool mEvalInPendingThread;
 	String mEvalError;               // why a path failed (a property getter or indexer)
+	LLDBPendingEval* mPendingEval;   // running, or finished with its result not yet collected
 
 	// Exception info (populated when RunState_Exception is set)
 	uint64 mExceptionAddress;
@@ -348,6 +381,12 @@ public:
 	void DoLaunch();
 	static void BFP_CALLTYPE LaunchThreadProc(void* param);
 	void WaitForLaunchThread();
+	static void BFP_CALLTYPE PendingEvalThreadProc(void* param);
+	String DoEvaluate(lldb::SBFrame& frame, const StringImpl& evalExpr, LLDBFormatInfo& fmtInfo, DwEvalExpressionFlags expressionFlags);
+	void CleanupPendingEval();
+	void InterruptPendingEval(const char* caller);
+	bool IsTargetBusy();
+	bool IsPausedState();
 	void HandleProcessEvent(lldb::StateType state);
 	virtual void Update() override;
 	virtual void ContinueDebugEvent() override;
