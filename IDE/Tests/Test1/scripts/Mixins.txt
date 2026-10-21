@@ -1,5 +1,5 @@
 # Temporarily broken in LLVM
-if (platform != "Win64") Stop()
+if (platform == "Win32") Stop()
 
 ShowFile("src/Mixins.bf") 
 GotoText("//Test_Start")
