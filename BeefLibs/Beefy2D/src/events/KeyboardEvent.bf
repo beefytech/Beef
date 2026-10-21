@@ -33,6 +33,8 @@ namespace Beefy.events
         public KeyFlags mKeyFlags;
         public KeyCode mKeyCode;
 		public bool mIsRepeat;
+		// With mHandled: the key's typed character still goes to the focus widget.
+		public bool mKeepChar;
     }
 
 	public class KeyCharEvent : Event

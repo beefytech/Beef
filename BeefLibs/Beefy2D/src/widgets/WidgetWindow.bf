@@ -478,7 +478,7 @@ namespace Beefy.widgets
 				e.mSender = mFocusWidget;
 				mFocusWidget.KeyDown(e);
 			}
-			if (e.mHandled)
+			if ((e.mHandled) && (!e.mKeepChar))
 				mIsKeyDownHandled = true;
 
             return e.mHandled;
