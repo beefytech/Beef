@@ -3495,9 +3495,10 @@ void BfModule::VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEval
 	}
 }
 
-void BfModule::VisitCodeBlock(BfBlock* block, BfIRBlock continueBlock, BfIRBlock breakBlock, BfIRBlock fallthroughBlock, bool defaultBreak, bool* hadReturn, BfLabelNode* labelNode, bool closeScope, BfEmbeddedStatementFlags flags)
+void BfModule::VisitCodeBlock(BfBlock* block, BfIRBlock continueBlock, BfIRBlock breakBlock, BfIRBlock fallthroughBlock, bool defaultBreak, bool* hadReturn, BfLabelNode* labelNode, bool closeScope, BfEmbeddedStatementFlags flags, BfDeferredLocalAssignData* breakLocalAssignData)
 {
 	BfBreakData breakData;
+	breakData.mBreakLocalAssignData = breakLocalAssignData;
 	breakData.mIRContinueBlock = continueBlock;
 	breakData.mIRBreakBlock = breakBlock;
 	breakData.mIRFallthroughBlock = fallthroughBlock;
@@ -4690,6 +4691,12 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 
 	SizedArray<BfDeferredLocalAssignData, 8> deferredLocalAssignDataVec;
 	deferredLocalAssignDataVec.resize(blocks.size());
+	// What's assigned at the breaks nested in each case (ie: 'if (c) break;'), which leave the switch without reaching the
+	//  end of the case. mLeftBlockUncond stays set if a case has no such break.
+	SizedArray<BfDeferredLocalAssignData, 8> breakLocalAssignDataVec;
+	breakLocalAssignDataVec.resize(blocks.size());
+	for (auto& breakLocalAssignData : breakLocalAssignDataVec)
+		breakLocalAssignData.mLeftBlockUncond = true;
 
 	auto boolType = GetPrimitiveType(BfTypeCode_Boolean);
 
@@ -5159,13 +5166,16 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		{
 			UpdateSrcPos(switchCase->mCodeBlock);
 
-			VisitCodeBlock(switchCase->mCodeBlock, BfIRBlock(), endBlock, fallthroughBlock, true, &hadReturn, switchStmt->mLabelNode, openedScope /*, BfEmbeddedStatementFlags_RescopeDLA*/);
+			VisitCodeBlock(switchCase->mCodeBlock, BfIRBlock(), endBlock, fallthroughBlock, true, &hadReturn, switchStmt->mLabelNode, openedScope, BfEmbeddedStatementFlags_None /*BfEmbeddedStatementFlags_RescopeDLA*/, &breakLocalAssignDataVec[blockIdx]);
 
 			openedScope = false;
 			deferredLocalAssignDataVec[blockIdx].mHadReturn = hadReturn;
 			caseCount++;
 			if ((!hadReturn) &&
 				((!mCurMethodState->mDeferredLocalAssignData->mHadFallthrough) || (mCurMethodState->mDeferredLocalAssignData->mHadBreak)))
+				allHadReturns = false;
+			// A break nested in the case reaches the end of the switch even if the case otherwise returns
+			if (!breakLocalAssignDataVec[blockIdx].mLeftBlockUncond)
 				allHadReturns = false;
 
 			if (auto block = BfNodeDynCast<BfBlock>(switchCase->mCodeBlock))
@@ -5405,10 +5415,10 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 			caseScopeData.mLabel = newScope.mLabel;
 
 			bool hadReturn = false;
-			VisitCodeBlock(switchCase->mCodeBlock, BfIRBlock(), endBlock, BfIRBlock(), true, &hadReturn, switchStmt->mLabelNode);
+			VisitCodeBlock(switchCase->mCodeBlock, BfIRBlock(), endBlock, BfIRBlock(), true, &hadReturn, switchStmt->mLabelNode, false, BfEmbeddedStatementFlags_None, &breakLocalAssignDataVec[blockIdx]);
 			deferredLocalAssignDataVec[blockIdx].mHadReturn = hadReturn;
 			caseCount++;
-			if (!hadReturn)
+			if ((!hadReturn) || (!breakLocalAssignDataVec[blockIdx].mLeftBlockUncond))
 				allHadReturns = false;
 
 			RestoreScopeState();
@@ -5438,8 +5448,17 @@ void BfModule::Visit(BfSwitchStatement* switchStmt)
 		for (blockIdx = 0; blockIdx < (int)blocks.size(); blockIdx++)
 		{
 			auto deferredLocalAssignData = &deferredLocalAssignDataVec[blockIdx];
+			auto breakLocalAssignData = &breakLocalAssignDataVec[blockIdx];
+			bool hadNestedBreak = !breakLocalAssignData->mLeftBlockUncond;
 			if (deferredLocalAssignData->mHadFallthrough)
-				continue;
+			{
+				// The next case accounts for the fallthrough path, so only the nested breaks leave the switch from here
+				if (!hadNestedBreak)
+					continue;
+				deferredLocalAssignData = breakLocalAssignData;
+			}
+			else if (hadNestedBreak)
+				deferredLocalAssignData->SetIntersection(*breakLocalAssignData);
 
 			if (mergedDeferredLocalAssignData == NULL)
 				mergedDeferredLocalAssignData = deferredLocalAssignData;
@@ -5791,6 +5810,22 @@ void BfModule::Visit(BfBreakStatement* breakStmt)
 		if (checkBreakData == breakData)
 			break;
 		checkBreakData = checkBreakData->mPrevBreakData;
+	}
+
+	// Breaks in unreachable code or in branches excluded by a constant condition never reach the target
+	if ((breakData->mBreakLocalAssignData != NULL) &&
+		(!mCurMethodState->mInPostReturn) && ((mCurMethodState->mCurScope == NULL) || (!mCurMethodState->mCurScope->mInConstIgnore)))
+	{
+		// What's assigned here is held by the nearest assign data that LocalDefined records into, which includes what
+		//  was assigned in the enclosing blocks
+		auto curLocalAssignData = mCurMethodState->mDeferredLocalAssignData;
+		while ((curLocalAssignData != NULL) && ((curLocalAssignData->mIsChained) || (curLocalAssignData->mIsUnconditional)))
+			curLocalAssignData = curLocalAssignData->mChainedAssignData;
+
+		BfDeferredLocalAssignData breakPointAssignData;
+		if (curLocalAssignData != NULL)
+			breakPointAssignData.mAssignedLocals = curLocalAssignData->mAssignedLocals;
+		breakData->mBreakLocalAssignData->SetIntersection(breakPointAssignData);
 	}
 }
 

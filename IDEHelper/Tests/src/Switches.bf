@@ -114,5 +114,202 @@ namespace Tests
 			}
 			Test.Assert(result == 234);
 		}
+
+		enum Kind
+		{
+			A,
+			B
+		}
+
+		const bool cNever = false;
+		static int sBreakDeferCount;
+
+		static int NestedBreak(int val, bool doBreak)
+		{
+			switch (val)
+			{
+			case 0:
+				if (doBreak)
+				{
+					break;
+				}
+				return 1;
+			default:
+				return 2;
+			}
+			return 0;
+		}
+
+		static int NestedBreakDefault(int val, bool doBreak)
+		{
+			switch (val)
+			{
+			case 0:
+				return 1;
+			default:
+				if (doBreak)
+					break;
+				return 2;
+			}
+			return 0;
+		}
+
+		static int NestedBreakDefer(int val, bool doBreak)
+		{
+			switch (val)
+			{
+			case 0:
+				{
+					defer { sBreakDeferCount++; }
+					if (doBreak)
+						break;
+				}
+				return 1;
+			default:
+				return 2;
+			}
+			return 0;
+		}
+
+		static int NestedBreakEnum(Kind kind, bool doBreak)
+		{
+			switch (kind)
+			{
+			case .A:
+				if (doBreak)
+					break;
+				return 1;
+			case .B:
+				return 2;
+			}
+			return 0;
+		}
+
+		static int NestedBreakAssign(int val, bool doBreak)
+		{
+			int result;
+			switch (val)
+			{
+			case 0:
+				if (doBreak)
+				{
+					result = 10;
+					break;
+				}
+				result = 11;
+				fallthrough;
+			case 1:
+				result = 12;
+			default:
+				result = 13;
+			}
+			return result;
+		}
+
+		static int LabeledBreakFromInnerSwitch(int val, int innerVal)
+		{
+			OUTER:
+			switch (val)
+			{
+			case 0:
+				switch (innerVal)
+				{
+				case 0:
+					break OUTER;
+				default:
+					return 3;
+				}
+				return 1;
+			default:
+				return 2;
+			}
+			return 0;
+		}
+
+		// These breaks don't leave the outer switch, so every case returns and no trailing return is needed
+		static int InnerLoopBreak(int val)
+		{
+			switch (val)
+			{
+			case 0:
+				for (int i < 3)
+				{
+					if (i == 1)
+						break;
+				}
+				return 1;
+			default:
+				return 2;
+			}
+		}
+
+		static int InnerSwitchBreak(int val, int innerVal)
+		{
+			switch (val)
+			{
+			case 0:
+				switch (innerVal)
+				{
+				case 0:
+					break;
+				default:
+					return 3;
+				}
+				return 1;
+			default:
+				return 2;
+			}
+		}
+
+		static int ConstFalseBreak(int val)
+		{
+			switch (val)
+			{
+			case 0:
+				if (cNever)
+					break;
+				return 1;
+			default:
+				if (cNever)
+					break;
+				return 2;
+			}
+		}
+
+		[Test]
+		public static void TestNestedBreak()
+		{
+			Test.Assert(NestedBreak(0, true) == 0);
+			Test.Assert(NestedBreak(0, false) == 1);
+			Test.Assert(NestedBreak(1, true) == 2);
+
+			Test.Assert(NestedBreakDefault(1, true) == 0);
+			Test.Assert(NestedBreakDefault(1, false) == 2);
+			Test.Assert(NestedBreakDefault(0, true) == 1);
+
+			sBreakDeferCount = 0;
+			Test.Assert(NestedBreakDefer(0, true) == 0);
+			Test.Assert(NestedBreakDefer(0, false) == 1);
+			Test.Assert(sBreakDeferCount == 2);
+
+			Test.Assert(NestedBreakEnum(.A, true) == 0);
+			Test.Assert(NestedBreakEnum(.A, false) == 1);
+			Test.Assert(NestedBreakEnum(.B, true) == 2);
+
+			Test.Assert(NestedBreakAssign(0, true) == 10);
+			Test.Assert(NestedBreakAssign(0, false) == 12);
+			Test.Assert(NestedBreakAssign(2, true) == 13);
+
+			Test.Assert(LabeledBreakFromInnerSwitch(0, 0) == 0);
+			Test.Assert(LabeledBreakFromInnerSwitch(0, 1) == 3);
+			Test.Assert(LabeledBreakFromInnerSwitch(1, 0) == 2);
+
+			Test.Assert(InnerLoopBreak(0) == 1);
+			Test.Assert(InnerLoopBreak(1) == 2);
+			Test.Assert(InnerSwitchBreak(0, 0) == 1);
+			Test.Assert(InnerSwitchBreak(0, 1) == 3);
+			Test.Assert(ConstFalseBreak(0) == 1);
+			Test.Assert(ConstFalseBreak(1) == 2);
+		}
 	}
 }

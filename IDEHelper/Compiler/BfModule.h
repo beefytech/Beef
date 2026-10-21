@@ -709,6 +709,9 @@ public:
 	BfIRBlock mIRFallthroughBlock;
 	BfIRValue mInnerValueScopeStart;
 	bool mHadBreak;
+	// When set, each break that can execute and targets this block itself intersects what's assigned at that point into
+	//  this. It starts with mLeftBlockUncond set (the intersection identity), which stays set if no such break occurs.
+	BfDeferredLocalAssignData* mBreakLocalAssignData;
 
 public:
 	BfBreakData()
@@ -716,6 +719,7 @@ public:
 		mPrevBreakData = NULL;
 		mScope = NULL;
 		mHadBreak = false;
+		mBreakLocalAssignData = NULL;
 	}
 };
 
@@ -1741,7 +1745,7 @@ public:
 	void AddBasicBlock(BfIRBlock bb, bool activate = true);
 	void VisitEmbeddedStatement(BfAstNode* stmt, BfExprEvaluator* exprEvaluator = NULL, BfEmbeddedStatementFlags flags = BfEmbeddedStatementFlags_None);
 	void VisitCodeBlock(BfBlock* block);
-	void VisitCodeBlock(BfBlock* block, BfIRBlock continueBlock, BfIRBlock breakBlock, BfIRBlock fallthroughBlock, bool defaultBreak, bool* hadReturn = NULL, BfLabelNode* labelNode = NULL, bool closeScope = false, BfEmbeddedStatementFlags flags = BfEmbeddedStatementFlags_None);
+	void VisitCodeBlock(BfBlock* block, BfIRBlock continueBlock, BfIRBlock breakBlock, BfIRBlock fallthroughBlock, bool defaultBreak, bool* hadReturn = NULL, BfLabelNode* labelNode = NULL, bool closeScope = false, BfEmbeddedStatementFlags flags = BfEmbeddedStatementFlags_None, BfDeferredLocalAssignData* breakLocalAssignData = NULL);
 	void DoForLess(BfForEachStatement* forEachStmt);
 
 	// Util

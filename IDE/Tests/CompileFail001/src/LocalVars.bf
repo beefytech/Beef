@@ -165,6 +165,190 @@ namespace IDETest
 			int a = val; //FAIL
 		}
 
+		public void Switch7()
+		{
+			int a = 1;
+			int b;
+
+			switch (a)
+			{
+			case 1:
+				if (a == 2)
+					break;
+				b = 1;
+			default:
+				b = 2;
+			}
+
+			int c = b; //FAIL
+		}
+
+		public void Switch8()
+		{
+			int a = 1;
+			int b;
+
+			switch (a)
+			{
+			case 1:
+				if (a == 2)
+					break;
+				b = 1;
+				return;
+			default:
+				b = 2;
+			}
+
+			int c = b; //FAIL
+		}
+
+		public void Switch9()
+		{
+			int a = 1;
+			int b;
+
+			switch (a)
+			{
+			case 1:
+				b = 1;
+			default:
+				if (a == 2)
+					break;
+				b = 2;
+			}
+
+			int c = b; //FAIL
+		}
+
+		public void Switch10()
+		{
+			int a = 1;
+			int b;
+
+			OUTER:
+			switch (a)
+			{
+			case 1:
+				switch (a)
+				{
+				case 2:
+					break OUTER;
+				default:
+					b = 3;
+				}
+				b = 1;
+			default:
+				b = 2;
+			}
+
+			int c = b; //FAIL
+		}
+
+		public void Switch11()
+		{
+			int a = 1;
+			int b;
+
+			switch (a)
+			{
+			case 1:
+				{
+					if (a == 2)
+						break;
+				}
+				b = 1;
+			default:
+				b = 2;
+			}
+
+			int c = b; //FAIL
+		}
+
+		public void Switch12()
+		{
+			int a = 1;
+			int b;
+
+			switch (a)
+			{
+			case 1:
+				if (a == 2)
+				{
+					b = 1;
+					break;
+				}
+				b = 2;
+				return;
+			default:
+				b = 3;
+			}
+
+			int c = b;
+		}
+
+		public void Switch13()
+		{
+			int a = 1;
+			int b;
+
+			switch (a)
+			{
+			case 1:
+				if (a == 2)
+				{
+					b = 1;
+					break;
+				}
+				fallthrough;
+			case 2:
+				b = 2;
+			default:
+				b = 3;
+			}
+
+			int c = b;
+		}
+
+		public void Switch14()
+		{
+			int a = 1;
+			int b;
+
+			switch (a)
+			{
+			case 1:
+				for (int i < 3)
+				{
+					if (a == 2)
+						break;
+				}
+				b = 1;
+			default:
+				b = 2;
+			}
+
+			int c = b;
+		}
+
+		public void Switch15()
+		{
+			const bool cNever = false;
+			int a = 1;
+			int b;
+
+			switch (a)
+			{
+			case 1:
+				if (cNever)
+					break;
+				b = 1;
+			default:
+				b = 2;
+			}
+
+			int c = b;
+		}
+
 		public void While1()
 		{
 			int a = 1;
