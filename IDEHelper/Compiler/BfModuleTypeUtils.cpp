@@ -4165,6 +4165,14 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					AssertErrorState();
 					TypeFailed(typeInstance);
 				}
+
+				// Resolving the base type can re-enter and finish populating us (ie: through a data cycle in a sized
+				//  array's size expression), so don't restore our earlier define state over that
+				if (_CheckTypeDone())
+				{
+					prevDefineState.CancelRestore();
+					return;
+				}
 			}
 
 			if (deferredError != NULL)

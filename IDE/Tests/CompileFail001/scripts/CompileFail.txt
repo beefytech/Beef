@@ -57,3 +57,8 @@ ShowFile("src/ConstraintChains.bf")
 WaitForResolve()
 SleepTicks(20)
 AssertFileErrors()
+
+ShowFile("src/EnumBaseCycle.bf")
+WaitForResolve()
+SleepTicks(20)
+AssertFileErrors()
