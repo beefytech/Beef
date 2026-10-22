@@ -116,14 +116,17 @@ static String FixBeefFunctionName(const char* name)
 
 	const char* src = name;
 
-	// Strip "bf::" prefix
-	if ((src[0] == 'b') && (src[1] == 'f') && (src[2] == ':') && (src[3] == ':'))
-		src += 4;
-
-	// Replace "::" with "."
+	// "bf::" also prefixes parameter and generic argument types, not just the function name
 	String result;
+	bool atNameStart = true;
 	while (*src != '\0')
 	{
+		if ((atNameStart) && (src[0] == 'b') && (src[1] == 'f') && (src[2] == ':') && (src[3] == ':'))
+		{
+			src += 4;
+			continue;
+		}
+		atNameStart = (*src == '(') || (*src == ',') || (*src == '<') || (*src == ' ') || (*src == '[');
 		if ((src[0] == ':') && (src[1] == ':'))
 		{
 			result += '.';
@@ -2753,6 +2756,7 @@ struct LLDBFormatInfo
 	DwIntDisplayType mIntDisplayType;
 	String mRefId;       // refid=XXX  — reference ID for persistent display formatting
 	String mThisExpr;    // this=EXPR  — implicit "this" context for member access
+	String mAssignExpr;  // assign=EXPR  the watch panel's edit: "expr = EXPR" is evaluated instead
 	bool mNoMembers;     // nm         — suppress member expansion
 	bool mNoAddress;     // na         — suppress address metadata
 	bool mRawString;     // rawStr     — don't escape string content
@@ -2830,9 +2834,13 @@ static bool TryParseSpecifier(const char* rawSpec, LLDBFormatInfo& fmtInfo)
 		fmtInfo.mMaxCount = atoi(strchr(spec, '=') + 1);
 		return true;
 	}
+	if (strncmp(spec, "assign=", 7) == 0)
+	{
+		fmtInfo.mAssignExpr = spec + 7;
+		return true;
+	}
 	// Silently consume specifiers we accept but don't act on yet
-	if ((strncmp(spec, "assign=",          7) == 0) ||
-	    (strncmp(spec, "action=",          7) == 0) ||
+	if ((strncmp(spec, "action=",          7) == 0) ||
 	    (strncmp(spec, "_=",               2) == 0) ||
 	    (strncmp(spec, "expectedType=",   13) == 0) ||
 	    (strncmp(spec, "namespaceSearch=", 16) == 0))
@@ -2892,6 +2900,9 @@ static void ParseExprAndFormat(const StringImpl& expr, String& outExpr, LLDBForm
 
 		outExpr = String(p, commaPos);
 	}
+
+	if (!outFmt.mAssignExpr.IsEmpty())
+		outExpr = outExpr + " = " + outFmt.mAssignExpr;
 }
 
 // Parse an LLDB expression error string into the IDE error wire format:
@@ -4943,8 +4954,6 @@ lldb::SBValue LLDBDebugger::EvaluateBeefTupleAssign(lldb::SBFrame& frame, const 
 
 	String rhs = expr.Substring(assignIdx + 1);
 	rhs.Trim();
-	if ((!rhs.StartsWith("(")) || (!rhs.EndsWith(")")))
-		return lldb::SBValue();
 	String lhs = expr.Substring(0, assignIdx);
 	lhs.Trim();
 
@@ -4958,6 +4967,37 @@ lldb::SBValue LLDBDebugger::EvaluateBeefTupleAssign(lldb::SBFrame& frame, const 
 		targetType = target.GetType();
 	}
 	if (!IsBeefTupleTypeName(targetType.GetCanonicalType().GetName()))
+	{
+		// The C++ parser can't name a splatted struct's field
+		const char* targetName = target.GetName();
+		if ((targetName == NULL) || (targetName[0] != '$') || (targetType.GetCanonicalType().GetBasicType() == lldb::eBasicTypeInvalid))
+			return lldb::SBValue();
+		lldb::SBValue element = EvaluateBeefOperand(frame, rhs, outError);
+		if (!outError.IsEmpty())
+			return lldb::SBValue();
+		lldb::SBValue elementPrim = GetBeefTypedPrimitiveValue(element);
+		if (elementPrim.IsValid())
+			element = elementPrim;
+		String elementText;
+		if (element.IsValid())
+		{
+			// A character's display text ("0x51 u8'Q'") isn't parsable; integers go by value
+			lldb::SBType elementType = element.GetType().GetCanonicalType();
+			uint32 flags = elementType.GetTypeFlags();
+			if (((flags & lldb::eTypeIsInteger) != 0) || ((flags & lldb::eTypeIsEnumeration) != 0) || (elementType.GetBasicType() == lldb::eBasicTypeBool))
+				elementText = StrFormat("%lld", (long long)element.GetValueAsSigned(0));
+			else if (element.GetValue() != NULL)
+				elementText = element.GetValue();
+		}
+		lldb::SBError error;
+		if ((elementText.IsEmpty()) || (!target.SetValueFromCString(elementText.c_str(), error)))
+		{
+			outError = StrFormat("unable to assign '%s'", rhs.c_str());
+			return lldb::SBValue();
+		}
+		return target;
+	}
+	if ((!rhs.StartsWith("(")) || (!rhs.EndsWith(")")))
 		return lldb::SBValue();
 
 	Array<String> elements;
@@ -5584,7 +5624,10 @@ lldb::SBValue LLDBDebugger::EvaluateBeefPath(lldb::SBFrame& frame, const StringI
 	auto _GetMember = [&](lldb::SBValue value, const StringImpl& name)
 	{
 		value = _Deref(value);
-		lldb::SBValue member = value.GetChildMemberWithName(name.c_str());
+		lldb::SBValue member = FindSplatMember(frame, value, name);
+		if (member.IsValid())
+			return member;
+		member = value.GetChildMemberWithName(name.c_str());
 		if (member.IsValid())
 			return member;
 		return HotFindMemberInNewestTypes(value, name, 0);
@@ -5613,7 +5656,11 @@ lldb::SBValue LLDBDebugger::EvaluateBeefPath(lldb::SBFrame& frame, const StringI
 	{
 		lldb::SBValue thisValue = _Deref(FindFrameThis(frame));
 		if (thisValue.IsValid())
-			value = thisValue.GetChildMemberWithName(ident.c_str());
+		{
+			value = FindSplatMember(frame, thisValue, ident);
+			if (!value.IsValid())
+				value = thisValue.GetChildMemberWithName(ident.c_str());
+		}
 	}
 	if (!value.IsValid())
 	{
@@ -6434,7 +6481,54 @@ lldb::SBValue LLDBDebugger::FindSplatVariable(lldb::SBFrame& frame, const String
 	lldb::SBError error;
 	lldb::SBData data;
 	data.SetData(error, buffer.mVals, (size_t)size, mLLDBTarget.GetByteOrder(), mLLDBTarget.GetAddressByteSize());
-	return mLLDBTarget.CreateValueFromData(name.c_str(), data, type);
+	// Named after its parts, so a member walk goes to the part itself (see FindSplatMember)
+	return mLLDBTarget.CreateValueFromData(("$" + name).c_str(), data, type);
+}
+
+// A member of a splatted struct is one of its parts (a real variable) or a nested splat. The value's name is the parts' prefix.
+lldb::SBValue LLDBDebugger::FindSplatMember(lldb::SBFrame& frame, lldb::SBValue value, const StringImpl& name)
+{
+	const char* valueName = value.GetName();
+	if ((valueName == NULL) || (valueName[0] != '$'))
+		return lldb::SBValue();
+	String prefix = valueName;
+
+	// The field's declaring type adds a "$b" per base-class hop
+	lldb::SBType type = value.GetType().GetCanonicalType();
+	for (int depth = 0; (type.IsValid()) && (depth < 16); depth++)
+	{
+		for (uint32 fieldIdx = 0; fieldIdx < type.GetNumberOfFields(); fieldIdx++)
+		{
+			lldb::SBTypeMember field = type.GetFieldAtIndex(fieldIdx);
+			if ((field.GetName() == NULL) || (name != field.GetName()))
+				continue;
+			lldb::SBType fieldType = field.GetType().GetCanonicalType();
+			String partName = (fieldType.GetTypeClass() == lldb::eTypeClassUnion) ? prefix + "$u" : prefix + "$m$" + name;
+			lldb::SBValue part = frame.FindVariable(partName.c_str());
+			if (part.IsValid())
+				return part;
+			lldb::TypeClass fieldClass = fieldType.GetTypeClass();
+			if ((fieldClass != lldb::eTypeClassStruct) && (fieldClass != lldb::eTypeClassClass))
+				return lldb::SBValue();
+			uint64 size = fieldType.GetByteSize();
+			if ((size == 0) || (size > 64 * 1024))
+				return lldb::SBValue();
+			Array<uint8> buffer;
+			buffer.Resize((int)size);
+			memset(buffer.mVals, 0, (size_t)size);
+			if (!FillSplatValue(frame, fieldType, partName, buffer.mVals, 0))
+				return lldb::SBValue();
+			lldb::SBError error;
+			lldb::SBData data;
+			data.SetData(error, buffer.mVals, (size_t)size, mLLDBTarget.GetByteOrder(), mLLDBTarget.GetAddressByteSize());
+			return mLLDBTarget.CreateValueFromData(partName.c_str(), data, fieldType);
+		}
+		if (type.GetNumberOfDirectBaseClasses() == 0)
+			break;
+		type = type.GetDirectBaseClassAtIndex(0).GetType().GetCanonicalType();
+		prefix += "$b";
+	}
+	return lldb::SBValue();
 }
 
 lldb::SBValue LLDBDebugger::FindFrameThis(lldb::SBFrame& frame)
