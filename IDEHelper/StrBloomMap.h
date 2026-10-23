@@ -1,7 +1,7 @@
 #pragma once
 
 #include "DebugCommon.h"
-#include "BeefySysLib/Util/BumpAllocator.h"
+#include "BeefySysLib/util/BumpAllocator.h"
 
 NS_BF_DBG_BEGIN
 

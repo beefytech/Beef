@@ -1,11 +1,14 @@
 #include "DebugTarget.h"
-#include "WinDebugger.h"
+#include "DbgTargetHost.h"
 #include "DWARFInfo.h"
 #include "BeefySysLib/FileStream.h"
 #include "BeefySysLib/MemStream.h"
-#include "BeefySysLib/Util/BeefPerf.h"
+#include "BeefySysLib/util/BeefPerf.h"
 #include "DebugManager.h"
 #include "HotHeap.h"
+#ifdef BF_PLATFORM_WINDOWS
+#include "COFF.h"
+#endif
 //#include <Winternl.h>
 
 #include "BeefySysLib/util/AllocDebug.h"
@@ -15,7 +18,7 @@ USING_NS_BF_DBG;
 #define GET(T) *((T*)(data += sizeof(T)) - 1)
 #define GET_FROM(ptr, T) *((T*)(ptr += sizeof(T)) - 1)
 
-DebugTarget::DebugTarget(WinDebugger* debugger)
+DebugTarget::DebugTarget(DbgTargetHost* debugger)
 {
 	mCheckedCompilerSettings = false;
 	mBfObjectHasFlags = false;
@@ -89,7 +92,7 @@ static bool PathEquals(const String& pathA, String& pathB)
 
 void DebugTarget::SetupTargetBinary()
 {
-	bool wantsHotHeap = (mDebugger->mHotSwapEnabled == true && mDebugger->mDbgProcessId == 0);
+	bool wantsHotHeap = mDebugger->WantsHotHeap();
 
 #ifdef BF_DBG_32
 	if (wantsHotHeap)
@@ -111,7 +114,7 @@ void DebugTarget::SetupTargetBinary()
 		addr_target reservedPtr = NULL;
 		while ((addr_target)checkHotReserveAddr < (addr_target)mTargetBinary->mImageBase + 0x30000000)
 		{
-			reservedPtr = (addr_target)VirtualAllocEx(mDebugger->mProcessInfo.hProcess, (void*)(intptr)checkHotReserveAddr, reserveSize, MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+			reservedPtr = mDebugger->ReserveHotHeapMemory(checkHotReserveAddr, reserveSize);
 			if (reservedPtr != NULL)
 			{
 				mHotHeapAddr = reservedPtr;
@@ -147,6 +150,15 @@ void DebugTarget::CheckTargetBinary(DbgModule* module)
 		SetupTargetBinary();
 }
 
+DbgModule* DebugTarget::CreateDbgModule()
+{
+#ifdef BF_PLATFORM_WINDOWS
+	return new COFF(this);
+#else
+	return new DbgModule(this);
+#endif
+}
+
 DbgModule* DebugTarget::Init(const StringImpl& launchPath, const StringImpl& targetPath, intptr imageBase)
 {
 	BP_ZONE("DebugTarget::Init");
@@ -155,14 +167,13 @@ DbgModule* DebugTarget::Init(const StringImpl& launchPath, const StringImpl& tar
 
 	mTargetPath = targetPath;
 	FileStream fileStream;
-	fileStream.mFP = _wfopen(UTF8Decode(launchPath).c_str(), L"rb");
-	if (fileStream.mFP == NULL)
+	if (!fileStream.Open(launchPath, "rb"))
 	{
 		mDebugger->OutputMessage(StrFormat("Debugger failed to open binary: %s\n", launchPath.c_str()));
 		return NULL;
 	}
 
-	DbgModule* dwarf = new COFF(this);
+	DbgModule* dwarf = CreateDbgModule();
 	mLaunchBinary = dwarf;
 	dwarf->mDisplayName = GetFileName(launchPath);
 	dwarf->mFilePath = launchPath;
@@ -194,14 +205,13 @@ DbgModule* DebugTarget::HotLoad(const StringImpl& fileName, int hotIdx)
 	AutoDbgTime dbgTime("DebugTarget::HotLoad " + fileName);
 
 	FileStream fileStream;
-	fileStream.mFP = _wfopen(UTF8Decode(fileName).c_str(), L"rb");
-	if (fileStream.mFP == NULL)
+	if (!fileStream.Open(fileName, "rb"))
 	{
 		mDebugger->OutputMessage(StrFormat("Debugger failed to open binary: %s\n", fileName.c_str()));
 		return NULL;
 	}
 
-	DbgModule* dwarf = new COFF(this);
+	DbgModule* dwarf = CreateDbgModule();
 	dwarf->mHotIdx = hotIdx;
 	dwarf->mDisplayName = GetFileName(fileName);
 	dwarf->mFilePath = fileName;
@@ -221,7 +231,7 @@ DbgModule* DebugTarget::SetupDyn(const StringImpl& filePath, DataStream* stream,
 
 	//AutoDbgTime dbgTime("DebugTarget::SetupDyn " + filePath);
 
-	DbgModule* dwarf = new COFF(this);
+	DbgModule* dwarf = CreateDbgModule();
 	dwarf->mFilePath = filePath;
 	dwarf->mImageBase = (intptr)imageBase;
 	if (!dwarf->ReadCOFF(stream, DbgModuleKind_Module))
@@ -272,7 +282,7 @@ String DebugTarget::UnloadDyn(addr_target imageBase)
 				if (mHotHeapAddr != 0)
 				{
 					BfLogDbg("VirtualFreeEx %p %d\n", mHotHeapAddr, mHotHeapReserveSize);
-					::VirtualFreeEx(mDebugger->mProcessInfo.hProcess, (void*)(intptr)mHotHeapAddr, 0, MEM_RELEASE);
+					mDebugger->ReleaseHotHeapMemory(mHotHeapAddr);
 					mHotHeapAddr = 0;
 				}
 			}
@@ -429,7 +439,7 @@ bool DebugTarget::FindSymbolAt(addr_target addr, String* outSymbol, addr_target*
 
 	if (isExecutable)
 	{
-		addr_target thunkAddr = mDebugger->mCPU->DecodeThunk(addr, dwSymbol->mDbgModule->mOrigImageData);
+		addr_target thunkAddr = mDebugger->DecodeThunk(addr, dwSymbol->mDbgModule->mOrigImageData);
 		if (thunkAddr != 0)
 		{
 			if (FindSymbolAt(thunkAddr, outSymbol, outOffset, outDWARF))
@@ -817,7 +827,7 @@ DbgSubprogram* DebugTarget::FindSubProgram(addr_target pc, DbgOnDemandKind onDem
 					if ((dwSubprogram->mLineInfo != NULL) && (dwSubprogram->mLineInfo->mHasInlinees))
 					{
 						if (dwSubprogram->mNeedLineDataFixup)
-							mDebugger->FixupLineDataForSubprogram(dwSubprogram);
+							DbgModule::FixupLineDataForSubprogram(dwSubprogram);
 
 						DbgSubprogram* inlinedSubprogram = NULL;
 						if (dwSubprogram->FindClosestLine(pc, &inlinedSubprogram) != NULL)
@@ -2479,7 +2489,7 @@ bool DebugTarget::DecodeInstruction(addr_target address, CPUInst* inst)
 	auto dwarf = FindDbgModuleForAddress(address);
 	if ((dwarf != NULL) && (dwarf->mOrigImageData != NULL))
 	{
-		return mDebugger->mCPU->Decode(address, dwarf->mOrigImageData, inst);
+		return mDebugger->DecodeInstruction(address, dwarf->mOrigImageData, inst);
 	}
 	return false;
 }
@@ -2489,7 +2499,7 @@ DbgBreakKind DebugTarget::GetDbgBreakKind(addr_target address, CPURegisters* reg
 	auto dwarf = FindDbgModuleForAddress(address);
 	if ((dwarf != NULL) && (dwarf->mOrigImageData != NULL))
 	{
-		auto result = mDebugger->mCPU->GetDbgBreakKind(address, dwarf->mOrigImageData, registers->mIntRegsArray, objAddr);
+		auto result = mDebugger->GetDbgBreakKind(address, dwarf->mOrigImageData, registers->mIntRegsArray, objAddr);
 		return result;
 	}
 	return DbgBreakKind_None;
@@ -2564,13 +2574,13 @@ void ReportRadixMap(MemReporter* memReporter, RadixMap64<T>& radixMap)
 		auto mid = radixMap.mRoot[rootIdx];
 		if (mid != NULL)
 		{
-			memReporter->Add(sizeof(RadixMap64<T>::Mid));
+			memReporter->Add(sizeof(typename RadixMap64<T>::Mid));
 			for (int midIdx = 0; midIdx < RadixMap64<T>::MID_LENGTH; midIdx++)
 			{
 				auto leaf = mid->mLeafs[midIdx];
 				if (leaf != NULL)
 				{
-					memReporter->Add(sizeof(RadixMap64<T>::Leaf));
+					memReporter->Add(sizeof(typename RadixMap64<T>::Leaf));
 				}
 			}
 		}

@@ -6,6 +6,7 @@
 NS_BF_DBG_BEGIN
 
 class HotHeap;
+class DbgTargetHost;
 
 static const int DBG_MAX_LOOKBACK = 64*1024;
 
@@ -33,7 +34,7 @@ struct FindDbgModuleCacheEntry
 class DebugTarget
 {
 public:
-	WinDebugger* mDebugger;
+	DbgTargetHost* mDebugger;
 
 	DbgRadixMap<DbgSymbol*> mSymbolMap;
 	DbgAutoStaticEntryBucketMap mAutoStaticEntryBucketMap;
@@ -89,11 +90,12 @@ protected:
 	bool GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgBlock* dwBlock, String& name, WdStackFrame* stackFrame, intptr* outAddr, DbgType** outType, DbgAddrType* outAddrType);
 
 public:
-	DebugTarget(WinDebugger* debugger);
+	DebugTarget(DbgTargetHost* debugger);
 	~DebugTarget();
 
 	void ClearFindDbgModuleCache();
 	void AddDbgModule(DbgModule* dbgModule);
+	DbgModule* CreateDbgModule();
 	DbgModule* Init(const StringImpl& launchPath, const StringImpl& targetPath, intptr imageBase = 0);
 	void SetupTargetBinary();
 	void CheckTargetBinary(DbgModule* module);

@@ -24,6 +24,7 @@
     <ClInclude Include="..\IDEHelper\CPU.h" />
     <ClInclude Include="..\IDEHelper\DbgEvalPool.h" />
     <ClInclude Include="..\IDEHelper\DbgExprEvaluator.h" />
+    <ClInclude Include="..\IDEHelper\DbgTargetHost.h" />
     <ClInclude Include="..\IDEHelper\DbgSymSrv.h" />
     <ClInclude Include="..\IDEHelper\DbgTypeMap.h" />
     <ClInclude Include="..\IDEHelper\DebugCommon.h" />
@@ -44,6 +45,7 @@
   <ItemGroup>
     <ClCompile Include="..\IDEHelper\COFF.cpp" />
     <ClCompile Include="..\IDEHelper\DbgEvalPool.cpp" />
+    <ClCompile Include="..\IDEHelper\DbgEvalSupport.cpp" />
     <ClCompile Include="..\IDEHelper\DbgExprEvaluator.cpp" />
     <ClCompile Include="..\IDEHelper\DbgSymSrv.cpp" />
     <ClCompile Include="..\IDEHelper\DbgTypeMap.cpp" />

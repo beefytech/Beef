@@ -7,14 +7,16 @@
 #include "DbgModule.h"
 
 #include "DWARFInfo.h"
+#ifdef BF_PLATFORM_WINDOWS
 #include <windows.h>
+#endif
 #include <stddef.h>
 #include <stdio.h>
 #include <string>
 #include <inttypes.h>
 #include <assert.h>
 #include <vector>
-#include "WinDebugger.h"
+#include "DbgTargetHost.h"
 #include "DebugManager.h"
 #include "DebugTarget.h"
 #include "COFFData.h"
@@ -23,7 +25,7 @@
 #include "BeefySysLib/util/BeefPerf.h"
 #include "BeefySysLib/util/MultiDictionary.h"
 #include "DbgSymSrv.h"
-#include "MiniDumpDebugger.h"
+#include "COFF.h"
 
 #pragma warning(pop)
 
@@ -3183,6 +3185,75 @@ void DbgModule::MapSubprogram(DbgSubprogram* dbgSubprogram)
 	}
 }
 
+static int CompareLineData(const void* lineDataP1, const void* lineDataP2)
+{
+	int cmpResult = (int)(((DbgLineData*)lineDataP1)->mRelAddress - ((DbgLineData*)lineDataP2)->mRelAddress);
+	if (cmpResult != 0)
+		return cmpResult;
+
+	// A larger contrib size means it's the 'outer' inlinee
+	cmpResult = -(((DbgLineData*)lineDataP1)->mContribSize - ((DbgLineData*)lineDataP2)->mContribSize);
+	if (cmpResult != 0)
+		return cmpResult;
+
+	return -(((DbgLineData*)lineDataP1)->mCtxIdx - ((DbgLineData*)lineDataP2)->mCtxIdx);
+}
+
+void DbgModule::FixupLineDataForSubprogram(DbgSubprogram* subProgram)
+{
+	if ((subProgram == NULL) || (!subProgram->mNeedLineDataFixup))
+		return;
+
+	BP_ZONE("FixupLineDataForSubprogram");
+
+	subProgram->mNeedLineDataFixup = false;
+	if (subProgram->mInlineeInfo != NULL)
+		FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);
+
+	if ((subProgram->mLineInfo == NULL) || (subProgram->mLineInfo->mLines.mSize == 0))
+		return;
+
+	//TODO: I think this was covering up a bug in DWARF line encoding? Figure this out
+// 	if (subProgram->mLineInfo->mLines.mSize >= 2)
+// 	{
+// 		DbgLineData* line0 = &subProgram->mLineInfo->mLines[0];
+// 		DbgLineData* line1 = &subProgram->mLineInfo->mLines[1];
+//
+//
+// 		if ((line0->mRelAddress == line1->mRelAddress) && (!line0->IsStackFrameSetup()) && (line1->IsStackFrameSetup()))
+// 		{
+// 			CPUInst inst;
+// 			if (mCPU->Decode(line0->mAddress, subProgram->mCompileUnit->mDbgModule->mOrigImageData, &inst))
+// 				line1->mAddress += inst.GetLength();
+// 		}
+// 	}
+
+	qsort(subProgram->mLineInfo->mLines.mVals, subProgram->mLineInfo->mLines.mSize, sizeof(DbgLineData), CompareLineData);
+
+	// If we have multiple lines with the same line/column/context, merge them
+	if (!subProgram->mLineInfo->mLines.IsEmpty())
+	{
+		auto prevLine = &subProgram->mLineInfo->mLines[0];
+		for (int i = 1; i < subProgram->mLineInfo->mLines.mSize; i++)
+		{
+			auto nextLine = &subProgram->mLineInfo->mLines[i];
+
+			if ((nextLine->mLine == prevLine->mLine) && (nextLine->mColumn == prevLine->mColumn) && (nextLine->mCtxIdx == prevLine->mCtxIdx) &&
+				(nextLine->mRelAddress == prevLine->mRelAddress + prevLine->mContribSize))
+			{
+				prevLine->mContribSize += nextLine->mContribSize;
+				// This messed up inline cases because mContribSize actually INCLUDES inlined lines so it caused the address to skip too far
+				//nextLine->mRelAddress += nextLine->mContribSize;
+				//nextLine->mContribSize = 0;
+			}
+			else
+			{
+				prevLine = nextLine;
+			}
+		}
+	}
+}
+
 bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 {
 	BP_ZONE("ParseDWARF");
@@ -5763,11 +5834,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 
 	DbgModule* mainModule = mDebugTarget->mTargetBinary;
 
-	MiniDumpDebugger* miniDumpDebugger = NULL;
-	if (mDebugger->IsMiniDumpDebugger())
-	{
-		miniDumpDebugger = (MiniDumpDebugger*)mDebugger;
-	}
+	bool isMiniDump = mDebugger->IsMiniDumpDebugger();
 
 	mModuleKind = moduleKind;
 	bool isHotSwap = mModuleKind == DbgModuleKind_HotObject;
@@ -5844,10 +5911,10 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 	int sectionStartPos = stream->GetPos();
 	int sectionDataEndPos = 0;
 
-	if (miniDumpDebugger != NULL)
+	if (isMiniDump)
 	{
 		// Map header
-		miniDumpDebugger->MapMemory((addr_target)mImageBase, (uint8*)mMappedImageFile->mData, 0x1000);
+		mDebugger->MapMemory((addr_target)mImageBase, (uint8*)mMappedImageFile->mData, 0x1000);
 	}
 
 	bool wantStringTable = isObjectFile;
@@ -5864,9 +5931,9 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		if (sectHdr.mNumberOfRelocations > 0)
 			sectionDataEndPos = BF_MAX(sectionDataEndPos, (int)(sectHdr.mPointerToRelocations + sectHdr.mNumberOfRelocations * sizeof(COFFRelocation)));
 
-		if (miniDumpDebugger != NULL)
+		if (isMiniDump)
 		{
-			miniDumpDebugger->MapMemory((addr_target)(mImageBase + sectHdr.mVirtualAddress), (uint8*)mMappedImageFile->mData + sectHdr.mPointerToRawData, sectHdr.mSizeOfRawData);
+			mDebugger->MapMemory((addr_target)(mImageBase + sectHdr.mVirtualAddress), (uint8*)mMappedImageFile->mData + sectHdr.mPointerToRawData, sectHdr.mSizeOfRawData);
 		}
 	}
 
@@ -7051,7 +7118,6 @@ intptr DbgModule::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* loc
 		BF_ASSERT(dbgModule->mDbgFlavor == DbgFlavor_MS);
 		if (dbgModule->mDbgFlavor == DbgFlavor_MS)
 		{
-			COFF* coff = (COFF*)dbgModule;
 			struct SegOfsData
 			{
 				uint32 mOfs;
@@ -7060,7 +7126,7 @@ intptr DbgModule::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* loc
 			SegOfsData* segOfsData = (SegOfsData*)locData;
 
 			*outAddrType = DbgAddrType_Target;
-			return coff->GetSectionAddr(segOfsData->mSeg, segOfsData->mOfs);
+			return dbgModule->GetSectionAddr(segOfsData->mSeg, segOfsData->mOfs);
 		}
 		else
 		{

@@ -14,6 +14,7 @@
 #include "RadixMap.h"
 #include <unordered_map>
 #include <unordered_set>
+#include <list>
 #include <functional>
 #include "Debugger.h"
 #include "StrHashMap.h"
@@ -97,7 +98,7 @@ enum DbgTypeCode : uint8
 };
 
 class DebugTarget;
-class WinDebugger;
+class DbgTargetHost;
 class DbgType;
 class DbgBlock;
 
@@ -162,7 +163,7 @@ enum DbgLocationLenKind
 class DbgVariable : public DbgDebugData
 {
 public:
-	static const DbgClassType ClassType = DbgClassType_Variable;
+	static constexpr DbgClassType ClassType = DbgClassType_Variable;
 
 	const char* mName;
 	const char* mLinkName;
@@ -218,7 +219,7 @@ typedef std::map<int, Array<int> > DwAsmDebugLineMap;
 class DbgBlock : public DbgDebugData
 {
 public:
-	static const DbgClassType ClassType = DbgClassType_Block;
+	static constexpr DbgClassType ClassType = DbgClassType_Block;
 
 	addr_target mLowPC; // If LowPC is -1 then mHighPC is index into debugRanges
 	addr_target mHighPC;
@@ -345,7 +346,7 @@ public:
 class DbgSubprogram : public DbgDebugData
 {
 public:
-	static const DbgClassType ClassType = DbgClassType_Subprogram;
+	static constexpr DbgClassType ClassType = DbgClassType_Subprogram;
 
 #ifdef BF_DBG_32
 	enum LocalBaseRegKind : uint8
@@ -534,7 +535,7 @@ enum DbgExtType : int8
 class DbgType : public DbgDebugData
 {
 public:
-	static const DbgClassType ClassType = DbgClassType_Type;
+	static constexpr DbgClassType ClassType = DbgClassType_Type;
 	DbgType* mParent;
 	BumpList<DbgType*> mAlternates; // From other compile units
 	DbgType* mPrimaryType;
@@ -830,7 +831,7 @@ public:
 class DbgCompileUnit
 {
 public:
-	static const DbgClassType ClassType = DbgClassType_CompileUnit;
+	static constexpr DbgClassType ClassType = DbgClassType_CompileUnit;
 
 	DbgModule* mDbgModule;
 	DbgLanguage mLanguage;
@@ -1112,7 +1113,7 @@ class DbgModule
 public:
 	static const int ImageBlockSize = 4096;
 
-	WinDebugger* mDebugger;
+	DbgTargetHost* mDebugger;
 	DebugTarget* mDebugTarget;
 	DbgModuleLoadState mLoadState;
 	MappedFile* mMappedImageFile;
@@ -1230,6 +1231,7 @@ public:
 	virtual void PopulateStaticVariableMap();
 	virtual void ProcessDebugInfo();
 	virtual bool CanGetOldSource() { return false; }
+	virtual addr_target GetSectionAddr(uint16 section, uint32 offset) { return 0; }
 	virtual String GetOldSourceCommand(const StringImpl& path) { return ""; }
 	virtual bool GetEmitSource(const StringImpl& filePath, String& outText) { return false; }
 	virtual bool DbgIsStrMutable(const char* str) { return true; } // Always assume its a copy
@@ -1253,6 +1255,7 @@ public:
 	DbgType* GetOrCreateType(int typeIdx, DbgDataMap& typeMap);
 	//void SplitName(const char* inName, const char*& outBaseName, const char*& outTemplateParams, bool alwaysDup = false);
 	void MapSubprogram(DbgSubprogram* dbgSubprogram);
+	static void FixupLineDataForSubprogram(DbgSubprogram* subProgram);
 	bool ParseDWARF(const uint8*& dataPtr);
 	void ParseAbbrevData(const uint8* data);
 	void ParseExceptionData();

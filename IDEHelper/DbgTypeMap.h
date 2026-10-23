@@ -1,8 +1,8 @@
 #pragma once
 
 #include "DebugCommon.h"
-#include "BeefySysLib/Util/BumpAllocator.h"
-#include "BeefySysLib/Util/HashSet.h"
+#include "BeefySysLib/util/BumpAllocator.h"
+#include "BeefySysLib/util/HashSet.h"
 
 namespace Beefy
 {
