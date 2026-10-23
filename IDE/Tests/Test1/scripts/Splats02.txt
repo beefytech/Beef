@@ -1,0 +1,19 @@
+# Structs passed by value are splatted into their fields: 'this' in a struct method and a struct
+# parameter are rebuilt from the parts
+
+if (platform == "Win32") Stop()
+
+ShowFile("src/Splats.bf")
+GotoText("//SplatTester_SplatC_Call")
+ToggleBreakpoint()
+RunWithCompiling()
+AssertEvalEquals("sc", "{ mC='Z' mB=1.2 mA=123 }")
+StepInto()
+AssertEvalEquals("mB", "1.2")
+AssertEvalEquals("this.mA", "123")
+StepOut()
+StepOver()
+StepInto()
+AssertLineContains("return sc.mA")
+AssertEvalEquals("sc", "{ mC='Z' mB=1.2 mA=123 }")
+AssertEvalEquals("sc.mA", "123")

@@ -116,14 +116,17 @@ static String FixBeefFunctionName(const char* name)
 
 	const char* src = name;
 
-	// Strip "bf::" prefix
-	if ((src[0] == 'b') && (src[1] == 'f') && (src[2] == ':') && (src[3] == ':'))
-		src += 4;
-
-	// Replace "::" with "."
+	// "bf::" also prefixes parameter and generic argument types, not just the function name
 	String result;
+	bool atNameStart = true;
 	while (*src != '\0')
 	{
+		if ((atNameStart) && (src[0] == 'b') && (src[1] == 'f') && (src[2] == ':') && (src[3] == ':'))
+		{
+			src += 4;
+			continue;
+		}
+		atNameStart = (*src == '(') || (*src == ',') || (*src == '<') || (*src == ' ') || (*src == '[');
 		if ((src[0] == ':') && (src[1] == ':'))
 		{
 			result += '.';
@@ -2753,6 +2756,7 @@ struct LLDBFormatInfo
 	DwIntDisplayType mIntDisplayType;
 	String mRefId;       // refid=XXX  — reference ID for persistent display formatting
 	String mThisExpr;    // this=EXPR  — implicit "this" context for member access
+	String mAssignExpr;  // assign=EXPR  the watch panel's edit: "expr = EXPR" is evaluated instead
 	bool mNoMembers;     // nm         — suppress member expansion
 	bool mNoAddress;     // na         — suppress address metadata
 	bool mRawString;     // rawStr     — don't escape string content
@@ -2830,9 +2834,13 @@ static bool TryParseSpecifier(const char* rawSpec, LLDBFormatInfo& fmtInfo)
 		fmtInfo.mMaxCount = atoi(strchr(spec, '=') + 1);
 		return true;
 	}
+	if (strncmp(spec, "assign=", 7) == 0)
+	{
+		fmtInfo.mAssignExpr = spec + 7;
+		return true;
+	}
 	// Silently consume specifiers we accept but don't act on yet
-	if ((strncmp(spec, "assign=",          7) == 0) ||
-	    (strncmp(spec, "action=",          7) == 0) ||
+	if ((strncmp(spec, "action=",          7) == 0) ||
 	    (strncmp(spec, "_=",               2) == 0) ||
 	    (strncmp(spec, "expectedType=",   13) == 0) ||
 	    (strncmp(spec, "namespaceSearch=", 16) == 0))
@@ -2892,6 +2900,9 @@ static void ParseExprAndFormat(const StringImpl& expr, String& outExpr, LLDBForm
 
 		outExpr = String(p, commaPos);
 	}
+
+	if (!outFmt.mAssignExpr.IsEmpty())
+		outExpr = outExpr + " = " + outFmt.mAssignExpr;
 }
 
 // Parse an LLDB expression error string into the IDE error wire format:
@@ -4303,8 +4314,9 @@ static String FormatBeefAggregate(lldb::SBValue value, int depth)
 			if ((baseName != NULL) && ((strcmp(baseName, "System::Object") == 0) || (strcmp(baseName, "System::Enum") == 0) ||
 				(strcmp(baseName, "System::ValueType") == 0)))
 				continue;
-			lldb::SBValue baseValue = fieldsOf.GetChildAtIndex(fieldsType.GetNumberOfFields() + baseIdx);
-			if (!baseValue.IsValid())
+			// LLDB lists base classes before fields
+			lldb::SBValue baseValue = fieldsOf.GetChildAtIndex(baseIdx);
+			if ((!baseValue.IsValid()) || (baseValue.GetType().GetCanonicalType() != baseType))
 				baseValue = fieldsOf.Cast(baseType);
 			if (!baseValue.IsValid())
 				continue;
@@ -4942,8 +4954,6 @@ lldb::SBValue LLDBDebugger::EvaluateBeefTupleAssign(lldb::SBFrame& frame, const 
 
 	String rhs = expr.Substring(assignIdx + 1);
 	rhs.Trim();
-	if ((!rhs.StartsWith("(")) || (!rhs.EndsWith(")")))
-		return lldb::SBValue();
 	String lhs = expr.Substring(0, assignIdx);
 	lhs.Trim();
 
@@ -4957,6 +4967,37 @@ lldb::SBValue LLDBDebugger::EvaluateBeefTupleAssign(lldb::SBFrame& frame, const 
 		targetType = target.GetType();
 	}
 	if (!IsBeefTupleTypeName(targetType.GetCanonicalType().GetName()))
+	{
+		// The C++ parser can't name a splatted struct's field
+		const char* targetName = target.GetName();
+		if ((targetName == NULL) || (targetName[0] != '$') || (targetType.GetCanonicalType().GetBasicType() == lldb::eBasicTypeInvalid))
+			return lldb::SBValue();
+		lldb::SBValue element = EvaluateBeefOperand(frame, rhs, outError);
+		if (!outError.IsEmpty())
+			return lldb::SBValue();
+		lldb::SBValue elementPrim = GetBeefTypedPrimitiveValue(element);
+		if (elementPrim.IsValid())
+			element = elementPrim;
+		String elementText;
+		if (element.IsValid())
+		{
+			// A character's display text ("0x51 u8'Q'") isn't parsable; integers go by value
+			lldb::SBType elementType = element.GetType().GetCanonicalType();
+			uint32 flags = elementType.GetTypeFlags();
+			if (((flags & lldb::eTypeIsInteger) != 0) || ((flags & lldb::eTypeIsEnumeration) != 0) || (elementType.GetBasicType() == lldb::eBasicTypeBool))
+				elementText = StrFormat("%lld", (long long)element.GetValueAsSigned(0));
+			else if (element.GetValue() != NULL)
+				elementText = element.GetValue();
+		}
+		lldb::SBError error;
+		if ((elementText.IsEmpty()) || (!target.SetValueFromCString(elementText.c_str(), error)))
+		{
+			outError = StrFormat("unable to assign '%s'", rhs.c_str());
+			return lldb::SBValue();
+		}
+		return target;
+	}
+	if ((!rhs.StartsWith("(")) || (!rhs.EndsWith(")")))
 		return lldb::SBValue();
 
 	Array<String> elements;
@@ -5139,7 +5180,7 @@ String LLDBDebugger::BuildAutocomplete(lldb::SBFrame& frame, const StringImpl& e
 		for (uint32 varIdx = 0; varIdx < variables.GetSize(); varIdx++)
 			_Add(variables.GetValueAtIndex(varIdx).GetName(), "value");
 
-		lldb::SBValue thisValue = frame.FindVariable("this");
+		lldb::SBValue thisValue = FindFrameThis(frame);
 		lldb::SBValue closure = frame.FindVariable("__closure");
 		if (closure.IsValid())
 		{
@@ -5546,10 +5587,18 @@ lldb::SBValue LLDBDebugger::EvaluateBeefPath(lldb::SBFrame& frame, const StringI
 
 	auto _Deref = [](lldb::SBValue value)
 	{
-		// Beef object references (and pointers to structs) are pointers in the debug info
-		while ((value.IsValid()) && (value.GetType().IsPointerType()))
+		// Beef object references (and pointers to structs) are pointers in the debug info. A mixin's 'this'
+		// is a reference to the caller's object pointer.
+		while ((value.IsValid()) && ((value.GetType().IsPointerType()) || (value.GetType().IsReferenceType())))
 		{
-			lldb::TypeClass pointeeClass = value.GetType().GetPointeeType().GetCanonicalType().GetTypeClass();
+			lldb::TypeClass pointeeClass = value.GetType().IsReferenceType() ?
+				value.GetType().GetDereferencedType().GetCanonicalType().GetTypeClass() :
+				value.GetType().GetPointeeType().GetCanonicalType().GetTypeClass();
+			if ((value.GetType().IsReferenceType()) && (pointeeClass == lldb::eTypeClassPointer))
+			{
+				value = value.Dereference();
+				continue;
+			}
 			if ((pointeeClass != lldb::eTypeClassClass) && (pointeeClass != lldb::eTypeClassStruct) && (pointeeClass != lldb::eTypeClassUnion))
 				break;
 			value = value.Dereference();
@@ -5575,7 +5624,10 @@ lldb::SBValue LLDBDebugger::EvaluateBeefPath(lldb::SBFrame& frame, const StringI
 	auto _GetMember = [&](lldb::SBValue value, const StringImpl& name)
 	{
 		value = _Deref(value);
-		lldb::SBValue member = value.GetChildMemberWithName(name.c_str());
+		lldb::SBValue member = FindSplatMember(frame, value, name);
+		if (member.IsValid())
+			return member;
+		member = value.GetChildMemberWithName(name.c_str());
 		if (member.IsValid())
 			return member;
 		return HotFindMemberInNewestTypes(value, name, 0);
@@ -5597,12 +5649,18 @@ lldb::SBValue LLDBDebugger::EvaluateBeefPath(lldb::SBFrame& frame, const StringI
 			value = variable;
 	}
 	if (!value.IsValid())
-		value = frame.FindVariable(ident.c_str());
+		value = (ident == "this") ? FindFrameThis(frame) : frame.FindVariable(ident.c_str());
+	if (!value.IsValid())
+		value = FindSplatVariable(frame, ident);
 	if (!value.IsValid())
 	{
-		lldb::SBValue thisValue = _Deref(frame.FindVariable("this"));
+		lldb::SBValue thisValue = _Deref(FindFrameThis(frame));
 		if (thisValue.IsValid())
-			value = thisValue.GetChildMemberWithName(ident.c_str());
+		{
+			value = FindSplatMember(frame, thisValue, ident);
+			if (!value.IsValid())
+				value = thisValue.GetChildMemberWithName(ident.c_str());
+		}
 	}
 	if (!value.IsValid())
 	{
@@ -6158,6 +6216,25 @@ static bool GetCallCType(lldb::SBType type, String& outName)
 			return GetCallCType(canonical.GetFieldAtIndex(0).GetType(), outName);
 		return false;
 	}
+	// Character types by size: the expression parser doesn't know char8_t and friends
+	switch (basicType)
+	{
+	case lldb::eBasicTypeChar8:
+	case lldb::eBasicTypeChar16:
+	case lldb::eBasicTypeChar32:
+	case lldb::eBasicTypeWChar:
+	case lldb::eBasicTypeSignedWChar:
+	case lldb::eBasicTypeUnsignedWChar:
+		switch (canonical.GetByteSize())
+		{
+		case 1: outName = "unsigned char"; return true;
+		case 2: outName = "unsigned short"; return true;
+		case 4: outName = "unsigned int"; return true;
+		default: return false;
+		}
+	default:
+		break;
+	}
 	const char* name = canonical.GetName();
 	if (name == NULL)
 		return false;
@@ -6247,6 +6324,219 @@ bool LLDBDebugger::FlattenBeefStruct(lldb::SBValue value, Array<String>& outType
 		}
 	}
 	return true;
+}
+
+// A struct 'this' passed by value is splatted into its fields, which the debug info names
+// "$this" + "$b" per base class + "$m$<field>" ("$u" for a union's storage). Rebuild it.
+static bool FillSplatValue(lldb::SBFrame& frame, lldb::SBType type, const StringImpl& prefix, uint8* data, uint64 offset)
+{
+	lldb::SBType canonicalType = type.GetCanonicalType();
+	for (uint32 baseIdx = 0; baseIdx < canonicalType.GetNumberOfDirectBaseClasses(); baseIdx++)
+	{
+		lldb::SBTypeMember base = canonicalType.GetDirectBaseClassAtIndex(baseIdx);
+		if (!FillSplatValue(frame, base.GetType(), prefix + "$b", data, offset + base.GetOffsetInBytes()))
+			return false;
+	}
+	for (uint32 fieldIdx = 0; fieldIdx < canonicalType.GetNumberOfFields(); fieldIdx++)
+	{
+		lldb::SBTypeMember field = canonicalType.GetFieldAtIndex(fieldIdx);
+		const char* fieldName = field.GetName();
+		if (fieldName == NULL)
+			return false;
+		lldb::SBType fieldType = field.GetType().GetCanonicalType();
+		lldb::TypeClass fieldClass = fieldType.GetTypeClass();
+		String partName = (fieldClass == lldb::eTypeClassUnion) ? prefix + "$u" : prefix + "$m$" + fieldName;
+		lldb::SBValue part = frame.FindVariable(partName.c_str());
+		if (!part.IsValid())
+		{
+			if ((fieldClass == lldb::eTypeClassStruct) || (fieldClass == lldb::eTypeClassClass))
+				return FillSplatValue(frame, fieldType, partName, data, offset + field.GetOffsetInBytes());
+			return false;
+		}
+		lldb::SBError error;
+		lldb::SBData partData = part.GetData();
+		uint64 size = BF_MIN(partData.GetByteSize(), fieldType.GetByteSize());
+		if (partData.ReadRawData(error, 0, data + offset + field.GetOffsetInBytes(), (size_t)size) != size)
+			return false;
+	}
+	return true;
+}
+
+// A struct parameter (or 'this') that was splatted, rebuilt from its parts (see FillSplatValue). The
+// struct's type isn't in the debug info for a parameter: 'this' takes the method's class, a parameter the
+// type of the first Beef type with those fields found through the parts' names.
+lldb::SBValue LLDBDebugger::FindSplatVariable(lldb::SBFrame& frame, const StringImpl& name)
+{
+	String prefix = "$" + name + "$";
+	bool hasParts = false;
+	lldb::SBValueList variables = frame.GetVariables(true, false, false, false);
+	for (uint32 varIdx = 0; varIdx < variables.GetSize(); varIdx++)
+	{
+		const char* varName = variables.GetValueAtIndex(varIdx).GetName();
+		if ((varName != NULL) && (strncmp(varName, prefix.c_str(), prefix.length()) == 0))
+			hasParts = true;
+	}
+	if (!hasParts)
+		return lldb::SBValue();
+
+	lldb::SBType type;
+	if (name == "this")
+	{
+		const char* functionName = frame.GetFunctionName();
+		if (functionName == NULL)
+			return lldb::SBValue();
+		String scope = FixBeefFunctionName(functionName);
+		int parenIdx = (int)scope.IndexOf('(');
+		if (parenIdx != -1)
+			scope = scope.Substring(0, parenIdx);
+		int lastDot = (int)scope.LastIndexOf('.');
+		if (lastDot <= 0)
+			return lldb::SBValue();
+		type = FindBeefType(frame, scope.Substring(0, lastDot));
+	}
+	else
+	{
+		// The function's definition has the lowered parameters; its declaration in the class has the
+		// Beef ones. The parameter's position is that of its first part among the lowered ones, counting
+		// each earlier splatted parameter once.
+		lldb::SBFunction function = frame.GetFunction();
+		const char* functionName = frame.GetFunctionName();
+		const char* mangledName = function.IsValid() ? function.GetMangledName() : NULL;
+		if ((functionName == NULL) || (mangledName == NULL))
+			return lldb::SBValue();
+		String scope = FixBeefFunctionName(functionName);
+		int parenIdx = (int)scope.IndexOf('(');
+		if (parenIdx != -1)
+			scope = scope.Substring(0, parenIdx);
+		int lastDot = (int)scope.LastIndexOf('.');
+		if (lastDot <= 0)
+			return lldb::SBValue();
+		lldb::SBType classType = FindBeefType(frame, scope.Substring(0, lastDot));
+		if (!classType.IsValid())
+			return lldb::SBValue();
+
+		int beefParamIdx = -1;
+		int beefParamCount = 0;
+		String lastSplatName;
+		bool hasThis = false;
+		lldb::SBValueList params = function.GetBlock().GetVariables(mLLDBTarget, true, false, false);
+		for (uint32 paramIdx = 0; paramIdx < params.GetSize(); paramIdx++)
+		{
+			const char* paramName = params.GetValueAtIndex(paramIdx).GetName();
+			if (paramName == NULL)
+				continue;
+			String splatName;
+			if (paramName[0] == '$')
+			{
+				int endIdx = (int)String(paramName).IndexOf('$', 1);
+				splatName = (endIdx != -1) ? String(paramName + 1, endIdx - 1) : String(paramName + 1);
+				if (splatName == lastSplatName)
+					continue;
+				lastSplatName = splatName;
+			}
+			else
+				lastSplatName.Clear();
+			if (((paramName[0] != '$') && (strcmp(paramName, "this") == 0)) || (splatName == "this"))
+			{
+				hasThis = true;
+				continue;
+			}
+			if (splatName == name)
+				beefParamIdx = beefParamCount;
+			beefParamCount++;
+		}
+		if (beefParamIdx == -1)
+			return lldb::SBValue();
+
+		for (uint32 funcIdx = 0; funcIdx < classType.GetNumberOfMemberFunctions(); funcIdx++)
+		{
+			lldb::SBTypeMemberFunction func = classType.GetMemberFunctionAtIndex(funcIdx);
+			const char* funcMangled = func.GetMangledName();
+			if ((funcMangled == NULL) || (strcmp(funcMangled, mangledName) != 0))
+				continue;
+			// The declaration lists 'this' first when the method has one
+			uint32 declIdx = (uint32)beefParamIdx + (hasThis ? 1 : 0);
+			if (func.GetNumberOfArguments() != (uint32)beefParamCount + (hasThis ? 1 : 0))
+				continue;
+			lldb::SBType paramType = func.GetArgumentTypeAtIndex(declIdx).GetCanonicalType();
+			lldb::TypeClass paramClass = paramType.GetTypeClass();
+			if ((paramClass == lldb::eTypeClassStruct) || (paramClass == lldb::eTypeClassClass) || (paramClass == lldb::eTypeClassUnion))
+			{
+				type = paramType;
+				break;
+			}
+		}
+	}
+	if (!type.IsValid())
+		return lldb::SBValue();
+
+	uint64 size = type.GetCanonicalType().GetByteSize();
+	if ((size == 0) || (size > 64 * 1024))
+		return lldb::SBValue();
+	Array<uint8> buffer;
+	buffer.Resize((int)size);
+	memset(buffer.mVals, 0, (size_t)size);
+	if (!FillSplatValue(frame, type, "$" + name, buffer.mVals, 0))
+		return lldb::SBValue();
+	lldb::SBError error;
+	lldb::SBData data;
+	data.SetData(error, buffer.mVals, (size_t)size, mLLDBTarget.GetByteOrder(), mLLDBTarget.GetAddressByteSize());
+	// Named after its parts, so a member walk goes to the part itself (see FindSplatMember)
+	return mLLDBTarget.CreateValueFromData(("$" + name).c_str(), data, type);
+}
+
+// A member of a splatted struct is one of its parts (a real variable) or a nested splat. The value's name is the parts' prefix.
+lldb::SBValue LLDBDebugger::FindSplatMember(lldb::SBFrame& frame, lldb::SBValue value, const StringImpl& name)
+{
+	const char* valueName = value.GetName();
+	if ((valueName == NULL) || (valueName[0] != '$'))
+		return lldb::SBValue();
+	String prefix = valueName;
+
+	// The field's declaring type adds a "$b" per base-class hop
+	lldb::SBType type = value.GetType().GetCanonicalType();
+	for (int depth = 0; (type.IsValid()) && (depth < 16); depth++)
+	{
+		for (uint32 fieldIdx = 0; fieldIdx < type.GetNumberOfFields(); fieldIdx++)
+		{
+			lldb::SBTypeMember field = type.GetFieldAtIndex(fieldIdx);
+			if ((field.GetName() == NULL) || (name != field.GetName()))
+				continue;
+			lldb::SBType fieldType = field.GetType().GetCanonicalType();
+			String partName = (fieldType.GetTypeClass() == lldb::eTypeClassUnion) ? prefix + "$u" : prefix + "$m$" + name;
+			lldb::SBValue part = frame.FindVariable(partName.c_str());
+			if (part.IsValid())
+				return part;
+			lldb::TypeClass fieldClass = fieldType.GetTypeClass();
+			if ((fieldClass != lldb::eTypeClassStruct) && (fieldClass != lldb::eTypeClassClass))
+				return lldb::SBValue();
+			uint64 size = fieldType.GetByteSize();
+			if ((size == 0) || (size > 64 * 1024))
+				return lldb::SBValue();
+			Array<uint8> buffer;
+			buffer.Resize((int)size);
+			memset(buffer.mVals, 0, (size_t)size);
+			if (!FillSplatValue(frame, fieldType, partName, buffer.mVals, 0))
+				return lldb::SBValue();
+			lldb::SBError error;
+			lldb::SBData data;
+			data.SetData(error, buffer.mVals, (size_t)size, mLLDBTarget.GetByteOrder(), mLLDBTarget.GetAddressByteSize());
+			return mLLDBTarget.CreateValueFromData(partName.c_str(), data, fieldType);
+		}
+		if (type.GetNumberOfDirectBaseClasses() == 0)
+			break;
+		type = type.GetDirectBaseClassAtIndex(0).GetType().GetCanonicalType();
+		prefix += "$b";
+	}
+	return lldb::SBValue();
+}
+
+lldb::SBValue LLDBDebugger::FindFrameThis(lldb::SBFrame& frame)
+{
+	lldb::SBValue thisValue = frame.FindVariable("this");
+	if (thisValue.IsValid())
+		return thisValue;
+	return FindSplatVariable(frame, "this");
 }
 
 // Parse and evaluate a Beef method call: "obj.Method(args)", "Method(args)" (on the implicit 'this', or a
@@ -6390,7 +6680,7 @@ lldb::SBValue LLDBDebugger::EvaluateBeefCall(lldb::SBFrame& frame, const StringI
 	}
 	else
 	{
-		thisValue = frame.FindVariable("this");
+		thisValue = FindFrameThis(frame);
 		if (!thisValue.IsValid())
 		{
 			// A static method of the class we're stopped in, called without naming the class
@@ -6845,16 +7135,44 @@ lldb::SBValue LLDBDebugger::CallBeefMethod(lldb::SBFrame& frame, lldb::SBValue t
 		}
 		_AddArg("void*", StrFormat("0x%llx", (unsigned long long)thisAddr));
 	}
+	// A struct argument is splatted into its fields like a struct 'this' (the debug info lists the
+	// lowered parameters), or passed by pointer when it's too big for that
+	lldb::SBTypeMemberFunction loweredMethod = thisByValue ? abiMethod : method;
+	uint32 paramIdx = thisByValue ? (uint32)thisArgTypes.size() : (thisListedInArgs ? 1 : 0);
 	for (intptr argIdx = 0; argIdx < callArgs.size(); argIdx++)
 	{
 		String paramCType;
-		uint32 paramIdx = (uint32)argIdx + (thisByValue ? (uint32)thisArgTypes.size() : (thisListedInArgs ? 1 : 0));
-		if (!GetCallCType((thisByValue ? abiMethod : method).GetArgumentTypeAtIndex(paramIdx), paramCType))
+		lldb::SBValue argValue = callArgs[argIdx];
+		lldb::SBType argCanonicalType = argValue.GetType().GetCanonicalType();
+		lldb::TypeClass argClass = argCanonicalType.GetTypeClass();
+		if (((argClass == lldb::eTypeClassStruct) || (argClass == lldb::eTypeClassClass)) && (!GetBeefTypedPrimitiveValue(argValue).IsValid()) &&
+			(!IsBeefObjectType(argCanonicalType)))
+		{
+			lldb::SBType paramType = loweredMethod.GetArgumentTypeAtIndex(paramIdx).GetCanonicalType();
+			if (paramType.IsPointerType())
+			{
+				_AddArg("void*", StrFormat("0x%llx", (unsigned long long)argValue.GetLoadAddress()));
+				paramIdx++;
+				continue;
+			}
+			Array<String> partTypes;
+			Array<String> partTexts;
+			if (!FlattenBeefStruct(argValue, partTypes, partTexts))
+			{
+				outError = "Passing this struct to methods isn't supported";
+				return lldb::SBValue();
+			}
+			for (intptr partIdx = 0; partIdx < partTypes.size(); partIdx++)
+				_AddArg(partTypes[partIdx], partTexts[partIdx]);
+			paramIdx += (uint32)partTypes.size();
+			continue;
+		}
+		if (!GetCallCType(loweredMethod.GetArgumentTypeAtIndex(paramIdx), paramCType))
 		{
 			outError = "Passing structs to methods isn't supported";
 			return lldb::SBValue();
 		}
-		lldb::SBValue argValue = callArgs[argIdx];
+		paramIdx++;
 		lldb::SBValue argPrimValue = GetBeefTypedPrimitiveValue(argValue);
 		if (argPrimValue.IsValid())
 			argValue = argPrimValue;

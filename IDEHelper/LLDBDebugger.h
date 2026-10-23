@@ -281,6 +281,9 @@ protected:
 	bool IsStepFiltered(lldb::SBFunction& function);
 	bool ContinueStep(lldb::SBThread& thread);
 	lldb::SBThread SelectStoppedThread();
+	lldb::SBValue FindSplatVariable(lldb::SBFrame& frame, const StringImpl& name);
+	lldb::SBValue FindSplatMember(lldb::SBFrame& frame, lldb::SBValue value, const StringImpl& name);
+	lldb::SBValue FindFrameThis(lldb::SBFrame& frame);
 	lldb::SBValue EvaluateBeefPath(lldb::SBFrame& frame, const StringImpl& expr);
 	lldb::SBValue EvaluateInThisContext(lldb::SBFrame& frame, const StringImpl& expr, const StringImpl& thisExpr, String& outText, String& outError);
 	lldb::SBValue FindFrameModuleGlobal(lldb::SBFrame& frame, const StringImpl& name);

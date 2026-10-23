@@ -1,0 +1,26 @@
+# Writing to a splatted struct's fields: 'this' in a struct method, and a struct parameter. Both are
+# by-value copies, so the caller's struct is unchanged.
+
+if (platform == "Win32") Stop()
+
+ShowFile("src/Splats.bf")
+GotoText("//SplatTester_SplatC_Call")
+ToggleBreakpoint()
+RunWithCompiling()
+StepOver()
+StepInto()
+AssertLineContains("return mB")
+AssertEvalEquals("mB = 7.5f", "7.5")
+AssertEvalEquals("mB", "7.5")
+AssertEvalEquals("this", "{ mC='Z' mB=7.5 mA=123 }")
+StepOut()
+AssertEvalEquals("sc.mB", "1.2")
+StepInto()
+AssertLineContains("return sc.mA")
+AssertEvalEquals("sc.mA = 5", "5")
+AssertEvalEquals("sc.mA", "5")
+AssertEvalEquals("sc.mA + 1", "6")
+AssertEvalEquals("sc.mC, assign='Q'", "'Q'")
+AssertEvalEquals("sc", "{ mC='Q' mB=1.2 mA=5 }")
+StepOut()
+AssertEvalEquals("sc.mA", "123")
