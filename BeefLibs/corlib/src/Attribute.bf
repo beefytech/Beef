@@ -544,7 +544,7 @@ namespace System
 
 	}
 
-	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias | .Property | .Field)]
+	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias | .Property | .Field | .StaticField)]
 	public struct ErrorAttribute : Attribute
 	{
 		public this(String error)
@@ -553,7 +553,7 @@ namespace System
 		}
 	}
 
-	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias | .Property | .Field)]
+	[AttributeUsage(.Method | .Constructor | .Class | .Struct | .Alias | .Property | .Field | .StaticField)]
 	public struct WarnAttribute : Attribute
 	{
 		public this(String error)
