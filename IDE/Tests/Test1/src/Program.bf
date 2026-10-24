@@ -21,6 +21,7 @@ namespace IDETest
 			HotSwap_LiveTypes.Test();
 			HotSwap_LocateSym01.Test();
 			HotSwap_Reflection.Test();
+			HotSwap_StringLiterals.Test();
 			HotSwap_TLS.Test();
 			InlineTester.Test();
 			LambdaTester.Test();
