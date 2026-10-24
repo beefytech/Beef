@@ -1453,6 +1453,8 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		CompileLog("VData unchanged, skipping\n");
 		return;
 	}
+	if (!isHotCompile)
+		bfModule->mDefinedStrings.Clear();
 
 	auto typeResolveModule = mContext->mUnreifiedModule;
 	BfTypeInstance* stringType = typeResolveModule->ResolveTypeDef(mStringTypeDef, BfPopulateType_Data)->ToTypeInstance();

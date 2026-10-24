@@ -1,0 +1,20 @@
+ShowFile("src/HotSwap_StringLiterals.bf")
+
+# Build with the literal, then remove its usage and rebuild without cleaning.
+ToggleCommentAt("UseString")
+Compile()
+AssertCompileSucceeded()
+ToggleCommentAt("UseString")
+Compile()
+AssertCompileSucceeded()
+
+GotoText("//StringPool_Start")
+ToggleBreakpoint()
+RunWithCompiling()
+AssertEvalEquals("GetLength()", "0")
+
+# The hot update must emit the literal omitted from the executable being debugged.
+ToggleCommentAt("UseString")
+Compile()
+AssertCompileSucceeded()
+AssertEvalEquals("GetLength()", "15")
