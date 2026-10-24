@@ -5556,7 +5556,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 					hashCtx.Mixin(ceInfo->mEmitSourceMap.mCount);
 					for (auto& kv : ceInfo->mEmitSourceMap)
 					{
-						hashCtx.Mixin(kv.mKey);
+						// The low part of the key is the emitter's position in its source file, which shifts with any edit earlier
+						//  in that file. Only mix in the partial index so that doesn't look like changed emissions and needlessly
+						//  rebuild our dependents mid-compile - the emitters are still distinguished by their order here.
+						hashCtx.Mixin((int32)(kv.mKey >> 32));
 						hashCtx.Mixin(kv.mValue.mKind);
 						hashCtx.Mixin(kv.mValue.mSrcStart);
 						hashCtx.Mixin(kv.mValue.mSrcEnd);
@@ -6685,7 +6688,14 @@ void BfModule::DoTypeInstanceMethodProcessing(BfTypeInstance* typeInstance)
 		BfTypeInterfaceEntry& typeInterfaceInst = typeInstance->mInterfaces[iFaceIdx];
 
 		auto checkInterface = typeInterfaceInst.mInterfaceType;
-		if (checkInterface->IsIncomplete())
+		if (checkInterface->IsDeleting())
+		{
+			// We were populated before a mid-compile rebuild deleted this interface. We still reserve its entries below,
+			//  and slotting skips it - this compile gets redone with us rebuilt.
+			mCompiler->RequestExtraCompile();
+			InternalError("DoTypeInstanceMethodProcessing using deleted interface", typeInstance->mTypeDef->GetRefNode());
+		}
+		else if (checkInterface->IsIncomplete())
 			PopulateType(checkInterface, BfPopulateType_Full_Force);
 
 		typeInterfaceInst.mStartInterfaceTableIdx = (int)typeInstance->mInterfaceMethodTable.size();

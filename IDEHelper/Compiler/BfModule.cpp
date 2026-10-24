@@ -15103,6 +15103,14 @@ BfModuleMethodInstance BfModule::GetMethodInstanceRaw(BfTypeInstance* typeInst, 
 	if (methodDef->mMethodType == BfMethodType_Init)
 		return BfModuleMethodInstance();
 
+	if (typeInst->IsDeleting())
+	{
+		// Can happen when a mid-compile rebuild deleted a type that something rebuilt earlier in this compile still refers to
+		mCompiler->RequestExtraCompile();
+		InternalError("GetMethodInstance for deleted type", methodDef->GetRefNode());
+		return BfModuleMethodInstance();
+	}
+
 	// Compile-time references must not reify a helper's owning type.
 	// Keep normal method generation for types that already have runtime uses.
 	SetAndRestoreValue<bool> prevIsReified(mIsReified,
@@ -27452,6 +27460,12 @@ bool BfModule::SlotVirtualMethod(BfMethodInstance* methodInstance, BfAmbiguityCo
 	for (auto& ifaceTypeInst : typeInstance->mInterfaces)
 	{
 		auto ifaceInst = ifaceTypeInst.mInterfaceType;
+		if (ifaceInst->IsDeleting())
+		{
+			// Deleted by a mid-compile rebuild after we were populated - this compile gets redone with us rebuilt
+			mCompiler->RequestExtraCompile();
+			continue;
+		}
 		if (ifaceInst->IsIncomplete())
 			PopulateType(ifaceInst, BfPopulateType_DataAndMethods);
 		int startIdx = ifaceTypeInst.mStartInterfaceTableIdx;

@@ -2045,6 +2045,9 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 				mGhostDependencies.Add(type);
 				// This keeps us from crashing from accessing deleted types on subsequent compiles
 				mFailTypes.TryAdd(dependentTypeInst, BfFailKind_Normal);
+				// The dependent was already rebuilt this revision (ie: before a mid-compile rebuild deleted us), so it still
+				//  refers to us for the rest of this compile. Its output can't be trusted, so compile again to rebuild it.
+				mCompiler->RequestExtraCompile();
 			}
 		}
 	}
