@@ -7363,6 +7363,13 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	int paramCount = methodInstance->GetParamCount();
 
+	// A delegate invoke thunk passes its own sret arg in irArgs (sret is NULL), so its slot must be skipped too
+	int thunkSretIdx = -1;
+	if ((callFlags & BfCreateCallFlags_DelegateThunkStatic) != 0)
+		thunkSretIdx = GetStructRetIdx(methodInstance, true);
+	else if ((callFlags & BfCreateCallFlags_DelegateThunkNonStatic) != 0)
+		thunkSretIdx = GetStructRetIdx(methodInstance);
+
 	for ( ; argIdx < callIRArgCount ; )
 	{
 		if (methodInstance->mIsIntrinsic)
@@ -7371,6 +7378,12 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 		if ((sret != NULL) && (argIdx == GetStructRetIdx(methodInstance)))
 		{
 			mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_StructRet);
+			argIdx++;
+			continue;
+		}
+
+		if (argIdx == thunkSretIdx)
+		{
 			argIdx++;
 			continue;
 		}

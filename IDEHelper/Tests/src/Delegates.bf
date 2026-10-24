@@ -230,6 +230,44 @@ namespace Tests
 			Test.Assert(splat.mB == 3345);
 		}
 
+		struct SretPos
+		{
+			public uint32 mLine;
+			public uint32 mColumn;
+		}
+
+		struct SretSel
+		{
+			public SretPos mAnchor;
+			public SretPos mHead;
+		}
+
+		static SretPos MoveSel(delegate SretPos(SretSel s, ref float goal) move, ref float goal)
+		{
+			SretSel s = .();
+			s.mHead.mLine = 7;
+			s.mHead.mColumn = 9;
+			return move(s, ref goal);
+		}
+
+		// The invoke thunk passes the sret arg itself, so the call's parameter attributes must skip it: else the
+		//  ref's dereferenceable lands on the lowered struct's second half and LLVM rejects the module
+		[Test]
+		public static void TestSretBeforeLoweredAndRef()
+		{
+			float goal = 1;
+			SretPos pos = MoveSel(scope (s, goal) => { goal += 1; return s.mHead; }, ref goal);
+			Test.Assert(pos.mLine == 7);
+			Test.Assert(pos.mColumn == 9);
+			Test.Assert(goal == 2);
+
+			uint32 add = 3;
+			pos = MoveSel(scope [&] (s, goal) => { goal += add; return .() { mLine = s.mHead.mLine + add, mColumn = s.mHead.mColumn }; }, ref goal);
+			Test.Assert(pos.mLine == 10);
+			Test.Assert(pos.mColumn == 9);
+			Test.Assert(goal == 5);
+		}
+
 		public static void TestCasting()
 		{
 			delegate int(int, int) dlg0 = scope (a, b) => 1;
