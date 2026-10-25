@@ -47,6 +47,10 @@ namespace TestsB
 			int la0a = la0.GetA();
 			Test.Assert(la0a == 2);
 
+			// LibA's part of globals LibC has a part of too: LibC's part (a closure capturing a LibC type)
+			//  must stay out of this executable, which does not reference LibC
+			Test.Assert(SharedGlobals.LibAGlobal() == 3);
+
 			// Same LibA5_Derived.GetVal body the Tests project links, but this executable sees no
 			//  extension of LibA5, so the same 'base.GetVal()' has to resolve to the original
 			LibA.LibA5_Derived la5d = scope .();

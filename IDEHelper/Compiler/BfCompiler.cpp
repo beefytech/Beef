@@ -523,14 +523,19 @@ bool BfCompiler::IsTypeAccessible(BfType* checkType, BfProject* curProject)
 	BfTypeInstance* typeInst = checkType->ToTypeInstance();
 	if (typeInst != NULL)
 	{
-		if (checkType->IsTuple())
+		// A closure's type is its delegate's, from the delegate's project, so what it captures decides who can see it
+		if ((checkType->IsTuple()) || (checkType->IsClosure()))
 		{
 			for (auto&& fieldInst : typeInst->mFieldInstances)
 			{
-				if (!IsTypeAccessible(fieldInst.mResolvedType, curProject))
+				if ((fieldInst.mResolvedType != NULL) && (!IsTypeAccessible(fieldInst.mResolvedType, curProject)))
 					return false;
 			}
 		}
+
+		// Nor does a closure carry its delegate's signature: that is its source delegate's
+		if ((checkType->IsClosure()) && (((BfClosureType*)typeInst)->mSrcDelegate != NULL) && (!IsTypeAccessible(((BfClosureType*)typeInst)->mSrcDelegate, curProject)))
+			return false;
 
 		auto genericTypeInst = typeInst->ToGenericTypeInstance();
 		if (genericTypeInst != NULL)
@@ -587,14 +592,17 @@ bool BfCompiler::IsTypeUsed(BfType* checkType, BfProject* curProject, bool conse
 		if (checkType->IsUnspecializedType())
 			return typeInst->mIsReified || conservativeCheck;
 
-		if (checkType->IsTuple())
+		if ((checkType->IsTuple()) || (checkType->IsClosure()))
 		{
 			for (auto&& fieldInst : typeInst->mFieldInstances)
 			{
-				if (!IsTypeUsed(fieldInst.mResolvedType, curProject, true))
+				if ((fieldInst.mResolvedType != NULL) && (!IsTypeUsed(fieldInst.mResolvedType, curProject, true)))
 					return false;
 			}
 		}
+
+		if ((checkType->IsClosure()) && (((BfClosureType*)typeInst)->mSrcDelegate != NULL) && (!IsTypeUsed(((BfClosureType*)typeInst)->mSrcDelegate, curProject, true)))
+			return false;
 
 		auto genericTypeInst = typeInst->ToGenericTypeInstance();
 		if (genericTypeInst != NULL)
