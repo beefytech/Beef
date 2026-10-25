@@ -7363,7 +7363,7 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 	int paramCount = methodInstance->GetParamCount();
 
-	// A delegate invoke thunk passes its own sret arg in irArgs (sret is NULL), so its slot must be skipped too
+	// A delegate invoke thunk passes its own sret arg in irArgs (sret is NULL), so its slot is handled here too
 	int thunkSretIdx = -1;
 	if ((callFlags & BfCreateCallFlags_DelegateThunkStatic) != 0)
 		thunkSretIdx = GetStructRetIdx(methodInstance, true);
@@ -7384,6 +7384,8 @@ BfTypedValue BfExprEvaluator::CreateCall(BfAstNode* targetSrc, BfMethodInstance*
 
 		if (argIdx == thunkSretIdx)
 		{
+			// Marked as a real call's is: AArch64 passes sret in x8, not as the first argument
+			mModule->mBfIRBuilder->Call_AddAttribute(callInst, argIdx + 1, BfIRAttribute_StructRet);
 			argIdx++;
 			continue;
 		}
