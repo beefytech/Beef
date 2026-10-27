@@ -12682,6 +12682,11 @@ void BfModule::ClearConstData()
 
 BfTypedValue BfModule::GetTypedValueFromConstant(BfConstant* constant, BfIRConstHolder* constHolder, BfType* wantType)
 {
+	// A default value can outlive a rebuild of its type: the type may be back to undefined here, and
+	//  an undefined enum is not yet a typed primitive its underlying constant can become
+	if (wantType->IsIncomplete())
+		PopulateType(wantType, BfPopulateType_Data);
+
 	switch (constant->mTypeCode)
 	{
 	case BfTypeCode_StringId:
