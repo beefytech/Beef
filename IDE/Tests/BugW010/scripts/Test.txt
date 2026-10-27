@@ -1,0 +1,22 @@
+# This tests that a hot compile emits a module the executable doesn't have, even when its object is cached
+
+ShowFile("src/Program.bf")
+
+# Build with the module, then remove its only use and rebuild so the executable no longer contains it
+ToggleCommentAt("UseSource")
+Compile()
+AssertCompileSucceeded()
+ToggleCommentAt("UseSource")
+Compile()
+AssertCompileSucceeded()
+
+GotoText("//Start")
+ToggleBreakpoint()
+RunWithCompiling()
+AssertEvalEquals("GetTotal()", "0")
+
+# The module's object is unchanged since the first build, so the hot compile must not treat it as cached
+ToggleCommentAt("UseSource")
+Compile()
+AssertCompileSucceeded()
+AssertEvalEquals("GetTotal()", "42")

@@ -1,0 +1,9 @@
+FileVersion = 1
+Projects = {Bug = {Path = "."}}
+
+[Workspace]
+StartupProject = "Bug"
+
+# O0 selects the LLVM backend, where a hot compile could reuse a cached object instead of handing it to the debugger
+[Configs.Debug.Win64]
+BfOptimizationLevel = "O0"

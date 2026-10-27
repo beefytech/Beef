@@ -1453,6 +1453,11 @@ void BfCompiler::CreateVData(BfVDataModule* bfModule)
 		CompileLog("VData unchanged, skipping\n");
 		return;
 	}
+
+	// mDefinedStrings mirrors the literals in the executable being debugged, and hot compiles skip emitting anything in it.
+	//  We're about to regenerate those from scratch below, so any literal that is no longer referenced won't be in the new
+	//  executable - keeping it here would make a later hot compile skip it and fail to resolve its __bfStrObj symbol.
+	//  Note this is after the "VData unchanged" return above, since then the executable keeps the literals it already had.
 	if (!isHotCompile)
 		bfModule->mDefinedStrings.Clear();
 

@@ -350,6 +350,15 @@ void BfCodeGenThread::RunLoop()
 		}
 #endif
 
+		if (request->mOptions.mIsHotCompile)
+		{
+			// A cached object only exists on disk, but a hot compile has to hand the object to the debugger to load into
+			//  the running process, which may not contain this module at all (ie: an intervening rebuild dropped it).
+			//  Note the OgPlus backend already misses here, since mWriteToLib is hashed and is only set for non-hot builds
+			orderedHash = Val128();
+			hasCacheMatch = false;
+		}
+
 		//TODO: Temporary, to make sure it keeps getting rebuilt
 
 #ifdef CODEGEN_DISABLE_CACHE_BEEFBACKEND
