@@ -160,5 +160,15 @@ namespace Tests
 			Test.Assert((getNewer() == 20) && (getOlder() == 10));
 			Test.Assert(CallWith(() => @y) == 20);
 		}
+
+		// LibC's part of the SharedGlobals globals holds a closure capturing a LibC type; TestsB, which
+		//  uses LibA's part but does not reference LibC, links only if it leaves LibC's part out
+		[Test]
+		public static void TestClosuresOfAnotherProjectsTypes()
+		{
+			SharedGlobals.LibCCaptured captured = .() { mValue = 7 };
+			Test.Assert(SharedGlobals.LibCCaptures(captured) == 7);
+			Test.Assert(SharedGlobals.LibAGlobal() == 3);
+		}
 	}
 }

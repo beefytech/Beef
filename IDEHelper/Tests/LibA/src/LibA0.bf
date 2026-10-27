@@ -235,3 +235,12 @@ static
 		return 1;
 	}
 }
+
+namespace SharedGlobals
+{
+	// LibA's part of the globals LibC also has globals in; TestsB calls it
+	static
+	{
+		public static int32 LibAGlobal() => 3;
+	}
+}
