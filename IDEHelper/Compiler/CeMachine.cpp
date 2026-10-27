@@ -11223,7 +11223,9 @@ CeTypeInfo* CeMachine::GetTypeInfo(BfType* type)
 	}
 
 	mCeModule->PopulateType(typeInstance, BfPopulateType_DataAndMethods);
-	ceTypeInfo->mRevision = typeInstance->mRevision;
+	// A type reached through a cycle can still be declaring its methods: answer with what it has
+	//  now, but don't keep that, or every later read this compile sees the partial list
+	ceTypeInfo->mRevision = (typeInstance->mDefineState >= BfTypeDefineState_DefinedAndMethodsSlotted) ? typeInstance->mRevision : -1;
 	for (auto& methodGroup : typeInstance->mMethodInstanceGroups)
 	{
 		if (methodGroup.mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference)

@@ -875,5 +875,61 @@ namespace Tests
 		{
 			Test.Assert(cZeroLengthMemOps == 1);
 		}
+
+		/// Reads its base's methods while it is applied, the way a generator asks whether an
+		///  ancestor already declares a member
+		[AttributeUsage(.Class)]
+		struct ReadsBaseMethodsAttribute : Attribute, IComptimeTypeApply
+		{
+			[Comptime]
+			public void ApplyToType(Type type)
+			{
+				int count = 0;
+				for (let m in type.BaseType.GetMethods(.Public | .Instance | .DeclaredOnly))
+					count++;
+				Compiler.EmitTypeBody(type, scope $"public const int cBaseMethodsSeen = {count};\n");
+			}
+		}
+
+		/// Declaring Make populates CycleDerived, whose generator reads this type's methods before
+		///  they are all declared
+		class CycleBase
+		{
+			public int First => 1;
+			public CycleDerived Make() => null;
+			public int Second => 2;
+		}
+
+		/// CycleBase's members without the cycle
+		class CycleTwin
+		{
+			public int First => 1;
+			public Object Make() => null;
+			public int Second => 2;
+		}
+
+		[ReadsBaseMethods]
+		class CycleDerived : CycleBase
+		{
+		}
+
+		[Comptime]
+		static int CountDeclaredMethods(Type type)
+		{
+			int count = 0;
+			for (let m in type.GetMethods(.Public | .Instance | .DeclaredOnly))
+				count++;
+			return count;
+		}
+
+		// A type's methods read while it was still declaring them (through a cycle) were cached as
+		//  they stood, so every later read in the compile saw that partial list
+		[Test]
+		public static void TestMethodsReadAfterACycle()
+		{
+			Test.Assert(CountDeclaredMethods(typeof(CycleTwin)) >= 3);
+			Test.Assert(CountDeclaredMethods(typeof(CycleBase)) == CountDeclaredMethods(typeof(CycleTwin)));
+			Test.Assert(CycleDerived.cBaseMethodsSeen >= 0);
+		}
 	}
 }
