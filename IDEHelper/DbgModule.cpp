@@ -66,6 +66,7 @@ DbgCompileUnit::DbgCompileUnit(DbgModule* dbgModule)
 
 	mLowPC = (addr_target)-1;
 	mHighPC = 0;
+	mStmtListOffset = -1;
 	//mDoPrimaryRemapping = true;
 	mNeedsLineDataFixup = true;
 	mWasHotReplaced = false;
@@ -2236,6 +2237,7 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 		mDebugger = NULL;
 	mDebugLineData = NULL;
 	mDebugInfoData = NULL;
+	mDebugInfoSize = 0;
 	mDebugPubNames = NULL;
 	mDebugFrameAddress = 0;
 	mDebugFrameData = NULL;
@@ -3278,7 +3280,12 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 		return false;
 	const uint8* dataEnd = data + length;
 	int version = GET(short);
-	int abbrevOffset = GET(int);
+	if (version >= 5)
+	{
+		dataPtr = dataEnd;
+		return true;
+	}
+	int64 abbrevOffset = mIsDwarf64 ? GET(int64) : GET(int);
 	char pointerSize = GET(char);
 
 	ParseAbbrevData(mDebugAbbrevData + abbrevOffset);
@@ -3289,6 +3296,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 	mCompileUnits.push_back(compileUnit);
 
 	DbgSubprogram* subProgram = NULL;
+	addr_target cuBaseAddr = 0;
 
 	//std::map<int, DbgType*> typeMap;
 	//std::map<int, DbgSubprogram*> subprogramMap;
@@ -3350,7 +3358,10 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 		bool hasChildren = GET_FROM(abbrevData, char) == DW_CHILDREN_yes;
 
 		int64 atLowPC = 0;
+		int64 atRawLowPC = 0;
 		int64 atHighPC = 0;
+		bool atHighPCIsAddr = false;
+		int64 atStmtList = -1;
 		int64 atRanges = 0;
 		bool hasRanges = false;
 		const uint8* atFrameBase = NULL;
@@ -3421,13 +3432,15 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				atBitSize = ReadValue<int>(data, form);
 				break;
 			case DW_AT_stmt_list:
-				ReadValue<int64_t>(data, form);
+				atStmtList = ReadValue<int64_t>(data, form);
 				break;
 			case DW_AT_low_pc:
-				atLowPC = RemapAddr((addr_target)ReadValue<int64_t>(data, form));
+				atRawLowPC = ReadValue<int64_t>(data, form);
+				atLowPC = RemapAddr((addr_target)atRawLowPC);
 				break;
 			case DW_AT_high_pc:
 				atHighPC = ReadValue<int64_t>(data, form);
+				atHighPCIsAddr = form == DW_FORM_addr;
 				break;
 			case DW_AT_language:
 				/*TODO:*/ ReadValue<int>(data, form);
@@ -3703,27 +3716,30 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 			}
 		}
 
+		if (atHighPCIsAddr)
+			atHighPC = (int64)RemapAddr((addr_target)atHighPC) - atLowPC;
+
+		if (entryTag == DW_TAG_compile_unit)
+			cuBaseAddr = (addr_target)atRawLowPC;
+
 		if ((hasRanges) && (atLowPC == 0))
 		{
+			addr_target baseAddr = cuBaseAddr;
 			addr_target* rangeData = (addr_target*)(mDebugRangesData + atRanges);
 			while (true)
 			{
 				addr_target lowPC = *(rangeData++);
-				if (lowPC == 0)
-					break;
 				addr_target highPC = *(rangeData++);
-
-				if (compileUnit->mLowPC != (addr_target)-1)
+				if ((lowPC == 0) && (highPC == 0))
+					break;
+				if (lowPC == (addr_target)-1)
 				{
-					// These are sometimes relative to the compile unit and sometimes absolute
-					if (highPC + compileUnit->mLowPC <= compileUnit->mHighPC)
-					{
-						lowPC += compileUnit->mLowPC;
-						highPC += compileUnit->mLowPC;
-					}
+					baseAddr = highPC;
+					continue;
 				}
 
-				highPC -= lowPC;
+				lowPC = RemapAddr(baseAddr + lowPC);
+				highPC = RemapAddr(baseAddr + highPC) - lowPC;
 
 				// Select the largest range.  We have some cases where some hoisting and such will
 				//  give us a small inlining aberration much earlier than expected so this ignores that
@@ -3732,11 +3748,6 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					atLowPC = lowPC;
 					atHighPC = highPC;
 				}
-
-				/*if ((atLowPC == 0) || (lowPC < (addr_target)atLowPC))
-					atLowPC = lowPC;
-				if (highPC > (addr_target)atHighPC)
-					atHighPC = highPC;*/
 			}
 		}
 
@@ -3749,7 +3760,9 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				compileUnit->mProducer = atProducer;
 				if (atCompDir != NULL)
 					compileUnit->mCompileDir = atCompDir;
-				if (atLowPC != 0)
+				compileUnit->mStmtListOffset = atStmtList;
+				// A CU with ranges spans several regions; its bounds come from its subprograms instead
+				if ((atLowPC != 0) && (!hasRanges))
 				{
 					compileUnit->mLowPC = (addr_target)atLowPC;
 					compileUnit->mHighPC = (addr_target)(atLowPC + atHighPC);
@@ -3855,7 +3868,8 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					subProgram->mFrameBaseLen = (int)atFrameBaseLength;
 					subProgram->mFrameBaseData = atFrameBase;
 
-					if (atHighPC > 0)
+					// Inlinees are found through their root's line data
+					if ((atHighPC > 0) && (entryTag != DW_TAG_inlined_subroutine))
 					{
 						MapSubprogram(subProgram);
 					}
@@ -4829,7 +4843,7 @@ DbgSrcFile* DbgModule::AddSrcFile(DbgCompileUnit* compileUnit, const String& src
 	return dwSrcFile;
 }
 
-bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
+bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, DbgCompileUnit* dwCompileUnit)
 {
 	BP_ZONE("ParseDebugLineInfo");
 
@@ -4838,12 +4852,13 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
 	int length = GET(int);
 	if (length == 0)
 		return false;
-	DbgCompileUnit* dwCompileUnit = mCompileUnits[compileUnitIdx];
 	const uint8* dataEnd = data + length;
 	short version = GET(short);
 	int headerLength = GET(int);
 	char minimumInstructionLength = GET(char);
 	int maximumOperationsPerInstruction = 1;
+	if (version >= 4)
+		maximumOperationsPerInstruction = GET(uint8);
 	char defaultIsStmt = GET(char);
 	char lineBase = GET(char);
 	char lineRange = GET(char);
@@ -5038,14 +5053,9 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
 				dwLineData.mRelAddress = newAddress;
 				dwLineData.mOpIndex = newOpIndex;
 
-				DbgLineData* lastLineData = NULL;
-
-				if ((newAddress == oldAddress) && (queuedPostPrologue) && (curSubprogram != NULL) && (curSubprogram->mBlock.mLowPC == newAddress))
-				{
-					// Adjust this line later
-					ADD_LINEDATA(dwLineData);
-				}
-
+				ADD_LINEDATA(dwLineData);
+				dwLineData.mBasicBlock = false;
+				dwLineData.mDiscriminator = 0;
 				queuedPostPrologue = false;
 			}
 			break;
@@ -5057,6 +5067,39 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
 	dataPtr = data;
 
 	return true;
+}
+
+void DbgModule::ParseDWARFUnits()
+{
+	if (mDebugInfoData == NULL)
+		return;
+
+	mDbgFlavor = DbgFlavor_GNU;
+	mMasterCompileUnit = new DbgCompileUnit(this);
+	mMasterCompileUnit->mDbgModule = this;
+	mMasterCompileUnit->mIsMaster = true;
+
+	const uint8* data = mDebugInfoData;
+	const uint8* dataEnd = (mDebugInfoSize > 0) ? mDebugInfoData + mDebugInfoSize : NULL;
+	while (((dataEnd == NULL) || (data < dataEnd)) && (ParseDWARF(data))) {}
+	CreateNamespaces();
+
+	// Must be added last so module reference indices still map correctly
+	mCompileUnits.push_back(mMasterCompileUnit);
+}
+
+void DbgModule::ParseDWARFLines()
+{
+	if (mDebugLineData == NULL)
+		return;
+
+	for (auto compileUnit : mCompileUnits)
+	{
+		if (compileUnit->mStmtListOffset < 0)
+			continue;
+		const uint8* data = mDebugLineData + compileUnit->mStmtListOffset;
+		ParseDebugLineInfo(data, compileUnit);
+	}
 }
 
 addr_target DbgModule::GetHotTargetAddress(DbgHotTargetSection* hotTargetSection)
@@ -6386,20 +6429,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 
 	ProcessDebugInfo();
 
-	if (mDebugInfoData != NULL)
-	{
-		mDbgFlavor = DbgFlavor_GNU;
-		mMasterCompileUnit = new DbgCompileUnit(this);
-		mMasterCompileUnit->mDbgModule = this;
-		mMasterCompileUnit->mIsMaster = true;
-
-		const uint8* data = mDebugInfoData;
-		while (ParseDWARF(data)) {}
-		CreateNamespaces();
-
-		// Must be added last so module reference indices still map correctly
-		mCompileUnits.push_back(mMasterCompileUnit);
-	}
+	ParseDWARFUnits();
 
 	ParseDebugFrameData();
 	ParseEHFrameData();
@@ -6407,13 +6437,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 	mEndTypeIdx = (int)linkedModule->mTypes.size();
 	mEndSubprogramIdx = (int)mSubprograms.size();
 
-	if (mDebugLineData != NULL)
-	{
-		const uint8* data = mDebugLineData;
-		for (int compileUnitIdx = 0; true; compileUnitIdx++)
-			if (!ParseDebugLineInfo(data, compileUnitIdx))
-			break;
-	}
+	ParseDWARFLines();
 
 	{
 		BP_ZONE("ReadPE_ReadSymbols");
@@ -6938,6 +6962,12 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 				stackFrameData[stackIdx++] = (addr_target)val;
 			}
 			break;
+		case DW_OP_constu:
+			{
+				uint64 val = DecodeULEB128(locData);
+				stackFrameData[stackIdx++] = (addr_target)val;
+			}
+			break;
 		case DW_OP_stack_value:
 			{
 				*outAddrType = DbgAddrType_Value;
@@ -7075,6 +7105,7 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 			}
 			break;
 		case DW_OP_GNU_push_tls_address:
+		case DW_OP_form_tls_address:
 			{
 				if ((mTLSAddr == 0) || (mTLSIndexAddr == 0))
 					return 0;
