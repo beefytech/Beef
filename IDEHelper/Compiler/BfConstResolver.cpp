@@ -400,6 +400,13 @@ bool BfConstResolver::PrepareMethodArguments(BfAstNode* targetSrc, BfMethodMatch
 						argValue = mModule->GetCompilerFieldValue(globalVar->mName);
 				}
 			}			
+
+			// Attributes come through here, and a constant default we cannot convert would otherwise
+			//  drop the whole attribute, leaving the error to land wherever its absence is noticed.
+			//  BfExprEvaluator reports the same failure for a normal call. The '#' globals are left
+			//  alone here - we have no caller state for most of them
+			if ((!argValue) && (foreignConst->mConstType != BfConstType_GlobalVar))
+				mModule->Fail("Default parameter value failed", targetSrc);
 		}
 
 		if ((!argValue) && (argIdx < arguments.size()))

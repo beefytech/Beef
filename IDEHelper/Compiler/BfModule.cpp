@@ -12684,7 +12684,7 @@ BfTypedValue BfModule::GetTypedValueFromConstant(BfConstant* constant, BfIRConst
 {
 	// A default value can outlive a rebuild of its type: the type may be back to undefined here, and
 	//  an undefined enum is not yet a typed primitive its underlying constant can become
-	if (wantType->IsIncomplete())
+	if ((wantType != NULL) && (wantType->IsIncomplete()))
 		PopulateType(wantType, BfPopulateType_Data);
 
 	switch (constant->mTypeCode)
