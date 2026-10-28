@@ -1026,7 +1026,8 @@ DbgType* DbgExprEvaluator::ResolveTypeRef(BfTypeReference* typeRef)
 
 DbgType* DbgExprEvaluator::ResolveTypeRef(BfAstNode* typeRef, BfAstNode** parentChildRef)
 {
-	StringT<128> name = typeRef->ToString();
+	StringT<128> name;
+	typeRef->ToString(name);
 	if ((name.StartsWith("_T_")) && ((int)name.IndexOf('.') == -1))
 	{
 		int endIdx = name.length();
@@ -2255,7 +2256,7 @@ DbgTypedValue DbgExprEvaluator::Cast(BfAstNode* srcNode, const DbgTypedValue& ty
 				{
 					// Never allow this
 				}
-				else if ((fromTypeCode == BfTypeCode_UInt64) && (srcVal < 0))
+				else if ((fromTypeCode == DbgType_u64) && (srcVal < 0))
 				{
 					// There's nothing that this could fit into
 				}
@@ -3573,7 +3574,7 @@ void DbgExprEvaluator::AutocompleteAddTopLevelTypes(const StringImpl& filter)
 				mAutoComplete->AddEntry(AutoCompleteEntry("valuetype", primType->mName), filter);
 		}
 
-		char* primNames[2] = { "int", "uint" };
+		const char* primNames[2] = { "int", "uint" };
 		for (auto primName : primNames)
 			mAutoComplete->AddEntry(AutoCompleteEntry("valuetype", primName), filter);
 	}
@@ -4174,7 +4175,7 @@ void DbgExprEvaluator::Visit(BfAssignmentExpression* assignExpr)
 	auto ptr = mResult;
 	mResult = DbgTypedValue();
 
-	if (binaryOp != NULL)
+	if (binaryOp != BfBinaryOp_None)
 	{
 		PerformBinaryOperation(assignExpr->mLeft, assignExpr->mRight, binaryOp, assignExpr->mOpToken, true);
 	}
@@ -6118,9 +6119,9 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 
 			mResult.mType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
 			if (binaryOp == BfBinaryOp_Equality)
-				mResult.mBool = resultTypedValue->mPtr == NULL;
+				mResult.mBool = resultTypedValue->mPtr == 0;
 			else
-				mResult.mBool = resultTypedValue->mPtr != NULL;
+				mResult.mBool = resultTypedValue->mPtr != 0;
 			return;
 		}
 
@@ -6176,9 +6177,9 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		{
 			mResult.mType = mDbgModule->GetPrimitiveType(DbgType_Bool, GetLanguage());
 			if ((binaryOp == BfBinaryOp_Equality) || (binaryOp == BfBinaryOp_StrictEquality))
-				mResult.mBool = resultTypedValue->mPtr == NULL;
+				mResult.mBool = resultTypedValue->mPtr == 0;
 			else
-				mResult.mBool = resultTypedValue->mPtr != NULL;
+				mResult.mBool = resultTypedValue->mPtr != 0;
 		}
 		else
 		{
@@ -6312,9 +6313,9 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 		}
 	}
 
-	if (convLeftValue == NULL)
+	if (!convLeftValue)
 		convLeftValue = Cast(leftExpression, leftValue, resultType, explicitCast);
-	if (convRightValue == NULL)
+	if (!convRightValue)
 		convRightValue = Cast(rightExpression, rightValue, resultType, explicitCast);
 
 	PerformBinaryOperation(resultType, convLeftValue, convRightValue, binaryOp, opToken);
@@ -6343,7 +6344,7 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 		return;
 	}
 
-	if ((convLeftValue == NULL) || (convRightValue == NULL))
+	if ((!convLeftValue) || (!convRightValue))
 		return;
 
 	if ((resultType->IsEnum()) || (resultType->IsTypedPrimitive()))

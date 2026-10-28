@@ -111,11 +111,11 @@ void DebugTarget::SetupTargetBinary()
 
 		checkHotReserveAddr = (addr_target)mTargetBinary->mImageBase;
 
-		addr_target reservedPtr = NULL;
+		addr_target reservedPtr = 0;
 		while ((addr_target)checkHotReserveAddr < (addr_target)mTargetBinary->mImageBase + 0x30000000)
 		{
 			reservedPtr = mDebugger->ReserveHotHeapMemory(checkHotReserveAddr, reserveSize);
-			if (reservedPtr != NULL)
+			if (reservedPtr != 0)
 			{
 				mHotHeapAddr = reservedPtr;
 				mHotHeapReserveSize = reserveSize;
@@ -2365,7 +2365,7 @@ bool DebugTarget::GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgB
 					if (variable->mIsConst)
 						*outAddr = (uint64)&variable->mConstValue;
 					else
-						*outAddr = NULL; // Optimized out?
+						*outAddr = 0; // Optimized out?
 					return true;
 				}
 				else

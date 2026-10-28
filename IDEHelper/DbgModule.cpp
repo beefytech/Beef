@@ -2257,7 +2257,7 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 	mId = 0;
 	mStartSubprogramIdx = 0;
 	mEndSubprogramIdx = 0;
-	mCodeAddress = NULL;
+	mCodeAddress = 0;
 	mMayBeOld = false;
 	mTimeStamp = 0;
 	mExpectedFileSize = 0;
@@ -3802,7 +3802,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					subProgram->mName = atName;
 
 					subProgram->mLinkName = atLinkageName;
-					if (atAbstractOrigin != NULL)
+					if (atAbstractOrigin != 0)
 					{
 						DbgSubprogram* originSubProgram = GetOrCreate<DbgSubprogram*>(atAbstractOrigin, dataMap);
 						auto abstractOriginEntry = AbstractOriginEntry::Create(DbgSubprogram::ClassType, subProgram, originSubProgram);
@@ -4069,7 +4069,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					// We had to remove the above for hot loading, calculate the mStaticCachedAddr later.  Just put into mStaticVariables for now
 					mStaticVariables.push_back(dbgVariable);
 
-					if (atAbstractOrigin != NULL)
+					if (atAbstractOrigin != 0)
 					{
 						DbgVariable* originVariable = GetOrCreate<DbgVariable*>(atAbstractOrigin, dataMap);
 						auto abstractOriginEntry = AbstractOriginEntry::Create(DbgVariable::ClassType, dbgVariable, originVariable);
@@ -5061,7 +5061,7 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, int compileUnitIdx)
 
 addr_target DbgModule::GetHotTargetAddress(DbgHotTargetSection* hotTargetSection)
 {
-	if ((hotTargetSection->mTargetSectionAddr == NULL) && (hotTargetSection->mDataSize > 0))
+	if ((hotTargetSection->mTargetSectionAddr == 0) && (hotTargetSection->mDataSize > 0))
 	{
 		if (hotTargetSection->mNoTargetAlloc)
 			return 0;
@@ -5070,7 +5070,7 @@ addr_target DbgModule::GetHotTargetAddress(DbgHotTargetSection* hotTargetSection
 		hotTargetSection->mTargetSectionAddr = mDebugger->AllocHotTargetMemory(hotTargetSection->mDataSize, hotTargetSection->mCanExecute, hotTargetSection->mCanWrite, &hotTargetSection->mTargetSectionSize);
 		hotTargetSection->mImageOffset = (int)mImageSize;
 
-		if (mImageBase == NULL)
+		if (mImageBase == 0)
 		{
 			mImageBase = hotTargetSection->mTargetSectionAddr;
 			mOrigImageData->mAddr = mImageBase;
@@ -5304,7 +5304,7 @@ void DbgModule::ParseHotTargetSections(DataStream* stream, addr_target* resolved
 						}
 					}
 
-					if ((symInfo->mSectionNum != 0) && (resolvedSymbolAddr == NULL))
+					if ((symInfo->mSectionNum != 0) && (resolvedSymbolAddr == 0))
 					{
 						DbgHotTargetSection* refHotTargetSection = mHotTargetSections[symInfo->mSectionNum - 1];
 						resolvedSymbolAddr = GetHotTargetAddress(refHotTargetSection) + symInfo->mValue;
@@ -5382,7 +5382,7 @@ void DbgModule::CommitHotTargetSections()
 				}
 
 				if (isTemp)
-					delete imageDestPtr;
+					delete [] (uint8*)imageDestPtr;
 			}
 		}
 	}
@@ -7286,7 +7286,7 @@ void DbgModule::ProcessHotSwapVariables()
 				else if (strstr(oldVariable->mName, "sStringLiterals") != NULL)
 				{
 					addr_target oldAddress = mDebugTarget->GetStaticAddress(oldVariable);
-					addr_target newAddress = NULL;
+					addr_target newAddress = 0;
 					if (mDbgFlavor == DbgFlavor_GNU)
 					{
 						newAddress = mDebugTarget->GetStaticAddress(staticVariable);
