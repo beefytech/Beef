@@ -1251,7 +1251,7 @@ public:
 	char* DbgDupString(const char* str, const char* allocName = NULL);
 	DbgModule* GetLinkedModule();
 	addr_target GetTargetImageBase();
-	addr_target RemapAddr(addr_target addr);
+	virtual addr_target RemapAddr(addr_target addr);
 	template <typename T>
 	T GetOrCreate(int idx, DbgDataMap& dataMap);
 	DbgType* GetOrCreateType(int typeIdx, DbgDataMap& typeMap);
@@ -1308,6 +1308,7 @@ public:
 	static bool CanRead(DataStream* stream, DebuggerResult* outResult);
 
 	bool ReadCOFF(DataStream* stream, DbgModuleKind dbgModuleKind);
+	virtual bool ReadImage(DataStream* stream, DbgModuleKind dbgModuleKind) { return ReadCOFF(stream, dbgModuleKind); }
 	void RemoveTargetData();
 	virtual void ReportMemory(MemReporter* memReporter);
 
