@@ -3483,6 +3483,7 @@ void BfSystem::AddToCompositePartial(BfPassInstance* passInstance, BfTypeDef* co
 		BF_ASSERT(newProp->mDeclaringType != NULL);
 		for (int methodIdx = 0; methodIdx < (int)newProp->mMethods.size(); methodIdx++)
 			newProp->mMethods[methodIdx] = typeDef->mMethods[startMethodIdx + newProp->mMethods[methodIdx]->mIdx];
+		newProp->mIdx = (int)typeDef->mProperties.size();
 		typeDef->mProperties.push_back(newProp);
 	}
 	typeDef->mPropertySet.Clear();
