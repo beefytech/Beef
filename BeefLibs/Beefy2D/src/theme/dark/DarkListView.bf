@@ -109,7 +109,9 @@ namespace Beefy.theme.dark
         public uint32? mTextColor;
         public uint32 mFocusColor = DarkTheme.COLOR_MENU_FOCUSED;
         public uint32 mSelectColor = DarkTheme.COLOR_MENU_SELECTED;
-        public float mTextAreaLengthOffset;        
+        public float mTextAreaLengthOffset;
+		// Space kept clear at the cell's right (eg for buttons): a longer label ends in an ellipsis before it.
+		public float mLabelRightInset;
 
         public DragEvent mCurDragEvent ~ delete _;
         public DragHelper mDragHelper ~ delete _;
@@ -347,11 +349,13 @@ namespace Beefy.theme.dark
 					wantWidth = mListView.mWidth - labelX - mX;
 					if (listView.mInsets != null)
 						wantWidth -= listView.mInsets.mRight;
-				}							 
+				}
+				if (mLabelRightInset > 0)
+					wantWidth = Math.Min(wantWidth, mWidth - mLabelRightInset - labelX);
 
                 using (g.PushColor(mTextColor ?? DarkTheme.COLOR_TEXT))
 				{
-					FontOverflowMode overflowMode = ((nextContentColumn != -1) || (listView.mEndInEllipsis)) ? .Ellipsis : .Overflow;
+					FontOverflowMode overflowMode = ((nextContentColumn != -1) || (listView.mEndInEllipsis) || (mLabelRightInset > 0)) ? .Ellipsis : .Overflow;
 					if (listView.mWordWrap)
 						overflowMode = .Wrap;
                     g.DrawString(mLabel, labelX, listView.mLabelY, .Left, wantWidth, overflowMode);
