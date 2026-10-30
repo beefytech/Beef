@@ -2482,6 +2482,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 			auto propDef = new BfPropertyDef();
 			mCurTypeDef->mProperties.Add(propDef);
+			propDef->mIdx = (int)mCurTypeDef->mProperties.size() - 1;
 			propDef->mTypeRef = mSystem->mDirectSelfBaseTypeRef;
 			BF_ASSERT(mCurDeclaringTypeDef != NULL);
 			propDef->mDeclaringType = mCurDeclaringTypeDef;
@@ -2505,6 +2506,7 @@ void BfDefBuilder::FinishTypeDef(bool wantsToString)
 
 			auto propDef = new BfPropertyDef();
 			mCurTypeDef->mProperties.Add(propDef);
+			propDef->mIdx = (int)mCurTypeDef->mProperties.size() - 1;
 			propDef->mTypeRef = mSystem->mDirectRefSelfBaseTypeRef;
 			BF_ASSERT(mCurDeclaringTypeDef != NULL);
 			propDef->mDeclaringType = mCurDeclaringTypeDef;

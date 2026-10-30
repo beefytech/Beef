@@ -75,6 +75,57 @@ namespace Tests
 			}
 		}
 
+		// Properties declared in an extension are renumbered when the partials are
+		//  composited - a stale index resolves a 'using' lookup to the wrong property
+		class PropsBase
+		{
+			public int PropP0 => 1;
+			public int PropP1 => 2;
+		}
+
+		extension PropsBase
+		{
+			public int PropP2 => 3;
+			public int PropP3 => 4;
+		}
+
+		class PropsHolder
+		{
+			using public PropsBase mBase = new .() ~ delete _;
+		}
+
+		// The compiler-generated 'Underlying'/'UnderlyingRef' properties are numbered
+		//  the same way, after any declared ones
+		enum EnumA
+		{
+			case Zero;
+			case One;
+
+			public int PropE0 => 100;
+		}
+
+		struct EnumHolder
+		{
+			using public EnumA mEnum;
+		}
+
+		[Test]
+		public static void TestProperties()
+		{
+			PropsHolder propsHolder = scope .();
+			Test.Assert(propsHolder.PropP0 == 1);
+			Test.Assert(propsHolder.PropP1 == 2);
+			Test.Assert(propsHolder.PropP2 == 3);
+			Test.Assert(propsHolder.PropP3 == 4);
+
+			EnumHolder enumHolder = .();
+			enumHolder.mEnum = .One;
+			Test.Assert(enumHolder.PropE0 == 100);
+			Test.Assert(enumHolder.Underlying == 1);
+			enumHolder.UnderlyingRef = 0;
+			Test.Assert(enumHolder.mEnum == .Zero);
+		}
+
 		[Test]
 		public static void Test()
 		{

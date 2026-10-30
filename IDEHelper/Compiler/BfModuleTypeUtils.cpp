@@ -5794,7 +5794,12 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						BfAstNode* refNode = fieldDecl->mConstSpecifier;
 						if (refNode == NULL)
 							refNode = fieldDef->GetRefNode();
-						if ((!resolvedFieldType->IsGenericParam()) && (!resolvedFieldType->IsObject()) && (!resolvedFieldType->IsStruct()))
+						// A typed primitive (which includes a payload-less enum) is not IsStruct(), but it
+						//  can still declare members whether or not it currently does. A function pointer
+						//  is a typed primitive too, and it has nothing to expose
+						bool canUsing = (resolvedFieldType->IsGenericParam()) || (resolvedFieldType->IsObject()) || (resolvedFieldType->IsStruct()) ||
+							((resolvedFieldType->IsTypedPrimitive()) && (!resolvedFieldType->IsFunction()));
+						if (!canUsing)
 						{														
 							Warn(0, StrFormat("Field type '%s' is not applicable for 'using'", TypeToString(resolvedFieldType).c_str()), refNode);
 						}
