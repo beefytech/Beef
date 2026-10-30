@@ -5947,7 +5947,7 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 								failStr = StrFormat("Circular data reference detected between '%s' and '%s'", TypeToString(mCurTypeInstance).c_str(), TypeToString(fieldTypeInst).c_str());
 								if (!mContext->mFieldResolveReentrys.IsEmpty())
 								{
-									failStr += StrFormat(" with the following fields:", TypeToString(mCurTypeInstance).c_str());
+									failStr += " with the following fields:";
 									for (int i = 0; i < (int)mContext->mFieldResolveReentrys.size(); i++)
 									{
 										auto checkField = mContext->mFieldResolveReentrys[i];

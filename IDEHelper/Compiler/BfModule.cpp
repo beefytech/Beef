@@ -3596,11 +3596,11 @@ void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstan
 	{
 		String err;
 		if (fieldInstance != NULL)
-			err += StrFormat("Method error: '", FieldToString(fieldInstance).c_str());
+			err += StrFormat("Field error for '%s': '", FieldToString(fieldInstance).c_str());
 		else if (methodInstance != NULL)
-			err += StrFormat("Method error: '", MethodToString(methodInstance).c_str());
+			err += StrFormat("Method error for '%s': '", MethodToString(methodInstance).c_str());
 		else
-			err += StrFormat("Type error: '", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
+			err += StrFormat("Type error for '%s': '", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
 		String* str = GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
 		if (str != NULL)
 			err += *str;
@@ -3614,11 +3614,11 @@ void BfModule::CheckErrorAttributes(BfTypeInstance* typeInstance, BfMethodInstan
 	{
 		String err;
 		if (fieldInstance != NULL)
-			err += StrFormat("Field warning: '", FieldToString(fieldInstance).c_str());
+			err += StrFormat("Field warning for '%s': '", FieldToString(fieldInstance).c_str());
 		else if (methodInstance != NULL)
-			err += StrFormat("Method warning: '", MethodToString(methodInstance).c_str());
+			err += StrFormat("Method warning for '%s': '", MethodToString(methodInstance).c_str());
 		else
-			err += StrFormat("Type warning: '", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
+			err += StrFormat("Type warning for '%s': '", TypeToString(typeInstance, BfTypeNameFlag_UseUnspecializedGenericParamNames).c_str());
 		String* str = GetStringPoolString(customAttribute->mCtorArgs[0], constHolder);
 		if (str != NULL)
 			err += *str;

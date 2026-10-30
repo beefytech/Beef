@@ -2242,7 +2242,7 @@ void BfModule::HandleTupleVariableDeclaration(BfVariableDeclaration* varDecl, Bf
 			}
 			else if ((tupleNameNode != NULL) && (tupleNameNode->mNameNode != NULL))
 			{
-				Fail(StrFormat("Unexpected tuple field name, expected unnamed tuple field", fieldDef->mName.c_str()), tupleNameNode->mNameNode);
+				Fail("Unexpected tuple field name, expected unnamed tuple field", tupleNameNode->mNameNode);
 			}
 		}
 		else

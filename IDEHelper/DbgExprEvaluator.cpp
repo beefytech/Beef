@@ -3108,12 +3108,12 @@ DbgTypedValue DbgExprEvaluator::ReadTypedValue(BfAstNode* targetSrc, DbgType* db
 
 	if (addrType == DbgAddrType_NoValue)
 	{
-		mPassInstance->Fail(StrFormat("No value", valAddr));
+		mPassInstance->Fail("No value");
 		return DbgTypedValue();
 	}
 	else if (addrType == DbgAddrType_OptimizedOut)
 	{
-		mPassInstance->Fail(StrFormat("Optimized out", valAddr));
+		mPassInstance->Fail("Optimized out");
 		return DbgTypedValue();
 	}
 

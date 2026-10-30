@@ -1823,7 +1823,7 @@ void BfMSMangler::Mangle(MangleContext& mangleContext, StringImpl& name, BfType*
 		if (type->IsUnknownSizedArrayType())
 		{
 			auto arrType = (BfUnknownSizedArrayType*)type;
-			name += StrFormat("arr_$", arrType->mSize);
+			name += "arr_$";
 			Mangle(mangleContext, name, arrType->mElementType);
 			name += "$";
 			Mangle(mangleContext, name, arrType->mElementCountSource);

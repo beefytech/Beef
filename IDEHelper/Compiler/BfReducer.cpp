@@ -11559,7 +11559,7 @@ BfInlineAsmStatement* BfReducer::CreateInlineAsmStatement(BfAstNode* asmNode)
 						bool rightIdent = (exprArgRight.mMemFlags & BfInlineAsmInstruction::AsmArg::ARGMEMF_BaseReg) != 0;
 						if (leftIdent && rightIdent)
 						{
-							Fail(StrFormat("Memory expressions can only scale by an integer", NodeToString(nodes[curNodeIdx]).c_str()), instNode);
+							Fail("Memory expressions can only scale by an integer", instNode);
 							return false;
 						}
 						else if (leftIdent || rightIdent)
