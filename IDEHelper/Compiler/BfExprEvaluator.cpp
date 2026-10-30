@@ -15130,8 +15130,19 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 	SizedArray<BfIRType, 0> paramTypes;
 	funcType = mModule->mBfIRBuilder->CreateFunctionType(mModule->mBfIRBuilder->MapType(voidType), paramTypes, false);
 
+	// A [Comptime] method body in a normal module has mIgnoreWrites forced on in ProcessMethod, which
+	//  leaves mActualInsertBlock unset. We restore mIgnoreWrites from the module's own setting above, so
+	//  there is no real insert block to be found here
+	bool isComptimeMethodBody = false;
+	if (!mModule->mIsComptimeModule)
+	{
+		auto rootMethodState = mModule->mCurMethodState->GetRootMethodState();
+		if ((rootMethodState->mMethodInstance != NULL) && (rootMethodState->mMethodInstance->mMethodDef->mHasComptime))
+			isComptimeMethodBody = true;
+	}
+
 	auto prevInsertBlock = mModule->mBfIRBuilder->GetInsertBlock();
-	BF_ASSERT(prevInsertBlock || isConstEval);
+	BF_ASSERT((prevInsertBlock) || (isConstEval) || (isComptimeMethodBody));
 	auto prevActiveFunction = mModule->mBfIRBuilder->GetActiveFunction();
 	mModule->mBfIRBuilder->SaveDebugLocation();
 
@@ -15400,7 +15411,7 @@ BfLambdaInstance* BfExprEvaluator::GetLambdaInstance(BfLambdaBindExpression* lam
 		mModule->mBfIRBuilder->RestoreDebugLocation();
 
 		mModule->mBfIRBuilder->SetActiveFunction(prevActiveFunction);
-		if (!prevInsertBlock.IsFake())
+		if ((prevInsertBlock) && (!prevInsertBlock.IsFake()))
 			mModule->mBfIRBuilder->SetInsertPoint(prevInsertBlock);
 		delete methodDef;
 		delete closureInstanceInfo;
