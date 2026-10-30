@@ -299,33 +299,34 @@ elseif ((NOT DEFINED BF_DISABLE_FFI))
       set(TARGET_TRIPLE_DIR "${CMAKE_HOST_SYSTEM_PROCESSOR}-pc-linux-gnu")
     endif()
 
+    # libtool's PIC objects (src/.libs) - so BeefRT can be linked into shared libraries too
     if (${CMAKE_HOST_SYSTEM_PROCESSOR} STREQUAL "x86_64")
       file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/linux/BFPlatform.cpp
         ../BeefySysLib/platform/linux/LinuxCommon.cpp
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/prep_cif.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/types.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/raw_api.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/java_raw_api.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/closures.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/tramp.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/ffi64.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/unix64.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/ffiw64.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/win64.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/.libs/prep_cif.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/.libs/types.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/.libs/raw_api.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/.libs/java_raw_api.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/.libs/closures.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/.libs/tramp.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/.libs/ffi64.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/.libs/unix64.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/.libs/ffiw64.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/x86/.libs/win64.o
       )
     else()
       file(GLOB SRC_FILES_OS
         ../BeefySysLib/platform/linux/BFPlatform.cpp
         ../BeefySysLib/platform/linux/LinuxCommon.cpp
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/prep_cif.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/types.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/raw_api.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/java_raw_api.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/closures.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/tramp.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/aarch64/ffi.o
-        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/aarch64/sysv.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/.libs/prep_cif.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/.libs/types.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/.libs/raw_api.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/.libs/java_raw_api.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/.libs/closures.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/.libs/tramp.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/aarch64/.libs/ffi.o
+        ../BeefySysLib/third_party/libffi/${TARGET_TRIPLE_DIR}/src/aarch64/.libs/sysv.o
       )
     endif()
 
