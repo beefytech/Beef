@@ -11222,16 +11222,35 @@ CeTypeInfo* CeMachine::GetTypeInfo(BfType* type)
 		return NULL;
 
 	CeTypeInfo* ceTypeInfo = NULL;
+	bool isBuilding = false;
 	if (!mTypeInfoMap.TryAdd(type, NULL, &ceTypeInfo))
 	{
-		if ((ceTypeInfo->mRevision == buildingRevision) || (ceTypeInfo->mRevision == typeInstance->mRevision))
+		isBuilding = ceTypeInfo->mRevision == buildingRevision;
+		if ((!isBuilding) && (ceTypeInfo->mRevision == typeInstance->mRevision))
 			return ceTypeInfo;
-		ceTypeInfo->mMethodInstances.Clear();
 	}
 
-	// Recursive reflection must use the declared methods collected so far, rather than rebuild this list.
-	ceTypeInfo->mRevision = buildingRevision;
-	mCeModule->PopulateType(typeInstance, BfPopulateType_DataAndMethods);
+	if (!isBuilding)
+	{
+		ceTypeInfo->mRevision = buildingRevision;
+		mCeModule->PopulateType(typeInstance, BfPopulateType_DataAndMethods);
+		for (int methodGroupIdx = 0; methodGroupIdx < typeInstance->mMethodInstanceGroups.mSize; methodGroupIdx++)
+		{
+			auto methodGroup = &typeInstance->mMethodInstanceGroups[methodGroupIdx];
+			if (methodGroup->mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference)
+			{
+				auto methodDef = typeInstance->mTypeDef->mMethods[methodGroup->mMethodIdx];
+				auto flags = ((methodDef->mGenericParams.size() != 0) || (typeInstance->IsUnspecializedType())) ? BfGetMethodInstanceFlag_UnspecializedPass : BfGetMethodInstanceFlag_None;
+				flags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_MethodInstanceOnly);
+				mCeModule->GetMethodInstance(typeInstance, methodDef, BfTypeVector(), flags);
+			}
+		}
+	}
+
+	// Recursive reads snapshot every already-declared method without starting more declarations.
+	// No compiler callbacks occur during collection, so this also cannot disturb an outer collection pass.
+	ceTypeInfo = &mTypeInfoMap[type];
+	ceTypeInfo->mMethodInstances.Clear();
 	bool hadIncompleteMethods = false;
 	auto _AddMethodInstance = [&](BfMethodInstance* methodInstance)
 	{
@@ -11243,32 +11262,21 @@ CeTypeInfo* CeMachine::GetTypeInfo(BfType* type)
 			return;
 		}
 		mMethodInstanceSet.Add(methodInstance);
-		mTypeInfoMap[type].mMethodInstances.Add(methodInstance);
+		ceTypeInfo->mMethodInstances.Add(methodInstance);
 	};
 
-	for (int methodGroupIdx = 0; methodGroupIdx < typeInstance->mMethodInstanceGroups.mSize; methodGroupIdx++)
+	for (auto& methodGroup : typeInstance->mMethodInstanceGroups)
 	{
-		auto methodGroup = &typeInstance->mMethodInstanceGroups[methodGroupIdx];
-		if (methodGroup->mOnDemandKind == BfMethodOnDemandKind_NoDecl_AwaitingReference)
+		_AddMethodInstance(methodGroup.mDefault);
+		if (methodGroup.mMethodSpecializationMap != NULL)
 		{
-			auto methodDef = typeInstance->mTypeDef->mMethods[methodGroup->mMethodIdx];
-			auto flags = ((methodDef->mGenericParams.size() != 0) || (typeInstance->IsUnspecializedType())) ? BfGetMethodInstanceFlag_UnspecializedPass : BfGetMethodInstanceFlag_None;
-			flags = (BfGetMethodInstanceFlags)(flags | BfGetMethodInstanceFlag_MethodInstanceOnly);
-			mCeModule->GetMethodInstance(typeInstance, methodDef, BfTypeVector(), flags);
-		}
-
-		// Declaring a method can reenter the compiler and relocate either the groups or the type-info map.
-		methodGroup = &typeInstance->mMethodInstanceGroups[methodGroupIdx];
-		_AddMethodInstance(methodGroup->mDefault);
-		if (methodGroup->mMethodSpecializationMap != NULL)
-		{
-			for (auto& kv : *methodGroup->mMethodSpecializationMap)
+			for (auto& kv : *methodGroup.mMethodSpecializationMap)
 				_AddMethodInstance(kv.mValue);
 		}
 	}
-	ceTypeInfo = &mTypeInfoMap[type];
 	// Retry partial results after declaration has made progress, including on-demand methods on a slotted type.
-	ceTypeInfo->mRevision = ((typeInstance->mDefineState >= BfTypeDefineState_DefinedAndMethodsSlotted) && (!hadIncompleteMethods)) ? typeInstance->mRevision : -1;
+	if (!isBuilding)
+		ceTypeInfo->mRevision = ((typeInstance->mDefineState >= BfTypeDefineState_DefinedAndMethodsSlotted) && (!hadIncompleteMethods)) ? typeInstance->mRevision : -1;
 	return ceTypeInfo;
 }
 

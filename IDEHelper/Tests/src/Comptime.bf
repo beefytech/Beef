@@ -974,6 +974,49 @@ namespace Tests
 			Test.Assert(HasScopeCycleMethod());
 		}
 
+		class RecursiveSnapshotOwner
+		{
+			[Comptime]
+			static int ObserveDeclaredMethods()
+			{
+				// Ready is callable before the recursive lookup, even though it appears after Pending.
+				Test.Assert(Ready(123) == 123);
+				bool foundReady = false;
+				for (let method in typeof(RecursiveSnapshotOwner).GetMethods(.Public | .NonPublic | .Static | .DeclaredOnly))
+				{
+					if (method.Name == "Ready")
+					{
+						Test.Assert(method.ReturnType == typeof(int));
+						Test.Assert(method.ParamCount == 1);
+						Test.Assert(method.GetParamType(0) == typeof(int));
+						foundReady = true;
+					}
+				}
+				Test.Assert(foundReady);
+				return 0;
+			}
+
+			public static void Pending<T>(int value = ObserveDeclaredMethods()) {}
+
+			[AlwaysInclude]
+			public static int Ready(int value) => value;
+		}
+
+		[Comptime]
+		static int CountRecursiveSnapshotMethods()
+		{
+			int count = 0;
+			for (let method in typeof(RecursiveSnapshotOwner).GetMethods(.Public | .NonPublic | .Static | .DeclaredOnly))
+				count++;
+			return count;
+		}
+
+		[Test]
+		public static void TestMethodsVisibleDuringRecursiveReflection()
+		{
+			Test.Assert(CountRecursiveSnapshotMethods() >= 3);
+		}
+
 		// A type's methods read while it was still declaring them (through a cycle) were cached as
 		//  they stood, so every later read in the compile saw that partial list
 		[Test]
