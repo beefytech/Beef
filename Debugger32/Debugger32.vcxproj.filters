@@ -56,6 +56,9 @@
     <ClInclude Include="..\IDEHelper\DbgEvalPool.h">
       <Filter>Source Files</Filter>
     </ClInclude>
+    <ClInclude Include="..\IDEHelper\DbgTargetHost.h">
+      <Filter>Source Files</Filter>
+    </ClInclude>
     <ClInclude Include="..\IDEHelper\DbgTypeMap.h">
       <Filter>Source Files</Filter>
     </ClInclude>
@@ -94,6 +97,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\IDEHelper\DbgEvalPool.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\IDEHelper\DbgEvalSupport.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\IDEHelper\DbgTypeMap.cpp">

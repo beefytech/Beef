@@ -5,6 +5,7 @@
 #include "DbgSymSrv.h"
 #include "DebugTarget.h"
 #include "DbgExprEvaluator.h"
+#include "DbgTargetHost.h"
 #include "Debugger.h"
 #include "HotHeap.h"
 #include "COFF.h"
@@ -99,28 +100,6 @@ enum BreakpointType
 	BreakpointType_Stepping
 };
 
-struct DwFormatInfo;
-
-class DbgEvaluationContext
-{
-public:
-	BfParser* mParser;
-	BfReducer* mReducer;
-	BfPassInstance* mPassInstance;
-	DbgExprEvaluator* mDbgExprEvaluator;
-	BfExpression* mExprNode;
-
-public:
-	DbgEvaluationContext(WinDebugger* winDebugger, DbgModule* dbgModule, const StringImpl& expr, DwFormatInfo* formatInfo = NULL, DbgTypedValue contextValue = DbgTypedValue());
-	DbgEvaluationContext(WinDebugger* winDebugger, DbgCompileUnit* dbgCompileUnit, const StringImpl& expr, DwFormatInfo* formatInfo = NULL, DbgTypedValue contextValue = DbgTypedValue());
-	void Init(WinDebugger* winDebugger, DbgModule* dbgModule, const StringImpl& expr, DwFormatInfo* formatInfo = NULL, DbgTypedValue contextValue = DbgTypedValue());
-	bool HasExpression();
-	~DbgEvaluationContext();
-	DbgTypedValue EvaluateInContext(DbgTypedValue contextTypedValue);
-	String GetErrorStr();
-	bool HadError();
-};
-
 class WdBreakpointCondition
 {
 public:
@@ -198,43 +177,6 @@ enum StepType
 	StepType_StepOut_Inline,
 	StepType_ToTempBreakpoint
 };
-
-class WdStackFrame
-{
-public:
-	CPURegisters mRegisters;
-	bool mIsStart;
-	bool mIsEnd;
-	bool mInInlineMethod;
-	bool mInInlineCall; // Means the frame above us is inlined
-
-	DbgSubprogram* mSubProgram;
-	bool mHasGottenSubProgram;
-	Array<RegForm> mRegForms;
-
-public:
-	WdStackFrame()
-	{
-		mSubProgram = NULL;
-		mHasGottenSubProgram = false;
-		mIsStart = true;
-		mIsEnd = false;
-		mInInlineMethod = false;
-		mInInlineCall = false;
-	}
-
-	addr_target GetSourcePC()
-	{
-		// 'PC' is return address of call in these cases, so subtract 1 for cases where
-		//  we want to bring it back into the calling block range (note that this doesn't
-		//  properly determine the actual starting address of the call instruction, though)
-		if ((!mIsStart) && (!mInInlineCall))
-			return mRegisters.GetPC() - 1;
-		return mRegisters.GetPC();
-	}
-};
-
-typedef WdStackFrame CPUStackFrame;
 
 struct WdThreadInfo
 {
@@ -327,18 +269,6 @@ struct WdMemoryBreakpointBind
 	}
 };
 
-struct DbgPendingDebugInfoLoad
-{
-	DbgModule* mModule;
-	bool mAllowRemote;
-
-	DbgPendingDebugInfoLoad()
-	{
-		mModule = NULL;
-		mAllowRemote = false;
-	}
-};
-
 struct WinHotThreadState
 {
 	CPURegisters mRegisters;
@@ -372,7 +302,7 @@ public:
 
 struct DwFormatInfo;
 
-class WinDebugger : public Debugger
+class WinDebugger : public DbgTargetHost
 {
 public:
 	SyncEvent mContinueEvent;
@@ -382,7 +312,6 @@ public:
 	int mActiveHotIdx;
 
 	volatile bool mShuttingDown;
-	volatile bool mIsRunning;
 	bool mDestroying;
 	String mLaunchPath;
 	String mTargetPath;
@@ -393,7 +322,6 @@ public:
 	Array<uint8> mEnvBlock;
 	DebugTarget* mEmptyDebugTarget;
 	DebugTarget* mDebugTarget;
-	BfSystem* mBfSystem;
 	CPU* mCPU;
 	PROCESS_INFORMATION mProcessInfo;
 	BfDbgAttachFlags mDbgAttachFlags;
@@ -418,7 +346,6 @@ public:
 	WdThreadInfo* mExplicitStopThread; // Don't try to show first frame-with-source for this thread (when we hit breakpoint in asm, encounter exception, etc)
 	DEBUG_EVENT mDebugEvent;
 	bool mGotStartupEvent;
-	int mPageSize;
 	DbgSymSrv mDbgSymSrv;
 	DbgSymRequest* mActiveSymSrvRequest;
 	DWORD mDebuggerThreadId;
@@ -429,10 +356,8 @@ public:
 	Array<WdBreakpoint*> mBreakpoints;
 	Dictionary<addr_target, WdBreakpoint*> mBreakpointAddrMap;
 	Array<int> mFreeMemoryBreakIndices;
-	Array<WdStackFrame*> mCallStack;
 	Dictionary<WdThreadInfo*, Array<WdStackFrame*>> mSavedCallStacks;
 	bool mIsPartialCallStack;
-	int mRequestedStackFrameIdx; // -1 means to show mShowPCOverride, -2 means "auto" stop, -3 means breakpoint - normally 0 but during inlining the address can be ambiguous
 	int mBreakStackFrameIdx;
 	addr_target mShowPCOverride;
 	Dictionary<uint32, WdThreadInfo*> mThreadMap;
@@ -453,13 +378,10 @@ public:
 	addr_target mStoredReturnValueAddr;
 	addr_target mLastValidStepIntoPC;
 	bool mIsStepIntoSpecific;
-	CPURegisters mDebugEvalSetRegisters;
 	DbgPendingExpr* mDebugPendingExpr;
 	WdThreadInfo mDebugEvalThreadInfo; // Copy of thread info when eval started
 	Array<DbgModule*> mPendingImageLoad;
-	Dictionary<DbgModule*, DbgPendingDebugInfoLoad> mPendingDebugInfoLoad;
 	Array<DbgModule*> mPendingDebugInfoRequests;
-	HashSet<String> mLiteralSet;
 
 	EXCEPTION_RECORD mCurException;
 	bool mIsContinuingFromException;
@@ -478,14 +400,14 @@ public:
 	uint8 mMemCacheData[WD_MEMCACHE_SIZE];
 
 public:
-	void Fail(const StringImpl& error);
+	virtual void Fail(const StringImpl& error) override;
 	void TryGetThreadName(WdThreadInfo* threadInfo);
 	void ThreadRestorePause(WdThreadInfo* onlyPauseThread, WdThreadInfo* dontPauseThread);
 	void ThreadRestoreUnpause();
 	void UpdateThreadDebugRegisters(WdThreadInfo* threadInfo);
 	void UpdateThreadDebugRegisters();
 	void ValidateBreakpoints();
-	void PhysSetBreakpoint(addr_target address);
+	virtual void PhysSetBreakpoint(addr_target address) override;
 	void SetBreakpoint(addr_target address, bool fromRehup = false);
 	void SetTempBreakpoint(addr_target address);
 	void PhysRemoveBreakpoint(addr_target address);
@@ -505,33 +427,27 @@ public:
 	bool IsMemoryBreakpointSizeValid(addr_target addr, int size);
 	bool HasMemoryBreakpoint(addr_target addr, int size);
 	bool PopulateRegisters(CPURegisters* registers, BF_CONTEXT& lcContext);
-	virtual bool PopulateRegisters(CPURegisters* registers);
+	virtual bool PopulateRegisters(CPURegisters* registers) override;
 	bool RollBackStackFrame(CPURegisters* registers, bool isStackStart);
-	bool SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget, int newTargetSize);
+	virtual bool SetHotJump(DbgSubprogram* oldSubprogram, addr_target newTarget, int newTargetSize) override;
 	DbgSubprogram* TryFollowHotJump(DbgSubprogram* subprogram, addr_target addr);
 
-	bool ParseFormatInfo(DbgModule* dbgModule, const StringImpl& formatInfoStr, DwFormatInfo* formatInfo, BfPassInstance* bfPassInstance, int* assignExprOffset, String* assignExpr = NULL, String* errorString = NULL, DbgTypedValue contextTypedValue = DbgTypedValue());
-	String MaybeQuoteFormatInfoParam(const StringImpl& str);
-	void DbgVisFailed(DebugVisualizerEntry* debugVis, const StringImpl& evalString, const StringImpl& errors);
-	DbgTypedValue EvaluateInContext(DbgCompileUnit* dbgCompileUnit, const DbgTypedValue& contextTypedValue, const StringImpl& subExpr, DwFormatInfo* formatInfo = NULL, String* outReferenceId = NULL, String* outErrors = NULL);
-	bool EvalCondition(DebugVisualizerEntry* debugVis, DbgCompileUnit* dbgCompileUnit, DbgTypedValue typedVal, DwFormatInfo& formatInfo, const StringImpl& condition, const Array<String>& dbgVisWildcardCaptures, String& errorStr);
 	DwDisplayInfo* GetDisplayInfo(const StringImpl& referenceId);
-	bool ProcessEvalString(DbgCompileUnit* dbgCompileUnit, DbgTypedValue useTypedValue, String& evalStr, String& displayString, DwFormatInfo& formatInfo, DebugVisualizerEntry* debugVis, bool limitLength);
+	virtual bool ProcessEvalString(DbgCompileUnit* dbgCompileUnit, DbgTypedValue useTypedValue, String& evalStr, String& displayString, DwFormatInfo& formatInfo, DebugVisualizerEntry* debugVis, bool limitLength) override;
 	String ReadString(DbgTypeCode charType, intptr addr, bool isLocalAddr, intptr maxLength, DwFormatInfo& formatInfo, bool wantStringView);
 	String DbgTypedValueToString(const DbgTypedValue& typedValue, const StringImpl& expr, DwFormatInfo& formatFlags, DbgExprEvaluator* optEvaluator, bool fullPrecision = false);
 	bool ShouldShowStaticMember(DbgType* dbgType, DbgVariable* member);
 	String GetMemberList(DbgType* dbgType, const StringImpl& expr, bool isPtr, bool isStatic, bool forceCast = false, bool isSplat = false, bool isReadOnly = false);
-	DebugVisualizerEntry* FindVisualizerForType(DbgType* dbgType, Array<String>* wildcardCaptures);
-	void ReserveHotTargetMemory(int size);
-	addr_target AllocHotTargetMemory(int size, bool canExecute, bool canWrite, int* outAllocSize);
-	void ReleaseHotTargetMemory(addr_target addr, int size);
+	virtual void ReserveHotTargetMemory(int size) override;
+	virtual addr_target AllocHotTargetMemory(int size, bool canExecute, bool canWrite, int* outAllocSize) override;
+	virtual void ReleaseHotTargetMemory(addr_target addr, int size) override;
 	void CleanupHotHeap();
-	int EnableWriting(intptr address, int size);
-	int SetProtection(intptr address, int size, int prot);
+	virtual int EnableWriting(intptr address, int size) override;
+	virtual int SetProtection(intptr address, int size, int prot) override;
 	void EnableMemCache();
 	void DisableMemCache();
-	template<typename T> T ReadMemory(intptr addr, bool local = false, bool* failed = NULL);
-	bool WriteInstructions(intptr address, void* src, uint64 length);
+	using DbgTargetHost::ReadMemory;
+	virtual bool WriteInstructions(intptr address, void* src, uint64 length) override;
 	template<typename T> bool WriteMemory(intptr addr, T val);
 	virtual DbgMemoryFlags GetMemoryFlags(intptr address) override;
 
@@ -542,15 +458,15 @@ public:
 	void CheckNonDebuggerBreak();
 	bool HasSteppedIntoCall();
 	void StepLineTryPause(addr_target address, bool requireExactMatch);
-	void PushValue(CPURegisters* registers, int64 val);
-	void PushValue(CPURegisters* registers, const DbgTypedValue& typedValue);
-	void SetThisRegister(CPURegisters* registers, addr_target val);
-	void AddParamValue(int paramIdx, bool hadThis, CPURegisters* registers, const DbgTypedValue& typedValue);
-	bool CheckNeedsSRetArgument(DbgType* retType);
-	DbgTypedValue ReadReturnValue(CPURegisters* registers, DbgType* type);
-	bool SetRegisters(CPURegisters* registers);
-	void SaveAllRegisters();
-	void RestoreAllRegisters();
+	virtual void PushValue(CPURegisters* registers, int64 val) override;
+	virtual void PushValue(CPURegisters* registers, const DbgTypedValue& typedValue) override;
+	virtual void SetThisRegister(CPURegisters* registers, addr_target val) override;
+	virtual void AddParamValue(int paramIdx, bool hadThis, CPURegisters* registers, const DbgTypedValue& typedValue) override;
+	virtual bool CheckNeedsSRetArgument(DbgType* retType) override;
+	virtual DbgTypedValue ReadReturnValue(CPURegisters* registers, DbgType* type) override;
+	virtual bool SetRegisters(CPURegisters* registers) override;
+	virtual void SaveAllRegisters() override;
+	virtual void RestoreAllRegisters() override;
 	String GetArrayItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, DbgType* valueType, DbgTypedValue& curNode, int& count, String* outContinuationData);
 	String GetLinkedListItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, addr_target endNodePtr, DbgType* valueType, DbgTypedValue& curNode, int& count, String* outContinuationData);
 	String GetDictionaryItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, DbgTypedValue dictValue, int bucketIdx, int nodeIdx, int& count, String* outContinuationData);
@@ -561,9 +477,8 @@ public:
 	void DebugThreadProc();
 	bool DoOpenFile(const StringImpl& fileName, const StringImpl& args, const StringImpl& workingDir, const Array<uint8>& envBlock, DbgOpenFileFlags openFileFlags);
 
-	DbgTypedValue GetRegister(const StringImpl& regName, DbgLanguage language, CPURegisters* registers, Array<RegForm>* regForms = NULL);
+	virtual DbgTypedValue GetRegister(const StringImpl& regName, DbgLanguage language, CPURegisters* registers, Array<RegForm>* regForms = NULL) override;
 	void FixupLineData(DbgCompileUnit* compileUnit);
-	void FixupLineDataForSubprogram(DbgSubprogram* subProgram);
 	DbgModule* GetCallStackDbgModule(int callStackIdx);
 	DbgSubprogram* GetCallStackSubprogram(int callStackIdx);
 	DbgCompileUnit* GetCallStackCompileUnit(int callStackIdx);
@@ -624,7 +539,7 @@ public:
 	virtual String Evaluate(const StringImpl& expr, int callStackIdx, int cursorPos, int language, DwEvalExpressionFlags expressionFlags) override;
 	virtual String EvaluateToAddress(const StringImpl& expr, int callStackIdx, int cursorPos) override;
 	virtual String EvaluateAtAddress(const StringImpl& expr, intptr atAddr, int cursorPos) override;
-	virtual bool AssignToReg(int callStackIdx, DbgTypedValue reg, DbgTypedValue value, String& outError);
+	virtual bool AssignToReg(int callStackIdx, DbgTypedValue reg, DbgTypedValue value, String& outError) override;
 	virtual String GetCollectionContinuation(const StringImpl& continuationData, int callStackIdx, int count) override;
 	virtual String GetAutoExpressions(int callStackIdx, uint64 memoryRangeStart, uint64 memoryRangeLen) override;
 	virtual String GetAutoLocals(int callStackIdx, bool showRegs) override;
@@ -644,7 +559,7 @@ public:
 	virtual int GetBreakStackFrameIdx() override;
 	virtual bool ReadMemory(intptr address, uint64 length, void* dest, bool local = false) override;
 	virtual bool WriteMemory(intptr address, void* src, uint64 length) override;
-	addr_target GetTLSOffset(int tlsIndex);
+	virtual addr_target GetTLSOffset(int tlsIndex) override;
 	virtual void UpdateRegisterUsage(int stackFrameIdx) override;
 	virtual void UpdateCallStackMethod(int stackFrameIdx) override;
 	virtual void GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) override;
@@ -682,7 +597,19 @@ public:
 	virtual void ReportMemory(MemReporter* memReporter) override;
 
 	virtual bool IsOnDemandDebugger() override { return false; }
-	virtual bool IsMiniDumpDebugger() { return false; }
+	virtual bool IsMiniDumpDebugger() override { return false; }
+	virtual int GetActiveThreadId() override;
+	virtual String GetActiveThreadName() override;
+	virtual void ClearExplicitStopThread() override;
+	virtual int GetActiveBreakpointHitCount() override;
+	virtual String GetActiveBreakpointCondition() override;
+	virtual int GetTargetProcessId() override;
+	virtual bool WantsHotHeap() override;
+	virtual addr_target ReserveHotHeapMemory(addr_target address, int size) override;
+	virtual void ReleaseHotHeapMemory(addr_target address) override;
+	virtual addr_target DecodeThunk(addr_target address, DbgModuleMemoryCache* memoryCache) override;
+	virtual bool DecodeInstruction(addr_target address, DbgModuleMemoryCache* memoryCache, CPUInst* inst) override;
+	virtual DbgBreakKind GetDbgBreakKind(addr_target address, DbgModuleMemoryCache* memoryCache, intptr_target* regs, intptr_target* outObjectPtr) override;
 	virtual bool GetEmitSource(const StringImpl& filePath, String& outText);
 };
 
@@ -690,41 +617,6 @@ template<typename T> bool WinDebugger::WriteMemory(intptr addr, T val)
 {
 	SIZE_T dwWriteBytes;
 	return WriteProcessMemory(mProcessInfo.hProcess, (void*)(intptr)addr, &val, (SIZE_T)sizeof(T), &dwWriteBytes) != 0;
-}
-
-template<typename T> T WinDebugger::ReadMemory(intptr addr, bool local, bool* failed)
-{
-	bool success = true;
-	T val;
-	memset(&val, 0, sizeof(T));
-	if (local)
-	{
-		if (addr != 0)
-		{
-			memcpy(&val, (void*)(intptr)addr, sizeof(T));
-			/*__try
-			{
-				memcpy(&val, (void*)(intptr)addr, sizeof(T));
-			}
-			__except (EXCEPTION_EXECUTE_HANDLER)
-			{
-				success = false;
-			}*/
-		}
-		else
-			success = false;
-	}
-	else
-	{
-		//SIZE_T dwReadBytes;
-		memset(&val, 0, sizeof(T));
-		//success = ReadProcessMemory(mProcessInfo.hProcess, (void*)(intptr)addr, &val, (SIZE_T)sizeof(T), &dwReadBytes) != 0;
-		success = ReadMemory(addr, (int)sizeof(T), &val);
-	}
-
-	if (failed != NULL)
-		*failed = !success;
-	return val;
 }
 
 addr_target DecodeTargetDataPtr(const char*& strRef);

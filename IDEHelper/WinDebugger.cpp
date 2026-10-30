@@ -94,132 +94,6 @@ WdBreakpointCondition::~WdBreakpointCondition()
 
 //////////////////////////////////////////////////////////////////////////
 
-DbgEvaluationContext::DbgEvaluationContext(WinDebugger* winDebugger, DbgModule* dbgModule, const StringImpl& expr, DwFormatInfo* formatInfo, DbgTypedValue contextValue)
-{
-	Init(winDebugger, dbgModule, expr, formatInfo, contextValue);
-}
-
-DbgEvaluationContext::DbgEvaluationContext(WinDebugger* winDebugger, DbgCompileUnit* dbgCompileUnit, const StringImpl& expr, DwFormatInfo* formatInfo, DbgTypedValue contextValue)
-{
-	DbgModule* dbgModule = NULL;
-	if (dbgCompileUnit != NULL)
-		dbgModule = dbgCompileUnit->mDbgModule;
-	Init(winDebugger, dbgModule, expr, formatInfo, contextValue);
-}
-
-void DbgEvaluationContext::Init(WinDebugger* winDebugger, DbgModule* dbgModule, const StringImpl& expr, DwFormatInfo* formatInfo, DbgTypedValue contextValue)
-{
-	if (expr.empty())
-	{
-		mParser = NULL;
-		mReducer = NULL;
-		mPassInstance = NULL;
-		mDbgExprEvaluator = NULL;
-		mExprNode = NULL;
-		return;
-	}
-
-	mParser = new BfParser(winDebugger->mBfSystem);
-	mParser->mCompatMode = true;
-	mPassInstance = new BfPassInstance(winDebugger->mBfSystem);
-	auto terminatedExpr = expr + ";";
-	mParser->SetSource(terminatedExpr.c_str(), terminatedExpr.length());
-	mParser->Parse(mPassInstance);
-
-	mReducer = new BfReducer();
-	mReducer->mAlloc = mParser->mAlloc;
-	mReducer->mSystem = winDebugger->mBfSystem;
-	mReducer->mPassInstance = mPassInstance;
-	mReducer->mVisitorPos = BfReducer::BfVisitorPos(mParser->mRootNode);
-	mReducer->mVisitorPos.MoveNext();
-	mReducer->mCompatMode = mParser->mCompatMode;
-	mReducer->mSource = mParser;
-	mExprNode = mReducer->CreateExpression(mParser->mRootNode->GetFirst());
-	mParser->Close();
-	mDbgExprEvaluator = new DbgExprEvaluator(winDebugger, dbgModule, mPassInstance, -1, -1);
-
-	if ((formatInfo != NULL) && (mExprNode != NULL) && (mExprNode->GetSrcEnd() < (int) expr.length()))
-	{
-		String formatFlags = expr.Substring(mExprNode->GetSrcEnd());
-		String errorString = "Invalid expression";
-		if (!winDebugger->ParseFormatInfo(dbgModule, formatFlags, formatInfo, mPassInstance, NULL, NULL, &errorString, contextValue))
-		{
-			mPassInstance->FailAt(errorString, mParser->mSourceData, mExprNode->GetSrcEnd(), (int)expr.length() - mExprNode->GetSrcEnd());
-			formatFlags = "";
-		}
-	}
-
-	if (formatInfo != NULL)
-	{
-		mDbgExprEvaluator->mExplicitThis = formatInfo->mExplicitThis;
-		mDbgExprEvaluator->mCallStackIdx = formatInfo->mCallStackIdx;
-		mDbgExprEvaluator->mLanguage = formatInfo->mLanguage;
-	}
-}
-
-bool DbgEvaluationContext::HasExpression()
-{
-	return mExprNode != NULL;
-}
-
-DbgEvaluationContext::~DbgEvaluationContext()
-{
-	delete mParser;
-	delete mReducer;
-	delete mDbgExprEvaluator;
-	delete mPassInstance;
-}
-
-DbgTypedValue DbgEvaluationContext::EvaluateInContext(DbgTypedValue contextTypedValue)
-{
-	if (mExprNode == NULL)
-		return DbgTypedValue();
-	mPassInstance->ClearErrors();
-	if (contextTypedValue)
-	{
-		mDbgExprEvaluator->mExplicitThis = contextTypedValue;
-		if ((mDbgExprEvaluator->mExplicitThis.mType->IsPointer()) && (mDbgExprEvaluator->mExplicitThis.mType->mTypeParam->WantsRefThis()))
-		{
-			mDbgExprEvaluator->mExplicitThis.mType = mDbgExprEvaluator->mExplicitThis.mType->mTypeParam;
-			mDbgExprEvaluator->mExplicitThis.mSrcAddress = mDbgExprEvaluator->mExplicitThis.mPtr;
-			mDbgExprEvaluator->mExplicitThis.mPtr = 0;
-		}
-
-		if ((mDbgExprEvaluator->mExplicitThis.mType->IsCompositeType()) && (!mDbgExprEvaluator->mExplicitThis.mType->WantsRefThis()))
-		{
-			if (mDbgExprEvaluator->mExplicitThis.mSrcAddress != 0)
-			{
-				mDbgExprEvaluator->mExplicitThis.mType = mDbgExprEvaluator->mDbgModule->GetPointerType(mDbgExprEvaluator->mExplicitThis.mType);
-				mDbgExprEvaluator->mExplicitThis.mPtr = mDbgExprEvaluator->mExplicitThis.mSrcAddress;
-				mDbgExprEvaluator->mExplicitThis.mSrcAddress = 0;
-			}
-		}
-	}
-	if (contextTypedValue.mType != NULL)
-		mDbgExprEvaluator->mDbgCompileUnit = contextTypedValue.mType->mCompileUnit;
-	DbgTypedValue exprResult;
-	auto result = mDbgExprEvaluator->Resolve(mExprNode);
-	return result;
-}
-
-bool DbgEvaluationContext::HadError()
-{
-	return mPassInstance->mFailedIdx != 0;
-}
-
-String DbgEvaluationContext::GetErrorStr()
-{
-	String errorStr = mPassInstance->mErrors[0]->mError;
-	if (mExprNode != NULL)
-	{
-		errorStr += ": ";
-		errorStr += mExprNode->ToString();
-	}
-	return errorStr;
-}
-
-//////////////////////////////////////////////////////////////////////////
-
 typedef HRESULT(WINAPI* SetThreadDescription_t)(HANDLE hThread, PCWSTR lpThreadDescription);
 typedef HRESULT(WINAPI* GetThreadDescription_t)(HANDLE hThread, PWSTR* lpThreadDescription);
 static SetThreadDescription_t gSetThreadDescription = NULL;
@@ -3144,7 +3018,7 @@ DbgLineData* WinDebugger::FindLineDataAtAddress(addr_target address, DbgSubprogr
 	if (dwSubprogram == NULL)
 		return NULL;
 
-	FixupLineDataForSubprogram(dwSubprogram);
+	DbgModule::FixupLineDataForSubprogram(dwSubprogram);
 	auto lineData = dwSubprogram->FindClosestLine(address, outSubProgram, outSrcFile, outLineIdx);
 
 	return lineData;
@@ -3154,7 +3028,7 @@ DbgLineData* WinDebugger::FindLineDataInSubprogram(addr_target address, DbgSubpr
 {
 	auto dwCompileUnit = dwSubprogram->mCompileUnit;
 
-	FixupLineDataForSubprogram(dwSubprogram);
+	DbgModule::FixupLineDataForSubprogram(dwSubprogram);
 	auto lineData = dwSubprogram->FindClosestLine(address);
 	return lineData;
 }
@@ -3341,7 +3215,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 		if (!hasNear)
 			return;
 
-		FixupLineDataForSubprogram(dbgSubprogram);
+		DbgModule::FixupLineDataForSubprogram(dbgSubprogram);
 
 		for (int lineIdx = 0; lineIdx < dbgLineInfo->mLines.mSize; lineIdx++)
 		{
@@ -3376,7 +3250,7 @@ void WinDebugger::CheckBreakpoint(WdBreakpoint* wdBreakpoint, DbgSrcFile* srcFil
 				auto address = dbgSubprogram->GetLineAddr(*lineData);
 				auto subProgram = mDebugTarget->FindSubProgram(address);
 				if (subProgram->mNeedLineDataFixup)
-					FixupLineDataForSubprogram(subProgram);
+					DbgModule::FixupLineDataForSubprogram(subProgram);
 
 				if (subProgram != NULL)
 					highestHotIdx = BF_MAX(highestHotIdx, subProgram->mCompileUnit->mDbgModule->mHotIdx);
@@ -5738,349 +5612,6 @@ String WinDebugger::GetMemberList(DbgType* dbgType, const StringImpl& expr, bool
 	return "";
 }
 
-bool WinDebugger::ParseFormatInfo(DbgModule* dbgModule, const StringImpl& formatInfoStr, DwFormatInfo* formatInfo, BfPassInstance* bfPassInstance, int* assignExprOffset, String* assignExprString, String* errorString, DbgTypedValue contextTypedValue)
-{
-	String formatFlags = formatInfoStr;
-	if (assignExprOffset != NULL)
-		*assignExprOffset = -1;
-
-	while (formatFlags.length() > 0)
-	{
-		formatFlags = Trim(formatFlags);
-		if (formatFlags.IsEmpty())
-			break;
-		if (formatFlags[0] != ',')
-		{
-			return false;
-		}
-		else
-		{
-			int nextComma = formatFlags.IndexOf(',', 1);
-			int quotePos = formatFlags.IndexOf('"', 1);
-			if ((quotePos != -1) && (quotePos < nextComma))
-			{
-				int nextQuotePos = formatFlags.IndexOf('"', quotePos + 1);
-				if (nextQuotePos != -1)
-					nextComma = formatFlags.IndexOf(',', nextQuotePos + 1);
-			}
-			if (nextComma == -1)
-				nextComma = formatFlags.length();
-
-			String formatCmd = formatFlags.Substring(1, nextComma - 1);
-			formatCmd = Trim(formatCmd);
-			bool hadError = false;
-
-			if (strncmp(formatCmd.c_str(), "this=", 5) == 0)
-			{
-				formatCmd = formatFlags.Substring(1);
-				formatCmd = Trim(formatCmd);
-				String thisExpr = formatCmd.Substring(5);
-				if (thisExpr.empty())
-					break;
-				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, thisExpr, formatInfo);
-				formatInfo->mExplicitThis = dbgEvaluationContext.EvaluateInContext(contextTypedValue);
-				if (dbgEvaluationContext.HadError())
-				{
-					if (errorString != NULL)
-						*errorString = dbgEvaluationContext.GetErrorStr();
-					return false;
-				}
-				formatFlags = thisExpr.Substring(dbgEvaluationContext.mExprNode->GetSrcEnd());
-				continue;
-			}
-			else if (strncmp(formatCmd.c_str(), "count=", 6) == 0)
-			{
-				formatCmd = formatFlags.Substring(1);
-				formatCmd = Trim(formatCmd);
-				String countExpr = formatCmd.Substring(6);
-				if (countExpr.empty())
-					break;
-				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, countExpr, formatInfo);
-				DbgTypedValue countValue = dbgEvaluationContext.EvaluateInContext(contextTypedValue);
-				if ((countValue) && (countValue.mType->IsInteger()))
-					formatInfo->mOverrideCount = (intptr)countValue.GetInt64();
-				if (dbgEvaluationContext.HadError())
-				{
-					if (errorString != NULL)
-						*errorString = dbgEvaluationContext.GetErrorStr();
-					return false;
-				}
-				formatFlags = countExpr.Substring(dbgEvaluationContext.mExprNode->GetSrcEnd());
-				continue;
-			}
-			else if (strncmp(formatCmd.c_str(), "maxcount=", 9) == 0)
-			{
-				formatCmd = formatFlags.Substring(1);
-				formatCmd = Trim(formatCmd);
-				String countExpr = formatCmd.Substring(9);
-				if (countExpr.empty())
-					break;
-				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, countExpr, formatInfo);
-				DbgTypedValue countValue = dbgEvaluationContext.EvaluateInContext(contextTypedValue);
-				if ((countValue) && (countValue.mType->IsInteger()))
-					formatInfo->mMaxCount = (intptr)countValue.GetInt64();
-				if (dbgEvaluationContext.HadError())
-				{
-					if (errorString != NULL)
-						*errorString = dbgEvaluationContext.GetErrorStr();
-					return false;
-				}
-				formatFlags = countExpr.Substring(dbgEvaluationContext.mExprNode->GetSrcEnd());
-				continue;
-			}
-			else if (strncmp(formatCmd.c_str(), "arraysize=", 10) == 0)
-			{
-				formatCmd = formatFlags.Substring(1);
-				formatCmd = Trim(formatCmd);
-				String countExpr = formatCmd.Substring(10);
-				if (countExpr.empty())
-					break;
-				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, countExpr, formatInfo);
-				DbgTypedValue countValue = dbgEvaluationContext.EvaluateInContext(contextTypedValue);
-				if ((countValue) && (countValue.mType->IsInteger()))
-					formatInfo->mArrayLength = (intptr)countValue.GetInt64();
-				if (dbgEvaluationContext.HadError())
-				{
-					if (errorString != NULL)
-						*errorString = dbgEvaluationContext.GetErrorStr();
-					return false;
-				}
-				formatFlags = countExpr.Substring(dbgEvaluationContext.mExprNode->GetSrcEnd());
-				continue;
-			}
-			else if (strncmp(formatCmd.c_str(), "assign=", 7) == 0)
-			{
-				formatCmd = formatFlags.Substring(1);
-				formatCmd = Trim(formatCmd);
-				String assignExpr = formatCmd.Substring(7);
-				if (assignExpr.empty())
-					break;
-				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, assignExpr, formatInfo);
-				if (dbgEvaluationContext.HadError())
-				{
-					if (errorString != NULL)
-						*errorString = dbgEvaluationContext.GetErrorStr();
-					return false;
-				}
-				if (assignExprOffset != NULL)
-				{
-					//TODO: Keep track of the offset directly, this is a hack
-					*assignExprOffset = (int)formatInfoStr.IndexOf("assign=") + 7;
-				}
-				if (assignExprString != NULL)
-					*assignExprString = dbgEvaluationContext.mExprNode->ToString();
-				formatFlags = assignExpr.Substring(dbgEvaluationContext.mExprNode->GetSrcEnd());
-				continue;
-			}
-			else if (strncmp(formatCmd.c_str(), "refid=", 6) == 0)
-			{
-				formatInfo->mReferenceId = formatCmd.Substring(6);
-				if ((formatInfo->mReferenceId.mLength >= 2) && (formatInfo->mReferenceId[0] == '\"'))
-					formatInfo->mReferenceId = formatInfo->mReferenceId.Substring(1, formatInfo->mReferenceId.length() - 2);
-			}
-			else if (strncmp(formatCmd.c_str(), "action=", 7) == 0)
-			{
-				formatInfo->mAction = formatCmd.Substring(7);
-				if ((formatInfo->mAction.mLength >= 2) && (formatInfo->mAction[0] == '\"'))
-					formatInfo->mAction = formatInfo->mReferenceId.Substring(1, formatInfo->mReferenceId.length() - 2);
-			}
-			else if (strncmp(formatCmd.c_str(), "_=", 2) == 0)
-			{
-				formatInfo->mSubjectExpr = formatCmd.Substring(2);
-				if ((formatInfo->mSubjectExpr.mLength >= 2) && (formatInfo->mSubjectExpr[0] == '\"'))
-					formatInfo->mSubjectExpr = formatInfo->mSubjectExpr.Substring(1, formatInfo->mSubjectExpr.length() - 2);
-			}
-			else if (strncmp(formatCmd.c_str(), "expectedType=", 13) == 0)
-			{
-				formatInfo->mExpectedType = formatCmd.Substring(13);
-				if ((formatInfo->mExpectedType.mLength >= 2) && (formatInfo->mExpectedType[0] == '\"'))
-					formatInfo->mExpectedType = formatInfo->mExpectedType.Substring(1, formatInfo->mExpectedType.length() - 2);
-			}
-			else if (strncmp(formatCmd.c_str(), "namespaceSearch=", 16) == 0)
-			{
-				formatInfo->mNamespaceSearch = formatCmd.Substring(16);
-				if ((formatInfo->mNamespaceSearch.mLength >= 2) && (formatInfo->mNamespaceSearch[0] == '\"'))
-					formatInfo->mNamespaceSearch = formatInfo->mNamespaceSearch.Substring(1, formatInfo->mNamespaceSearch.length() - 2);
-			}
-			else if (formatCmd == "d")
-			{
-				formatInfo->mDisplayType = DwDisplayType_Decimal;
-			}
-			else if (formatCmd == "x")
-			{
-				formatInfo->mDisplayType = DwDisplayType_HexLower;
-			}
-			else if (formatCmd == "X")
-			{
-				formatInfo->mDisplayType = DwDisplayType_HexUpper;
-			}
-			else if (formatCmd == "s")
-			{
-				formatInfo->mHidePointers = true;
-				formatInfo->mDisplayType = DwDisplayType_Ascii;
-			}
-			else if (formatCmd == "s8")
-			{
-				formatInfo->mHidePointers = true;
-				formatInfo->mDisplayType = DwDisplayType_Utf8;
-			}
-			else if (formatCmd == "s16")
-			{
-				formatInfo->mHidePointers = true;
-				formatInfo->mDisplayType = DwDisplayType_Utf16;
-			}
-			else if (formatCmd == "s32")
-			{
-				formatInfo->mHidePointers = true;
-				formatInfo->mDisplayType = DwDisplayType_Utf32;
-			}
-			else if (formatCmd == "nd")
-			{
-				formatInfo->mIgnoreDerivedClassInfo = true;
-			}
-			else if (formatCmd == "na")
-			{
-				formatInfo->mHidePointers = true;
-			}
-			else if (formatCmd == "nm")
-			{
-				formatInfo->mNoMembers = true;
-			}
-			else if (formatCmd == "ne")
-			{
-				formatInfo->mNoEdit = true;
-			}
-			else if (formatCmd == "nv")
-			{
-				formatInfo->mNoVisualizers = true;
-			}
-			else if (formatCmd == "rawStr")
-			{
-				formatInfo->mRawString = true;
-			}
-			else if (((!formatCmd.IsEmpty()) && ((formatCmd[0] >= '0') && (formatCmd[0] <= '9'))) ||
-					 (formatCmd.StartsWith("(")))
-			{
-				String countExpr = formatCmd;
-				if (countExpr.empty())
-					break;
-				DbgEvaluationContext dbgEvaluationContext(this, dbgModule, countExpr, formatInfo);
-				DbgTypedValue countValue = dbgEvaluationContext.EvaluateInContext(contextTypedValue);
-				if ((countValue) && (countValue.mType->IsInteger()))
-					formatInfo->mArrayLength = (intptr)countValue.GetInt64();
-				if (dbgEvaluationContext.HadError())
-				{
-					if (errorString != NULL)
-						*errorString = dbgEvaluationContext.GetErrorStr();
-					return false;
-				}
-				formatFlags = countExpr.Substring(dbgEvaluationContext.mExprNode->GetSrcEnd());
-				continue;
-			}
-			else
-				hadError = true;
-
-			if (hadError)
-			{
-				if (errorString != NULL)
-					*errorString = "Invalid format flags";
-				return false;
-			}
-
-			formatFlags = formatFlags.Substring(nextComma);
-		}
-	}
-	return true;
-}
-
-String WinDebugger::MaybeQuoteFormatInfoParam(const StringImpl& str)
-{
-	bool needsQuote = false;
-	for (int i = 0; i < (int)str.length(); i++)
-	{
-		char c = str[i];
-		if (c == ',')
-			needsQuote = true;
-	}
-	if (!needsQuote)
-		return str;
-
-	String qStr = "\"";
-	qStr += str;
-	qStr += "\"";
-	return qStr;
-}
-
-DbgTypedValue WinDebugger::EvaluateInContext(DbgCompileUnit* dbgCompileUnit, const DbgTypedValue& contextTypedValue, const StringImpl& subExpr, DwFormatInfo* formatInfo, String* outReferenceId, String* outErrors)
-{
-	DbgEvaluationContext dbgEvaluationContext(this, dbgCompileUnit->mDbgModule, subExpr, formatInfo, contextTypedValue);
-	if (dbgEvaluationContext.mDbgExprEvaluator == NULL)
-		return DbgTypedValue();
-	dbgEvaluationContext.mDbgExprEvaluator->mDbgCompileUnit = dbgCompileUnit;
-	if (formatInfo != NULL)
-	{
-		dbgEvaluationContext.mDbgExprEvaluator->mLanguage = formatInfo->mLanguage;
-		dbgEvaluationContext.mDbgExprEvaluator->mSubjectExpr = formatInfo->mSubjectExpr;
-	}
-	dbgEvaluationContext.mDbgExprEvaluator->mReferenceId = outReferenceId;
-	auto result = dbgEvaluationContext.EvaluateInContext(contextTypedValue);
-	if ((formatInfo != NULL) && (dbgEvaluationContext.mDbgExprEvaluator->mCountResultOverride != -1))
-		formatInfo->mOverrideCount = dbgEvaluationContext.mDbgExprEvaluator->mCountResultOverride;
-	if (dbgEvaluationContext.mPassInstance->HasFailed())
-	{
-		if (outErrors != NULL)
-		{
-			int errIdx = 0;
-			for (auto err : dbgEvaluationContext.mPassInstance->mErrors)
-			{
-				if (errIdx > 0)
-					(*outErrors) += "\n";
-				(*outErrors) += err->mError;
-				errIdx++;
-			}
-		}
-		return DbgTypedValue();
-	}
-	return result;
-}
-
-void WinDebugger::DbgVisFailed(DebugVisualizerEntry* debugVis, const StringImpl& evalString, const StringImpl& errors)
-{
-	bool onlyMemError = errors.StartsWith("Failed to read") && !errors.Contains('\n');
-	if ((!debugVis->mShowedError) && (!onlyMemError))
-	{
-		debugVis->mShowedError = true;
-		String errStr = StrFormat("DbgVis '%s' failed while evaluating condition '%s'\n", debugVis->mName.c_str(), evalString.c_str());
-		String spacedErrors = errors;
-		spacedErrors.Insert(0, " ");
-		spacedErrors.Replace("\n", "\n ");
-		errStr += spacedErrors;
-		OutputMessage(errStr);
-	}
-}
-
-bool WinDebugger::EvalCondition(DebugVisualizerEntry* debugVis, DbgCompileUnit* dbgCompileUnit, DbgTypedValue typedVal, DwFormatInfo& formatInfo, const StringImpl& condition, const Array<String>& dbgVisWildcardCaptures, String& errorStr)
-{
-	DwFormatInfo displayStrFormatInfo = formatInfo;
-	displayStrFormatInfo.mHidePointers = false;
-	displayStrFormatInfo.mRawString = false;
-
-	String errors;
-	const String conditionStr = mDebugManager->mDebugVisualizers->DoStringReplace(condition, dbgVisWildcardCaptures);
-	DbgTypedValue evalResult = EvaluateInContext(dbgCompileUnit, typedVal, conditionStr, &displayStrFormatInfo, NULL, &errors);
-	if ((!evalResult) || (!evalResult.mType->IsBoolean()))
-	{
-		if (formatInfo.mRawString)
-			return false;
-
-		errorStr += "<DbgVis Failed>";
-		DbgVisFailed(debugVis, conditionStr, errors);
-		return false;
-	}
-
-	return evalResult.mBool;
-}
-
 String WinDebugger::GetArrayItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, DbgType* valueType, DbgTypedValue& curNode, int& count, String* outContinuationData)
 {
 	DbgEvaluationContext conditionEvaluationContext(this, dbgCompileUnit, debugVis->mCondition);
@@ -6565,25 +6096,6 @@ static String WrapWithModifiers(const StringImpl& origName, DbgType* dbgType, Db
 		else
 			return name;
 	}
-}
-
-DebugVisualizerEntry* WinDebugger::FindVisualizerForType(DbgType* dbgType, Array<String>* wildcardCaptures)
-{
-	auto entry = mDebugManager->mDebugVisualizers->FindEntryForType(dbgType->ToString(DbgLanguage_Unknown, true), dbgType->mCompileUnit->mDbgModule->mDbgFlavor, wildcardCaptures);
-
-	if (entry == NULL)
-	{
-		dbgType = dbgType->GetPrimaryType();
-		dbgType->PopulateType();
-		for (auto baseTypeEntry : dbgType->mBaseTypes)
-		{
-			entry = FindVisualizerForType(baseTypeEntry->mBaseType, wildcardCaptures);
-			if (entry != NULL)
-				break;
-		}
-	}
-
-	return entry;
 }
 
 #define GET_FROM(ptr, T) *((T*)(ptr += sizeof(T)) - 1)
@@ -11603,7 +11115,7 @@ void WinDebugger::GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* ou
 		auto inlinedSubProgram = mDebugTarget->FindSubProgram(inlineCallAddr);
 		if (inlinedSubProgram != 0)
 		{
-			FixupLineDataForSubprogram(inlinedSubProgram->mInlineeInfo->mRootInliner);
+			DbgModule::FixupLineDataForSubprogram(inlinedSubProgram->mInlineeInfo->mRootInliner);
 			DbgSubprogram* parentSubprogram = inlinedSubProgram->mInlineeInfo->mInlineParent; // Require it be in the inline parent
 			auto foundLine = parentSubprogram->FindClosestLine(inlinedSubProgram->mBlock.mLowPC, &parentSubprogram);
 			if (foundLine != NULL)
@@ -11641,7 +11153,7 @@ void WinDebugger::GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* ou
 		*outLine = callingLineData->mLine;
 		*outColumn = callingLineData->mColumn;
 
-		FixupLineDataForSubprogram(subProgram);
+		DbgModule::FixupLineDataForSubprogram(subProgram);
 		DbgLineData* dwStartLineData = NULL;
 		DbgLineData* dwEndLineData = NULL;
 		if (subProgram->mLineInfo != NULL)
@@ -11813,7 +11325,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 
 		_SetFlags(subProgram);
 
-		FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);
+		DbgModule::FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);
 		DbgSubprogram* parentSubprogram = subProgram->mInlineeInfo->mInlineParent; // Require it be in the inline parent
 		auto foundLine = parentSubprogram->FindClosestLine(subProgram->mBlock.mLowPC, &parentSubprogram);
 		if (foundLine != NULL)
@@ -11874,7 +11386,7 @@ String WinDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* o
 		DbgSrcFile* dwSrcFile = NULL;
 		DbgLineData* dwLineData = NULL;
 
-		FixupLineDataForSubprogram(dwSubprogram);
+		DbgModule::FixupLineDataForSubprogram(dwSubprogram);
 		addr_target findAddress = wdStackFrame->GetSourcePC();
 		DbgSubprogram* specificSubprogram = dwSubprogram;
 		dwLineData = dwSubprogram->FindClosestLine(findAddress, &specificSubprogram);
@@ -12024,7 +11536,7 @@ String WinDebugger::Callstack_GetStackFrameOldFileInfo(int stackFrameIdx)
 		auto subProgram = nextStackFrame->mSubProgram;
 		dbgModule = subProgram->mCompileUnit->mDbgModule;
 
-		FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);
+		DbgModule::FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);
 		DbgSubprogram* parentSubprogram = subProgram->mInlineeInfo->mInlineParent; // Require it be in the inline parent
 		auto foundLine = parentSubprogram->FindClosestLine(subProgram->mBlock.mLowPC, &parentSubprogram);
 		if (foundLine != NULL)
@@ -12040,7 +11552,7 @@ String WinDebugger::Callstack_GetStackFrameOldFileInfo(int stackFrameIdx)
 		DbgSubprogram* dwSubprogram = wdStackFrame->mSubProgram;
 		if (dwSubprogram != NULL)
 		{
-			FixupLineDataForSubprogram(dwSubprogram);
+			DbgModule::FixupLineDataForSubprogram(dwSubprogram);
 			addr_target findAddress = wdStackFrame->GetSourcePC();
 
 			DbgSubprogram* dbgSubprogram = NULL;
@@ -12411,7 +11923,7 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 
 	DbgSrcFile* dwSrcFile = NULL;
 
-	FixupLineDataForSubprogram(dwSubProgram);
+	DbgModule::FixupLineDataForSubprogram(dwSubProgram);
 
 	DbgLineData* dwLineData = NULL;
 	if (dwSubProgram->mLineInfo != NULL)
@@ -12764,7 +12276,7 @@ String WinDebugger::FindLineCallAddresses(intptr inAddress)
 	PopulateRegisters(&registers);
 
 	auto inlinerSubprogram = dwSubprogram->GetRootInlineParent();
-	FixupLineDataForSubprogram(inlinerSubprogram);
+	DbgModule::FixupLineDataForSubprogram(inlinerSubprogram);
 
 	if (inlinerSubprogram->mLineInfo->mLines.mSize == 0)
 		return "";
@@ -13462,75 +12974,6 @@ void WinDebugger::FixupLineData(DbgCompileUnit* compileUnit)
 	compileUnit->mNeedsLineDataFixup = false;
 }
 
-static int CompareLineData(const void* lineDataP1, const void* lineDataP2)
-{
-	int cmpResult = (int)(((DbgLineData*)lineDataP1)->mRelAddress - ((DbgLineData*)lineDataP2)->mRelAddress);
-	if (cmpResult != 0)
-		return cmpResult;
-
-	// A larger contrib size means it's the 'outer' inlinee
-	cmpResult = -(((DbgLineData*)lineDataP1)->mContribSize - ((DbgLineData*)lineDataP2)->mContribSize);
-	if (cmpResult != 0)
-		return cmpResult;
-
-	return -(((DbgLineData*)lineDataP1)->mCtxIdx - ((DbgLineData*)lineDataP2)->mCtxIdx);
-}
-
-void WinDebugger::FixupLineDataForSubprogram(DbgSubprogram* subProgram)
-{
-	if ((subProgram == NULL) || (!subProgram->mNeedLineDataFixup))
-		return;
-
-	BP_ZONE("FixupLineDataForSubprogram");
-
-	subProgram->mNeedLineDataFixup = false;
-	if (subProgram->mInlineeInfo != NULL)
-		FixupLineDataForSubprogram(subProgram->mInlineeInfo->mRootInliner);
-
-	if ((subProgram->mLineInfo == NULL) || (subProgram->mLineInfo->mLines.mSize == 0))
-		return;
-
-	//TODO: I think this was covering up a bug in DWARF line encoding? Figure this out
-// 	if (subProgram->mLineInfo->mLines.mSize >= 2)
-// 	{
-// 		DbgLineData* line0 = &subProgram->mLineInfo->mLines[0];
-// 		DbgLineData* line1 = &subProgram->mLineInfo->mLines[1];
-//
-//
-// 		if ((line0->mRelAddress == line1->mRelAddress) && (!line0->IsStackFrameSetup()) && (line1->IsStackFrameSetup()))
-// 		{
-// 			CPUInst inst;
-// 			if (mCPU->Decode(line0->mAddress, subProgram->mCompileUnit->mDbgModule->mOrigImageData, &inst))
-// 				line1->mAddress += inst.GetLength();
-// 		}
-// 	}
-
-	qsort(subProgram->mLineInfo->mLines.mVals, subProgram->mLineInfo->mLines.mSize, sizeof(DbgLineData), CompareLineData);
-
-	// If we have multiple lines with the same line/column/context, merge them
-	if (!subProgram->mLineInfo->mLines.IsEmpty())
-	{
-		auto prevLine = &subProgram->mLineInfo->mLines[0];
-		for (int i = 1; i < subProgram->mLineInfo->mLines.mSize; i++)
-		{
-			auto nextLine = &subProgram->mLineInfo->mLines[i];
-
-			if ((nextLine->mLine == prevLine->mLine) && (nextLine->mColumn == prevLine->mColumn) && (nextLine->mCtxIdx == prevLine->mCtxIdx) &&
-				(nextLine->mRelAddress == prevLine->mRelAddress + prevLine->mContribSize))
-			{
-				prevLine->mContribSize += nextLine->mContribSize;
-				// This messed up inline cases because mContribSize actually INCLUDES inlined lines so it caused the address to skip too far
-				//nextLine->mRelAddress += nextLine->mContribSize;
-				//nextLine->mContribSize = 0;
-			}
-			else
-			{
-				prevLine = nextLine;
-			}
-		}
-	}
-}
-
 void WinDebugger::ReserveHotTargetMemory(int size)
 {
 	HotTargetMemory hotTargetMemory;
@@ -13825,6 +13268,70 @@ addr_target WinDebugger::GetTLSOffset(int tlsIndex)
 	addr_target tlsTable = ReadMemory<addr_target>((intptr)threadInfo.mTebBaseAddress + 0x58);
 #endif
 	return ReadMemory<addr_target>(tlsTable + tlsIndex * sizeof(addr_target));
+}
+
+int WinDebugger::GetActiveThreadId()
+{
+	return mActiveThread->mThreadId;
+}
+
+String WinDebugger::GetActiveThreadName()
+{
+	return mActiveThread->mName;
+}
+
+void WinDebugger::ClearExplicitStopThread()
+{
+	mExplicitStopThread = NULL;
+}
+
+int WinDebugger::GetActiveBreakpointHitCount()
+{
+	if (mActiveBreakpoint != NULL)
+		return mActiveBreakpoint->GetHeadBreakpoint()->mHitCount;
+	return 0;
+}
+
+String WinDebugger::GetActiveBreakpointCondition()
+{
+	if ((mActiveBreakpoint != NULL) && (mActiveBreakpoint->mCondition != NULL))
+		return mActiveBreakpoint->GetHeadBreakpoint()->mCondition->mExpr;
+	return "";
+}
+
+int WinDebugger::GetTargetProcessId()
+{
+	return mProcessInfo.dwProcessId;
+}
+
+bool WinDebugger::WantsHotHeap()
+{
+	return (mHotSwapEnabled) && (mDbgProcessId == 0);
+}
+
+addr_target WinDebugger::ReserveHotHeapMemory(addr_target address, int size)
+{
+	return (addr_target)(intptr)::VirtualAllocEx(mProcessInfo.hProcess, (void*)(intptr)address, size, MEM_RESERVE, PAGE_EXECUTE_READWRITE);
+}
+
+void WinDebugger::ReleaseHotHeapMemory(addr_target address)
+{
+	::VirtualFreeEx(mProcessInfo.hProcess, (void*)(intptr)address, 0, MEM_RELEASE);
+}
+
+addr_target WinDebugger::DecodeThunk(addr_target address, DbgModuleMemoryCache* memoryCache)
+{
+	return mCPU->DecodeThunk(address, memoryCache);
+}
+
+bool WinDebugger::DecodeInstruction(addr_target address, DbgModuleMemoryCache* memoryCache, CPUInst* inst)
+{
+	return mCPU->Decode(address, memoryCache, inst);
+}
+
+DbgBreakKind WinDebugger::GetDbgBreakKind(addr_target address, DbgModuleMemoryCache* memoryCache, intptr_target* regs, intptr_target* outObjectPtr)
+{
+	return mCPU->GetDbgBreakKind(address, memoryCache, regs, outObjectPtr);
 }
 
 bool WinDebugger::WriteInstructions(intptr address, void* src, uint64 length)

@@ -5,6 +5,101 @@
 struct CV_LVAR_ADDR_RANGE;
 struct CV_LVAR_ADDR_GAP;
 
+#ifndef BF_PLATFORM_WINDOWS
+#define IMAGE_SIZEOF_SHORT_NAME 8
+
+#define IMAGE_DIRECTORY_ENTRY_RESOURCE 2
+#define IMAGE_DIRECTORY_ENTRY_DEBUG 6
+#define IMAGE_DIRECTORY_ENTRY_TLS 9
+#define IMAGE_DEBUG_TYPE_CODEVIEW 2
+
+#define IMAGE_SCN_MEM_DISCARDABLE 0x02000000
+#define IMAGE_SCN_MEM_EXECUTE 0x20000000
+#define IMAGE_SCN_MEM_WRITE 0x80000000
+
+#define IMAGE_REL_AMD64_ADDR64 0x0001
+#define IMAGE_REL_AMD64_ADDR32 0x0002
+#define IMAGE_REL_AMD64_ADDR32NB 0x0003
+#define IMAGE_REL_AMD64_REL32 0x0004
+#define IMAGE_REL_AMD64_REL32_5 0x0009
+#define IMAGE_REL_AMD64_SECTION 0x000A
+#define IMAGE_REL_AMD64_SECREL 0x000B
+
+#define FIELD_OFFSET(type, field) ((int32)offsetof(type, field))
+
+struct IMAGE_EXPORT_DIRECTORY
+{
+	uint32 Characteristics;
+	uint32 TimeDateStamp;
+	uint16 MajorVersion;
+	uint16 MinorVersion;
+	uint32 Name;
+	uint32 Base;
+	uint32 NumberOfFunctions;
+	uint32 NumberOfNames;
+	uint32 AddressOfFunctions;
+	uint32 AddressOfNames;
+	uint32 AddressOfNameOrdinals;
+};
+
+struct IMAGE_DEBUG_DIRECTORY
+{
+	uint32 Characteristics;
+	uint32 TimeDateStamp;
+	uint16 MajorVersion;
+	uint16 MinorVersion;
+	uint32 Type;
+	uint32 SizeOfData;
+	uint32 AddressOfRawData;
+	uint32 PointerToRawData;
+};
+
+struct IMAGE_RESOURCE_DIRECTORY
+{
+	uint32 Characteristics;
+	uint32 TimeDateStamp;
+	uint16 MajorVersion;
+	uint16 MinorVersion;
+	uint16 NumberOfNamedEntries;
+	uint16 NumberOfIdEntries;
+};
+
+struct IMAGE_RESOURCE_DIRECTORY_ENTRY
+{
+	union
+	{
+		uint32 Name;
+		uint16 Id;
+	};
+	uint32 OffsetToData;
+};
+
+struct IMAGE_RESOURCE_DATA_ENTRY
+{
+	uint32 OffsetToData;
+	uint32 Size;
+	uint32 CodePage;
+	uint32 Reserved;
+};
+
+struct VS_FIXEDFILEINFO
+{
+	uint32 dwSignature;
+	uint32 dwStrucVersion;
+	uint32 dwFileVersionMS;
+	uint32 dwFileVersionLS;
+	uint32 dwProductVersionMS;
+	uint32 dwProductVersionLS;
+	uint32 dwFileFlagsMask;
+	uint32 dwFileFlags;
+	uint32 dwFileOS;
+	uint32 dwFileType;
+	uint32 dwFileSubtype;
+	uint32 dwFileDateMS;
+	uint32 dwFileDateLS;
+};
+#endif
+
 NS_BF_BEGIN
 
 #define PE_SIZEOF_SHORT_NAME              8

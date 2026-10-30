@@ -30,7 +30,7 @@ public:
 	MiniDumpDebugger(DebugManager* debugManager, DbgMiniDump* miniDump);
 	~MiniDumpDebugger();
 
-	void MapMemory(addr_target addr, void* data, intptr_target size);
+	virtual void MapMemory(addr_target addr, void* data, intptr_target size) override;
 	MappedFile* MapModule(COFF* dbgModule, const StringImpl& fileName);
 
 	virtual bool PopulateRegisters(CPURegisters* registers) override;

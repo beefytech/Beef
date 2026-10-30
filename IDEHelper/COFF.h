@@ -168,6 +168,7 @@ public:
 };
 
 class COFF;
+class WinDebugger;
 
 class CvStreamReader
 {
@@ -361,7 +362,8 @@ public:
 	void InitCvTypes();
 	DbgType* CvCreateType();
 	int CvConvRegNum(int regNum, int* outBits = NULL);
-	addr_target GetSectionAddr(uint16 section, uint32 offset);
+	virtual addr_target GetSectionAddr(uint16 section, uint32 offset) override;
+	WinDebugger* GetWinDebugger();
 	int64 CvParseConstant(uint16 constVal, uint8*& data);
 	int64 CvParseConstant(uint8*& data);
 	DbgType* CvGetType(int typeId);

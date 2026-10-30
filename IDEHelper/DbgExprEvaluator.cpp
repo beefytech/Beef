@@ -1,5 +1,6 @@
 #include "DbgExprEvaluator.h"
-#include "WinDebugger.h"
+#include "DbgTargetHost.h"
+#include "DebugTarget.h"
 #include "Compiler/BfUtil.h"
 #include "Compiler/BfSystem.h"
 #include "Compiler/BfParser.h"
@@ -727,12 +728,12 @@ bool DwMethodMatcher::CheckType(DbgType* typeInstance, bool isFailurePass)
 
 //////////////////////////////////////////////////////////////////////////
 
-DbgExprEvaluator::DbgExprEvaluator(WinDebugger* winDebugger, DbgModule* dbgModule, BfPassInstance* passInstance, int callStackIdx, int cursorPos)
+DbgExprEvaluator::DbgExprEvaluator(DbgTargetHost* debugger, DbgModule* dbgModule, BfPassInstance* passInstance, int callStackIdx, int cursorPos)
 {
 	mCountResultOverride = -1;
 	mCapturingChildRef = true;
 	mPassInstance = passInstance;
-	mDebugger = winDebugger;
+	mDebugger = debugger;
 	mLanguage = DbgLanguage_NotSet;
 	mOrigDbgModule = dbgModule;
 	if (dbgModule != NULL)
@@ -3639,9 +3640,9 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 		if (findName == "$this")
 			return GetThis();
 		else if (findName == "$ThreadId")
-			return GetInt(mDebugger->mActiveThread->mThreadId);
+			return GetInt(mDebugger->GetActiveThreadId());
 		else if (findName == "$ThreadName")
-			return GetString(mDebugger->mActiveThread->mName);
+			return GetString(mDebugger->GetActiveThreadName());
 		else if (findName == "$TargetName")
 			return GetString(GetFileName(mDebugTarget->mTargetPath));
 		else if (findName == "LaunchName")
@@ -3653,19 +3654,11 @@ DbgTypedValue DbgExprEvaluator::DoLookupIdentifier(BfAstNode* identifierNode, bo
 		else if (findName == "$ModulePath")
 			return GetString(mDbgModule->mFilePath);
 		else if (findName == "$HitCount")
-		{
-			if (mDebugger->mActiveBreakpoint != NULL)
-				return GetInt(mDebugger->mActiveBreakpoint->GetHeadBreakpoint()->mHitCount);
-			return GetInt(0);
-		}
+			return GetInt(mDebugger->GetActiveBreakpointHitCount());
 		else if (findName == "$BreakpointCondition")
-		{
-			if ((mDebugger->mActiveBreakpoint != NULL) && (mDebugger->mActiveBreakpoint->mCondition != NULL))
-				return GetString(mDebugger->mActiveBreakpoint->GetHeadBreakpoint()->mCondition->mExpr);
-			return GetString("");
-		}
+			return GetString(mDebugger->GetActiveBreakpointCondition());
 		else if (findName == "$ProcessId")
-			return GetInt(mDebugger->mProcessInfo.dwProcessId);
+			return GetInt(mDebugger->GetTargetProcessId());
 
 		bool mayBeRegister = true;
 		for (int i = 1; i < findName.length(); i++)
@@ -6686,7 +6679,7 @@ void DbgExprEvaluator::PerformUnaryExpression(BfAstNode* opToken, BfUnaryOp unar
 			val.mDouble += add;
 			break;
 		default:
-			Fail(StrFormat("Unable to perform operation on type '%s'", ptr.mType->ToString()), expr);
+			Fail(StrFormat("Unable to perform operation on type '%s'", ptr.mType->ToString().c_str()), expr);
 			return;
 		}
 
@@ -7016,7 +7009,7 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 
 	mDebugger->SaveAllRegisters();
 
-	BfLogDbg("Starting RunState_DebugEval on thread %d\n", mDebugger->mActiveThread->mThreadId);
+	BfLogDbg("Starting RunState_DebugEval on thread %d\n", mDebugger->GetActiveThreadId());
 
 	addr_target prevSP = registers->GetSP();
 
@@ -7052,10 +7045,10 @@ DbgTypedValue DbgExprEvaluator::CreateCall(DbgSubprogram* method, DbgTypedValue 
 // 	mDebugger->mActiveThread->mBreakpointAddressContinuing = 0;
 	auto prevRunState = mDebugger->mRunState;
 	mDebugger->mRunState = RunState_DebugEval;
-	mDebugger->mExplicitStopThread = NULL;
+	mDebugger->ClearExplicitStopThread();
 	mDebugger->mRequestedStackFrameIdx = -1;
 
-	BfLogDbg("DbgExprEvaluator::CreateCall %p in thread %d\n", startAddr, mDebugger->mActiveThread->mThreadId);
+	BfLogDbg("DbgExprEvaluator::CreateCall %p in thread %d\n", startAddr, mDebugger->GetActiveThreadId());
 
 	DbgCallResult callResult;
 	callResult.mSubProgram = method;

@@ -23,6 +23,23 @@ public:
 	~MappedFile();
 };
 
-#endif //BF_PLATFORM_WINDOWS
+#else
+
+class MappedFile
+{
+	BF_DISALLOW_COPY(MappedFile);
+public:
+	String mFileName;
+	void* mData;
+	int mFileSize;
+
+public:
+	bool Open(const StringImpl& fileName);
+
+	MappedFile();
+	~MappedFile();
+};
+
+#endif
 
 NS_BF_END

@@ -203,6 +203,22 @@ if(UNIX AND NOT APPLE)
 
 endif()
 
+option(BF_DBG_HOST "Build the Beef debug info and expression evaluation layer" OFF)
+
+if (BF_DBG_HOST AND NOT MSVC)
+  set(DBG_HOST_FILES
+    DbgModule.cpp
+    DebugTarget.cpp
+    DbgTypeMap.cpp
+    DbgExprEvaluator.cpp
+    DbgEvalSupport.cpp
+    DbgEvalPool.cpp
+    HotHeap.cpp
+  )
+  set_source_files_properties(${DBG_HOST_FILES} PROPERTIES COMPILE_DEFINITIONS BF_DBG_64)
+  list(APPEND SRC_FILES ${DBG_HOST_FILES})
+endif()
+
 # Add library to build.
 add_library(${PROJECT_NAME} STATIC
    ${SRC_FILES}

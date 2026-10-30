@@ -171,10 +171,10 @@ public:
 		{
 			while (true)
 			{
-				MoveToNextHashMatch();
-				if (*this == mDict->end())
+				this->MoveToNextHashMatch();
+				if (*this == this->mDict->end())
 					break;
-				if (mKey == GetKey())
+				if (mKey == this->GetKey())
 					break;
 			}			
 			return *this;
@@ -212,7 +212,7 @@ protected:
 	void ResizeEntries(int newSize)
 	{
 		BF_ASSERT(newSize >= mAllocSize);
-		Entry* newEntries = TFuncs::allocate<Entry>(newSize);
+		Entry* newEntries = TFuncs::template allocate<Entry>(newSize);
 
 		for (int i = 0; i < mCount; i++)
 		{
@@ -309,7 +309,7 @@ public:
 	{
 		if (this->mHashHeads == NULL)
 		{
-			this->mHashHeads = TFuncs::allocate<int>(mHashSize);
+			this->mHashHeads = TFuncs::template allocate<int>(mHashSize);
 			memset(this->mHashHeads, -1, sizeof(int) * mHashSize);
 		}
 
@@ -318,7 +318,7 @@ public:
 		int headEntry = this->mHashHeads[hashIdx];
 
 		Entry* newEntry = &mEntries[index];
-		newEntry->mValue = T();
+		newEntry->mValue = TValue();
 		newEntry->mNext = headEntry;
 		newEntry->mHashCode = hash;
 
@@ -331,7 +331,7 @@ public:
 	{
 		if (this->mHashHeads == NULL)
 		{
-			this->mHashHeads = TFuncs::allocate<int>(mHashSize);
+			this->mHashHeads = TFuncs::template allocate<int>(mHashSize);
 			memset(this->mHashHeads, -1, sizeof(int) * mHashSize);
 		}
 
@@ -367,7 +367,7 @@ public:
 
 	void Rehash(int newHashSize)
 	{
-		auto newHashHeads = TFuncs::allocate<int>(newHashSize);
+		auto newHashHeads = TFuncs::template allocate<int>(newHashSize);
 		memset(newHashHeads, -1, sizeof(int) * newHashSize);
 
 		if (mHashHeads != NULL)
@@ -414,8 +414,8 @@ public:
 		}
 	}
 
-	template <typename TKey>
-	bool TryGet(const TKey& key, TKey* outKey, TValue* outValue)
+	template <typename TAltKey>
+	bool TryGet(const TAltKey& key, TAltKey* outKey, TValue* outValue)
 	{
 		if (mHashHeads == NULL)
 			return false;
@@ -441,8 +441,8 @@ public:
 		return false;
 	}
 
-	template <typename TKey>
-	MatchIterator TryGet(const TKey& key)
+	template <typename TAltKey>
+	MatchIterator TryGet(const TAltKey& key)
 	{
 		if (mHashHeads == NULL)
 			return end();
@@ -468,14 +468,14 @@ public:
 		return end();
 	}	
 
-	template <typename TKey>
-	bool Contains(const TKey& key)
+	template <typename TAltKey>
+	bool Contains(const TAltKey& key)
 	{
 		return TryGet(key) != end();
 	}
 
-	template <typename TKey>
-	int GetCount(const TKey& key)
+	template <typename TAltKey>
+	int GetCount(const TAltKey& key)
 	{
 		int count = 0;
 		for (auto itr = TryGet(key); itr != end(); ++itr)
@@ -483,8 +483,8 @@ public:
 		return count;
 	}
 
-	template <typename TKey>
-	bool Remove(const TKey& key)
+	template <typename TAltKey>
+	bool Remove(const TAltKey& key)
 	{
 		if (mHashHeads == NULL)
 			return false;

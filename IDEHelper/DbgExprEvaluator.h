@@ -13,7 +13,7 @@ namespace Beefy
 
 NS_BF_DBG_BEGIN
 
-class WinDebugger;
+class DbgTargetHost;
 class WdStackFrame;
 
 typedef WdStackFrame CPUStackFrame;
@@ -339,7 +339,7 @@ public:
 
 	DbgLanguage mLanguage;
 	BfPassInstance* mPassInstance;
-	WinDebugger* mDebugger;
+	DbgTargetHost* mDebugger;
 	String mExpectingTypeName;
 	String mSubjectExpr;
 	DbgTypedValue mSubjectValue;
@@ -407,7 +407,7 @@ public:
 	DbgFlavor GetFlavor();
 
 public:
-	DbgExprEvaluator(WinDebugger* winDebugger, DbgModule* dbgModule, BfPassInstance* passInstance, int callStackIdx, int cursorPos);
+	DbgExprEvaluator(DbgTargetHost* debugger, DbgModule* dbgModule, BfPassInstance* passInstance, int callStackIdx, int cursorPos);
 	~DbgExprEvaluator();
 
 	DbgTypedValue GetInt(int value);

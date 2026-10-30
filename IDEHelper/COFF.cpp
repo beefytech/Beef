@@ -297,7 +297,7 @@ COFF::~COFF()
 {
 	BF_ASSERT(mTempBufIdx == 0);
 	ClosePDB();
-	mDebugger->mDbgSymSrv.ReleaseRequest(mDbgSymRequest);
+	GetWinDebugger()->mDbgSymSrv.ReleaseRequest(mDbgSymRequest);
 }
 
 const char* COFF::CvCheckTargetMatch(const char* name, bool& wasBeef)
@@ -495,6 +495,11 @@ void COFF::InitCvTypes()
 	CREATE_PRIMITIVE(T_REAL32, DbgType_Single, "float", float);
 	CREATE_PRIMITIVE(T_REAL64, DbgType_Double, "double", double);
 	CREATE_PRIMITIVE(T_REAL80, DbgType_Double, "double80", double); // This isn't correct
+}
+
+WinDebugger* COFF::GetWinDebugger()
+{
+	return static_cast<WinDebugger*>(mDebugger);
 }
 
 addr_target COFF::GetSectionAddr(uint16 section, uint32 offset)
@@ -6133,7 +6138,7 @@ bool COFF::TryLoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge)
 
 	//OutputDebugStrF("COFF::TryLoadPDB %s\n", pdbPath.c_str());
 	if (!isVerifyOnly)
-		mDebugger->ModuleChanged(this);
+		GetWinDebugger()->ModuleChanged(this);
 
 	mPDBLoaded = true;
 
@@ -6193,13 +6198,13 @@ bool COFF::LoadPDB(const String& pdbPath, uint8 wantGuid[16], int32 wantAge)
 	memcpy(mWantPDBGuid, wantGuid, 16);
 	mWantAge = wantAge;
 
-	mDbgSymRequest = mDebugger->mDbgSymSrv.CreateRequest(mFilePath, pdbPath, wantGuid, wantAge);
+	mDbgSymRequest = GetWinDebugger()->mDbgSymSrv.CreateRequest(mFilePath, pdbPath, wantGuid, wantAge);
 	mDbgSymRequest->SearchLocal();
 
 	if (!mDbgSymRequest->mFinalPDBPath.IsEmpty())
 	{
 		TryLoadPDB(mDbgSymRequest->mFinalPDBPath, wantGuid, wantAge);
-		mDebugger->mDbgSymSrv.ReleaseRequest(mDbgSymRequest);
+		GetWinDebugger()->mDbgSymSrv.ReleaseRequest(mDbgSymRequest);
 		mDbgSymRequest = NULL;
 	}
 	else
@@ -6829,7 +6834,7 @@ void COFF::PreCacheImage()
 	if (mOrigImageData != NULL)
 		return;
 
-	mDebugger->mDbgSymSrv.PreCacheImage(mFilePath, mTimeStamp, mImageSize);
+	GetWinDebugger()->mDbgSymSrv.PreCacheImage(mFilePath, mTimeStamp, mImageSize);
 }
 
 void COFF::PreCacheDebugInfo()
@@ -6844,7 +6849,7 @@ void COFF::PreCacheDebugInfo()
 	mDbgSymRequest->SearchCache();
 	if (mDbgSymRequest->mFinalPDBPath.IsEmpty())
 	{
-		if (GetCurrentThreadId() == mDebugger->mDebuggerThreadId)
+		if (GetCurrentThreadId() == GetWinDebugger()->mDebuggerThreadId)
 		{
 			mDbgSymRequest->mIsPreCache = true;
 			mDbgSymRequest->SearchSymSrv();
@@ -6897,21 +6902,21 @@ bool COFF::RequestImage()
 	if (mOrigImageData != NULL)
 		return false;
 
-	if (GetCurrentThreadId() == mDebugger->mDebuggerThreadId)
+	if (GetCurrentThreadId() == GetWinDebugger()->mDebuggerThreadId)
 	{
 		auto prevRunState = mDebugger->mRunState;
 		mDebugger->mRunState = RunState_SearchingSymSrv;
 		mDebugger->mDebugManager->mOutMessages.push_back(StrFormat("symsrv Searching for image '%s'", mFilePath.c_str()));
 
-		auto dbgSymRequest = mDebugger->mDbgSymSrv.CreateRequest();
-		mDebugger->mActiveSymSrvRequest = dbgSymRequest;
+		auto dbgSymRequest = GetWinDebugger()->mDbgSymSrv.CreateRequest();
+		GetWinDebugger()->mActiveSymSrvRequest = dbgSymRequest;
 		BF_ASSERT(mDebugger->mDebugManager->mCritSect.mLockCount == 1);
 		mDebugger->mDebugManager->mCritSect.Unlock();
 		// We unlock to allow the IDE to continue updating while we search
 		String imagePath = dbgSymRequest->SearchForImage(mFilePath, mTimeStamp, mImageSize);
 		mDebugger->mDebugManager->mCritSect.Lock();
-		delete mDebugger->mActiveSymSrvRequest;
-		mDebugger->mActiveSymSrvRequest = NULL;
+		delete GetWinDebugger()->mActiveSymSrvRequest;
+		GetWinDebugger()->mActiveSymSrvRequest = NULL;
 
 		mDebugger->mRunState = prevRunState;
 
@@ -6940,18 +6945,18 @@ bool COFF::RequestDebugInfo(bool allowRemote)
 		if (!allowRemote)
 			return false;
 
-		if (GetCurrentThreadId() == mDebugger->mDebuggerThreadId)
+		if (GetCurrentThreadId() == GetWinDebugger()->mDebuggerThreadId)
 		{
 			auto prevRunState = mDebugger->mRunState;
 			mDebugger->mRunState = RunState_SearchingSymSrv;
 
 			mDbgSymRequest->mInProcess = true;
-			mDebugger->mActiveSymSrvRequest = mDbgSymRequest;
+			GetWinDebugger()->mActiveSymSrvRequest = mDbgSymRequest;
 			BF_ASSERT(mDebugger->mDebugManager->mCritSect.mLockCount == 1);
 			mDebugger->mDebugManager->mCritSect.Unlock();
 			mDbgSymRequest->SearchSymSrv();
 			mDebugger->mDebugManager->mCritSect.Lock();
-			mDebugger->mActiveSymSrvRequest = NULL;
+			GetWinDebugger()->mActiveSymSrvRequest = NULL;
 			mDbgSymRequest->mInProcess = false;
 
 			mDebugger->mRunState = prevRunState;
@@ -6963,7 +6968,7 @@ bool COFF::RequestDebugInfo(bool allowRemote)
 	}
 	if (!mDbgSymRequest->mFinalPDBPath.IsEmpty())
 		hasDebugInfo = TryLoadPDB(mDbgSymRequest->mFinalPDBPath, mDbgSymRequest->mWantGuid, mDbgSymRequest->mWantAge);
-	mDebugger->mDbgSymSrv.ReleaseRequest(mDbgSymRequest);
+	GetWinDebugger()->mDbgSymSrv.ReleaseRequest(mDbgSymRequest);
 	mDbgSymRequest = NULL;
 	return hasDebugInfo;
 }
@@ -7099,7 +7104,7 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 				jumpOp.mOpCode1 = 0x25;
 				jumpOp.mRIPRel = 0;
 				jumpOp.mTarget = entry->mValue->mAddress;
-				mDebugger->WriteMemory(hotAddr, jumpOp);
+				GetWinDebugger()->WriteMemory(hotAddr, jumpOp);
 
 				callTarget = hotAddr;
 #endif
@@ -7137,8 +7142,8 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 	fileStream.mSize = libEntry->mLength;
 	fileStream.SetPos(0);
 
-	DbgModule* dbgModule = new COFF(mDebugger->mDebugTarget);
-	dbgModule->mHotIdx = mDebugger->mActiveHotIdx;
+	DbgModule* dbgModule = new COFF(GetWinDebugger()->mDebugTarget);
+	dbgModule->mHotIdx = GetWinDebugger()->mActiveHotIdx;
 	dbgModule->mFilePath = libEntry->mName + "@" + libEntry->mLibFile->mFilePath;
 	bool success = dbgModule->ReadCOFF(&fileStream, DbgModuleKind_FromLocateSymbol);
 	fileStream.mFP = NULL;
@@ -7154,7 +7159,7 @@ addr_target COFF::LocateSymbol(const StringImpl& name)
 		delete dbgModule;
 		return 0;
 	}
-	mDebugger->mDebugTarget->AddDbgModule(dbgModule);
+	GetWinDebugger()->mDebugTarget->AddDbgModule(dbgModule);
 
 	auto symbolEntry = mSymbolNameMap.Find(name.c_str());
 	if (symbolEntry != NULL)
