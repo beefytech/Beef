@@ -131,6 +131,7 @@ public:
 
 	const DbgMemoryFlags ReadOrigImageData(addr_target address, uint8* data, int size);
 	bool DecodeInstruction(addr_target address, CPUInst* inst);
+	bool IsReturnInstruction(addr_target address);
 	DbgBreakKind GetDbgBreakKind(addr_target address, CPURegisters* regs, intptr_target* objAddr);
 	DbgModule* FindDbgModuleForAddress(addr_target address);
 	DbgModule* GetMainDbgModule();

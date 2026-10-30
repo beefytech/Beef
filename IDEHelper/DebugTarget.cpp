@@ -8,6 +8,8 @@
 #include "HotHeap.h"
 #ifdef BF_PLATFORM_WINDOWS
 #include "COFF.h"
+#elif defined BF_PLATFORM_LINUX
+#include "ElfDbgModule.h"
 #endif
 //#include <Winternl.h>
 
@@ -111,11 +113,11 @@ void DebugTarget::SetupTargetBinary()
 
 		checkHotReserveAddr = (addr_target)mTargetBinary->mImageBase;
 
-		addr_target reservedPtr = NULL;
+		addr_target reservedPtr = 0;
 		while ((addr_target)checkHotReserveAddr < (addr_target)mTargetBinary->mImageBase + 0x30000000)
 		{
 			reservedPtr = mDebugger->ReserveHotHeapMemory(checkHotReserveAddr, reserveSize);
-			if (reservedPtr != NULL)
+			if (reservedPtr != 0)
 			{
 				mHotHeapAddr = reservedPtr;
 				mHotHeapReserveSize = reserveSize;
@@ -154,6 +156,8 @@ DbgModule* DebugTarget::CreateDbgModule()
 {
 #ifdef BF_PLATFORM_WINDOWS
 	return new COFF(this);
+#elif defined BF_PLATFORM_LINUX
+	return new ElfDbgModule(this);
 #else
 	return new DbgModule(this);
 #endif
@@ -178,7 +182,7 @@ DbgModule* DebugTarget::Init(const StringImpl& launchPath, const StringImpl& tar
 	dwarf->mDisplayName = GetFileName(launchPath);
 	dwarf->mFilePath = launchPath;
 	dwarf->mImageBase = (intptr)imageBase;
-	if (!dwarf->ReadCOFF(&fileStream, DbgModuleKind_Module))
+	if (!dwarf->ReadImage(&fileStream, DbgModuleKind_Module))
 	{
 		mDebugger->OutputMessage(StrFormat("Debugger failed to read binary: %s\n", launchPath.c_str()));
 		delete dwarf;
@@ -215,7 +219,7 @@ DbgModule* DebugTarget::HotLoad(const StringImpl& fileName, int hotIdx)
 	dwarf->mHotIdx = hotIdx;
 	dwarf->mDisplayName = GetFileName(fileName);
 	dwarf->mFilePath = fileName;
-	if (!dwarf->ReadCOFF(&fileStream, DbgModuleKind_HotObject))
+	if (!dwarf->ReadImage(&fileStream, DbgModuleKind_HotObject))
 	{
 		mDebugger->OutputMessage(StrFormat("Debugger failed to read binary: %s\n", fileName.c_str()));
 		delete dwarf;
@@ -234,7 +238,7 @@ DbgModule* DebugTarget::SetupDyn(const StringImpl& filePath, DataStream* stream,
 	DbgModule* dwarf = CreateDbgModule();
 	dwarf->mFilePath = filePath;
 	dwarf->mImageBase = (intptr)imageBase;
-	if (!dwarf->ReadCOFF(stream, DbgModuleKind_Module))
+	if (!dwarf->ReadImage(stream, DbgModuleKind_Module))
 	{
 		//mDebugger->OutputMessage(StrFormat("Debugger failed to read binary: %s", fileName.c_str()));
 		delete dwarf;
@@ -2090,15 +2094,11 @@ bool DebugTarget::RollBackStackFrame(CPURegisters* registers, addr_target* outRe
 	if (outReturnAddressLoc != NULL)
 		*outReturnAddressLoc = 0;
 
-	CPUInst inst;
-	if (DecodeInstruction(registers->GetPC(), &inst))
+	if (IsReturnInstruction(registers->GetPC()))
 	{
-		if (inst.IsReturn())
-		{
-			// If we are literally just a return then often the frame descriptor is wrong,
-			//  but we know this is ACTUALLY just a simple rollback
-			return RollBackStackFrame_SimpleRet(registers);
-		}
+		// If we are literally just a return then often the frame descriptor is wrong,
+		//  but we know this is ACTUALLY just a simple rollback
+		return RollBackStackFrame_SimpleRet(registers);
 	}
 
 #ifdef BF_DBG_32
@@ -2365,7 +2365,7 @@ bool DebugTarget::GetValueByNameInBlock_Helper(DbgSubprogram* dwSubprogram, DbgB
 					if (variable->mIsConst)
 						*outAddr = (uint64)&variable->mConstValue;
 					else
-						*outAddr = NULL; // Optimized out?
+						*outAddr = 0; // Optimized out?
 					return true;
 				}
 				else
@@ -2491,6 +2491,14 @@ bool DebugTarget::DecodeInstruction(addr_target address, CPUInst* inst)
 	{
 		return mDebugger->DecodeInstruction(address, dwarf->mOrigImageData, inst);
 	}
+	return false;
+}
+
+bool DebugTarget::IsReturnInstruction(addr_target address)
+{
+	auto dwarf = FindDbgModuleForAddress(address);
+	if ((dwarf != NULL) && (dwarf->mOrigImageData != NULL))
+		return mDebugger->IsReturnInstruction(address, dwarf->mOrigImageData);
 	return false;
 }
 

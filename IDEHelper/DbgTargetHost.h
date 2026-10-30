@@ -139,6 +139,7 @@ public:
 
 	virtual addr_target DecodeThunk(addr_target address, DbgModuleMemoryCache* memoryCache) = 0;
 	virtual bool DecodeInstruction(addr_target address, DbgModuleMemoryCache* memoryCache, CPUInst* inst) = 0;
+	virtual bool IsReturnInstruction(addr_target address, DbgModuleMemoryCache* memoryCache) = 0;
 	virtual DbgBreakKind GetDbgBreakKind(addr_target address, DbgModuleMemoryCache* memoryCache, intptr_target* regs, intptr_target* outObjectPtr) = 0;
 
 	template<typename T> T ReadMemory(intptr addr, bool local = false, bool* failed = NULL);

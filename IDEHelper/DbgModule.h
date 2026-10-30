@@ -843,6 +843,7 @@ public:
 	String mCompileDir;
 	addr_target mLowPC;
 	addr_target mHighPC;
+	int64 mStmtListOffset;
 	bool mNeedsLineDataFixup;
 	bool mWasHotReplaced;
 	bool mIsMaster;
@@ -1121,6 +1122,7 @@ public:
 
 	const uint8* mDebugLineData;
 	const uint8* mDebugInfoData;
+	int64 mDebugInfoSize;
 	const uint8* mDebugPubNames;
 	const uint8* mDebugFrameData;
 	const uint8* mDebugLocationData;
@@ -1249,7 +1251,7 @@ public:
 	char* DbgDupString(const char* str, const char* allocName = NULL);
 	DbgModule* GetLinkedModule();
 	addr_target GetTargetImageBase();
-	addr_target RemapAddr(addr_target addr);
+	virtual addr_target RemapAddr(addr_target addr);
 	template <typename T>
 	T GetOrCreate(int idx, DbgDataMap& dataMap);
 	DbgType* GetOrCreateType(int typeIdx, DbgDataMap& typeMap);
@@ -1257,6 +1259,8 @@ public:
 	void MapSubprogram(DbgSubprogram* dbgSubprogram);
 	static void FixupLineDataForSubprogram(DbgSubprogram* subProgram);
 	bool ParseDWARF(const uint8*& dataPtr);
+	void ParseDWARFUnits();
+	void ParseDWARFLines();
 	void ParseAbbrevData(const uint8* data);
 	void ParseExceptionData();
 	void ParseDebugFrameData();
@@ -1264,7 +1268,7 @@ public:
 	void FlushLineData(DbgSubprogram* curSubprogram, std::list<DbgLineData>& queuedLineData);
 	DbgSrcFile* AddSrcFile(DbgCompileUnit* compileUnit, const String& srcFilePath);
 	void AddLineData(DbgCompileUnit* dwCompileUnit, DbgLineData& lineData, DbgSubprogram*& curSubProgram, std::list<DbgLineData>& queuedLineData);
-	bool ParseDebugLineInfo(const uint8*& data, int compileUnitIdx);
+	bool ParseDebugLineInfo(const uint8*& data, DbgCompileUnit* dwCompileUnit);
 	void FixupInnerTypes(int startingTypeIdx);
 	void MapTypes(int startingTypeIdx);
 	void CreateNamespaces();
@@ -1304,6 +1308,7 @@ public:
 	static bool CanRead(DataStream* stream, DebuggerResult* outResult);
 
 	bool ReadCOFF(DataStream* stream, DbgModuleKind dbgModuleKind);
+	virtual bool ReadImage(DataStream* stream, DbgModuleKind dbgModuleKind) { return ReadCOFF(stream, dbgModuleKind); }
 	void RemoveTargetData();
 	virtual void ReportMemory(MemReporter* memReporter);
 

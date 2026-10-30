@@ -609,6 +609,7 @@ public:
 	virtual void ReleaseHotHeapMemory(addr_target address) override;
 	virtual addr_target DecodeThunk(addr_target address, DbgModuleMemoryCache* memoryCache) override;
 	virtual bool DecodeInstruction(addr_target address, DbgModuleMemoryCache* memoryCache, CPUInst* inst) override;
+	virtual bool IsReturnInstruction(addr_target address, DbgModuleMemoryCache* memoryCache) override;
 	virtual DbgBreakKind GetDbgBreakKind(addr_target address, DbgModuleMemoryCache* memoryCache, intptr_target* regs, intptr_target* outObjectPtr) override;
 	virtual bool GetEmitSource(const StringImpl& filePath, String& outText);
 };

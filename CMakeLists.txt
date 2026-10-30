@@ -20,6 +20,10 @@ add_subdirectory(extern/hunspell)
 add_subdirectory(IDEHelper)
 add_subdirectory(BeefBoot)
 
+if (BF_DBG_HOST AND UNIX AND NOT APPLE)
+  add_subdirectory(BeefTools/DbgModuleCheck)
+endif()
+
 if (DEFINED BUILD_IMGCREATE)
   add_subdirectory(BeefTools/ImgCreate)
 endif()

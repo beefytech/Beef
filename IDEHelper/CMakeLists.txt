@@ -203,7 +203,7 @@ if(UNIX AND NOT APPLE)
 
 endif()
 
-option(BF_DBG_HOST "Build the Beef debug info and expression evaluation layer" OFF)
+option(BF_DBG_HOST "Build the Beef debug info and expression evaluation layer" ON)
 
 if (BF_DBG_HOST AND NOT MSVC)
   set(DBG_HOST_FILES
@@ -215,6 +215,9 @@ if (BF_DBG_HOST AND NOT MSVC)
     DbgEvalPool.cpp
     HotHeap.cpp
   )
+  if (UNIX AND NOT APPLE)
+    list(APPEND DBG_HOST_FILES ElfDbgModule.cpp)
+  endif()
   set_source_files_properties(${DBG_HOST_FILES} PROPERTIES COMPILE_DEFINITIONS BF_DBG_64)
   list(APPEND SRC_FILES ${DBG_HOST_FILES})
 endif()

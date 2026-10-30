@@ -13329,6 +13329,12 @@ bool WinDebugger::DecodeInstruction(addr_target address, DbgModuleMemoryCache* m
 	return mCPU->Decode(address, memoryCache, inst);
 }
 
+bool WinDebugger::IsReturnInstruction(addr_target address, DbgModuleMemoryCache* memoryCache)
+{
+	CPUInst inst;
+	return (mCPU->Decode(address, memoryCache, &inst)) && (inst.IsReturn());
+}
+
 DbgBreakKind WinDebugger::GetDbgBreakKind(addr_target address, DbgModuleMemoryCache* memoryCache, intptr_target* regs, intptr_target* outObjectPtr)
 {
 	return mCPU->GetDbgBreakKind(address, memoryCache, regs, outObjectPtr);
