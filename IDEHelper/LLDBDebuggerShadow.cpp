@@ -46,6 +46,20 @@ static String ShadowFunctionName(const StringImpl& name)
 	return result;
 }
 
+// LLDB shows an inlined frame by its DW_AT_name alone, so only the unqualified name and the linkage name are compared
+static String ShadowInlineName(const StringImpl& name)
+{
+	String result = ShadowFunctionName(name);
+	int nameStart = (int)result.IndexOf('!') + 1;
+	int nameEnd = (int)result.IndexOf('!', nameStart);
+	if (nameEnd == -1)
+		nameEnd = (int)result.length();
+	int lastDot = (int)result.LastIndexOf('.', nameEnd - 1);
+	if (lastDot >= nameStart)
+		result.Remove(nameStart, lastDot + 1 - nameStart);
+	return result;
+}
+
 // WinDebugger::CheckBreakpoint's choice of addresses, without hot versions: the requested line, or else the
 // nearest following line within 6, bound at the first row of each run of rows on that line
 static void ShadowBindBreakpoint(DebugTarget* debugTarget, DbgSrcFile* srcFile, int lineNum, int instrOffset, Array<addr_target>& outAddrs)
@@ -180,12 +194,35 @@ void LLDBDebugger::ShadowCheckFrames()
 		String beefName = DbgTargetHost::GetStackFrameInfo(beefIdx, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
 		String beefLine = StrFormat("%s:%d", ShadowNormalizePath(file).c_str(), line);
 
+		int beefGroupEnd = beefIdx + 1;
+		while ((beefGroupEnd < (int)mCallStack.size()) && (mCallStack[beefGroupEnd]->mInInlineMethod))
+			beefGroupEnd++;
+		int beefDepth = beefGroupEnd - beefIdx - 1;
+		int lldbDepth = lldbIdx - groupStart;
+		if (beefDepth > 0)
+			beefName = DbgTargetHost::GetStackFrameInfo(beefGroupEnd - 1, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
+
 		WdStackFrame* wdStackFrame = mCallStack[beefIdx];
 		addr_target sourcePC = wdStackFrame->GetSourcePC();
 		if (wdStackFrame->mSubProgram != NULL)
 		{
 			ShadowCompare("frame_name", ShadowFunctionName(lldbName), ShadowFunctionName(beefName));
 			ShadowCompare("frame_line", lldbLine, beefLine);
+			ShadowCompare("inline_depth", StrFormat("%d", lldbDepth), StrFormat("%d", beefDepth));
+			if (lldbDepth == beefDepth)
+			{
+				for (int depthIdx = 0; depthIdx <= lldbDepth; depthIdx++)
+				{
+					String lldbInlineName = LLDBDebugger::GetStackFrameInfo(groupStart + depthIdx, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
+					String lldbInlineLine = StrFormat("%s:%d", ShadowNormalizePath(file).c_str(), line);
+					String beefInlineName = DbgTargetHost::GetStackFrameInfo(beefIdx + depthIdx, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
+					String beefInlineLine = StrFormat("%s:%d", ShadowNormalizePath(file).c_str(), line);
+					if (depthIdx < lldbDepth)
+						ShadowCompare("inline_name", ShadowInlineName(lldbInlineName), ShadowInlineName(beefInlineName));
+					if (depthIdx > 0)
+						ShadowCompare("inline_line", lldbInlineLine, beefInlineLine);
+				}
+			}
 			String lldbAddrLine = LLDBDebugger::GetAddressSourceLocation((intptr)sourcePC);
 			int columnColon = (int)lldbAddrLine.LastIndexOf(':');
 			if (columnColon > 0)
@@ -199,7 +236,7 @@ void LLDBDebugger::ShadowCheckFrames()
 			}
 			ShadowCompare("addr_line", ShadowNormalizePath(lldbAddrLine), HostAddressSourceLocation((intptr)sourcePC));
 
-			String lldbAutos = String("\n") + LLDBDebugger::GetAutoLocals(lldbIdx, false);
+			String lldbAutos = String("\n") + LLDBDebugger::GetAutoLocals(groupStart, false);
 			String beefAutos = DbgTargetHost::GetAutoLocals(beefIdx, false);
 			String missing;
 			for (auto name : beefAutos.Split('\n'))
