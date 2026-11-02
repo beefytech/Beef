@@ -7,6 +7,7 @@ NS_BF_DBG_BEGIN
 
 class HotHeap;
 class DbgTargetHost;
+struct DbgInstInfo;
 
 static const int DBG_MAX_LOOKBACK = 64*1024;
 
@@ -132,6 +133,7 @@ public:
 	const DbgMemoryFlags ReadOrigImageData(addr_target address, uint8* data, int size);
 	bool DecodeInstruction(addr_target address, CPUInst* inst);
 	bool IsReturnInstruction(addr_target address);
+	bool DecodeInstInfo(addr_target address, CPURegisters* registers, DbgInstInfo* outInfo);
 	DbgBreakKind GetDbgBreakKind(addr_target address, CPURegisters* regs, intptr_target* objAddr);
 	DbgModule* FindDbgModuleForAddress(addr_target address);
 	DbgModule* GetMainDbgModule();

@@ -227,7 +227,7 @@ addr_target LLDBDebugger::DecodeThunk(addr_target address, DbgModuleMemoryCache*
 	return 0;
 }
 
-bool LLDBDebugger::IsReturnInstruction(addr_target address, DbgModuleMemoryCache* memoryCache)
+bool LLDBDebugger::DecodeInstInfo(addr_target address, DbgModuleMemoryCache* memoryCache, CPURegisters* registers, DbgInstInfo* outInfo)
 {
 	if (!mLLDBTarget.IsValid())
 		return false;
@@ -236,8 +236,13 @@ bool LLDBDebugger::IsReturnInstruction(addr_target address, DbgModuleMemoryCache
 	lldb::SBInstructionList instructions = mLLDBTarget.ReadInstructions(addr, 1);
 	if (instructions.GetSize() == 0)
 		return false;
-	const char* mnemonic = instructions.GetInstructionAtIndex(0).GetMnemonic(mLLDBTarget);
-	return (mnemonic != NULL) && (strncmp(mnemonic, "ret", 3) == 0);
+	lldb::SBInstruction instruction = instructions.GetInstructionAtIndex(0);
+	const char* mnemonic = instruction.GetMnemonic(mLLDBTarget);
+	outInfo->mSize = (int)instruction.GetByteSize();
+	outInfo->mIsCall = false;
+	outInfo->mIsReturn = (mnemonic != NULL) && (strncmp(mnemonic, "ret", 3) == 0);
+	outInfo->mTarget = 0;
+	return true;
 }
 
 // HotGetTlsBlockAddr knows only the hot base module's TLS module id, and evaluates in the stopped thread's innermost frame

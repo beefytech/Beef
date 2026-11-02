@@ -138,125 +138,6 @@ void WinDebugger::TryGetThreadName(WdThreadInfo* threadInfo)
 	}
 }
 
-static void CreateFilterName(String& name, DbgType* type)
-{
-	CreateFilterName(name, type->mParent);
-
-	switch (type->mTypeCode)
-	{
-	case DbgType_Namespace:
-	case DbgType_Struct:
-	case DbgType_Class:
-		name += type->mName;
-		break;
-	}
-}
-
-static void CreateFilterName(String& name, const char* srcStr, DbgLanguage language)
-{
-	int chevronDepth = 0;
-	const char* cPtr = srcStr;
-	for (; true; cPtr++)
-	{
-		char c = *cPtr;
-		if (c == 0)
-			break;
-		if (c == '>')
-			chevronDepth--;
-		bool inGeneric = chevronDepth > 0;
-		if (c == '<')
-			chevronDepth++;
-		if (inGeneric) // Bundle all generic instances together
-			continue;
-		if (c == '[') // Bundle all arrays together
-			name.clear();
-		if (c == '(')
-			return; // Start of params
-		if ((c == ':') && (cPtr[1] == ':') && (language == DbgLanguage_Beef))
-		{
-			name.Append('.');
-			cPtr++;
-		}
-		else
-			name.Append(c);
-	}
-}
-
-static void CreateFilterName(String& name, DbgSubprogram* subprogram)
-{
-	auto language = subprogram->GetLanguage();
-	if (subprogram->mName == NULL)
-	{
-		if (subprogram->mLinkName[0] == '<')
-		{
-			name += subprogram->mLinkName;
-			return;
-		}
-		name = BfDemangler::Demangle(subprogram->mLinkName, language);
-		// Strip off the params since we need to generate those ourselves
-		int parenPos = (int)name.IndexOf('(');
-		if (parenPos != -1)
-			name.RemoveToEnd(parenPos);
-		return;
-	}
-	else if (subprogram->mHasQualifiedName)
-	{
-		const char* cPtr = subprogram->mName;
-		if (strncmp(cPtr, "_bf::", 5) == 0)
-		{
-			CreateFilterName(name, cPtr + 5, DbgLanguage_Beef);
-			name.Replace(".__BfStaticCtor", ".this$static");
-			name.Replace(".__BfCtorClear", ".this$clear");
-			name.Replace(".__BfCtor", ".this");
-		}
-		else
-			CreateFilterName(name, subprogram->mName, language);
-
-		return;
-	}
-	else
-	{
-		if (subprogram->mParentType != NULL)
-		{
-			String parentName = subprogram->mParentType->ToString();
-			CreateFilterName(name, parentName.c_str(), language);
-			if (!name.empty())
-			{
-				if (language == DbgLanguage_Beef)
-					name += ".";
-				else
-					name += "::";
-			}
-		}
-
-		if ((language == DbgLanguage_Beef) && (subprogram->mParentType != NULL) && (subprogram->mParentType->mTypeName != NULL) &&
-			(strcmp(subprogram->mName, subprogram->mParentType->mTypeName) == 0))
-			name += "this";
-		else if ((language == DbgLanguage_Beef) && (subprogram->mName[0] == '~'))
-			name += "~this";
-		else if (strncmp(subprogram->mName, "_bf::", 5) == 0)
-		{
-			CreateFilterName(name, subprogram->mName + 5, DbgLanguage_Beef);
-		}
-		else
-		{
-			CreateFilterName(name, subprogram->mName, language);
-		}
-	}
-
-	if (name.empty())
-		name += "`anon";
-	if ((name[name.length() - 1] == '!') || (name[0] == '<'))
-	{
-		if (language == DbgLanguage_Beef)
-		{
-			// It's a mixin - assert that there's no params
-			//BF_ASSERT(subprogram->mParams.Size() == 0);
-		}
-		return;
-	}
-}
-
 //////////////////////////////////////////////////////////////////////////
 
 DbgPendingExpr::DbgPendingExpr()
@@ -11684,220 +11565,6 @@ String WinDebugger::DisassembleAt(intptr inAddress)
 	return result;
 }
 
-String WinDebugger::FindLineCallAddresses(intptr inAddress)
-{
-	String callAddresses;
-
-	addr_target address = (addr_target)inAddress;
-
-	DbgSubprogram* dwSubprogram = NULL;
-
-	DbgLineData* startLineData = FindLineDataAtAddress(address, &dwSubprogram, NULL);
-
-	if (dwSubprogram == NULL)
-		return "";
-
-	CPURegisters registers;
-	PopulateRegisters(&registers);
-
-	auto inlinerSubprogram = dwSubprogram->GetRootInlineParent();
-	DbgModule::FixupLineDataForSubprogram(inlinerSubprogram);
-
-	if (inlinerSubprogram->mLineInfo->mLines.mSize == 0)
-		return "";
-	auto lineData = &inlinerSubprogram->mLineInfo->mLines[0];
-
-	addr_target addr = dwSubprogram->mBlock.mLowPC;
-	addr_target endAddr = dwSubprogram->mBlock.mHighPC;
-
-	DbgSubprogram* checkSubprogram = dwSubprogram;
-	DbgLineData* checkLineData = lineData;
-	addr_target checkLineAddr = 0;
-
-	int lineIdx = 0;
-	while (checkLineData != NULL)
-	{
-		//auto nextLineData = dwSubprogram->mCompileUnit->mLineDataMap.GetNext(checkLineData);
-		++lineIdx;
-
-		DbgLineData* nextLineData = NULL;
-		addr_target nextLineAddr;
-		if (lineIdx < inlinerSubprogram->mLineInfo->mLines.size())
-		{
-			nextLineData = &inlinerSubprogram->mLineInfo->mLines[lineIdx];
-			nextLineAddr = dwSubprogram->GetLineAddr(*nextLineData);
-		}
-		else
-			nextLineAddr = inlinerSubprogram->mBlock.mHighPC;
-
-		// This stuff doesn't make sense...
-		DbgSubprogram* nextSubProgram;
-		if (nextLineData != NULL)
-		{
-			if (nextLineAddr > dwSubprogram->mBlock.mHighPC)
-				break;
-
-			endAddr = nextLineAddr;
-			nextSubProgram = mDebugTarget->FindSubProgram(endAddr);
-			if (nextSubProgram != NULL)
-			{
-				auto dbgModule = nextSubProgram->mCompileUnit->mDbgModule;
-				dbgModule->ParseSymbolData();
-			}
-		}
-		else
-		{
-			nextSubProgram = dwSubprogram;
-			endAddr = dwSubprogram->mBlock.mHighPC;
-		}
-
-		auto _HandleSection = [&]()
-		{
-			while (addr < endAddr)
-			{
-				CPUInst inst;
-				if (!mDebugTarget->DecodeInstruction(addr, &inst))
-					break;
-
-				*registers.GetPCRegisterRef() = addr;
-				if (inst.IsCall())
-				{
-					bool addSymbol = true;
-
-					if (addr < (addr_target)inAddress)
-						callAddresses += "-";
-					callAddresses += EncodeDataPtr(addr, false);
-
-					addr_target targetAddr = inst.GetTarget(this, &registers);
-					if (targetAddr != 0)
-					{
-						String outSymbol;
-						auto subprogram = mDebugTarget->FindSubProgram(targetAddr);
-						if (subprogram != NULL)
-						{
-							CreateFilterName(outSymbol, subprogram);
-							addSymbol = true;
-						}
-						else
-						{
-							addr_target offset = 0;
-							String fullSymbolName;
-							if (mDebugTarget->FindSymbolAt(targetAddr, &outSymbol, &offset))
-							{
-								if (offset < 0x200)
-								{
-									//outSymbol = BfDemangler::Demangle(outSymbol, dwSubprogram->GetLanguage());
-									if (outSymbol == "___chkstk_ms")
-										addSymbol = false;
-									else
-									{
-										String demangledName = BfDemangler::Demangle(outSymbol, DbgLanguage_C);
-										outSymbol.clear();
-										CreateFilterName(outSymbol, demangledName.c_str(), DbgLanguage_C);
-									}
-								}
-								else
-									outSymbol.clear();
-							}
-						}
-
-						if (addSymbol)
-						{
-							if (outSymbol.empty())
-								callAddresses += "\tFunc@" + EncodeDataPtr(targetAddr, false);
-							else
-								callAddresses += "\t" + outSymbol;
-
-							String attrs;
-							bool isFiltered = false;
-							if (subprogram != NULL)
-							{
-								subprogram->PopulateSubprogram();
-								isFiltered = subprogram->mIsStepFilteredDefault;
-								if (isFiltered)
-									attrs += "d"; // 'd' for default filtered
-							}
-
-							StepFilter* stepFilterPtr = NULL;
-							if (mDebugManager->mStepFilters.TryGetValue(outSymbol, &stepFilterPtr))
-								isFiltered = stepFilterPtr->IsFiltered(isFiltered);
-
-							if (isFiltered)
-								attrs += "f";  // 'f' for filter
-
-							if (!attrs.IsEmpty())
-								callAddresses += "\t" + attrs;
-						}
-					}
-
-					if (addSymbol)
-						callAddresses += "\n";
-				}
-
-				inst.PartialSimulate(this, &registers);
-				addr += inst.GetLength();
-			}
-		};
-
-		// For inlining - only add calls that are found either directly in our main block (not an inlined block)
-		//  But add inlined methods when their parent is our current block
-		if ((checkSubprogram == dwSubprogram) && (checkLineData->mLine == startLineData->mLine))
-		{
-			_HandleSection();
-		}
-		else if ((checkSubprogram->mInlineeInfo != NULL) && (checkSubprogram->mInlineeInfo->mInlineParent == dwSubprogram))
-		{
-			if (checkLineAddr == checkSubprogram->mBlock.mLowPC)
-			{
-				addr_target inlineStartAddr = checkSubprogram->mBlock.mLowPC;
-
-				// Find the calling line
-				DbgSubprogram* callingSubprogram = dwSubprogram;
-				auto checkLineData = dwSubprogram->FindClosestLine(inlineStartAddr, &callingSubprogram);
-				if ((checkLineData != NULL) && (checkLineData->mCtxIdx == startLineData->mCtxIdx) && (checkLineData->mLine == startLineData->mLine))
-				{
-					if (inlineStartAddr <= (addr_target)inAddress)
-						callAddresses += "-";
-					callAddresses += EncodeDataPtr(inlineStartAddr, false);
-					String outSymbol;
-					CreateFilterName(outSymbol, checkSubprogram);
-					callAddresses += "\t" + outSymbol;
-
-					bool isFiltered = dwSubprogram->mIsStepFilteredDefault;
-					StepFilter* stepFilterPtr;
-					if (mDebugManager->mStepFilters.TryGetValue(outSymbol, &stepFilterPtr))
-						isFiltered = stepFilterPtr->IsFiltered(isFiltered);
-
-					if (isFiltered)
-						callAddresses += "\tf"; // 'f' for filter
-
-					callAddresses += "\n";
-				}
-
-// 				if (checkSubprogram->mBlock.mHighPC < endAddr)
-// 				{
-// 					addr = checkSubprogram->mBlock.mHighPC;
-// 					_HandleSection();
-// 				}
-			}
-
-			// If we have unattributed data after the end of an inlined method, add that
-			if ((endAddr > checkSubprogram->mBlock.mHighPC) && (nextSubProgram == dwSubprogram))
-			{
-				addr = checkSubprogram->mBlock.mHighPC;
-				_HandleSection();
-			}
-		}
-
-		checkLineData = nextLineData;
-		checkSubprogram = nextSubProgram;
-		checkLineAddr = nextLineAddr;
-		addr = endAddr;
-	}
-
-	return callAddresses;
-}
-
 String WinDebugger::GetCurrentException()
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
@@ -12754,10 +12421,23 @@ bool WinDebugger::DecodeInstruction(addr_target address, DbgModuleMemoryCache* m
 	return mCPU->Decode(address, memoryCache, inst);
 }
 
-bool WinDebugger::IsReturnInstruction(addr_target address, DbgModuleMemoryCache* memoryCache)
+bool WinDebugger::DecodeInstInfo(addr_target address, DbgModuleMemoryCache* memoryCache, CPURegisters* registers, DbgInstInfo* outInfo)
 {
 	CPUInst inst;
-	return (mCPU->Decode(address, memoryCache, &inst)) && (inst.IsReturn());
+	if (!mCPU->Decode(address, memoryCache, &inst))
+		return false;
+	outInfo->mSize = inst.GetLength();
+	outInfo->mIsCall = inst.IsCall();
+	outInfo->mIsReturn = inst.IsReturn();
+	outInfo->mTarget = 0;
+	if (registers != NULL)
+	{
+		*registers->GetPCRegisterRef() = address;
+		if (outInfo->mIsCall)
+			outInfo->mTarget = inst.GetTarget(this, registers);
+		inst.PartialSimulate(this, registers);
+	}
+	return true;
 }
 
 DbgBreakKind WinDebugger::GetDbgBreakKind(addr_target address, DbgModuleMemoryCache* memoryCache, intptr_target* regs, intptr_target* outObjectPtr)
