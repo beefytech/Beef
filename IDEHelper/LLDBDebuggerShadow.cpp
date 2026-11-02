@@ -236,23 +236,32 @@ void LLDBDebugger::ShadowCheckFrames()
 			}
 			ShadowCompare("addr_line", ShadowNormalizePath(lldbAddrLine), HostAddressSourceLocation((intptr)sourcePC));
 
-			String lldbAutos = String("\n") + LLDBDebugger::GetAutoLocals(groupStart, false);
-			String beefAutos = DbgTargetHost::GetAutoLocals(beefIdx, false);
-			String missing;
-			for (auto name : beefAutos.Split('\n'))
+			int autosDepth = (lldbDepth == beefDepth) ? lldbDepth : 0;
+			for (int depthIdx = 0; depthIdx <= autosDepth; depthIdx++)
 			{
-				if (name.IsEmpty())
-					continue;
-				String key = "\n";
-				key += name;
-				key += "\n";
-				if (!lldbAutos.Contains(key))
+				String lldbAutos = String("\n") + LLDBDebugger::GetAutoLocals(groupStart + depthIdx, false);
+				String beefAutos = DbgTargetHost::GetAutoLocals(beefIdx + depthIdx, false);
+				String missing;
+				for (auto name : beefAutos.Split('\n'))
 				{
-					missing += name;
-					missing += " ";
+					if (name.IsEmpty())
+						continue;
+					String key = "\n";
+					key += name;
+					key += "\n";
+					if (!lldbAutos.Contains(key))
+					{
+						missing += name;
+						missing += " ";
+					}
 				}
+				DbgSubprogram* frameSubprogram = mCallStack[beefIdx + depthIdx]->mSubProgram;
+				bool isInlineFrame = (frameSubprogram != NULL) && (frameSubprogram->mInlineeInfo != NULL);
+				// An empty list passes the subset rule trivially, so inline frames with autos are counted on their own
+				if ((isInlineFrame) && (!beefAutos.IsEmpty()))
+					mShadowQueryCounts["autos_inline_answered"]++;
+				ShadowCompare(isInlineFrame ? "autos_subset_inline" : "autos_subset", "", missing);
 			}
-			ShadowCompare("autos_subset", "", missing);
 		}
 
 		// Modules with only .dynsym are left out: LLDB also reads MiniDebugInfo locals and symbol versions there
