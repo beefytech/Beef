@@ -5128,6 +5128,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 		for (auto field : typeDef->mFields)
 		{
+			// A re-entrant population pass can resize mFieldInstances, and a comptime emit can leave it shorter than
+			//  the field list we are walking, so every lookup through 'mIdx' is range-checked
+			if (field->mIdx >= typeInstance->mFieldInstances.mSize)
+				continue;
 			auto fieldInstance = &typeInstance->mFieldInstances[field->mIdx];
 			if (fieldInstance->mResolvedType != NULL)
 				continue;
@@ -5153,6 +5157,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				if (field->mIsConst != (pass == 0))
 					continue;
 
+				if (field->mIdx >= typeInstance->mFieldInstances.mSize)
+					continue;
 				auto fieldInstance = &typeInstance->mFieldInstances[field->mIdx];
 				if ((fieldInstance->mResolvedType != NULL) || (!fieldInstance->mFieldIncluded))
 					continue;
@@ -5190,8 +5196,11 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 							BF_ASSERT(payloadType->IsTuple());
 							resolvedFieldType = payloadType;
 							// The payload resolve can re-enter and resize mFieldInstances
-							fieldInstance = &typeInstance->mFieldInstances[field->mIdx];
-							fieldInstance->mIsEnumPayloadCase = true;
+							if (field->mIdx < typeInstance->mFieldInstances.mSize)
+							{
+								fieldInstance = &typeInstance->mFieldInstances[field->mIdx];
+								fieldInstance->mIsEnumPayloadCase = true;
+							}
 						}
 					}
 					else
@@ -5228,6 +5237,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 				// Resolving the field's type can re-enter this type's population (through a generic constraint on it, say) and a pass that
 				//  takes in new emitted members resizes mFieldInstances, so the field instance is looked up again rather than held across it
+				if (field->mIdx >= typeInstance->mFieldInstances.mSize)
+					continue;
 				fieldInstance = &typeInstance->mFieldInstances[field->mIdx];
 
 				if (resolvedFieldType->IsUndefSizedArray())
@@ -5277,6 +5288,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 		int enumCaseEntryIdx = 0;
 		for (auto field : typeDef->mFields)
 		{
+			if (field->mIdx >= typeInstance->mFieldInstances.mSize)
+				continue;
 			auto fieldInstance = &typeInstance->mFieldInstances[field->mIdx];
 			if (!fieldInstance->mFieldIncluded)
 				continue;
@@ -5298,6 +5311,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 
 		for (auto& resolveEntry : deferredVarResolves)
 		{
+			if (resolveEntry.mFieldDef->mIdx >= typeInstance->mFieldInstances.mSize)
+				continue;
 			hadDeferredVars = true;
 			auto fieldType = ResolveVarFieldType(typeInstance, &typeInstance->mFieldInstances[resolveEntry.mFieldDef->mIdx], resolveEntry.mFieldDef);
 			if (fieldType == NULL)
@@ -5307,6 +5322,9 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 				mHadBuildError = true;
 				//typeInstance->mTypeFailed = true;
 			}
+			// ResolveVarFieldType evaluates the initializer, which can re-enter and resize mFieldInstances
+			if (resolveEntry.mFieldDef->mIdx >= typeInstance->mFieldInstances.mSize)
+				continue;
 			auto fieldInstance = &typeInstance->mFieldInstances[resolveEntry.mFieldDef->mIdx];
 			fieldInstance->SetResolvedType(fieldType);
 		}
