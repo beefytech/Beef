@@ -240,6 +240,32 @@ bool LLDBDebugger::IsReturnInstruction(addr_target address, DbgModuleMemoryCache
 	return (mnemonic != NULL) && (strncmp(mnemonic, "ret", 3) == 0);
 }
 
+// HotGetTlsBlockAddr knows only the hot base module's TLS module id, and evaluates in the stopped thread's innermost frame
+bool LLDBDebugger::GetTLSBlockAddr(DbgModule* dbgModule, CPURegisters* registers, addr_target& outAddr)
+{
+	if ((registers == NULL) || (mHotTlsModuleId == 1) || (mLLDBFrames.IsEmpty()))
+		return false;
+	lldb::SBModule baseModule = HotGetBaseModule();
+	if (!baseModule.IsValid())
+		return false;
+	char modulePath[PATH_MAX] = { 0 };
+	char moduleRealPath[PATH_MAX];
+	char dbgModuleRealPath[PATH_MAX];
+	baseModule.GetFileSpec().GetPath(modulePath, sizeof(modulePath));
+	if ((realpath(modulePath, moduleRealPath) == NULL) || (realpath(dbgModule->mFilePath.c_str(), dbgModuleRealPath) == NULL) ||
+		(strcmp(moduleRealPath, dbgModuleRealPath) != 0))
+		return false;
+
+	lldb::SBFrame& frame = mLLDBFrames[0];
+	if ((addr_target)frame.FindRegister("fs_base").GetValueAsUnsigned(0) != (addr_target)registers->mIntRegs.gs)
+		return false;
+	uint64 blockAddr = 0;
+	if (!HotGetTlsBlockAddr(frame, blockAddr))
+		return false;
+	outAddr = (addr_target)blockAddr;
+	return true;
+}
+
 addr_target LLDBDebugger::GetTLSOffset(int tlsIndex)
 {
 	HostUnsupported("GetTLSOffset");

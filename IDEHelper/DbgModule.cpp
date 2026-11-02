@@ -7544,6 +7544,20 @@ void DbgModule::FinishHotSwap()
 	mSymbolNameMap.Clear();
 }
 
+bool DbgModule::ResolveTLSAddress(addr_target operand, CPURegisters* registers, addr_target& outAddr)
+{
+	if ((mTLSAddr == 0) || (mTLSIndexAddr == 0))
+		return false;
+
+	int tlsIndex = mDebugger->ReadMemory<int>(mTLSIndexAddr);
+	addr_target tlsEntry = mDebugger->GetTLSOffset(tlsIndex);
+
+	intptr_target tlsValueIndex = (intptr_target)operand;
+
+	outAddr = (tlsValueIndex - mTLSAddr) + tlsEntry;
+	return true;
+}
+
 addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, CPURegisters* registers, DbgAddrType* outAddrType, DbgEvalLocFlags flags, addr_target* pushValue)
 {
 	bool allowReg = (flags & DbgEvalLocFlag_IsParam) == 0;
@@ -7743,16 +7757,13 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 		case DW_OP_GNU_push_tls_address:
 		case DW_OP_form_tls_address:
 			{
-				if ((mTLSAddr == 0) || (mTLSIndexAddr == 0))
+				addr_target tlsAddr = 0;
+				if (!ResolveTLSAddress((stackIdx > 0) ? stackFrameData[stackIdx - 1] : 0, registers, tlsAddr))
 					return 0;
 
 				OPS_NEED(1);
-				int tlsIndex = mDebugger->ReadMemory<int>(mTLSIndexAddr);
-				addr_target tlsEntry = mDebugger->GetTLSOffset(tlsIndex);
-
-				intptr_target tlsValueIndex = stackFrameData[--stackIdx];
-
-				OPS_PUSH((tlsValueIndex - mTLSAddr) + tlsEntry);
+				stackIdx--;
+				OPS_PUSH(tlsAddr);
 				*outAddrType = DbgAddrType_Target;
 			}
 			break;

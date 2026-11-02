@@ -1345,6 +1345,7 @@ public:
 	virtual bool ReadImage(DataStream* stream, DbgModuleKind dbgModuleKind) { return ReadCOFF(stream, dbgModuleKind); }
 	// COFF images can also carry GNU DWARF, whose inline handling stays as it was
 	virtual bool WantsDwarfInlineContexts() { return false; }
+	virtual bool ResolveTLSAddress(addr_target operand, CPURegisters* registers, addr_target& outAddr);
 	void RemoveTargetData();
 	virtual void ReportMemory(MemReporter* memReporter);
 

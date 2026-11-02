@@ -104,6 +104,7 @@ public:
 public:
 	virtual void Fail(const StringImpl& error) = 0;
 	virtual addr_target GetTLSOffset(int tlsIndex) = 0;
+	virtual bool GetTLSBlockAddr(DbgModule* dbgModule, CPURegisters* registers, addr_target& outAddr) { return false; }
 	virtual int EnableWriting(intptr address, int size) = 0;
 	virtual int SetProtection(intptr address, int size, int prot) = 0;
 	virtual bool IsMiniDumpDebugger() = 0;

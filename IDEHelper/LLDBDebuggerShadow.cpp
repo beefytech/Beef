@@ -6,6 +6,7 @@
 #include "DebugTarget.h"
 #include "DbgModule.h"
 #include "ElfDbgModule.h"
+#include "DWARFInfo.h"
 #include "BeefySysLib/util/AllocDebug.h"
 
 USING_NS_BF;
@@ -274,6 +275,60 @@ void LLDBDebugger::ShadowCheckFrames()
 			if (!mDebugTarget->FindSymbolAt(sourcePC, &beefSymbol, &offset))
 				beefSymbol = "!Invalid symbol";
 			ShadowCompare("addr_symbol", lldbSymbol, beefSymbol);
+		}
+	}
+
+	ShadowCheckTLS();
+}
+
+void LLDBDebugger::ShadowCheckTLS()
+{
+	if ((mCallStack.IsEmpty()) || (mDebugTarget->mLaunchBinary == NULL))
+		return;
+	DbgModule* dbgModule = mDebugTarget->mLaunchBinary;
+	WdStackFrame* wdStackFrame = mCallStack[0];
+
+	HashSet<String> seenNames;
+	for (auto dbgType : dbgModule->mTypes)
+	{
+		if ((dbgType->mCompileUnit == NULL) || (dbgType->mCompileUnit->mLanguage != DbgLanguage_Beef))
+			continue;
+		for (auto member : dbgType->mMemberList)
+		{
+			if ((!member->mIsStatic) || (member->mName == NULL) || (member->mLocationLen <= 0))
+				continue;
+			uint8 lastOp = member->mLocationData[member->mLocationLen - 1];
+			if ((lastOp != DW_OP_GNU_push_tls_address) && (lastOp != DW_OP_form_tls_address))
+				continue;
+
+			String qualifiedName = dbgType->ToString(DbgLanguage_Beef);
+			qualifiedName.Replace(".", "::");
+			qualifiedName += "::";
+			qualifiedName += member->mName;
+			if (!seenNames.Add(qualifiedName))
+				continue;
+
+			String lldbName;
+			lldb::SBValueList candidates = mLLDBTarget.FindGlobalVariables(member->mName, 64);
+			for (uint32 candidateIdx = 0; candidateIdx < candidates.GetSize(); candidateIdx++)
+			{
+				const char* candidateName = candidates.GetValueAtIndex(candidateIdx).GetName();
+				if ((candidateName != NULL) && (String(candidateName).EndsWith(qualifiedName)))
+				{
+					lldbName = candidateName;
+					break;
+				}
+			}
+			if (lldbName.IsEmpty())
+				continue;
+
+			// A target-level SBValue has no thread, so a thread-local is looked up through the stopped thread's frame
+			uint64 lldbAddr = mLLDBFrames[0].GetValueForVariablePath(lldbName.c_str()).GetLoadAddress();
+
+			DbgAddrType addrType = DbgAddrType_NoValue;
+			addr_target beefAddr = (addr_target)dbgModule->EvaluateLocation(NULL, member->mLocationData, member->mLocationLen, wdStackFrame, &addrType);
+			ShadowCompare("tls_addr", StrFormat("%s %llx", qualifiedName.c_str(), (unsigned long long)lldbAddr),
+				StrFormat("%s %llx", qualifiedName.c_str(), (unsigned long long)beefAddr));
 		}
 	}
 }
