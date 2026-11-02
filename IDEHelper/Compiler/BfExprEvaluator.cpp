@@ -20373,7 +20373,10 @@ BfModuleMethodInstance BfExprEvaluator::GetPropertyMethodInstance(BfMethodDef* m
 			{
 				auto useTypeInst = mOrigPropTarget.mType->ToTypeInstance();
 				auto virtualMethod = (BfMethodInstance*)useTypeInst->mVirtualMethodTable[rawMethodInstance->mVirtualTableIdx].mImplementingMethod;
-				return mModule->ReferenceExternalMethodInstance(virtualMethod);
+				// We need the real method instance rather than just an external reference, since a
+				//  devirtualized call may be the only thing that references this accessor - the vtable
+				//  slot only gets filled in for methods that are already reified
+				return mModule->GetMethodInstanceAtIdx(virtualMethod->mMethodInstanceGroup->mOwner, virtualMethod->mMethodInstanceGroup->mMethodIdx, NULL, mPropGetMethodFlags);
 			}
 		}
 	}
