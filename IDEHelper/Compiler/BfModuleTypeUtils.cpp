@@ -5189,6 +5189,8 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 							AddDependency(payloadType, typeInstance, BfDependencyMap::DependencyFlag_ValueTypeMemberData);
 							BF_ASSERT(payloadType->IsTuple());
 							resolvedFieldType = payloadType;
+							// The payload resolve can re-enter and resize mFieldInstances
+							fieldInstance = &typeInstance->mFieldInstances[field->mIdx];
 							fieldInstance->mIsEnumPayloadCase = true;
 						}
 					}
@@ -5223,6 +5225,10 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						resolvedFieldType = GetPrimitiveType(BfTypeCode_Var);
 					}
 				}
+
+				// Resolving the field's type can re-enter this type's population (through a generic constraint on it, say) and a pass that
+				//  takes in new emitted members resizes mFieldInstances, so the field instance is looked up again rather than held across it
+				fieldInstance = &typeInstance->mFieldInstances[field->mIdx];
 
 				if (resolvedFieldType->IsUndefSizedArray())
 				{
