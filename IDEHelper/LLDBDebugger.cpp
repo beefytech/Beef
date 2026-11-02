@@ -160,6 +160,7 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mIsRunning = false;
 	mPageSize = (int)sysconf(_SC_PAGESIZE);
 	mHostUnsupportedCount = 0;
+	ShadowInit();
 	mDidAttach = false;
 	mAttachFlags = BfDbgAttachFlag_None;
 	mNeedBreakpointRebind = false;
@@ -1767,6 +1768,9 @@ void LLDBDebugger::CheckBreakpoint(Breakpoint* checkBreakpoint)
 			}
 		}
 	}
+
+	if (mShadowEnabled)
+		ShadowCheckBreakpoint(bp);
 }
 
 // Bind a breakpoint in the code of an older compile, 'lineNum' being the line in that compile's version of
@@ -2047,6 +2051,9 @@ void LLDBDebugger::UpdateCallStack(bool slowEarlyOut)
 
 	HostBuildCallStack();
 	mCallStackDirty = false;
+
+	if (mShadowEnabled)
+		ShadowCheckFrames();
 }
 
 int LLDBDebugger::GetCallStackCount()
@@ -2284,8 +2291,9 @@ String LLDBDebugger::GetAddressSymbolName(intptr address, bool demangle)
 		return "!Invalid symbol";
 	if (demangle)
 		return symbol.GetDisplayName();
-	else
-		return symbol.GetMangledName();
+	// C symbols such as main have no mangled form
+	const char* mangledName = symbol.GetMangledName();
+	return (mangledName != NULL) ? mangledName : symbol.GetName();
 }
 
 static void FormatDisassembleSBInstruction(lldb::SBInstruction inst, lldb::SBTarget target, String& outString)
@@ -10018,6 +10026,7 @@ void LLDBDebugger::Detach()
 	mLLDBFrames.Clear();
 	mCallStackDirty = false;
 	HostClearCallStack();
+	ShadowWriteReport();
 	delete mDebugTarget;
 	mDebugTarget = NULL;
 	mHostModuleBases.Clear();

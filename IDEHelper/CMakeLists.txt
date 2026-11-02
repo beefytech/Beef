@@ -128,6 +128,7 @@ file(GLOB SRC_FILES
     X86XmmInfo.cpp
     LLDBDebugger.cpp
     LLDBDebuggerHost.cpp
+    LLDBDebuggerShadow.cpp
     GDBDebugger.cpp
 
     Beef/BfCommon.cpp

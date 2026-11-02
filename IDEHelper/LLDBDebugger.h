@@ -92,6 +92,14 @@ public:
 	HashSet<String> mHostUnsupportedNames;
 	int mHostUnsupportedCount;
 
+	// BEEF_DBG_SHADOW
+	bool mShadowEnabled;
+	String mShadowReportPath;
+	Dictionary<String, int> mShadowQueryCounts;
+	Dictionary<String, int> mShadowMismatchCounts;
+	Array<String> mShadowMismatchLines;
+	int mShadowExtraCount;
+
 	// Breakpoints
 	Array<LLDBBreakpoint*> mBreakpoints;
 	Dictionary<int, LLDBBreakpoint*> mBreakpointIdMap;     // LLDB break_id → our bp
@@ -369,6 +377,13 @@ protected:
 	void HostClearCallStack();
 	void HostBuildCallStack();
 	void HostReadFrameRegisters(lldb::SBFrame& frame, CPURegisters* registers);
+	String HostAddressSourceLocation(intptr address);
+	void ShadowInit();
+	void ShadowCompare(const char* query, const StringImpl& lldbResult, const StringImpl& beefResult);
+	void ShadowReportLine(const StringImpl& line);
+	void ShadowCheckFrames();
+	void ShadowCheckBreakpoint(LLDBBreakpoint* bp);
+	void ShadowWriteReport();
 
 public:
 	LLDBDebugger(DebugManager* debugManager);
