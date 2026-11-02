@@ -23105,7 +23105,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 				methodGenericArguments = methodInstance->mMethodInfoEx->mMethodGenericArguments;
 			auto innerMethodInstance = GetMethodInstance(innerType, methodDef, methodGenericArguments, flags, methodInstance->GetForeignType());
 
-			if ((innerMethodInstance == NULL) || (innerMethodInstance.mMethodInstance->IsSkipCall()))
+			if ((innerMethodInstance.mMethodInstance == NULL) || (innerMethodInstance.mMethodInstance->IsSkipCall()))
 			{
 				if (!methodInstance->mReturnType->IsValuelessType())
 				{
@@ -23118,7 +23118,7 @@ void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup,
 			else
 			{
 				auto innerMethodDef = innerMethodInstance.mMethodInstance->mMethodDef;
-				if ((innerMethodDef == methodDef != NULL) && (!CompareMethodSignatures(methodInstance, innerMethodInstance.mMethodInstance)))
+				if ((innerMethodDef == methodDef) && (!CompareMethodSignatures(methodInstance, innerMethodInstance.mMethodInstance)))
 				{
 					InternalError("Boxing method passthrough error");
 				}

@@ -8830,7 +8830,7 @@ BfObjectCreateExpression* BfReducer::CreateObjectCreateExpression(BfAstNode* all
 		{
 			if (nextToken = BfNodeDynCast<BfTokenNode>(mVisitorPos.GetNext()))
 			{
-				if ((nextToken->mToken != NULL) && (nextToken->mToken == BfToken_LChevron))
+				if (nextToken->mToken == BfToken_LChevron)
 				{
 					mVisitorPos.MoveNext();
 					auto genericParamsDecl = CreateGenericArguments(nextToken, true);
