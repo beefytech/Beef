@@ -886,7 +886,12 @@ namespace Tests
 			{
 				int count = 0;
 				for (let m in type.BaseType.GetMethods(.Public | .Instance | .DeclaredOnly))
+				{
+					Test.Assert(m.ReturnType != null);
+					for (int paramIdx < m.ParamCount)
+						Test.Assert(m.GetParamType(paramIdx) != null);
 					count++;
+				}
 				Compiler.EmitTypeBody(type, scope $"public const int cBaseMethodsSeen = {count};\n");
 			}
 		}
@@ -896,7 +901,8 @@ namespace Tests
 		class CycleBase
 		{
 			public int First => 1;
-			public CycleDerived Make() => null;
+			public int Before(int value) => value;
+			public CycleDerived Make(int value) => null;
 			public int Second => 2;
 		}
 
@@ -904,7 +910,8 @@ namespace Tests
 		class CycleTwin
 		{
 			public int First => 1;
-			public Object Make() => null;
+			public int Before(int value) => value;
+			public Object Make(int value) => null;
 			public int Second => 2;
 		}
 
@@ -918,8 +925,96 @@ namespace Tests
 		{
 			int count = 0;
 			for (let m in type.GetMethods(.Public | .Instance | .DeclaredOnly))
+			{
+				Test.Assert(m.ReturnType != null);
+				for (int paramIdx < m.ParamCount)
+					Test.Assert(m.GetParamType(paramIdx) != null);
+				count++;
+			}
+			return count;
+		}
+
+		class ScopeCycleOwner
+		{
+			public int Before(int value) => value;
+			public ScopeCycleScope BeginScope() => default;
+		}
+
+		struct ScopeCycleScope
+		{
+			[OnCompile(.TypeInit), Comptime]
+			static void EmitBindings()
+			{
+				// Resolving BeginScope's return type can run this before its declaration finishes.
+				int count = CountDeclaredMethods(typeof(ScopeCycleOwner));
+				Compiler.EmitTypeBody(typeof(Self), scope $"public const int cMethodsSeen = {count};\n");
+			}
+		}
+
+		[Comptime]
+		static bool HasScopeCycleMethod()
+		{
+			for (let method in typeof(ScopeCycleOwner).GetMethods(.Public | .Instance | .DeclaredOnly))
+			{
+				if (method.Name == "BeginScope")
+				{
+					Test.Assert(method.ReturnType == typeof(ScopeCycleScope));
+					Test.Assert(method.ParamCount == 0);
+					return true;
+				}
+			}
+			return false;
+		}
+
+		[Test]
+		public static void TestMethodsReadDuringScopeTypeInit()
+		{
+			Test.Assert(CountDeclaredMethods(typeof(ScopeCycleOwner)) >= 2);
+			Test.Assert(ScopeCycleScope.cMethodsSeen >= 0);
+			Test.Assert(HasScopeCycleMethod());
+		}
+
+		class RecursiveSnapshotOwner
+		{
+			[Comptime]
+			static int ObserveDeclaredMethods()
+			{
+				// Ready is callable before the recursive lookup, even though it appears after Pending.
+				Test.Assert(Ready(123) == 123);
+				bool foundReady = false;
+				for (let method in typeof(RecursiveSnapshotOwner).GetMethods(.Public | .NonPublic | .Static | .DeclaredOnly))
+				{
+					if (method.Name == "Ready")
+					{
+						Test.Assert(method.ReturnType == typeof(int));
+						Test.Assert(method.ParamCount == 1);
+						Test.Assert(method.GetParamType(0) == typeof(int));
+						foundReady = true;
+					}
+				}
+				Test.Assert(foundReady);
+				return 0;
+			}
+
+			public static void Pending<T>(int value = ObserveDeclaredMethods()) {}
+
+			[AlwaysInclude]
+			public static int Ready(int value) => value;
+		}
+
+		[Comptime]
+		static int CountRecursiveSnapshotMethods()
+		{
+			int count = 0;
+			for (let method in typeof(RecursiveSnapshotOwner).GetMethods(.Public | .NonPublic | .Static | .DeclaredOnly))
 				count++;
 			return count;
+		}
+
+		[Test]
+		public static void TestMethodsVisibleDuringRecursiveReflection()
+		{
+			Test.Assert(CountRecursiveSnapshotMethods() >= 3);
 		}
 
 		// A type's methods read while it was still declaring them (through a cycle) were cached as
