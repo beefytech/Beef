@@ -4291,11 +4291,11 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				else
 				{
 					DbgType* dbgType = GetStackTop<DbgType*>(&dataStack);
-					bool wantGlobal = true;
+					bool wantGlobal = atName != NULL;
 					if (compileUnit->mLanguage == DbgLanguage_Beef)
 					{
 						// Don't show certain global variables in Beef -- that includes things like VTable data
-						if (atName[0] == '_')
+						if ((wantGlobal) && (atName[0] == '_'))
 							wantGlobal = false;
 					}
 
