@@ -44,6 +44,7 @@ public:
 	bool mIsEnd;
 	bool mInInlineMethod;
 	bool mInInlineCall; // Means the frame above us is inlined
+	addr_target mCFA; // Set by hosts that take frames from an external unwinder
 
 	DbgSubprogram* mSubProgram;
 	bool mHasGottenSubProgram;
@@ -58,6 +59,7 @@ public:
 		mIsEnd = false;
 		mInInlineMethod = false;
 		mInInlineCall = false;
+		mCFA = 0;
 	}
 
 	addr_target GetSourcePC()

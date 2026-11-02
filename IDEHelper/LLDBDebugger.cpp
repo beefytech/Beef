@@ -30,6 +30,7 @@
 #endif
 
 USING_NS_BF;
+USING_NS_BF_DBG;
 
 // Hot swap layout
 static const uint64 HOT_HEAP_RESERVE_SIZE = 64 * 1024 * 1024;
@@ -153,6 +154,12 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mRequestedStackFrameIdx = 0;
 	mBreakStackFrameIdx = 0;
 	mCallStackDirty = false;
+	mDebugTarget = NULL;
+	mShowPCOverride = 0;
+	mBfSystem = NULL;
+	mIsRunning = false;
+	mPageSize = (int)sysconf(_SC_PAGESIZE);
+	mHostUnsupportedCount = 0;
 	mDidAttach = false;
 	mAttachFlags = BfDbgAttachFlag_None;
 	mNeedBreakpointRebind = false;
@@ -2002,7 +2009,8 @@ Breakpoint* LLDBDebugger::GetActiveBreakpoint()
 
 void LLDBDebugger::ClearCallStack()
 {
-	mCallStack.Clear();
+	mLLDBFrames.Clear();
+	HostClearCallStack();
 	mCallStackDirty = true;
 }
 
@@ -2019,7 +2027,7 @@ void LLDBDebugger::UpdateCallStack(bool slowEarlyOut)
 	if ((mRunState != RunState_Paused) && (mRunState != RunState_Breakpoint) && (mRunState != RunState_Exception))
 		return;
 
-	mCallStack.Clear();
+	mLLDBFrames.Clear();
 
 	lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
 	if (!thread.IsValid())
@@ -2034,15 +2042,16 @@ void LLDBDebugger::UpdateCallStack(bool slowEarlyOut)
 		lldb::SBFrame frame = thread.GetFrameAtIndex(i);
 		if (!frame.IsValid())
 			break;
-		mCallStack.push_back(frame);
+		mLLDBFrames.push_back(frame);
 	}
 
+	HostBuildCallStack();
 	mCallStackDirty = false;
 }
 
 int LLDBDebugger::GetCallStackCount()
 {
-	return (int)mCallStack.size();
+	return (int)mLLDBFrames.size();
 }
 
 int LLDBDebugger::GetRequestedStackFrameIdx()
@@ -2053,10 +2062,6 @@ int LLDBDebugger::GetRequestedStackFrameIdx()
 int LLDBDebugger::GetBreakStackFrameIdx()
 {
 	return mBreakStackFrameIdx;
-}
-
-void LLDBDebugger::UpdateCallStackMethod(int stackFrameIdx)
-{
 }
 
 void LLDBDebugger::UpdateRegisterUsage(int stackFrameIdx)
@@ -2085,13 +2090,13 @@ String LLDBDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* 
 	if (!mLLDBProcess.IsValid())
 		return String();
 
-	if (mCallStack.IsEmpty())
+	if (mLLDBFrames.IsEmpty())
 		UpdateCallStack();
 
-	if ((stackFrameIdx < 0) || (stackFrameIdx >= (int)mCallStack.size()))
+	if ((stackFrameIdx < 0) || (stackFrameIdx >= (int)mLLDBFrames.size()))
 		return String();
 
-	lldb::SBFrame& frame = mCallStack[stackFrameIdx];
+	lldb::SBFrame& frame = mLLDBFrames[stackFrameIdx];
 	if (!frame.IsValid())
 		return String();
 
@@ -2099,9 +2104,9 @@ String LLDBDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* 
 	*outHotIdx = HotGetModuleVersion(frame.GetModule());
 
 	// Stack frame size = difference in SP between this frame and its caller
-	if (stackFrameIdx + 1 < (int)mCallStack.size())
+	if (stackFrameIdx + 1 < (int)mLLDBFrames.size())
 	{
-		lldb::SBFrame& callerFrame = mCallStack[stackFrameIdx + 1];
+		lldb::SBFrame& callerFrame = mLLDBFrames[stackFrameIdx + 1];
 		if (callerFrame.IsValid())
 		{
 			lldb::addr_t sp = frame.GetSP();
@@ -5328,12 +5333,12 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 	if (!IsPausedState())
 		return "!Not paused";
 
-	if (mCallStack.IsEmpty())
+	if (mLLDBFrames.IsEmpty())
 		UpdateCallStack();
-	if ((callStackIdx < 0) || (callStackIdx >= (int)mCallStack.size()))
+	if ((callStackIdx < 0) || (callStackIdx >= (int)mLLDBFrames.size()))
 		return "!Invalid stack frame";
 
-	lldb::SBFrame frame = mCallStack[callStackIdx];
+	lldb::SBFrame frame = mLLDBFrames[callStackIdx];
 	if (!frame.IsValid())
 		return "!Invalid stack frame";
 
@@ -7391,14 +7396,14 @@ String LLDBDebugger::EvaluateToAddress(const StringImpl& expr, int callStackIdx,
 	/*String evalExpr;
 	LLDBFormatInfo fmtInfo;
 	ParseExprAndFormat(expr, evalExpr, fmtInfo);
-	auto value = mCallStack[callStackIdx].EvaluateExpression(evalExpr.c_str());
+	auto value = mLLDBFrames[callStackIdx].EvaluateExpression(evalExpr.c_str());
 	return FormatSBValueToResult(value, fmtInfo);*/
 	return Evaluate(expr, callStackIdx, cursorPos, /*unused*/ -1, (DwEvalExpressionFlags)0);
 }
 
 String LLDBDebugger::EvaluateAtAddress(const StringImpl& expr, intptr atAddr, int cursorPos)
 {
-	return Evaluate(expr, mCallStack.Count() - 1, cursorPos, /*unused*/ -1, (DwEvalExpressionFlags)0);
+	return Evaluate(expr, mLLDBFrames.Count() - 1, cursorPos, /*unused*/ -1, (DwEvalExpressionFlags)0);
 }
 
 String LLDBDebugger::GetCollectionContinuation(const StringImpl& continuationData, int callStackIdx, int count)
@@ -7411,12 +7416,12 @@ String LLDBDebugger::GetAutoExpressions(int callStackIdx, uint64 memoryRangeStar
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
 	// HotLoad clears the call stack while paused and the watch panels can ask for locals before a draw rebuilds it
-	if (mCallStack.IsEmpty())
+	if (mLLDBFrames.IsEmpty())
 		UpdateCallStack();
-	if ((callStackIdx < 0) || (callStackIdx >= (int)mCallStack.size()))
+	if ((callStackIdx < 0) || (callStackIdx >= (int)mLLDBFrames.size()))
 		return String();
 
-	lldb::SBFrame& frame = mCallStack[callStackIdx];
+	lldb::SBFrame& frame = mLLDBFrames[callStackIdx];
 	if (!frame.IsValid())
 		return String();
 
@@ -7436,12 +7441,12 @@ String LLDBDebugger::GetAutoLocals(int callStackIdx, bool showRegs)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
-	if (mCallStack.IsEmpty())
+	if (mLLDBFrames.IsEmpty())
 		UpdateCallStack();
-	if ((callStackIdx < 0) || (callStackIdx >= (int)mCallStack.size()))
+	if ((callStackIdx < 0) || (callStackIdx >= (int)mLLDBFrames.size()))
 		return String();
 
-	lldb::SBFrame& frame = mCallStack[callStackIdx];
+	lldb::SBFrame& frame = mLLDBFrames[callStackIdx];
 	if (!frame.IsValid())
 		return String();
 
@@ -10010,8 +10015,12 @@ void LLDBDebugger::Detach()
 	WaitForLaunchThread();
 
 	// Release SBFrame refs before destroying so LLDB can fully drop module handles.
-	mCallStack.Clear();
+	mLLDBFrames.Clear();
 	mCallStackDirty = false;
+	HostClearCallStack();
+	delete mDebugTarget;
+	mDebugTarget = NULL;
+	mHostModuleBases.Clear();
 
 	if (mLLDBProcess.IsValid())
 	{

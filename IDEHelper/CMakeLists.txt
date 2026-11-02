@@ -127,6 +127,7 @@ file(GLOB SRC_FILES
     Targets.cpp
     X86XmmInfo.cpp
     LLDBDebugger.cpp
+    LLDBDebuggerHost.cpp
     GDBDebugger.cpp
 
     Beef/BfCommon.cpp
@@ -188,11 +189,15 @@ else()
   message(FATAL_ERROR "LLVM not found")
 endif()
 
+option(BF_DBG_HOST "Build the Beef debug info and expression evaluation layer" ON)
+
 if(UNIX AND NOT APPLE)
   find_path(LLDB_INCLUDE_DIR lldb/API/LLDB.h HINTS ${LLVM_INCLUDE_DIRS})
   find_library(LLDB_LIBRARY NAMES lldb-22 liblldb-22 lldb liblldb HINTS ${LLVM_LIBRARY_DIRS})
 
-  if (LLDB_INCLUDE_DIR AND LLDB_LIBRARY)
+  if (NOT BF_DBG_HOST)
+    message(WARNING "BF_DBG_HOST is OFF; Linux IDE debugger support will be disabled")
+  elseif (LLDB_INCLUDE_DIR AND LLDB_LIBRARY)
     message(STATUS "Found LLDB: ${LLDB_LIBRARY}")
     add_definitions(-DLLDB_ENABLED)
     string(APPEND TARGET_LIBS_OS " ${LLDB_LIBRARY}")
@@ -202,8 +207,6 @@ if(UNIX AND NOT APPLE)
   endif()
 
 endif()
-
-option(BF_DBG_HOST "Build the Beef debug info and expression evaluation layer" ON)
 
 if (BF_DBG_HOST AND NOT MSVC)
   set(DBG_HOST_FILES
