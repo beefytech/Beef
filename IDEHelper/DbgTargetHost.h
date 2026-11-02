@@ -2,6 +2,7 @@
 
 #include "Debugger.h"
 #include "DbgExprEvaluator.h"
+#include "DebugTarget.h"
 
 namespace Beefy
 {
@@ -95,6 +96,8 @@ public:
 	CPURegisters mDebugEvalSetRegisters;
 	Dictionary<DbgModule*, DbgPendingDebugInfoLoad> mPendingDebugInfoLoad;
 	HashSet<String> mLiteralSet;
+	DebugTarget* mDebugTarget;
+	addr_target mShowPCOverride;
 
 public:
 	virtual void Fail(const StringImpl& error) = 0;
@@ -141,6 +144,16 @@ public:
 	virtual bool DecodeInstruction(addr_target address, DbgModuleMemoryCache* memoryCache, CPUInst* inst) = 0;
 	virtual bool IsReturnInstruction(addr_target address, DbgModuleMemoryCache* memoryCache) = 0;
 	virtual DbgBreakKind GetDbgBreakKind(addr_target address, DbgModuleMemoryCache* memoryCache, intptr_target* regs, intptr_target* outObjectPtr) = 0;
+
+	bool IsInRunState();
+	bool IsPaused();
+	DbgLineData* FindLineDataAtAddress(addr_target address, DbgSubprogram** outSubProgram = NULL, DbgSrcFile** outSrcFile = NULL, int* outLineIdx = NULL, DbgOnDemandKind onDemandKind = DbgOnDemandKind_AllowRemote);
+	DbgLineData* FindLineDataInSubprogram(addr_target address, DbgSubprogram* dwSubprogram);
+	virtual String GetAutoLocals(int callStackIdx, bool showRegs) override;
+	virtual void UpdateCallStackMethod(int stackFrameIdx) override;
+	virtual void GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) override;
+	virtual String GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn, int* outLanguage, int* outStackSize, int8* outFlags) override;
+	virtual String FindCodeAddresses(const StringImpl& fileName, int line, int column, bool allowAutoResolve) override;
 
 	template<typename T> T ReadMemory(intptr addr, bool local = false, bool* failed = NULL);
 	using Debugger::ReadMemory;

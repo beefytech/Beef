@@ -100,6 +100,9 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\IDEHelper\DbgEvalSupport.cpp">
+    <ClCompile Include="..\IDEHelper\DbgSymbolSupport.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="..\IDEHelper\DbgTypeMap.cpp">
