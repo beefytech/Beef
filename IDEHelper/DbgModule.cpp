@@ -320,6 +320,64 @@ static const char* DataGetString(const uint8*& data)
 	return prevVal;
 }
 
+template <typename T>
+static bool ReadBounded(const uint8*& data, const uint8* end, T& val)
+{
+	if ((end - data) < (int64)sizeof(T))
+		return false;
+	memcpy(&val, data, sizeof(T));
+	data += sizeof(T);
+	return true;
+}
+
+static bool ReadBoundedULEB128(const uint8*& data, const uint8* end, uint64& val)
+{
+	val = 0;
+	int shift = 0;
+	while (data < end)
+	{
+		uint8 curByte = *(data++);
+		if (shift < 64)
+			val |= (uint64)(curByte & 0x7f) << shift;
+		shift += 7;
+		if ((curByte & 0x80) == 0)
+			return true;
+	}
+	return false;
+}
+
+static bool ReadBoundedSLEB128(const uint8*& data, const uint8* end, int64& val)
+{
+	uint64 bits = 0;
+	int shift = 0;
+	uint8 curByte;
+	do
+	{
+		if (data >= end)
+			return false;
+		curByte = *(data++);
+		if (shift < 64)
+			bits |= (uint64)(curByte & 0x7f) << shift;
+		shift += 7;
+	} while ((curByte & 0x80) != 0);
+	if (((curByte & 0x40) != 0) && (shift < 64))
+		bits |= ~(uint64)0 << shift;
+	val = (int64)bits;
+	return true;
+}
+
+static const char* ReadBoundedString(const uint8*& data, const uint8* end)
+{
+	if (data >= end)
+		return NULL;
+	const uint8* strEnd = (const uint8*)memchr(data, 0, (size_t)(end - data));
+	if (strEnd == NULL)
+		return NULL;
+	const char* str = (const char*)data;
+	data = strEnd + 1;
+	return str;
+}
+
 struct AbstractOriginEntry
 {
 public:
@@ -2238,6 +2296,12 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 	mDebugLineData = NULL;
 	mDebugInfoData = NULL;
 	mDebugInfoSize = 0;
+	mDebugLineSize = 0;
+	mDebugFrameSize = 0;
+	mDebugLocationSize = 0;
+	mDebugRangesSize = 0;
+	mDebugAbbrevSize = 0;
+	mDebugStrSize = 0;
 	mDebugPubNames = NULL;
 	mDebugFrameAddress = 0;
 	mDebugFrameData = NULL;
@@ -2246,7 +2310,14 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 	mDebugAbbrevData = NULL;
 	mDebugStrData = NULL;
 	mDebugAbbrevPtrData = NULL;
+	mDwarfEnd = NULL;
+	mDwarfUnitOfs = 0;
+	mDwarfRefStart = 0;
+	mDwarfRefEnd = 0;
+	mDwarfFailed = false;
+	mDwarfFailCount = 0;
 	mEHFrameData = NULL;
+	mEHFrameSize = 0;
 	mEHFrameAddress = 0;
 	mStringTable = NULL;
 	mSymbolData = NULL;
@@ -2506,25 +2577,92 @@ addr_target DbgModule::RemapAddr(addr_target addr)
 	return addr;
 }
 
-void DbgModule::ParseAbbrevData(const uint8* data)
+bool DbgModule::ParseAbbrevData(const uint8* data)
 {
+	for (int usedIdx : mDebugAbbrevPtrUsed)
+		mDebugAbbrevPtrData[usedIdx] = NULL;
+	mDebugAbbrevPtrUsed.Clear();
+
+	const uint8* end = mDebugAbbrevData + mDebugAbbrevSize;
 	while (true)
 	{
-		int abbrevIdx = (int)DecodeULEB128(data);
-
-		mDebugAbbrevPtrData[abbrevIdx] = data;
-
+		uint64 abbrevIdx;
+		if (!ReadBoundedULEB128(data, end, abbrevIdx))
+			return false;
 		if (abbrevIdx == 0)
-			break;
-		int entryTag = (int)DecodeULEB128(data);
-		bool hasChildren = GET(char) == DW_CHILDREN_yes;
+			return true;
+		// mDebugAbbrevPtrData has one slot per byte of the abbrev section
+		if (abbrevIdx >= (uint64)mDebugAbbrevSize)
+			return false;
+
+		const uint8* entryData = data;
+		uint64 entryTag;
+		if ((!ReadBoundedULEB128(data, end, entryTag)) || (data >= end))
+			return false;
+		data++;
 		while (true)
 		{
-			int attrName = (int)DecodeULEB128(data);
-			int form = (int)DecodeULEB128(data);
+			uint64 attrName;
+			uint64 form;
+			if ((!ReadBoundedULEB128(data, end, attrName)) || (!ReadBoundedULEB128(data, end, form)))
+				return false;
 			if ((attrName == 0) && (form == 0))
 				break;
 		}
+
+		mDebugAbbrevPtrData[abbrevIdx] = entryData;
+		mDebugAbbrevPtrUsed.Add((int)abbrevIdx);
+	}
+}
+
+void DbgModule::DwarfFail(const char* reason)
+{
+	mDwarfFailed = true;
+	BfLogDbg("DbgModule::DwarfFail %s: %s\n", mFilePath.c_str(), reason);
+	if (mDwarfFailCount++ == 0)
+	{
+		if (mDebugger != NULL)
+			mDebugger->OutputMessage(StrFormat("Damaged DWARF in %s (%s), skipping the affected debug info\n", mFilePath.c_str(), reason));
+	}
+}
+
+// Range lists are read without a limit when blocks are looked up, so the terminator must exist inside the section
+bool DbgModule::IsDwarfRangeListValid(int64 offset)
+{
+	if ((mDebugRangesData == NULL) || (offset < 0) || (offset >= mDebugRangesSize))
+		return false;
+	const uint8* data = mDebugRangesData + offset;
+	const uint8* end = mDebugRangesData + mDebugRangesSize;
+	while (true)
+	{
+		addr_target lowPC;
+		addr_target highPC;
+		if ((!ReadBounded(data, end, lowPC)) || (!ReadBounded(data, end, highPC)))
+			return false;
+		if ((lowPC == 0) && (highPC == 0))
+			return true;
+	}
+}
+
+// EvaluateLocation reads the list without a limit
+bool DbgModule::IsDwarfLocationListValid(int64 offset)
+{
+	if ((mDebugLocationData == NULL) || (offset < 0) || (offset >= mDebugLocationSize))
+		return false;
+	const uint8* data = mDebugLocationData + offset;
+	const uint8* end = mDebugLocationData + mDebugLocationSize;
+	while (true)
+	{
+		addr_target startLoc;
+		addr_target endLoc;
+		if ((!ReadBounded(data, end, startLoc)) || (!ReadBounded(data, end, endLoc)))
+			return false;
+		if ((startLoc == 0) && (endLoc == 0))
+			return true;
+		int16 exprLen;
+		if ((!ReadBounded(data, end, exprLen)) || (exprLen < 0) || ((end - data) < exprLen))
+			return false;
+		data += exprLen;
 	}
 }
 
@@ -2597,18 +2735,41 @@ T DbgModule::ReadValue(const uint8*& data, int form, int refOffset, const uint8*
 {
 	gIdx++;
 
+	// On failure the cursor jumps to the unit end so the caller's loops stop
+	#define READ_FAIL(reason) { DwarfFail(reason); data = mDwarfEnd; return (T)0; }
+	#define CHECK_READ(size) if ((int64)(mDwarfEnd - data) < (int64)(size)) READ_FAIL("DIE data runs past its unit")
+	#define RETURN_REF(val) \
+		{ \
+			int64 refVal = (int64)(val); \
+			if ((refVal + mDwarfUnitOfs < mDwarfRefStart) || (refVal + mDwarfUnitOfs >= mDwarfRefEnd)) \
+				READ_FAIL("DIE reference outside its unit"); \
+			return (T)(intptr)(refVal + refOffset); \
+		}
+
 	switch (form)
 	{
 	case DW_FORM_strp:
 		{
-			int strOffset = GET(int);
-			BF_ASSERT(mDebugStrData != NULL);
-			const char* str = (const char*)mDebugStrData + strOffset;
-			return (T)(intptr)str;
+			uint64 strOffset;
+			if (mIsDwarf64)
+			{
+				CHECK_READ(8);
+				strOffset = GET(uint64);
+			}
+			else
+			{
+				CHECK_READ(4);
+				strOffset = GET(uint32);
+			}
+			if ((mDebugStrData == NULL) || (strOffset >= (uint64)mDebugStrSize) ||
+				(memchr(mDebugStrData + strOffset, 0, (size_t)((uint64)mDebugStrSize - strOffset)) == NULL))
+				READ_FAIL("string offset outside .debug_str");
+			return (T)(intptr)(mDebugStrData + strOffset);
 		}
 		break;
 	case DW_FORM_data1:
 		{
+			CHECK_READ(1);
 			if (IsTypeSigned<T>())
 				return (T)(intptr)GET(int8);
 			else
@@ -2617,22 +2778,25 @@ T DbgModule::ReadValue(const uint8*& data, int form, int refOffset, const uint8*
 		break;
 	case DW_FORM_data2:
 		{
-		if (IsTypeSigned<T>())
-			return (T)(intptr)GET(int16);
-		else
-			return (T)(uintptr)GET(uint16);
+			CHECK_READ(2);
+			if (IsTypeSigned<T>())
+				return (T)(intptr)GET(int16);
+			else
+				return (T)(uintptr)GET(uint16);
 		}
 		break;
 	case DW_FORM_data4:
 		{
-		if (IsTypeSigned<T>())
-			return (T)(intptr)GET(int32);
-		else
-			return (T)(uintptr)GET(uint32);
+			CHECK_READ(4);
+			if (IsTypeSigned<T>())
+				return (T)(intptr)GET(int32);
+			else
+				return (T)(uintptr)GET(uint32);
 		}
 		break;
 	case DW_FORM_data8:
 		{
+			CHECK_READ(8);
 			if (IsTypeSigned<T>())
 				return (T)GET(int64);
 			else
@@ -2641,28 +2805,39 @@ T DbgModule::ReadValue(const uint8*& data, int form, int refOffset, const uint8*
 		break;
 	case DW_FORM_ref1:
 		{
-			return (T)(intptr)GET(int8) + refOffset;
+			CHECK_READ(1);
+			RETURN_REF(GET(uint8));
 		}
 		break;
 	case DW_FORM_ref2:
 		{
-			return (T)(intptr)GET(int16) + refOffset;
+			CHECK_READ(2);
+			RETURN_REF(GET(uint16));
 		}
 		break;
 	case DW_FORM_ref4:
 		{
-			return (T)(intptr)GET(int32) + refOffset;
+			CHECK_READ(4);
+			RETURN_REF(GET(uint32));
 		}
 		break;
 	case DW_FORM_sec_offset:
 		{
-			intptr_target offset;
+			uint64 offset;
 			if (mIsDwarf64)
-				offset = (intptr_target)GET(int64);
+			{
+				CHECK_READ(8);
+				offset = GET(uint64);
+			}
 			else
-				offset = GET(int32);
+			{
+				CHECK_READ(4);
+				offset = GET(uint32);
+			}
 			if (extraData != NULL)
 			{
+				if (!IsDwarfLocationListValid((int64)offset))
+					READ_FAIL("location list outside .debug_loc");
 				*extraData = mDebugLocationData + offset;
 				return 0;
 			}
@@ -2671,12 +2846,15 @@ T DbgModule::ReadValue(const uint8*& data, int form, int refOffset, const uint8*
 		break;
 	case DW_FORM_addr:
 		{
+			CHECK_READ(sizeof(addr_target));
 			return (T)GET(addr_target);
 		}
 		break;
 	case DW_FORM_exprloc:
 		{
-			int64_t exprLen = DecodeULEB128(data);
+			uint64 exprLen;
+			if ((!ReadBoundedULEB128(data, mDwarfEnd, exprLen)) || (exprLen > (uint64)(mDwarfEnd - data)))
+				READ_FAIL("expression runs past its unit");
 			const uint8* endData = data + exprLen;
 
 			if (extraData != NULL)
@@ -2694,45 +2872,57 @@ T DbgModule::ReadValue(const uint8*& data, int form, int refOffset, const uint8*
 		break;
 	case DW_FORM_flag:
 		{
-			//
+			CHECK_READ(1);
 			return (T)(intptr)GET(char);
 		}
 		break;
 	case DW_FORM_sdata:
-		return (T)DecodeSLEB128(data);
+		{
+			int64 val;
+			if (!ReadBoundedSLEB128(data, mDwarfEnd, val))
+				READ_FAIL("LEB128 runs past its unit");
+			return (T)val;
+		}
 	case DW_FORM_udata:
-		return (T)DecodeULEB128(data);
+		{
+			uint64 val;
+			if (!ReadBoundedULEB128(data, mDwarfEnd, val))
+				READ_FAIL("LEB128 runs past its unit");
+			return (T)val;
+		}
 	case DW_FORM_string:
 		{
-			const char* str = (const char*)data;
-			while (true)
-			{
-				uint8 val = *data;
-				data++;
-				if (val == 0)
-					return (T)(intptr)str;
-			}
+			const char* str = ReadBoundedString(data, mDwarfEnd);
+			if (str == NULL)
+				READ_FAIL("unterminated string");
+			return (T)(intptr)str;
 		}
 	case DW_FORM_block:
 		{
-			int blockLen = (int)DecodeULEB128(data);
+			uint64 blockLen;
+			if ((!ReadBoundedULEB128(data, mDwarfEnd, blockLen)) || (blockLen > (uint64)(mDwarfEnd - data)))
+				READ_FAIL("block runs past its unit");
 			const uint8* retVal = data;
 			data += blockLen;
 			return (T)(intptr)retVal;
 		}
 	case DW_FORM_block1:
 		{
-			int blockLen = (int)*((uint8*)data);
-			data += sizeof(uint8);
+			CHECK_READ(1);
+			uint64 blockLen = GET(uint8);
+			if (blockLen > (uint64)(mDwarfEnd - data))
+				READ_FAIL("block runs past its unit");
 			const uint8* retVal = data;
 			data += blockLen;
 			return (T)(intptr)retVal;
 		}
 	default:
-		assert("Not covered!" == 0);
-		break;
+		READ_FAIL("unsupported DW_FORM");
 	}
 
+	#undef READ_FAIL
+	#undef CHECK_READ
+	#undef RETURN_REF
 	return (T)0;
 }
 #pragma warning(pop)
@@ -2773,6 +2963,8 @@ T DbgModule::GetOrCreate(int idx, DbgDataMap& dataMap)
 template <typename T>
 static T GetStackTop(DataStack* dataStack)
 {
+	if (dataStack->empty())
+		return NULL;
 	auto dataPair = dataStack->back();
 	if (dataPair.first == RemoveTypePointer<T>::type::ClassType)
 		return (T)dataPair.second;
@@ -2782,6 +2974,8 @@ static T GetStackTop(DataStack* dataStack)
 template <>
 DbgBlock* GetStackTop<DbgBlock*>(DataStack* dataStack)
 {
+	if (dataStack->empty())
+		return NULL;
 	auto dataPair = dataStack->back();
 	if (dataPair.first == DbgBlock::ClassType)
 		return (DbgBlock*)dataPair.second;
@@ -3262,33 +3456,94 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 
 	const uint8* data = dataPtr;
 	const uint8* startData = mDebugInfoData;
+	const uint8* sectionEnd = mDebugInfoData + mDebugInfoSize;
 	int dataOfs = (int)(data - mDebugInfoData);
+	mDwarfFailed = false;
 
-	intptr_target length = GET(int);
+	// Every bound below comes from these sizes, so a reader that leaves one unset would reject all DWARF without a word
+	auto _MissingSize = [](const uint8* sectionData, int64 sectionSize) { return (sectionData != NULL) && (sectionSize <= 0); };
+	if (_MissingSize(mDebugInfoData, mDebugInfoSize) || _MissingSize(mDebugAbbrevData, mDebugAbbrevSize) || _MissingSize(mDebugStrData, mDebugStrSize) ||
+		_MissingSize(mDebugLineData, mDebugLineSize) || _MissingSize(mDebugRangesData, mDebugRangesSize) || _MissingSize(mDebugLocationData, mDebugLocationSize))
+	{
+		DwarfFail("DWARF section without a size");
+		return false;
+	}
 
 	DbgModule* linkedModule = GetLinkedModule();
 
-	if (length == -1)
+	uint32 length32;
+	uint64 length;
+	if (!ReadBounded(data, sectionEnd, length32))
+	{
+		DwarfFail("truncated unit header");
+		return false;
+	}
+	if (length32 == 0xFFFFFFFF)
 	{
 		mIsDwarf64 = true;
-		length = (intptr_target)GET(int64);
+		if (!ReadBounded(data, sectionEnd, length))
+		{
+			DwarfFail("truncated unit header");
+			return false;
+		}
 	}
 	else
+	{
 		mIsDwarf64 = false;
+		length = length32;
+	}
 
 	if (length == 0)
 		return false;
+	if ((length > (uint64)(sectionEnd - data)) || ((uint64)(data - startData) + length > 0x7FFFFFFF))
+	{
+		DwarfFail("unit length runs past .debug_info");
+		return false;
+	}
 	const uint8* dataEnd = data + length;
-	int version = GET(short);
+	auto _SkipUnit = [&](const char* reason)
+	{
+		DwarfFail(reason);
+		dataPtr = dataEnd;
+		return true;
+	};
+
+	short version;
+	if (!ReadBounded(data, dataEnd, version))
+		return _SkipUnit("truncated unit header");
 	if (version >= 5)
 	{
 		dataPtr = dataEnd;
 		return true;
 	}
-	int64 abbrevOffset = mIsDwarf64 ? GET(int64) : GET(int);
-	char pointerSize = GET(char);
+	uint64 abbrevOffset;
+	if (mIsDwarf64)
+	{
+		if (!ReadBounded(data, dataEnd, abbrevOffset))
+			return _SkipUnit("truncated unit header");
+	}
+	else
+	{
+		uint32 abbrevOffset32;
+		if (!ReadBounded(data, dataEnd, abbrevOffset32))
+			return _SkipUnit("truncated unit header");
+		abbrevOffset = abbrevOffset32;
+	}
+	uint8 pointerSize;
+	if (!ReadBounded(data, dataEnd, pointerSize))
+		return _SkipUnit("truncated unit header");
+	if (pointerSize != sizeof(addr_target))
+		return _SkipUnit("unexpected pointer size");
+	if (abbrevOffset >= (uint64)mDebugAbbrevSize)
+		return _SkipUnit("abbrev offset outside .debug_abbrev");
 
-	ParseAbbrevData(mDebugAbbrevData + abbrevOffset);
+	if (!ParseAbbrevData(mDebugAbbrevData + abbrevOffset))
+		return _SkipUnit("damaged abbrev table");
+
+	mDwarfEnd = dataEnd;
+	mDwarfUnitOfs = dataOfs;
+	mDwarfRefStart = (int)(data - startData);
+	mDwarfRefEnd = (int)(dataEnd - startData);
 
 	DbgCompileUnit* compileUnit = new DbgCompileUnit(this);
 	mDbgFlavor = DbgFlavor_GNU;
@@ -3310,22 +3565,42 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 
 	int startingTypeIdx = (int)linkedModule->mTypes.size();
 
-	while (data < dataEnd)
+	while ((data < dataEnd) && (!mDwarfFailed))
 	{
 		gAbbrevNum++;
 
 		const uint8* tagDataStart = data;
 		int tagIdx = (int)(tagDataStart - startData);
 
-		int abbrevIdx = (int)DecodeULEB128(data);
-		const uint8* abbrevData = mDebugAbbrevPtrData[abbrevIdx];
+		uint64 abbrevCode;
+		if (!ReadBoundedULEB128(data, dataEnd, abbrevCode))
+		{
+			DwarfFail("abbrev code runs past its unit");
+			break;
+		}
+		int abbrevIdx = (int)abbrevCode;
+		const uint8* abbrevData = NULL;
+		if (abbrevCode != 0)
+		{
+			if (abbrevCode < (uint64)mDebugAbbrevSize)
+				abbrevData = mDebugAbbrevPtrData[abbrevCode];
+			if (abbrevData == NULL)
+			{
+				DwarfFail("DIE uses an abbrev code the unit does not define");
+				break;
+			}
+		}
 
 		if (abbrevIdx == 0)
 		{
 			if (deferredArrayDims.size() > 0)
 			{
 				DbgType* arrType = GetStackTop<DbgType*>(&dataStack);
-				BF_ASSERT(arrType->mTypeCode == DbgType_SizedArray);
+				if ((arrType == NULL) || (arrType->mTypeCode != DbgType_SizedArray))
+				{
+					DwarfFail("array dimension outside an array type");
+					break;
+				}
 				arrType->mSize = deferredArrayDims[0]; // Byte count still needs to be multiplied by the underlying type size
 
 				DbgType* rootArrType = arrType;
@@ -3350,7 +3625,8 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				deferredArrayDims.Clear();
 			}
 
-			dataStack.pop_back();
+			if (!dataStack.empty())
+				dataStack.pop_back();
 			continue;
 		}
 
@@ -3393,6 +3669,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 		int atBitSize = 0;
 		int atAbstractOrigin = 0;
 		const uint8* atVirtualLocData = NULL;
+		int atVirtualLocLen = 0;
 		bool atDeclaration = false;
 		bool atVirtual = false;
 		bool hadConstValue = false;
@@ -3598,7 +3875,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				atVirtual = ReadValue<int>(data, form) != 0;
 				break;
 			case DW_AT_vtable_elem_location:
-				ReadValue<uint64_t>(data, form, dataOfs, &atVirtualLocData);
+				atVirtualLocLen = (int)ReadValue<uint64_t>(data, form, dataOfs, &atVirtualLocData);
 				break;
 			case DW_AT_allocated:
 				/*TODO:*/ ReadValue<int>(data, form);
@@ -3622,8 +3899,10 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				/*TODO:*/ ReadValue<int>(data, form);
 				break;
 			case DW_AT_ranges:
-				atRanges = (int)ReadValue<uint>(data, form);
+				atRanges = ReadValue<uint>(data, form);
 				hasRanges = true;
+				if ((!mDwarfFailed) && (!IsDwarfRangeListValid(atRanges)))
+					DwarfFail("range list outside .debug_ranges");
 				break;
 			case DW_AT_trampoline:
 				/*TODO:*/ ReadValue<int>(data, form);
@@ -3714,7 +3993,12 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				ReadValue<int>(data, form);
 				break;
 			}
+			if (mDwarfFailed)
+				break;
 		}
+
+		if (mDwarfFailed)
+			break;
 
 		if (atHighPCIsAddr)
 			atHighPC = (int64)RemapAddr((addr_target)atHighPC) - atLowPC;
@@ -3804,10 +4088,10 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					if (atVirtualLocData != NULL)
 					{
 						const uint8* opPtr = atVirtualLocData;
-						if (*(opPtr++) == DW_OP_constu)
-						{
-							subProgram->mVTableLoc = (int)DecodeSLEB128(opPtr) * sizeof(addr_target);
-						}
+						const uint8* opEnd = opPtr + atVirtualLocLen;
+						int64 vtableLoc;
+						if ((opPtr < opEnd) && (*(opPtr++) == DW_OP_constu) && (ReadBoundedSLEB128(opPtr, opEnd, vtableLoc)))
+							subProgram->mVTableLoc = (int)vtableLoc * sizeof(addr_target);
 					}
 
 					//subProgram->mVTableLoc = atVirtualLoc * sizeof(addr_target);
@@ -4207,18 +4491,18 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 				{
 					bool foundVirtOffset = false;
 					const uint8* opPtr = atDataMemberData;
-					if (*(opPtr++) == DW_OP_dup)
+					const uint8* opEnd = opPtr + atDataMemberLocation;
+					int64 vtableOffset;
+					if (((opEnd - opPtr) >= 3) && (opPtr[0] == DW_OP_dup) && (opPtr[1] == DW_OP_deref) && (opPtr[2] == DW_OP_constu))
 					{
-						if (*(opPtr++) == DW_OP_deref)
+						opPtr += 3;
+						if (ReadBoundedSLEB128(opPtr, opEnd, vtableOffset))
 						{
-							if (*(opPtr++) == DW_OP_constu)
-							{
-								baseTypeEntry->mVTableOffset = (int)DecodeSLEB128(opPtr) / sizeof(int32);
-								foundVirtOffset = true;
+							baseTypeEntry->mVTableOffset = (int)vtableOffset / sizeof(int32);
+							foundVirtOffset = true;
 
-								if (*(opPtr++) == DW_OP_minus)
-									baseTypeEntry->mVTableOffset = -baseTypeEntry->mVTableOffset;
-							}
+							if ((opPtr < opEnd) && (*(opPtr++) == DW_OP_minus))
+								baseTypeEntry->mVTableOffset = -baseTypeEntry->mVTableOffset;
 						}
 					}
 
@@ -4514,7 +4798,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 								dbgType->mTypeCode = DbgType_ComplexDouble128;
 							break;
 						default:
-							BF_FATAL("Unknown DW_ATE type");
+							BfLogDbg("DbgModule::ParseDWARF unknown DW_ATE %d\n", atEncoding);
 							break;
 						}
 					}
@@ -4627,6 +4911,7 @@ void DbgModule::ParseDebugFrameData()
 	const uint8* data = mDebugFrameData;
 	if (data == NULL)
 		return;
+	const uint8* sectionEnd = mDebugFrameData + mDebugFrameSize;
 
 	mParsedFrameDescriptors = true;
 	Dictionary<addr_target, DwCommonFrameDescriptor*> commonFrameDescriptorMap;
@@ -4635,32 +4920,55 @@ void DbgModule::ParseDebugFrameData()
 	{
 		addr_target relSectionAddr = (addr_target)(data - mDebugFrameData);
 
-		int length = GET(int);
-		if (length == 0)
+		uint32 length;
+		if ((!ReadBounded(data, sectionEnd, length)) || (length == 0))
 			break;
+		if (length > (uint64)(sectionEnd - data))
+		{
+			DwarfFail("frame entry runs past .debug_frame");
+			break;
+		}
 
 		const uint8* dataEnd = data + length;
 
-		int cieID = GET(int);
+		int cieID;
+		if (!ReadBounded(data, dataEnd, cieID))
+		{
+			data = dataEnd;
+			continue;
+		}
 
 		if (cieID < 0)
 		{
+			char version;
+			const char* augmentation = NULL;
+			int8 pointerSize = -1;
+			int8 segmentSize = -1;
+			uint64 codeAlignmentFactor;
+			int64 dataAlignmentFactor;
+			uint64 returnAddressColumn;
+			if ((!ReadBounded(data, dataEnd, version)) || ((augmentation = ReadBoundedString(data, dataEnd)) == NULL) ||
+				((version >= 4) && ((!ReadBounded(data, dataEnd, pointerSize)) || (!ReadBounded(data, dataEnd, segmentSize)))) ||
+				(!ReadBoundedULEB128(data, dataEnd, codeAlignmentFactor)) || (!ReadBoundedSLEB128(data, dataEnd, dataAlignmentFactor)) ||
+				(!ReadBoundedULEB128(data, dataEnd, returnAddressColumn)))
+			{
+				data = dataEnd;
+				continue;
+			}
+
 			BP_ALLOC_T(DwCommonFrameDescriptor);
 			DwCommonFrameDescriptor* commonFrameDescriptor = mAlloc.Alloc<DwCommonFrameDescriptor>();
 
-			char version = GET(char);
 			commonFrameDescriptor->mDbgModule = this;
-			commonFrameDescriptor->mAugmentation = DataGetString(data);
-
+			commonFrameDescriptor->mAugmentation = augmentation;
 			if (version >= 4)
 			{
-				commonFrameDescriptor->mPointerSize = GET(int8);
-				commonFrameDescriptor->mSegmentSize = GET(int8);
+				commonFrameDescriptor->mPointerSize = pointerSize;
+				commonFrameDescriptor->mSegmentSize = segmentSize;
 			}
-
-			commonFrameDescriptor->mCodeAlignmentFactor = (int)DecodeULEB128(data);
-			commonFrameDescriptor->mDataAlignmentFactor = (int)DecodeSLEB128(data);
-			commonFrameDescriptor->mReturnAddressColumn = (int)DecodeULEB128(data);
+			commonFrameDescriptor->mCodeAlignmentFactor = (int)codeAlignmentFactor;
+			commonFrameDescriptor->mDataAlignmentFactor = (int)dataAlignmentFactor;
+			commonFrameDescriptor->mReturnAddressColumn = (int)returnAddressColumn;
 			commonFrameDescriptor->mInstData = data;
 			commonFrameDescriptor->mInstLen = (int)(dataEnd - data);
 
@@ -4672,12 +4980,16 @@ void DbgModule::ParseDebugFrameData()
 		}
 		else
 		{
-			addr_target lowPC = GET(addr_target);
-			addr_target highPC = lowPC + GET(addr_target);
-
-			DwCommonFrameDescriptor* commonFrameDescriptor = commonFrameDescriptorMap[(addr_target)cieID];
-
-			BF_ASSERT(commonFrameDescriptor != NULL);
+			addr_target lowPC;
+			addr_target pcRange;
+			DwCommonFrameDescriptor* commonFrameDescriptor = NULL;
+			if ((!ReadBounded(data, dataEnd, lowPC)) || (!ReadBounded(data, dataEnd, pcRange)) ||
+				(!commonFrameDescriptorMap.TryGetValue((addr_target)cieID, &commonFrameDescriptor)))
+			{
+				data = dataEnd;
+				continue;
+			}
+			addr_target highPC = lowPC + pcRange;
 
 			typedef decltype(mDebugTarget->mDwFrameDescriptorMap) MapType;
 			auto resultPair = mDebugTarget->mDwFrameDescriptorMap.insert(MapType::value_type(lowPC, DwFrameDescriptor()));
@@ -4698,6 +5010,7 @@ void DbgModule::ParseEHFrameData()
 	const uint8* data = mEHFrameData;
 	if (data == NULL)
 		return;
+	const uint8* sectionEnd = mEHFrameData + mEHFrameSize;
 
 	Dictionary<addr_target, DwCommonFrameDescriptor*> commonFrameDescriptorMap;
 
@@ -4705,51 +5018,90 @@ void DbgModule::ParseEHFrameData()
 	{
 		addr_target sectionAddress = (addr_target)(data - mEHFrameData);
 
-		int length = GET(int);
-		if (length == 0)
+		uint32 length;
+		if ((!ReadBounded(data, sectionEnd, length)) || (length == 0))
 			break;
+		if (length > (uint64)(sectionEnd - data))
+		{
+			DwarfFail("frame entry runs past .eh_frame");
+			break;
+		}
 
 		const uint8* dataEnd = data + length;
 
-		int cieID = GET(int);
+		int cieID;
+		if (!ReadBounded(data, dataEnd, cieID))
+		{
+			data = dataEnd;
+			continue;
+		}
 		if (cieID <= 0)
 		{
+			char version;
+			const char* augmentation = NULL;
+			uint64 codeAlignmentFactor;
+			int64 dataAlignmentFactor;
+			uint64 returnAddressColumn;
+			if ((!ReadBounded(data, dataEnd, version)) || ((augmentation = ReadBoundedString(data, dataEnd)) == NULL) ||
+				(!ReadBoundedULEB128(data, dataEnd, codeAlignmentFactor)) || (!ReadBoundedSLEB128(data, dataEnd, dataAlignmentFactor)) ||
+				(!ReadBoundedULEB128(data, dataEnd, returnAddressColumn)))
+			{
+				data = dataEnd;
+				continue;
+			}
+
 			BP_ALLOC_T(DwCommonFrameDescriptor);
 			DwCommonFrameDescriptor* commonFrameDescriptor = mAlloc.Alloc<DwCommonFrameDescriptor>();
 
-			char version = GET(char);
-			const char* augmentation = DataGetString(data);
-
 			commonFrameDescriptor->mDbgModule = this;
-			commonFrameDescriptor->mCodeAlignmentFactor = (int)DecodeULEB128(data);
-			commonFrameDescriptor->mDataAlignmentFactor = (int)DecodeSLEB128(data);
-			commonFrameDescriptor->mReturnAddressColumn = (int)DecodeULEB128(data);
+			commonFrameDescriptor->mCodeAlignmentFactor = (int)codeAlignmentFactor;
+			commonFrameDescriptor->mDataAlignmentFactor = (int)dataAlignmentFactor;
+			commonFrameDescriptor->mReturnAddressColumn = (int)returnAddressColumn;
 			commonFrameDescriptor->mAugmentation = augmentation;
 
 			if (*augmentation == 'z')
 			{
 				++augmentation;
-				int augLen = (int)DecodeULEB128(data);
-				commonFrameDescriptor->mAugmentationLength = augLen;
+				uint64 augLen;
+				if ((!ReadBoundedULEB128(data, dataEnd, augLen)) || (augLen > (uint64)(dataEnd - data)))
+				{
+					data = dataEnd;
+					continue;
+				}
+				commonFrameDescriptor->mAugmentationLength = (int)augLen;
 				const uint8* augEnd = data + augLen;
 				while (*augmentation != '\0')
 				{
+					// augEnd skips unknown augmentation data
 					if (*augmentation == 'R')
-						commonFrameDescriptor->mAddressPointerEncoding = (int) GET(uint8);
+					{
+						uint8 encoding;
+						if (!ReadBounded(data, augEnd, encoding))
+							break;
+						commonFrameDescriptor->mAddressPointerEncoding = (int)encoding;
+					}
 					else if (*augmentation == 'P')
 					{
-						int encodingType = GET(uint8);
+						uint8 encodingType;
+						addr_target lsdaRoutine;
+						if ((!ReadBounded(data, augEnd, encodingType)) || (!ReadBounded(data, augEnd, lsdaRoutine)))
+							break;
 						BF_ASSERT(encodingType == 0);
-						commonFrameDescriptor->mLSDARoutine = GET(addr_target);
+						commonFrameDescriptor->mLSDARoutine = lsdaRoutine;
 					}
 					else if (*augmentation == 'L')
-						commonFrameDescriptor->mLSDAPointerEncodingFDE = GET(uint8);
+					{
+						uint8 encoding;
+						if (!ReadBounded(data, augEnd, encoding))
+							break;
+						commonFrameDescriptor->mLSDAPointerEncodingFDE = encoding;
+					}
 					else if (*augmentation == 'S')
 					{
 						// mIsSignalHandler - on return from stack frame, CFA is before next instruction rather than after it
 					}
 					else
-						BF_FATAL("Unknown CIE augmentation");
+						break;
 					++augmentation;
 				}
 				data = augEnd;
@@ -4764,32 +5116,45 @@ void DbgModule::ParseEHFrameData()
 		else
 		{
 			int ciePos = (int)(sectionAddress - cieID) + 4;
-			DwCommonFrameDescriptor* commonFrameDescriptor = commonFrameDescriptorMap[(addr_target)ciePos];
+			DwCommonFrameDescriptor* commonFrameDescriptor = NULL;
+			if (!commonFrameDescriptorMap.TryGetValue((addr_target)ciePos, &commonFrameDescriptor))
+			{
+				data = dataEnd;
+				continue;
+			}
 
 			addr_target lowPC;
 			addr_target highPC;
+			int pcBegin;
+			int pcRange;
+			if ((!ReadBounded(data, dataEnd, pcBegin)) || (!ReadBounded(data, dataEnd, pcRange)))
+			{
+				data = dataEnd;
+				continue;
+			}
 
 			if (commonFrameDescriptor->mAddressPointerEncoding == (DW_EH_PE_pcrel | DW_EH_PE_sdata4))
 			{
-				lowPC = GET(int);
+				lowPC = pcBegin;
 				lowPC += mEHFrameAddress + sectionAddress + 8;
-				highPC = lowPC + GET(int);
+				highPC = lowPC + pcRange;
 			}
 			else
 			{
-				lowPC = GET(int);
-				highPC = lowPC + GET(int);
+				lowPC = pcBegin;
+				highPC = lowPC + pcRange;
 			}
 
-			typedef decltype(mDebugTarget->mDwFrameDescriptorMap) MapType;
-			auto resultPair = mDebugTarget->mDwFrameDescriptorMap.insert(MapType::value_type(lowPC, DwFrameDescriptor()));
-			auto frameDescriptor = &resultPair.first->second;
-			frameDescriptor->mLSDARoutine = commonFrameDescriptor->mLSDARoutine;
-
+			addr_target lsdaRoutine = commonFrameDescriptor->mLSDARoutine;
 			const char* augmentation = commonFrameDescriptor->mAugmentation;
 			if (*augmentation == 'z')
 			{
-				int augLen = GET(uint8);
+				uint8 augLen;
+				if ((!ReadBounded(data, dataEnd, augLen)) || (augLen > (dataEnd - data)))
+				{
+					data = dataEnd;
+					continue;
+				}
 				const uint8* augEnd = data + augLen;
 				++augmentation;
 				while (*augmentation != '\0')
@@ -4802,19 +5167,24 @@ void DbgModule::ParseEHFrameData()
 					}
 					else if (*augmentation == 'L')
 					{
+						if (!ReadBounded(data, augEnd, lsdaRoutine))
+							break;
 						BF_ASSERT(commonFrameDescriptor->mLSDAPointerEncodingFDE == 0);
-						frameDescriptor->mLSDARoutine = GET(addr_target);
 					}
 					else if (*augmentation == 'S')
 					{
 					}
 					else
-						BF_FATAL("Unknown CIE augmentation");
+						break;
 					augmentation++;
 				}
 				data = augEnd;
 			}
 
+			typedef decltype(mDebugTarget->mDwFrameDescriptorMap) MapType;
+			auto resultPair = mDebugTarget->mDwFrameDescriptorMap.insert(MapType::value_type(lowPC, DwFrameDescriptor()));
+			auto frameDescriptor = &resultPair.first->second;
+			frameDescriptor->mLSDARoutine = lsdaRoutine;
 			frameDescriptor->mLowPC = lowPC;
 			frameDescriptor->mHighPC = highPC;
 			frameDescriptor->mInstData = data;
@@ -4848,30 +5218,57 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, DbgCompileUnit* dwComp
 	BP_ZONE("ParseDebugLineInfo");
 
 	const uint8* data = dataPtr;
+	const uint8* sectionEnd = mDebugLineData + mDebugLineSize;
 	const int startOffset = (int)(data - mDebugLineData);
-	int length = GET(int);
-	if (length == 0)
+	uint32 length;
+	if ((!ReadBounded(data, sectionEnd, length)) || (length == 0))
 		return false;
+	// 0xFFFFFFFF (64 bit unit) also fails this check
+	if (length > (uint64)(sectionEnd - data))
+	{
+		DwarfFail("line program runs past .debug_line");
+		return false;
+	}
 	const uint8* dataEnd = data + length;
-	short version = GET(short);
-	int headerLength = GET(int);
-	char minimumInstructionLength = GET(char);
-	int maximumOperationsPerInstruction = 1;
-	if (version >= 4)
-		maximumOperationsPerInstruction = GET(uint8);
-	char defaultIsStmt = GET(char);
-	char lineBase = GET(char);
-	char lineRange = GET(char);
-	char opcodeBase = GET(char);
+	auto _Damaged = [&]()
+	{
+		DwarfFail("damaged line program header");
+		return false;
+	};
+
+	short version;
+	int headerLength;
+	if ((!ReadBounded(data, dataEnd, version)) || (!ReadBounded(data, dataEnd, headerLength)))
+		return _Damaged();
+	if ((headerLength < 0) || ((int64)headerLength > (dataEnd - data)))
+		return _Damaged();
+	char minimumInstructionLength;
+	uint8 maxOpsPerInstruction = 1;
+	char defaultIsStmt;
+	char lineBase;
+	char lineRange;
+	char opcodeBase;
+	if ((!ReadBounded(data, dataEnd, minimumInstructionLength)) || ((version >= 4) && (!ReadBounded(data, dataEnd, maxOpsPerInstruction))) ||
+		(!ReadBounded(data, dataEnd, defaultIsStmt)) || (!ReadBounded(data, dataEnd, lineBase)) ||
+		(!ReadBounded(data, dataEnd, lineRange)) || (!ReadBounded(data, dataEnd, opcodeBase)))
+		return _Damaged();
+	int maximumOperationsPerInstruction = maxOpsPerInstruction;
+	// Both divide the address advance
+	if ((lineRange == 0) || (maximumOperationsPerInstruction == 0))
+		return _Damaged();
 	for (int i = 0; i < opcodeBase - 1; i++)
 	{
-		char standardOpcodeLengths = GET(char);
+		char standardOpcodeLengths;
+		if (!ReadBounded(data, dataEnd, standardOpcodeLengths))
+			return _Damaged();
 	}
 
 	Array<const char*> directoryNames;
 	while (true)
 	{
-		const char* name = DataGetString(data);
+		const char* name = ReadBoundedString(data, dataEnd);
+		if (name == NULL)
+			return _Damaged();
 		if (name[0] == 0)
 			break;
 		directoryNames.push_back(name);
@@ -4886,20 +5283,25 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, DbgCompileUnit* dwComp
 	DbgSubprogram* curSubprogram = NULL;
 
 	#define ADD_LINEDATA(lineData) \
-		lineBuilder.Add(dwCompileUnit, lineData, dwSrcFileRef->mSrcFile, NULL);
+		_AddLineData(lineData);
 
 	while (true)
 	{
-		const char* path = DataGetString(data);
+		const char* path = ReadBoundedString(data, dataEnd);
+		if (path == NULL)
+			return _Damaged();
 		if (path[0] == 0)
 			break;
-		int directoryIdx = (int)DecodeULEB128(data);
-		int lastModificationTime = (int)DecodeULEB128(data);
-		int fileLength = (int)DecodeULEB128(data);
+		uint64 directoryIdx;
+		uint64 lastModificationTime;
+		uint64 fileLength;
+		if ((!ReadBoundedULEB128(data, dataEnd, directoryIdx)) || (!ReadBoundedULEB128(data, dataEnd, lastModificationTime)) ||
+			(!ReadBoundedULEB128(data, dataEnd, fileLength)) || (directoryIdx > (uint64)directoryNames.size()))
+			return _Damaged();
 
 		String filePath;
 		if (directoryIdx > 0)
-			filePath = String(directoryNames[directoryIdx - 1]) + "/";
+			filePath = String(directoryNames[(int)directoryIdx - 1]) + "/";
 		filePath += path;
 		filePath = GetAbsPath(filePath, dwCompileUnit->mCompileDir);
 		AddSrcFile(dwCompileUnit, filePath.c_str());
@@ -4907,14 +5309,42 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, DbgCompileUnit* dwComp
 
 	if (dwCompileUnit->mSrcFileRefs.size() > 0)
 		dwSrcFileRef = &dwCompileUnit->mSrcFileRefs.front();
+	if (dwSrcFileRef == NULL)
+	{
+		dataPtr = dataEnd;
+		return true;
+	}
 
 	DbgLineDataBuilder lineBuilder(this);
+
+	// Commit derives a length only from a next row in the same context, so rows before a file switch or end_sequence kept 0
+	bool hasPendingLine = false;
+	DbgLineData pendingLine;
+	DbgSrcFile* pendingSrcFile = NULL;
+	auto _FlushPendingLine = [&](uint32 endRelAddress)
+	{
+		if (!hasPendingLine)
+			return;
+		hasPendingLine = false;
+		if (endRelAddress > pendingLine.mRelAddress)
+			pendingLine.mContribSize = (uint16)BF_MIN(endRelAddress - pendingLine.mRelAddress, (uint32)0xFFFF);
+		lineBuilder.Add(dwCompileUnit, pendingLine, pendingSrcFile, NULL);
+	};
+	auto _AddLineData = [&](const DbgLineData& lineData)
+	{
+		_FlushPendingLine(lineData.mRelAddress);
+		hasPendingLine = true;
+		pendingLine = lineData;
+		pendingSrcFile = dwSrcFileRef->mSrcFile;
+	};
 
 	bool queuedPostPrologue = false;
 
 	DbgLineDataState dwLineData;
 	dwLineData.mLine = 0;
 	dwLineData.mRelAddress = 0;
+	dwLineData.mContribSize = 0;
+	dwLineData.mCtxIdx = 0;
 	dwLineData.mOpIndex = 0;
 	dwLineData.mBasicBlock = false;
 	dwLineData.mDiscriminator = 0;
@@ -4922,20 +5352,32 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, DbgCompileUnit* dwComp
 	dwLineData.mIsa = 0;
 	dwLineData.mColumn = -2;
 
+	// A damaged operand ends the program and keeps the lines read so far
+	bool damaged = false;
+	#define LINE_GET(T, name) T name = 0; if (!ReadBounded(data, dataEnd, name)) { damaged = true; break; }
+	#define LINE_ULEB(name) uint64 name = 0; if (!ReadBoundedULEB128(data, dataEnd, name)) { damaged = true; break; }
+	#define LINE_SLEB(name) int64 name = 0; if (!ReadBoundedSLEB128(data, dataEnd, name)) { damaged = true; break; }
+
 	while (data < dataEnd)
 	{
-		uint8_t opcode = GET(uint8_t);
+		uint8_t opcode = *(data++);
 		switch (opcode)
 		{
 		case DW_LNS_extended_op:
 			{
-				int len = (int)DecodeULEB128(data);
-				uint8_t exOpcode = GET(uint8_t);
+				LINE_ULEB(len);
+				if ((len == 0) || (len > (uint64)(dataEnd - data)))
+				{
+					damaged = true;
+					break;
+				}
+				const uint8* exEnd = data + len;
+				uint8_t exOpcode = *(data++);
 				switch (exOpcode)
 				{
 				case DW_LNE_end_sequence:
 					{
-						ADD_LINEDATA(dwLineData);
+						_FlushPendingLine(dwLineData.mRelAddress);
 
 						dwSrcFileRef = &dwCompileUnit->mSrcFileRefs[0];
 						dwLineData.mLine = 0;
@@ -4949,20 +5391,30 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, DbgCompileUnit* dwComp
 					}
 					break;
 				case DW_LNE_set_address:
-					dwLineData.mRelAddress = (uint32)(RemapAddr(GET(addr_target)) - mImageBase);
-					break;
-				case DW_LNE_define_file:
 					{
-						const char* path = DataGetString(data);
-						int directoryIdx = (int)DecodeULEB128(data);
-						int lastModificationTime = (int)DecodeULEB128(data);
-						int fileLength = (int)DecodeULEB128(data);
+						addr_target address;
+						if (!ReadBounded(data, exEnd, address))
+						{
+							damaged = true;
+							break;
+						}
+						dwLineData.mRelAddress = (uint32)(RemapAddr(address) - mImageBase);
 					}
 					break;
 				case DW_LNE_set_discriminator:
-					dwLineData.mDiscriminator = (int)DecodeULEB128(data);
+					{
+						uint64 discriminator;
+						if (!ReadBoundedULEB128(data, exEnd, discriminator))
+						{
+							damaged = true;
+							break;
+						}
+						dwLineData.mDiscriminator = (int)discriminator;
+					}
 					break;
 				}
+				// The length also skips define_file and unknown opcodes
+				data = exEnd;
 			}
 			break;
 		case DW_LNS_copy:
@@ -4973,27 +5425,34 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, DbgCompileUnit* dwComp
 			break;
 		case DW_LNS_advance_pc:
 			{
-				int advance = (int)DecodeULEB128(data);
-				dwLineData.mRelAddress += advance;
+				LINE_ULEB(advance);
+				dwLineData.mRelAddress += (int)advance;
 				// How to advance opCode addr?
 			}
 			break;
 		case DW_LNS_advance_line:
 			{
-				int advance = (int)DecodeSLEB128(data);
-				dwLineData.mLine += advance;
+				LINE_SLEB(advance);
+				dwLineData.mLine += (int)advance;
 			}
 			break;
 		case DW_LNS_set_file:
 			{
-				curFileIdx = (int)DecodeULEB128(data) - 1;
+				LINE_ULEB(fileNum);
+				if ((fileNum == 0) || (fileNum > (uint64)dwCompileUnit->mSrcFileRefs.size()))
+				{
+					damaged = true;
+					break;
+				}
+				curFileIdx = (int)fileNum - 1;
 				dwSrcFileRef = &dwCompileUnit->mSrcFileRefs[curFileIdx];
 				//dwLineData.mSrcFileRef = dwSrcFileRef;
 			}
 			break;
 		case DW_LNS_set_column:
 			{
-				dwLineData.mColumn = (int)DecodeULEB128(data) - 1;
+				LINE_ULEB(column);
+				dwLineData.mColumn = (int)column - 1;
 			}
 			break;
 		case DW_LNS_negate_stmt:
@@ -5019,7 +5478,7 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, DbgCompileUnit* dwComp
 			break;
 		case DW_LNS_fixed_advance_pc:
 			{
-				uint16_t advance = GET(uint16_t);
+				LINE_GET(uint16_t, advance);
 				dwLineData.mRelAddress += advance;
 				dwLineData.mOpIndex = 0;
 			}
@@ -5036,7 +5495,8 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, DbgCompileUnit* dwComp
 			break;
 		case DW_LNS_set_isa:
 			{
-				dwLineData.mIsa = (int)DecodeULEB128(data);
+				LINE_ULEB(isa);
+				dwLineData.mIsa = (int)isa;
 			}
 			break;
 		default:
@@ -5060,9 +5520,22 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, DbgCompileUnit* dwComp
 			}
 			break;
 		}
+		if (damaged)
+			break;
 	}
+	#undef LINE_GET
+	#undef LINE_ULEB
+	#undef LINE_SLEB
 
+	_FlushPendingLine(0);
 	lineBuilder.Commit();
+
+	if (damaged)
+	{
+		DwarfFail("damaged line program");
+		dataPtr = dataEnd;
+		return false;
+	}
 
 	dataPtr = data;
 
@@ -5080,8 +5553,8 @@ void DbgModule::ParseDWARFUnits()
 	mMasterCompileUnit->mIsMaster = true;
 
 	const uint8* data = mDebugInfoData;
-	const uint8* dataEnd = (mDebugInfoSize > 0) ? mDebugInfoData + mDebugInfoSize : NULL;
-	while (((dataEnd == NULL) || (data < dataEnd)) && (ParseDWARF(data))) {}
+	const uint8* dataEnd = mDebugInfoData + mDebugInfoSize;
+	while ((data < dataEnd) && (ParseDWARF(data))) {}
 	CreateNamespaces();
 
 	// Must be added last so module reference indices still map correctly
@@ -5097,6 +5570,11 @@ void DbgModule::ParseDWARFLines()
 	{
 		if (compileUnit->mStmtListOffset < 0)
 			continue;
+		if (compileUnit->mStmtListOffset >= mDebugLineSize)
+		{
+			DwarfFail("line program offset outside .debug_line");
+			continue;
+		}
 		const uint8* data = mDebugLineData + compileUnit->mStmtListOffset;
 		ParseDebugLineInfo(data, compileUnit);
 	}
@@ -5994,8 +6472,6 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 	if (isObjectFile)
 		GetStringTable(stream, stringTablePos);
 
-	int mDebugFrameDataLen = 0;
-
 	stream->SetPos(sectionStartPos);
 
 	PEDataDirectory* exportDataDir = &ntHdr.mOptionalHeader.mDataDirectory[0];
@@ -6348,7 +6824,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		{
 			mDebugFrameAddress = ntHdr.mOptionalHeader.mImageBase + sectHdr.mVirtualAddress;
 			mDebugFrameData = data;
-			mDebugFrameDataLen = sectHdr.mSizeOfRawData;
+			mDebugFrameSize = sectHdr.mSizeOfRawData;
 		}
 		else if (strcmp(name, ".eh_frame") == 0)
 		{
@@ -6933,39 +7409,49 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 	addr_target stackFrameData[256];
 	int stackIdx = 0;
 
+	// A damaged expression yields no value
+	#define OPS_FAIL() { *outAddrType = DbgAddrType_NoValue; return 0; }
+	#define OPS_NEED(count) if (stackIdx < (count)) OPS_FAIL()
+	#define OPS_PUSH(val) { if (stackIdx >= 256) OPS_FAIL(); stackFrameData[stackIdx++] = (val); }
+	#define OPS_READ(T, name) T name; if (!ReadBounded(locData, locDataEnd, name)) OPS_FAIL()
+	#define OPS_ULEB(name) uint64 name; if (!ReadBoundedULEB128(locData, locDataEnd, name)) OPS_FAIL()
+	#define OPS_SLEB(name) int64 name; if (!ReadBoundedSLEB128(locData, locDataEnd, name)) OPS_FAIL()
+
 	if (pushValue != NULL)
-		stackFrameData[stackIdx++] = *pushValue;
+		OPS_PUSH(*pushValue);
 
 	while (locData < locDataEnd)
 	{
-		uint8 opCode = GET_FROM(locData, uint8);
+		uint8 opCode = *(locData++);
 		switch (opCode)
 		{
 		case DW_OP_piece:
 			{
 				if (*outAddrType == DbgAddrType_Register)
 					*outAddrType = DbgAddrType_Value;
+				OPS_NEED(1);
 				addr_target val = stackFrameData[--stackIdx];
-				int pieceSize = (int)DecodeULEB128(locData);
+				OPS_ULEB(pieceSizeVal);
+				int pieceSize = (int)pieceSizeVal;
 				if (pieceSize == 4)
 					val &= 0xFFFFFFFF;
 				else if (pieceSize == 2)
 					val &= 0xFFFF;
 				else if (pieceSize == 1)
 					val &= 0xFF;
-				stackFrameData[stackIdx++] = val;
+				OPS_PUSH(val);
 			}
 			break;
 		case DW_OP_consts:
 			{
-				int64 val = DecodeSLEB128(locData);
-				stackFrameData[stackIdx++] = (addr_target)val;
+				OPS_SLEB(val);
+				OPS_PUSH((addr_target)val);
 			}
 			break;
 		case DW_OP_constu:
 			{
-				uint64 val = DecodeULEB128(locData);
-				stackFrameData[stackIdx++] = (addr_target)val;
+				OPS_ULEB(val);
+				OPS_PUSH((addr_target)val);
 			}
 			break;
 		case DW_OP_stack_value:
@@ -6975,8 +7461,8 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 			break;
 		case DW_OP_addr_noRemap:
 			{
-				addr_target addr = GET_FROM(locData, addr_target);
-				stackFrameData[stackIdx++] = addr;
+				OPS_READ(addr_target, addr);
+				OPS_PUSH(addr);
 				//*outIsAddr = true;
 				*outAddrType = DbgAddrType_Target;
 			}
@@ -6984,26 +7470,29 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 
 		case DW_OP_addr:
 			{
-				addr_target addr = GET_FROM(locData, addr_target);
+				OPS_READ(addr_target, addr);
 				//if (dwarf != NULL)
 					addr = RemapAddr(addr);
-				stackFrameData[stackIdx++] = addr;
+				OPS_PUSH(addr);
 				//*outIsAddr = true;
 				*outAddrType = DbgAddrType_Target;
 			}
 			break;
 		case DW_OP_deref:
 			{
+				OPS_NEED(1);
 				addr_target addr = stackFrameData[--stackIdx];
 				addr_target value = mDebugger->ReadMemory<addr_target>(addr);
-				stackFrameData[stackIdx++] = value;
+				OPS_PUSH(value);
 			}
 			break;
 		case DW_OP_fbreg:
 			{
 				if (registers == NULL)
 					return 0;
-				BF_ASSERT(dwSubprogram != NULL);
+				// The frame base is evaluated with this flag, so an fbreg inside it would recurse forever
+				if ((dwSubprogram == NULL) || ((flags & DbgEvalLocFlag_DisallowReg) != 0))
+					OPS_FAIL();
 				DbgSubprogram* nonInlinedSubProgram = dwSubprogram->GetRootInlineParent();
 
 				if (nonInlinedSubProgram->mFrameBaseData == NULL)
@@ -7013,13 +7502,13 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 				}
 
 				BF_ASSERT(nonInlinedSubProgram->mFrameBaseData != NULL);
+				OPS_SLEB(offset);
 				intptr loc = EvaluateLocation(nonInlinedSubProgram, nonInlinedSubProgram->mFrameBaseData, nonInlinedSubProgram->mFrameBaseLen, stackFrame, outAddrType, DbgEvalLocFlag_DisallowReg);
-				int64 offset = DecodeSLEB128(locData);
 				loc += offset;
 				//loc = BfDebuggerReadMemory(loc);
 				//*outIsAddr = true;
 				*outAddrType = DbgAddrType_Target;
-				stackFrameData[stackIdx++] = (addr_target)loc;
+				OPS_PUSH((addr_target)loc);
 			}
 			break;
 		case DW_OP_reg0:
@@ -7042,12 +7531,13 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 				return 0;
 			BF_ASSERT((opCode - DW_OP_reg0) < CPURegisters::kNumIntRegs);
 			regNum = opCode - DW_OP_reg0;
-			stackFrameData[stackIdx++] = registers->mIntRegsArray[regNum];
+			OPS_PUSH(registers->mIntRegsArray[regNum]);
 			*outAddrType = DbgAddrType_Register;
 			break;
 
 		case DW_OP_reg21: //XMM0
-			BF_FATAL("XMM registers not supported yet");
+			BfLogDbg("DbgModule::ExecuteOps DW_OP_reg21 (XMM) is not supported\n");
+			OPS_FAIL();
 			break;
 
 		case DW_OP_breg0:
@@ -7069,39 +7559,40 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 			{
 				if (registers == NULL)
 					return 0;
-				int64 offset = DecodeSLEB128(locData);
+				OPS_SLEB(offset);
 				BF_ASSERT((opCode - DW_OP_breg0) < CPURegisters::kNumIntRegs);
 				auto loc = registers->mIntRegsArray[opCode - DW_OP_breg0] + offset;
 				//loc = BfDebuggerReadMemory(loc);
 				//*outIsAddr = true;
 				*outAddrType = DbgAddrType_Target;
-				stackFrameData[stackIdx++] = (addr_target)loc;
+				OPS_PUSH((addr_target)loc);
 			}
 			break;
 		case DW_OP_bregx:
 			{
 				if (registers == NULL)
 					return 0;
-				int regNum = (int)DecodeULEB128(locData);
-				int64 offset = DecodeSLEB128(locData);
-				BF_ASSERT(regNum < CPURegisters::kNumIntRegs);
-				auto loc = registers->mIntRegsArray[regNum] + offset;
+				OPS_ULEB(regNumVal);
+				OPS_SLEB(offset);
+				if (regNumVal >= (uint64)CPURegisters::kNumIntRegs)
+					OPS_FAIL();
+				auto loc = registers->mIntRegsArray[regNumVal] + offset;
 				//loc = BfDebuggerReadMemory(loc);
 				//*outIsAddr = true;
 				*outAddrType = DbgAddrType_Target;
-				stackFrameData[stackIdx++] = (addr_target)loc;
+				OPS_PUSH((addr_target)loc);
 			}
 			break;
 		case DW_OP_const4u:
 			{
-				uint32 val = GET_FROM(locData, uint32);
-				stackFrameData[stackIdx++] = val;
+				OPS_READ(uint32, val);
+				OPS_PUSH(val);
 			}
 			break;
 		case DW_OP_const8u:
 			{
-				uint64 val = GET_FROM(locData, uint64);
-				stackFrameData[stackIdx++] = (addr_target)val;
+				OPS_READ(uint64, val);
+				OPS_PUSH((addr_target)val);
 			}
 			break;
 		case DW_OP_GNU_push_tls_address:
@@ -7110,19 +7601,20 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 				if ((mTLSAddr == 0) || (mTLSIndexAddr == 0))
 					return 0;
 
+				OPS_NEED(1);
 				int tlsIndex = mDebugger->ReadMemory<int>(mTLSIndexAddr);
 				addr_target tlsEntry = mDebugger->GetTLSOffset(tlsIndex);
 
 				intptr_target tlsValueIndex = stackFrameData[--stackIdx];
 
-				stackFrameData[stackIdx++] = (tlsValueIndex - mTLSAddr) + tlsEntry;
+				OPS_PUSH((tlsValueIndex - mTLSAddr) + tlsEntry);
 				*outAddrType = DbgAddrType_Target;
 			}
 			break;
 		case DW_OP_nop:
 			break;
 		default:
-			BF_FATAL("Unknown DW_OP");
+			OPS_FAIL();
 			break;
 		}
 	}
@@ -7135,7 +7627,14 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 	}
 
 	//BF_ASSERT(stackIdx == 1);
+	OPS_NEED(1);
 	return stackFrameData[--stackIdx];
+	#undef OPS_FAIL
+	#undef OPS_NEED
+	#undef OPS_PUSH
+	#undef OPS_READ
+	#undef OPS_ULEB
+	#undef OPS_SLEB
 }
 
 intptr DbgModule::EvaluateLocation(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, DbgAddrType* outAddrType, DbgEvalLocFlags flags)

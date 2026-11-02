@@ -22,7 +22,6 @@ public:
 	Array<uint8> mFileData;
 	Array<ElfSection> mElfSections;
 	bool mIsPositionIndependent;
-	int64 mEHFrameSize;
 	int64 mTLSDataSize;
 	int64 mTLSBssSize;
 
