@@ -267,7 +267,15 @@ void LLDBDebugger::ShadowCheckFrames()
 			int moduleEnd = (int)lldbName.IndexOf('!');
 			if ((nameSubprogram != NULL) && (nameSubprogram->mLinkName != NULL) && (strcmp(lldbName.c_str() + moduleEnd + 1, nameSubprogram->mLinkName) == 0))
 				lldbFrameName = ShadowFunctionName(beefName);
-			ShadowCompare("frame_name", lldbFrameName, ShadowFunctionName(beefName));
+			String beefFrameName = ShadowFunctionName(beefName);
+			// DebugTarget marks a replaced hot version with '#' and names hot code by its linked module, LLDB by the object file
+			if (beefFrameName.StartsWith('#'))
+				beefFrameName.Remove(0, 1);
+			int lldbModuleEnd = (int)lldbFrameName.IndexOf('!');
+			int beefModuleEnd = (int)beefFrameName.IndexOf('!');
+			if ((lldbFrameName.StartsWith("BeefHot_")) && (lldbModuleEnd != -1) && (beefModuleEnd != -1))
+				lldbFrameName = beefFrameName.Substring(0, beefModuleEnd) + lldbFrameName.Substring(lldbModuleEnd);
+			ShadowCompare("frame_name", lldbFrameName, beefFrameName);
 			ShadowCompare("frame_line", lldbLine, beefLine);
 			ShadowCompare("inline_depth", StrFormat("%d", lldbDepth), StrFormat("%d", beefDepth));
 			if (lldbDepth == beefDepth)
@@ -385,7 +393,22 @@ void LLDBDebugger::ShadowCheckLineCalls(addr_target pc)
 	lldb::SBFunction function = pcAddr.GetFunction();
 	if ((!pcLine.IsValid()) || (!function.IsValid()))
 		return;
-	lldb::SBInstructionList instructions = function.GetInstructions(mLLDBTarget);
+	// A hot-replaced entry is a jump in memory, so the executable's code is decoded from its file bytes
+	lldb::SBInstructionList instructions;
+	lldb::SBAddress startAddr = function.GetStartAddress();
+	lldb::SBSection section = startAddr.GetSection();
+	uint64 functionSize = function.GetEndAddress().GetFileAddress() - startAddr.GetFileAddress();
+	if ((section.IsValid()) && (HotGetModuleVersion(startAddr.GetModule()) == 0) && (functionSize > 0) && (functionSize < 0x100000))
+	{
+		lldb::SBData fileData = section.GetSectionData(startAddr.GetFileAddress() - section.GetFileAddress(), functionSize);
+		Array<uint8> bytes;
+		bytes.Resize((intptr)functionSize);
+		lldb::SBError error;
+		if (fileData.ReadRawData(error, 0, bytes.mVals, (size_t)functionSize) == (size_t)functionSize)
+			instructions = mLLDBTarget.GetInstructions(startAddr, bytes.mVals, (size_t)functionSize);
+	}
+	if (instructions.GetSize() == 0)
+		instructions = function.GetInstructions(mLLDBTarget);
 	for (uint32 instIdx = 0; instIdx < instructions.GetSize(); instIdx++)
 	{
 		lldb::SBInstruction instruction = instructions.GetInstructionAtIndex(instIdx);
@@ -470,6 +493,11 @@ void LLDBDebugger::ShadowCheckTLS()
 
 			// A target-level SBValue has no thread, so a thread-local is looked up through the stopped thread's frame
 			uint64 lldbAddr = mLLDBFrames[0].GetValueForVariablePath(lldbName.c_str()).GetLoadAddress();
+			// LLDB's debug info doesn't place statics a hot compile adds, which its evaluator reads through HotFindThreadLocalOffset
+			uint64 tlsOffset = 0;
+			uint64 blockAddr = 0;
+			if ((lldbAddr == LLDB_INVALID_ADDRESS) && (HotFindThreadLocalOffset(lldbName.c_str(), tlsOffset)) && (HotGetTlsBlockAddr(mLLDBFrames[0], blockAddr)))
+				lldbAddr = blockAddr + tlsOffset;
 
 			DbgAddrType addrType = DbgAddrType_NoValue;
 			addr_target beefAddr = (addr_target)dbgModule->EvaluateLocation(NULL, member->mLocationData, member->mLocationLen, wdStackFrame, &addrType);
@@ -494,8 +522,13 @@ void LLDBDebugger::ShadowCheckBreakpoint(LLDBBreakpoint* bp)
 		if ((!loc.IsValid()) || (!loc.IsEnabled()))
 			continue;
 		lldb::addr_t loadAddr = loc.GetLoadAddress();
-		if (loadAddr != LLDB_INVALID_ADDRESS)
-			lldbAddrs.Add((uint64)loadAddr);
+		if (loadAddr == LLDB_INVALID_ADDRESS)
+			continue;
+		// Windows binds an older hot version only through HotBindBreakpoint, at that version's line
+		DbgSubprogram* subprogram = mDebugTarget->FindSubProgram((addr_target)loadAddr, DbgOnDemandKind_LocalOnly);
+		if ((subprogram != NULL) && (subprogram->mHotReplaceKind != DbgSubprogram::HotReplaceKind_None))
+			continue;
+		lldbAddrs.Add((uint64)loadAddr);
 	}
 
 	Array<addr_target> boundAddrs;

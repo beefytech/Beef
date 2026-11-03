@@ -6,6 +6,7 @@
 #include "DebugTarget.h"
 #include "DbgModule.h"
 #include "DWARFInfo.h"
+#include "ElfDbgModule.h"
 #include "BeefySysLib/FileStream.h"
 #include <limits.h>
 
@@ -619,6 +620,37 @@ bool LLDBDebugger::HostFindThreadLocalAddress(lldb::SBFrame& frame, const char* 
 	LLDBLog("HostFindThreadLocalAddress: %s at 0x%llx\n", lldbName, (unsigned long long)addr);
 	outAddr = (uint64)addr;
 	return true;
+}
+
+void LLDBDebugger::HostLoadHotObject(const StringImpl& path, int hotIdx, addr_target imageAddr, int64 imageSize, const Array<addr_target>& sectionAddrs, const Array<uint64>& symbolAddrs)
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	if ((mDebugTarget == NULL) || (mDebugTarget->mTargetBinary == NULL))
+		return;
+
+	ElfDbgModule* dbgModule = new ElfDbgModule(mDebugTarget);
+	dbgModule->mHotIdx = hotIdx;
+	dbgModule->mDisplayName = GetFileName(path);
+	dbgModule->mFilePath = path;
+	dbgModule->SetHotLinkInfo(imageAddr, imageSize, sectionAddrs, symbolAddrs);
+	FileStream fileStream;
+	if ((!fileStream.Open(path, "rb")) || (!dbgModule->ReadImage(&fileStream, DbgModuleKind_HotObject)))
+	{
+		LLDBLog("HostLoadHotObject: %s could not be read\n", path.c_str());
+		delete dbgModule;
+		return;
+	}
+	dbgModule->mOrigImageData = new DbgModuleMemoryCache(dbgModule->mImageBase, dbgModule->mImageSize);
+	mDebugTarget->AddDbgModule(dbgModule);
+	LLDBLog("HostLoadHotObject: %s at 0x%llx, %d subprograms\n", path.c_str(), (unsigned long long)imageAddr, (int)dbgModule->mSubprograms.size());
+}
+
+void LLDBDebugger::HostFinishHotLoad()
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	if (mDebugTarget != NULL)
+		mDebugTarget->RehupSrcFiles();
+	ClearCallStack();
 }
 
 #endif

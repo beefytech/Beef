@@ -342,6 +342,9 @@ protected:
 	bool HotFindExeSymbol(const StringImpl& name, HotSymbol& outSymbol);
 	bool HotFindCanonicalSymbol(const StringImpl& name, HotSymbol& outSymbol);
 	bool HotResolveExternal(const StringImpl& name, uint64& outAddr, String& outError);
+	void HotDebugInfoAddrs(LLDBHotObject* obj, Array<addr_target>& outSectionAddrs, Array<uint64>& outSymbolAddrs);
+	void HostLoadHotObject(const StringImpl& path, int hotIdx, addr_target imageAddr, int64 imageSize, const Array<addr_target>& sectionAddrs, const Array<uint64>& symbolAddrs);
+	void HostFinishHotLoad();
 	bool HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<HotPatch>& patches, uint64& outAddr, String& outError);
 	bool HotParseObject(LLDBHotObject* obj, String& outError);
 	bool HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError);

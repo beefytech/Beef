@@ -8643,6 +8643,36 @@ bool LLDBDebugger::HotResolveTlsSymbol(LLDBHotObject* obj, int symIdx, uint64& o
 #endif
 }
 
+// The linker's resolution where it has one, else the symbol's address without side effects (debug sections are at 0)
+void LLDBDebugger::HotDebugInfoAddrs(LLDBHotObject* obj, Array<addr_target>& outSectionAddrs, Array<uint64>& outSymbolAddrs)
+{
+#ifdef __linux__
+	outSectionAddrs.Resize(obj->mNumSections);
+	for (int sectionIdx = 0; sectionIdx < obj->mNumSections; sectionIdx++)
+		outSectionAddrs[sectionIdx] = obj->IsLoadedSection(sectionIdx) ? (addr_target)(obj->mImageAddr + obj->mSectionOffsets[sectionIdx]) : 0;
+
+	outSymbolAddrs.Resize(obj->mNumSyms);
+	for (int symIdx = 0; symIdx < obj->mNumSyms; symIdx++)
+	{
+		Elf64_Sym& sym = obj->mSyms[symIdx];
+		uint64 addr = 0;
+		if (obj->mSymResolved[symIdx])
+			addr = obj->mSymAddrs[symIdx];
+		else if (sym.st_shndx == SHN_ABS)
+			addr = sym.st_value;
+		else if (sym.st_shndx == SHN_UNDEF)
+		{
+			String error;
+			if (!HotResolveExternal(obj->GetSymName(symIdx), addr, error))
+				addr = 0;
+		}
+		else if ((ELF64_ST_TYPE(sym.st_info) != STT_TLS) && (obj->IsLoadedSection(sym.st_shndx)))
+			addr = obj->mImageAddr + obj->mSectionOffsets[sym.st_shndx] + sym.st_value;
+		outSymbolAddrs[symIdx] = addr;
+	}
+#endif
+}
+
 bool LLDBDebugger::HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<HotPatch>& patches, uint64& outAddr, String& outError)
 {
 #ifdef __linux__
@@ -9683,6 +9713,17 @@ bool LLDBDebugger::HotLoadBatch(const Array<String>& objectFiles, int hotIdx, in
 		for (auto& kv : mHotPendingSymbols)
 			mHotSymbols[kv.mKey] = kv.mValue;
 		mHotTlsDemangledValid = false;
+
+		for (auto obj : objects)
+		{
+			if ((obj->mImageAddr == 0) || (obj->mModulePath.IsEmpty()))
+				continue;
+			Array<addr_target> sectionAddrs;
+			Array<uint64> symbolAddrs;
+			HotDebugInfoAddrs(obj, sectionAddrs, symbolAddrs);
+			HostLoadHotObject(obj->mModulePath, hotIdx, (addr_target)obj->mImageAddr, (int64)obj->mImageSize, sectionAddrs, symbolAddrs);
+		}
+		HostFinishHotLoad();
 	}
 	else if (outRestored)
 	{

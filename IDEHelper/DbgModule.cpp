@@ -6281,7 +6281,8 @@ void DbgModule::HotReplaceMethods(DbgType* newType, DbgType* primaryType)
 
 					if (!doHotJump)
 					{
-						mDebugTarget->mDebugger->PhysSetBreakpoint(oldMethod->mBlock.mLowPC);
+						if (WritesHotCode())
+							mDebugTarget->mDebugger->PhysSetBreakpoint(oldMethod->mBlock.mLowPC);
 						oldMethod->mHotReplaceKind = DbgSubprogram::HotReplaceKind_Invalid;
 					}
 				}
@@ -6289,7 +6290,9 @@ void DbgModule::HotReplaceMethods(DbgType* newType, DbgType* primaryType)
 
 			if (doHotJump)
 			{
-				if (!setHotJumpFailed)
+				if (!WritesHotCode())
+					_RemoveLineInfo(oldMethod);
+				else if (!setHotJumpFailed)
 				{
 					if (mDebugger->SetHotJump(oldMethod, newMethod->mBlock.mLowPC, (int)(newMethod->mBlock.mHighPC - newMethod->mBlock.mLowPC)))
 					{
@@ -6364,6 +6367,46 @@ void DbgModule::HotReplaceMethods(DbgType* newType, DbgType* primaryType)
 			primaryType->mMethodList.PushBack(newMethod);
 		}
 	}
+}
+
+void DbgModule::HotReplaceTypes()
+{
+	auto linkedModule = GetLinkedModule();
+
+	// In COFF, we don't necessarily add an actual primary type during MapCompileUnitMethods, so this fixes that
+	while (true)
+	{
+		bool didReplaceType = false;
+		for (auto itr = mHotPrimaryTypes.begin(); itr != mHotPrimaryTypes.end(); ++itr)
+		{
+			auto dbgType = *itr;
+			auto primaryType = dbgType->GetPrimaryType();
+
+			if ((primaryType->mHotNewType == NULL) && (HasHotReplacedMethods(primaryType)) && (dbgType == primaryType))
+			{
+				HotReplaceMethods(dbgType, primaryType);					
+			}
+
+			if (primaryType != dbgType)
+			{
+				mHotPrimaryTypes.Remove(itr);
+				mHotPrimaryTypes.Add(primaryType);
+				didReplaceType = true;
+				break;
+			}				
+		}
+		if (!didReplaceType)
+			break;
+	}		
+
+	BF_ASSERT(mTypes.size() == 0);
+	for (int typeIdx = mStartTypeIdx; typeIdx < (int)linkedModule->mTypes.size(); typeIdx++)
+	{
+		DbgType* newType = linkedModule->mTypes[typeIdx];
+		//if (!newType->mMethodList.IsEmpty())
+		if (!newType->mIsDeclaration)
+			HotReplaceType(newType);
+	}		
 }
 
 void DbgModule::HotReplaceType(DbgType* newType)
@@ -7345,42 +7388,7 @@ bool DbgModule::ReadCOFF(DataStream* stream, DbgModuleKind moduleKind)
 		lineDataCount, mEndTypeIdx - mStartTypeIdx, (int)linkedModule->mTypes.size() - mStartTypeIdx, mEndSubprogramIdx - mStartSubprogramIdx, subProgramSizes / 1024, mAlloc.GetAllocSize() / 1024);*/
 
 	if (isHotSwap)
-	{
-		// In COFF, we don't necessarily add an actual primary type during MapCompileUnitMethods, so this fixes that
-		while (true)
-		{
-			bool didReplaceType = false;
-			for (auto itr = mHotPrimaryTypes.begin(); itr != mHotPrimaryTypes.end(); ++itr)
-			{
-				auto dbgType = *itr;
-				auto primaryType = dbgType->GetPrimaryType();
-
-				if ((primaryType->mHotNewType == NULL) && (HasHotReplacedMethods(primaryType)) && (dbgType == primaryType))
-				{
-					HotReplaceMethods(dbgType, primaryType);					
-				}
-
-				if (primaryType != dbgType)
-				{
-					mHotPrimaryTypes.Remove(itr);
-					mHotPrimaryTypes.Add(primaryType);
-					didReplaceType = true;
-					break;
-				}				
-			}
-			if (!didReplaceType)
-				break;
-		}		
-
-		BF_ASSERT(mTypes.size() == 0);
-		for (int typeIdx = mStartTypeIdx; typeIdx < (int)linkedModule->mTypes.size(); typeIdx++)
-		{
-			DbgType* newType = linkedModule->mTypes[typeIdx];
-			//if (!newType->mMethodList.IsEmpty())
-			if (!newType->mIsDeclaration)
-				HotReplaceType(newType);
-		}		
-	}
+		HotReplaceTypes();
 
 	if (needHotTargetMemory != 0)
 	{
