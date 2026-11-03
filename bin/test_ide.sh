@@ -112,8 +112,8 @@ then
 	awk '
 		FNR == 1 { run = FILENAME; sub(/.*\//, "", run); sub(/\.txt$/, "", run) }
 		/^DBGSHADOW query / {
-			split($4, q, "="); split($5, m, "=")
-			queries[$3] += q[2]; mismatches[$3] += m[2]
+			split($4, q, "="); split($5, m, "="); split($6, src, "=")
+			queries[$3] += q[2]; mismatches[$3] += m[2]; source[$3] = src[2]
 			if (m[2] > 0) runs[$3] = runs[$3] " " run
 			next
 		}
@@ -129,7 +129,7 @@ then
 		}
 		END {
 			for (key in queries) {
-				printf "query %s queries=%d mismatches=%d extra=%d runs=%s\n", key, queries[key], mismatches[key], extra[key] + 0, runs[key]
+				printf "query %s source=%s queries=%d mismatches=%d extra=%d runs=%s\n", key, source[key], queries[key], mismatches[key], extra[key] + 0, runs[key]
 				totalMismatches += mismatches[key]
 			}
 			for (key in unsupported) {

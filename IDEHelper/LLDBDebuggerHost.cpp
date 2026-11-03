@@ -435,4 +435,25 @@ DbgBreakKind LLDBDebugger::GetDbgBreakKind(addr_target address, DbgModuleMemoryC
 	return DbgBreakKind_None;
 }
 
+bool LLDBDebugger::HostCoversAddress(intptr address)
+{
+	return (mDebugTarget != NULL) && (mDebugTarget->FindDbgModuleForAddress((addr_target)address) != NULL);
+}
+
+String LLDBDebugger::GetAddressSourceLocation(intptr address)
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	if ((ShadowIsFlipped("addr_line")) && (HostCoversAddress(address)))
+		return DbgTargetHost::GetAddressSourceLocation(address);
+	return LLDBAddressSourceLocation(address);
+}
+
+String LLDBDebugger::GetAddressSymbolName(intptr address, bool demangle)
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	if ((ShadowIsFlipped("addr_symbol")) && (HostCoversAddress(address)))
+		return DbgTargetHost::GetAddressSymbolName(address, demangle);
+	return LLDBAddressSymbolName(address, demangle);
+}
+
 #endif

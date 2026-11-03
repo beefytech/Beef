@@ -2268,7 +2268,7 @@ String LLDBDebugger::FindCodeAddresses(const StringImpl& fileName, int line, int
 	return result;
 }
 
-String LLDBDebugger::GetAddressSourceLocation(intptr address)
+String LLDBDebugger::LLDBAddressSourceLocation(intptr address)
 {
 	lldb::SBAddress addr;
 	addr.SetLoadAddress(address, mLLDBTarget);
@@ -2280,7 +2280,7 @@ String LLDBDebugger::GetAddressSourceLocation(intptr address)
 		entry.GetLine(), entry.GetColumn());
 }
 
-String LLDBDebugger::GetAddressSymbolName(intptr address, bool demangle)
+String LLDBDebugger::LLDBAddressSymbolName(intptr address, bool demangle)
 {
 	lldb::SBAddress addr;
 	addr.SetLoadAddress(address, mLLDBTarget);

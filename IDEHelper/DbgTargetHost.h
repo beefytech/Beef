@@ -168,6 +168,8 @@ public:
 	virtual String GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn, int* outLanguage, int* outStackSize, int8* outFlags) override;
 	virtual String FindCodeAddresses(const StringImpl& fileName, int line, int column, bool allowAutoResolve) override;
 	virtual String FindLineCallAddresses(intptr address) override;
+	virtual String GetAddressSourceLocation(intptr address) override;
+	virtual String GetAddressSymbolName(intptr address, bool demangle) override;
 
 	static void CreateFilterName(String& name, DbgType* type);
 	static void CreateFilterName(String& name, const char* srcStr, DbgLanguage language);

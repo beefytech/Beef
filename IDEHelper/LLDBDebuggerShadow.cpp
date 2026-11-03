@@ -171,14 +171,26 @@ void LLDBDebugger::ShadowInit()
 		mShadowReportPath = reportEnv;
 }
 
-// DBGSHADOW lines read "DBGSHADOW <query>: lldb=<result> beef=<result>"; source lines in them are 0-based, the IDE's convention
+static const char* sShadowFlippedQueries[] = { "addr_line", "addr_symbol" };
+
+bool LLDBDebugger::ShadowIsFlipped(const char* query)
+{
+	for (auto flippedQuery : sShadowFlippedQueries)
+	{
+		if (strcmp(flippedQuery, query) == 0)
+			return true;
+	}
+	return false;
+}
+
+// Source lines in DBGSHADOW lines are 0-based, the IDE's convention
 void LLDBDebugger::ShadowCompare(const char* query, const StringImpl& lldbResult, const StringImpl& beefResult)
 {
 	mShadowQueryCounts[query]++;
 	if (lldbResult == beefResult)
 		return;
 	mShadowMismatchCounts[query]++;
-	ShadowReportLine(StrFormat("DBGSHADOW %s: lldb=%s beef=%s", query, lldbResult.c_str(), beefResult.c_str()));
+	ShadowReportLine(StrFormat("DBGSHADOW %s: lldb=%s beef=%s returned=%s", query, lldbResult.c_str(), beefResult.c_str(), ShadowIsFlipped(query) ? "beef" : "lldb"));
 }
 
 void LLDBDebugger::ShadowReportLine(const StringImpl& line)
@@ -272,7 +284,7 @@ void LLDBDebugger::ShadowCheckFrames()
 						ShadowCompare("inline_line", lldbInlineLine, beefInlineLine);
 				}
 			}
-			String lldbAddrLine = LLDBDebugger::GetAddressSourceLocation((intptr)sourcePC);
+			String lldbAddrLine = LLDBAddressSourceLocation((intptr)sourcePC);
 			int columnColon = (int)lldbAddrLine.LastIndexOf(':');
 			if (columnColon > 0)
 				lldbAddrLine.RemoveToEnd(columnColon);
@@ -320,7 +332,7 @@ void LLDBDebugger::ShadowCheckFrames()
 		DbgModule* symbolModule = mDebugTarget->FindDbgModuleForAddress(sourcePC);
 		if ((symbolModule != NULL) && (((ElfDbgModule*)symbolModule)->FindSection(".symtab") != NULL))
 		{
-			String lldbSymbol = LLDBDebugger::GetAddressSymbolName((intptr)sourcePC, false);
+			String lldbSymbol = LLDBAddressSymbolName((intptr)sourcePC, false);
 			String beefSymbol;
 			addr_target offset = 0;
 			if (!mDebugTarget->FindSymbolAt(sourcePC, &beefSymbol, &offset))
@@ -521,12 +533,12 @@ void LLDBDebugger::ShadowCheckBreakpoint(LLDBBreakpoint* bp)
 	if (!missingAddrs.IsEmpty())
 	{
 		mShadowMismatchCounts["breakpoint"]++;
-		ShadowReportLine(StrFormat("DBGSHADOW breakpoint: lldb=%s beef=%s", (location + _Format(lldbAddrs)).c_str(), (location + _Format(beefAddrs)).c_str()));
+		ShadowReportLine(StrFormat("DBGSHADOW breakpoint: lldb=%s beef=%s returned=%s", (location + _Format(lldbAddrs)).c_str(), (location + _Format(beefAddrs)).c_str(), ShadowIsFlipped("breakpoint") ? "beef" : "lldb"));
 	}
 	else if (!extraAddrs.IsEmpty())
 	{
 		mShadowExtraCount++;
-		ShadowReportLine(StrFormat("DBGSHADOW breakpoint-extra: lldb=%s beef=%s", (location + _Format(lldbAddrs)).c_str(), (location + _Format(beefAddrs)).c_str()));
+		ShadowReportLine(StrFormat("DBGSHADOW breakpoint-extra: lldb=%s beef=%s returned=%s", (location + _Format(lldbAddrs)).c_str(), (location + _Format(beefAddrs)).c_str(), ShadowIsFlipped("breakpoint") ? "beef" : "lldb"));
 	}
 }
 
@@ -551,7 +563,7 @@ void LLDBDebugger::ShadowWriteReport()
 	{
 		int queryMismatches = 0;
 		mShadowMismatchCounts.TryGetValue(kv.mKey, &queryMismatches);
-		report += StrFormat("DBGSHADOW query %s queries=%d mismatches=%d\n", kv.mKey.c_str(), kv.mValue, queryMismatches);
+		report += StrFormat("DBGSHADOW query %s queries=%d mismatches=%d source=%s\n", kv.mKey.c_str(), kv.mValue, queryMismatches, ShadowIsFlipped(kv.mKey.c_str()) ? "beef" : "lldb");
 	}
 	for (auto& kv : mHostUnsupportedCounts)
 		report += StrFormat("DBGSHADOW unsupported %s count=%d\n", kv.mKey.c_str(), kv.mValue);

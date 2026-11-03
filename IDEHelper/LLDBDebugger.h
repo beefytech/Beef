@@ -379,6 +379,10 @@ protected:
 	void HostBuildCallStack();
 	void HostReadFrameRegisters(lldb::SBFrame& frame, CPURegisters* registers);
 	String HostAddressSourceLocation(intptr address);
+	static bool ShadowIsFlipped(const char* query);
+	bool HostCoversAddress(intptr address);
+	String LLDBAddressSourceLocation(intptr address);
+	String LLDBAddressSymbolName(intptr address, bool demangle);
 	void ShadowInit();
 	void ShadowCompare(const char* query, const StringImpl& lldbResult, const StringImpl& beefResult);
 	void ShadowReportLine(const StringImpl& line);
