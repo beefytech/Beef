@@ -653,4 +653,185 @@ void LLDBDebugger::HostFinishHotLoad()
 	ClearCallStack();
 }
 
+// Must choose the addresses WinDebugger::CheckBreakpoint chooses
+void LLDBDebugger::HostBindLineAddresses(DbgSrcFile* srcFile, int lineNum, int instrOffset, int hotIdx, Array<addr_target>& outAddrs, int& outLineNum)
+{
+	outLineNum = lineNum;
+	Array<DbgSubprogram*> subprograms;
+	Array<DbgLineInfo*> lineInfos;
+	if (hotIdx >= 0)
+	{
+		if (hotIdx >= (int)srcFile->mHotReplacedDbgLineInfo.size())
+			return;
+		for (auto& entry : srcFile->mHotReplacedDbgLineInfo[hotIdx]->mEntries)
+		{
+			subprograms.Add(entry.mSubprogram);
+			lineInfos.Add(entry.mLineInfo);
+		}
+	}
+	else
+	{
+		for (auto subprogram : srcFile->mLineDataRefs)
+		{
+			subprograms.Add(subprogram);
+			lineInfos.Add(subprogram->mLineInfo);
+		}
+	}
+
+	for (int pass = 0; pass < 2; pass++)
+	{
+		bool foundLine = false;
+		bool foundInSequence = false;
+		DbgSubprogram* lastFoundSubprogram = NULL;
+		int bestLineNum = -1;
+		int bestLineOffset = 0x7FFFFFFF;
+
+		for (int subprogramIdx = 0; subprogramIdx < (int)subprograms.size(); subprogramIdx++)
+		{
+			DbgSubprogram* subprogram = subprograms[subprogramIdx];
+			DbgLineInfo* lineInfo = lineInfos[subprogramIdx];
+			if (lineInfo == NULL)
+				continue;
+			DbgModule::FixupLineDataForSubprogram(subprogram);
+			for (int lineIdx = 0; lineIdx < lineInfo->mLines.mSize; lineIdx++)
+			{
+				auto lineData = &lineInfo->mLines[lineIdx];
+				if (lineInfo->mContexts[lineData->mCtxIdx].mSrcFile != srcFile)
+					continue;
+				if ((lineData->mColumn == -1) && (instrOffset == -1))
+					continue;
+				// A line 0 row does not end the line's run: CodeView has none, so Windows binds one address there
+				if (lineData->mLine < 0)
+					continue;
+
+				int lineOffset = lineData->mLine - lineNum;
+				if (lineOffset == 0)
+				{
+					foundLine = true;
+					addr_target address = subprogram->GetLineAddr(*lineData);
+					DbgSubprogram* foundSubprogram = mDebugTarget->FindSubProgram(address);
+					if ((foundInSequence) && (foundSubprogram != lastFoundSubprogram))
+						foundInSequence = false;
+					if (!foundInSequence)
+					{
+						lastFoundSubprogram = foundSubprogram;
+						outAddrs.Add(address);
+						foundInSequence = true;
+					}
+				}
+				else
+					foundInSequence = false;
+
+				if ((lineOffset >= 0) && (lineOffset <= 6) && (lineOffset < bestLineOffset))
+				{
+					bestLineNum = lineData->mLine;
+					bestLineOffset = lineOffset;
+				}
+			}
+		}
+
+		if ((foundLine) || (bestLineNum == -1) || (hotIdx >= 0))
+			break;
+		lineNum = bestLineNum;
+	}
+	outLineNum = lineNum;
+
+	for (auto& address : outAddrs)
+	{
+		for (int instIdx = 0; instIdx < instrOffset; instIdx++)
+		{
+			DbgInstInfo instInfo;
+			if (!mDebugTarget->DecodeInstInfo(address, NULL, &instInfo))
+				break;
+			address += instInfo.mSize;
+		}
+	}
+}
+
+void LLDBDebugger::HostClearAddressBreakpoints(LLDBBreakpoint* bp)
+{
+	for (auto& addressBreakpoint : bp->mAddressBreakpoints)
+	{
+		if (!addressBreakpoint.IsValid())
+			continue;
+		mBreakpointIdMap.Remove((int)addressBreakpoint.GetID(), bp);
+		if (mLLDBTarget.IsValid())
+			mLLDBTarget.BreakpointDelete(addressBreakpoint.GetID());
+	}
+	bp->mAddressBreakpoints.Clear();
+	for (auto address : bp->mAddresses)
+		mBreakpointAddrMap.Remove(address, bp);
+	bp->mAddresses.Clear();
+}
+
+// LLDB's own binding stays for the shadow, disabled unless the line has no debug info
+void LLDBDebugger::HostBindBreakpointAddresses(LLDBBreakpoint* bp)
+{
+	if ((!ShadowIsFlipped("breakpoint")) || (bp->mHostDisabled) || (bp->mFilePath.IsEmpty()) || (!bp->mLLDBBreakpoint.IsValid()) ||
+		(!mLLDBProcess.IsValid()))
+		return;
+	HostSyncModules();
+	if (mDebugTarget == NULL)
+		return;
+	DbgSrcFile* srcFile = mDebugTarget->GetSrcFile(bp->mFilePath);
+	if (srcFile == NULL)
+		return;
+
+	Array<addr_target> boundAddrs;
+	int boundLineNum = bp->mRequestedLineNum;
+	HostBindLineAddresses(srcFile, bp->mRequestedLineNum, bp->mInstrOffset, -1, boundAddrs, boundLineNum);
+	Array<uintptr> addresses;
+	for (auto address : boundAddrs)
+	{
+		if (!HotIsInPatchedEntry((uint64)address, NULL, NULL))
+			addresses.Add((uintptr)address);
+	}
+	if (addresses.IsEmpty())
+		return;
+	if ((addresses == bp->mAddresses) && (!bp->mAddressBreakpoints.IsEmpty()))
+		return;
+
+	HostClearAddressBreakpoints(bp);
+	if (bp->mResolvedAddr != 0)
+		mBreakpointAddrMap.Remove(bp->mResolvedAddr, bp);
+	bp->mLLDBBreakpoint.SetEnabled(false);
+	for (auto address : addresses)
+	{
+		lldb::SBBreakpoint addressBreakpoint = mLLDBTarget.BreakpointCreateByAddress((lldb::addr_t)address);
+		if (!addressBreakpoint.IsValid())
+			continue;
+		bp->mAddressBreakpoints.Add(addressBreakpoint);
+		mBreakpointIdMap.ForceAdd((int)addressBreakpoint.GetID(), bp);
+		mBreakpointAddrMap.ForceAdd(address, bp);
+	}
+	bp->mAddresses = addresses;
+	bp->mResolvedAddr = addresses[0];
+	bp->mLineNum = boundLineNum;
+	LLDBLog("HostBindBreakpointAddresses %s:%d -> %d addresses\n", GetFileName(bp->mFilePath).c_str(), boundLineNum + 1, (int)addresses.size());
+}
+
+bool LLDBDebugger::HostHotBindBreakpoint(LLDBBreakpoint* bp, int lineNum, int hotIdx)
+{
+	if ((!ShadowIsFlipped("breakpoint")) || (mDebugTarget == NULL) || (lineNum < 0))
+		return false;
+	DbgSrcFile* srcFile = mDebugTarget->GetSrcFile(bp->mFilePath);
+	if (srcFile == NULL)
+		return false;
+
+	Array<addr_target> boundAddrs;
+	int boundLineNum = lineNum;
+	HostBindLineAddresses(srcFile, lineNum, bp->mInstrOffset, hotIdx, boundAddrs, boundLineNum);
+	for (auto address : boundAddrs)
+	{
+		if (HotIsInPatchedEntry((uint64)address, NULL, NULL))
+			continue;
+		lldb::SBBreakpoint versionBreakpoint = mLLDBTarget.BreakpointCreateByAddress((lldb::addr_t)address);
+		if (!versionBreakpoint.IsValid())
+			continue;
+		bp->mVersionBreakpoints.Add(versionBreakpoint);
+		mBreakpointIdMap.ForceAdd((int)versionBreakpoint.GetID(), bp);
+	}
+	return true;
+}
+
 #endif

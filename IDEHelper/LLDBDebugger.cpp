@@ -171,6 +171,9 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mStepOutThenInto = false;
 	mStepOutFinishedLine = false;
 	mStepContinueCount = 0;
+	mStepIssueCall = StepCall_Into;
+	mStepIssuePC = 0;
+	mStepIssueSP = 0;
 	mStepStartFunctionAddr = 0;
 	mEvalAllowCalls = false;
 	mEvalAllowProperties = false;
@@ -1022,6 +1025,16 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 				mRunState = RunState_Running;
 				return;
 			}
+			// LLDB reports a breakpoint at a step's start address after a step stopped there, which Windows ignores
+			if ((thread.IsValid()) && (threadStopReason == lldb::eStopReasonBreakpoint) && (mStepKind != StepKind_None) &&
+				(mStepContinueCount < 16) && (mStepIssuePC != 0) && ((uint64)thread.GetFrameAtIndex(0).GetPC() == mStepIssuePC) &&
+				((uint64)thread.GetFrameAtIndex(0).GetSP() == mStepIssueSP))
+			{
+				mStepContinueCount++;
+				IssueStep(thread, mStepIssueCall);
+				mRunState = RunState_Running;
+				return;
+			}
 			mStepKind = StepKind_None;
 
 			if ((thread.IsValid()) && (threadStopReason == lldb::eStopReasonBreakpoint))
@@ -1290,7 +1303,7 @@ void LLDBDebugger::StepInto(bool inAssembly)
 		else
 		{
 			HotSetStepTraps();
-			thread.StepInto();
+			IssueStep(thread, StepCall_Into);
 		}
 	}
 }
@@ -1314,7 +1327,7 @@ void LLDBDebugger::StepOver(bool inAssembly)
 		if (inAssembly)
 			thread.StepInstruction(/*step_over=*/true);
 		else
-			thread.StepOver();
+			IssueStep(thread, StepCall_Over);
 	}
 }
 
@@ -1330,7 +1343,7 @@ void LLDBDebugger::StepOut(bool inAssembly)
 		BeginStep(thread, inAssembly ? StepKind_None : StepKind_Out);
 		ClearCallStack();
 		mRunState = RunState_Running;
-		thread.StepOut();
+		IssueStep(thread, StepCall_Out);
 	}
 }
 
@@ -1408,6 +1421,8 @@ void LLDBDebugger::BeginStep(lldb::SBThread& thread, StepKind stepKind)
 	mStepOutThenInto = false;
 	mStepOutFinishedLine = false;
 	mStepContinueCount = 0;
+	mStepIssuePC = 0;
+	mStepIssueSP = 0;
 	mStepNoInfoTries = 0;
 	lldb::SBFrame startFrame = thread.GetFrameAtIndex(0);
 	lldb::SBFunction function = startFrame.GetFunction();
@@ -1489,6 +1504,20 @@ bool LLDBDebugger::IsStepFiltered(lldb::SBFunction& function)
 	return (functionName[0] == '_') && (functionName[1] == '_');
 }
 
+void LLDBDebugger::IssueStep(lldb::SBThread& thread, StepCall stepCall)
+{
+	lldb::SBFrame frame = thread.GetFrameAtIndex(0);
+	mStepIssueCall = stepCall;
+	mStepIssuePC = (uint64)frame.GetPC();
+	mStepIssueSP = (uint64)frame.GetSP();
+	if (stepCall == StepCall_Into)
+		thread.StepInto();
+	else if (stepCall == StepCall_Over)
+		thread.StepOver();
+	else
+		thread.StepOut();
+}
+
 // Called when a step completes. Returns true if it kept stepping instead of stopping here.
 bool LLDBDebugger::ContinueStep(lldb::SBThread& thread)
 {
@@ -1506,7 +1535,7 @@ bool LLDBDebugger::ContinueStep(lldb::SBThread& thread)
 		if ((lineEntry.IsValid()) && ((uint64)lineEntry.GetStartAddress().GetLoadAddress(mLLDBTarget) != (uint64)frame.GetPC()))
 		{
 			mStepContinueCount++;
-			thread.StepInto();
+			IssueStep(thread, StepCall_Into);
 			return true;
 		}
 		return false;
@@ -1522,9 +1551,9 @@ bool LLDBDebugger::ContinueStep(lldb::SBThread& thread)
 		{
 			LLDBLog("ContinueStep: no line info at %llx, stepping (%d)\n", (unsigned long long)frame.GetPC(), mStepNoInfoTries);
 			if (mStepKind == StepKind_Into)
-				thread.StepInto();
+				IssueStep(thread, StepCall_Into);
 			else
-				thread.StepOver();
+				IssueStep(thread, StepCall_Over);
 		}
 		else if (thread.GetNumFrames() <= 1)
 		{
@@ -1534,7 +1563,7 @@ bool LLDBDebugger::ContinueStep(lldb::SBThread& thread)
 		else
 		{
 			LLDBLog("ContinueStep: no line info at %llx, stepping out\n", (unsigned long long)frame.GetPC());
-			thread.StepOut();
+			IssueStep(thread, StepCall_Out);
 		}
 		return true;
 	}
@@ -1548,9 +1577,9 @@ bool LLDBDebugger::ContinueStep(lldb::SBThread& thread)
 		LLDBLog("ContinueStep: not stopping on non-statement line %d\n", (int)stopLine.GetLine());
 		mStepContinueCount++;
 		if (mStepKind == StepKind_Into)
-			thread.StepInto();
+			IssueStep(thread, StepCall_Into);
 		else
-			thread.StepOver();
+			IssueStep(thread, StepCall_Over);
 		return true;
 	}
 
@@ -1574,7 +1603,7 @@ bool LLDBDebugger::ContinueStep(lldb::SBThread& thread)
 			{
 				mStepOutFinishedLine = true;
 				mStepContinueCount++;
-				thread.StepOver();
+				IssueStep(thread, StepCall_Over);
 				return true;
 			}
 		}
@@ -1586,12 +1615,12 @@ bool LLDBDebugger::ContinueStep(lldb::SBThread& thread)
 	if ((mStepKind == StepKind_Into) && (!filtered))
 	{
 		// Keep stepping in - e.g. through a delegate's Invoke method to the lambda it calls
-		thread.StepInto();
+		IssueStep(thread, StepCall_Into);
 	}
 	else
 	{
 		mStepOutThenInto = (mStepKind == StepKind_Into);
-		thread.StepOut();
+		IssueStep(thread, StepCall_Out);
 	}
 	return true;
 }
@@ -1779,6 +1808,7 @@ void LLDBDebugger::CheckBreakpoint(Breakpoint* checkBreakpoint)
 
 	if (mShadowEnabled)
 		ShadowCheckBreakpoint(bp);
+	HostBindBreakpointAddresses(bp);
 }
 
 // Bind a breakpoint in the code of an older compile, 'lineNum' being the line in that compile's version of
@@ -1793,7 +1823,7 @@ void LLDBDebugger::HotBindBreakpoint(Breakpoint* wdBreakpoint, int lineNum, int 
 		return;
 
 	lldb::SBFileSpec fileSpec(bp->mFilePath.c_str(), false);
-	if (lineNum >= 0)
+	if ((!HostHotBindBreakpoint(bp, lineNum, hotIdx)) && (lineNum >= 0))
 	{
 		lldb::SBFileSpecList modules;
 		HotGetVersionModules(hotIdx, modules);
@@ -1840,6 +1870,7 @@ void LLDBDebugger::DeleteBreakpoint(Breakpoint* breakpoint)
 		mLLDBTarget.BreakpointDelete(bp->mLLDBBreakpoint.GetID());
 	}
 	HotDeleteVersionBreakpoints(bp);
+	HostClearAddressBreakpoints(bp);
 
 	if (bp->mResolvedAddr != 0)
 		mBreakpointAddrMap.Remove(bp->mResolvedAddr, bp);
@@ -1862,6 +1893,8 @@ void LLDBDebugger::DetachBreakpoint(Breakpoint* breakpoint)
 		bp->mLLDBBreakpoint.SetEnabled(false);
 	for (auto& versionBreakpoint : bp->mVersionBreakpoints)
 		versionBreakpoint.SetEnabled(false);
+	HostClearAddressBreakpoints(bp);
+	bp->mHostDisabled = true;
 
 	if (bp->mResolvedAddr != 0)
 	{
@@ -1894,6 +1927,7 @@ void LLDBDebugger::MoveBreakpoint(Breakpoint* breakpoint, int lineNum, int wantC
 		bp->mLLDBBreakpoint = lldb::SBBreakpoint();
 	}
 	HotDeleteVersionBreakpoints(bp);
+	HostClearAddressBreakpoints(bp);
 
 	bp->mLineNum = lineNum;
 	bp->mRequestedLineNum = lineNum;
@@ -1904,6 +1938,7 @@ void LLDBDebugger::MoveBreakpoint(Breakpoint* breakpoint, int lineNum, int wantC
 		bp->mLLDBBreakpoint = CreateLineBreakpoint(bp, lineNum);
 		if (bp->mLLDBBreakpoint.IsValid())
 			mBreakpointIdMap.ForceAdd((int)bp->mLLDBBreakpoint.GetID(), bp);
+		HostBindBreakpointAddresses(bp);
 	}
 }
 
@@ -1926,6 +1961,8 @@ void LLDBDebugger::DisableBreakpoint(Breakpoint* breakpoint)
 		bp->mLLDBBreakpoint.SetEnabled(false);
 	for (auto& versionBreakpoint : bp->mVersionBreakpoints)
 		versionBreakpoint.SetEnabled(false);
+	HostClearAddressBreakpoints(bp);
+	bp->mHostDisabled = true;
 }
 
 void LLDBDebugger::SetBreakpointCondition(Breakpoint* breakpoint, const StringImpl& condition)
@@ -10014,6 +10051,8 @@ void LLDBDebugger::FinishStopDebugging()
 	for (auto bp : mBreakpoints)
 	{
 		bp->mLLDBBreakpoint = lldb::SBBreakpoint();
+		bp->mAddressBreakpoints.Clear();
+		bp->mAddresses.Clear();
 		bp->mWatchpointIds.Clear();
 	}
 	mBreakpointIdMap.Clear();
@@ -10111,6 +10150,8 @@ void LLDBDebugger::Detach()
 	for (auto bp : mBreakpoints)
 	{
 		bp->mLLDBBreakpoint = lldb::SBBreakpoint();
+		bp->mAddressBreakpoints.Clear();
+		bp->mAddresses.Clear();
 		bp->mResolvedAddr = 0;
 	}
 	mBreakpointIdMap.Clear();

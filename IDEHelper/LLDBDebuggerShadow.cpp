@@ -103,64 +103,6 @@ static String ShadowLLDBAutos(lldb::SBFrame& frame)
 	return result;
 }
 
-// WinDebugger::CheckBreakpoint's choice of addresses, without hot versions: the requested line, or else the
-// nearest following line within 6, bound at the first row of each run of rows on that line
-static void ShadowBindBreakpoint(DebugTarget* debugTarget, DbgSrcFile* srcFile, int lineNum, int instrOffset, Array<addr_target>& outAddrs)
-{
-	for (int pass = 0; pass < 2; pass++)
-	{
-		bool foundLine = false;
-		bool foundInSequence = false;
-		DbgSubprogram* lastFoundSubprogram = NULL;
-		int bestLineNum = -1;
-		int bestLineOffset = 0x7FFFFFFF;
-
-		for (auto subprogram : srcFile->mLineDataRefs)
-		{
-			DbgLineInfo* lineInfo = subprogram->mLineInfo;
-			if (lineInfo == NULL)
-				continue;
-			DbgModule::FixupLineDataForSubprogram(subprogram);
-			for (int lineIdx = 0; lineIdx < lineInfo->mLines.mSize; lineIdx++)
-			{
-				auto lineData = &lineInfo->mLines[lineIdx];
-				if (lineInfo->mContexts[lineData->mCtxIdx].mSrcFile != srcFile)
-					continue;
-				if ((lineData->mColumn == -1) && (instrOffset == -1))
-					continue;
-
-				int lineOffset = lineData->mLine - lineNum;
-				if (lineOffset == 0)
-				{
-					foundLine = true;
-					addr_target address = subprogram->GetLineAddr(*lineData);
-					DbgSubprogram* foundSubprogram = debugTarget->FindSubProgram(address);
-					if ((foundInSequence) && (foundSubprogram != lastFoundSubprogram))
-						foundInSequence = false;
-					if (!foundInSequence)
-					{
-						lastFoundSubprogram = foundSubprogram;
-						outAddrs.Add(address);
-						foundInSequence = true;
-					}
-				}
-				else
-					foundInSequence = false;
-
-				if ((lineOffset >= 0) && (lineOffset <= 6) && (lineOffset < bestLineOffset))
-				{
-					bestLineNum = lineData->mLine;
-					bestLineOffset = lineOffset;
-				}
-			}
-		}
-
-		if ((foundLine) || (bestLineNum == -1))
-			break;
-		lineNum = bestLineNum;
-	}
-}
-
 void LLDBDebugger::ShadowInit()
 {
 	const char* shadowEnv = getenv("BEEF_DBG_SHADOW");
@@ -171,7 +113,7 @@ void LLDBDebugger::ShadowInit()
 		mShadowReportPath = reportEnv;
 }
 
-static const char* sShadowFlippedQueries[] = { "addr_line", "addr_symbol", "frame_name", "frame_line", "inline_depth", "inline_name", "inline_line", "frame_map", "tls_addr" };
+static const char* sShadowFlippedQueries[] = { "addr_line", "addr_symbol", "frame_name", "frame_line", "inline_depth", "inline_name", "inline_line", "frame_map", "tls_addr", "breakpoint" };
 
 bool LLDBDebugger::ShadowIsFlipped(const char* query)
 {
@@ -534,7 +476,10 @@ void LLDBDebugger::ShadowCheckBreakpoint(LLDBBreakpoint* bp)
 	Array<addr_target> boundAddrs;
 	DbgSrcFile* srcFile = mDebugTarget->GetSrcFile(bp->mFilePath);
 	if (srcFile != NULL)
-		ShadowBindBreakpoint(mDebugTarget, srcFile, bp->mRequestedLineNum, bp->mInstrOffset, boundAddrs);
+	{
+		int boundLineNum = 0;
+		HostBindLineAddresses(srcFile, bp->mRequestedLineNum, bp->mInstrOffset, -1, boundAddrs, boundLineNum);
+	}
 	Array<uint64> beefAddrs;
 	for (auto addr : boundAddrs)
 		beefAddrs.Add((uint64)addr);
