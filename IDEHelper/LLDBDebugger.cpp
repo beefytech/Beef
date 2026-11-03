@@ -7494,6 +7494,7 @@ String LLDBDebugger::GetAutoLocals(int callStackIdx, bool showRegs)
 
 	if (mLLDBFrames.IsEmpty())
 		UpdateCallStack();
+	int hostIdx = callStackIdx;
 	callStackIdx = HostToLLDBFrameIdx(callStackIdx);
 	if ((callStackIdx < 0) || (callStackIdx >= (int)mLLDBFrames.size()))
 		return String();
@@ -7502,13 +7503,17 @@ String LLDBDebugger::GetAutoLocals(int callStackIdx, bool showRegs)
 	if (!frame.IsValid())
 		return String();
 
-	auto locals = frame.GetVariables(true, true, false, false);
-
 	String result;
-	for (int i = 0; i < locals.GetSize(); i++)
+	if ((ShadowIsFlipped("autos_subset")) && (hostIdx >= 0) && (hostIdx < (int)mCallStack.size()) && (mCallStack[hostIdx]->mSubProgram != NULL))
+		result = DbgTargetHost::GetAutoLocals(hostIdx, false);
+	else
 	{
-		result += locals.GetValueAtIndex(i).GetName();
-		result += '\n';
+		auto locals = frame.GetVariables(true, true, false, false);
+		for (int i = 0; i < locals.GetSize(); i++)
+		{
+			result += locals.GetValueAtIndex(i).GetName();
+			result += '\n';
+		}
 	}
 
 	if (showRegs)

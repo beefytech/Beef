@@ -69,7 +69,7 @@ static String ShadowLLDBAutos(lldb::SBFrame& frame)
 	options.SetIncludeArguments(true);
 	options.SetIncludeLocals(true);
 	options.SetIncludeStatics(false);
-	options.SetInScopeOnly(false);
+	options.SetInScopeOnly(true);
 	options.SetIncludeRuntimeSupportValues(true);
 	auto variables = frame.GetVariables(options);
 
@@ -113,7 +113,8 @@ void LLDBDebugger::ShadowInit()
 		mShadowReportPath = reportEnv;
 }
 
-static const char* sShadowFlippedQueries[] = { "addr_line", "addr_symbol", "frame_name", "frame_line", "inline_depth", "inline_name", "inline_line", "frame_map", "tls_addr", "breakpoint" };
+static const char* sShadowFlippedQueries[] = { "addr_line", "addr_symbol", "frame_name", "frame_line", "inline_depth", "inline_name", "inline_line", "frame_map", "tls_addr", "breakpoint",
+	"autos_subset", "autos_subset_inline" };
 
 bool LLDBDebugger::ShadowIsFlipped(const char* query)
 {
@@ -262,6 +263,22 @@ void LLDBDebugger::ShadowCheckFrames()
 					key += "\n";
 					if (!lldbAutos.Contains(key))
 					{
+						missing += name;
+						missing += " ";
+					}
+				}
+				String beefKeys = "\n";
+				beefKeys += beefAutos;
+				for (auto name : lldbAutos.Split('\n'))
+				{
+					if (name.IsEmpty())
+						continue;
+					String key = "\n";
+					key += name;
+					key += "\n";
+					if (!beefKeys.Contains(key))
+					{
+						missing += "lldb:";
 						missing += name;
 						missing += " ";
 					}
