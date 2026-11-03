@@ -131,6 +131,7 @@ int main(int argc, char** argv)
 	printf("subprograms_defined_with_lines %d\n", definedWithLinesCount);
 	printf("src_files %d\n", (int)debugTarget->mSrcFiles.size());
 	printf("global_symbols %d\n", dbgModule->mSymbolNameMap.mCount);
+	printf("dwarf_failures %d\n", dbgModule->mDwarfFailCount);
 
 	for (int argIdx = hasLoadBase ? 4 : 2; argIdx < argc; argIdx++)
 	{

@@ -151,12 +151,13 @@ bool ElfDbgModule::ReadELF(const uint8* data, int64 size, DbgModuleKind moduleKi
 		mElfSections.Add(section);
 	}
 
+	// A section without data (compressed, NOBITS or empty) reads as absent, so a non-NULL pointer always has a size
 	auto _GetSectionData = [&](const char* name, int64* outSize)
 	{
 		const uint8* sectionData = NULL;
 		int64 sectionSize = 0;
 		auto section = FindSection(name);
-		if (section != NULL)
+		if ((section != NULL) && (section->mData != NULL) && (section->mSize > 0))
 		{
 			sectionData = section->mData;
 			sectionSize = section->mSize;
@@ -166,21 +167,20 @@ bool ElfDbgModule::ReadELF(const uint8* data, int64 size, DbgModuleKind moduleKi
 		return sectionData;
 	};
 
-	int64 abbrevSize = 0;
 	mDebugInfoData = _GetSectionData(".debug_info", &mDebugInfoSize);
-	mDebugAbbrevData = _GetSectionData(".debug_abbrev", &abbrevSize);
-	mDebugLineData = _GetSectionData(".debug_line", NULL);
-	mDebugStrData = _GetSectionData(".debug_str", NULL);
-	mDebugRangesData = _GetSectionData(".debug_ranges", NULL);
-	mDebugLocationData = _GetSectionData(".debug_loc", NULL);
-	mDebugFrameData = _GetSectionData(".debug_frame", NULL);
+	mDebugAbbrevData = _GetSectionData(".debug_abbrev", &mDebugAbbrevSize);
+	mDebugLineData = _GetSectionData(".debug_line", &mDebugLineSize);
+	mDebugStrData = _GetSectionData(".debug_str", &mDebugStrSize);
+	mDebugRangesData = _GetSectionData(".debug_ranges", &mDebugRangesSize);
+	mDebugLocationData = _GetSectionData(".debug_loc", &mDebugLocationSize);
+	mDebugFrameData = _GetSectionData(".debug_frame", &mDebugFrameSize);
 	mEHFrameData = _GetSectionData(".eh_frame", &mEHFrameSize);
 	if (mEHFrameData != NULL)
 		mEHFrameAddress = RemapAddr(FindSection(".eh_frame")->mAddress);
 	if ((mDebugInfoData == NULL) || (mDebugAbbrevData == NULL))
 		mDebugInfoData = NULL;
 	else
-		mDebugAbbrevPtrData = new const uint8*[abbrevSize]();
+		mDebugAbbrevPtrData = new const uint8*[mDebugAbbrevSize]();
 
 	if (auto section = FindSection(".tdata"))
 		mTLSDataSize = section->mSize;

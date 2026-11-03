@@ -36,16 +36,34 @@ expect_eq() {
 	fi
 }
 
-llvm-dwarfdump --debug-line "$ELF" | awk '
-	/^debug_line\[/ { version = 0 }
-	/^ +version: / { version = $2 }
-	/^0x[0-9a-f]+ / { if (version == 4) print $1, $2, ($0 ~ /is_stmt/) ? 1 : 0, ($0 ~ /end_sequence/) ? 1 : 0 }
-' > "$TMPDIR/rows.txt"
-# Rows whose address is unique, so the expected line is unambiguous
-awk 'NR == FNR { count[$1]++; next } count[$1] == 1 && $3 == 1 && $4 == 0 && $2 != 0 { print $1, $2 }' "$TMPDIR/rows.txt" "$TMPDIR/rows.txt" > "$TMPDIR/expected_lines.txt"
-awk '{ print $1 }' "$TMPDIR/expected_lines.txt" > "$TMPDIR/addrs.txt"
+line_rows() {
+	llvm-dwarfdump --debug-line "$1" | awk '
+		/^debug_line\[/ { version = 0 }
+		/^ +version: / { version = $2 }
+		/^0x[0-9a-f]+ / { if (version == 4) print $1, $2, ($0 ~ /is_stmt/) ? 1 : 0, ($0 ~ /end_sequence/) ? 1 : 0 }
+	' > "$TMPDIR/$2_rows.txt"
+	# Rows whose address is unique, so the expected line is unambiguous
+	awk 'NR == FNR { count[$1]++; next } count[$1] == 1 && $3 == 1 && $4 == 0 && $2 != 0 { print $1, $2 }' "$TMPDIR/$2_rows.txt" "$TMPDIR/$2_rows.txt" > "$TMPDIR/$2_expected_lines.txt"
+	awk '{ print $1 }' "$TMPDIR/$2_expected_lines.txt" > "$TMPDIR/$2_addrs.txt"
+}
 
-"$CHECK" "$ELF" --addr-file "$TMPDIR/addrs.txt" > "$TMPDIR/check.txt" || { echo "DbgModuleCheck failed" >&2; exit 1; }
+check_lines() {
+	local total bad
+	total=$(wc -l < "$TMPDIR/$1_expected_lines.txt")
+	bad=$(paste -d' ' "$TMPDIR/$1_expected_lines.txt" <(grep '^addr ' "$2") | awk -v label="$1" '
+		{ n = split($NF, parts, ":"); if (parts[n] != $2) { bad++; if (bad <= 10) print "  line mismatch (" label "): " $0 > "/dev/stderr" } }
+		END { print bad + 0 }
+	')
+	if [ "$bad" != "0" ] || [ "$total" == "0" ]; then
+		fail "address to line ($1): $bad of $total rows differ from llvm-dwarfdump"
+	else
+		echo "ok address_to_line $1 $total rows"
+	fi
+}
+
+line_rows "$ELF" main
+
+"$CHECK" "$ELF" --addr-file "$TMPDIR/main_addrs.txt" > "$TMPDIR/check.txt" || { echo "DbgModuleCheck failed" >&2; exit 1; }
 grep -v '^addr ' "$TMPDIR/check.txt"
 
 value() {
@@ -68,16 +86,52 @@ expect_eq subprograms_inlined "$(value subprograms_inlined)" "$REF_INL"
 expect_eq subprograms_defined "$(value subprograms_defined)" "$REF_DEF"
 expect_eq subprograms_defined_with_lines "$(value subprograms_defined_with_lines)" "$REF_DEF"
 expect_eq global_symbols "$(value global_symbols)" "$REF_SYMS"
+expect_eq dwarf_failures "$(value dwarf_failures)" 0
 
-LINE_TOTAL=$(wc -l < "$TMPDIR/expected_lines.txt")
-LINE_BAD=$(paste -d' ' "$TMPDIR/expected_lines.txt" <(grep '^addr ' "$TMPDIR/check.txt") | awk '
-	{ n = split($NF, parts, ":"); if (parts[n] != $2) { bad++; if (bad <= 10) print "  line mismatch: " $0 > "/dev/stderr" } }
-	END { print bad + 0 }
-')
-if [ "$LINE_BAD" != "0" ] || [ "$LINE_TOTAL" == "0" ]; then
-	fail "address to line: $LINE_BAD of $LINE_TOTAL rows differ from llvm-dwarfdump"
+check_lines main "$TMPDIR/check.txt"
+
+# g++ puts each template instance in its own line sequence, which IDETest's Beef output does not
+if command -v g++ > /dev/null; then
+	cat > "$TMPDIR/gxx.cpp" <<'EOF'
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <cstdio>
+
+struct Entry
+{
+	std::string mName;
+	int mValue;
+	bool operator<(const Entry& other) const { return mName < other.mName; }
+};
+
+int main(int argc, char** argv)
+{
+	std::vector<Entry> entries;
+	for (int i = 0; i < argc; i++)
+		entries.push_back({ argv[i], i });
+	std::sort(entries.begin(), entries.end());
+	std::string joined;
+	for (auto& entry : entries)
+		joined += entry.mName + ",";
+	printf("%s %d\n", joined.c_str(), (int)joined.length());
+	return 0;
+}
+EOF
+	for opt in O0 O1; do
+		if ! g++ -$opt -g -gdwarf-4 -no-pie -o "$TMPDIR/gxx_$opt" "$TMPDIR/gxx.cpp"; then
+			fail "g++ -$opt build"
+			continue
+		fi
+		line_rows "$TMPDIR/gxx_$opt" "gxx_$opt"
+		if ! "$CHECK" "$TMPDIR/gxx_$opt" --addr-file "$TMPDIR/gxx_${opt}_addrs.txt" > "$TMPDIR/gxx_$opt.txt"; then
+			fail "g++ -$opt: DbgModuleCheck failed"
+			continue
+		fi
+		check_lines "gxx_$opt" "$TMPDIR/gxx_$opt.txt"
+	done
 else
-	echo "ok address_to_line $LINE_TOTAL rows"
+	echo "skip address_to_line g++: g++ not found"
 fi
 
 for name in $NAMES; do
@@ -133,13 +187,103 @@ write('unterminated_shstrtab', copy)
 copy = bytearray(data)
 struct.pack_into('<H', copy, 0x3C, 0xFFFF)
 write('huge_shnum', copy)
+
+shnum = struct.unpack_from('<H', data, 0x3C)[0]
+shstroff = struct.unpack_from('<Q', data, strhdr + 0x18)[0]
+sections = {}
+for sectionIdx in range(shnum):
+	hdr = shoff + sectionIdx * shentsize
+	nameOffset = struct.unpack_from('<I', data, hdr)[0]
+	name = data[shstroff + nameOffset:data.index(b'\0', shstroff + nameOffset)].decode()
+	sections[name] = struct.unpack_from('<QQ', data, hdr + 0x18)
+infoOff, infoSize = sections['.debug_info']
+abbrevOff, abbrevSize = sections['.debug_abbrev']
+strOff, strSize = sections['.debug_str']
+lineOff, lineSize = sections['.debug_line']
+
+def uleb(pos):
+	value = 0
+	shift = 0
+	while True:
+		byte = data[pos]
+		pos += 1
+		value |= (byte & 0x7f) << shift
+		shift += 7
+		if byte < 0x80:
+			return value, pos
+
+unit = infoOff
+while struct.unpack_from('<H', data, unit + 4)[0] != 4:
+	unit += 4 + struct.unpack_from('<I', data, unit)[0]
+abbrevTable = abbrevOff + struct.unpack_from('<I', data, unit + 6)[0]
+die = unit + 11
+code, attrPos = uleb(die)
+
+pos = abbrevTable
+while True:
+	entryCode, pos = uleb(pos)
+	tag, pos = uleb(pos)
+	pos += 1
+	attrs = []
+	while True:
+		attrName, pos = uleb(pos)
+		form, pos = uleb(pos)
+		if (attrName == 0) and (form == 0):
+			break
+		attrs.append((attrName, form))
+	if entryCode == code:
+		break
+
+formSizes = {0x01: 8, 0x0b: 1, 0x05: 2, 0x06: 4, 0x07: 8, 0x0c: 1, 0x0e: 4, 0x17: 4, 0x19: 0}
+strpPos = None
+stmtList = None
+pos = attrPos
+for attrName, form in attrs:
+	if (form == 0x0e) and (strpPos is None):
+		strpPos = pos
+	if (attrName == 0x10) and (form == 0x17):
+		stmtList = struct.unpack_from('<I', data, pos)[0]
+	if form == 0x08:
+		pos = data.index(b'\0', pos) + 1
+	else:
+		pos += formSizes[form]
+assert (strpPos is not None) and (stmtList is not None)
+
+copy = bytearray(data)
+struct.pack_into('<I', copy, infoOff, 0xFFFFFFF0)
+write('info_length', copy)
+
+copy = bytearray(data)
+struct.pack_into('<I', copy, unit + 6, abbrevSize + 0x1000)
+write('abbrev_offset', copy)
+
+copy = bytearray(data)
+struct.pack_into('<I', copy, strpPos, strSize + 0x1000)
+write('strp_offset', copy)
+
+copy = bytearray(data)
+struct.pack_into('<I', copy, lineOff + stmtList, 0xFFFFFFF0)
+write('line_length', copy)
+
+# 0x7FFFFFFF as a ULEB128 takes 5 bytes, which overwrite the code and the start of the first attribute
+copy = bytearray(data)
+copy[die:die + 5] = bytes([0xFF, 0xFF, 0xFF, 0xFF, 0x07])
+write('abbrev_code', copy)
 EOF
 
-for malformed in truncated_64 truncated_half huge_shoff unterminated_shstrtab huge_shnum; do
-	"$CHECK" "$TMPDIR/malformed_$malformed" > /dev/null 2>&1
+for malformed in truncated_64 truncated_half huge_shoff unterminated_shstrtab huge_shnum info_length abbrev_offset strp_offset line_length abbrev_code; do
+	"$CHECK" "$TMPDIR/malformed_$malformed" > "$TMPDIR/malformed_$malformed.out" 2>&1
 	status=$?
 	case "$status" in
-		0) echo "ok malformed $malformed loaded" ;;
+		0)
+			echo "ok malformed $malformed loaded"
+			case "$malformed" in
+				info_length|abbrev_offset|strp_offset|line_length|abbrev_code)
+					failures=$(awk '$1 == "dwarf_failures" { print $2 }' "$TMPDIR/malformed_$malformed.out")
+					[ "${failures:-0}" -ge 1 ] || fail "malformed $malformed: loaded without reporting damaged DWARF"
+					;;
+			esac
+			;;
 		1) echo "ok malformed $malformed rejected" ;;
 		*) fail "malformed $malformed: DbgModuleCheck exited with $status" ;;
 	esac
