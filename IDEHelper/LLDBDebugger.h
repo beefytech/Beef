@@ -91,6 +91,7 @@ public:
 	Dictionary<String, addr_target> mHostModuleBases;
 	HashSet<String> mHostUnsupportedNames;
 	int mHostUnsupportedCount;
+	Dictionary<String, int> mHostUnsupportedCounts;
 
 	// BEEF_DBG_SHADOW
 	bool mShadowEnabled;

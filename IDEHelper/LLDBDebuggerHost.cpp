@@ -19,6 +19,10 @@ static const char* sIntRegNames[] = { "rax", "rdx", "rcx", "rbx", "rsi", "rdi", 
 void LLDBDebugger::HostUnsupported(const char* name)
 {
 	mHostUnsupportedCount++;
+	int* countPtr = NULL;
+	if (mHostUnsupportedCounts.TryAdd(name, NULL, &countPtr))
+		*countPtr = 0;
+	(*countPtr)++;
 	LLDBLog("HostUnsupported: %s\n", name);
 	if (mHostUnsupportedNames.Add(name))
 		OutputMessage(StrFormat("Linux debugger: %s is not supported yet\n", name));

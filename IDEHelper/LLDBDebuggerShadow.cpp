@@ -505,6 +505,8 @@ void LLDBDebugger::ShadowWriteReport()
 		mShadowMismatchCounts.TryGetValue(kv.mKey, &queryMismatches);
 		report += StrFormat("DBGSHADOW query %s queries=%d mismatches=%d\n", kv.mKey.c_str(), kv.mValue, queryMismatches);
 	}
+	for (auto& kv : mHostUnsupportedCounts)
+		report += StrFormat("DBGSHADOW unsupported %s count=%d\n", kv.mKey.c_str(), kv.mValue);
 	report += StrFormat("DBGSHADOW queries=%d mismatches=%d extra=%d unsupported=%d\n", queries, mismatches, mShadowExtraCount, mHostUnsupportedCount);
 	LLDBLog("%s", report.c_str());
 
@@ -522,6 +524,7 @@ void LLDBDebugger::ShadowWriteReport()
 	mShadowMismatchCounts.Clear();
 	mShadowMismatchLines.Clear();
 	mHostUnsupportedCount = 0;
+	mHostUnsupportedCounts.Clear();
 	mShadowExtraCount = 0;
 }
 
