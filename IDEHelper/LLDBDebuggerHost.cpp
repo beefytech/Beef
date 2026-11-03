@@ -101,6 +101,8 @@ void LLDBDebugger::HostClearCallStack()
 		delete wdStackFrame;
 	mCallStack.Clear();
 	mHostFrameGroupStart.Clear();
+	mHostFrameMap.Clear();
+	mHostFramesLive = false;
 }
 
 void LLDBDebugger::HostReadFrameRegisters(lldb::SBFrame& frame, CPURegisters* registers)
@@ -454,6 +456,119 @@ String LLDBDebugger::GetAddressSymbolName(intptr address, bool demangle)
 	if ((ShadowIsFlipped("addr_symbol")) && (HostCoversAddress(address)))
 		return DbgTargetHost::GetAddressSymbolName(address, demangle);
 	return LLDBAddressSymbolName(address, demangle);
+}
+
+// The IDE's frame list becomes DebugTarget's, with its inline frames, only when every group of inline frames
+// lines up with LLDB's, since evaluation and the locals still run in the matching LLDB frame
+void LLDBDebugger::HostMapFrames()
+{
+	mHostFramesLive = false;
+	mHostFrameMap.Clear();
+	if ((!ShadowIsFlipped("frame_name")) || (mCallStack.IsEmpty()))
+		return;
+
+	for (int frameIdx = 0; frameIdx < (int)mCallStack.size(); frameIdx++)
+		DbgTargetHost::UpdateCallStackMethod(frameIdx);
+
+	// The debug info layer does not read separate debug files, so a frame without debug info keeps LLDB's inline frames and answers
+	int concreteIdx = -1;
+	for (int frameIdx = 0; frameIdx < (int)mCallStack.size(); frameIdx++)
+	{
+		WdStackFrame* wdStackFrame = mCallStack[frameIdx];
+		if (wdStackFrame->mInInlineMethod)
+			continue;
+		concreteIdx++;
+		if ((wdStackFrame->mSubProgram != NULL) || (concreteIdx >= (int)mHostFrameGroupStart.size()))
+			continue;
+		int lldbIdx = mHostFrameGroupStart[concreteIdx];
+		while ((lldbIdx < (int)mLLDBFrames.size()) && (mLLDBFrames[lldbIdx].IsInlined()))
+		{
+			WdStackFrame* inlineStackFrame = new WdStackFrame();
+			*inlineStackFrame = *wdStackFrame;
+			inlineStackFrame->mInInlineMethod = true;
+			mCallStack.Insert(frameIdx + 1, inlineStackFrame);
+			frameIdx++;
+			lldbIdx++;
+		}
+	}
+
+	bool matched = true;
+	concreteIdx = -1;
+	int groupStart = 0;
+	for (int frameIdx = 0; frameIdx < (int)mCallStack.size(); frameIdx++)
+	{
+		if (!mCallStack[frameIdx]->mInInlineMethod)
+		{
+			concreteIdx++;
+			groupStart = frameIdx;
+		}
+		if (concreteIdx >= (int)mHostFrameGroupStart.size())
+		{
+			matched = false;
+			break;
+		}
+		int lldbIdx = mHostFrameGroupStart[concreteIdx] + (frameIdx - groupStart);
+		bool isGroupEnd = (frameIdx + 1 == (int)mCallStack.size()) || (!mCallStack[frameIdx + 1]->mInInlineMethod);
+		if ((lldbIdx >= (int)mLLDBFrames.size()) || (mLLDBFrames[lldbIdx].IsInlined() == isGroupEnd))
+		{
+			LLDBLog("HostMapFrames: frame %d (%s) does not line up with LLDB frame %d (%s)\n", frameIdx, (mCallStack[frameIdx]->mSubProgram != NULL) ? "debug info" : "no debug info", lldbIdx,
+				(lldbIdx < (int)mLLDBFrames.size()) ? mLLDBFrames[lldbIdx].GetDisplayFunctionName() : "");
+			matched = false;
+			break;
+		}
+		mHostFrameMap.Add(lldbIdx);
+	}
+
+	if (mShadowEnabled)
+	{
+		mShadowQueryCounts["frame_map"]++;
+		if (!matched)
+		{
+			mShadowMismatchCounts["frame_map"]++;
+			ShadowReportLine(StrFormat("DBGSHADOW frame_map: lldb=%d beef=%d returned=lldb", (int)mLLDBFrames.size(), (int)mCallStack.size()));
+		}
+	}
+	if (!matched)
+	{
+		LLDBLog("HostMapFrames: inline frames differ from LLDB's, this stop shows LLDB's frames\n");
+		mHostFrameMap.Clear();
+		return;
+	}
+	mHostFramesLive = true;
+}
+
+int LLDBDebugger::HostToLLDBFrameIdx(int frameIdx)
+{
+	if (!mHostFramesLive)
+		return frameIdx;
+	if ((frameIdx < 0) || (frameIdx >= (int)mHostFrameMap.size()))
+		return -1;
+	return mHostFrameMap[frameIdx];
+}
+
+int LLDBDebugger::GetCallStackCount()
+{
+	return mHostFramesLive ? (int)mCallStack.size() : (int)mLLDBFrames.size();
+}
+
+String LLDBDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd, int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags)
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	if ((mLLDBFrames.IsEmpty()) && (mLLDBProcess.IsValid()))
+		UpdateCallStack();
+	if (!mHostFramesLive)
+		return LLDBStackFrameInfo(stackFrameIdx, addr, outFile, outHotIdx, outDefLineStart, outDefLineEnd, outLine, outColumn, outLanguage, outStackSize, outFlags);
+	int lldbIdx = HostToLLDBFrameIdx(stackFrameIdx);
+	if ((lldbIdx == -1) || (mCallStack[stackFrameIdx]->mSubProgram == NULL))
+		return LLDBStackFrameInfo(lldbIdx, addr, outFile, outHotIdx, outDefLineStart, outDefLineEnd, outLine, outColumn, outLanguage, outStackSize, outFlags);
+	return DbgTargetHost::GetStackFrameInfo(stackFrameIdx, addr, outFile, outHotIdx, outDefLineStart, outDefLineEnd, outLine, outColumn, outLanguage, outStackSize, outFlags);
+}
+
+void LLDBDebugger::GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn)
+{
+	AutoCrit autoCrit(mDebugManager->mCritSect);
+	if ((ShadowIsFlipped("frame_name")) && (HostCoversAddress(addr)))
+		DbgTargetHost::GetCodeAddrInfo(addr, inlineCallAddr, outFile, outHotIdx, outDefLineStart, outDefLineEnd, outLine, outColumn);
 }
 
 #endif

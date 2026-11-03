@@ -86,6 +86,8 @@ public:
 	// Inlined frames included; mCallStack holds the concrete ones
 	Array<lldb::SBFrame> mLLDBFrames;
 	bool mCallStackDirty;
+	bool mHostFramesLive;
+	Array<int> mHostFrameMap;
 	Array<int> mHostFrameGroupStart;                // per concrete frame: the index in mLLDBFrames of its innermost inlined frame
 
 	Dictionary<String, addr_target> mHostModuleBases;
@@ -383,6 +385,9 @@ protected:
 	bool HostCoversAddress(intptr address);
 	String LLDBAddressSourceLocation(intptr address);
 	String LLDBAddressSymbolName(intptr address, bool demangle);
+	String LLDBStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd, int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags);
+	void HostMapFrames();
+	int HostToLLDBFrameIdx(int frameIdx);
 	void ShadowInit();
 	void ShadowCompare(const char* query, const StringImpl& lldbResult, const StringImpl& beefResult);
 	void ShadowReportLine(const StringImpl& line);

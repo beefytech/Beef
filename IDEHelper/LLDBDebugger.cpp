@@ -160,6 +160,7 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mIsRunning = false;
 	mPageSize = (int)sysconf(_SC_PAGESIZE);
 	mHostUnsupportedCount = 0;
+	mHostFramesLive = false;
 	ShadowInit();
 	mDidAttach = false;
 	mAttachFlags = BfDbgAttachFlag_None;
@@ -2050,15 +2051,11 @@ void LLDBDebugger::UpdateCallStack(bool slowEarlyOut)
 	}
 
 	HostBuildCallStack();
+	HostMapFrames();
 	mCallStackDirty = false;
 
 	if (mShadowEnabled)
 		ShadowCheckFrames();
-}
-
-int LLDBDebugger::GetCallStackCount()
-{
-	return (int)mLLDBFrames.size();
 }
 
 int LLDBDebugger::GetRequestedStackFrameIdx()
@@ -2079,7 +2076,7 @@ void LLDBDebugger::UpdateRegisterUsage(int stackFrameIdx)
 // Stack frame info
 //----------------------------------------------------------------------------
 
-String LLDBDebugger::GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd, int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags)
+String LLDBDebugger::LLDBStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd, int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags)
 {
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 
@@ -2226,10 +2223,6 @@ String LLDBDebugger::GetStackMethodOwner(int stackFrameIdx, int& language)
 //----------------------------------------------------------------------------
 // Code address queries
 //----------------------------------------------------------------------------
-
-void LLDBDebugger::GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn)
-{
-}
 
 void LLDBDebugger::GetStackAllocInfo(intptr addr, int* outThreadId, int* outStackIdx)
 {
@@ -5343,6 +5336,7 @@ String LLDBDebugger::Evaluate(const StringImpl& expr, int callStackIdx, int curs
 
 	if (mLLDBFrames.IsEmpty())
 		UpdateCallStack();
+	callStackIdx = HostToLLDBFrameIdx(callStackIdx);
 	if ((callStackIdx < 0) || (callStackIdx >= (int)mLLDBFrames.size()))
 		return "!Invalid stack frame";
 
@@ -7411,7 +7405,7 @@ String LLDBDebugger::EvaluateToAddress(const StringImpl& expr, int callStackIdx,
 
 String LLDBDebugger::EvaluateAtAddress(const StringImpl& expr, intptr atAddr, int cursorPos)
 {
-	return Evaluate(expr, mLLDBFrames.Count() - 1, cursorPos, /*unused*/ -1, (DwEvalExpressionFlags)0);
+	return Evaluate(expr, GetCallStackCount() - 1, cursorPos, /*unused*/ -1, (DwEvalExpressionFlags)0);
 }
 
 String LLDBDebugger::GetCollectionContinuation(const StringImpl& continuationData, int callStackIdx, int count)
@@ -7426,6 +7420,7 @@ String LLDBDebugger::GetAutoExpressions(int callStackIdx, uint64 memoryRangeStar
 	// HotLoad clears the call stack while paused and the watch panels can ask for locals before a draw rebuilds it
 	if (mLLDBFrames.IsEmpty())
 		UpdateCallStack();
+	callStackIdx = HostToLLDBFrameIdx(callStackIdx);
 	if ((callStackIdx < 0) || (callStackIdx >= (int)mLLDBFrames.size()))
 		return String();
 
@@ -7451,6 +7446,7 @@ String LLDBDebugger::GetAutoLocals(int callStackIdx, bool showRegs)
 
 	if (mLLDBFrames.IsEmpty())
 		UpdateCallStack();
+	callStackIdx = HostToLLDBFrameIdx(callStackIdx);
 	if ((callStackIdx < 0) || (callStackIdx >= (int)mLLDBFrames.size()))
 		return String();
 

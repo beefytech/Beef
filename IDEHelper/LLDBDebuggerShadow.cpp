@@ -171,7 +171,7 @@ void LLDBDebugger::ShadowInit()
 		mShadowReportPath = reportEnv;
 }
 
-static const char* sShadowFlippedQueries[] = { "addr_line", "addr_symbol" };
+static const char* sShadowFlippedQueries[] = { "addr_line", "addr_symbol", "frame_name", "frame_line", "inline_depth", "inline_name", "inline_line", "frame_map" };
 
 bool LLDBDebugger::ShadowIsFlipped(const char* query)
 {
@@ -242,8 +242,8 @@ void LLDBDebugger::ShadowCheckFrames()
 		int32 stackSize = 0;
 		int8 flags = 0;
 
-		String lldbName = LLDBDebugger::GetStackFrameInfo(lldbIdx, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
-		LLDBDebugger::GetStackFrameInfo(groupStart, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
+		String lldbName = LLDBStackFrameInfo(lldbIdx, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
+		LLDBStackFrameInfo(groupStart, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
 		String lldbLine = StrFormat("%s:%d", ShadowNormalizePath(file).c_str(), line);
 
 		String beefName = DbgTargetHost::GetStackFrameInfo(beefIdx, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
@@ -254,7 +254,7 @@ void LLDBDebugger::ShadowCheckFrames()
 			beefGroupEnd++;
 		int beefDepth = beefGroupEnd - beefIdx - 1;
 		int lldbDepth = lldbIdx - groupStart;
-		if (beefDepth > 0)
+		if ((beefDepth > 0) && (mCallStack[beefIdx]->mSubProgram != NULL))
 			beefName = DbgTargetHost::GetStackFrameInfo(beefGroupEnd - 1, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
 
 		WdStackFrame* wdStackFrame = mCallStack[beefIdx];
@@ -274,7 +274,7 @@ void LLDBDebugger::ShadowCheckFrames()
 			{
 				for (int depthIdx = 0; depthIdx <= lldbDepth; depthIdx++)
 				{
-					String lldbInlineName = LLDBDebugger::GetStackFrameInfo(groupStart + depthIdx, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
+					String lldbInlineName = LLDBStackFrameInfo(groupStart + depthIdx, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
 					String lldbInlineLine = StrFormat("%s:%d", ShadowNormalizePath(file).c_str(), line);
 					String beefInlineName = DbgTargetHost::GetStackFrameInfo(beefIdx + depthIdx, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
 					String beefInlineLine = StrFormat("%s:%d", ShadowNormalizePath(file).c_str(), line);
