@@ -114,7 +114,7 @@ void LLDBDebugger::ShadowInit()
 }
 
 static const char* sShadowFlippedQueries[] = { "addr_line", "addr_symbol", "frame_name", "frame_line", "inline_depth", "inline_name", "inline_line", "frame_map", "tls_addr", "breakpoint",
-	"autos_subset", "autos_subset_inline" };
+	"autos_subset", "autos_subset_inline", "line_calls", "line_calls_nonempty" };
 
 bool LLDBDebugger::ShadowIsFlipped(const char* query)
 {

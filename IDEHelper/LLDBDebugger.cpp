@@ -172,6 +172,7 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mStepOutFinishedLine = false;
 	mStepContinueCount = 0;
 	mStepIssueCall = StepCall_Into;
+	mStepUnfiltered = false;
 	mStepIssuePC = 0;
 	mStepIssueSP = 0;
 	mStepStartFunctionAddr = 0;
@@ -940,6 +941,21 @@ void LLDBDebugger::HandleProcessEvent(lldb::StateType state)
 
 			auto threadStopReason = thread.IsValid() ? thread.GetStopReason() : lldb::eStopReasonNone;
 
+			if (mStepSpecificBreakpoint.IsValid())
+			{
+				bool atCall = (thread.IsValid()) && (threadStopReason == lldb::eStopReasonBreakpoint) &&
+					((lldb::break_id_t)thread.GetStopReasonDataAtIndex(0) == mStepSpecificBreakpoint.GetID());
+				ClearStepSpecific();
+				if (atCall)
+				{
+					BeginStep(thread, StepKind_Into);
+					mStepUnfiltered = true;
+					mRunState = RunState_Running;
+					IssueStep(thread, StepCall_Into);
+					return;
+				}
+			}
+
 			// The old version of a lambda whose captures changed incompatibly was called
 			if ((thread.IsValid()) && (threadStopReason == lldb::eStopReasonBreakpoint) &&
 				(mHotInvalidLambdaTrapIds.Contains((int)thread.GetStopReasonDataAtIndex(0))))
@@ -1308,8 +1324,39 @@ void LLDBDebugger::StepInto(bool inAssembly)
 	}
 }
 
+// Without step filters, as WinDebugger does
 void LLDBDebugger::StepIntoSpecific(intptr addr)
 {
+	if (!mLLDBProcess.IsValid())
+		return;
+	if (!TryRunContinue())
+		return;
+	lldb::SBThread thread = mLLDBProcess.GetSelectedThread();
+	if (!thread.IsValid())
+		return;
+	LLDBLog("StepIntoSpecific %llx\n", (unsigned long long)addr);
+	ClearCallStack();
+	mRunState = RunState_Running;
+	if ((uint64)thread.GetFrameAtIndex(0).GetPC() == (uint64)addr)
+	{
+		BeginStep(thread, StepKind_Into);
+		mStepUnfiltered = true;
+		IssueStep(thread, StepCall_Into);
+		return;
+	}
+	ClearStepSpecific();
+	mStepSpecificBreakpoint = mLLDBTarget.BreakpointCreateByAddress((lldb::addr_t)addr);
+	if (mStepSpecificBreakpoint.IsValid())
+		mStepSpecificBreakpoint.SetThreadID(thread.GetThreadID());
+	mStepKind = StepKind_None;
+	mLLDBProcess.Continue();
+}
+
+void LLDBDebugger::ClearStepSpecific()
+{
+	if ((mStepSpecificBreakpoint.IsValid()) && (mLLDBTarget.IsValid()))
+		mLLDBTarget.BreakpointDelete(mStepSpecificBreakpoint.GetID());
+	mStepSpecificBreakpoint = lldb::SBBreakpoint();
 }
 
 void LLDBDebugger::StepOver(bool inAssembly)
@@ -1421,6 +1468,7 @@ void LLDBDebugger::BeginStep(lldb::SBThread& thread, StepKind stepKind)
 	mStepOutThenInto = false;
 	mStepOutFinishedLine = false;
 	mStepContinueCount = 0;
+	mStepUnfiltered = false;
 	mStepIssuePC = 0;
 	mStepIssueSP = 0;
 	mStepNoInfoTries = 0;
@@ -1586,7 +1634,7 @@ bool LLDBDebugger::ContinueStep(lldb::SBThread& thread)
 	if ((uint64)function.GetStartAddress().GetLoadAddress(mLLDBTarget) == mStepStartFunctionAddr)
 		return false;
 
-	bool filtered = (mStepKind == StepKind_Into) && (IsStepFiltered(function));
+	bool filtered = (mStepKind == StepKind_Into) && (!mStepUnfiltered) && (IsStepFiltered(function));
 	bool hasStatementLines = FunctionHasStatementLines(function);
 	if ((!filtered) && (hasStatementLines))
 	{
@@ -2439,6 +2487,8 @@ String LLDBDebugger::DisassembleAt(intptr address)
 
 String LLDBDebugger::FindLineCallAddresses(intptr address)
 {
+	if ((ShadowIsFlipped("line_calls")) && (HostCoversAddress((addr_target)address)))
+		return DbgTargetHost::FindLineCallAddresses(address);
 	return String();
 }
 
@@ -10061,6 +10111,7 @@ void LLDBDebugger::FinishStopDebugging()
 		bp->mWatchpointIds.Clear();
 	}
 	mBreakpointIdMap.Clear();
+	mStepSpecificBreakpoint = lldb::SBBreakpoint();
 	mWatchpointIdMap.Clear();
 
 	mProcessId = 0;
@@ -10160,6 +10211,7 @@ void LLDBDebugger::Detach()
 		bp->mResolvedAddr = 0;
 	}
 	mBreakpointIdMap.Clear();
+	mStepSpecificBreakpoint = lldb::SBBreakpoint();
 	mBreakpointAddrMap.Clear();
 
 	// Reset all per-session state to initial values, mirroring WinDebugger::Detach.

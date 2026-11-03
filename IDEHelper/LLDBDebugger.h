@@ -139,6 +139,8 @@ public:
 		StepCall_Out
 	};
 	StepCall mStepIssueCall;
+	bool mStepUnfiltered;
+	lldb::SBBreakpoint mStepSpecificBreakpoint;
 	bool mStepOutThenInto;
 	bool mStepOutFinishedLine;
 	int mStepStartLine;                              // where the current step began
@@ -310,6 +312,7 @@ protected:
 	bool FunctionHasStatementLines(lldb::SBFunction& function);
 	bool IsStepFiltered(lldb::SBFunction& function);
 	void IssueStep(lldb::SBThread& thread, StepCall stepCall);
+	void ClearStepSpecific();
 	bool ContinueStep(lldb::SBThread& thread);
 	lldb::SBThread SelectStoppedThread();
 	lldb::SBValue FindSplatVariable(lldb::SBFrame& frame, const StringImpl& name);
