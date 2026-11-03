@@ -63,6 +63,9 @@ void LLDBDebugger::HostSyncModules()
 		if ((strcmp(modulePath, exePath) == 0) && (mDebugTarget->mLaunchBinary == NULL))
 		{
 			dbgModule = mDebugTarget->Init(path, mTargetPath, (intptr)loadBase);
+			// SetupDyn gives the other modules theirs
+			if ((dbgModule != NULL) && (dbgModule->mOrigImageData == NULL))
+				dbgModule->mOrigImageData = new DbgModuleMemoryCache(dbgModule->mImageBase, dbgModule->mImageSize);
 		}
 		else
 		{
@@ -237,11 +240,25 @@ bool LLDBDebugger::DecodeInstInfo(addr_target address, DbgModuleMemoryCache* mem
 	if (instructions.GetSize() == 0)
 		return false;
 	lldb::SBInstruction instruction = instructions.GetInstructionAtIndex(0);
-	const char* mnemonic = instruction.GetMnemonic(mLLDBTarget);
+	lldb::InstructionControlFlowKind controlFlowKind = instruction.GetControlFlowKind(mLLDBTarget);
 	outInfo->mSize = (int)instruction.GetByteSize();
-	outInfo->mIsCall = false;
-	outInfo->mIsReturn = (mnemonic != NULL) && (strncmp(mnemonic, "ret", 3) == 0);
+	outInfo->mIsCall = (controlFlowKind == lldb::eInstructionControlFlowKindCall) || (controlFlowKind == lldb::eInstructionControlFlowKindFarCall);
+	outInfo->mIsReturn = (controlFlowKind == lldb::eInstructionControlFlowKindReturn) || (controlFlowKind == lldb::eInstructionControlFlowKindFarReturn);
 	outInfo->mTarget = 0;
+	if (outInfo->mIsCall)
+	{
+		// Only a direct call's operand is a bare address; register and memory operands need the simulation Windows does
+		const char* operands = instruction.GetOperands(mLLDBTarget);
+		if ((operands != NULL) && (strncmp(operands, "0x", 2) == 0))
+		{
+			char* operandEnd = NULL;
+			uint64 target = strtoull(operands + 2, &operandEnd, 16);
+			if ((operandEnd != NULL) && (*operandEnd == 0))
+				outInfo->mTarget = (addr_target)target;
+		}
+	}
+	if (registers != NULL)
+		*registers->GetPCRegisterRef() = address;
 	return true;
 }
 

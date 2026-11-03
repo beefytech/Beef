@@ -383,6 +383,7 @@ protected:
 	void ShadowReportLine(const StringImpl& line);
 	void ShadowCheckFrames();
 	void ShadowCheckTLS();
+	void ShadowCheckLineCalls(addr_target pc);
 	void ShadowCheckBreakpoint(LLDBBreakpoint* bp);
 	void ShadowWriteReport();
 

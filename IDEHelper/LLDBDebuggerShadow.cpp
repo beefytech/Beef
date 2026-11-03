@@ -263,6 +263,9 @@ void LLDBDebugger::ShadowCheckFrames()
 					mShadowQueryCounts["autos_inline_answered"]++;
 				ShadowCompare(isInlineFrame ? "autos_subset_inline" : "autos_subset", "", missing);
 			}
+
+			if ((beefIdx == 0) && (beefDepth == 0))
+				ShadowCheckLineCalls((addr_target)wdStackFrame->mRegisters.GetPC());
 		}
 
 		// Modules with only .dynsym are left out: LLDB also reads MiniDebugInfo locals and symbol versions there
@@ -279,6 +282,89 @@ void LLDBDebugger::ShadowCheckFrames()
 	}
 
 	ShadowCheckTLS();
+}
+
+static bool ShadowSameFile(lldb::SBFileSpec lhs, lldb::SBFileSpec rhs)
+{
+	const char* lhsName = lhs.GetFilename();
+	const char* rhsName = rhs.GetFilename();
+	const char* lhsDir = lhs.GetDirectory();
+	const char* rhsDir = rhs.GetDirectory();
+	return (lhsName != NULL) && (rhsName != NULL) && (strcmp(lhsName, rhsName) == 0) &&
+		(strcmp((lhsDir != NULL) ? lhsDir : "", (rhsDir != NULL) ? rhsDir : "") == 0);
+}
+
+// LLDB's direct-call targets come from the E8 rel32 bytes, independent of the operand parsing in DecodeInstInfo
+void LLDBDebugger::ShadowCheckLineCalls(addr_target pc)
+{
+	Array<String> beefSites;
+	String beefCalls = DbgTargetHost::FindLineCallAddresses((intptr)pc);
+	for (auto entry : beefCalls.Split('\n'))
+	{
+		String site;
+		site += entry;
+		if (site.StartsWith('-'))
+			site.Remove(0, 1);
+		int tabIdx = (int)site.IndexOf('\t');
+		if (tabIdx != -1)
+			site.RemoveToEnd(tabIdx);
+		if (site.IsEmpty())
+			continue;
+		addr_target siteAddr = (addr_target)strtoull(site.c_str(), NULL, 16);
+		// Inlined methods are listed at their start, which is not a call instruction
+		DbgInstInfo instInfo;
+		if ((!mDebugTarget->DecodeInstInfo(siteAddr, NULL, &instInfo)) || (!instInfo.mIsCall))
+			continue;
+		beefSites.Add(StrFormat("%llx:%llx", (unsigned long long)siteAddr, (unsigned long long)instInfo.mTarget));
+	}
+
+	Array<String> lldbSites;
+	lldb::SBAddress pcAddr;
+	pcAddr.SetLoadAddress((lldb::addr_t)pc, mLLDBTarget);
+	lldb::SBLineEntry pcLine = pcAddr.GetLineEntry();
+	lldb::SBFunction function = pcAddr.GetFunction();
+	if ((!pcLine.IsValid()) || (!function.IsValid()))
+		return;
+	lldb::SBInstructionList instructions = function.GetInstructions(mLLDBTarget);
+	for (uint32 instIdx = 0; instIdx < instructions.GetSize(); instIdx++)
+	{
+		lldb::SBInstruction instruction = instructions.GetInstructionAtIndex(instIdx);
+		lldb::SBAddress instAddr = instruction.GetAddress();
+		lldb::SBLineEntry lineEntry = instAddr.GetLineEntry();
+		if ((!lineEntry.IsValid()) || (lineEntry.GetLine() != pcLine.GetLine()) || (!ShadowSameFile(lineEntry.GetFileSpec(), pcLine.GetFileSpec())))
+			continue;
+		if (instAddr.GetBlock().GetContainingInlinedBlock().IsValid())
+			continue;
+		lldb::InstructionControlFlowKind controlFlowKind = instruction.GetControlFlowKind(mLLDBTarget);
+		if ((controlFlowKind != lldb::eInstructionControlFlowKindCall) && (controlFlowKind != lldb::eInstructionControlFlowKindFarCall))
+			continue;
+
+		uint64 siteAddr = instAddr.GetLoadAddress(mLLDBTarget);
+		uint64 target = 0;
+		lldb::SBData data = instruction.GetData(mLLDBTarget);
+		uint8 bytes[5] = { 0 };
+		lldb::SBError error;
+		if ((data.GetByteSize() == 5) && (data.ReadRawData(error, 0, bytes, 5) == 5) && (bytes[0] == 0xE8))
+		{
+			int32 rel = 0;
+			memcpy(&rel, &bytes[1], 4);
+			target = siteAddr + 5 + (int64)rel;
+		}
+		lldbSites.Add(StrFormat("%llx:%llx", (unsigned long long)siteAddr, (unsigned long long)target));
+	}
+
+	auto _Format = [](Array<String>& sites)
+	{
+		sites.Sort([](const String& lhs, const String& rhs) { return strcmp(lhs.c_str(), rhs.c_str()) < 0; });
+		String result;
+		for (auto& site : sites)
+			result += site + " ";
+		return result;
+	};
+	if (!lldbSites.IsEmpty())
+		mShadowQueryCounts["line_calls_nonempty"]++;
+	String location = StrFormat("%s:%d ", (pcLine.GetFileSpec().GetFilename() != NULL) ? pcLine.GetFileSpec().GetFilename() : "?", pcLine.GetLine() - 1);
+	ShadowCompare("line_calls", location + _Format(lldbSites), location + _Format(beefSites));
 }
 
 void LLDBDebugger::ShadowCheckTLS()
