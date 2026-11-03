@@ -61,6 +61,48 @@ static String ShadowInlineName(const StringImpl& name)
 	return result;
 }
 
+// LLDB hides artificial parameters (a lambda's __closure) as runtime support values, and DebugTarget gives a
+// repeated name an '@' per earlier use and cuts a "$a" alias suffix
+static String ShadowLLDBAutos(lldb::SBFrame& frame)
+{
+	lldb::SBVariablesOptions options;
+	options.SetIncludeArguments(true);
+	options.SetIncludeLocals(true);
+	options.SetIncludeStatics(false);
+	options.SetInScopeOnly(false);
+	options.SetIncludeRuntimeSupportValues(true);
+	auto variables = frame.GetVariables(options);
+
+	Array<String> names;
+	for (int i = 0; i < (int)variables.GetSize(); i++)
+	{
+		const char* namePtr = variables.GetValueAtIndex(i).GetName();
+		if ((namePtr == NULL) || (namePtr[0] == '$'))
+			continue;
+		String name = namePtr;
+		while (names.Contains(name))
+			name.Insert(0, '@');
+		names.Add(name);
+	}
+
+	String result = "\n";
+	String lastAlias;
+	for (auto& name : names)
+	{
+		int aliasIdx = (int)name.IndexOf("$a");
+		if (aliasIdx == -1)
+		{
+			result += name + "\n";
+			continue;
+		}
+		name.RemoveToEnd(aliasIdx);
+		if (name != lastAlias)
+			result += name + "\n";
+		lastAlias = name;
+	}
+	return result;
+}
+
 // WinDebugger::CheckBreakpoint's choice of addresses, without hot versions: the requested line, or else the
 // nearest following line within 6, bound at the first row of each run of rows on that line
 static void ShadowBindBreakpoint(DebugTarget* debugTarget, DbgSrcFile* srcFile, int lineNum, int instrOffset, Array<addr_target>& outAddrs)
@@ -207,7 +249,13 @@ void LLDBDebugger::ShadowCheckFrames()
 		addr_target sourcePC = wdStackFrame->GetSourcePC();
 		if (wdStackFrame->mSubProgram != NULL)
 		{
-			ShadowCompare("frame_name", ShadowFunctionName(lldbName), ShadowFunctionName(beefName));
+			String lldbFrameName = ShadowFunctionName(lldbName);
+			// LLDB falls back to the linkage name when its demangler rejects one (delegate Invoke), where DebugTarget names the delegate type
+			DbgSubprogram* nameSubprogram = mCallStack[beefGroupEnd - 1]->mSubProgram;
+			int moduleEnd = (int)lldbName.IndexOf('!');
+			if ((nameSubprogram != NULL) && (nameSubprogram->mLinkName != NULL) && (strcmp(lldbName.c_str() + moduleEnd + 1, nameSubprogram->mLinkName) == 0))
+				lldbFrameName = ShadowFunctionName(beefName);
+			ShadowCompare("frame_name", lldbFrameName, ShadowFunctionName(beefName));
 			ShadowCompare("frame_line", lldbLine, beefLine);
 			ShadowCompare("inline_depth", StrFormat("%d", lldbDepth), StrFormat("%d", beefDepth));
 			if (lldbDepth == beefDepth)
@@ -240,7 +288,7 @@ void LLDBDebugger::ShadowCheckFrames()
 			int autosDepth = (lldbDepth == beefDepth) ? lldbDepth : 0;
 			for (int depthIdx = 0; depthIdx <= autosDepth; depthIdx++)
 			{
-				String lldbAutos = String("\n") + LLDBDebugger::GetAutoLocals(groupStart + depthIdx, false);
+				String lldbAutos = ShadowLLDBAutos(mLLDBFrames[groupStart + depthIdx]);
 				String beefAutos = DbgTargetHost::GetAutoLocals(beefIdx + depthIdx, false);
 				String missing;
 				for (auto name : beefAutos.Split('\n'))
