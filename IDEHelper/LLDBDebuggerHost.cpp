@@ -5,6 +5,7 @@
 #include "DebugManager.h"
 #include "DebugTarget.h"
 #include "DbgModule.h"
+#include "DWARFInfo.h"
 #include "BeefySysLib/FileStream.h"
 #include <limits.h>
 
@@ -569,6 +570,55 @@ void LLDBDebugger::GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* o
 	AutoCrit autoCrit(mDebugManager->mCritSect);
 	if ((ShadowIsFlipped("frame_name")) && (HostCoversAddress(addr)))
 		DbgTargetHost::GetCodeAddrInfo(addr, inlineCallAddr, outFile, outHotIdx, outDefLineStart, outDefLineEnd, outLine, outColumn);
+}
+
+// Statics a hot compile adds stay with HotFindThreadLocalOffset
+bool LLDBDebugger::HostFindThreadLocalAddress(lldb::SBFrame& frame, const char* lldbName, uint64& outAddr)
+{
+	if ((!ShadowIsFlipped("tls_addr")) || (mDebugTarget == NULL) || (mDebugTarget->mLaunchBinary == NULL) || (lldbName == NULL))
+		return false;
+
+	DbgModule* dbgModule = mDebugTarget->mLaunchBinary;
+	if (mHostThreadLocalsModule != dbgModule)
+	{
+		mHostThreadLocalsModule = dbgModule;
+		mHostThreadLocals.Clear();
+		for (auto dbgType : dbgModule->mTypes)
+		{
+			if ((dbgType->mCompileUnit == NULL) || (dbgType->mCompileUnit->mLanguage != DbgLanguage_Beef))
+				continue;
+			for (auto member : dbgType->mMemberList)
+			{
+				if ((!member->mIsStatic) || (member->mName == NULL) || (member->mLocationLen <= 0))
+					continue;
+				uint8 lastOp = member->mLocationData[member->mLocationLen - 1];
+				if ((lastOp != DW_OP_GNU_push_tls_address) && (lastOp != DW_OP_form_tls_address))
+					continue;
+				String qualifiedName = dbgType->ToString(DbgLanguage_Beef);
+				qualifiedName.Replace(".", "::");
+				qualifiedName += "::";
+				qualifiedName += member->mName;
+				mHostThreadLocals.TryAdd(qualifiedName, member);
+			}
+		}
+	}
+
+	const char* namePtr = lldbName;
+	if (strncmp(namePtr, "bf::", 4) == 0)
+		namePtr += 4;
+	DbgVariable* variable = NULL;
+	if (!mHostThreadLocals.TryGetValue(namePtr, &variable))
+		return false;
+
+	WdStackFrame wdStackFrame;
+	HostReadFrameRegisters(frame, &wdStackFrame.mRegisters);
+	DbgAddrType addrType = DbgAddrType_NoValue;
+	addr_target addr = (addr_target)dbgModule->EvaluateLocation(NULL, variable->mLocationData, variable->mLocationLen, &wdStackFrame, &addrType);
+	if ((addrType != DbgAddrType_Target) || (addr == 0))
+		return false;
+	LLDBLog("HostFindThreadLocalAddress: %s at 0x%llx\n", lldbName, (unsigned long long)addr);
+	outAddr = (uint64)addr;
+	return true;
 }
 
 #endif

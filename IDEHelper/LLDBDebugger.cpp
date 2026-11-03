@@ -161,6 +161,7 @@ LLDBDebugger::LLDBDebugger(DebugManager* debugManager)
 	mPageSize = (int)sysconf(_SC_PAGESIZE);
 	mHostUnsupportedCount = 0;
 	mHostFramesLive = false;
+	mHostThreadLocalsModule = NULL;
 	ShadowInit();
 	mDidAttach = false;
 	mAttachFlags = BfDbgAttachFlag_None;
@@ -5964,6 +5965,10 @@ lldb::SBValue LLDBDebugger::HotFindStaticVariable(lldb::SBFrame& frame, const St
 	if (!best.IsValid())
 		return best;
 
+	uint64 threadLocalAddr = 0;
+	if (HostFindThreadLocalAddress(frame, best.GetName(), threadLocalAddr))
+		return mLLDBTarget.CreateValueFromAddress(best.GetName(), lldb::SBAddress(threadLocalAddr, mLLDBTarget), best.GetType());
+
 	uint64 tlsOffset = 0;
 	if (HotFindThreadLocalOffset(best.GetName(), tlsOffset))
 	{
@@ -10026,6 +10031,8 @@ void LLDBDebugger::Detach()
 	delete mDebugTarget;
 	mDebugTarget = NULL;
 	mHostModuleBases.Clear();
+	mHostThreadLocalsModule = NULL;
+	mHostThreadLocals.Clear();
 
 	if (mLLDBProcess.IsValid())
 	{

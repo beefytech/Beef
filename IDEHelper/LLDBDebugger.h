@@ -91,6 +91,8 @@ public:
 	Array<int> mHostFrameGroupStart;                // per concrete frame: the index in mLLDBFrames of its innermost inlined frame
 
 	Dictionary<String, addr_target> mHostModuleBases;
+	NS_BF_DBG::DbgModule* mHostThreadLocalsModule;
+	Dictionary<String, NS_BF_DBG::DbgVariable*> mHostThreadLocals;
 	HashSet<String> mHostUnsupportedNames;
 	int mHostUnsupportedCount;
 	Dictionary<String, int> mHostUnsupportedCounts;
@@ -388,6 +390,7 @@ protected:
 	String LLDBStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd, int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags);
 	void HostMapFrames();
 	int HostToLLDBFrameIdx(int frameIdx);
+	bool HostFindThreadLocalAddress(lldb::SBFrame& frame, const char* lldbName, uint64& outAddr);
 	void ShadowInit();
 	void ShadowCompare(const char* query, const StringImpl& lldbResult, const StringImpl& beefResult);
 	void ShadowReportLine(const StringImpl& line);
