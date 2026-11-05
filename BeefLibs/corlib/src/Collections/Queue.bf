@@ -125,7 +125,7 @@ namespace System.Collections
 			{
 				Runtime.Assert((uint)index < (uint)mSize);
 				mItems[(mHead + index) % AllocSize] = value;
-#if VERSION_LIST
+#if VERSION_QUEUE
 				mVersion++;
 #endif
 			}
@@ -134,7 +134,7 @@ namespace System.Collections
 			set
 			{
 				mItems[(mHead + index) % AllocSize] = value;
-#if VERSION_LIST
+#if VERSION_QUEUE
 				mVersion++;
 #endif
 			}
@@ -162,7 +162,7 @@ namespace System.Collections
 				int idx = index.Get(mSize);
 				Runtime.Assert((uint)idx < (uint)mSize);
 				mItems[(mHead + idx) % AllocSize] = value;
-#if VERSION_LIST
+#if VERSION_QUEUE
 				mVersion++;
 #endif
 			}
@@ -171,7 +171,7 @@ namespace System.Collections
 			set
 			{
 				mItems[(mHead + index.Get(mSize)) % AllocSize] = value;
-#if VERSION_LIST
+#if VERSION_QUEUE
 				mVersion++;
 #endif
 			}
@@ -472,13 +472,37 @@ namespace System.Collections
 		public void RemoveAt(int index)
 		{
 			Debug.Assert((uint)index < (uint)mSize);
-			int absIndex = (mHead + index) % AllocSize;
-			if (absIndex < mSize - 1)
+			int allocSize = AllocSize;
+			int count = mSize - index - 1;
+			if (count > 0)
 			{
-				Internal.MemMove(mItems + absIndex, mItems + absIndex + 1, (mSize - absIndex - 1) * strideof(T), alignof(T));
+				// Shifting a circular range back a slot splits into at most two runs, plus the
+				//  element that crosses the seam between them
+				int src = (mHead + index + 1) % allocSize;
+				if (src == 0)
+				{
+					// The run starts at slot 0, so its first element wraps back to the last slot
+					mItems[allocSize - 1] = mItems[0];
+					if (count > 1)
+						Internal.MemMove(mItems, mItems + 1, (count - 1) * strideof(T), alignof(T));
+				}
+				else if (src + count <= allocSize)
+				{
+					Internal.MemMove(mItems + src - 1, mItems + src, count * strideof(T), alignof(T));
+				}
+				else
+				{
+					int firstPart = allocSize - src;
+					Internal.MemMove(mItems + src - 1, mItems + src, firstPart * strideof(T), alignof(T));
+					mItems[allocSize - 1] = mItems[0];
+					int rest = count - firstPart - 1;
+					if (rest > 0)
+						Internal.MemMove(mItems, mItems + 1, rest * strideof(T), alignof(T));
+				}
 			}
+			mTail = (int_cosize)((mTail + allocSize - 1) % allocSize);
 			mSize--;
-#if VERSION_LIST
+#if VERSION_QUEUE
 			mVersion++;
 #endif
 		}
