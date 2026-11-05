@@ -16,6 +16,7 @@
 #ifdef LLDB_ENABLED
 #pragma warning(disable:4251)
 #include "lldb/API/LLDB.h"
+#include "DbgTargetHost.h"
 #include <atomic>
 
 NS_BF_BEGIN
@@ -75,16 +76,29 @@ public:
 struct LLDBHotObject;
 struct LLDBFormatInfo;
 
-class LLDBDebugger : public Debugger
+class LLDBDebugger : public NS_BF_DBG::DbgTargetHost
 {
 public:
 	lldb::SBDebugger mLLDBDebugger;
 	lldb::SBTarget mLLDBTarget;
 	lldb::SBProcess mLLDBProcess;
 
-	// Call stack (populated while stopped)
-	Array<lldb::SBFrame> mCallStack;
+	// Inlined frames included; mCallStack holds the concrete ones
+	Array<lldb::SBFrame> mLLDBFrames;
 	bool mCallStackDirty;
+	Array<int> mHostFrameGroupStart;                // per concrete frame: the index in mLLDBFrames of its innermost inlined frame
+
+	Dictionary<String, addr_target> mHostModuleBases;
+	HashSet<String> mHostUnsupportedNames;
+	int mHostUnsupportedCount;
+
+	// BEEF_DBG_SHADOW
+	bool mShadowEnabled;
+	String mShadowReportPath;
+	Dictionary<String, int> mShadowQueryCounts;
+	Dictionary<String, int> mShadowMismatchCounts;
+	Array<String> mShadowMismatchLines;
+	int mShadowExtraCount;
 
 	// Breakpoints
 	Array<LLDBBreakpoint*> mBreakpoints;
@@ -94,7 +108,6 @@ public:
 	Breakpoint* mActiveBreakpoint;                         // bp we stopped at
 
 	// Stack frame indices
-	int mRequestedStackFrameIdx;
 	int mBreakStackFrameIdx;
 
 	int mProcessId;
@@ -359,6 +372,19 @@ protected:
 	bool HotApplyPatches(const Array<HotPatch>& patches, Array<HotWrite>& writes, Array<HotPriorEntry>& outPriorEntries, int& outNumPatched, String& outError);
 	bool HotLoadBatch(const Array<String>& objectFiles, int hotIdx, int& outNumPatched, bool& outRestored, String& outError);
 
+	void HostUnsupported(const char* name);
+	void HostSyncModules();
+	void HostClearCallStack();
+	void HostBuildCallStack();
+	void HostReadFrameRegisters(lldb::SBFrame& frame, CPURegisters* registers);
+	String HostAddressSourceLocation(intptr address);
+	void ShadowInit();
+	void ShadowCompare(const char* query, const StringImpl& lldbResult, const StringImpl& beefResult);
+	void ShadowReportLine(const StringImpl& line);
+	void ShadowCheckFrames();
+	void ShadowCheckBreakpoint(LLDBBreakpoint* bp);
+	void ShadowWriteReport();
+
 public:
 	LLDBDebugger(DebugManager* debugManager);
 	~LLDBDebugger();
@@ -442,7 +468,6 @@ public:
 	virtual bool WriteMemory(intptr address, void* src, uint64 length) override;
 	virtual DbgMemoryFlags GetMemoryFlags(intptr address) override;
 	virtual void UpdateRegisterUsage(int stackFrameIdx) override;
-	virtual void UpdateCallStackMethod(int stackFrameIdx) override;
 	virtual void GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) override;
 	virtual void GetStackAllocInfo(intptr addr, int* outThreadId, int* outStackIdx) override;
 	virtual String GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd, int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags) override;
@@ -472,6 +497,45 @@ public:
 	virtual void ReportMemory(MemReporter* memReporter) override;
 	virtual bool IsOnDemandDebugger() override;
 	virtual bool GetEmitSource(const StringImpl& filePath, String& outText) override;
+
+	virtual void Fail(const StringImpl& error) override;
+	virtual addr_target GetTLSOffset(int tlsIndex) override;
+	virtual int EnableWriting(intptr address, int size) override;
+	virtual int SetProtection(intptr address, int size, int prot) override;
+	virtual bool IsMiniDumpDebugger() override;
+	virtual int GetActiveThreadId() override;
+	virtual String GetActiveThreadName() override;
+	virtual void ClearExplicitStopThread() override;
+	virtual int GetActiveBreakpointHitCount() override;
+	virtual String GetActiveBreakpointCondition() override;
+	virtual int GetTargetProcessId() override;
+	virtual bool PopulateRegisters(CPURegisters* registers) override;
+	virtual NS_BF_DBG::DbgTypedValue GetRegister(const StringImpl& regName, DbgLanguage language, CPURegisters* registers, Array<RegForm>* regForms = NULL) override;
+	virtual bool AssignToReg(int callStackIdx, NS_BF_DBG::DbgTypedValue reg, NS_BF_DBG::DbgTypedValue value, String& outError) override;
+	virtual bool SetRegisters(CPURegisters* registers) override;
+	virtual void SaveAllRegisters() override;
+	virtual void RestoreAllRegisters() override;
+	virtual void PushValue(CPURegisters* registers, int64 val) override;
+	virtual void PushValue(CPURegisters* registers, const NS_BF_DBG::DbgTypedValue& typedValue) override;
+	virtual void SetThisRegister(CPURegisters* registers, addr_target val) override;
+	virtual void AddParamValue(int paramIdx, bool hadThis, CPURegisters* registers, const NS_BF_DBG::DbgTypedValue& typedValue) override;
+	virtual bool CheckNeedsSRetArgument(NS_BF_DBG::DbgType* retType) override;
+	virtual NS_BF_DBG::DbgTypedValue ReadReturnValue(CPURegisters* registers, NS_BF_DBG::DbgType* type) override;
+	virtual bool ProcessEvalString(NS_BF_DBG::DbgCompileUnit* dbgCompileUnit, NS_BF_DBG::DbgTypedValue useTypedValue, String& evalStr, String& displayString, NS_BF_DBG::DwFormatInfo& formatInfo, DebugVisualizerEntry* debugVis, bool limitLength) override;
+	virtual bool WantsHotHeap() override;
+	virtual addr_target ReserveHotHeapMemory(addr_target address, int size) override;
+	virtual void ReleaseHotHeapMemory(addr_target address) override;
+	virtual void ReserveHotTargetMemory(int size) override;
+	virtual addr_target AllocHotTargetMemory(int size, bool canExecute, bool canWrite, int* outAllocSize) override;
+	virtual void ReleaseHotTargetMemory(addr_target addr, int size) override;
+	virtual bool WriteInstructions(intptr address, void* src, uint64 length) override;
+	virtual bool SetHotJump(NS_BF_DBG::DbgSubprogram* oldSubprogram, addr_target newTarget, int newTargetSize) override;
+	virtual void PhysSetBreakpoint(addr_target address) override;
+	virtual addr_target DecodeThunk(addr_target address, DbgModuleMemoryCache* memoryCache) override;
+	virtual bool DecodeInstruction(addr_target address, DbgModuleMemoryCache* memoryCache, CPUInst* inst) override;
+	virtual bool IsReturnInstruction(addr_target address, DbgModuleMemoryCache* memoryCache) override;
+	virtual DbgBreakKind GetDbgBreakKind(addr_target address, DbgModuleMemoryCache* memoryCache, intptr_target* regs, intptr_target* outObjectPtr) override;
+	using NS_BF_DBG::DbgTargetHost::ReadMemory;
 };
 
 NS_BF_END

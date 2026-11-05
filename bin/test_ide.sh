@@ -145,4 +145,27 @@ do
 	[ $IDE_EXIT -eq 0 ] || fail $IDE_EXIT
 done
 
+# Fails on any disagreement with LLDB or unsupported host call
+SHADOW_REPORT=${TMPDIR:-/tmp}/beef-dbg-shadow-$$.txt
+for script in Inline Mixins Stepping_Scope Breakpoints Splats Splats02 Splats03 Multithread02 Data01 Globals
+do
+	for ide in "${BINARIES[@]}"
+	do
+		echo "Testing IDE/Tests/Test1/scripts/$script.txt in $ide with BEEF_DBG_SHADOW"
+		rm -f "$SHADOW_REPORT"
+		BEEF_DBG_SHADOW=1 BEEF_DBG_SHADOW_REPORT="$SHADOW_REPORT" "${LAUNCHER[@]}" "./$ide" -proddir="$ROOTPATH/IDE/Tests/Test1" -test="$ROOTPATH/IDE/Tests/Test1/scripts/$script.txt" || fail $?
+		touch "$SHADOW_REPORT"
+		grep "^DBGSHADOW breakpoint-extra:" "$SHADOW_REPORT" || true
+		if ! awk '/^DBGSHADOW queries=/ { for (i = 2; i <= NF; i++) { split($i, kv, "="); total[kv[1]] += kv[2] } }
+			END { printf "DBGSHADOW queries=%d mismatches=%d extra=%d unsupported=%d\n", total["queries"], total["mismatches"], total["extra"], total["unsupported"]
+				exit !((total["queries"] > 0) && (total["mismatches"] == 0) && (total["unsupported"] == 0)) }' "$SHADOW_REPORT"
+		then
+			grep -v "^DBGSHADOW query " "$SHADOW_REPORT" || true
+			rm -f "$SHADOW_REPORT"
+			fail 1
+		fi
+	done
+done
+rm -f "$SHADOW_REPORT"
+
 echo "SUCCESS!"

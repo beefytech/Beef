@@ -321,7 +321,6 @@ public:
 	DbgOpenFileFlags mOpenFileFlags;
 	Array<uint8> mEnvBlock;
 	DebugTarget* mEmptyDebugTarget;
-	DebugTarget* mDebugTarget;
 	CPU* mCPU;
 	PROCESS_INFORMATION mProcessInfo;
 	BfDbgAttachFlags mDbgAttachFlags;
@@ -359,7 +358,6 @@ public:
 	Dictionary<WdThreadInfo*, Array<WdStackFrame*>> mSavedCallStacks;
 	bool mIsPartialCallStack;
 	int mBreakStackFrameIdx;
-	addr_target mShowPCOverride;
 	Dictionary<uint32, WdThreadInfo*> mThreadMap;
 	Array<WdThreadInfo*> mThreadList;
 	StepType mOrigStepType;
@@ -413,11 +411,8 @@ public:
 	void PhysRemoveBreakpoint(addr_target address);
 	void RemoveBreakpoint(addr_target address);
 	void SingleStepX86();
-	bool IsInRunState();
 	bool ContinueFromBreakpoint();
 	bool HasLineInfoAt(addr_target address);
-	DbgLineData* FindLineDataAtAddress(addr_target address, DbgSubprogram** outSubProgram = NULL, DbgSrcFile** outSrcFile = NULL, int* outLineIdx = NULL, DbgOnDemandKind onDemandKind = DbgOnDemandKind_AllowRemote);
-	DbgLineData* FindLineDataInSubprogram(addr_target address, DbgSubprogram* dwSubprogram);
 	bool IsStepFiltered(DbgSubprogram* dbgSubprogram, DbgLineData* dbgLineData);
 	void RemoveTempBreakpoints();
 	void RehupBreakpoints(bool doFlush);
@@ -452,7 +447,6 @@ public:
 	virtual DbgMemoryFlags GetMemoryFlags(intptr address) override;
 
 	void SetRunState(RunState runState);
-	bool IsPaused();
 	void ClearStep();
 	bool SetupStep(StepType stepType);
 	void CheckNonDebuggerBreak();
@@ -542,7 +536,6 @@ public:
 	virtual bool AssignToReg(int callStackIdx, DbgTypedValue reg, DbgTypedValue value, String& outError) override;
 	virtual String GetCollectionContinuation(const StringImpl& continuationData, int callStackIdx, int count) override;
 	virtual String GetAutoExpressions(int callStackIdx, uint64 memoryRangeStart, uint64 memoryRangeLen) override;
-	virtual String GetAutoLocals(int callStackIdx, bool showRegs) override;
 	virtual String CompactChildExpression(const StringImpl& expr, const StringImpl& parentExpr, int callStackIdx) override;
 	virtual String GetProcessInfo() override;
 	virtual int GetProcessId() override;
@@ -561,16 +554,12 @@ public:
 	virtual bool WriteMemory(intptr address, void* src, uint64 length) override;
 	virtual addr_target GetTLSOffset(int tlsIndex) override;
 	virtual void UpdateRegisterUsage(int stackFrameIdx) override;
-	virtual void UpdateCallStackMethod(int stackFrameIdx) override;
-	virtual void GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) override;
 	virtual void GetStackAllocInfo(intptr addr, int* outThreadId, int* outStackIdx) override;
-	virtual String GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn, int* outLanguage, int* outStackSize, int8* outFlags) override;
 	virtual String GetStackFrameId(int stackFrameIdx) override;
 	virtual String Callstack_GetStackFrameOldFileInfo(int stackFrameIdx) override;
 	virtual int GetJmpState(int stackFrameIdx) override;
 	virtual intptr GetStackFrameCalleeAddr(int stackFrameIdx) override;
 	virtual String GetStackMethodOwner(int stackFrameIdx, int& language) override;
-	virtual String FindCodeAddresses(const StringImpl& fileName, int line, int column, bool allowAutoResolve) override;
 	virtual String GetAddressSourceLocation(intptr address) override;
 	virtual String GetAddressSymbolName(intptr address, bool demangle) override;
 	virtual intptr GetSymbolAddress(const StringImpl& sym) override;

@@ -126,8 +126,21 @@ bool ElfDbgModule::ReadELF(const uint8* data, int64 size, DbgModuleKind moduleKi
 	mPreferredImageBase = lowAddr;
 	if (mImageBase == 0)
 		mImageBase = mPreferredImageBase;
-	mImageSize = (uint32)(highAddr - lowAddr);
+	mImageSize = (uint32)(((highAddr - lowAddr) + 0xFFF) & ~(addr_target)0xFFF);
 	mEntryPoint = ehdr->e_entry - lowAddr;
+
+	for (int phdrIdx = 0; phdrIdx < ehdr->e_phnum; phdrIdx++)
+	{
+		auto& phdr = phdrs[phdrIdx];
+		if (phdr.p_type != PT_LOAD)
+			continue;
+		DbgSection dbgSection;
+		dbgSection.mName = "LOAD";
+		dbgSection.mAddrStart = (addr_target)phdr.p_vaddr - lowAddr;
+		dbgSection.mAddrLength = (addr_target)phdr.p_memsz;
+		dbgSection.mIsExecutable = (phdr.p_flags & PF_X) != 0;
+		mSections.Add(dbgSection);
+	}
 
 	auto shdrs = (const Elf64_Shdr*)(data + ehdr->e_shoff);
 	auto& shStrHdr = shdrs[ehdr->e_shstrndx];
