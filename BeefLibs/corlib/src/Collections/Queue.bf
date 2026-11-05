@@ -472,11 +472,10 @@ namespace System.Collections
 		public void RemoveAt(int index)
 		{
 			Debug.Assert((uint)index < (uint)mSize);
-			int absIndex = (mHead + index) % AllocSize;
-			if (absIndex < mSize - 1)
-			{
-				Internal.MemMove(mItems + absIndex, mItems + absIndex + 1, (mSize - absIndex - 1) * strideof(T), alignof(T));
-			}
+			for (int i = index; i < mSize - 1; i++)
+				GetElementRef(i) = GetElementRef(i + 1);
+			int_cosize allocSize = (.)AllocSize;
+			mTail = (mTail + allocSize - 1) % allocSize;
 			mSize--;
 #if VERSION_LIST
 			mVersion++;
