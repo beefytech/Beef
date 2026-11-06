@@ -9079,6 +9079,12 @@ void BfModule::ResolveGenericParamConstraints(BfGenericParamInstance* genericPar
 	if (((constraintDef->mGenericParamFlags & BfGenericParamFlag_Const) != 0) &&
 		(genericParamInstance->mTypeConstraint == NULL))
 		genericParamInstance->mTypeConstraint = GetPrimitiveType(BfTypeCode_IntPtr);
+
+	// Every enum derives from System.Enum, so give 'where T : enum' that type constraint - note that
+	//  the converse does not hold, a struct can derive from System.Enum without being an enum
+	if (((constraintDef->mGenericParamFlags & BfGenericParamFlag_Enum) != 0) &&
+		(genericParamInstance->mTypeConstraint == NULL))
+		genericParamInstance->mTypeConstraint = ResolveTypeDef(mCompiler->mEnumTypeDef);
 }
 
 String BfModule::GenericParamSourceToString(const BfGenericParamSource & genericParamSource)

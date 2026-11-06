@@ -193,7 +193,6 @@ bool BfGenericParamInstance::IsEnum()
 		if ((module != NULL) && (mTypeConstraint->IsInstanceOf(module->mCompiler->mEnumTypeDef)))
 			return true;
 	}
-	return true;
 	return false;
 }
 
