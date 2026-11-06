@@ -883,6 +883,13 @@ namespace Beefy.widgets
 
         public override void MouseWheel(int32 inX, int32 inY, float deltaX, float deltaY)
         {
+			var inX, inY, deltaX, deltaY;
+			if (IsKeyDown(KeyCode.Shift))
+			{
+				(inX, inY) = (inY, inX);
+				(deltaX, deltaY) = (-deltaY, -deltaX);
+			}
+
             float x;
             float y;
             TranslateMouseCoords(inX, inY, out x, out y);
