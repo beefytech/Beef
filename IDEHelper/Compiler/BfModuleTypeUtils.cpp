@@ -2989,7 +2989,18 @@ void BfModule::ExecuteCEOnCompile(CeEmitContext* ceEmitContext, BfTypeInstance* 
 		}
 		else if (typeInstance->mDefineState != BfTypeDefineState_CETypeInit)
 		{
-			// We populated before we could finish
+			// The type finished populating while this handler was running, so whatever it
+			//  emitted can no longer be applied. A detected data cycle now bails out of the
+			//  populate rather than completing it, so this should be unreachable - but if it
+			//  is reached, mark the type for a rebuild instead of silently caching a
+			//  half-emitted type as valid
+			if (typeInstance->mCeTypeInfo != NULL)
+				typeInstance->mCeTypeInfo->mFailed = true;
+			if ((ceEmitContext != NULL) && (!ceEmitContext->mEmitData.IsEmpty()))
+			{
+				Fail(StrFormat("Code emitted by '%s' was discarded because type '%s' finished populating while it was executing",
+					MethodToString(methodInstance).c_str(), TypeToString(typeInstance).c_str()), methodDef->GetRefNode());
+			}
 			AssertErrorState();
 		}
 		else
@@ -5540,6 +5551,16 @@ void BfModule::DoPopulateType(BfType* resolvedTypeRef, BfPopulateType populateTy
 						typeState = typeState->mPrevState;
 					}
 				}
+
+				// We have detected an unrecoverable data cycle. Returning here leaves the type at
+				//  BfTypeDefineState_CETypeInit so the TypeInit handler that is still executing
+				//  further up the stack can apply its emission when it finishes - completing the
+				//  populate from here would advance us to 'Defined' and strand that emission,
+				//  leaving the type permanently missing the members it was about to emit
+				typeInstance->mTypeFailed = true;
+				mHadBuildError = true;
+				AssertErrorState();
+				return;
 			}
  		}
 
