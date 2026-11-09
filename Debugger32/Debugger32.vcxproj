@@ -45,6 +45,8 @@
     <ClCompile Include="..\IDEHelper\DbgEvalPool.cpp" />
     <ClCompile Include="..\IDEHelper\DbgEvalSupport.cpp" />
     <ClCompile Include="..\IDEHelper\DbgSymbolSupport.cpp" />
+    <ClCompile Include="..\IDEHelper\DbgEvaluate.cpp" />
+    <ClCompile Include="..\IDEHelper\DbgValueFormat.cpp" />
     <ClCompile Include="..\IDEHelper\DbgExprEvaluator.cpp" />
     <ClCompile Include="..\IDEHelper\DbgModule.cpp" />
     <ClCompile Include="..\IDEHelper\DbgSymSrv.cpp" />
