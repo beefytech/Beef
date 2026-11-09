@@ -6321,6 +6321,14 @@ void DbgExprEvaluator::PerformBinaryOperation(ASTREF(BfExpression*)& leftExpress
 	PerformBinaryOperation(resultType, convLeftValue, convRightValue, binaryOp, opToken);
 }
 
+static bool IsSignedDivideOverflow(DbgType* type, const DbgTypedValue& left, const DbgTypedValue& right)
+{
+	if ((!type->IsSigned()) || (right.GetInt64() != -1))
+		return false;
+	int bitCount = type->GetByteCount() * 8;
+	return left.GetInt64() == (int64)(~(uint64)0 << (bitCount - 1));
+}
+
 void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue convLeftValue, DbgTypedValue convRightValue, BfBinaryOp binaryOp, BfTokenNode* opToken)
 {
 	if (resultType->IsValuelessType())
@@ -6404,11 +6412,20 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 			mResult.mInt64 = convLeftValue.GetInt64() ^ convRightValue.GetInt64();
 			return;
 		case BfBinaryOp_LeftShift:
-			mResult.mInt64 = convLeftValue.GetInt64() << convRightValue.GetInt64();
-			return;
 		case BfBinaryOp_RightShift:
-			mResult.mInt64 = convLeftValue.GetInt64() >> convRightValue.GetInt64();
-			return;
+			{
+				int64 shiftCount = convRightValue.GetInt64();
+				if ((shiftCount < 0) || (shiftCount >= resultType->GetByteCount() * 8))
+				{
+					Fail("Shift count out of range", opToken);
+					return;
+				}
+				if (binaryOp == BfBinaryOp_LeftShift)
+					mResult.mInt64 = convLeftValue.GetInt64() << shiftCount;
+				else
+					mResult.mInt64 = convLeftValue.GetInt64() >> shiftCount;
+				return;
+			}
 		}
 	}
 
@@ -6444,6 +6461,7 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 	case BfBinaryOp_Divide:
 		{
 			bool isZero = false;
+			bool isOverflow = false;
 			if (resultType->mTypeCode == DbgType_Single)
 			{
 				mResult.mSingle = convLeftValue.mSingle / convRightValue.mSingle;
@@ -6456,16 +6474,21 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 			{
 				if (convRightValue.GetInt64() == 0)
 					isZero = true;
+				else if (IsSignedDivideOverflow(resultType, convLeftValue, convRightValue))
+					isOverflow = true;
 				else
 					mResult.mInt64 = convLeftValue.GetInt64() / convRightValue.GetInt64();
 			}
 			if (isZero)
 				Fail("Divide by zero", opToken);
+			else if (isOverflow)
+				Fail("Integer overflow", opToken);
 		}
 		break;
 	case BfBinaryOp_Modulus:
 		{
 			bool isZero = false;
+			bool isOverflow = false;
 			if (resultType->mTypeCode == DbgType_Single)
 				mResult.mSingle = fmod(convLeftValue.mSingle, convRightValue.mSingle);
 			else if (resultType->mTypeCode == DbgType_Double)
@@ -6474,11 +6497,15 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 			{
 				if (convRightValue.GetInt64() == 0)
 					isZero = true;
+				else if (IsSignedDivideOverflow(resultType, convLeftValue, convRightValue))
+					isOverflow = true;
 				else
 					mResult.mInt64 = convLeftValue.GetInt64() % convRightValue.GetInt64();
 			}
 			if (isZero)
 				Fail("Divide by zero", opToken);
+			else if (isOverflow)
+				Fail("Integer overflow", opToken);
 		}
 		break;
 	case BfBinaryOp_Equality:
