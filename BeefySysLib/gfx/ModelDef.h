@@ -161,6 +161,10 @@ public:
 	String mMaterialName;
 	bool mHasSurfaceMaterial = false;
 	bool mTwoSided = false;
+	// Alpha-blended: a glTF BLEND material, or an FBX whose opacity is below 1.
+	bool mTransparent = false;
+	// Above 0, the alpha below which a pixel is discarded (a glTF MASK material's alphaCutoff).
+	float mAlphaCutoff = 0;
 	float mRoughness = 0.6f;
 	float mMetallic = 0.0f;
 	Vector3 mEmissive = Vector3(0, 0, 0);

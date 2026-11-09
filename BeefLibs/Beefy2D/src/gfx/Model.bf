@@ -189,6 +189,15 @@ namespace Beefy.gfx
 			return ModelDef_IsMaterialTwoSided(mNativeModelDef, meshIdx, primitivesIdx) != 0;
 		}
 
+		[CallingConvention(.Stdcall), CLink]
+		extern static int32 ModelDef_GetMaterialAlpha(void* nativeModel, int32 meshIdx, int32 primitivesIdx, out float cutoff);
+
+		// Alpha-blended when true; a cutoff above 0 is an alpha test instead, never both.
+		public bool GetMaterialAlpha(int32 meshIdx, int32 primitivesIdx, out float cutoff)
+		{
+			return ModelDef_GetMaterialAlpha(mNativeModelDef, meshIdx, primitivesIdx, out cutoff) != 0;
+		}
+
 		public bool GetSurfaceMaterial(int32 meshIdx, int32 primitivesIdx, out Vector2 parameters, out Vector3 emissive)
 		{
 			float[5] values = default;

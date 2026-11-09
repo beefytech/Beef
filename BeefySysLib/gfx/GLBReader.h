@@ -58,6 +58,19 @@ class GLBReader
 		return value == NULL ? fallback : value->mValueInt;
 	}
 
+	static double Dbl(Json* obj, const char* name, double fallback = 0)
+	{
+		auto value = obj == NULL ? NULL : obj->GetObjectItem(name);
+		return value == NULL ? fallback : value->mValueDouble;
+	}
+
+	// "" rather than NULL for a missing item, so the result is always safe to strcmp.
+	static const char* Str(Json* obj, const char* name)
+	{
+		auto value = obj == NULL ? NULL : obj->GetObjectItem(name);
+		return ((value == NULL) || (value->mValueString == NULL)) ? "" : value->mValueString;
+	}
+
 	static void Items(Json* array, Array<Json*>& items)
 	{
 		if (array != NULL)
@@ -391,6 +404,8 @@ class GLBReader
 			String materialName;
 			String albedoPath, normalPath, ormPath, emissionPath;
 			bool ormHasOcclusion = false;
+			bool transparent = false;
+			float alphaCutoff = 0;
 			int material = Int(primitive, "material", -1);
 			if (material >= 0)
 			{
@@ -424,6 +439,10 @@ class GLBReader
 				if (auto extensions = mMaterials[material]->GetObjectItem("extensions"))
 					if (auto extension = extensions->GetObjectItem("KHR_materials_emissive_strength"))
 						if (auto strength = extension->GetObjectItem("emissiveStrength")) emissive = emissive * (float)strength->mValueDouble;
+				const char* alphaMode = Str(mMaterials[material], "alphaMode");
+				transparent = strcmp(alphaMode, "BLEND") == 0;
+				if (strcmp(alphaMode, "MASK") == 0)
+					alphaCutoff = (float)Dbl(mMaterials[material], "alphaCutoff", 0.5);
 			}
 			ModelPrimitives* prims = NULL;
 			Dictionary<int, uint16> remap;
@@ -439,6 +458,8 @@ class GLBReader
 					prims->mHasSurfaceMaterial = true;
 					auto sidedness = material >= 0 ? mMaterials[material]->GetObjectItem("doubleSided") : NULL;
 					prims->mTwoSided = (sidedness != NULL) && (sidedness->mType == Json::Type_True);
+					prims->mTransparent = transparent;
+					prims->mAlphaCutoff = alphaCutoff;
 					prims->mRoughness = roughness;
 					prims->mMetallic = metallic;
 					prims->mEmissive = emissive;

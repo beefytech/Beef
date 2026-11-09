@@ -252,6 +252,24 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 						surface.mMetallicFileName = UfbxTexturePath(mat->pbr.metalness);
 						// Blender's connected image replaces the socket's fallback value.
 						if ((mat->shader_type == UFBX_SHADER_BLENDER_PHONG) && (!surface.mTexFileName.IsEmpty())) materialColor = 0xFFFFFFFF;
+						// A uniform opacity is the only transparency an FBX dependably carries, and it
+						// rides the vertex alpha like a glTF baseColorFactor's. Must stay below the
+						// reset above, which would otherwise drop it.
+						//
+						// pbr.opacity covers the shaders that state opacity outright (Blender's phong
+						// among them, already inverted for us); a plain FBX material instead states
+						// the legacy transparency, which ufbx leaves in fbx.transparency_factor.
+						double opacity = 1.0;
+						if (mat->pbr.opacity.has_value)
+							opacity = mat->pbr.opacity.value_real;
+						else if (mat->fbx.transparency_factor.has_value)
+							opacity = 1.0 - mat->fbx.transparency_factor.value_real;
+						if (opacity < 1.0)
+						{
+							opacity = BF_MAX(0.0, opacity);
+							materialColor = (materialColor & 0x00FFFFFF) | ((uint32)(opacity * 255.0 + 0.5) << 24);
+							surface.mTransparent = true;
+						}
 						surface.mHasSurfaceMaterial = mat->pbr.roughness.has_value || mat->pbr.metalness.has_value || mat->pbr.emission_factor.has_value;
 						if (mat->pbr.roughness.has_value) surface.mRoughness = (float)mat->pbr.roughness.value_real;
 						if (mat->pbr.metalness.has_value) surface.mMetallic = (float)mat->pbr.metalness.value_real;
@@ -543,6 +561,7 @@ bool FBXReader::ReadFile(const StringImpl& fileName, bool loadAnims)
 
 			prims->mMaterialName = fbxMesh->mMaterial.mName;
 			prims->mHasSurfaceMaterial = fbxMesh->mMaterial.mHasSurfaceMaterial;
+			prims->mTransparent = fbxMesh->mMaterial.mTransparent;
 			prims->mRoughness = fbxMesh->mMaterial.mRoughness;
 			prims->mMetallic = fbxMesh->mMaterial.mMetallic;
 			prims->mEmissive = fbxMesh->mMaterial.mEmissive;

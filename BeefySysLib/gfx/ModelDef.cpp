@@ -363,6 +363,15 @@ BF_EXPORT int BF_CALLTYPE ModelDef_IsMaterialTwoSided(ModelDef* modelDef, int me
 	return modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx].mTwoSided ? 1 : 0;
 }
 
+// Nonzero for an alpha-blended material. A positive *outCutoff is an alpha test instead; a file
+// asks for one or the other, never both.
+BF_EXPORT int BF_CALLTYPE ModelDef_GetMaterialAlpha(ModelDef* modelDef, int meshIdx, int primitivesIdx, float* outCutoff)
+{
+	auto& prims = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx];
+	*outCutoff = prims.mAlphaCutoff;
+	return prims.mTransparent ? 1 : 0;
+}
+
 BF_EXPORT int BF_CALLTYPE ModelDef_GetSurfaceMaterial(ModelDef* modelDef, int meshIdx, int primitivesIdx, float* values)
 {
 	auto& prims = modelDef->mMeshes[meshIdx].mPrimitives[primitivesIdx];

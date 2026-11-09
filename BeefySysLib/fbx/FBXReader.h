@@ -63,6 +63,7 @@ class FBXMaterial
 {
 public:
 	bool mHasSurfaceMaterial = false;
+	bool mTransparent = false;
 	float mRoughness = 0.6f;
 	float mMetallic = 0.0f;
 	Vector3 mEmissive = Vector3(0, 0, 0);
