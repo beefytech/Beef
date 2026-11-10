@@ -1379,6 +1379,8 @@ void BfModule::PopulateType(BfType* resolvedTypeRef, BfPopulateType populateType
  	if (populateType <= BfPopulateType_TypeDef)
  		return;
 
+	resolvedTypeRef->mActiveRevision = mCompiler->mRevision;
+
 	auto typeInstance = resolvedTypeRef->ToTypeInstance();
 	CheckInjectNewRevision(typeInstance);
 
@@ -2715,7 +2717,11 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 			{
 				auto owner = methodInstance->GetOwner();
 				int typeId = owner->mTypeId;
-				if ((!result) && (mCompiler->mFastFinish))
+				// Sample this once - a fast-finish request can arrive from another thread at any point, and a call that
+				//  completed before it arrived produced a full emission that we must still apply. Only a call that was
+				//  actually cut short (which also defers a rebuild of this type) gets the fast-finish treatment.
+				bool fastFinished = (!result) && (mCompiler->mFastFinish);
+				if (fastFinished)
 				{
 					if ((typeInstance->mCeTypeInfo != NULL) && (typeInstance->mCeTypeInfo->mNext == NULL))
 						typeInstance->mCeTypeInfo->mNext = new BfCeTypeInfo();
@@ -2749,7 +2755,7 @@ void BfModule::HandleCEAttributes(CeEmitContext* ceEmitContext, BfTypeInstance* 
 						typeInstance->mCeTypeInfo->mFailed = true;
 				}
 
-				if ((ceEmitContext->HasEmissions()) && (!mCompiler->mFastFinish))
+				if ((ceEmitContext->HasEmissions()) && (!fastFinished))
 				{
 					String ctxStr = "comptime ";
 					ctxStr += methodInstance->mMethodDef->mName;
@@ -11135,7 +11141,12 @@ void BfModule::TypeRefNotFound(BfTypeReference* typeRef, const char* appendName)
 				BfTypeInstance* typeInstance = mCurTypeInstance;
 				BfTypeLookupEntry typeLookupEntry;
 				typeLookupEntry.mNumGenericParams = 0;
-				typeLookupEntry.mAtomUpdateIdx = mSystem->mAtomUpdateIdx;
+				typeLookupEntry.mFlags = BfTypeLookupEntry::Flags_None;
+				typeLookupEntry.mUseTypeDef = NULL;
+				// The name has a part that is not an atom, so this lookup can only start succeeding after a new atom is created.
+				//  We record the atom creation count rather than mAtomUpdateIdx, which also changes whenever a type is removed -
+				//  including our own emitted typedef each time we are rebuilt, which had us fail this lookup, rebuild, and dirty it again
+				typeLookupEntry.mAtomUpdateIdx = (uint32)mSystem->mAtomCreateIdx;
 				typeInstance->mLookupResults.TryAdd(typeLookupEntry, BfTypeLookupResult());
 			}
 		}
@@ -14845,6 +14856,12 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 				BfStringPoolEntry* entry = NULL;
 				if ((isNull) || (mContext->mStringObjectIdMap.TryGetValue(stringId, &entry)))
 				{
+					// 'entry' points straight into mStringObjectIdMap's entry storage. The PopulateType
+					//  calls below can intern new string literals, and that insert can reallocate the
+					//  entry array (or hand this slot to another string off the free list), so read the
+					//  length we need out now, while the pointer is still valid
+					if (entry != NULL)
+						strLen = (int)entry->mString.mLength;
 					auto svTypeInst = toType->ToTypeInstance();
 					
 					PopulateType(svTypeInst);
@@ -14866,7 +14883,7 @@ BfIRValue BfModule::CastToValue(BfAstNode* srcNode, BfTypedValue typedVal, BfTyp
 						{
 							auto stringCharPtr = GetStringCharPtr(stringId);
 							spanFieldVals.Add(stringCharPtr);
-							spanFieldVals.Add(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, entry->mString.mLength));
+							spanFieldVals.Add(mBfIRBuilder->CreateConst(BfTypeCode_IntPtr, strLen));
 						}
 
 						SizedArray<BfIRValue, 2> svFieldVals;
