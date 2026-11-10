@@ -515,6 +515,7 @@ class BfType
 {
 public:
 	BfTypeRebuildFlags mRebuildFlags;
+	int mActiveRevision; // Last compile revision we were populated in, had a method processed in, or added a dependency in
 
 	BfContext* mContext;
 	int mTypeId;

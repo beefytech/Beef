@@ -277,6 +277,7 @@ BfType::BfType()
 	mTypeId = -1;
 	mContext = NULL;
 	mRevision = -1;
+	mActiveRevision = -1;
 
 	//mLastUsedRevision = -1;
 

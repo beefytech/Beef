@@ -363,6 +363,20 @@ public:
 	}
 };
 
+// Restricts a TypeDataChanged/TypeMethodSignaturesChanged cascade to dependents that have done some work since a given revision
+struct BfRebuildFilter
+{
+	int mMinActiveRevision;
+	HashSet<BfDependedType*> mStaticChangeSet;
+	HashSet<BfDependedType*> mNonStaticChangeSet;
+	HashSet<BfTypeInstance*> mMethodSignatureChangeSet;
+
+	BfRebuildFilter()
+	{
+		mMinActiveRevision = -1;
+	}
+};
+
 enum BfFailKind
 {
 	BfFailKind_Normal,
@@ -395,6 +409,7 @@ public:
 	Array<BfModule*> mModules;
 	Array<BfModule*> mDeletingModules;
 	Dictionary<BfTypeInstance*, BfFailKind> mFailTypes; // All types handled after a failure need to be rebuild on subsequent compile
+	int mDeepFailRevision; // Earliest revision a BfFailKind_Deep type in mFailTypes was left incomplete in, or -1
 	HashSet<BfTypeInstance*> mReferencedIFaceSlots;
 
 	BfMethodInstance* mValueTypeDeinitSentinel;
@@ -510,8 +525,8 @@ public:
 	void RebuildDependentTypes_MidCompile(BfDependedType* dType, const String& reason);
 	bool IsRebuilding(BfType* type);
 	bool CanRebuild(BfType* type);
-	void TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChange);
-	void TypeMethodSignaturesChanged(BfTypeInstance* typeInst);
+	void TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChange, BfRebuildFilter* rebuildFilter = NULL);
+	void TypeMethodSignaturesChanged(BfTypeInstance* typeInst, BfRebuildFilter* rebuildFilter = NULL);
 	void TypeInlineMethodInternalsChanged(BfTypeInstance* typeInst);
 	void TypeConstEvalChanged(BfTypeInstance* typeInst);
 	void TypeConstEvalFieldChanged(BfTypeInstance* typeInst);
