@@ -3773,6 +3773,8 @@ bool BfModule::CheckDefineMemberProtection(BfProtection protection, BfType* memb
 
 void BfModule::AddDependency(BfType* usedType, BfType* userType, BfDependencyMap::DependencyFlags flags, BfDepContext* depContext)
 {
+	userType->mActiveRevision = mCompiler->mRevision;
+
 	if (usedType == userType)
 		return;
 
@@ -4274,6 +4276,8 @@ void BfModule::DeferRebuildType(BfTypeInstance* typeInstance)
 	// Other types may have already consumed values we produced in this incomplete state, such as a const left at zero by a
 	//  cancelled comptime call being used as another type's sized array size, so those need to be rebuilt as well
 	mContext->mFailTypes[typeInstance] = BfFailKind_Deep;
+	if (mContext->mDeepFailRevision == -1)
+		mContext->mDeepFailRevision = mCompiler->mRevision;
 }
 
 void BfModule::CheckAddFailType()
@@ -13846,6 +13850,12 @@ BfVariant BfModule::TypedValueToVariant(BfAstNode* refNode, const BfTypedValue& 
 {
 	BfVariant variant;
 	variant.mTypeCode = BfTypeCode_None;
+
+	// A type that has been queued for rebuild doesn't know that it's a typed primitive until it's populated again,
+	//  so without this an enum value would get encoded as struct data (ie: a const generic arg from a default value)
+	if ((value.mType->IsValueType()) && (value.mType->IsIncomplete()) && (value.mType->ToTypeInstance() != NULL))
+		PopulateType(value.mType);
+
 	BfType* primType = NULL;
 	if (value.mType->IsPrimitiveType())
 		primType = (BfPrimitiveType*)value.mType;
@@ -21160,7 +21170,9 @@ void BfModule::ProcessMethod_ProcessDeferredLocals(int startIdx)
 
 					mCurMethodState->mLocalMethods = deferredLocalMethod->mLocalMethods;
 
-					bool doProcess = !mCompiler->mCanceling;
+					// A comptime function is cached once it's built, so it can't be left without its local method
+					//  bodies just because the compile that happened to request it was canceled
+					bool doProcess = (!mCompiler->mCanceling) || (mIsComptimeModule);
 					if (doProcess)
 					{
 						BP_ZONE_F("ProcessMethod local %s", deferredLocalMethod->mMethodInstance->mMethodDef->mName.c_str());
@@ -21220,7 +21232,8 @@ void BfModule::ProcessMethod_ProcessDeferredLocals(int startIdx)
 				methodInstanceGroup.mOwner = mCurTypeInstance;
 				methodInstanceGroup.mOnDemandKind = BfMethodOnDemandKind_AlwaysInclude;
 
-				bool doProcess = !mCompiler->mCanceling;
+				// See the comptime note for deferred local methods above
+				bool doProcess = (!mCompiler->mCanceling) || (mIsComptimeModule);
 				if (doProcess)
 				{
 					BP_ZONE_F("ProcessMethod lambdaInstance %s", lambdaInstance->mMethodInstance->mMethodDef->mName.c_str());
@@ -21679,6 +21692,8 @@ void BfModule::EmitGCFindTLSMembers()
 
 void BfModule::ProcessMethod(BfMethodInstance* methodInstance, bool isInlineDup, bool forceIRWrites)
 {
+	methodInstance->GetOwner()->mActiveRevision = mCompiler->mRevision;
+
 	BP_ZONE_F("BfModule::ProcessMethod %s", BP_DYN_STR(methodInstance->mMethodDef->mName.c_str()));
 
 	if (mIsComptimeModule)
@@ -24409,7 +24424,7 @@ BfModuleMethodInstance BfModule::GetLocalMethodInstance(BfLocalMethod* localMeth
 	{
 		if (localMethod->mDeclOnly)
 			return;
-		if (mCompiler->mCanceling)
+		if ((mCompiler->mCanceling) && (!mIsComptimeModule))
 			return;
 
 		if (auto blockBody = BfNodeDynCast<BfBlock>(body))
