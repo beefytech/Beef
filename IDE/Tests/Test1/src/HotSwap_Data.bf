@@ -119,6 +119,7 @@ namespace IDETest
 			*/
 
 			int a = 0;
+			int ext = HotSwap_DataExt.FuncExt();
 			//Test_Test01
 			Test01();
 			Test01();
@@ -132,6 +133,23 @@ namespace IDETest
 
 			//Test_Test04
 			Test04();
+		}
+	}
+
+	class HotSwap_DataExt
+	{
+	}
+
+	extension HotSwap_DataExt
+	{
+	}
+
+	extension HotSwap_DataExt
+	{
+		// Mangled as "2$7FuncExt"; a data change logs every method's demangled name, and this one once hung the demangler
+		public static int FuncExt()
+		{
+			return 1;
 		}
 	}
 }
