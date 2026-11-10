@@ -8403,9 +8403,12 @@ bool CeContext::Execute(CeFunction* startFunction, uint8* startStackPtr, uint8* 
 		SpecialCheck:
 			if (*fastFinishPtr)
 			{
-				BfTypeInstance* rebuildType = NULL;
-				if ((mCurModule != NULL) && (mCurModule->mCurTypeInstance != NULL))
-					rebuildType = mCurModule->mCurTypeInstance;
+				// The type this leaves incomplete is the one that was being compiled when it made the call - the emit target, or
+				//  else the caller. It is not mCurModule->mCurTypeInstance, which CeContext::Call points at the owner of the method
+				//  being executed (ie: System.String for String.ConstF) - rebuilding that drags in everything that depends on it.
+				BfTypeInstance* rebuildType = mCallerTypeInstance;
+				if ((mCallerMethodInstance != NULL) && (mCallerMethodInstance->mIsAutocompleteMethod))
+					rebuildType = NULL;
 				if ((mCurEmitContext != NULL) && (mCurEmitContext->mType != NULL))
 					rebuildType = mCurEmitContext->mType->ToTypeInstance();
 				if (rebuildType != NULL)
