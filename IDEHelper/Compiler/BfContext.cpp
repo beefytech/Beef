@@ -49,6 +49,7 @@ BfContext::BfContext(BfCompiler* compiler) :
 	mAllowLockYield = true;
 
 	mCurTypeState = NULL;
+	mDeepFailRevision = -1;
 	mCurNamespaceNodes = NULL;
 	mCurConstraintState = NULL;
 	mResolvingVarField = false;
@@ -1433,20 +1434,30 @@ bool BfContext::CanRebuild(BfType* type)
 //   ClassB, it means that ClassC code needs to be recompiled if ClassA data layout changes, but performing a ReadField
 //   (obviously) doesn't change the data layout of ClassC
 //  Calls: non-cascading dependency, since it's independent of data layout ConstValue: non-cascading data change
-void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChange)
+void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChange, BfRebuildFilter* rebuildFilter)
 {
 	BfLogSysM("TypeDataChanged %p\n", dType);
 
 	auto rebuildFlag = isNonStaticDataChange ? BfTypeRebuildFlag_NonStaticChange : BfTypeRebuildFlag_StaticChange;
 	if ((dType->mRebuildFlags & rebuildFlag) != 0) // Already did this change?
 		return;
-	dType->mRebuildFlags = (BfTypeRebuildFlags)(dType->mRebuildFlags | rebuildFlag);
+	if (rebuildFilter != NULL)
+	{
+		// A filtered change does not reach all of our dependents, so we cannot record it on the type as having been done
+		auto& changeSet = isNonStaticDataChange ? rebuildFilter->mNonStaticChangeSet : rebuildFilter->mStaticChangeSet;
+		if (!changeSet.Add(dType))
+			return;
+	}
+	else
+		dType->mRebuildFlags = (BfTypeRebuildFlags)(dType->mRebuildFlags | rebuildFlag);
 
 	// We need to rebuild all other types that rely on our data layout
 	for (auto& depItr : dType->mDependencyMap)
 	{
 		auto dependentType = depItr.mKey;
 		auto dependencyFlags = depItr.mValue.mFlags;
+		if ((rebuildFilter != NULL) && (dependentType->mActiveRevision < rebuildFilter->mMinActiveRevision))
+			continue;
 
 		auto dependentDType = dependentType->ToDependedType();
 		if (dependentDType != NULL)
@@ -1483,17 +1494,24 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 				}
 
 				if (hadChange)
-					TypeDataChanged(dependentDType, true);
+					TypeDataChanged(dependentDType, true, rebuildFilter);
+			}
+			else if ((dependencyFlags & BfDependencyMap::DependencyFlag_ValueTypeSizeDep) != 0)
+			{
+				// One of our consts sizes the dependent type (ie: int32[DepType.cVal]), so a change to our static data changes its
+				//  layout. We only get here with a static change when our const is itself computed from another type's const, and
+				//  the types that hold the dependent by value would otherwise keep its old size
+				TypeDataChanged(dependentDType, true, rebuildFilter);
 			}
 
 			if (dependencyFlags & BfDependencyMap::DependencyFlag_ConstValue)
 			{
-				TypeDataChanged(dependentDType, false);
+				TypeDataChanged(dependentDType, false, rebuildFilter);
 
 				// The ConstValue dependency may be that dependentType used one of our consts as
 				//  a default value to a method param, so assume callsites need rebuilding
 				if (dependentTypeInstance != NULL)
-					TypeMethodSignaturesChanged(dependentTypeInstance);
+					TypeMethodSignaturesChanged(dependentTypeInstance, rebuildFilter);
 			}
 
 			if (CanRebuild(dependentType))
@@ -1529,11 +1547,17 @@ void BfContext::TypeDataChanged(BfDependedType* dType, bool isNonStaticDataChang
 		RebuildType(dType);
 }
 
-void BfContext::TypeMethodSignaturesChanged(BfTypeInstance* typeInst)
+void BfContext::TypeMethodSignaturesChanged(BfTypeInstance* typeInst, BfRebuildFilter* rebuildFilter)
 {
 	if (typeInst->mRebuildFlags & BfTypeRebuildFlag_MethodSignatureChange) // Already did change?
 		return;
-	typeInst->mRebuildFlags = (BfTypeRebuildFlags) (typeInst->mRebuildFlags | BfTypeRebuildFlag_MethodSignatureChange);
+	if (rebuildFilter != NULL)
+	{
+		if (!rebuildFilter->mMethodSignatureChangeSet.Add(typeInst))
+			return;
+	}
+	else
+		typeInst->mRebuildFlags = (BfTypeRebuildFlags) (typeInst->mRebuildFlags | BfTypeRebuildFlag_MethodSignatureChange);
 
 	BfLogSysM("TypeMethodSignaturesChanged %p\n", typeInst);
 
@@ -1542,6 +1566,8 @@ void BfContext::TypeMethodSignaturesChanged(BfTypeInstance* typeInst)
 	{
 		auto dependentType = depItr.mKey;
 		auto dependencyFlags = depItr.mValue.mFlags;
+		if ((rebuildFilter != NULL) && (dependentType->mActiveRevision < rebuildFilter->mMinActiveRevision))
+			continue;
 
 		if (dependentType->mRevision != mCompiler->mRevision)
 		{
@@ -2043,11 +2069,19 @@ void BfContext::DeleteType(BfType* type, bool deferDepRebuilds)
 			else if (dependentTypeInst != NULL)
 			{
 				mGhostDependencies.Add(type);
-				// This keeps us from crashing from accessing deleted types on subsequent compiles
-				mFailTypes.TryAdd(dependentTypeInst, BfFailKind_Normal);
-				// The dependent was already rebuilt this revision (ie: before a mid-compile rebuild deleted us), so it still
-				//  refers to us for the rest of this compile. Its output can't be trusted, so compile again to rebuild it.
-				mCompiler->RequestExtraCompile();
+				if (dependentTypeInst->mDefineState != BfTypeDefineState_Undefined)
+				{
+					// This keeps us from crashing from accessing deleted types on subsequent compiles
+					mFailTypes.TryAdd(dependentTypeInst, BfFailKind_Normal);
+					// The dependent was already rebuilt this revision (ie: before a mid-compile rebuild deleted us), so it still
+					//  refers to us for the rest of this compile. Its output can't be trusted, so compile again to rebuild it.
+					mCompiler->RequestExtraCompile();
+				}
+				// An already-undefined dependent holds no populated reference to us - it was reset for a
+				//  rebuild earlier in this same revision and re-resolves everything before anything reads
+				//  it, so there is nothing stale to repair. Marking it as a fail type anyway makes the next
+				//  revision redo it, and that keeps re-deleting the same on-demand dependencies, so the set
+				//  never drains and every resolve pass re-declares the same types
 			}
 		}
 	}
@@ -2272,6 +2306,12 @@ void BfContext::UpdateRevisedTypes()
 	// Temporarily store failTypes - we may need to re-insert into them after another failure
 	auto failTypes = mFailTypes;
 	mFailTypes.Clear();
+	// Other types may have consumed the incomplete state a cancelled comptime call left a type in (see BfModule::DeferRebuildType),
+	//  but only if they did some work after it was left that way. Any dependent that has been idle since then still holds what it
+	//  got from the last complete build of the type, and a real change from that is handled the same as it is without a cancel.
+	BfRebuildFilter deepRebuildFilter;
+	deepRebuildFilter.mMinActiveRevision = mDeepFailRevision;
+	mDeepFailRevision = -1;
 
 	bool wantsDebugInfo = (mCompiler->mOptions.mEmitDebugInfo);
 
@@ -2464,7 +2504,14 @@ void BfContext::UpdateRevisedTypes()
 			{
 				BfLogSysM("Rebuilding failed type %p %d\n", typeInst, (int)failKV.mValue);
 				if (failKV.mValue == BfFailKind_Deep)
-					TypeDataChanged(typeInst, true);
+				{
+					TypeDataChanged(typeInst, true, &deepRebuildFilter);
+					TypeMethodSignaturesChanged(typeInst, &deepRebuildFilter);
+					// Everything that could have been slotted against our incomplete emissions has been rebuilt now, so the retry
+					//  only needs to rebuild our dependents (again) if what it emits has actually changed
+					if (typeInst->mCeTypeInfo != NULL)
+						typeInst->mCeTypeInfo->mFastFinished = false;
+				}
 				else
 					RebuildType(typeInst);
 			}
@@ -2818,7 +2865,7 @@ void BfContext::VerifyTypeLookups(BfTypeInstance* typeInst)
 		if (lookupEntry.mName.IsEmpty())
 		{
 			// If the name lookup failed before, thats because we didn't have the right atoms.  Are there new atoms now?
-			if (lookupEntry.mAtomUpdateIdx != mSystem->mAtomUpdateIdx)
+			if (lookupEntry.mAtomUpdateIdx != (uint32)mSystem->mAtomCreateIdx)
 				isDirty = true;
 		}
 		else
@@ -2848,7 +2895,13 @@ void BfContext::VerifyTypeLookups(BfTypeInstance* typeInst)
 					lookupResultCtx.mResult = lookupResult;
 					lookupResultCtx.mIsVerify = true;
 
-					BfTypeDef* result = typeInst->mModule->FindTypeDefRaw(lookupEntry.mName, lookupEntry.mNumGenericParams, typeInst, useTypeDef, NULL, &lookupResultCtx);
+					// Pass AllowGlobalContainer so this can reproduce a lookup that originally resolved to a
+					//  namespace-level globals container. Without it FindTypeDefRaw finds the container and then
+					//  returns NULL, so every cached lookup of a 'static' container looks like it changed and we
+					//  treat the referencing type as having a whole new signature - rebuilding it and everything
+					//  that depends on it, on every single compile
+					BfTypeDef* result = typeInst->mModule->FindTypeDefRaw(lookupEntry.mName, lookupEntry.mNumGenericParams, typeInst, useTypeDef, NULL, &lookupResultCtx,
+						BfResolveTypeRefFlag_AllowGlobalContainer);
 					if ((result == NULL) && (lookupResult->mFoundInnerType))
 					{
 						// Allow this- if there were new types added then the types would be rebuilt already
