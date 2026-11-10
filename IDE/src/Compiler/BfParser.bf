@@ -103,6 +103,7 @@ namespace IDE.Compiler
 		public String mDocumentationName ~ delete _;
 		public bool mCancelled;
 		public int32 mTextVersion = -1;
+		public int32 mTextChangeIdx = -1;
 		public bool mIsUserRequested;
 		public bool mDoFuzzyAutoComplete;
 		public Stopwatch mStopwatch ~ delete _;

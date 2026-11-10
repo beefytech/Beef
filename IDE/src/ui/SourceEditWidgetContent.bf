@@ -3821,6 +3821,12 @@ namespace IDE.ui
 			mData.mUndoManager.Add(undoBatchStart.mBatchEnd);
 		}
 
+		public override void TextChanged()
+		{
+			base.TextChanged();
+			mData.mTextChangeIdx++;
+		}
+
         public override void ContentChanged()
         {
             base.ContentChanged();
@@ -7339,4 +7345,16 @@ namespace IDE.ui
 			base.RemoveSecondaryTextCursors(force);
 		}
     }
+}
+
+namespace Beefy.widgets
+{
+	extension EditWidgetContent
+	{
+		extension Data
+		{
+			// Goes up each time the text changes. Unlike mCurTextVersionId, undo never takes this back to an earlier value
+			public int32 mTextChangeIdx;
+		}
+	}
 }

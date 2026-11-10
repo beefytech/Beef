@@ -454,6 +454,8 @@ namespace IDE.ui
         public int32 mLastTextVersionId;
         public int32 mAutocompleteTextVersionId;
         public int32 mClassifiedTextVersionId;
+        public int32 mClassifiedTextChangeIdx;
+        public int32 mResolveAllTextChangeIdx = -1;
 		public int32 mLastRecoveryTextVersionId;
 		public bool mLoadFailed;
 		String mOldVerLoadCmd ~ delete _;
@@ -1382,6 +1384,7 @@ namespace IDE.ui
 					resolveParams.mDocumentationName = new String(selectedEntry.mEntryDisplay);
 				}
 				resolveParams.mTextVersion = Content.mData.mCurTextVersionId;
+				resolveParams.mTextChangeIdx = Content.mData.mTextChangeIdx;
 
 				compiler.CheckThreadDone(); // Process any pending thread done callbacks
 
@@ -2021,7 +2024,26 @@ namespace IDE.ui
 			scope AutoBeefPerf("SourceViewPanel.DoClassify");
 
 			if ((resolveType == .Classify) || (resolveType == .ClassifyFullRefresh))
-				gApp.mErrorsPanel.SetNeedsResolveAll();
+			{
+				// A workspace ResolveAll exists to refresh workspace-wide errors, and those can only
+				//  change if this file's content changed. Re-classifying unchanged text - a newly shown
+				//  panel, or a refresh queued by RefreshVisibleViews after some other resolve finished -
+				//  cannot change them. Asking for one anyway closes a loop: classify -> ResolveAll ->
+				//  RefreshVisibleViews -> QueueFullRefresh -> classify -> ResolveAll
+				//
+				// A queued classify works on the text it was queued with, and we can be running on the compiler thread after
+				//  more edits have been made. Recording the live state here would mark text that has not been classified yet
+				//  as having had its ResolveAll, so the classify that does parse it would then skip the request.
+				//
+				// We compare the text change index rather than the text version id, since undo restores an earlier version id
+				//  and the next edit then reuses an id that different text already had.
+				int32 resolveAllTextChangeIdx = ((resolveParams != null) && (resolveParams.mTextChangeIdx != -1)) ? resolveParams.mTextChangeIdx : mEditWidget.Content.mData.mTextChangeIdx;
+				if (mResolveAllTextChangeIdx != resolveAllTextChangeIdx)
+				{
+					mResolveAllTextChangeIdx = resolveAllTextChangeIdx;
+					gApp.mErrorsPanel.SetNeedsResolveAll();
+				}
+			}
 
 			if ((resolveType.IsClassify) && (!resolveParams.mCharIdSpan.IsEmpty))
 			{
@@ -6806,8 +6828,11 @@ namespace IDE.ui
             }
 #endif
 
+            // Undo restores an earlier text version id, so the text can change and still show the version id we last saw.
+            //  The change index only ever goes up, so it catches that.
             if ((mLastTextVersionId != mEditWidget.Content.mData.mCurTextVersionId) ||
-                (mClassifiedTextVersionId != mEditWidget.Content.mData.mCurTextVersionId))
+                (mClassifiedTextVersionId != mEditWidget.Content.mData.mCurTextVersionId) ||
+                (mClassifiedTextChangeIdx != mEditWidget.Content.mData.mTextChangeIdx))
             {
                 if ((mIsBeefSource) && (projectSource != null))
                 {
@@ -6825,11 +6850,13 @@ namespace IDE.ui
                 }
 #endif
 
-                if (mClassifiedTextVersionId != mEditWidget.Content.mData.mCurTextVersionId)
+                if ((mClassifiedTextVersionId != mEditWidget.Content.mData.mCurTextVersionId) ||
+                    (mClassifiedTextChangeIdx != mEditWidget.Content.mData.mTextChangeIdx))
                 {
                     mWantsSpellCheck = true;
                     mWantsFullClassify = true;
                     mClassifiedTextVersionId = mEditWidget.Content.mData.mCurTextVersionId;
+                    mClassifiedTextChangeIdx = mEditWidget.Content.mData.mTextChangeIdx;
 
                     if ((mProjectSource != null) && (IDEApp.sApp.mWakaTime != null) && (IsControllingEditData()))
                     {
