@@ -4453,7 +4453,17 @@ void BfCompiler::ProcessAutocompleteTempType()
 		return;
 	}
 
+	// We can be running nested inside an in-flight compile (during one of its lock yields) that has been canceled.
+	//  That compile needs to resume in the fast-finish state it yielded in, otherwise it's left canceled but not
+	//  fast-finishing and its comptime calls run to completion instead of bailing out and deferring their rebuild.
+	//  Comptime execution here will have cleared the 'special check' flag, so that gets re-armed as well.
+	bool prevFastFinish = mFastFinish;
 	mFastFinish = false;
+	defer(
+	{
+		if (prevFastFinish)
+			RequestFastFinish();
+	});
 
 	SetAndRestoreValue<BfMethodState*> prevMethodState(module->mCurMethodState, NULL);
 	SetAndRestoreValue<BfTypeInstance*> prevTypeInstance(module->mCurTypeInstance, NULL);
