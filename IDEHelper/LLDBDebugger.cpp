@@ -1204,6 +1204,12 @@ void LLDBDebugger::Update()
 			continue;
 		lldb::StateType state = lldb::SBProcess::GetStateFromEvent(event);
 		LLDBLog("Update got event state:%d\n", state);
+		// A stop LLDB has already resumed from (an internal one, such as after the target is interrupted
+		// for a hot swap) is not a stop of the program. The process can still read as stopped while it
+		// resumes, so the stale-event check in HandleProcessEvent doesn't catch it, and the target would
+		// be shown as paused while it runs.
+		if ((state == lldb::eStateStopped) && (lldb::SBProcess::GetRestartedFromEvent(event)))
+			continue;
 		HandleProcessEvent(state);
 	}
 
