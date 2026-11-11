@@ -2316,6 +2316,7 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 	mDwarfRefEnd = 0;
 	mDwarfFailed = false;
 	mDwarfFailCount = 0;
+	mDwarfInlineeRangeCount = 0;
 	mEHFrameData = NULL;
 	mEHFrameSize = 0;
 	mEHFrameAddress = 0;
@@ -4194,6 +4195,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 							inlineeRange.mInlinee = subProgram;
 							inlineeRange.mDepth = subProgram->mInlineeInfo->mInlineDepth;
 							compileUnit->mInlineeRanges.Add(inlineeRange);
+							mDwarfInlineeRangeCount++;
 						}
 					}
 				}
@@ -5627,6 +5629,8 @@ void DbgModule::ParseDWARFLines()
 		const uint8* data = mDebugLineData + compileUnit->mStmtListOffset;
 		PrepareDwarfInlineeRanges(compileUnit);
 		ParseDebugLineInfo(data, compileUnit);
+		// Only the line program reads the ranges; the rows it made carry the inline contexts
+		compileUnit->mInlineeRanges.Dispose();
 	}
 }
 
