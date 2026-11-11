@@ -116,6 +116,12 @@ bool DwDemangler::DemangleBuiltinType(StringImpl& outName)
 		RETURN_STR("__float128");
 	case 'z':
 		RETURN_STR("...");
+	case 'u':
+		// A vendor extended type named by a source name, as "u3int" and "u4uint" are written for int and uint
+		if (DemangleSourceName(outName))
+			return true;
+		mCurIdx--;
+		return false;
 	case 'D':
 		{
 			char nextChar = SafeGetChar(mMangledName, mCurIdx++);
@@ -937,13 +943,14 @@ bool DwDemangler::DemangleName(StringImpl& outName, bool* outHasTemplateArgs)
 					int arrayDims = 0;
 					if (!mRawDemangle)
 					{
-						if (outName == "__TUPLE")
+						// A failed parse leaves templateArgs unclosed, possibly just "<", so only strip a complete list
+						if ((outName == "__TUPLE") && (templateArgs.length() >= 2))
 						{
 							outName = "(" + templateArgs.Substring(1, templateArgs.length() - 2) + ")";
 							mSubstituteList.push_back(outName);
 							continue;
 						}
-						else if (outName == "Box")
+						else if ((outName == "Box") && (templateArgs.length() >= 2))
 						{
 							outName = templateArgs.Substring(1, templateArgs.length() - 2) + "^";
 							mSubstituteList.push_back(outName);
