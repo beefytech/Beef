@@ -12,10 +12,12 @@ ToggleCommentAt("ClassB_mB2")
 SetExpectError("data changes")
 Compile()
 ExpectError()
+AssertCompileFailed()
 
 # Once sB is deleted, ClassB can change
 Continue()
 Compile()
+AssertCompileSucceeded()
 AssertEvalEquals("step", "1")
 
 # sA was created by the allocator's AllocObject
@@ -23,7 +25,9 @@ ToggleCommentAt("ClassA_mA2")
 SetExpectError("data changes")
 Compile()
 ExpectError()
+AssertCompileFailed()
 
 Continue()
 Compile()
+AssertCompileSucceeded()
 AssertEvalEquals("step", "2")

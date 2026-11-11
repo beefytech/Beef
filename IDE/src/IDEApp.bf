@@ -14376,6 +14376,8 @@ namespace IDE
 					var compileInstance = mWorkspace.mCompileInstanceList.Back;
 					Debug.Assert(compileInstance.mCompileResult == .PendingHotLoad);
 					compileInstance.mCompileResult = .Failure;
+					// The compile did not take: the program still runs the old code
+					mLastCompileFailed = true;
 				}
 			}
 
