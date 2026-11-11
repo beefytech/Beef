@@ -3562,6 +3562,8 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 	Array<AbstractOriginEntry> abstractOriginReplaceList;
 
 	Array<int> deferredArrayDims;
+	bool wantsInlineContexts = WantsDwarfInlineContexts();
+	Array<DbgInlineeRange> dieInlineeRanges;
 
 	int startingTypeIdx = (int)linkedModule->mTypes.size();
 
@@ -4006,6 +4008,8 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 		if (entryTag == DW_TAG_compile_unit)
 			cuBaseAddr = (addr_target)atRawLowPC;
 
+		bool collectInlineeRanges = (wantsInlineContexts) && (entryTag == DW_TAG_inlined_subroutine);
+		dieInlineeRanges.Clear();
 		if ((hasRanges) && (atLowPC == 0))
 		{
 			addr_target baseAddr = cuBaseAddr;
@@ -4024,6 +4028,12 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 
 				lowPC = RemapAddr(baseAddr + lowPC);
 				highPC = RemapAddr(baseAddr + highPC) - lowPC;
+
+				if (collectInlineeRanges)
+				{
+					DbgInlineeRange inlineeRange = { lowPC, lowPC + highPC, 0, NULL, 0 };
+					dieInlineeRanges.Add(inlineeRange);
+				}
 
 				// Select the largest range.  We have some cases where some hoisting and such will
 				//  give us a small inlining aberration much earlier than expected so this ignores that
@@ -4167,6 +4177,25 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 					subProgram->mInlineeInfo->mRootInliner = parentSubProgram->GetRootInlineParent();
 					subProgram->mFrameBaseData = parentSubProgram->mFrameBaseData;
 					subProgram->mFrameBaseLen = parentSubProgram->mFrameBaseLen;
+
+					if (collectInlineeRanges)
+					{
+						DbgInlineeInfo* parentInlineeInfo = parentSubProgram->mInlineeInfo;
+						subProgram->mInlineeInfo->mInlineDepth = (parentInlineeInfo != NULL) ? parentInlineeInfo->mInlineDepth + 1 : 1;
+						subProgram->mInlineeInfo->mCallFile = atCallFile;
+						subProgram->mInlineeInfo->mCallLine = atCallLine;
+						if ((dieInlineeRanges.IsEmpty()) && (atHighPC > 0))
+						{
+							DbgInlineeRange inlineeRange = { (addr_target)atLowPC, (addr_target)(atLowPC + atHighPC), 0, NULL, 0 };
+							dieInlineeRanges.Add(inlineeRange);
+						}
+						for (auto& inlineeRange : dieInlineeRanges)
+						{
+							inlineeRange.mInlinee = subProgram;
+							inlineeRange.mDepth = subProgram->mInlineeInfo->mInlineDepth;
+							compileUnit->mInlineeRanges.Add(inlineeRange);
+						}
+					}
 				}
 
 				//if (subProgram->mParentType != NULL)
@@ -5318,24 +5347,43 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, DbgCompileUnit* dwComp
 	DbgLineDataBuilder lineBuilder(this);
 
 	// Commit derives a length only from a next row in the same context, so rows before a file switch or end_sequence kept 0
+	bool wantsInlineContexts = WantsDwarfInlineContexts();
+	DbgSubprogram* prevInlinee = NULL;
 	bool hasPendingLine = false;
 	DbgLineData pendingLine;
 	DbgSrcFile* pendingSrcFile = NULL;
+	DbgSubprogram* pendingInlinee = NULL;
 	auto _FlushPendingLine = [&](uint32 endRelAddress)
 	{
 		if (!hasPendingLine)
 			return;
 		hasPendingLine = false;
+		if (pendingInlinee != NULL)
+		{
+			// An inlinee row never extends past its range, so the call row covering the range stays the outer one
+			addr_target rangeEnd = FindDwarfInlineeRangeEnd(dwCompileUnit, pendingInlinee, (addr_target)(pendingLine.mRelAddress + mImageBase));
+			if ((rangeEnd != 0) && ((addr_target)(endRelAddress + mImageBase) > rangeEnd))
+				endRelAddress = (uint32)(rangeEnd - mImageBase);
+		}
 		if (endRelAddress > pendingLine.mRelAddress)
 			pendingLine.mContribSize = (uint16)BF_MIN(endRelAddress - pendingLine.mRelAddress, (uint32)0xFFFF);
-		lineBuilder.Add(dwCompileUnit, pendingLine, pendingSrcFile, NULL);
+		lineBuilder.Add(dwCompileUnit, pendingLine, pendingSrcFile, pendingInlinee);
 	};
 	auto _AddLineData = [&](const DbgLineData& lineData)
 	{
 		_FlushPendingLine(lineData.mRelAddress);
+		DbgSubprogram* inlinee = NULL;
+		if (wantsInlineContexts)
+		{
+			inlinee = FindDwarfInlinee(dwCompileUnit, (addr_target)(lineData.mRelAddress + mImageBase));
+			if (inlinee != prevInlinee)
+				AddDwarfInlineCallRows(lineBuilder, dwCompileUnit, lineData, prevInlinee, inlinee);
+			prevInlinee = inlinee;
+		}
 		hasPendingLine = true;
 		pendingLine = lineData;
 		pendingSrcFile = dwSrcFileRef->mSrcFile;
+		pendingInlinee = inlinee;
 	};
 
 	bool queuedPostPrologue = false;
@@ -5378,6 +5426,7 @@ bool DbgModule::ParseDebugLineInfo(const uint8*& dataPtr, DbgCompileUnit* dwComp
 				case DW_LNE_end_sequence:
 					{
 						_FlushPendingLine(dwLineData.mRelAddress);
+						prevInlinee = NULL;
 
 						dwSrcFileRef = &dwCompileUnit->mSrcFileRefs[0];
 						dwLineData.mLine = 0;
@@ -5576,8 +5625,104 @@ void DbgModule::ParseDWARFLines()
 			continue;
 		}
 		const uint8* data = mDebugLineData + compileUnit->mStmtListOffset;
+		PrepareDwarfInlineeRanges(compileUnit);
 		ParseDebugLineInfo(data, compileUnit);
 	}
+}
+
+void DbgModule::PrepareDwarfInlineeRanges(DbgCompileUnit* dwCompileUnit)
+{
+	auto& ranges = dwCompileUnit->mInlineeRanges;
+	ranges.Sort([](const DbgInlineeRange& lhs, const DbgInlineeRange& rhs) { return lhs.mLowPC < rhs.mLowPC; });
+	addr_target maxHighPC = 0;
+	for (auto& inlineeRange : ranges)
+	{
+		maxHighPC = BF_MAX(maxHighPC, inlineeRange.mHighPC);
+		inlineeRange.mPrefixMaxHighPC = maxHighPC;
+	}
+}
+
+// Nested inlinee ranges overlap, so the row belongs to the deepest containing entry, which sort order alone does not give
+DbgSubprogram* DbgModule::FindDwarfInlinee(DbgCompileUnit* dwCompileUnit, addr_target address)
+{
+	auto& ranges = dwCompileUnit->mInlineeRanges;
+	int lo = 0;
+	int hi = (int)ranges.size();
+	while (lo < hi)
+	{
+		int mid = (lo + hi) / 2;
+		if (ranges[mid].mLowPC <= address)
+			lo = mid + 1;
+		else
+			hi = mid;
+	}
+
+	DbgSubprogram* best = NULL;
+	int bestDepth = 0;
+	for (int rangeIdx = lo - 1; rangeIdx >= 0; rangeIdx--)
+	{
+		auto& inlineeRange = ranges[rangeIdx];
+		if (inlineeRange.mPrefixMaxHighPC <= address)
+			break;
+		if ((address < inlineeRange.mHighPC) && (inlineeRange.mDepth > bestDepth))
+		{
+			best = inlineeRange.mInlinee;
+			bestDepth = inlineeRange.mDepth;
+		}
+	}
+	return best;
+}
+
+// DWARF rows are innermost only; the CodeView model DebugTarget reads also has a parent-context row at the call line
+void DbgModule::AddDwarfInlineCallRows(DbgLineDataBuilder& lineBuilder, DbgCompileUnit* dwCompileUnit, const DbgLineData& lineData, DbgSubprogram* prevInlinee, DbgSubprogram* inlinee)
+{
+	addr_target address = (addr_target)(lineData.mRelAddress + mImageBase);
+	Array<DbgSubprogram*> entered;
+	for (auto checkInlinee = inlinee; (checkInlinee != NULL) && (checkInlinee->mInlineeInfo != NULL); checkInlinee = checkInlinee->mInlineeInfo->mInlineParent)
+	{
+		bool isPrevChain = false;
+		for (auto prevChain = prevInlinee; (prevChain != NULL) && (prevChain->mInlineeInfo != NULL); prevChain = prevChain->mInlineeInfo->mInlineParent)
+		{
+			if (prevChain == checkInlinee)
+			{
+				isPrevChain = true;
+				break;
+			}
+		}
+		if (isPrevChain)
+			break;
+		entered.Add(checkInlinee);
+	}
+
+	for (int enteredIdx = (int)entered.size() - 1; enteredIdx >= 0; enteredIdx--)
+	{
+		auto enteredInlinee = entered[enteredIdx];
+		auto inlineeInfo = enteredInlinee->mInlineeInfo;
+		if ((inlineeInfo->mCallLine <= 0) || (inlineeInfo->mCallFile <= 0) || (inlineeInfo->mCallFile > (int)dwCompileUnit->mSrcFileRefs.size()))
+			continue;
+
+		addr_target rangeEnd = FindDwarfInlineeRangeEnd(dwCompileUnit, enteredInlinee, address);
+		if (rangeEnd == 0)
+			continue;
+
+		DbgLineData callLineData = lineData;
+		callLineData.mLine = inlineeInfo->mCallLine - 1;
+		callLineData.mColumn = 0;
+		// One byte past the range, so it sorts before an inlinee row spanning the whole range (CompareLineData puts larger first)
+		callLineData.mContribSize = (uint16)BF_MIN(rangeEnd - address + 1, (addr_target)0xFFFF);
+		auto parent = inlineeInfo->mInlineParent;
+		lineBuilder.Add(dwCompileUnit, callLineData, dwCompileUnit->mSrcFileRefs[inlineeInfo->mCallFile - 1].mSrcFile, (parent->mInlineeInfo != NULL) ? parent : NULL);
+	}
+}
+
+addr_target DbgModule::FindDwarfInlineeRangeEnd(DbgCompileUnit* dwCompileUnit, DbgSubprogram* inlinee, addr_target address)
+{
+	for (auto& inlineeRange : dwCompileUnit->mInlineeRanges)
+	{
+		if ((inlineeRange.mInlinee == inlinee) && (address >= inlineeRange.mLowPC) && (address < inlineeRange.mHighPC))
+			return inlineeRange.mHighPC;
+	}
+	return 0;
 }
 
 addr_target DbgModule::GetHotTargetAddress(DbgHotTargetSection* hotTargetSection)
@@ -7399,6 +7544,20 @@ void DbgModule::FinishHotSwap()
 	mSymbolNameMap.Clear();
 }
 
+bool DbgModule::ResolveTLSAddress(addr_target operand, CPURegisters* registers, addr_target& outAddr)
+{
+	if ((mTLSAddr == 0) || (mTLSIndexAddr == 0))
+		return false;
+
+	int tlsIndex = mDebugger->ReadMemory<int>(mTLSIndexAddr);
+	addr_target tlsEntry = mDebugger->GetTLSOffset(tlsIndex);
+
+	intptr_target tlsValueIndex = (intptr_target)operand;
+
+	outAddr = (tlsValueIndex - mTLSAddr) + tlsEntry;
+	return true;
+}
+
 addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locData, int locDataLen, WdStackFrame* stackFrame, CPURegisters* registers, DbgAddrType* outAddrType, DbgEvalLocFlags flags, addr_target* pushValue)
 {
 	bool allowReg = (flags & DbgEvalLocFlag_IsParam) == 0;
@@ -7598,16 +7757,13 @@ addr_target DbgModule::ExecuteOps(DbgSubprogram* dwSubprogram, const uint8* locD
 		case DW_OP_GNU_push_tls_address:
 		case DW_OP_form_tls_address:
 			{
-				if ((mTLSAddr == 0) || (mTLSIndexAddr == 0))
+				addr_target tlsAddr = 0;
+				if (!ResolveTLSAddress((stackIdx > 0) ? stackFrameData[stackIdx - 1] : 0, registers, tlsAddr))
 					return 0;
 
 				OPS_NEED(1);
-				int tlsIndex = mDebugger->ReadMemory<int>(mTLSIndexAddr);
-				addr_target tlsEntry = mDebugger->GetTLSOffset(tlsIndex);
-
-				intptr_target tlsValueIndex = stackFrameData[--stackIdx];
-
-				OPS_PUSH((tlsValueIndex - mTLSAddr) + tlsEntry);
+				stackIdx--;
+				OPS_PUSH(tlsAddr);
 				*outAddrType = DbgAddrType_Target;
 			}
 			break;

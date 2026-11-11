@@ -565,7 +565,6 @@ public:
 	virtual intptr GetSymbolAddress(const StringImpl& sym) override;
 	virtual String DisassembleAtRaw(intptr address) override;
 	virtual String DisassembleAt(intptr address) override;
-	virtual String FindLineCallAddresses(intptr address) override;
 	virtual String GetCurrentException() override;
 	virtual void SetAliasPath(const StringImpl& origPath, const StringImpl& localPath) override;
 	virtual String GetModulesInfo() override;
@@ -598,7 +597,7 @@ public:
 	virtual void ReleaseHotHeapMemory(addr_target address) override;
 	virtual addr_target DecodeThunk(addr_target address, DbgModuleMemoryCache* memoryCache) override;
 	virtual bool DecodeInstruction(addr_target address, DbgModuleMemoryCache* memoryCache, CPUInst* inst) override;
-	virtual bool IsReturnInstruction(addr_target address, DbgModuleMemoryCache* memoryCache) override;
+	virtual bool DecodeInstInfo(addr_target address, DbgModuleMemoryCache* memoryCache, CPURegisters* registers, DbgInstInfo* outInfo) override;
 	virtual DbgBreakKind GetDbgBreakKind(addr_target address, DbgModuleMemoryCache* memoryCache, intptr_target* regs, intptr_target* outObjectPtr) override;
 	virtual bool GetEmitSource(const StringImpl& filePath, String& outText);
 };

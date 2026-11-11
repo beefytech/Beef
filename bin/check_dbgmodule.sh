@@ -70,12 +70,13 @@ value() {
 	awk -v key="$1" '$1 == key { print $2 }' "$TMPDIR/check.txt"
 }
 
-read -r REF_V4 REF_V5 REF_SUB REF_INL REF_DEF < <(llvm-dwarfdump --debug-info "$ELF" | awk '
+read -r REF_V4 REF_V5 REF_SUB REF_INL REF_DEF REF_IRNG < <(llvm-dwarfdump --debug-info "$ELF" | awk '
 	/Compile Unit:/ { version = ($0 ~ /version = 0x0004/) ? 4 : (($0 ~ /version = 0x0005/) ? 5 : 0); units[version]++ }
 	/^0x[0-9a-f]+: +DW_TAG_/ { tag = $2; if (version == 4) { if (tag == "DW_TAG_subprogram") subprograms++; if (tag == "DW_TAG_inlined_subroutine") inlined++ } }
 	/^0x[0-9a-f]+: +NULL/ { tag = "" }
 	version == 4 && tag == "DW_TAG_subprogram" && /DW_AT_low_pc/ { def++ }
-	END { print units[4] + 0, units[5] + 0, subprograms + inlined, inlined + 0, def + 0 }
+	version == 4 && tag == "DW_TAG_inlined_subroutine" && (/DW_AT_low_pc/ || /^ +\[0x[0-9a-f]+, 0x[0-9a-f]+\)\)?$/) { irng++ }
+	END { print units[4] + 0, units[5] + 0, subprograms + inlined, inlined + 0, def + 0, irng + 0 }
 ')
 REF_SYMS=$(llvm-readelf -sW "$ELF" | awk '$4 ~ /^(FUNC|OBJECT)$/ && $7 != "UND" && $5 != "LOCAL" && $2 !~ /^0+$/ { n++ } END { print n + 0 }')
 
@@ -83,6 +84,8 @@ expect_eq dwarf4_units "$(value dwarf4_units)" "$REF_V4"
 expect_eq dwarf5_units_skipped "$(value dwarf5_units_skipped)" "$REF_V5"
 expect_eq subprograms "$(value subprograms)" "$REF_SUB"
 expect_eq subprograms_inlined "$(value subprograms_inlined)" "$REF_INL"
+expect_eq inlinee_ranges "$(value inlinee_ranges)" "$REF_IRNG"
+echo "info subprograms_inlined_with_lines $(value subprograms_inlined_with_lines)"
 expect_eq subprograms_defined "$(value subprograms_defined)" "$REF_DEF"
 expect_eq subprograms_defined_with_lines "$(value subprograms_defined_with_lines)" "$REF_DEF"
 expect_eq global_symbols "$(value global_symbols)" "$REF_SYMS"

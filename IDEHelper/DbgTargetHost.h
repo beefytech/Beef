@@ -87,6 +87,14 @@ struct DbgPendingDebugInfoLoad
 	}
 };
 
+struct DbgInstInfo
+{
+	int mSize;
+	bool mIsCall;
+	bool mIsReturn;
+	addr_target mTarget; // 0 when unknown
+};
+
 class DbgTargetHost : public Debugger
 {
 public:
@@ -104,6 +112,7 @@ public:
 public:
 	virtual void Fail(const StringImpl& error) = 0;
 	virtual addr_target GetTLSOffset(int tlsIndex) = 0;
+	virtual bool GetTLSBlockAddr(DbgModule* dbgModule, CPURegisters* registers, addr_target& outAddr) { return false; }
 	virtual int EnableWriting(intptr address, int size) = 0;
 	virtual int SetProtection(intptr address, int size, int prot) = 0;
 	virtual bool IsMiniDumpDebugger() = 0;
@@ -144,7 +153,9 @@ public:
 
 	virtual addr_target DecodeThunk(addr_target address, DbgModuleMemoryCache* memoryCache) = 0;
 	virtual bool DecodeInstruction(addr_target address, DbgModuleMemoryCache* memoryCache, CPUInst* inst) = 0;
-	virtual bool IsReturnInstruction(addr_target address, DbgModuleMemoryCache* memoryCache) = 0;
+	// With registers, the instruction is also simulated on them
+	virtual bool DecodeInstInfo(addr_target address, DbgModuleMemoryCache* memoryCache, CPURegisters* registers, DbgInstInfo* outInfo) = 0;
+	bool IsReturnInstruction(addr_target address, DbgModuleMemoryCache* memoryCache);
 	virtual DbgBreakKind GetDbgBreakKind(addr_target address, DbgModuleMemoryCache* memoryCache, intptr_target* regs, intptr_target* outObjectPtr) = 0;
 
 	bool IsInRunState();
@@ -156,6 +167,11 @@ public:
 	virtual void GetCodeAddrInfo(intptr addr, intptr inlineCallAddr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn) override;
 	virtual String GetStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int* outHotIdx, int* outDefLineStart, int* outDefLineEnd, int* outLine, int* outColumn, int* outLanguage, int* outStackSize, int8* outFlags) override;
 	virtual String FindCodeAddresses(const StringImpl& fileName, int line, int column, bool allowAutoResolve) override;
+	virtual String FindLineCallAddresses(intptr address) override;
+
+	static void CreateFilterName(String& name, DbgType* type);
+	static void CreateFilterName(String& name, const char* srcStr, DbgLanguage language);
+	static void CreateFilterName(String& name, DbgSubprogram* subprogram);
 
 	template<typename T> T ReadMemory(intptr addr, bool local = false, bool* failed = NULL);
 	using Debugger::ReadMemory;

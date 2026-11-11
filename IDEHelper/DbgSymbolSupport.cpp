@@ -13,6 +13,12 @@ bool DbgTargetHost::IsInRunState()
 	return (mRunState == RunState_Running) || (mRunState == RunState_Running_ToTempBreakpoint);
 }
 
+bool DbgTargetHost::IsReturnInstruction(addr_target address, DbgModuleMemoryCache* memoryCache)
+{
+	DbgInstInfo inst;
+	return (DecodeInstInfo(address, memoryCache, NULL, &inst)) && (inst.mIsReturn);
+}
+
 static int gFindLineDataAt = 0;
 
 DbgLineData* DbgTargetHost::FindLineDataAtAddress(addr_target address, DbgSubprogram** outSubProgram, DbgSrcFile** outSrcFile, int* outLineIdx, DbgOnDemandKind onDemandKind)
@@ -580,4 +586,335 @@ String DbgTargetHost::FindCodeAddresses(const StringImpl& fileName, int line, in
 	}
 
 	return result;
+}
+
+void DbgTargetHost::CreateFilterName(String& name, DbgType* type)
+{
+	CreateFilterName(name, type->mParent);
+
+	switch (type->mTypeCode)
+	{
+	case DbgType_Namespace:
+	case DbgType_Struct:
+	case DbgType_Class:
+		name += type->mName;
+		break;
+	}
+}
+
+void DbgTargetHost::CreateFilterName(String& name, const char* srcStr, DbgLanguage language)
+{
+	int chevronDepth = 0;
+	const char* cPtr = srcStr;
+	for (; true; cPtr++)
+	{
+		char c = *cPtr;
+		if (c == 0)
+			break;
+		if (c == '>')
+			chevronDepth--;
+		bool inGeneric = chevronDepth > 0;
+		if (c == '<')
+			chevronDepth++;
+		if (inGeneric) // Bundle all generic instances together
+			continue;
+		if (c == '[') // Bundle all arrays together
+			name.clear();
+		if (c == '(')
+			return; // Start of params
+		if ((c == ':') && (cPtr[1] == ':') && (language == DbgLanguage_Beef))
+		{
+			name.Append('.');
+			cPtr++;
+		}
+		else
+			name.Append(c);
+	}
+}
+
+void DbgTargetHost::CreateFilterName(String& name, DbgSubprogram* subprogram)
+{
+	auto language = subprogram->GetLanguage();
+	if (subprogram->mName == NULL)
+	{
+		if (subprogram->mLinkName[0] == '<')
+		{
+			name += subprogram->mLinkName;
+			return;
+		}
+		name = BfDemangler::Demangle(subprogram->mLinkName, language);
+		// Strip off the params since we need to generate those ourselves
+		int parenPos = (int)name.IndexOf('(');
+		if (parenPos != -1)
+			name.RemoveToEnd(parenPos);
+		return;
+	}
+	else if (subprogram->mHasQualifiedName)
+	{
+		const char* cPtr = subprogram->mName;
+		if (strncmp(cPtr, "_bf::", 5) == 0)
+		{
+			CreateFilterName(name, cPtr + 5, DbgLanguage_Beef);
+			name.Replace(".__BfStaticCtor", ".this$static");
+			name.Replace(".__BfCtorClear", ".this$clear");
+			name.Replace(".__BfCtor", ".this");
+		}
+		else
+			CreateFilterName(name, subprogram->mName, language);
+
+		return;
+	}
+	else
+	{
+		if (subprogram->mParentType != NULL)
+		{
+			String parentName = subprogram->mParentType->ToString();
+			CreateFilterName(name, parentName.c_str(), language);
+			if (!name.empty())
+			{
+				if (language == DbgLanguage_Beef)
+					name += ".";
+				else
+					name += "::";
+			}
+		}
+
+		if ((language == DbgLanguage_Beef) && (subprogram->mParentType != NULL) && (subprogram->mParentType->mTypeName != NULL) &&
+			(strcmp(subprogram->mName, subprogram->mParentType->mTypeName) == 0))
+			name += "this";
+		else if ((language == DbgLanguage_Beef) && (subprogram->mName[0] == '~'))
+			name += "~this";
+		else if (strncmp(subprogram->mName, "_bf::", 5) == 0)
+		{
+			CreateFilterName(name, subprogram->mName + 5, DbgLanguage_Beef);
+		}
+		else
+		{
+			CreateFilterName(name, subprogram->mName, language);
+		}
+	}
+
+	if (name.empty())
+		name += "`anon";
+	if ((name[name.length() - 1] == '!') || (name[0] == '<'))
+	{
+		if (language == DbgLanguage_Beef)
+		{
+			// It's a mixin - assert that there's no params
+			//BF_ASSERT(subprogram->mParams.Size() == 0);
+		}
+		return;
+	}
+}
+
+String DbgTargetHost::FindLineCallAddresses(intptr inAddress)
+{
+	String callAddresses;
+
+	addr_target address = (addr_target)inAddress;
+
+	DbgSubprogram* dwSubprogram = NULL;
+
+	DbgLineData* startLineData = FindLineDataAtAddress(address, &dwSubprogram, NULL);
+
+	if (dwSubprogram == NULL)
+		return "";
+
+	CPURegisters registers;
+	PopulateRegisters(&registers);
+
+	auto inlinerSubprogram = dwSubprogram->GetRootInlineParent();
+	DbgModule::FixupLineDataForSubprogram(inlinerSubprogram);
+
+	if (inlinerSubprogram->mLineInfo->mLines.mSize == 0)
+		return "";
+	auto lineData = &inlinerSubprogram->mLineInfo->mLines[0];
+
+	addr_target addr = dwSubprogram->mBlock.mLowPC;
+	addr_target endAddr = dwSubprogram->mBlock.mHighPC;
+
+	DbgSubprogram* checkSubprogram = dwSubprogram;
+	DbgLineData* checkLineData = lineData;
+	addr_target checkLineAddr = 0;
+
+	int lineIdx = 0;
+	while (checkLineData != NULL)
+	{
+		//auto nextLineData = dwSubprogram->mCompileUnit->mLineDataMap.GetNext(checkLineData);
+		++lineIdx;
+
+		DbgLineData* nextLineData = NULL;
+		addr_target nextLineAddr;
+		if (lineIdx < inlinerSubprogram->mLineInfo->mLines.size())
+		{
+			nextLineData = &inlinerSubprogram->mLineInfo->mLines[lineIdx];
+			nextLineAddr = dwSubprogram->GetLineAddr(*nextLineData);
+		}
+		else
+			nextLineAddr = inlinerSubprogram->mBlock.mHighPC;
+
+		// This stuff doesn't make sense...
+		DbgSubprogram* nextSubProgram;
+		if (nextLineData != NULL)
+		{
+			if (nextLineAddr > dwSubprogram->mBlock.mHighPC)
+				break;
+
+			endAddr = nextLineAddr;
+			nextSubProgram = mDebugTarget->FindSubProgram(endAddr);
+			if (nextSubProgram != NULL)
+			{
+				auto dbgModule = nextSubProgram->mCompileUnit->mDbgModule;
+				dbgModule->ParseSymbolData();
+			}
+		}
+		else
+		{
+			nextSubProgram = dwSubprogram;
+			endAddr = dwSubprogram->mBlock.mHighPC;
+		}
+
+		auto _HandleSection = [&]()
+		{
+			while (addr < endAddr)
+			{
+				DbgInstInfo inst;
+				if (!mDebugTarget->DecodeInstInfo(addr, &registers, &inst))
+					break;
+
+				if (inst.mIsCall)
+				{
+					bool addSymbol = true;
+
+					if (addr < (addr_target)inAddress)
+						callAddresses += "-";
+					callAddresses += EncodeDataPtr(addr, false);
+
+					addr_target targetAddr = inst.mTarget;
+					if (targetAddr != 0)
+					{
+						String outSymbol;
+						auto subprogram = mDebugTarget->FindSubProgram(targetAddr);
+						if (subprogram != NULL)
+						{
+							CreateFilterName(outSymbol, subprogram);
+							addSymbol = true;
+						}
+						else
+						{
+							addr_target offset = 0;
+							String fullSymbolName;
+							if (mDebugTarget->FindSymbolAt(targetAddr, &outSymbol, &offset))
+							{
+								if (offset < 0x200)
+								{
+									//outSymbol = BfDemangler::Demangle(outSymbol, dwSubprogram->GetLanguage());
+									if (outSymbol == "___chkstk_ms")
+										addSymbol = false;
+									else
+									{
+										String demangledName = BfDemangler::Demangle(outSymbol, DbgLanguage_C);
+										outSymbol.clear();
+										CreateFilterName(outSymbol, demangledName.c_str(), DbgLanguage_C);
+									}
+								}
+								else
+									outSymbol.clear();
+							}
+						}
+
+						if (addSymbol)
+						{
+							if (outSymbol.empty())
+								callAddresses += "\tFunc@" + EncodeDataPtr(targetAddr, false);
+							else
+								callAddresses += "\t" + outSymbol;
+
+							String attrs;
+							bool isFiltered = false;
+							if (subprogram != NULL)
+							{
+								subprogram->PopulateSubprogram();
+								isFiltered = subprogram->mIsStepFilteredDefault;
+								if (isFiltered)
+									attrs += "d"; // 'd' for default filtered
+							}
+
+							StepFilter* stepFilterPtr = NULL;
+							if (mDebugManager->mStepFilters.TryGetValue(outSymbol, &stepFilterPtr))
+								isFiltered = stepFilterPtr->IsFiltered(isFiltered);
+
+							if (isFiltered)
+								attrs += "f";  // 'f' for filter
+
+							if (!attrs.IsEmpty())
+								callAddresses += "\t" + attrs;
+						}
+					}
+
+					if (addSymbol)
+						callAddresses += "\n";
+				}
+
+				addr += inst.mSize;
+			}
+		};
+
+		// For inlining - only add calls that are found either directly in our main block (not an inlined block)
+		//  But add inlined methods when their parent is our current block
+		if ((checkSubprogram == dwSubprogram) && (checkLineData->mLine == startLineData->mLine))
+		{
+			_HandleSection();
+		}
+		else if ((checkSubprogram->mInlineeInfo != NULL) && (checkSubprogram->mInlineeInfo->mInlineParent == dwSubprogram))
+		{
+			if (checkLineAddr == checkSubprogram->mBlock.mLowPC)
+			{
+				addr_target inlineStartAddr = checkSubprogram->mBlock.mLowPC;
+
+				// Find the calling line
+				DbgSubprogram* callingSubprogram = dwSubprogram;
+				auto checkLineData = dwSubprogram->FindClosestLine(inlineStartAddr, &callingSubprogram);
+				if ((checkLineData != NULL) && (checkLineData->mCtxIdx == startLineData->mCtxIdx) && (checkLineData->mLine == startLineData->mLine))
+				{
+					if (inlineStartAddr <= (addr_target)inAddress)
+						callAddresses += "-";
+					callAddresses += EncodeDataPtr(inlineStartAddr, false);
+					String outSymbol;
+					CreateFilterName(outSymbol, checkSubprogram);
+					callAddresses += "\t" + outSymbol;
+
+					bool isFiltered = dwSubprogram->mIsStepFilteredDefault;
+					StepFilter* stepFilterPtr;
+					if (mDebugManager->mStepFilters.TryGetValue(outSymbol, &stepFilterPtr))
+						isFiltered = stepFilterPtr->IsFiltered(isFiltered);
+
+					if (isFiltered)
+						callAddresses += "\tf"; // 'f' for filter
+
+					callAddresses += "\n";
+				}
+
+// 				if (checkSubprogram->mBlock.mHighPC < endAddr)
+// 				{
+// 					addr = checkSubprogram->mBlock.mHighPC;
+// 					_HandleSection();
+// 				}
+			}
+
+			// If we have unattributed data after the end of an inlined method, add that
+			if ((endAddr > checkSubprogram->mBlock.mHighPC) && (nextSubProgram == dwSubprogram))
+			{
+				addr = checkSubprogram->mBlock.mHighPC;
+				_HandleSection();
+			}
+		}
+
+		checkLineData = nextLineData;
+		checkSubprogram = nextSubProgram;
+		checkLineAddr = nextLineAddr;
+		addr = endAddr;
+	}
+
+	return callAddresses;
 }

@@ -6,6 +6,7 @@
 #include "DebugTarget.h"
 #include "DbgModule.h"
 #include "ElfDbgModule.h"
+#include "DWARFInfo.h"
 #include "BeefySysLib/util/AllocDebug.h"
 
 USING_NS_BF;
@@ -43,6 +44,20 @@ static String ShadowFunctionName(const StringImpl& name)
 		result.RemoveToEnd(lastDot + 1);
 		result += "~this";
 	}
+	return result;
+}
+
+// LLDB shows an inlined frame by its DW_AT_name alone, so only the unqualified name and the linkage name are compared
+static String ShadowInlineName(const StringImpl& name)
+{
+	String result = ShadowFunctionName(name);
+	int nameStart = (int)result.IndexOf('!') + 1;
+	int nameEnd = (int)result.IndexOf('!', nameStart);
+	if (nameEnd == -1)
+		nameEnd = (int)result.length();
+	int lastDot = (int)result.LastIndexOf('.', nameEnd - 1);
+	if (lastDot >= nameStart)
+		result.Remove(nameStart, lastDot + 1 - nameStart);
 	return result;
 }
 
@@ -180,12 +195,35 @@ void LLDBDebugger::ShadowCheckFrames()
 		String beefName = DbgTargetHost::GetStackFrameInfo(beefIdx, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
 		String beefLine = StrFormat("%s:%d", ShadowNormalizePath(file).c_str(), line);
 
+		int beefGroupEnd = beefIdx + 1;
+		while ((beefGroupEnd < (int)mCallStack.size()) && (mCallStack[beefGroupEnd]->mInInlineMethod))
+			beefGroupEnd++;
+		int beefDepth = beefGroupEnd - beefIdx - 1;
+		int lldbDepth = lldbIdx - groupStart;
+		if (beefDepth > 0)
+			beefName = DbgTargetHost::GetStackFrameInfo(beefGroupEnd - 1, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
+
 		WdStackFrame* wdStackFrame = mCallStack[beefIdx];
 		addr_target sourcePC = wdStackFrame->GetSourcePC();
 		if (wdStackFrame->mSubProgram != NULL)
 		{
 			ShadowCompare("frame_name", ShadowFunctionName(lldbName), ShadowFunctionName(beefName));
 			ShadowCompare("frame_line", lldbLine, beefLine);
+			ShadowCompare("inline_depth", StrFormat("%d", lldbDepth), StrFormat("%d", beefDepth));
+			if (lldbDepth == beefDepth)
+			{
+				for (int depthIdx = 0; depthIdx <= lldbDepth; depthIdx++)
+				{
+					String lldbInlineName = LLDBDebugger::GetStackFrameInfo(groupStart + depthIdx, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
+					String lldbInlineLine = StrFormat("%s:%d", ShadowNormalizePath(file).c_str(), line);
+					String beefInlineName = DbgTargetHost::GetStackFrameInfo(beefIdx + depthIdx, &addr, &file, &hotIdx, &defLineStart, &defLineEnd, &line, &column, &language, &stackSize, &flags);
+					String beefInlineLine = StrFormat("%s:%d", ShadowNormalizePath(file).c_str(), line);
+					if (depthIdx < lldbDepth)
+						ShadowCompare("inline_name", ShadowInlineName(lldbInlineName), ShadowInlineName(beefInlineName));
+					if (depthIdx > 0)
+						ShadowCompare("inline_line", lldbInlineLine, beefInlineLine);
+				}
+			}
 			String lldbAddrLine = LLDBDebugger::GetAddressSourceLocation((intptr)sourcePC);
 			int columnColon = (int)lldbAddrLine.LastIndexOf(':');
 			if (columnColon > 0)
@@ -199,23 +237,35 @@ void LLDBDebugger::ShadowCheckFrames()
 			}
 			ShadowCompare("addr_line", ShadowNormalizePath(lldbAddrLine), HostAddressSourceLocation((intptr)sourcePC));
 
-			String lldbAutos = String("\n") + LLDBDebugger::GetAutoLocals(lldbIdx, false);
-			String beefAutos = DbgTargetHost::GetAutoLocals(beefIdx, false);
-			String missing;
-			for (auto name : beefAutos.Split('\n'))
+			int autosDepth = (lldbDepth == beefDepth) ? lldbDepth : 0;
+			for (int depthIdx = 0; depthIdx <= autosDepth; depthIdx++)
 			{
-				if (name.IsEmpty())
-					continue;
-				String key = "\n";
-				key += name;
-				key += "\n";
-				if (!lldbAutos.Contains(key))
+				String lldbAutos = String("\n") + LLDBDebugger::GetAutoLocals(groupStart + depthIdx, false);
+				String beefAutos = DbgTargetHost::GetAutoLocals(beefIdx + depthIdx, false);
+				String missing;
+				for (auto name : beefAutos.Split('\n'))
 				{
-					missing += name;
-					missing += " ";
+					if (name.IsEmpty())
+						continue;
+					String key = "\n";
+					key += name;
+					key += "\n";
+					if (!lldbAutos.Contains(key))
+					{
+						missing += name;
+						missing += " ";
+					}
 				}
+				DbgSubprogram* frameSubprogram = mCallStack[beefIdx + depthIdx]->mSubProgram;
+				bool isInlineFrame = (frameSubprogram != NULL) && (frameSubprogram->mInlineeInfo != NULL);
+				// An empty list passes the subset rule trivially, so inline frames with autos are counted on their own
+				if ((isInlineFrame) && (!beefAutos.IsEmpty()))
+					mShadowQueryCounts["autos_inline_answered"]++;
+				ShadowCompare(isInlineFrame ? "autos_subset_inline" : "autos_subset", "", missing);
 			}
-			ShadowCompare("autos_subset", "", missing);
+
+			if ((beefIdx == 0) && (beefDepth == 0))
+				ShadowCheckLineCalls((addr_target)wdStackFrame->mRegisters.GetPC());
 		}
 
 		// Modules with only .dynsym are left out: LLDB also reads MiniDebugInfo locals and symbol versions there
@@ -228,6 +278,143 @@ void LLDBDebugger::ShadowCheckFrames()
 			if (!mDebugTarget->FindSymbolAt(sourcePC, &beefSymbol, &offset))
 				beefSymbol = "!Invalid symbol";
 			ShadowCompare("addr_symbol", lldbSymbol, beefSymbol);
+		}
+	}
+
+	ShadowCheckTLS();
+}
+
+static bool ShadowSameFile(lldb::SBFileSpec lhs, lldb::SBFileSpec rhs)
+{
+	const char* lhsName = lhs.GetFilename();
+	const char* rhsName = rhs.GetFilename();
+	const char* lhsDir = lhs.GetDirectory();
+	const char* rhsDir = rhs.GetDirectory();
+	return (lhsName != NULL) && (rhsName != NULL) && (strcmp(lhsName, rhsName) == 0) &&
+		(strcmp((lhsDir != NULL) ? lhsDir : "", (rhsDir != NULL) ? rhsDir : "") == 0);
+}
+
+// LLDB's direct-call targets come from the E8 rel32 bytes, independent of the operand parsing in DecodeInstInfo
+void LLDBDebugger::ShadowCheckLineCalls(addr_target pc)
+{
+	Array<String> beefSites;
+	String beefCalls = DbgTargetHost::FindLineCallAddresses((intptr)pc);
+	for (auto entry : beefCalls.Split('\n'))
+	{
+		String site;
+		site += entry;
+		if (site.StartsWith('-'))
+			site.Remove(0, 1);
+		int tabIdx = (int)site.IndexOf('\t');
+		if (tabIdx != -1)
+			site.RemoveToEnd(tabIdx);
+		if (site.IsEmpty())
+			continue;
+		addr_target siteAddr = (addr_target)strtoull(site.c_str(), NULL, 16);
+		// Inlined methods are listed at their start, which is not a call instruction
+		DbgInstInfo instInfo;
+		if ((!mDebugTarget->DecodeInstInfo(siteAddr, NULL, &instInfo)) || (!instInfo.mIsCall))
+			continue;
+		beefSites.Add(StrFormat("%llx:%llx", (unsigned long long)siteAddr, (unsigned long long)instInfo.mTarget));
+	}
+
+	Array<String> lldbSites;
+	lldb::SBAddress pcAddr;
+	pcAddr.SetLoadAddress((lldb::addr_t)pc, mLLDBTarget);
+	lldb::SBLineEntry pcLine = pcAddr.GetLineEntry();
+	lldb::SBFunction function = pcAddr.GetFunction();
+	if ((!pcLine.IsValid()) || (!function.IsValid()))
+		return;
+	lldb::SBInstructionList instructions = function.GetInstructions(mLLDBTarget);
+	for (uint32 instIdx = 0; instIdx < instructions.GetSize(); instIdx++)
+	{
+		lldb::SBInstruction instruction = instructions.GetInstructionAtIndex(instIdx);
+		lldb::SBAddress instAddr = instruction.GetAddress();
+		lldb::SBLineEntry lineEntry = instAddr.GetLineEntry();
+		if ((!lineEntry.IsValid()) || (lineEntry.GetLine() != pcLine.GetLine()) || (!ShadowSameFile(lineEntry.GetFileSpec(), pcLine.GetFileSpec())))
+			continue;
+		if (instAddr.GetBlock().GetContainingInlinedBlock().IsValid())
+			continue;
+		lldb::InstructionControlFlowKind controlFlowKind = instruction.GetControlFlowKind(mLLDBTarget);
+		if ((controlFlowKind != lldb::eInstructionControlFlowKindCall) && (controlFlowKind != lldb::eInstructionControlFlowKindFarCall))
+			continue;
+
+		uint64 siteAddr = instAddr.GetLoadAddress(mLLDBTarget);
+		uint64 target = 0;
+		lldb::SBData data = instruction.GetData(mLLDBTarget);
+		uint8 bytes[5] = { 0 };
+		lldb::SBError error;
+		if ((data.GetByteSize() == 5) && (data.ReadRawData(error, 0, bytes, 5) == 5) && (bytes[0] == 0xE8))
+		{
+			int32 rel = 0;
+			memcpy(&rel, &bytes[1], 4);
+			target = siteAddr + 5 + (int64)rel;
+		}
+		lldbSites.Add(StrFormat("%llx:%llx", (unsigned long long)siteAddr, (unsigned long long)target));
+	}
+
+	auto _Format = [](Array<String>& sites)
+	{
+		sites.Sort([](const String& lhs, const String& rhs) { return strcmp(lhs.c_str(), rhs.c_str()) < 0; });
+		String result;
+		for (auto& site : sites)
+			result += site + " ";
+		return result;
+	};
+	if (!lldbSites.IsEmpty())
+		mShadowQueryCounts["line_calls_nonempty"]++;
+	String location = StrFormat("%s:%d ", (pcLine.GetFileSpec().GetFilename() != NULL) ? pcLine.GetFileSpec().GetFilename() : "?", pcLine.GetLine() - 1);
+	ShadowCompare("line_calls", location + _Format(lldbSites), location + _Format(beefSites));
+}
+
+void LLDBDebugger::ShadowCheckTLS()
+{
+	if ((mCallStack.IsEmpty()) || (mDebugTarget->mLaunchBinary == NULL))
+		return;
+	DbgModule* dbgModule = mDebugTarget->mLaunchBinary;
+	WdStackFrame* wdStackFrame = mCallStack[0];
+
+	HashSet<String> seenNames;
+	for (auto dbgType : dbgModule->mTypes)
+	{
+		if ((dbgType->mCompileUnit == NULL) || (dbgType->mCompileUnit->mLanguage != DbgLanguage_Beef))
+			continue;
+		for (auto member : dbgType->mMemberList)
+		{
+			if ((!member->mIsStatic) || (member->mName == NULL) || (member->mLocationLen <= 0))
+				continue;
+			uint8 lastOp = member->mLocationData[member->mLocationLen - 1];
+			if ((lastOp != DW_OP_GNU_push_tls_address) && (lastOp != DW_OP_form_tls_address))
+				continue;
+
+			String qualifiedName = dbgType->ToString(DbgLanguage_Beef);
+			qualifiedName.Replace(".", "::");
+			qualifiedName += "::";
+			qualifiedName += member->mName;
+			if (!seenNames.Add(qualifiedName))
+				continue;
+
+			String lldbName;
+			lldb::SBValueList candidates = mLLDBTarget.FindGlobalVariables(member->mName, 64);
+			for (uint32 candidateIdx = 0; candidateIdx < candidates.GetSize(); candidateIdx++)
+			{
+				const char* candidateName = candidates.GetValueAtIndex(candidateIdx).GetName();
+				if ((candidateName != NULL) && (String(candidateName).EndsWith(qualifiedName)))
+				{
+					lldbName = candidateName;
+					break;
+				}
+			}
+			if (lldbName.IsEmpty())
+				continue;
+
+			// A target-level SBValue has no thread, so a thread-local is looked up through the stopped thread's frame
+			uint64 lldbAddr = mLLDBFrames[0].GetValueForVariablePath(lldbName.c_str()).GetLoadAddress();
+
+			DbgAddrType addrType = DbgAddrType_NoValue;
+			addr_target beefAddr = (addr_target)dbgModule->EvaluateLocation(NULL, member->mLocationData, member->mLocationLen, wdStackFrame, &addrType);
+			ShadowCompare("tls_addr", StrFormat("%s %llx", qualifiedName.c_str(), (unsigned long long)lldbAddr),
+				StrFormat("%s %llx", qualifiedName.c_str(), (unsigned long long)beefAddr));
 		}
 	}
 }

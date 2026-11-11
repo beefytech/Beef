@@ -1,5 +1,6 @@
 #include "ElfDbgModule.h"
 #include "DebugTarget.h"
+#include "DbgTargetHost.h"
 #include "BeefySysLib/util/BeefPerf.h"
 #include <elf.h>
 
@@ -32,6 +33,8 @@ ElfDbgModule::ElfDbgModule(DebugTarget* debugTarget) : DbgModule(debugTarget)
 	mEHFrameSize = 0;
 	mTLSDataSize = 0;
 	mTLSBssSize = 0;
+	mTLSMemSize = 0;
+	mTLSAlign = 1;
 }
 
 ElfDbgModule::~ElfDbgModule()
@@ -64,6 +67,27 @@ addr_target ElfDbgModule::RemapAddr(addr_target addr)
 	if (addr == 0)
 		return 0;
 	return addr + (addr_target)(mImageBase - mPreferredImageBase);
+}
+
+bool ElfDbgModule::ResolveTLSAddress(addr_target operand, CPURegisters* registers, addr_target& outAddr)
+{
+	if ((mTLSMemSize == 0) || (registers == NULL))
+		return false;
+
+	addr_target blockAddr = 0;
+	if (this == mDebugTarget->mLaunchBinary)
+	{
+		// x86-64 variant II static TLS: the executable's block (module 1) ends at the thread pointer
+		addr_target threadPointer = (addr_target)registers->mIntRegs.gs;
+		if (threadPointer == 0)
+			return false;
+		blockAddr = threadPointer - ((mTLSMemSize + mTLSAlign - 1) & ~(mTLSAlign - 1));
+	}
+	else if ((mDebugger == NULL) || (!mDebugger->GetTLSBlockAddr(this, registers, blockAddr)))
+		return false;
+
+	outAddr = blockAddr + operand;
+	return true;
 }
 
 bool ElfDbgModule::ReadImage(DataStream* stream, DbgModuleKind moduleKind)
@@ -113,6 +137,16 @@ bool ElfDbgModule::ReadELF(const uint8* data, int64 size, DbgModuleKind moduleKi
 	for (int phdrIdx = 0; phdrIdx < ehdr->e_phnum; phdrIdx++)
 	{
 		auto& phdr = phdrs[phdrIdx];
+		if (phdr.p_type == PT_TLS)
+		{
+			addr_target tlsAlign = (phdr.p_align > 1) ? (addr_target)phdr.p_align : 1;
+			if (((tlsAlign & (tlsAlign - 1)) == 0) && (phdr.p_memsz < 0x40000000))
+			{
+				mTLSMemSize = (addr_target)phdr.p_memsz;
+				mTLSAlign = tlsAlign;
+			}
+			continue;
+		}
 		if (phdr.p_type != PT_LOAD)
 			continue;
 		addr_target align = (phdr.p_align > 1) ? (addr_target)phdr.p_align : 1;

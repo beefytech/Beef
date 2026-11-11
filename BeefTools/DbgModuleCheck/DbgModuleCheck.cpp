@@ -1,5 +1,5 @@
 // Loads an ELF image through ElfDbgModule and prints what the Beef debug info layer sees, in a stable text form.
-// Usage: DbgModuleCheck <elf> [--load-base 0xADDR] [--addr 0xADDR]... [--addr-file FILE] [--name NAME]...
+// Usage: DbgModuleCheck <elf> [--load-base 0xADDR] [--addr 0xADDR]... [--addr-file FILE] [--name NAME]... [--inlinees]
 // Exit codes: 0 loaded, 1 the image was rejected, 2 bad arguments.
 
 #include "ElfDbgModule.h"
@@ -80,7 +80,7 @@ int main(int argc, char** argv)
 {
 	if (argc < 2)
 	{
-		fprintf(stderr, "usage: DbgModuleCheck <elf> [--load-base 0xADDR] [--addr 0xADDR]... [--addr-file FILE] [--name NAME]...\n");
+		fprintf(stderr, "usage: DbgModuleCheck <elf> [--load-base 0xADDR] [--addr 0xADDR]... [--addr-file FILE] [--name NAME]... [--inlinees]\n");
 		return 2;
 	}
 
@@ -105,11 +105,14 @@ int main(int argc, char** argv)
 	int definedCount = 0;
 	int definedWithLinesCount = 0;
 	int inlinedCount = 0;
+	int inlinedWithLinesCount = 0;
 	for (auto subprogram : dbgModule->mSubprograms)
 	{
 		if (subprogram->mInlineeInfo != NULL)
 		{
 			inlinedCount++;
+			if (subprogram->mInlineeInfo->mFirstLineData.mRelAddress != 0)
+				inlinedWithLinesCount++;
 			continue;
 		}
 		if (subprogram->mBlock.mLowPC == 0)
@@ -118,6 +121,9 @@ int main(int argc, char** argv)
 		if ((subprogram->mLineInfo != NULL) && (subprogram->mLineInfo->mLines.mSize > 0))
 			definedWithLinesCount++;
 	}
+	int inlineeRangeCount = 0;
+	for (auto compileUnit : dbgModule->mCompileUnits)
+		inlineeRangeCount += (int)compileUnit->mInlineeRanges.size();
 
 	printf("module %s\n", dbgModule->mDisplayName.c_str());
 	printf("image_base 0x%llx\n", (unsigned long long)dbgModule->mImageBase);
@@ -127,6 +133,8 @@ int main(int argc, char** argv)
 	printf("types %d\n", (int)dbgModule->mTypes.size());
 	printf("subprograms %d\n", (int)dbgModule->mSubprograms.size());
 	printf("subprograms_inlined %d\n", inlinedCount);
+	printf("subprograms_inlined_with_lines %d\n", inlinedWithLinesCount);
+	printf("inlinee_ranges %d\n", inlineeRangeCount);
 	printf("subprograms_defined %d\n", definedCount);
 	printf("subprograms_defined_with_lines %d\n", definedWithLinesCount);
 	printf("src_files %d\n", (int)debugTarget->mSrcFiles.size());
@@ -143,6 +151,18 @@ int main(int argc, char** argv)
 		else if ((arg == "--name") && (argIdx + 1 < argc))
 		{
 			PrintName(dbgModule, argv[++argIdx]);
+		}
+		else if (arg == "--inlinees")
+		{
+			for (auto subprogram : dbgModule->mSubprograms)
+			{
+				auto inlineeInfo = subprogram->mInlineeInfo;
+				if (inlineeInfo == NULL)
+					continue;
+				printf("inlinee %s depth %d parent %s first 0x%llx:%d last 0x%llx:%d\n", subprogram->mName, inlineeInfo->mInlineDepth, inlineeInfo->mInlineParent->mName,
+					(unsigned long long)(inlineeInfo->mFirstLineData.mRelAddress + dbgModule->mImageBase), inlineeInfo->mFirstLineData.mLine + 1,
+					(unsigned long long)(inlineeInfo->mLastLineData.mRelAddress + dbgModule->mImageBase), inlineeInfo->mLastLineData.mLine + 1);
+			}
 		}
 		else if ((arg == "--addr-file") && (argIdx + 1 < argc))
 		{

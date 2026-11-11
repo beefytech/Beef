@@ -63,6 +63,9 @@ void LLDBDebugger::HostSyncModules()
 		if ((strcmp(modulePath, exePath) == 0) && (mDebugTarget->mLaunchBinary == NULL))
 		{
 			dbgModule = mDebugTarget->Init(path, mTargetPath, (intptr)loadBase);
+			// SetupDyn gives the other modules theirs
+			if ((dbgModule != NULL) && (dbgModule->mOrigImageData == NULL))
+				dbgModule->mOrigImageData = new DbgModuleMemoryCache(dbgModule->mImageBase, dbgModule->mImageSize);
 		}
 		else
 		{
@@ -227,7 +230,7 @@ addr_target LLDBDebugger::DecodeThunk(addr_target address, DbgModuleMemoryCache*
 	return 0;
 }
 
-bool LLDBDebugger::IsReturnInstruction(addr_target address, DbgModuleMemoryCache* memoryCache)
+bool LLDBDebugger::DecodeInstInfo(addr_target address, DbgModuleMemoryCache* memoryCache, CPURegisters* registers, DbgInstInfo* outInfo)
 {
 	if (!mLLDBTarget.IsValid())
 		return false;
@@ -236,8 +239,53 @@ bool LLDBDebugger::IsReturnInstruction(addr_target address, DbgModuleMemoryCache
 	lldb::SBInstructionList instructions = mLLDBTarget.ReadInstructions(addr, 1);
 	if (instructions.GetSize() == 0)
 		return false;
-	const char* mnemonic = instructions.GetInstructionAtIndex(0).GetMnemonic(mLLDBTarget);
-	return (mnemonic != NULL) && (strncmp(mnemonic, "ret", 3) == 0);
+	lldb::SBInstruction instruction = instructions.GetInstructionAtIndex(0);
+	lldb::InstructionControlFlowKind controlFlowKind = instruction.GetControlFlowKind(mLLDBTarget);
+	outInfo->mSize = (int)instruction.GetByteSize();
+	outInfo->mIsCall = (controlFlowKind == lldb::eInstructionControlFlowKindCall) || (controlFlowKind == lldb::eInstructionControlFlowKindFarCall);
+	outInfo->mIsReturn = (controlFlowKind == lldb::eInstructionControlFlowKindReturn) || (controlFlowKind == lldb::eInstructionControlFlowKindFarReturn);
+	outInfo->mTarget = 0;
+	if (outInfo->mIsCall)
+	{
+		// Only a direct call's operand is a bare address; register and memory operands need the simulation Windows does
+		const char* operands = instruction.GetOperands(mLLDBTarget);
+		if ((operands != NULL) && (strncmp(operands, "0x", 2) == 0))
+		{
+			char* operandEnd = NULL;
+			uint64 target = strtoull(operands + 2, &operandEnd, 16);
+			if ((operandEnd != NULL) && (*operandEnd == 0))
+				outInfo->mTarget = (addr_target)target;
+		}
+	}
+	if (registers != NULL)
+		*registers->GetPCRegisterRef() = address;
+	return true;
+}
+
+// HotGetTlsBlockAddr knows only the hot base module's TLS module id, and evaluates in the stopped thread's innermost frame
+bool LLDBDebugger::GetTLSBlockAddr(DbgModule* dbgModule, CPURegisters* registers, addr_target& outAddr)
+{
+	if ((registers == NULL) || (mHotTlsModuleId == 1) || (mLLDBFrames.IsEmpty()))
+		return false;
+	lldb::SBModule baseModule = HotGetBaseModule();
+	if (!baseModule.IsValid())
+		return false;
+	char modulePath[PATH_MAX] = { 0 };
+	char moduleRealPath[PATH_MAX];
+	char dbgModuleRealPath[PATH_MAX];
+	baseModule.GetFileSpec().GetPath(modulePath, sizeof(modulePath));
+	if ((realpath(modulePath, moduleRealPath) == NULL) || (realpath(dbgModule->mFilePath.c_str(), dbgModuleRealPath) == NULL) ||
+		(strcmp(moduleRealPath, dbgModuleRealPath) != 0))
+		return false;
+
+	lldb::SBFrame& frame = mLLDBFrames[0];
+	if ((addr_target)frame.FindRegister("fs_base").GetValueAsUnsigned(0) != (addr_target)registers->mIntRegs.gs)
+		return false;
+	uint64 blockAddr = 0;
+	if (!HotGetTlsBlockAddr(frame, blockAddr))
+		return false;
+	outAddr = (addr_target)blockAddr;
+	return true;
 }
 
 addr_target LLDBDebugger::GetTLSOffset(int tlsIndex)

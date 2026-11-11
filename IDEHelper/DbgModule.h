@@ -340,6 +340,8 @@ public:
 	DbgLineData mFirstLineData;
 	DbgLineData mLastLineData;
 	uint32 mInlineeId;
+	int mCallFile;
+	int mCallLine;
 	int mInlineDepth;
 };
 
@@ -828,6 +830,16 @@ public:
 	int mSection;
 };
 
+class DbgInlineeRange
+{
+public:
+	addr_target mLowPC;
+	addr_target mHighPC;
+	addr_target mPrefixMaxHighPC; // Lets FindDwarfInlinee stop scanning back
+	DbgSubprogram* mInlinee;
+	int mDepth;
+};
+
 class DbgCompileUnit
 {
 public:
@@ -849,6 +861,7 @@ public:
 	bool mIsMaster;
 
 	SLIList<DbgSubprogram*> mOrphanMethods;
+	Array<DbgInlineeRange> mInlineeRanges;
 
 public:
 	DbgCompileUnit(DbgModule* dbgModule);
@@ -1286,6 +1299,10 @@ public:
 	DbgSrcFile* AddSrcFile(DbgCompileUnit* compileUnit, const String& srcFilePath);
 	void AddLineData(DbgCompileUnit* dwCompileUnit, DbgLineData& lineData, DbgSubprogram*& curSubProgram, std::list<DbgLineData>& queuedLineData);
 	bool ParseDebugLineInfo(const uint8*& data, DbgCompileUnit* dwCompileUnit);
+	void PrepareDwarfInlineeRanges(DbgCompileUnit* dwCompileUnit);
+	DbgSubprogram* FindDwarfInlinee(DbgCompileUnit* dwCompileUnit, addr_target address);
+	void AddDwarfInlineCallRows(DbgLineDataBuilder& lineBuilder, DbgCompileUnit* dwCompileUnit, const DbgLineData& lineData, DbgSubprogram* prevInlinee, DbgSubprogram* inlinee);
+	addr_target FindDwarfInlineeRangeEnd(DbgCompileUnit* dwCompileUnit, DbgSubprogram* inlinee, addr_target address);
 	void FixupInnerTypes(int startingTypeIdx);
 	void MapTypes(int startingTypeIdx);
 	void CreateNamespaces();
@@ -1326,6 +1343,9 @@ public:
 
 	bool ReadCOFF(DataStream* stream, DbgModuleKind dbgModuleKind);
 	virtual bool ReadImage(DataStream* stream, DbgModuleKind dbgModuleKind) { return ReadCOFF(stream, dbgModuleKind); }
+	// COFF images can also carry GNU DWARF, whose inline handling stays as it was
+	virtual bool WantsDwarfInlineContexts() { return false; }
+	virtual bool ResolveTLSAddress(addr_target operand, CPURegisters* registers, addr_target& outAddr);
 	void RemoveTargetData();
 	virtual void ReportMemory(MemReporter* memReporter);
 

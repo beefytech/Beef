@@ -382,6 +382,8 @@ protected:
 	void ShadowCompare(const char* query, const StringImpl& lldbResult, const StringImpl& beefResult);
 	void ShadowReportLine(const StringImpl& line);
 	void ShadowCheckFrames();
+	void ShadowCheckTLS();
+	void ShadowCheckLineCalls(addr_target pc);
 	void ShadowCheckBreakpoint(LLDBBreakpoint* bp);
 	void ShadowWriteReport();
 
@@ -533,7 +535,8 @@ public:
 	virtual void PhysSetBreakpoint(addr_target address) override;
 	virtual addr_target DecodeThunk(addr_target address, DbgModuleMemoryCache* memoryCache) override;
 	virtual bool DecodeInstruction(addr_target address, DbgModuleMemoryCache* memoryCache, CPUInst* inst) override;
-	virtual bool IsReturnInstruction(addr_target address, DbgModuleMemoryCache* memoryCache) override;
+	virtual bool DecodeInstInfo(addr_target address, DbgModuleMemoryCache* memoryCache, CPURegisters* registers, NS_BF_DBG::DbgInstInfo* outInfo) override;
+	virtual bool GetTLSBlockAddr(NS_BF_DBG::DbgModule* dbgModule, CPURegisters* registers, addr_target& outAddr) override;
 	virtual DbgBreakKind GetDbgBreakKind(addr_target address, DbgModuleMemoryCache* memoryCache, intptr_target* regs, intptr_target* outObjectPtr) override;
 	using NS_BF_DBG::DbgTargetHost::ReadMemory;
 };

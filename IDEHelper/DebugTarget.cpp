@@ -2502,6 +2502,14 @@ bool DebugTarget::IsReturnInstruction(addr_target address)
 	return false;
 }
 
+bool DebugTarget::DecodeInstInfo(addr_target address, CPURegisters* registers, DbgInstInfo* outInfo)
+{
+	auto dwarf = FindDbgModuleForAddress(address);
+	if ((dwarf != NULL) && (dwarf->mOrigImageData != NULL))
+		return mDebugger->DecodeInstInfo(address, dwarf->mOrigImageData, registers, outInfo);
+	return false;
+}
+
 DbgBreakKind DebugTarget::GetDbgBreakKind(addr_target address, CPURegisters* registers, intptr_target* objAddr)
 {
 	auto dwarf = FindDbgModuleForAddress(address);
