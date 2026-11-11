@@ -15882,7 +15882,7 @@ bool BfModule::TypeIsSubTypeOf(BfTypeInstance* srcType, BfTypeInstance* wantType
 
 	if (wantType->IsInterface())
 	{
-		if (wantType->mDefineState < BfTypeDefineState_HasInterfaces_All)
+		if (srcType->mDefineState < BfTypeDefineState_HasInterfaces_All)
 			PopulateType(srcType, BfPopulateType_Interfaces_All);
 
 		BfTypeDef* checkActiveTypeDef = NULL;
