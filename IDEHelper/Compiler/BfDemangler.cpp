@@ -427,7 +427,8 @@ bool DwDemangler::DemangleFunctionType(StringImpl& outName)
 
 		for (int paramNum = 0; true; paramNum++)
 		{
-			if (DemangleEnd())
+			// A parameter that failed to parse consumed nothing, so retrying it would never end
+			if ((DemangleEnd()) || (mFailed))
 				break;
 
 			if (paramNum > 0)
@@ -695,6 +696,8 @@ bool DwDemangler::DemangleExprPriamry(StringImpl& outName)
 			auto c = SafeGetChar(mMangledName, mCurIdx++);
 			if (c == 'E')
 				break;
+			if (mCurIdx > (int)mMangledName.length())
+				return Failed();
 			value += c;
 		}
 		if (outType == "bool")
@@ -785,6 +788,8 @@ bool DwDemangler::DemangleSubstitution(StringImpl& outName)
 		while (true)
 		{
 			char idxChar = SafeGetChar(mMangledName, mCurIdx++);
+			if (mCurIdx > (int)mMangledName.length())
+				return Failed();
 			if (idxChar == 't')
 			{
 				DemangleUnqualifiedName(outName);
@@ -856,6 +861,8 @@ bool DwDemangler::DemangleTemplateParam(StringImpl& outName)
 		while (true)
 		{
 			char idxChar = SafeGetChar(mMangledName, mCurIdx++);
+			if (mCurIdx > (int)mMangledName.length())
+				return Failed();
 			if (idxChar == '?')
 				break;
 			if (idxChar == '_')
