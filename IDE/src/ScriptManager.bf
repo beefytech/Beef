@@ -2544,7 +2544,8 @@ namespace IDE
 		[IDECommand]
 		public void AssertCompileSucceeded()
 		{
-			if (gApp.IsCompiling)
+			// A hot compile is decided only once its type data has been resolved against the program
+			if ((gApp.IsCompiling) || (gApp.mHotResolveState != .None))
 			{
 				ScriptManager.sActiveManager.mCurCmd.mHandled = false;
 				return;
@@ -2552,6 +2553,19 @@ namespace IDE
 			
 			if (gApp.mLastCompileFailed)
 				mScriptManager.Fail("Compile failed");
+		}
+
+		[IDECommand]
+		public void AssertCompileFailed()
+		{
+			if ((gApp.IsCompiling) || (gApp.mHotResolveState != .None))
+			{
+				ScriptManager.sActiveManager.mCurCmd.mHandled = false;
+				return;
+			}
+
+			if (!gApp.mLastCompileFailed)
+				mScriptManager.Fail("Compile succeeded");
 		}
 
 		[IDECommand]
