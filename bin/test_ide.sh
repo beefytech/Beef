@@ -90,6 +90,67 @@ fi
 
 cd "$ROOTPATH/IDE/dist"
 
+# One run gives the whole baseline, so a run that fails or disagrees does not stop the others
+if [ -n "$BEEF_DBG_SHADOW_ALL" ]
+then
+	SHADOW_ALL_DIR=${BEEF_DBG_SHADOW_ALL_DIR:-${TMPDIR:-/tmp}/beef-dbg-shadow-all}
+	rm -rf "$SHADOW_ALL_DIR/reports" "$SHADOW_ALL_DIR/exits.txt"
+	mkdir -p "$SHADOW_ALL_DIR/reports"
+	for script in "$ROOTPATH"/IDE/Tests/Test1/scripts/*.txt
+	do
+		name=$(basename "$script" .txt)
+		for ide in "${BINARIES[@]}"
+		do
+			echo "Testing IDE/Tests/Test1/scripts/$name.txt in $ide with BEEF_DBG_SHADOW"
+			report="$SHADOW_ALL_DIR/reports/$name@$ide.txt"
+			exitCode=0
+			BEEF_DBG_SHADOW=1 BEEF_DBG_SHADOW_REPORT="$report" "${LAUNCHER[@]}" "./$ide" -proddir="$ROOTPATH/IDE/Tests/Test1" -test="$script" || exitCode=$?
+			touch "$report"
+			echo "$name@$ide $exitCode" >> "$SHADOW_ALL_DIR/exits.txt"
+		done
+	done
+	awk '
+		FNR == 1 { run = FILENAME; sub(/.*\//, "", run); sub(/\.txt$/, "", run) }
+		/^DBGSHADOW query / {
+			split($4, q, "="); split($5, m, "="); split($6, src, "=")
+			queries[$3] += q[2]; mismatches[$3] += m[2]; source[$3] = src[2]
+			if (m[2] > 0) runs[$3] = runs[$3] " " run
+			next
+		}
+		/^DBGSHADOW breakpoint-extra:/ { extra["breakpoint"]++; next }
+		/^DBGSHADOW unsupported / {
+			split($4, c, "="); unsupported[$3] += c[2]; unsupportedRuns[$3] = unsupportedRuns[$3] " " run
+			next
+		}
+		/^DBGSHADOW [a-z_]+: / {
+			key = $2; sub(/:$/, "", key)
+			if (!(key in first)) first[key] = run ": " $0
+			next
+		}
+		END {
+			for (key in queries) {
+				printf "query %s source=%s queries=%d mismatches=%d extra=%d runs=%s\n", key, source[key], queries[key], mismatches[key], extra[key] + 0, runs[key]
+				totalMismatches += mismatches[key]
+			}
+			for (key in unsupported) {
+				printf "unsupported %s count=%d runs=%s\n", key, unsupported[key], unsupportedRuns[key]
+				totalUnsupported += unsupported[key]
+			}
+			for (key in first)
+				printf "first %s %s\n", key, first[key]
+			printf "total mismatches=%d unsupported=%d\n", totalMismatches, totalUnsupported
+		}' "$SHADOW_ALL_DIR"/reports/*.txt | sort > "$SHADOW_ALL_DIR/shadow-all.txt"
+	awk '$2 != 0 { print "exit " $1 " " $2 }' "$SHADOW_ALL_DIR/exits.txt" >> "$SHADOW_ALL_DIR/shadow-all.txt"
+	cat "$SHADOW_ALL_DIR/shadow-all.txt"
+	if grep -q "^total mismatches=0 unsupported=0$" "$SHADOW_ALL_DIR/shadow-all.txt" && ! grep -q "^exit " "$SHADOW_ALL_DIR/shadow-all.txt"
+	then
+		echo "SUCCESS!"
+		exit 0
+	fi
+	echo "#### FAILED ####"
+	exit 1
+fi
+
 test_workspace() {
 	for script in "$ROOTPATH/$1"/scripts/*.txt
 	do

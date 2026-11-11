@@ -10990,55 +10990,6 @@ String WinDebugger::GetStackMethodOwner(int stackFrameIdx, int& language)
 	return parentType->ToString();
 }
 
-String WinDebugger::GetAddressSourceLocation(intptr address)
-{
-	DbgSubprogram* subProgram = NULL;
-	DbgLineData* lineData = FindLineDataAtAddress(address, &subProgram);
-	if (lineData != NULL)
-		return StrFormat("%s:%d:%d", subProgram->GetLineSrcFile(*lineData)->GetLocalPath().c_str(), lineData->mLine + 1, lineData->mColumn + 1);
-
-	String outSymbol;
-	addr_target offset = 0;
-	DbgModule* dbgModule;
-	if (mDebugTarget->FindSymbolAt(address, &outSymbol, &offset, &dbgModule))
-	{
-		if (offset < 0x10000)
-		{
-			outSymbol = BfDemangler::Demangle(outSymbol, DbgLanguage_Unknown);
-			if (offset > 0)
-				outSymbol += StrFormat("+%x", offset);
-			return outSymbol;
-		}
-	}
-
-	return StrFormat("0x%@", address);
-}
-
-String WinDebugger::GetAddressSymbolName(intptr address, bool demangle)
-{
-	auto subProgram = mDebugTarget->FindSubProgram(address);
-	if (subProgram != NULL)
-		return subProgram->ToString();
-
-	String outSymbol;
-	addr_target offset = 0;
-	DbgModule* dbgModule;
-	if (mDebugTarget->FindSymbolAt(address, &outSymbol, &offset, &dbgModule))
-	{
-		if (offset < 0x10000)
-		{
-			if (demangle)
-				outSymbol = BfDemangler::Demangle(outSymbol, DbgLanguage_Unknown);
-			if (offset > 0)
-				outSymbol += StrFormat("+%x", offset);
-			return outSymbol;
-		}
-	}
-
-	return StrFormat("0x%@", address);
-}
-
-
 intptr WinDebugger::GetSymbolAddress(const StringImpl& sym)
 {
 	return mDebugTarget->FindSymbolAddr(sym);
