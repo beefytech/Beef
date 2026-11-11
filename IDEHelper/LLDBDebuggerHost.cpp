@@ -244,6 +244,13 @@ bool LLDBDebugger::DecodeInstInfo(addr_target address, DbgModuleMemoryCache* mem
 	outInfo->mSize = (int)instruction.GetByteSize();
 	outInfo->mIsCall = (controlFlowKind == lldb::eInstructionControlFlowKindCall) || (controlFlowKind == lldb::eInstructionControlFlowKindFarCall);
 	outInfo->mIsReturn = (controlFlowKind == lldb::eInstructionControlFlowKindReturn) || (controlFlowKind == lldb::eInstructionControlFlowKindFarReturn);
+	if (controlFlowKind == lldb::eInstructionControlFlowKindUnknown)
+	{
+		// LLDB classifies control flow only on x86
+		const char* mnemonic = instruction.GetMnemonic(mLLDBTarget);
+		outInfo->mIsCall = (mnemonic != NULL) && (strncmp(mnemonic, "call", 4) == 0);
+		outInfo->mIsReturn = (mnemonic != NULL) && (strncmp(mnemonic, "ret", 3) == 0);
+	}
 	outInfo->mTarget = 0;
 	if (outInfo->mIsCall)
 	{
