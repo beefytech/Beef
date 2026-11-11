@@ -13671,6 +13671,14 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targe
 {
 	auto invokeMethodInstance = GetDelegateInvokeMethod(toType->ToTypeInstance());
 
+	auto _ThisTypeAccepts = [&](BfType* methodThisType, BfType* invokeThisType)
+	{
+		// Value types keep their own layout and an interface method has no body to bind, so both need an exact match
+		if ((methodThisType->IsValueType()) || (invokeThisType->IsValueType()) || (methodThisType->IsInterface()))
+			return methodThisType == invokeThisType;
+		return TypeIsSubTypeOf(invokeThisType->ToTypeInstance(), methodThisType->ToTypeInstance());
+	};
+
 	bool methodsThisMatch = true;
 	if (invokeMethodInstance->mMethodDef->mIsStatic != methodInstance->mMethodDef->mIsStatic)
 		methodsThisMatch = false;
@@ -13684,7 +13692,7 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targe
 			BfType* invokeThisType = invokeMethodInstance->GetThisType();
 			if (invokeThisType->IsPointer())
 				invokeThisType = invokeThisType->GetUnderlyingType();
-			if (!TypeIsSubTypeOf(thisType->ToTypeInstance(), invokeThisType->ToTypeInstance()))
+			if (!_ThisTypeAccepts(thisType, invokeThisType))
 				methodsThisMatch = false;
 		}
 	}
@@ -13755,7 +13763,7 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targe
 						invokeThisWasPtr = true;
 					}
 
-					if (TypeIsSubTypeOf(thisType->ToTypeInstance(), invokeThisType->ToTypeInstance()))
+					if (_ThisTypeAccepts(thisType, invokeThisType))
 					{
 						if (invokeThisWasPtr != thisWasPtr)
 						{
@@ -13765,6 +13773,16 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targe
 								Fail(StrFormat("Non-static method '%s' cannot match '%s', consider adding 'mut' specifier to '%s this' in the function parameters", MethodToString(methodInstance).c_str(), TypeToString(toType).c_str(), TypeToString(thisType).c_str()), srcNode);
 							handled = true;
 						}
+					}
+					else if ((thisType->IsValueType()) || (invokeThisType->IsValueType()))
+					{
+						Fail(StrFormat("Non-static method '%s' cannot match '%s', a value type 'this' must be exactly '%s'", MethodToString(methodInstance).c_str(), TypeToString(toType).c_str(), TypeToString(thisType).c_str()), srcNode);
+						handled = true;
+					}
+					else if (TypeIsSubTypeOf(thisType->ToTypeInstance(), invokeThisType->ToTypeInstance()))
+					{
+						Fail(StrFormat("Non-static method '%s' cannot match '%s' because a '%s' passed as 'this' is not necessarily a '%s'", MethodToString(methodInstance).c_str(), TypeToString(toType).c_str(), TypeToString(invokeThisType).c_str(), TypeToString(thisType).c_str()), srcNode);
+						handled = true;
 					}
 				}
 			}
