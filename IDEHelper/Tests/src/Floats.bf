@@ -250,5 +250,119 @@ namespace Tests
 			MinMaxTest<float>(Float.MinValue, Float.MaxValue);
 			MinMaxTest<double>(Double.MinValue, Double.MaxValue);
 		}
+
+		[NoInline]
+		static float Opaque(float val) => val;
+
+		[NoInline]
+		static double Opaque(double val) => val;
+
+		[NoInline]
+		static int64 Opaque(int64 val) => val;
+
+		[NoInline]
+		static uint64 Opaque(uint64 val) => val;
+
+		static uint32 Bits(float val)
+		{
+			var v = val;
+			return *(uint32*)&v;
+		}
+
+		static uint64 Bits(double val)
+		{
+			var v = val;
+			return *(uint64*)&v;
+		}
+
+		const float cChain = 120 + (280f / 3 + 10);
+
+		[Test]
+		public static void TestFoldAddChain()
+		{
+			float a = Opaque(280f);
+			float b = Opaque(3f);
+			float runtime = 120 + (a / b + 10);
+			float local = 120 + (280f / 3 + 10);
+			Test.Assert(Bits(cChain) == Bits(runtime));
+			Test.Assert(Bits(local) == Bits(runtime));
+			Test.Assert(Bits(120 + (280f / 3 + 10)) == Bits(runtime));
+		}
+
+		[Test]
+		public static void TestFoldSubChain()
+		{
+			float a = Opaque(399f);
+			float b = Opaque(90f);
+			float c = Opaque(32.6f);
+			Test.Assert(Bits(399f / 90f - 32.6f) == Bits(a / b - c));
+		}
+
+		[Test]
+		public static void TestFoldMulChain()
+		{
+			float a = Opaque(75.1f);
+			float b = Opaque(377f);
+			float c = Opaque(353f);
+			Test.Assert(Bits(75.1f / 377f * 353f) == Bits(a / b * c));
+		}
+
+		[Test]
+		public static void TestFoldDivChain()
+		{
+			float a = Opaque(167.6f);
+			float b = Opaque(101.1f);
+			float c = Opaque(191.2f);
+			Test.Assert(Bits(167.6f * 101.1f / 191.2f) == Bits(a * b / c));
+		}
+
+		[Test]
+		public static void TestFoldRemChain()
+		{
+			float a = Opaque(253f);
+			float b = Opaque(24f);
+			float c = Opaque(5f);
+			Test.Assert(Bits(253f / 24f % 5f) == Bits(a / b % c));
+		}
+
+		[Test]
+		public static void TestFoldNegChain()
+		{
+			float a = Opaque(322f);
+			float b = Opaque(6f);
+			float c = Opaque(64f);
+			Test.Assert(Bits(-(322f / 6f) - 64f) == Bits(-(a / b) - c));
+		}
+
+		[Test]
+		public static void TestFoldIntOperandChain()
+		{
+			float a = Opaque(86.5f);
+			Test.Assert(Bits(86.5f / 3 + 7) == Bits(a / 3 + 7));
+		}
+
+		[Test]
+		public static void TestFoldOverflowChain()
+		{
+			float a = Opaque(3e38f);
+			Test.Assert(Bits(3e38f * 10 / 10) == Bits(a * 10 / 10));
+		}
+
+		[Test]
+		public static void TestFoldDoubleChain()
+		{
+			double a = Opaque(1.0);
+			double b = Opaque(3.0);
+			Test.Assert(Bits((1.0 / 3.0 + 10) * 7) == Bits((a / b + 10) * 7));
+		}
+
+		[Test]
+		public static void TestFoldIntToFloatCast()
+		{
+			int64 s = Opaque(9007199791611905L);
+			uint64 u = Opaque(9223372586610589697UL);
+			Test.Assert(Bits((float)9007199791611905L) == Bits((float)s));
+			Test.Assert(Bits((float)9223372586610589697UL) == Bits((float)u));
+		}
 	}
 }
