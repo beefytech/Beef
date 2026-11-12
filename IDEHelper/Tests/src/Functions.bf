@@ -40,6 +40,18 @@ namespace Tests
 			}
 		}
 
+		class ClassC : ClassB
+		{
+			public int GetC(float f) => mA + (int)f + 3000;
+			public int BindInherited() => CallBound(this, => GetA);
+			public int BindInheritedVirtual() => CallBound(this, => GetB);
+		}
+
+		static int CallBound<T>(T target, function int(T this, float f) method) where T : class
+		{
+			return method(target, 100.0f);
+		}
+
 		struct StructA
 		{
 			int mA = 123;
@@ -81,6 +93,11 @@ namespace Tests
 				sa.mB = mB + 2000 + (int)f;
 				return sa;
 			}
+		}
+
+		struct StructD : StructA
+		{
+			public int GetD(float f) => (int)f;
 		}
 
 		struct StructB
@@ -289,6 +306,59 @@ namespace Tests
 		}
 
 		[Test]
+		public static void TestInheritedThis()
+		{
+			ClassB cb = scope ClassB();
+			function int (ClassB this, float f) funcB = => ClassA.GetA;
+			Test.Assert(funcB(cb, 100.0f) == 223);
+
+			ClassC cc = scope ClassC();
+			function int (ClassC this, float f) funcC = => ClassA.GetA;
+			Test.Assert(funcC(cc, 100.0f) == 223);
+			Test.Assert(CallBound(cc, => cc.GetA) == 223);
+			Test.Assert(cc.BindInherited() == 223);
+
+			function int (ClassB this, float f) funcVirtualB = => ClassA.GetB;
+			Test.Assert(funcVirtualB(cb, 100.0f) == 1223);
+			function int (ClassC this, float f) funcVirtualC = => ClassB.GetB;
+			Test.Assert(funcVirtualC(cc, 100.0f) == 2223);
+			Test.Assert(cc.BindInheritedVirtual() == 2223);
+			Test.Assert(CallBound(cc, => cc.GetB) == 2223);
+
+			function int (ClassA this, float f) funcA = => ClassA.GetA;
+			Test.Assert(!
+				[IgnoreErrors(true)]
+				{
+					funcA = => ClassC.GetC;
+					true
+				});
+
+			ClassA ca = scope ClassA();
+			Test.Assert(!
+				[IgnoreErrors(true)]
+				{
+					CallBound(ca, => ClassC.GetC);
+					true
+				});
+
+			function int (StructA this, float f) funcStruct = => StructA.GetA;
+			Test.Assert(!
+				[IgnoreErrors(true)]
+				{
+					funcStruct = => StructD.GetD;
+					true
+				});
+
+			function void (ITest this) funcInterface = null;
+			Test.Assert(!
+				[IgnoreErrors(true)]
+				{
+					funcInterface = => Zoop.TestFunc;
+					true
+				});
+		}
+
+		[Test]
 		public static void TestBasics()
 		{
 			ClassA ca = scope ClassA();
@@ -309,8 +379,12 @@ namespace Tests
 			Test.Assert(func0(ca, 100.0f) == 2223);
 			func0 = => ClassA.GetB;
 			Test.Assert(func0(ca, 100.0f) == 1223);
-			func0 = => ClassB.GetB;
-			Test.Assert(func0(ca, 100.0f) == 2223);
+			Test.Assert(!
+				[IgnoreErrors(true)]
+				{
+					func0 = => ClassB.GetB;
+					true
+				});
 
 			func0 = => ca.GetA;
 
