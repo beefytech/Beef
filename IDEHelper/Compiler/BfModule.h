@@ -2146,6 +2146,7 @@ public:
 	BfIRValue CreateClassVDataExtGlobal(BfTypeInstance* declTypeInst, BfTypeInstance* implTypeInst, int startVirtIdx);
 	Array<BfVirtualMethodEntry> ReslotVTableForProject(BfTypeInstance* typeInstance);
 	bool VirtualSlotNeedsDevirtThunk(BfTypeInstance* typeInstance, int virtIdx);
+	void PopulateDevirtThunkTypes(BfMethodInstance* declaringMethodInstance);
 	void GetDevirtThunkName(StringImpl& name, BfTypeInstance* typeInstance, BfMethodInstance* declaringMethodInstance);
 	BfIRValue TryGetDevirtThunk(BfTypeInstance* typeInstance, BfMethodInstance* methodInstance);
 	void CreateDevirtThunks(BfTypeInstance* typeInstance);
