@@ -86,11 +86,16 @@ public:
 	// Inlined frames included; mCallStack holds the concrete ones
 	Array<lldb::SBFrame> mLLDBFrames;
 	bool mCallStackDirty;
+	bool mHostFramesLive;
+	Array<int> mHostFrameMap;
 	Array<int> mHostFrameGroupStart;                // per concrete frame: the index in mLLDBFrames of its innermost inlined frame
 
 	Dictionary<String, addr_target> mHostModuleBases;
+	NS_BF_DBG::DbgModule* mHostThreadLocalsModule;
+	Dictionary<String, NS_BF_DBG::DbgVariable*> mHostThreadLocals;
 	HashSet<String> mHostUnsupportedNames;
 	int mHostUnsupportedCount;
+	Dictionary<String, int> mHostUnsupportedCounts;
 
 	// BEEF_DBG_SHADOW
 	bool mShadowEnabled;
@@ -378,6 +383,14 @@ protected:
 	void HostBuildCallStack();
 	void HostReadFrameRegisters(lldb::SBFrame& frame, CPURegisters* registers);
 	String HostAddressSourceLocation(intptr address);
+	static bool ShadowIsFlipped(const char* query);
+	bool HostCoversAddress(intptr address);
+	String LLDBAddressSourceLocation(intptr address);
+	String LLDBAddressSymbolName(intptr address, bool demangle);
+	String LLDBStackFrameInfo(int stackFrameIdx, intptr* addr, String* outFile, int32* outHotIdx, int32* outDefLineStart, int32* outDefLineEnd, int32* outLine, int32* outColumn, int32* outLanguage, int32* outStackSize, int8* outFlags);
+	void HostMapFrames();
+	int HostToLLDBFrameIdx(int frameIdx);
+	bool HostFindThreadLocalAddress(lldb::SBFrame& frame, const char* lldbName, uint64& outAddr);
 	void ShadowInit();
 	void ShadowCompare(const char* query, const StringImpl& lldbResult, const StringImpl& beefResult);
 	void ShadowReportLine(const StringImpl& line);

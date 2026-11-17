@@ -2316,6 +2316,7 @@ DbgModule::DbgModule(DebugTarget* debugTarget) : mDefaultCompileUnit(this)
 	mDwarfRefEnd = 0;
 	mDwarfFailed = false;
 	mDwarfFailCount = 0;
+	mDwarfInlineeRangeCount = 0;
 	mEHFrameData = NULL;
 	mEHFrameSize = 0;
 	mEHFrameAddress = 0;
@@ -4194,6 +4195,7 @@ bool DbgModule::ParseDWARF(const uint8*& dataPtr)
 							inlineeRange.mInlinee = subProgram;
 							inlineeRange.mDepth = subProgram->mInlineeInfo->mInlineDepth;
 							compileUnit->mInlineeRanges.Add(inlineeRange);
+							mDwarfInlineeRangeCount++;
 						}
 					}
 				}
@@ -5627,6 +5629,8 @@ void DbgModule::ParseDWARFLines()
 		const uint8* data = mDebugLineData + compileUnit->mStmtListOffset;
 		PrepareDwarfInlineeRanges(compileUnit);
 		ParseDebugLineInfo(data, compileUnit);
+		// Only the line program reads the ranges; the rows it made carry the inline contexts
+		compileUnit->mInlineeRanges.Dispose();
 	}
 }
 
@@ -5643,9 +5647,8 @@ void DbgModule::PrepareDwarfInlineeRanges(DbgCompileUnit* dwCompileUnit)
 }
 
 // Nested inlinee ranges overlap, so the row belongs to the deepest containing entry, which sort order alone does not give
-DbgSubprogram* DbgModule::FindDwarfInlinee(DbgCompileUnit* dwCompileUnit, addr_target address)
+static int FindDwarfInlineeRangesEnd(const Array<DbgInlineeRange>& ranges, addr_target address)
 {
-	auto& ranges = dwCompileUnit->mInlineeRanges;
 	int lo = 0;
 	int hi = (int)ranges.size();
 	while (lo < hi)
@@ -5656,10 +5659,15 @@ DbgSubprogram* DbgModule::FindDwarfInlinee(DbgCompileUnit* dwCompileUnit, addr_t
 		else
 			hi = mid;
 	}
+	return lo;
+}
 
+DbgSubprogram* DbgModule::FindDwarfInlinee(DbgCompileUnit* dwCompileUnit, addr_target address)
+{
+	auto& ranges = dwCompileUnit->mInlineeRanges;
 	DbgSubprogram* best = NULL;
 	int bestDepth = 0;
-	for (int rangeIdx = lo - 1; rangeIdx >= 0; rangeIdx--)
+	for (int rangeIdx = FindDwarfInlineeRangesEnd(ranges, address) - 1; rangeIdx >= 0; rangeIdx--)
 	{
 		auto& inlineeRange = ranges[rangeIdx];
 		if (inlineeRange.mPrefixMaxHighPC <= address)
@@ -5717,12 +5725,18 @@ void DbgModule::AddDwarfInlineCallRows(DbgLineDataBuilder& lineBuilder, DbgCompi
 
 addr_target DbgModule::FindDwarfInlineeRangeEnd(DbgCompileUnit* dwCompileUnit, DbgSubprogram* inlinee, addr_target address)
 {
-	for (auto& inlineeRange : dwCompileUnit->mInlineeRanges)
+	auto& ranges = dwCompileUnit->mInlineeRanges;
+	addr_target rangeEnd = 0;
+	// Keeps the lowest index that matches, which is the range a forward scan of the sorted list returns
+	for (int rangeIdx = FindDwarfInlineeRangesEnd(ranges, address) - 1; rangeIdx >= 0; rangeIdx--)
 	{
-		if ((inlineeRange.mInlinee == inlinee) && (address >= inlineeRange.mLowPC) && (address < inlineeRange.mHighPC))
-			return inlineeRange.mHighPC;
+		auto& inlineeRange = ranges[rangeIdx];
+		if (inlineeRange.mPrefixMaxHighPC <= address)
+			break;
+		if ((inlineeRange.mInlinee == inlinee) && (address < inlineeRange.mHighPC))
+			rangeEnd = inlineeRange.mHighPC;
 	}
-	return 0;
+	return rangeEnd;
 }
 
 addr_target DbgModule::GetHotTargetAddress(DbgHotTargetSection* hotTargetSection)

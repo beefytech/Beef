@@ -121,9 +121,7 @@ int main(int argc, char** argv)
 		if ((subprogram->mLineInfo != NULL) && (subprogram->mLineInfo->mLines.mSize > 0))
 			definedWithLinesCount++;
 	}
-	int inlineeRangeCount = 0;
-	for (auto compileUnit : dbgModule->mCompileUnits)
-		inlineeRangeCount += (int)compileUnit->mInlineeRanges.size();
+	int inlineeRangeCount = dbgModule->mDwarfInlineeRangeCount;
 
 	printf("module %s\n", dbgModule->mDisplayName.c_str());
 	printf("image_base 0x%llx\n", (unsigned long long)dbgModule->mImageBase);

@@ -1158,6 +1158,7 @@ public:
 	int mDwarfRefEnd;
 	bool mDwarfFailed;
 	int mDwarfFailCount;
+	int mDwarfInlineeRangeCount;
 	Array<DbgSectionData> mExceptionDirectory;
 	const uint8* mEHFrameData;
 	int64 mEHFrameSize;
