@@ -49,7 +49,9 @@ namespace IDE
 				if (gApp.IsCompiling)
 					mStarted = true;
 
-				bool finished = (mStarted) && (!gApp.IsCompiling);
+				// A hot compile ends once its type data has been resolved against the program, which
+				// can refuse it
+				bool finished = (mStarted) && (!gApp.IsCompiling) && (gApp.mHotResolveState == .None);
 				// A build that never got going (nothing to build, a dialog, no workspace) would
 				// otherwise leave us waiting for the whole timeout
 				if ((!mStarted) && (mFrames >= 30))
