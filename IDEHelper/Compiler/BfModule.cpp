@@ -6011,6 +6011,22 @@ bool BfModule::VirtualSlotNeedsDevirtThunk(BfTypeInstance* typeInstance, int vir
 	return implMethodInstance->mMethodDef->mDeclaringType->IsExtension();
 }
 
+// A devirt thunk's signature names its return and parameter types by value. In a module that has
+//  only declared one of them (the vdata, say), the struct is opaque, and a target that returns a
+//  small struct as the struct itself rather than lowered into registers (AArch64's homogeneous
+//  float aggregates) then builds a call LLVM rejects: "Instruction returns a non-scalar type".
+void BfModule::PopulateDevirtThunkTypes(BfMethodInstance* declaringMethodInstance)
+{
+	if (declaringMethodInstance->mReturnType->IsValueType())
+		mBfIRBuilder->PopulateType(declaringMethodInstance->mReturnType, BfIRPopulateType_Full);
+	for (int paramIdx = 0; paramIdx < declaringMethodInstance->GetParamCount(); paramIdx++)
+	{
+		auto paramType = declaringMethodInstance->GetParamType(paramIdx);
+		if (paramType->IsValueType())
+			mBfIRBuilder->PopulateType(paramType, BfIRPopulateType_Full);
+	}
+}
+
 void BfModule::GetDevirtThunkName(StringImpl& name, BfTypeInstance* typeInstance, BfMethodInstance* declaringMethodInstance)
 {
 	BfMangler::MangleStaticFieldName(name, mCompiler->GetMangleKind(), typeInstance, "bf_dvt");
@@ -6068,6 +6084,7 @@ BfIRValue BfModule::TryGetDevirtThunk(BfTypeInstance* typeInstance, BfMethodInst
 
 	BfLogSysM("Referencing devirt thunk %s\n", thunkName.c_str());
 
+	PopulateDevirtThunkTypes(declaringMethodInstance);
 	auto thunkFuncType = mBfIRBuilder->MapMethod(declaringMethodInstance);
 	auto thunkFunc = mBfIRBuilder->CreateFunction(thunkFuncType, BfIRLinkageType_External, thunkName);
 	mDevirtThunkRefs[mapEntry] = thunkFunc;
@@ -6137,6 +6154,7 @@ void BfModule::CreateDevirtThunks(BfTypeInstance* typeInstance)
 
 		BfLogSysM("Creating devirt thunk %s -> %s\n", thunkName.c_str(), MethodToString(implMethodInstance).c_str());
 
+		PopulateDevirtThunkTypes(declaringMethodInstance);
 		auto thunkFuncType = mBfIRBuilder->MapMethod(declaringMethodInstance);
 		auto thunkFunc = mBfIRBuilder->CreateFunction(thunkFuncType, BfIRLinkageType_External, thunkName);
 		SetupIRMethod(NULL, thunkFunc, false);
