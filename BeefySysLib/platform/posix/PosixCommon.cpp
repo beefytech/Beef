@@ -2787,7 +2787,14 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* inName, BfpFileCreat
 
 		if ((createFlags & BfpFileCreateFlag_Pipe) != 0)
 		{
+#ifdef BF_PLATFORM_ANDROID
+			// Android has no /tmp: a pipe goes in the temp folder (TMPDIR, which an app sets to its
+			// cache and adb's shell to /data/local/tmp), else /data/local/tmp.
+			const char* tempDir = getenv("TMPDIR");
+			name = String((tempDir != NULL) && (tempDir[0] != '\0') ? tempDir : "/data/local/tmp") + "/" + name;
+#else
 			name = "/tmp/" + name;
+#endif
 			if ((createKind == BfpFileCreateKind_CreateAlways) ||
 				(createKind == BfpFileCreateKind_CreateIfNotExists))
 			{
