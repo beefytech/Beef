@@ -847,7 +847,8 @@ BfIRValue BfIRConstHolder::CreateConst(BfTypeCode typeCode, double val)
 {
 	BfConstant* constant = mTempAlloc.Alloc<BfConstant>();
 	constant->mTypeCode = typeCode;
-	constant->mDouble = val;
+	// Round each folded float op as runtime code does
+	constant->mDouble = (typeCode == BfTypeCode_Float) ? (double)(float)val : val;
 	auto irValue = BfIRValue(BfIRValueFlags_Const, mTempAlloc.GetChunkedId(constant));
 #ifdef CHECK_CONSTHOLDER
 	irValue.mHolder = this;
@@ -4453,6 +4454,9 @@ BfIRValue BfIRBuilder::CreateNumericCast(BfIRValue val, bool valIsSigned, BfType
 			// Int -> Float
 			if (IsInt(constVal->mTypeCode))
 			{
+				if (typeCode == BfTypeCode_Float)
+					return CreateConst(typeCode, IsSigned(constVal->mTypeCode) ? (float)constVal->mInt64 : (float)constVal->mUInt64);
+
 				double val = 0;
 				if (IsSigned(constVal->mTypeCode))
 					val = (double)constVal->mInt64;
