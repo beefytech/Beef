@@ -14451,7 +14451,12 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 						return;
 					}
 				}
+				int prevFailedIdx = mModule->mCompiler->mPassInstance->mFailedIdx;
 				result = mModule->CastToFunction(delegateBindExpr->mTarget, bindResult.mOrigTarget, bindResult.mMethodInstance, mExpectingType, BfCastFlags_None, bindResult.mFunc);
+				// CastToFunction has said why the method can't bind. mResult still holds the result of the call we resolved the
+				//  method through, and casting that to the function type would add a second, misleading error
+				if ((!result) && (mModule->mCompiler->mPassInstance->mFailedIdx != prevFailedIdx))
+					mResult = BfTypedValue();
 			}
 			if (result)
 				mResult = BfTypedValue(result, mExpectingType);

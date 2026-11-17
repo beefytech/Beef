@@ -356,6 +356,29 @@ namespace Tests
 					funcInterface = => Zoop.TestFunc;
 					true
 				});
+
+			// A function value converts the same way a method bind does
+			function int (ClassA this, float f) funcBaseA = => ClassA.GetA;
+			function int (ClassB this, float f) funcFromBase = funcBaseA;
+			Test.Assert(funcFromBase(cb, 100.0f) == 223);
+			function int (ClassC this, float f) funcFromBaseC = (function int (ClassC this, float f))funcBaseA;
+			Test.Assert(funcFromBaseC(cc, 100.0f) == 223);
+			Test.Assert(CallBound(cc, funcBaseA) == 223);
+
+			Test.Assert(!
+				[IgnoreErrors(true)]
+				{
+					funcBaseA = funcFromBase;
+					true
+				});
+
+			function int (StructD this, float f) funcStructD = null;
+			Test.Assert(!
+				[IgnoreErrors(true)]
+				{
+					funcStructD = (function int (StructD this, float f))funcStruct;
+					true
+				});
 		}
 
 		[Test]

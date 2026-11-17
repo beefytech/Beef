@@ -15659,8 +15659,20 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 							nameMatches = fromParamName == toParamName;
 					}
 
+					bool typeMatches = fromMethodInst->GetParamType(paramIdx) == toMethodInst->GetParamType(paramIdx);
+					if ((!typeMatches) && (paramIdx == 0) && (fromMethodInst->HasExplicitThis()))
+					{
+						// Calling through the new type passes a 'this' of its type, which the function accepts when that derives from
+						//  its own 'this' type. This matches what CastToFunction allows when binding a method. Value types keep exact
+						//  matches, as their layouts differ
+						auto fromThisType = fromMethodInst->GetParamType(paramIdx);
+						auto toThisType = toMethodInst->GetParamType(paramIdx);
+						if ((fromThisType->IsObjectOrInterface()) && (toThisType->IsObjectOrInterface()))
+							typeMatches = TypeIsSubTypeOf(toThisType->ToTypeInstance(), fromThisType->ToTypeInstance());
+					}
+
 					if ((fromMethodInst->GetParamKind(paramIdx) == toMethodInst->GetParamKind(paramIdx)) &&
-						(fromMethodInst->GetParamType(paramIdx) == toMethodInst->GetParamType(paramIdx)) &&
+						(typeMatches) &&
 						(nameMatches))
 					{
 						// Matched, required for implicit/explicit
