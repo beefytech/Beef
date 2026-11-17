@@ -951,7 +951,11 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_Init(int version, BfpSystemInitFlags flag
         BfpSystem_FatalError(StrFormat("Bfp build version '%d' does not match requested version '%d'", BFP_VERSION, version).c_str(), "BFP FATAL ERROR");
     }
 
-    struct sigaction ignoreAction = { SIG_IGN };
+    // By field name: the members' order differs between C libraries (bionic puts sa_flags
+    // first), so a positional initializer is not portable.
+    struct sigaction ignoreAction;
+    memset(&ignoreAction, 0, sizeof(ignoreAction));
+    ignoreAction.sa_handler = SIG_IGN;
     sigaction(SIGPIPE, &ignoreAction, NULL);
 
 }
@@ -1215,9 +1219,10 @@ BFP_EXPORT void BFP_CALLTYPE BfpSystem_SetEnvironmentVariable(const char* var, c
 BFP_EXPORT int BFP_CALLTYPE BfpSystem_GetNumLogicalCPUs(BfpSystemResult* outResult)
 {
 #ifdef BF_PLATFORM_ANDROID
-    //TODO: Handle this
+    // The cores online now: bionic has sysconf, not glibc's get_nprocs_conf.
     OUTRESULT(BfpSystemResult_Ok);
-	return 1;
+    long count = sysconf(_SC_NPROCESSORS_ONLN);
+    return (count > 0) ? (int)count : 1;
 #elif defined BF_PLATFORM_DARWIN
     OUTRESULT(BfpSystemResult_Ok);
     int count = 1;
