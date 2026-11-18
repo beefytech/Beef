@@ -24537,9 +24537,10 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 				}
 			}
 
-			if (isConstBranch)
+			// A constant false before a variable declaration branches like a runtime false, so the variable is still declared
+			if ((isConstBranch) && ((constResult) || (!HasVariableDeclaration(rightExpression))))
 			{
-				if ((constResult) || (HasVariableDeclaration(rightExpression)))
+				if (constResult)
 				{
 					// Only right side
 					rightValue = mModule->CreateValueFromExpression(rightExpression, boolType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
