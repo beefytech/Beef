@@ -43,6 +43,8 @@ namespace Tests
 				break;
 			}
 			Test.Assert(!taken);
+			const bool folded = cOff && (Get(5) case .Ok(let g));
+			Test.Assert(!folded);
 			Test.Assert(sCalls == 0);
 
 			if (false && Check())

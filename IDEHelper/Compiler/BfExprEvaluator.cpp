@@ -24573,6 +24573,9 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 				if (rightValue)
 					mModule->mBfIRBuilder->AddPhiIncoming(phi, rightValue.mValue, endRhsBB);
 				mResult = BfTypedValue(phi, boolType);
+				// The branch above only declares the variable, so a constant false left still gives a constant result
+				if (isConstBranch)
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0), boolType);
 			}
 		}
 		else
