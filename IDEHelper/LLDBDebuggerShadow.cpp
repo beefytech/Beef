@@ -69,7 +69,7 @@ static String ShadowLLDBAutos(lldb::SBFrame& frame)
 	options.SetIncludeArguments(true);
 	options.SetIncludeLocals(true);
 	options.SetIncludeStatics(false);
-	options.SetInScopeOnly(false);
+	options.SetInScopeOnly(true);
 	options.SetIncludeRuntimeSupportValues(true);
 	auto variables = frame.GetVariables(options);
 
@@ -103,64 +103,6 @@ static String ShadowLLDBAutos(lldb::SBFrame& frame)
 	return result;
 }
 
-// WinDebugger::CheckBreakpoint's choice of addresses, without hot versions: the requested line, or else the
-// nearest following line within 6, bound at the first row of each run of rows on that line
-static void ShadowBindBreakpoint(DebugTarget* debugTarget, DbgSrcFile* srcFile, int lineNum, int instrOffset, Array<addr_target>& outAddrs)
-{
-	for (int pass = 0; pass < 2; pass++)
-	{
-		bool foundLine = false;
-		bool foundInSequence = false;
-		DbgSubprogram* lastFoundSubprogram = NULL;
-		int bestLineNum = -1;
-		int bestLineOffset = 0x7FFFFFFF;
-
-		for (auto subprogram : srcFile->mLineDataRefs)
-		{
-			DbgLineInfo* lineInfo = subprogram->mLineInfo;
-			if (lineInfo == NULL)
-				continue;
-			DbgModule::FixupLineDataForSubprogram(subprogram);
-			for (int lineIdx = 0; lineIdx < lineInfo->mLines.mSize; lineIdx++)
-			{
-				auto lineData = &lineInfo->mLines[lineIdx];
-				if (lineInfo->mContexts[lineData->mCtxIdx].mSrcFile != srcFile)
-					continue;
-				if ((lineData->mColumn == -1) && (instrOffset == -1))
-					continue;
-
-				int lineOffset = lineData->mLine - lineNum;
-				if (lineOffset == 0)
-				{
-					foundLine = true;
-					addr_target address = subprogram->GetLineAddr(*lineData);
-					DbgSubprogram* foundSubprogram = debugTarget->FindSubProgram(address);
-					if ((foundInSequence) && (foundSubprogram != lastFoundSubprogram))
-						foundInSequence = false;
-					if (!foundInSequence)
-					{
-						lastFoundSubprogram = foundSubprogram;
-						outAddrs.Add(address);
-						foundInSequence = true;
-					}
-				}
-				else
-					foundInSequence = false;
-
-				if ((lineOffset >= 0) && (lineOffset <= 6) && (lineOffset < bestLineOffset))
-				{
-					bestLineNum = lineData->mLine;
-					bestLineOffset = lineOffset;
-				}
-			}
-		}
-
-		if ((foundLine) || (bestLineNum == -1))
-			break;
-		lineNum = bestLineNum;
-	}
-}
-
 void LLDBDebugger::ShadowInit()
 {
 	const char* shadowEnv = getenv("BEEF_DBG_SHADOW");
@@ -171,7 +113,8 @@ void LLDBDebugger::ShadowInit()
 		mShadowReportPath = reportEnv;
 }
 
-static const char* sShadowFlippedQueries[] = { "addr_line", "addr_symbol", "frame_name", "frame_line", "inline_depth", "inline_name", "inline_line", "frame_map", "tls_addr" };
+static const char* sShadowFlippedQueries[] = { "addr_line", "addr_symbol", "frame_name", "frame_line", "inline_depth", "inline_name", "inline_line", "frame_map", "tls_addr", "breakpoint",
+	"autos_subset", "autos_subset_inline", "line_calls", "line_calls_nonempty" };
 
 bool LLDBDebugger::ShadowIsFlipped(const char* query)
 {
@@ -267,7 +210,15 @@ void LLDBDebugger::ShadowCheckFrames()
 			int moduleEnd = (int)lldbName.IndexOf('!');
 			if ((nameSubprogram != NULL) && (nameSubprogram->mLinkName != NULL) && (strcmp(lldbName.c_str() + moduleEnd + 1, nameSubprogram->mLinkName) == 0))
 				lldbFrameName = ShadowFunctionName(beefName);
-			ShadowCompare("frame_name", lldbFrameName, ShadowFunctionName(beefName));
+			String beefFrameName = ShadowFunctionName(beefName);
+			// DebugTarget marks a replaced hot version with '#' and names hot code by its linked module, LLDB by the object file
+			if (beefFrameName.StartsWith('#'))
+				beefFrameName.Remove(0, 1);
+			int lldbModuleEnd = (int)lldbFrameName.IndexOf('!');
+			int beefModuleEnd = (int)beefFrameName.IndexOf('!');
+			if ((lldbFrameName.StartsWith("BeefHot_")) && (lldbModuleEnd != -1) && (beefModuleEnd != -1))
+				lldbFrameName = beefFrameName.Substring(0, beefModuleEnd) + lldbFrameName.Substring(lldbModuleEnd);
+			ShadowCompare("frame_name", lldbFrameName, beefFrameName);
 			ShadowCompare("frame_line", lldbLine, beefLine);
 			ShadowCompare("inline_depth", StrFormat("%d", lldbDepth), StrFormat("%d", beefDepth));
 			if (lldbDepth == beefDepth)
@@ -312,6 +263,22 @@ void LLDBDebugger::ShadowCheckFrames()
 					key += "\n";
 					if (!lldbAutos.Contains(key))
 					{
+						missing += name;
+						missing += " ";
+					}
+				}
+				String beefKeys = "\n";
+				beefKeys += beefAutos;
+				for (auto name : lldbAutos.Split('\n'))
+				{
+					if (name.IsEmpty())
+						continue;
+					String key = "\n";
+					key += name;
+					key += "\n";
+					if (!beefKeys.Contains(key))
+					{
+						missing += "lldb:";
 						missing += name;
 						missing += " ";
 					}
@@ -385,7 +352,22 @@ void LLDBDebugger::ShadowCheckLineCalls(addr_target pc)
 	lldb::SBFunction function = pcAddr.GetFunction();
 	if ((!pcLine.IsValid()) || (!function.IsValid()))
 		return;
-	lldb::SBInstructionList instructions = function.GetInstructions(mLLDBTarget);
+	// A hot-replaced entry is a jump in memory, so the executable's code is decoded from its file bytes
+	lldb::SBInstructionList instructions;
+	lldb::SBAddress startAddr = function.GetStartAddress();
+	lldb::SBSection section = startAddr.GetSection();
+	uint64 functionSize = function.GetEndAddress().GetFileAddress() - startAddr.GetFileAddress();
+	if ((section.IsValid()) && (HotGetModuleVersion(startAddr.GetModule()) == 0) && (functionSize > 0) && (functionSize < 0x100000))
+	{
+		lldb::SBData fileData = section.GetSectionData(startAddr.GetFileAddress() - section.GetFileAddress(), functionSize);
+		Array<uint8> bytes;
+		bytes.Resize((intptr)functionSize);
+		lldb::SBError error;
+		if (fileData.ReadRawData(error, 0, bytes.mVals, (size_t)functionSize) == (size_t)functionSize)
+			instructions = mLLDBTarget.GetInstructions(startAddr, bytes.mVals, (size_t)functionSize);
+	}
+	if (instructions.GetSize() == 0)
+		instructions = function.GetInstructions(mLLDBTarget);
 	for (uint32 instIdx = 0; instIdx < instructions.GetSize(); instIdx++)
 	{
 		lldb::SBInstruction instruction = instructions.GetInstructionAtIndex(instIdx);
@@ -470,6 +452,11 @@ void LLDBDebugger::ShadowCheckTLS()
 
 			// A target-level SBValue has no thread, so a thread-local is looked up through the stopped thread's frame
 			uint64 lldbAddr = mLLDBFrames[0].GetValueForVariablePath(lldbName.c_str()).GetLoadAddress();
+			// LLDB's debug info doesn't place statics a hot compile adds, which its evaluator reads through HotFindThreadLocalOffset
+			uint64 tlsOffset = 0;
+			uint64 blockAddr = 0;
+			if ((lldbAddr == LLDB_INVALID_ADDRESS) && (HotFindThreadLocalOffset(lldbName.c_str(), tlsOffset)) && (HotGetTlsBlockAddr(mLLDBFrames[0], blockAddr)))
+				lldbAddr = blockAddr + tlsOffset;
 
 			DbgAddrType addrType = DbgAddrType_NoValue;
 			addr_target beefAddr = (addr_target)dbgModule->EvaluateLocation(NULL, member->mLocationData, member->mLocationLen, wdStackFrame, &addrType);
@@ -494,14 +481,22 @@ void LLDBDebugger::ShadowCheckBreakpoint(LLDBBreakpoint* bp)
 		if ((!loc.IsValid()) || (!loc.IsEnabled()))
 			continue;
 		lldb::addr_t loadAddr = loc.GetLoadAddress();
-		if (loadAddr != LLDB_INVALID_ADDRESS)
-			lldbAddrs.Add((uint64)loadAddr);
+		if (loadAddr == LLDB_INVALID_ADDRESS)
+			continue;
+		// Windows binds an older hot version only through HotBindBreakpoint, at that version's line
+		DbgSubprogram* subprogram = mDebugTarget->FindSubProgram((addr_target)loadAddr, DbgOnDemandKind_LocalOnly);
+		if ((subprogram != NULL) && (subprogram->mHotReplaceKind != DbgSubprogram::HotReplaceKind_None))
+			continue;
+		lldbAddrs.Add((uint64)loadAddr);
 	}
 
 	Array<addr_target> boundAddrs;
 	DbgSrcFile* srcFile = mDebugTarget->GetSrcFile(bp->mFilePath);
 	if (srcFile != NULL)
-		ShadowBindBreakpoint(mDebugTarget, srcFile, bp->mRequestedLineNum, bp->mInstrOffset, boundAddrs);
+	{
+		int boundLineNum = 0;
+		HostBindLineAddresses(srcFile, bp->mRequestedLineNum, bp->mInstrOffset, -1, boundAddrs, boundLineNum);
+	}
 	Array<uint64> beefAddrs;
 	for (auto addr : boundAddrs)
 		beefAddrs.Add((uint64)addr);
