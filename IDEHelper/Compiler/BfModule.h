@@ -135,6 +135,7 @@ enum BfAllocFlags : int8
 	BfAllocFlags_ZeroMemory = 4,
 	BfAllocFlags_NoDtorCall = 8,
 	BfAllocFlags_NoDefaultToMalloc = 0x10,	
+	BfAllocFlags_StackMarkable = 0x20, // A scope object on the GC's stack-markable list (AllocFromType only: not passed on)
 };
 
 enum BfProtectionCheckFlags : int8
@@ -1732,7 +1733,8 @@ public:
 	BfIRValue CreateAlloca(BfIRType irType, int align, bool addLifetime = true, const char* name = NULL, BfIRValue arraySize = BfIRValue());
 	BfIRValue CreateAlloca(BfType* type, bool addLifetime = true, const char* name = NULL, BfIRValue arraySize = BfIRValue());
 	BfIRValue CreateAllocaInst(BfTypeInstance* typeInst, bool addLifetime = true, const char* name = NULL);
-	BfDeferredCallEntry* AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scope, bool condAlloca = false, bool mayEscape = false, BfIRBlock valBlock = BfIRBlock());
+	BfDeferredCallEntry* AddStackAlloc(BfTypedValue val, BfIRValue arraySize, BfAstNode* refNode, BfScopeData* scope, bool condAlloca = false, bool mayEscape = false, BfIRBlock valBlock = BfIRBlock(), bool stackMarkable = false);
+	bool WantsStackMarking(BfTypeInstance* typeInstance, BfAllocFlags allocFlags);
 	void RestoreScoreState_LocalVariables(int localVarStart);
 	void RestoreScopeState();
 	void MarkDynStack(BfScopeData* scope);

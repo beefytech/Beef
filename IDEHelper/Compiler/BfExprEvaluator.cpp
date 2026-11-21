@@ -17209,6 +17209,7 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 	appendAllocAlign = BF_MAX(appendAllocAlign, allocAlign);
 
 	BfIRValue allocValue;
+	bool wantsStackMark = false;
 	if (IsVar(resolvedTypeRef))
 	{
 		mResult = mModule->GetDefaultTypedValue(resultType);
@@ -17222,6 +17223,13 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 		}
 		else
 		{
+			// A scope object whose members the GC marks goes on the GC's stack-markable list once it is cleared (below);
+			//  AllocFromType has it taken off after its destructor
+			wantsStackMark = (bindResult.mMethodInstance != NULL) && (bindResult.mFunc) && (isStackAlloc) && (typeInstance->IsObject()) &&
+				(!mModule->mIsComptimeModule) && (mModule->mCompiler->mOptions.mEnableRealtimeLeakCheck) && (!IsComptime()) &&
+				(mModule->WantsStackMarking(typeInstance, allocFlags));
+			if (wantsStackMark)
+				allocFlags = (BfAllocFlags)(allocFlags | BfAllocFlags_StackMarkable);
 			allocValue = mModule->AllocFromType(resolvedTypeRef, allocTarget, appendSizeValue, BfIRValue(), 0, allocFlags, allocAlign);
 		}
 		if (((mBfEvalExprFlags & BfEvalExprFlags_Comptime) != 0) && (mModule->mCompiler->mCeMachine != NULL))
@@ -17284,68 +17292,18 @@ void BfExprEvaluator::CreateObject(BfObjectCreateExpression* objCreateExpr, BfAs
 				}
 			}
 
-			if (typeInstance->IsObject())
-			{				
-				if ((!mModule->mIsComptimeModule) && (isStackAlloc) && (hasRealtimeLeakCheck))
+			if (wantsStackMark)
+			{
+				SizedArray<BfIRValue, 1> irArgs;
+				irArgs.push_back(mModule->mBfIRBuilder->CreateBitCast(mResult.mValue, mModule->mBfIRBuilder->MapType(mModule->mContext->mBfObjectType)));
+				auto gcType = mModule->ResolveTypeDef(mModule->mCompiler->mGCTypeDef);
+				BF_ASSERT(gcType != NULL);
+				if (gcType != NULL)
 				{
-					BfMethodInstance* markMethod = mModule->GetRawMethodByName(mModule->mContext->mBfObjectType, "GCMarkMembers");
-					BF_ASSERT(markMethod != NULL);
-					if (markMethod != NULL)
-					{
-						auto& vtableEntry = typeInstance->mVirtualMethodTable[markMethod->mVirtualTableIdx];
-						if (vtableEntry.mImplementingMethod.mTypeInstance != mModule->mContext->mBfObjectType)
-						{
-							auto impMethodInstance = (BfMethodInstance*)vtableEntry.mImplementingMethod;
-							bool needsCall = false;
-
-							if (allocFlags & BfAllocFlags_HasAppendWantMark)
-								needsCall = true;
-
-							if (!needsCall)
-							{
-								if (impMethodInstance != NULL)
-								{
-									needsCall = impMethodInstance->mMethodDef->mBody != NULL;
-								}
-								else
-								{
-									needsCall = true;
-									BF_ASSERT(vtableEntry.mImplementingMethod.mKind == BfMethodRefKind_AmbiguousRef);
-								}
-							}
-
-							if (!needsCall)
-							{
-								if (typeInstance->HasAppendedField(true))
-									needsCall = true;								
-							}
-
-							if (needsCall)
-							{
-								SizedArray<BfIRValue, 1> irArgs;
-								irArgs.push_back(mModule->mBfIRBuilder->CreateBitCast(mResult.mValue, mModule->mBfIRBuilder->MapType(mModule->mContext->mBfObjectType)));
-
-								auto gcType = mModule->ResolveTypeDef(mModule->mCompiler->mGCTypeDef);
-								BF_ASSERT(gcType != NULL);
-								if (gcType != NULL)
-								{
-									auto addStackObjMethod = mModule->GetMethodByName(gcType->ToTypeInstance(), "AddStackMarkableObject", 1);
-									BF_ASSERT(addStackObjMethod);
-									if (addStackObjMethod)
-									{
-										mModule->mBfIRBuilder->CreateCall(addStackObjMethod.mFunc, irArgs);
-									}
-
-									auto removeStackObjMethod = mModule->GetMethodByName(gcType->ToTypeInstance(), "RemoveStackMarkableObject", 1);
-									BF_ASSERT(removeStackObjMethod);
-									if (removeStackObjMethod)
-									{
-										mModule->AddDeferredCall(removeStackObjMethod, irArgs, allocTarget.mScopeData, allocNode);
-									}
-								}
-							}
-						}
-					}
+					auto addStackObjMethod = mModule->GetMethodByName(gcType->ToTypeInstance(), "AddStackMarkableObject", 1);
+					BF_ASSERT(addStackObjMethod);
+					if (addStackObjMethod)
+						mModule->mBfIRBuilder->CreateCall(addStackObjMethod.mFunc, irArgs);
 				}
 			}
 
