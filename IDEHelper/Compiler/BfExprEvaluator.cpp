@@ -24495,9 +24495,10 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 				}
 			}
 
-			if (isConstBranch)
+			// A constant false before a variable declaration branches like a runtime false, so the variable is still declared
+			if ((isConstBranch) && ((constResult) || (!HasVariableDeclaration(rightExpression))))
 			{
-				if ((constResult) || (HasVariableDeclaration(rightExpression)))
+				if (constResult)
 				{
 					// Only right side
 					rightValue = mModule->CreateValueFromExpression(rightExpression, boolType, (BfEvalExprFlags)(mBfEvalExprFlags & BfEvalExprFlags_InheritFlags));
@@ -24530,6 +24531,9 @@ void BfExprEvaluator::PerformBinaryOperation(BfExpression* leftExpression, BfExp
 				if (rightValue)
 					mModule->mBfIRBuilder->AddPhiIncoming(phi, rightValue.mValue, endRhsBB);
 				mResult = BfTypedValue(phi, boolType);
+				// The branch above only declares the variable, so a constant false left still gives a constant result
+				if (isConstBranch)
+					mResult = BfTypedValue(mModule->mBfIRBuilder->CreateConst(BfTypeCode_Boolean, 0), boolType);
 			}
 		}
 		else

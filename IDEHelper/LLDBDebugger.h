@@ -36,6 +36,9 @@ public:
 	bool mBreakAfterLogging = false;
 	lldb::SBBreakpoint mLLDBBreakpoint;
 	Array<lldb::SBBreakpoint> mVersionBreakpoints;   // bindings in older hot compiles (HotBindBreakpoint)
+	Array<lldb::SBBreakpoint> mAddressBreakpoints;   // DebugTarget's binding, while mLLDBBreakpoint stays disabled
+	Array<uintptr> mAddresses;
+	bool mHostDisabled = false;
 	uintptr mResolvedAddr;
 	Array<int> mWatchpointIds;                       // for a memory breakpoint: its LLDB watchpoints
 	int mMemoryBreakpointSize;
@@ -129,11 +132,22 @@ public:
 		StepKind_Out
 	};
 	StepKind mStepKind;
+	enum StepCall
+	{
+		StepCall_Into,
+		StepCall_Over,
+		StepCall_Out
+	};
+	StepCall mStepIssueCall;
+	bool mStepUnfiltered;
+	lldb::SBBreakpoint mStepSpecificBreakpoint;
 	bool mStepOutThenInto;
 	bool mStepOutFinishedLine;
 	int mStepStartLine;                              // where the current step began
 	String mStepStartFile;
 	int mStepContinueCount;
+	uint64 mStepIssuePC;
+	uint64 mStepIssueSP;
 	int mStepNoInfoTries;                            // instruction steps taken through code without line info
 	uint64 mStepStartFunctionAddr;
 	Dictionary<String, bool> mHasStatementLinesCache;
@@ -297,6 +311,8 @@ protected:
 	void BeginStep(lldb::SBThread& thread, StepKind stepKind);
 	bool FunctionHasStatementLines(lldb::SBFunction& function);
 	bool IsStepFiltered(lldb::SBFunction& function);
+	void IssueStep(lldb::SBThread& thread, StepCall stepCall);
+	void ClearStepSpecific();
 	bool ContinueStep(lldb::SBThread& thread);
 	lldb::SBThread SelectStoppedThread();
 	lldb::SBValue FindSplatVariable(lldb::SBFrame& frame, const StringImpl& name);
@@ -342,6 +358,9 @@ protected:
 	bool HotFindExeSymbol(const StringImpl& name, HotSymbol& outSymbol);
 	bool HotFindCanonicalSymbol(const StringImpl& name, HotSymbol& outSymbol);
 	bool HotResolveExternal(const StringImpl& name, uint64& outAddr, String& outError);
+	void HotDebugInfoAddrs(LLDBHotObject* obj, Array<addr_target>& outSectionAddrs, Array<uint64>& outSymbolAddrs);
+	void HostLoadHotObject(const StringImpl& path, int hotIdx, addr_target imageAddr, int64 imageSize, const Array<addr_target>& sectionAddrs, const Array<uint64>& symbolAddrs);
+	void HostFinishHotLoad();
 	bool HotResolveObjectSymbol(LLDBHotObject* obj, int symIdx, Array<HotPatch>& patches, uint64& outAddr, String& outError);
 	bool HotParseObject(LLDBHotObject* obj, String& outError);
 	bool HotPrepareObject(LLDBHotObject* obj, Array<HotPatch>& patches, String& outError);
@@ -379,6 +398,10 @@ protected:
 
 	void HostUnsupported(const char* name);
 	void HostSyncModules();
+	void HostBindLineAddresses(NS_BF_DBG::DbgSrcFile* srcFile, int lineNum, int instrOffset, int hotIdx, Array<addr_target>& outAddrs, int& outLineNum);
+	void HostBindBreakpointAddresses(LLDBBreakpoint* bp);
+	bool HostHotBindBreakpoint(LLDBBreakpoint* bp, int lineNum, int hotIdx);
+	void HostClearAddressBreakpoints(LLDBBreakpoint* bp);
 	void HostClearCallStack();
 	void HostBuildCallStack();
 	void HostReadFrameRegisters(lldb::SBFrame& frame, CPURegisters* registers);

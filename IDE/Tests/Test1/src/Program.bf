@@ -33,6 +33,7 @@ namespace IDETest
 			Properties.Test();
 			SplatTester.Test();
 			Stepping_Scope.Test();
+			Stepping_Delete.Test();
 			ThreadFreeze.Test();
 			TypedPrimitives.Test();
 			Unions.Test();

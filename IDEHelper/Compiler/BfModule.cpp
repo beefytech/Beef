@@ -13056,6 +13056,11 @@ BfIRValue BfModule::ConstantToCurrent(BfConstant* constant, BfIRConstHolder* con
 				return BfIRValue();
 			}
 
+			// The fields below map the constant's values: a type rebuilt since the constant was made (a module being
+			//  reified rebuilds its types) has no field instances until it is populated again.
+			if (wantTypeInst->IsIncomplete())
+				PopulateType(wantTypeInst, BfPopulateType_Data);
+
 			if (wantTypeInst->mBaseType != NULL)
 			{
 				auto baseVal = ConstantToCurrent(constHolder->GetConstant(constArray->mValues[0]), constHolder, wantTypeInst->mBaseType);

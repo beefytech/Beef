@@ -2829,6 +2829,10 @@ BFP_EXPORT BfpFile* BFP_CALLTYPE BfpFile_Create(const char* inName, BfpFileCreat
 
 		mode = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
 
+		// Close-on-exec, as Windows handles are not inherited by default: without it every process
+		// this one starts (a build, a shell, a file manager) holds each file it had open.
+		flags |= O_CLOEXEC;
+
 		int result = open(name.c_str(), flags, mode);
         //printf("BfpFile_Create %s %d %d %d\n", name.c_str(), result, flags, mode);
 
@@ -3265,14 +3269,14 @@ BFP_EXPORT void BFP_CALLTYPE BfpFile_Copy(const char* oldPath, const char* newPa
     char buf[4096];
     ssize_t nread;
 
-    fd_from = open(oldPath, O_RDONLY);
+    fd_from = open(oldPath, O_RDONLY | O_CLOEXEC);
     if (fd_from < 0)
     {
         OUTRESULT(BfpFileResult_NotFound);
         return;
     }
 
-    int flags = O_WRONLY | O_CREAT;
+    int flags = O_WRONLY | O_CREAT | O_CLOEXEC;
     if (copyKind == BfpFileCopyKind_IfNotExists)
         flags |= O_EXCL;
 

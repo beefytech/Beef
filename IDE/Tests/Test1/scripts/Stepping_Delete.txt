@@ -1,0 +1,20 @@
+# One StepOver from a breakpoint on a delete line reaches the next line, as on Windows
+
+ShowFile("src/Stepping_Delete.bf")
+GotoText("//Stepping_Delete_A")
+ToggleBreakpoint()
+RunWithCompiling()
+StepOver()
+AssertLineContains("MarkA()")
+
+GotoText("//Stepping_Delete_B")
+ToggleBreakpoint()
+Continue()
+StepOver()
+AssertLineContains("MarkB()")
+
+GotoText("//Stepping_Delete_C")
+ToggleBreakpoint()
+Continue()
+StepOver()
+AssertLineContains("MarkC()")
