@@ -286,6 +286,56 @@ namespace Tests
 			int32 mInt;
 		}
 
+		[AttributeUsage(.Parameter, .AlwaysIncludeTarget | .ReflectAttribute, AlwaysIncludeUser = .All, ReflectUser = .All)]
+		struct ParamAttrAttribute : Attribute
+		{
+			public int32 mA;
+
+			public this(int32 a)
+			{
+				mA = a;
+			}
+		}
+
+		// No attributes on the methods themselves, only on their parameters
+		[Reflect(.Methods | .Constructors), AlwaysInclude(IncludeAllMethods=true)]
+		struct StructParamAttrs
+		{
+			public int mA;
+
+			public this([ParamAttr(1)] int a)
+			{
+				mA = a;
+			}
+
+			public int Method([ParamAttr(2)] int a, int b, [ParamAttr(3)] int c)
+			{
+				return a + b + c;
+			}
+		}
+
+		[Test]
+		static void TestParamAttributes()
+		{
+			int foundCount = 0;
+			for (let methodInfo in typeof(StructParamAttrs).GetMethods())
+			{
+				if ((methodInfo.IsConstructor) && (methodInfo.ParamCount == 1))
+				{
+					Test.Assert(methodInfo.GetParamCustomAttribute<ParamAttrAttribute>(0).Get().mA == 1);
+					foundCount++;
+				}
+				else if (methodInfo.Name == "Method")
+				{
+					Test.Assert(methodInfo.GetParamCustomAttribute<ParamAttrAttribute>(0).Get().mA == 2);
+					Test.Assert(methodInfo.GetParamCustomAttribute<ParamAttrAttribute>(1) case .Err);
+					Test.Assert(methodInfo.GetParamCustomAttribute<ParamAttrAttribute>(2).Get().mA == 3);
+					foundCount++;
+				}
+			}
+			Test.Assert(foundCount == 2);
+		}
+
 		[Test]
 		static void TestTypes()
 		{

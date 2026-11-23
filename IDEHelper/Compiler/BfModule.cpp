@@ -8146,19 +8146,24 @@ BfIRValue BfModule::CreateTypeData(BfType* type, BfCreateTypeDataContext& ctx, b
 			includeMethod = true;
 
 		BfMethodCustomAttributes* methodCustomAttributes = NULL;
-		if ((defaultMethod->mMethodInfoEx != NULL) && (defaultMethod->mMethodInfoEx->mMethodCustomAttributes != NULL) && (defaultMethod->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes != NULL))
+		if ((defaultMethod->mMethodInfoEx != NULL) && (defaultMethod->mMethodInfoEx->mMethodCustomAttributes != NULL))
 		{
+			// This also holds the parameter and return value attributes, which need reflecting even when the method itself
+			//  has no attributes
 			methodCustomAttributes = defaultMethod->mMethodInfoEx->mMethodCustomAttributes;
-			for (auto& customAttr : defaultMethod->mMethodInfoEx->mMethodCustomAttributes->mCustomAttributes->mAttributes)
+			if (methodCustomAttributes->mCustomAttributes != NULL)
 			{
-				if (customAttr.mType->mTypeDef->mName->ToString() == "ReflectAttribute")
+				for (auto& customAttr : methodCustomAttributes->mCustomAttributes->mAttributes)
 				{
-					includeMethod = true;
-				}
-				else
-				{
-					auto userReflectKind = GetUserReflectKind(customAttr.mType);
-					methodReflectKind = (BfReflectKind)(methodReflectKind | userReflectKind);
+					if (customAttr.mType->mTypeDef->mName->ToString() == "ReflectAttribute")
+					{
+						includeMethod = true;
+					}
+					else
+					{
+						auto userReflectKind = GetUserReflectKind(customAttr.mType);
+						methodReflectKind = (BfReflectKind)(methodReflectKind | userReflectKind);
+					}
 				}
 			}
 		}
