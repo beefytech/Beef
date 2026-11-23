@@ -62,3 +62,8 @@ ShowFile("src/EnumBaseCycle.bf")
 WaitForResolve()
 SleepTicks(20)
 AssertFileErrors()
+
+ShowFile("src/Comptime.bf")
+WaitForResolve()
+SleepTicks(20)
+AssertFileErrors()
