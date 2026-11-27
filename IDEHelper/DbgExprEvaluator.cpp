@@ -6422,6 +6422,8 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 				}
 				if (binaryOp == BfBinaryOp_LeftShift)
 					mResult.mInt64 = convLeftValue.GetInt64() << shiftCount;
+				else if (!resultType->IsSigned())
+					mResult.mUInt64 = (uint64)convLeftValue.GetInt64() >> shiftCount;
 				else
 					mResult.mInt64 = convLeftValue.GetInt64() >> shiftCount;
 				return;
@@ -6476,6 +6478,8 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 					isZero = true;
 				else if (IsSignedDivideOverflow(resultType, convLeftValue, convRightValue))
 					isOverflow = true;
+				else if ((resultType->IsInteger()) && (!resultType->IsSigned()))
+					mResult.mUInt64 = (uint64)convLeftValue.GetInt64() / (uint64)convRightValue.GetInt64();
 				else
 					mResult.mInt64 = convLeftValue.GetInt64() / convRightValue.GetInt64();
 			}
@@ -6499,6 +6503,8 @@ void DbgExprEvaluator::PerformBinaryOperation(DbgType* resultType, DbgTypedValue
 					isZero = true;
 				else if (IsSignedDivideOverflow(resultType, convLeftValue, convRightValue))
 					isOverflow = true;
+				else if ((resultType->IsInteger()) && (!resultType->IsSigned()))
+					mResult.mUInt64 = (uint64)convLeftValue.GetInt64() % (uint64)convRightValue.GetInt64();
 				else
 					mResult.mInt64 = convLeftValue.GetInt64() % convRightValue.GetInt64();
 			}
