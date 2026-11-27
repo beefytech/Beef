@@ -16,7 +16,7 @@ namespace IDE
 		[ThreadStatic]
 		public static bool mBpSetThreadName;
 		public bool mAllowFastFinish;
-		WaitEvent mWaitEvent = new WaitEvent() ~ delete _;
+		WaitEvent mWaitEvent = new WaitEvent(true) ~ delete _;
 
 		public void DoBackground(ThreadStart threadStart, Action onThreadDone = null, int maxWait = 0, bool allowFastFinish = true)
 		{
@@ -26,6 +26,8 @@ namespace IDE
 		    //mBfSystem.PerfZoneStart("BfCompiler.ThreadStart");
 
 			BeefPerf.Event("DoBackground:starting", "");
+
+			mWaitEvent.WaitFor();
 
 			mAllowFastFinish = allowFastFinish;
 		    mOnThreadDone = onThreadDone;
@@ -52,7 +54,7 @@ namespace IDE
 				mAllowFastFinish = true;
 				BeefPerf.Event("DoBackground:threadEnd", "");
 
-				mWaitEvent.Set();
+				mWaitEvent.Set(true);
 		    });
 
 			if (maxWait != 0)
@@ -77,6 +79,8 @@ namespace IDE
 			    }
 			    //mBfSystem.PerfZoneEnd();                                
 			}
+
+			mWaitEvent.WaitFor();
 
 			if ((mOnThreadDone != null) && (Thread.CurrentThread == IDEApp.sApp.mMainThread))
 			{
