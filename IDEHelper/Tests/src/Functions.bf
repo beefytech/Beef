@@ -379,6 +379,44 @@ namespace Tests
 					funcStructD = (function int (StructD this, float f))funcStruct;
 					true
 				});
+
+			// Like an explicit downcast, an explicit cast lets a function take a base 'this' type. The caller is then responsible
+			//  for only passing a 'this' of the method's type
+			function int (ClassA this, float f) funcExplicitA = (.)=> ClassC.GetC;
+			Test.Assert(funcExplicitA(cc, 100.0f) == 3223);
+			funcExplicitA = (function int (ClassA this, float f))=> ClassC.GetC;
+			Test.Assert(funcExplicitA(cc, 100.0f) == 3223);
+			function int (ClassC this, float f) funcDerivedC = => ClassC.GetC;
+			funcExplicitA = (.)funcDerivedC;
+			Test.Assert(funcExplicitA(cc, 100.0f) == 3223);
+
+			Zoop.sVal = 0;
+			funcInterface = (.)=> Zoop.TestFunc;
+			funcInterface(scope Zoop());
+			Test.Assert(Zoop.sVal == 123);
+
+			// The types must still be related
+			function int (Zoop this, float f) funcZoop = null;
+			Test.Assert(!
+				[IgnoreErrors(true)]
+				{
+					funcExplicitA = (.)funcZoop;
+					true
+				});
+
+			// Value types still need an exact match
+			Test.Assert(!
+				[IgnoreErrors(true)]
+				{
+					funcStruct = (.)=> StructD.GetD;
+					true
+				});
+			Test.Assert(!
+				[IgnoreErrors(true)]
+				{
+					funcStruct = (function int (StructA this, float f))funcStructD;
+					true
+				});
 		}
 
 		[Test]

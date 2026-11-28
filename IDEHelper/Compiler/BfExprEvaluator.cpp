@@ -14235,6 +14235,9 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 		return;
 	}
 
+	// An explicit cast such as '(.)=> Method' may bind a method to a function whose 'this' is a base of the method's 'this' type
+	BfCastFlags bindCastFlags = mExplicitCast ? BfCastFlags_Explicit : BfCastFlags_None;
+
 	BfFunctionBindResult bindResult;
 	bindResult.mSkipMutCheck = true; // Allow operating on copies
 	bindResult.mBindType = delegateTypeInstance;
@@ -14375,7 +14378,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 				//
 				{
 					SetAndRestoreValue<bool> prevIgnore(mModule->mBfIRBuilder->mIgnoreWrites, true);
-					result = mModule->CastToFunction(delegateBindExpr->mTarget, bindResult.mOrigTarget, bindResult.mMethodInstance, mExpectingType);
+					result = mModule->CastToFunction(delegateBindExpr->mTarget, bindResult.mOrigTarget, bindResult.mMethodInstance, mExpectingType, bindCastFlags);
 				}
 
 				if (result)
@@ -14452,7 +14455,7 @@ void BfExprEvaluator::Visit(BfDelegateBindExpression* delegateBindExpr)
 					}
 				}
 				int prevFailedIdx = mModule->mCompiler->mPassInstance->mFailedIdx;
-				result = mModule->CastToFunction(delegateBindExpr->mTarget, bindResult.mOrigTarget, bindResult.mMethodInstance, mExpectingType, BfCastFlags_None, bindResult.mFunc);
+				result = mModule->CastToFunction(delegateBindExpr->mTarget, bindResult.mOrigTarget, bindResult.mMethodInstance, mExpectingType, bindCastFlags, bindResult.mFunc);
 				// CastToFunction has said why the method can't bind. mResult still holds the result of the call we resolved the
 				//  method through, and casting that to the function type would add a second, misleading error
 				if ((!result) && (mModule->mCompiler->mPassInstance->mFailedIdx != prevFailedIdx))

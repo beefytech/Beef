@@ -13670,13 +13670,18 @@ BfType* BfModule::GetClosestNumericCastType(const BfTypedValue& typedVal, BfType
 BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targetValue, BfMethodInstance* methodInstance, BfType* toType, BfCastFlags castFlags, BfIRValue irFunc)
 {
 	auto invokeMethodInstance = GetDelegateInvokeMethod(toType->ToTypeInstance());
+	bool explicitCast = (castFlags & BfCastFlags_Explicit) != 0;
 
 	auto _ThisTypeAccepts = [&](BfType* methodThisType, BfType* invokeThisType)
 	{
 		// Value types keep their own layout and an interface method has no body to bind, so both need an exact match
 		if ((methodThisType->IsValueType()) || (invokeThisType->IsValueType()) || (methodThisType->IsInterface()))
 			return methodThisType == invokeThisType;
-		return TypeIsSubTypeOf(invokeThisType->ToTypeInstance(), methodThisType->ToTypeInstance());
+		if (TypeIsSubTypeOf(invokeThisType->ToTypeInstance(), methodThisType->ToTypeInstance()))
+			return true;
+		// Like an explicit downcast, an explicit cast lets the function take a base 'this' type when the caller knows the
+		//  'this' it passes will always be the method's type
+		return (explicitCast) && (TypeIsSubTypeOf(methodThisType->ToTypeInstance(), invokeThisType->ToTypeInstance()));
 	};
 
 	bool methodsThisMatch = true;
@@ -13781,7 +13786,7 @@ BfIRValue BfModule::CastToFunction(BfAstNode* srcNode, const BfTypedValue& targe
 					}
 					else if (TypeIsSubTypeOf(thisType->ToTypeInstance(), invokeThisType->ToTypeInstance()))
 					{
-						Fail(StrFormat("Non-static method '%s' cannot match '%s' because a '%s' passed as 'this' is not necessarily a '%s'", MethodToString(methodInstance).c_str(), TypeToString(toType).c_str(), TypeToString(invokeThisType).c_str(), TypeToString(thisType).c_str()), srcNode);
+						Fail(StrFormat("Non-static method '%s' cannot match '%s' because a '%s' passed as 'this' is not necessarily a '%s', consider an explicit cast if it always will be", MethodToString(methodInstance).c_str(), TypeToString(toType).c_str(), TypeToString(invokeThisType).c_str(), TypeToString(thisType).c_str()), srcNode);
 						handled = true;
 					}
 				}
@@ -15668,7 +15673,12 @@ BfTypedValue BfModule::Cast(BfAstNode* srcNode, const BfTypedValue& typedVal, Bf
 						auto fromThisType = fromMethodInst->GetParamType(paramIdx);
 						auto toThisType = toMethodInst->GetParamType(paramIdx);
 						if ((fromThisType->IsObjectOrInterface()) && (toThisType->IsObjectOrInterface()))
+						{
 							typeMatches = TypeIsSubTypeOf(toThisType->ToTypeInstance(), fromThisType->ToTypeInstance());
+							// An explicit cast may also go the other way, as with an explicit downcast
+							if ((!typeMatches) && (explicitCast))
+								typeMatches = TypeIsSubTypeOf(fromThisType->ToTypeInstance(), toThisType->ToTypeInstance());
+						}
 					}
 
 					if ((fromMethodInst->GetParamKind(paramIdx) == toMethodInst->GetParamKind(paramIdx)) &&
