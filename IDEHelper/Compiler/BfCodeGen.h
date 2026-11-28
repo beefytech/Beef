@@ -84,6 +84,7 @@ public:
 	//std::vector<BfCodeGenRequest*> mRequests;
 	volatile bool mShuttingDown;
 	volatile bool mRunning;
+	BfpThread* mThread;
 
 public:
 	bool RawWriteObjectFile(llvm::Module* module, const StringImpl& outFileName, const BfCodeGenOptions& codeGenOptions);

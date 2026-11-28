@@ -268,6 +268,7 @@ BfCodeGenThread::BfCodeGenThread()
 	mRunning = false;
 	mThreadIdx = 0;
 	mCodeGen = NULL;
+	mThread = NULL;
 }
 
 BfCodeGenThread::~BfCodeGenThread()
@@ -576,6 +577,13 @@ void BfCodeGenThread::Shutdown()
 	{
 		mCodeGen->mDoneEvent.WaitFor(20);
 	}
+
+	if (mThread != NULL)
+	{
+		BfpThread_WaitFor(mThread, -1);
+		BfpThread_Release(mThread);
+		mThread = NULL;
+	}
 }
 
 static void BFP_CALLTYPE RunLoopThunk(void* codeGenThreadP)
@@ -589,9 +597,8 @@ void BfCodeGenThread::Start()
 {
 	mRunning = true;
 	//TODO: How much mem do we need? WTF- we have 32MB set before!
-	auto mThread = BfpThread_Create(RunLoopThunk, (void*)this, 1024 * 1024, BfpThreadCreateFlag_StackSizeReserve);
+	mThread = BfpThread_Create(RunLoopThunk, (void*)this, 1024 * 1024, BfpThreadCreateFlag_StackSizeReserve);
 	BfpThread_SetPriority(mThread, BfpThreadPriority_Low, NULL);
-	BfpThread_Release(mThread);
 }
 
 //////////////////////////////////////////////////////////////////////////
