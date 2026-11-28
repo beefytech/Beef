@@ -95,6 +95,29 @@ struct DbgInstInfo
 	addr_target mTarget; // 0 when unknown
 };
 
+class DbgPendingExpr
+{
+public:
+	int mThreadId;
+	BfParser* mParser;
+	DbgType* mExplitType;
+	DwFormatInfo mFormatInfo;
+	DwEvalExpressionFlags mExpressionFlags;
+	int mCursorPos;
+	BfExpression* mExprNode;
+	String mReferenceId;
+	int mCallStackIdx;
+	String mResult;
+	Array<DbgCallResult> mCallResults;
+	int mIdleTicks;
+	String mException;
+	bool mUsedSpecifiedLock;
+	int mStackIdxOverride;
+
+	DbgPendingExpr();
+	~DbgPendingExpr();
+};
+
 class DbgTargetHost : public Debugger
 {
 public:
@@ -108,8 +131,13 @@ public:
 	HashSet<String> mLiteralSet;
 	DebugTarget* mDebugTarget;
 	addr_target mShowPCOverride;
+	DebugTarget* mEmptyDebugTarget;
+	bool mDbgBreak;
+	DbgPendingExpr* mDebugPendingExpr;
 
 public:
+	DbgTargetHost();
+
 	virtual void Fail(const StringImpl& error) = 0;
 	virtual addr_target GetTLSOffset(int tlsIndex) = 0;
 	virtual bool GetTLSBlockAddr(DbgModule* dbgModule, CPURegisters* registers, addr_target& outAddr) { return false; }
@@ -126,8 +154,8 @@ public:
 	virtual int GetTargetProcessId() = 0;
 
 	virtual bool PopulateRegisters(CPURegisters* registers) = 0;
-	virtual DbgTypedValue GetRegister(const StringImpl& regName, DbgLanguage language, CPURegisters* registers, Array<RegForm>* regForms = NULL) = 0;
-	virtual bool AssignToReg(int callStackIdx, DbgTypedValue reg, DbgTypedValue value, String& outError) = 0;
+	virtual DbgTypedValue GetRegister(const StringImpl& regName, DbgLanguage language, CPURegisters* registers, Array<RegForm>* regForms = NULL);
+	virtual bool AssignToReg(int callStackIdx, DbgTypedValue reg, DbgTypedValue value, String& outError);
 	virtual bool SetRegisters(CPURegisters* registers) = 0;
 	virtual void SaveAllRegisters() = 0;
 	virtual void RestoreAllRegisters() = 0;
@@ -139,7 +167,7 @@ public:
 	virtual bool CheckNeedsSRetArgument(DbgType* retType) = 0;
 	virtual DbgTypedValue ReadReturnValue(CPURegisters* registers, DbgType* type) = 0;
 
-	virtual bool ProcessEvalString(DbgCompileUnit* dbgCompileUnit, DbgTypedValue useTypedValue, String& evalStr, String& displayString, DwFormatInfo& formatInfo, DebugVisualizerEntry* debugVis, bool limitLength) = 0;
+	virtual bool ProcessEvalString(DbgCompileUnit* dbgCompileUnit, DbgTypedValue useTypedValue, String& evalStr, String& displayString, DwFormatInfo& formatInfo, DebugVisualizerEntry* debugVis, bool limitLength);
 
 	virtual bool WantsHotHeap() = 0;
 	virtual addr_target ReserveHotHeapMemory(addr_target address, int size) = 0;
@@ -184,7 +212,42 @@ public:
 	DbgTypedValue EvaluateInContext(DbgCompileUnit* dbgCompileUnit, const DbgTypedValue& contextTypedValue, const StringImpl& subExpr, DwFormatInfo* formatInfo = NULL, String* outReferenceId = NULL, String* outErrors = NULL);
 	bool EvalCondition(DebugVisualizerEntry* debugVis, DbgCompileUnit* dbgCompileUnit, DbgTypedValue typedVal, DwFormatInfo& formatInfo, const StringImpl& condition, const Array<String>& dbgVisWildcardCaptures, String& errorStr);
 	DebugVisualizerEntry* FindVisualizerForType(DbgType* dbgType, Array<String>* wildcardCaptures);
+
+	virtual int GetEvalThreadId() { return 0; }
+	virtual void OnPendingEvalStarted() {}
+	virtual void FinishPendingEval() {}
+	virtual bool IsMemoryBreakpointSizeValid(addr_target addr, int size) { return false; }
+	virtual bool HasMemoryBreakpoint(addr_target addr, int size) { return false; }
+
+	DwDisplayInfo* GetDisplayInfo(const StringImpl& referenceId);
+	String ReadString(DbgTypeCode charType, intptr addr, bool isLocalAddr, intptr maxLength, DwFormatInfo& formatInfo, bool wantStringView);
+	String DbgTypedValueToString(const DbgTypedValue& typedValue, const StringImpl& expr, DwFormatInfo& formatFlags, DbgExprEvaluator* optEvaluator, bool fullPrecision = false);
+	bool ShouldShowStaticMember(DbgType* dbgType, DbgVariable* member);
+	String GetMemberList(DbgType* dbgType, const StringImpl& expr, bool isPtr, bool isStatic, bool forceCast = false, bool isSplat = false, bool isReadOnly = false);
+	String GetArrayItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, DbgType* valueType, DbgTypedValue& curNode, int& count, String* outContinuationData);
+	String GetLinkedListItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, addr_target endNodePtr, DbgType* valueType, DbgTypedValue& curNode, int& count, String* outContinuationData);
+	String GetDictionaryItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, DbgTypedValue dictValue, int bucketIdx, int nodeIdx, int& count, String* outContinuationData);
+	String GetTreeItems(DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, Array<addr_target>& parentList, DbgType*& valueType, DbgTypedValue& curNode, int count, String* outContinuationData);
+	void HandleCustomExpandedItems(String& retVal, DbgCompileUnit* dbgCompileUnit, DebugVisualizerEntry* debugVis, DbgType* dwUseType, DbgType* dwValueType, String& ptrUseDataStr, String& ptrDataStr, DbgTypedValue useTypedValue, Array<String>& dbgVisWildcardCaptures, DwFormatInfo& formatInfo);
+	DbgModule* GetCallStackDbgModule(int callStackIdx);
+	DbgSubprogram* GetCallStackSubprogram(int callStackIdx);
+	DbgCompileUnit* GetCallStackCompileUnit(int callStackIdx);
+	String Evaluate(const StringImpl& expr, DwFormatInfo formatInfo, int callStackIdx, int cursorPos, int language, DwEvalExpressionFlags expressionFlags);
+	String EvaluateContinue() override;
+	void EvaluateContinueKeep() override;
+	String EvaluateContinue(DbgPendingExpr* pendingExpr, BfPassInstance& bfPassInstance);
+	String GetAutocompleteOutput(DwAutoComplete& autoComplete);
+	bool FixCallStackIdx(int& callStackIdx);
+	virtual String Evaluate(const StringImpl& expr, int callStackIdx, int cursorPos, int language, DwEvalExpressionFlags expressionFlags) override;
+	virtual String EvaluateToAddress(const StringImpl& expr, int callStackIdx, int cursorPos) override;
+	virtual String EvaluateAtAddress(const StringImpl& expr, intptr atAddr, int cursorPos) override;
+	virtual String GetCollectionContinuation(const StringImpl& continuationData, int callStackIdx, int count) override;
+	virtual String GetAutoExpressions(int callStackIdx, uint64 memoryRangeStart, uint64 memoryRangeLen) override;
+	virtual String CompactChildExpression(const StringImpl& expr, const StringImpl& parentExpr, int callStackIdx) override;
 };
+
+addr_target DecodeTargetDataPtr(const char*& strRef);
+double ConvertFloat80ToDouble(const uint8 fp80[10]);
 
 template<typename T> T DbgTargetHost::ReadMemory(intptr addr, bool local, bool* failed)
 {

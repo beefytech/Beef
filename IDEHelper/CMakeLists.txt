@@ -216,6 +216,8 @@ if (BF_DBG_HOST AND NOT MSVC)
     DbgTypeMap.cpp
     DbgExprEvaluator.cpp
     DbgEvalSupport.cpp
+    DbgEvaluate.cpp
+    DbgValueFormat.cpp
     DbgSymbolSupport.cpp
     DbgEvalPool.cpp
     HotHeap.cpp
